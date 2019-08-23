@@ -1,0 +1,37 @@
+/*
+*    README
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+This is a collection of processes that communicate by anonymous pipe. Together, they read double-dash files to specify polytopes, sounds, and manipulation modes. Mouse motion can transforms view polytope or plane. Mouse clicks can add plane, add regions, or remove regions. Asynchronous appends to double-dash files wake up the file process to change the state of other processes.
+
+face.c face.h facer.lua facer.hs facer.c facra.c test fork exec read write processes.
+
+types.sh generates types.lua types.h types.c Types.hs.
+
+file.c file.h filer.lua filra.c test read write monitor append files.
+
+time.c timer.lua timra.c test stock flow sound system.
+
+plane.c planer.lua planra.c test opengl display mouse keyboard.
+
+space.hs Naive.hs spacer.lua spacra.hs test specify examine sample classify.
+
+sculpt.lua starts plane space to manipulating double dash polytopes.
+
+print.lua starts space to find and tweak inflated spaces or tetrahedron overlaps.
+
+play.lua starts time plane space to record user polytope sound interact.
+
