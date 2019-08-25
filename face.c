@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/errno.h>
-#include <lua.h>
+#include "face.h"
 
 #define ERROR {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno);exit(-1);}
 
@@ -226,8 +226,8 @@ void writeString(const char *val)
 
 void writeInt(int val) {send(sizeof(int),(char *)&val);}
 void writeNum(double val) {send(sizeof(double),(char *)&val);}
-void writeInts(int siz, int *val) {send(siz*sizeof(int),(char *)val);}
-void writeNums(int siz, double *val) {send(siz*sizeof(double),(char *)val);}
+void writeInts(int siz, const int *val) {send(siz*sizeof(int),(char *)val);}
+void writeNums(int siz, const double *val) {send(siz*sizeof(double),(char *)val);}
 
 #define WRITELUA(NAME,TYPE,FUNC) \
 int write##NAME##Lua(lua_State *lua) \
