@@ -25,8 +25,8 @@ to change the state of other processes.
 
 face.c face.h facer.lua facer.hs facer.c facra.c
 test fork exec read write processes.
-This has poll* read* write* *Char *Int *Float *Double
-*String *Chars *Ints *Floats *Doubles forkExec for each language.
+This has poll* read* write* *Int *Num
+*String *Ints *Nums forkExec for each language.
 
 types.sh generates types.lua types.h types.c Types.hs.
 This has poll* read* write* for each struct in each language,
