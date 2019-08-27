@@ -27,7 +27,7 @@
 
 int inp[BUFSIZE];
 int out[BUFSIZE];
-int num = 0;
+int len = 0;
 
 void forkExec(const char *exe)
 {
@@ -46,9 +46,9 @@ void forkExec(const char *exe)
 		ERROR}
 	val = close(ifd[1]); if (val < 0) ERROR
 	val = close(ofd[0]); if (val < 0) ERROR
-	inp[num] = ifd[0];
-	out[num] = ofd[1];
-	num++;
+	inp[len] = ifd[0];
+	out[len] = ofd[1];
+	len++;
 }
 int forkExecLua(lua_State *lua)
 {
@@ -58,9 +58,9 @@ int forkExecLua(lua_State *lua)
 void pipeInit(const char *av1, const char *av2)
 {
 	int val;
-	val = sscanf(av1,"%d",&out[num]); if (val != 1) ERROR
-	val = sscanf(av2,"%d",&inp[num]); if (val != 1) ERROR
-	num++;
+	val = sscanf(av1,"%d",&out[len]); if (val != 1) ERROR
+	val = sscanf(av2,"%d",&inp[len]); if (val != 1) ERROR
+	len++;
 }
 int pipeInitLua(lua_State *lua)
 {
@@ -73,13 +73,13 @@ int pollAny()
 	int val;
 	int nfd = 0;
 	fd_set fds; FD_ZERO(&fds);
-	for (int i = 0; i < num; i++) {
+	for (int i = 0; i < len; i++) {
 		if (nfd <= inp[i]) nfd = inp[i]+1;
 		FD_SET(inp[i],&fds);}
 	struct timespec tsp; tsp.tv_sec = 0; tsp.tv_nsec = 0;
 	val = pselect(nfd,&fds,0,&fds,&tsp,0); if (val < 0) ERROR
 	if (val == 0) return -1;
-	for (int i = 0; i < num; i++) {
+	for (int i = 0; i < len; i++) {
 		if (FD_ISSET(inp[i],&fds)) return i;}
 	ERROR return -1;
 }
@@ -93,11 +93,11 @@ int waitAny()
 	int val;
 	int nfd = 0;
 	fd_set fds; FD_ZERO(&fds);
-	for (int i = 0; i < num; i++) {
+	for (int i = 0; i < len; i++) {
 		if (nfd <= inp[i]) nfd = inp[i]+1;
 		FD_SET(inp[i],&fds);}
 	val = pselect(nfd,&fds,0,&fds,0,0); if (val < 0) ERROR
-	for (int i = 0; i < num; i++) {
+	for (int i = 0; i < len; i++) {
 		if (FD_ISSET(inp[i],&fds)) return i;}
 	ERROR return -1;
 }
