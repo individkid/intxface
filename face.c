@@ -53,7 +53,7 @@ void forkExec(const char *exe)
 int forkExecLua(lua_State *lua)
 {
 	forkExec(lua_tostring(lua,1));
-	return 1;
+	return 0;
 }
 void pipeInit(const char *av1, const char *av2)
 {
@@ -65,7 +65,7 @@ void pipeInit(const char *av1, const char *av2)
 int pipeInitLua(lua_State *lua)
 {
 	pipeInit(lua_tostring(lua,1),lua_tostring(lua,2));
-	return 1;
+	return 0;
 }
 
 int pollAny()
@@ -148,7 +148,7 @@ void writeString(const char *arg, int idx)
 int writeStringLua(lua_State *lua)
 {
 	writeString(lua_tostring(lua,2),lua_tointeger(lua,1));
-	return 1;
+	return 0;
 }
 void writeInt(int arg, int idx)
 {
@@ -157,7 +157,7 @@ void writeInt(int arg, int idx)
 int writeIntLua(lua_State *lua)
 {
 	writeInt(lua_tointeger(lua,2),lua_tointeger(lua,1));
-	return 1;
+	return 0;
 }
 void writeNum(double arg, int idx)
 {
@@ -166,5 +166,5 @@ void writeNum(double arg, int idx)
 int writeNumLua(lua_State *lua)
 {
 	writeNum(lua_tonumber(lua,2),lua_tointeger(lua,1));
-	return 1;
+	return 0;
 }
