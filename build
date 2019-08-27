@@ -1,1 +1,2 @@
 clang -c face.c -I /usr/local/include/lua
+clang -o facer facer.c -I /usr/local/include/lua
