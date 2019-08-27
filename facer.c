@@ -22,7 +22,7 @@
 int main(int argc, char **argv)
 {
 	if (argc == 3) pipeInit(argv[1],argv[2]);
-	else forkExec("facer");
+	else forkExec("a.out");
 	int status; wait(&status);
 	printf("test passed\n");
 	return 0;
