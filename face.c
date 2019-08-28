@@ -27,16 +27,17 @@
 
 int inp[BUFSIZE];
 int out[BUFSIZE];
+pid_t pid[BUFSIZE];
 int len = 0;
+char buf[BUFSIZE];
 
 void forkExec(const char *exe)
 {
 	int ifd[2], ofd[2], val;
-	pid_t pid;
 	val = pipe(ifd); if (val < 0) ERROR
 	val = pipe(ofd); if (val < 0) ERROR
-	pid = fork(); if (pid < 0) ERROR
-	if (pid == 0) {
+	pid[len] = fork(); if (pid[len] < 0) ERROR
+	if (pid[len] == 0) {
 		char ist[33], ost[33];
 		val = close(ifd[0]); if (val < 0) ERROR
 		val = close(ofd[1]); if (val < 0) ERROR
@@ -67,77 +68,69 @@ int pipeInitLua(lua_State *lua)
 	pipeInit(lua_tostring(lua,1),lua_tostring(lua,2));
 	return 0;
 }
-
-int pollAny()
-{
-	int val;
-	int nfd = 0;
-	fd_set fds; FD_ZERO(&fds);
-	for (int i = 0; i < len; i++) {
-		if (nfd <= inp[i]) nfd = inp[i]+1;
-		FD_SET(inp[i],&fds);}
-	struct timespec tsp; tsp.tv_sec = 0; tsp.tv_nsec = 0;
-	val = pselect(nfd,&fds,0,&fds,&tsp,0); if (val < 0) ERROR
-	if (val == 0) return -1;
-	for (int i = 0; i < len; i++) {
-		if (FD_ISSET(inp[i],&fds)) return i;}
-	ERROR return -1;
-}
-int pollAnyLua(lua_State *lua)
-{
-	lua_pushinteger(lua,pollAny());
-	return 1;
-}
 int waitAny()
 {
 	int val;
 	int nfd = 0;
-	fd_set fds; FD_ZERO(&fds);
+	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
 	for (int i = 0; i < len; i++) {
 		if (nfd <= inp[i]) nfd = inp[i]+1;
-		FD_SET(inp[i],&fds);}
-	val = pselect(nfd,&fds,0,&fds,0,0); if (val < 0) ERROR
+		if (inp[i] >= 0) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
+	val = pselect(nfd,&fds,0,&ers,0,0); if (val < 0) ERROR
 	for (int i = 0; i < len; i++) {
-		if (FD_ISSET(inp[i],&fds)) return i;}
-	ERROR return -1;
+		if (inp[i] >= 0 && FD_ISSET(inp[i],&fds)) return i;}
+	for (int i = 0; i < len; i++) {
+		if (inp[i] >= 0 && FD_ISSET(inp[i],&ers)) inp[i] = -1;}
+	return len;
 }
 int waitAnyLua(lua_State *lua)
 {
 	lua_pushinteger(lua,waitAny());
 	return 1;
 }
-
-void readString(char *arg, int idx)
+void sleepSec(int sec)
 {
-	while (1) {
-	int val = read(inp[idx],arg,1); if (val < 1) ERROR
-	if (*arg == 0) break;
-	arg++;}
+	sleep(sec);
+}
+int sleepSecLua(lua_State *lua)
+{
+	sleep(lua_tointeger(lua,1));
+	return 0;
+}
+
+const char *readString(int idx)
+{
+	for (int i = 0; i < BUFSIZE-1; i++) {
+	int val = read(inp[idx],&buf[i],1); if (val < 1) ERROR
+	if (buf[i] == 0) return buf;}
+	buf[BUFSIZE-1] = 0;
+	return buf;
 }
 int readStringLua(lua_State *lua)
 {
-	char val[BUFSIZE]; readString(val,lua_tointeger(lua,1));
-	lua_pushstring(lua,val);
+	lua_pushstring(lua,readString(lua_tointeger(lua,1)));
 	return 1;
 }
-void readInt(int *arg, int idx)
+int readInt(int idx)
 {
-	int val = read(inp[idx],(char *)arg,sizeof(int)); if (val < sizeof(int)) ERROR
+	int arg;
+	int val = read(inp[idx],(char *)&arg,sizeof(int)); if (val < sizeof(int)) ERROR
+	return arg;
 }
 int readIntLua(lua_State *lua)
 {
-	int val; readInt(&val,lua_tointeger(lua,1));
-	lua_pushinteger(lua,val);
+	lua_pushinteger(lua,readInt(lua_tointeger(lua,1)));
 	return 1;
 }
-void readNum(double *arg, int idx)
+double readNum(int idx)
 {
-	int val = read(inp[idx],(char *)arg,sizeof(double)); if (val < sizeof(double)) ERROR
+	double arg;
+	int val = read(inp[idx],(char *)&arg,sizeof(double)); if (val < sizeof(double)) ERROR
+	return arg;
 }
 int readNumLua(lua_State *lua)
 {
-	double val; readNum(&val,lua_tointeger(lua,1));
-	lua_pushnumber(lua,val);
+	lua_pushnumber(lua,readNum(lua_tointeger(lua,1)));
 	return 1;
 }
 void writeString(const char *arg, int idx)
