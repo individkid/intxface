@@ -24,7 +24,7 @@ import Foreign.C.String
 import System.Environment
 
 foreign import ccall "forkExec" forkExecC :: CString -> IO ()
-foreign import ccall "pipeInit" pipeInit :: CString -> CString -> IO ()
+foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO ()
 foreign import ccall "waitAny" waitAnyC :: IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
 foreign import ccall "readString" readStringC :: CInt -> IO CString
@@ -36,19 +36,24 @@ foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 
 forkExec :: String -> IO ()
 forkExec a = (newCString a) >>= forkExecC
+pipeInit :: String -> String -> IO ()
+pipeInit a b = (newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x))
 waitAny :: IO Int
 waitAny = fmap fromIntegral waitAny
+sleepSec :: Int -> IO ()
+sleepSec a = sleepSecC (fromIntegral a)
+readString :: Int -> IO String
+readString a = fmap show (readStringC (fromIntegral a))
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
 readNum :: Int -> IO Double
 readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
-readString :: Int -> IO String
-readString a = fmap show (readStringC (fromIntegral a))
+writeString :: String -> Int -> IO ()
+writeString a b = (newCString a) >>= (\x -> writeStringC x (fromIntegral b))
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNum :: Double -> Int -> IO ()
 writeNum a b = writeNumC (CDouble a) (fromIntegral b)
-writeString a b = (newCString a) >>= (\x -> writeStringC x (fromIntegral b))
 
 data MainABC = MainA Int | MainB Double | MainC String
 mainA :: [String]
@@ -85,12 +90,11 @@ mainF [] = do
  mainFG 0 mainB -- send stimulus
  actual <- (mainFH (replicate mainD []) mainC) -- collect responses
  mainFI actual mainB -- check responses
+ mainFJ 0 mainD -- wait processes
  print "hub passed"
-mainF [av1,av2] = do
- argv1 <- newCString av1
- argv2 <- newCString av2
- pipeInit argv1 argv2
- mainFJ (head mainC) -- copy request to response in order given
+mainF [a,b] = do
+ pipeInit a b
+ mainFK (head mainC) -- copy request to response in order given
  print "spoke passed"
 mainF _ = undefined
 
@@ -107,13 +111,12 @@ mainFGF _ [] = return ()
 mainFGF a (b:c) = (writeMain b a) >> (mainFGF a c)
 
 mainFH :: [[MainABC]] -> [[MainABC]] -> IO [[MainABC]]
-mainFH a b = waitAny >>= (mainFHF a b 1)
+mainFH a b = waitAny >>= (mainFHF a b)
 
-mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> Int -> IO [[MainABC]]
-mainFHF a b c d
- | (c == mainD) && (d == mainD) = return a
- | d == mainD = waitAny >>= (mainFHF a b (c+1))
- | otherwise = (readMain (mainFHG b d) d) >>= (\x -> mainFH (mainFHH x a d) (mainFHI b d))
+mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHF a b c
+ | c >= mainD = return a
+ | otherwise = (readMain (mainFHG b c) c) >>= (\x -> mainFH (mainFHH x a c) (mainFHI b c))
 
 --mainFHG return head value at given index
 mainFHG :: [[MainABC]] -> Int -> MainABC
@@ -149,10 +152,16 @@ mainFIF (a:b) (c:d)
  | otherwise = False
 mainFIF _ _ = False
 
-mainFJ :: [MainABC] -> IO ()
-mainFJ [] = return ()
-mainFJ (a:b) = do
+mainFJ :: Int -> Int -> IO ()
+mainFJ a b
+ | (a == mainD) && (b == mainD) = return ()
+ | b == mainD = waitAny >>= (mainFJ (a+1))
+ | otherwise = undefined
+
+mainFK :: [MainABC] -> IO ()
+mainFK [] = return ()
+mainFK (a:b) = do
  index <- waitAny
  value <- readMain a index
  writeMain value index
- mainFJ b
+ mainFK b
