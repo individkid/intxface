@@ -173,7 +173,7 @@ void writeString(const char *arg, int idx)
 }
 int writeStringLua(lua_State *lua)
 {
-	writeString(lua_tostring(lua,2),lua_tointeger(lua,1));
+	writeString(lua_tostring(lua,1),lua_tointeger(lua,2));
 	return 0;
 }
 void writeInt(int arg, int idx)
@@ -185,7 +185,7 @@ void writeInt(int arg, int idx)
 }
 int writeIntLua(lua_State *lua)
 {
-	writeInt(lua_tointeger(lua,2),lua_tointeger(lua,1));
+	writeInt(lua_tointeger(lua,1),lua_tointeger(lua,2));
 	return 0;
 }
 void writeNum(double arg, int idx)
@@ -197,6 +197,34 @@ void writeNum(double arg, int idx)
 }
 int writeNumLua(lua_State *lua)
 {
-	writeNum(lua_tonumber(lua,2),lua_tointeger(lua,1));
+	writeNum(lua_tonumber(lua,1),lua_tointeger(lua,2));
+	return 0;
+}
+int luaopen_face (lua_State *L)
+{
+	lua_pushcfunction(L, forkExecLua);
+	lua_setglobal(L, "forkExec");
+	lua_pushcfunction(L, pipeInitLua);
+	lua_setglobal(L, "pipeInit");
+	lua_pushcfunction(L, waitAnyLua);
+	lua_setglobal(L, "waitAny");
+	lua_pushcfunction(L, checkReadLua);
+	lua_setglobal(L, "checkRead");
+	lua_pushcfunction(L, checkWriteLua);
+	lua_setglobal(L, "checkWrite");
+	lua_pushcfunction(L, sleepSecLua);
+	lua_setglobal(L, "sleepSec");
+	lua_pushcfunction(L, readStringLua);
+	lua_setglobal(L, "readString");
+	lua_pushcfunction(L, readIntLua);
+	lua_setglobal(L, "readInt");
+	lua_pushcfunction(L, readNumLua);
+	lua_setglobal(L, "readNum");
+	lua_pushcfunction(L, writeStringLua);
+	lua_setglobal(L, "writeString");
+	lua_pushcfunction(L, writeIntLua);
+	lua_setglobal(L, "writeInt");
+	lua_pushcfunction(L, writeNumLua);
+	lua_setglobal(L, "writeNum");
 	return 0;
 }

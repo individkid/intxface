@@ -63,7 +63,7 @@ writeNum a b = writeNumC (CDouble a) (fromIntegral b)
 
 data MainABC = MainA Int | MainB Double | MainC String deriving (Show)
 mainA :: [String]
-mainA = ["a.out","a.out","a.out"]
+mainA = ["a.out","b.out","facer.lua"]
 mainB :: [[MainABC]]
 mainB = [[MainA 0, MainB 0.1, MainC "zero"],[MainA 1, MainB 1.1, MainC "one"],[MainA 2, MainB 2.1, MainC "two"]]
 mainC :: [[MainABC]]

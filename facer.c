@@ -17,14 +17,20 @@
 
 #include "face.h"
 #include <stdio.h>
-#include <sys/wait.h>
 
 int main(int argc, char **argv)
 {
-	if (argc == 4) pipeInit(argv[1],argv[2]);
-	else forkExec("a.out");
-	int status; wait(&status);
-	if (argc == 4) printf("test passed %s\n",argv[3]);
-	else printf("test passed\n");
+	printf("start spoke%s\n",argv[3]);
+	pipeInit(argv[1],argv[2]);
+	int val = readInt(0);
+	printf("spoke%s %d\n",argv[3],val);
+	writeInt(val,0);
+	double num = readNum(0);
+	printf("spoke%s %f\n",argv[3],num);
+	writeNum(num,0);
+	const char *str = readString(0);
+	printf("spoke%s %s\n",argv[3],str);
+	writeString(str,0);
+	printf("spoke done%s\n",argv[3]);
 	return 0;
 }

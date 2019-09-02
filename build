@@ -1,6 +1,6 @@
 clang -c face.c -I /usr/local/include/lua
-clang facer.c face.o -I /usr/local/include/lua -llua
-./a.out
-rm a.out
+clang -fPIC -shared -o face.so face.o -llua
+clang -o b.out facer.c face.o -I /usr/local/include/lua -llua
 ghc -o a.out facer.hs face.o -llua
 ./a.out
+rm *.out *.o *.so *.hi
