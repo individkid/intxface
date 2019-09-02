@@ -42,11 +42,12 @@ int main(int argc, char **argv)
 	writeInt(0,0); writeInt(1,1); writeInt(2,2);
 	writeNum(0.1,0); writeNum(1.1,1); writeNum(2.1,2);
 	writeStr("zero",0); writeStr("one",1); writeStr("two",2);
-	printf("hub %d %d %d\n",readInt(0),readInt(1),readInt(2));
-	printf("hub %f %f %f\n",readNum(0),readNum(1),readNum(2));
-	printf("hub %s",readStr(0)); printf(" %s",readStr(1)); printf(" %s\n",readStr(2));
-	readInt(0); readInt(1); readInt(2);
-	writeInt(-1,0); writeInt(-1,1); writeInt(-1,2);
+	int done[3] = {0};
+	for (int index = waitAny(); index < 3; index = waitAny()) switch (done[index]) {
+	case (0): printf("hub %d %d\n",index,readInt(index)); done[index]++; break;
+	case (1): printf("hub %d %f\n",index,readNum(index)); done[index]++; break;
+	case (2): printf("hub %d %s\n",index,readStr(index)); done[index]++; break;
+	default: readInt(index); writeInt(-1,index); printf("hub %d done\n",index); break;}
 	printf("hub done %d %d %d %d %d %d\n",
 	checkRead(0),checkRead(1),checkRead(2),
 	checkWrite(0),checkWrite(1),checkWrite(2));

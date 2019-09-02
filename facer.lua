@@ -28,14 +28,25 @@ writeNum(2.1,2)
 writeStr("zero",0)
 writeStr("one",1)
 writeStr("two",2)
-print(string.format("hub %d %d %d",readInt(0),readInt(1),readInt(2)))
-print(string.format("hub %f %f %f",readNum(0),readNum(1),readNum(2)))
-print(string.format("hub %s %s %s",readStr(0),readStr(1),readStr(2)))
-readInt(0)
-readInt(1)
-readInt(2)
-writeInt(-1,0)
-writeInt(-1,1)
-writeInt(-1,2)
+done = {0,0,0}
+index = waitAny()
+while (index < 3) do
+	sub = index+1
+	if (done[sub] == 0) then
+		print(string.format("hub %d %d",index,readInt(index)))
+		done[sub] = done[sub] + 1
+	elseif (done[sub] == 1) then
+		print(string.format("hub %d %f",index,readNum(index)))
+		done[sub] = done[sub] + 1
+	elseif (done[sub] == 2) then
+		print(string.format("hub %d %s",index,readStr(index)))
+		done[sub] = done[sub] + 1
+	else
+		readInt(index)
+		writeInt(-1,index)
+		print(string.format("hub %d done",index))
+	end
+	index = waitAny()
+end
 print(string.format("hub done %d %d %d %d %d %d",checkRead(0),checkRead(1),checkRead(2),checkWrite(0),checkWrite(1),checkWrite(2)))
 end
