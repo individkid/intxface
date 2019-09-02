@@ -48,5 +48,6 @@ while (index < 3) do
 	end
 	index = waitAny()
 end
-print(string.format("hub done %d %d %d %d %d %d",checkRead(0),checkRead(1),checkRead(2),checkWrite(0),checkWrite(1),checkWrite(2)))
+print(string.format("hub done %d %d %d %d %d %d",
+	checkRead(0),checkRead(1),checkRead(2),checkWrite(0),checkWrite(1),checkWrite(2)))
 end
