@@ -20,6 +20,7 @@
 
 int main(int argc, char **argv)
 {
+	if (argc == 4) {
 	printf("start spoke%s\n",argv[3]);
 	pipeInit(argv[1],argv[2]);
 	int val = readInt(0);
@@ -32,5 +33,22 @@ int main(int argc, char **argv)
 	printf("spoke%s %s\n",argv[3],str);
 	writeString(str,0);
 	printf("spoke done%s\n",argv[3]);
+	return 0;}
+	printf("start hub\n");
+	forkExec("a.out");
+	forkExec("b.out");
+	forkExec("facer.lua");
+	sleepSec(1);
+	writeInt(0,0); writeInt(1,1); writeInt(2,2);
+	writeNum(0.1,0); writeNum(1.1,1); writeNum(2.1,2);
+	writeString("zero",0); writeString("one",1); writeString("two",2);
+	printf("hub %d %d %d\n",readInt(0),readInt(1),readInt(2));
+	printf("hub %f %f %f\n",readNum(0),readNum(1),readNum(2));
+	printf("hub %s",readString(0)); printf(" %s",readString(1)); printf(" %s\n",readString(2));
+	readInt(0); readInt(1); readInt(2);
+	writeInt(-1,0); writeInt(-1,1); writeInt(-1,2);
+	printf("hub done %d %d %d %d %d %d\n",
+	checkRead(0),checkRead(1),checkRead(2),
+	checkWrite(0),checkWrite(1),checkWrite(2));
 	return 0;
 }

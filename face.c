@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/errno.h>
+#include <signal.h>
 #include "face.h"
 
 #define ERROR {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno);exit(-1);}
@@ -51,6 +52,7 @@ void forkExec(const char *exe)
 	inp[len] = c2p[0];
 	out[len] = p2c[1];
 	len++;
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR
 }
 int forkExecLua(lua_State *lua)
 {
@@ -63,6 +65,7 @@ void pipeInit(const char *av1, const char *av2)
 	val = sscanf(av1,"%d",&inp[len]); if (val != 1) ERROR
 	val = sscanf(av2,"%d",&out[len]); if (val != 1) ERROR
 	len++;
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR
 }
 int pipeInitLua(lua_State *lua)
 {
