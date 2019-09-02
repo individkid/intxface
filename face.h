@@ -23,6 +23,8 @@ void pipeInit(const char *av1, const char *av2);
 int pipeInitLua(lua_State *lua);
 int waitAny();
 int waitAnyLua(lua_State *lua);
+int checkRead(int idx);
+int checkReadLua(lua_State *lua);
 void sleepSec(int sec);
 int sleepSecLua(lua_State *lua);
 const char *readString(int idx);

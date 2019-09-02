@@ -33,22 +33,22 @@ char buf[BUFSIZE];
 
 void forkExec(const char *exe)
 {
-	int ifd[2], ofd[2], val;
-	val = pipe(ifd); if (val < 0) ERROR
-	val = pipe(ofd); if (val < 0) ERROR
+	int c2p[2], p2c[2], val;
+	val = pipe(c2p); if (val < 0) ERROR
+	val = pipe(p2c); if (val < 0) ERROR
 	pid[len] = fork(); if (pid[len] < 0) ERROR
 	if (pid[len] == 0) {
 		char ist[33], ost[33];
-		val = close(ifd[0]); if (val < 0) ERROR
-		val = close(ofd[1]); if (val < 0) ERROR
-		val = snprintf(ist,32,"%d",ifd[1]); if (val < 0 || val > 32) ERROR
-		val = snprintf(ost,32,"%d",ofd[0]); if (val < 0 || val > 32) ERROR
+		val = close(c2p[0]); if (val < 0) ERROR
+		val = close(p2c[1]); if (val < 0) ERROR
+		val = snprintf(ost,32,"%d",c2p[1]); if (val < 0 || val > 32) ERROR
+		val = snprintf(ist,32,"%d",p2c[0]); if (val < 0 || val > 32) ERROR
 		val = execl(exe,exe,ist,ost,0); if (val < 0) ERROR
 		ERROR}
-	val = close(ifd[1]); if (val < 0) ERROR
-	val = close(ofd[0]); if (val < 0) ERROR
-	inp[len] = ifd[0];
-	out[len] = ofd[1];
+	val = close(c2p[1]); if (val < 0) ERROR
+	val = close(p2c[0]); if (val < 0) ERROR
+	inp[len] = c2p[0];
+	out[len] = p2c[1];
 	len++;
 }
 int forkExecLua(lua_State *lua)
@@ -59,8 +59,8 @@ int forkExecLua(lua_State *lua)
 void pipeInit(const char *av1, const char *av2)
 {
 	int val;
-	val = sscanf(av1,"%d",&out[len]); if (val != 1) ERROR
-	val = sscanf(av2,"%d",&inp[len]); if (val != 1) ERROR
+	val = sscanf(av1,"%d",&inp[len]); if (val != 1) ERROR
+	val = sscanf(av2,"%d",&out[len]); if (val != 1) ERROR
 	len++;
 }
 int pipeInitLua(lua_State *lua)
@@ -76,7 +76,8 @@ int waitAny()
 	for (int i = 0; i < len; i++) {
 		if (nfd <= inp[i]) nfd = inp[i]+1;
 		if (inp[i] >= 0) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
-	val = pselect(nfd,&fds,0,&ers,0,0); if (val < 0) ERROR
+	if (nfd == 0) return len;
+	val = -1; while (val < 0) val = pselect(nfd,&fds,0,&ers,0,0); if (val == 0 || (val < 0 && errno != EINTR)) ERROR
 	for (int i = 0; i < len; i++) {
 		if (inp[i] >= 0 && FD_ISSET(inp[i],&fds)) return i;}
 	for (int i = 0; i < len; i++) {
@@ -86,6 +87,15 @@ int waitAny()
 int waitAnyLua(lua_State *lua)
 {
 	lua_pushinteger(lua,waitAny());
+	return 1;
+}
+int checkRead(int idx)
+{
+	return (inp[idx] >= 0);
+}
+int checkReadLua(lua_State *lua)
+{
+	lua_pushinteger(lua,checkRead(lua_tointeger(lua,1)));
 	return 1;
 }
 void sleepSec(int sec)
@@ -101,8 +111,10 @@ int sleepSecLua(lua_State *lua)
 const char *readString(int idx)
 {
 	for (int i = 0; i < BUFSIZE-1; i++) {
-	int val = read(inp[idx],&buf[i],1); if (val < 1) ERROR
-	if (buf[i] == 0) return buf;}
+	int val = read(inp[idx],&buf[i],1); if (val < 0) ERROR
+	if (val == 0) {buf[i] = 0; inp[idx] = -1;}
+	if (buf[i] == 0) return buf;
+	}
 	buf[BUFSIZE-1] = 0;
 	return buf;
 }
@@ -114,7 +126,8 @@ int readStringLua(lua_State *lua)
 int readInt(int idx)
 {
 	int arg;
-	int val = read(inp[idx],(char *)&arg,sizeof(int)); if (val < sizeof(int)) ERROR
+	int val = read(inp[idx],(char *)&arg,sizeof(int)); if (val != 0 && val < sizeof(int)) ERROR
+	if (val == 0) inp[idx] = -1;
 	return arg;
 }
 int readIntLua(lua_State *lua)
@@ -125,7 +138,8 @@ int readIntLua(lua_State *lua)
 double readNum(int idx)
 {
 	double arg;
-	int val = read(inp[idx],(char *)&arg,sizeof(double)); if (val < sizeof(double)) ERROR
+	int val = read(inp[idx],(char *)&arg,sizeof(double)); if (val != 0 && val < sizeof(double)) ERROR
+	if (val == 0) inp[idx] = -1;
 	return arg;
 }
 int readNumLua(lua_State *lua)

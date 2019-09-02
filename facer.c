@@ -24,6 +24,6 @@ int main(int argc, char **argv)
 	if (argc == 3) pipeInit(argv[1],argv[2]);
 	else forkExec("a.out");
 	int status; wait(&status);
-	printf("test passed\n");
+	printf("test passed %d\n",argc);
 	return 0;
 }

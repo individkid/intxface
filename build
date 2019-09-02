@@ -2,5 +2,5 @@ clang -c face.c -I /usr/local/include/lua
 clang facer.c face.o -I /usr/local/include/lua -llua
 ./a.out
 rm a.out
-ghc -o a.out facer.hs face.o
+ghc -o a.out facer.hs face.o -llua
 ./a.out

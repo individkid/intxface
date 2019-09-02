@@ -26,6 +26,7 @@ import System.Environment
 foreign import ccall "forkExec" forkExecC :: CString -> IO ()
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO ()
 foreign import ccall "waitAny" waitAnyC :: IO CInt
+foreign import ccall "checkRead" checkReadC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
 foreign import ccall "readString" readStringC :: CInt -> IO CString
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
@@ -39,7 +40,9 @@ forkExec a = (newCString a) >>= forkExecC
 pipeInit :: String -> String -> IO ()
 pipeInit a b = (newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x))
 waitAny :: IO Int
-waitAny = fmap fromIntegral waitAny
+waitAny = fmap fromIntegral waitAnyC
+checkRead :: Int -> IO Int
+checkRead a = fmap fromIntegral (checkReadC (fromIntegral a))
 sleepSec :: Int -> IO ()
 sleepSec a = sleepSecC (fromIntegral a)
 readString :: Int -> IO String
@@ -55,15 +58,15 @@ writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNum :: Double -> Int -> IO ()
 writeNum a b = writeNumC (CDouble a) (fromIntegral b)
 
-data MainABC = MainA Int | MainB Double | MainC String
+data MainABC = MainA Int | MainB Double | MainC String deriving (Show)
 mainA :: [String]
-mainA = ["a.out","a.out","a.out"]
+mainA = ["a.out"] -- ,"a.out","a.out"]
 mainB :: [[MainABC]]
-mainB = [[MainA 0, MainB 0.1, MainC "zero"],[MainA 1, MainB 1.1, MainC "one"],[MainA 2, MainB 2.1, MainC "two"]]
+mainB = [[MainA 0, MainB 0.1, MainC "zero"]] --,[MainA 1, MainB 1.1, MainC "one"],[MainA 2, MainB 2.1, MainC "two"]]
 mainC :: [[MainABC]]
-mainC = replicate 3 [MainA (negate 1), MainB 0.0, MainC ""]
+mainC = replicate mainD [MainA (negate 1), MainB 0.1, MainC "zero"]
 mainD :: Int
-mainD = 3
+mainD = 1 -- 3
 
 readMain :: MainABC -> Int -> IO MainABC
 readMain (MainA _) a = fmap MainA (readInt a)
@@ -82,20 +85,32 @@ compMain (MainC a) (MainC b) = a == b
 compMain _ _ = False
 
 main :: IO ()
-main = getArgs >>= mainF
+main = getArgs >>= mainS -- mainF
+
+mainS :: [String] -> IO ()
+mainS [] = do
+ print "hub start"
+ mainFF mainA
+ mainFG 0 mainB
+ actual <- mainFH mainC
+ mainFI actual mainB
+ print ("hub done " ++ (show actual))
+mainS [a,b] = do
+ print "spoke start"
+ pipeInit a b
+ mainFK (head mainC)
+ print "spoke done"
 
 mainF :: [String] -> IO ()
 mainF [] = do
  mainFF mainA -- start processes
  mainFG 0 mainB -- send stimulus
- actual <- (mainFH (replicate mainD []) mainC) -- collect responses
+ actual <- mainFH mainC -- collect responses
  mainFI actual mainB -- check responses
- mainFJ 0 mainD -- wait processes
- print "hub passed"
+ mainFJ 1 mainD -- wait processes
 mainF [a,b] = do
  pipeInit a b
  mainFK (head mainC) -- copy request to response in order given
- print "spoke passed"
 mainF _ = undefined
 
 mainFF :: [String] -> IO ()
@@ -110,40 +125,61 @@ mainFGF :: Int -> [MainABC] -> IO ()
 mainFGF _ [] = return ()
 mainFGF a (b:c) = (writeMain b a) >> (mainFGF a c)
 
-mainFH :: [[MainABC]] -> [[MainABC]] -> IO [[MainABC]]
-mainFH a b = waitAny >>= (mainFHF a b)
+mainFH :: [[MainABC]] -> IO [[MainABC]]
+mainFH a = do
+ index <- waitAny
+ print ("mainFH got index " ++ (show index))
+ mainFHF a index
 
-mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO [[MainABC]]
-mainFHF a b c
- | c >= mainD = return a
- | otherwise = (readMain (mainFHG b c) c) >>= (\x -> mainFH (mainFHH x a c) (mainFHI b c))
+mainFHF :: [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHF a b
+ | b == mainD = return a
+ | otherwise = do
+  pattern <- mainFHJ a b
+  value <- readMain pattern b
+  valid <- checkRead b
+  print ("mainFHF " ++ (show valid) ++ " " ++ (show value))
+  mainFHG a b value valid
 
---mainFHG return head value at given index
-mainFHG :: [[MainABC]] -> Int -> MainABC
-mainFHG a b = head (head (drop b a))
+mainFHG :: [[MainABC]] -> Int -> MainABC -> Int -> IO [[MainABC]]
+mainFHG a b c 1 = do
+ remove <- mainFHH a b
+ append <- mainFHI c remove b
+ print ("mainFHG append " ++ (show append))
+ mainFH append
+mainFHG a _ _ 0 = return a
 
---mainFHH append value at given index
-mainFHH :: MainABC -> [[MainABC]] -> Int -> [[MainABC]]
-mainFHH a b c = let
- pre = take c b
- rest = drop c b
- post = tail rest
- mid = head rest
- in pre ++ [(mid ++ [a])] ++ post
-
---mainFHI remove head at given index
-mainFHI :: [[MainABC]] -> Int -> [[MainABC]]
-mainFHI a b = let
+--mainFHH pop value at given index
+mainFHH :: [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHH a b = let
  pre = take b a
  rest = drop b a
  post = tail rest
  mid = head rest
- in pre ++ [(tail mid)] ++ post
+ in return (pre ++ [(tail mid)] ++ post)
+
+--mainFHI push value at given index
+mainFHI :: MainABC -> [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHI a b c = let
+ pre = take c b
+ rest = drop c b
+ post = tail rest
+ mid = head rest
+ in return (pre ++ [(mid ++ [a])] ++ post)
+
+--mainFHJ peek value at given index
+mainFHJ :: [[MainABC]] -> Int -> IO MainABC
+mainFHJ a b = let
+ rest = drop b a
+ mid = head rest
+ in return (head mid)
 
 mainFI :: [[MainABC]] -> [[MainABC]] -> IO ()
+mainFI [] [] = return ()
 mainFI (a:b) (c:d)
  | mainFIF a c = mainFI b d
- | otherwise = undefined
+ | otherwise = print ("mismatch " ++ (show a) ++ (show c))
+mainFI _ _ = print "impossible"
 
 mainFIF :: [MainABC] -> [MainABC] -> Bool
 mainFIF [] [] = True
@@ -162,6 +198,8 @@ mainFK :: [MainABC] -> IO ()
 mainFK [] = return ()
 mainFK (a:b) = do
  index <- waitAny
+ print ("mainFK got index " ++ (show index))
  value <- readMain a index
+ print ("mainFK got value " ++ (show value))
  writeMain value index
  mainFK b
