@@ -122,7 +122,7 @@ int sleepSecLua(lua_State *lua)
 	return 0;
 }
 
-const char *readString(int idx)
+const char *readStr(int idx)
 {
 	if (inp[idx] < 0) {buf[0] = 0; return buf;}
 	for (int i = 0; i < BUFSIZE-1; i++) {
@@ -133,9 +133,9 @@ const char *readString(int idx)
 	buf[BUFSIZE-1] = 0;
 	return buf;
 }
-int readStringLua(lua_State *lua)
+int readStrLua(lua_State *lua)
 {
-	lua_pushstring(lua,readString(lua_tointeger(lua,1)));
+	lua_pushstring(lua,readStr(lua_tointeger(lua,1)));
 	return 1;
 }
 int readInt(int idx)
@@ -166,7 +166,7 @@ int readNumLua(lua_State *lua)
 	lua_pushnumber(lua,readNum(lua_tointeger(lua,1)));
 	return 1;
 }
-void writeString(const char *arg, int idx)
+void writeStr(const char *arg, int idx)
 {
 	if (out[idx] < 0) return;
 	int siz = 0; while (arg[siz]) siz++;
@@ -174,9 +174,9 @@ void writeString(const char *arg, int idx)
 	if (val < 0 && errno == EPIPE) out[idx] = -1;
 	else if (val < siz+1) ERROR
 }
-int writeStringLua(lua_State *lua)
+int writeStrLua(lua_State *lua)
 {
-	writeString(lua_tostring(lua,1),lua_tointeger(lua,2));
+	writeStr(lua_tostring(lua,1),lua_tointeger(lua,2));
 	return 0;
 }
 void writeInt(int arg, int idx)
@@ -217,14 +217,14 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "checkWrite");
 	lua_pushcfunction(L, sleepSecLua);
 	lua_setglobal(L, "sleepSec");
-	lua_pushcfunction(L, readStringLua);
-	lua_setglobal(L, "readString");
+	lua_pushcfunction(L, readStrLua);
+	lua_setglobal(L, "readStr");
 	lua_pushcfunction(L, readIntLua);
 	lua_setglobal(L, "readInt");
 	lua_pushcfunction(L, readNumLua);
 	lua_setglobal(L, "readNum");
-	lua_pushcfunction(L, writeStringLua);
-	lua_setglobal(L, "writeString");
+	lua_pushcfunction(L, writeStrLua);
+	lua_setglobal(L, "writeStr");
 	lua_pushcfunction(L, writeIntLua);
 	lua_setglobal(L, "writeInt");
 	lua_pushcfunction(L, writeNumLua);

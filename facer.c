@@ -29,9 +29,9 @@ int main(int argc, char **argv)
 	double num = readNum(0);
 	printf("spoke%s %f\n",argv[3],num);
 	writeNum(num,0);
-	const char *str = readString(0);
+	const char *str = readStr(0);
 	printf("spoke%s %s\n",argv[3],str);
-	writeString(str,0);
+	writeStr(str,0);
 	printf("spoke done%s\n",argv[3]);
 	return 0;}
 	printf("start hub\n");
@@ -41,10 +41,10 @@ int main(int argc, char **argv)
 	sleepSec(1);
 	writeInt(0,0); writeInt(1,1); writeInt(2,2);
 	writeNum(0.1,0); writeNum(1.1,1); writeNum(2.1,2);
-	writeString("zero",0); writeString("one",1); writeString("two",2);
+	writeStr("zero",0); writeStr("one",1); writeStr("two",2);
 	printf("hub %d %d %d\n",readInt(0),readInt(1),readInt(2));
 	printf("hub %f %f %f\n",readNum(0),readNum(1),readNum(2));
-	printf("hub %s",readString(0)); printf(" %s",readString(1)); printf(" %s\n",readString(2));
+	printf("hub %s",readStr(0)); printf(" %s",readStr(1)); printf(" %s\n",readStr(2));
 	readInt(0); readInt(1); readInt(2);
 	writeInt(-1,0); writeInt(-1,1); writeInt(-1,2);
 	printf("hub done %d %d %d %d %d %d\n",

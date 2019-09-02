@@ -29,10 +29,10 @@ foreign import ccall "waitAny" waitAnyC :: IO CInt
 foreign import ccall "checkRead" checkReadC :: CInt -> IO CInt
 foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
-foreign import ccall "readString" readStringC :: CInt -> IO CString
+foreign import ccall "readStr" readStrC :: CInt -> IO CString
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
-foreign import ccall "writeString" writeStringC :: CString -> CInt -> IO ()
+foreign import ccall "writeStr" writeStrC :: CString -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 
@@ -48,14 +48,14 @@ checkWrite :: Int -> IO Int
 checkWrite a = fmap fromIntegral (checkWriteC (fromIntegral a))
 sleepSec :: Int -> IO ()
 sleepSec a = sleepSecC (fromIntegral a)
-readString :: Int -> IO String
-readString a = (readStringC (fromIntegral a)) >>= peekCString
+readStr :: Int -> IO String
+readStr a = (readStrC (fromIntegral a)) >>= peekCString
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
 readNum :: Int -> IO Double
 readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
-writeString :: String -> Int -> IO ()
-writeString a b = (newCString a) >>= (\x -> writeStringC x (fromIntegral b))
+writeStr :: String -> Int -> IO ()
+writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral b))
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNum :: Double -> Int -> IO ()
@@ -74,12 +74,12 @@ mainD = 3
 readMain :: MainABC -> Int -> IO MainABC
 readMain (MainA _) a = fmap MainA (readInt a)
 readMain (MainB _) a = fmap MainB (readNum a)
-readMain (MainC _) a = fmap MainC (readString a)
+readMain (MainC _) a = fmap MainC (readStr a)
 
 writeMain :: MainABC -> Int -> IO ()
 writeMain (MainA a) b = writeInt a b
 writeMain (MainB a) b = writeNum a b
-writeMain (MainC a) b = writeString a b
+writeMain (MainC a) b = writeStr a b
 
 compMain :: MainABC -> MainABC -> Bool
 compMain (MainA a) (MainA b) = a == b
