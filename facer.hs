@@ -94,15 +94,17 @@ mainF :: [String] -> IO ()
 mainF [] = do
  print "start hub"
  mainFF mainA -- start processes
+ sleepSec 1
  mainFG 0 mainB -- send stimulus
  actual <- mainFH (sum (map length mainB)) mainC -- collect responses
  mainFI actual mainB -- check responses
  mainFJ 0 -- wait processes
+ mainFK 0 -- check processes
  print ("hub done " ++ (show actual))
 mainF [a,b,c] = do
  print ("start spoke" ++ c)
  pipeInit a b
- mainFK (head mainC) -- copy request to response in order given
+ mainFL (head mainC) c -- copy request to response in order given
  print ("spoke" ++ c ++ " done")
 mainF _ = undefined
 
@@ -178,13 +180,24 @@ mainFIF _ _ = False
 mainFJ :: Int -> IO ()
 mainFJ a
  | a == mainD = return ()
- | otherwise = (readInt a) >> (mainFJ (a+1))
+ | otherwise = (readInt a) >> (writeInt 0 a) >> (mainFJ (a+1))
 
-mainFK :: [MainABC] -> IO ()
-mainFK [] = return ()
-mainFK (a:b) = do
+mainFK :: Int -> IO ()
+mainFK a
+ | a == mainD = return ()
+ | otherwise = do
+  (checkRead a) >>= (mainFKF a)
+  (checkWrite a) >>= (mainFKF a)
+
+mainFKF :: Int -> Int -> IO ()
+mainFKF a 0 = mainFK (a+1)
+mainFKF _ _ = undefined
+
+mainFL :: [MainABC] -> String -> IO ()
+mainFL [] _ = return ()
+mainFL (a:b) c = do
  index <- waitAny
  value <- readMain a index
- print ("spoke " ++ (show value))
+ print ("spoke" ++ c ++ " " ++ (show value))
  writeMain value index
- mainFK b
+ mainFL b c

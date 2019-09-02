@@ -78,7 +78,8 @@ int waitAny()
 		if (nfd <= inp[i]) nfd = inp[i]+1;
 		if (inp[i] >= 0) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
 	if (nfd == 0) return len;
-	val = -1; while (val < 0) val = pselect(nfd,&fds,0,&ers,0,0); if (val == 0 || (val < 0 && errno != EINTR)) ERROR
+	val = -1; while (val < 0) val = pselect(nfd,&fds,0,&ers,0,0);
+	if (val == 0 || (val < 0 && errno != EINTR)) ERROR
 	for (int i = 0; i < len; i++) {
 		if (inp[i] >= 0 && FD_ISSET(inp[i],&fds)) return i;}
 	for (int i = 0; i < len; i++) {
@@ -120,6 +121,7 @@ int sleepSecLua(lua_State *lua)
 
 const char *readString(int idx)
 {
+	if (inp[idx] < 0) {buf[0] = 0; return buf;}
 	for (int i = 0; i < BUFSIZE-1; i++) {
 	int val = read(inp[idx],&buf[i],1); if (val < 0) ERROR
 	if (val == 0) {buf[i] = 0; inp[idx] = -1;}
@@ -136,7 +138,9 @@ int readStringLua(lua_State *lua)
 int readInt(int idx)
 {
 	int arg;
-	int val = read(inp[idx],(char *)&arg,sizeof(int)); if (val != 0 && val < sizeof(int)) ERROR
+	if (inp[idx] < 0) {arg = 0; return arg;}
+	int val = read(inp[idx],(char *)&arg,sizeof(int));
+	if (val != 0 && val < (int)sizeof(int)) ERROR
 	if (val == 0) {arg = 0; inp[idx] = -1;}
 	return arg;
 }
@@ -148,7 +152,9 @@ int readIntLua(lua_State *lua)
 double readNum(int idx)
 {
 	double arg;
-	int val = read(inp[idx],(char *)&arg,sizeof(double)); if (val != 0 && val < sizeof(double)) ERROR
+	if (inp[idx] < 0) {arg = 0.0; return arg;}
+	int val = read(inp[idx],(char *)&arg,sizeof(double));
+	if (val != 0 && val < (int)sizeof(double)) ERROR
 	if (val == 0) {arg = 0.0; inp[idx] = -1;}
 	return arg;
 }
@@ -159,8 +165,11 @@ int readNumLua(lua_State *lua)
 }
 void writeString(const char *arg, int idx)
 {
+	if (out[idx] < 0) return;
 	int siz = 0; while (arg[siz]) siz++;
-	int val = write(out[idx],arg,siz+1); if (val < 1) ERROR
+	int val = write(out[idx],arg,siz+1);
+	if (val < 0 && errno == EPIPE) out[idx] = -1;
+	else if (val < siz+1) ERROR
 }
 int writeStringLua(lua_State *lua)
 {
@@ -169,7 +178,10 @@ int writeStringLua(lua_State *lua)
 }
 void writeInt(int arg, int idx)
 {
-	int val = write(out[idx],(char *)&arg,sizeof(int)); if (val < sizeof(int)) ERROR
+	if (out[idx] < 0) return;
+	int val = write(out[idx],(char *)&arg,sizeof(int));
+	if (val < 0 && errno == EPIPE) out[idx] = -1;
+	else if (val < (int)sizeof(int)) ERROR
 }
 int writeIntLua(lua_State *lua)
 {
@@ -178,7 +190,10 @@ int writeIntLua(lua_State *lua)
 }
 void writeNum(double arg, int idx)
 {
-	int val = write(out[idx],(char *)&arg,sizeof(double)); if (val < sizeof(double)) ERROR
+	if (out[idx] < 0) return;
+	int val = write(out[idx],(char *)&arg,sizeof(double));
+	if (val < 0 && errno == EPIPE) out[idx] = -1;
+	else if (val < (int)sizeof(double)) ERROR
 }
 int writeNumLua(lua_State *lua)
 {
