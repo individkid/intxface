@@ -21,9 +21,10 @@
 
 int main(int argc, char **argv)
 {
-	if (argc == 3) pipeInit(argv[1],argv[2]);
+	if (argc == 4) pipeInit(argv[1],argv[2]);
 	else forkExec("a.out");
 	int status; wait(&status);
-	printf("test passed %d\n",argc);
+	if (argc == 4) printf("test passed %s\n",argv[3]);
+	else printf("test passed\n");
 	return 0;
 }

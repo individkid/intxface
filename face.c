@@ -38,12 +38,13 @@ void forkExec(const char *exe)
 	val = pipe(p2c); if (val < 0) ERROR
 	pid[len] = fork(); if (pid[len] < 0) ERROR
 	if (pid[len] == 0) {
-		char ist[33], ost[33];
+		char ist[33], ost[33], idt[33];
 		val = close(c2p[0]); if (val < 0) ERROR
 		val = close(p2c[1]); if (val < 0) ERROR
 		val = snprintf(ost,32,"%d",c2p[1]); if (val < 0 || val > 32) ERROR
 		val = snprintf(ist,32,"%d",p2c[0]); if (val < 0 || val > 32) ERROR
-		val = execl(exe,exe,ist,ost,0); if (val < 0) ERROR
+		val = snprintf(idt,32,"%d",len); if (val < 0 || val > 32) ERROR
+		val = execl(exe,exe,ist,ost,idt,0); if (val < 0) ERROR
 		ERROR}
 	val = close(c2p[1]); if (val < 0) ERROR
 	val = close(p2c[0]); if (val < 0) ERROR
@@ -98,6 +99,15 @@ int checkReadLua(lua_State *lua)
 	lua_pushinteger(lua,checkRead(lua_tointeger(lua,1)));
 	return 1;
 }
+int checkWrite(int idx)
+{
+	return (out[idx] >= 0);
+}
+int checkWriteLua(lua_State *lua)
+{
+	lua_pushinteger(lua,checkWrite(lua_tointeger(lua,1)));
+	return 1;
+}
 void sleepSec(int sec)
 {
 	sleep(sec);
@@ -127,7 +137,7 @@ int readInt(int idx)
 {
 	int arg;
 	int val = read(inp[idx],(char *)&arg,sizeof(int)); if (val != 0 && val < sizeof(int)) ERROR
-	if (val == 0) inp[idx] = -1;
+	if (val == 0) {arg = 0; inp[idx] = -1;}
 	return arg;
 }
 int readIntLua(lua_State *lua)
@@ -139,7 +149,7 @@ double readNum(int idx)
 {
 	double arg;
 	int val = read(inp[idx],(char *)&arg,sizeof(double)); if (val != 0 && val < sizeof(double)) ERROR
-	if (val == 0) inp[idx] = -1;
+	if (val == 0) {arg = 0.0; inp[idx] = -1;}
 	return arg;
 }
 int readNumLua(lua_State *lua)
