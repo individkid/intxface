@@ -89,12 +89,11 @@ mainF [] = do
  sleepSec 1
  mainFG 0 mainB -- send stimulus
  mainFH mainB mainB -- check responses
- mainFI 0 -- wait processes
- check <- mainFJ 0 [] -- check processes
+ check <- mainFI 0 [] -- check processes
  print ("facer.hs " ++ (show check))
 mainF [a,b,c] = do
  pipeInit a b
- mainFK (head mainB) c -- copy request to response in order given
+ mainFJ (head mainB) c -- copy request to response in order given
 mainF _ = undefined
 
 mainFF :: [String] -> IO ()
@@ -110,15 +109,15 @@ mainFGF _ [] = return ()
 mainFGF a (b:c) = (writeMain b a) >> (mainFGF a c)
 
 mainFH :: [[MainABC]] -> [[MainABC]] -> IO ()
-mainFH a b
- | (sum (map length a)) == 0 = return ()
- | otherwise = waitAny >>= (mainFHF a b)
+mainFH a b = waitAny >>= (mainFHF a b)
 
 mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO ()
 mainFHF a b c
- | (length (a !! c)) == 0 = mainFH a b
- | otherwise = (readMain d c) >>=
-  (mainFHG (mainFHH a c) (mainFHH b c) c d)
+ | c == mainC = return ()
+ | (length (a !! c)) == 0 =
+  (readInt c) >> (writeInt (negate 1) c) >> (mainFH a b)
+ | otherwise =
+  (readMain d c) >>= (mainFHG (mainFHH a c) (mainFHH b c) c d)
  where d = mainFHJ b c
 
 mainFHG :: [[MainABC]] -> [[MainABC]] -> Int -> MainABC -> MainABC -> IO ()
@@ -152,25 +151,18 @@ mainFHJ a b = let
  mid = head rest
  in head mid
 
-mainFI :: Int -> IO ()
-mainFI a
- | a == mainC = return ()
- | otherwise = (readInt a) >>
-  (writeInt (negate 1) a) >>
-  (mainFI (a+1))
-
-mainFJ :: Int -> [Int] -> IO [Int]
-mainFJ a b
+mainFI :: Int -> [Int] -> IO [Int]
+mainFI a b
  | a == mainC = return b
  | otherwise = do
   read <- checkRead a
   write <- checkWrite a
-  mainFJ (a+1) (b ++ [read,write])
-
-mainFK :: [MainABC] -> String -> IO ()
-mainFK [] _ = return ()
-mainFK (a:b) c = do
+  mainFI (a+1) (b ++ [read,write])
+ 
+mainFJ :: [MainABC] -> String -> IO ()
+mainFJ [] _ = return ()
+mainFJ (a:b) c = do
  index <- waitAny
  value <- readMain a index
  writeMain value index
- mainFK b c
+ mainFJ b c
