@@ -92,7 +92,6 @@ main = getArgs >>= mainF -- mainF
 
 mainF :: [String] -> IO ()
 mainF [] = do
- print "start hub"
  mainFF mainA -- start processes
  sleepSec 1
  mainFG 0 mainB -- send stimulus
@@ -100,12 +99,9 @@ mainF [] = do
  mainFI actual mainB -- check responses
  mainFJ 0 -- wait processes
  mainFK 0 -- check processes
- print ("hub done " ++ (show actual))
 mainF [a,b,c] = do
- print ("start spoke" ++ c)
  pipeInit a b
  mainFL (head mainC) c -- copy request to response in order given
- print ("spoke" ++ c ++ " done")
 mainF _ = undefined
 
 mainFF :: [String] -> IO ()
@@ -130,6 +126,7 @@ mainFHF :: Int -> [[MainABC]] -> Int -> IO [[MainABC]]
 mainFHF a b c = do
  pattern <- mainFHJ b c
  value <- readMain pattern c
+ print ("mainFHF" ++ (show c) ++ " " ++ (show value))
  mainFHG a b c value
 
 mainFHG :: Int -> [[MainABC]] -> Int -> MainABC -> IO [[MainABC]]
@@ -198,6 +195,5 @@ mainFL [] _ = return ()
 mainFL (a:b) c = do
  index <- waitAny
  value <- readMain a index
- print ("spoke" ++ c ++ " " ++ (show value))
  writeMain value index
  mainFL b c

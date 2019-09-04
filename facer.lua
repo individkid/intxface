@@ -1,50 +1,75 @@
-#!/usr/local/bin/lua
+#!/usr/bin/env lua
+--[[
+*    facer.lua
+*    Copyright (C) 2019  Paul Coelho
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+--]]
+
 require "face"
 if (arg[1] and arg[2] and arg[3]) then
-print("start spoke" .. arg[3])
+-- print("start spoke" .. arg[3])
 pipeInit(arg[1],arg[2])
 int = readInt(0)
-print(string.format("spoke%d %d",arg[3],int))
+-- print(string.format("spoke%d %d",arg[3],int))
 writeInt(int,0)
 num = readNum(0)
-print(string.format("spoke%d %f",arg[3],num))
+-- print(string.format("spoke%d %f",arg[3],num))
 writeNum(num,0)
 str = readStr(0)
-print(string.format("spoke%d %s",arg[3],str))
+-- print(string.format("spoke%d %s",arg[3],str))
 writeStr(str,0)
-print("spoke" .. arg[3] .. " done")
+-- print("spoke" .. arg[3] .. " done")
 else
-print("start hub")
+-- print("start hub")
 forkExec("a.out")
 forkExec("b.out")
 forkExec("facer.lua")
 sleepSec(1)
-writeInt(0,0)
-writeInt(1,1)
-writeInt(2,2)
-writeNum(0.1,0)
-writeNum(1.1,1)
-writeNum(2.1,2)
-writeStr("zero",0)
-writeStr("one",1)
-writeStr("two",2)
+expectInt = {0,1,2}
+expectNum = {0.1,1.1,2.1}
+expectStr = {"zero","one","two"}
+for index=0,2,1 do
+	sub = index+1
+	writeInt(expectInt[sub],index)
+	writeNum(expectNum[sub],index)
+	writeStr(expectStr[sub],index)
+end
 done = {0,0,0}
 index = waitAny()
 while (index < 3) do
 	sub = index+1
+	-- print(string.format("sub %d index %d",sub,index))
 	if (done[sub] == 0) then
-		print(string.format("hub %d %d",index,readInt(index)))
+		value = readInt(index)
+		if value ~= expectInt[sub] then print(string.format("mismatch %d %d",value,index)); os.exit() end
+		-- print(string.format("hub %d %d",index,value))
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 1) then
-		print(string.format("hub %d %f",index,readNum(index)))
+		value = readNum(index)
+		if value ~= expectNum[sub] then print(string.format("mismatch %f %d",value,index)); os.exit() end
+		-- print(string.format("hub %d %f",index,value))
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 2) then
-		print(string.format("hub %d %s",index,readStr(index)))
+		value = readStr(index)
+		if value ~= expectStr[sub] then print(string.format("mismatch %s %d",value,index)); os.exit() end
+		-- print(string.format("hub %d %s",index,value))
 		done[sub] = done[sub] + 1
 	else
 		readInt(index)
 		writeInt(-1,index)
-		print(string.format("hub %d done",index))
+		-- print(string.format("hub %d done",index))
 	end
 	index = waitAny()
 end
