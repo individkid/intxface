@@ -22,6 +22,7 @@ module Main where
 import Foreign.C.Types
 import Foreign.C.String
 import System.Environment
+import System.Exit
 
 foreign import ccall "forkExec" forkExecC :: CString -> IO ()
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO ()
@@ -66,8 +67,6 @@ mainA :: [String]
 mainA = ["a.out","b.out","facer.lua"]
 mainB :: [[MainABC]]
 mainB = [[MainA 0, MainB 0.1, MainC "zero"],[MainA 1, MainB 1.1, MainC "one"],[MainA 2, MainB 2.1, MainC "two"]]
-mainC :: [[MainABC]]
-mainC = replicate mainD [MainA (negate 1), MainB 0.1, MainC "zero"]
 mainD :: Int
 mainD = 3
 
@@ -95,13 +94,14 @@ mainF [] = do
  mainFF mainA -- start processes
  sleepSec 1
  mainFG 0 mainB -- send stimulus
- actual <- mainFH (sum (map length mainB)) mainC -- collect responses
+ actual <- mainFH mainB mainB -- collect responses
  mainFI actual mainB -- check responses
  mainFJ 0 -- wait processes
- mainFK 0 -- check processes
+ check <- mainFK 0 [] -- check processes
+ print ("facer.hs " ++ (show check))
 mainF [a,b,c] = do
  pipeInit a b
- mainFL (head mainC) c -- copy request to response in order given
+ mainFL (head mainB) c -- copy request to response in order given
 mainF _ = undefined
 
 mainFF :: [String] -> IO ()
@@ -116,24 +116,35 @@ mainFGF :: Int -> [MainABC] -> IO ()
 mainFGF _ [] = return ()
 mainFGF a (b:c) = (writeMain b a) >> (mainFGF a c)
 
-mainFH :: Int -> [[MainABC]] -> IO [[MainABC]]
-mainFH 0 a = return a
-mainFH a b = do
- index <- waitAny
- mainFHF a b index
+mainFH :: [[MainABC]] -> [[MainABC]] -> IO [[MainABC]]
+mainFH a b
+ | (sum (map length a)) == 0 = return b
+ | otherwise = do
+  index <- waitAny
+  mainFHF a b index
 
-mainFHF :: Int -> [[MainABC]] -> Int -> IO [[MainABC]]
-mainFHF a b c = do
- pattern <- mainFHJ b c
- value <- readMain pattern c
- print ("mainFHF" ++ (show c) ++ " " ++ (show value))
- mainFHG a b c value
+mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHF a b c
+ | (length (a !! c)) == 0 = do
+  readInt c
+  writeInt (negate 1) c
+  mainFH a b
+ | otherwise = do
+  pattern <- mainFHJ b c
+  actual <- readMain pattern c
+  expect <- mainFHJ b c
+  delete <- mainFHH a c
+  remove <- mainFHH b c
+  mainFHG delete remove c actual expect
 
-mainFHG :: Int -> [[MainABC]] -> Int -> MainABC -> IO [[MainABC]]
-mainFHG a b c d = do
- remove <- mainFHH b c
- append <- mainFHI d remove c
- mainFH (a-1) append
+mainFHG :: [[MainABC]] -> [[MainABC]] -> Int -> MainABC -> MainABC -> IO [[MainABC]]
+mainFHG a b c d e
+ | compMain d e = do
+  insert <- mainFHI b c d
+  mainFH a insert
+ | otherwise = do
+  print ("mismatch " ++ (show d) ++ " " ++ (show c))
+  exitWith (ExitFailure (negate 1))
 
 --mainFHH pop value at given index
 mainFHH :: [[MainABC]] -> Int -> IO [[MainABC]]
@@ -145,13 +156,13 @@ mainFHH a b = let
  in return (pre ++ [(tail mid)] ++ post)
 
 --mainFHI push value at given index
-mainFHI :: MainABC -> [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHI :: [[MainABC]] -> Int -> MainABC -> IO [[MainABC]]
 mainFHI a b c = let
- pre = take c b
- rest = drop c b
+ pre = take b a
+ rest = drop b a
  post = tail rest
  mid = head rest
- in return (pre ++ [(mid ++ [a])] ++ post)
+ in return (pre ++ [(mid ++ [c])] ++ post)
 
 --mainFHJ peek value at given index
 mainFHJ :: [[MainABC]] -> Int -> IO MainABC
@@ -179,16 +190,13 @@ mainFJ a
  | a == mainD = return ()
  | otherwise = (readInt a) >> (writeInt 0 a) >> (mainFJ (a+1))
 
-mainFK :: Int -> IO ()
-mainFK a
- | a == mainD = return ()
+mainFK :: Int -> [Int] -> IO [Int]
+mainFK a b
+ | a == mainD = return b
  | otherwise = do
-  (checkRead a) >>= (mainFKF a)
-  (checkWrite a) >>= (mainFKF a)
-
-mainFKF :: Int -> Int -> IO ()
-mainFKF a 0 = mainFK (a+1)
-mainFKF _ _ = undefined
+  read <- checkRead a
+  write <- checkWrite a
+  mainFK (a+1) (b ++ [read,write])
 
 mainFL :: [MainABC] -> String -> IO ()
 mainFL [] _ = return ()
