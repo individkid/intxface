@@ -62,13 +62,13 @@ writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNum :: Double -> Int -> IO ()
 writeNum a b = writeNumC (CDouble a) (fromIntegral b)
 
-data MainABC = MainA Int | MainB Double | MainC String deriving (Show)
+data MainABC = MainA Int | MainB Double | MainC String deriving (Show,Eq)
 mainA :: [String]
 mainA = ["a.out","b.out","facer.lua"]
 mainB :: [[MainABC]]
 mainB = [[MainA 0, MainB 0.1, MainC "zero"],[MainA 1, MainB 1.1, MainC "one"],[MainA 2, MainB 2.1, MainC "two"]]
-mainD :: Int
-mainD = 3
+mainC :: Int
+mainC = 3
 
 readMain :: MainABC -> Int -> IO MainABC
 readMain (MainA _) a = fmap MainA (readInt a)
@@ -80,28 +80,21 @@ writeMain (MainA a) b = writeInt a b
 writeMain (MainB a) b = writeNum a b
 writeMain (MainC a) b = writeStr a b
 
-compMain :: MainABC -> MainABC -> Bool
-compMain (MainA a) (MainA b) = a == b
-compMain (MainB a) (MainB b) = a == b
-compMain (MainC a) (MainC b) = a == b
-compMain _ _ = False
-
 main :: IO ()
-main = getArgs >>= mainF -- mainF
+main = getArgs >>= mainF
 
 mainF :: [String] -> IO ()
 mainF [] = do
  mainFF mainA -- start processes
  sleepSec 1
  mainFG 0 mainB -- send stimulus
- actual <- mainFH mainB mainB -- collect responses
- mainFI actual mainB -- check responses
- mainFJ 0 -- wait processes
- check <- mainFK 0 [] -- check processes
+ mainFH mainB mainB -- check responses
+ mainFI 0 -- wait processes
+ check <- mainFJ 0 [] -- check processes
  print ("facer.hs " ++ (show check))
 mainF [a,b,c] = do
  pipeInit a b
- mainFL (head mainB) c -- copy request to response in order given
+ mainFK (head mainB) c -- copy request to response in order given
 mainF _ = undefined
 
 mainFF :: [String] -> IO ()
@@ -116,92 +109,68 @@ mainFGF :: Int -> [MainABC] -> IO ()
 mainFGF _ [] = return ()
 mainFGF a (b:c) = (writeMain b a) >> (mainFGF a c)
 
-mainFH :: [[MainABC]] -> [[MainABC]] -> IO [[MainABC]]
+mainFH :: [[MainABC]] -> [[MainABC]] -> IO ()
 mainFH a b
- | (sum (map length a)) == 0 = return b
- | otherwise = do
-  index <- waitAny
-  mainFHF a b index
+ | (sum (map length a)) == 0 = return ()
+ | otherwise = waitAny >>= (mainFHF a b)
 
-mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO ()
 mainFHF a b c
- | (length (a !! c)) == 0 = do
-  readInt c
-  writeInt (negate 1) c
-  mainFH a b
- | otherwise = do
-  pattern <- mainFHJ b c
-  actual <- readMain pattern c
-  expect <- mainFHJ b c
-  delete <- mainFHH a c
-  remove <- mainFHH b c
-  mainFHG delete remove c actual expect
+ | (length (a !! c)) == 0 = mainFH a b
+ | otherwise = (readMain d c) >>=
+  (mainFHG (mainFHH a c) (mainFHH b c) c d)
+ where d = mainFHJ b c
 
-mainFHG :: [[MainABC]] -> [[MainABC]] -> Int -> MainABC -> MainABC -> IO [[MainABC]]
+mainFHG :: [[MainABC]] -> [[MainABC]] -> Int -> MainABC -> MainABC -> IO ()
 mainFHG a b c d e
- | compMain d e = do
-  insert <- mainFHI b c d
-  mainFH a insert
- | otherwise = do
-  print ("mismatch " ++ (show d) ++ " " ++ (show c))
-  exitWith (ExitFailure (negate 1))
+ | d == e = mainFH a (mainFHI b c d)
+ | otherwise = (print ("mismatch " ++ (show e) ++ " " ++ (show c))) >>
+  (exitWith (ExitFailure (negate 1)))
 
 --mainFHH pop value at given index
-mainFHH :: [[MainABC]] -> Int -> IO [[MainABC]]
+mainFHH :: [[MainABC]] -> Int -> [[MainABC]]
 mainFHH a b = let
  pre = take b a
  rest = drop b a
  post = tail rest
  mid = head rest
- in return (pre ++ [(tail mid)] ++ post)
+ in pre ++ [(tail mid)] ++ post
 
 --mainFHI push value at given index
-mainFHI :: [[MainABC]] -> Int -> MainABC -> IO [[MainABC]]
+mainFHI :: [[MainABC]] -> Int -> MainABC -> [[MainABC]]
 mainFHI a b c = let
  pre = take b a
  rest = drop b a
  post = tail rest
  mid = head rest
- in return (pre ++ [(mid ++ [c])] ++ post)
+ in pre ++ [(mid ++ [c])] ++ post
 
 --mainFHJ peek value at given index
-mainFHJ :: [[MainABC]] -> Int -> IO MainABC
+mainFHJ :: [[MainABC]] -> Int -> MainABC
 mainFHJ a b = let
  rest = drop b a
  mid = head rest
- in return (head mid)
+ in head mid
 
-mainFI :: [[MainABC]] -> [[MainABC]] -> IO ()
-mainFI [] [] = return ()
-mainFI (a:b) (c:d)
- | mainFIF a c = mainFI b d
- | otherwise = undefined
-mainFI _ _ = undefined
+mainFI :: Int -> IO ()
+mainFI a
+ | a == mainC = return ()
+ | otherwise = (readInt a) >>
+  (writeInt (negate 1) a) >>
+  (mainFI (a+1))
 
-mainFIF :: [MainABC] -> [MainABC] -> Bool
-mainFIF [] [] = True
-mainFIF (a:b) (c:d)
- | compMain a c = mainFIF b d
- | otherwise = False
-mainFIF _ _ = False
-
-mainFJ :: Int -> IO ()
-mainFJ a
- | a == mainD = return ()
- | otherwise = (readInt a) >> (writeInt 0 a) >> (mainFJ (a+1))
-
-mainFK :: Int -> [Int] -> IO [Int]
-mainFK a b
- | a == mainD = return b
+mainFJ :: Int -> [Int] -> IO [Int]
+mainFJ a b
+ | a == mainC = return b
  | otherwise = do
   read <- checkRead a
   write <- checkWrite a
-  mainFK (a+1) (b ++ [read,write])
+  mainFJ (a+1) (b ++ [read,write])
 
-mainFL :: [MainABC] -> String -> IO ()
-mainFL [] _ = return ()
-mainFL (a:b) c = do
+mainFK :: [MainABC] -> String -> IO ()
+mainFK [] _ = return ()
+mainFK (a:b) c = do
  index <- waitAny
  value <- readMain a index
  writeMain value index
- mainFL b c
+ mainFK b c
