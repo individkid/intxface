@@ -66,9 +66,21 @@ data MainABC = MainA Int | MainB Double | MainC String deriving (Show,Eq)
 mainA :: [String]
 mainA = ["a.out","b.out","facer.lua"]
 mainB :: [[MainABC]]
-mainB = [[MainA 0, MainB 0.1, MainC "zero"],[MainA 1, MainB 1.1, MainC "one"],[MainA 2, MainB 2.1, MainC "two"]]
-mainC :: Int
-mainC = 3
+mainB = [[MainA 0, MainB 0.1, MainC "zero"],
+         [MainA 1, MainB 1.1, MainC "one"],
+         [MainA 2, MainB 2.1, MainC "two"]]
+mainC :: [[MainABC]]
+mainC = map mainCF mainB
+mainD :: Int
+mainD = length mainB
+
+mainCF :: [MainABC] -> [MainABC]
+mainCF = map mainCG
+
+mainCG :: MainABC -> MainABC
+mainCG (MainA a) = MainA (negate 1)
+mainCG (MainB a) = MainB 0.0
+mainCG (MainC a) = MainC ""
 
 readMain :: MainABC -> Int -> IO MainABC
 readMain (MainA _) a = fmap MainA (readInt a)
@@ -88,12 +100,12 @@ mainF [] = do
  mainFF mainA -- start processes
  sleepSec 1
  mainFG 0 mainB -- send stimulus
- mainFH mainB mainB -- check responses
+ mainFH mainC mainB -- check responses
  check <- mainFI 0 [] -- check processes
  print ("facer.hs " ++ (show check))
 mainF [a,b,c] = do
  pipeInit a b
- mainFJ (head mainB) c -- copy request to response in order given
+ mainFJ (mainC !! (read c)) -- copy request to response in order given
 mainF _ = undefined
 
 mainFF :: [String] -> IO ()
@@ -113,7 +125,7 @@ mainFH a b = waitAny >>= (mainFHF a b)
 
 mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO ()
 mainFHF a b c
- | c == mainC = return ()
+ | c == mainD = return ()
  | (length (a !! c)) == 0 =
   (readInt c) >> (writeInt (negate 1) c) >> (mainFH a b)
  | otherwise =
@@ -153,16 +165,16 @@ mainFHJ a b = let
 
 mainFI :: Int -> [Int] -> IO [Int]
 mainFI a b
- | a == mainC = return b
+ | a == mainD = return b
  | otherwise = do
   read <- checkRead a
   write <- checkWrite a
   mainFI (a+1) (b ++ [read,write])
  
-mainFJ :: [MainABC] -> String -> IO ()
-mainFJ [] _ = return ()
-mainFJ (a:b) c = do
+mainFJ :: [MainABC] -> IO ()
+mainFJ [] = return ()
+mainFJ (a:b) = do
  index <- waitAny
  value <- readMain a index
  writeMain value index
- mainFJ b c
+ mainFJ b
