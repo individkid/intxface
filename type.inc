@@ -30,10 +30,15 @@ function showList(list)
 	return str
 end
 function showSet(set)
-	str = ""
+	tab = {}
 	for key,val in pairs(set) do
+		table.insert(tab,key)
+	end
+	table.sort(tab)
+	str = ""
+	for key,val in ipairs(tab) do
 		if str ~= "" then str = str.."," end
-		if val then str = str..key else str = str.."("..key..")" end
+		if set[val] then str = str..val else str = str.."("..val..")" end
 	end
 	return str
 end

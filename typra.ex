@@ -47,15 +47,15 @@ file = io.open("type.txt","r")
 io.input(file)
 line = io.read(); if line ~= "Enum1 Value11,Value12,Value13" then print("error:"..line); io.exit() end
 line = io.read(); if line ~= "Enum2 Value21,Value22,Value23" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allOf(Enum1) Value13,Value11,Value12" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allBefore(Enum1,\"Value12\") (Value13),Value11,(Value12)" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allExcept(Enum1,allBefore) Value13,(Value11),Value12" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "unionSet(allBefore,allExcept) Value13,Value11,Value12" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "differSet(allOf,allBefore) Value13,(Value11),Value12" then print("error:"..line); os.exit() end
+line = io.read(); if line ~= "allOf(Enum1) Value11,Value12,Value13" then print("error:"..line); os.exit() end
+line = io.read(); if line ~= "allBefore(Enum1,\"Value12\") Value11,(Value12),(Value13)" then print("error:"..line); os.exit() end
+line = io.read(); if line ~= "allExcept(Enum1,allBefore) (Value11),Value12,Value13" then print("error:"..line); os.exit() end
+line = io.read(); if line ~= "unionSet(allBefore,allExcept) Value11,Value12,Value13" then print("error:"..line); os.exit() end
+line = io.read(); if line ~= "differSet(allOf,allBefore) (Value11),Value12,Value13" then print("error:"..line); os.exit() end
 line = io.read(); if line ~= "equalSet(allExcept,differSet) true" then print("error:"..line); os.exit() end
 line = io.read(); if line ~= "equalSet(allOf,AllExcept) false" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allBefore(Enum1,\"Value13\") (Value13),Value11,Value12" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "interSet(differSet,allBefore) (Value13),(Value11),Value12" then print("error:"..line); os.exit() end
+line = io.read(); if line ~= "allBefore(Enum1,\"Value13\") Value11,Value12,(Value13)" then print("error:"..line); os.exit() end
+line = io.read(); if line ~= "interSet(differSet,allBefore) (Value11),Value12,(Value13)" then print("error:"..line); os.exit() end
 io.close(file)
 print("typera.ex")
 Struct1 = {
