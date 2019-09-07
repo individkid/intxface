@@ -88,6 +88,20 @@ end
 -- all is the universe in a larger universe
 -- all of {} is the largest universe
 -- if all is {} then all sets are {}
+function showDimSet(ds,all)
+	tab = {}
+	for key,val in pairs(all) do
+		table.insert(tab,key)
+	end
+	table.sort(tab)
+	str = ""
+	for k,v in ipairs(tab) do
+		if str ~= "" then str = str..";" end
+		if ds[v] then str = str..showSet(interSet(all[v],ds[v]))
+		else str = str..showSet(interSet(all[v],{})) end
+	end
+	return str
+end
 function equalDimSet(lhs,rhs,all)
 	result = true
 	for k,v in pairs(lhs) do
@@ -180,7 +194,7 @@ function printField(val,depth)
 	end
 	print(stringIndent(depth)..decl.." "..ident..";")
 end
-function printStruct(name,struct)
+function structTagSpace(struct)
 	all = {}
 	key = 1
 	while struct[key] do
@@ -190,6 +204,10 @@ function printStruct(name,struct)
 		end
 		key = key + 1
 	end
+	return all
+end
+function printStruct(name,struct)
+	all = structTagSpace(struct)
 	length = 1
 	mode = {"struct"} -- list of block types
 	flds = {0} -- list of pointers to fields

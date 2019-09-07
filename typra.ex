@@ -29,35 +29,6 @@ Enum2 = {
 	"Value22",
 	"Value23",
 }
-file = io.open("type.txt","w")
-io.output(file)
-io.write("Enum1 "..showList(Enum1).."\n")
-io.write("Enum2 "..showList(Enum2).."\n")
-io.write("allOf(Enum1) "..showSet(allOf(Enum1)).."\n")
-io.write("allBefore(Enum1,\"Value12\") "..showSet(allBefore(Enum1,"Value12")).."\n")
-io.write("allExcept(Enum1,allBefore) "..showSet(allExcept(Enum1,allBefore(Enum1,"Value12"))).."\n")
-io.write("unionSet(allBefore,allExcept) "..showSet(unionSet(allBefore(Enum1,"Value12"),allExcept(Enum1,allBefore(Enum1,"Value12")))).."\n")
-io.write("differSet(allOf,allBefore) "..showSet(differSet(allOf(Enum1),allBefore(Enum1,"Value12"))).."\n")
-io.write("equalSet(allExcept,differSet) "..showBool(equalSet(allExcept(Enum1,allBefore(Enum1,"Value12")),differSet(allOf(Enum1),allBefore(Enum1,"Value12")))).."\n")
-io.write("equalSet(allOf,AllExcept) "..showBool(equalSet(allOf(Enum1),allExcept(Enum1,allBefore(Enum1,"Value12")))).."\n")
-io.write("allBefore(Enum1,\"Value13\") "..showSet(allBefore(Enum1,"Value13")).."\n")
-io.write("interSet(differSet,allBefore) "..showSet(interSet(differSet(allOf(Enum1),allBefore(Enum1,"Value12")),allBefore(Enum1,"Value13"))).."\n")
-io.close(file)
-file = io.open("type.txt","r")
-io.input(file)
-line = io.read(); if line ~= "Enum1 Value11,Value12,Value13" then print("error:"..line); io.exit() end
-line = io.read(); if line ~= "Enum2 Value21,Value22,Value23" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allOf(Enum1) Value11,Value12,Value13" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allBefore(Enum1,\"Value12\") Value11,(Value12),(Value13)" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allExcept(Enum1,allBefore) (Value11),Value12,Value13" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "unionSet(allBefore,allExcept) Value11,Value12,Value13" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "differSet(allOf,allBefore) (Value11),Value12,Value13" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "equalSet(allExcept,differSet) true" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "equalSet(allOf,AllExcept) false" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "allBefore(Enum1,\"Value13\") Value11,Value12,(Value13)" then print("error:"..line); os.exit() end
-line = io.read(); if line ~= "interSet(differSet,allBefore) (Value11),Value12,(Value13)" then print("error:"..line); os.exit() end
-io.close(file)
-print("typera.ex")
 Struct1 = {
 	{"next","Struct1",{},1},
 	{"field1","float",{},{2}},
@@ -96,3 +67,35 @@ function structOf(str)
 	if str == "Struct1" then return Struct1 end
 	return {}
 end
+file = io.open("type.txt","w")
+io.output(file)
+io.write("Enum1 "..showList(Enum1).."\n")
+io.write("Enum2 "..showList(Enum2).."\n")
+io.write("allOf(Enum1) "..showSet(allOf(Enum1)).."\n")
+io.write("allBefore(Enum1,\"Value12\") "..showSet(allBefore(Enum1,"Value12")).."\n")
+io.write("allExcept(Enum1,allBefore) "..showSet(allExcept(Enum1,allBefore(Enum1,"Value12"))).."\n")
+io.write("unionSet(allBefore,allExcept) "..showSet(unionSet(allBefore(Enum1,"Value12"),allExcept(Enum1,allBefore(Enum1,"Value12")))).."\n")
+io.write("differSet(allOf,allBefore) "..showSet(differSet(allOf(Enum1),allBefore(Enum1,"Value12"))).."\n")
+io.write("equalSet(allExcept,differSet) "..showBool(equalSet(allExcept(Enum1,allBefore(Enum1,"Value12")),differSet(allOf(Enum1),allBefore(Enum1,"Value12")))).."\n")
+io.write("equalSet(allOf,AllExcept) "..showBool(equalSet(allOf(Enum1),allExcept(Enum1,allBefore(Enum1,"Value12")))).."\n")
+io.write("allBefore(Enum1,\"Value13\") "..showSet(allBefore(Enum1,"Value13")).."\n")
+io.write("interSet(differSet,allBefore) "..showSet(interSet(differSet(allOf(Enum1),allBefore(Enum1,"Value12")),allBefore(Enum1,"Value13"))).."\n")
+io.write("structTagSpace(Struct1) "..showDimSet(structTagSpace(Struct1),structTagSpace(Struct1)))
+io.close(file)
+file = io.open("type.txt","r")
+io.input(file)
+line = io.read(); if line ~= "Enum1 Value11,Value12,Value13" then print("error: "..line); io.exit() end
+line = io.read(); if line ~= "Enum2 Value21,Value22,Value23" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "allOf(Enum1) Value11,Value12,Value13" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "allBefore(Enum1,\"Value12\") Value11,(Value12),(Value13)" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "allExcept(Enum1,allBefore) (Value11),Value12,Value13" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "unionSet(allBefore,allExcept) Value11,Value12,Value13" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "differSet(allOf,allBefore) (Value11),Value12,Value13" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "equalSet(allExcept,differSet) true" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "equalSet(allOf,AllExcept) false" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "allBefore(Enum1,\"Value13\") Value11,Value12,(Value13)" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "interSet(differSet,allBefore) (Value11),Value12,(Value13)" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= "structTagSpace(Struct1) Value11,Value12,Value13;Value21,Value22,Value23" then print("error: "..line); os.exit() end
+line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
+io.close(file)
+print("typera.ex")
