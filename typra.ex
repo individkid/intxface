@@ -17,7 +17,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-assert(loadfile("type.inc"))()
+dofile("type.inc")
 
 Enum1 = {
 	"Value11",
@@ -172,3 +172,5 @@ end
 line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
 io.close(file)
 print("typra.ex")
+-- print(showEnum("Enum1",Enum1))
+-- print(showStruct("Struct1",Struct1))

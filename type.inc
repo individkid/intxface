@@ -113,12 +113,16 @@ function equalDimSet(lhs,rhs,all)
 	if lhs == nil or rhs == nil then return false end
 	local result = true
 	for k,v in pairs(lhs) do
-		result = result and rhs[k]
-		result = result and equalSet(v,all[k]) == equalSet(rhs[k],all[k])
-		result = result and equalSet(v,rhs[k])
+		local lhv = v
+		local rhv = rhs[k]
+		if not rhv then rhv = all[k] end
+		result = result and equalSet(lhv,rhv)
 	end
 	for k,v in pairs(rhs) do
-		result = result and lhs[k]
+		local lhv = lhs[k]
+		if not lhv then lhv = all[k] end
+		local rhv = v
+		result = result and equalSet(lhv,rhv)
 	end
 	return result
 end
@@ -184,14 +188,15 @@ function findString(str,pat)
 	end
 	return result
 end
-function printEnum(name,enum)
-	print("enum "..name.." = {")
+function showEnum(name,enum)
+	local str = "enum "..name.." {\n"
 	for key,val in ipairs(enum) do
-		print("    "..val..",")
+		str = str.."    "..val..",\n"
 	end
-	print("};")
+	str = str.."};"
+	return str
 end
-function stringAny(any)
+function showAny(any)
 	local result = ""
 	if type(any) == "nil" then result = "nil"
 	elseif type(any) == "boolean" and not any then result = "false"
@@ -202,17 +207,17 @@ function stringAny(any)
 		result = "{"
 		for key,val in pairs(any) do
 			if result ~= "{" then result = result.."," end
-			result = result.."["..stringAny(key).."]="..stringAny(val)
+			result = result.."["..showAny(key).."]="..showAny(val)
 		end
 		result = result.."}"
 	else result = type(any) end
 	return result
 end
-function stringIndent(depth)
+function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
-function printField(val,depth)
+function showField(val,depth)
 	local decl;
 	if (Enums[val[2]]~=nil) then
 		decl = "enum "..val[2]
@@ -232,7 +237,7 @@ function printField(val,depth)
 			ident = ident.."["..v.."]"
 		end
 	end
-	print(stringIndent(depth)..decl.." "..ident..";")
+	return showIndent(depth)..decl.." "..ident..";\n"
 end
 function structTagSpace(struct)
 	local all = {}
@@ -246,24 +251,28 @@ function structTagSpace(struct)
 	end
 	return all
 end
-function printStruct(name,struct)
+function showStruct(name,struct)
 	local all = structTagSpace(struct)
 	local length = 1
 	local mode = {"struct"} -- list of block types
-	local flds = {0} -- list of pointers to fields
+	local flds = {1} -- list of pointers to fields
 	local idxs = {{}} -- list of pointers to subblocks
 	local sizs = {0} -- list of sizes of idxs
 	local depth = 1
-	local univ = {all} -- stack of nested tag sets
-	local stack = {0} -- stack of pointers to open blocks
+	local univ = {{}} -- stack of nested tag sets
+	local stack = {1} -- stack of pointers to open blocks
 	local key = 1
 	while struct[key] do
 		local tags = struct[key][3]
 		local top = stack[depth]
-		local join = interDimSet(tags,univ[depth],all) ~= nil
-		local gain = differDimSet(tags,univ[depth],all) ~= nil
-		local loss = differDimSet(univ[depth],tags,all) ~= nil
-		print("name:"..stringAny(name).." key:"..stringAny(key).." field:"..stringAny(struct[key][1]).." tags:"..stringAny(tags).." univ:"..stringAny(univ[depth]).." depth:"..stringAny(depth).." top:"..stringAny(top).." join:"..stringAny(join).." gain:"..stringAny(gain).." loss:"..stringAny(loss))
+		local inter = interDimSet(tags,univ[depth],all)
+		local outside = differDimSet(tags,univ[depth],all)
+		local inside = differDimSet(univ[depth],tags,all)
+		local join = equalDimSet(inter,nil,all)
+		local gain = not equalDimSet(outside,nil,all)
+		local loss = not equalDimSet(inside,nil,all)
+		print("name:"..showAny(name).." key:"..showAny(key).." join:"..showAny(join).." gain:"..showAny(gain).." loss:"..showAny(loss)..
+			" inter:"..showDimSet(inter,all).." inside:"..showDimSet(inside,all).." outside:"..showDimSet(outside,all).." all:"..showDimSet(all,all))
 		if mode[top] == "struct" and not gain and not loss then
 			length = length + 1
 			mode[length] = "field"
@@ -301,33 +310,36 @@ function printStruct(name,struct)
 		if mode[top] == "union" and join then
 			depth = depth - 1
 		end
+		if length >= 9 then break end
 	end
-	print("struct "..name.." {")
-		local indent = 1
-		local depth = 1
-		local stack = {sizs[1]}
-		local close = {false}
-		local index = 2
-		while index <= length do
-			if mode[index] == "struct" or mode[index] == "union" then
-				depth = depth + 1
-				stack[depth] = sizs[index]
-				close[depth] = sizs[index] > 1
-				if close[depth] then
-					print(stringIndent(indent).."struct {")
-					indent = indent + 1
-				end
+	local str = "struct "..name.." {\n"
+	local indent = 1
+	local depth = 1
+	local stack = {sizs[1]}
+	local close = {false}
+	local index = 2
+	while index <= length do
+		print("index:"..index.." length:"..length.." depth:"..depth.." mode:"..mode[index])
+		if mode[index] == "struct" or mode[index] == "union" then
+			depth = depth + 1
+			stack[depth] = sizs[index]
+			close[depth] = sizs[index] > 1
+			if close[depth] then
+				str = str..showIndent(indent).."struct {\n"
+				indent = indent + 1
 			end
-			if mode[index] == "field" then
-				print(stringIndent(indent)..stringAny(flds[index]))
-				stack[depth] = stack[depth] - 1
-				if stack[depth] == 0 and close[depth] then
-					depth = depth - 1
-					indent = indent - 1
-					print(stringIndent(indent).."};")
-				end
-			end
-			index = index + 1
 		end
-	print("};")
+		if mode[index] == "field" then
+			str = str..showField(struct[flds[index]],depth)
+			stack[depth] = stack[depth] - 1
+			if stack[depth] == 0 and close[depth] then
+				depth = depth - 1
+				indent = indent - 1
+				str = str..showIndent(indent).."};\n"
+			end
+		end
+		index = index + 1
+	end
+	str = str.."};"
+	return str
 end
