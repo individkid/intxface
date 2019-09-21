@@ -38,12 +38,12 @@ Struct1 = {
 	{"field5","int",{},3},
 	{"field6","Enum1",{},{}},
 	{"field7","Enum2",{},{}},
-	{"field8","int",{["field6"]={["Value11"]=true}}},
-	{"field9","int",{["field6"]={["Value11"]=true}}},
-	{"field10","int",{["field6"]={["Value12"]=true}}},
-	{"field11","int",{["field6"]={["Value12"]=true},["field7"]={["Value21"]=true}}},
-	{"field12","int",{["field6"]={["Value12"]=true},["field7"]={["Value22"]=true,["Value23"]=true}}},
-	{"field13","int",{["field6"]={["Value13"]=true}}},
+	{"field8","int",{["field6"]={["Value11"]=true}},{}},
+	{"field9","int",{["field6"]={["Value11"]=true}},{}},
+	{"field10","int",{["field6"]={["Value12"]=true}},{}},
+	{"field11","int",{["field6"]={["Value12"]=true},["field7"]={["Value21"]=true}},{}},
+	{"field12","int",{["field6"]={["Value12"]=true},["field7"]={["Value22"]=true,["Value23"]=true}},{}},
+	{"field13","int",{["field6"]={["Value13"]=true}},{}},
 	{"field14","int",{},{}},
 }
 Enums = {
@@ -83,8 +83,7 @@ Stimulus = {
 	{"allBefore(Enum1,\"Value13\")"},
 	{"interSet(differSet,allOf)"},
 	{"structTagSpace(Struct1)","structTagSpace(Struct1)"},
-	{"interDimSet({[\"field6\"]=allBefore},structTagSpace,structTagSpace)","structTagSpace"},
-	{"differDimSet(structTagSpace,interDimSet,structTagSpace)","structTagSpace"},
+	{"interPlaid({[\"field6\"]=allBefore},structTagSpace,structTagSpace)","structTagSpace"},
 }
 Expected = {
 	"1,-5",
@@ -103,7 +102,6 @@ Expected = {
 	"(Value11),Value12,Value13",
 	"field6:Value11,Value12,Value13;field7:Value21,Value22,Value23",
 	"field6:Value11,Value12,(Value13);field7:Value21,Value22,Value23",
-	"field6:(Value11),(Value12),(Value13);field7:(Value21),(Value22),(Value23)",
 }
 Monitor = {
 	"showFind",
@@ -120,9 +118,8 @@ Monitor = {
 	"showBool",
 	"showSet",
 	"showSet",
-	"showDimSet",
-	"showDimSet",
-	"showDimSet",
+	"showPlaid",
+	"showPlaid",
 }
 file = io.open("type.txt","w")
 io.output(file)
@@ -172,5 +169,5 @@ end
 line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
 io.close(file)
 print("typra.ex")
--- print(showEnum("Enum1",Enum1))
--- print(showStruct("Struct1",Struct1))
+print(showEnum("Enum1",Enum1))
+print(showStruct("Struct1",Struct1))

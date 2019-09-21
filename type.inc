@@ -86,13 +86,13 @@ function unionSet(lhs,rhs)
 end
 -- for Set empty is {}
 -- for Set universe is nil
--- for DimSet empty is nil
--- for DimSet universe is {}
+-- for Plaid empty is nil
+-- for Plaid universe is {}
 -- all cannot be nil
 -- all is the universe in a larger universe
 -- all of {} is the largest universe
 -- if all is {} then all sets are {}
-function showDimSet(ds,all)
+function showPlaid(ds,all)
 	if not ds then return "empty" end
 	local tab = {}
 	for key,val in pairs(all) do
@@ -108,58 +108,18 @@ function showDimSet(ds,all)
 	end
 	return str
 end
-function equalDimSet(lhs,rhs,all)
+function equalPlaid(lhs,rhs,all)
 	if lhs == nil and rhs == nil then return true end
-	if lhs == nil or rhs == nil then return false end
-	local result = true
-	for k,v in pairs(lhs) do
-		local lhv = v
-		local rhv = rhs[k]
-		if not rhv then rhv = all[k] end
-		result = result and equalSet(lhv,rhv)
-	end
-	for k,v in pairs(rhs) do
-		local lhv = lhs[k]
-		if not lhv then lhv = all[k] end
-		local rhv = v
+	if rhs == nil or lhs == nil then return false end
+	local result = false
+	for k,v in pairs(all) do
+		local lhv = lhs[k]; if not lhv then lhv = all[k] end
+		local rhv = rhs[k]; if not rhv then rhv = all[k] end
 		result = result and equalSet(lhv,rhv)
 	end
 	return result
 end
-function unionDimSet(lhs,rhs,all)
-	local result = nil
-	for k,v in pairs(lhs) do
-		if result == nil then result = {} end
-		if rhs[k] then result[k] = unionSet(v,rhs[k]) else result[k] = all[k] end
-		if equalSet(result[k],all[k]) then result[k] = nil end
-	end
-	if result and equalDimSet(result,all,all) then return {} end
-	return result
-end
-function interDimSet(lhs,rhs,all)
-	local result = nil
-	for k,v in pairs(lhs) do
-		if result == nil then result = {} end
-		if rhs[k] then result[k] = interSet(v,rhs[k]) else result[k] = v end
-		if result[k] and equalSet(result[k],{}) then return nil end
-	end
-	for k,v in pairs(rhs) do
-		if not result then result = {} end
-		if lhs[k] then result[k] = interSet(v,lhs[k]) else result[k] = v end
-		if result[k] and equalSet(result[k],{}) then return nil end
-	end
-	if result and equalDimSet(result,all,all) then return {} end
-	return result
-end
-function differDimSet(lhs,rhs,all)
-	local result = nil
-	for k,v in pairs(lhs) do
-		if not result then result = {} end
-		if rhs[k] then result[k] = differSet(v,rhs[k]) else return nil end
-		if result and result[k] and equalSet(result[k],{}) then return nil end
-	end
-	if result and equalDimSet(result,all,all) then return {} end
-	return result
+function interPlaid(lhs,rhs,all)
 end
 function showFind(found)
 	local str = ""
@@ -251,95 +211,61 @@ function structTagSpace(struct)
 	end
 	return all
 end
-function showStruct(name,struct)
+function nestStruct(nest)
+	-- return list of pairs of open on unequal and close on next unequal
+	local result = {}
+	local start = nil
+	for k,v in ipairs(nest) do
+		if v and not start then start = k end
+		if not v and start then result[#result+1] = {start,k}; start = nil end
+	end
+	if start then result[#result+1] = {start,#nest} end
+	return result
+end
+--  1 2 3 4 5 6 7 8 9 a b
+--  a a b b b c d e f g g
+--  1 0 1 1 0 0 0 0 0 1    (0 unequal, 1 equal)
+-- + 0 * 0 0 - 0 0 0 + 0 - (+ open, * close/open, - close struct)
+--  (1,2),(3,5),(a,b)      (open struct, close before opens)
+function chainStruct(struct)
+	-- return list of bool of whether successive fields are equal with first and last false
 	local all = structTagSpace(struct)
-	local length = 1
-	local mode = {"struct"} -- list of block types
-	local flds = {1} -- list of pointers to fields
-	local idxs = {{}} -- list of pointers to subblocks
-	local sizs = {0} -- list of sizes of idxs
-	local depth = 1
-	local univ = {{}} -- stack of nested tag sets
-	local stack = {1} -- stack of pointers to open blocks
-	local key = 1
-	while struct[key] do
-		local tags = struct[key][3]
-		local top = stack[depth]
-		local inter = interDimSet(tags,univ[depth],all)
-		local outside = differDimSet(tags,univ[depth],all)
-		local inside = differDimSet(univ[depth],tags,all)
-		local join = equalDimSet(inter,nil,all)
-		local gain = not equalDimSet(outside,nil,all)
-		local loss = not equalDimSet(inside,nil,all)
-		print("name:"..showAny(name).." key:"..showAny(key).." join:"..showAny(join).." gain:"..showAny(gain).." loss:"..showAny(loss)..
-			" inter:"..showDimSet(inter,all).." inside:"..showDimSet(inside,all).." outside:"..showDimSet(outside,all).." all:"..showDimSet(all,all))
-		if mode[top] == "struct" and not gain and not loss then
-			length = length + 1
-			mode[length] = "field"
-			flds[length] = key
-			idxs[length] = {}
-			sizs[length] = 0
-			sizs[top] = sizs[top] + 1;
-			idxs[top][sizs[top]] = length
-			key = key + 1
-		end
-		if mode[top] == "struct" and not gain and loss then
-			length = length + 1
-			mode[length] = "union"
-			flds[length] = 0
-			idxs[length] = {}
-			sizs[length] = 0
-			depth = depth + 1
-			univ[depth] = none
-			stack[depth] = length
-		end
-		if mode[top] == "struct" and gain then
-			depth = depth - 1
-		end
-		if mode[top] == "union" and not join then
-			univ[depth] = unionDimSet(univ[depth],tags,all);
-			length = length + 1
-			mode[length] = "struct"
-			flds[length] = 0
-			idxs[length] = {}
-			sizs[length] = 0
-			depth = depth + 1
-			univ[depth] = tags
-			stack[depth] = length
-		end
-		if mode[top] == "union" and join then
-			depth = depth - 1
-		end
-		if length >= 9 then break end
+	local result = {}
+	for k,v in ipairs(struct) do if struct[k+1] then
+		result[#result+1] = equalPlaid(v[3],struct[k+1][3],all) end end
+	return result
+end
+--  1 2 3 4 5 6 7 8 9 a b
+--  a a b b b c d e f g g  (b c d mutually disjoint)
+--  0 0 1 1 1 1 0 0 0 0    (0 conjoint, 1 disjoint back to conjoint)
+-- 0 0 + 0 0 0 0 - 0 0 0 0 (+ open, - close union)
+-- (3,7) (open union before open struct, close before opens)
+function splitStructF(field,sofar,all)
+	for k,v in ipairs(sofar) do
+		if not equalPlaid(interPlaid(v[3],sofar[#sofar],all),nil,all) then return false end
 	end
-	local str = "struct "..name.." {\n"
-	local indent = 1
-	local depth = 1
-	local stack = {sizs[1]}
-	local close = {false}
-	local index = 2
-	while index <= length do
-		print("index:"..index.." length:"..length.." depth:"..depth.." mode:"..mode[index])
-		if mode[index] == "struct" or mode[index] == "union" then
-			depth = depth + 1
-			stack[depth] = sizs[index]
-			close[depth] = sizs[index] > 1
-			if close[depth] then
-				str = str..showIndent(indent).."struct {\n"
-				indent = indent + 1
-			end
-		end
-		if mode[index] == "field" then
-			str = str..showField(struct[flds[index]],depth)
-			stack[depth] = stack[depth] - 1
-			if stack[depth] == 0 and close[depth] then
-				depth = depth - 1
-				indent = indent - 1
-				str = str..showIndent(indent).."};\n"
-			end
-		end
-		index = index + 1
+	return true
+end
+function splitStruct(struct)
+	-- return list of bool of whether successive structs are disjoint with first and last false
+	local all = structTagSpace(struct)
+	local result = {}
+	local sofar = {}
+	local count = 0
+	for k,v in ipairs(struct) do
+		if (#sofar == 0) then sofar = {v[3]}
+		elseif equalPlaid(v[3],sofar[#sofar],all) then sofar[#sofar+1] = v[3]
+		elseif splitStructF(v[3],sofar,all) then count = count + 1; sofar[#sofar+1] = v[3]
+		elseif (count > 0) then while (count > 0) do result[#result+1] = 1 end result[#result+1] = 0
+		else sofar = {v[3]} end
+ 	end
+	return result
+end
+function showStruct(name,struct)
+	local chain = nestStruct(chainStruct(struct))
+	local split = nestStruct(splitStruct(struct))
+	local result = "\n"
+	for k,v in ipairs(struct) do
 	end
-	str = str.."};"
-	return str
+	return "struct "..name.." {\n"..result.."}\n"
 end
