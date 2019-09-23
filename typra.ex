@@ -45,7 +45,7 @@ Struct1 = {
 	{"field12","int",{["field6"]={["Value12"]=true},["field7"]={["Value22"]=true,["Value23"]=true}},{}},
 	{"field13","int",{["field6"]={["Value13"]=true}},{}},
 	{"field14","int",{},{}},
-	{"field15","int",{},{}},
+	{"field15","int",{},"field14"},
 }
 Enums = {
 	["Enum1"]=true,["Enum2"]=true,
@@ -184,5 +184,3 @@ io.close(file)
 print("typra.ex")
 --print(showEnum("Enum1",Enum1))
 --print(showStruct("Struct1",Struct1))
---print(showAny(nestStruct(chainStruct(Struct1))))
---print(showAny(nestStruct(splitStruct(Struct1))))

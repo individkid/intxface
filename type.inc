@@ -189,8 +189,8 @@ function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
-function showField(val,depth)
-	local decl;
+function showField(val)
+	local decl
 	if (Enums[val[2]]~=nil) then
 		decl = "enum "..val[2]
 	elseif (Structs[val[2]]~=nil) then
@@ -209,7 +209,7 @@ function showField(val,depth)
 			ident = ident.."["..v.."]"
 		end
 	end
-	return showIndent(depth)..decl.." "..ident..";\n"
+	return decl.." "..ident..";"
 end
 function structTagSpace(struct)
 	local all = {}
@@ -301,9 +301,24 @@ end
 function showStruct(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
-	local result = "\n"
+	local result = ""
+	local link = 1
+	local step = 1
+	local depth = 1
 	for k,v in ipairs(struct) do
-
+		if split[step] and k == split[step][1] then
+			result = result..showIndent(depth).."union {\n"; depth = depth + 1
+		end
+		if chain[link] and k == chain[link][1] then
+			result = result..showIndent(depth).."struct {\n"; depth = depth + 1
+		end
+		result = result..showIndent(depth)..showField(v).."\n"
+		if chain[link] and k == chain[link][2] then
+			depth = depth - 1; result = result..showIndent(depth).."};\n"; link = link + 1
+		end
+		if split[step] and k == split[step][2] then
+			depth = depth - 1; result = result..showIndent(depth).."};\n"; step = step + 1
+		end
 	end
-	return "struct "..name.." {\n"..result.."}\n"
+	return "struct "..name.." {\n"..result.."};"
 end
