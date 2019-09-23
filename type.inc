@@ -61,10 +61,13 @@ function allBefore(enum,lim)
 	for key,val in pairs(enum) do all[val] = key < num end
 	return all
 end
+function equalSetF(lhs,rhs)
+	return (lhs and rhs) or (not lhs and not rhs)
+end
 function equalSet(lhs,rhs)
 	local result = true
-	for k,v in pairs(lhs) do result = result and rhs[k] == v end
-	for k,v in pairs(rhs) do result = result and lhs[k] == v end
+	for k,v in pairs(lhs) do result = result and equalSetF(rhs[k],v) end
+	for k,v in pairs(rhs) do result = result and equalSetF(lhs[k],v) end
 	return result
 end
 function interSet(lhs,rhs)
@@ -111,7 +114,7 @@ end
 function equalPlaid(lhs,rhs,all)
 	if lhs == nil and rhs == nil then return true end
 	if rhs == nil or lhs == nil then return false end
-	local result = false
+	local result = true
 	for k,v in pairs(all) do
 		local lhv = lhs[k]; if not lhv then lhv = all[k] end
 		local rhv = rhs[k]; if not rhv then rhv = all[k] end
@@ -120,6 +123,15 @@ function equalPlaid(lhs,rhs,all)
 	return result
 end
 function interPlaid(lhs,rhs,all)
+	if lhs == nil or rhs == nil then return nil end
+	local result = {}
+	for k,v in pairs(all) do
+		local lhv = lhs[k]; if not lhv then lhv = all[k] end
+		local rhv = rhs[k]; if not rhv then rhv = all[k] end
+		result[k] = interSet(lhv,rhv)
+		if equalSet(result[k],{}) then return nil end
+	end
+	return result
 end
 function showFind(found)
 	local str = ""
@@ -224,25 +236,28 @@ function nestStruct(nest)
 end
 --  1 2 3 4 5 6 7 8 9 a b
 --  a a b b b c d e f g g
---  1 0 1 1 0 0 0 0 0 1    (0 unequal, 1 equal)
+--  1 0 1 1 0 0 0 0 0 1 0  (0 unequal, 1 equal)
 -- + 0 * 0 0 - 0 0 0 + 0 - (+ open, * close/open, - close struct)
 --  (1,2),(3,5),(a,b)      (open struct, close before opens)
 function chainStruct(struct)
 	-- return list of bool of whether successive fields are equal with first and last false
 	local all = structTagSpace(struct)
 	local result = {}
-	for k,v in ipairs(struct) do if struct[k+1] then
-		result[#result+1] = equalPlaid(v[3],struct[k+1][3],all) end end
+	for k,v in ipairs(struct) do
+		result[#result+1] = (struct[k+1] ~= nil) and equalPlaid(v[3],struct[k+1][3],all)
+	end
 	return result
 end
 --  1 2 3 4 5 6 7 8 9 a b
 --  a a b b b c d e f g g  (b c d mutually disjoint)
---  0 0 1 1 1 1 0 0 0 0    (0 conjoint, 1 disjoint back to conjoint)
+--  0 0 1 1 1 1 0 0 0 0 0  (0 conjoint, 1 disjoint back to conjoint)
 -- 0 0 + 0 0 0 0 - 0 0 0 0 (+ open, - close union)
 -- (3,7) (open union before open struct, close before opens)
 function splitStructF(field,sofar,all)
 	for k,v in ipairs(sofar) do
-		if not equalPlaid(interPlaid(v[3],sofar[#sofar],all),nil,all) then return false end
+		if not equalPlaid(interPlaid(v,field,all),nil,all) then
+			return false
+		end
 	end
 	return true
 end
@@ -251,13 +266,35 @@ function splitStruct(struct)
 	local all = structTagSpace(struct)
 	local result = {}
 	local sofar = {}
-	local count = 0
+	local skip = 0
+	local joint = 0
 	for k,v in ipairs(struct) do
-		if (#sofar == 0) then sofar = {v[3]}
-		elseif equalPlaid(v[3],sofar[#sofar],all) then sofar[#sofar+1] = v[3]
-		elseif splitStructF(v[3],sofar,all) then count = count + 1; sofar[#sofar+1] = v[3]
-		elseif (count > 0) then while (count > 0) do result[#result+1] = 1 end result[#result+1] = 0
-		else sofar = {v[3]} end
+		if (#sofar == 0) then
+			skip = skip + 1
+			sofar = {v[3]}
+		elseif equalPlaid(v[3],sofar[#sofar],all) then
+			skip = skip + 1
+			sofar[#sofar+1] = v[3]
+		elseif splitStructF(v[3],sofar,all) then
+			skip = skip + 1
+			joint = joint + 1
+			sofar[#sofar+1] = v[3]
+		elseif (joint > 0) then
+			while (skip > 0) do result[#result+1] = true; skip = skip - 1 end
+			result[#result] = false
+			skip = skip + 1
+			sofar = {v[3]}
+			joint = 0
+		else
+			while (skip > 0) do result[#result+1] = false; skip = skip - 1 end
+			skip = skip + 1
+			sofar = {v[3]}
+		end
+ 	end
+ 	if (joint > 0) then
+		while (skip > 0) do result[#result+1] = true; skip = skip - 1 end
+ 	else
+		while (skip > 0) do result[#result+1] = false; skip = skip - 1 end
  	end
 	return result
 end
@@ -266,6 +303,7 @@ function showStruct(name,struct)
 	local split = nestStruct(splitStruct(struct))
 	local result = "\n"
 	for k,v in ipairs(struct) do
+
 	end
 	return "struct "..name.." {\n"..result.."}\n"
 end

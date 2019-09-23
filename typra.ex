@@ -45,6 +45,7 @@ Struct1 = {
 	{"field12","int",{["field6"]={["Value12"]=true},["field7"]={["Value22"]=true,["Value23"]=true}},{}},
 	{"field13","int",{["field6"]={["Value13"]=true}},{}},
 	{"field14","int",{},{}},
+	{"field15","int",{},{}},
 }
 Enums = {
 	["Enum1"]=true,["Enum2"]=true,
@@ -83,7 +84,11 @@ Stimulus = {
 	{"allBefore(Enum1,\"Value13\")"},
 	{"interSet(differSet,allOf)"},
 	{"structTagSpace(Struct1)","structTagSpace(Struct1)"},
+	{"equalPlaid(structTagSpace,structTagSpace,structTagSpace)"},
 	{"interPlaid({[\"field6\"]=allBefore},structTagSpace,structTagSpace)","structTagSpace"},
+	{"interPlaid({[\"field6\"]=allBefore},{[\"field7\"]=allExcept(Enum1,allBefore)},structTagSpace)","structTagSpace"},
+	{"nestStruct(chainStruct(Struct1))"},
+	{"nestStruct(splitStruct(Struct1))"},
 }
 Expected = {
 	"1,-5",
@@ -101,7 +106,11 @@ Expected = {
 	"Value11,Value12,(Value13)",
 	"(Value11),Value12,Value13",
 	"field6:Value11,Value12,Value13;field7:Value21,Value22,Value23",
+	"true",
 	"field6:Value11,Value12,(Value13);field7:Value21,Value22,Value23",
+	"empty",
+	"{[1]={[1]=1,[2]=8},[2]={[1]=9,[2]=10},[3]={[1]=15,[2]=16}}",
+	"{[1]={[1]=9,[2]=11},[2]={[1]=12,[2]=14}}",
 }
 Monitor = {
 	"showFind",
@@ -119,7 +128,11 @@ Monitor = {
 	"showSet",
 	"showSet",
 	"showPlaid",
+	"showBool",
 	"showPlaid",
+	"showPlaid",
+	"showAny",
+	"showAny",
 }
 file = io.open("type.txt","w")
 io.output(file)
@@ -140,7 +153,7 @@ for k,v in ipairs(Stimulus) do
 					if sum > 1 then before = string.sub(expand,1,sum-1) else before = "" end
 					if sum+neg <= string.len(expand) then after = string.sub(expand,sum+neg,-1) else after = "" end
 					expand = before..val..after
-					delta = val:len()-neg
+					delta = delta + val:len()-neg
 				end
 			end
 		end
@@ -148,7 +161,7 @@ for k,v in ipairs(Stimulus) do
 		chunk = chunk..expand
 	end
 	chunk = chunk..")"
-	-- print(chunk)
+	--print(chunk)
 	func = assert(load(chunk))
 	actual = func()
 	io.write(v[1].." "..actual.."\n")
@@ -169,5 +182,7 @@ end
 line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
 io.close(file)
 print("typra.ex")
-print(showEnum("Enum1",Enum1))
-print(showStruct("Struct1",Struct1))
+--print(showEnum("Enum1",Enum1))
+--print(showStruct("Struct1",Struct1))
+--print(showAny(nestStruct(chainStruct(Struct1))))
+--print(showAny(nestStruct(splitStruct(Struct1))))
