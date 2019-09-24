@@ -22,7 +22,6 @@ function showBool(bool)
 	return str
 end
 function showList(list)
-	if not list then print("list nil") end
 	local str = ""
 	for key,val in ipairs(list) do
 		if str ~= "" then str = str.."," end
@@ -105,9 +104,8 @@ function showPlaid(ds,all)
 	local str = ""
 	for k,v in ipairs(tab) do
 		if str ~= "" then str = str..";" end
-		if not ds then str = str..v..":"..showSet(all[v])
-		elseif ds[v] then str = str..v..":"..showSet(interSet(all[v],ds[v]))
-		else str = str..v..":"..showSet(interSet(all[v],{})) end
+		if not ds[v] then str = str..v..":"..showSet(all[v])
+		else str = str..v..":"..showSet(interSet(all[v],ds[v])) end
 	end
 	return str
 end

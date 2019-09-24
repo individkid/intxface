@@ -68,6 +68,13 @@ function structOf(str)
 	if str == "Struct1" then return Struct1 end
 	return {}
 end
+function linesOf(str)
+	local result = {}
+	for line in string.gmatch(str,"[^\n]+") do
+		result[#result+1] = line
+	end
+	return result
+end
 Stimulus = {
 	{"findString(\"hello ok again and again\",\"hello\")"},
 	{"findString(\"hello ok again() and again\",\"again\")"},
@@ -89,6 +96,8 @@ Stimulus = {
 	{"interPlaid({[\"field6\"]=allBefore},{[\"field7\"]=allExcept(Enum1,allBefore)},structTagSpace)","structTagSpace"},
 	{"nestStruct(chainStruct(Struct1))"},
 	{"nestStruct(splitStruct(Struct1))"},
+	{"\"Enum1\",Enum1"},
+	{"\"Struct1\",Struct1"},
 }
 Expected = {
 	"1,-5",
@@ -111,6 +120,39 @@ Expected = {
 	"empty",
 	"{[1]={[1]=1,[2]=8},[2]={[1]=9,[2]=10},[3]={[1]=15,[2]=16}}",
 	"{[1]={[1]=9,[2]=11},[2]={[1]=12,[2]=14}}",
+	"enum Enum1 {\n"..
+	"    Value11,\n"..
+	"    Value12,\n"..
+	"    Value13,\n"..
+	"};",
+	"struct Struct1 {\n"..
+	"    struct {\n"..
+	"        struct Struct1* next;\n"..
+	"        float field1[2];\n"..
+	"        double field2[3];\n"..
+	"        int field3[2][2];\n"..
+	"        char* field4;\n"..
+	"        int* field5;\n"..
+	"        enum Enum1 field6;\n"..
+	"        enum Enum2 field7;\n"..
+	"    };\n"..
+	"    union {\n"..
+	"        struct {\n"..
+	"            int field8;\n"..
+	"            int field9;\n"..
+	"        };\n"..
+	"        int field10;\n"..
+	"    };\n"..
+	"    union {\n"..
+	"        int field11;\n"..
+	"        int field12;\n"..
+	"        int field13;\n"..
+	"    };\n"..
+	"    struct {\n"..
+	"        int field14;\n"..
+	"        int* field15;\n"..
+	"    };\n"..
+	"};",
 }
 Monitor = {
 	"showFind",
@@ -133,6 +175,8 @@ Monitor = {
 	"showPlaid",
 	"showAny",
 	"showAny",
+	"showEnum",
+	"showStruct",
 }
 file = io.open("type.txt","w")
 io.output(file)
@@ -177,10 +221,11 @@ io.close(file)
 file = io.open("type.txt","r")
 io.input(file)
 for k,v in ipairs(Expected) do
-	line = io.read(); if line ~= Stimulus[k][1].." "..v then print("error: "..line); os.exit() end
+	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
+		line = io.read();
+		if line ~= val then print("error: "..line); os.exit() end
+	end
 end
 line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
 io.close(file)
 print("typra.ex")
---print(showEnum("Enum1",Enum1))
---print(showStruct("Struct1",Struct1))
