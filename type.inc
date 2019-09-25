@@ -187,7 +187,7 @@ function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
-function showField(val)
+function showDecl(val)
 	local decl
 	if (Enums[val[2]]~=nil) then
 		decl = "enum "..val[2]
@@ -201,12 +201,20 @@ function showField(val)
 	elseif (type(val[4]) == "string") then
 		decl = decl.."*"
 	end
+	return decl
+end
+function showIdent(val)
 	local ident = val[1]
 	if (type(val[4]) == "table") then
 		for k,v in pairs(val[4]) do
 			ident = ident.."["..v.."]"
 		end
 	end
+	return ident
+end
+function showField(val)
+	local decl = showDecl(val)
+	local ident = showIdent(val)
 	return decl.." "..ident..";"
 end
 function structTagSpace(struct)
@@ -319,4 +327,55 @@ function showStruct(name,struct)
 		end
 	end
 	return "struct "..name.." {\n"..result.."};"
+end
+function showReadC(name,struct)
+	local result = ""
+	local all = structTagSpace(struct)
+	for k,v in ipairs(struct) do
+		result = result..showIndent(1)
+		local plaid = v[3]
+		local fields = {}
+		for key,val in pairs(plaid) do
+			table.insert(fields,key)
+		end
+		table.sort(fields)
+		for idx,field in ipairs(fields) do
+			if idx > 1 then result = result..") and\n"..showIndent(2).."(" else result = result.."if ((" end
+			local values = {}
+			for key,val in pairs(v[3][field]) do
+				table.insert(values,key)
+			end
+			table.sort(values)
+			for key,value in ipairs(values) do
+				if key > 1 then result = result..") or (" else result = result.."(" end
+				result = result.."struct->"..field.."=="..value
+				if key == #values then result = result..")" end
+			end
+			if idx == #fields then result = result.."))\n"..showIndent(2) end
+		end
+		if (type(v[4]) == "table") then
+			local sub = ""
+			for key,val in ipairs(v[4]) do
+				result = result.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)\n"
+				result = result..showIndent(key+1);
+				sub = sub.."[i"..key.."]"
+			end
+			if (v[2] == "int") then
+				result = result.."struct->"..v[1]..sub.." = readInt(index);\n"
+			elseif (v[2] == "double") then
+				result = result.."struct->"..v[1]..sub.." = readNum(index);\n"
+			elseif (v[2] == "float") then
+				result = result.."{double temp = readNum(index); struct->"..v[1]..sub.." = temp;}\n"
+			elseif (Enums[v[2]]~=nil) then
+				result = result.."{int temp = readInt(index); struct->"..v[1]..sub.." = temp;}\n"
+			elseif (Structs[v[2]]~=nil) then
+				result = result.."read"..v[2].."(&struct->"..v[1]..sub..");\n"
+			else
+				result = result.."// "..showAny(v).."\n"
+			end
+		else
+			result = result.."// "..showAny(v).."\n"
+		end
+	end
+	return "void read"..name.."(struct "..name.." *struct)\n{\n"..result.."}"
 end

@@ -47,17 +47,28 @@ Struct1 = {
 	{"field14","int",{},{}},
 	{"field15","int",{},"field14"},
 }
+Struct2 = {
+	{"field1","int",{},{}},
+	{"field2","float",{},{3}},
+	{"field3","Enum1",{},{}},
+	{"field4","Enum2",{},{}},
+	{"fiedl5","int",{["field3"]={["Value11"]=true,["Value12"]=true},["field4"]={["Value23"]=true}},{}},
+	{"field6","Struct1",{},1},
+	{"field7","Struct3",{},{}},
+	{"field8","int",{},"field11"},
+}
+Struct3 = {
+	{"field1","int",{},{}},
+	{"field2","int",{},{}},
+}
 Enums = {
-	["Enum1"]=true,["Enum2"]=true,
+	["Enum1"]=true,
+	["Enum2"]=true,
 }
 Structs = {
 	["Struct1"]=true,
-}
-EnumOrder = {
-	"Enum1","Enum2",
-}
-StructOrder = {
-	"Struct1",
+	["Struct2"]=true,
+	["Struct3"]=true,
 }
 function enumOf(str)
 	if str == "Enum1" then return Enum1 end
@@ -66,6 +77,8 @@ function enumOf(str)
 end
 function structOf(str)
 	if str == "Struct1" then return Struct1 end
+	if str == "Struct2" then return Struct2 end
+	if str == "Struct3" then return Struct2 end
 	return {}
 end
 function linesOf(str)
@@ -98,6 +111,7 @@ Stimulus = {
 	{"nestStruct(splitStruct(Struct1))"},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Struct2\",Struct2"},
 }
 Expected = {
 	"1,-5",
@@ -153,6 +167,20 @@ Expected = {
 	"        int* field15;\n"..
 	"    };\n"..
 	"};",
+	"void readStruct2(struct Struct2 *struct)\n"..
+	"{\n"..
+	"    struct->field1 = readInt(index);\n"..
+	"    for (int i1 = 0; i1 < 3; i1++)\n"..
+	"        {double temp = readNum(index); struct->field2[i1] = temp;}\n"..
+	"    {int temp = readInt(index); struct->field3 = temp;}\n"..
+	"    {int temp = readInt(index); struct->field4 = temp;}\n"..
+	"    if (((struct->field3==Value11) or (struct->field3==Value12)) and\n"..
+	"        ((struct->field4==Value23)))\n"..
+	"        struct->fiedl5 = readInt(index);\n"..
+	"    // {[1]=\"field6\",[2]=\"Struct1\",[3]={},[4]=1}\n"..
+	"    readStruct3(&struct->field7);\n"..
+	"    // {[1]=\"field8\",[2]=\"int\",[3]={},[4]=\"field11\"}\n"..
+	"}",
 }
 Monitor = {
 	"showFind",
@@ -177,6 +205,7 @@ Monitor = {
 	"showAny",
 	"showEnum",
 	"showStruct",
+	"showReadC",
 }
 file = io.open("type.txt","w")
 io.output(file)
