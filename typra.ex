@@ -30,11 +30,11 @@ Enum2 = {
 	"Value23",
 }
 Struct1 = {
-	{"next","Struct1",{},1},
+	{"next","Struct1",{},0},
 	{"field1","float",{},{2}},
 	{"field2","double",{},{3}},
 	{"field3","int",{},{2,2}},
-	{"field4","char",{},0},
+	{"field4","char*",{},{}},
 	{"field5","int",{},3},
 	{"field6","Enum1",{},{}},
 	{"field7","Enum2",{},{}},
@@ -46,18 +46,10 @@ Struct1 = {
 	{"field13","int",{["field6"]={["Value13"]=true}},{}},
 	{"field14","int",{},{}},
 	{"field15","int",{},"field14"},
+	{"field16","Struct2",{},2},
+	{"field17","Struct2",{},{2}},
 }
 Struct2 = {
-	{"field1","int",{},{}},
-	{"field2","float",{},{3}},
-	{"field3","Enum1",{},{}},
-	{"field4","Enum2",{},{}},
-	{"fiedl5","int",{["field3"]={["Value11"]=true,["Value12"]=true},["field4"]={["Value23"]=true}},{}},
-	{"field6","Struct1",{},1},
-	{"field7","Struct3",{},{}},
-	{"field8","int",{},"field11"},
-}
-Struct3 = {
 	{"field1","int",{},{}},
 	{"field2","int",{},{}},
 }
@@ -68,7 +60,6 @@ Enums = {
 Structs = {
 	["Struct1"]=true,
 	["Struct2"]=true,
-	["Struct3"]=true,
 }
 function enumOf(str)
 	if str == "Enum1" then return Enum1 end
@@ -78,7 +69,6 @@ end
 function structOf(str)
 	if str == "Struct1" then return Struct1 end
 	if str == "Struct2" then return Struct2 end
-	if str == "Struct3" then return Struct2 end
 	return {}
 end
 function linesOf(str)
@@ -111,7 +101,7 @@ Stimulus = {
 	{"nestStruct(splitStruct(Struct1))"},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
-	{"\"Struct2\",Struct2"},
+	{"\"Struct1\",Struct1"},
 }
 Expected = {
 	"1,-5",
@@ -132,7 +122,7 @@ Expected = {
 	"true",
 	"field6:Value11,Value12,(Value13);field7:Value21,Value22,Value23",
 	"empty",
-	"{[1]={[1]=1,[2]=8},[2]={[1]=9,[2]=10},[3]={[1]=15,[2]=16}}",
+	"{[1]={[1]=1,[2]=8},[2]={[1]=9,[2]=10},[3]={[1]=15,[2]=18}}",
 	"{[1]={[1]=9,[2]=11},[2]={[1]=12,[2]=14}}",
 	"enum Enum1 {\n"..
 	"    Value11,\n"..
@@ -165,21 +155,51 @@ Expected = {
 	"    struct {\n"..
 	"        int field14;\n"..
 	"        int* field15;\n"..
+	"        struct Struct2* field16;\n"..
+	"        struct Struct2 field17[2];\n"..
 	"    };\n"..
 	"};",
-	"void readStruct2(struct Struct2 *struct)\n"..
+	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    struct->field1 = readInt(index);\n"..
+	"    reallocStruct1(&ptr->next,0);\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        readStruct1(&ptr->next[i],idx);\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        {double temp = readNum(idx); ptr->field1[i1] = temp;}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        {double temp = readNum(index); struct->field2[i1] = temp;}\n"..
-	"    {int temp = readInt(index); struct->field3 = temp;}\n"..
-	"    {int temp = readInt(index); struct->field4 = temp;}\n"..
-	"    if (((struct->field3==Value11) or (struct->field3==Value12)) and\n"..
-	"        ((struct->field4==Value23)))\n"..
-	"        struct->fiedl5 = readInt(index);\n"..
-	"    // {[1]=\"field6\",[2]=\"Struct1\",[3]={},[4]=1}\n"..
-	"    readStruct3(&struct->field7);\n"..
-	"    // {[1]=\"field8\",[2]=\"int\",[3]={},[4]=\"field11\"}\n"..
+	"        ptr->field2[i1] = readNum(idx);\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"            ptr->field3[i1][i2] = readInt(idx);\n"..
+	"    {char *temp = readStr(idx); reallocChar(&ptr->field4,strlen(temp)+1); strcpy(ptr->field4,temp);}\n"..
+	"    reallocInt(&ptr->field5,3);\n"..
+	"    for (int i = 0; i < 3; i++)\n"..
+	"        ptr->field5[i] = readInt(idx);\n"..
+	"    {int temp = readInt(idx); ptr->field6 = temp;}\n"..
+	"    {int temp = readInt(idx); ptr->field7 = temp;}\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        ptr->field8 = readInt(idx);\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        ptr->field9 = readInt(idx);\n"..
+	"    if (((ptr->field6==Value12)))\n"..
+	"        ptr->field10 = readInt(idx);\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value21)))\n"..
+	"        ptr->field11 = readInt(idx);\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"        ptr->field12 = readInt(idx);\n"..
+	"    if (((ptr->field6==Value13)))\n"..
+	"        ptr->field13 = readInt(idx);\n"..
+	"    ptr->field14 = readInt(idx);\n"..
+	"    reallocInt(&ptr->field15,ptr->field14);\n"..
+	"    for (int i = 0; i < ptr->field14; i++)\n"..
+	"        ptr->field15[i] = readInt(idx);\n"..
+	"    reallocStruct2(&ptr->field16,2);\n"..
+	"    for (int i = 0; i < 2; i++)\n"..
+	"        readStruct2(&ptr->field16[i],idx);\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        readStruct2(&ptr->field17[i1],idx);\n"..
 	"}",
 }
 Monitor = {

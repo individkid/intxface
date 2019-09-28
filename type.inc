@@ -328,11 +328,21 @@ function showStruct(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
+function showRealloc(name)
+	if (name == "int") then
+		return "reallocInt"
+	elseif (name == "double") then
+		return "reallocDouble"
+	elseif (name == "float") then
+		return "reallocFloat"
+	end
+	return "realloc"..name
+end
 function showReadC(name,struct)
 	local result = ""
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
-		result = result..showIndent(1)
+		local depth = 1
 		local plaid = v[3]
 		local fields = {}
 		for key,val in pairs(plaid) do
@@ -340,42 +350,78 @@ function showReadC(name,struct)
 		end
 		table.sort(fields)
 		for idx,field in ipairs(fields) do
-			if idx > 1 then result = result..") and\n"..showIndent(2).."(" else result = result.."if ((" end
+			if idx > 1 then
+				result = result..") and\n"..showIndent(depth+1).."("
+			else
+				result = result..showIndent(depth).."if (("
+			end
 			local values = {}
 			for key,val in pairs(v[3][field]) do
 				table.insert(values,key)
 			end
 			table.sort(values)
 			for key,value in ipairs(values) do
-				if key > 1 then result = result..") or (" else result = result.."(" end
-				result = result.."struct->"..field.."=="..value
-				if key == #values then result = result..")" end
+				if key > 1 then
+					result = result..") or ("
+				else
+					result = result.."("
+				end
+				result = result.."ptr->"..field.."=="..value
+				if key == #values then
+					result = result..")"
+				end
 			end
-			if idx == #fields then result = result.."))\n"..showIndent(2) end
+			if idx == #fields then
+				result = result.."))\n"
+				depth = depth + 1
+			end
 		end
+		local lim = nil
+		local sub = ""
+		local ebr = ""
 		if (type(v[4]) == "table") then
-			local sub = ""
 			for key,val in ipairs(v[4]) do
+				result = result..showIndent(depth)
 				result = result.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)\n"
-				result = result..showIndent(key+1);
 				sub = sub.."[i"..key.."]"
+				depth = depth + 1
 			end
-			if (v[2] == "int") then
-				result = result.."struct->"..v[1]..sub.." = readInt(index);\n"
-			elseif (v[2] == "double") then
-				result = result.."struct->"..v[1]..sub.." = readNum(index);\n"
-			elseif (v[2] == "float") then
-				result = result.."{double temp = readNum(index); struct->"..v[1]..sub.." = temp;}\n"
-			elseif (Enums[v[2]]~=nil) then
-				result = result.."{int temp = readInt(index); struct->"..v[1]..sub.." = temp;}\n"
-			elseif (Structs[v[2]]~=nil) then
-				result = result.."read"..v[2].."(&struct->"..v[1]..sub..");\n"
-			else
-				result = result.."// "..showAny(v).."\n"
-			end
+			result = result..showIndent(depth)
+		elseif (type(v[4]) == "number") then
+			lim = v[4]
+			result = result..showIndent(depth)
+		elseif (type(v[4]) == "string") then
+			lim = "ptr->"..v[4]
+			result = result..showIndent(depth)
 		else
+			result = result..showIndent(depth)
 			result = result.."// "..showAny(v).."\n"
 		end
+		if lim then
+			result = result..showRealloc(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
+			result = result..showIndent(depth)
+			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
+			sub = "[i]"
+			depth = depth + 1
+			result = result..showIndent(depth)
+		end
+		if (v[2] == "int") then
+			result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
+		elseif (v[2] == "double") then
+			result = result.."ptr->"..v[1]..sub.." = readNum(idx);"..ebr.."\n"
+		elseif (v[2] == "float") then
+			result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
+		elseif (v[2] == "char*") then
+			result = result.."{char *temp = readStr(idx); "
+			result = result.."reallocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
+			result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+		elseif (Enums[v[2]]~=nil) then
+			result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
+		elseif (Structs[v[2]]~=nil) then
+			result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+		else
+			result = result..ebr.."; // "..showAny(v).."\n"
+		end
 	end
-	return "void read"..name.."(struct "..name.." *struct)\n{\n"..result.."}"
+	return "void read"..name.."(struct "..name.." *ptr, int idx)\n{\n"..result.."}"
 end
