@@ -161,7 +161,7 @@ Expected = {
 	"};",
 	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    reallocStruct1(&ptr->next,0);\n"..
+	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        readStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -171,8 +171,8 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = readInt(idx);\n"..
-	"    {char *temp = readStr(idx); reallocChar(&ptr->field4,strlen(temp)+1); strcpy(ptr->field4,temp);}\n"..
-	"    reallocInt(&ptr->field5,3);\n"..
+	"    {char *temp = readStr(idx); allocChar(&ptr->field4,strlen(temp)+1); strcpy(ptr->field4,temp);}\n"..
+	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = readInt(idx);\n"..
 	"    {int temp = readInt(idx); ptr->field6 = temp;}\n"..
@@ -192,10 +192,10 @@ Expected = {
 	"    if (((ptr->field6==Value13)))\n"..
 	"        ptr->field13 = readInt(idx);\n"..
 	"    ptr->field14 = readInt(idx);\n"..
-	"    reallocInt(&ptr->field15,ptr->field14);\n"..
+	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
 	"        ptr->field15[i] = readInt(idx);\n"..
-	"    reallocStruct2(&ptr->field16,2);\n"..
+	"    allocStruct2(&ptr->field16,2);\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
 	"        readStruct2(&ptr->field16[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -223,8 +223,8 @@ Monitor = {
 	"showPlaid",
 	"showAny",
 	"showAny",
-	"showEnum",
-	"showStruct",
+	"showEnumC",
+	"showStructC",
 	"showReadC",
 }
 file = io.open("type.txt","w")

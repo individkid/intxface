@@ -158,7 +158,7 @@ function findString(str,pat)
 	end
 	return result
 end
-function showEnum(name,enum)
+function showEnumC(name,enum)
 	local str = "enum "..name.." {\n"
 	for key,val in ipairs(enum) do
 		str = str.."    "..val..",\n"
@@ -304,7 +304,7 @@ function splitStruct(struct)
  	end
 	return result
 end
-function showStruct(name,struct)
+function showStructC(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local result = ""
@@ -328,15 +328,15 @@ function showStruct(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
-function showRealloc(name)
+function showAlloc(name)
 	if (name == "int") then
-		return "reallocInt"
+		return "allocInt"
 	elseif (name == "double") then
-		return "reallocDouble"
+		return "allocDouble"
 	elseif (name == "float") then
-		return "reallocFloat"
+		return "allocFloat"
 	end
-	return "realloc"..name
+	return "alloc"..name
 end
 function showReadC(name,struct)
 	local result = ""
@@ -398,7 +398,7 @@ function showReadC(name,struct)
 			result = result.."// "..showAny(v).."\n"
 		end
 		if lim then
-			result = result..showRealloc(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
+			result = result..showAlloc(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
 			result = result..showIndent(depth)
 			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
 			sub = "[i]"
@@ -413,7 +413,7 @@ function showReadC(name,struct)
 			result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
 		elseif (v[2] == "char*") then
 			result = result.."{char *temp = readStr(idx); "
-			result = result.."reallocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
+			result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
 			result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 		elseif (Enums[v[2]]~=nil) then
 			result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
