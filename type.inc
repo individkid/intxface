@@ -426,8 +426,7 @@ function showRead(v,ebr,sub)
 		result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
 	elseif (v[2] == "char*") then
 		result = result.."{char *temp = readStr(idx); "
-		result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
-		result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	elseif (Enums[v[2]]~=nil) then
 		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
 	elseif (Structs[v[2]]~=nil) then
@@ -462,15 +461,33 @@ end
 function showWriteC(name,struct)
 	return showStream(name,struct,showWrite,"write",", int idx")
 end
-function showAllocC(name,struct)
-	result = "void alloc"..name.."(struct "..name.." **ptr, int siz)\n{\n"
-	result = result..showIndent(1).."*ptr = realloc(*ptr,siz);\n"
-	for k,v in ipairs(struct) do
-		if ((type(v[4]) == "number") and (v[4] > 0)) or (type(v[4]) == "string") then
-			result = result..showIndent(1).."(*ptr)->"..v[1].." = 0;\n"
+function showAllocC(name,typ)
+	result = ""
+	if (name == "Str") then
+		result = result.."void allocStr(char **ptr, char *str)\n{\n"
+		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
+		result = result..showIndent(1).."strcpy(*ptr,str);\n"
+		result = result.."}"
+	elseif (Enums[name] ~= nil) then
+		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)\n{\n"
+		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
+		result = result.."}"
+	elseif (Structs[name] ~= nil) then
+		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)\n{\n"
+		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
+		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {"
+		for k,v in ipairs(typ) do
+			if ((type(v[4]) == "number") and (v[4] > 0)) or (type(v[4]) == "string") then
+				result = result.."\n"..showIndent(2).."(*ptr)[i]."..v[1].." = 0;"
+			end
 		end
+		result = result.."}\n".."}"
+	else
+		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)\n{\n"
+		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof("..typ.."));\n"
+		result = result.."}"
 	end
-	return result.."}"
+	return result
 end
 randInt = 0
 randNum = 0.1
@@ -487,8 +504,7 @@ function showRand(v,ebr,sub)
 		randNum = randNum + 1.0
 	elseif (v[2] == "char*") then
 		result = result.."{char *temp = \"hello ok again\"; "
-		result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
-		result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	elseif (Enums[v[2]]~=nil) then
 		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
 		randInt = randInt + 1;

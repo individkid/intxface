@@ -104,7 +104,10 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Str\""},
+	{"\"Enum1\""},
 	{"\"Struct1\",Struct1"},
+	{"\"Int\",\"int\""},
 }
 Expected = {
 	"1,-5",
@@ -172,7 +175,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = readInt(idx);\n"..
-	"    {char *temp = readStr(idx); allocChar(&ptr->field4,strlen(temp)+1); strcpy(ptr->field4,temp);}\n"..
+	"    {char *temp = readStr(idx); allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = readInt(idx);\n"..
@@ -239,13 +242,6 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        writeStruct2(&ptr->field17[i1],idx);\n"..
 	"}",
-	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
-	"{\n"..
-	"    *ptr = realloc(*ptr,siz);\n"..
-	"    (*ptr)->field5 = 0;\n"..
-	"    (*ptr)->field15 = 0;\n"..
-	"    (*ptr)->field16 = 0;\n"..
-	"}",
 	"void randStruct1(struct Struct1 *ptr)\n"..
 	"{\n"..
 	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
@@ -256,7 +252,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = 0;\n"..
-	"    {char *temp = \"hello ok again\"; allocChar(&ptr->field4,strlen(temp)+1); strcpy(ptr->field4,temp);}\n"..
+	"    {char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = 1;\n"..
@@ -286,6 +282,27 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        randStruct2(&ptr->field17[i1]);\n"..
 	"}",
+	"void allocStr(char **ptr, char *str)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
+	"    strcpy(*ptr,str);\n"..
+	"}",
+	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(enum Enum1));\n"..
+	"}",
+	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
+	"    for (int i = 0; i < siz; i++) {\n"..
+	"        (*ptr)[i].field5 = 0;\n"..
+	"        (*ptr)[i].field15 = 0;\n"..
+	"        (*ptr)[i].field16 = 0;}\n"..
+	"}",
+	"void allocInt(int **ptr, int siz)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
+	"}",
 }
 Monitor = {
 	"showFind",
@@ -312,8 +329,11 @@ Monitor = {
 	"showStructC",
 	"showReadC",
 	"showWriteC",
-	"showAllocC",
 	"showRandC",
+	"showAllocC",
+	"showAllocC",
+	"showAllocC",
+	"showAllocC",
 }
 file = io.open("type.txt","w")
 io.output(file)
