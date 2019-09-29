@@ -104,6 +104,7 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Struct1\",Struct1"},
 }
 Expected = {
 	"1,-5",
@@ -245,6 +246,46 @@ Expected = {
 	"    (*ptr)->field15 = 0;\n"..
 	"    (*ptr)->field16 = 0;\n"..
 	"}",
+	"void randStruct1(struct Struct1 *ptr)\n"..
+	"{\n"..
+	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        ptr->field1[i1] = 0.1;\n"..
+	"    for (int i1 = 0; i1 < 3; i1++)\n"..
+	"        ptr->field2[i1] = 1.1;\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"            ptr->field3[i1][i2] = 0;\n"..
+	"    {char *temp = \"hello ok again\"; allocChar(&ptr->field4,strlen(temp)+1); strcpy(ptr->field4,temp);}\n"..
+	"    allocInt(&ptr->field5,3);\n"..
+	"    for (int i = 0; i < 3; i++)\n"..
+	"        ptr->field5[i] = 1;\n"..
+	"    ptr->field6 = 2;\n"..
+	"    ptr->field7 = 3;\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        ptr->field8 = 4;\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        ptr->field9 = 5;\n"..
+	"    if (((ptr->field6==Value12)))\n"..
+	"        ptr->field10 = 6;\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value21)))\n"..
+	"        ptr->field11 = 7;\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"        ptr->field12 = 8;\n"..
+	"    if (((ptr->field6==Value13)))\n"..
+	"        ptr->field13 = 9;\n"..
+	"    ptr->field14 = 10;\n"..
+	"    allocInt(&ptr->field15,ptr->field14);\n"..
+	"    for (int i = 0; i < ptr->field14; i++)\n"..
+	"        ptr->field15[i] = 11;\n"..
+	"    allocStruct2(&ptr->field16,2);\n"..
+	"    for (int i = 0; i < 2; i++)\n"..
+	"        randStruct2(&ptr->field16[i]);\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        randStruct2(&ptr->field17[i1]);\n"..
+	"}",
 }
 Monitor = {
 	"showFind",
@@ -272,6 +313,7 @@ Monitor = {
 	"showReadC",
 	"showWriteC",
 	"showAllocC",
+	"showRandC",
 }
 file = io.open("type.txt","w")
 io.output(file)

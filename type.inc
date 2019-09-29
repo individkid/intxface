@@ -338,47 +338,7 @@ function showAlloc(name)
 	end
 	return "alloc"..name
 end
-function showRead(v,ebr,sub)
-	result = ""
-	if (v[2] == "int") then
-		result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
-	elseif (v[2] == "double") then
-		result = result.."ptr->"..v[1]..sub.." = readNum(idx);"..ebr.."\n"
-	elseif (v[2] == "float") then
-		result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
-	elseif (v[2] == "char*") then
-		result = result.."{char *temp = readStr(idx); "
-		result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
-		result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
-	elseif (Enums[v[2]]~=nil) then
-		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
-	elseif (Structs[v[2]]~=nil) then
-		result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	else
-		result = result..ebr.."; // "..showAny(v).."\n"
-	end
-	return result
-end
-function showWrite(v,ebr,sub)
-	result = ""
-	if (v[2] == "int") then
-		result = result.."writeInt(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "double") then
-		result = result.."writeNum(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "float") then
-		result = result.."{double temp = ptr->"..v[1]..sub.."; writeNum(temp,idx);}"..ebr.."\n"
-	elseif (v[2] == "char*") then
-		result = result.."writeStr(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (Enums[v[2]]~=nil) then
-		result = result.."{int temp = ptr->"..v[1]..sub.."; writeInt(temp,idx);}"..ebr.."\n"
-	elseif (Structs[v[2]]~=nil) then
-		result = result.."write"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	else
-		result = result..ebr.."; // "..showAny(v).."\n"
-	end
-	return result
-end
-function showStream(name,struct,show,prefix)
+function showStream(name,struct,show,pre,post)
 	local result = ""
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
@@ -438,7 +398,7 @@ function showStream(name,struct,show,prefix)
 			result = result..showIndent(depth)
 		end
 		if lim then
-			if (show==showRead) then
+			if (show == showRead) or (show == showRand) then
 				result = result..showIndent(depth)
 				result = result..showAlloc(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
 			end
@@ -454,13 +414,53 @@ function showStream(name,struct,show,prefix)
 			result = result..show(v,ebr,sub)
 		end
 	end
-	return "void "..prefix..name.."(struct "..name.." *ptr, int idx)\n{\n"..result.."}"
+	return "void "..pre..name.."(struct "..name.." *ptr"..post..")\n{\n"..result.."}"
+end
+function showRead(v,ebr,sub)
+	result = ""
+	if (v[2] == "int") then
+		result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
+	elseif (v[2] == "double") then
+		result = result.."ptr->"..v[1]..sub.." = readNum(idx);"..ebr.."\n"
+	elseif (v[2] == "float") then
+		result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
+	elseif (v[2] == "char*") then
+		result = result.."{char *temp = readStr(idx); "
+		result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
+		result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+	elseif (Enums[v[2]]~=nil) then
+		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
+	elseif (Structs[v[2]]~=nil) then
+		result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	else
+		result = result..ebr.."; // "..showAny(v).."\n"
+	end
+	return result
+end
+function showWrite(v,ebr,sub)
+	result = ""
+	if (v[2] == "int") then
+		result = result.."writeInt(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "double") then
+		result = result.."writeNum(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "float") then
+		result = result.."{double temp = ptr->"..v[1]..sub.."; writeNum(temp,idx);}"..ebr.."\n"
+	elseif (v[2] == "char*") then
+		result = result.."writeStr(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (Enums[v[2]]~=nil) then
+		result = result.."{int temp = ptr->"..v[1]..sub.."; writeInt(temp,idx);}"..ebr.."\n"
+	elseif (Structs[v[2]]~=nil) then
+		result = result.."write"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	else
+		result = result..ebr.."; // "..showAny(v).."\n"
+	end
+	return result
 end
 function showReadC(name,struct)
-	return showStream(name,struct,showRead,"read")
+	return showStream(name,struct,showRead,"read",", int idx")
 end
 function showWriteC(name,struct)
-	return showStream(name,struct,showWrite,"write")
+	return showStream(name,struct,showWrite,"write",", int idx")
 end
 function showAllocC(name,struct)
 	result = "void alloc"..name.."(struct "..name.." **ptr, int siz)\n{\n"
@@ -472,4 +472,33 @@ function showAllocC(name,struct)
 	end
 	return result.."}"
 end
-
+randInt = 0
+randNum = 0.1
+function showRand(v,ebr,sub)
+	result = ""
+	if (v[2] == "int") then
+		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
+		randInt = randInt + 1;
+	elseif (v[2] == "double") then
+		result = result.."ptr->"..v[1]..sub.." = "..randNum..";"..ebr.."\n"
+		randNum = randNum + 1.0
+	elseif (v[2] == "float") then
+		result = result.."ptr->"..v[1]..sub.." = "..randNum..";"..ebr.."\n"
+		randNum = randNum + 1.0
+	elseif (v[2] == "char*") then
+		result = result.."{char *temp = \"hello ok again\"; "
+		result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
+		result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+	elseif (Enums[v[2]]~=nil) then
+		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
+		randInt = randInt + 1;
+	elseif (Structs[v[2]]~=nil) then
+		result = result.."rand"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
+	else
+		result = result..ebr.."; // "..showAny(v).."\n"
+	end
+	return result
+end
+function showRandC(name,struct)
+	return showStream(name,struct,showRand,"rand","")
+end
