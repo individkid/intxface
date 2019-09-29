@@ -19,6 +19,7 @@
 
 dofile("type.inc")
 
+--HERE Enums
 Enum1 = {
 	"Value11",
 	"Value12",
@@ -29,6 +30,7 @@ Enum2 = {
 	"Value22",
 	"Value23",
 }
+--HERE Structs
 Struct1 = {
 	{"next","Struct1",{},0},
 	{"field1","float",{},{2}},
@@ -53,6 +55,10 @@ Struct2 = {
 	{"field1","int",{},{}},
 	{"field2","int",{},{}},
 }
+--HERE
+Enums = listHere("Enums")
+Structs = listHere("Structs")
+--[[
 Enums = {
 	["Enum1"]=true,
 	["Enum2"]=true,
@@ -61,6 +67,7 @@ Structs = {
 	["Struct1"]=true,
 	["Struct2"]=true,
 }
+--]]
 function enumOf(str)
 	if str == "Enum1" then return Enum1 end
 	if str == "Enum2" then return Enum2 end
@@ -79,6 +86,8 @@ function linesOf(str)
 	return result
 end
 Stimulus = {
+	{"Enums"},
+	{"Structs"},
 	{"findString(\"hello ok again and again\",\"hello\")"},
 	{"findString(\"hello ok again() and again\",\"again\")"},
 	{"findString(\"hello() ok again and again\",\"hello\")"},
@@ -109,7 +118,42 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Int\",\"int\""},
 }
+Monitor = {
+	"showAny",
+	"showAny",
+	"showFind",
+	"showFind",
+	"showFind",
+	"showList",
+	"showList",
+	"showSet",
+	"showSet",
+	"showSet",
+	"showSet",
+	"showSet",
+	"showBool",
+	"showBool",
+	"showSet",
+	"showSet",
+	"showPlaid",
+	"showBool",
+	"showPlaid",
+	"showPlaid",
+	"showAny",
+	"showAny",
+	"showEnumC",
+	"showStructC",
+	"showReadC",
+	"showWriteC",
+	"showRandC",
+	"showAllocC",
+	"showAllocC",
+	"showAllocC",
+	"showAllocC",
+}
 Expected = {
+	"{[\"Enum1\"]=true,[\"Enum2\"]=true}",
+	"{[\"Struct1\"]=true,[\"Struct2\"]=true}",
 	"1,-5",
 	"10,5;22,-5",
 	"1,5",
@@ -304,37 +348,6 @@ Expected = {
 	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
 	"}",
 }
-Monitor = {
-	"showFind",
-	"showFind",
-	"showFind",
-	"showList",
-	"showList",
-	"showSet",
-	"showSet",
-	"showSet",
-	"showSet",
-	"showSet",
-	"showBool",
-	"showBool",
-	"showSet",
-	"showSet",
-	"showPlaid",
-	"showBool",
-	"showPlaid",
-	"showPlaid",
-	"showAny",
-	"showAny",
-	"showEnumC",
-	"showStructC",
-	"showReadC",
-	"showWriteC",
-	"showRandC",
-	"showAllocC",
-	"showAllocC",
-	"showAllocC",
-	"showAllocC",
-}
 file = io.open("type.txt","w")
 io.output(file)
 abbrev = {}
@@ -385,4 +398,4 @@ for k,v in ipairs(Expected) do
 end
 line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
 io.close(file)
-print("typra.ex")
+print(showAny(arg))

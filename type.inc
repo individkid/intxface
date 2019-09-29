@@ -175,9 +175,14 @@ function showAny(any)
 	elseif type(any) == "string" then result = "\""..any.."\""
 	elseif type(any) == "table" then
 		result = "{"
+		local keys = {}
 		for key,val in pairs(any) do
+			table.insert(keys,key)
+		end
+		table.sort(keys)
+		for k,key in ipairs(keys) do
 			if result ~= "{" then result = result.."," end
-			result = result.."["..showAny(key).."]="..showAny(val)
+			result = result.."["..showAny(key).."]="..showAny(any[key])
 		end
 		result = result.."}"
 	else result = type(any) end
@@ -492,7 +497,7 @@ end
 randInt = 0
 randNum = 0.1
 function showRand(v,ebr,sub)
-	result = ""
+	local result = ""
 	if (v[2] == "int") then
 		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
 		randInt = randInt + 1;
@@ -517,4 +522,22 @@ function showRand(v,ebr,sub)
 end
 function showRandC(name,struct)
 	return showStream(name,struct,showRand,"rand","")
+end
+function listHere(name)
+	local result = {}
+	local found = false
+	for line in io.lines(arg[0]) do
+		local set = false
+		local clear = false
+		if (string.find(line,"^--HERE "..name)) then set = true
+		elseif(string.find(line,"^--HERE")) then clear = true end
+		if clear then found = false end
+		if found then
+			local match
+			_, _, match = string.find(line,"([A-Za-z0-9]+) = {")
+			if (match) then result[match] = true end
+		end
+		if set then found = true end
+	end
+	return result
 end
