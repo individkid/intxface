@@ -102,6 +102,8 @@ Stimulus = {
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Struct1\",Struct1"},
+	{"\"Struct1\",Struct1"},
 }
 Expected = {
 	"1,-5",
@@ -161,9 +163,7 @@ Expected = {
 	"};",
 	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    allocStruct1(&ptr->next,0);\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        readStruct1(&ptr->next[i],idx);\n"..
+	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        {double temp = readNum(idx); ptr->field1[i1] = temp;}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -201,6 +201,50 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        readStruct2(&ptr->field17[i1],idx);\n"..
 	"}",
+	"void writeStruct1(struct Struct1 *ptr, int idx)\n"..
+	"{\n"..
+	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        {double temp = ptr->field1[i1]; writeNum(temp,idx);}\n"..
+	"    for (int i1 = 0; i1 < 3; i1++)\n"..
+	"        writeNum(ptr->field2[i1],idx);\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"            writeInt(ptr->field3[i1][i2],idx);\n"..
+	"    writeStr(ptr->field4,idx);\n"..
+	"    for (int i = 0; i < 3; i++)\n"..
+	"        writeInt(ptr->field5[i],idx);\n"..
+	"    {int temp = ptr->field6; writeInt(temp,idx);}\n"..
+	"    {int temp = ptr->field7; writeInt(temp,idx);}\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        writeInt(ptr->field8,idx);\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        writeInt(ptr->field9,idx);\n"..
+	"    if (((ptr->field6==Value12)))\n"..
+	"        writeInt(ptr->field10,idx);\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value21)))\n"..
+	"        writeInt(ptr->field11,idx);\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"        writeInt(ptr->field12,idx);\n"..
+	"    if (((ptr->field6==Value13)))\n"..
+	"        writeInt(ptr->field13,idx);\n"..
+	"    writeInt(ptr->field14,idx);\n"..
+	"    for (int i = 0; i < ptr->field14; i++)\n"..
+	"        writeInt(ptr->field15[i],idx);\n"..
+	"    for (int i = 0; i < 2; i++)\n"..
+	"        writeStruct2(&ptr->field16[i],idx);\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        writeStruct2(&ptr->field17[i1],idx);\n"..
+	"}",
+	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,siz);\n"..
+	"    (*ptr)->field5 = 0;\n"..
+	"    (*ptr)->field15 = 0;\n"..
+	"    (*ptr)->field16 = 0;\n"..
+	"}",
 }
 Monitor = {
 	"showFind",
@@ -226,6 +270,8 @@ Monitor = {
 	"showEnumC",
 	"showStructC",
 	"showReadC",
+	"showWriteC",
+	"showAllocC",
 }
 file = io.open("type.txt","w")
 io.output(file)

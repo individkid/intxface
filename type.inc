@@ -338,7 +338,47 @@ function showAlloc(name)
 	end
 	return "alloc"..name
 end
-function showReadC(name,struct)
+function showRead(v,ebr,sub)
+	result = ""
+	if (v[2] == "int") then
+		result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
+	elseif (v[2] == "double") then
+		result = result.."ptr->"..v[1]..sub.." = readNum(idx);"..ebr.."\n"
+	elseif (v[2] == "float") then
+		result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
+	elseif (v[2] == "char*") then
+		result = result.."{char *temp = readStr(idx); "
+		result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
+		result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+	elseif (Enums[v[2]]~=nil) then
+		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
+	elseif (Structs[v[2]]~=nil) then
+		result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	else
+		result = result..ebr.."; // "..showAny(v).."\n"
+	end
+	return result
+end
+function showWrite(v,ebr,sub)
+	result = ""
+	if (v[2] == "int") then
+		result = result.."writeInt(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "double") then
+		result = result.."writeNum(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "float") then
+		result = result.."{double temp = ptr->"..v[1]..sub.."; writeNum(temp,idx);}"..ebr.."\n"
+	elseif (v[2] == "char*") then
+		result = result.."writeStr(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (Enums[v[2]]~=nil) then
+		result = result.."{int temp = ptr->"..v[1]..sub.."; writeInt(temp,idx);}"..ebr.."\n"
+	elseif (Structs[v[2]]~=nil) then
+		result = result.."write"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	else
+		result = result..ebr.."; // "..showAny(v).."\n"
+	end
+	return result
+end
+function showStream(name,struct,show,prefix)
 	local result = ""
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
@@ -376,10 +416,11 @@ function showReadC(name,struct)
 				depth = depth + 1
 			end
 		end
+		local sub = nil
 		local lim = nil
-		local sub = ""
 		local ebr = ""
 		if (type(v[4]) == "table") then
+			sub = ""
 			for key,val in ipairs(v[4]) do
 				result = result..showIndent(depth)
 				result = result.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)\n"
@@ -387,41 +428,48 @@ function showReadC(name,struct)
 				depth = depth + 1
 			end
 			result = result..showIndent(depth)
-		elseif (type(v[4]) == "number") then
+		elseif (type(v[4]) == "number") and (v[4] > 0) then
+			sub = ""
 			lim = v[4]
-			result = result..showIndent(depth)
 		elseif (type(v[4]) == "string") then
+			sub = ""
 			lim = "ptr->"..v[4]
-			result = result..showIndent(depth)
 		else
 			result = result..showIndent(depth)
-			result = result.."// "..showAny(v).."\n"
 		end
 		if lim then
-			result = result..showAlloc(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
+			if (show==showRead) then
+				result = result..showIndent(depth)
+				result = result..showAlloc(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
+			end
 			result = result..showIndent(depth)
 			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
 			sub = "[i]"
 			depth = depth + 1
 			result = result..showIndent(depth)
 		end
-		if (v[2] == "int") then
-			result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
-		elseif (v[2] == "double") then
-			result = result.."ptr->"..v[1]..sub.." = readNum(idx);"..ebr.."\n"
-		elseif (v[2] == "float") then
-			result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
-		elseif (v[2] == "char*") then
-			result = result.."{char *temp = readStr(idx); "
-			result = result.."allocChar(&ptr->"..v[1]..sub..",strlen(temp)+1); "
-			result = result.."strcpy(ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
-		elseif (Enums[v[2]]~=nil) then
-			result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
-		elseif (Structs[v[2]]~=nil) then
-			result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+		if (sub == nil) then
+			result = result..ebr.."// "..showAny(v).."\n"
 		else
-			result = result..ebr.."; // "..showAny(v).."\n"
+			result = result..show(v,ebr,sub)
 		end
 	end
-	return "void read"..name.."(struct "..name.." *ptr, int idx)\n{\n"..result.."}"
+	return "void "..prefix..name.."(struct "..name.." *ptr, int idx)\n{\n"..result.."}"
 end
+function showReadC(name,struct)
+	return showStream(name,struct,showRead,"read")
+end
+function showWriteC(name,struct)
+	return showStream(name,struct,showWrite,"write")
+end
+function showAllocC(name,struct)
+	result = "void alloc"..name.."(struct "..name.." **ptr, int siz)\n{\n"
+	result = result..showIndent(1).."*ptr = realloc(*ptr,siz);\n"
+	for k,v in ipairs(struct) do
+		if ((type(v[4]) == "number") and (v[4] > 0)) or (type(v[4]) == "string") then
+			result = result..showIndent(1).."(*ptr)->"..v[1].." = 0;\n"
+		end
+	end
+	return result.."}"
+end
+
