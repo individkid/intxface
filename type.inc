@@ -326,19 +326,21 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
-function showAlloc(name)
+function showStreamCF(name)
 	if (name == "int") then
 		return "allocInt"
 	elseif (name == "double") then
 		return "allocDouble"
 	elseif (name == "float") then
 		return "allocFloat"
+	elseif (name == "char*") then
+		return "allocStr"
 	end
 	return "alloc"..name
 end
-function showStream(name,struct,show,pre,post)
+function showStreamC(name,struct,show,pre,post)
 	local result = ""
-	result = result.."void "..pre..name.."(struct "..name.." *ptr"..post..")"
+	result = result..pre..name.."(struct "..name.." *ptr"..post..")"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
 	local all = structTagSpace(struct)
@@ -391,9 +393,9 @@ function showStream(name,struct,show,pre,post)
 			result = result..showIndent(depth)
 		end
 		if lim then
-			if (show == showRead) or (show == showRand) then
+			if (show == showReadCF) or (show == showRandCF) then
 				result = result..showIndent(depth)
-				result = result..showAlloc(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
+				result = result..showStreamCF(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
 			end
 			result = result..showIndent(depth)
 			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
@@ -407,10 +409,13 @@ function showStream(name,struct,show,pre,post)
 			result = result..show(v,ebr,sub)
 		end
 	end
+	if (show == showCompCF) then
+		result = result..showIndent(1).."return true;\n"
+	end
 	result = result.."}"
 	return result
 end
-function showRead(v,ebr,sub)
+function showReadCF(v,ebr,sub)
 	result = ""
 	if (v[2] == "int") then
 		result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
@@ -430,7 +435,7 @@ function showRead(v,ebr,sub)
 	end
 	return result
 end
-function showWrite(v,ebr,sub)
+function showWriteCF(v,ebr,sub)
 	result = ""
 	if (v[2] == "int") then
 		result = result.."writeInt(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
@@ -450,15 +455,15 @@ function showWrite(v,ebr,sub)
 	return result
 end
 function showReadC(name,struct)
-	return showStream(name,struct,showRead,"read",", int idx")
+	return showStreamC(name,struct,showReadCF,"void read",", int idx")
 end
 function showWriteC(name,struct)
-	return showStream(name,struct,showWrite,"write",", int idx")
+	return showStreamC(name,struct,showWriteCF,"void write",", int idx")
 end
 function showAllocC(name,typ)
 	result = ""
 	if (name == "Str") then
-		result = result.."void allocStr(char **ptr, char *str)"
+		result = result.."void allocStr(char **ptr, const char *str)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
@@ -493,7 +498,7 @@ function showAllocC(name,typ)
 end
 randInt = 0
 randNum = 0.1
-function showRand(v,ebr,sub)
+function showRandCF(v,ebr,sub)
 	local result = ""
 	if (v[2] == "int") then
 		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
@@ -517,8 +522,25 @@ function showRand(v,ebr,sub)
 	end
 	return result
 end
+function showCompCF(v,ebr,sub)
+	local result = ""
+	if (v[2] == "int") or (v[2] == "double") or (v[2] == "float") or (Enums[v[2]]~=nil) then
+		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return false;"..ebr.."\n"
+		randInt = randInt + 1;
+	elseif (v[2] == "char*") then
+		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return false;"..ebr.."\n"
+	elseif (Structs[v[2]]~=nil) then
+		result = result.."if (!comp"..v[2].."(&ptr->"..v[1]..sub..", &cmp->"..v[1]..sub..")) return false;"..ebr.."\n"
+	else
+		result = result..ebr.."; // "..showAny(v).."\n"
+	end
+	return result
+end
 function showRandC(name,struct)
-	return showStream(name,struct,showRand,"rand","")
+	return showStreamC(name,struct,showRandCF,"void rand","")
+end
+function showCompC(name,struct)
+	return showStreamC(name,struct,showCompCF,"int comp",", struct "..name.." *cmp")
 end
 function listHere(name)
 	local result = {}
@@ -546,7 +568,7 @@ function showCall(map,func)
 	end
 	return result
 end
-function showFunc()
+function showFuncC()
 	local result = ""
 	result = result..showAllocC("Int","int").."\n"
 	result = result..showAllocC("Double","double").."\n"
@@ -555,7 +577,8 @@ function showFunc()
 	result = result..showCall(Structs,showAllocC).."\n"
 	result = result..showCall(Structs,showReadC).."\n"
 	result = result..showCall(Structs,showWriteC).."\n"
-	result = result..showCall(Structs,showRandC)
+	result = result..showCall(Structs,showRandC).."\n"
+	result = result..showCall(Structs,showCompC)
 	return result
 end
 function showTypeH()
@@ -563,7 +586,7 @@ function showTypeH()
 	result = result..showCall(Enums,showEnumC).."\n"
 	result = result..showCall(Structs,showStructC).."\n"
 	prototype = true
-	result = result..showFunc()
+	result = result..showFuncC()
 	return result
 end
 function showTypeC()
@@ -572,7 +595,7 @@ function showTypeC()
 	result = result.."#include <string.h>\n"
 	result = result.."#include \"face.h\"\n"
 	prototype = false
-	result = result..showFunc()
+	result = result..showFuncC()
 	return result
 end
 function showTypeHs()

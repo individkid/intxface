@@ -93,6 +93,7 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Struct1\",Struct1"},
 	{"\"Str\""},
 	{"\"Enum1\""},
 	{"\"Struct1\",Struct1"},
@@ -128,6 +129,7 @@ Monitor = {
 	"showReadC",
 	"showWriteC",
 	"showRandC",
+	"showCompC",
 	"showAllocC",
 	"showAllocC",
 	"showAllocC",
@@ -330,7 +332,45 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        randStruct2(&ptr->field17[i1]);\n"..
 	"}",
-	"void allocStr(char **ptr, char *str)\n"..
+	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
+	"{\n"..
+	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        if (ptr->field1[i1] != cmp->field1[i1]) return false;\n"..
+	"    for (int i1 = 0; i1 < 3; i1++)\n"..
+	"        if (ptr->field2[i1] != cmp->field2[i1]) return false;\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return false;\n"..
+	"    if (strcmp(ptr->field4,cmp->field4) != 0) return false;\n"..
+	"    for (int i = 0; i < 3; i++)\n"..
+	"        if (ptr->field5[i] != cmp->field5[i]) return false;\n"..
+	"    if (ptr->field6 != cmp->field6) return false;\n"..
+	"    if (ptr->field7 != cmp->field7) return false;\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        if (ptr->field8 != cmp->field8) return false;\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        if (ptr->field9 != cmp->field9) return false;\n"..
+	"    if (((ptr->field6==Value12)))\n"..
+	"        if (ptr->field10 != cmp->field10) return false;\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value21)))\n"..
+	"        if (ptr->field11 != cmp->field11) return false;\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"        if (ptr->field12 != cmp->field12) return false;\n"..
+	"    if (((ptr->field6==Value13)))\n"..
+	"        if (ptr->field13 != cmp->field13) return false;\n"..
+	"    if (ptr->field14 != cmp->field14) return false;\n"..
+	"    for (int i = 0; i < ptr->field14; i++)\n"..
+	"        if (ptr->field15[i] != cmp->field15[i]) return false;\n"..
+	"    for (int i = 0; i < 2; i++)\n"..
+	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return false;\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return false;\n"..
+	"    return true;\n"..
+	"}",
+	"void allocStr(char **ptr, const char *str)\n"..
 	"{\n"..
 	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
@@ -400,7 +440,7 @@ Expected = {
 	"void allocInt(int **ptr, int siz);\n"..
 	"void allocDouble(double **ptr, int siz);\n"..
 	"void allocFloat(float **ptr, int siz);\n"..
-	"void allocStr(char **ptr, char *str);\n"..
+	"void allocStr(char **ptr, const char *str);\n"..
 	"void allocStruct1(struct Struct1 **ptr, int siz);\n"..
 	"void allocStruct2(struct Struct2 **ptr, int siz);\n"..
 	"void readStruct1(struct Struct1 *ptr, int idx);\n"..
@@ -408,8 +448,10 @@ Expected = {
 	"void writeStruct1(struct Struct1 *ptr, int idx);\n"..
 	"void writeStruct2(struct Struct2 *ptr, int idx);\n"..
 	"void randStruct1(struct Struct1 *ptr);\n"..
-	"void randStruct2(struct Struct2 *ptr);",
-	"#include <stdlib.h>\n"..
+	"void randStruct2(struct Struct2 *ptr);\n"..
+	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp);\n"..
+	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp);",
+	("#include <stdlib.h>\n"..
 	"#include <string.h>\n"..
 	"#include \"face.h\"\n"..
 	"void allocInt(int **ptr, int siz)\n"..
@@ -424,7 +466,7 @@ Expected = {
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(float));\n"..
 	"}\n"..
-	"void allocStr(char **ptr, char *str)\n"..
+	"void allocStr(char **ptr, const char *str)\n"..
 	"{\n"..
 	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
@@ -441,8 +483,8 @@ Expected = {
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct2));\n"..
 	"    for (int i = 0; i < siz; i++) {}\n"..
-	"}\n"..
-	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
+	"}\n")..
+	("void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
 	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -486,8 +528,8 @@ Expected = {
 	"{\n"..
 	"    ptr->field1 = readInt(idx);\n"..
 	"    ptr->field2 = readInt(idx);\n"..
-	"}\n"..
-	"void writeStruct1(struct Struct1 *ptr, int idx)\n"..
+	"}\n")..
+	("void writeStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
 	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -528,8 +570,8 @@ Expected = {
 	"{\n"..
 	"    writeInt(ptr->field1,idx);\n"..
 	"    writeInt(ptr->field2,idx);\n"..
-	"}\n"..
-	"void randStruct1(struct Struct1 *ptr)\n"..
+	"}\n")..
+	("void randStruct1(struct Struct1 *ptr)\n"..
 	"{\n"..
 	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -538,31 +580,31 @@ Expected = {
 	"        ptr->field2[i1] = 3.1;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            ptr->field3[i1][i2] = 12;\n"..
+	"            ptr->field3[i1][i2] = 26;\n"..
 	"    {char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        ptr->field5[i] = 13;\n"..
-	"    ptr->field6 = 14;\n"..
-	"    ptr->field7 = 15;\n"..
+	"        ptr->field5[i] = 27;\n"..
+	"    ptr->field6 = 28;\n"..
+	"    ptr->field7 = 29;\n"..
 	"    if (((ptr->field6==Value11)))\n"..
-	"        ptr->field8 = 16;\n"..
+	"        ptr->field8 = 30;\n"..
 	"    if (((ptr->field6==Value11)))\n"..
-	"        ptr->field9 = 17;\n"..
+	"        ptr->field9 = 31;\n"..
 	"    if (((ptr->field6==Value12)))\n"..
-	"        ptr->field10 = 18;\n"..
+	"        ptr->field10 = 32;\n"..
 	"    if (((ptr->field6==Value12)) and\n"..
 	"        ((ptr->field7==Value21)))\n"..
-	"        ptr->field11 = 19;\n"..
+	"        ptr->field11 = 33;\n"..
 	"    if (((ptr->field6==Value12)) and\n"..
 	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
-	"        ptr->field12 = 20;\n"..
+	"        ptr->field12 = 34;\n"..
 	"    if (((ptr->field6==Value13)))\n"..
-	"        ptr->field13 = 21;\n"..
-	"    ptr->field14 = 22;\n"..
+	"        ptr->field13 = 35;\n"..
+	"    ptr->field14 = 36;\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        ptr->field15[i] = 23;\n"..
+	"        ptr->field15[i] = 37;\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
 	"        randStruct2(&ptr->field16[i]);\n"..
@@ -571,9 +613,53 @@ Expected = {
 	"}\n"..
 	"void randStruct2(struct Struct2 *ptr)\n"..
 	"{\n"..
-	"    ptr->field1 = 24;\n"..
-	"    ptr->field2 = 25;\n"..
-	"}",
+	"    ptr->field1 = 38;\n"..
+	"    ptr->field2 = 39;\n"..
+	"}\n")..
+	("int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
+	"{\n"..
+	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        if (ptr->field1[i1] != cmp->field1[i1]) return false;\n"..
+	"    for (int i1 = 0; i1 < 3; i1++)\n"..
+	"        if (ptr->field2[i1] != cmp->field2[i1]) return false;\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return false;\n"..
+	"    if (strcmp(ptr->field4,cmp->field4) != 0) return false;\n"..
+	"    for (int i = 0; i < 3; i++)\n"..
+	"        if (ptr->field5[i] != cmp->field5[i]) return false;\n"..
+	"    if (ptr->field6 != cmp->field6) return false;\n"..
+	"    if (ptr->field7 != cmp->field7) return false;\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        if (ptr->field8 != cmp->field8) return false;\n"..
+	"    if (((ptr->field6==Value11)))\n"..
+	"        if (ptr->field9 != cmp->field9) return false;\n"..
+	"    if (((ptr->field6==Value12)))\n"..
+	"        if (ptr->field10 != cmp->field10) return false;\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value21)))\n"..
+	"        if (ptr->field11 != cmp->field11) return false;\n"..
+	"    if (((ptr->field6==Value12)) and\n"..
+	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"        if (ptr->field12 != cmp->field12) return false;\n"..
+	"    if (((ptr->field6==Value13)))\n"..
+	"        if (ptr->field13 != cmp->field13) return false;\n"..
+	"    if (ptr->field14 != cmp->field14) return false;\n"..
+	"    for (int i = 0; i < ptr->field14; i++)\n"..
+	"        if (ptr->field15[i] != cmp->field15[i]) return false;\n"..
+	"    for (int i = 0; i < 2; i++)\n"..
+	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return false;\n"..
+	"    for (int i1 = 0; i1 < 2; i1++)\n"..
+	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return false;\n"..
+	"    return true;\n"..
+	"}\n"..
+	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp)\n"..
+	"{\n"..
+	"    if (ptr->field1 != cmp->field1) return false;\n"..
+	"    if (ptr->field2 != cmp->field2) return false;\n"..
+	"    return true;\n"..
+	"}"),
 }
 file = io.open("type.txt","w")
 io.output(file)
@@ -620,7 +706,8 @@ io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
 		line = io.read();
-		if line ~= val then print("error: "..line); os.exit() end
+		if line ~= val then print("error: "..line.." "..val); os.exit() end
+		--print(line)
 	end
 end
 line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
