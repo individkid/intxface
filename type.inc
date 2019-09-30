@@ -29,15 +29,18 @@ function showList(list)
 	end
 	return str
 end
-function showSet(set)
-	if not set then return "universe" end
+function listSort(map)
 	local tab = {}
-	for key,val in pairs(set) do
+	for key,val in pairs(map) do
 		table.insert(tab,key)
 	end
 	table.sort(tab)
+	return tab
+end
+function showSet(set)
+	if not set then return "universe" end
 	local str = ""
-	for key,val in ipairs(tab) do
+	for key,val in ipairs(listSort(set)) do
 		if str ~= "" then str = str.."," end
 		if set[val] then str = str..val else str = str.."("..val..")" end
 	end
@@ -96,13 +99,8 @@ end
 -- if all is {} then all sets are {}
 function showPlaid(ds,all)
 	if not ds then return "empty" end
-	local tab = {}
-	for key,val in pairs(all) do
-		table.insert(tab,key)
-	end
-	table.sort(tab)
 	local str = ""
-	for k,v in ipairs(tab) do
+	for k,v in ipairs(listSort(all)) do
 		if str ~= "" then str = str..";" end
 		if not ds[v] then str = str..v..":"..showSet(all[v])
 		else str = str..v..":"..showSet(interSet(all[v],ds[v])) end
@@ -175,12 +173,7 @@ function showAny(any)
 	elseif type(any) == "string" then result = "\""..any.."\""
 	elseif type(any) == "table" then
 		result = "{"
-		local keys = {}
-		for key,val in pairs(any) do
-			table.insert(keys,key)
-		end
-		table.sort(keys)
-		for k,key in ipairs(keys) do
+		for k,key in ipairs(listSort(any)) do
 			if result ~= "{" then result = result.."," end
 			result = result.."["..showAny(key).."]="..showAny(any[key])
 		end
@@ -345,38 +338,33 @@ function showAlloc(name)
 end
 function showStream(name,struct,show,pre,post)
 	local result = ""
+	result = result.."void "..pre..name.."(struct "..name.." *ptr"..post..")"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
 		local depth = 1
 		local plaid = v[3]
-		local fields = {}
-		for key,val in pairs(plaid) do
-			table.insert(fields,key)
-		end
-		table.sort(fields)
-		for idx,field in ipairs(fields) do
-			if idx > 1 then
+		local fields = listSort(plaid)
+		for index,field in ipairs(fields) do
+			if index > 1 then
 				result = result..") and\n"..showIndent(depth+1).."("
 			else
 				result = result..showIndent(depth).."if (("
 			end
-			local values = {}
-			for key,val in pairs(v[3][field]) do
-				table.insert(values,key)
-			end
-			table.sort(values)
-			for key,value in ipairs(values) do
+			local vals = listSort(plaid[field])
+			for key,val in ipairs(vals) do
 				if key > 1 then
 					result = result..") or ("
 				else
 					result = result.."("
 				end
-				result = result.."ptr->"..field.."=="..value
-				if key == #values then
+				result = result.."ptr->"..field.."=="..val
+				if key == #vals then
 					result = result..")"
 				end
 			end
-			if idx == #fields then
+			if index == #fields then
 				result = result.."))\n"
 				depth = depth + 1
 			end
@@ -419,7 +407,8 @@ function showStream(name,struct,show,pre,post)
 			result = result..show(v,ebr,sub)
 		end
 	end
-	return "void "..pre..name.."(struct "..name.." *ptr"..post..")\n{\n"..result.."}"
+	result = result.."}"
+	return result
 end
 function showRead(v,ebr,sub)
 	result = ""
@@ -469,16 +458,22 @@ end
 function showAllocC(name,typ)
 	result = ""
 	if (name == "Str") then
-		result = result.."void allocStr(char **ptr, char *str)\n{\n"
+		result = result.."void allocStr(char **ptr, char *str)"
+		if prototype then return result..";" end
+		result = result.."\n{\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
 		result = result.."}"
 	elseif (Enums[name] ~= nil) then
-		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)\n{\n"
+		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
+		if prototype then return result..";" end
+		result = result.."\n{\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
 		result = result.."}"
 	elseif (Structs[name] ~= nil) then
-		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)\n{\n"
+		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
+		if prototype then return result..";" end
+		result = result.."\n{\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {"
 		for k,v in ipairs(typ) do
@@ -488,7 +483,9 @@ function showAllocC(name,typ)
 		end
 		result = result.."}\n".."}"
 	else
-		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)\n{\n"
+		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)"
+		if prototype then return result..";" end
+		result = result.."\n{\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof("..typ.."));\n"
 		result = result.."}"
 	end
@@ -535,9 +532,90 @@ function listHere(name)
 		if found then
 			local match
 			_, _, match = string.find(line,"([A-Za-z0-9]+) = {")
-			if (match) then result[match] = true end
+			if (match) then result[match] = _G[match] end
 		end
 		if set then found = true end
 	end
+	return result
+end
+function showCall(map,func)
+	local result = ""
+	for k,v in ipairs(listSort(map)) do
+		if result ~= "" then result = result.."\n" end
+		result = result..func(v,map[v])
+	end
+	return result
+end
+function showFunc()
+	local result = ""
+	result = result..showAllocC("Int","int").."\n"
+	result = result..showAllocC("Double","double").."\n"
+	result = result..showAllocC("Float","float").."\n"
+	result = result..showAllocC("Str","char*").."\n"
+	result = result..showCall(Structs,showAllocC).."\n"
+	result = result..showCall(Structs,showReadC).."\n"
+	result = result..showCall(Structs,showWriteC).."\n"
+	result = result..showCall(Structs,showRandC)
+	return result
+end
+function showTypeH()
+	local result = ""
+	result = result..showCall(Enums,showEnumC).."\n"
+	result = result..showCall(Structs,showStructC).."\n"
+	prototype = true
+	result = result..showFunc()
+	return result
+end
+function showTypeC()
+	local result = ""
+	result = result.."#include <stdlib.h>\n"
+	result = result.."#include <string.h>\n"
+	result = result.."#include \"face.h\"\n"
+	prototype = false
+	result = result..showFunc()
+	return result
+end
+function showTypeHs()
+	local result = ""
+	return result
+end
+function showTypeLua()
+	local result = ""
+	return result
+end
+function showTyperC()
+	local result = ""
+	result = result.."#include \"face.h\"\n"
+	result = result.."#include \"typer.h\"\n"
+	result = result..showTypeC().."\n"
+	result = result.."int main(int argc, char **argv)\n"..
+	"{\n"..
+	"	if (argc == 4) {\n"..
+	"	pipeInit(argv[1],argv[2]);\n"..
+	"	return 0;}\n"..
+	"	forkExec(\"a.out\");\n"..
+	"	forkExec(\"b.out\");\n"..
+	"	forkExec(\"typer.lua\");\n"..
+	"	sleepSec(1);\n"
+	result = result..
+	"	// alloc structs\n"..
+	"	// init structs\n"..
+	"	// write structs\n"..
+	"	// read structs\n"..
+	"	// compa structs\n"
+	result = result..
+	"	printf(\"typer.c\\n\");\n"..
+	"	return 0;\n"..
+	"}"
+	return result
+end
+function showTyperHs()
+	local result = ""
+	result = result..showTypeHs()
+	return result
+end
+function showTyperLua()
+	local result = ""
+	result = result..showTypeLua()
 	return result
 end

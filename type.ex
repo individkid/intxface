@@ -17,11 +17,22 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-loadfile("type.inc")()
+dofile("type.inc")
 
-for key,val in ipairs(EnumOrder) do
-	printEnum(val,enumOf(val))
-end
-for key,val in ipairs(StructOrder) do
-	printStruct(val,structOf(val))
-end
+--HERE Enums
+--HERE Structs
+--HERE
+Enums = listHere("Enums")
+Structs = listHere("Structs")
+file = io.open("type.h", "w")
+file:write(showTypeH().."\n")
+file:close()
+file = io.open("type.c", "w")
+file:write(showTypeC().."\n")
+file:close()
+file = io.open("type.hs", "w")
+file:write(showTypeHs().."\n")
+file:close()
+file = io.open("type.lua", "w")
+file:write(showTypeLua().."\n")
+file:close()

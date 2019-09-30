@@ -6,4 +6,4 @@ ghc -o a.out facer.hs face.o -llua
 ./b.out
 ./facer.lua
 ./typra.ex
-rm *.out *.o *.so *.hi *.txt
+rm *.out *.o *.so *.hi *.txt typer.*
