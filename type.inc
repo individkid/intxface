@@ -333,10 +333,26 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
+function showStructHsF(struct,idx,lim)
+	local result = ""
+	while (idx < lim) do
+		result = result..showIndent(1)..struct[idx][1].."\n"
+		idx = idx + 1
+	end
+	return result
+end
 function showStructHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local result = ""
+	local index = 1
+	for k,v in ipairs(split) do
+		result = result..showStructHsF(struct,index,v[1])
+		result = result..showIndent(1)..name.."A"..k.."\n"
+		index = v[2] + 1
+	end
+	result = result..showStructHsF(struct,index,#struct+1)
+	return result
 end
 function showStreamCF(name)
 	if (name == "int") then
