@@ -156,12 +156,23 @@ function findString(str,pat)
 	end
 	return result
 end
+function showIndent(depth)
+	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
+	return indent
+end
 function showEnumC(name,enum)
 	local str = "enum "..name.." {\n"
 	for key,val in ipairs(enum) do
-		str = str.."    "..val..",\n"
+		str = str..showIndent(1)..val..",\n"
 	end
 	str = str.."};"
+	return str
+end
+function showEnumHs(name,enum)
+	local str = "data "..name.." ="
+	for key,val in ipairs(enum) do
+		str = str..showIndent(1)..val.." |\n"
+	end
 	return str
 end
 function showAny(any)
@@ -180,10 +191,6 @@ function showAny(any)
 		result = result.."}"
 	else result = type(any) end
 	return result
-end
-function showIndent(depth)
-	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
-	return indent
 end
 function showDecl(val)
 	local decl
@@ -325,6 +332,11 @@ function showStructC(name,struct)
 		end
 	end
 	return "struct "..name.." {\n"..result.."};"
+end
+function showStructHs(name,struct)
+	local chain = nestStruct(chainStruct(struct))
+	local split = nestStruct(splitStruct(struct))
+	local result = ""
 end
 function showStreamCF(name)
 	if (name == "int") then
