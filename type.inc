@@ -227,8 +227,13 @@ function showFieldHs(val)
 	if (val[2] == "int") and (type(val[4]) == "table") and (#val[4] == 0) then
 		result = result..showIndent(1).."Int -- "..val[1].."\n"
 	elseif (val[2] == "double") then
+		result = result..showIndent(1).."Double -- "..val[1].."\n"
 	elseif (val[2] == "float") then
+		result = result..showIndent(1).."Float -- "..val[1].."\n"
 	elseif (val[2] == "char*") then
+		result = result..showIndent(1).."String -- "..val[1].."\n"
+	else
+		result = result..showIndent(1).."-- "..val[1].."\n"
 	end
 	return result
 end
@@ -349,24 +354,80 @@ function showStructHs(name,struct)
 	local result = ""
 	local link = 1
 	local step = 1
+	for k,v in ipairs(struct) do
+		if chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
+			result = result..showFieldHs(v)
+		elseif chain[link] and (k == chain[link][2]) then
+			result = result..showFieldHs(v)
+			link = link + 1
+		elseif chain[link] and (k == chain[link][1]) then
+			result = result.."data "..name.."A"..link.." = "..name.."A"..link.."\n"
+			result = result..showFieldHs(v)
+		else
+		end
+	end
+	link = 1
+	for k,v in ipairs(struct) do
+		if split[step] and (k > split[step][1]) and (k < split[step][2]) and
+			chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
+		elseif split[step] and (k >= split[step][1]) and (k <= split[step][2]) and
+			chain[link] and (k == chain[link][2]) then
+			link = link + 1
+		elseif split[step] and (k > split[step][1]) and (k < split[step][2]) and
+			chain[link] and (k == chain[link][1]) then
+			result = result..showIndent(1)..name.."A"..link.."\n"
+
+		elseif split[step] and (k == split[step][2]) and
+			chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
+			step = step + 1
+		elseif split[step] and (k == split[step][2]) and
+			chain[link] and (k == chain[link][2]) then
+			link = link + 1
+			step = step + 1
+		elseif split[step] and (k == split[step][2]) and
+			chain[link] and (k == chain[link][1]) then
+			result = result..showIndent(1)..name.."A"..link.."\n"
+			step = step + 1
+
+		elseif split[step] and (k == split[step][1]) and
+			chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
+		elseif split[step] and (k == split[step][1]) and
+			chain[link] and (k == chain[link][2]) then
+			link = link + 1
+		elseif split[step] and (k == split[step][1]) and
+			chain[link] and (k == chain[link][1]) then
+			result = result.."data "..name.."B"..step.." = "..name.."B"..step.."\n"
+			result = result..showIndent(1)..name.."A"..link.."\n"
+
+		elseif split[step] and (k > split[step][1]) and (k < split[step][2]) then
+			result = result..showFieldHs(v)
+		elseif split[step] and (k == split[step][2]) then
+			result = result..showFieldHs(v)
+			step = step + 1
+		elseif split[step] and (k == split[step][1]) then
+			result = result.."data "..name.."B"..step.." = "..name.."B"..step.."\n"
+			result = result..showFieldHs(v)
+		elseif chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
+		elseif chain[link] and (k == chain[link][2]) then
+			link = link + 1
+		elseif chain[link] and (k == chain[link][1]) then
+		else
+		end
+	end
+	link = 1
+	step = 1
 	result = result.."data "..name.." = "..name.."\n"
 	for k,v in ipairs(struct) do
 		if split[step] and (k > split[step][1]) and (k < split[step][2]) then
-			result = result..showIndent(1).."-- "..name.."B"..step.." "..v[1].."\n"
 		elseif split[step] and (k == split[step][2]) then
-			result = result..showIndent(1).."-- "..name.."B"..step.." "..v[1].."\n"
 			step = step + 1
 		elseif split[step] and (k == split[step][1]) then
 			result = result..showIndent(1)..name.."B"..step.."\n"
-			result = result..showIndent(1).."-- "..name.."B"..step.." "..v[1].."\n"
 		elseif chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-			result = result..showIndent(1).."-- "..name.."A"..link.." "..v[1].."\n"
 		elseif chain[link] and (k == chain[link][2]) then
-			result = result..showIndent(1).."-- "..name.."A"..link.." "..v[1].."\n"
 			link = link + 1
 		elseif chain[link] and (k == chain[link][1]) then
 			result = result..showIndent(1)..name.."A"..link.."\n"
-			result = result..showIndent(1).."-- "..name.."A"..link.." "..v[1].."\n"
 		else
 			result = result..showFieldHs(v)
 		end
