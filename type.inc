@@ -192,7 +192,7 @@ function showAny(any)
 	else result = type(any) end
 	return result
 end
-function showDecl(val)
+function showDeclC(val)
 	local decl
 	if (Enums[val[2]]~=nil) then
 		decl = "enum "..val[2]
@@ -217,10 +217,20 @@ function showIdent(val)
 	end
 	return ident
 end
-function showField(val)
-	local decl = showDecl(val)
+function showFieldC(val)
+	local decl = showDeclC(val)
 	local ident = showIdent(val)
 	return decl.." "..ident..";"
+end
+function showFieldHs(val)
+	local result = ""
+	if (val[2] == "int") and (type(val[4]) == "table") and (#val[4] == 0) then
+		result = result..showIndent(1).."Int -- "..val[1].."\n"
+	elseif (val[2] == "double") then
+	elseif (val[2] == "float") then
+	elseif (val[2] == "char*") then
+	end
+	return result
 end
 function structTagSpace(struct)
 	local all = {}
@@ -323,7 +333,7 @@ function showStructC(name,struct)
 		if chain[link] and k == chain[link][1] then
 			result = result..showIndent(depth).."struct {\n"; depth = depth + 1
 		end
-		result = result..showIndent(depth)..showField(v).."\n"
+		result = result..showIndent(depth)..showFieldC(v).."\n"
 		if chain[link] and k == chain[link][2] then
 			depth = depth - 1; result = result..showIndent(depth).."};\n"; link = link + 1
 		end
@@ -333,25 +343,34 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
-function showStructHsF(struct,idx,lim)
-	local result = ""
-	while (idx < lim) do
-		result = result..showIndent(1)..struct[idx][1].."\n"
-		idx = idx + 1
-	end
-	return result
-end
 function showStructHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local result = ""
-	local index = 1
-	for k,v in ipairs(split) do
-		result = result..showStructHsF(struct,index,v[1])
-		result = result..showIndent(1)..name.."A"..k.."\n"
-		index = v[2] + 1
+	local link = 1
+	local step = 1
+	result = result.."data "..name.." = "..name.."\n"
+	for k,v in ipairs(struct) do
+		if split[step] and (k > split[step][1]) and (k < split[step][2]) then
+			result = result..showIndent(1).."-- "..name.."B"..step.." "..v[1].."\n"
+		elseif split[step] and (k == split[step][2]) then
+			result = result..showIndent(1).."-- "..name.."B"..step.." "..v[1].."\n"
+			step = step + 1
+		elseif split[step] and (k == split[step][1]) then
+			result = result..showIndent(1)..name.."B"..step.."\n"
+			result = result..showIndent(1).."-- "..name.."B"..step.." "..v[1].."\n"
+		elseif chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
+			result = result..showIndent(1).."-- "..name.."A"..link.." "..v[1].."\n"
+		elseif chain[link] and (k == chain[link][2]) then
+			result = result..showIndent(1).."-- "..name.."A"..link.." "..v[1].."\n"
+			link = link + 1
+		elseif chain[link] and (k == chain[link][1]) then
+			result = result..showIndent(1)..name.."A"..link.."\n"
+			result = result..showIndent(1).."-- "..name.."A"..link.." "..v[1].."\n"
+		else
+			result = result..showFieldHs(v)
+		end
 	end
-	result = result..showStructHsF(struct,index,#struct+1)
 	return result
 end
 function showStreamCF(name)
