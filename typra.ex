@@ -660,15 +660,15 @@ Expected = {
 	"data Enum1 = Enum1\n"..
 	"    Value11 |\n"..
 	"    Value12 |\n"..
-	"    Value13 |\n"..
+	"    Value13\n"..
 	"--",
 	"data Struct1A1 = Struct1A1\n"..
-	"    -- next\n"..
-	"    Float -- field1\n"..
-	"    Double -- field2\n"..
-	"    -- field3\n"..
+	"    -- [next]\n"..
+	"    [Float] -- field1\n"..
+	"    [Double] -- field2\n"..
+	"    [Int] -- field3\n"..
 	"    String -- field4\n"..
-	"    -- field5\n"..
+	"    [Int] -- field5\n"..
 	"    -- field6\n"..
 	"    -- field7\n"..
 	"data Struct1A2 = Struct1A2\n"..
@@ -676,9 +676,9 @@ Expected = {
 	"    Int -- field9\n"..
 	"data Struct1A3 = Struct1A3\n"..
 	"    Int -- field14\n"..
-	"    -- field15\n"..
-	"    -- field16\n"..
-	"    -- field17\n"..
+	"    [Int] -- field15\n"..
+	"    -- [field16]\n"..
+	"    -- [field17]\n"..
 	"data Struct1B1 = Struct1B1\n"..
 	"    Struct1A2\n"..
 	"    Int -- field10\n"..
@@ -691,9 +691,9 @@ Expected = {
 	"    Struct1B1\n"..
 	"    Struct1B2\n"..
 	"    Int -- field14\n"..
-	"    -- field15\n"..
-	"    -- field16\n"..
-	"    -- field17\n"..
+	"    [Int] -- field15\n"..
+	"    -- [field16]\n"..
+	"    -- [field17]\n"..
 	"--",
 }
 function linesOf(str)
@@ -776,5 +776,3 @@ file = io.open("typer.lua", "w")
 file:write(showTyperLua().."\n")
 file:close()
 print(showAny(arg))
---print(showEnumHs("Enum1",Enum1))
---print(showStructHs("Struct1",Struct1))

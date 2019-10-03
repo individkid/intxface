@@ -275,7 +275,12 @@ end
 function showEnumHs(name,enum)
 	local str = "data "..name.." = "..name.."\n"
 	for key,val in ipairs(enum) do
-		str = str..showIndent(1)..val.." |\n"
+		str = str..showIndent(1)..val
+		if (key < #enum) then
+			str = str.." |\n"
+		else
+			str = str.."\n"
+		end
 	end
 	return str.."--"
 end
@@ -335,16 +340,23 @@ function showStructC(name,struct)
 end
 function showStructHsF(val)
 	local result = ""
-	if (val[2] == "int") and (type(val[4]) == "table") and (#val[4] == 0) then
-		result = result..showIndent(1).."Int -- "..val[1].."\n"
+	local pre = ""
+	local post = ""
+	if ((type(val[4]) == "table") and (#val[4] > 0)) or
+		(type(val[4]) == "number") or (type(val[4]) == "string") then
+		pre = "["
+		post = "]"
+	end
+	if (val[2] == "int") then
+		result = result..showIndent(1)..pre.."Int"..post.." -- "..val[1].."\n"
 	elseif (val[2] == "double") then
-		result = result..showIndent(1).."Double -- "..val[1].."\n"
+		result = result..showIndent(1)..pre.."Double"..post.." -- "..val[1].."\n"
 	elseif (val[2] == "float") then
-		result = result..showIndent(1).."Float -- "..val[1].."\n"
+		result = result..showIndent(1)..pre.."Float"..post.." -- "..val[1].."\n"
 	elseif (val[2] == "char*") then
-		result = result..showIndent(1).."String -- "..val[1].."\n"
+		result = result..showIndent(1)..pre.."String"..post.." -- "..val[1].."\n"
 	else
-		result = result..showIndent(1).."-- "..val[1].."\n"
+		result = result..showIndent(1).."-- "..pre..val[1]..post.."\n"
 	end
 	return result
 end
