@@ -58,13 +58,6 @@ Struct2 = {
 --HERE
 Enums = listHere("Enums")
 Structs = listHere("Structs")
-function linesOf(str)
-	local result = {}
-	for line in string.gmatch(str,"[^\n]+") do
-		result[#result+1] = line
-	end
-	return result
-end
 Stimulus = {
 	{"Enums"},
 	{"Structs"},
@@ -100,6 +93,8 @@ Stimulus = {
 	{"\"Int\",\"int\""},
 	{""},
 	{""},
+	{"\"Enum1\",Enum1"},
+	{"\"Struct1\",Struct1"},
 }
 Monitor = {
 	"showAny",
@@ -136,6 +131,8 @@ Monitor = {
 	"showAllocC",
 	"showTypeH",
 	"showTypeC",
+	"showEnumHs",
+	"showStructHs",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -660,7 +657,61 @@ Expected = {
 	"    if (ptr->field2 != cmp->field2) return false;\n"..
 	"    return true;\n"..
 	"}"),
+	"data Enum1 = Enum1\n"..
+	"    Value11 |\n"..
+	"    Value12 |\n"..
+	"    Value13 |\n"..
+	"--",
+	"data Struct1A1 = Struct1A1\n"..
+	"    -- next\n"..
+	"    Float -- field1\n"..
+	"    Double -- field2\n"..
+	"    -- field3\n"..
+	"    String -- field4\n"..
+	"    -- field5\n"..
+	"    -- field6\n"..
+	"    -- field7\n"..
+	"data Struct1A2 = Struct1A2\n"..
+	"    Int -- field8\n"..
+	"    Int -- field9\n"..
+	"data Struct1A3 = Struct1A3\n"..
+	"    Int -- field14\n"..
+	"    -- field15\n"..
+	"    -- field16\n"..
+	"    -- field17\n"..
+	"data Struct1B1 = Struct1B1\n"..
+	"    Struct1A2\n"..
+	"    Int -- field10\n"..
+	"data Struct1B2 = Struct1B2\n"..
+	"    Int -- field11\n"..
+	"    Int -- field12\n"..
+	"    Int -- field13\n"..
+	"data Struct1 = Struct1\n"..
+	"    Struct1A1\n"..
+	"    Struct1B1\n"..
+	"    Struct1B2\n"..
+	"    Int -- field14\n"..
+	"    -- field15\n"..
+	"    -- field16\n"..
+	"    -- field17\n"..
+	"--",
 }
+function linesOf(str)
+	local result = {}
+	local todo = str
+	while (todo ~= "") do
+		local line = ""
+		while (todo ~= "") and (string.sub(todo,1,1) ~= "\n") do
+			line = line..string.sub(todo,1,1)
+			todo = string.sub(todo,2,-1)
+		end
+		if (todo ~= "") then
+			todo = string.sub(todo,2,-1)
+		end
+		result[#result+1] = line
+	end
+	return result
+end
 file = io.open("type.txt","w")
 io.output(file)
 abbrev = {}
@@ -706,11 +757,11 @@ io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
 		line = io.read();
-		if line ~= val then print("error: "..line.." "..val); os.exit() end
+		if line ~= val then print("error1: "..line.." "..val); os.exit() end
 		--print(line)
 	end
 end
-line = io.read(); if line ~= nil then print("error: "..line); os.exit() end
+line = io.read(); if line ~= nil then print("error2: "..line); os.exit() end
 io.close(file)
 file = io.open("typer.h", "w")
 file:write(showTypeH().."\n")
@@ -725,4 +776,5 @@ file = io.open("typer.lua", "w")
 file:write(showTyperLua().."\n")
 file:close()
 print(showAny(arg))
-print(showStructHs("Struct1",Struct1))
+--print(showEnumHs("Enum1",Enum1))
+--print(showStructHs("Struct1",Struct1))

@@ -156,25 +156,6 @@ function findString(str,pat)
 	end
 	return result
 end
-function showIndent(depth)
-	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
-	return indent
-end
-function showEnumC(name,enum)
-	local str = "enum "..name.." {\n"
-	for key,val in ipairs(enum) do
-		str = str..showIndent(1)..val..",\n"
-	end
-	str = str.."};"
-	return str
-end
-function showEnumHs(name,enum)
-	local str = "data "..name.." ="
-	for key,val in ipairs(enum) do
-		str = str..showIndent(1)..val.." |\n"
-	end
-	return str
-end
 function showAny(any)
 	local result = ""
 	if type(any) == "nil" then result = "nil"
@@ -190,51 +171,6 @@ function showAny(any)
 		end
 		result = result.."}"
 	else result = type(any) end
-	return result
-end
-function showDeclC(val)
-	local decl
-	if (Enums[val[2]]~=nil) then
-		decl = "enum "..val[2]
-	elseif (Structs[val[2]]~=nil) then
-		decl = "struct "..val[2]
-	else
-		decl = val[2]
-	end
-	if (type(val[4]) == "number") then
-		decl = decl.."*"
-	elseif (type(val[4]) == "string") then
-		decl = decl.."*"
-	end
-	return decl
-end
-function showIdent(val)
-	local ident = val[1]
-	if (type(val[4]) == "table") then
-		for k,v in pairs(val[4]) do
-			ident = ident.."["..v.."]"
-		end
-	end
-	return ident
-end
-function showFieldC(val)
-	local decl = showDeclC(val)
-	local ident = showIdent(val)
-	return decl.." "..ident..";"
-end
-function showFieldHs(val)
-	local result = ""
-	if (val[2] == "int") and (type(val[4]) == "table") and (#val[4] == 0) then
-		result = result..showIndent(1).."Int -- "..val[1].."\n"
-	elseif (val[2] == "double") then
-		result = result..showIndent(1).."Double -- "..val[1].."\n"
-	elseif (val[2] == "float") then
-		result = result..showIndent(1).."Float -- "..val[1].."\n"
-	elseif (val[2] == "char*") then
-		result = result..showIndent(1).."String -- "..val[1].."\n"
-	else
-		result = result..showIndent(1).."-- "..val[1].."\n"
-	end
 	return result
 end
 function structTagSpace(struct)
@@ -324,6 +260,55 @@ function splitStruct(struct)
  	end
 	return result
 end
+function showIndent(depth)
+	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
+	return indent
+end
+function showEnumC(name,enum)
+	local str = "enum "..name.." {\n"
+	for key,val in ipairs(enum) do
+		str = str..showIndent(1)..val..",\n"
+	end
+	str = str.."};"
+	return str
+end
+function showEnumHs(name,enum)
+	local str = "data "..name.." = "..name.."\n"
+	for key,val in ipairs(enum) do
+		str = str..showIndent(1)..val.." |\n"
+	end
+	return str.."--"
+end
+function showStructCH(val)
+	local decl
+	if (Enums[val[2]]~=nil) then
+		decl = "enum "..val[2]
+	elseif (Structs[val[2]]~=nil) then
+		decl = "struct "..val[2]
+	else
+		decl = val[2]
+	end
+	if (type(val[4]) == "number") then
+		decl = decl.."*"
+	elseif (type(val[4]) == "string") then
+		decl = decl.."*"
+	end
+	return decl
+end
+function showStructCG(val)
+	local ident = val[1]
+	if (type(val[4]) == "table") then
+		for k,v in pairs(val[4]) do
+			ident = ident.."["..v.."]"
+		end
+	end
+	return ident
+end
+function showStructCF(val)
+	local decl = showStructCH(val)
+	local ident = showStructCG(val)
+	return decl.." "..ident..";"
+end
 function showStructC(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
@@ -338,7 +323,7 @@ function showStructC(name,struct)
 		if chain[link] and k == chain[link][1] then
 			result = result..showIndent(depth).."struct {\n"; depth = depth + 1
 		end
-		result = result..showIndent(depth)..showFieldC(v).."\n"
+		result = result..showIndent(depth)..showStructCF(v).."\n"
 		if chain[link] and k == chain[link][2] then
 			depth = depth - 1; result = result..showIndent(depth).."};\n"; link = link + 1
 		end
@@ -348,6 +333,21 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
+function showStructHsF(val)
+	local result = ""
+	if (val[2] == "int") and (type(val[4]) == "table") and (#val[4] == 0) then
+		result = result..showIndent(1).."Int -- "..val[1].."\n"
+	elseif (val[2] == "double") then
+		result = result..showIndent(1).."Double -- "..val[1].."\n"
+	elseif (val[2] == "float") then
+		result = result..showIndent(1).."Float -- "..val[1].."\n"
+	elseif (val[2] == "char*") then
+		result = result..showIndent(1).."String -- "..val[1].."\n"
+	else
+		result = result..showIndent(1).."-- "..val[1].."\n"
+	end
+	return result
+end
 function showStructHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
@@ -356,13 +356,13 @@ function showStructHs(name,struct)
 	local step = 1
 	for k,v in ipairs(struct) do
 		if chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-			result = result..showFieldHs(v)
+			result = result..showStructHsF(v)
 		elseif chain[link] and (k == chain[link][2]) then
-			result = result..showFieldHs(v)
+			result = result..showStructHsF(v)
 			link = link + 1
 		elseif chain[link] and (k == chain[link][1]) then
 			result = result.."data "..name.."A"..link.." = "..name.."A"..link.."\n"
-			result = result..showFieldHs(v)
+			result = result..showStructHsF(v)
 		else
 		end
 	end
@@ -400,13 +400,13 @@ function showStructHs(name,struct)
 			result = result..showIndent(1)..name.."A"..link.."\n"
 
 		elseif split[step] and (k > split[step][1]) and (k < split[step][2]) then
-			result = result..showFieldHs(v)
+			result = result..showStructHsF(v)
 		elseif split[step] and (k == split[step][2]) then
-			result = result..showFieldHs(v)
+			result = result..showStructHsF(v)
 			step = step + 1
 		elseif split[step] and (k == split[step][1]) then
 			result = result.."data "..name.."B"..step.." = "..name.."B"..step.."\n"
-			result = result..showFieldHs(v)
+			result = result..showStructHsF(v)
 		elseif chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
 		elseif chain[link] and (k == chain[link][2]) then
 			link = link + 1
@@ -429,9 +429,10 @@ function showStructHs(name,struct)
 		elseif chain[link] and (k == chain[link][1]) then
 			result = result..showIndent(1)..name.."A"..link.."\n"
 		else
-			result = result..showFieldHs(v)
+			result = result..showStructHsF(v)
 		end
 	end
+	result = result.."--"
 	return result
 end
 function showStreamCF(name)
