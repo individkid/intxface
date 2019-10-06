@@ -95,6 +95,7 @@ Stimulus = {
 	{""},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Struct1\",Struct1"},
 }
 Monitor = {
 	"showAny",
@@ -133,6 +134,7 @@ Monitor = {
 	"showTypeC",
 	"showEnumHs",
 	"showStructHs",
+	"showAccessHs",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -663,22 +665,22 @@ Expected = {
 	"    Value13\n"..
 	"--",
 	"data Struct1A1 = Struct1A1\n"..
-	"    --[[ [Struct1] --]] -- next\n"..
+	"    [Struct1] -- next\n"..
 	"    [Float] -- field1\n"..
 	"    [Double] -- field2\n"..
 	"    [Int] -- field3\n"..
 	"    String -- field4\n"..
 	"    [Int] -- field5\n"..
-	"    --[[ Enum1 --]] -- field6\n"..
-	"    --[[ Enum2 --]] -- field7\n"..
+	"    Enum1 -- field6\n"..
+	"    Enum2 -- field7\n"..
 	"data Struct1A2 = Struct1A2\n"..
 	"    Int -- field8\n"..
 	"    Int -- field9\n"..
 	"data Struct1A3 = Struct1A3\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
-	"    --[[ [Struct2] --]] -- field16\n"..
-	"    --[[ [Struct2] --]] -- field17\n"..
+	"    [Struct2] -- field16\n"..
+	"    [Struct2] -- field17\n"..
 	"data Struct1B1 = Struct1B1\n"..
 	"    Struct1A2\n"..
 	"    Int -- field10\n"..
@@ -691,6 +693,35 @@ Expected = {
 	"    Struct1B1\n"..
 	"    Struct1B2\n"..
 	"    Struct1A3\n"..
+	"--",
+	"getStruct1A1next :: Struct1A1 -> [Struct1]\n"..
+	"getStruct1A1next (Struct1A1 a _ _ _ _ _ _ _) = a\n"..
+	"getStruct1A1field1 :: Struct1A1 -> [Float]\n"..
+	"getStruct1A1field1 (Struct1A1 _ a _ _ _ _ _ _) = a\n"..
+	"getStruct1A1field2 :: Struct1A1 -> [Double]\n"..
+	"getStruct1A1field2 (Struct1A1 _ _ a _ _ _ _ _) = a\n"..
+	"getStruct1A1field3 :: Struct1A1 -> [Int]\n"..
+	"getStruct1A1field3 (Struct1A1 _ _ _ a _ _ _ _) = a\n"..
+	"getStruct1A1field4 :: Struct1A1 -> String\n"..
+	"getStruct1A1field4 (Struct1A1 _ _ _ _ a _ _ _) = a\n"..
+	"getStruct1A1field5 :: Struct1A1 -> [Int]\n"..
+	"getStruct1A1field5 (Struct1A1 _ _ _ _ _ a _ _) = a\n"..
+	"getStruct1A1field6 :: Struct1A1 -> Enum1\n"..
+	"getStruct1A1field6 (Struct1A1 _ _ _ _ _ _ a _) = a\n"..
+	"getStruct1A1field7 :: Struct1A1 -> Enum2\n"..
+	"getStruct1A1field7 (Struct1A1 _ _ _ _ _ _ _ a) = a\n"..
+	"getStruct1A2field8 :: Struct1A2 -> Int\n"..
+	"getStruct1A2field8 (Struct1A2 a _) = a\n"..
+	"getStruct1A2field9 :: Struct1A2 -> Int\n"..
+	"getStruct1A2field9 (Struct1A2 _ a) = a\n"..
+	"getStruct1A3field14 :: Struct1A3 -> Int\n"..
+	"getStruct1A3field14 (Struct1A3 _ _ _ _ a _ _ _) = a\n"..
+	"getStruct1A3field15 :: Struct1A3 -> [Int]\n"..
+	"getStruct1A3field15 (Struct1A3 _ _ _ _ _ a _ _) = a\n"..
+	"getStruct1A3field16 :: Struct1A3 -> [Struct2]\n"..
+	"getStruct1A3field16 (Struct1A3 _ _ _ _ _ _ a _) = a\n"..
+	"getStruct1A3field17 :: Struct1A3 -> [Struct2]\n"..
+	"getStruct1A3field17 (Struct1A3 _ _ _ _ _ _ _ a) = a\n"..
 	"--",
 }
 function linesOf(str)
