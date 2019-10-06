@@ -361,104 +361,88 @@ function showStructHsF(val)
 	return result
 end
 function showStructHsG(struct,chain,split,func)
+	local result = ""
 	local link = 1
 	local step = 1
-	local i = 1
-	local j = 1
+	local chains = 0
+	local splits = 0
 	for k,v in ipairs(struct) do
-		local joint = chain[link]; if (joint < k) then joint = k end
-		local crack = split[step]; if (crack < k) then crack = k end
-		func(i,j,k,joint,crack)
-		if (k < chain[link][1]) then j = j + 1 end
-		if (k < split[step][1]) then i = i + 1 end
-		if (k == chain[link][2]) then link = link + 1; j = j + 1 end
-		if (k == split[step][2]) then step = step + 1; i = i + 1 end
+		local links = 0; link,links,chains = showStructHsH(chain,k,link,links,chains)
+		local steps = 0; step,steps,splits = showStructHsH(split,k,step,steps,splits)
+		local joints = chains; if (links == -1) then joints = joints + 1 end
+		local cracks = splits; if (steps == -1) then cracks = cracks + 1 end
+		result = result..func(k,links,steps,joints,cracks)
 	end
+	return result
+end
+function showStructHsH(ary,idx,sub,dif,sum)
+	if ary[sub] and (idx == ary[sub][1]) then
+		sum = sum + 1
+		dif = dif + 1
+	elseif ary[sub] and (idx == ary[sub][2]) then
+		sub = sub + 1
+		sum = sum - 1
+		dif = dif - 1
+	end
+	return sub,dif,sum
 end
 function showStructHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local result = ""
-	local link = 1
-	local step = 1
-	for k,v in ipairs(struct) do
-		if chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-			result = result..showStructHsF(v).." -- "..v[1].."\n"
-		elseif chain[link] and (k == chain[link][2]) then
-			result = result..showStructHsF(v).." -- "..v[1].."\n"
-			link = link + 1
-		elseif chain[link] and (k == chain[link][1]) then
-			result = result.."data "..name.."A"..link.." = "..name.."A"..link.."\n"
-			result = result..showStructHsF(v).." -- "..v[1].."\n"
-		else
+	local structs = 1
+	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
+		result = ""
+		if (links == 1) then
+			result = result.."data "..name.."A"..structs.." = "..name.."A"..structs.."\n"
+			structs = structs + 1
 		end
-	end
-	link = 1
-	for k,v in ipairs(struct) do
-		if split[step] and (k > split[step][1]) and (k < split[step][2]) and
-			chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-		elseif split[step] and (k >= split[step][1]) and (k <= split[step][2]) and
-			chain[link] and (k == chain[link][2]) then
-			link = link + 1
-		elseif split[step] and (k > split[step][1]) and (k < split[step][2]) and
-			chain[link] and (k == chain[link][1]) then
-			result = result..showIndent(1)..name.."A"..link.."\n"
-
-		elseif split[step] and (k == split[step][2]) and
-			chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-			step = step + 1
-		elseif split[step] and (k == split[step][2]) and
-			chain[link] and (k == chain[link][2]) then
-			link = link + 1
-			step = step + 1
-		elseif split[step] and (k == split[step][2]) and
-			chain[link] and (k == chain[link][1]) then
-			result = result..showIndent(1)..name.."A"..link.."\n"
-			step = step + 1
-
-		elseif split[step] and (k == split[step][1]) and
-			chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-		elseif split[step] and (k == split[step][1]) and
-			chain[link] and (k == chain[link][2]) then
-			link = link + 1
-		elseif split[step] and (k == split[step][1]) and
-			chain[link] and (k == chain[link][1]) then
-			result = result.."data "..name.."B"..step.." = "..name.."B"..step.."\n"
-			result = result..showIndent(1)..name.."A"..link.."\n"
-
-		elseif split[step] and (k > split[step][1]) and (k < split[step][2]) then
-			result = result..showStructHsF(v).." -- "..v[1].."\n"
-		elseif split[step] and (k == split[step][2]) then
-			result = result..showStructHsF(v).." -- "..v[1].."\n"
-			step = step + 1
-		elseif split[step] and (k == split[step][1]) then
-			result = result.."data "..name.."B"..step.." = "..name.."B"..step.."\n"
-			result = result..showStructHsF(v).." -- "..v[1].."\n"
-		elseif chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-		elseif chain[link] and (k == chain[link][2]) then
-			link = link + 1
-		elseif chain[link] and (k == chain[link][1]) then
-		else
+		if (chains == 1) then
+			result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
-	end
-	link = 1
-	step = 1
+		return result
+	end)
+	local unions = 1
+	structs = 1
+	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
+		result = ""
+		if (steps == 1) then
+			result = result.."data "..name.."B"..unions.." = "..name.."B"..unions.."\n"
+			unions = unions + 1
+		end
+		if (splits == 1) then
+			if (links == 1) then
+				result = result..showIndent(1)..name.."A"..structs.."\n"
+			end
+			if (chains == 0) then
+				result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+			end
+		end
+		if (links == 1) then
+			structs = structs + 1
+		end
+		return result
+	end)
 	result = result.."data "..name.." = "..name.."\n"
-	for k,v in ipairs(struct) do
-		if split[step] and (k > split[step][1]) and (k < split[step][2]) then
-		elseif split[step] and (k == split[step][2]) then
-			step = step + 1
-		elseif split[step] and (k == split[step][1]) then
-			result = result..showIndent(1)..name.."B"..step.."\n"
-		elseif chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-		elseif chain[link] and (k == chain[link][2]) then
-			link = link + 1
-		elseif chain[link] and (k == chain[link][1]) then
-			result = result..showIndent(1)..name.."A"..link.."\n"
-		else
-			result = result..showStructHsF(v).." -- "..v[1].."\n"
+	unions = 1
+	structs = 1
+	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
+		result = ""
+		if (links == 1) and (steps == 0) then
+			result = result..showIndent(1)..name.."A"..structs.."\n"
 		end
-	end
+		if (links == 1) then
+			structs = structs + 1
+		end
+		if (steps == 1) then
+			result = result..showIndent(1)..name.."B"..unions.."\n"
+			unions = unions + 1
+		end
+		if (chains == 0) and (splits == 0) then
+			result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+		end
+		return result
+	end)
 	result = result.."--"
 	return result
 end

@@ -690,10 +690,7 @@ Expected = {
 	"    Struct1A1\n"..
 	"    Struct1B1\n"..
 	"    Struct1B2\n"..
-	"    Int -- field14\n"..
-	"    [Int] -- field15\n"..
-	"    --[[ [Struct2] --]] -- field16\n"..
-	"    --[[ [Struct2] --]] -- field17\n"..
+	"    Struct1A3\n"..
 	"--",
 }
 function linesOf(str)
