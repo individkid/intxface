@@ -348,17 +348,32 @@ function showStructHsF(val)
 		post = "]"
 	end
 	if (val[2] == "int") then
-		result = result..showIndent(1)..pre.."Int"..post.." -- "..val[1].."\n"
+		result = result..showIndent(1)..pre.."Int"..post
 	elseif (val[2] == "double") then
-		result = result..showIndent(1)..pre.."Double"..post.." -- "..val[1].."\n"
+		result = result..showIndent(1)..pre.."Double"..post
 	elseif (val[2] == "float") then
-		result = result..showIndent(1)..pre.."Float"..post.." -- "..val[1].."\n"
+		result = result..showIndent(1)..pre.."Float"..post
 	elseif (val[2] == "char*") then
-		result = result..showIndent(1)..pre.."String"..post.." -- "..val[1].."\n"
+		result = result..showIndent(1)..pre.."String"..post
 	else
-		result = result..showIndent(1).."-- "..pre..val[1]..post.."\n"
+		result = result..showIndent(1).."--[[ "..pre..val[2]..post.." --]]"
 	end
 	return result
+end
+function showStructHsG(struct,chain,split,func)
+	local link = 1
+	local step = 1
+	local i = 1
+	local j = 1
+	for k,v in ipairs(struct) do
+		local joint = chain[link]; if (joint < k) then joint = k end
+		local crack = split[step]; if (crack < k) then crack = k end
+		func(i,j,k,joint,crack)
+		if (k < chain[link][1]) then j = j + 1 end
+		if (k < split[step][1]) then i = i + 1 end
+		if (k == chain[link][2]) then link = link + 1; j = j + 1 end
+		if (k == split[step][2]) then step = step + 1; i = i + 1 end
+	end
 end
 function showStructHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
@@ -368,13 +383,13 @@ function showStructHs(name,struct)
 	local step = 1
 	for k,v in ipairs(struct) do
 		if chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
-			result = result..showStructHsF(v)
+			result = result..showStructHsF(v).." -- "..v[1].."\n"
 		elseif chain[link] and (k == chain[link][2]) then
-			result = result..showStructHsF(v)
+			result = result..showStructHsF(v).." -- "..v[1].."\n"
 			link = link + 1
 		elseif chain[link] and (k == chain[link][1]) then
 			result = result.."data "..name.."A"..link.." = "..name.."A"..link.."\n"
-			result = result..showStructHsF(v)
+			result = result..showStructHsF(v).." -- "..v[1].."\n"
 		else
 		end
 	end
@@ -412,13 +427,13 @@ function showStructHs(name,struct)
 			result = result..showIndent(1)..name.."A"..link.."\n"
 
 		elseif split[step] and (k > split[step][1]) and (k < split[step][2]) then
-			result = result..showStructHsF(v)
+			result = result..showStructHsF(v).." -- "..v[1].."\n"
 		elseif split[step] and (k == split[step][2]) then
-			result = result..showStructHsF(v)
+			result = result..showStructHsF(v).." -- "..v[1].."\n"
 			step = step + 1
 		elseif split[step] and (k == split[step][1]) then
 			result = result.."data "..name.."B"..step.." = "..name.."B"..step.."\n"
-			result = result..showStructHsF(v)
+			result = result..showStructHsF(v).." -- "..v[1].."\n"
 		elseif chain[link] and (k > chain[link][1]) and (k < chain[link][2]) then
 		elseif chain[link] and (k == chain[link][2]) then
 			link = link + 1
@@ -441,7 +456,7 @@ function showStructHs(name,struct)
 		elseif chain[link] and (k == chain[link][1]) then
 			result = result..showIndent(1)..name.."A"..link.."\n"
 		else
-			result = result..showStructHsF(v)
+			result = result..showStructHsF(v).." -- "..v[1].."\n"
 		end
 	end
 	result = result.."--"

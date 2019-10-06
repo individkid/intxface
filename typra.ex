@@ -663,22 +663,22 @@ Expected = {
 	"    Value13\n"..
 	"--",
 	"data Struct1A1 = Struct1A1\n"..
-	"    -- [next]\n"..
+	"    --[[ [Struct1] --]] -- next\n"..
 	"    [Float] -- field1\n"..
 	"    [Double] -- field2\n"..
 	"    [Int] -- field3\n"..
 	"    String -- field4\n"..
 	"    [Int] -- field5\n"..
-	"    -- field6\n"..
-	"    -- field7\n"..
+	"    --[[ Enum1 --]] -- field6\n"..
+	"    --[[ Enum2 --]] -- field7\n"..
 	"data Struct1A2 = Struct1A2\n"..
 	"    Int -- field8\n"..
 	"    Int -- field9\n"..
 	"data Struct1A3 = Struct1A3\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
-	"    -- [field16]\n"..
-	"    -- [field17]\n"..
+	"    --[[ [Struct2] --]] -- field16\n"..
+	"    --[[ [Struct2] --]] -- field17\n"..
 	"data Struct1B1 = Struct1B1\n"..
 	"    Struct1A2\n"..
 	"    Int -- field10\n"..
@@ -692,8 +692,8 @@ Expected = {
 	"    Struct1B2\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
-	"    -- [field16]\n"..
-	"    -- [field17]\n"..
+	"    --[[ [Struct2] --]] -- field16\n"..
+	"    --[[ [Struct2] --]] -- field17\n"..
 	"--",
 }
 function linesOf(str)
