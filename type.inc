@@ -469,87 +469,99 @@ function showAccessHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local result = ""
-	local unions = 1
-	local structs = 1
-	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
-		local result = ""
-		if (chains == 1) then
-			result = result.."get"..name.."A"..structs..struct[index][1].." :: "
-			result = result..name.."A"..structs.." -> "..showStructHsF(struct[index]).."\n"
-			result = result.."get"..name.."A"..structs..struct[index][1].." ("..name.."A"..structs
-			local count = 1
-			result = result..showStructHsG(struct,chain,split,function(idx,lnks,stps,chns,spts)
-				local result = ""
-				if (chns == 1) and (count == structs) and (idx ~= index) then
-					result = result.." _"
-				end
-				if (chns == 1) and (count == structs) and (idx == index) then
-					result = result.." a"
-				end
-				if (lnks == -1) then
-					count = count + 1
-				end
-				return result
-			end)
-			result = result..") = a\n"
-		end
-		if (links == -1) then
-			structs = structs + 1
-		end
-		return result
-	end)
+	for k,v in ipairs(struct) do
+		result = result.."get"..name.."X"..v[1].." :: "
+		result = result..name.." -> "..showStructHsF(v).."\n"
+		result = result.."get"..name.."X"..v[1].." ("..name
+		local unions = 1
+		local structs = 1
+		result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
+			local result = ""
+			if (steps == 1) then
+				result = result.." ("..name.."B"..unions
+				unions = unions + 1
+			end
+			if (links == 1) then
+				result = result.." ("..name.."A"..structs
+				structs = structs + 1
+			end
+			if (index ~= k) then
+				result = result.." _"
+			end
+			if (index == k) then
+				result = result.." a"
+			end
+			if (links == -1) then
+				result = result..")"
+			end
+			if (steps == -1) then
+				result = result..")"
+			end
+			return result
+		end)
+		result = result..") = a\n"
+	end
 	result = result.."--\n"
-	unions = 1
-	structs = 1
-	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
-		local result = ""
-		if (chains == 1) then
-			result = result.."set"..name.."A"..structs..struct[index][1].." :: "
-			result = result..name.."A"..structs.." -> "..showStructHsF(struct[index])
-			result = result.." -> "..name.."A"..structs.."\n"
-			result = result.."set"..name.."A"..structs..struct[index][1].." ("..name.."A"..structs
-			local count = 1
-			local number = 1
-			result = result..showStructHsG(struct,chain,split,function(idx,lnks,stps,chns,spts)
-				local result = ""
-				if (chns == 1) and (count == structs) and (idx ~= index) then
-					result = result.." a"..number
-					number = number + 1
-				end
-				if (chns == 1) and (count == structs) and (idx == index) then
-					result = result.." _"
-					number = number + 1
-				end
-				if (lnks == -1) then
-					count = count + 1
-				end
-				return result
-			end)
-			result = result..") b = ("..name.."A"..structs
-			count = 1
-			number = 1
-			result = result..showStructHsG(struct,chain,split,function(idx,lnks,stps,chns,spts)
-				local result = ""
-				if (chns == 1) and (count == structs) and (idx ~= index) then
-					result = result.." a"..number
-					number = number + 1
-				end
-				if (chns == 1) and (count == structs) and (idx == index) then
-					result = result.." b"
-					number = number + 1
-				end
-				if (lnks == -1) then
-					count = count + 1
-				end
-				return result
-			end)
-			result = result..")\n"
-		end
-		if (links == -1) then
-			structs = structs + 1
-		end
-		return result
-	end)
+	for k,v in ipairs(struct) do
+		result = result.."set"..name.."X"..v[1].." :: "
+		result = result..name.." -> "..showStructHsF(v)
+		result = result.." -> "..name.."\n"
+		result = result.."set"..name.."X"..v[1].." ("..name
+		local unions = 1
+		local structs = 1
+		result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
+			local result = ""
+			if (steps == 1) then
+				result = result.." ("..name.."B"..unions
+				unions = unions + 1
+			end
+			if (links == 1) then
+				result = result.." ("..name.."A"..structs
+				structs = structs + 1
+			end
+			if (index ~= k) then
+				result = result.." a"..index
+			end
+			if (index == k) then
+				result = result.." _"
+			end
+			if (links == -1) then
+				result = result..")"
+			end
+			if (steps == -1) then
+				result = result..")"
+			end
+			return result
+		end)
+		result = result..") b = ("..name
+		unions = 1
+		structs = 1
+		result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
+			local result = ""
+			if (steps == 1) then
+				result = result.." ("..name.."B"..unions
+				unions = unions + 1
+			end
+			if (links == 1) then
+				result = result.." ("..name.."A"..structs
+				structs = structs + 1
+			end
+			if (index ~= k) then
+				result = result.." a"..index
+			end
+			if (index == k) then
+				result = result.." b"
+			end
+			if (links == -1) then
+				result = result..")"
+			end
+			if (steps == -1) then
+				result = result..")"
+			end
+			return result
+		end)
+		result = result..")\n"
+	end
 	result = result.."--"
 	return result
 end
