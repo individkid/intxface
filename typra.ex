@@ -659,7 +659,7 @@ Expected = {
 	"    if (ptr->field2 != cmp->field2) return false;\n"..
 	"    return true;\n"..
 	"}"),
-	"data Enum1 = Enum1\n"..
+	"data Enum1 =\n"..
 	"    Value11 |\n"..
 	"    Value12 |\n"..
 	"    Value13\n"..
@@ -681,20 +681,20 @@ Expected = {
 	"    [Int] -- field15\n"..
 	"    [Struct2] -- field16\n"..
 	"    [Struct2] -- field17\n"..
-	"data Struct1B1 = Struct1B1\n"..
-	"    Struct1A2\n"..
-	"    Int -- field10\n"..
-	"data Struct1B2 = Struct1B2\n"..
-	"    Int -- field11\n"..
-	"    Int -- field12\n"..
-	"    Int -- field13\n"..
+	"data Struct1B1 =\n"..
+	"    Struct1B1C1 Struct1A2 |\n"..
+	"    Struct1B1C2 Int -- field10\n"..
+	"data Struct1B2 =\n"..
+	"    Struct1B2C1 Int | -- field11\n"..
+	"    Struct1B2C2 Int | -- field12\n"..
+	"    Struct1B2C3 Int -- field13\n"..
 	"data Struct1 = Struct1\n"..
 	"    Struct1A1\n"..
 	"    Struct1B1\n"..
 	"    Struct1B2\n"..
 	"    Struct1A3\n"..
 	"--",
-	"getStruct1A1next :: Struct1A1 -> [Struct1]\n"..
+	("getStruct1A1next :: Struct1A1 -> [Struct1]\n"..
 	"getStruct1A1next (Struct1A1 a _ _ _ _ _ _ _) = a\n"..
 	"getStruct1A1field1 :: Struct1A1 -> [Float]\n"..
 	"getStruct1A1field1 (Struct1A1 _ a _ _ _ _ _ _) = a\n"..
@@ -715,14 +715,43 @@ Expected = {
 	"getStruct1A2field9 :: Struct1A2 -> Int\n"..
 	"getStruct1A2field9 (Struct1A2 _ a) = a\n"..
 	"getStruct1A3field14 :: Struct1A3 -> Int\n"..
-	"getStruct1A3field14 (Struct1A3 _ _ _ _ a _ _ _) = a\n"..
+	"getStruct1A3field14 (Struct1A3 a _ _ _) = a\n"..
 	"getStruct1A3field15 :: Struct1A3 -> [Int]\n"..
-	"getStruct1A3field15 (Struct1A3 _ _ _ _ _ a _ _) = a\n"..
+	"getStruct1A3field15 (Struct1A3 _ a _ _) = a\n"..
 	"getStruct1A3field16 :: Struct1A3 -> [Struct2]\n"..
-	"getStruct1A3field16 (Struct1A3 _ _ _ _ _ _ a _) = a\n"..
+	"getStruct1A3field16 (Struct1A3 _ _ a _) = a\n"..
 	"getStruct1A3field17 :: Struct1A3 -> [Struct2]\n"..
-	"getStruct1A3field17 (Struct1A3 _ _ _ _ _ _ _ a) = a\n"..
-	"--",
+	"getStruct1A3field17 (Struct1A3 _ _ _ a) = a\n"..
+	"--\n")..
+	("setStruct1A1next :: Struct1A1 -> [Struct1] -> Struct1A1\n"..
+	"setStruct1A1next (Struct1A1 _ a2 a3 a4 a5 a6 a7 a8) b = (Struct1A1 b a2 a3 a4 a5 a6 a7 a8)\n"..
+	"setStruct1A1field1 :: Struct1A1 -> [Float] -> Struct1A1\n"..
+	"setStruct1A1field1 (Struct1A1 a1 _ a3 a4 a5 a6 a7 a8) b = (Struct1A1 a1 b a3 a4 a5 a6 a7 a8)\n"..
+	"setStruct1A1field2 :: Struct1A1 -> [Double] -> Struct1A1\n"..
+	"setStruct1A1field2 (Struct1A1 a1 a2 _ a4 a5 a6 a7 a8) b = (Struct1A1 a1 a2 b a4 a5 a6 a7 a8)\n"..
+	"setStruct1A1field3 :: Struct1A1 -> [Int] -> Struct1A1\n"..
+	"setStruct1A1field3 (Struct1A1 a1 a2 a3 _ a5 a6 a7 a8) b = (Struct1A1 a1 a2 a3 b a5 a6 a7 a8)\n"..
+	"setStruct1A1field4 :: Struct1A1 -> String -> Struct1A1\n"..
+	"setStruct1A1field4 (Struct1A1 a1 a2 a3 a4 _ a6 a7 a8) b = (Struct1A1 a1 a2 a3 a4 b a6 a7 a8)\n"..
+	"setStruct1A1field5 :: Struct1A1 -> [Int] -> Struct1A1\n"..
+	"setStruct1A1field5 (Struct1A1 a1 a2 a3 a4 a5 _ a7 a8) b = (Struct1A1 a1 a2 a3 a4 a5 b a7 a8)\n"..
+	"setStruct1A1field6 :: Struct1A1 -> Enum1 -> Struct1A1\n"..
+	"setStruct1A1field6 (Struct1A1 a1 a2 a3 a4 a5 a6 _ a8) b = (Struct1A1 a1 a2 a3 a4 a5 a6 b a8)\n"..
+	"setStruct1A1field7 :: Struct1A1 -> Enum2 -> Struct1A1\n"..
+	"setStruct1A1field7 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 _) b = (Struct1A1 a1 a2 a3 a4 a5 a6 a7 b)\n"..
+	"setStruct1A2field8 :: Struct1A2 -> Int -> Struct1A2\n"..
+	"setStruct1A2field8 (Struct1A2 _ a2) b = (Struct1A2 b a2)\n"..
+	"setStruct1A2field9 :: Struct1A2 -> Int -> Struct1A2\n"..
+	"setStruct1A2field9 (Struct1A2 a1 _) b = (Struct1A2 a1 b)\n"..
+	"setStruct1A3field14 :: Struct1A3 -> Int -> Struct1A3\n"..
+	"setStruct1A3field14 (Struct1A3 _ a2 a3 a4) b = (Struct1A3 b a2 a3 a4)\n"..
+	"setStruct1A3field15 :: Struct1A3 -> [Int] -> Struct1A3\n"..
+	"setStruct1A3field15 (Struct1A3 a1 _ a3 a4) b = (Struct1A3 a1 b a3 a4)\n"..
+	"setStruct1A3field16 :: Struct1A3 -> [Struct2] -> Struct1A3\n"..
+	"setStruct1A3field16 (Struct1A3 a1 a2 _ a4) b = (Struct1A3 a1 a2 b a4)\n"..
+	"setStruct1A3field17 :: Struct1A3 -> [Struct2] -> Struct1A3\n"..
+	"setStruct1A3field17 (Struct1A3 a1 a2 a3 _) b = (Struct1A3 a1 a2 a3 b)\n"..
+	"--"),
 }
 function linesOf(str)
 	local result = {}

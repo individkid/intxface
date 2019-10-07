@@ -272,18 +272,6 @@ function showEnumC(name,enum)
 	str = str.."};"
 	return str
 end
-function showEnumHs(name,enum)
-	local str = "data "..name.." = "..name.."\n"
-	for key,val in ipairs(enum) do
-		str = str..showIndent(1)..val
-		if (key < #enum) then
-			str = str.." |\n"
-		else
-			str = str.."\n"
-		end
-	end
-	return str.."--"
-end
 function showStructCH(val)
 	local decl
 	if (Enums[val[2]]~=nil) then
@@ -338,6 +326,18 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
+function showEnumHs(name,enum)
+	local str = "data "..name.." =\n"
+	for key,val in ipairs(enum) do
+		str = str..showIndent(1)..val
+		if (key < #enum) then
+			str = str.." |\n"
+		else
+			str = str.."\n"
+		end
+	end
+	return str.."--"
+end
 function showStructHsF(val)
 	local result = ""
 	local pre = ""
@@ -348,15 +348,15 @@ function showStructHsF(val)
 		post = "]"
 	end
 	if (val[2] == "int") then
-		result = result..showIndent(1)..showStructHsI(val)
+		result = result..pre.."Int"..post
 	elseif (val[2] == "double") then
-		result = result..showIndent(1)..showStructHsI(val)
+		result = result..pre.."Double"..post
 	elseif (val[2] == "float") then
-		result = result..showIndent(1)..showStructHsI(val)
+		result = result..pre.."Float"..post
 	elseif (val[2] == "char*") then
-		result = result..showIndent(1)..showStructHsI(val)
+		result = result..pre.."String"..post
 	else
-		result = result..showIndent(1)..showStructHsI(val)
+		result = result..pre..val[2]..post
 	end
 	return result
 end
@@ -386,28 +386,6 @@ function showStructHsH(ary,idx,sub,dif,sum)
 	end
 	return sub,dif,sum
 end
-function showStructHsI(val)
-	local result = ""
-	local pre = ""
-	local post = ""
-	if ((type(val[4]) == "table") and (#val[4] > 0)) or
-		(type(val[4]) == "number") or (type(val[4]) == "string") then
-		pre = "["
-		post = "]"
-	end
-	if (val[2] == "int") then
-		result = result..pre.."Int"..post
-	elseif (val[2] == "double") then
-		result = result..pre.."Double"..post
-	elseif (val[2] == "float") then
-		result = result..pre.."Float"..post
-	elseif (val[2] == "char*") then
-		result = result..pre.."String"..post
-	else
-		result = result..pre..val[2]..post
-	end
-	return result
-end
 function showStructHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
@@ -420,31 +398,50 @@ function showStructHs(name,struct)
 			structs = structs + 1
 		end
 		if (chains == 1) then
-			result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
 		return result
 	end)
 	local unions = 1
 	structs = 1
+	local number = 1
+	local suffix = ""
+	local final = ""
 	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
 		local result = ""
 		if (steps == 1) then
-			result = result.."data "..name.."B"..unions.." = "..name.."B"..unions.."\n"
-			unions = unions + 1
+			result = result..final
+			result = result.."data "..name.."B"..unions.." =\n"
+			suffix = ""
+			final = "\n"
+			number = 1
 		end
 		if (splits == 1) then
 			if (links == 1) then
-				result = result..showIndent(1)..name.."A"..structs.."\n"
+				result = result..suffix
+				result = result..showIndent(1)..name.."B"..unions.."C"..number
+				result = result.." "..name.."A"..structs
+				suffix = " |\n"
+				number = number + 1
 			end
 			if (chains == 0) then
-				result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+				result = result..suffix
+				result = result..showIndent(1)..name.."B"..unions.."C"..number
+				result = result.." "..showStructHsF(struct[index])
+				suffix = " | -- "..struct[index][1].."\n"
+				final = " -- "..struct[index][1].."\n"
+				number = number + 1
 			end
 		end
-		if (links == 1) then
+		if (steps == -1) then
+			unions = unions + 1
+		end
+		if (links == -1) then
 			structs = structs + 1
 		end
 		return result
 	end)
+	result = result..final
 	result = result.."data "..name.." = "..name.."\n"
 	unions = 1
 	structs = 1
@@ -478,25 +475,75 @@ function showAccessHs(name,struct)
 		local result = ""
 		if (chains == 1) then
 			result = result.."get"..name.."A"..structs..struct[index][1].." :: "
-			result = result..name.."A"..structs.." -> "..showStructHsI(struct[index]).."\n"
+			result = result..name.."A"..structs.." -> "..showStructHsF(struct[index]).."\n"
 			result = result.."get"..name.."A"..structs..struct[index][1].." ("..name.."A"..structs
 			local count = 1
 			result = result..showStructHsG(struct,chain,split,function(idx,lnks,stps,chns,spts)
 				local result = ""
-				if (chains == 1) and (count == structs) and (idx ~= index) then
+				if (chns == 1) and (count == structs) and (idx ~= index) then
 					result = result.." _"
 				end
-				if (chains == 1) and (count == structs) and (idx == index) then
+				if (chns == 1) and (count == structs) and (idx == index) then
 					result = result.." a"
-				end
-				if (lnks == -1) and (count == structs) then
-					result = result..") = a\n"
 				end
 				if (lnks == -1) then
 					count = count + 1
 				end
 				return result
 			end)
+			result = result..") = a\n"
+		end
+		if (links == -1) then
+			structs = structs + 1
+		end
+		return result
+	end)
+	result = result.."--\n"
+	unions = 1
+	structs = 1
+	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
+		local result = ""
+		if (chains == 1) then
+			result = result.."set"..name.."A"..structs..struct[index][1].." :: "
+			result = result..name.."A"..structs.." -> "..showStructHsF(struct[index])
+			result = result.." -> "..name.."A"..structs.."\n"
+			result = result.."set"..name.."A"..structs..struct[index][1].." ("..name.."A"..structs
+			local count = 1
+			local number = 1
+			result = result..showStructHsG(struct,chain,split,function(idx,lnks,stps,chns,spts)
+				local result = ""
+				if (chns == 1) and (count == structs) and (idx ~= index) then
+					result = result.." a"..number
+					number = number + 1
+				end
+				if (chns == 1) and (count == structs) and (idx == index) then
+					result = result.." _"
+					number = number + 1
+				end
+				if (lnks == -1) then
+					count = count + 1
+				end
+				return result
+			end)
+			result = result..") b = ("..name.."A"..structs
+			count = 1
+			number = 1
+			result = result..showStructHsG(struct,chain,split,function(idx,lnks,stps,chns,spts)
+				local result = ""
+				if (chns == 1) and (count == structs) and (idx ~= index) then
+					result = result.." a"..number
+					number = number + 1
+				end
+				if (chns == 1) and (count == structs) and (idx == index) then
+					result = result.." b"
+					number = number + 1
+				end
+				if (lnks == -1) then
+					count = count + 1
+				end
+				return result
+			end)
+			result = result..")\n"
 		end
 		if (links == -1) then
 			structs = structs + 1
