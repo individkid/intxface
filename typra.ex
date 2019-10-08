@@ -664,7 +664,7 @@ Expected = {
 	"    Value12 |\n"..
 	"    Value13\n"..
 	"--",
-	"data Struct1A1 = Struct1A1\n"..
+	"data Struct1A1X8 = Struct1A1X8\n"..
 	"    [Struct1] -- next\n"..
 	"    [Float] -- field1\n"..
 	"    [Double] -- field2\n"..
@@ -673,26 +673,28 @@ Expected = {
 	"    [Int] -- field5\n"..
 	"    Enum1 -- field6\n"..
 	"    Enum2 -- field7\n"..
-	"data Struct1A2 = Struct1A2\n"..
+	"data Struct1A9X10 = Struct1A9X10\n"..
 	"    Int -- field8\n"..
 	"    Int -- field9\n"..
-	"data Struct1A3 = Struct1A3\n"..
+	"data Struct1A15X18 = Struct1A15X18\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
 	"    [Struct2] -- field16\n"..
 	"    [Struct2] -- field17\n"..
-	"data Struct1B1 =\n"..
-	"    Struct1B1C1 Struct1A2 |\n"..
-	"    Struct1B1C2 Int -- field10\n"..
-	"data Struct1B2 =\n"..
-	"    Struct1B2C1 Int | -- field11\n"..
-	"    Struct1B2C2 Int | -- field12\n"..
-	"    Struct1B2C3 Int -- field13\n"..
+	"data Struct1A9X11 =\n"..
+	"    Struct1A9X11B9X10 Struct1A9X10 |\n"..
+	"    Struct1A9X11B11 Int | -- field10\n"..
+	"    Struct1A9X11Bs\n"..
+	"data Struct1A12X14 =\n"..
+	"    Struct1A12X14B12 Int | -- field11\n"..
+	"    Struct1A12X14B13 Int | -- field12\n"..
+	"    Struct1A12X14B14 Int | -- field13\n"..
+	"    Struct1A12X14Bs\n"..
 	"data Struct1 = Struct1\n"..
-	"    Struct1A1\n"..
-	"    Struct1B1\n"..
-	"    Struct1B2\n"..
-	"    Struct1A3\n"..
+	"    Struct1A1X8\n"..
+	"    Struct1A9X11\n"..
+	"    Struct1A12X14\n"..
+	"    Struct1A15X18\n"..
 	"--",
 	("getStruct1Xnext :: Struct1 -> [Struct1]\n"..
 	"getStruct1Xnext (Struct1 (Struct1A1 a _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..

@@ -394,7 +394,8 @@ function showStructHs(name,struct)
 	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
 		local result = ""
 		if (links == 1) then
-			result = result.."data "..name.."A"..structs.." = "..name.."A"..structs.."\n"
+			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
+			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
 			structs = structs + 1
 		end
 		if (chains == 1) then
@@ -404,36 +405,25 @@ function showStructHs(name,struct)
 	end)
 	local unions = 1
 	structs = 1
-	local number = 1
-	local suffix = ""
-	local final = ""
 	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
 		local result = ""
 		if (steps == 1) then
-			result = result..final
-			result = result.."data "..name.."B"..unions.." =\n"
-			suffix = ""
-			final = "\n"
-			number = 1
+			result = result.."data "..name.."A"..split[unions][1].."X"..split[unions][2].." =\n"
 		end
 		if (splits == 1) then
 			if (links == 1) then
-				result = result..suffix
-				result = result..showIndent(1)..name.."B"..unions.."C"..number
-				result = result.." "..name.."A"..structs
-				suffix = " |\n"
-				number = number + 1
+				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
+				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
+				result = result.." "..name.."A"..chain[structs][1].."X"..chain[structs][2].." |\n"
 			end
 			if (chains == 0) then
-				result = result..suffix
-				result = result..showIndent(1)..name.."B"..unions.."C"..number
-				result = result.." "..showStructHsF(struct[index])
-				suffix = " | -- "..struct[index][1].."\n"
-				final = " -- "..struct[index][1].."\n"
-				number = number + 1
+				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
+				result = result.."B"..index
+				result = result.." "..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
 			end
 		end
 		if (steps == -1) then
+			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."Bs\n"
 			unions = unions + 1
 		end
 		if (links == -1) then
@@ -441,20 +431,19 @@ function showStructHs(name,struct)
 		end
 		return result
 	end)
-	result = result..final
 	result = result.."data "..name.." = "..name.."\n"
 	unions = 1
 	structs = 1
 	result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
 		local result = ""
 		if (links == 1) and (steps == 0) then
-			result = result..showIndent(1)..name.."A"..structs.."\n"
+			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
 		end
 		if (links == 1) then
 			structs = structs + 1
 		end
 		if (steps == 1) then
-			result = result..showIndent(1)..name.."B"..unions.."\n"
+			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."\n"
 			unions = unions + 1
 		end
 		if (chains == 0) and (splits == 0) then
@@ -464,6 +453,42 @@ function showStructHs(name,struct)
 	end)
 	result = result.."--"
 	return result
+end
+function showAccessHsF(limit,chain,split,index,link,step)
+	if (index >= limit) then return {} end
+	local begi = limit; if chain[link] then begi = chain[link][1] end
+	local endi = limit; if chain[link] then endi = chain[link][2] end
+	local mini = limit; if split[step] then mini = split[step][1] end
+	local maxi = limit; if split[step] then maxi = split[step][2] end
+	if (index < begi) and (index < mini) then
+		local head = {index,index,"field",{}}
+		local tail = showAccessHsF(limit,chain,split,index+1,link,step)
+		return table.insert(tail,1,head)
+	end
+	if (index == mini) then
+		local head = {mini,maxi,"union",showAccessHsF(maxi+1,chain,split,mini,link,step+1)}
+		local tail = showAccessHsF(limit,chain,split,maxi+1,link,step+1)
+		return table.insert(tail,1,head)
+	end
+	if (index == begi) then
+		local head = {begi,endi,"struct",showAccessHsF(endi+1,chain,split,begi,link+1,step)}
+		local tail = showAccessHsF(limit,chain,split,endi+1,link+1,step)
+		return table.insert(tail,1,head)
+	end
+	return {}
+end
+function showAccessHsG(index,field,name,number,tree)
+	if not tree[1] then return "" end
+	if (tree[1][3] == "field") and (tree[1][1] == index) then
+		return " "..field
+	end
+	if (tree[1][3] == "field") and (tree[1][1] ~= index) then
+		return " _"
+	end
+	if (tree[1][3] == "struct") and (tree[1][1] <= index) and (tree[1][2] >= index) then
+		return ""
+	end
+	return ""
 end
 function showAccessHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
