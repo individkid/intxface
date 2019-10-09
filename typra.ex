@@ -696,79 +696,79 @@ Expected = {
 	"    Struct1A12X14\n"..
 	"    Struct1A15X18\n"..
 	"--",
-	("getStruct1Xnext :: Struct1 -> [Struct1]\n"..
-	"getStruct1Xnext (Struct1 (Struct1A1 a _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield1 :: Struct1 -> [Float]\n"..
-	"getStruct1Xfield1 (Struct1 (Struct1A1 _ a _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield2 :: Struct1 -> [Double]\n"..
-	"getStruct1Xfield2 (Struct1 (Struct1A1 _ _ a _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield3 :: Struct1 -> [Int]\n"..
-	"getStruct1Xfield3 (Struct1 (Struct1A1 _ _ _ a _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield4 :: Struct1 -> String\n"..
-	"getStruct1Xfield4 (Struct1 (Struct1A1 _ _ _ _ a _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield5 :: Struct1 -> [Int]\n"..
-	"getStruct1Xfield5 (Struct1 (Struct1A1 _ _ _ _ _ a _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield6 :: Struct1 -> Enum1\n"..
-	"getStruct1Xfield6 (Struct1 (Struct1A1 _ _ _ _ _ _ a _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield7 :: Struct1 -> Enum2\n"..
-	"getStruct1Xfield7 (Struct1 (Struct1A1 _ _ _ _ _ _ _ a) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield8 :: Struct1 -> Int\n"..
-	"getStruct1Xfield8 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 a _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield9 :: Struct1 -> Int\n"..
-	"getStruct1Xfield9 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ a) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield10 :: Struct1 -> Int\n"..
-	"getStruct1Xfield10 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) a) (Struct1B2 _ _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield11 :: Struct1 -> Int\n"..
-	"getStruct1Xfield11 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 a _ _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield12 :: Struct1 -> Int\n"..
-	"getStruct1Xfield12 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ a _) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield13 :: Struct1 -> Int\n"..
-	"getStruct1Xfield13 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ a) (Struct1A3 _ _ _ _)) = a\n"..
-	"getStruct1Xfield14 :: Struct1 -> Int\n"..
-	"getStruct1Xfield14 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 a _ _ _)) = a\n"..
-	"getStruct1Xfield15 :: Struct1 -> [Int]\n"..
-	"getStruct1Xfield15 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ a _ _)) = a\n"..
-	"getStruct1Xfield16 :: Struct1 -> [Struct2]\n"..
-	"getStruct1Xfield16 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ a _)) = a\n"..
-	"getStruct1Xfield17 :: Struct1 -> [Struct2]\n"..
-	"getStruct1Xfield17 (Struct1 (Struct1A1 _ _ _ _ _ _ _ _) (Struct1B1 (Struct1A2 _ _) _) (Struct1B2 _ _ _) (Struct1A3 _ _ _ a)) = a\n"..
+	("getStruct1Cnext :: Struct1 -> [Struct1]\n"..
+	"getStruct1Cnext (Struct1 (Struct1A1X8 a a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield1 :: Struct1 -> [Float]\n"..
+	"getStruct1Cfield1 (Struct1 (Struct1A1X8 a1 a a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield2 :: Struct1 -> [Double]\n"..
+	"getStruct1Cfield2 (Struct1 (Struct1A1X8 a1 a2 a a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield3 :: Struct1 -> [Int]\n"..
+	"getStruct1Cfield3 (Struct1 (Struct1A1X8 a1 a2 a3 a a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield4 :: Struct1 -> String\n"..
+	"getStruct1Cfield4 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield5 :: Struct1 -> [Int]\n"..
+	"getStruct1Cfield5 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield6 :: Struct1 -> Enum1\n"..
+	"getStruct1Cfield6 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield7 :: Struct1 -> Enum2\n"..
+	"getStruct1Cfield7 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield8 :: Struct1 -> Int\n"..
+	"getStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a a10)) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield9 :: Struct1 -> Int\n"..
+	"getStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a9 a)) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield10 :: Struct1 -> Int\n"..
+	"getStruct1Cfield10 (Struct1 a1x8 (Struct1A9X11B11 a) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield11 :: Struct1 -> Int\n"..
+	"getStruct1Cfield11 (Struct1 a1x8 a9x11 (Struct1A12X14B12 a) a15x18) = a\n"..
+	"getStruct1Cfield12 :: Struct1 -> Int\n"..
+	"getStruct1Cfield12 (Struct1 a1x8 a9x11 (Struct1A12X14B13 a) a15x18) = a\n"..
+	"getStruct1Cfield13 :: Struct1 -> Int\n"..
+	"getStruct1Cfield13 (Struct1 a1x8 a9x11 (Struct1A12X14B14 a) a15x18) = a\n"..
+	"getStruct1Cfield14 :: Struct1 -> Int\n"..
+	"getStruct1Cfield14 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a a16 a17 a18)) = a\n"..
+	"getStruct1Cfield15 :: Struct1 -> [Int]\n"..
+	"getStruct1Cfield15 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a a17 a18)) = a\n"..
+	"getStruct1Cfield16 :: Struct1 -> [Struct2]\n"..
+	"getStruct1Cfield16 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a a18)) = a\n"..
+	"getStruct1Cfield17 :: Struct1 -> [Struct2]\n"..
+	"getStruct1Cfield17 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a)) = a\n"..
 	"--\n")..
-	("setStruct1Xnext :: Struct1 -> [Struct1] -> Struct1\n"..
-	"setStruct1Xnext (Struct1 (Struct1A1 _ a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 b a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield1 :: Struct1 -> [Float] -> Struct1\n"..
-	"setStruct1Xfield1 (Struct1 (Struct1A1 a1 _ a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 b a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield2 :: Struct1 -> [Double] -> Struct1\n"..
-	"setStruct1Xfield2 (Struct1 (Struct1A1 a1 a2 _ a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 b a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield3 :: Struct1 -> [Int] -> Struct1\n"..
-	"setStruct1Xfield3 (Struct1 (Struct1A1 a1 a2 a3 _ a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 b a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield4 :: Struct1 -> String -> Struct1\n"..
-	"setStruct1Xfield4 (Struct1 (Struct1A1 a1 a2 a3 a4 _ a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 b a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield5 :: Struct1 -> [Int] -> Struct1\n"..
-	"setStruct1Xfield5 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 _ a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 b a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield6 :: Struct1 -> Enum1 -> Struct1\n"..
-	"setStruct1Xfield6 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 _ a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 b a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield7 :: Struct1 -> Enum2 -> Struct1\n"..
-	"setStruct1Xfield7 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 _) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 b) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield8 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Xfield8 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 _ a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 b a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield9 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Xfield9 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 _) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 b) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield10 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Xfield10 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) _) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) b) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield11 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Xfield11 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 _ a13 a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 b a13 a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield12 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Xfield12 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 _ a14) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 b a14) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield13 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Xfield13 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 _) (Struct1A3 a15 a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 b) (Struct1A3 a15 a16 a17 a18))\n"..
-	"setStruct1Xfield14 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Xfield14 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 _ a16 a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 b a16 a17 a18))\n"..
-	"setStruct1Xfield15 :: Struct1 -> [Int] -> Struct1\n"..
-	"setStruct1Xfield15 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 _ a17 a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 b a17 a18))\n"..
-	"setStruct1Xfield16 :: Struct1 -> [Struct2] -> Struct1\n"..
-	"setStruct1Xfield16 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 _ a18)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 b a18))\n"..
-	"setStruct1Xfield17 :: Struct1 -> [Struct2] -> Struct1\n"..
-	"setStruct1Xfield17 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 _)) b = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) (Struct1B1 (Struct1A2 a9 a10) a11) (Struct1B2 a12 a13 a14) (Struct1A3 a15 a16 a17 b))\n"..
+	("setStruct1Cnext :: Struct1 -> [Struct1] -> Struct1\n"..
+	"setStruct1Cnext (Struct1 (Struct1A1X8 _ a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield1 :: Struct1 -> [Float] -> Struct1\n"..
+	"setStruct1Cfield1 (Struct1 (Struct1A1X8 a1 _ a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield2 :: Struct1 -> [Double] -> Struct1\n"..
+	"setStruct1Cfield2 (Struct1 (Struct1A1X8 a1 a2 _ a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield3 :: Struct1 -> [Int] -> Struct1\n"..
+	"setStruct1Cfield3 (Struct1 (Struct1A1X8 a1 a2 a3 _ a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield4 :: Struct1 -> String -> Struct1\n"..
+	"setStruct1Cfield4 (Struct1 (Struct1A1X8 a1 a2 a3 a4 _ a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield5 :: Struct1 -> [Int] -> Struct1\n"..
+	"setStruct1Cfield5 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 _ a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield6 :: Struct1 -> Enum1 -> Struct1\n"..
+	"setStruct1Cfield6 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 _ a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield7 :: Struct1 -> Enum2 -> Struct1\n"..
+	"setStruct1Cfield7 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 _) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield8 :: Struct1 -> Int -> Struct1\n"..
+	"setStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 _ a10)) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a a10)) a12x14 a15x18)\n"..
+	"setStruct1Cfield9 :: Struct1 -> Int -> Struct1\n"..
+	"setStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a9 _)) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a9 a)) a12x14 a15x18)\n"..
+	"setStruct1Cfield10 :: Struct1 -> Int -> Struct1\n"..
+	"setStruct1Cfield10 (Struct1 a1x8 (Struct1A9X11B11 _) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B11 a) a12x14 a15x18)\n"..
+	"setStruct1Cfield11 :: Struct1 -> Int -> Struct1\n"..
+	"setStruct1Cfield11 (Struct1 a1x8 a9x11 (Struct1A12X14B12 _) a15x18) a = (Struct1 a1x8 a9x11 (Struct1A12X14B12 a) a15x18)\n"..
+	"setStruct1Cfield12 :: Struct1 -> Int -> Struct1\n"..
+	"setStruct1Cfield12 (Struct1 a1x8 a9x11 (Struct1A12X14B13 _) a15x18) a = (Struct1 a1x8 a9x11 (Struct1A12X14B13 a) a15x18)\n"..
+	"setStruct1Cfield13 :: Struct1 -> Int -> Struct1\n"..
+	"setStruct1Cfield13 (Struct1 a1x8 a9x11 (Struct1A12X14B14 _) a15x18) a = (Struct1 a1x8 a9x11 (Struct1A12X14B14 a) a15x18)\n"..
+	"setStruct1Cfield14 :: Struct1 -> Int -> Struct1\n"..
+	"setStruct1Cfield14 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 _ a16 a17 a18)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a a16 a17 a18))\n"..
+	"setStruct1Cfield15 :: Struct1 -> [Int] -> Struct1\n"..
+	"setStruct1Cfield15 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 _ a17 a18)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a a17 a18))\n"..
+	"setStruct1Cfield16 :: Struct1 -> [Struct2] -> Struct1\n"..
+	"setStruct1Cfield16 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 _ a18)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a a18))\n"..
+	"setStruct1Cfield17 :: Struct1 -> [Struct2] -> Struct1\n"..
+	"setStruct1Cfield17 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 _)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a))\n"..
 	"--"),
 }
 function linesOf(str)

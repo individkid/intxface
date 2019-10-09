@@ -454,7 +454,7 @@ function showStructHs(name,struct)
 	result = result.."--"
 	return result
 end
-function showAccessHsF(limit,chain,split,index,link,step)
+function showAccessHsF(struct,limit,chain,split,index,link,step)
 	if (index >= limit) then return {} end
 	local begi = limit; if chain[link] then begi = chain[link][1] end
 	local endi = limit; if chain[link] then endi = chain[link][2] end
@@ -462,129 +462,80 @@ function showAccessHsF(limit,chain,split,index,link,step)
 	local maxi = limit; if split[step] then maxi = split[step][2] end
 	if (index < begi) and (index < mini) then
 		local head = {index,index,"field",{}}
-		local tail = showAccessHsF(limit,chain,split,index+1,link,step)
-		return table.insert(tail,1,head)
+		local tail = showAccessHsF(struct,limit,chain,split,index+1,link,step)
+		table.insert(tail,1,head)
+		return tail
 	end
 	if (index == mini) then
-		local head = {mini,maxi,"union",showAccessHsF(maxi+1,chain,split,mini,link,step+1)}
-		local tail = showAccessHsF(limit,chain,split,maxi+1,link,step+1)
-		return table.insert(tail,1,head)
+		local head = {mini,maxi,"union",showAccessHsF(struct,maxi+1,chain,split,mini,link,step+1)}
+		while (chain[link][1] < split[step][2]) do link = link + 1 end
+		local tail = showAccessHsF(struct,limit,chain,split,maxi+1,link,step+1)
+		table.insert(tail,1,head)
+		return tail
 	end
 	if (index == begi) then
-		local head = {begi,endi,"struct",showAccessHsF(endi+1,chain,split,begi,link+1,step)}
-		local tail = showAccessHsF(limit,chain,split,endi+1,link+1,step)
-		return table.insert(tail,1,head)
+		local head = {begi,endi,"struct",showAccessHsF(struct,endi+1,chain,split,begi,link+1,step)}
+		local tail = showAccessHsF(struct,limit,chain,split,endi+1,link+1,step)
+		table.insert(tail,1,head)
+		return tail
 	end
 	return {}
 end
-function showAccessHsG(index,field,name,number,tree)
-	if not tree[1] then return "" end
-	if (tree[1][3] == "field") and (tree[1][1] == index) then
-		return " "..field
+function showAccessHsG(index,field,name,tree,blank)
+	local result = ""
+	local branch = 1
+	while (tree[branch]) do
+		local leaf = " a"..tree[branch][1]
+		local node = " a"..tree[branch][1].."x"..tree[branch][2]
+		local clip = ""
+		local trim = ""
+		if blank then leaf = ""; node = "" end
+		if blank then clip = "B"..tree[branch][1] end
+		if blank then trim = "B"..tree[branch][1].."X"..tree[branch][2] end
+		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
+			result = result..clip.." "..field
+		end
+		if (tree[branch][3] == "field") and (tree[branch][1] ~= index) then
+			result = result..leaf
+		end
+		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
+			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
+			result = result..showAccessHsG(index,field,name,tree[branch][4],false)..")"
+		end
+		if (tree[branch][3] == "struct") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
+			result = result..node
+		end
+		if (tree[branch][3] == "union") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
+			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
+			result = result..showAccessHsG(index,field,name,tree[branch][4],true)..")"
+		end
+		if (tree[branch][3] == "union") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
+			result = result..node
+		end
+		branch = branch + 1
 	end
-	if (tree[1][3] == "field") and (tree[1][1] ~= index) then
-		return " _"
-	end
-	if (tree[1][3] == "struct") and (tree[1][1] <= index) and (tree[1][2] >= index) then
-		return ""
-	end
-	return ""
+	return result
 end
 function showAccessHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
+	local tree = showAccessHsF(struct,#struct+1,chain,split,1,1,1)
 	local result = ""
 	for k,v in ipairs(struct) do
-		result = result.."get"..name.."X"..v[1].." :: "
+		result = result.."get"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..showStructHsF(v).."\n"
-		result = result.."get"..name.."X"..v[1].." ("..name
-		local unions = 1
-		local structs = 1
-		result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
-			local result = ""
-			if (steps == 1) then
-				result = result.." ("..name.."B"..unions
-				unions = unions + 1
-			end
-			if (links == 1) then
-				result = result.." ("..name.."A"..structs
-				structs = structs + 1
-			end
-			if (index ~= k) then
-				result = result.." _"
-			end
-			if (index == k) then
-				result = result.." a"
-			end
-			if (links == -1) then
-				result = result..")"
-			end
-			if (steps == -1) then
-				result = result..")"
-			end
-			return result
-		end)
+		result = result.."get"..name.."C"..v[1].." ("..name
+		result = result..showAccessHsG(k,"a",name,tree,false)
 		result = result..") = a\n"
 	end
 	result = result.."--\n"
 	for k,v in ipairs(struct) do
-		result = result.."set"..name.."X"..v[1].." :: "
-		result = result..name.." -> "..showStructHsF(v)
-		result = result.." -> "..name.."\n"
-		result = result.."set"..name.."X"..v[1].." ("..name
-		local unions = 1
-		local structs = 1
-		result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
-			local result = ""
-			if (steps == 1) then
-				result = result.." ("..name.."B"..unions
-				unions = unions + 1
-			end
-			if (links == 1) then
-				result = result.." ("..name.."A"..structs
-				structs = structs + 1
-			end
-			if (index ~= k) then
-				result = result.." a"..index
-			end
-			if (index == k) then
-				result = result.." _"
-			end
-			if (links == -1) then
-				result = result..")"
-			end
-			if (steps == -1) then
-				result = result..")"
-			end
-			return result
-		end)
-		result = result..") b = ("..name
-		unions = 1
-		structs = 1
-		result = result..showStructHsG(struct,chain,split,function(index,links,steps,chains,splits)
-			local result = ""
-			if (steps == 1) then
-				result = result.." ("..name.."B"..unions
-				unions = unions + 1
-			end
-			if (links == 1) then
-				result = result.." ("..name.."A"..structs
-				structs = structs + 1
-			end
-			if (index ~= k) then
-				result = result.." a"..index
-			end
-			if (index == k) then
-				result = result.." b"
-			end
-			if (links == -1) then
-				result = result..")"
-			end
-			if (steps == -1) then
-				result = result..")"
-			end
-			return result
-		end)
+		result = result.."set"..name.."C"..v[1].." :: "
+		result = result..name.." -> "..showStructHsF(v).." -> "..name.."\n"
+		result = result.."set"..name.."C"..v[1].." ("..name
+		result = result..showAccessHsG(k,"_",name,tree,false)
+		result = result..") a = ("..name
+		result = result..showAccessHsG(k,"a",name,tree,false)
 		result = result..")\n"
 	end
 	result = result.."--"
