@@ -567,6 +567,7 @@ function showHelpHs()
 	return result
 end
 function showReadHsF(name,struct,node,depth)
+	print("showReadHsF "..node[1].." "..node[2].." "..node[3])
 	local result = ""
 	if (node[3] == "field") then
 		result = result..showReadHsG(struct,node[1],depth)
@@ -580,12 +581,13 @@ function showReadHsF(name,struct,node,depth)
 	return result
 end
 function showReadHsG(struct,index,depth)
+	print("showReadHsG "..index)
 	local result = ""
 	local field = struct[index]
 	result = result..showIndent(depth).."a"..index.." <- "
 	local count = 0
 	if (type(field[4]) == "table") and (#field ~= 0) then
-		while (count < #field) do
+		while (count < #field[4]) do
 			count = count + 1
 			result = result.."(listHelp "..field[4][count].." "
 		end
@@ -614,6 +616,7 @@ function showReadHsG(struct,index,depth)
 	return result
 end
 function showReadHsH(name,struct,node,depth)
+	print("showReadHsH "..node[1].." "..node[2].." "..node[3])
 	local result = ""
 	local args = ""
 	local func = name.."A"..node[1].."X"..node[2]
@@ -631,9 +634,11 @@ function showReadHsH(name,struct,node,depth)
 	return result
 end
 function showReadHsI(name,struct,node,depth)
+	print("showReadHsI "..node[1].." "..node[2].." "..node[3])
 	local result = ""
 	local none = name.."A"..node[1].."X"..node[2].."Bs"
 	local args = ""
+	local tree = node[4]
 	local branch = 1
 	while (tree[branch]) do
 		local temp = tree[branch]
