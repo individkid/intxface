@@ -97,6 +97,11 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{""},
+	{"Struct1,{[\"field6\"]={[\"Value12\"]=true},[\"field7\"]={[\"Value21\"]=true,[\"Value22\"]=true}}"},
+	{"Struct1,{[\"field7\"]={[\"Value21\"]=true,[\"Value22\"]=true}}"},
+	{"Struct1,{[\"field6\"]={[\"Value12\"]=true}}"},
+	{"Struct1,{}"},
+	{"\"Struct1\",Struct1"},
 }
 Monitor = {
 	"showAny",
@@ -137,6 +142,11 @@ Monitor = {
 	"showStructHs",
 	"showAccessHs",
 	"showHelpHs",
+	"showReadHsJ",
+	"showReadHsJ",
+	"showReadHsJ",
+	"showReadHsJ",
+	"showReadHs",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -793,6 +803,48 @@ Expected = {
 	"    | a == b = firstHelp a c\n"..
 	"    | otherwise = return b\n"..
 	"--",
+	"((a7 == Value12) && ((a8 == Value21) || (a8 == Value22)))",
+	"((a8 == Value21) || (a8 == Value22))",
+	"(a7 == Value12)",
+	"true",
+	"readStruct1 :: Int -> IO Struct1\n"..
+	"readStruct1 idx = do\n"..
+	"    a1 <- (listHelp 0 readStruct1(idx))\n"..
+	"    a2 <- (listHelp 2 (floatHelp readNum(idx)))\n"..
+	"    a3 <- (listHelp 3 readNum(idx))\n"..
+	"    a4 <- (listHelp 2 (listHelp 2 readInt(idx)))\n"..
+	"    a5 <- readStr(idx)\n"..
+	"    a6 <- (listHelp 3 readInt(idx))\n"..
+	"    a7 <- readEnum1(idx)\n"..
+	"    a8 <- readEnum2(idx)\n"..
+	"    a1x8 <- return (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8)\n"..
+	"    a9x10 <- (condHelp (a7 == Value11) Struct1A9X11Bs do\n"..
+	"        a9 <- readInt(idx)\n"..
+	"        a10 <- readInt(idx)\n"..
+	"        a9x10 <- return (Struct1A9X10 a9 a10)\n"..
+	"        return (Struct1A9X11B9X10  a9x10))\n"..
+	"    a11 <- (condHelp (a7 == Value12) Struct1A9X11Bs do\n"..
+	"        a11 <- readInt(idx)\n"..
+	"        return (Struct1A9X11B11 a11))\n"..
+	"    a9x11 <- firstHelp Struct1A9X11Bs [a9x10,a11]\n"..
+	"    a12 <- (condHelp ((a7 == Value12) && (a8 == Value21)) Struct1A12X14Bs do\n"..
+	"        a12 <- readInt(idx)\n"..
+	"        return (Struct1A12X14B12 a12))\n"..
+	"    a13 <- (condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) Struct1A12X14Bs do\n"..
+	"        a13 <- readInt(idx)\n"..
+	"        return (Struct1A12X14B13 a13))\n"..
+	"    a14 <- (condHelp (a7 == Value13) Struct1A12X14Bs do\n"..
+	"        a14 <- readInt(idx)\n"..
+	"        return (Struct1A12X14B14 a14))\n"..
+	"    a12x14 <- firstHelp Struct1A12X14Bs [a12,a13,a14]\n"..
+	"    a15 <- readInt(idx)\n"..
+	"    a16 <- (listHelp a15 readInt(idx))\n"..
+	"    a17 <- (listHelp 2 readStruct2(idx))\n"..
+	"    a18 <- (listHelp 2 readStruct2(idx))\n"..
+	"    a15x18 <- return (Struct1A15X18 a15 a16 a17 a18)\n"..
+	"    a1x18 <- return (Struct1A1X18 a1x8 a9x11 a12x14 a15x18)\n"..
+	"    return a1x18\n"..
+	"--",
 }
 function linesOf(str)
 	local result = {}
@@ -874,4 +926,3 @@ file = io.open("typer.lua", "w")
 file:write(showTyperLua().."\n")
 file:close()
 print(showAny(arg))
-print(showReadHs("Struct1",Struct1))

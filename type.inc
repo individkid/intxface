@@ -567,7 +567,6 @@ function showHelpHs()
 	return result
 end
 function showReadHsF(name,struct,node,depth)
-	print("showReadHsF "..node[1].." "..node[2].." "..node[3])
 	local result = ""
 	if (node[3] == "field") then
 		result = result..showReadHsG(struct,node[1],depth)
@@ -581,7 +580,6 @@ function showReadHsF(name,struct,node,depth)
 	return result
 end
 function showReadHsG(struct,index,depth)
-	print("showReadHsG "..index)
 	local result = ""
 	local field = struct[index]
 	result = result..showIndent(depth).."a"..index.." <- "
@@ -604,10 +602,11 @@ function showReadHsG(struct,index,depth)
 		result = result.."(listHelp "..field[4].." "
 		count = 1
 	end
-	if (field[2] == "int") then result = result.."readInt(idx)" end
-	if (field[2] == "float") then result = result.."(floatHelp readNum(idx))" end
-	if (field[2] == "double") then result = result.."readNum(idx)" end
-	if (field[2] == "char*") then result = result.."readStr(idx)" end
+	if (field[2] == "int") then result = result.."readInt(idx)"
+	elseif (field[2] == "float") then result = result.."(floatHelp readNum(idx))"
+	elseif (field[2] == "double") then result = result.."readNum(idx)"
+	elseif (field[2] == "char*") then result = result.."readStr(idx)"
+	else result = result.."read"..field[2].."(idx)" end
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -616,7 +615,6 @@ function showReadHsG(struct,index,depth)
 	return result
 end
 function showReadHsH(name,struct,node,depth)
-	print("showReadHsH "..node[1].." "..node[2].." "..node[3])
 	local result = ""
 	local args = ""
 	local func = name.."A"..node[1].."X"..node[2]
@@ -634,7 +632,6 @@ function showReadHsH(name,struct,node,depth)
 	return result
 end
 function showReadHsI(name,struct,node,depth)
-	print("showReadHsI "..node[1].." "..node[2].." "..node[3])
 	local result = ""
 	local none = name.."A"..node[1].."X"..node[2].."Bs"
 	local args = ""
@@ -648,26 +645,8 @@ function showReadHsI(name,struct,node,depth)
 		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
 		if (args ~= "") then args = args.."," end
 		args = args..arg
-		local cond = ""
-		local dset = struct[temp[1]][3]
-		for i,dim in ipairs(listSort(dset)) do
-			local set = dset[dim]
-			if (cond ~= "") then cond = cond.." && " end
-			local term = ""
-			for idx,fld in ipairs(struct) do
-				if (fld[1] == dim) then
-					for j,val in ipairs(listSort(set)) do
-						local factor = "a"..idx.." == "..val
-						if (term ~= "") then term = term.." || " end
-						term = term.."("..factor..")"
-					end
-				end
-			end
-			if (cond ~= "") then cond = cond.." && " end
-			cond = cond.."("..term..")"
-		end
-		if (cond == "") then cond = "true" else cond = "("..cond..")" end
-		result = result..showIndent(depth)..arg.." <- (condHelp "..cond
+		result = result..showIndent(depth)..arg.." <- (condHelp "
+		result = result..showReadHsJ(struct,struct[temp[1]][3])
 		result = result.." "..none.." do\n"
 		result = result..showReadHsF(name,struct,temp,depth+1)
 		result = result..showIndent(depth+1).."return ("..func.." "..arg.."))\n"
@@ -677,15 +656,48 @@ function showReadHsI(name,struct,node,depth)
 	result = result.." <- firstHelp "..none.." ["..args.."]\n"
 	return result
 end
+function showReadHsJ(struct,dset)
+	local cond = ""
+	local terms = 0
+	for i,dim in ipairs(listSort(dset)) do
+		local set = dset[dim]
+		local term = ""
+		local factors = 0
+		for idx,fld in ipairs(struct) do
+			if (fld[1] == dim) then
+				for j,val in ipairs(listSort(set)) do
+					local factor = "a"..idx.." == "..val
+					if (factors > 0) then term = term.." || " end
+					term = term.."("..factor..")"
+					factors = factors + 1
+				end
+			end
+		end
+		if (terms > 0) then cond = cond.." && " end
+		if (factors > 1) then
+			cond = cond.."("..term..")"
+		else
+			cond = cond..term
+		end
+		terms = terms + 1
+	end
+	if (terms == 0) then
+		cond = "true"
+	elseif (terms > 1) then
+		cond = "("..cond..")"
+	end
+	return cond
+end
 function showReadHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local tree = treeStruct(#struct+1,chain,split,1,1,1)
 	local result = ""
-	result = result.."read"..name.." :: IO "..name.."\n"
-	result = result.."read"..name.." = do"
+	result = result.."read"..name.." :: Int -> IO "..name.."\n"
+	result = result.."read"..name.." idx = do\n"
 	result = result..showReadHsF(name,struct,{1,#struct,"struct",tree},1)
 	result = result..showIndent(1).."return a1x"..#struct.."\n"
+	result = result.."--"
 	return result
 end
 function showStreamCF(name)
