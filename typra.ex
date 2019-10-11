@@ -96,6 +96,7 @@ Stimulus = {
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
+	{""},
 }
 Monitor = {
 	"showAny",
@@ -135,6 +136,7 @@ Monitor = {
 	"showEnumHs",
 	"showStructHs",
 	"showAccessHs",
+	"showHelpHs",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -662,7 +664,8 @@ Expected = {
 	"data Enum1 =\n"..
 	"    Value11 |\n"..
 	"    Value12 |\n"..
-	"    Value13\n"..
+	"    Value13 |\n"..
+	"    Enum1s deriving (Eq)\n"..
 	"--",
 	"data Struct1A1X8 = Struct1A1X8\n"..
 	"    [Struct1] -- next\n"..
@@ -673,28 +676,32 @@ Expected = {
 	"    [Int] -- field5\n"..
 	"    Enum1 -- field6\n"..
 	"    Enum2 -- field7\n"..
+	"    deriving (Eq)\n"..
 	"data Struct1A9X10 = Struct1A9X10\n"..
 	"    Int -- field8\n"..
 	"    Int -- field9\n"..
+	"    deriving (Eq)\n"..
 	"data Struct1A15X18 = Struct1A15X18\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
 	"    [Struct2] -- field16\n"..
 	"    [Struct2] -- field17\n"..
+	"    deriving (Eq)\n"..
 	"data Struct1A9X11 =\n"..
 	"    Struct1A9X11B9X10 Struct1A9X10 |\n"..
 	"    Struct1A9X11B11 Int | -- field10\n"..
-	"    Struct1A9X11Bs\n"..
+	"    Struct1A9X11Bs deriving (Eq)\n"..
 	"data Struct1A12X14 =\n"..
 	"    Struct1A12X14B12 Int | -- field11\n"..
 	"    Struct1A12X14B13 Int | -- field12\n"..
 	"    Struct1A12X14B14 Int | -- field13\n"..
-	"    Struct1A12X14Bs\n"..
+	"    Struct1A12X14Bs deriving (Eq)\n"..
 	"data Struct1 = Struct1\n"..
 	"    Struct1A1X8\n"..
 	"    Struct1A9X11\n"..
 	"    Struct1A12X14\n"..
 	"    Struct1A15X18\n"..
+	"    deriving (Eq)\n"..
 	"--",
 	("getStruct1Cnext :: Struct1 -> [Struct1]\n"..
 	"getStruct1Cnext (Struct1 (Struct1A1X8 a a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
@@ -770,6 +777,22 @@ Expected = {
 	"setStruct1Cfield17 :: Struct1 -> [Struct2] -> Struct1\n"..
 	"setStruct1Cfield17 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 _)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a))\n"..
 	"--"),
+	"listHelp :: Int -> IO a -> IO [a]\n"..
+	"listHelp 0 b = return []\n"..
+	"listHelp a b = do\n"..
+	"    d <- b\n"..
+	"    e <- listHelp (a-1) b\n"..
+	"    return (d:e)\n"..
+	"floatHelp :: IO Double -> IO Float\n"..
+	"floatHelp = fmap doubleToFloatcondHelp :: Bool -> a -> IO a -> IO a\n"..
+	"condHelp True _ a = a\n"..
+	"condHelp False a _ = return a\n"..
+	"firstHelp :: a -> [a] -> IO a\n"..
+	"firstHelp :: a [] = return a\n"..
+	"firstHelp :: a (b:c)\n"..
+	"    | a == b = firstHelp a c\n"..
+	"    | otherwise = return b\n"..
+	"--",
 }
 function linesOf(str)
 	local result = {}
