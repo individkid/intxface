@@ -317,75 +317,30 @@ function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
-function showEnumC(name,enum)
-	local str = "enum "..name.." {\n"
-	for key,val in ipairs(enum) do
-		str = str..showIndent(1)..val..",\n"
-	end
-	str = str.."};"
-	return str
-end
-function showStructCH(val)
-	local decl
-	if (Enums[val[2]]~=nil) then
-		decl = "enum "..val[2]
-	elseif (Structs[val[2]]~=nil) then
-		decl = "struct "..val[2]
-	else
-		decl = val[2]
-	end
-	if (type(val[4]) == "number") then
-		decl = decl.."*"
-	elseif (type(val[4]) == "string") then
-		decl = decl.."*"
-	end
-	return decl
-end
-function showStructCG(val)
-	local ident = val[1]
-	if (type(val[4]) == "table") then
-		for k,v in pairs(val[4]) do
-			ident = ident.."["..v.."]"
-		end
-	end
-	return ident
-end
-function showStructCF(val)
-	local decl = showStructCH(val)
-	local ident = showStructCG(val)
-	return decl.." "..ident..";"
-end
-function showStructC(name,struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
-	local result = ""
-	local link = 1
-	local step = 1
-	local depth = 1
-	for k,v in ipairs(struct) do
-		if split[step] and k == split[step][1] then
-			result = result..showIndent(depth).."union {\n"; depth = depth + 1
-		end
-		if chain[link] and k == chain[link][1] then
-			result = result..showIndent(depth).."struct {\n"; depth = depth + 1
-		end
-		result = result..showIndent(depth)..showStructCF(v).."\n"
-		if chain[link] and k == chain[link][2] then
-			depth = depth - 1; result = result..showIndent(depth).."};\n"; link = link + 1
-		end
-		if split[step] and k == split[step][2] then
-			depth = depth - 1; result = result..showIndent(depth).."};\n"; step = step + 1
-		end
-	end
-	return "struct "..name.." {\n"..result.."};"
-end
 function showEnumHs(name,enum)
-	local str = "data "..name.." =\n"
+	local result = "data "..name.." =\n"
 	for key,val in ipairs(enum) do
-		str = str..showIndent(1)..val.." |\n"
+		result = result..showIndent(1)..val.." |\n"
 	end
-	str = str..showIndent(1)..name.."s deriving (Eq)\n"
-	return str.."--"
+	result = result..showIndent(1)..name.."s deriving (Eq)\n"
+	return result.."--"
+end
+function showCodeHs(name,enum)
+	local result = ""
+	result = result.."read"..name.."F :: Int -> "..name.."\n"
+	for key,val in ipairs(enum) do
+		result = result.."read"..name.."F "..(key-1).." = "..val.."\n"
+	end
+	result = result.."read"..name.." :: Int -> IO "..name.."\n"
+	result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
+	result = result.."write"..name.."F :: Int -> "..name.."\n"
+	for key,val in ipairs(enum) do
+		result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
+	end
+	result = result.."write"..name.." :: Int -> "..name.." -> IO ()\n"
+	result = result.."write"..name.." idx a = writeInt idx (write"..name.."F a)\n"
+	result = result.."--"
+	return result
 end
 function showStructHsF(val)
 	local result = ""
@@ -587,7 +542,7 @@ function showReadHsG(struct,index,depth)
 	if (type(field[4]) == "table") and (#field ~= 0) then
 		while (count < #field[4]) do
 			count = count + 1
-			result = result.."(listHelp "..field[4][count].." "
+			result = result.."listHelp "..field[4][count].." ("
 		end
 	end
 	if (type(field[4]) == "string") then
@@ -595,18 +550,18 @@ function showReadHsG(struct,index,depth)
 		for k,v in ipairs(struct) do
 			if (v[1] == field[4]) then found = "a"..k end
 		end
-		result = result.."(listHelp "..found.." "
+		result = result.."listHelp "..found.." ("
 		count = 1
 	end
 	if (type(field[4]) == "number") then
-		result = result.."(listHelp "..field[4].." "
+		result = result.."listHelp "..field[4].." ("
 		count = 1
 	end
-	if (field[2] == "int") then result = result.."readInt(idx)"
-	elseif (field[2] == "float") then result = result.."(floatHelp readNum(idx))"
-	elseif (field[2] == "double") then result = result.."readNum(idx)"
-	elseif (field[2] == "char*") then result = result.."readStr(idx)"
-	else result = result.."read"..field[2].."(idx)" end
+	if (field[2] == "int") then result = result.."readInt idx"
+	elseif (field[2] == "float") then result = result.."floatHelp (readNum idx)"
+	elseif (field[2] == "double") then result = result.."readNum idx"
+	elseif (field[2] == "char*") then result = result.."readStr idx"
+	else result = result.."read"..field[2].." idx" end
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -645,7 +600,7 @@ function showReadHsI(name,struct,node,depth)
 		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
 		if (args ~= "") then args = args.."," end
 		args = args..arg
-		result = result..showIndent(depth)..arg.." <- (condHelp "
+		result = result..showIndent(depth)..arg.." <- condHelp "
 		result = result..showReadHsJ(struct,struct[temp[1]][3])
 		result = result.." "..none.." do\n"
 		result = result..showReadHsF(name,struct,temp,depth+1)
@@ -699,6 +654,68 @@ function showReadHs(name,struct)
 	result = result..showIndent(1).."return a1x"..#struct.."\n"
 	result = result.."--"
 	return result
+end
+function showEnumC(name,enum)
+	local str = "enum "..name.." {\n"
+	for key,val in ipairs(enum) do
+		str = str..showIndent(1)..val..",\n"
+	end
+	str = str.."};"
+	return str
+end
+function showStructCH(val)
+	local decl
+	if (Enums[val[2]]~=nil) then
+		decl = "enum "..val[2]
+	elseif (Structs[val[2]]~=nil) then
+		decl = "struct "..val[2]
+	else
+		decl = val[2]
+	end
+	if (type(val[4]) == "number") then
+		decl = decl.."*"
+	elseif (type(val[4]) == "string") then
+		decl = decl.."*"
+	end
+	return decl
+end
+function showStructCG(val)
+	local ident = val[1]
+	if (type(val[4]) == "table") then
+		for k,v in pairs(val[4]) do
+			ident = ident.."["..v.."]"
+		end
+	end
+	return ident
+end
+function showStructCF(val)
+	local decl = showStructCH(val)
+	local ident = showStructCG(val)
+	return decl.." "..ident..";"
+end
+function showStructC(name,struct)
+	local chain = nestStruct(chainStruct(struct))
+	local split = nestStruct(splitStruct(struct))
+	local result = ""
+	local link = 1
+	local step = 1
+	local depth = 1
+	for k,v in ipairs(struct) do
+		if split[step] and k == split[step][1] then
+			result = result..showIndent(depth).."union {\n"; depth = depth + 1
+		end
+		if chain[link] and k == chain[link][1] then
+			result = result..showIndent(depth).."struct {\n"; depth = depth + 1
+		end
+		result = result..showIndent(depth)..showStructCF(v).."\n"
+		if chain[link] and k == chain[link][2] then
+			depth = depth - 1; result = result..showIndent(depth).."};\n"; link = link + 1
+		end
+		if split[step] and k == split[step][2] then
+			depth = depth - 1; result = result..showIndent(depth).."};\n"; step = step + 1
+		end
+	end
+	return "struct "..name.." {\n"..result.."};"
 end
 function showStreamCF(name)
 	if (name == "int") then
