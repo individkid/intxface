@@ -103,6 +103,7 @@ Stimulus = {
 	{"Struct1,{}"},
 	{"\"Struct1\",Struct1"},
 	{"\"Enum1\",Enum1"},
+	{"\"Struct1\",Struct1"},
 }
 Monitor = {
 	"showAny",
@@ -143,12 +144,13 @@ Monitor = {
 	"showStructHs",
 	"showAccessHs",
 	"showHelpHs",
-	"showReadHsJ",
-	"showReadHsJ",
-	"showReadHsJ",
-	"showReadHsJ",
+	"showCondHs",
+	"showCondHs",
+	"showCondHs",
+	"showCondHs",
 	"showReadHs",
 	"showCodeHs",
+	"showWriteHs",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -795,8 +797,15 @@ Expected = {
 	"    d <- b\n"..
 	"    e <- listHelp (a-1) b\n"..
 	"    return (d:e)\n"..
+	"assertHelp :: Int -> [a] -> (a -> IO ()) -> IO ()\n"..
+	"assertHelp 0 [] _ = return ()\n"..
+	"assertHelp a (b:c) f = (f b) >> (assertHelp (a-1) c f)\n"..
+	"assertHelp _ _ _ = undefined\n"..
 	"floatHelp :: IO Double -> IO Float\n"..
-	"floatHelp = fmap doubleToFloatcondHelp :: Bool -> a -> IO a -> IO a\n"..
+	"floatHelp = fmap doubleToFloat\n"..
+	"doubleHelp :: Float -> Double\n"..
+	"doubleHelp = floatToDouble\n"..
+	"condHelp :: Bool -> a -> IO a -> IO a\n"..
 	"condHelp True _ a = a\n"..
 	"condHelp False a _ = return a\n"..
 	"firstHelp :: a -> [a] -> IO a\n"..
@@ -859,6 +868,29 @@ Expected = {
 	"writeEnum1F Value13 = 2\n"..
 	"writeEnum1 :: Int -> Enum1 -> IO ()\n"..
 	"writeEnum1 idx a = writeInt idx (writeEnum1F a)\n"..
+	"--",
+	"writeStruct1 :: Struct1 -> Int -> IO ()\n"..
+	"writeStruct1 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a18)) idx = do\n"..
+	"    assertHelp 0 (\\x -> writeStruct1 x idx) a1\n"..
+	"    assertHelp 2 (\\x -> writeNum (doubleHelp x) idx) a2\n"..
+	"    assertHelp 3 (\\x -> writeNum x idx) a3\n"..
+	"    assertHelp 2 (assertHelp 2 (\\x -> writeInt x idx)) a4\n"..
+	"    writeStr a5 idx\n"..
+	"    assertHelp 3 (\\x -> writeInt x idx) a6\n"..
+	"    writeEnum1 a7 idx\n"..
+	"    writeEnum2 a8 idx\n"..
+	"    condHelp (a7 == Value11) () ((\\(Struct1A9X11B9X10 a9 a10) -> do\n"..
+	"        writeInt a9 idx\n"..
+	"        writeInt a10 idx\n"..
+	"    ) a9x11)\n"..
+	"    condHelp (a7 == Value12) () ((\\(Struct1A9X11B11 a11) -> writeInt a11 idx) a9x11)\n"..
+	"    condHelp ((a7 == Value12) && (a8 == Value21)) () ((\\(Struct1A12X14B12 a12) -> writeInt a12 idx) a12x14)\n"..
+	"    condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) () ((\\(Struct1A12X14B13 a13) -> writeInt a13 idx) a12x14)\n"..
+	"    condHelp (a7 == Value13) () ((\\(Struct1A12X14B14 a14) -> writeInt a14 idx) a12x14)\n"..
+	"    writeInt a15 idx\n"..
+	"    assertHelp a15 (\\x -> writeInt x idx) a16\n"..
+	"    assertHelp 2 (\\x -> writeStruct2 x idx) a17\n"..
+	"    assertHelp 2 (\\x -> writeStruct2 x idx) a18\n"..
 	"--",
 }
 function linesOf(str)
@@ -928,7 +960,47 @@ for k,v in ipairs(Expected) do
 end
 line = io.read(); if line ~= nil then print("error2: "..line); os.exit() end
 io.close(file)
-file = io.open("typer.h", "w")
+function showTyperC()
+	local result = ""
+	result = result.."#include \"face.h\"\n"
+	result = result.."#include \"typer.h\"\n"
+	result = result..showTypeC().."\n"
+	result = result..
+	"int main(int argc, char **argv)\n"..
+	"{\n"..
+	"	if (argc == 4) {\n"..
+	"	pipeInit(argv[1],argv[2]);\n"..
+	"   // read structs\n"..
+	"   // write structs\n"..
+	"	return 0;}\n"
+	result = result..
+	"	forkExec(\"a.out\");\n"..
+	"	forkExec(\"b.out\");\n"..
+	"	forkExec(\"typer.lua\");\n"..
+	"	sleepSec(1);\n"
+	result = result..
+	"	// alloc structs\n"..
+	"	// init structs\n"..
+	"	// write structs\n"..
+	"	// read structs\n"..
+	"	// comp structs\n"
+	result = result..
+	"	printf(\"typer.c\\n\");\n"..
+	"	return 0;\n"..
+	"}"
+	return result
+end
+function showTyperHs()
+	local result = ""
+	result = result..showTypeHs()
+	return result
+end
+function showTyperLua()
+	local result = ""
+	result = result..showTypeLua()
+	return result
+end
+ file = io.open("typer.h", "w")
 file:write(showTypeH().."\n")
 file:close()
 file = io.open("typer.c", "w")

@@ -317,344 +317,6 @@ function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
-function showEnumHs(name,enum)
-	local result = "data "..name.." =\n"
-	for key,val in ipairs(enum) do
-		result = result..showIndent(1)..val.." |\n"
-	end
-	result = result..showIndent(1)..name.."s deriving (Eq)\n"
-	return result.."--"
-end
-function showCodeHs(name,enum)
-	local result = ""
-	result = result.."read"..name.."F :: Int -> "..name.."\n"
-	for key,val in ipairs(enum) do
-		result = result.."read"..name.."F "..(key-1).." = "..val.."\n"
-	end
-	result = result.."read"..name.." :: Int -> IO "..name.."\n"
-	result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
-	result = result.."write"..name.."F :: Int -> "..name.."\n"
-	for key,val in ipairs(enum) do
-		result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
-	end
-	result = result.."write"..name.." :: Int -> "..name.." -> IO ()\n"
-	result = result.."write"..name.." idx a = writeInt idx (write"..name.."F a)\n"
-	result = result.."--"
-	return result
-end
-function showStructHsF(val)
-	local result = ""
-	local pre = ""
-	local post = ""
-	if ((type(val[4]) == "table") and (#val[4] > 0)) or
-		(type(val[4]) == "number") or (type(val[4]) == "string") then
-		pre = "["
-		post = "]"
-	end
-	if (val[2] == "int") then
-		result = result..pre.."Int"..post
-	elseif (val[2] == "double") then
-		result = result..pre.."Double"..post
-	elseif (val[2] == "float") then
-		result = result..pre.."Float"..post
-	elseif (val[2] == "char*") then
-		result = result..pre.."String"..post
-	else
-		result = result..pre..val[2]..post
-	end
-	return result
-end
-function showStructHs(name,struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
-	local result = ""
-	local structs = 1
-	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
-		local result = ""
-		if (links == 1) then
-			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
-			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
-			structs = structs + 1
-		end
-		if (chains == 1) then
-			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
-		end
-		if (links == -1) then
-			result = result..showIndent(1).."deriving (Eq)\n"
-		end
-		return result
-	end)
-	local unions = 1
-	structs = 1
-	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
-		local result = ""
-		if (steps == 1) then
-			result = result.."data "..name.."A"..split[unions][1].."X"..split[unions][2].." =\n"
-		end
-		if (splits == 1) then
-			if (links == 1) then
-				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
-				result = result.." "..name.."A"..chain[structs][1].."X"..chain[structs][2].." |\n"
-			end
-			if (chains == 0) then
-				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-				result = result.."B"..index
-				result = result.." "..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
-			end
-		end
-		if (steps == -1) then
-			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-			result = result.."Bs deriving (Eq)\n"
-			unions = unions + 1
-		end
-		if (links == -1) then
-			structs = structs + 1
-		end
-		return result
-	end)
-	result = result.."data "..name.." = "..name.."\n"
-	unions = 1
-	structs = 1
-	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
-		local result = ""
-		if (links == 1) and (steps == 0) then
-			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
-		end
-		if (links == 1) then
-			structs = structs + 1
-		end
-		if (steps == 1) then
-			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."\n"
-			unions = unions + 1
-		end
-		if (chains == 0) and (splits == 0) then
-			result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
-		end
-		return result
-	end)
-	result = result..showIndent(1).."deriving (Eq)\n"
-	result = result.."--"
-	return result
-end
-function showAccessHsF(index,field,name,tree,blank)
-	local result = ""
-	local branch = 1
-	while (tree[branch]) do
-		local leaf = " a"..tree[branch][1]
-		local node = " a"..tree[branch][1].."x"..tree[branch][2]
-		local clip = ""
-		local trim = ""
-		if blank then
-			leaf = ""
-			node = ""
-			clip = "B"..tree[branch][1]
-			trim = "B"..tree[branch][1].."X"..tree[branch][2]
-		end
-		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
-			result = result..clip.." "..field
-		end
-		if (tree[branch][3] == "field") and (tree[branch][1] ~= index) then
-			result = result..leaf
-		end
-		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
-			result = result..showAccessHsF(index,field,name,tree[branch][4],false)..")"
-		end
-		if (tree[branch][3] == "struct") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
-			result = result..node
-		end
-		if (tree[branch][3] == "union") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
-			result = result..showAccessHsF(index,field,name,tree[branch][4],true)..")"
-		end
-		if (tree[branch][3] == "union") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
-			result = result..node
-		end
-		branch = branch + 1
-	end
-	return result
-end
-function showAccessHs(name,struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
-	local tree = treeStruct(#struct+1,chain,split,1,1,1)
-	local result = ""
-	for k,v in ipairs(struct) do
-		result = result.."get"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..showStructHsF(v).."\n"
-		result = result.."get"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"a",name,tree,false)
-		result = result..") = a\n"
-	end
-	result = result.."--\n"
-	for k,v in ipairs(struct) do
-		result = result.."set"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..showStructHsF(v).." -> "..name.."\n"
-		result = result.."set"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"_",name,tree,false)
-		result = result..") a = ("..name
-		result = result..showAccessHsF(k,"a",name,tree,false)
-		result = result..")\n"
-	end
-	result = result.."--"
-	return result
-end
-function showHelpHs()
-	result = ""
-	result = result.."listHelp :: Int -> IO a -> IO [a]\n"
-	result = result.."listHelp 0 b = return []\n"
-	result = result.."listHelp a b = do\n"
-	result = result..showIndent(1).."d <- b\n"
-	result = result..showIndent(1).."e <- listHelp (a-1) b\n"
-	result = result..showIndent(1).."return (d:e)\n"
-	result = result.."floatHelp :: IO Double -> IO Float\n"
-	result = result.."floatHelp = fmap doubleToFloat"
-	result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
-	result = result.."condHelp True _ a = a\n"
-	result = result.."condHelp False a _ = return a\n"
-	result = result.."firstHelp :: a -> [a] -> IO a\n"
-	result = result.."firstHelp :: a [] = return a\n"
-	result = result.."firstHelp :: a (b:c)\n"
-	result = result..showIndent(1).."| a == b = firstHelp a c\n"
-	result = result..showIndent(1).."| otherwise = return b\n"
-	result = result.."--"
-	return result
-end
-function showReadHsF(name,struct,node,depth)
-	local result = ""
-	if (node[3] == "field") then
-		result = result..showReadHsG(struct,node[1],depth)
-	end
-	if (node[3] == "struct") then
-		result = result..showReadHsH(name,struct,node,depth)
-	end
-	if (node[3] == "union") then
-		result = result..showReadHsI(name,struct,node,depth)
-	end
-	return result
-end
-function showReadHsG(struct,index,depth)
-	local result = ""
-	local field = struct[index]
-	result = result..showIndent(depth).."a"..index.." <- "
-	local count = 0
-	if (type(field[4]) == "table") and (#field ~= 0) then
-		while (count < #field[4]) do
-			count = count + 1
-			result = result.."listHelp "..field[4][count].." ("
-		end
-	end
-	if (type(field[4]) == "string") then
-		local found = "0"
-		for k,v in ipairs(struct) do
-			if (v[1] == field[4]) then found = "a"..k end
-		end
-		result = result.."listHelp "..found.." ("
-		count = 1
-	end
-	if (type(field[4]) == "number") then
-		result = result.."listHelp "..field[4].." ("
-		count = 1
-	end
-	if (field[2] == "int") then result = result.."readInt idx"
-	elseif (field[2] == "float") then result = result.."floatHelp (readNum idx)"
-	elseif (field[2] == "double") then result = result.."readNum idx"
-	elseif (field[2] == "char*") then result = result.."readStr idx"
-	else result = result.."read"..field[2].." idx" end
-	while (count > 0) do
-		result = result..")"
-		count = count - 1
-	end
-	result = result.."\n"
-	return result
-end
-function showReadHsH(name,struct,node,depth)
-	local result = ""
-	local args = ""
-	local func = name.."A"..node[1].."X"..node[2]
-	local tree = node[4]
-	local branch = 1
-	while (tree[branch]) do
-		local temp = tree[branch]
-		local arg = "a"..temp[1]
-		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
-		args = args.." "..arg
-		result = result..showReadHsF(name,struct,temp,depth)
-		branch = branch + 1
-	end
-	result = result..showIndent(depth).."a"..node[1].."x"..node[2].." <- return ("..func..args..")\n"
-	return result
-end
-function showReadHsI(name,struct,node,depth)
-	local result = ""
-	local none = name.."A"..node[1].."X"..node[2].."Bs"
-	local args = ""
-	local tree = node[4]
-	local branch = 1
-	while (tree[branch]) do
-		local temp = tree[branch]
-		local func = name.."A"..node[1].."X"..node[2].."B"..temp[1]
-		if (temp[3] ~= "field") then func = func.."X"..temp[2].." " end
-		local arg = "a"..temp[1]
-		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
-		if (args ~= "") then args = args.."," end
-		args = args..arg
-		result = result..showIndent(depth)..arg.." <- condHelp "
-		result = result..showReadHsJ(struct,struct[temp[1]][3])
-		result = result.." "..none.." do\n"
-		result = result..showReadHsF(name,struct,temp,depth+1)
-		result = result..showIndent(depth+1).."return ("..func.." "..arg.."))\n"
-		branch = branch + 1
-	end
-	result = result..showIndent(depth).."a"..node[1].."x"..node[2]
-	result = result.." <- firstHelp "..none.." ["..args.."]\n"
-	return result
-end
-function showReadHsJ(struct,dset)
-	local cond = ""
-	local terms = 0
-	for i,dim in ipairs(listSort(dset)) do
-		local set = dset[dim]
-		local term = ""
-		local factors = 0
-		for idx,fld in ipairs(struct) do
-			if (fld[1] == dim) then
-				for j,val in ipairs(listSort(set)) do
-					local factor = "a"..idx.." == "..val
-					if (factors > 0) then term = term.." || " end
-					term = term.."("..factor..")"
-					factors = factors + 1
-				end
-			end
-		end
-		if (terms > 0) then cond = cond.." && " end
-		if (factors > 1) then
-			cond = cond.."("..term..")"
-		else
-			cond = cond..term
-		end
-		terms = terms + 1
-	end
-	if (terms == 0) then
-		cond = "true"
-	elseif (terms > 1) then
-		cond = "("..cond..")"
-	end
-	return cond
-end
-function showReadHs(name,struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
-	local tree = treeStruct(#struct+1,chain,split,1,1,1)
-	local result = ""
-	result = result.."read"..name.." :: Int -> IO "..name.."\n"
-	result = result.."read"..name.." idx = do\n"
-	result = result..showReadHsF(name,struct,{1,#struct,"struct",tree},1)
-	result = result..showIndent(1).."return a1x"..#struct.."\n"
-	result = result.."--"
-	return result
-end
 function showEnumC(name,enum)
 	local str = "enum "..name.." {\n"
 	for key,val in ipairs(enum) do
@@ -933,6 +595,479 @@ end
 function showCompC(name,struct)
 	return showStreamC(name,struct,showCompCF,"int comp",", struct "..name.." *cmp")
 end
+function showEnumHs(name,enum)
+	local result = "data "..name.." =\n"
+	for key,val in ipairs(enum) do
+		result = result..showIndent(1)..val.." |\n"
+	end
+	result = result..showIndent(1)..name.."s deriving (Eq)\n"
+	return result.."--"
+end
+function showCodeHs(name,enum)
+	local result = ""
+	result = result.."read"..name.."F :: Int -> "..name.."\n"
+	for key,val in ipairs(enum) do
+		result = result.."read"..name.."F "..(key-1).." = "..val.."\n"
+	end
+	result = result.."read"..name.." :: Int -> IO "..name.."\n"
+	result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
+	result = result.."write"..name.."F :: Int -> "..name.."\n"
+	for key,val in ipairs(enum) do
+		result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
+	end
+	result = result.."write"..name.." :: Int -> "..name.." -> IO ()\n"
+	result = result.."write"..name.." idx a = writeInt idx (write"..name.."F a)\n"
+	result = result.."--"
+	return result
+end
+function showStructHsF(val)
+	local result = ""
+	local pre = ""
+	local post = ""
+	if ((type(val[4]) == "table") and (#val[4] > 0)) or
+		(type(val[4]) == "number") or (type(val[4]) == "string") then
+		pre = "["
+		post = "]"
+	end
+	if (val[2] == "int") then
+		result = result..pre.."Int"..post
+	elseif (val[2] == "double") then
+		result = result..pre.."Double"..post
+	elseif (val[2] == "float") then
+		result = result..pre.."Float"..post
+	elseif (val[2] == "char*") then
+		result = result..pre.."String"..post
+	else
+		result = result..pre..val[2]..post
+	end
+	return result
+end
+function showStructHs(name,struct)
+	local chain = nestStruct(chainStruct(struct))
+	local split = nestStruct(splitStruct(struct))
+	local result = ""
+	local structs = 1
+	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
+		local result = ""
+		if (links == 1) then
+			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
+			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
+			structs = structs + 1
+		end
+		if (chains == 1) then
+			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+		end
+		if (links == -1) then
+			result = result..showIndent(1).."deriving (Eq)\n"
+		end
+		return result
+	end)
+	local unions = 1
+	structs = 1
+	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
+		local result = ""
+		if (steps == 1) then
+			result = result.."data "..name.."A"..split[unions][1].."X"..split[unions][2].." =\n"
+		end
+		if (splits == 1) then
+			if (links == 1) then
+				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
+				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
+				result = result.." "..name.."A"..chain[structs][1].."X"..chain[structs][2].." |\n"
+			end
+			if (chains == 0) then
+				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
+				result = result.."B"..index
+				result = result.." "..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
+			end
+		end
+		if (steps == -1) then
+			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
+			result = result.."Bs deriving (Eq)\n"
+			unions = unions + 1
+		end
+		if (links == -1) then
+			structs = structs + 1
+		end
+		return result
+	end)
+	result = result.."data "..name.." = "..name.."\n"
+	unions = 1
+	structs = 1
+	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
+		local result = ""
+		if (links == 1) and (steps == 0) then
+			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
+		end
+		if (links == 1) then
+			structs = structs + 1
+		end
+		if (steps == 1) then
+			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."\n"
+			unions = unions + 1
+		end
+		if (chains == 0) and (splits == 0) then
+			result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+		end
+		return result
+	end)
+	result = result..showIndent(1).."deriving (Eq)\n"
+	result = result.."--"
+	return result
+end
+function showAccessHsF(index,field,name,tree,blank)
+	local result = ""
+	local branch = 1
+	while (tree[branch]) do
+		local leaf = " a"..tree[branch][1]
+		local node = " a"..tree[branch][1].."x"..tree[branch][2]
+		local clip = ""
+		local trim = ""
+		if blank then
+			leaf = ""
+			node = ""
+			clip = "B"..tree[branch][1]
+			trim = "B"..tree[branch][1].."X"..tree[branch][2]
+		end
+		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
+			result = result..clip.." "..field
+		end
+		if (tree[branch][3] == "field") and (tree[branch][1] ~= index) then
+			result = result..leaf
+		end
+		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
+			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
+			result = result..showAccessHsF(index,field,name,tree[branch][4],false)..")"
+		end
+		if (tree[branch][3] == "struct") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
+			result = result..node
+		end
+		if (tree[branch][3] == "union") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
+			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
+			result = result..showAccessHsF(index,field,name,tree[branch][4],true)..")"
+		end
+		if (tree[branch][3] == "union") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
+			result = result..node
+		end
+		branch = branch + 1
+	end
+	return result
+end
+function showAccessHs(name,struct)
+	local chain = nestStruct(chainStruct(struct))
+	local split = nestStruct(splitStruct(struct))
+	local tree = treeStruct(#struct+1,chain,split,1,1,1)
+	local result = ""
+	for k,v in ipairs(struct) do
+		result = result.."get"..name.."C"..v[1].." :: "
+		result = result..name.." -> "..showStructHsF(v).."\n"
+		result = result.."get"..name.."C"..v[1].." ("..name
+		result = result..showAccessHsF(k,"a",name,tree,false)
+		result = result..") = a\n"
+	end
+	result = result.."--\n"
+	for k,v in ipairs(struct) do
+		result = result.."set"..name.."C"..v[1].." :: "
+		result = result..name.." -> "..showStructHsF(v).." -> "..name.."\n"
+		result = result.."set"..name.."C"..v[1].." ("..name
+		result = result..showAccessHsF(k,"_",name,tree,false)
+		result = result..") a = ("..name
+		result = result..showAccessHsF(k,"a",name,tree,false)
+		result = result..")\n"
+	end
+	result = result.."--"
+	return result
+end
+function showHelpHs()
+	result = ""
+	result = result.."listHelp :: Int -> IO a -> IO [a]\n"
+	result = result.."listHelp 0 b = return []\n"
+	result = result.."listHelp a b = do\n"
+	result = result..showIndent(1).."d <- b\n"
+	result = result..showIndent(1).."e <- listHelp (a-1) b\n"
+	result = result..showIndent(1).."return (d:e)\n"
+	result = result.."assertHelp :: Int -> [a] -> (a -> IO ()) -> IO ()\n"
+	result = result.."assertHelp 0 [] _ = return ()\n"
+	result = result.."assertHelp a (b:c) f = (f b) >> (assertHelp (a-1) c f)\n"
+	result = result.."assertHelp _ _ _ = undefined\n"
+	result = result.."floatHelp :: IO Double -> IO Float\n"
+	result = result.."floatHelp = fmap doubleToFloat\n"
+	result = result.."doubleHelp :: Float -> Double\n"
+	result = result.."doubleHelp = floatToDouble\n"
+	result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
+	result = result.."condHelp True _ a = a\n"
+	result = result.."condHelp False a _ = return a\n"
+	result = result.."firstHelp :: a -> [a] -> IO a\n"
+	result = result.."firstHelp :: a [] = return a\n"
+	result = result.."firstHelp :: a (b:c)\n"
+	result = result..showIndent(1).."| a == b = firstHelp a c\n"
+	result = result..showIndent(1).."| otherwise = return b\n"
+	result = result.."--"
+	return result
+end
+function showCondHs(struct,dset)
+	local cond = ""
+	local terms = 0
+	for i,dim in ipairs(listSort(dset)) do
+		local set = dset[dim]
+		local term = ""
+		local factors = 0
+		for idx,fld in ipairs(struct) do
+			if (fld[1] == dim) then
+				for j,val in ipairs(listSort(set)) do
+					local factor = "a"..idx.." == "..val
+					if (factors > 0) then term = term.." || " end
+					term = term.."("..factor..")"
+					factors = factors + 1
+				end
+			end
+		end
+		if (terms > 0) then cond = cond.." && " end
+		if (factors > 1) then
+			cond = cond.."("..term..")"
+		else
+			cond = cond..term
+		end
+		terms = terms + 1
+	end
+	if (terms == 0) then
+		cond = "true"
+	elseif (terms > 1) then
+		cond = "("..cond..")"
+	end
+	return cond
+end
+function showReadHsF(name,struct,node,depth)
+	local result = ""
+	if (node[3] == "field") then
+		result = result..showReadHsG(struct,node[1],depth)
+	end
+	if (node[3] == "struct") then
+		result = result..showReadHsH(name,struct,node,depth)
+	end
+	if (node[3] == "union") then
+		result = result..showReadHsI(name,struct,node,depth)
+	end
+	return result
+end
+function showReadHsG(struct,index,depth)
+	local result = ""
+	local field = struct[index]
+	result = result..showIndent(depth).."a"..index.." <- "
+	local count = 0
+	if (type(field[4]) == "table") and (#field ~= 0) then
+		while (count < #field[4]) do
+			count = count + 1
+			result = result.."listHelp "..field[4][count].." ("
+		end
+	end
+	if (type(field[4]) == "string") then
+		local found = "0"
+		for k,v in ipairs(struct) do
+			if (v[1] == field[4]) then found = "a"..k end
+		end
+		result = result.."listHelp "..found.." ("
+		count = 1
+	end
+	if (type(field[4]) == "number") then
+		result = result.."listHelp "..field[4].." ("
+		count = 1
+	end
+	if (field[2] == "int") then result = result.."readInt idx"
+	elseif (field[2] == "float") then result = result.."floatHelp (readNum idx)"
+	elseif (field[2] == "double") then result = result.."readNum idx"
+	elseif (field[2] == "char*") then result = result.."readStr idx"
+	else result = result.."read"..field[2].." idx" end
+	while (count > 0) do
+		result = result..")"
+		count = count - 1
+	end
+	result = result.."\n"
+	return result
+end
+function showReadHsH(name,struct,node,depth)
+	local result = ""
+	local args = ""
+	local func = name.."A"..node[1].."X"..node[2]
+	local tree = node[4]
+	local branch = 1
+	while (tree[branch]) do
+		local temp = tree[branch]
+		local arg = "a"..temp[1]
+		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
+		args = args.." "..arg
+		result = result..showReadHsF(name,struct,temp,depth)
+		branch = branch + 1
+	end
+	result = result..showIndent(depth).."a"..node[1].."x"..node[2].." <- return ("..func..args..")\n"
+	return result
+end
+function showReadHsI(name,struct,node,depth)
+	local result = ""
+	local none = name.."A"..node[1].."X"..node[2].."Bs"
+	local args = ""
+	local tree = node[4]
+	local branch = 1
+	while (tree[branch]) do
+		local temp = tree[branch]
+		local func = name.."A"..node[1].."X"..node[2].."B"..temp[1]
+		if (temp[3] ~= "field") then func = func.."X"..temp[2].." " end
+		local arg = "a"..temp[1]
+		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
+		if (args ~= "") then args = args.."," end
+		args = args..arg
+		result = result..showIndent(depth)..arg.." <- condHelp "
+		result = result..showCondHs(struct,struct[temp[1]][3])
+		result = result.." "..none.." do\n"
+		result = result..showReadHsF(name,struct,temp,depth+1)
+		result = result..showIndent(depth+1).."return ("..func.." "..arg.."))\n"
+		branch = branch + 1
+	end
+	result = result..showIndent(depth).."a"..node[1].."x"..node[2]
+	result = result.." <- firstHelp "..none.." ["..args.."]\n"
+	return result
+end
+function showReadHs(name,struct)
+	local chain = nestStruct(chainStruct(struct))
+	local split = nestStruct(splitStruct(struct))
+	local tree = treeStruct(#struct+1,chain,split,1,1,1)
+	local result = ""
+	result = result.."read"..name.." :: Int -> IO "..name.."\n"
+	result = result.."read"..name.." idx = do\n"
+	result = result..showReadHsF(name,struct,{1,#struct,"struct",tree},1)
+	result = result..showIndent(1).."return a1x"..#struct.."\n"
+	result = result.."--"
+	return result
+end
+function showWriteHsF(name,struct,tree)
+	local result = ""
+	local branch = 1
+	while (tree[branch]) do
+		local node = tree[branch]
+		if (node[3] == "field") then
+			result = result.." a"..node[1]
+		end
+		if (node[3] == "struct") then
+			result = result.." ("..name.."A"..node[1].."X"..node[2]
+			result = result..showWriteHsF(name,struct,node[4])
+			result = result..")"
+		end
+		if (node[3] == "union") then
+			result = result.." a"..node[1].."x"..node[2]
+		end
+		branch = branch + 1
+	end
+	return result
+end
+function showWriteHsG(name,struct,tree,depth)
+	local result = ""
+	local branch = 1
+	while (tree[branch]) do
+		local node = tree[branch]
+		if (node[3] == "field") then
+			result = result..showIndent(depth)
+			result = result..showWriteHsH(struct,node[1])
+			result = result.."\n"
+		end
+		if (node[3] == "struct") then
+			result = result..showWriteHsG(name,struct,node[4],depth)
+		end
+		if (node[3] == "union") then
+			result = result..showWriteHsI(name,struct,node,depth)
+		end
+		branch = branch + 1
+	end
+	return result
+end
+function showWriteHsH(struct,index)
+	local result = ""
+	local field = struct[index]
+	local count = 0
+	if (type(field[4]) == "table") and (#field[4] ~= 0) then
+		while (count < #field[4]) do
+			count = count + 1
+			result = result.."assertHelp "..field[4][count].." ("
+		end
+	end
+	if (type(field[4]) == "string") then
+		local found = "0"
+		for k,v in ipairs(struct) do
+			if (v[1] == field[4]) then found = "a"..k end
+		end
+		result = result.."assertHelp "..found.." ("
+		count = 1
+	end
+	if (type(field[4]) == "number") then
+		result = result.."assertHelp "..field[4].." ("
+		count = 1
+	end
+	local anon = false
+	if (count > 0) then
+		anon = true
+		result = result.."\\x -> "
+	end
+	if (field[2] == "int") then result = result.."writeInt"
+	elseif (field[2] == "float") then result = result.."writeNum"
+	elseif (field[2] == "double") then result = result.."writeNum"
+	elseif (field[2] == "char*") then result = result.."writeStr"
+	else result = result.."write"..field[2] end
+	if anon and (field[2] == "float") then
+		result = result.." (doubleHelp x) idx"
+	elseif anon and (field[2] ~= "float") then
+		result = result.." x idx"
+	elseif not anon and (field[2] == "float") then
+		result = result.." (doubleHelp a"..index..") idx"
+	elseif not anon and (field[2] ~= "float") then
+		result = result.." a"..index.." idx"
+	end
+	while (count > 0) do
+		result = result..")"
+		count = count - 1
+	end
+	if anon then
+		result = result.." a"..index
+	end
+	return result
+end
+function showWriteHsI(name,struct,given,depth)
+	local result = ""
+	local tree = given[4]
+	local branch = 1
+	while (tree[branch]) do
+		local node = tree[branch]
+		result = result..showIndent(depth).."condHelp "
+		result = result..showCondHs(struct,struct[node[1]][3])
+		result = result.." () ((\\("..name.."A"..given[1].."X"..given[2]
+		result = result.."B"..node[1]
+		if (node[3] == "field") then
+			result = result..showWriteHsF(name,struct,{node})
+			result = result..") -> "
+			result = result..showWriteHsH(struct,node[1])
+		else
+			result = result.."X"..node[2]
+			result = result..showWriteHsF(name,struct,node[4])
+			result = result..") -> do\n"
+			result = result..showWriteHsG(name,struct,node[4],depth+1)
+			result = result..showIndent(depth)
+		end
+		result = result..") a"..given[1].."x"..given[2]..")\n"
+		branch = branch + 1
+	end
+	return result
+end
+function showWriteHs(name,struct)
+	local chain = nestStruct(chainStruct(struct))
+	local split = nestStruct(splitStruct(struct))
+	local tree = treeStruct(#struct+1,chain,split,1,1,1)
+	local result = ""
+	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
+	result = result.."write"..name.." ("..name
+	result = result..showWriteHsF(name,struct,tree)
+	result = result..") idx = do\n"
+	result = result..showWriteHsG(name,struct,tree,1)
+	result = result.."--"
+	return result
+end
 function listHere(name)
 	local result = {}
 	local found = false
@@ -995,41 +1130,5 @@ function showTypeHs()
 end
 function showTypeLua()
 	local result = ""
-	return result
-end
-function showTyperC()
-	local result = ""
-	result = result.."#include \"face.h\"\n"
-	result = result.."#include \"typer.h\"\n"
-	result = result..showTypeC().."\n"
-	result = result.."int main(int argc, char **argv)\n"..
-	"{\n"..
-	"	if (argc == 4) {\n"..
-	"	pipeInit(argv[1],argv[2]);\n"..
-	"	return 0;}\n"..
-	"	forkExec(\"a.out\");\n"..
-	"	forkExec(\"b.out\");\n"..
-	"	forkExec(\"typer.lua\");\n"..
-	"	sleepSec(1);\n"
-	result = result..
-	"	// alloc structs\n"..
-	"	// init structs\n"..
-	"	// write structs\n"..
-	"	// read structs\n"..
-	"	// compa structs\n"
-	result = result..
-	"	printf(\"typer.c\\n\");\n"..
-	"	return 0;\n"..
-	"}"
-	return result
-end
-function showTyperHs()
-	local result = ""
-	result = result..showTypeHs()
-	return result
-end
-function showTyperLua()
-	local result = ""
-	result = result..showTypeLua()
 	return result
 end
