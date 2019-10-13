@@ -1129,10 +1129,6 @@ function showTypeC()
 end
 function showTypeHs()
 	local result = ""
-	result = result.."module Type where\n"
-	result = result.."--\n"
-	result = result.."import Face\n"
-	result = result.."--\n"
 	result = result..showCall(Enums,showEnumHs).."\n"
 	result = result..showCall(Enums,showCodeHs).."\n"
 	result = result..showCall(Structs,showStructHs).."\n"

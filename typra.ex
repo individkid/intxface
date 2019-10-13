@@ -991,7 +991,17 @@ function showTyperC()
 end
 function showTyperHs()
 	local result = ""
+	result = result.."module Type where\n"
+	result = result.."--\n"
+	result = result.."import Face\n"
+	result = result.."import System.Environment\n"
+	result = result.."import System.Exit\n"
+	result = result.."--\n"
 	result = result..showTypeHs()
+	result = result.."main :: IO ()\n"
+	result = result.."main = do\n"
+	result = result..showIndent(1).."putStrLn(\"typer.hs\")\n"
+	result = result.."--"
 	return result
 end
 function showTyperLua()
@@ -999,7 +1009,7 @@ function showTyperLua()
 	result = result..showTypeLua()
 	return result
 end
- file = io.open("typer.h", "w")
+file = io.open("typer.h", "w")
 file:write(showTypeH().."\n")
 file:close()
 file = io.open("typer.c", "w")
