@@ -232,7 +232,9 @@ Expected = {
 	"};",
 	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    allocStruct1(&ptr->next,0);\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        readStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        {double temp = readNum(idx); ptr->field1[i1] = temp;}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -272,7 +274,8 @@ Expected = {
 	"}",
 	"void writeStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        writeStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        {double temp = ptr->field1[i1]; writeNum(temp,idx);}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -309,7 +312,9 @@ Expected = {
 	"}",
 	"void randStruct1(struct Struct1 *ptr)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    allocStruct1(&ptr->next,0);\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        randStruct1(&ptr->next[i]);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        ptr->field1[i1] = 0.1;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -349,7 +354,8 @@ Expected = {
 	"}",
 	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return false;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        if (ptr->field1[i1] != cmp->field1[i1]) return false;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -501,7 +507,9 @@ Expected = {
 	"}\n")..
 	("void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    allocStruct1(&ptr->next,0);\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        readStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        {double temp = readNum(idx); ptr->field1[i1] = temp;}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -546,7 +554,8 @@ Expected = {
 	"}\n")..
 	("void writeStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        writeStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        {double temp = ptr->field1[i1]; writeNum(temp,idx);}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -588,7 +597,9 @@ Expected = {
 	"}\n")..
 	("void randStruct1(struct Struct1 *ptr)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    allocStruct1(&ptr->next,0);\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        randStruct1(&ptr->next[i]);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        ptr->field1[i1] = 2.1;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
@@ -633,7 +644,8 @@ Expected = {
 	"}\n")..
 	("int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
 	"{\n"..
-	"    // {[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0}\n"..
+	"    for (int i = 0; i < 0; i++)\n"..
+	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return false;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        if (ptr->field1[i1] != cmp->field1[i1]) return false;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..

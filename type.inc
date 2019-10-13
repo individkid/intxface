@@ -436,7 +436,7 @@ function showStreamC(name,struct,show,pre,post)
 				depth = depth + 1
 			end
 			result = result..showIndent(depth)
-		elseif (type(v[4]) == "number") and (v[4] > 0) then
+		elseif (type(v[4]) == "number") then
 			sub = ""
 			lim = v[4]
 		elseif (type(v[4]) == "string") then
