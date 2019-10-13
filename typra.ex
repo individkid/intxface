@@ -853,8 +853,7 @@ Expected = {
 	"    a17 <- listHelp 2 (readStruct2 idx)\n"..
 	"    a18 <- listHelp 2 (readStruct2 idx)\n"..
 	"    a15x18 <- return (Struct1A15X18 a15 a16 a17 a18)\n"..
-	"    a1x18 <- return (Struct1A1X18 a1x8 a9x11 a12x14 a15x18)\n"..
-	"    return a1x18\n"..
+	"    return (Struct1 a1x8 a9x11 a12x14 a15x18)\n"..
 	"--",
 	"readEnum1F :: Int -> Enum1\n"..
 	"readEnum1F 0 = Value11\n"..

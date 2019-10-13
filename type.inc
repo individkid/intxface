@@ -888,7 +888,6 @@ end
 function showReadHsH(name,struct,node,depth)
 	local result = ""
 	local args = ""
-	local func = name.."A"..node[1].."X"..node[2]
 	local tree = node[4]
 	local branch = 1
 	while (tree[branch]) do
@@ -899,7 +898,12 @@ function showReadHsH(name,struct,node,depth)
 		result = result..showReadHsF(name,struct,temp,depth)
 		branch = branch + 1
 	end
-	result = result..showIndent(depth).."a"..node[1].."x"..node[2].." <- return ("..func..args..")\n"
+	if (node[3] == "top") then
+		result = result..showIndent(depth).."return ("..name..args..")\n"
+	else
+		result = result..showIndent(depth).."a"..node[1].."x"..node[2]
+		result = result.." <- return ("..name.."A"..node[1].."X"..node[2]..args..")\n"
+	end
 	return result
 end
 function showReadHsI(name,struct,node,depth)
@@ -934,8 +938,7 @@ function showReadHs(name,struct)
 	local result = ""
 	result = result.."read"..name.." :: Int -> IO "..name.."\n"
 	result = result.."read"..name.." idx = do\n"
-	result = result..showReadHsF(name,struct,{1,#struct,"struct",tree},1)
-	result = result..showIndent(1).."return a1x"..#struct.."\n"
+	result = result..showReadHsH(name,struct,{1,#struct,"top",tree},1)
 	result = result.."--"
 	return result
 end
@@ -1126,6 +1129,17 @@ function showTypeC()
 end
 function showTypeHs()
 	local result = ""
+	result = result.."module Type where\n"
+	result = result.."--\n"
+	result = result.."import Face\n"
+	result = result.."--\n"
+	result = result..showCall(Enums,showEnumHs).."\n"
+	result = result..showCall(Enums,showCodeHs).."\n"
+	result = result..showCall(Structs,showStructHs).."\n"
+	result = result..showCall(Structs,showAccessHs).."\n"
+	result = result..showHelpHs().."\n"
+	result = result..showCall(Structs,showReadHs).."\n"
+	result = result..showCall(Structs,showWriteHs).."\n"
 	return result
 end
 function showTypeLua()
