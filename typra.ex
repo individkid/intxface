@@ -810,8 +810,12 @@ Expected = {
 	"    e <- listHelp (a-1) b\n"..
 	"    return (d:e)\n"..
 	"assertHelp :: Int -> [a] -> (a -> IO ()) -> IO ()\n"..
-	"assertHelp 0 [] _ = return ()\n"..
-	"assertHelp a (b:c) f = (f b) >> (assertHelp (a-1) c f)\n"..
+	"assertHelp a [] _\n"..
+	"    | a == 0 = return ()\n"..
+	"    | otherwise = undefined\n"..
+	"assertHelp a (b:c) f\n"..
+	"    | a > 0 = (f b) >> (assertHelp (a-1) c f)\n"..
+	"    | otherwise = undefined\n"..
 	"assertHelp _ _ _ = undefined\n"..
 	"floatHelp :: IO Double -> IO Float\n"..
 	"floatHelp = fmap doubleToFloat\n"..
@@ -981,8 +985,10 @@ function showTyperC()
 	"{\n"..
 	"	if (argc == 4) {\n"..
 	"	pipeInit(argv[1],argv[2]);\n"..
-	"   // read structs\n"..
-	"   // write structs\n"..
+	"   struct Struct1 *ptr;\n"..
+	"   allocStruct1(&ptr,1);\n"..
+	"   readStruct1(&ptr,0);\n"..
+	"   writeStruct1(&ptr,0);\n"..
 	"	return 0;}\n"
 	result = result..
 	"	forkExec(\"a.out\");\n"..
