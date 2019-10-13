@@ -355,41 +355,41 @@ Expected = {
 	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
 	"{\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return false;\n"..
+	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (ptr->field1[i1] != cmp->field1[i1]) return false;\n"..
+	"        if (ptr->field1[i1] != cmp->field1[i1]) return 0;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        if (ptr->field2[i1] != cmp->field2[i1]) return false;\n"..
+	"        if (ptr->field2[i1] != cmp->field2[i1]) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return false;\n"..
-	"    if (strcmp(ptr->field4,cmp->field4) != 0) return false;\n"..
+	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return 0;\n"..
+	"    if (strcmp(ptr->field4,cmp->field4) != 0) return 0;\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        if (ptr->field5[i] != cmp->field5[i]) return false;\n"..
-	"    if (ptr->field6 != cmp->field6) return false;\n"..
-	"    if (ptr->field7 != cmp->field7) return false;\n"..
+	"        if (ptr->field5[i] != cmp->field5[i]) return 0;\n"..
+	"    if (ptr->field6 != cmp->field6) return 0;\n"..
+	"    if (ptr->field7 != cmp->field7) return 0;\n"..
 	"    if (((ptr->field6==Value11)))\n"..
-	"        if (ptr->field8 != cmp->field8) return false;\n"..
+	"        if (ptr->field8 != cmp->field8) return 0;\n"..
 	"    if (((ptr->field6==Value11)))\n"..
-	"        if (ptr->field9 != cmp->field9) return false;\n"..
+	"        if (ptr->field9 != cmp->field9) return 0;\n"..
 	"    if (((ptr->field6==Value12)))\n"..
-	"        if (ptr->field10 != cmp->field10) return false;\n"..
+	"        if (ptr->field10 != cmp->field10) return 0;\n"..
 	"    if (((ptr->field6==Value12)) and\n"..
 	"        ((ptr->field7==Value21)))\n"..
-	"        if (ptr->field11 != cmp->field11) return false;\n"..
+	"        if (ptr->field11 != cmp->field11) return 0;\n"..
 	"    if (((ptr->field6==Value12)) and\n"..
 	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
-	"        if (ptr->field12 != cmp->field12) return false;\n"..
+	"        if (ptr->field12 != cmp->field12) return 0;\n"..
 	"    if (((ptr->field6==Value13)))\n"..
-	"        if (ptr->field13 != cmp->field13) return false;\n"..
-	"    if (ptr->field14 != cmp->field14) return false;\n"..
+	"        if (ptr->field13 != cmp->field13) return 0;\n"..
+	"    if (ptr->field14 != cmp->field14) return 0;\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        if (ptr->field15[i] != cmp->field15[i]) return false;\n"..
+	"        if (ptr->field15[i] != cmp->field15[i]) return 0;\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return false;\n"..
+	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return false;\n"..
-	"    return true;\n"..
+	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return 0;\n"..
+	"    return 1;\n"..
 	"}",
 	"void allocStr(char **ptr, const char *str)\n"..
 	"{\n"..
@@ -645,47 +645,47 @@ Expected = {
 	("int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
 	"{\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return false;\n"..
+	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (ptr->field1[i1] != cmp->field1[i1]) return false;\n"..
+	"        if (ptr->field1[i1] != cmp->field1[i1]) return 0;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        if (ptr->field2[i1] != cmp->field2[i1]) return false;\n"..
+	"        if (ptr->field2[i1] != cmp->field2[i1]) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return false;\n"..
-	"    if (strcmp(ptr->field4,cmp->field4) != 0) return false;\n"..
+	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return 0;\n"..
+	"    if (strcmp(ptr->field4,cmp->field4) != 0) return 0;\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        if (ptr->field5[i] != cmp->field5[i]) return false;\n"..
-	"    if (ptr->field6 != cmp->field6) return false;\n"..
-	"    if (ptr->field7 != cmp->field7) return false;\n"..
+	"        if (ptr->field5[i] != cmp->field5[i]) return 0;\n"..
+	"    if (ptr->field6 != cmp->field6) return 0;\n"..
+	"    if (ptr->field7 != cmp->field7) return 0;\n"..
 	"    if (((ptr->field6==Value11)))\n"..
-	"        if (ptr->field8 != cmp->field8) return false;\n"..
+	"        if (ptr->field8 != cmp->field8) return 0;\n"..
 	"    if (((ptr->field6==Value11)))\n"..
-	"        if (ptr->field9 != cmp->field9) return false;\n"..
+	"        if (ptr->field9 != cmp->field9) return 0;\n"..
 	"    if (((ptr->field6==Value12)))\n"..
-	"        if (ptr->field10 != cmp->field10) return false;\n"..
+	"        if (ptr->field10 != cmp->field10) return 0;\n"..
 	"    if (((ptr->field6==Value12)) and\n"..
 	"        ((ptr->field7==Value21)))\n"..
-	"        if (ptr->field11 != cmp->field11) return false;\n"..
+	"        if (ptr->field11 != cmp->field11) return 0;\n"..
 	"    if (((ptr->field6==Value12)) and\n"..
 	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
-	"        if (ptr->field12 != cmp->field12) return false;\n"..
+	"        if (ptr->field12 != cmp->field12) return 0;\n"..
 	"    if (((ptr->field6==Value13)))\n"..
-	"        if (ptr->field13 != cmp->field13) return false;\n"..
-	"    if (ptr->field14 != cmp->field14) return false;\n"..
+	"        if (ptr->field13 != cmp->field13) return 0;\n"..
+	"    if (ptr->field14 != cmp->field14) return 0;\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        if (ptr->field15[i] != cmp->field15[i]) return false;\n"..
+	"        if (ptr->field15[i] != cmp->field15[i]) return 0;\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return false;\n"..
+	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return false;\n"..
-	"    return true;\n"..
+	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return 0;\n"..
+	"    return 1;\n"..
 	"}\n"..
 	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp)\n"..
 	"{\n"..
-	"    if (ptr->field1 != cmp->field1) return false;\n"..
-	"    if (ptr->field2 != cmp->field2) return false;\n"..
-	"    return true;\n"..
+	"    if (ptr->field1 != cmp->field1) return 0;\n"..
+	"    if (ptr->field2 != cmp->field2) return 0;\n"..
+	"    return 1;\n"..
 	"}"),
 	"data Enum1 =\n"..
 	"    Value11 |\n"..
@@ -987,8 +987,8 @@ function showTyperC()
 	"	pipeInit(argv[1],argv[2]);\n"..
 	"   struct Struct1 *ptr;\n"..
 	"   allocStruct1(&ptr,1);\n"..
-	"   readStruct1(&ptr,0);\n"..
-	"   writeStruct1(&ptr,0);\n"..
+	"   readStruct1(ptr,0);\n"..
+	"   writeStruct1(ptr,0);\n"..
 	"	return 0;}\n"
 	result = result..
 	"	forkExec(\"a.out\");\n"..
@@ -996,13 +996,17 @@ function showTyperC()
 	"	forkExec(\"typer.lua\");\n"..
 	"	sleepSec(1);\n"
 	result = result..
-	"	// alloc structs\n"..
-	"	// init structs\n"..
-	"	// write structs\n"..
-	"	// read structs\n"..
-	"	// comp structs\n"
+	"   struct Struct1 *exp[3];\n"..
+	"   allocStruct1(exp,3);\n"..
+	"   for (int i = 0; i < 3; i++) randStruct1(exp[i]);\n"..
+	"   for (int i = 0; i < 3; i++) writeStruct1(exp[i],i);\n"..
+	"   struct Struct1 *act[3];\n"..
+	"   allocStruct1(act,3);\n"..
+	"   for (int i = 0; i < 3; i++) readStruct1(exp[i],i);\n"..
+	"   int pass = 0;\n"..
+	"   for (int i = 0; i < 3; i++) pass += compStruct1(exp[i],act[i]);\n"
 	result = result..
-	"	printf(\"typer.c\\n\");\n"..
+	"	printf(\"typer.c %d\\n\",pass);\n"..
 	"	return 0;\n"..
 	"}"
 	return result

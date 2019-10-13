@@ -463,7 +463,7 @@ function showStreamC(name,struct,show,pre,post)
 		end
 	end
 	if (show == showCompCF) then
-		result = result..showIndent(1).."return true;\n"
+		result = result..showIndent(1).."return 1;\n"
 	end
 	result = result.."}"
 	return result
@@ -578,12 +578,12 @@ end
 function showCompCF(v,ebr,sub)
 	local result = ""
 	if (v[2] == "int") or (v[2] == "double") or (v[2] == "float") or (Enums[v[2]]~=nil) then
-		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return false;"..ebr.."\n"
+		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return 0;"..ebr.."\n"
 		randInt = randInt + 1;
 	elseif (v[2] == "char*") then
-		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return false;"..ebr.."\n"
+		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
 	elseif (Structs[v[2]]~=nil) then
-		result = result.."if (!comp"..v[2].."(&ptr->"..v[1]..sub..", &cmp->"..v[1]..sub..")) return false;"..ebr.."\n"
+		result = result.."if (!comp"..v[2].."(&ptr->"..v[1]..sub..", &cmp->"..v[1]..sub..")) return 0;"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
 	end
