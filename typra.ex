@@ -104,6 +104,7 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Enum1\",Enum1"},
 }
 Monitor = {
 	"showAny",
@@ -151,6 +152,7 @@ Monitor = {
 	"showReadHs",
 	"showCodeHs",
 	"showWriteHs",
+	"showCodeLua",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -907,6 +909,20 @@ Expected = {
 	"    assertHelp 2 (\\x -> writeStruct2 x idx) a17\n"..
 	"    assertHelp 2 (\\x -> writeStruct2 x idx) a18\n"..
 	"--",
+	"function readEnum1(idx))\n"..
+	"    val = readInt(idx)\n"..
+	"    if (val == 0) then return \"Value11\"\n"..
+	"    elseif (val == 1) then return \"Value12\"\n"..
+	"    elseif (val == 2) then return \"Value13\"\n"..
+	"    else return nil\n"..
+	"end\n"..
+	"function writeEnum1(val,idx))\n"..
+	"    if (val == \"Value11\") then writeInt(0,idx)\n"..
+	"    elseif (val == \"Value12\") then writeInt(1,idx)\n"..
+	"    elseif (val == \"Value13\") then writeInt(2,idx)\n"..
+	"    else writeInt(4,idx) end\n"..
+	"end\n"..
+	"--",
 }
 function linesOf(str)
 	local result = {}
@@ -1019,9 +1035,15 @@ function showTyperHs()
 	result = result.."import System.Exit\n"
 	result = result.."--\n"
 	result = result..showTypeHs()
+	result = result.."mainF :: [String] -> IO ()\n"
+	result = result.."mainF [a,b,c] = do\n"
+	result = result..showIndent(1).."pipeInit a b\n"
+	result = result..showIndent(1).."d <- readStruct1 0\n"
+	result = result..showIndent(1).."writeStruct1 d\n"
+	result = result.."mainF _ = undefined\n"
+	result = result.."--\n"
 	result = result.."main :: IO ()\n"
-	result = result.."main = do\n"
-	result = result..showIndent(1).."putStrLn(\"typer.hs\")\n"
+	result = result.."main = getArgs >>= mainF\n"
 	result = result.."--"
 	return result
 end

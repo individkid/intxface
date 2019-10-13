@@ -1075,6 +1075,36 @@ function showWriteHs(name,struct)
 	result = result.."--"
 	return result
 end
+function showCodeLua(name,enum)
+	local result = ""
+	result = result.."function read"..name.."(idx))\n"
+	result = result..showIndent(1).."val = readInt(idx)\n"
+	for key,val in ipairs(enum) do
+		if (key == 1) then
+			result = result..showIndent(1).."if (val == 0) then return \""..val.."\"\n"
+		else
+			result = result..showIndent(1).."elseif (val == "..(key-1)..") then return \""..val.."\"\n"
+		end
+	end
+	result = result..showIndent(1).."else return nil\n"
+	result = result.."end\n"
+	result = result.."function write"..name.."(val,idx))\n"
+	for key,val in ipairs(enum) do
+		if (key == 1) then
+			result = result..showIndent(1).."if (val == \""..val.."\") then writeInt(0,idx)\n"
+		else
+			result = result..showIndent(1).."elseif (val == \""..val.."\") then writeInt("..(key-1)..",idx)\n"
+		end
+	end
+	result = result..showIndent(1).."else writeInt("..(#enum+1)..",idx) end\n"
+	result = result.."end\n"
+	result = result.."--"
+	return result
+end
+function showReadLua(name,struct)
+	local result = ""
+	return result
+end
 function listHere(name)
 	local result = {}
 	local found = false
