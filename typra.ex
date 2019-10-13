@@ -977,37 +977,36 @@ line = io.read(); if line ~= nil then print("error2: "..line); os.exit() end
 io.close(file)
 function showTyperC()
 	local result = ""
-	result = result.."#include \"face.h\"\n"
 	result = result.."#include \"typer.h\"\n"
 	result = result..showTypeC().."\n"
 	result = result..
 	"int main(int argc, char **argv)\n"..
 	"{\n"..
-	"	if (argc == 4) {\n"..
-	"	pipeInit(argv[1],argv[2]);\n"..
-	"   struct Struct1 *ptr;\n"..
-	"   allocStruct1(&ptr,1);\n"..
-	"   readStruct1(ptr,0);\n"..
-	"   writeStruct1(ptr,0);\n"..
-	"	return 0;}\n"
+	showIndent(1).."if (argc == 4) {\n"..
+	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
+	showIndent(1).."struct Struct1 *ptr;\n"..
+	showIndent(1).."allocStruct1(&ptr,1);\n"..
+	showIndent(1).."readStruct1(ptr,0);\n"..
+	showIndent(1).."writeStruct1(ptr,0);\n"..
+	showIndent(1).."return 0;}\n"
 	result = result..
-	"	forkExec(\"a.out\");\n"..
-	"	forkExec(\"b.out\");\n"..
-	"	forkExec(\"typer.lua\");\n"..
-	"	sleepSec(1);\n"
+	showIndent(1).."forkExec(\"a.out\");\n"..
+	showIndent(1).."forkExec(\"b.out\");\n"..
+	showIndent(1).."forkExec(\"typer.lua\");\n"..
+	showIndent(1).."sleepSec(1);\n"
 	result = result..
-	"   struct Struct1 *exp[3];\n"..
-	"   allocStruct1(exp,3);\n"..
-	"   for (int i = 0; i < 3; i++) randStruct1(exp[i]);\n"..
-	"   for (int i = 0; i < 3; i++) writeStruct1(exp[i],i);\n"..
-	"   struct Struct1 *act[3];\n"..
-	"   allocStruct1(act,3);\n"..
-	"   for (int i = 0; i < 3; i++) readStruct1(exp[i],i);\n"..
-	"   int pass = 0;\n"..
-	"   for (int i = 0; i < 3; i++) pass += compStruct1(exp[i],act[i]);\n"
+	showIndent(1).."struct Struct1 *exp;\n"..
+	showIndent(1).."allocStruct1(&exp,3);\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) randStruct1(exp+i);\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) writeStruct1(exp+i,i);\n"..
+	showIndent(1).."struct Struct1 *act;\n"..
+	showIndent(1).."allocStruct1(&act,3);\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) readStruct1(exp+i,i);\n"..
+	showIndent(1).."int pass = 0;\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) pass += compStruct1(exp+i,act+i);\n"
 	result = result..
-	"	printf(\"typer.c %d\\n\",pass);\n"..
-	"	return 0;\n"..
+	showIndent(1).."printf(\"typer.c %d\\n\",pass);\n"..
+	showIndent(1).."return 0;\n"..
 	"}"
 	return result
 end
