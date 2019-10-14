@@ -859,7 +859,7 @@ function showReadHsG(struct,index,depth)
 	local field = struct[index]
 	result = result..showIndent(depth).."a"..index.." <- "
 	local count = 0
-	if (type(field[4]) == "table") and (#field ~= 0) then
+	if (type(field[4]) == "table") then
 		while (count < #field[4]) do
 			count = count + 1
 			result = result.."listHelp "..field[4][count].." ("
@@ -871,11 +871,11 @@ function showReadHsG(struct,index,depth)
 			if (v[1] == field[4]) then found = "a"..k end
 		end
 		result = result.."listHelp "..found.." ("
-		count = 1
+		count = count + 1
 	end
 	if (type(field[4]) == "number") then
 		result = result.."listHelp "..field[4].." ("
-		count = 1
+		count = count + 1
 	end
 	if (field[2] == "int") then result = result.."readInt idx"
 	elseif (field[2] == "float") then result = result.."floatHelp (readNum idx)"
@@ -1002,11 +1002,11 @@ function showWriteHsH(struct,index)
 			if (v[1] == field[4]) then found = "a"..k end
 		end
 		result = result.."assertHelp "..found.." ("
-		count = 1
+		count = count + 1
 	end
 	if (type(field[4]) == "number") then
 		result = result.."assertHelp "..field[4].." ("
-		count = 1
+		count = count + 1
 	end
 	local anon = false
 	if (count > 0) then
@@ -1101,8 +1101,101 @@ function showCodeLua(name,enum)
 	result = result.."--"
 	return result
 end
+function showCondLua(struct,dset)
+	local cond = ""
+	local terms = 0
+	for i,dim in ipairs(listSort(dset)) do
+		local set = dset[dim]
+		local term = ""
+		local factors = 0
+		for idx,fld in ipairs(struct) do
+			if (fld[1] == dim) then
+				for j,val in ipairs(listSort(set)) do
+					local factor = "tab["..struct[idx][1].."] == \""..val.."\""
+					if (factors > 0) then term = term.." or " end
+					term = term.."("..factor..")"
+					factors = factors + 1
+				end
+			end
+		end
+		if (terms > 0) then cond = cond.." and " end
+		if (factors > 1) then
+			cond = cond.."("..term..")"
+		else
+			cond = cond..term
+		end
+		terms = terms + 1
+	end
+	if (terms == 0) then
+		cond = "true"
+	elseif (terms > 1) then
+		cond = "("..cond..")"
+	end
+	return cond
+end
 function showReadLua(name,struct)
 	local result = ""
+	result = result.."function read"..name.."(idx)\n"
+	result = result..showIndent(1).."local tab = {}\n"
+	for index,field in ipairs(struct) do
+		local count = 0
+		local conds = 0
+		local cond = showCondLua(struct,field[3])
+		if (cond ~= "true") then
+			count = count + 1
+			conds = conds + 1
+			result = result..showIndent(count).."if "..cond.." then\n"
+		end
+		local sub = ""
+		if (type(field[4]) == "table") then
+			if (#field[4] > 0) then
+				result = result..showIndent(count+1).."tab[\""..field[1].."\"] = {}\n"
+			end
+			while (count < #field[4]) do
+				count = count + 1
+				result = result..showIndent(count).."local i"..count.." = 1\n"
+				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
+				sub = sub.."[i"..count.."]"
+			end
+		end
+		if (type(field[4]) == "string") then
+			local found = "0"
+			for k,v in ipairs(struct) do
+				if (v[1] == field[4]) then found = "a"..k end
+			end
+			count = count + 1
+			result = result..showIndent(count).."tab[\""..field[1].."\"] = {}\n"
+			result = result..showIndent(count).."local i"..count.." = 1\n"
+			result = result..showIndent(count).."while (i"..count.." <= "..found..") do\n"
+			sub = sub.."[i"..count.."]"
+		end
+		if (type(field[4]) == "number") then
+			count = count + 1
+			result = result..showIndent(count).."tab[\""..field[1].."\"] = {}\n"
+			result = result..showIndent(count).."local i"..count.." = 1\n"
+			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
+			sub = sub.."[i"..count.."]"
+		end
+		result = result..showIndent(count+1).."tab[\""..field[1].."\"]"..sub.." = "
+		if (field[2] == "int") then result = result.."readInt(idx)"
+		elseif (field[2] == "float") then result = result.."readNum(idx)"
+		elseif (field[2] == "double") then result = result.."readNum(idx)"
+		elseif (field[2] == "char*") then result = result.."readStr(idx)"
+		else result = result.."read"..field[2].."(idx)" end
+		result = result.."\n"
+		while (count > 0) do
+			if (conds == 0) then
+				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
+			else
+				conds = conds - 1
+			end
+			result = result..showIndent(count).."end\n"
+			count = count - 1
+		end
+	end
+	result = result..showIndent(1).."return tab\n"
+	result = result.."end\n"
+	result = result.."--"
 	return result
 end
 function listHere(name)

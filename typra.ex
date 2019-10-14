@@ -105,6 +105,7 @@ Stimulus = {
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Enum1\",Enum1"},
+	{"\"Struct1\",Struct1"},
 }
 Monitor = {
 	"showAny",
@@ -153,6 +154,7 @@ Monitor = {
 	"showCodeHs",
 	"showWriteHs",
 	"showCodeLua",
+	"showReadLua",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -921,6 +923,85 @@ Expected = {
 	"    elseif (val == \"Value12\") then writeInt(1,idx)\n"..
 	"    elseif (val == \"Value13\") then writeInt(2,idx)\n"..
 	"    else writeInt(4,idx) end\n"..
+	"end\n"..
+	"--",
+	"function readStruct1(idx)\n"..
+	"    local tab = {}\n"..
+	"    tab[\"next\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 0) do\n"..
+	"        tab[\"next\"][i1] = readStruct1(idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    tab[\"field1\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        tab[\"field1\"][i1] = readNum(idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    tab[\"field2\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 3) do\n"..
+	"        tab[\"field2\"][i1] = readNum(idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    tab[\"field3\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        local i2 = 1\n"..
+	"        while (i2 <= 2) do\n"..
+	"            tab[\"field3\"][i1][i2] = readInt(idx)\n"..
+	"            i2 = i2 + 1\n"..
+	"        end\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    tab[\"field4\"] = readStr(idx)\n"..
+	"    tab[\"field5\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 3) do\n"..
+	"        tab[\"field5\"][i1] = readInt(idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    tab[\"field6\"] = readEnum1(idx)\n"..
+	"    tab[\"field7\"] = readEnum2(idx)\n"..
+	"    if (tab[field6] == \"Value11\") then\n"..
+	"        tab[\"field8\"] = readInt(idx)\n"..
+	"    end\n"..
+	"    if (tab[field6] == \"Value11\") then\n"..
+	"        tab[\"field9\"] = readInt(idx)\n"..
+	"    end\n"..
+	"    if (tab[field6] == \"Value12\") then\n"..
+	"        tab[\"field10\"] = readInt(idx)\n"..
+	"    end\n"..
+	"    if ((tab[field6] == \"Value12\") and (tab[field7] == \"Value21\")) then\n"..
+	"        tab[\"field11\"] = readInt(idx)\n"..
+	"    end\n"..
+	"    if ((tab[field6] == \"Value12\") and ((tab[field7] == \"Value22\") or (tab[field7] == \"Value23\"))) then\n"..
+	"        tab[\"field12\"] = readInt(idx)\n"..
+	"    end\n"..
+	"    if (tab[field6] == \"Value13\") then\n"..
+	"        tab[\"field13\"] = readInt(idx)\n"..
+	"    end\n"..
+	"    tab[\"field14\"] = readInt(idx)\n"..
+	"    tab[\"field15\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= a15) do\n"..
+	"        tab[\"field15\"][i1] = readInt(idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    tab[\"field16\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        tab[\"field16\"][i1] = readStruct2(idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    tab[\"field17\"] = {}\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        tab[\"field17\"][i1] = readStruct2(idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    return tab\n"..
 	"end\n"..
 	"--",
 }
