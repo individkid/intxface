@@ -106,6 +106,7 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
+	{"\"Struct1\",Struct1"},
 }
 Monitor = {
 	"showAny",
@@ -155,6 +156,7 @@ Monitor = {
 	"showWriteHs",
 	"showCodeLua",
 	"showReadLua",
+	"showWriteLua",
 }
 Expected = {
 	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
@@ -1002,6 +1004,75 @@ Expected = {
 	"        i1 = i1 + 1\n"..
 	"    end\n"..
 	"    return tab\n"..
+	"end\n"..
+	"--",
+	"function writeStruct1(tab,idx)\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 0) do\n"..
+	"        writeStruct1(tab[\"next\"][i1],idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        writeNum(tab[\"field1\"][i1],idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 3) do\n"..
+	"        writeNum(tab[\"field2\"][i1],idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        local i2 = 1\n"..
+	"        while (i2 <= 2) do\n"..
+	"            writeInt(tab[\"field3\"][i1][i2],idx)\n"..
+	"            i2 = i2 + 1\n"..
+	"        end\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    writeStr(tab[\"field4\"],idx)\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 3) do\n"..
+	"        writeInt(tab[\"field5\"][i1],idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    writeEnum1(tab[\"field6\"],idx)\n"..
+	"    writeEnum2(tab[\"field7\"],idx)\n"..
+	"    if (tab[field6] == \"Value11\") then\n"..
+	"        writeInt(tab[\"field8\"],idx)\n"..
+	"    end\n"..
+	"    if (tab[field6] == \"Value11\") then\n"..
+	"        writeInt(tab[\"field9\"],idx)\n"..
+	"    end\n"..
+	"    if (tab[field6] == \"Value12\") then\n"..
+	"        writeInt(tab[\"field10\"],idx)\n"..
+	"    end\n"..
+	"    if ((tab[field6] == \"Value12\") and (tab[field7] == \"Value21\")) then\n"..
+	"        writeInt(tab[\"field11\"],idx)\n"..
+	"    end\n"..
+	"    if ((tab[field6] == \"Value12\") and ((tab[field7] == \"Value22\") or (tab[field7] == \"Value23\"))) then\n"..
+	"        writeInt(tab[\"field12\"],idx)\n"..
+	"    end\n"..
+	"    if (tab[field6] == \"Value13\") then\n"..
+	"        writeInt(tab[\"field13\"],idx)\n"..
+	"    end\n"..
+	"    writeInt(tab[\"field14\"],idx)\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= a15) do\n"..
+	"        writeInt(tab[\"field15\"][i1],idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        writeStruct2(tab[\"field16\"][i1],idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
+	"    local i1 = 1\n"..
+	"    while (i1 <= 2) do\n"..
+	"        writeStruct2(tab[\"field17\"][i1],idx)\n"..
+	"        i1 = i1 + 1\n"..
+	"    end\n"..
 	"end\n"..
 	"--",
 }

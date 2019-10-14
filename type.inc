@@ -1198,6 +1198,65 @@ function showReadLua(name,struct)
 	result = result.."--"
 	return result
 end
+function showWriteLua(name,struct)
+	local result = ""
+	result = result.."function write"..name.."(tab,idx)\n"
+	for index,field in ipairs(struct) do
+		local count = 0
+		local conds = 0
+		local cond = showCondLua(struct,field[3])
+		if (cond ~= "true") then
+			count = count + 1
+			conds = conds + 1
+			result = result..showIndent(count).."if "..cond.." then\n"
+		end
+		local sub = ""
+		if (type(field[4]) == "table") then
+			while (count < #field[4]) do
+				count = count + 1
+				result = result..showIndent(count).."local i"..count.." = 1\n"
+				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
+				sub = sub.."[i"..count.."]"
+			end
+		end
+		if (type(field[4]) == "string") then
+			local found = "0"
+			for k,v in ipairs(struct) do
+				if (v[1] == field[4]) then found = "a"..k end
+			end
+			count = count + 1
+			result = result..showIndent(count).."local i"..count.." = 1\n"
+			result = result..showIndent(count).."while (i"..count.." <= "..found..") do\n"
+			sub = sub.."[i"..count.."]"
+		end
+		if (type(field[4]) == "number") then
+			count = count + 1
+			result = result..showIndent(count).."local i"..count.." = 1\n"
+			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
+			sub = sub.."[i"..count.."]"
+		end
+		local value = "tab[\""..field[1].."\"]"..sub
+		result = result..showIndent(count+1)
+		if (field[2] == "int") then result = result.."writeInt("..value..",idx)"
+		elseif (field[2] == "float") then result = result.."writeNum("..value..",idx)"
+		elseif (field[2] == "double") then result = result.."writeNum("..value..",idx)"
+		elseif (field[2] == "char*") then result = result.."writeStr("..value..",idx)"
+		else result = result.."write"..field[2].."("..value..",idx)" end
+		result = result.."\n"
+		while (count > 0) do
+			if (conds == 0) then
+				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
+			else
+				conds = conds - 1
+			end
+			result = result..showIndent(count).."end\n"
+			count = count - 1
+		end
+	end
+	result = result.."end\n"
+	result = result.."--"
+	return result
+end
 function listHere(name)
 	local result = {}
 	local found = false
