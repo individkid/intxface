@@ -1326,5 +1326,8 @@ function showTypeHs()
 end
 function showTypeLua()
 	local result = ""
+	result = result..showCall(Enums,showCodeLua).."\n"
+	result = result..showCall(Structs,showReadLua).."\n"
+	result = result..showCall(Structs,showWriteLua).."\n"
 	return result
 end

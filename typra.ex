@@ -1201,7 +1201,14 @@ function showTyperHs()
 end
 function showTyperLua()
 	local result = ""
+	result = result.."require \"face\"\n"
+	result = result.."--\n"
 	result = result..showTypeLua()
+	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
+	result = result.."pipeInit(arg[1],arg[2])\n"
+	result = result.."tab = readStruct1(0)\n"
+	result = result.."writeStruct1(tab,0)\n"
+	result = result.."end\n"
 	return result
 end
 file = io.open("typer.h", "w")
