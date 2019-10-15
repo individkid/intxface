@@ -1,10 +1,12 @@
 clang -c face.c -I /usr/local/include/lua
 clang -fPIC -shared -o face.so face.o -llua
-clang -o b.out facer.c Face.o -I /usr/local/include/lua -llua
+clang -o a.out facer.c Face.o -I /usr/local/include/lua -llua
 clang -o faceHs.o -c face.c -I /usr/local/include/lua
-ghc -o a.out facer.hs Face.hs faceHs.o -llua
+ghc -o b.out facer.hs Face.hs faceHs.o -llua
 ./a.out
 ./b.out
 ./facer.lua
 ./typra.ex
+clang -o a.out typer.c face.c -I /usr/local/include/lua -llua
+# ghc -o b.out typer.hs Face.hs faceHs.o
 rm *.out *.o *.so *.hi *.txt typer.*

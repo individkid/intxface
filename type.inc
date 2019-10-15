@@ -327,9 +327,9 @@ function showEnumC(name,enum)
 end
 function showStructCH(val)
 	local decl
-	if (Enums[val[2]]~=nil) then
+	if (Enumz[val[2]]~=nil) then
 		decl = "enum "..val[2]
-	elseif (Structs[val[2]]~=nil) then
+	elseif (Structz[val[2]]~=nil) then
 		decl = "struct "..val[2]
 	else
 		decl = val[2]
@@ -391,6 +391,38 @@ function showStreamCF(name)
 	end
 	return "alloc"..name
 end
+function showCondC(struct,dset)
+	local cond = ""
+	local terms = 0
+	for i,dim in ipairs(listSort(dset)) do
+		local set = dset[dim]
+		local term = ""
+		local factors = 0
+		for idx,fld in ipairs(struct) do
+			if (fld[1] == dim) then
+				for j,val in ipairs(listSort(set)) do
+					local factor = "ptr->"..struct[idx][1].." == "..val
+					if (factors > 0) then term = term.." || " end
+					term = term.."("..factor..")"
+					factors = factors + 1
+				end
+			end
+		end
+		if (terms > 0) then cond = cond.." && " end
+		if (factors > 1) then
+			cond = cond.."("..term..")"
+		else
+			cond = cond..term
+		end
+		terms = terms + 1
+	end
+	if (terms == 0) then
+		cond = "1"
+	elseif (terms > 1) then
+		cond = "("..cond..")"
+	end
+	return cond
+end
 function showStreamC(name,struct,show,pre,post)
 	local result = ""
 	result = result..pre..name.."(struct "..name.." *ptr"..post..")"
@@ -401,32 +433,15 @@ function showStreamC(name,struct,show,pre,post)
 		local depth = 1
 		local plaid = v[3]
 		local fields = listSort(plaid)
-		for index,field in ipairs(fields) do
-			if index > 1 then
-				result = result..") and\n"..showIndent(depth+1).."("
-			else
-				result = result..showIndent(depth).."if (("
-			end
-			local vals = listSort(plaid[field])
-			for key,val in ipairs(vals) do
-				if key > 1 then
-					result = result..") or ("
-				else
-					result = result.."("
-				end
-				result = result.."ptr->"..field.."=="..val
-				if key == #vals then
-					result = result..")"
-				end
-			end
-			if index == #fields then
-				result = result.."))\n"
-				depth = depth + 1
-			end
-		end
+		local cond = showCondC(struct,plaid)
 		local sub = nil
 		local lim = nil
 		local ebr = ""
+		if (cond ~= "1") then
+			result = result..showIndent(depth)
+			result = result.."if "..cond.."\n"
+			depth = depth + 1
+		end
 		if (type(v[4]) == "table") then
 			sub = ""
 			for key,val in ipairs(v[4]) do
@@ -477,11 +492,11 @@ function showReadCF(v,ebr,sub)
 	elseif (v[2] == "float") then
 		result = result.."{double temp = readNum(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
 	elseif (v[2] == "char*") then
-		result = result.."{char *temp = readStr(idx); "
+		result = result.."{const char *temp = readStr(idx); "
 		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
-	elseif (Enums[v[2]]~=nil) then
+	elseif (Enumz[v[2]]~=nil) then
 		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
-	elseif (Structs[v[2]]~=nil) then
+	elseif (Structz[v[2]]~=nil) then
 		result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
@@ -498,9 +513,9 @@ function showWriteCF(v,ebr,sub)
 		result = result.."{double temp = ptr->"..v[1]..sub.."; writeNum(temp,idx);}"..ebr.."\n"
 	elseif (v[2] == "char*") then
 		result = result.."writeStr(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (Enums[v[2]]~=nil) then
+	elseif (Enumz[v[2]]~=nil) then
 		result = result.."{int temp = ptr->"..v[1]..sub.."; writeInt(temp,idx);}"..ebr.."\n"
-	elseif (Structs[v[2]]~=nil) then
+	elseif (Structz[v[2]]~=nil) then
 		result = result.."write"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
@@ -522,13 +537,13 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
 		result = result.."}"
-	elseif (Enums[name] ~= nil) then
+	elseif (Enumz[name] ~= nil) then
 		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
 		result = result.."}"
-	elseif (Structs[name] ~= nil) then
+	elseif (Structz[name] ~= nil) then
 		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"
@@ -563,12 +578,12 @@ function showRandCF(v,ebr,sub)
 		result = result.."ptr->"..v[1]..sub.." = "..randNum..";"..ebr.."\n"
 		randNum = randNum + 1.0
 	elseif (v[2] == "char*") then
-		result = result.."{char *temp = \"hello ok again\"; "
+		result = result.."{const char *temp = \"hello ok again\"; "
 		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
-	elseif (Enums[v[2]]~=nil) then
+	elseif (Enumz[v[2]]~=nil) then
 		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
 		randInt = randInt + 1;
-	elseif (Structs[v[2]]~=nil) then
+	elseif (Structz[v[2]]~=nil) then
 		result = result.."rand"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
@@ -577,12 +592,12 @@ function showRandCF(v,ebr,sub)
 end
 function showCompCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "int") or (v[2] == "double") or (v[2] == "float") or (Enums[v[2]]~=nil) then
+	if (v[2] == "int") or (v[2] == "double") or (v[2] == "float") or (Enumz[v[2]]~=nil) then
 		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return 0;"..ebr.."\n"
 		randInt = randInt + 1;
 	elseif (v[2] == "char*") then
 		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
-	elseif (Structs[v[2]]~=nil) then
+	elseif (Structz[v[2]]~=nil) then
 		result = result.."if (!comp"..v[2].."(&ptr->"..v[1]..sub..", &cmp->"..v[1]..sub..")) return 0;"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
@@ -1258,7 +1273,8 @@ function showWriteLua(name,struct)
 	return result
 end
 function listHere(name)
-	local result = {}
+	local list = {}
+	local map = {}
 	local found = false
 	for line in io.lines(arg[0]) do
 		local set = false
@@ -1269,15 +1285,18 @@ function listHere(name)
 		if found then
 			local match
 			_, _, match = string.find(line,"([A-Za-z0-9]+) = {")
-			if (match) then result[match] = _G[match] end
+			if (match) then
+				list[#list+1] = match
+				map[match] = _G[match]
+			end
 		end
 		if set then found = true end
 	end
-	return result
+	return list,map
 end
-function showCall(map,func)
+function showCall(list,map,func)
 	local result = ""
-	for k,v in ipairs(listSort(map)) do
+	for k,v in ipairs(list) do
 		if result ~= "" then result = result.."\n" end
 		result = result..func(v,map[v])
 	end
@@ -1289,17 +1308,17 @@ function showFuncC()
 	result = result..showAllocC("Double","double").."\n"
 	result = result..showAllocC("Float","float").."\n"
 	result = result..showAllocC("Str","char*").."\n"
-	result = result..showCall(Structs,showAllocC).."\n"
-	result = result..showCall(Structs,showReadC).."\n"
-	result = result..showCall(Structs,showWriteC).."\n"
-	result = result..showCall(Structs,showRandC).."\n"
-	result = result..showCall(Structs,showCompC)
+	result = result..showCall(Structs,Structz,showAllocC).."\n"
+	result = result..showCall(Structs,Structz,showReadC).."\n"
+	result = result..showCall(Structs,Structz,showWriteC).."\n"
+	result = result..showCall(Structs,Structz,showRandC).."\n"
+	result = result..showCall(Structs,Structz,showCompC)
 	return result
 end
 function showTypeH()
 	local result = ""
-	result = result..showCall(Enums,showEnumC).."\n"
-	result = result..showCall(Structs,showStructC).."\n"
+	result = result..showCall(Enums,Enumz,showEnumC).."\n"
+	result = result..showCall(Structs,Structz,showStructC).."\n"
 	prototype = true
 	result = result..showFuncC()
 	return result
@@ -1315,19 +1334,19 @@ function showTypeC()
 end
 function showTypeHs()
 	local result = ""
-	result = result..showCall(Enums,showEnumHs).."\n"
-	result = result..showCall(Enums,showCodeHs).."\n"
-	result = result..showCall(Structs,showStructHs).."\n"
-	result = result..showCall(Structs,showAccessHs).."\n"
+	result = result..showCall(Enums,Enumz,showEnumHs).."\n"
+	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
+	result = result..showCall(Structs,Structz,showStructHs).."\n"
+	result = result..showCall(Structs,Structz,showAccessHs).."\n"
 	result = result..showHelpHs().."\n"
-	result = result..showCall(Structs,showReadHs).."\n"
-	result = result..showCall(Structs,showWriteHs).."\n"
+	result = result..showCall(Structs,Structz,showReadHs).."\n"
+	result = result..showCall(Structs,Structz,showWriteHs).."\n"
 	return result
 end
 function showTypeLua()
 	local result = ""
-	result = result..showCall(Enums,showCodeLua).."\n"
-	result = result..showCall(Structs,showReadLua).."\n"
-	result = result..showCall(Structs,showWriteLua).."\n"
+	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
+	result = result..showCall(Structs,Structz,showReadLua).."\n"
+	result = result..showCall(Structs,Structz,showWriteLua).."\n"
 	return result
 end

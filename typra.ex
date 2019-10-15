@@ -31,6 +31,10 @@ Enum2 = {
 	"Value23",
 }
 --HERE Structs
+Struct2 = {
+	{"field1","int",{},{}},
+	{"field2","int",{},{}},
+}
 Struct1 = {
 	{"next","Struct1",{},0},
 	{"field1","float",{},{2}},
@@ -51,16 +55,12 @@ Struct1 = {
 	{"field16","Struct2",{},2},
 	{"field17","Struct2",{},{2}},
 }
-Struct2 = {
-	{"field1","int",{},{}},
-	{"field2","int",{},{}},
-}
 --HERE
-Enums = listHere("Enums")
-Structs = listHere("Structs")
+Enums,Enumz = listHere("Enums")
+Structs,Structz = listHere("Structs")
 Stimulus = {
-	{"Enums"},
-	{"Structs"},
+	{"Enumz"},
+	{"Structz"},
 	{"findString(\"hello ok again and again\",\"hello\")"},
 	{"findString(\"hello ok again() and again\",\"again\")"},
 	{"findString(\"hello() ok again and again\",\"hello\")"},
@@ -248,25 +248,23 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = readInt(idx);\n"..
-	"    {char *temp = readStr(idx); allocStr(&ptr->field4,temp);}\n"..
+	"    {const char *temp = readStr(idx); allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = readInt(idx);\n"..
 	"    {int temp = readInt(idx); ptr->field6 = temp;}\n"..
 	"    {int temp = readInt(idx); ptr->field7 = temp;}\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        ptr->field8 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        ptr->field9 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value12)))\n"..
+	"    if (ptr->field6 == Value12)\n"..
 	"        ptr->field10 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
 	"        ptr->field11 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
 	"        ptr->field12 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value13)))\n"..
+	"    if (ptr->field6 == Value13)\n"..
 	"        ptr->field13 = readInt(idx);\n"..
 	"    ptr->field14 = readInt(idx);\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
@@ -294,19 +292,17 @@ Expected = {
 	"        writeInt(ptr->field5[i],idx);\n"..
 	"    {int temp = ptr->field6; writeInt(temp,idx);}\n"..
 	"    {int temp = ptr->field7; writeInt(temp,idx);}\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        writeInt(ptr->field8,idx);\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        writeInt(ptr->field9,idx);\n"..
-	"    if (((ptr->field6==Value12)))\n"..
+	"    if (ptr->field6 == Value12)\n"..
 	"        writeInt(ptr->field10,idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
 	"        writeInt(ptr->field11,idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
 	"        writeInt(ptr->field12,idx);\n"..
-	"    if (((ptr->field6==Value13)))\n"..
+	"    if (ptr->field6 == Value13)\n"..
 	"        writeInt(ptr->field13,idx);\n"..
 	"    writeInt(ptr->field14,idx);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
@@ -328,25 +324,23 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = 0;\n"..
-	"    {char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
+	"    {const char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = 1;\n"..
 	"    ptr->field6 = 2;\n"..
 	"    ptr->field7 = 3;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        ptr->field8 = 4;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        ptr->field9 = 5;\n"..
-	"    if (((ptr->field6==Value12)))\n"..
+	"    if (ptr->field6 == Value12)\n"..
 	"        ptr->field10 = 6;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
 	"        ptr->field11 = 7;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
 	"        ptr->field12 = 8;\n"..
-	"    if (((ptr->field6==Value13)))\n"..
+	"    if (ptr->field6 == Value13)\n"..
 	"        ptr->field13 = 9;\n"..
 	"    ptr->field14 = 10;\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
@@ -374,19 +368,17 @@ Expected = {
 	"        if (ptr->field5[i] != cmp->field5[i]) return 0;\n"..
 	"    if (ptr->field6 != cmp->field6) return 0;\n"..
 	"    if (ptr->field7 != cmp->field7) return 0;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        if (ptr->field8 != cmp->field8) return 0;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        if (ptr->field9 != cmp->field9) return 0;\n"..
-	"    if (((ptr->field6==Value12)))\n"..
+	"    if (ptr->field6 == Value12)\n"..
 	"        if (ptr->field10 != cmp->field10) return 0;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
 	"        if (ptr->field11 != cmp->field11) return 0;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
 	"        if (ptr->field12 != cmp->field12) return 0;\n"..
-	"    if (((ptr->field6==Value13)))\n"..
+	"    if (ptr->field6 == Value13)\n"..
 	"        if (ptr->field13 != cmp->field13) return 0;\n"..
 	"    if (ptr->field14 != cmp->field14) return 0;\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
@@ -428,6 +420,12 @@ Expected = {
 	"    Value22,\n"..
 	"    Value23,\n"..
 	"};\n"..
+	"struct Struct2 {\n"..
+	"    struct {\n"..
+	"        int field1;\n"..
+	"        int field2;\n"..
+	"    };\n"..
+	"};\n"..
 	"struct Struct1 {\n"..
 	"    struct {\n"..
 	"        struct Struct1* next;\n"..
@@ -458,26 +456,20 @@ Expected = {
 	"        struct Struct2 field17[2];\n"..
 	"    };\n"..
 	"};\n"..
-	"struct Struct2 {\n"..
-	"    struct {\n"..
-	"        int field1;\n"..
-	"        int field2;\n"..
-	"    };\n"..
-	"};\n"..
 	"void allocInt(int **ptr, int siz);\n"..
 	"void allocDouble(double **ptr, int siz);\n"..
 	"void allocFloat(float **ptr, int siz);\n"..
 	"void allocStr(char **ptr, const char *str);\n"..
-	"void allocStruct1(struct Struct1 **ptr, int siz);\n"..
 	"void allocStruct2(struct Struct2 **ptr, int siz);\n"..
-	"void readStruct1(struct Struct1 *ptr, int idx);\n"..
+	"void allocStruct1(struct Struct1 **ptr, int siz);\n"..
 	"void readStruct2(struct Struct2 *ptr, int idx);\n"..
-	"void writeStruct1(struct Struct1 *ptr, int idx);\n"..
+	"void readStruct1(struct Struct1 *ptr, int idx);\n"..
 	"void writeStruct2(struct Struct2 *ptr, int idx);\n"..
-	"void randStruct1(struct Struct1 *ptr);\n"..
+	"void writeStruct1(struct Struct1 *ptr, int idx);\n"..
 	"void randStruct2(struct Struct2 *ptr);\n"..
-	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp);\n"..
-	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp);",
+	"void randStruct1(struct Struct1 *ptr);\n"..
+	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp);\n"..
+	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp);",
 	("#include <stdlib.h>\n"..
 	"#include <string.h>\n"..
 	"#include \"face.h\"\n"..
@@ -498,6 +490,11 @@ Expected = {
 	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
 	"}\n"..
+	"void allocStruct2(struct Struct2 **ptr, int siz)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct2));\n"..
+	"    for (int i = 0; i < siz; i++) {}\n"..
+	"}\n"..
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
@@ -505,13 +502,13 @@ Expected = {
 	"        (*ptr)[i].field5 = 0;\n"..
 	"        (*ptr)[i].field15 = 0;\n"..
 	"        (*ptr)[i].field16 = 0;}\n"..
-	"}\n"..
-	"void allocStruct2(struct Struct2 **ptr, int siz)\n"..
-	"{\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct2));\n"..
-	"    for (int i = 0; i < siz; i++) {}\n"..
 	"}\n")..
-	("void readStruct1(struct Struct1 *ptr, int idx)\n"..
+	("void readStruct2(struct Struct2 *ptr, int idx)\n"..
+	"{\n"..
+	"    ptr->field1 = readInt(idx);\n"..
+	"    ptr->field2 = readInt(idx);\n"..
+	"}\n"..
+	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
@@ -523,25 +520,23 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = readInt(idx);\n"..
-	"    {char *temp = readStr(idx); allocStr(&ptr->field4,temp);}\n"..
+	"    {const char *temp = readStr(idx); allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = readInt(idx);\n"..
 	"    {int temp = readInt(idx); ptr->field6 = temp;}\n"..
 	"    {int temp = readInt(idx); ptr->field7 = temp;}\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        ptr->field8 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        ptr->field9 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value12)))\n"..
+	"    if (ptr->field6 == Value12)\n"..
 	"        ptr->field10 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
 	"        ptr->field11 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
 	"        ptr->field12 = readInt(idx);\n"..
-	"    if (((ptr->field6==Value13)))\n"..
+	"    if (ptr->field6 == Value13)\n"..
 	"        ptr->field13 = readInt(idx);\n"..
 	"    ptr->field14 = readInt(idx);\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
@@ -552,13 +547,13 @@ Expected = {
 	"        readStruct2(&ptr->field16[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        readStruct2(&ptr->field17[i1],idx);\n"..
-	"}\n"..
-	"void readStruct2(struct Struct2 *ptr, int idx)\n"..
-	"{\n"..
-	"    ptr->field1 = readInt(idx);\n"..
-	"    ptr->field2 = readInt(idx);\n"..
 	"}\n")..
-	("void writeStruct1(struct Struct1 *ptr, int idx)\n"..
+	("void writeStruct2(struct Struct2 *ptr, int idx)\n"..
+	"{\n"..
+	"    writeInt(ptr->field1,idx);\n"..
+	"    writeInt(ptr->field2,idx);\n"..
+	"}\n"..
+	"void writeStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        writeStruct1(&ptr->next[i],idx);\n"..
@@ -574,19 +569,17 @@ Expected = {
 	"        writeInt(ptr->field5[i],idx);\n"..
 	"    {int temp = ptr->field6; writeInt(temp,idx);}\n"..
 	"    {int temp = ptr->field7; writeInt(temp,idx);}\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        writeInt(ptr->field8,idx);\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        writeInt(ptr->field9,idx);\n"..
-	"    if (((ptr->field6==Value12)))\n"..
+	"    if (ptr->field6 == Value12)\n"..
 	"        writeInt(ptr->field10,idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
 	"        writeInt(ptr->field11,idx);\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
 	"        writeInt(ptr->field12,idx);\n"..
-	"    if (((ptr->field6==Value13)))\n"..
+	"    if (ptr->field6 == Value13)\n"..
 	"        writeInt(ptr->field13,idx);\n"..
 	"    writeInt(ptr->field14,idx);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
@@ -595,13 +588,13 @@ Expected = {
 	"        writeStruct2(&ptr->field16[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        writeStruct2(&ptr->field17[i1],idx);\n"..
-	"}\n"..
-	"void writeStruct2(struct Struct2 *ptr, int idx)\n"..
-	"{\n"..
-	"    writeInt(ptr->field1,idx);\n"..
-	"    writeInt(ptr->field2,idx);\n"..
 	"}\n")..
-	("void randStruct1(struct Struct1 *ptr)\n"..
+	("void randStruct2(struct Struct2 *ptr)\n"..
+	"{\n"..
+	"    ptr->field1 = 26;\n"..
+	"    ptr->field2 = 27;\n"..
+	"}\n"..
+	"void randStruct1(struct Struct1 *ptr)\n"..
 	"{\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
@@ -612,43 +605,42 @@ Expected = {
 	"        ptr->field2[i1] = 3.1;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            ptr->field3[i1][i2] = 26;\n"..
-	"    {char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
+	"            ptr->field3[i1][i2] = 28;\n"..
+	"    {const char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        ptr->field5[i] = 27;\n"..
-	"    ptr->field6 = 28;\n"..
-	"    ptr->field7 = 29;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
-	"        ptr->field8 = 30;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
-	"        ptr->field9 = 31;\n"..
-	"    if (((ptr->field6==Value12)))\n"..
-	"        ptr->field10 = 32;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
-	"        ptr->field11 = 33;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
-	"        ptr->field12 = 34;\n"..
-	"    if (((ptr->field6==Value13)))\n"..
-	"        ptr->field13 = 35;\n"..
-	"    ptr->field14 = 36;\n"..
+	"        ptr->field5[i] = 29;\n"..
+	"    ptr->field6 = 30;\n"..
+	"    ptr->field7 = 31;\n"..
+	"    if (ptr->field6 == Value11)\n"..
+	"        ptr->field8 = 32;\n"..
+	"    if (ptr->field6 == Value11)\n"..
+	"        ptr->field9 = 33;\n"..
+	"    if (ptr->field6 == Value12)\n"..
+	"        ptr->field10 = 34;\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
+	"        ptr->field11 = 35;\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
+	"        ptr->field12 = 36;\n"..
+	"    if (ptr->field6 == Value13)\n"..
+	"        ptr->field13 = 37;\n"..
+	"    ptr->field14 = 38;\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        ptr->field15[i] = 37;\n"..
+	"        ptr->field15[i] = 39;\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
 	"        randStruct2(&ptr->field16[i]);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        randStruct2(&ptr->field17[i1]);\n"..
-	"}\n"..
-	"void randStruct2(struct Struct2 *ptr)\n"..
-	"{\n"..
-	"    ptr->field1 = 38;\n"..
-	"    ptr->field2 = 39;\n"..
 	"}\n")..
-	("int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
+	("int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp)\n"..
+	"{\n"..
+	"    if (ptr->field1 != cmp->field1) return 0;\n"..
+	"    if (ptr->field2 != cmp->field2) return 0;\n"..
+	"    return 1;\n"..
+	"}\n"..
+	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
 	"{\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return 0;\n"..
@@ -664,19 +656,17 @@ Expected = {
 	"        if (ptr->field5[i] != cmp->field5[i]) return 0;\n"..
 	"    if (ptr->field6 != cmp->field6) return 0;\n"..
 	"    if (ptr->field7 != cmp->field7) return 0;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        if (ptr->field8 != cmp->field8) return 0;\n"..
-	"    if (((ptr->field6==Value11)))\n"..
+	"    if (ptr->field6 == Value11)\n"..
 	"        if (ptr->field9 != cmp->field9) return 0;\n"..
-	"    if (((ptr->field6==Value12)))\n"..
+	"    if (ptr->field6 == Value12)\n"..
 	"        if (ptr->field10 != cmp->field10) return 0;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value21)))\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
 	"        if (ptr->field11 != cmp->field11) return 0;\n"..
-	"    if (((ptr->field6==Value12)) and\n"..
-	"        ((ptr->field7==Value22) or (ptr->field7==Value23)))\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
 	"        if (ptr->field12 != cmp->field12) return 0;\n"..
-	"    if (((ptr->field6==Value13)))\n"..
+	"    if (ptr->field6 == Value13)\n"..
 	"        if (ptr->field13 != cmp->field13) return 0;\n"..
 	"    if (ptr->field14 != cmp->field14) return 0;\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
@@ -685,12 +675,6 @@ Expected = {
 	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return 0;\n"..
-	"    return 1;\n"..
-	"}\n"..
-	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp)\n"..
-	"{\n"..
-	"    if (ptr->field1 != cmp->field1) return 0;\n"..
-	"    if (ptr->field2 != cmp->field2) return 0;\n"..
 	"    return 1;\n"..
 	"}"),
 	"data Enum1 =\n"..
@@ -1146,6 +1130,7 @@ io.close(file)
 function showTyperC()
 	local result = ""
 	result = result.."#include \"typer.h\"\n"
+	result = result.."#include <stdio.h>\n"
 	result = result..showTypeC().."\n"
 	result = result..
 	"int main(int argc, char **argv)\n"..
