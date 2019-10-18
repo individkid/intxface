@@ -687,7 +687,7 @@ Expected = {
 	"    [Struct1] -- next\n"..
 	"    [Float] -- field1\n"..
 	"    [Double] -- field2\n"..
-	"    [Int] -- field3\n"..
+	"    [[Int]] -- field3\n"..
 	"    String -- field4\n"..
 	"    [Int] -- field5\n"..
 	"    Enum1 -- field6\n"..
@@ -723,7 +723,7 @@ Expected = {
 	"getStruct1Cfield1 (Struct1 (Struct1A1X8 a1 a a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
 	"getStruct1Cfield2 :: Struct1 -> [Double]\n"..
 	"getStruct1Cfield2 (Struct1 (Struct1A1X8 a1 a2 a a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
-	"getStruct1Cfield3 :: Struct1 -> [Int]\n"..
+	"getStruct1Cfield3 :: Struct1 -> [[Int]]\n"..
 	"getStruct1Cfield3 (Struct1 (Struct1A1X8 a1 a2 a3 a a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
 	"getStruct1Cfield4 :: Struct1 -> String\n"..
 	"getStruct1Cfield4 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
@@ -760,7 +760,7 @@ Expected = {
 	"setStruct1Cfield1 (Struct1 (Struct1A1X8 a1 _ a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
 	"setStruct1Cfield2 :: Struct1 -> [Double] -> Struct1\n"..
 	"setStruct1Cfield2 (Struct1 (Struct1A1X8 a1 a2 _ a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
-	"setStruct1Cfield3 :: Struct1 -> [Int] -> Struct1\n"..
+	"setStruct1Cfield3 :: Struct1 -> [[Int]] -> Struct1\n"..
 	"setStruct1Cfield3 (Struct1 (Struct1A1X8 a1 a2 a3 _ a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
 	"setStruct1Cfield4 :: Struct1 -> String -> Struct1\n"..
 	"setStruct1Cfield4 (Struct1 (Struct1A1X8 a1 a2 a3 a4 _ a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a a6 a7 a8) a9x11 a12x14 a15x18)\n"..
@@ -797,14 +797,13 @@ Expected = {
 	"    d <- b\n"..
 	"    e <- listHelp (a-1) b\n"..
 	"    return (d:e)\n"..
-	"assertHelp :: Int -> [a] -> (a -> IO ()) -> IO ()\n"..
-	"assertHelp a [] _\n"..
+	"assertHelp :: Int -> (a -> IO ()) -> [a] -> IO ()\n"..
+	"assertHelp a _ []\n"..
 	"    | a == 0 = return ()\n"..
 	"    | otherwise = undefined\n"..
-	"assertHelp a (b:c) f\n"..
-	"    | a > 0 = (f b) >> (assertHelp (a-1) c f)\n"..
+	"assertHelp a f (b:c)\n"..
+	"    | a > 0 = (f b) >> (assertHelp (a-1) f c)\n"..
 	"    | otherwise = undefined\n"..
-	"assertHelp _ _ _ = undefined\n"..
 	"floatHelp :: IO Double -> IO Float\n"..
 	"floatHelp = fmap doubleToFloat\n"..
 	"doubleHelp :: Float -> Double\n"..
@@ -812,7 +811,7 @@ Expected = {
 	"condHelp :: Bool -> a -> IO a -> IO a\n"..
 	"condHelp True _ a = a\n"..
 	"condHelp False a _ = return a\n"..
-	"firstHelp :: a -> [a] -> IO a\n"..
+	"firstHelp :: Eq a => a -> [a] -> IO a\n"..
 	"firstHelp a [] = return a\n"..
 	"firstHelp a (b:c)\n"..
 	"    | a == b = firstHelp a c\n"..
@@ -836,8 +835,7 @@ Expected = {
 	"    a9x10 <- condHelp (a7 == Value11) Struct1A9X11Bs (do\n"..
 	"        a9 <- readInt idx\n"..
 	"        a10 <- readInt idx\n"..
-	"        a9x10 <- return (Struct1A9X10 a9 a10)\n"..
-	"        return (Struct1A9X11B9X10  a9x10))\n"..
+	"        return (Struct1A9X11B9X10 a9 a10))\n"..
 	"    a11 <- condHelp (a7 == Value12) Struct1A9X11Bs (do\n"..
 	"        a11 <- readInt idx\n"..
 	"        return (Struct1A9X11B11 a11))\n"..
@@ -859,18 +857,18 @@ Expected = {
 	"    a15x18 <- return (Struct1A15X18 a15 a16 a17 a18)\n"..
 	"    return (Struct1 a1x8 a9x11 a12x14 a15x18)\n"..
 	"--",
-	"readEnum1F :: Int -> Enum1\n"..
-	"readEnum1F 0 = Value11\n"..
-	"readEnum1F 1 = Value12\n"..
-	"readEnum1F 2 = Value13\n"..
+	"readEnum1F :: Int -> IO Enum1\n"..
+	"readEnum1F 0 = return Value11\n"..
+	"readEnum1F 1 = return Value12\n"..
+	"readEnum1F 2 = return Value13\n"..
 	"readEnum1 :: Int -> IO Enum1\n"..
 	"readEnum1 idx = (readInt idx) >>= readEnum1F\n"..
-	"writeEnum1F :: Int -> Enum1\n"..
+	"writeEnum1F :: Enum1 -> Int\n"..
 	"writeEnum1F Value11 = 0\n"..
 	"writeEnum1F Value12 = 1\n"..
 	"writeEnum1F Value13 = 2\n"..
-	"writeEnum1 :: Int -> Enum1 -> IO ()\n"..
-	"writeEnum1 idx a = writeInt idx (writeEnum1F a)\n"..
+	"writeEnum1 :: Enum1 -> Int -> IO ()\n"..
+	"writeEnum1 a idx = writeInt idx (writeEnum1F a)\n"..
 	"--",
 	"writeStruct1 :: Struct1 -> Int -> IO ()\n"..
 	"writeStruct1 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a18)) idx = do\n"..
@@ -1162,18 +1160,19 @@ function showTyperC()
 end
 function showTyperHs()
 	local result = ""
-	result = result.."module Type where\n"
+	result = result.."module Main where\n"
 	result = result.."--\n"
 	result = result.."import Face\n"
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
+	result = result.."import Numeric.Extra hiding (readInt)\n"
 	result = result.."--\n"
 	result = result..showTypeHs()
 	result = result.."mainF :: [String] -> IO ()\n"
 	result = result.."mainF [a,b,c] = do\n"
 	result = result..showIndent(1).."pipeInit a b\n"
 	result = result..showIndent(1).."d <- readStruct1 0\n"
-	result = result..showIndent(1).."writeStruct1 d\n"
+	result = result..showIndent(1).."writeStruct1 d 0\n"
 	result = result.."mainF _ = undefined\n"
 	result = result.."--\n"
 	result = result.."main :: IO ()\n"

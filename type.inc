@@ -620,18 +620,18 @@ function showEnumHs(name,enum)
 end
 function showCodeHs(name,enum)
 	local result = ""
-	result = result.."read"..name.."F :: Int -> "..name.."\n"
+	result = result.."read"..name.."F :: Int -> IO "..name.."\n"
 	for key,val in ipairs(enum) do
-		result = result.."read"..name.."F "..(key-1).." = "..val.."\n"
+		result = result.."read"..name.."F "..(key-1).." = return "..val.."\n"
 	end
 	result = result.."read"..name.." :: Int -> IO "..name.."\n"
 	result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
-	result = result.."write"..name.."F :: Int -> "..name.."\n"
+	result = result.."write"..name.."F :: "..name.." -> Int\n"
 	for key,val in ipairs(enum) do
 		result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
 	end
-	result = result.."write"..name.." :: Int -> "..name.." -> IO ()\n"
-	result = result.."write"..name.." idx a = writeInt idx (write"..name.."F a)\n"
+	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
+	result = result.."write"..name.." a idx = writeInt idx (write"..name.."F a)\n"
 	result = result.."--"
 	return result
 end
@@ -639,8 +639,15 @@ function showStructHsF(val)
 	local result = ""
 	local pre = ""
 	local post = ""
-	if ((type(val[4]) == "table") and (#val[4] > 0)) or
-		(type(val[4]) == "number") or (type(val[4]) == "string") then
+	if ((type(val[4]) == "table") and (#val[4] > 0)) then
+		local count = 1
+		while (count <= #val[4]) do
+			pre = pre.."["
+			post = post.."]"
+			count = count + 1
+		end
+	end
+	if (type(val[4]) == "number") or (type(val[4]) == "string") then
 		pre = "["
 		post = "]"
 	end
@@ -817,14 +824,13 @@ function showHelpHs()
 	result = result..showIndent(1).."d <- b\n"
 	result = result..showIndent(1).."e <- listHelp (a-1) b\n"
 	result = result..showIndent(1).."return (d:e)\n"
-	result = result.."assertHelp :: Int -> [a] -> (a -> IO ()) -> IO ()\n"
-	result = result.."assertHelp a [] _\n"
+	result = result.."assertHelp :: Int -> (a -> IO ()) -> [a] -> IO ()\n"
+	result = result.."assertHelp a _ []\n"
 	result = result..showIndent(1).."| a == 0 = return ()\n"
 	result = result..showIndent(1).."| otherwise = undefined\n"
-	result = result.."assertHelp a (b:c) f\n"
-	result = result..showIndent(1).."| a > 0 = (f b) >> (assertHelp (a-1) c f)\n"
+	result = result.."assertHelp a f (b:c)\n"
+	result = result..showIndent(1).."| a > 0 = (f b) >> (assertHelp (a-1) f c)\n"
 	result = result..showIndent(1).."| otherwise = undefined\n"
-	result = result.."assertHelp _ _ _ = undefined\n"
 	result = result.."floatHelp :: IO Double -> IO Float\n"
 	result = result.."floatHelp = fmap doubleToFloat\n"
 	result = result.."doubleHelp :: Float -> Double\n"
@@ -832,7 +838,7 @@ function showHelpHs()
 	result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
 	result = result.."condHelp True _ a = a\n"
 	result = result.."condHelp False a _ = return a\n"
-	result = result.."firstHelp :: a -> [a] -> IO a\n"
+	result = result.."firstHelp :: Eq a => a -> [a] -> IO a\n"
 	result = result.."firstHelp a [] = return a\n"
 	result = result.."firstHelp a (b:c)\n"
 	result = result..showIndent(1).."| a == b = firstHelp a c\n"
@@ -950,7 +956,7 @@ function showReadHsI(name,struct,node,depth)
 	while (tree[branch]) do
 		local temp = tree[branch]
 		local func = name.."A"..node[1].."X"..node[2].."B"..temp[1]
-		if (temp[3] ~= "field") then func = func.."X"..temp[2].." " end
+		if (temp[3] ~= "field") then func = func.."X"..temp[2] end
 		local arg = "a"..temp[1]
 		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
 		if (args ~= "") then args = args.."," end
@@ -958,12 +964,28 @@ function showReadHsI(name,struct,node,depth)
 		result = result..showIndent(depth)..arg.." <- condHelp "
 		result = result..showCondHs(struct,struct[temp[1]][3])
 		result = result.." "..none.." (do\n"
-		result = result..showReadHsF(name,struct,temp,depth+1)
-		result = result..showIndent(depth+1).."return ("..func.." "..arg.."))\n"
+		result = result..showReadHsJ(func,struct,temp,depth+1)
 		branch = branch + 1
 	end
 	result = result..showIndent(depth).."a"..node[1].."x"..node[2]
 	result = result.." <- firstHelp "..none.." ["..args.."]\n"
+	return result
+end
+function showReadHsJ(func,struct,node,depth)
+	local result = ""
+	local tree = node[4]
+	if (node[3] == "field") then tree = {node} end
+	local args = ""
+	local branch = 1
+	while (tree[branch]) do
+		local temp = tree[branch]
+		local arg = "a"..temp[1]
+		if (args ~= "") then args = args.." " end
+		args = args..arg
+		result = result..showReadHsG(struct,temp[1],depth)
+		branch = branch + 1
+	end
+	result = result..showIndent(depth).."return ("..func.." "..args.."))\n"
 	return result
 end
 function showReadHs(name,struct)
