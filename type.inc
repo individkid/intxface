@@ -737,47 +737,48 @@ function showStructHs(name,struct)
 	result = result.."--"
 	return result
 end
-function showAccessHsF(index,field,name,tree,blank)
+function showAccessHsF(index,field,name,tree)
 	local result = ""
 	local branch = 1
 	while (tree[branch]) do
 		local leaf = " a"..tree[branch][1]
 		local node = " a"..tree[branch][1].."x"..tree[branch][2]
-		local clip = ""
-		local trim = ""
-		if blank then
-			leaf = ""
-			node = ""
-			clip = "B"..tree[branch][1]
-			trim = "B"..tree[branch][1].."X"..tree[branch][2]
-		end
 		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
-			if blank then
-				result = result.." ("..name..blank..clip.." "..field..")"
-			else
-				result = result.." "..field
-			end
+			result = result.." "..field
 		end
 		if (tree[branch][3] == "field") and (tree[branch][1] ~= index) then
 			result = result..leaf
 		end
 		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			if blank then
-				result = result.." ("..name..blank
-			else
-				result = result.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
-			end
-			result = result..trim..showAccessHsF(index,field,name,tree[branch][4],nil)..")"
+			result = result.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
+			result = result..showAccessHsF(index,field,name,tree[branch][4])..")"
 		end
 		if (tree[branch][3] == "struct") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
 			result = result..node
 		end
 		if (tree[branch][3] == "union") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
 			local extend = "A"..tree[branch][1].."X"..tree[branch][2]
-			result = result..showAccessHsF(index,field,name,tree[branch][4],extend)
+			result = result..showAccessHsG(index,field,name,tree[branch][4],extend)
 		end
 		if (tree[branch][3] == "union") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
 			result = result..node
+		end
+		branch = branch + 1
+	end
+	return result
+end
+function showAccessHsG(index,field,name,tree,extend)
+	local result = ""
+	local branch = 1
+	while (tree[branch]) do
+		local clip = "B"..tree[branch][1]
+		local trim = "B"..tree[branch][1].."X"..tree[branch][2]
+		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
+			result = result.." ("..name..extend..clip.." "..field..")"
+		end
+		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
+			result = result.." ("..name..extend
+			result = result..trim..showAccessHsF(index,field,name,tree[branch][4],nil)..")"
 		end
 		branch = branch + 1
 	end
@@ -792,7 +793,7 @@ function showAccessHs(name,struct)
 		result = result.."get"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..showStructHsF(v).."\n"
 		result = result.."get"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"a",name,tree,nil)
+		result = result..showAccessHsF(k,"a",name,tree)
 		result = result..") = a\n"
 	end
 	result = result.."--\n"
@@ -800,9 +801,9 @@ function showAccessHs(name,struct)
 		result = result.."set"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..showStructHsF(v).." -> "..name.."\n"
 		result = result.."set"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"_",name,tree,nil)
+		result = result..showAccessHsF(k,"_",name,tree)
 		result = result..") a = ("..name
-		result = result..showAccessHsF(k,"a",name,tree,nil)
+		result = result..showAccessHsF(k,"a",name,tree)
 		result = result..")\n"
 	end
 	result = result.."--"
