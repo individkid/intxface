@@ -693,10 +693,6 @@ Expected = {
 	"    Enum1 -- field6\n"..
 	"    Enum2 -- field7\n"..
 	"    deriving (Eq)\n"..
-	"data Struct1A9X10 = Struct1A9X10\n"..
-	"    Int -- field8\n"..
-	"    Int -- field9\n"..
-	"    deriving (Eq)\n"..
 	"data Struct1A15X18 = Struct1A15X18\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
@@ -704,7 +700,9 @@ Expected = {
 	"    [Struct2] -- field17\n"..
 	"    deriving (Eq)\n"..
 	"data Struct1A9X11 =\n"..
-	"    Struct1A9X11B9X10 Struct1A9X10 |\n"..
+	"    Struct1A9X11B9X10\n"..
+	"        Int -- field8\n"..
+	"        Int | -- field9\n"..
 	"    Struct1A9X11B11 Int | -- field10\n"..
 	"    Struct1A9X11Bs deriving (Eq)\n"..
 	"data Struct1A12X14 =\n"..
@@ -736,9 +734,9 @@ Expected = {
 	"getStruct1Cfield7 :: Struct1 -> Enum2\n"..
 	"getStruct1Cfield7 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a) a9x11 a12x14 a15x18) = a\n"..
 	"getStruct1Cfield8 :: Struct1 -> Int\n"..
-	"getStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a a10)) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 a a10) a12x14 a15x18) = a\n"..
 	"getStruct1Cfield9 :: Struct1 -> Int\n"..
-	"getStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a9 a)) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 a9 a) a12x14 a15x18) = a\n"..
 	"getStruct1Cfield10 :: Struct1 -> Int\n"..
 	"getStruct1Cfield10 (Struct1 a1x8 (Struct1A9X11B11 a) a12x14 a15x18) = a\n"..
 	"getStruct1Cfield11 :: Struct1 -> Int\n"..
@@ -773,9 +771,9 @@ Expected = {
 	"setStruct1Cfield7 :: Struct1 -> Enum2 -> Struct1\n"..
 	"setStruct1Cfield7 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 _) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a) a9x11 a12x14 a15x18)\n"..
 	"setStruct1Cfield8 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 _ a10)) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a a10)) a12x14 a15x18)\n"..
+	"setStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 _ a10) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 a a10) a12x14 a15x18)\n"..
 	"setStruct1Cfield9 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a9 _)) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 (Struct1A9X10 a9 a)) a12x14 a15x18)\n"..
+	"setStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 a9 _) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 a9 a) a12x14 a15x18)\n"..
 	"setStruct1Cfield10 :: Struct1 -> Int -> Struct1\n"..
 	"setStruct1Cfield10 (Struct1 a1x8 (Struct1A9X11B11 _) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B11 a) a12x14 a15x18)\n"..
 	"setStruct1Cfield11 :: Struct1 -> Int -> Struct1\n"..
@@ -815,8 +813,8 @@ Expected = {
 	"condHelp True _ a = a\n"..
 	"condHelp False a _ = return a\n"..
 	"firstHelp :: a -> [a] -> IO a\n"..
-	"firstHelp :: a [] = return a\n"..
-	"firstHelp :: a (b:c)\n"..
+	"firstHelp a [] = return a\n"..
+	"firstHelp a (b:c)\n"..
 	"    | a == b = firstHelp a c\n"..
 	"    | otherwise = return b\n"..
 	"--",
@@ -835,22 +833,22 @@ Expected = {
 	"    a7 <- readEnum1 idx\n"..
 	"    a8 <- readEnum2 idx\n"..
 	"    a1x8 <- return (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8)\n"..
-	"    a9x10 <- condHelp (a7 == Value11) Struct1A9X11Bs do\n"..
+	"    a9x10 <- condHelp (a7 == Value11) Struct1A9X11Bs (do\n"..
 	"        a9 <- readInt idx\n"..
 	"        a10 <- readInt idx\n"..
 	"        a9x10 <- return (Struct1A9X10 a9 a10)\n"..
 	"        return (Struct1A9X11B9X10  a9x10))\n"..
-	"    a11 <- condHelp (a7 == Value12) Struct1A9X11Bs do\n"..
+	"    a11 <- condHelp (a7 == Value12) Struct1A9X11Bs (do\n"..
 	"        a11 <- readInt idx\n"..
 	"        return (Struct1A9X11B11 a11))\n"..
 	"    a9x11 <- firstHelp Struct1A9X11Bs [a9x10,a11]\n"..
-	"    a12 <- condHelp ((a7 == Value12) && (a8 == Value21)) Struct1A12X14Bs do\n"..
+	"    a12 <- condHelp ((a7 == Value12) && (a8 == Value21)) Struct1A12X14Bs (do\n"..
 	"        a12 <- readInt idx\n"..
 	"        return (Struct1A12X14B12 a12))\n"..
-	"    a13 <- condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) Struct1A12X14Bs do\n"..
+	"    a13 <- condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) Struct1A12X14Bs (do\n"..
 	"        a13 <- readInt idx\n"..
 	"        return (Struct1A12X14B13 a13))\n"..
-	"    a14 <- condHelp (a7 == Value13) Struct1A12X14Bs do\n"..
+	"    a14 <- condHelp (a7 == Value13) Struct1A12X14Bs (do\n"..
 	"        a14 <- readInt idx\n"..
 	"        return (Struct1A12X14B14 a14))\n"..
 	"    a12x14 <- firstHelp Struct1A12X14Bs [a12,a13,a14]\n"..
@@ -886,8 +884,7 @@ Expected = {
 	"    writeEnum2 a8 idx\n"..
 	"    condHelp (a7 == Value11) () ((\\(Struct1A9X11B9X10 a9 a10) -> do\n"..
 	"        writeInt a9 idx\n"..
-	"        writeInt a10 idx\n"..
-	"    ) a9x11)\n"..
+	"        writeInt a10 idx) a9x11)\n"..
 	"    condHelp (a7 == Value12) () ((\\(Struct1A9X11B11 a11) -> writeInt a11 idx) a9x11)\n"..
 	"    condHelp ((a7 == Value12) && (a8 == Value21)) () ((\\(Struct1A12X14B12 a12) -> writeInt a12 idx) a12x14)\n"..
 	"    condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) () ((\\(Struct1A12X14B13 a13) -> writeInt a13 idx) a12x14)\n"..

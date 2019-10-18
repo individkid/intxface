@@ -664,16 +664,18 @@ function showStructHs(name,struct)
 	local structs = 1
 	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
 		local result = ""
-		if (links == 1) then
+		if (links == 1 and splits == 0) then
 			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
 			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
-			structs = structs + 1
 		end
-		if (chains == 1) then
+		if (chains == 1 and splits == 0) then
 			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
-		if (links == -1) then
+		if (links == -1 and splits == 0) then
 			result = result..showIndent(1).."deriving (Eq)\n"
+		end
+		if (links == -1) then
+			structs = structs + 1
 		end
 		return result
 	end)
@@ -687,8 +689,13 @@ function showStructHs(name,struct)
 		if (splits == 1) then
 			if (links == 1) then
 				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
-				result = result.." "..name.."A"..chain[structs][1].."X"..chain[structs][2].." |\n"
+				result = result.."B"..chain[structs][1].."X"..chain[structs][2].."\n"
+			end
+			if (chains == 1) and (links ~= -1) then
+				result = result..showIndent(2)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+			end
+			if (chains == 1) and (links == -1) then
+				result = result..showIndent(2)..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
 			end
 			if (chains == 0) then
 				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
@@ -745,21 +752,29 @@ function showAccessHsF(index,field,name,tree,blank)
 			trim = "B"..tree[branch][1].."X"..tree[branch][2]
 		end
 		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
-			result = result..clip.." "..field
+			if blank then
+				result = result.." ("..name..blank..clip.." "..field..")"
+			else
+				result = result.." "..field
+			end
 		end
 		if (tree[branch][3] == "field") and (tree[branch][1] ~= index) then
 			result = result..leaf
 		end
 		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
-			result = result..showAccessHsF(index,field,name,tree[branch][4],false)..")"
+			if blank then
+				result = result.." ("..name..blank
+			else
+				result = result.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
+			end
+			result = result..trim..showAccessHsF(index,field,name,tree[branch][4],nil)..")"
 		end
 		if (tree[branch][3] == "struct") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
 			result = result..node
 		end
 		if (tree[branch][3] == "union") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			result = result..trim.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
-			result = result..showAccessHsF(index,field,name,tree[branch][4],true)..")"
+			local extend = "A"..tree[branch][1].."X"..tree[branch][2]
+			result = result..showAccessHsF(index,field,name,tree[branch][4],extend)
 		end
 		if (tree[branch][3] == "union") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
 			result = result..node
@@ -777,7 +792,7 @@ function showAccessHs(name,struct)
 		result = result.."get"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..showStructHsF(v).."\n"
 		result = result.."get"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"a",name,tree,false)
+		result = result..showAccessHsF(k,"a",name,tree,nil)
 		result = result..") = a\n"
 	end
 	result = result.."--\n"
@@ -785,9 +800,9 @@ function showAccessHs(name,struct)
 		result = result.."set"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..showStructHsF(v).." -> "..name.."\n"
 		result = result.."set"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"_",name,tree,false)
+		result = result..showAccessHsF(k,"_",name,tree,nil)
 		result = result..") a = ("..name
-		result = result..showAccessHsF(k,"a",name,tree,false)
+		result = result..showAccessHsF(k,"a",name,tree,nil)
 		result = result..")\n"
 	end
 	result = result.."--"
@@ -817,8 +832,8 @@ function showHelpHs()
 	result = result.."condHelp True _ a = a\n"
 	result = result.."condHelp False a _ = return a\n"
 	result = result.."firstHelp :: a -> [a] -> IO a\n"
-	result = result.."firstHelp :: a [] = return a\n"
-	result = result.."firstHelp :: a (b:c)\n"
+	result = result.."firstHelp a [] = return a\n"
+	result = result.."firstHelp a (b:c)\n"
 	result = result..showIndent(1).."| a == b = firstHelp a c\n"
 	result = result..showIndent(1).."| otherwise = return b\n"
 	result = result.."--"
@@ -941,7 +956,7 @@ function showReadHsI(name,struct,node,depth)
 		args = args..arg
 		result = result..showIndent(depth)..arg.." <- condHelp "
 		result = result..showCondHs(struct,struct[temp[1]][3])
-		result = result.." "..none.." do\n"
+		result = result.." "..none.." (do\n"
 		result = result..showReadHsF(name,struct,temp,depth+1)
 		result = result..showIndent(depth+1).."return ("..func.." "..arg.."))\n"
 		branch = branch + 1
@@ -989,7 +1004,6 @@ function showWriteHsG(name,struct,tree,depth)
 		if (node[3] == "field") then
 			result = result..showIndent(depth)
 			result = result..showWriteHsH(struct,node[1])
-			result = result.."\n"
 		end
 		if (node[3] == "struct") then
 			result = result..showWriteHsG(name,struct,node[4],depth)
@@ -998,6 +1012,9 @@ function showWriteHsG(name,struct,tree,depth)
 			result = result..showWriteHsI(name,struct,node,depth)
 		end
 		branch = branch + 1
+		if (tree[branch]) then
+			result = result.."\n"
+		end
 	end
 	return result
 end
@@ -1070,10 +1087,12 @@ function showWriteHsI(name,struct,given,depth)
 			result = result..showWriteHsF(name,struct,node[4])
 			result = result..") -> do\n"
 			result = result..showWriteHsG(name,struct,node[4],depth+1)
-			result = result..showIndent(depth)
 		end
-		result = result..") a"..given[1].."x"..given[2]..")\n"
+		result = result..") a"..given[1].."x"..given[2]..")"
 		branch = branch + 1
+		if (tree[branch]) then
+			result = result.."\n"
+		end
 	end
 	return result
 end
@@ -1086,7 +1105,7 @@ function showWriteHs(name,struct)
 	result = result.."write"..name.." ("..name
 	result = result..showWriteHsF(name,struct,tree)
 	result = result..") idx = do\n"
-	result = result..showWriteHsG(name,struct,tree,1)
+	result = result..showWriteHsG(name,struct,tree,1).."\n"
 	result = result.."--"
 	return result
 end
