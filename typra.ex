@@ -804,10 +804,6 @@ Expected = {
 	"assertHelp a f (b:c)\n"..
 	"    | a > 0 = (f b) >> (assertHelp (a-1) f c)\n"..
 	"    | otherwise = undefined\n"..
-	"floatHelp :: IO Double -> IO Float\n"..
-	"floatHelp = fmap doubleToFloat\n"..
-	"doubleHelp :: Float -> Double\n"..
-	"doubleHelp = floatToDouble\n"..
 	"condHelp :: Bool -> a -> IO a -> IO a\n"..
 	"condHelp True _ a = a\n"..
 	"condHelp False a _ = return a\n"..
@@ -824,7 +820,7 @@ Expected = {
 	"readStruct1 :: Int -> IO Struct1\n"..
 	"readStruct1 idx = do\n"..
 	"    a1 <- listHelp 0 (readStruct1 idx)\n"..
-	"    a2 <- listHelp 2 (floatHelp (readNum idx))\n"..
+	"    a2 <- listHelp 2 (readOld idx)\n"..
 	"    a3 <- listHelp 3 (readNum idx)\n"..
 	"    a4 <- listHelp 2 (listHelp 2 (readInt idx))\n"..
 	"    a5 <- readStr idx\n"..
@@ -873,7 +869,7 @@ Expected = {
 	"writeStruct1 :: Struct1 -> Int -> IO ()\n"..
 	"writeStruct1 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a18)) idx = do\n"..
 	"    assertHelp 0 (\\x -> writeStruct1 x idx) a1\n"..
-	"    assertHelp 2 (\\x -> writeNum (doubleHelp x) idx) a2\n"..
+	"    assertHelp 2 (\\x -> writeOld x idx) a2\n"..
 	"    assertHelp 3 (\\x -> writeNum x idx) a3\n"..
 	"    assertHelp 2 (assertHelp 2 (\\x -> writeInt x idx)) a4\n"..
 	"    writeStr a5 idx\n"..
@@ -1165,7 +1161,6 @@ function showTyperHs()
 	result = result.."import Face\n"
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
-	result = result.."import Numeric.Extra hiding (readInt)\n"
 	result = result.."--\n"
 	result = result..showTypeHs()
 	result = result.."mainF :: [String] -> IO ()\n"

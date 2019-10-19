@@ -831,10 +831,6 @@ function showHelpHs()
 	result = result.."assertHelp a f (b:c)\n"
 	result = result..showIndent(1).."| a > 0 = (f b) >> (assertHelp (a-1) f c)\n"
 	result = result..showIndent(1).."| otherwise = undefined\n"
-	result = result.."floatHelp :: IO Double -> IO Float\n"
-	result = result.."floatHelp = fmap doubleToFloat\n"
-	result = result.."doubleHelp :: Float -> Double\n"
-	result = result.."doubleHelp = floatToDouble\n"
 	result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
 	result = result.."condHelp True _ a = a\n"
 	result = result.."condHelp False a _ = return a\n"
@@ -915,7 +911,7 @@ function showReadHsG(struct,index,depth)
 		count = count + 1
 	end
 	if (field[2] == "int") then result = result.."readInt idx"
-	elseif (field[2] == "float") then result = result.."floatHelp (readNum idx)"
+	elseif (field[2] == "float") then result = result.."readOld idx"
 	elseif (field[2] == "double") then result = result.."readNum idx"
 	elseif (field[2] == "char*") then result = result.."readStr idx"
 	else result = result.."read"..field[2].." idx" end
@@ -1069,16 +1065,16 @@ function showWriteHsH(struct,index)
 		result = result.."\\x -> "
 	end
 	if (field[2] == "int") then result = result.."writeInt"
-	elseif (field[2] == "float") then result = result.."writeNum"
+	elseif (field[2] == "float") then result = result.."writeOld"
 	elseif (field[2] == "double") then result = result.."writeNum"
 	elseif (field[2] == "char*") then result = result.."writeStr"
 	else result = result.."write"..field[2] end
 	if anon and (field[2] == "float") then
-		result = result.." (doubleHelp x) idx"
+		result = result.." x idx"
 	elseif anon and (field[2] ~= "float") then
 		result = result.." x idx"
 	elseif not anon and (field[2] == "float") then
-		result = result.." (doubleHelp a"..index..") idx"
+		result = result.." a"..index.." idx"
 	elseif not anon and (field[2] ~= "float") then
 		result = result.." a"..index.." idx"
 	end

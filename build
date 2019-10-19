@@ -8,5 +8,5 @@ ghc -o b.out facer.hs Face.hs faceHs.o -llua
 ./facer.lua
 ./typra.ex
 clang -o a.out typer.c face.c -I /usr/local/include/lua -llua
-ghc -o b.out typer.hs Face.hs faceHs.o
+ghc -o b.out typer.hs Face.hs faceHs.o -llua
 rm *.out *.o *.so *.hi *.txt typer.*
