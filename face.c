@@ -228,7 +228,7 @@ void writeNum(double arg, int idx)
 }
 int writeNumLua(lua_State *lua)
 {
-	writeNum(lua_tonumber(lua,1),lua_tointeger(lua,2));
+	writeNum((double)lua_tonumber(lua,1),lua_tointeger(lua,2));
 	return 0;
 }
 void writeNew(long long arg, int idx)

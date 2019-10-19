@@ -54,23 +54,25 @@ while (index < 3) do
 	sub = index+1
 	if (done[sub] == 0) then
 		value = readInt(index)
-		if value ~= expectInt[sub] then print(string.format("mismatch %d %d",value,index)); os.exit() end
+		if value ~= expectInt[sub] then print(string.format("mismatch %d %d %d %d",value,expectInt[sub],index,done[sub])); os.exit() end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 1) then
 		value = readNum(index)
-		if value ~= expectNum[sub] then print(string.format("mismatch %f %d",value,index)); os.exit() end
+		if value ~= expectNum[sub] then print(string.format("mismatch %f %f %d %d",value,expectNum[sub],index,done[sub])); os.exit() end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 2) then
 		value = readStr(index)
-		if value ~= expectStr[sub] then print(string.format("mismatch %s %d",value,index)); os.exit() end
+		if value ~= expectStr[sub] then print(string.format("mismatch %s %s %d %d",value,expectStr[sub],index,done[sub])); os.exit() end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 3) then
 		value = readNew(index)
-		if value ~= expectNew[sub] then print(string.format("mismatch %d %d",value,index)); os.exit() end
+		if value ~= expectNew[sub] then print(string.format("mismatch %d %d %d %d",value,expectNew[sub],index,done[sub])); os.exit() end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 4) then
 		value = readOld(index)
-		if value ~= expectOld[sub] then print(string.format("mismatch %f %d",value,index)); os.exit() end
+		diff = value-expectOld[sub]
+		if diff < 0.0 then diff = -diff end
+		if diff > 0.0001 then print(string.format("mismatch %f %f %d %d",value,expectOld[sub],index,done[sub])); os.exit() end
 		done[sub] = done[sub] + 1
 	else
 		readInt(index)

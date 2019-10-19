@@ -22,8 +22,8 @@ dofile("type.inc")
 --HERE Enums
 --HERE Structs
 --HERE
-Enums = listHere("Enums")
-Structs = listHere("Structs")
+Enums,Enumz = listHere("Enums")
+Structs,Structz = listHere("Structs")
 file = io.open("type.h", "w")
 file:write(showTypeH().."\n")
 file:close()

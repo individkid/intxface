@@ -59,6 +59,13 @@ writeMain (MainC a) b = writeStr a b
 writeMain (MainD a) b = writeNew a b
 writeMain (MainE a) b = writeOld a b
 
+showMain :: MainABC -> String
+showMain (MainA a) = "int"
+showMain (MainB a) = "num"
+showMain (MainC a) = "str"
+showMain (MainD a) = "new"
+showMain (MainE a) = "old"
+
 main :: IO ()
 main = getArgs >>= mainF
 

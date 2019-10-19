@@ -242,7 +242,7 @@ Expected = {
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        readStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {double temp = readNum(idx); ptr->field1[i1] = temp;}\n"..
+	"        ptr->field1[i1] = readOld(idx);\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        ptr->field2[i1] = readNum(idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -281,7 +281,7 @@ Expected = {
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        writeStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {double temp = ptr->field1[i1]; writeNum(temp,idx);}\n"..
+	"        writeOld(ptr->field1[i1],idx);\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        writeNum(ptr->field2[i1],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -318,7 +318,7 @@ Expected = {
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        randStruct1(&ptr->next[i]);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        ptr->field1[i1] = 0.1;\n"..
+	"        ptr->field1[i1] = 0.2;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        ptr->field2[i1] = 1.1;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -457,8 +457,9 @@ Expected = {
 	"    };\n"..
 	"};\n"..
 	"void allocInt(int **ptr, int siz);\n"..
-	"void allocDouble(double **ptr, int siz);\n"..
-	"void allocFloat(float **ptr, int siz);\n"..
+	"void allocNew(long long **ptr, int siz);\n"..
+	"void allocNum(double **ptr, int siz);\n"..
+	"void allocOld(float **ptr, int siz);\n"..
 	"void allocStr(char **ptr, const char *str);\n"..
 	"void allocStruct2(struct Struct2 **ptr, int siz);\n"..
 	"void allocStruct1(struct Struct1 **ptr, int siz);\n"..
@@ -470,18 +471,19 @@ Expected = {
 	"void randStruct1(struct Struct1 *ptr);\n"..
 	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp);\n"..
 	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp);",
-	("#include <stdlib.h>\n"..
-	"#include <string.h>\n"..
-	"#include \"face.h\"\n"..
-	"void allocInt(int **ptr, int siz)\n"..
+	("void allocInt(int **ptr, int siz)\n"..
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
 	"}\n"..
-	"void allocDouble(double **ptr, int siz)\n"..
+	"void allocNew(long long **ptr, int siz)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(long long));\n"..
+	"}\n"..
+	"void allocNum(double **ptr, int siz)\n"..
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(double));\n"..
 	"}\n"..
-	"void allocFloat(float **ptr, int siz)\n"..
+	"void allocOld(float **ptr, int siz)\n"..
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(float));\n"..
 	"}\n"..
@@ -514,7 +516,7 @@ Expected = {
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        readStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {double temp = readNum(idx); ptr->field1[i1] = temp;}\n"..
+	"        ptr->field1[i1] = readOld(idx);\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        ptr->field2[i1] = readNum(idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -558,7 +560,7 @@ Expected = {
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        writeStruct1(&ptr->next[i],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {double temp = ptr->field1[i1]; writeNum(temp,idx);}\n"..
+	"        writeOld(ptr->field1[i1],idx);\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        writeNum(ptr->field2[i1],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -600,7 +602,7 @@ Expected = {
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        randStruct1(&ptr->next[i]);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        ptr->field1[i1] = 2.1;\n"..
+	"        ptr->field1[i1] = 0.2;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        ptr->field2[i1] = 3.1;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
@@ -913,7 +915,7 @@ Expected = {
 	"    tab[\"field1\"] = {}\n"..
 	"    local i1 = 1\n"..
 	"    while (i1 <= 2) do\n"..
-	"        tab[\"field1\"][i1] = readNum(idx)\n"..
+	"        tab[\"field1\"][i1] = readOld(idx)\n"..
 	"        i1 = i1 + 1\n"..
 	"    end\n"..
 	"    tab[\"field2\"] = {}\n"..
@@ -989,7 +991,7 @@ Expected = {
 	"    end\n"..
 	"    local i1 = 1\n"..
 	"    while (i1 <= 2) do\n"..
-	"        writeNum(tab[\"field1\"][i1],idx)\n"..
+	"        writeOld(tab[\"field1\"][i1],idx)\n"..
 	"        i1 = i1 + 1\n"..
 	"    end\n"..
 	"    local i1 = 1\n"..
@@ -1122,6 +1124,9 @@ function showTyperC()
 	local result = ""
 	result = result.."#include \"typer.h\"\n"
 	result = result.."#include <stdio.h>\n"
+	result = result.."#include <stdlib.h>\n"
+	result = result.."#include <string.h>\n"
+	result = result.."#include \"face.h\"\n"
 	result = result..showTypeC().."\n"
 	result = result..
 	"int main(int argc, char **argv)\n"..
