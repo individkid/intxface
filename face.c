@@ -149,7 +149,7 @@ int readInt(int idx)
 }
 int readIntLua(lua_State *lua)
 {
-	lua_pushinteger(lua,readInt(lua_tointeger(lua,1)));
+	lua_pushnumber(lua,readInt(lua_tointeger(lua,1)));
 	return 1;
 }
 double readNum(int idx)
@@ -164,6 +164,34 @@ double readNum(int idx)
 int readNumLua(lua_State *lua)
 {
 	lua_pushnumber(lua,readNum(lua_tointeger(lua,1)));
+	return 1;
+}
+long long readNew(int idx)
+{
+	long long arg;
+	if (inp[idx] < 0) {arg = 0; return arg;}
+	int val = read(inp[idx],(char *)&arg,sizeof(long long));
+	if (val != 0 && val < (int)sizeof(long long)) ERROR
+	if (val == 0) {arg = 0; inp[idx] = -1;}
+	return arg;
+}
+int readNewLua(lua_State *lua)
+{
+	lua_pushnumber(lua,readNew(lua_tointeger(lua,1)));
+	return 1;
+}
+float readOld(int idx)
+{
+	float arg;
+	if (inp[idx] < 0) {arg = 0.0; return arg;}
+	int val = read(inp[idx],(char *)&arg,sizeof(float));
+	if (val != 0 && val < (int)sizeof(float)) ERROR
+	if (val == 0) {arg = 0.0; inp[idx] = -1;}
+	return arg;
+}
+int readOldLua(lua_State *lua)
+{
+	lua_pushnumber(lua,readOld(lua_tointeger(lua,1)));
 	return 1;
 }
 void writeStr(const char *arg, int idx)
@@ -188,7 +216,7 @@ void writeInt(int arg, int idx)
 }
 int writeIntLua(lua_State *lua)
 {
-	writeInt(lua_tointeger(lua,1),lua_tointeger(lua,2));
+	writeInt((int)lua_tonumber(lua,1),lua_tointeger(lua,2));
 	return 0;
 }
 void writeNum(double arg, int idx)
@@ -201,6 +229,30 @@ void writeNum(double arg, int idx)
 int writeNumLua(lua_State *lua)
 {
 	writeNum(lua_tonumber(lua,1),lua_tointeger(lua,2));
+	return 0;
+}
+void writeNew(long long arg, int idx)
+{
+	if (out[idx] < 0) return;
+	int val = write(out[idx],(char *)&arg,sizeof(long long));
+	if (val < 0 && errno == EPIPE) out[idx] = -1;
+	else if (val < (int)sizeof(long long)) ERROR
+}
+int writeNewLua(lua_State *lua)
+{
+	writeNew((long long)lua_tonumber(lua,1),lua_tointeger(lua,2));
+	return 0;
+}
+void writeOld(float arg, int idx)
+{
+	if (out[idx] < 0) return;
+	int val = write(out[idx],(char *)&arg,sizeof(float));
+	if (val < 0 && errno == EPIPE) out[idx] = -1;
+	else if (val < (int)sizeof(float)) ERROR
+}
+int writeOldLua(lua_State *lua)
+{
+	writeOld((float)lua_tonumber(lua,1),lua_tointeger(lua,2));
 	return 0;
 }
 int luaopen_face (lua_State *L)
@@ -223,11 +275,19 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "readInt");
 	lua_pushcfunction(L, readNumLua);
 	lua_setglobal(L, "readNum");
+	lua_pushcfunction(L, readNewLua);
+	lua_setglobal(L, "readNew");
+	lua_pushcfunction(L, readOldLua);
+	lua_setglobal(L, "readOld");
 	lua_pushcfunction(L, writeStrLua);
 	lua_setglobal(L, "writeStr");
 	lua_pushcfunction(L, writeIntLua);
 	lua_setglobal(L, "writeInt");
 	lua_pushcfunction(L, writeNumLua);
 	lua_setglobal(L, "writeNum");
+	lua_pushcfunction(L, writeNewLua);
+	lua_setglobal(L, "writeNew");
+	lua_pushcfunction(L, writeOldLua);
+	lua_setglobal(L, "writeOld");
 	return 0;
 }

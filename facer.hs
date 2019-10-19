@@ -23,13 +23,13 @@ import Face
 import System.Environment
 import System.Exit
 
-data MainABC = MainA Int | MainB Double | MainC String deriving (Show,Eq)
+data MainABC = MainA Int | MainB Double | MainC String | MainD Integer | MainE Float deriving (Show,Eq)
 mainA :: [String]
 mainA = ["a.out","b.out","facer.lua"]
 mainB :: [[MainABC]]
-mainB = [[MainA 0, MainB 0.1, MainC "zero"],
-         [MainA 1, MainB 1.1, MainC "one"],
-         [MainA 2, MainB 2.1, MainC "two"]]
+mainB = [[MainA 0, MainB 0.1, MainC "zero", MainD 10, MainE 0.2],
+         [MainA 1, MainB 1.1, MainC "one", MainD 11, MainE 1.2],
+         [MainA 2, MainB 2.1, MainC "two", MainD 12, MainE 2.2]]
 mainC :: [[MainABC]]
 mainC = map mainCF mainB
 mainD :: Int
@@ -42,16 +42,22 @@ mainCG :: MainABC -> MainABC
 mainCG (MainA a) = MainA (negate 1)
 mainCG (MainB a) = MainB 0.0
 mainCG (MainC a) = MainC ""
+mainCG (MainD a) = MainD (negate 1)
+mainCG (MainE a) = MainE 0.0
 
 readMain :: MainABC -> Int -> IO MainABC
 readMain (MainA _) a = fmap MainA (readInt a)
 readMain (MainB _) a = fmap MainB (readNum a)
 readMain (MainC _) a = fmap MainC (readStr a)
+readMain (MainD _) a = fmap MainD (readNew a)
+readMain (MainE _) a = fmap MainE (readOld a)
 
 writeMain :: MainABC -> Int -> IO ()
 writeMain (MainA a) b = writeInt a b
 writeMain (MainB a) b = writeNum a b
 writeMain (MainC a) b = writeStr a b
+writeMain (MainD a) b = writeNew a b
+writeMain (MainE a) b = writeOld a b
 
 main :: IO ()
 main = getArgs >>= mainF

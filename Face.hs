@@ -32,10 +32,14 @@ foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
 foreign import ccall "readStr" readStrC :: CInt -> IO CString
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
+foreign import ccall "readNew" readNewC :: CInt -> IO CLLong
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
+foreign import ccall "readOld" readOldC :: CInt -> IO CFloat
 foreign import ccall "writeStr" writeStrC :: CString -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
+foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
+foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
 
 forkExec :: String -> IO ()
 forkExec a = (newCString a) >>= forkExecC
@@ -53,11 +57,19 @@ readStr :: Int -> IO String
 readStr a = (readStrC (fromIntegral a)) >>= peekCString
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
+readNew :: Int -> IO Integer
+readNew a = fmap toInteger (readNewC (fromIntegral a))
 readNum :: Int -> IO Double
 readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
+readOld :: Int -> IO Float
+readOld a = (readOldC (fromIntegral a)) >>= (\(CFloat x) -> return x)
 writeStr :: String -> Int -> IO ()
 writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral b))
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
+writeNew :: Integer -> Int -> IO ()
+writeNew a b = writeNewC (fromInteger a) (fromIntegral b)
 writeNum :: Double -> Int -> IO ()
 writeNum a b = writeNumC (CDouble a) (fromIntegral b)
+writeOld :: Float -> Int -> IO ()
+writeOld a b = writeOldC (CFloat a) (fromIntegral b)

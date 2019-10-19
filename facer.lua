@@ -26,6 +26,10 @@ num = readNum(0)
 writeNum(num,0)
 str = readStr(0)
 writeStr(str,0)
+new = readNew(0)
+writeNew(new,0)
+old = readOld(0)
+writeOld(old,0)
 else
 forkExec("a.out")
 forkExec("b.out")
@@ -34,11 +38,15 @@ sleepSec(1)
 expectInt = {0,1,2}
 expectNum = {0.1,1.1,2.1}
 expectStr = {"zero","one","two"}
+expectNew = {10,11,12}
+expectOld = {0.2,1.2,2.2}
 for index=0,2,1 do
 	sub = index+1
 	writeInt(expectInt[sub],index)
 	writeNum(expectNum[sub],index)
 	writeStr(expectStr[sub],index)
+	writeNew(expectNew[sub],index)
+	writeOld(expectOld[sub],index)
 end
 done = {0,0,0}
 index = waitAny()
@@ -55,6 +63,14 @@ while (index < 3) do
 	elseif (done[sub] == 2) then
 		value = readStr(index)
 		if value ~= expectStr[sub] then print(string.format("mismatch %s %d",value,index)); os.exit() end
+		done[sub] = done[sub] + 1
+	elseif (done[sub] == 3) then
+		value = readNew(index)
+		if value ~= expectNew[sub] then print(string.format("mismatch %d %d",value,index)); os.exit() end
+		done[sub] = done[sub] + 1
+	elseif (done[sub] == 4) then
+		value = readOld(index)
+		if value ~= expectOld[sub] then print(string.format("mismatch %f %d",value,index)); os.exit() end
 		done[sub] = done[sub] + 1
 	else
 		readInt(index)

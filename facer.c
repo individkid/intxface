@@ -29,6 +29,10 @@ int main(int argc, char **argv)
 	writeNum(num,0);
 	const char *str = readStr(0);
 	writeStr(str,0);
+	long long nnm = readNew(0);
+	writeNew(nnm,0);
+	float old = readOld(0);
+	writeOld(old,0);
 	return 0;}
 	forkExec("a.out");
 	forkExec("b.out");
@@ -37,10 +41,14 @@ int main(int argc, char **argv)
 	int expectInt[] = {0,1,2};
 	double expectNum[] = {0.1,1.1,2.1};
 	const char *expectStr[] = {"zero","one","two"};
+	long long expectNew[] = {10,11,12};
+	float expectOld[] = {0.2,1.2,2.2};
 	for (int index = 0; index < 3; index++) {
 		writeInt(expectInt[index],index);
 		writeNum(expectNum[index],index);
-		writeStr(expectStr[index],index);}
+		writeStr(expectStr[index],index);
+		writeNew(expectNew[index],index);
+		writeOld(expectOld[index],index);}
 	int done[3] = {0};
 	for (int index = waitAny(); index < 3; index = waitAny()) switch (done[index]) {
 	case (0): {
@@ -54,6 +62,14 @@ int main(int argc, char **argv)
 	case (2): {
 		const char *value = readStr(index);
 		if (strcmp(value,expectStr[index]) != 0) {printf("mismatch %s %d\n",value,index); return -1;}
+		done[index]++; break;}
+	case (3): {
+		long long value = readNew(index);
+		if (value != expectNew[index]) {printf("mismatch %lld %d\n",value,index); return -1;}
+		done[index]++; break;}
+	case (4): {
+		float value = readOld(index);
+		if (value != expectOld[index]) {printf("mismatch %f %d\n",value,index); return -1;}
 		done[index]++; break;}
 	default: {
 		readInt(index); writeInt(-1,index);
