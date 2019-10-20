@@ -1218,11 +1218,19 @@ function showReadLua(name,struct)
 		end
 		local sub = ""
 		if (type(field[4]) == "table") then
-			if (#field[4] > 0) then
-				result = result..showIndent(count+1).."tab[\""..field[1].."\"] = {}\n"
-			end
-			while (count < #field[4]) do
+			local squares = 1
+			local square = 1
+			local limit = count + #field[4]
+			while (count < limit) do
 				count = count + 1
+				result = result..showIndent(count).."tab[\""..field[1].."\"]"
+				local index = square
+				while (index < squares) do
+					result = result.."[i"..index.."]"
+					index = index + 1
+				end
+				squares = squares + 1
+				result = result.." = {}\n"
 				result = result..showIndent(count).."local i"..count.." = 1\n"
 				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
 				sub = sub.."[i"..count.."]"
@@ -1236,7 +1244,7 @@ function showReadLua(name,struct)
 			count = count + 1
 			result = result..showIndent(count).."tab[\""..field[1].."\"] = {}\n"
 			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= "..found..") do\n"
+			result = result..showIndent(count).."while (i"..count.." <= tab[\""..field[4].."\"]) do\n"
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then
@@ -1297,7 +1305,7 @@ function showWriteLua(name,struct)
 			end
 			count = count + 1
 			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= "..found..") do\n"
+			result = result..showIndent(count).."while (i"..count.." <= tab[\""..field[4].."\"]) do\n"
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then

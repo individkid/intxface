@@ -929,6 +929,7 @@ Expected = {
 	"    tab[\"field3\"] = {}\n"..
 	"    local i1 = 1\n"..
 	"    while (i1 <= 2) do\n"..
+	"        tab[\"field3\"][i1] = {}\n"..
 	"        local i2 = 1\n"..
 	"        while (i2 <= 2) do\n"..
 	"            tab[\"field3\"][i1][i2] = readInt(idx)\n"..
@@ -966,7 +967,7 @@ Expected = {
 	"    tab[\"field14\"] = readInt(idx)\n"..
 	"    tab[\"field15\"] = {}\n"..
 	"    local i1 = 1\n"..
-	"    while (i1 <= a15) do\n"..
+	"    while (i1 <= tab[\"field14\"]) do\n"..
 	"        tab[\"field15\"][i1] = readInt(idx)\n"..
 	"        i1 = i1 + 1\n"..
 	"    end\n"..
@@ -1038,7 +1039,7 @@ Expected = {
 	"    end\n"..
 	"    writeInt(tab[\"field14\"],idx)\n"..
 	"    local i1 = 1\n"..
-	"    while (i1 <= a15) do\n"..
+	"    while (i1 <= tab[\"field14\"]) do\n"..
 	"        writeInt(tab[\"field15\"][i1],idx)\n"..
 	"        i1 = i1 + 1\n"..
 	"    end\n"..

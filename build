@@ -1,3 +1,4 @@
+./clean
 clang -c face.c -I /usr/local/include/lua
 clang -fPIC -shared -o face.so face.o -llua
 clang -o a.out facer.c Face.o -I /usr/local/include/lua -llua
@@ -10,7 +11,6 @@ ghc -o b.out facer.hs Face.hs faceHs.o -llua
 clang -o a.out typer.c face.c -I /usr/local/include/lua -llua
 ghc -o b.out typer.hs Face.hs faceHs.o -llua
 chmod +x typer.lua
-# ./a.out
+./a.out
 ./type.ex
-rm type.h type.c Type.hs type.lua typer.*
-rm *.out *.o *.so *.hi *.txt
+echo "build done"
