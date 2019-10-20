@@ -24,14 +24,13 @@ Asynchronous appends to double dash files wake up the file process
 to change the state of other processes.
 
 face.c face.h facer.lua facer.hs facer.c test fork exec read write processes.
-This has poll* read* write* *Int *Num
-*String *Ints *Nums forkExec for each language.
+This has fork/exec/block read*/write* *Int/*Num
+*Str/*New/*Old for int/double/char*/longlong/float to/from processes in each language.
 
-type.sh generates type.lua type.h type.c Type.hs typer.lua typer.c typer.hs.
-This has poll* read* write* for each struct in each language,
-and name* for each enum value.
+type.ex generates type.h type.c Type.hs type.lua typer.h typer.c typer.hs typer.lua.
+This has declarations and read*/write* for each struct/enum in each language.
 
-file.c file.h filer.lua filra.c test read write monitor append files.
+file.h file.c filer.lua filra.c filer.c test read write monitor append files.
 Main pselects on interface pipe, waiting for commands.
 Open file command opens the helper named pipe for writing,
 creates a pthread with unnamed pipe, and opens given file.
@@ -83,3 +82,8 @@ inserts user manipulations and activations,
 writes the result to a new double dash file,
 while sound follows and alters polytope appearance metric configuration.
 
+ball.lua banks the focal point off of framebuffer decorated portions of planes.
+This starts a shader that detects when any of a swarm of detector points,
+surroundin the focal point, crosses a plane,
+triggering a script to change to motion of the focal point,
+while mouse and roller change velocity and speed of the focal point.
