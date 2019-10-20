@@ -400,8 +400,11 @@ Expected = {
 	"}",
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
 	"{\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
 	"    for (int i = 0; i < siz; i++) {\n"..
+	"        (*ptr)[i].next = 0;\n"..
 	"        (*ptr)[i].field5 = 0;\n"..
 	"        (*ptr)[i].field15 = 0;\n"..
 	"        (*ptr)[i].field16 = 0;}\n"..
@@ -494,13 +497,18 @@ Expected = {
 	"}\n"..
 	"void allocStruct2(struct Struct2 **ptr, int siz)\n"..
 	"{\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct2));\n"..
 	"    for (int i = 0; i < siz; i++) {}\n"..
 	"}\n"..
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
 	"{\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
 	"    for (int i = 0; i < siz; i++) {\n"..
+	"        (*ptr)[i].next = 0;\n"..
 	"        (*ptr)[i].field5 = 0;\n"..
 	"        (*ptr)[i].field15 = 0;\n"..
 	"        (*ptr)[i].field16 = 0;}\n"..
@@ -1135,22 +1143,15 @@ function showTyperC()
 	"int main(int argc, char **argv)\n"..
 	"{\n"..
 	showIndent(1).."if (argc == 4) {\n"..
-    showIndent(1).."printf(\"c calling init\\n\");\n"..
 	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
-    showIndent(1).."printf(\"c init done; calling read\\n\");\n"..
 	showIndent(1).."struct Struct1 *ptr;\n"..
 	showIndent(1).."allocStruct1(&ptr,1);\n"..
 	showIndent(1).."readStruct1(ptr,0);\n"..
-    showIndent(1).."printf(\"c read done; calling write\\n\");\n"..
 	showIndent(1).."writeStruct1(ptr,0);\n"..
-    showIndent(1).."printf(\"c write done\\n\");\n"..
 	showIndent(1).."return 0;}\n"
 	result = result..
-    showIndent(1).."printf(\"hub calling a.out\\n\");\n"..
 	showIndent(1).."forkExec(\"a.out\");\n"..
-    showIndent(1).."printf(\"hub calling b.out\\n\");\n"..
 	showIndent(1).."forkExec(\"b.out\");\n"..
-    showIndent(1).."printf(\"hub calling typer.lua\\n\");\n"..
 	showIndent(1).."forkExec(\"typer.lua\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
@@ -1180,13 +1181,9 @@ function showTyperHs()
 	result = result..showTypeHs()
 	result = result.."mainF :: [String] -> IO ()\n"
 	result = result.."mainF [a,b,c] = do\n"
-    result = result..showIndent(1).."putStrLn \"hs calling init\"\n"
 	result = result..showIndent(1).."pipeInit a b\n"
-    result = result..showIndent(1).."putStrLn \"hs init done; calling read\"\n"
 	result = result..showIndent(1).."d <- readStruct1 0\n"
-    result = result..showIndent(1).."putStrLn \"hs read done; calling write\"\n"
 	result = result..showIndent(1).."writeStruct1 d 0\n"
-    result = result..showIndent(1).."putStrLn \"hs write done\"\n"
 	result = result.."mainF _ = undefined\n"
 	result = result.."--\n"
 	result = result.."main :: IO ()\n"
@@ -1202,13 +1199,9 @@ function showTyperLua()
 	result = result.."--\n"
 	result = result..showTypeLua()
 	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
-	result = result.."print(\"lua calling init\")\n"
 	result = result.."pipeInit(arg[1],arg[2])\n"
-	result = result.."print(\"lua init done; calling read\")\n"
 	result = result.."tab = readStruct1(0)\n"
-	result = result.."print(\"lua read done; calling write\")\n"
 	result = result.."writeStruct1(tab,0)\n"
-	result = result.."print(\"lua write done\")\n"
 	result = result.."end\n"
 	return result
 end

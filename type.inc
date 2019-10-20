@@ -553,10 +553,12 @@ function showAllocC(name,typ)
 		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"
+		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (siz == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {"
 		for k,v in ipairs(typ) do
-			if ((type(v[4]) == "number") and (v[4] > 0)) or (type(v[4]) == "string") then
+			if (type(v[4]) == "number") or (type(v[4]) == "string") then
 				result = result.."\n"..showIndent(2).."(*ptr)[i]."..v[1].." = 0;"
 			end
 		end
