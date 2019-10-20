@@ -859,12 +859,14 @@ Expected = {
 	"readEnum1F 0 = return Value11\n"..
 	"readEnum1F 1 = return Value12\n"..
 	"readEnum1F 2 = return Value13\n"..
+	"readEnum1F _ = return Enum1s\n"..
 	"readEnum1 :: Int -> IO Enum1\n"..
 	"readEnum1 idx = (readInt idx) >>= readEnum1F\n"..
 	"writeEnum1F :: Enum1 -> Int\n"..
 	"writeEnum1F Value11 = 0\n"..
 	"writeEnum1F Value12 = 1\n"..
 	"writeEnum1F Value13 = 2\n"..
+	"writeEnum1F _ = 3\n"..
 	"writeEnum1 :: Enum1 -> Int -> IO ()\n"..
 	"writeEnum1 a idx = writeInt idx (writeEnum1F a)\n"..
 	"--",
@@ -890,14 +892,14 @@ Expected = {
 	"    assertHelp 2 (\\x -> writeStruct2 x idx) a17\n"..
 	"    assertHelp 2 (\\x -> writeStruct2 x idx) a18\n"..
 	"--",
-	"function readEnum1(idx))\n"..
+	"function readEnum1(idx)\n"..
 	"    val = readInt(idx)\n"..
 	"    if (val == 0) then return \"Value11\"\n"..
 	"    elseif (val == 1) then return \"Value12\"\n"..
 	"    elseif (val == 2) then return \"Value13\"\n"..
-	"    else return nil\n"..
+	"    else return nil end\n"..
 	"end\n"..
-	"function writeEnum1(val,idx))\n"..
+	"function writeEnum1(val,idx)\n"..
 	"    if (val == \"Value11\") then writeInt(0,idx)\n"..
 	"    elseif (val == \"Value12\") then writeInt(1,idx)\n"..
 	"    elseif (val == \"Value13\") then writeInt(2,idx)\n"..
@@ -1132,15 +1134,22 @@ function showTyperC()
 	"int main(int argc, char **argv)\n"..
 	"{\n"..
 	showIndent(1).."if (argc == 4) {\n"..
+    showIndent(1).."printf(\"c calling init\\n\");\n"..
 	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
+    showIndent(1).."printf(\"c init done; calling read\\n\");\n"..
 	showIndent(1).."struct Struct1 *ptr;\n"..
 	showIndent(1).."allocStruct1(&ptr,1);\n"..
 	showIndent(1).."readStruct1(ptr,0);\n"..
+    showIndent(1).."printf(\"c read done; calling write\\n\");\n"..
 	showIndent(1).."writeStruct1(ptr,0);\n"..
+    showIndent(1).."printf(\"c write done\\n\");\n"..
 	showIndent(1).."return 0;}\n"
 	result = result..
+    showIndent(1).."printf(\"hub calling a.out\\n\");\n"..
 	showIndent(1).."forkExec(\"a.out\");\n"..
+    showIndent(1).."printf(\"hub calling b.out\\n\");\n"..
 	showIndent(1).."forkExec(\"b.out\");\n"..
+    showIndent(1).."printf(\"hub calling typer.lua\\n\");\n"..
 	showIndent(1).."forkExec(\"typer.lua\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
@@ -1170,9 +1179,13 @@ function showTyperHs()
 	result = result..showTypeHs()
 	result = result.."mainF :: [String] -> IO ()\n"
 	result = result.."mainF [a,b,c] = do\n"
+    result = result..showIndent(1).."putStrLn \"hs calling init\"\n"
 	result = result..showIndent(1).."pipeInit a b\n"
+    result = result..showIndent(1).."putStrLn \"hs init done; calling read\"\n"
 	result = result..showIndent(1).."d <- readStruct1 0\n"
+    result = result..showIndent(1).."putStrLn \"hs read done; calling write\"\n"
 	result = result..showIndent(1).."writeStruct1 d 0\n"
+    result = result..showIndent(1).."putStrLn \"hs write done\"\n"
 	result = result.."mainF _ = undefined\n"
 	result = result.."--\n"
 	result = result.."main :: IO ()\n"
@@ -1182,13 +1195,19 @@ function showTyperHs()
 end
 function showTyperLua()
 	local result = ""
+	result = result.."#!/usr/bin/env lua\n"
+	result = result.."--\n"
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
 	result = result..showTypeLua()
 	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
+	result = result.."print(\"lua calling init\")\n"
 	result = result.."pipeInit(arg[1],arg[2])\n"
+	result = result.."print(\"lua init done; calling read\")\n"
 	result = result.."tab = readStruct1(0)\n"
+	result = result.."print(\"lua read done; calling write\")\n"
 	result = result.."writeStruct1(tab,0)\n"
+	result = result.."print(\"lua write done\")\n"
 	result = result.."end\n"
 	return result
 end

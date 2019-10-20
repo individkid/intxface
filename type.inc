@@ -635,12 +635,14 @@ function showCodeHs(name,enum)
 	for key,val in ipairs(enum) do
 		result = result.."read"..name.."F "..(key-1).." = return "..val.."\n"
 	end
+	result = result.."read"..name.."F _ = return "..name.."s\n"
 	result = result.."read"..name.." :: Int -> IO "..name.."\n"
 	result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
 	result = result.."write"..name.."F :: "..name.." -> Int\n"
 	for key,val in ipairs(enum) do
 		result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
 	end
+	result = result.."write"..name.."F _ = "..#enum.."\n"
 	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
 	result = result.."write"..name.." a idx = writeInt idx (write"..name.."F a)\n"
 	result = result.."--"
@@ -1145,7 +1147,7 @@ function showWriteHs(name,struct)
 end
 function showCodeLua(name,enum)
 	local result = ""
-	result = result.."function read"..name.."(idx))\n"
+	result = result.."function read"..name.."(idx)\n"
 	result = result..showIndent(1).."val = readInt(idx)\n"
 	for key,val in ipairs(enum) do
 		if (key == 1) then
@@ -1154,9 +1156,9 @@ function showCodeLua(name,enum)
 			result = result..showIndent(1).."elseif (val == "..(key-1)..") then return \""..val.."\"\n"
 		end
 	end
-	result = result..showIndent(1).."else return nil\n"
+	result = result..showIndent(1).."else return nil end\n"
 	result = result.."end\n"
-	result = result.."function write"..name.."(val,idx))\n"
+	result = result.."function write"..name.."(val,idx)\n"
 	for key,val in ipairs(enum) do
 		if (key == 1) then
 			result = result..showIndent(1).."if (val == \""..val.."\") then writeInt(0,idx)\n"
