@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 	return 0;}
 	forkExec("a.out");
 	forkExec("b.out");
-	forkExec("facer.lua");
+	forkExec("facer.ex");
 	sleepSec(1);
 	int expectInt[] = {0,1,2};
 	double expectNum[] = {0.1,1.1,2.1};

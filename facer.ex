@@ -33,7 +33,7 @@ writeOld(old,0)
 else
 forkExec("a.out")
 forkExec("b.out")
-forkExec("facer.lua")
+forkExec("facer.ex")
 sleepSec(1)
 expectInt = {0,1,2}
 expectNum = {0.1,1.1,2.1}

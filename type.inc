@@ -1383,7 +1383,7 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showCompC)
 	return result
 end
-function showTypeH()
+function showCallH()
 	local result = ""
 	result = result..showCall(Enums,Enumz,showEnumC).."\n"
 	result = result..showCall(Structs,Structz,showStructC).."\n"
@@ -1391,13 +1391,13 @@ function showTypeH()
 	result = result..showFuncC()
 	return result
 end
-function showTypeC()
+function showCallC()
 	local result = ""
 	prototype = false
 	result = result..showFuncC()
 	return result
 end
-function showTypeHs()
+function showCallHs()
 	local result = ""
 	result = result..showCall(Enums,Enumz,showEnumHs).."\n"
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
@@ -1408,7 +1408,7 @@ function showTypeHs()
 	result = result..showCall(Structs,Structz,showWriteHs).."\n"
 	return result
 end
-function showTypeLua()
+function showCallLua()
 	local result = ""
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	result = result..showCall(Structs,Structz,showReadLua).."\n"

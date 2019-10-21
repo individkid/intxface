@@ -15,37 +15,19 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <lua.h>
-
 void forkExec(const char *exe);
-int forkExecLua(lua_State *lua);
 void pipeInit(const char *av1, const char *av2);
-int pipeInitLua(lua_State *lua);
 int waitAny();
-int waitAnyLua(lua_State *lua);
 int checkRead(int idx);
-int checkReadLua(lua_State *lua);
 int checkWrite(int idx);
-int checkWriteLua(lua_State *lua);
 void sleepSec(int sec);
-int sleepSecLua(lua_State *lua);
 const char *readStr(int idx);
-int readStrLua(lua_State *lua);
 int readInt(int idx);
-int readIntLua(lua_State *lua);
 long long readNew(int idx);
-int readNewLua(lua_State *lua);
 double readNum(int idx);
-int readNumLua(lua_State *lua);
 float readOld(int idx);
-int readOldLua(lua_State *lua);
 void writeStr(const char *arg, int idx);
-int writeStrLua(lua_State *lua);
 void writeInt(int arg, int idx);
-int writeIntLua(lua_State *lua);
 void writeNum(double arg, int idx);
-int writeNumLua(lua_State *lua);
 void writeNew(long long arg, int idx);
-int writeNewLua(lua_State *lua);
 void writeOld(float arg, int idx);
-int writeOldLua(lua_State *lua);

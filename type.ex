@@ -24,13 +24,43 @@ dofile("type.inc")
 --HERE
 Enums,Enumz = listHere("Enums")
 Structs,Structz = listHere("Structs")
+function showTypeC()
+	local result = ""
+	result = result.."#include \"typer.h\"\n"
+	result = result.."#include <stdio.h>\n"
+	result = result.."#include <stdlib.h>\n"
+	result = result.."#include <string.h>\n"
+	result = result.."#include \"face.h\"\n"
+	result = result..showCallC().."\n"
+	return result
+end
+function showTypeHs()
+	local result = ""
+	result = result.."module Type where\n"
+	result = result.."--\n"
+	result = result.."import Face\n"
+	result = result.."import System.Environment\n"
+	result = result.."import System.Exit\n"
+	result = result.."--\n"
+	result = result..showCallHs()
+	result = result.."--"
+	return result
+end
+function showTypeLua()
+	local result = ""
+	result = result.."require \"face\"\n"
+	result = result.."--\n"
+	result = result..showCallLua()
+	result = result.."--\n"
+	return result
+end
 file = io.open("type.h", "w")
-file:write(showTypeH().."\n")
+file:write(showCallH().."\n")
 file:close()
 file = io.open("type.c", "w")
 file:write(showTypeC().."\n")
 file:close()
-file = io.open("Type.hs", "w")
+file = io.open("type.hs", "w")
 file:write(showTypeHs().."\n")
 file:close()
 file = io.open("type.lua", "w")

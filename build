@@ -1,16 +1,29 @@
 ./clean
-clang -c face.c -I /usr/local/include/lua
-clang -fPIC -shared -o face.so face.o -llua
-clang -o a.out facer.c Face.o -I /usr/local/include/lua -llua
-clang -o faceHs.o -c face.c -I /usr/local/include/lua
-ghc -o b.out facer.hs Face.hs faceHs.o -llua
+echo "compile face"
+clang -o faceC.o -c face.c -I /usr/local/include/lua
+touch face.hs
+clang -o face.so -fPIC -shared faceC.o -llua
+echo "link facer"
+clang -o a.out facer.c faceC.o -llua
+ghc -o b.out facer.hs faceC.o
+chmod +x facer.ex
+echo "execute facer"
 ./a.out
 ./b.out
-./facer.lua
+./facer.ex
+echo "generage typer"
 ./typra.ex
-clang -o a.out typer.c face.c -I /usr/local/include/lua -llua
-ghc -o b.out typer.hs Face.hs faceHs.o -llua
-chmod +x typer.lua
+echo "link typer"
+clang -o a.out typer.c faceC.o -llua
+ghc -o b.out typer.hs faceC.o
+chmod +x typer.ex
+echo "execute typer"
 ./a.out
+echo "generate type"
 ./type.ex
+echo "compile type"
+clang -o typeC.o -c type.c
+touch type.hs
+touch type.lua
+
 echo "build done"

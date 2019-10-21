@@ -91,8 +91,6 @@ Stimulus = {
 	{"\"Enum1\""},
 	{"\"Struct1\",Struct1"},
 	{"\"Int\",\"int\""},
-	{""},
-	{""},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
@@ -141,8 +139,6 @@ Monitor = {
 	"showAllocC",
 	"showAllocC",
 	"showAllocC",
-	"showTypeH",
-	"showTypeC",
 	"showEnumHs",
 	"showStructHs",
 	"showAccessHs",
@@ -413,280 +409,6 @@ Expected = {
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
 	"}",
-	"enum Enum1 {\n"..
-	"    Value11,\n"..
-	"    Value12,\n"..
-	"    Value13,\n"..
-	"};\n"..
-	"enum Enum2 {\n"..
-	"    Value21,\n"..
-	"    Value22,\n"..
-	"    Value23,\n"..
-	"};\n"..
-	"struct Struct2 {\n"..
-	"    struct {\n"..
-	"        int field1;\n"..
-	"        int field2;\n"..
-	"    };\n"..
-	"};\n"..
-	"struct Struct1 {\n"..
-	"    struct {\n"..
-	"        struct Struct1* next;\n"..
-	"        float field1[2];\n"..
-	"        double field2[3];\n"..
-	"        int field3[2][2];\n"..
-	"        char* field4;\n"..
-	"        int* field5;\n"..
-	"        enum Enum1 field6;\n"..
-	"        enum Enum2 field7;\n"..
-	"    };\n"..
-	"    union {\n"..
-	"        struct {\n"..
-	"            int field8;\n"..
-	"            int field9;\n"..
-	"        };\n"..
-	"        int field10;\n"..
-	"    };\n"..
-	"    union {\n"..
-	"        int field11;\n"..
-	"        int field12;\n"..
-	"        int field13;\n"..
-	"    };\n"..
-	"    struct {\n"..
-	"        int field14;\n"..
-	"        int* field15;\n"..
-	"        struct Struct2* field16;\n"..
-	"        struct Struct2 field17[2];\n"..
-	"    };\n"..
-	"};\n"..
-	"void allocInt(int **ptr, int siz);\n"..
-	"void allocNew(long long **ptr, int siz);\n"..
-	"void allocNum(double **ptr, int siz);\n"..
-	"void allocOld(float **ptr, int siz);\n"..
-	"void allocStr(char **ptr, const char *str);\n"..
-	"void allocStruct2(struct Struct2 **ptr, int siz);\n"..
-	"void allocStruct1(struct Struct1 **ptr, int siz);\n"..
-	"void readStruct2(struct Struct2 *ptr, int idx);\n"..
-	"void readStruct1(struct Struct1 *ptr, int idx);\n"..
-	"void writeStruct2(struct Struct2 *ptr, int idx);\n"..
-	"void writeStruct1(struct Struct1 *ptr, int idx);\n"..
-	"void randStruct2(struct Struct2 *ptr);\n"..
-	"void randStruct1(struct Struct1 *ptr);\n"..
-	"int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp);\n"..
-	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp);",
-	("void allocInt(int **ptr, int siz)\n"..
-	"{\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
-	"}\n"..
-	"void allocNew(long long **ptr, int siz)\n"..
-	"{\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(long long));\n"..
-	"}\n"..
-	"void allocNum(double **ptr, int siz)\n"..
-	"{\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(double));\n"..
-	"}\n"..
-	"void allocOld(float **ptr, int siz)\n"..
-	"{\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(float));\n"..
-	"}\n"..
-	"void allocStr(char **ptr, const char *str)\n"..
-	"{\n"..
-	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
-	"    strcpy(*ptr,str);\n"..
-	"}\n"..
-	"void allocStruct2(struct Struct2 **ptr, int siz)\n"..
-	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
-	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct2));\n"..
-	"    for (int i = 0; i < siz; i++) {}\n"..
-	"}\n"..
-	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
-	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
-	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
-	"    for (int i = 0; i < siz; i++) {\n"..
-	"        (*ptr)[i].next = 0;\n"..
-	"        (*ptr)[i].field5 = 0;\n"..
-	"        (*ptr)[i].field15 = 0;\n"..
-	"        (*ptr)[i].field16 = 0;}\n"..
-	"}\n")..
-	("void readStruct2(struct Struct2 *ptr, int idx)\n"..
-	"{\n"..
-	"    ptr->field1 = readInt(idx);\n"..
-	"    ptr->field2 = readInt(idx);\n"..
-	"}\n"..
-	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
-	"{\n"..
-	"    allocStruct1(&ptr->next,0);\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        readStruct1(&ptr->next[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        ptr->field1[i1] = readOld(idx);\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        ptr->field2[i1] = readNum(idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            ptr->field3[i1][i2] = readInt(idx);\n"..
-	"    {const char *temp = readStr(idx); allocStr(&ptr->field4,temp);}\n"..
-	"    allocInt(&ptr->field5,3);\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        ptr->field5[i] = readInt(idx);\n"..
-	"    {int temp = readInt(idx); ptr->field6 = temp;}\n"..
-	"    {int temp = readInt(idx); ptr->field7 = temp;}\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field8 = readInt(idx);\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field9 = readInt(idx);\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        ptr->field10 = readInt(idx);\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        ptr->field11 = readInt(idx);\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        ptr->field12 = readInt(idx);\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        ptr->field13 = readInt(idx);\n"..
-	"    ptr->field14 = readInt(idx);\n"..
-	"    allocInt(&ptr->field15,ptr->field14);\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        ptr->field15[i] = readInt(idx);\n"..
-	"    allocStruct2(&ptr->field16,2);\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        readStruct2(&ptr->field16[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        readStruct2(&ptr->field17[i1],idx);\n"..
-	"}\n")..
-	("void writeStruct2(struct Struct2 *ptr, int idx)\n"..
-	"{\n"..
-	"    writeInt(ptr->field1,idx);\n"..
-	"    writeInt(ptr->field2,idx);\n"..
-	"}\n"..
-	"void writeStruct1(struct Struct1 *ptr, int idx)\n"..
-	"{\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        writeStruct1(&ptr->next[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        writeOld(ptr->field1[i1],idx);\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        writeNum(ptr->field2[i1],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            writeInt(ptr->field3[i1][i2],idx);\n"..
-	"    writeStr(ptr->field4,idx);\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        writeInt(ptr->field5[i],idx);\n"..
-	"    {int temp = ptr->field6; writeInt(temp,idx);}\n"..
-	"    {int temp = ptr->field7; writeInt(temp,idx);}\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        writeInt(ptr->field8,idx);\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        writeInt(ptr->field9,idx);\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        writeInt(ptr->field10,idx);\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        writeInt(ptr->field11,idx);\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        writeInt(ptr->field12,idx);\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        writeInt(ptr->field13,idx);\n"..
-	"    writeInt(ptr->field14,idx);\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        writeInt(ptr->field15[i],idx);\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        writeStruct2(&ptr->field16[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        writeStruct2(&ptr->field17[i1],idx);\n"..
-	"}\n")..
-	("void randStruct2(struct Struct2 *ptr)\n"..
-	"{\n"..
-	"    ptr->field1 = 26;\n"..
-	"    ptr->field2 = 27;\n"..
-	"}\n"..
-	"void randStruct1(struct Struct1 *ptr)\n"..
-	"{\n"..
-	"    allocStruct1(&ptr->next,0);\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        randStruct1(&ptr->next[i]);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        ptr->field1[i1] = 0.2;\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        ptr->field2[i1] = 3.1;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            ptr->field3[i1][i2] = 28;\n"..
-	"    {const char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
-	"    allocInt(&ptr->field5,3);\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        ptr->field5[i] = 29;\n"..
-	"    ptr->field6 = 30;\n"..
-	"    ptr->field7 = 31;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field8 = 32;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field9 = 33;\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        ptr->field10 = 34;\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        ptr->field11 = 35;\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        ptr->field12 = 36;\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        ptr->field13 = 37;\n"..
-	"    ptr->field14 = 38;\n"..
-	"    allocInt(&ptr->field15,ptr->field14);\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        ptr->field15[i] = 39;\n"..
-	"    allocStruct2(&ptr->field16,2);\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        randStruct2(&ptr->field16[i]);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        randStruct2(&ptr->field17[i1]);\n"..
-	"}\n")..
-	("int compStruct2(struct Struct2 *ptr, struct Struct2 *cmp)\n"..
-	"{\n"..
-	"    if (ptr->field1 != cmp->field1) return 0;\n"..
-	"    if (ptr->field2 != cmp->field2) return 0;\n"..
-	"    return 1;\n"..
-	"}\n"..
-	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
-	"{\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return 0;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (ptr->field1[i1] != cmp->field1[i1]) return 0;\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        if (ptr->field2[i1] != cmp->field2[i1]) return 0;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return 0;\n"..
-	"    if (strcmp(ptr->field4,cmp->field4) != 0) return 0;\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        if (ptr->field5[i] != cmp->field5[i]) return 0;\n"..
-	"    if (ptr->field6 != cmp->field6) return 0;\n"..
-	"    if (ptr->field7 != cmp->field7) return 0;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        if (ptr->field8 != cmp->field8) return 0;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        if (ptr->field9 != cmp->field9) return 0;\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        if (ptr->field10 != cmp->field10) return 0;\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        if (ptr->field11 != cmp->field11) return 0;\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        if (ptr->field12 != cmp->field12) return 0;\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        if (ptr->field13 != cmp->field13) return 0;\n"..
-	"    if (ptr->field14 != cmp->field14) return 0;\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        if (ptr->field15[i] != cmp->field15[i]) return 0;\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return 0;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return 0;\n"..
-	"    return 1;\n"..
-	"}"),
 	"data Enum1 =\n"..
 	"    Value11 |\n"..
 	"    Value12 |\n"..
@@ -1138,7 +860,7 @@ function showTyperC()
 	result = result.."#include <stdlib.h>\n"
 	result = result.."#include <string.h>\n"
 	result = result.."#include \"face.h\"\n"
-	result = result..showTypeC().."\n"
+	result = result..showCallC().."\n"
 	result = result..
 	"int main(int argc, char **argv)\n"..
 	"{\n"..
@@ -1152,7 +874,7 @@ function showTyperC()
 	result = result..
 	showIndent(1).."forkExec(\"a.out\");\n"..
 	showIndent(1).."forkExec(\"b.out\");\n"..
-	showIndent(1).."forkExec(\"typer.lua\");\n"..
+	showIndent(1).."forkExec(\"typer.ex\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
 	showIndent(1).."struct Struct1 *exp;\n"..
@@ -1178,7 +900,7 @@ function showTyperHs()
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
 	result = result.."--\n"
-	result = result..showTypeHs()
+	result = result..showCallHs()
 	result = result.."mainF :: [String] -> IO ()\n"
 	result = result.."mainF [a,b,c] = do\n"
 	result = result..showIndent(1).."pipeInit a b\n"
@@ -1197,7 +919,7 @@ function showTyperLua()
 	result = result.."--\n"
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
-	result = result..showTypeLua()
+	result = result..showCallLua()
 	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
 	result = result.."pipeInit(arg[1],arg[2])\n"
 	result = result.."tab = readStruct1(0)\n"
@@ -1206,7 +928,7 @@ function showTyperLua()
 	return result
 end
 file = io.open("typer.h", "w")
-file:write(showTypeH().."\n")
+file:write(showCallH().."\n")
 file:close()
 file = io.open("typer.c", "w")
 file:write(showTyperC().."\n")
@@ -1214,7 +936,7 @@ file:close()
 file = io.open("typer.hs", "w")
 file:write(showTyperHs().."\n")
 file:close()
-file = io.open("typer.lua", "w")
+file = io.open("typer.ex", "w")
 file:write(showTyperLua().."\n")
 file:close()
 print(showAny(arg))

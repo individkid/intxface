@@ -21,6 +21,7 @@
 #include <sys/select.h>
 #include <sys/errno.h>
 #include <signal.h>
+#include <lua.h>
 #include "face.h"
 
 #define ERROR {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno);exit(-1);}
