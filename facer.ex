@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 --[[
-*    facer.lua
+*    facer.ex
 *    Copyright (C) 2019  Paul Coelho
 *
 *    This program is free software: you can redistribute it and/or modify

@@ -5,7 +5,7 @@ touch face.hs
 clang -o face.so -fPIC -shared faceC.o -llua
 echo "link facer"
 clang -o a.out facer.c faceC.o -llua
-ghc -o b.out facer.hs faceC.o
+ghc -o b.out facer.hs faceC.o -llua
 chmod +x facer.ex
 echo "execute facer"
 ./a.out
@@ -15,7 +15,7 @@ echo "generage typer"
 ./typra.ex
 echo "link typer"
 clang -o a.out typer.c faceC.o -llua
-ghc -o b.out typer.hs faceC.o
+ghc -o b.out typer.hs faceC.o -llua
 chmod +x typer.ex
 echo "execute typer"
 ./a.out

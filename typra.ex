@@ -88,6 +88,7 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Str\""},
+	{"\"Ptr\""},
 	{"\"Enum1\""},
 	{"\"Struct1\",Struct1"},
 	{"\"Int\",\"int\""},
@@ -135,6 +136,7 @@ Monitor = {
 	"showWriteC",
 	"showRandC",
 	"showCompC",
+	"showAllocC",
 	"showAllocC",
 	"showAllocC",
 	"showAllocC",
@@ -390,6 +392,10 @@ Expected = {
 	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
 	"}",
+	"void allocPtr(void **ptr, int siz)\n"..
+	"{\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(void*));\n"..
+	"}",
 	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
 	"{\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(enum Enum1));\n"..
@@ -401,6 +407,7 @@ Expected = {
 	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
 	"    for (int i = 0; i < siz; i++) {\n"..
 	"        (*ptr)[i].next = 0;\n"..
+	"        (*ptr)[i].field4 = 0;\n"..
 	"        (*ptr)[i].field5 = 0;\n"..
 	"        (*ptr)[i].field15 = 0;\n"..
 	"        (*ptr)[i].field16 = 0;}\n"..
@@ -855,11 +862,11 @@ line = io.read(); if line ~= nil then print("error2: "..line); os.exit() end
 io.close(file)
 function showTyperC()
 	local result = ""
-	result = result.."#include \"typer.h\"\n"
 	result = result.."#include <stdio.h>\n"
 	result = result.."#include <stdlib.h>\n"
 	result = result.."#include <string.h>\n"
 	result = result.."#include \"face.h\"\n"
+	result = result.."#include \"typer.h\"\n"
 	result = result..showCallC().."\n"
 	result = result..
 	"int main(int argc, char **argv)\n"..

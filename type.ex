@@ -21,16 +21,23 @@ dofile("type.inc")
 
 --HERE Enums
 --HERE Structs
+File = {
+	{"idx","int",{},{}},
+	{"loc","long long",{},{}},
+	{"siz","int",{},{}},
+	{"num","int",{},{}},
+	{"str","char*",{},"num"},
+}
 --HERE
 Enums,Enumz = listHere("Enums")
 Structs,Structz = listHere("Structs")
 function showTypeC()
 	local result = ""
-	result = result.."#include \"typer.h\"\n"
 	result = result.."#include <stdio.h>\n"
 	result = result.."#include <stdlib.h>\n"
 	result = result.."#include <string.h>\n"
 	result = result.."#include \"face.h\"\n"
+	result = result.."#include \"type.h\"\n"
 	result = result..showCallC().."\n"
 	return result
 end

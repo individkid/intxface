@@ -379,19 +379,25 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
-function showStreamCF(name)
+function showStreamCF(name,field,lim)
+	local result = "alloc"
+	local cast = ""
 	if (name == "int") then
-		return "allocInt"
+		result = result.."Int"
 	elseif (name == "long long") then
-		return "allocNew"
+		result = result.."New"
 	elseif (name == "double") then
-		return "allocNum"
+		result = result.."Num"
 	elseif (name == "float") then
-		return "allocOld"
+		result = result.."Old"
 	elseif (name == "char*") then
-		return "allocStr"
+		result = result.."Ptr"
+		cast = "(void**)"
+	else
+		result = result..name
 	end
-	return "alloc"..name
+	result = result.."("..cast.."&ptr->"..field..","..lim..");\n"
+	return result
 end
 function showCondC(struct,dset)
 	local cond = ""
@@ -465,7 +471,7 @@ function showStreamC(name,struct,show,pre,post)
 		if lim then
 			if (show == showReadCF) or (show == showRandCF) then
 				result = result..showIndent(depth)
-				result = result..showStreamCF(v[2]).."(&ptr->"..v[1]..","..lim..");\n"
+				result = result..showStreamCF(v[2],v[1],lim)
 			end
 			result = result..showIndent(depth)
 			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
@@ -543,6 +549,12 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
 		result = result.."}"
+	elseif (name == "Ptr") then
+		result = result.."void allocPtr(void **ptr, int siz)"
+		if prototype then return result..";" end
+		result = result.."\n{\n"
+		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(void*));\n"
+		result = result.."}"
 	elseif (Enumz[name] ~= nil) then
 		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
 		if prototype then return result..";" end
@@ -558,7 +570,7 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {"
 		for k,v in ipairs(typ) do
-			if (type(v[4]) == "number") or (type(v[4]) == "string") then
+			if (type(v[4]) == "number") or (type(v[4]) == "string") or (v[2] == "char*") then
 				result = result.."\n"..showIndent(2).."(*ptr)[i]."..v[1].." = 0;"
 			end
 		end
@@ -1376,6 +1388,7 @@ function showFuncC()
 	result = result..showAllocC("Num","double").."\n"
 	result = result..showAllocC("Old","float").."\n"
 	result = result..showAllocC("Str","char*").."\n"
+	result = result..showAllocC("Ptr","char*").."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"
 	result = result..showCall(Structs,Structz,showWriteC).."\n"
