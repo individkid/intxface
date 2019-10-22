@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/errno.h>
 #include "face.h"
 #include "type.h"
@@ -43,13 +44,15 @@ int main(int argc, char **argv)
 			anonym[command.idx] = addPipe(fd[0],fd[1]);
 			number[anonym[command.idx]] = command.idx;
 			// regular open command.str[0] into given[command.idx]
-			// fifo open concat(".",command.str[0]) into named[command.idx]
+			int fi,fo;
+			// fifo open concat(".",command.str[0]) into fi and fo
+			named[command.idx] = addPipe(fi,fo);
 			// regular open or create concat("..",command.str[0]) into helper[command.idx]
 			// read from start of helper[command.idx] for seqnum, or use default
 			// lseek end of helper[command.idx] into append
 			// pthread create with command.idx as argument
 		} else if (sub == face) {
-			// write command to named[command.idx]
+			writeFile(&command,named[command.idx]);
 		} else {
 			command.idx = number[sub];
 			writeFile(&command,face);
