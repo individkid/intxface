@@ -15,12 +15,13 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "type.h"
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <sys/errno.h>
 #include "face.h"
-#include "type.h"
+#include <unistd.h>
+#include <pthread.h>
 
 int face = 0;
 int anonym[BUFSIZE] = {0};
@@ -30,6 +31,20 @@ int named[BUFSIZE] = {0};
 int helper[BUFSIZE] = {0};
 int seqnum[BUFSIZE] = {0};
 int append[BUFSIZE] = {0};
+pthread_t thread[BUFSIZE] = {0};
+
+void *file(void *arg)
+{
+	int idx = (int)arg;
+	return 0;
+}
+
+#define BIGPTR
+#ifdef BIGPTR
+#define VOIDARG(x) ((void*)(long long)(x))
+#else
+#define VOIDARG(x) ((void*)(x))
+#endif
 
 int main(int argc, char **argv)
 {
@@ -39,6 +54,7 @@ int main(int argc, char **argv)
 		struct File command;
 		readFile(&command,sub);
 		if (sub == face && named[command.idx] <= 0) {
+			if (command.idx < 0 || command.idx >= BUFSIZE) ERROR
 			int fd[2];
 			if (pipe(fd) < 0) ERROR
 			anonym[command.idx] = addPipe(fd[0],fd[1]);
@@ -51,9 +67,11 @@ int main(int argc, char **argv)
 			// read from start of helper[command.idx] for seqnum, or use default
 			// lseek end of helper[command.idx] into append
 			// pthread create with command.idx as argument
+			if (pthread_create(&thread[command.idx],0,file,VOIDARG(command.idx)) < 0) ERROR
 		} else if (sub == face) {
 			writeFile(&command,named[command.idx]);
 		} else {
+			// check for close file command, clean up, and zero out array entries
 			command.idx = number[sub];
 			writeFile(&command,face);
 		}
