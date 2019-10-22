@@ -33,18 +33,14 @@ int seqnum[BUFSIZE] = {0};
 int append[BUFSIZE] = {0};
 pthread_t thread[BUFSIZE] = {0};
 
+#define VOIDARG(x) ((void*)(((char*)(0))+(x)))
+#define ARGVOID(x) (((char*)(x))-((char*)(0)))
+
 void *file(void *arg)
 {
-	int idx = (int)arg;
+	int idx = ARGVOID(arg);
 	return 0;
 }
-
-#define BIGPTR
-#ifdef BIGPTR
-#define VOIDARG(x) ((void*)(long long)(x))
-#else
-#define VOIDARG(x) ((void*)(x))
-#endif
 
 int main(int argc, char **argv)
 {
