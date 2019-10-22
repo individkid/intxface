@@ -38,7 +38,7 @@ function showTypeC()
 	result = result.."#include <string.h>\n"
 	result = result.."#include \"face.h\"\n"
 	result = result.."#include \"type.h\"\n"
-	result = result..showCallC().."\n"
+	result = result..showCallC()
 	return result
 end
 function showTypeHs()
@@ -50,7 +50,6 @@ function showTypeHs()
 	result = result.."import System.Exit\n"
 	result = result.."--\n"
 	result = result..showCallHs()
-	result = result.."--"
 	return result
 end
 function showTypeLua()
@@ -58,7 +57,6 @@ function showTypeLua()
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
 	result = result..showCallLua()
-	result = result.."--\n"
 	return result
 end
 file = io.open("type.h", "w")

@@ -542,31 +542,33 @@ function showWriteC(name,struct)
 end
 function showAllocC(name,typ)
 	result = ""
+	local qualify = showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+	qualify = qualify..showIndent(1).."if (siz == 0) return;\n"
 	if (name == "Str") then
 		result = result.."void allocStr(char **ptr, const char *str)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"
+		result = result..showIndent(1).."if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (str == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
 		result = result.."}"
 	elseif (name == "Ptr") then
 		result = result.."void allocPtr(void **ptr, int siz)"
 		if prototype then return result..";" end
-		result = result.."\n{\n"
+		result = result.."\n{\n"..qualify
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(void*));\n"
 		result = result.."}"
 	elseif (Enumz[name] ~= nil) then
 		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
 		if prototype then return result..";" end
-		result = result.."\n{\n"
+		result = result.."\n{\n"..qualify
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
 		result = result.."}"
 	elseif (Structz[name] ~= nil) then
 		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
 		if prototype then return result..";" end
-		result = result.."\n{\n"
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (siz == 0) return;\n"
+		result = result.."\n{\n"..qualify
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {"
 		for k,v in ipairs(typ) do
@@ -578,7 +580,7 @@ function showAllocC(name,typ)
 	else
 		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)"
 		if prototype then return result..";" end
-		result = result.."\n{\n"
+		result = result.."\n{\n"..qualify
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof("..typ.."));\n"
 		result = result.."}"
 	end

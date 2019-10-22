@@ -389,15 +389,21 @@ Expected = {
 	"}",
 	"void allocStr(char **ptr, const char *str)\n"..
 	"{\n"..
+	"    if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (str == 0) return;\n"..
 	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
 	"}",
 	"void allocPtr(void **ptr, int siz)\n"..
 	"{\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(void*));\n"..
 	"}",
 	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
 	"{\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(enum Enum1));\n"..
 	"}",
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
@@ -414,6 +420,8 @@ Expected = {
 	"}",
 	"void allocInt(int **ptr, int siz)\n"..
 	"{\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
 	"}",
 	"data Enum1 =\n"..
