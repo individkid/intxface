@@ -26,5 +26,6 @@ echo "compile type"
 f clang -o typeC.o -c type.c
 f touch type.hs
 f touch type.lua
-
+echo "compile file"
+f clang -o file.o file.c typeC.o faceC.o -llua
 echo "build done"

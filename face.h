@@ -15,8 +15,15 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-void forkExec(const char *exe);
-void pipeInit(const char *av1, const char *av2);
+#ifndef FACE_H
+#define FACE_H
+
+#define ERROR {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno);exit(-1);}
+#define BUFSIZE 1024
+
+int addPipe(int fd[2]);
+int forkExec(const char *exe);
+int pipeInit(const char *av1, const char *av2);
 int waitAny();
 int checkRead(int idx);
 int checkWrite(int idx);
@@ -31,3 +38,5 @@ void writeInt(int arg, int idx);
 void writeNum(double arg, int idx);
 void writeNew(long long arg, int idx);
 void writeOld(float arg, int idx);
+
+#endif

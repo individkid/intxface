@@ -24,20 +24,26 @@
 #include <lua.h>
 #include "face.h"
 
-#define ERROR {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno);exit(-1);}
-#define BUFSIZE 1024
-
 int inp[BUFSIZE];
 int out[BUFSIZE];
 pid_t pid[BUFSIZE];
 int len = 0;
 char buf[BUFSIZE];
 
-void forkExec(const char *exe)
+int addPipe(int fd[2])
+{
+	int saved = len;
+	if (len >= BUFSIZE) ERROR
+	inp[len] = fd[0];
+	out[len] = fd[1];
+	len++;
+}
+int forkExec(const char *exe)
 {
 	int c2p[2], p2c[2], val;
 	val = pipe(c2p); if (val < 0) ERROR
 	val = pipe(p2c); if (val < 0) ERROR
+	if (len >= BUFSIZE) ERROR
 	pid[len] = fork(); if (pid[len] < 0) ERROR
 	if (pid[len] == 0) {
 		char ist[33], ost[33], idt[33];
@@ -57,10 +63,10 @@ void forkExec(const char *exe)
 }
 int forkExecLua(lua_State *lua)
 {
-	forkExec(lua_tostring(lua,1));
-	return 0;
+	lua_pushnumber(lua,forkExec(lua_tostring(lua,1)));
+	return 1;
 }
-void pipeInit(const char *av1, const char *av2)
+int pipeInit(const char *av1, const char *av2)
 {
 	int val;
 	val = sscanf(av1,"%d",&inp[len]); if (val != 1) ERROR
@@ -70,8 +76,8 @@ void pipeInit(const char *av1, const char *av2)
 }
 int pipeInitLua(lua_State *lua)
 {
-	pipeInit(lua_tostring(lua,1),lua_tostring(lua,2));
-	return 0;
+	lua_pushnumber(lua,pipeInit(lua_tostring(lua,1),lua_tostring(lua,2)));
+	return 1;
 }
 int waitAny()
 {
