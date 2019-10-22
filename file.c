@@ -15,12 +15,15 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdio.h>
 #include <unistd.h>
+#include <sys/errno.h>
 #include "face.h"
+#include "type.h"
 
-int sub = 0;
-int size = 0;
+int face = 0;
 int anonym[BUFSIZE] = {0};
+int number[BUFSIZE] = {0};
 int given[BUFSIZE] = {0};
 int named[BUFSIZE] = {0};
 int helper[BUFSIZE] = {0};
@@ -30,18 +33,27 @@ int append[BUFSIZE] = {0};
 int main(int argc, char **argv)
 {
 	if (argc != 4) ERROR
-	sub = pipeInit(argv[1],argv[2]);
-	if (0) { // command.idx >= size
-		int fd[2];
-		if (pipe(fd) < 0) ERROR
-		anonym[size] = addPipe(fd);
-		// regular open command.str[0] into given[size]
-		// fifo open concat(".",command.str[0]) into named[size]
-		// regular open or create concat("..",command.str[0]) into helper[size]
-		// read from start of helper[size] for seqnum, or use default
-		// lseek end of helper[size] into append
-		// pthread create with size as argument
-		size++;
+	face = pipeInit(argv[1],argv[2]);
+	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
+		struct File command;
+		readFile(&command,sub);
+		if (sub == face && named[command.idx] <= 0) {
+			int fd[2];
+			if (pipe(fd) < 0) ERROR
+			anonym[command.idx] = addPipe(fd[0],fd[1]);
+			number[anonym[command.idx]] = command.idx;
+			// regular open command.str[0] into given[command.idx]
+			// fifo open concat(".",command.str[0]) into named[command.idx]
+			// regular open or create concat("..",command.str[0]) into helper[command.idx]
+			// read from start of helper[command.idx] for seqnum, or use default
+			// lseek end of helper[command.idx] into append
+			// pthread create with command.idx as argument
+		} else if (sub == face) {
+			// write command to named[command.idx]
+		} else {
+			command.idx = number[sub];
+			writeFile(&command,face);
+		}
 	}
 	return 0;
 }

@@ -24,8 +24,9 @@ import Foreign.C.String
 import System.Environment
 import System.Exit
 
-foreign import ccall "forkExec" forkExecC :: CString -> IO ()
-foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO ()
+foreign import ccall "addPipe" addPipeC :: CInt -> CInt -> IO CInt
+foreign import ccall "forkExec" forkExecC :: CString -> IO CInt
+foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO CInt
 foreign import ccall "waitAny" waitAnyC :: IO CInt
 foreign import ccall "checkRead" checkReadC :: CInt -> IO CInt
 foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
@@ -41,10 +42,12 @@ foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
 
-forkExec :: String -> IO ()
-forkExec a = (newCString a) >>= forkExecC
-pipeInit :: String -> String -> IO ()
-pipeInit a b = (newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x))
+addPipe :: Int -> Int -> IO Int
+addPipe a b = fmap fromIntegral (addPipeC (fromIntegral a) (fromIntegral b))
+forkExec :: String -> IO Int
+forkExec a = fmap fromIntegral ((newCString a) >>= forkExecC)
+pipeInit :: String -> String -> IO Int
+pipeInit a b = fmap fromIntegral ((newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x)))
 waitAny :: IO Int
 waitAny = fmap fromIntegral waitAnyC
 checkRead :: Int -> IO Int

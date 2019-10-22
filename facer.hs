@@ -99,7 +99,7 @@ mainFH a b = waitAny >>= (mainFHF a b)
 
 mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO ()
 mainFHF a b c
- | c == mainD = return ()
+ | c < 0 = return ()
  | (length (a !! c)) == 0 =
   (readInt c) >> (writeInt (negate 1) c) >> (mainFH a b)
  | otherwise =

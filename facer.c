@@ -50,7 +50,7 @@ int main(int argc, char **argv)
 		writeNew(expectNew[index],index);
 		writeOld(expectOld[index],index);}
 	int done[3] = {0};
-	for (int index = waitAny(); index < 3; index = waitAny()) switch (done[index]) {
+	for (int index = waitAny(); index >= 0; index = waitAny()) switch (done[index]) {
 	case (0): {
 		int value = readInt(index);
 		if (value != expectInt[index]) {printf("mismatch %d %d\n",value,index); return -1;}

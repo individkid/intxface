@@ -50,7 +50,7 @@ for index=0,2,1 do
 end
 done = {0,0,0}
 index = waitAny()
-while (index < 3) do
+while (index >= 0) do
 	sub = index+1
 	if (done[sub] == 0) then
 		value = readInt(index)

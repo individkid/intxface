@@ -21,7 +21,7 @@
 #define ERROR {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno);exit(-1);}
 #define BUFSIZE 1024
 
-int addPipe(int fd[2]);
+int addPipe(int fd0, int fd1);
 int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
 int waitAny();
