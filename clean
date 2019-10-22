@@ -1,2 +1,2 @@
-rm -f type.h type.c Type.hs type.lua typer.*
+rm -f log type.h type.c type.hs type.lua typer.*
 rm -f *.out *.o *.so *.hi *.txt

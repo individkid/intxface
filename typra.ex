@@ -854,11 +854,11 @@ io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
 		line = io.read();
-		if line ~= val then print("error1: "..line.." "..val); os.exit() end
+		if line ~= val then print("error1: "..line.." "..val); assert(false) end
 		--print(line)
 	end
 end
-line = io.read(); if line ~= nil then print("error2: "..line); os.exit() end
+line = io.read(); if line ~= nil then print("error2: "..line); assert(false) end
 io.close(file)
 function showTyperC()
 	local result = ""
@@ -894,8 +894,7 @@ function showTyperC()
 	showIndent(1).."int pass = 0;\n"..
 	showIndent(1).."for (int i = 0; i < 3; i++) pass += compStruct1(exp+i,act+i);\n"
 	result = result..
-	showIndent(1).."printf(\"typer.c %d\\n\",pass);\n"..
-	showIndent(1).."return 0;\n"..
+	showIndent(1).."return pass?-1:0;\n"..
 	"}"
 	return result
 end
@@ -946,4 +945,3 @@ file:close()
 file = io.open("typer.ex", "w")
 file:write(showTyperLua().."\n")
 file:close()
-print(showAny(arg))

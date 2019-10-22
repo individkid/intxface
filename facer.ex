@@ -54,25 +54,25 @@ while (index < 3) do
 	sub = index+1
 	if (done[sub] == 0) then
 		value = readInt(index)
-		if value ~= expectInt[sub] then print(string.format("mismatch %d %d %d %d",value,expectInt[sub],index,done[sub])); os.exit() end
+		if value ~= expectInt[sub] then print(string.format("mismatch %d %d %d %d",value,expectInt[sub],index,done[sub])); assert(false) end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 1) then
 		value = readNum(index)
-		if value ~= expectNum[sub] then print(string.format("mismatch %f %f %d %d",value,expectNum[sub],index,done[sub])); os.exit() end
+		if value ~= expectNum[sub] then print(string.format("mismatch %f %f %d %d",value,expectNum[sub],index,done[sub])); assert(false) end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 2) then
 		value = readStr(index)
-		if value ~= expectStr[sub] then print(string.format("mismatch %s %s %d %d",value,expectStr[sub],index,done[sub])); os.exit() end
+		if value ~= expectStr[sub] then print(string.format("mismatch %s %s %d %d",value,expectStr[sub],index,done[sub])); assert(false) end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 3) then
 		value = readNew(index)
-		if value ~= expectNew[sub] then print(string.format("mismatch %d %d %d %d",value,expectNew[sub],index,done[sub])); os.exit() end
+		if value ~= expectNew[sub] then print(string.format("mismatch %d %d %d %d",value,expectNew[sub],index,done[sub])); assert(false) end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 4) then
 		value = readOld(index)
 		diff = value-expectOld[sub]
 		if diff < 0.0 then diff = -diff end
-		if diff > 0.0001 then print(string.format("mismatch %f %f %d %d",value,expectOld[sub],index,done[sub])); os.exit() end
+		if diff > 0.0001 then print(string.format("mismatch %f %f %d %d",value,expectOld[sub],index,done[sub])); assert(false) end
 		done[sub] = done[sub] + 1
 	else
 		readInt(index)
@@ -80,6 +80,10 @@ while (index < 3) do
 	end
 	index = waitAny()
 end
-print(string.format("facer.lua %d %d %d %d %d %d",
-	checkRead(0),checkRead(1),checkRead(2),checkWrite(0),checkWrite(1),checkWrite(2)))
+assert(checkRead(0) == 0)
+assert(checkRead(1) == 0)
+assert(checkRead(2) == 0)
+assert(checkWrite(0) == 0)
+assert(checkWrite(1) == 0)
+assert(checkWrite(2) == 0)
 end

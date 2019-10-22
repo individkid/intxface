@@ -74,8 +74,6 @@ int main(int argc, char **argv)
 	default: {
 		readInt(index); writeInt(-1,index);
 		break;}}
-	printf("facer.c %d %d %d %d %d %d\n",
-	checkRead(0),checkRead(1),checkRead(2),
-	checkWrite(0),checkWrite(1),checkWrite(2));
-	return 0;
+	return (checkRead(0)||checkRead(1)||checkRead(2)||
+		checkWrite(0)||checkWrite(1)||checkWrite(2)) ? -1 : 0;
 }

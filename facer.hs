@@ -76,7 +76,7 @@ mainF [] = do
  mainFG 0 mainB -- send stimulus
  mainFH mainC mainB -- check responses
  check <- mainFI 0 [] -- check processes
- print ("facer.hs " ++ (show check))
+ mainFK check
 mainF [a,b,c] = do
  pipeInit a b
  mainFJ (mainC !! (read c)) -- copy request to response in order given
@@ -152,3 +152,7 @@ mainFJ (a:b) = do
  value <- readMain a index
  writeMain value index
  mainFJ b
+
+mainFK :: [Int] -> IO ()
+mainFK [0,0,0,0,0,0] = return ()
+mainFK _ = undefined

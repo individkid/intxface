@@ -92,7 +92,7 @@ int waitAny()
 }
 int waitAnyLua(lua_State *lua)
 {
-	lua_pushinteger(lua,waitAny());
+	lua_pushnumber(lua,waitAny());
 	return 1;
 }
 int checkRead(int idx)
@@ -101,7 +101,7 @@ int checkRead(int idx)
 }
 int checkReadLua(lua_State *lua)
 {
-	lua_pushinteger(lua,checkRead(lua_tointeger(lua,1)));
+	lua_pushnumber(lua,checkRead(lua_tointeger(lua,1)));
 	return 1;
 }
 int checkWrite(int idx)
@@ -110,7 +110,7 @@ int checkWrite(int idx)
 }
 int checkWriteLua(lua_State *lua)
 {
-	lua_pushinteger(lua,checkWrite(lua_tointeger(lua,1)));
+	lua_pushnumber(lua,checkWrite(lua_tointeger(lua,1)));
 	return 1;
 }
 void sleepSec(int sec)
