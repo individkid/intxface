@@ -34,43 +34,104 @@ char *name[BUFSIZE] = {0};
 int named[BUFSIZE] = {0};
 pthread_t thread[BUFSIZE] = {0};
 
+#define INFINITE 1000000000ull
 #define FILESIZE 1000
 #define VOIDARG(x) ((void*)(((char*)(0))+(x)))
 #define ARGVOID(x) (((char*)(x))-((char*)(0)))
+#define NAMES 4
+#define GIVEN 3
+#define NAMED 2
+#define HELPER 1
+#define CONTROL 0
+
+struct flock *ctlck(struct flock *lock, off_t pos)
+{
+	lock->l_start = pos;
+	lock->l_len = 1;
+	lock->l_type = F_WRLCK;
+	lock->l_whence = SEEK_SET;
+	return lock;
+}
+
+struct flock *wrlck(struct flock *lock, off_t pos)
+{
+	lock->l_start = pos;
+	lock->l_len = INFINITE;
+	lock->l_type = F_WRLCK;
+	lock->l_whence = SEEK_SET;
+	return lock;
+}
+
+struct flock *rdlck(struct flock *lock, off_t pos)
+{
+	lock->l_start = pos;
+	lock->l_len = 1;
+	lock->l_type = F_RDLCK;
+	lock->l_whence = SEEK_SET;
+	return lock;
+}
+
+struct flock *delck(struct flock *lock, off_t pos)
+{
+	lock->l_start = pos;
+	lock->l_len = INFINITE;
+	lock->l_type = F_UNLCK;
+	lock->l_whence = SEEK_SET;
+	return lock;	
+}
+
+struct flock *unlck(struct flock *lock, off_t pos)
+{
+	lock->l_start = pos;
+	lock->l_len = 1;
+	lock->l_type = F_UNLCK;
+	lock->l_whence = SEEK_SET;
+	return lock;	
+}
 
 void *file(void *arg)
 {
 	int idx = ARGVOID(arg);
 	int given = 0;
+	int empty = 0;
 	int helper = 0;
 	int seqnum = 0;
-	if ((given = open(name[idx]+2,O_RDWR|O_CREAT,0666)) < 0) ERROR
+	struct flock lock = {0};
 	helper = addFile(-1,-1);
+	if ((given = open(name[idx]+GIVEN,O_RDWR|O_CREAT,0666)) < 0) ERROR
+	if ((empty = open(name[idx]+CONTROL,O_RDWR|O_CREAT,0666)) < 0) ERROR
+	if (fcntl(empty,F_SETLKW,ctlck(&lock,0)) < 0) ERROR
 	off_t config = 0;
 	int stage = 0;
 	int fdesc = 0;
 	while (1) {
-		off_t append = 0;
 		int fd = 0;
-		if ((fd = open(name[idx]+0,O_RDWR|O_CREAT,0666)) < 0) ERROR
+		if ((fd = open(name[idx]+HELPER,O_RDWR|O_CREAT,0666)) < 0) ERROR
 		if (fdesc > 0) close(fdesc);
+		fdesc = fd;
 		setFile(fd,fd,helper);
-		while (todoFile(helper) < sizeof(int)) {
-			// writelock and writeInt seqnum
+		if (todoFile(helper) < sizeof(int)) {
+			seqnum = seqnum + 1;
+			writeInt(seqnum,helper);
+		} else {
+			int saved = seqnum;
+			seqnum = readInt(helper);
+			if (seqnum != saved + 1) {config = 0; stage = 0;}
 		}
-		int temp = readInt(helper) - 1;
-		if (temp != seqnum) {config = 0; stage = 0;}
-		else seqnum = seqnum + 1;
+		if (fcntl(empty,F_SETLK,unlck(&lock,0)) < 0) ERROR
+		off_t append = 0;
+		struct File command = {0};
 		while (append < FILESIZE) {
-			struct File command = {0};
 			if (stage == 0) {
 				// todoFile keeping buffer ahead of command
+				// setting stage = 1 upon buffer eof
 			} else {
 				// writelock or readlock for commands
 			}
 			writeFile(&command,named[idx]);
 		}
-		if (unlink(name[idx]+0) < 0) ERROR
+		if (fcntl(empty,F_SETLKW,ctlck(&lock,0)) < 0) ERROR
+		if (unlink(name[idx]+HELPER) < 0 && errno != ENOENT) ERROR
 	}
 	return 0;
 }
@@ -89,13 +150,13 @@ int main(int argc, char **argv)
 			if (pipe(fd) < 0) ERROR
 			anonym[command.idx] = addPipe(fd[0],fd[1]);
 			number[anonym[command.idx]] = command.idx;
-			name[command.idx] = malloc(strlen(command.str[0])+3);
-			name[command.idx][0] = name[command.idx][1] = '.';
-			strcat(name[command.idx],command.str[0]);
+			name[command.idx] = malloc(strlen(command.str[0])+NAMES);
+			for (int i = 0; i < NAMES-1; i++) name[command.idx][i] = '.';
+			strcpy(name[command.idx]+GIVEN,command.str[0]);
 			int fi,fo;
-			if (mkfifo(name[command.idx]+1,0666) < 0) ERROR
-			if ((fi = open(name[command.idx]+1,O_RDONLY)) < 0) ERROR
-			if ((fo = open(name[command.idx]+1,O_WRONLY)) < 0) ERROR
+			if (mkfifo(name[command.idx]+NAMED,0666) < 0) ERROR
+			if ((fi = open(name[command.idx]+NAMED,O_RDONLY)) < 0) ERROR
+			if ((fo = open(name[command.idx]+NAMED,O_WRONLY)) < 0) ERROR
 			named[command.idx] = addPipe(fi,fo);
 			if (pthread_create(&thread[command.idx],0,file,VOIDARG(command.idx)) < 0) ERROR
 		} else if (sub == face) {
