@@ -44,7 +44,7 @@ void *file(void *arg)
 	int helper = 0;
 	int seqnum = 0;
 	if ((given = open(name[idx]+2,O_RDWR|O_CREAT,0666)) < 0) ERROR
-	helper = addFile(0,0);
+	helper = addFile(-1,-1);
 	while (1) {
 		off_t append = 0;
 		off_t config = 0;
@@ -52,10 +52,9 @@ void *file(void *arg)
 		int fd = 0;
 		if ((fd = open(name[idx]+0,O_RDWR|O_CREAT,0666)) < 0) ERROR
 		setFile(fd,fd,helper);
-		while (todoFile(helper) == 0) {
+		while (todoFile(helper) < sizeof(int)) {
 			// writelock and writeInt seqnum
 		}
-		if (todoFile(helper) < sizeof(int)) ERROR
 		seqnum = readInt(helper);
 		while (1) {
 			// todoFile keeping buffer ahead of command
