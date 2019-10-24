@@ -1,31 +1,21 @@
 ./clean
-f() { $* 2> log ; status=$? ; if [ $status -ne 0 ] ; then cat log ; exit -1 ; fi }
-echo "compile face"
+f() { echo "$*" ; $* 2> log ; status=$? ; if [ $status -ne 0 ] ; then cat log ; exit -1 ; fi }
 f clang -o faceC.o -c face.c -I /usr/local/include/lua
 f touch face.hs
 f clang -o face.so -fPIC -shared faceC.o -llua
-echo "link facer"
 f clang -o a.out facer.c faceC.o -llua
 f ghc -o b.out facer.hs faceC.o -llua -v0
 f chmod +x facer.ex
-echo "execute facer"
 f ./a.out
 f ./b.out
 f ./facer.ex
-echo "generate typer"
 f ./typra.ex
-echo "link typer"
 f clang -o a.out typer.c faceC.o -llua
 f ghc -o b.out typer.hs faceC.o -llua -v0
 f chmod +x typer.ex
-echo "execute typer"
 f ./a.out
-echo "generate type"
 f ./type.ex
-echo "compile type"
 f clang -o typeC.o -c type.c
 f touch type.hs
 f touch type.lua
-echo "compile file"
 f clang -o file.o file.c typeC.o faceC.o -llua
-echo "build done"
