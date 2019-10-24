@@ -93,14 +93,14 @@ void *file(void *arg)
 {
 	int idx = ARGVOID(arg);
 	int given = 0;
-	int empty = 0;
+	int control = 0;
 	int helper = 0;
 	int seqnum = 0;
 	struct flock lock = {0};
 	helper = addFile(-1,-1);
 	if ((given = open(name[idx]+GIVEN,O_RDWR|O_CREAT,0666)) < 0) ERROR
-	if ((empty = open(name[idx]+CONTROL,O_RDWR|O_CREAT,0666)) < 0) ERROR
-	if (fcntl(empty,F_SETLKW,ctlck(&lock,0)) < 0) ERROR
+	if ((control = open(name[idx]+CONTROL,O_RDWR|O_CREAT,0666)) < 0) ERROR
+	if (fcntl(control,F_SETLKW,ctlck(&lock,0)) < 0) ERROR
 	off_t config = 0;
 	int stage = 0;
 	int fdesc = 0;
@@ -118,7 +118,7 @@ void *file(void *arg)
 			seqnum = readInt(helper);
 			if (seqnum != saved + 1) {config = 0; stage = 0;}
 		}
-		if (fcntl(empty,F_SETLK,unlck(&lock,0)) < 0) ERROR
+		if (fcntl(control,F_SETLK,unlck(&lock,0)) < 0) ERROR
 		off_t append = 0;
 		struct File command = {0};
 		while (append < FILESIZE) {
@@ -130,7 +130,7 @@ void *file(void *arg)
 			}
 			writeFile(&command,named[idx]);
 		}
-		if (fcntl(empty,F_SETLKW,ctlck(&lock,0)) < 0) ERROR
+		if (fcntl(control,F_SETLKW,ctlck(&lock,0)) < 0) ERROR
 		if (unlink(name[idx]+HELPER) < 0 && errno != ENOENT) ERROR
 	}
 	return 0;
