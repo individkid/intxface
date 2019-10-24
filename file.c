@@ -34,6 +34,7 @@ char *name[BUFSIZE] = {0};
 int named[BUFSIZE] = {0};
 pthread_t thread[BUFSIZE] = {0};
 
+#define FILESIZE 1000
 #define VOIDARG(x) ((void*)(((char*)(0))+(x)))
 #define ARGVOID(x) (((char*)(x))-((char*)(0)))
 
@@ -45,26 +46,31 @@ void *file(void *arg)
 	int seqnum = 0;
 	if ((given = open(name[idx]+2,O_RDWR|O_CREAT,0666)) < 0) ERROR
 	helper = addFile(-1,-1);
+	off_t config = 0;
+	int stage = 0;
+	int fdesc = 0;
 	while (1) {
 		off_t append = 0;
-		off_t config = 0;
-		struct File command = {0};
 		int fd = 0;
 		if ((fd = open(name[idx]+0,O_RDWR|O_CREAT,0666)) < 0) ERROR
+		if (fdesc > 0) close(fdesc);
 		setFile(fd,fd,helper);
 		while (todoFile(helper) < sizeof(int)) {
 			// writelock and writeInt seqnum
 		}
-		seqnum = readInt(helper);
-		while (1) {
-			// todoFile keeping buffer ahead of command
-		}
-		while (1) {
-			while (1) {
+		int temp = readInt(helper) - 1;
+		if (temp != seqnum) {config = 0; stage = 0;}
+		else seqnum = seqnum + 1;
+		while (append < FILESIZE) {
+			struct File command = {0};
+			if (stage == 0) {
+				// todoFile keeping buffer ahead of command
+			} else {
 				// writelock or readlock for commands
 			}
-			// reopen helper and check seqnum
+			writeFile(&command,named[idx]);
 		}
+		if (unlink(name[idx]+0) < 0) ERROR
 	}
 	return 0;
 }
