@@ -22,9 +22,14 @@
 #define BUFSIZE 1024
 
 int addPipe(int fd0, int fd1);
+int addFile(int fd0, int fd1);
+void setFile(int fd0, int fd1, int idx);
+int addPipe(int fd0, int fd1);
 int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
 int waitAny();
+int pollPipe(int idx);
+int todoFile(int idx);
 int checkRead(int idx);
 int checkWrite(int idx);
 void sleepSec(int sec);

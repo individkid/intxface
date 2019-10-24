@@ -22,15 +22,16 @@
 #include "face.h"
 #include <unistd.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 int face = 0;
 int anonym[BUFSIZE] = {0};
 int number[BUFSIZE] = {0};
-int given[BUFSIZE] = {0};
+char *name[BUFSIZE] = {0};
 int named[BUFSIZE] = {0};
-int helper[BUFSIZE] = {0};
-int seqnum[BUFSIZE] = {0};
-int append[BUFSIZE] = {0};
 pthread_t thread[BUFSIZE] = {0};
 
 #define VOIDARG(x) ((void*)(((char*)(0))+(x)))
@@ -39,6 +40,33 @@ pthread_t thread[BUFSIZE] = {0};
 void *file(void *arg)
 {
 	int idx = ARGVOID(arg);
+	int given = 0;
+	int helper = 0;
+	int seqnum = 0;
+	if ((given = open(name[idx]+2,O_RDWR|O_CREAT,0666)) < 0) ERROR
+	helper = addFile(0,0);
+	while (1) {
+		off_t append = 0;
+		off_t config = 0;
+		struct File command = {0};
+		int fd = 0;
+		if ((fd = open(name[idx]+0,O_RDWR|O_CREAT,0666)) < 0) ERROR
+		setFile(fd,fd,helper);
+		while (todoFile(helper) == 0) {
+			// writelock and writeInt seqnum
+		}
+		if (todoFile(helper) < sizeof(int)) ERROR
+		seqnum = readInt(helper);
+		while (1) {
+			// todoFile keeping buffer ahead of command
+		}
+		while (1) {
+			while (1) {
+				// writelock or readlock for commands
+			}
+			// reopen helper and check seqnum
+		}
+	}
 	return 0;
 }
 
@@ -51,18 +79,19 @@ int main(int argc, char **argv)
 		readFile(&command,sub);
 		if (sub == face && named[command.idx] <= 0) {
 			if (command.idx < 0 || command.idx >= BUFSIZE) ERROR
+			if (command.num != 1) ERROR
 			int fd[2];
 			if (pipe(fd) < 0) ERROR
 			anonym[command.idx] = addPipe(fd[0],fd[1]);
 			number[anonym[command.idx]] = command.idx;
-			// regular open command.str[0] into given[command.idx]
+			name[command.idx] = malloc(strlen(command.str[0])+3);
+			name[command.idx][0] = name[command.idx][1] = '.';
+			strcat(name[command.idx],command.str[0]);
 			int fi,fo;
-			// fifo open concat(".",command.str[0]) into fi and fo
+			if (mkfifo(name[command.idx]+1,0666) < 0) ERROR
+			if ((fi = open(name[command.idx]+1,O_RDONLY)) < 0) ERROR
+			if ((fo = open(name[command.idx]+1,O_WRONLY)) < 0) ERROR
 			named[command.idx] = addPipe(fi,fo);
-			// regular open or create concat("..",command.str[0]) into helper[command.idx]
-			// read from start of helper[command.idx] for seqnum, or use default
-			// lseek end of helper[command.idx] into append
-			// pthread create with command.idx as argument
 			if (pthread_create(&thread[command.idx],0,file,VOIDARG(command.idx)) < 0) ERROR
 		} else if (sub == face) {
 			writeFile(&command,named[command.idx]);

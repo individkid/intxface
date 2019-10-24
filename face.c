@@ -61,6 +61,15 @@ int addFileLua(lua_State *lua)
 	lua_pushnumber(lua,addFile((int)lua_tonumber(lua,1),lua_tointeger(lua,2)));
 	return 1;
 }
+void setFile(int fd0, int fd1, int idx)
+{
+	if (idx < 0 || idx >= len) ERROR
+}
+int setFileLua(lua_State *lua)
+{
+	setFile((int)lua_tonumber(lua,1),lua_tointeger(lua,2),lua_tointeger(lua,3));
+	return 0;
+}
 int forkExec(const char *exe)
 {
 	int c2p[2], p2c[2], val;
@@ -155,7 +164,7 @@ int todoFile(int idx)
 	if (idx < 0 || idx >= len || vld[idx] != Wait) return 0;
 	pos = lseek(inp[idx],0,SEEK_CUR);
 	len = lseek(inp[idx],0,SEEK_END);
-	return (len > pos);
+	return (len - pos);
 }
 int todoFileLua(lua_State *lua)
 {
@@ -341,6 +350,8 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "addPipe");
 	lua_pushcfunction(L, addFileLua);
 	lua_setglobal(L, "addFile");
+	lua_pushcfunction(L, setFileLua);
+	lua_setglobal(L, "setFile");
 	lua_pushcfunction(L, forkExecLua);
 	lua_setglobal(L, "forkExec");
 	lua_pushcfunction(L, pipeInitLua);
