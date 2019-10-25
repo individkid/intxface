@@ -165,7 +165,7 @@ int todoFile(int idx)
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR;
 	if ((len = lseek(inp[idx],0,SEEK_END)) < 0) ERROR;
 	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR;
-	return (len - pos);
+	return (len > pos);
 }
 int todoFileLua(lua_State *lua)
 {

@@ -113,13 +113,13 @@ void *file(void *arg)
 		if (fdesc > 0 && close(fdesc) < 0) ERROR
 		fdesc = fd;
 		setFile(fd,fd,helper);
-		if (todoFile(helper) < sizeof(int)) {
-			seqnum = seqnum + 1;
-			writeInt(seqnum,helper);
-		} else {
+		if (todoFile(helper)) {
 			int saved = seqnum;
 			seqnum = readInt(helper);
 			if (seqnum != saved + 1) {config = 0; stage = 0;}
+		} else {
+			seqnum = seqnum + 1;
+			writeInt(seqnum,helper);
 		}
 		if (fcntl(control,F_SETLK,unlck(&lock,0)) < 0) ERROR
 		off_t append = 0;
@@ -142,9 +142,13 @@ void *file(void *arg)
 					buffer[len] = 0;
 					char *ptr = buffer;
 					struct File temp = {0};
-					for (temp.num = 0; strlen(ptr) > 0;
-						ptr += strlen(ptr)+1, temp.num++)
+					temp.num = 0;
+					for (int i = 0; i < len;) {
+						int size = 0;
+						size = strlen(ptr)+1;
 						temp.str[temp.num] = ptr;
+						ptr += size; i += size; temp.num++;
+					}
 					temp.idx = idx;
 					temp.loc = config;
 					temp.siz = len;
@@ -153,12 +157,33 @@ void *file(void *arg)
 				}
 			} else {
 				int val = 0;
-				val = fcntl(control,F_SETLK,wrlck(&lock,append));
+				val = fcntl(helper,F_SETLK,wrlck(&lock,append));
 				if (val < 0 && errno != EAGAIN) ERROR
 				if (val < 0) {
-					// wait for readlock
+					if (fcntl(helper,F_SETLKW,rdlck(&lock,append)) < 0) ERROR
+					if (todoFile(helper)) {
+						readFile(&command,helper);
+						writeFile(&command,anonym[idx]);
+						if (fcntl(helper,F_SETLK,unlck(&lock,append)) < 0) ERROR
+						// TODO // append += sizeFile(&command);
+					} else {
+						if (fcntl(helper,F_SETLK,unlck(&lock,append)) < 0) ERROR
+					}
 				} else {
-					// wait for named pipe if eof helper
+					if (todoFile(helper)) {
+						if (fcntl(helper,F_SETLK,delck(&lock,append)) < 0) ERROR
+					} else {
+						readFile(&command,named[idx]);
+						for (int i = 0; i < command.num; i++) {
+							int len = strlen(command.str[i]);
+							if (i < command.num-1) len++;
+							if (write(given,command.str[i],len) < len) ERROR
+						}
+						writeFile(&command,helper);
+						writeFile(&command,anonym[idx]);
+						if (fcntl(helper,F_SETLK,delck(&lock,append)) < 0) ERROR
+						// TODO // append += sizeFile(&command);
+					}
 				}
 			}
 		}
