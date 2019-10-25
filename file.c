@@ -165,7 +165,7 @@ void *file(void *arg)
 						readFile(&command,helper);
 						writeFile(&command,anonym[idx]);
 						if (fcntl(helper,F_SETLK,unlck(&lock,append)) < 0) ERROR
-						// TODO // append += sizeFile(&command);
+						append += sizeFile(&command);
 					} else {
 						if (fcntl(helper,F_SETLK,unlck(&lock,append)) < 0) ERROR
 					}
@@ -182,7 +182,7 @@ void *file(void *arg)
 						writeFile(&command,helper);
 						writeFile(&command,anonym[idx]);
 						if (fcntl(helper,F_SETLK,delck(&lock,append)) < 0) ERROR
-						// TODO // append += sizeFile(&command);
+						append += sizeFile(&command);
 					}
 				}
 			}

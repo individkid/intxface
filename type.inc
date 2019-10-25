@@ -379,26 +379,6 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
-function showStreamCF(name,field,lim)
-	local result = "alloc"
-	local cast = ""
-	if (name == "int") then
-		result = result.."Int"
-	elseif (name == "long long") then
-		result = result.."New"
-	elseif (name == "double") then
-		result = result.."Num"
-	elseif (name == "float") then
-		result = result.."Old"
-	elseif (name == "char*") then
-		result = result.."Ptr"
-		cast = "(void**)"
-	else
-		result = result..name
-	end
-	result = result.."("..cast.."&ptr->"..field..","..lim..");\n"
-	return result
-end
 function showCondC(struct,dset)
 	local cond = ""
 	local terms = 0
@@ -431,11 +411,34 @@ function showCondC(struct,dset)
 	end
 	return cond
 end
+function showStreamCF(name,field,lim)
+	local result = "alloc"
+	local cast = ""
+	if (name == "int") then
+		result = result.."Int"
+	elseif (name == "long long") then
+		result = result.."New"
+	elseif (name == "double") then
+		result = result.."Num"
+	elseif (name == "float") then
+		result = result.."Old"
+	elseif (name == "char*") then
+		result = result.."Ptr"
+		cast = "(void**)"
+	else
+		result = result..name
+	end
+	result = result.."("..cast.."&ptr->"..field..","..lim..");\n"
+	return result
+end
 function showStreamC(name,struct,show,pre,post)
 	local result = ""
 	result = result..pre..name.."(struct "..name.." *ptr"..post..")"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
+	if (show == showSizeCF) then
+		result = result..showIndent(1).."int result = 0;\n"
+	end
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
 		local depth = 1
@@ -487,6 +490,9 @@ function showStreamC(name,struct,show,pre,post)
 	end
 	if (show == showCompCF) then
 		result = result..showIndent(1).."return 1;\n"
+	end
+	if (show == showSizeCF) then
+		result = result..showIndent(1).."return result;\n"
 	end
 	result = result.."}"
 	return result
@@ -631,11 +637,29 @@ function showCompCF(v,ebr,sub)
 	end
 	return result
 end
+function showSizeCF(v,ebr,sub)
+	local result = ""
+	if (v[2] == "int") or (v[2] == "long long") or (v[2] == "double") or (v[2] == "float") then
+		result = result.."result = result + sizeof("..v[2]..");"..ebr.."\n"
+	elseif (Enumz[v[2]]~=nil) then
+		result = result.."result = result + sizeof(int);"..ebr.."\n"
+	elseif (v[2] == "char*") then
+		result = result.."result = result + strlen(ptr->"..v[1]..sub..") + 1;"..ebr.."\n"
+	elseif (Structz[v[2]]~=nil) then
+		result = result.."result = result + size"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
+	else
+		result = result..ebr.."; // "..showAny(v).."\n"
+	end
+	return result
+end
 function showRandC(name,struct)
 	return showStreamC(name,struct,showRandCF,"void rand","")
 end
 function showCompC(name,struct)
 	return showStreamC(name,struct,showCompCF,"int comp",", struct "..name.." *cmp")
+end
+function showSizeC(name,struct)
+	return showStreamC(name,struct,showSizeCF,"int size","")
 end
 function showEnumHs(name,enum)
 	local result = "data "..name.." =\n"
@@ -1395,7 +1419,8 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showReadC).."\n"
 	result = result..showCall(Structs,Structz,showWriteC).."\n"
 	result = result..showCall(Structs,Structz,showRandC).."\n"
-	result = result..showCall(Structs,Structz,showCompC)
+	result = result..showCall(Structs,Structz,showCompC).."\n"
+	result = result..showCall(Structs,Structz,showSizeC)
 	return result
 end
 function showCallH()
