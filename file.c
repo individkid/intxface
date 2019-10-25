@@ -36,6 +36,7 @@ pthread_t thread[BUFSIZE] = {0};
 
 #define INFINITE 1000000000ull
 #define FILESIZE 1000
+#define CMDSIZE 100
 #define VOIDARG(x) ((void*)(((char*)(0))+(x)))
 #define ARGVOID(x) (((char*)(x))-((char*)(0)))
 #define NAMES 4
@@ -97,6 +98,8 @@ void *file(void *arg)
 	int helper = 0;
 	int seqnum = 0;
 	struct flock lock = {0};
+	struct File command = {0};
+	char buffer[CMDSIZE] = {0};
 	helper = addFile(-1,-1);
 	if ((given = open(name[idx]+GIVEN,O_RDWR|O_CREAT,0666)) < 0) ERROR
 	if ((control = open(name[idx]+CONTROL,O_RDWR|O_CREAT,0666)) < 0) ERROR
@@ -107,7 +110,7 @@ void *file(void *arg)
 	while (1) {
 		int fd = 0;
 		if ((fd = open(name[idx]+HELPER,O_RDWR|O_CREAT,0666)) < 0) ERROR
-		if (fdesc > 0) close(fdesc);
+		if (fdesc > 0 && close(fdesc) < 0) ERROR
 		fdesc = fd;
 		setFile(fd,fd,helper);
 		if (todoFile(helper) < sizeof(int)) {
@@ -120,18 +123,47 @@ void *file(void *arg)
 		}
 		if (fcntl(control,F_SETLK,unlck(&lock,0)) < 0) ERROR
 		off_t append = 0;
-		struct File command = {0};
+		int valid = 0;
 		while (append < FILESIZE) {
 			if (stage == 0) {
-				// todoFile keeping buffer ahead of command
-				// setting stage = 1 upon buffer eof
+				if (!valid && todoFile(helper)) {readFile(&command,helper); valid = 1;}
+				if (valid && config >= command.loc + command.siz) {
+					writeFile(&command,named[idx]);
+					valid = 0;
+				} else {
+					int len = 0;
+					if ((len = read(given,buffer,CMDSIZE-1)) < 0) ERROR
+					if (len == 0) {
+						if (valid) writeFile(&command,named[idx]);
+						valid = 0;
+						stage = 1;
+						break;
+					}
+					buffer[len] = 0;
+					char *ptr = buffer;
+					struct File temp = {0};
+					for (temp.num = 0; strlen(ptr) > 0;
+						ptr += strlen(ptr)+1, temp.num++)
+						temp.str[temp.num] = ptr;
+					temp.idx = idx;
+					temp.loc = config;
+					temp.siz = len;
+					writeFile(&temp,anonym[idx]);
+					config += len;
+				}
 			} else {
-				// writelock or readlock for commands
+				int val = 0;
+				val = fcntl(control,F_SETLK,wrlck(&lock,append));
+				if (val < 0 && errno != EAGAIN) ERROR
+				if (val < 0) {
+					// wait for readlock
+				} else {
+					// wait for named pipe if eof helper
+				}
 			}
-			writeFile(&command,named[idx]);
 		}
 		if (fcntl(control,F_SETLKW,ctlck(&lock,0)) < 0) ERROR
-		if (unlink(name[idx]+HELPER) < 0 && errno != ENOENT) ERROR
+		if (unlink(name[idx]+HELPER) < 0) ERROR
 	}
 	return 0;
 }
