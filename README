@@ -35,9 +35,9 @@ Main pselects on interface pipe, waiting for commands.
 Open file command opens the helper named pipe for writing,
 creates a pthread with unnamed pipe, and opens given file.
 Write command forwards to indicated named pipe.
-Main round robin lock reads from given files til eof,
-and pselects unnamed pipes and interface pipe.
-The created pthread tries for writelock on youngest helper file,
+Main pselects unnamed pipes and interface pipe.
+The created pthread round robin lock reads from given files til eof,
+and tries for writelock on youngest helper file,
 or waits for readlock.
 The writelocker waits for commands in the named pipe,
 lock changes the given file, appends to the helper file,

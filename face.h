@@ -18,7 +18,7 @@
 #ifndef FACE_H
 #define FACE_H
 
-#define ERROR {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno);exit(-1);}
+#define ERROR(JMP) {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno); if (JMP) longjmp(JMP,1); else exit(-1);}
 #define BUFSIZE 1024
 
 int addPipe(int fd0, int fd1);

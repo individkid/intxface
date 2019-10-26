@@ -21,25 +21,27 @@
 #include <sys/select.h>
 #include <sys/errno.h>
 #include <signal.h>
+#include <setjmp.h>
 #include <lua.h>
 #include "face.h"
 
-int inp[BUFSIZE];
-int out[BUFSIZE];
-enum {Wait,Poll,Seek,None} vld[BUFSIZE];
-pid_t pid[BUFSIZE];
+int inp[BUFSIZE] = {0};
+int out[BUFSIZE] = {0};
+enum {Wait,Poll,Seek,None} vld[BUFSIZE] = {0};
+pid_t pid[BUFSIZE] = {0};
 int len = 0;
-char buf[BUFSIZE];
+char buf[BUFSIZE] = {0};
+jmp_buf *errptr[BUFSIZE] = {0};
 
 int addPipe(int fd0, int fd1)
 {
-	if (len >= BUFSIZE) ERROR
+	if (len >= BUFSIZE) return -1;
 	inp[len] = fd0;
 	out[len] = fd1;
 	vld[len] = Poll;
+	int ret = len;
 	len++;
-	int reg = len;
-	return reg;
+	return ret;
 }
 int addPipeLua(lua_State *lua)
 {
@@ -48,13 +50,13 @@ int addPipeLua(lua_State *lua)
 }
 int addFile(int fd0, int fd1)
 {
-	if (len >= BUFSIZE) ERROR
+	if (len >= BUFSIZE) return -1;
 	inp[len] = fd0;
 	out[len] = fd1;
 	vld[len] = Seek;
+	int ret = len;
 	len++;
-	int reg = len;
-	return reg;
+	return ret;
 }
 int addFileLua(lua_State *lua)
 {
@@ -63,7 +65,9 @@ int addFileLua(lua_State *lua)
 }
 void setFile(int fd0, int fd1, int idx)
 {
-	if (idx < 0 || idx >= len) ERROR
+	if (idx < 0 || idx >= len) ERROR(*errptr[idx])
+	inp[idx] = fd0;
+	out[idx] = fd1;
 }
 int setFileLua(lua_State *lua)
 {
@@ -73,27 +77,27 @@ int setFileLua(lua_State *lua)
 int forkExec(const char *exe)
 {
 	int c2p[2], p2c[2], val;
-	val = pipe(c2p); if (val < 0) ERROR
-	val = pipe(p2c); if (val < 0) ERROR
-	if (len >= BUFSIZE) ERROR
-	pid[len] = fork(); if (pid[len] < 0) ERROR
+	val = pipe(c2p); if (val < 0) return -1;
+	val = pipe(p2c); if (val < 0) return -1;
+	if (len >= BUFSIZE) return -1;
+	pid[len] = fork(); if (pid[len] < 0) return -1;
 	if (pid[len] == 0) {
 		char ist[33], ost[33], idt[33];
-		val = close(c2p[0]); if (val < 0) ERROR
-		val = close(p2c[1]); if (val < 0) ERROR
-		val = snprintf(ost,32,"%d",c2p[1]); if (val < 0 || val > 32) ERROR
-		val = snprintf(ist,32,"%d",p2c[0]); if (val < 0 || val > 32) ERROR
-		val = snprintf(idt,32,"%d",len); if (val < 0 || val > 32) ERROR
-		val = execl(exe,exe,ist,ost,idt,0); if (val < 0) ERROR
-		ERROR}
-	val = close(c2p[1]); if (val < 0) ERROR
-	val = close(p2c[0]); if (val < 0) ERROR
+		val = close(c2p[0]); if (val < 0) return -1;
+		val = close(p2c[1]); if (val < 0) return -1;
+		val = snprintf(ost,32,"%d",c2p[1]); if (val < 0 || val > 32) return -1;
+		val = snprintf(ist,32,"%d",p2c[0]); if (val < 0 || val > 32) return -1;
+		val = snprintf(idt,32,"%d",len); if (val < 0 || val > 32) return -1;
+		val = execl(exe,exe,ist,ost,idt,0); if (val < 0) return -1;
+		return -1;}
+	val = close(c2p[1]); if (val < 0) return -1;
+	val = close(p2c[0]); if (val < 0) return -1;
 	inp[len] = c2p[0];
 	out[len] = p2c[1];
 	vld[len] = Wait;
 	int ret = len;
 	len++;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
 	return ret;
 }
 int forkExecLua(lua_State *lua)
@@ -104,12 +108,12 @@ int forkExecLua(lua_State *lua)
 int pipeInit(const char *av1, const char *av2)
 {
 	int val;
-	val = sscanf(av1,"%d",&inp[len]); if (val != 1) ERROR
-	val = sscanf(av2,"%d",&out[len]); if (val != 1) ERROR
+	val = sscanf(av1,"%d",&inp[len]); if (val != 1) return -1;
+	val = sscanf(av2,"%d",&out[len]); if (val != 1) return -1;
 	vld[len] = Wait;
 	int ret = len;
 	len++;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
 	return ret;
 }
 int pipeInitLua(lua_State *lua)
@@ -128,7 +132,7 @@ int waitAny()
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
-	if (val <= 0) ERROR
+	if (val <= 0) return -1;
 	for (int i = 0; i < len; i++) {
 		if (inp[i] >= 0 && FD_ISSET(inp[i],&ers)) vld[i] = None;}
 	for (int i = 0; i < len; i++) {
@@ -149,7 +153,7 @@ int pollPipe(int idx)
 	if (nfd <= inp[idx]) nfd = inp[idx]+1;
 	FD_SET(inp[idx],&fds); FD_SET(inp[idx],&ers);
 	val = -1; while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
-	if (val <= 0) ERROR
+	if (val <= 0) ERROR(*errptr[idx])
 	if (FD_ISSET(inp[idx],&fds)) return 1;
 	return 0;
 }
@@ -162,9 +166,9 @@ int todoFile(int idx)
 {
 	off_t pos, len;
 	if (idx < 0 || idx >= len || vld[idx] != Wait) return 0;
-	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR;
-	if ((len = lseek(inp[idx],0,SEEK_END)) < 0) ERROR;
-	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR;
+	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(*errptr[idx]);
+	if ((len = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(*errptr[idx]);
+	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(*errptr[idx]);
 	return (len > pos);
 }
 int todoFileLua(lua_State *lua)
@@ -207,7 +211,7 @@ const char *readStr(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) {buf[0] = 0; return buf;}
 	if (inp[idx] < 0) {buf[0] = 0; return buf;}
 	for (int i = 0; i < BUFSIZE-1; i++) {
-	int val = read(inp[idx],&buf[i],1); if (val < 0) ERROR
+	int val = read(inp[idx],&buf[i],1); if (val < 0) ERROR(*errptr[idx])
 	if (val == 0) {buf[i] = 0; vld[idx] = None;}
 	if (buf[i] == 0) return buf;
 	}
@@ -225,7 +229,7 @@ int readInt(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) {arg = 0; return arg;}
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(int));
-	if (val != 0 && val < (int)sizeof(int)) ERROR
+	if (val != 0 && val < (int)sizeof(int)) ERROR(*errptr[idx])
 	if (val == 0) {arg = 0; vld[idx] = None;}
 	return arg;
 }
@@ -240,7 +244,7 @@ double readNum(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) {arg = 0.0; return arg;}
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(double));
-	if (val != 0 && val < (int)sizeof(double)) ERROR
+	if (val != 0 && val < (int)sizeof(double)) ERROR(*errptr[idx])
 	if (val == 0) {arg = 0.0; vld[idx] = None;}
 	return arg;
 }
@@ -255,7 +259,7 @@ long long readNew(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) {arg = 0; return arg;}
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(long long));
-	if (val != 0 && val < (int)sizeof(long long)) ERROR
+	if (val != 0 && val < (int)sizeof(long long)) ERROR(*errptr[idx])
 	if (val == 0) {arg = 0; vld[idx] = None;}
 	return arg;
 }
@@ -270,7 +274,7 @@ float readOld(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) {arg = 0.0; return arg;}
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(float));
-	if (val != 0 && val < (int)sizeof(float)) ERROR
+	if (val != 0 && val < (int)sizeof(float)) ERROR(*errptr[idx])
 	if (val == 0) {arg = 0.0; vld[idx] = None;}
 	return arg;
 }
@@ -286,7 +290,7 @@ void writeStr(const char *arg, int idx)
 	int siz = 0; while (arg[siz]) siz++;
 	int val = write(out[idx],arg,siz+1);
 	if (val < 0 && errno == EPIPE) vld[idx] = None;
-	else if (val < siz+1) ERROR
+	else if (val < siz+1) ERROR(*errptr[idx])
 }
 int writeStrLua(lua_State *lua)
 {
@@ -299,7 +303,7 @@ void writeInt(int arg, int idx)
 	if (out[idx] < 0) return;
 	int val = write(out[idx],(char *)&arg,sizeof(int));
 	if (val < 0 && errno == EPIPE) vld[idx] = None;
-	else if (val < (int)sizeof(int)) ERROR
+	else if (val < (int)sizeof(int)) ERROR(*errptr[idx])
 }
 int writeIntLua(lua_State *lua)
 {
@@ -312,7 +316,7 @@ void writeNum(double arg, int idx)
 	if (out[idx] < 0) return;
 	int val = write(out[idx],(char *)&arg,sizeof(double));
 	if (val < 0 && errno == EPIPE) vld[idx] = None;
-	else if (val < (int)sizeof(double)) ERROR
+	else if (val < (int)sizeof(double)) ERROR(*errptr[idx])
 }
 int writeNumLua(lua_State *lua)
 {
@@ -325,7 +329,7 @@ void writeNew(long long arg, int idx)
 	if (out[idx] < 0) return;
 	int val = write(out[idx],(char *)&arg,sizeof(long long));
 	if (val < 0 && errno == EPIPE) vld[idx] = None;
-	else if (val < (int)sizeof(long long)) ERROR
+	else if (val < (int)sizeof(long long)) ERROR(*errptr[idx])
 }
 int writeNewLua(lua_State *lua)
 {
@@ -338,7 +342,7 @@ void writeOld(float arg, int idx)
 	if (out[idx] < 0) return;
 	int val = write(out[idx],(char *)&arg,sizeof(float));
 	if (val < 0 && errno == EPIPE) vld[idx] = None;
-	else if (val < (int)sizeof(float)) ERROR
+	else if (val < (int)sizeof(float)) ERROR(*errptr[idx])
 }
 int writeOldLua(lua_State *lua)
 {

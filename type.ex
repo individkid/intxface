@@ -24,7 +24,6 @@ dofile("type.inc")
 File = {
 	{"idx","int",{},{}},
 	{"loc","long long",{},{}},
-	{"siz","int",{},{}},
 	{"num","int",{},{}},
 	{"str","char*",{},"num"},
 }
