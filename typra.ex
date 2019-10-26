@@ -205,7 +205,7 @@ Expected = {
 	"    Value13,\n"..
 	"};",
 	"struct Struct1 {\n"..
-	"    struct {\n"..
+	"    struct { // field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
 	"        struct Struct1* next;\n"..
 	"        float field1[2];\n"..
 	"        double field2[3];\n"..
@@ -216,18 +216,18 @@ Expected = {
 	"        enum Enum2 field7;\n"..
 	"    };\n"..
 	"    union {\n"..
-	"        struct {\n"..
+	"        struct { // field6:Value11;field7:Value21,Value22,Value23\n"..
 	"            int field8;\n"..
 	"            int field9;\n"..
 	"        };\n"..
-	"        int field10;\n"..
+	"        int field10; // field6:Value12;field7:Value21,Value22,Value23\n"..
 	"    };\n"..
 	"    union {\n"..
-	"        int field11;\n"..
-	"        int field12;\n"..
-	"        int field13;\n"..
+	"        int field11; // field6:Value12;field7:Value21\n"..
+	"        int field12; // field6:Value12;field7:Value22,Value23\n"..
+	"        int field13; // field6:Value13;field7:Value21,Value22,Value23\n"..
 	"    };\n"..
-	"    struct {\n"..
+	"    struct { // field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
 	"        int field14;\n"..
 	"        int* field15;\n"..
 	"        struct Struct2* field16;\n"..
@@ -430,7 +430,7 @@ Expected = {
 	"    Value13 |\n"..
 	"    Enum1s deriving (Eq)\n"..
 	"--",
-	"data Struct1A1X8 = Struct1A1X8\n"..
+	"data Struct1A1X8 = Struct1A1X8 -- field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
 	"    [Struct1] -- next\n"..
 	"    [Float] -- field1\n"..
 	"    [Double] -- field2\n"..
@@ -440,22 +440,22 @@ Expected = {
 	"    Enum1 -- field6\n"..
 	"    Enum2 -- field7\n"..
 	"    deriving (Eq)\n"..
-	"data Struct1A15X18 = Struct1A15X18\n"..
+	"data Struct1A15X18 = Struct1A15X18 -- field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
 	"    [Struct2] -- field16\n"..
 	"    [Struct2] -- field17\n"..
 	"    deriving (Eq)\n"..
 	"data Struct1A9X11 =\n"..
-	"    Struct1A9X11B9X10\n"..
+	"    Struct1A9X11B9X10 -- field6:Value11;field7:Value21,Value22,Value23\n"..
 	"        Int -- field8\n"..
 	"        Int | -- field9\n"..
-	"    Struct1A9X11B11 Int | -- field10\n"..
+	"    Struct1A9X11B11 Int | -- field10 -- field6:Value12;field7:Value21,Value22,Value23\n"..
 	"    Struct1A9X11Bs deriving (Eq)\n"..
 	"data Struct1A12X14 =\n"..
-	"    Struct1A12X14B12 Int | -- field11\n"..
-	"    Struct1A12X14B13 Int | -- field12\n"..
-	"    Struct1A12X14B14 Int | -- field13\n"..
+	"    Struct1A12X14B12 Int | -- field11 -- field6:Value12;field7:Value21\n"..
+	"    Struct1A12X14B13 Int | -- field12 -- field6:Value12;field7:Value22,Value23\n"..
+	"    Struct1A12X14B14 Int | -- field13 -- field6:Value13;field7:Value21,Value22,Value23\n"..
 	"    Struct1A12X14Bs deriving (Eq)\n"..
 	"data Struct1 = Struct1\n"..
 	"    Struct1A1X8\n"..

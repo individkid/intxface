@@ -105,6 +105,7 @@ function showPlaid(ds,all)
 		if not ds[v] then str = str..v..":"..showSet(all[v])
 		else str = str..v..":"..showSet(interSet(all[v],ds[v])) end
 	end
+	if str == "" then return "all" end
 	return str
 end
 function equalPlaid(lhs,rhs,all)
@@ -356,25 +357,37 @@ function showStructCF(val)
 	return decl.." "..ident..";"
 end
 function showStructC(name,struct)
+	local all = structTagSpace(struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local result = ""
 	local link = 1
 	local step = 1
 	local depth = 1
+	local single = 1
 	for k,v in ipairs(struct) do
 		if split[step] and k == split[step][1] then
-			result = result..showIndent(depth).."union {\n"; depth = depth + 1
+			result = result..showIndent(depth).."union {\n"
+			depth = depth + 1
 		end
 		if chain[link] and k == chain[link][1] then
-			result = result..showIndent(depth).."struct {\n"; depth = depth + 1
+			result = result..showIndent(depth).."struct { // "
+			result = result..showPlaid(v[3],all).."\n"
+			single = 0; depth = depth + 1
 		end
-		result = result..showIndent(depth)..showStructCF(v).."\n"
+		if single == 1 then
+			result = result..showIndent(depth)..showStructCF(v).." // "
+			result = result..showPlaid(v[3],all).."\n"
+		else
+			result = result..showIndent(depth)..showStructCF(v).."\n"
+		end
 		if chain[link] and k == chain[link][2] then
-			depth = depth - 1; result = result..showIndent(depth).."};\n"; link = link + 1
+			single = 1; depth = depth - 1; link = link + 1
+			result = result..showIndent(depth).."};\n"
 		end
 		if split[step] and k == split[step][2] then
-			depth = depth - 1; result = result..showIndent(depth).."};\n"; step = step + 1
+			depth = depth - 1; step = step + 1
+			result = result..showIndent(depth).."};\n"
 		end
 	end
 	return "struct "..name.." {\n"..result.."};"
@@ -720,6 +733,7 @@ function showStructHsF(val)
 	return result
 end
 function showStructHs(name,struct)
+	local all = structTagSpace(struct)
 	local chain = nestStruct(chainStruct(struct))
 	local split = nestStruct(splitStruct(struct))
 	local result = ""
@@ -728,7 +742,8 @@ function showStructHs(name,struct)
 		local result = ""
 		if (links == 1 and splits == 0) then
 			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
-			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
+			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2]
+			result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 		end
 		if (chains == 1 and splits == 0) then
 			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
@@ -751,7 +766,8 @@ function showStructHs(name,struct)
 		if (splits == 1) then
 			if (links == 1) then
 				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-				result = result.."B"..chain[structs][1].."X"..chain[structs][2].."\n"
+				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
+				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 			end
 			if (chains == 1) and (links ~= -1) then
 				result = result..showIndent(2)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
@@ -762,7 +778,8 @@ function showStructHs(name,struct)
 			if (chains == 0) then
 				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
 				result = result.."B"..index
-				result = result.." "..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
+				result = result.." "..showStructHsF(struct[index]).." | -- "..struct[index][1]
+				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 			end
 		end
 		if (steps == -1) then
