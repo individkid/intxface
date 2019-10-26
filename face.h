@@ -18,9 +18,13 @@
 #ifndef FACE_H
 #define FACE_H
 
-#define ERROR(JMP) {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno); if (JMP) longjmp(JMP,1); else exit(-1);}
+#define ERROR(FNC,ARG) {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno); if (FNC) FNC(ARG); else exit(-1);}
 #define NUMOPEN 256
 
+typedef void (*eftype)(int);
+void readJump(eftype err, int idx);
+void writeJump(eftype err, int idx);
+void bothJump(eftype err, int idx);
 void closeIdent(int idx);
 int addPipe(int fd0, int fd1);
 int addFile(int fd);

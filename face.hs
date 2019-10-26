@@ -21,6 +21,7 @@ module Face where
 
 import Foreign.C.Types
 import Foreign.C.String
+import Foreign.Ptr
 import System.Environment
 import System.Exit
 
@@ -41,6 +42,10 @@ foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
 foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
+foreign import ccall "wrapper" faceError :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
+foreign import ccall "readJump" readJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "writeJump" writeJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "bothJump" bothJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 
 addPipe :: Int -> Int -> IO Int
 addPipe a b = fmap fromIntegral (addPipeC (fromIntegral a) (fromIntegral b))
