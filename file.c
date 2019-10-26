@@ -28,16 +28,16 @@
 #include <sys/stat.h>
 #include <setjmp.h>
 
+#define NUMFILE 128
 int face = 0;
-int anonym[BUFSIZE] = {0};
-int number[BUFSIZE] = {0};
-char *name[BUFSIZE] = {0};
-int named[BUFSIZE] = {0};
-int valid[BUFSIZE] = {0};
-pthread_t thread[BUFSIZE] = {0};
+int anonym[NUMFILE] = {0};
+int number[NUMOPEN] = {0};
+char *name[NUMFILE] = {0};
+int named[NUMFILE] = {0};
+int valid[NUMFILE] = {0};
+pthread_t thread[NUMFILE] = {0};
 long long identifier = 0;
-extern jmp_buf *errptr[BUFSIZE];
-jmp_buf jmpbuf[BUFSIZE] = {0};
+jmp_buf jmpbuf[NUMFILE] = {0};
 jmp_buf errbuf = {0};
 
 #define INFINITE 1000000000ull
@@ -50,6 +50,10 @@ jmp_buf errbuf = {0};
 #define NAMED 2
 #define HELPER 1
 #define CONTROL 0
+
+void readJump(jmp_buf *jmp, int idx);
+void writeJump(jmp_buf *jmp, int idx);
+void fileJump(jmp_buf *jmp, int idx);
 
 struct flock *ctlck(struct flock *lock, off_t pos)
 {
@@ -96,16 +100,6 @@ struct flock *unlck(struct flock *lock, off_t pos)
 	return lock;	
 }
 
-void endfile(int sub)
-{
-	// TODO
-}
-
-void errfile(int sub)
-{
-	// TODO
-}
-
 void *file(void *arg)
 {
 	int idx = ARGVOID(arg);
@@ -116,19 +110,23 @@ void *file(void *arg)
 	struct flock lock = {0};
 	struct File command = {0};
 	char buffer[CMDSIZE] = {0};
-	helper = addFile(-1,-1);
+	int fdesc = 0;
+if (setjmp(jmpbuf[idx]) == 0) {
+	if ((helper = addFile(-1)) < 0) ERROR(jmpbuf[idx])
+	fileJump(&jmpbuf[idx],helper);
+	writeJump(&jmpbuf[idx],anonym[idx]);
+	readJump(&jmpbuf[idx],named[idx]);
 	if ((given = open(name[idx]+GIVEN,O_RDWR|O_CREAT,0666)) < 0) ERROR(jmpbuf[idx])
 	if ((control = open(name[idx]+CONTROL,O_RDWR|O_CREAT,0666)) < 0) ERROR(jmpbuf[idx])
 	if (fcntl(control,F_SETLKW,ctlck(&lock,0)) < 0) ERROR(jmpbuf[idx])
 	off_t config = 0;
 	int stage = 0;
-	int fdesc = 0;
 	while (1) {
 		int fd = 0;
 		if ((fd = open(name[idx]+HELPER,O_RDWR|O_CREAT,0666)) < 0) ERROR(jmpbuf[idx])
 		if (fdesc > 0 && close(fdesc) < 0) ERROR(jmpbuf[idx])
 		fdesc = fd;
-		setFile(fd,fd,helper);
+		setFile(fd,helper);
 		if (todoFile(helper)) {
 			int saved = seqnum;
 			seqnum = readInt(helper);
@@ -150,13 +148,13 @@ void *file(void *arg)
 					for (int i = 0; i < command.num; i++) size += strlen(command.str[i]);
 				}
 				if (valid && config >= command.loc + size) {
-					writeFile(&command,named[idx]);
+					writeFile(&command,anonym[idx]);
 					valid = 0;
 				} else {
 					int len = 0;
 					if ((len = read(given,buffer,CMDSIZE-1)) < 0) ERROR(jmpbuf[idx])
 					if (len == 0) {
-						if (valid) writeFile(&command,named[idx]);
+						if (valid) writeFile(&command,anonym[idx]);
 						valid = 0;
 						stage = 1;
 						break;
@@ -195,6 +193,12 @@ void *file(void *arg)
 						if (fcntl(helper,F_SETLK,delck(&lock,append)) < 0) ERROR(jmpbuf[idx])
 					} else {
 						readFile(&command,named[idx]);
+						if (command.num == 0 && command.loc == identifier) {
+							if (fdesc) close(fdesc);
+							if (given) close(given);
+							if (control) close(control);
+							return 0;
+						}
 						for (int i = 0; i < command.num; i++) {
 							int len = strlen(command.str[i]);
 							if (i < command.num-1) len++;
@@ -211,14 +215,22 @@ void *file(void *arg)
 		if (fcntl(control,F_SETLKW,ctlck(&lock,0)) < 0) ERROR(jmpbuf[idx])
 		if (unlink(name[idx]+HELPER) < 0) ERROR(jmpbuf[idx])
 	}
-	// TODO else of setjmp close helper and control, send error command
+} else {
+	writeJump(0,anonym[idx]);
+	if (fdesc && close(fdesc) < 0) ERROR(0)
+	if (given && close(given) < 0) ERROR(0)
+	if (control && close(control) < 0) ERROR(0)
+	command.num = 0;
+	writeFile(&command,anonym[idx]);
+}
 	return 0;
 }
 
 void cleanup(int sub)
 {
 	if (pthread_join(thread[sub],0) < 0) ERROR(errbuf)
-	// close files and pipes
+	closeIdent(anonym[sub]);
+	closeIdent(named[sub]);
 	valid[sub] = 0;
 }
 
@@ -234,23 +246,24 @@ void finish(int sub)
 int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
-	// TODO identifier = pid + seconds-since-publish
-	if ((face = pipeInit(argv[1],argv[2])) < 0) return -1;
 	struct File command = {0};
 	int fd[2] = {0};
 	int fi = 0;
 	int fo = 0;
+	// TODO identifier = pid + seconds-since-publish
+	if ((face = pipeInit(argv[1],argv[2])) < 0) return -1;
 if (setjmp(errbuf) == 0) {
-	errptr[face] = &errbuf;
+	readJump(&errbuf,face);
+	writeJump(&errbuf,face);
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 		readFile(&command,sub);
-		if (sub == face && command.idx >= 0 && command.idx < BUFSIZE && !valid[command.idx]) {
+		if (sub == face && command.idx >= 0 && command.idx < NUMFILE && !valid[command.idx]) {
 			valid[command.idx] = 1;
 			if (command.num != 1) ERROR(errbuf)
 			if (pipe(fd) < 0) ERROR(errbuf)
 			if ((anonym[command.idx] = addPipe(fd[0],fd[1])) < 0) ERROR(errbuf)
+			readJump(&errbuf,anonym[command.idx]);
 			number[anonym[command.idx]] = command.idx;
-			errptr[anonym[command.idx]] = &errbuf;
 			if ((name[command.idx] = malloc(strlen(command.str[0])+NAMES)) == 0) ERROR(errbuf)
 			for (int i = 0; i < NAMES-1; i++) name[command.idx][i] = '.';
 			strcpy(name[command.idx]+GIVEN,command.str[0]);
@@ -258,16 +271,16 @@ if (setjmp(errbuf) == 0) {
 			if ((fi = open(name[command.idx]+NAMED,O_RDONLY)) < 0) ERROR(errbuf)
 			if ((fo = open(name[command.idx]+NAMED,O_WRONLY)) < 0) ERROR(errbuf)
 			if ((named[command.idx] = addPipe(fi,fo)) < 0) ERROR(errbuf)
-			errptr[named[command.idx]] = &errbuf;
+			writeJump(&errbuf,named[command.idx]);
 			if (pthread_create(&thread[command.idx],0,file,VOIDARG(command.idx)) < 0) ERROR(errbuf)
-		} else if (sub == face && command.idx >= 0 && command.idx < BUFSIZE && command.num == 0) {
+		} else if (sub == face && command.idx >= 0 && command.idx < NUMFILE && command.num == 0) {
 			finish(command.idx);
 		} else if (sub == face && command.num == 0) {
-			for (int i = 0; i < BUFSIZE; i++) if (valid[i]) finish(i);
+			for (int i = 0; i < NUMFILE; i++) if (valid[i]) finish(i);
 			return 0;
 		} else if (sub == face) {
 			if (command.idx < 0) ERROR(errbuf)
-			if (command.idx >= BUFSIZE) ERROR(errbuf)
+			if (command.idx >= NUMFILE) ERROR(errbuf)
 			writeFile(&command,named[command.idx]);
 		} else {
 			command.idx = number[sub];
@@ -276,7 +289,7 @@ if (setjmp(errbuf) == 0) {
 		}
 	}
 } else {
-	errptr[face] = 0;
+	writeJump(0,face);
 	command.idx = -1;
 	command.num = 0;
 	writeFile(&command,face);

@@ -19,11 +19,12 @@
 #define FACE_H
 
 #define ERROR(JMP) {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno); if (JMP) longjmp(JMP,1); else exit(-1);}
-#define BUFSIZE 1024
+#define NUMOPEN 256
 
+void closeIdent(int idx);
 int addPipe(int fd0, int fd1);
-int addFile(int fd0, int fd1);
-void setFile(int fd0, int fd1, int idx);
+int addFile(int fd);
+void setFile(int fd, int idx);
 int addPipe(int fd0, int fd1);
 int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
