@@ -1,5 +1,5 @@
 ./clean
-f() { echo "$*" ; $* 2> log ; status=$? ; if [ $status -ne 0 ] ; then cat log ; exit -1 ; fi }
+f() { echo "$*" ; $* 2> log ; status=$? ; if [ $status -ne 0 ] ; then echo "failed" ; cat log ; exit -1 ; fi }
 f clang -o faceC.o -c face.c -I /usr/local/include/lua
 f touch face.hs
 f clang -o face.so -fPIC -shared faceC.o -llua

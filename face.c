@@ -262,7 +262,7 @@ int todoFileLua(lua_State *lua)
 int checkRead(int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) return 0;
-	return (inp[idx] >= 0);
+	return 1;
 }
 int checkReadLua(lua_State *lua)
 {
@@ -273,7 +273,7 @@ int checkReadLua(lua_State *lua)
 int checkWrite(int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) return 0;
-	return (out[idx] >= 0);
+	return 1;
 }
 int checkWriteLua(lua_State *lua)
 {
@@ -294,7 +294,7 @@ int sleepSecLua(lua_State *lua)
 
 const char *readStr(int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) {buf[0] = 0; return buf;}
+	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	if (inp[idx] < 0) {buf[0] = 0; return buf;}
 	for (int i = 0; i < BUFSIZE-1; i++) {
 	int val = read(inp[idx],&buf[i],1); if (val < 0) ERROR(inperr[idx],idx)

@@ -18,6 +18,13 @@
 #include "face.h"
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
+
+int errcheck = 0;
+void errfunc(int arg)
+{
+	errcheck = arg;
+}
 
 int main(int argc, char **argv)
 {
@@ -74,6 +81,13 @@ int main(int argc, char **argv)
 	default: {
 		readInt(index); writeInt(-1,index);
 		break;}}
+	int err = open("oops.txt",O_RDWR|O_CREAT|O_TRUNC,0666);
+	addFile(err);
+	bothJump(errfunc,3);
+	char val = 0;
+	write(err,&val,1);
+	lseek(err,0,SEEK_SET);
+	readInt(3);
 	return (checkRead(0)||checkRead(1)||checkRead(2)||
-		checkWrite(0)||checkWrite(1)||checkWrite(2)) ? -1 : 0;
+		checkWrite(0)||checkWrite(1)||checkWrite(2)||errcheck!=3) ? -1 : 0;
 }
