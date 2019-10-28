@@ -42,7 +42,7 @@ foreign import ccall "pollPipe" pollPipeC :: CInt -> IO CInt
 foreign import ccall "pollFile" pollFileC :: CInt -> IO CInt
 foreign import ccall "seekFile" seekFileC :: CLLong -> CInt -> IO ()
 foreign import ccall "truncFile" truncFileC :: CInt -> IO ()
-foreign import ccall "sizeFile" sizeFileC :: CInt -> IO CLLong
+foreign import ccall "checkFile" checkFileC :: CInt -> IO CLLong
 foreign import ccall "rdlkFile" rdlkFileC :: CLLong -> CLLong -> CInt -> IO () 
 foreign import ccall "wrlkFile" wrlkFileC :: CLLong -> CLLong -> CInt -> IO () 
 foreign import ccall "unlkFile" unlkFileC :: CLLong -> CLLong -> CInt -> IO () 
@@ -51,13 +51,14 @@ foreign import ccall "wrlkwFile" wrlkwFileC :: CLLong -> CLLong -> CInt -> IO ()
 foreign import ccall "checkRead" checkReadC :: CInt -> IO CInt
 foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
-foreign import ccall "checkStr" checkStrC :: CInt -> IO CString
-foreign import ccall "readStr" readStrC :: CInt -> IO CInt
+foreign import ccall "checkStr" checkStrC :: CInt -> IO CInt
+foreign import ccall "readStr" readStrC :: CInt -> IO CString
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
 foreign import ccall "readNew" readNewC :: CInt -> IO CLLong
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
 foreign import ccall "readOld" readOldC :: CInt -> IO CFloat
-foreign import ccall "writeStr" writeStrC :: CString -> CInt -> CInt -> IO ()
+foreign import ccall "writeBuf" writeBufC :: CString -> CInt -> CInt -> IO ()
+foreign import ccall "writeStr" writeStrC :: CString -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
 foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
@@ -95,8 +96,8 @@ seekFile :: Integer -> Int -> IO ()
 seekFile a b = seekFileC (fromIntegral a) (fromIntegral b)
 truncFile :: Int -> IO ()
 truncFile a = truncFileC (fromIntegral a)
-sizeFile :: Int -> IO Integer
-sizeFile a = fmap fromIntegral (sizeFileC (fromIntegral a))
+checkFile :: Int -> IO Integer
+checkFile a = fmap fromIntegral (checkFileC (fromIntegral a))
 rdlkFile :: Integer -> Integer -> Int -> IO () 
 rdlkFile a b c = rdlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
 wrlkFile :: Integer -> Integer -> Int -> IO () 
@@ -113,10 +114,10 @@ checkWrite :: Int -> IO Int
 checkWrite a = fmap fromIntegral (checkWriteC (fromIntegral a))
 sleepSec :: Int -> IO ()
 sleepSec a = sleepSecC (fromIntegral a)
-checkStr :: Int -> IO String
-checkStr a = (checkStrC (fromIntegral a)) >>= peekCString
-readStr :: Int -> IO Int
-readStr a = fmap fromIntegral (readStrC (fromIntegral a))
+checkStr :: Int -> IO Int
+checkStr a = fmap fromIntegral (checkStrC (fromIntegral a))
+readStr :: Int -> IO String
+readStr a = (readStrC (fromIntegral a)) >>= peekCString
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
 readNew :: Int -> IO Integer
@@ -125,8 +126,10 @@ readNum :: Int -> IO Double
 readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
 readOld :: Int -> IO Float
 readOld a = (readOldC (fromIntegral a)) >>= (\(CFloat x) -> return x)
+writeBuf :: String -> Int -> IO ()  -- TODO confirm newCString preserves trailing characters
+writeBuf a b = (newCString a) >>= (\x -> writeBufC x (fromIntegral ((length a) + 1)) (fromIntegral b))
 writeStr :: String -> Int -> IO ()
-writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral ((length a) + 1)) (fromIntegral b))
+writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral b))
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNew :: Integer -> Int -> IO ()

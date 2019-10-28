@@ -49,7 +49,7 @@ mainCG (MainE a) = MainE 0.0
 readMain :: MainABC -> Int -> IO MainABC
 readMain (MainA _) a = fmap MainA (readInt a)
 readMain (MainB _) a = fmap MainB (readNum a)
-readMain (MainC _) a = fmap MainC ((readStr a) >> (checkStr 0))
+readMain (MainC _) a = fmap MainC (readStr a)
 readMain (MainD _) a = fmap MainD (readNew a)
 readMain (MainE _) a = fmap MainE (readOld a)
 
@@ -61,11 +61,11 @@ writeMain (MainD a) b = writeNew a b
 writeMain (MainE a) b = writeOld a b
 
 showMain :: MainABC -> String
-showMain (MainA a) = "int"
-showMain (MainB a) = "num"
-showMain (MainC a) = "str"
-showMain (MainD a) = "new"
-showMain (MainE a) = "old"
+showMain (MainA a) = "int "++(show a)
+showMain (MainB a) = "num "++(show a)
+showMain (MainC a) = "str "++(show a)
+showMain (MainD a) = "new "++(show a)
+showMain (MainE a) = "old "++(show a)
 
 main :: IO ()
 main = getArgs >>= mainF
@@ -76,14 +76,14 @@ mainF [] = do
  sleepSec 1
  mainFG 0 mainB -- send stimulus
  mainFH mainC mainB -- check responses
- var <- newIORef 0
+ -- var <- newIORef 0
  -- file <- addFile emptyFile
  -- readJump (writeIORef var)
  -- call writeStr
  -- lseek file
  -- call readInt
- act <- readIORef var
- check <- mainFI 0 [act] -- check processes
+ -- act <- readIORef var
+ check <- mainFI 0 [] -- [act] -- check processes
  mainFK check
 mainF [a,b,c] = do
  pipeInit a b
@@ -109,7 +109,7 @@ mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO ()
 mainFHF a b c
  | c < 0 = return ()
  | (length (a !! c)) == 0 =
-  (readInt c) >> (writeInt (negate 1) c) >> (mainFH a b)
+  (readInt c) >> (mainFH a b) --(writeInt (negate 1) c) >> (mainFH a b)
  | otherwise =
   (readMain d c) >>= (mainFHG (mainFHH a c) (mainFHH b c) c d)
  where d = mainFHJ b c
@@ -162,6 +162,6 @@ mainFJ (a:b) = do
  mainFJ b
 
 mainFK :: [Int] -> IO ()
-mainFK [3,0,0,0,0,0,0] = return ()
+mainFK [0,0,0,0,0,0] = return ()
 mainFK _ = undefined
 

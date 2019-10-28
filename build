@@ -7,8 +7,8 @@ f clang -o a.out facer.c faceC.o -llua
 f ghc -o b.out facer.hs faceC.o -llua -v0
 f chmod +x facer.ex
 f ./a.out
-# f ./b.out
-# f ./facer.ex
+f ./b.out
+f ./facer.ex
 f ./typra.ex
 # f clang -o a.out typer.c faceC.o -llua
 # f ghc -o b.out typer.hs faceC.o -llua -v0

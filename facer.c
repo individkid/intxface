@@ -34,9 +34,8 @@ int main(int argc, char **argv)
 	writeInt(val,0);
 	double num = readNum(0);
 	writeNum(num,0);
-	int len = readStr(0);
-	const char *str = checkStr(0);
-	writeStr(str,len,0);
+	const char *str = readStr(0);
+	writeStr(str,0);
 	long long nnm = readNew(0);
 	writeNew(nnm,0);
 	float old = readOld(0);
@@ -54,33 +53,33 @@ int main(int argc, char **argv)
 	for (int index = 0; index < 3; index++) {
 		writeInt(expectInt[index],index);
 		writeNum(expectNum[index],index);
-		writeStr(expectStr[index],strlen(expectStr[index])+1,index);
+		writeStr(expectStr[index],index);
 		writeNew(expectNew[index],index);
 		writeOld(expectOld[index],index);}
 	int done[3] = {0};
 	for (int index = waitAny(); index >= 0; index = waitAny()) switch (done[index]) {
 	case (0): {
 		int value = readInt(index);
-		if (value != expectInt[index]) {printf("mismatch %d %d\n",value,index); return -1;}
+		if (value != expectInt[index]) {printf("mismatch %d %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	case (1): {
 		double value = readNum(index);
-		if (value != expectNum[index]) {printf("mismatch %f %d\n",value,index); return -1;}
+		if (value != expectNum[index]) {printf("mismatch %f %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	case (2): {
-		int size = readStr(index);
-		const char *value = checkStr(0);
-		if (strcmp(value,expectStr[index]) != 0) {printf("mismatch %s %d\n",value,index); return -1;}
+		const char *value = readStr(index);
+		if (strcmp(value,expectStr[index]) != 0) {printf("mismatch %s %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	case (3): {
 		long long value = readNew(index);
-		if (value != expectNew[index]) {printf("mismatch %lld %d\n",value,index); return -1;}
+		if (value != expectNew[index]) {printf("mismatch %lld %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	case (4): {
 		float value = readOld(index);
-		if (value != expectOld[index]) {printf("mismatch %f %d\n",value,index); return -1;}
+		if (value != expectOld[index]) {printf("mismatch %f %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	default: {
+		// TODO add eof handler for read at eof
 		readInt(index); // writeInt(-1,index);
 		break;}}
 	// int handle = openFile("oops.txt"); bothJump(errfunc,handle);

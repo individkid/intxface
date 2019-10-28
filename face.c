@@ -33,6 +33,7 @@ enum {Wait,Poll,Seek,None} vld[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
 int len = 0;
 char buf[BUFSIZE+1] = {0};
+int chk = 0;
 eftype inperr[NUMOPEN] = {0};
 eftype outerr[NUMOPEN] = {0};
 char *inplua[NUMOPEN] = {0};
@@ -313,6 +314,7 @@ int seekFileLua(lua_State *lua)
 }
 void truncFile(int idx)
 {
+	seekFile(0,idx);
 	if (ftruncate(inp[idx],0) < 0) ERROR(inperr[idx],idx);
 	if (ftruncate(out[idx],0) < 0) ERROR(outerr[idx],idx);
 }
@@ -322,16 +324,19 @@ int truncFileLua(lua_State *lua)
 	truncFile((int)lua_tonumber(lua,1));
 	return 0;
 }
-long long sizeFile(int idx)
+long long checkFile(int idx)
 {
-	off_t pos = 0;
-	if ((pos = lseek(inp[idx],0,SEEK_SET)) < 0) ERROR(inperr[idx],idx);
-	return (long long)pos;
+	off_t pos, len;
+	if (idx < 0 || idx >= len || vld[idx] != Wait) return 0;
+	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
+	if ((len = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
+	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
+	return len;
 }
-int sizeFileLua(lua_State *lua)
+int checkFileLua(lua_State *lua)
 {
 	luaerr = lua;
-	lua_pushnumber(lua,sizeFile((int)lua_tonumber(lua,1)));
+	lua_pushnumber(lua,checkFile((int)lua_tonumber(lua,1)));
 	return 1;
 }
 void rdlkFile(long long arg0, long long arg1, int idx)
@@ -451,32 +456,31 @@ int sleepSecLua(lua_State *lua)
 	sleep((int)lua_tonumber(lua,1));
 	return 0;
 }
-char *checkStr(int pos)
+int checkStr()
 {
-	if (pos >= BUFSIZE) ERROR(exitErr,0)
-	return buf+pos;
+	return chk;
 }
 int checkStrLua(lua_State *lua)
 {
 	luaerr = lua;
-	lua_pushstring(lua,checkStr((int)lua_tonumber(lua,1)));
+	lua_pushnumber(lua,checkStr((int)lua_tonumber(lua,1)));
 	return 1;
 }
-int readStr(int idx)
+char *readStr(int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	for (int i = 0; i < BUFSIZE; i++) {
 		int val = read(inp[idx],&buf[i],1);
 		if (val < 0) ERROR(inperr[idx],idx)
-		if (val == 0) {buf[i] = 0; return i;}
-		if (buf[i] == 0) return i+1;
+		if (val == 0) {buf[i] = 0; chk = 0; return buf;}
+		if (buf[i] == 0) {chk = 1; return buf;}
 	}
-	buf[BUFSIZE] = 0; return BUFSIZE;
+	buf[BUFSIZE] = 0; chk = 0; return buf;
 }
 int readStrLua(lua_State *lua)
 {
 	luaerr = lua;
-	lua_pushnumber(lua,readStr((int)lua_tonumber(lua,1)));
+	lua_pushstring(lua,readStr((int)lua_tonumber(lua,1)));
 	return 1;
 }
 int readInt(int idx)
@@ -541,16 +545,29 @@ int readOldLua(lua_State *lua)
 	lua_pushnumber(lua,readOld((int)lua_tonumber(lua,1)));
 	return 1;
 }
-void writeStr(const char *arg, int siz, int idx)
+void writeBuf(const char *arg, int siz, int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	int val = write(out[idx],arg,siz);
+	if (val < siz) ERROR(outerr[idx],idx)
+}
+int writeBufLua(lua_State *lua)
+{
+	luaerr = lua;
+	writeBuf(lua_tostring(lua,1),strlen(lua_tostring(lua,1))+1,(int)lua_tonumber(lua,2));
+	return 0;
+}
+void writeStr(const char *arg, int idx)
+{
+	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	int siz = strlen(arg)+1;
 	int val = write(out[idx],arg,siz);
 	if (val < siz) ERROR(outerr[idx],idx)
 }
 int writeStrLua(lua_State *lua)
 {
 	luaerr = lua;
-	writeStr(lua_tostring(lua,1),strlen(lua_tostring(lua,1))+1,(int)lua_tonumber(lua,2));
+	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2));
 	return 0;
 }
 void writeInt(int arg, int idx)
@@ -633,6 +650,10 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "pollFile");
 	lua_pushcfunction(L, seekFileLua);
 	lua_setglobal(L, "seekFile");
+	lua_pushcfunction(L, truncFileLua);
+	lua_setglobal(L, "truncFile");
+	lua_pushcfunction(L, checkFileLua);
+	lua_setglobal(L, "checkFile");
 	lua_pushcfunction(L, rdlkFileLua);
 	lua_setglobal(L, "rdlkFile");
 	lua_pushcfunction(L, wrlkFileLua);
@@ -661,6 +682,8 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "readNew");
 	lua_pushcfunction(L, readOldLua);
 	lua_setglobal(L, "readOld");
+	lua_pushcfunction(L, writeBufLua);
+	lua_setglobal(L, "writeBuf");
 	lua_pushcfunction(L, writeStrLua);
 	lua_setglobal(L, "writeStr");
 	lua_pushcfunction(L, writeIntLua);

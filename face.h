@@ -18,7 +18,7 @@
 #ifndef FACE_H
 #define FACE_H
 
-#define ERROR(FNC,ARG) {fprintf(stderr,"%s(%d): %d\n",__FILE__,__LINE__,errno); if (FNC) FNC(ARG); else exit(-1);}
+#define ERROR(FNC,ARG) {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); if (FNC) FNC(ARG); else exit(-1);}
 #define NUMOPEN 256
 
 typedef void (*eftype)(int);
@@ -38,7 +38,7 @@ int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);
 void truncFile(int idx);
-long long sizeFile(int idx);
+long long checkFile(int idx);
 void rdlkFile(long long arg0, long long arg1, int idx);
 void wrlkFile(long long arg0, long long arg1, int idx);
 void unlkFile(long long arg0, long long arg1, int idx);
@@ -47,13 +47,14 @@ void wrlkwFile(long long arg0, long long arg1, int idx);
 int checkRead(int idx);
 int checkWrite(int idx);
 void sleepSec(int sec);
-char *checkStr(int pos);
-int readStr(int idx);
+int checkStr(int pos);
+char *readStr(int idx);
 int readInt(int idx);
 long long readNew(int idx);
 double readNum(int idx);
 float readOld(int idx);
-void writeStr(const char *arg, int siz, int idx);
+void writeBuf(const char *arg, int siz, int idx);
+void writeStr(const char *arg, int idx);
 void writeInt(int arg, int idx);
 void writeNum(double arg, int idx);
 void writeNew(long long arg, int idx);
