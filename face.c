@@ -34,8 +34,10 @@ pid_t pid[NUMOPEN] = {0};
 int len = 0;
 char buf[BUFSIZE+1] = {0};
 int chk = 0;
+eftype inpexc[NUMOPEN] = {0};
 eftype inperr[NUMOPEN] = {0};
 eftype outerr[NUMOPEN] = {0};
+char *exclua[NUMOPEN] = {0};
 char *inplua[NUMOPEN] = {0};
 char *outlua[NUMOPEN] = {0};
 lua_State *luaerr = 0;
@@ -57,6 +59,10 @@ void callLua(lua_State *lua, const char *str, int idx)
 	lua_pushnumber(lua,idx);
 	if (lua_pcall(lua, 2, 0, 0) != 0) ERROR(exitErr,0)
 }
+void noteLua(int idx)
+{
+	callLua(luaerr,exclua[idx],idx);
+}
 void readLua(int idx)
 {
 	callLua(luaerr,inplua[idx],idx);
@@ -64,6 +70,17 @@ void readLua(int idx)
 void writeLua(int idx)
 {
 	callLua(luaerr,outlua[idx],idx);
+}
+void readNote(eftype exc, int idx)
+{
+	if (idx < 0 || idx >= len) ERROR(exitErr,0)
+	inpexc[idx] = exc;
+}
+int readNoteLua(lua_State *lua)
+{
+	setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+	readNote(noteLua,(int)lua_tonumber(lua,2));
+	return 0;
 }
 void readJump(eftype err, int idx)
 {
@@ -104,6 +121,9 @@ void closeIdent(int idx)
 		close(inp[idx]);
 		close(out[idx]);
 		vld[idx] = None;
+		inpexc[idx] = 0;
+		inperr[idx] = 0;
+		outerr[idx] = 0;
 	}
 	while (len > 0 && vld[len-1] == None) len--;
 }
@@ -122,6 +142,9 @@ void moveIdent(int idx0, int idx1)
 	inp[idx1] = inp[idx0];
 	out[idx1] = out[idx0];
 	vld[idx1] = vld[idx0];
+	inpexc[idx1] = inpexc[idx0];
+	inperr[idx1] = inperr[idx0];
+	outerr[idx1] = outerr[idx0];
 }
 int moveIdentLua(lua_State *lua)
 {
@@ -472,6 +495,7 @@ char *readStr(int idx)
 	for (int i = 0; i < BUFSIZE; i++) {
 		int val = read(inp[idx],&buf[i],1);
 		if (val < 0) ERROR(inperr[idx],idx)
+		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
 		if (val == 0) {buf[i] = 0; chk = 0; return buf;}
 		if (buf[i] == 0) {chk = 1; return buf;}
 	}
@@ -489,7 +513,7 @@ int readInt(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(int));
 	if (val != 0 && val < (int)sizeof(int)) ERROR(inperr[idx],idx)
-	if (val == 0) {arg = 0; closeIdent(idx);}
+	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
 int readIntLua(lua_State *lua)
@@ -504,7 +528,7 @@ double readNum(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(double));
 	if (val != 0 && val < (int)sizeof(double)) ERROR(inperr[idx],idx)
-	if (val == 0) {arg = 0.0; closeIdent(idx);}
+	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
 int readNumLua(lua_State *lua)
@@ -520,7 +544,7 @@ long long readNew(int idx)
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(long long));
 	if (val != 0 && val < (int)sizeof(long long)) ERROR(inperr[idx],idx)
-	if (val == 0) {arg = 0; closeIdent(idx);}
+	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
 int readNewLua(lua_State *lua)
@@ -536,7 +560,7 @@ float readOld(int idx)
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(float));
 	if (val != 0 && val < (int)sizeof(float)) ERROR(inperr[idx],idx)
-	if (val == 0) {arg = 0.0; closeIdent(idx);}
+	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
 int readOldLua(lua_State *lua)
@@ -620,6 +644,8 @@ int writeOldLua(lua_State *lua)
 }
 int luaopen_face (lua_State *L)
 {
+	lua_pushcfunction(L, readNoteLua);
+	lua_setglobal(L, "readNote");
 	lua_pushcfunction(L, readJumpLua);
 	lua_setglobal(L, "readJump");
 	lua_pushcfunction(L, writeJumpLua);

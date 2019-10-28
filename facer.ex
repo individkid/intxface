@@ -76,7 +76,6 @@ while (index >= 0) do
 		done[sub] = done[sub] + 1
 	else
 		readInt(index)
-		-- writeInt(-1,index)
 	end
 	index = waitAny()
 end

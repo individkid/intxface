@@ -21,9 +21,15 @@
 #include <fcntl.h>
 
 int errcheck = 0;
+int exccheck = 0;
 void errfunc(int arg)
 {
 	errcheck = arg;
+}
+void excfunc(int arg)
+{
+	closeIdent(arg);
+	exccheck++;
 }
 
 int main(int argc, char **argv)
@@ -41,9 +47,11 @@ int main(int argc, char **argv)
 	float old = readOld(0);
 	writeOld(old,0);
 	return 0;}
-	forkExec("a.out");
-	forkExec("b.out");
-	forkExec("facer.ex");
+	if (forkExec("a.out") != 0) {printf("a.out\n"); return -1;}
+	if (forkExec("b.out") != 1) {printf("b.out\n"); return -1;}
+	if (forkExec("facer.ex") != 2) {printf("facer.ex\n"); return -1;}
+	for (int i = 0; i < 3; i++) readNote(excfunc,i);
+	int handle = openFile("oops.txt"); bothJump(errfunc,handle);
 	sleepSec(1);
 	int expectInt[] = {0,1,2};
 	double expectNum[] = {0.1,1.1,2.1};
@@ -79,13 +87,11 @@ int main(int argc, char **argv)
 		if (value != expectOld[index]) {printf("mismatch %f %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	default: {
-		// TODO add eof handler for read at eof
-		readInt(index); // writeInt(-1,index);
+		readInt(index);
 		break;}}
-	// int handle = openFile("oops.txt"); bothJump(errfunc,handle);
-	// char buffer[1] = {0}; writeStr(buffer,1,handle);
-	// seekFile(0,handle); readInt(handle);
+	char buffer[1] = {0}; writeBuf(buffer,1,handle);
+	seekFile(0,handle); readInt(handle);
 	return (checkRead(0)||checkRead(1)||checkRead(2)||
 		checkWrite(0)||checkWrite(1)||checkWrite(2)||
-		/*errcheck!=handle*/0) ? -1 : 0;
+		errcheck!=handle || exccheck != 3) ? -1 : 0;
 }

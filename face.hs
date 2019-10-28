@@ -26,6 +26,7 @@ import System.Environment
 import System.Exit
 
 foreign import ccall "wrapper" wrapJump :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
+foreign import ccall "readNote" readNoteC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "readJump" readJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "writeJump" writeJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "bothJump" bothJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
@@ -64,6 +65,8 @@ foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
 
+readNote :: (Int -> IO ()) -> Int -> IO ()
+readNote a b = (wrapJump (\x -> a (fromIntegral x))) >>= (\y -> readNoteC y (fromIntegral b))
 readJump :: (Int -> IO ()) -> Int -> IO ()
 readJump a b = (wrapJump (\x -> a (fromIntegral x))) >>= (\y -> readJumpC y (fromIntegral b))
 writeJump :: (Int -> IO ()) -> Int -> IO ()
@@ -126,7 +129,7 @@ readNum :: Int -> IO Double
 readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
 readOld :: Int -> IO Float
 readOld a = (readOldC (fromIntegral a)) >>= (\(CFloat x) -> return x)
-writeBuf :: String -> Int -> IO ()  -- TODO confirm newCString preserves trailing characters
+writeBuf :: String -> Int -> IO ()  -- TODO change String to ByteString
 writeBuf a b = (newCString a) >>= (\x -> writeBufC x (fromIntegral ((length a) + 1)) (fromIntegral b))
 writeStr :: String -> Int -> IO ()
 writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral b))

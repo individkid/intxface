@@ -73,17 +73,17 @@ main = getArgs >>= mainF
 mainF :: [String] -> IO ()
 mainF [] = do
  mainFF mainA -- start processes
+ file <- openFile "oops.txt"
  sleepSec 1
  mainFG 0 mainB -- send stimulus
  mainFH mainC mainB -- check responses
- -- var <- newIORef 0
- -- file <- addFile emptyFile
- -- readJump (writeIORef var)
- -- call writeStr
- -- lseek file
- -- call readInt
- -- act <- readIORef var
- check <- mainFI 0 [] -- [act] -- check processes
+ var <- newIORef 0
+ readJump (writeIORef var) file
+ writeStr "" file
+ seekFile 0 file
+ readInt file
+ act <- readIORef var
+ check <- mainFI 0 [act] -- check processes
  mainFK check
 mainF [a,b,c] = do
  pipeInit a b
@@ -109,7 +109,7 @@ mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO ()
 mainFHF a b c
  | c < 0 = return ()
  | (length (a !! c)) == 0 =
-  (readInt c) >> (mainFH a b) --(writeInt (negate 1) c) >> (mainFH a b)
+  (readInt c) >> (mainFH a b)
  | otherwise =
   (readMain d c) >>= (mainFHG (mainFHH a c) (mainFHH b c) c d)
  where d = mainFHJ b c
@@ -162,6 +162,6 @@ mainFJ (a:b) = do
  mainFJ b
 
 mainFK :: [Int] -> IO ()
-mainFK [0,0,0,0,0,0] = return ()
+mainFK [3,0,0,0,0,0,0] = return ()
 mainFK _ = undefined
 
