@@ -25,6 +25,7 @@ File = {
 	{"idx","int",{},{}},
 	{"loc","long long",{},{}},
 	{"num","int",{},{}},
+	{"siz","int",{},"num"},
 	{"str","char*",{},"num"},
 }
 --HERE

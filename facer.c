@@ -34,8 +34,9 @@ int main(int argc, char **argv)
 	writeInt(val,0);
 	double num = readNum(0);
 	writeNum(num,0);
-	const char *str = readStr(0);
-	writeStr(str,0);
+	int len = readStr(0);
+	const char *str = checkStr(0);
+	writeStr(str,len,0);
 	long long nnm = readNew(0);
 	writeNew(nnm,0);
 	float old = readOld(0);
@@ -53,7 +54,7 @@ int main(int argc, char **argv)
 	for (int index = 0; index < 3; index++) {
 		writeInt(expectInt[index],index);
 		writeNum(expectNum[index],index);
-		writeStr(expectStr[index],index);
+		writeStr(expectStr[index],strlen(expectStr[index])+1,index);
 		writeNew(expectNew[index],index);
 		writeOld(expectOld[index],index);}
 	int done[3] = {0};
@@ -67,7 +68,8 @@ int main(int argc, char **argv)
 		if (value != expectNum[index]) {printf("mismatch %f %d\n",value,index); return -1;}
 		done[index]++; break;}
 	case (2): {
-		const char *value = readStr(index);
+		int size = readStr(index);
+		const char *value = checkStr(0);
 		if (strcmp(value,expectStr[index]) != 0) {printf("mismatch %s %d\n",value,index); return -1;}
 		done[index]++; break;}
 	case (3): {
@@ -79,13 +81,12 @@ int main(int argc, char **argv)
 		if (value != expectOld[index]) {printf("mismatch %f %d\n",value,index); return -1;}
 		done[index]++; break;}
 	default: {
-		readInt(index); writeInt(-1,index);
+		readInt(index); // writeInt(-1,index);
 		break;}}
-	int err = open("oops.txt",O_RDWR|O_CREAT|O_TRUNC,0666);
-	addFile(err); bothJump(errfunc,3);
-	char val = 0; write(err,&val,1);
-	lseek(err,0,SEEK_SET); readInt(3);
+	// int handle = openFile("oops.txt"); bothJump(errfunc,handle);
+	// char buffer[1] = {0}; writeStr(buffer,1,handle);
+	// seekFile(0,handle); readInt(handle);
 	return (checkRead(0)||checkRead(1)||checkRead(2)||
 		checkWrite(0)||checkWrite(1)||checkWrite(2)||
-		errcheck!=3) ? -1 : 0;
+		/*errcheck!=handle*/0) ? -1 : 0;
 }

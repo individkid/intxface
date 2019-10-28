@@ -25,44 +25,98 @@ import Foreign.Ptr
 import System.Environment
 import System.Exit
 
-foreign import ccall "addPipe" addPipeC :: CInt -> CInt -> IO CInt
+foreign import ccall "wrapper" wrapJump :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
+foreign import ccall "readJump" readJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "writeJump" writeJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "bothJump" bothJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "closeIdent" closeIdentC :: CInt -> IO ()
+foreign import ccall "moveIdent" moveIdentC :: CInt -> CInt -> IO ()
+foreign import ccall "openIdent" openIdentC :: IO CInt
+foreign import ccall "openPipe" openPipeC :: IO CInt
+foreign import ccall "openFifo" openFifoC :: CString -> IO CInt
+foreign import ccall "openFile" openFileC :: CString -> IO CInt
 foreign import ccall "forkExec" forkExecC :: CString -> IO CInt
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO CInt
 foreign import ccall "waitAny" waitAnyC :: IO CInt
+foreign import ccall "pollPipe" pollPipeC :: CInt -> IO CInt
+foreign import ccall "pollFile" pollFileC :: CInt -> IO CInt
+foreign import ccall "seekFile" seekFileC :: CLLong -> CInt -> IO ()
+foreign import ccall "truncFile" truncFileC :: CInt -> IO ()
+foreign import ccall "sizeFile" sizeFileC :: CInt -> IO CLLong
+foreign import ccall "rdlkFile" rdlkFileC :: CLLong -> CLLong -> CInt -> IO () 
+foreign import ccall "wrlkFile" wrlkFileC :: CLLong -> CLLong -> CInt -> IO () 
+foreign import ccall "unlkFile" unlkFileC :: CLLong -> CLLong -> CInt -> IO () 
+foreign import ccall "rdlkwFile" rdlkwFileC :: CLLong -> CLLong -> CInt -> IO () 
+foreign import ccall "wrlkwFile" wrlkwFileC :: CLLong -> CLLong -> CInt -> IO ()
 foreign import ccall "checkRead" checkReadC :: CInt -> IO CInt
 foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
-foreign import ccall "readStr" readStrC :: CInt -> IO CString
+foreign import ccall "checkStr" checkStrC :: CInt -> IO CString
+foreign import ccall "readStr" readStrC :: CInt -> IO CInt
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
 foreign import ccall "readNew" readNewC :: CInt -> IO CLLong
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
 foreign import ccall "readOld" readOldC :: CInt -> IO CFloat
-foreign import ccall "writeStr" writeStrC :: CString -> CInt -> IO ()
+foreign import ccall "writeStr" writeStrC :: CString -> CInt -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
 foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
-foreign import ccall "wrapper" faceError :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
-foreign import ccall "readJump" readJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
-foreign import ccall "writeJump" writeJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
-foreign import ccall "bothJump" bothJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 
-addPipe :: Int -> Int -> IO Int
-addPipe a b = fmap fromIntegral (addPipeC (fromIntegral a) (fromIntegral b))
+readJump :: (Int -> IO ()) -> Int -> IO ()
+readJump a b = (wrapJump (\x -> a (fromIntegral x))) >>= (\y -> readJumpC y (fromIntegral b))
+writeJump :: (Int -> IO ()) -> Int -> IO ()
+writeJump a b = (wrapJump (\x -> a (fromIntegral x))) >>= (\y -> readJumpC y (fromIntegral b))
+bothJump :: (Int -> IO ()) -> Int -> IO ()
+bothJump a b = (wrapJump (\x -> a (fromIntegral x))) >>= (\y -> readJumpC y (fromIntegral b))
+closeIdent :: Int -> IO ()
+closeIdent a = closeIdentC (fromIntegral a)
+moveIdent :: Int -> Int -> IO ()
+moveIdent a b = moveIdentC (fromIntegral a) (fromIntegral b)
+openIdent :: IO Int
+openIdent = fmap fromIntegral openIdentC
+openPipe :: IO Int
+openPipe = fmap fromIntegral openPipeC
+openFifo :: String -> IO Int
+openFifo a = fmap fromIntegral ((newCString a) >>= openFifoC)
+openFile :: String -> IO Int
+openFile a = fmap fromIntegral ((newCString a) >>= openFileC)
 forkExec :: String -> IO Int
 forkExec a = fmap fromIntegral ((newCString a) >>= forkExecC)
 pipeInit :: String -> String -> IO Int
 pipeInit a b = fmap fromIntegral ((newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x)))
 waitAny :: IO Int
 waitAny = fmap fromIntegral waitAnyC
+pollPipe :: Int -> IO Int
+pollPipe a = fmap fromIntegral (pollPipeC (fromIntegral a))
+pollFile :: Int -> IO Int
+pollFile a = fmap fromIntegral (pollFileC (fromIntegral a))
+seekFile :: Integer -> Int -> IO ()
+seekFile a b = seekFileC (fromIntegral a) (fromIntegral b)
+truncFile :: Int -> IO ()
+truncFile a = truncFileC (fromIntegral a)
+sizeFile :: Int -> IO Integer
+sizeFile a = fmap fromIntegral (sizeFileC (fromIntegral a))
+rdlkFile :: Integer -> Integer -> Int -> IO () 
+rdlkFile a b c = rdlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
+wrlkFile :: Integer -> Integer -> Int -> IO () 
+wrlkFile a b c = wrlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
+unlkFile :: Integer -> Integer -> Int -> IO () 
+unlkFile a b c = unlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
+rdlkwFile :: Integer -> Integer -> Int -> IO () 
+rdlkwFile a b c = rdlkwFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
+wrlkwFile :: Integer -> Integer -> Int -> IO ()
+wrlkwFile a b c = wrlkwFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
 checkRead :: Int -> IO Int
 checkRead a = fmap fromIntegral (checkReadC (fromIntegral a))
 checkWrite :: Int -> IO Int
 checkWrite a = fmap fromIntegral (checkWriteC (fromIntegral a))
 sleepSec :: Int -> IO ()
 sleepSec a = sleepSecC (fromIntegral a)
-readStr :: Int -> IO String
-readStr a = (readStrC (fromIntegral a)) >>= peekCString
+checkStr :: Int -> IO String
+checkStr a = (checkStrC (fromIntegral a)) >>= peekCString
+readStr :: Int -> IO Int
+readStr a = fmap fromIntegral (readStrC (fromIntegral a))
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
 readNew :: Int -> IO Integer
@@ -72,7 +126,7 @@ readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
 readOld :: Int -> IO Float
 readOld a = (readOldC (fromIntegral a)) >>= (\(CFloat x) -> return x)
 writeStr :: String -> Int -> IO ()
-writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral b))
+writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral ((length a) + 1)) (fromIntegral b))
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNew :: Integer -> Int -> IO ()
