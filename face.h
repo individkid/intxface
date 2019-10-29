@@ -18,7 +18,7 @@
 #ifndef FACE_H
 #define FACE_H
 
-#define ERROR(FNC,ARG) {if (FNC) FNC(ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
+#define ERROR(FNC,ARG) {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); if (FNC) FNC(ARG); else exit(-1);}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(ARG); else closeIdent(ARG);}
 #define NUMOPEN 256
 
@@ -41,8 +41,8 @@ int pollFile(int idx);
 void seekFile(long long arg, int idx);
 void truncFile(int idx);
 long long checkFile(int idx);
-void rdlkFile(long long arg0, long long arg1, int idx);
-void wrlkFile(long long arg0, long long arg1, int idx);
+int rdlkFile(long long arg0, long long arg1, int idx);
+int wrlkFile(long long arg0, long long arg1, int idx);
 void unlkFile(long long arg0, long long arg1, int idx);
 void rdlkwFile(long long arg0, long long arg1, int idx);
 void wrlkwFile(long long arg0, long long arg1, int idx);

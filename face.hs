@@ -44,8 +44,8 @@ foreign import ccall "pollFile" pollFileC :: CInt -> IO CInt
 foreign import ccall "seekFile" seekFileC :: CLLong -> CInt -> IO ()
 foreign import ccall "truncFile" truncFileC :: CInt -> IO ()
 foreign import ccall "checkFile" checkFileC :: CInt -> IO CLLong
-foreign import ccall "rdlkFile" rdlkFileC :: CLLong -> CLLong -> CInt -> IO () 
-foreign import ccall "wrlkFile" wrlkFileC :: CLLong -> CLLong -> CInt -> IO () 
+foreign import ccall "rdlkFile" rdlkFileC :: CLLong -> CLLong -> CInt -> IO CInt
+foreign import ccall "wrlkFile" wrlkFileC :: CLLong -> CLLong -> CInt -> IO CInt
 foreign import ccall "unlkFile" unlkFileC :: CLLong -> CLLong -> CInt -> IO () 
 foreign import ccall "rdlkwFile" rdlkwFileC :: CLLong -> CLLong -> CInt -> IO () 
 foreign import ccall "wrlkwFile" wrlkwFileC :: CLLong -> CLLong -> CInt -> IO ()
@@ -101,10 +101,10 @@ truncFile :: Int -> IO ()
 truncFile a = truncFileC (fromIntegral a)
 checkFile :: Int -> IO Integer
 checkFile a = fmap fromIntegral (checkFileC (fromIntegral a))
-rdlkFile :: Integer -> Integer -> Int -> IO () 
-rdlkFile a b c = rdlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
-wrlkFile :: Integer -> Integer -> Int -> IO () 
-wrlkFile a b c = wrlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
+rdlkFile :: Integer -> Integer -> Int -> IO CInt
+rdlkFile a b c = fmap fromIntegral (rdlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c))
+wrlkFile :: Integer -> Integer -> Int -> IO CInt
+wrlkFile a b c = fmap fromIntegral (wrlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c))
 unlkFile :: Integer -> Integer -> Int -> IO () 
 unlkFile a b c = unlkFileC (fromIntegral a) (fromIntegral b) (fromIntegral c)
 rdlkwFile :: Integer -> Integer -> Int -> IO () 

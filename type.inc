@@ -323,6 +323,7 @@ function showEnumC(name,enum)
 	for key,val in ipairs(enum) do
 		str = str..showIndent(1)..val..",\n"
 	end
+	str = str..showIndent(1)..name.."s\n"
 	str = str.."};"
 	return str
 end
@@ -627,7 +628,7 @@ function showRandCF(v,ebr,sub)
 		result = result.."{const char *temp = \"hello ok again\"; "
 		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	elseif (Enumz[v[2]]~=nil) then
-		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
+		result = result.."ptr->"..v[1]..sub.." = "..randInt.."%"..v[2].."s;"..ebr.."\n"
 		randInt = randInt + 1;
 	elseif (Structz[v[2]]~=nil) then
 		result = result.."rand"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
@@ -697,7 +698,7 @@ function showCodeHs(name,enum)
 	end
 	result = result.."write"..name.."F _ = "..#enum.."\n"
 	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
-	result = result.."write"..name.." a idx = writeInt idx (write"..name.."F a)\n"
+	result = result.."write"..name.." a idx = writeInt (write"..name.."F a) idx\n"
 	result = result.."--"
 	return result
 end
@@ -1238,7 +1239,7 @@ function showCondLua(struct,dset)
 		for idx,fld in ipairs(struct) do
 			if (fld[1] == dim) then
 				for j,val in ipairs(listSort(set)) do
-					local factor = "tab["..struct[idx][1].."] == \""..val.."\""
+					local factor = "tab[\""..struct[idx][1].."\"] == \""..val.."\""
 					if (factors > 0) then term = term.." or " end
 					term = term.."("..factor..")"
 					factors = factors + 1

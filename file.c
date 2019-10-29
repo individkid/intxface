@@ -17,6 +17,13 @@
 
 #include "type.h"
 #include "face.h"
+#include <pthread.h>
+#include <setjmp.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/errno.h>
 
 #define NUMFILE 128
 int face = 0;
@@ -94,7 +101,7 @@ if (setjmp(jmpbuf[idx]) == 0) {
 			seqnum = seqnum + 1;
 			writeInt(seqnum,helper);
 		}
-		unlkFile(0,1,control)
+		unlkFile(0,1,control);
 		off_t append = 0;
 		int valid = 0;
 		int size = 0;
@@ -109,22 +116,23 @@ if (setjmp(jmpbuf[idx]) == 0) {
 					writeFile(&command,anonym[idx]);
 					valid = 0;
 				} else {
-					int len = readStr(given);
-					if (len == 0) {
+					char *ptr = readStr(given); // TODO suppress closeIdent
+					if (*ptr == 0 && checkStr(given) == 0) {
 						if (valid) writeFile(&command,anonym[idx]);
 						valid = 0; stage = 1; break;
 					}
+					int len = strlen(ptr)+checkStr(given);
 					config += len;
 					response.idx = idx;
 					response.loc = config;
 					int num = 0;
 					long long pos = 0;
 					while (pos < len) {
-						char *ptr = checkStr(pos);
-						response.str[num] = ptr;
+						long long sav = pos;
+						response.str[num] = ptr+pos;
 						while (pos < len && ptr[pos]) pos++;
 						if (len > 0) pos++;
-						response.siz[num] = pos;
+						response.siz[num] = pos-sav;
 						num++;
 					}
 					response.num = num;
@@ -137,20 +145,20 @@ if (setjmp(jmpbuf[idx]) == 0) {
 					} else {
 						readFile(&command,named[idx]);
 						for (int i = 0; i < command.num; i++) {
-							writeStr(command.str[i],command.siz[i],given);
+							writeBuf(command.str[i],command.siz[i],given);
 						}
 						writeFile(&command,helper);
-						unlckFile(append,INFINITE,helper);
+						unlkFile(append,INFINITE,helper);
 						append += sizeFile(&command);
 					}
 				} else {
-					rdlckwFile(append,1,helper);
+					rdlkwFile(append,1,helper);
 					if (pollFile(helper)) {
 						readFile(&command,helper);
-						unlckFile(append,1,helper);
+						unlkFile(append,1,helper);
 						append += sizeFile(&command);
 					} else {
-						unlckFile(append,1,helper);
+						unlkFile(append,1,helper);
 					}
 				}
 				writeFile(&command,anonym[idx]);
@@ -210,7 +218,7 @@ if (setjmp(errbuf) == 0) {
 			if ((name[command.idx] = malloc(strlen(command.str[0])+NAMES)) == 0) ERROR(huberr,-1)
 			for (int i = 0; i < NAMES-1; i++) name[command.idx][i] = '.';
 			strcpy(name[command.idx]+GIVEN,command.str[0]);
-			if ((named[command.idx] = addFifo(name[command.idx]+NAMED)) < 0) ERROR(huberr,-1)
+			if ((named[command.idx] = openFifo(name[command.idx]+NAMED)) < 0) ERROR(huberr,-1)
 			number[named[command.idx]] = command.idx; writeJump(huberr,named[command.idx]);
 			number[anonym[command.idx]] = command.idx; readJump(huberr,anonym[command.idx]);
 			if (pthread_create(&thread[command.idx],0,file,VOIDARG(command.idx)) < 0) ERROR(huberr,-1)

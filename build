@@ -10,12 +10,12 @@ f ./a.out
 f ./b.out
 f ./facer.ex
 f ./typra.ex
-# f clang -o a.out typer.c faceC.o -llua
-# f ghc -o b.out typer.hs faceC.o -llua -v0
-# f chmod +x typer.ex
-# f ./a.out
+f clang -o a.out typer.c faceC.o -llua
+f ghc -o b.out typer.hs faceC.o -llua -v0
+f chmod +x typer.ex
+f ./a.out
 f ./type.ex
-# f clang -o typeC.o -c type.c
-# f touch type.hs
-# f touch type.lua
-# f clang -o file.o file.c typeC.o faceC.o -llua
+f clang -o typeC.o -c type.c
+f touch type.hs
+f touch type.lua
+f clang -o file.o file.c typeC.o faceC.o -llua

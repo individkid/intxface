@@ -203,6 +203,7 @@ Expected = {
 	"    Value11,\n"..
 	"    Value12,\n"..
 	"    Value13,\n"..
+	"    Enum1s\n"..
 	"};",
 	"struct Struct1 {\n"..
 	"    struct { // field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
@@ -326,8 +327,8 @@ Expected = {
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = 1;\n"..
-	"    ptr->field6 = 2;\n"..
-	"    ptr->field7 = 3;\n"..
+	"    ptr->field6 = 2%Enum1s;\n"..
+	"    ptr->field7 = 3%Enum2s;\n"..
 	"    if (ptr->field6 == Value11)\n"..
 	"        ptr->field8 = 4;\n"..
 	"    if (ptr->field6 == Value11)\n"..
@@ -613,7 +614,7 @@ Expected = {
 	"writeEnum1F Value13 = 2\n"..
 	"writeEnum1F _ = 3\n"..
 	"writeEnum1 :: Enum1 -> Int -> IO ()\n"..
-	"writeEnum1 a idx = writeInt idx (writeEnum1F a)\n"..
+	"writeEnum1 a idx = writeInt (writeEnum1F a) idx\n"..
 	"--",
 	"writeStruct1 :: Struct1 -> Int -> IO ()\n"..
 	"writeStruct1 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a18)) idx = do\n"..
@@ -691,22 +692,22 @@ Expected = {
 	"    end\n"..
 	"    tab[\"field6\"] = readEnum1(idx)\n"..
 	"    tab[\"field7\"] = readEnum2(idx)\n"..
-	"    if (tab[field6] == \"Value11\") then\n"..
+	"    if (tab[\"field6\"] == \"Value11\") then\n"..
 	"        tab[\"field8\"] = readInt(idx)\n"..
 	"    end\n"..
-	"    if (tab[field6] == \"Value11\") then\n"..
+	"    if (tab[\"field6\"] == \"Value11\") then\n"..
 	"        tab[\"field9\"] = readInt(idx)\n"..
 	"    end\n"..
-	"    if (tab[field6] == \"Value12\") then\n"..
+	"    if (tab[\"field6\"] == \"Value12\") then\n"..
 	"        tab[\"field10\"] = readInt(idx)\n"..
 	"    end\n"..
-	"    if ((tab[field6] == \"Value12\") and (tab[field7] == \"Value21\")) then\n"..
+	"    if ((tab[\"field6\"] == \"Value12\") and (tab[\"field7\"] == \"Value21\")) then\n"..
 	"        tab[\"field11\"] = readInt(idx)\n"..
 	"    end\n"..
-	"    if ((tab[field6] == \"Value12\") and ((tab[field7] == \"Value22\") or (tab[field7] == \"Value23\"))) then\n"..
+	"    if ((tab[\"field6\"] == \"Value12\") and ((tab[\"field7\"] == \"Value22\") or (tab[\"field7\"] == \"Value23\"))) then\n"..
 	"        tab[\"field12\"] = readInt(idx)\n"..
 	"    end\n"..
-	"    if (tab[field6] == \"Value13\") then\n"..
+	"    if (tab[\"field6\"] == \"Value13\") then\n"..
 	"        tab[\"field13\"] = readInt(idx)\n"..
 	"    end\n"..
 	"    tab[\"field14\"] = readInt(idx)\n"..
@@ -764,22 +765,22 @@ Expected = {
 	"    end\n"..
 	"    writeEnum1(tab[\"field6\"],idx)\n"..
 	"    writeEnum2(tab[\"field7\"],idx)\n"..
-	"    if (tab[field6] == \"Value11\") then\n"..
+	"    if (tab[\"field6\"] == \"Value11\") then\n"..
 	"        writeInt(tab[\"field8\"],idx)\n"..
 	"    end\n"..
-	"    if (tab[field6] == \"Value11\") then\n"..
+	"    if (tab[\"field6\"] == \"Value11\") then\n"..
 	"        writeInt(tab[\"field9\"],idx)\n"..
 	"    end\n"..
-	"    if (tab[field6] == \"Value12\") then\n"..
+	"    if (tab[\"field6\"] == \"Value12\") then\n"..
 	"        writeInt(tab[\"field10\"],idx)\n"..
 	"    end\n"..
-	"    if ((tab[field6] == \"Value12\") and (tab[field7] == \"Value21\")) then\n"..
+	"    if ((tab[\"field6\"] == \"Value12\") and (tab[\"field7\"] == \"Value21\")) then\n"..
 	"        writeInt(tab[\"field11\"],idx)\n"..
 	"    end\n"..
-	"    if ((tab[field6] == \"Value12\") and ((tab[field7] == \"Value22\") or (tab[field7] == \"Value23\"))) then\n"..
+	"    if ((tab[\"field6\"] == \"Value12\") and ((tab[\"field7\"] == \"Value22\") or (tab[\"field7\"] == \"Value23\"))) then\n"..
 	"        writeInt(tab[\"field12\"],idx)\n"..
 	"    end\n"..
-	"    if (tab[field6] == \"Value13\") then\n"..
+	"    if (tab[\"field6\"] == \"Value13\") then\n"..
 	"        writeInt(tab[\"field13\"],idx)\n"..
 	"    end\n"..
 	"    writeInt(tab[\"field14\"],idx)\n"..
@@ -898,11 +899,11 @@ function showTyperC()
 	showIndent(1).."for (int i = 0; i < 3; i++) writeStruct1(exp+i,i);\n"..
 	showIndent(1).."struct Struct1 *act;\n"..
 	showIndent(1).."allocStruct1(&act,3);\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) readStruct1(exp+i,i);\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) readStruct1(act+i,i);\n"..
 	showIndent(1).."int pass = 0;\n"..
 	showIndent(1).."for (int i = 0; i < 3; i++) pass += compStruct1(exp+i,act+i);\n"
 	result = result..
-	showIndent(1).."return pass?-1:0;\n"..
+	showIndent(1).."return pass!=3?-1:0;\n"..
 	"}"
 	return result
 end

@@ -362,7 +362,7 @@ int checkFileLua(lua_State *lua)
 	lua_pushnumber(lua,checkFile((int)lua_tonumber(lua,1)));
 	return 1;
 }
-void rdlkFile(long long arg0, long long arg1, int idx)
+int rdlkFile(long long arg0, long long arg1, int idx)
 {
 	off_t pos = arg0;
 	off_t len = arg1;
@@ -371,15 +371,17 @@ void rdlkFile(long long arg0, long long arg1, int idx)
 	lock.l_len = arg1;
 	lock.l_type = F_RDLCK;
 	lock.l_whence = SEEK_SET;
-	if (fcntl(inp[idx],F_SETLK,&lock) < 0) ERROR(inperr[idx],idx);
+	int val = 0;
+	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
+	return (val==0);
 }
 int rdlkFileLua(lua_State *lua)
 {
 	luaerr = lua;
-	rdlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
+	lua_pushnumber(lua,rdlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
+	return 1;
 }
-void wrlkFile(long long arg0, long long arg1, int idx)
+int wrlkFile(long long arg0, long long arg1, int idx)
 {
 	off_t pos = arg0;
 	off_t len = arg1;
@@ -388,13 +390,15 @@ void wrlkFile(long long arg0, long long arg1, int idx)
 	lock.l_len = arg1;
 	lock.l_type = F_WRLCK;
 	lock.l_whence = SEEK_SET;
-	if (fcntl(inp[idx],F_SETLK,&lock) < 0) ERROR(inperr[idx],idx);
+	int val = 0;
+	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
+	return (val==0);
 }
 int wrlkFileLua(lua_State *lua)
 {
 	luaerr = lua;
-	wrlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
+	lua_pushnumber(lua,wrlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
+	return 1;
 }
 void unlkFile(long long arg0, long long arg1, int idx)
 {
