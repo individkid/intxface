@@ -114,7 +114,7 @@ if (setjmp(jmpbuf[idx]) == 0) {
 		int valid = 0;
 		int size = 0;
 		int num = 0;
-		char *buf = 0;
+		char *buf = buffer;
 		off_t start = config;
 		while (append < FILESIZE) {
 			if (stage == 0) {
@@ -129,7 +129,6 @@ if (setjmp(jmpbuf[idx]) == 0) {
 					char *ptr = readStr(given);
 					int siz = strlen(ptr)+checkStr(given);
 					if (siz == 0) {stage = 1; break;}
-					if (buf == 0) buf = buffer;
 					strcpy(buf,ptr);
 					bufptr[num] = buf;
 					bufsiz[num] = siz;
@@ -142,9 +141,9 @@ if (setjmp(jmpbuf[idx]) == 0) {
 					response.siz = bufsiz;
 					response.ptr = bufptr;
 					writeFile(&response,anonym[idx]);
-					num = 0; buf = 0; size = 0; start = config;
+					num = 0; buf = buffer; size = 0; start = config;
 				}
-				if (num > 0 || buf != 0 || size > 0 || config > start) ERROR(exiterr,0)
+				if (num > 0 || buf != buffer || size > 0 || config > start) ERROR(exiterr,0)
 			} else {
 				if (valid) {writeFile(&command,anonym[idx]); valid = 0;}
 				if (wrlkFile(append,INFINITE,helper)) {
