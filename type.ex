@@ -26,7 +26,7 @@ File = {
 	{"loc","long long",{},{}},
 	{"num","int",{},{}},
 	{"siz","int",{},"num"},
-	{"str","char*",{},"num"},
+	{"ptr","char*",{},"num"},
 }
 --HERE
 Enums,Enumz = listHere("Enums")

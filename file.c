@@ -29,6 +29,7 @@
 #define INFINITE 1000000000ull
 #define FILESIZE 1000
 #define CMDSIZE 100
+#define INDSIZE 10
 #define VOIDARG(x) ((void*)(((char*)(0))+(x)))
 #define ARGVOID(x) (((char*)(x))-((char*)(0)))
 #define NAMES 4
@@ -48,6 +49,8 @@ long long identifier = 0;
 jmp_buf jmpbuf[NUMFILE] = {0};
 jmp_buf errbuf = {0};
 char buffer[CMDSIZE+BUFSIZE+1] = {0};
+int bufsiz[INDSIZE] = {0};
+char *bufptr[INDSIZE] = {0};
 
 void spokerr(int arg)
 {
@@ -79,7 +82,10 @@ void *file(void *arg)
 	int given = 0;
 	int control = 0;
 	int helper = 0;
+	int handle = 0;
 	int seqnum = 0;
+	off_t config = 0;
+	int stage = 0;
 	struct File command = {0};
 	struct File response = {0};
 if (setjmp(jmpbuf[idx]) == 0) {
@@ -92,10 +98,7 @@ if (setjmp(jmpbuf[idx]) == 0) {
 	if ((control = openFile(name[idx]+CONTROL)) < 0) ERROR(filerr,idx)
 	number[control] = idx; bothJump(spokerr,control);
 	wrlkwFile(0,1,control);
-	off_t config = 0;
-	int stage = 0;
 	while (1) {
-		int handle = 0;
 		if ((handle = openFile(name[idx]+GIVEN)) < 0) ERROR(filerr,idx)
 		moveIdent(handle,helper);
 		if (pollFile(helper)) {
@@ -112,6 +115,7 @@ if (setjmp(jmpbuf[idx]) == 0) {
 		int size = 0;
 		int num = 0;
 		char *buf = 0;
+		off_t start = config;
 		while (append < FILESIZE) {
 			if (stage == 0) {
 				if (valid == 0 && pollFile(helper)) {
@@ -121,37 +125,35 @@ if (setjmp(jmpbuf[idx]) == 0) {
 				if (valid > 0 && config >= command.loc + valid) {
 					writeFile(&command,anonym[idx]);
 					valid = 0;
-				} else while (size < CMDSIZE) {
+				} else while (size < CMDSIZE && stage == 0) {
 					char *ptr = readStr(given);
-					if (*ptr == 0 && checkStr(given) == 0) {
-						if (valid) writeFile(&command,anonym[idx]);
-						valid = 0; stage = 1; break;
-					}
 					int siz = strlen(ptr)+checkStr(given);
-					if (buf == 0) {
-						buf = buffer;
-						response.idx = idx;
-						response.loc = config;
-					}
+					if (siz == 0) {stage = 1; break;}
+					if (buf == 0) buf = buffer;
 					strcpy(buf,ptr);
-					// TODO keep dynamic array in temporary
-					response.str[num] = buf;
-					response.siz[num] = siz;
+					bufptr[num] = buf;
+					bufsiz[num] = siz;
 					num++; buf += siz; size += siz; config += siz;
 				}
-				if (num > 0) {
+				if (num > 0 && buf != 0 && size > 0 && config > start) {
+					response.idx = idx;
+					response.loc = start;
 					response.num = num;
+					response.siz = bufsiz;
+					response.ptr = bufptr;
 					writeFile(&response,anonym[idx]);
-					num = 0; buf = 0; size = 0;
+					num = 0; buf = 0; size = 0; start = config;
 				}
+				if (num > 0 || buf != 0 || size > 0 || config > start) ERROR(exiterr,0)
 			} else {
+				if (valid) {writeFile(&command,anonym[idx]); valid = 0;}
 				if (wrlkFile(append,INFINITE,helper)) {
 					if (pollFile(helper)) {
 						unlkFile(append,INFINITE,helper);
 					} else {
 						readFile(&command,named[idx]);
 						for (int i = 0; i < command.num; i++) {
-							writeBuf(command.str[i],command.siz[i],given);
+							writeBuf(command.ptr[i],command.siz[i],given);
 						}
 						writeFile(&command,helper);
 						unlkFile(append,INFINITE,helper);
@@ -211,7 +213,7 @@ int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
 	struct File command = {0};
-	// TODO identifier = pid + seconds-since-publish
+	identifier = getpid(); // TODO add seconds-since-publish
 	if ((face = pipeInit(argv[1],argv[2])) < 0) return -1;
 if (setjmp(errbuf) == 0) {
 	bothJump(huberr,face);
@@ -221,9 +223,9 @@ if (setjmp(errbuf) == 0) {
 			valid[command.idx] = 1;
 			if (command.num != 1) ERROR(huberr,-1)
 			if ((anonym[command.idx] = openPipe()) < 0) ERROR(huberr,-1)
-			if ((name[command.idx] = malloc(strlen(command.str[0])+NAMES)) == 0) ERROR(huberr,-1)
+			if ((name[command.idx] = malloc(strlen(command.ptr[0])+NAMES)) == 0) ERROR(huberr,-1)
 			for (int i = 0; i < NAMES-1; i++) name[command.idx][i] = '.';
-			strcpy(name[command.idx]+GIVEN,command.str[0]);
+			strcpy(name[command.idx]+GIVEN,command.ptr[0]);
 			if ((named[command.idx] = openFifo(name[command.idx]+NAMED)) < 0) ERROR(huberr,-1)
 			number[named[command.idx]] = command.idx; writeJump(huberr,named[command.idx]);
 			number[anonym[command.idx]] = command.idx; readJump(huberr,anonym[command.idx]);
