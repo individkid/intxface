@@ -21,6 +21,7 @@
 #define ERROR(FNC,ARG) {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); if (FNC) FNC(ARG); else exit(-1);}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(ARG); else closeIdent(ARG);}
 #define NUMOPEN 256
+#define BUFSIZE 1024
 
 typedef void (*eftype)(int);
 void readNote(eftype exc, int idx);

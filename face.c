@@ -26,7 +26,6 @@
 #include <lua.h>
 #include "face.h"
 
-#define BUFSIZE 1024
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};
 enum {Wait,Poll,Seek,None} vld[NUMOPEN] = {0};

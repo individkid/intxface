@@ -26,17 +26,6 @@
 #include <sys/errno.h>
 
 #define NUMFILE 128
-int face = 0;
-int anonym[NUMFILE] = {0};
-int number[NUMOPEN] = {0};
-char *name[NUMFILE] = {0};
-int named[NUMFILE] = {0};
-int valid[NUMFILE] = {0};
-pthread_t thread[NUMFILE] = {0};
-long long identifier = 0;
-jmp_buf jmpbuf[NUMFILE] = {0};
-jmp_buf errbuf = {0};
-
 #define INFINITE 1000000000ull
 #define FILESIZE 1000
 #define CMDSIZE 100
@@ -47,6 +36,18 @@ jmp_buf errbuf = {0};
 #define NAMED 2
 #define HELPER 1
 #define CONTROL 0
+
+int face = 0;
+int anonym[NUMFILE] = {0};
+int number[NUMOPEN] = {0};
+char *name[NUMFILE] = {0};
+int named[NUMFILE] = {0};
+int valid[NUMFILE] = {0};
+pthread_t thread[NUMFILE] = {0};
+long long identifier = 0;
+jmp_buf jmpbuf[NUMFILE] = {0};
+jmp_buf errbuf = {0};
+char buffer[CMDSIZE+BUFSIZE+1] = {0};
 
 void spokerr(int arg)
 {
@@ -68,6 +69,10 @@ void exiterr(int arg)
 	exit(-1);
 }
 
+void nonote(int idx)
+{
+}
+
 void *file(void *arg)
 {
 	int idx = ARGVOID(arg);
@@ -83,7 +88,7 @@ if (setjmp(jmpbuf[idx]) == 0) {
 	writeJump(spokerr,anonym[idx]);
 	readJump(spokerr,named[idx]);
 	if ((given = openFile(name[idx]+GIVEN)) < 0) ERROR(filerr,idx)
-	number[given] = idx; bothJump(spokerr,given);
+	number[given] = idx; bothJump(spokerr,given); readNote(nonote,given);
 	if ((control = openFile(name[idx]+CONTROL)) < 0) ERROR(filerr,idx)
 	number[control] = idx; bothJump(spokerr,control);
 	wrlkwFile(0,1,control);
@@ -105,38 +110,39 @@ if (setjmp(jmpbuf[idx]) == 0) {
 		off_t append = 0;
 		int valid = 0;
 		int size = 0;
+		int num = 0;
+		char *buf = 0;
 		while (append < FILESIZE) {
 			if (stage == 0) {
-				if (!valid && pollFile(helper)) {
+				if (valid == 0 && pollFile(helper)) {
 					readFile(&command,helper);
-					valid = 1; size = 0;
-					for (int i = 0; i < command.num; i++) size += command.siz[i];
+					for (int i = 0; i < command.num; i++) valid += command.siz[i];
 				}
-				if (valid && config >= command.loc + size) {
+				if (valid > 0 && config >= command.loc + valid) {
 					writeFile(&command,anonym[idx]);
 					valid = 0;
-				} else {
-					char *ptr = readStr(given); // TODO suppress closeIdent
+				} else while (size < CMDSIZE) {
+					char *ptr = readStr(given);
 					if (*ptr == 0 && checkStr(given) == 0) {
 						if (valid) writeFile(&command,anonym[idx]);
 						valid = 0; stage = 1; break;
 					}
-					int len = strlen(ptr)+checkStr(given);
-					config += len;
-					response.idx = idx;
-					response.loc = config;
-					int num = 0;
-					long long pos = 0;
-					while (pos < len) {
-						long long sav = pos;
-						response.str[num] = ptr+pos;
-						while (pos < len && ptr[pos]) pos++;
-						if (len > 0) pos++;
-						response.siz[num] = pos-sav;
-						num++;
+					int siz = strlen(ptr)+checkStr(given);
+					if (buf == 0) {
+						buf = buffer;
+						response.idx = idx;
+						response.loc = config;
 					}
+					strcpy(buf,ptr);
+					// TODO keep dynamic array in temporary
+					response.str[num] = buf;
+					response.siz[num] = siz;
+					num++; buf += siz; size += siz; config += siz;
+				}
+				if (num > 0) {
 					response.num = num;
 					writeFile(&response,anonym[idx]);
+					num = 0; buf = 0; size = 0;
 				}
 			} else {
 				if (wrlkFile(append,INFINITE,helper)) {
