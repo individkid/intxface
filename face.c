@@ -31,7 +31,7 @@ int out[NUMOPEN] = {0};
 enum {Wait,Poll,Seek,None} vld[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
 int len = 0;
-char buf[BUFSIZE+1] = {0};
+char buf[BUFSIZE] = {0};
 int chk = 0;
 eftype inpexc[NUMOPEN] = {0};
 eftype inperr[NUMOPEN] = {0};
@@ -134,10 +134,9 @@ int closeIdentLua(lua_State *lua)
 }
 void moveIdent(int idx0, int idx1)
 {
-	if (idx1 < 0 || idx1 >= len) ERROR(exitErr,0)
-	if (idx0 < 0 || idx0 >= len) ERROR(exitErr,0)
+	if (idx1 < 0 || idx1 >= len) ERROR(inperr[idx1],idx1);
+	if (idx0 < 0 || idx0 >= len) ERROR(inperr[idx1],idx1);
 	closeIdent(idx1);
-	if (idx0 == len) len++;
 	inp[idx1] = inp[idx0];
 	out[idx1] = out[idx0];
 	vld[idx1] = vld[idx0];
@@ -495,14 +494,14 @@ int checkStrLua(lua_State *lua)
 char *readStr(int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
-	for (int i = 0; i < BUFSIZE; i++) {
+	for (int i = 0; i < BUFSIZE-1; i++) {
 		int val = read(inp[idx],&buf[i],1);
 		if (val < 0) ERROR(inperr[idx],idx)
 		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
 		if (val == 0) {buf[i] = 0; chk = 0; return buf;}
 		if (buf[i] == 0) {chk = 1; return buf;}
 	}
-	buf[BUFSIZE] = 0; chk = 0; return buf;
+	buf[BUFSIZE-1] = 0; chk = 0; return buf;
 }
 int readStrLua(lua_State *lua)
 {
