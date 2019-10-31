@@ -87,3 +87,6 @@ This starts a shader that detects when any of a swarm of detector points,
 surrounding the focal point, crosses a plane,
 triggering a script to change the motion of the focal point,
 while mouse and roller change velocity and speed of the focal point.
+This also starts a shader that detects when decorated portions of planes
+become visible, so framebuffer textures can be dedicated for them.
+This also distorts sounds to hammer home which lines of sight are broken.
