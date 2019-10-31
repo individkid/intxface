@@ -35,10 +35,11 @@
 #define HELPER 1
 #define CONTROL 0
 
-int face = 0;
 long long identifier = 0;
 jmp_buf errbuf = {0};
-int number[NUMOPEN];
+jmp_buf jmpbuf[NUMFILE] = {0};
+int number[NUMOPEN] = {0};
+
 enum Stage {
 	Move,
 	Rreq,
@@ -53,7 +54,6 @@ enum Stage {
 };
 struct Thread {
 	pthread_t thread;
-	jmp_buf jmpbuf;
 	enum Stage stage;
 	char *name;
 	int anonym;
@@ -75,20 +75,22 @@ struct Thread {
 	char *bufptr[CMDSIZE];
 	struct File command;
 	struct File response;
-} *thread[NUMFILE] = {0};
+};
 
 void spokerr(int arg);
 void huberr(int arg);
 void filerr(int arg);
 void exiterr(int arg);
 void nonote(int idx);
-void construct(char *ptr, int idx);
-void destroy(int sub);
-void finish(struct File *command);
-void finall();
-void error();
+void construct(char *ptr, int idx, struct Thread **thread);
+void destroy(struct File *command, int sub, struct Thread **thread);
+void normish(struct File *command, struct Thread **thread);
+void normal(struct File *command, int sub);
+void finish(struct File *command, struct Thread **thread);
+void final(struct Thread **thread);
+void error(int sub);
 void create(char *ptr, int idx, struct Thread *thread);
-void cleanup(struct Thread *thread);
+void clean(struct Thread *thread);
 void move(struct Thread *thread);
 void rreq(struct Thread *thread);
 void wreq(struct Thread *thread);
@@ -102,9 +104,11 @@ void jump(struct Thread *thread);
 int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
+	int face = 0;
 	struct File command = {0};
+	struct Thread *thread[NUMFILE] = {0};
 	identifier = getpid(); // TODO add seconds-since-publish
-	if ((face = pipeInit(argv[1],argv[2])) < 0) return -1;
+	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	if (setjmp(errbuf) == 0) {
 	bothJump(huberr,face);
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
@@ -114,22 +118,20 @@ int main(int argc, char **argv)
 	int new = (vld && thread[command.idx] == 0);
 	int non = (command.num == 0);
 	int one = (command.num == 1);
-	if (cmd && vld && new && one) construct(*command.ptr,command.idx);
-	else if (cmd && vld && new) error();
-	else if (cmd && vld && non) finish(&command);
-	else if (cmd && vld) writeFile(&command,thread[command.idx]->named);
-	else if (cmd && non) {finall(); return 0;}
-	else if (cmd) error();
-	else {if (non) destroy(command.idx);
-	command.idx = number[sub]; writeFile(&command,face);}
-	}} else error();
-	return -1;
+	if (cmd && vld && new && one) construct(*command.ptr,command.idx,thread);
+	else if (cmd && vld && new) error(thread[sub]->anonym);
+	else if (cmd && vld && non) finish(&command,thread);
+	else if (cmd && vld) normish(&command,thread);
+	else if (cmd) {final(thread); return 0;}
+	else if (non) destroy(&command,face,thread);
+	else normal(&command,face);}}
+	error(face); return -1;
 }
 
 void *file(void *arg)
 {
 	struct Thread *thread = (struct Thread *)arg;
-	if (setjmp(thread->jmpbuf) == 0)
+	if (setjmp(jmpbuf[thread->idx]) == 0)
 	while (1) switch (thread->stage) {
 	case (Move): move(thread); break;
 	case (Rreq): rreq(thread); break;
@@ -147,7 +149,7 @@ void *file(void *arg)
 
 void spokerr(int arg)
 {
-	longjmp(thread[number[arg]]->jmpbuf,1);
+	longjmp(jmpbuf[number[arg]],1);
 }
 
 void huberr(int arg)
@@ -157,55 +159,69 @@ void huberr(int arg)
 
 void filerr(int arg)
 {
-	longjmp(thread[arg]->jmpbuf,1);
+	longjmp(jmpbuf[arg],1);
 }
 
 void exiterr(int arg)
 {
-	exit(-1);
+	exit(arg);
 }
 
 void nonote(int idx)
 {
 }
 
-void construct(char *ptr, int idx)
+void construct(char *ptr, int idx, struct Thread **thread)
 {
 	struct Thread init = {0};
 	struct Thread *new = malloc(sizeof(struct Thread));
 	if (new == 0) ERROR(huberr,-1)
 	*new = init;
+	if (thread[idx]) ERROR(exiterr,-1)
 	thread[idx] = new;
 	create(ptr,idx,new);
 }
 
-void destroy(int idx)
+void destroy(struct File *command, int sub, struct Thread **thread)
 {
-	cleanup(thread[idx]);
+	int idx = command->idx;
+	clean(thread[idx]);
 	free(thread[idx]);
 	thread[idx] = 0;
+	normal(command,sub);
 }
 
-void finish(struct File *command)
+void normish(struct File *command, struct Thread **thread)
+{
+	writeFile(command,thread[command->idx]->named);
+}
+
+void normal(struct File *command, int sub)
+{
+	command->idx = number[sub];
+	writeFile(command,sub);
+}
+
+void finish(struct File *command, struct Thread **thread)
 {
 	command->loc = identifier;
 	writeFile(command,thread[command->idx]->named);
 }
 
-void finall()
+void final(struct Thread **thread)
 {
 	struct File command = {0};
 	command.num = 0;
 	for (int i = 0; i < NUMFILE; i++) if (thread[i]) {
-	command.idx = i; finish(&command);}
+	command.idx = i; finish(&command,thread);}
 }
 
-void error()
+void error(int sub)
 {
 	struct File command = {0};
 	command.idx = -1;
 	command.num = 0;
-	writeFile(&command,face);
+	writeFile(&command,sub);
 }
 
 #define self thread->thread
@@ -264,7 +280,7 @@ void create(char *ptr, int sub, struct Thread *thread)
 	if (pthread_create(&self,0,file,thread) < 0) ERROR(huberr,-1)
 }
 
-void cleanup(struct Thread *thread)
+void clean(struct Thread *thread)
 {
 	if (pthread_join(self,0) < 0) ERROR(huberr,-1)
 	closeIdent(anonym);
