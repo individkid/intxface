@@ -25,10 +25,10 @@
 #include <string.h>
 #include <sys/errno.h>
 
-#define NUMFILE 128
+#define NUMFILE 64
 #define INFINITE 1000000000ull
-#define FILESIZE 1000
-#define CMDSIZE 10
+#define FILESIZE 4096
+#define CMDSIZE 4
 #define NAMES 4
 #define GIVEN 3
 #define NAMED 2
@@ -296,10 +296,7 @@ void move(struct Thread *thread)
 	if (pollFile(helper)) {
 		int saved = seqnum;
 		seqnum = readInt(helper);
-		if (seqnum != saved + 1) {
-			config = 0; stage = 0;
-			seekFile(config,given);
-		}
+		if (seqnum != saved + 1) {config = 0; seekFile(0,given);}
 	} else {
 		seqnum = seqnum + 1;
 		writeInt(seqnum,helper);

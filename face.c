@@ -31,8 +31,8 @@ int out[NUMOPEN] = {0};
 enum {Wait,Poll,Seek,None} vld[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
 int len = 0;
-char buf[BUFSIZE] = {0};
-int chk = 0;
+char buf[NUMOPEN][BUFSIZE] = {0};
+int chk[NUMOPEN] = {0};
 eftype inpexc[NUMOPEN] = {0};
 eftype inperr[NUMOPEN] = {0};
 eftype outerr[NUMOPEN] = {0};
@@ -481,9 +481,9 @@ int sleepSecLua(lua_State *lua)
 	sleep((int)lua_tonumber(lua,1));
 	return 0;
 }
-int checkStr()
+int checkStr(int idx)
 {
-	return chk;
+	return chk[idx];
 }
 int checkStrLua(lua_State *lua)
 {
@@ -495,13 +495,13 @@ char *readStr(int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	for (int i = 0; i < BUFSIZE-1; i++) {
-		int val = read(inp[idx],&buf[i],1);
+		int val = read(inp[idx],&buf[idx][i],1);
 		if (val < 0) ERROR(inperr[idx],idx)
 		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
-		if (val == 0) {buf[i] = 0; chk = 0; return buf;}
-		if (buf[i] == 0) {chk = 1; return buf;}
+		if (val == 0) {buf[idx][i] = 0; chk[idx] = 0; return buf[idx];}
+		if (buf[idx][i] == 0) {chk[idx] = 1; return buf[idx];}
 	}
-	buf[BUFSIZE-1] = 0; chk = 0; return buf;
+	buf[idx][BUFSIZE-1] = 0; chk[idx] = 0; return buf[idx];
 }
 int readStrLua(lua_State *lua)
 {

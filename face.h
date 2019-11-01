@@ -20,8 +20,8 @@
 
 #define ERROR(FNC,ARG) {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); if (FNC) FNC(ARG); else exit(-1);}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(ARG); else closeIdent(ARG);}
-#define NUMOPEN 256
-#define BUFSIZE 1024
+#define NUMOPEN 1024
+#define BUFSIZE 256
 
 typedef void (*eftype)(int);
 void readNote(eftype exc, int idx);
@@ -50,7 +50,7 @@ void wrlkwFile(long long arg0, long long arg1, int idx);
 int checkRead(int idx);
 int checkWrite(int idx);
 void sleepSec(int sec);
-int checkStr(int pos);
+int checkStr(int idx);
 char *readStr(int idx);
 int readInt(int idx);
 long long readNew(int idx);
