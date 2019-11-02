@@ -28,11 +28,9 @@
 
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};
-enum {Wait,Poll,Seek,None} vld[NUMOPEN] = {0};
+enum {None,Wait,Poll,Seek} vld[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
 int len = 0;
-char buf[NUMOPEN][BUFSIZE] = {0};
-int chk[NUMOPEN] = {0};
 eftype inpexc[NUMOPEN] = {0};
 eftype inperr[NUMOPEN] = {0};
 eftype outerr[NUMOPEN] = {0};
@@ -56,7 +54,7 @@ void callLua(lua_State *lua, const char *str, int idx)
 	if (lua == 0) ERROR(exitErr,0)
 	lua_getglobal(lua,str);
 	lua_pushnumber(lua,idx);
-	if (lua_pcall(lua, 2, 0, 0) != 0) ERROR(exitErr,0)
+	if (lua_pcall(lua, 1, 0, 0) != 0) ERROR(exitErr,0)
 }
 void noteLua(int idx)
 {
@@ -72,14 +70,14 @@ void writeLua(int idx)
 }
 void readNote(eftype exc, int idx)
 {
-	if (idx < 0 || idx >= len) ERROR(exitErr,0)
-	inpexc[idx] = exc;
+       if (idx < 0 || idx >= len) ERROR(exitErr,0)
+       inpexc[idx] = exc;
 }
 int readNoteLua(lua_State *lua)
 {
-	setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	readNote(noteLua,(int)lua_tonumber(lua,2));
-	return 0;
+       setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+       readNote(noteLua,(int)lua_tonumber(lua,2));
+       return 0;
 }
 void readJump(eftype err, int idx)
 {
@@ -149,18 +147,6 @@ int moveIdentLua(lua_State *lua)
 	luaerr = lua;
 	moveIdent((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
 	return 0;
-}
-int openIdent()
-{
-	if (len >= NUMOPEN) return -1;
-	vld[len] = None;
-	return len++;
-}
-int openIdentLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openIdent());
-	return 1;
 }
 int openPipe()
 {
@@ -481,33 +467,40 @@ int sleepSecLua(lua_State *lua)
 	sleep((int)lua_tonumber(lua,1));
 	return 0;
 }
-int checkStr(int idx)
-{
-	return chk[idx];
-}
-int checkStrLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkStr((int)lua_tonumber(lua,1)));
-	return 1;
-}
-char *readStr(int idx)
+void readStr(cftype fnc, void *arg, int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
-	for (int i = 0; i < BUFSIZE-1; i++) {
-		int val = read(inp[idx],&buf[idx][i],1);
-		if (val < 0) ERROR(inperr[idx],idx)
+	char buf[BUFSIZ] = {0};
+	int trm = 0;
+	for (int i = 0; i < BUFSIZ-1; i++, len++) {
+		int val = read(inp[idx],buf+i,1);
+		if (val < 0) ERROR(inperr[idx],idx);
 		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
-		if (val == 0) {buf[idx][i] = 0; chk[idx] = 0; return buf[idx];}
-		if (buf[idx][i] == 0) {chk[idx] = 1; return buf[idx];}
-	}
-	buf[idx][BUFSIZE-1] = 0; chk[idx] = 0; return buf[idx];
+		if (val == 0) {buf[i] = 0; break;}
+		if (buf[i] == 0) {trm = 1; break;}}
+	buf[BUFSIZ-1] = 0;
+	fnc(buf,trm,arg);
+}
+void readStrHsFnc(char *buf, int trm, void *arg)
+{
+	hftype fnc = arg;
+	fnc(buf,trm);
+}
+void readStrHs(hftype fnc, int idx)
+{
+	readStr(readStrHsFnc,fnc,idx);
+}
+void readStrLuaFnc(char *buf, int trm, void *arg)
+{
+	lua_State *lua = arg;
+	lua_pushstring(lua,buf);
+	lua_pushnumber(lua,trm);
 }
 int readStrLua(lua_State *lua)
 {
 	luaerr = lua;
-	lua_pushstring(lua,readStr((int)lua_tonumber(lua,1)));
-	return 1;
+	readStr(readStrLuaFnc,lua,(int)lua_tonumber(lua,1));
+	return 2;
 }
 int readInt(int idx)
 {
@@ -568,32 +561,20 @@ float readOld(int idx)
 int readOldLua(lua_State *lua)
 {
 	luaerr = lua;
-	lua_pushnumber(lua,readOld((int)lua_tonumber(lua,1)));
+	lua_pushnumber(lua,(double)readOld((int)lua_tonumber(lua,1)));
 	return 1;
 }
-void writeBuf(const char *arg, int siz, int idx)
+void writeStr(const char *arg, int trm, int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
-	int val = write(out[idx],arg,siz);
-	if (val < siz) ERROR(outerr[idx],idx)
-}
-int writeBufLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeBuf(lua_tostring(lua,1),strlen(lua_tostring(lua,1))+1,(int)lua_tonumber(lua,2));
-	return 0;
-}
-void writeStr(const char *arg, int idx)
-{
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
-	int siz = strlen(arg)+1;
+	int siz = strlen(arg)+trm;
 	int val = write(out[idx],arg,siz);
 	if (val < siz) ERROR(outerr[idx],idx)
 }
 int writeStrLua(lua_State *lua)
 {
 	luaerr = lua;
-	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
 	return 0;
 }
 void writeInt(int arg, int idx)
@@ -658,8 +639,6 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "closeIdent");
 	lua_pushcfunction(L, moveIdentLua);
 	lua_setglobal(L, "moveIdent");
-	lua_pushcfunction(L, openIdentLua);
-	lua_setglobal(L, "openIdent");
 	lua_pushcfunction(L, openPipeLua);
 	lua_setglobal(L, "openPipe");
 	lua_pushcfunction(L, openFifoLua);
@@ -698,8 +677,6 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "checkWrite");
 	lua_pushcfunction(L, sleepSecLua);
 	lua_setglobal(L, "sleepSec");
-	lua_pushcfunction(L, checkStrLua);
-	lua_setglobal(L, "checkStr");
 	lua_pushcfunction(L, readStrLua);
 	lua_setglobal(L, "readStr");
 	lua_pushcfunction(L, readIntLua);
@@ -710,8 +687,6 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "readNew");
 	lua_pushcfunction(L, readOldLua);
 	lua_setglobal(L, "readOld");
-	lua_pushcfunction(L, writeBufLua);
-	lua_setglobal(L, "writeBuf");
 	lua_pushcfunction(L, writeStrLua);
 	lua_setglobal(L, "writeStr");
 	lua_pushcfunction(L, writeIntLua);

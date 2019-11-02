@@ -247,7 +247,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = readInt(idx);\n"..
-	"    {const char *temp = readStr(idx); allocStr(&ptr->field4,temp);}\n"..
+	"    readStr(callStr,&ptr->field4,idx);\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = readInt(idx);\n"..
@@ -286,7 +286,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            writeInt(ptr->field3[i1][i2],idx);\n"..
-	"    writeStr(ptr->field4,idx);\n"..
+	"    writeStr(ptr->field4,1,idx);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        writeInt(ptr->field5[i],idx);\n"..
 	"    {int temp = ptr->field6; writeInt(temp,idx);}\n"..
@@ -394,6 +394,11 @@ Expected = {
 	"    if (str == 0) return;\n"..
 	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
+	"}\n"..
+	"void callStr(char* str, int trm, void*arg)\n"..
+	"{\n"..
+	"    char **ptr = arg;\n"..
+	"    allocStr(ptr,str);\n"..
 	"}",
 	"void allocPtr(void **ptr, int siz)\n"..
 	"{\n"..
@@ -571,7 +576,7 @@ Expected = {
 	"    a2 <- listHelp 2 (readOld idx)\n"..
 	"    a3 <- listHelp 3 (readNum idx)\n"..
 	"    a4 <- listHelp 2 (listHelp 2 (readInt idx))\n"..
-	"    a5 <- readStr idx\n"..
+	"    a5 <- fmap fst (readStr idx)\n"..
 	"    a6 <- listHelp 3 (readInt idx)\n"..
 	"    a7 <- readEnum1 idx\n"..
 	"    a8 <- readEnum2 idx\n"..
@@ -622,7 +627,7 @@ Expected = {
 	"    assertHelp 2 (\\x -> writeOld x idx) a2\n"..
 	"    assertHelp 3 (\\x -> writeNum x idx) a3\n"..
 	"    assertHelp 2 (assertHelp 2 (\\x -> writeInt x idx)) a4\n"..
-	"    writeStr a5 idx\n"..
+	"    writeStr a5 True idx\n"..
 	"    assertHelp 3 (\\x -> writeInt x idx) a6\n"..
 	"    writeEnum1 a7 idx\n"..
 	"    writeEnum2 a8 idx\n"..
@@ -757,7 +762,7 @@ Expected = {
 	"        end\n"..
 	"        i1 = i1 + 1\n"..
 	"    end\n"..
-	"    writeStr(tab[\"field4\"],idx)\n"..
+	"    writeStr(tab[\"field4\"],1,idx)\n"..
 	"    local i1 = 1\n"..
 	"    while (i1 <= 3) do\n"..
 	"        writeInt(tab[\"field5\"][i1],idx)\n"..

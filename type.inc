@@ -522,8 +522,7 @@ function showReadCF(v,ebr,sub)
 	elseif (v[2] == "float") then
 		result = result.."ptr->"..v[1]..sub.." = readOld(idx);"..ebr.."\n"
 	elseif (v[2] == "char*") then
-		result = result.."{const char *temp = readStr(idx); "
-		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+		result = result.."readStr(callStr,&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	elseif (Enumz[v[2]]~=nil) then
 		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
 	elseif (Structz[v[2]]~=nil) then
@@ -544,7 +543,7 @@ function showWriteCF(v,ebr,sub)
 	elseif (v[2] == "float") then
 		result = result.."writeOld(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	elseif (v[2] == "char*") then
-		result = result.."writeStr(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+		result = result.."writeStr(ptr->"..v[1]..sub..",1,idx);"..ebr.."\n"
 	elseif (Enumz[v[2]]~=nil) then
 		result = result.."{int temp = ptr->"..v[1]..sub.."; writeInt(temp,idx);}"..ebr.."\n"
 	elseif (Structz[v[2]]~=nil) then
@@ -572,6 +571,12 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."if (str == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
+		result = result.."}\n"
+		result = result.."void callStr(char* str, int trm, void*arg)"
+		if prototype then return result..";" end
+		result = result.."\n{\n"
+		result = result..showIndent(1).."char **ptr = arg;\n"
+		result = result..showIndent(1).."allocStr(ptr,str);\n"
 		result = result.."}"
 	elseif (name == "Ptr") then
 		result = result.."void allocPtr(void **ptr, int siz)"
@@ -983,12 +988,15 @@ function showReadHsG(struct,index,depth)
 		result = result.."listHelp "..field[4].." ("
 		count = count + 1
 	end
-	if (field[2] == "int") then result = result.."readInt idx"
-	elseif (field[2] == "long long") then result = result.."readNew idx"
-	elseif (field[2] == "double") then result = result.."readNum idx"
-	elseif (field[2] == "float") then result = result.."readOld idx"
-	elseif (field[2] == "char*") then result = result.."readStr idx"
-	else result = result.."read"..field[2].." idx" end
+	if (field[2] == "int") then result = result.."readInt"
+	elseif (field[2] == "long long") then result = result.."readNew"
+	elseif (field[2] == "double") then result = result.."readNum"
+	elseif (field[2] == "float") then result = result.."readOld"
+	elseif (field[2] == "char*") then
+		result = result.."fmap fst (readStr"
+		count = count + 1
+	else result = result.."read"..field[2] end
+	result = result.." idx"
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -1145,14 +1153,16 @@ function showWriteHsH(struct,index)
 	elseif (field[2] == "char*") then result = result.."writeStr"
 	else result = result.."write"..field[2] end
 	if anon and (field[2] == "float") then
-		result = result.." x idx"
+		result = result.." x"
 	elseif anon and (field[2] ~= "float") then
-		result = result.." x idx"
+		result = result.." x"
 	elseif not anon and (field[2] == "float") then
-		result = result.." a"..index.." idx"
+		result = result.." a"..index
 	elseif not anon and (field[2] ~= "float") then
-		result = result.." a"..index.." idx"
+		result = result.." a"..index
 	end
+	if (field[2] == "char*") then result = result.." True" end
+	result = result.." idx"
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -1378,7 +1388,7 @@ function showWriteLua(name,struct)
 		elseif (field[2] == "long long") then result = result.."writeNew("..value..",idx)"
 		elseif (field[2] == "double") then result = result.."writeNum("..value..",idx)"
 		elseif (field[2] == "float") then result = result.."writeOld("..value..",idx)"
-		elseif (field[2] == "char*") then result = result.."writeStr("..value..",idx)"
+		elseif (field[2] == "char*") then result = result.."writeStr("..value..",1,idx)"
 		else result = result.."write"..field[2].."("..value..",idx)" end
 		result = result.."\n"
 		while (count > 0) do

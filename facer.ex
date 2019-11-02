@@ -24,8 +24,8 @@ int = readInt(0)
 writeInt(int,0)
 num = readNum(0)
 writeNum(num,0)
-str = readStr(0)
-writeStr(str,0)
+str,trm = readStr(0)
+writeStr(str,trm,0)
 new = readNew(0)
 writeNew(new,0)
 old = readOld(0)
@@ -44,7 +44,7 @@ for index=0,2,1 do
 	sub = index+1
 	writeInt(expectInt[sub],index)
 	writeNum(expectNum[sub],index)
-	writeStr(expectStr[sub],index)
+	writeStr(expectStr[sub],1,index)
 	writeNew(expectNew[sub],index)
 	writeOld(expectOld[sub],index)
 end
@@ -61,7 +61,7 @@ while (index >= 0) do
 		if value ~= expectNum[sub] then print(string.format("mismatch %f %f %d %d",value,expectNum[sub],index,done[sub])); assert(false) end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 2) then
-		value = readStr(index)
+		value,term = readStr(index)
 		if value ~= expectStr[sub] then print(string.format("mismatch %s %s %d %d",value,expectStr[sub],index,done[sub])); assert(false) end
 		done[sub] = done[sub] + 1
 	elseif (done[sub] == 3) then

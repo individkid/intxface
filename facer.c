@@ -22,6 +22,7 @@
 
 int errcheck = 0;
 int exccheck = 0;
+char buffer[BUFSIZE] = {0};
 void errfunc(int arg)
 {
 	errcheck = arg;
@@ -30,6 +31,10 @@ void excfunc(int arg)
 {
 	closeIdent(arg);
 	exccheck++;
+}
+void buffunc(char *buf, int trm, void *arg)
+{
+	strncpy(buffer,buf,strlen(buf)+trm);
 }
 
 int main(int argc, char **argv)
@@ -40,8 +45,10 @@ int main(int argc, char **argv)
 	writeInt(val,0);
 	double num = readNum(0);
 	writeNum(num,0);
-	const char *str = readStr(0);
-	writeStr(str,0);
+	readStr(buffunc,0,0);
+	const char *str = buffer;
+	writeStr(str,1,0);
+	strcpy(buffer,"oops");
 	long long nnm = readNew(0);
 	writeNew(nnm,0);
 	float old = readOld(0);
@@ -61,11 +68,12 @@ int main(int argc, char **argv)
 	for (int index = 0; index < 3; index++) {
 		writeInt(expectInt[index],index);
 		writeNum(expectNum[index],index);
-		writeStr(expectStr[index],index);
+		writeStr(expectStr[index],1,index);
 		writeNew(expectNew[index],index);
 		writeOld(expectOld[index],index);}
 	int done[3] = {0};
-	for (int index = waitAny(); index >= 0; index = waitAny()) switch (done[index]) {
+	for (int index = waitAny(); index >= 0; index = waitAny()) {
+	switch (done[index]) {
 	case (0): {
 		int value = readInt(index);
 		if (value != expectInt[index]) {printf("mismatch %d %d %d\n",value,index,done[index]); return -1;}
@@ -75,8 +83,10 @@ int main(int argc, char **argv)
 		if (value != expectNum[index]) {printf("mismatch %f %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	case (2): {
-		const char *value = readStr(index);
+		readStr(buffunc,0,index);
+		const char *value = buffer;
 		if (strcmp(value,expectStr[index]) != 0) {printf("mismatch %s %d %d\n",value,index,done[index]); return -1;}
+		strcpy(buffer,"oops");
 		done[index]++; break;}
 	case (3): {
 		long long value = readNew(index);
@@ -88,8 +98,8 @@ int main(int argc, char **argv)
 		done[index]++; break;}
 	default: {
 		readInt(index);
-		break;}}
-	char buffer[1] = {0}; writeBuf(buffer,1,handle);
+		break;}}}
+	char empty[1] = {0}; writeStr(empty,1,handle);
 	seekFile(0,handle); readInt(handle);
 	return (checkRead(0)||checkRead(1)||checkRead(2)||
 		checkWrite(0)||checkWrite(1)||checkWrite(2)||

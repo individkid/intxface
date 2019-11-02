@@ -49,14 +49,14 @@ mainCG (MainE a) = MainE 0.0
 readMain :: MainABC -> Int -> IO MainABC
 readMain (MainA _) a = fmap MainA (readInt a)
 readMain (MainB _) a = fmap MainB (readNum a)
-readMain (MainC _) a = fmap MainC (readStr a)
+readMain (MainC _) a = fmap (\(x,_) -> MainC x) (readStr a)
 readMain (MainD _) a = fmap MainD (readNew a)
 readMain (MainE _) a = fmap MainE (readOld a)
 
 writeMain :: MainABC -> Int -> IO ()
 writeMain (MainA a) b = writeInt a b
 writeMain (MainB a) b = writeNum a b
-writeMain (MainC a) b = writeStr a b
+writeMain (MainC a) b = writeStr a True b
 writeMain (MainD a) b = writeNew a b
 writeMain (MainE a) b = writeOld a b
 
@@ -79,7 +79,7 @@ mainF [] = do
  mainFH mainC mainB -- check responses
  var <- newIORef 0
  readJump (writeIORef var) file
- writeStr "" file
+ writeStr "" True file
  seekFile 0 file
  readInt file
  act <- readIORef var

@@ -323,12 +323,17 @@ void wreq(struct Thread *thread)
 	else stage = Rrsp;
 }
 
+void rrspf(char *ptr, int siz, void *arg);
 void rrsp(struct Thread *thread)
 {
 	rdlkwFile(config,BUFSIZE,given);
-	char *ptr = readStr(given);
+	readStr(rrspf,thread,given);
+}
+void rrspf(char *ptr, int trm, void *arg)
+{
+	struct Thread *thread = arg;
+	int siz = strlen(ptr)+trm;
 	unlkFile(config,BUFSIZE,given);
-	int siz = strlen(ptr)+checkStr(given);
 	if (siz == 0 && thdnum == 0) {stage = Wlck; return;}
 	if (siz == 0) {stage = Wrsp; return;}
 	strcpy(thdbuf,ptr);
@@ -363,7 +368,8 @@ void wlck(struct Thread *thread)
 	seekFile(loc,given);
 	for (int i = 0; i < cmdnum; i++) {
 		wrlkwFile(loc,cmdsiz[i],given);
-		writeBuf(cmdptr[i],cmdsiz[i],given);
+		int trm = (cmdsiz[i]>strlen(cmdptr[i]));
+		writeStr(cmdptr[i],trm,given);
 		unlkFile(loc,cmdsiz[i],given);
 		loc += cmdsiz[i];}
 	writeFile(&cmd,helper);

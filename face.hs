@@ -22,6 +22,7 @@ module Face where
 import Foreign.C.Types
 import Foreign.C.String
 import Foreign.Ptr
+import Data.IORef
 import System.Environment
 import System.Exit
 
@@ -32,7 +33,6 @@ foreign import ccall "writeJump" writeJumpC :: FunPtr (CInt -> IO ()) -> CInt ->
 foreign import ccall "bothJump" bothJumpC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "closeIdent" closeIdentC :: CInt -> IO ()
 foreign import ccall "moveIdent" moveIdentC :: CInt -> CInt -> IO ()
-foreign import ccall "openIdent" openIdentC :: IO CInt
 foreign import ccall "openPipe" openPipeC :: IO CInt
 foreign import ccall "openFifo" openFifoC :: CString -> IO CInt
 foreign import ccall "openFile" openFileC :: CString -> IO CInt
@@ -52,14 +52,13 @@ foreign import ccall "wrlkwFile" wrlkwFileC :: CLLong -> CLLong -> CInt -> IO ()
 foreign import ccall "checkRead" checkReadC :: CInt -> IO CInt
 foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
-foreign import ccall "checkStr" checkStrC :: CInt -> IO CInt
-foreign import ccall "readStr" readStrC :: CInt -> IO CString
+foreign import ccall "wrapper" wrapStr :: (CString -> CInt -> IO ()) -> IO (FunPtr (CString -> CInt -> IO ()))
+foreign import ccall "readStrHs" readStrC :: FunPtr (CString -> CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
 foreign import ccall "readNew" readNewC :: CInt -> IO CLLong
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
 foreign import ccall "readOld" readOldC :: CInt -> IO CFloat
-foreign import ccall "writeBuf" writeBufC :: CString -> CInt -> CInt -> IO ()
-foreign import ccall "writeStr" writeStrC :: CString -> CInt -> IO ()
+foreign import ccall "writeStr" writeStrC :: CString -> CInt -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
 foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
@@ -77,8 +76,6 @@ closeIdent :: Int -> IO ()
 closeIdent a = closeIdentC (fromIntegral a)
 moveIdent :: Int -> Int -> IO ()
 moveIdent a b = moveIdentC (fromIntegral a) (fromIntegral b)
-openIdent :: IO Int
-openIdent = fmap fromIntegral openIdentC
 openPipe :: IO Int
 openPipe = fmap fromIntegral openPipeC
 openFifo :: String -> IO Int
@@ -117,10 +114,14 @@ checkWrite :: Int -> IO Int
 checkWrite a = fmap fromIntegral (checkWriteC (fromIntegral a))
 sleepSec :: Int -> IO ()
 sleepSec a = sleepSecC (fromIntegral a)
-checkStr :: Int -> IO Int
-checkStr a = fmap fromIntegral (checkStrC (fromIntegral a))
-readStr :: Int -> IO String
-readStr a = (readStrC (fromIntegral a)) >>= peekCString
+readStrF :: IORef (String,Bool) -> CString -> CInt -> IO ()
+readStrF a b c = (peekCString b) >>= (\x -> (writeIORef a (x,((fromIntegral c) /= 0))))
+readStr :: Int -> IO (String,Bool)
+readStr a = do
+ b <- newIORef ("",False)
+ c <- wrapStr (readStrF b)
+ readStrC c (fromIntegral a)
+ readIORef b
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
 readNew :: Int -> IO Integer
@@ -129,10 +130,9 @@ readNum :: Int -> IO Double
 readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
 readOld :: Int -> IO Float
 readOld a = (readOldC (fromIntegral a)) >>= (\(CFloat x) -> return x)
-writeBuf :: String -> Int -> IO ()  -- TODO change String to ByteString
-writeBuf a b = (newCString a) >>= (\x -> writeBufC x (fromIntegral ((length a) + 1)) (fromIntegral b))
-writeStr :: String -> Int -> IO ()
-writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral b))
+writeStr :: String -> Bool -> Int -> IO ()
+writeStr a False b = (newCString a) >>= (\x -> writeStrC x (fromIntegral 0) (fromIntegral b))
+writeStr a True b = (newCString a) >>= (\x -> writeStrC x (fromIntegral 1) (fromIntegral b))
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNew :: Integer -> Int -> IO ()

@@ -24,13 +24,14 @@
 #define BUFSIZE 256
 
 typedef void (*eftype)(int);
+typedef void (*hftype)(char*,int);
+typedef void (*cftype)(char*,int,void*);
 void readNote(eftype exc, int idx);
 void readJump(eftype err, int idx);
 void writeJump(eftype err, int idx);
 void bothJump(eftype err, int idx);
 void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
-int openIdent();
 int openPipe();
 int openFifo(const char *str);
 int openFile(const char *str);
@@ -50,14 +51,13 @@ void wrlkwFile(long long arg0, long long arg1, int idx);
 int checkRead(int idx);
 int checkWrite(int idx);
 void sleepSec(int sec);
-int checkStr(int idx);
-char *readStr(int idx);
+void readStr(cftype fnc, void *arg, int idx);
+void readStrHs(hftype fnc, int idx);
 int readInt(int idx);
 long long readNew(int idx);
 double readNum(int idx);
 float readOld(int idx);
-void writeBuf(const char *arg, int siz, int idx);
-void writeStr(const char *arg, int idx);
+void writeStr(const char *arg, int trm, int idx);
 void writeInt(int arg, int idx);
 void writeNum(double arg, int idx);
 void writeNew(long long arg, int idx);
