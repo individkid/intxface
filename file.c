@@ -139,7 +139,6 @@ void normal(struct File *command, int sub, int face, struct Thread **thread)
 void normish(struct File *command, int sub, int face, struct Thread **thread)
 {
 	if (sub == face) ERROR(exiterr,-1)
-	command->idx = number[sub];
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] == 0) ERROR(exiterr,-1)
 	if (command->num <= 0) ERROR(exiterr,-1)
@@ -159,7 +158,6 @@ void final(struct File *command, int sub, int face, struct Thread **thread)
 void finish(struct File *command, int sub, int face, struct Thread **thread)
 {
 	if (sub == face) ERROR(exiterr,-1)
-	command->idx = number[sub];
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] == 0) ERROR(exiterr,-1)
 	if (command->num != 0) ERROR(exiterr,-1)
@@ -198,20 +196,25 @@ int main(int argc, char **argv)
 	identifier = getpid(); // TODO add seconds-since-publish
 	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,face);
-	while (1) {
-	if (setjmp(errbuf) == 0) {
+	while (1) {if (setjmp(errbuf) == 0) {
 	for (sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(&command,sub);
 	switch (command.act) {
+	// initialize idx Thread with file name
 	case (NewThd): construct(&command,sub,face,thread); break;
+	// forward to idx Thread through named pipe
 	case (CmdThd): normal(&command,sub,face,thread); break;
+	// forward from number[sub] Thread to process pipe
 	case (ThdCmd): normish(&command,sub,face,thread); break;
+	// forward identifier to idx Thread through named pipe
 	case (EndThd): final(&command,sub,face,thread); break;
+	// forward last from number[sub] Thread to process pipe
 	case (ThdEnd): finish(&command,sub,face,thread); break;
+	// forward to each Thread and send last to process pipe
 	case (EndPrc): error(&command,sub,face,thread); return 0;
-	default: ERROR(exiterr,-1)}}
-	ERROR(exiterr,-1)}
-	else errish(&command,sub,face,thread);}
+	default: ERROR(exiterr,-1)}} ERROR(exiterr,-1)}
+	// send last from number[sub] Thread to process pipe
+	errish(&command,sub,face,thread);}
 	return -1;
 }
 
@@ -255,11 +258,13 @@ void *file(void *arg)
 #define bufptr thread->bufptr
 #define cmd thread->command
 #define rsp thread->response
+#define cmdact thread->command.act
 #define cmdidx thread->command.idx
 #define cmdloc thread->command.loc
 #define cmdnum thread->command.num
 #define cmdsiz thread->command.siz
 #define cmdptr thread->command.ptr
+#define rspact thread->response.act
 #define rspidx thread->response.idx
 #define rsploc thread->response.loc
 #define rspnum thread->response.num
@@ -282,7 +287,7 @@ void create(char *ptr, int sub, struct Thread *thread)
 	readJump(huberr,anonym); writeJump(huberr,named);
 	writeJump(spokerr,anonym); readJump(spokerr,named);
 	bothJump(spokerr,helper); bothJump(spokerr,given);
-	bothJump(spokerr,control); readNote(nonote,given);
+	bothJump(spokerr,control);
 	append = 0; config = 0; cfgsiz = 0; appsiz = 0; thdnum = 0;
 	thdidx = sub; thdbuf = buffer; cfgloc = config; stage = Move;
 	if (pthread_create(&self,0,file,thread) < 0) ERROR(huberr,-1)
@@ -323,6 +328,9 @@ void move(struct Thread *thread)
 void rreq(struct Thread *thread)
 {
 	readFile(&cmd,helper);
+	if (cmdnum == 0 && cmdloc == identifier) {
+		stage = Done; return;}
+	if (cmdnum == 0) return;
 	for (int i = 0; i < cmdnum; i++) cfgsiz += cmdsiz[i];
 	if (config >= cmdloc + cfgsiz) stage = Wreq;
 	else stage = Rrsp;	
@@ -340,6 +348,7 @@ void rrspf(char *ptr, int siz, void *arg);
 void rrsp(struct Thread *thread)
 {
 	rdlkwFile(config,BUFSIZE,given);
+	seekFile(config,given);
 	readStr(rrspf,thread,given);
 }
 void rrspf(char *ptr, int trm, void *arg)
@@ -352,12 +361,12 @@ void rrspf(char *ptr, int trm, void *arg)
 	strcpy(thdbuf,ptr);
 	bufptr[thdnum] = thdbuf;
 	bufsiz[thdnum] = siz;
-	thdnum++; thdbuf += siz; appsiz += siz; config += siz;
-	if (appsiz >= CMDSIZE) stage = Wrsp;
+	thdnum++; thdbuf += siz; config += siz;
 }
 
 void wrsp(struct Thread *thread)
 {
+	rspact = ThdCmd;
 	rspidx = thdidx;
 	rsploc = cfgloc;
 	rspnum = thdnum;
@@ -365,7 +374,8 @@ void wrsp(struct Thread *thread)
 	rspptr = bufptr;
 	writeFile(&rsp,anonym);
 	thdnum = 0; thdbuf = buffer; appsiz = 0; cfgloc = config;
-	if (pollFile(helper)) stage = Rreq;
+	if (cfgsiz > 0 && config >= cmdloc + cfgsiz) stage = Wreq;
+	else if (cfgsiz == 0 && pollFile(helper)) stage = Rreq;
 	else stage = Rrsp;
 }
 
@@ -384,7 +394,7 @@ void wlck(struct Thread *thread)
 		int trm = (cmdsiz[i]>strlen(cmdptr[i]));
 		writeStr(cmdptr[i],trm,given);
 		unlkFile(loc,cmdsiz[i],given);
-		loc += cmdsiz[i];}
+		loc += cmdsiz[i]+trm;}
 	writeFile(&cmd,helper);
 	unlkFile(append,INFINITE,helper);
 	append += sizeFile(&cmd);
@@ -405,15 +415,15 @@ void rlck(struct Thread *thread)
 void send(struct Thread *thread)
 {
 	writeFile(&cmd,anonym);
-	if (cmdnum == 0 && cmdloc == identifier) {
-		stage = Done; return;}
 	if (append >= FILESIZE) stage = Move;
 	else stage = Wlck;
 }
 
 void jump(struct Thread *thread)
 {
+	rspact = ThdEnd;
+	rspidx = thdidx;
+	rspnum = 0;
 	writeJump(0,anonym);
-	cmdnum = 0;
-	writeFile(&cmd,anonym);
+	writeFile(&rsp,anonym);
 }
