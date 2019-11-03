@@ -64,15 +64,14 @@ struct Thread {
 	int seqnum;
 	off_t config;
 	off_t append;
-	int total;
-	int size;
 	int idx;
+	off_t loc;
 	int num;
 	char *buf;
-	off_t start;
+	int total;
 	char buffer[CMDSIZE*BUFSIZE];
-	int bufsiz[CMDSIZE];
-	char *bufptr[CMDSIZE];
+	int size[CMDSIZE];
+	char *pointer[CMDSIZE];
 	struct File command;
 	struct File response;
 };
@@ -265,15 +264,14 @@ void *file(void *arg)
 #define seqnum thread->seqnum
 #define config thread->config
 #define append thread->append
-#define cfgsiz thread->size
-#define appsiz thread->total
 #define thdidx thread->idx
+#define thdloc thread->loc
 #define thdnum thread->num
 #define thdbuf thread->buf
-#define cfgloc thread->start
+#define total thread->total
 #define buffer thread->buffer
-#define bufsiz thread->bufsiz
-#define bufptr thread->bufptr
+#define size thread->size
+#define pointer thread->pointer
 #define cmd thread->command
 #define rsp thread->response
 #define cmdact thread->command.act
@@ -306,8 +304,8 @@ void create(char *ptr, int sub, struct Thread *thread)
 	writeJump(spokerr,anonym); readJump(spokerr,named);
 	bothJump(spokerr,helper); bothJump(spokerr,given);
 	bothJump(spokerr,control);
-	append = 0; config = 0; cfgsiz = 0; appsiz = 0; thdnum = 0;
-	thdidx = sub; thdbuf = buffer; cfgloc = config; stage = Move;
+	append = 0; config = 0; total = 0; thdnum = 0;
+	thdidx = sub; thdbuf = buffer; thdloc = config; stage = Move;
 	if (pthread_create(&self,0,file,thread) < 0) ERROR(huberr,-1)
 }
 
@@ -353,8 +351,8 @@ void rreq(struct Thread *thread)
 		stage = Rreq; return;}
 	if (cmdact == EndThd) {
 		stage = Rrsp; return;}
-	for (int i = 0; i < cmdnum; i++) cfgsiz += cmdsiz[i];
-	if (config >= cmdloc + cfgsiz) {
+	for (int i = 0; i < cmdnum; i++) total += cmdsiz[i];
+	if (config >= cmdloc + total) {
 		stage = Wreq; return;}
 	stage = Rrsp;
 }
@@ -362,7 +360,7 @@ void rreq(struct Thread *thread)
 void wreq(struct Thread *thread)
 {
 	writeFile(&cmd,anonym);
-	cfgsiz = 0;
+	total = 0;
 	if (pollFile(helper)) {
 		stage = Rreq; return;}
 	stage = Rrsp;
@@ -385,8 +383,8 @@ void rrspf(char *ptr, int trm, void *arg)
 	if (siz == 0) {
 		stage = Wrsp; return;}
 	strcpy(thdbuf,ptr);
-	bufptr[thdnum] = thdbuf;
-	bufsiz[thdnum] = siz;
+	pointer[thdnum] = thdbuf;
+	size[thdnum] = siz;
 	thdnum++; thdbuf += siz; config += siz;
 	if (thdnum >= CMDSIZE) {
 		stage = Wrsp; return;}
@@ -396,15 +394,15 @@ void wrsp(struct Thread *thread)
 {
 	rspact = ThdCmd;
 	rspidx = thdidx;
-	rsploc = cfgloc;
+	rsploc = thdloc;
 	rspnum = thdnum;
-	rspsiz = bufsiz;
-	rspptr = bufptr;
+	rspsiz = size;
+	rspptr = pointer;
 	writeFile(&rsp,anonym);
-	thdnum = 0; thdbuf = buffer; appsiz = 0; cfgloc = config;
-	if (cfgsiz > 0 && config >= cmdloc + cfgsiz) {
+	thdnum = 0; thdbuf = buffer; thdloc = config;
+	if (total > 0 && config >= cmdloc + total) {
 		stage = Wreq; return;}
-	if (cfgsiz == 0 && pollFile(helper)) {
+	if (total == 0 && pollFile(helper)) {
 		stage = Rreq; return;}
 	stage = Rrsp;
 }
