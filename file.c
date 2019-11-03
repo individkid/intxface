@@ -387,6 +387,8 @@ void wlck(struct Thread *thread)
 		unlkFile(append,INFINITE,helper);
 		stage = Rlck; return;}
 	readFile(&cmd,named);
+	if (cmdnum == 0 && cmdloc == identifier) {
+		stage = Done; return;}
 	off_t loc = cmdloc;
 	seekFile(loc,given);
 	for (int i = 0; i < cmdnum; i++) {
@@ -409,7 +411,9 @@ void rlck(struct Thread *thread)
 		stage = Wlck; return;}
 	readFile(&cmd,helper);
 	append += sizeFile(&cmd);
-	stage = Send;
+	if (cmdnum == 0 && cmdloc == identifier) stage = Done;
+	else if (cmdnum == 0) stage = Wlck;
+	else stage = Send;
 }
 
 void send(struct Thread *thread)
