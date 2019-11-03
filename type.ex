@@ -20,8 +20,18 @@
 dofile("type.inc")
 
 --HERE Enums
+Action = {
+	"NewThd",
+	"CmdThd",
+	"ThdCmd",
+	"EndThd",
+	"ThdEnd",
+	"EndPrc",
+	"PrcEnd",
+}
 --HERE Structs
 File = {
+	{"act","Action",{},{}},
 	{"idx","int",{},{}},
 	{"loc","long long",{},{}},
 	{"num","int",{},{}},
