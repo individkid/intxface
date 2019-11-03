@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 #include <sys/errno.h>
 
 #define NUMFILE 64
@@ -53,27 +54,27 @@ enum Stage {
 	Stages
 };
 struct Thread {
-	pthread_t thread;
-	enum Stage stage;
-	char *name;
-	int anonym;
-	int named;
-	int given;
-	int helper;
-	int control;
-	int seqnum;
-	off_t config;
-	off_t append;
-	int idx;
-	off_t loc;
-	int num;
-	char *buf;
-	int total;
-	char buffer[CMDSIZE*BUFSIZE];
-	int size[CMDSIZE];
-	char *pointer[CMDSIZE];
-	struct File command;
-	struct File response;
+	pthread_t thread; // wait after end notice
+	enum Stage stage; // goto labels
+	char *name; // three leading dots for four names
+	int anonym; // config/update from given/helper/named
+	int named; // block to append to helper
+	int given; // read to eof, random write
+	int helper; // poll or block at eof
+	int control; // lock for replacing helper
+	int seqnum; // first int in helper
+	off_t config; // location in given
+	off_t append; // location in helper
+	int idx; // constant per thread
+	off_t loc; // saved from config when num is zero
+	int num; // indicates if response is pending
+	char *buf; // saved from buffer when num is zero
+	int total; // indicates if command is valid
+	char buffer[CMDSIZE*BUFSIZE]; // read from given
+	int size[CMDSIZE]; // per num delta in buffer
+	char *pointer[CMDSIZE]; // per num into buffer
+	struct File command; // from helper or named to anonym
+	struct File response; // from given to anonym
 };
 
 void create(char *ptr, int idx, struct Thread *thread);
@@ -192,7 +193,7 @@ int main(int argc, char **argv)
 	int sub = 0;
 	struct File command = {0};
 	struct Thread *thread[NUMFILE] = {0};
-	identifier = getpid(); // TODO add seconds-since-publish
+	identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,face);
 	while (1) {if (setjmp(errbuf) == 0) {
@@ -226,28 +227,56 @@ void *file(void *arg)
 	// neof helper, goto Rreq
 	// eof helper, goto Rrsp
 	case (Move): move(thread); break;
+	// Rreq:
 	// read helper
-	// kill command to self, goto Done
-	// kill command to other, neof helper, goto Rreq
-	// kill command to other, eof helper, goto Rrsp
+	// kill to self, goto Done
+	// kill to other, neof helper, goto Rreq
+	// kill to other, eof helper, goto Rrsp
 	// past command, goto Wreq
 	// future command, goto Rrsp
 	case (Rreq): rreq(thread); break;
+	// Wreq:
 	// write anonym
 	// neof helper, goto Rreq
 	// eof helper, goto Rrsp
 	case (Wreq): wreq(thread); break;
+	// Rrsp:
 	// read given
-	// eof given, nothing read, goto Wlck
-	// eof given, something read, goto Wrsp
-	// neof given, enough read, goto Wrsp
-	// neof given, not enough read, goto Rrsp
+	// eof given, none read, goto Wlck
+	// eof given, some read, goto Wrsp
+	// neof given, all read, goto Wrsp
+	// neof given, nall read, goto Rrsp
 	case (Rrsp): rrsp(thread); break;
+	// Wrsp:
 	// write anonym
+	// command read, past command, goto Wreq
+	// command unread, neof helper, goto Rreq
+	// command unread, eof helper, goto Rrsp
 	case (Wrsp): wrsp(thread); break;
+	// Wlck:
+	// helper locked, goto Rlck, wlock helper
+	// neof helper, unlock helper, goto Rlck
+	// read named
+	// kill to self, goto Done
+	// write given
+	// write helper
+	// unlock helper
+	// goto Send
 	case (Wlck): wlck(thread); break;
+	// Rlck:
+	// rlock helper
+	// unlock helper
+	// eof helper, goto Wlck
+	// read helper
+	// kill to self, goto Done
+	// kill to other, goto Wlck
+	// goto Send
 	case (Rlck): rlck(thread); break;
+	// Send:
+	// write anonym
+	// goto Wlck
 	case (Send): send(thread); break;
+	// Done:
 	case (Done): return 0;
 	default: ERROR(exiterr,-1)}
 	jump(thread); return 0;
@@ -336,9 +365,8 @@ void move(struct Thread *thread)
 		writeInt(seqnum,helper);
 	}
 	unlkFile(0,1,control);
-	append = sizeof(int);
-	if (pollFile(helper)) {
-		stage = Rreq; return;}
+	append = checkFile(helper);
+	seekFile(append,helper);
 	stage = Rrsp;
 }
 
@@ -388,6 +416,7 @@ void rrspf(char *ptr, int trm, void *arg)
 	thdnum++; thdbuf += siz; config += siz;
 	if (thdnum >= CMDSIZE) {
 		stage = Wrsp; return;}
+	stage = Rrsp;
 }
 
 void wrsp(struct Thread *thread)
@@ -435,12 +464,13 @@ void rlck(struct Thread *thread)
 {
 	rdlkwFile(append,1,helper);
 	unlkFile(append,1,helper);
-	if (!pollFile(helper)) {
+	if (pollFile(helper)) {
 		stage = Wlck; return;}
 	readFile(&cmd,helper);
 	append += sizeFile(&cmd);
-	if (cmdnum == 0 && cmdloc == identifier) stage = Done;
-	else if (cmdnum == 0) {
+	if (cmdnum == 0 && cmdloc == identifier) {
+		stage = Done; return;}
+	if (cmdnum == 0) {
 		stage = Wlck; return;}
 	stage = Send;
 }
