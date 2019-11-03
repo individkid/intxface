@@ -223,10 +223,28 @@ void *file(void *arg)
 	struct Thread *thread = (struct Thread *)arg;
 	if (setjmp(jmpbuf[thread->idx]) == 0)
 	while (1) switch (thread->stage) {
+	// reopen helper
+	// neof helper, goto Rreq
+	// eof helper, goto Rrsp
 	case (Move): move(thread); break;
+	// read helper
+	// kill command to self, goto Done
+	// kill command to other, neof helper, goto Rreq
+	// kill command to other, eof helper, goto Rrsp
+	// past command, goto Wreq
+	// future command, goto Rrsp
 	case (Rreq): rreq(thread); break;
+	// write anonym
+	// neof helper, goto Rreq
+	// eof helper, goto Rrsp
 	case (Wreq): wreq(thread); break;
+	// read given
+	// eof given, nothing read, goto Wlck
+	// eof given, something read, goto Wrsp
+	// neof given, enough read, goto Wrsp
+	// neof given, not enough read, goto Rrsp
 	case (Rrsp): rrsp(thread); break;
+	// write anonym
 	case (Wrsp): wrsp(thread); break;
 	case (Wlck): wlck(thread); break;
 	case (Rlck): rlck(thread); break;
@@ -321,27 +339,33 @@ void move(struct Thread *thread)
 	}
 	unlkFile(0,1,control);
 	append = sizeof(int);
-	if (pollFile(helper)) stage = Rreq;
-	else stage = Rrsp;
+	if (pollFile(helper)) {
+		stage = Rreq; return;}
+	stage = Rrsp;
 }
 
 void rreq(struct Thread *thread)
 {
 	readFile(&cmd,helper);
-	if (cmdnum == 0 && cmdloc == identifier) {
+	if (cmdact == EndThd && cmdloc == identifier) {
 		stage = Done; return;}
-	if (cmdnum == 0) return;
+	if (cmdact == EndThd && pollFile(helper)) {
+		stage = Rreq; return;}
+	if (cmdact == EndThd) {
+		stage = Rrsp; return;}
 	for (int i = 0; i < cmdnum; i++) cfgsiz += cmdsiz[i];
-	if (config >= cmdloc + cfgsiz) stage = Wreq;
-	else stage = Rrsp;	
+	if (config >= cmdloc + cfgsiz) {
+		stage = Wreq; return;}
+	stage = Rrsp;
 }
 
 void wreq(struct Thread *thread)
 {
 	writeFile(&cmd,anonym);
 	cfgsiz = 0;
-	if (pollFile(helper)) stage = Rreq;
-	else stage = Rrsp;
+	if (pollFile(helper)) {
+		stage = Rreq; return;}
+	stage = Rrsp;
 }
 
 void rrspf(char *ptr, int siz, void *arg);
@@ -356,12 +380,16 @@ void rrspf(char *ptr, int trm, void *arg)
 	struct Thread *thread = arg;
 	int siz = strlen(ptr)+trm;
 	unlkFile(config,BUFSIZE,given);
-	if (siz == 0 && thdnum == 0) {stage = Wlck; return;}
-	if (siz == 0) {stage = Wrsp; return;}
+	if (siz == 0 && thdnum == 0) {
+		stage = Wlck; return;}
+	if (siz == 0) {
+		stage = Wrsp; return;}
 	strcpy(thdbuf,ptr);
 	bufptr[thdnum] = thdbuf;
 	bufsiz[thdnum] = siz;
 	thdnum++; thdbuf += siz; config += siz;
+	if (thdnum >= CMDSIZE) {
+		stage = Wrsp; return;}
 }
 
 void wrsp(struct Thread *thread)
@@ -374,9 +402,11 @@ void wrsp(struct Thread *thread)
 	rspptr = bufptr;
 	writeFile(&rsp,anonym);
 	thdnum = 0; thdbuf = buffer; appsiz = 0; cfgloc = config;
-	if (cfgsiz > 0 && config >= cmdloc + cfgsiz) stage = Wreq;
-	else if (cfgsiz == 0 && pollFile(helper)) stage = Rreq;
-	else stage = Rrsp;
+	if (cfgsiz > 0 && config >= cmdloc + cfgsiz) {
+		stage = Wreq; return;}
+	if (cfgsiz == 0 && pollFile(helper)) {
+		stage = Rreq; return;}
+	stage = Rrsp;
 }
 
 void wlck(struct Thread *thread)
@@ -412,15 +442,17 @@ void rlck(struct Thread *thread)
 	readFile(&cmd,helper);
 	append += sizeFile(&cmd);
 	if (cmdnum == 0 && cmdloc == identifier) stage = Done;
-	else if (cmdnum == 0) stage = Wlck;
-	else stage = Send;
+	else if (cmdnum == 0) {
+		stage = Wlck; return;}
+	stage = Send;
 }
 
 void send(struct Thread *thread)
 {
 	writeFile(&cmd,anonym);
-	if (append >= FILESIZE) stage = Move;
-	else stage = Wlck;
+	if (append >= FILESIZE) {
+		stage = Move; return;}
+	stage = Wlck;
 }
 
 void jump(struct Thread *thread)
