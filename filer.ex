@@ -21,4 +21,9 @@ require "face"
 require "type"
 
 forkExec("file")
-
+file = {}
+file["act"] = "EndPrc"
+file["num"] = 0
+writeFile(file,0)
+file = readFile(0)
+if (file["act"] ~= "PrcEnd") then assert(false) end
