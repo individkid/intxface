@@ -18,6 +18,7 @@
 --]]
 
 require "face"
+
 if (arg[1] and arg[2] and arg[3]) then
 pipeInit(arg[1],arg[2])
 int = readInt(0)
@@ -30,6 +31,7 @@ new = readNew(0)
 writeNew(new,0)
 old = readOld(0)
 writeOld(old,0)
+
 else
 forkExec("a.out")
 forkExec("b.out")

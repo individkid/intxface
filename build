@@ -1,7 +1,6 @@
 ./clean
 f() { echo "$*" ; $* 2> log ; status=$? ; if [ $status -ne 0 ] ; then echo "failed" ; cat log ; exit -1 ; fi }
 f clang -o faceC.o -c face.c -I /usr/local/include/lua
-f touch face.hs
 f clang -o face.so -fPIC -shared faceC.o -llua
 f clang -o a.out facer.c faceC.o -llua
 f ghc -o b.out facer.hs faceC.o -llua -v0
@@ -16,6 +15,16 @@ f chmod +x typer.ex
 f ./a.out
 f ./type.ex
 f clang -o typeC.o -c type.c
-f touch type.hs
-f touch type.lua
-f clang -o file.o file.c typeC.o faceC.o -llua
+f clang -o type.so -fPIC -shared typeC.o faceC.o -llua
+f clang -o file file.c typeC.o faceC.o -llua
+f ./filer.ex
+# f clang -o line line.c typeC.o faceC.o -llua
+# f ./liner.ex
+# f clang -o plane plane.c typeC.o faceC.o -llua
+# f ./planer.ex
+# f ghc -o space space.hs typeC.o faceC.o -llua -v0
+# f ./spacer.ex
+# f ./sculpt.ex
+# f ./print.ex
+# f ./play.ex
+# f ./ball.ex
