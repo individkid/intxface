@@ -1,8 +1,5 @@
 test: facer.log typra.log typer.log filer.log
 
-facerC.log: facerC facerHs facerLua
-	./facerC > facerC.log
-
 facer.log: facerC facerHs facerLua
 	./facerC > facer.log
 	./facerHs >> facer.log
@@ -57,5 +54,6 @@ spacerLua sculptLua printLua playLua ballLua: face.so type.so file space
 .PHONY: clean
 clean:
 	rm -f file line plane space *C *Hs *Lua *Gen
-	rm -f log type.h type.c type.hs type.lua typer.*
+	rm -f log type.h type.c type.hs type.lua
+	rm -f typer.h typer.c typer.hs typer.lua
 	rm -f *.out *.log *.o *.so *.hi *_stub.h *.txt

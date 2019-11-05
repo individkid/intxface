@@ -78,7 +78,7 @@ mainF [] = do
  mainFG 0 mainB -- send stimulus
  mainFH mainC mainB -- check responses
  var <- newIORef 0
- readJump (writeIORef var) file
+ readJump (\_ _ a -> writeIORef var a) file
  writeStr "" True file
  seekFile 0 file
  readInt file
@@ -163,5 +163,7 @@ mainFJ (a:b) = do
 
 mainFK :: [Int] -> IO ()
 mainFK [3,0,0,0,0,0,0] = return ()
-mainFK _ = undefined
+mainFK a = do
+ putStrLn (show a)
+ undefined
 

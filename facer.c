@@ -73,7 +73,6 @@ int main(int argc, char **argv)
 		writeOld(expectOld[index],index);}
 	int done[3] = {0};
 	for (int index = waitAny(); index >= 0; index = waitAny()) {
-	printf("index %d done %d\n",index,done[index]);
 	switch (done[index]) {
 	case (0): {
 		int value = readInt(index);
