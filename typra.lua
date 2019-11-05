@@ -1,5 +1,5 @@
 --[[
-*    typer.inc
+*    typra.lua
 *    Copyright (C) 2019  Paul Coelho
 *
 *    This program is free software: you can redistribute it and/or modify
@@ -16,47 +16,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-dofile("type.inc")
+dofile("test.lua")
 
---HERE Enums
-Enum1 = {
-	"Value11",
-	"Value12",
-	"Value13",
-}
-Enum2 = {
-	"Value21",
-	"Value22",
-	"Value23",
-}
---HERE Structs
-Struct2 = {
-	{"field1","int",{},{}},
-	{"field2","int",{},{}},
-}
-Struct1 = {
-	{"next","Struct1",{},0},
-	{"field1","float",{},{2}},
-	{"field2","double",{},{3}},
-	{"field3","int",{},{2,2}},
-	{"field4","char*",{},{}},
-	{"field5","int",{},3},
-	{"field6","Enum1",{},{}},
-	{"field7","Enum2",{},{}},
-	{"field8","int",{["field6"]={["Value11"]=true}},{}},
-	{"field9","int",{["field6"]={["Value11"]=true}},{}},
-	{"field10","int",{["field6"]={["Value12"]=true}},{}},
-	{"field11","int",{["field6"]={["Value12"]=true},["field7"]={["Value21"]=true}},{}},
-	{"field12","int",{["field6"]={["Value12"]=true},["field7"]={["Value22"]=true,["Value23"]=true}},{}},
-	{"field13","int",{["field6"]={["Value13"]=true}},{}},
-	{"field14","int",{},{}},
-	{"field15","int",{},"field14"},
-	{"field16","Struct2",{},2},
-	{"field17","Struct2",{},{2}},
-}
---HERE
-Enums,Enumz = listHere("Enums")
-Structs,Structz = listHere("Structs")
 Stimulus = {
 	{"Enumz"},
 	{"Structz"},
@@ -873,88 +834,3 @@ for k,v in ipairs(Expected) do
 end
 line = io.read(); if line ~= nil then print("error2: "..line); assert(false) end
 io.close(file)
-function showTyperC()
-	local result = ""
-	result = result.."#include <stdio.h>\n"
-	result = result.."#include <stdlib.h>\n"
-	result = result.."#include <string.h>\n"
-	result = result.."#include \"face.h\"\n"
-	result = result.."#include \"typer.h\"\n"
-	result = result..showCallC().."\n"
-	result = result..
-	"int main(int argc, char **argv)\n"..
-	"{\n"..
-	showIndent(1).."if (argc == 4) {\n"..
-	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
-	showIndent(1).."struct Struct1 *ptr;\n"..
-	showIndent(1).."allocStruct1(&ptr,1);\n"..
-	showIndent(1).."readStruct1(ptr,0);\n"..
-	showIndent(1).."writeStruct1(ptr,0);\n"..
-	showIndent(1).."return 0;}\n"
-	result = result..
-	showIndent(1).."forkExec(\"a.out\");\n"..
-	showIndent(1).."forkExec(\"b.out\");\n"..
-	showIndent(1).."forkExec(\"typer.ex\");\n"..
-	showIndent(1).."sleepSec(1);\n"
-	result = result..
-	showIndent(1).."struct Struct1 *exp;\n"..
-	showIndent(1).."allocStruct1(&exp,3);\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) randStruct1(exp+i);\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) writeStruct1(exp+i,i);\n"..
-	showIndent(1).."struct Struct1 *act;\n"..
-	showIndent(1).."allocStruct1(&act,3);\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) readStruct1(act+i,i);\n"..
-	showIndent(1).."int pass = 0;\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) pass += compStruct1(exp+i,act+i);\n"
-	result = result..
-	showIndent(1).."return pass!=3?-1:0;\n"..
-	"}"
-	return result
-end
-function showTyperHs()
-	local result = ""
-	result = result.."module Main where\n"
-	result = result.."--\n"
-	result = result.."import Face\n"
-	result = result.."import System.Environment\n"
-	result = result.."import System.Exit\n"
-	result = result.."--\n"
-	result = result..showCallHs()
-	result = result.."mainF :: [String] -> IO ()\n"
-	result = result.."mainF [a,b,c] = do\n"
-	result = result..showIndent(1).."pipeInit a b\n"
-	result = result..showIndent(1).."d <- readStruct1 0\n"
-	result = result..showIndent(1).."writeStruct1 d 0\n"
-	result = result.."mainF _ = undefined\n"
-	result = result.."--\n"
-	result = result.."main :: IO ()\n"
-	result = result.."main = getArgs >>= mainF\n"
-	result = result.."--"
-	return result
-end
-function showTyperLua()
-	local result = ""
-	result = result.."#!/usr/bin/env lua\n"
-	result = result.."--\n"
-	result = result.."require \"face\"\n"
-	result = result.."--\n"
-	result = result..showCallLua()
-	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
-	result = result.."pipeInit(arg[1],arg[2])\n"
-	result = result.."tab = readStruct1(0)\n"
-	result = result.."writeStruct1(tab,0)\n"
-	result = result.."end\n"
-	return result
-end
-file = io.open("typer.h", "w")
-file:write(showCallH().."\n")
-file:close()
-file = io.open("typer.c", "w")
-file:write(showTyperC().."\n")
-file:close()
-file = io.open("typer.hs", "w")
-file:write(showTyperHs().."\n")
-file:close()
-file = io.open("typer.ex", "w")
-file:write(showTyperLua().."\n")
-file:close()

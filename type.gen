@@ -1,6 +1,5 @@
-#!/usr/bin/env lua
 --[[
-*    type.ex
+*    type.gen
 *    Copyright (C) 2019  Paul Coelho
 *
 *    This program is free software: you can redistribute it and/or modify
@@ -17,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-dofile("type.inc")
+dofile("show.lua")
 
 --HERE Enums
 Action = {
@@ -69,15 +68,23 @@ function showTypeLua()
 	result = result..showCallLua()
 	return result
 end
-file = io.open("type.h", "w")
-file:write(showCallH().."\n")
-file:close()
-file = io.open("type.c", "w")
-file:write(showTypeC().."\n")
-file:close()
-file = io.open("type.hs", "w")
-file:write(showTypeHs().."\n")
-file:close()
-file = io.open("type.lua", "w")
-file:write(showTypeLua().."\n")
-file:close()
+if (arg[1] == "type.h") then
+	file = io.open("type.h", "w")
+	file:write(showCallH().."\n")
+	file:close()
+end
+if (arg[1] == "type.c") then
+	file = io.open("type.c", "w")
+	file:write(showTypeC().."\n")
+	file:close()
+end
+if (arg[1] == "type.hs") then
+	file = io.open("type.hs", "w")
+	file:write(showTypeHs().."\n")
+	file:close()
+end
+if (arg[1] == "type.lua") then
+	file = io.open("type.lua", "w")
+	file:write(showTypeLua().."\n")
+	file:close()
+end

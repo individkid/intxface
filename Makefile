@@ -29,15 +29,21 @@ spaceHs: type.hs
 %: %Hs
 	ln -f $< $@
 
-%Lua: %.inc type.inc face.so
-	echo '#!/usr/bin/env lua' > $@
-	echo 'dofile "'$<'"' >> $@
-	chmod +x $@
-filerLua sculptLua printLua playLua ballLua: type.so file
+wrap = echo '\#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
+%Gen: %.gen
+	$(wrap)
+%Lua: %.lua
+	$(wrap)
 %: %Lua
 	ln -f $< $@
-typra.inc: typer.inc
-	ln -f $< $@
+facerLua: face.so
+typraLua typerGen: show.lua test.lua
+typerLua: face.so type.so
+typeGen: show.lua
+filerLua: face.so type.so file
+linerLua playLua ballLua: face.so type.so file line
+planerLua sculptLua playLua ballLua: face.so type.so file plane
+spacerLua sculptLua printLua playLua ballLua: face.so type.so file space
 
 %.so: %C.o
 	clang -o $@ -fPIC -shared $< -llua
@@ -45,11 +51,11 @@ typra.inc: typer.inc
 %C.o: %.c %.h
 	clang -o $@ -c $< -I /usr/local/include/lua
 
-%.h %.c %.hs %.lua: % %.inc type.inc
+%.h %.c %.hs %.lua: %Gen
 	./$< $@
 
 .PHONY: clean
 clean:
-	rm -f file line plane space *C *Hs *Lua
+	rm -f file line plane space *C *Hs *Lua *Gen
 	rm -f log type.h type.c type.hs type.lua typer.*
 	rm -f *.out *.log *.o *.so *.hi *_stub.h *.txt

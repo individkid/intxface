@@ -1,0 +1,113 @@
+--[[
+*    typer.gen
+*    Copyright (C) 2019  Paul Coelho
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+--]]
+
+dofile("test.lua")
+
+function showTyperC()
+	local result = ""
+	result = result.."#include <stdio.h>\n"
+	result = result.."#include <stdlib.h>\n"
+	result = result.."#include <string.h>\n"
+	result = result.."#include \"face.h\"\n"
+	result = result.."#include \"typer.h\"\n"
+	result = result..showCallC().."\n"
+	result = result..
+	"int main(int argc, char **argv)\n"..
+	"{\n"..
+	showIndent(1).."if (argc == 4) {\n"..
+	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
+	showIndent(1).."struct Struct1 *ptr;\n"..
+	showIndent(1).."allocStruct1(&ptr,1);\n"..
+	showIndent(1).."readStruct1(ptr,0);\n"..
+	showIndent(1).."writeStruct1(ptr,0);\n"..
+	showIndent(1).."return 0;}\n"
+	result = result..
+	showIndent(1).."forkExec(\"a.out\");\n"..
+	showIndent(1).."forkExec(\"b.out\");\n"..
+	showIndent(1).."forkExec(\"typer.ex\");\n"..
+	showIndent(1).."sleepSec(1);\n"
+	result = result..
+	showIndent(1).."struct Struct1 *exp;\n"..
+	showIndent(1).."allocStruct1(&exp,3);\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) randStruct1(exp+i);\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) writeStruct1(exp+i,i);\n"..
+	showIndent(1).."struct Struct1 *act;\n"..
+	showIndent(1).."allocStruct1(&act,3);\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) readStruct1(act+i,i);\n"..
+	showIndent(1).."int pass = 0;\n"..
+	showIndent(1).."for (int i = 0; i < 3; i++) pass += compStruct1(exp+i,act+i);\n"
+	result = result..
+	showIndent(1).."return pass!=3?-1:0;\n"..
+	"}"
+	return result
+end
+function showTyperHs()
+	local result = ""
+	result = result.."module Main where\n"
+	result = result.."--\n"
+	result = result.."import Face\n"
+	result = result.."import System.Environment\n"
+	result = result.."import System.Exit\n"
+	result = result.."--\n"
+	result = result..showCallHs()
+	result = result.."mainF :: [String] -> IO ()\n"
+	result = result.."mainF [a,b,c] = do\n"
+	result = result..showIndent(1).."pipeInit a b\n"
+	result = result..showIndent(1).."d <- readStruct1 0\n"
+	result = result..showIndent(1).."writeStruct1 d 0\n"
+	result = result.."mainF _ = undefined\n"
+	result = result.."--\n"
+	result = result.."main :: IO ()\n"
+	result = result.."main = getArgs >>= mainF\n"
+	result = result.."--"
+	return result
+end
+function showTyperLua()
+	local result = ""
+	result = result.."#!/usr/bin/env lua\n"
+	result = result.."--\n"
+	result = result.."require \"face\"\n"
+	result = result.."--\n"
+	result = result..showCallLua()
+	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
+	result = result.."pipeInit(arg[1],arg[2])\n"
+	result = result.."tab = readStruct1(0)\n"
+	result = result.."writeStruct1(tab,0)\n"
+	result = result.."end\n"
+	return result
+end
+if (arg[1] == "typer.h") then
+	file = io.open("typer.h", "w")
+	file:write(showCallH().."\n")
+	file:close()
+end
+if (arg[1] == "typer.c") then
+	file = io.open("typer.c", "w")
+	file:write(showTyperC().."\n")
+	file:close()
+end
+if (arg[1] == "typer.hs") then
+	file = io.open("typer.hs", "w")
+	file:write(showTyperHs().."\n")
+	file:close()
+end
+if (arg[1] == "typer.lua") then
+	file = io.open("typer.lua", "w")
+	file:write(showTyperLua().."\n")
+	file:close()
+end
