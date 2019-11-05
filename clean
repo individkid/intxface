@@ -1,3 +1,0 @@
-rm -f file line plane space
-rm -f log type.h type.c type.hs type.lua typer.*
-rm -f *.out *.o *.so *.hi *_stub.h *.txt
