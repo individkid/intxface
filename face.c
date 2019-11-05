@@ -39,8 +39,9 @@ char *inplua[NUMOPEN] = {0};
 char *outlua[NUMOPEN] = {0};
 lua_State *luaerr = 0;
 
-void exitErr(int idx)
+void exitErr(const char *str, int num, int idx)
 {
+	fprintf(stderr,"%s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	exit(-1);
 }
 void setupLua(char **mem, const char *str, int idx)
@@ -49,24 +50,26 @@ void setupLua(char **mem, const char *str, int idx)
 	mem[idx] = malloc(strlen(str)+1);
 	strcpy(mem[idx],str);
 }
-void callLua(lua_State *lua, const char *str, int idx)
+void callLua(lua_State *lua, const char *fnc, const char *str, int num, int idx)
 {
 	if (lua == 0) ERROR(exitErr,0)
-	lua_getglobal(lua,str);
+	lua_getglobal(lua,fnc);
+	lua_pushstring(lua,str);
+	lua_pushnumber(lua,num);
 	lua_pushnumber(lua,idx);
-	if (lua_pcall(lua, 1, 0, 0) != 0) ERROR(exitErr,0)
+	if (lua_pcall(lua, 3, 0, 0) != 0) ERROR(exitErr,0)
 }
-void noteLua(int idx)
+void noteLua(const char *str, int num, int idx)
 {
-	callLua(luaerr,exclua[idx],idx);
+	callLua(luaerr,exclua[idx],str,num,idx);
 }
-void readLua(int idx)
+void readLua(const char *str, int num, int idx)
 {
-	callLua(luaerr,inplua[idx],idx);
+	callLua(luaerr,inplua[idx],str,num,idx);
 }
-void writeLua(int idx)
+void writeLua(const char *str, int num, int idx)
 {
-	callLua(luaerr,outlua[idx],idx);
+	callLua(luaerr,outlua[idx],str,num,idx);
 }
 void readNote(eftype exc, int idx)
 {

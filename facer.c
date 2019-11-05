@@ -23,11 +23,11 @@
 int errcheck = 0;
 int exccheck = 0;
 char buffer[BUFSIZE] = {0};
-void errfunc(int arg)
+void errfunc(const char *str, int num, int arg)
 {
 	errcheck = arg;
 }
-void excfunc(int arg)
+void excfunc(const char *str, int num, int arg)
 {
 	closeIdent(arg);
 	exccheck++;
@@ -54,9 +54,9 @@ int main(int argc, char **argv)
 	float old = readOld(0);
 	writeOld(old,0);
 	return 0;}
-	if (forkExec("a.out") != 0) {printf("a.out\n"); return -1;}
-	if (forkExec("b.out") != 1) {printf("b.out\n"); return -1;}
-	if (forkExec("facer.ex") != 2) {printf("facer.ex\n"); return -1;}
+	if (forkExec("facerC") != 0) {printf("a.out\n"); return -1;}
+	if (forkExec("facerHs") != 1) {printf("b.out\n"); return -1;}
+	if (forkExec("facerLua") != 2) {printf("facer.ex\n"); return -1;}
 	for (int i = 0; i < 3; i++) readNote(excfunc,i);
 	int handle = openFile("oops.txt"); bothJump(errfunc,handle);
 	sleepSec(1);
@@ -73,6 +73,7 @@ int main(int argc, char **argv)
 		writeOld(expectOld[index],index);}
 	int done[3] = {0};
 	for (int index = waitAny(); index >= 0; index = waitAny()) {
+	printf("index %d done %d\n",index,done[index]);
 	switch (done[index]) {
 	case (0): {
 		int value = readInt(index);

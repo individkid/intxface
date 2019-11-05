@@ -26,7 +26,7 @@ import Data.IORef
 
 data MainABC = MainA Int | MainB Double | MainC String | MainD Integer | MainE Float deriving (Show,Eq)
 mainA :: [String]
-mainA = ["a.out","b.out","facer.ex"]
+mainA = ["facerC","facerHs","facerLua"]
 mainB :: [[MainABC]]
 mainB = [[MainA 0, MainB 0.1, MainC "zero", MainD 10, MainE 0.2],
          [MainA 1, MainB 1.1, MainC "one", MainD 11, MainE 1.2],

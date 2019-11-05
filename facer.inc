@@ -1,6 +1,5 @@
-#!/usr/bin/env lua
 --[[
-*    facer.ex
+*    facer.inc
 *    Copyright (C) 2019  Paul Coelho
 *
 *    This program is free software: you can redistribute it and/or modify
@@ -33,9 +32,9 @@ old = readOld(0)
 writeOld(old,0)
 
 else
-forkExec("a.out")
-forkExec("b.out")
-forkExec("facer.ex")
+forkExec("facerC")
+forkExec("facerHs")
+forkExec("facerLua")
 sleepSec(1)
 expectInt = {0,1,2}
 expectNum = {0.1,1.1,2.1}

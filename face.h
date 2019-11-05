@@ -18,12 +18,12 @@
 #ifndef FACE_H
 #define FACE_H
 
-#define ERROR(FNC,ARG) {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); if (FNC) FNC(ARG); else exit(-1);}
-#define NOTICE(FNC,ARG) {if (FNC) FNC(ARG); else closeIdent(ARG);}
+#define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
+#define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else closeIdent(ARG);}
 #define NUMOPEN 1024
 #define BUFSIZE 256
 
-typedef void (*eftype)(int);
+typedef void (*eftype)(const char*,int,int);
 typedef void (*hftype)(char*,int);
 typedef void (*cftype)(char*,int,void*);
 void readNote(eftype exc, int idx);
