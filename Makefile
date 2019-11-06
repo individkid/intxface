@@ -1,4 +1,4 @@
-test: facer.log typra.log typer.log filer.log
+all: facer.log typra.log typer.log filer.log
 
 facer.log: facerC facerHs facerLua
 	./facerC > facer.log
