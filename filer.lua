@@ -16,8 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-require "face"
-require "type"
+dofile "type.lua"
 
 forkExec("file")
 file = {}

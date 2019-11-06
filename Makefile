@@ -36,12 +36,12 @@ wrap = echo '\#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $
 	ln -f $< $@
 facerLua: face.so
 typraLua typerGen: show.lua test.lua
-typerLua: face.so type.so
+typerLua: face.so typer.lua
 typeGen: show.lua
-filerLua: face.so type.so file
-linerLua playLua ballLua: face.so type.so file line
-planerLua sculptLua playLua ballLua: face.so type.so file plane
-spacerLua sculptLua printLua playLua ballLua: face.so type.so file space
+filerLua: face.so type.lua file
+linerLua playLua ballLua: face.so type.lua file line
+planerLua sculptLua playLua ballLua: face.so type.lua file plane
+spacerLua sculptLua printLua playLua ballLua: face.so type.lua file space
 
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
@@ -63,6 +63,6 @@ type.so: faceC.o
 clean:
 	rm -f type.h type.c type.hs type.lua
 	rm -f typer.h typer.c typer.hs typer.lua
-	rm -f typra file line plane space 
+	rm -f typra filer file line plane space 
 	rm -f *C *Hs *Lua *Gen *.out *.log
 	rm -f *.o *.so *.hi *_stub.h *.txt

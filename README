@@ -27,10 +27,10 @@ face.c face.h facer.lua facer.hs facer.c test fork exec read write processes.
 This has fork/exec/block read*/write* *Int/*Num/*Str/*New/*Old
 for int/double/char*/longlong/float to/from processes in each language.
 
-type.ex generates type.h type.c Type.hs type.lua typer.h typer.c typer.hs typer.lua.
+type.gen generates type.h type.c type.hs type.lua typer.h typer.c typer.hs typer.lua.
 This has declarations and read*/write* for each struct/enum in each language.
 
-file.h file.c filer.lua filra.c filer.c test read write monitor append files.
+file.h file.c filer.lua test read write monitor append files.
 Main pselects on interface pipe, waiting for commands.
 Open file command opens the helper named pipe for writing,
 creates a pthread with unnamed pipe, and opens given file.

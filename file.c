@@ -90,27 +90,27 @@ void rlck(struct Thread *thread);
 void send(struct Thread *thread);
 void jump(struct Thread *thread);
 
-void spokerr(int arg)
+void spokerr(const char *str, int num, int arg)
 {
 	longjmp(jmpbuf[number[arg]],1);
 }
 
-void huberr(int arg)
+void huberr(const char *str, int num, int arg)
 {
 	longjmp(errbuf,1);
 }
 
-void filerr(int arg)
+void filerr(const char *str, int num, int arg)
 {
 	longjmp(jmpbuf[arg],1);
 }
 
-void exiterr(int arg)
+void exiterr(const char *str, int num, int arg)
 {
 	exit(arg);
 }
 
-void nonote(int idx)
+void nonote(const char *str, int num, int idx)
 {
 }
 

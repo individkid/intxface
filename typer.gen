@@ -79,8 +79,6 @@ function showTyperHs()
 end
 function showTyperLua()
 	local result = ""
-	result = result.."#!/usr/bin/env lua\n"
-	result = result.."--\n"
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
 	result = result..showCallLua()
