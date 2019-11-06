@@ -37,9 +37,9 @@ function showTyperC()
 	showIndent(1).."writeStruct1(ptr,0);\n"..
 	showIndent(1).."return 0;}\n"
 	result = result..
-	showIndent(1).."forkExec(\"a.out\");\n"..
-	showIndent(1).."forkExec(\"b.out\");\n"..
-	showIndent(1).."forkExec(\"typer.ex\");\n"..
+	showIndent(1).."forkExec(\"typerC\");\n"..
+	showIndent(1).."forkExec(\"typerHs\");\n"..
+	showIndent(1).."forkExec(\"typerLua\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
 	showIndent(1).."struct Struct1 *exp;\n"..

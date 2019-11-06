@@ -15,8 +15,9 @@ filer.log: filer
 	./filer > filer.log
 
 %C: %.c faceC.o
-	clang -o $@ $^ -llua
-fileC lineC planeC: typeC.o
+	clang -o $@ $(filter-out %.h,$^) -llua
+typerC: typer.h
+fileC lineC planeC: typeC.o type.h
 %: %C
 	ln -f $< $@
 
@@ -43,12 +44,19 @@ planerLua sculptLua playLua ballLua: face.so type.so file plane
 spacerLua sculptLua printLua playLua ballLua: face.so type.so file space
 
 %.so: %C.o
-	clang -o $@ -fPIC -shared $< -llua
+	clang -o $@ -fPIC -shared $^ -llua
+type.so: faceC.o
 
 %C.o: %.c %.h
 	clang -o $@ -c $< -I /usr/local/include/lua
 
-%.h %.c %.hs %.lua: %Gen
+%.h: %Gen
+	./$< $@
+%.c: %Gen
+	./$< $@
+%.hs: %Gen
+	./$< $@
+%.lua: %Gen
 	./$< $@
 
 .PHONY: clean
