@@ -38,8 +38,8 @@ File = {
 	{"ptr","char*",{},"num"},
 }
 --HERE
-Enums,Enumz = listHere("Enums")
-Structs,Structz = listHere("Structs")
+Enums,Enumz = listHere("Enums","type.gen")
+Structs,Structz = listHere("Structs","type.gen")
 function showTypeC()
 	local result = ""
 	result = result.."#include <stdio.h>\n"

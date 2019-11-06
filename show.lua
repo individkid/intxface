@@ -1405,11 +1405,11 @@ function showWriteLua(name,struct)
 	result = result.."--"
 	return result
 end
-function listHere(name)
+function listHere(name,file)
 	local list = {}
 	local map = {}
 	local found = false
-	for line in io.lines(arg[0]) do
+	for line in io.lines(file) do
 		local set = false
 		local clear = false
 		if (string.find(line,"^--HERE "..name)) then set = true

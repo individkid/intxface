@@ -53,7 +53,8 @@ spacerLua sculptLua printLua playLua ballLua: face.so type.so file space
 
 .PHONY: clean
 clean:
-	rm -f file line plane space *C *Hs *Lua *Gen
-	rm -f log type.h type.c type.hs type.lua
+	rm -f type.h type.c type.hs type.lua
 	rm -f typer.h typer.c typer.hs typer.lua
-	rm -f *.out *.log *.o *.so *.hi *_stub.h *.txt
+	rm -f typra file line plane space 
+	rm -f *C *Hs *Lua *Gen *.out *.log
+	rm -f *.o *.so *.hi *_stub.h *.txt

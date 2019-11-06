@@ -55,5 +55,5 @@ Struct1 = {
 	{"field17","Struct2",{},{2}},
 }
 --HERE
-Enums,Enumz = listHere("Enums")
-Structs,Structz = listHere("Structs")
+Enums,Enumz = listHere("Enums","test.lua")
+Structs,Structz = listHere("Structs","test.lua")

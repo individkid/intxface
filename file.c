@@ -526,6 +526,7 @@ void rlck(struct Thread *thread)
 void send(struct Thread *thread)
 {
 	// write anonym
+	if (cmd.act == CmdThd) cmd.act = ThdCmd;
 	writeFile(&cmd,anonym);
 	// too big, goto Move
 	if (append >= FILESIZE) {
