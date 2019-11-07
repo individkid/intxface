@@ -87,10 +87,9 @@ for line in makefile:lines() do
 	end
 end
 makefile:close()
--- find which leaves are in current directory
--- find which nodes have only leaves in current directory
--- for each satisfied nonsingleton file node, make node
+-- mark nonfile nodes with extant dependee as extant
+-- for each file node with extant dependees, make node
 -- go back to start if some make was not up to date
--- eliminate duplicate graph edges, singleton nodes, and nonfile nodes
+-- eliminate duplicate graph edges and nonfile nodes
 -- create .depend file from graph
 -- for each node, make clean node
