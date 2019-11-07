@@ -16,6 +16,29 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
+--[[
+Identifier in c is alpha prefix, alphanumeric, open-paren suffix.
+Note this does not capture extern variable dependencies in c.
+A include in c is dependee.
+A identifier in indented line in c is synonym for dependee.
+A identifier on unindented line in c is synonym for depender.
+A import of hs in hs is synonym for dependee.
+A foreign of c in hs is synonym for dependee.
+A module in hs is synonym for depender.
+A dofile in lua/gen is dependee.
+A require of c in lua/gen is synonym for dependee of .so dependee.
+A io.open in gen is depender.
+A closure of nonindented colon line in Makefile is depender and dependee(s).
+Make all nonexistent non-synonym dependers that have all dependees.
+Repeat until none made.
+Replace synonym nodes by the depender they are in.
+Eliminate duplicate graph edges and singleton nodes.
+Spit out the dependence graph.
+Test by make clean target for each node.
+--]]
+
+-- remove .depend file
+-- find current directory contents
 files = {}
 os.execute("ls -1 > depend.txt")
 dirlist = io.open("depend.txt")
@@ -23,6 +46,11 @@ for line in dirlist:lines() do
 	files[#files+1] = line
 end
 dirlist:close()
+-- find edges from .c files in current directory
+-- find edges from .hs files in current directory
+-- find edges from .lua files in current directory
+-- find edges from .gen files in current directory
+-- find edges from makefile rules applied to current directory contents
 makefile = io.open("Makefile", "r")
 for line in makefile:lines() do
 	pats = {}
@@ -59,24 +87,10 @@ for line in makefile:lines() do
 	end
 end
 makefile:close()
-
---[[
-Identifier in c is alpha prefix, alphanumeric, open-paren suffix.
-Note this does not capture extern variable dependencies in c.
-A include in c is dependee.
-A identifier in indented line in c is synonym for dependee.
-A identifier on unindented line in c is synonym for depender.
-A import of hs in hs is synonym for dependee.
-A foreign of c in hs is synonym for dependee.
-A module in hs is synonym for depender.
-A dofile in lua/gen is dependee.
-A require of c in lua/gen is synonym for dependee.
-A io.open in gen is depender.
-A closure of nonindented colon line in Makefile is depender and dependee(s).
-Make all nonexistent non-synonym dependers that have all dependees.
-Repeat until none made.
-Replace synonym nodes by the depender they are in.
-Eliminate duplicate graph edges and singleton nodes.
-Spit out the dependence graph.
-Test by make clean target for each node.
---]]
+-- find which leaves are in current directory
+-- find which nodes have only leaves in current directory
+-- for each satisfied nonsingleton file node, make node
+-- go back to start if some make was not up to date
+-- eliminate duplicate graph edges, singleton nodes, and nonfile nodes
+-- create .depend file from graph
+-- for each node, make clean node
