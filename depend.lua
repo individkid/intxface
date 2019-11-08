@@ -26,7 +26,7 @@ A import of hs in hs is synonym for dependee.
 A foreign of c in hs is synonym for dependee.
 A module in hs is synonym for depender.
 A dofile in lua/gen is dependee.
-A require of c in lua/gen is synonym for dependee of .so dependee.
+A require of c in lua/gen is synonym for dependee.
 A io.open in gen is depender.
 A closure of nonindented colon line in Makefile is depender and dependee(s).
 Make all nonexistent non-synonym dependers that have all dependees.
@@ -37,19 +37,20 @@ Spit out the dependence graph.
 Test by make clean target for each node.
 --]]
 
+-- initialize graph to empty
+edges = {}
+extants = {}
 -- remove .depend file
+os.execute("rm -f .depend")
 -- find current directory contents
 files = {}
 os.execute("ls -1 > depend.txt")
 dirlist = io.open("depend.txt")
 for line in dirlist:lines() do
 	files[#files+1] = line
+	extants[line] = true
 end
 dirlist:close()
--- find edges from .c files in current directory
--- find edges from .hs files in current directory
--- find edges from .lua files in current directory
--- find edges from .gen files in current directory
 -- find edges from makefile rules applied to current directory contents
 makefile = io.open("Makefile", "r")
 for line in makefile:lines() do
@@ -62,34 +63,113 @@ for line in makefile:lines() do
 		args = files; table.sort(args)
 		table.sort(pats)
 		saved = nil
-		deps = ""
+		deps = {}
+		strs = ""
 		count = 1
 		for k,v in ipairs(args) do
 			expr = "(.*)("..string.gsub(pats[count],"%.","%%.")..")$"
 			base,ext = string.match(v,expr)
 			if saved and base ~= saved then
 				saved = nil
-				deps = ""
+				deps = {}
+				strs = ""
 				count = 1
 			end
 			if (base and ext) then
 				saved = base
-				deps = deps.." "..base..ext
+				deps[base..ext] = true
+				strs = strs.." "..base..ext
 				count = count + 1
 			end
 			if not pats[count] then
-				print(saved..trgt..":"..deps)
+				print(saved..trgt..":"..strs)
+				edges[saved..trgt] = deps
 				saved = nil
-				deps = ""
+				deps = {}
+				strs = ""
 				count = 1
 			end
 		end
 	end
 end
 makefile:close()
+-- find edges from .c files in current directory
+exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
+expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
+for k,v in ipairs(files) do
+	if (string.match(v,"^.*%.c$")) then
+		print(v..":")
+		file = io.open(v)
+		cmnt = false; abrv = false; quot = false
+		for line in file:lines() do
+			more = line
+			len = more:len() - 1
+			bgn = 1; ndg = 1
+			if (not quot) and (not cmnt) and (not abrv) then
+				while (bgn<=len) do
+					if (more:sub(bgn,bgn+1)=="/*") then break end
+					if (more:sub(bgn,bgn+1)=="//") then break end
+					if (more:sub(bgn,bgn)=="\"") then break end
+					bgn = bgn + 1
+				end
+				if (bgn<=len) then
+					if (more:sub(bgn,bgn+1)=="/*") then cmnt = true end
+					if (more:sub(bgn,bgn+1)=="//") then abrv = true end
+					if (more:sub(bgn,bgn)=="\"") then quot = true end
+				end
+			end
+			if cmnt then
+				ndg = bgn
+				while (ndg<=len) do
+					if (more:sub(ndg,ndg+1)=="*/") then break end
+					ndg = ndg + 1
+				end
+				if (ndg==len) then ndg=ndg+1 end
+			end
+			if abrv then
+				ndg = more:len()
+			end
+			if quot then
+				ndg = bgn + 1
+				while (ndg<=more:len()) do
+					if (more:sub(ndg,ndg)=="\"") then break end
+					ndg = ndg + 1
+				end
+			end
+			if cmnt or abrv or quot then
+				if cmnt then c = "true" else c = "false" end
+				if abrv then a = "true" else a = "false" end
+				if quot then q = "true" else q = "false" end
+				if cmnt and (more:sub(ndg-1,ndg)=="*/") then
+					cmnt = false;
+				end
+				if abrv then
+					abrv = false;
+				end
+				if quot and (more:sub(ndg,ndg)=="\"") then
+					quot = false
+				end
+				more = more:sub(1,bgn-1)..more:sub(ndg+1)
+			end
+			depender = string.match(more,exper)
+			if (depender) then
+				print("depender "..depender)
+			else while (1) do
+				more,dependee = string.match(more,expee)
+				if not dependee then break end
+				print("dependee "..dependee)
+			end end
+		end
+		file:close()
+	end
+end
+-- find edges from .hs files in current directory
+-- find edges from .lua files in current directory
+-- find edges from .gen files in current directory
 -- mark nonfile nodes with extant dependee as extant
 -- for each file node with extant dependees, make node
 -- go back to start if some make was not up to date
 -- eliminate duplicate graph edges and nonfile nodes
+-- insert C.so and/or C.o dependee/depender nodes
 -- create .depend file from graph
 -- for each node, make clean node
