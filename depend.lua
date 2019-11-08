@@ -29,21 +29,28 @@ A dofile in lua/gen is dependee.
 A require of c in lua/gen is synonym for dependee.
 A io.open in gen is depender.
 A closure of nonindented colon line in Makefile is depender and dependee(s).
-Make all nonexistent non-synonym dependers that have all dependees.
-Repeat until none made.
-Replace synonym nodes by the depender they are in.
-Eliminate duplicate graph edges and singleton nodes.
-Spit out the dependence graph.
-Test by make clean target for each node.
+
+Theory:
+Files are buildable or not.
+
+Adding dependies to a makefile does not add build rules.
+So, if a file is buildable in the presence of some set of files,
+then it is buildable by a makefile without dependencies.
+
+If a makefile has wildcards, the wildcards must also be after the colons.
+So, if a file can be built, its name is known from makefile and listing.
+
+Thus, we can build all buildable files,
+by cumulatively attempting to build all that can be named.
+
+A file's dependencies are deducible if it and its dependencies exist.
 --]]
 
--- initialize graph to empty
-edges = {}
-extants = {}
--- remove .depend file
-os.execute("rm -f .depend")
+-- remove depend.mk file
+os.execute("rm -f depend.mk")
 -- find current directory contents
 files = {}
+extants = {}
 os.execute("ls -1 > depend.txt")
 dirlist = io.open("depend.txt")
 for line in dirlist:lines() do
@@ -51,7 +58,8 @@ for line in dirlist:lines() do
 	extants[line] = true
 end
 dirlist:close()
--- find edges from makefile rules applied to current directory contents
+-- find nodes from makefile rules applied to current directory contents
+edges = {}
 makefile = io.open("Makefile", "r")
 for line in makefile:lines() do
 	pats = {}
@@ -83,7 +91,7 @@ for line in makefile:lines() do
 			end
 			if not pats[count] then
 				print(saved..trgt..":"..strs)
-				edges[saved..trgt] = deps
+				edges[saved..trgt] = {} -- deps
 				saved = nil
 				deps = {}
 				strs = ""
@@ -93,6 +101,8 @@ for line in makefile:lines() do
 	end
 end
 makefile:close()
+-- attempt to make each node
+-- go back to start if any nontrivial make succeeded
 -- find edges from .c files in current directory
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
 expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
@@ -103,6 +113,7 @@ for k,v in ipairs(files) do
 		cmnt = false; abrv = false; quot = false
 		for line in file:lines() do
 			more = line
+			name = ""
 			len = more:len() - 1
 			bgn = 1; ndg = 1
 			if (not quot) and (not cmnt) and (not abrv) then
@@ -137,9 +148,6 @@ for k,v in ipairs(files) do
 				end
 			end
 			if cmnt or abrv or quot then
-				if cmnt then c = "true" else c = "false" end
-				if abrv then a = "true" else a = "false" end
-				if quot then q = "true" else q = "false" end
 				if cmnt and (more:sub(ndg-1,ndg)=="*/") then
 					cmnt = false;
 				end
@@ -147,17 +155,26 @@ for k,v in ipairs(files) do
 					abrv = false;
 				end
 				if quot and (more:sub(ndg,ndg)=="\"") then
+					name = more:sub(bgn+1,ndg-1)
 					quot = false
 				end
 				more = more:sub(1,bgn-1)..more:sub(ndg+1)
 			end
 			depender = string.match(more,exper)
 			if (depender) then
-				print("depender "..depender)
+				print(" "..depender)
+				if not edges[depender] then edges[depender] = {} end
+				edges[depender][file] = true
+			elseif (more == "#include ") then
+				print(" "..name)
+				if not edges[file] then edges[file] = {} end
+				edges[file][name] = true
 			else while (1) do
 				more,dependee = string.match(more,expee)
 				if not dependee then break end
-				print("dependee "..dependee)
+				print(" "..dependee)
+				if not edges[file] then edges[file] = {} end
+				edges[file][dependee] = true
 			end end
 		end
 		file:close()
@@ -166,10 +183,7 @@ end
 -- find edges from .hs files in current directory
 -- find edges from .lua files in current directory
 -- find edges from .gen files in current directory
--- mark nonfile nodes with extant dependee as extant
--- for each file node with extant dependees, make node
--- go back to start if some make was not up to date
 -- eliminate duplicate graph edges and nonfile nodes
 -- insert C.so and/or C.o dependee/depender nodes
--- create .depend file from graph
--- for each node, make clean node
+-- create depend.mk file from graph
+-- for each node test by make clean node
