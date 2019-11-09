@@ -34,13 +34,13 @@ filer.log: filerLua
 	./filerLua > filer.log
 	cat $@
 
-%C: %.c
-	clang -o $@ $(filter-out %.h,$^) -llua
-facerC: faceC.o face.h
-typerC: faceC.o face.h typer.h baseC.o base.h
-fileC: faceC.o typeC.o face.h type.h baseC.o base.h
-lineC: faceC.o typeC.o face.h type.h baseC.o base.h
-planeC: faceC.o typeC.o face.h type.h baseC.o base.h
+%C: %C.o
+	clang -o $@ $^ -llua
+facerC: faceC.o
+typerC: faceC.o baseC.o
+fileC: faceC.o baseC.o typeC.o
+lineC: faceC.o baseC.o typeC.o
+planeC: faceC.o baseC.o typeC.o
 %: %C
 	ln -f $< $@
 
@@ -48,7 +48,7 @@ planeC: faceC.o typeC.o face.h type.h baseC.o base.h
 	ghc -o $@ $< $(filter-out %.hs,$^) -llua -v0 2> $*.out
 facerHs: face.hs faceC.o
 typerHs: face.hs faceC.o
-spaceHs: type.hs face.hs faceC.o
+spaceHs: face.hs faceC.o type.hs
 %: %Hs
 	ln -f $< $@
 
@@ -76,8 +76,13 @@ ballLua: face.so type.lua file line plane space
 
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
-%C.o: %.c %.h
+%C.o: %.c
 	clang -o $@ -c $< -I /usr/local/include/lua
+faceC.o: face.h
+facerC.o: face.h
+baseC.o: face.h base.h
+typeC.o: face.h base.h type.h
+typerC.o: face.h base.h typer.h
 %.h: %Gen
 	./$< $@
 %.c: %Gen

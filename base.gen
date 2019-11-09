@@ -22,7 +22,6 @@ Enumz = {}
 Structz = {}
 function showBaseC()
 	local result = ""
-	result = result.."#include <stdio.h>\n"
 	result = result.."#include <stdlib.h>\n"
 	result = result.."#include <string.h>\n"
 	result = result.."#include \"face.h\"\n"
