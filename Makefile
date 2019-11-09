@@ -37,10 +37,10 @@ filer.log: filerLua
 %C: %.c
 	clang -o $@ $(filter-out %.h,$^) -llua
 facerC: faceC.o face.h
-typerC: faceC.o face.h typer.h
-fileC: faceC.o typeC.o face.h type.h
-lineC: faceC.o typeC.o face.h type.h
-planeC: faceC.o typeC.o face.h type.h
+typerC: faceC.o face.h typer.h baseC.o base.h
+fileC: faceC.o typeC.o face.h type.h baseC.o base.h
+lineC: faceC.o typeC.o face.h type.h baseC.o base.h
+planeC: faceC.o typeC.o face.h type.h baseC.o base.h
 %: %C
 	ln -f $< $@
 
@@ -56,6 +56,7 @@ spaceHs: type.hs face.hs faceC.o
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 typerGen: show.lua test.lua
 typeGen: show.lua
+baseGen: show.lua
 
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
@@ -88,6 +89,7 @@ ballLua: face.so type.lua file line plane space
 
 .PHONY: clean
 clean:
+	rm -f base.h base.c
 	rm -f type.h type.c type.hs type.lua
 	rm -f typer.h typer.c typer.hs typer.lua
 	rm -f typra filer file line plane space

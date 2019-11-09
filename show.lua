@@ -565,13 +565,16 @@ function showAllocC(name,typ)
 	qualify = qualify..showIndent(1).."if (siz == 0) return;\n"
 	if (name == "Str") then
 		result = result.."void allocStr(char **ptr, const char *str)"
-		if prototype then return result..";" end
+		if prototype then
+		result = result..";\n"
+		else
 		result = result.."\n{\n"
 		result = result..showIndent(1).."if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"
 		result = result..showIndent(1).."if (str == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
 		result = result.."}\n"
+		end
 		result = result.."void callStr(char* str, int trm, void*arg)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"
@@ -1435,7 +1438,7 @@ function showCall(list,map,func)
 	end
 	return result
 end
-function showFuncC()
+function showShareC()
 	local result = ""
 	result = result..showAllocC("Int","int").."\n"
 	result = result..showAllocC("New","long long").."\n"
@@ -1443,12 +1446,28 @@ function showFuncC()
 	result = result..showAllocC("Old","float").."\n"
 	result = result..showAllocC("Str","char*").."\n"
 	result = result..showAllocC("Ptr","char*").."\n"
+	return result
+end
+function showFuncC()
+	local result = ""
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"
 	result = result..showCall(Structs,Structz,showWriteC).."\n"
 	result = result..showCall(Structs,Structz,showRandC).."\n"
 	result = result..showCall(Structs,Structz,showCompC).."\n"
 	result = result..showCall(Structs,Structz,showSizeC)
+	return result
+end
+function showWrapH()
+	local result = ""
+	prototype = true
+	result = result..showShareC()
+	return result
+end
+function showWrapC()
+	local result = ""
+	prototype = false
+	result = result..showShareC()
 	return result
 end
 function showCallH()
