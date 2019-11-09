@@ -46,6 +46,7 @@ by cumulatively attempting to build all that can be named.
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
 
+while true do
 -- remove depend.mk file
 os.execute("rm -f depend.mk")
 -- find current directory contents
@@ -90,7 +91,7 @@ for line in makefile:lines() do
 				count = count + 1
 			end
 			if not pats[count] then
-				print(saved..trgt..":"..strs)
+				-- print(saved..trgt..":"..strs)
 				edges[saved..trgt] = {} -- deps
 				saved = nil
 				deps = {}
@@ -102,13 +103,37 @@ for line in makefile:lines() do
 end
 makefile:close()
 -- attempt to make each node
+goback = false
+for k,v in pairs(edges) do
+	if (not extants[k]) then
+		retval = os.execute("make "..k.." 2> depend.err > depend.out")
+		retval = retval and os.execute("[ -e "..k.." ]")
+		if retval then
+			if os.execute("[ -e "..k.." ]") then print("exist") else print("nexist") end
+			goback = true
+			print(k)
+			-- makeerr = io.open("depend.err")
+			-- for line in makeerr:lines() do
+			-- print("err "..line)
+			-- end
+			-- makeerr:close()
+			-- makeout = io.open("depend.out")
+			-- for line in makeout:lines() do
+			-- print("out "..line)
+			-- end
+			-- makeout:close()
+		end
+	end
+end
 -- go back to start if any nontrivial make succeeded
+if not goback then break end
+end
 -- find edges from .c files in current directory
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
 expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.c$")) then
-		print(v..":")
+		-- print(v..":")
 		file = io.open(v)
 		cmnt = false; abrv = false; quot = false
 		for line in file:lines() do
@@ -162,17 +187,17 @@ for k,v in ipairs(files) do
 			end
 			depender = string.match(more,exper)
 			if (depender) then
-				print(" "..depender)
+				-- print(" "..depender)
 				if not edges[depender] then edges[depender] = {} end
 				edges[depender][file] = true
 			elseif (more == "#include ") then
-				print(" "..name)
+				-- print(" "..name)
 				if not edges[file] then edges[file] = {} end
 				edges[file][name] = true
 			else while (1) do
 				more,dependee = string.match(more,expee)
 				if not dependee then break end
-				print(" "..dependee)
+				-- print(" "..dependee)
 				if not edges[file] then edges[file] = {} end
 				edges[file][dependee] = true
 			end end

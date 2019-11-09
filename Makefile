@@ -90,6 +90,7 @@ ballLua: face.so type.lua file line plane space
 clean:
 	rm -f type.h type.c type.hs type.lua
 	rm -f typer.h typer.c typer.hs typer.lua
-	rm -f typra filer file line plane space 
-	rm -f *C *Hs *Lua *Gen *.out *.log *.txt
+	rm -f typra filer file line plane space
+	rm -f depend facer show test type typer
+	rm -f *C *Hs *Lua *Gen *.err *.out *.log *.txt
 	rm -f *.o *.so *.hi *_stub.h
