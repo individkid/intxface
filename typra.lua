@@ -783,6 +783,7 @@ function linesOf(str)
 	end
 	return result
 end
+-- MAIN
 file = io.open("type.txt","w")
 io.output(file)
 abbrev = {}

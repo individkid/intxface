@@ -83,6 +83,7 @@ function showTyperLua()
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
 	result = result..showCallLua()
+	result = result.."-- MAIN\n"
 	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
 	result = result.."pipeInit(arg[1],arg[2])\n"
 	result = result.."tab = readStruct1(0)\n"
@@ -90,6 +91,7 @@ function showTyperLua()
 	result = result.."end\n"
 	return result
 end
+-- MAIN
 if (arg[1] == "typer.h") then
 	file = io.open("typer.h", "w")
 	file:write(showCallH().."\n")

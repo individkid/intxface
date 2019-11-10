@@ -57,6 +57,13 @@ for line in dirlist:lines() do
 	extants[line] = true
 end
 dirlist:close()
+scripts = {}
+os.execute("grep -l -- '-- MAIN' *.lua *.gen > depend.txt")
+greplist = io.open("depend.txt")
+for line in greplist:lines() do
+	scripts[line] = true
+end
+greplist:close()
 -- find nodes from makefile rules applied to current directory contents
 edges = {}
 makefile = io.open("Makefile", "r")
@@ -234,6 +241,28 @@ for k,v in ipairs(files) do
 	end
 end
 -- find edges from .lua and .gen files in current directory
+expee = "^dofile%(\"([^\"]*)\"%)"
+expex = "^require +\"([^\"]*)\""
+for k,v in ipairs(files) do
+	if (string.match(v,"^.*%.lua$") or string.match(v,"^.*%.gen$")) then
+		file = io.open(v)
+		for line in file:lines() do
+			import = string.match(line,expee)
+			foreign = string.match(line,expex)
+			if import then
+				-- print(v..": "..import)
+				if not edges[v] then edges[v] = {} end
+				edges[v][import] = true
+			end
+			if foreign then
+				-- print(v..": "..foreign..".c")
+				if not edges[v] then edges[v] = {} end
+				edges[v][foreign..".c"] = true
+			end
+		end
+		file:close()
+	end
+end
 
 -- eliminate duplicate graph edges and nonfile nodes
 -- print("HERE")
@@ -250,6 +279,9 @@ for k,v in pairs(edges) do
 			entries[key] = true
 		end
 	end
+end
+for k,v in pairs(scripts) do
+	entries[k] = true
 end
 update = {}
 for k,v in pairs(edges) do
@@ -332,13 +364,45 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b..".so"
+				deps = deps.." "..b.."C.o"
 			end
 			if b and (e == ".hs") then
 				deps = deps.." "..key
 			end
 		end
 		print(base.."Hs:"..deps)
+	end
+	if base and (ext == ".lua") and entries[k] then
+		deps = ""
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".c") then
+				deps = deps.." "..b..".so"
+			end
+			if b and (e == ".lua") then
+				deps = deps.." "..key
+			end
+			if b and (e == ".gen") then
+				deps = deps.." "..key
+			end
+		end
+		print(base.."Lua:"..deps)
+	end
+	if base and (ext == ".gen") and entries[k] then
+		deps = ""
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".c") then
+				deps = deps.." "..b..".so"
+			end
+			if b and (e == ".lua") then
+				deps = deps.." "..key
+			end
+			if b and (e == ".gen") then
+				deps = deps.." "..key
+			end
+		end
+		print(base.."Gen:"..deps)
 	end
 end
 

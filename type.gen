@@ -68,6 +68,7 @@ function showTypeLua()
 	result = result..showCallLua()
 	return result
 end
+-- MAIN
 if (arg[1] == "type.h") then
 	file = io.open("type.h", "w")
 	file:write(showCallH().."\n")

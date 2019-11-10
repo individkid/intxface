@@ -18,6 +18,7 @@
 
 dofile "type.lua"
 
+-- MAIN
 forkExec("file")
 file = {}
 file["act"] = "EndPrc"
