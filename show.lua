@@ -1450,6 +1450,7 @@ function showShareC()
 end
 function showFuncC()
 	local result = ""
+	-- result = desult..showSpoofC().."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"
 	result = result..showCall(Structs,Structz,showWriteC).."\n"

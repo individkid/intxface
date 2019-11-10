@@ -47,8 +47,6 @@ A file's dependencies are deducible if it and its dependencies exist.
 --]]
 
 while true do
--- remove depend.mk file
-os.execute("rm -f depend.mk")
 -- find current directory contents
 files = {}
 extants = {}
@@ -106,7 +104,7 @@ makefile:close()
 goback = false
 for k,v in pairs(edges) do
 	if (not extants[k]) then
-		retval = os.execute("make "..k.." 2> depend.err > depend.out")
+		retval = os.execute("make DEPEND=1 "..k.." 2> depend.err > depend.out")
 		retval = retval and os.execute("[ -e "..k.." ]")
 		if retval then
 			goback = true
@@ -187,17 +185,17 @@ for k,v in ipairs(files) do
 			end
 			depender = string.match(more,exper)
 			if (depender) then
-				print(depender..": "..v)
+				-- print(depender..": "..v)
 				if not edges[depender] then edges[depender] = {} end
 				edges[depender][v] = true
 			elseif (more == "#include ") then
-				print(v..": "..name)
+				-- print(v..": "..name)
 				if not edges[v] then edges[v] = {} end
 				edges[v][name] = true
 			else while (1) do
 				more,dependee = string.match(more,expee)
 				if not dependee then break end
-				print(v..": "..dependee)
+				-- print(v..": "..dependee)
 				if not edges[v] then edges[v] = {} end
 				edges[v][dependee] = true
 			end end
@@ -208,26 +206,34 @@ end
 -- find edges from .hs files in current directory
 -- find edges from .lua and .gen files in current directory
 
-print("HERE")
 -- eliminate duplicate graph edges and nonfile nodes
+-- print("HERE")
 update = {}
+entries = {}
 for k,v in pairs(edges) do
+	if (k == "main") then
+		for key,val in pairs(v) do
+			entries[key] = true
+		end
+	end
 	deps = {}
 	count = 0
 	if extants[k] then
+		deps[k] = true;
+		count = count + 1
 		for key,val in pairs(v) do
 			if extants[key] then
 				if not deps[key] then
 					count = count + 1
 				end
-				print(k..": "..key)
+				-- print(k..": "..key)
 				deps[key] = true
 			elseif edges[key] then
 				for ky,vl in pairs(edges[key]) do
 					if (not deps[ky]) then
 						count = count + 1
 					end
-					print(k..": "..key..": "..ky)
+					-- print(k..": "..key..": "..ky)
 					deps[ky] = true
 				end
 			end
@@ -238,15 +244,52 @@ for k,v in pairs(edges) do
 	end
 end
 edges = update
-print("HERE")
+update = {}
 for k,v in pairs(edges) do
-	deps = ""
-	for key,val in pairs(v) do
-		deps = deps.." "..key
+	deps = v
+	count = 1
+	while (count > 0) do
+		count = 0
+		for key,val in pairs(v) do
+			if edges[key] then
+				for ky,vl in pairs(edges[key]) do
+					if (not deps[ky]) then
+						count = count + 1;
+						deps[ky] = vl
+						-- print(k..": "..key..": "..ky)
+					end
+				end
+			end
+		end
 	end
-	print(k..":"..deps)
+	update[k] = deps
 end
--- insert C.so and/or C.o dependee/depender nodes
+edges = update
 
 -- create depend.mk file from graph
+-- print("HERE")
+for k,v in pairs(edges) do
+	base,ext = string.match(k,"(.*)(%..*)")
+	if base and (ext == ".c") and entries[k] then
+		deps = ""
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".c") then
+				deps = deps.." "..b.."C.o"
+			end
+		end
+		print(base.."C:"..deps)
+	end
+	if base and (ext == ".c") then
+		deps = ""
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if (e == ".h") then
+				deps = deps.." "..key
+			end
+		end
+		print(base.."C.o:"..deps)
+	end
+end
+
 -- for each node test by make clean node

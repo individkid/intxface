@@ -16,6 +16,10 @@
 
 all: facer.log typra.log typer.log filer.log
 
+ifndef DEPEND
+include depend.mk
+endif
+
 facer.log: facerC facerHs facerLua
 	./facerC > facer.log
 	./facerHs >> facer.log
@@ -36,11 +40,6 @@ filer.log: filerLua
 
 %C: %C.o
 	clang -o $@ $^ -llua
-facerC: faceC.o
-typerC: faceC.o baseC.o
-fileC: faceC.o baseC.o typeC.o
-lineC: faceC.o baseC.o typeC.o
-planeC: faceC.o baseC.o typeC.o
 %: %C
 	ln -f $< $@
 
@@ -78,11 +77,6 @@ ballLua: face.so type.lua file line plane space
 	clang -o $@ -fPIC -shared $^ -llua
 %C.o: %.c
 	clang -o $@ -c $< -I /usr/local/include/lua
-faceC.o: face.h
-facerC.o: face.h
-baseC.o: face.h base.h
-typeC.o: face.h base.h type.h
-typerC.o: face.h base.h typer.h
 %.h: %Gen
 	./$< $@
 %.c: %Gen

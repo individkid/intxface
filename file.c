@@ -16,6 +16,7 @@
 */
 
 #include "type.h"
+#include "base.h"
 #include "face.h"
 #include <pthread.h>
 #include <setjmp.h>
