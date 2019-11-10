@@ -1,15 +1,16 @@
-typeC.o: base.h type.h face.h
-typerC: faceC.o typerC.o baseC.o
-typerC.o: base.h typer.h face.h
-facerHs: faceC.o face.hs facer.hs
-typerLua: face.so typer.lua
-typeGen: show.lua type.gen
-typraLua: typra.lua test.lua show.lua
 fileC: faceC.o fileC.o baseC.o typeC.o
-fileC.o: base.h type.h face.h
+fileC.o: type.h base.h face.h
+typraLua: show.lua test.lua typra.lua
+facerHs: faceC.o face.hs facer.hs
+typeGen: type.gen show.lua
+baseC.o: base.h face.h
 typerHs: faceC.o face.hs typer.hs
+typerGen: show.lua typer.gen test.lua
+typeC.o: type.h face.h base.h
+facerLua: face.so facer.lua
+typerC: faceC.o typerC.o baseC.o
+typerC.o: typer.h base.h face.h
 faceC.o: face.h
 facerC: faceC.o facerC.o
 facerC.o: face.h
-baseC.o: face.h base.h
-typerGen: typer.gen test.lua show.lua
+typerLua: face.so typer.lua

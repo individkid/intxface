@@ -41,9 +41,6 @@ filer.log: filerLua
 	ghc -o $@ $< $(filter-out %.hs,$^) -llua -v0 2> $*.out
 %Gen: %.gen
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-typerGen: show.lua test.lua
-typeGen: show.lua
-baseGen: show.lua
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 facerLua: face.so

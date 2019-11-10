@@ -18,6 +18,7 @@
 
 require "face"
 
+-- MAIN
 if (arg[1] and arg[2] and arg[3]) then
 pipeInit(arg[1],arg[2])
 int = readInt(0)
