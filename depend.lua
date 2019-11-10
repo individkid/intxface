@@ -242,6 +242,7 @@ for k,v in ipairs(files) do
 end
 -- find edges from .lua and .gen files in current directory
 needed = {}
+depended = {}
 exper = "forkExec%(\"([^\"]*)\"%)"
 expee = "^dofile%(\"([^\"]*)\"%)"
 expex = "^require +\"([^\"]*)\""
@@ -267,6 +268,7 @@ for k,v in ipairs(files) do
 				-- print(v..": "..foreign..".c")
 				if not edges[v] then edges[v] = {} end
 				edges[v][foreign..".c"] = true
+				depended[foreign..".c"] = true
 			end
 		end
 		file:close()
@@ -296,23 +298,28 @@ update = {}
 for k,v in pairs(edges) do
 	deps = {}
 	count = 0
-	if extants[k] then
-		deps[k] = true;
-		count = count + 1
+	if extants[k] or needed[k] then
+		-- deps[k] = true;
+		-- count = count + 1
 		for key,val in pairs(v) do
-			if extants[key] then
-				if not deps[key] then
-					count = count + 1
-				end
-				-- print(k..": "..key)
-				deps[key] = true
-			elseif edges[key] then
-				for ky,vl in pairs(edges[key]) do
-					if (not deps[ky]) then
+			if extants[key] or needed[key] then
+				if (key ~= k) then
+					if not deps[key] then
 						count = count + 1
 					end
-					-- print(k..": "..key..": "..ky)
-					deps[ky] = true
+					-- print(k..": "..key)
+					deps[key] = true
+				end
+			end
+			if edges[key] and (not needed[key]) then
+				for ky,vl in pairs(edges[key]) do
+					if (ky ~= k) then
+						if (not deps[ky]) then
+							count = count + 1
+						end
+						-- print(k..": "..key..": "..ky)
+						deps[ky] = true
+					end
 				end
 			end
 		end
@@ -322,27 +329,15 @@ for k,v in pairs(edges) do
 	end
 end
 edges = update
-update = {}
+--[[
+print("HERE")
 for k,v in pairs(edges) do
-	deps = v
-	count = 1
-	while (count > 0) do
-		count = 0
-		for key,val in pairs(v) do
-			if edges[key] then
-				for ky,vl in pairs(edges[key]) do
-					if (not deps[ky]) and (not needed[key]) then
-						count = count + 1;
-						deps[ky] = vl
-						-- print(k..": "..key..": "..ky)
-					end
-				end
-			end
-		end
+	print(k)
+	for key,val in pairs(v) do
+		print(" "..key)
 	end
-	update[k] = deps
 end
-edges = update
+--]]
 
 -- create depend.mk file from graph
 -- print("HERE")
@@ -357,6 +352,18 @@ for k,v in pairs(edges) do
 			end
 		end
 		print(base.."C:"..deps)
+	end
+	if base and (ext == ".c") and depended[k] then
+		deps = ""
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".c") then
+				deps = deps.." "..b.."C.o"
+			end
+		end
+		if (deps ~= "") then
+			print(base..".so:"..deps)
+		end
 	end
 	if base and (ext == ".c") then
 		deps = ""
@@ -382,7 +389,7 @@ for k,v in pairs(edges) do
 		print(base.."Hs:"..deps)
 	end
 	if base and (ext == ".lua") and entries[k] then
-		deps = ""
+		deps = " "..k
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
@@ -401,7 +408,7 @@ for k,v in pairs(edges) do
 		print(base.."Lua:"..deps)
 	end
 	if base and (ext == ".gen") and entries[k] then
-		deps = ""
+		deps = " "..k
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
@@ -424,7 +431,7 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b.."C.o"
+				deps = deps.." "..b.."C"
 			end
 		end
 		print(k..":"..deps)
