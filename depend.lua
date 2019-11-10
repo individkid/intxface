@@ -241,14 +241,23 @@ for k,v in ipairs(files) do
 	end
 end
 -- find edges from .lua and .gen files in current directory
+needed = {}
+exper = "forkExec%(\"([^\"]*)\"%)"
 expee = "^dofile%(\"([^\"]*)\"%)"
 expex = "^require +\"([^\"]*)\""
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.lua$") or string.match(v,"^.*%.gen$")) then
 		file = io.open(v)
 		for line in file:lines() do
+			depend = string.match(line,exper)
 			import = string.match(line,expee)
 			foreign = string.match(line,expex)
+			if depend then
+				-- print("depend: "..v..": "..depend)
+				if not edges[v] then edges[v] = {} end
+				edges[v][depend] = true
+				needed[depend] = true
+			end
 			if import then
 				-- print(v..": "..import)
 				if not edges[v] then edges[v] = {} end
@@ -322,7 +331,7 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			if edges[key] then
 				for ky,vl in pairs(edges[key]) do
-					if (not deps[ky]) then
+					if (not deps[ky]) and (not needed[key]) then
 						count = count + 1;
 						deps[ky] = vl
 						-- print(k..": "..key..": "..ky)
@@ -385,6 +394,9 @@ for k,v in pairs(edges) do
 			if b and (e == ".gen") then
 				deps = deps.." "..key
 			end
+			if needed[key] then
+				deps = deps.." "..key
+			end
 		end
 		print(base.."Lua:"..deps)
 	end
@@ -403,6 +415,19 @@ for k,v in pairs(edges) do
 			end
 		end
 		print(base.."Gen:"..deps)
+	end
+	if needed[k] and
+		(not string.match(k,"^.*C$")) and
+		(not string.match(k,"^.*Hs$")) and
+		(not string.match(k,"^.*Lua$")) then
+		deps = ""
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".c") then
+				deps = deps.." "..b.."C.o"
+			end
+		end
+		print(k..":"..deps)
 	end
 end
 

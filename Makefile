@@ -43,17 +43,6 @@ filer.log: filerLua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-facerLua: face.so
-typraLua: show.lua test.lua
-typerLua: face.so typer.lua
-filerLua: face.so type.lua file
-linerLua: face.so type.lua file line
-planerLua: face.so type.lua file plane
-spacerLua: face.so type.lua file space
-sculptLua: face.so type.lua file plane space
-printLua: face.so type.lua file space
-playLua: face.so type.lua file line plane space
-ballLua: face.so type.lua file line plane space
 
 %: %C
 	ln -f $< $@
