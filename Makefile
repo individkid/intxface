@@ -25,42 +25,27 @@ facer.log: facerC facerHs facerLua
 	./facerHs >> facer.log
 	./facerLua >> facer.log
 	cat $@
-
 typra.log: typraLua
 	./typraLua > typra.log
 	cat $@
-
 typer.log: typerC typerHs typerLua
 	./typerC > typer.log
 	cat $@
-
 filer.log: filerLua
 	./filerLua > filer.log
 	cat $@
 
 %C: %C.o
 	clang -o $@ $^ -llua
-%: %C
-	ln -f $< $@
-
 %Hs: %.hs
 	ghc -o $@ $< $(filter-out %.hs,$^) -llua -v0 2> $*.out
-facerHs: face.hs faceC.o
-typerHs: face.hs faceC.o
-spaceHs: face.hs faceC.o type.hs
-%: %Hs
-	ln -f $< $@
-
 %Gen: %.gen
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 typerGen: show.lua test.lua
 typeGen: show.lua
 baseGen: show.lua
-
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-%: %Lua
-	ln -f $< $@
 facerLua: face.so
 typraLua: show.lua test.lua
 typerLua: face.so typer.lua
@@ -73,10 +58,18 @@ printLua: face.so type.lua file space
 playLua: face.so type.lua file line plane space
 ballLua: face.so type.lua file line plane space
 
+%: %C
+	ln -f $< $@
+%: %Hs
+	ln -f $< $@
+%: %Lua
+	ln -f $< $@
+
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
 %C.o: %.c
 	clang -o $@ -c $< -I /usr/local/include/lua
+
 %.h: %Gen
 	./$< $@
 %.c: %Gen

@@ -204,18 +204,55 @@ for k,v in ipairs(files) do
 	end
 end
 -- find edges from .hs files in current directory
+exper = "^module +([^ ]*) +where"
+expee = "^import +([^ ]*)"
+expex = "^foreign import ccall \"([^\"]*)\""
+for k,v in ipairs(files) do
+	if (string.match(v,"^.*%.hs$")) then
+		file = io.open(v)
+		for line in file:lines() do
+			depender = string.match(line,exper)
+			import = string.match(line,expee)
+			foreign = string.match(line,expex)
+			if depender then
+				-- print(depender..": "..v)
+				if not edges[depender] then edges[depender] = {} end
+				edges[depender][v] = true
+			end
+			if import then
+				-- print(v..": "..import)
+				if not edges[v] then edges[v] = {} end
+				edges[v][import] = true
+			end
+			if foreign then
+				-- print(v..": "..foreign)
+				if not edges[v] then edges[v] = {} end
+				edges[v][foreign] = true
+			end
+		end
+		file:close()
+	end
+end
 -- find edges from .lua and .gen files in current directory
 
 -- eliminate duplicate graph edges and nonfile nodes
 -- print("HERE")
-update = {}
 entries = {}
 for k,v in pairs(edges) do
-	if (k == "main") then
-		for key,val in pairs(v) do
+	for key,val in pairs(v) do
+		base,ext = string.match(key,"(.*)(%..*)")
+		if (k == "main") and (ext == ".c") then
+			-- print(key..": main")
+			entries[key] = true
+		end
+		if (k == "Main") and (ext == ".hs") then
+			-- print(key..": Main")
 			entries[key] = true
 		end
 	end
+end
+update = {}
+for k,v in pairs(edges) do
 	deps = {}
 	count = 0
 	if extants[k] then
@@ -289,6 +326,19 @@ for k,v in pairs(edges) do
 			end
 		end
 		print(base.."C.o:"..deps)
+	end
+	if base and (ext == ".hs") and entries[k] then
+		deps = ""
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".c") then
+				deps = deps.." "..b..".so"
+			end
+			if b and (e == ".hs") then
+				deps = deps.." "..key
+			end
+		end
+		print(base.."Hs:"..deps)
 	end
 end
 
