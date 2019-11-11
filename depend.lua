@@ -81,7 +81,7 @@ for line in makefile:lines() do
 		strs = ""
 		count = 1
 		for k,v in ipairs(args) do
-			expr = "(.*)("..string.gsub(pats[count],"%.","%%.")..")$"
+			expr = "^(.*)("..string.gsub(pats[count],"%.","%%.")..")$"
 			base,ext = string.match(v,expr)
 			if saved and base ~= saved then
 				saved = nil
@@ -310,8 +310,7 @@ for k,v in pairs(edges) do
 					-- print(k..": "..key)
 					deps[key] = true
 				end
-			end
-			if edges[key] and (not needed[key]) then
+			elseif edges[key] then
 				for ky,vl in pairs(edges[key]) do
 					if (ky ~= k) then
 						if (not deps[ky]) then
