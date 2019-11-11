@@ -134,8 +134,10 @@ if not goback then break end
 end
 
 -- find edges from .c files in current directory
+needed = {}
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
 expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
+expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.c$")) then
 		-- print(v..":")
@@ -143,6 +145,7 @@ for k,v in ipairs(files) do
 		cmnt = false; abrv = false; quot = false
 		for line in file:lines() do
 			more = line
+			forkexec = string.match(more,expre)
 			name = ""
 			len = more:len() - 1
 			bgn = 1; ndg = 1
@@ -199,6 +202,11 @@ for k,v in ipairs(files) do
 				-- print(v..": "..name)
 				if not edges[v] then edges[v] = {} end
 				edges[v][name] = true
+			elseif (forkexec) then
+				-- print(v..": "..forkexec)
+				if not edges[v] then edges[v] = {} end
+				edges[v][forkexec] = true
+				needed[forkexec] = true
 			else while (1) do
 				more,dependee = string.match(more,expee)
 				if not dependee then break end
@@ -206,6 +214,7 @@ for k,v in ipairs(files) do
 				if not edges[v] then edges[v] = {} end
 				edges[v][dependee] = true
 			end end
+
 		end
 		file:close()
 	end
@@ -241,24 +250,17 @@ for k,v in ipairs(files) do
 	end
 end
 -- find edges from .lua and .gen files in current directory
-needed = {}
 depended = {}
-exper = "forkExec%(\"([^\"]*)\"%)"
 expee = "^dofile%(\"([^\"]*)\"%)"
 expex = "^require +\"([^\"]*)\""
+expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.lua$") or string.match(v,"^.*%.gen$")) then
 		file = io.open(v)
 		for line in file:lines() do
-			depend = string.match(line,exper)
 			import = string.match(line,expee)
 			foreign = string.match(line,expex)
-			if depend then
-				-- print("depend: "..v..": "..depend)
-				if not edges[v] then edges[v] = {} end
-				edges[v][depend] = true
-				needed[depend] = true
-			end
+			forkex = string.match(line,expre)
 			if import then
 				-- print(v..": "..import)
 				if not edges[v] then edges[v] = {} end
@@ -269,6 +271,12 @@ for k,v in ipairs(files) do
 				if not edges[v] then edges[v] = {} end
 				edges[v][foreign..".c"] = true
 				depended[foreign..".c"] = true
+			end
+			if forkex then
+				-- print("forkex: "..v..": "..forkex)
+				if not edges[v] then edges[v] = {} end
+				edges[v][forkex] = true
+				needed[forkex] = true
 			end
 		end
 		file:close()
@@ -378,6 +386,9 @@ for k,v in pairs(edges) do
 			if b and (e == ".c") then
 				deps[#deps+1] = b.."C.o"
 			end
+			if needed[key] then
+				deps[#deps+1] = key
+			end
 		end
 		table.sort(deps)
 		update[base.."C"] = deps
@@ -459,10 +470,7 @@ for k,v in pairs(edges) do
 		table.sort(deps)
 		update[base.."Gen"] = deps
 	end
-	if needed[k] and
-		(not string.match(k,"^.*C$")) and
-		(not string.match(k,"^.*Hs$")) and
-		(not string.match(k,"^.*Lua$")) then
+	if needed[k] then
 		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")

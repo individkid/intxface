@@ -29,7 +29,7 @@ facer.log: facerC facerHs facerLua
 typra.log: typraLua
 	./typraLua > typra.log
 	cat $@
-typer.log: typerC typerHs typerLua
+typer.log: typerC
 	./typerC > typer.log
 	cat $@
 filer.log: filerLua
@@ -37,9 +37,9 @@ filer.log: filerLua
 	cat $@
 
 %C: %C.o
-	clang -o $@ $^ -llua
+	clang -o $@ $(filter %C.o,$^) -llua
 %Hs: %.hs
-	ghc -o $@ $< $(filter-out %.hs,$^) -llua -v0 2> $*.out
+	ghc -o $@ $< $(filter %C.o,$^) -llua -v0 2> $*.out
 %Gen: %.gen
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
