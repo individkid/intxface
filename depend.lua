@@ -369,101 +369,124 @@ end
 
 -- create depend.mk file from graph
 -- print("HERE")
+update = {}
 for k,v in pairs(edges) do
 	base,ext = string.match(k,"(.*)(%..*)")
 	if base and (ext == ".c") and entries[k] then
-		deps = ""
+		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b.."C.o"
+				deps[#deps+1] = b.."C.o"
 			end
 		end
-		print(base.."C:"..deps)
+		table.sort(deps)
+		update[base.."C"] = deps
 	end
 	if base and (ext == ".c") and depended[k] then
-		deps = ""
+		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b.."C.o"
+				deps[#deps+1] = b.."C.o"
 			end
 		end
-		if (deps ~= "") then
-			print(base..".so:"..deps)
+		if (#deps > 0) then
+			table.sort(deps)
+			update[base..".so"] = deps
 		end
 	end
 	if base and (ext == ".c") then
-		deps = ""
+		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if (e == ".h") then
-				deps = deps.." "..key
+				deps[#deps+1] = key
 			end
 		end
-		print(base.."C.o:"..deps)
+		table.sort(deps)
+		update[base.."C.o"] = deps
 	end
 	if base and (ext == ".hs") and entries[k] then
-		deps = ""
+		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b.."C.o"
+				deps[#deps+1] = b.."C.o"
 			end
 			if b and (e == ".hs") then
-				deps = deps.." "..key
+				deps[#deps+1] = key
 			end
 		end
-		print(base.."Hs:"..deps)
+		table.sort(deps)
+		update[base.."Hs"] = deps
 	end
 	if base and (ext == ".lua") and entries[k] then
-		deps = " "..k
+		deps = {}
+		deps[#deps+1] = k
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b..".so"
+				deps[#deps+1] = b..".so"
 			end
 			if b and (e == ".lua") then
-				deps = deps.." "..key
+				deps[#deps+1] = key
 			end
 			if b and (e == ".gen") then
-				deps = deps.." "..key
+				deps[#deps+1] = key
 			end
 			if needed[key] then
-				deps = deps.." "..key
+				deps[#deps+1] = key
 			end
 		end
-		print(base.."Lua:"..deps)
+		table.sort(deps)
+		update[base.."Lua"] = deps
 	end
 	if base and (ext == ".gen") and entries[k] then
-		deps = " "..k
+		deps = {}
+		deps[#deps+1] = k
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b..".so"
+				deps[#deps+1] = b..".so"
 			end
 			if b and (e == ".lua") then
-				deps = deps.." "..key
+				deps[#deps+1] = key
 			end
 			if b and (e == ".gen") then
-				deps = deps.." "..key
+				deps[#deps+1] = key
 			end
 		end
-		print(base.."Gen:"..deps)
+		table.sort(deps)
+		update[base.."Gen"] = deps
 	end
 	if needed[k] and
 		(not string.match(k,"^.*C$")) and
 		(not string.match(k,"^.*Hs$")) and
 		(not string.match(k,"^.*Lua$")) then
-		deps = ""
+		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
-				deps = deps.." "..b.."C"
+				deps[#deps+1] = b.."C"
 			end
 		end
-		print(k..":"..deps)
+		table.sort(deps)
+		update[k] = deps
 	end
+end
+edges = update
+order = {}
+for k,v in pairs(edges) do
+	order[#order+1] = k
+end
+table.sort(order)
+for k,v in ipairs(order) do
+	str = v..":"
+	for key,val in ipairs(edges[v]) do
+		str = str.." "..val
+	end
+	print(str)
 end
 
 -- for each node test by make clean node
