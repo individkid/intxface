@@ -134,6 +134,7 @@ if not goback then break end
 end
 
 -- find edges from .c files in current directory
+circular = false
 needed = {}
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
 expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
@@ -202,7 +203,7 @@ for k,v in ipairs(files) do
 				-- print(v..": "..name)
 				if not edges[v] then edges[v] = {} end
 				edges[v][name] = true
-			elseif false and forkexec then
+			elseif circular and forkexec then
 				-- print(v..": "..forkexec)
 				if not edges[v] then edges[v] = {} end
 				edges[v][forkexec] = true
@@ -223,6 +224,7 @@ end
 exper = "^module +([^ ]*) +where"
 expee = "^import +([^ ]*)"
 expex = "^foreign import ccall \"([^\"]*)\""
+expre = "forkExec +\"([^\"]*)\""
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.hs$")) then
 		file = io.open(v)
@@ -230,6 +232,7 @@ for k,v in ipairs(files) do
 			depender = string.match(line,exper)
 			import = string.match(line,expee)
 			foreign = string.match(line,expex)
+			forkexe = string.match(line,expre)
 			if depender then
 				-- print(depender..": "..v)
 				if not edges[depender] then edges[depender] = {} end
@@ -244,6 +247,12 @@ for k,v in ipairs(files) do
 				-- print(v..": "..foreign)
 				if not edges[v] then edges[v] = {} end
 				edges[v][foreign] = true
+			end
+			if circular and forkexe then
+				-- print(v..": "..forkexe)
+				if not edges[v] then edges[v] = {} end
+				edges[v][forkexe] = true
+				needed[forkexe] = true
 			end
 		end
 		file:close()
@@ -272,7 +281,7 @@ for k,v in ipairs(files) do
 				edges[v][foreign..".c"] = true
 				depended[foreign..".c"] = true
 			end
-			if false and forkex then
+			if circular and forkex then
 				-- print("forkex: "..v..": "..forkex)
 				if not edges[v] then edges[v] = {} end
 				edges[v][forkex] = true
@@ -427,6 +436,9 @@ for k,v in pairs(edges) do
 			if b and (e == ".hs") then
 				deps[#deps+1] = key
 			end
+			if needed[key] then
+				deps[#deps+1] = key
+			end
 		end
 		table.sort(deps)
 		update[base.."Hs"] = deps
@@ -457,9 +469,6 @@ for k,v in pairs(edges) do
 		deps[#deps+1] = k
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
-			if b and (e == ".c") then
-				deps[#deps+1] = b..".so"
-			end
 			if b and (e == ".lua") then
 				deps[#deps+1] = key
 			end
