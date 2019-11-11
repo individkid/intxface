@@ -329,20 +329,22 @@ for k,v in pairs(edges) do
 	end
 end
 edges = update
--- flatten .hs and *C dependencies
+-- flatten *C *Hs *Lua *Gen dependencies
 update = {}
 for k,v in pairs(edges) do
 	base,ext = string.match(k,"(.*)(%..*)")
 	deps = v
-	if base and (ext == ".c") and entries[k] or
-		base and (ext == ".hs") and entries[k] then
+	if base and entries[k] then
 		count = 1
 		while (count > 0) do
 			count = 0
 			for key,val in pairs(v) do
-				if edges[key] then
+				b,e = string.match(key,"(.*)(%..*)")
+				if edges[key] and (not needed[key]) and
+					((ext ~= ".lua") or (e ~= ".c")) and
+					((ext ~= ".gen") or (e ~= ".c")) then
 					for ky,vl in pairs(edges[key]) do
-						if (not deps[ky]) and (not needed[key]) then
+						if (not deps[ky]) then
 							count = count + 1;
 							deps[ky] = vl
 							-- print(k..": "..key..": "..ky)
