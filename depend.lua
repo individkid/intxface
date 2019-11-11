@@ -194,7 +194,7 @@ for k,v in ipairs(files) do
 				more = more:sub(1,bgn-1)..more:sub(ndg+1)
 			end
 			depender = string.match(more,exper)
-			if (depender) then
+			if depender then
 				-- print(depender..": "..v)
 				if not edges[depender] then edges[depender] = {} end
 				edges[depender][v] = true
@@ -202,7 +202,7 @@ for k,v in ipairs(files) do
 				-- print(v..": "..name)
 				if not edges[v] then edges[v] = {} end
 				edges[v][name] = true
-			elseif (forkexec) then
+			elseif false and forkexec then
 				-- print(v..": "..forkexec)
 				if not edges[v] then edges[v] = {} end
 				edges[v][forkexec] = true
@@ -272,7 +272,7 @@ for k,v in ipairs(files) do
 				edges[v][foreign..".c"] = true
 				depended[foreign..".c"] = true
 			end
-			if forkex then
+			if false and forkex then
 				-- print("forkex: "..v..": "..forkex)
 				if not edges[v] then edges[v] = {} end
 				edges[v][forkex] = true
