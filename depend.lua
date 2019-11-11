@@ -1,19 +1,19 @@
 --[[
-*    depend.lua
-*    Copyright (C) 2019  Paul Coelho
+*	depend.lua
+*	Copyright (C) 2019  Paul Coelho
 *
-*    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation, either version 3 of the License, or
-*    (at your option) any later version.
+*	This program is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
 *
-*    This program is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
+*	This program is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
 *
-*    You should have received a copy of the GNU General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*	You should have received a copy of the GNU General Public License
+*	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
 --[[
@@ -327,6 +327,32 @@ for k,v in pairs(edges) do
 	if (count > 0) then
 		update[k] = deps
 	end
+end
+edges = update
+-- flatten .hs and *C dependencies
+update = {}
+for k,v in pairs(edges) do
+	base,ext = string.match(k,"(.*)(%..*)")
+	deps = v
+	if base and (ext == ".c") and entries[k] or
+		base and (ext == ".hs") and entries[k] then
+		count = 1
+		while (count > 0) do
+			count = 0
+			for key,val in pairs(v) do
+				if edges[key] then
+					for ky,vl in pairs(edges[key]) do
+						if (not deps[ky]) and (not needed[key]) then
+							count = count + 1;
+							deps[ky] = vl
+							-- print(k..": "..key..": "..ky)
+						end
+					end
+				end
+			end
+		end
+	end
+	update[k] = deps
 end
 edges = update
 --[[
