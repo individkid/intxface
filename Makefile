@@ -14,6 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+.SECONDARY:
 all: facer.log typra.log typer.log filer.log
 
 ifndef DEPEND
@@ -65,12 +66,12 @@ filer.log: filerLua
 %.lua: %Gen
 	./$< $@
 
-.PHONY: clean
+.PHONY:
 clean:
 	rm -f base.h base.c
 	rm -f type.h type.c type.hs type.lua
 	rm -f typer.h typer.c typer.hs typer.lua
-	rm -f typra filer file line plane space
-	rm -f depend facer show test type typer
+	rm -f typra facer typer filer
+	rm -f file line plane space
 	rm -f *C *Hs *Lua *Gen *.err *.out *.log *.txt
 	rm -f *.o *.so *.hi *_stub.h
