@@ -29,6 +29,7 @@ function showBaseC()
 	result = result..showWrapC()
 	return result
 end
+-- MAIN
 if (arg[1] == "base.h") then
 	file = io.open("base.h", "w")
 	file:write(showWrapH().."\n")

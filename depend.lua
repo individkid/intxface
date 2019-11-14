@@ -445,7 +445,6 @@ for k,v in pairs(edges) do
 	end
 	if base and (ext == ".lua") and entries[k] then
 		deps = {}
-		deps[#deps+1] = k
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".c") then
@@ -466,7 +465,6 @@ for k,v in pairs(edges) do
 	end
 	if base and (ext == ".gen") and entries[k] then
 		deps = {}
-		deps[#deps+1] = k
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".lua") then

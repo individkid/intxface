@@ -586,6 +586,7 @@ function showAllocC(name,typ)
 		if prototype then return result..";" end
 		result = result.."\n{\n"..qualify
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(void*));\n"
+		result = result..showIndent(1).."for (int i = 0; i < siz; i++) ptr[i] = 0;\n"
 		result = result.."}"
 	elseif (Enumz[name] ~= nil) then
 		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
