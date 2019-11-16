@@ -360,12 +360,12 @@ Expected = {
 	"    char **ptr = arg;\n"..
 	"    allocStr(ptr,str);\n"..
 	"}",
-	"void allocPtr(void **ptr, int siz)\n"..
+	"void allocPtr(void ***ptr, int siz)\n"..
 	"{\n"..
 	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(void*));\n"..
-	"    for (int i = 0; i < siz; i++) ptr[i] = 0;\n"..
+	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
 	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
 	"{\n"..

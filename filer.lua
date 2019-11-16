@@ -19,10 +19,17 @@
 dofile("type.lua")
 
 -- MAIN
-forkExec("file")
+ident = forkExec("file")
 file = {}
+file["act"] = "NewThd"
+file["idx"] = 0
+file["num"] = 1
+name = "filer.txt"
+file["siz"] = {string.len(name)}
+file["ptr"] = {name}
+writeFile(file,ident)
 file["act"] = "EndPrc"
 file["num"] = 0
-writeFile(file,0)
-file = readFile(0)
-if (file["act"] ~= "PrcEnd") then assert(false) end
+writeFile(file,ident)
+file = readFile(ident)
+assert(file["act"] == "PrcEnd")

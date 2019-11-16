@@ -173,8 +173,10 @@ int openFifo(const char *str)
 	int fo = 0;
 	if (len >= NUMOPEN) return -1;
 	if ((mkfifo(str,0666) < 0) && errno != EEXIST) return -1;
-	if ((fi = open(str,O_RDONLY)) < 0) return -1;
-	if ((fo = open(str,O_WRONLY)) < 0) return -1;
+	if ((fi = open(str,O_RDONLY | O_NONBLOCK)) < 0) return -1;
+	if ((fo = open(str,O_WRONLY | O_NONBLOCK)) < 0) return -1;
+	if (fcntl(fi,F_SETFL,0) < 0) return -1;
+	if (fcntl(fo,F_SETFL,0) < 0) return -1;
 	inp[len] = fi;
 	out[len] = fo;
 	vld[len] = Poll;
@@ -298,7 +300,7 @@ int pollPipeLua(lua_State *lua)
 int pollFile(int idx)
 {
 	off_t pos, len;
-	if (idx < 0 || idx >= len || vld[idx] != Wait) return 0;
+	if (idx < 0 || idx >= len || vld[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
 	if ((len = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
 	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
@@ -478,6 +480,7 @@ void readStr(cftype fnc, void *arg, int idx)
 	for (int i = 0; i < BUFSIZ-1; i++, len++) {
 		int val = read(inp[idx],buf+i,1);
 		if (val < 0) ERROR(inperr[idx],idx);
+		// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
 		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
 		if (val == 0) {buf[i] = 0; break;}
 		if (buf[i] == 0) {trm = 1; break;}}
@@ -511,6 +514,7 @@ int readInt(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(int));
 	if (val != 0 && val < (int)sizeof(int)) ERROR(inperr[idx],idx)
+	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
@@ -526,6 +530,7 @@ double readNum(int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(double));
 	if (val != 0 && val < (int)sizeof(double)) ERROR(inperr[idx],idx)
+	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
@@ -542,6 +547,7 @@ long long readNew(int idx)
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(long long));
 	if (val != 0 && val < (int)sizeof(long long)) ERROR(inperr[idx],idx)
+	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
@@ -558,6 +564,7 @@ float readOld(int idx)
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(float));
 	if (val != 0 && val < (int)sizeof(float)) ERROR(inperr[idx],idx)
+	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }

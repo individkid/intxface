@@ -438,7 +438,7 @@ function showStreamCF(name,field,lim)
 		result = result.."Old"
 	elseif (name == "char*") then
 		result = result.."Ptr"
-		cast = "(void**)"
+		cast = "(void***)"
 	else
 		result = result..name
 	end
@@ -582,11 +582,11 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."allocStr(ptr,str);\n"
 		result = result.."}"
 	elseif (name == "Ptr") then
-		result = result.."void allocPtr(void **ptr, int siz)"
+		result = result.."void allocPtr(void ***ptr, int siz)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"..qualify
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(void*));\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++) ptr[i] = 0;\n"
+		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
 		result = result.."}"
 	elseif (Enumz[name] ~= nil) then
 		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
