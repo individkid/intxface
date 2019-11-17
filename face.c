@@ -299,12 +299,12 @@ int pollPipeLua(lua_State *lua)
 }
 int pollFile(int idx)
 {
-	off_t pos, len;
+	off_t pos, siz;
 	if (idx < 0 || idx >= len || vld[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
-	if ((len = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
+	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
 	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
-	return (len > pos);
+	return (siz > pos);
 }
 int pollFileLua(lua_State *lua)
 {
@@ -338,12 +338,12 @@ int truncFileLua(lua_State *lua)
 }
 long long checkFile(int idx)
 {
-	off_t pos, len;
-	if (idx < 0 || idx >= len || vld[idx] != Wait) return 0;
+	off_t pos, siz;
+	if (idx < 0 || idx >= len || vld[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
-	if ((len = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
+	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
 	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
-	return len;
+	return siz;
 }
 int checkFileLua(lua_State *lua)
 {
@@ -353,8 +353,6 @@ int checkFileLua(lua_State *lua)
 }
 int rdlkFile(long long arg0, long long arg1, int idx)
 {
-	off_t pos = arg0;
-	off_t len = arg1;
 	struct flock lock = {0};
 	lock.l_start = arg0;
 	lock.l_len = arg1;
@@ -372,8 +370,6 @@ int rdlkFileLua(lua_State *lua)
 }
 int wrlkFile(long long arg0, long long arg1, int idx)
 {
-	off_t pos = arg0;
-	off_t len = arg1;
 	struct flock lock = {0};
 	lock.l_start = arg0;
 	lock.l_len = arg1;
@@ -391,8 +387,6 @@ int wrlkFileLua(lua_State *lua)
 }
 void unlkFile(long long arg0, long long arg1, int idx)
 {
-	off_t pos = arg0;
-	off_t len = arg1;
 	struct flock lock = {0};
 	lock.l_start = arg0;
 	lock.l_len = arg1;
@@ -408,8 +402,6 @@ int unlkFileLua(lua_State *lua)
 }
 void rdlkwFile(long long arg0, long long arg1, int idx)
 {
-	off_t pos = arg0;
-	off_t len = arg1;
 	struct flock lock = {0};
 	lock.l_start = arg0;
 	lock.l_len = arg1;
@@ -425,8 +417,6 @@ int rdlkwFileLua(lua_State *lua)
 }
 void wrlkwFile(long long arg0, long long arg1, int idx)
 {
-	off_t pos = arg0;
-	off_t len = arg1;
 	struct flock lock = {0};
 	lock.l_start = arg0;
 	lock.l_len = arg1;
