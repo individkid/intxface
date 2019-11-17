@@ -119,7 +119,7 @@ void closeIdent(int idx)
 {
 	if (vld[idx] != None) {
 		close(inp[idx]);
-		close(out[idx]);
+		if (inp[idx] != out[idx]) close(out[idx]);
 		vld[idx] = None;
 		inpexc[idx] = 0;
 		inperr[idx] = 0;
@@ -477,7 +477,7 @@ void readStr(cftype fnc, void *arg, int idx)
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
 	char buf[BUFSIZ] = {0};
 	int trm = 0;
-	for (int i = 0; i < BUFSIZ-1; i++, len++) {
+	for (int i = 0; i < BUFSIZ-1; i++) {
 		int val = read(inp[idx],buf+i,1);
 		if (val < 0) ERROR(inperr[idx],idx);
 		// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
