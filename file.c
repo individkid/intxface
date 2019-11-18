@@ -364,7 +364,7 @@ void move(struct Thread *thread)
 	// reopen helper
 	wrlkwFile(0,1,control);
 	if (append >= FILESIZE && unlink(name+HELPER) < 0) ERROR(filerr,thdidx)
-	moveIdent(openFile(name+GIVEN),helper);
+	moveIdent(openFile(name+HELPER),helper);
 	if (pollFile(helper)) {
 		int saved = seqnum;
 		seqnum = readInt(helper);
