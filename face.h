@@ -24,8 +24,8 @@
 #define BUFSIZE 256
 
 typedef void (*eftype)(const char*,int,int);
-typedef void (*hftype)(char*,int);
-typedef void (*cftype)(char*,int,void*);
+typedef void (*hftype)(const char*,int);
+typedef void (*cftype)(const char*,int,void*);
 void readNote(eftype exc, int idx);
 void readJump(eftype err, int idx);
 void writeJump(eftype err, int idx);

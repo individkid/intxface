@@ -416,15 +416,16 @@ void wreq(struct Thread *thread)
 	stage = Rrsp;
 }
 
-void rrspf(char *ptr, int siz, void *arg);
+void rrspf(const char *ptr, int siz, void *arg);
 void rrsp(struct Thread *thread)
 {
 	// read given
 	rdlkwFile(config,BUFSIZE,given);
 	seekFile(config,given);
-	readStr(rrspf,thread,given);
+	if (pollFile(given)) readStr(rrspf,thread,given);
+	else rrspf("",0,thread);
 }
-void rrspf(char *ptr, int trm, void *arg)
+void rrspf(const char *ptr, int trm, void *arg)
 {
 	struct Thread *thread = arg;
 	int siz = strlen(ptr)+trm;

@@ -575,7 +575,7 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
 		result = result.."}\n"
 		end
-		result = result.."void callStr(char* str, int trm, void*arg)"
+		result = result.."void callStr(const char* str, int trm, void*arg)"
 		if prototype then return result..";" end
 		result = result.."\n{\n"
 		result = result..showIndent(1).."char **ptr = arg;\n"

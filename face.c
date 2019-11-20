@@ -477,7 +477,7 @@ void readStr(cftype fnc, void *arg, int idx)
 	buf[BUFSIZ-1] = 0;
 	fnc(buf,trm,arg);
 }
-void readStrHsFnc(char *buf, int trm, void *arg)
+void readStrHsFnc(const char *buf, int trm, void *arg)
 {
 	hftype fnc = arg;
 	fnc(buf,trm);
@@ -486,7 +486,7 @@ void readStrHs(hftype fnc, int idx)
 {
 	readStr(readStrHsFnc,fnc,idx);
 }
-void readStrLuaFnc(char *buf, int trm, void *arg)
+void readStrLuaFnc(const char *buf, int trm, void *arg)
 {
 	lua_State *lua = arg;
 	lua_pushstring(lua,buf);

@@ -28,7 +28,6 @@ name = "filer.txt"
 file["siz"] = {string.len(name)}
 file["ptr"] = {name}
 writeFile(file,ident)
---[[
 file["act"] = "CmdThd"
 file["idx"] = 0
 file["loc"] = 0
@@ -37,18 +36,19 @@ data = "hello ok again"
 file["siz"] = {string.len(data)}
 file["ptr"] = {data}
 writeFile(file,ident)
+sleepSec(1)
 file = readFile(ident)
 assert(file["act"] == "ThdCmd")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["num"] == 1)
-assert(#file["str"] == 1)
+assert(#file["siz"] == 1)
 assert(file["siz"][1] == string.len(data))
 assert(#file["ptr"] == 1)
 assert(file["ptr"][1] == data)
---]]
 file["act"] = "EndPrc"
 file["num"] = 0
 writeFile(file,ident)
 file = readFile(ident)
 assert(file["act"] == "PrcEnd")
+sleepSec(1)

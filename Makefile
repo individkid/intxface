@@ -73,5 +73,6 @@ clean:
 	rm -f typer.h typer.c typer.hs typer.lua
 	rm -f typra facer typer filer
 	rm -f file line plane space
-	rm -f *C *Hs *Lua *Gen *.err *.out *.log *.txt
+	rm -f *C *Hs *Lua *Gen *.err *.out *.log
+	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h

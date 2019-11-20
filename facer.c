@@ -32,7 +32,7 @@ void excfunc(const char *str, int num, int arg)
 	closeIdent(arg);
 	exccheck++;
 }
-void buffunc(char *buf, int trm, void *arg)
+void buffunc(const char *buf, int trm, void *arg)
 {
 	strncpy(buffer,buf,strlen(buf)+trm);
 }

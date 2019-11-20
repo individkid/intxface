@@ -355,7 +355,7 @@ Expected = {
 	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
 	"}\n"..
-	"void callStr(char* str, int trm, void*arg)\n"..
+	"void callStr(const char* str, int trm, void*arg)\n"..
 	"{\n"..
 	"    char **ptr = arg;\n"..
 	"    allocStr(ptr,str);\n"..
