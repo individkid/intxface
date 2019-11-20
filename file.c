@@ -30,7 +30,7 @@
 #define NUMFILE 64
 #define INFINITE 1000000000ull
 #define FILESIZE 4096
-#define CMDSIZE 4
+#define CMDSIZE 2
 #define NAMES 4
 #define GIVEN 3
 #define NAMED 2

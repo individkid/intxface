@@ -95,7 +95,10 @@ mainF _ = undefined
 
 mainFF :: [String] -> IO ()
 mainFF [] = return ()
-mainFF (a:b) = (forkExec a) >> (mainFF b)
+mainFF (a:b) = (forkExec a) >>= (readNote mainFFF) >> (mainFF b)
+
+mainFFF :: String -> Int -> Int -> IO ()
+mainFFF _ _ a = closeIdent a
 
 mainFG :: Int -> [[MainABC]] -> IO ()
 mainFG _ [] = return ()

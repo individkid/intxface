@@ -303,7 +303,7 @@ int pollFile(int idx)
 	if (idx < 0 || idx >= len || vld[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
 	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
-	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
+	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERROR(inperr[idx],idx);
 	return (siz > pos);
 }
 int pollFileLua(lua_State *lua)

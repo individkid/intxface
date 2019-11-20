@@ -18,6 +18,10 @@
 
 require "face"
 
+function callClose(file,line,idx)
+	closeIdent(idx)
+end
+
 -- MAIN
 if (arg[1] and arg[2] and arg[3]) then
 pipeInit(arg[1],arg[2])
@@ -33,9 +37,9 @@ old = readOld(0)
 writeOld(old,0)
 
 else
-forkExec("facerC")
-forkExec("facerHs")
-forkExec("facerLua")
+readNote("callClose",forkExec("facerC"))
+readNote("callClose",forkExec("facerHs"))
+readNote("callClose",forkExec("facerLua"))
 sleepSec(1)
 expectInt = {0,1,2}
 expectNum = {0.1,1.1,2.1}
