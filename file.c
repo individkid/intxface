@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <dlfcn.h>
 #include <string.h>
 #include <time.h>
 #include <sys/errno.h>
@@ -55,6 +56,7 @@ enum Stage {
 	Done,
 	Stages
 };
+typedef void (*cbtype)(char *,const char*,int);
 struct Thread {
 	pthread_t thread; // wait after end notice
 	enum Stage stage; // goto labels
@@ -75,6 +77,9 @@ struct Thread {
 	char buffer[CMDSIZE*BUFSIZE]; // read from given
 	int size[CMDSIZE]; // per num delta in buffer
 	char *pointer[CMDSIZE]; // per num into buffer
+	int opcsiz; // size of rmw buffer
+	char opcbuf[CMDSIZE*BUFSIZE]; // rmw buffer
+	cbtype opcode[Opcodes]; // how to change given fields
 	struct File command; // from helper or named to anonym
 	struct File response; // from given to anonym
 };
@@ -120,12 +125,19 @@ void construct(struct File *command, int sub, int face, struct Thread **thread)
 	if (sub != face) ERROR(exiterr,-1)
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] != 0) ERROR(exiterr,-1)
-	if (command->num != 1) ERROR(exiterr,-1)
+	if (command->opc == Identity && command->num != 1) ERROR(exiterr,-1)
+	if (command->opc != Identity && command->num != 3) ERROR(exiterr,-1)
 	struct Thread *new = malloc(sizeof(struct Thread));
 	if (new == 0) ERROR(exiterr,-1)
 	struct Thread init = {0};
 	*new = init;
 	thread[command->idx] = new;
+		if (command->opc != Identity) {
+		void *lib = 0;
+		if ((lib = dlopen(command->ptr[1], RTLD_LAZY)) == 0) ERROR(huberr,-1)
+		new->opcode[command->opc] = dlsym(lib,command->ptr[2]);
+		if (new->opcode[command->opc] == 0) ERROR(huberr,-1)
+		if (dlclose(lib) < 0) ERROR(huberr,-1)}
 	create(command->ptr[0],command->idx,new);
 }
 
@@ -308,15 +320,20 @@ void *file(void *arg)
 #define buffer thread->buffer
 #define size thread->size
 #define pointer thread->pointer
+#define opcsiz thread->opcsiz
+#define opcbuf thread->opcbuf
+#define opcode thread->opcode
 #define cmd thread->command
 #define rsp thread->response
 #define cmdact thread->command.act
+#define cmdopc thread->command.opc
 #define cmdidx thread->command.idx
 #define cmdloc thread->command.loc
 #define cmdnum thread->command.num
 #define cmdsiz thread->command.siz
 #define cmdptr thread->command.ptr
 #define rspact thread->response.act
+#define rspopc thread->response.opc
 #define rspidx thread->response.idx
 #define rsploc thread->response.loc
 #define rspnum thread->response.num
@@ -471,6 +488,11 @@ void wrsp(struct Thread *thread)
 	stage = Rrsp;
 }
 
+void wlckf(const char *str, int siz, void *arg)
+{
+	struct Thread *thread = arg;
+
+}
 void wlck(struct Thread *thread)
 {
 	// helper locked, goto Rlck, wlock helper
@@ -486,14 +508,19 @@ void wlck(struct Thread *thread)
 	if (cmdact == EndThd && cmdloc == identifier) {
 		stage = Done; return;}
 	// write given
-	off_t loc = cmdloc;
-	seekFile(loc,given);
+	int siz = 0;
+	for (int i = 0; i < cmdnum; i++) siz += cmdsiz[i];
+	if (opcode[cmdopc]) {
+		opcsiz = 0;
+		while (opcsiz < siz) readStr(wlckf,thread,given);
+		(*opcode[cmdopc])(buffer,opcbuf,siz);
+	}
+	seekFile(cmdloc,given);
+	wrlkwFile(cmdloc,siz,given);
 	for (int i = 0; i < cmdnum; i++) {
-		wrlkwFile(loc,cmdsiz[i],given);
 		int trm = (cmdsiz[i]>strlen(cmdptr[i]));
-		writeStr(cmdptr[i],trm,given);
-		unlkFile(loc,cmdsiz[i],given);
-		loc += cmdsiz[i];}
+		writeStr(cmdptr[i],trm,given);}
+	unlkFile(cmdloc,siz,given);
 	// write helper
 	writeFile(&cmd,helper);
 	// unlock helper

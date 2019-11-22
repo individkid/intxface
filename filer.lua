@@ -22,6 +22,7 @@ dofile("type.lua")
 ident = forkExec("file")
 file = {}
 file["act"] = "NewThd"
+file["opc"] = "Identity"
 file["idx"] = 0
 file["num"] = 1
 name = "filer.txt"
@@ -39,6 +40,7 @@ writeFile(file,ident)
 sleepSec(1)
 file = readFile(ident)
 assert(file["act"] == "ThdCmd")
+assert(file["opc"] == "Identity")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["num"] == 1)
