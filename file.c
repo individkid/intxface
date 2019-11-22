@@ -488,10 +488,11 @@ void wrsp(struct Thread *thread)
 	stage = Rrsp;
 }
 
-void wlckf(const char *str, int siz, void *arg)
+void wlckf(const char *str, int trm, void *arg)
 {
 	struct Thread *thread = arg;
-
+	strcpy(opcbuf+opcsiz,str);
+	opcsiz += strlen(str)+trm;
 }
 void wlck(struct Thread *thread)
 {
