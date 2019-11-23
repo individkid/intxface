@@ -47,7 +47,6 @@ assert(file["siz"][1] == string.len(data))
 assert(#file["ptr"] == 1)
 assert(file["ptr"][1] == data)
 file["act"] = "EndPrc"
-file["num"] = 0
 writeFile(file,ident)
 file = readFile(ident)
 assert(file["act"] == "PrcEnd")

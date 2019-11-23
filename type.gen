@@ -54,10 +54,29 @@ File = {
 	{"loc","long long",{["act"]={
 		["CmdThd"]=true,
 		["ThdCmd"]=true,
+		["ThdCfg"]=true,
+		["EndThd"]=true}},{}},
+	{"num","int",{["act"]={
+		["NewThd"]=true,
+		["FncThd"]=true,
+		["CmdThd"]=true,
+		["CfgThd"]=true,
+		["ThdCmd"]=true,
 		["ThdCfg"]=true}},{}},
-	{"num","int",{},{}},
-	{"siz","int",{},"num"},
-	{"ptr","char*",{},"num"},
+	{"siz","int",{["act"]={
+		["NewThd"]=true,
+		["FncThd"]=true,
+		["CmdThd"]=true,
+		["CfgThd"]=true,
+		["ThdCmd"]=true,
+		["ThdCfg"]=true}},"num"},
+	{"ptr","char*",{["act"]={
+		["NewThd"]=true,
+		["FncThd"]=true,
+		["CmdThd"]=true,
+		["CfgThd"]=true,
+		["ThdCmd"]=true,
+		["ThdCfg"]=true}},"num"},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")

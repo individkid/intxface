@@ -170,7 +170,6 @@ void final(struct File *command, int sub, int face, struct Thread **thread)
 	if (sub != face) ERROR(exiterr,-1)
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] == 0) ERROR(exiterr,-1)
-	if (command->num != 0) ERROR(exiterr,-1)
 	command->loc = identifier;
 	writeFile(command,thread[command->idx]->named);
 }
@@ -180,7 +179,6 @@ void finish(struct File *command, int sub, int face, struct Thread **thread)
 	if (sub == face) ERROR(exiterr,-1)
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] == 0) ERROR(exiterr,-1)
-	if (command->num != 0) ERROR(exiterr,-1)
 	clean(thread[command->idx]);
 	free(thread[command->idx]);
 	thread[command->idx] = 0;
@@ -190,7 +188,6 @@ void finish(struct File *command, int sub, int face, struct Thread **thread)
 void error(struct File *command, int sub, int face, struct Thread **thread)
 {
 	if (sub != face) ERROR(exiterr,-1)
-	if (command->num != 0) ERROR(exiterr,-1)
 	command->act = EndThd;
 	command->loc = identifier;
 	for (int i = 0; i < NUMFILE; i++) if (thread[i])

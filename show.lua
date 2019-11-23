@@ -99,13 +99,17 @@ end
 -- if all is {} then all sets are {}
 function showPlaid(ds,all)
 	if not ds then return "empty" end
+	local empty = true
+	for k,v in pairs(ds) do
+		empty = false
+	end
+	if empty then return "all" end
 	local str = ""
 	for k,v in ipairs(listSort(all)) do
 		if str ~= "" then str = str..";" end
 		if not ds[v] then str = str..v..":"..showSet(all[v])
 		else str = str..v..":"..showSet(interSet(all[v],ds[v])) end
 	end
-	if str == "" then return "all" end
 	return str
 end
 function equalPlaid(lhs,rhs,all)
@@ -464,7 +468,8 @@ function showStreamC(name,struct,show,pre,post)
 		local ebr = ""
 		if (cond ~= "1") then
 			result = result..showIndent(depth)
-			result = result.."if "..cond.."\n"
+			result = result.."if "..cond.." {".."\n"
+			ebr = ebr.."}"
 			depth = depth + 1
 		end
 		if (type(v[4]) == "table") then
@@ -1335,10 +1340,8 @@ function showReadLua(name,struct)
 		else result = result.."read"..field[2].."(idx)" end
 		result = result.."\n"
 		while (count > 0) do
-			if (conds == 0) then
+			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
-			else
-				conds = conds - 1
 			end
 			result = result..showIndent(count).."end\n"
 			count = count - 1
@@ -1396,10 +1399,8 @@ function showWriteLua(name,struct)
 		else result = result.."write"..field[2].."("..value..",idx)" end
 		result = result.."\n"
 		while (count > 0) do
-			if (conds == 0) then
+			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
-			else
-				conds = conds - 1
 			end
 			result = result..showIndent(count).."end\n"
 			count = count - 1

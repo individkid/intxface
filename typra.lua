@@ -166,7 +166,7 @@ Expected = {
 	"    Enum1s\n"..
 	"};",
 	"struct Struct1 {\n"..
-	"    struct { // field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
+	"    struct { // all\n"..
 	"        struct Struct1* next;\n"..
 	"        float field1[2];\n"..
 	"        double field2[3];\n"..
@@ -188,7 +188,7 @@ Expected = {
 	"        int field12; // field6:Value12;field7:Value22,Value23\n"..
 	"        int field13; // field6:Value13;field7:Value21,Value22,Value23\n"..
 	"    };\n"..
-	"    struct { // field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
+	"    struct { // all\n"..
 	"        int field14;\n"..
 	"        int* field15;\n"..
 	"        struct Struct2* field16;\n"..
@@ -213,18 +213,18 @@ Expected = {
 	"        ptr->field5[i] = readInt(idx);\n"..
 	"    {int temp = readInt(idx); ptr->field6 = temp;}\n"..
 	"    {int temp = readInt(idx); ptr->field7 = temp;}\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field8 = readInt(idx);\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field9 = readInt(idx);\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        ptr->field10 = readInt(idx);\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        ptr->field11 = readInt(idx);\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        ptr->field12 = readInt(idx);\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        ptr->field13 = readInt(idx);\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        ptr->field8 = readInt(idx);}\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        ptr->field9 = readInt(idx);}\n"..
+	"    if (ptr->field6 == Value12) {\n"..
+	"        ptr->field10 = readInt(idx);}\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
+	"        ptr->field11 = readInt(idx);}\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
+	"        ptr->field12 = readInt(idx);}\n"..
+	"    if (ptr->field6 == Value13) {\n"..
+	"        ptr->field13 = readInt(idx);}\n"..
 	"    ptr->field14 = readInt(idx);\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
@@ -251,18 +251,18 @@ Expected = {
 	"        writeInt(ptr->field5[i],idx);\n"..
 	"    {int temp = ptr->field6; writeInt(temp,idx);}\n"..
 	"    {int temp = ptr->field7; writeInt(temp,idx);}\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        writeInt(ptr->field8,idx);\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        writeInt(ptr->field9,idx);\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        writeInt(ptr->field10,idx);\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        writeInt(ptr->field11,idx);\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        writeInt(ptr->field12,idx);\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        writeInt(ptr->field13,idx);\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        writeInt(ptr->field8,idx);}\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        writeInt(ptr->field9,idx);}\n"..
+	"    if (ptr->field6 == Value12) {\n"..
+	"        writeInt(ptr->field10,idx);}\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
+	"        writeInt(ptr->field11,idx);}\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
+	"        writeInt(ptr->field12,idx);}\n"..
+	"    if (ptr->field6 == Value13) {\n"..
+	"        writeInt(ptr->field13,idx);}\n"..
 	"    writeInt(ptr->field14,idx);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
 	"        writeInt(ptr->field15[i],idx);\n"..
@@ -289,18 +289,18 @@ Expected = {
 	"        ptr->field5[i] = 1;\n"..
 	"    ptr->field6 = 2%Enum1s;\n"..
 	"    ptr->field7 = 3%Enum2s;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field8 = 4;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        ptr->field9 = 5;\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        ptr->field10 = 6;\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        ptr->field11 = 7;\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        ptr->field12 = 8;\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        ptr->field13 = 9;\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        ptr->field8 = 4;}\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        ptr->field9 = 5;}\n"..
+	"    if (ptr->field6 == Value12) {\n"..
+	"        ptr->field10 = 6;}\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
+	"        ptr->field11 = 7;}\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
+	"        ptr->field12 = 8;}\n"..
+	"    if (ptr->field6 == Value13) {\n"..
+	"        ptr->field13 = 9;}\n"..
 	"    ptr->field14 = 10;\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
@@ -327,18 +327,18 @@ Expected = {
 	"        if (ptr->field5[i] != cmp->field5[i]) return 0;\n"..
 	"    if (ptr->field6 != cmp->field6) return 0;\n"..
 	"    if (ptr->field7 != cmp->field7) return 0;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        if (ptr->field8 != cmp->field8) return 0;\n"..
-	"    if (ptr->field6 == Value11)\n"..
-	"        if (ptr->field9 != cmp->field9) return 0;\n"..
-	"    if (ptr->field6 == Value12)\n"..
-	"        if (ptr->field10 != cmp->field10) return 0;\n"..
-	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21))\n"..
-	"        if (ptr->field11 != cmp->field11) return 0;\n"..
-	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23)))\n"..
-	"        if (ptr->field12 != cmp->field12) return 0;\n"..
-	"    if (ptr->field6 == Value13)\n"..
-	"        if (ptr->field13 != cmp->field13) return 0;\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        if (ptr->field8 != cmp->field8) return 0;}\n"..
+	"    if (ptr->field6 == Value11) {\n"..
+	"        if (ptr->field9 != cmp->field9) return 0;}\n"..
+	"    if (ptr->field6 == Value12) {\n"..
+	"        if (ptr->field10 != cmp->field10) return 0;}\n"..
+	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
+	"        if (ptr->field11 != cmp->field11) return 0;}\n"..
+	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
+	"        if (ptr->field12 != cmp->field12) return 0;}\n"..
+	"    if (ptr->field6 == Value13) {\n"..
+	"        if (ptr->field13 != cmp->field13) return 0;}\n"..
 	"    if (ptr->field14 != cmp->field14) return 0;\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
 	"        if (ptr->field15[i] != cmp->field15[i]) return 0;\n"..
@@ -397,7 +397,7 @@ Expected = {
 	"    Value13 |\n"..
 	"    Enum1s deriving (Eq)\n"..
 	"--",
-	"data Struct1A1X8 = Struct1A1X8 -- field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
+	"data Struct1A1X8 = Struct1A1X8 -- all\n"..
 	"    [Struct1] -- next\n"..
 	"    [Float] -- field1\n"..
 	"    [Double] -- field2\n"..
@@ -407,7 +407,7 @@ Expected = {
 	"    Enum1 -- field6\n"..
 	"    Enum2 -- field7\n"..
 	"    deriving (Eq)\n"..
-	"data Struct1A15X18 = Struct1A15X18 -- field6:Value11,Value12,Value13;field7:Value21,Value22,Value23\n"..
+	"data Struct1A15X18 = Struct1A15X18 -- all\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
 	"    [Struct2] -- field16\n"..
