@@ -125,20 +125,26 @@ void construct(struct File *command, int sub, int face, struct Thread **thread)
 	if (sub != face) ERROR(exiterr,-1)
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] != 0) ERROR(exiterr,-1)
-	if (command->opc == Identity && command->num != 1) ERROR(exiterr,-1)
-	if (command->opc != Identity && command->num != 3) ERROR(exiterr,-1)
+	if (command->num != 1) ERROR(exiterr,-1)
 	struct Thread *new = malloc(sizeof(struct Thread));
 	if (new == 0) ERROR(exiterr,-1)
 	struct Thread init = {0};
 	*new = init;
 	thread[command->idx] = new;
-		if (command->opc != Identity) {
-		void *lib = 0;
-		if ((lib = dlopen(command->ptr[1], RTLD_LAZY)) == 0) ERROR(huberr,-1)
-		new->opcode[command->opc] = dlsym(lib,command->ptr[2]);
-		if (new->opcode[command->opc] == 0) ERROR(huberr,-1)
-		if (dlclose(lib) < 0) ERROR(huberr,-1)}
 	create(command->ptr[0],command->idx,new);
+}
+
+void function(struct File *command, int sub, int face, struct Thread **thread)
+{
+	if (sub != face) ERROR(exiterr,-1)
+	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
+	if (thread[command->idx] == 0) ERROR(exiterr,-1)
+	if (command->num != 2) ERROR(exiterr,-1)
+	void *lib = 0;
+	if ((lib = dlopen(command->ptr[0], RTLD_LAZY)) == 0) ERROR(huberr,-1)
+	thread[command->idx]->opcode[command->opc] = dlsym(lib,command->ptr[1]);
+	if (thread[command->idx]->opcode[command->opc] == 0) ERROR(huberr,-1)
+	if (dlclose(lib) < 0) ERROR(huberr,-1)
 }
 
 void normal(struct File *command, int sub, int face, struct Thread **thread)

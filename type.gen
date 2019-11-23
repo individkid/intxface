@@ -26,8 +26,11 @@ Opcode = {
 }
 Action = {
 	"NewThd",
+	"FncThd",
 	"CmdThd",
+	"CfgThd",
 	"ThdCmd",
+	"ThdCfg",
 	"EndThd",
 	"ThdEnd",
 	"EndPrc",
@@ -36,9 +39,22 @@ Action = {
 --HERE Structs
 File = {
 	{"act","Action",{},{}},
-	{"opc","Opcode",{},{}},
-	{"idx","int",{},{}},
-	{"loc","long long",{},{}},
+	{"opc","Opcode",{["act"]={
+		["FncThd"]=true,
+		["CmdThd"]=true}},{}},
+	{"idx","int",{["act"]={
+		["NewThd"]=true,
+		["FncThd"]=true,
+		["CmdThd"]=true,
+		["CfgThd"]=true,
+		["ThdCmd"]=true,
+		["ThdCfg"]=true,
+		["EndThd"]=true,
+		["ThdEnd"]=true}},{}},
+	{"loc","long long",{["act"]={
+		["CmdThd"]=true,
+		["ThdCmd"]=true,
+		["ThdCfg"]=true}},{}},
 	{"num","int",{},{}},
 	{"siz","int",{},"num"},
 	{"ptr","char*",{},"num"},

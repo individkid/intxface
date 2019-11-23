@@ -33,14 +33,12 @@ file["act"] = "CmdThd"
 file["idx"] = 0
 file["loc"] = 0
 file["num"] = 1
-data = "hello ok again"
+data = "hello ok again\n"
 file["siz"] = {string.len(data)}
 file["ptr"] = {data}
 writeFile(file,ident)
-sleepSec(1)
 file = readFile(ident)
 assert(file["act"] == "ThdCmd")
-assert(file["opc"] == "Identity")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["num"] == 1)
@@ -53,4 +51,3 @@ file["num"] = 0
 writeFile(file,ident)
 file = readFile(ident)
 assert(file["act"] == "PrcEnd")
-sleepSec(1)
