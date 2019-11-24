@@ -152,8 +152,6 @@ void function(struct File *command, int sub, int face, struct Thread **thread)
 void configure(struct File *command, int sub, int face, struct Thread **thread)
 {
 	if (sub != face) ERROR(exiterr,-1)
-	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
-	if (thread[command->idx] == 0) ERROR(exiterr,-1)
 	if (command->num != 2) ERROR(exiterr,-1)
 	int val;
 	val = sscanf(command->ptr[0],"%d",&bufsize); if (val != 1) ERROR(huberr,-1)

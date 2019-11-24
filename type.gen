@@ -46,7 +46,6 @@ File = {
 	{"idx","int",{["act"]={
 		["NewThd"]=true,
 		["FncThd"]=true,
-		["TstThd"]=true,
 		["CmdThd"]=true,
 		["CfgThd"]=true,
 		["ThdCmd"]=true,
