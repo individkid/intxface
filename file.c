@@ -31,7 +31,7 @@
 #define NUMFILE 64
 #define INFINITE 1000000000ull
 #define FILESIZE 4096
-#define CMDSIZE 2
+#define CMDSIZE 4
 #define NAMES 4
 #define GIVEN 3
 #define NAMED 2
@@ -189,7 +189,7 @@ void error(struct File *command, int sub, int face, struct Thread **thread)
 {
 	if (sub != face) ERROR(exiterr,-1)
 	command->act = EndThd;
-	command->loc = identifier;
+	command->pid = identifier;
 	for (int i = 0; i < NUMFILE; i++) if (thread[i])
 	writeFile(command,thread[i]->named);
 	command->act = PrcEnd;

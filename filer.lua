@@ -22,7 +22,6 @@ dofile("type.lua")
 ident = forkExec("file")
 file = {}
 file["act"] = "NewThd"
-file["opc"] = "Identity"
 file["idx"] = 0
 file["num"] = 1
 name = "filer.txt"
