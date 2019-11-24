@@ -31,6 +31,7 @@ int out[NUMOPEN] = {0};
 enum {None,Wait,Poll,Seek} vld[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
 int len = 0;
+int bufsize = BUFSIZE;
 eftype inpexc[NUMOPEN] = {0};
 eftype inperr[NUMOPEN] = {0};
 eftype outerr[NUMOPEN] = {0};
@@ -465,16 +466,16 @@ int sleepSecLua(lua_State *lua)
 void readStr(cftype fnc, void *arg, int idx)
 {
 	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
-	char buf[BUFSIZ] = {0};
+	char buf[bufsize]; memset(buf,0,bufsize);
 	int trm = 0;
-	for (int i = 0; i < BUFSIZ-1; i++) {
+	for (int i = 0; i < bufsize-1; i++) {
 		int val = read(inp[idx],buf+i,1);
 		if (val < 0) ERROR(inperr[idx],idx);
 		// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
 		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
 		if (val == 0) {buf[i] = 0; break;}
 		if (buf[i] == 0) {trm = 1; break;}}
-	buf[BUFSIZ-1] = 0;
+	buf[bufsize-1] = 0;
 	fnc(buf,trm,arg);
 }
 void readStrHsFnc(const char *buf, int trm, void *arg)

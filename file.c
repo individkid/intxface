@@ -42,6 +42,8 @@ long long identifier = 0;
 jmp_buf errbuf = {0};
 jmp_buf jmpbuf[NUMFILE] = {0};
 int number[NUMOPEN] = {0};
+int cmdsize = CMDSIZE;
+extern int bufsize;
 
 enum Stage {
 	Open,
@@ -147,6 +149,17 @@ void function(struct File *command, int sub, int face, struct Thread **thread)
 	if (dlclose(lib) < 0) ERROR(huberr,-1)
 }
 
+void configure(struct File *command, int sub, int face, struct Thread **thread)
+{
+	if (sub != face) ERROR(exiterr,-1)
+	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
+	if (thread[command->idx] == 0) ERROR(exiterr,-1)
+	if (command->num != 2) ERROR(exiterr,-1)
+	int val;
+	val = sscanf(command->ptr[0],"%d",&bufsize); if (val != 1) ERROR(huberr,-1)
+	val = sscanf(command->ptr[1],"%d",&cmdsize); if (val != 1) ERROR(huberr,-1)
+}
+
 void normal(struct File *command, int sub, int face, struct Thread **thread)
 {
 	if (sub != face) ERROR(exiterr,-1)
@@ -221,6 +234,8 @@ int main(int argc, char **argv)
 	case (NewThd): construct(&command,sub,face,thread); break;
 	// set up callback for read modify write
 	case (FncThd): function(&command,sub,face,thread); break;
+	// change granularity of command data
+	case (TstThd): configure(&command,sub,face,thread); break;
 	// forward to idx Thread through named pipe
 	case (CmdThd): case (CfgThd): normal(&command,sub,face,thread); break;
 	// forward from number[sub] Thread to process pipe
@@ -442,7 +457,7 @@ void rrspf(const char *ptr, int siz, void *arg);
 void rrsp(struct Thread *thread)
 {
 	// read given
-	rdlkwFile(config,BUFSIZE,given);
+	rdlkwFile(config,bufsize,given);
 	seekFile(config,given);
 	if (pollFile(given)) readStr(rrspf,thread,given);
 	else rrspf("",0,thread);
@@ -451,7 +466,7 @@ void rrspf(const char *ptr, int trm, void *arg)
 {
 	struct Thread *thread = arg;
 	int siz = strlen(ptr)+trm;
-	unlkFile(config,BUFSIZE,given);
+	unlkFile(config,bufsize,given);
 	// eof given, none read, goto Wlck
 	if (siz == 0 && thdnum == 0) {
 		stage = Wlck; return;}
@@ -463,7 +478,7 @@ void rrspf(const char *ptr, int trm, void *arg)
 	size[thdnum] = siz;
 	thdnum++; thdbuf += siz; config += siz;
 	// neof given, all read, goto Wrsp
-	if (thdnum >= CMDSIZE) {
+	if (thdnum >= cmdsize) {
 		stage = Wrsp; return;}
 	// neof given, nall read, goto Rrsp
 	stage = Rrsp;
