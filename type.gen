@@ -27,6 +27,7 @@ Opcode = {
 Action = {
 	"NewThd",
 	"FncThd",
+	"TstThd",
 	"CmdThd",
 	"CfgThd",
 	"ThdCmd",
@@ -45,6 +46,7 @@ File = {
 	{"idx","int",{["act"]={
 		["NewThd"]=true,
 		["FncThd"]=true,
+		["TstThd"]=true,
 		["CmdThd"]=true,
 		["CfgThd"]=true,
 		["ThdCmd"]=true,
@@ -60,6 +62,7 @@ File = {
 	{"num","int",{["act"]={
 		["NewThd"]=true,
 		["FncThd"]=true,
+		["TstThd"]=true,
 		["CmdThd"]=true,
 		["CfgThd"]=true,
 		["ThdCmd"]=true,
@@ -67,6 +70,7 @@ File = {
 	{"siz","int",{["act"]={
 		["NewThd"]=true,
 		["FncThd"]=true,
+		["TstThd"]=true,
 		["CmdThd"]=true,
 		["CfgThd"]=true,
 		["ThdCmd"]=true,
@@ -74,6 +78,7 @@ File = {
 	{"ptr","char*",{["act"]={
 		["NewThd"]=true,
 		["FncThd"]=true,
+		["TstThd"]=true,
 		["CmdThd"]=true,
 		["CfgThd"]=true,
 		["ThdCmd"]=true,

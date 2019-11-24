@@ -219,10 +219,12 @@ int main(int argc, char **argv)
 	switch (command.act) {
 	// initialize idx Thread with file name
 	case (NewThd): construct(&command,sub,face,thread); break;
+	// set up callback for read modify write
+	case (FncThd): function(&command,sub,face,thread); break;
 	// forward to idx Thread through named pipe
-	case (CmdThd): normal(&command,sub,face,thread); break;
+	case (CmdThd): case (CfgThd): normal(&command,sub,face,thread); break;
 	// forward from number[sub] Thread to process pipe
-	case (ThdCmd): normish(&command,sub,face,thread); break;
+	case (ThdCmd): case (ThdCfg): normish(&command,sub,face,thread); break;
 	// forward identifier to idx Thread through named pipe
 	case (EndThd): final(&command,sub,face,thread); break;
 	// forward last from number[sub] Thread to process pipe
@@ -470,7 +472,7 @@ void rrspf(const char *ptr, int trm, void *arg)
 void wrsp(struct Thread *thread)
 {
 	// write anonym
-	rspact = ThdCmd;
+	rspact = ThdCfg;
 	rspidx = thdidx;
 	rsploc = thdloc;
 	rspnum = thdnum;
@@ -511,6 +513,7 @@ void wlck(struct Thread *thread)
 	// kill to self, goto Done
 	if (cmdact == EndThd && cmdloc == identifier) {
 		stage = Done; return;}
+	if (cmdact == CfgThd) cmdloc = append;
 	// write given
 	int siz = 0;
 	for (int i = 0; i < cmdnum; i++) siz += cmdsiz[i];
@@ -559,7 +562,7 @@ void rlck(struct Thread *thread)
 void send(struct Thread *thread)
 {
 	// write anonym
-	if (cmd.act == CmdThd) cmd.act = ThdCmd;
+	if (cmdact == CmdThd || cmdact == CfgThd) cmdact = ThdCmd;
 	writeFile(&cmd,anonym);
 	// too big, goto Move
 	if (append >= FILESIZE) {
