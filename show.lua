@@ -881,8 +881,8 @@ function showStructHs(name,struct)
 			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."\n"
 			unions = unions + 1
 		end
-		if (chainz == 0) and (splitz == 0) then
-			result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+		if (chains == 0) and (splits == 0) then
+			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
 		return result
 	end)
