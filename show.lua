@@ -99,10 +99,7 @@ end
 -- if all is {} then all sets are {}
 function showPlaid(ds,all)
 	if not ds then return "empty" end
-	local empty = true
-	for k,v in pairs(ds) do
-		empty = false
-	end
+	local empty = true; for k,v in pairs(ds) do empty = false end
 	if empty then return "all" end
 	local str = ""
 	for k,v in ipairs(listSort(all)) do
@@ -190,6 +187,36 @@ function structTagSpace(struct)
 	end
 	return all
 end
+-- 1 2 3 4 5 6 7 8 9 a b
+-- a a b b b c d e f g g  (b c d mutually disjoint)
+--(   |     )       (   )
+--    (         )
+--(   |         | | |   )
+function flatStruct(chain,split,cond)
+	local last = #cond
+	local link = 1
+	local step = 1
+	local single = 1
+	local result = {}
+	while (single <= last) do
+		if (step <= #split) and (single >= split[step][1]) then
+			if cond[split[step][1]] then result[#result+1] = split[step] end
+			single = split[step][2] + 1
+			while (link <= #chain) and (split[step][2] >= chain[link][2]) do
+				link = link + 1
+			end
+			step = step + 1
+		elseif (link <= #chain) and (single >= chain[link][1]) then
+			if cond[chain[link][1]] then result[#result+1] = chain[link] end
+			single = chain[link][2] + 1
+			link = link + 1
+		else
+			if cond[single] then result[#result+1] = {single,single} end
+			single = single + 1
+		end
+	end
+	return result
+end
 function nestStruct(nest)
 	-- return list of pairs of open on unequal and close on next unequal
 	local result = {}
@@ -199,6 +226,14 @@ function nestStruct(nest)
 		if not v and start then result[#result+1] = {start,k}; start = nil end
 	end
 	if start then result[#result+1] = {start,#nest} end
+	return result
+end
+function condStruct(struct)
+	local result = {}
+	for k,v in ipairs(struct) do
+		local empty = true; for k,v in pairs(v[3]) do empty = false end
+		result[#result+1] = not empty
+	end
 	return result
 end
 --  1 2 3 4 5 6 7 8 9 a b
@@ -265,29 +300,47 @@ function splitStruct(struct)
  	end
 	return result
 end
-function stringStructF(ary,idx,sub,dif,sum)
+function stringStructF(ary,idx,sub,any,dif,cum,sum)
 	if ary[sub] and (idx == ary[sub][1]) then
-		sum = sum + 1
+		any = any + 1
 		dif = dif + 1
-	elseif ary[sub] and (idx == ary[sub][2]) then
-		sub = sub + 1
-		sum = sum - 1
-		dif = dif - 1
+		sum = sum + 1
+		cum = cum + 1
 	end
-	return sub,dif,sum
+	if ary[sub] and (idx == ary[sub][2]) then
+		any = any + 1
+		dif = dif - 1
+		sum = sum - 1
+		cum = cum - 1
+	end
+	if ary[sub] and (idx == ary[sub][2]) then
+		sum = sum + 1
+	end
+	if (any > 1) then
+		any = any - 1
+	end
+	if ary[sub] and (idx == ary[sub][2]) then
+		sub = sub + 1
+	end
+	return sub,any,dif,cum,sum
 end
 function stringStruct(struct,chain,split,func)
 	local result = ""
 	local link = 1
 	local step = 1
-	local chains = 0
-	local splits = 0
+	local chainz = 0
+	local splitz = 0
 	for k,v in ipairs(struct) do
-		local links = 0; link,links,chains = stringStructF(chain,k,link,links,chains)
-		local steps = 0; step,steps,splits = stringStructF(split,k,step,steps,splits)
-		local joints = chains; if (links == -1) then joints = joints + 1 end
-		local cracks = splits; if (steps == -1) then cracks = cracks + 1 end
-		result = result..func(k,links,steps,joints,cracks)
+		local linkz = 0
+		local links = 0
+		local chains = chainz
+		link,linkz,links,chainz,chains = stringStructF(chain,k,link,linkz,links,chainz,chains)
+		local stepz = 0 -- transition
+		local steps = 0 -- increase or decrease
+		local splits = splitz -- current = cumulative
+		step,stepz,steps,splitz,splits = stringStructF(split,k,step,stepz,steps,splitz,splits)
+		-- index transition direction level
+		result = result..func(k,linkz,stepz,links,steps,chains,splits)
 	end
 	return result
 end
@@ -305,7 +358,7 @@ function treeStruct(limit,chain,split,index,link,step)
 	end
 	if (index == mini) then
 		local head = {mini,maxi,"union",treeStruct(maxi+1,chain,split,mini,link,step+1)}
-		while (chain[link][1] < split[step][2]) do link = link + 1 end
+		while chain[link] and (chain[link][1] < split[step][2]) do link = link + 1 end
 		local tail = treeStruct(limit,chain,split,maxi+1,link,step+1)
 		table.insert(tail,1,head)
 		return tail
@@ -750,44 +803,48 @@ end
 function showStructHs(name,struct)
 	local all = structTagSpace(struct)
 	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
+	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
 	local result = ""
 	local structs = 1
-	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
+	result = result..stringStruct(struct,chain,split,
+		function(index,linkz,stepz,links,steps,chains,splits)
+		-- index transition direction level
 		local result = ""
-		if (links == 1 and splits == 0) then
+		if (linkz+links > 0) and (splits == 0) then
 			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
 			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2]
 			result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 		end
-		if (chains == 1 and splits == 0) then
+		if (chains == 1) and (splits == 0) then
 			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
-		if (links == -1 and splits == 0) then
+		if (linkz-links > 0) and (splits == 0) then
 			result = result..showIndent(1).."deriving (Eq)\n"
 		end
-		if (links == -1) then
+		if (linkz-links > 0) then
 			structs = structs + 1
 		end
 		return result
 	end)
 	local unions = 1
 	structs = 1
-	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
+	result = result..stringStruct(struct,chain,split,
+		function(index,linkz,stepz,links,steps,chains,splits)
+		-- index transition direction level
 		local result = ""
-		if (steps == 1) then
+		if (stepz+steps > 0) then
 			result = result.."data "..name.."A"..split[unions][1].."X"..split[unions][2].." =\n"
 		end
 		if (splits == 1) then
-			if (links == 1) then
+			if (linkz+links > 0) then
 				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
 				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
 				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 			end
-			if (chains == 1) and (links ~= -1) then
+			if (chains == 1) and (linkz-links <= 0) then
 				result = result..showIndent(2)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 			end
-			if (chains == 1) and (links == -1) then
+			if (chains == 1) and (linkz-links > 0) then
 				result = result..showIndent(2)..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
 			end
 			if (chains == 0) then
@@ -797,12 +854,12 @@ function showStructHs(name,struct)
 				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 			end
 		end
-		if (steps == -1) then
+		if (stepz-steps > 0) then
 			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
 			result = result.."Bs deriving (Eq)\n"
 			unions = unions + 1
 		end
-		if (links == -1) then
+		if (linkz-links > 0) then
 			structs = structs + 1
 		end
 		return result
@@ -810,19 +867,21 @@ function showStructHs(name,struct)
 	result = result.."data "..name.." = "..name.."\n"
 	unions = 1
 	structs = 1
-	result = result..stringStruct(struct,chain,split,function(index,links,steps,chains,splits)
+	result = result..stringStruct(struct,chain,split,
+		function(index,linkz,stepz,links,steps,chains,splits)
+		-- index transition direction level
 		local result = ""
-		if (links == 1) and (steps == 0) then
+		if (linkz+links > 0) and (stepz == 0) then
 			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
 		end
-		if (links == 1) then
+		if (linkz+links > 0) then
 			structs = structs + 1
 		end
-		if (steps == 1) then
+		if (stepz+steps > 0) then
 			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."\n"
 			unions = unions + 1
 		end
-		if (chains == 0) and (splits == 0) then
+		if (chainz == 0) and (splitz == 0) then
 			result = result..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
 		return result
@@ -880,7 +939,7 @@ function showAccessHsG(index,field,name,tree,extend)
 end
 function showAccessHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
+	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
 	local tree = treeStruct(#struct+1,chain,split,1,1,1)
 	local result = ""
 	for k,v in ipairs(struct) do
@@ -955,7 +1014,7 @@ function showCondHs(struct,dset)
 		terms = terms + 1
 	end
 	if (terms == 0) then
-		cond = "true"
+		cond = "True"
 	elseif (terms > 1) then
 		cond = "("..cond..")"
 	end
@@ -1044,7 +1103,7 @@ function showReadHsI(name,struct,node,depth)
 		local temp = tree[branch]
 		local func = name.."A"..node[1].."X"..node[2].."B"..temp[1]
 		if (temp[3] ~= "field") then func = func.."X"..temp[2] end
-		local arg = "a"..temp[1]
+		local arg = "b"..temp[1]
 		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
 		if (args ~= "") then args = args.."," end
 		args = args..arg
@@ -1077,7 +1136,7 @@ function showReadHsJ(func,struct,node,depth)
 end
 function showReadHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
+	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
 	local tree = treeStruct(#struct+1,chain,split,1,1,1)
 	local result = ""
 	result = result.."read"..name.." :: Int -> IO "..name.."\n"
@@ -1211,7 +1270,7 @@ function showWriteHsI(name,struct,given,depth)
 end
 function showWriteHs(name,struct)
 	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
+	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
 	local tree = treeStruct(#struct+1,chain,split,1,1,1)
 	local result = ""
 	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
@@ -1274,7 +1333,7 @@ function showCondLua(struct,dset)
 		terms = terms + 1
 	end
 	if (terms == 0) then
-		cond = "true"
+		cond = "True"
 	elseif (terms > 1) then
 		cond = "("..cond..")"
 	end
@@ -1288,7 +1347,7 @@ function showReadLua(name,struct)
 		local count = 0
 		local conds = 0
 		local cond = showCondLua(struct,field[3])
-		if (cond ~= "true") then
+		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
 			result = result..showIndent(count).."if "..cond.." then\n"
@@ -1359,7 +1418,7 @@ function showWriteLua(name,struct)
 		local count = 0
 		local conds = 0
 		local cond = showCondLua(struct,field[3])
-		if (cond ~= "true") then
+		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
 			result = result..showIndent(count).."if "..cond.." then\n"
