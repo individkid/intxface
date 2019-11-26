@@ -12,7 +12,7 @@ lineC: baseC.o faceC.o typeC.o
 lineC.o: base.h face.h type.h
 planeC: baseC.o faceC.o typeC.o
 planeC.o: base.h face.h type.h
-spaceHs: face.hs faceC.o type.hs
+spaceHs: face.hs faceC.o naive.hs type.hs
 typeC.o: base.h face.h type.h
 typeGen: show.lua
 typerC: baseC.o faceC.o
