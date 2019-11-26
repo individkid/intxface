@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log
+all: facer.log typra.log typer.log filer.log line plane
 
 ifndef DEPEND
 include depend.mk

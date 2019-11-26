@@ -41,6 +41,10 @@ Change = {
 	"Stock",
 	"Flow",
 }
+Memory = {
+	"Buffer",
+	"Shader",
+}
 --HERE Structs
 File = {
 	{"act","Action",{},{}},
@@ -89,6 +93,9 @@ File = {
 }
 Event = {
 	{"cng","Change",{},{}},
+}
+Client = {
+	{"mem","Memory",{},{}},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
