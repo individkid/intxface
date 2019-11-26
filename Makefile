@@ -40,7 +40,7 @@ filer.log: filerLua file
 %C: %C.o
 	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio
 %Hs: %.hs
-	ghc -o $@ $< $(filter %C.o,$^) -llua -v0 2> $*.out
+	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -v0 2> $*.out
 %Gen: %.gen
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
