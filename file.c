@@ -526,7 +526,7 @@ void wlck(struct Thread *thread)
 	// kill to self, goto Done
 	if (cmdact == EndThd && cmdloc == identifier) {
 		stage = Done; return;}
-	if (cmdact == CfgThd) cmdloc = append;
+	if (cmdact == CfgThd) cmdloc = config;
 	// write given
 	int siz = 0;
 	for (int i = 0; i < cmdnum; i++) siz += cmdsiz[i];
