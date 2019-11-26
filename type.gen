@@ -45,6 +45,10 @@ Memory = {
 	"Buffer",
 	"Shader",
 }
+Config = {
+	"Plane",
+	"Sides",
+}
 --HERE Structs
 File = {
 	{"act","Action",{},{}},
@@ -96,6 +100,9 @@ Event = {
 }
 Client = {
 	{"mem","Memory",{},{}},
+}
+State = {
+	{"cfg","Config",{},{}},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
