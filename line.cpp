@@ -19,6 +19,7 @@ extern "C" {
 #include "type.h"
 #include "base.h"
 #include "face.h"
+#include "portaudio.h"
 }
 #include <setjmp.h>
 #include <unistd.h>
@@ -27,6 +28,15 @@ extern "C" {
 
 std::map<double,Event*> timewheel;
 jmp_buf errbuf = {0};
+
+static int patestCallback( const void *inputBuffer, void *outputBuffer,
+                           unsigned long framesPerBuffer,
+                           const PaStreamCallbackTimeInfo* timeInfo,
+                           PaStreamCallbackFlags statusFlags,
+                           void *userData )
+{
+	return 0;
+}
 
 void huberr(const char *str, int num, int arg)
 {
@@ -44,6 +54,7 @@ int main(int argc, char **argv)
 	int hub = 0;
 	int sub = 0;
 	Event *event = (Event*)malloc(sizeof(Event));
+	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
 	while (1) {if (setjmp(errbuf) == 0) {
@@ -54,5 +65,6 @@ int main(int argc, char **argv)
 	case (Flow): break;
 	default: ERROR(exiterr,-1);}
 	event = (Event*)malloc(sizeof(Event));}}}
+	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return -1;
 }

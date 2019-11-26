@@ -38,7 +38,7 @@ filer.log: filerLua file
 	cat $@
 
 %C: %C.o
-	clang++ -o $@ $(filter %C.o,$^) -llua
+	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio
 %Hs: %.hs
 	ghc -o $@ $< $(filter %C.o,$^) -llua -v0 2> $*.out
 %Gen: %.gen
