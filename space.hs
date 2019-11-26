@@ -17,6 +17,7 @@
 
 module Main where
 
+import Naive
 import Face
 import Type
 import System.Environment
@@ -26,6 +27,7 @@ main = getArgs >>= mainF
 
 mainF :: [String] -> IO ()
 mainF [a,b,c] = do
+ putStrLn (show (boolToSide False))
  idx <- pipeInit a b
  state <- readState idx
  mainG state
