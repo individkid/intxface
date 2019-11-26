@@ -38,7 +38,7 @@ filer.log: filerLua file
 	cat $@
 
 %C: %C.o
-	clang -o $@ $(filter %C.o,$^) -llua
+	clang++ -o $@ $(filter %C.o,$^) -llua
 %Hs: %.hs
 	ghc -o $@ $< $(filter %C.o,$^) -llua -v0 2> $*.out
 %Gen: %.gen
@@ -56,6 +56,8 @@ filer.log: filerLua file
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
 %C.o: %.c
+	clang -o $@ -c $< -I /usr/local/include/lua
+%C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include/lua
 
 %.h: %Gen

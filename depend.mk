@@ -8,6 +8,8 @@ facerLua: face.so
 fileC: baseC.o faceC.o typeC.o
 fileC.o: base.h face.h type.h
 filerLua: face.so type.lua
+lineC: baseC.o faceC.o typeC.o
+lineC.o: base.h face.h type.h
 typeC.o: base.h face.h type.h
 typeGen: show.lua
 typerC: baseC.o faceC.o
