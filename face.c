@@ -205,6 +205,17 @@ int openFileLua(lua_State *lua)
 	lua_pushnumber(lua,openFile(lua_tostring(lua,1)));
 	return 1;
 }
+int openInet(const char *adr, const char *num)
+{
+	// TODO
+	return 0;
+}
+int openInetLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,openInet(lua_tostring(lua,1),lua_tostring(lua,2)));
+	return 1;
+}
 int forkExec(const char *exe)
 {
 	int c2p[2], p2c[2], val;
@@ -350,6 +361,17 @@ int checkFileLua(lua_State *lua)
 {
 	luaerr = lua;
 	lua_pushnumber(lua,checkFile((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int checkInet(const char *adr, const char *num)
+{
+	// TODO
+	return 0;
+}
+int checkInetLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,checkInet(lua_tostring(lua,1),lua_tostring(lua,2)));
 	return 1;
 }
 int rdlkFile(long long arg0, long long arg1, int idx)

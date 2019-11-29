@@ -25,13 +25,13 @@
 #include <sys/errno.h>
 
 jmp_buf errbuf = {0};
-int hub2net[NUMFILE] = {0};
-int net2idx[NUMINET][NUMFILE] = {0};
-int net2len[NUMINET] = {0};
-int hub2idx[NUMFILE] = {0};
-int sys2len = 0;
-int sys2net[NUMFILE] = {0};
-int sys2idx[NUMFILE] = {0};
+int mapping[NUMINET][NUMOPEN] = {0}; // to NUMOPEN
+int address[NUMINET][NUMOPEN] = {0}; // to NUMINET
+int number[NUMINET] = {0}; // to NUMOPEN
+enum {Unused,Cluster,System,Server,Client} layer[NUMINET] = {0};
+// only fub on System layer
+// only hub on Cluster layer
+// might have several sub on Server or Client layers
 
 void huberr(const char *str, int num, int arg)
 {
@@ -55,46 +55,28 @@ int main(int argc, char **argv)
 	if ((fub = forkExec("file")) < 0) ERROR(exiterr,-1);
 	if ((rub = openInet(0,argv[3])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub); bothJump(huberr,fub); bothJump(huberr,rub);
+	layer[hub] = Cluster; layer[fub] = System; layer[rub] = Unused;
 	while (1) {if (setjmp(errbuf) == 0) {
 	for (sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(&file,sub);
-	int idx = file.idx;
-	if (sub == hub && file.act == NewThd && file.num == 3 && !checkinet(file.ptr[1],file[ptr[2]])) {
-	// open file to server
-	sub = hub2net[idx] = openInet(file.ptr[1],file[2]);
-	file.idx = net2idx[sub][idx] = net2len[sub]++;}
-	else if (sub == hub && hub2net[idx]) {
-	// forward command from cluster to server
-	sub = hub2net[idx];
-	file.idx = net2idx[sub][idx];}
-	else if (sub == hub && file.act == NewThd) {
-	// open file to system
-	sub = fub;
-	file.idx = hub2idx[idx] = sys2len++;}
-	else if (sub == hub) {
-	// forward command from cluster to system
-	sub = fub;
-	file.idx = sys2idx[idx];}
-	else if (sub == fub && sys2net[idx]) {
-	// forward response from system to client
-	sub = sys2net[idx];
-	file.idx = sys2idx[idx];}
-	else if (sub == fub) {
-	// forward response from system to cluster
-	sub = hub;
-	file.idx = sys2idx[idx];}
+	int snd = rub;
+	if (layer[sub] == Cluster && file.act == NewThd && file.num == 3 &&
+	checkInet(file.ptr[1],file.ptr[2]) < 0) {
+	snd = openInet(file.ptr[1],file.ptr[2]); layer[snd] = Server;}
+	else if (layer[sub] == Cluster && file.act == NewThd && file.num == 3) {
+	snd = checkInet(file.ptr[1],file.ptr[2]);}
+	else if (layer[sub] == Unused) {
+	snd = fub; layer[sub] = Client;}
 	else if (file.act == NewThd) {
-	// open file for client
-	sys2net[idx] = sub = fub;
-	sys2idx[file.idx = net2idx[idx] = sys2len++] = idx;}
-	else if (hub2net[idx]) {
-	// forward response from server to cluster
-	sub = hub;
-	file.idx = sys2idx[idx];}
-	else {
-	// forward command from client to system
-	sub = fub;
-	file.idx = net2idx[idx];}
-	writeFile(&file,sub);}}}
+	snd = fub;}
+	if (snd != rub) {
+	address[sub][file.idx] = snd;
+	int num = mapping[sub][file.idx] = number[snd]++;
+	address[snd][num] = sub;
+	mapping[snd][num] = file.idx;}
+	// forward command
+	int idx = address[sub][file.idx];
+	file.idx = mapping[sub][file.idx];
+	writeFile(&file,idx);}}}
 	return -1;
 }

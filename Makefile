@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log line plane space
+all: facer.log typra.log typer.log filer.log line plane space trade
 
 ifndef DEPEND
 include depend.mk
@@ -75,7 +75,7 @@ clean:
 	rm -f type.h type.c type.hs type.lua
 	rm -f typer.h typer.c typer.hs typer.lua
 	rm -f typra facer typer filer
-	rm -f file line plane space
+	rm -f trade file line plane space
 	rm -f *C *Hs *Lua *Gen *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h
