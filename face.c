@@ -363,6 +363,17 @@ int checkFileLua(lua_State *lua)
 	lua_pushnumber(lua,checkFile((int)lua_tonumber(lua,1)));
 	return 1;
 }
+int pollInet(const char *adr, const char *num)
+{
+	// TODO
+	return 0;
+}
+int pollInetLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,pollInet(lua_tostring(lua,1),lua_tostring(lua,2)));
+	return 1;
+}
 int checkInet(const char *adr, const char *num)
 {
 	// TODO

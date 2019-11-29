@@ -60,15 +60,11 @@ int main(int argc, char **argv)
 	for (sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(&file,sub);
 	int snd = rub;
-	if (layer[sub] == Cluster && file.act == NewThd && file.num == 3 &&
-	checkInet(file.ptr[1],file.ptr[2]) < 0) {
-	snd = openInet(file.ptr[1],file.ptr[2]); layer[snd] = Server;}
-	else if (layer[sub] == Cluster && file.act == NewThd && file.num == 3) {
-	snd = checkInet(file.ptr[1],file.ptr[2]);}
-	else if (layer[sub] == Unused) {
-	snd = fub; layer[sub] = Client;}
-	else if (file.act == NewThd) {
-	snd = fub;}
+	if (layer[sub] == Cluster && file.act == NewThd && file.num == 3) {
+	if (pollInet(file.ptr[1],file.ptr[2])) snd = checkInet(file.ptr[1],file.ptr[2]);
+	else {snd = openInet(file.ptr[1],file.ptr[2]); layer[snd] = Server;}}
+	else if (layer[sub] == Unused) {snd = fub; layer[sub] = Client;}
+	else if (file.act == NewThd) snd = fub;
 	if (snd != rub) {
 	address[sub][file.idx] = snd;
 	int num = mapping[sub][file.idx] = number[snd]++;

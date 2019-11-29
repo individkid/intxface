@@ -45,6 +45,7 @@ int pollFile(int idx);
 void seekFile(long long arg, int idx);
 void truncFile(int idx);
 long long checkFile(int idx);
+int pollInet(const char *adr, const char *num);
 int checkInet(const char *adr, const char *num);
 int rdlkFile(long long arg0, long long arg1, int idx);
 int wrlkFile(long long arg0, long long arg1, int idx);
