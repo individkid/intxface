@@ -220,7 +220,6 @@ int openInet(const char *adr, const char *num)
 	int flag = 1;
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) return -1;
 	struct sockaddr_in6 adr = {0};
-	socklen_t len = sizeof(adr);
 	adr.sin6_family = AF_INET6;
 	adr.sin6_addr = in6addr_any;
 	int port = 0;
@@ -409,7 +408,15 @@ int checkFileLua(lua_State *lua)
 }
 int pollInet(const char *adr, const char *num)
 {
-	// TODO
+	struct sockaddr_in6 comp = {0};
+	comp.sin6_family = AF_INET6;
+	inet_pton(AF_INET6, adr, &comp.sin6_addr);
+	int port = 0;
+	if (sscanf(num,"%d",&port) != 1) return -1;
+	comp.sin6_port = htons(port);
+	for (int i = 0; i < ads; i++)
+	if (memcmp(&addr[i],&comp,sizeof(comp)) == 0)
+	return 1;
 	return 0;
 }
 int pollInetLua(lua_State *lua)
@@ -420,8 +427,16 @@ int pollInetLua(lua_State *lua)
 }
 int checkInet(const char *adr, const char *num)
 {
-	// TODO
-	return 0;
+	struct sockaddr_in6 comp = {0};
+	comp.sin6_family = AF_INET6;
+	inet_pton(AF_INET6, adr, &comp.sin6_addr);
+	int port = 0;
+	if (sscanf(num,"%d",&port) != 1) return -1;
+	comp.sin6_port = htons(port);
+	for (int i = 0; i < ads; i++)
+	if (memcmp(&addr[i],&comp,sizeof(comp)) == 0)
+	return i;
+	return NUMINET;
 }
 int checkInetLua(lua_State *lua)
 {
