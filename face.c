@@ -23,12 +23,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <lua.h>
 #include "face.h"
 
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};
-enum {None,Wait,Poll,Seek} vld[NUMOPEN] = {0};
+enum {None,Wait,Poll,Seek,Inet} vld[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
 int len = 0;
 int bufsize = BUFSIZE;
@@ -39,6 +42,9 @@ char *exclua[NUMOPEN] = {0};
 char *inplua[NUMOPEN] = {0};
 char *outlua[NUMOPEN] = {0};
 lua_State *luaerr = 0;
+struct sockaddr_in6 addr[NUMINET] = {0};
+int ads = 0;
+int inet[NUMOPEN] = {0};
 
 void exitErr(const char *str, int num, int idx)
 {
@@ -207,8 +213,35 @@ int openFileLua(lua_State *lua)
 }
 int openInet(const char *adr, const char *num)
 {
-	// TODO
-	return 0;
+	if (len >= NUMOPEN) return -1;
+	int fd = 0;
+	if (adr == 0) {
+	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
+	int flag = 1;
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) return -1;
+	struct sockaddr_in6 adr = {0};
+	socklen_t len = sizeof(adr);
+	adr.sin6_family = AF_INET6;
+	adr.sin6_addr = in6addr_any;
+	int port = 0;
+	if (sscanf(num,"%d",&port) != 1) return -1;
+	adr.sin6_port = htons(port);
+	if (bind(fd, (struct sockaddr*)&adr, sizeof(adr)) < 0) return -1;
+	if (listen(fd, NUMPEND) < 0) return -1;
+	vld[len] = Inet;} else {
+	if (ads >= NUMINET) return -1;
+	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
+	addr[ads].sin6_family = AF_INET6;
+	inet_pton(AF_INET6, adr, &addr[ads].sin6_addr);
+	int port = 0;
+	if (sscanf(num,"%d",&port) != 1) return -1;
+	addr[ads].sin6_port = htons(port);
+	if (connect(fd, (struct sockaddr*)&addr[ads], sizeof(addr[ads])) < 0) return -1;
+	vld[len] = Wait;
+	ads++;}
+	inp[len] = fd;
+	out[len] = fd;
+	return len++;
 }
 int openInetLua(lua_State *lua)
 {
@@ -273,15 +306,26 @@ int waitAny()
 	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
 	for (int i = 0; i < len; i++) {
 		if (vld[i] == Wait && nfd <= inp[i]) nfd = inp[i]+1;
-		if (vld[i] == Wait) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
+		if (vld[i] == Wait) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}
+		if (vld[i] == Inet && nfd <= inp[i]) nfd = inp[i]+1;
+		if (vld[i] == Inet) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
 	if (val <= 0) return -1;
 	nfd = 0; for (int i = 0; i < len; i++) {
-		if (vld[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}}
+		if (vld[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
+		if (vld[i] == Inet && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}}
 	if (nfd == 0) for (int i = 0; i < len; i++) {
-		if (vld[i] == Wait && FD_ISSET(inp[i],&fds)) return i;}
+		if (vld[i] == Wait && FD_ISSET(inp[i],&fds)) return i;
+		if (vld[i] == Inet && FD_ISSET(inp[i],&fds)) {
+		struct sockaddr_in6 adr = {0};
+		socklen_t len = sizeof(adr);
+		if (len >= NUMOPEN) {closeIdent(i); continue;}
+		inp[len] = out[len] = accept(inp[i],(struct sockaddr*)&adr,&len);
+		if (inp[len] < 0) continue;
+		vld[len] = Wait;
+		return len++;}}
 	} return -1;
 }
 int waitAnyLua(lua_State *lua)

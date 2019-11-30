@@ -23,6 +23,7 @@
 #define NUMOPEN 1024
 #define BUFSIZE 64
 #define NUMINET 16
+#define NUMPEND 10
 
 typedef void (*eftype)(const char*,int,int);
 typedef void (*hftype)(const char*,int);
