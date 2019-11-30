@@ -32,6 +32,8 @@ enum {Unused,Cluster,System,Server,Client} layer[NUMINET] = {0};
 // only fub on System layer
 // only hub on Cluster layer
 // might have several sub on Server or Client layers
+// Server to main
+// Client of main
 
 void huberr(const char *str, int num, int arg)
 {
@@ -49,7 +51,7 @@ int main(int argc, char **argv)
 	int rub = 0; // unused listen
 	int fub = 0; // file system
 	int hub = 0; // process cluster
-	int sub = 0;
+	int sub = 0; // hub, fub, connect, or accept
 	struct File file = {0};
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	if ((fub = forkExec("file")) < 0) ERROR(exiterr,-1);
