@@ -26,7 +26,9 @@ extern "C" {
 #include <sys/errno.h>
 #include <map>
 
-std::map<double,Event*> timewheel;
+std::map < int, Event* > state;
+std::map < double, std::pair < int, double > > change;
+std::map < double, int > grain;
 jmp_buf errbuf = {0};
 
 static int patestCallback( const void *inputBuffer, void *outputBuffer,

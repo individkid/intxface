@@ -20,10 +20,22 @@
 
 #define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
+#define INFINITE 1000000000ull
+#define FILESIZE 4096
 #define NUMOPEN 1024
+#define NUMFILE 64
 #define BUFSIZE 64
 #define NUMINET 16
 #define NUMPEND 10
+#define CMDSIZE 4
+// INFINITE longer than any given file
+// FILESIZE rough limit to helper file
+// NUMOPEN total number of file descriptors
+// NUMFILE limit on number of file threads
+// BUFSIZE amount read from file at a time
+// NUMINET open address port pair limit
+// NUMPEND connection request queue length
+// CMDSIZE field buffer array limit
 
 typedef void (*eftype)(const char*,int,int);
 typedef void (*hftype)(const char*,int);

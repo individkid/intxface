@@ -31,9 +31,8 @@ int number[NUMINET] = {0}; // to NUMOPEN
 enum {Unused,Cluster,System,Server,Client} layer[NUMINET] = {0};
 // only fub on System layer
 // only hub on Cluster layer
-// might have several sub on Server or Client layers
-// Server to main
-// Client of main
+// sub might be any of Server to main
+// sub might be any of Client of main
 
 void huberr(const char *str, int num, int arg)
 {
@@ -57,22 +56,25 @@ int main(int argc, char **argv)
 	if ((fub = forkExec("file")) < 0) ERROR(exiterr,-1);
 	if ((rub = openInet(0,argv[3])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub); bothJump(huberr,fub); bothJump(huberr,rub);
-	layer[hub] = Cluster; layer[fub] = System; layer[rub] = Unused;
+	layer[hub] = Cluster; layer[fub] = System;
 	while (1) {if (setjmp(errbuf) == 0) {
 	for (sub = waitAny(); sub >= 0; sub = waitAny()) {
+	// read from readable
 	readFile(&file,sub);
+	// find new mappings
 	int snd = rub;
 	if (layer[sub] == Cluster && file.act == NewThd && file.num == 3) {
 	if (pollInet(file.ptr[1],file.ptr[2])) snd = checkInet(file.ptr[1],file.ptr[2]);
 	else {snd = openInet(file.ptr[1],file.ptr[2]); layer[snd] = Server;}}
 	else if (layer[sub] == Unused) {snd = fub; layer[sub] = Client;}
 	else if (file.act == NewThd) snd = fub;
+	// set up new mapping
 	if (snd != rub) {
 	address[sub][file.idx] = snd;
 	int num = mapping[sub][file.idx] = number[snd]++;
 	address[snd][num] = sub;
 	mapping[snd][num] = file.idx;}
-	// forward command
+	// translate and forward
 	int idx = address[sub][file.idx];
 	file.idx = mapping[sub][file.idx];
 	writeFile(&file,idx);}}}

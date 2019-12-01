@@ -95,8 +95,41 @@ File = {
 		["ThdCmd"]=true,
 		["ThdCfg"]=true}},"num"},
 }
+Term0 = {
+	{"cff","double",{},{}},
+}
+Term1 = {
+	{"cff","double",{},{}},
+	{"var","int",{},{1}},
+}
+Term2 = {
+	{"cff","double",{},{}},
+	{"var","int",{},{2}},
+}
+Term3 = {
+	{"cff","double",{},{}},
+	{"var","int",{},{3}},
+}
+Nomial = {
+	{"num0","int",{},{}},
+	{"trm0","Term0",{},"num0"},
+	{"num1","int",{},{}},
+	{"trm1","Term1",{},"num1"},
+	{"num2","int",{},{}},
+	{"trm2","Term2",{},"num2"},
+	{"num3","int",{},{}},
+	{"trm3","Term3",{},"num3"},
+}
+Ratio = {
+	{"num","Nomial",{},{}},
+	{"den","Nomial",{},{}},
+}
 Event = {
 	{"cng","Change",{},{}},
+	{"val","double",{},{}},
+    {"upd","Ratio",{},{}},
+    {"dly","Ratio",{},{}},
+    {"sch","Ratio",{},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},

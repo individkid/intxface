@@ -28,16 +28,6 @@
 #include <time.h>
 #include <sys/errno.h>
 
-#define NUMFILE 64
-#define INFINITE 1000000000ull
-#define FILESIZE 4096
-#define CMDSIZE 4
-#define NAMES 4
-#define GIVEN 3
-#define NAMED 2
-#define HELPER 1
-#define CONTROL 0
-
 long long identifier = 0;
 jmp_buf errbuf = {0};
 jmp_buf jmpbuf[NUMFILE] = {0};
@@ -45,6 +35,13 @@ int number[NUMOPEN] = {0};
 int cmdsize = CMDSIZE;
 extern int bufsize;
 
+enum Name {
+	Control,
+	Helper,
+	Named,
+	Given,
+	Names
+};
 enum Stage {
 	Open,
 	Move,
@@ -343,31 +340,17 @@ void *file(void *arg)
 #define opcode thread->opcode
 #define cmd thread->command
 #define rsp thread->response
-#define cmdact thread->command.act
-#define cmdopc thread->command.opc
-#define cmdidx thread->command.idx
-#define cmdloc thread->command.loc
-#define cmdnum thread->command.num
-#define cmdsiz thread->command.siz
-#define cmdptr thread->command.ptr
-#define rspact thread->response.act
-#define rspopc thread->response.opc
-#define rspidx thread->response.idx
-#define rsploc thread->response.loc
-#define rspnum thread->response.num
-#define rspsiz thread->response.siz
-#define rspptr thread->response.ptr
 
 void create(char *ptr, int sub, struct Thread *thread)
 {
-	if ((name = malloc(strlen(ptr)+NAMES)) == 0) ERROR(huberr,-1)
-	for (int i = 0; i < NAMES-1; i++) name[i] = '.';
-	strcpy(name+NAMES-1,ptr);
+	if ((name = malloc(strlen(ptr)+Names)) == 0) ERROR(huberr,-1)
+	for (int i = 0; i < Names-1; i++) name[i] = '.';
+	strcpy(name+Names-1,ptr);
 	if ((anonym = openPipe()) < 0) ERROR(huberr,-1)
-	if ((named = openFifo(name+NAMED)) < 0) ERROR(huberr,-1)
-	if ((helper = openFile(name+HELPER)) < 0) ERROR(huberr,-1)
-	if ((given = openFile(name+GIVEN)) < 0) ERROR(huberr,-1)
-	if ((control = openFile(name+CONTROL)) < 0) ERROR(huberr,-1)
+	if ((named = openFifo(name+Named)) < 0) ERROR(huberr,-1)
+	if ((helper = openFile(name+Helper)) < 0) ERROR(huberr,-1)
+	if ((given = openFile(name+Given)) < 0) ERROR(huberr,-1)
+	if ((control = openFile(name+Control)) < 0) ERROR(huberr,-1)
 	number[anonym] = thdidx; number[named] = thdidx;
 	number[helper] = thdidx; number[given] = thdidx;
 	number[control] = thdidx;
@@ -398,8 +381,8 @@ void move(struct Thread *thread)
 {
 	// reopen helper
 	wrlkwFile(0,1,control);
-	if (append >= FILESIZE && unlink(name+HELPER) < 0) ERROR(filerr,thdidx)
-	moveIdent(openFile(name+HELPER),helper);
+	if (append >= FILESIZE && unlink(name+Helper) < 0) ERROR(filerr,thdidx)
+	moveIdent(openFile(name+Helper),helper);
 	if (pollFile(helper)) {
 		int saved = seqnum;
 		seqnum = readInt(helper);
@@ -423,17 +406,17 @@ void rreq(struct Thread *thread)
 	// read helper
 	readFile(&cmd,helper);
 	// kill to self, goto Done
-	if (cmdact == EndThd && cmdloc == identifier) {
+	if (cmd.act == EndThd && cmd.loc == identifier) {
 		stage = Done; return;}
 	// kill to other, neof helper, goto Rreq
-	if (cmdact == EndThd && pollFile(helper)) {
+	if (cmd.act == EndThd && pollFile(helper)) {
 		stage = Rreq; return;}
 	// kill to other, eof helper, goto Rrsp
-	if (cmdact == EndThd) {
+	if (cmd.act == EndThd) {
 		stage = Rrsp; return;}
-	for (int i = 0; i < cmdnum; i++) total += cmdsiz[i];
+	for (int i = 0; i < cmd.num; i++) total += cmd.siz[i];
 	// past command, goto Wreq
-	if (config >= cmdloc + total) {
+	if (config >= cmd.loc + total) {
 		stage = Wreq; return;}
 	// future command, goto Rrsp
 	stage = Rrsp;
@@ -485,16 +468,16 @@ void rrspf(const char *ptr, int trm, void *arg)
 void wrsp(struct Thread *thread)
 {
 	// write anonym
-	rspact = ThdCfg;
-	rspidx = thdidx;
-	rsploc = thdloc;
-	rspnum = thdnum;
-	rspsiz = size;
-	rspptr = pointer;
+	rsp.act = ThdCfg;
+	rsp.idx = thdidx;
+	rsp.loc = thdloc;
+	rsp.num = thdnum;
+	rsp.siz = size;
+	rsp.ptr = pointer;
 	writeFile(&rsp,anonym);
 	thdnum = 0; thdbuf = buffer; thdloc = config;
 	// command read, past command, goto Wreq
-	if (total > 0 && config >= cmdloc + total) {
+	if (total > 0 && config >= cmd.loc + total) {
 		stage = Wreq; return;}
 	// command read, future command, goto Rrsp
 	if (total > 0) {
@@ -524,23 +507,23 @@ void wlck(struct Thread *thread)
 	// read named
 	readFile(&cmd,named);
 	// kill to self, goto Done
-	if (cmdact == EndThd && cmdloc == identifier) {
+	if (cmd.act == EndThd && cmd.loc == identifier) {
 		stage = Done; return;}
-	if (cmdact == CfgThd) cmdloc = config;
+	if (cmd.act == CfgThd) cmd.loc = config;
 	// write given
 	int siz = 0;
-	for (int i = 0; i < cmdnum; i++) siz += cmdsiz[i];
-	if (opcode[cmdopc]) {
+	for (int i = 0; i < cmd.num; i++) siz += cmd.siz[i];
+	if (opcode[cmd.opc]) {
 		opcsiz = 0;
 		while (opcsiz < siz) readStr(wlckf,thread,given);
-		(*opcode[cmdopc])(buffer,opcbuf,siz);
+		(*opcode[cmd.opc])(buffer,opcbuf,siz);
 	}
-	seekFile(cmdloc,given);
-	wrlkwFile(cmdloc,siz,given);
-	for (int i = 0; i < cmdnum; i++) {
-		int trm = (cmdsiz[i]>strlen(cmdptr[i]));
-		writeStr(cmdptr[i],trm,given);}
-	unlkFile(cmdloc,siz,given);
+	seekFile(cmd.loc,given);
+	wrlkwFile(cmd.loc,siz,given);
+	for (int i = 0; i < cmd.num; i++) {
+		int trm = (cmd.siz[i]>strlen(cmd.ptr[i]));
+		writeStr(cmd.ptr[i],trm,given);}
+	unlkFile(cmd.loc,siz,given);
 	// write helper
 	writeFile(&cmd,helper);
 	// unlock helper
@@ -563,10 +546,10 @@ void rlck(struct Thread *thread)
 	readFile(&cmd,helper);
 	append += sizeFile(&cmd);
 	// kill to self, goto Done
-	if (cmdact == EndThd && cmdloc == identifier) {
+	if (cmd.act == EndThd && cmd.loc == identifier) {
 		stage = Done; return;}
 	// kill to other, goto Wlck
-	if (cmdact == EndThd) {
+	if (cmd.act == EndThd) {
 		stage = Wlck; return;}
 	// goto Send
 	stage = Send;
@@ -575,7 +558,7 @@ void rlck(struct Thread *thread)
 void send(struct Thread *thread)
 {
 	// write anonym
-	if (cmdact == CmdThd || cmdact == CfgThd) cmdact = ThdCmd;
+	if (cmd.act == CmdThd || cmd.act == CfgThd) cmd.act = ThdCmd;
 	writeFile(&cmd,anonym);
 	// too big, goto Move
 	if (append >= FILESIZE) {
@@ -586,9 +569,9 @@ void send(struct Thread *thread)
 
 void jump(struct Thread *thread)
 {
-	rspact = ThdEnd;
-	rspidx = thdidx;
-	rspnum = 0;
+	rsp.act = ThdEnd;
+	rsp.idx = thdidx;
+	rsp.num = 0;
 	writeJump(0,anonym);
 	writeFile(&rsp,anonym);
 }
