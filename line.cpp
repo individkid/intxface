@@ -24,6 +24,7 @@ extern "C" {
 #include <setjmp.h>
 #include <unistd.h>
 #include <time.h>
+#include <math.h>
 #include <sys/errno.h>
 #include <map>
 
@@ -53,10 +54,34 @@ int callback(const void *inputBuffer, void *outputBuffer,
 	return 0;
 }
 
+double condition(int *variable)
+{
+	if (state[variable[0]]->val > 0.0) return state[variable[1]]->val;
+	return state[variable[2]]->val;
+}
+
+double polynomial(Nomial *nomial)
+{
+	double result = 0.0;
+	for (int i = 0; i < nomial->num0; i++) result += nomial->trm0[i].cff;
+	for (int i = 0; i < nomial->num1; i++) result += nomial->trm1[i].cff*state[nomial->trm1[i].var[0]]->val;
+	for (int i = 0; i < nomial->num2; i++) result += nomial->trm2[i].cff*state[nomial->trm2[i].var[0]]->val*state[nomial->trm2[i].var[1]]->val;
+	for (int i = 0; i < nomial->num3; i++) result += nomial->trm3[i].cff*condition(nomial->trm3[i].var);
+	return result;
+}
+
 double evaluate(Ratio *ratio)
 {
-	// TODO
-	return 0.0;
+	double num = polynomial(&ratio->num);
+	if (num == 0.0) return 0.0;
+	if (!(num < 0.0) && !(num > 0.0)) return 0.0;
+	double den = polynomial(&ratio->den);
+	double sat = num/SATURATE;
+	if (fabs(sat) > fabs(den)) {
+		if (num < 0.0) return -SATURATE;
+		else return SATURATE;
+	}
+	return num/den;
 }
 
 void schedule(Event *event)
