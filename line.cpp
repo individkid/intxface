@@ -58,7 +58,7 @@ double evaluate(Ratio *ratio)
 	return 0.0;
 }
 
-void evalpush(Event *event)
+void schedule(Event *event)
 {
 	double upd = evaluate(&event->upd);
 	double dly = evaluate(&event->dly);
@@ -69,20 +69,24 @@ void evalpush(Event *event)
 
 int callwait()
 {
-	if (change.empty()) return waitAny();
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*0.000000001;
-	while ((*change.begin()).first <= nowtime) {
+	while (!change.empty() && (*change.begin()).first <= nowtime) {
 		std::pair < int, double > head = (*change.begin()).second;
 		change.erase(change.begin());
 		state[head.first]->val = head.second;
 	}
-	while ((*sample.begin()).first <= nowtime) {
+	while (!sample.empty() && (*sample.begin()).first <= nowtime) {
 		int head = (*sample.begin()).second;
 		sample.erase(sample.begin());
-		evalpush(state[head]);
+		schedule(state[head]);
 	}
+	if (change.empty() && sample.empty()) return waitAny();
+	if (change.empty()) return pauseAny((*sample.begin()).first-nowtime);
+	if (sample.empty()) return pauseAny((*change.begin()).first-nowtime);
+	if ((*sample.begin()).first < (*change.begin()).first)
+	return pauseAny((*sample.begin()).first-nowtime);
 	return pauseAny((*change.begin()).first-nowtime);
 }
 
@@ -91,7 +95,7 @@ int main(int argc, char **argv)
 	if (argc != 4) return -1;
 	int hub = 0;
 	int sub = 0;
-	Event *event = (Event*)malloc(sizeof(Event));
+	Event *event = new Event;
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*0.000000001;
@@ -104,7 +108,7 @@ int main(int argc, char **argv)
 	switch (event->cng) {
 	case (Stock):
 	state[event->idx] = event;
-	event = (Event*)malloc(sizeof(Event));
+	event = new Event;
 	break;
 	case (Flow):
 	state[event->idx]->val = event->val;
