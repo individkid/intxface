@@ -379,11 +379,8 @@ Expected = {
 	"    if (siz == 0) return;\n"..
 	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
 	"    for (int i = 0; i < siz; i++) {\n"..
-	"        (*ptr)[i].next = 0;\n"..
-	"        (*ptr)[i].field4 = 0;\n"..
-	"        (*ptr)[i].field5 = 0;\n"..
-	"        (*ptr)[i].field15 = 0;\n"..
-	"        (*ptr)[i].field16 = 0;}\n"..
+	"        struct Struct1 init = {0};\n"..
+	"        memcpy(&(*ptr)[i],&init,sizeof(init));}\n"..
 	"}",
 	"void allocInt(int **ptr, int siz)\n"..
 	"{\n"..

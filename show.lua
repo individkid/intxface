@@ -661,13 +661,10 @@ function showAllocC(name,typ)
 		if prototype then return result..";" end
 		result = result.."\n{\n"..qualify
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {"
-		for k,v in ipairs(typ) do
-			if (type(v[4]) == "number") or (type(v[4]) == "string") or (v[2] == "char*") then
-				result = result.."\n"..showIndent(2).."(*ptr)[i]."..v[1].." = 0;"
-			end
-		end
-		result = result.."}\n".."}"
+		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {\n"
+		result = result..showIndent(2).."struct "..name.." init = {0};\n"
+		result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));}\n"
+		result = result.."}"
 	else
 		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)"
 		if prototype then return result..";" end
