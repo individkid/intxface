@@ -132,6 +132,7 @@ Event = {
     {"upd","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"dly","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},
+    {"aud","Ratio",{["cng"]={["Stock"]=true}},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},

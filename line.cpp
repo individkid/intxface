@@ -30,6 +30,7 @@ extern "C" {
 std::map < int, Event* > state;
 std::map < double, std::pair < int, double > > change;
 std::map < double, int > sample;
+std::map < double, double > audio;
 jmp_buf errbuf = {0};
 double nowtime = 0.0;
 
@@ -63,8 +64,13 @@ void schedule(Event *event)
 	double upd = evaluate(&event->upd);
 	double dly = evaluate(&event->dly);
 	double sch = evaluate(&event->sch);
+	double aud = evaluate(&event->aud);
 	change[nowtime+dly] = std::make_pair(event->idx,upd);
 	sample[nowtime+sch] = event->idx;
+	if (aud != 0.0) {
+		if (audio.find(nowtime) == audio.end()) audio[nowtime] = 0.0;
+		audio[nowtime] += aud;
+	}
 }
 
 int callwait()
