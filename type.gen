@@ -127,9 +127,9 @@ Ratio = {
 Event = {
 	{"cng","Change",{},{}},
 	{"val","double",{},{}},
-    {"upd","Ratio",{},{}},
-    {"dly","Ratio",{},{}},
-    {"sch","Ratio",{},{}},
+    {"upd","Ratio",{["cng"]={["Stock"]=true}},{}},
+    {"dly","Ratio",{["cng"]={["Stock"]=true}},{}},
+    {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},

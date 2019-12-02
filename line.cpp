@@ -28,17 +28,8 @@ extern "C" {
 
 std::map < int, Event* > state;
 std::map < double, std::pair < int, double > > change;
-std::map < double, int > grain;
+std::map < double, int > sample;
 jmp_buf errbuf = {0};
-
-static int patestCallback( const void *inputBuffer, void *outputBuffer,
-                           unsigned long framesPerBuffer,
-                           const PaStreamCallbackTimeInfo* timeInfo,
-                           PaStreamCallbackFlags statusFlags,
-                           void *userData )
-{
-	return 0;
-}
 
 void huberr(const char *str, int num, int arg)
 {
@@ -48,6 +39,15 @@ void huberr(const char *str, int num, int arg)
 void exiterr(const char *str, int num, int arg)
 {
 	exit(arg);
+}
+
+int callback(const void *inputBuffer, void *outputBuffer,
+	unsigned long framesPerBuffer,
+	const PaStreamCallbackTimeInfo* timeInfo,
+	PaStreamCallbackFlags statusFlags,
+	void *userData)
+{
+	return 0;
 }
 
 int main(int argc, char **argv)

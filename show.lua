@@ -114,9 +114,13 @@ function equalPlaid(lhs,rhs,all)
 	if rhs == nil or lhs == nil then return false end
 	local result = true
 	for k,v in pairs(all) do
-		local lhv = lhs[k]; if not lhv then lhv = all[k] end
-		local rhv = rhs[k]; if not rhv then rhv = all[k] end
-		result = result and equalSet(lhv,rhv)
+		local lhv = lhs[k]; -- if not lhv then lhv = all[k] end
+		local rhv = rhs[k]; -- if not rhv then rhv = all[k] end
+		if lhv and rhv then
+			result = result and equalSet(lhv,rhv)
+		else
+			result = result and (not lhv) and (not rhv)
+		end
 	end
 	return result
 end
@@ -246,7 +250,7 @@ function chainStruct(struct)
 	local all = structTagSpace(struct)
 	local result = {}
 	for k,v in ipairs(struct) do
-		result[#result+1] = (struct[k+1] ~= nil) and equalPlaid(v[3],struct[k+1][3],all)
+		result[#result+1] = ((struct[k+1] ~= nil) and equalPlaid(v[3],struct[k+1][3],all)) or (k == 1)
 	end
 	return result
 end
