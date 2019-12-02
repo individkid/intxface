@@ -1,4 +1,4 @@
---
+ --
 --    naive.hs
 --
 --    This program is free software: you can redistribute it and/or modify
@@ -130,7 +130,15 @@ welldefF [] = []
 
 -- ++ is as in Data.List except welldef
 (++) :: Ord a => [a] -> [a] -> [a]
-a ++ b = a `append` (b \\ a)
+a ++ b = plusPlusF a (b \\ a)
+
+plusPlusF :: Ord a => [a] -> [a] -> [a]
+plusPlusF (a:b) (c:d)
+ | a > c = c : (slashSlashF (a:b) d)
+ | a < c = a : (slashSlashF b (c:d))
+ | a == c = undefined
+plusPlusF [] a = a
+plusPlusF a [] = a
 
 (\\) :: Ord a => [a] -> [a] -> [a]
 a \\ b = slashSlashF (checkSort a) (checkSort b)
