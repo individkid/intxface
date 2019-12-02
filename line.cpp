@@ -23,6 +23,7 @@ extern "C" {
 }
 #include <setjmp.h>
 #include <unistd.h>
+#include <time.h>
 #include <sys/errno.h>
 #include <map>
 
@@ -30,6 +31,7 @@ std::map < int, Event* > state;
 std::map < double, std::pair < int, double > > change;
 std::map < double, int > sample;
 jmp_buf errbuf = {0};
+double nowtime = 0.0;
 
 void huberr(const char *str, int num, int arg)
 {
@@ -50,12 +52,49 @@ int callback(const void *inputBuffer, void *outputBuffer,
 	return 0;
 }
 
+double evaluate(Ratio *ratio)
+{
+	// TODO
+	return 0.0;
+}
+
+void evalpush(Event *event)
+{
+	double upd = evaluate(&event->upd);
+	double dly = evaluate(&event->dly);
+	double sch = evaluate(&event->sch);
+	change[nowtime+dly] = std::make_pair(event->idx,upd);
+	sample[nowtime+sch] = event->idx;
+}
+
+int callwait()
+{
+	if (change.empty()) return waitAny();
+	struct timespec ts = {0};
+	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
+	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*0.000000001;
+	while ((*change.begin()).first <= nowtime) {
+		std::pair < int, double > head = (*change.begin()).second;
+		change.erase(change.begin());
+		state[head.first]->val = head.second;
+	}
+	while ((*sample.begin()).first <= nowtime) {
+		int head = (*sample.begin()).second;
+		sample.erase(sample.begin());
+		evalpush(state[head]);
+	}
+	return pauseAny((*change.begin()).first-nowtime);
+}
+
 int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
 	int hub = 0;
 	int sub = 0;
 	Event *event = (Event*)malloc(sizeof(Event));
+	struct timespec ts = {0};
+	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
+	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*0.000000001;
 	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
@@ -63,8 +102,16 @@ int main(int argc, char **argv)
 	for (sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readEvent(event,sub);
 	switch (event->cng) {
-	case (Stock): break;
-	case (Flow): break;
+	case (Stock):
+	state[event->idx] = event;
+	event = (Event*)malloc(sizeof(Event));
+	break;
+	case (Flow):
+	state[event->idx]->val = event->val;
+	break;
+	case (Start):
+	sample[nowtime] = event->idx;
+	break;
 	default: ERROR(exiterr,-1);}
 	event = (Event*)malloc(sizeof(Event));}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);

@@ -40,6 +40,7 @@ Opcode = {
 Change = {
 	"Stock",
 	"Flow",
+	"Start",
 }
 Memory = {
 	"Buffer",
@@ -126,7 +127,8 @@ Ratio = {
 }
 Event = {
 	{"cng","Change",{},{}},
-	{"val","double",{},{}},
+	{"idx","int",{},{}},
+	{"val","double",{["cng"]={["Stock"]=true,["Flow"]=true}},{}},
     {"upd","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"dly","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},

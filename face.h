@@ -53,6 +53,7 @@ int openInet(const char *adr, const char *num);
 int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
 int waitAny();
+int pauseAny(double dly);
 int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);

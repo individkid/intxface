@@ -39,6 +39,7 @@ foreign import ccall "openFile" openFileC :: CString -> IO CInt
 foreign import ccall "forkExec" forkExecC :: CString -> IO CInt
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO CInt
 foreign import ccall "waitAny" waitAnyC :: IO CInt
+foreign import ccall "pauseAny" pauseAnyC :: CDouble -> IO CInt
 foreign import ccall "pollPipe" pollPipeC :: CInt -> IO CInt
 foreign import ccall "pollFile" pollFileC :: CInt -> IO CInt
 foreign import ccall "seekFile" seekFileC :: CLLong -> CInt -> IO ()
@@ -88,6 +89,8 @@ pipeInit :: String -> String -> IO Int
 pipeInit a b = fmap fromIntegral ((newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x)))
 waitAny :: IO Int
 waitAny = fmap fromIntegral waitAnyC
+pauseAny :: Double -> IO Int
+pauseAny a = fmap fromIntegral (pauseAnyC (CDouble a))
 pollPipe :: Int -> IO Int
 pollPipe a = fmap fromIntegral (pollPipeC (fromIntegral a))
 pollFile :: Int -> IO Int

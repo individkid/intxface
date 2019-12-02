@@ -297,7 +297,7 @@ int pipeInitLua(lua_State *lua)
 	lua_pushnumber(lua,pipeInit(lua_tostring(lua,1),lua_tostring(lua,2)));
 	return 1;
 }
-int waitAny()
+int pselectAny(struct timespec *dly)
 {
 	while (1) {
 	int val;
@@ -310,7 +310,7 @@ int waitAny()
 		if (vld[i] == Inet) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
-	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
+	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,dly,0);
 	if (val <= 0) return -1;
 	nfd = 0; for (int i = 0; i < len; i++) {
 		if (vld[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
@@ -327,10 +327,27 @@ int waitAny()
 		return len++;}}
 	} return -1;
 }
+int waitAny()
+{
+	return pselectAny(0);
+}
 int waitAnyLua(lua_State *lua)
 {
 	luaerr = lua;
 	lua_pushnumber(lua,waitAny());
+	return 1;
+}
+int pauseAny(double dly)
+{
+	struct timespec delay = {0};
+	delay.tv_sec = (long long)dly;
+	delay.tv_nsec = (dly-(long long)dly)*1000000000.0;
+	return pselectAny(&delay);
+}
+int pauseAnyLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,pauseAny(lua_tonumber(lua,1)));
 	return 1;
 }
 int pollPipe(int idx)
