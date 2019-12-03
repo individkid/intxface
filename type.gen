@@ -143,13 +143,16 @@ Event = {
     {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"aud","Ratio",{["cng"]={["Stock"]=true}},{}},
 	{"met","Metric",{["cng"]={["Lines"]=true}},1},
+	{"len","double",{["cng"]={["Linez"]=true}},{}},
+	{"siz","int",{["cng"]={["Linez"]=true}},{}},
+	{"enb","int",{["cng"]={["Linez"]=true}},{}},
 }
 Metric = {
 	{"src","Source",{},{}},
 	{"num","int",{["src"]={["Line"]=true}},{}},
 	{"siz","int",{["src"]={["Line"]=true}},"num"},
 	{"idx","int",{["src"]={["Line"]=true}},"num"},
-	{"val","double",{["src"]={["Line"]=true}},"num"},
+	{"val","float",{["src"]={["Line"]=true}},"num"},
 }
 Client = {
 	{"mem","Memory",{},{}},

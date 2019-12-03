@@ -30,12 +30,14 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double l, int s) : len(l), siz(s), now(0), cnt(s), val(s) {}
+	Channel(double l, int s) : str(0), len(l), siz(s), now(0), cnt(s), val(s) {}
+	PaStream *str;
 	double len; // how long between callbacks
 	int siz; // size of circular buffer
 	int now; // index of last read by callback
+	float sav; // last value read by callback
 	std::vector < int > cnt; // denomitor for average
-	std::vector < double > val; // total for average
+	std::vector < float > val; // total for average
 };
 struct Update {
 	Update() {}
@@ -61,12 +63,21 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
+void copywave(float *dst, Channel *cnl, int siz, double now)
+{
+	// TODO add optional stereo Channel to given args
+	// TODO ramp from channel->sav at channel->now to location calculated from now
+	// TODO then copy starting from calculated location, and update channel->sav and channel->now
+}
+
 int callback(const void *inputBuffer, void *outputBuffer,
 	unsigned long framesPerBuffer,
 	const PaStreamCallbackTimeInfo* timeInfo,
 	PaStreamCallbackFlags statusFlags,
 	void *userData)
 {
+	Channel *channel = (Channel*)userData; // TODO get two channels
+	copywave((float*)outputBuffer,channel,framesPerBuffer,Pa_GetStreamTime(channel->str));
 	return 0;
 }
 
@@ -110,7 +121,8 @@ void schedule(Event *event)
 	if (audio.find(event->chn) != audio.end()) {
 		double aud = evaluate(&event->aud);
 		Channel *channel = audio[event->chn];
-		double div = nowtime/channel->len;
+		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
+		double div = strtime/channel->len;
 		long long rep = div;
 		double rem = div-rep;
 		int sub = rem*channel->siz;
@@ -132,7 +144,8 @@ int callwait()
 		if (timer.find(event->tmr) != timer.end()) {
 			Metric *metric = timer[event->tmr];
 			for (int i = 0; i < metric->num; i++) {
-
+				if (metric->siz[i] == 0) metric->val[i] = state[metric->idx[i]]->val;
+				else copywave(metric->val, audio[metric->idx[i]], metric->siz[i],nowtime);
 			}
 		}
 	}
@@ -154,6 +167,7 @@ int main(int argc, char **argv)
 	if (argc != 4) return -1;
 	int hub = 0;
 	int sub = 0;
+	Channel *channel;
 	Event *event = 0; allocEvent(&event,1);
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
@@ -180,7 +194,11 @@ int main(int argc, char **argv)
 	event->met = 0;
 	break;
 	case (Linez):
-	// TODO setup audio
+	audio[event->idx] = channel = new Channel(event->len,event->siz);
+	if (event->enb && Pa_OpenDefaultStream(&channel->str,0,2,
+	paFloat32,44100,256,callback,channel) != paNoError) ERROR(huberr,-1);
+	if (event->enb && Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);
+	// TODO optionally open second channel for stereo
 	break;
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
