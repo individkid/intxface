@@ -27,11 +27,27 @@ extern "C" {
 #include <math.h>
 #include <sys/errno.h>
 #include <map>
+#include <vector>
 
+struct Channel {
+	Channel(double l, int s) : len(l), siz(s), now(0), cnt(s), val(s) {}
+	double len; // how long between callbacks
+	int siz; // size of circular buffer
+	int now; // index of last read by callback
+	std::vector < int > cnt; // denomitor for average
+	std::vector < double > val; // total for average
+};
+struct Update {
+	Update() {}
+	Update(int i, double v) : idx(i), val(v) {}
+	int idx; // state to update
+	double val; // value for update
+};
+std::map < int, Metric* > timer;
+std::map < int, Channel* > audio;
 std::map < int, Event* > state;
-std::map < double, std::pair < int, double > > change;
+std::map < double, Update > change;
 std::map < double, int > sample;
-std::map < double, double > audio;
 jmp_buf errbuf = {0};
 double nowtime = 0.0;
 
@@ -89,12 +105,17 @@ void schedule(Event *event)
 	double upd = evaluate(&event->upd);
 	double dly = evaluate(&event->dly);
 	double sch = evaluate(&event->sch);
-	double aud = evaluate(&event->aud);
-	change[nowtime+dly] = std::make_pair(event->idx,upd);
+	change[nowtime+dly] = Update(event->idx,upd);
 	sample[nowtime+sch] = event->idx;
-	if (aud != 0.0) {
-		if (audio.find(nowtime) == audio.end()) audio[nowtime] = 0.0;
-		audio[nowtime] += aud;
+	if (audio.find(event->chn) != audio.end()) {
+		double aud = evaluate(&event->aud);
+		Channel *channel = audio[event->chn];
+		double div = nowtime/channel->len;
+		long long rep = div;
+		double rem = div-rep;
+		int sub = rem*channel->siz;
+		channel->cnt[sub]++;
+		channel->val[sub] += aud;
 	}
 }
 
@@ -104,9 +125,16 @@ int callwait()
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*0.000000001;
 	while (!change.empty() && (*change.begin()).first <= nowtime) {
-		std::pair < int, double > head = (*change.begin()).second;
+		Update head = (*change.begin()).second;
 		change.erase(change.begin());
-		state[head.first]->val = head.second;
+		Event *event = state[head.idx];
+		event->val = head.val;
+		if (timer.find(event->tmr) != timer.end()) {
+			Metric *metric = timer[event->tmr];
+			for (int i = 0; i < metric->num; i++) {
+
+			}
+		}
 	}
 	while (!sample.empty() && (*sample.begin()).first <= nowtime) {
 		int head = (*sample.begin()).second;
@@ -126,7 +154,7 @@ int main(int argc, char **argv)
 	if (argc != 4) return -1;
 	int hub = 0;
 	int sub = 0;
-	Event *event = new Event;
+	Event *event = 0; allocEvent(&event,1);
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*0.000000001;
@@ -139,7 +167,7 @@ int main(int argc, char **argv)
 	switch (event->cng) {
 	case (Stock):
 	state[event->idx] = event;
-	event = new Event;
+	allocEvent(&event,1);
 	break;
 	case (Flow):
 	state[event->idx]->val = event->val;
@@ -147,8 +175,14 @@ int main(int argc, char **argv)
 	case (Start):
 	sample[nowtime] = event->idx;
 	break;
-	default: ERROR(exiterr,-1);}
-	event = (Event*)malloc(sizeof(Event));}}}
+	case (Lines):
+	timer[event->idx] = event->met;
+	event->met = 0;
+	break;
+	case (Linez):
+	// TODO setup audio
+	break;
+	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return -1;
 }

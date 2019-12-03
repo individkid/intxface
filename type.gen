@@ -41,13 +41,20 @@ Change = {
 	"Stock",
 	"Flow",
 	"Start",
+	"Lines",
+	"Linez",
+}
+Source = {
+	"Line",
+	"Plane",
+	"Space",
 }
 Memory = {
 	"Buffer",
 	"Shader",
 }
 Config = {
-	"Plane",
+	"Table",
 	"Sides",
 }
 --HERE Structs
@@ -129,10 +136,20 @@ Event = {
 	{"cng","Change",{},{}},
 	{"idx","int",{},{}},
 	{"val","double",{["cng"]={["Stock"]=true,["Flow"]=true}},{}},
+	{"tmr","int",{["cng"]={["Stock"]=true}},{}},
+	{"chn","int",{["cng"]={["Stock"]=true}},{}},
     {"upd","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"dly","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"aud","Ratio",{["cng"]={["Stock"]=true}},{}},
+	{"met","Metric",{["cng"]={["Lines"]=true}},1},
+}
+Metric = {
+	{"src","Source",{},{}},
+	{"num","int",{["src"]={["Line"]=true}},{}},
+	{"siz","int",{["src"]={["Line"]=true}},"num"},
+	{"idx","int",{["src"]={["Line"]=true}},"num"},
+	{"val","double",{["src"]={["Line"]=true}},"num"},
 }
 Client = {
 	{"mem","Memory",{},{}},
