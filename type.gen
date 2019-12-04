@@ -141,7 +141,6 @@ Event = {
     {"upd","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"dly","Ratio",{["cng"]={["Stock"]=true}},{}},
     {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},
-    {"aud","Ratio",{["cng"]={["Stock"]=true}},{}},
 	{"met","Metric",{["cng"]={["Lines"]=true}},1},
 	{"len","double",{["cng"]={["Linez"]=true}},{}},
 	{"siz","int",{["cng"]={["Linez"]=true}},{}},

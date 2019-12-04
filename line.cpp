@@ -151,14 +151,6 @@ void schedule(Event *event)
 	double sch = evaluate(&event->sch);
 	change[nowtime+dly] = Update(event->idx,upd);
 	sample[nowtime+sch] = event->idx;
-	if (audio.find(event->chn) != audio.end()) {
-		double aud = evaluate(&event->aud);
-		Channel *channel = audio[event->chn];
-		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
-		int sub = location(strtime,channel->len,channel->siz);
-		channel->cnt[sub]++;
-		channel->val[sub] += aud;
-	}
 }
 
 int callwait()
@@ -171,6 +163,13 @@ int callwait()
 		change.erase(change.begin());
 		Event *event = state[head.idx];
 		event->val = head.val;
+		if (audio.find(event->chn) != audio.end()) {
+			Channel *channel = audio[event->chn];
+			double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
+			int sub = location(strtime,channel->len,channel->siz);
+			channel->cnt[sub]++;
+			channel->val[sub] += head.val;
+		}
 		if (timer.find(event->tmr) != timer.end()) {
 			Metric *metric = timer[event->tmr];
 			double *ptr = metric->val;
