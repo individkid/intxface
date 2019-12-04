@@ -22,6 +22,8 @@
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define SATURATE 1000000000000.0
 #define INFINITE 1000000000ull
+#define SEC2NANO 1000000000.0
+#define NANO2SEC 0.000000001
 #define FILESIZE 4096
 #define NUMOPEN 1024
 #define NUMFILE 64

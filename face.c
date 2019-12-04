@@ -311,7 +311,8 @@ int pselectAny(struct timespec *dly)
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,dly,0);
-	if (val <= 0) return -1;
+	if (val < 0) ERROR(exitErr,0);
+	if (val == 0) return -1;
 	nfd = 0; for (int i = 0; i < len; i++) {
 		if (vld[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
 		if (vld[i] == Inet && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}}
@@ -341,7 +342,7 @@ int pauseAny(double dly)
 {
 	struct timespec delay = {0};
 	delay.tv_sec = (long long)dly;
-	delay.tv_nsec = (dly-(long long)dly)*1000000000.0;
+	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
 	return pselectAny(&delay);
 }
 int pauseAnyLua(lua_State *lua)
