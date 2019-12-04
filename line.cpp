@@ -201,16 +201,15 @@ int main(int argc, char **argv)
 	if (argc != 4) return -1;
 	int hub = 0;
 	int sub = 0;
-	Channel *channel;
+	Channel *channel = 0;
 	Event *event = 0; allocEvent(&event,1);
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
-	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*0.000000001;
 	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
 	while (1) {if (setjmp(errbuf) == 0) {
-	for (sub = waitAny(); sub >= 0; sub = waitAny()) {
+	for (sub = callwait(); sub >= 0; sub = callwait()) {
 	readEvent(event,sub);
 	switch (event->cng) {
 	case (Stock):
@@ -229,11 +228,13 @@ int main(int argc, char **argv)
 	break;
 	case (Linez):
 	audio[event->idx] = channel = new Channel(event->len,event->siz);
-	if (event->enb!=event->idx) audio[event->enb] = channel->nxt = new Channel(event->len,event->siz);
-	if (event->enb!=event->idx) channel->nxt->gap = channel->gap = channel->len*(1.0-256.0/channel->siz)/2.0;
-	if (event->enb!=event->idx && Pa_OpenDefaultStream(&channel->str,0,2,
-	paFloat32,44100,256,callback,channel) != paNoError) ERROR(huberr,-1);
-	if (event->enb!=event->idx && Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);
+	if (event->enb!=event->idx) {
+		audio[event->enb] = channel->nxt = new Channel(event->len,event->siz);
+		channel->nxt->gap = channel->gap = channel->len*(1.0-256.0/channel->siz)/2.0;
+		if (Pa_OpenDefaultStream(&channel->str,0,2,
+		paFloat32,44100,256,callback,channel) != paNoError) ERROR(huberr,-1);
+		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);
+	}
 	break;
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
