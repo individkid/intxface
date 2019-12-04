@@ -30,9 +30,10 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double l, int s) : str(0), len(l), siz(s), now(0), cnt(s), val(s) {}
+	Channel(double l, int s) : str(0), len(l), gap(0.0), siz(s), now(0), sav(0.0), cnt(s), val(s) {}
 	PaStream *str;
 	double len; // how long between callbacks
+	double gap; // how long from write to read
 	int siz; // size of circular buffer
 	int now; // index of last read by callback
 	float sav; // last value read by callback
@@ -63,11 +64,37 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
-void copywave(float *dst, Channel *cnl, int siz, double now)
+double location(double now, double len, int siz)
 {
-	// TODO add optional stereo Channel to given args
-	// TODO ramp from channel->sav at channel->now to location calculated from now
-	// TODO then copy starting from calculated location, and update channel->sav and channel->now
+	double div = now/len;
+	long long rep = div;
+	double rem = div-rep;
+	return rem*siz;
+}
+
+float average(Channel *channel, int sub)
+{
+	// TODO limit to between -1.0 and 1.0
+	sub = sub % channel->siz;
+	if (channel->cnt[sub] > 0) {
+		channel->val[sub] = channel->val[(sub+channel->siz-1)%channel->siz];
+		return channel->val[sub];
+	}
+	float retval = channel->val[sub]/channel->cnt[sub];
+	channel->cnt[sub] = 0;
+	return retval;
+}
+
+void copywave(float *dest, Channel *channel, int siz, double now)
+{
+	// TODO add optional stereo Channel
+	int sub = location(now,channel->len,channel->siz);
+	int num = sub - channel->now;
+	double dif = channel->val[sub]-channel->sav;
+	for (int i = 0; i < num; i++) dest[i] = channel->sav+dif*i/num;
+	for (int i = num; i < siz; i++) dest[i] = average(channel,sub+i-num);
+	channel->now = sub+siz-num;
+	channel->sav = average(channel,channel->now);
 }
 
 int callback(const void *inputBuffer, void *outputBuffer,
@@ -77,7 +104,7 @@ int callback(const void *inputBuffer, void *outputBuffer,
 	void *userData)
 {
 	Channel *channel = (Channel*)userData; // TODO get two channels
-	copywave((float*)outputBuffer,channel,framesPerBuffer,Pa_GetStreamTime(channel->str));
+	copywave((float*)outputBuffer,channel,framesPerBuffer,Pa_GetStreamTime(channel->str)+channel->gap);
 	return 0;
 }
 
@@ -122,10 +149,7 @@ void schedule(Event *event)
 		double aud = evaluate(&event->aud);
 		Channel *channel = audio[event->chn];
 		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
-		double div = strtime/channel->len;
-		long long rep = div;
-		double rem = div-rep;
-		int sub = rem*channel->siz;
+		int sub = location(strtime,channel->len,channel->siz);
 		channel->cnt[sub]++;
 		channel->val[sub] += aud;
 	}
@@ -199,6 +223,7 @@ int main(int argc, char **argv)
 	break;
 	case (Linez):
 	audio[event->idx] = channel = new Channel(event->len,event->siz);
+	if (event->enb) channel->gap = channel->len*(1.0-256.0/channel->siz)/2.0;
 	if (event->enb && Pa_OpenDefaultStream(&channel->str,0,2,
 	paFloat32,44100,256,callback,channel) != paNoError) ERROR(huberr,-1);
 	if (event->enb && Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);
