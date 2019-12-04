@@ -143,9 +143,13 @@ int callwait()
 		event->val = head.val;
 		if (timer.find(event->tmr) != timer.end()) {
 			Metric *metric = timer[event->tmr];
-			for (int i = 0; i < metric->num; i++) {
-				if (metric->siz[i] == 0) metric->val[i] = state[metric->idx[i]]->val;
-				else copywave(metric->val, audio[metric->idx[i]], metric->siz[i],nowtime);
+			double *ptr = metric->val;
+			for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
+				if (metric->siz[i] == 0) *(ptr++) = state[metric->idx[i]]->val; else {
+					float val[metric->siz[i]];
+					copywave(val, audio[metric->idx[i]], metric->siz[i],nowtime);
+					for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];
+				}
 			}
 		}
 	}

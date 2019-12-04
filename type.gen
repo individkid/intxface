@@ -150,9 +150,10 @@ Event = {
 Metric = {
 	{"src","Source",{},{}},
 	{"num","int",{["src"]={["Line"]=true}},{}},
+	{"tot","int",{["src"]={["Line"]=true}},{}},
 	{"siz","int",{["src"]={["Line"]=true}},"num"},
 	{"idx","int",{["src"]={["Line"]=true}},"num"},
-	{"val","float",{["src"]={["Line"]=true}},"num"},
+	{"val","double",{["src"]={["Line"]=true}},"tot"},
 }
 Client = {
 	{"mem","Memory",{},{}},

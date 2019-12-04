@@ -872,7 +872,7 @@ function showStructHs(name,struct)
 		function(index,linkz,stepz,links,steps,chains,splits)
 		-- index transition direction level
 		local result = ""
-		if (linkz+links > 0) and (stepz == 0) then
+		if (linkz+links > 0) and (splits == 0) then
 			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
 		end
 		if (linkz+links > 0) then
