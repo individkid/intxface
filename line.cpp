@@ -89,15 +89,27 @@ float average(Channel *channel, int sub)
 void copywave(float *dest, Channel *channel, int siz, double now)
 {
 	int enb = 0;
-	for (Channel *i = channel; i; i = i->nxt) enb++;
-	int cnt = 0;
-	for (Channel *ptr = channel; ptr; ptr = ptr->nxt, cnt++) {
-		int sub = location(now,ptr->len,ptr->siz);
-		int num = sub - ptr->now;
-		double dif = ptr->val[sub]-ptr->sav;
-		for (int i = 0; i < num; i++) dest[i*enb+cnt] = ptr->sav+dif*i/num;
-		for (int i = num; i < siz; i++) dest[i*enb+cnt] = average(ptr,sub+i-num);
-		ptr->now = sub+siz-num;
+	for (Channel *ptr = channel; ptr; ptr = ptr->nxt) enb++;
+	int sub[enb];
+	int num[enb];
+	double dif[enb];
+	Channel *ptr = channel;
+	for (int i = 0; ptr; i++, ptr = ptr->nxt) {
+		sub[i] = location(now,ptr->len,ptr->siz);
+		num[i] = sub[i] - ptr->now;
+		dif[i] = ptr->val[sub[i]]-ptr->sav;
+	}
+	int dst = 0;
+	while (dst < siz) {
+	ptr = channel;
+	for (int i = 0; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
+		int src = dst/enb;
+		if (dst/enb < num[i]) dest[dst++] = ptr->sav+dif[i]*src/num[i];
+		else dest[dst++] = average(ptr,sub[i]+src-num[i]);
+	}}
+	ptr = channel;
+	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt) {
+		ptr->now = sub[i]+siz-num[i];
 		ptr->sav = average(ptr,ptr->now);
 	}
 }
@@ -109,7 +121,7 @@ int callback(const void *inputBuffer, void *outputBuffer,
 	void *userData)
 {
 	Channel *channel = (Channel*)userData;
-	copywave((float*)outputBuffer,channel,framesPerBuffer,Pa_GetStreamTime(channel->str)+channel->gap);
+	copywave((float*)outputBuffer,channel,framesPerBuffer*2,Pa_GetStreamTime(channel->str)+channel->gap);
 	return 0;
 }
 
