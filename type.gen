@@ -143,6 +143,7 @@ Event = {
     {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},
 	{"met","Metric",{["cng"]={["Lines"]=true}},1},
 	{"len","double",{["cng"]={["Linez"]=true}},{}},
+	{"gap","double",{["cng"]={["Linez"]=true}},{}},
 	{"siz","int",{["cng"]={["Linez"]=true}},{}},
 	{"enb","int",{["cng"]={["Linez"]=true}},{}},
 }

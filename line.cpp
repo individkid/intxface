@@ -30,7 +30,7 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double l, int s) : nxt(0), str(0), len(l), gap(0.0), siz(s), now(0), sav(0.0), cnt(s), val(s) {}
+	Channel(double l, int s) : nxt(0), str(0), len(l), gap(0.0), siz(s), now(0), sav(0.0), cnt(s,0), val(s,0.0) {}
 	Channel *nxt;
 	PaStream *str;
 	double len; // how long between callbacks
@@ -75,7 +75,7 @@ double location(double now, double len, int siz)
 float average(Channel *channel, int sub)
 {
 	sub = sub % channel->siz;
-	if (channel->cnt[sub] > 0) {
+	if (channel->cnt[sub] == 0) {
 		channel->val[sub] = channel->val[(sub+channel->siz-1)%channel->siz];
 		return channel->val[sub];
 	}
@@ -168,8 +168,8 @@ int main(int argc, char **argv)
 			Channel *channel = audio[event->chn];
 			double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
 			int sub = location(strtime,channel->len,channel->siz);
-			channel->cnt[sub]++;
 			channel->val[sub] += head.val;
+			channel->cnt[sub]++;
 		}
 		if (timer.find(event->tmr) != timer.end()) {
 			Metric *metric = timer[event->tmr];
@@ -221,9 +221,9 @@ int main(int argc, char **argv)
 	audio[event->idx] = channel = new Channel(event->len,event->siz);
 	if (event->enb!=event->idx) {
 		audio[event->enb] = channel->nxt = new Channel(event->len,event->siz);
-		channel->nxt->gap = channel->gap = channel->len*(1.0-256.0/channel->siz)/2.0;
-		if (Pa_OpenDefaultStream(&channel->str,0,2,
-		paFloat32,44100,256,callback,channel) != paNoError) ERROR(huberr,-1);
+		channel->nxt->gap = channel->gap = event->gap;
+		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
+		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);
 	}
 	break;
