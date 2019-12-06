@@ -96,12 +96,6 @@ float temper(Channel *channel, int lft, int rgt, int sub, int siz)
 	return channel->val[lft]*rat+channel->val[rgt]*(1.0-rat);
 }
 
-/*
-1 1 1 1 0 0 0 0 0 0 1 1
-        w       r   l
-1 1 1 1 0 0 1 1 1 1 1 1
-        w   l   r
-*/
 void copywave(float *dest, Channel *channel, int siz, double now)
 {
 	int enb = 0;
@@ -126,7 +120,7 @@ void copywave(float *dest, Channel *channel, int siz, double now)
 			dest[dst++] = average(ptr,sum);}}}
 	ptr = channel;
 	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt)
-		ptr->sub = modulus(sub[i],siz,ptr->siz);
+		ptr->sub = modulus(sub[i],siz/enb,ptr->siz);
 }
 
 int callback(const void *inputBuffer, void *outputBuffer,
