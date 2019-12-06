@@ -30,14 +30,13 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double l, int s) : nxt(0), str(0), len(l), gap(0.0), siz(s), now(0), sav(0.0), cnt(s,0), val(s,0.0) {}
+	Channel(double l, int s) : nxt(0), str(0), len(l), gap(0.0), siz(s), sub(0), cnt(s,0), val(s,0.0) {}
 	Channel *nxt;
 	PaStream *str;
 	double len; // how long between callbacks
 	double gap; // how long from write to read
 	int siz; // size of circular buffer
-	int now; // index of last read by callback
-	float sav; // last value read by callback
+	int sub; // index of last read by callback
 	std::vector < int > cnt; // denomitor for average
 	std::vector < float > val; // total for average
 };
@@ -86,32 +85,48 @@ float average(Channel *channel, int sub)
 	return retval;
 }
 
+int modulus(int lft, int rgt, int mod)
+{
+	return (lft+rgt)%mod;
+}
+
+float temper(Channel *channel, int lft, int rgt, int sub, int siz)
+{
+	float rat = (float)sub/siz;
+	return channel->val[lft]*rat+channel->val[rgt]*(1.0-rat);
+}
+
+/*
+1 1 1 1 0 0 0 0 0 0 1 1
+        w       r   l
+1 1 1 1 0 0 1 1 1 1 1 1
+        w   l   r
+*/
 void copywave(float *dest, Channel *channel, int siz, double now)
 {
 	int enb = 0;
 	for (Channel *ptr = channel; ptr; ptr = ptr->nxt) enb++;
-	int sub[enb];
-	int num[enb];
-	double dif[enb];
+	int sub[enb]; // location of now
 	Channel *ptr = channel;
-	for (int i = 0; ptr; i++, ptr = ptr->nxt) {
+	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt)
 		sub[i] = location(now,ptr->len,ptr->siz);
-		num[i] = sub[i] - ptr->now;
-		dif[i] = ptr->val[sub[i]]-ptr->sav;
-	}
 	int dst = 0;
 	while (dst < siz) {
 	ptr = channel;
 	for (int i = 0; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
 		int src = dst/enb;
-		if (dst/enb < num[i]) dest[dst++] = ptr->sav+dif[i]*src/num[i];
-		else dest[dst++] = average(ptr,sub[i]+src-num[i]);
-	}}
+		int dif = modulus(sub[i],-ptr->sub,ptr->siz);
+		if (dif < 0) dest[dst++] = ptr->val[ptr->sub];
+		else if (dif > 0) {
+			int bef = modulus(ptr->sub,src,ptr->siz);
+			int sum = modulus(sub[i],src,ptr->siz);
+			dest[dst++] = temper(ptr,bef,sum,src,dif);
+		} else {
+			int sum = modulus(sub[i],src,ptr->siz);
+			dest[dst++] = average(ptr,sum);}}}
 	ptr = channel;
-	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt) {
-		ptr->now = sub[i]+siz-num[i];
-		ptr->sav = average(ptr,ptr->now);
-	}
+	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt)
+		ptr->sub = modulus(sub[i],siz,ptr->siz);
 }
 
 int callback(const void *inputBuffer, void *outputBuffer,
