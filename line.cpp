@@ -116,26 +116,23 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 		} else {
 			// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
 			// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
-			dif[i] = 0; sub[i] = ptr->sub;}
-	}
+			dif[i] = 0; sub[i] = ptr->sub;}}
 	for (dst = 0; dst < siz;) {
 	for (i = 0, ptr = channel; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
+		if (dif[i]) {
 		if (sub[i] == pst[i]) dif[i] = 0;
-		if (ptr->cnt[sub[i]] == 0 && dif[i]) {
+		if (ptr->cnt[sub[i]] == 0) {
 			ptr->val[sub[i]] = ptr->val[pst[i]];
-			ptr->cnt[sub[i]] = ptr->cnt[pst[i]];
-		}
+			ptr->cnt[sub[i]] = ptr->cnt[pst[i]];}}
 		repeat(ptr,sub[i]);
 		ptr->val[sub[i]] = ptr->val[sub[i]]/ptr->cnt[sub[i]];
 		ptr->cnt[sub[i]] = 0;
 		if (dif[i]) {
-			float rat = (float)pre[i]/(float)dif[i];
-			ptr->val[sub[i]] = rat*ptr->val[sub[i]]+(1.0-rat)*ptr->val[pst[i]];
-		}
+			float rat = (float)pre[i]/(float)dif[i]; pre[i]++;
+			ptr->val[sub[i]] = rat*ptr->val[sub[i]]+(1.0-rat)*ptr->val[pst[i]];}
 		if (ptr->val[sub[i]] < -1.0) ptr->val[sub[i]] = -1.0;
 		if (ptr->val[sub[i]] > 1.0) ptr->val[sub[i]] = 1.0;
 		dest[dst++] = ptr->val[sub[i]];
-		if (dif[i]) pre[i]++;
 		sub[i] = modulus(sub[i],1,ptr->siz);}}
 	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
 		ptr->sub = sub[i];}
