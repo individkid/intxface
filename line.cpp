@@ -88,15 +88,18 @@ int modulus(int one, int oth, int siz)
 	return res;
 }
 
-void repeat(Channel *ptr, int sub)
+void normalize(Channel *ptr, int sub)
 {
 	if (ptr->cnt[sub] == 0) {
-		ptr->val[sub] = ptr->val[modulus(sub,ptr->siz-1,ptr->siz)];
-		ptr->cnt[sub] = 1;}
+		int prd = modulus(sub,ptr->siz-1,ptr->siz);
+		ptr->val[sub] = ptr->val[prd];
+		ptr->cnt[sub] = ptr->cnt[prd];
+		if (ptr->cnt[sub] == 0) ptr->cnt[sub] = 1;}
 	ptr->val[sub] = ptr->val[sub]/ptr->cnt[sub];
+	ptr->cnt[sub] = 1;
 }
 
-void copywave(float *dest, Channel *channel, int enb, int siz, double now)
+void copywave(float *dest, Channel *channel, int enb, int siz, double now, float sat)
 {
 	int dif[enb]; int num[enb]; int sub[enb]; int sup[enb]; int i, dst; Channel *ptr;
 	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
@@ -108,12 +111,12 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 			// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r and r
 			dif[i] = modulus(ptr->sub,-gap,ptr->siz);
 			num[i] = 0; sub[i] = gap; sup[i] = ptr->sub;
-			repeat(ptr,sup[i]);
+			normalize(ptr,sup[i]);
 		} else if (between(ptr->sub,min,gap,ptr->siz)) {
 			// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |
 			dif[i] = modulus(gap,-ptr->sub,ptr->siz);
 			num[i] = 0; sub[i] = ptr->sub; sup[i] = gap;
-			repeat(ptr,sup[i]);
+			normalize(ptr,sup[i]);
 		} else {
 			// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
 			// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
@@ -125,14 +128,14 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 		if (ptr->cnt[sub[i]] == 0) {
 			ptr->val[sub[i]] = ptr->val[sup[i]];
 			ptr->cnt[sub[i]] = ptr->cnt[sup[i]];}}
-		repeat(ptr,sub[i]);
-		ptr->cnt[sub[i]] = 0;
+		normalize(ptr,sub[i]);
 		if (dif[i]) {
 			float rat = (float)num[i]/(float)dif[i]; num[i]++;
 			ptr->val[sub[i]] = rat*ptr->val[sub[i]]+(1.0-rat)*ptr->val[sup[i]];}
-		if (ptr->val[sub[i]] < -1.0) ptr->val[sub[i]] = -1.0;
-		if (ptr->val[sub[i]] > 1.0) ptr->val[sub[i]] = 1.0;
-		dest[dst++] = ptr->val[sub[i]];
+		if (ptr->val[sub[i]] < -sat) dest[dst++] = -sat;
+		else if (ptr->val[sub[i]] > sat) dest[dst++] = sat;
+		else dest[dst++] = ptr->val[sub[i]];
+		ptr->cnt[sub[i]] = 0;
 		sub[i] = modulus(sub[i],1,ptr->siz);}}
 	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
 		ptr->sub = sub[i];}
@@ -146,7 +149,7 @@ int callback(const void *inputBuffer, void *outputBuffer,
 {
 	Channel *channel = (Channel*)userData;
 	int enb = 0; for (Channel *ptr = channel; ptr; ptr = ptr->nxt) enb++;
-	copywave((float*)outputBuffer,channel,enb,framesPerBuffer*enb,Pa_GetStreamTime(channel->str)+channel->gap);
+	copywave((float*)outputBuffer,channel,enb,framesPerBuffer*enb,Pa_GetStreamTime(channel->str)+channel->gap,1.0);
 	return 0;
 }
 
@@ -214,7 +217,7 @@ int main(int argc, char **argv)
 			for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
 				if (metric->siz[i] == 0) *(ptr++) = state[metric->idx[i]]->val; else {
 					float val[metric->siz[i]];
-					copywave(val,audio[metric->idx[i]],1,metric->siz[i],nowtime);
+					copywave(val,audio[metric->idx[i]],1,metric->siz[i],nowtime,SATURATE);
 					for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];
 				}
 			}
