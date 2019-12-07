@@ -80,10 +80,8 @@ int between(int bef, int bet, int aft, int siz)
 	return ((aft-bef)*2 < siz);
 }
 
-void copywave(float *dest, Channel *channel, int siz, double now)
+void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 {
-	int enb = 0;
-	for (Channel *ptr = channel; ptr; ptr = ptr->nxt) enb++;
 	int dif[enb];
 	int sub[enb];
 	int pst[enb];
@@ -143,7 +141,9 @@ int callback(const void *inputBuffer, void *outputBuffer,
 	void *userData)
 {
 	Channel *channel = (Channel*)userData;
-	copywave((float*)outputBuffer,channel,framesPerBuffer*2,Pa_GetStreamTime(channel->str)+channel->gap);
+	int enb = 0;
+	for (Channel *ptr = channel; ptr; ptr = ptr->nxt) enb++;
+	copywave((float*)outputBuffer,channel,enb,framesPerBuffer*enb,Pa_GetStreamTime(channel->str)+channel->gap);
 	return 0;
 }
 
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 			for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
 				if (metric->siz[i] == 0) *(ptr++) = state[metric->idx[i]]->val; else {
 					float val[metric->siz[i]];
-					copywave(val,audio[metric->idx[i]],metric->siz[i],nowtime);
+					copywave(val,audio[metric->idx[i]],1,metric->siz[i],nowtime);
 					for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];
 				}
 			}
