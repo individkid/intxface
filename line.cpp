@@ -133,8 +133,7 @@ void copywave(float *dest, Channel *channel, int siz, double now)
 		if (dif[i]) pre[i]++;
 		sub[i] = (sub[i]+1)%ptr->siz;}}
 	ptr = channel;
-	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt)
-		ptr->sub = sub[i];
+	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt) ptr->sub = sub[i];
 }
 
 int callback(const void *inputBuffer, void *outputBuffer,
