@@ -33,8 +33,9 @@ struct Channel {
 	Channel(double l, int s) : nxt(0), str(0), len(l), gap(0.0), siz(s), sub(0), cnt(s,0), val(s,0.0) {}
 	Channel *nxt;
 	PaStream *str;
-	double len; // how long between callbacks
-	double gap; // how long from write to read
+	double len; // how long between buffer wraps
+	int gap; // optimum time from write to read
+	int cdt; // extra time from write to read
 	int siz; // size of circular buffer
 	int sub; // index of last read by callback
 	std::vector < int > cnt; // denomitor for average
@@ -96,31 +97,49 @@ float temper(Channel *channel, int lft, int rgt, int sub, int siz)
 	return channel->val[lft]*rat+channel->val[rgt]*(1.0-rat);
 }
 
+// 1 1 1 < | > 0 0 0 // > between | and 0 // < between | and 1
+int between(int bef, int bet, int aft, int siz)
+{
+	return 0; // TODO
+}
+
 void copywave(float *dest, Channel *channel, int siz, double now)
 {
 	int enb = 0;
 	for (Channel *ptr = channel; ptr; ptr = ptr->nxt) enb++;
-	int sub[enb]; // location of now
+	int loc[enb];
+	int gap[enb];
+	int min[enb];
+	int max[enb];
+	int dif[enb];
+	int cpy[enb];
+	int src[enb];
 	Channel *ptr = channel;
-	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt)
-		sub[i] = location(now,ptr->len,ptr->siz);
+	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt) {
+		loc[i] = location(now,ptr->len,ptr->siz);
+		gap[i] = modulus(loc[i],ptr->gap,ptr->siz);
+		min[i] = modulus(gap[i],-ptr->cdt,ptr->siz);
+		max[i] = modulus(gap[i],ptr->cdt,ptr->siz);
+		if (between(gap[i],max[i],ptr->sub,ptr->siz)) {
+		// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r++ and r++
+		dif[i] = modulus(-gap[i],ptr->sub,ptr->siz); cpy[i] = 1;
+		} else if (between(ptr->sub,min[i],gap[i],ptr->siz)) {
+		// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |++
+		dif[i] = modulus(-ptr->sub,gap[i],ptr->siz); cpy[i] = 0;
+		// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
+		// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
+		} else dif[i] = 0;
+		src[i] = 0;
+	}
 	int dst = 0;
 	while (dst < siz) {
 	ptr = channel;
 	for (int i = 0; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
-		int src = dst/enb;
-		int dif = modulus(sub[i],-ptr->sub,ptr->siz);
-		if (dif < 0) dest[dst++] = ptr->val[ptr->sub];
-		else if (dif > 0) {
-			int bef = modulus(ptr->sub,src,ptr->siz);
-			int sum = modulus(sub[i],src,ptr->siz);
-			dest[dst++] = temper(ptr,bef,sum,src,dif);
-		} else {
-			int sum = modulus(sub[i],src,ptr->siz);
-			dest[dst++] = average(ptr,sum);}}}
+		int sub = modulus(ptr->sub,src[i]++,ptr->siz);
+		dest[dst++] = average(ptr,sub);}}
 	ptr = channel;
 	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt)
-		ptr->sub = modulus(sub[i],siz/enb,ptr->siz);
+		ptr->sub = modulus(ptr->sub,src[i],ptr->siz);
 }
 
 int callback(const void *inputBuffer, void *outputBuffer,
