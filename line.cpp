@@ -64,7 +64,7 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
-double location(double now, double len, int siz)
+int location(double now, double len, int siz)
 {
 	double div = now/len;
 	long long rep = div;
@@ -72,74 +72,69 @@ double location(double now, double len, int siz)
 	return rem*siz;
 }
 
-float average(Channel *channel, int sub)
-{
-	sub = sub % channel->siz;
-	if (channel->cnt[sub] == 0) {
-		channel->val[sub] = channel->val[(sub+channel->siz-1)%channel->siz];
-		return channel->val[sub];
-	}
-	float retval = channel->val[sub]/channel->cnt[sub];
-	channel->cnt[sub] = 0;
-	if (retval < -1.0) return -1.0;
-	if (retval > 1.0) return 1.0;
-	return retval;
-}
-
-int modulus(int lft, int rgt, int mod)
-{
-	return (lft+rgt)%mod;
-}
-
-float temper(Channel *channel, int lft, int rgt, int sub, int siz)
-{
-	float rat = (float)sub/siz;
-	return channel->val[lft]*rat+channel->val[rgt]*(1.0-rat);
-}
-
 // 1 1 1 < | > 0 0 0 // > between | and 0 // < between | and 1
 int between(int bef, int bet, int aft, int siz)
 {
-	return 0; // TODO
+	while (bef > bet) bet += siz;
+	while (bet > aft) aft += siz;
+	return ((aft-bef)*2 < siz);
 }
 
 void copywave(float *dest, Channel *channel, int siz, double now)
 {
 	int enb = 0;
 	for (Channel *ptr = channel; ptr; ptr = ptr->nxt) enb++;
-	int loc[enb];
-	int gap[enb];
-	int min[enb];
-	int max[enb];
 	int dif[enb];
-	int cpy[enb];
-	int src[enb];
+	int sub[enb];
+	int pst[enb];
+	int pre[enb];
 	Channel *ptr = channel;
 	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt) {
-		loc[i] = location(now,ptr->len,ptr->siz);
-		gap[i] = modulus(loc[i],ptr->gap,ptr->siz);
-		min[i] = modulus(gap[i],-ptr->cdt,ptr->siz);
-		max[i] = modulus(gap[i],ptr->cdt,ptr->siz);
-		if (between(gap[i],max[i],ptr->sub,ptr->siz)) {
-		// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r++ and r++
-		dif[i] = modulus(-gap[i],ptr->sub,ptr->siz); cpy[i] = 1;
-		} else if (between(ptr->sub,min[i],gap[i],ptr->siz)) {
-		// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |++
-		dif[i] = modulus(-ptr->sub,gap[i],ptr->siz); cpy[i] = 0;
-		// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
-		// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
-		} else dif[i] = 0;
-		src[i] = 0;
+		int loc = location(now,ptr->len,ptr->siz);
+		int gap = (loc+ptr->gap)%ptr->siz;
+		int min = (gap-ptr->cdt)%ptr->siz;
+		int max = (gap+ptr->cdt)%ptr->siz;
+		if (between(gap,max,ptr->sub,ptr->siz)) {
+			// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r and r
+			dif[i] = (ptr->sub-gap)%ptr->siz; sub[i] = gap; pst[i] = ptr->sub;
+		} else if (between(ptr->sub,min,gap,ptr->siz)) {
+			// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |
+			dif[i] = (gap-ptr->sub)%ptr->siz; sub[i] = ptr->sub; pst[i] = gap;
+		} else {
+			// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
+			// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
+			dif[i] = 0; sub[i] = pst[i] = ptr->sub;}
+		if (dif[i]) pre[i] = 0;
+		if (ptr->cnt[pst[i]] == 0) {
+			ptr->val[pst[i]] = ptr->val[(pst[i]+ptr->siz-1)%ptr->siz];
+			ptr->cnt[pst[i]] = 1;}
 	}
 	int dst = 0;
 	while (dst < siz) {
 	ptr = channel;
 	for (int i = 0; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
-		int sub = modulus(ptr->sub,src[i]++,ptr->siz);
-		dest[dst++] = average(ptr,sub);}}
+		if (sub[i] == pst[i]) dif[i] = 0;
+		if (ptr->cnt[sub[i]] == 0 && dif[i]) {
+			ptr->val[sub[i]] = ptr->val[pst[i]];
+			ptr->cnt[sub[i]] = ptr->cnt[pst[i]];
+		}
+		if (ptr->cnt[sub[i]] == 0) {
+			ptr->val[sub[i]] = ptr->val[(sub[i]+ptr->siz-1)%ptr->siz];
+			ptr->cnt[sub[i]] = 1;}
+		ptr->val[sub[i]] = ptr->val[sub[i]]/ptr->cnt[sub[i]];
+		ptr->cnt[sub[i]] = 0;
+		if (dif[i]) {
+			float rat = (float)pre[i]/(float)dif[i];
+			ptr->val[sub[i]] = rat*ptr->val[sub[i]]+(1.0-rat)*ptr->val[pst[i]];
+		}
+		if (ptr->val[sub[i]] < -1.0) ptr->val[sub[i]] = -1.0;
+		if (ptr->val[sub[i]] > 1.0) ptr->val[sub[i]] = 1.0;
+		dest[dst++] = ptr->val[sub[i]];
+		if (dif[i]) pre[i]++;
+		sub[i] = (sub[i]+1)%ptr->siz;}}
 	ptr = channel;
 	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt)
-		ptr->sub = modulus(ptr->sub,src[i],ptr->siz);
+		ptr->sub = sub[i];
 }
 
 int callback(const void *inputBuffer, void *outputBuffer,
