@@ -16,6 +16,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
+-- TODO recurse before free or realloc in allocStruct
+
 function showBool(bool)
 	local str = ""
 	if bool then str = "true" else str = "false" end

@@ -53,6 +53,7 @@ std::map < int, Event* > state;
 std::map < double, Update > change;
 std::map < double, int > sample;
 jmp_buf errbuf = {0};
+int numbug = 0;
 
 void huberr(const char *str, int num, int arg)
 {
@@ -111,12 +112,12 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now, float
 			// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r and r
 			dif[i] = modulus(ptr->sub,-gap,ptr->siz);
 			num[i] = 0; sub[i] = gap; sup[i] = ptr->sub;
-			normalize(ptr,sup[i]);
+			normalize(ptr,sup[i]); numbug++;
 		} else if (between(ptr->sub,min,gap,ptr->siz)) {
 			// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |
 			dif[i] = modulus(gap,-ptr->sub,ptr->siz);
 			num[i] = 0; sub[i] = ptr->sub; sup[i] = gap;
-			normalize(ptr,sup[i]);
+			normalize(ptr,sup[i]); numbug++;
 		} else {
 			// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
 			// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
@@ -221,6 +222,8 @@ int main(int argc, char **argv)
 					for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];
 				}
 			}
+			writeMetric(metric,hub);
+			allocMetric(&metric,0);
 		}
 	}
 	while (!sample.empty() && (*sample.begin()).first <= nowtime) {
@@ -251,13 +254,17 @@ int main(int argc, char **argv)
 	state[event->idx]->val = event->val;
 	break;
 	case (Start):
+	// TODO handle remove from sample
 	sample[nowtime] = event->idx;
 	break;
 	case (Lines):
+	// TODO allow repeated metric write from timer
+	// TODO handle metric->wavebuf, waveval->stateval, as well as metric->wavebuf
 	timer[event->idx] = event->met;
 	event->met = 0;
 	break;
 	case (Linez):
+	// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
 	audio[event->idx] = channel = new Channel(event->len,event->siz);
 	if (event->enb!=event->idx) {
 		audio[event->enb] = channel->nxt = new Channel(event->len,event->siz);
