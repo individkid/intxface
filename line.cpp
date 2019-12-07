@@ -93,6 +93,7 @@ void repeat(Channel *ptr, int sub)
 	if (ptr->cnt[sub] == 0) {
 		ptr->val[sub] = ptr->val[modulus(sub,ptr->siz-1,ptr->siz)];
 		ptr->cnt[sub] = 1;}
+	ptr->val[sub] = ptr->val[sub]/ptr->cnt[sub];
 }
 
 void copywave(float *dest, Channel *channel, int enb, int siz, double now)
@@ -125,7 +126,6 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 			ptr->val[sub[i]] = ptr->val[sup[i]];
 			ptr->cnt[sub[i]] = ptr->cnt[sup[i]];}}
 		repeat(ptr,sub[i]);
-		ptr->val[sub[i]] = ptr->val[sub[i]]/ptr->cnt[sub[i]];
 		ptr->cnt[sub[i]] = 0;
 		if (dif[i]) {
 			float rat = (float)num[i]/(float)dif[i]; num[i]++;
