@@ -97,7 +97,7 @@ void repeat(Channel *ptr, int sub)
 
 void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 {
-	int dif[enb]; int sub[enb]; int pst[enb]; int pre[enb]; int i, dst; Channel *ptr;
+	int dif[enb]; int num[enb]; int sub[enb]; int sup[enb]; int i, dst; Channel *ptr;
 	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
 		int loc = location(now,ptr->len,ptr->siz);
 		int gap = modulus(loc,ptr->gap,ptr->siz);
@@ -106,13 +106,13 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 		if (between(gap,max,ptr->sub,ptr->siz)) {
 			// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r and r
 			dif[i] = modulus(ptr->sub,-gap,ptr->siz);
-			pre[i] = 0; sub[i] = gap; pst[i] = ptr->sub;
-			repeat(ptr,pst[i]);
+			num[i] = 0; sub[i] = gap; sup[i] = ptr->sub;
+			repeat(ptr,sup[i]);
 		} else if (between(ptr->sub,min,gap,ptr->siz)) {
 			// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |
 			dif[i] = modulus(gap,-ptr->sub,ptr->siz);
-			pre[i] = 0; sub[i] = ptr->sub; pst[i] = gap;
-			repeat(ptr,pst[i]);
+			num[i] = 0; sub[i] = ptr->sub; sup[i] = gap;
+			repeat(ptr,sup[i]);
 		} else {
 			// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
 			// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
@@ -120,16 +120,16 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 	for (dst = 0; dst < siz;) {
 	for (i = 0, ptr = channel; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
 		if (dif[i]) {
-		if (sub[i] == pst[i]) dif[i] = 0;
+		if (sub[i] == sup[i]) dif[i] = 0;
 		if (ptr->cnt[sub[i]] == 0) {
-			ptr->val[sub[i]] = ptr->val[pst[i]];
-			ptr->cnt[sub[i]] = ptr->cnt[pst[i]];}}
+			ptr->val[sub[i]] = ptr->val[sup[i]];
+			ptr->cnt[sub[i]] = ptr->cnt[sup[i]];}}
 		repeat(ptr,sub[i]);
 		ptr->val[sub[i]] = ptr->val[sub[i]]/ptr->cnt[sub[i]];
 		ptr->cnt[sub[i]] = 0;
 		if (dif[i]) {
-			float rat = (float)pre[i]/(float)dif[i]; pre[i]++;
-			ptr->val[sub[i]] = rat*ptr->val[sub[i]]+(1.0-rat)*ptr->val[pst[i]];}
+			float rat = (float)num[i]/(float)dif[i]; num[i]++;
+			ptr->val[sub[i]] = rat*ptr->val[sub[i]]+(1.0-rat)*ptr->val[sup[i]];}
 		if (ptr->val[sub[i]] < -1.0) ptr->val[sub[i]] = -1.0;
 		if (ptr->val[sub[i]] > 1.0) ptr->val[sub[i]] = 1.0;
 		dest[dst++] = ptr->val[sub[i]];
