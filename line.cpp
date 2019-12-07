@@ -88,6 +88,13 @@ int modulus(int one, int oth, int siz)
 	return res;
 }
 
+void repeat(Channel *ptr, int sub)
+{
+	if (ptr->cnt[sub] == 0) {
+		ptr->val[sub] = ptr->val[modulus(sub,ptr->siz-1,ptr->siz)];
+		ptr->cnt[sub] = 1;}
+}
+
 void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 {
 	int dif[enb]; int sub[enb]; int pst[enb]; int pre[enb]; int i, dst; Channel *ptr;
@@ -98,18 +105,18 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 		int max = modulus(gap,ptr->cdt,ptr->siz);
 		if (between(gap,max,ptr->sub,ptr->siz)) {
 			// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r and r
-			dif[i] = modulus(ptr->sub,-gap,ptr->siz); sub[i] = gap; pst[i] = ptr->sub;
+			dif[i] = modulus(ptr->sub,-gap,ptr->siz);
+			pre[i] = 0; sub[i] = gap; pst[i] = ptr->sub;
+			repeat(ptr,pst[i]);
 		} else if (between(ptr->sub,min,gap,ptr->siz)) {
 			// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |
-			dif[i] = modulus(gap,-ptr->sub,ptr->siz); sub[i] = ptr->sub; pst[i] = gap;
+			dif[i] = modulus(gap,-ptr->sub,ptr->siz);
+			pre[i] = 0; sub[i] = ptr->sub; pst[i] = gap;
+			repeat(ptr,pst[i]);
 		} else {
 			// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
 			// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
-			dif[i] = 0; sub[i] = pst[i] = ptr->sub;}
-		if (dif[i]) pre[i] = 0;
-		if (ptr->cnt[pst[i]] == 0) {
-			ptr->val[pst[i]] = ptr->val[modulus(pst[i],ptr->siz-1,ptr->siz)];
-			ptr->cnt[pst[i]] = 1;}
+			dif[i] = 0; sub[i] = ptr->sub;}
 	}
 	for (dst = 0; dst < siz;) {
 	for (i = 0, ptr = channel; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
@@ -118,9 +125,7 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now)
 			ptr->val[sub[i]] = ptr->val[pst[i]];
 			ptr->cnt[sub[i]] = ptr->cnt[pst[i]];
 		}
-		if (ptr->cnt[sub[i]] == 0) {
-			ptr->val[sub[i]] = ptr->val[modulus(sub[i],ptr->siz-1,ptr->siz)];
-			ptr->cnt[sub[i]] = 1;}
+		repeat(ptr,sub[i]);
 		ptr->val[sub[i]] = ptr->val[sub[i]]/ptr->cnt[sub[i]];
 		ptr->cnt[sub[i]] = 0;
 		if (dif[i]) {
