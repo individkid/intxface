@@ -42,16 +42,20 @@ struct Channel {
 	std::vector < float > val; // total for average
 };
 struct Update {
-	Update() {}
-	Update(int i, double v) : idx(i), val(v) {}
-	int idx; // state to update
+	Update() : flw(Flows) {}
+	Update(int i) : flw(Sched), idx(i) {}
+	Update(int i, double v) : flw(Back), idx(i), val(v) {}
+	Update(Flow f, int i, double v) : flw(f), idx(i), val(v) {}
+	Update(Flow f, int i, int j, double v) : flw(f), idx(i), oth(j), val(v) {}
+	Flow flw; // kind of index
+	int idx; // index of originator
+	int oth; // index for transfer
 	double val; // value for update
 };
-std::map < int, Metric* > timer;
-std::map < int, Channel* > audio;
 std::map < int, Event* > state;
 std::map < double, Update > change;
-std::map < double, int > sample;
+std::map < int, Metric* > timer;
+std::map < int, Channel* > audio;
 jmp_buf errbuf = {0};
 int numbug = 0;
 
@@ -201,69 +205,62 @@ int main(int argc, char **argv)
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	double nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
 	while (!change.empty() && (*change.begin()).first <= nowtime) {
-		Update head = (*change.begin()).second;
-		Event *event = state[head.idx];
+		Update *head = &(*change.begin()).second;
 		change.erase(change.begin());
-		event->val = head.val;
-		if (audio.find(event->chn) != audio.end()) {
-			Channel *channel = audio[event->chn];
+		switch (head->flw) {
+		case (Sched): {
+			Event *event = state[head->idx];
+			double upd = evaluate(&event->upd);
+			double dly = evaluate(&event->dly);
+			double sch = evaluate(&event->sch);
+			change[nowtime+dly] = Update(event->idx,upd); // TODO optional
+			change[nowtime+sch] = Update(event->idx); // TODO optional
+			break;}
+		case (Back): {
+			Event *event = state[head->idx];
+			event->val = head->val;
+			break;}
+		case (Peek): {
+			break;}
+		case (Poke): {
+			Channel *channel = audio[head->idx];
 			double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
 			int sub = location(strtime,channel->len,channel->siz);
-			channel->val[sub] += head.val;
+			channel->val[sub] += head->val;
 			channel->cnt[sub]++;
-		}
-		if (timer.find(event->tmr) != timer.end()) {
-			Metric *metric = timer[event->tmr];
+			break;}
+		case (Store): {
+			Metric *metric = timer[head->idx];
 			double *ptr = metric->val;
 			for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
 				if (metric->siz[i] == 0) *(ptr++) = state[metric->idx[i]]->val; else {
 					float val[metric->siz[i]];
 					copywave(val,audio[metric->idx[i]],1,metric->siz[i],nowtime,SATURATE);
-					for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];
-				}
-			}
+					for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];}}
 			writeMetric(metric,hub);
 			allocMetric(&metric,0);
-		}
-	}
-	while (!sample.empty() && (*sample.begin()).first <= nowtime) {
-		int head = (*sample.begin()).second;
-		Event *event = state[head];
-		sample.erase(sample.begin());
-		double upd = evaluate(&event->upd);
-		double dly = evaluate(&event->dly);
-		double sch = evaluate(&event->sch);
-		change[nowtime+dly] = Update(event->idx,upd);
-		sample[nowtime+sch] = event->idx;
-	}
+			break;}
+		case (Load): {
+			break;}
+		default: ERROR(huberr,-1);}}
 	int sub = -1;
-	if (change.empty() && sample.empty()) sub = waitAny();
-	else if (change.empty()) sub = pauseAny((*sample.begin()).first-nowtime);
-	else if (sample.empty()) sub = pauseAny((*change.begin()).first-nowtime);
-	else if ((*sample.begin()).first < (*change.begin()).first)
-	sub = pauseAny((*sample.begin()).first-nowtime);
+	if (change.empty()) sub = waitAny();
 	else sub = pauseAny((*change.begin()).first-nowtime);
 	if (sub < 0) continue;
 	readEvent(event,sub);
 	switch (event->cng) {
-	case (Stock):
+	case (State):
 	state[event->idx] = event;
 	allocEvent(&event,1);
 	break;
-	case (Flow):
-	state[event->idx]->val = event->val;
+	case (Change):
+	change[event->key] = Update(event->flw,event->idx,event->oth,event->val);
 	break;
-	case (Start):
-	// TODO handle remove from sample
-	sample[nowtime] = event->idx;
-	break;
-	case (Lines):
-	// TODO allow repeated metric write from timer
-	// TODO handle metric->wavebuf, waveval->stateval, as well as metric->wavebuf
+	case (Timer):
 	timer[event->idx] = event->met;
 	event->met = 0;
 	break;
-	case (Linez):
+	case (Audio):
 	// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
 	audio[event->idx] = channel = new Channel(event->len,event->siz);
 	if (event->enb!=event->idx) {
@@ -271,8 +268,7 @@ int main(int argc, char **argv)
 		channel->nxt->gap = channel->gap = event->gap;
 		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
-		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);
-	}
+		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
 	break;
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);

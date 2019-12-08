@@ -37,12 +37,19 @@ Opcode = {
 	"Compose",
 	"Apply",
 }
-Change = {
-	"Stock",
-	"Flow",
-	"Start",
-	"Lines",
-	"Linez",
+Stock = {
+	"State",
+	"Change",
+	"Timer",
+	"Audio",
+}
+Flow = {
+	"Sched",
+	"Back",
+	"Peek",
+	"Poke",
+	"Store",
+	"Load",
 }
 Source = {
 	"Line",
@@ -127,25 +134,28 @@ Nomial = {
 	{"trm2","Term2",{},"num2"},
 	{"num3","int",{},{}},
 	{"trm3","Term3",{},"num3"},
+	{"numw","int",{},{}},
+	{"trmw","Term1",{},"numw"},
 }
 Ratio = {
 	{"num","Nomial",{},{}},
 	{"den","Nomial",{},{}},
 }
 Event = {
-	{"cng","Change",{},{}},
+	{"cng","Stock",{},{}},
 	{"idx","int",{},{}},
-	{"val","double",{["cng"]={["Stock"]=true,["Flow"]=true}},{}},
-	{"tmr","int",{["cng"]={["Stock"]=true}},{}},
-	{"chn","int",{["cng"]={["Stock"]=true}},{}},
-    {"upd","Ratio",{["cng"]={["Stock"]=true}},{}},
-    {"dly","Ratio",{["cng"]={["Stock"]=true}},{}},
-    {"sch","Ratio",{["cng"]={["Stock"]=true}},{}},
-	{"met","Metric",{["cng"]={["Lines"]=true}},1},
-	{"len","double",{["cng"]={["Linez"]=true}},{}},
-	{"gap","double",{["cng"]={["Linez"]=true}},{}},
-	{"siz","int",{["cng"]={["Linez"]=true}},{}},
-	{"enb","int",{["cng"]={["Linez"]=true}},{}},
+	{"flw","Flow",{["cng"]={["State"]=true,["Change"]=true}},{}},
+	{"oth","int",{["cng"]={["State"]=true,["Change"]=true}},{}},
+	{"val","double",{["cng"]={["State"]=true,["Change"]=true}},{}},
+    {"upd","Ratio",{["cng"]={["State"]=true}},{}},
+    {"dly","Ratio",{["cng"]={["State"]=true}},{}},
+    {"sch","Ratio",{["cng"]={["State"]=true}},{}},
+	{"key","double",{["cng"]={["Change"]=true}},{}},
+	{"met","Metric",{["cng"]={["Timer"]=true}},1},
+	{"len","double",{["cng"]={["Audio"]=true}},{}},
+	{"gap","double",{["cng"]={["Audio"]=true}},{}},
+	{"siz","int",{["cng"]={["Audio"]=true}},{}},
+	{"enb","int",{["cng"]={["Audio"]=true}},{}},
 }
 Metric = {
 	{"src","Source",{},{}},
@@ -158,7 +168,7 @@ Metric = {
 Client = {
 	{"mem","Memory",{},{}},
 }
-State = {
+Spec = {
 	{"cfg","Config",{},{}},
 }
 --HERE

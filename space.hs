@@ -29,10 +29,10 @@ mainF :: [String] -> IO ()
 mainF [a,b,c] = do
  putStrLn (show (boolToSide False))
  idx <- pipeInit a b
- state <- readState idx
- mainG state
+ spec <- readSpec idx
+ mainG spec
 mainF _ = undefined
 
-mainG :: State -> IO ()
+mainG :: Spec -> IO ()
 mainG _ = undefined
 
