@@ -503,7 +503,7 @@ function showStreamCF(name,field,lim)
 	else
 		result = result..name
 	end
-	result = result.."("..cast.."&ptr->"..field..","..lim..");\n"
+	result = result.."("..cast.."&ptr->"..field..","..lim..");"
 	return result
 end
 function showStreamC(name,struct,show,pre,post)
@@ -523,7 +523,8 @@ function showStreamC(name,struct,show,pre,post)
 		local sub = nil
 		local lim = nil
 		local ebr = ""
-		if (show~=showFreeCF) or (Structz[v[2]]~=nil) then
+		if (show~=showFreeCF) or (Structz[v[2]]~=nil) or
+			(type(v[4]) == "number") or (type(v[4]) == "string") then
 		if (cond ~= "1") then
 			result = result..showIndent(depth)
 			result = result.."if "..cond.." {".."\n"
@@ -551,7 +552,7 @@ function showStreamC(name,struct,show,pre,post)
 		if lim then
 			if (show == showReadCF) or (show == showRandCF) then
 				result = result..showIndent(depth)
-				result = result..showStreamCF(v[2],v[1],lim)
+				result = result..showStreamCF(v[2],v[1],lim).."\n"
 			end
 			result = result..showIndent(depth)
 			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
@@ -701,6 +702,11 @@ function showFreeCF(v,ebr,sub)
 			result = result.."{void *tmp = ptr->"..v[1].."; allocVoid(&tmp,0,0); ptr->"..v[1].." = tmp;}"
 		end
 		result = result..ebr.."\n"
+	elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
+		result = result..showStreamCF(v[2],v[1],0)
+		result = result..ebr.."\n"
+	else
+		result = result..ebr.." // "..showAny(v).."\n"
 	end
 	return result
 end
@@ -731,7 +737,7 @@ function showRandCF(v,ebr,sub)
 	elseif (Structz[v[2]]~=nil) then
 		result = result.."rand"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
 	else
-		result = result..ebr.."; // "..showAny(v).."\n"
+		result = result..ebr.." // "..showAny(v).."\n"
 	end
 	return result
 end
