@@ -16,8 +16,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
--- TODO recurse before free or realloc in allocStruct
-
 function showBool(bool)
 	local str = ""
 	if bool then str = "true" else str = "false" end
@@ -525,6 +523,7 @@ function showStreamC(name,struct,show,pre,post)
 		local sub = nil
 		local lim = nil
 		local ebr = ""
+		if (show~=showFreeCF) or (Structz[v[2]]~=nil) then
 		if (cond ~= "1") then
 			result = result..showIndent(depth)
 			result = result.."if "..cond.." {".."\n"
@@ -564,6 +563,7 @@ function showStreamC(name,struct,show,pre,post)
 			result = result..ebr.."// "..showAny(v).."\n"
 		else
 			result = result..show(v,ebr,sub)
+		end
 		end
 	end
 	if (show == showCompCF) then
@@ -625,54 +625,80 @@ function showWriteC(name,struct)
 end
 function showAllocC(name,typ)
 	result = ""
-	local qualify = showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-	qualify = qualify..showIndent(1).."if (siz == 0) return;\n"
-	if (name == "Str") then
+	if (name == "Void") then
+		result = result.."void allocVoid(void **ptr, int num, int siz)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."int *tmp = *ptr; if (tmp!=0) tmp -= 2;\n"
+		result = result..showIndent(1).."if (tmp && num==0) {free(tmp); *ptr = 0; return;}\n"
+		result = result..showIndent(1).."tmp = realloc(tmp,num*siz+2*sizeof(int));\n"
+		result = result..showIndent(1).."*(tmp++) = num; *(tmp++) = siz; *ptr = tmp;\n"
+		result = result.."}\n" end
+		result = result.."void *checkVoid(void *ptr, int sub)"
+		if prototype then return result..";" else result = result.."\n{\n" end
+		result = result..showIndent(1).."int *tmp = ptr;\n"
+		result = result..showIndent(1).."if (tmp==0) return 0;\n"
+		result = result..showIndent(1).."int num = *(tmp++);\n"
+		result = result..showIndent(1).."int siz = *(tmp++);\n"
+		result = result..showIndent(1).."if (sub < 0 || sub >= num) return 0;\n"
+		result = result..showIndent(1).."return (void*)((char*)ptr+sub*siz);\n"
+		result = result.."}"
+	elseif (name == "Str") then
 		result = result.."void allocStr(char **ptr, const char *str)"
-		if prototype then
-		result = result..";\n"
-		else
-		result = result.."\n{\n"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
 		result = result..showIndent(1).."if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"
 		result = result..showIndent(1).."if (str == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
-		result = result.."}\n"
-		end
+		result = result.."}\n" end
 		result = result.."void callStr(const char* str, int trm, void*arg)"
-		if prototype then return result..";" end
-		result = result.."\n{\n"
+		if prototype then return result..";" else result = result.."\n{\n" end
 		result = result..showIndent(1).."char **ptr = arg;\n"
 		result = result..showIndent(1).."allocStr(ptr,str);\n"
 		result = result.."}"
 	elseif (name == "Ptr") then
 		result = result.."void allocPtr(void ***ptr, int siz)"
-		if prototype then return result..";" end
-		result = result.."\n{\n"..qualify
+		if prototype then return result..";" else result = result.."\n{\n" end
+		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (siz == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(void*));\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
 		result = result.."}"
 	elseif (Enumz[name] ~= nil) then
 		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
-		if prototype then return result..";" end
-		result = result.."\n{\n"..qualify
+		if prototype then return result..";" else result = result.."\n{\n" end
+		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (siz == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
 		result = result.."}"
 	elseif (Structz[name] ~= nil) then
 		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
-		if prototype then return result..";" end
-		result = result.."\n{\n"..qualify
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++) {\n"
-		result = result..showIndent(2).."struct "..name.." init = {0};\n"
-		result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));}\n"
+		if prototype then return result..";" else result = result.."\n{\n" end
+		result = result..showIndent(1).."if (*ptr) for (int i = 0; checkVoid(*ptr,i); i++) free"..name.."(&(*ptr)[i]);\n"
+		result = result..showIndent(1).."if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,0); *ptr = tmp;}\n"
+		result = result..showIndent(1).."if (siz == 0) return;\n"
+		result = result..showIndent(1).."void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(struct "..name..")); *ptr = tmp;\n"
+		result = result..showIndent(1).."struct "..name.." init = {0};\n"
+		result = result..showIndent(1).."for (int i = 0; i < siz; i++)\n"
+		result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));\n"
 		result = result.."}"
 	else
 		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)"
-		if prototype then return result..";" end
-		result = result.."\n{\n"..qualify
+		if prototype then return result..";" else result = result.."\n{\n" end
+		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (siz == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof("..typ.."));\n"
 		result = result.."}"
+	end
+	return result
+end
+function showFreeCF(v,ebr,sub)
+	result = ""
+	if (Structz[v[2]]~=nil) then
+		result = result.."free"..v[2].."(&ptr->"..v[1]..sub..");"
+		if (type(v[4]) == "number") or (type(v[4]) == "string") then
+			result = result.." {void *tmp = ptr->"..v[1].."; allocVoid(&tmp,0,0); ptr->"..v[1].." = tmp;}"
+		end
+		result = result..ebr.."\n"
 	end
 	return result
 end
@@ -735,6 +761,9 @@ function showSizeCF(v,ebr,sub)
 		result = result..ebr.."; // "..showAny(v).."\n"
 	end
 	return result
+end
+function showFreeC(name,struct)
+	return showStreamC(name,struct,showFreeCF,"void free","")
 end
 function showRandC(name,struct)
 	return showStreamC(name,struct,showRandCF,"void rand","")
@@ -1510,11 +1539,12 @@ function showShareC()
 	result = result..showAllocC("Old","float").."\n"
 	result = result..showAllocC("Str","char*").."\n"
 	result = result..showAllocC("Ptr","char*").."\n"
+	result = result..showAllocC("Void","void*").."\n"
 	return result
 end
 function showFuncC()
 	local result = ""
-	-- result = desult..showSpoofC().."\n"
+	result = result..showCall(Structs,Structz,showFreeC).."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"
 	result = result..showCall(Structs,Structz,showWriteC).."\n"

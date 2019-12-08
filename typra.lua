@@ -375,12 +375,13 @@ Expected = {
 	"}",
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (*ptr) for (int i = 0; checkVoid(*ptr,i); i++) freeStruct1(&(*ptr)[i]);\n"..
+	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,0); *ptr = tmp;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
-	"    for (int i = 0; i < siz; i++) {\n"..
-	"        struct Struct1 init = {0};\n"..
-	"        memcpy(&(*ptr)[i],&init,sizeof(init));}\n"..
+	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(struct Struct1)); *ptr = tmp;\n"..
+	"    struct Struct1 init = {0};\n"..
+	"    for (int i = 0; i < siz; i++)\n"..
+	"        memcpy(&(*ptr)[i],&init,sizeof(init));\n"..
 	"}",
 	"void allocInt(int **ptr, int siz)\n"..
 	"{\n"..
