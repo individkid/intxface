@@ -694,9 +694,11 @@ end
 function showFreeCF(v,ebr,sub)
 	result = ""
 	if (Structz[v[2]]~=nil) then
+		local depth = 1; while (string.sub(ebr,depth,1) == "}") do depth = depth + 1 end
 		result = result.."free"..v[2].."(&ptr->"..v[1]..sub..");"
 		if (type(v[4]) == "number") or (type(v[4]) == "string") then
-			result = result.." {void *tmp = ptr->"..v[1].."; allocVoid(&tmp,0,0); ptr->"..v[1].." = tmp;}"
+			result = result.."\n"..showIndent(depth)
+			result = result.."{void *tmp = ptr->"..v[1].."; allocVoid(&tmp,0,0); ptr->"..v[1].." = tmp;}"
 		end
 		result = result..ebr.."\n"
 	end
