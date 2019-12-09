@@ -297,11 +297,11 @@ int main(int argc, char **argv)
 		// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
 		audio[event->idx] = channel = new Channel(event->len,event->siz);
 		if (event->enb!=event->idx) {
-			audio[event->enb] = channel->nxt = new Channel(event->len,event->siz);
-			channel->nxt->gap = channel->gap = event->gap;
-			if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
-			paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
-			if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
+		audio[event->enb] = channel->nxt = new Channel(event->len,event->siz);
+		channel->nxt->gap = channel->gap = event->gap;
+		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
+		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
+		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
 		break;
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
