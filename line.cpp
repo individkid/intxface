@@ -30,13 +30,13 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double l, int s) : nxt(0), str(0), len(l), gap(0.0), siz(s), sub(0), cnt(s,0), val(s,0.0) {}
+	Channel(double w, int l) : nxt(0), str(0), wrp(w), gap(0.0), len(l), sub(0), cnt(l,0), val(l,0.0) {}
 	Channel *nxt;
 	PaStream *str;
-	double len; // how long between buffer wraps
+	double wrp; // how long between buffer wraps
 	int gap; // optimum time from write to read
 	int cdt; // extra time from write to read
-	int siz; // size of circular buffer
+	int len; // size of circular buffer
 	int sub; // index of last read by callback
 	std::vector < int > cnt; // denomitor for average
 	std::vector < float > val; // total for average
@@ -97,34 +97,34 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
-int location(double now, double len, int siz)
+int location(double now, double wrp, int len)
 {
-	double div = now/len;
+	double div = now/wrp;
 	long long rep = div;
 	double rem = div-rep;
-	return rem*siz;
+	return rem*len;
 }
 
 // 1 1 1 < | > 0 0 0 // > between | and 0 // < between | and 1
-int between(int bef, int bet, int aft, int siz)
+int between(int bef, int bet, int aft, int len)
 {
-	while (bef > bet) bet += siz;
-	while (bet > aft) aft += siz;
-	return ((aft-bef)*2 < siz);
+	while (bef > bet) bet += len;
+	while (bet > aft) aft += len;
+	return ((aft-bef)*2 < len);
 }
 
-int modulus(int one, int oth, int siz)
+int modulus(int one, int oth, int len)
 {
 	int res = one+oth;
-	while (res < 0) res += siz;
-	while (res >= siz) res -= siz;
+	while (res < 0) res += len;
+	while (res >= len) res -= len;
 	return res;
 }
 
 void normalize(Channel *ptr, int sub)
 {
 	if (ptr->cnt[sub] == 0) {
-		int prd = modulus(sub,ptr->siz-1,ptr->siz);
+		int prd = modulus(sub,ptr->len-1,ptr->len);
 		ptr->val[sub] = ptr->val[prd];
 		ptr->cnt[sub] = ptr->cnt[prd];
 		if (ptr->cnt[sub] == 0) ptr->cnt[sub] = 1;}
@@ -136,18 +136,18 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now, float
 {
 	int dif[enb]; int num[enb]; int sub[enb]; int sup[enb]; int i, dst; Channel *ptr;
 	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
-		int loc = location(now,ptr->len,ptr->siz);
-		int gap = modulus(loc,ptr->gap,ptr->siz);
-		int min = modulus(gap,-ptr->cdt,ptr->siz);
-		int max = modulus(gap,ptr->cdt,ptr->siz);
-		if (between(gap,max,ptr->sub,ptr->siz)) {
+		int loc = location(now,ptr->wrp,ptr->len);
+		int gap = modulus(loc,ptr->gap,ptr->len);
+		int min = modulus(gap,-ptr->cdt,ptr->len);
+		int max = modulus(gap,ptr->cdt,ptr->len);
+		if (between(gap,max,ptr->sub,ptr->len)) {
 			// 1 1 w 0 0 < 0 0 | 0 0 > r 1 // temper between |++=r and r
-			dif[i] = modulus(ptr->sub,-gap,ptr->siz);
+			dif[i] = modulus(ptr->sub,-gap,ptr->len);
 			num[i] = 0; sub[i] = gap; sup[i] = ptr->sub;
 			normalize(ptr,sup[i]); numbug++;
-		} else if (between(ptr->sub,min,gap,ptr->siz)) {
+		} else if (between(ptr->sub,min,gap,ptr->len)) {
 			// 1 1 w 0 r < 1 1 | 1 1 > 1 1 // temper between r++ and |
-			dif[i] = modulus(gap,-ptr->sub,ptr->siz);
+			dif[i] = modulus(gap,-ptr->sub,ptr->len);
 			num[i] = 0; sub[i] = ptr->sub; sup[i] = gap;
 			normalize(ptr,sup[i]); numbug++;
 		} else {
@@ -169,7 +169,7 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now, float
 		else if (ptr->val[sub[i]] > sat) dest[dst++] = sat;
 		else dest[dst++] = ptr->val[sub[i]];
 		ptr->cnt[sub[i]] = 0;
-		sub[i] = modulus(sub[i],1,ptr->siz);}}
+		sub[i] = modulus(sub[i],1,ptr->len);}}
 	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
 		ptr->sub = sub[i];}
 }
@@ -251,14 +251,19 @@ int main(int argc, char **argv)
 		event->val = head->val;
 		break;}
 	case (Peek): {
-		// TODO single value from wave to event->val
+		Channel *channel = audio[head->oth];
+		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
+		int loc = location(strtime,channel->wrp,channel->len);
+		int gap = modulus(loc,channel->gap,channel->len);
+		if (channel->cnt[gap] == 0) event->val = channel->val[gap];
+		else event->val = channel->val[gap]/channel->cnt[gap];
 		alloc(sch);
 		break;}
 	case (Poke): {
 		double upd = evaluate(&event->upd);
 		Channel *channel = audio[head->oth];
 		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
-		int sub = location(strtime,channel->len,channel->siz);
+		int sub = location(strtime,channel->wrp,channel->len);
 		channel->val[sub] += upd;
 		channel->cnt[sub]++;
 		alloc(sch);
@@ -267,16 +272,24 @@ int main(int argc, char **argv)
 		Metric *metric = timer[head->oth];
 		double *ptr = metric->val;
 		for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
-		if (metric->siz[i] == 0) *(ptr++) = state[metric->idx[i]]->val; else {
+		if (metric->siz[i] == 0)
+		*(ptr++) = state[metric->idx[i]]->val; else {
 		float val[metric->siz[i]];
 		copywave(val,audio[metric->idx[i]],1,metric->siz[i],nowtime,SATURATE);
-		for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];}}
+		for (int j = 0; j < metric->siz[i]; j++)
+		*(ptr++) = val[j];}}
 		writeMetric(metric,hub);
 		allocMetric(&metric,0);
 		timer.erase(timer.find(head->oth));
 		break;}
 	case (Load): {
-		// TODO write block of data to wave
+		Channel *channel = audio[head->oth];
+		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
+		int sub = location(strtime,channel->wrp,channel->len);
+		for (int i = 0; i < event->siz; i++) {
+		channel->val[sub] += event->buf[i];
+		channel->cnt[sub]++;
+		sub = modulus(sub,1,channel->len);}
 		break;}
 	case (Flows): break;
 	default: ERROR(huberr,-1);}}
@@ -299,9 +312,9 @@ int main(int argc, char **argv)
 		break;
 	case (Audio):
 		// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
-		audio[event->idx] = channel = new Channel(event->len,event->siz);
+		audio[event->idx] = channel = new Channel(event->wrp,event->len);
 		if (event->enb!=event->idx) {
-		audio[event->enb] = channel->nxt = new Channel(event->len,event->siz);
+		audio[event->enb] = channel->nxt = new Channel(event->wrp,event->len);
 		channel->nxt->gap = channel->gap = event->gap;
 		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
