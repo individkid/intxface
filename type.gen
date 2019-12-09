@@ -144,9 +144,9 @@ Ratio = {
 Event = {
 	{"cng","Stock",{},{}},
 	{"idx","int",{},{}},
-	{"flw","Flow",{["cng"]={["State"]=true,["Change"]=true}},{}},
-	{"oth","int",{["cng"]={["State"]=true,["Change"]=true}},{}},
-	{"val","double",{["cng"]={["State"]=true,["Change"]=true}},{}},
+	{"flw","Flow",{},{}},
+	{"oth","int",{},{}},
+	{"val","double",{},{}},
     {"upd","Ratio",{["cng"]={["State"]=true}},{}},
     {"dly","Ratio",{["cng"]={["State"]=true}},{}},
     {"sch","Ratio",{["cng"]={["State"]=true}},{}},

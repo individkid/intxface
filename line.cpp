@@ -86,7 +86,7 @@ Update *Update::dealloc(double k)
 	Update *ptr = (*change.begin()).second;
 	if (ptr->nxt == 0) change.erase(change.begin());
 	else (*change.begin()).second = ptr->nxt;
-	return ptr;
+	ptr->nxt = upd; upd = ptr; return ptr;
 }
 
 void huberr(const char *str, int num, int arg)
@@ -218,9 +218,10 @@ double evaluate(Ratio *ratio)
 	return num/den;
 }
 
-void alloc(double k, int i) {alloc(k,i);}
-void alloc(double k, int i, double v) {alloc(k,i,v);}
-void alloc(double k, Flow f, int i, int j, double v) {alloc(k,f,i,j,v);}
+void alloc(double k, int i) {Update::alloc(k,i);}
+void alloc(double k, int i, double v) {Update::alloc(k,i,v);}
+void alloc(double k, Flow f, int i, int j, double v) {Update::alloc(k,f,i,j,v);}
+void alloc(double k) {Update::alloc(k);}
 Update *dealloc(double k) {return Update::dealloc(k);}
 
 int main(int argc, char **argv)
@@ -240,30 +241,33 @@ int main(int argc, char **argv)
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	double nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
 	for (Update *head = dealloc(nowtime); head; head = dealloc(nowtime)) {
+	Event *event = state[head->idx];
+	double sch = nowtime+evaluate(&event->sch);
 	switch (head->flw) {
 	case (Sched): {
-		Event *event = state[head->idx];
+		double dly = nowtime+evaluate(&event->dly);
 		double upd = evaluate(&event->upd);
-		double dly = evaluate(&event->dly);
-		double sch = evaluate(&event->sch);
-		alloc(nowtime+dly,event->idx,upd); // TODO optional
-		alloc(nowtime+sch,event->idx); // TODO optional
+		alloc(dly,event->idx,upd);
+		alloc(sch,event->idx);
 		break;}
 	case (Back): {
-		Event *event = state[head->idx];
 		event->val = head->val;
 		break;}
 	case (Peek): {
+		// TODO single value from wave to event->val
+		alloc(sch);
 		break;}
 	case (Poke): {
-		Channel *channel = audio[head->idx];
+		double upd = evaluate(&event->upd);
+		Channel *channel = audio[head->oth];
 		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
 		int sub = location(strtime,channel->len,channel->siz);
-		channel->val[sub] += head->val;
+		channel->val[sub] += upd;
 		channel->cnt[sub]++;
+		alloc(sch);
 		break;}
 	case (Store): {
-		Metric *metric = timer[head->idx];
+		Metric *metric = timer[head->oth];
 		double *ptr = metric->val;
 		for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
 		if (metric->siz[i] == 0) *(ptr++) = state[metric->idx[i]]->val; else {
@@ -272,9 +276,12 @@ int main(int argc, char **argv)
 		for (int j = 0; j < metric->siz[i]; j++) *(ptr++) = val[j];}}
 		writeMetric(metric,hub);
 		allocMetric(&metric,0);
+		timer.erase(timer.find(head->oth));
 		break;}
 	case (Load): {
+		// TODO write block of data to wave
 		break;}
+	case (Flows): break;
 	default: ERROR(huberr,-1);}}
 	int sub = -1;
 	if (change.empty()) sub = waitAny();
