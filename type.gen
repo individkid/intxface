@@ -144,12 +144,12 @@ Ratio = {
 Event = {
 	{"cng","Stock",{},{}},
 	{"idx","int",{},{}},
-	{"flw","Flow",{},{}},
 	{"oth","int",{},{}},
 	{"val","double",{},{}},
     {"upd","Ratio",{["cng"]={["State"]=true}},{}},
     {"dly","Ratio",{["cng"]={["State"]=true}},{}},
     {"sch","Ratio",{["cng"]={["State"]=true}},{}},
+	{"flw","Flow",{["cng"]={["Change"]=true}},{}},
 	{"key","double",{["cng"]={["Change"]=true}},{}},
 	{"siz","int",{["cng"]={["Change"]=true}},{}},
 	{"buf","double",{["cng"]={["Change"]=true}},"siz"},
@@ -157,7 +157,6 @@ Event = {
 	{"wrp","double",{["cng"]={["Audio"]=true}},{}},
 	{"gap","double",{["cng"]={["Audio"]=true}},{}},
 	{"len","int",{["cng"]={["Audio"]=true}},{}},
-	{"enb","int",{["cng"]={["Audio"]=true}},{}},
 }
 Metric = {
 	{"src","Source",{},{}},

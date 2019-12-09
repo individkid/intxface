@@ -279,8 +279,8 @@ int main(int argc, char **argv)
 		for (int j = 0; j < metric->siz[i]; j++)
 		*(ptr++) = val[j];}}
 		writeMetric(metric,hub);
-		allocMetric(&metric,0);
-		timer.erase(timer.find(head->oth));
+ 		timer.erase(timer.find(head->oth));
+		alloc(sch);
 		break;}
 	case (Load): {
 		Channel *channel = audio[head->oth];
@@ -290,8 +290,11 @@ int main(int argc, char **argv)
 		channel->val[sub] += event->buf[i];
 		channel->cnt[sub]++;
 		sub = modulus(sub,1,channel->len);}
+		alloc(sch);
 		break;}
-	case (Flows): break;
+	case (Flows): {
+		// HERE debug
+		break;}
 	default: ERROR(huberr,-1);}}
 	int sub = -1;
 	if (change.empty()) sub = waitAny();
@@ -300,26 +303,34 @@ int main(int argc, char **argv)
 	readEvent(event,sub);
 	switch (event->cng) {
 	case (State):
-		state[event->idx] = event;
-		allocEvent(&event,1);
+		if (state.find(event->idx) != state.end()) {
+		allocEvent(&state[event->idx],0);}
+		state[event->idx] = event; allocEvent(&event,1);
 		break;
 	case (Change):
-		alloc(event->key,event->flw,event->idx,event->oth,event->val);
+		alloc(nowtime+event->key,event->flw,event->idx,event->oth,event->val);
 		break;
 	case (Timer):
-		timer[event->idx] = event->met;
-		event->met = 0;
+		if (timer.find(event->idx) != timer.end()) {
+		allocMetric(&timer[event->idx],0);}
+		timer[event->idx] = event->met; event->met = 0;
 		break;
 	case (Audio):
-		// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
+		if (audio.find(event->idx) != audio.end()) {
+		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR(huberr,-1);
+		delete audio[event->idx]; audio[event->idx] = 0;}
 		audio[event->idx] = channel = new Channel(event->wrp,event->len);
-		if (event->enb!=event->idx) {
-		audio[event->enb] = channel->nxt = new Channel(event->wrp,event->len);
+		if (event->oth!=event->idx) {
+		if (audio.find(event->oth) != audio.end()) {
+		if (Pa_CloseStream(audio[event->oth]->str) != paNoError) ERROR(huberr,-1);
+		delete audio[event->oth]; audio[event->oth] = 0;}
+		audio[event->oth] = channel->nxt = new Channel(event->wrp,event->len);
 		channel->nxt->gap = channel->gap = event->gap;
 		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
 		break;
+	// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return -1;
