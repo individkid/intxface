@@ -44,12 +44,10 @@ struct Channel {
 struct Update {
 	Update() {}
 	static Update *alloc(double k);
-	static void alloc(double k, int i) {alloc(k)->init(i);}
 	static void alloc(double k, int i, double v) {alloc(k)->init(i,v);}
 	static void alloc(double k, Flow f, int i, int j, double v) {alloc(k)->init(f,i,j,v);}
 	static Update *dealloc(double k);
 	static Update *upd; // free pool
-	void init(int i) {flw=Sched; idx=i;}
 	void init(int i, double v) {flw=Back; idx=i; val=v;}
 	void init(Flow f, int i, int j, double v) {flw=f; idx=i; oth=j; val=v;}
 	Update *nxt; // linked list
@@ -218,10 +216,9 @@ double evaluate(Ratio *ratio)
 	return num/den;
 }
 
-void alloc(double k, int i) {Update::alloc(k,i);}
+void alloc(double k) {Update::alloc(k);}
 void alloc(double k, int i, double v) {Update::alloc(k,i,v);}
 void alloc(double k, Flow f, int i, int j, double v) {Update::alloc(k,f,i,j,v);}
-void alloc(double k) {Update::alloc(k);}
 Update *dealloc(double k) {return Update::dealloc(k);}
 
 int main(int argc, char **argv)
@@ -247,8 +244,8 @@ int main(int argc, char **argv)
 	case (Sched): {
 		double dly = nowtime+evaluate(&event->dly);
 		double upd = evaluate(&event->upd);
+		alloc(sch);
 		alloc(dly,event->idx,upd);
-		alloc(sch,event->idx);
 		break;}
 	case (Back): {
 		event->val = head->val;
