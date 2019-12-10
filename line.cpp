@@ -156,11 +156,10 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now, float
 			dif[i] = 0; sub[i] = ptr->sub;}}
 	for (dst = 0; dst < siz;) {
 	for (i = 0, ptr = channel; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
-		if (dif[i]) {
-		if (sub[i] == sup[i]) dif[i] = 0;
-		if (ptr->cnt[sub[i]] == 0) {
+		if (dif[i] && sub[i] == sup[i]) dif[i] = 0;
+		if (dif[i] && ptr->cnt[sub[i]] == 0) {
 			ptr->val[sub[i]] = ptr->val[sup[i]];
-			ptr->cnt[sub[i]] = ptr->cnt[sup[i]];}}
+			ptr->cnt[sub[i]] = ptr->cnt[sup[i]];}
 		normalize(ptr,sub[i]);
 		if (dif[i]) {
 			float rat = (float)num[i]/(float)dif[i]; num[i]++;
@@ -210,9 +209,8 @@ double evaluate(Ratio *ratio)
 	double den = polynomial(&ratio->den);
 	double sat = num/SATURATE;
 	if (fabs(sat) > fabs(den)) {
-		if (num < 0.0) return -SATURATE;
-		else return SATURATE;
-	}
+	if (num < 0.0) return -SATURATE;
+	else return SATURATE;}
 	return num/den;
 }
 
@@ -228,8 +226,6 @@ int main(int argc, char **argv)
 	int sub = 0;
 	Channel *channel = 0;
 	Event *event = 0; allocEvent(&event,1);
-	struct timespec ts = {0};
-	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
