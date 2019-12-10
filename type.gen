@@ -122,7 +122,7 @@ Event = {
 	{"buf","double",{["cng"]={["Change"]=true}},"siz"},
 	{"met","Metric",{["cng"]={["Timer"]=true}},1},
 	{"wrp","double",{["cng"]={["Audio"]=true}},{}},
-	{"gap","double",{["cng"]={["Audio"]=true}},{}},
+	{"gap","int",{["cng"]={["Audio"]=true}},{}},
 	{"len","int",{["cng"]={["Audio"]=true}},{}},
 }
 Metric = {
