@@ -33,7 +33,7 @@ Action = {
 	"PrcEnd",
 }
 Opcode = {
-	"Identity",
+	"Replace",
 	"Compose",
 	"Apply",
 }

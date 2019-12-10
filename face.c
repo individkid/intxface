@@ -211,6 +211,18 @@ int openFileLua(lua_State *lua)
 	lua_pushnumber(lua,openFile(lua_tostring(lua,1)));
 	return 1;
 }
+struct sockaddr_in6 *scanInet6(struct sockaddr_in6 *in6, const char *adr, const char *num)
+{
+	struct sockaddr_in6 init = {0};
+	memcpy(in6,&init,sizeof(init));
+	in6->sin6_family = AF_INET6;
+	if (adr == 0) in6->sin6_addr = in6addr_any;
+	else inet_pton(AF_INET6, adr, &in6->sin6_addr);
+	int port = 0;
+	if (sscanf(num,"%d",&port) != 1) return 0;
+	in6->sin6_port = htons(port);
+	return in6;
+}
 int openInet(const char *adr, const char *num)
 {
 	if (len >= NUMOPEN) return -1;
@@ -220,21 +232,13 @@ int openInet(const char *adr, const char *num)
 	int flag = 1;
 	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) return -1;
 	struct sockaddr_in6 adr = {0};
-	adr.sin6_family = AF_INET6;
-	adr.sin6_addr = in6addr_any;
-	int port = 0;
-	if (sscanf(num,"%d",&port) != 1) return -1;
-	adr.sin6_port = htons(port);
+	if (scanInet6(&adr,0,num) == 0) return -1;
 	if (bind(fd, (struct sockaddr*)&adr, sizeof(adr)) < 0) return -1;
 	if (listen(fd, NUMPEND) < 0) return -1;
 	vld[len] = Inet;} else {
 	if (ads >= NUMINET) return -1;
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
-	addr[ads].sin6_family = AF_INET6;
-	inet_pton(AF_INET6, adr, &addr[ads].sin6_addr);
-	int port = 0;
-	if (sscanf(num,"%d",&port) != 1) return -1;
-	addr[ads].sin6_port = htons(port);
+	if (scanInet6(&addr[ads],adr,num) == 0) return -1;
 	if (connect(fd, (struct sockaddr*)&addr[ads], sizeof(addr[ads])) < 0) return -1;
 	vld[len] = Wait;
 	ads++;}
@@ -426,16 +430,7 @@ int checkFileLua(lua_State *lua)
 }
 int pollInet(const char *adr, const char *num)
 {
-	struct sockaddr_in6 comp = {0};
-	comp.sin6_family = AF_INET6;
-	inet_pton(AF_INET6, adr, &comp.sin6_addr);
-	int port = 0;
-	if (sscanf(num,"%d",&port) != 1) return -1;
-	comp.sin6_port = htons(port);
-	for (int i = 0; i < ads; i++)
-	if (memcmp(&addr[i],&comp,sizeof(comp)) == 0)
-	return 1;
-	return 0;
+	return (checkInet(adr,num) < NUMINET);
 }
 int pollInetLua(lua_State *lua)
 {
@@ -446,11 +441,7 @@ int pollInetLua(lua_State *lua)
 int checkInet(const char *adr, const char *num)
 {
 	struct sockaddr_in6 comp = {0};
-	comp.sin6_family = AF_INET6;
-	inet_pton(AF_INET6, adr, &comp.sin6_addr);
-	int port = 0;
-	if (sscanf(num,"%d",&port) != 1) return -1;
-	comp.sin6_port = htons(port);
+	if (scanInet6(&comp,adr,num) == 0) return -1;
 	for (int i = 0; i < ads; i++)
 	if (memcmp(&addr[i],&comp,sizeof(comp)) == 0)
 	return i;
