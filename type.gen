@@ -67,48 +67,17 @@ Config = {
 --HERE Structs
 File = {
 	{"act","Action",{},{}},
-	{"opc","Opcode",{["act"]={
-		["FncThd"]=true,
-		["CmdThd"]=true}},{}},
-	{"idx","int",{["act"]={
-		["NewThd"]=true,
-		["FncThd"]=true,
-		["CmdThd"]=true,
-		["CfgThd"]=true,
-		["ThdCmd"]=true,
-		["ThdCfg"]=true,
-		["EndThd"]=true,
-		["ThdEnd"]=true}},{}},
-	{"loc","long long",{["act"]={
-		["CmdThd"]=true,
-		["ThdCmd"]=true,
-		["ThdCfg"]=true}},{}},
-	{"pid","long long",{["act"]={
-		["EndThd"]=true}},{}},
-	{"num","int",{["act"]={
-		["NewThd"]=true,
-		["FncThd"]=true,
-		["TstThd"]=true,
-		["CmdThd"]=true,
-		["CfgThd"]=true,
-		["ThdCmd"]=true,
-		["ThdCfg"]=true}},{}},
-	{"siz","int",{["act"]={
-		["NewThd"]=true,
-		["FncThd"]=true,
-		["TstThd"]=true,
-		["CmdThd"]=true,
-		["CfgThd"]=true,
-		["ThdCmd"]=true,
-		["ThdCfg"]=true}},"num"},
-	{"ptr","char*",{["act"]={
-		["NewThd"]=true,
-		["FncThd"]=true,
-		["TstThd"]=true,
-		["CmdThd"]=true,
-		["CfgThd"]=true,
-		["ThdCmd"]=true,
-		["ThdCfg"]=true}},"num"},
+	{"opc","Opcode",{["act"]={["FncThd"]=true,["CmdThd"]=true}},{}},
+	{"idx","int",{["act"]={["NewThd"]=true,["FncThd"]=true,["CmdThd"]=true,["CfgThd"]=true,
+		["ThdCmd"]=true,["ThdCfg"]=true,["EndThd"]=true,["ThdEnd"]=true}},{}},
+	{"loc","long long",{["act"]={["CmdThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},{}},
+	{"pid","long long",{["act"]={["EndThd"]=true}},{}},
+	{"num","int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,["CmdThd"]=true,
+		["CfgThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},{}},
+	{"siz","int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,["CmdThd"]=true,
+		["CfgThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},"num"},
+	{"ptr","char*",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,["CmdThd"]=true,
+		["CfgThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},"num"},
 }
 Term0 = {
 	{"cff","double",{},{}},
@@ -134,8 +103,6 @@ Nomial = {
 	{"trm2","Term2",{},"num2"},
 	{"num3","int",{},{}},
 	{"trm3","Term3",{},"num3"},
-	{"numw","int",{},{}},
-	{"trmw","Term1",{},"numw"},
 }
 Ratio = {
 	{"num","Nomial",{},{}},
