@@ -132,10 +132,9 @@ void normalize(Channel *ptr, int sub)
 	ptr->cnt[sub] = 1;
 }
 
-void copywave(float *dest, Channel *channel, int enb, int siz, double now, float sat)
+void prepwave(int *dif, int *num, int *sub, int *sup, Channel *ptr, int enb, double now)
 {
-	int dif[enb]; int num[enb]; int sub[enb]; int sup[enb]; int i, dst; Channel *ptr;
-	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
+	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt) {
 		int loc = location(now,ptr->wrp,ptr->len);
 		int gap = modulus(loc,ptr->gap,ptr->len);
 		int min = modulus(gap,-ptr->cdt,ptr->len);
@@ -154,8 +153,13 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now, float
 			// 1 1 w 0 0 < 0 0 | r 1 > 1 1 // continue from r++
 			// 1 1 w 0 0 < 0 r | 1 1 > 1 1 // continue from r++
 			dif[i] = 0; sub[i] = ptr->sub;}}
-	for (dst = 0; dst < siz;) {
-	for (i = 0, ptr = channel; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
+}
+
+void procwave(float *dest, int *dif, int *num, int *sub, int *sup, Channel *channel, int enb, int siz, float sat)
+{
+	for (int dst = 0; dst < siz;) {
+	Channel *ptr = channel;
+	for (int i = 0; i < enb && ptr && dst < siz; i++, ptr = ptr->nxt) {
 		if (dif[i] && sub[i] == sup[i]) dif[i] = 0;
 		if (dif[i] && ptr->cnt[sub[i]] == 0) {
 			ptr->val[sub[i]] = ptr->val[sup[i]];
@@ -169,8 +173,20 @@ void copywave(float *dest, Channel *channel, int enb, int siz, double now, float
 		else dest[dst++] = ptr->val[sub[i]];
 		ptr->cnt[sub[i]] = 0;
 		sub[i] = modulus(sub[i],1,ptr->len);}}
-	for (i = 0, ptr = channel; i < enb && ptr; i++, ptr = ptr->nxt) {
+}
+
+void progwave(Channel *ptr, int *sub, int enb)
+{
+	for (int i = 0; i < enb && ptr; i++, ptr = ptr->nxt) {
 		ptr->sub = sub[i];}
+}
+
+void copywave(float *dest, Channel *channel, int enb, int siz, double now, float sat)
+{
+	int dif[enb]; int num[enb]; int sub[enb]; int sup[enb];
+	prepwave(dif,num,sub,sup,channel,enb,now);
+	procwave(dest,dif,num,sub,sup,channel,enb,siz,sat);
+	progwave(channel,sub,enb);
 }
 
 int callback(const void *inputBuffer, void *outputBuffer,
@@ -249,10 +265,12 @@ int main(int argc, char **argv)
 	case (Peek): {
 		Channel *channel = audio[head->oth];
 		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
-		int loc = location(strtime,channel->wrp,channel->len);
-		int gap = modulus(loc,channel->gap,channel->len);
-		if (channel->cnt[gap] == 0) event->val = channel->val[gap];
-		else event->val = channel->val[gap]/channel->cnt[gap];
+		int dif[1]; int num[1]; int sub[1]; int sup[1];
+		prepwave(dif,num,sub,sup,channel,1,strtime);
+		float val[dif[0]+1];
+		procwave(val,dif,num,sub,sup,channel,1,dif[0]+1,SATURATE);
+		progwave(channel,sub,1);
+		event->val = val[dif[0]];
 		alloc(sch);
 		break;}
 	case (Poke): {
@@ -279,13 +297,7 @@ int main(int argc, char **argv)
 		alloc(sch);
 		break;}
 	case (Load): {
-		Channel *channel = audio[head->oth];
-		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
-		int sub = location(strtime,channel->wrp,channel->len);
-		for (int i = 0; i < event->siz; i++) {
-		channel->val[sub] += event->buf[i];
-		channel->cnt[sub]++;
-		sub = modulus(sub,1,channel->len);}
+		// TODO
 		alloc(sch);
 		break;}
 	case (Flows): {
@@ -325,8 +337,8 @@ int main(int argc, char **argv)
 		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
+		// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
 		break;
-	// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return -1;
