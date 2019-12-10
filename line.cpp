@@ -30,7 +30,7 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double w, int l) : nxt(0), str(0), wrp(w), gap(0.0), len(l), sub(0), cnt(l,0), val(l,0.0) {}
+	Channel(double w, int l) : nxt(0), str(0), wrp(w), gap(0), len(l), sub(0), cnt(l,0), val(l,0.0) {}
 	Channel *nxt;
 	PaStream *str;
 	double wrp; // how long between buffer wraps
