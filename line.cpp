@@ -42,19 +42,31 @@ struct Channel {
 	std::vector < float > val; // total for average
 };
 struct Update {
-	Update() {}
+	Update() {buf = 0;}
+	~Update() {allocNum(&buf,0);}
 	static Update *alloc(double k);
+	static void alloc(double k, int i) {alloc(k)->init(i);}
 	static void alloc(double k, int i, double v) {alloc(k)->init(i,v);}
-	static void alloc(double k, Flow f, int i, int j, double v) {alloc(k)->init(f,i,j,v);}
+	static void alloc(double k, Flow f, int i, int j) {alloc(k)->init(f,i,j);}
+	static void alloc(double k, int i, int j, int s, double **v) {alloc(k)->init(i,j,s,v);}
 	static Update *dealloc(double k);
 	static Update *upd; // free pool
+	void init(int i) {flw=Sched; idx=i;}
 	void init(int i, double v) {flw=Back; idx=i; val=v;}
-	void init(Flow f, int i, int j, double v) {flw=f; idx=i; oth=j; val=v;}
+	void init(Flow f, int i, int j) {flw=f; idx=i; oth=j;}
+	void init(int i, int j, int s, double **v)
+	{
+		allocNum(&buf,0);
+		flw=Load; idx=i; oth=j;
+		siz = s; buf = *v; *v = 0;
+	}
 	Update *nxt; // linked list
 	Flow flw; // kind of index
 	int idx; // index of originator
 	int oth; // index for transfer
 	double val; // value for update
+	int siz; // how many values
+	double *buf; // values for update
 };
 
 std::map < int, Event* > state;
@@ -231,8 +243,10 @@ double evaluate(Ratio *ratio)
 }
 
 void alloc(double k) {Update::alloc(k);}
+void alloc(double k, int i) {Update::alloc(k,i);}
 void alloc(double k, int i, double v) {Update::alloc(k,i,v);}
-void alloc(double k, Flow f, int i, int j, double v) {Update::alloc(k,f,i,j,v);}
+void alloc(double k, Flow f, int i, int j) {Update::alloc(k,f,i,j);}
+void alloc(double k, int i, int j, int s, double **v) {Update::alloc(k,i,j,s,v);}
 Update *dealloc(double k) {return Update::dealloc(k);}
 
 int main(int argc, char **argv)
@@ -251,13 +265,10 @@ int main(int argc, char **argv)
 	double nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
 	for (Update *head = dealloc(nowtime); head; head = dealloc(nowtime)) {
 	Event *event = state[head->idx];
-	double sch = nowtime+evaluate(&event->sch);
 	switch (head->flw) {
 	case (Sched): {
-		double dly = nowtime+evaluate(&event->dly);
-		double upd = evaluate(&event->upd);
-		alloc(sch);
-		alloc(dly,event->idx,upd);
+		alloc(nowtime+evaluate(&event->sch));
+		alloc(nowtime+evaluate(&event->dly),event->idx,evaluate(&event->upd));
 		break;}
 	case (Back): {
 		event->val = head->val;
@@ -271,7 +282,7 @@ int main(int argc, char **argv)
 		procwave(val,dif,num,sub,sup,channel,1,dif[0]+1,SATURATE);
 		progwave(channel,sub,1);
 		event->val = val[dif[0]];
-		alloc(sch);
+		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Poke): {
 		double upd = evaluate(&event->upd);
@@ -280,7 +291,7 @@ int main(int argc, char **argv)
 		int sub = location(strtime,channel->wrp,channel->len);
 		channel->val[sub] += upd;
 		channel->cnt[sub]++;
-		alloc(sch);
+		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Store): {
 		Metric *metric = timer[head->oth];
@@ -293,12 +304,11 @@ int main(int argc, char **argv)
 		for (int j = 0; j < metric->siz[i]; j++)
 		*(ptr++) = val[j];}}
 		writeMetric(metric,hub);
- 		timer.erase(timer.find(head->oth));
-		alloc(sch);
+		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Load): {
 		// TODO
-		alloc(sch);
+		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Flows): {
 		// HERE debug
@@ -309,14 +319,27 @@ int main(int argc, char **argv)
 	else sub = pauseAny((*change.begin()).first-nowtime);
 	if (sub < 0) continue;
 	readEvent(event,sub);
-	switch (event->cng) {
+	switch (event->tag) {
 	case (State):
 		if (state.find(event->idx) != state.end()) {
 		allocEvent(&state[event->idx],0);}
 		state[event->idx] = event; allocEvent(&event,1);
 		break;
-	case (Change):
-		alloc(nowtime+event->key,event->flw,event->idx,event->oth,event->val);
+	case (Start):
+		if (event->key > nowtime)
+		alloc(event->key,event->idx);
+		break;
+	case (Assign):
+		if (event->key > nowtime)
+		alloc(event->key,event->idx,event->val);
+		break;
+	case (Bind):
+		if (event->key > nowtime)
+		alloc(event->key,event->flw,event->idx,event->oth);
+		break;
+	case (Wave):
+		if (event->key > nowtime)
+		alloc(event->key,event->idx,event->oth,event->siz,&event->buf);
 		break;
 	case (Timer):
 		if (timer.find(event->idx) != timer.end()) {

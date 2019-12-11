@@ -39,7 +39,10 @@ Opcode = {
 }
 Stock = {
 	"State",
-	"Change",
+	"Start",
+	"Assign",
+	"Bind",
+	"Wave",
 	"Timer",
 	"Audio",
 }
@@ -109,21 +112,21 @@ Ratio = {
 	{"den","Nomial",{},{}},
 }
 Event = {
-	{"cng","Stock",{},{}},
+	{"tag","Stock",{},{}},
 	{"idx","int",{},{}},
 	{"oth","int",{},{}},
+	{"key","double",{},{}},
 	{"val","double",{},{}},
-    {"upd","Ratio",{["cng"]={["State"]=true}},{}},
-    {"dly","Ratio",{["cng"]={["State"]=true}},{}},
-    {"sch","Ratio",{["cng"]={["State"]=true}},{}},
-	{"flw","Flow",{["cng"]={["Change"]=true}},{}},
-	{"key","double",{["cng"]={["Change"]=true}},{}},
-	{"siz","int",{["cng"]={["Change"]=true}},{}},
-	{"buf","double",{["cng"]={["Change"]=true}},"siz"},
-	{"met","Metric",{["cng"]={["Timer"]=true}},1},
-	{"wrp","double",{["cng"]={["Audio"]=true}},{}},
-	{"gap","int",{["cng"]={["Audio"]=true}},{}},
-	{"len","int",{["cng"]={["Audio"]=true}},{}},
+    {"upd","Ratio",{["tag"]={["State"]=true}},{}},
+    {"dly","Ratio",{["tag"]={["State"]=true}},{}},
+    {"sch","Ratio",{["tag"]={["State"]=true}},{}},
+	{"flw","Flow",{["tag"]={["Bind"]=true}},{}},
+	{"siz","int",{["tag"]={["Wave"]=true}},{}},
+	{"buf","double",{["tag"]={["Wave"]=true}},"siz"},
+	{"met","Metric",{["tag"]={["Timer"]=true}},1},
+	{"wrp","double",{["tag"]={["Audio"]=true}},{}},
+	{"gap","int",{["tag"]={["Audio"]=true}},{}},
+	{"len","int",{["tag"]={["Audio"]=true}},{}},
 }
 Metric = {
 	{"src","Source",{},{}},
