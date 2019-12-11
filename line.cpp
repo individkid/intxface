@@ -330,7 +330,7 @@ void stock()
 	case (Stocks): {
 		goon = 0;
 		break;}
-	default: ERROR(exiterr,-1);}
+	default: ERROR(huberr,-1);}
 }
 
 void flow()
