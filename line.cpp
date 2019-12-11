@@ -230,16 +230,22 @@ double polynomial(Nomial *nomial)
 	return result;
 }
 
+int iszero(double val)
+{
+	if (val == 0.0) return 1;
+	if (!(val < 0.0) && !(val > 0.0)) return 1;
+	return 0;
+}
+
 double evaluate(Ratio *ratio)
 {
 	double num = polynomial(&ratio->num);
-	if (num == 0.0) return 0.0;
-	if (!(num < 0.0) && !(num > 0.0)) return 0.0;
 	double den = polynomial(&ratio->den);
 	double sat = num/SATURATE;
-	if (fabs(sat) > fabs(den)) {
+	if (fabs(sat) > fabs(den) || iszero(den)) {
+	if (iszero(num)) return 0.0;
 	if (num < 0.0) return -SATURATE;
-	else return SATURATE;}
+	return SATURATE;}
 	return num/den;
 }
 
