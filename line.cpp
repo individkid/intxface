@@ -275,6 +275,8 @@ void alloc(double k, int i, double v) {Update::alloc(k,i,v);}
 void alloc(double k, Flow f, int i, int j) {Update::alloc(k,f,i,j);}
 void alloc(double k, int i, int j, int s, double **v) {Update::alloc(k,i,j,s,v);}
 Update *dealloc(double k) {return Update::dealloc(k);}
+int alloced() {return !change.empty();}
+double allocy(double k) {return (*change.begin()).first-k;}
 
 void stock()
 {
@@ -409,8 +411,8 @@ int main(int argc, char **argv)
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
 	for (head = dealloc(nowtime); head; head = dealloc(nowtime)) flow();
-	if (change.empty()) sub = waitAny();
-	else sub = pauseAny((*change.begin()).first-nowtime);
+	if (alloced()) sub = pauseAny(allocy(nowtime));
+	else sub = waitAny();
 	if (sub < 0) continue; readEvent(event,sub); stock();}}}
 	return 0;
 }
