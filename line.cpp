@@ -78,6 +78,8 @@ jmp_buf errbuf = {0};
 int numbug = 0;
 double nowtime = 0;
 int hub = 0; int sub = 0;
+Event *event = 0;
+Update *head = 0;
 
 Update *Update::upd = 0;
 Update *Update::alloc(double k)
@@ -272,7 +274,7 @@ void alloc(double k, Flow f, int i, int j) {Update::alloc(k,f,i,j);}
 void alloc(double k, int i, int j, int s, double **v) {Update::alloc(k,i,j,s,v);}
 Update *dealloc(double k) {return Update::dealloc(k);}
 
-void stock(Event *event)
+void stock()
 {
 	switch (event->tag) {
 	case (State):
@@ -326,7 +328,7 @@ void stock(Event *event)
 	default: ERROR(exiterr,-1);}
 }
 
-void flow(Update *head)
+void flow()
 {
 	Event *event = state[head->idx];
 	switch (head->flw) {
@@ -394,20 +396,20 @@ int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
 	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
-	Event *event = 0; allocEvent(&event,1);
+	allocEvent(&event,1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
 	while (1) {if (setjmp(errbuf) == 0) {while (1) {
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
-	for (Update *head = dealloc(nowtime); head; head = dealloc(nowtime)) flow(head);
+	for (head = dealloc(nowtime); head; head = dealloc(nowtime)) flow();
 	int sub = -1;
 	if (change.empty()) sub = waitAny();
 	else sub = pauseAny((*change.begin()).first-nowtime);
 	if (sub < 0) continue;
 	readEvent(event,sub);
-	stock(event);}}}
+	stock();}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return -1;
 }
