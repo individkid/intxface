@@ -126,6 +126,7 @@ Event = {
 	{"met","Metric",{["tag"]={["Timer"]=true}},1},
 	{"wrp","double",{["tag"]={["Audio"]=true}},{}},
 	{"gap","int",{["tag"]={["Audio"]=true}},{}},
+	{"cdt","int",{["tag"]={["Audio"]=true}},{}},
 	{"len","int",{["tag"]={["Audio"]=true}},{}},
 }
 Metric = {

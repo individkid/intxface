@@ -30,8 +30,8 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double w, int l) : nxt(0), str(0), wrp(w),
-	gap(0), cdt(0), len(l), sub(0), cnt(l,0), val(l,0.0) {}
+	Channel(double w, int g, int c, int l) : nxt(0), str(0),
+	wrp(w), gap(g), cdt(c), len(l), sub(0), cnt(l,0), val(l,0.0) {}
 	Channel *nxt;
 	PaStream *str;
 	double wrp; // how long between buffer wraps
@@ -92,7 +92,7 @@ Update *Update::alloc(double k)
 }
 Update *Update::dealloc(double k)
 {
-	if (change.begin() == change.end()) return 0;
+	if (change.empty()) return 0;
 	if ((*change.begin()).first > k) return 0;
 	Update *ptr = (*change.begin()).second;
 	if (ptr->nxt == 0) change.erase(change.begin());
@@ -360,13 +360,14 @@ int main(int argc, char **argv)
 		if (audio.find(event->idx) != audio.end()) {
 		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR(huberr,-1);
 		delete audio[event->idx]; audio[event->idx] = 0;}
-		audio[event->idx] = channel = new Channel(event->wrp,event->len);
+		audio[event->idx] = channel =
+		new Channel(event->wrp,event->gap,event->cdt,event->len);
 		if (event->oth!=event->idx) {
 		if (audio.find(event->oth) != audio.end()) {
 		if (Pa_CloseStream(audio[event->oth]->str) != paNoError) ERROR(huberr,-1);
 		delete audio[event->oth]; audio[event->oth] = 0;}
-		audio[event->oth] = channel->nxt = new Channel(event->wrp,event->len);
-		channel->nxt->gap = channel->gap = event->gap;
+		audio[event->oth] = channel->nxt =
+		new Channel(event->wrp,event->gap,event->cdt,event->len);
 		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
