@@ -30,7 +30,8 @@ extern "C" {
 #include <vector>
 
 struct Channel {
-	Channel(double w, int l) : nxt(0), str(0), wrp(w), gap(0), len(l), sub(0), cnt(l,0), val(l,0.0) {}
+	Channel(double w, int l) : nxt(0), str(0), wrp(w),
+	gap(0), cdt(0), len(l), sub(0), cnt(l,0), val(l,0.0) {}
 	Channel *nxt;
 	PaStream *str;
 	double wrp; // how long between buffer wraps
@@ -331,7 +332,8 @@ int main(int argc, char **argv)
 	case (State):
 		if (state.find(event->idx) != state.end()) {
 		allocEvent(&state[event->idx],0);}
-		state[event->idx] = event; allocEvent(&event,1);
+		state[event->idx] = event;
+		allocEvent(&event,1);
 		break;
 	case (Start):
 		if (event->key > nowtime)
