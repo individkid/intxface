@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Flows): {
-		// HERE debug
+		printf("numbug %d\n",numbug); fflush(stdout);
 		break;}
 	default: ERROR(huberr,-1);}}
 	int sub = -1;
@@ -358,20 +358,20 @@ int main(int argc, char **argv)
 		break;
 	case (Audio):
 		if (audio.find(event->idx) != audio.end()) {
+		if (audio[event->idx]->str)
 		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR(huberr,-1);
 		delete audio[event->idx]; audio[event->idx] = 0;}
 		audio[event->idx] = channel =
 		new Channel(event->wrp,event->gap,event->cdt,event->len);
-		if (event->oth!=event->idx) {
-		if (audio.find(event->oth) != audio.end()) {
-		if (Pa_CloseStream(audio[event->oth]->str) != paNoError) ERROR(huberr,-1);
-		delete audio[event->oth]; audio[event->oth] = 0;}
-		audio[event->oth] = channel->nxt =
-		new Channel(event->wrp,event->gap,event->cdt,event->len);
-		if (Pa_OpenDefaultStream(&channel->str,0,2,paFloat32,CALLRATE,
+		if (event->oth!=event->idx)
+		if (audio.find(event->oth) != audio.end()) channel->nxt = audio[event->oth];
+		if (event->enb) {
+		int inputs = 0; int outputs = 0; int count;
+		for (Channel *ptr = channel; ptr; ptr = ptr->nxt) count++;
+		if (event->enb > 0) outputs = count; else inputs = count;
+		if (Pa_OpenDefaultStream(&channel->str,inputs,outputs,paFloat32,CALLRATE,
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
-		// TODO handle other configs, like numbug, callrate, multitrack, portaudio input
 		break;
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
