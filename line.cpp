@@ -289,6 +289,7 @@ int main(int argc, char **argv)
 		Channel *channel = audio[head->oth];
 		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
 		int sub = location(strtime,channel->wrp,channel->len);
+		if (channel->cnt[sub] == 0) channel->val[sub] = 0;
 		channel->val[sub] += upd;
 		channel->cnt[sub]++;
 		alloc(nowtime+evaluate(&event->sch));
@@ -307,7 +308,14 @@ int main(int argc, char **argv)
 		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Load): {
-		// TODO
+		Channel *channel = audio[head->oth];
+		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
+		int sub = location(strtime,channel->wrp,channel->len);
+		for (int i = 0; i < head->siz; i++) {
+		int sum = modulus(sub,i,channel->len);
+		if (channel->cnt[sum] == 0) channel->val[sum] = 0;
+		channel->val[sum] += head->buf[i];
+		channel->cnt[sum]++;}
 		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Flows): {
