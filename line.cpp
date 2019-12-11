@@ -214,19 +214,33 @@ int callback(const void *inputBuffer, void *outputBuffer,
 	return 0;
 }
 
-double condition(int *variable)
+double condition(double val0, double val1, double val2)
 {
-	if (state[variable[0]]->val > 0.0) return state[variable[1]]->val;
-	return state[variable[2]]->val;
+	if (val0 > 0.0) return val1;
+	return val2;
 }
 
 double polynomial(Nomial *nomial)
 {
 	double result = 0.0;
-	for (int i = 0; i < nomial->num0; i++) result += nomial->trm0[i].cff;
-	for (int i = 0; i < nomial->num1; i++) result += nomial->trm1[i].cff*state[nomial->trm1[i].var[0]]->val;
-	for (int i = 0; i < nomial->num2; i++) result += nomial->trm2[i].cff*state[nomial->trm2[i].var[0]]->val*state[nomial->trm2[i].var[1]]->val;
-	for (int i = 0; i < nomial->num3; i++) result += nomial->trm3[i].cff*condition(nomial->trm3[i].var);
+	for (int i = 0; i < nomial->num0; i++) {
+		Term0 *trm = &nomial->trm0[i];
+		result += trm->cff;}
+	for (int i = 0; i < nomial->num1; i++) {
+		Term1 *trm = &nomial->trm1[i];
+		Event *var0 = state[trm->var[0]];
+		result += trm->cff*var0->val;}
+	for (int i = 0; i < nomial->num2; i++) {
+		Term2 *trm = &nomial->trm2[i];
+		Event *var0 = state[trm->var[0]];
+		Event *var1 = state[trm->var[1]];
+		result += trm->cff*var0->val*var1->val;}
+	for (int i = 0; i < nomial->num3; i++) {
+		Term3 *trm = &nomial->trm3[i];
+		Event *var0 = state[trm->var[0]];
+		Event *var1 = state[trm->var[1]];
+		Event *var2 = state[trm->var[2]];
+		result += trm->cff*condition(var0->val,var1->val,var2->val);}
 	return result;
 }
 
