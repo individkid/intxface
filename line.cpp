@@ -77,9 +77,11 @@ std::map < int, Channel* > audio;
 jmp_buf errbuf = {0};
 int numbug = 0;
 double nowtime = 0;
-int hub = 0; int sub = 0;
+int hub = 0;
+int sub = 0;
 Event *event = 0;
 Update *head = 0;
+int goon = 0;
 
 Update *Update::upd = 0;
 Update *Update::alloc(double k)
@@ -111,7 +113,7 @@ void huberr(const char *str, int num, int arg)
 
 void exiterr(const char *str, int num, int arg)
 {
-	exit(arg);
+	Pa_Terminate(); exit(arg);
 }
 
 int location(double now, double wrp, int len)
@@ -325,6 +327,9 @@ void stock()
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
 		break;}
+	case (Stocks): {
+		goon = 0;
+		break;}
 	default: ERROR(exiterr,-1);}
 }
 
@@ -399,17 +404,13 @@ int main(int argc, char **argv)
 	allocEvent(&event,1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
-	while (1) {if (setjmp(errbuf) == 0) {while (1) {
+	int goon = 1; while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
 	for (head = dealloc(nowtime); head; head = dealloc(nowtime)) flow();
-	int sub = -1;
 	if (change.empty()) sub = waitAny();
 	else sub = pauseAny((*change.begin()).first-nowtime);
-	if (sub < 0) continue;
-	readEvent(event,sub);
-	stock();}}}
-	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
-	return -1;
+	if (sub < 0) continue; readEvent(event,sub); stock();}}}
+	return 0;
 }
