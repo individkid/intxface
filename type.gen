@@ -141,7 +141,7 @@ Metric = {
 Client = {
 	{"mem","Memory",{},{}},
 }
-Spec = {
+Sculpt = {
 	{"cfg","Config",{},{}},
 }
 --HERE

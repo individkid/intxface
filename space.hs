@@ -29,10 +29,10 @@ mainF :: [String] -> IO ()
 mainF [a,b,c] = do
  putStrLn (show (boolToSide False))
  idx <- pipeInit a b
- spec <- readSpec idx
- mainG spec
+ sculpt <- readSculpt idx
+ mainG sculpt
 mainF _ = undefined
 
-mainG :: Spec -> IO ()
+mainG :: Sculpt -> IO ()
 mainG _ = undefined
 

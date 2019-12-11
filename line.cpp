@@ -253,11 +253,9 @@ Update *dealloc(double k) {return Update::dealloc(k);}
 int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
-	int hub = 0;
-	int sub = 0;
-	Channel *channel = 0;
-	Event *event = 0; allocEvent(&event,1);
 	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
+	int hub = 0; int sub = 0;
+	Event *event = 0; allocEvent(&event,1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
 	while (1) {if (setjmp(errbuf) == 0) {while (1) {
@@ -301,8 +299,10 @@ int main(int argc, char **argv)
 		for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
 		if (metric->siz[i] == 0)
 		*(ptr++) = state[metric->idx[i]]->val; else {
+		Channel *channel = audio[metric->idx[i]];
+		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
 		float val[metric->siz[i]];
-		copywave(val,audio[metric->idx[i]],1,metric->siz[i],nowtime,SATURATE);
+		copywave(val,channel,1,metric->siz[i],nowtime,SATURATE);
 		for (int j = 0; j < metric->siz[i]; j++)
 		*(ptr++) = val[j];}}
 		writeMetric(metric,hub);
@@ -356,15 +356,15 @@ int main(int argc, char **argv)
 		allocMetric(&timer[event->idx],0);}
 		timer[event->idx] = event->met; event->met = 0;
 		break;
-	case (Audio):
+	case (Audio): {
 		if (audio.find(event->idx) != audio.end()) {
 		if (audio[event->idx]->str)
 		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR(huberr,-1);
 		delete audio[event->idx]; audio[event->idx] = 0;}
-		audio[event->idx] = channel =
+		Channel *channel = audio[event->idx] =
 		new Channel(event->wrp,event->gap,event->cdt,event->len);
-		if (event->oth!=event->idx)
-		if (audio.find(event->oth) != audio.end()) channel->nxt = audio[event->oth];
+		if (event->oth!=event->idx && audio.find(event->oth) != audio.end())
+		channel->nxt = audio[event->oth];
 		if (event->enb) {
 		int inputs = 0; int outputs = 0; int count;
 		for (Channel *ptr = channel; ptr; ptr = ptr->nxt) count++;
@@ -372,7 +372,7 @@ int main(int argc, char **argv)
 		if (Pa_OpenDefaultStream(&channel->str,inputs,outputs,paFloat32,CALLRATE,
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
-		break;
+		break;}
 	default: ERROR(exiterr,-1);}}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return -1;
