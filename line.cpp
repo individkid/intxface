@@ -338,18 +338,22 @@ int main(int argc, char **argv)
 	case (Start):
 		if (event->key > nowtime)
 		alloc(event->key,event->idx);
+		else numbug++;
 		break;
 	case (Assign):
 		if (event->key > nowtime)
 		alloc(event->key,event->idx,event->val);
+		else numbug++;
 		break;
 	case (Bind):
 		if (event->key > nowtime)
 		alloc(event->key,event->flw,event->idx,event->oth);
+		else numbug++;
 		break;
 	case (Wave):
 		if (event->key > nowtime)
 		alloc(event->key,event->idx,event->oth,event->siz,&event->buf);
+		else numbug++;
 		break;
 	case (Timer):
 		if (timer.find(event->idx) != timer.end()) {
