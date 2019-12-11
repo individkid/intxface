@@ -76,6 +76,8 @@ std::map < int, Metric* > timer;
 std::map < int, Channel* > audio;
 jmp_buf errbuf = {0};
 int numbug = 0;
+double nowtime = 0;
+int hub = 0; int sub = 0;
 
 Update *Update::upd = 0;
 Update *Update::alloc(double k)
@@ -270,19 +272,62 @@ void alloc(double k, Flow f, int i, int j) {Update::alloc(k,f,i,j);}
 void alloc(double k, int i, int j, int s, double **v) {Update::alloc(k,i,j,s,v);}
 Update *dealloc(double k) {return Update::dealloc(k);}
 
-int main(int argc, char **argv)
+void stock(Event *event)
 {
-	if (argc != 4) return -1;
-	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
-	int hub = 0; int sub = 0;
-	Event *event = 0; allocEvent(&event,1);
-	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
-	bothJump(huberr,hub);
-	while (1) {if (setjmp(errbuf) == 0) {while (1) {
-	struct timespec ts = {0};
-	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
-	double nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
-	for (Update *head = dealloc(nowtime); head; head = dealloc(nowtime)) {
+	switch (event->tag) {
+	case (State):
+		if (state.find(event->idx) != state.end()) {
+		allocEvent(&state[event->idx],0);}
+		state[event->idx] = event;
+		allocEvent(&event,1);
+		break;
+	case (Start):
+		if (event->key > nowtime)
+		alloc(event->key,event->idx);
+		else numbug++;
+		break;
+	case (Assign):
+		if (event->key > nowtime)
+		alloc(event->key,event->idx,event->val);
+		else numbug++;
+		break;
+	case (Bind):
+		if (event->key > nowtime)
+		alloc(event->key,event->flw,event->idx,event->oth);
+		else numbug++;
+		break;
+	case (Wave):
+		if (event->key > nowtime)
+		alloc(event->key,event->idx,event->oth,event->siz,&event->buf);
+		else numbug++;
+		break;
+	case (Timer):
+		if (timer.find(event->idx) != timer.end()) {
+		allocMetric(&timer[event->idx],0);}
+		timer[event->idx] = event->met; event->met = 0;
+		break;
+	case (Audio): {
+		if (audio.find(event->idx) != audio.end()) {
+		if (audio[event->idx]->str)
+		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR(huberr,-1);
+		delete audio[event->idx]; audio[event->idx] = 0;}
+		Channel *channel = audio[event->idx] =
+		new Channel(event->wrp,event->gap,event->cdt,event->len);
+		if (event->oth!=event->idx && audio.find(event->oth) != audio.end())
+		channel->nxt = audio[event->oth];
+		if (event->enb) {
+		int inputs = 0; int outputs = 0; int count;
+		for (Channel *ptr = channel; ptr; ptr = ptr->nxt) count++;
+		if (event->enb > 0) outputs = count; else inputs = count;
+		if (Pa_OpenDefaultStream(&channel->str,inputs,outputs,paFloat32,CALLRATE,
+		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
+		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
+		break;}
+	default: ERROR(exiterr,-1);}
+}
+
+void flow(Update *head)
+{
 	Event *event = state[head->idx];
 	switch (head->flw) {
 	case (Sched): {
@@ -342,62 +387,27 @@ int main(int argc, char **argv)
 	case (Flows): {
 		printf("numbug %d\n",numbug); fflush(stdout);
 		break;}
-	default: ERROR(huberr,-1);}}
+	default: ERROR(huberr,-1);}
+}
+
+int main(int argc, char **argv)
+{
+	if (argc != 4) return -1;
+	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
+	Event *event = 0; allocEvent(&event,1);
+	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
+	bothJump(huberr,hub);
+	while (1) {if (setjmp(errbuf) == 0) {while (1) {
+	struct timespec ts = {0};
+	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
+	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
+	for (Update *head = dealloc(nowtime); head; head = dealloc(nowtime)) flow(head);
 	int sub = -1;
 	if (change.empty()) sub = waitAny();
 	else sub = pauseAny((*change.begin()).first-nowtime);
 	if (sub < 0) continue;
 	readEvent(event,sub);
-	switch (event->tag) {
-	case (State):
-		if (state.find(event->idx) != state.end()) {
-		allocEvent(&state[event->idx],0);}
-		state[event->idx] = event;
-		allocEvent(&event,1);
-		break;
-	case (Start):
-		if (event->key > nowtime)
-		alloc(event->key,event->idx);
-		else numbug++;
-		break;
-	case (Assign):
-		if (event->key > nowtime)
-		alloc(event->key,event->idx,event->val);
-		else numbug++;
-		break;
-	case (Bind):
-		if (event->key > nowtime)
-		alloc(event->key,event->flw,event->idx,event->oth);
-		else numbug++;
-		break;
-	case (Wave):
-		if (event->key > nowtime)
-		alloc(event->key,event->idx,event->oth,event->siz,&event->buf);
-		else numbug++;
-		break;
-	case (Timer):
-		if (timer.find(event->idx) != timer.end()) {
-		allocMetric(&timer[event->idx],0);}
-		timer[event->idx] = event->met; event->met = 0;
-		break;
-	case (Audio): {
-		if (audio.find(event->idx) != audio.end()) {
-		if (audio[event->idx]->str)
-		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR(huberr,-1);
-		delete audio[event->idx]; audio[event->idx] = 0;}
-		Channel *channel = audio[event->idx] =
-		new Channel(event->wrp,event->gap,event->cdt,event->len);
-		if (event->oth!=event->idx && audio.find(event->oth) != audio.end())
-		channel->nxt = audio[event->oth];
-		if (event->enb) {
-		int inputs = 0; int outputs = 0; int count;
-		for (Channel *ptr = channel; ptr; ptr = ptr->nxt) count++;
-		if (event->enb > 0) outputs = count; else inputs = count;
-		if (Pa_OpenDefaultStream(&channel->str,inputs,outputs,paFloat32,CALLRATE,
-		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
-		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
-		break;}
-	default: ERROR(exiterr,-1);}}}}
+	stock(event);}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return -1;
 }
