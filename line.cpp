@@ -414,5 +414,6 @@ int main(int argc, char **argv)
 	if (alloced()) sub = pauseAny(allocy(nowtime));
 	else sub = waitAny();
 	if (sub < 0) continue; readEvent(event,sub); stock();}}}
+	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return 0;
 }
