@@ -22,10 +22,12 @@ extern "C" {
 #include "portaudio.h"
 }
 #include <setjmp.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
+#include <sys/errno.h>
 #include <time.h>
 #include <math.h>
-#include <sys/errno.h>
 #include <map>
 #include <vector>
 
