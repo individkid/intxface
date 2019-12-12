@@ -50,7 +50,7 @@ struct Update {
 	static void alloc(double k, int i, double v) {alloc(k)->init(i,v);}
 	static void alloc(double k, Flow f, int i, int j) {alloc(k)->init(f,i,j);}
 	static void alloc(double k, int i, int j, int s, double **v) {alloc(k)->init(i,j,s,v);}
-	static Update *dealloc(double k);
+	static Update *deloc(double k);
 	static Update *upd; // free pool
 	void init(int i) {flw=Sched; idx=i;}
 	void init(int i, double v) {flw=Back; idx=i; val=v;}
@@ -96,7 +96,7 @@ Update *Update::alloc(double k)
 	change[k] = ptr;
 	return ptr;
 }
-Update *Update::dealloc(double k)
+Update *Update::deloc(double k)
 {
 	if (change.empty()) return 0;
 	if ((*change.begin()).first > k) return 0;
@@ -281,9 +281,9 @@ void alloc(double k, int i) {Update::alloc(k,i);}
 void alloc(double k, int i, double v) {Update::alloc(k,i,v);}
 void alloc(double k, Flow f, int i, int j) {Update::alloc(k,f,i,j);}
 void alloc(double k, int i, int j, int s, double **v) {Update::alloc(k,i,j,s,v);}
-Update *dealloc(double k) {return Update::dealloc(k);}
-int alloced() {return !change.empty();}
-double allocy(double k) {return (*change.begin()).first-k;}
+Update *deloc(double k) {return Update::deloc(k);}
+int adloc() {return !change.empty();}
+double adloc(double k) {return (*change.begin()).first-k;}
 
 void stock()
 {
@@ -413,8 +413,8 @@ int main(int argc, char **argv)
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub); allocEvent(&event,1); goon = 1;
 	while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
-	for (head = dealloc(nowtime = gettime()); head; head = dealloc(nowtime)) flow();
-	if (alloced()) sub = pauseAny(allocy(nowtime)); else sub = waitAny();
+	for (head = deloc(nowtime = gettime()); head; head = deloc(nowtime)) flow();
+	if (adloc()) sub = pauseAny(adloc(nowtime)); else sub = waitAny();
 	if (sub < 0) continue; readEvent(event,sub); stock();}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return 0;
