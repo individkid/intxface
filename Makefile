@@ -38,7 +38,7 @@ filer.log: filerLua file
 	cat $@
 
 %C: %C.o
-	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw3 -lMoltenVK
+	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw3 -lMoltenVK -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreGraphics
 %Hs: %.hs
 	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw3 -lMoltenVK -v0 2> $*.out
 %Gen: %.gen

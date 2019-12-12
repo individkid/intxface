@@ -15,6 +15,9 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 #include "type.h"
 #include "base.h"
 #include "face.h"
@@ -39,6 +42,26 @@ void exiterr(const char *str, int num, int arg)
 
 int main(int argc, char **argv)
 {
+    glfwInit();
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", 0, 0);
+
+    uint32_t extensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(0, &extensionCount, 0);
+
+    printf("%d extensions supported",extensionCount);
+
+    while(!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+    }
+
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
+
+    return 0;
+
 	if (argc != 4) return -1;
 	int hub = 0;
 	int sub = 0;
