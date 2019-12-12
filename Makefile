@@ -38,9 +38,9 @@ filer.log: filerLua file
 	cat $@
 
 %C: %C.o
-	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio
+	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw3 -lMoltenVK
 %Hs: %.hs
-	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -v0 2> $*.out
+	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw3 -lMoltenVK -v0 2> $*.out
 %Gen: %.gen
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
@@ -56,9 +56,9 @@ filer.log: filerLua file
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
 %C.o: %.c
-	clang -o $@ -c $< -I /usr/local/include/lua
+	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include/vulkan
 %C.o: %.cpp
-	clang -o $@ -c $< -I /usr/local/include/lua
+	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include/vulkan
 
 %.h: %Gen
 	./$< $@

@@ -143,7 +143,7 @@ int modulus(int one, int oth, int len)
 void normalize(Channel *ptr, int sub)
 {
 	if (ptr->cnt[sub] == 0) {
-		int prd = modulus(sub,ptr->len-1,ptr->len);
+		int prd = modulus(sub,-1,ptr->len);
 		ptr->val[sub] = ptr->val[prd];
 		ptr->cnt[sub] = ptr->cnt[prd];
 		if (ptr->cnt[sub] == 0) ptr->cnt[sub] = 1;}

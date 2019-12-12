@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/errno.h>
+#include <vulkan.h>
 
 jmp_buf errbuf = {0};
 
