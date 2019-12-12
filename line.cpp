@@ -269,6 +269,13 @@ double evaluate(Ratio *ratio)
 	return num/den;
 }
 
+double gettime()
+{
+	struct timespec ts = {0};
+	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
+	return (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
+}
+
 void alloc(double k) {Update::alloc(k);}
 void alloc(double k, int i) {Update::alloc(k,i);}
 void alloc(double k, int i, double v) {Update::alloc(k,i,v);}
@@ -403,16 +410,11 @@ int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
 	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
-	allocEvent(&event,1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
-	bothJump(huberr,hub);
-	goon = 1; while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
-	struct timespec ts = {0};
-	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
-	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
-	for (head = dealloc(nowtime); head; head = dealloc(nowtime)) flow();
-	if (alloced()) sub = pauseAny(allocy(nowtime));
-	else sub = waitAny();
+	bothJump(huberr,hub); allocEvent(&event,1); goon = 1;
+	while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
+	for (head = dealloc(nowtime = gettime()); head; head = dealloc(nowtime)) flow();
+	if (alloced()) sub = pauseAny(allocy(nowtime)); else sub = waitAny();
 	if (sub < 0) continue; readEvent(event,sub); stock();}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return 0;
