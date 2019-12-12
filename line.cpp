@@ -406,7 +406,7 @@ int main(int argc, char **argv)
 	allocEvent(&event,1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub);
-	int goon = 1; while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
+	goon = 1; while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
 	struct timespec ts = {0};
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
 	nowtime = (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
