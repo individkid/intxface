@@ -38,9 +38,9 @@ filer.log: filerLua file
 	cat $@
 
 %C: %C.o
-	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw3 -lMoltenVK -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreGraphics
+	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw -lMoltenVK -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreGraphics
 %Hs: %.hs
-	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw3 -lMoltenVK -v0 2> $*.out
+	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw -lMoltenVK -v0 2> $*.out
 %Gen: %.gen
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
@@ -56,9 +56,9 @@ filer.log: filerLua file
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
 %C.o: %.c
-	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include/vulkan
+	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %C.o: %.cpp
-	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include/vulkan
+	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 
 %.h: %Gen
 	./$< $@
