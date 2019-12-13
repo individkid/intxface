@@ -63,13 +63,13 @@ void *clientmem(void *arg)
 
 int main(int argc, char **argv)
 {
-	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
-	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
 	pthread_t thread = {0};
 	if (argc == 4) {
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	if ((trm = openPipe()) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub); bothJump(huberr,trm);
+	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
+	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
 	if (pthread_create(&thread,0,clientmem,0) != 0) ERROR(exiterr,-1);}
 
 	glfwInit();
@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 	glfwPollEvents();
 	// send Metric to steer scripts, update other users,
 	//  change modes, sculpt topology, report state
+	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
 	if (sub >= 0) {
 	readClient(client,sub);
@@ -96,7 +97,7 @@ int main(int argc, char **argv)
 	client = (struct Client*)malloc(sizeof(struct Client));
 	sub = -1;}
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
