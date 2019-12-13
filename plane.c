@@ -51,8 +51,8 @@ void *thread(void *arg)
 	int gon = 1;
 	while (gon) {
 	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
-	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
 	if (tmp == zub) gon = 0; else {
+	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
 	sub = tmp; glfwPostEmptyEvent();
 	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
