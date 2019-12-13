@@ -64,7 +64,7 @@ void *clientmem(void *arg)
 int main(int argc, char **argv)
 {
 	pthread_t thread = {0};
-	if (argc == 4) {
+	if (argc == 4) {sub = -1;
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	if ((trm = openPipe()) < 0) ERROR(exiterr,-1);
 	bothJump(huberr,hub); bothJump(huberr,trm);
@@ -76,36 +76,31 @@ int main(int argc, char **argv)
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", 0, 0);
 	struct Client *client = (struct Client*)malloc(sizeof(struct Client));
-	sub = -1;
 
 	uint32_t extensionCount = 0;
 	vkEnumerateInstanceExtensionProperties(0, &extensionCount, 0);
 	printf("%d extensions supported\n",extensionCount); fflush(stdout);
 
-	while(!glfwWindowShouldClose(window)) {
-	glfwPollEvents();
+	while(!glfwWindowShouldClose(window)) {glfwPollEvents();
 	// send Metric to steer scripts, update other users,
 	//  change modes, sculpt topology, report state
 	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (sub >= 0) {
-	readClient(client,sub);
+	if (sub >= 0) {readClient(client,sub);
 	switch (client->mem) {
 	case (Buffer): break;
 	case (Shader): break;
 	default: ERROR(exiterr,-1);}
-	client = (struct Client*)malloc(sizeof(struct Client));
-	sub = -1;}
+	client = (struct Client*)malloc(sizeof(struct Client)); sub = -1;}
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
-	if (argc == 4) {
-	writeInt(1,trm);
-	if (pthread_join(thread,0) != 0) ERROR(exiterr,-1);}
+	if (argc == 4) {writeInt(1,trm);
+	if (pthread_join(thread,0) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_destroy(&mutex) != 0) ERROR(exiterr,-1);
-	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);
+	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);}
 	return 0;
 }
