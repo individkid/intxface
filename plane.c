@@ -28,18 +28,16 @@
 #include <pthread.h>
 #include <sys/errno.h>
 
-jmp_buf mainbuf = {0};
-jmp_buf threadbuf = {0};
+jmp_buf jmpbuf = {0};
 pthread_mutex_t mutex = {0};
 pthread_cond_t cond = {0};
 int sub = 0;
 int hub = 0;
-int trm = 0;
+int zub = 0;
 
 void huberr(const char *str, int num, int arg)
 {
-	if (arg < 0) longjmp(mainbuf,1);
-	else if (arg > 0) longjmp(threadbuf,1);
+	longjmp(jmpbuf,1);
 }
 
 void exiterr(const char *str, int num, int arg)
@@ -47,59 +45,61 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
-void *clientmem(void *arg)
+void *thread(void *arg)
 {
 	int tmp = 0;
-	int goon = 1;
-	while (goon) {if (setjmp(threadbuf) == 0) {
-	for (tmp = waitAny(); tmp >= 0 && goon; tmp = waitAny()) {
+	int gon = 1;
+	while (gon) {
+	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (tmp == trm) goon = 0; else {
+	if (tmp == zub) gon = 0; else {
 	sub = tmp; glfwPostEmptyEvent();
 	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}}
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
 	return 0;
 }
 
 int main(int argc, char **argv)
 {
-	pthread_t thread = {0};
+	pthread_t pthread = {0};
 	if (argc == 4) {sub = -1;
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
-	if ((trm = openPipe()) < 0) ERROR(exiterr,-1);
-	bothJump(huberr,hub); bothJump(huberr,trm);
+	if ((zub = openPipe()) < 0) ERROR(exiterr,-1);
+	bothJump(huberr,hub); bothJump(huberr,zub);
 	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
 	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
-	if (pthread_create(&thread,0,clientmem,0) != 0) ERROR(exiterr,-1);}
+	if (pthread_create(&pthread,0,thread,0) != 0) ERROR(exiterr,-1);}
 
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", 0, 0);
-	struct Client *client = (struct Client*)malloc(sizeof(struct Client));
-
 	uint32_t extensionCount = 0;
 	vkEnumerateInstanceExtensionProperties(0, &extensionCount, 0);
 	printf("%d extensions supported\n",extensionCount); fflush(stdout);
 
-	while(!glfwWindowShouldClose(window)) {glfwPollEvents();
+	int vld = 0;
+	struct Client client = {0};
+	while (!glfwWindowShouldClose(window)) {
+	if (setjmp(jmpbuf) == 0) {
+	while(!glfwWindowShouldClose(window)) {
+	glfwPollEvents();
 	// send Metric to steer scripts, update other users,
 	//  change modes, sculpt topology, report state
 	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (sub >= 0) {readClient(client,sub);
-	switch (client->mem) {
+	if (sub >= 0) {readClient(&client,sub); sub = -1; vld = 1;}
+	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}
+	if (vld) {vld = 0; switch (client.mem) {
 	case (Buffer): break;
 	case (Shader): break;
-	default: ERROR(exiterr,-1);}
-	client = (struct Client*)malloc(sizeof(struct Client)); sub = -1;}
-	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}
+	default: ERROR(exiterr,-1);}}}}}
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
-	if (argc == 4) {writeInt(1,trm);
-	if (pthread_join(thread,0) != 0) ERROR(exiterr,-1);
+	if (argc == 4) {writeInt(1,zub);
+	if (pthread_join(pthread,0) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_destroy(&mutex) != 0) ERROR(exiterr,-1);
 	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);}
 	return 0;
