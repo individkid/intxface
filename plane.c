@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/errno.h>
 
 jmp_buf errbuf = {0};
@@ -39,29 +40,9 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
-int main(int argc, char **argv)
+void *clientmem(void *arg)
 {
-    glfwInit();
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", 0, 0);
-
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(0, &extensionCount, 0);
-
-    printf("%d extensions supported",extensionCount);
-
-    while(!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-    }
-
-    glfwDestroyWindow(window);
-
-    glfwTerminate();
-
-    return 0;
-
-	if (argc != 4) return -1;
+	char **argv = arg;
 	int hub = 0;
 	int sub = 0;
 	struct Client *client = (struct Client*)malloc(sizeof(struct Client));
@@ -75,5 +56,34 @@ int main(int argc, char **argv)
 	case (Shader): break;
 	default: ERROR(exiterr,-1);}
 	client = (struct Client*)malloc(sizeof(struct Client));}}}
-	return -1;
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	pthread_t thread = {0};
+	if (argc == 4) {
+	if (pthread_create(&thread,0,clientmem,argv) != 0) ERROR(exiterr,-1);}
+
+	glfwInit();
+
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", 0, 0);
+
+	uint32_t extensionCount = 0;
+	vkEnumerateInstanceExtensionProperties(0, &extensionCount, 0);
+
+	printf("%d extensions supported",extensionCount);
+
+	while(!glfwWindowShouldClose(window)) {
+	glfwPollEvents();}
+
+	glfwDestroyWindow(window);
+
+	glfwTerminate();
+
+	if (argc == 4) {
+	if (pthread_join(thread,0) != 0) ERROR(exiterr,-1);}
+
+	return 0;
 }
