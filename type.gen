@@ -60,8 +60,9 @@ Source = {
 	"Space",
 }
 Memory = {
+	"Uniform",
 	"Buffer",
-	"Shader",
+	"Usage",
 }
 Matrix = {
 	"Picture",
@@ -69,10 +70,11 @@ Matrix = {
 	"Facet",
 }
 Click = {
+	"Transform",
 	"Refine",
 	"Additive",
 	"Subtractive",
-	"MacroC",
+	"Script",
 }
 Move = {
 	"Rotate",
@@ -88,7 +90,8 @@ Roll = {
 }
 Type = {
 	"Command",
-	"MacroT",
+	"Compat",
+	"Hotkey",
 }
 Mode = {
 	"Initial",
@@ -172,6 +175,12 @@ Metric = {
 }
 Client = {
 	{"mem","Memory",{},{}},
+	{"matrix","Matrix",{["mem"]={["Usage"]=true}},{}},
+	{"click","Click",{["mem"]={["Usage"]=true}},{}},
+	{"move","Move",{["mem"]={["Usage"]=true}},{}},
+	{"roll","Roll",{["mem"]={["Usage"]=true}},{}},
+	{"type","Type",{["mem"]={["Usage"]=true}},{}},
+	{"mode","Mode",{["mem"]={["Usage"]=true}},{}},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},
