@@ -35,6 +35,46 @@ int sub = 0;
 int hub = 0;
 int zub = 0;
 
+struct Vertex {
+	int vtxid;
+	int tag[3];
+	float plane[3][3];
+	int versor[3];
+	float coord[3][2];
+	float color[3][3];
+	int texid[3];
+	int facid[3];
+	int matid;
+};
+struct Facet {
+	int facid;
+	int vtxid[3];
+};
+struct Affine {
+	float view[4][4];
+	float tope[NUMFILE][4][4];
+	float face[4][4];
+};
+
+int tope = 0;
+int topes = 0;
+struct Affine affine = {0};
+int vertices = 0;
+struct Vertex *vertex = 0;
+int facsts = 0;
+struct Facet *facets = 0;
+enum Matrix matrix = Picture;
+enum Click click = Refine;
+enum Move move = Rotate;
+enum Roll roll = Cylinder;
+enum Type type = Command;
+enum Mode mode = Initial;
+
+struct Affine saved = {0};
+float fixed[3] = {0};
+float moved[2] = {0};
+float rolled = {0};
+
 void huberr(const char *str, int num, int arg)
 {
 	longjmp(jmpbuf,1);

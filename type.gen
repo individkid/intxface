@@ -63,6 +63,38 @@ Memory = {
 	"Buffer",
 	"Shader",
 }
+Matrix = {
+	"Picture",
+	"Polytope",
+	"Facet",
+}
+Click = {
+	"Refine",
+	"Additive",
+	"Subtractive",
+	"MacroC",
+}
+Move = {
+	"Rotate",
+	"Tangent",
+	"Translate",
+}
+Roll = {
+	"Cylinder",
+	"Clock",
+	"Normal",
+	"Parallel",
+	"Scale",
+}
+Type = {
+	"Command",
+	"MacroT",
+}
+Mode = {
+	"Initial",
+	"Active",
+	"Suspend",
+}
 Config = {
 	"Table",
 	"Sides",
