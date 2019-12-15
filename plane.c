@@ -95,7 +95,7 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
-void process(int argc)
+int valid(int argc)
 {
 	int vld = 0;
 	if (argc == 4) {
@@ -103,11 +103,16 @@ void process(int argc)
 	if (sub >= 0) {readClient(&client,sub); sub = -1; vld = 1;}
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}
-	if (vld) {vld = 0; switch (client.mem) {
+	return vld;
+}
+
+void process()
+{
+	switch (client.mem) {
 	case (Uniform): break;
 	case (Buffer): break;
 	case (Usage): break;
-	default: ERROR(exiterr,-1);}}
+	default: ERROR(exiterr,-1);}
 }
 
 void produce()
@@ -259,7 +264,8 @@ int main(int argc, char **argv)
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
 	glfwPollEvents();
 	produce();
-	process(argc);}}}
+	if (valid(argc))
+	process();}}}
 
 	vulkanDestroy();
 	windowDestroy();
