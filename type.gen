@@ -61,7 +61,8 @@ Source = {
 }
 Memory = {
 	"Uniform",
-	"Buffer",
+	"Corner",
+	"Triangle",
 	"Usage",
 }
 Matrix = {
@@ -181,6 +182,15 @@ Client = {
 	{"roll","Roll",{["mem"]={["Usage"]=true}},{}},
 	{"type","Type",{["mem"]={["Usage"]=true}},{}},
 	{"mode","Mode",{["mem"]={["Usage"]=true}},{}},
+	{"tag","int",{["mem"]={["Corner"]=true}},{3}},
+	{"pln","float",{["mem"]={["Corner"]=true}},{3,3}},
+	{"vsr","int",{["mem"]={["Corner"]=true}},{3}},
+	{"crd","float",{["mem"]={["Corner"]=true}},{3,2}},
+	{"clr","float",{["mem"]={["Corner"]=true}},{4,3}},
+	{"tex","int",{["mem"]={["Corner"]=true}},{3}},
+	{"fac","int",{["mem"]={["Corner"]=true}},{3}},
+	{"mat","int",{["mem"]={["Corner"]=true}},{}},
+	{"vtx","int",{["mem"]={["Triangle"]=true}},{3}},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},

@@ -110,7 +110,8 @@ void process()
 {
 	switch (client.mem) {
 	case (Uniform): break;
-	case (Buffer): break;
+	case (Corner): break;
+	case (Triangle): break;
 	case (Usage): break;
 	default: ERROR(exiterr,-1);}
 }
