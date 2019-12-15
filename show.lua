@@ -250,7 +250,7 @@ function chainStruct(struct)
 	local all = structTagSpace(struct)
 	local result = {}
 	for k,v in ipairs(struct) do
-		result[#result+1] = ((struct[k+1] ~= nil) and equalPlaid(v[3],struct[k+1][3],all)) or (k == 1)
+		result[#result+1] = (struct[k+1] ~= nil) and equalPlaid(v[3],struct[k+1][3],all)
 	end
 	return result
 end
@@ -1397,8 +1397,10 @@ function showReadLua(name,struct)
 			local squares = 1
 			local square = 1
 			local limit = count + #field[4]
+			local dimen = 0
 			while (count < limit) do
 				count = count + 1
+				dimen = dimen + 1
 				result = result..showIndent(count).."tab[\""..field[1].."\"]"
 				local index = square
 				while (index < squares) do
@@ -1408,7 +1410,7 @@ function showReadLua(name,struct)
 				squares = squares + 1
 				result = result.." = {}\n"
 				result = result..showIndent(count).."local i"..count.." = 1\n"
-				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
+				result = result..showIndent(count).."while (i"..count.." <= "..field[4][dimen]..") do\n"
 				sub = sub.."[i"..count.."]"
 			end
 		end
