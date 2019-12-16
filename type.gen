@@ -99,6 +99,12 @@ Mode = {
 	"Active",
 	"Suspend",
 }
+Special = {
+	"Basis",
+	"Subject",
+	"Object",
+	"Feature",
+}
 Config = {
 	"Table",
 	"Sides",
@@ -174,23 +180,35 @@ Metric = {
 	{"idx","int",{["src"]={["Line"]=true}},"num"},
 	{"val","double",{["src"]={["Line"]=true}},"tot"},
 }
+User = {
+	{"matrix","Matrix",{},{}}, -- transformation collection
+	{"click","Click",{},{}}, -- what mouse click does
+	{"move","Move",{},{}}, -- what mouse move does
+	{"roll","Roll",{},{}}, -- what mouse roller does
+	{"type","Type",{},{}}, -- what keyboard does
+	{"mode","Mode",{},{}}, -- changed by left/right click
+}
+Vertex = {
+	{"tag","int",{},{3}}, -- layout (location=0) in ivec3 tag;
+	{"plane","float",{},{3,3}}, -- layout (location=1) in vec3 plane[3];
+	{"versor","int",{},{3}}, -- layout (location=4) in ivec3 versor;
+	{"coord","float",{},{3,2}}, -- layout (location=5) in vec2 coord[3];
+	{"color","float",{},{4,3}}, -- layout (location=8) in vec4 color[3];
+	{"texid","int",{},{3}}, -- layout (location=11) in ivec3 texid;
+	{"facid","int",{},{3}}, -- layout (location=12) in ivec3 facid;
+	{"matid","int",{},{}}, -- layout (location=13) in int matid;
+}
+Facet = {
+	{"vtxid","int",{},{3}}, -- just in time filtered per tag
+}
 Client = {
 	{"mem","Memory",{},{}},
-	{"matrix","Matrix",{["mem"]={["Usage"]=true}},{}},
-	{"click","Click",{["mem"]={["Usage"]=true}},{}},
-	{"move","Move",{["mem"]={["Usage"]=true}},{}},
-	{"roll","Roll",{["mem"]={["Usage"]=true}},{}},
-	{"type","Type",{["mem"]={["Usage"]=true}},{}},
-	{"mode","Mode",{["mem"]={["Usage"]=true}},{}},
-	{"tag","int",{["mem"]={["Corner"]=true}},{3}},
-	{"pln","float",{["mem"]={["Corner"]=true}},{3,3}},
-	{"vsr","int",{["mem"]={["Corner"]=true}},{3}},
-	{"crd","float",{["mem"]={["Corner"]=true}},{3,2}},
-	{"clr","float",{["mem"]={["Corner"]=true}},{4,3}},
-	{"tex","int",{["mem"]={["Corner"]=true}},{3}},
-	{"fac","int",{["mem"]={["Corner"]=true}},{3}},
-	{"mat","int",{["mem"]={["Corner"]=true}},{}},
-	{"vtx","int",{["mem"]={["Triangle"]=true}},{3}},
+	{"idx","int",{},{}},
+	{"usr","User",{["mem"]={["Usage"]=true}},{}},
+	{"vtx","Vertex",{["mem"]={["Corner"]=true}},{3}},
+	{"fct","Facet",{["mem"]={["Triangle"]=true}},{3}},
+	{"spl","Special",{["mem"]={["Uniform"]=true}},{}},
+	{"mat","float",{["mem"]={["Uniform"]=true}},{3,3}},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},

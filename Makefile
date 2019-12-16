@@ -57,6 +57,8 @@ filer.log: filerLua file
 	clang -o $@ -fPIC -shared $^ -llua
 %C.o: %.c
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
+%C.o: %.m
+	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 
