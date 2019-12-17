@@ -35,14 +35,20 @@ EXTERN int esc;
 EXTERN GLFWwindow* window;
 EXTERN int vertexBufferChanged;
 EXTERN int elementBufferChanged;
-// TODO uniformBufferChanged;
+EXTERN int uniformBufferChanged[Specials];
+EXTERN int nextBufferChanged[Specials];
+EXTERN int firstBufferChanged;
 EXTERN float basis[3][3][3];
 EXTERN struct Affine affine;
 EXTERN int vertices;
 EXTERN struct Vertex *vertex;
 EXTERN int facets;
 EXTERN struct Facet *facet;
+EXTERN float feather[3];
+EXTERN float arrow[3];
+EXTERN float cloud[NUMFEND][3];
 EXTERN int tag;
+EXTERN int tope;
 EXTERN int plane;
 // TODO feather arrow and feedback
 

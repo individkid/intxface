@@ -107,6 +107,8 @@ Special = {
 	"Feather",
 	"Arrow",
 	"Cloud",
+	"Pass",
+	"Tool",
 }
 Config = {
 	"Table",
@@ -211,7 +213,9 @@ Client = {
 	{"vtx","Vertex",{["mem"]={["Corner"]=true}},{3}},
 	{"fct","Facet",{["mem"]={["Triangle"]=true}},{3}},
 	{"spl","Special",{["mem"]={["Uniform"]=true}},{}},
-	{"mat","float",{["mem"]={["Uniform"]=true}},{3,3}},
+	{"siz","int",{["mem"]={["Uniform"]=true}},{}},
+	{"mat","float",{["mem"]={["Uniform"]=true}},"siz"},
+	{"val","int",{["mem"]={["Uniform"]=true}},{}},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},
