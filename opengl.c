@@ -37,7 +37,7 @@ int openglInit()
 	glDepthFunc(GL_LESS); 
 	glGenVertexArrays(1, &arrayId);
 	glBindVertexArray(arrayId);
-	programId = loadShaders("plane.vs","plane.fs");
+	programId = loadShaders("opengl.vs","opengl.fs");
 	glGenBuffers(1, &vertexId);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexId);
 	GLuint index = 0;
@@ -78,8 +78,7 @@ void openglDraw()
 	if (elementBufferChanged) {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(struct Facet)*facets, facet, GL_STATIC_DRAW);}
-	for (enum Special i = firstBufferChanged; uniformBufferChanged[i]; i = nextBufferChanged[i])
-	switch (i) {
+	for (enum Special i = firstBufferChanged; uniformBufferChanged[i]; i = nextBufferChanged[i]) switch (i) {
 	case (Basis): glUniformMatrix3fv(uniformId[Basis], 3, GL_FALSE, &basis[0][0][0]); break;
 	case (Subject): glUniformMatrix4fv(uniformId[Subject], 1, GL_FALSE, &affine.view[0][0]); break;
 	case (Object): glUniformMatrix4fv(uniformId[Object], 1, GL_FALSE, &affine.tope[tope][0][0]); break;
