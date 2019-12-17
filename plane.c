@@ -156,7 +156,7 @@ void threadInit(int argc, char **argv)
 	if (pthread_create(&pthread,0,thread,0) != 0) ERROR(exiterr,-1);}
 }
 
-void threadDestroy(int argc)
+void threadDone(int argc)
 {
 	if (argc == 4) {writeInt(1,zub);
 	if (pthread_join(pthread,0) != 0) ERROR(exiterr,-1);
@@ -192,11 +192,11 @@ int main(int argc, char **argv)
 
 	switch (api) {
 	case (None): break;
-	case (Metal): metalDestroy(); break;
-	case (Vulkan): vulkanDestroy(); break;
-	case (Opengl):  openglDestroy(); break;}
-	windowDestroy();
-	threadDestroy(argc);
+	case (Metal): metalDone(); break;
+	case (Vulkan): vulkanDone(); break;
+	case (Opengl):  openglDone(); break;}
+	windowDone();
+	threadDone(argc);
 
 	return 0;
 }

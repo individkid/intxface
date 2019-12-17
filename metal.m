@@ -26,6 +26,6 @@ void metalDraw()
 {
 }
 
-void metalDestroy()
+void metalDone()
 {
 }

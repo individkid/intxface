@@ -39,7 +39,7 @@ void windowInit(int argc, char **argv)
 	glfwMakeContextCurrent(window);
 }
 
-void windowDestroy()
+void windowDone()
 {
 	glfwDestroyWindow(window);
 	glfwTerminate();

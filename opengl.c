@@ -98,7 +98,7 @@ void openglDraw()
 	glfwSwapBuffers(window);}
 }
 
-void openglDestroy()
+void openglDone()
 {
 	glDeleteBuffers(1, &elementId);
 	glDeleteBuffers(1, &arrayId);

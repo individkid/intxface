@@ -157,7 +157,7 @@ void vulkanDraw()
 {
 }
 
-void vulkanDestroy()
+void vulkanDone()
 {
 	//vkDestroySwapchainKHR(logical, swap, 0);
 	vkDestroyDevice(logical, 0);
