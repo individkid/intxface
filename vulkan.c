@@ -16,10 +16,14 @@
 */
 
 #define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include "plane.h"
+#include <setjmp.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/errno.h>
 
-enum Shader {Render,Present,Pierce,Cloud,Shaders};
+enum Shader {Render,Present,Pierce,Bounce,Shaders};
 VkInstance instance = {0};
 VkDebugUtilsMessengerEXT debug = {0};
 VkSurfaceKHR surface = {0};
@@ -169,6 +173,4 @@ void vulkanDestroy()
 	if (func == 0) {ERROR(exiterr,-1);} else func(instance, debug, 0);
 	*/
 	vkDestroyInstance(instance, 0);
-	glfwDestroyWindow(window);
-	glfwTerminate();
 }

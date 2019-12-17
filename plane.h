@@ -15,29 +15,47 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <GLFW/glfw3.h>
 #include "type.h"
+#include "base.h"
+#include "face.h"
+
+#ifndef EXTERN
+#define EXTERN extern
+#endif
+#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 
 struct Affine {
 	float view[4][4]; // all polytopes at once
 	float tope[NUMFILE][4][4]; // individual polytopes
 	float face[4][4]; // individual plane
 };
-#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 
-extern int esc;
-extern GLFWwindow* window;
-extern int vertexBufferChanged;
-extern int elementBufferChanged;
+EXTERN int esc;
+EXTERN GLFWwindow* window;
+EXTERN int vertexBufferChanged;
+EXTERN int elementBufferChanged;
 // TODO uniformBufferChanged;
-extern float basis[3][3][3];
-extern struct Affine affine;
-extern int vertices;
-extern struct Vertex *vertex;
-extern int facets;
-extern struct Facet *facet;
-extern int tag;
-extern int plane;
+EXTERN float basis[3][3][3];
+EXTERN struct Affine affine;
+EXTERN int vertices;
+EXTERN struct Vertex *vertex;
+EXTERN int facets;
+EXTERN struct Facet *facet;
+EXTERN int tag;
+EXTERN int plane;
 // TODO feather arrow and feedback
 
 void huberr(const char *str, int num, int arg);
 void exiterr(const char *str, int num, int arg);
+void windowInit(int argc, char **argv);
+void windowDestroy();
+int metalInit();
+void metalDraw();
+void metalDestroy();
+int vulkanInit();
+void vulkanDraw();
+void vulkanDestroy();
+int openglInit();
+void openglDraw();
+void openglDestroy();

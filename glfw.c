@@ -15,8 +15,12 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <GLFW/glfw3.h>
 #include "plane.h"
+#include <setjmp.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/errno.h>
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
 {
@@ -26,7 +30,7 @@ void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int m
     else if (action == 1) esc = 0;
 }
 
-void glfwInit(int argc, char **argv)
+void windowInit(int argc, char **argv)
 {
 	glfwInit();
 	glfwWindowHint(GLFW_SAMPLES, 4);
@@ -40,6 +44,8 @@ void glfwInit(int argc, char **argv)
 	glfwMakeContextCurrent(window);
 }
 
-void glfwDestroy()
+void windowDestroy()
 {
+	glfwDestroyWindow(window);
+	glfwTerminate();
 }

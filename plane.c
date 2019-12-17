@@ -15,18 +15,16 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <GLFW/glfw3.h>
+#define EXTERN
 #include "plane.h"
-#include "base.h"
-#include "face.h"
 #include <setjmp.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/errno.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/errno.h>
 
 enum API {None, Metal, Vulkan, Opengl};
 
@@ -65,18 +63,6 @@ struct Affine saved = {0}; // from when sent to file
 float fixed[3] = {0}; // from when pierce point clicked
 float moved[2] = {0}; // from when mouse moved
 float rolled = {0}; // from when roller adjusted
-
-	void glfwInit(int argc, char **argv);
-	void glfwDestroy();
-	int metalInit();
-	void metalDraw();
-	void metalDestroy();
-	int vulkanInit();
-	void vulkanDraw();
-	void vulkanDestroy();
-	int openglInit();
-	void openglDraw();
-	void openglDestroy();
 
 void huberr(const char *str, int num, int arg)
 {
@@ -165,7 +151,7 @@ int main(int argc, char **argv)
 	printf("uint32_t(%d) int(%d) GL_INT(%d)\n",(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT));
 
 	threadInit(argc,argv);
-	glfwInit(argc,argv);
+	windowInit(argc,argv);
 	if (metalInit()) api = Metal;
 	else if (vulkanInit()) api = Vulkan;
 	else if (openglInit()) api = Opengl;
@@ -190,7 +176,7 @@ int main(int argc, char **argv)
 	case (Metal): metalDestroy(); break;
 	case (Vulkan): vulkanDestroy(); break;
 	case (Opengl):  openglDestroy(); break;}
-	glfwDestroy();
+	windowDestroy();
 	threadDestroy(argc);
 
 	return 0;

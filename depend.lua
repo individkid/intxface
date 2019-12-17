@@ -140,7 +140,9 @@ exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
 expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
-	if (string.match(v,"^.*%.c$") or string.match(v,"^.*%.cpp$")) then
+	if (string.match(v,"^.*%.c$") or
+		string.match(v,"^.*%.cpp$") or
+		string.match(v,"^.*%.m$")) then
 		-- print(v..":")
 		file = io.open(v)
 		cmnt = false; abrv = false; quot = false
@@ -299,6 +301,7 @@ for k,v in pairs(edges) do
 	for key,val in pairs(v) do
 		base,ext = string.match(key,"(.*)(%..*)")
 		if (ext == ".cpp") then ext = ".c" end
+		if (ext == ".m") then ext = ".m" end
 		if (k == "main") and (ext == ".c") then
 			-- print(key..": main")
 			entries[key] = true
@@ -358,6 +361,7 @@ for k,v in pairs(edges) do
 			for key,val in pairs(v) do
 				b,e = string.match(key,"(.*)(%..*)")
 				if (e == ".cpp") then e = ".c" end
+				if (e == ".m") then e = ".c" end
 				if edges[key] and (not needed[key]) and
 					((ext ~= ".lua") or (e ~= ".c")) and
 					((ext ~= ".gen") or (e ~= ".c")) then
@@ -391,11 +395,13 @@ update = {}
 for k,v in pairs(edges) do
 	base,ext = string.match(k,"(.*)(%..*)")
 	if (ext == ".cpp") then ext = ".c" end
+	if (ext == ".m") then ext = ".c" end
 	if base and (ext == ".c") and entries[k] then
 		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if (e == ".cpp") then e = ".c" end
+			if (e == ".m") then e = ".c" end
 			if b and (e == ".c") then
 				deps[#deps+1] = b.."C.o"
 			end
@@ -411,6 +417,7 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if (e == ".cpp") then e = ".c" end
+			if (e == ".m") then e = ".c" end
 			if b and (e == ".c") then
 				deps[#deps+1] = b.."C.o"
 			end
@@ -437,6 +444,7 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if (e == ".cpp") then e = ".c" end
+			if (e == ".m") then e = ".c" end
 			if b and (e == ".c") then
 				deps[#deps+1] = b.."C.o"
 			end
@@ -455,6 +463,7 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if (e == ".cpp") then e = ".c" end
+			if (e == ".m") then e = ".c" end
 			if b and (e == ".c") then
 				deps[#deps+1] = b..".so"
 			end
@@ -490,6 +499,7 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if (e == ".cpp") then e = ".c" end
+			if (e == ".m") then e = ".c" end
 			if b and (e == ".c") then
 				deps[#deps+1] = b.."C"
 			end

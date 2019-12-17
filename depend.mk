@@ -11,8 +11,9 @@ filerLua: face.so type.lua
 glfwC.o: plane.h
 lineC: baseC.o faceC.o typeC.o
 lineC.o: base.h face.h type.h
+metalC.o: plane.h
 openglC.o: plane.h
-planeC: baseC.o faceC.o glfwC.o openglC.o typeC.o vulkanC.o
+planeC: baseC.o faceC.o glfwC.o metalC.o openglC.o typeC.o vulkanC.o
 planeC.o: base.h face.h plane.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o

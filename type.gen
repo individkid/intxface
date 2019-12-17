@@ -68,7 +68,7 @@ Memory = {
 Matrix = {
 	"Picture",
 	"Polytope",
-	"Facet",
+	"Single",
 }
 Click = {
 	"Transform",
@@ -104,6 +104,9 @@ Special = {
 	"Subject",
 	"Object",
 	"Feature",
+	"Feather",
+	"Arrow",
+	"Cloud",
 }
 Config = {
 	"Table",
