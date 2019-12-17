@@ -40,7 +40,7 @@ filer.log: filerLua file
 %C: %C.o
 	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw -lGLEW -lMoltenVK -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreGraphics -framework OpenGL
 %Hs: %.hs
-	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw -lMoltenVK -v0 2> $*.out
+	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw -lGLEW -lMoltenVK -v0 2> $*.out
 %Gen: %.gen
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua

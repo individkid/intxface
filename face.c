@@ -15,19 +15,15 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include "face.h"
+#include <pthread.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <lua.h>
-#include "face.h"
 
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};

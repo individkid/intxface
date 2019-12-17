@@ -17,11 +17,6 @@
 
 #include <GL/glew.h>
 #include "plane.h"
-#include <setjmp.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/errno.h>
 
 GLuint vertexArray = 0;
 GLuint programID = 0;

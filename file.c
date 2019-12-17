@@ -15,18 +15,12 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "type.h"
-#include "base.h"
 #include "face.h"
+#include "base.h"
+#include "type.h"
 #include <pthread.h>
-#include <setjmp.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <dlfcn.h>
-#include <string.h>
 #include <time.h>
-#include <sys/errno.h>
 
 long long identifier = 0;
 jmp_buf errbuf = {0};

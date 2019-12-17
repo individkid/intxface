@@ -17,11 +17,6 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include "plane.h"
-#include <setjmp.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/errno.h>
 
 enum Shader {Render,Present,Pierce,Bounce,Shaders};
 VkInstance instance = {0};

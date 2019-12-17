@@ -16,11 +16,6 @@
 */
 
 #include "plane.h"
-#include <setjmp.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/errno.h>
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
 {

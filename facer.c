@@ -16,9 +16,6 @@
 */
 
 #include "face.h"
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
 
 int errcheck = 0;
 int exccheck = 0;

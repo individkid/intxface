@@ -16,9 +16,9 @@
 */
 
 #include <GLFW/glfw3.h>
-#include "type.h"
-#include "base.h"
 #include "face.h"
+#include "base.h"
+#include "type.h"
 
 #ifndef EXTERN
 #define EXTERN extern

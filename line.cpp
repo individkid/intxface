@@ -16,16 +16,11 @@
 */
 
 extern "C" {
-#include "type.h"
-#include "base.h"
 #include "face.h"
+#include "base.h"
+#include "type.h"
 #include "portaudio.h"
 }
-#include <setjmp.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/errno.h>
 #include <time.h>
 #include <math.h>
 #include <map>

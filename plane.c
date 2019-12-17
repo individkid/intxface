@@ -17,14 +17,7 @@
 
 #define EXTERN
 #include "plane.h"
-#include <setjmp.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/errno.h>
 #include <pthread.h>
-#include <stdint.h>
-#include <string.h>
 
 enum API {None, Metal, Vulkan, Opengl};
 
