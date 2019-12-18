@@ -22,7 +22,7 @@ GLuint arrayId = 0;
 GLuint programId = 0;
 GLuint vertexId = 0;
 GLuint elementId = 0;
-GLuint uniformId[Specials] = {0};
+GLuint uniformId[Memorys] = {0};
 
 GLuint loadShaders(const char *vs, const char *fs)
 {
@@ -65,13 +65,15 @@ int openglInit()
 	uniformId[Feather] = glGetUniformLocation(programId, "feather");
 	uniformId[Arrow] = glGetUniformLocation(programId, "arrow");
 	uniformId[Cloud] = glGetUniformLocation(programId, "cloud");
-	uniformId[Pass] = glGetUniformLocation(programId, "pass");
-	uniformId[Tool] = glGetUniformLocation(programId, "tool");
+	uniformId[Face] = glGetUniformLocation(programId, "face");
+	uniformId[Tope] = glGetUniformLocation(programId, "tope");
+	uniformId[Tag] = glGetUniformLocation(programId, "tag");
 	return 1;
 }
 
 void openglDraw()
 {
+	/*
 	if (vertexBufferChanged) {
 	glBindBuffer(GL_ARRAY_BUFFER, vertexId);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(struct Vertex)*vertices, vertex, GL_STATIC_DRAW);}
@@ -96,6 +98,7 @@ void openglDraw()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId);
 	glDrawElements(GL_TRIANGLES,facets,GL_UNSIGNED_INT,(void*)0);
 	glfwSwapBuffers(window);}
+	*/
 }
 
 void openglDone()

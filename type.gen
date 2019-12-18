@@ -59,11 +59,38 @@ Source = {
 	"Plane",
 	"Space",
 }
+Function = {
+	"Check",
+	"Rdma",
+	"Rmw0",
+	"Rmw1",
+	"Copy",
+	"Save0",
+	"Save1",
+	"Dma",
+	"Report",
+	"Render",
+}
 Memory = {
-	"Uniform",
 	"Corner",
 	"Triangle",
-	"Usage",
+	"Basis",
+	"Subject",
+	"Object",
+	"Feature",
+	"Feather",
+	"Arrow",
+	"Cloud",
+	"MMatrix",
+	"MClick",
+	"MMove",
+	"MRoll",
+	"Fixed",
+	"Moved",
+	"Rolled",
+	"Face",
+	"Tope",
+	"Tag",
 }
 Matrix = {
 	"Picture",
@@ -88,27 +115,6 @@ Roll = {
 	"Normal",
 	"Parallel",
 	"Scale",
-}
-Type = {
-	"Command",
-	"Compat",
-	"Hotkey",
-}
-Mode = {
-	"Initial",
-	"Active",
-	"Suspend",
-}
-Special = {
-	"Basis",
-	"Subject",
-	"Object",
-	"Feature",
-	"Feather",
-	"Arrow",
-	"Cloud",
-	"Pass",
-	"Tool",
 }
 Config = {
 	"Table",
@@ -185,14 +191,6 @@ Metric = {
 	{"idx","int",{["src"]={["Line"]=true}},"num"},
 	{"val","double",{["src"]={["Line"]=true}},"tot"},
 }
-User = {
-	{"matrix","Matrix",{},{}}, -- transformation collection
-	{"click","Click",{},{}}, -- what mouse click does
-	{"move","Move",{},{}}, -- what mouse move does
-	{"roll","Roll",{},{}}, -- what mouse roller does
-	{"type","Type",{},{}}, -- what keyboard does
-	{"mode","Mode",{},{}}, -- changed by left/right click
-}
 Vertex = {
 	{"tag","int",{},{3}}, -- layout (location=0) in ivec3 tag;
 	{"plane","float",{},{3,3}}, -- layout (location=1) in vec3 plane[3];
@@ -206,16 +204,41 @@ Vertex = {
 Facet = {
 	{"vtxid","int",{},{3}}, -- just in time filtered per tag
 }
+Affine = {
+	{"val","float",{},{4,4}},
+}
+Linear = {
+	{"val","float",{},{3,3}},
+}
+Vector = {
+	{"val","float",{},{3}},
+}
+Cursor = {
+	{"val","float",{},{2}},
+}
 Client = {
 	{"mem","Memory",{},{}},
-	{"idx","int",{},{}},
-	{"usr","User",{["mem"]={["Usage"]=true}},{}},
-	{"vtx","Vertex",{["mem"]={["Corner"]=true}},{3}},
-	{"fct","Facet",{["mem"]={["Triangle"]=true}},{3}},
-	{"spl","Special",{["mem"]={["Uniform"]=true}},{}},
-	{"siz","int",{["mem"]={["Uniform"]=true}},{}},
-	{"mat","float",{["mem"]={["Uniform"]=true}},"siz"},
-	{"val","int",{["mem"]={["Uniform"]=true}},{}},
+	{"fnc","int",{},{}},
+	{"siz","int",{},{}},
+	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
+	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
+	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
+	{"subject","Affine",{["mem"]={["Subject"]=true}},1},
+	{"object","Affine",{["mem"]={["Object"]=true}},1},
+	{"feature","Affine",{["mem"]={["Feature"]=true}},1},
+	{"feather","Vector",{["mem"]={["Feather"]=true}},1},
+	{"arrow","Vector",{["mem"]={["Arrow"]=true}},1},
+	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
+	{"matrix","Matrix",{["mem"]={["MMatrix"]=true}},{}},
+	{"click","Click",{["mem"]={["MClick"]=true}},{}},
+	{"move","Move",{["mem"]={["MMove"]=true}},{}},
+	{"roll","Roll",{["mem"]={["MRoll"]=true}},{}},
+	{"fixed","Vector",{["mem"]={["Fixed"]=true}},1},
+	{"moved","Cursor",{["mem"]={["Moved"]=true}},1},
+	{"rolled","float",{["mem"]={["Rolled"]=true}},{}},
+	{"plane","int",{["mem"]={["Face"]=true}},{}},
+	{"tope","int",{["mem"]={["Tope"]=true}},{}},
+	{"tag","int",{["mem"]={["Tag"]=true}},{}},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},

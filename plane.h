@@ -25,32 +25,12 @@
 #endif
 #define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 
-struct Affine {
-	float view[4][4]; // all polytopes at once
-	float tope[NUMFILE][4][4]; // individual polytopes
-	float face[4][4]; // individual plane
-};
-
 EXTERN int esc;
 EXTERN GLFWwindow* window;
-EXTERN int vertexBufferChanged;
-EXTERN int elementBufferChanged;
-EXTERN int uniformBufferChanged[Specials];
-EXTERN int nextBufferChanged[Specials];
-EXTERN int firstBufferChanged;
-EXTERN float basis[3][3][3];
-EXTERN struct Affine affine;
-EXTERN int vertices;
-EXTERN struct Vertex *vertex;
-EXTERN int facets;
-EXTERN struct Facet *facet;
-EXTERN float feather[3];
-EXTERN float arrow[3];
-EXTERN float cloud[NUMFEND][3];
-EXTERN int tag;
-EXTERN int tope;
-EXTERN int plane;
-// TODO feather arrow and feedback
+EXTERN struct Client *client;
+EXTERN struct Client *state[Memorys];
+EXTERN struct Client *saved0[Memorys];
+EXTERN struct Client *saved1[Memorys];
 
 void huberr(const char *str, int num, int arg);
 void exiterr(const char *str, int num, int arg);

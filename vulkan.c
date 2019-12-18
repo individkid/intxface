@@ -18,7 +18,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include "plane.h"
 
-enum Shader {Render,Present,Pierce,Bounce,Shaders};
+enum Shader {Display,Present,Pierce,Bounce,Shaders};
 VkInstance instance = {0};
 VkDebugUtilsMessengerEXT debug = {0};
 VkSurfaceKHR surface = {0};
@@ -120,8 +120,8 @@ int vulkanInit()
 	// vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &presentSupport);
 	if (presentSupport && !valid[Present]) {
 	family[Present] = i; valid[Present] = 1;}
-	if ((queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && !valid[Render]) {
-	family[Render] = i; valid[Render] = 1;}}
+	if ((queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && !valid[Display]) {
+	family[Display] = i; valid[Display] = 1;}}
 	uint32_t queueCreateInfoCount = 0;
 	VkDeviceQueueCreateInfo queueCreateInfo[Shaders] = {0};
 	float queuePriority = 1.0f;

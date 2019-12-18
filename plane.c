@@ -28,38 +28,13 @@ int esc = 0;
 jmp_buf jmpbuf = {0};
 pthread_mutex_t mutex = {0};
 pthread_cond_t cond = {0};
-struct Client client = {0};
 pthread_t pthread = {0};
-GLFWwindow* window = 0;
-int vertexBufferChanged = 0;
-int elementBufferChanged = 0;
-int uniformBufferChanged[Specials] = {0};
-int nextBufferChanged[Specials] = {0};
-int firstBufferChanged = 0;
+GLFWwindow *window = 0;
+struct Client *client = 0;
+struct Client *state[Memorys] = {0};
+struct Client *saved0[Memorys] = {0};
+struct Client *saved1[Memorys] = {0};
 enum API api = 0;
-
-int tags = 0; // how many tags to render
-int topes = 0; // how many files/polytopes there are
-float basis[3][3][3] = {0}; // client copy of foot points
-struct Affine affine = {0}; // client copy of transformation
-float feather[3] = {0}; // client copy of tail uniform
-float arrow[3] = {0}; // client copy of head uniform
-float cloud[NUMFEND][3] = {0}; // client copy of bounce points
-int vertices = 0; // how many points
-int verticez = 0; // how much memory allocated
-struct Vertex *vertex = 0; // client copy of shader input
-int facets = 0; // how many triangles
-int facetz = 0; // how much memory allocated
-struct Facet *facet = 0; // client copy of point triples
-struct User user = {0};
-
-int tag = 0; // which triangles are being rendered
-int tope = 0; // which tope is being transformed
-int plane = 0; // which plane is being transformed
-struct Affine saved = {0}; // from when sent to file
-float fixed[3] = {0}; // from when pierce point clicked
-float moved[2] = {0}; // from when mouse moved
-float rolled = {0}; // from when roller adjusted
 
 void huberr(const char *str, int num, int arg)
 {
@@ -78,46 +53,53 @@ int callread(int argc)
 	int vld = 0;
 	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (sub >= 0) {readClient(&client,sub); sub = -1; vld = 1;}
+	if (sub >= 0) {readClient(client,sub); sub = -1; vld = 1;}
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}
 	return vld;
 }
 
+void clientCompose(struct Client *res, struct Client *one, struct Client *oth)
+{
+}
+
+void clientDelta(struct Client *res, struct Client *one, struct Client *oth)
+{
+}
+
 void process()
 {
-	switch (client.mem) {
-	case (Usage): break;
-	case (Corner):
-	while (client.idx >= verticez) {
-	verticez = (verticez ? verticez*2 : 1);
-	if ((vertex = realloc(vertex,verticez)) == 0) ERROR(exiterr,-1);}
-	memcpy(&vertex[client.idx],&client.vtx,sizeof(client.vtx));
-	vertexBufferChanged = 1;
-	break;
-	case (Triangle):
-	while (client.idx >= facetz) {
-	facetz = (facetz ? facetz*2 : 1);
-	if ((facet = realloc(facet,facetz)) == 0) ERROR(exiterr,-1);}
-	memcpy(&facet[client.idx],&client.fct,sizeof(client.fct));
-	elementBufferChanged = 1;
-	break;
-	case (Uniform):
-	switch (client.spl) {
-	case (Basis): memcpy(basis[client.idx],client.mat,client.siz*sizeof(float)); break;
-	case (Subject): memcpy(affine.view,client.mat,client.siz*sizeof(float)); break;
-	case (Object): memcpy(affine.tope[client.idx],client.mat,client.siz*sizeof(float)); break;
-	case (Feature): memcpy(affine.face,client.mat,client.siz*sizeof(float)); break;
-	case (Feather): memcpy(feather,client.mat,client.siz*sizeof(float)); break;
-	case (Arrow): memcpy(arrow,client.mat,client.siz*sizeof(float)); break;
-	case (Cloud): memcpy(cloud[client.idx],client.mat,client.siz*sizeof(float)); break;
-	case (Pass): memcpy(&tag,&client.val,sizeof(int)); break;
-	case (Tool): memcpy(&plane,&client.val,sizeof(int)); break;
-	default: ERROR(exiterr,-1);}
-	if (!uniformBufferChanged[client.spl]) {
-	nextBufferChanged[client.spl] = firstBufferChanged;
-	firstBufferChanged = client.spl;}
-	break;
+	enum Function func = 0;
+	while (client->fnc) if ((client->fnc>>func)&1) switch (func) {
+	case (Check): break;
+	case (Rdma): break;
+	case (Rmw0): {
+	struct Client *compose = 0; allocClient(&compose,1);
+	clientCompose(compose,client,saved0[client->mem]);
+	allocClient(&state[client->mem],0);
+	state[client->mem] = compose; break;}
+	case (Rmw1): {
+	struct Client *delta = 0; allocClient(&delta,1);
+	clientDelta(delta,state[client->mem],saved1[client->mem]);
+	saved1[client->mem] = client;
+	struct Client *compose = 0; allocClient(&compose,1);
+	clientCompose(compose,delta,client);
+	allocClient(&delta,0);
+	allocClient(&saved1[client->mem],0);
+	state[client->mem] = compose;
+	saved1[client->mem] = client; break;}
+	case (Copy): {
+	allocClient(&state[client->mem],0);
+	state[client->mem] = client; break;}
+	case (Save0): {
+	allocClient(&saved0[client->mem],0);
+	saved0[client->mem] = client; break;}
+	case (Save1): {
+	allocClient(&saved1[client->mem],0);
+	saved1[client->mem] = client; break;}
+	case (Dma): break;
+	case (Report): break;
+	case (Render): break;
 	default: ERROR(exiterr,-1);}
 }
 
@@ -180,15 +162,19 @@ int main(int argc, char **argv)
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
 	glfwWaitEvents();
 	handle(); // apply arguments from user input callbacks
-	if (callread(argc)) process(); // from other processes
+	if (callread(argc)) { // from other processes
+	switch (api) {
+	case (None): break;
+	case (Metal): /*metalCheck();*/ break;
+	case (Vulkan): /*vulkanCheck();*/ break;
+	case (Opengl):  /*openglCheck();*/ break;}
+	process();}
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;
 	case (Metal): metalDraw(); break;
 	case (Vulkan): vulkanDraw(); break;
 	case (Opengl):  openglDraw(); break;}
-	produce(); // send changed metrics with feedback info
-	for (enum Special i = firstBufferChanged; uniformBufferChanged[i]; i = nextBufferChanged[i])
-	uniformBufferChanged[i] = 0; vertexBufferChanged = elementBufferChanged = 0;}}}
+	produce();}}} // send changed metrics with feedback info
 
 	switch (api) {
 	case (None): break;
