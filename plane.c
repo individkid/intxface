@@ -76,27 +76,20 @@ void process()
 	case (Rmw0): {
 	struct Client *compose = 0; allocClient(&compose,1);
 	clientCompose(compose,client,saved0[client->mem]);
-	allocClient(&state[client->mem],0);
-	state[client->mem] = compose; break;}
+	allocClient(&state[client->mem],0); state[client->mem] = compose; break;}
 	case (Rmw1): {
 	struct Client *delta = 0; allocClient(&delta,1);
 	clientDelta(delta,state[client->mem],saved1[client->mem]);
-	saved1[client->mem] = client;
+	allocClient(&saved1[client->mem],0); saved1[client->mem] = client;
 	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,delta,client);
-	allocClient(&delta,0);
-	allocClient(&saved1[client->mem],0);
-	state[client->mem] = compose;
-	saved1[client->mem] = client; break;}
+	clientCompose(compose,delta,client); allocClient(&delta,0);
+	allocClient(&state[client->mem],0); state[client->mem] = compose; break;}
 	case (Copy): {
-	allocClient(&state[client->mem],0);
-	state[client->mem] = client; break;}
+	allocClient(&state[client->mem],0); state[client->mem] = client; break;}
 	case (Save0): {
-	allocClient(&saved0[client->mem],0);
-	saved0[client->mem] = client; break;}
+	allocClient(&saved0[client->mem],0); saved0[client->mem] = client; break;}
 	case (Save1): {
-	allocClient(&saved1[client->mem],0);
-	saved1[client->mem] = client; break;}
+	allocClient(&saved1[client->mem],0); saved1[client->mem] = client; break;}
 	case (Dma): break;
 	case (Report): break;
 	case (Render): break;

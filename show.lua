@@ -523,15 +523,17 @@ function showStreamC(name,struct,show,pre,post)
 		local sub = nil
 		local lim = nil
 		local ebr = ""
-		if (show~=showFreeCF) or (Structz[v[2]]~=nil) or
-			(type(v[4]) == "number") or (type(v[4]) == "string") then
+		if (show==showFreeCF) and (Structz[v[2]]==nil) and
+			(type(v[4]) ~= "number") and (type(v[4]) ~= "string") then
+			cond = "1"
+		end
 		if (cond ~= "1") then
 			result = result..showIndent(depth)
 			result = result.."if "..cond.." {".."\n"
 			ebr = ebr.."}"
 			depth = depth + 1
 		end
-		if (type(v[4]) == "table") then
+		if (type(v[4]) == "table") and ((show~=showFreeCF) or (Structz[v[2]]~=nil)) then
 			sub = ""
 			for key,val in ipairs(v[4]) do
 				result = result..showIndent(depth)
@@ -539,15 +541,14 @@ function showStreamC(name,struct,show,pre,post)
 				sub = sub.."[i"..key.."]"
 				depth = depth + 1
 			end
-			result = result..showIndent(depth)
-		elseif (type(v[4]) == "number") then
+		elseif (type(v[4]) == "number") and (show ~= showFreeCF) then
 			sub = ""
 			lim = v[4]
-		elseif (type(v[4]) == "string") then
+		elseif (type(v[4]) == "string") and (show ~= showFreeCF) then
 			sub = ""
 			lim = "ptr->"..v[4]
-		else
-			result = result..showIndent(depth)
+		elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
+			sub = ""
 		end
 		if lim then
 			if (show == showReadCF) or (show == showRandCF) then
@@ -559,12 +560,13 @@ function showStreamC(name,struct,show,pre,post)
 			sub = "[i]"
 			depth = depth + 1
 			result = result..showIndent(depth)
+		elseif (sub ~= nil) or (show ~= showFreeCF) then
+			result = result..showIndent(depth)
 		end
-		if (sub == nil) then
-			result = result..ebr.."// "..showAny(v).."\n"
-		else
+		if (sub ~= nil) then
 			result = result..show(v,ebr,sub)
-		end
+		elseif (show ~= showFreeCF) then
+			result = result..ebr.."// "..showAny(v).."\n"
 		end
 	end
 	if (show == showCompCF) then
@@ -577,7 +579,7 @@ function showStreamC(name,struct,show,pre,post)
 	return result
 end
 function showReadCF(v,ebr,sub)
-	result = ""
+	local result = ""
 	if (v[2] == "int") then
 		result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
 	elseif (v[2] == "long long") then
@@ -598,7 +600,7 @@ function showReadCF(v,ebr,sub)
 	return result
 end
 function showWriteCF(v,ebr,sub)
-	result = ""
+	local result = ""
 	if (v[2] == "int") then
 		result = result.."writeInt(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	elseif (v[2] == "long long") then
@@ -625,7 +627,7 @@ function showWriteC(name,struct)
 	return showStreamC(name,struct,showWriteCF,"void write",", int idx")
 end
 function showAllocC(name,typ)
-	result = ""
+	local result = ""
 	if (name == "Void") then
 		result = result.."void allocVoid(void **ptr, int num, int siz)"
 		if prototype then result = result..";\n" else result = result.."\n{\n"
@@ -693,10 +695,12 @@ function showAllocC(name,typ)
 	return result
 end
 function showFreeCF(v,ebr,sub)
-	result = ""
+	local result = ""
 	if (Structz[v[2]]~=nil) then
 		local depth = 1; while (string.sub(ebr,depth,1) == "}") do depth = depth + 1 end
-		result = result.."free"..v[2].."(&ptr->"..v[1]..sub..");"
+		result = result.."free"..v[2].."("
+		if (sub ~= "") or (type(v[4]) == "table") then result = result.."&" end
+		result = result.."ptr->"..v[1]..sub..");"
 		if (type(v[4]) == "number") or (type(v[4]) == "string") then
 			result = result.."\n"..showIndent(depth)
 			result = result.."{void *tmp = ptr->"..v[1].."; allocVoid(&tmp,0,0); ptr->"..v[1].." = tmp;}"
@@ -1003,7 +1007,7 @@ function showAccessHs(name,struct)
 	return result
 end
 function showHelpHs()
-	result = ""
+	local result = ""
 	result = result.."listHelp :: Int -> IO a -> IO [a]\n"
 	result = result.."listHelp 0 b = return []\n"
 	result = result.."listHelp a b = do\n"
