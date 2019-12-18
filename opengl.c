@@ -73,37 +73,86 @@ int openglInit()
 
 int openglCheck()
 {
-	return 0;
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Check): {
+	// TODO return 0 if query not finished
+	break;}
+	case (Rdma): {
+	// TODO transfer from gpu to state[client->mem]
+	break;}
+	case (Rmw0): break;
+	case (Rmw1): break;
+	case (Copy): break;
+	case (Save0): break;
+	case (Save1): break;
+	case (Dma): break;
+	case (Report): break;
+	case (Render): break;
+	default: ERROR(exiterr,-1);}
+	return 1;
 }
 
-void openglDraw()
+void openglDma()
 {
-	/*
-	if (vertexBufferChanged) {
+	switch (client->mem) {
+	case (Corner):
 	glBindBuffer(GL_ARRAY_BUFFER, vertexId);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(struct Vertex)*vertices, vertex, GL_STATIC_DRAW);}
-	if (elementBufferChanged) {
+	// TODO use client->idx as index for glBufferSubData
+	glBufferData(GL_ARRAY_BUFFER, sizeof(*client->corner)*client->siz, client->corner, GL_STATIC_DRAW);
+	break;
+	case (Triangle): 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(struct Facet)*facets, facet, GL_STATIC_DRAW);}
-	for (enum Special i = firstBufferChanged; uniformBufferChanged[i]; i = nextBufferChanged[i]) switch (i) {
-	case (Basis): glUniformMatrix3fv(uniformId[Basis], 3, GL_FALSE, &basis[0][0][0]); break;
-	case (Subject): glUniformMatrix4fv(uniformId[Subject], 1, GL_FALSE, &affine.view[0][0]); break;
-	case (Object): glUniformMatrix4fv(uniformId[Object], 1, GL_FALSE, &affine.tope[tope][0][0]); break;
-	case (Feature): glUniformMatrix4fv(uniformId[Feature], 1, GL_FALSE, &affine.view[0][0]); break;
-	case (Feather): glUniform3fv(uniformId[Feather], 1, &feather[0]); break;
-	case (Arrow): glUniform3fv(uniformId[Arrow], 1, &arrow[0]); break;
-	case (Cloud): glUniform3fv(uniformId[Cloud], NUMFEND, &cloud[0][0]); break;
-	case (Pass): glUniform1i(uniformId[Pass], tag); break;
-	case (Tool): glUniform1i(uniformId[Tool], plane); break;
+	// TODO use client->idx as index for glBufferSubData
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(*client->triangle)*client->siz, client->triangle, GL_STATIC_DRAW);
+	break;
+	case (Basis): glUniformMatrix3fv(uniformId[Basis], 3, GL_FALSE, &client->basis->val[0][0]); break;
+	case (Subject): glUniformMatrix4fv(uniformId[Subject], 1, GL_FALSE, &client->subject->val[0][0]); break;
+	// TODO use client->idx to index an array of uniforms indicated by uniformId[Object]
+	case (Object): glUniformMatrix4fv(uniformId[Object], 1, GL_FALSE, &client->object->val[0][0]); break;
+	case (Feature): glUniformMatrix4fv(uniformId[Feature], 1, GL_FALSE, &client->feature->val[0][0]); break;
+	case (Feather): glUniform3fv(uniformId[Feather], 1, &client->feather->val[0]); break;
+	case (Arrow): glUniform3fv(uniformId[Arrow], 1, &client->arrow->val[0]); break;
+	// TODO use client->idx to index an array of uniforms indicated by uniformId[Cloud]
+	case (Cloud): glUniform3fv(uniformId[Cloud], client->siz, &client->cloud->val[0]); break;
+	case (MMatrix): ERROR(huberr,-1);
+	case (MClick): ERROR(huberr,-1);
+	case (MMove): ERROR(huberr,-1);
+	case (MRoll): ERROR(huberr,-1);
+	case (Fixed): ERROR(huberr,-1);
+	case (Moved): ERROR(huberr,-1);
+	case (Rolled): ERROR(huberr,-1);
+	case (Face): glUniform1i(uniformId[Face], client->face); break;
+	case (Tope): glUniform1i(uniformId[Tope], client->tope); break;
+	case (Tag): glUniform1i(uniformId[Tag], client->tag); break;
 	default: ERROR(exiterr,-1);}
-	if (vertexBufferChanged || elementBufferChanged || uniformBufferChanged[firstBufferChanged]) {
+}
+
+void openglRender()
+{
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(programId);
 	glBindVertexArray(arrayId);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId);
-	glDrawElements(GL_TRIANGLES,facets,GL_UNSIGNED_INT,(void*)0);
-	glfwSwapBuffers(window);}
-	*/
+	glDrawElements(GL_TRIANGLES,state[Triangle]->siz*3,GL_UNSIGNED_INT,(void*)0);
+	glfwSwapBuffers(window);
+}
+
+void openglDraw()
+{
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Check): break;
+	case (Rdma): break;
+	case (Rmw0): break;
+	case (Rmw1): break;
+	case (Copy): break;
+	case (Save0): break;
+	case (Save1): break;
+	case (Dma): openglDma(); break;
+	case (Report): break;
+	case (Render): openglRender(); break;
+	default: ERROR(exiterr,-1);}
 }
 
 void openglDone()

@@ -229,7 +229,7 @@ Client = {
 	{"feature","Affine",{["mem"]={["Feature"]=true}},1},
 	{"feather","Vector",{["mem"]={["Feather"]=true}},1},
 	{"arrow","Vector",{["mem"]={["Arrow"]=true}},1},
-	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
+	{"cloud","Vector",{["mem"]={["Cloud"]=true}},1},
 	{"matrix","Matrix",{["mem"]={["MMatrix"]=true}},{}},
 	{"click","Click",{["mem"]={["MClick"]=true}},{}},
 	{"move","Move",{["mem"]={["MMove"]=true}},{}},
@@ -237,7 +237,7 @@ Client = {
 	{"fixed","Vector",{["mem"]={["Fixed"]=true}},1},
 	{"moved","Cursor",{["mem"]={["Moved"]=true}},1},
 	{"rolled","float",{["mem"]={["Rolled"]=true}},{}},
-	{"plane","int",{["mem"]={["Face"]=true}},{}},
+	{"face","int",{["mem"]={["Face"]=true}},{}},
 	{"tope","int",{["mem"]={["Tope"]=true}},{}},
 	{"tag","int",{["mem"]={["Tag"]=true}},{}},
 }

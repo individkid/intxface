@@ -50,6 +50,7 @@ void exiterr(const char *str, int num, int arg)
 
 int callread(int argc)
 {
+	// TODO get from user input inject
 	int vld = 0;
 	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
@@ -102,10 +103,6 @@ void produce()
 	//  change modes, sculpt topology, report state
 }
 
-void handle()
-{
-}
-
 void *thread(void *arg)
 {
 	int tmp = 0;
@@ -154,20 +151,19 @@ int main(int argc, char **argv)
 	if (setjmp(jmpbuf) == 0) {
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
 	glfwWaitEvents();
-	handle(); // apply arguments from user input callbacks
 	if (callread(argc)) { // from other processes
 	switch (api) {
 	case (None): break;
 	case (Metal): if (!metalCheck()) continue; break;
 	case (Vulkan): if (!vulkanCheck()) continue; break;
 	case (Opengl):  if (!openglCheck()) continue; break;}
-	process();}
+	process();
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;
 	case (Metal): metalDraw(); break;
 	case (Vulkan): vulkanDraw(); break;
 	case (Opengl):  openglDraw(); break;}
-	produce();}}} // send changed metrics with feedback info
+	produce();}}}} // send changed metrics with feedback info
 
 	switch (api) {
 	case (None): break;
