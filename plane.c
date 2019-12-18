@@ -69,8 +69,8 @@ void clientDelta(struct Client *res, struct Client *one, struct Client *oth)
 
 void process()
 {
-	enum Function func = 0;
-	while (client->fnc) if ((client->fnc>>func)&1) switch (func) {
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
 	case (Check): break;
 	case (Rdma): break;
 	case (Rmw0): {
@@ -165,9 +165,9 @@ int main(int argc, char **argv)
 	if (callread(argc)) { // from other processes
 	switch (api) {
 	case (None): break;
-	case (Metal): /*metalCheck();*/ break;
-	case (Vulkan): /*vulkanCheck();*/ break;
-	case (Opengl):  /*openglCheck();*/ break;}
+	case (Metal): if (!metalCheck()) continue; break;
+	case (Vulkan): if (!vulkanCheck()) continue; break;
+	case (Opengl):  if (!openglCheck()) continue; break;}
 	process();}
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;

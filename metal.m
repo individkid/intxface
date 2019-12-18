@@ -22,6 +22,11 @@ int metalInit()
 	return 0;
 }
 
+int metalCheck()
+{
+	return 0;
+}
+
 void metalDraw()
 {
 }

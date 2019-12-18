@@ -153,6 +153,11 @@ int vulkanInit()
 	return 1;
 }
 
+int vulkanCheck()
+{
+	return 0;
+}
+
 void vulkanDraw()
 {
 }

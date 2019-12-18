@@ -71,6 +71,11 @@ int openglInit()
 	return 1;
 }
 
+int openglCheck()
+{
+	return 0;
+}
+
 void openglDraw()
 {
 	/*
