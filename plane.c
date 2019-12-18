@@ -68,29 +68,45 @@ void clientDelta(struct Client *res, struct Client *one, struct Client *oth)
 {
 }
 
+#define INDEXED(ENUM,FIELD) \
+if (client->mem == ENUM && ptr[client->mem] && client->siz < ptr[client->mem]->siz) \
+	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
+void clientCopy(struct Client **ptr)
+{
+	INDEXED(Basis,basis);
+	INDEXED(Object,object);
+	INDEXED(Cloud,cloud);
+	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
+}
+
+void clientRmw0()
+{
+	struct Client *compose = 0; allocClient(&compose,1);
+	clientCompose(compose,client,saved0[client->mem]);
+	allocClient(&state[client->mem],0); state[client->mem] = compose;
+}
+
+void clientRmw1()
+{
+	struct Client *delta = 0; allocClient(&delta,1);
+	clientDelta(delta,state[client->mem],saved1[client->mem]);
+	allocClient(&saved1[client->mem],0); saved1[client->mem] = client;
+	struct Client *compose = 0; allocClient(&compose,1);
+	clientCompose(compose,delta,client); allocClient(&delta,0);
+	allocClient(&state[client->mem],0); state[client->mem] = compose;
+}
+
 void process()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
 	case (Check): break;
 	case (Rdma): break;
-	case (Rmw0): {
-	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,client,saved0[client->mem]);
-	allocClient(&state[client->mem],0); state[client->mem] = compose; break;}
-	case (Rmw1): {
-	struct Client *delta = 0; allocClient(&delta,1);
-	clientDelta(delta,state[client->mem],saved1[client->mem]);
-	allocClient(&saved1[client->mem],0); saved1[client->mem] = client;
-	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,delta,client); allocClient(&delta,0);
-	allocClient(&state[client->mem],0); state[client->mem] = compose; break;}
-	case (Copy): {
-	allocClient(&state[client->mem],0); state[client->mem] = client; break;}
-	case (Save0): {
-	allocClient(&saved0[client->mem],0); saved0[client->mem] = client; break;}
-	case (Save1): {
-	allocClient(&saved1[client->mem],0); saved1[client->mem] = client; break;}
+	case (Rmw0): clientRmw0(); break;
+	case (Rmw1): clientRmw1(); break;
+	case (Copy): clientCopy(state); break;
+	case (Save0): clientCopy(saved0); break;
+	case (Save1): clientCopy(saved1); break;
 	case (Dma): break;
 	case (Report): break;
 	case (Render): break;

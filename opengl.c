@@ -22,11 +22,26 @@ GLuint arrayId = 0;
 GLuint programId = 0;
 GLuint vertexId = 0;
 GLuint elementId = 0;
-GLuint uniformId[Memorys] = {0};
+GLuint *uniformId[Memorys] = {0};
 
 GLuint loadShaders(const char *vs, const char *fs)
 {
 	return 0;
+}
+
+GLuint *uniformIdent(const char *name, int size)
+{
+	GLuint *ptr = 0;
+	if (size) ptr = malloc(size*sizeof(GLuint));
+	else ptr = malloc(sizeof(GLuint));
+	if (!ptr) ERROR(exiterr,-1);
+	if (size) for (int i = 0; i < size; i++) {
+		char *str = 0;
+		if (asprintf(&str,"%s[%d]",name,i) < 0) ERROR(exiterr,-1);
+		ptr[i] = glGetUniformLocation(programId,str);
+		free(str);
+	} else ptr[0] = glGetUniformLocation(programId,name);
+	return ptr;
 }
 
 int openglInit()
@@ -58,16 +73,16 @@ int openglInit()
 	for (int i = 0; i < index; i++)
 	glDisableVertexAttribArray(i);
 	glGenBuffers(1, &elementId);
-	uniformId[Basis] = glGetUniformLocation(programId, "basis");
-	uniformId[Subject] = glGetUniformLocation(programId, "subject");
-	uniformId[Object] = glGetUniformLocation(programId, "object");
-	uniformId[Feature] = glGetUniformLocation(programId, "feature");
-	uniformId[Feather] = glGetUniformLocation(programId, "feather");
-	uniformId[Arrow] = glGetUniformLocation(programId, "arrow");
-	uniformId[Cloud] = glGetUniformLocation(programId, "cloud");
-	uniformId[Face] = glGetUniformLocation(programId, "face");
-	uniformId[Tope] = glGetUniformLocation(programId, "tope");
-	uniformId[Tag] = glGetUniformLocation(programId, "tag");
+	uniformId[Basis] = uniformIdent("basis",3);
+	uniformId[Subject] = uniformIdent("subject",0);
+	uniformId[Object] = uniformIdent("object",NUMFILE);
+	uniformId[Feature] = uniformIdent("feature",0);
+	uniformId[Feather] = uniformIdent("feather",0);
+	uniformId[Arrow] = uniformIdent("arrow",0);
+	uniformId[Cloud] = uniformIdent("cloud",NUMFEND);
+	uniformId[Face] = uniformIdent("face",0);
+	uniformId[Tope] = uniformIdent("tope",0);
+	uniformId[Tag] = uniformIdent("tag",0);
 	return 1;
 }
 
@@ -106,15 +121,13 @@ void openglDma()
 	// TODO use client->idx as index for glBufferSubData
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(*client->triangle)*client->siz, client->triangle, GL_STATIC_DRAW);
 	break;
-	case (Basis): glUniformMatrix3fv(uniformId[Basis], 3, GL_FALSE, &client->basis->val[0][0]); break;
-	case (Subject): glUniformMatrix4fv(uniformId[Subject], 1, GL_FALSE, &client->subject->val[0][0]); break;
-	// TODO use client->idx to index an array of uniforms indicated by uniformId[Object]
-	case (Object): glUniformMatrix4fv(uniformId[Object], 1, GL_FALSE, &client->object->val[0][0]); break;
-	case (Feature): glUniformMatrix4fv(uniformId[Feature], 1, GL_FALSE, &client->feature->val[0][0]); break;
-	case (Feather): glUniform3fv(uniformId[Feather], 1, &client->feather->val[0]); break;
-	case (Arrow): glUniform3fv(uniformId[Arrow], 1, &client->arrow->val[0]); break;
-	// TODO use client->idx to index an array of uniforms indicated by uniformId[Cloud]
-	case (Cloud): glUniform3fv(uniformId[Cloud], client->siz, &client->cloud->val[0]); break;
+	case (Basis): glUniformMatrix3fv(uniformId[Basis][0], 3, GL_FALSE, &client->basis->val[0][0]); break;
+	case (Subject): glUniformMatrix4fv(uniformId[Subject][0], 1, GL_FALSE, &client->subject->val[0][0]); break;
+	case (Object): glUniformMatrix4fv(uniformId[Object][client->idx], client->siz, GL_FALSE, &client->object->val[0][0]); break;
+	case (Feature): glUniformMatrix4fv(uniformId[Feature][0], 1, GL_FALSE, &client->feature->val[0][0]); break;
+	case (Feather): glUniform3fv(uniformId[Feather][0], 1, &client->feather->val[0]); break;
+	case (Arrow): glUniform3fv(uniformId[Arrow][0], 1, &client->arrow->val[0]); break;
+	case (Cloud): glUniform3fv(uniformId[Cloud][client->idx], client->siz, &client->cloud->val[0]); break;
 	case (MMatrix): ERROR(huberr,-1);
 	case (MClick): ERROR(huberr,-1);
 	case (MMove): ERROR(huberr,-1);
@@ -122,9 +135,9 @@ void openglDma()
 	case (Fixed): ERROR(huberr,-1);
 	case (Moved): ERROR(huberr,-1);
 	case (Rolled): ERROR(huberr,-1);
-	case (Face): glUniform1i(uniformId[Face], client->face); break;
-	case (Tope): glUniform1i(uniformId[Tope], client->tope); break;
-	case (Tag): glUniform1i(uniformId[Tag], client->tag); break;
+	case (Face): glUniform1i(uniformId[Face][0], client->face); break;
+	case (Tope): glUniform1i(uniformId[Tope][0], client->tope); break;
+	case (Tag): glUniform1i(uniformId[Tag][0], client->tag); break;
 	default: ERROR(exiterr,-1);}
 }
 
