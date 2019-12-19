@@ -86,41 +86,17 @@ int openglInit()
 	return 1;
 }
 
-int openglCheck()
-{
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
-	case (Check): {
-	// TODO return 0 if query not finished
-	break;}
-	case (Rdma): {
-	// TODO transfer from gpu to state[client->mem]
-	break;}
-	case (Rmw0): break;
-	case (Rmw1): break;
-	case (Copy): break;
-	case (Save0): break;
-	case (Save1): break;
-	case (Dma): break;
-	case (Report): break;
-	case (Render): break;
-	default: ERROR(exiterr,-1);}
-	return 1;
-}
-
+#define INDEXED(ENUM,FIELD,IDENT,BUFFER) \
+	glBindBuffer(BUFFER, IDENT); \
+	if (client->siz < state[ENUM]->siz) \
+	glBufferSubData(BUFFER, sizeof(*client->FIELD)*client->idx, sizeof(*client->FIELD)*client->siz, client->FIELD); \
+	else \
+	glBufferData(GL_ARRAY_BUFFER, sizeof(*client->FIELD)*client->siz, client->FIELD, GL_STATIC_DRAW);
 void openglDma()
 {
 	switch (client->mem) {
-	case (Corner):
-	glBindBuffer(GL_ARRAY_BUFFER, vertexId);
-	// TODO use client->idx as index for glBufferSubData
-	glBufferData(GL_ARRAY_BUFFER, sizeof(*client->corner)*client->siz, client->corner, GL_STATIC_DRAW);
-	break;
-	case (Triangle): 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId);
-	// TODO use client->idx as index for glBufferSubData
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(*client->triangle)*client->siz, client->triangle, GL_STATIC_DRAW);
-	break;
+	case (Corner): INDEXED(Corner,corner,vertexId,GL_ARRAY_BUFFER); break;
+	case (Triangle): INDEXED(Triangle,triangle,elementId,GL_ELEMENT_ARRAY_BUFFER); break;
 	case (Basis): glUniformMatrix3fv(uniformId[Basis][0], 3, GL_FALSE, &client->basis->val[0][0]); break;
 	case (Subject): glUniformMatrix4fv(uniformId[Subject][0], 1, GL_FALSE, &client->subject->val[0][0]); break;
 	case (Object): glUniformMatrix4fv(uniformId[Object][client->idx], client->siz, GL_FALSE, &client->object->val[0][0]); break;
@@ -138,10 +114,23 @@ void openglDma()
 	case (Face): glUniform1i(uniformId[Face][0], client->face); break;
 	case (Tope): glUniform1i(uniformId[Tope][0], client->tope); break;
 	case (Tag): glUniform1i(uniformId[Tag][0], client->tag); break;
+	case (Scratch): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }
 
-void openglRender()
+int openglCheck()
+{
+	int found = 0;
+	for (int i = 0; i < client->len && !found; i++) {
+	if (client->fnc[i] == Dma0) found = 1;
+	if (client->fnc[i] == Dma1) found = 1;
+	if (client->fnc[i] == Draw) found = 1;}
+	if (!found) return 0;
+	// return 1 if query not finished
+	return 0;
+}
+
+void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(programId);
@@ -155,16 +144,14 @@ void openglDraw()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Check): break;
-	case (Rdma): break;
 	case (Rmw0): break;
 	case (Rmw1): break;
 	case (Copy): break;
-	case (Save0): break;
-	case (Save1): break;
-	case (Dma): openglDma(); break;
-	case (Report): break;
-	case (Render): openglRender(); break;
+	case (Save): break;
+	case (Dma0): openglDma(); break;
+	case (Dma1): break;
+	case (Draw): openglFunc(); break;
+	case (Port): break;
 	default: ERROR(exiterr,-1);}
 }
 

@@ -32,9 +32,9 @@ pthread_t pthread = {0};
 GLFWwindow *window = 0;
 struct Client *client = 0;
 struct Client *state[Memorys] = {0};
-struct Client *saved0[Memorys] = {0};
-struct Client *saved1[Memorys] = {0};
+struct Client *saved[Memorys] = {0};
 enum API api = 0;
+int pend = 0;
 
 void huberr(const char *str, int num, int arg)
 {
@@ -68,8 +68,29 @@ void clientDelta(struct Client *res, struct Client *one, struct Client *oth)
 {
 }
 
+void clientRmw0()
+{
+	struct Client **stat = &state[client->mem];
+	struct Client **save = &saved[client->mem];
+	if (client->mem == Object) {stat += client->idx; save += client->idx;}
+	clientCompose(client,client,*save);
+	allocClient(stat,0); *stat = client;
+}
+
+void clientRmw1()
+{
+	struct Client **stat = &state[client->mem];
+	struct Client **save = &saved[client->mem];
+	if (client->mem == Object) {stat += client->idx; save += client->idx;}
+	struct Client *delta = 0; allocClient(&delta,1);
+	clientDelta(delta,*stat,*save);
+	allocClient(save,0); *save = client;
+	clientCompose(client,delta,client); allocClient(&delta,0);
+	allocClient(stat,0); *stat = client;
+}
+
 #define INDEXED(ENUM,FIELD) \
-if (client->mem == ENUM && ptr[client->mem] && client->siz < ptr[client->mem]->siz) \
+	if (client->mem == ENUM && ptr[client->mem] && client->siz < ptr[client->mem]->siz) \
 	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
 void clientCopy(struct Client **ptr)
 {
@@ -79,42 +100,27 @@ void clientCopy(struct Client **ptr)
 	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
 }
 
-void clientRmw0()
-{
-	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,client,saved0[client->mem]);
-	allocClient(&state[client->mem],0); state[client->mem] = compose;
-}
-
-void clientRmw1()
-{
-	struct Client *delta = 0; allocClient(&delta,1);
-	clientDelta(delta,state[client->mem],saved1[client->mem]);
-	allocClient(&saved1[client->mem],0); saved1[client->mem] = client;
-	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,delta,client); allocClient(&delta,0);
-	allocClient(&state[client->mem],0); state[client->mem] = compose;
-}
-
 void process()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Check): break;
-	case (Rdma): break;
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
 	case (Copy): clientCopy(state); break;
-	case (Save0): clientCopy(saved0); break;
-	case (Save1): clientCopy(saved1); break;
-	case (Dma): break;
-	case (Report): break;
-	case (Render): break;
+	case (Save): clientCopy(saved); break;
+	case (Dma0): break;
+	case (Dma1): break;
+	case (Draw): break;
+	case (Port): break;
 	default: ERROR(exiterr,-1);}
 }
 
 void produce()
 {
+	int found = 0;
+	for (int i = 0; i < client->len && !found; i++)
+	if (client->fnc[i] == Port) found = 1;
+	if (!found) return;
 	// send Metric to steer scripts, update other users,
 	//  change modes, sculpt topology, report state
 }
@@ -167,12 +173,13 @@ int main(int argc, char **argv)
 	if (setjmp(jmpbuf) == 0) {
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
 	glfwWaitEvents();
-	if (callread(argc)) { // from other processes
+	if (pend || callread(argc)) { // from inject or other processes
 	switch (api) {
 	case (None): break;
-	case (Metal): if (!metalCheck()) continue; break;
-	case (Vulkan): if (!vulkanCheck()) continue; break;
-	case (Opengl):  if (!openglCheck()) continue; break;}
+	case (Metal): pend = metalCheck(); break;
+	case (Vulkan): pend = vulkanCheck(); break;
+	case (Opengl):  pend = openglCheck(); break;}
+	if (pend) continue;
 	process();
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;

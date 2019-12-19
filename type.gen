@@ -60,16 +60,14 @@ Source = {
 	"Space",
 }
 Function = {
-	"Check",
-	"Rdma",
 	"Rmw0",
 	"Rmw1",
 	"Copy",
-	"Save0",
-	"Save1",
-	"Dma",
-	"Report",
-	"Render",
+	"Save",
+	"Dma0",
+	"Dma1",
+	"Draw",
+	"Port",
 }
 Memory = {
 	"Corner",
@@ -91,6 +89,7 @@ Memory = {
 	"Face",
 	"Tope",
 	"Tag",
+	"Scratch",
 }
 Matrix = {
 	"Picture",
