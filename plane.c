@@ -100,31 +100,10 @@ void clientCopy(struct Client **ptr)
 	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
 }
 
-<<<<<<< HEAD
-=======
-void clientRmw0()
-{
-	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,client,saved[client->mem]);
-	allocClient(&state[client->mem],0); state[client->mem] = compose;
-}
-
-void clientRmw1()
-{
-	struct Client *delta = 0; allocClient(&delta,1);
-	clientDelta(delta,state[client->mem],saved[client->mem]);
-	allocClient(&saved[client->mem],0); saved[client->mem] = client;
-	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,delta,client); allocClient(&delta,0);
-	allocClient(&state[client->mem],0); state[client->mem] = compose;
-}
-
->>>>>>> 8fe9956480b180d51caa5ace6f3b44eab9b6e437
 void process()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-<<<<<<< HEAD
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
 	case (Copy): clientCopy(state); break;
@@ -133,16 +112,6 @@ void process()
 	case (Dma1): break;
 	case (Draw): break;
 	case (Port): break;
-=======
-	case (Copy): clientCopy(state); break;
-	case (Save): clientCopy(saved); break;
-	case (Rmw0): clientRmw0(); break;
-	case (Rmw1): clientRmw1(); break;
-	case (Dma0): break;
-	case (Dma1): break;
-	case (Render): break;
-	case (Report): break;
->>>>>>> 8fe9956480b180d51caa5ace6f3b44eab9b6e437
 	default: ERROR(exiterr,-1);}
 }
 
