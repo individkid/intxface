@@ -60,16 +60,14 @@ Source = {
 	"Space",
 }
 Function = {
-	"Check",
-	"Rdma",
+	"Copy",
+	"Save",
 	"Rmw0",
 	"Rmw1",
-	"Copy",
-	"Save0",
-	"Save1",
-	"Dma",
-	"Report",
+	"Dma0",
+	"Dma1",
 	"Render",
+	"Report",
 }
 Memory = {
 	"Corner",

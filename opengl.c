@@ -90,20 +90,14 @@ int openglCheck()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Check): {
-	// TODO return 0 if query not finished
-	break;}
-	case (Rdma): {
-	// TODO transfer from gpu to state[client->mem]
-	break;}
+	case (Copy): break;
+	case (Save): break;
 	case (Rmw0): break;
 	case (Rmw1): break;
-	case (Copy): break;
-	case (Save0): break;
-	case (Save1): break;
-	case (Dma): break;
-	case (Report): break;
+	case (Dma0): break;
+	case (Dma1): break;
 	case (Render): break;
+	case (Report): break;
 	default: ERROR(exiterr,-1);}
 	return 1;
 }
@@ -155,16 +149,14 @@ void openglDraw()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Check): break;
-	case (Rdma): break;
+	case (Copy): break;
+	case (Save): break;
 	case (Rmw0): break;
 	case (Rmw1): break;
-	case (Copy): break;
-	case (Save0): break;
-	case (Save1): break;
-	case (Dma): openglDma(); break;
-	case (Report): break;
+	case (Dma0): break;
+	case (Dma1): openglDma(); break;
 	case (Render): openglRender(); break;
+	case (Report): break;
 	default: ERROR(exiterr,-1);}
 }
 

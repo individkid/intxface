@@ -32,8 +32,7 @@ pthread_t pthread = {0};
 GLFWwindow *window = 0;
 struct Client *client = 0;
 struct Client *state[Memorys] = {0};
-struct Client *saved0[Memorys] = {0};
-struct Client *saved1[Memorys] = {0};
+struct Client *saved[Memorys] = {0};
 enum API api = 0;
 
 void huberr(const char *str, int num, int arg)
@@ -82,15 +81,15 @@ void clientCopy(struct Client **ptr)
 void clientRmw0()
 {
 	struct Client *compose = 0; allocClient(&compose,1);
-	clientCompose(compose,client,saved0[client->mem]);
+	clientCompose(compose,client,saved[client->mem]);
 	allocClient(&state[client->mem],0); state[client->mem] = compose;
 }
 
 void clientRmw1()
 {
 	struct Client *delta = 0; allocClient(&delta,1);
-	clientDelta(delta,state[client->mem],saved1[client->mem]);
-	allocClient(&saved1[client->mem],0); saved1[client->mem] = client;
+	clientDelta(delta,state[client->mem],saved[client->mem]);
+	allocClient(&saved[client->mem],0); saved[client->mem] = client;
 	struct Client *compose = 0; allocClient(&compose,1);
 	clientCompose(compose,delta,client); allocClient(&delta,0);
 	allocClient(&state[client->mem],0); state[client->mem] = compose;
@@ -100,16 +99,14 @@ void process()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Check): break;
-	case (Rdma): break;
+	case (Copy): clientCopy(state); break;
+	case (Save): clientCopy(saved); break;
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
-	case (Copy): clientCopy(state); break;
-	case (Save0): clientCopy(saved0); break;
-	case (Save1): clientCopy(saved1); break;
-	case (Dma): break;
-	case (Report): break;
+	case (Dma0): break;
+	case (Dma1): break;
 	case (Render): break;
+	case (Report): break;
 	default: ERROR(exiterr,-1);}
 }
 
