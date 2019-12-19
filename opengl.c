@@ -130,6 +130,11 @@ int openglCheck()
 	return 0;
 }
 
+void openglGet()
+{
+	// TODO
+}
+
 void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -149,7 +154,7 @@ void openglDraw()
 	case (Copy): break;
 	case (Save): break;
 	case (Dma0): openglDma(); break;
-	case (Dma1): break;
+	case (Dma1): openglGet(); break;
 	case (Draw): openglFunc(); break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}

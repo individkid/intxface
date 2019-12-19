@@ -19,7 +19,7 @@
 #include "plane.h"
 #include <pthread.h>
 
-enum API {None, Metal, Vulkan, Opengl};
+enum API {None, Metal, Vulkan, Opengl, Model};
 
 int sub = 0;
 int hub = 0;
@@ -167,6 +167,7 @@ int main(int argc, char **argv)
 	if (metalInit()) api = Metal;
 	else if (vulkanInit()) api = Vulkan;
 	else if (openglInit()) api = Opengl;
+	else if (modelInit()) api = Model;
 	else api = None;
 
 	while (esc < 2 && !glfwWindowShouldClose(window)) {
@@ -178,21 +179,24 @@ int main(int argc, char **argv)
 	case (None): break;
 	case (Metal): pend = metalCheck(); break;
 	case (Vulkan): pend = vulkanCheck(); break;
-	case (Opengl):  pend = openglCheck(); break;}
+	case (Opengl):  pend = openglCheck(); break;
+	case (Model):  pend = modelCheck(); break;}
 	if (pend) continue;
 	process();
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;
 	case (Metal): metalDraw(); break;
 	case (Vulkan): vulkanDraw(); break;
-	case (Opengl):  openglDraw(); break;}
+	case (Opengl):  openglDraw(); break;
+	case (Model):  modelDraw(); break;}
 	produce();}}}} // send changed metrics with feedback info
 
 	switch (api) {
 	case (None): break;
 	case (Metal): metalDone(); break;
 	case (Vulkan): vulkanDone(); break;
-	case (Opengl):  openglDone(); break;}
+	case (Opengl):  openglDone(); break;
+	case (Model):  modelDone(); break;}
 	windowDone();
 	threadDone(argc);
 

@@ -47,3 +47,7 @@ int openglInit();
 int openglCheck();
 void openglDraw();
 void openglDone();
+int modelInit();
+int modelCheck();
+void modelDraw();
+void modelDone();
