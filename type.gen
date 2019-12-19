@@ -60,6 +60,7 @@ Source = {
 	"Space",
 }
 Function = {
+<<<<<<< HEAD
 	"Rmw0",
 	"Rmw1",
 	"Copy",
@@ -68,6 +69,16 @@ Function = {
 	"Dma1",
 	"Draw",
 	"Port",
+=======
+	"Copy",
+	"Save",
+	"Rmw0",
+	"Rmw1",
+	"Dma0",
+	"Dma1",
+	"Render",
+	"Report",
+>>>>>>> 8fe9956480b180d51caa5ace6f3b44eab9b6e437
 }
 Memory = {
 	"Corner",
