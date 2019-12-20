@@ -32,10 +32,20 @@ int *last[NUMCNTX][Memorys] = {0}; // last invalid
 GLsync fence[NUMCNTX] = {0}; // test to disuse context
 int head = 0; // current not inuse context
 int tail = 0; // next inuse (if != head) context to disuse
+void *unpack = 0;
 
-GLuint loadShaders(const char *vs, const char *fs)
+GLuint openglLoad(const char *vs, const char *fs)
 {
 	return 0;
+}
+
+int *openglOffset(int num, int siz, int *tot)
+{
+	if (num > 1 && siz < 4) siz = 4;
+	int *res = malloc(num*sizeof(int));
+	for (int i = 0; i < num; i++) {
+	res[i] = *tot; *tot += siz*4;}
+	return res;
 }
 
 int openglInit()
@@ -44,7 +54,7 @@ int openglInit()
 	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	programId = loadShaders("opengl.vs","opengl.fs");
+	programId = openglLoad("opengl.vs","opengl.fs");
 	blockId = glGetUniformBlockIndex(programId,"Uniform");
 	glUniformBlockBinding(programId,blockId,0);
 	for (int context = 0; context < NUMCNTX; context++) {
@@ -71,27 +81,48 @@ int openglInit()
 	glDisableVertexAttribArray(i);
 	glGenBuffers(1, &elementId[context]);
 	glGenBuffers(1, &uniformId[context]);
-	GLsizeiptr total = 0;
-	// TODO fill in offset and get total size
+	int total = 0;
+	offset[Basis] = openglOffset(3*3,3,&total);
+	offset[Subject] = openglOffset(4,4,&total);
+	offset[Object] = openglOffset(NUMFILE*4,4,&total);
+	offset[Feature] = openglOffset(4,4,&total);
+	offset[Feather] = openglOffset(1,3,&total);
+	offset[Arrow] = openglOffset(1,3,&total);
+	offset[Cloud] = openglOffset(NUMFEND,3,&total);
+	offset[Face] = openglOffset(1,1,&total);
+	offset[Tope] = openglOffset(1,1,&total);
+	offset[Tag] = openglOffset(1,1,&total);
 	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
-	glBufferData(GL_UNIFORM_BUFFER, total, NULL, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, total, 0, GL_STATIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniformId[context], 0, total);}
 	return 1;
 }
 
+void openglValid(enum Memory mem)
+{
+}
+
+void openglBuffer(enum Memory mem, int idx, int siz, int len, void *buf, GLuint *idt, GLuint tgt)
+{
+}
+
+void openglUniform(enum Memory mem, int idx, int siz, int len, void *buf)
+{
+}
+
 void openglDma()
 {
 	switch (client->mem) {
-	case (Corner): /*INDEXED(Corner,corner,vertexId,GL_ARRAY_BUFFER);*/ break;
-	case (Triangle): /*INDEXED(Triangle,triangle,elementId,GL_ELEMENT_ARRAY_BUFFER);*/ break;
-	case (Basis): /*glUniformMatrix3fv(uniformId[Basis][0], 3, GL_FALSE, &client->basis->val[0][0]);*/ break;
-	case (Subject): /*glUniformMatrix4fv(uniformId[Subject][0], 1, GL_FALSE, &client->subject->val[0][0]);*/ break;
-	case (Object): /*glUniformMatrix4fv(uniformId[Object][client->idx], client->siz, GL_FALSE, &client->object->val[0][0]);*/ break;
-	case (Feature): /*glUniformMatrix4fv(uniformId[Feature][0], 1, GL_FALSE, &client->feature->val[0][0]);*/ break;
-	case (Feather): /*glUniform3fv(uniformId[Feather][0], 1, &client->feather->val[0]);*/ break;
-	case (Arrow): /*glUniform3fv(uniformId[Arrow][0], 1, &client->arrow->val[0]);*/ break;
-	case (Cloud): /*glUniform3fv(uniformId[Cloud][client->idx], client->siz, &client->cloud->val[0]);*/ break;
+	case (Corner): openglBuffer(Corner,client->idx,client->siz,sizeof(struct Vertex),&client->corner[0],vertexId,GL_ARRAY_BUFFER); break;
+	case (Triangle): openglBuffer(Triangle,client->idx,client->siz,sizeof(struct Facet),&client->triangle[0],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
+	case (Basis): openglUniform(Basis,client->idx,client->siz*3,3,&client->basis->val[0][0]); break;
+	case (Subject): openglUniform(Subject,0,4,4,&client->subject->val[0][0]); break;
+	case (Object): openglUniform(Object,client->idx,client->siz*4,4,&client->object->val[0][0]); break;
+	case (Feature): openglUniform(Feature,0,4,4,&client->feature->val[0][0]); break;
+	case (Feather): openglUniform(Feather,0,1,3,&client->feather->val[0]); break;
+	case (Arrow): openglUniform(Arrow,0,1,3,&client->arrow->val[0]); break;
+	case (Cloud): openglUniform(Cloud,client->idx,client->siz,3,&client->cloud->val[0]); break;
 	case (MMatrix): ERROR(huberr,-1);
 	case (MClick): ERROR(huberr,-1);
 	case (MMove): ERROR(huberr,-1);
@@ -99,10 +130,9 @@ void openglDma()
 	case (Fixed): ERROR(huberr,-1);
 	case (Moved): ERROR(huberr,-1);
 	case (Rolled): ERROR(huberr,-1);
-	case (Face): /*glUniform1i(uniformId[Face][0], client->face);*/ break;
-	case (Tope): /*glUniform1i(uniformId[Tope][0], client->tope);*/ break;
-	case (Tag): /*glUniform1i(uniformId[Tag][0], client->tag);*/ break;
-	case (Scratch): ERROR(huberr,-1);
+	case (Face): openglUniform(Face,0,1,1,&client->face); break;
+	case (Tope): openglUniform(Tope,0,1,1,&client->tope); break;
+	case (Tag): openglUniform(Tag,0,1,1,&client->tag); break;
 	default: ERROR(exiterr,-1);}
 }
 
@@ -122,10 +152,10 @@ void openglGet()
 
 void openglFunc()
 {
-	// TODO for each invalid buffer, dma from last and remember valid
+	// TODO for each invalid buffer, dma from last and mark valid
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(programId);
-	// TODO bind uniformId[head]
+	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId[head]);
 	glDrawElements(GL_TRIANGLES,state[Triangle]->siz*3,GL_UNSIGNED_INT,(void*)0);

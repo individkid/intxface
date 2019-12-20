@@ -47,7 +47,6 @@ void modelDma()
 	case (Face): /*TODO*/ break;
 	case (Tope): /*TODO*/ break;
 	case (Tag): /*TODO*/ break;
-	case (Scratch): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }
 

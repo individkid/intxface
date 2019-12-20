@@ -73,6 +73,7 @@ void clientRmw0()
 	struct Client **stat = &state[client->mem];
 	struct Client **save = &saved[client->mem];
 	if (client->mem == Object) {stat += client->idx; save += client->idx;}
+	freeClient(client);
 	clientCompose(client,client,*save);
 	allocClient(stat,0); *stat = client;
 }
@@ -85,7 +86,9 @@ void clientRmw1()
 	struct Client *delta = 0; allocClient(&delta,1);
 	clientDelta(delta,*stat,*save);
 	allocClient(save,0); *save = client;
-	clientCompose(client,delta,client); allocClient(&delta,0);
+	freeClient(client);
+	clientCompose(client,delta,client);
+	allocClient(&delta,0);
 	allocClient(stat,0); *stat = client;
 }
 
@@ -160,7 +163,7 @@ void threadDone(int argc)
 
 int main(int argc, char **argv)
 {
-	printf("uint32_t(%d) int(%d) GL_INT(%d)\n",(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT));
+	printf("uint32_t(%d) int(%d) GL_INT(%d) float(%d) GL_FLOAT(%d)\n",(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT),(int)sizeof(float),(int)sizeof(GL_FLOAT));
 
 	threadInit(argc,argv);
 	windowInit(argc,argv);
