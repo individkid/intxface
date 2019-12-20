@@ -53,13 +53,6 @@ void modelDma()
 
 int modelCheck()
 {
-	int found = 0;
-	for (int i = 0; i < client->len && !found; i++) {
-	if (client->fnc[i] == Dma0) found = 1;
-	if (client->fnc[i] == Dma1) found = 1;
-	if (client->fnc[i] == Draw) found = 1;}
-	if (!found) return 0;
-	// return 1 if query not finished
 	return 0;
 }
 
