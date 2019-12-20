@@ -42,6 +42,7 @@
 #define NUMINET 16
 #define NUMPEND 10
 #define NUMFEND 8
+#define NUMCNTX 5
 #define CMDSIZE 4
 // INFINITE longer than any given file
 // FILESIZE rough limit to helper file
