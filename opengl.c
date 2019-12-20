@@ -19,6 +19,7 @@
 #include "plane.h"
 
 GLuint programId = 0;
+GLuint blockId = 0;
 GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
@@ -37,23 +38,6 @@ GLuint loadShaders(const char *vs, const char *fs)
 	return 0;
 }
 
-/*
-GLuint *uniformIdent(const char *name, int size)
-{
-	GLuint *ptr = 0;
-	if (size) ptr = malloc(size*sizeof(GLuint));
-	else ptr = malloc(sizeof(GLuint));
-	if (!ptr) ERROR(exiterr,-1);
-	if (size) for (int i = 0; i < size; i++) {
-		char *str = 0;
-		if (asprintf(&str,"%s[%d]",name,i) < 0) ERROR(exiterr,-1);
-		ptr[i] = glGetUniformLocation(programId,str);
-		free(str);
-	} else ptr[0] = glGetUniformLocation(programId,name);
-	return ptr;
-}
-*/
-
 int openglInit()
 {
 	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
@@ -61,6 +45,8 @@ int openglInit()
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	programId = loadShaders("opengl.vs","opengl.fs");
+	blockId = glGetUniformBlockIndex(programId,"Uniform");
+	glUniformBlockBinding(programId,blockId,0);
 	for (int context = 0; context < NUMCNTX; context++) {
 	glGenVertexArrays(1, &arrayId[context]);
 	glBindVertexArray(arrayId[context]);
@@ -83,30 +69,17 @@ int openglInit()
 	glBindVertexArray(0);
 	for (int i = 0; i < index; i++)
 	glDisableVertexAttribArray(i);
-	glGenBuffers(1, &elementId[context]);}
-	/*
-	uniformId[Basis] = uniformIdent("basis",3);
-	uniformId[Subject] = uniformIdent("subject",0);
-	uniformId[Object] = uniformIdent("object",NUMFILE);
-	uniformId[Feature] = uniformIdent("feature",0);
-	uniformId[Feather] = uniformIdent("feather",0);
-	uniformId[Arrow] = uniformIdent("arrow",0);
-	uniformId[Cloud] = uniformIdent("cloud",NUMFEND);
-	uniformId[Face] = uniformIdent("face",0);
-	uniformId[Tope] = uniformIdent("tope",0);
-	uniformId[Tag] = uniformIdent("tag",0);
-	*/
+	glGenBuffers(1, &elementId[context]);
+	glGenBuffers(1, &uniformId[context]);
+	GLsizeiptr total = 0;
+	// TODO fill in offset and get total size
+	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
+	glBufferData(GL_UNIFORM_BUFFER, total, NULL, GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniformId[context], 0, total);}
 	return 1;
 }
 
-/*
-#define INDEXED(ENUM,FIELD,IDENT,BUFFER) \
-	glBindBuffer(BUFFER, IDENT); \
-	if (client->siz < state[ENUM]->siz) \
-	glBufferSubData(BUFFER, sizeof(*client->FIELD)*client->idx, sizeof(*client->FIELD)*client->siz, client->FIELD); \
-	else \
-	glBufferData(GL_ARRAY_BUFFER, sizeof(*client->FIELD)*client->siz, client->FIELD, GL_STATIC_DRAW);
-*/
 void openglDma()
 {
 	switch (client->mem) {
@@ -144,7 +117,7 @@ int openglCheck()
 
 void openglGet()
 {
-	// TODO
+	// TODO read from ubo in first valid context before tail
 }
 
 void openglFunc()
