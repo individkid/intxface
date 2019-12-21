@@ -28,7 +28,7 @@ int offsets[Memorys] = {0};
 int *offset[Memorys] = {0}; // offset into uniform buffer
 struct Pend {enum Memory mem;
 int idx; int siz; int len; 
-void *buf; GLuint *idt; GLuint tgt;
+void *buf; GLuint hdl; GLuint tgt;
 } pend[NUMCNTX][NUMPEND] = {0};
 int pead[NUMCNTX] = {0};
 int pail[NUMCNTX] = {0};
@@ -102,25 +102,29 @@ int openglInit()
 	return 1;
 }
 
-void openglApply(int ctx, struct Pend *ptr)
+void openglPendee(enum Memory mem, int idx, int siz, int len, void *buf, GLuint hdl, GLuint tgt)
 {
 }
 
-void openglBuffer(enum Memory mem, int idx, int siz, int len, void *buf, GLuint *idt, GLuint tgt)
+void openglPender(struct Pend *ptr)
+{
+	openglPendee(ptr->mem,ptr->idx,ptr->siz,ptr->len,ptr->buf,ptr->hdl,ptr->tgt);
+}
+
+void openglPending(struct Pend *ptr, enum Memory mem, int idx, int siz, int len, void *buf, GLuint hdl, GLuint tgt)
+{
+	ptr->mem=mem;ptr->idx=idx;ptr->siz=siz;ptr->len=len;ptr->buf=buf;ptr->hdl=hdl;ptr->tgt=tgt;
+}
+
+void openglBuffer(enum Memory mem, int idx, int siz, int len, void *buf, GLuint *hdl, GLuint tgt)
 {
 	for (int ctx = 0; ctx < NUMCNTX; ctx++) if (ctx != head) {
 	int found = 0; for (int pnd = pead[ctx]; pnd != pail[ctx] && !found; pnd = (pnd+1)%NUMPEND)
 	if (pend[ctx][pnd].mem == mem && pend[ctx][pnd].idx == idx && pend[ctx][pnd].siz == siz) found = 1;
-	if (!found && (pail[ctx]+1)%NUMPEND == pead[ctx]) {
-	openglApply(ctx,&pend[ctx][pead[ctx]]);
-	pead[ctx] = (pead[ctx]+1)%NUMPEND;}
-	if (!found) {struct Pend *ptr = &pend[ctx][pail[ctx]]; ptr->mem = mem;
-	ptr->idx = idx; ptr->siz = siz; ptr->len = len;
-	ptr->buf = buf; ptr->idt = idt; ptr->tgt = tgt;}}
-	struct Pend tmp; tmp.mem = mem;
-	tmp.idx = idx; tmp.siz = siz; tmp.len = len;
-	tmp.buf = buf; tmp.idt = idt; tmp.tgt = tgt;
-	openglApply(head,&tmp);
+	if (!found) {if ((pail[ctx]+1)%NUMPEND == pead[ctx]) {
+	openglPender(&pend[ctx][pead[ctx]]); pead[ctx] = (pead[ctx]+1)%NUMPEND;}
+	openglPending(&pend[ctx][pail[ctx]],mem,idx,siz,len,buf,hdl[ctx],tgt); pail[ctx] = (pail[ctx]+1)%NUMPEND;}}
+	struct Pend tmp; openglPending(&tmp,mem,idx,siz,len,buf,hdl[head],tgt); openglPender(&tmp);
 }
 
 void openglDma()
@@ -174,7 +178,7 @@ void openglFunc()
 	glfwSwapBuffers(window);
 	head = (head + 1) % NUMCNTX;
 	while (pail[head] == pead[head]) {
-	openglApply(head,&pend[head][pead[head]]);
+	openglPender(&pend[head][pead[head]]);
 	pead[head] = (pead[head]+1)%NUMPEND;}
 }
 
