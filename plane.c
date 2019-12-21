@@ -34,7 +34,7 @@ struct Client *client = 0;
 struct Client *state[Memorys] = {0};
 struct Client *saved[Memorys] = {0};
 enum API api = 0;
-int pend = 0;
+int check = 0;
 
 void huberr(const char *str, int num, int arg)
 {
@@ -177,14 +177,14 @@ int main(int argc, char **argv)
 	if (setjmp(jmpbuf) == 0) {
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
 	glfwWaitEvents();
-	if (pend || callread(argc)) { // from inject or other processes
+	if (check || callread(argc)) { // from inject or other processes
 	switch (api) {
 	case (None): break;
-	case (Metal): pend = metalCheck(); break;
-	case (Vulkan): pend = vulkanCheck(); break;
-	case (Opengl):  pend = openglCheck(); break;
-	case (Model):  pend = modelCheck(); break;}
-	if (pend) continue;
+	case (Metal): check = metalCheck(); break;
+	case (Vulkan): check = vulkanCheck(); break;
+	case (Opengl):  check = openglCheck(); break;
+	case (Model):  check = modelCheck(); break;}
+	if (check) continue;
 	process();
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;
