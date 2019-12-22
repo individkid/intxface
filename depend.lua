@@ -133,16 +133,18 @@ end
 if not goback then break end
 end
 
--- find edges from .c files in current directory
+-- find edges from .c or .h files in current directory
 circular = false
 needed = {}
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
 expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
+	local ish = string.match(v,"^.*%.h$")
 	if (string.match(v,"^.*%.c$") or
 		string.match(v,"^.*%.cpp$") or
-		string.match(v,"^.*%.m$")) then
+		string.match(v,"^.*%.m$") or
+		ish) then
 		-- print(v..":")
 		file = io.open(v)
 		cmnt = false; abrv = false; quot = false
@@ -197,7 +199,13 @@ for k,v in ipairs(files) do
 				more = more:sub(1,bgn-1)..more:sub(ndg+1)
 			end
 			depender = string.match(more,exper)
-			if depender then
+			if ish then
+				if (more == "#include ") then
+					-- print(v..": "..name)
+					if not edges[v] then edges[v] = {} end
+					edges[v][name] = true
+				end
+			elseif depender then
 				-- print(depender..": "..v)
 				if not edges[depender] then edges[depender] = {} end
 				edges[depender][v] = true
@@ -379,6 +387,33 @@ for k,v in pairs(edges) do
 	update[k] = deps
 end
 edges = update
+-- flatten .h dependencies
+update = {}
+for k,v in pairs(edges) do
+	base,ext = string.match(k,"(.*)(%..*)")
+	deps = v
+	if base then
+		count = 1
+		while (count > 0) do
+			count = 0
+			for key,val in pairs(v) do
+				b,e = string.match(key,"(.*)(%..*)")
+				if edges[key] and (e == ".h") then
+					for ky,vl in pairs(edges[key]) do
+						if (not deps[ky]) then
+							count = count + 1;
+							deps[ky] = vl
+							-- print(k..": "..key..": "..ky)
+						end
+					end
+				end
+			end
+		end
+	end
+	update[k] = deps
+end
+edges = update
+
 --[[
 print("HERE")
 for k,v in pairs(edges) do
