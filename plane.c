@@ -59,34 +59,22 @@ int callread(int argc)
 	return vld;
 }
 
-void clientGet(float *mat, struct Client *client, int idx)
+float *clientMat(struct Client *client, int idx)
 {
-	float *affine = 0;
 	switch (client->mem) {
-	case (Subject): affine = &state[Subject]->subject[0].val[0][0];
-	case (Object): affine = &state[Object]->object[idx].val[0][0];
-	case (Feature): affine = &state[Feature]->feature[0].val[0][0];
+	case (Subject): return &state[Subject]->subject[0].val[0][0];
+	case (Object): return &state[Object]->object[idx].val[0][0];
+	case (Feature): return &state[Feature]->feature[0].val[0][0];
 	default: ERROR(exiterr,-1);}
-	xposmat(copymat(mat,affine,4),4);
-}
-
-void clientPut(float *mat, struct Client *client, int idx)
-{
-	float *affine = 0;
-	switch (client->mem) {
-	case (Subject): affine = &state[Subject]->subject[0].val[0][0];
-	case (Object): affine = &state[Object]->object[idx].val[0][0];
-	case (Feature): affine = &state[Feature]->feature[0].val[0][0];
-	default: ERROR(exiterr,-1);}
-	xposmat(copymat(affine,mat,4),4);
+	return 0;
 }
 
 void clientRmw0()
 {
 	// state[idx] = client[0]*saved[idx]
-	float save[16] = {0}; clientGet(save,saved[client->mem],client->idx);
-	float give[16] = {0}; clientGet(give,client,0);
-	timesmat(save,give,4); clientPut(save,state[client->mem],client->idx);
+	float *save = clientMat(saved[client->mem],client->idx);
+	float *give = clientMat(client,0);
+	copymat(save,timesmat(save,give,4),4);
 }
 
 void clientRmw1()
@@ -95,14 +83,13 @@ void clientRmw1()
 	// A' = B*C'
 	// B = A/C
 	// A' = (A/C)*C'
-	// save = 1/saved[idx]
-	// stat = state[idx]*save
+	// saved[idx] = 1/saved[idx]
+	// state[idx] = state[idx]*saved[idx]
 	// saved[idx] = client[0]
-	// state[idx] = stat*client[0]
-	float save[16] = {0}; clientGet(save,saved[client->mem],client->idx); invmat(save,4);
-	float stat[16] = {0}; clientGet(stat,state[client->mem],client->idx); timesmat(stat,save,4);
-	float give[16] = {0}; clientGet(give,client,0); clientPut(give,saved[client->mem],client->idx);
-	timesmat(stat,give,4); clientPut(stat,state[client->mem],client->idx);
+	// state[idx] = state[idx]*client[0]
+	float *save = clientMat(saved[client->mem],client->idx); invmat(save,4);
+	float *stat = clientMat(state[client->mem],client->idx); timesmat(stat,save,4);
+	float *give = clientMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
 }
 
 #define INDEXED(ENUM,FIELD) \
