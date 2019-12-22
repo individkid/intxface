@@ -19,7 +19,6 @@
 #include "plane.h"
 #include <pthread.h>
 
-#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 enum API {None, Metal, Vulkan, Opengl, Model};
 int sub = 0;
 int hub = 0;
@@ -68,9 +67,7 @@ void clientGet(float *mat, struct Client *client, int idx)
 	case (Object): affine = &state[Object]->object[idx].val[0][0];
 	case (Feature): affine = &state[Feature]->feature[0].val[0][0];
 	default: ERROR(exiterr,-1);}
-	for (int i = 0; i < 4; i++)
-	for (int j = 0; j < 4; j++)
-	mat[i*4+j] = affine[j*4+i];
+	xposmat(copymat(mat,affine,4),4);
 }
 
 void clientPut(float *mat, struct Client *client, int idx)
@@ -81,9 +78,7 @@ void clientPut(float *mat, struct Client *client, int idx)
 	case (Object): affine = &state[Object]->object[idx].val[0][0];
 	case (Feature): affine = &state[Feature]->feature[0].val[0][0];
 	default: ERROR(exiterr,-1);}
-	for (int i = 0; i < 4; i++)
-	for (int j = 0; j < 4; j++)
-	affine[i*4+j] = mat[j*4+i];
+	xposmat(copymat(affine,mat,4),4);
 }
 
 void clientRmw0()

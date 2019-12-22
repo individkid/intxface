@@ -32,6 +32,7 @@ float *compmat(float *u, float *v, int n);
 float *crossmat(float *u);
 float *crossvec(float *u, float *v);
 float detmat(float *u, int n);
+float *xposmat(float *u, int n);
 float *adjmat(float *u, int n);
 float *invmat(float *u, int n);
 float *tweakvec(float *u, float a, float b, int n);
