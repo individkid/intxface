@@ -30,6 +30,7 @@ void modelDma()
 	switch (client->mem) {
 	case (Corner): /*TODO*/ break;
 	case (Triangle): /*TODO*/ break;
+	case (Sightline): /*TODO*/ break;
 	case (Basis): /*TODO*/ break;
 	case (Subject): /*TODO*/ break;
 	case (Object): /*TODO*/ break;
