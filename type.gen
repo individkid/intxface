@@ -68,10 +68,12 @@ Function = {
 	"Dma1",
 	"Draw",
 	"Port",
+	"Post",
 }
 Memory = {
 	"Corner",
 	"Triangle",
+	"Sightline",
 	"Basis",
 	"Subject",
 	"Object",
@@ -200,7 +202,11 @@ Vertex = {
 	{"matid","int",{},{}}, -- layout (location=13) in int matid;
 }
 Facet = {
-	{"vtxid","int",{},{3}}, -- just in time filtered per tag
+	{"vtxid","int",{},{3}}, -- sort by tag and render per tag
+}
+Pierce = {
+	{"ident","int",{},{}},
+	{"order","float",{},{}},
 }
 Affine = {
 	{"val","float",{},{4,4}},
@@ -222,6 +228,7 @@ Client = {
 	{"siz","int",{},{}},
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
 	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
+	{"sightline","Pierce",{["mem"]={["Sightline"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
 	{"subject","Affine",{["mem"]={["Subject"]=true}},1},
 	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},

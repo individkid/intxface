@@ -117,18 +117,30 @@ void process()
 	case (Dma1): break;
 	case (Draw): break;
 	case (Port): break;
+	case (Post): break;
 	default: ERROR(exiterr,-1);}
 }
 
 void produce()
 {
-	int found = 0;
-	for (int i = 0; i < client->len && !found; i++)
-	if (client->fnc[i] == Port) found = 1;
-	if (!found) return;
-	// TODO work out where Dma1 puts data,
-	//  and send Metric to steer scripts, update other users,
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Rmw0): break;
+	case (Rmw1): break;
+	case (Copy): break;
+	case (Save): break;
+	case (Dma0): break;
+	case (Dma1): break;
+	case (Draw): break;
+	case (Port):
+	// TODO send Metric with data from client->mem
+	//  to steer scripts, update other users,
 	//  change modes, sculpt topology, report state
+	break;
+	case (Post):
+	// TODO send Metric with postprocessed data
+	break;
+	default: ERROR(exiterr,-1);}
 }
 
 void *thread(void *arg)

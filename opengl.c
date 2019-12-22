@@ -23,6 +23,7 @@ GLuint blockId = 0;
 GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
+GLuint feedbackId[NUMCNTX] = {0};
 GLuint uniformId[NUMCNTX] = {0};
 int *offset[Memorys] = {0};
 int total[NUMCNTX][Memorys] = {0};
@@ -68,6 +69,8 @@ int openglInit()
 	offset[Face] = openglOffset(1,1,&uniform);
 	offset[Tope] = openglOffset(1,1,&uniform);
 	offset[Tag] = openglOffset(1,1,&uniform);
+	const GLchar* names[] = {"ident","order"};
+	glTransformFeedbackVaryings(programId, 2, names, GL_INTERLEAVED_ATTRIBS);
 	for (int context = 0; context < NUMCNTX; context++) {
 	glGenVertexArrays(1, &arrayId[context]);
 	glBindVertexArray(arrayId[context]);
@@ -91,6 +94,7 @@ int openglInit()
 	for (int i = 0; i < index; i++)
 	glDisableVertexAttribArray(i);
 	glGenBuffers(1, &elementId[context]);
+	glGenBuffers(1, &feedbackId[context]);
 	glGenBuffers(1, &uniformId[context]);
 	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
 	glBufferData(GL_UNIFORM_BUFFER, uniform, 0, GL_STATIC_DRAW);
@@ -145,6 +149,7 @@ void openglDma()
 	switch (client->mem) {
 	case (Corner): openglBuffer(client->idx,client->siz,sizeof(struct Vertex),0,&total[head][Corner],&state[Corner]->corner[0],vertexId,GL_ARRAY_BUFFER); break;
 	case (Triangle): openglBuffer(client->idx,client->siz,sizeof(struct Facet),0,&total[head][Triangle],&state[Triangle]->triangle[0],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
+	case (Sightline): openglBuffer(client->idx,client->siz,sizeof(struct Pierce),0,&total[head][Sightline],&state[Sightline]->sightline[0],feedbackId,GL_TRANSFORM_FEEDBACK_BUFFER); break;
 	case (Basis): openglBuffer(client->idx,client->siz*3,3,offset[Basis][client->idx],0,&state[Basis]->basis->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Subject): openglBuffer(0,4,4,offset[Subject][0],0,&state[Subject]->subject->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Object): openglBuffer(client->idx,client->siz*4,4,offset[Object][client->idx],0,&state[Object]->object->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
@@ -181,17 +186,20 @@ int openglFull()
 
 void openglGet()
 {
-	// TODO read from transform feedback buffer in first valid context before tail
+	// TODO read from client->mem in first valid context before tail
 }
 
 void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(programId);
-	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId[head]);
-	glDrawElements(GL_TRIANGLES,state[Triangle]->siz*3,GL_UNSIGNED_INT,(void*)0);
+	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
+	glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,0,feedbackId[head]);
+	glBeginTransformFeedback(GL_TRIANGLES);
+	glDrawElements(GL_TRIANGLES,client->siz*3,GL_UNSIGNED_INT,(void*)(client->idx*3*sizeof(struct Facet)));
+	glEndTransformFeedback();
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
 	glfwSwapBuffers(window);
 	head = (head + 1) % NUMCNTX;
@@ -212,6 +220,7 @@ void openglDraw()
 	case (Dma1): openglGet(); break;
 	case (Draw): openglFunc(); break;
 	case (Port): break;
+	case (Post): break;
 	default: ERROR(exiterr,-1);}
 }
 
