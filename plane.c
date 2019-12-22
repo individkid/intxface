@@ -34,7 +34,7 @@ struct Client *client = 0;
 struct Client *state[Memorys] = {0};
 struct Client *saved[Memorys] = {0};
 enum API api = 0;
-int check = 0;
+int full = 0;
 
 void huberr(const char *str, int num, int arg)
 {
@@ -62,10 +62,12 @@ int callread(int argc)
 
 void clientCompose(struct Client *res, struct Client *one, struct Client *oth)
 {
+	// TODO like arithmetic.c, except transposed
 }
 
 void clientDelta(struct Client *res, struct Client *one, struct Client *oth)
 {
+	// TODO like arithmetic.c, except transposed
 }
 
 void clientRmw0()
@@ -124,7 +126,8 @@ void produce()
 	for (int i = 0; i < client->len && !found; i++)
 	if (client->fnc[i] == Port) found = 1;
 	if (!found) return;
-	// send Metric to steer scripts, update other users,
+	// TODO work out where Dma1 puts data,
+	//  and send Metric to steer scripts, update other users,
 	//  change modes, sculpt topology, report state
 }
 
@@ -177,14 +180,14 @@ int main(int argc, char **argv)
 	if (setjmp(jmpbuf) == 0) {
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
 	glfwWaitEvents();
-	if (check || callread(argc)) { // from inject or other processes
+	if (full || callread(argc)) { // from inject or other processes
 	switch (api) {
 	case (None): break;
-	case (Metal): check = metalCheck(); break;
-	case (Vulkan): check = vulkanCheck(); break;
-	case (Opengl):  check = openglCheck(); break;
-	case (Model):  check = modelCheck(); break;}
-	if (check) continue;
+	case (Metal): full = metalFull(); break;
+	case (Vulkan): full = vulkanFull(); break;
+	case (Opengl):  full = openglFull(); break;
+	case (Model):  full = modelFull(); break;}
+	if (full) continue;
 	process();
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;

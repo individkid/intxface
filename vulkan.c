@@ -153,7 +153,7 @@ int vulkanInit()
 	return 1;
 }
 
-int vulkanCheck()
+int vulkanFull()
 {
 	return 0;
 }

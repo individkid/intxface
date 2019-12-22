@@ -152,22 +152,27 @@ void openglDma()
 	case (Feather): openglBuffer(0,1,3,offset[Feather][0],0,&state[Feather]->feather->val[0],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Arrow): openglBuffer(0,1,3,offset[Arrow][0],0,&state[Arrow]->arrow->val[0],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Cloud): openglBuffer(client->idx,client->siz,3,offset[Cloud][client->idx],0,&state[Cloud]->cloud->val[0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (MMatrix): ERROR(huberr,-1);
-	case (MClick): ERROR(huberr,-1);
-	case (MMove): ERROR(huberr,-1);
-	case (MRoll): ERROR(huberr,-1);
-	case (Fixed): ERROR(huberr,-1);
-	case (Moved): ERROR(huberr,-1);
-	case (Rolled): ERROR(huberr,-1);
 	case (Face): openglBuffer(0,1,1,offset[Face][0],0,&state[Face]->face,uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tope): openglBuffer(0,1,1,offset[Tope][0],0,&state[Tope]->tope,uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tag): openglBuffer(0,1,1,offset[Tag][0],0,&state[Tag]->tag,uniformId,GL_UNIFORM_BUFFER); break;
+	case (Mode0): ERROR(huberr,-1);
+	case (Mode1): ERROR(huberr,-1);
+	case (Mode2): ERROR(huberr,-1);
+	case (Mode3): ERROR(huberr,-1);
+	case (Fixed): ERROR(huberr,-1);
+	case (Moved): ERROR(huberr,-1);
+	case (Rolled): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }
 
-int openglCheck()
+int openglFull()
 {
-	// TODO check fence[tail] to advance tail
+	while (tail != head) {
+	GLint val;
+	GLsizei len;
+	glGetSynciv(fence[tail],GL_SYNC_STATUS,1,&len,&val);
+	if (val == GL_UNSIGNALED) break;
+	tail = (tail+1)%NUMCNTX;}
 	int found = 0;
 	for (int i = 0; i < client->len && !found; i++) {
 	if (client->fnc[i] == Draw) found = 1;}

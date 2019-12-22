@@ -22,7 +22,7 @@ int metalInit()
 	return 0;
 }
 
-int metalCheck()
+int metalFull()
 {
 	return 0;
 }

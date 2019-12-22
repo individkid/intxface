@@ -37,20 +37,20 @@ void modelDma()
 	case (Feather): /*TODO*/ break;
 	case (Arrow): /*TODO*/ break;
 	case (Cloud): /*TODO*/ break;
-	case (MMatrix): ERROR(huberr,-1);
-	case (MClick): ERROR(huberr,-1);
-	case (MMove): ERROR(huberr,-1);
-	case (MRoll): ERROR(huberr,-1);
-	case (Fixed): ERROR(huberr,-1);
-	case (Moved): ERROR(huberr,-1);
-	case (Rolled): ERROR(huberr,-1);
 	case (Face): /*TODO*/ break;
 	case (Tope): /*TODO*/ break;
 	case (Tag): /*TODO*/ break;
+	case (Mode0): ERROR(huberr,-1);
+	case (Mode1): ERROR(huberr,-1);
+	case (Mode2): ERROR(huberr,-1);
+	case (Mode3): ERROR(huberr,-1);
+	case (Fixed): ERROR(huberr,-1);
+	case (Moved): ERROR(huberr,-1);
+	case (Rolled): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }
 
-int modelCheck()
+int modelFull()
 {
 	return 0;
 }
