@@ -18,6 +18,7 @@
 #include <GL/glew.h>
 #include "plane.h"
 
+#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 GLuint programId = 0;
 GLuint blockId = 0;
 GLuint arrayId[NUMCNTX] = {0};
@@ -178,15 +179,53 @@ int openglFull()
 	glGetSynciv(fence[tail],GL_SYNC_STATUS,1,&len,&val);
 	if (val == GL_UNSIGNALED) break;
 	tail = (tail+1)%NUMCNTX;}
-	int found = 0;
-	for (int i = 0; i < client->len && !found; i++) {
-	if (client->fnc[i] == Draw) found = 1;}
-	return (found && ((head + 1) % NUMCNTX) == tail);
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Rmw0): break;
+	case (Rmw1): break;
+	case (Copy): break;
+	case (Save): break;
+	case (Dma0): break;
+	case (Dma1): case (Draw):
+	if (((head + 1) % NUMCNTX) == tail) return 1; else break;
+	case (Post): break;
+	case (Port): break;
+	default: ERROR(exiterr,-1);}
+	return 0;
+}
+
+void openglBuffee(int idx, int siz, int len, void *buf, GLuint hdl, GLuint tgt)
+{
+	glBindBuffer(tgt, hdl);
+	glBufferSubData(tgt, idx*len, siz*len, buf);
+	glBindBuffer(tgt, 0);
 }
 
 void openglGet()
 {
-	// TODO read from client->mem in first valid context before tail
+	int ctx = (tail+NUMCNTX-1)%NUMCNTX;
+	switch (client->mem) {
+	case (Corner): openglBuffee(client->idx,client->siz,sizeof(struct Vertex),&state[Corner]->corner[0],vertexId[ctx],GL_ARRAY_BUFFER); break;
+	case (Triangle): openglBuffee(client->idx,client->siz,sizeof(struct Facet),&state[Triangle]->triangle[0],elementId[ctx],GL_ELEMENT_ARRAY_BUFFER); break;
+	case (Sightline): openglBuffee(client->idx,client->siz,sizeof(struct Pierce),&state[Sightline]->sightline[0],feedbackId[ctx],GL_TRANSFORM_FEEDBACK_BUFFER); break;
+	case (Basis): ERROR(huberr,-1);
+	case (Subject): ERROR(huberr,-1);
+	case (Object): ERROR(huberr,-1);
+	case (Feature): ERROR(huberr,-1);
+	case (Feather): ERROR(huberr,-1);
+	case (Arrow): ERROR(huberr,-1);
+	case (Cloud): ERROR(huberr,-1);
+	case (Face): ERROR(huberr,-1);
+	case (Tope): ERROR(huberr,-1);
+	case (Tag): ERROR(huberr,-1);
+	case (Mode0): ERROR(huberr,-1);
+	case (Mode1): ERROR(huberr,-1);
+	case (Mode2): ERROR(huberr,-1);
+	case (Mode3): ERROR(huberr,-1);
+	case (Fixed): ERROR(huberr,-1);
+	case (Moved): ERROR(huberr,-1);
+	case (Rolled): ERROR(huberr,-1);
+	default: ERROR(exiterr,-1);}
 }
 
 void openglFunc()
@@ -198,7 +237,7 @@ void openglFunc()
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
 	glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,0,feedbackId[head]);
 	glBeginTransformFeedback(GL_TRIANGLES);
-	glDrawElements(GL_TRIANGLES,client->siz*3,GL_UNSIGNED_INT,(void*)(client->idx*3*sizeof(struct Facet)));
+	glDrawElements(GL_TRIANGLES,client->siz*3,GL_UNSIGNED_INT,(void*)(client->idx*sizeof(struct Facet)));
 	glEndTransformFeedback();
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
 	glfwSwapBuffers(window);
@@ -219,8 +258,8 @@ void openglDraw()
 	case (Dma0): openglDma(); break;
 	case (Dma1): openglGet(); break;
 	case (Draw): openglFunc(); break;
-	case (Port): break;
 	case (Post): break;
+	case (Port): break;
 	default: ERROR(exiterr,-1);}
 }
 

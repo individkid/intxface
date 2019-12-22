@@ -19,8 +19,8 @@
 #include "plane.h"
 #include <pthread.h>
 
+#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 enum API {None, Metal, Vulkan, Opengl, Model};
-
 int sub = 0;
 int hub = 0;
 int zub = 0;
@@ -60,38 +60,54 @@ int callread(int argc)
 	return vld;
 }
 
-void clientCompose(struct Client *res, struct Client *one, struct Client *oth)
+void clientGet(float *mat, struct Client *client, int idx)
 {
-	// TODO like arithmetic.c, except transposed
+	float *affine = 0;
+	switch (client->mem) {
+	case (Subject): affine = &state[Subject]->subject[0].val[0][0];
+	case (Object): affine = &state[Object]->object[idx].val[0][0];
+	case (Feature): affine = &state[Feature]->feature[0].val[0][0];
+	default: ERROR(exiterr,-1);}
+	for (int i = 0; i < 4; i++)
+	for (int j = 0; j < 4; j++)
+	mat[i*4+j] = affine[j*4+i];
 }
 
-void clientDelta(struct Client *res, struct Client *one, struct Client *oth)
+void clientPut(float *mat, struct Client *client, int idx)
 {
-	// TODO like arithmetic.c, except transposed
+	float *affine = 0;
+	switch (client->mem) {
+	case (Subject): affine = &state[Subject]->subject[0].val[0][0];
+	case (Object): affine = &state[Object]->object[idx].val[0][0];
+	case (Feature): affine = &state[Feature]->feature[0].val[0][0];
+	default: ERROR(exiterr,-1);}
+	for (int i = 0; i < 4; i++)
+	for (int j = 0; j < 4; j++)
+	affine[i*4+j] = mat[j*4+i];
 }
 
 void clientRmw0()
 {
-	struct Client **stat = &state[client->mem];
-	struct Client **save = &saved[client->mem];
-	if (client->mem == Object) {stat += client->idx; save += client->idx;}
-	freeClient(client);
-	clientCompose(client,client,*save);
-	allocClient(stat,0); *stat = client;
+	// state[idx] = client[0]*saved[idx]
+	float save[16] = {0}; clientGet(save,saved[client->mem],client->idx);
+	float give[16] = {0}; clientGet(give,client,0);
+	timesmat(save,give,4); clientPut(save,state[client->mem],client->idx);
 }
 
 void clientRmw1()
 {
-	struct Client **stat = &state[client->mem];
-	struct Client **save = &saved[client->mem];
-	if (client->mem == Object) {stat += client->idx; save += client->idx;}
-	struct Client *delta = 0; allocClient(&delta,1);
-	clientDelta(delta,*stat,*save);
-	allocClient(save,0); *save = client;
-	freeClient(client);
-	clientCompose(client,delta,client);
-	allocClient(&delta,0);
-	allocClient(stat,0); *stat = client;
+	// A = B*C
+	// A' = B*C'
+	// B = A/C
+	// A' = (A/C)*C'
+	// save = 1/saved[idx]
+	// stat = state[idx]*save
+	// saved[idx] = client[0]
+	// state[idx] = stat*client[0]
+	float save[16] = {0}; clientGet(save,saved[client->mem],client->idx); invmat(save,4);
+	float stat[16] = {0}; clientGet(stat,state[client->mem],client->idx); timesmat(stat,save,4);
+	float give[16] = {0}; clientGet(give,client,0); clientPut(give,saved[client->mem],client->idx);
+	timesmat(stat,give,4); clientPut(stat,state[client->mem],client->idx);
 }
 
 #define INDEXED(ENUM,FIELD) \
@@ -116,8 +132,8 @@ void process()
 	case (Dma0): break;
 	case (Dma1): break;
 	case (Draw): break;
-	case (Port): break;
 	case (Post): break;
+	case (Port): break;
 	default: ERROR(exiterr,-1);}
 }
 
@@ -132,14 +148,20 @@ void produce()
 	case (Dma0): break;
 	case (Dma1): break;
 	case (Draw): break;
-	case (Port):
-	// TODO send Metric with data from client->mem
-	//  to steer scripts, update other users,
-	//  change modes, sculpt topology, report state
-	break;
-	case (Post):
-	// TODO send Metric with postprocessed data
-	break;
+	case (Post): {
+	struct Pierce *ptr = 0;
+	for (int i = 0; i < state[Sightline]->siz; i++)
+	if (ptr == 0 || state[Sightline]->sightline[i].order < ptr->order)
+	ptr = &state[Sightline]->sightline[i];
+	if (ptr) state[Face]->face = ptr->ident;
+	else state[Face]->face = state[Triangle]->siz;
+	break;}
+	case (Port): {
+	struct Metric metric = {0};
+	metric.src = Plane;
+	metric.plane = state[client->mem];
+	writeMetric(&metric,hub);
+	break;}
 	default: ERROR(exiterr,-1);}
 }
 

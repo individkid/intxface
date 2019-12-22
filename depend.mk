@@ -1,3 +1,4 @@
+arithmeticC.o: arithmetic.h
 baseC.o: base.h face.h
 baseGen: show.lua
 faceC.o: face.h
@@ -14,8 +15,8 @@ lineC.o: base.h face.h type.h
 metalC.o: plane.h
 modelC.o: plane.h
 openglC.o: plane.h
-planeC: baseC.o faceC.o glfwC.o metalC.o modelC.o openglC.o typeC.o vulkanC.o
-planeC.o: base.h face.h plane.h type.h
+planeC: arithmeticC.o baseC.o faceC.o glfwC.o metalC.o modelC.o openglC.o typeC.o vulkanC.o
+planeC.o: arithmetic.h base.h face.h plane.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h

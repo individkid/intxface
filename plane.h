@@ -19,11 +19,11 @@
 #include "face.h"
 #include "base.h"
 #include "type.h"
+#include "arithmetic.h"
 
 #ifndef EXTERN
 #define EXTERN extern
 #endif
-#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 
 EXTERN int esc;
 EXTERN GLFWwindow* window;

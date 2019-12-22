@@ -67,8 +67,8 @@ Function = {
 	"Dma0",
 	"Dma1",
 	"Draw",
-	"Port",
 	"Post",
+	"Port",
 }
 Memory = {
 	"Corner",
@@ -183,14 +183,6 @@ Event = {
 	{"len","int",{["tag"]={["Audio"]=true}},{}},
 	{"enb","int",{["tag"]={["Audio"]=true}},{}},
 }
-Metric = {
-	{"src","Source",{},{}},
-	{"num","int",{["src"]={["Line"]=true}},{}},
-	{"tot","int",{["src"]={["Line"]=true}},{}},
-	{"siz","int",{["src"]={["Line"]=true}},"num"},
-	{"idx","int",{["src"]={["Line"]=true}},"num"},
-	{"val","double",{["src"]={["Line"]=true}},"tot"},
-}
 Vertex = {
 	{"tag","int",{},{3}}, -- layout (location=0) in ivec3 tag;
 	{"plane","float",{},{3,3}}, -- layout (location=1) in vec3 plane[3];
@@ -249,6 +241,15 @@ Client = {
 }
 Sculpt = {
 	{"cfg","Config",{},{}},
+}
+Metric = {
+	{"src","Source",{},{}},
+	{"num","int",{["src"]={["Line"]=true}},{}},
+	{"tot","int",{["src"]={["Line"]=true}},{}},
+	{"siz","int",{["src"]={["Line"]=true}},"num"},
+	{"idx","int",{["src"]={["Line"]=true}},"num"},
+	{"val","double",{["src"]={["Line"]=true}},"tot"},
+	{"plane","Client",{["src"]={["Plane"]=true}},1},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
