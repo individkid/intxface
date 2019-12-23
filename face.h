@@ -40,6 +40,7 @@
 #define NUMFILE 64
 #define BUFSIZE 64
 #define NUMINET 16
+#define NUMJECT 12
 #define NUMPEND 10
 #define NUMFEND 8
 #define NUMCNTX 5

@@ -179,6 +179,7 @@ int openglFull()
 	glGetSynciv(fence[tail],GL_SYNC_STATUS,1,&len,&val);
 	if (val == GL_UNSIGNALED) break;
 	tail = (tail+1)%NUMCNTX;}
+	if (client)
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
 	case (Rmw0): break;

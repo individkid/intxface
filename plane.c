@@ -32,6 +32,9 @@ GLFWwindow *window = 0;
 struct Client *client = 0;
 struct Client *state[Memorys] = {0};
 struct Client *saved[Memorys] = {0};
+struct Client *inject[NUMJECT] = {0};
+int enject = 0;
+int deject = 0;
 enum API api = 0;
 int full = 0;
 
@@ -49,7 +52,10 @@ void exiterr(const char *str, int num, int arg)
 
 int callread(int argc)
 {
-	// TODO get from user input inject
+	if (enject != deject) {
+	allocClient(&client,0);
+	client = inject[deject];
+	deject = (deject+1)%NUMJECT;}
 	int vld = 0;
 	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
@@ -195,15 +201,16 @@ int main(int argc, char **argv)
 	while (esc < 2 && !glfwWindowShouldClose(window)) {
 	if (setjmp(jmpbuf) == 0) {
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
-	glfwWaitEvents();
-	if (full || callread(argc)) { // from inject or other processes
 	switch (api) {
 	case (None): break;
 	case (Metal): full = metalFull(); break;
 	case (Vulkan): full = vulkanFull(); break;
 	case (Opengl):  full = openglFull(); break;
 	case (Model):  full = modelFull(); break;}
-	if (full) continue;
+	if (full) {
+	glfwWaitEventsTimeout(1000.0*NANO2SEC);
+	continue;}
+	if (callread(argc)) {
 	process();
 	switch (api) { // redraw changed buffers uniforms
 	case (None): break;
@@ -211,7 +218,10 @@ int main(int argc, char **argv)
 	case (Vulkan): vulkanDraw(); break;
 	case (Opengl):  openglDraw(); break;
 	case (Model):  modelDraw(); break;}
-	produce();}}}} // send changed metrics with feedback info
+	produce();
+	glfwPollEvents();
+	continue;}
+	glfwWaitEvents();}}} // send changed metrics with feedback info
 
 	switch (api) {
 	case (None): break;
