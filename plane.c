@@ -55,6 +55,7 @@ int callread(int argc)
 	if (enject != deject) {
 	allocClient(&client,0);
 	client = inject[deject];
+	inject[deject] = 0;
 	deject = (deject+1)%NUMJECT;}
 	int vld = 0;
 	if (argc == 4) {

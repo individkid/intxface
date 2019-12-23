@@ -20,6 +20,7 @@
 #include "base.h"
 #include "type.h"
 #include "arithmetic.h"
+#include <math.h>
 
 #ifndef EXTERN
 #define EXTERN extern

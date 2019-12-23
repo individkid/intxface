@@ -37,5 +37,3 @@ float *adjmat(float *u, int n);
 float *invmat(float *u, int n);
 float *tweakvec(float *u, float a, float b, int n);
 float absval(float a);
-float *basearrow(float *u, float *v, int *i, float *b, int n);
-float *arrowbase(float *u, float *v, int i, float *b, int n);
