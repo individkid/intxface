@@ -28,7 +28,7 @@ GLuint uniformId[NUMCNTX] = {0};
 int size[NUMCNTX][Memorys] = {0};
 int base[Memorys] = {0};
 int unit[Memorys] = {0};
-struct Pend {int idx; int cnt; int cpu; int gpu; int bas; int *siz; void *buf; GLuint hdl; GLuint tgt;};
+struct Pend {int idx; int cnt; int cpu; int gpu; int bas; int *siz; void **buf; GLuint hdl; GLuint tgt;};
 struct Pend pend[NUMCNTX][NUMPEND] = {0};
 int pead[NUMCNTX] = {0};
 int pail[NUMCNTX] = {0};
@@ -98,7 +98,7 @@ void *openglBuffed(int idx, int len, void *buf)
 	return ptr;
 }
 
-void openglPendee(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint hdl, GLuint tgt)
+void openglPendee(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
 {
 	glBindBuffer(tgt, hdl);
 	if (siz && *siz == 0) glBufferData(tgt, (*siz=idx+cnt)*gpu, 0, GL_STATIC_DRAW);
@@ -108,12 +108,12 @@ void openglPendee(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *b
 	glBufferData(tgt, (idx+cnt)*gpu, 0, GL_STATIC_DRAW);
 	glBufferSubData(tgt, 0, (*siz)*gpu, buffer);
 	*siz = idx+cnt;}
-	if (siz && cpu == gpu) glBufferSubData(tgt, idx*gpu, cnt*gpu, buf);
+	if (siz && cpu == gpu) glBufferSubData(tgt, idx*gpu, cnt*gpu, *buf);
 	if (siz && cpu != gpu) for (int i = 0; i < cnt; i++)
-	glBufferSubData(tgt, (idx+i)*gpu, cpu, openglBuffed(i,cpu,buf));
-	if (siz == 0 && cpu == gpu) glBufferSubData(tgt, bas+idx*gpu, cnt*gpu, buf);
+	glBufferSubData(tgt, (idx+i)*gpu, cpu, openglBuffed(i,cpu,*buf));
+	if (siz == 0 && cpu == gpu) glBufferSubData(tgt, bas+idx*gpu, cnt*gpu, *buf);
 	if (siz == 0 && cpu != gpu) for (int i = 0; i < cnt; i++)
-	glBufferSubData(tgt, bas+(idx+i)*gpu, cpu, openglBuffed(i,cpu,buf));
+	glBufferSubData(tgt, bas+(idx+i)*gpu, cpu, openglBuffed(i,cpu,*buf));
 	glBindBuffer(tgt, 0);
 }
 
@@ -122,17 +122,17 @@ void openglPender(struct Pend *ptr)
 	openglPendee(ptr->idx,ptr->cnt,ptr->cpu,ptr->gpu,ptr->bas,ptr->siz,ptr->buf,ptr->hdl,ptr->tgt);
 }
 
-void openglPending(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint hdl, GLuint tgt)
+void openglPending(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
 {
 	ptr->idx=idx;ptr->cnt=cnt;ptr->cpu=cpu;ptr->gpu=gpu;ptr->bas=bas;ptr->siz=siz;ptr->buf=buf;ptr->hdl=hdl;ptr->tgt=tgt;
 }
 
-int openglPendant(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint hdl, GLuint tgt)
+int openglPendant(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
 {
 	return (ptr->bas == bas && ptr->siz == siz && ptr->idx == idx && ptr->cnt == cnt);
 }
 
-void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint *hdl, GLuint tgt)
+void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint *hdl, GLuint tgt)
 {
 	for (int ctx = 0; ctx < NUMCNTX; ctx++) if (ctx != head) {
 	int found = 0; for (int pnd = pead[ctx]; pnd != pail[ctx] && !found; pnd = (pnd+1)%NUMPEND)
@@ -220,7 +220,7 @@ void openglFunc()
 	for (int i = 0; i < state[Range]->siz; i++) {
 	void *buf = openglBuffed(state[Range]->range[i].idx,sizeof(struct Facet),0);
 	state[Tag]->tag = state[Range]->range[i].tag;
-	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&state[Tag]->tag,uniformId[head],GL_UNIFORM_BUFFER);
+	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
 	glDrawElements(GL_TRIANGLES,state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
 	glfwSwapBuffers(window);
