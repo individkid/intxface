@@ -163,7 +163,7 @@ void openglDma()
 	case (Mode1): ERROR(huberr,-1);
 	case (Mode2): ERROR(huberr,-1);
 	case (Mode3): ERROR(huberr,-1);
-	case (Fixed): ERROR(huberr,-1);
+	case (Pierce): ERROR(huberr,-1);
 	case (Moved): ERROR(huberr,-1);
 	case (Rolled): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}

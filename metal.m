@@ -16,6 +16,8 @@
 */
 
 #include "plane.h"
+#include <Metal/Metal.h>
+#include <MetalKit/MetalKit.h>
 
 int metalInit()
 {

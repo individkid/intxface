@@ -88,13 +88,12 @@ Memory = {
 	"Mode2",
 	"Mode3",
 	"Pierce",
-	"Fixed",
 	"Moved",
 	"Rolled",
 }
 Matrix = {
-	"Picture",
-	"Polytope",
+	"Global",
+	"Several",
 	"Single",
 }
 Click = {
@@ -237,7 +236,7 @@ Client = {
 	{"click","Click",{["mem"]={["Mode1"]=true}},{}},
 	{"move","Move",{["mem"]={["Mode2"]=true}},{}},
 	{"roll","Roll",{["mem"]={["Mode3"]=true}},{}},
-	{"fixed","Vector",{["mem"]={["Fixed"]=true}},1},
+	{"fixed","Vector",{["mem"]={["Pierce"]=true}},1},
 	{"moved","Cursor",{["mem"]={["Moved"]=true}},1},
 	{"rolled","float",{["mem"]={["Rolled"]=true}},{}},
 }
