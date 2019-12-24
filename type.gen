@@ -87,7 +87,7 @@ Memory = {
 	"Mode1",
 	"Mode2",
 	"Mode3",
-	"Pierce",
+	"Pierced",
 	"Moved",
 	"Rolled",
 }
@@ -236,7 +236,7 @@ Client = {
 	{"click","Click",{["mem"]={["Mode1"]=true}},{}},
 	{"move","Move",{["mem"]={["Mode2"]=true}},{}},
 	{"roll","Roll",{["mem"]={["Mode3"]=true}},{}},
-	{"fixed","Vector",{["mem"]={["Pierce"]=true}},1},
+	{"pierced","Vector",{["mem"]={["Pierced"]=true}},1},
 	{"moved","Cursor",{["mem"]={["Moved"]=true}},1},
 	{"rolled","float",{["mem"]={["Rolled"]=true}},{}},
 }

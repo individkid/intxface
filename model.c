@@ -15,13 +15,10 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <GL/glew.h>
 #include "plane.h"
 
 int modelInit()
 {
-	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
-	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 	return 1;
 }
 
@@ -45,7 +42,7 @@ void modelDma()
 	case (Mode1): ERROR(huberr,-1);
 	case (Mode2): ERROR(huberr,-1);
 	case (Mode3): ERROR(huberr,-1);
-	case (Pierce): ERROR(huberr,-1);
+	case (Pierced): ERROR(huberr,-1);
 	case (Moved): ERROR(huberr,-1);
 	case (Rolled): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
@@ -63,9 +60,7 @@ void modelGet()
 
 void modelFunc()
 {
-	glClear(GL_COLOR_BUFFER_BIT);
 	// TODO
-	glfwSwapBuffers(window);
 }
 
 void modelDraw()

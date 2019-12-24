@@ -172,11 +172,11 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	if (state[Mode1] == 0) ERROR(huberr,-1);
 	if (state[Mode1]->click == Transform) {
 	if (state[Mode2] == 0 || state[Mode2] == 0) ERROR(huberr,-1);
-	if (state[Pierce] == 0 || state[Moved] == 0) ERROR(huberr,-1);
+	if (state[Pierced] == 0 || state[Moved] == 0) ERROR(huberr,-1);
 	switch (state[Mode2]->move) {
-	case (Rotate): /*rotateMatrix(&mat->val,state[Pierce]->val,state[Moved]->val,pos)*/ break;
-	case (Tangent): /*tangentMatrix(&mat->val,state[Pierce]->val,state[Moved]->val,pos)*/ break;
-	case (Translate): /*translateMatrix(&mat->val,state[Pierce]->val,state[Moved]->val,pos)*/ break;
+	case (Rotate): /*rotateMatrix(&mat->val,state[Pierced]->val,state[Moved]->val,pos)*/ break;
+	case (Tangent): /*tangentMatrix(&mat->val,state[Pierced]->val,state[Moved]->val,pos)*/ break;
+	case (Translate): /*translateMatrix(&mat->val,state[Pierced]->val,state[Moved]->val,pos)*/ break;
 	default: ERROR(huberr,-1);}
 	switch (state[Mode0]->matrix) {
 	case (Global): client.mem = Subject; client.subject = mat; break;
@@ -186,7 +186,7 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	client.siz = 1; client.len = 3; allocInt(&client.fnc,3);
 	client.fnc[0] = Rmw0; client.fnc[1] = Dma0; client.fnc[2] = Draw;
 	writeClient(&client,tub);} else {
-	// TODO call pierce shader and update state[Pierce]
+	// TODO call pierce shader and update state[Pierced]
 	}
 }
 
