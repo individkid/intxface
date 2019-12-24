@@ -159,10 +159,10 @@ void affineMatrix(int file, float *affine)
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
 {
-    if (action == 1) printf("GLFW key %d %d %d %d\n",key,scancode,action,mods);
-    if (key == 256 && action == 1) {if (esc == 0) esc = 1;}
-    else if (key == 257 && action == 1) {if (esc == 1) esc = 2;}
-    else if (action == 1) esc = 0;
+	if (action == 1) printf("GLFW key %d %d %d %d\n",key,scancode,action,mods);
+	if (key == 256 && action == 1) {if (esc == 0) esc = 1;}
+	else if (key == 257 && action == 1) {if (esc == 1) esc = 2;}
+	else if (action == 1) esc = 0;
 }
 
 void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
@@ -171,7 +171,7 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	struct Affine *mat = 0; allocAffine(&mat,1);
 	if (state[Mode1] == 0) ERROR(huberr,-1);
 	if (state[Mode1]->click == Transform) {
-	if (state[Mode2] == 0 || state[Mode2] == 0) ERROR(huberr,-1);
+	if (state[Mode2] == 0 || state[Mode0] == 0) ERROR(huberr,-1);
 	if (state[Pierced] == 0 || state[Moved] == 0) ERROR(huberr,-1);
 	switch (state[Mode2]->move) {
 	case (Rotate): /*rotateMatrix(&mat->val,state[Pierced]->val,state[Moved]->val,pos)*/ break;

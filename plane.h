@@ -33,6 +33,7 @@ EXTERN GLFWwindow* window;
 EXTERN struct Client *client;
 EXTERN struct Client *state[Memorys];
 EXTERN struct Client *saved[Memorys];
+EXTERN void *refer[Memorys];
 
 void huberr(const char *str, int num, int arg);
 void exiterr(const char *str, int num, int arg);

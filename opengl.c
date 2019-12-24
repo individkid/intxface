@@ -91,10 +91,10 @@ int openglInit()
 	return 1;
 }
 
-void *openglBuffed(int idx, int cpu, void *buf)
+void *openglBuffed(int idx, int len, void *buf)
 {
 	char *ptr = buf;
-	ptr += idx*cpu;
+	ptr += idx*len;
 	return ptr;
 }
 
@@ -146,19 +146,19 @@ void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *b
 void openglDma()
 {
 	switch (client->mem) {
-	case (Corner): openglBuffer(client->idx,client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[head][Corner],&state[Corner]->corner[0],vertexId,GL_ARRAY_BUFFER); break;
-	case (Triangle): openglBuffer(client->idx,client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[head][Triangle],&state[Triangle]->triangle[0],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
+	case (Corner): openglBuffer(client->idx,client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[head][Corner],&refer[Corner],vertexId,GL_ARRAY_BUFFER); break;
+	case (Triangle): openglBuffer(client->idx,client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[head][Triangle],&refer[Triangle],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
 	case (Range): ERROR(huberr,-1);
-	case (Basis): openglBuffer(client->idx,client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&state[Basis]->basis->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&state[Subject]->subject->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Object): openglBuffer(client->idx,client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&state[Object]->object->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Feature): openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&state[Feature]->feature->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&state[Feather]->feather->val[0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&state[Arrow]->arrow->val[0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&state[Cloud]->cloud->val[0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&state[Face]->face,uniformId,GL_UNIFORM_BUFFER); break;
-	case (Tope): openglBuffer(0,1,sizeof(int),unit[Tope],base[Tope],0,&state[Tope]->tope,uniformId,GL_UNIFORM_BUFFER); break;
-	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&state[Tag]->tag,uniformId,GL_UNIFORM_BUFFER); break;
+	case (Basis): openglBuffer(client->idx,client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&refer[Basis],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&refer[Subject],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Object): openglBuffer(client->idx,client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&refer[Object],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Feature): openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&refer[Feature],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&refer[Feather],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&refer[Arrow],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&refer[Face],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Tope): openglBuffer(0,1,sizeof(int),unit[Tope],base[Tope],0,&refer[Tope],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Mode0): ERROR(huberr,-1);
 	case (Mode1): ERROR(huberr,-1);
 	case (Mode2): ERROR(huberr,-1);

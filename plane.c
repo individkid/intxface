@@ -34,6 +34,7 @@ GLFWwindow *window = 0;
 struct Client *client = 0;
 struct Client *state[Memorys] = {0};
 struct Client *saved[Memorys] = {0};
+void *refer[Memorys] = {0};
 enum API api = 0;
 int full = 0;
 
@@ -73,9 +74,10 @@ float *clientMat(struct Client *client, int idx)
 void clientRmw0()
 {
 	// state[idx] = client[0]*saved[idx]
+	float *stat = clientMat(state[client->mem],client->idx);
 	float *save = clientMat(saved[client->mem],client->idx);
 	float *give = clientMat(client,0);
-	copymat(save,timesmat(save,give,4),4);
+	copymat(stat,timesmat(save,give,4),4);
 }
 
 void clientRmw1()
@@ -98,10 +100,31 @@ void clientRmw1()
 	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
 void clientCopy(struct Client **ptr)
 {
+	INDEXED(Corner,corner);
+	INDEXED(Triangle,triangle);
+	INDEXED(Range,range);
 	INDEXED(Basis,basis);
 	INDEXED(Object,object);
 	INDEXED(Cloud,cloud);
 	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
+}
+
+void clientRefer()
+{
+	switch (client->mem) {
+	case (Corner): refer[client->mem] = &client->corner[0];
+	case (Triangle): refer[client->mem] = &client->triangle[0];
+	case (Basis): refer[client->mem] = &client->basis[0];
+	case (Subject): refer[client->mem] = &client->subject[0];
+	case (Object): refer[client->mem] = &client->object[0];
+	case (Feature): refer[client->mem] = &client->feature[0];
+	case (Feather): refer[client->mem] = &client->feather[0];
+	case (Arrow): refer[client->mem] = &client->arrow[0];
+	case (Cloud): refer[client->mem] = &client->cloud[0];
+	case (Face): refer[client->mem] = &client->face;
+	case (Tope): refer[client->mem] = &client->tope;
+	case (Tag): refer[client->mem] = &client->tag;
+	default: break;}
 }
 
 void process()
@@ -110,7 +133,7 @@ void process()
 	switch (client->fnc[i]) {
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
-	case (Copy): clientCopy(state); break;
+	case (Copy): clientCopy(state); clientRefer(); break;
 	case (Save): clientCopy(saved); break;
 	case (Dma0): break;
 	case (Dma1): break;
@@ -192,23 +215,24 @@ int main(int argc, char **argv)
 	case (None): break;
 	case (Metal): full = metalFull(); break;
 	case (Vulkan): full = vulkanFull(); break;
-	case (Opengl):  full = openglFull(); break;
-	case (Model):  full = modelFull(); break;}
+	case (Opengl): full = openglFull(); break;
+	case (Model): full = modelFull(); break;}
 	if (full) {
 	glfwWaitEventsTimeout(1000.0*NANO2SEC);
 	continue;}
+
 	if (callread(argc)) {
 	process();
-	switch (api) { // redraw changed buffers uniforms
+	switch (api) {
 	case (None): break;
 	case (Metal): metalDraw(); break;
 	case (Vulkan): vulkanDraw(); break;
-	case (Opengl):  openglDraw(); break;
-	case (Model):  modelDraw(); break;}
+	case (Opengl): openglDraw(); break;
+	case (Model): modelDraw(); break;}
 	produce();
 	glfwPollEvents();
 	continue;}
-	glfwWaitEvents();}}} // send changed metrics with feedback info
+	glfwWaitEvents();}}}
 
 	switch (api) {
 	case (None): break;
