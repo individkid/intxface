@@ -65,7 +65,6 @@ int openglInit()
 	unit[Cloud] = 4*4; base[Cloud] = total; total += unit[Cloud]*NUMFEND;
 	unit[Shader] = 4; base[Shader] = total; total += unit[Shader];
 	unit[Face] = 4; base[Face] = total; total += unit[Face];
-	unit[Tope] = 4; base[Tope] = total; total += unit[Tope];
 	unit[Tag] = 4; base[Tag] = total; total += unit[Tag];
 	for (int context = 0; context < NUMCNTX; context++) {
 	glGenVertexArrays(1, &arrayId[context]);
@@ -164,7 +163,7 @@ void openglDma()
 	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Shader): openglBuffer(0,1,sizeof(int),unit[Shader],base[Shader],0,&refer[Shader],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&refer[Face],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Tope): openglBuffer(0,1,sizeof(int),unit[Tope],base[Tope],0,&refer[Tope],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Tope): ERROR(huberr,-1);
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Mode0): ERROR(huberr,-1);
 	case (Mode1): ERROR(huberr,-1);

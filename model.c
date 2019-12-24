@@ -35,6 +35,7 @@ void modelDma()
 	case (Feather): /*TODO*/ break;
 	case (Arrow): /*TODO*/ break;
 	case (Cloud): /*TODO*/ break;
+	case (Shader): /*TODO*/ break;
 	case (Face): /*TODO*/ break;
 	case (Tope): /*TODO*/ break;
 	case (Tag): /*TODO*/ break;
