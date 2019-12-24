@@ -112,18 +112,19 @@ void clientCopy(struct Client **ptr)
 void clientRefer()
 {
 	switch (client->mem) {
-	case (Corner): refer[client->mem] = &client->corner[0];
-	case (Triangle): refer[client->mem] = &client->triangle[0];
-	case (Basis): refer[client->mem] = &client->basis[0];
-	case (Subject): refer[client->mem] = &client->subject[0];
-	case (Object): refer[client->mem] = &client->object[0];
-	case (Feature): refer[client->mem] = &client->feature[0];
-	case (Feather): refer[client->mem] = &client->feather[0];
-	case (Arrow): refer[client->mem] = &client->arrow[0];
-	case (Cloud): refer[client->mem] = &client->cloud[0];
-	case (Face): refer[client->mem] = &client->face;
-	case (Tope): refer[client->mem] = &client->tope;
-	case (Tag): refer[client->mem] = &client->tag;
+	case (Corner): refer[Corner] = &client->corner[0];
+	case (Triangle): refer[Triangle] = &client->triangle[0];
+	case (Basis): refer[Basis] = &client->basis[0];
+	case (Subject): refer[Subject] = &client->subject[0];
+	case (Object): refer[Object] = &client->object[0];
+	case (Feature): refer[Feature] = &client->feature[0];
+	case (Feather): refer[Feather] = &client->feather[0];
+	case (Arrow): refer[Arrow] = &client->arrow[0];
+	case (Cloud): refer[Cloud] = &client->cloud[0];
+	case (Shader): refer[Shader] = &client->shader;
+	case (Face): refer[Face] = &client->face;
+	case (Tope): refer[Tope] = &client->tope;
+	case (Tag): refer[Tag] = &client->tag;
 	default: break;}
 }
 
@@ -208,8 +209,8 @@ int main(int argc, char **argv)
 	else if (modelInit()) api = Model;
 	else api = None;
 
-	while (esc < 2 && !glfwWindowShouldClose(window)) {
-	if (setjmp(jmpbuf) == 0) {
+	while (esc < 2 && !glfwWindowShouldClose(window))
+	if (setjmp(jmpbuf) == 0)
 	while(esc < 2 && !glfwWindowShouldClose(window)) {
 	switch (api) {
 	case (None): break;
@@ -232,7 +233,7 @@ int main(int argc, char **argv)
 	produce();
 	glfwPollEvents();
 	continue;}
-	glfwWaitEvents();}}}
+	glfwWaitEvents();}
 
 	switch (api) {
 	case (None): break;

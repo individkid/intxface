@@ -59,6 +59,10 @@ Source = {
 	"Plane",
 	"Space",
 }
+Microcode = {
+	"Display",
+	"Track",
+}
 Function = {
 	"Rmw0",
 	"Rmw1",
@@ -80,6 +84,7 @@ Memory = {
 	"Feather",
 	"Arrow",
 	"Cloud",
+	"Shader",
 	"Face",
 	"Tope",
 	"Tag",
@@ -229,6 +234,7 @@ Client = {
 	{"feather","Vector",{["mem"]={["Feather"]=true}},1},
 	{"arrow","Vector",{["mem"]={["Arrow"]=true}},1},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
+	{"shader","Microcode",{["mem"]={["Shader"]=true}},{}},
 	{"face","int",{["mem"]={["Face"]=true}},{}},
 	{"tope","int",{["mem"]={["Tope"]=true}},{}},
 	{"tag","int",{["mem"]={["Tag"]=true}},{}},

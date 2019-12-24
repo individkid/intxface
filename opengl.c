@@ -19,8 +19,8 @@
 #include "plane.h"
 
 #define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
-GLuint programId = 0;
-GLuint blockId = 0;
+GLuint programId[Microcodes] = {0};
+GLuint blockId[Microcodes] = {0};
 GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
@@ -47,9 +47,14 @@ int openglInit()
 	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	programId = openglLoad("opengl.vs","opengl.fs");
-	blockId = glGetUniformBlockIndex(programId,"Uniform");
-	glUniformBlockBinding(programId,blockId,0);
+	for (int shader = 0; shader < Microcodes; shader++) {
+	char *vertex = 0; char *fragment = 0;
+	if (asprintf(&vertex,"opengl%d.vs",shader) < 0) ERROR(exiterr,-1);
+	if (asprintf(&fragment,"opengl%d.fs",shader) < 0) ERROR(exiterr,-1);
+	programId[shader] = openglLoad(vertex,fragment);
+	free(vertex); free(fragment);
+	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");
+	glUniformBlockBinding(programId[shader],blockId[shader],0);}
 	int total = 0;
 	unit[Basis] = 3*4*4; base[Basis] = total; total += unit[Basis]*3;
 	unit[Subject] = 4*4*4; base[Subject] = total; total += unit[Subject];
@@ -58,7 +63,8 @@ int openglInit()
 	unit[Feather] = 4*4; base[Feather] = total; total += unit[Feather];
 	unit[Arrow] = 4*4; base[Arrow] = total; total += unit[Arrow];
 	unit[Cloud] = 4*4; base[Cloud] = total; total += unit[Cloud]*NUMFEND;
-	unit[Face] = 4*4; base[Face] = total; total += unit[Face];
+	unit[Shader] = 4; base[Shader] = total; total += unit[Shader];
+	unit[Face] = 4; base[Face] = total; total += unit[Face];
 	unit[Tope] = 4; base[Tope] = total; total += unit[Tope];
 	unit[Tag] = 4; base[Tag] = total; total += unit[Tag];
 	for (int context = 0; context < NUMCNTX; context++) {
@@ -156,6 +162,7 @@ void openglDma()
 	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&refer[Feather],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&refer[Arrow],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Shader): openglBuffer(0,1,sizeof(int),unit[Shader],base[Shader],0,&refer[Shader],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&refer[Face],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tope): openglBuffer(0,1,sizeof(int),unit[Tope],base[Tope],0,&refer[Tope],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
@@ -210,7 +217,7 @@ void openglGet()
 void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-	glUseProgram(programId);
+	glUseProgram(programId[state[Shader]->shader]);
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId[head]);
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
@@ -251,5 +258,6 @@ void openglDone()
 	glDeleteBuffers(1, &elementId[context]);
 	glDeleteBuffers(1, &vertexId[context]);
 	glDeleteVertexArrays(1, &arrayId[context]);}
-	glDeleteProgram(programId);
+	for (int shader = 0; shader < Microcodes; shader++)
+	glDeleteProgram(programId[shader]);
 }

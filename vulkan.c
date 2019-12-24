@@ -18,15 +18,15 @@
 #define GLFW_INCLUDE_VULKAN
 #include "plane.h"
 
-enum Shader {Display,Present,Shaders};
+enum Family {Render,Present,Familys};
 VkInstance instance = {0};
 VkDebugUtilsMessengerEXT debug = {0};
 VkSurfaceKHR surface = {0};
 VkPhysicalDevice physical = {0};
 VkDevice logical = {0};
-int valid[Shaders] = {0};
-uint32_t family[Shaders] = {0};
-VkQueue queue[Shaders] = {0};
+int valid[Familys] = {0};
+uint32_t family[Familys] = {0};
+VkQueue queue[Familys] = {0};
 VkSwapchainKHR swap = {0};
 
 VkBool32 debugCallback(
@@ -120,12 +120,12 @@ int vulkanInit()
 	// vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &presentSupport);
 	if (presentSupport && !valid[Present]) {
 	family[Present] = i; valid[Present] = 1;}
-	if ((queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && !valid[Display]) {
-	family[Display] = i; valid[Display] = 1;}}
+	if ((queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && !valid[Render]) {
+	family[Render] = i; valid[Render] = 1;}}
 	uint32_t queueCreateInfoCount = 0;
-	VkDeviceQueueCreateInfo queueCreateInfo[Shaders] = {0};
+	VkDeviceQueueCreateInfo queueCreateInfo[Familys] = {0};
 	float queuePriority = 1.0f;
-	for (int i = 0; i < Shaders; i++) if (valid[i]) {
+	for (int i = 0; i < Familys; i++) if (valid[i]) {
 	queueCreateInfo[queueCreateInfoCount].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo[queueCreateInfoCount].queueFamilyIndex = family[i];
 	queueCreateInfo[queueCreateInfoCount].queueCount = 1;
@@ -140,7 +140,7 @@ int vulkanInit()
 	deviceCreateInfo.enabledExtensionCount = 0;
 	deviceCreateInfo.enabledLayerCount = 0;
 	if (vkCreateDevice(physical, &deviceCreateInfo, 0, &logical) != VK_SUCCESS) ERROR(exiterr,-1);
-	for (int i = 0; i < Shaders; i++) if (valid[i]) {
+	for (int i = 0; i < Familys; i++) if (valid[i]) {
 	vkGetDeviceQueue(logical, family[i], 0, &queue[i]);}
 
 	// create swap chain
