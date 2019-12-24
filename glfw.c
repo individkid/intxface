@@ -183,7 +183,7 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	case (Several): client.mem = Object; client.object = mat; client.idx = state[Tope]->tope; break;
 	case (Single): client.mem = Feature; client.feature = mat; break;
 	default: ERROR(huberr,-1);}
-	client.siz = 1; client.len = 3; allocInt(&client.fnc,3);
+	client.siz = 1; client.len = 3; allocFunction(&client.fnc,3);
 	client.fnc[0] = Rmw0; client.fnc[1] = Dma0; client.fnc[2] = Draw;
 	writeClient(&client,tub);} else {
 	// TODO call pierce shader and update state[Pierced]

@@ -1558,6 +1558,7 @@ function showShareC()
 end
 function showFuncC()
 	local result = ""
+	result = result..showCall(Enums,Enumz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"

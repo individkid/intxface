@@ -216,7 +216,7 @@ Cursor = {
 Client = {
 	{"mem","Memory",{},{}},
 	{"len","int",{},{}},
-	{"fnc","int",{},"len"},
+	{"fnc","Function",{},"len"},
 	{"idx","int",{},{}},
 	{"siz","int",{},{}},
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
