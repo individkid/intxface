@@ -18,7 +18,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include "plane.h"
 
-enum Shader {Display,Present,Pierce,Bounce,Shaders};
+enum Shader {Display,Present,Shaders};
 VkInstance instance = {0};
 VkDebugUtilsMessengerEXT debug = {0};
 VkSurfaceKHR surface = {0};

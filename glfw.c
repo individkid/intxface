@@ -167,6 +167,27 @@ void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int m
 
 void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 {
+	struct Client client = {0};
+	struct Affine *mat = 0; allocAffine(&mat,1);
+	if (state[Mode1] == 0) ERROR(huberr,-1);
+	if (state[Mode1]->click == Transform) {
+	if (state[Mode2] == 0 || state[Mode2] == 0) ERROR(huberr,-1);
+	if (state[Fixed] == 0 || state[Moved] == 0) ERROR(huberr,-1);
+	switch (state[Mode2]->move) {
+	case (Rotate): /*rotateMatrix(&mat->val,state[Fixed]->val,state[Moved]->val,pos)*/ break;
+	case (Tangent): /*tangentMatrix(&mat->val,state[Fixed]->val,state[Moved]->val,pos)*/ break;
+	case (Translate): /*translateMatrix(&mat->val,state[Fixed]->val,state[Moved]->val,pos)*/ break;
+	default: ERROR(huberr,-1);}
+	switch (state[Mode0]->matrix) {
+	case (Picture): client.mem = Subject; client.subject = mat; break;
+	case (Polytope): client.mem = Object; client.object = mat; client.idx = state[Tope]->tope; break;
+	case (Single): client.mem = Feature; client.feature = mat; break;
+	default: ERROR(huberr,-1);}
+	client.siz = 1; client.len = 3; allocInt(&client.fnc,3);
+	client.fnc[0] = Rmw0; client.fnc[1] = Dma0; client.fnc[2] = Draw;
+	writeClient(&client,tub);} else {
+	// TODO call pierce shader and update state[Pierce]
+	}
 }
 
 void windowInit(int argc, char **argv)

@@ -27,7 +27,7 @@
 
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};
-enum {None,Wait,Poll,Seek,Inet} vld[NUMOPEN] = {0};
+enum {None,Wait,Poll,Seek,Inet} fdt[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
 int len = 0;
 int bufsize = BUFSIZE;
@@ -120,15 +120,15 @@ int bothJumpLua(lua_State *lua)
 }
 void closeIdent(int idx)
 {
-	if (vld[idx] != None) {
+	if (fdt[idx] != None) {
 		close(inp[idx]);
 		if (inp[idx] != out[idx]) close(out[idx]);
-		vld[idx] = None;
+		fdt[idx] = None;
 		inpexc[idx] = 0;
 		inperr[idx] = 0;
 		outerr[idx] = 0;
 	}
-	while (len > 0 && vld[len-1] == None) len--;
+	while (len > 0 && fdt[len-1] == None) len--;
 }
 int closeIdentLua(lua_State *lua)
 {
@@ -143,7 +143,7 @@ void moveIdent(int idx0, int idx1)
 	closeIdent(idx1);
 	inp[idx1] = inp[idx0];
 	out[idx1] = out[idx0];
-	vld[idx1] = vld[idx0];
+	fdt[idx1] = fdt[idx0];
 	inpexc[idx1] = inpexc[idx0];
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
@@ -161,7 +161,7 @@ int openPipe()
 	if (pipe(fd) < 0) return -1;
 	inp[len] = fd[0];
 	out[len] = fd[1];
-	vld[len] = Wait;
+	fdt[len] = Wait;
 	return len++;
 }
 int openPipeLua(lua_State *lua)
@@ -182,7 +182,7 @@ int openFifo(const char *str)
 	if (fcntl(fo,F_SETFL,0) < 0) return -1;
 	inp[len] = fi;
 	out[len] = fo;
-	vld[len] = Poll;
+	fdt[len] = Poll;
 	return len++;
 }
 int openFifoLua(lua_State *lua)
@@ -198,7 +198,7 @@ int openFile(const char *str)
 	if ((fd = open(str,O_RDWR|O_CREAT,0666)) < 0) return -1;
 	inp[len] = fd;
 	out[len] = fd;
-	vld[len] = Seek;
+	fdt[len] = Seek;
 	return len++;
 }
 int openFileLua(lua_State *lua)
@@ -231,12 +231,12 @@ int openInet(const char *adr, const char *num)
 	if (scanInet6(&adr,0,num) == 0) return -1;
 	if (bind(fd, (struct sockaddr*)&adr, sizeof(adr)) < 0) return -1;
 	if (listen(fd, NUMPEND) < 0) return -1;
-	vld[len] = Inet;} else {
+	fdt[len] = Inet;} else {
 	if (ads >= NUMINET) return -1;
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
 	if (scanInet6(&addr[ads],adr,num) == 0) return -1;
 	if (connect(fd, (struct sockaddr*)&addr[ads], sizeof(addr[ads])) < 0) return -1;
-	vld[len] = Wait;
+	fdt[len] = Wait;
 	ads++;}
 	inp[len] = fd;
 	out[len] = fd;
@@ -268,7 +268,7 @@ int forkExec(const char *exe)
 	val = close(p2c[0]); if (val < 0) return -1;
 	inp[len] = c2p[0];
 	out[len] = p2c[1];
-	vld[len] = Wait;
+	fdt[len] = Wait;
 	int ret = len;
 	len++;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
@@ -285,7 +285,7 @@ int pipeInit(const char *av1, const char *av2)
 	int val;
 	val = sscanf(av1,"%d",&inp[len]); if (val != 1) return -1;
 	val = sscanf(av2,"%d",&out[len]); if (val != 1) return -1;
-	vld[len] = Wait;
+	fdt[len] = Wait;
 	int ret = len;
 	len++;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
@@ -304,27 +304,27 @@ int pselectAny(struct timespec *dly)
 	int nfd = 0;
 	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
 	for (int i = 0; i < len; i++) {
-		if (vld[i] == Wait && nfd <= inp[i]) nfd = inp[i]+1;
-		if (vld[i] == Wait) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}
-		if (vld[i] == Inet && nfd <= inp[i]) nfd = inp[i]+1;
-		if (vld[i] == Inet) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
+		if (fdt[i] == Wait && nfd <= inp[i]) nfd = inp[i]+1;
+		if (fdt[i] == Wait) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}
+		if (fdt[i] == Inet && nfd <= inp[i]) nfd = inp[i]+1;
+		if (fdt[i] == Inet) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,dly,0);
 	if (val < 0) ERROR(exitErr,0);
 	if (val == 0) return -1;
 	nfd = 0; for (int i = 0; i < len; i++) {
-		if (vld[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
-		if (vld[i] == Inet && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}}
+		if (fdt[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
+		if (fdt[i] == Inet && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}}
 	if (nfd == 0) for (int i = 0; i < len; i++) {
-		if (vld[i] == Wait && FD_ISSET(inp[i],&fds)) return i;
-		if (vld[i] == Inet && FD_ISSET(inp[i],&fds)) {
+		if (fdt[i] == Wait && FD_ISSET(inp[i],&fds)) return i;
+		if (fdt[i] == Inet && FD_ISSET(inp[i],&fds)) {
 		struct sockaddr_in6 adr = {0};
 		socklen_t len = sizeof(adr);
 		if (len >= NUMOPEN) {closeIdent(i); continue;}
 		inp[len] = out[len] = accept(inp[i],(struct sockaddr*)&adr,&len);
 		if (inp[len] < 0) continue;
-		vld[len] = Wait;
+		fdt[len] = Wait;
 		return len++;}}
 	} return -1;
 }
@@ -356,7 +356,7 @@ int pollPipe(int idx)
 	int val;
 	int nfd = 0;
 	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
-	if (idx < 0 || idx >= len || vld[idx] != Poll) return 0;
+	if (idx < 0 || idx >= len || fdt[idx] != Poll) return 0;
 	if (nfd <= inp[idx]) nfd = inp[idx]+1;
 	FD_SET(inp[idx],&fds); FD_SET(inp[idx],&ers);
 	val = -1; while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
@@ -373,7 +373,7 @@ int pollPipeLua(lua_State *lua)
 int pollFile(int idx)
 {
 	off_t pos, siz;
-	if (idx < 0 || idx >= len || vld[idx] != Seek) return 0;
+	if (idx < 0 || idx >= len || fdt[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
 	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
 	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERROR(inperr[idx],idx);
@@ -412,7 +412,7 @@ int truncFileLua(lua_State *lua)
 long long checkFile(int idx)
 {
 	off_t pos, siz;
-	if (idx < 0 || idx >= len || vld[idx] != Seek) return 0;
+	if (idx < 0 || idx >= len || fdt[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
 	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
 	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
@@ -530,7 +530,7 @@ int wrlkwFileLua(lua_State *lua)
 }
 int checkRead(int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) return 0;
+	if (idx < 0 || idx >= len || fdt[idx] == None) return 0;
 	return 1;
 }
 int checkReadLua(lua_State *lua)
@@ -541,7 +541,7 @@ int checkReadLua(lua_State *lua)
 }
 int checkWrite(int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) return 0;
+	if (idx < 0 || idx >= len || fdt[idx] == None) return 0;
 	return 1;
 }
 int checkWriteLua(lua_State *lua)
@@ -562,13 +562,13 @@ int sleepSecLua(lua_State *lua)
 }
 void readStr(cftype fnc, void *arg, int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	char buf[bufsize]; memset(buf,0,bufsize);
 	int trm = 0;
 	for (int i = 0; i < bufsize-1; i++) {
 		int val = read(inp[idx],buf+i,1);
 		if (val < 0) ERROR(inperr[idx],idx);
-		// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
+		// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
 		if (val == 0) {buf[i] = 0; break;}
 		if (buf[i] == 0) {trm = 1; break;}}
@@ -599,10 +599,10 @@ int readStrLua(lua_State *lua)
 int readInt(int idx)
 {
 	int arg;
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(int));
 	if (val != 0 && val < (int)sizeof(int)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
+	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
@@ -615,10 +615,10 @@ int readIntLua(lua_State *lua)
 double readNum(int idx)
 {
 	double arg;
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(double));
 	if (val != 0 && val < (int)sizeof(double)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
+	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
@@ -631,11 +631,11 @@ int readNumLua(lua_State *lua)
 long long readNew(int idx)
 {
 	long long arg;
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(long long));
 	if (val != 0 && val < (int)sizeof(long long)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
+	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
@@ -648,11 +648,11 @@ int readNewLua(lua_State *lua)
 float readOld(int idx)
 {
 	float arg;
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(float));
 	if (val != 0 && val < (int)sizeof(float)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and vld[idx] == Poll
+	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
@@ -664,7 +664,7 @@ int readOldLua(lua_State *lua)
 }
 void writeStr(const char *arg, int trm, int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int siz = strlen(arg)+trm;
 	int val = write(out[idx],arg,siz);
 	if (val < siz) ERROR(outerr[idx],idx)
@@ -677,7 +677,7 @@ int writeStrLua(lua_State *lua)
 }
 void writeInt(int arg, int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = write(out[idx],(char *)&arg,sizeof(int));
 	if (val < (int)sizeof(int)) ERROR(outerr[idx],idx)
 }
@@ -689,7 +689,7 @@ int writeIntLua(lua_State *lua)
 }
 void writeNum(double arg, int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = write(out[idx],(char *)&arg,sizeof(double));
 	if (val < (int)sizeof(double)) ERROR(outerr[idx],idx)
 }
@@ -701,7 +701,7 @@ int writeNumLua(lua_State *lua)
 }
 void writeNew(long long arg, int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = write(out[idx],(char *)&arg,sizeof(long long));
 	if (val < (int)sizeof(long long)) ERROR(outerr[idx],idx)
 }
@@ -713,7 +713,7 @@ int writeNewLua(lua_State *lua)
 }
 void writeOld(float arg, int idx)
 {
-	if (idx < 0 || idx >= len || vld[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = write(out[idx],(char *)&arg,sizeof(float));
 	if (val < (int)sizeof(float)) ERROR(outerr[idx],idx)
 }

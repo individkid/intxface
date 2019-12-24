@@ -20,8 +20,10 @@
 #include <pthread.h>
 
 enum API {None, Metal, Vulkan, Opengl, Model};
+int vld = 0;
 int sub = 0;
 int hub = 0;
+int tub = 0;
 int zub = 0;
 int esc = 0;
 jmp_buf jmpbuf = {0};
@@ -32,9 +34,6 @@ GLFWwindow *window = 0;
 struct Client *client = 0;
 struct Client *state[Memorys] = {0};
 struct Client *saved[Memorys] = {0};
-struct Client *inject[NUMJECT] = {0};
-int enject = 0;
-int deject = 0;
 enum API api = 0;
 int full = 0;
 
@@ -52,18 +51,13 @@ void exiterr(const char *str, int num, int arg)
 
 int callread(int argc)
 {
-	if (enject != deject) {
-	allocClient(&client,0);
-	client = inject[deject];
-	inject[deject] = 0;
-	deject = (deject+1)%NUMJECT;}
-	int vld = 0;
+	int res = 0;
 	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (sub >= 0) {readClient(client,sub); sub = -1; vld = 1;}
+	if (vld) {readClient(client,sub); vld = 0; res = 1;}
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}
-	return vld;
+	return res;
 }
 
 float *clientMat(struct Client *client, int idx)
@@ -138,12 +132,10 @@ void produce()
 	case (Dma1): break;
 	case (Draw): break;
 	case (Post): {
-	struct Pierce *ptr = 0;
-	for (int i = 0; i < state[Sightline]->siz; i++)
-	if (ptr == 0 || state[Sightline]->sightline[i].order < ptr->order)
-	ptr = &state[Sightline]->sightline[i];
-	if (ptr) state[Face]->face = ptr->ident;
-	else state[Face]->face = state[Triangle]->siz;
+	float color = 0.0;
+	glReadBuffer(GL_AUX0);
+	glReadPixels(0,0,1,1,GL_RED,GL_FLOAT,&color);
+	state[Face]->face = color;
 	break;}
 	case (Port): {
 	struct Metric metric = {0};
@@ -160,9 +152,9 @@ void *thread(void *arg)
 	int gon = 1;
 	while (gon) {
 	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
-	if (tmp == zub) gon = 0; else {
+	if (tmp == zub) gon = 0; else if (tmp >= 0) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	sub = tmp; glfwPostEmptyEvent();
+	sub = tmp; vld = 1; glfwPostEmptyEvent();
 	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
 	return 0;
@@ -173,7 +165,8 @@ void threadInit(int argc, char **argv)
 	if (argc == 4) {sub = -1;
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	if ((zub = openPipe()) < 0) ERROR(exiterr,-1);
-	bothJump(huberr,hub); bothJump(huberr,zub);
+	if ((tub = openPipe()) < 0) ERROR(exiterr,-1);
+	bothJump(huberr,hub); bothJump(huberr,zub); bothJump(huberr,tub);
 	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
 	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
 	if (pthread_create(&pthread,0,thread,0) != 0) ERROR(exiterr,-1);}

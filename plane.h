@@ -15,6 +15,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 #include "face.h"
 #include "base.h"
@@ -26,14 +27,12 @@
 #define EXTERN extern
 #endif
 
+EXTERN int tub;
 EXTERN int esc;
 EXTERN GLFWwindow* window;
 EXTERN struct Client *client;
 EXTERN struct Client *state[Memorys];
 EXTERN struct Client *saved[Memorys];
-EXTERN struct Client *inject[NUMJECT];
-EXTERN int enject;
-EXTERN int deject;
 
 void huberr(const char *str, int num, int arg);
 void exiterr(const char *str, int num, int arg);

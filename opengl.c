@@ -24,11 +24,12 @@ GLuint blockId = 0;
 GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
-GLuint feedbackId[NUMCNTX] = {0};
+// GLuint feedbackId[NUMCNTX] = {0};
 GLuint uniformId[NUMCNTX] = {0};
-int *offset[Memorys] = {0};
-int total[NUMCNTX][Memorys] = {0};
-struct Pend {int idx; int siz; int len; int bas; int *tot; void *buf; GLuint hdl; GLuint tgt;};
+int size[NUMCNTX][Memorys] = {0};
+int base[Memorys] = {0};
+int unit[Memorys] = {0};
+struct Pend {int idx; int cnt; int cpu; int gpu; int bas; int *siz; void *buf; GLuint hdl; GLuint tgt;};
 struct Pend pend[NUMCNTX][NUMPEND] = {0};
 int pead[NUMCNTX] = {0};
 int pail[NUMCNTX] = {0};
@@ -41,15 +42,6 @@ GLuint openglLoad(const char *vs, const char *fs)
 	return 0;
 }
 
-int *openglOffset(int num, int siz, int *tot)
-{
-	if (num > 1 && siz < 4) siz = 4;
-	int *res = malloc(num*sizeof(int));
-	for (int i = 0; i < num; i++) {
-	res[i] = *tot; *tot += siz*4;}
-	return res;
-}
-
 int openglInit()
 {
 	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
@@ -59,19 +51,19 @@ int openglInit()
 	programId = openglLoad("opengl.vs","opengl.fs");
 	blockId = glGetUniformBlockIndex(programId,"Uniform");
 	glUniformBlockBinding(programId,blockId,0);
-	int uniform = 0;
-	offset[Basis] = openglOffset(3*3,3,&uniform);
-	offset[Subject] = openglOffset(4,4,&uniform);
-	offset[Object] = openglOffset(NUMFILE*4,4,&uniform);
-	offset[Feature] = openglOffset(4,4,&uniform);
-	offset[Feather] = openglOffset(1,3,&uniform);
-	offset[Arrow] = openglOffset(1,3,&uniform);
-	offset[Cloud] = openglOffset(NUMFEND,3,&uniform);
-	offset[Face] = openglOffset(1,1,&uniform);
-	offset[Tope] = openglOffset(1,1,&uniform);
-	offset[Tag] = openglOffset(1,1,&uniform);
-	const GLchar* names[] = {"ident","order"};
-	glTransformFeedbackVaryings(programId, 2, names, GL_INTERLEAVED_ATTRIBS);
+	// const GLchar* names[] = {"ident","order"};
+	// glTransformFeedbackVaryings(programId, 2, names, GL_INTERLEAVED_ATTRIBS);
+	int total = 0;
+	unit[Basis] = 3*4*4; base[Basis] = total; total += unit[Basis]*3;
+	unit[Subject] = 4*4*4; base[Subject] = total; total += unit[Subject];
+	unit[Object] = 4*4*4; base[Object] = total; total += unit[Object]*NUMFILE;
+	unit[Feature] = 4*4*4; base[Feature] = total; total += unit[Feature];
+	unit[Feather] = 4*4; base[Feather] = total; total += unit[Feather];
+	unit[Arrow] = 4*4; base[Arrow] = total; total += unit[Arrow];
+	unit[Cloud] = 4*4; base[Cloud] = total; total += unit[Cloud]*NUMFEND;
+	unit[Face] = 4*4; base[Face] = total; total += unit[Face];
+	unit[Tope] = 4; base[Tope] = total; total += unit[Tope];
+	unit[Tag] = 4; base[Tag] = total; total += unit[Tag];
 	for (int context = 0; context < NUMCNTX; context++) {
 	glGenVertexArrays(1, &arrayId[context]);
 	glBindVertexArray(arrayId[context]);
@@ -95,72 +87,82 @@ int openglInit()
 	for (int i = 0; i < index; i++)
 	glDisableVertexAttribArray(i);
 	glGenBuffers(1, &elementId[context]);
-	glGenBuffers(1, &feedbackId[context]);
+	// glGenBuffers(1, &feedbackId[context]);
 	glGenBuffers(1, &uniformId[context]);
 	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
-	glBufferData(GL_UNIFORM_BUFFER, uniform, 0, GL_STATIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniformId[context], 0, uniform);}
+	glBufferData(GL_UNIFORM_BUFFER, total, 0, GL_STATIC_DRAW);
+	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniformId[context], 0, total);}
 	return 1;
 }
 
-void openglPendee(int idx, int siz, int len, int bas, int *tot, void *buf, GLuint hdl, GLuint tgt)
+void *openglBuffed(int idx, int cpu, void *buf)
+{
+	char *ptr = buf;
+	ptr += idx*cpu;
+	return ptr;
+}
+
+void openglPendee(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint hdl, GLuint tgt)
 {
 	glBindBuffer(tgt, hdl);
-	if (tot && *tot == 0) glBufferData(tgt, (*tot=idx+siz)*len, 0, GL_STATIC_DRAW);
-	if (tot && idx == 0 && siz > *tot) glBufferData(tgt, (*tot=(idx+siz))*len, 0, GL_STATIC_DRAW);
-	if (tot && idx+siz > *tot) {
-	char buffer[*tot]; glGetBufferSubData(tgt, 0, (*tot)*len, buffer);
-	glBufferData(tgt, (idx+siz)*len, 0, GL_STATIC_DRAW);
-	glBufferSubData(tgt, 0, (*tot)*len, buffer);
-	*tot = idx+siz;}
-	if (tot) glBufferSubData(tgt, idx*len, siz*len, buf);
-	else glBufferSubData(tgt, bas+idx*len, siz*len, buf);
+	if (siz && *siz == 0) glBufferData(tgt, (*siz=idx+cnt)*gpu, 0, GL_STATIC_DRAW);
+	if (siz && idx == 0 && cnt > *siz) glBufferData(tgt, (*siz=(idx+cnt))*gpu, 0, GL_STATIC_DRAW);
+	if (siz && idx+cnt > *siz) {
+	char buffer[*siz]; glGetBufferSubData(tgt, 0, (*siz)*gpu, buffer);
+	glBufferData(tgt, (idx+cnt)*gpu, 0, GL_STATIC_DRAW);
+	glBufferSubData(tgt, 0, (*siz)*gpu, buffer);
+	*siz = idx+cnt;}
+	if (siz && cpu == gpu) glBufferSubData(tgt, idx*gpu, cnt*gpu, buf);
+	if (siz && cpu != gpu) for (int i = 0; i < cnt; i++)
+	glBufferSubData(tgt, (idx+i)*gpu, cpu, openglBuffed(i,cpu,buf));
+	if (siz == 0 && cpu == gpu) glBufferSubData(tgt, bas+idx*gpu, cnt*gpu, buf);
+	if (siz == 0 && cpu != gpu) for (int i = 0; i < cnt; i++)
+	glBufferSubData(tgt, bas+(idx+i)*gpu, cpu, openglBuffed(i,cpu,buf));
 	glBindBuffer(tgt, 0);
 }
 
 void openglPender(struct Pend *ptr)
 {
-	openglPendee(ptr->idx,ptr->siz,ptr->len,ptr->bas,ptr->tot,ptr->buf,ptr->hdl,ptr->tgt);
+	openglPendee(ptr->idx,ptr->cnt,ptr->cpu,ptr->gpu,ptr->bas,ptr->siz,ptr->buf,ptr->hdl,ptr->tgt);
 }
 
-void openglPending(struct Pend *ptr, int idx, int siz, int len, int bas, int *tot, void *buf, GLuint hdl, GLuint tgt)
+void openglPending(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint hdl, GLuint tgt)
 {
-	ptr->idx=idx;ptr->siz=siz;ptr->len=len;ptr->bas=bas;ptr->tot=tot;ptr->buf=buf;ptr->hdl=hdl;ptr->tgt=tgt;
+	ptr->idx=idx;ptr->cnt=cnt;ptr->cpu=cpu;ptr->gpu=gpu;ptr->bas=bas;ptr->siz=siz;ptr->buf=buf;ptr->hdl=hdl;ptr->tgt=tgt;
 }
 
-int openglPendant(struct Pend *ptr, int idx, int siz, int len, int bas, int *tot, void *buf, GLuint hdl, GLuint tgt)
+int openglPendant(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint hdl, GLuint tgt)
 {
-	return (ptr->bas == bas && ptr->tot == tot && ptr->idx == idx && ptr->siz == siz);
+	return (ptr->bas == bas && ptr->siz == siz && ptr->idx == idx && ptr->cnt == cnt);
 }
 
-void openglBuffer(int idx, int siz, int len, int bas, int *tot, void *buf, GLuint *hdl, GLuint tgt)
+void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void *buf, GLuint *hdl, GLuint tgt)
 {
 	for (int ctx = 0; ctx < NUMCNTX; ctx++) if (ctx != head) {
 	int found = 0; for (int pnd = pead[ctx]; pnd != pail[ctx] && !found; pnd = (pnd+1)%NUMPEND)
-	if (openglPendant(&pend[ctx][pnd],idx,siz,len,bas,tot,buf,hdl[ctx],tgt)) found = 1;
+	if (openglPendant(&pend[ctx][pnd],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt)) found = 1;
 	if (!found) {if ((pail[ctx]+1)%NUMPEND == pead[ctx]) {
 	openglPender(&pend[ctx][pead[ctx]]); pead[ctx] = (pead[ctx]+1)%NUMPEND;}
-	openglPending(&pend[ctx][pail[ctx]],idx,siz,len,bas,tot,buf,hdl[ctx],tgt); pail[ctx] = (pail[ctx]+1)%NUMPEND;}}
-	struct Pend tmp; openglPending(&tmp,idx,siz,len,bas,tot,buf,hdl[head],tgt); openglPender(&tmp);
+	openglPending(&pend[ctx][pail[ctx]],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt); pail[ctx] = (pail[ctx]+1)%NUMPEND;}}
+	struct Pend tmp; openglPending(&tmp,idx,cnt,cpu,gpu,bas,siz,buf,hdl[head],tgt); openglPender(&tmp);
 }
 
 void openglDma()
 {
 	switch (client->mem) {
-	case (Corner): openglBuffer(client->idx,client->siz,sizeof(struct Vertex),0,&total[head][Corner],&state[Corner]->corner[0],vertexId,GL_ARRAY_BUFFER); break;
-	case (Triangle): openglBuffer(client->idx,client->siz,sizeof(struct Facet),0,&total[head][Triangle],&state[Triangle]->triangle[0],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
-	case (Sightline): openglBuffer(client->idx,client->siz,sizeof(struct Pierce),0,&total[head][Sightline],&state[Sightline]->sightline[0],feedbackId,GL_TRANSFORM_FEEDBACK_BUFFER); break;
-	case (Basis): openglBuffer(client->idx,client->siz*3,3,offset[Basis][client->idx],0,&state[Basis]->basis->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Subject): openglBuffer(0,4,4,offset[Subject][0],0,&state[Subject]->subject->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Object): openglBuffer(client->idx,client->siz*4,4,offset[Object][client->idx],0,&state[Object]->object->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Feature): openglBuffer(0,4,4,offset[Feature][0],0,&state[Feature]->feature->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Feather): openglBuffer(0,1,3,offset[Feather][0],0,&state[Feather]->feather->val[0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Arrow): openglBuffer(0,1,3,offset[Arrow][0],0,&state[Arrow]->arrow->val[0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Cloud): openglBuffer(client->idx,client->siz,3,offset[Cloud][client->idx],0,&state[Cloud]->cloud->val[0],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Face): openglBuffer(0,1,1,offset[Face][0],0,&state[Face]->face,uniformId,GL_UNIFORM_BUFFER); break;
-	case (Tope): openglBuffer(0,1,1,offset[Tope][0],0,&state[Tope]->tope,uniformId,GL_UNIFORM_BUFFER); break;
-	case (Tag): openglBuffer(0,1,1,offset[Tag][0],0,&state[Tag]->tag,uniformId,GL_UNIFORM_BUFFER); break;
+	case (Corner): openglBuffer(client->idx,client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[head][Corner],&state[Corner]->corner[0],vertexId,GL_ARRAY_BUFFER); break;
+	case (Triangle): openglBuffer(client->idx,client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[head][Triangle],&state[Triangle]->triangle[0],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
+	case (Range): ERROR(huberr,-1);
+	case (Basis): openglBuffer(client->idx,client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&state[Basis]->basis->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&state[Subject]->subject->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Object): openglBuffer(client->idx,client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&state[Object]->object->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Feature): openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&state[Feature]->feature->val[0][0],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&state[Feather]->feather->val[0],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&state[Arrow]->arrow->val[0],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&state[Cloud]->cloud->val[0],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&state[Face]->face,uniformId,GL_UNIFORM_BUFFER); break;
+	case (Tope): openglBuffer(0,1,sizeof(int),unit[Tope],base[Tope],0,&state[Tope]->tope,uniformId,GL_UNIFORM_BUFFER); break;
+	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&state[Tag]->tag,uniformId,GL_UNIFORM_BUFFER); break;
 	case (Mode0): ERROR(huberr,-1);
 	case (Mode1): ERROR(huberr,-1);
 	case (Mode2): ERROR(huberr,-1);
@@ -198,7 +200,7 @@ int openglFull()
 void openglBuffee(int idx, int siz, int len, void *buf, GLuint hdl, GLuint tgt)
 {
 	glBindBuffer(tgt, hdl);
-	glBufferSubData(tgt, idx*len, siz*len, buf);
+	glGetBufferSubData(tgt, idx*len, siz*len, buf);
 	glBindBuffer(tgt, 0);
 }
 
@@ -208,7 +210,7 @@ void openglGet()
 	switch (client->mem) {
 	case (Corner): openglBuffee(client->idx,client->siz,sizeof(struct Vertex),&state[Corner]->corner[0],vertexId[ctx],GL_ARRAY_BUFFER); break;
 	case (Triangle): openglBuffee(client->idx,client->siz,sizeof(struct Facet),&state[Triangle]->triangle[0],elementId[ctx],GL_ELEMENT_ARRAY_BUFFER); break;
-	case (Sightline): openglBuffee(client->idx,client->siz,sizeof(struct Pierce),&state[Sightline]->sightline[0],feedbackId[ctx],GL_TRANSFORM_FEEDBACK_BUFFER); break;
+	case (Range): ERROR(huberr,-1);
 	case (Basis): ERROR(huberr,-1);
 	case (Subject): ERROR(huberr,-1);
 	case (Object): ERROR(huberr,-1);
@@ -236,10 +238,17 @@ void openglFunc()
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId[head]);
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
-	glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,0,feedbackId[head]);
-	glBeginTransformFeedback(GL_TRIANGLES);
-	glDrawElements(GL_TRIANGLES,client->siz*3,GL_UNSIGNED_INT,(void*)(client->idx*sizeof(struct Facet)));
-	glEndTransformFeedback();
+	// TODO depending on state[Shader] render to invisible framebuffer instead
+	//  then depth replacement finds closest pierce point
+	//  and color is plane identifier
+	// glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,0,feedbackId[head]);
+	// glBeginTransformFeedback(GL_TRIANGLES);
+	for (int i = 0; i < state[Range]->siz; i++) {
+	void *buf = openglBuffed(state[Range]->range[i].idx,sizeof(struct Facet),0);
+	state[Tag]->tag = state[Range]->range[i].tag;
+	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&state[Tag]->tag,uniformId[head],GL_UNIFORM_BUFFER);
+	glDrawElements(GL_TRIANGLES,state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
+	// glEndTransformFeedback();
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
 	glfwSwapBuffers(window);
 	head = (head + 1) % NUMCNTX;

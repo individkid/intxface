@@ -73,7 +73,7 @@ Function = {
 Memory = {
 	"Corner",
 	"Triangle",
-	"Sightline",
+	"Range",
 	"Basis",
 	"Subject",
 	"Object",
@@ -88,6 +88,7 @@ Memory = {
 	"Mode1",
 	"Mode2",
 	"Mode3",
+	"Pierce",
 	"Fixed",
 	"Moved",
 	"Rolled",
@@ -103,6 +104,7 @@ Click = {
 	"Additive",
 	"Subtractive",
 	"Script",
+	"Suspend",
 }
 Move = {
 	"Rotate",
@@ -196,9 +198,10 @@ Vertex = {
 Facet = {
 	{"vtxid","int",{},{3}}, -- sort by tag and render per tag
 }
-Pierce = {
-	{"ident","int",{},{}},
-	{"order","float",{},{}},
+Array = {
+	{"idx","int",{},{}},
+	{"siz","int",{},{}},
+	{"tag","int",{},{}},
 }
 Affine = {
 	{"val","float",{},{4,4}},
@@ -220,7 +223,7 @@ Client = {
 	{"siz","int",{},{}},
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
 	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
-	{"sightline","Pierce",{["mem"]={["Sightline"]=true}},"siz"},
+	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
 	{"subject","Affine",{["mem"]={["Subject"]=true}},1},
 	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},
