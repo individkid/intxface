@@ -24,7 +24,6 @@ GLuint blockId = 0;
 GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
-// GLuint feedbackId[NUMCNTX] = {0};
 GLuint uniformId[NUMCNTX] = {0};
 int size[NUMCNTX][Memorys] = {0};
 int base[Memorys] = {0};
@@ -51,8 +50,6 @@ int openglInit()
 	programId = openglLoad("opengl.vs","opengl.fs");
 	blockId = glGetUniformBlockIndex(programId,"Uniform");
 	glUniformBlockBinding(programId,blockId,0);
-	// const GLchar* names[] = {"ident","order"};
-	// glTransformFeedbackVaryings(programId, 2, names, GL_INTERLEAVED_ATTRIBS);
 	int total = 0;
 	unit[Basis] = 3*4*4; base[Basis] = total; total += unit[Basis]*3;
 	unit[Subject] = 4*4*4; base[Subject] = total; total += unit[Subject];
@@ -87,7 +84,6 @@ int openglInit()
 	for (int i = 0; i < index; i++)
 	glDisableVertexAttribArray(i);
 	glGenBuffers(1, &elementId[context]);
-	// glGenBuffers(1, &feedbackId[context]);
 	glGenBuffers(1, &uniformId[context]);
 	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
 	glBufferData(GL_UNIFORM_BUFFER, total, 0, GL_STATIC_DRAW);
@@ -189,9 +185,8 @@ int openglFull()
 	case (Copy): break;
 	case (Save): break;
 	case (Dma0): break;
-	case (Dma1): case (Draw):
-	if (((head + 1) % NUMCNTX) == tail) return 1; else break;
-	case (Post): break;
+	case (Dma1): break;
+	case (Draw): if (((head + 1) % NUMCNTX) == tail) return 1; else break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 	return 0;
@@ -206,29 +201,10 @@ void openglBuffee(int idx, int siz, int len, void *buf, GLuint hdl, GLuint tgt)
 
 void openglGet()
 {
-	int ctx = (tail+NUMCNTX-1)%NUMCNTX;
-	switch (client->mem) {
-	case (Corner): openglBuffee(client->idx,client->siz,sizeof(struct Vertex),&state[Corner]->corner[0],vertexId[ctx],GL_ARRAY_BUFFER); break;
-	case (Triangle): openglBuffee(client->idx,client->siz,sizeof(struct Facet),&state[Triangle]->triangle[0],elementId[ctx],GL_ELEMENT_ARRAY_BUFFER); break;
-	case (Range): ERROR(huberr,-1);
-	case (Basis): ERROR(huberr,-1);
-	case (Subject): ERROR(huberr,-1);
-	case (Object): ERROR(huberr,-1);
-	case (Feature): ERROR(huberr,-1);
-	case (Feather): ERROR(huberr,-1);
-	case (Arrow): ERROR(huberr,-1);
-	case (Cloud): ERROR(huberr,-1);
-	case (Face): ERROR(huberr,-1);
-	case (Tope): ERROR(huberr,-1);
-	case (Tag): ERROR(huberr,-1);
-	case (Mode0): ERROR(huberr,-1);
-	case (Mode1): ERROR(huberr,-1);
-	case (Mode2): ERROR(huberr,-1);
-	case (Mode3): ERROR(huberr,-1);
-	case (Fixed): ERROR(huberr,-1);
-	case (Moved): ERROR(huberr,-1);
-	case (Rolled): ERROR(huberr,-1);
-	default: ERROR(exiterr,-1);}
+	float color = 0.0;
+	glReadBuffer(GL_AUX0);
+	glReadPixels(0,0,1,1,GL_RED,GL_FLOAT,&color);
+	state[Face]->face = color;
 }
 
 void openglFunc()
@@ -241,14 +217,11 @@ void openglFunc()
 	// TODO depending on state[Shader] render to invisible framebuffer instead
 	//  then depth replacement finds closest pierce point
 	//  and color is plane identifier
-	// glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,0,feedbackId[head]);
-	// glBeginTransformFeedback(GL_TRIANGLES);
 	for (int i = 0; i < state[Range]->siz; i++) {
 	void *buf = openglBuffed(state[Range]->range[i].idx,sizeof(struct Facet),0);
 	state[Tag]->tag = state[Range]->range[i].tag;
 	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&state[Tag]->tag,uniformId[head],GL_UNIFORM_BUFFER);
 	glDrawElements(GL_TRIANGLES,state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
-	// glEndTransformFeedback();
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
 	glfwSwapBuffers(window);
 	head = (head + 1) % NUMCNTX;
@@ -268,7 +241,6 @@ void openglDraw()
 	case (Dma0): openglDma(); break;
 	case (Dma1): openglGet(); break;
 	case (Draw): openglFunc(); break;
-	case (Post): break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 }

@@ -67,7 +67,6 @@ Function = {
 	"Dma0",
 	"Dma1",
 	"Draw",
-	"Post",
 	"Port",
 }
 Memory = {

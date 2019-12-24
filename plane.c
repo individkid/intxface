@@ -115,7 +115,6 @@ void process()
 	case (Dma0): break;
 	case (Dma1): break;
 	case (Draw): break;
-	case (Post): break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 }
@@ -131,12 +130,6 @@ void produce()
 	case (Dma0): break;
 	case (Dma1): break;
 	case (Draw): break;
-	case (Post): {
-	float color = 0.0;
-	glReadBuffer(GL_AUX0);
-	glReadPixels(0,0,1,1,GL_RED,GL_FLOAT,&color);
-	state[Face]->face = color;
-	break;}
 	case (Port): {
 	struct Metric metric = {0};
 	metric.src = Plane;
