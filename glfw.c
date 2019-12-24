@@ -155,6 +155,16 @@ void affineMatrix(int file, float *affine)
 	case (FacetMode): timesmat(timesmat(identmat(affine,4),matrix.session,4),matrix.polytope[file],4); break;
 	default: displayError(mode.target,"invalid mode.target");}
 }
+
+void rotateMatrix(float *result, float *pierce, float *pixel, float *cursor)
+{
+	float neg[3] = {0}; scalevec(copyvec(neg,pierce,3),-1.0,3);
+	float arm0[3] = {0}; plusvec(copyvec(arm0,pixel,3),neg,3);
+	float arm1[3] = {0}; plusvec(copyvec(arm1,cursor,3),neg,3);
+	float arm2[3] = {0}; crossvec(copyvec(arm2,arm0),arm1);
+	float mat[9] = {0};
+	// mat*arm2 == arm2; mat*(arm0/|arm0|) == arm1/|arm1|
+}
 */
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
@@ -168,15 +178,23 @@ void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int m
 void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 {
 	struct Client client = {0};
-	struct Affine *mat = 0; allocAffine(&mat,1);
+	struct Affine *mat = 0;
+	float *res = 0;
+	float pix[3] = {0};
+	float pie[3] = {0};
+	float cur[3] = {0};
 	if (state[Mode1] == 0) ERROR(huberr,-1);
 	if (state[Mode1]->click == Transform) {
 	if (state[Mode2] == 0 || state[Mode0] == 0) ERROR(huberr,-1);
 	if (state[Pierced] == 0 || state[Moved] == 0) ERROR(huberr,-1);
+	allocAffine(&mat,1); res = &mat->val[0][0];
+ 	for (int i = 0; i < 2; i++) pix[i] = state[Moved]->val[i]; pix[2] = -1.0;
+ 	for (int i = 0; i < 3; i++) pie[i] = &state[Pierced]->val[i];
+	cur[0] = xpos; cur[1] = ypos; cur[2] = -1.0;
 	switch (state[Mode2]->move) {
-	case (Rotate): /*rotateMatrix(&mat->val,state[Pierced]->val,state[Moved]->val,pos)*/ break;
-	case (Tangent): /*tangentMatrix(&mat->val,state[Pierced]->val,state[Moved]->val,pos)*/ break;
-	case (Translate): /*translateMatrix(&mat->val,state[Pierced]->val,state[Moved]->val,pos)*/ break;
+	case (Rotate): /*rotateMatrix(res,pie,pix,cur)*/ break;
+	case (Tangent): /*tangentMatrix(res,pie,pix,cur)*/ break;
+	case (Translate): /*translateMatrix(res,pie,pix,cur)*/ break;
 	default: ERROR(huberr,-1);}
 	switch (state[Mode0]->matrix) {
 	case (Global): client.mem = Subject; client.subject = mat; break;
