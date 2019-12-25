@@ -37,8 +37,8 @@ Opcode = {
 	"Compose",
 	"Apply",
 }
-Stock = {
-	"State",
+State = {
+	"Stock",
 	"Start",
 	"Assign",
 	"Bind",
@@ -84,6 +84,7 @@ Memory = {
 	"Tag",
 	"Collect",
 	"User",
+	"Periph",
 }
 Matrix = {
 	"Global",
@@ -163,14 +164,14 @@ Ratio = {
 	{"den","Nomial",{},{}},
 }
 Event = {
-	{"tag","Stock",{},{}},
+	{"tag","State",{},{}},
 	{"idx","int",{},{}},
 	{"oth","int",{},{}},
 	{"key","double",{},{}},
 	{"val","double",{},{}},
-    {"upd","Ratio",{["tag"]={["State"]=true}},{}},
-    {"dly","Ratio",{["tag"]={["State"]=true}},{}},
-    {"sch","Ratio",{["tag"]={["State"]=true}},{}},
+    {"upd","Ratio",{["tag"]={["Stock"]=true}},{}},
+    {"dly","Ratio",{["tag"]={["Stock"]=true}},{}},
+    {"sch","Ratio",{["tag"]={["Stock"]=true}},{}},
 	{"flw","Flow",{["tag"]={["Bind"]=true}},{}},
 	{"siz","int",{["tag"]={["Wave"]=true}},{}},
 	{"buf","double",{["tag"]={["Wave"]=true}},"siz"},
@@ -221,6 +222,7 @@ Mode = {
 	{"normal","Vector",{},{}},
 	{"pixel","Cursor",{},{}},
 	{"roller","float",{},{}},
+	{"tope","int",{},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},

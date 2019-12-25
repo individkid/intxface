@@ -93,26 +93,54 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	switch (state[User]->user->matrix) {
 	case (Global): client.mem = Subject; client.subject = mat; break;
 	case (Several): client.mem = Object; client.object = mat;
-	client.idx = state[Collect]->collect; break;
+	client.idx = state[User]->user->tope; break;
 	case (Single): client.mem = Feature; client.feature = mat; break;
 	default: ERROR(huberr,-1);}
-	client.siz = 1; client.len = 3; allocFunction(&client.fnc,3);
+	client.siz = 1; client.len = 3;
+	allocFunction(&client.fnc,3);
 	client.fnc[0] = Rmw0; client.fnc[1] = Dma0; client.fnc[2] = Draw;
-	writeClient(&client,tub);} else {
+	writeClient(&client,tub); freeClient(&client);} else {
 	client.mem = Memorys; client.siz = 0; client.len = 2;
 	allocFunction(&client.fnc,2);
 	client.fnc[0] = Dma1; client.fnc[1] = Draw;
-	writeClient(&client,tub);}
+	writeClient(&client,tub); freeClient(&client);}
 }
 
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 {
 }
 
+#define REJECT(MEM,FIELD,IDX) \
+	client.mem = MEM; \
+	client.idx = IDX; \
+	src = &state[MEM]->FIELD[client.idx]; \
+	client.FIELD = mat;
 void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS);
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS);
+	struct Client client = {0};
+	struct Mode *user = 0;
+	struct Affine *mat = 0;
+	struct Affine *src = 0;
+	if (state[User] == 0) ERROR(huberr,-1);
+	allocAffine(&mat,1);
+	switch (state[User]->user->matrix) {
+	case (Global): REJECT(Subject,subject,0); break;
+	case (Several): REJECT(Object,object,state[User]->user->tope); break;
+	case (Single): REJECT(Feature,feature,0); break;
+	default: ERROR(huberr,-1);}
+	memcpy(mat,src,sizeof(struct Affine));
+	client.siz = 1; client.len = 2;
+	allocFunction(&client.fnc,2);
+	client.fnc[0] = Copy; client.fnc[1] = Port; client.fnc[2] = Draw;
+	writeClient(&client,tub); allocAffine(&mat,0);
+	allocMode(&client.user,1); allocFunction(&client.fnc,1);
+	client.fnc[0] = Copy; client.mem = User; client.siz = 1; client.len = 1;
+	*(user = client.user) = *(state[User]->user);
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+	}
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+	}
+	writeClient(&client,tub); freeClient(&client);
 }
 
 void windowInit(int argc, char **argv)

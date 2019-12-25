@@ -37,8 +37,8 @@ void modelDma()
 	case (Cloud): /*TODO*/ break;
 	case (Face): /*TODO*/ break;
 	case (Tag): /*TODO*/ break;
-	case (User): ERROR(huberr,-1);
 	case (Collect): ERROR(huberr,-1);
+	case (User): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }
 

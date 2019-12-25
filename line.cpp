@@ -285,7 +285,7 @@ double adloc(double k) {return (*change.begin()).first-k;}
 void stock()
 {
 	switch (event->tag) {
-	case (State):
+	case (Stock):
 		if (state.find(event->idx) != state.end()) {
 		allocEvent(&state[event->idx],0);}
 		state[event->idx] = event;
@@ -333,7 +333,7 @@ void stock()
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
 		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
 		break;}
-	case (Stocks): {
+	case (States): {
 		goon = 0;
 		break;}
 	default: ERROR(huberr,-1);}
