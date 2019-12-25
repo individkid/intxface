@@ -41,7 +41,11 @@ void rotateMatrix(float *result, float *pierce, float *pixel, float *cursor)
 	copymat(result,rot2,4);
 }
 
-void translateMatrix(float *result, float *pierce, float *pixel, float *cursor)
+void tangentMatrix(float *result, float *normal, float *pixel, float *cursor)
+{
+}
+
+void translateMatrix(float *result, float *pixel, float *cursor)
 {
 	float neg[3] = {0}; scalevec(copyvec(neg,pixel,3),-1.0,3);
 	float vec[3] = {0}; plusvec(copyvec(vec,cursor,3),neg,3);
@@ -61,21 +65,31 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	struct Client client = {0};
 	struct Affine *mat = 0;
 	float *res = 0;
-	float pix[3] = {0};
 	float pie[3] = {0};
+	float nor[3] = {0};
+	float pix[3] = {0};
 	float cur[3] = {0};
 	if (state[Mode1] == 0) ERROR(huberr,-1);
 	if (state[Mode1]->click == Transform) {
 	if (state[Mode2] == 0 || state[Mode0] == 0) ERROR(huberr,-1);
-	if (state[Pierced] == 0 || state[Moved] == 0) ERROR(huberr,-1);
 	allocAffine(&mat,1); res = &mat->val[0][0];
- 	for (int i = 0; i < 2; i++) pix[i] = state[Moved]->moved->val[i]; pix[2] = -1.0;
- 	for (int i = 0; i < 3; i++) pie[i] = state[Pierced]->pierced->val[i];
+	if (state[Pixel] == 0) ERROR(huberr,-1);
+ 	for (int i = 0; i < 2; i++) pix[i] = state[Pixel]->pixel->val[i]; pix[2] = -1.0;
 	cur[0] = xpos; cur[1] = ypos; cur[2] = -1.0;
 	switch (state[Mode2]->move) {
-	case (Rotate): rotateMatrix(res,pie,pix,cur); break;
-	case (Tangent): /*tangentMatrix(res,pie,pix,cur)*/ break;
-	case (Translate): translateMatrix(res,pie,pix,cur); break;
+	case (Rotate):
+	if (state[Pierce] == 0) ERROR(huberr,-1);
+ 	for (int i = 0; i < 3; i++) pie[i] = state[Pierce]->pierce->val[i];
+	rotateMatrix(res,pie,pix,cur);
+	break;
+	case (Slide):
+	if (state[Normal] == 0) ERROR(huberr,-1);
+ 	for (int i = 0; i < 3; i++) nor[i] = state[Normal]->normal->val[i];
+	tangentMatrix(res,nor,pix,cur);
+	break;
+	case (Slate):
+	translateMatrix(res,pix,cur);
+	break;
 	default: ERROR(huberr,-1);}
 	switch (state[Mode0]->matrix) {
 	case (Global): client.mem = Subject; client.subject = mat; break;

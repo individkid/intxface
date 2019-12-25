@@ -121,7 +121,6 @@ void clientRefer()
 	case (Feather): refer[Feather] = &client->feather[0];
 	case (Arrow): refer[Arrow] = &client->arrow[0];
 	case (Cloud): refer[Cloud] = &client->cloud[0];
-	case (Shader): refer[Shader] = &client->shader;
 	case (Face): refer[Face] = &client->face;
 	case (Tope): refer[Tope] = &client->tope;
 	case (Tag): refer[Tag] = &client->tag;

@@ -59,10 +59,6 @@ Source = {
 	"Plane",
 	"Space",
 }
-Microcode = {
-	"Display",
-	"Track",
-}
 Function = {
 	"Rmw0",
 	"Rmw1",
@@ -84,7 +80,6 @@ Memory = {
 	"Feather",
 	"Arrow",
 	"Cloud",
-	"Shader",
 	"Face",
 	"Tope",
 	"Tag",
@@ -92,9 +87,11 @@ Memory = {
 	"Mode1",
 	"Mode2",
 	"Mode3",
-	"Pierced",
-	"Moved",
-	"Rolled",
+	"Shader",
+	"Pierce",
+	"Normal",
+	"Pixel",
+	"Roller",
 }
 Matrix = {
 	"Global",
@@ -110,16 +107,20 @@ Click = {
 	"Suspend",
 }
 Move = {
-	"Rotate",
-	"Tangent",
-	"Translate",
+	"Rotate", -- rotate about fixed pierce point
+	"Slide", -- translate parallel to fixed facet
+	"Slate", -- translate parallel to picture plane
 }
 Roll = {
-	"Cylinder",
-	"Clock",
-	"Normal",
-	"Parallel",
-	"Scale",
+	"Cylinder", -- rotate with rotated fixed axis
+	"Clock", -- rotate with fixed normal to picture plane
+	"Compass", -- rotate with fixed normal to facet
+	"Accordion", -- translate with fixed normal to facet
+	"Balloon", -- scale with fixed pierce point
+}
+Mode = {
+	"Display",
+	"Track",
 }
 Config = {
 	"Table",
@@ -234,7 +235,6 @@ Client = {
 	{"feather","Vector",{["mem"]={["Feather"]=true}},1},
 	{"arrow","Vector",{["mem"]={["Arrow"]=true}},1},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
-	{"shader","Microcode",{["mem"]={["Shader"]=true}},{}},
 	{"face","int",{["mem"]={["Face"]=true}},{}},
 	{"tope","int",{["mem"]={["Tope"]=true}},{}},
 	{"tag","int",{["mem"]={["Tag"]=true}},{}},
@@ -242,9 +242,11 @@ Client = {
 	{"click","Click",{["mem"]={["Mode1"]=true}},{}},
 	{"move","Move",{["mem"]={["Mode2"]=true}},{}},
 	{"roll","Roll",{["mem"]={["Mode3"]=true}},{}},
-	{"pierced","Vector",{["mem"]={["Pierced"]=true}},1},
-	{"moved","Cursor",{["mem"]={["Moved"]=true}},1},
-	{"rolled","float",{["mem"]={["Rolled"]=true}},{}},
+	{"shader","Mode",{["mem"]={["Shader"]=true}},{}},
+	{"pierce","Vector",{["mem"]={["Pierce"]=true}},1},
+	{"normal","Vector",{["mem"]={["Normal"]=true}},1},
+	{"pixel","Cursor",{["mem"]={["Pixel"]=true}},1},
+	{"roller","float",{["mem"]={["Roller"]=true}},{}},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},

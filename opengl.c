@@ -19,8 +19,8 @@
 #include "plane.h"
 
 #define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
-GLuint programId[Microcodes] = {0};
-GLuint blockId[Microcodes] = {0};
+GLuint programId[Modes] = {0};
+GLuint blockId[Modes] = {0};
 GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
@@ -47,7 +47,7 @@ int openglInit()
 	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	for (int shader = 0; shader < Microcodes; shader++) {
+	for (int shader = 0; shader < Modes; shader++) {
 	char *vertex = 0; char *fragment = 0;
 	if (asprintf(&vertex,"opengl%d.vs",shader) < 0) ERROR(exiterr,-1);
 	if (asprintf(&fragment,"opengl%d.fs",shader) < 0) ERROR(exiterr,-1);
@@ -63,7 +63,6 @@ int openglInit()
 	unit[Feather] = 4*4; base[Feather] = total; total += unit[Feather];
 	unit[Arrow] = 4*4; base[Arrow] = total; total += unit[Arrow];
 	unit[Cloud] = 4*4; base[Cloud] = total; total += unit[Cloud]*NUMFEND;
-	unit[Shader] = 4; base[Shader] = total; total += unit[Shader];
 	unit[Face] = 4; base[Face] = total; total += unit[Face];
 	unit[Tag] = 4; base[Tag] = total; total += unit[Tag];
 	for (int context = 0; context < NUMCNTX; context++) {
@@ -161,7 +160,6 @@ void openglDma()
 	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&refer[Feather],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&refer[Arrow],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Shader): openglBuffer(0,1,sizeof(int),unit[Shader],base[Shader],0,&refer[Shader],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&refer[Face],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tope): ERROR(huberr,-1);
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
@@ -169,9 +167,11 @@ void openglDma()
 	case (Mode1): ERROR(huberr,-1);
 	case (Mode2): ERROR(huberr,-1);
 	case (Mode3): ERROR(huberr,-1);
-	case (Pierced): ERROR(huberr,-1);
-	case (Moved): ERROR(huberr,-1);
-	case (Rolled): ERROR(huberr,-1);
+	case (Shader): ERROR(huberr,-1);
+	case (Pierce): ERROR(huberr,-1);
+	case (Normal): ERROR(huberr,-1);
+	case (Pixel): ERROR(huberr,-1);
+	case (Roller): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }
 
@@ -218,7 +218,7 @@ void openglFunc()
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(programId[state[Shader]->shader]);
 	glBindVertexArray(arrayId[head]);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementId[head]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
 	// TODO depending on state[Shader] render to invisible framebuffer instead
 	//  then depth replacement finds closest pierce point
@@ -257,6 +257,6 @@ void openglDone()
 	glDeleteBuffers(1, &elementId[context]);
 	glDeleteBuffers(1, &vertexId[context]);
 	glDeleteVertexArrays(1, &arrayId[context]);}
-	for (int shader = 0; shader < Microcodes; shader++)
+	for (int shader = 0; shader < Modes; shader++)
 	glDeleteProgram(programId[shader]);
 }
