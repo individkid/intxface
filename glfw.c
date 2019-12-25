@@ -69,29 +69,28 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	float nor[3] = {0};
 	float pix[3] = {0};
 	float cur[3] = {0};
-	if (state[Mode1] == 0) ERROR(huberr,-1);
-	if (state[Mode1]->click == Transform) {
-	if (state[Mode2] == 0 || state[Mode0] == 0) ERROR(huberr,-1);
+	if (state[User] == 0) ERROR(huberr,-1);
+	if (state[User]->user->click == Transform) {
 	allocAffine(&mat,1); res = &mat->val[0][0];
-	if (state[Pixel] == 0) ERROR(huberr,-1);
- 	for (int i = 0; i < 2; i++) pix[i] = state[Pixel]->pixel->val[i]; pix[2] = -1.0;
-	cur[0] = xpos; cur[1] = ypos; cur[2] = -1.0;
-	switch (state[Mode2]->move) {
+ 	for (int i = 0; i < 2; i++)
+ 	pix[i] = state[User]->user->pixel.val[i];
+ 	pix[2] = -1.0; cur[0] = xpos; cur[1] = ypos; cur[2] = -1.0;
+	switch (state[User]->user->move) {
 	case (Rotate):
-	if (state[Pierce] == 0) ERROR(huberr,-1);
- 	for (int i = 0; i < 3; i++) pie[i] = state[Pierce]->pierce->val[i];
+ 	for (int i = 0; i < 3; i++)
+ 	pie[i] = state[User]->user->pierce.val[i];
 	rotateMatrix(res,pie,pix,cur);
 	break;
 	case (Slide):
-	if (state[Normal] == 0) ERROR(huberr,-1);
- 	for (int i = 0; i < 3; i++) nor[i] = state[Normal]->normal->val[i];
+ 	for (int i = 0; i < 3; i++)
+ 	nor[i] = state[User]->user->normal.val[i];
 	tangentMatrix(res,nor,pix,cur);
 	break;
 	case (Slate):
 	translateMatrix(res,pix,cur);
 	break;
 	default: ERROR(huberr,-1);}
-	switch (state[Mode0]->matrix) {
+	switch (state[User]->user->matrix) {
 	case (Global): client.mem = Subject; client.subject = mat; break;
 	case (Several): client.mem = Object; client.object = mat;
 	client.idx = state[Collect]->collect; break;
@@ -100,8 +99,20 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	client.siz = 1; client.len = 3; allocFunction(&client.fnc,3);
 	client.fnc[0] = Rmw0; client.fnc[1] = Dma0; client.fnc[2] = Draw;
 	writeClient(&client,tub);} else {
-	// TODO call pierce shader and update state[Pierced]
-	}
+	client.mem = Memorys; client.siz = 0; client.len = 2;
+	allocFunction(&client.fnc,2);
+	client.fnc[0] = Dma1; client.fnc[1] = Draw;
+	writeClient(&client,tub);}
+}
+
+void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
+{
+}
+
+void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS);
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS);
 }
 
 void windowInit(int argc, char **argv)
@@ -117,6 +128,8 @@ void windowInit(int argc, char **argv)
 	if ((window = glfwCreateWindow(WINWIDE, WINHIGH, name, 0, 0)) == 0) ERROR(exiterr,-1);
 	glfwSetKeyCallback(window, displayKey);
 	glfwSetCursorPosCallback(window, displayMove);
+	glfwSetScrollCallback(window, displayRoll);
+	glfwSetMouseButtonCallback(window, displayClick);
 	glfwMakeContextCurrent(window);
 }
 

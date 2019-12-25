@@ -82,16 +82,8 @@ Memory = {
 	"Cloud",
 	"Face",
 	"Tag",
-	"Mode0",
-	"Mode1",
-	"Mode2",
-	"Mode3",
-	"Shader",
 	"Collect",
-	"Pierce",
-	"Normal",
-	"Pixel",
-	"Roller",
+	"User",
 }
 Matrix = {
 	"Global",
@@ -118,7 +110,7 @@ Roll = {
 	"Accordion", -- translate with fixed normal to facet
 	"Balloon", -- scale with fixed pierce point
 }
-Mode = {
+Shader = {
 	"Display",
 	"Track",
 }
@@ -219,6 +211,17 @@ Vector = {
 Cursor = {
 	{"val","float",{},{2}},
 }
+Mode = {
+	{"matrix","Matrix",{},{}},
+	{"click","Click",{},{}},
+	{"move","Move",{},{}},
+	{"roll","Roll",{},{}},
+	{"shader","Shader",{},{}},
+	{"pierce","Vector",{},{}},
+	{"normal","Vector",{},{}},
+	{"pixel","Cursor",{},{}},
+	{"roller","float",{},{}},
+}
 Client = {
 	{"mem","Memory",{},{}},
 	{"len","int",{},{}},
@@ -237,16 +240,8 @@ Client = {
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
 	{"face","int",{["mem"]={["Face"]=true}},{}},
 	{"tag","int",{["mem"]={["Tag"]=true}},{}},
-	{"matrix","Matrix",{["mem"]={["Mode0"]=true}},{}},
-	{"click","Click",{["mem"]={["Mode1"]=true}},{}},
-	{"move","Move",{["mem"]={["Mode2"]=true}},{}},
-	{"roll","Roll",{["mem"]={["Mode3"]=true}},{}},
-	{"shader","Mode",{["mem"]={["Shader"]=true}},{}},
 	{"collect","int",{["mem"]={["Collect"]=true}},{}},
-	{"pierce","Vector",{["mem"]={["Pierce"]=true}},1},
-	{"normal","Vector",{["mem"]={["Normal"]=true}},1},
-	{"pixel","Cursor",{["mem"]={["Pixel"]=true}},1},
-	{"roller","float",{["mem"]={["Roller"]=true}},{}},
+	{"user","Mode",{["mem"]={["User"]=true}},1},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},

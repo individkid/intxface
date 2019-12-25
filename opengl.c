@@ -19,8 +19,8 @@
 #include "plane.h"
 
 #define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
-GLuint programId[Modes] = {0};
-GLuint blockId[Modes] = {0};
+GLuint programId[Shaders] = {0};
+GLuint blockId[Shaders] = {0};
 GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
@@ -47,7 +47,7 @@ int openglInit()
 	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	for (int shader = 0; shader < Modes; shader++) {
+	for (int shader = 0; shader < Shaders; shader++) {
 	char *vertex = 0; char *fragment = 0;
 	if (asprintf(&vertex,"opengl%d.vs",shader) < 0) ERROR(exiterr,-1);
 	if (asprintf(&fragment,"opengl%d.fs",shader) < 0) ERROR(exiterr,-1);
@@ -162,16 +162,8 @@ void openglDma()
 	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&refer[Face],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Mode0): ERROR(huberr,-1);
-	case (Mode1): ERROR(huberr,-1);
-	case (Mode2): ERROR(huberr,-1);
-	case (Mode3): ERROR(huberr,-1);
-	case (Shader): ERROR(huberr,-1);
+	case (User): ERROR(huberr,-1);
 	case (Collect): ERROR(huberr,-1);
-	case (Pierce): ERROR(huberr,-1);
-	case (Normal): ERROR(huberr,-1);
-	case (Pixel): ERROR(huberr,-1);
-	case (Roller): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }
 
@@ -216,7 +208,7 @@ void openglGet()
 void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-	glUseProgram(programId[state[Shader]->shader]);
+	glUseProgram(programId[state[User]->user->shader]);
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
@@ -257,6 +249,6 @@ void openglDone()
 	glDeleteBuffers(1, &elementId[context]);
 	glDeleteBuffers(1, &vertexId[context]);
 	glDeleteVertexArrays(1, &arrayId[context]);}
-	for (int shader = 0; shader < Modes; shader++)
+	for (int shader = 0; shader < Shaders; shader++)
 	glDeleteProgram(programId[shader]);
 }
