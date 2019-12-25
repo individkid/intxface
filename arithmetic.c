@@ -59,6 +59,11 @@ float *zerovec(float *u, int n)
     return u;
 }
 
+float *normvec(float *u, int n)
+{
+    return scalevec(u,1.0/dotvec(u,u,n),n);
+}
+
 float *unitvec(float *u, int n, int m)
 {
     for (int i = 0; i < n; i++) u[i] = (i == m ? 1.0 : 0.0);
