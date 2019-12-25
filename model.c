@@ -36,13 +36,13 @@ void modelDma()
 	case (Arrow): /*TODO*/ break;
 	case (Cloud): /*TODO*/ break;
 	case (Face): /*TODO*/ break;
-	case (Tope): /*TODO*/ break;
 	case (Tag): /*TODO*/ break;
 	case (Mode0): ERROR(huberr,-1);
 	case (Mode1): ERROR(huberr,-1);
 	case (Mode2): ERROR(huberr,-1);
 	case (Mode3): ERROR(huberr,-1);
 	case (Shader): ERROR(huberr,-1);
+	case (Collect): ERROR(huberr,-1);
 	case (Pierce): ERROR(huberr,-1);
 	case (Normal): ERROR(huberr,-1);
 	case (Pixel): ERROR(huberr,-1);

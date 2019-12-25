@@ -93,7 +93,8 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	default: ERROR(huberr,-1);}
 	switch (state[Mode0]->matrix) {
 	case (Global): client.mem = Subject; client.subject = mat; break;
-	case (Several): client.mem = Object; client.object = mat; client.idx = state[Tope]->tope; break;
+	case (Several): client.mem = Object; client.object = mat;
+	client.idx = state[Collect]->collect; break;
 	case (Single): client.mem = Feature; client.feature = mat; break;
 	default: ERROR(huberr,-1);}
 	client.siz = 1; client.len = 3; allocFunction(&client.fnc,3);

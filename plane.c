@@ -122,7 +122,6 @@ void clientRefer()
 	case (Arrow): refer[Arrow] = &client->arrow[0];
 	case (Cloud): refer[Cloud] = &client->cloud[0];
 	case (Face): refer[Face] = &client->face;
-	case (Tope): refer[Tope] = &client->tope;
 	case (Tag): refer[Tag] = &client->tag;
 	default: break;}
 }

@@ -161,13 +161,13 @@ void openglDma()
 	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&refer[Arrow],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&refer[Face],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Tope): ERROR(huberr,-1);
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Mode0): ERROR(huberr,-1);
 	case (Mode1): ERROR(huberr,-1);
 	case (Mode2): ERROR(huberr,-1);
 	case (Mode3): ERROR(huberr,-1);
 	case (Shader): ERROR(huberr,-1);
+	case (Collect): ERROR(huberr,-1);
 	case (Pierce): ERROR(huberr,-1);
 	case (Normal): ERROR(huberr,-1);
 	case (Pixel): ERROR(huberr,-1);
