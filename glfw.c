@@ -116,6 +116,22 @@ void targetMatrix(struct Client *client, struct Affine *matrix)
 	default: ERROR(huberr,-1);}
 }
 
+void constructVector(float *point, float *plane, int *versor, float *basis)
+{
+}
+
+void transformVector(float *point, float *matrix)
+{
+}
+
+void pierceVector(float *pierce, float *point, float *feather, float *arrow)
+{
+}
+
+void normalVector(float *normal, float *point)
+{
+}
+
 #define REJECT(MEM,FIELD,IDX) \
 	client->mem = MEM; \
 	client->idx = IDX; \
@@ -138,7 +154,42 @@ void copyUser(struct Client *client, struct Mode *user)
 {
 	client->mem = User; *(client->user = user) = *(state[User]->user);
 	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove; offset = 0.0;
-	// TODO calculate pierce normal tope face from state[Corner] state[Facet] state[Face]
+	user->face = state[Face]->face;
+	int found = state[Range]->siz;
+	for (int i = 0; i < found; i++) {
+	struct Array *range = state[Range]->range;
+	if (user->face < range[i].idx+range[i].siz && range[i].idx <= user->face) found = i;}
+	if (found == state[Range]->siz) {
+	// TODO use original piere normal tope face
+	return;}
+	int tag = state[Range]->range[found].tag;
+	struct Facet *facet = &state[Triangle]->triangle[user->face];
+	struct Vertex *vertex[3] = {0};
+	for (int i = 0; i < 3; i++) vertex[i] = &state[Corner]->corner[facet->vtxid[i]];
+	float plane[3][3] = {0};
+	int versor[3] = {0};
+	int done = 0;
+	for (int i = 0; i < 3; i++)
+	for (int j = 0; j < 3; j++)
+	if (vertex[i]->tag[j] == tag) {
+	for (int k = 0; k < 3; k++) plane[done][k] = vertex[i]->plane[j][k];
+	versor[done] = vertex[i]->versor[j];
+	if (done && user->tope != vertex[i]->matid) ERROR(huberr,-1);
+	if (!done) user->tope = vertex[i]->matid;
+	done++;}
+	if (done != 3) ERROR(huberr,-1);
+	float point[3][3] = {0};
+	constructVector(&point[0][0],&plane[0][0],&versor[0],&state[Basis]->basis[0].val[0][0]);
+	for (int i = 0; i < 3; i++)
+	transformVector(&point[i][0],&state[Subject]->subject->val[0][0]);
+	for (int i = 0; i < 3; i++)
+	transformVector(&point[i][0],&state[Object]->object[user->tope].val[0][0]);
+	if (user->face==state[Hand]->hand)
+	for (int i = 0; i < 3; i++)
+	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
+	pierceVector(&user->pierce.val[0],&point[0][0],
+	&state[Feather]->feather->val[0],&state[Arrow]->arrow->val[0]);
+	normalVector(&user->normal.val[0],&point[0][0]);
 }
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
