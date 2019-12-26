@@ -95,6 +95,16 @@ void clientRmw1()
 	float *give = clientMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
 }
 
+void clientRmw2()
+{
+	// A = B*C
+	// A = B'*C'
+	// C = B'*D
+	// C' = B*D
+	// A = B*B'*D
+	// A = B'*B*D
+}
+
 #define INDEXED(ENUM,FIELD) \
 	if (client->mem == ENUM && ptr[client->mem] && client->siz < ptr[client->mem]->siz) \
 	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
@@ -132,6 +142,7 @@ void process()
 	switch (client->fnc[i]) {
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
+	case (Rmw2): clientRmw2(); break;
 	case (Copy): clientCopy(state); clientRefer(); break;
 	case (Save): clientCopy(saved); break;
 	case (Dma0): break;

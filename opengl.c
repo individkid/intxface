@@ -180,6 +180,7 @@ int openglFull()
 	switch (client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
+	case (Rmw2): break;
 	case (Copy): break;
 	case (Save): break;
 	case (Dma0): break;

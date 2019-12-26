@@ -16,6 +16,12 @@
 */
 
 #include "plane.h"
+#include <CoreGraphics/CoreGraphics.h>
+
+float xmove = 0.0;
+float ymove = 0.0;
+float offset = 0.0;
+int toggle = 0;
 
 void rotateMatrix(float *result, float *pierce, float *pixel, float *cursor)
 {
@@ -41,15 +47,73 @@ void rotateMatrix(float *result, float *pierce, float *pixel, float *cursor)
 	copymat(result,rot2,4);
 }
 
-void tangentMatrix(float *result, float *normal, float *pixel, float *cursor)
+void slideMatrix(float *result, float *normal, float *pixel, float *cursor)
 {
 }
 
-void translateMatrix(float *result, float *pixel, float *cursor)
+void slateMatrix(float *result, float *pixel, float *cursor)
 {
 	float neg[3] = {0}; scalevec(copyvec(neg,pixel,3),-1.0,3);
 	float vec[3] = {0}; plusvec(copyvec(vec,cursor,3),neg,3);
 	copyvec(identmat(result,4)+12,vec,3);
+}
+
+void transformMatrix(float *result)
+{
+	float cur[3] = {0}; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
+	float pix[3] = {0}; pix[2] = -1.0;
+	float pie[3] = {0};
+	float nor[3] = {0};
+	struct Mode *user = state[User]->user;
+	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
+	switch (user->move) {
+	case (Rotate):
+	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
+	rotateMatrix(result,pie,pix,cur);
+	break;
+	case (Slide):
+	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
+	slideMatrix(result,nor,pix,cur);
+	break;
+	case (Slate):
+	slateMatrix(result,pix,cur);
+	break;
+	default: ERROR(huberr,-1);}
+}
+
+void targetMatrix(struct Client *client, struct Affine *matrix)
+{
+	struct Mode *user = state[User]->user;
+	switch (user->matrix) {
+	case (Global): client->mem = Subject; client->subject = matrix; break;
+	case (Several): client->mem = Object; client->object = matrix;
+	client->idx = user->tope; break;
+	case (Single): client->mem = Feature; client->feature = matrix; break;
+	default: ERROR(huberr,-1);}
+}
+
+void cylinderMatrix(float *result, float roller)
+{
+}
+
+void clockMatrix(float *result, float roller)
+{
+}
+
+void compassMatrix(float *result, float roller)
+{
+}
+
+void accordionMatrix(float *result, float roller)
+{
+}
+
+void balloonMatrix(float *result, float roller)
+{
+}
+
+void composeMatrix(float *result)
+{
 }
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
@@ -62,52 +126,34 @@ void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int m
 
 void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 {
-	struct Client client = {0};
-	struct Affine *mat = 0;
-	float *res = 0;
-	float pie[3] = {0};
-	float nor[3] = {0};
-	float pix[3] = {0};
-	float cur[3] = {0};
+	xmove = xpos; ymove = ypos;
 	if (state[User] == 0) ERROR(huberr,-1);
-	if (state[User]->user->click == Transform) {
-	allocAffine(&mat,1); res = &mat->val[0][0];
- 	for (int i = 0; i < 2; i++)
- 	pix[i] = state[User]->user->pixel.val[i];
- 	pix[2] = -1.0; cur[0] = xpos; cur[1] = ypos; cur[2] = -1.0;
-	switch (state[User]->user->move) {
-	case (Rotate):
- 	for (int i = 0; i < 3; i++)
- 	pie[i] = state[User]->user->pierce.val[i];
-	rotateMatrix(res,pie,pix,cur);
-	break;
-	case (Slide):
- 	for (int i = 0; i < 3; i++)
- 	nor[i] = state[User]->user->normal.val[i];
-	tangentMatrix(res,nor,pix,cur);
-	break;
-	case (Slate):
-	translateMatrix(res,pix,cur);
-	break;
-	default: ERROR(huberr,-1);}
-	switch (state[User]->user->matrix) {
-	case (Global): client.mem = Subject; client.subject = mat; break;
-	case (Several): client.mem = Object; client.object = mat;
-	client.idx = state[User]->user->tope; break;
-	case (Single): client.mem = Feature; client.feature = mat; break;
-	default: ERROR(huberr,-1);}
-	client.siz = 1; client.len = 3;
-	allocFunction(&client.fnc,3);
-	client.fnc[0] = Rmw0; client.fnc[1] = Dma0; client.fnc[2] = Draw;
+	struct Mode *user = state[User]->user;
+	if (user->click == Transform) {
+	enum Function rmw = (toggle ? Rmw2 : Rmw0);
+	int size = (toggle ? 2 : 1); toggle = !toggle;
+	struct Affine *matrix = 0; allocAffine(&matrix,size);
+	transformMatrix(&matrix[0].val[0][0]);
+	if (size > 1) composeMatrix(&matrix[1].val[0][0]); 
+	struct Client client = {0}; targetMatrix(&client,matrix); client.siz = 1; client.len = 3;
+	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
 	writeClient(&client,tub); freeClient(&client);} else {
-	client.mem = Memorys; client.siz = 0; client.len = 2;
-	allocFunction(&client.fnc,2);
-	client.fnc[0] = Dma1; client.fnc[1] = Draw;
+	struct Client client = {0}; client.mem = Memorys; client.siz = 0; client.len = 2;
+	allocFunction(&client.fnc,2); client.fnc[0] = Dma1; client.fnc[1] = Draw;
 	writeClient(&client,tub); freeClient(&client);}
 }
 
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 {
+	offset += yoffset;
+}
+
+void displayWarp(struct GLFWwindow* ptr, double xpos, double ypos)
+{
+    int xloc, yloc;
+    glfwGetWindowPos(window,&xloc,&yloc);
+    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
+    CGWarpMouseCursorPosition(point);
 }
 
 #define REJECT(MEM,FIELD,IDX) \
@@ -122,24 +168,28 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 	struct Affine *mat = 0;
 	struct Affine *src = 0;
 	if (state[User] == 0) ERROR(huberr,-1);
-	allocAffine(&mat,1);
+	allocAffine(&mat,1); allocFunction(&client.fnc,2);
 	switch (state[User]->user->matrix) {
 	case (Global): REJECT(Subject,subject,0); break;
 	case (Several): REJECT(Object,object,state[User]->user->tope); break;
 	case (Single): REJECT(Feature,feature,0); break;
 	default: ERROR(huberr,-1);}
 	memcpy(mat,src,sizeof(struct Affine));
-	client.siz = 1; client.len = 2;
-	allocFunction(&client.fnc,2);
-	client.fnc[0] = Copy; client.fnc[1] = Port; client.fnc[2] = Draw;
+	client.fnc[0] = Save; client.fnc[1] = Port; client.siz = 1; client.len = 2;
 	writeClient(&client,tub); allocAffine(&mat,0);
 	allocMode(&client.user,1); allocFunction(&client.fnc,1);
 	client.fnc[0] = Copy; client.mem = User; client.siz = 1; client.len = 1;
 	*(user = client.user) = *(state[User]->user);
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-	}
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-	}
+	if (action == GLFW_PRESS && user->click == Transform) {
+	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Suspend;
+	else user->click = Complete;
+	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove; user->roller = 0.0;}
+	if (action == GLFW_PRESS && user->click == Suspend) {
+	user->click = Transform;
+	if (button == GLFW_MOUSE_BUTTON_RIGHT)
+	displayWarp(ptr,user->cursor.val[0],user->cursor.val[1]);}
+	if (action == GLFW_PRESS && user->click == Complete) {
+	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Transform;}
 	writeClient(&client,tub); freeClient(&client);
 }
 
