@@ -20,7 +20,7 @@
 #include "face.h"
 #include "base.h"
 #include "type.h"
-#include "arithmetic.h"
+#include "metic.h"
 #include <math.h>
 
 #ifndef EXTERN

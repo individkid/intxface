@@ -1,4 +1,3 @@
-arithmeticC.o: arithmetic.h
 baseC.o: base.h face.h
 baseGen: show.lua
 faceC.o: face.h
@@ -9,14 +8,15 @@ facerLua: face.so
 fileC: baseC.o faceC.o typeC.o
 fileC.o: base.h face.h type.h
 filerLua: face.so type.lua
-glfwC.o: arithmetic.h base.h face.h plane.h type.h
+glfwC.o: base.h face.h metic.h plane.h type.h
 lineC: baseC.o faceC.o typeC.o
 lineC.o: base.h face.h type.h
-metalC.o: arithmetic.h base.h face.h plane.h type.h
-modelC.o: arithmetic.h base.h face.h plane.h type.h
-openglC.o: arithmetic.h base.h face.h plane.h type.h
-planeC: arithmeticC.o baseC.o faceC.o glfwC.o metalC.o modelC.o openglC.o typeC.o vulkanC.o
-planeC.o: arithmetic.h base.h face.h plane.h type.h
+metalC.o: base.h face.h metic.h plane.h type.h
+meticC.o: metic.h
+modelC.o: base.h face.h metic.h plane.h type.h
+openglC.o: base.h face.h metic.h plane.h type.h
+planeC: baseC.o faceC.o glfwC.o metalC.o meticC.o modelC.o openglC.o typeC.o vulkanC.o
+planeC.o: base.h face.h metic.h plane.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h
@@ -28,4 +28,4 @@ typerGen: show.lua test.lua
 typerHs: face.hs faceC.o
 typerLua: face.so
 typraLua: show.lua test.lua
-vulkanC.o: arithmetic.h base.h face.h plane.h type.h
+vulkanC.o: base.h face.h metic.h plane.h type.h

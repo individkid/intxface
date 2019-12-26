@@ -105,17 +105,6 @@ void composeMatrix(float *result)
 {
 }
 
-void targetMatrix(struct Client *client, struct Affine *matrix)
-{
-	struct Mode *user = state[User]->user;
-	switch (user->matrix) {
-	case (Global): client->mem = Subject; client->subject = matrix; break;
-	case (Several): client->mem = Object; client->object = matrix;
-	client->idx = user->tope; break;
-	case (Single): client->mem = Feature; client->feature = matrix; break;
-	default: ERROR(huberr,-1);}
-}
-
 void constructVector(float *point, float *plane, int *versor, float *basis)
 {
 }
@@ -132,12 +121,23 @@ void normalVector(float *normal, float *point)
 {
 }
 
+void assignAffine(struct Client *client, struct Affine *matrix)
+{
+	struct Mode *user = state[User]->user;
+	switch (user->matrix) {
+	case (Global): client->mem = Subject; client->subject = matrix; break;
+	case (Several): client->mem = Object; client->object = matrix;
+	client->idx = user->tope; break;
+	case (Single): client->mem = Feature; client->feature = matrix; break;
+	default: ERROR(huberr,-1);}
+}
+
 #define REJECT(MEM,FIELD,IDX) \
 	client->mem = MEM; \
 	client->idx = IDX; \
 	src = &state[MEM]->FIELD[client->idx]; \
 	client->FIELD = matrix;
-void copyMatrix(struct Client *client, struct Affine *matrix)
+void copyAffine(struct Client *client, struct Affine *matrix)
 {
 	struct Mode *user = state[User]->user;
 	struct Affine *src = 0;
@@ -207,11 +207,11 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	struct Mode *user = state[User]->user;
 	if (user->click == Transform) {
 	enum Function rmw = (toggle ? Rmw2 : Rmw0);
-	int size = (toggle ? 2 : 1); toggle = !toggle;
+	int size = (toggle ? 2 : 1); toggle = 0;
 	struct Affine *matrix = 0; allocAffine(&matrix,size);
 	transformMatrix(&matrix[0].val[0][0]);
 	if (size > 1) composeMatrix(&matrix[1].val[0][0]); 
-	struct Client client = {0}; targetMatrix(&client,matrix); client.siz = 1; client.len = 3;
+	struct Client client = {0}; assignAffine(&client,matrix); client.siz = 1; client.len = 3;
 	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
 	writeClient(&client,tub); freeClient(&client);} else {
 	struct Client client = {0}; client.mem = Memorys; client.siz = 0; client.len = 2;
@@ -221,7 +221,7 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 {
-	offset += yoffset;
+	offset += yoffset*ANGLE;
 }
 
 void displayWarp(struct GLFWwindow* ptr, double xpos, double ypos)
@@ -235,7 +235,7 @@ void displayWarp(struct GLFWwindow* ptr, double xpos, double ypos)
 void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 {
 	struct Affine *matrix = 0; allocAffine(&matrix,1); 
-	struct Client client = {0}; copyMatrix(&client,matrix); client.siz = 1; client.len = 2;
+	struct Client client = {0}; copyAffine(&client,matrix); client.siz = 1; client.len = 2;
 	allocFunction(&client.fnc,2); client.fnc[0] = Save; client.fnc[1] = Port;
 	writeClient(&client,tub); freeClient(&client);
 	struct Mode *user = 0; allocMode(&user,1);

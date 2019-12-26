@@ -103,6 +103,7 @@ void clientRmw2()
 	// C' = B*D
 	// A = B*B'*D
 	// A = B'*B*D
+	// TODO apply above to save for mat/idx
 }
 
 #define INDEXED(ENUM,FIELD) \

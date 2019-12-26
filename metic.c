@@ -1,5 +1,5 @@
 /*
-*    arithmetic.c functions for operations on float arrays
+*    metic.c functions for operations on float arrays
 *    Copyright (C) 2019  Paul Coelho
 *
 *    This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "arithmetic.h"
+#include "metic.h"
 
 #define INVALID 1.0e37
 
