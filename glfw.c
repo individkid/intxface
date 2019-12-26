@@ -134,6 +134,13 @@ void copyMatrix(struct Client *client, struct Affine *matrix)
 	memcpy(matrix,src,sizeof(struct Affine));
 }
 
+void copyUser(struct Client *client, struct Mode *user)
+{
+	client->mem = User; *(client->user = user) = *(state[User]->user);
+	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove; offset = 0.0;
+	// TODO calculate pierce normal tope face from state[Corner] state[Facet] state[Face]
+}
+
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
 {
 	if (action == 1) printf("GLFW key %d %d %d %d\n",key,scancode,action,mods);
@@ -180,11 +187,9 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 	struct Client client = {0}; copyMatrix(&client,matrix); client.siz = 1; client.len = 2;
 	allocFunction(&client.fnc,2); client.fnc[0] = Save; client.fnc[1] = Port;
 	writeClient(&client,tub); freeClient(&client);
-	struct Mode *user = 0; allocMode(&user,1); client.mem = User;
-	*(client.user = user) = *(state[User]->user); client.siz = 1; client.len = 1;
+	struct Mode *user = 0; allocMode(&user,1);
+	copyUser(&client,user); client.siz = 1; client.len = 1;
 	allocFunction(&client.fnc,1); client.fnc[0] = Copy;
-	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove; offset = 0.0;
-	// TODO calculate pierce normal tope face from state[Corner] state[Facet] state[Face]->face
 	if (action == GLFW_PRESS && user->click == Transform) {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Suspend;
 	else user->click = Complete;}
