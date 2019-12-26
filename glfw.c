@@ -58,6 +58,26 @@ void slateMatrix(float *result, float *pixel, float *cursor)
 	copyvec(identmat(result,4)+12,vec,3);
 }
 
+void cylinderMatrix(float *result, float roller)
+{
+}
+
+void clockMatrix(float *result, float roller)
+{
+}
+
+void compassMatrix(float *result, float roller)
+{
+}
+
+void accordionMatrix(float *result, float roller)
+{
+}
+
+void balloonMatrix(float *result, float roller)
+{
+}
+
 void transformMatrix(float *result)
 {
 	float cur[3] = {0}; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
@@ -81,6 +101,10 @@ void transformMatrix(float *result)
 	default: ERROR(huberr,-1);}
 }
 
+void composeMatrix(float *result)
+{
+}
+
 void targetMatrix(struct Client *client, struct Affine *matrix)
 {
 	struct Mode *user = state[User]->user;
@@ -92,28 +116,22 @@ void targetMatrix(struct Client *client, struct Affine *matrix)
 	default: ERROR(huberr,-1);}
 }
 
-void cylinderMatrix(float *result, float roller)
+#define REJECT(MEM,FIELD,IDX) \
+	client->mem = MEM; \
+	client->idx = IDX; \
+	src = &state[MEM]->FIELD[client->idx]; \
+	client->FIELD = matrix;
+void copyMatrix(struct Client *client, struct Affine *matrix)
 {
-}
-
-void clockMatrix(float *result, float roller)
-{
-}
-
-void compassMatrix(float *result, float roller)
-{
-}
-
-void accordionMatrix(float *result, float roller)
-{
-}
-
-void balloonMatrix(float *result, float roller)
-{
-}
-
-void composeMatrix(float *result)
-{
+	struct Mode *user = state[User]->user;
+	struct Affine *src = 0;
+	if (state[User] == 0) ERROR(huberr,-1);
+	switch (user->matrix) {
+	case (Global): REJECT(Subject,subject,0); break;
+	case (Several): REJECT(Object,object,user->tope); break;
+	case (Single): REJECT(Feature,feature,0); break;
+	default: ERROR(huberr,-1);}
+	memcpy(matrix,src,sizeof(struct Affine));
 }
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
@@ -156,34 +174,20 @@ void displayWarp(struct GLFWwindow* ptr, double xpos, double ypos)
     CGWarpMouseCursorPosition(point);
 }
 
-#define REJECT(MEM,FIELD,IDX) \
-	client.mem = MEM; \
-	client.idx = IDX; \
-	src = &state[MEM]->FIELD[client.idx]; \
-	client.FIELD = mat;
 void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 {
-	struct Client client = {0};
-	struct Mode *user = 0;
-	struct Affine *mat = 0;
-	struct Affine *src = 0;
-	if (state[User] == 0) ERROR(huberr,-1);
-	allocAffine(&mat,1); allocFunction(&client.fnc,2);
-	switch (state[User]->user->matrix) {
-	case (Global): REJECT(Subject,subject,0); break;
-	case (Several): REJECT(Object,object,state[User]->user->tope); break;
-	case (Single): REJECT(Feature,feature,0); break;
-	default: ERROR(huberr,-1);}
-	memcpy(mat,src,sizeof(struct Affine));
-	client.fnc[0] = Save; client.fnc[1] = Port; client.siz = 1; client.len = 2;
-	writeClient(&client,tub); allocAffine(&mat,0);
-	allocMode(&client.user,1); allocFunction(&client.fnc,1);
-	client.fnc[0] = Copy; client.mem = User; client.siz = 1; client.len = 1;
-	*(user = client.user) = *(state[User]->user);
+	struct Affine *matrix = 0; allocAffine(&matrix,1); 
+	struct Client client = {0}; copyMatrix(&client,matrix); client.siz = 1; client.len = 2;
+	allocFunction(&client.fnc,2); client.fnc[0] = Save; client.fnc[1] = Port;
+	writeClient(&client,tub); freeClient(&client);
+	struct Mode *user = 0; allocMode(&user,1); client.mem = User;
+	*(client.user = user) = *(state[User]->user); client.siz = 1; client.len = 1;
+	allocFunction(&client.fnc,1); client.fnc[0] = Copy;
 	if (action == GLFW_PRESS && user->click == Transform) {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Suspend;
 	else user->click = Complete;
-	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove; user->roller = 0.0;}
+	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove;
+	user->roller = offset = 0.0;}
 	if (action == GLFW_PRESS && user->click == Suspend) {
 	user->click = Transform;
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
