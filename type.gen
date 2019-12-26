@@ -81,11 +81,10 @@ Memory = {
 	"Feather",
 	"Arrow",
 	"Cloud",
-	"Face",
+	"Hand",
 	"Tag",
-	"Collect",
+	"Face",
 	"User",
-	"Periph",
 }
 Matrix = {
 	"Global",
@@ -220,11 +219,11 @@ Mode = {
 	{"move","Move",{},{}},
 	{"roll","Roll",{},{}},
 	{"shader","Shader",{},{}},
+	{"cursor","Cursor",{},{}},
 	{"pierce","Vector",{},{}},
 	{"normal","Vector",{},{}},
-	{"cursor","Cursor",{},{}},
-	{"roller","float",{},{}},
 	{"tope","int",{},{}},
+	{"face","int",{},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},
@@ -242,9 +241,9 @@ Client = {
 	{"feather","Vector",{["mem"]={["Feather"]=true}},1},
 	{"arrow","Vector",{["mem"]={["Arrow"]=true}},1},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
-	{"face","int",{["mem"]={["Face"]=true}},{}},
+	{"hand","int",{["mem"]={["Hand"]=true}},{}},
 	{"tag","int",{["mem"]={["Tag"]=true}},{}},
-	{"collect","int",{["mem"]={["Collect"]=true}},{}},
+	{"face","int",{["mem"]={["Face"]=true}},{}},
 	{"user","Mode",{["mem"]={["User"]=true}},1},
 }
 Sculpt = {

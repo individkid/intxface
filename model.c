@@ -35,9 +35,9 @@ void modelDma()
 	case (Feather): /*TODO*/ break;
 	case (Arrow): /*TODO*/ break;
 	case (Cloud): /*TODO*/ break;
-	case (Face): /*TODO*/ break;
+	case (Hand): /*TODO*/ break;
 	case (Tag): /*TODO*/ break;
-	case (Collect): ERROR(huberr,-1);
+	case (Face): ERROR(huberr,-1);
 	case (User): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }

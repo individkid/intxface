@@ -160,9 +160,9 @@ void openglDma()
 	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&refer[Feather],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&refer[Arrow],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Face): openglBuffer(0,1,sizeof(int),unit[Face],base[Face],0,&refer[Face],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Hand): openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&refer[Hand],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Collect): ERROR(huberr,-1);
+	case (Face): ERROR(huberr,-1);
 	case (User): ERROR(huberr,-1);
 	default: ERROR(exiterr,-1);}
 }

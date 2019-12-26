@@ -183,11 +183,11 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 	struct Mode *user = 0; allocMode(&user,1); client.mem = User;
 	*(client.user = user) = *(state[User]->user); client.siz = 1; client.len = 1;
 	allocFunction(&client.fnc,1); client.fnc[0] = Copy;
+	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove; offset = 0.0;
+	// TODO calculate pierce normal tope face from state[Corner] state[Facet] state[Face]->face
 	if (action == GLFW_PRESS && user->click == Transform) {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Suspend;
-	else user->click = Complete;
-	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove;
-	user->roller = offset = 0.0;}
+	else user->click = Complete;}
 	if (action == GLFW_PRESS && user->click == Suspend) {
 	user->click = Transform;
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
