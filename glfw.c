@@ -107,18 +107,36 @@ void composeMatrix(float *result)
 
 void constructVector(float *point, float *plane, int *versor, float *basis)
 {
+	for (int i = 0; i < 3; i++)
+	for (int j = 0; j < 3; j++)
+	for (int k = 0; k < 3; k++)
+	point[i*9+j*3+k] = basis[versor[i]*9+j*3+k];
+	for (int i = 0; i < 3; i++)
+	for (int j = 0; j < 3; j++)
+	point[i*9+j*3+versor[i]] = plane[i*3+j];
 }
 
 void transformVector(float *point, float *matrix)
 {
-}
-
-void pierceVector(float *pierce, float *point, float *feather, float *arrow)
-{
+	jumpmat(point,matrix,3);
 }
 
 void normalVector(float *normal, float *point)
 {
+	float neg[3] = {0};
+	float leg0[3] = {0};
+	float leg1[3] = {0};
+	scalevec(copyvec(neg,point,3),-1.0,3);
+	plusvec(copyvec(leg0,point+3,3),neg,3);
+	plusvec(copyvec(leg1,point+6,3),neg,3);
+	normvec(crossvec(copyvec(normal,leg0,3),leg1),3);
+}
+
+void pierceVector(float *pierce, float *normal, float *feather, float *arrow)
+{
+	float delta[3] = {0};
+	scalevec(copyvec(delta,arrow,3),dotvec(arrow,normal,3),3);
+	plusvec(copyvec(pierce,feather,3),delta,3);
 }
 
 void assignAffine(struct Client *client, struct Affine *matrix)
@@ -187,9 +205,9 @@ void copyUser(struct Client *client, struct Mode *user)
 	if (user->face==state[Hand]->hand)
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
-	pierceVector(&user->pierce.val[0],&point[0][0],
-	&state[Feather]->feather->val[0],&state[Arrow]->arrow->val[0]);
 	normalVector(&user->normal.val[0],&point[0][0]);
+	pierceVector(&user->pierce.val[0],&user->normal.val[0],
+	&state[Feather]->feather->val[0],&state[Arrow]->arrow->val[0]);
 }
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
