@@ -18,7 +18,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include "plane.h"
 
-enum Family {Render,Present,Familys};
+enum Family {Render,Support,Familys};
 VkInstance instance = {0};
 VkDebugUtilsMessengerEXT debug = {0};
 VkSurfaceKHR surface = {0};
@@ -118,8 +118,8 @@ int vulkanInit()
 	for (int i = 0; i < queueFamilyCount; i++) {
 	VkBool32 presentSupport = VK_FALSE;
 	// vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &presentSupport);
-	if (presentSupport && !valid[Present]) {
-	family[Present] = i; valid[Present] = 1;}
+	if (presentSupport && !valid[Support]) {
+	family[Support] = i; valid[Support] = 1;}
 	if ((queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && !valid[Render]) {
 	family[Render] = i; valid[Render] = 1;}}
 	uint32_t queueCreateInfoCount = 0;

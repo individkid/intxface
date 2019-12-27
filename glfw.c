@@ -74,7 +74,7 @@ void compassMatrix(float *result, float roller)
 {
 }
 
-void accordionMatrix(float *result, float roller)
+void normalMatrix(float *result, float roller)
 {
 }
 
@@ -115,8 +115,8 @@ void composeMatrix(float *result)
 	clockMatrix(result,offset); break;
 	case (Compass): // rotate with fixed normal to facet
 	compassMatrix(result,offset); break;
-	case (Accordion): // translate with fixed normal to facet
-	accordionMatrix(result,offset); break;
+	case (Normal): // translate with fixed normal to facet
+	normalMatrix(result,offset); break;
 	case (Balloon): // scale with fixed pierce point
 	balloonMatrix(result,offset); break;
 	default: ERROR(huberr,-1);}
