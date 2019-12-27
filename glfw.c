@@ -49,6 +49,10 @@ void rotateMatrix(float *result, float *pierce, float *pixel, float *cursor)
 
 void slideMatrix(float *result, float *normal, float *pixel, float *cursor)
 {
+	float neg[3] = {0}; scalevec(copyvec(neg,pixel,3),-1.0,3);
+	float vec[3] = {0}; plusvec(copyvec(vec,cursor,3),neg,3);
+	plusvec(vec,scalevec(copyvec(neg,normal,3),-dotvec(vec,normal,3),3),3);
+	copyvec(identmat(result,4)+12,vec,3);
 }
 
 void slateMatrix(float *result, float *pixel, float *cursor)
@@ -80,21 +84,21 @@ void balloonMatrix(float *result, float roller)
 
 void transformMatrix(float *result)
 {
+	struct Mode *user = state[User]->user;
 	float cur[3] = {0}; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
 	float pix[3] = {0}; pix[2] = -1.0;
-	float pie[3] = {0};
-	float nor[3] = {0};
-	struct Mode *user = state[User]->user;
 	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
 	switch (user->move) {
-	case (Rotate): // rotate about fixed pierce point
+	case (Rotate): { // rotate about fixed pierce point
+	float pie[3] = {0};
 	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
 	rotateMatrix(result,pie,pix,cur);
-	break;
-	case (Slide): // translate parallel to fixed facet
+	break;}
+	case (Slide): { // translate parallel to fixed facet
+	float nor[3] = {0};
 	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
 	slideMatrix(result,nor,pix,cur);
-	break;
+	break;}
 	case (Slate): // translate parallel to picture plane
 	slateMatrix(result,pix,cur);
 	break;
