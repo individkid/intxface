@@ -112,14 +112,6 @@ Roll = {
 	"Normal", -- translate with fixed normal to facet
 	"Balloon", -- scale with fixed pierce point
 }
-Affect = {
-	"Present", -- fixed point relative to boundary plane
-	"Abstract", -- fixed point relative to picture plane
-}
-Effect = {
-	"Physical", -- mouse moves canvass cursor
-	"Virtual", -- mouse moves decoration cursor
-}
 Shader = {
 	"Display",
 	"Track",
