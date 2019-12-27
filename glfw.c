@@ -23,122 +23,120 @@ float ymove = 0.0;
 float offset = 0.0;
 int toggle = 0;
 float matrix[16] = {0};
-float inverse[16] = {0};
 
-void rotateMatrix(float *result, float *pierce, float *pixel, float *cursor)
-{
-	float neg[3] = {0}; scalevec(copyvec(neg,pierce,3),-1.0,3);
-	float arm0[3] = {0}; normvec(plusvec(copyvec(arm0,pixel,3),neg,3),3);
-	float arm1[3] = {0}; normvec(plusvec(copyvec(arm1,cursor,3),neg,3),3);
-	float leg0[2] = {0}; leg0[0] = sqrtf(dotvec(arm1,arm1,2)); leg0[1] = arm1[2]; normvec(leg0,2);
-	float leg1[2] = {0}; normvec(copyvec(leg1,arm1,2),2);
-	float ang0 = asinf(leg0[0]); // angle in the yz plane
-	float ang1 = asinf(leg1[0]); // angle in the xy plane
-	float mat0[9] = {0}; identmat(mat0,3);
-	mat0[4] = cosf(ang0); mat0[5] = -sinf(ang0);
-	mat0[7] = sinf(ang0); mat0[8] = cosf(ang0);
-	float mat1[9] = {0}; identmat(mat1,3);
-	mat1[0] = cosf(ang1); mat1[1] = -sinf(ang1);
-	mat1[3] = sinf(ang1); mat1[4] = cosf(ang1);
-	float mat2[9] = {0}; invmat(copymat(mat2,mat1,3),3);
-	timesmat(timesmat(mat2,mat0,3),mat1,3); // mat = (1/A)*B*A
-	float rot0[16] = {0}; identmat(rot0,4); copyary(rot0,mat2,3,4,9);
-	float rot1[16] = {0}; identmat(rot1,4); copyvec(rot1+12,pierce,3);
-	float rot2[16] = {0}; invmat(copymat(rot2,rot1,4),4);
-	timesmat(timesmat(rot2,rot0,4),rot1,4); // rot = (1/A)*B*A
-	copymat(result,rot2,4);
-}
-
-void slideMatrix(float *result, float *normal, float *pixel, float *cursor)
-{
-	float neg[3] = {0}; scalevec(copyvec(neg,pixel,3),-1.0,3);
-	float vec[3] = {0}; plusvec(copyvec(vec,cursor,3),neg,3);
-	plusvec(vec,scalevec(copyvec(neg,normal,3),-dotvec(vec,normal,3),3),3);
-	copyvec(identmat(result,4)+12,vec,3);
-}
-
-void slateMatrix(float *result, float *pixel, float *cursor)
-{
-	float neg[3] = {0}; scalevec(copyvec(neg,pixel,3),-1.0,3);
-	float vec[3] = {0}; plusvec(copyvec(vec,cursor,3),neg,3);
-	copyvec(identmat(result,4)+12,vec,3);
-}
-
-void cylinderMatrix(float *result, float roller, float *pixel)
+void rotateMatrix(float *result, float *vector)
 {
 }
 
-void clockMatrix(float *result, float roller, float *pixel)
+void translateMatrix(float *result, float *vector)
+{
+	copyvec(identmat(result,4)+12,vector,3);
+}
+
+void angleMatrix(float *result, float angle)
 {
 }
 
-void compassMatrix(float *result, float roller, float *pierce, float *normal)
+void lengthMatrix(float *result, float angle)
 {
 }
 
-void normalMatrix(float *result, float roller, float *normal)
+void scaleMatrix(float *result, float angle)
 {
 }
 
-void balloonMatrix(float *result, float roller, float *pierce)
+void normalMatrix(float *result)
 {
+	struct Mode *user = state[User]->user;
+	float nor[3] = {0};
+	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
+	// TODO
 }
 
-void transformMatrix(float *result)
+void fixedMatrix(float *result)
+{
+	struct Mode *user = state[User]->user;
+	float pie[3] = {0};
+	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
+	// TODO
+}
+
+void offsetVector(float *result)
 {
 	struct Mode *user = state[User]->user;
 	float cur[3] = {0}; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
 	float pix[3] = {0}; pix[2] = -1.0;
 	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
+	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
+}
+
+void transformMatrix(float *result)
+{
+	struct Mode *user = state[User]->user;
 	switch (user->move) {
 	case (Rotate): { // rotate about fixed pierce point
-	float pie[3] = {0};
-	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
-	rotateMatrix(result,pie,pix,cur);
+	float fix[16] = {0}; fixedMatrix(fix);
+	float vec[3] = {0}; offsetVector(vec);
+	rotateMatrix(result,vec);
+	float mat[16] = {0}; copymat(mat,fix,4);
+	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slide): { // translate parallel to fixed facet
-	float nor[3] = {0};
-	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
-	slideMatrix(result,nor,pix,cur);
+	float nor[16] = {0}; normalMatrix(nor);
+	float vec[3] = {0}; offsetVector(vec);
+	translateMatrix(result,vec);
+	float mat[16] = {0}; copymat(mat,nor,4);
+	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
-	case (Slate): // translate parallel to picture plane
-	slateMatrix(result,pix,cur);
-	break;
+	case (Slate): { // translate parallel to picture plane
+	float vec[3] = {0}; offsetVector(vec);
+	translateMatrix(result,vec);
+	break;}
 	default: ERROR(huberr,-1);}
 }
 
 void composeMatrix(float *result)
 {
+	float mat[16] = {0};
 	struct Mode *user = state[User]->user;
 	switch (user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
-	float pix[3] = {0}; pix[2] = -1.0;
-	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
-	cylinderMatrix(result,offset,pix);
-	timesmat(jumpmat(result,inverse,4),matrix,4);
+	float fix[16] = {0}; fixedMatrix(fix);
+	angleMatrix(result,offset);
+	float mat[16] = {0}; jumpmat(copymat(mat,fix,4),matrix,4);
+	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Clock): { // rotate with fixed normal to picture plane
-	float pix[3] = {0}; pix[2] = -1.0;
-	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
-	clockMatrix(result,offset,pix);
+	float fix[16] = {0}; fixedMatrix(fix);
+	angleMatrix(result,offset);
+	float mat[16] = {0}; copymat(mat,fix,4);
+	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Compass): { // rotate with fixed normal to facet
-	float pie[3] = {0};
-	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
-	float nor[3] = {0};
-	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
-	compassMatrix(result,offset,pie,nor);
-	timesmat(jumpmat(result,inverse,4),matrix,4);
+	float nor[16] = {0}; normalMatrix(nor);
+	float fix[16] = {0}; fixedMatrix(fix);
+	angleMatrix(result,offset);
+	float mat[16] = {0}; jumpmat(jumpmat(copymat(mat,fix,4),nor,4),matrix,4);
+	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Normal): { // translate with fixed normal to facet
-	float nor[3] = {0};
-	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
-	normalMatrix(result,offset,nor);
+	float nor[16] = {0}; normalMatrix(nor);
+	lengthMatrix(result,offset);
+	float mat[16] = {0}; copymat(mat,nor,4);
+	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Balloon): { // scale with fixed pierce point
-	float pie[3] = {0};
-	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
-	balloonMatrix(result,offset,pie);
+	float fix[16] = {0}; fixedMatrix(fix);
+	scaleMatrix(result,offset);
+	float mat[16] = {0}; copymat(mat,fix,4);
+	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	default: ERROR(huberr,-1);}
 }
@@ -287,8 +285,7 @@ void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 	int size = (toggle ? 1 : 2); toggle = 1;
 	struct Affine *affine = 0; allocAffine(&affine,size);
 	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
-	copymat(matrix,&affine[1].val[0][0],4);
-	invmat(copymat(inverse,matrix,4),4);}
+	copymat(matrix,&affine[1].val[0][0],4);}
 	composeMatrix(&affine[0].val[0][0]);
 	struct Client client = {0}; assignAffine(&client,affine); client.siz = 1; client.len = 3;
 	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
