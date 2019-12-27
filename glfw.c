@@ -22,6 +22,8 @@ float xmove = 0.0;
 float ymove = 0.0;
 float offset = 0.0;
 int toggle = 0;
+float matrix[16] = {0};
+float inverse[16] = {0};
 
 void rotateMatrix(float *result, float *pierce, float *pixel, float *cursor)
 {
@@ -245,7 +247,7 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	int size = (toggle ? 2 : 1); toggle = 0;
 	struct Affine *matrix = 0; allocAffine(&matrix,size);
 	transformMatrix(&matrix[0].val[0][0]);
-	if (size > 1) composeMatrix(&matrix[1].val[0][0]); 
+	if (size > 1) composeMatrix(&matrix[1].val[0][0]);
 	struct Client client = {0}; assignAffine(&client,matrix); client.siz = 1; client.len = 3;
 	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
 	writeClient(&client,tub); freeClient(&client);} else {
@@ -257,6 +259,8 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 {
 	offset += yoffset*ANGLE;
+	if (!toggle) transformMatrix(matrix);
+	if (!toggle) invmat(copymat(inverse,matrix,4),4);
 }
 
 void displayWarp(struct GLFWwindow* ptr, double xpos, double ypos)
@@ -284,7 +288,7 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	displayWarp(ptr,user->cursor.val[0],user->cursor.val[1]);}
 	if (action == GLFW_PRESS && user->click == Complete) {
-	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Transform;}
+	if (button == GLFW_MOUSE_BUTTON_LEFT) user->click = Transform;}
 	writeClient(&client,tub); freeClient(&client);
 }
 
