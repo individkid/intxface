@@ -87,15 +87,15 @@ void transformMatrix(float *result)
 	struct Mode *user = state[User]->user;
 	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
 	switch (user->move) {
-	case (Rotate):
+	case (Rotate): // rotate about fixed pierce point
 	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
 	rotateMatrix(result,pie,pix,cur);
 	break;
-	case (Slide):
+	case (Slide): // translate parallel to fixed facet
 	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
 	slideMatrix(result,nor,pix,cur);
 	break;
-	case (Slate):
+	case (Slate): // translate parallel to picture plane
 	slateMatrix(result,pix,cur);
 	break;
 	default: ERROR(huberr,-1);}
@@ -103,6 +103,19 @@ void transformMatrix(float *result)
 
 void composeMatrix(float *result)
 {
+	struct Mode *user = state[User]->user;
+	switch (user->roll) {
+	case (Cylinder): // rotate with rotated fixed axis
+	cylinderMatrix(result,offset); break;
+	case (Clock): // rotate with fixed normal to picture plane
+	clockMatrix(result,offset); break;
+	case (Compass): // rotate with fixed normal to facet
+	compassMatrix(result,offset); break;
+	case (Accordion): // translate with fixed normal to facet
+	accordionMatrix(result,offset); break;
+	case (Balloon): // scale with fixed pierce point
+	balloonMatrix(result,offset); break;
+	default: ERROR(huberr,-1);}
 }
 
 void constructVector(float *point, float *plane, int *versor, float *basis)
