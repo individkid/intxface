@@ -64,23 +64,23 @@ void slateMatrix(float *result, float *pixel, float *cursor)
 	copyvec(identmat(result,4)+12,vec,3);
 }
 
-void cylinderMatrix(float *result, float roller)
+void cylinderMatrix(float *result, float roller, float *pixel)
 {
 }
 
-void clockMatrix(float *result, float roller)
+void clockMatrix(float *result, float roller, float *pixel)
 {
 }
 
-void compassMatrix(float *result, float roller)
+void compassMatrix(float *result, float roller, float *pierce, float *normal)
 {
 }
 
-void normalMatrix(float *result, float roller)
+void normalMatrix(float *result, float roller, float *normal)
 {
 }
 
-void balloonMatrix(float *result, float roller)
+void balloonMatrix(float *result, float roller, float *pierce)
 {
 }
 
@@ -111,16 +111,35 @@ void composeMatrix(float *result)
 {
 	struct Mode *user = state[User]->user;
 	switch (user->roll) {
-	case (Cylinder): // rotate with rotated fixed axis
-	cylinderMatrix(result,offset); break;
-	case (Clock): // rotate with fixed normal to picture plane
-	clockMatrix(result,offset); break;
-	case (Compass): // rotate with fixed normal to facet
-	compassMatrix(result,offset); break;
-	case (Normal): // translate with fixed normal to facet
-	normalMatrix(result,offset); break;
-	case (Balloon): // scale with fixed pierce point
-	balloonMatrix(result,offset); break;
+	case (Cylinder): { // rotate with rotated fixed axis
+	float pix[3] = {0}; pix[2] = -1.0;
+	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
+	cylinderMatrix(result,offset,pix);
+	timesmat(jumpmat(result,inverse,4),matrix,4);
+	break;}
+	case (Clock): { // rotate with fixed normal to picture plane
+	float pix[3] = {0}; pix[2] = -1.0;
+	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
+	clockMatrix(result,offset,pix);
+	break;}
+	case (Compass): { // rotate with fixed normal to facet
+	float pie[3] = {0};
+	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
+	float nor[3] = {0};
+	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
+	compassMatrix(result,offset,pie,nor);
+	timesmat(jumpmat(result,inverse,4),matrix,4);
+	break;}
+	case (Normal): { // translate with fixed normal to facet
+	float nor[3] = {0};
+	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
+	normalMatrix(result,offset,nor);
+	break;}
+	case (Balloon): { // scale with fixed pierce point
+	float pie[3] = {0};
+	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
+	balloonMatrix(result,offset,pie);
+	break;}
 	default: ERROR(huberr,-1);}
 }
 
@@ -245,22 +264,35 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	if (user->click == Transform) {
 	enum Function rmw = (toggle ? Rmw2 : Rmw0);
 	int size = (toggle ? 2 : 1); toggle = 0;
-	struct Affine *matrix = 0; allocAffine(&matrix,size);
-	transformMatrix(&matrix[0].val[0][0]);
-	if (size > 1) composeMatrix(&matrix[1].val[0][0]);
-	struct Client client = {0}; assignAffine(&client,matrix); client.siz = 1; client.len = 3;
+	struct Affine *affine = 0; allocAffine(&affine,size);
+	transformMatrix(&affine[0].val[0][0]);
+	if (size > 1) composeMatrix(&affine[1].val[0][0]);
+	struct Client client = {0}; assignAffine(&client,affine); client.siz = 1; client.len = 3;
 	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
 	writeClient(&client,tub); freeClient(&client);} else {
-	struct Client client = {0}; client.mem = Memorys; client.siz = 0; client.len = 2;
-	allocFunction(&client.fnc,2); client.fnc[0] = Dma1; client.fnc[1] = Draw;
+	struct Client client = {0}; client.mem = Feather; client.siz = 1; client.len = 3;
+	struct Vector *vector = 0; allocVector(&vector,1); client.feather = vector;
+	vector->val[0] = xmove; vector->val[1] = ymove; vector->val[2] = -1.0;
+	allocFunction(&client.fnc,3); client.fnc[1] = Dma1; client.fnc[2] = Draw;
 	writeClient(&client,tub); freeClient(&client);}
 }
 
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 {
 	offset += yoffset*ANGLE;
-	if (!toggle) transformMatrix(matrix);
-	if (!toggle) invmat(copymat(inverse,matrix,4),4);
+	if (state[User] == 0) ERROR(huberr,-1);
+	struct Mode *user = state[User]->user;
+	if (user->click == Transform) {
+	enum Function rmw = (toggle ? Rmw2 : Rmw0);
+	int size = (toggle ? 1 : 2); toggle = 1;
+	struct Affine *affine = 0; allocAffine(&affine,size);
+	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
+	copymat(matrix,&affine[1].val[0][0],4);
+	invmat(copymat(inverse,matrix,4),4);}
+	composeMatrix(&affine[0].val[0][0]);
+	struct Client client = {0}; assignAffine(&client,affine); client.siz = 1; client.len = 3;
+	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
+	writeClient(&client,tub); freeClient(&client);}
 }
 
 void displayWarp(struct GLFWwindow* ptr, double xpos, double ypos)
