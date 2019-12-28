@@ -219,11 +219,6 @@ Mode = {
 	{"move","Move",{},{}},
 	{"roll","Roll",{},{}},
 	{"shader","Shader",{},{}},
-	{"cursor","Cursor",{},{}},
-	{"pierce","Vector",{},{}},
-	{"normal","Vector",{},{}},
-	{"tope","int",{},{}},
-	{"face","int",{},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},

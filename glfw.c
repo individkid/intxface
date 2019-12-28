@@ -22,9 +22,17 @@ float xmove = 0.0;
 float ymove = 0.0;
 float offset = 0.0;
 int toggle = 0;
+float vector[3] = {0};
 float matrix[16] = {0};
+float piemat[16] = {0};
+float normat[16] = {0};
+int tope = 0;
 
-void rotateMatrix(float *result, float *vector)
+void longitudeMatrix(float *result, float *vector)
+{
+}
+
+void latitudeMatrix(float *result, float *vector)
 {
 }
 
@@ -45,20 +53,12 @@ void scaleMatrix(float *result, float angle)
 {
 }
 
-void normalMatrix(float *result)
+void normalMatrix(float *result, float *normal)
 {
-	struct Mode *user = state[User]->user;
-	float nor[3] = {0};
-	for (int i = 0; i < 3; i++) nor[i] = user->normal.val[i];
-	// TODO
 }
 
-void fixedMatrix(float *result)
+void fixedMatrix(float *result, float *pierce)
 {
-	struct Mode *user = state[User]->user;
-	float pie[3] = {0};
-	for (int i = 0; i < 3; i++) pie[i] = user->pierce.val[i];
-	// TODO
 }
 
 void offsetVector(float *result)
@@ -66,7 +66,7 @@ void offsetVector(float *result)
 	struct Mode *user = state[User]->user;
 	float cur[3] = {0}; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
 	float pix[3] = {0}; pix[2] = -1.0;
-	for (int i = 0; i < 2; i++) pix[i] = user->cursor.val[i];
+	for (int i = 0; i < 2; i++) pix[i] = vector[i];
 	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
 }
 
@@ -75,18 +75,17 @@ void transformMatrix(float *result)
 	struct Mode *user = state[User]->user;
 	switch (user->move) {
 	case (Rotate): { // rotate about fixed pierce point
-	float fix[16] = {0}; fixedMatrix(fix);
 	float vec[3] = {0}; offsetVector(vec);
-	rotateMatrix(result,vec);
-	float mat[16] = {0}; copymat(mat,fix,4);
+	float lon[16] = {0}; longitudeMatrix(lon,vec);
+	latitudeMatrix(result,vec);
+	float mat[16] = {0}; jumpmat(copymat(mat,piemat,4),lon,4);
 	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slide): { // translate parallel to fixed facet
-	float nor[16] = {0}; normalMatrix(nor);
 	float vec[3] = {0}; offsetVector(vec);
 	translateMatrix(result,vec);
-	float mat[16] = {0}; copymat(mat,nor,4);
+	float mat[16] = {0}; copymat(mat,normat,4);
 	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -103,38 +102,32 @@ void composeMatrix(float *result)
 	struct Mode *user = state[User]->user;
 	switch (user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
-	float fix[16] = {0}; fixedMatrix(fix);
 	angleMatrix(result,offset);
-	float mat[16] = {0}; jumpmat(copymat(mat,fix,4),matrix,4);
+	float mat[16] = {0}; jumpmat(copymat(mat,piemat,4),matrix,4);
 	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Clock): { // rotate with fixed normal to picture plane
-	float fix[16] = {0}; fixedMatrix(fix);
 	angleMatrix(result,offset);
-	float mat[16] = {0}; copymat(mat,fix,4);
+	float mat[16] = {0}; copymat(mat,piemat,4);
 	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Compass): { // rotate with fixed normal to facet
-	float nor[16] = {0}; normalMatrix(nor);
-	float fix[16] = {0}; fixedMatrix(fix);
 	angleMatrix(result,offset);
-	float mat[16] = {0}; jumpmat(jumpmat(copymat(mat,fix,4),nor,4),matrix,4);
+	float mat[16] = {0}; jumpmat(jumpmat(copymat(mat,piemat,4),normat,4),matrix,4);
 	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Normal): { // translate with fixed normal to facet
-	float nor[16] = {0}; normalMatrix(nor);
 	lengthMatrix(result,offset);
-	float mat[16] = {0}; copymat(mat,nor,4);
+	float mat[16] = {0}; copymat(mat,normat,4);
 	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Balloon): { // scale with fixed pierce point
-	float fix[16] = {0}; fixedMatrix(fix);
 	scaleMatrix(result,offset);
-	float mat[16] = {0}; copymat(mat,fix,4);
+	float mat[16] = {0}; copymat(mat,piemat,4);
 	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -181,7 +174,7 @@ void assignAffine(struct Client *client, struct Affine *matrix)
 	switch (user->matrix) {
 	case (Global): client->mem = Subject; client->subject = matrix; break;
 	case (Several): client->mem = Object; client->object = matrix;
-	client->idx = user->tope; break;
+	client->idx = tope; break;
 	case (Single): client->mem = Feature; client->feature = matrix; break;
 	default: ERROR(huberr,-1);}
 }
@@ -198,7 +191,7 @@ void copyAffine(struct Client *client, struct Affine *matrix)
 	if (state[User] == 0) ERROR(huberr,-1);
 	switch (user->matrix) {
 	case (Global): REJECT(Subject,subject,0); break;
-	case (Several): REJECT(Object,object,user->tope); break;
+	case (Several): REJECT(Object,object,tope); break;
 	case (Single): REJECT(Feature,feature,0); break;
 	default: ERROR(huberr,-1);}
 	memcpy(matrix,src,sizeof(struct Affine));
@@ -206,18 +199,24 @@ void copyAffine(struct Client *client, struct Affine *matrix)
 
 void copyUser(struct Client *client, struct Mode *user)
 {
-	client->mem = User; *(client->user = user) = *(state[User]->user);
-	user->cursor.val[0] = xmove; user->cursor.val[1] = ymove; offset = 0.0;
-	user->face = state[Face]->face;
+	struct Mode *src = state[User]->user;
+	client->user = user;
+	memcpy(user,src,sizeof(struct Mode));
+}
+
+void calculateGlobal()
+{
+	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
+	int face = state[Face]->face;
 	int found = state[Range]->siz;
 	for (int i = 0; i < found; i++) {
 	struct Array *range = state[Range]->range;
-	if (user->face < range[i].idx+range[i].siz && range[i].idx <= user->face) found = i;}
+	if (face < range[i].idx+range[i].siz && range[i].idx <= face) found = i;}
 	if (found == state[Range]->siz) {
 	// TODO use original piere normal tope face
 	return;}
 	int tag = state[Range]->range[found].tag;
-	struct Facet *facet = &state[Triangle]->triangle[user->face];
+	struct Facet *facet = &state[Triangle]->triangle[face];
 	struct Vertex *vertex[3] = {0};
 	for (int i = 0; i < 3; i++) vertex[i] = &state[Corner]->corner[facet->vtxid[i]];
 	float plane[3][3] = {0};
@@ -228,8 +227,8 @@ void copyUser(struct Client *client, struct Mode *user)
 	if (vertex[i]->tag[j] == tag) {
 	for (int k = 0; k < 3; k++) plane[done][k] = vertex[i]->plane[j][k];
 	versor[done] = vertex[i]->versor[j];
-	if (done && user->tope != vertex[i]->matid) ERROR(huberr,-1);
-	if (!done) user->tope = vertex[i]->matid;
+	if (done && tope != vertex[i]->matid) ERROR(huberr,-1);
+	if (!done) tope = vertex[i]->matid;
 	done++;}
 	if (done != 3) ERROR(huberr,-1);
 	float point[3][3] = {0};
@@ -237,13 +236,16 @@ void copyUser(struct Client *client, struct Mode *user)
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Subject]->subject->val[0][0]);
 	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Object]->object[user->tope].val[0][0]);
-	if (user->face==state[Hand]->hand)
+	transformVector(&point[i][0],&state[Object]->object[tope].val[0][0]);
+	if (face==state[Hand]->hand)
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
-	normalVector(&user->normal.val[0],&point[0][0]);
-	pierceVector(&user->pierce.val[0],&user->normal.val[0],
-	&state[Feather]->feather->val[0],&state[Arrow]->arrow->val[0]);
+	float norvec[3] = {0}; normalVector(norvec,&point[0][0]);
+	float pievec[3] = {0}; pierceVector(pievec,norvec,&point[0][0],&state[Arrow]->arrow->val[0]);
+	normalMatrix(normat,norvec);
+	fixedMatrix(piemat,pievec);
+	identmat(matrix,4);
+	toggle = 0;
 }
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
@@ -307,18 +309,19 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 	allocFunction(&client.fnc,2); client.fnc[0] = Save; client.fnc[1] = Port;
 	writeClient(&client,tub); freeClient(&client);
 	struct Mode *user = 0; allocMode(&user,1);
-	copyUser(&client,user); client.siz = 1; client.len = 1;
-	allocFunction(&client.fnc,1); client.fnc[0] = Copy;
+	copyUser(&client,user); client.mem = User; client.siz = 1;
+	allocFunction(&client.fnc,1); client.fnc[0] = Copy; client.len = 1;
 	if (action == GLFW_PRESS && user->click == Transform) {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Suspend;
 	else user->click = Complete;}
 	if (action == GLFW_PRESS && user->click == Suspend) {
 	user->click = Transform;
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
-	displayWarp(ptr,user->cursor.val[0],user->cursor.val[1]);}
+	displayWarp(ptr,vector[0],vector[1]);}
 	if (action == GLFW_PRESS && user->click == Complete) {
 	if (button == GLFW_MOUSE_BUTTON_LEFT) user->click = Transform;}
 	writeClient(&client,tub); freeClient(&client);
+	calculateGlobal();
 }
 
 void windowInit(int argc, char **argv)
