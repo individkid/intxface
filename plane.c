@@ -55,8 +55,8 @@ int callread(int argc)
 	int res = 0;
 	if (argc == 4) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (vld) {readClient(client,sub); vld = 0; res = 1;}
-	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);
+	if (vld) {readClient(client,sub); vld = 0; res = 1;
+	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}
 	return res;
 }
