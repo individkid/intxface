@@ -358,14 +358,16 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 	function[0] = Copy;
 	client.mem = copyUser(&client,&user);
 	if (action == GLFW_PRESS && user.click == Transform) {
-	if (button == GLFW_MOUSE_BUTTON_RIGHT) user.click = Suspend;
-	else user.click = Complete;}
+	if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+	user.click = Suspend; user.shader = Track;} else {
+	user.click = Complete; user.shader = Track;}}
 	if (action == GLFW_PRESS && user.click == Suspend) {
-	user.click = Transform;
+	user.click = Transform; user.shader = Display;
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	warpCursor(ptr,vector[0],vector[1]);}
 	if (action == GLFW_PRESS && user.click == Complete) {
-	if (button == GLFW_MOUSE_BUTTON_LEFT) user.click = Transform;}
+	if (button == GLFW_MOUSE_BUTTON_LEFT) {
+	user.click = Transform; user.shader = Display;}}
 	client.fnc = function; client.len = 1; client.siz = 1;
 	writeClient(&client,tub);
 }
