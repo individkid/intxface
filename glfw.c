@@ -83,7 +83,7 @@ void normalMatrix(float *result, float *normal)
 {
 	float lon[16]; longitudeMatrix(lon,normal);
 	float lat[16]; latitudeMatrix(lat,normal);
-	timesmat(copymat(result,lon,4),lat,4);
+	timesmat(copymat(result,lat,4),lon,4);
 }
 
 void fixedMatrix(float *result, float *pierce)
