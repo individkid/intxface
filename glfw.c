@@ -30,10 +30,24 @@ int tope = 0;
 
 void longitudeMatrix(float *result, float *vector)
 {
+	float vec[2]; normvec(copyvec(vec,vector,2),2);
+	identmat(result,4);
+	result[0*4+0] = vec[1];
+	result[0*4+1] = vec[0];
+	result[1*4+0] = -vec[0];
+	result[1*4+1] = vec[1];
 }
 
 void latitudeMatrix(float *result, float *vector)
 {
+	float vec[2]; copyvec(vec,vector,2);
+	vec[0] = sqrtf(dotvec(vec,vec,2)); vec[1] = vector[2];
+	normvec(vec,2);
+	identmat(result,4);
+	result[0*4+0] = vec[1];
+	result[0*4+2] = -vec[0];
+	result[2*4+0] = vec[0];
+	result[2*4+2] = vec[1];
 }
 
 void translateMatrix(float *result, float *vector)
@@ -43,29 +57,45 @@ void translateMatrix(float *result, float *vector)
 
 void angleMatrix(float *result, float angle)
 {
+	float vec[2]; vec[0] = sinf(angle); vec[1] = cosf(angle);
+	identmat(result,4);
+	result[0*4+0] = vec[1];
+	result[0*4+1] = vec[0];
+	result[1*4+0] = -vec[0];
+	result[1*4+1] = vec[1];
 }
 
-void lengthMatrix(float *result, float angle)
+void lengthMatrix(float *result, float length)
 {
+	identmat(result,4);
+	result[3*4+2] = length;
 }
 
-void scaleMatrix(float *result, float angle)
+void scaleMatrix(float *result, float scale)
 {
+	scale = logf(scale);
+	identmat(result,4);
+	for (int i = 0; i < 3; i++)
+	result[i*4+i] = scale;
 }
 
 void normalMatrix(float *result, float *normal)
 {
+	float lon[16]; longitudeMatrix(lon,normal);
+	float lat[16]; latitudeMatrix(lat,normal);
+	timesmat(copymat(result,lon,4),lat,4);
 }
 
 void fixedMatrix(float *result, float *pierce)
 {
+	translateMatrix(result,pierce);
 }
 
 void offsetVector(float *result)
 {
 	struct Mode *user = state[User]->user;
-	float cur[3] = {0}; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
-	float pix[3] = {0}; pix[2] = -1.0;
+	float cur[3]; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
+	float pix[3]; pix[2] = -1.0;
 	for (int i = 0; i < 2; i++) pix[i] = vector[i];
 	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
 }
@@ -75,22 +105,22 @@ void transformMatrix(float *result)
 	struct Mode *user = state[User]->user;
 	switch (user->move) {
 	case (Rotate): { // rotate about fixed pierce point
-	float vec[3] = {0}; offsetVector(vec);
-	float lon[16] = {0}; longitudeMatrix(lon,vec);
+	float vec[3]; offsetVector(vec);
+	float lon[16]; longitudeMatrix(lon,vec);
 	latitudeMatrix(result,vec);
-	float mat[16] = {0}; jumpmat(copymat(mat,piemat,4),lon,4);
-	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	float mat[16]; jumpmat(copymat(mat,piemat,4),lon,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slide): { // translate parallel to fixed facet
-	float vec[3] = {0}; offsetVector(vec);
+	float vec[3]; offsetVector(vec);
 	translateMatrix(result,vec);
-	float mat[16] = {0}; copymat(mat,normat,4);
-	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	float mat[16]; copymat(mat,normat,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slate): { // translate parallel to picture plane
-	float vec[3] = {0}; offsetVector(vec);
+	float vec[3]; offsetVector(vec);
 	translateMatrix(result,vec);
 	break;}
 	default: ERROR(huberr,-1);}
@@ -98,37 +128,37 @@ void transformMatrix(float *result)
 
 void composeMatrix(float *result)
 {
-	float mat[16] = {0};
+	float mat[16];
 	struct Mode *user = state[User]->user;
 	switch (user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
 	angleMatrix(result,offset);
-	float mat[16] = {0}; jumpmat(copymat(mat,piemat,4),matrix,4);
-	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	float mat[16]; jumpmat(copymat(mat,piemat,4),matrix,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Clock): { // rotate with fixed normal to picture plane
 	angleMatrix(result,offset);
-	float mat[16] = {0}; copymat(mat,piemat,4);
-	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	float mat[16]; copymat(mat,piemat,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Compass): { // rotate with fixed normal to facet
 	angleMatrix(result,offset);
-	float mat[16] = {0}; jumpmat(jumpmat(copymat(mat,piemat,4),normat,4),matrix,4);
-	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	float mat[16]; jumpmat(jumpmat(copymat(mat,piemat,4),normat,4),matrix,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Normal): { // translate with fixed normal to facet
 	lengthMatrix(result,offset);
-	float mat[16] = {0}; copymat(mat,normat,4);
-	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	float mat[16]; copymat(mat,normat,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Balloon): { // scale with fixed pierce point
 	scaleMatrix(result,offset);
-	float mat[16] = {0}; copymat(mat,piemat,4);
-	float inv[16] = {0}; invmat(copymat(inv,mat,4),4);
+	float mat[16]; copymat(mat,piemat,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	default: ERROR(huberr,-1);}
@@ -152,9 +182,9 @@ void transformVector(float *point, float *matrix)
 
 void normalVector(float *normal, float *point)
 {
-	float neg[3] = {0};
-	float leg0[3] = {0};
-	float leg1[3] = {0};
+	float neg[3];
+	float leg0[3];
+	float leg1[3];
 	scalevec(copyvec(neg,point,3),-1.0,3);
 	plusvec(copyvec(leg0,point+3,3),neg,3);
 	plusvec(copyvec(leg1,point+6,3),neg,3);
@@ -163,7 +193,7 @@ void normalVector(float *normal, float *point)
 
 void pierceVector(float *pierce, float *normal, float *feather, float *arrow)
 {
-	float delta[3] = {0};
+	float delta[3];
 	scalevec(copyvec(delta,arrow,3),dotvec(arrow,normal,3),3);
 	plusvec(copyvec(pierce,feather,3),delta,3);
 }
@@ -181,10 +211,10 @@ void calculateGlobal()
 	return;}
 	int tag = state[Range]->range[found].tag;
 	struct Facet *facet = &state[Triangle]->triangle[face];
-	struct Vertex *vertex[3] = {0};
+	struct Vertex *vertex[3];
 	for (int i = 0; i < 3; i++) vertex[i] = &state[Corner]->corner[facet->vtxid[i]];
-	float plane[3][3] = {0};
-	int versor[3] = {0};
+	float plane[3][3];
+	int versor[3];
 	int done = 0;
 	for (int i = 0; i < 3; i++)
 	for (int j = 0; j < 3; j++)
@@ -195,7 +225,7 @@ void calculateGlobal()
 	if (!done) tope = vertex[i]->matid;
 	done++;}
 	if (done != 3) ERROR(huberr,-1);
-	float point[3][3] = {0};
+	float point[3][3];
 	constructVector(&point[0][0],&plane[0][0],&versor[0],&state[Basis]->basis[0].val[0][0]);
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Subject]->subject->val[0][0]);
@@ -204,8 +234,8 @@ void calculateGlobal()
 	if (face==state[Hand]->hand)
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
-	float norvec[3] = {0}; normalVector(norvec,&point[0][0]);
-	float pievec[3] = {0}; pierceVector(pievec,norvec,&point[0][0],&state[Arrow]->arrow->val[0]);
+	float norvec[3]; normalVector(norvec,&point[0][0]);
+	float pievec[3]; pierceVector(pievec,norvec,&point[0][0],&state[Arrow]->arrow->val[0]);
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
