@@ -103,7 +103,14 @@ void clientRmw2()
 	// C' = B*D
 	// A = B*B'*D
 	// A = B'*B*D
-	// TODO apply above to save for mat/idx
+	// C = saved[idx]
+	// B = client[1]
+	// B' = client[0]
+	// C' = B*(1/B')*C
+	float *save = clientMat(saved[client->mem],client->idx);
+	float *give0 = clientMat(client,0); invmat(give0,4);
+	float *give1 = clientMat(client,1);
+	jumpmat(jumpmat(save,give0,4),give1,4);
 }
 
 #define INDEXED(ENUM,FIELD) \
