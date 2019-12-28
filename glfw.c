@@ -26,7 +26,7 @@ float vector[3] = {0};
 float matrix[16] = {0};
 float piemat[16] = {0};
 float normat[16] = {0};
-int polytope = 0;
+int object = 0;
 
 void longitudeMatrix(float *result, float *vector)
 {
@@ -209,7 +209,7 @@ void calculateGlobal()
 	float norvec[3];
 	float pievec[3];
 	if (found == state[Range]->siz) {
-	polytope = 0;
+	object = 0;
 	unitvec(norvec,3,2);
 	zerovec(pievec,3);} else {
 	int tag = state[Range]->range[found].tag;
@@ -224,8 +224,8 @@ void calculateGlobal()
 	if (vertex[i]->tag[j] == tag) {
 	for (int k = 0; k < 3; k++) plane[done][k] = vertex[i]->plane[j][k];
 	versor[done] = vertex[i]->versor[j];
-	if (done && polytope != vertex[i]->matid) ERROR(huberr,-1);
-	if (!done) polytope = vertex[i]->matid;
+	if (done && object != vertex[i]->matid) ERROR(huberr,-1);
+	if (!done) object = vertex[i]->matid;
 	done++;}
 	if (done != 3) ERROR(huberr,-1);
 	float point[3][3];
@@ -233,7 +233,7 @@ void calculateGlobal()
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Subject]->subject->val[0][0]);
 	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Object]->object[polytope].val[0][0]);
+	transformVector(&point[i][0],&state[Object]->object[object].val[0][0]);
 	if (face==state[Hand]->hand)
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
@@ -249,7 +249,7 @@ enum Memory assignAffine(struct Client *client, struct Affine *affine)
 {
 	switch (state[User]->user->matrix) {
 	case (Global): client->subject = affine; client->idx = 0; return Subject;
-	case (Several): client->object = affine; client->idx = polytope; return Object;
+	case (Several): client->object = affine; client->idx = object; return Object;
 	case (Single): client->feature = affine; client->idx = 0; return Feature;
 	default: ERROR(huberr,-1);}
 	return Memorys;
@@ -266,7 +266,7 @@ enum Memory copyAffine(struct Client *client, struct Affine *affine)
 	enum Memory mem;
 	switch (state[User]->user->matrix) {
 	case (Global): REJECT(Subject,subject,0); break;
-	case (Several): REJECT(Object,object,polytope); break;
+	case (Several): REJECT(Object,object,object); break;
 	case (Single): REJECT(Feature,feature,0); break;
 	default: ERROR(huberr,-1);}
 	memcpy(&affine->val[0][0],src,sizeof(struct Affine));
