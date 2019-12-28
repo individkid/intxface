@@ -168,42 +168,6 @@ void pierceVector(float *pierce, float *normal, float *feather, float *arrow)
 	plusvec(copyvec(pierce,feather,3),delta,3);
 }
 
-void assignAffine(struct Client *client, struct Affine *matrix)
-{
-	struct Mode *user = state[User]->user;
-	switch (user->matrix) {
-	case (Global): client->mem = Subject; client->subject = matrix; break;
-	case (Several): client->mem = Object; client->object = matrix;
-	client->idx = tope; break;
-	case (Single): client->mem = Feature; client->feature = matrix; break;
-	default: ERROR(huberr,-1);}
-}
-
-#define REJECT(MEM,FIELD,IDX) \
-	client->mem = MEM; \
-	client->idx = IDX; \
-	src = &state[MEM]->FIELD[client->idx]; \
-	client->FIELD = matrix;
-void copyAffine(struct Client *client, struct Affine *matrix)
-{
-	struct Mode *user = state[User]->user;
-	struct Affine *src = 0;
-	if (state[User] == 0) ERROR(huberr,-1);
-	switch (user->matrix) {
-	case (Global): REJECT(Subject,subject,0); break;
-	case (Several): REJECT(Object,object,tope); break;
-	case (Single): REJECT(Feature,feature,0); break;
-	default: ERROR(huberr,-1);}
-	memcpy(matrix,src,sizeof(struct Affine));
-}
-
-void copyUser(struct Client *client, struct Mode *user)
-{
-	struct Mode *src = state[User]->user;
-	client->user = user;
-	memcpy(user,src,sizeof(struct Mode));
-}
-
 void calculateGlobal()
 {
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
@@ -248,6 +212,50 @@ void calculateGlobal()
 	toggle = 0;
 }
 
+enum Memory assignAffine(struct Client *client, struct Affine *affine)
+{
+	switch (state[User]->user->matrix) {
+	case (Global): client->subject = affine; client->idx = 0; return Subject;
+	case (Several): client->object = affine; client->idx = tope; return Object;
+	case (Single): client->feature = affine; client->idx = 0; return Feature;
+	default: ERROR(huberr,-1);}
+	return Memorys;
+}
+
+#define REJECT(MEM,FIELD,IDX) \
+	mem = MEM; \
+	client->idx = IDX; \
+	src = &state[MEM]->FIELD[client->idx]; \
+	client->FIELD = affine;
+enum Memory copyAffine(struct Client *client, struct Affine *affine)
+{
+	struct Affine *src;
+	enum Memory mem;
+	switch (state[User]->user->matrix) {
+	case (Global): REJECT(Subject,subject,0); break;
+	case (Several): REJECT(Object,object,tope); break;
+	case (Single): REJECT(Feature,feature,0); break;
+	default: ERROR(huberr,-1);}
+	memcpy(&affine->val[0][0],src,sizeof(struct Affine));
+	return mem;
+}
+
+enum Memory copyUser(struct Client *client, struct Mode *user)
+{
+	struct Mode *src = state[User]->user;
+	client->user = user;
+	memcpy(user,src,sizeof(struct Mode));
+	return User;
+}
+
+void warpCursor(struct GLFWwindow* ptr, double xpos, double ypos)
+{
+    int xloc, yloc;
+    glfwGetWindowPos(window,&xloc,&yloc);
+    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
+    CGWarpMouseCursorPosition(point);
+}
+
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
 {
 	if (action == 1) printf("GLFW key %d %d %d %d\n",key,scancode,action,mods);
@@ -262,19 +270,25 @@ void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 	if (state[User] == 0) ERROR(huberr,-1);
 	struct Mode *user = state[User]->user;
 	if (user->click == Transform) {
+	struct Client client;
+	struct Affine affine[2];
+	enum Function function[3];
 	enum Function rmw = (toggle ? Rmw2 : Rmw0);
 	int size = (toggle ? 2 : 1); toggle = 0;
-	struct Affine *affine = 0; allocAffine(&affine,size);
 	transformMatrix(&affine[0].val[0][0]);
 	if (size > 1) composeMatrix(&affine[1].val[0][0]);
-	struct Client client = {0}; assignAffine(&client,affine); client.siz = 1; client.len = 3;
-	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
-	writeClient(&client,tub); freeClient(&client);} else {
-	struct Client client = {0}; client.mem = Feather; client.siz = 1; client.len = 3;
-	struct Vector *vector = 0; allocVector(&vector,1); client.feather = vector;
-	vector->val[0] = xmove; vector->val[1] = ymove; vector->val[2] = -1.0;
-	allocFunction(&client.fnc,3); client.fnc[1] = Dma1; client.fnc[2] = Draw;
-	writeClient(&client,tub); freeClient(&client);}
+	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
+	client.mem = assignAffine(&client,&affine[0]);
+	client.fnc = function; client.len = 3; client.siz = size;
+	writeClient(&client,tub);} else {
+	struct Client client;
+	struct Vector vector;
+	enum Function function[3];
+	vector.val[0] = xmove; vector.val[1] = ymove; vector.val[2] = -1.0;
+	function[0] = Copy; function[1] = Dma1; function[2] = Draw;
+	client.feather = &vector; client.idx = 0; client.mem = Feather;
+	client.fnc = function; client.len = 3; client.siz = 1;
+	writeClient(&client,tub);}
 }
 
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
@@ -283,45 +297,44 @@ void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 	if (state[User] == 0) ERROR(huberr,-1);
 	struct Mode *user = state[User]->user;
 	if (user->click == Transform) {
-	enum Function rmw = (toggle ? Rmw2 : Rmw0);
+	struct Client client;
+	struct Affine affine[2];
+	enum Function function[3];
+	enum Function rmw = (toggle ? Rmw0 : Rmw2);
 	int size = (toggle ? 1 : 2); toggle = 1;
-	struct Affine *affine = 0; allocAffine(&affine,size);
 	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
 	copymat(matrix,&affine[1].val[0][0],4);}
 	composeMatrix(&affine[0].val[0][0]);
-	struct Client client = {0}; assignAffine(&client,affine); client.siz = 1; client.len = 3;
-	allocFunction(&client.fnc,3); client.fnc[0] = rmw; client.fnc[1] = Dma0; client.fnc[2] = Draw;
-	writeClient(&client,tub); freeClient(&client);}
-}
-
-void displayWarp(struct GLFWwindow* ptr, double xpos, double ypos)
-{
-    int xloc, yloc;
-    glfwGetWindowPos(window,&xloc,&yloc);
-    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
-    CGWarpMouseCursorPosition(point);
+	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
+	client.mem = assignAffine(&client,&affine[0]);
+	client.fnc = function; client.len = 3; client.siz = size;
+	writeClient(&client,tub);}
 }
 
 void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 {
-	struct Affine *matrix = 0; allocAffine(&matrix,1); 
-	struct Client client = {0}; copyAffine(&client,matrix); client.siz = 1; client.len = 2;
-	allocFunction(&client.fnc,2); client.fnc[0] = Save; client.fnc[1] = Port;
-	writeClient(&client,tub); freeClient(&client);
-	struct Mode *user = 0; allocMode(&user,1);
-	copyUser(&client,user); client.mem = User; client.siz = 1;
-	allocFunction(&client.fnc,1); client.fnc[0] = Copy; client.len = 1;
-	if (action == GLFW_PRESS && user->click == Transform) {
-	if (button == GLFW_MOUSE_BUTTON_RIGHT) user->click = Suspend;
-	else user->click = Complete;}
-	if (action == GLFW_PRESS && user->click == Suspend) {
-	user->click = Transform;
-	if (button == GLFW_MOUSE_BUTTON_RIGHT)
-	displayWarp(ptr,vector[0],vector[1]);}
-	if (action == GLFW_PRESS && user->click == Complete) {
-	if (button == GLFW_MOUSE_BUTTON_LEFT) user->click = Transform;}
-	writeClient(&client,tub); freeClient(&client);
 	calculateGlobal();
+	struct Client client;
+	struct Affine affine;
+	enum Function function[2];
+	struct Mode user;
+	function[0] = Save; function[1] = Port;
+	client.mem = copyAffine(&client,&affine);
+	client.fnc = function; client.len = 2; client.siz = 1;
+	writeClient(&client,tub);
+	function[0] = Copy;
+	client.mem = copyUser(&client,&user);
+	if (action == GLFW_PRESS && user.click == Transform) {
+	if (button == GLFW_MOUSE_BUTTON_RIGHT) user.click = Suspend;
+	else user.click = Complete;}
+	if (action == GLFW_PRESS && user.click == Suspend) {
+	user.click = Transform;
+	if (button == GLFW_MOUSE_BUTTON_RIGHT)
+	warpCursor(ptr,vector[0],vector[1]);}
+	if (action == GLFW_PRESS && user.click == Complete) {
+	if (button == GLFW_MOUSE_BUTTON_LEFT) user.click = Transform;}
+	client.fnc = function; client.len = 1; client.siz = 1;
+	writeClient(&client,tub);
 }
 
 void windowInit(int argc, char **argv)
