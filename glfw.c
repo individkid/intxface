@@ -206,9 +206,12 @@ void calculateGlobal()
 	for (int i = 0; i < found; i++) {
 	struct Array *range = state[Range]->range;
 	if (face < range[i].idx+range[i].siz && range[i].idx <= face) found = i;}
+	float norvec[3];
+	float pievec[3];
 	if (found == state[Range]->siz) {
-	// TODO use original piere normal tope face
-	return;}
+	polytope = 0;
+	unitvec(norvec,3,2);
+	zerovec(pievec,3);} else {
 	int tag = state[Range]->range[found].tag;
 	struct Facet *facet = &state[Triangle]->triangle[face];
 	struct Vertex *vertex[3];
@@ -234,8 +237,8 @@ void calculateGlobal()
 	if (face==state[Hand]->hand)
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
-	float norvec[3]; normalVector(norvec,&point[0][0]);
-	float pievec[3]; pierceVector(pievec,norvec,&point[0][0],&state[Arrow]->arrow->val[0]);
+	normalVector(norvec,&point[0][0]);
+	pierceVector(pievec,norvec,&point[0][0],&state[Arrow]->arrow->val[0]);}
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
