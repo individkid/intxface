@@ -31,9 +31,15 @@ void moderr(const char *str, int num, int arg)
 	longjmp(modjmp,1);
 }
 
-void modelPrint(float *point, float *coord, float *color, int texid, int facid, int matid)
+void modelPrint(float *point, float *coord, float *color, int texid)
 {
-	// TODO intepolate color in point triangle, map onto ascii, and print ascii page instead of pixels
+	// TODO intepolate color or texture in point triangle,
+	//  map onto ascii, and print ascii page instead of pixels
+}
+
+void modelTrack(float *point, int facid)
+{
+	// TOOD writeClient of Face if Feather Arrow pierces triangle
 }
 
 void constructVector(float *point, float *plane, int versor, float *basis);
@@ -87,7 +93,9 @@ void modelFunc(struct Array *range)
 				else if (plane[k] != ptr[j]->plane[found][k]) ERROR(exiterr,-1);
 			if (j == 0) versor = ptr[j]->versor[found];
 			else if (versor != ptr[j]->versor[found]) ERROR(exiterr,-1);}
-		if (!skip) modelPrint(point,coord,color,texid,facid,matid);}
+		if (skip) continue;
+		if (accel[User]->user->shader == Track) modelTrack(point,facid);
+		else modelPrint(point,coord,color,texid);}
 }
 
 #define INDEXED(ENUM,FIELD) \
@@ -106,7 +114,12 @@ void *model(void *arg)
 	switch (pointer->mem) {
 	case (Corner): INDEXED(Corner,corner); break;
 	case (Triangle): INDEXED(Triangle,triangle); break;
-	case (Range): for (int i = 0; i < pointer->siz; i++) modelFunc(&pointer->range[i]); break;
+	case (Range):
+	if (accel[Basis] && accel[Triangle] && accel[Corner] &&
+	accel[User] && accel[Feather] && accel[Arrow])
+	for (int i = 0; i < pointer->siz; i++)
+	modelFunc(&pointer->range[i]);
+	break;
 	case (Basis): INDEXED(Basis,basis); break;
 	case (Subject): UNDEXED(Subject); break;
 	case (Object): INDEXED(Object,object); break;
