@@ -204,7 +204,10 @@ void pierceVector(float *pierce, float *point, float *normal, float *feather, fl
 	float solve1[3]; solveVector(solve1,point,normal,arrow);
 	float diff0 = feather[2]-solve0[2];
 	float diff1 = feather[2]-solve1[2];
-	float ratio = diff1/(diff1+diff0);
+	float denom = diff1+diff0;
+	float ratio;
+	if (fabs(denom) < 1.0 && fabs(diff1) > fabs(INVALID*denom)) ratio = 0.0;
+	else ratio = diff1/denom;
 	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,feather,3),-1.0,3),arrow,3),ratio,3),feather,3);
 }
 
