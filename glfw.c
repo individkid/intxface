@@ -349,8 +349,8 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 	calculateGlobal();
 	struct Client client;
 	struct Affine affine;
-	enum Function function[2];
 	struct Mode user;
+	enum Function function[2];
 	function[0] = Save; function[1] = Port;
 	client.mem = copyAffine(&client,&affine);
 	client.fnc = function; client.len = 2; client.siz = 1;

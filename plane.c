@@ -132,17 +132,17 @@ void clientCopy(struct Client **ptr)
 void clientRefer()
 {
 	switch (client->mem) {
-	case (Corner): refer[Corner] = &client->corner[0];
-	case (Triangle): refer[Triangle] = &client->triangle[0];
-	case (Basis): refer[Basis] = &client->basis[0];
-	case (Subject): refer[Subject] = &client->subject[0];
-	case (Object): refer[Object] = &client->object[0];
-	case (Feature): refer[Feature] = &client->feature[0];
-	case (Feather): refer[Feather] = &client->feather[0];
-	case (Arrow): refer[Arrow] = &client->arrow[0];
-	case (Cloud): refer[Cloud] = &client->cloud[0];
-	case (Hand): refer[Hand] = &client->face;
-	case (Tag): refer[Tag] = &client->tag;
+	case (Corner): refer[Corner] = &state[Corner]->corner[0];
+	case (Triangle): refer[Triangle] = &state[Triangle]->triangle[0];
+	case (Basis): refer[Basis] = &state[Basis]->basis[0];
+	case (Subject): refer[Subject] = &state[Subject]->subject[0];
+	case (Object): refer[Object] = &state[Object]->object[0];
+	case (Feature): refer[Feature] = &state[Feature]->feature[0];
+	case (Feather): refer[Feather] = &state[Feather]->feather[0];
+	case (Arrow): refer[Arrow] = &state[Arrow]->arrow[0];
+	case (Cloud): refer[Cloud] = &state[Cloud]->cloud[0];
+	case (Hand): refer[Hand] = &state[Hand]->face;
+	case (Tag): refer[Tag] = &state[Tag]->tag;
 	default: break;}
 }
 
