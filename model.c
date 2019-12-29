@@ -19,10 +19,17 @@
 #include <pthread.h>
 
 int mub = 0;
+int modesc = 0;
+jmp_buf modjmp = {0};
 pthread_t mthread = {0};
 struct Client *accel[Memorys] = {0};
 struct Client *pointer = 0;
 int mface = 0;
+
+void moderr(const char *str, int num, int arg)
+{
+	longjmp(modjmp,1);
+}
 
 void modelPrint(float *point, float *coord, float *color, int texid, int facid, int matid)
 {
@@ -75,7 +82,9 @@ void modelFunc(struct Array *range)
 	allocClient(&accel[ENUM],0); accel[ENUM] = pointer;
 void *model(void *arg)
 {
-	while (1) {
+	while (modesc == 0)
+	if (setjmp(modjmp) == 0)
+	while(modesc == 0) {
 	allocClient(&pointer,1);
 	readClient(pointer,mub);
 	switch (pointer->mem) {
@@ -91,14 +100,14 @@ void *model(void *arg)
 	case (Cloud): INDEXED(Cloud,cloud); break;
 	case (Hand): UNDEXED(Hand); break;
 	case (Tag): UNDEXED(Tag); break;
-	default: return 0;}}
+	default: modesc = 1; break;}}
 	return 0;
 }
 
 int modelInit()
 {
 	if ((mub = openPipe()) < 0) ERROR(exiterr,-1);
-	bothJump(huberr,mub);
+	bothJump(moderr,mub);
 	if (pthread_create(&mthread,0,model,0) != 0) ERROR(exiterr,-1);
 	return 1;
 }
