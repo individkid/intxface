@@ -36,9 +36,22 @@ void modelPrint(float *point, float *coord, float *color, int texid, int facid, 
 	// TODO intepolate color in point triangle, map onto ascii, and print ascii page instead of pixels
 }
 
-void modelPoint(float *point, float *plane, int *versor, float *basis)
+void constructVector(float *point, float *plane, int versor, float *basis);
+void normalVector(float *normal, float *point);
+void pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
+
+void intersectVector(float *point, float *plane, int *versor, float *basis)
 {
-	// TODO intersect three planes into one point
+	// intersect three planes into one point
+	float corner[27];
+	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
+	float normal[9];
+	for (int i = 0; i < 3; i++) normalVector(&normal[i*3],&corner[i*9]);
+	float pierce0[3];
+	pierceVector(&pierce0[0],&corner[9],&normal[3],&corner[18],&corner[21]);
+	float pierce1[3];
+	pierceVector(&pierce1[0],&corner[9],&normal[3],&corner[18],&corner[24]);
+	pierceVector(point,&corner[0],&normal[0],&pierce0[0],&pierce1[0]);
 }
 
 void modelFunc(struct Array *range)
@@ -55,7 +68,7 @@ void modelFunc(struct Array *range)
 		int texid; int facid; int matid; float plane[3]; int versor;
 		for (int j = 0; j < 3; j++) {
 			int found = 0; for (int k = 0; k < 3; k++) if (ptr[j]->tag[k] == range->tag) found = k;
-			modelPoint(&point[j*3],&ptr[j]->plane[0][0],ptr[j]->versor,basis);
+			intersectVector(&point[j*3],&ptr[j]->plane[0][0],ptr[j]->versor,basis);
 			for (int k = 0; k < 2; k++)
 				coord[j*2+k] = ptr[j]->coord[found][k];
 			for (int k = 0; k < 4; k++)

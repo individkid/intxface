@@ -164,15 +164,13 @@ void composeMatrix(float *result)
 	default: ERROR(huberr,-1);}
 }
 
-void constructVector(float *point, float *plane, int *versor, float *basis)
+void constructVector(float *point, float *plane, int versor, float *basis)
 {
 	for (int i = 0; i < 3; i++)
 	for (int j = 0; j < 3; j++)
-	for (int k = 0; k < 3; k++)
-	point[i*9+j*3+k] = basis[versor[i]*9+j*3+k];
+	point[i*3+j] = basis[versor*9+i*3+j];
 	for (int i = 0; i < 3; i++)
-	for (int j = 0; j < 3; j++)
-	point[i*9+j*3+versor[i]] = plane[i*3+j];
+	point[i*3+versor] = plane[i];
 }
 
 void transformVector(float *point, float *matrix)
@@ -191,11 +189,23 @@ void normalVector(float *normal, float *point)
 	normvec(crossvec(copyvec(normal,leg0,3),leg1),3);
 }
 
-void pierceVector(float *pierce, float *normal, float *feather, float *arrow)
+void solveVector(float *pierce, float *point, float *normal, float *feather)
 {
-	float delta[3];
-	scalevec(copyvec(delta,arrow,3),dotvec(arrow,normal,3),3);
-	plusvec(copyvec(pierce,feather,3),delta,3);
+	// point+(feather-point-normal/((feather-point)*normal))
+	plusvec(scalevec(copyvec(pierce,point,3),-1.0,3),feather,3);
+	float delta[3]; scalevec(copyvec(delta,normal,3),-1.0/dotvec(pierce,normal,3),3);
+	plusvec(plusvec(pierce,delta,3),point,3);
+}
+
+void pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow)
+{
+	// feather+(arrow-feather)*z(arrow-p(arrow))/(z(arrow-p(arrow))+z(feather-p(feather)))
+	float solve0[3]; solveVector(solve0,point,normal,feather);
+	float solve1[3]; solveVector(solve1,point,normal,arrow);
+	float diff0 = feather[2]-solve0[2];
+	float diff1 = feather[2]-solve1[2];
+	float ratio = diff1/(diff1+diff0);
+	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,feather,3),-1.0,3),arrow,3),ratio,3),feather,3);
 }
 
 void calculateGlobal()
@@ -216,20 +226,20 @@ void calculateGlobal()
 	struct Facet *facet = &state[Triangle]->triangle[face];
 	struct Vertex *vertex[3];
 	for (int i = 0; i < 3; i++) vertex[i] = &state[Corner]->corner[facet->vtxid[i]];
-	float plane[3][3];
-	int versor[3];
+	float plane[3];
+	int versor;
 	int done = 0;
 	for (int i = 0; i < 3; i++)
 	for (int j = 0; j < 3; j++)
 	if (vertex[i]->tag[j] == tag) {
-	for (int k = 0; k < 3; k++) plane[done][k] = vertex[i]->plane[j][k];
-	versor[done] = vertex[i]->versor[j];
+	if (done == 0) for (int k = 0; k < 3; k++) plane[k] = vertex[i]->plane[j][k];
+	if (done == 0) versor = vertex[i]->versor[j];
 	if (done && object != vertex[i]->matid) ERROR(huberr,-1);
 	if (!done) object = vertex[i]->matid;
 	done++;}
 	if (done != 3) ERROR(huberr,-1);
 	float point[3][3];
-	constructVector(&point[0][0],&plane[0][0],&versor[0],&state[Basis]->basis[0].val[0][0]);
+	constructVector(&point[0][0],&plane[0],versor,&state[Basis]->basis[0].val[0][0]);
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Subject]->subject->val[0][0]);
 	for (int i = 0; i < 3; i++)
@@ -238,7 +248,7 @@ void calculateGlobal()
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
 	normalVector(norvec,&point[0][0]);
-	pierceVector(pievec,norvec,&point[0][0],&state[Arrow]->arrow->val[0]);}
+	pierceVector(pievec,&point[0][0],norvec,&state[Feather]->feather->val[0],&state[Arrow]->arrow->val[0]);}
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
