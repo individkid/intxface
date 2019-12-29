@@ -19,12 +19,9 @@
 #include <pthread.h>
 
 int mub = 0;
-int modesc = 0;
 jmp_buf modjmp = {0};
 pthread_t mthread = {0};
 struct Client *accel[Memorys] = {0};
-struct Client *pointer = 0;
-int mface = 0;
 
 void moderr(const char *str, int num, int arg)
 {
@@ -99,27 +96,26 @@ void modelFunc(struct Array *range)
 }
 
 #define INDEXED(ENUM,FIELD) \
-	if (pointer->mem == ENUM && accel[ENUM] && pointer->siz < accel[ENUM]->siz) \
-	memcpy(&accel[ENUM]->FIELD[pointer->idx],pointer->FIELD,pointer->siz*sizeof(*pointer->FIELD)); \
-	else allocClient(&accel[ENUM],0); accel[ENUM] = pointer;
+	if (client->mem == ENUM && accel[ENUM] && client->siz < accel[ENUM]->siz) \
+	memcpy(&accel[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
+	else allocClient(&accel[ENUM],0); accel[ENUM] = client;
 #define UNDEXED(ENUM) \
-	allocClient(&accel[ENUM],0); accel[ENUM] = pointer;
+	allocClient(&accel[ENUM],0); accel[ENUM] = client;
 void *model(void *arg)
 {
-	while (modesc == 0)
+	struct Client *client = 0;
+	struct Client *pend = 0;
+	int esc = 0;
+	while (esc == 0)
 	if (setjmp(modjmp) == 0)
-	while(modesc == 0) {
-	allocClient(&pointer,1);
-	readClient(pointer,mub);
-	switch (pointer->mem) {
+	while(esc == 0) {
+	while (pollPipe(mub)) {
+	allocClient(&client,1);
+	readClient(client,mub);
+	switch (client->mem) {
 	case (Corner): INDEXED(Corner,corner); break;
 	case (Triangle): INDEXED(Triangle,triangle); break;
-	case (Range):
-	if (accel[Basis] && accel[Triangle] && accel[Corner] &&
-	accel[User] && accel[Feather] && accel[Arrow])
-	for (int i = 0; i < pointer->siz; i++)
-	modelFunc(&pointer->range[i]);
-	break;
+	case (Range): allocClient(&pend,0); pend = client; client = 0; break;
 	case (Basis): INDEXED(Basis,basis); break;
 	case (Subject): UNDEXED(Subject); break;
 	case (Object): INDEXED(Object,object); break;
@@ -129,7 +125,13 @@ void *model(void *arg)
 	case (Cloud): INDEXED(Cloud,cloud); break;
 	case (Hand): UNDEXED(Hand); break;
 	case (Tag): UNDEXED(Tag); break;
-	default: modesc = 1; break;}}
+	default: esc = 1; break;}}
+	if (pend) {
+	if (accel[Basis] && accel[Triangle] && accel[Corner] &&
+	accel[User] && accel[Feather] && accel[Arrow])
+	for (int i = 0; i < pend->siz; i++)
+	modelFunc(&pend->range[i]);
+	allocClient(&pend,0);}}
 	return 0;
 }
 
@@ -156,16 +158,17 @@ void modelWrite(enum Memory memory)
 
 void modelDraw()
 {
+	int face = 0;
 	while (pollPipe(mub)) {
 		struct Client temp;
 		readClient(&temp,mub);
 		if (temp.mem == Face && state[Face])
-			mface = temp.face;}
+			face = temp.face;}
 	for (int i = 0; i < client->len; i++) {
 		if (client->fnc[i] == Dma0)
 			modelWrite(client->mem);
 		if (client->fnc[i] == Dma1)
-			state[Face]->face = mface;
+			state[Face]->face = face;
 		if (client->fnc[i] == Draw)
 			modelWrite(Range);}
 }
