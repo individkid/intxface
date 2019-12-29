@@ -40,40 +40,42 @@ void constructVector(float *point, float *plane, int versor, float *basis);
 void normalVector(float *normal, float *point);
 int pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
 
-void intersectVector(float *point, float *plane, int *versor, float *basis)
+int intersectVector(float *point, float *plane, int *versor, float *basis)
 {
 	// intersect three planes into one point
 	float corner[27];
 	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
 	float normal[9];
 	for (int i = 0; i < 3; i++) normalVector(&normal[i*3],&corner[i*9]);
-	// TODO try permutations if !pierceVector
 	float pierce0[3];
-	pierceVector(&pierce0[0],&corner[9],&normal[3],&corner[18],&corner[21]);
 	float pierce1[3];
-	pierceVector(&pierce1[0],&corner[9],&normal[3],&corner[18],&corner[24]);
-	pierceVector(point,&corner[0],&normal[0],&pierce0[0],&pierce1[0]);
+	for (int i = 0; i < 3; i++) {
+	int i0 = i; int i1 = (i+1)%3; int i2 = (i+2)%3;
+	int a0 = i0*3; int a1 = i1*3; int a2 = i2*3;
+	int b0 = i0*9; int b1 = i1*9; int b2 = i2*9;
+	for (int j = 0; j < 3; j++) {
+	int j0 = j; int j1 = (j+1)%3; int j2 = (j+2)%3;
+	int c0 = b2+j0; int c1 = b2+j1; int c2 = b2+j2;
+	if (!pierceVector(&pierce0[0],&corner[b1],&normal[a1],&corner[c0],&corner[c1])) continue;
+	if (!pierceVector(&pierce1[0],&corner[b1],&normal[a1],&corner[c0],&corner[c2])) continue;
+	if (pierceVector(point,&corner[b0],&normal[a0],&pierce0[0],&pierce1[0])) return 1;}}
+	return 0;
 }
 
 void modelFunc(struct Array *range)
 {
-	float basis[27];
-	for (int i = 0; i < 3; i++)
-	for (int j = 0; j < 3; j++)
-	for (int k = 0; k < 3; k++)
+	float basis[27]; for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) for (int k = 0; k < 3; k++)
 	basis[i*9+j*3+k] = accel[Basis]->basis[i].val[j][k];
 	for (int i = 0; i < range->siz; i++) {
 		int sub[3]; for (int j = 0; j < 3; j++) sub[j] = accel[Triangle]->triangle[range->idx+i].vtxid[j];
 		struct Vertex *ptr[3]; for (int j = 0; j < 3; j++) ptr[j] = &accel[Corner]->corner[sub[j]];
 		float point[9]; float coord[6]; float color[8];
 		int texid; int facid; int matid; float plane[3]; int versor;
-		for (int j = 0; j < 3; j++) {
+		int skip = 0; for (int j = 0; j < 3; j++) {
 			int found = 0; for (int k = 0; k < 3; k++) if (ptr[j]->tag[k] == range->tag) found = k;
-			intersectVector(&point[j*3],&ptr[j]->plane[0][0],ptr[j]->versor,basis);
-			for (int k = 0; k < 2; k++)
-				coord[j*2+k] = ptr[j]->coord[found][k];
-			for (int k = 0; k < 4; k++)
-				color[j*4+k] = ptr[j]->color[found][k];
+			if (!intersectVector(&point[j*3],&ptr[j]->plane[0][0],ptr[j]->versor,basis)) {skip = 1; break;}
+			for (int k = 0; k < 2; k++) coord[j*2+k] = ptr[j]->coord[found][k];
+			for (int k = 0; k < 4; k++) color[j*4+k] = ptr[j]->color[found][k];
 			if (j == 0) texid = ptr[j]->texid[found];
 			else if (texid != ptr[j]->texid[found]) ERROR(exiterr,-1);
 			if (j == 0) facid = ptr[j]->facid[found];
@@ -85,7 +87,7 @@ void modelFunc(struct Array *range)
 				else if (plane[k] != ptr[j]->plane[found][k]) ERROR(exiterr,-1);
 			if (j == 0) versor = ptr[j]->versor[found];
 			else if (versor != ptr[j]->versor[found]) ERROR(exiterr,-1);}
-		modelPrint(point,coord,color,texid,facid,matid);}
+		if (!skip) modelPrint(point,coord,color,texid,facid,matid);}
 }
 
 #define INDEXED(ENUM,FIELD) \

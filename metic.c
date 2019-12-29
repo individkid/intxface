@@ -62,7 +62,7 @@ float *zerovec(float *u, int n)
 float *normvec(float *u, int n)
 {
     float denom = dotvec(u,u,n);
-    if (fabs(denom) < 1.0 && 1.0 > fabs(INVALID*denom)) return 0;
+    if (absval(denom) < 1.0 && 1.0 > absval(INVALID*denom)) return 0;
     return scalevec(u,1.0/denom,n);
 }
 
