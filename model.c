@@ -38,7 +38,7 @@ void modelPrint(float *point, float *coord, float *color, int texid, int facid, 
 
 void constructVector(float *point, float *plane, int versor, float *basis);
 void normalVector(float *normal, float *point);
-void pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
+int pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
 
 void intersectVector(float *point, float *plane, int *versor, float *basis)
 {
@@ -47,6 +47,7 @@ void intersectVector(float *point, float *plane, int *versor, float *basis)
 	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
 	float normal[9];
 	for (int i = 0; i < 3; i++) normalVector(&normal[i*3],&corner[i*9]);
+	// TODO try permutations if !pierceVector
 	float pierce0[3];
 	pierceVector(&pierce0[0],&corner[9],&normal[3],&corner[18],&corner[21]);
 	float pierce1[3];

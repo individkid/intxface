@@ -30,8 +30,9 @@ int object = 0;
 
 void longitudeMatrix(float *result, float *vector)
 {
-	float vec[2]; normvec(copyvec(vec,vector,2),2);
+	float vec[2];
 	identmat(result,4);
+	if (!normvec(copyvec(vec,vector,2),2)) return;
 	result[0*4+0] = vec[1];
 	result[0*4+1] = vec[0];
 	result[1*4+0] = -vec[0];
@@ -42,8 +43,8 @@ void latitudeMatrix(float *result, float *vector)
 {
 	float vec[2]; copyvec(vec,vector,2);
 	vec[0] = sqrtf(dotvec(vec,vec,2)); vec[1] = vector[2];
-	normvec(vec,2);
 	identmat(result,4);
+	if (!normvec(vec,2)) return;
 	result[0*4+0] = vec[1];
 	result[0*4+2] = -vec[0];
 	result[2*4+0] = vec[0];
@@ -189,26 +190,30 @@ void normalVector(float *normal, float *point)
 	normvec(crossvec(copyvec(normal,leg0,3),leg1),3);
 }
 
-void solveVector(float *pierce, float *point, float *normal, float *feather)
+int solveVector(float *pierce, float *point, float *normal, float *feather)
 {
 	// point+(feather-point-normal/((feather-point)*normal))
 	plusvec(scalevec(copyvec(pierce,point,3),-1.0,3),feather,3);
-	float delta[3]; scalevec(copyvec(delta,normal,3),-1.0/dotvec(pierce,normal,3),3);
+	float denom = dotvec(pierce,normal,3);
+	if (fabs(denom) < 1.0 && 1.0 > fabs(INVALID*denom)) return 0;
+	float delta[3]; scalevec(copyvec(delta,normal,3),-1.0/denom,3);
 	plusvec(plusvec(pierce,delta,3),point,3);
+	return 1;
 }
 
-void pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow)
+int pierceVector(float *pierce, float *point, float *normal, float *point0, float *point1)
 {
 	// feather+(arrow-feather)*z(arrow-p(arrow))/(z(arrow-p(arrow))+z(feather-p(feather)))
-	float solve0[3]; solveVector(solve0,point,normal,feather);
-	float solve1[3]; solveVector(solve1,point,normal,arrow);
-	float diff0 = feather[2]-solve0[2];
-	float diff1 = feather[2]-solve1[2];
-	float denom = diff1+diff0;
+	float solve0[3]; if (!solveVector(solve0,point,normal,point0)) return 0;
+	float solve1[3]; if (!solveVector(solve1,point,normal,point1)) return 0;
+	float diff0 = solve0[2]-point0[2];
+	float diff1 = solve1[2]-point1[2];
+	float denom = diff0-diff1;
 	float ratio;
-	if (fabs(denom) < 1.0 && fabs(diff1) > fabs(INVALID*denom)) ratio = 0.0;
-	else ratio = diff1/denom;
-	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,feather,3),-1.0,3),arrow,3),ratio,3),feather,3);
+	if (fabs(denom) < 1.0 && fabs(diff0) > fabs(INVALID*denom)) return 0;
+	else ratio = diff0/denom;
+	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,point0,3),-1.0,3),point1,3),ratio,3),point0,3);
+	return 1;
 }
 
 void calculateGlobal()
@@ -251,7 +256,8 @@ void calculateGlobal()
 	for (int i = 0; i < 3; i++)
 	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
 	normalVector(norvec,&point[0][0]);
-	pierceVector(pievec,&point[0][0],norvec,&state[Feather]->feather->val[0],&state[Arrow]->arrow->val[0]);}
+	float other[3]; plusvec(copyvec(other,&state[Feather]->feather->val[0],3),&state[Arrow]->arrow->val[0],3);
+	pierceVector(pievec,&point[0][0],norvec,&state[Feather]->feather->val[0],other);}
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
