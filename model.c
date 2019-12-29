@@ -23,6 +23,10 @@ jmp_buf modjmp = {0};
 pthread_t mthread = {0};
 struct Client *accel[Memorys] = {0};
 
+void constructVector(float *point, float *plane, int versor, float *basis);
+void normalVector(float *normal, float *point);
+int pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
+
 void moderr(const char *str, int num, int arg)
 {
 	longjmp(modjmp,1);
@@ -36,12 +40,11 @@ void modelPrint(float *point, float *coord, float *color, int texid)
 
 void modelTrack(float *point, int facid)
 {
-	// TOOD writeClient of Face if Feather Arrow pierces triangle
+	float normal[3]; float other[3]; float pierce[3]; normalVector(normal,point);
+	plusvec(copyvec(other,&accel[Feather]->feather->val[0],3),&accel[Arrow]->arrow->val[0],3);
+	if (pierceVector(&pierce[0],point,normal,&accel[Feather]->feather->val[0],other)) {
+	struct Client client = {0}; client.mem = Face; client.face = facid; writeClient(&client,mub);}
 }
-
-void constructVector(float *point, float *plane, int versor, float *basis);
-void normalVector(float *normal, float *point);
-int pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
 
 int intersectVector(float *point, float *plane, int *versor, float *basis)
 {
