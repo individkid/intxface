@@ -103,17 +103,26 @@ void modelFunc(struct Array *range)
 			for (int k = 0; k < 2; k++) coord[j*2+k] = ptr[j]->coord[found][k];
 			for (int k = 0; k < 4; k++) color[j*4+k] = ptr[j]->color[found][k];
 			if (j == 0) texid = ptr[j]->texid[found];
-			else if (texid != ptr[j]->texid[found]) ERROR(exiterr,-1);
+			else if (texid != ptr[j]->texid[found]) ERROR(moderr,-1);
 			if (j == 0) facid = ptr[j]->facid[found];
-			else if (facid != ptr[j]->facid[found]) ERROR(exiterr,-1);
+			else if (facid != ptr[j]->facid[found]) ERROR(moderr,-1);
 			if (j == 0) matid = ptr[j]->matid;
-			else if (matid != ptr[j]->matid) ERROR(exiterr,-1);
+			else if (matid != ptr[j]->matid) ERROR(moderr,-1);
 			for (int k = 0; k < 3; k++)
 				if (j == 0) plane[k] = ptr[j]->plane[found][k];
-				else if (plane[k] != ptr[j]->plane[found][k]) ERROR(exiterr,-1);
+				else if (plane[k] != ptr[j]->plane[found][k]) ERROR(moderr,-1);
 			if (j == 0) versor = ptr[j]->versor[found];
-			else if (versor != ptr[j]->versor[found]) ERROR(exiterr,-1);}
+			else if (versor != ptr[j]->versor[found]) ERROR(moderr,-1);}
 		if (skip) continue;
+		// TODO transform point by subject, object[matid], and feature if facid==hand
+		for (int i = 0; i < 3; i++)
+		transformVector(&point[i*3],&accel[Subject]->subject->val[0][0]);
+		if (matid < 0 || matid >= accel[Subject]->siz) ERROR(moderr,-1);
+		for (int i = 0; i < 3; i++)
+		transformVector(&point[i*3],&accel[Object]->object[matid].val[0][0]);
+		if (accel[Hand]->hand == facid)
+		for (int i = 0; i < 3; i++)
+		transformVector(&point[i*3],&accel[Feature]->feature->val[0][0]);
 		if (accel[User]->user->shader == Display) modelFrame(point,coord,color,texid);
 		else if (accel[User]->user->shader == Track) modelTrack(point,facid);}
 }
@@ -149,6 +158,7 @@ void *model(void *arg)
 	case (Tag): UNDEXED(Tag); break;
 	default: mesc = 1; break;}}
 	if (pend && accel[Basis] && accel[Triangle] && accel[Corner] &&
+	accel[Subject] && accel[Object] && accel[Feature] && accel[Hand] &&
 	accel[User] && accel[Feather] && accel[Arrow]) {
 	if (accel[User]->user->shader == Display) modelClear();
 	for (int i = 0; i < pend->siz; i++) modelFunc(&pend->range[i]);

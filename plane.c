@@ -62,7 +62,9 @@ void constructVector(float *point, float *plane, int versor, float *basis)
 
 void transformVector(float *point, float *matrix)
 {
-	jumpmat(point,matrix,3);
+	float temp[4]; copyvec(temp,point,3); temp[3] = 1.0;
+	jumpmat(temp,matrix,4);
+	copyvec(point,temp,3);
 }
 
 int normalVector(float *normal, float *point)
