@@ -38,6 +38,7 @@ int tail = 0;
 
 GLuint openglLoad(const char *vs, const char *fs)
 {
+	// TODO
 	return 0;
 }
 
@@ -201,7 +202,6 @@ void openglBuffee(int idx, int siz, int len, void *buf, GLuint hdl, GLuint tgt)
 void openglGet()
 {
 	float color = 0.0;
-	glReadBuffer(GL_AUX0);
 	glReadPixels(0,0,1,1,GL_RED,GL_FLOAT,&color);
 	state[Face]->face = color;
 }
@@ -213,16 +213,13 @@ void openglFunc()
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
-	// TODO depending on state[Shader] render to invisible framebuffer instead
-	//  then depth replacement finds closest pierce point
-	//  and color is plane identifier
 	for (int i = 0; i < state[Range]->siz; i++) {
 	void *buf = openglBuffed(state[Range]->range[i].idx,sizeof(struct Facet),0);
 	state[Tag]->tag = state[Range]->range[i].tag;
 	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
 	glDrawElements(GL_TRIANGLES,state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
-	glfwSwapBuffers(window);
+	if (state[User]->user->shader == Display) glfwSwapBuffers(window);
 	head = (head + 1) % NUMCNTX;
 	while (pail[head] == pead[head]) {
 	openglPender(&pend[head][pead[head]]);
