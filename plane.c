@@ -18,6 +18,7 @@
 #define EXTERN
 #include "plane.h"
 #include <pthread.h>
+#include <sys/ioctl.h>
 
 enum API {None, Metal, Vulkan, Opengl, Model};
 int vld = 0;
@@ -218,7 +219,11 @@ void threadDone(int argc)
 
 int main(int argc, char **argv)
 {
-	printf("uint32_t(%d) int(%d) GL_INT(%d) float(%d) GL_FLOAT(%d)\n",(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT),(int)sizeof(float),(int)sizeof(GL_FLOAT));
+	struct ttysize ts;
+	ioctl(0, TIOCGSIZE, &ts);
+	printf("uint32_t(%d) int(%d) GL_INT(%d) float(%d) GL_FLOAT(%d) lines(%d) columns(%d)\n",
+	(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT),(int)sizeof(float),(int)sizeof(GL_FLOAT),
+	ts.ts_lines,ts.ts_cols);
 
 	threadInit(argc,argv);
 	windowInit(argc,argv);

@@ -17,11 +17,16 @@
 
 #include "plane.h"
 #include <pthread.h>
+#include <sys/ioctl.h>
 
 int mub = 0;
-jmp_buf modjmp = {0};
+int mesc = 0;
+jmp_buf mjmp = {0};
 pthread_t mthread = {0};
 struct Client *accel[Memorys] = {0};
+struct ttysize ts;
+char *mpage;
+float *mframe;
 
 void constructVector(float *point, float *plane, int versor, float *basis);
 void normalVector(float *normal, float *point);
@@ -29,13 +34,53 @@ int pierceVector(float *pierce, float *point, float *normal, float *feather, flo
 
 void moderr(const char *str, int num, int arg)
 {
-	longjmp(modjmp,1);
+	longjmp(mjmp,1);
 }
 
-void modelPrint(float *point, float *coord, float *color, int texid)
+void modelClear()
 {
-	// TODO intepolate color or texture in point triangle,
-	//  map onto ascii, and print ascii page instead of pixels
+	for (int i = 0; i < ts.ts_cols; i++)
+	for (int j = 0; j < ts.ts_lines; j++) {
+	mframe[i*ts.ts_cols+j] = INFINITE;
+	mpage[i*ts.ts_cols+j] = ' ';}
+}
+
+void modelFrame(float *point, float *coord, float *color, int texid)
+{
+	float mat3[9];
+	for (int i = 0; i < 3; i++)
+	for (int j = 0; j < 2; j++)
+	mat3[i*3+j] = point[i*3+j];
+	for (int i = 0; i < 3; i++)
+	mat3[i*3+2] = 1.0;
+	invmat(mat3,3);
+	float mat4[16];
+	for (int i = 0; i < 3; i++)
+	for (int j = 0; j < 3; j++)
+	mat4[i*4+j] = point[i*3+j];
+	for (int j = 0; j < 3; j++)
+	mat4[12+j] = 0.0;
+	for (int i = 0; i < 4; i++)
+	mat4[i*4+3] = 1.0;
+	invmat(mat4,4);
+	float depth[3]; for (int i = 0; i < 3; i++) depth[i] = point[i*3+1];
+	float offset[2]; offset[0] = ts.ts_cols/-2.0; offset[1] = ts.ts_lines/-2.0;
+	for (int i = 0; i < ts.ts_cols; i++)
+	for (int j = 0; j < ts.ts_lines; j++) {
+	float pos[3]; pos[0] = i*CHRWIDE; pos[1] = j*CHRHIGH; pos[2] = 1.0; plusvec(pos,offset,2);
+	float vec[3]; copyvec(vec,pos,3); jumpvec(pos,mat3,3); vec[2] = dotvec(pos,depth,3);
+	float ipos[4]; copyvec(ipos,vec,3); ipos[3] = 1.0; jumpvec(ipos,mat4,4);
+	float ichr = dotvec(ipos,color,4);
+	char chr; if (ichr < 0.0) chr = '-'; else if (ichr >= 1.0) chr = '+'; else chr = '0'+(char)(ichr*10.0);
+	if (mframe[i*ts.ts_cols+j] > vec[2]) {mframe[i*ts.ts_cols+j] = vec[2]; mpage[i*ts.ts_cols+j] = chr;}}
+}
+
+void modelPrint()
+{
+	for (int i = 0; i < ts.ts_cols; i++) {
+	for (int j = 0; j < ts.ts_lines; j++)
+	printf("%c",mpage[i*ts.ts_cols+j]);
+	printf("\n");}
 }
 
 void modelTrack(float *point, int facid)
@@ -48,7 +93,6 @@ void modelTrack(float *point, int facid)
 
 int intersectVector(float *point, float *plane, int *versor, float *basis)
 {
-	// intersect three planes into one point
 	float corner[27];
 	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
 	float normal[9];
@@ -95,7 +139,7 @@ void modelFunc(struct Array *range)
 			else if (versor != ptr[j]->versor[found]) ERROR(exiterr,-1);}
 		if (skip) continue;
 		if (accel[User]->user->shader == Track) modelTrack(point,facid);
-		else modelPrint(point,coord,color,texid);}
+		else modelFrame(point,coord,color,texid);}
 }
 
 #define INDEXED(ENUM,FIELD) \
@@ -108,10 +152,9 @@ void *model(void *arg)
 {
 	struct Client *client = 0;
 	struct Client *pend = 0;
-	int esc = 0;
-	while (esc == 0)
-	if (setjmp(modjmp) == 0)
-	while(esc == 0) {
+	while (mesc == 0)
+	if (setjmp(mjmp) == 0)
+	while(mesc == 0) {
 	while (pollPipe(mub)) {
 	allocClient(&client,1);
 	readClient(client,mub);
@@ -128,18 +171,23 @@ void *model(void *arg)
 	case (Cloud): INDEXED(Cloud,cloud); break;
 	case (Hand): UNDEXED(Hand); break;
 	case (Tag): UNDEXED(Tag); break;
-	default: esc = 1; break;}}
+	default: mesc = 1; break;}}
 	if (pend) {
 	if (accel[Basis] && accel[Triangle] && accel[Corner] &&
 	accel[User] && accel[Feather] && accel[Arrow])
+	modelClear();
 	for (int i = 0; i < pend->siz; i++)
 	modelFunc(&pend->range[i]);
+	modelPrint();
 	allocClient(&pend,0);}}
 	return 0;
 }
 
 int modelInit()
 {
+	ioctl(0, TIOCGSIZE, &ts); ts.ts_cols--; ts.ts_lines--;
+	mpage = malloc(sizeof(*mpage)*ts.ts_lines*ts.ts_cols);
+	mframe = malloc(sizeof(*mframe)*ts.ts_lines*ts.ts_cols);
 	if ((mub = openPipe()) < 0) ERROR(exiterr,-1);
 	bothJump(moderr,mub);
 	if (pthread_create(&mthread,0,model,0) != 0) ERROR(exiterr,-1);

@@ -41,6 +41,8 @@
 #define WINHIGH 600
 #define NUMFILE 64
 #define BUFSIZE 64
+#define CHRHIGH 64
+#define CHRWIDE 16
 #define NUMINET 16
 #define NUMPEND 10
 #define NUMFEND 8
