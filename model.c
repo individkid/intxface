@@ -114,7 +114,6 @@ void modelFunc(struct Array *range)
 			if (j == 0) versor = ptr[j]->versor[found];
 			else if (versor != ptr[j]->versor[found]) ERROR(moderr,-1);}
 		if (skip) continue;
-		// TODO transform point by subject, object[matid], and feature if facid==hand
 		for (int i = 0; i < 3; i++)
 		transformVector(&point[i*3],&accel[Subject]->subject->val[0][0]);
 		if (matid < 0 || matid >= accel[Subject]->siz) ERROR(moderr,-1);
