@@ -59,14 +59,15 @@ void modelFrame(float *point, float *coord, float *color, int texid)
 	for (int i = 0; i < 4; i++)
 	mat4[i*4+3] = 1.0;
 	invmat(mat4,4);
-	float depth[3]; for (int i = 0; i < 3; i++) depth[i] = point[i*3+1];
+	float depth[3]; for (int i = 0; i < 3; i++) depth[i] = point[i*3+2];
+	float shade[3]; for (int i = 0; i < 3; i++) shade[i] = color[i*4+3];
 	float offset[2]; offset[0] = ts.ts_cols/-2.0; offset[1] = ts.ts_lines/-2.0;
-	for (int i = 0; i < ts.ts_cols; i++)
-	for (int j = 0; j < ts.ts_lines; j++) {
-	float pos[3]; pos[0] = i*CHRWIDE; pos[1] = j*CHRHIGH; pos[2] = 1.0; plusvec(pos,offset,2);
+	for (int i = 0; i < ts.ts_lines; i++)
+	for (int j = 0; j < ts.ts_cols; j++) {
+	float pos[3]; pos[0] = j*CHRHIGH; pos[1] = i*CHRWIDE; pos[2] = 1.0; plusvec(pos,offset,2);
 	float vec[3]; copyvec(vec,pos,3); jumpvec(pos,mat3,3); vec[2] = dotvec(pos,depth,3);
 	float ipos[4]; copyvec(ipos,vec,3); ipos[3] = 1.0; jumpvec(ipos,mat4,4);
-	float ichr = dotvec(ipos,color,4);
+	float ichr = dotvec(ipos,shade,3);
 	char chr; if (ichr < 0.0) chr = '-'; else if (ichr >= 1.0) chr = '+'; else chr = '0'+(char)(ichr*10.0);
 	if (mframe[i*ts.ts_cols+j] > vec[2]) {mframe[i*ts.ts_cols+j] = vec[2]; mpage[i*ts.ts_cols+j] = chr;}}
 }
@@ -94,7 +95,7 @@ void modelFunc(struct Array *range)
 	for (int i = 0; i < range->siz; i++) {
 		int sub[3]; for (int j = 0; j < 3; j++) sub[j] = accel[Triangle]->triangle[range->idx+i].vtxid[j];
 		struct Vertex *ptr[3]; for (int j = 0; j < 3; j++) ptr[j] = &accel[Corner]->corner[sub[j]];
-		float point[9]; float coord[6]; float color[8];
+		float point[9]; float coord[6]; float color[12];
 		int texid; int facid; int matid; float plane[3]; int versor;
 		int skip = 0; for (int j = 0; j < 3; j++) {
 			int found = 0; for (int k = 0; k < 3; k++) if (ptr[j]->tag[k] == range->tag) found = k;
