@@ -65,7 +65,7 @@ void transformVector(float *point, float *matrix)
 	jumpmat(point,matrix,3);
 }
 
-void normalVector(float *normal, float *point)
+int normalVector(float *normal, float *point)
 {
 	float neg[3];
 	float leg0[3];
@@ -73,7 +73,8 @@ void normalVector(float *normal, float *point)
 	scalevec(copyvec(neg,point,3),-1.0,3);
 	plusvec(copyvec(leg0,point+3,3),neg,3);
 	plusvec(copyvec(leg1,point+6,3),neg,3);
-	normvec(crossvec(copyvec(normal,leg0,3),leg1),3);
+	if (!normvec(crossvec(copyvec(normal,leg0,3),leg1),3)) return 0;
+	return 1;
 }
 
 int solveVector(float *pierce, float *point, float *normal, float *feather)
@@ -107,7 +108,7 @@ int intersectVector(float *point, float *plane, int *versor, float *basis)
 	float corner[27];
 	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
 	float normal[9];
-	for (int i = 0; i < 3; i++) normalVector(&normal[i*3],&corner[i*9]);
+	for (int i = 0; i < 3; i++) if (!normalVector(&normal[i*3],&corner[i*9])) return 0;
 	float pierce0[3];
 	float pierce1[3];
 	for (int i = 0; i < 3; i++) {
