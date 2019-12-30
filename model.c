@@ -114,8 +114,8 @@ void modelFunc(struct Array *range)
 			if (j == 0) versor = ptr[j]->versor[found];
 			else if (versor != ptr[j]->versor[found]) ERROR(exiterr,-1);}
 		if (skip) continue;
-		if (accel[User]->user->shader == Track) modelTrack(point,facid);
-		else modelFrame(point,coord,color,texid);}
+		if (accel[User]->user->shader == Display) modelFrame(point,coord,color,texid);
+		else if (accel[User]->user->shader == Track) modelTrack(point,facid);}
 }
 
 #define INDEXED(ENUM,FIELD) \
@@ -151,10 +151,9 @@ void *model(void *arg)
 	if (pend) {
 	if (accel[Basis] && accel[Triangle] && accel[Corner] &&
 	accel[User] && accel[Feather] && accel[Arrow])
-	modelClear();
-	for (int i = 0; i < pend->siz; i++)
-	modelFunc(&pend->range[i]);
-	modelPrint();
+	if (accel[User]->user->shader == Display) modelClear();
+	for (int i = 0; i < pend->siz; i++) modelFunc(&pend->range[i]);
+	if (accel[User]->user->shader == Display) modelPrint();
 	allocClient(&pend,0);}}
 	return 0;
 }
