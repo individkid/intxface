@@ -64,7 +64,7 @@ void modelFrame(float *point, float *coord, float *color, int texid)
 	float offset[2]; offset[0] = ts.ts_cols/-2.0; offset[1] = ts.ts_lines/-2.0;
 	for (int i = 0; i < ts.ts_lines; i++)
 	for (int j = 0; j < ts.ts_cols; j++) {
-	float pos[3]; pos[0] = j*CHRHIGH; pos[1] = i*CHRWIDE; pos[2] = 1.0; plusvec(pos,offset,2);
+	float pos[3]; pos[0] = j*CHRWIDE; pos[1] = i*CHRHIGH; pos[2] = 1.0; plusvec(pos,offset,2);
 	float vec[3]; copyvec(vec,pos,3); jumpvec(pos,mat3,3); vec[2] = dotvec(pos,depth,3);
 	float ipos[4]; copyvec(ipos,vec,3); ipos[3] = 1.0; jumpvec(ipos,mat4,4);
 	float ichr = dotvec(ipos,shade,3);
