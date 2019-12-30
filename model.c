@@ -37,7 +37,7 @@ void modelClear()
 {
 	for (int i = 0; i < ts.ts_cols; i++)
 	for (int j = 0; j < ts.ts_lines; j++) {
-	mframe[i*ts.ts_cols+j] = INFINITE;
+	mframe[i*ts.ts_cols+j] = INVALID;
 	mpage[i*ts.ts_cols+j] = ' ';}
 }
 
@@ -49,7 +49,7 @@ void modelFrame(float *point, float *coord, float *color, int texid)
 	mat3[i*3+j] = point[i*3+j];
 	for (int i = 0; i < 3; i++)
 	mat3[i*3+2] = 1.0;
-	invmat(mat3,3);
+	if (!invmat(mat3,3)) return;
 	float mat4[16];
 	for (int i = 0; i < 3; i++)
 	for (int j = 0; j < 3; j++)
@@ -58,7 +58,7 @@ void modelFrame(float *point, float *coord, float *color, int texid)
 	mat4[12+j] = 0.0;
 	for (int i = 0; i < 4; i++)
 	mat4[i*4+3] = 1.0;
-	invmat(mat4,4);
+	if (!invmat(mat4,4)) return;
 	float depth[3]; for (int i = 0; i < 3; i++) depth[i] = point[i*3+2];
 	float shade[3]; for (int i = 0; i < 3; i++) shade[i] = color[i*4+3];
 	float offset[2]; offset[0] = ts.ts_cols/-2.0; offset[1] = ts.ts_lines/-2.0;
@@ -69,7 +69,11 @@ void modelFrame(float *point, float *coord, float *color, int texid)
 	float ipos[4]; copyvec(ipos,vec,3); ipos[3] = 1.0; jumpvec(ipos,mat4,4);
 	float ichr = dotvec(ipos,shade,3);
 	char chr; if (ichr < 0.0) chr = '-'; else if (ichr >= 1.0) chr = '+'; else chr = '0'+(char)(ichr*10.0);
-	if (mframe[i*ts.ts_cols+j] > vec[2]) {mframe[i*ts.ts_cols+j] = vec[2]; mpage[i*ts.ts_cols+j] = chr;}}
+	if (mframe[i*ts.ts_cols+j] > vec[2] &&
+	mframe[i*ts.ts_cols+j] > -INVALID &&
+	mframe[i*ts.ts_cols+j] < INVALID) {
+	mframe[i*ts.ts_cols+j] = vec[2];
+	mpage[i*ts.ts_cols+j] = chr;}}
 }
 
 void modelPrint()

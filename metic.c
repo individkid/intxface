@@ -19,7 +19,7 @@
 #include "metic.h"
 #include <stdlib.h>
 
-#define INVALID 1.0e37
+#define INVALID 1.0e30
 
 float dotvec(float *u, float *v, int n)
 {
