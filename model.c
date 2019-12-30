@@ -148,9 +148,8 @@ void *model(void *arg)
 	case (Hand): UNDEXED(Hand); break;
 	case (Tag): UNDEXED(Tag); break;
 	default: mesc = 1; break;}}
-	if (pend) {
-	if (accel[Basis] && accel[Triangle] && accel[Corner] &&
-	accel[User] && accel[Feather] && accel[Arrow])
+	if (pend && accel[Basis] && accel[Triangle] && accel[Corner] &&
+	accel[User] && accel[Feather] && accel[Arrow]) {
 	if (accel[User]->user->shader == Display) modelClear();
 	for (int i = 0; i < pend->siz; i++) modelFunc(&pend->range[i]);
 	if (accel[User]->user->shader == Display) modelPrint();
