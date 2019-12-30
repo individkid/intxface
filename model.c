@@ -73,8 +73,8 @@ void modelFrame(float *point, float *coord, float *color, int texid)
 
 void modelPrint()
 {
-	for (int i = 0; i < ts.ts_cols; i++) {
-	for (int j = 0; j < ts.ts_lines; j++)
+	for (int i = 0; i < ts.ts_lines; i++) {
+	for (int j = 0; j < ts.ts_cols; j++)
 	printf("%c",mpage[i*ts.ts_cols+j]);
 	printf("\n");}
 }
