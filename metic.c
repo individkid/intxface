@@ -16,10 +16,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "metic.h"
+#include <stdlib.h>
 
 #define INVALID 1.0e37
 
@@ -61,8 +59,8 @@ float *zerovec(float *u, int n)
 
 float *normvec(float *u, int n)
 {
-    float denom = dotvec(u,u,n);
-    if (absval(denom) < 1.0 && 1.0 > absval(INVALID*denom)) return 0;
+    float denom = sqrtf(dotvec(u,u,n));
+    if (fabs(denom) < 1.0 && 1.0 > fabs(INVALID*denom)) return 0;
     return scalevec(u,1.0/denom,n);
 }
 
@@ -210,8 +208,8 @@ float *invmat(float *u, int n)
     int m = n*n; float v[m];
     adjmat(copymat(v,u,n),n);
     float det = detmat(u,n);
-    float lim = det*INVALID;
-    for (int i = 0; i < m; i++) if (det<1.0 && v[i]>lim) {fprintf(stderr,"cannot invert matrix\n"); exit(-1);}
+    float lim = fabs(det*INVALID);
+    for (int i = 0; i < m; i++) if (fabs(det)<1.0 && fabs(v[i])>lim) return 0;
     for (int i = 0; i < m; i++) u[i] = v[i]/det;
     return u;
 }
@@ -233,10 +231,4 @@ float *tweakvec(float *u, float a, float b, int n)
 {
     for (int i = 0; i < n; i++) u[i] = a+((b-a)*rand()/(float)RAND_MAX);
     return u;
-}
-
-float absval(float a)
-{
-    if (a>0.0) return a;
-    return -a;
 }

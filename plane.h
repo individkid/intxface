@@ -21,7 +21,6 @@
 #include "base.h"
 #include "type.h"
 #include "metic.h"
-#include <math.h>
 
 #ifndef EXTERN
 #define EXTERN extern

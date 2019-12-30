@@ -16,6 +16,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <math.h>
+
 float dotvec(float *u, float *v, int n);
 float *plusvec(float *u, float *v, int n);
 float *scalevec(float *u, float s, int n);
