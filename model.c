@@ -28,10 +28,6 @@ struct ttysize ts;
 char *mpage;
 float *mframe;
 
-void constructVector(float *point, float *plane, int versor, float *basis);
-void normalVector(float *normal, float *point);
-int pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
-
 void moderr(const char *str, int num, int arg)
 {
 	longjmp(mjmp,1);
@@ -89,27 +85,6 @@ void modelTrack(float *point, int facid)
 	plusvec(copyvec(other,&accel[Feather]->feather->val[0],3),&accel[Arrow]->arrow->val[0],3);
 	if (pierceVector(&pierce[0],point,normal,&accel[Feather]->feather->val[0],other)) {
 	struct Client client = {0}; client.mem = Face; client.face = facid; writeClient(&client,mub);}
-}
-
-int intersectVector(float *point, float *plane, int *versor, float *basis)
-{
-	float corner[27];
-	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
-	float normal[9];
-	for (int i = 0; i < 3; i++) normalVector(&normal[i*3],&corner[i*9]);
-	float pierce0[3];
-	float pierce1[3];
-	for (int i = 0; i < 3; i++) {
-	int i0 = i; int i1 = (i+1)%3; int i2 = (i+2)%3;
-	int a0 = i0*3; int a1 = i1*3; int a2 = i2*3;
-	int b0 = i0*9; int b1 = i1*9; int b2 = i2*9;
-	for (int j = 0; j < 3; j++) {
-	int j0 = j; int j1 = (j+1)%3; int j2 = (j+2)%3;
-	int c0 = b2+j0; int c1 = b2+j1; int c2 = b2+j2;
-	if (!pierceVector(&pierce0[0],&corner[b1],&normal[a1],&corner[c0],&corner[c1])) continue;
-	if (!pierceVector(&pierce1[0],&corner[b1],&normal[a1],&corner[c0],&corner[c2])) continue;
-	if (pierceVector(point,&corner[b0],&normal[a0],&pierce0[0],&pierce1[0])) return 1;}}
-	return 0;
 }
 
 void modelFunc(struct Array *range)

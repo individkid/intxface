@@ -165,57 +165,6 @@ void composeMatrix(float *result)
 	default: ERROR(huberr,-1);}
 }
 
-void constructVector(float *point, float *plane, int versor, float *basis)
-{
-	for (int i = 0; i < 3; i++)
-	for (int j = 0; j < 3; j++)
-	point[i*3+j] = basis[versor*9+i*3+j];
-	for (int i = 0; i < 3; i++)
-	point[i*3+versor] = plane[i];
-}
-
-void transformVector(float *point, float *matrix)
-{
-	jumpmat(point,matrix,3);
-}
-
-void normalVector(float *normal, float *point)
-{
-	float neg[3];
-	float leg0[3];
-	float leg1[3];
-	scalevec(copyvec(neg,point,3),-1.0,3);
-	plusvec(copyvec(leg0,point+3,3),neg,3);
-	plusvec(copyvec(leg1,point+6,3),neg,3);
-	normvec(crossvec(copyvec(normal,leg0,3),leg1),3);
-}
-
-int solveVector(float *pierce, float *point, float *normal, float *feather)
-{
-	// point+(feather-point-normal/((feather-point)*normal))
-	plusvec(scalevec(copyvec(pierce,point,3),-1.0,3),feather,3);
-	float denom = dotvec(pierce,normal,3);
-	if (fabs(denom) < 1.0 && 1.0 > fabs(INVALID*denom)) return 0;
-	float delta[3]; scalevec(copyvec(delta,normal,3),-1.0/denom,3);
-	plusvec(plusvec(pierce,delta,3),point,3);
-	return 1;
-}
-
-int pierceVector(float *pierce, float *point, float *normal, float *point0, float *point1)
-{
-	// feather+(arrow-feather)*z(arrow-p(arrow))/(z(arrow-p(arrow))+z(feather-p(feather)))
-	float solve0[3]; if (!solveVector(solve0,point,normal,point0)) return 0;
-	float solve1[3]; if (!solveVector(solve1,point,normal,point1)) return 0;
-	float diff0 = solve0[2]-point0[2];
-	float diff1 = solve1[2]-point1[2];
-	float denom = diff0-diff1;
-	float ratio;
-	if (fabs(denom) < 1.0 && fabs(diff0) > fabs(INVALID*denom)) return 0;
-	else ratio = diff0/denom;
-	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,point0,3),-1.0,3),point1,3),ratio,3),point0,3);
-	return 1;
-}
-
 void calculateGlobal()
 {
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;

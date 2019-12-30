@@ -51,6 +51,78 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
+void constructVector(float *point, float *plane, int versor, float *basis)
+{
+	for (int i = 0; i < 3; i++)
+	for (int j = 0; j < 3; j++)
+	point[i*3+j] = basis[versor*9+i*3+j];
+	for (int i = 0; i < 3; i++)
+	point[i*3+versor] = plane[i];
+}
+
+void transformVector(float *point, float *matrix)
+{
+	jumpmat(point,matrix,3);
+}
+
+void normalVector(float *normal, float *point)
+{
+	float neg[3];
+	float leg0[3];
+	float leg1[3];
+	scalevec(copyvec(neg,point,3),-1.0,3);
+	plusvec(copyvec(leg0,point+3,3),neg,3);
+	plusvec(copyvec(leg1,point+6,3),neg,3);
+	normvec(crossvec(copyvec(normal,leg0,3),leg1),3);
+}
+
+int solveVector(float *pierce, float *point, float *normal, float *feather)
+{
+	// point+(feather-point-normal/((feather-point)*normal))
+	plusvec(scalevec(copyvec(pierce,point,3),-1.0,3),feather,3);
+	float denom = dotvec(pierce,normal,3);
+	if (fabs(denom) < 1.0 && 1.0 > fabs(INVALID*denom)) return 0;
+	float delta[3]; scalevec(copyvec(delta,normal,3),-1.0/denom,3);
+	plusvec(plusvec(pierce,delta,3),point,3);
+	return 1;
+}
+
+int pierceVector(float *pierce, float *point, float *normal, float *point0, float *point1)
+{
+	// feather+(arrow-feather)*z(arrow-p(arrow))/(z(arrow-p(arrow))+z(feather-p(feather)))
+	float solve0[3]; if (!solveVector(solve0,point,normal,point0)) return 0;
+	float solve1[3]; if (!solveVector(solve1,point,normal,point1)) return 0;
+	float diff0 = solve0[2]-point0[2];
+	float diff1 = solve1[2]-point1[2];
+	float denom = diff0-diff1;
+	float ratio;
+	if (fabs(denom) < 1.0 && fabs(diff0) > fabs(INVALID*denom)) return 0;
+	else ratio = diff0/denom;
+	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,point0,3),-1.0,3),point1,3),ratio,3),point0,3);
+	return 1;
+}
+
+int intersectVector(float *point, float *plane, int *versor, float *basis)
+{
+	float corner[27];
+	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
+	float normal[9];
+	for (int i = 0; i < 3; i++) normalVector(&normal[i*3],&corner[i*9]);
+	float pierce0[3];
+	float pierce1[3];
+	for (int i = 0; i < 3; i++) {
+	int i0 = i; int i1 = (i+1)%3; int i2 = (i+2)%3;
+	int a0 = i0*3; int a1 = i1*3; int a2 = i2*3;
+	int b0 = i0*9; int b1 = i1*9; int b2 = i2*9;
+	for (int j = 0; j < 3; j++) {
+	int j0 = j; int j1 = (j+1)%3; int j2 = (j+2)%3;
+	int c0 = b2+j0; int c1 = b2+j1; int c2 = b2+j2;
+	if (!pierceVector(&pierce0[0],&corner[b1],&normal[a1],&corner[c0],&corner[c1])) continue;
+	if (!pierceVector(&pierce1[0],&corner[b1],&normal[a1],&corner[c0],&corner[c2])) continue;
+	if (pierceVector(point,&corner[b0],&normal[a0],&pierce0[0],&pierce1[0])) return 1;}}
+	return 0;
+}
+
 int callread(int argc)
 {
 	int res = 0;
