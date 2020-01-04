@@ -610,6 +610,7 @@ void nokey(int key)
 
 void nomove(double xpos, double ypos)
 {
+	xmove = xpos; ymove = ypos;
 	printf("GLFW move %f %f\n",xpos,ypos);
 }
 
@@ -618,9 +619,12 @@ void noroll(double xoffset, double yoffset)
 	printf("GLFW roll %f %f\n",xoffset,yoffset);
 }
 
+double novec[2];
 void noclick(int isright)
 {
 	printf("GLFW click %d\n",isright);
+	if (isright) windowWarp(novec[0],novec[1]);
+	else novec[0] = xmove; novec[1] = ymove;
 }
 
 int main(int argc, char **argv)
