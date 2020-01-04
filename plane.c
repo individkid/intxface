@@ -593,13 +593,11 @@ int nofalse()
 
 void nopos(int *xloc, int *yloc)
 {
-	printf("GLFW pos\n");
     *xloc = *yloc = 0;
 }
 
 void nosize(int *width, int *height)
 {
-	printf("GLFW size\n");
 	*width = *height = 0;
 }
 
@@ -611,7 +609,6 @@ void nokey(int key)
 void nomove(double xpos, double ypos)
 {
 	xmove = xpos; ymove = ypos;
-	printf("GLFW move %f %f\n",xpos,ypos);
 }
 
 void noroll(double xoffset, double yoffset)
@@ -622,9 +619,17 @@ void noroll(double xoffset, double yoffset)
 double novec[2];
 void noclick(int isright)
 {
-	printf("GLFW click %d\n",isright);
-	if (isright) windowWarp(novec[0],novec[1]);
-	else novec[0] = xmove; novec[1] = ymove;
+	if (isright) {
+	int xpos, ypos;
+	cb.pos(&xpos,&ypos);
+	windowWarp(novec[0],novec[1]);
+	printf("GLFW right (%d,%d) (%f,%f) (%f,%f)\n",xpos,ypos,xmove,ymove,novec[0],novec[1]);
+	} else {
+	int xpos, ypos;
+	cb.pos(&xpos,&ypos);
+	novec[0] = xmove; novec[1] = ymove;
+	printf("GLFW left (%d,%d) (%f,%f)\n",xpos,ypos,xmove,ymove);
+	}
 }
 
 int main(int argc, char **argv)
@@ -632,13 +637,14 @@ int main(int argc, char **argv)
 	struct ttysize ts;
 	ioctl(0, TIOCGSIZE, &ts);
 	printf("uint32_t(%d) int(%d) GL_INT(%d) float(%d) GL_FLOAT(%d) lines(%d) columns(%d)\n",
-	(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT),(int)sizeof(float),(int)sizeof(GL_FLOAT),
+	(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT),
+	(int)sizeof(float),(int)sizeof(GL_FLOAT),
 	ts.ts_lines,ts.ts_cols);
 
 	cb.err = exiterr;
 	cb.pos = nopos;
 	cb.size = nosize;
-	cb.key = nokey;
+	cb.key = windowKey;
 	cb.move = (argc == 4 ? windowMove : nomove);
 	cb.roll = (argc == 4 ? windowRoll : noroll);
 	cb.click = (argc == 4 ? windowClick : noclick);
