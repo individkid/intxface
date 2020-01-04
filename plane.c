@@ -500,19 +500,8 @@ void windowWarp(double xpos, double ypos)
     CGWarpMouseCursorPosition(point);
 }
 
-void windowPos(int *xloc, int *yloc)
-{
-    *xloc = *yloc = 0;
-}
-
-void windowSize(int *width, int *height)
-{
-	*width = *height = 0;
-}
-
 void windowKey(int key)
 {
-	printf("GLFW key %d\n",key);
 	if (key == 256) {if (esc == 0) esc = 1;}
 	else if (key == 257) {if (esc == 1) esc = 2;}
 	else esc = 0;
@@ -593,13 +582,45 @@ void windowClick(int isright)
 	writeClient(&client,tub);
 }
 
-void nocall()
+void novoid()
 {
 }
 
-int callfalse()
+int nofalse()
 {
 	return 0;
+}
+
+void nopos(int *xloc, int *yloc)
+{
+	printf("GLFW pos\n");
+    *xloc = *yloc = 0;
+}
+
+void nosize(int *width, int *height)
+{
+	printf("GLFW size\n");
+	*width = *height = 0;
+}
+
+void nokey(int key)
+{
+	printf("GLFW key %d\n",key);
+}
+
+void nomove(double xpos, double ypos)
+{
+	printf("GLFW move %f %f\n",xpos,ypos);
+}
+
+void noroll(double xoffset, double yoffset)
+{
+	printf("GLFW roll %f %f\n",xoffset,yoffset);
+}
+
+void noclick(int isright)
+{
+	printf("GLFW click %d\n",isright);
 }
 
 int main(int argc, char **argv)
@@ -611,20 +632,20 @@ int main(int argc, char **argv)
 	ts.ts_lines,ts.ts_cols);
 
 	cb.err = exiterr;
-	cb.pos = windowPos;
-	cb.size = windowSize;
-	cb.key = windowKey;
-	cb.move = windowMove;
-	cb.roll = windowRoll;
-	cb.click = windowClick;
-	cb.full = callfalse;
-	cb.read = (argc == 4 ? callread : callfalse);
+	cb.pos = nopos;
+	cb.size = nosize;
+	cb.key = nokey;
+	cb.move = (argc == 4 ? windowMove : nomove);
+	cb.roll = (argc == 4 ? windowRoll : noroll);
+	cb.click = (argc == 4 ? windowClick : noclick);
+	cb.full = nofalse;
+	cb.read = (argc == 4 ? callread : nofalse);
 	cb.proc = process;
-	cb.draw = nocall;
+	cb.draw = novoid;
 	cb.prod = produce;
-	cb.call = nocall;
-	cb.swap = nocall;
-	cb.done = nocall;
+	cb.call = novoid;
+	cb.swap = novoid;
+	cb.done = novoid;
 
 	if (argc == 4) {sub = -1;
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
@@ -634,16 +655,18 @@ int main(int argc, char **argv)
 	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
 	if (pthread_create(&pthread,0,thread,0) != 0) ERROR(exiterr,-1);}
 
-	if (metalInit(argc,argv) ||
-	(displayInit(argc,argv) &&
-	(vulkanInit() ||
+	displayInit(argc,argv);
+	if (metalInit() ||
+	vulkanInit() ||
 	openglInit() ||
-	modelInit()))) {
+	modelInit()) {
 	if (argc == 4) {
 	bothJump(cb.err,hub);
 	bothJump(cb.err,zub);
 	bothJump(cb.err,tub);}
 	cb.call();}
+	cb.done();
+	displayDone();
 
 	if (argc == 4) {writeInt(1,zub);
 	if (pthread_join(pthread,0) != 0) ERROR(exiterr,-1);

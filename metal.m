@@ -17,42 +17,100 @@
 
 #include "plane.h"
 #import <Metal/Metal.h>
-#import <MetalKit/MetalKit.h>
-#import <Foundation/Foundation.h>
+#import <QuartzCore/QuartzCore.h>
 
-id<MTLDevice> device = 0;
-MTKView *view = 0;
+id <MTLDevice> device = 0;
+id <MTLCommandQueue> cmdque = 0;
+NSWindow *nswin = 0;
+CAMetalLayer *layer = 0;
+MTLRenderPassDescriptor *pass = 0;
 
-void metalErr(const char *str, int num, int arg)
+void metalDma()
 {
+	switch (client->mem) {
+	case (Corner): /*TODO*/ break;
+	case (Triangle): /*TODO*/ break;
+	case (Range): ERROR(cb.err,-1);
+	case (Basis): /*TODO*/ break;
+	case (Subject): /*TODO*/ break;
+	case (Object): /*TODO*/ break;
+	case (Feature): /*TODO*/ break;
+	case (Feather): /*TODO*/ break;
+	case (Arrow): /*TODO*/ break;
+	case (Cloud): /*TODO*/ break;
+	case (Hand): /*TODO*/ break;
+	case (Tag): /*TODO*/ break;
+	case (Face): ERROR(cb.err,-1);
+	case (User): ERROR(cb.err,-1);
+	default: ERROR(exiterr,-1);}
 }
 
-void metalPos(int *xloc, int *yloc)
+void metalGet()
 {
-	// TODO get window position
+	/*TODO*/
 }
 
-void metalSize(int *width, int *height)
+void metalFunc()
 {
-	// TODO get window size
+	/*TODO*/
 }
 
-void metalCall()
+int metalFull()
 {
-	// TODO call appDelegate run
-	cb.done();
-	// TODO release pointers
-}
-
-int metalInit(int argc, char **argv)
-{
+	if (client)
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Rmw0): break;
+	case (Rmw1): break;
+	case (Rmw2): break;
+	case (Copy): break;
+	case (Save): break;
+	case (Dma0): break;
+	case (Dma1): break;
+	case (Draw): /*TODO*/ break;
+	case (Port): break;
+	default: ERROR(cb.err,-1);}
 	return 0;
-	cb.err = metalErr;
-	cb.pos = metalPos;
-	cb.size = metalSize;
-	cb.call = metalCall;
-	int width, height;
-	cb.size(&width,&height);
-	device = MTLCreateSystemDefaultDevice();
-	view = [[MTKView alloc] initWithFrame: CGRectMake(0,0,width,height) device:device];
+}
+
+void metalDraw()
+{
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Rmw0): break;
+	case (Rmw1): break;
+	case (Rmw2): break;
+	case (Copy): break;
+	case (Save): break;
+	case (Dma0): metalDma(); break;
+	case (Dma1): metalGet(); break;
+	case (Draw): metalFunc(); break;
+	case (Port): break;
+	default: ERROR(exiterr,-1);}
+}
+
+void metalDone()
+{
+	[pass release];
+	[layer release];
+	// [nswin release];
+	[cmdque release];
+	[device release];
+}
+
+int metalInit()
+{
+	cb.full = metalFull;
+	cb.draw = metalDraw;
+	cb.done = metalDone;
+	device = MTLCreateSystemDefaultDevice();;
+	cmdque = [device newCommandQueue];
+	nswin = glfwGetCocoaWindow(window);
+	layer = [CAMetalLayer layer];
+	layer.device = device;
+	layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+	nswin.contentView.layer = layer;
+	nswin.contentView.wantsLayer = YES;
+	pass = [MTLRenderPassDescriptor new];
+	return 1;
 }

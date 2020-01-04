@@ -71,7 +71,10 @@ void displayCall()
 	glfwPollEvents();
 	continue;}
 	glfwWaitEvents();}
-	cb.done();
+}
+
+void displayDone()
+{
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }

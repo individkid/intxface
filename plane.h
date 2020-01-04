@@ -16,7 +16,9 @@
 */
 
 #define GL_SILENCE_DEPRECATION
+#define GLFW_EXPOSE_NATIVE_COCOA
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 #include "face.h"
 #include "base.h"
 #include "type.h"
@@ -45,10 +47,12 @@ extern struct Client *client;
 extern struct Client *state[Memorys];
 extern void *refer[Memorys];
 extern struct Callback cb;
+extern struct GLFWwindow* window;
 
 void exiterr(const char *str, int num, int arg);
 int displayInit(int argc, char **argv);
-int metalInit(int argc, char **argv);
+void displayDone();
+int metalInit();
 int vulkanInit();
 int openglInit();
 int modelInit();
