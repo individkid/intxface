@@ -484,6 +484,7 @@ void *thread(void *arg)
 	int gon = 1;
 	while (gon) {
 	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
+	printf("thread(%d) hub(%d) tub(%d) zub(%d)\n",tmp,hub,tub,zub);
 	if (tmp == zub) gon = 0; else if (tmp >= 0) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
 	sub = tmp; vld = 1; glfwPostEmptyEvent();
@@ -623,13 +624,12 @@ void noclick(int isright)
 	int xpos, ypos;
 	cb.pos(&xpos,&ypos);
 	windowWarp(novec[0],novec[1]);
-	printf("GLFW right (%d,%d) (%f,%f) (%f,%f)\n",xpos,ypos,xmove,ymove,novec[0],novec[1]);
-	} else {
+	printf("GLFW right (%d,%d) (%f,%f) (%f,%f)\n",xpos,ypos,xmove,ymove,novec[0],novec[1]);}
+	if (!isright) {
 	int xpos, ypos;
 	cb.pos(&xpos,&ypos);
 	novec[0] = xmove; novec[1] = ymove;
-	printf("GLFW left (%d,%d) (%f,%f)\n",xpos,ypos,xmove,ymove);
-	}
+	printf("GLFW left (%d,%d) (%f,%f)\n",xpos,ypos,xmove,ymove);}
 }
 
 int main(int argc, char **argv)
@@ -657,13 +657,13 @@ int main(int argc, char **argv)
 	cb.swap = novoid;
 	cb.done = novoid;
 
-	if (argc == 4) {sub = -1;
-	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
+	if (argc == 4) {
+	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);}
 	if ((zub = openPipe()) < 0) ERROR(exiterr,-1);
 	if ((tub = openPipe()) < 0) ERROR(exiterr,-1);
 	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
 	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
-	if (pthread_create(&pthread,0,thread,0) != 0) ERROR(exiterr,-1);}
+	if (pthread_create(&pthread,0,thread,0) != 0) ERROR(exiterr,-1);
 
 	displayInit(argc,argv);
 	if (metalInit() ||
@@ -671,17 +671,17 @@ int main(int argc, char **argv)
 	openglInit() ||
 	modelInit()) {
 	if (argc == 4) {
-	bothJump(cb.err,hub);
+	bothJump(cb.err,hub);}
 	bothJump(cb.err,zub);
-	bothJump(cb.err,tub);}
+	bothJump(cb.err,tub);
 	cb.call();}
 	cb.done();
 	displayDone();
 
-	if (argc == 4) {writeInt(1,zub);
+	writeInt(1,zub);
 	if (pthread_join(pthread,0) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_destroy(&mutex) != 0) ERROR(exiterr,-1);
-	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);}
+	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);
 
 	return 0;
 }
