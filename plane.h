@@ -15,10 +15,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define GL_SILENCE_DEPRECATION
-#define GLFW_EXPOSE_NATIVE_COCOA
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
 #include "face.h"
 #include "base.h"
 #include "type.h"
@@ -39,15 +35,15 @@ struct Callback {
 	void (*prod)();
 	void (*call)();
 	void (*swap)();
+	void (*wake)();
 	void (*done)();
+	int esc;
+	struct Client *client;
+	struct Client *state[Memorys];
+	void *refer[Memorys];
 };
 
-extern int esc;
-extern struct Client *client;
-extern struct Client *state[Memorys];
-extern void *refer[Memorys];
 extern struct Callback cb;
-extern struct GLFWwindow* window;
 
 void exiterr(const char *str, int num, int arg);
 int displayInit(int argc, char **argv);

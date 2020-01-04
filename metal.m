@@ -15,19 +15,24 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "plane.h"
+#define GLFW_INCLUDE_NONE
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
+#include "plane.h"
 
 id <MTLDevice> device = 0;
 id <MTLCommandQueue> cmdque = 0;
 NSWindow *nswin = 0;
 CAMetalLayer *layer = 0;
 MTLRenderPassDescriptor *pass = 0;
+extern struct GLFWwindow* window;
 
 void metalDma()
 {
-	switch (client->mem) {
+	switch (cb.client->mem) {
 	case (Corner): /*TODO*/ break;
 	case (Triangle): /*TODO*/ break;
 	case (Range): ERROR(cb.err,-1);
@@ -57,9 +62,9 @@ void metalFunc()
 
 int metalFull()
 {
-	if (client)
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
+	if (cb.client)
+	for (int i = 0; i < cb.client->len; i++)
+	switch (cb.client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
 	case (Rmw2): break;
@@ -75,8 +80,8 @@ int metalFull()
 
 void metalDraw()
 {
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
+	for (int i = 0; i < cb.client->len; i++)
+	switch (cb.client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
 	case (Rmw2): break;

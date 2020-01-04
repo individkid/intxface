@@ -15,7 +15,9 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define GL_SILENCE_DEPRECATION
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include "plane.h"
 
 #define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
@@ -90,19 +92,19 @@ void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **
 
 void openglDma()
 {
-	switch (client->mem) {
-	case (Corner): openglBuffer(client->idx,client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[head][Corner],&refer[Corner],vertexId,GL_ARRAY_BUFFER); break;
-	case (Triangle): openglBuffer(client->idx,client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[head][Triangle],&refer[Triangle],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
+	switch (cb.client->mem) {
+	case (Corner): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[head][Corner],&cb.refer[Corner],vertexId,GL_ARRAY_BUFFER); break;
+	case (Triangle): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[head][Triangle],&cb.refer[Triangle],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
 	case (Range): ERROR(cb.err,-1);
-	case (Basis): openglBuffer(client->idx,client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&refer[Basis],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&refer[Subject],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Object): openglBuffer(client->idx,client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&refer[Object],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Feature): openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&refer[Feature],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&refer[Feather],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&refer[Arrow],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Hand): openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&refer[Hand],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Basis): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Object): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&cb.refer[Object],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Feature): openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&cb.refer[Feature],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&cb.refer[Feather],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&cb.refer[Arrow],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Cloud): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&cb.refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Hand): openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&cb.refer[Hand],uniformId,GL_UNIFORM_BUFFER); break;
+	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Face): ERROR(cb.err,-1);
 	case (User): ERROR(cb.err,-1);
 	default: ERROR(exiterr,-1);}
@@ -116,9 +118,9 @@ int openglFull()
 	glGetSynciv(fence[tail],GL_SYNC_STATUS,1,&len,&val);
 	if (val == GL_UNSIGNALED) break;
 	tail = (tail+1)%NUMCNTX;}
-	if (client)
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
+	if (cb.client)
+	for (int i = 0; i < cb.client->len; i++)
+	switch (cb.client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
 	case (Rmw2): break;
@@ -143,23 +145,23 @@ void openglGet()
 {
 	float color = 0.0;
 	glReadPixels(0,0,1,1,GL_RED,GL_FLOAT,&color);
-	state[Face]->face = color;
+	cb.state[Face]->face = color;
 }
 
 void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-	glUseProgram(programId[state[User]->user->shader]);
+	glUseProgram(programId[cb.state[User]->user->shader]);
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
-	for (int i = 0; i < state[Range]->siz; i++) {
-	void *buf = openglBuffed(state[Range]->range[i].idx,sizeof(struct Facet),0);
-	state[Tag]->tag = state[Range]->range[i].tag;
-	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
-	glDrawElements(GL_TRIANGLES,state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
+	for (int i = 0; i < cb.state[Range]->siz; i++) {
+	void *buf = openglBuffed(cb.state[Range]->range[i].idx,sizeof(struct Facet),0);
+	cb.state[Tag]->tag = cb.state[Range]->range[i].tag;
+	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
+	glDrawElements(GL_TRIANGLES,cb.state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
-	if (state[User]->user->shader == Display) cb.swap();
+	if (cb.state[User]->user->shader == Display) cb.swap();
 	head = (head + 1) % NUMCNTX;
 	while (pail[head] == pead[head]) {
 	openglPender(&pend[head][pead[head]]);
@@ -168,8 +170,8 @@ void openglFunc()
 
 void openglDraw()
 {
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
+	for (int i = 0; i < cb.client->len; i++)
+	switch (cb.client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
 	case (Rmw2): break;
@@ -200,6 +202,7 @@ GLuint openglLoad(const char *vs, const char *fs)
 
 int openglInit()
 {
+	printf("GL_INT(%d) GL_FLOAT(%d)\n",(int)sizeof(GL_INT),(int)sizeof(GL_FLOAT));
 	cb.full = openglFull;
 	cb.draw = openglDraw;
 	cb.done = openglDone;

@@ -15,6 +15,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 #include "plane.h"
 
 jmp_buf jmpbuf = {0};
@@ -58,9 +60,9 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 
 void displayCall()
 {
-	while (esc < 2 && !glfwWindowShouldClose(window))
+	while (cb.esc < 2 && !glfwWindowShouldClose(window))
 	if (setjmp(jmpbuf) == 0)
-	while(esc < 2 && !glfwWindowShouldClose(window)) {
+	while(cb.esc < 2 && !glfwWindowShouldClose(window)) {
 	if (cb.full()) {
 	glfwWaitEventsTimeout(1000.0*NANO2SEC);
 	continue;}
@@ -86,11 +88,13 @@ void displaySwap()
 
 int displayInit(int argc, char **argv)
 {
+	printf("uint32_t(%d) int(%d) float(%d)\n",(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(float));
 	cb.err = displayErr;
 	cb.pos = displayPos;
 	cb.size = displaySize;
 	cb.call = displayCall;
 	cb.swap = displaySwap;
+	cb.wake = glfwPostEmptyEvent;
 	glfwInit();
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);

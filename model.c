@@ -131,11 +131,11 @@ void modelFunc(struct Array *range)
 }
 
 #define INDEXED(ENUM,FIELD) \
-	if (client->mem == ENUM && accel[ENUM] && client->siz < accel[ENUM]->siz) \
-	memcpy(&accel[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
-	else allocClient(&accel[ENUM],0); accel[ENUM] = client;
+	if (cb.client->mem == ENUM && accel[ENUM] && cb.client->siz < accel[ENUM]->siz) \
+	memcpy(&accel[ENUM]->FIELD[cb.client->idx],cb.client->FIELD,cb.client->siz*sizeof(*cb.client->FIELD)); \
+	else allocClient(&accel[ENUM],0); accel[ENUM] = cb.client;
 #define UNDEXED(ENUM) \
-	allocClient(&accel[ENUM],0); accel[ENUM] = client;
+	allocClient(&accel[ENUM],0); accel[ENUM] = cb.client;
 void *model(void *arg)
 {
 	struct Client *client = 0;
@@ -172,10 +172,10 @@ void *model(void *arg)
 
 void modelWrite(enum Memory memory)
 {
-	if (state[memory]->len) {
-		allocFunction(&state[memory]->fnc,0);
-		state[memory]->len = 0;}
-	writeClient(state[memory],mub);
+	if (cb.state[memory]->len) {
+		allocFunction(&cb.state[memory]->fnc,0);
+		cb.state[memory]->len = 0;}
+	writeClient(cb.state[memory],mub);
 }
 
 void modelDraw()
@@ -184,14 +184,14 @@ void modelDraw()
 	while (pollPipe(mub)) {
 		struct Client temp;
 		readClient(&temp,mub);
-		if (temp.mem == Face && state[Face])
+		if (temp.mem == Face && cb.state[Face])
 			face = temp.face;}
-	for (int i = 0; i < client->len; i++) {
-		if (client->fnc[i] == Dma0)
-			modelWrite(client->mem);
-		if (client->fnc[i] == Dma1)
-			state[Face]->face = face;
-		if (client->fnc[i] == Draw)
+	for (int i = 0; i < cb.client->len; i++) {
+		if (cb.client->fnc[i] == Dma0)
+			modelWrite(cb.client->mem);
+		if (cb.client->fnc[i] == Dma1)
+			cb.state[Face]->face = face;
+		if (cb.client->fnc[i] == Draw)
 			modelWrite(Range);}
 }
 
@@ -206,6 +206,9 @@ void modelDone()
 int modelInit()
 {
 	return 0;
+	struct ttysize ts;
+	ioctl(0, TIOCGSIZE, &ts);
+	printf("lines(%d) columns(%d)\n",ts.ts_lines,ts.ts_cols);
 	cb.draw = modelDraw;
 	cb.done = modelDone;
 	ioctl(0, TIOCGSIZE, &ts); ts.ts_cols--; ts.ts_lines--;

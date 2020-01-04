@@ -17,7 +17,6 @@
 
 #include "plane.h"
 #include <pthread.h>
-#include <sys/ioctl.h>
 #include <CoreGraphics/CoreGraphics.h>
 
 int vld = 0;
@@ -25,14 +24,10 @@ int sub = 0;
 int hub = 0;
 int tub = 0;
 int zub = 0;
-int esc = 0;
 pthread_mutex_t mutex = {0};
 pthread_cond_t cond = {0};
 pthread_t pthread = {0};
-struct Client *client = 0;
-struct Client *state[Memorys] = {0};
 struct Client *saved[Memorys] = {0};
-void *refer[Memorys] = {0};
 struct Callback cb = {0};
 float xmove = 0.0;
 float ymove = 0.0;
@@ -46,7 +41,6 @@ int object = 0;
 
 void exiterr(const char *str, int num, int arg)
 {
-	glfwTerminate();
 	printf("exiterr (%s) (%d)\n",str,num); fflush(stdout);
 	exit(arg);
 }
@@ -192,7 +186,7 @@ void fixedMatrix(float *result, float *pierce)
 
 void offsetVector(float *result)
 {
-	struct Mode *user = state[User]->user;
+	struct Mode *user = cb.state[User]->user;
 	float cur[3]; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
 	float pix[3]; pix[2] = -1.0;
 	for (int i = 0; i < 2; i++) pix[i] = vector[i];
@@ -201,7 +195,7 @@ void offsetVector(float *result)
 
 void transformMatrix(float *result)
 {
-	struct Mode *user = state[User]->user;
+	struct Mode *user = cb.state[User]->user;
 	switch (user->move) {
 	case (Rotate): { // rotate about fixed pierce point
 	float vec[3]; offsetVector(vec);
@@ -228,7 +222,7 @@ void transformMatrix(float *result)
 void composeMatrix(float *result)
 {
 	float mat[16];
-	struct Mode *user = state[User]->user;
+	struct Mode *user = cb.state[User]->user;
 	switch (user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
 	angleMatrix(result,offset);
@@ -266,21 +260,21 @@ void composeMatrix(float *result)
 void calculateGlobal()
 {
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
-	int face = state[Face]->face;
-	int found = state[Range]->siz;
+	int face = cb.state[Face]->face;
+	int found = cb.state[Range]->siz;
 	for (int i = 0; i < found; i++) {
-	struct Array *range = state[Range]->range;
+	struct Array *range = cb.state[Range]->range;
 	if (face < range[i].idx+range[i].siz && range[i].idx <= face) found = i;}
 	float norvec[3];
 	float pievec[3];
-	if (found == state[Range]->siz) {
+	if (found == cb.state[Range]->siz) {
 	object = 0;
 	unitvec(norvec,3,2);
 	zerovec(pievec,3);} else {
-	int tag = state[Range]->range[found].tag;
-	struct Facet *facet = &state[Triangle]->triangle[face];
+	int tag = cb.state[Range]->range[found].tag;
+	struct Facet *facet = &cb.state[Triangle]->triangle[face];
 	struct Vertex *vertex[3];
-	for (int i = 0; i < 3; i++) vertex[i] = &state[Corner]->corner[facet->vtxid[i]];
+	for (int i = 0; i < 3; i++) vertex[i] = &cb.state[Corner]->corner[facet->vtxid[i]];
 	float plane[3];
 	int versor;
 	int done = 0;
@@ -294,17 +288,17 @@ void calculateGlobal()
 	done++;}
 	if (done != 3) ERROR(cb.err,-1);
 	float point[3][3];
-	constructVector(&point[0][0],&plane[0],versor,&state[Basis]->basis[0].val[0][0]);
+	constructVector(&point[0][0],&plane[0],versor,&cb.state[Basis]->basis[0].val[0][0]);
 	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Subject]->subject->val[0][0]);
+	transformVector(&point[i][0],&cb.state[Subject]->subject->val[0][0]);
 	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Object]->object[object].val[0][0]);
-	if (face==state[Hand]->hand)
+	transformVector(&point[i][0],&cb.state[Object]->object[object].val[0][0]);
+	if (face==cb.state[Hand]->hand)
 	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
+	transformVector(&point[i][0],&cb.state[Feature]->feature->val[0][0]);
 	normalVector(norvec,&point[0][0]);
-	float other[3]; plusvec(copyvec(other,&state[Feather]->feather->val[0],3),&state[Arrow]->arrow->val[0],3);
-	pierceVector(pievec,&point[0][0],norvec,&state[Feather]->feather->val[0],other);}
+	float other[3]; plusvec(copyvec(other,&cb.state[Feather]->feather->val[0],3),&cb.state[Arrow]->arrow->val[0],3);
+	pierceVector(pievec,&point[0][0],norvec,&cb.state[Feather]->feather->val[0],other);}
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
@@ -313,24 +307,24 @@ void calculateGlobal()
 
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
 {
-	switch (state[User]->user->matrix) {
-	case (Global): client->subject = affine; client->idx = 0; return Subject;
-	case (Several): client->object = affine; client->idx = object; return Object;
-	case (Single): client->feature = affine; client->idx = 0; return Feature;
+	switch (cb.state[User]->user->matrix) {
+	case (Global): cb.client->subject = affine; cb.client->idx = 0; return Subject;
+	case (Several): cb.client->object = affine; cb.client->idx = object; return Object;
+	case (Single): cb.client->feature = affine; cb.client->idx = 0; return Feature;
 	default: ERROR(cb.err,-1);}
 	return Memorys;
 }
 
 #define REJECT(MEM,FIELD,IDX) \
 	mem = MEM; \
-	client->idx = IDX; \
-	src = &state[MEM]->FIELD[client->idx]; \
-	client->FIELD = affine;
+	cb.client->idx = IDX; \
+	src = &cb.state[MEM]->FIELD[cb.client->idx]; \
+	cb.client->FIELD = affine;
 enum Memory copyAffine(struct Client *client, struct Affine *affine)
 {
 	struct Affine *src;
 	enum Memory mem;
-	switch (state[User]->user->matrix) {
+	switch (cb.state[User]->user->matrix) {
 	case (Global): REJECT(Subject,subject,0); break;
 	case (Several): REJECT(Object,object,object); break;
 	case (Single): REJECT(Feature,feature,0); break;
@@ -341,8 +335,8 @@ enum Memory copyAffine(struct Client *client, struct Affine *affine)
 
 enum Memory copyUser(struct Client *client, struct Mode *user)
 {
-	struct Mode *src = state[User]->user;
-	client->user = user;
+	struct Mode *src = cb.state[User]->user;
+	cb.client->user = user;
 	memcpy(user,src,sizeof(struct Mode));
 	return User;
 }
@@ -351,7 +345,7 @@ int callread()
 {
 	int res = 0;
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (vld) {readClient(client,sub); vld = 0; res = 1;
+	if (vld) {readClient(cb.client,sub); vld = 0; res = 1;
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
 	return res;
@@ -359,20 +353,20 @@ int callread()
 
 float *clientMat(struct Client *client, int idx)
 {
-	switch (client->mem) {
-	case (Subject): return &state[Subject]->subject[0].val[0][0];
-	case (Object): return &state[Object]->object[idx].val[0][0];
-	case (Feature): return &state[Feature]->feature[0].val[0][0];
+	switch (cb.client->mem) {
+	case (Subject): return &cb.state[Subject]->subject[0].val[0][0];
+	case (Object): return &cb.state[Object]->object[idx].val[0][0];
+	case (Feature): return &cb.state[Feature]->feature[0].val[0][0];
 	default: ERROR(exiterr,-1);}
 	return 0;
 }
 
 void clientRmw0()
 {
-	// state[idx] = client[0]*saved[idx]
-	float *stat = clientMat(state[client->mem],client->idx);
-	float *save = clientMat(saved[client->mem],client->idx);
-	float *give = clientMat(client,0);
+	// cb.state[idx] = client[0]*saved[idx]
+	float *stat = clientMat(cb.state[cb.client->mem],cb.client->idx);
+	float *save = clientMat(saved[cb.client->mem],cb.client->idx);
+	float *give = clientMat(cb.client,0);
 	copymat(stat,timesmat(save,give,4),4);
 }
 
@@ -383,12 +377,12 @@ void clientRmw1()
 	// B = A/C
 	// A' = (A/C)*C'
 	// saved[idx] = 1/saved[idx]
-	// state[idx] = state[idx]*saved[idx]
+	// cb.state[idx] = cb.state[idx]*saved[idx]
 	// saved[idx] = client[0]
-	// state[idx] = state[idx]*client[0]
-	float *save = clientMat(saved[client->mem],client->idx); invmat(save,4);
-	float *stat = clientMat(state[client->mem],client->idx); timesmat(stat,save,4);
-	float *give = clientMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
+	// cb.state[idx] = cb.state[idx]*client[0]
+	float *save = clientMat(saved[cb.client->mem],cb.client->idx); invmat(save,4);
+	float *stat = clientMat(cb.state[cb.client->mem],cb.client->idx); timesmat(stat,save,4);
+	float *give = clientMat(cb.client,0); copymat(save,give,4); timesmat(stat,give,4);
 }
 
 void clientRmw2()
@@ -404,16 +398,16 @@ void clientRmw2()
 	// C = saved[idx]
 	// B = client[1]
 	// B' = client[0]
-	float *save = clientMat(saved[client->mem],client->idx);
-	float *give0 = clientMat(client,0);
-	float *give1 = clientMat(client,1);
+	float *save = clientMat(saved[cb.client->mem],cb.client->idx);
+	float *give0 = clientMat(cb.client,0);
+	float *give1 = clientMat(cb.client,1);
 	float inv[16]; invmat(copymat(inv,give0,4),4);
 	jumpmat(jumpmat(save,inv,4),give1,4);
 }
 
 #define INDEXED(ENUM,FIELD) \
-	if (client->mem == ENUM && ptr[client->mem] && client->siz < ptr[client->mem]->siz) \
-	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
+	if (cb.client->mem == ENUM && ptr[cb.client->mem] && cb.client->siz < ptr[cb.client->mem]->siz) \
+	{memcpy(&ptr[ENUM]->FIELD[cb.client->idx],cb.client->FIELD,cb.client->siz*sizeof(*cb.client->FIELD)); return;}
 void clientCopy(struct Client **ptr)
 {
 	INDEXED(Corner,corner);
@@ -422,34 +416,34 @@ void clientCopy(struct Client **ptr)
 	INDEXED(Basis,basis);
 	INDEXED(Object,object);
 	INDEXED(Cloud,cloud);
-	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
+	allocClient(&ptr[cb.client->mem],0); ptr[cb.client->mem] = cb.client;
 }
 
 void clientRefer()
 {
-	switch (client->mem) {
-	case (Corner): refer[Corner] = &state[Corner]->corner[0];
-	case (Triangle): refer[Triangle] = &state[Triangle]->triangle[0];
-	case (Basis): refer[Basis] = &state[Basis]->basis[0];
-	case (Subject): refer[Subject] = &state[Subject]->subject[0];
-	case (Object): refer[Object] = &state[Object]->object[0];
-	case (Feature): refer[Feature] = &state[Feature]->feature[0];
-	case (Feather): refer[Feather] = &state[Feather]->feather[0];
-	case (Arrow): refer[Arrow] = &state[Arrow]->arrow[0];
-	case (Cloud): refer[Cloud] = &state[Cloud]->cloud[0];
-	case (Hand): refer[Hand] = &state[Hand]->face;
-	case (Tag): refer[Tag] = &state[Tag]->tag;
+	switch (cb.client->mem) {
+	case (Corner): cb.refer[Corner] = &cb.state[Corner]->corner[0];
+	case (Triangle): cb.refer[Triangle] = &cb.state[Triangle]->triangle[0];
+	case (Basis): cb.refer[Basis] = &cb.state[Basis]->basis[0];
+	case (Subject): cb.refer[Subject] = &cb.state[Subject]->subject[0];
+	case (Object): cb.refer[Object] = &cb.state[Object]->object[0];
+	case (Feature): cb.refer[Feature] = &cb.state[Feature]->feature[0];
+	case (Feather): cb.refer[Feather] = &cb.state[Feather]->feather[0];
+	case (Arrow): cb.refer[Arrow] = &cb.state[Arrow]->arrow[0];
+	case (Cloud): cb.refer[Cloud] = &cb.state[Cloud]->cloud[0];
+	case (Hand): cb.refer[Hand] = &cb.state[Hand]->face;
+	case (Tag): cb.refer[Tag] = &cb.state[Tag]->tag;
 	default: break;}
 }
 
 void process()
 {
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
+	for (int i = 0; i < cb.client->len; i++)
+	switch (cb.client->fnc[i]) {
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
 	case (Rmw2): clientRmw2(); break;
-	case (Copy): clientCopy(state); clientRefer(); break;
+	case (Copy): clientCopy(cb.state); clientRefer(); break;
 	case (Save): clientCopy(saved); break;
 	case (Dma0): break;
 	case (Dma1): break;
@@ -460,8 +454,8 @@ void process()
 
 void produce()
 {
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
+	for (int i = 0; i < cb.client->len; i++)
+	switch (cb.client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
 	case (Copy): break;
@@ -472,7 +466,7 @@ void produce()
 	case (Port): {
 	struct Metric metric = {0};
 	metric.src = Plane;
-	metric.plane = state[client->mem];
+	metric.plane = cb.state[cb.client->mem];
 	writeMetric(&metric,hub);
 	break;}
 	default: ERROR(exiterr,-1);}
@@ -487,7 +481,7 @@ void *thread(void *arg)
 	printf("thread(%d) hub(%d) tub(%d) zub(%d)\n",tmp,hub,tub,zub);
 	if (tmp == zub) gon = 0; else if (tmp >= 0) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	sub = tmp; vld = 1; glfwPostEmptyEvent();
+	sub = tmp; vld = 1; cb.wake();
 	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
 	return 0;
@@ -503,16 +497,16 @@ void windowWarp(double xpos, double ypos)
 
 void windowKey(int key)
 {
-	if (key == 256) {if (esc == 0) esc = 1;}
-	else if (key == 257) {if (esc == 1) esc = 2;}
-	else esc = 0;
+	if (key == 256) {if (cb.esc == 0) cb.esc = 1;}
+	else if (key == 257) {if (cb.esc == 1) cb.esc = 2;}
+	else cb.esc = 0;
 }
 
 void windowMove(double xpos, double ypos)
 {
 	xmove = xpos; ymove = ypos;
-	if (state[User] == 0) ERROR(cb.err,-1);
-	struct Mode *user = state[User]->user;
+	if (cb.state[User] == 0) ERROR(cb.err,-1);
+	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -538,8 +532,8 @@ void windowMove(double xpos, double ypos)
 void windowRoll(double xoffset, double yoffset)
 {
 	offset += yoffset*ANGLE;
-	if (state[User] == 0) ERROR(cb.err,-1);
-	struct Mode *user = state[User]->user;
+	if (cb.state[User] == 0) ERROR(cb.err,-1);
+	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -634,13 +628,6 @@ void noclick(int isright)
 
 int main(int argc, char **argv)
 {
-	struct ttysize ts;
-	ioctl(0, TIOCGSIZE, &ts);
-	printf("uint32_t(%d) int(%d) GL_INT(%d) float(%d) GL_FLOAT(%d) lines(%d) columns(%d)\n",
-	(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(GL_INT),
-	(int)sizeof(float),(int)sizeof(GL_FLOAT),
-	ts.ts_lines,ts.ts_cols);
-
 	cb.err = exiterr;
 	cb.pos = nopos;
 	cb.size = nosize;
@@ -655,6 +642,7 @@ int main(int argc, char **argv)
 	cb.prod = produce;
 	cb.call = novoid;
 	cb.swap = novoid;
+	cb.wake = novoid;
 	cb.done = novoid;
 
 	if (argc == 4) {
