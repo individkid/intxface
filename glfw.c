@@ -16,332 +16,78 @@
 */
 
 #include "plane.h"
-#include <CoreGraphics/CoreGraphics.h>
 
-float xmove = 0.0;
-float ymove = 0.0;
-float offset = 0.0;
-int toggle = 0;
-float vector[3] = {0};
-float matrix[16] = {0};
-float piemat[16] = {0};
-float normat[16] = {0};
-int object = 0;
+jmp_buf jmpbuf = {0};
+struct GLFWwindow* window = 0;
 
-void longitudeMatrix(float *result, float *vector)
+void displayErr(const char *str, int num, int arg)
 {
-	float vec[2];
-	identmat(result,4);
-	if (!normvec(copyvec(vec,vector,2),2)) return;
-	result[0*4+0] = vec[1];
-	result[0*4+1] = vec[0];
-	result[1*4+0] = -vec[0];
-	result[1*4+1] = vec[1];
+	longjmp(jmpbuf,1);
 }
 
-void latitudeMatrix(float *result, float *vector)
+void displayPos(int *xloc, int *yloc)
 {
-	float vec[2]; copyvec(vec,vector,2);
-	vec[0] = sqrtf(dotvec(vec,vec,2)); vec[1] = vector[2];
-	identmat(result,4);
-	if (!normvec(vec,2)) return;
-	result[0*4+0] = vec[1];
-	result[0*4+2] = -vec[0];
-	result[2*4+0] = vec[0];
-	result[2*4+2] = vec[1];
+    glfwGetWindowPos(window,xloc,yloc);
 }
 
-void translateMatrix(float *result, float *vector)
+void displaySize(int *width, int *height)
 {
-	copyvec(identmat(result,4)+12,vector,3);
-}
-
-void angleMatrix(float *result, float angle)
-{
-	float vec[2]; vec[0] = sinf(angle); vec[1] = cosf(angle);
-	identmat(result,4);
-	result[0*4+0] = vec[1];
-	result[0*4+1] = vec[0];
-	result[1*4+0] = -vec[0];
-	result[1*4+1] = vec[1];
-}
-
-void lengthMatrix(float *result, float length)
-{
-	identmat(result,4);
-	result[3*4+2] = length;
-}
-
-void scaleMatrix(float *result, float scale)
-{
-	scale = logf(scale);
-	identmat(result,4);
-	for (int i = 0; i < 3; i++)
-	result[i*4+i] = scale;
-}
-
-void normalMatrix(float *result, float *normal)
-{
-	float lon[16]; longitudeMatrix(lon,normal);
-	float lat[16]; latitudeMatrix(lat,normal);
-	timesmat(copymat(result,lat,4),lon,4);
-}
-
-void fixedMatrix(float *result, float *pierce)
-{
-	translateMatrix(result,pierce);
-}
-
-void offsetVector(float *result)
-{
-	struct Mode *user = state[User]->user;
-	float cur[3]; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
-	float pix[3]; pix[2] = -1.0;
-	for (int i = 0; i < 2; i++) pix[i] = vector[i];
-	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
-}
-
-void transformMatrix(float *result)
-{
-	struct Mode *user = state[User]->user;
-	switch (user->move) {
-	case (Rotate): { // rotate about fixed pierce point
-	float vec[3]; offsetVector(vec);
-	float lon[16]; longitudeMatrix(lon,vec);
-	latitudeMatrix(result,vec);
-	float mat[16]; jumpmat(copymat(mat,piemat,4),lon,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
-	break;}
-	case (Slide): { // translate parallel to fixed facet
-	float vec[3]; offsetVector(vec);
-	translateMatrix(result,vec);
-	float mat[16]; copymat(mat,normat,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
-	break;}
-	case (Slate): { // translate parallel to picture plane
-	float vec[3]; offsetVector(vec);
-	translateMatrix(result,vec);
-	break;}
-	default: ERROR(huberr,-1);}
-}
-
-void composeMatrix(float *result)
-{
-	float mat[16];
-	struct Mode *user = state[User]->user;
-	switch (user->roll) {
-	case (Cylinder): { // rotate with rotated fixed axis
-	angleMatrix(result,offset);
-	float mat[16]; jumpmat(copymat(mat,piemat,4),matrix,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
-	break;}
-	case (Clock): { // rotate with fixed normal to picture plane
-	angleMatrix(result,offset);
-	float mat[16]; copymat(mat,piemat,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
-	break;}
-	case (Compass): { // rotate with fixed normal to facet
-	angleMatrix(result,offset);
-	float mat[16]; jumpmat(jumpmat(copymat(mat,piemat,4),normat,4),matrix,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
-	break;}
-	case (Normal): { // translate with fixed normal to facet
-	lengthMatrix(result,offset);
-	float mat[16]; copymat(mat,normat,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
-	break;}
-	case (Balloon): { // scale with fixed pierce point
-	scaleMatrix(result,offset);
-	float mat[16]; copymat(mat,piemat,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
-	break;}
-	default: ERROR(huberr,-1);}
-}
-
-void calculateGlobal()
-{
-	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
-	int face = state[Face]->face;
-	int found = state[Range]->siz;
-	for (int i = 0; i < found; i++) {
-	struct Array *range = state[Range]->range;
-	if (face < range[i].idx+range[i].siz && range[i].idx <= face) found = i;}
-	float norvec[3];
-	float pievec[3];
-	if (found == state[Range]->siz) {
-	object = 0;
-	unitvec(norvec,3,2);
-	zerovec(pievec,3);} else {
-	int tag = state[Range]->range[found].tag;
-	struct Facet *facet = &state[Triangle]->triangle[face];
-	struct Vertex *vertex[3];
-	for (int i = 0; i < 3; i++) vertex[i] = &state[Corner]->corner[facet->vtxid[i]];
-	float plane[3];
-	int versor;
-	int done = 0;
-	for (int i = 0; i < 3; i++)
-	for (int j = 0; j < 3; j++)
-	if (vertex[i]->tag[j] == tag) {
-	if (done == 0) for (int k = 0; k < 3; k++) plane[k] = vertex[i]->plane[j][k];
-	if (done == 0) versor = vertex[i]->versor[j];
-	if (done && object != vertex[i]->matid) ERROR(huberr,-1);
-	if (!done) object = vertex[i]->matid;
-	done++;}
-	if (done != 3) ERROR(huberr,-1);
-	float point[3][3];
-	constructVector(&point[0][0],&plane[0],versor,&state[Basis]->basis[0].val[0][0]);
-	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Subject]->subject->val[0][0]);
-	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Object]->object[object].val[0][0]);
-	if (face==state[Hand]->hand)
-	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&state[Feature]->feature->val[0][0]);
-	normalVector(norvec,&point[0][0]);
-	float other[3]; plusvec(copyvec(other,&state[Feather]->feather->val[0],3),&state[Arrow]->arrow->val[0],3);
-	pierceVector(pievec,&point[0][0],norvec,&state[Feather]->feather->val[0],other);}
-	normalMatrix(normat,norvec);
-	fixedMatrix(piemat,pievec);
-	identmat(matrix,4);
-	toggle = 0;
-}
-
-enum Memory assignAffine(struct Client *client, struct Affine *affine)
-{
-	switch (state[User]->user->matrix) {
-	case (Global): client->subject = affine; client->idx = 0; return Subject;
-	case (Several): client->object = affine; client->idx = object; return Object;
-	case (Single): client->feature = affine; client->idx = 0; return Feature;
-	default: ERROR(huberr,-1);}
-	return Memorys;
-}
-
-#define REJECT(MEM,FIELD,IDX) \
-	mem = MEM; \
-	client->idx = IDX; \
-	src = &state[MEM]->FIELD[client->idx]; \
-	client->FIELD = affine;
-enum Memory copyAffine(struct Client *client, struct Affine *affine)
-{
-	struct Affine *src;
-	enum Memory mem;
-	switch (state[User]->user->matrix) {
-	case (Global): REJECT(Subject,subject,0); break;
-	case (Several): REJECT(Object,object,object); break;
-	case (Single): REJECT(Feature,feature,0); break;
-	default: ERROR(huberr,-1);}
-	memcpy(&affine->val[0][0],src,sizeof(struct Affine));
-	return mem;
-}
-
-enum Memory copyUser(struct Client *client, struct Mode *user)
-{
-	struct Mode *src = state[User]->user;
-	client->user = user;
-	memcpy(user,src,sizeof(struct Mode));
-	return User;
-}
-
-void warpCursor(struct GLFWwindow* ptr, double xpos, double ypos)
-{
-    int xloc, yloc;
-    glfwGetWindowPos(window,&xloc,&yloc);
-    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
-    CGWarpMouseCursorPosition(point);
+	glfwGetWindowSize(window, width, height);
 }
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
 {
-	if (action == 1) printf("GLFW key %d %d %d %d\n",key,scancode,action,mods);
-	if (key == 256 && action == 1) {if (esc == 0) esc = 1;}
-	else if (key == 257 && action == 1) {if (esc == 1) esc = 2;}
-	else if (action == 1) esc = 0;
+	if (action == 1) cb.key(key);
 }
 
 void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 {
-	xmove = xpos; ymove = ypos;
-	if (state[User] == 0) ERROR(huberr,-1);
-	struct Mode *user = state[User]->user;
-	if (user->click == Transform) {
-	struct Client client;
-	struct Affine affine[2];
-	enum Function function[3];
-	enum Function rmw = (toggle ? Rmw2 : Rmw0);
-	int size = (toggle ? 2 : 1); toggle = 0;
-	transformMatrix(&affine[0].val[0][0]);
-	if (size > 1) composeMatrix(&affine[1].val[0][0]);
-	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
-	client.mem = assignAffine(&client,&affine[0]);
-	client.fnc = function; client.len = 3; client.siz = size;
-	writeClient(&client,tub);} else {
-	struct Client client;
-	struct Vector vector;
-	enum Function function[3];
-	vector.val[0] = xmove; vector.val[1] = ymove; vector.val[2] = -1.0;
-	function[0] = Copy; function[1] = Dma1; function[2] = Draw;
-	client.feather = &vector; client.idx = 0; client.mem = Feather;
-	client.fnc = function; client.len = 3; client.siz = 1;
-	writeClient(&client,tub);}
+	cb.move(xpos,ypos);
 }
 
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 {
-	offset += yoffset*ANGLE;
-	if (state[User] == 0) ERROR(huberr,-1);
-	struct Mode *user = state[User]->user;
-	if (user->click == Transform) {
-	struct Client client;
-	struct Affine affine[2];
-	enum Function function[3];
-	enum Function rmw = (toggle ? Rmw0 : Rmw2);
-	int size = (toggle ? 1 : 2); toggle = 1;
-	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
-	copymat(matrix,&affine[1].val[0][0],4);}
-	composeMatrix(&affine[0].val[0][0]);
-	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
-	client.mem = assignAffine(&client,&affine[0]);
-	client.fnc = function; client.len = 3; client.siz = size;
-	writeClient(&client,tub);}
+	cb.roll(xoffset,yoffset);
 }
 
 void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 {
-	calculateGlobal();
-	struct Client client;
-	struct Affine affine;
-	struct Mode user;
-	enum Function function[2];
-	function[0] = Save; function[1] = Port;
-	client.mem = copyAffine(&client,&affine);
-	client.fnc = function; client.len = 2; client.siz = 1;
-	writeClient(&client,tub);
-	function[0] = Copy;
-	client.mem = copyUser(&client,&user);
-	if (action == GLFW_PRESS && user.click == Transform) {
-	if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-	user.click = Suspend; user.shader = Track;} else {
-	user.click = Complete; user.shader = Track;}}
-	if (action == GLFW_PRESS && user.click == Suspend) {
-	user.click = Transform; user.shader = Display;
-	if (button == GLFW_MOUSE_BUTTON_RIGHT)
-	warpCursor(ptr,vector[0],vector[1]);}
-	if (action == GLFW_PRESS && user.click == Complete) {
-	if (button == GLFW_MOUSE_BUTTON_LEFT) {
-	user.click = Transform; user.shader = Display;}}
-	client.fnc = function; client.len = 1; client.siz = 1;
-	writeClient(&client,tub);
+	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT) cb.click(0);
+	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_RIGHT) cb.click(1);
 }
 
-void windowInit(int argc, char **argv)
+void displayCall()
 {
+	while (esc < 2 && !glfwWindowShouldClose(window))
+	if (setjmp(jmpbuf) == 0)
+	while(esc < 2 && !glfwWindowShouldClose(window)) {
+	if (cb.full()) {
+	glfwWaitEventsTimeout(1000.0*NANO2SEC);
+	continue;}
+	if (cb.read()) {
+	cb.proc();
+	cb.draw();
+	cb.prod();
+	glfwPollEvents();
+	continue;}
+	glfwWaitEvents();}
+	cb.done();
+	glfwDestroyWindow(window);
+	glfwTerminate();
+}
+
+void displaySwap()
+{
+	glfwSwapBuffers(window);
+}
+
+int displayInit(int argc, char **argv)
+{
+	cb.err = displayErr;
+	cb.pos = displayPos;
+	cb.size = displaySize;
+	cb.call = displayCall;
+	cb.swap = displaySwap;
 	glfwInit();
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -351,15 +97,10 @@ void windowInit(int argc, char **argv)
 	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
 	const char *name = (argc == 4 ? argv[3] : argv[0]);
 	if ((window = glfwCreateWindow(WINWIDE, WINHIGH, name, 0, 0)) == 0) ERROR(exiterr,-1);
-	glfwSetKeyCallback(window, displayKey);
-	glfwSetCursorPosCallback(window, displayMove);
-	glfwSetScrollCallback(window, displayRoll);
-	glfwSetMouseButtonCallback(window, displayClick);
+	glfwSetKeyCallback(window,displayKey);
+	glfwSetCursorPosCallback(window,displayMove);
+	glfwSetScrollCallback(window,displayRoll);
+	glfwSetMouseButtonCallback(window,displayClick);
 	glfwMakeContextCurrent(window);
-}
-
-void windowDone()
-{
-	glfwDestroyWindow(window);
-	glfwTerminate();
+	return 1;
 }

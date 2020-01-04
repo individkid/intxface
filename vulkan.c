@@ -38,9 +38,34 @@ VkBool32 debugCallback(
 	return VK_FALSE;
 }
 
+int vulkanFull()
+{
+	return 0;
+}
+
+void vulkanDraw()
+{
+}
+
+void vulkanDone()
+{
+	//vkDestroySwapchainKHR(logical, swap, 0);
+	vkDestroyDevice(logical, 0);
+	vkDestroySurfaceKHR(instance, surface, 0);
+	/*
+	PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT)
+	vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+	if (func == 0) {ERROR(exiterr,-1);} else func(instance, debug, 0);
+	*/
+	vkDestroyInstance(instance, 0);
+}
+
 int vulkanInit()
 {
 	if (!glfwVulkanSupported()) return 0;
+	cb.full = vulkanFull;
+	cb.draw = vulkanDraw;
+	cb.done = vulkanDone;
 	uint32_t extensionPropertyCount = 0;
 	if (vkEnumerateInstanceExtensionProperties(0,&extensionPropertyCount,0) != VK_SUCCESS) ERROR(exiterr,-1);
 	VkExtensionProperties extensionProperties[extensionPropertyCount];
@@ -151,26 +176,4 @@ int vulkanInit()
 
 	// continue https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain#page_Surface-format
 	return 1;
-}
-
-int vulkanFull()
-{
-	return 0;
-}
-
-void vulkanDraw()
-{
-}
-
-void vulkanDone()
-{
-	//vkDestroySwapchainKHR(logical, swap, 0);
-	vkDestroyDevice(logical, 0);
-	vkDestroySurfaceKHR(instance, surface, 0);
-	/*
-	PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT)
-	vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func == 0) {ERROR(exiterr,-1);} else func(instance, debug, 0);
-	*/
-	vkDestroyInstance(instance, 0);
 }

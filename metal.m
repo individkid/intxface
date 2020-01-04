@@ -16,23 +16,43 @@
 */
 
 #include "plane.h"
-#include <Metal/Metal.h>
-#include <MetalKit/MetalKit.h>
+#import <Metal/Metal.h>
+#import <MetalKit/MetalKit.h>
+#import <Foundation/Foundation.h>
 
-int metalInit()
+id<MTLDevice> device = 0;
+MTKView *view = 0;
+
+void metalErr(const char *str, int num, int arg)
+{
+}
+
+void metalPos(int *xloc, int *yloc)
+{
+	// TODO get window position
+}
+
+void metalSize(int *width, int *height)
+{
+	// TODO get window size
+}
+
+void metalCall()
+{
+	// TODO call appDelegate run
+	cb.done();
+	// TODO release pointers
+}
+
+int metalInit(int argc, char **argv)
 {
 	return 0;
-}
-
-int metalFull()
-{
-	return 0;
-}
-
-void metalDraw()
-{
-}
-
-void metalDone()
-{
+	cb.err = metalErr;
+	cb.pos = metalPos;
+	cb.size = metalSize;
+	cb.call = metalCall;
+	int width, height;
+	cb.size(&width,&height);
+	device = MTLCreateSystemDefaultDevice();
+	view = [[MTKView alloc] initWithFrame: CGRectMake(0,0,width,height) device:device];
 }

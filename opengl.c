@@ -36,66 +36,6 @@ GLsync fence[NUMCNTX] = {0};
 int head = 0;
 int tail = 0;
 
-GLuint openglLoad(const char *vs, const char *fs)
-{
-	// TODO
-	return 0;
-}
-
-int openglInit()
-{
-	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
-	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
-	for (int shader = 0; shader < Shaders; shader++) {
-	char *vertex = 0; char *fragment = 0;
-	if (asprintf(&vertex,"opengl%d.vs",shader) < 0) ERROR(exiterr,-1);
-	if (asprintf(&fragment,"opengl%d.fs",shader) < 0) ERROR(exiterr,-1);
-	programId[shader] = openglLoad(vertex,fragment);
-	free(vertex); free(fragment);
-	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");
-	glUniformBlockBinding(programId[shader],blockId[shader],0);}
-	int total = 0;
-	unit[Basis] = 3*4*4; base[Basis] = total; total += unit[Basis]*3;
-	unit[Subject] = 4*4*4; base[Subject] = total; total += unit[Subject];
-	unit[Object] = 4*4*4; base[Object] = total; total += unit[Object]*NUMFILE;
-	unit[Feature] = 4*4*4; base[Feature] = total; total += unit[Feature];
-	unit[Feather] = 4*4; base[Feather] = total; total += unit[Feather];
-	unit[Arrow] = 4*4; base[Arrow] = total; total += unit[Arrow];
-	unit[Cloud] = 4*4; base[Cloud] = total; total += unit[Cloud]*NUMFEND;
-	unit[Face] = 4; base[Face] = total; total += unit[Face];
-	unit[Tag] = 4; base[Tag] = total; total += unit[Tag];
-	for (int context = 0; context < NUMCNTX; context++) {
-	glGenVertexArrays(1, &arrayId[context]);
-	glBindVertexArray(arrayId[context]);
-	glGenBuffers(1, &vertexId[context]);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexId[context]);
-	GLuint index = 0;
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(tag[0]));
-	for (int i = 0; i < 3; i++)
-	glVertexAttribPointer(index++,3,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(plane[i][0]));
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(versor[0]));
-	for (int i = 0; i < 3; i++)
-	glVertexAttribPointer(index++,2,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(coord[i][0]));
-	for (int i = 0; i < 3; i++)
-	glVertexAttribPointer(index++,4,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(coord[i][0]));
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(texid[0]));
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(facid[0]));
-	glVertexAttribIPointer(index++,1,GL_INT,sizeof(struct Vertex),VERTEX(matid));
-	for (int i = 0; i < index; i++)
-	glEnableVertexAttribArray(i);
-	glBindVertexArray(0);
-	for (int i = 0; i < index; i++)
-	glDisableVertexAttribArray(i);
-	glGenBuffers(1, &elementId[context]);
-	glGenBuffers(1, &uniformId[context]);
-	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
-	glBufferData(GL_UNIFORM_BUFFER, total, 0, GL_STATIC_DRAW);
-	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniformId[context], 0, total);}
-	return 1;
-}
-
 void *openglBuffed(int idx, int len, void *buf)
 {
 	char *ptr = buf;
@@ -153,7 +93,7 @@ void openglDma()
 	switch (client->mem) {
 	case (Corner): openglBuffer(client->idx,client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[head][Corner],&refer[Corner],vertexId,GL_ARRAY_BUFFER); break;
 	case (Triangle): openglBuffer(client->idx,client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[head][Triangle],&refer[Triangle],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
-	case (Range): ERROR(huberr,-1);
+	case (Range): ERROR(cb.err,-1);
 	case (Basis): openglBuffer(client->idx,client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&refer[Basis],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&refer[Subject],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Object): openglBuffer(client->idx,client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&refer[Object],uniformId,GL_UNIFORM_BUFFER); break;
@@ -163,8 +103,8 @@ void openglDma()
 	case (Cloud): openglBuffer(client->idx,client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&refer[Cloud],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Hand): openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&refer[Hand],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
-	case (Face): ERROR(huberr,-1);
-	case (User): ERROR(huberr,-1);
+	case (Face): ERROR(cb.err,-1);
+	case (User): ERROR(cb.err,-1);
 	default: ERROR(exiterr,-1);}
 }
 
@@ -219,7 +159,7 @@ void openglFunc()
 	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
 	glDrawElements(GL_TRIANGLES,state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
 	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
-	if (state[User]->user->shader == Display) glfwSwapBuffers(window);
+	if (state[User]->user->shader == Display) cb.swap();
 	head = (head + 1) % NUMCNTX;
 	while (pail[head] == pead[head]) {
 	openglPender(&pend[head][pead[head]]);
@@ -250,4 +190,67 @@ void openglDone()
 	glDeleteVertexArrays(1, &arrayId[context]);}
 	for (int shader = 0; shader < Shaders; shader++)
 	glDeleteProgram(programId[shader]);
+}
+
+GLuint openglLoad(const char *vs, const char *fs)
+{
+	// TODO
+	return 0;
+}
+
+int openglInit()
+{
+	cb.full = openglFull;
+	cb.draw = openglDraw;
+	cb.done = openglDone;
+	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
+	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	for (int shader = 0; shader < Shaders; shader++) {
+	char *vertex = 0; char *fragment = 0;
+	if (asprintf(&vertex,"opengl%d.vs",shader) < 0) ERROR(exiterr,-1);
+	if (asprintf(&fragment,"opengl%d.fs",shader) < 0) ERROR(exiterr,-1);
+	programId[shader] = openglLoad(vertex,fragment);
+	free(vertex); free(fragment);
+	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");
+	glUniformBlockBinding(programId[shader],blockId[shader],0);}
+	int total = 0;
+	unit[Basis] = 3*4*4; base[Basis] = total; total += unit[Basis]*3;
+	unit[Subject] = 4*4*4; base[Subject] = total; total += unit[Subject];
+	unit[Object] = 4*4*4; base[Object] = total; total += unit[Object]*NUMFILE;
+	unit[Feature] = 4*4*4; base[Feature] = total; total += unit[Feature];
+	unit[Feather] = 4*4; base[Feather] = total; total += unit[Feather];
+	unit[Arrow] = 4*4; base[Arrow] = total; total += unit[Arrow];
+	unit[Cloud] = 4*4; base[Cloud] = total; total += unit[Cloud]*NUMFEND;
+	unit[Face] = 4; base[Face] = total; total += unit[Face];
+	unit[Tag] = 4; base[Tag] = total; total += unit[Tag];
+	for (int context = 0; context < NUMCNTX; context++) {
+	glGenVertexArrays(1, &arrayId[context]);
+	glBindVertexArray(arrayId[context]);
+	glGenBuffers(1, &vertexId[context]);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexId[context]);
+	GLuint index = 0;
+	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(tag[0]));
+	for (int i = 0; i < 3; i++)
+	glVertexAttribPointer(index++,3,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(plane[i][0]));
+	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(versor[0]));
+	for (int i = 0; i < 3; i++)
+	glVertexAttribPointer(index++,2,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(coord[i][0]));
+	for (int i = 0; i < 3; i++)
+	glVertexAttribPointer(index++,4,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(coord[i][0]));
+	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(texid[0]));
+	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(facid[0]));
+	glVertexAttribIPointer(index++,1,GL_INT,sizeof(struct Vertex),VERTEX(matid));
+	for (int i = 0; i < index; i++)
+	glEnableVertexAttribArray(i);
+	glBindVertexArray(0);
+	for (int i = 0; i < index; i++)
+	glDisableVertexAttribArray(i);
+	glGenBuffers(1, &elementId[context]);
+	glGenBuffers(1, &uniformId[context]);
+	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
+	glBufferData(GL_UNIFORM_BUFFER, total, 0, GL_STATIC_DRAW);
+	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniformId[context], 0, total);}
+	return 1;
 }

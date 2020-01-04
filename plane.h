@@ -22,38 +22,36 @@
 #include "type.h"
 #include "metic.h"
 
-#ifndef EXTERN
-#define EXTERN extern
-#endif
+struct Callback {
+	void (*err)(const char *str, int num, int arg);
+	void (*pos)(int *xloc, int *yloc);
+	void (*size)(int *width, int *height);
+	void (*key)(int key);
+	void (*move)(double xpos, double ypos);
+	void (*roll)(double xoffset, double yoffset);
+	void (*click)(int isright);
+	int (*full)();
+	int (*read)();
+	void (*proc)();
+	void (*draw)();
+	void (*prod)();
+	void (*call)();
+	void (*swap)();
+	void (*done)();
+};
 
-EXTERN int tub;
-EXTERN int esc;
-EXTERN GLFWwindow* window;
-EXTERN struct Client *client;
-EXTERN struct Client *state[Memorys];
-EXTERN struct Client *saved[Memorys];
-EXTERN void *refer[Memorys];
+extern int esc;
+extern struct Client *client;
+extern struct Client *state[Memorys];
+extern void *refer[Memorys];
+extern struct Callback cb;
 
-void huberr(const char *str, int num, int arg);
 void exiterr(const char *str, int num, int arg);
-void windowInit(int argc, char **argv);
-void windowDone();
-int metalInit();
-int metalFull();
-void metalDraw();
-void metalDone();
+int displayInit(int argc, char **argv);
+int metalInit(int argc, char **argv);
 int vulkanInit();
-int vulkanFull();
-void vulkanDraw();
-void vulkanDone();
 int openglInit();
-int openglFull();
-void openglDraw();
-void openglDone();
 int modelInit();
-int modelFull();
-void modelDraw();
-void modelDone();
 void constructVector(float *point, float *plane, int versor, float *basis);
 void transformVector(float *point, float *matrix);
 int normalVector(float *normal, float *point);

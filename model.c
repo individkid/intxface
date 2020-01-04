@@ -170,22 +170,6 @@ void *model(void *arg)
 	return 0;
 }
 
-int modelInit()
-{
-	ioctl(0, TIOCGSIZE, &ts); ts.ts_cols--; ts.ts_lines--;
-	mpage = malloc(sizeof(*mpage)*ts.ts_lines*ts.ts_cols);
-	mframe = malloc(sizeof(*mframe)*ts.ts_lines*ts.ts_cols);
-	if ((mub = openPipe()) < 0) ERROR(exiterr,-1);
-	bothJump(moderr,mub);
-	if (pthread_create(&mthread,0,model,0) != 0) ERROR(exiterr,-1);
-	return 1;
-}
-
-int modelFull()
-{
-	return 0;
-}
-
 void modelWrite(enum Memory memory)
 {
 	if (state[memory]->len) {
@@ -217,4 +201,18 @@ void modelDone()
 	temp.len = 0; temp.siz = 0; temp.mem = Memorys;
 	writeClient(&temp,mub);
 	if (pthread_join(mthread,0) != 0) ERROR(exiterr,-1);
+}
+
+int modelInit()
+{
+	return 0;
+	cb.draw = modelDraw;
+	cb.done = modelDone;
+	ioctl(0, TIOCGSIZE, &ts); ts.ts_cols--; ts.ts_lines--;
+	mpage = malloc(sizeof(*mpage)*ts.ts_lines*ts.ts_cols);
+	mframe = malloc(sizeof(*mframe)*ts.ts_lines*ts.ts_cols);
+	if ((mub = openPipe()) < 0) ERROR(exiterr,-1);
+	bothJump(moderr,mub);
+	if (pthread_create(&mthread,0,model,0) != 0) ERROR(exiterr,-1);
+	return 1;
 }
