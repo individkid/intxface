@@ -137,7 +137,7 @@ end
 circular = false
 needed = {}
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
-expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
+expee = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
 	local ish = string.match(v,"^.*%.h$")

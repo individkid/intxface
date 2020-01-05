@@ -44,7 +44,7 @@ void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int m
 
 void displayMove(struct GLFWwindow* ptr, double xpos, double ypos)
 {
-	cb.move (xpos,ypos);
+	cb.move(xpos,ypos);
 }
 
 void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
