@@ -136,7 +136,7 @@ end
 -- find edges from .c or .h files in current directory
 circular = false
 needed = {}
-exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(.*$"
+exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 expee = "(.*)[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
@@ -173,7 +173,6 @@ for k,v in ipairs(files) do
 					if (more:sub(ndg,ndg+1)=="*/") then break end
 					ndg = ndg + 1
 				end
-				if (ndg==len) then ndg=ndg+1 end
 			end
 			if abrv then
 				ndg = more:len()
@@ -186,7 +185,7 @@ for k,v in ipairs(files) do
 				end
 			end
 			if cmnt or abrv or quot then
-				if cmnt and (more:sub(ndg-1,ndg)=="*/") then
+				if cmnt and (more:sub(ndg,ndg+1)=="*/") then
 					cmnt = false;
 				end
 				if abrv then
@@ -196,7 +195,7 @@ for k,v in ipairs(files) do
 					name = more:sub(bgn+1,ndg-1)
 					quot = false
 				end
-				more = more:sub(1,bgn-1)..more:sub(ndg+1)
+				more = more:sub(1,bgn-1)..more:sub(ndg+2)
 			end
 			depender = string.match(more,exper)
 			if ish then
@@ -309,7 +308,7 @@ for k,v in pairs(edges) do
 	for key,val in pairs(v) do
 		base,ext = string.match(key,"(.*)(%..*)")
 		if (ext == ".cpp") then ext = ".c" end
-		if (ext == ".m") then ext = ".m" end
+		if (ext == ".m") then ext = ".c" end
 		if (k == "main") and (ext == ".c") then
 			-- print(key..": main")
 			entries[key] = true
@@ -437,7 +436,7 @@ for k,v in pairs(edges) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if (e == ".cpp") then e = ".c" end
 			if (e == ".m") then e = ".c" end
-			if b and (e == ".c") then
+			if b and (e == ".c") and (base ~= b) then
 				deps[#deps+1] = b.."C.o"
 			end
 			if needed[key] then
