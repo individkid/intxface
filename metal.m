@@ -23,12 +23,12 @@
 #import <QuartzCore/QuartzCore.h>
 #include "plane.h"
 
-id <MTLDevice> device = 0;
-id <MTLCommandQueue> cmdque = 0;
+extern struct GLFWwindow* window;
+id<MTLDevice> device = 0;
+id<MTLCommandQueue> cmdque = 0;
 NSWindow *nswin = 0;
 CAMetalLayer *layer = 0;
-MTLRenderPassDescriptor *pass = 0;
-extern struct GLFWwindow* window;
+MTLRenderPassDescriptor *render = 0;
 
 void metalDma()
 {
@@ -96,18 +96,19 @@ void metalDraw()
 
 void metalDone()
 {
-	[pass release];
 	[layer release];
-	// [nswin release];
 	[cmdque release];
 	[device release];
 }
 
 int metalInit()
 {
+	return 0;
+
 	cb.full = metalFull;
 	cb.draw = metalDraw;
 	cb.done = metalDone;
+
 	device = MTLCreateSystemDefaultDevice();;
 	cmdque = [device newCommandQueue];
 	nswin = glfwGetCocoaWindow(window);
@@ -116,6 +117,22 @@ int metalInit()
 	layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 	nswin.contentView.layer = layer;
 	nswin.contentView.wantsLayer = YES;
-	pass = [MTLRenderPassDescriptor new];
+	render = [MTLRenderPassDescriptor new];
+
+	int width, height;
+	glfwGetFramebufferSize(window, &width, &height);
+	layer.drawableSize = CGSizeMake(width, height);
+
+	id<CAMetalDrawable> drawable = [layer nextDrawable];
+	id<MTLCommandBuffer> commandBuffer = [cmdque commandBuffer];
+	render.colorAttachments[0].clearColor = MTLClearColorMake(1.00f,1.00f,1.00f,1.00f);
+	render.colorAttachments[0].texture = drawable.texture;
+	render.colorAttachments[0].loadAction = MTLLoadActionClear;
+	render.colorAttachments[0].storeAction = MTLStoreActionDontCare;
+	id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:render];
+	[renderEncoder endEncoding];
+	[commandBuffer presentDrawable:drawable];
+	[commandBuffer commit];
+
 	return 1;
 }

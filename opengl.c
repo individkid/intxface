@@ -207,7 +207,7 @@ int openglInit()
 	cb.draw = openglDraw;
 	cb.done = openglDone;
 	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
-	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+	glClearColor(0.18f, 0.14f, 0.12f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	for (int shader = 0; shader < Shaders; shader++) {
@@ -255,5 +255,7 @@ int openglInit()
 	glBindBuffer(GL_UNIFORM_BUFFER, uniformId[context]);
 	glBufferData(GL_UNIFORM_BUFFER, total, 0, GL_STATIC_DRAW);
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniformId[context], 0, total);}
+	glClear(GL_COLOR_BUFFER_BIT);
+	cb.swap();
 	return 1;
 }
