@@ -49,7 +49,7 @@ void openglPendee(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **
 {
 	glBindBuffer(tgt, hdl);
 	if (siz && *siz == 0) glBufferData(tgt, (*siz=idx+cnt)*gpu, 0, GL_STATIC_DRAW);
-	if (siz && idx == 0 && cnt > *siz) glBufferData(tgt, (*siz=(idx+cnt))*gpu, 0, GL_STATIC_DRAW);
+	if (siz && idx == 0 && cnt > *siz) glBufferData(tgt, (*siz=cnt)*gpu, 0, GL_STATIC_DRAW);
 	if (siz && idx+cnt > *siz) {
 	char buffer[*siz]; glGetBufferSubData(tgt, 0, (*siz)*gpu, buffer);
 	glBufferData(tgt, (idx+cnt)*gpu, 0, GL_STATIC_DRAW);
@@ -86,8 +86,9 @@ void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **
 	if (openglPendant(&pend[ctx][pnd],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt)) found = 1;
 	if (!found) {if ((pail[ctx]+1)%NUMPEND == pead[ctx]) {
 	openglPender(&pend[ctx][pead[ctx]]); pead[ctx] = (pead[ctx]+1)%NUMPEND;}
-	openglPending(&pend[ctx][pail[ctx]],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt); pail[ctx] = (pail[ctx]+1)%NUMPEND;}}
-	struct Pend tmp; openglPending(&tmp,idx,cnt,cpu,gpu,bas,siz,buf,hdl[head],tgt); openglPender(&tmp);
+	openglPending(&pend[ctx][pail[ctx]],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt);
+	pail[ctx] = (pail[ctx]+1)%NUMPEND;}}
+	openglPendee(idx,cnt,cpu,gpu,bas,siz,buf,hdl[head],tgt);
 }
 
 void openglDma()
@@ -200,7 +201,7 @@ void openglShader(GLuint i, GLenum j, const char *file)
 	pipe(stream);
 	if (fork() == 0) {
 	char *args[2] = {0};
-	if (asprintf(&args[0],"cat %s | clang -E -P",file) < 0) exit(-1);
+	if (asprintf(&args[0],"cat %s | lua opengl.lua",file) < 0) exit(-1);
 	close(stream[0]);
 	dup2(stream[1], STDOUT_FILENO);
 	execvp(args[0], args);
@@ -230,6 +231,15 @@ GLuint openglLoad(const char *vs, const char *fs)
 	return retval;
 }
 
+void openglAlign(int *total, int *base, int *unit, int elem, int count, int size)
+{
+	int rem = *total%elem;
+	if (rem) *total += (elem-rem);
+	*unit = elem*count;
+	*base = *total;
+	*total += *unit*size;
+}
+
 int openglInit()
 {
 	printf("GL_INT(%d) GL_FLOAT(%d)\n",(int)sizeof(GL_INT),(int)sizeof(GL_FLOAT));
@@ -249,15 +259,15 @@ int openglInit()
 	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");
 	glUniformBlockBinding(programId[shader],blockId[shader],0);}
 	int total = 0;
-	unit[Basis] = 3*4*4; base[Basis] = total; total += unit[Basis]*3;
-	unit[Subject] = 4*4*4; base[Subject] = total; total += unit[Subject];
-	unit[Object] = 4*4*4; base[Object] = total; total += unit[Object]*NUMFILE;
-	unit[Feature] = 4*4*4; base[Feature] = total; total += unit[Feature];
-	unit[Feather] = 4*4; base[Feather] = total; total += unit[Feather];
-	unit[Arrow] = 4*4; base[Arrow] = total; total += unit[Arrow];
-	unit[Cloud] = 4*4; base[Cloud] = total; total += unit[Cloud]*NUMFEND;
-	unit[Face] = 4; base[Face] = total; total += unit[Face];
-	unit[Tag] = 4; base[Tag] = total; total += unit[Tag];
+	openglAlign(&total,&base[Basis],&unit[Basis],4*4,3,3);
+	openglAlign(&total,&base[Subject],&unit[Subject],4*4,4,1);
+	openglAlign(&total,&base[Object],&unit[Object],4*4,4,NUMFILE);
+	openglAlign(&total,&base[Feature],&unit[Feature],4*4,4,1);
+	openglAlign(&total,&base[Feather],&unit[Feather],4*4,1,1);
+	openglAlign(&total,&base[Arrow],&unit[Arrow],4*4,1,1);
+	openglAlign(&total,&base[Cloud],&unit[Cloud],4*4,1,NUMFEND);
+	openglAlign(&total,&base[Hand],&unit[Hand],4,1,1);
+	openglAlign(&total,&base[Tag],&unit[Tag],4,1,1);
 	for (int context = 0; context < NUMCNTX; context++) {
 	glGenVertexArrays(1, &arrayId[context]);
 	glBindVertexArray(arrayId[context]);
