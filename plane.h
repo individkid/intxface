@@ -21,22 +21,24 @@
 #include "metic.h"
 
 struct Callback {
+	// plane.c : glfw.c
 	void (*err)(const char *str, int num, int arg);
 	void (*pos)(int *xloc, int *yloc);
 	void (*size)(int *width, int *height);
+	// glfw.c : plane.c
 	void (*key)(int key);
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
-	int (*full)();
-	int (*read)();
-	void (*proc)();
-	void (*draw)();
-	void (*prod)();
-	void (*call)();
-	void (*swap)();
-	void (*wake)();
-	void (*done)();
+	int (*full)(); // glfw.c : opengl.c
+	int (*read)(); // glfw.c : plane.c
+	void (*proc)(); // glfw.c : plane.c
+	void (*draw)(); // glfw.c : opengl.c
+	void (*prod)(); // glfw.c : plane.c
+	void (*call)(); // plane.c : glfw.c
+	void (*swap)(); // opengl.c : glfw.c
+	void (*wake)(); // plane.c : glfw.c
+	void (*done)(); // plane.c : opengl.c
 	int esc;
 	struct Client *client;
 	struct Client *state[Memorys];

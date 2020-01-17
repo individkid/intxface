@@ -75,26 +75,24 @@ int normalVector(float *normal, float *point)
 
 int solveVector(float *pierce, float *point, float *normal, float *feather)
 {
-	// point+(feather-point-normal/((feather-point)*normal))
+	// point+(feather-point-normal*((feather-point)*normal))
 	plusvec(scalevec(copyvec(pierce,point,3),-1.0,3),feather,3);
-	float denom = dotvec(pierce,normal,3);
-	if (fabs(denom) < 1.0 && 1.0 > fabs(INVALID*denom)) return 0;
-	float delta[3]; scalevec(copyvec(delta,normal,3),-1.0/denom,3);
+	float portion = dotvec(pierce,normal,3);
+	float delta[3]; scalevec(copyvec(delta,normal,3),-portion,3);
 	plusvec(plusvec(pierce,delta,3),point,3);
 	return 1;
 }
 
 int pierceVector(float *pierce, float *point, float *normal, float *point0, float *point1)
 {
-	// feather+(arrow-feather)*z(arrow-p(arrow))/(z(arrow-p(arrow))+z(feather-p(feather)))
+	// feather+(arrow-feather)*z(feather-p(feather))/(z(feather-p(feather))-z(arrow-p(arrow)))
 	float solve0[3]; if (!solveVector(solve0,point,normal,point0)) return 0;
 	float solve1[3]; if (!solveVector(solve1,point,normal,point1)) return 0;
 	float diff0 = solve0[2]-point0[2];
 	float diff1 = solve1[2]-point1[2];
 	float denom = diff0-diff1;
-	float ratio;
 	if (fabs(denom) < 1.0 && fabs(diff0) > fabs(INVALID*denom)) return 0;
-	else ratio = diff0/denom;
+	float ratio = diff0/denom;
 	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,point0,3),-1.0,3),point1,3),ratio,3),point0,3);
 	return 1;
 }

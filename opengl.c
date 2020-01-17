@@ -194,10 +194,28 @@ void openglDone()
 	glDeleteProgram(programId[shader]);
 }
 
+void openglShader(GLuint i, GLenum j, const char *file)
+{
+	char *buf[1] = {0};
+	int len[1] = {0};
+	GLuint k = glCreateShader(j);
+	buf[0] = malloc(FILESIZE);
+	len[0] = 0;
+	// TODO read from file
+	glShaderSource(k,1,(const char *const *)buf,len);
+	glCompileShader(k);
+	glAttachShader(i,k);
+	glDeleteShader(k);
+	free(buf[0]);
+}
+
 GLuint openglLoad(const char *vs, const char *fs)
 {
-	// TODO
-	return 0;
+	GLuint retval = glCreateProgram();
+	openglShader(retval,GL_VERTEX_SHADER,vs);
+	openglShader(retval,GL_FRAGMENT_SHADER,fs);
+	glLinkProgram(retval);
+	return retval;
 }
 
 int openglInit()
@@ -207,13 +225,14 @@ int openglInit()
 	cb.draw = openglDraw;
 	cb.done = openglDone;
 	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
-	glClearColor(0.18f, 0.14f, 0.12f, 0.0f);
+	glClearColor(1.00f,1.00f,1.00f,1.00f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+	// TODO indicate dependency upon *v.sl and *f.sl
 	for (int shader = 0; shader < Shaders; shader++) {
 	char *vertex = 0; char *fragment = 0;
-	if (asprintf(&vertex,"opengl%d.vs",shader) < 0) ERROR(exiterr,-1);
-	if (asprintf(&fragment,"opengl%d.fs",shader) < 0) ERROR(exiterr,-1);
+	if (asprintf(&vertex,"opengl%dv.sl",shader) < 0) ERROR(exiterr,-1);
+	if (asprintf(&fragment,"opengl%df.sl",shader) < 0) ERROR(exiterr,-1);
 	programId[shader] = openglLoad(vertex,fragment);
 	free(vertex); free(fragment);
 	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");

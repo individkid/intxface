@@ -133,6 +133,7 @@ int metalInit()
 	[renderEncoder endEncoding];
 	[commandBuffer presentDrawable:drawable];
 	[commandBuffer commit];
+	cb.swap();
 
 	return 1;
 }
