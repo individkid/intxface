@@ -498,6 +498,7 @@ void windowKey(int key)
 	if (key == 256) {if (cb.esc == 0) cb.esc = 1;}
 	else if (key == 257) {if (cb.esc == 1) cb.esc = 2;}
 	else cb.esc = 0;
+	printf("key(%d) esc(%d)\n",key,cb.esc);
 }
 
 void windowMove(double xpos, double ypos)
