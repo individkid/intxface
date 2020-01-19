@@ -207,17 +207,18 @@ void openglShader(GLuint i, GLenum j, const char *file)
 	close(stream[1]);
 	char *buf[1] = {0};
 	int len[1] = {0};
+	int siz[1] = {0};
 	int nread = 0;
-	buf[0] = malloc(FILESIZE);
-	while ((nread = read(stream[0],buf[0]+len[0],FILESIZE)) != 0) {
-	len[0] += nread; buf[0] = realloc(buf[0],len[0]+FILESIZE);}
-	buf[0][len[0]] = 0;
+	buf[0] = malloc(siz[0]=BUFSIZE*CMDSIZE);
+	while ((nread = read(stream[0],buf[0]+len[0],BUFSIZE)) != 0)
+	if ((len[0]+=nread)>siz[0]-BUFSIZE)
+	buf[0] = realloc(buf[0],siz[0]+=BUFSIZE*CMDSIZE);
 	GLuint k = glCreateShader(j);
 	glShaderSource(k,1,(const char *const *)buf,len);
 	glCompileShader(k);
+	free(buf[0]);
 	{char log[BUFSIZE] = {0};
-	int siz = 0;
-	glGetShaderInfoLog(k,BUFSIZE,&siz,log);
+	glGetShaderInfoLog(k,BUFSIZE,0,log);
 	if (*log) printf("file(%s) log(%s)\n",file,log);}
 	glAttachShader(i,k);
 	glDeleteShader(k);
