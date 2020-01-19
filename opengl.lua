@@ -15,6 +15,42 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-for line in io.stdin:lines() do
-	print(line)
+state = {}
+stack = {{"","sl",io.stdin}}
+function read(stack)
+	return function()
+		local line = nil
+		while not line do
+			line = stack[#stack][3]:read("*l")
+			if line then return line end
+			stack[#stack] = nil
+			if #stack == 0 then return nil end
+		end
+	end
+end
+for line in read(stack) do
+	pat, rep = string.match(line,"^#define%s+([^%s]+)%s+(.*)")
+	inc, ext = string.match(line,"^#include \"(.*)%.(.*)\"")
+	if pat and rep then
+		state[pat] = rep
+	elseif inc and ext then
+		found = false
+		for k,v in ipairs(stack) do
+			if v[1] == inc and v[2] == ext then found = true end
+		end
+		if not found then
+			stack[#stack+1] = {inc,ext,io.open(inc.."."..ext)}
+		end
+	elseif stack[#stack][2] == "sl" then
+		newline = line
+		for k,v in pairs(state) do
+			expr = "(.*)"..k.."(.*)"
+			before, after = string.match(newline,expr)
+			while before and after do
+				newline = before..v..after
+				before, after = string.match(newline,expr)
+			end
+		end
+		print(newline)
+	end
 end

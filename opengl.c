@@ -217,6 +217,11 @@ void openglShader(GLuint i, GLenum j, const char *file)
 	GLuint k = glCreateShader(j);
 	glShaderSource(k,1,(const char *const *)buf,len);
 	glCompileShader(k);
+	{char log[BUFSIZE] = {0};
+	int siz = 0;
+	glGetShaderInfoLog(k,BUFSIZE,&siz,log);
+	log[BUFSIZE-1] = 0;
+	printf("file(%s) source(%s) log(%s)\n",file,buf[0],log);}
 	glAttachShader(i,k);
 	glDeleteShader(k);
 	free(buf[0]);
@@ -228,6 +233,11 @@ GLuint openglLoad(const char *vs, const char *fs)
 	openglShader(retval,GL_VERTEX_SHADER,vs);
 	openglShader(retval,GL_FRAGMENT_SHADER,fs);
 	glLinkProgram(retval);
+	{char log[BUFSIZE] = {0};
+	int siz = 0;
+	glGetProgramInfoLog(retval,BUFSIZE,&siz,log);
+	log[BUFSIZE-1] = 0;
+	printf("vs(%s) fs(%s) log(%s)\n",vs,fs,log);}
 	return retval;
 }
 
