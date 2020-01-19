@@ -15,6 +15,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define VERTEX
 #include "opengl.sl"
 
 void main()

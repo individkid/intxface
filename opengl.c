@@ -20,7 +20,6 @@
 #include <GLFW/glfw3.h>
 #include "plane.h"
 
-#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
 GLuint programId[Shaders] = {0};
 GLuint blockId[Shaders] = {0};
 GLuint arrayId[NUMCNTX] = {0};
@@ -246,6 +245,9 @@ void openglAlign(int *total, int *base, int *unit, int elem, int count, int size
 	*total += *unit*size;
 }
 
+#define VERTEX(FIELD) ((void*)&(((struct Vertex *)0)->FIELD))
+#define INTEGER(SIZE,FIELD) glVertexAttribIPointer(index++,SIZE,GL_INT,sizeof(struct Vertex),VERTEX(FIELD))
+#define FLOATER(SIZE,FIELD) glVertexAttribPointer(index++,SIZE,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(FIELD))
 int openglInit()
 {
 	printf("GL_INT(%d) GL_FLOAT(%d)\n",(int)sizeof(GL_INT),(int)sizeof(GL_FLOAT));
@@ -280,17 +282,14 @@ int openglInit()
 	glGenBuffers(1, &vertexId[context]);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexId[context]);
 	GLuint index = 0;
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(tag[0]));
-	for (int i = 0; i < 3; i++)
-	glVertexAttribPointer(index++,3,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(plane[i][0]));
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(versor[0]));
-	for (int i = 0; i < 3; i++)
-	glVertexAttribPointer(index++,2,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(coord[i][0]));
-	for (int i = 0; i < 3; i++)
-	glVertexAttribPointer(index++,4,GL_FLOAT,GL_FALSE,sizeof(struct Vertex),VERTEX(coord[i][0]));
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(texid[0]));
-	glVertexAttribIPointer(index++,3,GL_INT,sizeof(struct Vertex),VERTEX(facid[0]));
-	glVertexAttribIPointer(index++,1,GL_INT,sizeof(struct Vertex),VERTEX(matid));
+	INTEGER(3,tag[0]); // location=0 ivec3
+	for (int i = 0; i < 3; i++) FLOATER(3,plane[i][0]); // location=1 vec3[3]
+	INTEGER(3,versor[0]); // location=4 ivec3
+	for (int i = 0; i < 3; i++) FLOATER(2,coord[i][0]); // location=5 vec2[3]
+	for (int i = 0; i < 3; i++) FLOATER(4,color[i][0]); // location=8 vec4[3]
+	INTEGER(3,texid[0]); // location=11 ivec3
+	INTEGER(3,facid[0]); // location=12 ivec3
+	INTEGER(1,matid); // location=13 int
 	for (int i = 0; i < index; i++)
 	glEnableVertexAttribArray(i);
 	glBindVertexArray(0);

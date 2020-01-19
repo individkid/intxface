@@ -17,7 +17,9 @@
 
 inc, ext = string.match(arg[1],"(.*)%.(.*)")
 state = {}
+defined = {}
 stack = {{inc,ext,io.open(arg[1])}}
+depth = {}
 function read(stack)
 	return function()
 		local line = nil
@@ -32,10 +34,37 @@ function read(stack)
 end
 for line in read(stack) do
 	local pat, rep = string.match(line,"^#define%s+([^%s]+)%s+(.*)")
-	local inc, ext = string.match(line,"^#include \"(.*)%.(.*)\"")
-	if pat and rep then
+	if not pat then pat = string.match(line,"^#define%s+([^%s]+)") end
+	local inc, ext = string.match(line,"^#include%s+\"(.*)%.(.*)\"")
+	local ifdef = string.match(line,"^#ifdef%s+(.*)")
+	local ifndef = string.match(line,"^#ifndef%s+(.*)")
+	local endif = string.match(line,"^#endif")
+	local found = false
+	for k,v in pairs(depth) do
+		if not v then
+			found = true
+		else
+		end
+	end
+	if ifdef then
+		if state[ifdef] or defined[ifdef] then
+			depth[#depth+1] = true
+		else
+			depth[#depth+1] = false
+		end
+	elseif ifndef then
+		if not state[ifndef] and not defined[ifndef] then
+			depth[#depth+1] = true
+		else
+			depth[#depth+1] = false
+		end
+	elseif endif then
+		depth[#depth] = nil
+	elseif pat and rep and not found then
 		state[pat] = rep
-	elseif inc and ext then
+	elseif pat and not found then
+		defined[pat] = true
+	elseif inc and ext and not found then
 		local found = false
 		for k,v in ipairs(stack) do
 			if v[1] == inc and v[2] == ext then found = true end
@@ -43,7 +72,7 @@ for line in read(stack) do
 		if not found then
 			stack[#stack+1] = {inc,ext,io.open(inc.."."..ext)}
 		end
-	elseif stack[#stack][2] == "sl" then
+	elseif stack[#stack][2] == "sl" and not found then
 		local newline = line
 		for k,v in pairs(state) do
 			expr = "(.*)"..k.."(.*)"
