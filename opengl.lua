@@ -15,12 +15,14 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
+inc, ext = string.match(arg[1],"(.*)%.(.*)")
 state = {}
-stack = {{"","sl",io.stdin}}
+stack = {{inc,ext,io.open(arg[1])}}
 function read(stack)
 	return function()
 		local line = nil
 		while not line do
+			if not stack[#stack][3] then return nil end
 			line = stack[#stack][3]:read("*l")
 			if line then return line end
 			stack[#stack] = nil
@@ -29,12 +31,12 @@ function read(stack)
 	end
 end
 for line in read(stack) do
-	pat, rep = string.match(line,"^#define%s+([^%s]+)%s+(.*)")
-	inc, ext = string.match(line,"^#include \"(.*)%.(.*)\"")
+	local pat, rep = string.match(line,"^#define%s+([^%s]+)%s+(.*)")
+	local inc, ext = string.match(line,"^#include \"(.*)%.(.*)\"")
 	if pat and rep then
 		state[pat] = rep
 	elseif inc and ext then
-		found = false
+		local found = false
 		for k,v in ipairs(stack) do
 			if v[1] == inc and v[2] == ext then found = true end
 		end
@@ -42,7 +44,7 @@ for line in read(stack) do
 			stack[#stack+1] = {inc,ext,io.open(inc.."."..ext)}
 		end
 	elseif stack[#stack][2] == "sl" then
-		newline = line
+		local newline = line
 		for k,v in pairs(state) do
 			expr = "(.*)"..k.."(.*)"
 			before, after = string.match(newline,expr)

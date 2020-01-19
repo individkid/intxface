@@ -200,31 +200,28 @@ void openglShader(GLuint i, GLenum j, const char *file)
 	int stream[2] = {0};
 	pipe(stream);
 	if (fork() == 0) {
-	char *args[2] = {0};
-	if (asprintf(&args[0],"cat %s | lua opengl.lua",file) < 0) exit(-1);
+	const char *args[] = {"lua","opengl.lua",file,0};
 	close(stream[0]);
 	dup2(stream[1], STDOUT_FILENO);
-	execvp(args[0], args);
+	execvp(args[0], (char * const*)args);
 	exit(-1);}
 	close(stream[1]);
 	char *buf[1] = {0};
 	int len[1] = {0};
 	int nread = 0;
 	buf[0] = malloc(FILESIZE);
-	len[0] = 0;
-	while ((nread = read(stream[0],buf[0]+len[0],FILESIZE)) == FILESIZE) {
-	len[0] += nread; buf[0] = realloc(buf[0],len[0]+FILESIZE);} len[0] += nread;
+	while ((nread = read(stream[0],buf[0]+len[0],FILESIZE)) != 0) {
+	len[0] += nread; buf[0] = realloc(buf[0],len[0]+FILESIZE);}
+	buf[0][len[0]] = 0;
 	GLuint k = glCreateShader(j);
 	glShaderSource(k,1,(const char *const *)buf,len);
 	glCompileShader(k);
 	{char log[BUFSIZE] = {0};
 	int siz = 0;
 	glGetShaderInfoLog(k,BUFSIZE,&siz,log);
-	log[BUFSIZE-1] = 0;
-	printf("file(%s) source(%s) log(%s)\n",file,buf[0],log);}
+	if (*log) printf("file(%s) log(%s)\n",file,log);}
 	glAttachShader(i,k);
 	glDeleteShader(k);
-	free(buf[0]);
 }
 
 GLuint openglLoad(const char *vs, const char *fs)
@@ -236,8 +233,7 @@ GLuint openglLoad(const char *vs, const char *fs)
 	{char log[BUFSIZE] = {0};
 	int siz = 0;
 	glGetProgramInfoLog(retval,BUFSIZE,&siz,log);
-	log[BUFSIZE-1] = 0;
-	printf("vs(%s) fs(%s) log(%s)\n",vs,fs,log);}
+	if (*log) printf("vs(%s) fs(%s) log(%s)\n",vs,fs,log);}
 	return retval;
 }
 
