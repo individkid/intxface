@@ -15,10 +15,13 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
+if not arg[1] then return end
 inc, ext = string.match(arg[1],"(.*)%.(.*)")
+if not inc or not ext then return end
 state = {}
-defined = {}
+defin = {}
 stack = {{inc,ext,io.open(arg[1])}}
+if not stack[1][3] then return end
 depth = {}
 function read(stack)
 	return function()
@@ -47,13 +50,13 @@ for line in read(stack) do
 		end
 	end
 	if ifdef then
-		if state[ifdef] or defined[ifdef] then
+		if state[ifdef] or defin[ifdef] then
 			depth[#depth+1] = true
 		else
 			depth[#depth+1] = false
 		end
 	elseif ifndef then
-		if not state[ifndef] and not defined[ifndef] then
+		if not state[ifndef] and not defin[ifndef] then
 			depth[#depth+1] = true
 		else
 			depth[#depth+1] = false
@@ -63,7 +66,7 @@ for line in read(stack) do
 	elseif pat and rep and not found then
 		state[pat] = rep
 	elseif pat and not found then
-		defined[pat] = true
+		defin[pat] = true
 	elseif inc and ext and not found then
 		local found = false
 		for k,v in ipairs(stack) do

@@ -217,9 +217,14 @@ void openglShader(GLuint i, GLenum j, const char *file)
 	glShaderSource(k,1,(const char *const *)buf,len);
 	glCompileShader(k);
 	free(buf[0]);
-	{char log[BUFSIZE] = {0};
-	glGetShaderInfoLog(k,BUFSIZE,0,log);
-	if (*log) printf("file(%s) log(%s)\n",file,log);}
+	GLint stat = 0;
+	glGetShaderiv(k,GL_COMPILE_STATUS,&stat);
+	if (stat == GL_FALSE) {
+	GLint max = 0;
+	glGetShaderiv(k,GL_INFO_LOG_LENGTH,&max);
+	char log[max];
+	glGetShaderInfoLog(k,max,&max,log);
+	printf("file(%s) log(%s)\n",file,log);}
 	glAttachShader(i,k);
 	glDeleteShader(k);
 }
@@ -230,10 +235,14 @@ GLuint openglLoad(const char *vs, const char *fs)
 	openglShader(retval,GL_VERTEX_SHADER,vs);
 	openglShader(retval,GL_FRAGMENT_SHADER,fs);
 	glLinkProgram(retval);
-	{char log[BUFSIZE] = {0};
-	int siz = 0;
-	glGetProgramInfoLog(retval,BUFSIZE,&siz,log);
-	if (*log) printf("vs(%s) fs(%s) log(%s)\n",vs,fs,log);}
+	GLint stat = 0;
+	glGetProgramiv(retval,GL_LINK_STATUS,(int*)&stat);
+	if (stat == GL_FALSE) {
+	GLint max = 0;
+	glGetProgramiv(retval,GL_INFO_LOG_LENGTH,&max);
+	char log[max];
+	glGetProgramInfoLog(retval,max,&max,log);
+	printf("vs(%s) fs(%s) log(%s)\n",vs,fs,log);}
 	return retval;
 }
 

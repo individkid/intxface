@@ -111,7 +111,7 @@ int intersectVector(float *point, float *plane, int *versor, float *basis)
 	int b0 = i0*9; int b1 = i1*9; int b2 = i2*9;
 	for (int j = 0; j < 3; j++) {
 	int j0 = j; int j1 = (j+1)%3; int j2 = (j+2)%3;
-	int c0 = b2+j0; int c1 = b2+j1; int c2 = b2+j2;
+	int c0 = b2+j0*3; int c1 = b2+j1*3; int c2 = b2+j2*3;
 	if (!pierceVector(&pierce0[0],&corner[b1],&normal[a1],&corner[c0],&corner[c1])) continue;
 	if (!pierceVector(&pierce1[0],&corner[b1],&normal[a1],&corner[c0],&corner[c2])) continue;
 	if (pierceVector(point,&corner[b0],&normal[a0],&pierce0[0],&pierce1[0])) return 1;}}
