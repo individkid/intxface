@@ -59,7 +59,9 @@ vec3 transformVector(vec3 point, mat4 matrix)
 
 bool infiniteVector(vec3 vector)
 {
-	return (length(vector) >= SATURATE);
+	for (int i = 0; i < 3; i++)
+	if (isinf(vector[i]) || isnan(vector[i])) return true;
+	return false;
 }
 
 vec3 normalVector(vec3 point[3])
@@ -81,5 +83,17 @@ vec3 pierceVector(vec3 point, vec3 normal, vec3 feather, vec3 arrow)
 
 vec3 intersectVector(vec3 plane[3], ivec3 versor, mat3 basis[3])
 {
-	return vec3(0.0,0.0,0.0);
+	for (int i = 0; i < 3; i++) {
+	vec3 plane0[3] = constructVector(plane[i],versor[i],basis);
+	vec3 normal0 = normalVector(plane0);
+	for (int j = 1; j < 3; j++) {
+	vec3 plane1[3] = constructVector(plane[(i+j)%3],versor[(i+j)%3],basis);
+	vec3 plane2[3] = constructVector(plane[(i+j+1)%3],versor[(i+j+1)%3],basis);
+	vec3 normal2 = normalVector(plane2);
+	for (int k = 0; k < 3; k++) {
+	vec3 pierce0 = pierceVector(plane0[0],normal0,plane1[(k+0)%3],plane1[(k+1)%3]);
+	vec3 pierce1 = pierceVector(plane0[0],normal0,plane1[(k+0)%3],plane1[(k+2)%3]);
+	vec3 point = pierceVector(plane2[0],normal2,pierce0,pierce1);
+	if (!infiniteVector(point)) return point;}}}
+	return vec3(1.0/0.0,1.0/0.0,1.0/0.0);
 }

@@ -99,22 +99,18 @@ int pierceVector(float *pierce, float *point, float *normal, float *point0, floa
 
 int intersectVector(float *point, float *plane, int *versor, float *basis)
 {
-	float corner[27];
-	for (int i = 0; i < 3; i++) constructVector(&corner[i*9],&plane[i],versor[i],basis);
-	float normal[9];
-	for (int i = 0; i < 3; i++) if (!normalVector(&normal[i*3],&corner[i*9])) return 0;
-	float pierce0[3];
-	float pierce1[3];
 	for (int i = 0; i < 3; i++) {
-	int i0 = i; int i1 = (i+1)%3; int i2 = (i+2)%3;
-	int a0 = i0*3; int a1 = i1*3; int a2 = i2*3;
-	int b0 = i0*9; int b1 = i1*9; int b2 = i2*9;
-	for (int j = 0; j < 3; j++) {
-	int j0 = j; int j1 = (j+1)%3; int j2 = (j+2)%3;
-	int c0 = b2+j0*3; int c1 = b2+j1*3; int c2 = b2+j2*3;
-	if (!pierceVector(&pierce0[0],&corner[b1],&normal[a1],&corner[c0],&corner[c1])) continue;
-	if (!pierceVector(&pierce1[0],&corner[b1],&normal[a1],&corner[c0],&corner[c2])) continue;
-	if (pierceVector(point,&corner[b0],&normal[a0],&pierce0[0],&pierce1[0])) return 1;}}
+	float plane0[3][3]; constructVector(&plane0[0][0],&plane[i*3],versor[i],basis);
+	float normal0[3]; if (!normalVector(&normal0[0],&plane0[0][0])) continue;
+	for (int j = 1; j < 3; j++) {
+	float plane1[3][3]; constructVector(&plane1[0][0],&plane[((i+j)%3)*3],versor[(i+j)%3],basis);
+	float plane2[3][3]; constructVector(&plane2[0][0],&plane[((i+j+1)%3)*3],versor[(i+j+1)%3],basis);
+	float normal2[3]; if (!normalVector(&normal2[0],&plane2[0][0])) continue;
+	for (int k = 0; k < 3; k++) {
+	float pierce0[3]; if (!pierceVector(&pierce0[0],&plane0[0][0],&normal0[0],&plane1[(k+0)%3][0],&plane1[(k+1)%3][0])) continue;
+	float pierce1[3]; if (!pierceVector(&pierce1[0],&plane0[0][0],&normal0[0],&plane1[(k+0)%3][0],&plane1[(k+2)%3][0])) continue;
+	float point[3]; if (!pierceVector(&point[0],&plane2[0][0],&normal2[0],&pierce0[0],&pierce1[0])) continue;
+	return 1;}}}
 	return 0;
 }
 
