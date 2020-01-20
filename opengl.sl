@@ -57,16 +57,16 @@ vec3 transformVector(vec3 point, mat4 matrix)
 	return vec3(vector.x,vector.y,vector.z);
 }
 
-bool infiniteVector(vec3 vector)
+bool finiteVector(vec3 vector)
 {
 	for (int i = 0; i < 3; i++)
-	if (isinf(vector[i]) || isnan(vector[i])) return true;
-	return false;
+	if (isinf(vector[i]) || isnan(vector[i])) return false;
+	return true;
 }
 
 vec3 normalVector(vec3 point[3])
 {
-	return cross(point[1]-point[0],point[2]-point[0]);
+	return normalize(cross(point[1]-point[0],point[2]-point[0]));
 }
 
 vec3 solveVector(vec3 point, vec3 normal, vec3 project)
@@ -94,6 +94,6 @@ vec3 intersectVector(vec3 plane[3], ivec3 versor, mat3 basis[3])
 	vec3 pierce0 = pierceVector(plane0[0],normal0,plane1[(k+0)%3],plane1[(k+1)%3]);
 	vec3 pierce1 = pierceVector(plane0[0],normal0,plane1[(k+0)%3],plane1[(k+2)%3]);
 	vec3 point = pierceVector(plane2[0],normal2,pierce0,pierce1);
-	if (!infiniteVector(point)) return point;}}}
+	if (finiteVector(point)) return point;}}}
 	return vec3(1.0/0.0,1.0/0.0,1.0/0.0);
 }
