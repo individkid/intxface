@@ -37,14 +37,14 @@ GLsync fence[NUMCNTX] = {0};
 int head = 0;
 int tail = 0;
 
-void *openglBuffed(int idx, int len, void *buf)
+void *openglBufferJ(int idx, int len, void *buf)
 {
 	char *ptr = buf;
 	ptr += idx*len;
 	return ptr;
 }
 
-void openglPendee(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
+void openglBufferI(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
 {
 	glBindBuffer(tgt, hdl);
 	if (siz && *siz == 0) glBufferData(tgt, (*siz=idx+cnt)*gpu, 0, GL_STATIC_DRAW);
@@ -56,24 +56,24 @@ void openglPendee(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **
 	*siz = idx+cnt;}
 	if (siz && cpu == gpu) glBufferSubData(tgt, idx*gpu, cnt*gpu, *buf);
 	if (siz && cpu != gpu) for (int i = 0; i < cnt; i++)
-	glBufferSubData(tgt, (idx+i)*gpu, cpu, openglBuffed(i,cpu,*buf));
+	glBufferSubData(tgt, (idx+i)*gpu, cpu, openglBufferJ(i,cpu,*buf));
 	if (siz == 0 && cpu == gpu) glBufferSubData(tgt, bas+idx*gpu, cnt*gpu, *buf);
 	if (siz == 0 && cpu != gpu) for (int i = 0; i < cnt; i++)
-	glBufferSubData(tgt, bas+(idx+i)*gpu, cpu, openglBuffed(i,cpu,*buf));
+	glBufferSubData(tgt, bas+(idx+i)*gpu, cpu, openglBufferJ(i,cpu,*buf));
 	glBindBuffer(tgt, 0);
 }
 
-void openglPender(struct Pend *ptr)
+void openglBufferH(struct Pend *ptr)
 {
-	openglPendee(ptr->idx,ptr->cnt,ptr->cpu,ptr->gpu,ptr->bas,ptr->siz,ptr->buf,ptr->hdl,ptr->tgt);
+	openglBufferI(ptr->idx,ptr->cnt,ptr->cpu,ptr->gpu,ptr->bas,ptr->siz,ptr->buf,ptr->hdl,ptr->tgt);
 }
 
-void openglPending(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
+void openglBufferG(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
 {
 	ptr->idx=idx;ptr->cnt=cnt;ptr->cpu=cpu;ptr->gpu=gpu;ptr->bas=bas;ptr->siz=siz;ptr->buf=buf;ptr->hdl=hdl;ptr->tgt=tgt;
 }
 
-int openglPendant(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
+int openglBufferF(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint hdl, GLuint tgt)
 {
 	return (ptr->bas == bas && ptr->siz == siz && ptr->idx == idx && ptr->cnt == cnt);
 }
@@ -82,12 +82,12 @@ void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **
 {
 	for (int ctx = 0; ctx < NUMCNTX; ctx++) if (ctx != head) {
 	int found = 0; for (int pnd = pead[ctx]; pnd != pail[ctx] && !found; pnd = (pnd+1)%NUMPEND)
-	if (openglPendant(&pend[ctx][pnd],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt)) found = 1;
+	if (openglBufferF(&pend[ctx][pnd],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt)) found = 1;
 	if (!found) {if ((pail[ctx]+1)%NUMPEND == pead[ctx]) {
-	openglPender(&pend[ctx][pead[ctx]]); pead[ctx] = (pead[ctx]+1)%NUMPEND;}
-	openglPending(&pend[ctx][pail[ctx]],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt);
+	openglBufferH(&pend[ctx][pead[ctx]]); pead[ctx] = (pead[ctx]+1)%NUMPEND;}
+	openglBufferG(&pend[ctx][pail[ctx]],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt);
 	pail[ctx] = (pail[ctx]+1)%NUMPEND;}}
-	openglPendee(idx,cnt,cpu,gpu,bas,siz,buf,hdl[head],tgt);
+	openglBufferI(idx,cnt,cpu,gpu,bas,siz,buf,hdl[head],tgt);
 }
 
 void openglDma()
@@ -108,6 +108,33 @@ void openglDma()
 	case (Face): ERROR(cb.err,-1);
 	case (User): ERROR(cb.err,-1);
 	default: ERROR(exiterr,-1);}
+}
+
+void openglGet()
+{
+	float color = 0.0;
+	glReadPixels(0,0,1,1,GL_RED,GL_FLOAT,&color);
+	cb.state[Face]->face = color;
+}
+
+void openglFunc()
+{
+	glClear(GL_COLOR_BUFFER_BIT);
+	glUseProgram(programId[cb.state[User]->user->shader]);
+	glBindVertexArray(arrayId[head]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
+	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
+	for (int i = 0; i < cb.state[Range]->siz; i++) {
+	void *buf = openglBufferJ(cb.state[Range]->range[i].idx,sizeof(struct Facet),0);
+	cb.state[Tag]->tag = cb.state[Range]->range[i].tag;
+	openglBufferI(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
+	glDrawElements(GL_TRIANGLES,cb.state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
+	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
+	if (cb.state[User]->user->shader == Display) cb.swap();
+	head = (head + 1) % NUMCNTX;
+	while (pail[head] == pead[head]) {
+	openglBufferH(&pend[head][pead[head]]);
+	pead[head] = (pead[head]+1)%NUMPEND;}
 }
 
 int openglFull()
@@ -132,40 +159,6 @@ int openglFull()
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 	return 0;
-}
-
-void openglBuffee(int idx, int siz, int len, void *buf, GLuint hdl, GLuint tgt)
-{
-	glBindBuffer(tgt, hdl);
-	glGetBufferSubData(tgt, idx*len, siz*len, buf);
-	glBindBuffer(tgt, 0);
-}
-
-void openglGet()
-{
-	float color = 0.0;
-	glReadPixels(0,0,1,1,GL_RED,GL_FLOAT,&color);
-	cb.state[Face]->face = color;
-}
-
-void openglFunc()
-{
-	glClear(GL_COLOR_BUFFER_BIT);
-	glUseProgram(programId[cb.state[User]->user->shader]);
-	glBindVertexArray(arrayId[head]);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
-	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
-	for (int i = 0; i < cb.state[Range]->siz; i++) {
-	void *buf = openglBuffed(cb.state[Range]->range[i].idx,sizeof(struct Facet),0);
-	cb.state[Tag]->tag = cb.state[Range]->range[i].tag;
-	openglPendee(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
-	glDrawElements(GL_TRIANGLES,cb.state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
-	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
-	if (cb.state[User]->user->shader == Display) cb.swap();
-	head = (head + 1) % NUMCNTX;
-	while (pail[head] == pead[head]) {
-	openglPender(&pend[head][pead[head]]);
-	pead[head] = (pead[head]+1)%NUMPEND;}
 }
 
 void openglDraw()
@@ -194,12 +187,12 @@ void openglDone()
 	glDeleteProgram(programId[shader]);
 }
 
-void openglShader(GLuint i, GLenum j, const char *file)
+void openglShader(GLuint i, GLenum j, const char *file, const char *def)
 {
 	int stream[2] = {0};
 	pipe(stream);
 	if (fork() == 0) {
-	const char *args[] = {"lua","opengl.lua",file,0};
+	const char *args[] = {"lua","opengl.lua",file,def,0};
 	close(stream[0]);
 	dup2(stream[1], STDOUT_FILENO);
 	execvp(args[0], (char * const*)args);
@@ -229,11 +222,13 @@ void openglShader(GLuint i, GLenum j, const char *file)
 	glDeleteShader(k);
 }
 
-GLuint openglLoad(const char *vs, const char *fs)
+GLuint openglLoad(const char *vs, const char *gs, const char *fs)
 {
 	GLuint retval = glCreateProgram();
-	openglShader(retval,GL_VERTEX_SHADER,vs);
-	openglShader(retval,GL_FRAGMENT_SHADER,fs);
+	const char *def = (gs ? "TRACK" : "DISPLAY");
+	openglShader(retval,GL_VERTEX_SHADER,vs,def);
+	if (gs) openglShader(retval,GL_GEOMETRY_SHADER,gs,def);
+	openglShader(retval,GL_FRAGMENT_SHADER,fs,def);
 	glLinkProgram(retval);
 	GLint stat = 0;
 	glGetProgramiv(retval,GL_LINK_STATUS,(int*)&stat);
@@ -242,7 +237,8 @@ GLuint openglLoad(const char *vs, const char *fs)
 	glGetProgramiv(retval,GL_INFO_LOG_LENGTH,&max);
 	char log[max];
 	glGetProgramInfoLog(retval,max,&max,log);
-	printf("vs(%s) fs(%s) log(%s)\n",vs,fs,log);}
+	if (gs) printf("vs(%s) gs(%s) fs(%s) log(%s)\n",vs,gs,fs,log);
+	else printf("vs(%s) fs(%s) log(%s)\n",vs,fs,log);}
 	return retval;
 }
 
@@ -269,11 +265,8 @@ int openglInit()
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	for (int shader = 0; shader < Shaders; shader++) {
-	char *vertex = 0; char *fragment = 0;
-	if (asprintf(&vertex,"opengl%dv.sl",shader) < 0) ERROR(exiterr,-1);
-	if (asprintf(&fragment,"opengl%df.sl",shader) < 0) ERROR(exiterr,-1);
-	programId[shader] = openglLoad(vertex,fragment);
-	free(vertex); free(fragment);
+	const char *geom = (shader == Track ? "openglg.sl" : 0);
+	programId[shader] = openglLoad("openglv.sl",geom,"openglf.sl");
 	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");
 	glUniformBlockBinding(programId[shader],blockId[shader],0);}
 	int total = 0;

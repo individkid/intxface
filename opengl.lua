@@ -35,6 +35,11 @@ function read(stack)
 		end
 	end
 end
+index = 2
+while arg[index] do
+	state[arg[index]] = true
+	index = index + 1
+end
 for line in read(stack) do
 	local pat, rep = string.match(line,"^#define%s+([^%s]+)%s+(.*)")
 	if not pat then pat = string.match(line,"^#define%s+([^%s]+)") end

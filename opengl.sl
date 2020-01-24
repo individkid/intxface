@@ -71,7 +71,7 @@ vec3 normalVector(vec3 point[3])
 
 vec3 solveVector(vec3 point, vec3 normal, vec3 project)
 {
-	return point+(project-point-normal*((project-point)*normal));
+	return point+(project-point-normal*dot((project-point),normal));
 }
 
 vec3 pierceVector(vec3 point, vec3 normal, vec3 feather, vec3 arrow)

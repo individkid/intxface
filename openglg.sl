@@ -1,5 +1,5 @@
 /*
-*    opengl0v.sl
+*    openglg.sl
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -15,10 +15,20 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define VERTEX
 #include "opengl.sl"
+
+layout (triangles) in;
+layout (points, max_vertices = 1) out;
+in vec4 VertColor[];
+out vec4 GeomColor;
 
 void main()
 {
-	gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+	vec3 plane[3];
+	for (int i = 0; i < 3; i++) plane[i] = gl_in[i].gl_Position.xyz;
+	gl_Position.xyz = pierceVector(plane[0],normalVector(plane),feather,arrow);
+	gl_Position.z = 1.0;
+	GeomColor = VertColor[0];
+	EmitVertex();
+	EndPrimitive();
 }

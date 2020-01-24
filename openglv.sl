@@ -1,5 +1,5 @@
 /*
-*    opengl0f.sl
+*    openglv.sl
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -15,11 +15,29 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define VERTEX
 #include "opengl.sl"
 
-out vec4 FragColor;
+#ifdef DISPLAY
+out vec2 VertCoord;
+out int VertIndex;
+#endif
+out vec4 VertColor;
 
 void main()
 {
-	FragColor = vec4(0.0, 0.0, 0.0, 1.0);   
+	vec3 point = intersectVector(plane,versor,basis);
+	int index = 0; for (int i = 0; i < 3; i++) if (tag == tags[i]) index = i;
+	point = transformVector(point,subject);
+	point = transformVector(point,object[matid]);
+	if (facid[index] == hand) point = transformVector(point,feature);
+	gl_Position = vec4(point.x, point.y, point.z, 1.0);
+#ifdef DISPLAY
+	VertCoord = coord[index];
+	VertIndex = texid[index];
+	VertColor = color[index];
+#endif
+#ifdef TRACK
+	VertColor = vec4(facid[index],facid[index],facid[index],1.0);
+#endif
 }

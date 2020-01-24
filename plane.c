@@ -400,7 +400,7 @@ void clientRmw2()
 }
 
 #define INDEXED(ENUM,FIELD) \
-	if (cb.client->mem == ENUM && ptr[cb.client->mem] && cb.client->siz < ptr[cb.client->mem]->siz) \
+	if (cb.client->mem == ENUM && ptr[ENUM] && cb.client->siz < ptr[ENUM]->siz) \
 	{memcpy(&ptr[ENUM]->FIELD[cb.client->idx],cb.client->FIELD,cb.client->siz*sizeof(*cb.client->FIELD)); return;}
 void clientCopy(struct Client **ptr)
 {
@@ -452,6 +452,7 @@ void produce()
 	switch (cb.client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
+	case (Rmw2): break;
 	case (Copy): break;
 	case (Save): break;
 	case (Dma0): break;

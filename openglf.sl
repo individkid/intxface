@@ -1,5 +1,5 @@
 /*
-*    opengl0f.sl
+*    openglf.sl
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -18,8 +18,24 @@
 #include "opengl.sl"
 
 out vec4 FragColor;
+#ifdef TRACK
+in vec4 GeomColor;
+#endif
+#ifdef DISPLAY
+in vec4 VertColor;
+in vec2 VertCoord;
+flat in int VertIndex;
+#endif
 
 void main()
 {
-	FragColor = vec4(0.0, 0.0, 0.0, 1.0);   
+#ifdef TRACK
+	FragColor = GeomColor;
+#endif
+#ifdef DISPLAY
+	FragColor = VertColor;
+	// TODO modify color by texture,
+	//  selected by VertIndex,
+	//  and indexed by VertCoord
+#endif
 }
