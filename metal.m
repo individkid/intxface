@@ -47,6 +47,7 @@ void metalDma()
 	case (Tag): /*TODO*/ break;
 	case (Face): ERROR(cb.err,-1);
 	case (User): ERROR(cb.err,-1);
+	case (Image): /*TODO*/ break;
 	default: ERROR(exiterr,-1);}
 }
 

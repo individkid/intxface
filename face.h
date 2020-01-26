@@ -44,6 +44,7 @@
 #define CHRHIGH 24
 #define CHRWIDE 16
 #define NUMINET 16
+#define NUMTEXT 16
 #define NUMPEND 10
 #define NUMFEND 8
 #define NUMCNTX 5

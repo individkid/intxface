@@ -26,13 +26,20 @@ GLuint arrayId[NUMCNTX] = {0};
 GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
 GLuint uniformId[NUMCNTX] = {0};
+GLuint imageId[NUMTEXT] = {0};
 int size[NUMCNTX][Memorys] = {0};
 int base[Memorys] = {0};
 int unit[Memorys] = {0};
 struct Pend {int idx; int cnt; int cpu; int gpu; int bas; int *siz; void **buf; GLuint hdl; GLuint tgt;};
 struct Pend pend[NUMCNTX][NUMPEND] = {0};
-int pead[NUMCNTX] = {0};
-int pail[NUMCNTX] = {0};
+int pead[NUMCNTX] = {0}; // -> NUMPEND
+int pail[NUMCNTX] = {0}; // -> NUMPEND
+int pink[NUMTEXT] = {0}; // -> NUMTEXT
+int pist[NUMTEXT] = {0}; // -> NUMTEXT
+int pone[NUMTEXT] = {0}; // -> NUMTEXT
+int qink[NUMCNTX][NUMTEXT] = {0}; // -> NUMTEXT
+int qist[NUMCNTX] = {0}; // -> NUMTEXT
+int qone[NUMCNTX] = {0}; // -> NUMTEXT
 GLsync fence[NUMCNTX] = {0};
 int head = 0;
 int tail = 0;
@@ -107,6 +114,7 @@ void openglDma()
 	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Face): ERROR(cb.err,-1);
 	case (User): ERROR(cb.err,-1);
+	case (Image): /*TODO*/ break;
 	default: ERROR(exiterr,-1);}
 }
 
@@ -124,6 +132,10 @@ void openglFunc()
 	glBindVertexArray(arrayId[head]);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
 	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
+	if (cb.state[User]->user->shader == Display)
+	for (int i = qist[head]; i != qone[head]; i = qink[head][i]) {
+	glActiveTexture(GL_TEXTURE0+i);
+	glBindTexture(GL_TEXTURE_2D,imageId[i]);}
 	for (int i = 0; i < cb.state[Range]->siz; i++) {
 	void *buf = openglBufferJ(cb.state[Range]->range[i].idx,sizeof(struct Facet),0);
 	cb.state[Tag]->tag = cb.state[Range]->range[i].tag;
@@ -153,7 +165,7 @@ int openglFull()
 	case (Rmw2): break;
 	case (Copy): break;
 	case (Save): break;
-	case (Dma0): break;
+	case (Dma0): if (cb.client->mem == Image && cb.client->siz > pone[tail]) return 1; else break;
 	case (Dma1): break;
 	case (Draw): if (((head + 1) % NUMCNTX) == tail) return 1; else break;
 	case (Port): break;

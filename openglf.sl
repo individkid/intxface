@@ -25,6 +25,7 @@ in vec4 GeomColor;
 in vec4 VertColor;
 in vec2 VertCoord;
 flat in int VertIndex;
+uniform sampler2D image[16];
 #endif
 
 void main()
@@ -34,8 +35,7 @@ void main()
 #endif
 #ifdef DISPLAY
 	FragColor = VertColor;
-	// TODO modify color by texture,
-	//  selected by VertIndex,
-	//  and indexed by VertCoord
+	if (VertIndex >= 0 && VertIndex < 16)
+	FragColor *= texture(image[VertIndex],VertCoord);
 #endif
 }

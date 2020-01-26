@@ -26,8 +26,8 @@ void main()
 {
 	vec3 plane[3];
 	for (int i = 0; i < 3; i++) plane[i] = gl_in[i].gl_Position.xyz;
-	gl_Position.xyz = pierceVector(plane[0],normalVector(plane),feather,arrow);
-	gl_Position.z = 1.0;
+	vec3 pierce = pierceVector(plane[0],normalVector(plane),feather,arrow);
+	gl_Position = vec4(0.0,0.0,pierce.z,1.0);
 	GeomColor = VertColor[0];
 	EmitVertex();
 	EndPrimitive();

@@ -85,6 +85,7 @@ Memory = {
 	"Tag",
 	"Face",
 	"User",
+	"Image",
 }
 Matrix = {
 	"Global",

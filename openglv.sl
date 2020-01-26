@@ -20,7 +20,7 @@
 
 #ifdef DISPLAY
 out vec2 VertCoord;
-out int VertIndex;
+flat out int VertIndex;
 #endif
 out vec4 VertColor;
 
