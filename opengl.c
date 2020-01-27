@@ -20,6 +20,20 @@
 #include <GLFW/glfw3.h>
 #include "plane.h"
 
+struct Pend {
+	int idx; int cnt; int cpu; int gpu; int bas;
+	int *siz; void **buf; GLuint hdl; GLuint tgt;
+};
+struct Circular {
+	int head;
+	int tail;
+};
+struct Linked {
+	int list;
+	int link[NUMTEXT];
+	int size;
+};
+
 GLuint programId[Shaders] = {0};
 GLuint blockId[Shaders] = {0};
 GLuint arrayId[NUMCNTX] = {0};
@@ -27,22 +41,15 @@ GLuint vertexId[NUMCNTX] = {0};
 GLuint elementId[NUMCNTX] = {0};
 GLuint uniformId[NUMCNTX] = {0};
 GLuint imageId[NUMTEXT] = {0};
-int size[NUMCNTX][Memorys] = {0};
-int base[Memorys] = {0};
-int unit[Memorys] = {0};
-struct Pend {int idx; int cnt; int cpu; int gpu; int bas; int *siz; void **buf; GLuint hdl; GLuint tgt;};
-struct Pend pend[NUMCNTX][NUMPEND] = {0};
-int pead[NUMCNTX] = {0}; // -> NUMPEND
-int pail[NUMCNTX] = {0}; // -> NUMPEND
-int pink[NUMTEXT] = {0}; // -> NUMTEXT
-int pist[NUMTEXT] = {0}; // -> NUMTEXT
-int pone[NUMTEXT] = {0}; // -> NUMTEXT
-int qink[NUMCNTX][NUMTEXT] = {0}; // -> NUMTEXT
-int qist[NUMCNTX] = {0}; // -> NUMTEXT
-int qone[NUMCNTX] = {0}; // -> NUMTEXT
-GLsync fence[NUMCNTX] = {0};
-int head = 0;
-int tail = 0;
+GLsync fence[NUMCNTX] = {0}; // when to free context
+int size[NUMCNTX][Memorys] = {0}; // current size of dynamic
+int base[Memorys] = {0}; // offset of field in buffer
+int unit[Memorys] = {0}; // padded size of field
+struct Circular cntx = {0}; // arc of used contexts
+struct Pend pend[NUMCNTX][NUMPEND] = {0}; // updates to use
+struct Circular circ[NUMCNTX] = {0}; // arcs of used updates
+struct Linked pool = {0}; // image buffers to use
+struct Linked used[NUMCNTX] = {0}; // arcs of used images
 
 void *openglBufferJ(int idx, int len, void *buf)
 {
@@ -87,21 +94,22 @@ int openglBufferF(struct Pend *ptr, int idx, int cnt, int cpu, int gpu, int bas,
 
 void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **buf, GLuint *hdl, GLuint tgt)
 {
-	for (int ctx = 0; ctx < NUMCNTX; ctx++) if (ctx != head) {
-	int found = 0; for (int pnd = pead[ctx]; pnd != pail[ctx] && !found; pnd = (pnd+1)%NUMPEND)
+	for (int ctx = 0; ctx < NUMCNTX; ctx++) if (ctx != cntx.head) {
+	int found = 0; for (int pnd = circ[ctx].head; pnd != circ[ctx].tail && !found; pnd = (pnd+1)%NUMPEND)
 	if (openglBufferF(&pend[ctx][pnd],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt)) found = 1;
-	if (!found) {if ((pail[ctx]+1)%NUMPEND == pead[ctx]) {
-	openglBufferH(&pend[ctx][pead[ctx]]); pead[ctx] = (pead[ctx]+1)%NUMPEND;}
-	openglBufferG(&pend[ctx][pail[ctx]],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt);
-	pail[ctx] = (pail[ctx]+1)%NUMPEND;}}
-	openglBufferI(idx,cnt,cpu,gpu,bas,siz,buf,hdl[head],tgt);
+	if (!found) {if ((circ[ctx].tail+1)%NUMPEND == circ[ctx].head) {
+	openglBufferH(&pend[ctx][circ[ctx].head]);
+	circ[ctx].head = (circ[ctx].head+1)%NUMPEND;}
+	openglBufferG(&pend[ctx][circ[ctx].tail],idx,cnt,cpu,gpu,bas,siz,buf,hdl[ctx],tgt);
+	circ[ctx].tail = (circ[ctx].tail+1)%NUMPEND;}}
+	openglBufferI(idx,cnt,cpu,gpu,bas,siz,buf,hdl[cntx.head],tgt);
 }
 
 void openglDma()
 {
 	switch (cb.client->mem) {
-	case (Corner): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[head][Corner],&cb.refer[Corner],vertexId,GL_ARRAY_BUFFER); break;
-	case (Triangle): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[head][Triangle],&cb.refer[Triangle],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
+	case (Corner): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[cntx.head][Corner],&cb.refer[Corner],vertexId,GL_ARRAY_BUFFER); break;
+	case (Triangle): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[cntx.head][Triangle],&cb.refer[Triangle],elementId,GL_ELEMENT_ARRAY_BUFFER); break;
 	case (Range): ERROR(cb.err,-1);
 	case (Basis): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],uniformId,GL_UNIFORM_BUFFER); break;
 	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],uniformId,GL_UNIFORM_BUFFER); break;
@@ -129,34 +137,34 @@ void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(programId[cb.state[User]->user->shader]);
-	glBindVertexArray(arrayId[head]);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[head]);
-	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[head]);
-	if (cb.state[User]->user->shader == Display)
-	for (int i = qist[head]; i != qone[head]; i = qink[head][i]) {
-	glActiveTexture(GL_TEXTURE0+i);
-	glBindTexture(GL_TEXTURE_2D,imageId[i]);}
+	glBindVertexArray(arrayId[cntx.head]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[cntx.head]);
+	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[cntx.head]);
+	// if (cb.state[User]->user->shader == Display) {
+	// glActiveTexture(GL_TEXTURE0+i);
+	// glBindTexture(GL_TEXTURE_2D,imageId[i]);}
 	for (int i = 0; i < cb.state[Range]->siz; i++) {
 	void *buf = openglBufferJ(cb.state[Range]->range[i].idx,sizeof(struct Facet),0);
 	cb.state[Tag]->tag = cb.state[Range]->range[i].tag;
-	openglBufferI(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId[head],GL_UNIFORM_BUFFER);
+	openglBufferI(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId[cntx.head],GL_UNIFORM_BUFFER);
 	glDrawElements(GL_TRIANGLES,cb.state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
-	fence[head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
+	fence[cntx.head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
 	if (cb.state[User]->user->shader == Display) cb.swap();
-	head = (head + 1) % NUMCNTX;
-	while (pail[head] == pead[head]) {
-	openglBufferH(&pend[head][pead[head]]);
-	pead[head] = (pead[head]+1)%NUMPEND;}
+	cntx.head = (cntx.head + 1) % NUMCNTX;
+	while (used[cntx.head].size > 0) {
+	openglBufferH(&pend[cntx.head][used[cntx.head].list]);
+	used[cntx.head].list = used[cntx.head].link[used[cntx.head].list];
+	used[cntx.head].size--;}
 }
 
 int openglFull()
 {
-	while (tail != head) {
+	while (cntx.tail != cntx.head) {
 	GLint val;
 	GLsizei len;
-	glGetSynciv(fence[tail],GL_SYNC_STATUS,1,&len,&val);
+	glGetSynciv(fence[cntx.tail],GL_SYNC_STATUS,1,&len,&val);
 	if (val == GL_UNSIGNALED) break;
-	tail = (tail+1)%NUMCNTX;}
+	cntx.tail = (cntx.tail+1)%NUMCNTX;}
 	if (cb.client)
 	for (int i = 0; i < cb.client->len; i++)
 	switch (cb.client->fnc[i]) {
@@ -165,9 +173,10 @@ int openglFull()
 	case (Rmw2): break;
 	case (Copy): break;
 	case (Save): break;
-	case (Dma0): if (cb.client->mem == Image && cb.client->siz > pone[tail]) return 1; else break;
+	case (Dma0):
+	if (cb.client->mem == Image && cb.client->siz > pool.size) return 1; else break;
 	case (Dma1): break;
-	case (Draw): if (((head + 1) % NUMCNTX) == tail) return 1; else break;
+	case (Draw): if (((cntx.head + 1) % NUMCNTX) == cntx.tail) return 1; else break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 	return 0;
