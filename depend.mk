@@ -14,9 +14,9 @@ lineC.o: base.h face.h type.h
 metalC.o: base.h face.h metic.h plane.h type.h
 meticC.o: metic.h
 modelC.o: base.h face.h metic.h plane.h type.h
-openglC.o: base.h face.h metic.h plane.h type.h
-planeC: baseC.o faceC.o glfwC.o metalC.o meticC.o modelC.o openglC.o typeC.o vulkanC.o
-planeC.o: base.h face.h metic.h plane.h type.h
+openglC.o: base.h contain.h face.h metic.h plane.h type.h
+planeC: baseC.o containC.o faceC.o glfwC.o metalC.o meticC.o modelC.o openglC.o typeC.o vulkanC.o
+planeC.o: base.h contain.h face.h metic.h plane.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h

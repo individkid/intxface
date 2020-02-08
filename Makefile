@@ -73,7 +73,7 @@ filer.log: filerLua file
 
 .PHONY:
 clean:
-	rm -f base.h base.c
+	rm -f base.h base.c contain.h contain.c
 	rm -f type.h type.c type.hs type.lua
 	rm -f typer.h typer.c typer.hs typer.lua
 	rm -f typra facer typer filer

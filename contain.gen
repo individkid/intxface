@@ -1,0 +1,38 @@
+--[[
+*    contain.gen
+*    Copyright (C) 2019  Paul Coelho
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+--]]
+
+if (arg[1] == "contain.h") then
+	file = io.open("contain.h", "w")
+	file:write("struct bufPend {\n")
+	file:write("};\n")
+	file:close()
+end
+if (arg[1] == "contain.c") then
+	file = io.open("contain.c", "w")
+	file:write("struct Pend {\n")
+	file:write("	int idx; int cnt; int cpu; int gpu; int bas;\n")
+	file:write("	int *siz; void **buf; unsigned hdl; unsigned tgt;\n")
+	file:write("};\n")
+	file:write("void putPend(struct bufPend *buf, COPY(struct Pend), int sub, int *box)\n")
+	file:write("{}\n")
+	file:write("void getPend(struct bufPend *buf, INIT(struct Pend), int sub, int *box)\n")
+	file:write("{}\n")
+	file:write("int sizPend(struct bufPend *buf)\n")
+	file:write("{}\n")
+	file:close()
+end

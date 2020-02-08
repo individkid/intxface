@@ -27,6 +27,8 @@
 
 #define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
+#define INIT(TYPE) void (*func)(TYPE* val)
+#define COPY(TYPE) void (*func)(TYPE* dst, TYPE* src)
 #define INVALID 1.0e30
 #define ANGLE (1.0/30.0)
 #define SATURATE 1000000000000.0
@@ -58,6 +60,10 @@
 // NUMPEND connection request queue length
 // CMDSIZE field buffer array limit
 
+struct bufInt;
+void putInt(struct bufInt *buf, COPY(int), int sub, int *box);
+void getInt(struct bufInt *buf, INIT(int), int sub, int *box);
+int sizInt(struct bufInt *buf);
 typedef void (*eftype)(const char*,int,int);
 typedef void (*hftype)(const char*,int);
 typedef void (*cftype)(const char*,int,void*);
