@@ -84,10 +84,12 @@ end
 
 typestr = {}
 for k,v in pairs(buffers) do
-	if v == "" then
-		typestr[k] = string.lower(k)
-	else
+	if structs[k] then
 		typestr[k] = "struct "..k
+	elseif enums[k] then
+		typestr[k] = "enum "..k
+	else
+		typestr[k] = string.lower(k)
 	end
 end
 if (arg[1] == "contain.h") then
@@ -145,7 +147,7 @@ if (arg[1] == "contain.c") then
 		file:write("void get"..k.."(struct buf"..k.." *buf, COPY("..typestr[k].."), INIT("..typestr[k].."), int sub, "..typestr[k].." *box)\n")
 		file:write("{\n")
 		file:write("	big"..k.."(buf,copy,sub);\n")
-		file:write("	int ofs = (buf->head+sub)%buf->room;")
+		file:write("	int ofs = (buf->head+sub)%buf->room;\n")
 		file:write("	if (!buf->init[ofs]) {buf->init[ofs] = 1; init(buf->data+ofs);}\n")
 		file:write("	if (box) copy(box,buf->data+ofs);\n")
 		file:write("}\n")
