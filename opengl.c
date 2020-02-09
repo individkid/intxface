@@ -34,7 +34,6 @@ struct Pend {
 	int idx; int cnt; int cpu; int gpu; int bas;
 	int *siz; void **buf; unsigned hdl; unsigned tgt;
 };
-struct bufPend;
 void putPend(struct bufPend *buf, COPY(struct Pend), int sub, int *box);
 void getPend(struct bufPend *buf, INIT(struct Pend), int sub, int *box);
 int sizPend(struct bufPend *buf);
@@ -47,6 +46,9 @@ struct Linked {
 	int link[NUMTEXT];
 	int size;
 };
+void putInt(struct bufInt *buf, COPY(int), int sub, int *box);
+void getInt(struct bufInt *buf, INIT(int), int sub, int *box);
+int sizInt(struct bufInt *buf);
 
 GLuint programId[Shaders] = {0};
 GLuint blockId[Shaders] = {0};

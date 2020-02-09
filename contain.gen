@@ -84,23 +84,31 @@ end
 
 if (arg[1] == "contain.h") then
 	file = io.open("contain.h", "w")
-	file:write("struct bufPend {\n")
-	file:write("};\n")
+	for k,v in pairs(buffers) do
+		file:write("struct buf"..k.." {\n")
+		file:write("};\n")
+	end
 	file:close()
 end
 if (arg[1] == "contain.c") then
 	file = io.open("contain.c", "w")
 	file:write("#include \"contain.h\"\n")
 	file:write("#include \"face.h\"\n")
-	file:write("struct Pend {\n")
-	file:write("	int idx; int cnt; int cpu; int gpu; int bas;\n")
-	file:write("	int *siz; void **buf; unsigned hdl; unsigned tgt;\n")
-	file:write("};\n")
-	file:write("void putPend(struct bufPend *buf, COPY(struct Pend), int sub, int *box)\n")
-	file:write("{}\n")
-	file:write("void getPend(struct bufPend *buf, INIT(struct Pend), int sub, int *box)\n")
-	file:write("{}\n")
-	file:write("int sizPend(struct bufPend *buf)\n")
-	file:write("{return 0;}\n")
+	for k,v in pairs(buffers) do
+		file:write(v.."\n")
+		if v == "" then
+			file:write("void put"..k.."(struct buf"..k.." *buf, COPY("..string.lower(k).."), int sub, int *box)\n")
+			file:write("{}\n")
+			file:write("void get"..k.."(struct buf"..k.." *buf, INIT("..string.lower(k).."), int sub, int *box)\n")
+			file:write("{}\n")
+		else
+			file:write("void put"..k.."(struct buf"..k.." *buf, COPY(struct "..k.."), int sub, int *box)\n")
+			file:write("{}\n")
+			file:write("void get"..k.."(struct buf"..k.." *buf, INIT(struct "..k.."), int sub, int *box)\n")
+			file:write("{}\n")
+		end
+		file:write("int siz"..k.."(struct buf"..k.." *buf)\n")
+		file:write("{return 0;}\n")
+	end
 	file:close()
 end
