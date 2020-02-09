@@ -82,12 +82,33 @@ for k,v in ipairs(files) do
 	end
 end
 
+typestr = {}
+for k,v in pairs(buffers) do
+	if v == "" then
+		typestr[k] = string.lower(k)
+	else
+		typestr[k] = "struct "..k
+	end
+end
 if (arg[1] == "contain.h") then
 	file = io.open("contain.h", "w")
+	file:write("#ifndef CONTAIN_H\n")
+	file:write("#define CONTAIN_H\n")
+	file:write("\n")
 	for k,v in pairs(buffers) do
+		if v ~= "" then
+			file:write(typestr[k]..";\n")
+		end
 		file:write("struct buf"..k.." {\n")
+		file:write("	int size;\n")
+		file:write("	int head;\n")
+		file:write("	int tail;\n")
+		file:write("	int wrap;\n")
+		file:write("	"..typestr[k].." *buf;\n")
 		file:write("};\n")
 	end
+	file:write("\n")
+	file:write("#endif")
 	file:close()
 end
 if (arg[1] == "contain.c") then
@@ -96,17 +117,10 @@ if (arg[1] == "contain.c") then
 	file:write("#include \"face.h\"\n")
 	for k,v in pairs(buffers) do
 		file:write(v.."\n")
-		if v == "" then
-			file:write("void put"..k.."(struct buf"..k.." *buf, COPY("..string.lower(k).."), int sub, int *box)\n")
-			file:write("{}\n")
-			file:write("void get"..k.."(struct buf"..k.." *buf, INIT("..string.lower(k).."), int sub, int *box)\n")
-			file:write("{}\n")
-		else
-			file:write("void put"..k.."(struct buf"..k.." *buf, COPY(struct "..k.."), int sub, int *box)\n")
-			file:write("{}\n")
-			file:write("void get"..k.."(struct buf"..k.." *buf, INIT(struct "..k.."), int sub, int *box)\n")
-			file:write("{}\n")
-		end
+		file:write("void put"..k.."(struct buf"..k.." *buf, COPY("..typestr[k].."), int sub, int *box)\n")
+		file:write("{}\n")
+		file:write("void get"..k.."(struct buf"..k.." *buf, INIT("..typestr[k].."), int sub, int *box)\n")
+		file:write("{}\n")
 		file:write("int siz"..k.."(struct buf"..k.." *buf)\n")
 		file:write("{return 0;}\n")
 	end
