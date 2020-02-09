@@ -373,7 +373,9 @@ for k,v in pairs(edges) do
 					((ext ~= ".lua") or (e ~= ".c")) and
 					((ext ~= ".gen") or (e ~= ".c")) then
 					for ky,vl in pairs(edges[key]) do
-						if (not deps[ky]) then
+						ba,ex = string.match(ky,"(.*)(%..*)")
+						if (not deps[ky]) and
+							(ex ~= ".h" or e ~= ".c") then
 							count = count + 1;
 							deps[ky] = vl
 							-- print(k..": "..key..": "..ky)

@@ -1,5 +1,6 @@
 baseC.o: base.h face.h
 baseGen: show.lua
+containC.o: contain.h face.h
 faceC.o: face.h
 facerC: faceC.o
 facerC.o: face.h
@@ -16,7 +17,7 @@ meticC.o: metic.h
 modelC.o: base.h face.h metic.h plane.h type.h
 openglC.o: base.h contain.h face.h metic.h plane.h type.h
 planeC: baseC.o containC.o faceC.o glfwC.o metalC.o meticC.o modelC.o openglC.o typeC.o vulkanC.o
-planeC.o: base.h contain.h face.h metic.h plane.h type.h
+planeC.o: base.h face.h metic.h plane.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h

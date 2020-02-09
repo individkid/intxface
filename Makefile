@@ -81,3 +81,4 @@ clean:
 	rm -f *C *Hs *Lua *Gen *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h
+	rm -f depend opengl show test type
