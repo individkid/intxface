@@ -80,5 +80,5 @@ clean:
 	rm -f trade file line plane space
 	rm -f *C *Hs *Lua *Gen *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
-	rm -f *.o *.so *.hi *_stub.h
+	rm -f *.o *.so *.hi *_stub.h a.*
 	rm -f depend opengl show test type
