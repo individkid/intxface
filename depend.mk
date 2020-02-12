@@ -1,6 +1,6 @@
 baseC.o: base.h face.h
 baseGen: show.lua
-containC.o: contain.h face.h
+containC.o: contain.h
 faceC.o: face.h
 facerC: faceC.o
 facerC.o: face.h
@@ -30,5 +30,4 @@ typerHs: face.hs faceC.o
 typerLua: face.so
 typraLua: show.lua test.lua
 vulkanC.o: base.h face.h metic.h plane.h type.h
-containC.o: base.h type.h
 contain.c: base.h type.h

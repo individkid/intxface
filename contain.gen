@@ -103,6 +103,7 @@ for k,v in pairs(buffers) do
 			file = io.open("a.txt")
 			sizes[k] = file:read("*number")
 			file:close()
+			os.execute("rm a.c")
 			break
 		else
 			if val == "struct " and k == "Pend" then
