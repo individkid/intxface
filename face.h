@@ -27,8 +27,6 @@
 
 #define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
-#define INIT(TYPE) void (*init)(TYPE* val)
-#define COPY(TYPE) void (*copy)(TYPE* dst, TYPE* src)
 #define INVALID 1.0e30
 #define ANGLE (1.0/30.0)
 #define SATURATE 1000000000000.0

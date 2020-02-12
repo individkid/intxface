@@ -27,10 +27,10 @@ dirlist:close()
 buffers = {}
 buffer = nil
 for k,v in ipairs(files) do
-	code = ""
+	code = {}
 	file = io.open(v)
 	for line in file:lines() do
-		code = code..line.."\n"
+		code[#code+1] = line
 		buffer,check = string.match(line,"^void put(.*)%(struct buf(.*) %*buf")
 		if not buffer or buffer~=check then
 			buffer,check = string.match(line,"^void get(.*)%(struct buf(.*) %*buf")
@@ -39,7 +39,10 @@ for k,v in ipairs(files) do
 			buffer,check = string.match(line,"^void siz(.*)%(struct buf(.*) %*buf")
 		end
 		if buffer and buffer==check then
-			buffers[buffer] = code
+			buffers[buffer] = {}
+			for key,val in ipairs(code) do
+				buffers[buffer][key] = val
+			end
 			buffer = nil
 		end
 	end
@@ -78,10 +81,16 @@ end
 for k,v in pairs(buffers) do
 	for key,val in ipairs(sizeofs) do
 		if val == "" then siztyp = string.lower(k) else siztyp = val..k end
-		os.execute("touch contain.h")
 		file = io.open("a.c","w")
 		file:write("#include <stdio.h>\n")
-		file:write(v)
+		for ky,vl in ipairs(v) do
+			if string.match(vl,"#include \"contain.h\"") then
+				file:write("#define INIT(TYPE) void (*init)(TYPE* val)\n")
+				file:write("#define COPY(TYPE) void (*copy)(TYPE* dst, TYPE* src)\n")
+			else
+				file:write(vl.."\n")
+			end
+		end
 		file:write("int main() {printf(\"%d\",(int)sizeof("..siztyp..")); return 0;}\n")
 		file:close()
 		while compile() do
@@ -101,21 +110,33 @@ for k,v in pairs(buffers) do
 				os.exit(-1)
 			end
 		end
+		os.execute("rm a.c")
 	end
 end
 if #arg == 0 then
-	depend = "containC.o:"
+	depend = "contain.c:"
 	for k,v in ipairs(depends) do
 		depend = depend.." "..v
 	end
 	print(depend)
 	os.exit(0)
+else
+	for k,v in pairs(buffers) do
+		print("buffers["..k.."]("..#buffers[k]..")")
+	end
+	for k,v in pairs(sizes) do
+		print("sizes["..k.."]("..sizes[k]..")")
+	end
+	for k,v in pairs(depends) do
+		print("depends["..k.."]("..depends[k]..")")
+	end
 end
 if (arg[1] == "contain.h") then
 	file = io.open("contain.h", "w")
 	file:write("#ifndef CONTAIN_H\n")
 	file:write("#define CONTAIN_H\n")
-	file:write("\n")
+	file:write("#define INIT(TYPE) void (*init)(TYPE* val)\n")
+	file:write("#define COPY(TYPE) void (*copy)(TYPE* dst, TYPE* src)\n")
 	for k,v in pairs(sizes) do
 		file:write("typedef char arr"..k.."["..sizes[k].."];\n")
 		file:write("struct buf"..k.." {\n")
@@ -132,8 +153,9 @@ if (arg[1] == "contain.h") then
 end
 if (arg[1] == "contain.c") then
 	file = io.open("contain.c", "w")
-	for k,v in pairs(buffers) do
-		if v ~= "" then file:write(v.."\n") end
+	file:write("#include <stdlib.h>\n")
+	file:write("#include \"contain.h\"\n")
+	for k,v in pairs(sizes) do
 		file:write("int ofs"..k.."(struct buf"..k.." *buf, int sub)\n")
 		file:write("{\n")
 		file:write("	return (buf->head+sub)%buf->room;\n")

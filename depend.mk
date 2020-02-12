@@ -31,3 +31,4 @@ typerLua: face.so
 typraLua: show.lua test.lua
 vulkanC.o: base.h face.h metic.h plane.h type.h
 containC.o: base.h type.h
+contain.c: base.h type.h
