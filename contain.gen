@@ -24,26 +24,26 @@ for line in dirlist:lines() do
 end
 dirlist:close()
 
-buffers = {}
-buffer = nil
+codes = {}
+code = nil
 for k,v in ipairs(files) do
-	code = {}
+	lines = {}
 	file = io.open(v)
 	for line in file:lines() do
-		code[#code+1] = line
-		buffer,check = string.match(line,"^void put(.*)%(struct buf(.*) %*buf")
-		if not buffer or buffer~=check then
-			buffer,check = string.match(line,"^void get(.*)%(struct buf(.*) %*buf")
+		lines[#lines+1] = line
+		code,check = string.match(line,"^void put(.*)%(struct buf(.*) %*buf")
+		if not code or code~=check then
+			code,check = string.match(line,"^void get(.*)%(struct buf(.*) %*buf")
 		end
-		if not buffer or buffer~=check then
-			buffer,check = string.match(line,"^void siz(.*)%(struct buf(.*) %*buf")
+		if not code or code~=check then
+			code,check = string.match(line,"^void siz(.*)%(struct buf(.*) %*buf")
 		end
-		if buffer and buffer==check then
-			buffers[buffer] = {}
-			for key,val in ipairs(code) do
-				buffers[buffer][key] = val
+		if code and code==check then
+			codes[code] = {}
+			for key,val in ipairs(lines) do
+				codes[code][key] = val
 			end
-			buffer = nil
+			code = nil
 		end
 	end
 	file:close()
@@ -56,12 +56,12 @@ clangpp = clangpp.." -framework OpenGL -framework Metal -framework QuartzCore"
 clangpp = clangpp.."  2>> a.err >> a.txt"
 sizeofs = {"struct ","enum ",""}
 sizes = {}
-depends = {}
-depend = nil
+pends = {}
+pend = nil
 function compile()
 	if os.execute(clang) then
 		if os.execute(clangpp) then
-			depend = true
+			pend = true
 			return false
 		end
 	end
@@ -69,16 +69,16 @@ function compile()
 	for line in file:lines() do
 		name = string.match(line,"fatal error: '(.*)' file not found")
 		if name then
-			depend = name;
+			pend = name;
 			file:close()
 			return true
 		end
 	end
 	file:close()
-	depend = false
+	pend = false
 	return false
 end
-for k,v in pairs(buffers) do
+for k,v in pairs(codes) do
 	for key,val in ipairs(sizeofs) do
 		if val == "" then siztyp = string.lower(k) else siztyp = val..k end
 		file = io.open("a.c","w")
@@ -94,12 +94,12 @@ for k,v in pairs(buffers) do
 		file:write("int main() {printf(\"%d\",(int)sizeof("..siztyp..")); return 0;}\n")
 		file:close()
 		while compile() do
-			depends[#depends+1] = depend
-			if not os.execute("make "..depend.." > a.txt") then
+			pends[#pends+1] = pend
+			if not os.execute("make "..pend.." > a.txt") then
 				os.exit(-1)
 			end
 		end
-		if depend and os.execute("./a.out > a.txt") then
+		if pend and os.execute("./a.out > a.txt") then
 			file = io.open("a.txt")
 			sizes[k] = file:read("*number")
 			file:close()
@@ -115,21 +115,21 @@ for k,v in pairs(buffers) do
 	end
 end
 if #arg == 0 then
-	depend = "contain.c:"
-	for k,v in ipairs(depends) do
-		depend = depend.." "..v
+	pend = "contain.c:"
+	for k,v in ipairs(pends) do
+		pend = pend.." "..v
 	end
-	print(depend)
+	print(pend)
 	os.exit(0)
 else
-	for k,v in pairs(buffers) do
-		print("buffers["..k.."]("..#buffers[k]..")")
+	for k,v in pairs(codes) do
+		print("codes["..k.."]("..#codes[k]..")")
 	end
 	for k,v in pairs(sizes) do
 		print("sizes["..k.."]("..sizes[k]..")")
 	end
-	for k,v in pairs(depends) do
-		print("depends["..k.."]("..depends[k]..")")
+	for k,v in pairs(pends) do
+		print("pends["..k.."]("..pends[k]..")")
 	end
 end
 if (arg[1] == "contain.h") then
