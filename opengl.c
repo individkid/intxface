@@ -47,42 +47,38 @@ void putGluint(struct bufGluint *buf, int sub, gluint *box);
 gluint getGluint(struct bufGluint *buf, INITBOX(gluint), int sub, gluint *box);
 int sizGluint(struct bufGluint *buf);
 VALUEBOX(gluint,Gluint);
-void putPend(struct bufPend *buf, int sub, struct Pend *box);
-struct Pend *getPend(struct bufPend *buf, INITBOX(struct Pend), int sub, struct Pend *box);
-int sizPend(struct bufPend *buf);
-REFERBOX(struct Pend,Pend)
 void putGlsync(struct bufGlsync *buf, int sub, struct Glsync *box);
 glsync getGlsync(struct bufGlsync *buf, INITBOX(glsync), int sub, struct Glsync *box);
 int sizGlsync(struct bufGlsync *buf);
 VALUEBOX(glsync,Glsync)
+void putPend(struct bufPend *buf, int sub, struct Pend *box);
+struct Pend *getPend(struct bufPend *buf, INITBOX(struct Pend), int sub, struct Pend *box);
+int sizPend(struct bufPend *buf);
+REFERBOX(struct Pend,Pend)
 
 struct Attribute {
-	struct bufPend pend;
 	struct bufGluint ident;
-	int seqnum;
+	struct bufGluint pool;
+	struct bufInt inum;
+	struct bufInt pnum;
 };
 struct Uniform {
 	struct bufInt size;
-	struct bufPend pend;
 	struct bufGluint ident;
-	int seqnum;
-};
-struct Sync {
-	struct bufPend pend;
-	struct bufGlsync ident;
-	int seqnum;
+	struct bufGluint pool;
+	struct bufInt inum;
+	struct bufInt pnum;
 };
 
 GLuint programId[Shaders] = {0};
 GLuint blockId[Shaders] = {0};
 struct Attribute arrayId = {0};
-void funcArray(gluint *box) {}
 struct Attribute vertexId = {0};
 struct Attribute elementId = {0};
 struct Uniform uniformId = {0};
 struct Uniform imageId = {0};
-struct Sync fence = {0}; // when to free context
-int size[NUMCNTX][Memorys] = {0}; // current size of dynamic
+struct bufGlsync fence = {0};
+struct bufPend pend = {0};
 int base[Memorys] = {0}; // offset of field in buffer
 int unit[Memorys] = {0}; // padded size of field
 
@@ -172,19 +168,20 @@ void openglFunc()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glUseProgram(programId[cb.state[User]->user->shader]);
-	glBindVertexArray(headGluint(&arrayId));
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,elementId[cntx.head]);
-	glBindBufferBase(GL_UNIFORM_BUFFER,0,uniformId[cntx.head]);
-	// if (cb.state[User]->user->shader == Display) {
-	// glActiveTexture(GL_TEXTURE0+i);
-	// glBindTexture(GL_TEXTURE_2D,imageId[i]);}
+	glBindVertexArray(popGluint(&arrayId.ident));
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,popGluint(&elementId.ident));
+	GLuint ident = 0;
+	glBindBufferBase(GL_UNIFORM_BUFFER,0,ident=popGluint(&uniformId.ident));
+	if (cb.state[User]->user->shader == Stream) {
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D,popGluint(&imageId.ident));}
 	for (int i = 0; i < cb.state[Range]->siz; i++) {
 	void *buf = openglBufferJ(cb.state[Range]->range[i].idx,sizeof(struct Facet),0);
 	cb.state[Tag]->tag = cb.state[Range]->range[i].tag;
-	openglBufferI(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformId[cntx.head],GL_UNIFORM_BUFFER);
+	openglBufferI(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],ident,GL_UNIFORM_BUFFER);
 	glDrawElements(GL_TRIANGLES,cb.state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);}
-	fence[cntx.head] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
-	if (cb.state[User]->user->shader == Display) cb.swap();
+	pushGlsync(&fence,glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0));
+	if (cb.state[User]->user->shader == Display || cb.state[User]->user->shader == Stream) cb.swap();
 	cntx.head = (cntx.head + 1) % NUMCNTX;
 	while (used[cntx.head].size > 0) {
 	openglBufferH(&pend[cntx.head][used[cntx.head].list]);
