@@ -114,7 +114,9 @@ Roll = {
 	"Balloon", -- scale with fixed pierce point
 }
 Shader = {
+	"Proximity"
 	"Display",
+	"Stream",
 	"Track",
 }
 Config = {
@@ -190,9 +192,8 @@ Vertex = {
 	{"versor","int",{},{3}}, -- layout (location=4) in ivec3 versor;
 	{"coord","float",{},{3,2}}, -- layout (location=5) in vec2 coord[3];
 	{"color","float",{},{3,4}}, -- layout (location=8) in vec4 color[3];
-	{"texid","int",{},{3}}, -- layout (location=11) in ivec3 texid;
-	{"facid","int",{},{3}}, -- layout (location=12) in ivec3 facid;
-	{"matid","int",{},{}}, -- layout (location=13) in int matid;
+	{"facid","int",{},{3}}, -- layout (location=11) in ivec3 facid;
+	{"matid","int",{},{}}, -- layout (location=12) in int matid;
 }
 Facet = {
 	{"vtxid","int",{},{3}}, -- sort by tag and render per tag

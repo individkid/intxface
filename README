@@ -31,22 +31,27 @@ type.gen generates type.h type.c type.hs type.lua typer.h typer.c typer.hs typer
 This has declarations and read*/write* for each struct/enum in each language.
 
 file.h file.c filer.lua test read write monitor append files.
-Main pselects on interface pipe, waiting for commands.
+Main pselects on interface pipe,
+waiting for commands.
 Open file command opens the helper named pipe for writing,
-creates a pthread with unnamed pipe, and opens given file.
+creates a pthread with unnamed pipe,
+and opens given file.
 Write command forwards to indicated named pipe.
 Main pselects unnamed pipes and interface pipe.
 The created pthread round robin lock reads from given files til eof,
 and tries for writelock on youngest helper file,
 or waits for readlock.
 The writelocker waits for commands in the named pipe,
-lock changes the given file, appends to the helper file,
+lock changes the given file,
+appends to the helper file,
 writes to the unnamed pipe,
-opens younger helper file if current one is too long, and loops back.
-The readlocker reads the appended command, lock reads the given file,
-writes to unnamed pipe, and loops back.
+opens younger helper file if current one is too long,
+and loops back.
+The readlocker reads the appended command,
+writes to the unnamed pipe,
+and loops back.
 
-time.c timer.lua timra.c test stock flow sound system.
+line.c liner.lua linra.c test stock flow sound system.
 This allows simple sums of terms of coefficient
 with one or two variable factors or three variable conditional
 to schedule evaluations, variable changes, and interface writes on a timewheel.
@@ -54,8 +59,11 @@ Interface reads can change the set variables, their simple sums,
 their values, or which is used for sound.
 
 plane.c planer.lua planra.c test opengl display mouse keyboard.
-This has two shaders, one to find pierce points and one to display facets.
-This maintains a global transformation matrix, a matrix per polytope,
+This has four shaders, one to find pierce points,
+one to display facets, and one to stream framebuffers,
+and one to detect focal point proximity to planes.
+This maintains a global transformation matrix,
+a matrix per polytope,
 one for manipulating individual planes,
 copies of the matrices from when fixed point is saved,
 and copies from when matrices are sent to synchronize with other processes.
@@ -67,7 +75,7 @@ classifies sets of regions as polytopes, samples polytopes as region sets,
 finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
-sculpt.lua starts plane space to manipulating double dash polytopes.
+sculpt.lua starts plane space to manipulate double dash polytopes.
 This converts double dash commands in files
 to and from commands in other processes.
 
@@ -76,7 +84,7 @@ This applies heuristics to samples from space
 to find canonical examples of complete classes of spaces and overlaps,
 and writes specifications to double dash files.
 
-play.lua starts time plane space to record user polytope sound interact.
+play.lua starts line plane space to record user polytope sound interact.
 This reads double dash files at the rate they were written,
 inserts user manipulations and activations,
 writes the result to a new double dash file,

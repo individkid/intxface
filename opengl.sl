@@ -25,9 +25,8 @@ layout (location=1) in vec3 plane[3];
 layout (location=4) in ivec3 versor;
 layout (location=5) in vec2 coord[3];
 layout (location=8) in vec4 color[3];
-layout (location=11) in ivec3 texid;
-layout (location=12) in ivec3 facid;
-layout (location=13) in int matid;
+layout (location=11) in ivec3 facid;
+layout (location=12) in int matid;
 #endif
 
 layout (std140) uniform Uniform
