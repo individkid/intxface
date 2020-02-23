@@ -106,8 +106,6 @@ void modelFunc(struct Array *range)
 			if (!intersectVector(&point[j*3],&ptr[j]->plane[0][0],ptr[j]->versor,basis)) {skip = 1; break;}
 			for (int k = 0; k < 2; k++) coord[j*2+k] = ptr[j]->coord[found][k];
 			for (int k = 0; k < 4; k++) color[j*4+k] = ptr[j]->color[found][k];
-			if (j == 0) texid = ptr[j]->texid[found];
-			else if (texid != ptr[j]->texid[found]) ERROR(moderr,-1);
 			if (j == 0) facid = ptr[j]->facid[found];
 			else if (facid != ptr[j]->facid[found]) ERROR(moderr,-1);
 			if (j == 0) matid = ptr[j]->matid;

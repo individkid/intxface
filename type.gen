@@ -114,7 +114,7 @@ Roll = {
 	"Balloon", -- scale with fixed pierce point
 }
 Shader = {
-	"Proximity"
+	"Proximity",
 	"Display",
 	"Stream",
 	"Track",

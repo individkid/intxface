@@ -25,20 +25,38 @@ end
 dirlist:close()
 
 codes = {}
+sizes = {}
+pends = {}
 ctypes = {}
-code = nil
-ctype = nil
 for k,v in ipairs(files) do
 	lines = {}
 	file = io.open(v)
 	for line in file:lines() do
 		lines[#lines+1] = line
-		code,check = string.match(line,"^void put(.*)%(struct buf(.*) %*buf")
+		code = nil
+		ctype = nil
 		if not code or code~=check then
-			ctype,code,check = string.match(line,"^(.* %*?)get(.*)%(struct buf(.*) %*buf")
+			code,check = string.match(line,"^void put(Buf.*)%(struct Que(Que.*) %*buf")
 		end
 		if not code or code~=check then
-			code,check = string.match(line,"^int siz(.*)%(struct buf(.*) %*buf")
+			ctype,code,check = string.match(line,"^(Buf.* %*?)get(Buf.*)%(struct Que(Que.*) %*buf")
+		end
+		if not code or code~=check then
+			code,check = string.match(line,"^int siz(Buf.*)%(struct Que(Que.*) %*buf")
+		end
+		if not code or code~=check then
+			code,check = string.match(line,"^void put(.*)%(struct Que(.*) %*buf")
+		end
+		if not code or code~=check then
+			ctype,code,check = string.match(line,"^(.* %*?)get(.*)%(struct Que(.*) %*buf")
+		end
+		if not code or code~=check then
+			code,check = string.match(line,"^int siz(.*)%(struct Que(.*) %*buf")
+		end
+		if code and code==check and string.match(code,"^Buf.*") then
+			sizes[code] = "sizeof(int)*3+sizeof(void*)*2"
+			code = nil
+			ctype = nil
 		end
 		if code and code==check then
 			codes[code] = {}
@@ -61,8 +79,6 @@ clangpp = clangpp.." -framework CoreFoundation -framework CoreGraphics"
 clangpp = clangpp.." -framework OpenGL -framework Metal -framework QuartzCore"
 clangpp = clangpp.."  2>> a.err >> a.txt"
 sizeofs = {"struct ","enum ",""}
-sizes = {}
-pends = {}
 pend = nil
 function compile()
 	if os.execute(clang) then
@@ -91,7 +107,8 @@ for k,v in pairs(codes) do
 		file:write("#include <stdio.h>\n")
 		for ky,vl in ipairs(v) do
 			if string.match(vl,"#include \"contain.h\"") then
-				file:write("#define INITBOX(TYPE) void (*func)(TYPE* val)\n")
+				file:write("#define VALUEBOX(TYPE,NAME)\n")
+				file:write("#define REFERBOX(TYPE,NAME)\n")
 			else
 				file:write(vl.."\n")
 			end
@@ -144,26 +161,26 @@ if (arg[1] == "contain.h") then
 	file = io.open("contain.h", "w")
 	file:write("#ifndef CONTAIN_H\n")
 	file:write("#define CONTAIN_H\n")
-	file:write("#define INITBOX(TYPE) void (*func)(TYPE* val)\n")
+	file:write("#define VALUEBOX(TYPE,NAME)\\\n")
+	file:write("TYPE peek##NAME(struct Que##NAME *buf, int sub) {static TYPE box; return get##NAME(buf,sub,&box);}\\\n")
+	file:write("TYPE head##NAME(struct Que##NAME *buf) {static TYPE box; return get##NAME(buf,0,&box);}\\\n")
+	file:write("void enque##NAME(struct Que##NAME *buf, TYPE box) {put##NAME(buf,siz##NAME(buf),&box);}\\\n")
+	file:write("TYPE deque##NAME(struct Que##NAME *buf) {static TYPE box = {0}; box = get##NAME(buf,0,0); put##NAME(buf,0,0); return box;}\n")
+	file:write("#define REFERBOX(TYPE,NAME)\\\n")
+	file:write("TYPE *peek##NAME(struct Que##NAME *buf, int sub) {return get##NAME(buf,sub,0);}\\\n")
+	file:write("TYPE *head##NAME(struct Que##NAME *buf) {return get##NAME(buf,0,0);}\\\n")
+	file:write("void enque##NAME(struct Que##NAME *buf, TYPE *box) {put##NAME(buf,siz##NAME(buf),box);}\\\n")
+	file:write("TYPE *deque##NAME(struct Que##NAME *buf) {static TYPE box; memcpy(&box,get##NAME(buf,0,0),sizeof(struct TYPE)); put##NAME(buf,0,0); return &box;}\n")
 	for k,v in pairs(sizes) do
 		file:write("typedef char arr"..k.."["..sizes[k].."];\n")
-		file:write("struct buf"..k.." {\n")
+		file:write("struct Que"..k.." {\n")
 		file:write("	int size;\n")
 		file:write("	int head;\n")
 		file:write("	int room;\n")
 		file:write("	int *init;\n")
 		file:write("	arr"..k.." *data;\n")
+		file:write("	void (*func)(int sub, arr"..k.."* box);")
 		file:write("};\n")
-		file:write("#define VALUEBOX(TYPE,NAME)\\\n")
-		file:write("void func##NAME(TYPE *box) {TYPE init = {0}; memcpy(box,&init,sizeof(TYPE));}\n")
-		file:write("TYPE head##NAME(struct buf##NAME *buf) {static TYPE box; return *get"..k.."(buf,func##NAME,0,&box);}\\\n")
-		file:write("void push##NAME(struct buf##NAME *buf, TYPE box) {push##NAME(buf,size##NAME(buf),&box);}\\\n")
-		file:write("void pop##NAME(struct buf##NAME *buf) {set##NAME(buf,0,0);}\n")
-		file:write("#define REFERBOX(TYPE,NAME)\\\n")
-		file:write("void func##NAME(TYPE *box) {TYPE init = {0}; memcpy(box,&init,sizeof(TYPE));}\n")
-		file:write("TYPE *head##NAME(struct buf##NAME *buf) {return get"..k.."(buf,func##NAME,0,0);}\\\n")
-		file:write("void push##NAME(struct buf##NAME *buf, TYPE *box) {put##NAME(buf,size##NAME(buf),box);}\\\n")
-		file:write("void pop##NAME(struct buf##NAME *buf) {set##NAME(buf,0,0);}\n")
 	end
 	file:write("\n")
 	file:write("#endif")
@@ -175,11 +192,11 @@ if (arg[1] == "contain.c") then
 	file:write("#include <string.h>\n")
 	file:write("#include \"contain.h\"\n")
 	for k,v in pairs(sizes) do
-		file:write("int ofs"..k.."(struct buf"..k.." *buf, int sub)\n")
+		file:write("int ofs"..k.."(struct Que"..k.." *buf, int sub)\n")
 		file:write("{\n")
 		file:write("	return (buf->head+sub)%buf->room;\n")
 		file:write("}\n")
-		file:write("void big"..k.."(struct buf"..k.." *buf, int sub)\n")
+		file:write("void big"..k.."(struct Que"..k.." *buf, int sub)\n")
 		file:write("{\n")
 		file:write("	while (sub >= buf->room) {\n")
 		file:write("		int *save = buf->init;\n")
@@ -195,7 +212,7 @@ if (arg[1] == "contain.c") then
 		file:write("		buf->room *= 2; buf->head = 0;\n")
 		file:write("	}\n")
 		file:write("}\n")
-		file:write("void put"..k.."(struct buf"..k.." *buf, int sub, arr"..k.." *box)\n")
+		file:write("void put"..k.."(struct Que"..k.." *buf, int sub, arr"..k.." *box)\n")
 		file:write("{\n")
 		file:write("	big"..k.."(buf,sub);\n")
 		file:write("	int ofs = ofs"..k.."(buf,sub);\n")
@@ -209,14 +226,23 @@ if (arg[1] == "contain.c") then
 		file:write("		while (buf->size > 0 && !buf->init[buf->head]) {buf->head = ofs"..k.."(buf,1); buf->size--;}\n")
 		file:write("	}\n")
 		file:write("}\n")
-		file:write("arr"..k.." *get"..k.."(struct buf"..k.." *buf, INITBOX(arr"..k.."), int sub, arr"..k.." *box)\n")
+		file:write("arr"..k.." *get"..k.."(struct Que"..k.." *buf, int sub, arr"..k.." *box)\n")
 		file:write("{\n")
 		file:write("	big"..k.."(buf,sub);\n")
 		file:write("	int ofs = (buf->head+sub)%buf->room;\n")
 		file:write("	if (!buf->init[ofs]) {\n")
-		file:write("		buf->init[ofs] = 1; func(buf->data+ofs);\n")
-		file:write("		if (sub < 0) buf->size += -sub;\n")
+		file:write("		buf->init[ofs] = 1;\n")
+		file:write("		while (sub < 0) {\n")
+		file:write("			buf->size++;\n")
+		file:write("			buf->head += buf->room-1;\n")
+		file:write("			sub++;\n")
+		file:write("		}\n")
 		file:write("		if (sub >= buf->size) buf->size = sub+1;\n")
+		file:write("		if (buf->func) buf->func(sub,buf->data+ofs);\n")
+		file:write("		else {\n")
+		file:write("			arr"..k.." init = {0};\n")
+		file:write("			memcpy(buf->data+ofs,&init,"..sizes[k]..");\n")
+		file:write("		}\n")
 		file:write("	}\n")
 		file:write("	if (box) {\n")
 		file:write("		memcpy(box,buf->data+ofs,sizeof(arr"..k.."));\n")
@@ -224,7 +250,7 @@ if (arg[1] == "contain.c") then
 		file:write("	}\n")
 		file:write("	return buf->data+ofs;\n")
 		file:write("}\n")
-		file:write("int siz"..k.."(struct buf"..k.." *buf)\n")
+		file:write("int siz"..k.."(struct Que"..k.." *buf)\n")
 		file:write("{\n")
 		file:write("	return buf->size;\n")
 		file:write("}\n")
