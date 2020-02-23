@@ -143,6 +143,7 @@ if #arg == 0 then
 	end
 	print(pend)
 	os.exit(0)
+	--[[
 else
 	for k,v in pairs(codes) do
 		print("codes["..k.."]("..#codes[k]..")")
@@ -156,6 +157,7 @@ else
 	for k,v in pairs(ctypes) do
 		print("ctypes["..k.."]("..ctypes[k]..")")
 	end
+	--]]
 end
 if (arg[1] == "contain.h") then
 	file = io.open("contain.h", "w")
@@ -173,13 +175,14 @@ if (arg[1] == "contain.h") then
 	file:write("TYPE *deque##NAME(struct Que##NAME *buf) {static TYPE box; memcpy(&box,get##NAME(buf,0,0),sizeof(struct TYPE)); put##NAME(buf,0,0); return &box;}\n")
 	for k,v in pairs(sizes) do
 		file:write("typedef char arr"..k.."["..sizes[k].."];\n")
+		file:write("typedef void (*func"..k..")(int sub, arr"..k.."* box);")
 		file:write("struct Que"..k.." {\n")
 		file:write("	int size;\n")
 		file:write("	int head;\n")
 		file:write("	int room;\n")
 		file:write("	int *init;\n")
 		file:write("	arr"..k.." *data;\n")
-		file:write("	void (*func)(int sub, arr"..k.."* box);")
+		file:write("	func"..k.." func;\n")
 		file:write("};\n")
 	end
 	file:write("\n")

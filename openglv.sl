@@ -18,9 +18,8 @@
 #define VERTEX
 #include "opengl.sl"
 
-#ifdef DISPLAY
+#ifdef STREAM
 out vec2 VertCoord;
-flat out int VertIndex;
 #endif
 out vec4 VertColor;
 
@@ -33,8 +32,10 @@ void main()
 	if (facid[index] == hand) point = transformVector(point,feature);
 	gl_Position = vec4(point.x, point.y, point.z, 1.0);
 #ifdef DISPLAY
+	VertColor = color[index];
+#endif
+#ifdef STREAM
 	VertCoord = coord[index];
-	VertIndex = texid[index];
 	VertColor = color[index];
 #endif
 #ifdef TRACK

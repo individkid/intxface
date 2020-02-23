@@ -21,11 +21,13 @@ out vec4 FragColor;
 #ifdef TRACK
 in vec4 GeomColor;
 #endif
-#ifdef DISPLAY
+#ifdef STREAM
 in vec4 VertColor;
 in vec2 VertCoord;
-flat in int VertIndex;
-uniform sampler2D image[16];
+uniform sampler2D image;
+#endif
+#ifdef DISPLAY
+in vec4 VertColor;
 #endif
 
 void main()
@@ -33,9 +35,11 @@ void main()
 #ifdef TRACK
 	FragColor = GeomColor;
 #endif
+#ifdef STREAM
+	FragColor = VertColor;
+	FragColor *= texture(image,VertCoord);
+#endif
 #ifdef DISPLAY
 	FragColor = VertColor;
-	if (VertIndex >= 0 && VertIndex < 16)
-	FragColor *= texture(image[VertIndex],VertCoord);
 #endif
 }

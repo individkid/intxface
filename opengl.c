@@ -126,15 +126,15 @@ void queueUniform(int sub, GLuint *box)
 	glBindBuffer(GL_UNIFORM_BUFFER,*box);
 	glBufferData(GL_UNIFORM_BUFFER,total,0,GL_STATIC_DRAW);
 	glBindBufferRange(GL_UNIFORM_BUFFER,0,*box,0,total);
-	openglBuffer(0,cb.state[Basis]->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,cb.state[Object]->siz,sizeof(struct Affine),unit[Object],base[Object],0,&cb.refer[Object],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&cb.refer[Feature],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&cb.refer[Feather],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&cb.refer[Arrow],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,cb.state[Cloud]->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&cb.refer[Cloud],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&cb.refer[Hand],uniformQue,GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformQue,GL_UNIFORM_BUFFER);
+	openglBuffer(0,cb.state[Basis]->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,cb.state[Object]->siz,sizeof(struct Affine),unit[Object],base[Object],0,&cb.refer[Object],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&cb.refer[Feature],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&cb.refer[Feather],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&cb.refer[Arrow],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,cb.state[Cloud]->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&cb.refer[Cloud],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&cb.refer[Hand],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
 }
 
 void queueImage(int sub, GLuint *box)
@@ -142,14 +142,22 @@ void queueImage(int sub, GLuint *box)
 	// TODO
 }
 
+int *queueSize(struct Queue *que)
+{
+	// TODO
+	return 0;
+}
+
 GLuint queueDma(struct Queue *que)
 {
 	// TODO
+	return 0;
 }
 
 GLuint queueDraw(struct Queue *que)
 {
 	// TODO
+	return 0;
 }
 
 void queueSync(struct Queue *que)
@@ -160,18 +168,18 @@ void queueSync(struct Queue *que)
 void openglDma()
 {
 	switch (cb.client->mem) {
-	case (Corner): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,&size[cntx.head][Corner],&cb.refer[Corner],vertexQue,GL_ARRAY_BUFFER); break;
-	case (Triangle): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Facet),sizeof(struct Facet),0,&size[cntx.head][Triangle],&cb.refer[Triangle],elementQue,GL_ELEMENT_ARRAY_BUFFER); break;
+	case (Corner): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vertex),sizeof(struct Vertex),0,queueSize(&vertexQue),&cb.refer[Corner],queueDma(&vertexQue),GL_ARRAY_BUFFER); break;
+	case (Triangle): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Facet),sizeof(struct Facet),0,queueSize(&elementQue),&cb.refer[Triangle],queueDma(&elementQue),GL_ELEMENT_ARRAY_BUFFER); break;
 	case (Range): ERROR(cb.err,-1);
-	case (Basis): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Object): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&cb.refer[Object],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Feature): openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&cb.refer[Feature],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&cb.refer[Feather],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&cb.refer[Arrow],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Cloud): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&cb.refer[Cloud],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Hand): openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&cb.refer[Hand],uniformQue,GL_UNIFORM_BUFFER); break;
-	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],uniformQue,GL_UNIFORM_BUFFER); break;
+	case (Basis): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Subject): openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Object): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Affine),unit[Object],base[Object],0,&cb.refer[Object],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Feature): openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&cb.refer[Feature],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Feather): openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&cb.refer[Feather],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Arrow): openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&cb.refer[Arrow],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Cloud): openglBuffer(cb.client->idx,cb.client->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&cb.refer[Cloud],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Hand): openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&cb.refer[Hand],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
+	case (Tag): openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],queueDma(&uniformQue),GL_UNIFORM_BUFFER); break;
 	case (Face): ERROR(cb.err,-1);
 	case (User): ERROR(cb.err,-1);
 	case (Image): /*TODO*/ break;
@@ -202,6 +210,10 @@ void openglFunc()
 	glDrawElements(GL_TRIANGLES,cb.state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);
 	enqueGlsync(&fence,glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0));}
 	if (cb.state[User]->user->shader == Display || cb.state[User]->user->shader == Stream) cb.swap();
+}
+
+int openglFull()
+{
 	while (sizGlsync(&fence) > 0) {
 	GLint value = 0;
 	glGetSynciv(headGlsync(&fence),GL_SYNC_STATUS,sizeof(GLint),0,&value);
@@ -212,16 +224,6 @@ void openglFunc()
 	queueSync(&elementQue);
 	queueSync(&uniformQue);
 	queueSync(&imageQue);}
-}
-
-int openglFull()
-{
-	while (cntx.tail != cntx.head) {
-	GLint val;
-	GLsizei len;
-	glGetSynciv(fence[cntx.tail],GL_SYNC_STATUS,1,&len,&val);
-	if (val == GL_UNSIGNALED) break;
-	cntx.tail = (cntx.tail+1)%NUMCNTX;}
 	if (cb.client)
 	for (int i = 0; i < cb.client->len; i++)
 	switch (cb.client->fnc[i]) {
@@ -230,10 +232,9 @@ int openglFull()
 	case (Rmw2): break;
 	case (Copy): break;
 	case (Save): break;
-	case (Dma0):
-	if (cb.client->mem == Image && cb.client->siz > pool.size) return 1; else break;
+	case (Dma0): /*TODO return 1 if could no more of flex*/ break;
 	case (Dma1): break;
-	case (Draw): if (((cntx.head + 1) % NUMCNTX) == cntx.tail) return 1; else break;
+	case (Draw): /*TODO return 1 if too many of sync*/ break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 	return 0;
@@ -258,16 +259,20 @@ void openglDraw()
 void openglDone()
 {
 	for (int sub = 0; sub < sizGluint(&uniformQue.ident); sub++) {
-		glDeleteBuffers(1,getGluint(&uniformQue.ident,sub,0));
+		GLuint ident = getGluint(&uniformQue.ident,sub,0);
+		glDeleteBuffers(1,&ident);
 		putGluint(&uniformQue.ident,sub,0);}
 	for (int sub = 0; sub < sizGluint(&elementQue.ident); sub++) {
-		glDeleteBuffers(1,getGluint(&elementQue.ident,sub,0));
+		GLuint ident = getGluint(&elementQue.ident,sub,0);
+		glDeleteBuffers(1,&ident);
 		putGluint(&elementQue.ident,sub,0);}
 	for (int sub = 0; sub < sizGluint(&vertexQue.ident); sub++) {
-		glDeleteBuffers(1,getGluint(&vertexQue.ident,sub,0));
+		GLuint ident = getGluint(&vertexQue.ident,sub,0);
+		glDeleteBuffers(1,&ident);
 		putGluint(&vertexQue.ident,sub,0);}
 	for (int sub = 0; sub < sizGluint(&arrayQue.ident); sub++) {
-		glDeleteBuffers(1,getGluint(&arrayQue.ident,sub,0));
+		GLuint ident = getGluint(&arrayQue.ident,sub,0);
+		glDeleteBuffers(1,&ident);
 		putGluint(&arrayQue.ident,sub,0);}
 	for (int shader = 0; shader < Shaders; shader++)
 	glDeleteProgram(programId[shader]);
@@ -311,7 +316,7 @@ void openglShader(GLuint i, GLenum j, const char *file, const char *def)
 GLuint openglLoad(const char *vs, const char *gs, const char *fs)
 {
 	GLuint retval = glCreateProgram();
-	const char *def = (gs ? "TRACK" : "DISPLAY");
+	const char *def = (gs ? "TRACK" : "DISPLAY"); // TODO check for def of STREAM
 	openglShader(retval,GL_VERTEX_SHADER,vs,def);
 	if (gs) openglShader(retval,GL_GEOMETRY_SHADER,gs,def);
 	openglShader(retval,GL_FRAGMENT_SHADER,fs,def);
@@ -362,11 +367,11 @@ int openglInit()
 	openglAlign(&total,&base[Cloud],&unit[Cloud],4*4,1,NUMFEND);
 	openglAlign(&total,&base[Hand],&unit[Hand],4,1,1);
 	openglAlign(&total,&base[Tag],&unit[Tag],4,1,1);
-	arrayQue.ident.func = queueArray;
-	vertexQue.ident.func = queueVertex;
-	elementQue.ident.func = queueElement;
-	uniformQue.ident.func = queueUniform;
-	imageQue.ident.func = queueImage;
+	arrayQue.ident.func = (funcGluint)queueArray;
+	vertexQue.ident.func = (funcGluint)queueVertex;
+	elementQue.ident.func = (funcGluint)queueElement;
+	uniformQue.ident.func = (funcGluint)queueUniform;
+	imageQue.ident.func = (funcGluint)queueImage;
 	glClear(GL_COLOR_BUFFER_BIT);
 	cb.swap();
 	return 1;
