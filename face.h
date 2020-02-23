@@ -49,6 +49,7 @@
 #define NUMFEND 8
 #define NUMCNTX 5
 #define CMDSIZE 4
+#define NUMFLEX 3
 // INFINITE longer than any given file
 // FILESIZE rough limit to helper file
 // NUMOPEN total number of file descriptors
