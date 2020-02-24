@@ -159,7 +159,6 @@ void doneImage(GLuint *box)
 GLuint queueDraw(struct Queue *que)
 {
 	int sub = que->inuse;
-	if (sub == sizGluint(&que->ident)) que->inuse += 1;
 	getInt(&que->size,sub,0);
 	*getInt(&que->smart,sub,0) += 1;
 	return *getGluint(&que->ident,sub,0);
@@ -188,6 +187,7 @@ void queueBufferF(struct Queue *que)
 	getInt(&que->size,que->inuse,0);
 	getGluint(&que->ident,que->inuse,0);
 	getInt(&que->smart,que->inuse,0);}
+	if (*getInt(&que->smart,que->inuse,0) > 0) que->inuse += 1;
 }
 
 void queueBufferG(int idx, int cnt, int cpu, int gpu, int bas, int sub, void **buf, struct Queue *que, GLuint tgt)
