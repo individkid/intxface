@@ -28,15 +28,12 @@ typedef void (*doneGLuint)(GLuint* box);
 void putInt(struct QueInt *buf, int sub, int *box);
 int *getInt(struct QueInt *buf, int sub, int *box);
 int sizInt(struct QueInt *buf);
-VALUEBOX(int,Int);
 void putGluint(struct QueGluint *buf, int sub, gluint *box);
 gluint *getGluint(struct QueGluint *buf, int sub, gluint *box);
 int sizGluint(struct QueGluint *buf);
-VALUEBOX(gluint,Gluint);
 void putGlsync(struct QueGlsync *buf, int sub, glsync *box);
 glsync *getGlsync(struct QueGlsync *buf, int sub, glsync *box);
 int sizGlsync(struct QueGlsync *buf);
-VALUEBOX(glsync,Glsync)
 struct Queue {
 	struct QueInt size;
 	struct QueGluint ident;
@@ -128,15 +125,15 @@ void initUniform(int sub, GLuint *box)
 	glBindBuffer(GL_UNIFORM_BUFFER,*box);
 	glBufferData(GL_UNIFORM_BUFFER,total,0,GL_STATIC_DRAW);
 	glBindBufferRange(GL_UNIFORM_BUFFER,0,*box,0,total);
-	openglBuffer(0,cb.state[Basis]->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,cb.state[Object]->siz,sizeof(struct Affine),unit[Object],base[Object],0,&cb.refer[Object],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&cb.refer[Feature],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&cb.refer[Feather],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&cb.refer[Arrow],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,cb.state[Cloud]->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&cb.refer[Cloud],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&cb.refer[Hand],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
-	openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],peekGluint(&uniformQue.ident,sub),GL_UNIFORM_BUFFER);
+	openglBuffer(0,cb.state[Basis]->siz,sizeof(struct Linear),unit[Basis],base[Basis],0,&cb.refer[Basis],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Affine),unit[Subject],base[Subject],0,&cb.refer[Subject],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,cb.state[Object]->siz,sizeof(struct Affine),unit[Object],base[Object],0,&cb.refer[Object],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Affine),unit[Feature],base[Feature],0,&cb.refer[Feature],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Vector),unit[Feather],base[Feather],0,&cb.refer[Feather],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(struct Vector),unit[Arrow],base[Arrow],0,&cb.refer[Arrow],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,cb.state[Cloud]->siz,sizeof(struct Vector),unit[Cloud],base[Cloud],0,&cb.refer[Cloud],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(int),unit[Hand],base[Hand],0,&cb.refer[Hand],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
+	openglBuffer(0,1,sizeof(int),unit[Tag],base[Tag],0,&cb.refer[Tag],*getGluint(&uniformQue.ident,sub,0),GL_UNIFORM_BUFFER);
 }
 
 void initImage(int sub, GLuint *box)
@@ -254,7 +251,8 @@ void openglFunc()
 	glBindTexture(GL_TEXTURE_2D,queueDraw(&imageQue));}
 	void *buf = openglBufferF(cb.state[Range]->range[i].idx,sizeof(struct Facet),0);
 	glDrawElements(GL_TRIANGLES,cb.state[Range]->range[i].siz*3,GL_UNSIGNED_INT,buf);
-	enqueGlsync(&fence,glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0));}
+	GLsync temp = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
+	putGlsync(&fence,sizGlsync(&fence),&temp);}
 	if (cb.state[User]->user->shader == Display || cb.state[User]->user->shader == Stream) cb.swap();
 }
 
@@ -262,9 +260,11 @@ int openglFull()
 {
 	while (sizGlsync(&fence) > 0) {
 	GLint value = 0;
-	glGetSynciv(headGlsync(&fence),GL_SYNC_STATUS,sizeof(GLint),0,&value);
+	glGetSynciv(*getGlsync(&fence,0,0),GL_SYNC_STATUS,sizeof(GLint),0,&value);
 	if (value != GL_SIGNALED) break;
-	glDeleteSync(dequeGlsync(&fence));
+	GLsync temp = *getGlsync(&fence,0,0);
+	putGlsync(&fence,0,0);
+	glDeleteSync(temp);
 	queueSync(&arrayQue);
 	queueSync(&vertexQue);
 	queueSync(&elementQue);
@@ -278,9 +278,27 @@ int openglFull()
 	case (Rmw2): break;
 	case (Copy): break;
 	case (Save): break;
-	case (Dma0): /*TODO return 1 if too many of buffer or image*/ break;
+	case (Dma0): switch (cb.client->mem) {
+	case (Corner):
+	if (sizGluint(&vertexQue.ident) == vertexQue.inuse &&
+	vertexQue.inuse == NUMCNTX) return 1; break;
+	case (Triangle):
+	if (sizGluint(&elementQue.ident) == elementQue.inuse &&
+	elementQue.inuse == NUMCNTX) return 1; break;
+	case (Range): ERROR(cb.err,-1);
+	case (Basis): case (Subject): case (Object): case (Feature):
+	case (Feather): case (Arrow): case (Cloud): case (Hand): case (Tag):
+	if (sizGluint(&uniformQue.ident) == uniformQue.inuse &&
+	uniformQue.inuse == NUMCNTX) return 1; break;
+	case (Face): ERROR(cb.err,-1);
+	case (User): ERROR(cb.err,-1);
+	case (Image):
+	if (sizGluint(&imageQue.ident) == imageQue.inuse &&
+	imageQue.inuse == NUMCNTX) return 1; break;
+	default: ERROR(exiterr,-1);} break;
 	case (Dma1): break;
-	case (Draw): /*TODO return 1 if too many of sync*/ break;
+	case (Draw):
+	if (sizGlsync(&fence) == NUMCNTX) return 1; break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 	return 0;
