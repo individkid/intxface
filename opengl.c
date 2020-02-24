@@ -23,6 +23,7 @@
 
 typedef GLuint gluint;
 typedef GLsync glsync;
+struct Pend {int idx; int cnt; int cpu; int gpu; int bas; int *siz; void **buf; GLuint hdl; GLuint tgt;};
 typedef void (*initGLuint)(int sub, GLuint* box);
 typedef void (*doneGLuint)(GLuint* box);
 void putInt(struct QueInt *buf, int sub, int *box);
@@ -34,10 +35,15 @@ int sizGluint(struct QueGluint *buf);
 void putGlsync(struct QueGlsync *buf, int sub, glsync *box);
 glsync *getGlsync(struct QueGlsync *buf, int sub, glsync *box);
 int sizGlsync(struct QueGlsync *buf);
+void putPend(struct QuePend *buf, int sub, struct Pend *box);
+struct Pend *getPend(struct QuePend *buf, int sub, struct Pend *box);
+int sizPend(struct QuePend *buf);
+
 struct Queue {
 	struct QueInt size;
 	struct QueGluint ident;
 	struct QueInt smart;
+	struct QuePend pend;
 	int inuse;
 	int flex;
 };
@@ -78,6 +84,10 @@ void openglBuffer(int idx, int cnt, int cpu, int gpu, int bas, int *siz, void **
 	if (siz == 0 && cpu != gpu) for (int i = 0; i < cnt; i++)
 	glBufferSubData(tgt, bas+(idx+i)*gpu, cpu, openglBufferF(i,cpu,*buf));
 	glBindBuffer(tgt, 0);
+}
+
+void openglPend()
+{
 }
 
 void initArray(int sub, GLuint *box)
@@ -167,19 +177,22 @@ GLuint queueDraw(struct Queue *que)
 
 void queueSync(struct Queue *que)
 {
-	while (1) {
 	*getInt(&que->smart,0,0) -= 1;
-	if (*getInt(&que->smart,0,0) > 0) break;
+	if (*getInt(&que->smart,0,0) > 0) return;
 	int sub = sizGluint(&que->ident);
-	if (sub-que->inuse == que->flex) {
-	putInt(&que->size,sub,0);
-	putGluint(&que->ident,sub,0);
-	putInt(&que->smart,sub,0);}
-	else {
-	putInt(&que->size,sub,getInt(&que->size,sub,0));
-	putGluint(&que->ident,sub,getGluint(&que->ident,sub,0));
-	putInt(&que->smart,sub,getInt(&que->smart,sub,0));}
-	que->inuse -= 1;}
+	if (sub-que->inuse < que->flex) {
+	GLuint ident = *getGluint(&que->ident,0,0);
+	putInt(&que->size,sub,getInt(&que->size,0,0));
+	putGluint(&que->ident,sub,&ident);
+	putInt(&que->smart,sub,getInt(&que->smart,0,0));
+	while (sizPend(&que->pend) > 0) {
+	struct Pend *pend = getPend(&que->pend,0,0);
+	openglBuffer(pend->idx,pend->cnt,pend->cpu,pend->gpu,pend->bas,pend->siz,pend->buf,pend->hdl,pend->tgt);
+	putPend(&que->pend,0,0);}}
+	putInt(&que->size,0,0);
+	putGluint(&que->ident,0,0);
+	putInt(&que->smart,0,0);
+	que->inuse -= 1;
 }
 
 void queueBufferF(struct Queue *que)
@@ -195,6 +208,15 @@ void queueBufferG(int idx, int cnt, int cpu, int gpu, int bas, int sub, void **b
 	openglBuffer(idx,cnt,cpu,gpu,bas,(tgt==GL_UNIFORM_BUFFER?0:getInt(&que->size,sub,0)),buf,*getGluint(&que->ident,sub,0),tgt);
 }
 
+void queueBufferH(int idx, int cnt, int cpu, int gpu, int bas, int sub, void **buf, struct Queue *que, GLuint tgt)
+{
+	struct Pend pend = {0};
+	pend.idx=idx,pend.cnt=cnt,pend.cpu=cpu,pend.gpu=gpu,pend.bas=bas;
+	pend.siz=(tgt==GL_UNIFORM_BUFFER?0:getInt(&que->size,sub,0));
+	pend.buf=buf;pend.hdl=*getGluint(&que->ident,sub,0);pend.tgt=tgt;
+	putPend(&que->pend,sizPend(&que->pend),&pend);
+}
+
 void queueBuffer(int idx, int cnt, int cpu, int gpu, int bas, void **buf, struct Queue *que, GLuint tgt)
 {
 	queueBufferF(que);
@@ -204,6 +226,8 @@ void queueBuffer(int idx, int cnt, int cpu, int gpu, int bas, void **buf, struct
 void queueBuffers(int idx, int cnt, int cpu, int gpu, int bas, void **buf, struct Queue *que, GLuint tgt)
 {
 	queueBufferF(que);
+	for (int sub = 0; sub < que->inuse; sub++)
+	queueBufferH(idx,cnt,cpu,gpu,bas,sub,buf,que,tgt);
 	for (int sub = que->inuse; sub < sizGluint(&que->ident); sub++)
 	queueBufferG(idx,cnt,cpu,gpu,bas,sub,buf,que,tgt);
 }
