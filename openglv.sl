@@ -41,4 +41,7 @@ void main()
 #ifdef TRACK
 	VertColor = vec4(facid[index],facid[index],facid[index],1.0);
 #endif
+#ifdef PROXIMITY
+	VertColor = vec4(facid[index],facid[index],facid[index],1.0);
+#endif
 }

@@ -395,10 +395,9 @@ void openglShader(GLuint i, GLenum j, const char *file, const char *def)
 	glDeleteShader(k);
 }
 
-GLuint openglLoad(const char *vs, const char *gs, const char *fs)
+GLuint openglLoad(const char *def, const char *vs, const char *gs, const char *fs)
 {
 	GLuint retval = glCreateProgram();
-	const char *def = (gs ? "TRACK" : "DISPLAY"); // TODO check for def of STREAM
 	openglShader(retval,GL_VERTEX_SHADER,vs,def);
 	if (gs) openglShader(retval,GL_GEOMETRY_SHADER,gs,def);
 	openglShader(retval,GL_FRAGMENT_SHADER,fs,def);
@@ -442,9 +441,10 @@ int openglInit()
 	glClearColor(1.00f,1.00f,1.00f,1.00f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+	const char *def[] = {"PROXIMITY","DISPLAY","STREAM","TRACK"};
 	for (int shader = 0; shader < Shaders; shader++) {
-	const char *geom = (shader == Track ? "openglg.sl" : 0);
-	programId[shader] = openglLoad("openglv.sl",geom,"openglf.sl");
+	const char *geom = (shader == Track || shader == Proximity ? "openglg.sl" : 0);
+	programId[shader] = openglLoad(def[shader],"openglv.sl",geom,"openglf.sl");
 	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");
 	glUniformBlockBinding(programId[shader],blockId[shader],0);}
 	total = 0;

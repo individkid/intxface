@@ -36,13 +36,13 @@ for k,v in ipairs(files) do
 		code = nil
 		ctype = nil
 		if not code or code~=check then
-			code,check = string.match(line,"^void put(Buf.*)%(struct Que(Que.*) %*buf")
+			code,check = string.match(line,"^void put(Que.*)%(struct Que(Que.*) %*buf")
 		end
 		if not code or code~=check then
-			ctype,code,check = string.match(line,"^(Buf.* %*?)get(Buf.*)%(struct Que(Que.*) %*buf")
+			ctype,code,check = string.match(line,"^(Que.* %*?)get(Que.*)%(struct Que(Que.*) %*buf")
 		end
 		if not code or code~=check then
-			code,check = string.match(line,"^int siz(Buf.*)%(struct Que(Que.*) %*buf")
+			code,check = string.match(line,"^int siz(Que.*)%(struct Que(Que.*) %*buf")
 		end
 		if not code or code~=check then
 			code,check = string.match(line,"^void put(.*)%(struct Que(.*) %*buf")
@@ -53,7 +53,7 @@ for k,v in ipairs(files) do
 		if not code or code~=check then
 			code,check = string.match(line,"^int siz(.*)%(struct Que(.*) %*buf")
 		end
-		if code and code==check and string.match(code,"^Buf.*") then
+		if code and code==check and string.match(code,"^Que.*") then
 			sizes[code] = "sizeof(int)*3+sizeof(void*)*2"
 			code = nil
 			ctype = nil
@@ -177,8 +177,7 @@ if (arg[1] == "contain.h") then
 		file:write("	done"..k.." done;\n")
 		file:write("};\n")
 	end
-	file:write("\n")
-	file:write("#endif")
+	file:write("#endif\n")
 	file:close()
 end
 if (arg[1] == "contain.c") then

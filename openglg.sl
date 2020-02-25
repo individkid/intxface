@@ -26,7 +26,13 @@ void main()
 {
 	vec3 plane[3];
 	for (int i = 0; i < 3; i++) plane[i] = gl_in[i].gl_Position.xyz;
+#ifdef TRACK
 	vec3 pierce = pierceVector(plane[0],normalVector(plane),feather,arrow);
+#endif
+#ifdef PROXIMITY
+	// TODO instead of feather/arrow average toghether focal/cloud
+	vec3 pierce = pierceVector(plane[0],normalVector(plane),feather,arrow);
+#endif
 	gl_Position = vec4(0.0,0.0,pierce.z,1.0);
 	GeomColor = VertColor[0];
 	EmitVertex();
