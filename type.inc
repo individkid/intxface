@@ -1,5 +1,5 @@
 --[[
-*    test.lua
+*    type.inc
 *    Copyright (C) 2019  Paul Coelho
 *
 *    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-dofile("show.lua")
+dofile("show.inc")
 
 --HERE Enums
 Enum1 = {
@@ -55,5 +55,5 @@ Struct1 = {
 	{"field17","Struct2",{},{2}},
 }
 --HERE
-Enums,Enumz = listHere("Enums","test.lua")
-Structs,Structz = listHere("Structs","test.lua")
+Enums,Enumz = listHere("Enums","type.inc")
+Structs,Structz = listHere("Structs","type.inc")

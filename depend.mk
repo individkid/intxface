@@ -1,5 +1,5 @@
 baseC.o: base.h face.h
-baseGen: show.lua
+baseGen: show.inc
 containC.o: contain.h
 faceC.o: face.h
 facerC: faceC.o
@@ -22,12 +22,12 @@ spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h
 typeC.o: base.h face.h type.h
-typeGen: show.lua
+typeGen: show.inc
 typerC: baseC.o faceC.o
 typerC.o: base.h face.h typer.h
-typerGen: show.lua test.lua
+typerGen: show.inc type.inc
 typerHs: face.hs faceC.o
 typerLua: face.so
-typraLua: show.lua test.lua
+typraLua: show.inc type.inc
 vulkanC.o: base.h face.h metic.h plane.h type.h
 contain.c: base.h type.h

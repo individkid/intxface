@@ -267,13 +267,15 @@ for k,v in ipairs(files) do
 		file:close()
 	end
 end
--- find edges from .lua and .gen files in current directory
+-- find edges from .inc .lua and .gen files in current directory
 depended = {}
 expee = "^dofile%(\"([^\"]*)\"%)"
 expex = "^require +\"([^\"]*)\""
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
-	if (string.match(v,"^.*%.lua$") or string.match(v,"^.*%.gen$")) then
+	if (string.match(v,"^.*%.inc$") or
+		string.match(v,"^.*%.lua$") or
+		string.match(v,"^.*%.gen$")) then
 		file = io.open(v)
 		for line in file:lines() do
 			import = string.match(line,expee)
@@ -370,6 +372,7 @@ for k,v in pairs(edges) do
 				if (e == ".cpp") then e = ".c" end
 				if (e == ".m") then e = ".c" end
 				if edges[key] and (not needed[key]) and
+					((ext ~= ".inc") or (e ~= ".c")) and
 					((ext ~= ".lua") or (e ~= ".c")) and
 					((ext ~= ".gen") or (e ~= ".c")) then
 					for ky,vl in pairs(edges[key]) do
@@ -503,6 +506,9 @@ for k,v in pairs(edges) do
 			if b and (e == ".c") then
 				deps[#deps+1] = b..".so"
 			end
+			if b and (e == ".inc") then
+				deps[#deps+1] = key
+			end
 			if b and (e == ".lua") then
 				deps[#deps+1] = key
 			end
@@ -520,6 +526,9 @@ for k,v in pairs(edges) do
 		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".inc") then
+				deps[#deps+1] = key
+			end
 			if b and (e == ".lua") then
 				deps[#deps+1] = key
 			end
