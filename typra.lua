@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-dofile("type.inc")
+dofile("typra.inc")
 
 Stimulus = {
 	{"Enumz"},

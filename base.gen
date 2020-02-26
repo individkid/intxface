@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-dofile("show.inc")
+dofile("type.inc")
 
 Enumz = {}
 Structz = {}
