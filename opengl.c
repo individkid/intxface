@@ -168,6 +168,7 @@ GLuint queueDraw(struct Queue *que)
 {
 	int sub = que->inuse;
 	getInt(&que->size,sub,0);
+	if (*getInt(&que->smart,sub,0) == 0) que->inuse += 1;
 	*getInt(&que->smart,sub,0) += 1;
 	return *getGluint(&que->ident,sub,0);
 }
@@ -198,7 +199,6 @@ void queueBufferF(struct Queue *que)
 	getInt(&que->size,que->inuse,0);
 	getGluint(&que->ident,que->inuse,0);
 	getInt(&que->smart,que->inuse,0);}
-	if (*getInt(&que->smart,que->inuse,0) > 0) que->inuse += 1;
 }
 
 void queueBufferG(int idx, int cnt, int cpu, int gpu, int bas, int sub, void **buf, struct Queue *que, GLuint tgt)
@@ -395,12 +395,12 @@ void openglShader(GLuint i, GLenum j, const char *file, const char *def)
 	glDeleteShader(k);
 }
 
-GLuint openglLoad(const char *def, const char *vs, const char *gs, const char *fs)
+GLuint openglLoad(const char *name, const char *vs, const char *gs, const char *fs)
 {
 	GLuint retval = glCreateProgram();
-	openglShader(retval,GL_VERTEX_SHADER,vs,def);
-	if (gs) openglShader(retval,GL_GEOMETRY_SHADER,gs,def);
-	openglShader(retval,GL_FRAGMENT_SHADER,fs,def);
+	openglShader(retval,GL_VERTEX_SHADER,vs,name);
+	if (gs) openglShader(retval,GL_GEOMETRY_SHADER,gs,name);
+	openglShader(retval,GL_FRAGMENT_SHADER,fs,name);
 	glLinkProgram(retval);
 	GLint stat = 0;
 	glGetProgramiv(retval,GL_LINK_STATUS,(int*)&stat);
@@ -441,10 +441,10 @@ int openglInit()
 	glClearColor(1.00f,1.00f,1.00f,1.00f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	const char *def[] = {"PROXIMITY","DISPLAY","STREAM","TRACK"};
+	const char *name[] = {"PROXIMITY","DISPLAY","STREAM","TRACK"};
+	const char *geom[] = {"openglg.sl",0,0,"openglg.sl"};
 	for (int shader = 0; shader < Shaders; shader++) {
-	const char *geom = (shader == Track || shader == Proximity ? "openglg.sl" : 0);
-	programId[shader] = openglLoad(def[shader],"openglv.sl",geom,"openglf.sl");
+	programId[shader] = openglLoad(name[shader],"openglv.sl",geom[shader],"openglf.sl");
 	blockId[shader] = glGetUniformBlockIndex(programId[shader],"Uniform");
 	glUniformBlockBinding(programId[shader],blockId[shader],0);}
 	total = 0;
