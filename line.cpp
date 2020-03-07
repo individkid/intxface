@@ -291,22 +291,22 @@ void stock()
 		state[event->idx] = event;
 		allocEvent(&event,1);
 		break;
-	case (Start):
+	case (Start): // Sched
 		if (event->key > nowtime)
 		alloc(event->key,event->idx);
 		else numbug++;
 		break;
-	case (Assign):
+	case (Assign): // Back
 		if (event->key > nowtime)
 		alloc(event->key,event->idx,event->val);
 		else numbug++;
 		break;
-	case (Bind):
+	case (Bind): // Peek Poke Store
 		if (event->key > nowtime)
 		alloc(event->key,event->flw,event->idx,event->oth);
 		else numbug++;
 		break;
-	case (Wave):
+	case (Wave): // Load
 		if (event->key > nowtime)
 		alloc(event->key,event->idx,event->oth,event->siz,&event->buf);
 		else numbug++;

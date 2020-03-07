@@ -78,7 +78,12 @@ clangpp = "clang++ a.o -llua -lportaudio -lglfw -lGLEW -lMoltenVK"
 clangpp = clangpp.." -framework CoreFoundation -framework CoreGraphics"
 clangpp = clangpp.." -framework OpenGL -framework Metal -framework QuartzCore"
 clangpp = clangpp.."  2>> a.err >> a.txt"
-sizeofs = {"struct ","enum ",""}
+sizeofs = {
+	function(x) return string.format("struct %s",x) end,
+	function(x) return string.format("enum %s",x) end,
+	function(x) return string.lower(x) end,
+	function(x) return x end
+}
 pend = nil
 function compile()
 	if os.execute(clang) then
@@ -102,7 +107,7 @@ function compile()
 end
 for k,v in pairs(codes) do
 	for key,val in ipairs(sizeofs) do
-		if val == "" then siztyp = string.lower(k) else siztyp = val..k end
+		siztyp = val(k)
 		file = io.open("a.c","w")
 		file:write("#include <stdio.h>\n")
 		for ky,vl in ipairs(v) do
@@ -165,16 +170,16 @@ if (arg[1] == "contain.h") then
 	file:write("#define CONTAIN_H\n")
 	for k,v in pairs(sizes) do
 		file:write("typedef char arr"..k.."["..sizes[k].."];\n")
-		file:write("typedef void (*init"..k..")(int sub, arr"..k.."* box);\n")
-		file:write("typedef void (*done"..k..")(arr"..k.."* box);\n")
+		file:write("typedef void (*initArr"..k..")(int sub, arr"..k.."* box);\n")
+		file:write("typedef void (*doneArr"..k..")(arr"..k.."* box);\n")
 		file:write("struct Que"..k.." {\n")
 		file:write("	int size;\n")
 		file:write("	int head;\n")
 		file:write("	int room;\n")
 		file:write("	int *qual;\n")
 		file:write("	arr"..k.." *data;\n")
-		file:write("	init"..k.." init;\n")
-		file:write("	done"..k.." done;\n")
+		file:write("	initArr"..k.." init;\n")
+		file:write("	doneArr"..k.." done;\n")
 		file:write("};\n")
 	end
 	file:write("#endif\n")
