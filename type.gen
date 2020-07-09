@@ -284,6 +284,11 @@ function showTypeLua()
 	result = result..showCallLua()
 	return result
 end
+function showTypeSwift()
+	local result = ""
+	result = result..showCallSwift()
+	return result
+end
 -- MAIN
 if (arg[1] == "type.h") then
 	file = io.open("type.h", "w")
@@ -303,5 +308,10 @@ end
 if (arg[1] == "type.lua") then
 	file = io.open("type.lua", "w")
 	file:write(showTypeLua().."\n")
+	file:close()
+end
+if (arg[1] == "type.swift") then
+	file = io.open("type.swift", "w")
+	file:write(showTypeSwift().."\n")
 	file:close()
 end

@@ -45,12 +45,16 @@ filer.log: filerLua file
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
+%Swift: %.o
+	swiftc -o $@ $(filter %C.o,%^) -L /usr/local/lib -llua -lportaudio -lglfw -lGLEW -lMoltenVK
 
 %: %C
 	ln -f $< $@
 %: %Hs
 	ln -f $< $@
 %: %Lua
+	ln -f $< $@
+%: %Swift
 	ln -f $< $@
 
 %.so: %C.o
@@ -61,6 +65,8 @@ filer.log: filerLua file
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
+%C.o: %.swift
+	swiftc -I . -c $<
 
 %.h: %Gen
 	./$< $@
@@ -70,11 +76,13 @@ filer.log: filerLua file
 	./$< $@
 %.lua: %Gen
 	./$< $@
+%.swift: %Gen
+	./$< $@
 
 .PHONY:
 clean:
 	rm -f base.h base.c contain.h contain.c
-	rm -f type.h type.c type.hs type.lua
+	rm -f type.h type.c type.hs type.lua type.swift
 	rm -f typer.h typer.c typer.hs typer.lua
 	rm -f typra facer typer filer
 	rm -f trade file line plane space
