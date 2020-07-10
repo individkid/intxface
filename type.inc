@@ -787,91 +787,30 @@ function showSizeC(name,struct)
 	return showStreamC(name,struct,showSizeCF,"int size","")
 end
 function showEnumHs(name,enum)
-	local result = ""
-	if language then
-		result = result.."enum "..name..": Int {\n"
-	else
-		result = result.."data "..name.." =\n"
-	end
+	local result = "data "..name.." =\n"
 	for key,val in ipairs(enum) do
-		if language then
-			result = result..showIndent(1).."case "..val.."\n"
-		else
-			result = result..showIndent(1)..val.." |\n"
-		end
+		result = result..showIndent(1)..val.." |\n"
 	end
-	if language then
-		result = result..showIndent(1).."case "..name.."s\n"
-		result = result.."}\n"
-		result = result.."//"
-	else
-		result = result..showIndent(1)..name.."s deriving (Eq)\n"
-		result = result.."--"
-	end
-	return result
+	result = result..showIndent(1)..name.."s deriving (Eq)\n"
+	return result.."--"
 end
 function showCodeHs(name,enum)
 	local result = ""
-	if language then
-		result = result.."func read"..name.."F(_ a: Int) -> "..name.." {switch a {\n"
-	else
-		result = result.."read"..name.."F :: Int -> IO "..name.."\n"
-	end
+	result = result.."read"..name.."F :: Int -> IO "..name.."\n"
 	for key,val in ipairs(enum) do
-		if language then
-			result = result..showIndent(1).."case "..(key-1)..": return "..name.."."..val.."\n"
-		else
-			result = result.."read"..name.."F "..(key-1).." = return "..val.."\n"
-		end
+		result = result.."read"..name.."F "..(key-1).." = return "..val.."\n"
 	end
-	if language then
-		result = result..showIndent(1).."default: return "..name.."."..name.."s\n"
-		result = result.."}}\n"
-	else
-		result = result.."read"..name.."F _ = return "..name.."s\n"
-	end
-	if language then
-		result = result.."read"..name.."(_ idx: Int) -> "..name.." {\n"
-		result = result..showIndent(1).."return read"..name.."F(readInt(idx));"
-		result = result.."}\n"
-	else
-		result = result.."read"..name.." :: Int -> IO "..name.."\n"
-		result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
-	end
-	if language then
-		result = result.."func write"..name.."F(_ a: "..name..") -> Int {switch a {\n"
-	else
-		result = result.."write"..name.."F :: "..name.." -> Int\n"
-	end
+	result = result.."read"..name.."F _ = return "..name.."s\n"
+	result = result.."read"..name.." :: Int -> IO "..name.."\n"
+	result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
+	result = result.."write"..name.."F :: "..name.." -> Int\n"
 	for key,val in ipairs(enum) do
-		if language then
-			result = result..showIndent(1).."case ."..val.." return "..(key-1).."\n"
-		else
-			result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
-		end
+		result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
 	end
-	if language then
-		result = result..showIndent(1).."default: return "..#enum.."\n"
-		result = result.."}}\n"
-		result = result.."func write"..name.."(_ a: "..name..") {\n"
-		result = result..showIndent(1).."writeInt(write"..name.."F(a),idx)\n"
-		result = result.."}\n"
-		result = result.."//"
-	else
-		result = result.."write"..name.."F _ = "..#enum.."\n"
-		result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
-		result = result.."write"..name.." a idx = writeInt (write"..name.."F a) idx\n"
-		result = result.."--"
-	end
-	return result
-end
-function showStructHsG()
-	local result = ""
-	if language then
-		result = result.." // "
-	else
-		result = result.." -- "
-	end
+	result = result.."write"..name.."F _ = "..#enum.."\n"
+	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
+	result = result.."write"..name.." a idx = writeInt (write"..name.."F a) idx\n"
+	result = result.."--"
 	return result
 end
 function showStructHsF(val)
@@ -893,11 +832,7 @@ function showStructHsF(val)
 	if (val[2] == "int") then
 		result = result..pre.."Int"..post
 	elseif (val[2] == "long long") then
-		if language then
-			result = result..pre.."Int64"..post
-		else
-			result = result..pre.."Integer"..post
-		end
+		result = result..pre.."Integer"..post
 	elseif (val[2] == "double") then
 		result = result..pre.."Double"..post
 	elseif (val[2] == "float") then
@@ -920,28 +855,15 @@ function showStructHs(name,struct)
 		-- index transition direction level
 		local result = ""
 		if (linkz+links > 0) and (splits == 0) then
-			if language then result = result.."enum " else result = result.."data " end
-			result = result..name.."A"..chain[structs][1].."X"..chain[structs][2]
-			if language then result = result.."{case " else result = result.." = " end
-			result = result..name.."A"..chain[structs][1].."X"..chain[structs][2]
-			if language then result = result.."(" end
-			result = result..showStructHsG()..showPlaid(struct[index][3],all).."\n"
+			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
+			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2]
+			result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 		end
-		if (chains == 1) and (splits == 0) and (linkz-links <= 0) then
-			result = result..showIndent(1)..showStructHsF(struct[index])
-			if language then result = result.."," end
-			result = result..showStructHsG()..struct[index][1].."\n"
-		end
-		if (chains == 1) and (splits == 0) and (linkz-links > 0) then
-			result = result..showIndent(1)..showStructHsF(struct[index])
-			result = result..showStructHsG()..struct[index][1].."\n"
+		if (chains == 1) and (splits == 0) then
+			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
 		if (linkz-links > 0) and (splits == 0) then
-			if language then
-				result = result..")}\n"
-			else
-				result = result..showIndent(1).."deriving (Eq)\n"
-			end
+			result = result..showIndent(1).."deriving (Eq)\n"
 		end
 		if (linkz-links > 0) then
 			structs = structs + 1
@@ -955,43 +877,30 @@ function showStructHs(name,struct)
 		-- index transition direction level
 		local result = ""
 		if (stepz+steps > 0) then
-			if language then result = result.."enum " else result = result.."data " end
-			result = result..name.."A"..split[unions][1].."X"..split[unions][2]
-			if language then result = result.." {\n" else result = result.." =\n" end
+			result = result.."data "..name.."A"..split[unions][1].."X"..split[unions][2].." =\n"
 		end
 		if (splits == 1) then
 			if (linkz+links > 0) then
-				result = result..showIndent(1)
-				if language then result = result.."case " end
-				result = result..name.."A"..split[unions][1].."X"..split[unions][2]
+				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
 				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
-				if language then result = result.."(" end
-				result = result..showStructHsG()..showPlaid(struct[index][3],all).."\n"
+				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 			end
-			if (chains == 1) then
-				result = result..showIndent(2)
-				result = result..showStructHsF(struct[index])
-				if language and (linkz-links <= 0) then result = result.."," end
-				if language and (linkz-links > 0) then result = result..")" end
-				if not language and (linkz-links > 0) then result = result.." |" end
-				result = result..showStructHsG()..struct[index][1].."\n"
+			if (chains == 1) and (linkz-links <= 0) then
+				result = result..showIndent(2)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
+			end
+			if (chains == 1) and (linkz-links > 0) then
+				result = result..showIndent(2)..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
 			end
 			if (chains == 0) then
-				result = result..showIndent(1)
-				if language then result = result.."case " end
-				result = result..name.."A"..split[unions][1].."X"..split[unions][2].."B"..index
-				if language then result = result.."(" else result = result.." " end
-				result = result..showStructHsF(struct[index])
-				if language then result = result..")" else result = result.." |" end
-				result = result..showStructHsG()..struct[index][1]
-				result = result..showStructHsG()..showPlaid(struct[index][3],all).."\n"
+				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
+				result = result.."B"..index
+				result = result.." "..showStructHsF(struct[index]).." | -- "..struct[index][1]
+				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
 			end
 		end
 		if (stepz-steps > 0) then
-			result = result..showIndent(1)
-			if language then result = result.."case " end
-			result = result..name.."A"..split[unions][1].."X"..split[unions][2].."Bs"
-			if language then result = result.."\n" else result = result.." deriving (Eq)\n" end
+			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
+			result = result.."Bs deriving (Eq)\n"
 			unions = unions + 1
 		end
 		if (linkz-links > 0) then
@@ -999,57 +908,30 @@ function showStructHs(name,struct)
 		end
 		return result
 	end)
-	if language then result = result.."enum " else result = result.."data " end
-	result = result..name
-	if language then result = result.." {case " else result = result.." = " end
-	result = result..name
-	if language then result = result.."(" end
-	result = result.."\n"
+	result = result.."data "..name.." = "..name.."\n"
 	unions = 1
 	structs = 1
-	count = 0
-	stringStruct(struct,chain,split,
-		function(index,linkz,stepz,links,steps,chains,splits)
-		if (linkz+links > 0) and (splits == 0) then count = count + 1 end
-		if (stepz+steps > 0) then count = count + 1 end
-		if (chains == 0) and (splits == 0) then count = count + 1 end
-		return ""
-	end)
 	result = result..stringStruct(struct,chain,split,
 		function(index,linkz,stepz,links,steps,chains,splits)
 		-- index transition direction level
 		local result = ""
 		if (linkz+links > 0) and (splits == 0) then
-			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2]
-			count = count - 1
-			if language and (count > 0) then result = result.."," end
-			result = result.."\n"
+			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
 		end
 		if (linkz+links > 0) then
 			structs = structs + 1
 		end
 		if (stepz+steps > 0) then
-			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-			count = count - 1
-			if language and (count > 0) then result = result.."," end
-			result = result.."\n"
+			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."\n"
 			unions = unions + 1
 		end
 		if (chains == 0) and (splits == 0) then
-			result = result..showIndent(1)..showStructHsF(struct[index])
-			count = count - 1
-			if language and (count > 0) then result = result.."," end
-			result = result..showStructHsG()..struct[index][1].."\n"
+			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
 		end
 		return result
 	end)
-	if language then
-		result = result..")}\n"
-		result = result.."//"
-	else
-		result = result..showIndent(1).."deriving (Eq)\n"
-		result = result.."--"
-	end
+	result = result..showIndent(1).."deriving (Eq)\n"
+	result = result.."--"
 	return result
 end
 function showAccessHsF(index,field,name,tree)
@@ -1714,7 +1596,6 @@ function showCallC()
 end
 function showCallHs()
 	local result = ""
-	language = false
 	result = result..showCall(Enums,Enumz,showEnumHs).."\n"
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
@@ -1733,13 +1614,9 @@ function showCallLua()
 end
 function showCallSwift()
 	local result = ""
-	language = true
-	result = result..showCall(Enums,Enumz,showEnumHs).."\n"
-	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
-	result = result..showCall(Structs,Structz,showStructHs).."\n"
-	-- result = result..showCall(Structs,Structz,showAccessHs).."\n"
-	-- result = result..showHelpHs().."\n"
-	-- result = result..showCall(Structs,Structz,showReadHs).."\n"
-	-- result = result..showCall(Structs,Structz,showWriteHs).."\n"
+	-- result = result..showCall(Enums,Enumz,showEnumSwift).."\n"
+	-- result = result..showCall(Structs,Structz,showStructSwift).."\n"
+	-- result = result..showCall(Structs,Structz,showReadSwift).."\n"
+	-- result = result..showCall(Structs,Structz,showWriteSwift).."\n"
 	return result
 end
