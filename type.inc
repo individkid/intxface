@@ -829,18 +829,25 @@ function showStructHsF(val)
 		pre = "["
 		post = "]"
 	end
-	if (val[2] == "int") then
+	result = result..showStructHsG(val[2],pre,post)
+	return result
+end
+function showStructHsG(name,pre,post)
+	local result = ""
+	if (name == "int") then
 		result = result..pre.."Int"..post
-	elseif (val[2] == "long long") then
+	elseif (name == "long long") and language then
+		result = result..pre.."Int64"..post
+	elseif (name == "long long") then
 		result = result..pre.."Integer"..post
-	elseif (val[2] == "double") then
+	elseif (name == "double") then
 		result = result..pre.."Double"..post
-	elseif (val[2] == "float") then
+	elseif (name == "float") then
 		result = result..pre.."Float"..post
-	elseif (val[2] == "char*") then
+	elseif (name == "char*") then
 		result = result..pre.."String"..post
 	else
-		result = result..pre..val[2]..post
+		result = result..pre..name..post
 	end
 	return result
 end
@@ -1361,8 +1368,8 @@ function showCondLua(struct,dset)
 		for idx,fld in ipairs(struct) do
 			if (fld[1] == dim) then
 				for j,val in ipairs(listSort(set)) do
-					local factor = "tab[\""..struct[idx][1].."\"] == \""..val.."\""
-					if (factors > 0) then term = term.." or " end
+					local factor = "tab"..showReadLuaF(struct[idx][1]).." == "..showReadLuaI(val)
+					if (factors > 0) then term = term..showReadLuaJ() end
 					term = term.."("..factor..")"
 					factors = factors + 1
 				end
@@ -1383,10 +1390,90 @@ function showCondLua(struct,dset)
 	end
 	return cond
 end
+function showReadLuaF(field)
+	local result = ""
+	if language then
+		result = result.."."..field
+	else
+		result = result.."[\""..field.."\"]"
+	end
+	return result
+end
+function showReadLuaG(cond)
+	local result = ""
+	if language then
+		result = result.."if "..cond.." {"
+	else
+		result = result.."if "..cond.." then"
+	end
+	return result
+end
+function showReadLuaH(limit,count,name)
+	local result = ""
+	if language then
+		local pre = ""
+		local post = ""
+		local index = count
+		while (index <= limit) do
+			pre = pre.."["
+			index = index + 1
+		end
+		index = count
+		while (index <= limit) do
+			post = post.."]"
+			index = index + 1
+		end
+		result = result..showStructHsG(name,pre,post)
+	else
+		result = result.."{}"
+	end
+	return result
+end
+function showReadLuaI(val)
+	local result = ""
+	if language then
+		result = result.."."..val
+	else
+		result = result.."\""..val.."\""
+	end
+	return result
+end
+function showReadLuaJ()
+	local result = ""
+	if language then
+		result = result.." || "
+	else
+		result = result.." or "
+	end
+	return result
+end
+function showReadLuaK()
+	local result = ""
+	if language then
+		result = result.."}\n"
+	else
+		result = result.."end\n"
+	end
+	return result
+end
+function showReadLuaL()
+	local result = ""
+	if language then
+		result = result.."//"
+	else
+		result = result.."--"
+	end
+	return result
+end
 function showReadLua(name,struct)
 	local result = ""
-	result = result.."function read"..name.."(idx)\n"
-	result = result..showIndent(1).."local tab = {}\n"
+	if language then
+		result = result.."func".." read"..name.."(_ idx: Int) -> "..name.." {\n"
+		result = result..showIndent(1).."var tab = "..name.."()\n"
+	else
+		result = result.."function".." read"..name.."(idx)\n"
+		result = result..showIndent(1).."local tab = {}\n"
+	end
 	for index,field in ipairs(struct) do
 		local count = 0
 		local conds = 0
@@ -1394,7 +1481,7 @@ function showReadLua(name,struct)
 		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
-			result = result..showIndent(count).."if "..cond.." then\n"
+			result = result..showIndent(count)..showReadLuaG(cond).."\n"
 		end
 		local sub = ""
 		if (type(field[4]) == "table") then
@@ -1405,14 +1492,14 @@ function showReadLua(name,struct)
 			while (count < limit) do
 				count = count + 1
 				dimen = dimen + 1
-				result = result..showIndent(count).."tab[\""..field[1].."\"]"
+				result = result..showIndent(count).."tab"..showReadLuaF(field[1])
 				local index = square
 				while (index < squares) do
 					result = result.."[i"..index.."]"
 					index = index + 1
 				end
 				squares = squares + 1
-				result = result.." = {}\n"
+				result = result.." = "..showReadLuaH(limit,count,field[2]).."\n"
 				result = result..showIndent(count).."local i"..count.." = 1\n"
 				result = result..showIndent(count).."while (i"..count.." <= "..field[4][dimen]..") do\n"
 				sub = sub.."[i"..count.."]"
@@ -1424,19 +1511,19 @@ function showReadLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showIndent(count).."tab[\""..field[1].."\"] = {}\n"
+			result = result..showIndent(count).."tab"..showReadLuaF(field[1]).." = "..showReadLuaH(1,1,field[2]).."\n"
 			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= tab[\""..field[4].."\"]) do\n"
+			result = result..showIndent(count).."while (i"..count.." <= tab"..showReadLuaF(field[4])..") do\n"
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showIndent(count).."tab[\""..field[1].."\"] = {}\n"
+			result = result..showIndent(count).."tab"..showReadLuaF(field[1]).." = "..showReadLuaH(1,1,field[2]).."\n"
 			result = result..showIndent(count).."local i"..count.." = 1\n"
 			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
 			sub = sub.."[i"..count.."]"
 		end
-		result = result..showIndent(count+1).."tab[\""..field[1].."\"]"..sub.." = "
+		result = result..showIndent(count+1).."tab"..showReadLuaF(field[1])..sub.." = "
 		if (field[2] == "int") then result = result.."readInt(idx)"
 		elseif (field[2] == "long long") then result = result.."readNew(idx)"
 		elseif (field[2] == "double") then result = result.."readNum(idx)"
@@ -1448,13 +1535,13 @@ function showReadLua(name,struct)
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
 			end
-			result = result..showIndent(count).."end\n"
+			result = result..showIndent(count)..showReadLuaK()
 			count = count - 1
 		end
 	end
 	result = result..showIndent(1).."return tab\n"
-	result = result.."end\n"
-	result = result.."--"
+	result = result..showReadLuaK()
+	result = result..showReadLuaL()
 	return result
 end
 function showWriteLua(name,struct)
@@ -1485,7 +1572,7 @@ function showWriteLua(name,struct)
 			end
 			count = count + 1
 			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= tab[\""..field[4].."\"]) do\n"
+			result = result..showIndent(count).."while (i"..count.." <= tab"..showReadLuaF(field[4])..") do\n"
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then
@@ -1494,7 +1581,7 @@ function showWriteLua(name,struct)
 			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
 			sub = sub.."[i"..count.."]"
 		end
-		local value = "tab[\""..field[1].."\"]"..sub
+		local value = "tab"..showReadLuaF(field[1])..sub
 		result = result..showIndent(count+1)
 		if (field[2] == "int") then result = result.."writeInt("..value..",idx)"
 		elseif (field[2] == "long long") then result = result.."writeNew("..value..",idx)"
@@ -1514,6 +1601,30 @@ function showWriteLua(name,struct)
 	result = result.."end\n"
 	result = result.."--"
 	return result
+end
+function showEnumSwift(name,enum)
+	local result = "enum "..name..": Int {\n"
+	for key,val in ipairs(enum) do
+		result = result..showIndent(1).."case "..val.."\n"
+	end
+	result = result..showIndent(1).."case "..name.."s\n"
+	result = result.."}\n"
+	return result.."//"
+end
+function showCodeSwift(name,enum)
+	local result = ""
+	result = result.."func read"..name.."(_ idx: Int) -> "..name.." {"..name.."(rawValue: readInt(idx))}\n"
+	result = result.."func write"..name.."(_ val: "..name..", _ idx: Int) {writeInt(val.rawValue, idx);}\n"
+	result = result.."//"
+	return result
+end
+function showStructSwift(name,struct)
+	local result = "struct "..name.." {\n"
+	for key,val in ipairs(struct) do
+		result = result..showIndent(1)..val[1]..": "..showStructHsF(val).."!\n"
+	end
+	result = result.."}\n"
+	return result.."//"
 end
 function listHere(name,file)
 	local list = {}
@@ -1596,6 +1707,7 @@ function showCallC()
 end
 function showCallHs()
 	local result = ""
+	language = false
 	result = result..showCall(Enums,Enumz,showEnumHs).."\n"
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
@@ -1607,6 +1719,7 @@ function showCallHs()
 end
 function showCallLua()
 	local result = ""
+	language = false
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
 	result = result..showCall(Structs,Structz,showWriteLua).."\n"
@@ -1614,9 +1727,11 @@ function showCallLua()
 end
 function showCallSwift()
 	local result = ""
-	-- result = result..showCall(Enums,Enumz,showEnumSwift).."\n"
-	-- result = result..showCall(Structs,Structz,showStructSwift).."\n"
-	-- result = result..showCall(Structs,Structz,showReadSwift).."\n"
-	-- result = result..showCall(Structs,Structz,showWriteSwift).."\n"
+	language = true
+	result = result..showCall(Enums,Enumz,showEnumSwift).."\n"
+	result = result..showCall(Enums,Enumz,showCodeSwift).."\n"
+	result = result..showCall(Structs,Structz,showStructSwift).."\n"
+	result = result..showCall(Structs,Structz,showReadLua).."\n"
+	-- result = result..showCall(Structs,Structz,showWriteLua).."\n"
 	return result
 end

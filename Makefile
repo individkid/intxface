@@ -18,6 +18,8 @@
 all: facer.log typra.log typer.log filer.log line plane space trade
 
 ifndef DEPEND
+# lua depend.lua > depend.mk
+# lua contain.gen >> depend.mk
 include depend.mk
 endif
 
@@ -89,4 +91,5 @@ clean:
 	rm -f *C *Hs *Lua *Gen *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h a.*
-	rm -f depend opengl typra type
+	rm -f depend opengl type
+
