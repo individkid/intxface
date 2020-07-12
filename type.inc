@@ -1368,7 +1368,7 @@ function showCondLua(struct,dset)
 		for idx,fld in ipairs(struct) do
 			if (fld[1] == dim) then
 				for j,val in ipairs(listSort(set)) do
-					local factor = "tab"..showReadLuaF(struct[idx][1]).." == "..showReadLuaI(val)
+					local factor = "tab"..showReadLuaF(struct[idx][1]).." == "..showReadLuaI(struct[idx][2],val)
 					if (factors > 0) then term = term..showReadLuaJ() end
 					term = term.."("..factor..")"
 					factors = factors + 1
@@ -1429,10 +1429,10 @@ function showReadLuaH(limit,count,name)
 	end
 	return result
 end
-function showReadLuaI(val)
+function showReadLuaI(type,val)
 	local result = ""
 	if language then
-		result = result.."."..val
+		result = result..type.."."..val
 	else
 		result = result.."\""..val.."\""
 	end
@@ -1462,6 +1462,17 @@ function showReadLuaL()
 		result = result.."//"
 	else
 		result = result.."--"
+	end
+	return result
+end
+function showReadLuaM(count,limit)
+	local result = ""
+	if language then
+		result = result..showIndent(count).."var i"..count.." = 1\n"
+		result = result..showIndent(count).."while (i"..count.." <= "..limit..") {\n"
+	else
+		result = result..showIndent(count).."local i"..count.." = 1\n"
+		result = result..showIndent(count).."while (i"..count.." <= "..limit..") do\n"
 	end
 	return result
 end
@@ -1500,8 +1511,7 @@ function showReadLua(name,struct)
 				end
 				squares = squares + 1
 				result = result.." = "..showReadLuaH(limit,count,field[2]).."\n"
-				result = result..showIndent(count).."local i"..count.." = 1\n"
-				result = result..showIndent(count).."while (i"..count.." <= "..field[4][dimen]..") do\n"
+				result = result..showReadLuaM(count,field[4][dimen])
 				sub = sub.."[i"..count.."]"
 			end
 		end
@@ -1512,15 +1522,13 @@ function showReadLua(name,struct)
 			end
 			count = count + 1
 			result = result..showIndent(count).."tab"..showReadLuaF(field[1]).." = "..showReadLuaH(1,1,field[2]).."\n"
-			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= tab"..showReadLuaF(field[4])..") do\n"
+			result = result..showReadLuaM(count,"tab"..showReadLuaF(field[4]))
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
 			result = result..showIndent(count).."tab"..showReadLuaF(field[1]).." = "..showReadLuaH(1,1,field[2]).."\n"
-			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
+			result = result..showReadLuaM(count,field[4])
 			sub = sub.."[i"..count.."]"
 		end
 		result = result..showIndent(count+1).."tab"..showReadLuaF(field[1])..sub.." = "
@@ -1546,7 +1554,11 @@ function showReadLua(name,struct)
 end
 function showWriteLua(name,struct)
 	local result = ""
-	result = result.."function write"..name.."(tab,idx)\n"
+	if language then
+		result = result.."func write"..name.."(_ tab: "..name..", _ idx: Int) {\n"
+	else
+		result = result.."function write"..name.."(tab,idx)\n"
+	end
 	for index,field in ipairs(struct) do
 		local count = 0
 		local conds = 0
@@ -1554,14 +1566,13 @@ function showWriteLua(name,struct)
 		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
-			result = result..showIndent(count).."if "..cond.." then\n"
+			result = result..showIndent(count)..showReadLuaG(cond).."\n"
 		end
 		local sub = ""
 		if (type(field[4]) == "table") then
 			while (count < #field[4]) do
 				count = count + 1
-				result = result..showIndent(count).."local i"..count.." = 1\n"
-				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
+				result = result..showReadLuaM(count,field[4][count])
 				sub = sub.."[i"..count.."]"
 			end
 		end
@@ -1571,14 +1582,12 @@ function showWriteLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= tab"..showReadLuaF(field[4])..") do\n"
+			result = result..showReadLuaM(count,"tab"..showReadLuaF(field[4]))
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showIndent(count).."local i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
+			result = result..showReadLuaM(count,field[4])
 			sub = sub.."[i"..count.."]"
 		end
 		local value = "tab"..showReadLuaF(field[1])..sub
@@ -1594,12 +1603,12 @@ function showWriteLua(name,struct)
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
 			end
-			result = result..showIndent(count).."end\n"
+			result = result..showIndent(count)..showReadLuaK()
 			count = count - 1
 		end
 	end
-	result = result.."end\n"
-	result = result.."--"
+	result = result..showReadLuaK()
+	result = result..showReadLuaL()
 	return result
 end
 function showEnumSwift(name,enum)
@@ -1732,6 +1741,6 @@ function showCallSwift()
 	result = result..showCall(Enums,Enumz,showCodeSwift).."\n"
 	result = result..showCall(Structs,Structz,showStructSwift).."\n"
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
-	-- result = result..showCall(Structs,Structz,showWriteLua).."\n"
+	result = result..showCall(Structs,Structz,showWriteLua).."\n"
 	return result
 end
