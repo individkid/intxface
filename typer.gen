@@ -24,9 +24,7 @@ function showTyperC()
 	result = result.."#include \"base.h\"\n"
 	result = result.."#include \"typer.h\"\n"
 	result = result..showCallC().."\n"
-	result = result..
-	"int main(int argc, char **argv)\n"..
-	"{\n"..
+	result = result.."int main(int argc, char **argv)\n".."{\n"..
 	showIndent(1).."if (argc == 4) {\n"..
 	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
 	showIndent(1).."struct Struct1 *ptr;\n"..
@@ -38,17 +36,20 @@ function showTyperC()
 	showIndent(1).."forkExec(\"typerC\");\n"..
 	showIndent(1).."forkExec(\"typerHs\");\n"..
 	showIndent(1).."forkExec(\"typerLua\");\n"..
+	-- showIndent(1).."forkExec(\"typerSwift\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
 	showIndent(1).."struct Struct1 *exp;\n"..
-	showIndent(1).."allocStruct1(&exp,3);\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) randStruct1(exp+i);\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) writeStruct1(exp+i,i);\n"..
+	-- showIndent(1).."int size = 4;\n"..
+	showIndent(1).."int size = 3;\n"..
+	showIndent(1).."allocStruct1(&exp,size);\n"..
+	showIndent(1).."for (int i = 0; i < size; i++) randStruct1(exp+i);\n"..
+	showIndent(1).."for (int i = 0; i < size; i++) writeStruct1(exp+i,i);\n"..
 	showIndent(1).."struct Struct1 *act;\n"..
-	showIndent(1).."allocStruct1(&act,3);\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) readStruct1(act+i,i);\n"..
+	showIndent(1).."allocStruct1(&act,size);\n"..
+	showIndent(1).."for (int i = 0; i < size; i++) readStruct1(act+i,i);\n"..
 	showIndent(1).."int pass = 0;\n"..
-	showIndent(1).."for (int i = 0; i < 3; i++) pass += compStruct1(exp+i,act+i);\n"
+	showIndent(1).."for (int i = 0; i < size; i++) pass += compStruct1(exp+i,act+i);\n"
 	result = result..
 	showIndent(1).."return pass!=3?-1:0;\n"..
 	"}"
@@ -88,6 +89,25 @@ function showTyperLua()
 	result = result.."end\n"
 	return result
 end
+function showTyperSwift()
+	local result = ""
+	result = result.."import faceC\n"
+	result = result.."//\n"
+	result = result..showCallSwift()
+	result = result.."// MAIN\n"
+	result = result.."var capturedStr: String = \"\"\n"
+	result = result.."func callReadStr(_ idx: Int32) -> String {\n"
+	result = result..showIndent(1).."print(\"calling readStrHs \\(idx)\")\n"
+	result = result..showIndent(1).."readStrHs({(str,trm) -> () in\n"
+	result = result..showIndent(1).."capturedStr = String(cString: str!)}, idx);\n"
+	result = result..showIndent(1).."return capturedStr}\n"
+	result = result.."if (CommandLine.arguments.count == 4) {\n"
+	result = result.."pipeInit(CommandLine.arguments[1],CommandLine.arguments[2])\n"
+	result = result.."let tab = readStruct1(0)\n"
+	result = result.."writeStruct1(tab,0)\n"
+	result = result.."}\n"
+	return result
+end
 -- MAIN
 if (arg[1] == "typer.h") then
 	file = io.open("typer.h", "w")
@@ -107,5 +127,10 @@ end
 if (arg[1] == "typer.lua") then
 	file = io.open("typer.lua", "w")
 	file:write(showTyperLua().."\n")
+	file:close()
+end
+if (arg[1] == "typer.swift") then
+	file = io.open("typer.swift", "w")
+	file:write(showTyperSwift().."\n")
 	file:close()
 end

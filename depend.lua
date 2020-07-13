@@ -27,6 +27,7 @@ A foreign of c in hs is synonym for dependee.
 A module in hs is synonym for depender.
 A dofile in lua/gen is dependee.
 A require of c in lua/gen is synonym for dependee.
+A import of c in swift is synonym for dependee.
 A io.open in gen is depender.
 A closure of nonindented colon line in Makefile is depender and dependee(s).
 
@@ -59,6 +60,7 @@ end
 dirlist:close()
 scripts = {}
 os.execute("grep -l -- '-- MAIN' *.lua *.gen > depend.txt")
+os.execute("grep -l -- '// MAIN' *.swift >> depend.txt")
 greplist = io.open("depend.txt")
 for line in greplist:lines() do
 	scripts[line] = true
@@ -302,6 +304,22 @@ for k,v in ipairs(files) do
 		file:close()
 	end
 end
+-- find edges from .swift files in current directory
+expex = "^import +([^\"]*)"
+for k,v in ipairs(files) do
+	if (string.match(v,"^.*%.swift$")) then
+		file = io.open(v)
+		for line in file:lines() do
+			import = string.match(line,expex)
+			if import then
+				-- print(v..": "..import..".c")
+				if not edges[v] then edges[v] = {} end
+				edges[v][import..".c"] = true
+			end
+		end
+		file:close()
+	end
+end
 
 -- eliminate duplicate graph edges and nonfile nodes
 -- print("HERE")
@@ -538,6 +556,17 @@ for k,v in pairs(edges) do
 		end
 		table.sort(deps)
 		update[base.."Gen"] = deps
+	end
+	if base and (ext == ".swift") and entries[k] then
+		deps = {}
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".c") then
+				deps[#deps+1] = b.."C.o"
+			end
+		end
+		table.sort(deps)
+		update[base.."Swift"] = deps
 	end
 	if needed[k] then
 		deps = {}

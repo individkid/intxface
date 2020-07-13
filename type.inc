@@ -834,7 +834,9 @@ function showStructHsF(val)
 end
 function showStructHsG(name,pre,post)
 	local result = ""
-	if (name == "int") then
+	if (name == "int") and language then
+		result = result..pre.."Int32"..post
+	elseif (name == "int") then
 		result = result..pre.."Int"..post
 	elseif (name == "long long") and language then
 		result = result..pre.."Int64"..post
@@ -1375,7 +1377,8 @@ function showCondLua(struct,dset)
 				end
 			end
 		end
-		if (terms > 0) then cond = cond.." and " end
+		if (terms > 0 and language) then cond = cond.." || "
+		elseif (terms > 0) then cond = cond.." and " end
 		if (factors > 1) then
 			cond = cond.."("..term..")"
 		else
@@ -1423,7 +1426,7 @@ function showReadLuaH(limit,count,name)
 			post = post.."]"
 			index = index + 1
 		end
-		result = result..showStructHsG(name,pre,post)
+		result = result..showStructHsG(name,pre,post).."()"
 	else
 		result = result.."{}"
 	end
@@ -1465,10 +1468,18 @@ function showReadLuaL()
 	end
 	return result
 end
+nest = 0
 function showReadLuaM(count,limit)
 	local result = ""
 	if language then
-		result = result..showIndent(count).."var i"..count.." = 1\n"
+		local declare = ""
+		if (count > nest) then
+			declare = "var "
+		end
+		if (count ~= nest) then
+			nest = count
+		end
+		result = result..showIndent(count)..declare.."i"..count.." = 1\n"
 		result = result..showIndent(count).."while (i"..count.." <= "..limit..") {\n"
 	else
 		result = result..showIndent(count).."local i"..count.." = 1\n"
@@ -1477,9 +1488,10 @@ function showReadLuaM(count,limit)
 	return result
 end
 function showReadLua(name,struct)
+	nest = 0
 	local result = ""
 	if language then
-		result = result.."func".." read"..name.."(_ idx: Int) -> "..name.." {\n"
+		result = result.."func".." read"..name.."(_ idx: Int32) -> "..name.." {\n"
 		result = result..showIndent(1).."var tab = "..name.."()\n"
 	else
 		result = result.."function".." read"..name.."(idx)\n"
@@ -1536,6 +1548,7 @@ function showReadLua(name,struct)
 		elseif (field[2] == "long long") then result = result.."readNew(idx)"
 		elseif (field[2] == "double") then result = result.."readNum(idx)"
 		elseif (field[2] == "float") then result = result.."readOld(idx)"
+		elseif (field[2] == "char*") and language then result = result.."callReadStr(idx)"
 		elseif (field[2] == "char*") then result = result.."readStr(idx)"
 		else result = result.."read"..field[2].."(idx)" end
 		result = result.."\n"
@@ -1553,9 +1566,10 @@ function showReadLua(name,struct)
 	return result
 end
 function showWriteLua(name,struct)
+	nest = 0
 	local result = ""
 	if language then
-		result = result.."func write"..name.."(_ tab: "..name..", _ idx: Int) {\n"
+		result = result.."func write"..name.."(_ tab: "..name..", _ idx: Int32) {\n"
 	else
 		result = result.."function write"..name.."(tab,idx)\n"
 	end
@@ -1612,7 +1626,7 @@ function showWriteLua(name,struct)
 	return result
 end
 function showEnumSwift(name,enum)
-	local result = "enum "..name..": Int {\n"
+	local result = "enum "..name..": Int32 {\n"
 	for key,val in ipairs(enum) do
 		result = result..showIndent(1).."case "..val.."\n"
 	end
@@ -1622,15 +1636,15 @@ function showEnumSwift(name,enum)
 end
 function showCodeSwift(name,enum)
 	local result = ""
-	result = result.."func read"..name.."(_ idx: Int) -> "..name.." {"..name.."(rawValue: readInt(idx))}\n"
-	result = result.."func write"..name.."(_ val: "..name..", _ idx: Int) {writeInt(val.rawValue, idx);}\n"
+	result = result.."func read"..name.."(_ idx: Int32) -> "..name.." {"..name.."(rawValue: readInt(idx))!}\n"
+	result = result.."func write"..name.."(_ val: "..name..", _ idx: Int32) {writeInt(val.rawValue, idx);}\n"
 	result = result.."//"
 	return result
 end
 function showStructSwift(name,struct)
 	local result = "struct "..name.." {\n"
 	for key,val in ipairs(struct) do
-		result = result..showIndent(1)..val[1]..": "..showStructHsF(val).."!\n"
+		result = result..showIndent(1).."var "..val[1]..": "..showStructHsF(val).."!\n"
 	end
 	result = result.."}\n"
 	return result.."//"

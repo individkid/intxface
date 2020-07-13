@@ -19,6 +19,7 @@ all: facer.log typra.log typer.log filer.log line plane space trade
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
+# make clean
 # lua contain.gen >> depend.mk
 include depend.mk
 endif
@@ -47,8 +48,8 @@ filer.log: filerLua file
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-%Swift: %.o
-	swiftc -o $@ $(filter %C.o,%^) -L /usr/local/lib -llua -lportaudio -lglfw -lGLEW -lMoltenVK
+%Swift: %Swift.o
+	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib -llua -lportaudio -lglfw -lGLEW -lMoltenVK
 
 %: %C
 	ln -f $< $@
@@ -67,8 +68,8 @@ filer.log: filerLua file
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
-%C.o: %.swift
-	swiftc -I . -c $<
+%Swift.o: %.swift
+	swiftc -o $@ -I . -c $<
 
 %.h: %Gen
 	./$< $@
@@ -85,10 +86,11 @@ filer.log: filerLua file
 clean:
 	rm -f base.h base.c contain.h contain.c
 	rm -f type.h type.c type.hs type.lua type.swift
-	rm -f typer.h typer.c typer.hs typer.lua
+	rm -f typer.h typer.c typer.hs typer.lua typer.swift
 	rm -f typra facer typer filer
 	rm -f trade file line plane space
-	rm -f *C *Hs *Lua *Gen *.err *.out *.log
+	rm -f *C *Hs *Lua *Gen *Swift
+	rm -f *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h a.*
 	rm -f depend opengl type
