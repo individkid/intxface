@@ -1413,6 +1413,11 @@ function showReadLuaG(cond)
 end
 function showReadLuaH(limit,count,name)
 	local result = ""
+	if language and (count > 1) then
+		result = result..".append("
+	else
+		result = result.." = "
+	end
 	if language then
 		local pre = ""
 		local post = ""
@@ -1429,6 +1434,9 @@ function showReadLuaH(limit,count,name)
 		result = result..showStructHsG(name,pre,post).."()"
 	else
 		result = result.."{}"
+	end
+	if language and (count > 1) then
+		result = result..")"
 	end
 	return result
 end
@@ -1524,11 +1532,7 @@ function showReadLua(name,struct)
 					result = result.."[i"..index.."]"
 					index = index + 1
 				end
-				if language and (count > 1) then
-					result = result..".append("..showReadLuaH(limit,count,field[2])..")\n"
-				else
-					result = result.." = "..showReadLuaH(limit,count,field[2]).."\n"
-				end
+				result = result..showReadLuaH(limit,count,field[2]).."\n"
 				squares = squares + 1
 				result = result..showReadLuaM(count,field[4][dimen])
 				sub = sub.."[i"..count.."]"
@@ -1542,14 +1546,14 @@ function showReadLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showIndent(count).."tab"..showReadLuaF(field[1]).." = "..showReadLuaH(1,1,field[2]).."\n"
+			result = result..showIndent(count).."tab"..showReadLuaF(field[1])..showReadLuaH(1,1,field[2]).."\n"
 			result = result..showReadLuaM(count,"tab"..showReadLuaF(field[4]))
 			sub = sub.."[i"..count.."]"
 			super = true
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showIndent(count).."tab"..showReadLuaF(field[1]).." = "..showReadLuaH(1,1,field[2]).."\n"
+			result = result..showIndent(count).."tab"..showReadLuaF(field[1])..showReadLuaH(1,1,field[2]).."\n"
 			result = result..showReadLuaM(count,field[4])
 			sub = sub.."[i"..count.."]"
 			super = true
