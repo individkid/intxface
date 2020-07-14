@@ -69,7 +69,7 @@ filer.log: filerLua file
 %C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %Swift.o: %.swift
-	swiftc -o $@ -I . -c $<
+	cat $^ | swiftc -o $@ -I . -c -
 
 %.h: %Gen
 	./$< $@

@@ -90,7 +90,7 @@ function showTyperLua()
 end
 function showTyperSwift()
 	local result = ""
-	result = result.."import faceC\n"
+	result = result.."import face\n"
 	result = result.."//\n"
 	result = result..showCallSwift()
 	result = result.."// MAIN\n"

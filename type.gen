@@ -286,7 +286,7 @@ function showTypeLua()
 end
 function showTypeSwift()
 	local result = ""
-	result = result.."import faceC\n"
+	result = result.."import face\n"
 	result = result..showCallSwift()
 	return result
 end

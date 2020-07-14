@@ -305,7 +305,8 @@ for k,v in ipairs(files) do
 	end
 end
 -- find edges from .swift files in current directory
-expex = "^import +([^\"]*)"
+expee = "^//include +(.*)"
+expex = "^import +(.*)"
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.swift$")) then
 		file = io.open(v)
@@ -315,6 +316,12 @@ for k,v in ipairs(files) do
 				-- print(v..": "..import..".c")
 				if not edges[v] then edges[v] = {} end
 				edges[v][import..".c"] = true
+			end
+			include = string.match(line,expee)
+			if include then
+				-- print(v..": "..include..".swift")
+				if not edges[v] then edges[v] = {} end
+				edges[v][include..".swift"] = true
 			end
 		end
 		file:close()
@@ -567,6 +574,17 @@ for k,v in pairs(edges) do
 		end
 		table.sort(deps)
 		update[base.."Swift"] = deps
+	end
+	if base and (ext == ".swift") and entries[k] then
+		deps = {}
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
+			if b and (e == ".swift") then
+				deps[#deps+1] = key
+			end
+		end
+		table.sort(deps)
+		update[base.."Swift.o"] = deps
 	end
 	if needed[k] then
 		deps = {}
