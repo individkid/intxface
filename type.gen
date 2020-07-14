@@ -143,15 +143,15 @@ Term0 = {
 }
 Term1 = {
 	{"cff","double",{},{}},
-	{"var","int",{},{1}},
+	{"vry","int",{},{1}},
 }
 Term2 = {
 	{"cff","double",{},{}},
-	{"var","int",{},{2}},
+	{"vry","int",{},{2}},
 }
 Term3 = {
 	{"cff","double",{},{}},
-	{"var","int",{},{3}},
+	{"vry","int",{},{3}},
 }
 Nomial = {
 	{"num0","int",{},{}},
@@ -286,6 +286,7 @@ function showTypeLua()
 end
 function showTypeSwift()
 	local result = ""
+	result = result.."import faceC\n"
 	result = result..showCallSwift()
 	return result
 end

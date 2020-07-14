@@ -1508,6 +1508,7 @@ function showReadLua(name,struct)
 		elseif (field[2] == "char*") then result = result.."readStr(idx)"
 		else result = result.."read"..field[2].."(idx)" end
 		if language and super then result = result..")" end
+		if (cond ~= "True") then nest = 1 end
 		result = result.."\n"
 		while (count > 0) do
 			if (count > conds) then
@@ -1572,6 +1573,7 @@ function showWriteLua(name,struct)
 		elseif (field[2] == "float") then result = result.."writeOld("..value..",idx)"
 		elseif (field[2] == "char*") then result = result.."writeStr("..value..",1,idx)"
 		else result = result.."write"..field[2].."("..value..",idx)" end
+		if (cond ~= "True") then nest = 1 end
 		result = result.."\n"
 		while (count > 0) do
 			if (count > conds) then
@@ -1608,6 +1610,17 @@ function showStructSwift(name,struct)
 	end
 	result = result.."}\n"
 	return result.."//"
+end
+function showHelpSwift()
+	local result = ""
+	result = result.."var capturedStr: String = \"\"\n"
+	result = result.."func callReadStr(_ idx: Int32) -> String {\n"
+	result = result..showIndent(1).."readStrHs({(str,trm) -> () in\n"
+	result = result..showIndent(1).."capturedStr = String(cString: str!)}, idx);\n"
+	result = result..showIndent(1).."return capturedStr\n"
+	result = result.."}\n"
+	result = result.."//"
+	return result
 end
 function listHere(name,file)
 	local list = {}
@@ -1714,6 +1727,7 @@ function showCallSwift()
 	result = result..showCall(Enums,Enumz,showEnumSwift).."\n"
 	result = result..showCall(Enums,Enumz,showCodeSwift).."\n"
 	result = result..showCall(Structs,Structz,showStructSwift).."\n"
+	result = result..showHelpSwift().."\n"
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
 	result = result..showCall(Structs,Structz,showWriteLua).."\n"
 	return result

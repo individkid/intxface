@@ -231,18 +231,18 @@ double polynomial(Nomial *nomial)
 		result += trm->cff;}
 	for (int i = 0; i < nomial->num1; i++) {
 		Term1 *trm = &nomial->trm1[i];
-		Event *var0 = state[trm->var[0]];
+		Event *var0 = state[trm->vry[0]];
 		result += trm->cff*var0->val;}
 	for (int i = 0; i < nomial->num2; i++) {
 		Term2 *trm = &nomial->trm2[i];
-		Event *var0 = state[trm->var[0]];
-		Event *var1 = state[trm->var[1]];
+		Event *var0 = state[trm->vry[0]];
+		Event *var1 = state[trm->vry[1]];
 		result += trm->cff*var0->val*var1->val;}
 	for (int i = 0; i < nomial->num3; i++) {
 		Term3 *trm = &nomial->trm3[i];
-		Event *var0 = state[trm->var[0]];
-		Event *var1 = state[trm->var[1]];
-		Event *var2 = state[trm->var[2]];
+		Event *var0 = state[trm->vry[0]];
+		Event *var1 = state[trm->vry[1]];
+		Event *var2 = state[trm->vry[2]];
 		result += trm->cff*condition(var0->val,var1->val,var2->val);}
 	return result;
 }

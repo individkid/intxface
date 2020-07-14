@@ -94,11 +94,6 @@ function showTyperSwift()
 	result = result.."//\n"
 	result = result..showCallSwift()
 	result = result.."// MAIN\n"
-	result = result.."var capturedStr: String = \"\"\n"
-	result = result.."func callReadStr(_ idx: Int32) -> String {\n"
-	result = result..showIndent(1).."readStrHs({(str,trm) -> () in\n"
-	result = result..showIndent(1).."capturedStr = String(cString: str!)}, idx);\n"
-	result = result..showIndent(1).."return capturedStr}\n"
 	result = result.."if (CommandLine.arguments.count == 4) {\n"
 	result = result.."pipeInit(CommandLine.arguments[1],CommandLine.arguments[2])\n"
 	result = result.."let tab = readStruct1(0)\n"
