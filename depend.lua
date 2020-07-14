@@ -583,8 +583,10 @@ for k,v in pairs(edges) do
 				deps[#deps+1] = key
 			end
 		end
-		table.sort(deps)
-		update[base.."Swift.o"] = deps
+		if (#deps > 0) then
+			table.sort(deps)
+			update[base.."Swift.o"] = deps
+		end
 	end
 	if needed[k] then
 		deps = {}
