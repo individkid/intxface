@@ -32,7 +32,7 @@ facer.log: facerC facerHs facerLua
 typra.log: typraLua
 	./typraLua > typra.log
 	cat $@
-typer.log: typerC typerHs typerLua
+typer.log: typerC typerHs typerLua typerSwift
 	./typerC > typer.log
 	cat $@
 filer.log: filerLua file

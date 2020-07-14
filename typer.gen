@@ -36,22 +36,21 @@ function showTyperC()
 	showIndent(1).."forkExec(\"typerC\");\n"..
 	showIndent(1).."forkExec(\"typerHs\");\n"..
 	showIndent(1).."forkExec(\"typerLua\");\n"..
-	-- showIndent(1).."forkExec(\"typerSwift\");\n"..
+	showIndent(1).."forkExec(\"typerSwift\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
-	showIndent(1).."struct Struct1 *exp;\n"..
-	-- showIndent(1).."int size = 4;\n"..
-	showIndent(1).."int size = 3;\n"..
+	showIndent(1).."struct Struct1 *exp = 0;\n"..
+	showIndent(1).."int size = 4;\n"..
 	showIndent(1).."allocStruct1(&exp,size);\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) randStruct1(exp+i);\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) writeStruct1(exp+i,i);\n"..
-	showIndent(1).."struct Struct1 *act;\n"..
+	showIndent(1).."struct Struct1 *act = 0;\n"..
 	showIndent(1).."allocStruct1(&act,size);\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) readStruct1(act+i,i);\n"..
 	showIndent(1).."int pass = 0;\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) pass += compStruct1(exp+i,act+i);\n"
 	result = result..
-	showIndent(1).."return pass!=3?-1:0;\n"..
+	showIndent(1).."return pass!=size?-1:0;\n"..
 	"}"
 	return result
 end
@@ -97,7 +96,6 @@ function showTyperSwift()
 	result = result.."// MAIN\n"
 	result = result.."var capturedStr: String = \"\"\n"
 	result = result.."func callReadStr(_ idx: Int32) -> String {\n"
-	result = result..showIndent(1).."print(\"calling readStrHs \\(idx)\")\n"
 	result = result..showIndent(1).."readStrHs({(str,trm) -> () in\n"
 	result = result..showIndent(1).."capturedStr = String(cString: str!)}, idx);\n"
 	result = result..showIndent(1).."return capturedStr}\n"
