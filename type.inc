@@ -1370,8 +1370,8 @@ function showCondLua(struct,dset)
 		for idx,fld in ipairs(struct) do
 			if (fld[1] == dim) then
 				for j,val in ipairs(listSort(set)) do
-					local factor = "tab"..showReadLuaF(struct[idx][1]).." == "..showReadLuaI(struct[idx][2],val)
-					if (factors > 0) then term = term..showReadLuaJ() end
+					local factor = "tab"..show(".","[\"")..struct[idx][1]..show("","\"]").." == "..show(struct[idx][2].."."..val,"\""..val.."\"")
+					if (factors > 0) then term = term..show(" || "," or ") end
 					term = term.."("..factor..")"
 					factors = factors + 1
 				end
@@ -1393,107 +1393,44 @@ function showCondLua(struct,dset)
 	end
 	return cond
 end
-function showReadLuaF(field)
+function showReadLuaF(limit,count,name)
 	local result = ""
-	if language then
-		result = result.."."..field
-	else
-		result = result.."[\""..field.."\"]"
-	end
-	return result
-end
-function showReadLuaG(cond)
-	local result = ""
-	if language then
-		result = result.."if "..cond.." {"
-	else
-		result = result.."if "..cond.." then"
-	end
-	return result
-end
-function showReadLuaH(limit,count,name)
-	local result = ""
-	if language and (count > 1) then
+	if (count > 1) then
 		result = result..".append("
 	else
 		result = result.." = "
 	end
-	if language then
-		local pre = ""
-		local post = ""
-		local index = count
-		while (index <= limit) do
-			pre = pre.."["
-			index = index + 1
-		end
-		index = count
-		while (index <= limit) do
-			post = post.."]"
-			index = index + 1
-		end
-		result = result..showStructHsG(name,pre,post).."()"
-	else
-		result = result.."{}"
+	local pre = ""
+	local post = ""
+	local index = count
+	while (index <= limit) do
+		pre = pre.."["
+		index = index + 1
 	end
-	if language and (count > 1) then
+	index = count
+	while (index <= limit) do
+		post = post.."]"
+		index = index + 1
+	end
+	result = result..showStructHsG(name,pre,post).."()"
+	if (count > 1) then
 		result = result..")"
 	end
 	return result
 end
-function showReadLuaI(type,val)
-	local result = ""
-	if language then
-		result = result..type.."."..val
-	else
-		result = result.."\""..val.."\""
-	end
-	return result
-end
-function showReadLuaJ()
-	local result = ""
-	if language then
-		result = result.." || "
-	else
-		result = result.." or "
-	end
-	return result
-end
-function showReadLuaK()
-	local result = ""
-	if language then
-		result = result.."}\n"
-	else
-		result = result.."end\n"
-	end
-	return result
-end
-function showReadLuaL()
-	local result = ""
-	if language then
-		result = result.."//"
-	else
-		result = result.."--"
-	end
-	return result
-end
 nest = 0
-function showReadLuaM(count,limit)
+function showReadLuaG(count)
 	local result = ""
-	if language then
-		local declare = ""
-		if (count > nest) then
-			declare = "var "
-		end
-		if (count ~= nest) then
-			nest = count
-		end
-		result = result..showIndent(count)..declare.."i"..count.." = 0\n"
-		result = result..showIndent(count).."while (i"..count.." < "..limit..") {\n"
-	else
-		result = result..showIndent(count).."local i"..count.." = 1\n"
-		result = result..showIndent(count).."while (i"..count.." <= "..limit..") do\n"
+	if (count > nest) then
+		result = "var"
+	end
+	if (count ~= nest) then
+		nest = count
 	end
 	return result
+end
+function show(left,right)
+	if language then return left else return right end
 end
 function showReadLua(name,struct)
 	nest = 0
@@ -1512,7 +1449,7 @@ function showReadLua(name,struct)
 		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
-			result = result..showIndent(count)..showReadLuaG(cond).."\n"
+			result = result..showIndent(count).."if "..cond.." "..show("{","then").."\n"
 		end
 		local sub = ""
 		local sup = ""
@@ -1525,16 +1462,17 @@ function showReadLua(name,struct)
 			while (count < limit) do
 				count = count + 1
 				dimen = dimen + 1
-				result = result..showIndent(count).."tab"..showReadLuaF(field[1])
+				result = result..showIndent(count).."tab"..show(".","[\"")..field[1]..show("","\"]")
 				local index = square
 				if language then squares = squares-1 end
 				while (index < squares) do
 					result = result.."[i"..index.."]"
 					index = index + 1
 				end
-				result = result..showReadLuaH(limit,count,field[2]).."\n"
+				result = result..show(showReadLuaF(limit,count,field[2])," = {}").."\n"
 				squares = squares + 1
-				result = result..showReadLuaM(count,field[4][dimen])
+				result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
+				result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4][dimen]..") "..show("{","do").."\n"
 				sub = sub.."[i"..count.."]"
 				if (count < limit) then sup = sup.."[i"..count.."]" end
 				super = true
@@ -1546,19 +1484,21 @@ function showReadLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showIndent(count).."tab"..showReadLuaF(field[1])..showReadLuaH(1,1,field[2]).."\n"
-			result = result..showReadLuaM(count,"tab"..showReadLuaF(field[4]))
+			result = result..showIndent(count).."tab"..show(".","[\"")..field[1]..show("","\"]")..show(showReadLuaF(1,1,field[2])," = {}").."\n"
+			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
+			result = result..showIndent(count).."while (i"..count..show(" < "," <= ").."tab"..show(".","[\"")..field[4]..show("","\"]")..") "..show("{","do").."\n"
 			sub = sub.."[i"..count.."]"
 			super = true
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showIndent(count).."tab"..showReadLuaF(field[1])..showReadLuaH(1,1,field[2]).."\n"
-			result = result..showReadLuaM(count,field[4])
+			result = result..showIndent(count).."tab"..show(".","[\"")..field[1]..show("","\"]")..show(showReadLuaF(1,1,field[2])," = {}").."\n"
+			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
+			result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4]..") "..show("{","do").."\n"
 			sub = sub.."[i"..count.."]"
 			super = true
 		end
-		result = result..showIndent(count+1).."tab"..showReadLuaF(field[1])
+		result = result..showIndent(count+1).."tab"..show(".","[\"")..field[1]..show("","\"]")
 		if language and super then result = result..sup..".append(" else result = result..sub.." = " end
 		if (field[2] == "int") then result = result.."readInt(idx)"
 		elseif (field[2] == "long long") then result = result.."readNew(idx)"
@@ -1573,13 +1513,13 @@ function showReadLua(name,struct)
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
 			end
-			result = result..showIndent(count)..showReadLuaK()
+			result = result..showIndent(count)..show("}","end").."\n"
 			count = count - 1
 		end
 	end
 	result = result..showIndent(1).."return tab\n"
-	result = result..showReadLuaK()
-	result = result..showReadLuaL()
+	result = result..show("}","end").."\n"
+	result = result..show("//","--")
 	return result
 end
 function showWriteLua(name,struct)
@@ -1597,13 +1537,14 @@ function showWriteLua(name,struct)
 		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
-			result = result..showIndent(count)..showReadLuaG(cond).."\n"
+			result = result..showIndent(count).."if "..cond.." "..show("{","then").."\n"
 		end
 		local sub = ""
 		if (type(field[4]) == "table") then
 			while (count < #field[4]) do
 				count = count + 1
-				result = result..showReadLuaM(count,field[4][count])
+				result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
+				result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4][count]..") "..show("{","do").."\n"
 				sub = sub.."[i"..count.."]"
 			end
 		end
@@ -1613,15 +1554,17 @@ function showWriteLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showReadLuaM(count,"tab"..showReadLuaF(field[4]))
+			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
+			result = result..showIndent(count).."while (i"..count..show(" < "," <= ").."tab"..show(".","[\"")..field[4]..show("","\"]")..") "..show("{","do").."\n"
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showReadLuaM(count,field[4])
+			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
+			result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4]..") "..show("{","do").."\n"
 			sub = sub.."[i"..count.."]"
 		end
-		local value = "tab"..showReadLuaF(field[1])..sub
+		local value = "tab"..show(".","[\"")..field[1]..show("","\"]")..sub
 		result = result..showIndent(count+1)
 		if (field[2] == "int") then result = result.."writeInt("..value..",idx)"
 		elseif (field[2] == "long long") then result = result.."writeNew("..value..",idx)"
@@ -1634,12 +1577,12 @@ function showWriteLua(name,struct)
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
 			end
-			result = result..showIndent(count)..showReadLuaK()
+			result = result..showIndent(count)..show("}","end").."\n"
 			count = count - 1
 		end
 	end
-	result = result..showReadLuaK()
-	result = result..showReadLuaL()
+	result = result..show("}","end").."\n"
+	result = result..show("//","--")
 	return result
 end
 function showEnumSwift(name,enum)
