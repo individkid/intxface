@@ -28,7 +28,7 @@ typerC.o: base.h face.h typer.h
 typerGen: type.inc typra.inc
 typerHs: face.hs faceC.o
 typerLua: face.so
-typerSwift: faceC.o
+typerSw: faceC.o
 typraLua: type.inc typra.inc
 vulkanC.o: base.h face.h metic.h plane.h type.h
 contain.c: base.h type.h

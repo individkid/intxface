@@ -1587,7 +1587,7 @@ function showWriteLua(name,struct)
 	result = result..show("//","--")
 	return result
 end
-function showEnumSwift(name,enum)
+function showEnumSw(name,enum)
 	local result = "enum "..name..": Int32 {\n"
 	for key,val in ipairs(enum) do
 		result = result..showIndent(1).."case "..val.."\n"
@@ -1596,14 +1596,14 @@ function showEnumSwift(name,enum)
 	result = result.."}\n"
 	return result.."//"
 end
-function showCodeSwift(name,enum)
+function showCodeSw(name,enum)
 	local result = ""
 	result = result.."func read"..name.."(_ idx: Int32) -> "..name.." {"..name.."(rawValue: readInt(idx))!}\n"
 	result = result.."func write"..name.."(_ val: "..name..", _ idx: Int32) {writeInt(val.rawValue, idx);}\n"
 	result = result.."//"
 	return result
 end
-function showStructSwift(name,struct)
+function showStructSw(name,struct)
 	local result = "struct "..name.." {\n"
 	for key,val in ipairs(struct) do
 		result = result..showIndent(1).."var "..val[1]..": "..showStructHsF(val).."!\n"
@@ -1611,7 +1611,7 @@ function showStructSwift(name,struct)
 	result = result.."}\n"
 	return result.."//"
 end
-function showHelpSwift()
+function showHelpSw()
 	local result = ""
 	result = result.."var capturedStr: String = \"\"\n"
 	result = result.."func callReadStr(_ idx: Int32) -> String {\n"
@@ -1721,13 +1721,13 @@ function showCallLua()
 	result = result..showCall(Structs,Structz,showWriteLua).."\n"
 	return result
 end
-function showCallSwift()
+function showCallSw()
 	local result = ""
 	language = true
-	result = result..showCall(Enums,Enumz,showEnumSwift).."\n"
-	result = result..showCall(Enums,Enumz,showCodeSwift).."\n"
-	result = result..showCall(Structs,Structz,showStructSwift).."\n"
-	result = result..showHelpSwift().."\n"
+	result = result..showCall(Enums,Enumz,showEnumSw).."\n"
+	result = result..showCall(Enums,Enumz,showCodeSw).."\n"
+	result = result..showCall(Structs,Structz,showStructSw).."\n"
+	result = result..showHelpSw().."\n"
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
 	result = result..showCall(Structs,Structz,showWriteLua).."\n"
 	return result

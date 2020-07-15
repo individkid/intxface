@@ -28,6 +28,7 @@ A module in hs is synonym for depender.
 A dofile in lua/gen is dependee.
 A require of c in lua/gen is synonym for dependee.
 A import of c in swift is synonym for dependee.
+A include of swift in swift is synonym for dependee.
 A io.open in gen is depender.
 A closure of nonindented colon line in Makefile is depender and dependee(s).
 
@@ -60,7 +61,7 @@ end
 dirlist:close()
 scripts = {}
 os.execute("grep -l -- '-- MAIN' *.lua *.gen > depend.txt")
-os.execute("grep -l -- '// MAIN' *.swift >> depend.txt")
+os.execute("grep -l -- '// MAIN' *.sw >> depend.txt")
 greplist = io.open("depend.txt")
 for line in greplist:lines() do
 	scripts[line] = true
@@ -304,11 +305,11 @@ for k,v in ipairs(files) do
 		file:close()
 	end
 end
--- find edges from .swift files in current directory
+-- find edges from .sw files in current directory
 expee = "^//include +(.*)"
 expex = "^import +(.*)"
 for k,v in ipairs(files) do
-	if (string.match(v,"^.*%.swift$")) then
+	if (string.match(v,"^.*%.sw$")) then
 		file = io.open(v)
 		for line in file:lines() do
 			import = string.match(line,expex)
@@ -319,9 +320,9 @@ for k,v in ipairs(files) do
 			end
 			include = string.match(line,expee)
 			if include then
-				-- print(v..": "..include..".swift")
+				-- print(v..": "..include..".sw")
 				if not edges[v] then edges[v] = {} end
-				edges[v][include..".swift"] = true
+				edges[v][include..".sw"] = true
 			end
 		end
 		file:close()
@@ -564,7 +565,7 @@ for k,v in pairs(edges) do
 		table.sort(deps)
 		update[base.."Gen"] = deps
 	end
-	if base and (ext == ".swift") and entries[k] then
+	if base and (ext == ".sw") and entries[k] then
 		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
@@ -573,19 +574,19 @@ for k,v in pairs(edges) do
 			end
 		end
 		table.sort(deps)
-		update[base.."Swift"] = deps
+		update[base.."Sw"] = deps
 	end
-	if base and (ext == ".swift") and entries[k] then
+	if base and (ext == ".sw") and entries[k] then
 		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
-			if b and (e == ".swift") then
+			if b and (e == ".sw") then
 				deps[#deps+1] = key
 			end
 		end
 		if (#deps > 0) then
 			table.sort(deps)
-			update[base.."Swift.o"] = deps
+			update[base.."Sw.o"] = deps
 		end
 	end
 	if needed[k] then

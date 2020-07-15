@@ -284,10 +284,10 @@ function showTypeLua()
 	result = result..showCallLua()
 	return result
 end
-function showTypeSwift()
+function showTypeSw()
 	local result = ""
 	result = result.."import face\n"
-	result = result..showCallSwift()
+	result = result..showCallSw()
 	return result
 end
 -- MAIN
@@ -311,8 +311,8 @@ if (arg[1] == "type.lua") then
 	file:write(showTypeLua().."\n")
 	file:close()
 end
-if (arg[1] == "type.swift") then
-	file = io.open("type.swift", "w")
-	file:write(showTypeSwift().."\n")
+if (arg[1] == "type.sw") then
+	file = io.open("type.sw", "w")
+	file:write(showTypeSw().."\n")
 	file:close()
 end

@@ -32,7 +32,7 @@ facer.log: facerC facerHs facerLua
 typra.log: typraLua
 	./typraLua > typra.log
 	cat $@
-typer.log: typerC typerHs typerLua typerSwift
+typer.log: typerC typerHs typerLua typerSw
 	./typerC > typer.log
 	cat $@
 filer.log: filerLua file
@@ -48,7 +48,7 @@ filer.log: filerLua file
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-%Swift: %Swift.o
+%Sw: %Sw.o
 	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib -llua -lportaudio -lglfw -lGLEW -lMoltenVK
 
 %: %C
@@ -57,7 +57,7 @@ filer.log: filerLua file
 	ln -f $< $@
 %: %Lua
 	ln -f $< $@
-%: %Swift
+%: %Sw
 	ln -f $< $@
 
 %.so: %C.o
@@ -68,7 +68,7 @@ filer.log: filerLua file
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
-%Swift.o: %.swift
+%Sw.o: %.sw
 	cat $^ | swiftc -o $@ -I . -c -
 
 %.h: %Gen
@@ -79,17 +79,17 @@ filer.log: filerLua file
 	./$< $@
 %.lua: %Gen
 	./$< $@
-%.swift: %Gen
+%.sw: %Gen
 	./$< $@
 
 .PHONY:
 clean:
 	rm -f base.h base.c contain.h contain.c
-	rm -f type.h type.c type.hs type.lua type.swift
-	rm -f typer.h typer.c typer.hs typer.lua typer.swift
+	rm -f type.h type.c type.hs type.lua type.sw
+	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer
 	rm -f trade file line plane space
-	rm -f *C *Hs *Lua *Gen *Swift
+	rm -f *C *Hs *Lua *Gen *Sw
 	rm -f *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h a.*

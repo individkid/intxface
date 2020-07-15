@@ -36,7 +36,7 @@ function showTyperC()
 	showIndent(1).."forkExec(\"typerC\");\n"..
 	showIndent(1).."forkExec(\"typerHs\");\n"..
 	showIndent(1).."forkExec(\"typerLua\");\n"..
-	showIndent(1).."forkExec(\"typerSwift\");\n"..
+	showIndent(1).."forkExec(\"typerSw\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
 	showIndent(1).."struct Struct1 *exp = 0;\n"..
@@ -88,11 +88,11 @@ function showTyperLua()
 	result = result.."end\n"
 	return result
 end
-function showTyperSwift()
+function showTyperSw()
 	local result = ""
 	result = result.."import face\n"
 	result = result.."//\n"
-	result = result..showCallSwift()
+	result = result..showCallSw()
 	result = result.."// MAIN\n"
 	result = result.."if (CommandLine.arguments.count == 4) {\n"
 	result = result.."pipeInit(CommandLine.arguments[1],CommandLine.arguments[2])\n"
@@ -122,8 +122,8 @@ if (arg[1] == "typer.lua") then
 	file:write(showTyperLua().."\n")
 	file:close()
 end
-if (arg[1] == "typer.swift") then
-	file = io.open("typer.swift", "w")
-	file:write(showTyperSwift().."\n")
+if (arg[1] == "typer.sw") then
+	file = io.open("typer.sw", "w")
+	file:write(showTyperSw().."\n")
 	file:close()
 end
