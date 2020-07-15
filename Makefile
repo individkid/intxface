@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log line plane space trade
+all: facer.log typra.log typer.log filer.log line plane space trade main
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
@@ -91,5 +91,5 @@ clean:
 	rm -f *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h a.*
-	rm -f depend opengl type
+	rm -f depend opengl type main
 
