@@ -40,17 +40,6 @@ filer.log: filerLua file
 	./filerLua > filer.log
 	cat $@
 
-%C: %C.o
-	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw -lGLEW -lMoltenVK -framework CoreFoundation -framework CoreGraphics -framework OpenGL -framework Metal -framework QuartzCore
-%Hs: %.hs
-	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw -lGLEW -lMoltenVK -v0 2> $*.out
-%Gen: %.gen
-	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-%Lua: %.lua
-	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-%Sw: %Sw.o
-	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib -llua -lportaudio -lglfw -lGLEW -lMoltenVK
-
 %: %C
 	ln -f $< $@
 %: %Hs
@@ -59,6 +48,15 @@ filer.log: filerLua file
 	ln -f $< $@
 %: %Sw
 	ln -f $< $@
+
+%C: %C.o
+	clang++ -o $@ $(filter %C.o,$^) -llua -lportaudio -lglfw -lGLEW -lMoltenVK -framework CoreFoundation -framework CoreGraphics -framework OpenGL -framework Metal -framework QuartzCore
+%Hs: %.hs
+	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) -llua -lportaudio -lglfw -lGLEW -lMoltenVK -v0 2> $*.out
+%Lua: %.lua
+	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
+%Sw: %Sw.o
+	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib -llua -lportaudio -lglfw -lGLEW -lMoltenVK
 
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
@@ -71,16 +69,16 @@ filer.log: filerLua file
 %Sw.o: %.sw
 	cat $^ | swiftc -o $@ -I . -c -
 
-%.h: %Gen
-	./$< $@
-%.c: %Gen
-	./$< $@
-%.hs: %Gen
-	./$< $@
-%.lua: %Gen
-	./$< $@
-%.sw: %Gen
-	./$< $@
+%.h: %.gen
+	lua $< $@
+%.c: %.gen
+	lua $< $@
+%.hs: %.gen
+	lua $< $@
+%.lua: %.gen
+	lua $< $@
+%.sw: %.gen
+	lua $< $@
 
 .PHONY:
 clean:
@@ -89,7 +87,7 @@ clean:
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer
 	rm -f trade file line plane space
-	rm -f *C *Hs *Lua *Gen *Sw
+	rm -f *C *Hs *Lua *Sw
 	rm -f *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h a.*

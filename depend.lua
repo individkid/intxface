@@ -137,8 +137,6 @@ if not goback then break end
 end
 
 -- find edges from .c or .h files in current directory
-circular = false
-needed = {}
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 expee = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
 expre = "forkExec%(\"([^\"]*)\"%)"
@@ -215,11 +213,6 @@ for k,v in ipairs(files) do
 				-- print(v..": "..name)
 				if not edges[v] then edges[v] = {} end
 				edges[v][name] = true
-			elseif circular and forkexec then
-				-- print(v..": "..forkexec)
-				if not edges[v] then edges[v] = {} end
-				edges[v][forkexec] = true
-				needed[forkexec] = true
 			else while (1) do
 				more,dependee = string.match(more,expee)
 				if not dependee then break end
@@ -227,7 +220,6 @@ for k,v in ipairs(files) do
 				if not edges[v] then edges[v] = {} end
 				edges[v][dependee] = true
 			end end
-
 		end
 		file:close()
 	end
@@ -260,23 +252,17 @@ for k,v in ipairs(files) do
 				if not edges[v] then edges[v] = {} end
 				edges[v][foreign] = true
 			end
-			if circular and forkexe then
-				-- print(v..": "..forkexe)
-				if not edges[v] then edges[v] = {} end
-				edges[v][forkexe] = true
-				needed[forkexe] = true
-			end
 		end
 		file:close()
 	end
 end
--- find edges from .inc .lua and .gen files in current directory
+-- find edges from .src .lua and .gen files in current directory
 depended = {}
 expee = "^dofile%(\"([^\"]*)\"%)"
 expex = "^require +\"([^\"]*)\""
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
-	if (string.match(v,"^.*%.inc$") or
+	if (string.match(v,"^.*%.src$") or
 		string.match(v,"^.*%.lua$") or
 		string.match(v,"^.*%.gen$")) then
 		file = io.open(v)
@@ -294,12 +280,6 @@ for k,v in ipairs(files) do
 				if not edges[v] then edges[v] = {} end
 				edges[v][foreign..".c"] = true
 				depended[foreign..".c"] = true
-			end
-			if circular and forkex then
-				-- print("forkex: "..v..": "..forkex)
-				if not edges[v] then edges[v] = {} end
-				edges[v][forkex] = true
-				needed[forkex] = true
 			end
 		end
 		file:close()
@@ -354,11 +334,11 @@ update = {}
 for k,v in pairs(edges) do
 	deps = {}
 	count = 0
-	if extants[k] or needed[k] then
+	if extants[k] then
 		-- deps[k] = true;
 		-- count = count + 1
 		for key,val in pairs(v) do
-			if extants[key] or needed[key] then
+			if extants[key] then
 				if (key ~= k) then
 					if not deps[key] then
 						count = count + 1
@@ -397,8 +377,8 @@ for k,v in pairs(edges) do
 				b,e = string.match(key,"(.*)(%..*)")
 				if (e == ".cpp") then e = ".c" end
 				if (e == ".m") then e = ".c" end
-				if edges[key] and (not needed[key]) and
-					((ext ~= ".inc") or (e ~= ".c")) and
+				if edges[key] and
+					((ext ~= ".src") or (e ~= ".c")) and
 					((ext ~= ".lua") or (e ~= ".c")) and
 					((ext ~= ".gen") or (e ~= ".c")) then
 					for ky,vl in pairs(edges[key]) do
@@ -470,9 +450,6 @@ for k,v in pairs(edges) do
 			if b and (e == ".c") and (base ~= b) then
 				deps[#deps+1] = b.."C.o"
 			end
-			if needed[key] then
-				deps[#deps+1] = key
-			end
 		end
 		table.sort(deps)
 		update[base.."C"] = deps
@@ -516,9 +493,6 @@ for k,v in pairs(edges) do
 			if b and (e == ".hs") then
 				deps[#deps+1] = key
 			end
-			if needed[key] then
-				deps[#deps+1] = key
-			end
 		end
 		table.sort(deps)
 		update[base.."Hs"] = deps
@@ -532,16 +506,13 @@ for k,v in pairs(edges) do
 			if b and (e == ".c") then
 				deps[#deps+1] = b..".so"
 			end
-			if b and (e == ".inc") then
+			if b and (e == ".src") then
 				deps[#deps+1] = key
 			end
 			if b and (e == ".lua") then
 				deps[#deps+1] = key
 			end
 			if b and (e == ".gen") then
-				deps[#deps+1] = key
-			end
-			if needed[key] then
 				deps[#deps+1] = key
 			end
 		end
@@ -552,7 +523,7 @@ for k,v in pairs(edges) do
 		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
-			if b and (e == ".inc") then
+			if b and (e == ".src") then
 				deps[#deps+1] = key
 			end
 			if b and (e == ".lua") then
@@ -588,19 +559,6 @@ for k,v in pairs(edges) do
 			table.sort(deps)
 			update[base.."Sw.o"] = deps
 		end
-	end
-	if needed[k] then
-		deps = {}
-		for key,val in pairs(v) do
-			b,e = string.match(key,"(.*)(%..*)")
-			if (e == ".cpp") then e = ".c" end
-			if (e == ".m") then e = ".c" end
-			if b and (e == ".c") then
-				deps[#deps+1] = b.."C"
-			end
-		end
-		table.sort(deps)
-		update[k] = deps
 	end
 end
 edges = update

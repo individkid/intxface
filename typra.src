@@ -1,5 +1,5 @@
 --[[
-*    typra.inc
+*    typra.src
 *    Copyright (C) 2019  Paul Coelho
 *
 *    This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-dofile("type.inc")
+dofile("type.src")
 
 --HERE Enums
 Enum1 = {
@@ -55,5 +55,5 @@ Struct1 = {
 	{"field17","Struct2",{},{2}},
 }
 --HERE
-Enums,Enumz = listHere("Enums","typra.inc")
-Structs,Structz = listHere("Structs","typra.inc")
+Enums,Enumz = listHere("Enums","typra.src")
+Structs,Structz = listHere("Structs","typra.src")

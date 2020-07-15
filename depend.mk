@@ -1,5 +1,5 @@
 baseC.o: base.h face.h
-baseGen: type.inc
+baseGen: type.src
 containC.o: contain.h
 faceC.o: face.h
 facerC: faceC.o
@@ -22,13 +22,13 @@ spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h
 typeC.o: base.h face.h type.h
-typeGen: type.inc
+typeGen: type.src
 typerC: baseC.o faceC.o
 typerC.o: base.h face.h typer.h
-typerGen: type.inc typra.inc
+typerGen: type.src typra.src
 typerHs: face.hs faceC.o
 typerLua: face.so
 typerSw: faceC.o
-typraLua: type.inc typra.inc
+typraLua: type.src typra.src
 vulkanC.o: base.h face.h metic.h plane.h type.h
 contain.c: base.h type.h

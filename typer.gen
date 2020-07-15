@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-dofile("typra.inc")
+dofile("typra.src")
 
 function showTyperC()
 	local result = ""
