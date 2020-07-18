@@ -15,18 +15,18 @@ metalC.o: base.h face.h metic.h share.h type.h
 meticC.o: metic.h
 modelC.o: base.h face.h metic.h share.h type.h
 openglC.o: base.h contain.h face.h metic.h share.h type.h
-planeSw:
 planeSw.o: base.h face.h metic.h share.h type.h
 shareC.o: base.h face.h metic.h share.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h
 typeC.o: base.h face.h type.h
+typeSw.o: face.h
 typerC: baseC.o faceC.o
 typerC.o: base.h face.h typer.h
 typerHs: face.hs faceC.o
 typerLua: face.so
-typerSw: faceC.o
 typerSw.o: face.h
+typerSw: faceC.o
 typraLua: type.src typra.src
 vulkanC.o: base.h face.h metic.h share.h type.h

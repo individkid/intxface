@@ -293,7 +293,7 @@ for k,v in ipairs(files) do
 		for line in file:lines() do
 			import = string.match(line,expex)
 			if import then
-				-- print(v..": "..import..".h")
+				print(v..": "..import..".h")
 				if not edges[v] then edges[v] = {} end
 				edges[v][import..".h" ] = true
 			end
@@ -519,17 +519,19 @@ for k,v in pairs(edges) do
 			if b and (e == ".c") then
 				deps[#deps+1] = b.."C.o"
 			end
-		end
-		table.sort(deps)
-		update[base.."Sw"] = deps
-	end
-	if base and (ext == ".sw") and entries[k] then
-		deps = {}
-		for key,val in pairs(v) do
-			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".sw") then
 				deps[#deps+1] = key
 			end
+		end
+		if (#deps > 0) then
+			table.sort(deps)
+			update[base.."Sw"] = deps
+		end
+	end
+	if base and (ext == ".sw") then
+		deps = {}
+		for key,val in pairs(v) do
+			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".h") then
 				deps[#deps+1] = key
 			end

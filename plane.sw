@@ -19,9 +19,9 @@ func swiftInit() -> Int32
 	if (cb.tub < 0) {callError()}
 	threadInit()
 	if (argc == 4) {
-	callDisplayInit(argv[3])}
+	displayInit(argv[3])}
 	if (argc != 4) {
-	callDisplayInit(argv[0])}
+	displayInit(argv[0])}
 	if (swiftInit() != 0 ||
 	metalInit() != 0 ||
 	vulkanInit() != 0 ||
@@ -33,5 +33,5 @@ func swiftInit() -> Int32
 	bothJump(cb.err,cb.tub)
 	cb.call()}
 	cb.done()
-	callDisplayDone()
+	displayDone()
 	writeInt(1,cb.zub)
