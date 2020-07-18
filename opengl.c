@@ -18,7 +18,7 @@
 #define GL_SILENCE_DEPRECATION
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include "plane.h"
+#include "share.h"
 #include "contain.h"
 
 struct Pend {int idx; int cnt; int cpu; int gpu; int bas; int *siz; void **buf; GLuint hdl; GLuint tgt;};

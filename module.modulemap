@@ -1,3 +1,6 @@
 module face {
     header "face.h"
 }
+module share {
+	header "share.h"
+}

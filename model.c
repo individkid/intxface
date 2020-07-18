@@ -15,7 +15,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "plane.h"
+#include "share.h"
 #include <pthread.h>
 #include <sys/ioctl.h>
 

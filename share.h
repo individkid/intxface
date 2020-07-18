@@ -1,5 +1,5 @@
 /*
-*    plane.h
+*    share.h
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -39,6 +39,9 @@ struct Callback {
 	void (*swap)(); // opengl.c : glfw.c
 	void (*wake)(); // plane.c : glfw.c
 	void (*done)(); // plane.c : opengl.c
+	int hub;
+	int tub;
+	int zub;
 	int esc;
 	struct Client *client;
 	struct Client *state[Memorys];
@@ -48,7 +51,7 @@ struct Callback {
 extern struct Callback cb;
 
 void exiterr(const char *str, int num, int arg);
-int displayInit(int argc, char **argv);
+int displayInit(const char *name);
 void displayDone();
 int metalInit();
 int vulkanInit();
@@ -60,3 +63,7 @@ int normalVector(float *normal, float *point);
 int solveVector(float *pierce, float *point, float *normal, float *feather);
 int pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
 int intersectVector(float *point, float *plane, int *versor, float *basis);
+void planeInit(int argc);
+void threadInit();
+void threadDone();
+void callError();

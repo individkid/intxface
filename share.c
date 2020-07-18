@@ -15,15 +15,13 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "plane.h"
+#include "share.h"
 #include <pthread.h>
 #include <CoreGraphics/CoreGraphics.h>
+//include plane
 
 int vld = 0;
 int sub = 0;
-int hub = 0;
-int tub = 0;
-int zub = 0;
 pthread_mutex_t mutex = {0};
 pthread_cond_t cond = {0};
 pthread_t pthread = {0};
@@ -462,7 +460,7 @@ void produce()
 	struct Metric metric = {0};
 	metric.src = Plane;
 	metric.plane = cb.state[cb.client->mem];
-	writeMetric(&metric,hub);
+	writeMetric(&metric,cb.hub);
 	break;}
 	default: ERROR(exiterr,-1);}
 }
@@ -473,8 +471,8 @@ void *thread(void *arg)
 	int gon = 1;
 	while (gon) {
 	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
-	printf("thread(%d) hub(%d) tub(%d) zub(%d)\n",tmp,hub,tub,zub);
-	if (tmp == zub) gon = 0; else if (tmp >= 0) {
+	printf("thread(%d) cb.hub(%d) cb.tub(%d) cb.zub(%d)\n",tmp,cb.hub,cb.tub,cb.zub);
+	if (tmp == cb.zub) gon = 0; else if (tmp >= 0) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
 	sub = tmp; vld = 1; cb.wake();
 	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
@@ -487,7 +485,7 @@ void windowWarp(double xpos, double ypos)
     int xloc, yloc;
     cb.pos(&xloc,&yloc);
     struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
-    CGWarpMouseCursorPosition(point);
+    // CGWarpMouseCursorPosition(point);
 }
 
 void windowKey(int key)
@@ -514,7 +512,7 @@ void windowMove(double xpos, double ypos)
 	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
 	client.mem = assignAffine(&client,&affine[0]);
 	client.fnc = function; client.len = 3; client.siz = size;
-	writeClient(&client,tub);} else {
+	writeClient(&client,cb.tub);} else {
 	struct Client client;
 	struct Vector vector;
 	enum Function function[3];
@@ -522,7 +520,7 @@ void windowMove(double xpos, double ypos)
 	function[0] = Copy; function[1] = Dma1; function[2] = Draw;
 	client.feather = &vector; client.idx = 0; client.mem = Feather;
 	client.fnc = function; client.len = 3; client.siz = 1;
-	writeClient(&client,tub);}
+	writeClient(&client,cb.tub);}
 }
 
 void windowRoll(double xoffset, double yoffset)
@@ -542,7 +540,7 @@ void windowRoll(double xoffset, double yoffset)
 	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
 	client.mem = assignAffine(&client,&affine[0]);
 	client.fnc = function; client.len = 3; client.siz = size;
-	writeClient(&client,tub);}
+	writeClient(&client,cb.tub);}
 }
 
 void windowClick(int isright)
@@ -555,7 +553,7 @@ void windowClick(int isright)
 	function[0] = Save; function[1] = Port;
 	client.mem = copyAffine(&client,&affine);
 	client.fnc = function; client.len = 2; client.siz = 1;
-	writeClient(&client,tub);
+	writeClient(&client,cb.tub);
 	function[0] = Copy;
 	client.mem = copyUser(&client,&user);
 	if (user.click == Transform) {
@@ -570,7 +568,7 @@ void windowClick(int isright)
 	if (!isright) {
 	user.click = Transform; user.shader = Display;}}
 	client.fnc = function; client.len = 1; client.siz = 1;
-	writeClient(&client,tub);
+	writeClient(&client,cb.tub);
 }
 
 void novoid()
@@ -622,7 +620,7 @@ void noclick(int isright)
 	printf("GLFW left (%d,%d) (%f,%f)\n",xpos,ypos,xmove,ymove);}
 }
 
-int main(int argc, char **argv)
+void planeInit(int argc)
 {
 	cb.err = exiterr;
 	cb.pos = nopos;
@@ -640,32 +638,23 @@ int main(int argc, char **argv)
 	cb.swap = novoid;
 	cb.wake = novoid;
 	cb.done = novoid;
+}
 
-	if (argc == 4) {
-	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);}
-	if ((zub = openPipe()) < 0) ERROR(exiterr,-1);
-	if ((tub = openPipe()) < 0) ERROR(exiterr,-1);
-	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
-	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
-	if (pthread_create(&pthread,0,thread,0) != 0) ERROR(exiterr,-1);
+void threadInit()
+{
+	if (pthread_mutex_init(&mutex,0) != 0) callError();
+	if (pthread_cond_init(&cond,0) != 0) callError();
+	if (pthread_create(&pthread,0,thread,0) != 0) callError();
+}
 
-	displayInit(argc,argv);
-	if (metalInit() ||
-	vulkanInit() ||
-	openglInit() ||
-	modelInit()) {
-	if (argc == 4) {
-	bothJump(cb.err,hub);}
-	bothJump(cb.err,zub);
-	bothJump(cb.err,tub);
-	cb.call();}
-	cb.done();
-	displayDone();
+void threadDone()
+{
+	if (pthread_join(pthread,0) != 0) callError();
+	if (pthread_mutex_destroy(&mutex) != 0) callError();
+	if (pthread_cond_destroy(&cond) != 0) callError();
+}
 
-	writeInt(1,zub);
-	if (pthread_join(pthread,0) != 0) ERROR(exiterr,-1);
-	if (pthread_mutex_destroy(&mutex) != 0) ERROR(exiterr,-1);
-	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);
-
-	return 0;
+void callError()
+{
+	ERROR(exiterr,-1);
 }

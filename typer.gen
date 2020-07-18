@@ -81,11 +81,11 @@ function showTyperLua()
 	result = result.."--\n"
 	result = result..showCallLua()
 	result = result.."-- MAIN\n"
-	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
-	result = result.."pipeInit(arg[1],arg[2])\n"
-	result = result.."tab = readStruct1(0)\n"
-	result = result.."writeStruct1(tab,0)\n"
-	result = result.."end\n"
+	result = result..showIndent(1).."if (arg[1] and arg[2] and arg[3]) then\n"
+	result = result..showIndent(1).."pipeInit(arg[1],arg[2])\n"
+	result = result..showIndent(1).."tab = readStruct1(0)\n"
+	result = result..showIndent(1).."writeStruct1(tab,0)\n"
+	result = result..showIndent(1).."end\n"
 	return result
 end
 function showTyperSw()
@@ -94,11 +94,11 @@ function showTyperSw()
 	result = result.."//\n"
 	result = result..showCallSw()
 	result = result.."// MAIN\n"
-	result = result.."if (CommandLine.arguments.count == 4) {\n"
-	result = result.."pipeInit(CommandLine.arguments[1],CommandLine.arguments[2])\n"
-	result = result.."let tab = readStruct1(0)\n"
-	result = result.."writeStruct1(tab,0)\n"
-	result = result.."}\n"
+	result = result..showIndent(1).."if (CommandLine.arguments.count == 4) {\n"
+	result = result..showIndent(1).."pipeInit(CommandLine.arguments[1],CommandLine.arguments[2])\n"
+	result = result..showIndent(1).."let tab = readStruct1(0)\n"
+	result = result..showIndent(1).."writeStruct1(tab,0)\n"
+	result = result..showIndent(1).."}\n"
 	return result
 end
 -- MAIN

@@ -17,7 +17,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include "plane.h"
+#include "share.h"
 
 enum Family {Render,Support,Familys};
 VkInstance instance = {0};

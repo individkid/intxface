@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log line plane space trade main
+all: facer.log typra.log typer.log filer.log line shareC.o glfwC.o metalC.o vulkanC.o openglC.o modelC.o space trade
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
@@ -67,7 +67,7 @@ filer.log: filerLua file
 %C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %Sw.o: %.sw
-	cat $^ | swiftc -o $@ -I . -c -
+	cat $(filter %.sw,$^) | swiftc -o $@ -I . -c -
 
 %.h: %.gen
 	lua $< $@

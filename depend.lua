@@ -136,7 +136,7 @@ end
 if not goback then break end
 end
 
--- find edges from .c or .h files in current directory
+-- find edges from .c .h or .sw files in current directory
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 expee = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
 expre = "forkExec%(\"([^\"]*)\"%)"
@@ -145,6 +145,7 @@ for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.c$") or
 		string.match(v,"^.*%.cpp$") or
 		string.match(v,"^.*%.m$") or
+		-- string.match(v,"^.*%.sw$") or
 		ish) then
 		-- print(v..":")
 		file = io.open(v)
@@ -256,15 +257,14 @@ for k,v in ipairs(files) do
 		file:close()
 	end
 end
--- find edges from .src .lua and .gen files in current directory
+-- find edges from .src and .lua files in current directory
 depended = {}
 expee = "^dofile%(\"([^\"]*)\"%)"
 expex = "^require +\"([^\"]*)\""
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.src$") or
-		string.match(v,"^.*%.lua$") or
-		string.match(v,"^.*%.gen$")) then
+		string.match(v,"^.*%.lua$")) then
 		file = io.open(v)
 		for line in file:lines() do
 			import = string.match(line,expee)
@@ -286,7 +286,6 @@ for k,v in ipairs(files) do
 	end
 end
 -- find edges from .sw files in current directory
-expee = "^//include +(.*)"
 expex = "^import +(.*)"
 for k,v in ipairs(files) do
 	if (string.match(v,"^.*%.sw$")) then
@@ -294,15 +293,9 @@ for k,v in ipairs(files) do
 		for line in file:lines() do
 			import = string.match(line,expex)
 			if import then
-				-- print(v..": "..import..".c")
+				-- print(v..": "..import..".h")
 				if not edges[v] then edges[v] = {} end
-				edges[v][import..".c"] = true
-			end
-			include = string.match(line,expee)
-			if include then
-				-- print(v..": "..include..".sw")
-				if not edges[v] then edges[v] = {} end
-				edges[v][include..".sw"] = true
+				edges[v][import..".h" ] = true
 			end
 		end
 		file:close()
@@ -364,7 +357,7 @@ for k,v in pairs(edges) do
 	end
 end
 edges = update
--- flatten *C *Hs *Lua *Gen dependencies
+-- flatten *C *Hs *Lua *Sw dependencies
 update = {}
 for k,v in pairs(edges) do
 	base,ext = string.match(k,"(.*)(%..*)")
@@ -379,12 +372,12 @@ for k,v in pairs(edges) do
 				if (e == ".m") then e = ".c" end
 				if edges[key] and
 					((ext ~= ".src") or (e ~= ".c")) and
-					((ext ~= ".lua") or (e ~= ".c")) and
-					((ext ~= ".gen") or (e ~= ".c")) then
+					((ext ~= ".lua") or (e ~= ".c")) then
 					for ky,vl in pairs(edges[key]) do
 						ba,ex = string.match(ky,"(.*)(%..*)")
 						if (not deps[ky]) and
 							(ex ~= ".h" or e ~= ".c") then
+							-- print("base("..base..") ext("..ext..") b("..b..") e("..e..") ba("..ba..") ex("..ex..")")
 							count = count + 1;
 							deps[ky] = vl
 							-- print(k..": "..key..": "..ky)
@@ -519,23 +512,6 @@ for k,v in pairs(edges) do
 		table.sort(deps)
 		update[base.."Lua"] = deps
 	end
-	if base and (ext == ".gen") and entries[k] then
-		deps = {}
-		for key,val in pairs(v) do
-			b,e = string.match(key,"(.*)(%..*)")
-			if b and (e == ".src") then
-				deps[#deps+1] = key
-			end
-			if b and (e == ".lua") then
-				deps[#deps+1] = key
-			end
-			if b and (e == ".gen") then
-				deps[#deps+1] = key
-			end
-		end
-		table.sort(deps)
-		update[base.."Gen"] = deps
-	end
 	if base and (ext == ".sw") and entries[k] then
 		deps = {}
 		for key,val in pairs(v) do
@@ -552,6 +528,9 @@ for k,v in pairs(edges) do
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
 			if b and (e == ".sw") then
+				deps[#deps+1] = key
+			end
+			if b and (e == ".h") then
 				deps[#deps+1] = key
 			end
 		end

@@ -17,7 +17,7 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include "plane.h"
+#include "share.h"
 
 jmp_buf jmpbuf = {0};
 struct GLFWwindow* window = 0;
@@ -86,7 +86,7 @@ void displaySwap()
 	glfwSwapBuffers(window);
 }
 
-int displayInit(int argc, char **argv)
+int displayInit(const char *name)
 {
 	printf("uint32_t(%d) int(%d) float(%d)\n",(int)sizeof(uint32_t),(int)sizeof(int),(int)sizeof(float));
 	cb.err = displayErr;
@@ -102,7 +102,6 @@ int displayInit(int argc, char **argv)
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); // To make MacOS happy; should not be needed
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-	const char *name = (argc == 4 ? argv[3] : argv[0]);
 	if ((window = glfwCreateWindow(WINWIDE, WINHIGH, name, 0, 0)) == 0) ERROR(exiterr,-1);
 	glfwSetKeyCallback(window,displayKey);
 	glfwSetCursorPosCallback(window,displayMove);

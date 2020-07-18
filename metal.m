@@ -21,7 +21,7 @@
 #include <GLFW/glfw3native.h>
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
-#include "plane.h"
+#include "share.h"
 
 extern struct GLFWwindow* window;
 id<MTLDevice> device = 0;
