@@ -31,3 +31,4 @@ typerSw: faceC.o
 typerSw.o: face.h
 typraLua: type.src typra.src
 vulkanC.o: base.h face.h metic.h share.h type.h
+contain.c: base.h type.h
