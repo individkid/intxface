@@ -138,15 +138,16 @@ end
 
 -- find edges from .c .h or .sw files in current directory
 exper = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
+expes = "^func%s[%s]([a-z][a-zA-Z0-9_]*)%("
 expee = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
 expre = "forkExec%(\"([^\"]*)\"%)"
 for k,v in ipairs(files) do
 	local ish = string.match(v,"^.*%.h$")
+	local isw = string.match(v,"^.*%.sw$")
 	if (string.match(v,"^.*%.c$") or
 		string.match(v,"^.*%.cpp$") or
 		string.match(v,"^.*%.m$") or
-		-- string.match(v,"^.*%.sw$") or
-		ish) then
+		ish or isw) then
 		-- print(v..":")
 		file = io.open(v)
 		cmnt = false; abrv = false; quot = false
@@ -199,25 +200,29 @@ for k,v in ipairs(files) do
 				end
 				more = more:sub(1,bgn-1)..more:sub(ndg+2)
 			end
-			depender = string.match(more,exper)
+			if isw then
+				depender = string.match(more,expes)
+			else
+				depender = string.match(more,exper)
+			end
 			if ish then
 				if (more == "#include ") then
-					-- print(v..": "..name)
+					-- print(v..": "..name.." because includish")
 					if not edges[v] then edges[v] = {} end
 					edges[v][name] = true
 				end
 			elseif depender then
-				-- print(depender..": "..v)
+				-- print(depender..": "..v.." because depender")
 				if not edges[depender] then edges[depender] = {} end
 				edges[depender][v] = true
 			elseif (more == "#include ") then
-				-- print(v..": "..name)
+				-- print(v..": "..name.." because include")
 				if not edges[v] then edges[v] = {} end
 				edges[v][name] = true
 			else while (1) do
 				more,dependee = string.match(more,expee)
 				if not dependee then break end
-				-- print(v..": "..dependee)
+				-- print(v..": "..dependee.." because while")
 				if not edges[v] then edges[v] = {} end
 				edges[v][dependee] = true
 			end end
@@ -293,7 +298,7 @@ for k,v in ipairs(files) do
 		for line in file:lines() do
 			import = string.match(line,expex)
 			if import then
-				print(v..": "..import..".h")
+				-- print(v..": "..import..".h")
 				if not edges[v] then edges[v] = {} end
 				edges[v][import..".h" ] = true
 			end
@@ -341,7 +346,7 @@ for k,v in pairs(edges) do
 				end
 			elseif edges[key] then
 				for ky,vl in pairs(edges[key]) do
-					if (ky ~= k) then
+					if (ky ~= k) and not entries[ky] then
 						if (not deps[ky]) then
 							count = count + 1
 						end
@@ -367,6 +372,7 @@ for k,v in pairs(edges) do
 		while (count > 0) do
 			count = 0
 			for key,val in pairs(v) do
+				if (val == "metalInit") then print("found "..k) end
 				b,e = string.match(key,"(.*)(%..*)")
 				if (e == ".cpp") then e = ".c" end
 				if (e == ".m") then e = ".c" end
@@ -516,6 +522,8 @@ for k,v in pairs(edges) do
 		deps = {}
 		for key,val in pairs(v) do
 			b,e = string.match(key,"(.*)(%..*)")
+			if (e == ".cpp") then e = ".c" end
+			if (e == ".m") then e = ".c" end
 			if b and (e == ".c") then
 				deps[#deps+1] = b.."C.o"
 			end
