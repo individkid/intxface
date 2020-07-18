@@ -18,7 +18,6 @@
 #include "share.h"
 #include <pthread.h>
 #include <CoreGraphics/CoreGraphics.h>
-//include plane
 
 int vld = 0;
 int sub = 0;
