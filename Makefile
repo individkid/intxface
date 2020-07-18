@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log line planeSw.o shareC.o glfwC.o metalC.o vulkanC.o openglC.o modelC.o space trade
+all: facer.log typra.log typer.log filer.log line plane space trade
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
