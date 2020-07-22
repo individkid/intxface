@@ -245,13 +245,15 @@ for k,v in pairs(files) do
 			declareVal = string.match(more,declareExpr)
 			includeVal = string.match(more,includeExpr)
 			moduleVal = string.match(more,moduleExpr)
-			importVal = string.match(more,importExpr)
+			if (ext == ".hs") then hsImportVal = string.match(more,importExpr) end
+			if (ext == ".sw") then swImportVal = string.match(more,importExpr) end
 			foreighVal = string.match(more,foreignExpr)
 			dofileVal = string.match(more,dofileExpr)
 			requireVal = string.match(more,requireExpr)
 			if includeVal then insert(edges,v,name)
 			elseif moduleVal then insert(edges,moduleVal,v)
-			elseif importVal then insert(edges,v,importVal)
+			elseif hsImportVal then insert(edges,v,hsImportVal)
+			elseif swImportVal then insert(edges,v,swImportVal..".h")
 			elseif foreignVal then insert(edges,v,name)
 			elseif dofileVal then insert(edges,v,name)
 			elseif requireVal then insert(edges,v,name..".c")
@@ -273,15 +275,18 @@ function flatten(str,dst,ext,mid,src,map)
 	ba,ex = string.match(str,fileExpr)
 	for k,v in pairs(src) do
 		b,e = string.match(k,fileExpr)
-		if not dst[k] and (k ~= str) and map[k] and not scripts[k] and
-			((b and (e == ext)) or
-			(not b and not map[k][str]))
+		if
+			not dst[k] and (k ~= str) and map[k] and not scripts[k] and
+			((b and (e == ext)) or (not b and not map[k][str]))
 		then
 			if b and (e == ext) then
 				-- if (str == "plane.sw") then io.stderr:write(str..": "..mid..": "..k.."\n") end
 				dst[k] = true
 			end
-			if ((ex ~= ".lua") and (ex ~= ".gen")) or (e and (e ~= ".c") and (e ~= ".h")) then
+			if
+				((ex ~= ".lua") and (ex ~= ".gen")) or
+				(e and (e ~= ".c") and (e ~= ".h"))
+			then
 				flatten(str,dst,".h",k,map[k],map)
 				flatten(str,dst,".c",k,map[k],map)
 				flatten(str,dst,".m",k,map[k],map)
@@ -415,6 +420,7 @@ for k,v in pairs(flats) do
 				filter(targets,base.."Sw",k,v,".cpp","C.o")
 			end
 			filter(targets,base.."Sw.o",k,v,".sw",".sw")
+			filter(targets,base.."Sw.o",k,v,".h",".h")
 		end
 	end
 end
