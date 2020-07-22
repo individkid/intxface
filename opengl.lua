@@ -23,7 +23,7 @@ defin = {}
 stack = {{inc,ext,io.open(arg[1])}}
 if not stack[1][3] then return end
 depth = {}
-function read(stack)
+function readFunc(stack)
 	return function()
 		local line = nil
 		while not line do
@@ -40,7 +40,7 @@ while arg[index] do
 	state[arg[index]] = true
 	index = index + 1
 end
-for line in read(stack) do
+for line in readFunc(stack) do
 	local pat, rep = string.match(line,"^#define%s+([^%s]+)%s+(.*)")
 	if not pat then pat = string.match(line,"^#define%s+([^%s]+)") end
 	local inc, ext = string.match(line,"^#include%s+\"(.*)%.(.*)\"")
