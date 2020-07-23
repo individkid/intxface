@@ -17,10 +17,11 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#define NOID
 #include "share.h"
 
+struct GLFWwindow* glfw = 0;
 jmp_buf jmpbuf = {0};
-struct GLFWwindow* window = 0;
 
 void displayErr(const char *str, int num, int arg)
 {
@@ -29,12 +30,12 @@ void displayErr(const char *str, int num, int arg)
 
 void displayPos(int *xloc, int *yloc)
 {
-    glfwGetWindowPos(window,xloc,yloc);
+    glfwGetWindowPos(glfw,xloc,yloc);
 }
 
 void displaySize(int *width, int *height)
 {
-	glfwGetWindowSize(window, width, height);
+	glfwGetWindowSize(glfw, width, height);
 }
 
 void displayKey(struct GLFWwindow* ptr, int key, int scancode, int action, int mods)
@@ -60,9 +61,9 @@ void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 
 void displayCall()
 {
-	while (cb.esc < 2 && !glfwWindowShouldClose(window))
+	while (cb.esc < 2 && !glfwWindowShouldClose(glfw))
 	if (setjmp(jmpbuf) == 0)
-	while(cb.esc < 2 && !glfwWindowShouldClose(window)) {
+	while(cb.esc < 2 && !glfwWindowShouldClose(glfw)) {
 	if (cb.full()) {
 	glfwWaitEventsTimeout(1000.0*NANO2SEC);
 	continue;}
@@ -77,13 +78,13 @@ void displayCall()
 
 void displayDone()
 {
-	glfwDestroyWindow(window);
+	glfwDestroyWindow(glfw);
 	glfwTerminate();
 }
 
 void displaySwap()
 {
-	glfwSwapBuffers(window);
+	glfwSwapBuffers(glfw);
 }
 
 int displayInit(const char *name)
@@ -102,11 +103,11 @@ int displayInit(const char *name)
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE); // To make MacOS happy; should not be needed
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-	if ((window = glfwCreateWindow(WINWIDE, WINHIGH, name, 0, 0)) == 0) ERROR(exiterr,-1);
-	glfwSetKeyCallback(window,displayKey);
-	glfwSetCursorPosCallback(window,displayMove);
-	glfwSetScrollCallback(window,displayRoll);
-	glfwSetMouseButtonCallback(window,displayClick);
-	glfwMakeContextCurrent(window);
+	if ((glfw = glfwCreateWindow(WINWIDE, WINHIGH, name, 0, 0)) == 0) ERROR(exiterr,-1);
+	glfwSetKeyCallback(glfw,displayKey);
+	glfwSetCursorPosCallback(glfw,displayMove);
+	glfwSetScrollCallback(glfw,displayRoll);
+	glfwSetMouseButtonCallback(glfw,displayClick);
+	glfwMakeContextCurrent(glfw);
 	return 1;
 }

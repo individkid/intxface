@@ -15,6 +15,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define NOID
 #include "share.h"
 #include <pthread.h>
 #include <CoreGraphics/CoreGraphics.h>
@@ -484,7 +485,7 @@ void windowWarp(double xpos, double ypos)
     int xloc, yloc;
     cb.pos(&xloc,&yloc);
     struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
-    // CGWarpMouseCursorPosition(point);
+    CGWarpMouseCursorPosition(point);
 }
 
 void windowKey(int key)
@@ -548,12 +549,13 @@ void windowClick(int isright)
 	struct Client client;
 	struct Affine affine;
 	struct Mode user;
-	enum Function function[2];
-	function[0] = Save; function[1] = Port;
+	allocFunction(&client.fnc,2);
+	client.fnc[0] = Save; client.fnc[1] = Port;
 	client.mem = copyAffine(&client,&affine);
-	client.fnc = function; client.len = 2; client.siz = 1;
+	client.len = 2; client.siz = 1;
 	writeClient(&client,cb.tub);
-	function[0] = Copy;
+	allocFunction(&client.fnc,1);
+	client.fnc[0] = Copy;
 	client.mem = copyUser(&client,&user);
 	if (user.click == Transform) {
 	if (isright) {
@@ -566,7 +568,7 @@ void windowClick(int isright)
 	if (user.click == Complete) {
 	if (!isright) {
 	user.click = Transform; user.shader = Display;}}
-	client.fnc = function; client.len = 1; client.siz = 1;
+	client.len = 1; client.siz = 1;
 	writeClient(&client,cb.tub);
 }
 

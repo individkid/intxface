@@ -18,6 +18,7 @@
 #define GL_SILENCE_DEPRECATION
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#define NOID
 #include "share.h"
 #include "contain.h"
 
@@ -436,7 +437,7 @@ int openglInit()
 	cb.draw = openglDraw;
 	cb.done = openglDone;
 	if (glewInit() != GLEW_OK) ERROR(exiterr,-1);
-	glClearColor(1.00f,1.00f,1.00f,1.00f);
+	glClearColor(1.00f,1.00f,0.00f,1.00f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	const char *name[] = {"PROXIMITY","DISPLAY","STREAM","TRACK"};

@@ -17,6 +17,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#define NOID
 #include "share.h"
 
 enum Family {Render,Support,Familys};

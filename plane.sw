@@ -1,5 +1,8 @@
 import face
 import share
+import AppKit
+
+var window:NSWindow
 
 func swiftInit() -> Int32
 {
@@ -22,10 +25,14 @@ func swiftInit() -> Int32
 	displayInit(argv[3])}
 	if (argc != 4) {
 	displayInit(argv[0])}
+	windowInit()
+	if let temp = cocoa as? NSWindow {
+	window = temp
+	print("hello window")}
 	if (swiftInit() != 0 ||
 	metalInit() != 0 ||
-	vulkanInit() != 0 ||
 	openglInit() != 0 ||
+	vulkanInit() != 0 ||
 	modelInit() != 0) {
 	if (argc == 4) {
 	bothJump(cb.err,cb.hub)}
@@ -35,3 +42,4 @@ func swiftInit() -> Int32
 	cb.done()
 	displayDone()
 	writeInt(1,cb.zub)
+	threadDone()

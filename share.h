@@ -49,9 +49,14 @@ struct Callback {
 };
 
 extern struct Callback cb;
+extern struct GLFWwindow* glfw;
+#ifndef NOID
+extern id cocoa;
+#endif
 
 void exiterr(const char *str, int num, int arg);
 int displayInit(const char *name);
+void windowInit();
 void displayDone();
 int metalInit();
 int vulkanInit();

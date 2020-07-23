@@ -23,10 +23,10 @@
 #import <QuartzCore/QuartzCore.h>
 #include "share.h"
 
-extern struct GLFWwindow* window;
+id cocoa;
+NSWindow *window = 0;
 id<MTLDevice> device = 0;
 id<MTLCommandQueue> cmdque = 0;
-NSWindow *nswin = 0;
 CAMetalLayer *layer = 0;
 MTLRenderPassDescriptor *render = 0;
 
@@ -102,31 +102,36 @@ void metalDone()
 	[device release];
 }
 
+void windowInit()
+{
+	cocoa = glfwGetCocoaWindow(glfw);
+}
+
 int metalInit()
 {
-	return 0;
+	// return 0;
 
 	cb.full = metalFull;
 	cb.draw = metalDraw;
 	cb.done = metalDone;
 
+	window = cocoa;
 	device = MTLCreateSystemDefaultDevice();;
 	cmdque = [device newCommandQueue];
-	nswin = glfwGetCocoaWindow(window);
 	layer = [CAMetalLayer layer];
 	layer.device = device;
 	layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-	nswin.contentView.layer = layer;
-	nswin.contentView.wantsLayer = YES;
+	window.contentView.layer = layer;
+	window.contentView.wantsLayer = YES;
 	render = [MTLRenderPassDescriptor new];
 
 	int width, height;
-	glfwGetFramebufferSize(window, &width, &height);
+	glfwGetFramebufferSize(glfw, &width, &height);
 	layer.drawableSize = CGSizeMake(width, height);
 
 	id<CAMetalDrawable> drawable = [layer nextDrawable];
 	id<MTLCommandBuffer> commandBuffer = [cmdque commandBuffer];
-	render.colorAttachments[0].clearColor = MTLClearColorMake(1.00f,1.00f,1.00f,1.00f);
+	render.colorAttachments[0].clearColor = MTLClearColorMake(1.00f,0.00f,1.00f,1.00f);
 	render.colorAttachments[0].texture = drawable.texture;
 	render.colorAttachments[0].loadAction = MTLLoadActionClear;
 	render.colorAttachments[0].storeAction = MTLStoreActionDontCare;
