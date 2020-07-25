@@ -55,7 +55,7 @@ void displayRoll(struct GLFWwindow* ptr, double xoffset, double yoffset)
 
 void displayClick(struct GLFWwindow* ptr, int button, int action, int mods)
 {
-	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT) cb.click(0);
+	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT) cb.click(mods);
 	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_RIGHT) cb.click(1);
 }
 
