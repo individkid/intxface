@@ -407,6 +407,9 @@ for k,v in pairs(flats) do
 			end
 			filter(targets,base.."C.o",k,v,".h",".h")
 		end
+		if (ext == ".g") then
+			filter(targets,base.."G.o",k,v,".h",".h")
+		end
 		if (ext == ".hs") then
 			if scripts[k] then
 				filter(targets,base.."Hs",k,v,".c","C.o")
