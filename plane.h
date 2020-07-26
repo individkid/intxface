@@ -18,12 +18,22 @@
 struct Plane {
 	float3 plane;
 	uint versor;
-	uint tag;
-	uint3 index;
+	uint3 point; // match to point to choose coord and color
 	float2 coord[3];
 	float4 color[3];
 };
 struct Point {
+	uint3 plane; // planes intersect in point
+	uint3 tag; // match to state to choose face plane
+};
+struct State {
+	float3 basis[3][3];
+	float4 subject[4];
+	float4 object[4];
+	float4 feature[4];
+	float3 feather;
+	float3 arrow;
+	// float3 *cloud;
+	// uint size;
 	uint tag;
-	uint3 index;
 };
