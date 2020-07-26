@@ -17,7 +17,7 @@ metalC.o: base.h face.h metic.h share.h type.h
 meticC.o: metic.h
 modelC.o: base.h face.h metic.h share.h type.h
 openglC.o: base.h contain.h face.h metic.h share.h type.h
-planeSw: baseC.o containC.o faceC.o glfwC.o metalC.o meticC.o modelC.o openglC.o shareC.o typeC.o vulkanC.o
+planeSw: baseC.o containC.o faceC.o glfwC.o metalC.o meticC.o modelC.o openglC.o plane.so shareC.o typeC.o vulkanC.o
 planeSw.o: base.h contain.h face.h metic.h share.h type.h type.sw
 shareC.o: base.h face.h metic.h share.h type.h
 spaceHs: baseC.o face.hs faceC.o naive.hs type.hs typeC.o

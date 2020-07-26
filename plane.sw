@@ -18,7 +18,7 @@ func swiftInit() -> Int32
 	device = MTLCreateSystemDefaultDevice()
 	queue = device.makeCommandQueue()
 	code = queue.makeCommandBuffer()
-	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.gl") else {return 0}
+	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {return 0}
 	let vertex:MTLFunction! = library.makeFunction(name:"vertex_main")
 	let fragment:MTLFunction! = library.makeFunction(name:"fragment_main")
 	let descriptor:MTLRenderPipelineDescriptor! = MTLRenderPipelineDescriptor()

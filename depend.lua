@@ -53,10 +53,12 @@ function depend(dep)
 	pat = string.match(dep,"(.*)%.lua"); if pat then return pat.."Lua" end
 	pat = string.match(dep,"(.*)Sw%.o"); if pat then return pat.."Sw" end
 	pat = string.match(dep,"(.*)C%.o"); if pat then return pat..".so" end
+	pat = string.match(dep,"(.*)G%.o"); if pat then return pat..".so" end
 	pat = string.match(dep,"(.*)%.c"); if pat then return pat.."C.o" end
 	pat = string.match(dep,"(.*)%.m"); if pat then return pat.."C.o" end
 	pat = string.match(dep,"(.*)%.cpp"); if pat then return pat.."C.o" end
 	pat = string.match(dep,"(.*)%.sw"); if pat then return pat.."Sw.o" end
+	pat = string.match(dep,"(.*)%.g"); if pat then return pat.."G.o" end
 	return ""
 end
 function source(file)
@@ -70,7 +72,8 @@ function source(file)
 		ext == ".lua" or
 		ext == ".gen" or
 		ext == ".src" or
-		ext == ".sw")
+		ext == ".sw" or
+		ext == ".g")
 	then
 		return true
 	end
@@ -133,6 +136,7 @@ os.execute("grep -l -- 'int main(void)' *.m >> depend.txt")
 os.execute("grep -l -- 'main :: IO ()' *.hs >> depend.txt")
 os.execute("grep -l -- '-- MAIN' *.lua >> depend.txt")
 os.execute("grep -l -- '// MAIN' *.sw >> depend.txt")
+os.execute("grep -l -- '// MAIN' *.g >> depend.txt")
 greplist = io.open("depend.txt")
 for line in greplist:lines() do
 	scripts[line] = true
@@ -152,6 +156,7 @@ importExpr = "^import +([^ ]*)"
 foreignExpr = "^foreign import ccall "
 dofileExpr = "^dofile%("
 requireExpr = "^require +"
+graphicsExpr = "makeLibrary%(filepath:"
 cOpenExpr = "/*"; cCloseExpr = "*/"
 luaOpenExpr = "-[["; luaCloseExpr = "-]]"
 hsOpenExpr = "{-"; hsCloseExpr = "-}"
@@ -161,6 +166,7 @@ hsCommentExpr = "--"; swCommentExpr = "//"
 edges = {}
 for k,v in pairs(files) do
 	if source(v) and extants[v] then
+		base,ext = string.match(v,fileExpr)
 		-- io.stderr:write("examine("..v..")\n")
 		edges[v] = {}
 		if
@@ -250,6 +256,7 @@ for k,v in pairs(files) do
 			foreighVal = string.match(more,foreignExpr)
 			dofileVal = string.match(more,dofileExpr)
 			requireVal = string.match(more,requireExpr)
+			if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) end
 			if includeVal then insert(edges,v,name)
 			elseif moduleVal then insert(edges,moduleVal,v)
 			elseif hsImportVal then insert(edges,v,hsImportVal)
@@ -263,6 +270,10 @@ for k,v in pairs(files) do
 				if not invokeVal then break end
 				insert(edges,v,invokeVal)
 			end end
+			if graphicsVal then
+				insert(edges,v,name)
+				if not edges[name] then edges[name] = {} end
+			end
 		end
 	end
 end
@@ -273,14 +284,13 @@ function flatten(str,dst,ext,mid,src,map)
 	-- depend and recurse if non-file that does not depend on src
 	-- depend and recurse if file that has given extension
 	ba,ex = string.match(str,fileExpr)
-	for k,v in pairs(src) do
+	if src then for k,v in pairs(src) do
 		b,e = string.match(k,fileExpr)
 		if
 			not dst[k] and (k ~= str) and map[k] and not scripts[k] and
 			((b and (e == ext)) or (not b and not map[k][str]))
 		then
 			if b and (e == ext) then
-				-- if (str == "plane.sw") then io.stderr:write(str..": "..mid..": "..k.."\n") end
 				dst[k] = true
 			end
 			if
@@ -298,7 +308,7 @@ function flatten(str,dst,ext,mid,src,map)
 			if (ex == ".lua") then flatten(str,dst,".lua",k,map[k],map) end
 			if (ex == ".gen") then flatten(str,dst,".src",k,map[k],map) end
 		end
-	end
+	end end
 end
 flats = {}
 for k,v in pairs(edges) do if source(k) then
@@ -310,6 +320,7 @@ for k,v in pairs(edges) do if source(k) then
 	flatten(k,flats[k],".m",k,v,edges)
 	flatten(k,flats[k],".cpp",k,v,edges)
 	if (ext == ".sw") then flatten(k,flats[k],".sw",k,v,edges) end
+	if (ext == ".sw") then flatten(k,flats[k],".so",k,v,edges) end
 	if (ext == ".hs") then flatten(k,flats[k],".hs",k,v,edges) end
 	if (ext == ".lua") then flatten(k,flats[k],".src",k,v,edges) end
 	if (ext == ".lua") then flatten(k,flats[k],".lua",k,v,edges) end
@@ -418,6 +429,7 @@ for k,v in pairs(flats) do
 				filter(targets,base.."Sw",k,v,".c","C.o")
 				filter(targets,base.."Sw",k,v,".m","C.o")
 				filter(targets,base.."Sw",k,v,".cpp","C.o")
+				filter(targets,base.."Sw",k,v,".so",".so")
 			end
 			filter(targets,base.."Sw.o",k,v,".sw",".sw")
 			filter(targets,base.."Sw.o",k,v,".h",".h")

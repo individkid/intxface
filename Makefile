@@ -62,6 +62,10 @@ LIBRARIES = -llua -lportaudio -lglfw -lGLEW -lMoltenVK
 
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
+%.so: %G.o
+	cp $< $@
+	# xcrun -sdk macosx metallib -o $@ $<
+
 %C.o: %.c
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %C.o: %.m
@@ -70,6 +74,9 @@ LIBRARIES = -llua -lportaudio -lglfw -lGLEW -lMoltenVK
 	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
 %Sw.o: %.sw
 	cat $(filter %.sw,$^) | swiftc -o $@ -I . -c -
+%G.o: %.g
+	cp $< $@
+	# xcrun -sdk macosx metal -O2 -std=osx-metal1.1 -o $@ -c $<
 
 %.h: %.gen
 	lua $< $@
