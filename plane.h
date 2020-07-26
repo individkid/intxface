@@ -15,6 +15,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <metal_matrix>
+
 struct Plane {
 	float3 plane;
 	uint versor;
@@ -29,13 +31,13 @@ struct Point {
 };
 struct State {
 	float3 basis[3][3];
-	float4 subject[4];
-	float4 object[4];
-	float4 feature[4];
-	float3 feather;
-	float3 arrow;
-	// float3 *cloud;
-	// uint size;
+	metal::float4x4 subject;
+	metal::float4x4 object;
+	metal::float4x4 feature;
+	// float3 feather; // for pierce shader
+	// float3 arrow; // for pierce shader
+	// float3 *cloud; // for bounce shader
+	// uint size; // for bounce shader
 	uint tag; // which planes of polytope to render this pass
 	uint polytope; // whether to apply object transformation
 	uint manipulate; // which plane to apply feature transformation to
