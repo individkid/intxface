@@ -19,11 +19,13 @@ func swiftInit() -> Int32
 	queue = device.makeCommandQueue()
 	code = queue.makeCommandBuffer()
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {return 0}
-	let vertex:MTLFunction! = library.makeFunction(name:"vertex_main")
-	let fragment:MTLFunction! = library.makeFunction(name:"fragment_main")
+	let vertex:MTLFunction! = library.makeFunction(name:"vertex_render")
+	let fragment:MTLFunction! = library.makeFunction(name:"fragment_render")
 	let descriptor:MTLRenderPipelineDescriptor! = MTLRenderPipelineDescriptor()
 	descriptor.vertexFunction = vertex
 	descriptor.fragmentFunction = fragment
+	return 0
+	/*
 	state = try? device.makeRenderPipelineState(descriptor:descriptor)
 	pass = MTLRenderPassDescriptor()
 	pass.colorAttachments[0].loadAction = .clear
@@ -32,6 +34,7 @@ func swiftInit() -> Int32
 	let function:MTLFunction! = library.makeFunction(name:"pierce_main")
 	compute = try? device.makeComputePipelineState(function:function)
 	return 0
+	*/
 }
 
 func swiftDraw()

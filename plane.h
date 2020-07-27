@@ -29,13 +29,23 @@ struct Plane {
 struct Point {
 	uint3 plane; // planes intersect in point
 };
+struct Expand {
+	float3 point[3]; // plane expanded to points by basis
+};
+struct Triple {
+	Expand plane[3];
+};
+struct Pierce {
+	bool valid;
+	float3 point;
+};
 struct State {
-	float3 basis[3][3];
+	Triple basis;
 	metal::float4x4 subject;
 	metal::float4x4 object;
 	metal::float4x4 feature;
-	// float3 feather; // for pierce shader
-	// float3 arrow; // for pierce shader
+	float3 feather; // for pierce shader
+	float3 arrow; // for pierce shader
 	// float3 *cloud; // for bounce shader
 	// uint size; // for bounce shader
 	uint tag; // which planes of polytope to render this pass
