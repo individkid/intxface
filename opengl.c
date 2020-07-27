@@ -105,13 +105,13 @@ void initVertex(int sub, GLuint *box)
 	glBindVertexArray(*getGLuint(&arrayQue.ident,sub,0));
 	glBindBuffer(GL_ARRAY_BUFFER,*box);
 	GLuint index = 0;
-	INTEGER(3,tag[0]); // location=0 ivec3
+	INTEGER(3,point[0]); // location=0 ivec3
 	for (int i = 0; i < 3; i++) FLOATER(3,plane[i][0]); // location=1 vec3[3]
 	INTEGER(3,versor[0]); // location=4 ivec3
 	for (int i = 0; i < 3; i++) FLOATER(2,coord[i][0]); // location=5 vec2[3]
 	for (int i = 0; i < 3; i++) FLOATER(4,color[i][0]); // location=8 vec4[3]
-	INTEGER(3,facid[0]); // location=11 ivec3
-	INTEGER(1,matid); // location=12 int
+	INTEGER(1,tag); // location=11 ivec3
+	INTEGER(1,poly); // location=12 int
 	for (int i = 0; i < index; i++)
 	glEnableVertexAttribArray(i);
 	glBindVertexArray(0);

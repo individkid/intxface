@@ -101,16 +101,14 @@ void modelFunc(struct Array *range)
 		int sub[3]; for (int j = 0; j < 3; j++) sub[j] = accel[Triangle]->triangle[range->idx+i].vtxid[j];
 		struct Vertex *ptr[3]; for (int j = 0; j < 3; j++) ptr[j] = &accel[Corner]->corner[sub[j]];
 		float point[9]; float coord[6]; float color[12];
-		int texid; int facid; int matid; float plane[3]; int versor;
+		int texid; int matid; float plane[3]; int versor;
 		int skip = 0; for (int j = 0; j < 3; j++) {
-			int found = 0; for (int k = 0; k < 3; k++) if (ptr[j]->tag[k] == range->tag) found = k;
+			int found = 0; for (int k = 0; k < 3; k++) if (ptr[j]->point[k] == range->idx+i) found = k;
 			if (!intersectVector(&point[j*3],&ptr[j]->plane[0][0],ptr[j]->versor,basis)) {skip = 1; break;}
 			for (int k = 0; k < 2; k++) coord[j*2+k] = ptr[j]->coord[found][k];
 			for (int k = 0; k < 4; k++) color[j*4+k] = ptr[j]->color[found][k];
-			if (j == 0) facid = ptr[j]->facid[found];
-			else if (facid != ptr[j]->facid[found]) ERROR(moderr,-1);
-			if (j == 0) matid = ptr[j]->matid;
-			else if (matid != ptr[j]->matid) ERROR(moderr,-1);
+			if (j == 0) matid = ptr[j]->poly;
+			else if (matid != ptr[j]->poly) ERROR(moderr,-1);
 			for (int k = 0; k < 3; k++)
 				if (j == 0) plane[k] = ptr[j]->plane[found][k];
 				else if (plane[k] != ptr[j]->plane[found][k]) ERROR(moderr,-1);
@@ -122,11 +120,11 @@ void modelFunc(struct Array *range)
 		if (matid < 0 || matid >= accel[Subject]->siz) ERROR(moderr,-1);
 		for (int i = 0; i < 3; i++)
 		transformVector(&point[i*3],&accel[Object]->object[matid].val[0][0]);
-		if (accel[Hand]->hand == facid)
+		if (/*accel[Hand]->hand == facid*/0) // FIXME transform the plane before intersect
 		for (int i = 0; i < 3; i++)
 		transformVector(&point[i*3],&accel[Feature]->feature->val[0][0]);
 		if (accel[User]->user->shader == Display) modelFrame(point,coord,color,texid);
-		else if (accel[User]->user->shader == Track) modelTrack(point,facid);}
+		else if (accel[User]->user->shader == Track) modelTrack(point,/*facid*/0/*FIXME*/);}
 }
 
 #define INDEXED(ENUM,FIELD) \

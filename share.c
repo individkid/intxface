@@ -271,12 +271,12 @@ void calculateGlobal()
 	int versor;
 	int done = 0;
 	for (int i = 0; i < 3; i++)
-	for (int j = 0; j < 3; j++)
-	if (vertex[i]->tag[j] == tag) {
+	for (int j = 0; j < 3; j++)/*
+	if (vertex[i]->point[j] == range->idx+i)*//*FIXME*/ {
 	if (done == 0) for (int k = 0; k < 3; k++) plane[k] = vertex[i]->plane[j][k];
 	if (done == 0) versor = vertex[i]->versor[j];
-	if (done && object != vertex[i]->matid) ERROR(cb.err,-1);
-	if (!done) object = vertex[i]->matid;
+	if (done && object != vertex[i]->poly) ERROR(cb.err,-1);
+	if (!done) object = vertex[i]->poly;
 	done++;}
 	if (done != 3) ERROR(cb.err,-1);
 	float point[3][3];

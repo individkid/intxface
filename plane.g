@@ -10,14 +10,7 @@ Expand expand(Plane plane, const device State *state)
 }
 bool opposite(Expand plane, float3 feather, float3 arrow)
 {
-   return false;
-}
-bool inside(Expand plane[3], float3 corner[3], float3 point)
-{
-   for (uint i = 0; i < 3; i++)
-      if (opposite(plane[i],corner[i],point-corner[i]))
-         return false;
-   return true;
+   return false; // TODO
 }
 float3 intrasect(Expand plane, float3 feather, float3 arrow)
 {
@@ -51,61 +44,58 @@ Expand transform(Expand plane, metal::float4x4 matrix)
    return result;
 }
 uint copoint(
-   uint3 point,
+   uint3 map,
    const device Plane *plane,
    const device State *state)
 {
-   uint face = 0;
+   uint result = 0;
    for (uint i = 0; i < 3; i++) {
-      uint index = point[i];
-      if (plane[index].tag == state->tag)
-         face = index;}
-   return face;
+      uint index = map[i];
+      if (plane[index].tag == state->tag) result = index;}
+   return result;
 }
 uint coplane(
-   uint ident,
-   uint face,
-   const device Plane *plane)
+   uint3 map,
+   uint ident)
 {
-   uint corner = 0;
+   uint result = 0;
    for (uint i = 0; i < 3; i++)
-      if (plane[face].point[i] == ident)
-         corner = i;
-   return corner;
+      if (map[i] == ident) result = i;
+   return result;
 }
 Triple explode(
-   uint3 point,
+   uint3 map,
    const device Plane *plane,
    const device State *state)
 {
    Triple result;
    for (uint i = 0; i < 3; i++) {
-      uint index = point[i];
+      uint index = map[i];
       result.plane[i] = expand(plane[index],state);
-      if (state->manipulate == index) for (uint j = 0; j < 3; j++) {
+      if (state->manip == index) for (uint j = 0; j < 3; j++) {
          float4 affine = float4(result.plane[i].point[j],1.0);
          result.plane[i].point[j] = (state->feature*affine).xyz;}}
    return result;
 }
 float4 convert(
-   uint face,
+   uint index,
    Triple triple,
    const device Plane *plane,
    const device State *state)
 {
    float4 position = float4(intersect(triple),1.0);
-   if (state->polytope == plane[face].polytope) position = state->object*position;
+   if (state->poly == plane[index].poly) position = state->object*position;
    position = state->subject*position;
    return position;
 }
 Expand prepare(
-   uint ident,
+   uint index,
    const device Plane *plane,
    const device State *state)
 {
-   Expand face = expand(plane[ident],state);
-   if (state->manipulate == ident) face = transform(face,state->feature);
-   if (state->polytope == plane[ident].polytope) transform(face,state->object);
+   Expand face = expand(plane[index],state);
+   if (state->manip == index) face = transform(face,state->feature);
+   if (state->poly == plane[index].poly) transform(face,state->object);
    transform(face,state->subject);
    return face;
 }
@@ -124,7 +114,7 @@ vertex VertexOutput vertex_render(
 {
    VertexOutput out;
    uint face = copoint(point[ident].plane,plane,state); // which plane of point is the face being rendered
-   uint corner = coplane(ident,face,plane); // which color and coord in face is being rendered
+   uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
    out.position = convert(face,triple,plane,state);
    out.normal = half3(normal3(triple));
@@ -145,7 +135,7 @@ vertex void vertex_pierce(
    const device State *state)
 {
    float3 feather = state->feather; // focal point
-   float3 arrow = state->arrow; // line of sight
+   float3 arrow = state->arrow; // mouse direction
    Expand face = prepare(ident,plane,state);
    if (!opposite(face,feather,arrow)) {
       pierce[ident].valid = false; return;}
@@ -157,14 +147,13 @@ vertex void vertex_pierce(
       uint corner = plane[ident].point[i];
       Triple triple = explode(point[corner].plane,plane,state);
       apex.point[i] = convert(ident,triple,plane,state).xyz;
-      uint line;
+      uint line = 0;
       for (uint j = 0; j < 3; j++) {
          line = point[corner].plane[j];
-         uint k;
-         for (k = 0; k < i; k++)
-            if (index[k] == line) break;
-         if (k == i) break;}
-      index[i] = line;
+         bool found = false;
+         for (uint k = 0; k < i; k++)
+            if (index[k] == line) found = true;
+         if (!found && line != ident) index[i] = line;}
       edge.plane[i] = expand(plane[line],state);}
    for (uint i = 0; i < 3; i++)
       if (opposite(edge.plane[i],hole,apex.point[i])) {

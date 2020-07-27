@@ -18,12 +18,12 @@
 #include <metal_matrix>
 
 struct Plane {
-	float3 plane;
-	uint versor;
+	float3 plane; // distances above expanded basis plane
+	uint versor; // which expanded plane in basis to use
 	uint3 point; // match to point to choose coord and color
 	float2 coord[3];
 	float4 color[3];
-	uint polytope; // which polytope plane is in
+	uint poly; // which polytope plane is in
 	uint tag; // which of 7 sets face of plane is in
 };
 struct Point {
@@ -32,11 +32,11 @@ struct Point {
 struct Expand {
 	float3 point[3]; // plane expanded to points by basis
 };
-struct Triple {
+struct Triple { // expanded planes for intersect
 	Expand plane[3];
 };
-struct Pierce {
-	bool valid;
+struct Pierce { // intrasect plane with line through points
+	bool valid; // valid if points opposite plane
 	float3 point;
 };
 struct State {
@@ -49,6 +49,6 @@ struct State {
 	// float3 *cloud; // for bounce shader
 	// uint size; // for bounce shader
 	uint tag; // which planes of polytope to render this pass
-	uint polytope; // whether to apply object transformation
-	uint manipulate; // which plane to apply feature transformation to
+	uint poly; // whether to apply object transformation
+	uint manip; // which plane to apply feature transformation to
 };
