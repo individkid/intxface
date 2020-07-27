@@ -186,18 +186,17 @@ Event = {
 	{"len","int",{["tag"]={["Audio"]=true}},{}},
 	{"enb","int",{["tag"]={["Audio"]=true}},{}},
 }
-Vertex = { -- FIXME change to Facet
-	-- change plane to single vec3 and versor to single int
-	{"plane","float",{},{3,3}}, -- layout (location=1) in vec3 plane[3];
-	{"versor","int",{},{3}}, -- layout (location=4) in ivec3 versor;
-	{"point","int",{},{3}}, -- layout (location=0) in ivec3 tag;
-	{"coord","float",{},{3,2}}, -- layout (location=5) in vec2 coord[3];
-	{"color","float",{},{3,4}}, -- layout (location=8) in vec4 color[3];
-	{"poly","int",{},{}}, -- layout (location=11) in ivec3 facid;
-	{"tag","int",{},{}}, -- layout (location=12) in int matid;
+Facet = {
+	{"plane","float",{},{3}},
+	{"versor","int",{},{}},
+	{"point","int",{},{3}},
+	{"coord","float",{},{3,2}},
+	{"color","float",{},{3,4}},
+	{"poly","int",{},{}},
+	{"tag","int",{},{}},
 }
-Facet = { -- FIXME change to Vertex
-	{"vtxid","int",{},{3}}, -- sort by tag and render per tag
+Vertex = {
+	{"plane","int",{},{3}},
 }
 Array = {
 	{"idx","int",{},{}},

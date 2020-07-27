@@ -70,10 +70,7 @@ func swiftDraw()
 	displayInit(argv[0])}
 	windowInit()
 	if (swiftInit() != 0 ||
-	metalInit() != 0 ||
-	openglInit() != 0 ||
-	vulkanInit() != 0 ||
-	modelInit() != 0) {
+	metalInit() != 0) {
 	if (argc == 4) {
 	bothJump(cb.err,cb.hub)}
 	bothJump(cb.err,cb.zub)

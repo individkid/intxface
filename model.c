@@ -120,11 +120,11 @@ void modelFunc(struct Array *range)
 		if (matid < 0 || matid >= accel[Subject]->siz) ERROR(moderr,-1);
 		for (int i = 0; i < 3; i++)
 		transformVector(&point[i*3],&accel[Object]->object[matid].val[0][0]);
-		if (/*accel[Hand]->hand == facid*/0) // FIXME transform the plane before intersect
+		if (/*accel[Hand]->hand == facid*/0) // TODO transform the plane before intersect
 		for (int i = 0; i < 3; i++)
 		transformVector(&point[i*3],&accel[Feature]->feature->val[0][0]);
 		if (accel[User]->user->shader == Display) modelFrame(point,coord,color,texid);
-		else if (accel[User]->user->shader == Track) modelTrack(point,/*facid*/0/*FIXME*/);}
+		else if (accel[User]->user->shader == Track) modelTrack(point,/*facid*/0/*TODO*/);}
 }
 
 #define INDEXED(ENUM,FIELD) \

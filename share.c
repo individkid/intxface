@@ -264,37 +264,17 @@ void calculateGlobal()
 	unitvec(norvec,3,2);
 	zerovec(pievec,3);} else {
 	int tag = cb.state[Range]->range[found].tag;
-	struct Facet *facet = &cb.state[Triangle]->triangle[face];
-	struct Vertex *vertex[3];
-	for (int i = 0; i < 3; i++) vertex[i] = &cb.state[Corner]->corner[facet->vtxid[i]];
-	float plane[3];
-	int versor;
-	int done = 0;
-	for (int i = 0; i < 3; i++)
-	for (int j = 0; j < 3; j++)/*
-	if (vertex[i]->point[j] == range->idx+i)*//*FIXME*/ {
-	if (done == 0) for (int k = 0; k < 3; k++) plane[k] = vertex[i]->plane[j][k];
-	if (done == 0) versor = vertex[i]->versor[j];
-	if (done && object != vertex[i]->poly) ERROR(cb.err,-1);
-	if (!done) object = vertex[i]->poly;
-	done++;}
-	if (done != 3) ERROR(cb.err,-1);
-	float point[3][3];
-	constructVector(&point[0][0],&plane[0],versor,&cb.state[Basis]->basis[0].val[0][0]);
-	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&cb.state[Subject]->subject->val[0][0]);
-	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&cb.state[Object]->object[object].val[0][0]);
-	if (face==cb.state[Hand]->hand)
-	for (int i = 0; i < 3; i++)
-	transformVector(&point[i][0],&cb.state[Feature]->feature->val[0][0]);
-	normalVector(norvec,&point[0][0]);
-	float other[3]; plusvec(copyvec(other,&cb.state[Feather]->feather->val[0],3),&cb.state[Arrow]->arrow->val[0],3);
-	pierceVector(pievec,&point[0][0],norvec,&cb.state[Feather]->feather->val[0],other);}
-	normalMatrix(normat,norvec);
-	fixedMatrix(piemat,pievec);
-	identmat(matrix,4);
-	toggle = 0;
+	struct Vertex *vertex = &cb.state[Corner]->corner[face];
+	struct Facet *facet[3];
+	for (int i = 0; i < 3; i++) facet[i] = &cb.state[Triangle]->triangle[vertex->plane[i]];
+	/* TODO initialize such that toggle can be set to 0:
+	int toggle = 0;
+	float vector[3] = {0};
+	float matrix[16] = {0};
+	float piemat[16] = {0};
+	float normat[16] = {0};
+	int object = 0;
+	*/}
 }
 
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
