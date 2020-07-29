@@ -81,21 +81,23 @@ float4 convert(
    uint index,
    Triple triple,
    const device Plane *plane,
+   const device File *file,
    const device State *state)
 {
    float4 position = float4(intersect(triple),1.0);
-   if (state->poly == plane[index].poly) position = state->object*position;
+   position = file[plane[index].poly].object*position;
    position = state->subject*position;
    return position;
 }
 Expand prepare(
    uint index,
    const device Plane *plane,
+   const device File *file,
    const device State *state)
 {
    Expand face = expand(plane[index],state);
    if (state->manip == index) face = transform(face,state->feature);
-   if (state->poly == plane[index].poly) transform(face,state->object);
+   transform(face,file[plane[index].poly].object);
    transform(face,state->subject);
    return face;
 }
@@ -110,13 +112,14 @@ vertex VertexOutput vertex_render(
    const device Plane *plane [[buffer(0)]],
    const device Point *point [[buffer(1)]],
    uint ident [[vertex_id]],
+   const device File *file,
    const device State *state)
 {
    VertexOutput out;
    uint face = copoint(point[ident].plane,plane,state); // which plane of point is the face being rendered
    uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
-   out.position = convert(face,triple,plane,state);
+   out.position = convert(face,triple,plane,file,state);
    out.normal = half3(normal3(triple));
    out.color = half4(plane[face].color[corner]);
    out.coord = half2(plane[face].coord[corner]);
@@ -132,11 +135,12 @@ vertex void vertex_pierce(
    const device Point *point [[buffer(1)]],
    device Pierce *pierce [[buffer(2)]],
    uint ident [[vertex_id]],
-   const device State *state)
+   const device File *file [[buffer(3)]],
+   const device State *state [[buffer(4)]])
 {
    float3 feather = state->feather; // focal point
    float3 arrow = state->arrow; // mouse direction
-   Expand face = prepare(ident,plane,state);
+   Expand face = prepare(ident,plane,file,state);
    if (!opposite(face,feather,arrow)) {
       pierce[ident].valid = false; return;}
    float3 hole = intrasect(face,feather,arrow);
@@ -146,7 +150,7 @@ vertex void vertex_pierce(
    for (uint i = 0; i < 3; i++) {
       uint corner = plane[ident].point[i];
       Triple triple = explode(point[corner].plane,plane,state);
-      apex.point[i] = convert(ident,triple,plane,state).xyz;
+      apex.point[i] = convert(ident,triple,plane,file,state).xyz;
       uint line = 0;
       for (uint j = 0; j < 3; j++) {
          line = point[corner].plane[j];
@@ -158,6 +162,7 @@ vertex void vertex_pierce(
    for (uint i = 0; i < 3; i++)
       if (opposite(edge.plane[i],hole,apex.point[i])) {
          pierce[ident].valid = false; return;}
+   pierce[ident].normal = normal(face);
    pierce[ident].point = hole;
    pierce[ident].valid = true;
 }

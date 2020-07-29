@@ -83,7 +83,6 @@ Memory = {
 	"Cloud",
 	"Hand",
 	"Tag",
-	"Face",
 	"User",
 	"Image",
 }
@@ -228,8 +227,8 @@ Client = {
 	{"fnc","Function",{},"len"},
 	{"idx","int",{},{}},
 	{"siz","int",{},{}},
-	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
 	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
+	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
 	{"subject","Affine",{["mem"]={["Subject"]=true}},1},
@@ -240,7 +239,6 @@ Client = {
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
 	{"hand","int",{["mem"]={["Hand"]=true}},{}},
 	{"tag","int",{["mem"]={["Tag"]=true}},{}},
-	{"face","int",{["mem"]={["Face"]=true}},{}},
 	{"user","Mode",{["mem"]={["User"]=true}},1},
 }
 Sculpt = {

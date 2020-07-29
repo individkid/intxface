@@ -107,7 +107,7 @@ int intersectVector(float *point, float *plane, int *versor, float *basis)
 	for (int k = 0; k < 3; k++) {
 	float pierce0[3]; if (!pierceVector(&pierce0[0],&plane0[0][0],&normal0[0],&plane1[(k+0)%3][0],&plane1[(k+1)%3][0])) continue;
 	float pierce1[3]; if (!pierceVector(&pierce1[0],&plane0[0][0],&normal0[0],&plane1[(k+0)%3][0],&plane1[(k+2)%3][0])) continue;
-	float point[3]; if (!pierceVector(&point[0],&plane2[0][0],&normal2[0],&pierce0[0],&pierce1[0])) continue;
+	if (!pierceVector(&point[0],&plane2[0][0],&normal2[0],&pierce0[0],&pierce1[0])) continue;
 	return 1;}}}
 	return 0;
 }
@@ -252,29 +252,13 @@ void composeMatrix(float *result)
 void calculateGlobal()
 {
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
-	int face = cb.state[Face]->face;
-	int found = cb.state[Range]->siz;
-	for (int i = 0; i < found; i++) {
-	struct Array *range = cb.state[Range]->range;
-	if (face < range[i].idx+range[i].siz && range[i].idx <= face) found = i;}
 	float norvec[3];
 	float pievec[3];
-	if (found == cb.state[Range]->siz) {
-	object = 0;
-	unitvec(norvec,3,2);
-	zerovec(pievec,3);} else {
-	int tag = cb.state[Range]->range[found].tag;
-	struct Vertex *vertex = &cb.state[Corner]->corner[face];
-	struct Facet *facet[3];
-	for (int i = 0; i < 3; i++) facet[i] = &cb.state[Triangle]->triangle[vertex->plane[i]];
-	/* TODO initialize such that toggle can be set to 0:
-	int toggle = 0;
-	float vector[3] = {0};
-	float matrix[16] = {0};
-	float piemat[16] = {0};
-	float normat[16] = {0};
-	int object = 0;
-	*/}
+	// get norvec and pievec from track shader
+	normalMatrix(normat,norvec);
+	fixedMatrix(piemat,pievec);
+	identmat(matrix,4);
+	toggle = 0;
 }
 
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
@@ -394,8 +378,8 @@ void clientCopy(struct Client **ptr)
 void clientRefer()
 {
 	switch (cb.client->mem) {
-	case (Corner): cb.refer[Corner] = &cb.state[Corner]->corner[0];
 	case (Triangle): cb.refer[Triangle] = &cb.state[Triangle]->triangle[0];
+	case (Corner): cb.refer[Corner] = &cb.state[Corner]->corner[0];
 	case (Basis): cb.refer[Basis] = &cb.state[Basis]->basis[0];
 	case (Subject): cb.refer[Subject] = &cb.state[Subject]->subject[0];
 	case (Object): cb.refer[Object] = &cb.state[Object]->object[0];
@@ -403,7 +387,6 @@ void clientRefer()
 	case (Feather): cb.refer[Feather] = &cb.state[Feather]->feather[0];
 	case (Arrow): cb.refer[Arrow] = &cb.state[Arrow]->arrow[0];
 	case (Cloud): cb.refer[Cloud] = &cb.state[Cloud]->cloud[0];
-	case (Hand): cb.refer[Hand] = &cb.state[Hand]->face;
 	case (Tag): cb.refer[Tag] = &cb.state[Tag]->tag;
 	default: break;}
 }
@@ -529,12 +512,12 @@ void windowClick(int isright)
 	struct Client client;
 	struct Affine affine;
 	struct Mode user;
-	allocFunction(&client.fnc,2);
+	enum Function function[2];
+	client.fnc = function;
 	client.fnc[0] = Save; client.fnc[1] = Port;
 	client.mem = copyAffine(&client,&affine);
 	client.len = 2; client.siz = 1;
 	writeClient(&client,cb.tub);
-	allocFunction(&client.fnc,1);
 	client.fnc[0] = Copy;
 	client.mem = copyUser(&client,&user);
 	if (user.click == Transform) {

@@ -24,7 +24,7 @@ struct Plane {
 	float2 coord[3];
 	float4 color[3];
 	uint poly; // which polytope plane is in
-	uint tag; // which of 7 sets face of plane is in
+	uint tag; // which of 7 sets plane is in
 };
 struct Point {
 	uint3 plane; // planes intersect in point
@@ -38,17 +38,21 @@ struct Triple { // expanded planes for intersect
 struct Pierce { // intrasect plane with line through points
 	bool valid; // valid if points opposite plane
 	float3 point;
+	float3 normal;
+};
+struct File {
+	metal::float4x4 object;
+};
+struct Bounce {
+	float3 point;
 };
 struct State {
 	Triple basis;
 	metal::float4x4 subject;
-	metal::float4x4 object;
 	metal::float4x4 feature;
 	float3 feather; // for pierce shader
 	float3 arrow; // for pierce shader
-	// float3 *cloud; // for bounce shader
-	// uint size; // for bounce shader
+	uint size; // for bounce shader
 	uint tag; // which planes of polytope to render this pass
-	uint poly; // whether to apply object transformation
 	uint manip; // which plane to apply feature transformation to
 };
