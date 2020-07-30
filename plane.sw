@@ -11,15 +11,19 @@ var compute:MTLComputePipelineState!
 var debug:MTLComputePipelineState!
 var pass:MTLRenderPassDescriptor!
 
+func unwrap<T>(_ x: Any) -> T {
+  return x as! T
+}
+
 func swiftInit() -> Int32
 {
 	cb.draw = swiftDraw
 	window = cocoa as? NSWindow
 	device = MTLCreateSystemDefaultDevice()
 	queue = device.makeCommandQueue()
+	guard let /*library*/_:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {return 0}
 	return 0
 	/*
-	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {return 0}
 	let vertex:MTLFunction! = library.makeFunction(name:"vertex_debug")
 	compute = try? device.makeComputePipelineState(function:vertex)
 	compute.setBuffer(debugPlane offset:0 atIndex:0)
@@ -44,14 +48,17 @@ func swiftInit() -> Int32
 
 func swiftDraw()
 {
-	let shader = cb.state.12!.pointee.user!.pointee.shader
-	if (shader == Track) {
+	let client:UnsafeMutablePointer<share.Client> = unwrap(Mirror(reflecting: cb.state).descendant(Int(Memory.User.rawValue))!)!
+	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
+	let shader:share.Shader = user.pointee.shader
+	// let shader = cb.state.12!.pointee.user!.pointee.shader
+	if (shader == share.Track) {
 	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
 	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
 	encode.setComputePipelineState(compute)
 	encode.endEncoding()
 	code.commit()}
-	else if (shader == Display) {
+	else if (shader == share.Display) {
 	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
 	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:pass)
 	encode.setRenderPipelineState(state)

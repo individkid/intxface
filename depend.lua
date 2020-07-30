@@ -366,7 +366,7 @@ function filter(tab,dst,mid,src,pat,rep)
 	if src then for k,v in pairs(src) do
 		str,num = string.gsub(k,pat,rep)
 		b,e = string.match(k,fileExpr)
-		if (num > 0) and (ba ~= b) then
+		if (num > 0) and (dst ~= k) then
 			insert(tab,dst,str)
 		end
 	end end

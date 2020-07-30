@@ -24,6 +24,11 @@ shareC.o: base.h face.h metic.h share.h type.h
 spaceHs: baseC.o face.hs faceC.o naive.hs type.hs typeC.o
 tradeC: baseC.o faceC.o typeC.o
 tradeC.o: base.h face.h type.h
+type.c: type.src
+type.h: type.src
+type.hs: type.src
+type.lua: type.src
+type.sw: type.src
 typeC.o: base.h face.h type.h
 typeSw.o: face.h
 typer.c: type.src typra.src

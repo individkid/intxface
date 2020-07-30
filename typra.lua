@@ -829,7 +829,7 @@ io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
 		line = io.read();
-		if line ~= val then print("error1: "..line.." "..val); assert(false) end
+		if line ~= val then print("error1: "..line..":::"..val); assert(false) end
 		--print(line)
 	end
 end
