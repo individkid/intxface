@@ -6,10 +6,10 @@ import Metal
 var window:NSWindow!
 var device:MTLDevice!
 var queue:MTLCommandQueue!
-var code:MTLCommandBuffer!
 var state:MTLRenderPipelineState!
-var pass:MTLRenderPassDescriptor!
 var compute:MTLComputePipelineState!
+var debug:MTLComputePipelineState!
+var pass:MTLRenderPassDescriptor!
 
 func swiftInit() -> Int32
 {
@@ -17,15 +17,20 @@ func swiftInit() -> Int32
 	window = cocoa as? NSWindow
 	device = MTLCreateSystemDefaultDevice()
 	queue = device.makeCommandQueue()
-	code = queue.makeCommandBuffer()
+	return 0
+	/*
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {return 0}
+	let vertex:MTLFunction! = library.makeFunction(name:"vertex_debug")
+	compute = try? device.makeComputePipelineState(function:vertex)
+	compute.setBuffer(debugPlane offset:0 atIndex:0)
+	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
+	encode.setComputePipelineState(compute)
+	encode.endEncoding()
 	let vertex:MTLFunction! = library.makeFunction(name:"vertex_render")
 	let fragment:MTLFunction! = library.makeFunction(name:"fragment_render")
 	let descriptor:MTLRenderPipelineDescriptor! = MTLRenderPipelineDescriptor()
 	descriptor.vertexFunction = vertex
 	descriptor.fragmentFunction = fragment
-	return 0
-	/*
 	state = try? device.makeRenderPipelineState(descriptor:descriptor)
 	pass = MTLRenderPassDescriptor()
 	pass.colorAttachments[0].loadAction = .clear
@@ -39,44 +44,37 @@ func swiftInit() -> Int32
 
 func swiftDraw()
 {
-	if (false/*compute*/) {
+	let shader = cb.state.12!.pointee.user!.pointee.shader
+	if (shader == Track) {
+	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
 	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
 	encode.setComputePipelineState(compute)
-	encode.endEncoding()}
-	else {
+	encode.endEncoding()
+	code.commit()}
+	else if (shader == Display) {
+	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
 	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:pass)
 	encode.setRenderPipelineState(state)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:0)
-	encode.endEncoding()}
+	encode.endEncoding()
 	code.commit()
-	// cb.swap()
+	cb.swap()}
 }
 
 // MAIN
 	let argc = CommandLine.arguments.count
 	let argv = CommandLine.arguments
+	if (argc == 4) {cb.hub = pipeInit(argv[1],argv[2]); if (cb.hub < 0) {callError()}; bothJump(cb.err,cb.hub)}
+	cb.zub = openPipe(); if (cb.zub < 0) {callError()}; bothJump(cb.err,cb.zub)
+	cb.tub = openPipe(); if (cb.tub < 0) {callError()}; bothJump(cb.err,cb.tub)
+	cb.mub = openPipe(); if (cb.mub < 0) {callError()}; bothJump(cb.err,cb.mub)
 	planeInit(Int32(argc))
-	if (argc == 4) {
-	cb.hub = pipeInit(argv[1],argv[2])
-	if (cb.hub < 0) {callError()}}
-	cb.zub = openPipe()
-	if (cb.zub < 0) {callError()}
-	cb.tub = openPipe()
-	if (cb.tub < 0) {callError()}
 	threadInit()
-	if (argc == 4) {
-	displayInit(argv[3])}
-	if (argc != 4) {
-	displayInit(argv[0])}
+	if (argc == 4) {displayInit(argv[3])}
+	if (argc != 4) {displayInit(argv[0])}
 	windowInit()
-	if (swiftInit() != 0 ||
-	metalInit() != 0) {
-	if (argc == 4) {
-	bothJump(cb.err,cb.hub)}
-	bothJump(cb.err,cb.zub)
-	bothJump(cb.err,cb.tub)
-	cb.call()}
+	if (swiftInit() != 0 || metalInit() != 0) {cb.call()}
+	writeInt(1,cb.zub)
 	cb.done()
 	displayDone()
-	writeInt(1,cb.zub)
 	threadDone()

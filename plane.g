@@ -166,3 +166,12 @@ vertex void vertex_pierce(
    pierce[ident].point = hole;
    pierce[ident].valid = true;
 }
+vertex void vertex_debug(
+   const device Plane *plane [[buffer(0)]],
+   uint ident [[vertex_id]],
+   device char *bytes [[buffer(1)]])
+{
+   device char *source = (device char *)(plane+ident);
+   for (size_t i = 0; i < sizeof(Plane); i++)
+      bytes[sizeof(Plane)*ident+i] = source[i];
+}

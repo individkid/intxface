@@ -33,8 +33,8 @@ MTLRenderPassDescriptor *render = 0;
 void metalDma()
 {
 	switch (cb.client->mem) {
-	case (Corner): /*TODO*/ break;
 	case (Triangle): /*TODO*/ break;
+	case (Corner): /*TODO*/ break;
 	case (Range): ERROR(cb.err,-1);
 	case (Basis): /*TODO*/ break;
 	case (Subject): /*TODO*/ break;
@@ -108,8 +108,6 @@ void windowInit()
 
 int metalInit()
 {
-	// return 0;
-
 	cb.full = metalFull;
 	cb.draw = metalDraw;
 	cb.done = metalDone;

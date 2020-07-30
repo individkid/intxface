@@ -39,9 +39,10 @@ struct Callback {
 	void (*swap)(); // opengl.c : glfw.c
 	void (*wake)(); // plane.c : glfw.c
 	void (*done)(); // plane.c : opengl.c
-	int hub;
-	int tub;
-	int zub;
+	int hub; // from other processes
+	int tub; // from displayCall
+	int mub; // from metal callback
+	int zub; // from threadDone
 	int esc;
 	struct Client *client;
 	struct Client *state[Memorys];
