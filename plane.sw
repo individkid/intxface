@@ -21,15 +21,24 @@ func swiftInit() -> Int32
 	window = cocoa as? NSWindow
 	device = MTLCreateSystemDefaultDevice()
 	queue = device.makeCommandQueue()
-	guard let /*library*/_:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {return 0}
-	return 0
-	/*
+	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {return 0}
 	let vertex:MTLFunction! = library.makeFunction(name:"vertex_debug")
 	compute = try? device.makeComputePipelineState(function:vertex)
-	compute.setBuffer(debugPlane offset:0 atIndex:0)
+	let plane = share.Facet()
+	let planes = UnsafeMutablePointer<share.Facet>.allocate(capacity:1); planes.pointee = plane
+	let chars = UnsafeMutablePointer<Character>.allocate(capacity:1000)
+	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size)
+	let charz = device.makeBuffer(bytes:chars,length:1000)
+	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
 	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
 	encode.setComputePipelineState(compute)
+	encode.setBuffer(planez,offset:0,index:0)
+	encode.setBuffer(charz,offset:0,index:1)
 	encode.endEncoding()
+	code.commit()
+	code.waitUntilCompleted()
+	return 0
+	/*
 	let vertex:MTLFunction! = library.makeFunction(name:"vertex_render")
 	let fragment:MTLFunction! = library.makeFunction(name:"fragment_render")
 	let descriptor:MTLRenderPipelineDescriptor! = MTLRenderPipelineDescriptor()
