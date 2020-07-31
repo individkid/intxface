@@ -6,8 +6,9 @@ import Metal
 var window:NSWindow!
 var device:MTLDevice!
 var queue:MTLCommandQueue!
-var displayPass:MTLRenderPassDescriptor!
-var displayState:MTLRenderPipelineState!
+var pass:MTLRenderPassDescriptor!
+var state:MTLRenderPipelineState!
+var compute:MTLComputePipelineState!
 
 func unwrap<T>(_ x: Any) -> T {
   return x as! T
@@ -32,15 +33,15 @@ func swiftInit() -> Int32
 	/*
 	let debug:MTLFunction! = library.makeFunction(name:"vertex_debug")
 	let ignore:MTLFunction! = library.makeFunction(name:"fragment_render")
-	let pass:MTLRenderPassDescriptor! = MTLRenderPassDescriptor()
-	// pass.colorAttachments[0].loadAction = .clear
-	// pass.colorAttachments[0].storeAction = .store
-	// pass.colorAttachments[0].clearColor = MTLClearColorMake(0.0,1.0,1.0,1.0)
+	pass = MTLRenderPassDescriptor()
+	pass.colorAttachments[0].loadAction = .clear
+	pass.colorAttachments[0].storeAction = .store
+	pass.colorAttachments[0].clearColor = MTLClearColorMake(0.0,1.0,1.0,1.0)
 	let descriptor:MTLRenderPipelineDescriptor! = MTLRenderPipelineDescriptor()
 	descriptor.vertexFunction = debug
 	descriptor.fragmentFunction = ignore
 	descriptor.colorAttachments[0].pixelFormat = MTLPixelFormat.rgba16Float
-	let state:MTLRenderPipelineState! = try? device.makeRenderPipelineState(descriptor:descriptor)
+	state = try? device.makeRenderPipelineState(descriptor:descriptor)
 	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:pass)
 	encode.setRenderPipelineState(state)
 	encode.setVertexBuffer(planez,offset:0,index:0)
@@ -50,9 +51,9 @@ func swiftInit() -> Int32
 	*/
 	// /*
 	let debug:MTLFunction! = library.makeFunction(name:"kernel_debug")
-	let state:MTLComputePipelineState! = try? device.makeComputePipelineState(function:debug)
+	compute = try? device.makeComputePipelineState(function:debug)
 	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
-	encode.setComputePipelineState(state)
+	encode.setComputePipelineState(compute)
 	encode.setBuffer(planez,offset:0,index:0)
 	encode.setBuffer(charz,offset:0,index:1)
 	let groups = MTLSize(width:1,height:1,depth:1)
@@ -74,6 +75,7 @@ func swiftInit() -> Int32
 		}
 		count = count + 1
 	}
+	// cb.swap()
 	return 1
 }
 
@@ -83,11 +85,23 @@ func swiftDraw()
 	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
 	let shader:share.Shader = user.pointee.shader
 	// let shader = cb.state.12!.pointee.user!.pointee.shader
-	if (shader == share.Track) {}
+	if (shader == share.Track) {
+	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
+	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
+	encode.setComputePipelineState(compute)
+	// encode.setBuffer(planez,offset:0,index:0)
+	// encode.setBuffer(charz,offset:0,index:1)
+	let groups = MTLSize(width:1,height:1,depth:1)
+	let threads = MTLSize(width:0,height:1,depth:1)
+	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
+	encode.endEncoding()
+	code.commit()}
 	else if (shader == share.Display) {
 	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
-	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:displayPass)
-	encode.setRenderPipelineState(displayState)
+	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:pass)
+	encode.setRenderPipelineState(state)
+	// encode.setVertexBuffer(planez,offset:0,index:0)
+	// encode.setVertexBuffer(charz,offset:0,index:1)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:0)
 	encode.endEncoding()
 	code.commit()
