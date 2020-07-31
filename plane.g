@@ -166,21 +166,34 @@ vertex void vertex_pierce(
    pierce[ident].point = hole;
    pierce[ident].valid = true;
 }
-vertex void vertex_debug(
+struct Bytes {
+   char bytes[12];
+};
+// vertex VertexOutput vertex_debug(
+kernel void kernel_debug(
    const device Plane *plane [[buffer(0)]],
-   uint ident [[vertex_id]],
-   device char *bytes [[buffer(1)]])
+//    uint ident [[vertex_id]],
+   uint ident [[thread_position_in_grid]],
+   device Bytes *bytes [[buffer(1)]])
 {
-   bytes[0] = (device char*)&plane[ident].plane - (device char*)&plane[ident];
-   bytes[1] = (device char*)&plane[ident].versor - (device char*)&plane[ident];
-   bytes[2] = (device char*)&plane[ident].point - (device char*)&plane[ident];
-   bytes[3] = (device char*)&plane[ident].coord[0] - (device char*)&plane[ident];
-   bytes[4] = (device char*)&plane[ident].color[0] - (device char*)&plane[ident];
-   bytes[5] = ((device char*)&plane[ident].poly - (device char*)&plane[ident]) - 128;
-   bytes[6] = ((device char*)&plane[ident].tag - (device char*)&plane[ident]) - 128;
-   bytes[7] = (device char*)&plane[ident].coord[1] - (device char*)&plane[ident];
-   bytes[8] = (device char*)&plane[ident].color[1] - (device char*)&plane[ident];
-   bytes[9] = plane[ident].versor;
-   bytes[10] = plane[ident].poly;
-   bytes[11] = plane[ident].tag;
+   bytes[ident].bytes[0] = (device char*)&plane[ident].plane - (device char*)&plane[ident];
+   bytes[ident].bytes[1] = (device char*)&plane[ident].versor - (device char*)&plane[ident];
+   bytes[ident].bytes[2] = (device char*)&plane[ident].point - (device char*)&plane[ident];
+   bytes[ident].bytes[3] = (device char*)&plane[ident].coord[0] - (device char*)&plane[ident];
+   bytes[ident].bytes[4] = (device char*)&plane[ident].color[0] - (device char*)&plane[ident];
+   bytes[ident].bytes[5] = ((device char*)&plane[ident].poly - (device char*)&plane[ident]) - 128;
+   bytes[ident].bytes[6] = ((device char*)&plane[ident].tag - (device char*)&plane[ident]) - 128;
+   bytes[ident].bytes[7] = (device char*)&plane[ident].coord[1] - (device char*)&plane[ident];
+   bytes[ident].bytes[8] = (device char*)&plane[ident].color[1] - (device char*)&plane[ident];
+   bytes[ident].bytes[9] = ((device char*)&plane[ident+1] - (device char*)&plane[ident]) - 128;
+   bytes[ident].bytes[10] = plane[ident].versor;
+   bytes[ident].bytes[11] = plane[ident].tag;
+   /*
+   VertexOutput out;
+   out.position = float4(0.0,0.0,0.0,0.0);
+   out.normal = half3(0.0,0.0,0.0);
+   out.color = half4(0.0,0.0,0.0,0.0);
+   out.coord = half2(0.0,0.0);
+   return out;
+   */
 }

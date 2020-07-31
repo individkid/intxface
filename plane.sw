@@ -6,10 +6,8 @@ import Metal
 var window:NSWindow!
 var device:MTLDevice!
 var queue:MTLCommandQueue!
-var state:MTLRenderPipelineState!
-var compute:MTLComputePipelineState!
-var debug:MTLComputePipelineState!
-var pass:MTLRenderPassDescriptor!
+var displayPass:MTLRenderPassDescriptor!
+var displayState:MTLRenderPipelineState!
 
 func unwrap<T>(_ x: Any) -> T {
   return x as! T
@@ -25,24 +23,49 @@ func swiftInit() -> Int32
 		print("cannot load shaders")
 		return 0
 	}
-	let vertex:MTLFunction! = library.makeFunction(name:"vertex_debug")
-	compute = try? device.makeComputePipelineState(function:vertex)
-	var plane = share.Facet(); plane.versor = 7; plane.poly = 15; plane.tag = 63
-	let planes = UnsafeMutablePointer<share.Facet>.allocate(capacity:1); planes.pointee = plane
-	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size)
+	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
+	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
+	let planes = UnsafeMutablePointer<share.Facet>.allocate(capacity:2); planes[0] = plane0; planes[1] = plane1
+	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size*2)
 	let charz = device.makeBuffer(length:1000)
 	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
+	/*
+	let debug:MTLFunction! = library.makeFunction(name:"vertex_debug")
+	let ignore:MTLFunction! = library.makeFunction(name:"fragment_render")
+	let pass:MTLRenderPassDescriptor! = MTLRenderPassDescriptor()
+	// pass.colorAttachments[0].loadAction = .clear
+	// pass.colorAttachments[0].storeAction = .store
+	// pass.colorAttachments[0].clearColor = MTLClearColorMake(0.0,1.0,1.0,1.0)
+	let descriptor:MTLRenderPipelineDescriptor! = MTLRenderPipelineDescriptor()
+	descriptor.vertexFunction = debug
+	descriptor.fragmentFunction = ignore
+	descriptor.colorAttachments[0].pixelFormat = MTLPixelFormat.rgba16Float
+	let state:MTLRenderPipelineState! = try? device.makeRenderPipelineState(descriptor:descriptor)
+	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:pass)
+	encode.setRenderPipelineState(state)
+	encode.setVertexBuffer(planez,offset:0,index:0)
+	encode.setVertexBuffer(charz,offset:0,index:1)
+	encode.drawPrimitives(type:.point,vertexStart:0,vertexCount:2)
+	encode.endEncoding()
+	*/
+	// /*
+	let debug:MTLFunction! = library.makeFunction(name:"kernel_debug")
+	let state:MTLComputePipelineState! = try? device.makeComputePipelineState(function:debug)
 	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
-	encode.setComputePipelineState(compute)
+	encode.setComputePipelineState(state)
 	encode.setBuffer(planez,offset:0,index:0)
 	encode.setBuffer(charz,offset:0,index:1)
-	let size = MTLSize(width:1,height:1,depth:1)
-	encode.dispatchThreadgroups(size,threadsPerThreadgroup:size)
+	let groups = MTLSize(width:1,height:1,depth:1)
+	let threads = MTLSize(width:2,height:1,depth:1)
+	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	encode.endEncoding()
+	// */
 	code.commit()
 	code.waitUntilCompleted()
 	var count = 0
-	for expected:Int8 in [0,16,32,48,80,0,4,56,96,7,15,63] {
+	for expected:Int8 in [
+		0,16,32,48,80,0,4,56,96,16,7,63,
+		0,16,32,48,80,0,4,56,96,16,9,65] {
 		let actual:Int8 = charz!.contents().load(fromByteOffset:count,as:Int8.self)
 		if (expected != actual) {
 			print("mismatch count(\(count)): expected(\(expected)) != actual(\(actual))")
@@ -51,22 +74,7 @@ func swiftInit() -> Int32
 		}
 		count = count + 1
 	}
-	return 0
-	/*
-	let vertex:MTLFunction! = library.makeFunction(name:"vertex_render")
-	let fragment:MTLFunction! = library.makeFunction(name:"fragment_render")
-	let descriptor:MTLRenderPipelineDescriptor! = MTLRenderPipelineDescriptor()
-	descriptor.vertexFunction = vertex
-	descriptor.fragmentFunction = fragment
-	state = try? device.makeRenderPipelineState(descriptor:descriptor)
-	pass = MTLRenderPassDescriptor()
-	pass.colorAttachments[0].loadAction = .clear
-	pass.colorAttachments[0].storeAction = .store
-	pass.colorAttachments[0].clearColor = MTLClearColorMake(0.0,1.0,1.0,1.0)
-	let function:MTLFunction! = library.makeFunction(name:"pierce_main")
-	compute = try? device.makeComputePipelineState(function:function)
-	return 0
-	*/
+	return 1
 }
 
 func swiftDraw()
@@ -75,16 +83,11 @@ func swiftDraw()
 	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
 	let shader:share.Shader = user.pointee.shader
 	// let shader = cb.state.12!.pointee.user!.pointee.shader
-	if (shader == share.Track) {
-	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
-	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
-	encode.setComputePipelineState(compute)
-	encode.endEncoding()
-	code.commit()}
+	if (shader == share.Track) {}
 	else if (shader == share.Display) {
 	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
-	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:pass)
-	encode.setRenderPipelineState(state)
+	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:displayPass)
+	encode.setRenderPipelineState(displayState)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:0)
 	encode.endEncoding()
 	code.commit()
