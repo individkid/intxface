@@ -171,7 +171,16 @@ vertex void vertex_debug(
    uint ident [[vertex_id]],
    device char *bytes [[buffer(1)]])
 {
-   device char *source = (device char *)(plane+ident);
-   for (size_t i = 0; i < sizeof(Plane); i++)
-      bytes[sizeof(Plane)*ident+i] = source[i];
+   bytes[0] = (device char*)&plane[ident].plane - (device char*)&plane[ident];
+   bytes[1] = (device char*)&plane[ident].versor - (device char*)&plane[ident];
+   bytes[2] = (device char*)&plane[ident].point - (device char*)&plane[ident];
+   bytes[3] = (device char*)&plane[ident].coord[0] - (device char*)&plane[ident];
+   bytes[4] = (device char*)&plane[ident].color[0] - (device char*)&plane[ident];
+   bytes[5] = ((device char*)&plane[ident].poly - (device char*)&plane[ident]) - 128;
+   bytes[6] = ((device char*)&plane[ident].tag - (device char*)&plane[ident]) - 128;
+   bytes[7] = (device char*)&plane[ident].coord[1] - (device char*)&plane[ident];
+   bytes[8] = (device char*)&plane[ident].color[1] - (device char*)&plane[ident];
+   bytes[9] = plane[ident].versor;
+   bytes[10] = plane[ident].poly;
+   bytes[11] = plane[ident].tag;
 }
