@@ -13,13 +13,52 @@ var pass:MTLRenderPassDescriptor!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 
+var facet:MTLBuffer!
+var vertex:MTLBuffer!
+var index:MTLBuffer!
+var file:MTLBuffer!
+var state = Pool<MTLBuffer>(renew:getState)
+var pierce = Pool<MTLBuffer>(renew:getPierce)
+
 struct Pool<T>
 {
 	var max:Int = 3
 	var val:[T] = []
 	var pool = Set<Int>()
 	var inuse = Set<Int>()
+	let renew:(_ old:T?)->T?
+	mutating func id() -> Int?
+	{
+		if (pool.isEmpty && val.count >= max) {return nil}
+		if (pool.isEmpty) {
+			guard let temp = renew(nil) else {return nil}
+			pool.insert(val.count)
+			val.append(temp)}
+		let head = pool.startIndex
+		let index = pool[head]
+		return index
+	}
+	mutating func val(_ index:Int) -> T?
+	{
+		if (!inuse.contains(index)) {return nil}
+		guard let temp = renew(val[index]) else {return nil}
+		val[index] = temp
+		return temp
+	}
+	mutating func get(_ index:Int)
+	{
+		if (!pool.contains(index)) {callError();return}
+		pool.remove(index)
+		inuse.insert(index)
+	}
+	mutating func put(_ index:Int)
+	{
+		if (!inuse.contains(index)) {callError();return}
+		inuse.remove(index)
+		pool.insert(index)
 }
+}
+
 struct Share
 {
 	var basis:share.Linear
@@ -40,50 +79,43 @@ struct Pierce
 	var normal:share.Vector
 }
 
-var facet:MTLBuffer!
-var vertex:MTLBuffer!
-var index:MTLBuffer!
-var file:MTLBuffer!
-var state:Pool<MTLBuffer>
-var pierce:Pool<MTLBuffer>
-
-protocol Value
+func getMode() -> share.Mode
 {
-	init()
+	// let shader = cb.state.12!.pointee.user!.pointee.shader
+	let client:UnsafeMutablePointer<share.Client> =
+	unwrap(Mirror(reflecting: cb.state).descendant(Int(Memory.User.rawValue))!)!
+	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
+	return user.pointee
 }
-func poolId<T:Value>(pool:inout Pool<T>) -> Int?
+func getFacet() -> MTLBuffer?
 {
-	if (pool.pool.isEmpty && pool.val.count >= pool.max) {return nil}
-	if (pool.pool.isEmpty) {
-		pool.pool.insert(pool.val.count)
-		pool.val.append(T())}
-	let head = pool.pool.startIndex
-	let index = pool.pool[head]
-	return index
+	return nil // TODO
 }
-func poolVal<T:Value>(pool:inout Pool<T>,index:Int) -> T?
+func getVertex() -> MTLBuffer?
 {
-	if (!pool.inuse.contains(index)) {return nil}
-	return pool.val[index]
+	return nil // TODO
 }
-func poolGet<T:Value>(pool:inout Pool<T>,index:Int)
+func getIndex() -> MTLBuffer?
 {
-	if (!pool.pool.contains(index)) {callError();return}
-	pool.pool.remove(index)
-	pool.inuse.insert(index)
+	return nil // TODO
 }
-func poolPut<T:Value>(pool:inout Pool<T>,index:Int)
+func getArray() -> [share.Array]
 {
-	if (!pool.inuse.contains(index)) {callError();return}
-	pool.inuse.remove(index)
-	pool.pool.insert(index)
+	return [] // TODO
+}
+func getState(_ old:MTLBuffer?) -> MTLBuffer?
+{
+	return nil // TODO
+}
+func getPierce(_ old:MTLBuffer?) -> MTLBuffer?
+{
+	return nil // TODO
 }
 
 func unwrap<T>(_ x: Any) -> T
 {
   return x as! T
 }
-
 func handler(event:NSEvent) -> NSEvent?
 {
 	print("key down")
@@ -98,7 +130,7 @@ func swiftInit() -> Int32
 
 	// cb.pos
 	// cb.size
-	// cb.full
+	cb.full = swiftFull
 	cb.draw = swiftDraw
 	cb.call = {NSApp.run()}
 	cb.wake = {
@@ -222,29 +254,9 @@ func swiftInit() -> Int32
 	return 1
 }
 
-func getMode() -> share.Mode
+func swiftFull() -> Int32
 {
-	// let shader = cb.state.12!.pointee.user!.pointee.shader
-	let client:UnsafeMutablePointer<share.Client> =
-	unwrap(Mirror(reflecting: cb.state).descendant(Int(Memory.User.rawValue))!)!
-	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
-	return user.pointee
-}
-func getFacet() -> MTLBuffer?
-{
-	return nil // TODO
-}
-func getVertex() -> MTLBuffer?
-{
-	return nil // TODO
-}
-func getIndex() -> MTLBuffer?
-{
-	return nil // TODO
-}
-func getArray() -> [share.Array]
-{
-	return [] // TODO
+	return (state.id() == nil ? 1 : 0)
 }
 
 func swiftDraw()
