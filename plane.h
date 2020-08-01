@@ -29,6 +29,9 @@ struct Plane {
 struct Point {
 	uint3 plane; // planes intersect in point
 };
+struct Facet {
+	uint3 point; // points form triangle
+};
 struct Corner {
 	float4 point;
 	float4 color;

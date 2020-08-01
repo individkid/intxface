@@ -8,6 +8,7 @@ var window:NSWindow!
 var view:NSView!
 var device:MTLDevice!
 var layer: CAMetalLayer!
+var drawable: CAMetalDrawable!
 var queue:MTLCommandQueue!
 var pass:MTLRenderPassDescriptor!
 var render:MTLRenderPipelineState!
@@ -68,8 +69,6 @@ func swiftInit() -> Int32
 		print("cannot make debug"); return 0;}
 	if let temp = try? device.makeComputePipelineState(function:debug) {
 		compute = temp} else {print("cannot make compute"); return 0;}
-	let groups = MTLSize(width:1,height:1,depth:1)
-	let threads = MTLSize(width:2,height:1,depth:1)
 
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return 0}
@@ -79,6 +78,8 @@ func swiftInit() -> Int32
 	command.setBuffer(planez,offset:0,index:0)
 	command.setBuffer(pointz,offset:0,index:1)
 	command.setBuffer(charz,offset:0,index:2)
+	let groups = MTLSize(width:1,height:1,depth:1)
+	let threads = MTLSize(width:2,height:1,depth:1)
 	command.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	command.endEncoding()
 	code.commit()
@@ -104,8 +105,8 @@ func swiftInit() -> Int32
 	guard let fragment = library.makeFunction(name:"fragment_render") else {
 		print("cannot make fragment"); return 0}
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
-	guard let drawable = layer?.nextDrawable() else {
-		print("cannot make drawable"); return 0}
+	if let temp = layer?.nextDrawable() {
+		drawable = temp} else {print("cannot make drawable"); return 0}
 
 	pass = MTLRenderPassDescriptor()
 	pass.colorAttachments[0].texture = drawable.texture
@@ -134,32 +135,77 @@ func swiftInit() -> Int32
 	return 1
 }
 
-func swiftDraw()
+func getMode() -> share.Mode
 {
+	// let shader = cb.state.12!.pointee.user!.pointee.shader
 	let client:UnsafeMutablePointer<share.Client> = unwrap(Mirror(reflecting: cb.state).descendant(Int(Memory.User.rawValue))!)!
 	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
-	let shader:share.Shader = user.pointee.shader
-	// let shader = cb.state.12!.pointee.user!.pointee.shader
+	return user.pointee
+}
+func getFacet() -> MTLBuffer?
+{
+	return nil // TODO
+}
+func getVertex() -> MTLBuffer?
+{
+	return nil // TODO
+}
+func getIndex() -> MTLBuffer?
+{
+	return nil // TODO
+}
+func getArray() -> [share.Array]
+{
+	return [] // TODO
+}
+
+func swiftDraw()
+{
+	let shader = getMode().shader
 	if (shader == share.Track) {
-	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
-	let encode:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
-	encode.setComputePipelineState(compute)
-	// encode.setBuffer(planez,offset:0,index:0)
-	// encode.setBuffer(charz,offset:0,index:1)
-	let groups = MTLSize(width:1,height:1,depth:1)
-	let threads = MTLSize(width:0,height:1,depth:1)
-	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
-	encode.endEncoding()
-	code.commit()}
-	else if (shader == share.Display) {
-	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
-	let encode:MTLRenderCommandEncoder! = code.makeRenderCommandEncoder(descriptor:pass)
-	encode.setRenderPipelineState(render)
-	// encode.setVertexBuffer(planez,offset:0,index:0)
-	// encode.setVertexBuffer(charz,offset:0,index:1)
-	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:0)
-	encode.endEncoding()
-	code.commit()}
+
+		guard let recode = queue.makeCommandBuffer() else {
+			print("cannot make recode"); return}
+		guard let encode = recode.makeRenderCommandEncoder(descriptor:pass) else {
+			print("cannot make encode"); return}
+		encode.setRenderPipelineState(render)
+		encode.setVertexBuffer(getFacet(),offset:0,index:0)
+		encode.setVertexBuffer(getVertex(),offset:0,index:1)
+		encode.setVertexBuffer(getIndex(),offset:0,index:2)
+		// TODO set file buffer
+		// TODO set state buffer
+		for array in getArray() {
+			// TODO make copy of tag as single uint vertex input
+			encode.drawPrimitives(type:.triangle,vertexStart:Int(array.idx),vertexCount:Int(array.siz))
+		}
+		encode.endEncoding()
+		recode.present(drawable)
+		recode.commit()
+
+	} else if (shader == share.Display) {
+
+		guard let code = queue.makeCommandBuffer() else {
+			print("cannot make code"); return}
+		guard let command = code.makeComputeCommandEncoder() else {
+			print("cannot make command"); return}
+		command.setComputePipelineState(compute)
+		command.setBuffer(getFacet(),offset:0,index:0)
+		command.setBuffer(getVertex(),offset:0,index:1)
+		command.setBuffer(getIndex(),offset:0,index:2)
+		// TODO set file buffer
+		// TODO set state buffer
+		// TODO set allocated result buffer
+		for array in getArray() {
+			// TODO make copy of tag as single uint vertex input
+			let groups = MTLSize(width:1,height:1,depth:1)
+			let threads = MTLSize(width:2,height:1,depth:1)
+			command.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
+		}
+		command.endEncoding()
+		code.commit()
+		// TODO add callback to command to read result
+
+	}
 }
 
 // MAIN

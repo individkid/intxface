@@ -111,9 +111,10 @@ struct VertexOutput {
 vertex VertexOutput vertex_render(
    const device Plane *plane [[buffer(0)]],
    const device Point *point [[buffer(1)]],
-   uint ident [[vertex_id]],
-   const device File *file,
-   const device State *state)
+   const device Facet *facet [[buffer(2)]], // TODO use indirection
+   const device File *file [[buffer(3)]],
+   const device State *state [[buffer(4)]],
+   uint ident [[vertex_id]])
 {
    VertexOutput out;
    uint face = copoint(point[ident].plane,plane,state); // which plane of point is the face being rendered
@@ -142,10 +143,11 @@ vertex VertexOutput vertex_simple(
 vertex void vertex_pierce(
    const device Plane *plane [[buffer(0)]],
    const device Point *point [[buffer(1)]],
-   device Pierce *pierce [[buffer(2)]],
-   uint ident [[vertex_id]],
+   const device Facet *facet [[buffer(2)]], // TODO use indirection
    const device File *file [[buffer(3)]],
-   const device State *state [[buffer(4)]])
+   const device State *state [[buffer(4)]],
+   uint ident [[vertex_id]],
+   device Pierce *pierce [[buffer(5)]])
 {
    float3 feather = state->feather; // focal point
    float3 arrow = state->arrow; // mouse direction
