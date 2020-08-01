@@ -1,6 +1,6 @@
 #include "plane.h"
 
-Expand expand(Plane plane, const device State *state)
+Expand expand(Facet plane, const device State *state)
 {
    Expand result;
    for (uint i = 0; i < 3; i++) {
@@ -45,7 +45,7 @@ Expand transform(Expand plane, metal::float4x4 matrix)
 }
 uint copoint(
    uint3 map,
-   const device Plane *plane,
+   const device Facet *plane,
    const device State *state)
 {
    uint result = 0;
@@ -65,7 +65,7 @@ uint coplane(
 }
 Triple explode(
    uint3 map,
-   const device Plane *plane,
+   const device Facet *plane,
    const device State *state)
 {
    Triple result;
@@ -80,7 +80,7 @@ Triple explode(
 float4 convert(
    uint index,
    Triple triple,
-   const device Plane *plane,
+   const device Facet *plane,
    const device File *file,
    const device State *state)
 {
@@ -91,7 +91,7 @@ float4 convert(
 }
 Expand prepare(
    uint index,
-   const device Plane *plane,
+   const device Facet *plane,
    const device File *file,
    const device State *state)
 {
@@ -109,9 +109,9 @@ struct VertexOutput {
    float2 coord;
 };
 vertex VertexOutput vertex_render(
-   const device Plane *plane [[buffer(0)]],
-   const device Point *point [[buffer(1)]],
-   const device Facet *facet [[buffer(2)]], // TODO use indirection
+   const device Facet *plane [[buffer(0)]],
+   const device Vertex *point [[buffer(1)]],
+   const device Index *facet [[buffer(2)]], // TODO use indirection
    const device File *file [[buffer(3)]],
    const device State *state [[buffer(4)]],
    uint ident [[vertex_id]])
@@ -132,18 +132,18 @@ fragment half4 fragment_render(
    return half4(in.color);
 }
 vertex VertexOutput vertex_simple(
-   const device Corner *point [[buffer(0)]],
+   const device Facet *point [[buffer(0)]],
    uint ident [[vertex_id]])
 {
    VertexOutput out = VertexOutput();
-   out.position = point[ident].point;
-   out.color = point[ident].color;
+   out.position = float4(point[ident].plane,1.0);
+   out.color = point[ident].color[0];
    return out;
 }
 vertex void vertex_pierce(
-   const device Plane *plane [[buffer(0)]],
-   const device Point *point [[buffer(1)]],
-   const device Facet *facet [[buffer(2)]], // TODO use indirection
+   const device Facet *plane [[buffer(0)]],
+   const device Vertex *point [[buffer(1)]],
+   const device Index *facet [[buffer(2)]], // TODO use indirection
    const device File *file [[buffer(3)]],
    const device State *state [[buffer(4)]],
    uint ident [[vertex_id]],
@@ -181,8 +181,8 @@ struct Bytes {
    char bytes[12];
 };
 kernel void kernel_debug(
-   const device Plane *plane [[buffer(0)]],
-   const device Corner *point [[buffer(1)]],
+   const device Facet *plane [[buffer(0)]],
+   const device Index *point [[buffer(1)]],
    uint ident [[thread_position_in_grid]],
    device Bytes *bytes [[buffer(2)]])
 {
@@ -194,8 +194,8 @@ kernel void kernel_debug(
    bytes[ident].bytes[5] = ((device char*)&plane[ident].poly - (device char*)&plane[ident]) - 128;
    bytes[ident].bytes[6] = ((device char*)&plane[ident].tag - (device char*)&plane[ident]) - 128;
    bytes[ident].bytes[7] = ((device char*)&plane[ident+1] - (device char*)&plane[ident]) - 128;
-   bytes[ident].bytes[8] = (device char*)&point[ident].color - (device char*)&point[ident];
-   bytes[ident].bytes[9] = (device char*)&point[ident+1] - (device char*)&point[ident];
-   bytes[ident].bytes[10] = char(point[ident].point.y);
+   bytes[ident].bytes[8] = (device char*)&point[ident+1] - (device char*)&point[ident];
+   bytes[ident].bytes[9] = point[ident].point.x;
+   bytes[ident].bytes[10] = point[ident].point.y;
    bytes[ident].bytes[11] = plane[ident].tag;
 }

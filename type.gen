@@ -75,7 +75,6 @@ Memory = {
 	"Corner",
 	"Frame",
 	"Range",
-	"Raw",
 	"Basis",
 	"Subject",
 	"Object",
@@ -203,18 +202,16 @@ Facet = {
 }
 Vertex = {
 	{"plane","int",{},{3}},
+	{"pad","int",{},{1}},
 }
 Index = {
 	{"point","int",{},{3}},
+	{"pad","int",{},{1}},
 }
 Array = {
 	{"idx","int",{},{}},
 	{"siz","int",{},{}},
 	{"tag","int",{},{}},
-}
-Simple = {
-	{"point","float",{},{4}},
-	{"color","float",{},{4}},
 }
 Affine = {
 	{"val","float",{},{4,4}},
@@ -245,7 +242,6 @@ Client = {
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
 	{"frame","Index",{["mem"]={["Frame"]=true}},"siz"},
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
-	{"fixed","Simple",{["mem"]={["Raw"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
 	{"subject","Affine",{["mem"]={["Subject"]=true}},1},
 	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},

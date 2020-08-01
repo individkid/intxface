@@ -55,12 +55,16 @@ func swiftInit() -> Int32
 	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
 	let planes = [plane0,plane1]
 	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size*2)
-	var point0 = share.Simple(); point0.point = (0.0,1.0,0.0,1.0); point0.color = (1.0,1.0,0.0,1.0)
-	var point1 = share.Simple(); point1.point = (-1.0,-1.0,0.0,1.0); point1.color = (1.0,1.0,0.0,1.0)
-	var point2 = share.Simple(); point2.point = (1.0,-1.0,0.0,1.0); point2.color = (1.0,0.5,0.0,1.0)
+	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.0); point0.color.0 = (1.0,1.0,0.0,1.0)
+	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.0); point1.color.0 = (1.0,1.0,0.0,1.0)
+	var point2 = share.Facet(); point2.plane = (1.0,-1.0,0.0); point2.color.0 = (1.0,0.5,0.0,1.0)
 	let points = [point0,point1,point2]
-	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Simple>.size*3)
+	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Facet>.size*3)
 	let charz = device.makeBuffer(length:1000)
+	var array0 = share.Index(); array0.point = (0,1,2)
+	var array1 = share.Index(); array1.point = (3,4,5)
+	let arrays = [array0,array1]
+	let arrayz = device.makeBuffer(bytes:arrays,length:MemoryLayout<share.Index>.size*2)
 
 	print("before compute")
 
@@ -75,7 +79,7 @@ func swiftInit() -> Int32
 		print("cannot make command"); return 0}
 	command.setComputePipelineState(compute)
 	command.setBuffer(planez,offset:0,index:0)
-	command.setBuffer(pointz,offset:0,index:1)
+	command.setBuffer(arrayz,offset:0,index:1)
 	command.setBuffer(charz,offset:0,index:2)
 	let groups = MTLSize(width:1,height:1,depth:1)
 	let threads = MTLSize(width:2,height:1,depth:1)
@@ -86,8 +90,8 @@ func swiftInit() -> Int32
 
 	var count = 0
 	for expected:Int8 in [
-		0,16,32,48,80,0,4,16,16,32,1,63,
-		0,16,32,48,80,0,4,16,16,32,-1,65] {
+		0,16,32,48,80,0,4,16,16,0,1,63,
+		0,16,32,48,80,0,4,16,16,3,4,65] {
 		let actual:Int8 = charz!.contents().load(fromByteOffset:count,as:Int8.self)
 		if (expected != actual) {
 			print("mismatch count(\(count)): expected(\(expected)) != actual(\(actual))")
@@ -164,51 +168,45 @@ func swiftDraw()
 	let shader = getMode().shader
 	if (shader == share.Track) {
 
-		guard let recode = queue.makeCommandBuffer() else {
-			print("cannot make recode"); return}
-		guard let encode = recode.makeRenderCommandEncoder(descriptor:pass) else {
-			print("cannot make encode"); return}
-		encode.setRenderPipelineState(render)
-		encode.setVertexBuffer(getFacet(),offset:0,index:0)
-		encode.setVertexBuffer(getVertex(),offset:0,index:1)
-		encode.setVertexBuffer(getIndex(),offset:0,index:2)
-		// TODO set file buffer
-		// TODO set state buffer
+		guard let recode = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
-			// TODO make copy of tag as single uint vertex input
+			guard let encode = recode.makeRenderCommandEncoder(descriptor:pass) else {callError();return}
+			encode.setRenderPipelineState(render)
+			encode.setVertexBuffer(getFacet(),offset:0,index:0)
+			encode.setVertexBuffer(getVertex(),offset:0,index:1)
+			encode.setVertexBuffer(getIndex(),offset:0,index:2)
+			// TODO set file buffer
+			// TODO set state buffer with altered tag
 			encode.drawPrimitives(
 				type:.triangle,
 				vertexStart:Int(array.idx),
 				vertexCount:Int(array.siz))
+			encode.endEncoding()
 		}
-		encode.endEncoding()
 		recode.present(drawable)
 		recode.commit()
 
 	} else if (shader == share.Display) {
 
-		guard let code = queue.makeCommandBuffer() else {
-			print("cannot make code"); return}
-		guard let command = code.makeComputeCommandEncoder() else {
-			print("cannot make command"); return}
-		command.setComputePipelineState(compute)
-		command.setBuffer(getFacet(),offset:0,index:0)
-		command.setBuffer(getVertex(),offset:0,index:1)
-		// TODO set file buffer
-		// TODO set state buffer
-		// TODO set allocated result buffer
+		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
+			guard let command = code.makeComputeCommandEncoder() else {callError();return}
+			command.setComputePipelineState(compute)
+			command.setBuffer(getFacet(),offset:0,index:0)
+			command.setBuffer(getVertex(),offset:0,index:1)
 			let offset = Int(array.idx)*MemoryLayout<share.Index>.size
 			command.setBuffer(getIndex(),offset:offset,index:2)
-			// TODO make copy of tag as single uint vertex input
+			// TODO set file buffer
+			// TODO set state buffer with altered tag
+			// TODO set allocated result buffer
 			let groups = MTLSize(width:1,height:1,depth:1)
 			// TODO use groups if threads too large
 			let threads = MTLSize(width:Int(array.siz),height:1,depth:1)
 			command.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
+			command.endEncoding()
+			// TODO add callback to read result
 		}
-		command.endEncoding()
 		code.commit()
-		// TODO add callback to command to read result
 
 	}
 }
@@ -221,13 +219,11 @@ func swiftDraw()
 	if (cb.hub < 0) {callError()}
 	bothJump(cb.err,cb.hub)}
 	cb.zub = openPipe()
-	if (cb.zub < 0) {callError()}
-	bothJump(cb.err,cb.zub)
 	cb.tub = openPipe()
-	if (cb.tub < 0) {callError()}
-	bothJump(cb.err,cb.tub)
 	cb.mub = openPipe();
-	if (cb.mub < 0) {callError()}
+	if (cb.zub < 0 || cb.tub < 0 || cb.mub < 0) {callError()}
+	bothJump(cb.err,cb.zub)
+	bothJump(cb.err,cb.tub)
 	bothJump(cb.err,cb.mub)
 	planeInit(Int32(argc))
 	threadInit()

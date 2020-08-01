@@ -17,7 +17,7 @@
 
 #include <metal_matrix>
 
-struct Plane {
+struct Facet {
 	float3 plane; // distances above expanded basis plane
 	uint versor; // which expanded plane in basis to use
 	uint3 point; // match to point to choose coord and color
@@ -26,15 +26,11 @@ struct Plane {
 	uint poly; // which polytope plane is in
 	uint tag; // which of 7 sets plane is in
 };
-struct Point {
+struct Vertex {
 	uint3 plane; // planes intersect in point
 };
-struct Facet {
+struct Index {
 	uint3 point; // points form triangle
-};
-struct Corner {
-	float4 point;
-	float4 color;
 };
 struct Expand {
 	float3 point[3]; // plane expanded to points by basis
