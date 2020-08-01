@@ -297,16 +297,6 @@ enum Memory copyUser(struct Client *client, struct Mode *user)
 	return User;
 }
 
-int callread()
-{
-	int res = 0;
-	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (vld) {readClient(cb.client,sub); vld = 0; res = 1;
-	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
-	return res;
-}
-
 float *clientMat(struct Client *client, int idx)
 {
 	switch (cb.client->mem) {
@@ -375,30 +365,14 @@ void clientCopy(struct Client **ptr)
 	allocClient(&ptr[cb.client->mem],0); ptr[cb.client->mem] = cb.client;
 }
 
-void clientRefer()
-{
-	switch (cb.client->mem) {
-	case (Triangle): cb.refer[Triangle] = &cb.state[Triangle]->triangle[0];
-	case (Corner): cb.refer[Corner] = &cb.state[Corner]->corner[0];
-	case (Basis): cb.refer[Basis] = &cb.state[Basis]->basis[0];
-	case (Subject): cb.refer[Subject] = &cb.state[Subject]->subject[0];
-	case (Object): cb.refer[Object] = &cb.state[Object]->object[0];
-	case (Feature): cb.refer[Feature] = &cb.state[Feature]->feature[0];
-	case (Feather): cb.refer[Feather] = &cb.state[Feather]->feather[0];
-	case (Arrow): cb.refer[Arrow] = &cb.state[Arrow]->arrow[0];
-	case (Cloud): cb.refer[Cloud] = &cb.state[Cloud]->cloud[0];
-	case (Tag): cb.refer[Tag] = &cb.state[Tag]->tag;
-	default: break;}
-}
-
-void process()
+void windowProc()
 {
 	for (int i = 0; i < cb.client->len; i++)
 	switch (cb.client->fnc[i]) {
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
 	case (Rmw2): clientRmw2(); break;
-	case (Copy): clientCopy(cb.state); clientRefer(); break;
+	case (Copy): clientCopy(cb.state); break;
 	case (Save): clientCopy(saved); break;
 	case (Dma0): break;
 	case (Dma1): break;
@@ -407,7 +381,7 @@ void process()
 	default: ERROR(exiterr,-1);}
 }
 
-void produce()
+void windowProd()
 {
 	for (int i = 0; i < cb.client->len; i++)
 	switch (cb.client->fnc[i]) {
@@ -441,6 +415,16 @@ void *thread(void *arg)
 	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
 	return 0;
+}
+
+int windowRead()
+{
+	int res = 0;
+	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
+	if (vld) {readClient(cb.client,sub); vld = 0; res = 1;
+	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
+	return res;
 }
 
 void windowWarp(double xpos, double ypos)
@@ -594,12 +578,11 @@ void planeInit(int argc)
 	cb.roll = (argc == 4 ? windowRoll : noroll);
 	cb.click = (argc == 4 ? windowClick : noclick);
 	cb.full = nofalse;
-	cb.read = (argc == 4 ? callread : nofalse);
-	cb.proc = process;
 	cb.draw = novoid;
-	cb.prod = produce;
+	cb.proc = windowProc;
+	cb.prod = windowProd;
+	cb.read = windowRead;
 	cb.call = novoid;
-	cb.swap = novoid;
 	cb.wake = novoid;
 	cb.done = novoid;
 }

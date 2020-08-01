@@ -83,7 +83,6 @@ Memory = {
 	"Arrow",
 	"Cloud",
 	"Hand",
-	"Tag",
 	"User",
 	"Image",
 }
@@ -218,9 +217,11 @@ Affine = {
 }
 Linear = {
 	{"val","float",{},{3,3}},
+	{"pad","int",{},{3}},
 }
 Vector = {
 	{"val","float",{},{3}},
+	{"pad","int",{},{1}},
 }
 Cursor = {
 	{"val","float",{},{2}},
@@ -250,7 +251,6 @@ Client = {
 	{"arrow","Vector",{["mem"]={["Arrow"]=true}},1},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
 	{"hand","int",{["mem"]={["Hand"]=true}},{}},
-	{"tag","int",{["mem"]={["Tag"]=true}},{}},
 	{"user","Mode",{["mem"]={["User"]=true}},1},
 }
 Sculpt = {

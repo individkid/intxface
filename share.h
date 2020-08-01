@@ -31,12 +31,11 @@ struct Callback {
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
 	int (*full)(); // glfw.c : opengl.c
-	int (*read)(); // glfw.c : plane.c
-	void (*proc)(); // glfw.c : plane.c
 	void (*draw)(); // glfw.c : opengl.c
+	void (*proc)(); // glfw.c : plane.c
 	void (*prod)(); // glfw.c : plane.c
+	int (*read)(); // glfw.c : plane.c
 	void (*call)(); // plane.c : glfw.c
-	void (*swap)(); // opengl.c : glfw.c
 	void (*wake)(); // plane.c : glfw.c
 	void (*done)(); // plane.c : opengl.c
 	int hub; // from other processes

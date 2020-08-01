@@ -13,7 +13,74 @@ var pass:MTLRenderPassDescriptor!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 
-func unwrap<T>(_ x: Any) -> T {
+struct Pool<T>
+{
+	var max:Int = 3
+	var val:[T] = []
+	var pool = Set<Int>()
+	var inuse = Set<Int>()
+}
+struct Share
+{
+	var basis:share.Linear
+	var subject:share.Affine
+	var feature:share.Affine
+	var feather:share.Vector
+	var arrow:share.Vector
+	var size:uint
+	var tag:uint
+	var manip:uint
+	var pad:uint
+}
+struct Pierce
+{
+	var valid:Bool
+	var pad:(uint,uint,uint)
+	var point:share.Vector
+	var normal:share.Vector
+}
+
+var facet:MTLBuffer!
+var vertex:MTLBuffer!
+var index:MTLBuffer!
+var file:MTLBuffer!
+var state:Pool<MTLBuffer>
+var pierce:Pool<MTLBuffer>
+
+protocol Value
+{
+	init()
+}
+func poolId<T:Value>(pool:inout Pool<T>) -> Int?
+{
+	if (pool.pool.isEmpty && pool.val.count >= pool.max) {return nil}
+	if (pool.pool.isEmpty) {
+		pool.pool.insert(pool.val.count)
+		pool.val.append(T())}
+	let head = pool.pool.startIndex
+	let index = pool.pool[head]
+	return index
+}
+func poolVal<T:Value>(pool:inout Pool<T>,index:Int) -> T?
+{
+	if (!pool.inuse.contains(index)) {return nil}
+	return pool.val[index]
+}
+func poolGet<T:Value>(pool:inout Pool<T>,index:Int)
+{
+	if (!pool.pool.contains(index)) {callError();return}
+	pool.pool.remove(index)
+	pool.inuse.insert(index)
+}
+func poolPut<T:Value>(pool:inout Pool<T>,index:Int)
+{
+	if (!pool.inuse.contains(index)) {callError();return}
+	pool.inuse.remove(index)
+	pool.pool.insert(index)
+}
+
+func unwrap<T>(_ x: Any) -> T
+{
   return x as! T
 }
 
@@ -29,8 +96,25 @@ func swiftInit() -> Int32
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
 
+	// cb.pos
+	// cb.size
+	// cb.full
 	cb.draw = swiftDraw
 	cb.call = {NSApp.run()}
+	cb.wake = {
+		NSApp.postEvent(
+		NSEvent.otherEvent(
+		with:.applicationDefined,
+		location:NSZeroPoint,
+		modifierFlags:.command,
+		timestamp:0.0,
+		windowNumber:0,
+		context:nil,
+		subtype:0,
+		data1:0,
+		data2:0)!,
+		atStart:false)}
+
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:handler)
 
 	let rect = NSMakeRect(0, 0, 640, 480)
@@ -168,9 +252,9 @@ func swiftDraw()
 	let shader = getMode().shader
 	if (shader == share.Track) {
 
-		guard let recode = queue.makeCommandBuffer() else {callError();return}
+		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
-			guard let encode = recode.makeRenderCommandEncoder(descriptor:pass) else {callError();return}
+			guard let encode = code.makeRenderCommandEncoder(descriptor:pass) else {callError();return}
 			encode.setRenderPipelineState(render)
 			encode.setVertexBuffer(getFacet(),offset:0,index:0)
 			encode.setVertexBuffer(getVertex(),offset:0,index:1)
@@ -183,27 +267,27 @@ func swiftDraw()
 				vertexCount:Int(array.siz))
 			encode.endEncoding()
 		}
-		recode.present(drawable)
-		recode.commit()
+		code.present(drawable)
+		code.commit()
 
 	} else if (shader == share.Display) {
 
 		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
-			guard let command = code.makeComputeCommandEncoder() else {callError();return}
-			command.setComputePipelineState(compute)
-			command.setBuffer(getFacet(),offset:0,index:0)
-			command.setBuffer(getVertex(),offset:0,index:1)
+			guard let encode = code.makeComputeCommandEncoder() else {callError();return}
+			encode.setComputePipelineState(compute)
+			encode.setBuffer(getFacet(),offset:0,index:0)
+			encode.setBuffer(getVertex(),offset:0,index:1)
 			let offset = Int(array.idx)*MemoryLayout<share.Index>.size
-			command.setBuffer(getIndex(),offset:offset,index:2)
+			encode.setBuffer(getIndex(),offset:offset,index:2)
 			// TODO set file buffer
 			// TODO set state buffer with altered tag
 			// TODO set allocated result buffer
 			let groups = MTLSize(width:1,height:1,depth:1)
 			// TODO use groups if threads too large
 			let threads = MTLSize(width:Int(array.siz),height:1,depth:1)
-			command.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
-			command.endEncoding()
+			encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
+			encode.endEncoding()
 			// TODO add callback to read result
 		}
 		code.commit()
@@ -214,18 +298,16 @@ func swiftDraw()
 // MAIN
 	let argc = CommandLine.arguments.count
 	let argv = CommandLine.arguments
-	if (argc == 4) {
-	cb.hub = pipeInit(argv[1],argv[2])
-	if (cb.hub < 0) {callError()}
-	bothJump(cb.err,cb.hub)}
+	if (argc == 4) {cb.hub = pipeInit(argv[1],argv[2])}
 	cb.zub = openPipe()
 	cb.tub = openPipe()
 	cb.mub = openPipe();
-	if (cb.zub < 0 || cb.tub < 0 || cb.mub < 0) {callError()}
+	if (cb.zub < 0 || cb.tub < 0 || cb.mub < 0 || (argc == 4 && cb.hub < 0)) {callError()}
+	planeInit(Int32(argc))
 	bothJump(cb.err,cb.zub)
 	bothJump(cb.err,cb.tub)
 	bothJump(cb.err,cb.mub)
-	planeInit(Int32(argc))
+	if (argc == 4) {bothJump(cb.err,cb.hub)}
 	threadInit()
 	if (swiftInit() != 0) {cb.call()}
 	writeInt(1,cb.zub)
