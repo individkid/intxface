@@ -210,17 +210,22 @@ func swiftDraw()
 // MAIN
 	let argc = CommandLine.arguments.count
 	let argv = CommandLine.arguments
-	if (argc == 4) {cb.hub = pipeInit(argv[1],argv[2]); if (cb.hub < 0) {callError()}; bothJump(cb.err,cb.hub)}
-	cb.zub = openPipe(); if (cb.zub < 0) {callError()}; bothJump(cb.err,cb.zub)
-	cb.tub = openPipe(); if (cb.tub < 0) {callError()}; bothJump(cb.err,cb.tub)
-	cb.mub = openPipe(); if (cb.mub < 0) {callError()}; bothJump(cb.err,cb.mub)
+	if (argc == 4) {
+	cb.hub = pipeInit(argv[1],argv[2])
+	if (cb.hub < 0) {callError()}
+	bothJump(cb.err,cb.hub)}
+	cb.zub = openPipe()
+	if (cb.zub < 0) {callError()}
+	bothJump(cb.err,cb.zub)
+	cb.tub = openPipe()
+	if (cb.tub < 0) {callError()}
+	bothJump(cb.err,cb.tub)
+	cb.mub = openPipe();
+	if (cb.mub < 0) {callError()}
+	bothJump(cb.err,cb.mub)
 	planeInit(Int32(argc))
 	threadInit()
-	// if (argc == 4) {displayInit(argv[3])}
-	// if (argc != 4) {displayInit(argv[0])}
-	// windowInit()
 	if (swiftInit() != 0) {cb.call()}
 	writeInt(1,cb.zub)
 	cb.done()
-	// displayDone()
 	threadDone()
