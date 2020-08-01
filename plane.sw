@@ -2,7 +2,6 @@ import face
 import share
 import AppKit
 import Metal
-import MetalKit
 
 var window:NSWindow!
 var view:NSView!
@@ -195,7 +194,7 @@ func swiftDraw()
 		// TODO set file buffer
 		// TODO set state buffer
 		// TODO set allocated result buffer
-		for array in getArray() {
+		for _ in getArray() {
 			// TODO make copy of tag as single uint vertex input
 			let groups = MTLSize(width:1,height:1,depth:1)
 			let threads = MTLSize(width:2,height:1,depth:1)
