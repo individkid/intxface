@@ -137,7 +137,8 @@ func swiftInit() -> Int32
 func getMode() -> share.Mode
 {
 	// let shader = cb.state.12!.pointee.user!.pointee.shader
-	let client:UnsafeMutablePointer<share.Client> = unwrap(Mirror(reflecting: cb.state).descendant(Int(Memory.User.rawValue))!)!
+	let client:UnsafeMutablePointer<share.Client> =
+	unwrap(Mirror(reflecting: cb.state).descendant(Int(Memory.User.rawValue))!)!
 	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
 	return user.pointee
 }
@@ -175,7 +176,10 @@ func swiftDraw()
 		// TODO set state buffer
 		for array in getArray() {
 			// TODO make copy of tag as single uint vertex input
-			encode.drawPrimitives(type:.triangle,vertexStart:Int(array.idx),vertexCount:Int(array.siz))
+			encode.drawPrimitives(
+				type:.triangle,
+				vertexStart:Int(array.idx),
+				vertexCount:Int(array.siz))
 		}
 		encode.endEncoding()
 		recode.present(drawable)
@@ -190,14 +194,16 @@ func swiftDraw()
 		command.setComputePipelineState(compute)
 		command.setBuffer(getFacet(),offset:0,index:0)
 		command.setBuffer(getVertex(),offset:0,index:1)
-		command.setBuffer(getIndex(),offset:0,index:2)
 		// TODO set file buffer
 		// TODO set state buffer
 		// TODO set allocated result buffer
-		for _ in getArray() {
+		for array in getArray() {
+			let offset = Int(array.idx)*MemoryLayout<share.Index>.size
+			command.setBuffer(getIndex(),offset:offset,index:2)
 			// TODO make copy of tag as single uint vertex input
 			let groups = MTLSize(width:1,height:1,depth:1)
-			let threads = MTLSize(width:2,height:1,depth:1)
+			// TODO use groups if threads too large
+			let threads = MTLSize(width:Int(array.siz),height:1,depth:1)
 			command.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 		}
 		command.endEncoding()

@@ -71,8 +71,9 @@ Function = {
 	"Port",
 }
 Memory = {
-	"Corner",
 	"Triangle",
+	"Corner",
+	"Frame",
 	"Range",
 	"Raw",
 	"Basis",
@@ -203,6 +204,9 @@ Facet = {
 Vertex = {
 	{"plane","int",{},{3}},
 }
+Index = {
+	{"point","int",{},{3}},
+}
 Array = {
 	{"idx","int",{},{}},
 	{"siz","int",{},{}},
@@ -239,6 +243,7 @@ Client = {
 	{"siz","int",{},{}},
 	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
+	{"frame","Index",{["mem"]={["Frame"]=true}},"siz"},
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
 	{"fixed","Simple",{["mem"]={["Raw"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
