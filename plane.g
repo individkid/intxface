@@ -125,10 +125,28 @@ vertex VertexOutput vertex_render(
    out.coord = half2(plane[face].coord[corner]);
    return out;
 }
+vertex VertexOutput vertex_simple(
+   const device Corner *point [[buffer(0)]],
+   uint ident [[vertex_id]])
+{
+   VertexOutput out;
+   out.position = point[ident].point;
+   out.color = half4(point[ident].color);
+   return out;
+}
 fragment half4 fragment_render(
    VertexOutput in [[stage_in]])
 {
+   return half4(1.0);
    return in.color;
+}
+vertex float4 basic_vertex(                           // 1
+  const device packed_float3* vertex_array [[ buffer(0) ]], // 2
+  unsigned int vid [[ vertex_id ]]) {                 // 3
+  return float4(vertex_array[vid], 1.0);              // 4
+}
+fragment half4 basic_fragment() { // 1
+  return half4(1.0);              // 2
 }
 vertex void vertex_pierce(
    const device Plane *plane [[buffer(0)]],

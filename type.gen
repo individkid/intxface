@@ -74,6 +74,7 @@ Memory = {
 	"Corner",
 	"Triangle",
 	"Range",
+	"Raw",
 	"Basis",
 	"Subject",
 	"Object",
@@ -207,6 +208,10 @@ Array = {
 	{"siz","int",{},{}},
 	{"tag","int",{},{}},
 }
+Simple = {
+	{"point","float",{},{4}},
+	{"color","float",{},{4}},
+}
 Affine = {
 	{"val","float",{},{4,4}},
 }
@@ -235,6 +240,7 @@ Client = {
 	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
+	{"fixed","Simple",{["mem"]={["Raw"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
 	{"subject","Affine",{["mem"]={["Subject"]=true}},1},
 	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},

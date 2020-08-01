@@ -29,6 +29,10 @@ struct Plane {
 struct Point {
 	uint3 plane; // planes intersect in point
 };
+struct Corner {
+	float4 point;
+	float4 color;
+};
 struct Expand {
 	float3 point[3]; // plane expanded to points by basis
 };
