@@ -115,7 +115,7 @@ func swiftInit() -> Int32
 	let pipe = MTLRenderPipelineDescriptor()
 	pipe.vertexFunction = vertex
 	pipe.fragmentFunction = fragment
-	pipe.colorAttachments[0].pixelFormat = /*view.colorPixelFormat*/ /*texture.pixelFormat*/ .bgra8Unorm
+	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return 0}
 
