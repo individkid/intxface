@@ -104,9 +104,9 @@ Expand prepare(
 // MAIN
 struct VertexOutput {
    float4 position [[position]];
-   half3 normal;
-   half4 color;
-   half2 coord;
+   float3 normal;
+   float4 color;
+   float2 coord;
 };
 vertex VertexOutput vertex_render(
    const device Plane *plane [[buffer(0)]],
@@ -120,33 +120,24 @@ vertex VertexOutput vertex_render(
    uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
    out.position = convert(face,triple,plane,file,state);
-   out.normal = half3(normal3(triple));
-   out.color = half4(plane[face].color[corner]);
-   out.coord = half2(plane[face].coord[corner]);
-   return out;
-}
-vertex VertexOutput vertex_simple(
-   const device Corner *point [[buffer(0)]],
-   uint ident [[vertex_id]])
-{
-   VertexOutput out;
-   out.position = point[ident].point;
-   out.color = half4(point[ident].color);
+   out.normal = normal3(triple);
+   out.color = plane[face].color[corner];
+   out.coord = plane[face].coord[corner];
    return out;
 }
 fragment half4 fragment_render(
    VertexOutput in [[stage_in]])
 {
-   return half4(1.0);
-   return in.color;
+   return half4(in.color);
 }
-vertex float4 basic_vertex(                           // 1
-  const device packed_float3* vertex_array [[ buffer(0) ]], // 2
-  unsigned int vid [[ vertex_id ]]) {                 // 3
-  return float4(vertex_array[vid], 1.0);              // 4
-}
-fragment half4 basic_fragment() { // 1
-  return half4(1.0);              // 2
+vertex VertexOutput vertex_simple(
+   const device Corner *point [[buffer(0)]],
+   uint ident [[vertex_id]])
+{
+   VertexOutput out = VertexOutput();
+   out.position = point[ident].point;
+   out.color = point[ident].color;
+   return out;
 }
 vertex void vertex_pierce(
    const device Plane *plane [[buffer(0)]],
@@ -187,12 +178,11 @@ vertex void vertex_pierce(
 struct Bytes {
    char bytes[12];
 };
-// vertex VertexOutput vertex_debug(
 kernel void kernel_debug(
    const device Plane *plane [[buffer(0)]],
-//    uint ident [[vertex_id]],
+   const device Corner *point [[buffer(1)]],
    uint ident [[thread_position_in_grid]],
-   device Bytes *bytes [[buffer(1)]])
+   device Bytes *bytes [[buffer(2)]])
 {
    bytes[ident].bytes[0] = (device char*)&plane[ident].plane - (device char*)&plane[ident];
    bytes[ident].bytes[1] = (device char*)&plane[ident].versor - (device char*)&plane[ident];
@@ -201,17 +191,9 @@ kernel void kernel_debug(
    bytes[ident].bytes[4] = (device char*)&plane[ident].color[0] - (device char*)&plane[ident];
    bytes[ident].bytes[5] = ((device char*)&plane[ident].poly - (device char*)&plane[ident]) - 128;
    bytes[ident].bytes[6] = ((device char*)&plane[ident].tag - (device char*)&plane[ident]) - 128;
-   bytes[ident].bytes[7] = (device char*)&plane[ident].coord[1] - (device char*)&plane[ident];
-   bytes[ident].bytes[8] = (device char*)&plane[ident].color[1] - (device char*)&plane[ident];
-   bytes[ident].bytes[9] = ((device char*)&plane[ident+1] - (device char*)&plane[ident]) - 128;
-   bytes[ident].bytes[10] = plane[ident].versor;
+   bytes[ident].bytes[7] = ((device char*)&plane[ident+1] - (device char*)&plane[ident]) - 128;
+   bytes[ident].bytes[8] = (device char*)&point[ident].color - (device char*)&point[ident];
+   bytes[ident].bytes[9] = (device char*)&point[ident+1] - (device char*)&point[ident];
+   bytes[ident].bytes[10] = char(point[ident].point.y);
    bytes[ident].bytes[11] = plane[ident].tag;
-   /*
-   VertexOutput out;
-   out.position = float4(0.0,0.0,0.0,0.0);
-   out.normal = half3(0.0,0.0,0.0);
-   out.color = half4(0.0,0.0,0.0,0.0);
-   out.coord = half2(0.0,0.0);
-   return out;
-   */
 }

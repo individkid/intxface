@@ -5,14 +5,13 @@ import Metal
 import MetalKit
 
 var window:NSWindow!
-var device:MTLDevice!
-// var view:MTKView!
 var view:NSView!
+var device:MTLDevice!
+var layer: CAMetalLayer!
 var queue:MTLCommandQueue!
 var pass:MTLRenderPassDescriptor!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
-var layer: CAMetalLayer!
 
 func unwrap<T>(_ x: Any) -> T {
   return x as! T
@@ -24,70 +23,71 @@ func handler(event:NSEvent) -> NSEvent?
 	return nil
 }
 
-/*
-class AppDelegate: NSObject, NSApplicationDelegate
-{
-	func applicationDidFinishLaunching(_ notification: Notification)
-{
-}
-}
-*/
-
 func swiftInit() -> Int32
 {
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:handler)
-	cb.draw = swiftDraw
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
-	// let delegate = AppDelegate()
-	// NSApp.delegate = delegate
-	let window = NSWindow(
-	    contentRect: NSMakeRect(0, 0, 640, 480),
-	    styleMask: [.titled, .closable, .resizable],
-	    backing: .buffered,
-	    defer: true
-	)
+
+	cb.draw = swiftDraw
+	cb.call = {NSApp.run()}
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:handler)
+
+	let rect = NSMakeRect(0, 0, 640, 480)
+	let mask:NSWindow.StyleMask = [.titled, .closable, .resizable]
+	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
 	window.title = "Hello, world!"
 	window.makeKeyAndOrderFront(nil)
 	view = NSView(frame:window.frame)
 	window.contentView = view
 	device = MTLCreateSystemDefaultDevice()
-layer = CAMetalLayer()          // 1
-layer.device = device           // 2
-layer.pixelFormat = .bgra8Unorm // 3
-layer.framebufferOnly = true    // 4
-layer.frame = window.frame      // 5
-view.layer = layer              // 6
+	layer = CAMetalLayer()
+	layer.device = device
+	layer.pixelFormat = .bgra8Unorm
+	layer.framebufferOnly = true
+	layer.frame = window.frame
+	view.layer = layer
 	queue = device.makeCommandQueue()
+
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
-		print("cannot load shaders")
-		return 0
-	}
-	print("before compute")
-	// /*
-	let debug:MTLFunction! = library.makeFunction(name:"kernel_debug")
+		print("cannot load shaders"); return 0}
 	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
 	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
-	let planes = UnsafeMutablePointer<share.Facet>.allocate(capacity:2); planes[0] = plane0; planes[1] = plane1
+	let planes = [plane0,plane1]
 	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size*2)
+	var point0 = share.Simple(); point0.point = (0.0,1.0,0.0,1.0); point0.color = (1.0,1.0,0.0,1.0)
+	var point1 = share.Simple(); point1.point = (-1.0,-1.0,0.0,1.0); point1.color = (1.0,1.0,0.0,1.0)
+	var point2 = share.Simple(); point2.point = (1.0,-1.0,0.0,1.0); point2.color = (1.0,0.5,0.0,1.0)
+	let points = [point0,point1,point2]
+	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Simple>.size*3)
 	let charz = device.makeBuffer(length:1000)
-	compute = try? device.makeComputePipelineState(function:debug)
-	let code:MTLCommandBuffer! = queue.makeCommandBuffer()
-	let command:MTLComputeCommandEncoder! = code.makeComputeCommandEncoder()
-	command.setComputePipelineState(compute)
-	command.setBuffer(planez,offset:0,index:0)
-	command.setBuffer(charz,offset:0,index:1)
+
+	print("before compute")
+
+	guard let debug = library.makeFunction(name:"kernel_debug") else {
+		print("cannot make debug"); return 0;}
+	if let temp = try? device.makeComputePipelineState(function:debug) {
+		compute = temp} else {print("cannot make compute"); return 0;}
 	let groups = MTLSize(width:1,height:1,depth:1)
 	let threads = MTLSize(width:2,height:1,depth:1)
+
+	guard let code = queue.makeCommandBuffer() else {
+		print("cannot make code"); return 0}
+	guard let command = code.makeComputeCommandEncoder() else {
+		print("cannot make command"); return 0}
+	command.setComputePipelineState(compute)
+	command.setBuffer(planez,offset:0,index:0)
+	command.setBuffer(pointz,offset:0,index:1)
+	command.setBuffer(charz,offset:0,index:2)
 	command.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	command.endEncoding()
 	code.commit()
 	code.waitUntilCompleted()
+
 	var count = 0
 	for expected:Int8 in [
-		0,16,32,48,80,0,4,56,96,16,7,63,
-		0,16,32,48,80,0,4,56,96,16,9,65] {
+		0,16,32,48,80,0,4,16,16,32,1,63,
+		0,16,32,48,80,0,4,16,16,32,-1,65] {
 		let actual:Int8 = charz!.contents().load(fromByteOffset:count,as:Int8.self)
 		if (expected != actual) {
 			print("mismatch count(\(count)): expected(\(expected)) != actual(\(actual))")
@@ -96,67 +96,41 @@ view.layer = layer              // 6
 		}
 		count = count + 1
 	}
-	// */
+
 	print("between compute and render")
-	// /*
-	let vertex:MTLFunction! = library.makeFunction(name:/*"vertex_simple"*/"basic_vertex")
-	let fragment:MTLFunction! = library.makeFunction(name:/*"fragment_render"*/"basic_fragment")
 
-/*
-	var point0 = share.Simple(); point0.point = (0.0,1.0,0.0,1.0); point0.color = (1.0,0.0,0.0,1.0)
-	var point1 = share.Simple(); point1.point = (-1.0,-1.0,0.0,1.0); point1.color = (0.0,1.0,0.0,1.0)
-	var point2 = share.Simple(); point2.point = (1.0,-1.0,0.0,1.0); point2.color = (0.0,0.0,1.0,1.0)
-	let points = UnsafeMutablePointer<share.Simple>.allocate(capacity:3)
-	points[0] = point0; points[1] = point2; points[2] = point2
-	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Simple>.size*3)
-*/
+	guard let vertex = library.makeFunction(name:"vertex_simple") else {
+		print("cannot make vertex"); return 0}
+	guard let fragment = library.makeFunction(name:"fragment_render") else {
+		print("cannot make fragment"); return 0}
+	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
+	guard let drawable = layer?.nextDrawable() else {
+		print("cannot make drawable"); return 0}
 
-let vertexData: [Float] = [
-   0.0,  1.0, 0.0,
-  -1.0, -1.0, 0.0,
-   1.0, -1.0, 0.0
-]
-var vertexBuffer: MTLBuffer!
-let dataSize = vertexData.count * MemoryLayout.size(ofValue: vertexData[0]) // 1
-vertexBuffer = device.makeBuffer(bytes: vertexData, length: dataSize, options: []) // 2
-
-guard let drawable = layer?.nextDrawable() else { return 0 }
-pass = MTLRenderPassDescriptor()
-pass.colorAttachments[0].texture = drawable.texture
-pass.colorAttachments[0].loadAction = .clear
-pass.colorAttachments[0].clearColor = MTLClearColor(
-  red: 0.0, 
-  green: 104.0/255.0, 
-  blue: 55.0/255.0, 
-  alpha: 1.0)
-  	// view = MTKView(frame:window.contentLayoutRect,device:device)
-//	let text:MTLTextureDescriptor! = MTLTextureDescriptor.texture2DDescriptor(pixelFormat:MTLPixelFormat.rgba8Unorm,width:1,height:1,mipmapped:false)
-//	let texture:MTLTexture! = device.makeTexture(descriptor:text)
-//	pass = /*view.currentRenderPassDescriptor*/ MTLRenderPassDescriptor()
-/*
-	pass.colorAttachments[0].texture = texture
+	pass = MTLRenderPassDescriptor()
+	pass.colorAttachments[0].texture = drawable.texture
 	pass.colorAttachments[0].loadAction = .clear
-	pass.colorAttachments[0].clearColor = MTLClearColorMake(0.0,1.0,1.0,1.0)
-*/
+	pass.colorAttachments[0].clearColor = color
 
 	let pipe = MTLRenderPipelineDescriptor()
 	pipe.vertexFunction = vertex
 	pipe.fragmentFunction = fragment
 	pipe.colorAttachments[0].pixelFormat = /*view.colorPixelFormat*/ /*texture.pixelFormat*/ .bgra8Unorm
-	render = try? device.makeRenderPipelineState(descriptor:pipe)
+	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
+		render = temp} else {print("cannot make render"); return 0}
 
-	let recode:MTLCommandBuffer! = queue.makeCommandBuffer()
-	let encode:MTLRenderCommandEncoder! = recode.makeRenderCommandEncoder(descriptor:pass)
+	guard let recode = queue.makeCommandBuffer() else {
+		print("cannot make recode"); return 0}
+	guard let encode = recode.makeRenderCommandEncoder(descriptor:pass) else {
+		print("cannot make encode"); return 0}
 	encode.setRenderPipelineState(render)
-	encode.setVertexBuffer(/*pointz*/vertexBuffer,offset:0,index:0)
+	encode.setVertexBuffer(pointz,offset:0,index:0)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:3)
 	encode.endEncoding()
-	// let drawable:CAMetalDrawable = view.currentDrawable!
 	recode.present(drawable)
 	recode.commit()
-	// */
+
 	print("after render")
-	cb.call = {NSApp.run()} // app.run()
 	return 1
 }
 
