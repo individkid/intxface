@@ -19,8 +19,6 @@ all: facer.log typra.log typer.log filer.log line plane space trade
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
-# make clean
-# lua contain.gen >> depend.mk
 include depend.mk
 endif
 
