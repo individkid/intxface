@@ -22,12 +22,12 @@ var pierce = Pend()
 
 struct Pend
 {
-	var pend:MTLBuffer! // initially moved from last; used by set
-	var last:MTLBuffer! // initially moved from pend; returned by get
+	var pend:MTLBuffer!
+	var last:MTLBuffer!
 	mutating func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
-		if (pend == nil) {
-			pend = last
+		if (pend == nil && last != nil) {
+			pend = device.makeBuffer(bytes:last.contents(),length:last.length)
 			last = nil
 		}
 		if (pend == nil && range.lowerBound == 0) {
