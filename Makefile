@@ -47,16 +47,15 @@ filer.log: filerLua file
 %: %Sw
 	ln -f $< $@
 
-FRAMEWORKS = -framework CoreFoundation -framework CoreGraphics -framework OpenGL -framework Metal -framework QuartzCore
-LIBRARIES = -llua -lportaudio -lglfw -lGLEW -lMoltenVK
+LIBRARIES = -llua -lportaudio
 %C: %C.o
-	clang++ -o $@ $(filter %C.o,$^) ${LIBRARIES} ${FRAMEWORKS}
+	clang++ -o $@ $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
 	ghc -L/usr/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0 2> $*.out
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
-	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib ${LIBRARIES} ${FRAMEWORKS}
+	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib ${LIBRARIES}
 
 %.so: %C.o
 	clang -o $@ -fPIC -shared $^ -llua
