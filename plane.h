@@ -43,10 +43,10 @@ struct Pierce { // intrasect plane with line through points
 	float3 point;
 	float3 normal;
 };
-struct File {
+struct Object {
 	metal::float4x4 object;
 };
-struct Bounce {
+struct Cloud {
 	float3 point;
 };
 struct State {
@@ -55,7 +55,7 @@ struct State {
 	metal::float4x4 feature;
 	float3 feather; // for pierce shader
 	float3 arrow; // for pierce shader
-	uint size; // for bounce shader
+	uint siz; // for bounce shader
+	uint hand; // which plane to apply feature transformation to
 	uint tag; // which planes of polytope to render this pass
-	uint manip; // which plane to apply feature transformation to
 };

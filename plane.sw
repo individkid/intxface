@@ -17,7 +17,7 @@ var facet = Pend()
 var vertex = Pend()
 var index = Pend()
 var object = Pend()
-var state = Pend()
+var form = Pend()
 var pierce = Pend()
 
 struct Pend
@@ -52,18 +52,33 @@ struct Pend
 		}
 		return last
 	}
+	mutating func rmw(_ ptr: UnsafeRawPointer, _ range: Range<Int>) -> MTLBuffer
+	{
+		let buf = get()
+		let base:Int = range.lowerBound
+		let size:Int = range.upperBound-range.lowerBound
+		buf.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
+		buf.didModifyRange(range)
+		return buf
+	}
+	mutating func new(_ len:Int) -> MTLBuffer
+	{
+		pend = nil
+		last = device.makeBuffer(length:len)
+		return last
+	}
 }
 
-struct Share
+struct Form
 {
 	var basis:share.Linear
 	var subject:share.Affine
 	var feature:share.Affine
 	var feather:share.Vector
 	var arrow:share.Vector
-	var size:uint
+	var siz:uint
+	var hand:uint
 	var tag:uint
-	var manip:uint
 	var pad:uint
 }
 struct Pierce
@@ -74,17 +89,42 @@ struct Pierce
 	var normal:share.Vector
 }
 
+func setPierce()
+{
+	// TODO initialize pierce.set() with size from getArray
+}
+func setForm()
+{
+	let elem = Form(
+		basis:getClient(.Basis).basis!.pointee,
+		subject:getClient(.Subject).subject!.pointee,
+		feature:getClient(.Feature).feature!.pointee,
+		feather:getClient(.Feather).feather!.pointee,
+		arrow:getClient(.Arrow).arrow!.pointee,
+		siz:UInt32(getClient(.Cloud).siz),
+		hand:UInt32(getClient(.Hand).hand),
+		tag:0,pad:0)
+	form.set([elem],0..<MemoryLayout<Form>.size)
+}
+func setTag(_ tag:uint) -> MTLBuffer
+{
+	let base:Int = MemoryLayout<Form>.offset(of:\Form.tag)!
+	let limit:Int = MemoryLayout<Form>.offset(of:\Form.pad)!
+	return form.rmw([tag],base..<limit)
+}
 func getMode() -> share.Mode
 {
-	// let shader = cb.state.12!.pointee.user!.pointee.shader
-	let client:UnsafeMutablePointer<share.Client> =
-	unwrap(Mirror(reflecting: cb.state).descendant(Int(Memory.User.rawValue))!)!
-	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
-	return user.pointee
+	return getClient(.User).user!.pointee
 }
 func getArray() -> [share.Array]
 {
 	return [] // TODO
+}
+func getClient(_ mem:Memory) -> share.Client
+{
+	let client:UnsafeMutablePointer<share.Client> =
+	unwrap(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
+	return client.pointee
 }
 func unwrap<T>(_ x: Any) -> T
 {
@@ -253,7 +293,7 @@ func swiftDraw()
 {
 	let shader = getMode().shader
 	if (shader == share.Track) {
-
+		setForm()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
 			guard let encode = code.makeRenderCommandEncoder(descriptor:pass) else {callError();return}
@@ -261,8 +301,8 @@ func swiftDraw()
 			encode.setVertexBuffer(facet.get(),offset:0,index:0)
 			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
 			encode.setVertexBuffer(index.get(),offset:0,index:2)
-			// TODO set file buffer
-			// TODO set state buffer with altered tag
+			encode.setVertexBuffer(object.get(),offset:0,index:3)
+			encode.setVertexBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
 			encode.drawPrimitives(
 				type:.triangle,
 				vertexStart:Int(array.idx),
@@ -273,7 +313,7 @@ func swiftDraw()
 		code.commit()
 
 	} else if (shader == share.Display) {
-
+		setForm(); setPierce()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
 			guard let encode = code.makeComputeCommandEncoder() else {callError();return}
@@ -282,16 +322,16 @@ func swiftDraw()
 			encode.setBuffer(vertex.get(),offset:0,index:1)
 			let offset = Int(array.idx)*MemoryLayout<share.Index>.size
 			encode.setBuffer(index.get(),offset:offset,index:2)
-			// TODO set object buffer
-			// TODO set state buffer with altered tag
-			// TODO set allocated result buffer
+			encode.setBuffer(object.get(),offset:0,index:3)
+			encode.setBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
+			encode.setBuffer(pierce.get(),offset:0,index:5)
 			let groups = MTLSize(width:1,height:1,depth:1)
 			// TODO use groups if threads too large
 			let threads = MTLSize(width:Int(array.siz),height:1,depth:1)
 			encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 			encode.endEncoding()
-			// TODO add callback to read result
 		}
+		// TODO add callback to read result
 		code.commit()
 
 	}
