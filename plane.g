@@ -111,10 +111,10 @@ struct VertexOutput {
 vertex VertexOutput vertex_render(
    const device Facet *plane [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
-   const device Index *facet [[buffer(2)]], // TODO use indirection
+   const device uint *refer [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
-   uint ident [[vertex_id]])
+   uint ident [[vertex_id]]) // TODO treat as refer index instead of point index
 {
    VertexOutput out;
    uint face = copoint(point[ident].plane,plane,state); // which plane of point is the face being rendered
@@ -143,10 +143,10 @@ vertex VertexOutput vertex_simple(
 vertex void vertex_pierce(
    const device Facet *plane [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
-   const device Index *facet [[buffer(2)]], // TODO use indirection
+   const device uint *refer [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
-   uint ident [[vertex_id]],
+   uint ident [[vertex_id]], // TODO treat as refer index instead of plane index
    device Pierce *pierce [[buffer(5)]])
 {
    float3 feather = state->feather; // focal point

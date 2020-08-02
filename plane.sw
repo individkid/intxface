@@ -83,15 +83,73 @@ struct Form
 }
 struct Pierce
 {
-	var valid:Bool
-	var pad:(uint,uint,uint)
-	var point:share.Vector
-	var normal:share.Vector
+	var valid:Bool = false
+	var pad:(uint,uint,uint) = getZero()
+	var point:share.Vector = getZero()
+	var normal:share.Vector = getZero()
+}
+
+func getZero<T>() -> T
+{
+	return getZero(1)[0]
+}
+func getZero<T>(_ len:Int) -> [T]
+{
+	let siz = MemoryLayout<Pierce>.size
+	let ptr = UnsafeMutablePointer<Int8>.allocate(capacity:len*siz)
+	var count = 0
+	while (count < len*siz) {
+		ptr[count] = 0
+		count = count + 1
+	}
+	return getRaw(ptr,len)
+}
+func getSame<T>(_ val:T, _ len:Int) -> [T]
+{
+	var vals:[T] = []
+	while (vals.count < len) {
+		vals.append(val)
+	}
+	return vals
+}
+func getRaw<T>(_ raw:UnsafeRawPointer) -> T
+{
+	return getRaw(raw,1)[0]
+}
+func getRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
+{
+	let siz = MemoryLayout<Pierce>.size
+	var current = raw
+	var vals:[T] = []
+	while (vals.count < len) {
+		current = current.advanced(by:siz)
+		vals.append(current.load(as:T.self))
+	}
+	return vals
+}
+func setRaw<T>(_ vals:[T]) -> UnsafeRawPointer
+{
+	let len = vals.count
+	let ptr = UnsafeMutablePointer<T>.allocate(capacity: len)
+	var count = 0
+	for val in vals {
+		ptr[count] = val
+		count = count + 1
+	}
+	return UnsafeRawPointer(ptr)
+}
+func unwrap<T>(_ x: Any) -> T
+{
+  return x as! T
 }
 
 func setPierce()
 {
-	// TODO initialize pierce.set() with size from getArray
+	let siz = Int(getClient(.Triangle).siz)
+	let zero = Pierce()
+	let vals = getSame(zero,siz)
+	let size = MemoryLayout<Pierce>.size*siz
+	pierce.set(vals,0..<size)
 }
 func setForm()
 {
@@ -118,7 +176,8 @@ func getMode() -> share.Mode
 }
 func getArray() -> [share.Array]
 {
-	return [] // TODO
+	let client = getClient(.Range)
+	return getRaw(client.range,Int(client.siz))
 }
 func getClient(_ mem:Memory) -> share.Client
 {
@@ -126,10 +185,7 @@ func getClient(_ mem:Memory) -> share.Client
 	unwrap(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
 	return client.pointee
 }
-func unwrap<T>(_ x: Any) -> T
-{
-  return x as! T
-}
+
 func handler(event:NSEvent) -> NSEvent?
 {
 	print("key down")
@@ -207,10 +263,10 @@ func swiftInit() -> Int32
 	let points = [point0,point1,point2]
 	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Facet>.size*3)
 	let charz = device.makeBuffer(length:1000)
-	var array0 = share.Index(); array0.point = (0,1,2)
-	var array1 = share.Index(); array1.point = (3,4,5)
+	var array0 = share.Vertex(); array0.plane = (0,1,2)
+	var array1 = share.Vertex(); array1.plane = (3,4,5)
 	let arrays = [array0,array1]
-	let arrayz = device.makeBuffer(bytes:arrays,length:MemoryLayout<share.Index>.size*2)
+	let arrayz = device.makeBuffer(bytes:arrays,length:MemoryLayout<share.Vertex>.size*2)
 
 	print("before compute")
 
@@ -320,7 +376,7 @@ func swiftDraw()
 			encode.setComputePipelineState(compute)
 			encode.setBuffer(facet.get(),offset:0,index:0)
 			encode.setBuffer(vertex.get(),offset:0,index:1)
-			let offset = Int(array.idx)*MemoryLayout<share.Index>.size
+			let offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 			encode.setBuffer(index.get(),offset:offset,index:2)
 			encode.setBuffer(object.get(),offset:0,index:3)
 			encode.setBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
