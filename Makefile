@@ -88,7 +88,7 @@ LIBRARIES = -llua -lportaudio
 
 .PHONY:
 clean:
-	rm -f base.h base.c contain.h contain.c
+	rm -f base.h base.c
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer
@@ -97,5 +97,5 @@ clean:
 	rm -f *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h a.* *.metal
-	rm -f depend opengl type main
+	rm -f depend type main
 
