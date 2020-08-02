@@ -13,50 +13,45 @@ var pass:MTLRenderPassDescriptor!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 
-var facet:MTLBuffer!
-var vertex:MTLBuffer!
-var index:MTLBuffer!
-var file:MTLBuffer!
-var state = Pool<MTLBuffer>(renew:getState)
-var pierce = Pool<MTLBuffer>(renew:getPierce)
+var facet = Pend()
+var vertex = Pend()
+var index = Pend()
+var object = Pend()
+var state = Pend()
+var pierce = Pend()
 
-struct Pool<T>
+struct Pend
 {
-	var max:Int = 3
-	var val:[T] = []
-	var pool = Set<Int>()
-	var inuse = Set<Int>()
-	let renew:(_ old:T?)->T?
-	mutating func id() -> Int?
+	var pend:MTLBuffer! // initially moved from last; used by set
+	var last:MTLBuffer! // initially moved from pend; returned by get
+	mutating func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
-		if (pool.isEmpty && val.count >= max) {return nil}
-		if (pool.isEmpty) {
-			guard let temp = renew(nil) else {return nil}
-			pool.insert(val.count)
-			val.append(temp)}
-		let head = pool.startIndex
-		let index = pool[head]
-		return index
+		if (pend == nil) {
+			pend = last
+			last = nil
+		}
+		if (pend == nil && range.lowerBound == 0) {
+			pend = device.makeBuffer(bytes:ptr,length:range.upperBound)
+			return
+		}
+		if (pend == nil) {
+			pend = device.makeBuffer(length:range.upperBound)
+		}
+		let base:Int = range.lowerBound
+		let size:Int = range.upperBound-range.lowerBound
+		pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
 	}
-	mutating func val(_ index:Int) -> T?
+	mutating func get() -> MTLBuffer
 	{
-		if (!inuse.contains(index)) {return nil}
-		guard let temp = renew(val[index]) else {return nil}
-		val[index] = temp
-		return temp
+		if (last == nil) {
+			last = pend
+			pend = nil
+		}
+		if (last == nil) {
+			last = device.makeBuffer(length:0)
+		}
+		return last
 	}
-	mutating func get(_ index:Int)
-	{
-		if (!pool.contains(index)) {callError();return}
-		pool.remove(index)
-		inuse.insert(index)
-	}
-	mutating func put(_ index:Int)
-	{
-		if (!inuse.contains(index)) {callError();return}
-		inuse.remove(index)
-		pool.insert(index)
-}
 }
 
 struct Share
@@ -87,31 +82,10 @@ func getMode() -> share.Mode
 	let user:UnsafeMutablePointer<share.Mode> = client.pointee.user!
 	return user.pointee
 }
-func getFacet() -> MTLBuffer?
-{
-	return nil // TODO
-}
-func getVertex() -> MTLBuffer?
-{
-	return nil // TODO
-}
-func getIndex() -> MTLBuffer?
-{
-	return nil // TODO
-}
 func getArray() -> [share.Array]
 {
 	return [] // TODO
 }
-func getState(_ old:MTLBuffer?) -> MTLBuffer?
-{
-	return nil // TODO
-}
-func getPierce(_ old:MTLBuffer?) -> MTLBuffer?
-{
-	return nil // TODO
-}
-
 func unwrap<T>(_ x: Any) -> T
 {
   return x as! T
@@ -148,6 +122,22 @@ func swiftInit() -> Int32
 		atStart:false)}
 
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:handler)
+	// TODO add handlers to do the following and call the other cb functions in share.c
+	/*
+	while (cb.esc < 2 && !glfwWindowShouldClose(glfw))
+	if (setjmp(jmpbuf) == 0)
+	while(cb.esc < 2 && !glfwWindowShouldClose(glfw)) {
+	if (cb.full()) {
+	glfwWaitEventsTimeout(1000.0*NANO2SEC);
+	continue;}
+	if (cb.read()) {
+	cb.proc();
+	cb.draw();
+	cb.prod();
+	glfwPollEvents();
+	continue;}
+	glfwWaitEvents();}
+	*/
 
 	let rect = NSMakeRect(0, 0, 640, 480)
 	let mask:NSWindow.StyleMask = [.titled, .closable, .resizable]
@@ -256,7 +246,7 @@ func swiftInit() -> Int32
 
 func swiftFull() -> Int32
 {
-	return (state.id() == nil ? 1 : 0)
+	return 0 // count inuse buffers
 }
 
 func swiftDraw()
@@ -268,9 +258,9 @@ func swiftDraw()
 		for array in getArray() {
 			guard let encode = code.makeRenderCommandEncoder(descriptor:pass) else {callError();return}
 			encode.setRenderPipelineState(render)
-			encode.setVertexBuffer(getFacet(),offset:0,index:0)
-			encode.setVertexBuffer(getVertex(),offset:0,index:1)
-			encode.setVertexBuffer(getIndex(),offset:0,index:2)
+			encode.setVertexBuffer(facet.get(),offset:0,index:0)
+			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
+			encode.setVertexBuffer(index.get(),offset:0,index:2)
 			// TODO set file buffer
 			// TODO set state buffer with altered tag
 			encode.drawPrimitives(
@@ -288,11 +278,11 @@ func swiftDraw()
 		for array in getArray() {
 			guard let encode = code.makeComputeCommandEncoder() else {callError();return}
 			encode.setComputePipelineState(compute)
-			encode.setBuffer(getFacet(),offset:0,index:0)
-			encode.setBuffer(getVertex(),offset:0,index:1)
+			encode.setBuffer(facet.get(),offset:0,index:0)
+			encode.setBuffer(vertex.get(),offset:0,index:1)
 			let offset = Int(array.idx)*MemoryLayout<share.Index>.size
-			encode.setBuffer(getIndex(),offset:offset,index:2)
-			// TODO set file buffer
+			encode.setBuffer(index.get(),offset:offset,index:2)
+			// TODO set object buffer
 			// TODO set state buffer with altered tag
 			// TODO set allocated result buffer
 			let groups = MTLSize(width:1,height:1,depth:1)
