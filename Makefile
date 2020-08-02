@@ -63,11 +63,11 @@ LIBRARIES = -llua -lportaudio
 	xcrun -sdk macosx metallib -o $@ $<
 
 %C.o: %.c
-	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
+	clang -o $@ -c $< -I /usr/local/include/lua
 %C.o: %.m
-	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
+	clang -o $@ -c $< -I /usr/local/include/lua
 %C.o: %.cpp
-	clang -o $@ -c $< -I /usr/local/include/lua -I /usr/local/Cellar/molten-vk/1.0.34/libexec/include
+	clang -o $@ -c $< -I /usr/local/include/lua
 %Sw.o: %.sw
 	cat $(filter %.sw,$^) | swiftc -o $@ -I . -c -
 %G.o: %.metal
