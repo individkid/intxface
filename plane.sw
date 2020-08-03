@@ -203,8 +203,7 @@ func swiftInit() -> Int32
 	cb.full = swiftFull
 	cb.draw = swiftDraw
 	cb.call = {NSApp.run()}
-	cb.wake = {
-		NSApp.postEvent(
+	cb.wake = {NSApp.postEvent(
 		NSEvent.otherEvent(
 		with:.applicationDefined,
 		location:NSZeroPoint,
@@ -216,7 +215,6 @@ func swiftInit() -> Int32
 		data1:0,
 		data2:0)!,
 		atStart:false)}
-
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:handler)
 	// TODO add handlers to do the following and call the other cb functions in share.c
 	/*
@@ -238,7 +236,8 @@ func swiftInit() -> Int32
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
-	device = MTLCreateSystemDefaultDevice()
+	if let temp = MTLCreateSystemDefaultDevice() {
+		device = temp} else {print("cannot make device")}
 	let rect = NSMakeRect(0, 0, 640, 480)
 	layer = CAMetalLayer()
 	layer.device = device
@@ -317,20 +316,18 @@ func swiftInit() -> Int32
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	encode.endEncoding()
 	code.commit()
-	code.waitUntilCompleted()}
-
+	code.waitUntilCompleted()
 	var count = 0
 	for expected:Int8 in [
-		0,16,32,48,80,0,4,16,16,0,1,63,
-		0,16,32,48,80,0,4,16,16,3,4,65] {
-		let actual:Int8 = charz!.contents().load(fromByteOffset:count,as:Int8.self)
-		if (expected != actual) {
-			print("mismatch count(\(count)): expected(\(expected)) != actual(\(actual))")
-		} else {
-			print("match count(\(count)): expected(\(expected)) == actual(\(actual))")
-		}
-		count = count + 1
+	0,16,32,48,80,0,4,16,16,0,1,63,
+	0,16,32,48,80,0,4,16,16,3,4,65] {
+	let actual:Int8 = charz!.contents().load(fromByteOffset:count,as:Int8.self)
+	if (expected != actual) {
+		print("mismatch count(\(count)): expected(\(expected)) != actual(\(actual))")
+	} else {
+		print("match count(\(count)): expected(\(expected)) == actual(\(actual))")
 	}
+	count = count + 1}}
 
 	print("between debug and hello")
 
