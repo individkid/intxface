@@ -3,13 +3,13 @@ import share
 import AppKit
 import Metal
 
-var window:NSWindow!
-var view:NSView!
 var device:MTLDevice!
 var layer: CAMetalLayer!
+var view:NSView!
+var window:NSWindow!
 var drawable: CAMetalDrawable!
+var descriptor:MTLRenderPassDescriptor!
 var queue:MTLCommandQueue!
-var pass:MTLRenderPassDescriptor!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 
@@ -84,16 +84,16 @@ struct Form
 struct Pierce
 {
 	var valid:Bool = false
-	var pad:(uint,uint,uint) = getZero()
-	var point:share.Vector = getZero()
-	var normal:share.Vector = getZero()
+	var pad:(uint,uint,uint) = fromZero()
+	var point:share.Vector = fromZero()
+	var normal:share.Vector = fromZero()
 }
 
-func getZero<T>() -> T
+func fromZero<T>() -> T
 {
-	return getZero(1)[0]
+	return fromZero(1)[0]
 }
-func getZero<T>(_ len:Int) -> [T]
+func fromZero<T>(_ len:Int) -> [T]
 {
 	let siz = MemoryLayout<Pierce>.size
 	let ptr = UnsafeMutablePointer<Int8>.allocate(capacity:len*siz)
@@ -102,9 +102,9 @@ func getZero<T>(_ len:Int) -> [T]
 		ptr[count] = 0
 		count = count + 1
 	}
-	return getRaw(ptr,len)
+	return fromRaw(ptr,len)
 }
-func getSame<T>(_ val:T, _ len:Int) -> [T]
+func toList<T>(_ val:T, _ len:Int) -> [T]
 {
 	var vals:[T] = []
 	while (vals.count < len) {
@@ -112,11 +112,11 @@ func getSame<T>(_ val:T, _ len:Int) -> [T]
 	}
 	return vals
 }
-func getRaw<T>(_ raw:UnsafeRawPointer) -> T
+func fromRaw<T>(_ raw:UnsafeRawPointer) -> T
 {
-	return getRaw(raw,1)[0]
+	return fromRaw(raw,1)[0]
 }
-func getRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
+func fromRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
 {
 	let siz = MemoryLayout<Pierce>.size
 	var current = raw
@@ -127,7 +127,11 @@ func getRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
 	}
 	return vals
 }
-func setRaw<T>(_ vals:[T]) -> UnsafeRawPointer
+func toRaw<T>(_ val:T) -> UnsafeRawPointer
+{
+	return toRaw([val])
+}
+func toRaw<T>(_ vals:[T]) -> UnsafeRawPointer
 {
 	let len = vals.count
 	let ptr = UnsafeMutablePointer<T>.allocate(capacity: len)
@@ -138,7 +142,7 @@ func setRaw<T>(_ vals:[T]) -> UnsafeRawPointer
 	}
 	return UnsafeRawPointer(ptr)
 }
-func unwrap<T>(_ x: Any) -> T
+func fromAny<T>(_ x: Any) -> T
 {
   return x as! T
 }
@@ -147,7 +151,7 @@ func setPierce()
 {
 	let siz = Int(getClient(.Triangle).siz)
 	let zero = Pierce()
-	let vals = getSame(zero,siz)
+	let vals = toList(zero,siz)
 	let size = MemoryLayout<Pierce>.size*siz
 	pierce.set(vals,0..<size)
 }
@@ -177,12 +181,12 @@ func getMode() -> share.Mode
 func getArray() -> [share.Array]
 {
 	let client = getClient(.Range)
-	return getRaw(client.range,Int(client.siz))
+	return fromRaw(client.range,Int(client.siz))
 }
 func getClient(_ mem:Memory) -> share.Client
 {
 	let client:UnsafeMutablePointer<share.Client> =
-	unwrap(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
+	fromAny(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
 	return client.pointee
 }
 
@@ -194,10 +198,6 @@ func handler(event:NSEvent) -> NSEvent?
 
 func swiftInit() -> Int32
 {
-	let _ = NSApplication.shared
-	NSApp.setActivationPolicy(.regular)
-	NSApp.activate(ignoringOtherApps: true)
-
 	// cb.pos
 	// cb.size
 	cb.full = swiftFull
@@ -235,24 +235,57 @@ func swiftInit() -> Int32
 	glfwWaitEvents();}
 	*/
 
-	let rect = NSMakeRect(0, 0, 640, 480)
-	let mask:NSWindow.StyleMask = [.titled, .closable, .resizable]
-	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
-	window.title = "Hello, world!"
-	window.makeKeyAndOrderFront(nil)
-	view = NSView(frame:window.frame)
-	window.contentView = view
+	let _ = NSApplication.shared
+	NSApp.setActivationPolicy(.regular)
+	NSApp.activate(ignoringOtherApps: true)
 	device = MTLCreateSystemDefaultDevice()
+	let rect = NSMakeRect(0, 0, 640, 480)
 	layer = CAMetalLayer()
 	layer.device = device
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
-	layer.frame = window.frame
+	layer.frame = rect // window.frame
+	view = NSView(frame:rect) // window.frame)
 	view.layer = layer
+	let mask:NSWindow.StyleMask = [.titled, .closable, .resizable]
+	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
+	window.title = "plane"
+	window.makeKeyAndOrderFront(nil)
+	window.contentView = view
+	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
+	if let temp = layer?.nextDrawable() {
+		drawable = temp} else {print("cannot make drawable"); return 0}
+	descriptor = MTLRenderPassDescriptor()
+	descriptor.colorAttachments[0].texture = drawable.texture
+	descriptor.colorAttachments[0].loadAction = .clear
+	descriptor.colorAttachments[0].clearColor = color
 	queue = device.makeCommandQueue()
-
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
 		print("cannot load shaders"); return 0}
+	guard let kernel_debug = library.makeFunction(name:"kernel_debug") else {
+		print("cannot make kernel_debug"); return 0;}
+	guard let vertex_simple = library.makeFunction(name:"vertex_simple") else {
+		print("cannot make vertex_simple"); return 0}
+	guard let vertex_render = library.makeFunction(name:"vertex_render") else {
+		print("cannot make vertex_render"); return 0}
+	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
+		print("cannot make fragment_render"); return 0}
+	guard let vertex_pierce = library.makeFunction(name:"vertex_pierce") else {
+		print("cannot make pierce"); return 0}
+	guard let debug = try? device.makeComputePipelineState(function:kernel_debug) else {
+		print("cannot make debug"); return 0;}
+	let pipe = MTLRenderPipelineDescriptor()
+	pipe.vertexFunction = vertex_simple
+	pipe.fragmentFunction = fragment_render
+	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
+	guard let hello = try? device.makeRenderPipelineState(descriptor:pipe) else {
+		print("cannot make hello"); return 0}
+	pipe.vertexFunction = vertex_render
+	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
+		render = temp} else {print("cannot make render"); return 0}
+	if let temp = try? device.makeComputePipelineState(function:vertex_pierce) {
+		compute = temp} else {print("cannot make compute"); return 0;}
+
 	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
 	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
 	let planes = [plane0,plane1]
@@ -268,27 +301,23 @@ func swiftInit() -> Int32
 	let arrays = [array0,array1]
 	let arrayz = device.makeBuffer(bytes:arrays,length:MemoryLayout<share.Vertex>.size*2)
 
-	print("before compute")
+	print("before debug")
 
-	guard let debug = library.makeFunction(name:"kernel_debug") else {
-		print("cannot make debug"); return 0;}
-	if let temp = try? device.makeComputePipelineState(function:debug) {
-		compute = temp} else {print("cannot make compute"); return 0;}
-
+	if (true) {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return 0}
-	guard let command = code.makeComputeCommandEncoder() else {
-		print("cannot make command"); return 0}
-	command.setComputePipelineState(compute)
-	command.setBuffer(planez,offset:0,index:0)
-	command.setBuffer(arrayz,offset:0,index:1)
-	command.setBuffer(charz,offset:0,index:2)
+	guard let encode = code.makeComputeCommandEncoder() else {
+		print("cannot make encode"); return 0}
+	encode.setComputePipelineState(debug)
+	encode.setBuffer(planez,offset:0,index:0)
+	encode.setBuffer(arrayz,offset:0,index:1)
+	encode.setBuffer(charz,offset:0,index:2)
 	let groups = MTLSize(width:1,height:1,depth:1)
 	let threads = MTLSize(width:2,height:1,depth:1)
-	command.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
-	command.endEncoding()
+	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
+	encode.endEncoding()
 	code.commit()
-	code.waitUntilCompleted()
+	code.waitUntilCompleted()}
 
 	var count = 0
 	for expected:Int8 in [
@@ -303,40 +332,21 @@ func swiftInit() -> Int32
 		count = count + 1
 	}
 
-	print("between compute and render")
+	print("between debug and hello")
 
-	guard let vertex = library.makeFunction(name:"vertex_simple") else {
-		print("cannot make vertex"); return 0}
-	guard let fragment = library.makeFunction(name:"fragment_render") else {
-		print("cannot make fragment"); return 0}
-	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
-	if let temp = layer?.nextDrawable() {
-		drawable = temp} else {print("cannot make drawable"); return 0}
-
-	pass = MTLRenderPassDescriptor()
-	pass.colorAttachments[0].texture = drawable.texture
-	pass.colorAttachments[0].loadAction = .clear
-	pass.colorAttachments[0].clearColor = color
-
-	let pipe = MTLRenderPipelineDescriptor()
-	pipe.vertexFunction = vertex
-	pipe.fragmentFunction = fragment
-	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
-	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
-		render = temp} else {print("cannot make render"); return 0}
-
-	guard let recode = queue.makeCommandBuffer() else {
-		print("cannot make recode"); return 0}
-	guard let encode = recode.makeRenderCommandEncoder(descriptor:pass) else {
+	if (true) {
+	guard let code = queue.makeCommandBuffer() else {
+		print("cannot make code"); return 0}
+	guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {
 		print("cannot make encode"); return 0}
-	encode.setRenderPipelineState(render)
+	encode.setRenderPipelineState(hello)
 	encode.setVertexBuffer(pointz,offset:0,index:0)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:3)
 	encode.endEncoding()
-	recode.present(drawable)
-	recode.commit()
+	code.present(drawable)
+	code.commit()}
 
-	print("after render")
+	print("after hello")
 	return 1
 }
 
@@ -352,7 +362,7 @@ func swiftDraw()
 		setForm()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
-			guard let encode = code.makeRenderCommandEncoder(descriptor:pass) else {callError();return}
+			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {callError();return}
 			encode.setRenderPipelineState(render)
 			encode.setVertexBuffer(facet.get(),offset:0,index:0)
 			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
@@ -367,7 +377,6 @@ func swiftDraw()
 		}
 		code.present(drawable)
 		code.commit()
-
 	} else if (shader == share.Display) {
 		setForm(); setPierce()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
@@ -389,7 +398,6 @@ func swiftDraw()
 		}
 		// TODO add callback to read result
 		code.commit()
-
 	}
 }
 
