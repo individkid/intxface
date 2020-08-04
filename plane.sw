@@ -189,6 +189,14 @@ func getClient(_ mem:share.Memory) -> share.Client
 	fromAny(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
 	return client.pointee
 }
+func noWarn<T>(_ val:T) -> T?
+{
+	return val
+}
+func noWarn<T>(_ opt:T?) -> T?
+{
+	return nil
+}
 
 func handler(event:NSEvent) -> NSEvent?
 {
@@ -237,30 +245,35 @@ func swiftInit() -> Int32
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
 	if let temp = MTLCreateSystemDefaultDevice() {
-		device = temp} else {print("cannot make device")}
+		device = temp} else {print("cannot make device"); return 0}
 	let rect = NSMakeRect(0, 0, 640, 480)
-	layer = CAMetalLayer()
+	if let temp = noWarn(CAMetalLayer()) {
+		layer = temp} else {print("cannot make layer"); return 0}
 	layer.device = device
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
-	layer.frame = rect // window.frame
-	view = NSView(frame:rect) // window.frame)
+	layer.frame = rect
+	if let temp = noWarn(NSView(frame:rect)) {
+		view = temp} else {print("cannot make view"); return 0}
 	view.layer = layer
 	let mask:NSWindow.StyleMask = [.titled, .closable, .resizable]
-	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
+	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
+		window = temp} else {print("cannot make window"); return 0}
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
 	if let temp = layer?.nextDrawable() {
 		drawable = temp} else {print("cannot make drawable"); return 0}
-	descriptor = MTLRenderPassDescriptor()
+	if let temp = noWarn(MTLRenderPassDescriptor()) {
+		descriptor = temp} else {print("cannot make descriptor"); return 0}
 	descriptor.colorAttachments[0].texture = drawable.texture
 	descriptor.colorAttachments[0].loadAction = .clear
 	descriptor.colorAttachments[0].clearColor = color
-	queue = device.makeCommandQueue()
+	if let temp = device.makeCommandQueue() {
+		queue = temp} else {print("cannot make queue"); return 0}
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
-		print("cannot load shaders"); return 0}
+		print("cannot make library"); return 0}
 	guard let kernel_debug = library.makeFunction(name:"kernel_debug") else {
 		print("cannot make kernel_debug"); return 0;}
 	guard let vertex_simple = library.makeFunction(name:"vertex_simple") else {
@@ -270,10 +283,11 @@ func swiftInit() -> Int32
 	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
 		print("cannot make fragment_render"); return 0}
 	guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {
-		print("cannot make pierce"); return 0}
+		print("cannot make kernel_pierce"); return 0}
 	guard let debug = try? device.makeComputePipelineState(function:kernel_debug) else {
-		print("cannot make debug"); return 0;}
-	let pipe = MTLRenderPipelineDescriptor()
+		print("cannot make debug"); return 0}
+	guard let pipe = noWarn(MTLRenderPipelineDescriptor()) else {
+		print("cannot make pipe"); return 0}
 	pipe.vertexFunction = vertex_simple
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
