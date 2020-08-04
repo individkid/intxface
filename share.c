@@ -15,10 +15,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define NOID
 #include "share.h"
 #include <pthread.h>
-#include <CoreGraphics/CoreGraphics.h>
 
 int vld = 0;
 int sub = 0;
@@ -523,10 +521,12 @@ int nofalse()
 
 void nowarp(double xpos, double ypos)
 {
+	printf("warp %f %f\n",xpos,ypos);
 }
 
 void nosize(double width, double height)
 {
+	printf("size %f %f\n",width,height);
 }
 
 void nomove(double xpos, double ypos)
@@ -541,6 +541,7 @@ void noroll(double xoffset, double yoffset)
 
 void noclick(int isright)
 {
+	printf("click %d\n",isright);
 }
 
 void planeInit(int argc)
