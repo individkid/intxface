@@ -205,8 +205,8 @@ func handler(event:NSEvent) -> NSEvent?
 
 func swiftInit() -> Int32
 {
-	// cb.pos
-	// cb.size
+	// cb.pos // TODO implement for share.c
+	// cb.size // TODO implement for share.c
 	cb.full = swiftFull
 	cb.draw = swiftDraw
 	cb.call = {NSApp.run()}
@@ -362,7 +362,7 @@ func swiftInit() -> Int32
 
 func swiftFull() -> Int32
 {
-	return 0 // count inuse buffers
+	return 0 // TODO count inuse buffers
 }
 
 func swiftDraw()
