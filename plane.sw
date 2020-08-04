@@ -368,17 +368,23 @@ func swiftFull() -> Int32
 
 func swiftDraw()
 {
-	// TODO switch on each fnc
+	for i in 0..<Int(cb.client.pointee.len) {
+	switch (cb.client.pointee.fnc[i]) {
+	case (share.Rmw0): break;
+	case (share.Rmw1): break;
+	case (share.Rmw2): break;
+	case (share.Copy): break;
+	case (share.Save): break;
+	case (share.Dma0): swiftDma()
+	case (share.Dma1): break;
+	case (share.Draw): swiftFunc()
+	case (share.Port): break;
+	default: callError()}}
 }
 
 func swiftDma() // Function.Dma0
 {
 	// TODO dma from client to MTLBuffer
-}
-
-func swiftGet() // Function.Dma1
-{
-	// TODO copy results of vertex_pierce into cb.state
 }
 
 func swiftFunc() // Function.Draw
