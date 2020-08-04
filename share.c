@@ -428,22 +428,6 @@ int windowRead()
 	return res;
 }
 
-void windowWarp(double xpos, double ypos)
-{
-    int xloc, yloc;
-    cb.pos(&xloc,&yloc);
-    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
-    CGWarpMouseCursorPosition(point);
-}
-
-void windowKey(int key)
-{
-	if (key == 256) {if (cb.esc == 0) cb.esc = 1;}
-	else if (key == 257) {if (cb.esc == 1) cb.esc = 2;}
-	else cb.esc = 0;
-	printf("key(%d) esc(%d)\n",key,cb.esc);
-}
-
 void windowMove(double xpos, double ypos)
 {
 	xmove = xpos; ymove = ypos;
@@ -477,7 +461,8 @@ void windowRoll(double xoffset, double yoffset)
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform) {
-	// TODO assignArrow instead of assignAffine if user->roll is Focal
+	// TODO instead of assignAffine, if user->roll is Focal
+	// TODO assignArrow using recorded window size.
 	struct Client client;
 	struct Affine affine[2];
 	enum Function function[3];
@@ -513,12 +498,18 @@ void windowClick(int isright)
 	if (user.click == Suspend) {
 	user.click = Transform; user.shader = Display;
 	if (isright)
-	windowWarp(vector[0],vector[1]);}
+	cb.warp(vector[0],vector[1]);}
 	if (user.click == Complete) {
 	if (!isright) {
 	user.click = Transform; user.shader = Display;}}
 	client.len = 1; client.siz = 1;
 	writeClient(&client,cb.tub);
+}
+
+void windowSize(double width, double height)
+{
+	// TODO record width and height for use in windowRoll
+	windowRoll(0.0,0.0);
 }
 
 void novoid()
@@ -530,55 +521,36 @@ int nofalse()
 	return 0;
 }
 
-void nopos(int *xloc, int *yloc)
+void nowarp(double xpos, double ypos)
 {
-    *xloc = *yloc = 0;
 }
 
-void nosize(int *width, int *height)
+void nosize(double width, double height)
 {
-	*width = *height = 0;
-}
-
-void nokey(int key)
-{
-	printf("GLFW key %d\n",key);
 }
 
 void nomove(double xpos, double ypos)
 {
-	xmove = xpos; ymove = ypos;
+	printf("move %f %f\n",xpos,ypos);
 }
 
 void noroll(double xoffset, double yoffset)
 {
-	printf("GLFW roll %f %f\n",xoffset,yoffset);
+	printf("roll %f %f\n",xoffset,yoffset);
 }
 
-double novec[2];
 void noclick(int isright)
 {
-	if (isright) {
-	int xpos, ypos;
-	cb.pos(&xpos,&ypos);
-	windowWarp(novec[0],novec[1]);
-	printf("GLFW right (%d,%d) (%f,%f) (%f,%f)\n",xpos,ypos,xmove,ymove,novec[0],novec[1]);}
-	if (!isright) {
-	int xpos, ypos;
-	cb.pos(&xpos,&ypos);
-	novec[0] = xmove; novec[1] = ymove;
-	printf("GLFW left (%d,%d) (%f,%f)\n",xpos,ypos,xmove,ymove);}
 }
 
 void planeInit(int argc)
 {
 	cb.err = exiterr;
-	cb.pos = nopos;
-	cb.size = nosize;
-	cb.key = windowKey;
 	cb.move = (argc == 4 ? windowMove : nomove);
 	cb.roll = (argc == 4 ? windowRoll : noroll);
 	cb.click = (argc == 4 ? windowClick : noclick);
+	cb.size = (argc == 4 ? windowSize : nosize);
+	cb.warp = nowarp;
 	cb.full = nofalse;
 	cb.draw = novoid;
 	cb.proc = windowProc;

@@ -21,30 +21,26 @@
 #include "metic.h"
 
 struct Callback {
-	// share.c : plane.sw
 	void (*err)(const char *str, int num, int arg);
-	void (*pos)(int *xloc, int *yloc);
-	void (*size)(int *width, int *height);
-	// plane.sw : share.c
-	void (*key)(int key);
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
-	int (*full)(); // plane.sw : plane.sw
-	void (*draw)(); // plane.sw : plane.sw
-	void (*proc)(); // plane.sw : share.c
-	void (*prod)(); // plane.sw : share.c
-	int (*read)(); // plane.sw : share.c
-	void (*call)(); // plane.sw : plane.sw
-	void (*wake)(); // share.c : plane.sw
-	void (*done)(); // plane.sw : plane.sw
-	int hub; // from other processes
-	int tub; // from displayCall
-	int zub; // from threadDone
+	void (*size)(double width, double height);
+	void (*warp)(double xpos, double ypos);
+	int (*full)();
+	void (*draw)();
+	void (*proc)();
+	void (*prod)();
+	int (*read)();
+	void (*call)();
+	void (*wake)();
+	void (*done)();
+	int hub;
+	int tub;
+	int zub;
 	int esc;
 	struct Client *client;
 	struct Client *state[Memorys];
-	void *refer[Memorys];
 };
 
 extern struct Callback cb;

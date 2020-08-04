@@ -197,9 +197,39 @@ func noWarn<T>(_ opt:T?) -> T?
 	return nil
 }
 
-func handler(event:NSEvent) -> NSEvent?
+/*
+void windowWarp(double xpos, double ypos)
 {
-	print("key down")
+    int xloc, yloc;
+    cb.pos(&xloc,&yloc);
+    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
+    CGWarpMouseCursorPosition(point);
+}
+*/
+func swiftKey(event:NSEvent) -> NSEvent?
+{
+	let point:NSPoint = NSEvent.mouseLocation
+	let frame:CGRect = window.frame
+	let rect:CGRect = layer.frame
+	guard let str:String = event.characters else {return nil}
+	let unicode = str.unicodeScalars
+	let key = Int(unicode[unicode.startIndex].value)
+	print("key \(point.x),\(point.y) \(NSMinX(frame)),\(NSMinY(frame)) \(NSMinX(rect)),\(NSMinY(rect)) \(NSMaxX(rect)),\(NSMaxY(rect))")
+	if (key == 256) {if (cb.esc == 0) {cb.esc = 1}}
+	else if (key == 257) {if (cb.esc == 1) {cb.esc = 2}}
+	else {cb.esc = 0}
+	print("key(\(key)) esc(\(cb.esc))")
+	return nil
+}
+func swiftMove(event:NSEvent) -> NSEvent?
+{
+	var point:NSPoint = NSEvent.mouseLocation
+	let frame:CGRect = window.frame
+	let rect:CGRect = layer.frame
+	point.x = point.x - NSMinX(frame)
+	point.y = point.y - NSMinY(frame)
+	if (NSPointInRect(point,rect)) {
+		print("move \(point.x) \(point.y)")}
 	return nil
 }
 
@@ -207,6 +237,7 @@ func swiftInit() -> Int32
 {
 	// cb.pos // TODO implement for share.c
 	// cb.size // TODO implement for share.c
+	// cb.warp // TODO move from share.c
 	cb.full = swiftFull
 	cb.draw = swiftDraw
 	cb.call = {NSApp.run()}
@@ -222,7 +253,8 @@ func swiftInit() -> Int32
 		data1:0,
 		data2:0)!,
 		atStart:false)}
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:handler)
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:swiftKey)
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved,handler:swiftMove)
 	// TODO add handlers to do the following and call the other cb functions in share.c
 	/*
 	while (cb.esc < 2 && !glfwWindowShouldClose(glfw))
@@ -252,6 +284,8 @@ func swiftInit() -> Int32
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
 	layer.frame = rect
+	let temp:CGRect = layer.contentsRect
+	print("rect \(NSMinX(temp)) \(NSMinY(temp))")
 	if let temp = noWarn(NSView(frame:rect)) {
 		view = temp} else {print("cannot make view"); return 0}
 	view.layer = layer
