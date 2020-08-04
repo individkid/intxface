@@ -141,13 +141,13 @@ vertex VertexOutput vertex_simple(
    out.color = point[ident].color[0];
    return out;
 }
-vertex void vertex_pierce(
+kernel void kernel_pierce(
    const device Facet *plane [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
    const device uint *order [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
-   uint ident [[vertex_id]], // TODO treat as order index instead of plane index
+   uint ident [[thread_position_in_grid]], // TODO treat as order index instead of plane index
    device Pierce *pierce [[buffer(5)]])
 {
    float3 feather = state->feather; // focal point

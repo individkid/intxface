@@ -13,13 +13,6 @@ var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 
-var facet = Pend()
-var vertex = Pend()
-var index = Pend()
-var object = Pend()
-var form = Pend()
-var pierce = Pend()
-
 struct Pend
 {
 	var pend:MTLBuffer!
@@ -68,6 +61,13 @@ struct Pend
 		return last
 	}
 }
+
+var facet = Pend()
+var vertex = Pend()
+var index = Pend()
+var object = Pend()
+var form = Pend()
+var pierce = Pend()
 
 struct Form
 {
@@ -149,7 +149,7 @@ func fromAny<T>(_ x: Any) -> T
 
 func setPierce()
 {
-	let siz = Int(getClient(.Triangle).siz)
+	let siz = Int(getClient(Triangle).siz)
 	let zero = Pierce()
 	let vals = toList(zero,siz)
 	let size = MemoryLayout<Pierce>.size*siz
@@ -158,13 +158,13 @@ func setPierce()
 func setForm()
 {
 	let elem = Form(
-		basis:getClient(.Basis).basis!.pointee,
-		subject:getClient(.Subject).subject!.pointee,
-		feature:getClient(.Feature).feature!.pointee,
-		feather:getClient(.Feather).feather!.pointee,
-		arrow:getClient(.Arrow).arrow!.pointee,
-		siz:UInt32(getClient(.Cloud).siz),
-		hand:UInt32(getClient(.Hand).hand),
+		basis:getClient(Basis).basis!.pointee,
+		subject:getClient(Subject).subject!.pointee,
+		feature:getClient(Feature).feature!.pointee,
+		feather:getClient(Feather).feather!.pointee,
+		arrow:getClient(Arrow).arrow!.pointee,
+		siz:UInt32(getClient(Cloud).siz),
+		hand:UInt32(getClient(Hand).hand),
 		tag:0,pad:0)
 	form.set([elem],0..<MemoryLayout<Form>.size)
 }
@@ -176,14 +176,14 @@ func setTag(_ tag:uint) -> MTLBuffer
 }
 func getMode() -> share.Mode
 {
-	return getClient(.User).user!.pointee
+	return getClient(User).user!.pointee
 }
 func getArray() -> [share.Array]
 {
-	let client = getClient(.Range)
+	let client = getClient(Range)
 	return fromRaw(client.range,Int(client.siz))
 }
-func getClient(_ mem:Memory) -> share.Client
+func getClient(_ mem:share.Memory) -> share.Client
 {
 	let client:UnsafeMutablePointer<share.Client> =
 	fromAny(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
@@ -269,7 +269,7 @@ func swiftInit() -> Int32
 		print("cannot make vertex_render"); return 0}
 	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
 		print("cannot make fragment_render"); return 0}
-	guard let vertex_pierce = library.makeFunction(name:"vertex_pierce") else {
+	guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {
 		print("cannot make pierce"); return 0}
 	guard let debug = try? device.makeComputePipelineState(function:kernel_debug) else {
 		print("cannot make debug"); return 0;}
@@ -282,7 +282,7 @@ func swiftInit() -> Int32
 	pipe.vertexFunction = vertex_render
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return 0}
-	if let temp = try? device.makeComputePipelineState(function:vertex_pierce) {
+	if let temp = try? device.makeComputePipelineState(function:kernel_pierce) {
 		compute = temp} else {print("cannot make compute"); return 0;}
 
 	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
