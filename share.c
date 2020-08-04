@@ -246,6 +246,7 @@ void composeMatrix(float *result)
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
+	// TODO compose with identity if roll is Focal
 	default: ERROR(cb.err,-1);}
 }
 
@@ -254,7 +255,7 @@ void calculateGlobal()
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
 	float norvec[3];
 	float pievec[3];
-	// get norvec and pievec from track shader
+	// TODO get norvec and pievec from what track shader reported in Dma1
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
@@ -375,7 +376,7 @@ void windowProc()
 	case (Copy): clientCopy(cb.state); break;
 	case (Save): clientCopy(saved); break;
 	case (Dma0): break;
-	case (Dma1): break;
+	case (Dma1): break; // TODO	read feather for pierce point
 	case (Draw): break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
@@ -476,6 +477,7 @@ void windowRoll(double xoffset, double yoffset)
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform) {
+	// TODO assignArrow instead of assignAffine if user->roll is Focal
 	struct Client client;
 	struct Affine affine[2];
 	enum Function function[3];

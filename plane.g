@@ -87,6 +87,7 @@ float4 convert(
    float4 position = float4(intersect(triple),1.0);
    position = object[plane[index].poly].object*position;
    position = state->subject*position;
+   // TODO add perspective from arrow
    return position;
 }
 Expand prepare(
@@ -154,6 +155,7 @@ vertex void vertex_pierce(
    Expand face = prepare(ident,plane,object,state);
    if (!opposite(face,feather,arrow)) {
       pierce[ident].valid = false; return;}
+   // TODO scale arrow by feather distance from origin
    float3 hole = intrasect(face,feather,arrow);
    Triple edge;
    Expand apex;

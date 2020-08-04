@@ -354,6 +354,21 @@ func swiftFull() -> Int32
 
 func swiftDraw()
 {
+	// TODO switch on each fnc
+}
+
+func swiftDma() // Function.Dma0
+{
+	// TODO dma from client to MTLBuffer
+}
+
+func swiftGet() // Function.Dma1
+{
+	// TODO copy results of vertex_pierce into cb.state
+}
+
+func swiftFunc() // Function.Draw
+{
 	let shader = getMode().shader
 	if (shader == share.Track) {
 		setForm()
@@ -393,7 +408,7 @@ func swiftDraw()
 			encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 			encode.endEncoding()
 		}
-		// TODO add callback to read result
+		// TODO add callback to read result and send pierce point as feather through Dma1 to cb.tub
 		code.commit()
 	}
 }
@@ -404,12 +419,10 @@ func swiftDraw()
 	if (argc == 4) {cb.hub = pipeInit(argv[1],argv[2])}
 	cb.zub = openPipe()
 	cb.tub = openPipe()
-	cb.mub = openPipe();
-	if (cb.zub < 0 || cb.tub < 0 || cb.mub < 0 || (argc == 4 && cb.hub < 0)) {callError()}
+	if (cb.zub < 0 || cb.tub < 0 || (argc == 4 && cb.hub < 0)) {callError()}
 	planeInit(Int32(argc))
 	bothJump(cb.err,cb.zub)
 	bothJump(cb.err,cb.tub)
-	bothJump(cb.err,cb.mub)
 	if (argc == 4) {bothJump(cb.err,cb.hub)}
 	threadInit()
 	if (swiftInit() != 0) {cb.call()}
