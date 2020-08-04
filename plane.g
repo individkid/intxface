@@ -8,13 +8,50 @@ Expand expand(Facet plane, const device State *state)
       result.point[i][plane.versor] = plane.plane[i];}
    return result;
 }
+float3 barrycentric(Expand plane, uint versor, float3 point)
+{
+   uint3 sub;
+   for (int i = 0; i < 3; i++) sub[i] = (versor+i+1)%3;
+   float x = point[sub[0]];
+   float y = point[sub[1]];
+   float x1 = plane.point[1][sub[0]];
+   float x2 = plane.point[2][sub[0]];
+   float x3 = plane.point[3][sub[0]];
+   float y1 = plane.point[1][sub[1]];
+   float y2 = plane.point[2][sub[1]];
+   float y3 = plane.point[3][sub[1]];
+   float3 lambda;
+   lambda.x = ((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
+   lambda.y = ((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
+   lambda.z = 1-lambda.x-lambda.y;
+   return lambda;
+}
+float cartesian(Expand plane, uint versor, float3 lambda)
+{
+   float value = 0.0;
+   for (uint i = 0; i < 3; i++) value += lambda[i]*plane.point[i][versor];
+   return value;
+}
+float3 project(Expand plane, uint versor, float3 point)
+{
+   point[versor] = cartesian(plane,versor,barrycentric(plane,versor,point));
+   return point;
+}
 bool opposite(Expand plane, float3 feather, float3 arrow)
 {
-   return false; // TODO
+   uint versor = 2; // TODO set to most squashed dimension
+   bool left = (feather[versor]>project(plane,versor,feather)[versor]);
+   bool right = (arrow[versor]>project(plane,versor,arrow)[versor]);
+   return left^right;
 }
 float3 intrasect(Expand plane, float3 feather, float3 arrow)
 {
-   return float3(0.0); // TODO
+   uint versor = 2; // TODO set to most squashed dimension
+   float3 origin = project(plane,versor,feather);
+   float3 point = project(plane,versor,feather+arrow);
+   float numerator = origin.z-feather.z;
+   float denominator = numerator-point.z+feather.z+arrow.z;
+   return feather+arrow*numerator/denominator;
 }
 float3 intersect(Triple point)
 {
@@ -77,6 +114,12 @@ Triple explode(
          result.plane[i].point[j] = (state->feature*affine).xyz;}}
    return result;
 }
+uint3 versor3(
+   uint3 map,
+   const device Facet *plane)
+{
+   return uint3(0,0,0); // TODO
+}
 float4 convert(
    uint index,
    Triple triple,
@@ -122,6 +165,7 @@ vertex VertexOutput vertex_render(
    uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
    out.position = convert(face,triple,plane,object,state);
+   // TODO use arrow for perspective
    out.normal = normal3(triple);
    out.color = plane[face].color[corner];
    out.coord = plane[face].coord[corner];
@@ -155,7 +199,7 @@ kernel void kernel_pierce(
    Expand face = prepare(ident,plane,object,state);
    if (!opposite(face,feather,arrow)) {
       pierce[ident].valid = false; return;}
-   // TODO scale arrow by feather distance from origin
+   // TODO use arrow for perspective
    float3 hole = intrasect(face,feather,arrow);
    Triple edge;
    Expand apex;
@@ -164,14 +208,13 @@ kernel void kernel_pierce(
       uint corner = plane[ident].point[i];
       Triple triple = explode(point[corner].plane,plane,state);
       apex.point[i] = convert(ident,triple,plane,object,state).xyz;
-      uint line = 0;
       for (uint j = 0; j < 3; j++) {
-         line = point[corner].plane[j];
+         uint line = point[corner].plane[j];
          bool found = false;
          for (uint k = 0; k < i; k++)
             if (index[k] == line) found = true;
          if (!found && line != ident) index[i] = line;}
-      edge.plane[i] = expand(plane[line],state);}
+      edge.plane[i] = expand(plane[index[i]],state);}
    for (uint i = 0; i < 3; i++)
       if (opposite(edge.plane[i],hole,apex.point[i])) {
          pierce[ident].valid = false; return;}
