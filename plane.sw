@@ -149,7 +149,7 @@ func fromAny<T>(_ x: Any) -> T
 
 func setPierce()
 {
-	let siz = Int(getClient(Triangle).siz)
+	let siz = Int(getClient(share.Triangle).siz)
 	let zero = Pierce()
 	let vals = toList(zero,siz)
 	let size = MemoryLayout<Pierce>.size*siz
@@ -158,13 +158,13 @@ func setPierce()
 func setForm()
 {
 	let elem = Form(
-		basis:getClient(Basis).basis!.pointee,
-		subject:getClient(Subject).subject!.pointee,
-		feature:getClient(Feature).feature!.pointee,
-		feather:getClient(Feather).feather!.pointee,
-		arrow:getClient(Arrow).arrow!.pointee,
-		siz:UInt32(getClient(Cloud).siz),
-		hand:UInt32(getClient(Hand).hand),
+		basis:getClient(share.Basis).basis!.pointee,
+		subject:getClient(share.Subject).subject!.pointee,
+		feature:getClient(share.Feature).feature!.pointee,
+		feather:getClient(share.Feather).feather!.pointee,
+		arrow:getClient(share.Arrow).arrow!.pointee,
+		siz:UInt32(getClient(share.Cloud).siz),
+		hand:UInt32(getClient(share.Hand).hand),
 		tag:0,pad:0)
 	form.set([elem],0..<MemoryLayout<Form>.size)
 }
@@ -176,11 +176,11 @@ func setTag(_ tag:uint) -> MTLBuffer
 }
 func getMode() -> share.Mode
 {
-	return getClient(User).user!.pointee
+	return getClient(share.User).user!.pointee
 }
 func getArray() -> [share.Array]
 {
-	let client = getClient(Range)
+	let client = getClient(share.Range)
 	return fromRaw(client.range,Int(client.siz))
 }
 func getClient(_ mem:share.Memory) -> share.Client
