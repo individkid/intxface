@@ -13,55 +13,6 @@ var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 
-struct Pend
-{
-	var pend:MTLBuffer!
-	var last:MTLBuffer!
-	mutating func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
-	{
-		if (pend == nil && last != nil) {
-			pend = device.makeBuffer(bytes:last.contents(),length:last.length)
-			last = nil
-		}
-		if (pend == nil && range.lowerBound == 0) {
-			pend = device.makeBuffer(bytes:ptr,length:range.upperBound)
-			return
-		}
-		if (pend == nil) {
-			pend = device.makeBuffer(length:range.upperBound)
-		}
-		let base:Int = range.lowerBound
-		let size:Int = range.upperBound-range.lowerBound
-		pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
-	}
-	mutating func get() -> MTLBuffer
-	{
-		if (last == nil) {
-			last = pend
-			pend = nil
-		}
-		if (last == nil) {
-			last = device.makeBuffer(length:0)
-		}
-		return last
-	}
-	mutating func rmw(_ ptr: UnsafeRawPointer, _ range: Range<Int>) -> MTLBuffer
-	{
-		let buf = get()
-		let base:Int = range.lowerBound
-		let size:Int = range.upperBound-range.lowerBound
-		buf.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
-		buf.didModifyRange(range)
-		return buf
-	}
-	mutating func new(_ len:Int) -> MTLBuffer
-	{
-		pend = nil
-		last = device.makeBuffer(length:len)
-		return last
-	}
-}
-
 var facet = Pend()
 var vertex = Pend()
 var index = Pend()
@@ -147,6 +98,54 @@ func fromAny<T>(_ x: Any) -> T
   return x as! T
 }
 
+struct Pend
+{
+	var pend:MTLBuffer!
+	var last:MTLBuffer!
+	mutating func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
+	{
+		if (pend == nil && last != nil) {
+			pend = device.makeBuffer(bytes:last.contents(),length:last.length)
+			last = nil
+		}
+		if (pend == nil && range.lowerBound == 0) {
+			pend = device.makeBuffer(bytes:ptr,length:range.upperBound)
+			return
+		}
+		if (pend == nil) {
+			pend = device.makeBuffer(length:range.upperBound)
+		}
+		let base:Int = range.lowerBound
+		let size:Int = range.upperBound-range.lowerBound
+		pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
+	}
+	mutating func get() -> MTLBuffer
+	{
+		if (last == nil) {
+			last = pend
+			pend = nil
+		}
+		if (last == nil) {
+			last = device.makeBuffer(length:0)
+		}
+		return last
+	}
+	mutating func rmw(_ ptr: UnsafeRawPointer, _ range: Range<Int>) -> MTLBuffer
+	{
+		let buf = get()
+		let base:Int = range.lowerBound
+		let size:Int = range.upperBound-range.lowerBound
+		buf.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
+		buf.didModifyRange(range)
+		return buf
+	}
+	mutating func new(_ len:Int) -> MTLBuffer
+	{
+		pend = nil
+		last = device.makeBuffer(length:len)
+		return last
+	}
+}
 func setPierce()
 {
 	let siz = Int(getClient(share.Triangle).siz)

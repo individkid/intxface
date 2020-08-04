@@ -255,7 +255,7 @@ void calculateGlobal()
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
 	float norvec[3];
 	float pievec[3];
-	// TODO get norvec and pievec from what track shader reported in Dma1
+	// TODO get norvec and pievec from what pierce shader reported in Dma1
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
