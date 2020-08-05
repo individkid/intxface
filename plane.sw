@@ -197,28 +197,20 @@ func noWarn<T>(_ opt:T?) -> T?
 	return nil
 }
 
-/*
-void windowWarp(double xpos, double ypos)
-{
-    int xloc, yloc;
-    cb.pos(&xloc,&yloc);
-    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
-    CGWarpMouseCursorPosition(point);
-}
-*/
 func swiftKey(event:NSEvent) -> NSEvent?
 {
 	let point:NSPoint = NSEvent.mouseLocation
 	let frame:CGRect = window.frame
 	let rect:CGRect = layer.frame
+	print("key \(point.x),\(point.y) \(NSMinX(frame)),\(NSMinY(frame)) \(NSMinX(rect)),\(NSMinY(rect)) \(NSMaxX(rect)),\(NSMaxY(rect))")
 	guard let str:String = event.characters else {return nil}
 	let unicode = str.unicodeScalars
 	let key = Int(unicode[unicode.startIndex].value)
-	print("key \(point.x),\(point.y) \(NSMinX(frame)),\(NSMinY(frame)) \(NSMinX(rect)),\(NSMinY(rect)) \(NSMaxX(rect)),\(NSMaxY(rect))")
-	if (key == 256) {if (cb.esc == 0) {cb.esc = 1}}
-	else if (key == 257) {if (cb.esc == 1) {cb.esc = 2}}
+	if (key == 27) {if (cb.esc == 0) {cb.esc = 1}}
+	else if (key == 13) {if (cb.esc == 1) {cb.esc = 2}}
 	else {cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
+	if (cb.esc >= 2) {NSApp.terminate(nil)}
 	return nil
 }
 func swiftMove(event:NSEvent) -> NSEvent?
@@ -229,15 +221,33 @@ func swiftMove(event:NSEvent) -> NSEvent?
 	point.x = point.x - NSMinX(frame)
 	point.y = point.y - NSMinY(frame)
 	if (NSPointInRect(point,rect)) {
-		print("move \(point.x) \(point.y)")}
+		// print("move \(point.x) \(point.y)")
+	}
+	return nil
+}
+func swiftWake(event:NSEvent) -> NSEvent?
+{
+	/*
+	while (cb.esc < 2 && !glfwWindowShouldClose(glfw))
+	if (setjmp(jmpbuf) == 0)
+	while(cb.esc < 2 && !glfwWindowShouldClose(glfw)) {
+	if (cb.full()) {
+	glfwWaitEventsTimeout(1000.0*NANO2SEC);
+	continue;}
+	if (cb.read()) {
+	cb.proc();
+	cb.draw();
+	cb.prod();
+	glfwPollEvents();
+	continue;}
+	glfwWaitEvents();}
+	*/
 	return nil
 }
 
 func swiftInit() -> Int32
 {
-	// cb.pos // TODO implement for share.c
-	// cb.size // TODO implement for share.c
-	// cb.warp // TODO move from share.c
+	cb.warp = swiftWarp
 	cb.full = swiftFull
 	cb.draw = swiftDraw
 	cb.call = {NSApp.run()}
@@ -255,22 +265,7 @@ func swiftInit() -> Int32
 		atStart:false)}
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:swiftKey)
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved,handler:swiftMove)
-	// TODO add handlers to do the following and call the other cb functions in share.c
-	/*
-	while (cb.esc < 2 && !glfwWindowShouldClose(glfw))
-	if (setjmp(jmpbuf) == 0)
-	while(cb.esc < 2 && !glfwWindowShouldClose(glfw)) {
-	if (cb.full()) {
-	glfwWaitEventsTimeout(1000.0*NANO2SEC);
-	continue;}
-	if (cb.read()) {
-	cb.proc();
-	cb.draw();
-	cb.prod();
-	glfwPollEvents();
-	continue;}
-	glfwWaitEvents();}
-	*/
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined,handler:swiftWake)
 
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
@@ -394,11 +389,19 @@ func swiftInit() -> Int32
 	return 1
 }
 
+func swiftWarp(xpos:Double, ypos:Double)
+{
+/*
+    int xloc, yloc;
+    cb.pos(&xloc,&yloc);
+    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
+    CGWarpMouseCursorPosition(point);
+*/
+}
 func swiftFull() -> Int32
 {
 	return 0 // TODO count inuse buffers
 }
-
 func swiftDraw()
 {
 	for i in 0..<Int(cb.client.pointee.len) {
@@ -419,7 +422,6 @@ func swiftDma() // Function.Dma0
 {
 	// TODO dma from client to MTLBuffer
 }
-
 func swiftFunc() // Function.Draw
 {
 	let shader = getMode().shader
