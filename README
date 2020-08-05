@@ -93,6 +93,10 @@ This reads double dash files at the rate they were written,
 inserts user manipulations and activations,
 writes the result to a new double dash file,
 while sound follows and alters polytope appearance metric configuration.
+Each vertex is a harmonic pattern. The vertives facet sizes control
+loudness (where zero visible area is too soft to hear),
+duty cycle (zero visible area is too much silence between attacks to wait for),
+fundamental frequency (visible area of zero is too high to hear).
 
 ball.lua banks the focal point off of framebuffer decorated portions of planes.
 This starts a shader that detects when any of a swarm of detector points,
