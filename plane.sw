@@ -1,3 +1,20 @@
+/*
+*    plane.sw
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 import face
 import share
 import AppKit
@@ -40,94 +57,6 @@ struct Pierce
 	var pad:(uint,uint,uint) = fromZero()
 	var point:share.Vector = fromZero()
 	var normal:share.Vector = fromZero()
-}
-
-func fromZero<T>() -> T
-{
-	return fromZero(1)[0]
-}
-func fromZero<T>(_ len:Int) -> [T]
-{
-	let siz = MemoryLayout<Pierce>.size
-	let ptr = UnsafeMutablePointer<Int8>.allocate(capacity:len*siz)
-	var count = 0
-	while (count < len*siz) {
-		ptr[count] = 0
-		count = count + 1
-	}
-	let res:[T] = fromRaw(ptr,len)
-	ptr.deallocate()
-	return res
-}
-func toList<T>(_ val:T, _ len:Int) -> [T]
-{
-	var vals:[T] = []
-	while (vals.count < len) {
-		vals.append(val)
-	}
-	return vals
-}
-func fromRaw<T>(_ raw:UnsafeRawPointer) -> T
-{
-	return fromRaw(raw,1)[0]
-}
-func fromRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
-{
-	let siz = MemoryLayout<Pierce>.size
-	var current = raw
-	var vals:[T] = []
-	while (vals.count < len) {
-		current = current.advanced(by:siz)
-		vals.append(current.load(as:T.self))
-	}
-	return vals
-}
-func fromAny<T>(_ x: Any) -> T
-{
-  return x as! T
-}
-func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
-{
-	let ptr = UnsafeMutablePointer<T>.allocate(capacity:1); ptr[0] = val
-	fnc(ptr)
-	ptr.deallocate()
-}
-func toMutabls<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
-{
-	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
-	var count = 0
-	for val in list {
-		ptr[count] = val
-		count = count + 1
-	}
-	fnc(ptr)
-	ptr.deallocate()
-}
-func toPointer<T>(_ val:T, _ fnc:(_:UnsafePointer<T>)->Void)
-{
-	toMutable(val,{(_ val:UnsafeMutablePointer<T>) in
-		let ptr = UnsafePointer<T>(val)
-		fnc(ptr)})
-}
-func toMutablee<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
-{
-	toMutable(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutable(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
-}
-func toMutablse<S,T>(_ val0:[S], _ val1:T, _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
-{
-	toMutabls(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutable(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
-}
-func toMutables<S,T>(_ val0:S, _ val1:[T], _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
-{
-	toMutable(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutabls(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
-}
-func toMutablss<S,T>(_ val0:[S], _ val1:[T], _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
-{
-	toMutabls(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutabls(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
-}
-func toPointer<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafePointer<S>,_:UnsafePointer<T>)->Void)
-{
-	toPointer(val0,{(ptr0:UnsafePointer<S>) in toPointer(val1,{(ptr1:UnsafePointer<T>) in fnc(ptr0,ptr1)})})
 }
 
 struct Pend
@@ -240,7 +169,7 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else {cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
 	if (cb.esc >= 2) {NSApp.terminate(nil)}
-	return event
+	return nil
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
 {
@@ -280,7 +209,7 @@ func swiftAlarm(event:NSEvent) -> NSEvent?
 {
 	NSEvent.stopPeriodicEvents()
 	cb.wake()
-	return event
+	return nil
 }
 func swiftWake(event:NSEvent) -> NSEvent?
 {
@@ -294,9 +223,9 @@ func swiftWake(event:NSEvent) -> NSEvent?
 		cb.prod()
 		cb.wake()
 	}
-	return event
+	return nil
 }
-func swiftSize(n: Notification)
+func swiftSize(_: Notification)
 {
 	let rect:CGRect = layer.frame
 	print("size \(NSMaxX(rect)) \(NSMaxY(rect))")
@@ -333,11 +262,17 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 		toMutable(share.Client(tags,vals),{(val) in
 			writeClient(val,cb.tub)})})
 }
-
+func swiftWarp(xpos:Double, ypos:Double)
+{
+	let frame:CGRect = window.frame
+	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
+    CGWarpMouseCursorPosition(coord);	
+}
 func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
+
 func swiftInit() -> Int32
 {
 	cb.warp = swiftWarp
@@ -489,16 +424,6 @@ func swiftInit() -> Int32
 	print("after hello")
 	return 1
 }
-
-func swiftWarp(xpos:Double, ypos:Double)
-{
-/*
-    int xloc, yloc;
-    cb.pos(&xloc,&yloc);
-    struct CGPoint point; point.x = xloc+xpos; point.y = yloc+ypos;
-    CGWarpMouseCursorPosition(point);
-*/
-}
 func swiftFull() -> Int32
 {
 	return 0 // TODO count inuse buffers
@@ -518,7 +443,6 @@ func swiftDraw()
 	case (share.Port): break;
 	default: callError()}}
 }
-
 func swiftDma() // Function.Dma0
 {
 	// TODO dma from client to MTLBuffer

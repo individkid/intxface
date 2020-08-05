@@ -145,7 +145,7 @@ greplist:close()
 
 -- find dependencies based on file extension.
 cDeclareExpr = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
-swDeclareExpr = "^func%s%s*([a-z][a-zA-Z0-9_]*)%("
+swDeclareExpr = "^func%s%s*([a-z][a-zA-Z0-9_]*)"
 hsDeclareExpr = "^([^ ]+) +:: "
 luaDeclareExpr = "^function%s%s*([a-z][a-zA-Z0-9_]*)%("
 cInvokeExpr = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
