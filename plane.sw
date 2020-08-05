@@ -92,17 +92,40 @@ func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 	fnc(ptr)
 	ptr.deallocate()
 }
+func toMutabls<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
+{
+	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
+	var count = 0
+	for val in list {
+		ptr[count] = val
+		count = count + 1
+	}
+	fnc(ptr)
+	ptr.deallocate()
+}
 func toPointer<T>(_ val:T, _ fnc:(_:UnsafePointer<T>)->Void)
 {
 	toMutable(val,{(_ val:UnsafeMutablePointer<T>) in
 		let ptr = UnsafePointer<T>(val)
 		fnc(ptr)})
 }
-func toMutable2<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
+func toMutablee<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
 {
 	toMutable(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutable(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
 }
-func toPointer2<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafePointer<S>,_:UnsafePointer<T>)->Void)
+func toMutablse<S,T>(_ val0:[S], _ val1:T, _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
+{
+	toMutabls(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutable(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
+}
+func toMutables<S,T>(_ val0:S, _ val1:[T], _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
+{
+	toMutable(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutabls(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
+}
+func toMutablss<S,T>(_ val0:[S], _ val1:[T], _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
+{
+	toMutabls(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutabls(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
+}
+func toPointer<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafePointer<S>,_:UnsafePointer<T>)->Void)
 {
 	toPointer(val0,{(ptr0:UnsafePointer<S>) in toPointer(val1,{(ptr1:UnsafePointer<T>) in fnc(ptr0,ptr1)})})
 }
@@ -209,10 +232,6 @@ func noWarn<T>(_ opt:T?) -> T?
 
 func swiftKey(event:NSEvent) -> NSEvent?
 {
-	let point:NSPoint = NSEvent.mouseLocation
-	let frame:CGRect = window.frame
-	let rect:CGRect = layer.frame
-	print("key \(point.x),\(point.y) \(NSMinX(frame)),\(NSMinY(frame)) \(NSMinX(rect)),\(NSMinY(rect)) \(NSMaxX(rect)),\(NSMaxY(rect))")
 	guard let str:String = event.characters else {return nil}
 	let unicode = str.unicodeScalars
 	let key = Int(unicode[unicode.startIndex].value)
@@ -277,6 +296,11 @@ func swiftWake(event:NSEvent) -> NSEvent?
 	}
 	return event
 }
+func swiftSize(n: Notification)
+{
+	let rect:CGRect = layer.frame
+	print("size \(NSMaxX(rect)) \(NSMaxY(rect))")
+}
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
@@ -286,7 +310,7 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			found = pierce
 		}
 	}
-	toMutable2(share.Rmw1,found.point,{(fnc,vec) in
+	toMutablse([share.Rmw1],found.point,{(fnc,vec) in
 		let tags = share.Client.__Unnamed_struct___Anonymous_field0(
 			mem:share.Feather,
 			len:1,
@@ -297,7 +321,7 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			feather:vec)
 		toMutable(share.Client(tags,vals),{(val) in
 			writeClient(val,cb.tub)})})
-	toMutable2(share.Rmw1,found.normal,{(fnc,vec) in
+	toMutablse([share.Rmw1],found.normal,{(fnc,vec) in
 		let tags = share.Client.__Unnamed_struct___Anonymous_field0(
 			mem:share.Arrow,
 			len:1,
@@ -310,6 +334,10 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			writeClient(val,cb.tub)})})
 }
 
+func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
+{
+	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
+}
 func swiftInit() -> Int32
 {
 	cb.warp = swiftWarp
@@ -328,14 +356,18 @@ func swiftInit() -> Int32
 		data1:0,
 		data2:0)!,
 		atStart:false)}
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:swiftKey)
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.leftMouseDown,handler:swiftLeft)
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.rightMouseDown,handler:swiftRight)
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved,handler:swiftMove)
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.scrollWheel,handler:swiftRoll)
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined,handler:swiftWake)
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.periodic,handler:swiftAlarm)
-
+	swiftEvent(.keyDown,swiftKey)
+	swiftEvent(.leftMouseDown,swiftLeft)
+	swiftEvent(.rightMouseDown,swiftRight)
+	swiftEvent(.mouseMoved,swiftMove)
+	swiftEvent(.scrollWheel,swiftRoll)
+	swiftEvent(.applicationDefined,swiftWake)
+	swiftEvent(.periodic,swiftAlarm)
+	NotificationCenter.default.addObserver(
+		forName: NSWindow.didResizeNotification,
+		object: nil,
+		queue: OperationQueue.main,
+		using: swiftSize)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
@@ -551,6 +583,6 @@ func swiftFunc() // Function.Draw
 	if (argc == 4) {bothJump(cb.err,cb.hub)}
 	threadInit()
 	if (swiftInit() != 0) {cb.call()}
-	writeInt(1,cb.zub)
 	cb.done()
+	writeInt(1,cb.zub)
 	threadDone()
