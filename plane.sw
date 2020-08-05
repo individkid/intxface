@@ -20,6 +20,8 @@ var object = Pend()
 var form = Pend()
 var pierce = Pend()
 
+var point = NSPoint(x:0.0,y:0.0)
+
 struct Form
 {
 	var basis:share.Linear
@@ -53,7 +55,9 @@ func fromZero<T>(_ len:Int) -> [T]
 		ptr[count] = 0
 		count = count + 1
 	}
-	return fromRaw(ptr,len)
+	let res:[T] = fromRaw(ptr,len)
+	ptr.deallocate()
+	return res
 }
 func toList<T>(_ val:T, _ len:Int) -> [T]
 {
@@ -78,24 +82,29 @@ func fromRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
 	}
 	return vals
 }
-func toRaw<T>(_ val:T) -> UnsafeRawPointer
-{
-	return toRaw([val])
-}
-func toRaw<T>(_ vals:[T]) -> UnsafeRawPointer
-{
-	let len = vals.count
-	let ptr = UnsafeMutablePointer<T>.allocate(capacity: len)
-	var count = 0
-	for val in vals {
-		ptr[count] = val
-		count = count + 1
-	}
-	return UnsafeRawPointer(ptr)
-}
 func fromAny<T>(_ x: Any) -> T
 {
   return x as! T
+}
+func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
+{
+	let ptr = UnsafeMutablePointer<T>.allocate(capacity:1); ptr[0] = val
+	fnc(ptr)
+	ptr.deallocate()
+}
+func toPointer<T>(_ val:T, _ fnc:(_:UnsafePointer<T>)->Void)
+{
+	toMutable(val,{(_ val:UnsafeMutablePointer<T>) in
+		let ptr = UnsafePointer<T>(val)
+		fnc(ptr)})
+}
+func toMutable2<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
+{
+	toMutable(val0,{(ptr0:UnsafeMutablePointer<S>) in toMutable(val1,{(ptr1:UnsafeMutablePointer<T>) in fnc(ptr0,ptr1)})})
+}
+func toPointer2<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafePointer<S>,_:UnsafePointer<T>)->Void)
+{
+	toPointer(val0,{(ptr0:UnsafePointer<S>) in toPointer(val1,{(ptr1:UnsafePointer<T>) in fnc(ptr0,ptr1)})})
 }
 
 struct Pend
@@ -212,38 +221,61 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else {cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
 	if (cb.esc >= 2) {NSApp.terminate(nil)}
-	return nil
+	return event
+}
+func swiftLeft(event:NSEvent) -> NSEvent?
+{
+	let rect:CGRect = layer.frame
+	if (NSPointInRect(point,rect)) {
+		print("left \(point.x) \(point.y)")
+	}
+	return event
+}
+func swiftRight(event:NSEvent) -> NSEvent?
+{
+	let rect:CGRect = layer.frame
+	if (NSPointInRect(point,rect)) {
+		print("right \(point.x) \(point.y)")
+	}
+	return event
 }
 func swiftMove(event:NSEvent) -> NSEvent?
 {
-	var point:NSPoint = NSEvent.mouseLocation
+	point = NSEvent.mouseLocation
 	let frame:CGRect = window.frame
-	let rect:CGRect = layer.frame
 	point.x = point.x - NSMinX(frame)
 	point.y = point.y - NSMinY(frame)
-	if (NSPointInRect(point,rect)) {
-		// print("move \(point.x) \(point.y)")
+	let rect:CGRect = layer.frame
+	if (NSPointInRect(point,rect) && cb.esc == 1) {
+		print("move \(point.x) \(point.y)")
 	}
-	return nil
+	return event
+}
+func swiftRoll(event:NSEvent) -> NSEvent?
+{
+	let roll = event.deltaY
+	print("roll \(roll)")
+	return event
+}
+func swiftAlarm(event:NSEvent) -> NSEvent?
+{
+	NSEvent.stopPeriodicEvents()
+	cb.wake()
+	return event
 }
 func swiftWake(event:NSEvent) -> NSEvent?
 {
-	/*
-	while (cb.esc < 2 && !glfwWindowShouldClose(glfw))
-	if (setjmp(jmpbuf) == 0)
-	while(cb.esc < 2 && !glfwWindowShouldClose(glfw)) {
-	if (cb.full()) {
-	glfwWaitEventsTimeout(1000.0*NANO2SEC);
-	continue;}
-	if (cb.read()) {
-	cb.proc();
-	cb.draw();
-	cb.prod();
-	glfwPollEvents();
-	continue;}
-	glfwWaitEvents();}
-	*/
-	return nil
+	if (cb.full() != 0) {
+		NSEvent.startPeriodicEvents(afterDelay: 1000.0*NANO2SEC, withPeriod: 0.0)
+		return event
+	}
+	if (cb.read() != 0) {
+		cb.proc()
+		cb.draw()
+		cb.prod()
+		cb.wake()
+	}
+	return event
 }
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
@@ -254,31 +286,28 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			found = pierce
 		}
 	}
-
-	let fnc0 = UnsafeMutablePointer<share.Function>.allocate(capacity:1); fnc0[0] = share.Rmw1
-	let tags0 = share.Client.__Unnamed_struct___Anonymous_field0(
-		mem:share.Feather,
-		len:1,
-		fnc:fnc0,
-		idx:0,
-		siz:0)
-	let vec0 = UnsafeMutablePointer<share.Vector>.allocate(capacity:1); vec0[0] = found.point
-	let vals0 = share.Client.__Unnamed_union___Anonymous_field1(
-		feather:vec0)
-	let ptr0 = UnsafeMutablePointer<share.Client>.allocate(capacity:1); ptr0[0] = share.Client(tags0,vals0)
-	writeClient(ptr0,cb.tub)
-	let fnc1 = UnsafeMutablePointer<share.Function>.allocate(capacity:1); fnc1[0] = share.Rmw1
-	let tags1 = share.Client.__Unnamed_struct___Anonymous_field0(
-		mem:share.Arrow,
-		len:1,
-		fnc:fnc1,
-		idx:0,
-		siz:0)
-	let vec1 = UnsafeMutablePointer<share.Vector>.allocate(capacity:1); vec1[0] = found.normal
-	let vals1 = share.Client.__Unnamed_union___Anonymous_field1(
-		arrow:vec1)
-	let ptr1 = UnsafeMutablePointer<share.Client>.allocate(capacity:1); ptr1[0] = share.Client(tags1,vals1)
-	writeClient(ptr1,cb.tub)
+	toMutable2(share.Rmw1,found.point,{(fnc,vec) in
+		let tags = share.Client.__Unnamed_struct___Anonymous_field0(
+			mem:share.Feather,
+			len:1,
+			fnc:fnc,
+			idx:0,
+			siz:0)
+		let vals = share.Client.__Unnamed_union___Anonymous_field1(
+			feather:vec)
+		toMutable(share.Client(tags,vals),{(val) in
+			writeClient(val,cb.tub)})})
+	toMutable2(share.Rmw1,found.normal,{(fnc,vec) in
+		let tags = share.Client.__Unnamed_struct___Anonymous_field0(
+			mem:share.Arrow,
+			len:1,
+			fnc:fnc,
+			idx:0,
+			siz:0)
+		let vals = share.Client.__Unnamed_union___Anonymous_field1(
+			arrow:vec)
+		toMutable(share.Client(tags,vals),{(val) in
+			writeClient(val,cb.tub)})})
 }
 
 func swiftInit() -> Int32
@@ -300,8 +329,12 @@ func swiftInit() -> Int32
 		data2:0)!,
 		atStart:false)}
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown,handler:swiftKey)
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.leftMouseDown,handler:swiftLeft)
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.rightMouseDown,handler:swiftRight)
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved,handler:swiftMove)
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.scrollWheel,handler:swiftRoll)
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined,handler:swiftWake)
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.periodic,handler:swiftAlarm)
 
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
