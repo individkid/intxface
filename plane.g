@@ -68,6 +68,8 @@ float3 intrasect(Expand plane, float3 feather, float3 arrow)
    float3 point = project(plane,versor,feather+arrow);
    float numerator = origin.z-feather.z;
    float denominator = numerator-point.z+feather.z+arrow.z;
+   if (metal::abs(denominator) < 1.0 && INFINITY*metal::abs(denominator) < metal::abs(numerator)) {
+      return float3(INFINITY,INFINITY,INFINITY);}
    return feather+arrow*numerator/denominator;
 }
 float3 intersect(Triple point)
