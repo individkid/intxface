@@ -1,7 +1,6 @@
 base.c: type.src
 base.h: type.src
 baseC.o: base.h face.h
-containC.o: contain.h
 faceC.o: face.h
 facerC: faceC.o
 facerC.o: face.h
@@ -15,7 +14,7 @@ lineC.o: base.h face.h type.h
 meticC.o: metic.h
 planeG.o: plane.h
 planeSw: baseC.o faceC.o meticC.o plane.so shareC.o typeC.o
-planeSw.o: base.h face.h metic.h share.h type.h type.sw
+planeSw.o: base.h face.h metic.h share.h type.h
 shareC.o: base.h face.h metic.h share.h type.h
 spaceHs: baseC.o face.hs faceC.o naive.hs type.hs typeC.o
 tradeC: baseC.o faceC.o typeC.o
@@ -24,9 +23,7 @@ type.c: type.src
 type.h: type.src
 type.hs: type.src
 type.lua: type.src
-type.sw: type.src
 typeC.o: base.h face.h type.h
-typeSw.o: face.h
 typer.c: type.src typra.src
 typer.h: type.src typra.src
 typer.hs: type.src typra.src

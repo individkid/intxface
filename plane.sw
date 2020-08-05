@@ -146,13 +146,14 @@ struct Pend
 		return last
 	}
 }
-func setPierce()
+func setPierce() -> Int
 {
 	let siz = Int(getClient(share.Triangle).siz)
 	let zero = Pierce()
 	let vals = toList(zero,siz)
 	let size = MemoryLayout<Pierce>.size*siz
 	pierce.set(vals,0..<size)
+	return siz
 }
 func setForm()
 {
@@ -243,6 +244,41 @@ func swiftWake(event:NSEvent) -> NSEvent?
 	glfwWaitEvents();}
 	*/
 	return nil
+}
+func swiftReady(_ buffer:MTLBuffer, _ size:Int)
+{
+	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
+	var found:Pierce = Pierce()
+	for pierce in pierces {
+		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
+			found = pierce
+		}
+	}
+
+	let fnc0 = UnsafeMutablePointer<share.Function>.allocate(capacity:1); fnc0[0] = share.Rmw1
+	let tags0 = share.Client.__Unnamed_struct___Anonymous_field0(
+		mem:share.Feather,
+		len:1,
+		fnc:fnc0,
+		idx:0,
+		siz:0)
+	let vec0 = UnsafeMutablePointer<share.Vector>.allocate(capacity:1); vec0[0] = found.point
+	let vals0 = share.Client.__Unnamed_union___Anonymous_field1(
+		feather:vec0)
+	let ptr0 = UnsafeMutablePointer<share.Client>.allocate(capacity:1); ptr0[0] = share.Client(tags0,vals0)
+	writeClient(ptr0,cb.tub)
+	let fnc1 = UnsafeMutablePointer<share.Function>.allocate(capacity:1); fnc1[0] = share.Rmw1
+	let tags1 = share.Client.__Unnamed_struct___Anonymous_field0(
+		mem:share.Arrow,
+		len:1,
+		fnc:fnc1,
+		idx:0,
+		siz:0)
+	let vec1 = UnsafeMutablePointer<share.Vector>.allocate(capacity:1); vec1[0] = found.normal
+	let vals1 = share.Client.__Unnamed_union___Anonymous_field1(
+		arrow:vec1)
+	let ptr1 = UnsafeMutablePointer<share.Client>.allocate(capacity:1); ptr1[0] = share.Client(tags1,vals1)
+	writeClient(ptr1,cb.tub)
 }
 
 func swiftInit() -> Int32
@@ -445,7 +481,8 @@ func swiftFunc() // Function.Draw
 		code.present(drawable)
 		code.commit()
 	} else if (shader == share.Display) {
-		setForm(); setPierce()
+		setForm();
+		let size = setPierce()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
 			guard let encode = code.makeComputeCommandEncoder() else {callError();return}
@@ -463,7 +500,7 @@ func swiftFunc() // Function.Draw
 			encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 			encode.endEncoding()
 		}
-		// TODO add callback to read result and send pierce point as feather through Dma1 to cb.tub
+		code.addCompletedHandler({(buffer:MTLCommandBuffer) in swiftReady(pierce.get(),size)})
 		code.commit()
 	}
 }
