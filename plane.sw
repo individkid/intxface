@@ -317,7 +317,7 @@ func swiftInit() -> Int32
 	combine.clearColor = color
 	combine.colorPixelFormat = .bgra8Unorm
 	combine.depthStencilPixelFormat = .depth32Float
-	combine.clearDepth = -1.0
+	combine.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	if let temp = noWarn(CAMetalLayer()) {
 		layer = temp} else {print("cannot make layer"); return 0}
 	layer.device = device
@@ -365,7 +365,7 @@ func swiftInit() -> Int32
 		compute = temp} else {print("cannot make compute"); return 0;}
     guard let stencil = noWarn(MTLDepthStencilDescriptor()) else {
     	print("cannot make stencil"); return 0}
-    stencil.depthCompareFunction = .greater
+    stencil.depthCompareFunction = .greater // left hand rule; z thumb to observer
     stencil.isDepthWriteEnabled = true
     if let temp = device.makeDepthStencilState(descriptor: stencil) {
     	depth = temp} else {print("cannot make depth")}
@@ -374,11 +374,16 @@ func swiftInit() -> Int32
 	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
 	let planes = [plane0,plane1]
 	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size*2)
-	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.0); point0.color.0 = (1.0,1.0,0.0,1.0)
-	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.0); point1.color.0 = (1.0,1.0,0.0,1.0)
-	var point2 = share.Facet(); point2.plane = (1.0,-1.0,0.0); point2.color.0 = (1.0,0.5,0.0,1.0)
-	let points = [point0,point1,point2]
-	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Facet>.size*3)
+	// yellow
+	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.5); point0.color.0 = (1.0,1.0,0.0,1.0)
+	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.5); point1.color.0 = (1.0,1.0,0.0,1.0)
+	var point2 = share.Facet(); point2.plane = (1.0,-1.0,0.5); point2.color.0 = (1.0,0.5,0.0,1.0)
+	// orange
+	var point3 = share.Facet(); point3.plane = (0.0,-1.0,0.6); point3.color.0 = (1.0,0.5,0.0,1.0)
+	var point4 = share.Facet(); point4.plane = (1.0,1.0,0.6); point4.color.0 = (1.0,0.5,0.0,1.0)
+	var point5 = share.Facet(); point5.plane = (-1.0,1.0,0.6); point5.color.0 = (1.0,1.0,0.0,1.0)
+	let points = [point0,point1,point2,point3,point4,point5]
+	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Facet>.size*6)
 	let charz = device.makeBuffer(length:1000)
 	var array0 = share.Vertex(); array0.plane = (0,1,2)
 	var array1 = share.Vertex(); array1.plane = (3,4,5)
@@ -424,9 +429,9 @@ func swiftInit() -> Int32
 	guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {
 		print("cannot make encode"); return 0}
 	encode.setRenderPipelineState(hello)
-	// encode.setDepthStencilState(depth)
+	encode.setDepthStencilState(depth)
 	encode.setVertexBuffer(pointz,offset:0,index:0)
-	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:3)
+	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
 	encode.endEncoding()
     guard let draw = combine.currentDrawable else {
     	print("cannot make draw"); return 0}
@@ -454,7 +459,7 @@ func swiftDraw()
 			guard let desc = combine.currentRenderPassDescriptor else {callError();return}
 			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {callError();return}
 			encode.setRenderPipelineState(render)
-			// encode.setDepthStencilState(depth)
+			encode.setDepthStencilState(depth)
 			encode.setVertexBuffer(facet.get(),offset:0,index:0)
 			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
 			encode.setVertexBuffer(index.get(),offset:0,index:2)
