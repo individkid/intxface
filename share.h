@@ -36,7 +36,6 @@ struct Callback {
 	int (*full)();
 	// loop to share
 	void (*proc)();
-	void (*prod)();
 	int (*read)();
 	// main to loop
 	void (*call)();
@@ -53,17 +52,8 @@ struct Callback {
 
 extern struct Callback cb;
 
-void exiterr(const char *str, int num, int arg);
-int displayInit(const char *name);
-void windowInit();
-void displayDone();
-void constructVector(float *point, float *plane, int versor, float *basis);
-void transformVector(float *point, float *matrix);
-int normalVector(float *normal, float *point);
-int solveVector(float *pierce, float *point, float *normal, float *feather);
-int pierceVector(float *pierce, float *point, float *normal, float *feather, float *arrow);
-int intersectVector(float *point, float *plane, int *versor, float *basis);
-void planeInit(int argc);
+void shareInit(int argc);
+void shareDone();
 void threadInit();
 void threadDone();
 void callError();

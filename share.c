@@ -249,7 +249,7 @@ void composeMatrix(float *result)
 	default: ERROR(cb.err,-1);}
 }
 
-void calculateGlobal()
+void initMatrix()
 {
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
 	float norvec[3];
@@ -259,6 +259,7 @@ void calculateGlobal()
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
 	toggle = 0;
+	// TODO synchronize to other processes
 }
 
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
@@ -297,7 +298,7 @@ enum Memory copyUser(struct Client *client, struct Mode *user)
 	return User;
 }
 
-float *clientMat(struct Client *client, int idx)
+float *shareMat(struct Client *client, int idx)
 {
 	switch (client->mem) {
 	case (Subject): return &cb.state[Subject]->subject[0].val[0][0];
@@ -307,16 +308,16 @@ float *clientMat(struct Client *client, int idx)
 	return 0;
 }
 
-void clientRmw0()
+void shareRmw0()
 {
 	// cb.state[idx] = client[0]*saved[idx]
-	float *stat = clientMat(cb.state[client->mem],client->idx);
-	float *save = clientMat(saved[client->mem],client->idx);
-	float *give = clientMat(client,0);
+	float *stat = shareMat(cb.state[client->mem],client->idx);
+	float *save = shareMat(saved[client->mem],client->idx);
+	float *give = shareMat(client,0);
 	copymat(stat,timesmat(save,give,4),4);
 }
 
-void clientRmw1()
+void shareRmw1()
 {
 	// A = B*C
 	// A' = B*C'
@@ -326,12 +327,12 @@ void clientRmw1()
 	// cb.state[idx] = cb.state[idx]*saved[idx]
 	// saved[idx] = client[0]
 	// cb.state[idx] = cb.state[idx]*client[0]
-	float *save = clientMat(saved[client->mem],client->idx); invmat(save,4);
-	float *stat = clientMat(cb.state[client->mem],client->idx); timesmat(stat,save,4);
-	float *give = clientMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
+	float *save = shareMat(saved[client->mem],client->idx); invmat(save,4);
+	float *stat = shareMat(cb.state[client->mem],client->idx); timesmat(stat,save,4);
+	float *give = shareMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
 }
 
-void clientRmw2()
+void shareRmw2()
 {
 	// A = B*C
 	// A = B'*C'
@@ -344,9 +345,9 @@ void clientRmw2()
 	// C = saved[idx]
 	// B = client[1]
 	// B' = client[0]
-	float *save = clientMat(saved[client->mem],client->idx);
-	float *give0 = clientMat(client,0);
-	float *give1 = clientMat(client,1);
+	float *save = shareMat(saved[client->mem],client->idx);
+	float *give0 = shareMat(client,0);
+	float *give1 = shareMat(client,1);
 	float inv[16]; invmat(copymat(inv,give0,4),4);
 	jumpmat(jumpmat(save,inv,4),give1,4);
 }
@@ -354,7 +355,7 @@ void clientRmw2()
 #define INDEXED(ENUM,FIELD) \
 	if (client->mem == ENUM && ptr[ENUM] && client->siz < ptr[ENUM]->siz) \
 	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
-void clientCopy(struct Client **ptr)
+void shareCopy(struct Client **ptr)
 {
 	INDEXED(Corner,corner);
 	INDEXED(Triangle,triangle);
@@ -365,59 +366,31 @@ void clientCopy(struct Client **ptr)
 	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
 }
 
-void windowProc()
+void shareMetric()
 {
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
-	case (Rmw0): clientRmw0(); break;
-	case (Rmw1): clientRmw1(); break;
-	case (Rmw2): clientRmw2(); break;
-	case (Copy): clientCopy(cb.state); break;
-	case (Save): clientCopy(saved); break;
-	case (Dma0): cb.dma(client->mem); break;
-	case (Dma1): break; // TODO	read feather for pierce point and arrow for pierce normal
-	case (Draw): cb.draw(); break;
-	case (Port): break;
-	default: ERROR(exiterr,-1);}
-}
-
-void windowProd()
-{
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
-	case (Rmw0): break;
-	case (Rmw1): break;
-	case (Rmw2): break;
-	case (Copy): break;
-	case (Save): break;
-	case (Dma0): break;
-	case (Dma1): break;
-	case (Draw): break;
-	case (Port): {
 	struct Metric metric = {0};
 	metric.src = Plane;
 	metric.plane = cb.state[client->mem];
 	writeMetric(&metric,cb.hub);
-	break;}
+}
+
+void shareProc()
+{
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Rmw0): shareRmw0(); break;
+	case (Rmw1): shareRmw1(); break;
+	case (Rmw2): shareRmw2(); break;
+	case (Copy): shareCopy(cb.state); break;
+	case (Save): shareCopy(saved); break;
+	case (Dma0): cb.dma(client->mem); break;
+	case (Dma1): break; // TODO	read feather for pierce point and arrow for pierce normal
+	case (Draw): cb.draw(); break;
+	case (Port): shareMetric(); break;
 	default: ERROR(exiterr,-1);}
 }
 
-void *thread(void *arg)
-{
-	int tmp = 0;
-	int gon = 1;
-	while (gon) {
-	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
-	printf("thread(%d) cb.hub(%d) cb.tub(%d) cb.zub(%d)\n",tmp,cb.hub,cb.tub,cb.zub);
-	if (tmp == cb.zub) gon = 0; else if (tmp >= 0) {
-	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	sub = tmp; vld = 1; cb.wake();
-	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
-	return 0;
-}
-
-int windowRead()
+int shareRead()
 {
 	int res = 0;
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
@@ -427,7 +400,7 @@ int windowRead()
 	return res;
 }
 
-void windowWrite(struct Vector *point, struct Vector *normal)
+void shareWrite(struct Vector *point, struct Vector *normal)
 {
 	enum Function function[1];
 	function[0] = Rmw1;
@@ -444,7 +417,7 @@ void windowWrite(struct Vector *point, struct Vector *normal)
 	writeClient(&client,cb.tub);
 }
 
-void windowMove(double xpos, double ypos)
+void shareMove(double xpos, double ypos)
 {
 	xmove = xpos; ymove = ypos;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
@@ -471,7 +444,7 @@ void windowMove(double xpos, double ypos)
 	writeClient(&client,cb.tub);}
 }
 
-void windowRoll(double xoffset, double yoffset)
+void shareRoll(double xoffset, double yoffset)
 {
 	offset += yoffset*ANGLE;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
@@ -493,9 +466,9 @@ void windowRoll(double xoffset, double yoffset)
 	writeClient(&client,cb.tub);}
 }
 
-void windowClick(int isright)
+void shareClick(int isright)
 {
-	calculateGlobal();
+	initMatrix();
 	struct Client client;
 	struct Affine affine;
 	struct Mode user;
@@ -522,10 +495,10 @@ void windowClick(int isright)
 	writeClient(&client,cb.tub);
 }
 
-void windowSize(double width, double height)
+void shareSize(double width, double height)
 {
-	// TODO record width and height for use in windowRoll
-	windowRoll(0.0,0.0);
+	// TODO record width and height for use in shareRoll
+	shareRoll(0.0,0.0);
 }
 
 void novoid()
@@ -549,7 +522,7 @@ void nosize(double width, double height)
 
 void nomove(double xpos, double ypos)
 {
-	printf("move %f %f\n",xpos,ypos);
+	if (cb.esc == 1) printf("move %f %f\n",xpos,ypos);
 }
 
 void noroll(double xoffset, double yoffset)
@@ -562,23 +535,42 @@ void noclick(int isright)
 	printf("click %d\n",isright);
 }
 
-void planeInit(int argc)
+void shareInit(int argc)
 {
 	cb.err = exiterr;
-	cb.move = (argc == 4 ? windowMove : nomove);
-	cb.roll = (argc == 4 ? windowRoll : noroll);
-	cb.click = (argc == 4 ? windowClick : noclick);
-	cb.size = (argc == 4 ? windowSize : nosize);
-	cb.write = windowWrite;
+	cb.move = (argc == 4 ? shareMove : nomove);
+	cb.roll = (argc == 4 ? shareRoll : noroll);
+	cb.click = (argc == 4 ? shareClick : noclick);
+	cb.size = (argc == 4 ? shareSize : nosize);
+	cb.write = shareWrite;
 	cb.warp = nowarp;
 	cb.full = nofalse;
 	cb.draw = novoid;
-	cb.proc = windowProc;
-	cb.prod = windowProd;
-	cb.read = windowRead;
+	cb.proc = shareProc;
+	cb.read = shareRead;
 	cb.call = novoid;
 	cb.wake = novoid;
 	cb.done = novoid;
+}
+
+void shareDone()
+{
+	initMatrix();
+}
+
+void *thread(void *arg)
+{
+	int tmp = 0;
+	int gon = 1;
+	while (gon) {
+	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
+	printf("thread(%d) cb.hub(%d) cb.tub(%d) cb.zub(%d)\n",tmp,cb.hub,cb.tub,cb.zub);
+	if (tmp == cb.zub) gon = 0; else if (tmp >= 0) {
+	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
+	sub = tmp; vld = 1; cb.wake();
+	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
+	return 0;
 }
 
 void threadInit()
@@ -590,6 +582,7 @@ void threadInit()
 
 void threadDone()
 {
+	writeInt(1,cb.zub);
 	if (pthread_join(pthread,0) != 0) callError();
 	if (pthread_mutex_destroy(&mutex) != 0) callError();
 	if (pthread_cond_destroy(&cond) != 0) callError();

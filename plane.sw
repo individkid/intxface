@@ -166,17 +166,15 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	let key = Int(unicode[unicode.startIndex].value)
 	if (key == 27) {if (cb.esc == 0) {cb.esc = 1}}
 	else if (key == 13) {if (cb.esc == 1) {cb.esc = 2}}
-	else {cb.esc = 0}
+	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
 	if (cb.esc >= 2) {NSApp.terminate(nil)}
 	return nil
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
 {
-	if (cb.esc == 1) {return swiftRight(event:event)}
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
-		print("left \(point.x) \(point.y)")
 		cb.click(0)
 	}
 	return event
@@ -185,7 +183,6 @@ func swiftRight(event:NSEvent) -> NSEvent?
 {
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
-		print("right \(point.x) \(point.y)")
 		cb.click(1)
 	}
 	return event
@@ -197,16 +194,13 @@ func swiftMove(event:NSEvent) -> NSEvent?
 	point.x = point.x - NSMinX(frame)
 	point.y = point.y - NSMinY(frame)
 	let rect:CGRect = layer.frame
-	if (NSPointInRect(point,rect) && cb.esc == 1) {
-		print("move \(point.x) \(point.y)")
+	if (NSPointInRect(point,rect)) {
 		cb.move(Double(point.x),Double(point.y))
 	}
 	return event
 }
 func swiftRoll(event:NSEvent) -> NSEvent?
 {
-	let roll = event.deltaY
-	print("roll \(roll)")
 	cb.roll(Double(event.deltaX),Double(event.deltaY))
 	return event
 }
@@ -224,7 +218,6 @@ func swiftWake(event:NSEvent) -> NSEvent?
 	}
 	if (cb.read() != 0) {
 		cb.proc()
-		cb.prod()
 		cb.wake()
 	}
 	return nil
@@ -232,7 +225,6 @@ func swiftWake(event:NSEvent) -> NSEvent?
 func swiftSize(_: Notification)
 {
 	let rect:CGRect = layer.frame
-	print("size \(NSMaxX(rect)) \(NSMaxY(rect))")
 	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 }
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
@@ -288,13 +280,17 @@ func swiftNotify(_ type:Notification.Name, _ handler: @escaping (_:Notification)
 		using: handler)
 }
 
-func swiftInit() -> Int32
+func loopInit()
 {
-	// as loop
 	cb.call = swiftCall
 	cb.wake = swiftWake
 	swiftEvent(.periodic,swiftAlarm)
-	// as kvm
+}
+func loopDone()
+{
+}
+func swiftInit() -> Int32
+{
 	cb.warp = swiftWarp
 	cb.full = swiftFull
 	cb.dma = swiftDma
@@ -319,8 +315,6 @@ func swiftInit() -> Int32
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
 	layer.frame = rect
-	let temp:CGRect = layer.contentsRect
-	print("rect \(NSMinX(temp)) \(NSMinY(temp))")
 	if let temp = noWarn(NSView(frame:rect)) {
 		view = temp} else {print("cannot make view"); return 0}
 	view.layer = layer
@@ -490,12 +484,14 @@ func swiftDraw()
 	cb.zub = openPipe()
 	cb.tub = openPipe()
 	if (cb.zub < 0 || cb.tub < 0 || (argc == 4 && cb.hub < 0)) {callError()}
-	planeInit(Int32(argc))
+	shareInit(Int32(argc))
 	bothJump(cb.err,cb.zub)
 	bothJump(cb.err,cb.tub)
 	if (argc == 4) {bothJump(cb.err,cb.hub)}
+	loopInit()
 	threadInit()
 	if (swiftInit() != 0) {cb.call()}
 	cb.done()
-	writeInt(1,cb.zub)
 	threadDone()
+	loopDone()
+	shareDone()
