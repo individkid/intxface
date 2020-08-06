@@ -30,6 +30,7 @@ var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 var depth:MTLDepthStencilState!
+var threads:MTLSize!
 
 var facet = Pend()
 var vertex = Pend()
@@ -229,6 +230,10 @@ func swiftSize(_: Notification)
 	combine.frame = rect
 	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 }
+func swiftClose(_: Notification)
+{
+	NSApp.terminate(nil)
+}
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
@@ -305,6 +310,7 @@ func swiftInit() -> Int32
 	swiftEvent(.scrollWheel,swiftRoll)
 	swiftEvent(.applicationDefined,swiftWake)
 	swiftNotify(NSWindow.didResizeNotification,swiftSize)
+	swiftNotify(NSWindow.willCloseNotification,swiftClose)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
@@ -328,7 +334,7 @@ func swiftInit() -> Int32
 		view = temp} else {print("cannot make view"); return 0}
 	view.layer = layer
 	view.addSubview(combine)
-	let mask:NSWindow.StyleMask = [.titled, .closable, .resizable]
+	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
 		window = temp} else {print("cannot make window"); return 0}
 	window.title = "plane"
@@ -368,20 +374,22 @@ func swiftInit() -> Int32
     stencil.depthCompareFunction = .greater // left hand rule; z thumb to observer
     stencil.isDepthWriteEnabled = true
     if let temp = device.makeDepthStencilState(descriptor: stencil) {
-    	depth = temp} else {print("cannot make depth")}
+    	depth = temp} else {print("cannot make depth"); return 0}
+    if let temp = noWarn(device.maxThreadsPerThreadgroup) {
+    	threads = temp} else {print("cannot make thread"); return 0}
 
 	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
 	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
 	let planes = [plane0,plane1]
 	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size*2)
 	// yellow
-	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.5); point0.color.0 = (1.0,1.0,0.0,1.0)
-	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.5); point1.color.0 = (1.0,1.0,0.0,1.0)
-	var point2 = share.Facet(); point2.plane = (1.0,-1.0,0.5); point2.color.0 = (1.0,0.5,0.0,1.0)
+	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.6); point0.color.0 = (1.0,1.0,0.0,1.0)
+	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.6); point1.color.0 = (1.0,1.0,0.0,1.0)
+	var point2 = share.Facet(); point2.plane = (1.0,-1.0,0.6); point2.color.0 = (1.0,0.5,0.0,1.0)
 	// orange
-	var point3 = share.Facet(); point3.plane = (0.0,-1.0,0.6); point3.color.0 = (1.0,0.5,0.0,1.0)
-	var point4 = share.Facet(); point4.plane = (1.0,1.0,0.6); point4.color.0 = (1.0,0.5,0.0,1.0)
-	var point5 = share.Facet(); point5.plane = (-1.0,1.0,0.6); point5.color.0 = (1.0,1.0,0.0,1.0)
+	var point3 = share.Facet(); point3.plane = (0.0,-1.2,0.4); point3.color.0 = (1.0,0.5,0.0,1.0)
+	var point4 = share.Facet(); point4.plane = (1.2,1.2,0.4); point4.color.0 = (1.0,0.5,0.0,1.0)
+	var point5 = share.Facet(); point5.plane = (-1.2,1.2,0.4); point5.color.0 = (1.0,1.0,0.0,1.0)
 	let points = [point0,point1,point2,point3,point4,point5]
 	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Facet>.size*6)
 	let charz = device.makeBuffer(length:1000)
@@ -479,21 +487,32 @@ func swiftDraw()
 		let size = setPierce()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
+		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
+		var nums:[Int] = []
+		var pers:[Int] = []
+		let quotient = Int(array.siz)/threads.width
+		let remainder = Int(array.siz)%threads.width
+		if (quotient > 0) {
+			nums.append(quotient)
+			pers.append(threads.width)}
+		if (remainder > 0) {
+			nums.append(1)
+			pers.append(remainder)}
+		for (n,p) in zip(nums,pers) {
 			guard let encode = code.makeComputeCommandEncoder() else {callError();return}
 			encode.setComputePipelineState(compute)
 			encode.setBuffer(facet.get(),offset:0,index:0)
 			encode.setBuffer(vertex.get(),offset:0,index:1)
-			let offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 			encode.setBuffer(index.get(),offset:offset,index:2)
 			encode.setBuffer(object.get(),offset:0,index:3)
 			encode.setBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
 			encode.setBuffer(pierce.get(),offset:0,index:5)
-			let groups = MTLSize(width:1,height:1,depth:1)
-			// TODO use groups if threads too large
-			let threads = MTLSize(width:Int(array.siz),height:1,depth:1)
-			encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
+			let num = MTLSize(width:n,height:1,depth:1)
+			let per = MTLSize(width:p,height:1,depth:1)
+			encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
 			encode.endEncoding()
-		}
+			offset += n*p*MemoryLayout<share.Vertex>.size
+		}}
 		code.addCompletedHandler({(buffer:MTLCommandBuffer) in swiftReady(pierce.get(),size)})
 		code.commit()
 	}
