@@ -280,6 +280,14 @@ func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
+func swiftNotify(_ type:Notification.Name, _ handler: @escaping (_:Notification)->Void)
+{
+	NotificationCenter.default.addObserver(
+		forName: type,
+		object: nil,
+		queue: OperationQueue.main,
+		using: handler)
+}
 
 func swiftInit() -> Int32
 {
@@ -298,11 +306,7 @@ func swiftInit() -> Int32
 	swiftEvent(.mouseMoved,swiftMove)
 	swiftEvent(.scrollWheel,swiftRoll)
 	swiftEvent(.applicationDefined,swiftWake)
-	NotificationCenter.default.addObserver(
-		forName: NSWindow.didResizeNotification,
-		object: nil,
-		queue: OperationQueue.main,
-		using: swiftSize)
+	swiftNotify(NSWindow.didResizeNotification,swiftSize)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
