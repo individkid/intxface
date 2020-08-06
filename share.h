@@ -30,19 +30,24 @@ struct Callback {
 	void (*write)(struct Vector *point, struct Vector *normal);
 	// share to kvm
 	void (*warp)(double xpos, double ypos);
-	int (*full)(); // loop to kvm
-	void (*draw)(); // loop to kvm
-	void (*proc)(); // loop to share
-	void (*prod)(); // loop to share
-	int (*read)(); // loop to share
-	void (*call)(); // main to loop
-	void (*wake)(); // share to loop
-	void (*done)(); // main to kvm
+	void (*dma)(enum Memory mem);
+	void (*draw)();
+	// loop to kvm
+	int (*full)();
+	// loop to share
+	void (*proc)();
+	void (*prod)();
+	int (*read)();
+	// main to loop
+	void (*call)();
+	// share to loop
+	void (*wake)();
+	// main to kvm
+	void (*done)();
 	int hub;
 	int tub;
 	int zub;
 	int esc;
-	struct Client *client;
 	struct Client *state[Memorys];
 };
 

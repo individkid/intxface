@@ -23,6 +23,7 @@ int sub = 0;
 pthread_mutex_t mutex = {0};
 pthread_cond_t cond = {0};
 pthread_t pthread = {0};
+struct Client *client = 0;
 struct Client *saved[Memorys] = {0};
 struct Callback cb = {0};
 float xmove = 0.0;
@@ -263,18 +264,18 @@ void calculateGlobal()
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
 {
 	switch (cb.state[User]->user->matrix) {
-	case (Global): cb.client->subject = affine; cb.client->idx = 0; return Subject;
-	case (Several): cb.client->object = affine; cb.client->idx = object; return Object;
-	case (Single): cb.client->feature = affine; cb.client->idx = 0; return Feature;
+	case (Global): client->subject = affine; client->idx = 0; return Subject;
+	case (Several): client->object = affine; client->idx = object; return Object;
+	case (Single): client->feature = affine; client->idx = 0; return Feature;
 	default: ERROR(cb.err,-1);}
 	return Memorys;
 }
 
 #define REJECT(MEM,FIELD,IDX) \
 	mem = MEM; \
-	cb.client->idx = IDX; \
-	src = &cb.state[MEM]->FIELD[cb.client->idx]; \
-	cb.client->FIELD = affine;
+	client->idx = IDX; \
+	src = &cb.state[MEM]->FIELD[client->idx]; \
+	client->FIELD = affine;
 enum Memory copyAffine(struct Client *client, struct Affine *affine)
 {
 	struct Affine *src;
@@ -291,14 +292,14 @@ enum Memory copyAffine(struct Client *client, struct Affine *affine)
 enum Memory copyUser(struct Client *client, struct Mode *user)
 {
 	struct Mode *src = cb.state[User]->user;
-	cb.client->user = user;
+	client->user = user;
 	memcpy(user,src,sizeof(struct Mode));
 	return User;
 }
 
 float *clientMat(struct Client *client, int idx)
 {
-	switch (cb.client->mem) {
+	switch (client->mem) {
 	case (Subject): return &cb.state[Subject]->subject[0].val[0][0];
 	case (Object): return &cb.state[Object]->object[idx].val[0][0];
 	case (Feature): return &cb.state[Feature]->feature[0].val[0][0];
@@ -309,9 +310,9 @@ float *clientMat(struct Client *client, int idx)
 void clientRmw0()
 {
 	// cb.state[idx] = client[0]*saved[idx]
-	float *stat = clientMat(cb.state[cb.client->mem],cb.client->idx);
-	float *save = clientMat(saved[cb.client->mem],cb.client->idx);
-	float *give = clientMat(cb.client,0);
+	float *stat = clientMat(cb.state[client->mem],client->idx);
+	float *save = clientMat(saved[client->mem],client->idx);
+	float *give = clientMat(client,0);
 	copymat(stat,timesmat(save,give,4),4);
 }
 
@@ -325,9 +326,9 @@ void clientRmw1()
 	// cb.state[idx] = cb.state[idx]*saved[idx]
 	// saved[idx] = client[0]
 	// cb.state[idx] = cb.state[idx]*client[0]
-	float *save = clientMat(saved[cb.client->mem],cb.client->idx); invmat(save,4);
-	float *stat = clientMat(cb.state[cb.client->mem],cb.client->idx); timesmat(stat,save,4);
-	float *give = clientMat(cb.client,0); copymat(save,give,4); timesmat(stat,give,4);
+	float *save = clientMat(saved[client->mem],client->idx); invmat(save,4);
+	float *stat = clientMat(cb.state[client->mem],client->idx); timesmat(stat,save,4);
+	float *give = clientMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
 }
 
 void clientRmw2()
@@ -343,16 +344,16 @@ void clientRmw2()
 	// C = saved[idx]
 	// B = client[1]
 	// B' = client[0]
-	float *save = clientMat(saved[cb.client->mem],cb.client->idx);
-	float *give0 = clientMat(cb.client,0);
-	float *give1 = clientMat(cb.client,1);
+	float *save = clientMat(saved[client->mem],client->idx);
+	float *give0 = clientMat(client,0);
+	float *give1 = clientMat(client,1);
 	float inv[16]; invmat(copymat(inv,give0,4),4);
 	jumpmat(jumpmat(save,inv,4),give1,4);
 }
 
 #define INDEXED(ENUM,FIELD) \
-	if (cb.client->mem == ENUM && ptr[ENUM] && cb.client->siz < ptr[ENUM]->siz) \
-	{memcpy(&ptr[ENUM]->FIELD[cb.client->idx],cb.client->FIELD,cb.client->siz*sizeof(*cb.client->FIELD)); return;}
+	if (client->mem == ENUM && ptr[ENUM] && client->siz < ptr[ENUM]->siz) \
+	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
 void clientCopy(struct Client **ptr)
 {
 	INDEXED(Corner,corner);
@@ -361,29 +362,29 @@ void clientCopy(struct Client **ptr)
 	INDEXED(Basis,basis);
 	INDEXED(Object,object);
 	INDEXED(Cloud,cloud);
-	allocClient(&ptr[cb.client->mem],0); ptr[cb.client->mem] = cb.client;
+	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
 }
 
 void windowProc()
 {
-	for (int i = 0; i < cb.client->len; i++)
-	switch (cb.client->fnc[i]) {
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
 	case (Rmw0): clientRmw0(); break;
 	case (Rmw1): clientRmw1(); break;
 	case (Rmw2): clientRmw2(); break;
 	case (Copy): clientCopy(cb.state); break;
 	case (Save): clientCopy(saved); break;
-	case (Dma0): break;
+	case (Dma0): cb.dma(client->mem); break;
 	case (Dma1): break; // TODO	read feather for pierce point and arrow for pierce normal
-	case (Draw): break;
+	case (Draw): cb.draw(); break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}
 }
 
 void windowProd()
 {
-	for (int i = 0; i < cb.client->len; i++)
-	switch (cb.client->fnc[i]) {
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
 	case (Rmw0): break;
 	case (Rmw1): break;
 	case (Rmw2): break;
@@ -395,7 +396,7 @@ void windowProd()
 	case (Port): {
 	struct Metric metric = {0};
 	metric.src = Plane;
-	metric.plane = cb.state[cb.client->mem];
+	metric.plane = cb.state[client->mem];
 	writeMetric(&metric,cb.hub);
 	break;}
 	default: ERROR(exiterr,-1);}
@@ -420,7 +421,7 @@ int windowRead()
 {
 	int res = 0;
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (vld) {readClient(cb.client,sub); vld = 0; res = 1;
+	if (vld) {readClient(client,sub); vld = 0; res = 1;
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
 	return res;

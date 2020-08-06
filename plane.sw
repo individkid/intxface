@@ -224,7 +224,6 @@ func swiftWake(event:NSEvent) -> NSEvent?
 	}
 	if (cb.read() != 0) {
 		cb.proc()
-		cb.draw()
 		cb.prod()
 		cb.wake()
 	}
@@ -298,6 +297,7 @@ func swiftInit() -> Int32
 	// as kvm
 	cb.warp = swiftWarp
 	cb.full = swiftFull
+	cb.dma = swiftDma
 	cb.draw = swiftDraw
 	cb.done = swiftDone
 	swiftEvent(.keyDown,swiftKey)
@@ -432,26 +432,11 @@ func swiftFull() -> Int32
 {
 	return 0 // TODO count inuse buffers
 }
+func swiftDma(_ mem:share.Memory)
+{
+	// TODO dma from cb.state to MTLBuffer
+}
 func swiftDraw()
-{
-	for i in 0..<Int(cb.client.pointee.len) {
-	switch (cb.client.pointee.fnc[i]) {
-	case (share.Rmw0): break;
-	case (share.Rmw1): break;
-	case (share.Rmw2): break;
-	case (share.Copy): break;
-	case (share.Save): break;
-	case (share.Dma0): swiftDma()
-	case (share.Dma1): break;
-	case (share.Draw): swiftFunc()
-	case (share.Port): break;
-	default: callError()}}
-}
-func swiftDma() // Function.Dma0
-{
-	// TODO dma from client to MTLBuffer
-}
-func swiftFunc() // Function.Draw
 {
 	let shader = getMode().shader
 	if (shader == share.Track) {
