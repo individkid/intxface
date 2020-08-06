@@ -374,7 +374,7 @@ void windowProc()
 	case (Copy): clientCopy(cb.state); break;
 	case (Save): clientCopy(saved); break;
 	case (Dma0): break;
-	case (Dma1): break; // TODO	read feather for pierce point
+	case (Dma1): break; // TODO	read feather for pierce point and arrow for pierce normal
 	case (Draw): break;
 	case (Port): break;
 	default: ERROR(exiterr,-1);}

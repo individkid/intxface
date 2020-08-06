@@ -22,19 +22,21 @@
 
 struct Callback {
 	void (*err)(const char *str, int num, int arg);
+	// kvm to share
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
 	void (*size)(double width, double height);
+	// share to kvm
 	void (*warp)(double xpos, double ypos);
-	int (*full)();
-	void (*draw)();
-	void (*proc)();
-	void (*prod)();
-	int (*read)();
-	void (*call)();
-	void (*wake)();
-	void (*done)();
+	int (*full)(); // loop to kvm
+	void (*draw)(); // loop to kvm
+	void (*proc)(); // loop to share
+	void (*prod)(); // loop to share
+	int (*read)(); // loop to share
+	void (*call)(); // main to loop
+	void (*wake)(); // share to loop
+	void (*done)(); // main to kvm
 	int hub;
 	int tub;
 	int zub;
