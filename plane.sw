@@ -19,16 +19,17 @@ import face
 import share
 import AppKit
 import Metal
+import MetalKit
 
 var device:MTLDevice!
+var combine:MTKView!
 var layer: CAMetalLayer!
 var view:NSView!
 var window:NSWindow!
-var drawable: CAMetalDrawable!
-var descriptor:MTLRenderPassDescriptor!
 var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
+var depth:MTLDepthStencilState!
 
 var facet = Pend()
 var vertex = Pend()
@@ -225,6 +226,7 @@ func swiftWake(event:NSEvent) -> NSEvent?
 func swiftSize(_: Notification)
 {
 	let rect:CGRect = layer.frame
+	combine.frame = rect
 	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 }
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
@@ -309,6 +311,13 @@ func swiftInit() -> Int32
 	if let temp = MTLCreateSystemDefaultDevice() {
 		device = temp} else {print("cannot make device"); return 0}
 	let rect = NSMakeRect(0, 0, 640, 480)
+	if let temp = noWarn(MTKView(frame:rect,device:device)) {
+		combine = temp} else {print("cannot make combine"); return 0}
+	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
+	combine.clearColor = color
+	combine.colorPixelFormat = .bgra8Unorm
+	combine.depthStencilPixelFormat = .depth32Float
+	combine.clearDepth = -1.0
 	if let temp = noWarn(CAMetalLayer()) {
 		layer = temp} else {print("cannot make layer"); return 0}
 	layer.device = device
@@ -318,20 +327,13 @@ func swiftInit() -> Int32
 	if let temp = noWarn(NSView(frame:rect)) {
 		view = temp} else {print("cannot make view"); return 0}
 	view.layer = layer
+	view.addSubview(combine)
 	let mask:NSWindow.StyleMask = [.titled, .closable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
 		window = temp} else {print("cannot make window"); return 0}
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
-	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
-	if let temp = layer?.nextDrawable() {
-		drawable = temp} else {print("cannot make drawable"); return 0}
-	if let temp = noWarn(MTLRenderPassDescriptor()) {
-		descriptor = temp} else {print("cannot make descriptor"); return 0}
-	descriptor.colorAttachments[0].texture = drawable.texture
-	descriptor.colorAttachments[0].loadAction = .clear
-	descriptor.colorAttachments[0].clearColor = color
 	if let temp = device.makeCommandQueue() {
 		queue = temp} else {print("cannot make queue"); return 0}
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
@@ -353,6 +355,7 @@ func swiftInit() -> Int32
 	pipe.vertexFunction = vertex_simple
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
+	pipe.depthAttachmentPixelFormat = .depth32Float
 	guard let hello = try? device.makeRenderPipelineState(descriptor:pipe) else {
 		print("cannot make hello"); return 0}
 	pipe.vertexFunction = vertex_render
@@ -360,6 +363,12 @@ func swiftInit() -> Int32
 		render = temp} else {print("cannot make render"); return 0}
 	if let temp = try? device.makeComputePipelineState(function:kernel_pierce) {
 		compute = temp} else {print("cannot make compute"); return 0;}
+    guard let stencil = noWarn(MTLDepthStencilDescriptor()) else {
+    	print("cannot make stencil"); return 0}
+    stencil.depthCompareFunction = .greater
+    stencil.isDepthWriteEnabled = true
+    if let temp = device.makeDepthStencilState(descriptor: stencil) {
+    	depth = temp} else {print("cannot make depth")}
 
 	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
 	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
@@ -410,13 +419,18 @@ func swiftInit() -> Int32
 	if (true) {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return 0}
-	guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {
+	guard let desc = combine.currentRenderPassDescriptor else {
+		print("cannot make desc"); return 0}
+	guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {
 		print("cannot make encode"); return 0}
 	encode.setRenderPipelineState(hello)
+	// encode.setDepthStencilState(depth)
 	encode.setVertexBuffer(pointz,offset:0,index:0)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:3)
 	encode.endEncoding()
-	code.present(drawable)
+    guard let draw = combine.currentDrawable else {
+    	print("cannot make draw"); return 0}
+	code.present(draw)
 	code.commit()}
 
 	print("after hello")
@@ -433,12 +447,14 @@ func swiftDma(_ mem:share.Memory)
 func swiftDraw()
 {
 	let shader = getMode().shader
-	if (shader == share.Track) {
+	if (shader == share.Display) {
 		setForm()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
 		for array in getArray() {
-			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {callError();return}
+			guard let desc = combine.currentRenderPassDescriptor else {callError();return}
+			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {callError();return}
 			encode.setRenderPipelineState(render)
+			// encode.setDepthStencilState(depth)
 			encode.setVertexBuffer(facet.get(),offset:0,index:0)
 			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
 			encode.setVertexBuffer(index.get(),offset:0,index:2)
@@ -450,9 +466,10 @@ func swiftDraw()
 				vertexCount:Int(array.siz))
 			encode.endEncoding()
 		}
-		code.present(drawable)
+	    guard let draw = combine.currentDrawable else {callError();return}
+        code.present(draw)
 		code.commit()
-	} else if (shader == share.Display) {
+	} else if (shader == share.Track) {
 		setForm();
 		let size = setPierce()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
