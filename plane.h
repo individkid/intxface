@@ -32,6 +32,15 @@ struct Vertex {
 struct Index {
 	uint3 point; // points form triangle
 };
+struct Qualify {
+	float quality;
+	float3 point;
+};
+struct Quality {
+	float quality;
+	float3 left;
+	float3 right;
+};
 struct Expand {
 	float3 point[3]; // plane expanded to points by basis
 };

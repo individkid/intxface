@@ -173,6 +173,7 @@ func swiftKey(event:NSEvent) -> NSEvent?
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
 {
+	if (cb.esc == 1) {return swiftRight(event:event)}
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		print("left \(point.x) \(point.y)")

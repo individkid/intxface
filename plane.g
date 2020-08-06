@@ -28,7 +28,7 @@ Expand expand(Facet plane, const device State *state)
 float3 barrycentric(Expand plane, uint versor, float3 point)
 {
    uint3 sub;
-   for (int i = 0; i < 3; i++) sub[i] = (versor+i+1)%3;
+   for (uint i = 0; i < 3; i++) sub[i] = (versor+i+1)%3;
    float x = point[sub[0]];
    float y = point[sub[1]];
    float x1 = plane.point[1][sub[0]];
@@ -54,35 +54,121 @@ float3 project(Expand plane, uint versor, float3 point)
    point[versor] = cartesian(plane,versor,barrycentric(plane,versor,point));
    return point;
 }
-bool opposite(Expand plane, float3 feather, float3 arrow)
+float extreme(Expand plane, uint versor)
 {
-   uint versor = 2; // TODO set to most squashed dimension
-   bool left = (feather[versor]>project(plane,versor,feather)[versor]);
-   bool right = (arrow[versor]>project(plane,versor,arrow)[versor]);
-   return left^right;
+   float best = -1.0;
+   for (uint i = 0; i < 3; i++) {
+      int other[2];
+      for (uint j = i+1; j < i+3; j++)
+         other[j-i-1] = j%3;
+      float difference = metal::abs(plane.point[other[0]][versor]-plane.point[other[1]][versor]);
+      if (difference > best)
+         best = difference;}
+   return best;
 }
-float3 intrasect(Expand plane, float3 feather, float3 arrow)
+uint squashed(Expand plane)
 {
-   uint versor = 2; // TODO set to most squashed dimension
-   float3 origin = project(plane,versor,feather);
-   float3 point = project(plane,versor,feather+arrow);
-   float numerator = origin.z-feather.z;
-   float denominator = numerator-point.z+feather.z+arrow.z;
-   if (metal::abs(denominator) < 1.0 && INFINITY*metal::abs(denominator) < metal::abs(numerator)) {
-      return float3(INFINITY,INFINITY,INFINITY);}
-   return feather+arrow*numerator/denominator;
+   uint best = 0;
+   float difference = INFINITY;
+   for (uint i = 0; i < 3; i++) {
+      float temp = extreme(plane,i);
+      if (temp < difference) {
+         difference = temp;
+         best = i;}}
+   return best;
+}
+bool opposite(Expand plane, float3 left, float3 right)
+{
+   uint versor = squashed(plane);
+   bool temp0 = (left[versor]>project(plane,versor,left)[versor]);
+   bool temp1 = (right[versor]>project(plane,versor,right)[versor]);
+   return temp0^temp1;
+}
+Qualify intrasect(Expand plane, float3 left, float3 right)
+{
+   Qualify qualify;
+   uint versor = squashed(plane);
+   float3 origin = project(plane,versor,left);
+   float3 point = project(plane,versor,right);
+   float numerator = origin.z-left.z;
+   float denominator = numerator-point.z+right.z;
+   float numer = metal::abs(numerator);
+   float denom = metal::abs(denominator);
+   if (denom < 1.0 && INFINITY*denom < numer) {
+      qualify.quality = INFINITY;
+      qualify.point = float3(INFINITY,INFINITY,INFINITY);
+   } else {
+      qualify.quality = numer/denom;
+      qualify.point = right*numerator/denominator;
+   }
+   return qualify;
+}
+Quality inteasect(Expand left, Expand right)
+{
+   Quality best;
+   best.quality = INFINITY;
+   for (uint i = 0; i < 3; i++) {
+      int other[2];
+      for (uint j = i+1; j < i+3; j++)
+         other[j-i-1] = j%3;
+      Qualify temp0 = intrasect(left,right.point[other[0]],right.point[i]);
+      Qualify temp1 = intrasect(left,right.point[other[1]],right.point[i]);
+      float worst;
+      if (temp0.quality < temp1.quality)
+         worst = temp1.quality; else worst = temp0.quality;
+      if (worst < best.quality) {
+         best.quality = worst;
+         best.left = temp0.point;
+         best.right = temp1.point;}}
+   return best;
+}
+Quality intrrsect(Expand left, Expand right)
+{
+   Quality fore = inteasect(left,right);
+   Quality back = inteasect(right,left);
+   if (fore.quality < back.quality)
+      return fore;
+   return back;
 }
 float3 intersect(Triple point)
 {
-   return float3(0.0); // TODO
+   Qualify best;
+   best.quality = INFINITY;
+   for (uint i = 0; i < 3; i++) {
+      int other[2];
+      for (uint j = i+1; j < i+3; j++)
+         other[j-i-1] = j%3;
+      Quality intrr = intrrsect(point.plane[other[0]],point.plane[other[1]]);
+      Qualify intra = intrasect(point.plane[i],intrr.left,intrr.right);
+      if (intra.quality < intrr.quality)
+         intra.quality = intrr.quality;
+      if (intra.quality < best.quality)
+         best = intra;}
+   return best.point;
 }
 float3 normal(Expand plane)
 {
-   return float3(0.0); // TODO
+   uint versor = squashed(plane);
+   int other[2];
+   for (uint i = versor+1; i < versor+3; i++)
+      other[i-versor-1] = i%3;
+   float x = plane.point[other[0]].x;
+   float y = plane.point[other[0]].y;
+   float z = plane.point[other[0]].z;
+   metal::float3x3 u;
+   u[0][0] =  0; u[1][0] = -z; u[2][0] =  y;
+   u[0][1] =  z; u[1][1] =  0; u[2][1] = -x;
+   u[0][2] = -y; u[1][2] =  x; u[2][2] =  0;
+   float3 cross = u*plane.point[other[1]];
+   float magnitude = metal::sqrt(metal::dot(cross,cross));
+   return cross/magnitude;
 }
 float3 average3(Expand plane)
 {
-   return float3(0.0); // TODO
+   float3 total = float3(0.0,0.0,0.0);
+   for (uint i = 0; i < 3; i++)
+      total += plane.point[i];
+   return total/3.0;
 }
 float3 normal3(Triple point)
 {
@@ -132,12 +218,6 @@ Triple explode(
          float4 affine = float4(result.plane[i].point[j],1.0);
          result.plane[i].point[j] = (state->feature*affine).xyz;}}
    return result;
-}
-uint3 versor3(
-   uint3 map,
-   const device Facet *plane)
-{
-   return uint3(0,0,0); // TODO
 }
 float4 convert(
    uint index,
@@ -219,7 +299,9 @@ kernel void kernel_pierce(
    if (!opposite(face,feather,arrow)) {
       pierce[ident].valid = false; return;}
    // TODO use arrow for perspective
-   float3 hole = intrasect(face,feather,arrow);
+   Qualify hole = intrasect(face,feather,arrow);
+   if (hole.quality == INFINITY) {
+      pierce[ident].valid = false; return;}
    Triple edge;
    Expand apex;
    uint3 index;
@@ -235,10 +317,10 @@ kernel void kernel_pierce(
          if (!found && line != ident) index[i] = line;}
       edge.plane[i] = expand(plane[index[i]],state);}
    for (uint i = 0; i < 3; i++)
-      if (opposite(edge.plane[i],hole,apex.point[i])) {
+      if (opposite(edge.plane[i],hole.point,apex.point[i])) {
          pierce[ident].valid = false; return;}
    pierce[ident].normal = normal(face);
-   pierce[ident].point = hole;
+   pierce[ident].point = hole.point;
    pierce[ident].valid = true;
 }
 struct Bytes {
