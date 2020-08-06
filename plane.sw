@@ -177,6 +177,7 @@ func swiftLeft(event:NSEvent) -> NSEvent?
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		print("left \(point.x) \(point.y)")
+		cb.click(0)
 	}
 	return event
 }
@@ -185,6 +186,7 @@ func swiftRight(event:NSEvent) -> NSEvent?
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		print("right \(point.x) \(point.y)")
+		cb.click(1)
 	}
 	return event
 }
@@ -197,6 +199,7 @@ func swiftMove(event:NSEvent) -> NSEvent?
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect) && cb.esc == 1) {
 		print("move \(point.x) \(point.y)")
+		cb.move(Double(point.x),Double(point.y))
 	}
 	return event
 }
@@ -204,6 +207,7 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 {
 	let roll = event.deltaY
 	print("roll \(roll)")
+	cb.roll(Double(event.deltaX),Double(event.deltaY))
 	return event
 }
 func swiftAlarm(event:NSEvent) -> NSEvent?
@@ -230,6 +234,7 @@ func swiftSize(_: Notification)
 {
 	let rect:CGRect = layer.frame
 	print("size \(NSMaxX(rect)) \(NSMaxY(rect))")
+	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 }
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
@@ -240,28 +245,7 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			found = pierce
 		}
 	}
-	toMutablse([share.Rmw1],found.point,{(fnc,vec) in
-		let tags = share.Client.__Unnamed_struct___Anonymous_field0(
-			mem:share.Feather,
-			len:1,
-			fnc:fnc,
-			idx:0,
-			siz:0)
-		let vals = share.Client.__Unnamed_union___Anonymous_field1(
-			feather:vec)
-		toMutable(share.Client(tags,vals),{(val) in
-			writeClient(val,cb.tub)})})
-	toMutablse([share.Rmw1],found.normal,{(fnc,vec) in
-		let tags = share.Client.__Unnamed_struct___Anonymous_field0(
-			mem:share.Arrow,
-			len:1,
-			fnc:fnc,
-			idx:0,
-			siz:0)
-		let vals = share.Client.__Unnamed_union___Anonymous_field1(
-			arrow:vec)
-		toMutable(share.Client(tags,vals),{(val) in
-			writeClient(val,cb.tub)})})
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml)})
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -269,18 +253,13 @@ func swiftWarp(xpos:Double, ypos:Double)
 	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
     CGWarpMouseCursorPosition(coord);	
 }
-func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
+func swiftCall()
 {
-	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
+	NSApp.run()
 }
-
-func swiftInit() -> Int32
+func swiftWake()
 {
-	cb.warp = swiftWarp
-	cb.full = swiftFull
-	cb.draw = swiftDraw
-	cb.call = {NSApp.run()}
-	cb.wake = {NSApp.postEvent(
+	NSApp.postEvent(
 		NSEvent.otherEvent(
 		with:.applicationDefined,
 		location:NSZeroPoint,
@@ -291,14 +270,34 @@ func swiftInit() -> Int32
 		subtype:0,
 		data1:0,
 		data2:0)!,
-		atStart:false)}
+		atStart:false)
+}
+func swiftDone()
+{
+	print("done")
+}
+func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
+{
+	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
+}
+
+func swiftInit() -> Int32
+{
+	// as loop
+	cb.call = swiftCall
+	cb.wake = swiftWake
+	swiftEvent(.periodic,swiftAlarm)
+	// as kvm
+	cb.warp = swiftWarp
+	cb.full = swiftFull
+	cb.draw = swiftDraw
+	cb.done = swiftDone
 	swiftEvent(.keyDown,swiftKey)
 	swiftEvent(.leftMouseDown,swiftLeft)
 	swiftEvent(.rightMouseDown,swiftRight)
 	swiftEvent(.mouseMoved,swiftMove)
 	swiftEvent(.scrollWheel,swiftRoll)
 	swiftEvent(.applicationDefined,swiftWake)
-	swiftEvent(.periodic,swiftAlarm)
 	NotificationCenter.default.addObserver(
 		forName: NSWindow.didResizeNotification,
 		object: nil,

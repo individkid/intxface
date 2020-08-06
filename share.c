@@ -426,6 +426,23 @@ int windowRead()
 	return res;
 }
 
+void windowWrite(struct Vector *point, struct Vector *normal)
+{
+	enum Function function[1];
+	function[0] = Rmw1;
+	struct Client client;
+	client.mem = Feather;
+	client.len = 1;
+	client.fnc = function;
+	client.idx = 0;
+	client.siz = 0;
+	client.feather = point;
+	writeClient(&client,cb.tub);
+	client.mem = Arrow;
+	client.arrow = normal;
+	writeClient(&client,cb.tub);
+}
+
 void windowMove(double xpos, double ypos)
 {
 	xmove = xpos; ymove = ypos;
@@ -551,6 +568,7 @@ void planeInit(int argc)
 	cb.roll = (argc == 4 ? windowRoll : noroll);
 	cb.click = (argc == 4 ? windowClick : noclick);
 	cb.size = (argc == 4 ? windowSize : nosize);
+	cb.write = windowWrite;
 	cb.warp = nowarp;
 	cb.full = nofalse;
 	cb.draw = novoid;
