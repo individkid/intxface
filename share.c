@@ -517,7 +517,7 @@ void nowarp(double xpos, double ypos)
 
 void nosize(double width, double height)
 {
-	printf("size %f %f\n",width,height);
+	if (cb.esc == 1) printf("size %f %f\n",width,height);
 }
 
 void nomove(double xpos, double ypos)
@@ -527,7 +527,7 @@ void nomove(double xpos, double ypos)
 
 void noroll(double xoffset, double yoffset)
 {
-	printf("roll %f %f\n",xoffset,yoffset);
+	if (cb.esc == 1) printf("roll %f %f\n",xoffset,yoffset);
 }
 
 void noclick(int isright)

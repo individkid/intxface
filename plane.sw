@@ -31,6 +31,7 @@ var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 var depth:MTLDepthStencilState!
 var threads:MTLSize!
+var delegate:WindowDelegate!
 
 var facet = Pend()
 var vertex = Pend()
@@ -41,6 +42,18 @@ var pierce = Pend()
 
 var point = NSPoint(x:0.0,y:0.0)
 
+class WindowDelegate : NSObject, NSWindowDelegate
+{
+	func windowDidResize(_ notification: Notification)
+	{
+		swiftSize()
+	}
+	func windowShouldClose(_ sender: NSWindow) -> Bool
+	{
+		swiftClose()
+		return true
+	}
+}
 struct Form
 {
 	var basis:share.Linear
@@ -224,13 +237,13 @@ func swiftWake(event:NSEvent) -> NSEvent?
 	}
 	return nil
 }
-func swiftSize(_: Notification)
+func swiftSize()
 {
 	let rect:CGRect = layer.frame
 	combine.frame = rect
 	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 }
-func swiftClose(_: Notification)
+func swiftClose()
 {
 	NSApp.terminate(nil)
 }
@@ -278,14 +291,6 @@ func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
-func swiftNotify(_ type:Notification.Name, _ handler: @escaping (_:Notification)->Void)
-{
-	NotificationCenter.default.addObserver(
-		forName: type,
-		object: nil,
-		queue: OperationQueue.main,
-		using: handler)
-}
 
 func loopInit()
 {
@@ -309,8 +314,6 @@ func swiftInit() -> Int32
 	swiftEvent(.mouseMoved,swiftMove)
 	swiftEvent(.scrollWheel,swiftRoll)
 	swiftEvent(.applicationDefined,swiftWake)
-	swiftNotify(NSWindow.didResizeNotification,swiftSize)
-	swiftNotify(NSWindow.willCloseNotification,swiftClose)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
@@ -340,6 +343,8 @@ func swiftInit() -> Int32
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
+	delegate = WindowDelegate()
+	window.delegate = delegate
 	if let temp = device.makeCommandQueue() {
 		queue = temp} else {print("cannot make queue"); return 0}
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
