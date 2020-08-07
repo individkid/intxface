@@ -278,7 +278,10 @@ func swiftCent()
 {
 	guard let frame:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
+	let size:CGSize = CGDisplayScreenSize(CGMainDisplayID())
+	print("ratio \(size.width/NSMaxX(frame)) \(size.height/NSMaxY(frame))")
 	cb.cent(Double(NSMaxX(frame)),Double(NSMaxY(frame)))
+	cb.mili(Double(size.width),Double(size.height))
 }
 func swiftClose()
 {

@@ -511,6 +511,11 @@ void shareCent(double xpos, double ypos)
 	// TODO record center of screen
 }
 
+void shareMili(double xpos, double ypos)
+{
+	// TODO record screen size
+}
+
 void novoid()
 {
 }
@@ -540,6 +545,11 @@ void nocent(double xpos, double ypos)
 	printf("cent %f %f\n",xpos,ypos);
 }
 
+void nomili(double xpos, double ypos)
+{
+	printf("mili %f %f\n",xpos,ypos);
+}
+
 void nomove(double xpos, double ypos)
 {
 	if (cb.esc == 1) printf("move %f %f\n",xpos,ypos);
@@ -564,6 +574,7 @@ void shareInit(int argc)
 	cb.size = (argc == 4 ? shareSize : nosize);
 	cb.drag = (argc == 4 ? shareDrag : nodrag);
 	cb.cent = (argc == 4 ? shareCent : nocent);
+	cb.mili = (argc == 4 ? shareMili : nomili);
 	cb.write = shareWrite;
 	cb.warp = nowarp;
 	cb.full = nofalse;

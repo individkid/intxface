@@ -29,6 +29,7 @@ struct Callback {
 	void (*size)(double width, double height);
 	void (*drag)(double xpos, double ypos);
 	void (*cent)(double width, double height);
+	void (*mili)(double width, double height);
 	void (*write)(struct Vector *point, struct Vector *normal);
 	// share to kvm
 	void (*warp)(double xpos, double ypos);
