@@ -32,6 +32,7 @@ var compute:MTLComputePipelineState!
 var depth:MTLDepthStencilState!
 var threads:MTLSize!
 var delegate:WindowDelegate!
+var drag:NSPoint?
 
 var facet = Pend()
 var vertex = Pend()
@@ -40,8 +41,6 @@ var base = Pend()
 var object = Pend()
 var form = Pend()
 var pierce = Pend()
-
-var point = NSPoint(x:0.0,y:0.0)
 
 class WindowDelegate : NSObject, NSWindowDelegate
 {
@@ -53,6 +52,10 @@ class WindowDelegate : NSObject, NSWindowDelegate
 	{
 		swiftClose()
 		return true
+	}
+	func windowWillMove(_ notification: Notification)
+	{
+		if (drag == nil) {drag = swiftPoint()}
 	}
 }
 struct Form
@@ -192,8 +195,17 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	if (cb.esc >= 2) {NSApp.terminate(nil)}
 	return nil
 }
+func swiftPoint() -> NSPoint
+{
+	var point = NSEvent.mouseLocation
+	let frame:CGRect = window.frame
+	point.x = point.x - NSMinX(frame)
+	point.y = point.y - NSMinY(frame)
+	return point
+}
 func swiftLeft(event:NSEvent) -> NSEvent?
 {
+	let point = swiftPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.click(0)
@@ -202,6 +214,7 @@ func swiftLeft(event:NSEvent) -> NSEvent?
 }
 func swiftRight(event:NSEvent) -> NSEvent?
 {
+	let point = swiftPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.click(1)
@@ -210,10 +223,7 @@ func swiftRight(event:NSEvent) -> NSEvent?
 }
 func swiftMove(event:NSEvent) -> NSEvent?
 {
-	point = NSEvent.mouseLocation
-	let frame:CGRect = window.frame
-	point.x = point.x - NSMinX(frame)
-	point.y = point.y - NSMinY(frame)
+	let point = swiftPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.move(Double(point.x),Double(point.y))
@@ -243,11 +253,26 @@ func swiftCheck(event:NSEvent) -> NSEvent?
 	}
 	return nil
 }
+func swiftDrag(event:NSEvent) -> NSEvent?
+{
+	if (drag == nil) {return event}
+	var point = NSEvent.mouseLocation
+	point.x -= drag!.x; point.y -= drag!.y
+	cb.drag(Double(point.x),Double(point.y))
+	return event
+}
+func swiftClear(event:NSEvent) -> NSEvent?
+{
+	drag = nil
+	return event
+}
 func swiftSize()
 {
 	let rect:CGRect = layer.frame
 	combine.frame = rect
 	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
+	let frame:CGRect = window.frame
+	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))
 }
 func swiftClose()
 {
@@ -266,6 +291,7 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
+	let point = swiftPoint()
 	let frame:CGRect = window.frame
 	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
     CGWarpMouseCursorPosition(coord);	
@@ -320,6 +346,8 @@ func swiftInit() -> Int32
 	swiftEvent(.mouseMoved,swiftMove)
 	swiftEvent(.scrollWheel,swiftRoll)
 	swiftEvent(.applicationDefined,swiftCheck)
+	swiftEvent(.leftMouseDragged,swiftDrag)
+	swiftEvent(.leftMouseUp,swiftClear)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)

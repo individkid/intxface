@@ -242,6 +242,7 @@ Expand prepare(
    if (state->hand == index) face = transform(face,state->feature);
    transform(face,object[plane[index].poly].object);
    transform(face,state->subject);
+   // TODO add perspective from arrow
    return face;
 }
 // MAIN
@@ -265,7 +266,6 @@ vertex VertexOutput vertex_render(
    uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
    out.position = convert(face,triple,plane,object,state);
-   // TODO use arrow for perspective
    out.normal = normal3(triple);
    out.color = plane[face].color[corner];
    out.coord = plane[face].coord[corner];
@@ -295,13 +295,12 @@ kernel void kernel_pierce(
    device Pierce *pierce [[buffer(5)]])
 {
    uint ident = order[id];
-   float3 feather = state->feather; // focal point
-   float3 arrow = state->arrow; // mouse direction
+   float3 near = float3(0.0); // float3(state->cursor,1.0);
+   float3 far = float3(0.0); //
    Expand face = prepare(ident,plane,object,state);
-   if (!opposite(face,feather,arrow)) {
+   if (!opposite(face,near,far)) {
       pierce[ident].valid = false; return;}
-   // TODO use arrow for perspective
-   Qualify hole = intrasect(face,feather,arrow);
+   Qualify hole = intrasect(face,near,far);
    if (hole.quality == INFINITY) {
       pierce[ident].valid = false; return;}
    Triple edge;
