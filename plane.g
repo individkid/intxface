@@ -257,9 +257,10 @@ vertex VertexOutput vertex_render(
    const device uint *order [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
-   uint ident [[vertex_id]]) // TODO treat as order index instead of point index
+   uint id [[vertex_id]])
 {
    VertexOutput out;
+   uint ident = order[id];
    uint face = copoint(point[ident].plane,plane,state); // which plane of point is the face being rendered
    uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
@@ -290,9 +291,10 @@ kernel void kernel_pierce(
    const device uint *order [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
-   uint ident [[thread_position_in_grid]], // TODO treat as order index instead of plane index
+   uint id [[thread_position_in_grid]],
    device Pierce *pierce [[buffer(5)]])
 {
+   uint ident = order[id];
    float3 feather = state->feather; // focal point
    float3 arrow = state->arrow; // mouse direction
    Expand face = prepare(ident,plane,object,state);

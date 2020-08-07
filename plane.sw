@@ -35,7 +35,8 @@ var delegate:WindowDelegate!
 
 var facet = Pend()
 var vertex = Pend()
-var index = Pend()
+var frame = Pend()
+var base = Pend()
 var object = Pend()
 var form = Pend()
 var pierce = Pend()
@@ -154,10 +155,15 @@ func getMode() -> share.Mode
 {
 	return getClient(share.User).user!.pointee
 }
-func getArray() -> [share.Array]
+func getRange() -> [share.Array]
 {
 	let client = getClient(share.Range)
 	return fromRaw(client.range,Int(client.siz))
+}
+func getActive() -> [share.Array]
+{
+	let client = getClient(share.Active)
+	return fromRaw(client.active,Int(client.siz))
 }
 func getClient(_ mem:share.Memory) -> share.Client
 {
@@ -468,14 +474,14 @@ func swiftDraw()
 	if (shader == share.Display) {
 		setForm()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
-		for array in getArray() {
+		for array in getRange() {
 			guard let desc = combine.currentRenderPassDescriptor else {callError();return}
 			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {callError();return}
 			encode.setRenderPipelineState(render)
 			encode.setDepthStencilState(depth)
 			encode.setVertexBuffer(facet.get(),offset:0,index:0)
 			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
-			encode.setVertexBuffer(index.get(),offset:0,index:2)
+			encode.setVertexBuffer(frame.get(),offset:0,index:2)
 			encode.setVertexBuffer(object.get(),offset:0,index:3)
 			encode.setVertexBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
 			encode.drawPrimitives(
@@ -491,7 +497,7 @@ func swiftDraw()
 		setForm();
 		let size = setPierce()
 		guard let code = queue.makeCommandBuffer() else {callError();return}
-		for array in getArray() {
+		for array in getActive() {
 		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 		var nums:[Int] = []
 		var pers:[Int] = []
@@ -508,7 +514,7 @@ func swiftDraw()
 			encode.setComputePipelineState(compute)
 			encode.setBuffer(facet.get(),offset:0,index:0)
 			encode.setBuffer(vertex.get(),offset:0,index:1)
-			encode.setBuffer(index.get(),offset:offset,index:2)
+			encode.setBuffer(base.get(),offset:offset,index:2)
 			encode.setBuffer(object.get(),offset:0,index:3)
 			encode.setBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
 			encode.setBuffer(pierce.get(),offset:0,index:5)
