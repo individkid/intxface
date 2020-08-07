@@ -225,7 +225,7 @@ func swiftAlarm(event:NSEvent) -> NSEvent?
 	cb.wake()
 	return nil
 }
-func swiftWake(event:NSEvent) -> NSEvent?
+func swiftCheck(event:NSEvent) -> NSEvent?
 {
 	if (cb.full() != 0) {
 		NSEvent.startPeriodicEvents(afterDelay: 1000.0*NANO2SEC, withPeriod: 0.0)
@@ -313,7 +313,7 @@ func swiftInit() -> Int32
 	swiftEvent(.rightMouseDown,swiftRight)
 	swiftEvent(.mouseMoved,swiftMove)
 	swiftEvent(.scrollWheel,swiftRoll)
-	swiftEvent(.applicationDefined,swiftWake)
+	swiftEvent(.applicationDefined,swiftCheck)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
