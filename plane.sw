@@ -274,6 +274,12 @@ func swiftSize()
 	let frame:CGRect = window.frame
 	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))
 }
+func swiftCent()
+{
+	guard let frame:NSRect = NSScreen.main?.frame else {
+		print("cannot make screen"); return}
+	cb.cent(Double(NSMidX(frame)),Double(NSMidY(frame)))
+}
 func swiftClose()
 {
 	NSApp.terminate(nil)
@@ -416,6 +422,8 @@ func swiftInit() -> Int32
     	depth = temp} else {print("cannot make depth"); return 0}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return 0}
+    swiftCent()
+    swiftSize()
 
 	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
 	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
@@ -568,6 +576,7 @@ func swiftDraw()
 	bothJump(cb.err,cb.zub)
 	bothJump(cb.err,cb.tub)
 	if (argc == 4) {bothJump(cb.err,cb.hub)}
+	cb.esc = 0
 	loopInit()
 	threadInit()
 	if (swiftInit() != 0) {cb.call()}

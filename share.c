@@ -506,6 +506,11 @@ void shareDrag(double xpos, double ypos)
 	// TODO translate the picture plane
 }
 
+void shareCent(double xpos, double ypos)
+{
+	// TODO record center of screen
+}
+
 void novoid()
 {
 }
@@ -528,6 +533,11 @@ void nosize(double width, double height)
 void nodrag(double xpos, double ypos)
 {
 	if (cb.esc == 1) printf("drag %f %f\n",xpos,ypos);
+}
+
+void nocent(double xpos, double ypos)
+{
+	printf("cent %f %f\n",xpos,ypos);
 }
 
 void nomove(double xpos, double ypos)
@@ -553,6 +563,7 @@ void shareInit(int argc)
 	cb.click = (argc == 4 ? shareClick : noclick);
 	cb.size = (argc == 4 ? shareSize : nosize);
 	cb.drag = (argc == 4 ? shareDrag : nodrag);
+	cb.cent = (argc == 4 ? shareCent : nocent);
 	cb.write = shareWrite;
 	cb.warp = nowarp;
 	cb.full = nofalse;
