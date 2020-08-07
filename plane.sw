@@ -278,7 +278,7 @@ func swiftCent()
 {
 	guard let frame:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
-	cb.cent(Double(NSMidX(frame)),Double(NSMidY(frame)))
+	cb.cent(Double(NSMaxX(frame)),Double(NSMaxY(frame)))
 }
 func swiftClose()
 {
