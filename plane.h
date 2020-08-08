@@ -62,8 +62,8 @@ struct State {
 	Triple basis;
 	metal::float4x4 subject;
 	metal::float4x4 feature;
-	float3 feather; // for pierce shader
-	float3 arrow; // for pierce shader
+	float3 feather; // near for pierce; focal for display
+	float3 arrow; // far for pierce; picture for display
 	uint siz; // for bounce shader
 	uint hand; // which plane to apply feature transformation to
 	uint tag; // which planes of polytope to render this pass

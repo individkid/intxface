@@ -450,8 +450,8 @@ void shareRoll(double xoffset, double yoffset)
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform) {
-	// TODO instead of assignAffine, if user->roll is Focal
-	// TODO assignArrow using recorded window size.
+	// TODO if user->roll is Focal assignFeather
+	// TODO if user->roll is Picture assignArrow
 	struct Client client;
 	struct Affine affine[2];
 	enum Function function[3];
@@ -495,25 +495,29 @@ void shareClick(int isright)
 	writeClient(&client,cb.tub);
 }
 
+void shareOther(struct Vector *feather, struct Vector *arrow)
+{
+	// TODO send Copy Dma0 Feather and/or Arrow and Draw
+}
+
 void shareSize(double width, double height)
 {
-	// TODO record width and height for use in shareRoll
-	shareRoll(0.0,0.0);
+	// TODO adjust Feather and Arrow with picture for shareOther
 }
 
 void shareDrag(double xpos, double ypos)
 {
-	// TODO translate the picture plane
+	// TODO adjust Feather and Arrow with picture for shareOther
 }
 
 void shareCent(double xpos, double ypos)
 {
-	// TODO record center of screen
+	// TODO adjust Feather and Arrow with picture for shareOther
 }
 
-void shareMili(double xpos, double ypos)
+void shareMilli(double xpos, double ypos)
 {
-	// TODO record screen size
+	// TODO adjust Feather and Arrow with picture for shareOther
 }
 
 void novoid()
@@ -545,9 +549,9 @@ void nocent(double xpos, double ypos)
 	printf("cent %f %f\n",xpos,ypos);
 }
 
-void nomili(double xpos, double ypos)
+void nomilli(double xpos, double ypos)
 {
-	printf("mili %f %f\n",xpos,ypos);
+	printf("milli %f %f\n",xpos,ypos);
 }
 
 void nomove(double xpos, double ypos)
@@ -574,7 +578,7 @@ void shareInit(int argc)
 	cb.size = (argc == 4 ? shareSize : nosize);
 	cb.drag = (argc == 4 ? shareDrag : nodrag);
 	cb.cent = (argc == 4 ? shareCent : nocent);
-	cb.mili = (argc == 4 ? shareMili : nomili);
+	cb.milli = (argc == 4 ? shareMilli : nomilli);
 	cb.write = shareWrite;
 	cb.warp = nowarp;
 	cb.full = nofalse;

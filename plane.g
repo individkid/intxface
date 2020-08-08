@@ -229,7 +229,6 @@ float4 convert(
    float4 position = float4(intersect(triple),1.0);
    position = object[plane[index].poly].object*position;
    position = state->subject*position;
-   // TODO add perspective from arrow
    return position;
 }
 Expand prepare(
@@ -242,8 +241,18 @@ Expand prepare(
    if (state->hand == index) face = transform(face,state->feature);
    transform(face,object[plane[index].poly].object);
    transform(face,state->subject);
-   // TODO add perspective from arrow
    return face;
+}
+float4 perspective(
+   float4 given,
+   const device State *state)
+{
+   float4 result;
+   result.z = given.z/state->arrow.z;
+   float ratio = (given.z-state->feather.z)/(state->arrow.z-state->feather.z);
+   result.x = (given.x-state->feather.x)*ratio/(state->arrow.x-state->feather.x);
+   result.y = (given.y-state->feather.y)*ratio/(state->arrow.y-state->feather.y);
+   return result;
 }
 // MAIN
 struct VertexOutput {
@@ -265,7 +274,7 @@ vertex VertexOutput vertex_render(
    uint face = copoint(point[ident].plane,plane,state); // which plane of point is the face being rendered
    uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
-   out.position = convert(face,triple,plane,object,state);
+   out.position = perspective(convert(face,triple,plane,object,state),state);
    out.normal = normal3(triple);
    out.color = plane[face].color[corner];
    out.coord = plane[face].coord[corner];
@@ -295,12 +304,10 @@ kernel void kernel_pierce(
    device Pierce *pierce [[buffer(5)]])
 {
    uint ident = order[id];
-   float3 near = float3(0.0); // float3(state->cursor,1.0);
-   float3 far = float3(0.0); //
    Expand face = prepare(ident,plane,object,state);
-   if (!opposite(face,near,far)) {
+   if (!opposite(face,state->feather,state->arrow)) {
       pierce[ident].valid = false; return;}
-   Qualify hole = intrasect(face,near,far);
+   Qualify hole = intrasect(face,state->feather,state->arrow);
    if (hole.quality == INFINITY) {
       pierce[ident].valid = false; return;}
    Triple edge;

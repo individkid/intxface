@@ -281,7 +281,7 @@ func swiftCent()
 	let size:CGSize = CGDisplayScreenSize(CGMainDisplayID())
 	print("ratio \(size.width/NSMaxX(frame)) \(size.height/NSMaxY(frame))")
 	cb.cent(Double(NSMaxX(frame)),Double(NSMaxY(frame)))
-	cb.mili(Double(size.width),Double(size.height))
+	cb.milli(Double(size.width),Double(size.height))
 }
 func swiftClose()
 {
