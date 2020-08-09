@@ -59,4 +59,3 @@ void shareInit(int argc);
 void shareDone();
 void threadInit();
 void threadDone();
-void callError();

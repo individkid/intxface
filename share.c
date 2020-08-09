@@ -595,7 +595,7 @@ void shareDone()
 	initMatrix();
 }
 
-void *thread(void *arg)
+void *threadCall(void *arg)
 {
 	int tmp = 0;
 	int gon = 1;
@@ -612,20 +612,15 @@ void *thread(void *arg)
 
 void threadInit()
 {
-	if (pthread_mutex_init(&mutex,0) != 0) callError();
-	if (pthread_cond_init(&cond,0) != 0) callError();
-	if (pthread_create(&pthread,0,thread,0) != 0) callError();
+	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
+	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
+	if (pthread_create(&pthread,0,threadCall,0) != 0) ERROR(exiterr,-1);
 }
 
 void threadDone()
 {
 	writeInt(1,cb.zub);
-	if (pthread_join(pthread,0) != 0) callError();
-	if (pthread_mutex_destroy(&mutex) != 0) callError();
-	if (pthread_cond_destroy(&cond) != 0) callError();
-}
-
-void callError()
-{
-	ERROR(exiterr,-1);
+	if (pthread_join(pthread,0) != 0) ERROR(exiterr,-1);
+	if (pthread_mutex_destroy(&mutex) != 0) ERROR(exiterr,-1);
+	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);
 }

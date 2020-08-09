@@ -34,11 +34,12 @@ var threads:MTLSize!
 var delegate:WindowDelegate!
 var drag:NSPoint?
 
-var facet = Pend<share.Facet>()
-var vertex = Pend<share.Vertex>()
+var triangle = Pend<share.Facet>()
+var corner = Pend<share.Vertex>()
 var frame = Pend<Int32>()
 var base = Pend<Int32>()
 var object = Pend<share.Affine>()
+var cloud = Pend<share.Vector>()
 var form = Pend<Form>()
 var pierce = Pend<Pierce>()
 
@@ -265,6 +266,12 @@ func noWarn<T>(_ opt:T?) -> T?
 	return nil
 }
 
+func swiftAlarm(event:NSEvent) -> NSEvent?
+{
+	NSEvent.stopPeriodicEvents()
+	cb.wake()
+	return nil
+}
 func swiftKey(event:NSEvent) -> NSEvent?
 {
 	guard let str:String = event.characters else {return nil}
@@ -276,14 +283,6 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	print("key(\(key)) esc(\(cb.esc))")
 	if (cb.esc >= 2) {NSApp.terminate(nil)}
 	return nil
-}
-func swiftPoint() -> NSPoint
-{
-	var point = NSEvent.mouseLocation
-	let frame:CGRect = window.frame
-	point.x = point.x - NSMinX(frame)
-	point.y = point.y - NSMinY(frame)
-	return point
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
 {
@@ -316,12 +315,6 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 {
 	cb.roll(Double(event.deltaX),Double(event.deltaY))
 	return event
-}
-func swiftAlarm(event:NSEvent) -> NSEvent?
-{
-	NSEvent.stopPeriodicEvents()
-	cb.wake()
-	return nil
 }
 func swiftCheck(event:NSEvent) -> NSEvent?
 {
@@ -369,6 +362,14 @@ func swiftClose()
 {
 	NSApp.terminate(nil)
 }
+func swiftPoint() -> NSPoint
+{
+	var point = NSEvent.mouseLocation
+	let frame:CGRect = window.frame
+	point.x = point.x - NSMinX(frame)
+	point.y = point.y - NSMinY(frame)
+	return point
+}
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
@@ -380,41 +381,10 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 	}
 	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml)})
 }
-func swiftWarp(xpos:Double, ypos:Double)
-{
-	let point = swiftPoint()
-	let frame:CGRect = window.frame
-	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
-    CGWarpMouseCursorPosition(coord);	
-}
-func swiftCall()
-{
-	NSApp.run()
-}
-func swiftWake()
-{
-	NSApp.postEvent(
-		NSEvent.otherEvent(
-		with:.applicationDefined,
-		location:NSZeroPoint,
-		modifierFlags:.command,
-		timestamp:0.0,
-		windowNumber:0,
-		context:nil,
-		subtype:0,
-		data1:0,
-		data2:0)!,
-		atStart:false)
-}
-func swiftDone()
-{
-	print("done")
-}
 func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
-
 func loopInit()
 {
 	cb.call = swiftCall
@@ -424,10 +394,7 @@ func loopInit()
 func loopDone()
 {
 }
-func address<T>(_ val: inout T, _ ptr: UnsafeRawPointer) -> Int
-{
-	return withUnsafePointer(to:val, {(p) in UnsafeRawPointer(p)-ptr})
-}
+
 func swiftInit() -> Int32
 {
 	cb.warp = swiftWarp
@@ -517,7 +484,7 @@ func swiftInit() -> Int32
 	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64
 	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64
 	let planes = [plane0,plane1];
-	facet.set(planes)
+	triangle.set(planes)
 	// yellow
 	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.6); point0.color.0 = (1.0,1.0,0.0,1.0)
 	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.6); point1.color.0 = (1.0,1.0,0.0,1.0)
@@ -544,7 +511,7 @@ func swiftInit() -> Int32
 	guard let encode = code.makeComputeCommandEncoder() else {
 		print("cannot make encode"); return 0}
 	encode.setComputePipelineState(debug)
-	encode.setBuffer(facet.get(),offset:0,index:0)
+	encode.setBuffer(triangle.get(),offset:0,index:0)
 	encode.setBuffer(arrayz,offset:0,index:1)
 	encode.setBuffer(charz,offset:0,index:2)
 	let groups = MTLSize(width:1,height:1,depth:1)
@@ -557,10 +524,10 @@ func swiftInit() -> Int32
 	count += 1
 	code.commit()
 	// code.waitUntilScheduled()
-	facet.set(Int32(63),Int(offsetFacetTag()))
-	facet.set(Int32(65),1,Int(offsetFacetTag()))
-	facet.set(Int32(7),Int(offsetFacetVersor()))
-	facet.set(Int32(9),1,Int(offsetFacetVersor()))
+	triangle.set(Int32(63),Int(offsetFacetTag()))
+	triangle.set(Int32(65),1,Int(offsetFacetTag()))
+	triangle.set(Int32(7),Int(offsetFacetVersor()))
+	triangle.set(Int32(9),1,Int(offsetFacetVersor()))
 	print("before \(count)")
 	code.waitUntilCompleted()
 	print("after \(count)")}
@@ -590,27 +557,62 @@ func swiftInit() -> Int32
 	print("after hello")
 	return 1
 }
+func swiftCall()
+{
+	NSApp.run()
+}
+func swiftWake()
+{
+	NSApp.postEvent(
+		NSEvent.otherEvent(
+		with:.applicationDefined,
+		location:NSZeroPoint,
+		modifierFlags:.command,
+		timestamp:0.0,
+		windowNumber:0,
+		context:nil,
+		subtype:0,
+		data1:0,
+		data2:0)!,
+		atStart:false)
+}
+func swiftWarp(xpos:Double, ypos:Double)
+{
+	let point = swiftPoint()
+	let frame:CGRect = window.frame
+	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
+    CGWarpMouseCursorPosition(coord);	
+}
 func swiftFull() -> Int32
 {
-	return 0 // TODO count inuse buffers
+	if (count < 3) {return 0}
+	return 1
 }
 func swiftDma(_ mem:share.Memory)
 {
-	// TODO dma from cb.state to MTLBuffer
+	let client = getClient(mem)
+	switch (mem) {
+	case (share.Triangle): triangle.set(fromRaw(client.triangle,Int(client.siz)))
+	case (share.Corner): corner.set(fromRaw(client.corner,Int(client.siz)))
+	case (share.Frame): frame.set(fromRaw(client.frame,Int(client.siz)))
+	case (share.Base): base.set(fromRaw(client.base,Int(client.siz)))
+	case (share.Object): object.set(fromRaw(client.object,Int(client.siz)))
+	case (share.Cloud): cloud.set(fromRaw(client.cloud,Int(client.siz)))
+	default: cb.err(#file,#line,-1); return}
 }
 func swiftDraw()
 {
 	let shader = getMode().shader
 	if (shader == share.Display) {
 		setForm()
-		guard let code = queue.makeCommandBuffer() else {callError();return}
+		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		for array in getRange() {
-			guard let desc = combine.currentRenderPassDescriptor else {callError();return}
-			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {callError();return}
+			guard let desc = combine.currentRenderPassDescriptor else {cb.err(#file,#line,-1);return}
+			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {cb.err(#file,#line,-1);return}
 			encode.setRenderPipelineState(render)
 			encode.setDepthStencilState(depth)
-			encode.setVertexBuffer(facet.get(),offset:0,index:0)
-			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
+			encode.setVertexBuffer(triangle.get(),offset:0,index:0)
+			encode.setVertexBuffer(corner.get(),offset:0,index:1)
 			encode.setVertexBuffer(frame.get(),offset:0,index:2)
 			encode.setVertexBuffer(object.get(),offset:0,index:3)
 			encode.setVertexBuffer(getForm(UInt32(array.tag)),offset:0,index:4)
@@ -620,7 +622,7 @@ func swiftDraw()
 				vertexCount:Int(array.siz))
 			encode.endEncoding()
 		}
-	    guard let draw = combine.currentDrawable else {callError();return}
+	    guard let draw = combine.currentDrawable else {cb.err(#file,#line,-1);return}
         code.present(draw)
 		code.addScheduledHandler(getLock())
 		code.addCompletedHandler(getCount())
@@ -629,7 +631,7 @@ func swiftDraw()
 	} else if (shader == share.Track) {
 		setForm();
 		let size = setPierce()
-		guard let code = queue.makeCommandBuffer() else {callError();return}
+		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		for array in getActive() {
 		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 		var nums:[Int] = []
@@ -643,10 +645,10 @@ func swiftDraw()
 			nums.append(1)
 			pers.append(remainder)}
 		for (n,p) in zip(nums,pers) {
-			guard let encode = code.makeComputeCommandEncoder() else {callError();return}
+			guard let encode = code.makeComputeCommandEncoder() else {cb.err(#file,#line,-1);return}
 			encode.setComputePipelineState(compute)
-			encode.setBuffer(facet.get(),offset:0,index:0)
-			encode.setBuffer(vertex.get(),offset:0,index:1)
+			encode.setBuffer(triangle.get(),offset:0,index:0)
+			encode.setBuffer(corner.get(),offset:0,index:1)
 			encode.setBuffer(base.get(),offset:offset,index:2)
 			encode.setBuffer(object.get(),offset:0,index:3)
 			encode.setBuffer(getForm(UInt32(array.tag)),offset:0,index:4)
@@ -664,6 +666,10 @@ func swiftDraw()
 		code.commit()
 	}
 }
+func swiftDone()
+{
+	print("done")
+}
 
 // MAIN
 	let argc = CommandLine.arguments.count
@@ -671,7 +677,7 @@ func swiftDraw()
 	if (argc == 4) {cb.hub = pipeInit(argv[1],argv[2])}
 	cb.zub = openPipe()
 	cb.tub = openPipe()
-	if (cb.zub < 0 || cb.tub < 0 || (argc == 4 && cb.hub < 0)) {callError()}
+	if (cb.zub < 0 || cb.tub < 0 || (argc == 4 && cb.hub < 0)) {cb.err(#file,#line,-1)}
 	shareInit(Int32(argc))
 	bothJump(cb.err,cb.zub)
 	bothJump(cb.err,cb.tub)

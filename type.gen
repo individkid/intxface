@@ -113,6 +113,8 @@ Roll = {
 	"Compass", -- rotate with fixed normal to facet
 	"Normal", -- translate with fixed normal to facet
 	"Balloon", -- scale with fixed pierce point
+	"Focal", -- adjust focal length
+	"Picture" -- adjust frustrum height
 }
 Shader = {
 	"Proximity",
