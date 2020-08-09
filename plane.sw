@@ -159,7 +159,7 @@ struct Pend<T>
 			refer = Refer()
 			last = device.makeBuffer(length:0)
 		}
-		if (refer.lock == 0) {lock.append(refer)}
+		lock.append(refer)
 		refer.lock += 1
 		return last
 	}
@@ -174,7 +174,7 @@ struct Pend<T>
 			last = device.makeBuffer(length:len)
 			pend = nil
 		}
-		if (refer.lock == 0) {lock.append(refer)}
+		lock.append(refer)
 		refer.lock += 1
 		return last
 	}
