@@ -43,6 +43,7 @@ var form = Pend<Form>()
 var pierce = Pend<Pierce>()
 
 var lock = [Refer]()
+var count = Int(0)
 
 class WindowDelegate : NSObject, NSWindowDelegate
 {
@@ -189,6 +190,25 @@ func getReady(_ size: Int) -> MTLCommandBufferHandler
 {
 	let last = pierce.last!
 	return {(MTLCommandBuffer) in swiftReady(last,size)}
+}
+func getCount() -> MTLCommandBufferHandler
+{
+	return {(MTLCommandBuffer) in count -= 1}
+}
+func getDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLCommandBufferHandler
+{
+	return {(MTLCommandBuffer) in
+	var index = 0
+	for expected:Int8 in [
+	0,16,32,48,80,0,4,16,16,0,a,b,
+	0,16,32,48,80,0,4,16,16,3,c,d] {
+	let actual:Int8 = charz.contents().load(fromByteOffset:index,as:Int8.self)
+	if (expected != actual) {
+		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
+	} else {
+		print("match index(\(index)): expected(\(expected)) == actual(\(actual))")
+	}
+	index = index + 1}}
 }
 func setPierce() -> Int
 {
@@ -531,25 +551,19 @@ func swiftInit() -> Int32
 	let threads = MTLSize(width:2,height:1,depth:1)
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	encode.endEncoding()
+	code.addCompletedHandler(getDebug(charz!,a,b,c,d))
 	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
+	count += 1
 	code.commit()
 	// code.waitUntilScheduled()
 	facet.set(Int32(63),Int(offsetFacetTag()))
 	facet.set(Int32(65),1,Int(offsetFacetTag()))
 	facet.set(Int32(7),Int(offsetFacetVersor()))
 	facet.set(Int32(9),1,Int(offsetFacetVersor()))
+	print("before \(count)")
 	code.waitUntilCompleted()
-	var count = 0
-	for expected:Int8 in [
-	0,16,32,48,80,0,4,16,16,0,a,b,
-	0,16,32,48,80,0,4,16,16,3,c,d] {
-	let actual:Int8 = charz!.contents().load(fromByteOffset:count,as:Int8.self)
-	if (expected != actual) {
-		print("mismatch count(\(count)): expected(\(expected)) != actual(\(actual))")
-	} else {
-		print("match count(\(count)): expected(\(expected)) == actual(\(actual))")
-	}
-	count = count + 1}}
+	print("after \(count)")}
 
 	print("between debug and hello")
 
@@ -569,6 +583,8 @@ func swiftInit() -> Int32
     	print("cannot make draw"); return 0}
 	code.present(draw)
 	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
+	count += 1
 	code.commit()}
 
 	print("after hello")
@@ -607,6 +623,8 @@ func swiftDraw()
 	    guard let draw = combine.currentDrawable else {callError();return}
         code.present(draw)
 		code.addScheduledHandler(getLock())
+		code.addCompletedHandler(getCount())
+		count += 1
 		code.commit()
 	} else if (shader == share.Track) {
 		setForm();
@@ -641,6 +659,8 @@ func swiftDraw()
 		}}
 		code.addCompletedHandler(getReady(size))
 		code.addScheduledHandler(getLock())
+		code.addCompletedHandler(getCount())
+		count += 1
 		code.commit()
 	}
 }
