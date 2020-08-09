@@ -152,13 +152,11 @@ struct Pend<T>
 	{
 		if (last == nil && pend != nil) {
 			refer = Refer()
-			lock.append(refer)
 			last = pend
 			pend = nil
 		}
 		if (last == nil) {
 			refer = Refer()
-			lock.append(refer)
 			last = device.makeBuffer(length:0)
 		}
 		if (refer.lock == 0) {lock.append(refer)}
@@ -169,12 +167,10 @@ struct Pend<T>
 	{
 		if (pend != nil && pend.length == len) {
 			refer = Refer()
-			lock.append(refer)
 			last = pend
 			pend = nil
 		} else {
 			refer = Refer()
-			lock.append(refer)
 			last = device.makeBuffer(length:len)
 			pend = nil
 		}
@@ -185,13 +181,13 @@ struct Pend<T>
 }
 func getLock() -> MTLCommandBufferHandler
 {
-	let temp = lock;
-	lock = [];
+	let temp = lock
+	lock = []
 	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
 }
 func getReady(_ size: Int) -> MTLCommandBufferHandler
 {
-	let last = pierce.last!;
+	let last = pierce.last!
 	return {(MTLCommandBuffer) in swiftReady(last,size)}
 }
 func setPierce() -> Int
@@ -537,6 +533,7 @@ func swiftInit() -> Int32
 	encode.endEncoding()
 	code.addScheduledHandler(getLock())
 	code.commit()
+	// code.waitUntilScheduled()
 	facet.set(Int32(63),Int(offsetFacetTag()))
 	facet.set(Int32(65),1,Int(offsetFacetTag()))
 	facet.set(Int32(7),Int(offsetFacetVersor()))
