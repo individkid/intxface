@@ -786,6 +786,23 @@ end
 function showSizeC(name,struct)
 	return showStreamC(name,struct,showSizeCF,"int size","")
 end
+function showOffsetC(name,struct)
+	local result = ""
+	for k,v in ipairs(struct) do
+		local camel = string.upper(string.sub(v[1],1,1))..string.sub(v[1],2)
+		if result ~= "" then result = result.."\n" end
+		result = result.."int offset"..name..camel.."()"
+		if prototype then
+			result = result..";"
+		else
+			result = result.."\n"
+			result = result.."{\n"
+			result = result..showIndent(1).."return (int)&(((struct "..name.." *)0)->"..v[1]..");\n"
+			result = result.."}"
+		end
+	end
+	return result
+end
 function showEnumHs(name,enum)
 	local result = "data "..name.." =\n"
 	for key,val in ipairs(enum) do
@@ -1665,6 +1682,7 @@ function showShareC()
 end
 function showFuncC()
 	local result = ""
+	result = result..showCall(Structs,Structz,showOffsetC).."\n"
 	result = result..showCall(Enums,Enumz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"

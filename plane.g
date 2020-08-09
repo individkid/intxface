@@ -350,6 +350,6 @@ kernel void kernel_debug(
    bytes[ident].bytes[7] = ((device char*)&plane[ident+1] - (device char*)&plane[ident]) - 128;
    bytes[ident].bytes[8] = (device char*)&point[ident+1] - (device char*)&point[ident];
    bytes[ident].bytes[9] = point[ident].point.x;
-   bytes[ident].bytes[10] = point[ident].point.y;
+   bytes[ident].bytes[10] = plane[ident].versor;
    bytes[ident].bytes[11] = plane[ident].tag;
 }

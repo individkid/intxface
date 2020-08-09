@@ -34,13 +34,15 @@ var threads:MTLSize!
 var delegate:WindowDelegate!
 var drag:NSPoint?
 
-var facet = Pend()
-var vertex = Pend()
-var frame = Pend()
-var base = Pend()
-var object = Pend()
-var form = Pend()
-var pierce = Pend()
+var facet = Pend<share.Facet>()
+var vertex = Pend<share.Vertex>()
+var frame = Pend<Int32>()
+var base = Pend<Int32>()
+var object = Pend<share.Affine>()
+var form = Pend<Form>()
+var pierce = Pend<Pierce>()
+
+var lock = [Refer]()
 
 class WindowDelegate : NSObject, NSWindowDelegate
 {
@@ -77,20 +79,30 @@ struct Pierce
 	var point:share.Vector = fromZero()
 	var normal:share.Vector = fromZero()
 }
-
-struct Pend
+class Refer
+{
+	var lock:Int = 0
+}
+struct Pend<T>
 {
 	var pend:MTLBuffer!
 	var last:MTLBuffer!
+	var refer:Refer!
 	mutating func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
+		if (pend == nil && last != nil && last.length < range.upperBound) {
+			pend = device.makeBuffer(length:range.upperBound)
+			pend.contents().copyMemory(from:last.contents(),byteCount:last.length)
+			last = nil
+		}
+		if (pend == nil && last != nil && refer.lock == 0)
+		{
+			pend = last
+			last = nil
+		}
 		if (pend == nil && last != nil) {
 			pend = device.makeBuffer(bytes:last.contents(),length:last.length)
 			last = nil
-		}
-		if (pend == nil && range.lowerBound == 0) {
-			pend = device.makeBuffer(bytes:ptr,length:range.upperBound)
-			return
 		}
 		if (pend == nil) {
 			pend = device.makeBuffer(length:range.upperBound)
@@ -99,40 +111,95 @@ struct Pend
 		let size:Int = range.upperBound-range.lowerBound
 		pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
 	}
+	mutating func set(_ val: [T], _ index: Int)
+	{
+		let siz = MemoryLayout<T>.size
+		let base = siz*index
+		let limit = base+siz*val.count
+		let ptr = UnsafeMutablePointer<T>.allocate(capacity:siz*val.count)
+		for (count,elem) in zip(0..<val.count,val) {ptr[count] = elem}
+		set(UnsafeRawPointer(ptr),base..<limit)
+		ptr.deallocate()
+	}
+	mutating func set<S>(_ val: S, _ index: Int, _ field: Int)
+	{
+		let siz = MemoryLayout<S>.size
+		let size = MemoryLayout<T>.size
+		let base = size*index+field
+		let limit = base+siz
+		let ptr = UnsafeMutablePointer<S>.allocate(capacity:siz)
+		ptr[0] = val
+		set(UnsafeRawPointer(ptr),base..<limit)
+		ptr.deallocate()
+	}
+	mutating func set<S>(_ val: S, _ field: Int)
+	{
+		set(val,0,field)
+	}
+	mutating func set(_ val: T, _ index: Int)
+	{
+		set([val],index)
+	}
+	mutating func set(_ val: [T])
+	{
+		set(val,0)
+	}
+	mutating func set(_ val: T)
+	{
+		set([val])
+	}
 	mutating func get() -> MTLBuffer
 	{
-		if (last == nil) {
+		if (last == nil && pend != nil) {
+			refer = Refer()
+			lock.append(refer)
 			last = pend
 			pend = nil
 		}
 		if (last == nil) {
+			refer = Refer()
+			lock.append(refer)
 			last = device.makeBuffer(length:0)
 		}
+		if (refer.lock == 0) {lock.append(refer)}
+		refer.lock += 1
 		return last
 	}
-	mutating func rmw(_ ptr: UnsafeRawPointer, _ range: Range<Int>) -> MTLBuffer
+	mutating func get(_ len:Int) -> MTLBuffer
 	{
-		let buf = get()
-		let base:Int = range.lowerBound
-		let size:Int = range.upperBound-range.lowerBound
-		buf.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
-		buf.didModifyRange(range)
-		return buf
-	}
-	mutating func new(_ len:Int) -> MTLBuffer
-	{
-		pend = nil
-		last = device.makeBuffer(length:len)
+		if (pend != nil && pend.length == len) {
+			refer = Refer()
+			lock.append(refer)
+			last = pend
+			pend = nil
+		} else {
+			refer = Refer()
+			lock.append(refer)
+			last = device.makeBuffer(length:len)
+			pend = nil
+		}
+		if (refer.lock == 0) {lock.append(refer)}
+		refer.lock += 1
 		return last
 	}
+}
+func getLock() -> MTLCommandBufferHandler
+{
+	let temp = lock;
+	lock = [];
+	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
+}
+func getReady(_ size: Int) -> MTLCommandBufferHandler
+{
+	let last = pierce.last!;
+	return {(MTLCommandBuffer) in swiftReady(last,size)}
 }
 func setPierce() -> Int
 {
 	let siz = Int(getClient(share.Triangle).siz)
 	let zero = Pierce()
 	let vals = toList(zero,siz)
-	let size = MemoryLayout<Pierce>.size*siz
-	pierce.set(vals,0..<size)
+	pierce.set(vals,0..<siz)
 	return siz
 }
 func setForm()
@@ -148,11 +215,10 @@ func setForm()
 		tag:0,pad:0)
 	form.set([elem],0..<MemoryLayout<Form>.size)
 }
-func setTag(_ tag:uint) -> MTLBuffer
+func getForm(_ tag:uint) -> MTLBuffer
 {
-	let base:Int = MemoryLayout<Form>.offset(of:\Form.tag)!
-	let limit:Int = MemoryLayout<Form>.offset(of:\Form.pad)!
-	return form.rmw([tag],base..<limit)
+	form.set(tag,MemoryLayout<Form>.offset(of:\Form.tag)!)
+	return form.get()
 }
 func getMode() -> share.Mode
 {
@@ -342,6 +408,10 @@ func loopInit()
 func loopDone()
 {
 }
+func address<T>(_ val: inout T, _ ptr: UnsafeRawPointer) -> Int
+{
+	return withUnsafePointer(to:val, {(p) in UnsafeRawPointer(p)-ptr})
+}
 func swiftInit() -> Int32
 {
 	cb.warp = swiftWarp
@@ -428,10 +498,10 @@ func swiftInit() -> Int32
     swiftCent()
     swiftSize()
 
-	var plane0 = share.Facet(); plane0.versor = 7; plane0.tag = 63
-	var plane1 = share.Facet(); plane1.versor = 9; plane1.tag = 65
-	let planes = [plane0,plane1]
-	let planez = device.makeBuffer(bytes:planes,length:MemoryLayout<share.Facet>.size*2)
+	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64
+	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64
+	let planes = [plane0,plane1];
+	facet.set(planes)
 	// yellow
 	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.6); point0.color.0 = (1.0,1.0,0.0,1.0)
 	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.6); point1.color.0 = (1.0,1.0,0.0,1.0)
@@ -447,28 +517,35 @@ func swiftInit() -> Int32
 	var array1 = share.Vertex(); array1.plane = (3,4,5)
 	let arrays = [array0,array1]
 	let arrayz = device.makeBuffer(bytes:arrays,length:MemoryLayout<share.Vertex>.size*2)
+	print("Form.tag \(MemoryLayout<Form>.offset(of:\Form.tag)!)")
+	print("Facet.tag \(offsetFacetTag())")
 
 	print("before debug")
 
-	if (true) {
+	for (a,b,c,d):(Int8,Int8,Int8,Int8) in [(8,64,8,64),(7,63,9,65)] {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return 0}
 	guard let encode = code.makeComputeCommandEncoder() else {
 		print("cannot make encode"); return 0}
 	encode.setComputePipelineState(debug)
-	encode.setBuffer(planez,offset:0,index:0)
+	encode.setBuffer(facet.get(),offset:0,index:0)
 	encode.setBuffer(arrayz,offset:0,index:1)
 	encode.setBuffer(charz,offset:0,index:2)
 	let groups = MTLSize(width:1,height:1,depth:1)
 	let threads = MTLSize(width:2,height:1,depth:1)
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	encode.endEncoding()
+	code.addScheduledHandler(getLock())
 	code.commit()
+	facet.set(Int32(63),Int(offsetFacetTag()))
+	facet.set(Int32(65),1,Int(offsetFacetTag()))
+	facet.set(Int32(7),Int(offsetFacetVersor()))
+	facet.set(Int32(9),1,Int(offsetFacetVersor()))
 	code.waitUntilCompleted()
 	var count = 0
 	for expected:Int8 in [
-	0,16,32,48,80,0,4,16,16,0,1,63,
-	0,16,32,48,80,0,4,16,16,3,4,65] {
+	0,16,32,48,80,0,4,16,16,0,a,b,
+	0,16,32,48,80,0,4,16,16,3,c,d] {
 	let actual:Int8 = charz!.contents().load(fromByteOffset:count,as:Int8.self)
 	if (expected != actual) {
 		print("mismatch count(\(count)): expected(\(expected)) != actual(\(actual))")
@@ -494,6 +571,7 @@ func swiftInit() -> Int32
     guard let draw = combine.currentDrawable else {
     	print("cannot make draw"); return 0}
 	code.present(draw)
+	code.addScheduledHandler(getLock())
 	code.commit()}
 
 	print("after hello")
@@ -522,7 +600,7 @@ func swiftDraw()
 			encode.setVertexBuffer(vertex.get(),offset:0,index:1)
 			encode.setVertexBuffer(frame.get(),offset:0,index:2)
 			encode.setVertexBuffer(object.get(),offset:0,index:3)
-			encode.setVertexBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
+			encode.setVertexBuffer(getForm(UInt32(array.tag)),offset:0,index:4)
 			encode.drawPrimitives(
 				type:.triangle,
 				vertexStart:Int(array.idx),
@@ -531,6 +609,7 @@ func swiftDraw()
 		}
 	    guard let draw = combine.currentDrawable else {callError();return}
         code.present(draw)
+		code.addScheduledHandler(getLock())
 		code.commit()
 	} else if (shader == share.Track) {
 		setForm();
@@ -555,7 +634,7 @@ func swiftDraw()
 			encode.setBuffer(vertex.get(),offset:0,index:1)
 			encode.setBuffer(base.get(),offset:offset,index:2)
 			encode.setBuffer(object.get(),offset:0,index:3)
-			encode.setBuffer(setTag(UInt32(array.tag)),offset:0,index:4)
+			encode.setBuffer(getForm(UInt32(array.tag)),offset:0,index:4)
 			encode.setBuffer(pierce.get(),offset:0,index:5)
 			let num = MTLSize(width:n,height:1,depth:1)
 			let per = MTLSize(width:p,height:1,depth:1)
@@ -563,7 +642,8 @@ func swiftDraw()
 			encode.endEncoding()
 			offset += n*p*MemoryLayout<share.Vertex>.size
 		}}
-		code.addCompletedHandler({(buffer:MTLCommandBuffer) in swiftReady(pierce.get(),size)})
+		code.addCompletedHandler(getReady(size))
+		code.addScheduledHandler(getLock())
 		code.commit()
 	}
 }
