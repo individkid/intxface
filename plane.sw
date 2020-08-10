@@ -362,14 +362,6 @@ func swiftSize()
 	let frame:CGRect = window.frame
 	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))
 }
-func swiftCent()
-{
-	guard let frame:NSRect = NSScreen.main?.frame else {
-		print("cannot make screen"); return}
-	let size:CGSize = CGDisplayScreenSize(CGMainDisplayID())
-	cb.cent(Double(NSMaxX(frame)),Double(NSMaxY(frame)))
-	cb.milli(Double(size.width),Double(size.height))
-}
 func swiftClose()
 {
 	NSApp.terminate(nil)
@@ -492,7 +484,6 @@ func swiftInit() -> Int32
     	depth = temp} else {print("cannot make depth"); return 0}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return 0}
-    swiftCent()
     swiftSize()
 
 	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64

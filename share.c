@@ -387,7 +387,20 @@ void shareMetric()
 
 void shareRender()
 {
-	// TODO send Copy Render and Draw
+	enum Function function[2];
+	function[0] = Copy; function[1] = Draw;
+	struct Vector vector[2];
+	for (int i = 0; i < 3; i++) {
+	vector[0].val[i] = render[0][i];
+	vector[1].val[i] = render[1][i];}
+	struct Client client;
+	client.mem = Render;
+	client.len = 2;
+	client.fnc = function;
+	client.idx = 0;
+	client.siz = 0;
+	client.render = vector;
+	writeClient(&client,cb.tub);
 }
 
 void shareProc()
@@ -524,25 +537,15 @@ void shareClick(int isright)
 
 void shareSize(double width, double height)
 {
-	// TODO adjust focal and picture for shareRender
+	render[1][0] = width;
+	render[1][1] = height;
 	shareRender();
 }
 
 void shareDrag(double xpos, double ypos)
 {
-	// TODO adjust focal and picture for shareRender
-	shareRender();
-}
-
-void shareCent(double xpos, double ypos)
-{
-	// TODO adjust focal and picture for shareRender
-	shareRender();
-}
-
-void shareMilli(double xpos, double ypos)
-{
-	// TODO adjust focal and picture for shareRender
+	render[0][0] = xpos+render[1][0]/2.0;
+	render[0][1] = ypos+render[1][1]/2.0;
 	shareRender();
 }
 
@@ -575,16 +578,6 @@ void nodrag(double xpos, double ypos)
 	if (cb.esc == 1) printf("drag %f %f\n",xpos,ypos);
 }
 
-void nocent(double xpos, double ypos)
-{
-	printf("cent %f %f\n",xpos,ypos);
-}
-
-void nomilli(double xpos, double ypos)
-{
-	printf("milli %f %f\n",xpos,ypos);
-}
-
 void nomove(double xpos, double ypos)
 {
 	if (cb.esc == 1) printf("move %f %f\n",xpos,ypos);
@@ -609,8 +602,6 @@ void shareInit(int argc)
 	cb.click = (argc == 4 ? shareClick : noclick);
 	cb.size = (argc == 4 ? shareSize : nosize);
 	cb.drag = (argc == 4 ? shareDrag : nodrag);
-	cb.cent = (argc == 4 ? shareCent : nocent);
-	cb.milli = (argc == 4 ? shareMilli : nomilli);
 	cb.write = shareWrite;
 	cb.warp = nowarp;
 	cb.dma = nodma;
