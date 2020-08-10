@@ -219,14 +219,27 @@ func setPierce() -> Int
 	pierce.set(vals,0..<siz)
 	return siz
 }
-func setForm()
+func setDisplay()
 {
 	let elem = Form(
 		basis:getClient(share.Basis).basis!.pointee,
 		subject:getClient(share.Subject).subject!.pointee,
 		feature:getClient(share.Feature).feature!.pointee,
-		feather:getClient(share.Feather).feather!.pointee,
-		arrow:getClient(share.Arrow).arrow!.pointee,
+		feather:getClient(share.Render).render!.pointee,
+		arrow:getClient(share.Render).render!.pointee,
+		siz:UInt32(getClient(share.Cloud).siz),
+		hand:UInt32(getClient(share.Hand).hand),
+		tag:0,pad:0)
+	form.set([elem],0..<MemoryLayout<Form>.size)
+}
+func setTrack()
+{
+	let elem = Form(
+		basis:getClient(share.Basis).basis!.pointee,
+		subject:getClient(share.Subject).subject!.pointee,
+		feature:getClient(share.Feature).feature!.pointee,
+		feather:getClient(share.Pierce).pierce!.pointee,
+		arrow:getClient(share.Pierce).pierce!.pointee,
 		siz:UInt32(getClient(share.Cloud).siz),
 		hand:UInt32(getClient(share.Hand).hand),
 		tag:0,pad:0)
@@ -354,7 +367,6 @@ func swiftCent()
 	guard let frame:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
 	let size:CGSize = CGDisplayScreenSize(CGMainDisplayID())
-	print("ratio \(size.width/NSMaxX(frame)) \(size.height/NSMaxY(frame))")
 	cb.cent(Double(NSMaxX(frame)),Double(NSMaxY(frame)))
 	cb.milli(Double(size.width),Double(size.height))
 }
@@ -374,12 +386,14 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
 	var found:Pierce = Pierce()
-	for pierce in pierces {
+	var index = Int(0)
+	for (pierce,object) in zip(pierces,0..<size) {
 		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
 			found = pierce
+			index = object
 		}
 	}
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml)})
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
 }
 func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
 {
@@ -398,9 +412,9 @@ func loopDone()
 func swiftInit() -> Int32
 {
 	cb.warp = swiftWarp
-	cb.full = swiftFull
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
+	cb.full = swiftFull
 	cb.done = swiftDone
 	swiftEvent(.keyDown,swiftKey)
 	swiftEvent(.leftMouseDown,swiftLeft)
@@ -415,7 +429,7 @@ func swiftInit() -> Int32
 	NSApp.activate(ignoringOtherApps: true)
 	if let temp = MTLCreateSystemDefaultDevice() {
 		device = temp} else {print("cannot make device"); return 0}
-	let rect = NSMakeRect(0, 0, 640, 480)
+	let rect = NSMakeRect(0, 0, CGFloat(cb.conf("WINWIDE")), CGFloat(cb.conf("WINHIGH")))
 	if let temp = noWarn(MTKView(frame:rect,device:device)) {
 		combine = temp} else {print("cannot make combine"); return 0}
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
@@ -604,7 +618,7 @@ func swiftDraw()
 {
 	let shader = getMode().shader
 	if (shader == share.Display) {
-		setForm()
+		setDisplay()
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		for array in getRange() {
 			guard let desc = combine.currentRenderPassDescriptor else {cb.err(#file,#line,-1);return}
@@ -629,7 +643,7 @@ func swiftDraw()
 		count += 1
 		code.commit()
 	} else if (shader == share.Track) {
-		setForm();
+		setTrack();
 		let size = setPierce()
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		for array in getActive() {
@@ -677,12 +691,12 @@ func swiftDone()
 	if (argc == 4) {cb.hub = pipeInit(argv[1],argv[2])}
 	cb.zub = openPipe()
 	cb.tub = openPipe()
-	if (cb.zub < 0 || cb.tub < 0 || (argc == 4 && cb.hub < 0)) {cb.err(#file,#line,-1)}
+	cb.esc = 0
 	shareInit(Int32(argc))
+	if (cb.zub < 0 || cb.tub < 0 || (argc == 4 && cb.hub < 0)) {cb.err(#file,#line,-1)}
 	bothJump(cb.err,cb.zub)
 	bothJump(cb.err,cb.tub)
 	if (argc == 4) {bothJump(cb.err,cb.hub)}
-	cb.esc = 0
 	loopInit()
 	threadInit()
 	if (swiftInit() != 0) {cb.call()}

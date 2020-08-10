@@ -34,12 +34,24 @@ float vector[3] = {0};
 float matrix[16] = {0};
 float piemat[16] = {0};
 float normat[16] = {0};
+float norvec[3];
+float pievec[3];
 int object = 0;
+float render[2][3];
+float pierce[2][3];
 
 void exiterr(const char *str, int num, int arg)
 {
 	printf("exiterr (%s) (%d)\n",str,num); fflush(stdout);
 	exit(arg);
+}
+
+double getconf(const char *str)
+{
+	if (strcmp(str,"WINWIDE") == 0) return WINWIDE;
+	if (strcmp(str,"WINHIGH") == 0) return WINHIGH;
+	if (strcmp(str,"WINDEEP") == 0) return WINDEEP;
+	return 0;
 }
 
 void constructVector(float *point, float *plane, int versor, float *basis)
@@ -245,21 +257,22 @@ void composeMatrix(float *result)
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
-	// TODO compose with identity if roll is Focal
+	case (Focal): {
+	identmat(result,4);
+	break;}
+	case (Picture): {
+	identmat(result,4);
+	break;}
 	default: ERROR(cb.err,-1);}
 }
 
 void initMatrix()
 {
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
-	float norvec[3];
-	float pievec[3];
-	// TODO get norvec and pievec from what pierce shader reported in Dma1
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
 	toggle = 0;
-	// TODO synchronize to other processes
 }
 
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
@@ -366,6 +379,13 @@ void shareCopy(struct Client **ptr)
 	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
 }
 
+void sharePierce()
+{
+	memcpy(pievec,client->pierce[0].val,sizeof(client->pierce[0].val));
+	memcpy(norvec,client->pierce[1].val,sizeof(client->pierce[1].val));
+	object = client->idx;
+}
+
 void shareMetric()
 {
 	struct Metric metric = {0};
@@ -384,7 +404,7 @@ void shareProc()
 	case (Copy): shareCopy(cb.state); break;
 	case (Save): shareCopy(saved); break;
 	case (Dma0): cb.dma(client->mem); break;
-	case (Dma1): break; // TODO	read feather for pierce point and arrow for pierce normal
+	case (Dma1): sharePierce(); break;
 	case (Draw): cb.draw(); break;
 	case (Port): shareMetric(); break;
 	default: ERROR(exiterr,-1);}
@@ -400,20 +420,21 @@ int shareRead()
 	return res;
 }
 
-void shareWrite(struct Vector *point, struct Vector *normal)
+void shareWrite(struct Vector *point, struct Vector *normal, int object)
 {
 	enum Function function[1];
-	function[0] = Rmw1;
+	function[0] = Dma1;
+	struct Vector pierce[2];
+	for (int i = 0; i < 3; i++) {
+		pierce[0].val[i] = point->val[i];
+		pierce[1].val[i] = normal->val[i];}
 	struct Client client;
-	client.mem = Feather;
+	client.mem = Pierce;
 	client.len = 1;
 	client.fnc = function;
-	client.idx = 0;
+	client.idx = object;
 	client.siz = 0;
-	client.feather = point;
-	writeClient(&client,cb.tub);
-	client.mem = Arrow;
-	client.arrow = normal;
+	client.pierce = pierce;
 	writeClient(&client,cb.tub);
 }
 
@@ -435,12 +456,14 @@ void shareMove(double xpos, double ypos)
 	client.fnc = function; client.len = 3; client.siz = size;
 	writeClient(&client,cb.tub);} else {
 	struct Client client;
-	struct Vector vector;
-	enum Function function[3];
-	vector.val[0] = xmove; vector.val[1] = ymove; vector.val[2] = -1.0;
-	function[0] = Copy; function[1] = Dma1; function[2] = Draw;
-	client.feather = &vector; client.idx = 0; client.mem = Feather;
-	client.fnc = function; client.len = 3; client.siz = 1;
+	enum Function function[2];
+	function[0] = Copy; function[1] = Draw;
+	struct Vector vector[2];
+	for (int i = 0; i < 3; i++) {
+		vector[0].val[i] = pierce[0][i];
+		vector[1].val[i] = pierce[1][i];}
+	client.pierce = vector; client.idx = 0; client.mem = Pierce;
+	client.fnc = function; client.len = 2; client.siz = 2;
 	writeClient(&client,cb.tub);}
 }
 
@@ -449,9 +472,11 @@ void shareRoll(double xoffset, double yoffset)
 	offset += yoffset*ANGLE;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
-	if (user->click == Transform) {
-	// TODO if user->roll is Focal assignFeather
-	// TODO if user->roll is Picture assignArrow
+	if (user->click == Transform && user->roll == Focal) {
+	}
+	else if (user->click == Transform && user->roll == Picture) {
+	}
+	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
 	enum Function function[3];
@@ -495,29 +520,29 @@ void shareClick(int isright)
 	writeClient(&client,cb.tub);
 }
 
-void shareOther(struct Vector *feather, struct Vector *arrow)
+void shareOther()
 {
-	// TODO send Copy Dma0 Feather and/or Arrow and Draw
+	// TODO send Copy Render and Draw
 }
 
 void shareSize(double width, double height)
 {
-	// TODO adjust Feather and Arrow with picture for shareOther
+	// TODO adjust focal and picture for shareOther
 }
 
 void shareDrag(double xpos, double ypos)
 {
-	// TODO adjust Feather and Arrow with picture for shareOther
+	// TODO adjust focal and picture for shareOther
 }
 
 void shareCent(double xpos, double ypos)
 {
-	// TODO adjust Feather and Arrow with picture for shareOther
+	// TODO adjust focal and picture for shareOther
 }
 
 void shareMilli(double xpos, double ypos)
 {
-	// TODO adjust Feather and Arrow with picture for shareOther
+	// TODO adjust focal and picture for shareOther
 }
 
 void novoid()
@@ -532,6 +557,11 @@ int nofalse()
 void nowarp(double xpos, double ypos)
 {
 	printf("warp %f %f\n",xpos,ypos);
+}
+
+void nodma(enum Memory mem)
+{
+	printf("dma %d\n",mem);
 }
 
 void nosize(double width, double height)
@@ -572,6 +602,7 @@ void noclick(int isright)
 void shareInit(int argc)
 {
 	cb.err = exiterr;
+	cb.conf = getconf;
 	cb.move = (argc == 4 ? shareMove : nomove);
 	cb.roll = (argc == 4 ? shareRoll : noroll);
 	cb.click = (argc == 4 ? shareClick : noclick);
@@ -581,8 +612,9 @@ void shareInit(int argc)
 	cb.milli = (argc == 4 ? shareMilli : nomilli);
 	cb.write = shareWrite;
 	cb.warp = nowarp;
-	cb.full = nofalse;
+	cb.dma = nodma;
 	cb.draw = novoid;
+	cb.full = nofalse;
 	cb.proc = shareProc;
 	cb.read = shareRead;
 	cb.call = novoid;
