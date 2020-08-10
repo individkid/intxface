@@ -46,22 +46,6 @@ var pierce = Pend<Pierce>()
 var lock = [Refer]()
 var count = Int(0)
 
-class WindowDelegate : NSObject, NSWindowDelegate
-{
-	func windowDidResize(_ notification: Notification)
-	{
-		swiftSize()
-	}
-	func windowShouldClose(_ sender: NSWindow) -> Bool
-	{
-		swiftClose()
-		return true
-	}
-	func windowWillMove(_ notification: Notification)
-	{
-		if (drag == nil) {drag = swiftPoint()}
-	}
-}
 struct Form
 {
 	var basis:share.Linear
@@ -80,6 +64,22 @@ struct Pierce
 	var pad:(uint,uint,uint) = fromZero()
 	var point:share.Vector = fromZero()
 	var normal:share.Vector = fromZero()
+}
+class WindowDelegate : NSObject, NSWindowDelegate
+{
+	func windowDidResize(_ notification: Notification)
+	{
+		swiftSize()
+	}
+	func windowShouldClose(_ sender: NSWindow) -> Bool
+	{
+		NSApp.terminate(nil)
+		return true
+	}
+	func windowWillMove(_ notification: Notification)
+	{
+		if (drag == nil) {drag = getPoint()}
+	}
 }
 class Refer
 {
@@ -190,7 +190,20 @@ func getLock() -> MTLCommandBufferHandler
 func getReady(_ size: Int) -> MTLCommandBufferHandler
 {
 	let last = pierce.last!
-	return {(MTLCommandBuffer) in swiftReady(last,size)}
+	return {(MTLCommandBuffer) in setReady(last,size)}
+}
+func setReady(_ buffer:MTLBuffer, _ size:Int)
+{
+	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
+	var found:Pierce = Pierce()
+	var index = Int(0)
+	for (pierce,object) in zip(pierces,0..<size) {
+		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
+			found = pierce
+			index = object
+		}
+	}
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
 }
 func getCount() -> MTLCommandBufferHandler
 {
@@ -270,21 +283,54 @@ func getClient(_ mem:share.Memory) -> share.Client
 	fromAny(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
 	return client.pointee
 }
-func noWarn<T>(_ val:T) -> T?
+func getPoint() -> NSPoint
 {
-	return val
+	var point = NSEvent.mouseLocation
+	let frame:CGRect = window.frame
+	point.x = point.x - NSMinX(frame)
+	point.y = point.y - NSMinY(frame)
+	return point
 }
-func noWarn<T>(_ opt:T?) -> T?
+func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
 {
-	return nil
+	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
 
-func swiftAlarm(event:NSEvent) -> NSEvent?
+func loopAlarm(event:NSEvent) -> NSEvent?
 {
 	NSEvent.stopPeriodicEvents()
 	cb.wake()
 	return nil
 }
+func loopInit()
+{
+	cb.call = loopCall
+	cb.wake = loopWake
+	setEvent(.periodic,loopAlarm)
+}
+func loopCall()
+{
+	NSApp.run()
+}
+func loopWake()
+{
+	NSApp.postEvent(
+		NSEvent.otherEvent(
+		with:.applicationDefined,
+		location:NSZeroPoint,
+		modifierFlags:.command,
+		timestamp:0.0,
+		windowNumber:0,
+		context:nil,
+		subtype:0,
+		data1:0,
+		data2:0)!,
+		atStart:false)
+}
+func loopDone()
+{
+}
+
 func swiftKey(event:NSEvent) -> NSEvent?
 {
 	guard let str:String = event.characters else {return nil}
@@ -299,7 +345,7 @@ func swiftKey(event:NSEvent) -> NSEvent?
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
 {
-	let point = swiftPoint()
+	let point = getPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.click(0)
@@ -308,7 +354,7 @@ func swiftLeft(event:NSEvent) -> NSEvent?
 }
 func swiftRight(event:NSEvent) -> NSEvent?
 {
-	let point = swiftPoint()
+	let point = getPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.click(1)
@@ -317,7 +363,7 @@ func swiftRight(event:NSEvent) -> NSEvent?
 }
 func swiftMove(event:NSEvent) -> NSEvent?
 {
-	let point = swiftPoint()
+	let point = getPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.move(Double(point.x),Double(point.y))
@@ -362,45 +408,6 @@ func swiftSize()
 	let frame:CGRect = window.frame
 	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))
 }
-func swiftClose()
-{
-	NSApp.terminate(nil)
-}
-func swiftPoint() -> NSPoint
-{
-	var point = NSEvent.mouseLocation
-	let frame:CGRect = window.frame
-	point.x = point.x - NSMinX(frame)
-	point.y = point.y - NSMinY(frame)
-	return point
-}
-func swiftReady(_ buffer:MTLBuffer, _ size:Int)
-{
-	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
-	var found:Pierce = Pierce()
-	var index = Int(0)
-	for (pierce,object) in zip(pierces,0..<size) {
-		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
-			found = pierce
-			index = object
-		}
-	}
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
-}
-func swiftEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
-{
-	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
-}
-func loopInit()
-{
-	cb.call = swiftCall
-	cb.wake = swiftWake
-	swiftEvent(.periodic,swiftAlarm)
-}
-func loopDone()
-{
-}
-
 func swiftInit() -> Int32
 {
 	cb.warp = swiftWarp
@@ -408,14 +415,14 @@ func swiftInit() -> Int32
 	cb.draw = swiftDraw
 	cb.full = swiftFull
 	cb.done = swiftDone
-	swiftEvent(.keyDown,swiftKey)
-	swiftEvent(.leftMouseDown,swiftLeft)
-	swiftEvent(.rightMouseDown,swiftRight)
-	swiftEvent(.mouseMoved,swiftMove)
-	swiftEvent(.scrollWheel,swiftRoll)
-	swiftEvent(.applicationDefined,swiftCheck)
-	swiftEvent(.leftMouseDragged,swiftDrag)
-	swiftEvent(.leftMouseUp,swiftClear)
+	setEvent(.keyDown,swiftKey)
+	setEvent(.leftMouseDown,swiftLeft)
+	setEvent(.rightMouseDown,swiftRight)
+	setEvent(.mouseMoved,swiftMove)
+	setEvent(.scrollWheel,swiftRoll)
+	setEvent(.applicationDefined,swiftCheck)
+	setEvent(.leftMouseDragged,swiftDrag)
+	setEvent(.leftMouseUp,swiftClear)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
@@ -562,36 +569,12 @@ func swiftInit() -> Int32
 	print("after hello")
 	return 1
 }
-func swiftCall()
-{
-	NSApp.run()
-}
-func swiftWake()
-{
-	NSApp.postEvent(
-		NSEvent.otherEvent(
-		with:.applicationDefined,
-		location:NSZeroPoint,
-		modifierFlags:.command,
-		timestamp:0.0,
-		windowNumber:0,
-		context:nil,
-		subtype:0,
-		data1:0,
-		data2:0)!,
-		atStart:false)
-}
 func swiftWarp(xpos:Double, ypos:Double)
 {
-	let point = swiftPoint()
+	let point = getPoint()
 	let frame:CGRect = window.frame
 	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
     CGWarpMouseCursorPosition(coord);	
-}
-func swiftFull() -> Int32
-{
-	if (count < 3) {return 0}
-	return 1
 }
 func swiftDma(_ mem:share.Memory)
 {
@@ -670,6 +653,11 @@ func swiftDraw()
 		count += 1
 		code.commit()
 	}
+}
+func swiftFull() -> Int32
+{
+	if (count < 3) {return 0}
+	return 1
 }
 func swiftDone()
 {

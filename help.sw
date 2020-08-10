@@ -15,6 +15,14 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+func noWarn<T>(_ val:T) -> T?
+{
+	return val
+}
+func noWarn<T>(_ opt:T?) -> T?
+{
+	return nil
+}
 func fromZero<T>() -> T
 {
 	return fromZero(1)[0]
