@@ -29,6 +29,7 @@
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define INVALID 1.0e30
 #define ANGLE (1.0/30.0)
+#define LENGTH 20.0
 #define SATURATE 1000000000000.0
 #define INFINITE 1000000000ull
 #define SEC2NANO 1000000000.0
@@ -42,15 +43,9 @@
 #define WINDEEP 512
 #define NUMFILE 64
 #define BUFSIZE 64
-#define CHRHIGH 24
-#define CHRWIDE 16
 #define NUMINET 16
-#define NUMTEXT 16
 #define NUMPEND 10
-#define NUMFEND 8
-#define NUMCNTX 5
 #define CMDSIZE 4
-#define NUMFLEX 3
 // INFINITE longer than any given file
 // FILESIZE rough limit to helper file
 // NUMOPEN total number of file descriptors

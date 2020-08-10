@@ -394,6 +394,11 @@ void shareMetric()
 	writeMetric(&metric,cb.hub);
 }
 
+void shareRender()
+{
+	// TODO send Copy Render and Draw
+}
+
 void shareProc()
 {
 	for (int i = 0; i < client->len; i++)
@@ -426,8 +431,8 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 	function[0] = Dma1;
 	struct Vector pierce[2];
 	for (int i = 0; i < 3; i++) {
-		pierce[0].val[i] = point->val[i];
-		pierce[1].val[i] = normal->val[i];}
+	pierce[0].val[i] = point->val[i];
+	pierce[1].val[i] = normal->val[i];}
 	struct Client client;
 	client.mem = Pierce;
 	client.len = 1;
@@ -460,8 +465,8 @@ void shareMove(double xpos, double ypos)
 	function[0] = Copy; function[1] = Draw;
 	struct Vector vector[2];
 	for (int i = 0; i < 3; i++) {
-		vector[0].val[i] = pierce[0][i];
-		vector[1].val[i] = pierce[1][i];}
+	vector[0].val[i] = pierce[0][i];
+	vector[1].val[i] = pierce[1][i];}
 	client.pierce = vector; client.idx = 0; client.mem = Pierce;
 	client.fnc = function; client.len = 2; client.siz = 2;
 	writeClient(&client,cb.tub);}
@@ -473,9 +478,11 @@ void shareRoll(double xoffset, double yoffset)
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform && user->roll == Focal) {
-	}
+	if (render[0][2]+yoffset*LENGTH > WINDEEP) render[0][2] += yoffset*LENGTH;
+	shareRender();}
 	else if (user->click == Transform && user->roll == Picture) {
-	}
+	if (render[1][2]+yoffset*LENGTH > WINDEEP) render[1][2] += yoffset*LENGTH;
+	shareRender();}
 	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -520,29 +527,24 @@ void shareClick(int isright)
 	writeClient(&client,cb.tub);
 }
 
-void shareOther()
-{
-	// TODO send Copy Render and Draw
-}
-
 void shareSize(double width, double height)
 {
-	// TODO adjust focal and picture for shareOther
+	// TODO adjust focal and picture for shareRender
 }
 
 void shareDrag(double xpos, double ypos)
 {
-	// TODO adjust focal and picture for shareOther
+	// TODO adjust focal and picture for shareRender
 }
 
 void shareCent(double xpos, double ypos)
 {
-	// TODO adjust focal and picture for shareOther
+	// TODO adjust focal and picture for shareRender
 }
 
 void shareMilli(double xpos, double ypos)
 {
-	// TODO adjust focal and picture for shareOther
+	// TODO adjust focal and picture for shareRender
 }
 
 void novoid()
