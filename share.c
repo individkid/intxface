@@ -266,15 +266,6 @@ void composeMatrix(float *result)
 	default: ERROR(cb.err,-1);}
 }
 
-void initMatrix()
-{
-	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
-	normalMatrix(normat,norvec);
-	fixedMatrix(piemat,pievec);
-	identmat(matrix,4);
-	toggle = 0;
-}
-
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
 {
 	switch (cb.state[User]->user->matrix) {
@@ -500,7 +491,11 @@ void shareRoll(double xoffset, double yoffset)
 
 void shareClick(int isright)
 {
-	initMatrix();
+	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
+	normalMatrix(normat,norvec);
+	fixedMatrix(piemat,pievec);
+	identmat(matrix,4);
+	toggle = 0;
 	struct Client client;
 	struct Affine affine;
 	struct Mode user;
@@ -530,21 +525,25 @@ void shareClick(int isright)
 void shareSize(double width, double height)
 {
 	// TODO adjust focal and picture for shareRender
+	shareRender();
 }
 
 void shareDrag(double xpos, double ypos)
 {
 	// TODO adjust focal and picture for shareRender
+	shareRender();
 }
 
 void shareCent(double xpos, double ypos)
 {
 	// TODO adjust focal and picture for shareRender
+	shareRender();
 }
 
 void shareMilli(double xpos, double ypos)
 {
 	// TODO adjust focal and picture for shareRender
+	shareRender();
 }
 
 void novoid()
@@ -626,7 +625,6 @@ void shareInit(int argc)
 
 void shareDone()
 {
-	initMatrix();
 }
 
 void *threadCall(void *arg)
