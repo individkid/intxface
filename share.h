@@ -22,7 +22,6 @@
 
 struct Callback {
 	void (*err)(const char *str, int num, int arg);
-	double (*conf)(const char *str);
 	// kvm to share
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);

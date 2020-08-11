@@ -428,7 +428,7 @@ func swiftInit() -> Int32
 	NSApp.activate(ignoringOtherApps: true)
 	if let temp = MTLCreateSystemDefaultDevice() {
 		device = temp} else {print("cannot make device"); return 0}
-	let rect = NSMakeRect(0, 0, CGFloat(cb.conf("WINWIDE")), CGFloat(cb.conf("WINHIGH")))
+	let rect = NSMakeRect(0, 0, CGFloat(WINWIDE), CGFloat(WINHIGH))
 	if let temp = noWarn(MTKView(frame:rect,device:device)) {
 		combine = temp} else {print("cannot make combine"); return 0}
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)

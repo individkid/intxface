@@ -46,14 +46,6 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
-double getconf(const char *str)
-{
-	if (strcmp(str,"WINWIDE") == 0) return WINWIDE;
-	if (strcmp(str,"WINHIGH") == 0) return WINHIGH;
-	if (strcmp(str,"WINDEEP") == 0) return WINDEEP;
-	return 0;
-}
-
 void constructVector(float *point, float *plane, int versor, float *basis)
 {
 	for (int i = 0; i < 3; i++)
@@ -612,7 +604,6 @@ void noclick(int isright)
 void shareInit(int argc)
 {
 	cb.err = exiterr;
-	cb.conf = getconf;
 	cb.move = (argc == 4 ? shareMove : nomove);
 	cb.roll = (argc == 4 ? shareRoll : noroll);
 	cb.click = (argc == 4 ? shareClick : noclick);
