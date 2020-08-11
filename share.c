@@ -381,6 +381,7 @@ void shareCopy(struct Client **ptr)
 	INDEXED(Render,render);
 	INDEXED(Pierce,pierce);
 	INDEXED(Cloud,cloud);
+	INDEXED(User,user);
 }
 
 void sharePierce()

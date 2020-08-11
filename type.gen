@@ -84,9 +84,7 @@ Memory = {
 	"Render",
 	"Pierce",
 	"Cloud",
-	"Hand",
 	"User",
-	"Image",
 }
 Matrix = {
 	"Global",
@@ -232,6 +230,7 @@ Mode = {
 	{"move","Move",{},{}},
 	{"roll","Roll",{},{}},
 	{"shader","Shader",{},{}},
+	{"hand","int",{},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},
@@ -252,7 +251,6 @@ Client = {
 	{"render","Vector",{["mem"]={["Render"]=true}},2},
 	{"pierce","Vector",{["mem"]={["Pierce"]=true}},2},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
-	{"hand","int",{["mem"]={["Hand"]=true}},{}},
 	{"user","Mode",{["mem"]={["User"]=true}},1},
 }
 Sculpt = {

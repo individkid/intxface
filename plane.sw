@@ -241,7 +241,7 @@ func setDisplay()
 		feather:getClient(share.Render).render!.pointee,
 		arrow:getClient(share.Render).render!.pointee,
 		siz:UInt32(getClient(share.Cloud).siz),
-		hand:UInt32(getClient(share.Hand).hand),
+		hand:UInt32(getMode().hand),
 		tag:0,pad:0)
 	form.set([elem],0..<MemoryLayout<Form>.size)
 }
@@ -254,7 +254,7 @@ func setTrack()
 		feather:getClient(share.Pierce).pierce!.pointee,
 		arrow:getClient(share.Pierce).pierce!.pointee,
 		siz:UInt32(getClient(share.Cloud).siz),
-		hand:UInt32(getClient(share.Hand).hand),
+		hand:UInt32(getMode().hand),
 		tag:0,pad:0)
 	form.set([elem],0..<MemoryLayout<Form>.size)
 }
