@@ -245,13 +245,13 @@ Client = {
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
 	{"active","Array",{["mem"]={["Active"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
-	{"subject","Affine",{["mem"]={["Subject"]=true}},1},
+	{"subject","Affine",{["mem"]={["Subject"]=true}},"siz"},
 	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},
-	{"feature","Affine",{["mem"]={["Feature"]=true}},1},
-	{"render","Vector",{["mem"]={["Render"]=true}},2},
-	{"pierce","Vector",{["mem"]={["Pierce"]=true}},2},
+	{"feature","Affine",{["mem"]={["Feature"]=true}},"siz"},
+	{"render","Vector",{["mem"]={["Render"]=true}},"siz"},
+	{"pierce","Vector",{["mem"]={["Pierce"]=true}},"siz"},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
-	{"user","Mode",{["mem"]={["User"]=true}},1},
+	{"user","Mode",{["mem"]={["User"]=true}},"siz"},
 }
 Sculpt = {
 	{"cfg","Config",{},{}},

@@ -23,9 +23,9 @@ int sub = 0;
 pthread_mutex_t mutex = {0};
 pthread_cond_t cond = {0};
 pthread_t pthread = {0};
-struct Client *client = 0;
-struct Client *saved[Memorys] = {0};
-struct Callback cb = {0};
+struct Client *client = 0; // read from pipe
+struct Client *saved[Memorys] = {0}; // cb.state at click time
+struct Callback cb = {0}; // cb.state sent to gpu by Dma0
 float xmove = 0.0;
 float ymove = 0.0;
 float offset = 0.0;
@@ -297,15 +297,16 @@ enum Memory copyUser(struct Client *client, struct Mode *user)
 float *shareMat(struct Client *client, int idx)
 {
 	switch (client->mem) {
-	case (Subject): return &cb.state[Subject]->subject[0].val[0][0];
+	case (Subject): return &cb.state[Subject]->subject[idx].val[0][0];
 	case (Object): return &cb.state[Object]->object[idx].val[0][0];
-	case (Feature): return &cb.state[Feature]->feature[0].val[0][0];
+	case (Feature): return &cb.state[Feature]->feature[idx].val[0][0];
 	default: ERROR(exiterr,-1);}
 	return 0;
 }
 
-void shareRmw0()
+void shareRmw0() // continuation of move or roll
 {
+	// A = B*C
 	// cb.state[idx] = client[0]*saved[idx]
 	float *stat = shareMat(cb.state[client->mem],client->idx);
 	float *save = shareMat(saved[client->mem],client->idx);
@@ -313,7 +314,7 @@ void shareRmw0()
 	copymat(stat,timesmat(save,give,4),4);
 }
 
-void shareRmw1()
+void shareRmw1() // from outside parallel since last Rmw1 or Save
 {
 	// A = B*C
 	// A' = B*C'
@@ -328,7 +329,7 @@ void shareRmw1()
 	float *give = shareMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
 }
 
-void shareRmw2()
+void shareRmw2() // transition between move and roll
 {
 	// A = B*C
 	// A = B'*C'

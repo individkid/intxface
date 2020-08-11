@@ -25,14 +25,14 @@ var device:MTLDevice!
 var combine:MTKView!
 var layer: CAMetalLayer!
 var view:NSView!
+var delegate:WindowDelegate!
 var window:NSWindow!
 var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
 var compute:MTLComputePipelineState!
 var depth:MTLDepthStencilState!
 var threads:MTLSize!
-var delegate:WindowDelegate!
-var drag:NSPoint?
+var drag:NSPoint!
 
 var triangle = Pend<share.Facet>()
 var corner = Pend<share.Vertex>()
@@ -239,7 +239,7 @@ func setDisplay()
 		subject:getClient(share.Subject).subject!.pointee,
 		feature:getClient(share.Feature).feature!.pointee,
 		feather:getClient(share.Render).render!.pointee,
-		arrow:getClient(share.Render).render!.pointee,
+		arrow:getClient(share.Render).render!.advanced(by:1).pointee,
 		siz:UInt32(getClient(share.Cloud).siz),
 		hand:UInt32(getMode().hand),
 		tag:0,pad:0)
@@ -252,7 +252,7 @@ func setTrack()
 		subject:getClient(share.Subject).subject!.pointee,
 		feature:getClient(share.Feature).feature!.pointee,
 		feather:getClient(share.Pierce).pierce!.pointee,
-		arrow:getClient(share.Pierce).pierce!.pointee,
+		arrow:getClient(share.Pierce).pierce!.advanced(by:1).pointee,
 		siz:UInt32(getClient(share.Cloud).siz),
 		hand:UInt32(getMode().hand),
 		tag:0,pad:0)
@@ -391,7 +391,7 @@ func swiftDrag(event:NSEvent) -> NSEvent?
 {
 	if (drag == nil) {return event}
 	var point = NSEvent.mouseLocation
-	point.x -= drag!.x; point.y -= drag!.y
+	point.x -= drag.x; point.y -= drag.y
 	cb.drag(Double(point.x),Double(point.y))
 	return event
 }
@@ -446,13 +446,13 @@ func swiftInit() -> Int32
 		view = temp} else {print("cannot make view"); return 0}
 	view.layer = layer
 	view.addSubview(combine)
+	delegate = WindowDelegate()
 	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
 		window = temp} else {print("cannot make window"); return 0}
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
-	delegate = WindowDelegate()
 	window.delegate = delegate
 	if let temp = device.makeCommandQueue() {
 		queue = temp} else {print("cannot make queue"); return 0}
