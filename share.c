@@ -357,17 +357,30 @@ void shareRmw2()
 }
 
 #define INDEXED(ENUM,FIELD) \
-	if (client->mem == ENUM && ptr[ENUM] && client->siz < ptr[ENUM]->siz) \
-	{memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); return;}
+	if (client->mem == ENUM) {\
+	if (!ptr[ENUM] || client->idx+client->siz > ptr[ENUM]->siz) \
+	{allocClient(&ptr[ENUM],1); \
+	void *mem = malloc((client->idx+client->siz)*sizeof(*client->FIELD)); \
+	memcpy(mem,ptr[ENUM]->FIELD,ptr[ENUM]->siz*sizeof(*client->FIELD)); \
+	ptr[ENUM]->FIELD = mem; \
+	ptr[ENUM]->siz = client->idx+client->siz;} \
+	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
+	return;}
 void shareCopy(struct Client **ptr)
 {
-	INDEXED(Corner,corner);
 	INDEXED(Triangle,triangle);
+	INDEXED(Corner,corner);
+	INDEXED(Frame,frame);
+	INDEXED(Base,base);
 	INDEXED(Range,range);
+	INDEXED(Active,active);
 	INDEXED(Basis,basis);
+	INDEXED(Subject,subject);
 	INDEXED(Object,object);
+	INDEXED(Feature,feature);
+	INDEXED(Render,render);
+	INDEXED(Pierce,pierce);
 	INDEXED(Cloud,cloud);
-	allocClient(&ptr[client->mem],0); ptr[client->mem] = client;
 }
 
 void sharePierce()
@@ -398,7 +411,7 @@ void shareRender()
 	client.len = 2;
 	client.fnc = function;
 	client.idx = 0;
-	client.siz = 0;
+	client.siz = 1;
 	client.render = vector;
 	writeClient(&client,cb.tub);
 }
@@ -423,7 +436,9 @@ int shareRead()
 {
 	int res = 0;
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (vld) {readClient(client,sub); vld = 0; res = 1;
+	if (vld) {
+	if (!client) allocClient(&client,1);
+	readClient(client,sub); vld = 0; res = 1;
 	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
 	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
 	return res;
