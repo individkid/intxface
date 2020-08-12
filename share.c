@@ -371,7 +371,7 @@ float *procMat(struct Client *client, int idx)
 	case (Subject): return &cb.state[Subject]->subject[idx].val[0][0];
 	case (Object): return &cb.state[Object]->object[idx].val[0][0];
 	case (Feature): return &cb.state[Feature]->feature[idx].val[0][0];
-	default: ERROR(exiterr,-1);}
+	default: ERROR(cb.err,-1);}
 	return 0;
 }
 
@@ -476,18 +476,18 @@ void shareProc()
 	case (Dma1): procPierce(); break;
 	case (Draw): cb.draw(); break;
 	case (Port): procMetric(); break;
-	default: ERROR(exiterr,-1);}
+	default: ERROR(cb.err,-1);}
 }
 
 int shareRead()
 {
 	int res = 0;
-	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
+	if (pthread_mutex_lock(&mutex) != 0) ERROR(cb.err,-1);
 	if (vld) {
 	if (!client) allocClient(&client,1);
 	readClient(client,sub); vld = 0; res = 1;
-	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
+	if (pthread_cond_signal(&cond) != 0) ERROR(cb.err,-1);}
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(cb.err,-1);
 	return res;
 }
 
@@ -535,28 +535,59 @@ void noclick(int isright)
 	printf("click %d\n",isright);
 }
 
-void shareInit(int argc)
+void nowrite(struct Vector *point, struct Vector *normal, int object)
+{
+	printf("write %d\n",object);
+}
+
+void shareNoinit()
 {
 	cb.err = exiterr;
-	cb.move = (argc == 4 ? shareMove : nomove);
-	cb.roll = (argc == 4 ? shareRoll : noroll);
-	cb.click = (argc == 4 ? shareClick : noclick);
-	cb.size = (argc == 4 ? shareSize : nosize);
-	cb.drag = (argc == 4 ? shareDrag : nodrag);
-	cb.write = shareWrite;
+	cb.move = nomove;
+	cb.roll = noroll;
+	cb.click = noclick;
+	cb.size = nosize;
+	cb.drag = nodrag;
+	cb.write = nowrite;
 	cb.warp = nowarp;
 	cb.dma = nodma;
 	cb.draw = novoid;
 	cb.full = nofalse;
-	cb.proc = shareProc;
-	cb.read = shareRead;
+	cb.proc = novoid;
+	cb.read = nofalse;
+	if (cb.start == 0) cb.start = novoid;
 	cb.call = novoid;
 	cb.wake = novoid;
 	cb.done = novoid;
+	cb.hub = -1;
+	cb.zub = openPipe();
+	cb.tub = openPipe();
+	if (cb.zub < 0 || cb.tub < 0) {
+	ERROR(cb.err,-1);}
+	bothJump(cb.err,cb.zub);
+	bothJump(cb.err,cb.tub);
+	cb.esc = 0;
+}
+
+void shareInit(const char *av1, const char *av2)
+{
+	cb.move = shareMove;
+	cb.roll = shareRoll;
+	cb.click = shareClick;
+	cb.size = shareSize;
+	cb.drag = shareDrag;
+	cb.write = shareWrite;
+	cb.proc = shareProc;
+	cb.read = shareRead;
+	cb.hub = pipeInit(av1,av2);
+	if (cb.hub < 0) {
+	ERROR(cb.err,-1);}
+	bothJump(cb.err,cb.hub);
 }
 
 void shareDone()
 {
+	printf("shareDone\n");
 }
 
 void *threadCall(void *arg)
@@ -567,24 +598,25 @@ void *threadCall(void *arg)
 	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
 	printf("thread(%d) cb.hub(%d) cb.tub(%d) cb.zub(%d)\n",tmp,cb.hub,cb.tub,cb.zub);
 	if (tmp == cb.zub) gon = 0; else if (tmp >= 0) {
-	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
+	if (pthread_mutex_lock(&mutex) != 0) ERROR(cb.err,-1);
 	sub = tmp; vld = 1; cb.wake();
-	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(exiterr,-1);
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);}}}
+	if (pthread_cond_wait(&cond,&mutex) != 0) ERROR(cb.err,-1);
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(cb.err,-1);}}}
 	return 0;
 }
 
 void threadInit()
 {
-	if (pthread_mutex_init(&mutex,0) != 0) ERROR(exiterr,-1);
-	if (pthread_cond_init(&cond,0) != 0) ERROR(exiterr,-1);
-	if (pthread_create(&pthread,0,threadCall,0) != 0) ERROR(exiterr,-1);
+	if (pthread_mutex_init(&mutex,0) != 0) ERROR(cb.err,-1);
+	if (pthread_cond_init(&cond,0) != 0) ERROR(cb.err,-1);
+	if (pthread_create(&pthread,0,threadCall,0) != 0) ERROR(cb.err,-1);
 }
 
 void threadDone()
 {
 	writeInt(1,cb.zub);
-	if (pthread_join(pthread,0) != 0) ERROR(exiterr,-1);
-	if (pthread_mutex_destroy(&mutex) != 0) ERROR(exiterr,-1);
-	if (pthread_cond_destroy(&cond) != 0) ERROR(exiterr,-1);
+	if (pthread_join(pthread,0) != 0) ERROR(cb.err,-1);
+	if (pthread_mutex_destroy(&mutex) != 0) ERROR(cb.err,-1);
+	if (pthread_cond_destroy(&cond) != 0) ERROR(cb.err,-1);
+	printf("threadDone\n");
 }

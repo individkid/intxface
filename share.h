@@ -39,6 +39,7 @@ struct Callback {
 	void (*proc)();
 	int (*read)();
 	// main to loop
+	void (*start)();
 	void (*call)();
 	// share to loop
 	void (*wake)();
@@ -53,7 +54,8 @@ struct Callback {
 
 extern struct Callback cb;
 
-void shareInit(int argc);
+void shareNoinit();
+void shareInit(const char *av1, const char *av2);
 void shareDone();
 void threadInit();
 void threadDone();

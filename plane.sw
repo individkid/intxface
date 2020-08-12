@@ -15,5 +15,10 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+func planeInit()
+{
+	swiftInit()
+}
+
 // MAIN
-	let mainInit = getInit()
+	cb.start = planeInit

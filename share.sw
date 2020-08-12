@@ -73,7 +73,7 @@ class WindowDelegate : NSObject, NSWindowDelegate
 	}
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		NSApp.terminate(nil)
+		NSApp.stop(nil)
 		return true
 	}
 	func windowWillMove(_ notification: Notification)
@@ -295,10 +295,6 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> 
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
-func getInit() -> (()->Int32)
-{
-	return swiftInit
-}
 
 func loopAlarm(event:NSEvent) -> NSEvent?
 {
@@ -333,6 +329,7 @@ func loopWake()
 }
 func loopDone()
 {
+	print("loopDone")
 }
 
 func swiftKey(event:NSEvent) -> NSEvent?
@@ -344,7 +341,7 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else if (key == 13) {if (cb.esc == 1) {cb.esc = 2}}
 	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
-	if (cb.esc >= 2) {NSApp.terminate(nil)}
+	if (cb.esc >= 2) {NSApp.stop(nil)}
 	return nil
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
@@ -412,7 +409,7 @@ func swiftSize()
 	let frame:CGRect = window.frame
 	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))
 }
-func swiftInit() -> Int32
+func swiftInit()
 {
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
@@ -431,63 +428,62 @@ func swiftInit() -> Int32
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
 	if let temp = MTLCreateSystemDefaultDevice() {
-		device = temp} else {print("cannot make device"); return 0}
+		device = temp} else {print("cannot make device"); return}
 	let rect = NSMakeRect(0, 0, CGFloat(WINWIDE), CGFloat(WINHIGH))
 	if let temp = noWarn(MTKView(frame:rect,device:device)) {
-		combine = temp} else {print("cannot make combine"); return 0}
+		combine = temp} else {print("cannot make combine"); return}
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
 	combine.clearColor = color
 	combine.colorPixelFormat = .bgra8Unorm
 	combine.depthStencilPixelFormat = .depth32Float
 	combine.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	if let temp = noWarn(CAMetalLayer()) {
-		layer = temp} else {print("cannot make layer"); return 0}
+		layer = temp} else {print("cannot make layer"); return}
 	layer.device = device
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
 	layer.frame = rect
 	if let temp = noWarn(NSView(frame:rect)) {
-		view = temp} else {print("cannot make view"); return 0}
+		view = temp} else {print("cannot make view"); return}
 	view.layer = layer
 	view.addSubview(combine)
 	delegate = WindowDelegate()
 	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
-		window = temp} else {print("cannot make window"); return 0}
+		window = temp} else {print("cannot make window"); return}
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
 	window.delegate = delegate
 	if let temp = device.makeCommandQueue() {
-		queue = temp} else {print("cannot make queue"); return 0}
+		queue = temp} else {print("cannot make queue"); return}
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
-		print("cannot make library"); return 0}
+		print("cannot make library"); return}
 	guard let vertex_render = library.makeFunction(name:"vertex_render") else {
-		print("cannot make vertex_render"); return 0}
+		print("cannot make vertex_render"); return}
 	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
-		print("cannot make fragment_render"); return 0}
+		print("cannot make fragment_render"); return}
 	guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {
-		print("cannot make kernel_pierce"); return 0}
+		print("cannot make kernel_pierce"); return}
 	guard let pipe = noWarn(MTLRenderPipelineDescriptor()) else {
-		print("cannot make pipe"); return 0}
+		print("cannot make pipe"); return}
 	pipe.vertexFunction = vertex_render
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
 	pipe.depthAttachmentPixelFormat = .depth32Float
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
-		render = temp} else {print("cannot make render"); return 0}
+		render = temp} else {print("cannot make render"); return}
 	if let temp = try? device.makeComputePipelineState(function:kernel_pierce) {
-		compute = temp} else {print("cannot make compute"); return 0;}
+		compute = temp} else {print("cannot make compute"); return;}
     guard let stencil = noWarn(MTLDepthStencilDescriptor()) else {
-    	print("cannot make stencil"); return 0}
+    	print("cannot make stencil"); return}
     stencil.depthCompareFunction = .greater // left hand rule; z thumb to observer
     stencil.isDepthWriteEnabled = true
     if let temp = device.makeDepthStencilState(descriptor: stencil) {
-    	depth = temp} else {print("cannot make depth"); return 0}
+    	depth = temp} else {print("cannot make depth"); return}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
-    	threads = temp} else {print("cannot make thread"); return 0}
+    	threads = temp} else {print("cannot make thread"); return}
     swiftSize()
-    return 1
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -581,28 +577,19 @@ func swiftFull() -> Int32
 }
 func swiftDone()
 {
-	print("done")
+	print("swiftDone")
 }
 
+	shareNoinit()
 	let argc = CommandLine.arguments.count
 	let argv = CommandLine.arguments
 	if (argc == 4) {
-	cb.hub = pipeInit(argv[1],argv[2])}
-	cb.zub = openPipe()
-	cb.tub = openPipe()
-	cb.esc = 0
-	shareInit(Int32(argc))
-	if (cb.zub < 0 || cb.tub < 0 ||
-	(argc == 4 && cb.hub < 0)) {
-	cb.err(#file,#line,-1)}
-	bothJump(cb.err,cb.zub)
-	bothJump(cb.err,cb.tub)
-	if (argc == 4) {
-	bothJump(cb.err,cb.hub)}
+	shareInit(argv[1],argv[2])}
 	loopInit()
 	threadInit()
-	if (mainInit() != 0) {
-	cb.call()}
+	if (cb.start != nil) {
+	cb.start()}
+	cb.call()
 	cb.done()
 	threadDone()
 	loopDone()

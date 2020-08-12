@@ -15,28 +15,28 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-func planraInit() -> Int32
+func planraInit()
 {
 	let _ = swiftInit()
 
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
-		print("cannot make library"); return 0}
+		print("cannot make library"); return}
 	guard let kernel_debug = library.makeFunction(name:"kernel_debug") else {
-		print("cannot make kernel_debug"); return 0;}
+		print("cannot make kernel_debug"); return;}
 	guard let vertex_simple = library.makeFunction(name:"vertex_simple") else {
-		print("cannot make vertex_simple"); return 0}
+		print("cannot make vertex_simple"); return}
 	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
-		print("cannot make fragment_render"); return 0}
+		print("cannot make fragment_render"); return}
 	guard let debug = try? device.makeComputePipelineState(function:kernel_debug) else {
-		print("cannot make debug"); return 0}
+		print("cannot make debug"); return}
 	guard let pipe = noWarn(MTLRenderPipelineDescriptor()) else {
-		print("cannot make pipe"); return 0}
+		print("cannot make pipe"); return}
 	pipe.vertexFunction = vertex_simple
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
 	pipe.depthAttachmentPixelFormat = .depth32Float
 	guard let hello = try? device.makeRenderPipelineState(descriptor:pipe) else {
-		print("cannot make hello"); return 0}
+		print("cannot make hello"); return}
 
 	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64
 	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64
@@ -64,9 +64,9 @@ func planraInit() -> Int32
 
 	for (a,b,c,d):(Int8,Int8,Int8,Int8) in [(8,64,8,64),(7,63,9,65)] {
 	guard let code = queue.makeCommandBuffer() else {
-		print("cannot make code"); return 0}
+		print("cannot make code"); return}
 	guard let encode = code.makeComputeCommandEncoder() else {
-		print("cannot make encode"); return 0}
+		print("cannot make encode"); return}
 	encode.setComputePipelineState(debug)
 	encode.setBuffer(triangle.get(),offset:0,index:0)
 	encode.setBuffer(arrayz,offset:0,index:1)
@@ -93,18 +93,18 @@ func planraInit() -> Int32
 
 	if (true) {
 	guard let code = queue.makeCommandBuffer() else {
-		print("cannot make code"); return 0}
+		print("cannot make code"); return}
 	guard let desc = combine.currentRenderPassDescriptor else {
-		print("cannot make desc"); return 0}
+		print("cannot make desc"); return}
 	guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {
-		print("cannot make encode"); return 0}
+		print("cannot make encode"); return}
 	encode.setRenderPipelineState(hello)
 	encode.setDepthStencilState(depth)
 	encode.setVertexBuffer(pointz,offset:0,index:0)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
 	encode.endEncoding()
     guard let draw = combine.currentDrawable else {
-    	print("cannot make draw"); return 0}
+    	print("cannot make draw"); return}
 	code.present(draw)
 	code.addScheduledHandler(getLock())
 	code.addCompletedHandler(getCount())
@@ -112,8 +112,7 @@ func planraInit() -> Int32
 	code.commit()}
 
 	print("after hello")
-	return 1
 }
 
 // MAIN
-	let mainInit = planraInit
+	cb.start = planraInit
