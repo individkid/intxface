@@ -587,8 +587,7 @@ func swiftDone()
 	shareInit(argv[1],argv[2])}
 	loopInit()
 	threadInit()
-	if (cb.start != nil) {
-	cb.start()}
+	cb.start()
 	cb.call()
 	cb.done()
 	threadDone()
