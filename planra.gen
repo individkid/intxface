@@ -1,0 +1,7 @@
+if (arg[1] == "planra.sw") then
+    file = io.open("planra.sw", "w")
+    for line in io.lines("plane.sw") do
+        file:write(line.."\n")
+    end
+    file:close()
+end

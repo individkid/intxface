@@ -92,6 +92,7 @@ clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer
+	rm -f planra.sw
 	rm -f trade file line plane space
 	rm -f *C *Hs *Lua *Sw
 	rm -f *.err *.out *.log

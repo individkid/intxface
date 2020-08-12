@@ -15,6 +15,8 @@ meticC.o: metic.h
 planeG.o: plane.h
 planeSw: baseC.o faceC.o meticC.o plane.so shareC.o typeC.o
 planeSw.o: base.h face.h help.sw metic.h share.h type.h
+planraSw: baseC.o faceC.o meticC.o plane.so shareC.o typeC.o
+planraSw.o: base.h face.h help.sw metic.h share.h type.h
 shareC.o: base.h face.h metic.h share.h type.h
 spaceHs: baseC.o face.hs faceC.o naive.hs type.hs typeC.o
 tradeC: baseC.o faceC.o typeC.o
