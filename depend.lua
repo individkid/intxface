@@ -72,7 +72,6 @@ function source(file)
 		ext == ".lua" or
 		ext == ".gen" or
 		ext == ".src" or
-		ext == ".isw" or
 		ext == ".sw" or
 		ext == ".g")
 	then
@@ -156,7 +155,6 @@ moduleExpr = "^module +([^ ]*) +where"
 importExpr = "^import +([^ ]*)"
 foreignExpr = "^foreign import ccall "
 dofileExpr = "^dofile%("
-linesExpr = "io%.lines%("
 requireExpr = "^require +"
 graphicsExpr = "makeLibrary%(filepath:"
 cOpenExpr = "/*"; cCloseExpr = "*/"
@@ -257,7 +255,6 @@ for k,v in pairs(files) do
 			if (ext == ".sw") then swImportVal = string.match(more,importExpr) else swImportVal = nil end
 			foreighVal = string.match(more,foreignExpr)
 			dofileVal = string.match(more,dofileExpr)
-			linesVal = string.match(more,linesExpr)
 			requireVal = string.match(more,requireExpr)
 			if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
 			if includeVal then insert(edges,v,name)
@@ -266,7 +263,6 @@ for k,v in pairs(files) do
 			elseif swImportVal then insert(edges,v,swImportVal..".h")
 			elseif foreignVal then insert(edges,v,name)
 			elseif dofileVal then insert(edges,v,name)
-			elseif linesVal then insert(edges,v,name)
 			elseif requireVal then insert(edges,v,name..".c")
 			elseif declareVal then insert(edges,declareVal,v)
 			else while (1) do
@@ -324,7 +320,6 @@ for k,v in pairs(edges) do if source(k) then
 	flatten(k,flats[k],".c",k,v,edges)
 	flatten(k,flats[k],".m",k,v,edges)
 	flatten(k,flats[k],".cpp",k,v,edges)
-	flatten(k,flats[k],".isw",k,v,edges)
 	if (ext == ".sw") then flatten(k,flats[k],".sw",k,v,edges) end
 	if (ext == ".sw") then flatten(k,flats[k],".so",k,v,edges) end
 	if (ext == ".hs") then flatten(k,flats[k],".hs",k,v,edges) end
@@ -391,7 +386,6 @@ for k,v in pairs(flats) do
 			(ext == ".sw")
 		then
 			if extants[base..".gen"] then
-				filter(targets,k,base..".gen",flats[base..".gen"],".isw",".isw")
 				filter(targets,k,base..".gen",flats[base..".gen"],".src",".src")
 				filter(targets,k,base..".gen",flats[base..".gen"],".c",".so")
 				filter(targets,k,base..".gen",flats[base..".gen"],".m",".so")
@@ -441,9 +435,9 @@ for k,v in pairs(flats) do
 				filter(targets,base.."Sw",k,v,".m","C.o")
 				filter(targets,base.."Sw",k,v,".cpp","C.o")
 				filter(targets,base.."Sw",k,v,".so",".so")
+				filter(targets,base.."Sw.o",k,v,".sw",".sw")
+				filter(targets,base.."Sw.o",k,v,".h",".h")
 			end
-			filter(targets,base.."Sw.o",k,v,".sw",".sw")
-			filter(targets,base.."Sw.o",k,v,".h",".h")
 		end
 	end
 end

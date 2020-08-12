@@ -1,5 +1,5 @@
 /*
-*    planra.isw
+*    planra.sw
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -114,3 +114,6 @@ func planraInit() -> Int32
 	print("after hello")
 	return 1
 }
+
+// MAIN
+	let mainInit = planraInit

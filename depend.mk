@@ -13,11 +13,10 @@ lineC: baseC.o faceC.o typeC.o
 lineC.o: base.h face.h type.h
 meticC.o: metic.h
 planeG.o: plane.h
-planeSw: baseC.o faceC.o meticC.o plane.so shareC.o typeC.o
-planeSw.o: base.h face.h help.sw metic.h share.h type.h
-planra.sw: planra.isw
+planeSw: baseC.o faceC.o meticC.o shareC.o typeC.o
+planeSw.o: base.h face.h help.sw metic.h share.h share.sw type.h
 planraSw: baseC.o faceC.o meticC.o plane.so shareC.o typeC.o
-planraSw.o: base.h face.h help.sw metic.h share.h type.h
+planraSw.o: base.h face.h help.sw metic.h share.h share.sw type.h
 shareC.o: base.h face.h metic.h share.h type.h
 spaceHs: baseC.o face.hs faceC.o naive.hs type.hs typeC.o
 tradeC: baseC.o faceC.o typeC.o
