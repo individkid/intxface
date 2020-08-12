@@ -458,27 +458,18 @@ func swiftInit() -> Int32
 		queue = temp} else {print("cannot make queue"); return 0}
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
 		print("cannot make library"); return 0}
-	guard let kernel_debug = library.makeFunction(name:"kernel_debug") else {
-		print("cannot make kernel_debug"); return 0;}
-	guard let vertex_simple = library.makeFunction(name:"vertex_simple") else {
-		print("cannot make vertex_simple"); return 0}
 	guard let vertex_render = library.makeFunction(name:"vertex_render") else {
 		print("cannot make vertex_render"); return 0}
 	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
 		print("cannot make fragment_render"); return 0}
 	guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {
 		print("cannot make kernel_pierce"); return 0}
-	guard let debug = try? device.makeComputePipelineState(function:kernel_debug) else {
-		print("cannot make debug"); return 0}
 	guard let pipe = noWarn(MTLRenderPipelineDescriptor()) else {
 		print("cannot make pipe"); return 0}
-	pipe.vertexFunction = vertex_simple
+	pipe.vertexFunction = vertex_render
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
 	pipe.depthAttachmentPixelFormat = .depth32Float
-	guard let hello = try? device.makeRenderPipelineState(descriptor:pipe) else {
-		print("cannot make hello"); return 0}
-	pipe.vertexFunction = vertex_render
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return 0}
 	if let temp = try? device.makeComputePipelineState(function:kernel_pierce) {
@@ -492,82 +483,7 @@ func swiftInit() -> Int32
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return 0}
     swiftSize()
-
-	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64
-	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64
-	let planes = [plane0,plane1];
-	triangle.set(planes)
-	// yellow
-	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.6); point0.color.0 = (1.0,1.0,0.0,1.0)
-	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.6); point1.color.0 = (1.0,1.0,0.0,1.0)
-	var point2 = share.Facet(); point2.plane = (1.0,-1.0,0.6); point2.color.0 = (1.0,0.5,0.0,1.0)
-	// orange
-	var point3 = share.Facet(); point3.plane = (0.0,-1.2,0.4); point3.color.0 = (1.0,0.5,0.0,1.0)
-	var point4 = share.Facet(); point4.plane = (1.2,1.2,0.4); point4.color.0 = (1.0,0.5,0.0,1.0)
-	var point5 = share.Facet(); point5.plane = (-1.2,1.2,0.4); point5.color.0 = (1.0,1.0,0.0,1.0)
-	let points = [point0,point1,point2,point3,point4,point5]
-	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Facet>.size*6)
-	let charz = device.makeBuffer(length:1000)
-	var array0 = share.Vertex(); array0.plane = (0,1,2)
-	var array1 = share.Vertex(); array1.plane = (3,4,5)
-	let arrays = [array0,array1]
-	let arrayz = device.makeBuffer(bytes:arrays,length:MemoryLayout<share.Vertex>.size*2)
-	print("Form.tag \(MemoryLayout<Form>.offset(of:\Form.tag)!)")
-	print("Facet.tag \(offsetFacetTag())")
-
-	print("before debug")
-
-	for (a,b,c,d):(Int8,Int8,Int8,Int8) in [(8,64,8,64),(7,63,9,65)] {
-	guard let code = queue.makeCommandBuffer() else {
-		print("cannot make code"); return 0}
-	guard let encode = code.makeComputeCommandEncoder() else {
-		print("cannot make encode"); return 0}
-	encode.setComputePipelineState(debug)
-	encode.setBuffer(triangle.get(),offset:0,index:0)
-	encode.setBuffer(arrayz,offset:0,index:1)
-	encode.setBuffer(charz,offset:0,index:2)
-	let groups = MTLSize(width:1,height:1,depth:1)
-	let threads = MTLSize(width:2,height:1,depth:1)
-	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
-	encode.endEncoding()
-	code.addCompletedHandler(getDebug(charz!,a,b,c,d))
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
-	count += 1
-	code.commit()
-	// code.waitUntilScheduled()
-	triangle.set(Int32(63),Int(offsetFacetTag()))
-	triangle.set(Int32(65),1,Int(offsetFacetTag()))
-	triangle.set(Int32(7),Int(offsetFacetVersor()))
-	triangle.set(Int32(9),1,Int(offsetFacetVersor()))
-	print("before \(count)")
-	code.waitUntilCompleted()
-	print("after \(count)")}
-
-	print("between debug and hello")
-
-	if (true) {
-	guard let code = queue.makeCommandBuffer() else {
-		print("cannot make code"); return 0}
-	guard let desc = combine.currentRenderPassDescriptor else {
-		print("cannot make desc"); return 0}
-	guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {
-		print("cannot make encode"); return 0}
-	encode.setRenderPipelineState(hello)
-	encode.setDepthStencilState(depth)
-	encode.setVertexBuffer(pointz,offset:0,index:0)
-	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
-	encode.endEncoding()
-    guard let draw = combine.currentDrawable else {
-    	print("cannot make draw"); return 0}
-	code.present(draw)
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
-	count += 1
-	code.commit()}
-
-	print("after hello")
-	return 1
+    return 1
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -667,18 +583,23 @@ func swiftDone()
 // MAIN
 	let argc = CommandLine.arguments.count
 	let argv = CommandLine.arguments
-	if (argc == 4) {cb.hub = pipeInit(argv[1],argv[2])}
+	if (argc == 4) {
+	cb.hub = pipeInit(argv[1],argv[2])}
 	cb.zub = openPipe()
 	cb.tub = openPipe()
 	cb.esc = 0
 	shareInit(Int32(argc))
-	if (cb.zub < 0 || cb.tub < 0 || (argc == 4 && cb.hub < 0)) {cb.err(#file,#line,-1)}
+	if (cb.zub < 0 || cb.tub < 0 ||
+	(argc == 4 && cb.hub < 0)) {
+	cb.err(#file,#line,-1)}
 	bothJump(cb.err,cb.zub)
 	bothJump(cb.err,cb.tub)
-	if (argc == 4) {bothJump(cb.err,cb.hub)}
+	if (argc == 4) {
+	bothJump(cb.err,cb.hub)}
 	loopInit()
 	threadInit()
-	if (swiftInit() != 0) {cb.call()}
+	if (swiftInit() != 0) {
+	cb.call()}
 	cb.done()
 	threadDone()
 	loopDone()

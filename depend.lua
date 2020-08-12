@@ -72,6 +72,7 @@ function source(file)
 		ext == ".lua" or
 		ext == ".gen" or
 		ext == ".src" or
+		ext == ".isw" or
 		ext == ".sw" or
 		ext == ".g")
 	then
@@ -155,6 +156,7 @@ moduleExpr = "^module +([^ ]*) +where"
 importExpr = "^import +([^ ]*)"
 foreignExpr = "^foreign import ccall "
 dofileExpr = "^dofile%("
+linesExpr = "io%.lines%("
 requireExpr = "^require +"
 graphicsExpr = "makeLibrary%(filepath:"
 cOpenExpr = "/*"; cCloseExpr = "*/"
@@ -251,18 +253,20 @@ for k,v in pairs(files) do
 			declareVal = string.match(more,declareExpr)
 			includeVal = string.match(more,includeExpr)
 			moduleVal = string.match(more,moduleExpr)
-			if (ext == ".hs") then hsImportVal = string.match(more,importExpr) end
-			if (ext == ".sw") then swImportVal = string.match(more,importExpr) end
+			if (ext == ".hs") then hsImportVal = string.match(more,importExpr) else hsImportVal = nil end
+			if (ext == ".sw") then swImportVal = string.match(more,importExpr) else swImportVal = nil end
 			foreighVal = string.match(more,foreignExpr)
 			dofileVal = string.match(more,dofileExpr)
+			linesVal = string.match(more,linesExpr)
 			requireVal = string.match(more,requireExpr)
-			if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) end
+			if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
 			if includeVal then insert(edges,v,name)
 			elseif moduleVal then insert(edges,moduleVal,v)
 			elseif hsImportVal then insert(edges,v,hsImportVal)
 			elseif swImportVal then insert(edges,v,swImportVal..".h")
 			elseif foreignVal then insert(edges,v,name)
 			elseif dofileVal then insert(edges,v,name)
+			elseif linesVal then insert(edges,v,name)
 			elseif requireVal then insert(edges,v,name..".c")
 			elseif declareVal then insert(edges,declareVal,v)
 			else while (1) do
@@ -278,6 +282,7 @@ for k,v in pairs(files) do
 	end
 end
 -- debug(edges)
+-- print("HERE")
 
 -- recursively add dependencies.
 function flatten(str,dst,ext,mid,src,map)
@@ -319,6 +324,7 @@ for k,v in pairs(edges) do if source(k) then
 	flatten(k,flats[k],".c",k,v,edges)
 	flatten(k,flats[k],".m",k,v,edges)
 	flatten(k,flats[k],".cpp",k,v,edges)
+	flatten(k,flats[k],".isw",k,v,edges)
 	if (ext == ".sw") then flatten(k,flats[k],".sw",k,v,edges) end
 	if (ext == ".sw") then flatten(k,flats[k],".so",k,v,edges) end
 	if (ext == ".hs") then flatten(k,flats[k],".hs",k,v,edges) end
@@ -358,6 +364,7 @@ for k,v in pairs(flats) do
 	end
 end
 -- debug(flats)
+-- print("HERE")
 
 -- convert to makefile expectations.
 function filter(tab,dst,mid,src,pat,rep)
@@ -384,6 +391,7 @@ for k,v in pairs(flats) do
 			(ext == ".sw")
 		then
 			if extants[base..".gen"] then
+				filter(targets,k,base..".gen",flats[base..".gen"],".isw",".isw")
 				filter(targets,k,base..".gen",flats[base..".gen"],".src",".src")
 				filter(targets,k,base..".gen",flats[base..".gen"],".c",".so")
 				filter(targets,k,base..".gen",flats[base..".gen"],".m",".so")
