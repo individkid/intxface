@@ -244,7 +244,7 @@ Client = {
 	{"base","int",{["mem"]={["Base"]=true}},"siz"},
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
 	{"active","Array",{["mem"]={["Active"]=true}},"siz"},
-	{"basis","Linear",{["mem"]={["Basis"]=true}},3},
+	{"basis","Linear",{["mem"]={["Basis"]=true}},"siz"},
 	{"subject","Affine",{["mem"]={["Subject"]=true}},"siz"},
 	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},
 	{"feature","Affine",{["mem"]={["Feature"]=true}},"siz"},
