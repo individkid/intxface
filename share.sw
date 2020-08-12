@@ -310,6 +310,7 @@ func loopInit()
 }
 func loopCall()
 {
+	let _ = NSApplication.shared
 	NSApp.run()
 }
 func loopWake()
