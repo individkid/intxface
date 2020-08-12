@@ -26,93 +26,26 @@ pthread_t pthread = {0};
 struct Client *client = 0; // read from pipe
 struct Client *saved[Memorys] = {0}; // cb.state at click time
 struct Callback cb = {0}; // cb.state sent to gpu by Dma0
-float xmove = 0.0;
-float ymove = 0.0;
-float offset = 0.0;
-int toggle = 0;
-float vector[3] = {0};
-float matrix[16] = {0};
-float piemat[16] = {0};
-float normat[16] = {0};
-float norvec[3];
-float pievec[3];
-int object = 0;
-float render[2][3];
-float pierce[2][3];
+int toggle = 0; // whether Move or Roll was last
+float xmove = 0.0; // copied-in Move; used-in Transform
+float ymove = 0.0; // copied-in Move; used-in Transform
+float vector[3] = {0}; // staged-in Click; used-in Transform
+float offset = 0.0; // copied-in Roll; cleared-in Click; used-in Compose
+float matrix[16] = {0}; // copied-in Roll; cleared-in Click; used-in Compose
+float piemat[16] = {0}; // staged-in Click; used-in Transform Compose
+float normat[16] = {0}; // staged-in Click; used-in Transform Compose
+float pievec[3]; // copied-in Pierce
+float norvec[3]; // copied-in Pierce
+int object = 0; // copied-in Pierce; used-in Move Roll Click
+float render[2][3]; // copied-in Size; copied-in Drag; altered-in Roll; used-in Render
+// Render used-in Size Drag Roll
+// Transform used-in Move and Roll
+// Compose used-in Move and Roll
 
 void exiterr(const char *str, int num, int arg)
 {
 	printf("exiterr (%s) (%d)\n",str,num); fflush(stdout);
 	exit(arg);
-}
-
-void constructVector(float *point, float *plane, int versor, float *basis)
-{
-	for (int i = 0; i < 3; i++)
-	for (int j = 0; j < 3; j++)
-	point[i*3+j] = basis[versor*9+i*3+j];
-	for (int i = 0; i < 3; i++)
-	point[i*3+versor] = plane[i];
-}
-
-void transformVector(float *point, float *matrix)
-{
-	float temp[4]; copyvec(temp,point,3); temp[3] = 1.0;
-	jumpmat(temp,matrix,4);
-	copyvec(point,temp,3);
-}
-
-int normalVector(float *normal, float *point)
-{
-	float neg[3];
-	float leg0[3];
-	float leg1[3];
-	scalevec(copyvec(neg,point,3),-1.0,3);
-	plusvec(copyvec(leg0,point+3,3),neg,3);
-	plusvec(copyvec(leg1,point+6,3),neg,3);
-	if (!normvec(crossvec(copyvec(normal,leg0,3),leg1),3)) return 0;
-	return 1;
-}
-
-int solveVector(float *pierce, float *point, float *normal, float *feather)
-{
-	// point+(feather-point-normal*((feather-point)*normal))
-	plusvec(scalevec(copyvec(pierce,point,3),-1.0,3),feather,3);
-	float portion = dotvec(pierce,normal,3);
-	float delta[3]; scalevec(copyvec(delta,normal,3),-portion,3);
-	plusvec(plusvec(pierce,delta,3),point,3);
-	return 1;
-}
-
-int pierceVector(float *pierce, float *point, float *normal, float *point0, float *point1)
-{
-	// feather+(arrow-feather)*z(feather-p(feather))/(z(feather-p(feather))-z(arrow-p(arrow)))
-	float solve0[3]; if (!solveVector(solve0,point,normal,point0)) return 0;
-	float solve1[3]; if (!solveVector(solve1,point,normal,point1)) return 0;
-	float diff0 = solve0[2]-point0[2];
-	float diff1 = solve1[2]-point1[2];
-	float denom = diff0-diff1;
-	if (fabs(denom) < 1.0 && fabs(diff0) > fabs(INVALID*denom)) return 0;
-	float ratio = diff0/denom;
-	plusvec(scalevec(plusvec(scalevec(copyvec(pierce,point0,3),-1.0,3),point1,3),ratio,3),point0,3);
-	return 1;
-}
-
-int intersectVector(float *point, float *plane, int *versor, float *basis)
-{
-	for (int i = 0; i < 3; i++) {
-	float plane0[3][3]; constructVector(&plane0[0][0],&plane[i*3],versor[i],basis);
-	float normal0[3]; if (!normalVector(&normal0[0],&plane0[0][0])) continue;
-	for (int j = 1; j < 3; j++) {
-	float plane1[3][3]; constructVector(&plane1[0][0],&plane[((i+j)%3)*3],versor[(i+j)%3],basis);
-	float plane2[3][3]; constructVector(&plane2[0][0],&plane[((i+j+1)%3)*3],versor[(i+j+1)%3],basis);
-	float normal2[3]; if (!normalVector(&normal2[0],&plane2[0][0])) continue;
-	for (int k = 0; k < 3; k++) {
-	float pierce0[3]; if (!pierceVector(&pierce0[0],&plane0[0][0],&normal0[0],&plane1[(k+0)%3][0],&plane1[(k+1)%3][0])) continue;
-	float pierce1[3]; if (!pierceVector(&pierce1[0],&plane0[0][0],&normal0[0],&plane1[(k+0)%3][0],&plane1[(k+2)%3][0])) continue;
-	if (!pierceVector(&point[0],&plane2[0][0],&normal2[0],&pierce0[0],&pierce1[0])) continue;
-	return 1;}}}
-	return 0;
 }
 
 void longitudeMatrix(float *result, float *vector)
@@ -258,6 +191,24 @@ void composeMatrix(float *result)
 	default: ERROR(cb.err,-1);}
 }
 
+void writeRender()
+{
+	enum Function function[2];
+	function[0] = Copy; function[1] = Draw;
+	struct Vector vector[2];
+	for (int i = 0; i < 3; i++) {
+	vector[0].val[i] = render[0][i];
+	vector[1].val[i] = render[1][i];}
+	struct Client client;
+	client.mem = Render;
+	client.len = 2;
+	client.fnc = function;
+	client.idx = 0;
+	client.siz = 1;
+	client.render = vector;
+	writeClient(&client,cb.tub);
+}
+
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
 {
 	switch (cb.state[User]->user->matrix) {
@@ -292,150 +243,6 @@ enum Memory copyUser(struct Client *client, struct Mode *user)
 	client->user = user;
 	memcpy(user,src,sizeof(struct Mode));
 	return User;
-}
-
-float *shareMat(struct Client *client, int idx)
-{
-	switch (client->mem) {
-	case (Subject): return &cb.state[Subject]->subject[idx].val[0][0];
-	case (Object): return &cb.state[Object]->object[idx].val[0][0];
-	case (Feature): return &cb.state[Feature]->feature[idx].val[0][0];
-	default: ERROR(exiterr,-1);}
-	return 0;
-}
-
-void shareRmw0() // continuation of move or roll
-{
-	// A = B*C
-	// cb.state[idx] = client[0]*saved[idx]
-	float *stat = shareMat(cb.state[client->mem],client->idx);
-	float *save = shareMat(saved[client->mem],client->idx);
-	float *give = shareMat(client,0);
-	copymat(stat,timesmat(save,give,4),4);
-}
-
-void shareRmw1() // from outside parallel since last Rmw1 or Save
-{
-	// A = B*C
-	// A' = B*C'
-	// B = A/C
-	// A' = (A/C)*C'
-	// saved[idx] = 1/saved[idx]
-	// cb.state[idx] = cb.state[idx]*saved[idx]
-	// saved[idx] = client[0]
-	// cb.state[idx] = cb.state[idx]*client[0]
-	float *save = shareMat(saved[client->mem],client->idx); invmat(save,4);
-	float *stat = shareMat(cb.state[client->mem],client->idx); timesmat(stat,save,4);
-	float *give = shareMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
-}
-
-void shareRmw2() // transition between move and roll
-{
-	// A = B*C
-	// A = B'*C'
-	// A = B*B'*D
-	// A = B'*B*D
-	// C = B'*D
-	// C' = B*D
-	// D = (1/B')*C
-	// C' = B*(1/B')*C
-	// C = saved[idx]
-	// B = client[1]
-	// B' = client[0]
-	float *save = shareMat(saved[client->mem],client->idx);
-	float *give0 = shareMat(client,0);
-	float *give1 = shareMat(client,1);
-	float inv[16]; invmat(copymat(inv,give0,4),4);
-	jumpmat(jumpmat(save,inv,4),give1,4);
-}
-
-#define INDEXED(ENUM,FIELD) \
-	if (client->mem == ENUM) {\
-	if (!ptr[ENUM] || client->idx+client->siz > ptr[ENUM]->siz) \
-	{allocClient(&ptr[ENUM],1); \
-	void *mem = malloc((client->idx+client->siz)*sizeof(*client->FIELD)); \
-	memcpy(mem,ptr[ENUM]->FIELD,ptr[ENUM]->siz*sizeof(*client->FIELD)); \
-	ptr[ENUM]->FIELD = mem; \
-	ptr[ENUM]->siz = client->idx+client->siz;} \
-	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
-	return;}
-void shareCopy(struct Client **ptr)
-{
-	INDEXED(Triangle,triangle);
-	INDEXED(Corner,corner);
-	INDEXED(Frame,frame);
-	INDEXED(Base,base);
-	INDEXED(Range,range);
-	INDEXED(Active,active);
-	INDEXED(Basis,basis);
-	INDEXED(Subject,subject);
-	INDEXED(Object,object);
-	INDEXED(Feature,feature);
-	INDEXED(Render,render);
-	INDEXED(Pierce,pierce);
-	INDEXED(Cloud,cloud);
-	INDEXED(User,user);
-}
-
-void sharePierce()
-{
-	memcpy(pievec,client->pierce[0].val,sizeof(client->pierce[0].val));
-	memcpy(norvec,client->pierce[1].val,sizeof(client->pierce[1].val));
-	object = client->idx;
-}
-
-void shareMetric()
-{
-	struct Metric metric = {0};
-	metric.src = Plane;
-	metric.plane = cb.state[client->mem];
-	writeMetric(&metric,cb.hub);
-}
-
-void shareRender()
-{
-	enum Function function[2];
-	function[0] = Copy; function[1] = Draw;
-	struct Vector vector[2];
-	for (int i = 0; i < 3; i++) {
-	vector[0].val[i] = render[0][i];
-	vector[1].val[i] = render[1][i];}
-	struct Client client;
-	client.mem = Render;
-	client.len = 2;
-	client.fnc = function;
-	client.idx = 0;
-	client.siz = 1;
-	client.render = vector;
-	writeClient(&client,cb.tub);
-}
-
-void shareProc()
-{
-	for (int i = 0; i < client->len; i++)
-	switch (client->fnc[i]) {
-	case (Rmw0): shareRmw0(); break;
-	case (Rmw1): shareRmw1(); break;
-	case (Rmw2): shareRmw2(); break;
-	case (Copy): shareCopy(cb.state); break;
-	case (Save): shareCopy(saved); break;
-	case (Dma0): cb.dma(client->mem); break;
-	case (Dma1): sharePierce(); break;
-	case (Draw): cb.draw(); break;
-	case (Port): shareMetric(); break;
-	default: ERROR(exiterr,-1);}
-}
-
-int shareRead()
-{
-	int res = 0;
-	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
-	if (vld) {
-	if (!client) allocClient(&client,1);
-	readClient(client,sub); vld = 0; res = 1;
-	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
-	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
-	return res;
 }
 
 void shareWrite(struct Vector *point, struct Vector *normal, int object)
@@ -477,9 +284,9 @@ void shareMove(double xpos, double ypos)
 	enum Function function[2];
 	function[0] = Copy; function[1] = Draw;
 	struct Vector vector[2];
-	for (int i = 0; i < 3; i++) {
-	vector[0].val[i] = pierce[0][i];
-	vector[1].val[i] = pierce[1][i];}
+	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
+	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
+	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
 	client.pierce = vector; client.idx = 0; client.mem = Pierce;
 	client.fnc = function; client.len = 2; client.siz = 2;
 	writeClient(&client,cb.tub);}
@@ -492,10 +299,10 @@ void shareRoll(double xoffset, double yoffset)
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform && user->roll == Focal) {
 	if (render[0][2]+yoffset*LENGTH > WINDEEP) render[0][2] += yoffset*LENGTH;
-	shareRender();}
+	writeRender();}
 	else if (user->click == Transform && user->roll == Picture) {
 	if (render[1][2]+yoffset*LENGTH > WINDEEP) render[1][2] += yoffset*LENGTH;
-	shareRender();}
+	writeRender();}
 	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -548,14 +355,140 @@ void shareSize(double width, double height)
 {
 	render[1][0] = width;
 	render[1][1] = height;
-	shareRender();
+	writeRender();
 }
 
 void shareDrag(double xpos, double ypos)
 {
 	render[0][0] = xpos+render[1][0]/2.0;
 	render[0][1] = ypos+render[1][1]/2.0;
-	shareRender();
+	writeRender();
+}
+
+float *procMat(struct Client *client, int idx)
+{
+	switch (client->mem) {
+	case (Subject): return &cb.state[Subject]->subject[idx].val[0][0];
+	case (Object): return &cb.state[Object]->object[idx].val[0][0];
+	case (Feature): return &cb.state[Feature]->feature[idx].val[0][0];
+	default: ERROR(exiterr,-1);}
+	return 0;
+}
+
+void procRmw0() // continuation of move or roll
+{
+	// A = B*C
+	// cb.state[idx] = client[0]*saved[idx]
+	float *stat = procMat(cb.state[client->mem],client->idx);
+	float *save = procMat(saved[client->mem],client->idx);
+	float *give = procMat(client,0);
+	copymat(stat,timesmat(save,give,4),4);
+}
+
+void procRmw1() // from outside parallel since last Rmw1 or Save
+{
+	// A = B*C
+	// A' = B*C'
+	// B = A/C
+	// A' = (A/C)*C'
+	// saved[idx] = 1/saved[idx]
+	// cb.state[idx] = cb.state[idx]*saved[idx]
+	// saved[idx] = client[0]
+	// cb.state[idx] = cb.state[idx]*client[0]
+	float *save = procMat(saved[client->mem],client->idx); invmat(save,4);
+	float *stat = procMat(cb.state[client->mem],client->idx); timesmat(stat,save,4);
+	float *give = procMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
+}
+
+void procRmw2() // transition between move and roll
+{
+	// A = B*C
+	// A = B'*C'
+	// A = B*B'*D
+	// A = B'*B*D
+	// C = B'*D
+	// C' = B*D
+	// D = (1/B')*C
+	// C' = B*(1/B')*C
+	// C = saved[idx]
+	// B = client[1]
+	// B' = client[0]
+	float *save = procMat(saved[client->mem],client->idx);
+	float *give0 = procMat(client,0);
+	float *give1 = procMat(client,1);
+	float inv[16]; invmat(copymat(inv,give0,4),4);
+	jumpmat(jumpmat(save,inv,4),give1,4);
+}
+
+#define INDEXED(ENUM,FIELD) \
+	if (client->mem == ENUM) {\
+	if (!ptr[ENUM] || client->idx+client->siz > ptr[ENUM]->siz) \
+	{allocClient(&ptr[ENUM],1); \
+	void *mem = malloc((client->idx+client->siz)*sizeof(*client->FIELD)); \
+	memcpy(mem,ptr[ENUM]->FIELD,ptr[ENUM]->siz*sizeof(*client->FIELD)); \
+	ptr[ENUM]->FIELD = mem; \
+	ptr[ENUM]->siz = client->idx+client->siz;} \
+	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
+	return;}
+void procCopy(struct Client **ptr)
+{
+	INDEXED(Triangle,triangle);
+	INDEXED(Corner,corner);
+	INDEXED(Frame,frame);
+	INDEXED(Base,base);
+	INDEXED(Range,range);
+	INDEXED(Active,active);
+	INDEXED(Basis,basis);
+	INDEXED(Subject,subject);
+	INDEXED(Object,object);
+	INDEXED(Feature,feature);
+	INDEXED(Render,render);
+	INDEXED(Pierce,pierce);
+	INDEXED(Cloud,cloud);
+	INDEXED(User,user);
+}
+
+void procPierce()
+{
+	memcpy(pievec,client->pierce[0].val,sizeof(client->pierce[0].val));
+	memcpy(norvec,client->pierce[1].val,sizeof(client->pierce[1].val));
+	object = client->idx;
+}
+
+void procMetric()
+{
+	struct Metric metric = {0};
+	metric.src = Plane;
+	metric.plane = cb.state[client->mem];
+	writeMetric(&metric,cb.hub);
+}
+
+void shareProc()
+{
+	for (int i = 0; i < client->len; i++)
+	switch (client->fnc[i]) {
+	case (Rmw0): procRmw0(); break;
+	case (Rmw1): procRmw1(); break;
+	case (Rmw2): procRmw2(); break;
+	case (Copy): procCopy(cb.state); break;
+	case (Save): procCopy(saved); break;
+	case (Dma0): cb.dma(client->mem); break;
+	case (Dma1): procPierce(); break;
+	case (Draw): cb.draw(); break;
+	case (Port): procMetric(); break;
+	default: ERROR(exiterr,-1);}
+}
+
+int shareRead()
+{
+	int res = 0;
+	if (pthread_mutex_lock(&mutex) != 0) ERROR(exiterr,-1);
+	if (vld) {
+	if (!client) allocClient(&client,1);
+	readClient(client,sub); vld = 0; res = 1;
+	if (pthread_cond_signal(&cond) != 0) ERROR(exiterr,-1);}
+	if (pthread_mutex_unlock(&mutex) != 0) ERROR(exiterr,-1);
+	return res;
 }
 
 void novoid()
