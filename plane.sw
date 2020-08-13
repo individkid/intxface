@@ -17,6 +17,11 @@
 
 func planeInit()
 {
+	cb.move = nomove;
+	cb.roll = noroll;
+	cb.click = noclick;
+	cb.size = nosize;
+	cb.drag = nodrag;
 	swiftInit()
 }
 

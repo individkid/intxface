@@ -17,6 +17,11 @@
 
 func planraInit()
 {
+	cb.move = nomove;
+	cb.roll = noroll;
+	cb.click = noclick;
+	cb.size = nosize;
+	cb.drag = nodrag;
 	let _ = swiftInit()
 
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {

@@ -304,6 +304,7 @@ function flatten(str,dst,ext,mid,src,map)
 				flatten(str,dst,".cpp",k,map[k],map)
 			end
 			if (ex == ".sw") then flatten(str,dst,".sw",k,map[k],map) end
+			if (ex == ".sw") then flatten(str,dst,".so",k,map[k],map) end
 			if (ex == ".hs") then flatten(str,dst,".hs",k,map[k],map) end
 			if (ex == ".lua") then flatten(str,dst,".src",k,map[k],map) end
 			if (ex == ".lua") then flatten(str,dst,".lua",k,map[k],map) end

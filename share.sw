@@ -581,11 +581,9 @@ func swiftDone()
 	print("swiftDone")
 }
 
-	shareNoinit()
-	let argc = CommandLine.arguments.count
-	let argv = CommandLine.arguments
-	if (argc == 4) {
-	shareInit(argv[1],argv[2])}
+	for arg in CommandLine.arguments {
+	shareArg(arg)}
+	shareInit()
 	loopInit()
 	threadInit()
 	cb.start()

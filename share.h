@@ -54,8 +54,18 @@ struct Callback {
 
 extern struct Callback cb;
 
-void shareNoinit();
-void shareInit(const char *av1, const char *av2);
+void novoid();
+int nofalse();
+void nowarp(double xpos, double ypos);
+void nodma(enum Memory mem);
+void nosize(double width, double height);
+void nodrag(double xpos, double ypos);
+void nomove(double xpos, double ypos);
+void noroll(double xoffset, double yoffset);
+void noclick(int isright);
+void nowrite(struct Vector *point, struct Vector *normal, int object);
+void shareArg(const char *arg);
+void shareInit();
 void shareDone();
 void threadInit();
 void threadDone();

@@ -540,26 +540,42 @@ void nowrite(struct Vector *point, struct Vector *normal, int object)
 	printf("write %d\n",object);
 }
 
-void shareNoinit()
+int argc = 0;
+char **argv = 0;
+void shareArg(const char *arg)
+{
+	argc++;
+	argv = realloc(argv,argc*sizeof(*argv));
+	argv[argc-1] = malloc(strlen(arg)+1);
+	strcpy(argv[argc-1],arg);
+}
+
+void shareInit()
 {
 	cb.err = exiterr;
-	cb.move = nomove;
-	cb.roll = noroll;
-	cb.click = noclick;
-	cb.size = nosize;
-	cb.drag = nodrag;
-	cb.write = nowrite;
+	cb.move = shareMove;
+	cb.roll = shareRoll;
+	cb.click = shareClick;
+	cb.size = shareSize;
+	cb.drag = shareDrag;
+	cb.write = shareWrite;
 	cb.warp = nowarp;
 	cb.dma = nodma;
 	cb.draw = novoid;
 	cb.full = nofalse;
-	cb.proc = novoid;
-	cb.read = nofalse;
+	cb.proc = shareProc;
+	cb.read = shareRead;
 	if (cb.start == 0) cb.start = novoid;
 	cb.call = novoid;
 	cb.wake = novoid;
 	cb.done = novoid;
-	cb.hub = -1;
+	if (argc == 1) {printf("shareInit %s\n",argv[0]);}
+	if (argc == 4) {
+	cb.hub = pipeInit(argv[1],argv[2]);
+	if (cb.hub < 0) {
+	ERROR(cb.err,-1);}
+	bothJump(cb.err,cb.hub);}
+	else cb.hub = -1;
 	cb.zub = openPipe();
 	cb.tub = openPipe();
 	if (cb.zub < 0 || cb.tub < 0) {
@@ -567,22 +583,6 @@ void shareNoinit()
 	bothJump(cb.err,cb.zub);
 	bothJump(cb.err,cb.tub);
 	cb.esc = 0;
-}
-
-void shareInit(const char *av1, const char *av2)
-{
-	cb.move = shareMove;
-	cb.roll = shareRoll;
-	cb.click = shareClick;
-	cb.size = shareSize;
-	cb.drag = shareDrag;
-	cb.write = shareWrite;
-	cb.proc = shareProc;
-	cb.read = shareRead;
-	cb.hub = pipeInit(av1,av2);
-	if (cb.hub < 0) {
-	ERROR(cb.err,-1);}
-	bothJump(cb.err,cb.hub);
 }
 
 void shareDone()
