@@ -640,6 +640,7 @@ function showAllocC(name,typ)
 		if prototype then return result..";" else result = result.."\n{\n" end
 		result = result..showIndent(1).."int *tmp = ptr;\n"
 		result = result..showIndent(1).."if (tmp==0) return 0;\n"
+		result = result..showIndent(1).."tmp -= 2;\n"
 		result = result..showIndent(1).."int num = *(tmp++);\n"
 		result = result..showIndent(1).."int siz = *(tmp++);\n"
 		result = result..showIndent(1).."if (sub < 0 || sub >= num) return 0;\n"

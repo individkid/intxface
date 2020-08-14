@@ -601,13 +601,13 @@ void shareInit()
 	mode.roll = Rolls;
 	mode.shader = Shaders;
 	writeClient(&client,cb.tub);
-	// /*
+	/*
 	cb.move = nomove;
 	cb.roll = noroll;
 	cb.click = noclick;
 	cb.size = nosize;
 	cb.drag = nodrag;
-	// */
+	*/
 }
 
 void shareDone()
