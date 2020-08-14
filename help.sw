@@ -63,9 +63,9 @@ func fromRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
 	}
 	return vals
 }
-func fromAny<T>(_ x: Any) -> T
+func fromAny<T>(_ x: Any?) -> T?
 {
-  return x as! T
+  return x as? T
 }
 func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 {

@@ -181,13 +181,13 @@ struct Pend<T>
 		return last
 	}
 }
-func getLock() -> MTLCommandBufferHandler
+func retLock() -> MTLCommandBufferHandler
 {
 	let temp = lock
 	lock = []
 	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
 }
-func getReady(_ size: Int) -> MTLCommandBufferHandler
+func retReady(_ size: Int) -> MTLCommandBufferHandler
 {
 	let last = pierce.last!
 	return {(MTLCommandBuffer) in setReady(last,size)}
@@ -205,83 +205,78 @@ func setReady(_ buffer:MTLBuffer, _ size:Int)
 	}
 	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
 }
-func getCount() -> MTLCommandBufferHandler
+func retCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1}
 }
-func getDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLCommandBufferHandler
+func setPierce() -> Int?
 {
-	return {(MTLCommandBuffer) in
-	var index = 0
-	for expected:Int8 in [
-	0,16,32,48,80,0,4,16,16,0,a,b,
-	0,16,32,48,80,0,4,16,16,3,c,d] {
-	let actual:Int8 = charz.contents().load(fromByteOffset:index,as:Int8.self)
-	if (expected != actual) {
-		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
-	} else {
-		print("match index(\(index)): expected(\(expected)) == actual(\(actual))")
-	}
-	index = index + 1}}
-}
-func setPierce() -> Int
-{
-	let siz = Int(getClient(share.Triangle).siz)
+	guard let client = getClient(share.Triangle) else {return nil}
+	let siz = Int(client.siz)
 	let zero = Pierce()
 	let vals = toList(zero,siz)
 	pierce.set(vals,0..<siz)
 	return siz
 }
-func setDisplay()
+func setDisplay() -> Form?
 {
+	guard let basis = getClient(share.Basis) else {return nil}
+	guard let subject = getClient(share.Subject) else {return nil}
+	guard let feature = getClient(share.Feature) else {return nil}
+	guard let render = getClient(share.Render) else {return nil}
+	guard let siz = getClient(share.Cloud) else {return nil}
+	guard let mode = getMode() else {return nil}
 	let elem = Form(
-		basis:getClient(share.Basis).basis!.pointee,
-		subject:getClient(share.Subject).subject!.pointee,
-		feature:getClient(share.Feature).feature!.pointee,
-		feather:getClient(share.Render).render!.pointee,
-		arrow:getClient(share.Render).render!.advanced(by:1).pointee,
-		siz:UInt32(getClient(share.Cloud).siz),
-		hand:UInt32(getMode().hand),
+		basis:basis.basis!.pointee,
+		subject:subject.subject!.pointee,
+		feature:feature.feature!.pointee,
+		feather:render.render!.pointee,
+		arrow:render.render!.advanced(by:1).pointee,
+		siz:UInt32(siz.siz),
+		hand:UInt32(mode.hand),
 		tag:0,pad:0)
 	form.set([elem],0..<MemoryLayout<Form>.size)
+	return elem
 }
-func setTrack()
+func setTrack() -> Form?
 {
+	guard let basis = getClient(share.Basis) else {return nil}
+	guard let subject = getClient(share.Subject) else {return nil}
+	guard let feature = getClient(share.Feature) else {return nil}
+	guard let pierce = getClient(share.Pierce) else {return nil}
+	guard let siz = getClient(share.Cloud) else {return nil}
+	guard let mode = getMode() else {return nil}
 	let elem = Form(
-		basis:getClient(share.Basis).basis!.pointee,
-		subject:getClient(share.Subject).subject!.pointee,
-		feature:getClient(share.Feature).feature!.pointee,
-		feather:getClient(share.Pierce).pierce!.pointee,
-		arrow:getClient(share.Pierce).pierce!.advanced(by:1).pointee,
-		siz:UInt32(getClient(share.Cloud).siz),
-		hand:UInt32(getMode().hand),
+		basis:basis.basis!.pointee,
+		subject:subject.subject!.pointee,
+		feature:feature.feature!.pointee,
+		feather:pierce.pierce!.pointee,
+		arrow:pierce.pierce!.advanced(by:1).pointee,
+		siz:UInt32(siz.siz),
+		hand:UInt32(mode.hand),
 		tag:0,pad:0)
 	form.set([elem],0..<MemoryLayout<Form>.size)
+	return elem
 }
-func getForm(_ tag:uint) -> MTLBuffer
+func getMode() -> share.Mode?
 {
-	form.set(tag,MemoryLayout<Form>.offset(of:\Form.tag)!)
-	return form.get()
+	return getClient(share.User)?.user?.pointee
 }
-func getMode() -> share.Mode
+func getRange() -> [share.Array]?
 {
-	return getClient(share.User).user!.pointee
-}
-func getRange() -> [share.Array]
-{
-	let client = getClient(share.Range)
+	guard let client = getClient(share.Range) else {return nil}
 	return fromRaw(client.range,Int(client.siz))
 }
-func getActive() -> [share.Array]
+func getActive() -> [share.Array]?
 {
-	let client = getClient(share.Active)
+	guard let client = getClient(share.Active) else {return nil}
 	return fromRaw(client.active,Int(client.siz))
 }
-func getClient(_ mem:share.Memory) -> share.Client
+func getClient(_ mem:share.Memory) -> share.Client?
 {
-	let client:UnsafeMutablePointer<share.Client> =
-	fromAny(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))!)!
-	return client.pointee
+	let client:UnsafeMutablePointer<share.Client>? =
+	fromAny(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue)))
+	return client?.pointee
 }
 func getPoint() -> NSPoint
 {
@@ -412,19 +407,6 @@ func swiftSize()
 }
 func swiftInit()
 {
-	cb.warp = swiftWarp
-	cb.dma = swiftDma
-	cb.draw = swiftDraw
-	cb.full = swiftFull
-	cb.done = swiftDone
-	setEvent(.keyDown,swiftKey)
-	setEvent(.leftMouseDown,swiftLeft)
-	setEvent(.rightMouseDown,swiftRight)
-	setEvent(.mouseMoved,swiftMove)
-	setEvent(.scrollWheel,swiftRoll)
-	setEvent(.applicationDefined,swiftCheck)
-	setEvent(.leftMouseDragged,swiftDrag)
-	setEvent(.leftMouseUp,swiftClear)
 	let _ = NSApplication.shared
 	NSApp.setActivationPolicy(.regular)
 	NSApp.activate(ignoringOtherApps: true)
@@ -484,6 +466,24 @@ func swiftInit()
     	depth = temp} else {print("cannot make depth"); return}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
+	cb.move = nomove; // TODO initialize Pend instead
+	cb.roll = noroll; //
+	cb.click = noclick; //
+	cb.size = nosize; //
+	cb.drag = nodrag; //
+	cb.warp = swiftWarp
+	cb.dma = swiftDma
+	cb.draw = swiftDraw
+	cb.full = swiftFull
+	cb.done = swiftDone
+	setEvent(.keyDown,swiftKey)
+	setEvent(.leftMouseDown,swiftLeft)
+	setEvent(.rightMouseDown,swiftRight)
+	setEvent(.mouseMoved,swiftMove)
+	setEvent(.scrollWheel,swiftRoll)
+	setEvent(.applicationDefined,swiftCheck)
+	setEvent(.leftMouseDragged,swiftDrag)
+	setEvent(.leftMouseUp,swiftClear)
     swiftSize()
 }
 func swiftWarp(xpos:Double, ypos:Double)
@@ -495,7 +495,7 @@ func swiftWarp(xpos:Double, ypos:Double)
 }
 func swiftDma(_ mem:share.Memory)
 {
-	let client = getClient(mem)
+	guard let client = getClient(mem) else {cb.err(#file,#line,-1);return}
 	switch (mem) {
 	case (share.Triangle): triangle.set(fromRaw(client.triangle,Int(client.siz)))
 	case (share.Corner): corner.set(fromRaw(client.corner,Int(client.siz)))
@@ -503,15 +503,18 @@ func swiftDma(_ mem:share.Memory)
 	case (share.Base): base.set(fromRaw(client.base,Int(client.siz)))
 	case (share.Object): object.set(fromRaw(client.object,Int(client.siz)))
 	case (share.Cloud): cloud.set(fromRaw(client.cloud,Int(client.siz)))
-	default: cb.err(#file,#line,-1); return}
+	default: cb.err(#file,#line,-1);return}
 }
 func swiftDraw()
 {
-	let shader = getMode().shader
+	guard let shader = getMode()?.shader else {cb.err(#file,#line,-1);return}
 	if (shader == share.Display) {
-		setDisplay()
+		guard var display = setDisplay() else {cb.err(#file,#line,-1);return}
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
-		for array in getRange() {
+		guard let range = getRange() else {cb.err(#file,#line,-1);return}
+		for array in range {
+			guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
+			display.tag = UInt32(array.tag); form.set(display,field)
 			guard let desc = combine.currentRenderPassDescriptor else {cb.err(#file,#line,-1);return}
 			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {cb.err(#file,#line,-1);return}
 			encode.setRenderPipelineState(render)
@@ -520,7 +523,7 @@ func swiftDraw()
 			encode.setVertexBuffer(corner.get(),offset:0,index:1)
 			encode.setVertexBuffer(frame.get(),offset:0,index:2)
 			encode.setVertexBuffer(object.get(),offset:0,index:3)
-			encode.setVertexBuffer(getForm(UInt32(array.tag)),offset:0,index:4)
+			encode.setVertexBuffer(form.get(),offset:0,index:4)
 			encode.drawPrimitives(
 				type:.triangle,
 				vertexStart:Int(array.idx),
@@ -528,35 +531,38 @@ func swiftDraw()
 			encode.endEncoding()
 		}
 	    guard let draw = combine.currentDrawable else {cb.err(#file,#line,-1);return}
-        code.present(draw)
-		code.addScheduledHandler(getLock())
-		code.addCompletedHandler(getCount())
+	code.present(draw)
+		code.addScheduledHandler(retLock())
+		code.addCompletedHandler(retCount())
 		count += 1
 		code.commit()
 	} else if (shader == share.Track) {
-		setTrack();
-		let size = setPierce()
+		guard var track = setTrack() else {cb.err(#file,#line,-1);return}
+		guard let size = setPierce() else {cb.err(#file,#line,-1);return}
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
-		for array in getActive() {
-		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
-		var nums:[Int] = []
-		var pers:[Int] = []
-		let quotient = Int(array.siz)/threads.width
-		let remainder = Int(array.siz)%threads.width
-		if (quotient > 0) {
-			nums.append(quotient)
-			pers.append(threads.width)}
-		if (remainder > 0) {
-			nums.append(1)
-			pers.append(remainder)}
-		for (n,p) in zip(nums,pers) {
+		guard let active = getActive() else {cb.err(#file,#line,-1);return}
+		for array in active {
+			guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
+			track.tag = UInt32(array.tag); form.set(track,field)
+			var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
+			var nums:[Int] = []
+			var pers:[Int] = []
+			let quotient = Int(array.siz)/threads.width
+			let remainder = Int(array.siz)%threads.width
+			if (quotient > 0) {
+				nums.append(quotient)
+				pers.append(threads.width)}
+			if (remainder > 0) {
+				nums.append(1)
+				pers.append(remainder)}
+			for (n,p) in zip(nums,pers) {
 			guard let encode = code.makeComputeCommandEncoder() else {cb.err(#file,#line,-1);return}
 			encode.setComputePipelineState(compute)
 			encode.setBuffer(triangle.get(),offset:0,index:0)
 			encode.setBuffer(corner.get(),offset:0,index:1)
 			encode.setBuffer(base.get(),offset:offset,index:2)
 			encode.setBuffer(object.get(),offset:0,index:3)
-			encode.setBuffer(getForm(UInt32(array.tag)),offset:0,index:4)
+			encode.setBuffer(form.get(),offset:0,index:4)
 			encode.setBuffer(pierce.get(),offset:0,index:5)
 			let num = MTLSize(width:n,height:1,depth:1)
 			let per = MTLSize(width:p,height:1,depth:1)
@@ -564,9 +570,9 @@ func swiftDraw()
 			encode.endEncoding()
 			offset += n*p*MemoryLayout<share.Vertex>.size
 		}}
-		code.addCompletedHandler(getReady(size))
-		code.addScheduledHandler(getLock())
-		code.addCompletedHandler(getCount())
+		code.addCompletedHandler(retReady(size))
+		code.addScheduledHandler(retLock())
+		code.addCompletedHandler(retCount())
 		count += 1
 		code.commit()
 	}

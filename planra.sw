@@ -15,13 +15,23 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+func retDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLCommandBufferHandler
+{
+	return {(MTLCommandBuffer) in
+	var index = 0
+	for expected:Int8 in [
+	0,16,32,48,80,0,4,16,16,0,a,b,
+	0,16,32,48,80,0,4,16,16,3,c,d] {
+	let actual:Int8 = charz.contents().load(fromByteOffset:index,as:Int8.self)
+	if (expected != actual) {
+		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
+	} else {
+		print("match index(\(index)): expected(\(expected)) == actual(\(actual))")
+	}
+	index = index + 1}}
+}
 func planraInit()
 {
-	cb.move = nomove;
-	cb.roll = noroll;
-	cb.click = noclick;
-	cb.size = nosize;
-	cb.drag = nodrag;
 	let _ = swiftInit()
 
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
@@ -80,9 +90,9 @@ func planraInit()
 	let threads = MTLSize(width:2,height:1,depth:1)
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	encode.endEncoding()
-	code.addCompletedHandler(getDebug(charz!,a,b,c,d))
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
+	code.addCompletedHandler(retDebug(charz!,a,b,c,d))
+	code.addScheduledHandler(retLock())
+	code.addCompletedHandler(retCount())
 	count += 1
 	code.commit()
 	// code.waitUntilScheduled()
@@ -111,8 +121,8 @@ func planraInit()
     guard let draw = combine.currentDrawable else {
     	print("cannot make draw"); return}
 	code.present(draw)
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
+	code.addScheduledHandler(retLock())
+	code.addCompletedHandler(retCount())
 	count += 1
 	code.commit()}
 

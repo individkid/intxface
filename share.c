@@ -368,15 +368,17 @@ void shareDrag(double xpos, double ypos)
 float *procMat(struct Client *client, int idx)
 {
 	switch (client->mem) {
-	case (Subject): return &cb.state[Subject]->subject[idx].val[0][0];
-	case (Object): return &cb.state[Object]->object[idx].val[0][0];
-	case (Feature): return &cb.state[Feature]->feature[idx].val[0][0];
+	case (Subject): return &client->subject[idx].val[0][0];
+	case (Object): return &client->object[idx].val[0][0];
+	case (Feature): return &client->feature[idx].val[0][0];
 	default: ERROR(cb.err,-1);}
 	return 0;
 }
 
 void procRmw0() // continuation of move or roll
 {
+	if (cb.state[client->mem] == 0) ERROR(cb.err,-1);
+	if (saved[client->mem] == 0) ERROR(cb.err,-1);
 	// A = B*C
 	// cb.state[idx] = client[0]*saved[idx]
 	float *stat = procMat(cb.state[client->mem],client->idx);
@@ -387,6 +389,8 @@ void procRmw0() // continuation of move or roll
 
 void procRmw1() // from outside parallel since last Rmw1 or Save
 {
+	if (cb.state[client->mem] == 0) ERROR(cb.err,-1);
+	if (saved[client->mem] == 0) ERROR(cb.err,-1);
 	// A = B*C
 	// A' = B*C'
 	// B = A/C
@@ -402,6 +406,7 @@ void procRmw1() // from outside parallel since last Rmw1 or Save
 
 void procRmw2() // transition between move and roll
 {
+	if (saved[client->mem] == 0) ERROR(cb.err,-1);
 	// A = B*C
 	// A = B'*C'
 	// A = B*B'*D
@@ -457,6 +462,7 @@ void procPierce()
 
 void procMetric()
 {
+	if (cb.state[client->mem] == 0) NOTICE(cb.err,-1);
 	struct Metric metric = {0};
 	metric.src = Plane;
 	metric.plane = cb.state[client->mem];
