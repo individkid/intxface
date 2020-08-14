@@ -293,7 +293,6 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> 
 
 func loopAlarm(event:NSEvent) -> NSEvent?
 {
-	NSEvent.stopPeriodicEvents()
 	cb.wake()
 	return nil
 }
@@ -305,7 +304,6 @@ func loopInit()
 }
 func loopCall()
 {
-	let _ = NSApplication.shared
 	NSApp.run()
 }
 func loopWake()
@@ -466,23 +464,6 @@ func swiftInit()
     	depth = temp} else {print("cannot make depth"); return}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
-    /*
-    var client:share.Client = fromZero()
-    let function:[share.Function] = [share.Copy]
-    for mem in 0..<share.Memorys.rawValue {
-    client.mem.rawValue = mem;
-    toMutabls(function,{(fnc) in
-    client.fnc = fnc; client.len = 1
-    toMutable(client,{(ptr) in
-    writeClient(ptr,cb.tub)})})}
-    */
-    // /*
-	cb.move = nomove
-	cb.roll = noroll
-	cb.click = noclick
-	cb.size = nosize
-	cb.drag = nodrag
-	// */
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
@@ -601,11 +582,11 @@ func swiftDone()
 
 	for arg in CommandLine.arguments {
 	shareArg(arg)}
-	shareInit()
-	loopInit()
-	threadInit()
-	cb.start()
-	cb.call()
+	shareInit() // can write to pipes
+	cb.start() // can schedule events
+	loopInit() // can read from pipes
+	threadInit() // will schedule pipe reads
+	cb.call() // will handle events
 	cb.done()
 	threadDone()
 	loopDone()

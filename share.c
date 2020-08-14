@@ -425,32 +425,34 @@ void procRmw2() // transition between move and roll
 	jumpmat(jumpmat(save,inv,4),give1,4);
 }
 
-#define PROCCOPY(ENUM,FIELD) \
+#define PROCCOPY(ENUM,FIELD,TYPE) \
 	if (client->mem == ENUM) {\
 	if (!ptr[ENUM] || client->idx+client->siz > ptr[ENUM]->siz) \
 	{allocClient(&ptr[ENUM],1); \
-	void *mem = malloc((client->idx+client->siz)*sizeof(*client->FIELD)); \
-	memcpy(mem,ptr[ENUM]->FIELD,ptr[ENUM]->siz*sizeof(*client->FIELD)); \
-	ptr[ENUM]->FIELD = mem; \
+	void *mem = ptr[ENUM]->FIELD; \
+	alloc##TYPE(&ptr[ENUM]->FIELD,client->idx+client->siz); \
+	printf("procCopy "#ENUM" %p %p\n",ptr[ENUM]->FIELD,mem); \
+	if (mem) { \
+	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
 	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
 	return;}
 void procCopy(struct Client **ptr)
 {
-	PROCCOPY(Triangle,triangle);
-	PROCCOPY(Corner,corner);
-	PROCCOPY(Frame,frame);
-	PROCCOPY(Base,base);
-	PROCCOPY(Range,range);
-	PROCCOPY(Active,active);
-	PROCCOPY(Basis,basis);
-	PROCCOPY(Subject,subject);
-	PROCCOPY(Object,object);
-	PROCCOPY(Feature,feature);
-	PROCCOPY(Render,render);
-	PROCCOPY(Pierce,pierce);
-	PROCCOPY(Cloud,cloud);
-	PROCCOPY(User,user);
+	PROCCOPY(Triangle,triangle,Facet);
+	PROCCOPY(Corner,corner,Vertex);
+	PROCCOPY(Frame,frame,Int);
+	PROCCOPY(Base,base,Int);
+	PROCCOPY(Range,range,Array);
+	PROCCOPY(Active,active,Array);
+	PROCCOPY(Basis,basis,Linear);
+	PROCCOPY(Subject,subject,Affine);
+	PROCCOPY(Object,object,Affine);
+	PROCCOPY(Feature,feature,Affine);
+	PROCCOPY(Render,render,Vector);
+	PROCCOPY(Pierce,pierce,Vector);
+	PROCCOPY(Cloud,cloud,Vector);
+	PROCCOPY(User,user,Mode);
 }
 
 void procPierce()
@@ -588,6 +590,24 @@ void shareInit()
 	bothJump(cb.err,cb.zub);
 	bothJump(cb.err,cb.tub);
 	cb.esc = 0;
+    struct Client client = {0};
+    enum Function function[1] = {0};
+    struct Mode mode = {0};
+    function[0] = Copy; client.fnc = function; client.len = 1;
+    client.user = &mode; client.mem = User; client.siz = 1;
+    mode.matrix = Matrixs;
+	mode.click = Clicks;
+	mode.move = Moves;
+	mode.roll = Rolls;
+	mode.shader = Shaders;
+	writeClient(&client,cb.tub);
+	// /*
+	cb.move = nomove;
+	cb.roll = noroll;
+	cb.click = noclick;
+	cb.size = nosize;
+	cb.drag = nodrag;
+	// */
 }
 
 void shareDone()
