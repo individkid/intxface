@@ -467,10 +467,10 @@ func swiftInit()
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
 	cb.move = nomove; // TODO initialize Pend instead
-	cb.roll = noroll; //
-	cb.click = noclick; //
-	cb.size = nosize; //
-	cb.drag = nodrag; //
+	cb.roll = noroll; // TODO initialize Pend instead
+	cb.click = noclick; // TODO initialize Pend instead
+	cb.size = nosize; // TODO initialize Pend instead
+	cb.drag = nodrag; // TODO initialize Pend instead
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw

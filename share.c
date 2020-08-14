@@ -575,7 +575,6 @@ void shareInit()
 	cb.call = novoid;
 	cb.wake = novoid;
 	cb.done = novoid;
-	if (argc == 1) {printf("shareInit %s\n",argv[0]);}
 	if (argc == 4) {
 	cb.hub = pipeInit(argv[1],argv[2]);
 	if (cb.hub < 0) {
