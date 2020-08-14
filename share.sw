@@ -274,8 +274,8 @@ func getActive() -> [share.Array]?
 }
 func getClient(_ mem:share.Memory) -> share.Client?
 {
-	let client:UnsafeMutablePointer<share.Client>? =
-	fromAny(Mirror(reflecting: cb.state).descendant(Int(mem.rawValue)))
+	let any = Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))
+	let client:UnsafeMutablePointer<share.Client>? = fromAny(any)
 	return client?.pointee
 }
 func getPoint() -> NSPoint
@@ -466,11 +466,23 @@ func swiftInit()
     	depth = temp} else {print("cannot make depth"); return}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
-	cb.move = nomove; // TODO initialize Pend instead
-	cb.roll = noroll; // TODO initialize Pend instead
-	cb.click = noclick; // TODO initialize Pend instead
-	cb.size = nosize; // TODO initialize Pend instead
-	cb.drag = nodrag; // TODO initialize Pend instead
+    /*
+    var client:share.Client = fromZero()
+    let function:[share.Function] = [share.Copy]
+    for mem in 0..<share.Memorys.rawValue {
+    client.mem.rawValue = mem;
+    toMutabls(function,{(fnc) in
+    client.fnc = fnc; client.len = 1
+    toMutable(client,{(ptr) in
+    writeClient(ptr,cb.tub)})})}
+    */
+    // /*
+	cb.move = nomove
+	cb.roll = noroll
+	cb.click = noclick
+	cb.size = nosize
+	cb.drag = nodrag
+	// */
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
@@ -514,7 +526,7 @@ func swiftDraw()
 		guard let range = getRange() else {cb.err(#file,#line,-1);return}
 		for array in range {
 			guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
-			display.tag = UInt32(array.tag); form.set(display,field)
+			display.tag = UInt32(array.tag); form.set(display.tag,field)
 			guard let desc = combine.currentRenderPassDescriptor else {cb.err(#file,#line,-1);return}
 			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {cb.err(#file,#line,-1);return}
 			encode.setRenderPipelineState(render)
@@ -543,7 +555,7 @@ func swiftDraw()
 		guard let active = getActive() else {cb.err(#file,#line,-1);return}
 		for array in active {
 			guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
-			track.tag = UInt32(array.tag); form.set(track,field)
+			track.tag = UInt32(array.tag); form.set(track.tag,field)
 			var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 			var nums:[Int] = []
 			var pers:[Int] = []

@@ -425,7 +425,7 @@ void procRmw2() // transition between move and roll
 	jumpmat(jumpmat(save,inv,4),give1,4);
 }
 
-#define INDEXED(ENUM,FIELD) \
+#define PROCCOPY(ENUM,FIELD) \
 	if (client->mem == ENUM) {\
 	if (!ptr[ENUM] || client->idx+client->siz > ptr[ENUM]->siz) \
 	{allocClient(&ptr[ENUM],1); \
@@ -437,20 +437,20 @@ void procRmw2() // transition between move and roll
 	return;}
 void procCopy(struct Client **ptr)
 {
-	INDEXED(Triangle,triangle);
-	INDEXED(Corner,corner);
-	INDEXED(Frame,frame);
-	INDEXED(Base,base);
-	INDEXED(Range,range);
-	INDEXED(Active,active);
-	INDEXED(Basis,basis);
-	INDEXED(Subject,subject);
-	INDEXED(Object,object);
-	INDEXED(Feature,feature);
-	INDEXED(Render,render);
-	INDEXED(Pierce,pierce);
-	INDEXED(Cloud,cloud);
-	INDEXED(User,user);
+	PROCCOPY(Triangle,triangle);
+	PROCCOPY(Corner,corner);
+	PROCCOPY(Frame,frame);
+	PROCCOPY(Base,base);
+	PROCCOPY(Range,range);
+	PROCCOPY(Active,active);
+	PROCCOPY(Basis,basis);
+	PROCCOPY(Subject,subject);
+	PROCCOPY(Object,object);
+	PROCCOPY(Feature,feature);
+	PROCCOPY(Render,render);
+	PROCCOPY(Pierce,pierce);
+	PROCCOPY(Cloud,cloud);
+	PROCCOPY(User,user);
 }
 
 void procPierce()
@@ -601,7 +601,6 @@ void *threadCall(void *arg)
 	int gon = 1;
 	while (gon) {
 	for (tmp = waitAny(); tmp >= 0 && gon; tmp = waitAny()) {
-	printf("thread(%d) cb.hub(%d) cb.tub(%d) cb.zub(%d)\n",tmp,cb.hub,cb.tub,cb.zub);
 	if (tmp == cb.zub) gon = 0; else if (tmp >= 0) {
 	if (pthread_mutex_lock(&mutex) != 0) ERROR(cb.err,-1);
 	sub = tmp; vld = 1; cb.wake();
