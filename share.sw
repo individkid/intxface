@@ -380,6 +380,8 @@ func swiftInit()
 	if let temp = noWarn(MTKView(frame:rect,device:device)) {
 		combine = temp} else {print("cannot make combine"); return}
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
+	combine.isPaused = true
+	combine.enableSetNeedsDisplay = false
 	combine.clearColor = color
 	combine.colorPixelFormat = .bgra8Unorm
 	combine.depthStencilPixelFormat = .depth32Float
