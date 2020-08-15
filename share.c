@@ -505,7 +505,7 @@ void shareProc()
 	case (Rmw2): if (cb.esc) printf("Rmw2\n"); procRmw2(); break;
 	case (Copy): if (cb.esc) printf("Copy\n"); procCopy(cb.state); break;
 	case (Save): if (cb.esc) printf("Save\n"); procCopy(saved); break;
-	case (Dma0): if (cb.esc) printf("Dma0\n"); cb.dma(client->mem); break;
+	case (Dma0): if (cb.esc) printf("Dma0\n"); cb.dma(client->mem,client->idx,1); break;
 	case (Dma1): if (cb.esc) printf("Dma1\n"); procPierce(); break;
 	case (Draw): if (cb.esc) printf("Draw\n"); cb.draw(); break;
 	case (Port): if (cb.esc) printf("Port\n"); procMetric(); break;
@@ -538,7 +538,7 @@ void nowarp(double xpos, double ypos)
 	printf("warp %f %f\n",xpos,ypos);
 }
 
-void nodma(enum Memory mem)
+void nodma(enum Memory mem, int idx, int siz)
 {
 	printf("dma %d\n",mem);
 }

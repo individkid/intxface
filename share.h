@@ -32,7 +32,7 @@ struct Callback {
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
 	// share to kvm
 	void (*warp)(double xpos, double ypos);
-	void (*dma)(enum Memory mem);
+	void (*dma)(enum Memory mem, int idx, int siz);
 	void (*draw)();
 	// loop to kvm
 	int (*full)();
@@ -55,16 +55,6 @@ struct Callback {
 
 extern struct Callback cb;
 
-void novoid();
-int nofalse();
-void nowarp(double xpos, double ypos);
-void nodma(enum Memory mem);
-void nosize(double width, double height);
-void nodrag(double xpos, double ypos);
-void nomove(double xpos, double ypos);
-void noroll(double xoffset, double yoffset);
-void noclick(int isright);
-void nowrite(struct Vector *point, struct Vector *normal, int object);
 void shareArg(const char *arg);
 void shareInit();
 void shareDone();

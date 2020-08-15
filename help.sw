@@ -54,7 +54,7 @@ func fromRaw<T>(_ raw:UnsafeRawPointer) -> T
 }
 func fromRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
 {
-	let siz = MemoryLayout<Pierce>.size
+	let siz = MemoryLayout<T>.size
 	var current = raw
 	var vals:[T] = []
 	while (vals.count < len) {

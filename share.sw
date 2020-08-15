@@ -85,12 +85,12 @@ class Refer
 {
 	var lock:Int = 0
 }
-struct Pend<T>
+class Pend<T>
 {
 	var pend:MTLBuffer!
 	var last:MTLBuffer!
 	var refer:Refer!
-	mutating func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
+	func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
 		if (pend == nil && last != nil && last.length < range.upperBound) {
 			pend = device.makeBuffer(length:range.upperBound)
@@ -113,7 +113,7 @@ struct Pend<T>
 		let size:Int = range.upperBound-range.lowerBound
 		pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
 	}
-	mutating func set(_ val: [T], _ index: Int)
+	func set(_ val: [T], _ index: Int)
 	{
 		let siz = MemoryLayout<T>.size
 		let base = siz*index
@@ -123,7 +123,7 @@ struct Pend<T>
 		set(UnsafeRawPointer(ptr),base..<limit)
 		ptr.deallocate()
 	}
-	mutating func set<S>(_ val: S, _ index: Int, _ field: Int)
+	func set<S>(_ val: S, _ index: Int, _ field: Int)
 	{
 		let siz = MemoryLayout<S>.size
 		let size = MemoryLayout<T>.size
@@ -134,23 +134,23 @@ struct Pend<T>
 		set(UnsafeRawPointer(ptr),base..<limit)
 		ptr.deallocate()
 	}
-	mutating func set<S>(_ val: S, _ field: Int)
+	func set<S>(_ val: S, _ field: Int)
 	{
 		set(val,0,field)
 	}
-	mutating func set(_ val: T, _ index: Int)
+	func set(_ val: T, _ index: Int)
 	{
 		set([val],index)
 	}
-	mutating func set(_ val: [T])
+	func set(_ val: [T])
 	{
 		set(val,0)
 	}
-	mutating func set(_ val: T)
+	func set(_ val: T)
 	{
 		set([val])
 	}
-	mutating func get() -> MTLBuffer
+	func get() -> MTLBuffer
 	{
 		if (last == nil && pend != nil) {
 			refer = Refer()
@@ -165,7 +165,7 @@ struct Pend<T>
 		refer.lock += 1
 		return last
 	}
-	mutating func get(_ len:Int) -> MTLBuffer
+	func get(_ len:Int) -> MTLBuffer
 	{
 		if (pend != nil && pend.length == len) {
 			refer = Refer()
@@ -217,46 +217,6 @@ func setPierce() -> Int?
 	let vals = toList(zero,siz)
 	pierce.set(vals,0..<siz)
 	return siz
-}
-func setDisplay() -> Form?
-{
-	guard let basis = getClient(share.Basis) else {return nil}
-	guard let subject = getClient(share.Subject) else {return nil}
-	guard let feature = getClient(share.Feature) else {return nil}
-	guard let render = getClient(share.Render) else {return nil}
-	guard let siz = getClient(share.Cloud) else {return nil}
-	guard let mode = getMode() else {return nil}
-	let elem = Form(
-		basis:basis.basis!.pointee,
-		subject:subject.subject!.pointee,
-		feature:feature.feature!.pointee,
-		feather:render.render!.pointee,
-		arrow:render.render!.advanced(by:1).pointee,
-		siz:UInt32(siz.siz),
-		hand:UInt32(mode.hand),
-		tag:0,pad:0)
-	form.set([elem],0..<MemoryLayout<Form>.size)
-	return elem
-}
-func setTrack() -> Form?
-{
-	guard let basis = getClient(share.Basis) else {return nil}
-	guard let subject = getClient(share.Subject) else {return nil}
-	guard let feature = getClient(share.Feature) else {return nil}
-	guard let pierce = getClient(share.Pierce) else {return nil}
-	guard let siz = getClient(share.Cloud) else {return nil}
-	guard let mode = getMode() else {return nil}
-	let elem = Form(
-		basis:basis.basis!.pointee,
-		subject:subject.subject!.pointee,
-		feature:feature.feature!.pointee,
-		feather:pierce.pierce!.pointee,
-		arrow:pierce.pierce!.advanced(by:1).pointee,
-		siz:UInt32(siz.siz),
-		hand:UInt32(mode.hand),
-		tag:0,pad:0)
-	form.set([elem],0..<MemoryLayout<Form>.size)
-	return elem
 }
 func getMode() -> share.Mode?
 {
@@ -485,6 +445,7 @@ func swiftInit()
 	setEvent(.leftMouseUp,swiftClear)
 	cb.curs(Double(NSMinX(rect)),Double(NSMinY(rect)),
 		Double(NSMaxX(rect)),Double(NSMaxY(rect)))
+	let zero:Form = fromZero(); form.set(zero)
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -493,28 +454,63 @@ func swiftWarp(xpos:Double, ypos:Double)
 	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
     CGWarpMouseCursorPosition(coord);	
 }
-func swiftDma(_ mem:share.Memory)
+func swiftWhole<T>(_ pend:Pend<T>, _ ptr:UnsafePointer<T>, _ src:Int32, _ dst:Int32, _ siz:Int32)
+{
+	let size = MemoryLayout<T>.size
+	let base = Int(dst)*size
+	let limit = (Int(dst)+Int(siz))*size
+	pend.set(ptr.advanced(by:Int(src)),base..<limit)
+}
+func swiftPart<T,S>(_ pend:Pend<T>, _ ptr:UnsafePointer<S>, _ src:Int32, _ dst:Int32, _ fld:PartialKeyPath<T>)
+{
+	guard let field = MemoryLayout<T>.offset(of:fld) else {cb.err(#file,#line,-1);return}
+	let part = MemoryLayout<S>.size
+	let size = MemoryLayout<T>.size
+	let base = Int(dst)*size+field
+	let limit = Int(dst)*size+field+part
+	pend.set(ptr.advanced(by:Int(src)),base..<limit)
+}
+func swiftPart<T,S>(_ pend:Pend<T>, _ val:S, _ dst:Int32, _ fld:PartialKeyPath<T>)
+{
+	guard let field = MemoryLayout<T>.offset(of:fld) else {cb.err(#file,#line,-1);return}
+	let part = MemoryLayout<S>.size
+	let size = MemoryLayout<T>.size
+	let base = Int(dst)*size+field
+	let limit = Int(dst)*size+field+part
+	toPointre(val,{(ptr) in pend.set(ptr,base..<limit)})
+}
+func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 {
 	guard let client = getClient(mem) else {cb.err(#file,#line,-1);return}
 	switch (mem) {
-	case (share.Triangle): triangle.set(fromRaw(client.triangle,Int(client.siz)))
-	case (share.Corner): corner.set(fromRaw(client.corner,Int(client.siz)))
-	case (share.Frame): frame.set(fromRaw(client.frame,Int(client.siz)))
-	case (share.Base): base.set(fromRaw(client.base,Int(client.siz)))
-	case (share.Object): object.set(fromRaw(client.object,Int(client.siz)))
-	case (share.Cloud): cloud.set(fromRaw(client.cloud,Int(client.siz)))
-	default: print("oops(\(mem))");cb.err(#file,#line,-1);return}
+	case (share.Triangle): swiftWhole(triangle,client.triangle,idx,idx,siz)
+	case (share.Corner): swiftWhole(corner,client.corner,idx,idx,siz)
+	case (share.Frame): swiftWhole(frame,client.frame,idx,idx,siz)
+	case (share.Base): swiftWhole(base,client.base,idx,idx,siz)
+	case (share.Basis): swiftPart(form,client.basis,idx,Int32(0),\Form.basis)
+	case (share.Subject): swiftPart(form,client.subject,idx,Int32(0),\Form.subject)
+	case (share.Object): swiftWhole(object,client.object,idx,idx,siz)
+	case (share.Feature): swiftPart(form,client.feature,idx,Int32(0),\Form.feature)
+	case (share.Render):
+	if (idx == 0 && siz > 0) {swiftPart(form,client.render,Int32(0),Int32(0),\Form.feather)}
+	if (idx+siz > 1) {swiftPart(form,client.render,Int32(1),Int32(0),\Form.arrow)}
+	case (share.Pierce):
+	if (idx == 0 && siz > 0) {swiftPart(form,client.pierce,Int32(0),Int32(0),\Form.feather)}
+	if (idx+siz > 1) {swiftPart(form,client.pierce,Int32(1),Int32(0),\Form.arrow)}
+	case (share.Cloud): swiftWhole(cloud,client.cloud,idx,idx,siz)
+	swiftPart(form,client.siz,Int32(0),\Form.siz)
+	case (share.User): swiftPart(form,client.user.pointee.hand,Int32(0),\Form.hand)
+	default: cb.err(#file,#line,-1);return}
 }
 func swiftDraw()
 {
 	guard let shader = getMode()?.shader else {cb.err(#file,#line,-1);return}
 	if (shader == share.Display) {
-		guard var display = setDisplay() else {cb.err(#file,#line,-1);return}
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		guard let range = getRange() else {cb.err(#file,#line,-1);return}
+		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
 		for array in range {
-			guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
-			display.tag = UInt32(array.tag); form.set(display.tag,field)
+			form.set(UInt32(array.tag),field)
 			guard let desc = combine.currentRenderPassDescriptor else {cb.err(#file,#line,-1);return}
 			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {cb.err(#file,#line,-1);return}
 			encode.setRenderPipelineState(render)
@@ -530,20 +526,19 @@ func swiftDraw()
 				vertexCount:Int(array.siz))
 			encode.endEncoding()
 		}
-	    guard let draw = combine.currentDrawable else {cb.err(#file,#line,-1);return}
+	    guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
 		code.present(draw)
 		code.addScheduledHandler(retLock())
 		code.addCompletedHandler(retCount())
 		count += 1
 		code.commit()
 	} else if (shader == share.Track) {
-		guard var track = setTrack() else {cb.err(#file,#line,-1);return}
 		guard let size = setPierce() else {cb.err(#file,#line,-1);return}
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		guard let active = getActive() else {cb.err(#file,#line,-1);return}
+		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
 		for array in active {
-			guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
-			track.tag = UInt32(array.tag); form.set(track.tag,field)
+			form.set(UInt32(array.tag),field)
 			var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 			var nums:[Int] = []
 			var pers:[Int] = []
