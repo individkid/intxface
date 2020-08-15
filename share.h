@@ -28,6 +28,7 @@ struct Callback {
 	void (*click)(int isright);
 	void (*size)(double width, double height);
 	void (*drag)(double xpos, double ypos);
+	void (*curs)(double xpos, double ypos, double width, double height);
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
 	// share to kvm
 	void (*warp)(double xpos, double ypos);

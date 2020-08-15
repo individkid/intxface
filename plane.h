@@ -59,7 +59,7 @@ struct Cloud {
 	float3 point;
 };
 struct State {
-	Triple basis;
+	Triple basis; // TODO change to 9*float4
 	metal::float4x4 subject;
 	metal::float4x4 feature;
 	float3 feather; // near for pierce; focal for display

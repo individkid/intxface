@@ -189,14 +189,14 @@ func retLock() -> MTLCommandBufferHandler
 }
 func retReady(_ size: Int) -> MTLCommandBufferHandler
 {
-	let last = pierce.last!
+	let last = pierce.get()
 	return {(MTLCommandBuffer) in setReady(last,size)}
 }
 func setReady(_ buffer:MTLBuffer, _ size:Int)
 {
-	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
 	var found:Pierce = Pierce()
-	var index = Int(0)
+	var index = Int(-1)
+	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
 	for (pierce,object) in zip(pierces,0..<size) {
 		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
 			found = pierce
@@ -211,7 +211,7 @@ func retCount() -> MTLCommandBufferHandler
 }
 func setPierce() -> Int?
 {
-	guard let client = getClient(share.Triangle) else {return nil}
+	guard let client = getClient(share.Pierce) else {return nil}
 	let siz = Int(client.siz)
 	let zero = Pierce()
 	let vals = toList(zero,siz)
@@ -265,11 +265,13 @@ func getMode() -> share.Mode?
 func getRange() -> [share.Array]?
 {
 	guard let client = getClient(share.Range) else {return nil}
+	if (client.siz == 0) {return []}
 	return fromRaw(client.range,Int(client.siz))
 }
 func getActive() -> [share.Array]?
 {
 	guard let client = getClient(share.Active) else {return nil}
+	if (client.siz == 0) {return []}
 	return fromRaw(client.active,Int(client.siz))
 }
 func getClient(_ mem:share.Memory) -> share.Client?
@@ -362,12 +364,16 @@ func swiftMove(event:NSEvent) -> NSEvent?
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.move(Double(point.x),Double(point.y))
+		// cb.move(Double(point.x),Double(point.y)) // TODO test
 	}
 	return event
 }
 func swiftRoll(event:NSEvent) -> NSEvent?
 {
 	cb.roll(Double(event.deltaX),Double(event.deltaY))
+	// cb.roll(Double(event.deltaX),Double(event.deltaY)) // TODO test
+	// let point = getPoint() // TODO test
+	// cb.move(Double(point.x),Double(point.y)) // TODO test
 	return event
 }
 func swiftCheck(event:NSEvent) -> NSEvent?
@@ -477,7 +483,8 @@ func swiftInit()
 	setEvent(.applicationDefined,swiftCheck)
 	setEvent(.leftMouseDragged,swiftDrag)
 	setEvent(.leftMouseUp,swiftClear)
-    swiftSize()
+	cb.curs(Double(NSMinX(rect)),Double(NSMinY(rect)),
+		Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -524,7 +531,7 @@ func swiftDraw()
 			encode.endEncoding()
 		}
 	    guard let draw = combine.currentDrawable else {cb.err(#file,#line,-1);return}
-	code.present(draw)
+		code.present(draw)
 		code.addScheduledHandler(retLock())
 		code.addCompletedHandler(retCount())
 		count += 1

@@ -258,7 +258,7 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 	client.len = 1;
 	client.fnc = function;
 	client.idx = object;
-	client.siz = 0;
+	client.siz = 2;
 	client.pierce = pierce;
 	writeClient(&client,cb.tub);
 }
@@ -365,6 +365,28 @@ void shareDrag(double xpos, double ypos)
 	writeRender();
 }
 
+void shareCurs(double xpos, double ypos, double width, double height)
+{
+	struct Client client = {0};
+	enum Function function[1]; function[0] = Copy;
+	client.fnc = function; client.len = 1; client.siz = 2;
+	render[1][0] = width;
+	render[1][1] = height;
+	render[0][0] = xpos+render[1][0]/2.0;
+	render[0][1] = ypos+render[1][1]/2.0;
+	struct Vector vector[2] = {0};
+	for (int i = 0; i < 2; i++) {
+	for (int j = 0; j < 2; j++) {
+	vector[i].val[j] = render[i][j];}}
+	client.render = vector; client.mem = Render;
+	writeClient(&client,cb.tub);
+	vector[1].val[0] = vector[0].val[0] = render[0][0];
+	vector[1].val[1] = vector[0].val[1] = render[0][1];
+	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
+	client.pierce = vector; client.mem = Pierce;
+	writeClient(&client,cb.tub);
+}
+
 float *procMat(struct Client *client, int idx)
 {
 	switch (client->mem) {
@@ -431,7 +453,6 @@ void procRmw2() // transition between move and roll
 	{allocClient(&ptr[ENUM],1); \
 	void *mem = ptr[ENUM]->FIELD; \
 	alloc##TYPE(&ptr[ENUM]->FIELD,client->idx+client->siz); \
-	printf("procCopy "#ENUM" %p %p\n",ptr[ENUM]->FIELD,mem); \
 	if (mem) { \
 	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
@@ -457,8 +478,8 @@ void procCopy(struct Client **ptr)
 
 void procPierce()
 {
-	memcpy(pievec,client->pierce[0].val,sizeof(client->pierce[0].val));
-	memcpy(norvec,client->pierce[1].val,sizeof(client->pierce[1].val));
+	memcpy(pievec,client->pierce[0].val,sizeof(pievec));
+	memcpy(norvec,client->pierce[1].val,sizeof(norvec));
 	object = client->idx;
 }
 
@@ -475,15 +496,15 @@ void shareProc()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Rmw0): procRmw0(); break;
-	case (Rmw1): procRmw1(); break;
-	case (Rmw2): procRmw2(); break;
-	case (Copy): procCopy(cb.state); break;
-	case (Save): procCopy(saved); break;
-	case (Dma0): cb.dma(client->mem); break;
-	case (Dma1): procPierce(); break;
-	case (Draw): cb.draw(); break;
-	case (Port): procMetric(); break;
+	case (Rmw0): if (cb.esc) printf("Rmw0\n"); procRmw0(); break;
+	case (Rmw1): if (cb.esc) printf("Rmw1\n"); procRmw1(); break;
+	case (Rmw2): if (cb.esc) printf("Rmw2\n"); procRmw2(); break;
+	case (Copy): if (cb.esc) printf("Copy\n"); procCopy(cb.state); break;
+	case (Save): if (cb.esc) printf("Save\n"); procCopy(saved); break;
+	case (Dma0): if (cb.esc) printf("Dma0\n"); cb.dma(client->mem); break;
+	case (Dma1): if (cb.esc) printf("Dma1\n"); procPierce(); break;
+	case (Draw): if (cb.esc) printf("Draw\n"); cb.draw(); break;
+	case (Port): if (cb.esc) printf("Port\n"); procMetric(); break;
 	default: ERROR(cb.err,-1);}
 }
 
@@ -566,6 +587,7 @@ void shareInit()
 	cb.click = shareClick;
 	cb.size = shareSize;
 	cb.drag = shareDrag;
+	cb.curs = shareCurs;
 	cb.write = shareWrite;
 	cb.warp = nowarp;
 	cb.dma = nodma;
@@ -591,15 +613,24 @@ void shareInit()
 	bothJump(cb.err,cb.tub);
 	cb.esc = 0;
     struct Client client = {0};
-    enum Function function[1] = {0};
-    struct Mode mode = {0};
-    function[0] = Copy; client.fnc = function; client.len = 1;
+    enum Function function[1] = {0}; function[0] = Copy;
+    client.fnc = function; client.len = 1; client.siz = 0;
+    for (client.mem = 0; client.mem < Memorys; client.mem++) {
+	writeClient(&client,cb.tub);}
+    struct Mode mode = {0}; mode.matrix = Global; mode.shader = Track;
+    mode.click = Complete; mode.move = Rotate; mode.roll = Cylinder;
     client.user = &mode; client.mem = User; client.siz = 1;
-    mode.matrix = Matrixs;
-	mode.click = Clicks;
-	mode.move = Moves;
-	mode.roll = Rolls;
-	mode.shader = Shaders;
+	writeClient(&client,cb.tub);
+	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
+	client.subject = &affine; client.mem = Subject;
+	writeClient(&client,cb.tub);
+	client.feature = &affine; client.mem = Feature;
+	writeClient(&client,cb.tub);
+	struct Linear linear = {0};
+	linear.val[1][1] = linear.val[2][2] = 1.0;
+	linear.val[4][2] = linear.val[5][0] = 1.0;
+	linear.val[7][0] = linear.val[8][1] = 1.0;
+	client.basis = &linear; client.mem = Basis;
 	writeClient(&client,cb.tub);
 	/*
 	cb.move = nomove;
