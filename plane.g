@@ -21,7 +21,7 @@ Expand expand(Facet plane, const device State *state)
 {
    Expand result;
    for (uint i = 0; i < 3; i++) {
-      result.point[i] = state->basis.plane[plane.versor].point[i];
+      result.point[i] = state->basis[plane.versor][i];
       result.point[i][plane.versor] = plane.plane[i];}
    return result;
 }

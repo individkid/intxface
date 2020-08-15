@@ -449,8 +449,10 @@ void procRmw2() // transition between move and roll
 
 #define PROCCOPY(ENUM,FIELD,TYPE) \
 	if (client->mem == ENUM) {\
-	if (!ptr[ENUM] || client->idx+client->siz > ptr[ENUM]->siz) \
+	if (!ptr[ENUM]) \
 	{allocClient(&ptr[ENUM],1); \
+	ptr[ENUM]->mem = ENUM;} \
+	if (client->idx+client->siz > ptr[ENUM]->siz) { \
 	void *mem = ptr[ENUM]->FIELD; \
 	alloc##TYPE(&ptr[ENUM]->FIELD,client->idx+client->siz); \
 	if (mem) { \
@@ -474,6 +476,7 @@ void procCopy(struct Client **ptr)
 	PROCCOPY(Pierce,pierce,Vector);
 	PROCCOPY(Cloud,cloud,Vector);
 	PROCCOPY(User,user,Mode);
+	ERROR(cb.err,-1);
 }
 
 void procPierce()
@@ -489,7 +492,8 @@ void procMetric()
 	struct Metric metric = {0};
 	metric.src = Plane;
 	metric.plane = cb.state[client->mem];
-	writeMetric(&metric,cb.hub);
+	if (cb.hub >= 0) {
+	writeMetric(&metric,cb.hub);}
 }
 
 void shareProc()

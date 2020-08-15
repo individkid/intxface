@@ -503,7 +503,7 @@ func swiftDma(_ mem:share.Memory)
 	case (share.Base): base.set(fromRaw(client.base,Int(client.siz)))
 	case (share.Object): object.set(fromRaw(client.object,Int(client.siz)))
 	case (share.Cloud): cloud.set(fromRaw(client.cloud,Int(client.siz)))
-	default: cb.err(#file,#line,-1);return}
+	default: print("oops(\(mem))");cb.err(#file,#line,-1);return}
 }
 func swiftDraw()
 {
