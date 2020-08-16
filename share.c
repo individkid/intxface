@@ -507,6 +507,7 @@ void shareProc()
 	case (Save): if (cb.esc) printf("Save\n"); procCopy(saved); break;
 	case (Dma0): if (cb.esc) printf("Dma0\n"); cb.dma(client->mem,client->idx,1); break;
 	case (Dma1): if (cb.esc) printf("Dma1\n"); procPierce(); break;
+	case (Dma2): if (cb.esc) printf("Dma2\n"); cb.dma(client->mem,client->idx,client->siz); break;
 	case (Draw): if (cb.esc) printf("Draw\n"); cb.draw(); break;
 	case (Port): if (cb.esc) printf("Port\n"); procMetric(); break;
 	default: ERROR(cb.err,-1);}

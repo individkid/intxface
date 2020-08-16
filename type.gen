@@ -67,6 +67,7 @@ Function = {
 	"Save",
 	"Dma0",
 	"Dma1",
+	"Dma2",
 	"Draw",
 	"Port",
 }

@@ -60,9 +60,7 @@ func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 func toMutabls<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 {
 	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
-	for (val,idx) in zip(list,Swift.Array(0..<list.count)) {
-		ptr[idx] = val
-	}
+	for (val,idx) in zip(list,Swift.Array(0..<list.count)) {ptr[idx] = val}
 	fnc(ptr)
 	ptr.deallocate()
 }

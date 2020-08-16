@@ -22,7 +22,7 @@
 
 struct Callback {
 	void (*err)(const char *str, int num, int arg);
-	// kvm to share
+	// kvm to share; read from state; write to pipe
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
@@ -30,13 +30,13 @@ struct Callback {
 	void (*drag)(double xpos, double ypos);
 	void (*curs)(double xpos, double ypos, double width, double height);
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
-	// share to kvm
+	// share to kvm; read from state; write to gpu
 	void (*warp)(double xpos, double ypos);
 	void (*dma)(enum Memory mem, int idx, int siz);
 	void (*draw)();
 	// loop to kvm
 	int (*full)();
-	// loop to share
+	// loop to share; read from pipe; write to state
 	void (*proc)();
 	int (*read)();
 	// main to loop
