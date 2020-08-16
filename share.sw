@@ -229,7 +229,7 @@ func retCount() -> MTLCommandBufferHandler
 }
 func setPierce() -> Int?
 {
-	guard let client = getClient(share.Pierce) else {return nil}
+	guard let client = getClient(share.Base) else {return nil}
 	let siz = Int(client.siz)
 	let zero = Pierce()
 	let vals = Swift.Array(repeating: zero, count: siz)
