@@ -91,8 +91,10 @@ class Pend<T>
 	var refer:Refer!
 	func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
-		if (pend == nil && last != nil && last.length < range.upperBound) {
-			pend = device.makeBuffer(length:range.upperBound)
+		let unit:Int = MemoryLayout<T>.size
+		let length:Int = range.upperBound+(unit-range.upperBound%unit)%unit;
+		if (pend == nil && last != nil && last.length < length) {
+			pend = device.makeBuffer(length:length)
 			pend.contents().copyMemory(from:last.contents(),byteCount:last.length)
 			last = nil
 		}
@@ -106,7 +108,7 @@ class Pend<T>
 			last = nil
 		}
 		if (pend == nil) {
-			pend = device.makeBuffer(length:range.upperBound)
+			pend = device.makeBuffer(length:length)
 		}
 		let base:Int = range.lowerBound
 		let size:Int = range.upperBound-range.lowerBound
@@ -377,7 +379,8 @@ func swiftInit()
 	if let temp = noWarn(NSView(frame:rect)) {
 		view = temp} else {print("cannot make view"); return}
 	view.layer = layer
-	delegate = WindowDelegate()
+	if let temp = noWarn(WindowDelegate()) {
+		delegate = temp} else {print("cannot make delegate"); return}
 	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
 		window = temp} else {print("cannot make window"); return}
@@ -403,11 +406,11 @@ func swiftInit()
 	pipe.depthAttachmentPixelFormat = .depth32Float
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
-	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
 	if let temp = noWarn(MTLRenderPassDescriptor()) {
     	descriptor = temp} else {print("cannot make descriptor"); return}
-	descriptor.colorAttachments[0].loadAction = .clear
+	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
 	descriptor.colorAttachments[0].clearColor = color
+	descriptor.colorAttachments[0].loadAction = .clear
 	descriptor.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
     guard let desc = noWarn(MTLDepthStencilDescriptor()) else {
     	print("cannot make desc"); return}
@@ -434,7 +437,6 @@ func swiftInit()
 	setEvent(.leftMouseUp,swiftClear)
 	cb.curs(Double(NSMinX(rect)),Double(NSMinY(rect)),
 		Double(NSMaxX(rect)),Double(NSMaxY(rect)))
-	let zero:Form = fromZero(); form.set(zero)
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -481,11 +483,11 @@ func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 	case (share.Object): swiftWhole(object,client.object,idx,idx,siz)
 	case (share.Feature): swiftPart(form,client.feature,idx,Int32(0),\Form.feature)
 	case (share.Render):
-	if (idx == 0 && siz > 0) {swiftPart(form,client.render,Int32(0),Int32(0),\Form.feather)}
-	if (idx+siz > 1) {swiftPart(form,client.render,Int32(1),Int32(0),\Form.arrow)}
+	if (idx == 0 && siz > 0) {swiftPart(form,client.render,idx,Int32(0),\Form.feather)}
+	if (idx+siz > 1) {swiftPart(form,client.render,idx+1,Int32(0),\Form.arrow)}
 	case (share.Pierce):
-	if (idx == 0 && siz > 0) {swiftPart(form,client.pierce,Int32(0),Int32(0),\Form.feather)}
-	if (idx+siz > 1) {swiftPart(form,client.pierce,Int32(1),Int32(0),\Form.arrow)}
+	if (idx == 0 && siz > 0) {swiftPart(form,client.pierce,idx,Int32(0),\Form.feather)}
+	if (idx+siz > 1) {swiftPart(form,client.pierce,idx+1,Int32(0),\Form.arrow)}
 	case (share.Cloud): swiftWhole(cloud,client.cloud,idx,idx,siz)
 	swiftPart(form,client.siz,Int32(0),\Form.siz)
 	case (share.User): swiftPart(form,client.user.pointee.hand,Int32(0),\Form.hand)

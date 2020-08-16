@@ -636,13 +636,6 @@ void shareInit()
 	linear.val[7][0] = linear.val[8][1] = 1.0;
 	client.basis = &linear; client.mem = Basis;
 	writeClient(&client,cb.tub);
-	/*
-	cb.move = nomove;
-	cb.roll = noroll;
-	cb.click = noclick;
-	cb.size = nosize;
-	cb.drag = nodrag;
-	*/
 }
 
 void shareDone()
