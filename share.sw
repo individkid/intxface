@@ -470,20 +470,23 @@ func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 	case (share.Corner): corner.set(fromPtr(client.corner,Int(idx),Int(siz)),Int(idx))
 	case (share.Frame): frame.set(fromPtr(client.frame,Int(idx),Int(siz)),Int(idx))
 	case (share.Base): base.set(fromPtr(client.base,Int(idx),Int(siz)),Int(idx))
-	case (share.Basis): form.set(fromPtr(client.basis),\Form.basis)
-	case (share.Subject): form.set(fromPtr(client.subject),\Form.subject)
+	case (share.Basis):
+	form.set(fromPtr(client.basis),\Form.basis)
+	case (share.Subject):
+	form.set(fromPtr(client.subject),\Form.subject)
 	case (share.Object): object.set(fromPtr(client.object,Int(idx),Int(siz)),Int(idx))
-	case (share.Feature): form.set(fromPtr(client.feature),\Form.feature)
+	case (share.Feature):
+	form.set(fromPtr(client.feature),\Form.feature)
 	case (share.Render):
-	form.set(client.render[0],\Form.feather)
-	form.set(client.render[1],\Form.arrow)
+	form.set(fromPtr(client.render,0),\Form.feather)
+	form.set(fromPtr(client.render,1),\Form.arrow)
 	case (share.Pierce):
-	form.set(client.pierce[0],\Form.feather)
-	form.set(client.pierce[1],\Form.arrow)
-	case (share.Cloud):
-	cloud.set(fromPtr(client.cloud,Int(idx),Int(siz)),Int(idx))
+	form.set(fromPtr(client.pierce,0),\Form.feather)
+	form.set(fromPtr(client.pierce,1),\Form.arrow)
+	case (share.Cloud): cloud.set(fromPtr(client.cloud,Int(idx),Int(siz)),Int(idx))
 	form.set(client.siz,\Form.siz)
-	case (share.User): form.set(fromPtr(client.user).hand,\Form.hand)
+	case (share.User):
+	form.set(fromPtr(client.user).hand,\Form.hand)
 	default: cb.err(#file,#line,-1);return}
 }
 func swiftDraw()
