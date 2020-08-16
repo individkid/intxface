@@ -91,8 +91,9 @@ class Pend<T>
 	var refer:Refer!
 	func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
+		let len:Int = range.upperBound
 		let unit:Int = MemoryLayout<T>.size
-		let length:Int = range.upperBound+(unit-range.upperBound%unit)%unit;
+		let length:Int = len+(unit-len%unit)%unit;
 		if (pend == nil && last != nil && last.length < length) {
 			pend = device.makeBuffer(length:length)
 			pend.contents().copyMemory(from:last.contents(),byteCount:last.length)
