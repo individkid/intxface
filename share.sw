@@ -125,18 +125,32 @@ class Pend<T>
 		set(UnsafeRawPointer(ptr),base..<limit)
 		ptr.deallocate()
 	}
-	func set<S>(_ val: S, _ index: Int, _ field: Int)
+	func set<S>(_ vals: [S], _ index: Int, _ field: Int)
 	{
 		let siz = MemoryLayout<S>.size
 		let size = MemoryLayout<T>.size
 		let base = size*index+field
-		let limit = base+siz
-		let ptr = UnsafeMutablePointer<S>.allocate(capacity:siz)
-		ptr[0] = val
-		set(UnsafeRawPointer(ptr),base..<limit)
-		ptr.deallocate()
+		let limit = base+siz*vals.count
+		toPointrs(vals,{(ptr) in set(ptr,base..<limit)})
+	}
+	func set<S>(_ val: S, _ index: Int, _ field: Int)
+	{
+		set([val],index,field)
 	}
 	func set<S>(_ val: S, _ field: Int)
+	{
+		set(val,0,field)
+	}
+	func set<S>(_ vals: [S], _ index: Int, _ field: PartialKeyPath<T>)
+	{
+		guard let fld = MemoryLayout<T>.offset(of:field) else {cb.err(#file,#line,-1);return}
+		set(vals,index,fld)
+	}
+	func set<S>(_ val: S, _ index: Int, _ field: PartialKeyPath<T>)
+	{
+		set([val],index,field)
+	}
+	func set<S>(_ val: S, _ field: PartialKeyPath<T>)
 	{
 		set(val,0,field)
 	}
@@ -448,52 +462,28 @@ func swiftWarp(xpos:Double, ypos:Double)
 	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
     CGWarpMouseCursorPosition(coord);	
 }
-func swiftWhole<T>(_ pend:Pend<T>, _ ptr:UnsafePointer<T>, _ src:Int32, _ dst:Int32, _ siz:Int32)
-{
-	let size = MemoryLayout<T>.size
-	let base = Int(dst)*size
-	let limit = (Int(dst)+Int(siz))*size
-	pend.set(ptr.advanced(by:Int(src)),base..<limit)
-}
-func swiftPart<T,S>(_ pend:Pend<T>, _ ptr:UnsafePointer<S>, _ src:Int32, _ dst:Int32, _ fld:PartialKeyPath<T>)
-{
-	guard let field = MemoryLayout<T>.offset(of:fld) else {cb.err(#file,#line,-1);return}
-	let part = MemoryLayout<S>.size
-	let size = MemoryLayout<T>.size
-	let base = Int(dst)*size+field
-	let limit = Int(dst)*size+field+part
-	pend.set(ptr.advanced(by:Int(src)),base..<limit)
-}
-func swiftPart<T,S>(_ pend:Pend<T>, _ val:S, _ dst:Int32, _ fld:PartialKeyPath<T>)
-{
-	guard let field = MemoryLayout<T>.offset(of:fld) else {cb.err(#file,#line,-1);return}
-	let part = MemoryLayout<S>.size
-	let size = MemoryLayout<T>.size
-	let base = Int(dst)*size+field
-	let limit = Int(dst)*size+field+part
-	toPointre(val,{(ptr) in pend.set(ptr,base..<limit)})
-}
 func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 {
 	guard let client = getClient(mem) else {cb.err(#file,#line,-1);return}
 	switch (mem) {
-	case (share.Triangle): swiftWhole(triangle,client.triangle,idx,idx,siz)
-	case (share.Corner): swiftWhole(corner,client.corner,idx,idx,siz)
-	case (share.Frame): swiftWhole(frame,client.frame,idx,idx,siz)
-	case (share.Base): swiftWhole(base,client.base,idx,idx,siz)
-	case (share.Basis): swiftPart(form,client.basis,idx,Int32(0),\Form.basis)
-	case (share.Subject): swiftPart(form,client.subject,idx,Int32(0),\Form.subject)
-	case (share.Object): swiftWhole(object,client.object,idx,idx,siz)
-	case (share.Feature): swiftPart(form,client.feature,idx,Int32(0),\Form.feature)
+	case (share.Triangle): triangle.set(fromPtr(client.triangle,Int(idx),Int(siz)),Int(idx))
+	case (share.Corner): corner.set(fromPtr(client.corner,Int(idx),Int(siz)),Int(idx))
+	case (share.Frame): frame.set(fromPtr(client.frame,Int(idx),Int(siz)),Int(idx))
+	case (share.Base): base.set(fromPtr(client.base,Int(idx),Int(siz)),Int(idx))
+	case (share.Basis): form.set(fromPtr(client.basis),\Form.basis)
+	case (share.Subject): form.set(fromPtr(client.subject),\Form.subject)
+	case (share.Object): object.set(fromPtr(client.object,Int(idx),Int(siz)),Int(idx))
+	case (share.Feature): form.set(fromPtr(client.feature),\Form.feature)
 	case (share.Render):
-	if (idx == 0 && siz > 0) {swiftPart(form,client.render,idx,Int32(0),\Form.feather)}
-	if (idx+siz > 1) {swiftPart(form,client.render,idx+1,Int32(0),\Form.arrow)}
+	form.set(client.render[0],\Form.feather)
+	form.set(client.render[1],\Form.arrow)
 	case (share.Pierce):
-	if (idx == 0 && siz > 0) {swiftPart(form,client.pierce,idx,Int32(0),\Form.feather)}
-	if (idx+siz > 1) {swiftPart(form,client.pierce,idx+1,Int32(0),\Form.arrow)}
-	case (share.Cloud): swiftWhole(cloud,client.cloud,idx,idx,siz)
-	swiftPart(form,client.siz,Int32(0),\Form.siz)
-	case (share.User): swiftPart(form,client.user.pointee.hand,Int32(0),\Form.hand)
+	form.set(client.pierce[0],\Form.feather)
+	form.set(client.pierce[1],\Form.arrow)
+	case (share.Cloud):
+	cloud.set(fromPtr(client.cloud,Int(idx),Int(siz)),Int(idx))
+	form.set(client.siz,\Form.siz)
+	case (share.User): form.set(fromPtr(client.user).hand,\Form.hand)
 	default: cb.err(#file,#line,-1);return}
 }
 func swiftDraw()
@@ -510,7 +500,7 @@ func swiftDraw()
 			encode.endEncoding()
 		}
 		for array in range {
-			form.set(UInt32(array.tag),field)
+			form.set(UInt32(array.tag),field,\Form.tag)
 			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
 			encode.setRenderPipelineState(render)
 			encode.setDepthStencilState(depth)
@@ -536,7 +526,7 @@ func swiftDraw()
 		guard let active = getActive() else {cb.err(#file,#line,-1);return}
 		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
 		for array in active {
-			form.set(UInt32(array.tag),field)
+			form.set(UInt32(array.tag),field,\Form.tag)
 			var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 			var nums:[Int] = []
 			var pers:[Int] = []

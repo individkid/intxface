@@ -63,6 +63,18 @@ func fromRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
 	}
 	return vals
 }
+func fromPtr<T>(_ ptr:UnsafePointer<T>, _ idx:Int, _ len:Int) -> [T]
+{
+	var vals:[T] = []
+	while (vals.count < len) {
+		vals.append(ptr[idx+vals.count])
+	}
+	return vals
+}
+func fromPtr<T>(_ ptr:UnsafePointer<T>) -> T
+{
+	return ptr.pointee
+}
 func fromAny<T>(_ x: Any?) -> T?
 {
   return x as? T
