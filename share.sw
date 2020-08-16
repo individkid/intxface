@@ -206,7 +206,7 @@ func setReady(_ buffer:MTLBuffer, _ size:Int)
 }
 func retCount() -> MTLCommandBufferHandler
 {
-	return {(MTLCommandBuffer) in count -= 1}
+	return {(MTLCommandBuffer) in count -= 1; cb.wake()}
 }
 func setPierce() -> Int?
 {
@@ -252,16 +252,10 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> 
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
 
-func loopAlarm(event:NSEvent) -> NSEvent?
-{
-	cb.wake()
-	return nil
-}
 func loopInit()
 {
 	cb.call = loopCall
 	cb.wake = loopWake
-	setEvent(.periodic,loopAlarm)
 }
 func loopCall()
 {
@@ -338,8 +332,7 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 func swiftCheck(event:NSEvent) -> NSEvent?
 {
 	if (cb.full() != 0) {
-		NSEvent.startPeriodicEvents(afterDelay: 1000.0*NANO2SEC, withPeriod: 0.0)
-		return event
+		return nil
 	}
 	if (cb.read() != 0) {
 		cb.proc()
@@ -363,7 +356,6 @@ func swiftClear(event:NSEvent) -> NSEvent?
 func swiftSize()
 {
 	let rect:CGRect = layer.frame
-	// combine.frame = rect
 	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 	let frame:CGRect = window.frame
 	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))

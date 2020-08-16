@@ -219,7 +219,7 @@ enum Memory assignAffine(struct Client *client, struct Affine *affine)
 	return Memorys;
 }
 
-#define REJECT(MEM,FIELD,IDX) \
+#define COPYAFFINE(MEM,FIELD,IDX) \
 	mem = MEM; \
 	client->idx = IDX; \
 	src = &cb.state[MEM]->FIELD[client->idx]; \
@@ -229,9 +229,9 @@ enum Memory copyAffine(struct Client *client, struct Affine *affine)
 	struct Affine *src;
 	enum Memory mem;
 	switch (cb.state[User]->user->matrix) {
-	case (Global): REJECT(Subject,subject,0); break;
-	case (Several): REJECT(Object,object,object); break;
-	case (Single): REJECT(Feature,feature,0); break;
+	case (Global): COPYAFFINE(Subject,subject,0); break;
+	case (Several): COPYAFFINE(Object,object,object); break;
+	case (Single): COPYAFFINE(Feature,feature,0); break;
 	default: ERROR(cb.err,-1);}
 	memcpy(&affine->val[0][0],src,sizeof(struct Affine));
 	return mem;
