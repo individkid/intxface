@@ -168,13 +168,15 @@ class Pend<T>
 	}
 	func get(_ len:Int) -> MTLBuffer
 	{
-		if (pend != nil && pend.length == len) {
+		let unit:Int = MemoryLayout<T>.size
+		let length:Int = len+(unit-len%unit)%unit;
+		if (pend != nil && pend.length == length) {
 			refer = Refer()
 			last = pend
 			pend = nil
 		} else {
 			refer = Refer()
-			last = device.makeBuffer(length:len)
+			last = device.makeBuffer(length:length)
 			pend = nil
 		}
 		lock.append(refer)
