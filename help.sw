@@ -23,45 +23,24 @@ func noWarn<T>(_ opt:T?) -> T?
 {
 	return nil
 }
-func fromZero<T>() -> T
-{
-	return fromZero(1)[0]
-}
-func fromZero<T>(_ len:Int) -> [T]
-{
-	let siz = MemoryLayout<Pierce>.size
-	let ptr = UnsafeMutablePointer<Int8>.allocate(capacity:len*siz)
-	var count = 0
-	while (count < len*siz) {
-		ptr[count] = 0
-		count = count + 1
-	}
-	let res:[T] = fromRaw(ptr,len)
-	ptr.deallocate()
-	return res
-}
-func toList<T>(_ val:T, _ len:Int) -> [T]
-{
-	var vals:[T] = []
-	while (vals.count < len) {
-		vals.append(val)
-	}
-	return vals
-}
-func fromRaw<T>(_ raw:UnsafeRawPointer) -> T
-{
-	return fromRaw(raw,1)[0]
-}
-func fromRaw<T>(_ raw:UnsafeRawPointer, _ len:Int) -> [T]
+func fromRaw<T>(_ raw:UnsafeRawPointer, _ idx:Int, _ len:Int) -> [T]
 {
 	let siz = MemoryLayout<T>.size
-	var current = raw
+	var current = raw.advanced(by:idx*siz)
 	var vals:[T] = []
 	while (vals.count < len) {
 		current = current.advanced(by:siz)
 		vals.append(current.load(as:T.self))
 	}
 	return vals
+}
+func fromRaw<T>(_ raw:UnsafeRawPointer, _ idx:Int) -> T
+{
+	return fromRaw(raw,idx,1)[0]
+}
+func fromRaw<T>(_ raw:UnsafeRawPointer) -> T
+{
+	return fromRaw(raw,0,1)[0]
 }
 func fromPtr<T>(_ ptr:UnsafePointer<T>, _ idx:Int, _ len:Int) -> [T]
 {
@@ -70,6 +49,10 @@ func fromPtr<T>(_ ptr:UnsafePointer<T>, _ idx:Int, _ len:Int) -> [T]
 		vals.append(ptr[idx+vals.count])
 	}
 	return vals
+}
+func fromPtr<T>(_ ptr:UnsafePointer<T>, _ idx:Int) -> T
+{
+	return ptr[idx]
 }
 func fromPtr<T>(_ ptr:UnsafePointer<T>) -> T
 {

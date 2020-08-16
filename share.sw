@@ -60,9 +60,9 @@ struct Form
 struct Pierce
 {
 	var valid:Bool = false
-	var pad:(uint,uint,uint) = fromZero()
-	var point:share.Vector = fromZero()
-	var normal:share.Vector = fromZero()
+	var pad:(uint,uint,uint) = (0,0,0)
+	var point:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
+	var normal:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
 }
 class WindowDelegate : NSObject, NSWindowDelegate
 {
@@ -214,7 +214,7 @@ func setReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	var found:Pierce = Pierce()
 	var index = Int(-1)
-	let pierces:[Pierce] = fromRaw(buffer.contents(),size)
+	let pierces:[Pierce] = fromRaw(buffer.contents(),0,size)
 	for (pierce,object) in zip(pierces,0..<size) {
 		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
 			found = pierce
@@ -232,7 +232,7 @@ func setPierce() -> Int?
 	guard let client = getClient(share.Pierce) else {return nil}
 	let siz = Int(client.siz)
 	let zero = Pierce()
-	let vals = toList(zero,siz)
+	let vals = Swift.Array(repeating: zero, count: siz)
 	pierce.set(vals,0..<siz)
 	return siz
 }
@@ -244,13 +244,13 @@ func getRange() -> [share.Array]?
 {
 	guard let client = getClient(share.Range) else {return nil}
 	if (client.siz == 0) {return []}
-	return fromRaw(client.range,Int(client.siz))
+	return fromRaw(client.range,0,Int(client.siz))
 }
 func getActive() -> [share.Array]?
 {
 	guard let client = getClient(share.Active) else {return nil}
 	if (client.siz == 0) {return []}
-	return fromRaw(client.active,Int(client.siz))
+	return fromRaw(client.active,0,Int(client.siz))
 }
 func getClient(_ mem:share.Memory) -> share.Client?
 {
