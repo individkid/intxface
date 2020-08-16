@@ -25,30 +25,19 @@ func noWarn<T>(_ opt:T?) -> T?
 }
 func fromRaw<T>(_ raw:UnsafeRawPointer, _ idx:Int, _ len:Int) -> [T]
 {
-	let siz = MemoryLayout<T>.size
-	var current = raw.advanced(by:idx*siz)
-	var vals:[T] = []
-	while (vals.count < len) {
-		current = current.advanced(by:siz)
-		vals.append(current.load(as:T.self))
-	}
-	return vals
+	return Swift.Array(0..<len).map({(sub) in raw.advanced(by:(idx+sub)*MemoryLayout<T>.size).load(as:T.self)})
 }
 func fromRaw<T>(_ raw:UnsafeRawPointer, _ idx:Int) -> T
 {
-	return fromRaw(raw,idx,1)[0]
+	return raw.advanced(by:idx*MemoryLayout<T>.size).load(as:T.self)
 }
 func fromRaw<T>(_ raw:UnsafeRawPointer) -> T
 {
-	return fromRaw(raw,0,1)[0]
+	return raw.load(as:T.self)
 }
 func fromPtr<T>(_ ptr:UnsafePointer<T>, _ idx:Int, _ len:Int) -> [T]
 {
-	var vals:[T] = []
-	while (vals.count < len) {
-		vals.append(ptr[idx+vals.count])
-	}
-	return vals
+	return Swift.Array(0..<len).map({(sub) in ptr[idx+sub]})
 }
 func fromPtr<T>(_ ptr:UnsafePointer<T>, _ idx:Int) -> T
 {
@@ -71,10 +60,8 @@ func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 func toMutabls<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 {
 	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
-	var count = 0
-	for val in list {
-		ptr[count] = val
-		count = count + 1
+	for (val,idx) in zip(list,Swift.Array(0..<list.count)) {
+		ptr[idx] = val
 	}
 	fnc(ptr)
 	ptr.deallocate()
