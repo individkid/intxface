@@ -109,17 +109,16 @@ func planraInit()
 	if (true) {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
-	guard let desc = combine.currentRenderPassDescriptor else {
-		print("cannot make desc"); return}
-	guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {
+    guard let draw = layer.nextDrawable() else {
+    	print("cannot make draw"); return}
+	descriptor.colorAttachments[0].texture = draw.texture
+	guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {
 		print("cannot make encode"); return}
 	encode.setRenderPipelineState(hello)
 	encode.setDepthStencilState(depth)
 	encode.setVertexBuffer(pointz,offset:0,index:0)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
 	encode.endEncoding()
-    guard let draw = combine.currentDrawable else {
-    	print("cannot make draw"); return}
 	code.present(draw)
 	code.addScheduledHandler(retLock())
 	code.addCompletedHandler(retCount())

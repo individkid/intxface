@@ -19,18 +19,17 @@ import face
 import share
 import AppKit
 import Metal
-import MetalKit
 
 var device:MTLDevice!
-var combine:MTKView!
 var layer: CAMetalLayer!
 var view:NSView!
 var delegate:WindowDelegate!
 var window:NSWindow!
 var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
-var compute:MTLComputePipelineState!
+var descriptor:MTLRenderPassDescriptor!
 var depth:MTLDepthStencilState!
+var compute:MTLComputePipelineState!
 var threads:MTLSize!
 var drag:NSPoint!
 
@@ -364,7 +363,7 @@ func swiftClear(event:NSEvent) -> NSEvent?
 func swiftSize()
 {
 	let rect:CGRect = layer.frame
-	combine.frame = rect
+	// combine.frame = rect
 	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
 	let frame:CGRect = window.frame
 	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))
@@ -377,15 +376,6 @@ func swiftInit()
 	if let temp = MTLCreateSystemDefaultDevice() {
 		device = temp} else {print("cannot make device"); return}
 	let rect = NSMakeRect(0, 0, CGFloat(WINWIDE), CGFloat(WINHIGH))
-	if let temp = noWarn(MTKView(frame:rect,device:device)) {
-		combine = temp} else {print("cannot make combine"); return}
-	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
-	combine.isPaused = true
-	combine.enableSetNeedsDisplay = false
-	combine.clearColor = color
-	combine.colorPixelFormat = .bgra8Unorm
-	combine.depthStencilPixelFormat = .depth32Float
-	combine.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	if let temp = noWarn(CAMetalLayer()) {
 		layer = temp} else {print("cannot make layer"); return}
 	layer.device = device
@@ -395,7 +385,6 @@ func swiftInit()
 	if let temp = noWarn(NSView(frame:rect)) {
 		view = temp} else {print("cannot make view"); return}
 	view.layer = layer
-	view.addSubview(combine)
 	delegate = WindowDelegate()
 	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
@@ -422,14 +411,20 @@ func swiftInit()
 	pipe.depthAttachmentPixelFormat = .depth32Float
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
+	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
+	if let temp = noWarn(MTLRenderPassDescriptor()) {
+    	descriptor = temp} else {print("cannot make descriptor"); return}
+	descriptor.colorAttachments[0].loadAction = .clear
+	descriptor.colorAttachments[0].clearColor = color
+	descriptor.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
+    guard let desc = noWarn(MTLDepthStencilDescriptor()) else {
+    	print("cannot make desc"); return}
+    desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
+    desc.isDepthWriteEnabled = true
+    if let temp = device.makeDepthStencilState(descriptor: desc) {
+    	depth = temp} else {print("cannot make depth"); return}
 	if let temp = try? device.makeComputePipelineState(function:kernel_pierce) {
 		compute = temp} else {print("cannot make compute"); return;}
-    guard let stencil = noWarn(MTLDepthStencilDescriptor()) else {
-    	print("cannot make stencil"); return}
-    stencil.depthCompareFunction = .greater // left hand rule; z thumb to observer
-    stencil.isDepthWriteEnabled = true
-    if let temp = device.makeDepthStencilState(descriptor: stencil) {
-    	depth = temp} else {print("cannot make depth"); return}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
 	cb.warp = swiftWarp
@@ -511,10 +506,15 @@ func swiftDraw()
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		guard let range = getRange() else {cb.err(#file,#line,-1);return}
 		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
+	    guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
+		descriptor.colorAttachments[0].texture = draw.texture
+		if (range.count == 0) {
+			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
+			encode.endEncoding()
+		}
 		for array in range {
 			form.set(UInt32(array.tag),field)
-			guard let desc = combine.currentRenderPassDescriptor else {cb.err(#file,#line,-1);return}
-			guard let encode = code.makeRenderCommandEncoder(descriptor:desc) else {cb.err(#file,#line,-1);return}
+			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
 			encode.setRenderPipelineState(render)
 			encode.setDepthStencilState(depth)
 			encode.setVertexBuffer(triangle.get(),offset:0,index:0)
@@ -528,7 +528,6 @@ func swiftDraw()
 				vertexCount:Int(array.siz))
 			encode.endEncoding()
 		}
-	    guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
 		code.present(draw)
 		code.addScheduledHandler(retLock())
 		code.addCompletedHandler(retCount())
@@ -553,20 +552,21 @@ func swiftDraw()
 				nums.append(1)
 				pers.append(remainder)}
 			for (n,p) in zip(nums,pers) {
-			guard let encode = code.makeComputeCommandEncoder() else {cb.err(#file,#line,-1);return}
-			encode.setComputePipelineState(compute)
-			encode.setBuffer(triangle.get(),offset:0,index:0)
-			encode.setBuffer(corner.get(),offset:0,index:1)
-			encode.setBuffer(base.get(),offset:offset,index:2)
-			encode.setBuffer(object.get(),offset:0,index:3)
-			encode.setBuffer(form.get(),offset:0,index:4)
-			encode.setBuffer(pierce.get(),offset:0,index:5)
-			let num = MTLSize(width:n,height:1,depth:1)
-			let per = MTLSize(width:p,height:1,depth:1)
-			encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
-			encode.endEncoding()
-			offset += n*p*MemoryLayout<share.Vertex>.size
-		}}
+				guard let encode = code.makeComputeCommandEncoder() else {cb.err(#file,#line,-1);return}
+				encode.setComputePipelineState(compute)
+				encode.setBuffer(triangle.get(),offset:0,index:0)
+				encode.setBuffer(corner.get(),offset:0,index:1)
+				encode.setBuffer(base.get(),offset:offset,index:2)
+				encode.setBuffer(object.get(),offset:0,index:3)
+				encode.setBuffer(form.get(),offset:0,index:4)
+				encode.setBuffer(pierce.get(),offset:0,index:5)
+				let num = MTLSize(width:n,height:1,depth:1)
+				let per = MTLSize(width:p,height:1,depth:1)
+				encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
+				encode.endEncoding()
+				offset += n*p*MemoryLayout<share.Vertex>.size
+			}
+		}
 		code.addCompletedHandler(retReady(size))
 		code.addScheduledHandler(retLock())
 		code.addCompletedHandler(retCount())
