@@ -474,10 +474,9 @@ func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
 	let width = xdif*2
 	let height = ydif*2
 	let size = CGSize(width:width,height:height)
-	let frame = layer.frame
-	let xpos = (NSMinX(frame)+NSMaxX(frame))/2
-	let ypos = (NSMinY(frame)+NSMaxY(frame))/2
-	let rect = CGRect(x:Double(xpos)-xdif,y:Double(ypos)-ydif,width:width,height:height)
+	let xpos = xmid-xdif
+	let ypos = ymid-ydif
+	let rect = CGRect(x:xpos,y:ypos,width:width,height:height)
 	window.setFrame(rect,display:false)
 	layer.drawableSize = size
 	layer.frame = rect
