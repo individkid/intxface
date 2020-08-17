@@ -326,14 +326,29 @@ void shareRoll(double xoffset, double yoffset)
 	double diff = yoffset*LENGTH;
 	double xmax = render[1][0];
 	double xmin = 2*render[0][0]-render[1][0];
-	if (xmin-diff < 0.0) {offs = diff-xmin; diff = xmin;}
-	// TODO if xmax+diff > render[2][0]
+	if (xmax-xmin+diff*2 > render[2][0]) {
+	offs = render[2][0]/2-render[0][0]; diff = (render[2][0]-xmax+xmin)/2;}
+	if (xmin-diff < 0.0) {
+	offs = diff-xmin; diff = xmin;}
+	if (xmax+diff > render[2][0]) {
+	offs = diff-render[2][0]+xmax; diff = render[2][0]-xmax;}
 	render[0][0] += offs;
 	render[1][0] += diff;
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	writeRender();}
 	else if (user->click == Transform && user->roll == Height) {
-	// TODO
+	double offs = 0.0;
+	double diff = yoffset*LENGTH;
+	double ymax = render[1][1];
+	double ymin = 2*render[0][1]-render[1][1];
+	if (ymax-ymin+diff*2 > render[2][1]) {
+	offs = render[2][1]/2-render[0][1]; diff = (render[2][1]-ymax+ymin)/2;}
+	if (ymin-diff < 0.0) {
+	offs = diff-ymin; diff = ymin;}
+	if (ymax+diff > render[2][1]) {
+	offs = diff-render[2][1]+ymax; diff = render[2][1]-ymax;}
+	render[0][1] += offs;
+	render[1][1] += diff;
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	writeRender();}
 	else if (user->click == Transform) {
