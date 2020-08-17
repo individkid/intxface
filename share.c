@@ -37,7 +37,7 @@ float normat[16] = {0}; // staged-in Click; used-in Transform Compose
 float pievec[3]; // copied-in Pierce
 float norvec[3]; // copied-in Pierce
 int object = 0; // copied-in Pierce; used-in Move Roll Click
-float render[2][3]; // copied-in Size; copied-in Drag; altered-in Roll; used-in Render
+float render[3][3]; // copied-in Drag; altered-in Roll; used-in Render
 // Render used-in Size Drag Roll
 // Transform used-in Move and Roll
 // Compose used-in Move and Roll
@@ -191,24 +191,6 @@ void composeMatrix(float *result)
 	default: ERROR(cb.err,-1);}
 }
 
-void writeRender()
-{
-	enum Function function[2];
-	function[0] = Copy; function[1] = Draw;
-	struct Vector vector[2];
-	for (int i = 0; i < 3; i++) {
-	vector[0].val[i] = render[0][i];
-	vector[1].val[i] = render[1][i];}
-	struct Client client;
-	client.mem = Render;
-	client.len = 2;
-	client.fnc = function;
-	client.idx = 0;
-	client.siz = 1;
-	client.render = vector;
-	writeClient(&client,cb.tub);
-}
-
 enum Memory assignAffine(struct Client *client, struct Affine *affine)
 {
 	switch (cb.state[User]->user->matrix) {
@@ -292,16 +274,67 @@ void shareMove(double xpos, double ypos)
 	writeClient(&client,cb.tub);}
 }
 
+void writeRender()
+{
+	enum Function function[2];
+	function[0] = Copy; function[1] = Draw;
+	struct Vector vector[2];
+	for (int i = 0; i < 3; i++) {
+	vector[0].val[i] = render[0][i];
+	vector[1].val[i] = render[1][i];}
+	struct Client client;
+	client.mem = Render;
+	client.len = 2;
+	client.fnc = function;
+	client.idx = 0;
+	client.siz = 1;
+	client.render = vector;
+	writeClient(&client,cb.tub);
+}
+
+void shareSize(double width, double height)
+{
+	render[1][0] = width;
+	render[1][1] = height;
+	writeRender();
+}
+
+void shareDrag(double xpos, double ypos)
+{
+	render[0][0] = xpos+render[1][0]/2.0;
+	render[0][1] = ypos+render[1][1]/2.0;
+	writeRender();
+}
+
 void shareRoll(double xoffset, double yoffset)
 {
+	if (yoffset == 0.0) return;
 	offset += yoffset*ANGLE;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform && user->roll == Focal) {
-	if (render[0][2]+yoffset*LENGTH > WINDEEP) render[0][2] += yoffset*LENGTH;
+	if (render[0][2]+yoffset*LENGTH > render[1][2]*1.5)
+	render[0][2] += yoffset*LENGTH;
 	writeRender();}
 	else if (user->click == Transform && user->roll == Picture) {
-	if (render[1][2]+yoffset*LENGTH > WINDEEP) render[1][2] += yoffset*LENGTH;
+	if (render[1][2]+yoffset*LENGTH > render[0][2] &&
+	render[1][2]+yoffset*LENGTH*1.5 < render[0][2])
+	render[1][2] += yoffset*LENGTH;
+	writeRender();}
+	else if (user->click == Transform && user->roll == Width) {
+	double offs = 0.0;
+	double diff = yoffset*LENGTH;
+	double xmax = render[1][0];
+	double xmin = 2*render[0][0]-render[1][0];
+	if (xmin-diff < 0.0) {offs = diff-xmin; diff = xmin;}
+	// TODO if xmax+diff > render[2][0]
+	render[0][0] += offs;
+	render[1][0] += diff;
+	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
+	writeRender();}
+	else if (user->click == Transform && user->roll == Height) {
+	// TODO
+	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	writeRender();}
 	else if (user->click == Transform) {
 	struct Client client;
@@ -351,29 +384,20 @@ void shareClick(int isright)
 	writeClient(&client,cb.tub);
 }
 
-void shareSize(double width, double height)
-{
-	render[1][0] = width;
-	render[1][1] = height;
-	writeRender();
-}
-
-void shareDrag(double xpos, double ypos)
-{
-	render[0][0] = xpos+render[1][0]/2.0;
-	render[0][1] = ypos+render[1][1]/2.0;
-	writeRender();
-}
-
-void shareCurs(double xpos, double ypos, double width, double height)
+void shareCurs(double xpos, double ypos, double width, double height, double xmax, double ymax)
 {
 	struct Client client = {0};
 	enum Function function[1]; function[0] = Copy;
 	client.fnc = function; client.len = 1; client.siz = 2;
+	render[2][0] = xmax;
+	render[2][1] = ymax;
+	render[2][2] = 0.0;
 	render[1][0] = width;
 	render[1][1] = height;
+	render[1][2] = WINDEEP;
 	render[0][0] = xpos+render[1][0]/2.0;
 	render[0][1] = ypos+render[1][1]/2.0;
+	render[0][2] = 2*WINDEEP;
 	struct Vector vector[2] = {0};
 	for (int i = 0; i < 2; i++) {
 	for (int j = 0; j < 2; j++) {
@@ -500,16 +524,16 @@ void shareProc()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Rmw0): if (cb.esc) printf("Rmw0\n"); procRmw0(); break;
-	case (Rmw1): if (cb.esc) printf("Rmw1\n"); procRmw1(); break;
-	case (Rmw2): if (cb.esc) printf("Rmw2\n"); procRmw2(); break;
-	case (Copy): if (cb.esc) printf("Copy\n"); procCopy(cb.state); break;
-	case (Save): if (cb.esc) printf("Save\n"); procCopy(saved); break;
-	case (Dma0): if (cb.esc) printf("Dma0\n"); cb.dma(client->mem,client->idx,1); break;
-	case (Dma1): if (cb.esc) printf("Dma1\n"); procPierce(); break;
-	case (Dma2): if (cb.esc) printf("Dma2\n"); cb.dma(client->mem,client->idx,client->siz); break;
-	case (Draw): if (cb.esc) printf("Draw\n"); cb.draw(); break;
-	case (Port): if (cb.esc) printf("Port\n"); procMetric(); break;
+	case (Rmw0): if (cb.esc && 0) printf("Rmw0\n"); procRmw0(); break;
+	case (Rmw1): if (cb.esc && 0) printf("Rmw1\n"); procRmw1(); break;
+	case (Rmw2): if (cb.esc && 0) printf("Rmw2\n"); procRmw2(); break;
+	case (Copy): if (cb.esc && 0) printf("Copy\n"); procCopy(cb.state); break;
+	case (Save): if (cb.esc && 0) printf("Save\n"); procCopy(saved); break;
+	case (Dma0): if (cb.esc && 0) printf("Dma0\n"); cb.dma(client->mem,client->idx,1); break;
+	case (Dma1): if (cb.esc && 0) printf("Dma1\n"); procPierce(); break;
+	case (Dma2): if (cb.esc && 0) printf("Dma2\n"); cb.dma(client->mem,client->idx,client->siz); break;
+	case (Draw): if (cb.esc && 0) printf("Draw\n"); cb.draw(); break;
+	case (Port): if (cb.esc && 0) printf("Port\n"); procMetric(); break;
 	default: ERROR(cb.err,-1);}
 }
 
@@ -534,6 +558,11 @@ int nofalse()
 	return 0;
 }
 
+void nosize(double xmid, double ymid, double xmax, double ymax)
+{
+	printf("size %f %f %f %f\n",xmid,ymid,xmax,ymax);
+}
+
 void nowarp(double xpos, double ypos)
 {
 	printf("warp %f %f\n",xpos,ypos);
@@ -542,11 +571,6 @@ void nowarp(double xpos, double ypos)
 void nodma(enum Memory mem, int idx, int siz)
 {
 	printf("dma %d\n",mem);
-}
-
-void nosize(double width, double height)
-{
-	if (cb.esc == 1) printf("size %f %f\n",width,height);
 }
 
 void nodrag(double xpos, double ypos)
@@ -590,10 +614,10 @@ void shareInit()
 	cb.move = shareMove;
 	cb.roll = shareRoll;
 	cb.click = shareClick;
-	cb.size = shareSize;
 	cb.drag = shareDrag;
 	cb.curs = shareCurs;
 	cb.write = shareWrite;
+	cb.size = nosize;
 	cb.warp = nowarp;
 	cb.dma = nodma;
 	cb.draw = novoid;

@@ -26,11 +26,11 @@ struct Callback {
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
-	void (*size)(double width, double height);
 	void (*drag)(double xpos, double ypos);
-	void (*curs)(double xpos, double ypos, double width, double height);
+	void (*curs)(double xpos, double ypos, double width, double height, double xmax, double ymax);
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
 	// share to kvm; read from state; write to gpu
+	void (*size)(double xmid, double ymid, double xmax, double ymax);
 	void (*warp)(double xpos, double ypos);
 	void (*dma)(enum Memory mem, int idx, int siz);
 	void (*draw)();

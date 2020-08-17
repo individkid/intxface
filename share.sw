@@ -64,22 +64,6 @@ struct Pierce
 	var point:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
 	var normal:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
 }
-class WindowDelegate : NSObject, NSWindowDelegate
-{
-	func windowDidResize(_ notification: Notification)
-	{
-		swiftSize()
-	}
-	func windowShouldClose(_ sender: NSWindow) -> Bool
-	{
-		NSApp.stop(nil)
-		return true
-	}
-	func windowWillMove(_ notification: Notification)
-	{
-		if (drag == nil) {drag = getPoint()}
-	}
-}
 class Refer
 {
 	var lock:Int = 0
@@ -111,19 +95,23 @@ class Pend<T>
 		if (pend == nil) {
 			pend = device.makeBuffer(length:length)
 		}
-		let base:Int = range.lowerBound
-		let size:Int = range.upperBound-range.lowerBound
-		pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
+		if (pend != nil) {
+			let base:Int = range.lowerBound
+			let size:Int = range.upperBound-range.lowerBound
+			pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
+		}
 	}
 	func set(_ val: [T], _ index: Int)
 	{
 		let siz = MemoryLayout<T>.size
 		let base = siz*index
 		let limit = base+siz*val.count
-		let ptr = UnsafeMutablePointer<T>.allocate(capacity:siz*val.count)
-		for (count,elem) in zip(0..<val.count,val) {ptr[count] = elem}
-		set(UnsafeRawPointer(ptr),base..<limit)
-		ptr.deallocate()
+		if (val.count > 0) {
+			let ptr = UnsafeMutablePointer<T>.allocate(capacity:siz*val.count)
+			for (count,elem) in zip(0..<val.count,val) {ptr[count] = elem}
+			set(UnsafeRawPointer(ptr),base..<limit)
+			ptr.deallocate()
+		}
 	}
 	func set<S>(_ vals: [S], _ index: Int, _ field: Int)
 	{
@@ -173,30 +161,41 @@ class Pend<T>
 			last = pend
 			pend = nil
 		}
-		if (last == nil) {
-			refer = Refer()
-			last = device.makeBuffer(length:0)
+		if (last != nil) {
+			lock.append(refer)
+			refer.lock += 1
 		}
-		lock.append(refer)
-		refer.lock += 1
 		return last
 	}
 	func get(_ len:Int) -> MTLBuffer
 	{
 		let unit:Int = MemoryLayout<T>.size
-		let length:Int = len+(unit-len%unit)%unit;
+		let length:Int = len*unit
 		if (pend != nil && pend.length == length) {
-			refer = Refer()
 			last = pend
 			pend = nil
 		} else {
-			refer = Refer()
 			last = device.makeBuffer(length:length)
 			pend = nil
 		}
-		lock.append(refer)
-		refer.lock += 1
+		if (last != nil) {
+			refer = Refer()
+			lock.append(refer)
+			refer.lock += 1
+		}
 		return last
+	}
+}
+class WindowDelegate : NSObject, NSWindowDelegate
+{
+	func windowShouldClose(_ sender: NSWindow) -> Bool
+	{
+		NSApp.stop(nil)
+		return true
+	}
+	func windowWillMove(_ notification: Notification)
+	{
+		if (drag == nil) {drag = getPoint()}
 	}
 }
 func retLock() -> MTLCommandBufferHandler
@@ -207,6 +206,7 @@ func retLock() -> MTLCommandBufferHandler
 }
 func retReady(_ size: Int) -> MTLCommandBufferHandler
 {
+	if (size == 0) {return {(MTLCommandBuffer) in notReady()}}
 	let last = pierce.get()
 	return {(MTLCommandBuffer) in setReady(last,size)}
 }
@@ -223,6 +223,12 @@ func setReady(_ buffer:MTLBuffer, _ size:Int)
 	}
 	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
 }
+func notReady()
+{
+	let found:Pierce = Pierce()
+	let index = Int(-1)
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
+}
 func retCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; cb.wake()}
@@ -233,7 +239,7 @@ func setPierce() -> Int?
 	let siz = Int(client.siz)
 	let zero = Pierce()
 	let vals = Swift.Array(repeating: zero, count: siz)
-	pierce.set(vals,0..<siz)
+	pierce.set(vals,0)
 	return siz
 }
 func getMode() -> share.Mode?
@@ -348,6 +354,24 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 	// cb.move(Double(point.x),Double(point.y)) // TODO test
 	return event
 }
+func swiftDrag(event:NSEvent) -> NSEvent?
+{
+		// let size:CGSize = layer.drawableSize
+		// let rect:CGRect = layer.frame
+		// let frame:CGRect = window.frame
+		// let debug:NSPoint = NSEvent.mouseLocation
+	if (drag == nil) {return event}
+	var point = NSEvent.mouseLocation
+	point.x -= drag.x; point.y -= drag.y
+		// if (cb.esc > 0) {print("diff \(NSMinX(frame)-point.x),\(NSMinY(frame)-point.y)")}
+	cb.drag(Double(point.x),Double(point.y))
+	return event
+}
+func swiftClear(event:NSEvent) -> NSEvent?
+{
+	drag = nil
+	return event
+}
 func swiftCheck(event:NSEvent) -> NSEvent?
 {
 	if (cb.full() != 0) {
@@ -358,26 +382,6 @@ func swiftCheck(event:NSEvent) -> NSEvent?
 		cb.wake()
 	}
 	return nil
-}
-func swiftDrag(event:NSEvent) -> NSEvent?
-{
-	if (drag == nil) {return event}
-	var point = NSEvent.mouseLocation
-	point.x -= drag.x; point.y -= drag.y
-	cb.drag(Double(point.x),Double(point.y))
-	return event
-}
-func swiftClear(event:NSEvent) -> NSEvent?
-{
-	drag = nil
-	return event
-}
-func swiftSize()
-{
-	let rect:CGRect = layer.frame
-	cb.size(Double(NSMaxX(rect)),Double(NSMaxY(rect)))
-	let frame:CGRect = window.frame
-	cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)))
 }
 func swiftInit()
 {
@@ -395,10 +399,11 @@ func swiftInit()
 	layer.frame = rect
 	if let temp = noWarn(NSView(frame:rect)) {
 		view = temp} else {print("cannot make view"); return}
+	view.wantsLayer = true
 	view.layer = layer
 	if let temp = noWarn(WindowDelegate()) {
 		delegate = temp} else {print("cannot make delegate"); return}
-	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
+	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
 		window = temp} else {print("cannot make window"); return}
 	window.title = "plane"
@@ -428,7 +433,10 @@ func swiftInit()
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
 	descriptor.colorAttachments[0].clearColor = color
 	descriptor.colorAttachments[0].loadAction = .clear
+	descriptor.colorAttachments[0].storeAction = .store
 	descriptor.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
+	descriptor.depthAttachment.loadAction = .clear
+	descriptor.depthAttachment.storeAction = .dontCare
     guard let desc = noWarn(MTLDepthStencilDescriptor()) else {
     	print("cannot make desc"); return}
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
@@ -439,6 +447,7 @@ func swiftInit()
 		compute = temp} else {print("cannot make compute"); return;}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
+    cb.size = swiftSize
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
@@ -449,11 +458,35 @@ func swiftInit()
 	setEvent(.rightMouseDown,swiftRight)
 	setEvent(.mouseMoved,swiftMove)
 	setEvent(.scrollWheel,swiftRoll)
-	setEvent(.applicationDefined,swiftCheck)
 	setEvent(.leftMouseDragged,swiftDrag)
 	setEvent(.leftMouseUp,swiftClear)
+	setEvent(.applicationDefined,swiftCheck)
+	guard let size:NSRect = NSScreen.main?.frame else {
+		print("cannot make screen"); return}
 	cb.curs(Double(NSMinX(rect)),Double(NSMinY(rect)),
-		Double(NSMaxX(rect)),Double(NSMaxY(rect)))
+		Double(NSMaxX(rect)),Double(NSMaxY(rect)),
+		Double(NSMaxX(size)),Double(NSMaxY(size)))
+}
+func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
+{
+	let xdif = xmax-xmid
+	let ydif = ymax-ymid
+	let width = xdif*2
+	let height = ydif*2
+	let size = CGSize(width:width,height:height)
+	let frame = layer.frame
+	let xpos = (NSMinX(frame)+NSMaxX(frame))/2
+	let ypos = (NSMinY(frame)+NSMaxY(frame))/2
+	let rect = CGRect(x:Double(xpos)-xdif,y:Double(ypos)-ydif,width:width,height:height)
+	window.setFrame(rect,display:false)
+	layer.drawableSize = size
+	layer.frame = rect
+	view.frame = rect
+		// let size:CGSize = layer.drawableSize
+		// let rect:CGRect = layer.frame
+		// let wind:CGRect = window.frame
+		// let frame:NSRect = view.frame
+		// let screen:NSRect = NSScreen.main.frame
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -498,6 +531,16 @@ func swiftDraw()
 		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
 	    guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
 		descriptor.colorAttachments[0].texture = draw.texture
+		guard let text = noWarn(MTLTextureDescriptor()) else {
+			print("cannot make text"); return}
+		text.height = draw.texture.height
+		text.width = draw.texture.width
+		text.pixelFormat = .depth32Float
+		text.storageMode = .private
+		if (cb.esc > 0) {print("height \(text.height) width \(text.width)")}
+		guard let texture = device.makeTexture(descriptor:text) else {
+			print("cannot make texture"); return}
+		descriptor.depthAttachment.texture = texture
 		if (range.count == 0) {
 			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
 			encode.endEncoding()

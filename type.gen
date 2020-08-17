@@ -113,7 +113,9 @@ Roll = {
 	"Normal", -- translate with fixed normal to facet
 	"Balloon", -- scale with fixed pierce point
 	"Focal", -- adjust focal length
-	"Picture" -- adjust frustrum height
+	"Picture", -- adjust frustrum height
+	"Width", -- adjust window size
+	"Height", -- adjust window size
 }
 Shader = {
 	"Proximity",
