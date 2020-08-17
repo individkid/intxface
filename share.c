@@ -292,13 +292,6 @@ void writeRender()
 	writeClient(&client,cb.tub);
 }
 
-void shareSize(double width, double height)
-{
-	render[1][0] = width;
-	render[1][1] = height;
-	writeRender();
-}
-
 void shareDrag(double xpos, double ypos)
 {
 	render[0][0] = xpos+render[1][0]/2.0;
