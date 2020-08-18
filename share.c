@@ -364,6 +364,7 @@ void shareMove(double xpos, double ypos)
 
 void shareClick(int isright)
 {
+	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
@@ -371,7 +372,7 @@ void shareClick(int isright)
 	toggle = 0;
 	struct Client client;
 	struct Affine affine;
-	struct Mode user;
+	struct Mode user = *cb.state[User]->user;
 	enum Function function[2];
 	client.fnc = function;
 	client.fnc[0] = Save; client.fnc[1] = Port;
@@ -383,12 +384,13 @@ void shareClick(int isright)
 	if (user.click == Transform) {
 	if (isright) {
 	user.click = Suspend; user.shader = Track;} else {
+	printf("change click to Complete\n");
 	user.click = Complete; user.shader = Track;}}
-	if (user.click == Suspend) {
+	else if (user.click == Suspend) {
 	user.click = Transform; user.shader = Display;
 	if (isright)
 	cb.warp(vector[0],vector[1]);}
-	if (user.click == Complete) {
+	else if (user.click == Complete) {
 	if (!isright) {
 	user.click = Transform; user.shader = Display;}}
 	client.len = 1; client.siz = 1;
@@ -496,6 +498,7 @@ void procRmw2() // transition between move and roll
 	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
 	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
+	if (ENUM == User && ptr[User]->user) printf("click %d\n",ptr[User]->user->click); \
 	return;}
 void procCopy(struct Client **ptr)
 {
