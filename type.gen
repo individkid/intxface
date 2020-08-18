@@ -105,6 +105,7 @@ Move = {
 	"Rotate", -- rotate about fixed pierce point
 	"Slide", -- translate parallel to fixed facet
 	"Slate", -- translate parallel to picture plane
+	"Nomove",
 }
 Roll = {
 	"Cylinder", -- rotate with rotated fixed axis
@@ -116,6 +117,7 @@ Roll = {
 	"Picture", -- adjust frustrum height
 	"Width", -- adjust window size
 	"Height", -- adjust window size
+	"Noroll",
 }
 Shader = {
 	"Proximity",

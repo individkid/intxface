@@ -144,6 +144,9 @@ void transformMatrix(float *result)
 	float vec[3]; offsetVector(vec);
 	translateMatrix(result,vec);
 	break;}
+	case (Nomove): {
+	identmat(result,4);
+	break;}
 	default: ERROR(cb.err,-1);}
 }
 
@@ -186,6 +189,9 @@ void composeMatrix(float *result)
 	identmat(result,4);
 	break;}
 	case (Picture): {
+	identmat(result,4);
+	break;}
+	case (Noroll): {
 	identmat(result,4);
 	break;}
 	default: ERROR(cb.err,-1);}
@@ -245,6 +251,88 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 	writeClient(&client,cb.tub);
 }
 
+void shareRender()
+{
+	enum Function function[2];
+	function[0] = Copy; function[1] = Draw;
+	struct Vector vector[2];
+	for (int i = 0; i < 3; i++) {
+	vector[0].val[i] = render[0][i];
+	vector[1].val[i] = render[1][i];}
+	struct Client client;
+	client.mem = Render;
+	client.len = 2;
+	client.fnc = function;
+	client.idx = 0;
+	client.siz = 2;
+	client.render = vector;
+	writeClient(&client,cb.tub);
+}
+
+void shareSize(double diff, int dim, double lim)
+{
+	double max = render[1][dim];
+	double min = render[0][dim]-(render[1][dim]-render[0][dim]);
+	max += diff; min -= diff;
+	if (max-min < lim) return;
+	if (max > render[2][dim] && min < 0.0) {
+	render[0][dim] = render[2][dim]/2.0;
+	render[1][dim] = render[2][dim];}
+	else if (max > render[2][dim]) {
+	render[0][dim] = (min+render[2][dim])/2.0;
+	render[1][dim] = render[2][dim];}
+	else if (min < 0.0) {
+	render[0][dim] = max/2.0;
+	render[1][dim] = max;}
+	else {render[1][dim] = max;}
+	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
+	shareRender();
+}
+
+void shareDrag(double xpos, double ypos)
+{
+	float xdif = render[1][0]-render[0][0];
+	float ydif = render[1][1]-render[0][1];
+	render[0][0] = xpos+xdif;
+	render[0][1] = ypos+ydif;
+	render[1][0] = xpos+xdif*2.0;
+	render[1][1] = ypos+ydif*2.0;
+	shareRender();
+}
+
+void shareRoll(double xoffset, double yoffset)
+{
+	if (yoffset == 0.0) return;
+	offset += yoffset*ANGLE;
+	if (cb.state[User] == 0) ERROR(cb.err,-1);
+	struct Mode *user = cb.state[User]->user;
+	if (user->click == Transform && user->roll == Focal) {
+	if (render[0][2]+yoffset*LENGTH > render[1][2]+MINDEEP)
+	render[0][2] += yoffset*LENGTH;
+	shareRender();}
+	else if (user->click == Transform && user->roll == Picture) {
+	if (render[0][2] > render[1][2]+yoffset*LENGTH+MINDEEP)
+	render[1][2] += yoffset*LENGTH;
+	shareRender();}
+	else if (user->click == Transform && user->roll == Width) {
+	shareSize(yoffset*LENGTH,0,MINWIDE);}
+	else if (user->click == Transform && user->roll == Height) {
+	shareSize(yoffset*LENGTH,1,MINHIGH);}
+	else if (user->click == Transform) {
+	struct Client client;
+	struct Affine affine[2];
+	enum Function function[3];
+	enum Function rmw = (toggle ? Rmw0 : Rmw2);
+	int size = (toggle ? 1 : 2); toggle = 1;
+	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
+	copymat(matrix,&affine[1].val[0][0],4);}
+	composeMatrix(&affine[0].val[0][0]);
+	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
+	client.mem = assignAffine(&client,&affine[0]);
+	client.fnc = function; client.len = 3; client.siz = size;
+	writeClient(&client,cb.tub);}
+}
+
 void shareMove(double xpos, double ypos)
 {
 	xmove = xpos; ymove = ypos;
@@ -271,91 +359,6 @@ void shareMove(double xpos, double ypos)
 	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
 	client.pierce = vector; client.idx = 0; client.mem = Pierce;
 	client.fnc = function; client.len = 2; client.siz = 2;
-	writeClient(&client,cb.tub);}
-}
-
-void writeRender()
-{
-	enum Function function[2];
-	function[0] = Copy; function[1] = Draw;
-	struct Vector vector[2];
-	for (int i = 0; i < 3; i++) {
-	vector[0].val[i] = render[0][i];
-	vector[1].val[i] = render[1][i];}
-	struct Client client;
-	client.mem = Render;
-	client.len = 2;
-	client.fnc = function;
-	client.idx = 0;
-	client.siz = 1;
-	client.render = vector;
-	writeClient(&client,cb.tub);
-}
-
-void shareDrag(double xpos, double ypos)
-{
-	render[0][0] = xpos+render[1][0]/2.0;
-	render[0][1] = ypos+render[1][1]/2.0;
-	writeRender();
-}
-
-void shareRoll(double xoffset, double yoffset)
-{
-	if (yoffset == 0.0) return;
-	offset += yoffset*ANGLE;
-	if (cb.state[User] == 0) ERROR(cb.err,-1);
-	struct Mode *user = cb.state[User]->user;
-	if (user->click == Transform && user->roll == Focal) {
-	if (render[0][2]+yoffset*LENGTH > render[1][2]*1.5)
-	render[0][2] += yoffset*LENGTH;
-	writeRender();}
-	else if (user->click == Transform && user->roll == Picture) {
-	if (render[1][2]+yoffset*LENGTH > render[0][2] &&
-	render[1][2]+yoffset*LENGTH*1.5 < render[0][2])
-	render[1][2] += yoffset*LENGTH;
-	writeRender();}
-	else if (user->click == Transform && user->roll == Width) {
-	double offs = 0.0;
-	double diff = yoffset*LENGTH;
-	double xmax = render[1][0];
-	double xmin = 2*render[0][0]-render[1][0];
-	if (xmax-xmin+diff*2 > render[2][0]) {
-	offs = render[2][0]/2-render[0][0]; diff = (render[2][0]-xmax+xmin)/2;}
-	if (xmin-diff < 0.0) {
-	offs = diff-xmin; diff = xmin;}
-	if (xmax+diff > render[2][0]) {
-	offs = diff-render[2][0]+xmax; diff = render[2][0]-xmax;}
-	render[0][0] += offs;
-	render[1][0] += diff;
-	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
-	writeRender();}
-	else if (user->click == Transform && user->roll == Height) {
-	double offs = 0.0;
-	double diff = yoffset*LENGTH;
-	double ymax = render[1][1];
-	double ymin = 2*render[0][1]-render[1][1];
-	if (ymax-ymin+diff*2 > render[2][1]) {
-	offs = render[2][1]/2-render[0][1]; diff = (render[2][1]-ymax+ymin)/2;}
-	if (ymin-diff < 0.0) {
-	offs = diff-ymin; diff = ymin;}
-	if (ymax+diff > render[2][1]) {
-	offs = diff-render[2][1]+ymax; diff = render[2][1]-ymax;}
-	render[0][1] += offs;
-	render[1][1] += diff;
-	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
-	writeRender();}
-	else if (user->click == Transform) {
-	struct Client client;
-	struct Affine affine[2];
-	enum Function function[3];
-	enum Function rmw = (toggle ? Rmw0 : Rmw2);
-	int size = (toggle ? 1 : 2); toggle = 1;
-	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
-	copymat(matrix,&affine[1].val[0][0],4);}
-	composeMatrix(&affine[0].val[0][0]);
-	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
-	client.mem = assignAffine(&client,&affine[0]);
-	client.fnc = function; client.len = 3; client.siz = size;
 	writeClient(&client,cb.tub);}
 }
 
@@ -397,15 +400,17 @@ void shareCurs(double xpos, double ypos, double width, double height, double xma
 	struct Client client = {0};
 	enum Function function[1]; function[0] = Copy;
 	client.fnc = function; client.len = 1; client.siz = 2;
+	double xhalf = width/2.0;
+	double yhalf = height/2.0;
 	render[2][0] = xmax;
 	render[2][1] = ymax;
 	render[2][2] = 0.0;
-	render[1][0] = width;
-	render[1][1] = height;
-	render[1][2] = WINDEEP;
-	render[0][0] = xpos+render[1][0]/2.0;
-	render[0][1] = ypos+render[1][1]/2.0;
+	render[0][0] = xpos+xhalf;
+	render[0][1] = ypos+yhalf;
 	render[0][2] = 2*WINDEEP;
+	render[1][0] = xpos+width;
+	render[1][1] = ypos+height;
+	render[1][2] = WINDEEP;
 	struct Vector vector[2] = {0};
 	for (int i = 0; i < 2; i++) {
 	for (int j = 0; j < 2; j++) {
@@ -655,7 +660,7 @@ void shareInit()
     for (client.mem = 0; client.mem < Memorys; client.mem++) {
 	writeClient(&client,cb.tub);}
     struct Mode mode = {0}; mode.matrix = Global; mode.shader = Track;
-    mode.click = Complete; mode.move = Rotate; mode.roll = Cylinder;
+    mode.click = Complete; mode.move = Nomove; mode.roll = Height;
     client.user = &mode; client.mem = User; client.siz = 1;
 	writeClient(&client,cb.tub);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
@@ -699,6 +704,7 @@ void threadInit()
 
 void threadDone()
 {
+	while (shareRead());
 	writeInt(1,cb.zub);
 	if (pthread_join(pthread,0) != 0) ERROR(cb.err,-1);
 	if (pthread_mutex_destroy(&mutex) != 0) ERROR(cb.err,-1);

@@ -32,6 +32,7 @@ var depth:MTLDepthStencilState!
 var compute:MTLComputePipelineState!
 var threads:MTLSize!
 var drag:NSPoint!
+var extra:NSSize!
 
 var triangle = Pend<share.Facet>()
 var corner = Pend<share.Vertex>()
@@ -356,15 +357,9 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 }
 func swiftDrag(event:NSEvent) -> NSEvent?
 {
-		// let size:CGSize = layer.drawableSize
-		// let rect:CGRect = layer.frame
-		// let frame:CGRect = window.frame
-		// let debug:NSPoint = NSEvent.mouseLocation
 	if (drag == nil) {return event}
-	var point = NSEvent.mouseLocation
-	point.x -= drag.x; point.y -= drag.y
-		// if (cb.esc > 0) {print("diff \(NSMinX(frame)-point.x),\(NSMinY(frame)-point.y)")}
-	cb.drag(Double(point.x),Double(point.y))
+	let frame:CGRect = window.frame
+	cb.drag(Double(frame.minX),Double(frame.minY))
 	return event
 }
 func swiftClear(event:NSEvent) -> NSEvent?
@@ -390,7 +385,7 @@ func swiftInit()
 	NSApp.activate(ignoringOtherApps: true)
 	if let temp = MTLCreateSystemDefaultDevice() {
 		device = temp} else {print("cannot make device"); return}
-	let rect = NSMakeRect(0, 0, CGFloat(WINWIDE), CGFloat(WINHIGH))
+	let rect = NSMakeRect(0.0, 0.0, CGFloat(WINWIDE), CGFloat(WINHIGH))
 	if let temp = noWarn(CAMetalLayer()) {
 		layer = temp} else {print("cannot make layer"); return}
 	layer.device = device
@@ -461,31 +456,30 @@ func swiftInit()
 	setEvent(.leftMouseDragged,swiftDrag)
 	setEvent(.leftMouseUp,swiftClear)
 	setEvent(.applicationDefined,swiftCheck)
-	guard let size:NSRect = NSScreen.main?.frame else {
+	guard let screen:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
-	cb.curs(Double(NSMinX(rect)),Double(NSMinY(rect)),
-		Double(NSMaxX(rect)),Double(NSMaxY(rect)),
-		Double(NSMaxX(size)),Double(NSMaxY(size)))
+	let wind = window.contentRect(forFrameRect:window.frame)
+	cb.curs(Double(NSMinX(wind)),Double(NSMinY(wind)),
+		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
+		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
 }
 func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
 {
 	let xdif = xmax-xmid
 	let ydif = ymax-ymid
-	let width = xdif*2
-	let height = ydif*2
-	let size = CGSize(width:width,height:height)
-	let xpos = xmid-xdif
-	let ypos = ymid-ydif
-	let rect = CGRect(x:xpos,y:ypos,width:width,height:height)
-	window.setFrame(rect,display:false)
+	let xmin = xmid-xdif
+	let ymin = ymid-ydif
+	let newer = NSRect(x:xmin,y:ymin,width:xmax-xmin,height:ymax-ymin)
+	let newra = window.frameRect(forContentRect:newer)
+	window.setFrame(newra,display:true)
+	let size = CGSize(width:xmax-xmin,height:ymax-ymin)
 	layer.drawableSize = size
-	layer.frame = rect
-	view.frame = rect
-		// let size:CGSize = layer.drawableSize
-		// let rect:CGRect = layer.frame
-		// let wind:CGRect = window.frame
-		// let frame:NSRect = view.frame
-		// let screen:NSRect = NSScreen.main.frame
+	guard let screen:NSRect = NSScreen.main?.frame else {
+		print("cannot make screen"); return}
+	let wind = window.contentRect(forFrameRect:window.frame)
+	cb.curs(Double(NSMinX(wind)),Double(NSMinY(wind)),
+		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
+		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
