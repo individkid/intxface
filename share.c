@@ -243,15 +243,15 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 
 void shareRender()
 {
-	enum Function function[2];
-	function[0] = Copy; function[1] = Draw;
+	enum Function function[3];
+	function[0] = Copy; function[1] = Dma0; function[2] = Draw;
 	struct Vector vector[2];
 	for (int i = 0; i < 3; i++) {
 	vector[0].val[i] = render[0][i];
 	vector[1].val[i] = render[1][i];}
 	struct Client client;
 	client.mem = Render;
-	client.len = 2;
+	client.len = 3;
 	client.fnc = function;
 	client.idx = 0;
 	client.siz = 2;
@@ -259,9 +259,8 @@ void shareRender()
 	writeClient(&client,cb.tub);
 }
 
-void shareSize(double inc, double dec, int dim, double lim, double pos)
+/*void shareSize(double inc, double dec, int dim, double lim, double pos)
 {
-	// double ave = (inc+dec)/2.0;
 	double max = render[1][dim];
 	double mid = render[0][dim];
 	double dif = max-mid;
@@ -278,16 +277,16 @@ void shareSize(double inc, double dec, int dim, double lim, double pos)
 	double ave = (inc+dec)/2.0;
 	render[0][dim] += ave;
 	render[1][dim] += inc;
-}
+}*/
 
-void shareDrag(double xpos, double ypos)
+void shareDrag(double xpos, double ypos, double width, double height)
 {
-	float xdif = render[1][0]-render[0][0];
-	float ydif = render[1][1]-render[0][1];
-	render[0][0] = xpos+xdif;
-	render[0][1] = ypos+ydif;
-	render[1][0] = xpos+xdif*2.0;
-	render[1][1] = ypos+ydif*2.0;
+	double xhalf = width/2.0;
+	double yhalf = height/2.0;
+	render[0][0] = xpos+xhalf;
+	render[0][1] = ypos+yhalf;
+	render[1][0] = xpos+width;
+	render[1][1] = ypos+height;
 	shareRender();
 }
 
@@ -306,7 +305,7 @@ void shareRoll(double xoffset, double yoffset)
 	if (render[0][2] > render[1][2]+dif+MINDEEP)
 	render[1][2] += dif;
 	shareRender();}
-	else if (user->click == Transform && user->roll == Width) {
+	/*else if (user->click == Transform && user->roll == Width) {
 	shareSize(dif,-dif,0,MINWIDE,cb.xpos());
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
@@ -318,7 +317,7 @@ void shareRoll(double xoffset, double yoffset)
 	shareSize(dif,-dif,0,MINWIDE,cb.xpos());
 	shareSize(dif,-dif,1,MINHIGH,cb.ypos());
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
-	shareRender();}
+	shareRender();}*/
 	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -339,14 +338,14 @@ void shareMove(double xpos, double ypos)
 	xmove = xpos; ymove = ypos;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
-	if (user->click == Transform && user->move == Look) {
+	/*if (user->click == Transform && user->move == Look) {
 	double xdif = cb.xpos()-screen[0]; screen[0] = cb.xpos();
 	double ydif = cb.ypos()-screen[1]; screen[1] = cb.ypos();
 	shareSize(xdif,xdif,0,MINWIDE,cb.xpos());
 	shareSize(ydif,ydif,1,MINHIGH,cb.ypos());
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
-	else if (user->click == Transform) {
+	else */if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
 	enum Function function[3];
@@ -359,14 +358,14 @@ void shareMove(double xpos, double ypos)
 	client.fnc = function; client.len = 3; client.siz = size;
 	writeClient(&client,cb.tub);} else {
 	struct Client client;
-	enum Function function[2];
-	function[0] = Copy; function[1] = Draw;
+	enum Function function[3];
+	function[0] = Copy; function[1] = Dma0; function[2] = Draw;
 	struct Vector vector[2];
 	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
 	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
 	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
 	client.pierce = vector; client.idx = 0; client.mem = Pierce;
-	client.fnc = function; client.len = 2; client.siz = 2;
+	client.fnc = function; client.len = 3; client.siz = 2;
 	writeClient(&client,cb.tub);}
 }
 
@@ -653,7 +652,7 @@ void shareInit()
 	cb.mask = nomask;
 	cb.xpos = nopos;
 	cb.ypos = nopos;
-	cb.size = nosize;
+	// cb.size = nosize;
 	cb.warp = nowarp;
 	cb.dma = nodma;
 	cb.draw = novoid;
@@ -683,7 +682,7 @@ void shareInit()
     for (client.mem = 0; client.mem < Memorys; client.mem++) {
 	writeClient(&client,cb.tub);}
     struct Mode mode = {0}; mode.matrix = Global; mode.shader = Track;
-    mode.click = Complete; mode.move = Look; mode.roll = Both;
+    mode.click = Complete; mode.move = Moves; mode.roll = Rolls;
     client.user = &mode; client.mem = User; client.siz = 1;
 	writeClient(&client,cb.tub);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);

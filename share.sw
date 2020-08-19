@@ -189,6 +189,8 @@ class Pend<T>
 }
 class WindowDelegate : NSObject, NSWindowDelegate
 {
+	init(_ wind:NSWindow) {window = wind}
+	var window:NSWindow
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
 		NSApp.stop(nil)
@@ -205,6 +207,32 @@ class WindowDelegate : NSObject, NSWindowDelegate
 	func windowWillExitFullScreen(_ notification: Notification)
 	{
 		mask &= ~1
+	}
+	func windowDidResize(_ notification: Notification)
+	{
+		let rect = window.contentRect(forFrameRect:window.frame)
+		cb.drag(Double(rect.minX),Double(rect.minY),
+		Double(rect.width),Double(rect.height))
+		let size = CGSize(width:rect.width,height:rect.height)
+		layer.drawableSize = size
+		guard let text = noWarn(MTLTextureDescriptor()) else {
+			print("cannot make text"); return}
+		text.height = Int(rect.height)
+		text.width = Int(rect.width)
+		// print("didResize width(\(rect.width)) height(\(rect.height))")
+		text.pixelFormat = .depth32Float
+		text.storageMode = .private
+		guard let texture = device.makeTexture(descriptor:text) else {
+			print("cannot make texture"); return}
+		descriptor.depthAttachment.texture = texture
+		while (swiftCheck()) {}
+	}
+	func windowDidMove(_ notification: Notification)
+	{
+		let rect = window.contentRect(forFrameRect:window.frame)
+		cb.drag(Double(rect.minX),Double(rect.minY),
+		Double(rect.width),Double(rect.height))
+		// print("didMove width(\(rect.width)) height(\(rect.height))")
 	}
 }
 func retLock() -> MTLCommandBufferHandler
@@ -366,8 +394,10 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 func swiftDrag(event:NSEvent) -> NSEvent?
 {
 	if (drag == nil) {return event}
-	let frame:CGRect = window.frame
-	cb.drag(Double(frame.minX),Double(frame.minY))
+	// let frame:CGRect = window.frame
+	// cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)),
+	// Double(NSMaxX(frame)-NSMinX(frame)),
+	// Double(NSMaxY(frame)-NSMinY(frame)))
 	return event
 }
 func swiftClear(event:NSEvent) -> NSEvent?
@@ -375,15 +405,21 @@ func swiftClear(event:NSEvent) -> NSEvent?
 	drag = nil
 	return event
 }
-func swiftCheck(event:NSEvent) -> NSEvent?
+func swiftCheck() -> Bool
 {
 	if (cb.full() != 0) {
-		return nil
+		return true
 	}
 	if (cb.read() != 0) {
 		cb.proc()
 		cb.wake()
+		return true
 	}
+	return false
+}
+func swiftEvent(event:NSEvent) -> NSEvent?
+{
+	let _ = swiftCheck()
 	return nil
 }
 func swiftInit()
@@ -404,14 +440,14 @@ func swiftInit()
 		view = temp} else {print("cannot make view"); return}
 	view.wantsLayer = true
 	view.layer = layer
-	if let temp = noWarn(WindowDelegate()) {
-		delegate = temp} else {print("cannot make delegate"); return}
 	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
 		window = temp} else {print("cannot make window"); return}
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
+	if let temp = noWarn(WindowDelegate(window)) {
+		delegate = temp} else {print("cannot make delegate"); return}
 	window.delegate = delegate
 	if let temp = device.makeCommandQueue() {
 		queue = temp} else {print("cannot make queue"); return}
@@ -453,7 +489,7 @@ func swiftInit()
     cb.mask = swiftMask
     cb.xpos = swiftXpos
     cb.ypos = swiftYpos
-    cb.size = swiftSize
+    // cb.size = swiftSize
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
@@ -466,7 +502,7 @@ func swiftInit()
 	setEvent(.scrollWheel,swiftRoll)
 	setEvent(.leftMouseDragged,swiftDrag)
 	setEvent(.leftMouseUp,swiftClear)
-	setEvent(.applicationDefined,swiftCheck)
+	setEvent(.applicationDefined,swiftEvent)
 	guard let screen:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
 	let wind = window.contentRect(forFrameRect:window.frame)
@@ -488,8 +524,9 @@ func swiftYpos() -> Double
 	let point = NSEvent.mouseLocation
 	return Double(point.y)
 }
-func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
+/*func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
 {
+	print("swiftSize")
 	let xdif = xmax-xmid
 	let ydif = ymax-ymid
 	let xmin = xmid-xdif
@@ -499,7 +536,7 @@ func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
 	window.setFrame(newra,display:true)
 	let size = CGSize(width:xmax-xmin,height:ymax-ymin)
 	layer.drawableSize = size
-}
+}*/
 func swiftWarp(xpos:Double, ypos:Double)
 {
 	let point = getPoint()
@@ -523,6 +560,7 @@ func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 	case (share.Feature):
 	form.set(fromPtr(client.feature),\Form.feature)
 	case (share.Render):
+	// print("swiftDma width(\(fromPtr(client.render,1).val.0-fromPtr(client.render,0).val.0))) height(\(fromPtr(client.render,1).val.1-fromPtr(client.render,0).val.1)))")
 	form.set(fromPtr(client.render,0),\Form.feather)
 	form.set(fromPtr(client.render,1),\Form.arrow)
 	case (share.Pierce):
@@ -542,16 +580,8 @@ func swiftDraw()
 		guard let range = getRange() else {cb.err(#file,#line,-1);return}
 		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
 	    guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
+		// print("swiftDraw width(\(draw.texture.width)) height(\(draw.texture.height))")
 		descriptor.colorAttachments[0].texture = draw.texture
-		guard let text = noWarn(MTLTextureDescriptor()) else {
-			print("cannot make text"); return}
-		text.height = draw.texture.height
-		text.width = draw.texture.width
-		text.pixelFormat = .depth32Float
-		text.storageMode = .private
-		guard let texture = device.makeTexture(descriptor:text) else {
-			print("cannot make texture"); return}
-		descriptor.depthAttachment.texture = texture
 		if (range.count == 0) {
 			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
 			encode.endEncoding()
