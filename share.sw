@@ -442,6 +442,8 @@ func swiftInit()
 		compute = temp} else {print("cannot make compute"); return;}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
+    cb.xpos = swiftXpos
+    cb.ypos = swiftYpos
     cb.size = swiftSize
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
@@ -463,6 +465,16 @@ func swiftInit()
 		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
 		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
 }
+func swiftXpos() -> Double
+{
+	let point = NSEvent.mouseLocation
+	return Double(point.x)
+}
+func swiftYpos() -> Double
+{
+	let point = NSEvent.mouseLocation
+	return Double(point.y)
+}
 func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
 {
 	let xdif = xmax-xmid
@@ -474,12 +486,6 @@ func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
 	window.setFrame(newra,display:true)
 	let size = CGSize(width:xmax-xmin,height:ymax-ymin)
 	layer.drawableSize = size
-	guard let screen:NSRect = NSScreen.main?.frame else {
-		print("cannot make screen"); return}
-	let wind = window.contentRect(forFrameRect:window.frame)
-	cb.curs(Double(NSMinX(wind)),Double(NSMinY(wind)),
-		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
-		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -530,7 +536,6 @@ func swiftDraw()
 		text.width = draw.texture.width
 		text.pixelFormat = .depth32Float
 		text.storageMode = .private
-		if (cb.esc > 0) {print("height \(text.height) width \(text.width)")}
 		guard let texture = device.makeTexture(descriptor:text) else {
 			print("cannot make texture"); return}
 		descriptor.depthAttachment.texture = texture

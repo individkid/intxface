@@ -30,6 +30,7 @@ int toggle = 0;
 float xmove = 0.0;
 float ymove = 0.0;
 float vector[3] = {0};
+float screen[2] = {0};
 float offset = 0.0;
 float matrix[16] = {0};
 float piemat[16] = {0};
@@ -258,28 +259,27 @@ void shareRender()
 	writeClient(&client,cb.tub);
 }
 
-void shareLook(double inc, double dec, int dim, double lim)
+void shareSize(double inc, double dec, int dim, double lim)
 {
-	double ave = (inc+dec)/2.0;
-	vector[dim] += ave;
+	// double ave = (inc+dec)/2.0;
 	double max = render[1][dim];
 	double mid = render[0][dim];
 	double dif = max-mid;
 	double min = mid-dif;
-	// printf("dim(%d) min(%f) max(%f) mid(%f) inc(%f) dec(%f) ave(%f)\n",dim,min,max,mid,inc,dec,ave);
-	max += inc; min += dec; mid += ave;
-	if (max-min < lim) return;
-	if (max > render[2][dim] && min < 0.0) {
-	render[0][dim] = render[2][dim]/2.0;
-	render[1][dim] = render[2][dim];}
-	else if (max > render[2][dim]) {
-	render[0][dim] = (min+render[2][dim])/2.0;
-	render[1][dim] = render[2][dim];}
-	else if (min < 0.0) {
-	render[0][dim] = max/2.0;
-	render[1][dim] = max;} else {
-	render[0][dim] = mid;
-	render[1][dim] = max;}
+	// max += inc; min += dec; mid += ave;
+	if ((max+inc)-(min+dec) < lim) return;
+	if ((max+inc) > render[2][dim] && (min+dec) < 0.0) {
+	inc = render[2][dim]-max; dec = -min;}
+	// max = render[2][dim]; min = 0.0; mid = (min+max)/2.0;}
+	else if ((max+inc) > render[2][dim]) {
+	inc = render[2][dim]-max;}
+	// max = render[2][dim]; mid = (min+max)/2.0;}
+	else if ((min+dec) < 0.0) {
+	dec = -min;}
+	// min = 0.0; mid = (min+max)/2.0;}
+	double ave = (inc+dec)/2.0;
+	render[0][dim] += ave;
+	render[1][dim] += inc;
 }
 
 void shareDrag(double xpos, double ypos)
@@ -309,16 +309,16 @@ void shareRoll(double xoffset, double yoffset)
 	render[1][2] += dif;
 	shareRender();}
 	else if (user->click == Transform && user->roll == Width) {
-	shareLook(dif,-dif,0,MINWIDE);
+	shareSize(dif,-dif,0,MINWIDE);
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
 	else if (user->click == Transform && user->roll == Height) {
-	shareLook(dif,-dif,1,MINHIGH);
+	shareSize(dif,-dif,1,MINHIGH);
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
 	else if (user->click == Transform && user->roll == Both) {
-	shareLook(dif,-dif,0,MINWIDE);
-	shareLook(dif,-dif,1,MINHIGH);
+	shareSize(dif,-dif,0,MINWIDE);
+	shareSize(dif,-dif,1,MINHIGH);
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
 	else if (user->click == Transform) {
@@ -342,15 +342,12 @@ void shareMove(double xpos, double ypos)
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform && user->move == Look) {
-	float xdif = xpos-vector[0];
-	float ydif = ypos-vector[1];
-	printf("dif(%f,%f) vector(%f,%f)\n",xdif,ydif,vector[0],vector[1]);
-	// shareLook(xdif,xdif,0,MINWIDE);
-	// shareLook(ydif,ydif,1,MINHIGH);
-	// cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
-	// cb.warp(vector[0],vector[1]);
-	// shareRender();}
-	}
+	double xdif = cb.xpos()-screen[0]; screen[0] = cb.xpos();
+	double ydif = cb.ypos()-screen[1]; screen[1] = cb.ypos();
+	shareSize(xdif,xdif,0,MINWIDE);
+	shareSize(ydif,ydif,1,MINHIGH);
+	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
+	shareRender();}
 	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -378,7 +375,8 @@ void shareMove(double xpos, double ypos)
 void shareClick(int isright)
 {
 	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
-	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
+	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0;
+	offset = 0.0; screen[0] = cb.xpos(); screen[1] = cb.ypos();
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
@@ -397,7 +395,6 @@ void shareClick(int isright)
 	if (user.click == Transform) {
 	if (isright) {
 	user.click = Suspend; user.shader = Track;} else {
-	printf("change click to Complete\n");
 	user.click = Complete; user.shader = Track;}}
 	else if (user.click == Suspend) {
 	user.click = Transform; user.shader = Display;
@@ -511,7 +508,6 @@ void procRmw2() // transition between move and roll
 	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
 	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
-	if (ENUM == User && ptr[User]->user) printf("click %d\n",ptr[User]->user->click); \
 	return;}
 void procCopy(struct Client **ptr)
 {
@@ -676,7 +672,7 @@ void shareInit()
     for (client.mem = 0; client.mem < Memorys; client.mem++) {
 	writeClient(&client,cb.tub);}
     struct Mode mode = {0}; mode.matrix = Global; mode.shader = Track;
-    mode.click = Complete; mode.move = Moves; mode.roll = Both;
+    mode.click = Complete; mode.move = Look; mode.roll = Both;
     client.user = &mode; client.mem = User; client.siz = 1;
 	writeClient(&client,cb.tub);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);

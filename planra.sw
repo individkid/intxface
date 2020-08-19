@@ -118,7 +118,6 @@ func planraInit()
 	text.width = draw.texture.width
 	text.pixelFormat = .depth32Float
 	text.storageMode = .private
-	print("height \(text.height) width \(text.width)")
 	guard let texture = device.makeTexture(descriptor:text) else {
 		print("cannot make texture"); return}
 	descriptor.depthAttachment.texture = texture
