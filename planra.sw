@@ -112,15 +112,6 @@ func planraInit()
     guard let draw = layer.nextDrawable() else {
     	print("cannot make draw"); return}
 	descriptor.colorAttachments[0].texture = draw.texture
-	guard let text = noWarn(MTLTextureDescriptor()) else {
-		print("cannot make text"); return}
-	text.height = draw.texture.height
-	text.width = draw.texture.width
-	text.pixelFormat = .depth32Float
-	text.storageMode = .private
-	guard let texture = device.makeTexture(descriptor:text) else {
-		print("cannot make texture"); return}
-	descriptor.depthAttachment.texture = texture
 	guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {
 		print("cannot make encode"); return}
 	encode.setRenderPipelineState(hello)

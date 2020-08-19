@@ -30,7 +30,7 @@ int toggle = 0;
 float xmove = 0.0;
 float ymove = 0.0;
 float vector[3] = {0};
-float screen[2] = {0};
+// float screen[2] = {0};
 float offset = 0.0;
 float matrix[16] = {0};
 float piemat[16] = {0};
@@ -372,8 +372,8 @@ void shareMove(double xpos, double ypos)
 void shareClick(int isright)
 {
 	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
-	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0;
-	offset = 0.0; screen[0] = cb.xpos(); screen[1] = cb.ypos();
+	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
+	// screen[0] = cb.xpos(); screen[1] = cb.ypos();
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
@@ -580,7 +580,7 @@ int nofalse()
 	return 0;
 }
 
-int nomask()
+/*int nomask()
 {
 	return 0;
 }
@@ -588,7 +588,7 @@ int nomask()
 double nopos()
 {
 	return 0.0;
-}
+}*/
 
 void nosize(double xmid, double ymid, double xmax, double ymax)
 {
@@ -649,9 +649,9 @@ void shareInit()
 	cb.drag = shareDrag;
 	cb.curs = shareCurs;
 	cb.write = shareWrite;
-	cb.mask = nomask;
-	cb.xpos = nopos;
-	cb.ypos = nopos;
+	// cb.mask = nomask;
+	// cb.xpos = nopos;
+	// cb.ypos = nopos;
 	// cb.size = nosize;
 	cb.warp = nowarp;
 	cb.dma = nodma;
@@ -726,8 +726,8 @@ void threadInit()
 
 void threadDone()
 {
-	while (shareRead());
 	writeInt(1,cb.zub);
+	while (shareRead());
 	if (pthread_join(pthread,0) != 0) ERROR(cb.err,-1);
 	if (pthread_mutex_destroy(&mutex) != 0) ERROR(cb.err,-1);
 	if (pthread_cond_destroy(&cond) != 0) ERROR(cb.err,-1);

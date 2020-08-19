@@ -31,7 +31,6 @@ var descriptor:MTLRenderPassDescriptor!
 var depth:MTLDepthStencilState!
 var compute:MTLComputePipelineState!
 var threads:MTLSize!
-var drag:NSPoint!
 
 var triangle = Pend<share.Facet>()
 var corner = Pend<share.Vertex>()
@@ -44,7 +43,6 @@ var pierce = Pend<Pierce>()
 
 var lock = [Refer]()
 var count = Int(0)
-var mask = Int(0)
 
 struct Form
 {
@@ -193,46 +191,19 @@ class WindowDelegate : NSObject, NSWindowDelegate
 	var window:NSWindow
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
+		while (swiftCheck()) {}
 		NSApp.stop(nil)
 		return true
 	}
-	func windowWillMove(_ notification: Notification)
-	{
-		if (drag == nil) {drag = getPoint()}
-	}
-	func windowWillEnterFullScreen(_ notification: Notification)
-	{
-		mask |= 1
-	}
-	func windowWillExitFullScreen(_ notification: Notification)
-	{
-		mask &= ~1
-	}
 	func windowDidResize(_ notification: Notification)
 	{
-		let rect = window.contentRect(forFrameRect:window.frame)
-		cb.drag(Double(rect.minX),Double(rect.minY),
-		Double(rect.width),Double(rect.height))
-		let size = CGSize(width:rect.width,height:rect.height)
-		layer.drawableSize = size
-		guard let text = noWarn(MTLTextureDescriptor()) else {
-			print("cannot make text"); return}
-		text.height = Int(rect.height)
-		text.width = Int(rect.width)
-		// print("didResize width(\(rect.width)) height(\(rect.height))")
-		text.pixelFormat = .depth32Float
-		text.storageMode = .private
-		guard let texture = device.makeTexture(descriptor:text) else {
-			print("cannot make texture"); return}
-		descriptor.depthAttachment.texture = texture
+		swiftSize()
 		while (swiftCheck()) {}
 	}
 	func windowDidMove(_ notification: Notification)
 	{
-		let rect = window.contentRect(forFrameRect:window.frame)
-		cb.drag(Double(rect.minX),Double(rect.minY),
-		Double(rect.width),Double(rect.height))
-		// print("didMove width(\(rect.width)) height(\(rect.height))")
+		swiftDrag()
+		while (swiftCheck()) {}
 	}
 }
 func retLock() -> MTLCommandBufferHandler
@@ -343,6 +314,33 @@ func loopDone()
 	print("loopDone")
 }
 
+func swiftTexture(_ rect:NSRect) -> MTLTexture?
+{
+	guard let text = noWarn(MTLTextureDescriptor()) else {return nil}
+	text.height = Int(rect.height)
+	text.width = Int(rect.width)
+	text.pixelFormat = .depth32Float
+	text.storageMode = .private
+	guard let texture = device.makeTexture(descriptor:text) else {return nil}
+	return texture
+}
+func swiftDrag()
+{
+	let rect = window.contentRect(forFrameRect:window.frame)
+	cb.drag(Double(rect.minX),Double(rect.minY),
+	Double(rect.width),Double(rect.height))
+	// print("didMove width(\(rect.width)) height(\(rect.height))")
+}
+func swiftSize()
+{
+	let rect = window.contentRect(forFrameRect:window.frame)
+	cb.drag(Double(rect.minX),Double(rect.minY),
+	Double(rect.width),Double(rect.height))
+	let size = CGSize(width:rect.width,height:rect.height)
+	layer.drawableSize = size
+	if let temp = swiftTexture(rect) {
+		descriptor.depthAttachment.texture = temp} else {return}
+}
 func swiftKey(event:NSEvent) -> NSEvent?
 {
 	guard let str:String = event.characters else {return nil}
@@ -352,7 +350,9 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else if (key == 13) {if (cb.esc == 1) {cb.esc = 2}}
 	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
-	if (cb.esc >= 2) {NSApp.stop(nil)}
+	if (cb.esc >= 2) {
+	while (swiftCheck()) {}
+	NSApp.stop(nil)}
 	return nil
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
@@ -389,20 +389,6 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 	// cb.roll(Double(event.deltaX),Double(event.deltaY)) // TODO test
 	// let point = getPoint() // TODO test
 	// cb.move(Double(point.x),Double(point.y)) // TODO test
-	return event
-}
-func swiftDrag(event:NSEvent) -> NSEvent?
-{
-	if (drag == nil) {return event}
-	// let frame:CGRect = window.frame
-	// cb.drag(Double(NSMinX(frame)),Double(NSMinY(frame)),
-	// Double(NSMaxX(frame)-NSMinX(frame)),
-	// Double(NSMaxY(frame)-NSMinY(frame)))
-	return event
-}
-func swiftClear(event:NSEvent) -> NSEvent?
-{
-	drag = nil
 	return event
 }
 func swiftCheck() -> Bool
@@ -476,6 +462,9 @@ func swiftInit()
 	descriptor.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	descriptor.depthAttachment.loadAction = .clear
 	descriptor.depthAttachment.storeAction = .dontCare
+	if let temp = swiftTexture(rect) {
+		descriptor.depthAttachment.texture = temp} else {
+		print("cannot make texture"); return}
     guard let desc = noWarn(MTLDepthStencilDescriptor()) else {
     	print("cannot make desc"); return}
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
@@ -486,10 +475,10 @@ func swiftInit()
 		compute = temp} else {print("cannot make compute"); return;}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
-    cb.mask = swiftMask
+    /*cb.mask = swiftMask
     cb.xpos = swiftXpos
     cb.ypos = swiftYpos
-    // cb.size = swiftSize
+    cb.size = swiftSize*/
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
@@ -500,8 +489,6 @@ func swiftInit()
 	setEvent(.rightMouseDown,swiftRight)
 	setEvent(.mouseMoved,swiftMove)
 	setEvent(.scrollWheel,swiftRoll)
-	setEvent(.leftMouseDragged,swiftDrag)
-	setEvent(.leftMouseUp,swiftClear)
 	setEvent(.applicationDefined,swiftEvent)
 	guard let screen:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
@@ -509,20 +496,6 @@ func swiftInit()
 	cb.curs(Double(NSMinX(wind)),Double(NSMinY(wind)),
 		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
 		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
-}
-func swiftMask() -> Int32
-{
-	return Int32(mask)
-}
-func swiftXpos() -> Double
-{
-	let point = NSEvent.mouseLocation
-	return Double(point.x)
-}
-func swiftYpos() -> Double
-{
-	let point = NSEvent.mouseLocation
-	return Double(point.y)
 }
 /*func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
 {
@@ -665,7 +638,7 @@ func swiftDone()
 	loopInit() // can read from pipes
 	threadInit() // will schedule pipe reads
 	cb.call() // will handle events
-	cb.done()
 	threadDone()
 	loopDone()
+	cb.done()
 	shareDone()
