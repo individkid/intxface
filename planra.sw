@@ -15,7 +15,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-func retDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLCommandBufferHandler
+func getDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in
 	var index = 0
@@ -30,9 +30,30 @@ func retDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLC
 	}
 	index = index + 1}}
 }
+func planraDraw()
+{
+	guard let code = queue.makeCommandBuffer() else {
+		print("cannot make code"); return}
+    guard let draw = layer.nextDrawable() else {
+		print("cannot make draw"); return}
+	descriptor.colorAttachments[0].texture = draw.texture
+	guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {
+		print("cannot make encode"); return}
+	encode.setRenderPipelineState(render)
+	encode.setDepthStencilState(depth)
+	encode.setVertexBuffer(triangle.get(),offset:0,index:0)
+	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
+	encode.endEncoding()
+	code.present(draw)
+	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
+	count += 1
+	code.commit()
+}
 func planraInit()
 {
 	let _ = swiftInit()
+	cb.draw = planraDraw
 
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
 		print("cannot make library"); return}
@@ -50,8 +71,8 @@ func planraInit()
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
 	pipe.depthAttachmentPixelFormat = .depth32Float
-	guard let hello = try? device.makeRenderPipelineState(descriptor:pipe) else {
-		print("cannot make hello"); return}
+	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
+		render = temp} else {print("cannot make render"); return}
 
 	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64
 	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64
@@ -66,7 +87,6 @@ func planraInit()
 	var point4 = share.Facet(); point4.plane = (1.2,1.2,0.4); point4.color.0 = (1.0,0.5,0.0,1.0)
 	var point5 = share.Facet(); point5.plane = (-1.2,1.2,0.4); point5.color.0 = (1.0,1.0,0.0,1.0)
 	let points = [point0,point1,point2,point3,point4,point5]
-	let pointz = device.makeBuffer(bytes:points,length:MemoryLayout<share.Facet>.size*6)
 	let charz = device.makeBuffer(length:1000)
 	var array0 = share.Vertex(); array0.plane = (0,1,2)
 	var array1 = share.Vertex(); array1.plane = (3,4,5)
@@ -90,9 +110,9 @@ func planraInit()
 	let threads = MTLSize(width:2,height:1,depth:1)
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
 	encode.endEncoding()
-	code.addCompletedHandler(retDebug(charz!,a,b,c,d))
-	code.addScheduledHandler(retLock())
-	code.addCompletedHandler(retCount())
+	code.addCompletedHandler(getDebug(charz!,a,b,c,d))
+	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
 	count += 1
 	code.commit()
 	// TEST code.waitUntilScheduled()
@@ -106,24 +126,8 @@ func planraInit()
 
 	print("between debug and hello")
 
-	if (true) {
-	guard let code = queue.makeCommandBuffer() else {
-		print("cannot make code"); return}
-    guard let draw = layer.nextDrawable() else {
-    	print("cannot make draw"); return}
-	descriptor.colorAttachments[0].texture = draw.texture
-	guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {
-		print("cannot make encode"); return}
-	encode.setRenderPipelineState(hello)
-	encode.setDepthStencilState(depth)
-	encode.setVertexBuffer(pointz,offset:0,index:0)
-	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
-	encode.endEncoding()
-	code.present(draw)
-	code.addScheduledHandler(retLock())
-	code.addCompletedHandler(retCount())
-	count += 1
-	code.commit()}
+	triangle.set(points)
+	planraDraw()
 
 	print("after hello")
 }

@@ -23,7 +23,6 @@ import Metal
 var device:MTLDevice!
 var layer: CAMetalLayer!
 var view:NSView!
-var delegate:WindowDelegate!
 var window:NSWindow!
 var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
@@ -67,6 +66,7 @@ class Refer
 {
 	var lock:Int = 0
 }
+
 class Pend<T>
 {
 	var pend:MTLBuffer!
@@ -185,62 +185,6 @@ class Pend<T>
 		return last
 	}
 }
-class WindowDelegate : NSObject, NSWindowDelegate
-{
-	init(_ wind:NSWindow) {window = wind}
-	var window:NSWindow
-	func windowShouldClose(_ sender: NSWindow) -> Bool
-	{
-		while (swiftCheck()) {}
-		NSApp.stop(nil)
-		return true
-	}
-	func windowDidResize(_ notification: Notification)
-	{
-		swiftSize()
-		while (swiftCheck()) {}
-	}
-	func windowDidMove(_ notification: Notification)
-	{
-		swiftDrag()
-		while (swiftCheck()) {}
-	}
-}
-func retLock() -> MTLCommandBufferHandler
-{
-	let temp = lock
-	lock = []
-	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
-}
-func retReady(_ size: Int) -> MTLCommandBufferHandler
-{
-	if (size == 0) {return {(MTLCommandBuffer) in notReady()}}
-	let last = pierce.get()
-	return {(MTLCommandBuffer) in setReady(last,size)}
-}
-func setReady(_ buffer:MTLBuffer, _ size:Int)
-{
-	var found:Pierce = Pierce()
-	var index = Int(-1)
-	let pierces:[Pierce] = fromRaw(buffer.contents(),0,size)
-	for (pierce,object) in zip(pierces,0..<size) {
-		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
-			found = pierce
-			index = object
-		}
-	}
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
-}
-func notReady()
-{
-	let found:Pierce = Pierce()
-	let index = Int(-1)
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
-}
-func retCount() -> MTLCommandBufferHandler
-{
-	return {(MTLCommandBuffer) in count -= 1; cb.wake()}
-}
 func setPierce() -> Int?
 {
 	guard let client = getClient(share.Base) else {return nil}
@@ -280,41 +224,7 @@ func getPoint() -> NSPoint
 	point.y = point.y - NSMinY(frame)
 	return point
 }
-func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
-{
-	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
-}
-
-func loopInit()
-{
-	cb.call = loopCall
-	cb.wake = loopWake
-}
-func loopCall()
-{
-	NSApp.run()
-}
-func loopWake()
-{
-	NSApp.postEvent(
-		NSEvent.otherEvent(
-		with:.applicationDefined,
-		location:NSZeroPoint,
-		modifierFlags:.command,
-		timestamp:0.0,
-		windowNumber:0,
-		context:nil,
-		subtype:0,
-		data1:0,
-		data2:0)!,
-		atStart:false)
-}
-func loopDone()
-{
-	print("loopDone")
-}
-
-func swiftTexture(_ rect:NSRect) -> MTLTexture?
+func getTexture(_ rect:NSRect) -> MTLTexture?
 {
 	guard let text = noWarn(MTLTextureDescriptor()) else {return nil}
 	text.height = Int(rect.height)
@@ -323,6 +233,78 @@ func swiftTexture(_ rect:NSRect) -> MTLTexture?
 	text.storageMode = .private
 	guard let texture = device.makeTexture(descriptor:text) else {return nil}
 	return texture
+}
+func getCheck() -> Bool
+{
+	if (cb.full() != 0) {
+		return true
+	}
+	if (cb.read() != 0) {
+		cb.proc()
+		cb.wake()
+		return true
+	}
+	return false
+}
+
+func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
+{
+	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
+}
+func getLock() -> MTLCommandBufferHandler
+{
+	let temp = lock
+	lock = []
+	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
+}
+func getReady(_ size: Int) -> MTLCommandBufferHandler
+{
+	if (size == 0) {return {(MTLCommandBuffer) in swiftEmpty()}}
+	let last = pierce.get()
+	return {(MTLCommandBuffer) in swiftReady(last,size)}
+}
+func getCount() -> MTLCommandBufferHandler
+{
+	return {(MTLCommandBuffer) in count -= 1; cb.wake()}
+}
+class WindowDelegate : NSObject, NSWindowDelegate
+{
+	func windowShouldClose(_ sender: NSWindow) -> Bool
+	{
+		while (getCheck()) {}
+		NSApp.stop(nil)
+		return true
+	}
+	func windowDidResize(_ notification: Notification)
+	{
+		swiftSize()
+		while (getCheck()) {}
+	}
+	func windowDidMove(_ notification: Notification)
+	{
+		swiftDrag()
+		while (getCheck()) {}
+	}
+}
+
+func swiftReady(_ buffer:MTLBuffer, _ size:Int)
+{
+	var found:Pierce = Pierce()
+	var index = Int(-1)
+	let pierces:[Pierce] = fromRaw(buffer.contents(),0,size)
+	for (pierce,object) in zip(pierces,0..<size) {
+		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
+			found = pierce
+			index = object
+		}
+	}
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
+}
+func swiftEmpty()
+{
+	let found:Pierce = Pierce()
+	let index = Int(-1)
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
 }
 func swiftDrag()
 {
@@ -338,7 +320,7 @@ func swiftSize()
 	Double(rect.width),Double(rect.height))
 	let size = CGSize(width:rect.width,height:rect.height)
 	layer.drawableSize = size
-	if let temp = swiftTexture(rect) {
+	if let temp = getTexture(rect) {
 		descriptor.depthAttachment.texture = temp} else {return}
 }
 func swiftKey(event:NSEvent) -> NSEvent?
@@ -351,7 +333,7 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
 	if (cb.esc >= 2) {
-	while (swiftCheck()) {}
+	while (getCheck()) {}
 	NSApp.stop(nil)}
 	return nil
 }
@@ -391,23 +373,12 @@ func swiftRoll(event:NSEvent) -> NSEvent?
 	// cb.move(Double(point.x),Double(point.y)) // TEST
 	return event
 }
-func swiftCheck() -> Bool
+func swiftCheck(event:NSEvent) -> NSEvent?
 {
-	if (cb.full() != 0) {
-		return true
-	}
-	if (cb.read() != 0) {
-		cb.proc()
-		cb.wake()
-		return true
-	}
-	return false
-}
-func swiftEvent(event:NSEvent) -> NSEvent?
-{
-	let _ = swiftCheck()
+	let _ = getCheck()
 	return nil
 }
+
 func swiftInit()
 {
 	let _ = NSApplication.shared
@@ -432,9 +403,8 @@ func swiftInit()
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
-	if let temp = noWarn(WindowDelegate(window)) {
-		delegate = temp} else {print("cannot make delegate"); return}
-	window.delegate = delegate
+	if let temp = noWarn(WindowDelegate()) {
+		window.delegate = temp} else {print("cannot make delegate"); return}
 	if let temp = device.makeCommandQueue() {
 		queue = temp} else {print("cannot make queue"); return}
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
@@ -462,7 +432,7 @@ func swiftInit()
 	descriptor.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	descriptor.depthAttachment.loadAction = .clear
 	descriptor.depthAttachment.storeAction = .dontCare
-	if let temp = swiftTexture(rect) {
+	if let temp = getTexture(rect) {
 		descriptor.depthAttachment.texture = temp} else {
 		print("cannot make texture"); return}
     guard let desc = noWarn(MTLDepthStencilDescriptor()) else {
@@ -485,7 +455,7 @@ func swiftInit()
 	setEvent(.rightMouseDown,swiftRight)
 	setEvent(.mouseMoved,swiftMove)
 	setEvent(.scrollWheel,swiftRoll)
-	setEvent(.applicationDefined,swiftEvent)
+	setEvent(.applicationDefined,swiftCheck)
 	guard let screen:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
 	let wind = window.contentRect(forFrameRect:window.frame)
@@ -559,8 +529,8 @@ func swiftDraw()
 			encode.endEncoding()
 		}
 		code.present(draw)
-		code.addScheduledHandler(retLock())
-		code.addCompletedHandler(retCount())
+		code.addScheduledHandler(getLock())
+		code.addCompletedHandler(getCount())
 		count += 1
 		code.commit()
 	} else if (shader == share.Track) {
@@ -597,9 +567,9 @@ func swiftDraw()
 				offset += n*p*MemoryLayout<share.Vertex>.size
 			}
 		}
-		code.addCompletedHandler(retReady(size))
-		code.addScheduledHandler(retLock())
-		code.addCompletedHandler(retCount())
+		code.addCompletedHandler(getReady(size))
+		code.addScheduledHandler(getLock())
+		code.addCompletedHandler(getCount())
 		count += 1
 		code.commit()
 	}
@@ -612,6 +582,35 @@ func swiftFull() -> Int32
 func swiftDone()
 {
 	print("swiftDone")
+}
+
+func loopInit()
+{
+	cb.call = loopCall
+	cb.wake = loopWake
+}
+func loopCall()
+{
+	NSApp.run()
+}
+func loopWake()
+{
+	NSApp.postEvent(
+		NSEvent.otherEvent(
+		with:.applicationDefined,
+		location:NSZeroPoint,
+		modifierFlags:.command,
+		timestamp:0.0,
+		windowNumber:0,
+		context:nil,
+		subtype:0,
+		data1:0,
+		data2:0)!,
+		atStart:false)
+}
+func loopDone()
+{
+	print("loopDone")
 }
 
 	for arg in CommandLine.arguments {
