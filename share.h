@@ -32,7 +32,7 @@ struct Callback {
 	// share to kvm; read from state; write to gpu
 	void (*warp)(double xpos, double ypos);
 	void (*dma)(enum Memory mem, int idx, int siz);
-	void (*draw)();
+	void (*draw)(int both);
 	// loop to kvm
 	int (*full)();
 	// loop to share; read from pipe; write to state

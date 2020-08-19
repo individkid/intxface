@@ -30,7 +30,7 @@ func getDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLC
 	}
 	index = index + 1}}
 }
-func planraDraw()
+func planraDraw(_ both:Int32)
 {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
@@ -127,7 +127,7 @@ func planraInit()
 	print("between debug and hello")
 
 	triangle.set(points)
-	planraDraw()
+	planraDraw(Int32(0))
 
 	print("after hello")
 }

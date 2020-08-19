@@ -240,10 +240,10 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 	writeClient(&client,cb.tub);
 }
 
-void shareRender()
+void shareRender(enum Function draw)
 {
 	enum Function function[3];
-	function[0] = Copy; function[1] = Dma0; function[2] = Draw;
+	function[0] = Copy; function[1] = Dma0; function[2] = draw;
 	struct Vector vector[2];
 	for (int i = 0; i < 3; i++) {
 	vector[0].val[i] = render[0][i];
@@ -266,7 +266,7 @@ void shareDrag(double xpos, double ypos, double width, double height)
 	render[0][1] = ypos+yhalf;
 	render[1][0] = xpos+width;
 	render[1][1] = ypos+height;
-	shareRender();
+	shareRender(Both);
 }
 
 void shareRoll(double xoffset, double yoffset)
@@ -279,11 +279,11 @@ void shareRoll(double xoffset, double yoffset)
 	if (user->click == Transform && user->roll == Focal) {
 	if (render[0][2]+dif > render[1][2]+MINDEEP)
 	render[0][2] += dif;
-	shareRender();}
+	shareRender(Draw);}
 	else if (user->click == Transform && user->roll == Picture) {
 	if (render[0][2] > render[1][2]+dif+MINDEEP)
 	render[1][2] += dif;
-	shareRender();}
+	shareRender(Draw);}
 	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -512,7 +512,8 @@ void shareProc()
 	case (Dma0): if (cb.esc && 0) printf("Dma0\n"); cb.dma(client->mem,client->idx,1); break;
 	case (Dma1): if (cb.esc && 0) printf("Dma1\n"); procPierce(); break;
 	case (Dma2): if (cb.esc && 0) printf("Dma2\n"); cb.dma(client->mem,client->idx,client->siz); break;
-	case (Draw): if (cb.esc && 0) printf("Draw\n"); cb.draw(); break;
+	case (Draw): if (cb.esc && 0) printf("Draw\n"); cb.draw(0); break;
+	case (Both): if (cb.esc && 0) printf("Both\n"); cb.draw(1); break;
 	case (Port): if (cb.esc && 0) printf("Port\n"); procMetric(); break;
 	default: ERROR(cb.err,-1);}
 }
@@ -639,6 +640,8 @@ void shareInit()
 	linear.val[4][2] = linear.val[5][0] = 1.0;
 	linear.val[7][0] = linear.val[8][1] = 1.0;
 	client.basis = &linear; client.mem = Basis;
+	writeClient(&client,cb.tub);
+	function[0] = Both; client.siz = 0;
 	writeClient(&client,cb.tub);
 }
 

@@ -498,10 +498,10 @@ func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 	form.set(fromPtr(client.user).hand,\Form.hand)
 	default: cb.err(#file,#line,-1);return}
 }
-func swiftDraw()
+func swiftDraw(_ both:Int32)
 {
 	guard let shader = getMode()?.shader else {cb.err(#file,#line,-1);return}
-	if (shader == share.Display) {
+	if (shader == share.Display || both != 0) {
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		guard let range = getRange() else {cb.err(#file,#line,-1);return}
 		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
@@ -533,7 +533,8 @@ func swiftDraw()
 		code.addCompletedHandler(getCount())
 		count += 1
 		code.commit()
-	} else if (shader == share.Track) {
+	}
+	if (shader == share.Track) {
 		guard let size = setPierce() else {cb.err(#file,#line,-1);return}
 		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 		guard let active = getActive() else {cb.err(#file,#line,-1);return}
