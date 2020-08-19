@@ -259,24 +259,22 @@ void shareRender()
 	writeClient(&client,cb.tub);
 }
 
-void shareSize(double inc, double dec, int dim, double lim)
+void shareSize(double inc, double dec, int dim, double lim, double pos)
 {
 	// double ave = (inc+dec)/2.0;
 	double max = render[1][dim];
 	double mid = render[0][dim];
 	double dif = max-mid;
 	double min = mid-dif;
-	// max += inc; min += dec; mid += ave;
 	if ((max+inc)-(min+dec) < lim) return;
+	if ((max+inc) < pos) {inc = pos-max;}
+	if ((min+dec) > pos) {dec = pos-min;}
 	if ((max+inc) > render[2][dim] && (min+dec) < 0.0) {
 	inc = render[2][dim]-max; dec = -min;}
-	// max = render[2][dim]; min = 0.0; mid = (min+max)/2.0;}
 	else if ((max+inc) > render[2][dim]) {
 	inc = render[2][dim]-max;}
-	// max = render[2][dim]; mid = (min+max)/2.0;}
 	else if ((min+dec) < 0.0) {
 	dec = -min;}
-	// min = 0.0; mid = (min+max)/2.0;}
 	double ave = (inc+dec)/2.0;
 	render[0][dim] += ave;
 	render[1][dim] += inc;
@@ -309,16 +307,16 @@ void shareRoll(double xoffset, double yoffset)
 	render[1][2] += dif;
 	shareRender();}
 	else if (user->click == Transform && user->roll == Width) {
-	shareSize(dif,-dif,0,MINWIDE);
+	shareSize(dif,-dif,0,MINWIDE,cb.xpos());
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
 	else if (user->click == Transform && user->roll == Height) {
-	shareSize(dif,-dif,1,MINHIGH);
+	shareSize(dif,-dif,1,MINHIGH,cb.ypos());
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
 	else if (user->click == Transform && user->roll == Both) {
-	shareSize(dif,-dif,0,MINWIDE);
-	shareSize(dif,-dif,1,MINHIGH);
+	shareSize(dif,-dif,0,MINWIDE,cb.xpos());
+	shareSize(dif,-dif,1,MINHIGH,cb.ypos());
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
 	else if (user->click == Transform) {
@@ -344,8 +342,8 @@ void shareMove(double xpos, double ypos)
 	if (user->click == Transform && user->move == Look) {
 	double xdif = cb.xpos()-screen[0]; screen[0] = cb.xpos();
 	double ydif = cb.ypos()-screen[1]; screen[1] = cb.ypos();
-	shareSize(xdif,xdif,0,MINWIDE);
-	shareSize(ydif,ydif,1,MINHIGH);
+	shareSize(xdif,xdif,0,MINWIDE,cb.xpos());
+	shareSize(ydif,ydif,1,MINHIGH,cb.ypos());
 	cb.size(render[0][0],render[0][1],render[1][0],render[1][1]);
 	shareRender();}
 	else if (user->click == Transform) {
@@ -583,6 +581,16 @@ int nofalse()
 	return 0;
 }
 
+int nomask()
+{
+	return 0;
+}
+
+double nopos()
+{
+	return 0.0;
+}
+
 void nosize(double xmid, double ymid, double xmax, double ymax)
 {
 	printf("size %f %f %f %f\n",xmid,ymid,xmax,ymax);
@@ -642,6 +650,9 @@ void shareInit()
 	cb.drag = shareDrag;
 	cb.curs = shareCurs;
 	cb.write = shareWrite;
+	cb.mask = nomask;
+	cb.xpos = nopos;
+	cb.ypos = nopos;
 	cb.size = nosize;
 	cb.warp = nowarp;
 	cb.dma = nodma;

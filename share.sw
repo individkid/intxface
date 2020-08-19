@@ -32,7 +32,6 @@ var depth:MTLDepthStencilState!
 var compute:MTLComputePipelineState!
 var threads:MTLSize!
 var drag:NSPoint!
-var extra:NSSize!
 
 var triangle = Pend<share.Facet>()
 var corner = Pend<share.Vertex>()
@@ -45,6 +44,7 @@ var pierce = Pend<Pierce>()
 
 var lock = [Refer]()
 var count = Int(0)
+var mask = Int(0)
 
 struct Form
 {
@@ -197,6 +197,14 @@ class WindowDelegate : NSObject, NSWindowDelegate
 	func windowWillMove(_ notification: Notification)
 	{
 		if (drag == nil) {drag = getPoint()}
+	}
+	func windowWillEnterFullScreen(_ notification: Notification)
+	{
+		mask |= 1
+	}
+	func windowWillExitFullScreen(_ notification: Notification)
+	{
+		mask &= ~1
 	}
 }
 func retLock() -> MTLCommandBufferHandler
@@ -398,7 +406,7 @@ func swiftInit()
 	view.layer = layer
 	if let temp = noWarn(WindowDelegate()) {
 		delegate = temp} else {print("cannot make delegate"); return}
-	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable]
+	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
 	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
 		window = temp} else {print("cannot make window"); return}
 	window.title = "plane"
@@ -442,6 +450,7 @@ func swiftInit()
 		compute = temp} else {print("cannot make compute"); return;}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
+    cb.mask = swiftMask
     cb.xpos = swiftXpos
     cb.ypos = swiftYpos
     cb.size = swiftSize
@@ -464,6 +473,10 @@ func swiftInit()
 	cb.curs(Double(NSMinX(wind)),Double(NSMinY(wind)),
 		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
 		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
+}
+func swiftMask() -> Int32
+{
+	return Int32(mask)
 }
 func swiftXpos() -> Double
 {
