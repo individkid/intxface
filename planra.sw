@@ -95,7 +95,7 @@ func planraInit()
 	code.addCompletedHandler(retCount())
 	count += 1
 	code.commit()
-	// code.waitUntilScheduled()
+	// TEST code.waitUntilScheduled()
 	triangle.set(Int32(63),Int(offsetFacetTag()))
 	triangle.set(Int32(65),1,Int(offsetFacetTag()))
 	triangle.set(Int32(7),Int(offsetFacetVersor()))

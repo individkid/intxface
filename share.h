@@ -30,10 +30,6 @@ struct Callback {
 	void (*curs)(double xpos, double ypos, double width, double height, double xmax, double ymax);
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
 	// share to kvm; read from state; write to gpu
-	int (*mask)();
-	double (*xpos)();
-	double (*ypos)();
-	// void (*size)(double xmid, double ymid, double xmax, double ymax);
 	void (*warp)(double xpos, double ypos);
 	void (*dma)(enum Memory mem, int idx, int siz);
 	void (*draw)();

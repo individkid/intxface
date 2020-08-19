@@ -379,16 +379,16 @@ func swiftMove(event:NSEvent) -> NSEvent?
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.move(Double(point.x),Double(point.y))
-		// cb.move(Double(point.x),Double(point.y)) // TODO test
+		// cb.move(Double(point.x),Double(point.y)) // TEST
 	}
 	return event
 }
 func swiftRoll(event:NSEvent) -> NSEvent?
 {
 	cb.roll(Double(event.deltaX),Double(event.deltaY))
-	// cb.roll(Double(event.deltaX),Double(event.deltaY)) // TODO test
-	// let point = getPoint() // TODO test
-	// cb.move(Double(point.x),Double(point.y)) // TODO test
+	// cb.roll(Double(event.deltaX),Double(event.deltaY)) // TEST
+	// let point = getPoint() // TEST
+	// cb.move(Double(point.x),Double(point.y)) // TEST
 	return event
 }
 func swiftCheck() -> Bool
@@ -475,10 +475,6 @@ func swiftInit()
 		compute = temp} else {print("cannot make compute"); return;}
     if let temp = noWarn(device.maxThreadsPerThreadgroup) {
     	threads = temp} else {print("cannot make thread"); return}
-    /*cb.mask = swiftMask
-    cb.xpos = swiftXpos
-    cb.ypos = swiftYpos
-    cb.size = swiftSize*/
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
@@ -497,19 +493,6 @@ func swiftInit()
 		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
 		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
 }
-/*func swiftSize(xmid:Double, ymid:Double, xmax:Double, ymax:Double)
-{
-	print("swiftSize")
-	let xdif = xmax-xmid
-	let ydif = ymax-ymid
-	let xmin = xmid-xdif
-	let ymin = ymid-ydif
-	let newer = NSRect(x:xmin,y:ymin,width:xmax-xmin,height:ymax-ymin)
-	let newra = window.frameRect(forContentRect:newer)
-	window.setFrame(newra,display:true)
-	let size = CGSize(width:xmax-xmin,height:ymax-ymin)
-	layer.drawableSize = size
-}*/
 func swiftWarp(xpos:Double, ypos:Double)
 {
 	let point = getPoint()
