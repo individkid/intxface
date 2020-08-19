@@ -105,7 +105,6 @@ Move = {
 	"Rotate", -- rotate about fixed pierce point
 	"Slide", -- translate parallel to fixed facet
 	"Slate", -- translate parallel to picture plane
-	-- "Look", -- translate picture plane and focal point
 }
 Roll = {
 	"Cylinder", -- rotate with rotated fixed axis
@@ -115,9 +114,6 @@ Roll = {
 	"Balloon", -- scale with fixed pierce point
 	"Focal", -- adjust focal length
 	"Picture", -- adjust frustrum height
-	-- "Width", -- adjust picture plane size
-	-- "Height", -- adjust picture plane size
-	-- "Both", -- adjust picture plane size
 }
 Shader = {
 	"Proximity",
