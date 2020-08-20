@@ -240,18 +240,18 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 	writeClient(&client,cb.tub);
 }
 
-void shareRender(int both)
+void shareRender()
 {
-	enum Function function[4];
-	function[0] = Copy; function[1] = Dma0;
-	function[2] = Gpu0; function[3] = Gpu1;
+	struct Mode *user = cb.state[User]->user;
+	enum Function function[3];
+	function[0] = Copy; function[1] = Dma0; function[2] = Gpu0;
 	struct Vector vector[2];
 	for (int i = 0; i < 3; i++) {
 	vector[0].val[i] = render[0][i];
 	vector[1].val[i] = render[1][i];}
 	struct Client client;
 	client.mem = Render;
-	client.len = (both ? 4 : 3);
+	client.len = 3;
 	client.fnc = function;
 	client.idx = 0;
 	client.siz = 2;
@@ -267,7 +267,7 @@ void shareDrag(double xpos, double ypos, double width, double height)
 	render[0][1] = ypos+yhalf;
 	render[1][0] = xpos+width;
 	render[1][1] = ypos+height;
-	shareRender(1);
+	shareRender();
 }
 
 void shareRoll(double xoffset, double yoffset)
@@ -280,11 +280,11 @@ void shareRoll(double xoffset, double yoffset)
 	if (user->click == Transform && user->roll == Focal) {
 	if (render[0][2]+dif > render[1][2]+MINDEEP)
 	render[0][2] += dif;
-	shareRender(0);}
+	shareRender();}
 	else if (user->click == Transform && user->roll == Picture) {
 	if (render[0][2] > render[1][2]+dif+MINDEEP)
 	render[1][2] += dif;
-	shareRender(0);}
+	shareRender();}
 	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -319,7 +319,7 @@ void shareMove(double xpos, double ypos)
 	writeClient(&client,cb.tub);} else {
 	struct Client client;
 	enum Function function[3];
-	function[0] = Copy; function[1] = Dma0; function[2] = Gpu0;
+	function[0] = Copy; function[1] = Dma0; function[2] = Gpu1;
 	struct Vector vector[2];
 	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
 	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
