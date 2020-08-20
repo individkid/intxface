@@ -287,6 +287,7 @@ fragment half4 fragment_render(
 }
 vertex VertexOutput vertex_simple(
    const device Facet *point [[buffer(0)]],
+   const device State *state [[buffer(1)]],
    uint ident [[vertex_id]])
 {
    VertexOutput out = VertexOutput();

@@ -198,13 +198,25 @@ func getRange() -> [share.Array]?
 {
 	guard let client = getClient(share.Range) else {return nil}
 	if (client.siz == 0) {return []}
-	return fromRaw(client.range,0,Int(client.siz))
+	return fromPtr(client.range,0,Int(client.siz))
 }
 func getActive() -> [share.Array]?
 {
 	guard let client = getClient(share.Active) else {return nil}
 	if (client.siz == 0) {return []}
-	return fromRaw(client.active,0,Int(client.siz))
+	return fromPtr(client.active,0,Int(client.siz))
+}
+func getRender(_ idx:Int) -> share.Vector?
+{
+	guard let client = getClient(share.Render) else {return nil}
+	if (client.siz <= idx) {return nil}
+	return fromPtr(client.render,idx)
+}
+func getPierce(_ idx:Int) -> share.Vector?
+{
+	guard let client = getClient(share.Pierce) else {return nil}
+	if (client.siz <= idx) {return nil}
+	return fromPtr(client.pierce,idx)
 }
 func getClient(_ mem:share.Memory) -> share.Client?
 {
@@ -307,7 +319,6 @@ func swiftDrag()
 	let rect = window.contentRect(forFrameRect:window.frame)
 	cb.drag(Double(rect.minX),Double(rect.minY),
 	Double(rect.width),Double(rect.height))
-	// print("didMove width(\(rect.width)) height(\(rect.height))")
 }
 func swiftSize()
 {
@@ -481,7 +492,6 @@ func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 	case (share.Feature):
 	form.set(fromPtr(client.feature),\Form.feature)
 	case (share.Render):
-	// print("swiftDma width(\(fromPtr(client.render,1).val.0-fromPtr(client.render,0).val.0))) height(\(fromPtr(client.render,1).val.1-fromPtr(client.render,0).val.1)))")
 	form.set(fromPtr(client.render,0),\Form.feather)
 	form.set(fromPtr(client.render,1),\Form.arrow)
 	case (share.Pierce):
@@ -499,16 +509,16 @@ func swiftDraw(_ shader:share.Shader)
 	case (share.Display):
 	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 	guard let range = getRange() else {cb.err(#file,#line,-1);return}
-	guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
     guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
-	// print("swiftDraw width(\(draw.texture.width)) height(\(draw.texture.height))")
 	descriptor.colorAttachments[0].texture = draw.texture
 	if (range.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
 		encode.endEncoding()
 	}
 	for array in range {
-		form.set(UInt32(array.tag),field,\Form.tag)
+		form.set(UInt32(array.tag),\Form.tag)
+		form.set(getRender(0),\Form.feather)
+		form.set(getRender(1),\Form.arrow)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
@@ -532,9 +542,10 @@ func swiftDraw(_ shader:share.Shader)
 	guard let size = setPierce() else {cb.err(#file,#line,-1);return}
 	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 	guard let active = getActive() else {cb.err(#file,#line,-1);return}
-	guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
 	for array in active {
-		form.set(UInt32(array.tag),field,\Form.tag)
+		form.set(UInt32(array.tag),\Form.tag)
+		form.set(getPierce(0),\Form.feather)
+		form.set(getPierce(1),\Form.arrow)
 		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 		var nums:[Int] = []
 		var pers:[Int] = []

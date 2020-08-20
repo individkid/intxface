@@ -365,20 +365,20 @@ void shareClick(int isright)
 
 void shareCurs(double xpos, double ypos, double width, double height, double xmax, double ymax)
 {
-	struct Client client = {0};
-	enum Function function[1]; function[0] = Copy;
-	client.fnc = function; client.len = 1; client.siz = 2;
 	double xhalf = width/2.0;
 	double yhalf = height/2.0;
-	render[2][0] = xmax;
-	render[2][1] = ymax;
-	render[2][2] = 0.0;
 	render[0][0] = xpos+xhalf;
 	render[0][1] = ypos+yhalf;
 	render[0][2] = 2*WINDEEP;
 	render[1][0] = xpos+width;
 	render[1][1] = ypos+height;
 	render[1][2] = WINDEEP;
+	render[2][0] = xmax;
+	render[2][1] = ymax;
+	render[2][2] = 0.0;
+	struct Client client = {0};
+	enum Function function[1]; function[0] = Copy;
+	client.fnc = function; client.len = 1; client.siz = 2;
 	struct Vector vector[2] = {0};
 	for (int i = 0; i < 2; i++) {
 	for (int j = 0; j < 2; j++) {

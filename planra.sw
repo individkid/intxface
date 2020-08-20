@@ -32,6 +32,8 @@ func getDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLC
 }
 func planraDraw(_ shader:share.Shader)
 {
+	form.set(getRender(0),\Form.feather)
+	form.set(getRender(1),\Form.arrow)
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
     guard let draw = layer.nextDrawable() else {
@@ -42,6 +44,7 @@ func planraDraw(_ shader:share.Shader)
 	encode.setRenderPipelineState(render)
 	encode.setDepthStencilState(depth)
 	encode.setVertexBuffer(triangle.get(),offset:0,index:0)
+	encode.setVertexBuffer(form.get(),offset:0,index:1)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
 	encode.endEncoding()
 	code.present(draw)
