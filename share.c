@@ -240,17 +240,18 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 	writeClient(&client,cb.tub);
 }
 
-void shareRender(enum Function draw)
+void shareRender(int both)
 {
-	enum Function function[3];
-	function[0] = Copy; function[1] = Dma0; function[2] = draw;
+	enum Function function[4];
+	function[0] = Copy; function[1] = Dma0;
+	function[2] = Gpu0; function[3] = Gpu1;
 	struct Vector vector[2];
 	for (int i = 0; i < 3; i++) {
 	vector[0].val[i] = render[0][i];
 	vector[1].val[i] = render[1][i];}
 	struct Client client;
 	client.mem = Render;
-	client.len = 3;
+	client.len = (both ? 4 : 3);
 	client.fnc = function;
 	client.idx = 0;
 	client.siz = 2;
@@ -266,7 +267,7 @@ void shareDrag(double xpos, double ypos, double width, double height)
 	render[0][1] = ypos+yhalf;
 	render[1][0] = xpos+width;
 	render[1][1] = ypos+height;
-	shareRender(Both);
+	shareRender(1);
 }
 
 void shareRoll(double xoffset, double yoffset)
@@ -279,11 +280,11 @@ void shareRoll(double xoffset, double yoffset)
 	if (user->click == Transform && user->roll == Focal) {
 	if (render[0][2]+dif > render[1][2]+MINDEEP)
 	render[0][2] += dif;
-	shareRender(Draw);}
+	shareRender(0);}
 	else if (user->click == Transform && user->roll == Picture) {
 	if (render[0][2] > render[1][2]+dif+MINDEEP)
 	render[1][2] += dif;
-	shareRender(Draw);}
+	shareRender(0);}
 	else if (user->click == Transform) {
 	struct Client client;
 	struct Affine affine[2];
@@ -293,7 +294,7 @@ void shareRoll(double xoffset, double yoffset)
 	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
 	copymat(matrix,&affine[1].val[0][0],4);}
 	composeMatrix(&affine[0].val[0][0]);
-	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
+	function[0] = rmw; function[1] = Dma0; function[2] = Gpu0;
 	client.mem = assignAffine(&client,&affine[0]);
 	client.fnc = function; client.len = 3; client.siz = size;
 	writeClient(&client,cb.tub);}
@@ -312,13 +313,13 @@ void shareMove(double xpos, double ypos)
 	int size = (toggle ? 2 : 1); toggle = 0;
 	transformMatrix(&affine[0].val[0][0]);
 	if (size > 1) composeMatrix(&affine[1].val[0][0]);
-	function[0] = rmw; function[1] = Dma0; function[2] = Draw;
+	function[0] = rmw; function[1] = Dma0; function[2] = Gpu0;
 	client.mem = assignAffine(&client,&affine[0]);
 	client.fnc = function; client.len = 3; client.siz = size;
 	writeClient(&client,cb.tub);} else {
 	struct Client client;
 	enum Function function[3];
-	function[0] = Copy; function[1] = Dma0; function[2] = Draw;
+	function[0] = Copy; function[1] = Dma0; function[2] = Gpu0;
 	struct Vector vector[2];
 	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
 	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
@@ -349,15 +350,15 @@ void shareClick(int isright)
 	client.mem = copyUser(&client,&user);
 	if (user.click == Transform) {
 	if (isright) {
-	user.click = Suspend; user.shader = Track;} else {
-	user.click = Complete; user.shader = Track;}}
+	user.click = Suspend;} else {
+	user.click = Complete;}}
 	else if (user.click == Suspend) {
-	user.click = Transform; user.shader = Display;
+	user.click = Transform;
 	if (isright)
 	cb.warp(vector[0],vector[1]);}
 	else if (user.click == Complete) {
 	if (!isright) {
-	user.click = Transform; user.shader = Display;}}
+	user.click = Transform;}}
 	client.len = 1; client.siz = 1;
 	writeClient(&client,cb.tub);
 }
@@ -512,8 +513,8 @@ void shareProc()
 	case (Dma0): if (cb.esc && 0) printf("Dma0\n"); cb.dma(client->mem,client->idx,1); break;
 	case (Dma1): if (cb.esc && 0) printf("Dma1\n"); procPierce(); break;
 	case (Dma2): if (cb.esc && 0) printf("Dma2\n"); cb.dma(client->mem,client->idx,client->siz); break;
-	case (Draw): if (cb.esc && 0) printf("Draw\n"); cb.draw(0); break;
-	case (Both): if (cb.esc && 0) printf("Both\n"); cb.draw(1); break;
+	case (Gpu0): if (cb.esc && 0) printf("Gpu0\n"); cb.draw(Display); break;
+	case (Gpu1): if (cb.esc && 0) printf("Gpu1\n"); cb.draw(Track); break;
 	case (Port): if (cb.esc && 0) printf("Port\n"); procMetric(); break;
 	default: ERROR(cb.err,-1);}
 }
@@ -622,11 +623,11 @@ void shareInit()
 	bothJump(cb.err,cb.tub);
 	cb.esc = 0;
     struct Client client = {0};
-    enum Function function[1] = {0}; function[0] = Copy;
+    enum Function function[2] = {0}; function[0] = Copy;
     client.fnc = function; client.len = 1; client.siz = 0;
     for (client.mem = 0; client.mem < Memorys; client.mem++) {
 	writeClient(&client,cb.tub);}
-    struct Mode mode = {0}; mode.matrix = Global; mode.shader = Track;
+    struct Mode mode = {0}; mode.matrix = Global;
     mode.click = Complete; mode.move = Moves; mode.roll = Rolls;
     client.user = &mode; client.mem = User; client.siz = 1;
 	writeClient(&client,cb.tub);
@@ -641,7 +642,8 @@ void shareInit()
 	linear.val[7][0] = linear.val[8][1] = 1.0;
 	client.basis = &linear; client.mem = Basis;
 	writeClient(&client,cb.tub);
-	function[0] = Both; client.siz = 0;
+	function[0] = Gpu0; function[1] = Gpu1;
+	client.len = 2; client.siz = 0;
 	writeClient(&client,cb.tub);
 }
 

@@ -68,8 +68,8 @@ Function = {
 	"Dma0",
 	"Dma1",
 	"Dma2",
-	"Draw",
-	"Both",
+	"Gpu0",
+	"Gpu1",
 	"Port",
 }
 Memory = {
@@ -115,12 +115,6 @@ Roll = {
 	"Balloon", -- scale with fixed pierce point
 	"Focal", -- adjust focal length
 	"Picture", -- adjust frustrum height
-}
-Shader = {
-	"Proximity",
-	"Display",
-	"Stream",
-	"Track",
 }
 Config = {
 	"Table",
@@ -229,7 +223,6 @@ Mode = {
 	{"click","Click",{},{}},
 	{"move","Move",{},{}},
 	{"roll","Roll",{},{}},
-	{"shader","Shader",{},{}},
 	{"hand","int",{},{}},
 }
 Client = {

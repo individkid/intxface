@@ -194,10 +194,6 @@ func setPierce() -> Int?
 	pierce.set(vals,0)
 	return siz
 }
-func getMode() -> share.Mode?
-{
-	return getClient(share.User)?.user?.pointee
-}
 func getRange() -> [share.Array]?
 {
 	guard let client = getClient(share.Range) else {return nil}
@@ -498,82 +494,81 @@ func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
 	form.set(fromPtr(client.user).hand,\Form.hand)
 	default: cb.err(#file,#line,-1);return}
 }
-func swiftDraw(_ both:Int32)
+func swiftDraw(_ shader:share.Shader)
 {
-	guard let shader = getMode()?.shader else {cb.err(#file,#line,-1);return}
-	if (shader == share.Display || both != 0) {
-		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
-		guard let range = getRange() else {cb.err(#file,#line,-1);return}
-		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
-	    guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
-		// print("swiftDraw width(\(draw.texture.width)) height(\(draw.texture.height))")
-		descriptor.colorAttachments[0].texture = draw.texture
-		if (range.count == 0) {
-			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
-			encode.endEncoding()
-		}
-		for array in range {
-			form.set(UInt32(array.tag),field,\Form.tag)
-			guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
-			encode.setRenderPipelineState(render)
-			encode.setDepthStencilState(depth)
-			encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-			encode.setVertexBuffer(corner.get(),offset:0,index:1)
-			encode.setVertexBuffer(frame.get(),offset:0,index:2)
-			encode.setVertexBuffer(object.get(),offset:0,index:3)
-			encode.setVertexBuffer(form.get(),offset:0,index:4)
-			encode.drawPrimitives(
-				type:.triangle,
-				vertexStart:Int(array.idx),
-				vertexCount:Int(array.siz))
-			encode.endEncoding()
-		}
-		code.present(draw)
-		code.addScheduledHandler(getLock())
-		code.addCompletedHandler(getCount())
-		count += 1
-		code.commit()
+	switch (shader) {
+	case (share.Display):
+	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
+	guard let range = getRange() else {cb.err(#file,#line,-1);return}
+	guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
+    guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
+	// print("swiftDraw width(\(draw.texture.width)) height(\(draw.texture.height))")
+	descriptor.colorAttachments[0].texture = draw.texture
+	if (range.count == 0) {
+		guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
+		encode.endEncoding()
 	}
-	if (shader == share.Track) {
-		guard let size = setPierce() else {cb.err(#file,#line,-1);return}
-		guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
-		guard let active = getActive() else {cb.err(#file,#line,-1);return}
-		guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
-		for array in active {
-			form.set(UInt32(array.tag),field,\Form.tag)
-			var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
-			var nums:[Int] = []
-			var pers:[Int] = []
-			let quotient = Int(array.siz)/threads.width
-			let remainder = Int(array.siz)%threads.width
-			if (quotient > 0) {
-				nums.append(quotient)
-				pers.append(threads.width)}
-			if (remainder > 0) {
-				nums.append(1)
-				pers.append(remainder)}
-			for (n,p) in zip(nums,pers) {
-				guard let encode = code.makeComputeCommandEncoder() else {cb.err(#file,#line,-1);return}
-				encode.setComputePipelineState(compute)
-				encode.setBuffer(triangle.get(),offset:0,index:0)
-				encode.setBuffer(corner.get(),offset:0,index:1)
-				encode.setBuffer(base.get(),offset:offset,index:2)
-				encode.setBuffer(object.get(),offset:0,index:3)
-				encode.setBuffer(form.get(),offset:0,index:4)
-				encode.setBuffer(pierce.get(),offset:0,index:5)
-				let num = MTLSize(width:n,height:1,depth:1)
-				let per = MTLSize(width:p,height:1,depth:1)
-				encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
-				encode.endEncoding()
-				offset += n*p*MemoryLayout<share.Vertex>.size
-			}
-		}
-		code.addCompletedHandler(getReady(size))
-		code.addScheduledHandler(getLock())
-		code.addCompletedHandler(getCount())
-		count += 1
-		code.commit()
+	for array in range {
+		form.set(UInt32(array.tag),field,\Form.tag)
+		guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
+		encode.setRenderPipelineState(render)
+		encode.setDepthStencilState(depth)
+		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
+		encode.setVertexBuffer(corner.get(),offset:0,index:1)
+		encode.setVertexBuffer(frame.get(),offset:0,index:2)
+		encode.setVertexBuffer(object.get(),offset:0,index:3)
+		encode.setVertexBuffer(form.get(),offset:0,index:4)
+		encode.drawPrimitives(
+			type:.triangle,
+			vertexStart:Int(array.idx),
+			vertexCount:Int(array.siz))
+		encode.endEncoding()
 	}
+	code.present(draw)
+	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
+	count += 1
+	code.commit()
+	case (share.Track):
+	guard let size = setPierce() else {cb.err(#file,#line,-1);return}
+	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
+	guard let active = getActive() else {cb.err(#file,#line,-1);return}
+	guard let field = MemoryLayout<Form>.offset(of:\Form.tag) else {cb.err(#file,#line,-1);return}
+	for array in active {
+		form.set(UInt32(array.tag),field,\Form.tag)
+		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
+		var nums:[Int] = []
+		var pers:[Int] = []
+		let quotient = Int(array.siz)/threads.width
+		let remainder = Int(array.siz)%threads.width
+		if (quotient > 0) {
+			nums.append(quotient)
+			pers.append(threads.width)}
+		if (remainder > 0) {
+			nums.append(1)
+			pers.append(remainder)}
+		for (n,p) in zip(nums,pers) {
+			guard let encode = code.makeComputeCommandEncoder() else {cb.err(#file,#line,-1);return}
+			encode.setComputePipelineState(compute)
+			encode.setBuffer(triangle.get(),offset:0,index:0)
+			encode.setBuffer(corner.get(),offset:0,index:1)
+			encode.setBuffer(base.get(),offset:offset,index:2)
+			encode.setBuffer(object.get(),offset:0,index:3)
+			encode.setBuffer(form.get(),offset:0,index:4)
+			encode.setBuffer(pierce.get(),offset:0,index:5)
+			let num = MTLSize(width:n,height:1,depth:1)
+			let per = MTLSize(width:p,height:1,depth:1)
+			encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
+			encode.endEncoding()
+			offset += n*p*MemoryLayout<share.Vertex>.size
+		}
+	}
+	code.addCompletedHandler(getReady(size))
+	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
+	count += 1
+	code.commit()
+	default: cb.err(#file,#line,-1);return}
 }
 func swiftFull() -> Int32
 {

@@ -20,6 +20,8 @@
 #include "type.h"
 #include "metic.h"
 
+enum Shader {Display,Track,Shaders};
+
 struct Callback {
 	void (*err)(const char *str, int num, int arg);
 	// kvm to share; read from state; write to pipe
@@ -32,7 +34,7 @@ struct Callback {
 	// share to kvm; read from state; write to gpu
 	void (*warp)(double xpos, double ypos);
 	void (*dma)(enum Memory mem, int idx, int siz);
-	void (*draw)(int both);
+	void (*draw)(enum Shader shader);
 	// loop to kvm
 	int (*full)();
 	// loop to share; read from pipe; write to state
