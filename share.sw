@@ -454,10 +454,9 @@ func swiftInit()
 	setEvent(.applicationDefined,swiftCheck)
 	guard let screen:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return}
-	let wind = window.contentRect(forFrameRect:window.frame)
-	cb.curs(Double(NSMinX(wind)),Double(NSMinY(wind)),
-		Double(NSMaxX(wind)-NSMinX(wind)),Double(NSMaxY(wind)-NSMinY(wind)),
-		Double(NSMaxX(screen)),Double(NSMaxY(screen)))
+	cb.curs(Double(rect.minX),Double(rect.minY),
+		Double(rect.width),Double(rect.height),
+		Double(screen.maxX),Double(screen.maxY))
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
