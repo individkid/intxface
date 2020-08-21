@@ -116,7 +116,7 @@ Roll = {
 	"Focal", -- adjust focal length
 	"Picture", -- adjust frustrum height
 }
-Config = {
+Ture = {
 	"Table",
 	"Sides",
 }
@@ -247,7 +247,7 @@ Client = {
 	{"user","Mode",{["mem"]={["User"]=true}},"siz"},
 }
 Sculpt = {
-	{"cfg","Config",{},{}},
+	{"cfg","Ture",{},{}},
 }
 Metric = {
 	{"src","Source",{},{}},

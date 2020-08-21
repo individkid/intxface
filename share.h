@@ -21,6 +21,10 @@
 #include "metic.h"
 
 enum Shader {Display,Track,Shaders};
+enum Config {PictureMinX,PictureMinY,
+	PictureMaxX,PictureMaxY,
+	PictureWide,PictureHigh,
+	ScreenMaxX,ScreenMaxY};
 
 struct Callback {
 	void (*err)(const char *str, int num, int arg);
@@ -29,9 +33,9 @@ struct Callback {
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
 	void (*drag)(double xpos, double ypos, double width, double height);
-	void (*curs)(double xpos, double ypos, double width, double height, double xmax, double ymax);
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
 	// share to kvm; read from state; write to gpu
+	double (*conf)(enum Config config);
 	void (*warp)(double xpos, double ypos);
 	void (*dma)(enum Memory mem, int idx, int siz);
 	void (*draw)(enum Shader shader);

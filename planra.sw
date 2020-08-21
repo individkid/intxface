@@ -30,7 +30,7 @@ func getDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLC
 	}
 	index = index + 1}}
 }
-func planraDraw(_ shader:share.Shader)
+func planraDraw1(_ shader:share.Shader)
 {
 	form.set(getRender(0),\Form.feather)
 	form.set(getRender(1),\Form.arrow)
@@ -53,11 +53,8 @@ func planraDraw(_ shader:share.Shader)
 	count += 1
 	code.commit()
 }
-func planraInit()
+func planraDraw0(_ shader:share.Shader)
 {
-	let _ = swiftInit()
-	cb.draw = planraDraw
-
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
 		print("cannot make library"); return}
 	guard let kernel_debug = library.makeFunction(name:"kernel_debug") else {
@@ -77,8 +74,8 @@ func planraInit()
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
 
-	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64
-	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64
+	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64; plane0.plane = (51.20,76.80,28.16);
+	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64; plane1.plane = (25.60,25.60,28.16);
 	let planes = [plane0,plane1];
 	triangle.set(planes)
 	// yellow
@@ -100,6 +97,8 @@ func planraInit()
 
 	print("before debug")
 
+	form.set(getRender(0),\Form.feather)
+	form.set(getRender(1),\Form.arrow)
 	for (a,b,c,d):(Int8,Int8,Int8,Int8) in [(8,64,8,64),(7,63,9,65)] {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
@@ -109,6 +108,7 @@ func planraInit()
 	encode.setBuffer(triangle.get(),offset:0,index:0)
 	encode.setBuffer(arrayz,offset:0,index:1)
 	encode.setBuffer(charz,offset:0,index:2)
+	encode.setBuffer(form.get(),offset:0,index:3)
 	let groups = MTLSize(width:1,height:1,depth:1)
 	let threads = MTLSize(width:2,height:1,depth:1)
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
@@ -130,9 +130,16 @@ func planraInit()
 	print("between debug and hello")
 
 	triangle.set(points)
-	planraDraw(share.Display)
+	planraDraw1(share.Display)
 
 	print("after hello")
+
+	cb.draw = planraDraw1
+}
+func planraInit()
+{
+	swiftInit()
+	cb.draw = planraDraw0
 }
 
 // MAIN

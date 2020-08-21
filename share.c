@@ -363,35 +363,6 @@ void shareClick(int isright)
 	writeClient(&client,cb.tub);
 }
 
-void shareCurs(double xpos, double ypos, double width, double height, double xmax, double ymax)
-{
-	double xhalf = width/2.0;
-	double yhalf = height/2.0;
-	render[0][0] = xpos+xhalf;
-	render[0][1] = ypos+yhalf;
-	render[0][2] = 2*WINDEEP;
-	render[1][0] = xpos+width;
-	render[1][1] = ypos+height;
-	render[1][2] = WINDEEP;
-	render[2][0] = xmax;
-	render[2][1] = ymax;
-	render[2][2] = 0.0;
-	struct Client client = {0};
-	enum Function function[1]; function[0] = Copy;
-	client.fnc = function; client.len = 1; client.siz = 2;
-	struct Vector vector[2] = {0};
-	for (int i = 0; i < 2; i++) {
-	for (int j = 0; j < 2; j++) {
-	vector[i].val[j] = render[i][j];}}
-	client.render = vector; client.mem = Render;
-	writeClient(&client,cb.tub);
-	vector[1].val[0] = vector[0].val[0] = render[0][0];
-	vector[1].val[1] = vector[0].val[1] = render[0][1];
-	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
-	client.pierce = vector; client.mem = Pierce;
-	writeClient(&client,cb.tub);
-}
-
 float *procMat(struct Client *client, int idx)
 {
 	switch (client->mem) {
@@ -464,6 +435,7 @@ void procRmw2() // transition between move and roll
 	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
 	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
+	/*if (ENUM == Render) printf("Copy Render %d %d\n",client->idx,client->siz);*/ \
 	return;}
 void procCopy(struct Client **ptr)
 {
@@ -531,55 +503,6 @@ int shareRead()
 	return res;
 }
 
-void novoid()
-{
-}
-
-int nofalse()
-{
-	return 0;
-}
-
-void nosize(double xmid, double ymid, double xmax, double ymax)
-{
-	printf("size %f %f %f %f\n",xmid,ymid,xmax,ymax);
-}
-
-void nowarp(double xpos, double ypos)
-{
-	printf("warp %f %f\n",xpos,ypos);
-}
-
-void nodma(enum Memory mem, int idx, int siz)
-{
-	printf("dma %d\n",mem);
-}
-
-void nodrag(double xpos, double ypos)
-{
-	if (cb.esc == 1) printf("drag %f %f\n",xpos,ypos);
-}
-
-void nomove(double xpos, double ypos)
-{
-	if (cb.esc == 1) printf("move %f %f\n",xpos,ypos);
-}
-
-void noroll(double xoffset, double yoffset)
-{
-	if (cb.esc == 1) printf("roll %f %f\n",xoffset,yoffset);
-}
-
-void noclick(int isright)
-{
-	printf("click %d\n",isright);
-}
-
-void nowrite(struct Vector *point, struct Vector *normal, int object)
-{
-	printf("write %d\n",object);
-}
-
 int argc = 0;
 char **argv = 0;
 void shareArg(const char *arg)
@@ -597,18 +520,9 @@ void shareInit()
 	cb.roll = shareRoll;
 	cb.click = shareClick;
 	cb.drag = shareDrag;
-	cb.curs = shareCurs;
 	cb.write = shareWrite;
-	cb.warp = nowarp;
-	cb.dma = nodma;
-	cb.draw = novoid;
-	cb.full = nofalse;
 	cb.proc = shareProc;
 	cb.read = shareRead;
-	if (cb.start == 0) cb.start = novoid;
-	cb.call = novoid;
-	cb.wake = novoid;
-	cb.done = novoid;
 	if (argc == 4) {
 	cb.hub = pipeInit(argv[1],argv[2]);
 	if (cb.hub < 0) {
@@ -623,13 +537,13 @@ void shareInit()
 	bothJump(cb.err,cb.tub);
 	cb.esc = 0;
     struct Client client = {0};
-    enum Function function[2] = {0}; function[0] = Copy;
-    client.fnc = function; client.len = 1; client.siz = 0;
+    enum Function function[2] = {0}; client.fnc = function;
+    client.len = 1; client.siz = 0; function[0] = Copy;
     for (client.mem = 0; client.mem < Memorys; client.mem++) {
 	writeClient(&client,cb.tub);}
     struct Mode mode = {0}; mode.matrix = Global;
     mode.click = Complete; mode.move = Moves; mode.roll = Rolls;
-    client.user = &mode; client.mem = User; client.siz = 1;
+    client.siz = 1; client.user = &mode; client.mem = User;
 	writeClient(&client,cb.tub);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
 	client.subject = &affine; client.mem = Subject;
@@ -641,6 +555,34 @@ void shareInit()
 	linear.val[4][2] = linear.val[5][0] = 1.0;
 	linear.val[7][0] = linear.val[8][1] = 1.0;
 	client.basis = &linear; client.mem = Basis;
+	writeClient(&client,cb.tub);
+	double xpos = cb.conf(PictureMinX);
+	double ypos = cb.conf(PictureMinY);
+	double width = xpos+cb.conf(PictureMaxX);
+	double height = ypos+cb.conf(PictureMaxY);
+	double xmax = cb.conf(ScreenMaxX);
+	double ymax = cb.conf(ScreenMaxY);
+	double xhalf = width/2.0;
+	double yhalf = height/2.0;
+	render[0][0] = xpos+xhalf;
+	render[0][1] = ypos+yhalf;
+	render[0][2] = 2*WINDEEP;
+	render[1][0] = xpos+width;
+	render[1][1] = ypos+height;
+	render[1][2] = WINDEEP;
+	render[2][0] = xmax;
+	render[2][1] = ymax;
+	render[2][2] = 0.0;
+	struct Vector vector[2] = {0};
+	for (int i = 0; i < 2; i++) {
+	for (int j = 0; j < 2; j++) {
+	vector[i].val[j] = render[i][j];}}
+	client.siz = 2; client.render = vector; client.mem = Render;
+	writeClient(&client,cb.tub);
+	vector[1].val[0] = vector[0].val[0] = render[0][0];
+	vector[1].val[1] = vector[0].val[1] = render[0][1];
+	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
+	client.pierce = vector; client.mem = Pierce;
 	writeClient(&client,cb.tub);
 	function[0] = Gpu0; function[1] = Gpu1;
 	client.len = 2; client.siz = 0;

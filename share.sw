@@ -224,6 +224,15 @@ func getClient(_ mem:share.Memory) -> share.Client?
 	let client:UnsafeMutablePointer<share.Client>? = fromAny(any)
 	return client?.pointee
 }
+func getRect() -> NSRect
+{
+	if let temp = window {
+		return temp.contentRect(forFrameRect:temp.frame)
+	} else {
+		return NSMakeRect(0.0, 0.0, CGFloat(WINWIDE), CGFloat(WINHIGH))
+
+	}
+}
 func getPoint() -> NSPoint
 {
 	var point = NSEvent.mouseLocation
@@ -279,19 +288,12 @@ class WindowDelegate : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		while (getCheck()) {}
 		NSApp.stop(nil)
 		return true
 	}
 	func windowDidResize(_ notification: Notification)
 	{
 		swiftSize()
-		while (getCheck()) {}
-	}
-	func windowDidMove(_ notification: Notification)
-	{
-		swiftDrag()
-		while (getCheck()) {}
 	}
 }
 
@@ -316,9 +318,6 @@ func swiftEmpty()
 }
 func swiftDrag()
 {
-	let rect = window.contentRect(forFrameRect:window.frame)
-	cb.drag(Double(rect.minX),Double(rect.minY),
-	Double(rect.width),Double(rect.height))
 }
 func swiftSize()
 {
@@ -329,6 +328,15 @@ func swiftSize()
 	layer.drawableSize = size
 	if let temp = getTexture(rect) {
 		descriptor.depthAttachment.texture = temp} else {return}
+	while (getCheck()) {}
+}
+func swiftDrag(event:NSEvent) -> NSEvent?
+{
+	let rect = window.contentRect(forFrameRect:window.frame)
+	cb.drag(Double(rect.minX),Double(rect.minY),
+	Double(rect.width),Double(rect.height))
+	while (getCheck()) {}
+	return event
 }
 func swiftKey(event:NSEvent) -> NSEvent?
 {
@@ -340,7 +348,6 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
 	if (cb.esc >= 2) {
-	while (getCheck()) {}
 	NSApp.stop(nil)}
 	return nil
 }
@@ -388,12 +395,11 @@ func swiftCheck(event:NSEvent) -> NSEvent?
 
 func swiftInit()
 {
-	let _ = NSApplication.shared
-	NSApp.setActivationPolicy(.regular)
-	NSApp.activate(ignoringOtherApps: true)
 	if let temp = MTLCreateSystemDefaultDevice() {
 		device = temp} else {print("cannot make device"); return}
-	let rect = NSMakeRect(0.0, 0.0, CGFloat(WINWIDE), CGFloat(WINHIGH))
+	let rect = NSMakeRect(
+		CGFloat(cb.conf(share.PictureMinX)), CGFloat(cb.conf(share.PictureMinY)),
+		CGFloat(cb.conf(share.PictureWide)), CGFloat(cb.conf(share.PictureHigh)))
 	if let temp = noWarn(CAMetalLayer()) {
 		layer = temp} else {print("cannot make layer"); return}
 	layer.device = device
@@ -461,13 +467,9 @@ func swiftInit()
 	setEvent(.leftMouseDown,swiftLeft)
 	setEvent(.rightMouseDown,swiftRight)
 	setEvent(.mouseMoved,swiftMove)
+	setEvent(.leftMouseDragged,swiftDrag)
 	setEvent(.scrollWheel,swiftRoll)
 	setEvent(.applicationDefined,swiftCheck)
-	guard let screen:NSRect = NSScreen.main?.frame else {
-		print("cannot make screen"); return}
-	cb.curs(Double(rect.minX),Double(rect.minY),
-		Double(rect.width),Double(rect.height),
-		Double(screen.maxX),Double(screen.maxY))
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
@@ -590,8 +592,28 @@ func swiftDone()
 	print("swiftDone")
 }
 
+func loopConf(_ config:share.Config) -> Double
+{
+	let rect = getRect()
+	guard let screen:NSRect = NSScreen.main?.frame else {
+		print("cannot make screen"); return 0.0}
+	switch (config) {
+	case (share.PictureMinX): return Double(rect.minX)
+	case (share.PictureMinY): return Double(rect.minY)
+	case (share.PictureMaxX): return Double(rect.maxX)
+	case (share.PictureMaxY): return Double(rect.maxY)
+	case (share.PictureWide): return Double(rect.maxX-rect.minX)
+	case (share.PictureHigh): return Double(rect.maxY-rect.minY)
+	case (share.ScreenMaxX): return Double(screen.maxX)
+	case (share.ScreenMaxY): return Double(screen.maxY)
+	default: cb.err(#file,#line,-1);return 0.0}
+}
 func loopInit()
 {
+	let _ = NSApplication.shared
+	NSApp.setActivationPolicy(.regular)
+	NSApp.activate(ignoringOtherApps: true)
+    cb.conf = loopConf
 	cb.call = loopCall
 	cb.wake = loopWake
 }
@@ -621,12 +643,12 @@ func loopDone()
 
 	for arg in CommandLine.arguments {
 	shareArg(arg)}
+	loopInit() // can read from pipes
 	shareInit() // can write to pipes
 	cb.start() // can schedule events
-	loopInit() // can read from pipes
 	threadInit() // will schedule pipe reads
 	cb.call() // will handle events
 	threadDone()
-	loopDone()
 	cb.done()
 	shareDone()
+	loopDone()

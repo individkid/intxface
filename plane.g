@@ -291,6 +291,7 @@ vertex VertexOutput vertex_simple(
    uint ident [[vertex_id]])
 {
    VertexOutput out = VertexOutput();
+   // out.position = perspective(float4(point[ident].plane,1.0),state);
    out.position = float4(point[ident].plane,1.0);
    out.color = point[ident].color[0];
    return out;
@@ -335,11 +336,19 @@ kernel void kernel_pierce(
 struct Bytes {
    char bytes[12];
 };
+char saturate(float val)
+{
+   if (val > 127.0) {return char(127);}
+   if (val < -128.0) {return char(128);}
+   if (val < 0.0) {return char(256.0+val);}
+   return char(val);
+}
 kernel void kernel_debug(
    const device Facet *plane [[buffer(0)]],
    const device Index *point [[buffer(1)]],
    uint ident [[thread_position_in_grid]],
-   device Bytes *bytes [[buffer(2)]])
+   device Bytes *bytes [[buffer(2)]],
+   const device State *state [[buffer(3)]])
 {
    bytes[ident].bytes[0] = (device char*)&plane[ident].plane - (device char*)&plane[ident];
    bytes[ident].bytes[1] = (device char*)&plane[ident].versor - (device char*)&plane[ident];
@@ -353,4 +362,8 @@ kernel void kernel_debug(
    bytes[ident].bytes[9] = point[ident].point.x;
    bytes[ident].bytes[10] = plane[ident].versor;
    bytes[ident].bytes[11] = plane[ident].tag;
+   // float4 result = perspective(float4(plane[ident].plane,1.0),state);
+   // bytes[ident].bytes[9] = saturate(state->feather.x);
+   // bytes[ident].bytes[10] = saturate(state->feather.y);
+   // bytes[ident].bytes[11] = saturate(state->feather.z);
 }
