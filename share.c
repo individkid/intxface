@@ -299,7 +299,7 @@ void shareWrite(struct Vector *point, struct Vector *normal, int object)
 	for (int i = 0; i < 3; i++) {
 	vector[0].val[i] = point->val[i];
 	vector[1].val[i] = normal->val[i];}
-	shareClient(Pierce,0,1,1,vector,Dma1);
+	shareClient(Pierce,object,2,1,vector,Dma1);
 }
 
 void shareRender()

@@ -300,7 +300,13 @@ class WindowDelegate : NSObject, NSWindowDelegate
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	var found:Pierce = Pierce()
-	var index = Int(-1)
+	guard let focal = getPierce(0) else {print("cannot get pierce"); return}
+	let xpos = focal.val.0; let ypos = focal.val.1
+	found.point.val.0 = xpos; found.normal.val.0 = xpos
+	found.point.val.1 = ypos; found.normal.val.1 = ypos
+	found.point.val.2 = 0.0; found.normal.val.2 = 1.0
+	guard let object = getClient(Object) else {print("cannot get object"); return}
+	var index = Int(object.siz)
 	let pierces:[Pierce] = fromRaw(buffer.contents(),0,size)
 	for (pierce,object) in zip(pierces,0..<size) {
 		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
