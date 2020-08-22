@@ -230,7 +230,6 @@ func getRect() -> NSRect
 		return temp.contentRect(forFrameRect:temp.frame)
 	} else {
 		return NSMakeRect(0.0, 0.0, CGFloat(WINWIDE), CGFloat(WINHIGH))
-
 	}
 }
 func getPoint() -> NSPoint
@@ -325,21 +324,14 @@ func swiftEmpty()
 func swiftSize()
 {
 	let rect = window.contentRect(forFrameRect:window.frame)
-	cb.drag(Double(rect.minX),Double(rect.minY),
-	Double(rect.width),Double(rect.height))
+	let wide = Double(rect.width)
+	let high = Double(rect.height)
+	cb.drag(-wide/2.0,-high/2.0,wide,high)
 	let size = CGSize(width:rect.width,height:rect.height)
 	layer.drawableSize = size
 	if let temp = getTexture(rect) {
 		descriptor.depthAttachment.texture = temp} else {return}
 	while (getCheck()) {}
-}
-func swiftDrag(event:NSEvent) -> NSEvent?
-{
-	let rect = window.contentRect(forFrameRect:window.frame)
-	cb.drag(Double(rect.minX),Double(rect.minY),
-	Double(rect.width),Double(rect.height))
-	while (getCheck()) {}
-	return event
 }
 func swiftKey(event:NSEvent) -> NSEvent?
 {
@@ -469,7 +461,6 @@ func swiftInit()
 	setEvent(.leftMouseDown,swiftLeft)
 	setEvent(.rightMouseDown,swiftRight)
 	setEvent(.mouseMoved,swiftMove)
-	setEvent(.leftMouseDragged,swiftDrag)
 	setEvent(.scrollWheel,swiftRoll)
 	setEvent(.applicationDefined,swiftCheck)
 }
@@ -599,15 +590,19 @@ func loopConf(_ config:share.Config) -> Double
 	let rect = getRect()
 	guard let screen:NSRect = NSScreen.main?.frame else {
 		print("cannot make screen"); return 0.0}
+	let wide = rect.maxX-rect.minX
+	let high = rect.maxY-rect.minY
 	switch (config) {
-	case (share.PictureMinX): return Double(rect.minX)
-	case (share.PictureMinY): return Double(rect.minY)
-	case (share.PictureMaxX): return Double(rect.maxX)
-	case (share.PictureMaxY): return Double(rect.maxY)
-	case (share.PictureWide): return Double(rect.maxX-rect.minX)
-	case (share.PictureHigh): return Double(rect.maxY-rect.minY)
-	case (share.ScreenMaxX): return Double(screen.maxX)
-	case (share.ScreenMaxY): return Double(screen.maxY)
+	case (share.PictureMinX): return Double(-wide/2.0)
+	case (share.PictureMinY): return Double(-high/2.0)
+	case (share.PictureWide): return Double(wide)
+	case (share.PictureHigh): return Double(high)
+	case (share.DefaultWide): return Double(WINWIDE)
+	case (share.DefaultHigh): return Double(WINHIGH)
+	case (share.DefaultDeep): return Double(WINDEEP)
+	case (share.DefaultLong): return Double(WINDEEP*2)
+	case (share.ScreenWide): return Double(screen.maxX)
+	case (share.ScreenHigh): return Double(screen.maxY)
 	default: cb.err(#file,#line,-1);return 0.0}
 }
 func loopInit()

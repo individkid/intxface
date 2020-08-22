@@ -41,8 +41,6 @@
 #define WINWIDE 512
 #define WINHIGH 512
 #define WINDEEP 512
-#define MINWIDE 128
-#define MINHIGH 128
 #define MINDEEP 128
 #define NUMFILE 64
 #define BUFSIZE 64

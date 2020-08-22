@@ -576,12 +576,13 @@ void shareInit()
 	linear.val[4][2] = linear.val[5][0] = 1.0;
 	linear.val[7][0] = linear.val[8][1] = 1.0;
 	shareClient(Basis,0,1,1,&linear,Copy);
-	double xpos = cb.conf(PictureMinX); double ypos = cb.conf(PictureMinY);
-	double width = xpos+cb.conf(PictureMaxX); double height = ypos+cb.conf(PictureMaxY);
-	double xmax = cb.conf(ScreenMaxX); double ymax = cb.conf(ScreenMaxY);
-	double xhalf = width/2.0; double yhalf = height/2.0;
-	render[0][0] = xpos+xhalf; render[0][1] = ypos+yhalf; render[0][2] = 2*WINDEEP;
-	render[1][0] = xpos+width; render[1][1] = ypos+height; render[1][2] = WINDEEP;
+	double wide = cb.conf(DefaultWide); double high = cb.conf(DefaultHigh);
+	double xpos = -wide/2.0; double ypos = -high/2.0; double zpos = 0.0;
+	double deep = cb.conf(DefaultDeep); double leng = cb.conf(DefaultLong);
+	double xmax = cb.conf(ScreenWide); double ymax = cb.conf(ScreenHigh);
+	double xhalf = wide/2.0; double yhalf = high/2.0;
+	render[0][0] = xpos+xhalf; render[0][1] = ypos+yhalf; render[0][2] = zpos+leng;
+	render[1][0] = xpos+wide; render[1][1] = ypos+high; render[1][2] = zpos+deep;
 	render[2][0] = xmax; render[2][1] = ymax; render[2][2] = 0.0;
 	shareRender(); sharePierce();
 }

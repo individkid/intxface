@@ -20,11 +20,15 @@
 #include "type.h"
 #include "metic.h"
 
-enum Shader {Display,Track,Shaders};
-enum Config {PictureMinX,PictureMinY,
-	PictureMaxX,PictureMaxY,
-	PictureWide,PictureHigh,
-	ScreenMaxX,ScreenMaxY};
+enum Shader {
+	Display,Track,Shaders
+};
+enum Config {
+	PictureMinX,PictureMinY,PictureMinZ,
+	PictureWide,PictureHigh,PictureDeep,
+	DefaultWide,DefaultHigh,DefaultDeep,DefaultLong,
+	ScreenWide,ScreenHigh,
+};
 
 struct Callback {
 	void (*err)(const char *str, int num, int arg);
