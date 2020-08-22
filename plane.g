@@ -250,9 +250,9 @@ float4 perspective(
    float3 result;
    result.z = given.z/state->arrow.z;
    float ratio = (given.z-state->feather.z)/(state->arrow.z-state->feather.z);
-   result.x = (given.x-state->feather.x)*ratio/(state->arrow.x-state->feather.x);
-   result.y = (given.y-state->feather.y)*ratio/(state->arrow.y-state->feather.y);
-   return float4(result,given[3]);
+   result.x = (given.x-state->feather.x)/(state->arrow.x-state->feather.x);
+   result.y = (given.y-state->feather.y)/(state->arrow.y-state->feather.y);
+   return float4(result,given[3]*ratio);
 }
 // MAIN
 struct VertexOutput {
