@@ -79,13 +79,13 @@ func planraDraw0(_ shader:share.Shader)
 	let planes = [plane0,plane1];
 	triangle.set(planes)
 	// yellow
-	var point0 = share.Facet(); point0.plane = (0.0,1.0,0.6); point0.color.0 = (1.0,1.0,0.0,1.0)
-	var point1 = share.Facet(); point1.plane = (-1.0,-1.0,0.6); point1.color.0 = (1.0,1.0,0.0,1.0)
-	var point2 = share.Facet(); point2.plane = (1.0,-1.0,0.6); point2.color.0 = (1.0,0.5,0.0,1.0)
+	var point0 = share.Facet(); point0.plane = (256.0,384.0,250.0); point0.color.0 = (1.0,1.0,0.0,1.0)
+	var point1 = share.Facet(); point1.plane = (128.0,128.0,250.0); point1.color.0 = (1.0,1.0,0.0,1.0)
+	var point2 = share.Facet(); point2.plane = (384.0,128.0,250.0); point2.color.0 = (1.0,0.5,0.0,1.0)
 	// orange
-	var point3 = share.Facet(); point3.plane = (0.0,-1.2,0.4); point3.color.0 = (1.0,0.5,0.0,1.0)
-	var point4 = share.Facet(); point4.plane = (1.2,1.2,0.4); point4.color.0 = (1.0,0.5,0.0,1.0)
-	var point5 = share.Facet(); point5.plane = (-1.2,1.2,0.4); point5.color.0 = (1.0,1.0,0.0,1.0)
+	var point3 = share.Facet(); point3.plane = (128.0,384.0,200.0); point3.color.0 = (1.0,0.5,0.0,1.0)
+	var point4 = share.Facet(); point4.plane = (384.0,384.0,200.0); point4.color.0 = (1.0,0.5,0.0,1.0)
+	var point5 = share.Facet(); point5.plane = (256.0,128.0,200.0); point5.color.0 = (1.0,1.0,0.0,1.0)
 	let points = [point0,point1,point2,point3,point4,point5]
 	let charz = device.makeBuffer(length:1000)
 	var array0 = share.Vertex(); array0.plane = (0,1,2)

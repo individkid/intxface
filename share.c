@@ -308,7 +308,7 @@ void shareRender()
 	for (int i = 0; i < 3; i++) {
 	vector[0].val[i] = render[0][i];
 	vector[1].val[i] = render[1][i];}
-	shareClient(Render,0,1,3,vector,Copy,Dma0,Gpu0);
+	shareClient(Render,0,2,3,vector,Copy,Dma0,Gpu0);
 }
 
 void sharePierce()
@@ -317,7 +317,7 @@ void sharePierce()
 	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
 	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
 	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0;
-	shareClient(Pierce,0,1,3,vector,Copy,Dma0,Gpu1);
+	shareClient(Pierce,0,2,3,vector,Copy,Dma0,Gpu1);
 }
 
 void shareDrag(double xpos, double ypos, double width, double height)
@@ -462,7 +462,7 @@ void procRmw2() // transition between move and roll
 	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
 	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
-	/*if (ENUM == Render) printf("Copy Render %d %d\n",client->idx,client->siz);*/ \
+	/*if (ENUM == Render && client->siz > 1) printf("Copy Render %d %d %f\n",client->idx,client->siz,client->render[1].val[2]);*/ \
 	return;}
 void procCopy(struct Client **ptr)
 {

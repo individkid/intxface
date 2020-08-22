@@ -247,12 +247,12 @@ float4 perspective(
    float4 given,
    const device State *state)
 {
-   float4 result;
+   float3 result;
    result.z = given.z/state->arrow.z;
    float ratio = (given.z-state->feather.z)/(state->arrow.z-state->feather.z);
    result.x = (given.x-state->feather.x)*ratio/(state->arrow.x-state->feather.x);
    result.y = (given.y-state->feather.y)*ratio/(state->arrow.y-state->feather.y);
-   return result;
+   return float4(result,given[3]);
 }
 // MAIN
 struct VertexOutput {
@@ -291,8 +291,7 @@ vertex VertexOutput vertex_simple(
    uint ident [[vertex_id]])
 {
    VertexOutput out = VertexOutput();
-   // out.position = perspective(float4(point[ident].plane,1.0),state);
-   out.position = float4(point[ident].plane,1.0);
+   out.position = perspective(float4(point[ident].plane,1.0),state);
    out.color = point[ident].color[0];
    return out;
 }
@@ -339,8 +338,7 @@ struct Bytes {
 char saturate(float val)
 {
    if (val > 127.0) {return char(127);}
-   if (val < -128.0) {return char(128);}
-   if (val < 0.0) {return char(256.0+val);}
+   if (val < -128.0) {return char(-128);}
    return char(val);
 }
 kernel void kernel_debug(
@@ -362,8 +360,5 @@ kernel void kernel_debug(
    bytes[ident].bytes[9] = point[ident].point.x;
    bytes[ident].bytes[10] = plane[ident].versor;
    bytes[ident].bytes[11] = plane[ident].tag;
-   // float4 result = perspective(float4(plane[ident].plane,1.0),state);
-   // bytes[ident].bytes[9] = saturate(state->feather.x);
-   // bytes[ident].bytes[10] = saturate(state->feather.y);
-   // bytes[ident].bytes[11] = saturate(state->feather.z);
 }
+
