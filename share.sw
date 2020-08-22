@@ -288,7 +288,7 @@ class WindowDelegate : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		NSApp.stop(nil)
+		loopStop()
 		return true
 	}
 	func windowDidResize(_ notification: Notification)
@@ -315,9 +315,6 @@ func swiftEmpty()
 	let found:Pierce = Pierce()
 	let index = Int(-1)
 	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
-}
-func swiftDrag()
-{
 }
 func swiftSize()
 {
@@ -347,8 +344,7 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else if (key == 13) {if (cb.esc == 1) {cb.esc = 2}}
 	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
-	if (cb.esc >= 2) {
-	NSApp.stop(nil)}
+	if (cb.esc >= 2) {loopStop()}
 	return nil
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
@@ -620,6 +616,10 @@ func loopInit()
 func loopCall()
 {
 	NSApp.run()
+}
+func loopStop()
+{
+	NSApp.stop(nil)
 }
 func loopWake()
 {
