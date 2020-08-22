@@ -55,52 +55,52 @@ Flow = {
 	"Load",
 }
 Source = {
-	"Line",
-	"Plane",
-	"Space",
+	"Line", -- metric comes from sound system
+	"Plane", -- metric comes from video system
+	"Space", -- metric comes from idea system
 }
 Function = {
-	"Rmw0",
-	"Rmw1",
-	"Rmw2",
-	"Copy",
-	"Save",
-	"Dma0",
-	"Dma1",
-	"Dma2",
-	"Gpu0",
-	"Gpu1",
-	"Port",
+	"Rmw0", -- update matrix from user
+	"Rmw1", -- update matrix from other
+	"Rmw2", -- update matrix from recompose
+	"Copy", -- directly update current matrix
+	"Save", -- directly update saved matrix
+	"Dma0", -- transfer single to gpu
+	"Dma1", -- transfer closest from gpu
+	"Dma2", -- transfer multiple to gpu
+	"Gpu0", -- update display
+	"Gpu1", -- find pierce point
+	"Port", -- send metric
 }
 Memory = {
-	"Triangle",
-	"Corner",
-	"Frame",
-	"Base",
-	"Range",
-	"Active",
-	"Basis",
-	"Subject",
-	"Object",
-	"Feature",
-	"Render",
-	"Pierce",
-	"Cloud",
-	"User",
+	"Triangle", -- plane gouping backlinks decoration
+	"Corner", -- links to planes
+	"Frame", -- link to point, arrayed by three
+	"Base", -- link to plane, randomly arrayed
+	"Range", -- grouping of link to point
+	"Active", -- grouping of link to plane
+	"Basis", -- convert plane to points
+	"Subject", -- transform all points
+	"Object", -- transform file points
+	"Feature", -- transform plane points
+	"Render", -- apply clipping perspective
+	"Pierce", -- find pierce point
+	"Cloud", -- find collisions
+	"User", -- interpret mouse
 }
 Matrix = {
-	"Global",
-	"Several",
-	"Single",
+	"Global", -- transorm matrix for all points
+	"Several", -- transform matrix for file points
+	"Single", -- transform matrix for plane points
 }
 Click = {
-	"Complete",
-	"Transform",
-	"Refine",
-	"Additive",
-	"Subtractive",
-	"Script",
-	"Suspend",
+	"Complete", -- wait for pierce point
+	"Transform", -- apply move and roll to transform matrix
+	"Refine", -- add random point through pierce point
+	"Additive", -- add region over pierce point
+	"Subtractive", -- remove region under pierce point
+	"Script", -- execute script on pierce point
+	"Suspend", -- temporarily ignore mouse
 }
 Move = {
 	"Rotate", -- rotate about fixed pierce point
