@@ -17,6 +17,7 @@
 
 #include "share.h"
 #include <pthread.h>
+#include <stdarg.h>
 
 int vld = 0;
 int sub = 0;
@@ -186,77 +187,137 @@ void composeMatrix(float *result)
 	break;}}
 }
 
-enum Memory assignAffine(struct Client *client, struct Affine *affine)
+enum Memory shareMemory(enum Matrix matrix)
 {
-	switch (cb.state[User]->user->matrix) {
-	case (Global): client->subject = affine; client->idx = 0; return Subject;
-	case (Several): client->object = affine; client->idx = object; return Object;
-	case (Single): client->feature = affine; client->idx = 0; return Feature;
+	switch (matrix) {
+	case (Global): return Subject;
+	case (Several): return Object;
+	case (Single): return Feature;
 	default: ERROR(cb.err,-1);}
 	return Memorys;
 }
 
-#define COPYAFFINE(MEM,FIELD,IDX) \
-	mem = MEM; \
-	client->idx = IDX; \
-	src = &cb.state[MEM]->FIELD[client->idx]; \
-	client->FIELD = affine;
-enum Memory copyAffine(struct Client *client, struct Affine *affine)
+int shareIndex(enum Matrix matrix)
 {
-	struct Affine *src;
-	enum Memory mem;
-	switch (cb.state[User]->user->matrix) {
-	case (Global): COPYAFFINE(Subject,subject,0); break;
-	case (Several): COPYAFFINE(Object,object,object); break;
-	case (Single): COPYAFFINE(Feature,feature,0); break;
+	switch (matrix) {
+	case (Global): return 0;
+	case (Several): return object;
+	case (Single): return 0;
 	default: ERROR(cb.err,-1);}
-	memcpy(&affine->val[0][0],src,sizeof(struct Affine));
-	return mem;
+	return 0;
 }
 
-enum Memory copyUser(struct Client *client, struct Mode *user)
+struct Affine *shareAffine(enum Matrix matrix)
 {
-	struct Mode *src = cb.state[User]->user;
-	client->user = user;
-	memcpy(user,src,sizeof(struct Mode));
-	return User;
+	switch (matrix) {
+	case (Global): return cb.state[Subject]->subject;
+	case (Several): return cb.state[Object]->object+object;
+	case (Single): return cb.state[Feature]->feature;
+	default: ERROR(cb.err,-1);}
+	return 0;
+}
+
+enum Click shareMachine(enum Click click, int isright)
+{
+	if (click == Transform && isright) {click = Suspend;}
+	else if (click == Transform) {click = Complete;}
+	else if (click == Suspend) {click = Transform;}
+	else if (click == Complete && !isright) {click = Transform;}
+	return click;
+}
+
+void shareClient(enum Memory mem, int idx, int siz, int len, ...)
+{
+	/*printf("mem(");
+	switch (mem) {
+	case (Triangle): printf("Triangle"); break;
+	case (Corner): printf("Corner"); break;
+	case (Frame): printf("Frame"); break;
+	case (Base): printf("Base"); break;
+	case (Range): printf("Range"); break;
+	case (Active): printf("Active"); break;
+	case (Basis): printf("Basis"); break;
+	case (Subject): printf("Subject"); break;
+	case (Object): printf("Object"); break;
+	case (Feature): printf("Feature"); break;
+	case (Render): printf("Render"); break;
+	case (Pierce): printf("Pierce"); break;
+	case (Cloud): printf("Cloud"); break;
+	case (User): printf("User"); break;
+	default: printf("Memorys?"); break;}
+	printf(")");*/
+	struct Client client;
+	enum Function function[len];
+	client.fnc = function;
+	client.mem = mem;
+	client.idx = idx;
+	client.siz = siz;
+	client.len = len;
+	//printf(" idx(%d) siz(%d) len(%d) fnc(",idx,siz,len);
+    va_list args;
+    va_start(args, len);
+    switch (mem) {
+	case (Triangle): client.triangle = va_arg(args,struct Facet *); break;
+	case (Corner): client.corner = va_arg(args,struct Vertex *); break;
+	case (Frame): client.frame = va_arg(args,int *); break;
+	case (Base): client.base = va_arg(args,int *); break;
+	case (Range): client.range = va_arg(args,struct Array *); break;
+	case (Active): client.active = va_arg(args,struct Array *); break;
+	case (Basis): client.basis = va_arg(args,struct Linear *); break;
+	case (Subject): client.subject = va_arg(args,struct Affine *); break;
+	case (Object): client.object = va_arg(args,struct Affine *); break;
+	case (Feature): client.feature = va_arg(args,struct Affine *); break;
+	case (Render): client.render = va_arg(args,struct Vector *); break;
+	case (Pierce): client.pierce = va_arg(args,struct Vector *); break;
+	case (Cloud): client.cloud = va_arg(args,struct Vector *); break;
+	case (User): client.user = va_arg(args,struct Mode *); break;
+	default: ERROR(cb.err,-1);}
+	for (int i = 0; i < len; i++) {
+	function[i] = va_arg(args,enum Function);
+	/*if (i > 0) printf(",");
+	switch (function[i]) {
+	case (Rmw0): printf("Rmw0"); break;
+	case (Rmw1): printf("Rmw1"); break;
+	case (Rmw2): printf("Rmw2"); break;
+	case (Copy): printf("Copy"); break;
+	case (Save): printf("Save"); break;
+	case (Dma0): printf("Dma0"); break;
+	case (Dma1): printf("Dma1"); break;
+	case (Dma2): printf("Dma2"); break;
+	case (Gpu0): printf("Gpu0"); break;
+	case (Gpu1): printf("Gpu1"); break;
+	case (Port): printf("Port"); break;
+	default: printf("Functions?\n"); break;}*/}
+	//printf(")\n");
+	writeClient(&client,cb.tub);
+    va_end(args);
 }
 
 void shareWrite(struct Vector *point, struct Vector *normal, int object)
 {
-	enum Function function[1];
-	function[0] = Dma1;
-	struct Vector pierce[2];
+	struct Vector vector[2];
 	for (int i = 0; i < 3; i++) {
-	pierce[0].val[i] = point->val[i];
-	pierce[1].val[i] = normal->val[i];}
-	struct Client client;
-	client.mem = Pierce;
-	client.len = 1;
-	client.fnc = function;
-	client.idx = object;
-	client.siz = 2;
-	client.pierce = pierce;
-	writeClient(&client,cb.tub);
+	vector[0].val[i] = point->val[i];
+	vector[1].val[i] = normal->val[i];}
+	shareClient(Pierce,0,1,1,vector,Dma1);
 }
 
 void shareRender()
 {
-	struct Mode *user = cb.state[User]->user;
-	enum Function function[3];
-	function[0] = Copy; function[1] = Dma0; function[2] = Gpu0;
 	struct Vector vector[2];
 	for (int i = 0; i < 3; i++) {
 	vector[0].val[i] = render[0][i];
 	vector[1].val[i] = render[1][i];}
-	struct Client client;
-	client.mem = Render;
-	client.len = 3;
-	client.fnc = function;
-	client.idx = 0;
-	client.siz = 2;
-	client.render = vector;
-	writeClient(&client,cb.tub);
+	shareClient(Render,0,1,3,vector,Copy,Dma0,Gpu0);
+}
+
+void sharePierce()
+{
+	struct Vector vector[2];
+	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
+	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
+	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0;
+	shareClient(Pierce,0,1,3,vector,Copy,Dma0,Gpu1);
 }
 
 void shareDrag(double xpos, double ypos, double width, double height)
@@ -285,19 +346,16 @@ void shareRoll(double xoffset, double yoffset)
 	if (render[0][2] > render[1][2]+dif+MINDEEP)
 	render[1][2] += dif;
 	shareRender();}
-	else if (user->click == Transform) {
-	struct Client client;
-	struct Affine affine[2];
-	enum Function function[3];
-	enum Function rmw = (toggle ? Rmw0 : Rmw2);
-	int size = (toggle ? 1 : 2); toggle = 1;
-	if (size > 1) {transformMatrix(&affine[1].val[0][0]);
-	copymat(matrix,&affine[1].val[0][0],4);}
+	else if (user->click == Transform && toggle) {
+	struct Affine affine[1];
 	composeMatrix(&affine[0].val[0][0]);
-	function[0] = rmw; function[1] = Dma0; function[2] = Gpu0;
-	client.mem = assignAffine(&client,&affine[0]);
-	client.fnc = function; client.len = 3; client.siz = size;
-	writeClient(&client,cb.tub);}
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
+	else if (user->click == Transform) {
+	struct Affine affine[2]; toggle = 1;
+	transformMatrix(&affine[1].val[0][0]);
+	copymat(matrix,&affine[1].val[0][0],4);
+	composeMatrix(&affine[0].val[0][0]);
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw2,Dma0,Gpu0);}
 }
 
 void shareMove(double xpos, double ypos)
@@ -305,62 +363,31 @@ void shareMove(double xpos, double ypos)
 	xmove = xpos; ymove = ypos;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
-	if (user->click == Transform) {
-	struct Client client;
-	struct Affine affine[2];
-	enum Function function[3];
-	enum Function rmw = (toggle ? Rmw2 : Rmw0);
-	int size = (toggle ? 2 : 1); toggle = 0;
+	if (user->click == Transform && toggle) {
+	struct Affine affine[2]; toggle = 0;
 	transformMatrix(&affine[0].val[0][0]);
-	if (size > 1) composeMatrix(&affine[1].val[0][0]);
-	function[0] = rmw; function[1] = Dma0; function[2] = Gpu0;
-	client.mem = assignAffine(&client,&affine[0]);
-	client.fnc = function; client.len = 3; client.siz = size;
-	writeClient(&client,cb.tub);} else {
-	struct Client client;
-	enum Function function[3];
-	function[0] = Copy; function[1] = Dma0; function[2] = Gpu1;
-	struct Vector vector[2];
-	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
-	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
-	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
-	client.pierce = vector; client.idx = 0; client.mem = Pierce;
-	client.fnc = function; client.len = 3; client.siz = 2;
-	writeClient(&client,cb.tub);}
+	composeMatrix(&affine[1].val[0][0]);
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw2,Dma0,Gpu0);}
+	else if (user->click == Transform) {
+	struct Affine affine[1];
+	transformMatrix(&affine[0].val[0][0]);
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
+	else sharePierce();
 }
 
 void shareClick(int isright)
 {
 	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
+	struct Mode user = *cb.state[User]->user;
+	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
 	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
 	toggle = 0;
-	struct Client client;
-	struct Affine affine;
-	struct Mode user = *cb.state[User]->user;
-	enum Function function[2];
-	client.fnc = function;
-	client.fnc[0] = Save; client.fnc[1] = Port;
-	client.mem = copyAffine(&client,&affine);
-	client.len = 2; client.siz = 1;
-	writeClient(&client,cb.tub);
-	client.fnc[0] = Copy;
-	client.mem = copyUser(&client,&user);
-	if (user.click == Transform) {
-	if (isright) {
-	user.click = Suspend;} else {
-	user.click = Complete;}}
-	else if (user.click == Suspend) {
-	user.click = Transform;
-	if (isright)
-	cb.warp(vector[0],vector[1]);}
-	else if (user.click == Complete) {
-	if (!isright) {
-	user.click = Transform;}}
-	client.len = 1; client.siz = 1;
-	writeClient(&client,cb.tub);
+	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
+	user.click = shareMachine(user.click,isright);
+	shareClient(User,0,1,1,&user,Copy);
 }
 
 float *procMat(struct Client *client, int idx)
@@ -536,57 +563,27 @@ void shareInit()
 	bothJump(cb.err,cb.zub);
 	bothJump(cb.err,cb.tub);
 	cb.esc = 0;
-    struct Client client = {0};
-    enum Function function[2] = {0}; client.fnc = function;
-    client.len = 1; client.siz = 0; function[0] = Copy;
-    for (client.mem = 0; client.mem < Memorys; client.mem++) {
-	writeClient(&client,cb.tub);}
+    for (enum Memory mem = 0; mem < Memorys; mem++) {
+    shareClient(mem,0,0,1,0,Copy);}
     struct Mode mode = {0}; mode.matrix = Global;
     mode.click = Complete; mode.move = Moves; mode.roll = Rolls;
-    client.siz = 1; client.user = &mode; client.mem = User;
-	writeClient(&client,cb.tub);
+    shareClient(User,0,1,1,&mode,Copy);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
-	client.subject = &affine; client.mem = Subject;
-	writeClient(&client,cb.tub);
-	client.feature = &affine; client.mem = Feature;
-	writeClient(&client,cb.tub);
+	shareClient(Subject,0,1,1,&affine,Copy);
+	shareClient(Feature,0,1,1,&affine,Copy);
 	struct Linear linear = {0};
 	linear.val[1][1] = linear.val[2][2] = 1.0;
 	linear.val[4][2] = linear.val[5][0] = 1.0;
 	linear.val[7][0] = linear.val[8][1] = 1.0;
-	client.basis = &linear; client.mem = Basis;
-	writeClient(&client,cb.tub);
-	double xpos = cb.conf(PictureMinX);
-	double ypos = cb.conf(PictureMinY);
-	double width = xpos+cb.conf(PictureMaxX);
-	double height = ypos+cb.conf(PictureMaxY);
-	double xmax = cb.conf(ScreenMaxX);
-	double ymax = cb.conf(ScreenMaxY);
-	double xhalf = width/2.0;
-	double yhalf = height/2.0;
-	render[0][0] = xpos+xhalf;
-	render[0][1] = ypos+yhalf;
-	render[0][2] = 2*WINDEEP;
-	render[1][0] = xpos+width;
-	render[1][1] = ypos+height;
-	render[1][2] = WINDEEP;
-	render[2][0] = xmax;
-	render[2][1] = ymax;
-	render[2][2] = 0.0;
-	struct Vector vector[2] = {0};
-	for (int i = 0; i < 2; i++) {
-	for (int j = 0; j < 2; j++) {
-	vector[i].val[j] = render[i][j];}}
-	client.siz = 2; client.render = vector; client.mem = Render;
-	writeClient(&client,cb.tub);
-	vector[1].val[0] = vector[0].val[0] = render[0][0];
-	vector[1].val[1] = vector[0].val[1] = render[0][1];
-	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0; 
-	client.pierce = vector; client.mem = Pierce;
-	writeClient(&client,cb.tub);
-	function[0] = Gpu0; function[1] = Gpu1;
-	client.len = 2; client.siz = 0;
-	writeClient(&client,cb.tub);
+	shareClient(Basis,0,1,1,&linear,Copy);
+	double xpos = cb.conf(PictureMinX); double ypos = cb.conf(PictureMinY);
+	double width = xpos+cb.conf(PictureMaxX); double height = ypos+cb.conf(PictureMaxY);
+	double xmax = cb.conf(ScreenMaxX); double ymax = cb.conf(ScreenMaxY);
+	double xhalf = width/2.0; double yhalf = height/2.0;
+	render[0][0] = xpos+xhalf; render[0][1] = ypos+yhalf; render[0][2] = 2*WINDEEP;
+	render[1][0] = xpos+width; render[1][1] = ypos+height; render[1][2] = WINDEEP;
+	render[2][0] = xmax; render[2][1] = ymax; render[2][2] = 0.0;
+	shareRender(); sharePierce();
 }
 
 void shareDone()
