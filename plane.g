@@ -31,16 +31,16 @@ float3 barrycentric(Expand plane, uint versor, float3 point)
    for (uint i = 0; i < 3; i++) sub[i] = (versor+i+1)%3;
    float x = point[sub[0]];
    float y = point[sub[1]];
-   float x1 = plane.point[1][sub[0]];
-   float x2 = plane.point[2][sub[0]];
-   float x3 = plane.point[3][sub[0]];
-   float y1 = plane.point[1][sub[1]];
-   float y2 = plane.point[2][sub[1]];
-   float y3 = plane.point[3][sub[1]];
+   float x1 = plane.point[0][sub[0]];
+   float x2 = plane.point[1][sub[0]];
+   float x3 = plane.point[2][sub[0]];
+   float y1 = plane.point[0][sub[1]];
+   float y2 = plane.point[1][sub[1]];
+   float y3 = plane.point[2][sub[1]];
    float3 lambda;
    lambda.x = ((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
    lambda.y = ((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
-   lambda.z = 1-lambda.x-lambda.y;
+   lambda.z = 1.0-lambda.x-lambda.y;
    return lambda;
 }
 float cartesian(Expand plane, uint versor, float3 lambda)
@@ -364,18 +364,34 @@ kernel void kernel_debug(
    points.plane[0] = expand(plane[0],state);
    points.plane[1] = expand(plane[1],state);
    points.plane[2] = expand(plane[2],state);
-   float3 result = intersect(points);
-   bytes[ident].bytes[0] = result.x;
-   bytes[ident].bytes[1] = result.y;
-   bytes[ident].bytes[2] = result.z;
-   bytes[ident].bytes[3] = points.plane[0].point[0].x/8.0;
-   bytes[ident].bytes[4] = points.plane[0].point[0].y/8.0;
-   bytes[ident].bytes[5] = points.plane[0].point[0].z/8.0;
-   bytes[ident].bytes[6] = points.plane[0].point[1].x/8.0;
-   bytes[ident].bytes[7] = points.plane[0].point[1].y/8.0;
-   bytes[ident].bytes[8] = points.plane[0].point[1].z/8.0;
-   bytes[ident].bytes[9] = points.plane[0].point[2].x/8.0;
-   bytes[ident].bytes[10] = points.plane[0].point[2].y/8.0;
-   bytes[ident].bytes[11] = points.plane[0].point[2].z/8.0;*/
+   //Qualify qualify = intrasect(points.plane[0],float3(0.0,0.0,0.0),float3(0.0,0.0,1.0));
+   uint versor = squashed(points.plane[0]);
+   uint3 sub;
+   for (uint i = 0; i < 3; i++) sub[i] = (versor+i+1)%3;
+   float x = float3(0.0,0.0,1.0)[sub[0]];
+   float y = float3(0.0,0.0,1.0)[sub[1]];
+   float x1 = points.plane[0].point[1][sub[0]];
+   float x2 = points.plane[0].point[2][sub[0]];
+   float x3 = points.plane[0].point[3][sub[0]];
+   float y1 = points.plane[0].point[1][sub[1]];
+   float y2 = points.plane[0].point[2][sub[1]];
+   float y3 = points.plane[0].point[3][sub[1]];
+   float3 result = barrycentric(points.plane[0],versor,float3(0.0,0.0,1.0));
+   float3 lambda;
+   lambda.x = ((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
+   lambda.y = ((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
+   lambda.z = 1.0-lambda.x-lambda.y;
+   bytes[ident].bytes[0] = lambda.x;
+   bytes[ident].bytes[1] = lambda.y;
+   bytes[ident].bytes[2] = lambda.z;
+   bytes[ident].bytes[3] = x1/8.0; // nonzero
+   bytes[ident].bytes[4] = x2/8.0;
+   bytes[ident].bytes[5] = x3/8.0;
+   bytes[ident].bytes[6] = y1/8.0;
+   bytes[ident].bytes[7] = y2/8.0; // nonzero
+   bytes[ident].bytes[8] = y3/8.0;
+   bytes[ident].bytes[9] = result[0];
+   bytes[ident].bytes[10] = result[1];
+   bytes[ident].bytes[11] = result[2];*/
 }
 
