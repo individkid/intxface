@@ -376,7 +376,8 @@ kernel void kernel_debug(
    float y1 = points.plane[0].point[1][sub[1]];
    float y2 = points.plane[0].point[2][sub[1]];
    float y3 = points.plane[0].point[3][sub[1]];
-   float3 result = barrycentric(points.plane[0],versor,float3(0.0,0.0,1.0));
+   float3 result0 = barrycentric(points.plane[0],versor,float3(0.0,0.0,1.0));
+   float3 result1 = project(points.plane[0],versor,float3(0.0,0.0,1.0));
    float3 lambda;
    lambda.x = ((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
    lambda.y = ((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
@@ -384,14 +385,14 @@ kernel void kernel_debug(
    bytes[ident].bytes[0] = lambda.x;
    bytes[ident].bytes[1] = lambda.y;
    bytes[ident].bytes[2] = lambda.z;
-   bytes[ident].bytes[3] = x1/8.0; // nonzero
-   bytes[ident].bytes[4] = x2/8.0;
-   bytes[ident].bytes[5] = x3/8.0;
-   bytes[ident].bytes[6] = y1/8.0;
-   bytes[ident].bytes[7] = y2/8.0; // nonzero
-   bytes[ident].bytes[8] = y3/8.0;
-   bytes[ident].bytes[9] = result[0];
-   bytes[ident].bytes[10] = result[1];
-   bytes[ident].bytes[11] = result[2];*/
+   bytes[ident].bytes[3] = points.plane[0].point[0].z;
+   bytes[ident].bytes[4] = points.plane[0].point[1].z;
+   bytes[ident].bytes[5] = points.plane[0].point[2].z;
+   bytes[ident].bytes[6] = result1[0];
+   bytes[ident].bytes[7] = result1[1];
+   bytes[ident].bytes[8] = result1[2];
+   bytes[ident].bytes[9] = result0[0];
+   bytes[ident].bytes[10] = result0[1];
+   bytes[ident].bytes[11] = result0[2];*/
 }
 
