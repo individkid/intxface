@@ -339,11 +339,11 @@ void shareRoll(double xoffset, double yoffset)
 	struct Mode *user = cb.state[User]->user;
 	float dif = yoffset*LENGTH;
 	if (user->click == Transform && user->roll == Focal) {
-	if (render[0][2]+dif > render[1][2]+MINDEEP)
+	if (render[0][2]+dif > render[1][2]+cb.conf(DefaultStop))
 	render[0][2] += dif;
 	shareRender();}
 	else if (user->click == Transform && user->roll == Picture) {
-	if (render[0][2] > render[1][2]+dif+MINDEEP)
+	if (render[0][2] > render[1][2]+dif+cb.conf(DefaultStop))
 	render[1][2] += dif;
 	shareRender();}
 	else if (user->click == Transform && toggle) {

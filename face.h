@@ -38,10 +38,11 @@
 #define FILESIZE 4096
 #define NUMOPEN 1024
 #define NUMPOOL 1024
+#define WINLONG 1024
 #define WINWIDE 512
 #define WINHIGH 512
 #define WINDEEP 512
-#define MINDEEP 128
+#define WINSTOP 128
 #define NUMFILE 64
 #define BUFSIZE 64
 #define NUMINET 16

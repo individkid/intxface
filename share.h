@@ -26,7 +26,8 @@ enum Shader {
 enum Config {
 	PictureMinX,PictureMinY,PictureMinZ,
 	PictureWide,PictureHigh,PictureDeep,
-	DefaultWide,DefaultHigh,DefaultDeep,DefaultLong,
+	DefaultWide,DefaultHigh,
+	DefaultDeep,DefaultLong,DefaultStop,
 	ScreenWide,ScreenHigh,
 };
 

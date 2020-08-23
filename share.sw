@@ -600,7 +600,8 @@ func loopConf(_ config:share.Config) -> Double
 	case (share.DefaultWide): return Double(WINWIDE)
 	case (share.DefaultHigh): return Double(WINHIGH)
 	case (share.DefaultDeep): return Double(WINDEEP)
-	case (share.DefaultLong): return Double(WINDEEP*2)
+	case (share.DefaultLong): return Double(WINLONG)
+	case (share.DefaultStop): return Double(WINSTOP)
 	case (share.ScreenWide): return Double(screen.maxX)
 	case (share.ScreenHigh): return Double(screen.maxY)
 	default: cb.err(#file,#line,-1);return 0.0}
