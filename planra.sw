@@ -74,9 +74,11 @@ func planraDraw0(_ shader:share.Shader)
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
 
-	var plane0 = share.Facet(); plane0.versor = 8; plane0.tag = 64; plane0.plane = (51.20,76.80,28.16);
-	var plane1 = share.Facet(); plane1.versor = 8; plane1.tag = 64; plane1.plane = (25.60,25.60,28.16);
-	let planes = [plane0,plane1];
+	var plane0 = share.Facet(); plane0.versor = 2; plane0.tag = 64; plane0.plane = (51.20,76.80,28.16);
+	var plane1 = share.Facet(); plane1.versor = 1; plane1.tag = 64; plane1.plane = (25.60,25.60,28.16);
+	var plane2 = share.Facet(); plane2.versor = 0; plane2.tag = 64; plane2.plane = (25.60,25.60,28.16);
+	plane0.plane = (0.0,0.0,0.0); plane1.plane = (0.0,0.0,0.0); plane2.plane = (16.0,16.0,16.0);
+	let planes = [plane0,plane1,plane2];
 	triangle.set(planes)
 	// yellow
 	var point0 = share.Facet(); point0.plane = (0.0,256.0,500.0); point0.color.0 = (1.0,1.0,0.0,1.0)
@@ -99,7 +101,7 @@ func planraDraw0(_ shader:share.Shader)
 
 	form.set(getRender(0),\Form.feather)
 	form.set(getRender(1),\Form.arrow)
-	for (a,b,c,d):(Int8,Int8,Int8,Int8) in [(8,64,8,64),(7,63,9,65)] {
+	for (a,b,c,d):(Int8,Int8,Int8,Int8) in [(2,64,1,64),(2,63,1,65)] {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
 	guard let encode = code.makeComputeCommandEncoder() else {
@@ -121,8 +123,8 @@ func planraDraw0(_ shader:share.Shader)
 	// TEST code.waitUntilScheduled()
 	triangle.set(Int32(63),Int(offsetFacetTag()))
 	triangle.set(Int32(65),1,Int(offsetFacetTag()))
-	triangle.set(Int32(7),Int(offsetFacetVersor()))
-	triangle.set(Int32(9),1,Int(offsetFacetVersor()))
+	//triangle.set(Int32(7),Int(offsetFacetVersor()))
+	//triangle.set(Int32(9),1,Int(offsetFacetVersor()))
 	print("before \(count)")
 	code.waitUntilCompleted()
 	print("after \(count)")}

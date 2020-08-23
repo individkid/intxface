@@ -106,12 +106,7 @@ class Pend<T>
 		let siz = MemoryLayout<T>.size
 		let base = siz*index
 		let limit = base+siz*val.count
-		if (val.count > 0) {
-			let ptr = UnsafeMutablePointer<T>.allocate(capacity:siz*val.count)
-			for (count,elem) in zip(0..<val.count,val) {ptr[count] = elem}
-			set(UnsafeRawPointer(ptr),base..<limit)
-			ptr.deallocate()
-		}
+		toPointrs(val,{(ptr) in set(ptr,base..<limit)})
 	}
 	func set<S>(_ vals: [S], _ index: Int, _ field: Int)
 	{

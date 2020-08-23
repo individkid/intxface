@@ -359,5 +359,23 @@ kernel void kernel_debug(
    bytes[ident].bytes[9] = point[ident].point.x;
    bytes[ident].bytes[10] = plane[ident].versor;
    bytes[ident].bytes[11] = plane[ident].tag;
+
+   /*Triple points;
+   points.plane[0] = expand(plane[0],state);
+   points.plane[1] = expand(plane[1],state);
+   points.plane[2] = expand(plane[2],state);
+   float3 result = intersect(points);
+   bytes[ident].bytes[0] = result.x;
+   bytes[ident].bytes[1] = result.y;
+   bytes[ident].bytes[2] = result.z;
+   bytes[ident].bytes[3] = points.plane[0].point[0].x/8.0;
+   bytes[ident].bytes[4] = points.plane[0].point[0].y/8.0;
+   bytes[ident].bytes[5] = points.plane[0].point[0].z/8.0;
+   bytes[ident].bytes[6] = points.plane[0].point[1].x/8.0;
+   bytes[ident].bytes[7] = points.plane[0].point[1].y/8.0;
+   bytes[ident].bytes[8] = points.plane[0].point[1].z/8.0;
+   bytes[ident].bytes[9] = points.plane[0].point[2].x/8.0;
+   bytes[ident].bytes[10] = points.plane[0].point[2].y/8.0;
+   bytes[ident].bytes[11] = points.plane[0].point[2].z/8.0;*/
 }
 
