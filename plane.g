@@ -91,7 +91,7 @@ Qualify intrasect(Expand plane, float3 left, float3 right)
    float3 origin = project(plane,versor,left);
    float3 point = project(plane,versor,right);
    float numerator = origin.z-left.z;
-   float denominator = numerator-point.z+right.z;
+   float denominator = numerator+(right.z-point.z);
    float numer = metal::abs(numerator);
    float denom = metal::abs(denominator);
    if (denom < 1.0 && INFINITY*denom < numer) {
@@ -99,7 +99,7 @@ Qualify intrasect(Expand plane, float3 left, float3 right)
       qualify.point = float3(INFINITY,INFINITY,INFINITY);
    } else {
       qualify.quality = numer/denom;
-      qualify.point = right*numerator/denominator;
+      qualify.point = left+(right-left)*numerator/denominator;
    }
    return qualify;
 }
@@ -364,35 +364,20 @@ kernel void kernel_debug(
    points.plane[0] = expand(plane[0],state);
    points.plane[1] = expand(plane[1],state);
    points.plane[2] = expand(plane[2],state);
-   //Qualify qualify = intrasect(points.plane[0],float3(0.0,0.0,0.0),float3(0.0,0.0,1.0));
-   uint versor = squashed(points.plane[0]);
-   uint3 sub;
-   for (uint i = 0; i < 3; i++) sub[i] = (versor+i+1)%3;
-   float x = float3(0.0,0.0,1.0)[sub[0]];
-   float y = float3(0.0,0.0,1.0)[sub[1]];
-   float x1 = points.plane[0].point[1][sub[0]];
-   float x2 = points.plane[0].point[2][sub[0]];
-   float x3 = points.plane[0].point[3][sub[0]];
-   float y1 = points.plane[0].point[1][sub[1]];
-   float y2 = points.plane[0].point[2][sub[1]];
-   float y3 = points.plane[0].point[3][sub[1]];
-   float3 result0 = barrycentric(points.plane[0],versor,float3(0.0,0.0,1.0));
-   float3 result1 = project(points.plane[0],versor,float3(0.0,0.0,1.0));
-   float3 lambda;
-   lambda.x = ((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
-   lambda.y = ((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
-   lambda.z = 1.0-lambda.x-lambda.y;
-   bytes[ident].bytes[0] = lambda.x;
-   bytes[ident].bytes[1] = lambda.y;
-   bytes[ident].bytes[2] = lambda.z;
-   bytes[ident].bytes[3] = points.plane[0].point[0].z;
-   bytes[ident].bytes[4] = points.plane[0].point[1].z;
-   bytes[ident].bytes[5] = points.plane[0].point[2].z;
-   bytes[ident].bytes[6] = result1[0];
-   bytes[ident].bytes[7] = result1[1];
-   bytes[ident].bytes[8] = result1[2];
-   bytes[ident].bytes[9] = result0[0];
-   bytes[ident].bytes[10] = result0[1];
-   bytes[ident].bytes[11] = result0[2];*/
+   Quality quality = inteasect(points.plane[0],points.plane[1]);
+   Qualify left = intrasect(points.plane[0],points.plane[1].point[1],points.plane[1].point[2]);
+   Qualify right = intrasect(points.plane[0],points.plane[1].point[1],points.plane[1].point[0]);
+   bytes[ident].bytes[0] = quality.left.x/4.0;
+   bytes[ident].bytes[1] = quality.left.y/4.0;
+   bytes[ident].bytes[2] = quality.left.z/4.0;
+   bytes[ident].bytes[3] = quality.right.x/4.0;
+   bytes[ident].bytes[4] = quality.right.y/4.0;
+   bytes[ident].bytes[5] = quality.right.z/4.0;
+   bytes[ident].bytes[6] = left.point.x/4.0;
+   bytes[ident].bytes[7] = left.point.y/4.0;
+   bytes[ident].bytes[8] = left.point.z/4.0;
+   bytes[ident].bytes[9] = right.point.x/4.0;
+   bytes[ident].bytes[10] = right.point.y/4.0;
+   bytes[ident].bytes[11] = right.point.z/4.0;*/
 }
 
