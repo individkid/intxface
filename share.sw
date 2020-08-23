@@ -42,6 +42,7 @@ var pierce = Pend<Pierce>()
 
 var lock = [Refer]()
 var count = Int(0)
+let event = getEvent()
 
 struct Form
 {
@@ -283,7 +284,7 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; cb.wake()}
 }
-class WindowDelegate : NSObject, NSWindowDelegate
+class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
@@ -410,8 +411,7 @@ func swiftInit()
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
-	if let temp = noWarn(WindowDelegate()) {
-		window.delegate = temp} else {print("cannot make delegate"); return}
+	window.delegate = event
 	if let temp = device.makeCommandQueue() {
 		queue = temp} else {print("cannot make queue"); return}
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
