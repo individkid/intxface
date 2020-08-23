@@ -254,7 +254,6 @@ float4 perspective(
    result.y = (given.y-state->feather.y)/(state->arrow.y-state->feather.y);
    return float4(result,given[3]*ratio);
 }
-// MAIN
 struct VertexOutput {
    float4 position [[position]];
    float3 normal;

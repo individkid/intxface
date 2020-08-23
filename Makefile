@@ -97,5 +97,5 @@ clean:
 	rm -f *.err *.out *.log
 	rm -f *.txt .*.txt ..*.txt ...*.txt
 	rm -f *.o *.so *.hi *_stub.h a.* *.metal
-	rm -f depend type main
+	rm -f depend type main help
 
