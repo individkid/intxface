@@ -335,7 +335,7 @@ kernel void kernel_pierce(
    pierce[ident].valid = true;
 }
 struct Bytes {
-   char bytes[12];
+   int bytes[12];
 };
 char saturate(float val)
 {
@@ -346,42 +346,30 @@ char saturate(float val)
 kernel void kernel_debug(
    const device Facet *plane [[buffer(0)]],
    const device Index *point [[buffer(1)]],
-   uint ident [[thread_position_in_grid]],
-   device Bytes *bytes [[buffer(2)]],
-   const device State *state [[buffer(3)]])
+   const device Object *object [[buffer(2)]],
+   const device State *state [[buffer(3)]],
+   device Bytes *bytes [[buffer(4)]],
+   uint ident [[thread_position_in_grid]])
 {
 
-   bytes[ident].bytes[0] = (device char*)&plane[ident].plane - (device char*)&plane[ident];
-   bytes[ident].bytes[1] = (device char*)&plane[ident].versor - (device char*)&plane[ident];
-   bytes[ident].bytes[2] = (device char*)&plane[ident].point - (device char*)&plane[ident];
-   bytes[ident].bytes[3] = (device char*)&plane[ident].coord[0] - (device char*)&plane[ident];
-   bytes[ident].bytes[4] = (device char*)&plane[ident].color[0] - (device char*)&plane[ident];
-   bytes[ident].bytes[5] = ((device char*)&plane[ident].poly - (device char*)&plane[ident]) - 128;
-   bytes[ident].bytes[6] = ((device char*)&plane[ident].tag - (device char*)&plane[ident]) - 128;
-   bytes[ident].bytes[7] = ((device char*)&plane[ident+1] - (device char*)&plane[ident]) - 128;
-   bytes[ident].bytes[8] = (device char*)&point[ident+1] - (device char*)&point[ident];
-   bytes[ident].bytes[9] = point[ident].point.x;
-   bytes[ident].bytes[10] = plane[ident].versor;
-   bytes[ident].bytes[11] = plane[ident].tag;
-
-   /*Triple triple;
+   Triple triple;
    triple.plane[0] = expand(plane[0],state);
    triple.plane[1] = expand(plane[1],state);
    triple.plane[2] = expand(plane[2],state);
    Quality intrr = intrrsect(triple.plane[0],triple.plane[1]);
    Qualify best = intersect(triple);
-   bytes[ident].bytes[0] = saturate(0);
-   bytes[ident].bytes[1] = saturate(intrr.quality);
-   bytes[ident].bytes[2] = saturate(best.quality);
-   bytes[ident].bytes[3] = saturate(intrr.left.x);
-   bytes[ident].bytes[4] = saturate(intrr.left.y);
-   bytes[ident].bytes[5] = saturate(intrr.left.z);
-   bytes[ident].bytes[6] = saturate(intrr.right.x);
-   bytes[ident].bytes[7] = saturate(intrr.right.y);
-   bytes[ident].bytes[8] = saturate(intrr.right.z);
-   bytes[ident].bytes[9] = saturate(best.point.x);
-   bytes[ident].bytes[10] = saturate(best.point.y+0.0001);
-   bytes[ident].bytes[11] = saturate(best.point.z);*/
+   bytes[ident].bytes[0] = 0;
+   bytes[ident].bytes[1] = intrr.quality;
+   bytes[ident].bytes[2] = best.quality;
+   bytes[ident].bytes[3] = intrr.left.x;
+   bytes[ident].bytes[4] = intrr.left.y;
+   bytes[ident].bytes[5] = intrr.left.z;
+   bytes[ident].bytes[6] = intrr.right.x;
+   bytes[ident].bytes[7] = intrr.right.y;
+   bytes[ident].bytes[8] = intrr.right.z;
+   bytes[ident].bytes[9] = best.point.x;
+   bytes[ident].bytes[10] = best.point.y+0.0001;
+   bytes[ident].bytes[11] = best.point.z;
 
 }
 

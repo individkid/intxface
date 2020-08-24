@@ -15,20 +15,20 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-func getDebug(_ charz:MTLBuffer, _ a:Int8, _ b:Int8, _ c:Int8, _ d:Int8) -> MTLCommandBufferHandler
+func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in
 	var index = 0
-	for expected:Int8 in [
-	0,16,32,48,80,0,4,16,16,0,a,b,
-	0,16,32,48,80,0,4,16,16,3,c,d] {
-	let actual:Int8 = charz.contents().load(fromByteOffset:index,as:Int8.self)
+	for expected:Int32 in [
+	0,0,0,112,32,16,0,32,16,a,32,16,
+	0,0,0,112,32,16,0,32,16,a,32,16] {
+	let actual:Int32 = charz.contents().load(fromByteOffset:index,as:Int32.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
 	} else {
 		print("match index(\(index)): expected(\(expected)) == actual(\(actual))")
 	}
-	index = index + 1}}
+	index = index + MemoryLayout<Int32>.size}}
 }
 func planraDraw1(_ shader:share.Shader)
 {
@@ -74,11 +74,12 @@ func planraDraw0(_ shader:share.Shader)
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
 
-	var plane0 = share.Facet(); plane0.versor = 2; plane0.tag = 64; plane0.plane = (51.20,76.80,28.16);
-	var plane1 = share.Facet(); plane1.versor = 1; plane1.tag = 64; plane1.plane = (25.60,25.60,28.16);
-	var plane2 = share.Facet(); plane2.versor = 0; plane2.tag = 64; plane2.plane = (25.60,25.60,28.16);
-	plane0.plane = (16.0,16.0,16.0); plane1.plane = (32.0,32.0,32.0); plane2.plane = (64.0,64.0,64.0);
-	let planes = [plane0,plane1,plane2];
+	var plane0 = share.Facet(); plane0.versor = 2; plane0.tag = 64; plane0.plane = (51.20,76.80,28.16)
+	var plane1 = share.Facet(); plane1.versor = 1; plane1.tag = 64; plane1.plane = (25.60,25.60,28.16)
+	var plane2 = share.Facet(); plane2.versor = 0; plane2.tag = 64; plane2.plane = (25.60,25.60,28.16)
+	plane0.plane = (16.0,16.0,16.0); plane1.plane = (32.0,32.0,32.0); plane2.plane = (64.0,64.0,64.0)
+	plane0.poly = 0; plane1.poly = 0; plane2.poly = 0
+	let planes = [plane0,plane1,plane2]
 	triangle.set(planes)
 	// yellow
 	var point0 = share.Facet(); point0.plane = (0.0,256.0,500.0); point0.color.0 = (1.0,1.0,0.0,1.0)
@@ -101,7 +102,7 @@ func planraDraw0(_ shader:share.Shader)
 
 	form.set(getRender(0),\Form.feather)
 	form.set(getRender(1),\Form.arrow)
-	for (a,b,c,d):(Int8,Int8,Int8,Int8) in [(2,64,1,64),(2,63,1,65)] {
+	for (a,b,c,d):(Int32,Int32,Int32,Int32) in [(64,0,0,0),(48,0,0,0)] {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
 	guard let encode = code.makeComputeCommandEncoder() else {
@@ -109,8 +110,9 @@ func planraDraw0(_ shader:share.Shader)
 	encode.setComputePipelineState(debug)
 	encode.setBuffer(triangle.get(),offset:0,index:0)
 	encode.setBuffer(arrayz,offset:0,index:1)
-	encode.setBuffer(charz,offset:0,index:2)
+	encode.setBuffer(object.get(),offset:0,index:2)
 	encode.setBuffer(form.get(),offset:0,index:3)
+	encode.setBuffer(charz,offset:0,index:4)
 	let groups = MTLSize(width:1,height:1,depth:1)
 	let threads = MTLSize(width:2,height:1,depth:1)
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
@@ -121,10 +123,8 @@ func planraDraw0(_ shader:share.Shader)
 	count += 1
 	code.commit()
 	// TEST code.waitUntilScheduled()
-	triangle.set(Int32(63),Int(offsetFacetTag()))
-	triangle.set(Int32(65),1,Int(offsetFacetTag()))
-	//triangle.set(Int32(7),Int(offsetFacetVersor()))
-	//triangle.set(Int32(9),1,Int(offsetFacetVersor()))
+	plane2.plane = (48.0,48.0,48.0)
+	triangle.set(plane2,2)
 	print("before \(count)")
 	code.waitUntilCompleted()
 	print("after \(count)")}
