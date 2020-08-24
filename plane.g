@@ -353,9 +353,9 @@ kernel void kernel_debug(
 {
 
    Triple triple;
-   triple.plane[0] = expand(plane[0],state);
-   triple.plane[1] = expand(plane[1],state);
-   triple.plane[2] = expand(plane[2],state);
+   triple.plane[0] = prepare(0,plane,object,state);
+   triple.plane[1] = prepare(1,plane,object,state);
+   triple.plane[2] = prepare(2,plane,object,state);
    Quality intrr = intrrsect(triple.plane[0],triple.plane[1]);
    Qualify best = intersect(triple);
    bytes[ident].bytes[0] = 0;
