@@ -77,7 +77,7 @@ func planraDraw0(_ shader:share.Shader)
 	var plane0 = share.Facet(); plane0.versor = 2; plane0.tag = 64; plane0.plane = (51.20,76.80,28.16);
 	var plane1 = share.Facet(); plane1.versor = 1; plane1.tag = 64; plane1.plane = (25.60,25.60,28.16);
 	var plane2 = share.Facet(); plane2.versor = 0; plane2.tag = 64; plane2.plane = (25.60,25.60,28.16);
-	plane0.plane = (16.0,16.0,16.0); plane1.plane = (0.0,0.0,0.0); plane2.plane = (0.0,0.0,0.0);
+	plane0.plane = (16.0,16.0,16.0); plane1.plane = (32.0,32.0,32.0); plane2.plane = (64.0,64.0,64.0);
 	let planes = [plane0,plane1,plane2];
 	triangle.set(planes)
 	// yellow

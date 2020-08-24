@@ -90,8 +90,8 @@ Qualify intrasect(Expand plane, float3 left, float3 right)
    uint versor = squashed(plane);
    float3 origin = project(plane,versor,left);
    float3 point = project(plane,versor,right);
-   float numerator = origin.z-left.z;
-   float denominator = numerator+(right.z-point.z);
+   float numerator = origin[versor]-left[versor];
+   float denominator = numerator+(right[versor]-point[versor]);
    float numer = metal::abs(numerator);
    float denom = metal::abs(denominator);
    if (denom < 1.0 && INFINITY*denom < numer) {
@@ -130,7 +130,7 @@ Quality intrrsect(Expand left, Expand right)
       return fore;
    return back;
 }
-float3 intersect(Triple point)
+Qualify intersect(Triple point)
 {
    Qualify best;
    best.quality = INFINITY;
@@ -144,7 +144,7 @@ float3 intersect(Triple point)
          intra.quality = intrr.quality;
       if (intra.quality < best.quality)
          best = intra;}
-   return best.point;
+   return best;
 }
 float3 normal(Expand plane)
 {
@@ -226,7 +226,10 @@ float4 convert(
    const device Object *object,
    const device State *state)
 {
-   float4 position = float4(intersect(triple),1.0);
+   Qualify qualify = intersect(triple);
+   float4 position = float4(0.0,0.0,0.0,0.0);
+   if (qualify.quality < INFINITY) {
+   position = float4(qualify.point,1.0);}
    position = object[plane[index].poly].object*position;
    position = state->subject*position;
    return position;
@@ -347,6 +350,7 @@ kernel void kernel_debug(
    device Bytes *bytes [[buffer(2)]],
    const device State *state [[buffer(3)]])
 {
+
    bytes[ident].bytes[0] = (device char*)&plane[ident].plane - (device char*)&plane[ident];
    bytes[ident].bytes[1] = (device char*)&plane[ident].versor - (device char*)&plane[ident];
    bytes[ident].bytes[2] = (device char*)&plane[ident].point - (device char*)&plane[ident];
@@ -360,24 +364,24 @@ kernel void kernel_debug(
    bytes[ident].bytes[10] = plane[ident].versor;
    bytes[ident].bytes[11] = plane[ident].tag;
 
-   /*Triple points;
-   points.plane[0] = expand(plane[0],state);
-   points.plane[1] = expand(plane[1],state);
-   points.plane[2] = expand(plane[2],state);
-   Quality quality = inteasect(points.plane[0],points.plane[1]);
-   Qualify left = intrasect(points.plane[0],points.plane[1].point[1],points.plane[1].point[2]);
-   Qualify right = intrasect(points.plane[0],points.plane[1].point[1],points.plane[1].point[0]);
-   bytes[ident].bytes[0] = quality.left.x/4.0;
-   bytes[ident].bytes[1] = quality.left.y/4.0;
-   bytes[ident].bytes[2] = quality.left.z/4.0;
-   bytes[ident].bytes[3] = quality.right.x/4.0;
-   bytes[ident].bytes[4] = quality.right.y/4.0;
-   bytes[ident].bytes[5] = quality.right.z/4.0;
-   bytes[ident].bytes[6] = left.point.x/4.0;
-   bytes[ident].bytes[7] = left.point.y/4.0;
-   bytes[ident].bytes[8] = left.point.z/4.0;
-   bytes[ident].bytes[9] = right.point.x/4.0;
-   bytes[ident].bytes[10] = right.point.y/4.0;
-   bytes[ident].bytes[11] = right.point.z/4.0;*/
+   /*Triple triple;
+   triple.plane[0] = expand(plane[0],state);
+   triple.plane[1] = expand(plane[1],state);
+   triple.plane[2] = expand(plane[2],state);
+   Quality intrr = intrrsect(triple.plane[0],triple.plane[1]);
+   Qualify best = intersect(triple);
+   bytes[ident].bytes[0] = saturate(0);
+   bytes[ident].bytes[1] = saturate(intrr.quality);
+   bytes[ident].bytes[2] = saturate(best.quality);
+   bytes[ident].bytes[3] = saturate(intrr.left.x);
+   bytes[ident].bytes[4] = saturate(intrr.left.y);
+   bytes[ident].bytes[5] = saturate(intrr.left.z);
+   bytes[ident].bytes[6] = saturate(intrr.right.x);
+   bytes[ident].bytes[7] = saturate(intrr.right.y);
+   bytes[ident].bytes[8] = saturate(intrr.right.z);
+   bytes[ident].bytes[9] = saturate(best.point.x);
+   bytes[ident].bytes[10] = saturate(best.point.y+0.0001);
+   bytes[ident].bytes[11] = saturate(best.point.z);*/
+
 }
 
