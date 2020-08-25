@@ -320,14 +320,12 @@ void sharePierce()
 	shareClient(Pierce,0,2,3,vector,Copy,Dma0,Gpu1);
 }
 
-void shareDrag(double xpos, double ypos, double width, double height)
+void shareDrag(double xmid, double ymid, double xmax, double ymax)
 {
-	double xhalf = width/2.0;
-	double yhalf = height/2.0;
-	render[0][0] = xpos+xhalf;
-	render[0][1] = ypos+yhalf;
-	render[1][0] = xpos+width;
-	render[1][1] = ypos+height;
+	render[0][0] = xmid;
+	render[0][1] = ymid;
+	render[1][0] = xmax;
+	render[1][1] = ymax;
 	shareRender();
 }
 

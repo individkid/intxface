@@ -37,7 +37,7 @@ struct Callback {
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);
 	void (*click)(int isright);
-	void (*drag)(double xpos, double ypos, double width, double height);
+	void (*drag)(double xmid, double ymid, double xmax, double ymax);
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
 	// share to kvm; read from state; write to gpu
 	double (*conf)(enum Config config);

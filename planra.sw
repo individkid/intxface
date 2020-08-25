@@ -74,6 +74,10 @@ func planraDraw0(_ shader:share.Shader)
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
 
+	let white = (Float(0.0),Float(0.0),Float(0.0),Float(1.0))
+	let yellow = (Float(1.0),Float(1.0),Float(0.0),Float(1.0))
+	let orange = (Float(1.0),Float(0.5),Float(0.0),Float(1.0))
+	let allwhite = (white,white,white)
 	var plane0 = share.Facet(); plane0.versor = 2
 	var plane1 = share.Facet(); plane1.versor = 2
 	var plane2 = share.Facet(); plane2.versor = 1 // (0,256,0),(0,256,128),(128,0,0)
@@ -91,6 +95,12 @@ func planraDraw0(_ shader:share.Shader)
 	plane0.tag = 0; plane1.tag = 0
 	plane2.tag = 1; plane3.tag = 1; plane4.tag = 1
 	plane5.tag = 1; plane6.tag = 1; plane7.tag = 1
+	plane0.point = (0,1,2); plane1.point = (3,4,5)
+	plane2.point = (0,1,6); plane3.point = (0,2,6); plane4.point = (1,2,6)
+	plane5.point = (3,4,6); plane6.point = (3,5,6); plane7.point = (4,5,6)
+	plane0.color = (orange,yellow,yellow); plane1.color = (yellow,orange,orange)
+	plane2.color = allwhite; plane3.color = allwhite; plane4.color = allwhite
+	plane5.color = allwhite; plane6.color = allwhite; plane7.color = allwhite
 	let planes = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	triangle.set(planes)
 	var vertex0 = share.Vertex(); vertex0.plane = (0,2,3)
@@ -101,14 +111,13 @@ func planraDraw0(_ shader:share.Shader)
 	var vertex5 = share.Vertex(); vertex5.plane = (1,6,7)
 	corner.set([vertex0,vertex1,vertex2,vertex3,vertex4,vertex5])
 	frame.set([0,1,2,3,4,5])
-	// yellow
-	var point0 = share.Facet(); point0.plane = (0.0,256.0,500.0); point0.color.0 = (1.0,1.0,0.0,1.0)
-	var point1 = share.Facet(); point1.plane = (-256.0,-256.0,500.0); point1.color.0 = (1.0,1.0,0.0,1.0)
-	var point2 = share.Facet(); point2.plane = (256.0,-256.0,500.0); point2.color.0 = (1.0,0.5,0.0,1.0)
-	// orange
-	var point3 = share.Facet(); point3.plane = (-256.0,256.0,400.0); point3.color.0 = (1.0,0.5,0.0,1.0)
-	var point4 = share.Facet(); point4.plane = (256.0,256.0,400.0); point4.color.0 = (1.0,0.5,0.0,1.0)
-	var point5 = share.Facet(); point5.plane = (0.0,-256.0,400.0); point5.color.0 = (1.0,1.0,0.0,1.0)
+
+	var point0 = share.Facet(); point0.plane = (0.0,256.0,500.0); point0.color.0 = yellow
+	var point1 = share.Facet(); point1.plane = (-256.0,-256.0,500.0); point1.color.0 = yellow
+	var point2 = share.Facet(); point2.plane = (256.0,-256.0,500.0); point2.color.0 = orange
+	var point3 = share.Facet(); point3.plane = (-256.0,256.0,400.0); point3.color.0 = orange
+	var point4 = share.Facet(); point4.plane = (256.0,256.0,400.0); point4.color.0 = orange
+	var point5 = share.Facet(); point5.plane = (0.0,-256.0,400.0); point5.color.0 = yellow
 	let points = [point0,point1,point2,point3,point4,point5]
 	let charz = device.makeBuffer(length:1000)
 	print("Form.tag \(MemoryLayout<Form>.offset(of:\Form.tag)!)")

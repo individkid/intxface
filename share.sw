@@ -314,7 +314,8 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 func swiftEmpty()
 {
 	let found:Pierce = Pierce()
-	let index = Int(-1)
+	guard let object = getClient(Object) else {print("cannot get object"); return}
+	let index = Int(object.siz)
 	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
 }
 func swiftSize()
@@ -322,7 +323,7 @@ func swiftSize()
 	let rect = window.contentRect(forFrameRect:window.frame)
 	let wide = Double(rect.width)
 	let high = Double(rect.height)
-	cb.drag(-wide/2.0,-high/2.0,wide,high)
+	cb.drag(0.0,0.0,wide/2.0,high/2.0)
 	let size = CGSize(width:rect.width,height:rect.height)
 	layer.drawableSize = size
 	if let temp = getTexture(rect) {
