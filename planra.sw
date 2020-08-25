@@ -20,8 +20,8 @@ func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> 
 	return {(MTLCommandBuffer) in
 	var index = 0
 	for expected:Int32 in [
-	0,128,16,128,32,0,a,0,128,b,32,16,
-	0,128,16,128,32,0,c,0,128,d,32,16] {
+	0,255,500,256,-256,500,-256,-256,500,0,0,0,
+	0,-256,400,256,256,400,-256,256,400,1,1,1] {
 	let actual:Int32 = charz.contents().load(fromByteOffset:index,as:Int32.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
@@ -74,16 +74,33 @@ func planraDraw0(_ shader:share.Shader)
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
 
-	var plane0 = share.Facet(); plane0.versor = 2; plane0.tag = 64; plane0.plane = (51.20,76.80,28.16)
-	var plane1 = share.Facet(); plane1.versor = 1; plane1.tag = 64; plane1.plane = (25.60,25.60,28.16)
-	var plane2 = share.Facet(); plane2.versor = 0; plane2.tag = 64; plane2.plane = (25.60,25.60,28.16)
-	plane0.plane = (16.0,16.0,16.0); plane1.plane = (32.0,32.0,32.0); plane2.plane = (64.0,64.0,64.0)
-	plane0.poly = 0; plane1.poly = 0; plane2.poly = 0
-	let planes = [plane0,plane1,plane2]
+	var plane0 = share.Facet(); plane0.versor = 2
+	var plane1 = share.Facet(); plane1.versor = 2
+	var plane2 = share.Facet(); plane2.versor = 1 // (0,256,0),(0,256,128),(128,0,0)
+	var plane3 = share.Facet(); plane3.versor = 1 // (0,256,0),(0,256,128),(128,512,0)
+	var plane4 = share.Facet(); plane4.versor = 1 // (0,-256,0),(0,-256,128),(128,-256,0)
+	var plane5 = share.Facet(); plane5.versor = 1 // (0,-256,0),(0,-256,128),(128,0,0)
+	var plane6 = share.Facet(); plane6.versor = 1 // (0,-256,0),(0,-256,128),(128,-512,0)
+	var plane7 = share.Facet(); plane7.versor = 1 // (0,256,0),(0,256,128),(128,256,0)
+	plane0.plane = (500.0,500.0,500.0); plane1.plane = (400.0,400.0,400.0)
+	plane2.plane = (256.0,256.0,0.0); plane3.plane = (256.0,256.0,512.0); plane4.plane = (-256.0,-256.0,-256.0)
+	plane5.plane = (-256.0,-256.0,0.0); plane6.plane = (-256.0,-256.0,-512.0); plane7.plane = (256.0,256.0,256.0)
+	plane0.poly = 0; plane1.poly = 0
+	plane2.poly = 0; plane3.poly = 0; plane4.poly = 0
+	plane5.poly = 0; plane6.poly = 0; plane7.poly = 0
+	plane0.tag = 0; plane1.tag = 0
+	plane2.tag = 1; plane3.tag = 1; plane4.tag = 1
+	plane5.tag = 1; plane6.tag = 1; plane7.tag = 1
+	let planes = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	triangle.set(planes)
-	var vertex = share.Vertex(); vertex.plane = (0,1,2)
-	corner.set([vertex])
-	frame.set([0,0])
+	var vertex0 = share.Vertex(); vertex0.plane = (0,2,3)
+	var vertex1 = share.Vertex(); vertex1.plane = (0,2,4)
+	var vertex2 = share.Vertex(); vertex2.plane = (0,3,4)
+	var vertex3 = share.Vertex(); vertex3.plane = (1,5,6)
+	var vertex4 = share.Vertex(); vertex4.plane = (1,5,7)
+	var vertex5 = share.Vertex(); vertex5.plane = (1,6,7)
+	corner.set([vertex0,vertex1,vertex2,vertex3,vertex4,vertex5])
+	frame.set([0,1,2,3,4,5])
 	// yellow
 	var point0 = share.Facet(); point0.plane = (0.0,256.0,500.0); point0.color.0 = (1.0,1.0,0.0,1.0)
 	var point1 = share.Facet(); point1.plane = (-256.0,-256.0,500.0); point1.color.0 = (1.0,1.0,0.0,1.0)
@@ -101,7 +118,8 @@ func planraDraw0(_ shader:share.Shader)
 
 	form.set(getRender(0),\Form.feather)
 	form.set(getRender(1),\Form.arrow)
-	for (a,b,c,d):(Int32,Int32,Int32,Int32) in [(64,64,64,64),(48,48,48,48)] {
+	form.set(UInt32(0),\Form.tag)
+	for (a,b,c,d):(Int32,Int32,Int32,Int32) in [(0,0,0,0),(0,0,0,0)] {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
 	guard let encode = code.makeComputeCommandEncoder() else {
@@ -123,8 +141,8 @@ func planraDraw0(_ shader:share.Shader)
 	count += 1
 	code.commit()
 	// TEST code.waitUntilScheduled()
-	plane2.plane = (48.0,48.0,48.0)
-	triangle.set(plane2,2)
+	// plane2.plane = (48.0,48.0,48.0)
+	// triangle.set(plane2,2)
 	print("before \(count)")
 	code.waitUntilCompleted()
 	print("after \(count)")}

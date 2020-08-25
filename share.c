@@ -578,6 +578,13 @@ void shareInit()
 	double xmax = cb.conf(ScreenWide); double ymax = cb.conf(ScreenHigh);
 	double xhalf = wide/2.0; double yhalf = high/2.0;
 	struct Linear linear = {0};
+	// origin at 0,3,6
+	// positive x at 5,7
+	// positive y at 1,8
+	// positive z at 2,4
+	// 0,1,2 goes x,y,z
+	// 3,4,5 goes y,z,x
+	// 6,7,8 goes z,x,y
 	linear.val[1][1] = linear.val[2][2] = xhalf/2.0;
 	linear.val[4][2] = linear.val[5][0] = xhalf/2.0;
 	linear.val[7][0] = linear.val[8][1] = xhalf/2.0;

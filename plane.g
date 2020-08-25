@@ -346,20 +346,13 @@ kernel void kernel_debug(
    uint id [[thread_position_in_grid]],
    device Bytes *bytes [[buffer(5)]])
 {
-   uint ident = order[id];
+   for (int i = 0; i < 3; i++) {
+   uint ident = order[id*3+i];
    uint face = copoint(point[ident].plane,plane,state);
    Triple triple = explode(point[ident].plane,plane,state);
    float4 result = convert(face,triple,plane,object,state);
-   bytes[id].bytes[0] = triple.plane[0].point[2].x;
-   bytes[id].bytes[1] = triple.plane[0].point[2].y;
-   bytes[id].bytes[2] = triple.plane[0].point[2].z;
-   bytes[id].bytes[3] = triple.plane[1].point[2].x;
-   bytes[id].bytes[4] = triple.plane[1].point[2].y;
-   bytes[id].bytes[5] = triple.plane[1].point[2].z;
-   bytes[id].bytes[6] = triple.plane[2].point[2].x;
-   bytes[id].bytes[7] = triple.plane[2].point[2].y;
-   bytes[id].bytes[8] = triple.plane[2].point[2].z;
-   bytes[id].bytes[9] = result.x;
-   bytes[id].bytes[10] = result.y+0.0001;
-   bytes[id].bytes[11] = result.z;
+   bytes[id].bytes[i*3+0] = result.x;
+   bytes[id].bytes[i*3+1] = result.y;
+   bytes[id].bytes[i*3+2] = result.z;
+   bytes[id].bytes[9+i] = face;}
 }
