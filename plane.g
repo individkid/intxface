@@ -349,10 +349,11 @@ kernel void kernel_debug(
    for (int i = 0; i < 3; i++) {
    uint ident = order[id*3+i];
    uint face = copoint(point[ident].plane,plane,state);
+   uint corner = coplane(plane[face].point,ident);
    Triple triple = explode(point[ident].plane,plane,state);
    float4 result = convert(face,triple,plane,object,state);
    bytes[id].bytes[i*3+0] = result.x;
    bytes[id].bytes[i*3+1] = result.y;
    bytes[id].bytes[i*3+2] = result.z;
-   bytes[id].bytes[9+i] = face;}
+   bytes[id].bytes[9+i] = plane[face].color[corner][i]*10.0;}
 }

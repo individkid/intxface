@@ -20,8 +20,8 @@ func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> 
 	return {(MTLCommandBuffer) in
 	var index = 0
 	for expected:Int32 in [
-	0,255,500,256,-256,500,-256,-256,500,0,0,0,
-	0,-256,400,256,256,400,-256,256,400,1,1,1] {
+	0,255,500,256,-256,500,-256,-256,500,10,10,0,
+	0,-256,400,256,256,400,-256,256,400,10,5,0] {
 	let actual:Int32 = charz.contents().load(fromByteOffset:index,as:Int32.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
