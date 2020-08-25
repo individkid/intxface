@@ -313,22 +313,22 @@ kernel void kernel_pierce(
    Qualify hole = intrasect(face,state->feather,state->arrow);
    if (hole.quality == INFINITY) {
       pierce[ident].valid = false; return;}
-   Triple edge;
-   Expand apex;
+   Expand edge[3];
+   float3 apex[3];
    uint3 index;
    for (uint i = 0; i < 3; i++) {
       uint corner = plane[ident].point[i];
       Triple triple = explode(point[corner].plane,plane,state);
-      apex.point[i] = convert(ident,triple,plane,object,state).xyz;
+      apex[i] = convert(ident,triple,plane,object,state).xyz;
       for (uint j = 0; j < 3; j++) {
          uint line = point[corner].plane[j];
          bool found = false;
          for (uint k = 0; k < i; k++)
             if (index[k] == line) found = true;
          if (!found && line != ident) index[i] = line;}
-      edge.plane[i] = expand(plane[index[i]],state);}
+      edge[i] = expand(plane[index[i]],state);}
    for (uint i = 0; i < 3; i++)
-      if (opposite(edge.plane[i],hole.point,apex.point[i])) {
+      if (opposite(edge[i],hole.point,apex[i])) {
          pierce[ident].valid = false; return;}
    pierce[ident].normal = normal(face);
    pierce[ident].point = hole.point;
@@ -337,39 +337,29 @@ kernel void kernel_pierce(
 struct Bytes {
    int bytes[12];
 };
-char saturate(float val)
-{
-   if (val > 127.0) {return char(127);}
-   if (val < -128.0) {return char(-128);}
-   return char(val);
-}
 kernel void kernel_debug(
    const device Facet *plane [[buffer(0)]],
-   const device Index *point [[buffer(1)]],
-   const device Object *object [[buffer(2)]],
-   const device State *state [[buffer(3)]],
-   device Bytes *bytes [[buffer(4)]],
-   uint ident [[thread_position_in_grid]])
+   const device Vertex *point [[buffer(1)]],
+   const device uint *order [[buffer(2)]],
+   const device Object *object [[buffer(3)]],
+   const device State *state [[buffer(4)]],
+   uint id [[thread_position_in_grid]],
+   device Bytes *bytes [[buffer(5)]])
 {
-
-   Triple triple;
-   triple.plane[0] = prepare(0,plane,object,state);
-   triple.plane[1] = prepare(1,plane,object,state);
-   triple.plane[2] = prepare(2,plane,object,state);
-   Quality intrr = intrrsect(triple.plane[0],triple.plane[1]);
-   Qualify best = intersect(triple);
-   bytes[ident].bytes[0] = 0;
-   bytes[ident].bytes[1] = intrr.quality;
-   bytes[ident].bytes[2] = best.quality;
-   bytes[ident].bytes[3] = intrr.left.x;
-   bytes[ident].bytes[4] = intrr.left.y;
-   bytes[ident].bytes[5] = intrr.left.z;
-   bytes[ident].bytes[6] = intrr.right.x;
-   bytes[ident].bytes[7] = intrr.right.y;
-   bytes[ident].bytes[8] = intrr.right.z;
-   bytes[ident].bytes[9] = best.point.x;
-   bytes[ident].bytes[10] = best.point.y+0.0001;
-   bytes[ident].bytes[11] = best.point.z;
-
+   uint ident = order[id];
+   uint face = copoint(point[ident].plane,plane,state);
+   Triple triple = explode(point[ident].plane,plane,state);
+   float4 result = convert(face,triple,plane,object,state);
+   bytes[id].bytes[0] = triple.plane[0].point[2].x;
+   bytes[id].bytes[1] = triple.plane[0].point[2].y;
+   bytes[id].bytes[2] = triple.plane[0].point[2].z;
+   bytes[id].bytes[3] = triple.plane[1].point[2].x;
+   bytes[id].bytes[4] = triple.plane[1].point[2].y;
+   bytes[id].bytes[5] = triple.plane[1].point[2].z;
+   bytes[id].bytes[6] = triple.plane[2].point[2].x;
+   bytes[id].bytes[7] = triple.plane[2].point[2].y;
+   bytes[id].bytes[8] = triple.plane[2].point[2].z;
+   bytes[id].bytes[9] = result.x;
+   bytes[id].bytes[10] = result.y+0.0001;
+   bytes[id].bytes[11] = result.z;
 }
-

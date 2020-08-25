@@ -20,8 +20,8 @@ func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> 
 	return {(MTLCommandBuffer) in
 	var index = 0
 	for expected:Int32 in [
-	0,0,0,112,32,16,0,32,16,a,32,16,
-	0,0,0,112,32,16,0,32,16,a,32,16] {
+	0,128,16,128,32,0,a,0,128,b,32,16,
+	0,128,16,128,32,0,c,0,128,d,32,16] {
 	let actual:Int32 = charz.contents().load(fromByteOffset:index,as:Int32.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
@@ -81,6 +81,9 @@ func planraDraw0(_ shader:share.Shader)
 	plane0.poly = 0; plane1.poly = 0; plane2.poly = 0
 	let planes = [plane0,plane1,plane2]
 	triangle.set(planes)
+	var vertex = share.Vertex(); vertex.plane = (0,1,2)
+	corner.set([vertex])
+	frame.set([0,0])
 	// yellow
 	var point0 = share.Facet(); point0.plane = (0.0,256.0,500.0); point0.color.0 = (1.0,1.0,0.0,1.0)
 	var point1 = share.Facet(); point1.plane = (-256.0,-256.0,500.0); point1.color.0 = (1.0,1.0,0.0,1.0)
@@ -91,10 +94,6 @@ func planraDraw0(_ shader:share.Shader)
 	var point5 = share.Facet(); point5.plane = (0.0,-256.0,400.0); point5.color.0 = (1.0,1.0,0.0,1.0)
 	let points = [point0,point1,point2,point3,point4,point5]
 	let charz = device.makeBuffer(length:1000)
-	var array0 = share.Vertex(); array0.plane = (0,1,2)
-	var array1 = share.Vertex(); array1.plane = (3,4,5)
-	let arrays = [array0,array1]
-	let arrayz = device.makeBuffer(bytes:arrays,length:MemoryLayout<share.Vertex>.size*2)
 	print("Form.tag \(MemoryLayout<Form>.offset(of:\Form.tag)!)")
 	print("Facet.tag \(offsetFacetTag())")
 
@@ -102,17 +101,18 @@ func planraDraw0(_ shader:share.Shader)
 
 	form.set(getRender(0),\Form.feather)
 	form.set(getRender(1),\Form.arrow)
-	for (a,b,c,d):(Int32,Int32,Int32,Int32) in [(64,0,0,0),(48,0,0,0)] {
+	for (a,b,c,d):(Int32,Int32,Int32,Int32) in [(64,64,64,64),(48,48,48,48)] {
 	guard let code = queue.makeCommandBuffer() else {
 		print("cannot make code"); return}
 	guard let encode = code.makeComputeCommandEncoder() else {
 		print("cannot make encode"); return}
 	encode.setComputePipelineState(debug)
 	encode.setBuffer(triangle.get(),offset:0,index:0)
-	encode.setBuffer(arrayz,offset:0,index:1)
-	encode.setBuffer(object.get(),offset:0,index:2)
-	encode.setBuffer(form.get(),offset:0,index:3)
-	encode.setBuffer(charz,offset:0,index:4)
+	encode.setBuffer(corner.get(),offset:0,index:1)
+	encode.setBuffer(frame.get(),offset:0,index:2)
+	encode.setBuffer(object.get(),offset:0,index:3)
+	encode.setBuffer(form.get(),offset:0,index:4)
+	encode.setBuffer(charz,offset:0,index:5)
 	let groups = MTLSize(width:1,height:1,depth:1)
 	let threads = MTLSize(width:2,height:1,depth:1)
 	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
