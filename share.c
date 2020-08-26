@@ -266,21 +266,21 @@ void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 	SHARECLIENT3;
     va_end(args);
 }
-void debugFacet(enum Memory mem, int idx, int siz, int len, struct Facet *ptr, enum Function *fnc)
+void clientFacet(enum Memory mem, int idx, int siz, int len, struct Facet *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Triangle,triangle,ptr);
 	SHARECLIENT2;
 	SHARECLIENT3;
 }
-void debugVertex(enum Memory mem, int idx, int siz, int len, struct Vertex *ptr, enum Function *fnc)
+void clientVertex(enum Memory mem, int idx, int siz, int len, struct Vertex *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Corner,corner,ptr);
 	SHARECLIENT2;
 	SHARECLIENT3;
 }
-void debugInt(enum Memory mem, int idx, int siz, int len, int *ptr, enum Function *fnc)
+void clientInt(enum Memory mem, int idx, int siz, int len, int *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Frame,frame,ptr);
@@ -288,7 +288,7 @@ void debugInt(enum Memory mem, int idx, int siz, int len, int *ptr, enum Functio
 	SHARECLIENT2;
 	SHARECLIENT3;
 }
-void debugArray(enum Memory mem, int idx, int siz, int len, struct Array *ptr, enum Function *fnc)
+void clientArray(enum Memory mem, int idx, int siz, int len, struct Array *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Range,range,ptr);
@@ -296,14 +296,14 @@ void debugArray(enum Memory mem, int idx, int siz, int len, struct Array *ptr, e
 	SHARECLIENT2;
 	SHARECLIENT3;
 }
-void debugLinear(enum Memory mem, int idx, int siz, int len, struct Linear *ptr, enum Function *fnc)
+void clientLinear(enum Memory mem, int idx, int siz, int len, struct Linear *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Basis,basis,ptr);
 	SHARECLIENT2;
 	SHARECLIENT3;
 }
-void debugAffine(enum Memory mem, int idx, int siz, int len, struct Affine *ptr, enum Function *fnc)
+void clientAffine(enum Memory mem, int idx, int siz, int len, struct Affine *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Subject,subject,ptr);
@@ -312,7 +312,7 @@ void debugAffine(enum Memory mem, int idx, int siz, int len, struct Affine *ptr,
 	SHARECLIENT2;
 	SHARECLIENT3;
 }
-void debugVector(enum Memory mem, int idx, int siz, int len, struct Vector *ptr, enum Function *fnc)
+void clientVector(enum Memory mem, int idx, int siz, int len, struct Vector *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Render,render,ptr);
@@ -321,7 +321,7 @@ void debugVector(enum Memory mem, int idx, int siz, int len, struct Vector *ptr,
 	SHARECLIENT2;
 	SHARECLIENT3;
 }
-void debugMode(enum Memory mem, int idx, int siz, int len, struct Mode *ptr, enum Function *fnc)
+void clientMode(enum Memory mem, int idx, int siz, int len, struct Mode *ptr, enum Function *fnc)
 {
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(User,user,ptr);

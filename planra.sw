@@ -144,9 +144,9 @@ func planraInit()
 	let vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
 	let indexs:[Int32] = [0,1,2,3,4,5]
 
-	toMutablss(planes,[Copy,Dma2],{(ptr,fnc) in debugFacet(Triangle,0,8,2,ptr,fnc)})
-	toMutablss(vertexs,[Copy,Dma2],{(ptr,fnc) in debugVertex(Corner,0,6,2,ptr,fnc)})
-	toMutablss(indexs,[Copy,Dma2,Gpu1,Gpu0],{(ptr,fnc) in debugInt(Frame,0,6,4,ptr,fnc)})
+	toMutablss(planes,[Copy,Dma2],{(ptr,fnc) in clientFacet(Triangle,0,8,2,ptr,fnc)})
+	toMutablss(vertexs,[Copy,Dma2],{(ptr,fnc) in clientVertex(Corner,0,6,2,ptr,fnc)})
+	toMutablss(indexs,[Copy,Dma2,Gpu1,Gpu0],{(ptr,fnc) in clientInt(Frame,0,6,4,ptr,fnc)})
 }
 
 // MAIN
