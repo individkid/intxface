@@ -35,10 +35,10 @@ float offset = 0.0;
 float matrix[16] = {0};
 float piemat[16] = {0};
 float normat[16] = {0};
-float pievec[3];
-float norvec[3];
+float pievec[3] = {0};
+float norvec[3] = {0};
 int object = 0;
-float render[3][3];
+float render[3][3] = {0};
 
 void exiterr(const char *str, int num, int arg)
 {
