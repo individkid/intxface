@@ -15,14 +15,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-func noWarn<T>(_ val:T) -> T?
-{
-	return val
-}
-func noWarn<T>(_ opt:T?) -> T?
-{
-	return nil
-}
 func fromRaw<T>(_ raw:UnsafeRawPointer, _ idx:Int, _ len:Int) -> [T]
 {
 	return Swift.Array(0..<len).map({(sub) in raw.advanced(by:(idx+sub)*MemoryLayout<T>.size).load(as:T.self)})

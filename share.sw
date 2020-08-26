@@ -238,13 +238,12 @@ func getPoint() -> NSPoint
 }
 func getTexture(_ rect:NSRect) -> MTLTexture?
 {
-	guard let text = noWarn(MTLTextureDescriptor()) else {return nil}
+	let text = MTLTextureDescriptor()
 	text.height = Int(rect.height)
 	text.width = Int(rect.width)
 	text.pixelFormat = .depth32Float
 	text.storageMode = .private
-	guard let texture = device.makeTexture(descriptor:text) else {return nil}
-	return texture
+	return device.makeTexture(descriptor:text)
 }
 func getCheck() -> Bool
 {
@@ -382,30 +381,25 @@ func swiftCheck(event:NSEvent) -> NSEvent?
 
 func swiftInit()
 {
-	if let temp = MTLCreateSystemDefaultDevice() {
-		device = temp} else {print("cannot make device"); return}
+	device = MTLCreateSystemDefaultDevice()
 	let rect = NSMakeRect(
 		CGFloat(cb.conf(share.PictureMinX)), CGFloat(cb.conf(share.PictureMinY)),
 		CGFloat(cb.conf(share.PictureWide)), CGFloat(cb.conf(share.PictureHigh)))
-	if let temp = noWarn(CAMetalLayer()) {
-		layer = temp} else {print("cannot make layer"); return}
+	layer = CAMetalLayer()
 	layer.device = device
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
 	layer.frame = rect
-	if let temp = noWarn(NSView(frame:rect)) {
-		view = temp} else {print("cannot make view"); return}
+	view = NSView(frame:rect)
 	view.wantsLayer = true
 	view.layer = layer
 	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
-	if let temp = noWarn(NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)) {
-		window = temp} else {print("cannot make window"); return}
+	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
 	window.delegate = event
-	if let temp = device.makeCommandQueue() {
-		queue = temp} else {print("cannot make queue"); return}
+	queue = device.makeCommandQueue()
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
 		print("cannot make library"); return}
 	guard let vertex_render = library.makeFunction(name:"vertex_render") else {
@@ -414,36 +408,27 @@ func swiftInit()
 		print("cannot make fragment_render"); return}
 	guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {
 		print("cannot make kernel_pierce"); return}
-	guard let pipe = noWarn(MTLRenderPipelineDescriptor()) else {
-		print("cannot make pipe"); return}
+	let pipe = MTLRenderPipelineDescriptor()
 	pipe.vertexFunction = vertex_render
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
 	pipe.depthAttachmentPixelFormat = .depth32Float
-	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
-		render = temp} else {print("cannot make render"); return}
-	if let temp = noWarn(MTLRenderPassDescriptor()) {
-    	param = temp} else {print("cannot make param"); return}
+	render = try? device.makeRenderPipelineState(descriptor:pipe)
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
+	param = MTLRenderPassDescriptor()
 	param.colorAttachments[0].clearColor = color
 	param.colorAttachments[0].loadAction = .clear
 	param.colorAttachments[0].storeAction = .store
 	param.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	param.depthAttachment.loadAction = .clear
 	param.depthAttachment.storeAction = .dontCare
-	if let temp = getTexture(rect) {
-		param.depthAttachment.texture = temp} else {
-		print("cannot make texture"); return}
-    guard let desc = noWarn(MTLDepthStencilDescriptor()) else {
-    	print("cannot make desc"); return}
+	param.depthAttachment.texture = getTexture(rect)
+    let desc = MTLDepthStencilDescriptor()
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
     desc.isDepthWriteEnabled = true
-    if let temp = device.makeDepthStencilState(descriptor: desc) {
-    	depth = temp} else {print("cannot make depth"); return}
-	if let temp = try? device.makeComputePipelineState(function:kernel_pierce) {
-		compute = temp} else {print("cannot make compute"); return;}
-    if let temp = noWarn(device.maxThreadsPerThreadgroup) {
-    	threads = temp} else {print("cannot make thread"); return}
+    depth = device.makeDepthStencilState(descriptor: desc)
+	compute = try? device.makeComputePipelineState(function:kernel_pierce)
+    threads = device.maxThreadsPerThreadgroup
 	cb.warp = swiftWarp
 	cb.dma = swiftDma
 	cb.draw = swiftDraw
