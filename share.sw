@@ -33,8 +33,8 @@ var threads:MTLSize!
 
 var triangle = Pend<share.Facet>()
 var corner = Pend<share.Vertex>()
-var frame = Pend<Int32>()
-var base = Pend<Int32>()
+var frame = Pend<CInt>()
+var base = Pend<CInt>()
 var object = Pend<share.Affine>()
 var cloud = Pend<share.Vector>()
 var form = Pend<Form>()
@@ -308,14 +308,14 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			index = object
 		}
 	}
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,CInt(index))})
 }
 func swiftEmpty()
 {
 	let found:Pierce = Pierce()
 	guard let object = getClient(Object) else {print("cannot get object"); return}
 	let index = Int(object.siz)
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,Int32(index))})
+	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,CInt(index))})
 }
 func swiftSize()
 {
@@ -448,7 +448,7 @@ func swiftWarp(xpos:Double, ypos:Double)
 	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
     CGWarpMouseCursorPosition(coord);	
 }
-func swiftDma(_ mem:share.Memory, _ idx:Int32, _ siz:Int32)
+func swiftDma(_ mem:share.Memory, _ idx:CInt, _ siz:CInt)
 {
 	guard let client = getClient(mem) else {cb.err(#file,#line,-1);return}
 	switch (mem) {
@@ -552,7 +552,7 @@ func swiftDraw(_ shader:share.Shader)
 	code.commit()
 	default: cb.err(#file,#line,-1);return}
 }
-func swiftFull() -> Int32
+func swiftFull() -> CInt
 {
 	if (count < 3) {return 0}
 	return 1

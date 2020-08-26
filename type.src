@@ -1454,7 +1454,7 @@ function showReadLua(name,struct)
 	nest = 0
 	local result = ""
 	if language then
-		result = result.."func".." read"..name.."(_ idx: Int32) -> "..name.." {\n"
+		result = result.."func".." read"..name.."(_ idx: CInt) -> "..name.." {\n"
 		result = result..showIndent(1).."var tab = "..name.."()\n"
 	else
 		result = result.."function".." read"..name.."(idx)\n"
@@ -1545,7 +1545,7 @@ function showWriteLua(name,struct)
 	nest = 0
 	local result = ""
 	if language then
-		result = result.."func write"..name.."(_ tab: "..name..", _ idx: Int32) {\n"
+		result = result.."func write"..name.."(_ tab: "..name..", _ idx: CInt) {\n"
 	else
 		result = result.."function write"..name.."(tab,idx)\n"
 	end
@@ -1606,7 +1606,7 @@ function showWriteLua(name,struct)
 	return result
 end
 function showEnumSw(name,enum)
-	local result = "enum "..name..": Int32 {\n"
+	local result = "enum "..name..": CInt {\n"
 	for key,val in ipairs(enum) do
 		result = result..showIndent(1).."case "..val.."\n"
 	end
@@ -1616,8 +1616,8 @@ function showEnumSw(name,enum)
 end
 function showCodeSw(name,enum)
 	local result = ""
-	result = result.."func read"..name.."(_ idx: Int32) -> "..name.." {"..name.."(rawValue: readInt(idx))!}\n"
-	result = result.."func write"..name.."(_ val: "..name..", _ idx: Int32) {writeInt(val.rawValue, idx);}\n"
+	result = result.."func read"..name.."(_ idx: CInt) -> "..name.." {"..name.."(rawValue: readInt(idx))!}\n"
+	result = result.."func write"..name.."(_ val: "..name..", _ idx: CInt) {writeInt(val.rawValue, idx);}\n"
 	result = result.."//"
 	return result
 end
@@ -1632,7 +1632,7 @@ end
 function showHelpSw()
 	local result = ""
 	result = result.."var capturedStr: String = \"\"\n"
-	result = result.."func callReadStr(_ idx: Int32) -> String {\n"
+	result = result.."func callReadStr(_ idx: CInt) -> String {\n"
 	result = result..showIndent(1).."readStrHs({(str,trm) -> () in\n"
 	result = result..showIndent(1).."capturedStr = String(cString: str!)}, idx);\n"
 	result = result..showIndent(1).."return capturedStr\n"

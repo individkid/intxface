@@ -19,20 +19,20 @@ var charz:MTLBuffer!
 var debug:MTLComputePipelineState!
 var once:Bool = false
 
-func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> MTLCommandBufferHandler
+func getDebug(_ charz:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in
 	var index = 0
-	for expected:Int32 in [
+	for expected:CInt in [
 	0,255,500,256,-256,500,-256,-256,500,10,5,0,
 	0,-256,400,256,256,400,-256,256,400,10,10,0] {
-	let actual:Int32 = charz.contents().load(fromByteOffset:index,as:Int32.self)
+	let actual:CInt = charz.contents().load(fromByteOffset:index,as:CInt.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
 	} else {
 		print("match index(\(index)): expected(\(expected)) == actual(\(actual))")
 	}
-	index = index + MemoryLayout<Int32>.size}}
+	index = index + MemoryLayout<CInt>.size}}
 }
 func planraDraw(_ shader:share.Shader)
 {
@@ -142,7 +142,9 @@ func planraInit()
 
 	let planes = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	let vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
-	let indexs:[Int32] = [0,1,2,3,4,5]
+	let indexs:[CInt] = [0,1,2,3,4,5]
+
+
 
 	toMutablss(planes,[Copy,Dma2],{(ptr,fnc) in clientFacet(Triangle,0,8,2,ptr,fnc)})
 	toMutablss(vertexs,[Copy,Dma2],{(ptr,fnc) in clientVertex(Corner,0,6,2,ptr,fnc)})
