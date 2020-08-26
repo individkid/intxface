@@ -670,7 +670,7 @@ void shareInit()
 	render[0][0] = xpos+xhalf; render[0][1] = ypos+yhalf; render[0][2] = zpos+leng;
 	render[1][0] = xpos+wide; render[1][1] = ypos+high; render[1][2] = zpos+deep;
 	render[2][0] = xmax; render[2][1] = ymax; render[2][2] = 0.0;
-	shareRender(); sharePierce();
+	sharePierce(); shareRender();
 }
 
 void shareDone()
