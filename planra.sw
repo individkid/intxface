@@ -17,9 +17,6 @@
 
 var charz:MTLBuffer!
 var debug:MTLComputePipelineState!
-var planes:[share.Facet]!
-var vertexs:[share.Vertex]!
-var indexs:[Int32]!
 var once:Bool = false
 
 func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> MTLCommandBufferHandler
@@ -143,9 +140,9 @@ func planraInit()
 	var vertex4 = share.Vertex(); vertex4.plane = (1,5,7)
 	var vertex5 = share.Vertex(); vertex5.plane = (1,6,7)
 
-	planes = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
-	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
-	indexs = [0,1,2,3,4,5]
+	let planes = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
+	let vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
+	let indexs:[Int32] = [0,1,2,3,4,5]
 
 	toMutablss(planes,[Copy,Dma2],{(ptr,fnc) in debugFacet(Triangle,0,8,2,ptr,fnc)})
 	toMutablss(vertexs,[Copy,Dma2],{(ptr,fnc) in debugVertex(Corner,0,6,2,ptr,fnc)})
