@@ -287,16 +287,6 @@ fragment half4 fragment_render(
 {
    return half4(in.color);
 }
-vertex VertexOutput vertex_simple(
-   const device Facet *point [[buffer(0)]],
-   const device State *state [[buffer(1)]],
-   uint ident [[vertex_id]])
-{
-   VertexOutput out = VertexOutput();
-   out.position = perspective(float4(point[ident].plane,1.0),state);
-   out.color = point[ident].color[0];
-   return out;
-}
 kernel void kernel_pierce(
    const device Facet *plane [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],

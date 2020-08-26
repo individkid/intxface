@@ -226,6 +226,20 @@ enum Click shareMachine(enum Click click, int isright)
 	return click;
 }
 
+#define SHARECLIENT0(PTR) \
+	struct Client client; \
+	client.fnc = PTR; \
+	client.mem = mem; \
+	client.idx = idx; \
+	client.siz = siz; \
+	client.len = len; \
+    switch (mem) {
+#define SHARECLIENT1(MEM,FLD,PTR) \
+	case (MEM): client.FLD = PTR; break;
+#define SHARECLIENT2 \
+	default: ERROR(cb.err,-1);}
+#define SHARECLIENT3 \
+	writeClient(&client,cb.tub);
 void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 {
 	/*printf("mem(");
@@ -246,35 +260,30 @@ void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 	case (User): printf("User"); break;
 	default: printf("Memorys?"); break;}
 	printf(")");*/
-	struct Client client;
-	enum Function function[len];
-	client.fnc = function;
-	client.mem = mem;
-	client.idx = idx;
-	client.siz = siz;
-	client.len = len;
 	//printf(" idx(%d) siz(%d) len(%d) fnc(",idx,siz,len);
     va_list args;
     va_start(args, len);
-    switch (mem) {
-	case (Triangle): client.triangle = va_arg(args,struct Facet *); break;
-	case (Corner): client.corner = va_arg(args,struct Vertex *); break;
-	case (Frame): client.frame = va_arg(args,int *); break;
-	case (Base): client.base = va_arg(args,int *); break;
-	case (Range): client.range = va_arg(args,struct Array *); break;
-	case (Active): client.active = va_arg(args,struct Array *); break;
-	case (Basis): client.basis = va_arg(args,struct Linear *); break;
-	case (Subject): client.subject = va_arg(args,struct Affine *); break;
-	case (Object): client.object = va_arg(args,struct Affine *); break;
-	case (Feature): client.feature = va_arg(args,struct Affine *); break;
-	case (Render): client.render = va_arg(args,struct Vector *); break;
-	case (Pierce): client.pierce = va_arg(args,struct Vector *); break;
-	case (Cloud): client.cloud = va_arg(args,struct Vector *); break;
-	case (User): client.user = va_arg(args,struct Mode *); break;
-	default: ERROR(cb.err,-1);}
+	enum Function function[len];
+	SHARECLIENT0(function);
+	SHARECLIENT1(Triangle,triangle,va_arg(args,struct Facet *));
+	SHARECLIENT1(Corner,corner,va_arg(args,struct Vertex *));
+	SHARECLIENT1(Frame,frame,va_arg(args,int *));
+	SHARECLIENT1(Base,base,va_arg(args,int *));
+	SHARECLIENT1(Range,range,va_arg(args,struct Array *));
+	SHARECLIENT1(Active,active,va_arg(args,struct Array *));
+	SHARECLIENT1(Basis,basis,va_arg(args,struct Linear *));
+	SHARECLIENT1(Subject,subject,va_arg(args,struct Affine *));
+	SHARECLIENT1(Object,object,va_arg(args,struct Affine *));
+	SHARECLIENT1(Feature,feature,va_arg(args,struct Affine *));
+	SHARECLIENT1(Render,render,va_arg(args,struct Vector *));
+	SHARECLIENT1(Pierce,pierce,va_arg(args,struct Vector *));
+	SHARECLIENT1(Cloud,cloud,va_arg(args,struct Vector *));
+	SHARECLIENT1(User,user,va_arg(args,struct Mode *));
+	SHARECLIENT2;
 	for (int i = 0; i < len; i++) {
-	function[i] = va_arg(args,enum Function);
-	/*if (i > 0) printf(",");
+	function[i] = va_arg(args,enum Function);}
+	/*for (int i = 0; i < len; i++) {
+	if (i > 0) printf(",");
 	switch (function[i]) {
 	case (Rmw0): printf("Rmw0"); break;
 	case (Rmw1): printf("Rmw1"); break;
@@ -287,10 +296,77 @@ void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 	case (Gpu0): printf("Gpu0"); break;
 	case (Gpu1): printf("Gpu1"); break;
 	case (Port): printf("Port"); break;
-	default: printf("Functions?\n"); break;}*/}
-	//printf(")\n");
-	writeClient(&client,cb.tub);
+	default: printf("Functions?\n"); break;}}
+	printf(")\n");*/
+	SHARECLIENT3;
     va_end(args);
+}
+void debugFacet(enum Memory mem, int idx, int siz, int len, struct Facet *ptr, enum Function *fnc)
+{
+	/*printf("mem(%d) idx(%d) siz(%d) len(%d) plane",mem,idx,siz,len);
+	for (int i = 0; i < siz; i++)
+	if (i == 0) printf("((%f,%f,%f)",ptr[i].plane[0],ptr[i].plane[1],ptr[i].plane[2]);
+	else printf(",(%f,%f,%f)",ptr[i].plane[0],ptr[i].plane[1],ptr[i].plane[2]);
+	printf(")\n");*/
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(Triangle,triangle,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
+}
+void debugVertex(enum Memory mem, int idx, int siz, int len, struct Vertex *ptr, enum Function *fnc)
+{
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(Corner,corner,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
+}
+void debugInt(enum Memory mem, int idx, int siz, int len, int *ptr, enum Function *fnc)
+{
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(Frame,frame,ptr);
+	SHARECLIENT1(Base,base,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
+}
+void debugArray(enum Memory mem, int idx, int siz, int len, struct Array *ptr, enum Function *fnc)
+{
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(Range,range,ptr);
+	SHARECLIENT1(Active,active,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
+}
+void debugLinear(enum Memory mem, int idx, int siz, int len, struct Linear *ptr, enum Function *fnc)
+{
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(Basis,basis,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
+}
+void debugAffine(enum Memory mem, int idx, int siz, int len, struct Affine *ptr, enum Function *fnc)
+{
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(Subject,subject,ptr);
+	SHARECLIENT1(Object,object,ptr);
+	SHARECLIENT1(Feature,feature,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
+}
+void debugVector(enum Memory mem, int idx, int siz, int len, struct Vector *ptr, enum Function *fnc)
+{
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(Render,render,ptr);
+	SHARECLIENT1(Pierce,pierce,ptr);
+	SHARECLIENT1(Cloud,cloud,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
+}
+void debugMode(enum Memory mem, int idx, int siz, int len, struct Mode *ptr, enum Function *fnc)
+{
+	SHARECLIENT0(fnc);
+	SHARECLIENT1(User,user,ptr);
+	SHARECLIENT2;
+	SHARECLIENT3;
 }
 
 void shareWrite(struct Vector *point, struct Vector *normal, int object)
@@ -460,7 +536,11 @@ void procRmw2() // transition between move and roll
 	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
 	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
-	/*if (ENUM == Render && client->siz > 1) printf("Copy Render %d %d %f\n",client->idx,client->siz,client->render[1].val[2]);*/ \
+	/*if (ENUM == Render && client->siz > 1) printf("Copy Render %d %d (%f,%f,%f) (%f,%f,%f)\n", \
+	client->idx,client->siz, \
+	ptr[Render]->render[0].val[0],ptr[Render]->render[0].val[1],ptr[Render]->render[0].val[2], \
+	ptr[Render]->render[1].val[0],ptr[Render]->render[1].val[1],ptr[Render]->render[1].val[2]); \
+	if (ENUM == Triangle) printf("Copy Triangle %d %d\n",client->idx,client->siz);*/ \
 	return;}
 void procCopy(struct Client **ptr)
 {

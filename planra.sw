@@ -20,8 +20,8 @@ func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> 
 	return {(MTLCommandBuffer) in
 	var index = 0
 	for expected:Int32 in [
-	0,255,500,256,-256,500,-256,-256,500,10,10,0,
-	0,-256,400,256,256,400,-256,256,400,10,5,0] {
+	0,255,500,256,-256,500,-256,-256,500,10,5,0,
+	0,-256,400,256,256,400,-256,256,400,10,10,0] {
 	let actual:Int32 = charz.contents().load(fromByteOffset:index,as:Int32.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
@@ -44,7 +44,10 @@ func planraDraw1(_ shader:share.Shader)
 	encode.setRenderPipelineState(render)
 	encode.setDepthStencilState(depth)
 	encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-	encode.setVertexBuffer(form.get(),offset:0,index:1)
+	encode.setVertexBuffer(corner.get(),offset:0,index:1)
+	encode.setVertexBuffer(frame.get(),offset:0,index:2)
+	encode.setVertexBuffer(object.get(),offset:0,index:3)
+	encode.setVertexBuffer(form.get(),offset:0,index:4)
 	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
 	encode.endEncoding()
 	code.present(draw)
@@ -59,20 +62,8 @@ func planraDraw0(_ shader:share.Shader)
 		print("cannot make library"); return}
 	guard let kernel_debug = library.makeFunction(name:"kernel_debug") else {
 		print("cannot make kernel_debug"); return;}
-	guard let vertex_simple = library.makeFunction(name:"vertex_simple") else {
-		print("cannot make vertex_simple"); return}
-	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
-		print("cannot make fragment_render"); return}
 	guard let debug = try? device.makeComputePipelineState(function:kernel_debug) else {
 		print("cannot make debug"); return}
-	guard let pipe = noWarn(MTLRenderPipelineDescriptor()) else {
-		print("cannot make pipe"); return}
-	pipe.vertexFunction = vertex_simple
-	pipe.fragmentFunction = fragment_render
-	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
-	pipe.depthAttachmentPixelFormat = .depth32Float
-	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
-		render = temp} else {print("cannot make render"); return}
 
 	let white = (Float(0.0),Float(0.0),Float(0.0),Float(1.0))
 	let yellow = (Float(1.0),Float(1.0),Float(0.0),Float(1.0))
@@ -98,7 +89,7 @@ func planraDraw0(_ shader:share.Shader)
 	plane0.point = (0,1,2); plane1.point = (3,4,5)
 	plane2.point = (0,1,6); plane3.point = (0,2,6); plane4.point = (1,2,6)
 	plane5.point = (3,4,6); plane6.point = (3,5,6); plane7.point = (4,5,6)
-	plane0.color = (orange,yellow,yellow); plane1.color = (yellow,orange,orange)
+	plane0.color = (yellow,orange,yellow); plane1.color = (orange,yellow,orange)
 	plane2.color = allwhite; plane3.color = allwhite; plane4.color = allwhite
 	plane5.color = allwhite; plane6.color = allwhite; plane7.color = allwhite
 	let planes = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
@@ -112,13 +103,6 @@ func planraDraw0(_ shader:share.Shader)
 	corner.set([vertex0,vertex1,vertex2,vertex3,vertex4,vertex5])
 	frame.set([0,1,2,3,4,5])
 
-	var point0 = share.Facet(); point0.plane = (0.0,256.0,500.0); point0.color.0 = yellow
-	var point1 = share.Facet(); point1.plane = (-256.0,-256.0,500.0); point1.color.0 = yellow
-	var point2 = share.Facet(); point2.plane = (256.0,-256.0,500.0); point2.color.0 = orange
-	var point3 = share.Facet(); point3.plane = (-256.0,256.0,400.0); point3.color.0 = orange
-	var point4 = share.Facet(); point4.plane = (256.0,256.0,400.0); point4.color.0 = orange
-	var point5 = share.Facet(); point5.plane = (0.0,-256.0,400.0); point5.color.0 = yellow
-	let points = [point0,point1,point2,point3,point4,point5]
 	let charz = device.makeBuffer(length:1000)
 	print("Form.tag \(MemoryLayout<Form>.offset(of:\Form.tag)!)")
 	print("Facet.tag \(offsetFacetTag())")
@@ -150,16 +134,13 @@ func planraDraw0(_ shader:share.Shader)
 	count += 1
 	code.commit()
 	// TEST code.waitUntilScheduled()
-	// plane2.plane = (48.0,48.0,48.0)
-	// triangle.set(plane2,2)
 	print("before \(count)")
 	code.waitUntilCompleted()
 	print("after \(count)")}
 
 	print("between debug and hello")
 
-	triangle.set(points)
-	planraDraw1(share.Display)
+	toMutablss([],[Gpu0],{(ptr,fnc) in debugFacet(Triangle,0,0,1,ptr,fnc)})
 
 	print("after hello")
 
