@@ -26,7 +26,7 @@ var view:NSView!
 var window:NSWindow!
 var queue:MTLCommandQueue!
 var render:MTLRenderPipelineState!
-var descriptor:MTLRenderPassDescriptor!
+var param:MTLRenderPassDescriptor!
 var depth:MTLDepthStencilState!
 var compute:MTLComputePipelineState!
 var threads:MTLSize!
@@ -327,7 +327,7 @@ func swiftSize()
 	let size = CGSize(width:rect.width,height:rect.height)
 	layer.drawableSize = size
 	if let temp = getTexture(rect) {
-		descriptor.depthAttachment.texture = temp} else {return}
+		param.depthAttachment.texture = temp} else {return}
 	while (getCheck()) {}
 }
 func swiftKey(event:NSEvent) -> NSEvent?
@@ -423,16 +423,16 @@ func swiftInit()
 	if let temp = try? device.makeRenderPipelineState(descriptor:pipe) {
 		render = temp} else {print("cannot make render"); return}
 	if let temp = noWarn(MTLRenderPassDescriptor()) {
-    	descriptor = temp} else {print("cannot make descriptor"); return}
+    	param = temp} else {print("cannot make param"); return}
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
-	descriptor.colorAttachments[0].clearColor = color
-	descriptor.colorAttachments[0].loadAction = .clear
-	descriptor.colorAttachments[0].storeAction = .store
-	descriptor.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
-	descriptor.depthAttachment.loadAction = .clear
-	descriptor.depthAttachment.storeAction = .dontCare
+	param.colorAttachments[0].clearColor = color
+	param.colorAttachments[0].loadAction = .clear
+	param.colorAttachments[0].storeAction = .store
+	param.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
+	param.depthAttachment.loadAction = .clear
+	param.depthAttachment.storeAction = .dontCare
 	if let temp = getTexture(rect) {
-		descriptor.depthAttachment.texture = temp} else {
+		param.depthAttachment.texture = temp} else {
 		print("cannot make texture"); return}
     guard let desc = noWarn(MTLDepthStencilDescriptor()) else {
     	print("cannot make desc"); return}
@@ -497,16 +497,16 @@ func swiftDraw(_ shader:share.Shader)
 	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 	guard let range = getRange() else {cb.err(#file,#line,-1);return}
     guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
-	descriptor.colorAttachments[0].texture = draw.texture
+	param.colorAttachments[0].texture = draw.texture
 	if (range.count == 0) {
-		guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.endEncoding()
 	}
 	for array in range {
 		form.set(UInt32(array.tag),\Form.tag)
 		form.set(getRender(0),\Form.feather)
 		form.set(getRender(1),\Form.arrow)
-		guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {cb.err(#file,#line,-1);return}
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
 		encode.setVertexBuffer(triangle.get(),offset:0,index:0)

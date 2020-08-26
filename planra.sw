@@ -70,8 +70,8 @@ func planraDraw(_ shader:share.Shader)
 		print("cannot make code"); return}
     guard let draw = layer.nextDrawable() else {
 		print("cannot make draw"); return}
-	descriptor.colorAttachments[0].texture = draw.texture
-	guard let encode = code.makeRenderCommandEncoder(descriptor:descriptor) else {
+	param.colorAttachments[0].texture = draw.texture
+	guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {
 		print("cannot make encode"); return}
 	encode.setRenderPipelineState(render)
 	encode.setDepthStencilState(depth)
