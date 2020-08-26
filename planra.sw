@@ -20,6 +20,7 @@ var debug:MTLComputePipelineState!
 var planes:[share.Facet]!
 var vertexs:[share.Vertex]!
 var indexs:[Int32]!
+var once:Bool = false
 
 func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> MTLCommandBufferHandler
 {
@@ -38,12 +39,10 @@ func getDebug(_ charz:MTLBuffer, _ a:Int32, _ b:Int32, _ c:Int32, _ d:Int32) -> 
 }
 func planraDraw(_ shader:share.Shader)
 {
-	// guard let temp = getClient(Frame) else {print("cannot get frame"); return}
-	// if (temp.siz < 6) {print("not yet"); return}
-	if (shader == share.Track) {
-	triangle.set(planes)
-	corner.set(vertexs)
-	frame.set(indexs)
+	guard let temp = getClient(Frame) else {print("cannot get frame"); return}
+	if (temp.siz < 6) {return}
+	if (shader == share.Track && !once) {
+	once = true
 	form.set(getRender(0),\Form.feather)
 	form.set(getRender(1),\Form.arrow)
 	form.set(UInt32(0),\Form.tag)
@@ -148,9 +147,9 @@ func planraInit()
 	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
 	indexs = [0,1,2,3,4,5]
 
-	// toMutablss(planes,[Copy,Dma2],{(ptr,fnc) in debugFacet(Triangle,0,8,2,ptr,fnc)})
-	// toMutablss(vertexs,[Copy,Dma2],{(ptr,fnc) in debugVertex(Corner,0,6,2,ptr,fnc)})
-	// toMutablss(indexs,[Copy,Dma2,Gpu1,Gpu0],{(ptr,fnc) in debugInt(Frame,0,6,4,ptr,fnc)})
+	toMutablss(planes,[Copy,Dma2],{(ptr,fnc) in debugFacet(Triangle,0,8,2,ptr,fnc)})
+	toMutablss(vertexs,[Copy,Dma2],{(ptr,fnc) in debugVertex(Corner,0,6,2,ptr,fnc)})
+	toMutablss(indexs,[Copy,Dma2,Gpu1,Gpu0],{(ptr,fnc) in debugInt(Frame,0,6,4,ptr,fnc)})
 }
 
 // MAIN

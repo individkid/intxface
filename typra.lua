@@ -350,9 +350,9 @@ Expected = {
 	"}",
 	"void allocStr(char **ptr, const char *str)\n"..
 	"{\n"..
-	"    if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (*ptr && str == 0) {void *tmp = *ptr; allocVoid(&tmp,0,1); *ptr = tmp;}\n"..
 	"    if (str == 0) return;\n"..
-	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
+	"    void *tmp = *ptr; allocVoid(&tmp,strlen(str)+1,1); *ptr = tmp;\n"..
 	"    strcpy(*ptr,str);\n"..
 	"}\n"..
 	"void callStr(const char* str, int trm, void*arg)\n"..
@@ -362,16 +362,16 @@ Expected = {
 	"}",
 	"void allocPtr(void ***ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(void*)); *ptr = tmp;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(void*));\n"..
+	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(void*)); *ptr = tmp;\n"..
 	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
 	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(enum Enum1)); *ptr = tmp;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(enum Enum1));\n"..
+	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(enum Enum1)); *ptr = tmp;\n"..
 	"}",
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
 	"{\n"..
@@ -385,9 +385,9 @@ Expected = {
 	"}",
 	"void allocInt(int **ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
+	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(int)); *ptr = tmp;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
+	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(int)); *ptr = tmp;\n"..
 	"}",
 	"data Enum1 =\n"..
 	"    Value11 |\n"..

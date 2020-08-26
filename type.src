@@ -649,9 +649,9 @@ function showAllocC(name,typ)
 	elseif (name == "Str") then
 		result = result.."void allocStr(char **ptr, const char *str)"
 		if prototype then result = result..";\n" else result = result.."\n{\n"
-		result = result..showIndent(1).."if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (*ptr && str == 0) {void *tmp = *ptr; allocVoid(&tmp,0,1); *ptr = tmp;}\n"
 		result = result..showIndent(1).."if (str == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
+		result = result..showIndent(1).."void *tmp = *ptr; allocVoid(&tmp,strlen(str)+1,1); *ptr = tmp;\n"
 		result = result..showIndent(1).."strcpy(*ptr,str);\n"
 		result = result.."}\n" end
 		result = result.."void callStr(const char* str, int trm, void*arg)"
@@ -662,17 +662,17 @@ function showAllocC(name,typ)
 	elseif (name == "Ptr") then
 		result = result.."void allocPtr(void ***ptr, int siz)"
 		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(void*)); *ptr = tmp;}\n"
 		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(void*));\n"
+		result = result..showIndent(1).."void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(void*)); *ptr = tmp;\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
 		result = result.."}"
 	elseif (Enumz[name] ~= nil) then
 		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
 		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(enum "..name..")); *ptr = tmp;}\n"
 		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
+		result = result..showIndent(1).."void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(enum "..name..")); *ptr = tmp;\n"
 		result = result.."}"
 	elseif (Structz[name] ~= nil) then
 		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
@@ -688,9 +688,9 @@ function showAllocC(name,typ)
 	else
 		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)"
 		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof("..typ..")); *ptr = tmp;}\n"
 		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof("..typ.."));\n"
+		result = result..showIndent(1).."void *tmp = *ptr; allocVoid(&tmp,siz,sizeof("..typ..")); *ptr = tmp;\n"
 		result = result.."}"
 	end
 	return result

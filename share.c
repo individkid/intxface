@@ -540,7 +540,9 @@ void procRmw2() // transition between move and roll
 	client->idx,client->siz, \
 	ptr[Render]->render[0].val[0],ptr[Render]->render[0].val[1],ptr[Render]->render[0].val[2], \
 	ptr[Render]->render[1].val[0],ptr[Render]->render[1].val[1],ptr[Render]->render[1].val[2]); \
-	if (ENUM == Triangle) printf("Copy Triangle %d %d\n",client->idx,client->siz);*/ \
+	if (ENUM == Triangle) printf("Copy Triangle %d %d\n",client->idx,client->siz); \
+	if (ENUM == Corner) printf("Copy Corner %d %d\n",client->idx,client->siz); \
+	if (ENUM == Frame) printf("Copy Frame %d %d\n",client->idx,client->siz);*/ \
 	return;}
 void procCopy(struct Client **ptr)
 {
