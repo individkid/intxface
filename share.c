@@ -242,25 +242,6 @@ enum Click shareMachine(enum Click click, int isright)
 	writeClient(&client,cb.tub);
 void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 {
-	/*printf("mem(");
-	switch (mem) {
-	case (Triangle): printf("Triangle"); break;
-	case (Corner): printf("Corner"); break;
-	case (Frame): printf("Frame"); break;
-	case (Base): printf("Base"); break;
-	case (Range): printf("Range"); break;
-	case (Active): printf("Active"); break;
-	case (Basis): printf("Basis"); break;
-	case (Subject): printf("Subject"); break;
-	case (Object): printf("Object"); break;
-	case (Feature): printf("Feature"); break;
-	case (Render): printf("Render"); break;
-	case (Pierce): printf("Pierce"); break;
-	case (Cloud): printf("Cloud"); break;
-	case (User): printf("User"); break;
-	default: printf("Memorys?"); break;}
-	printf(")");*/
-	//printf(" idx(%d) siz(%d) len(%d) fnc(",idx,siz,len);
     va_list args;
     va_start(args, len);
 	enum Function function[len];
@@ -282,32 +263,11 @@ void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 	SHARECLIENT2;
 	for (int i = 0; i < len; i++) {
 	function[i] = va_arg(args,enum Function);}
-	/*for (int i = 0; i < len; i++) {
-	if (i > 0) printf(",");
-	switch (function[i]) {
-	case (Rmw0): printf("Rmw0"); break;
-	case (Rmw1): printf("Rmw1"); break;
-	case (Rmw2): printf("Rmw2"); break;
-	case (Copy): printf("Copy"); break;
-	case (Save): printf("Save"); break;
-	case (Dma0): printf("Dma0"); break;
-	case (Dma1): printf("Dma1"); break;
-	case (Dma2): printf("Dma2"); break;
-	case (Gpu0): printf("Gpu0"); break;
-	case (Gpu1): printf("Gpu1"); break;
-	case (Port): printf("Port"); break;
-	default: printf("Functions?\n"); break;}}
-	printf(")\n");*/
 	SHARECLIENT3;
     va_end(args);
 }
 void debugFacet(enum Memory mem, int idx, int siz, int len, struct Facet *ptr, enum Function *fnc)
 {
-	/*printf("mem(%d) idx(%d) siz(%d) len(%d) plane",mem,idx,siz,len);
-	for (int i = 0; i < siz; i++)
-	if (i == 0) printf("((%f,%f,%f)",ptr[i].plane[0],ptr[i].plane[1],ptr[i].plane[2]);
-	else printf(",(%f,%f,%f)",ptr[i].plane[0],ptr[i].plane[1],ptr[i].plane[2]);
-	printf(")\n");*/
 	SHARECLIENT0(fnc);
 	SHARECLIENT1(Triangle,triangle,ptr);
 	SHARECLIENT2;
@@ -536,13 +496,6 @@ void procRmw2() // transition between move and roll
 	memcpy(ptr[ENUM]->FIELD,mem,ptr[ENUM]->siz*sizeof(*client->FIELD));} \
 	ptr[ENUM]->siz = client->idx+client->siz;} \
 	memcpy(&ptr[ENUM]->FIELD[client->idx],client->FIELD,client->siz*sizeof(*client->FIELD)); \
-	/*if (ENUM == Render && client->siz > 1) printf("Copy Render %d %d (%f,%f,%f) (%f,%f,%f)\n", \
-	client->idx,client->siz, \
-	ptr[Render]->render[0].val[0],ptr[Render]->render[0].val[1],ptr[Render]->render[0].val[2], \
-	ptr[Render]->render[1].val[0],ptr[Render]->render[1].val[1],ptr[Render]->render[1].val[2]); \
-	if (ENUM == Triangle) printf("Copy Triangle %d %d\n",client->idx,client->siz); \
-	if (ENUM == Corner) printf("Copy Corner %d %d\n",client->idx,client->siz); \
-	if (ENUM == Frame) printf("Copy Frame %d %d\n",client->idx,client->siz);*/ \
 	return;}
 void procCopy(struct Client **ptr)
 {
@@ -584,17 +537,17 @@ void shareProc()
 {
 	for (int i = 0; i < client->len; i++)
 	switch (client->fnc[i]) {
-	case (Rmw0): if (cb.esc && 0) printf("Rmw0\n"); procRmw0(); break;
-	case (Rmw1): if (cb.esc && 0) printf("Rmw1\n"); procRmw1(); break;
-	case (Rmw2): if (cb.esc && 0) printf("Rmw2\n"); procRmw2(); break;
-	case (Copy): if (cb.esc && 0) printf("Copy\n"); procCopy(cb.state); break;
-	case (Save): if (cb.esc && 0) printf("Save\n"); procCopy(saved); break;
-	case (Dma0): if (cb.esc && 0) printf("Dma0\n"); cb.dma(client->mem,client->idx,1); break;
-	case (Dma1): if (cb.esc && 0) printf("Dma1\n"); procPierce(); break;
-	case (Dma2): if (cb.esc && 0) printf("Dma2\n"); cb.dma(client->mem,client->idx,client->siz); break;
-	case (Gpu0): if (cb.esc && 0) printf("Gpu0\n"); cb.draw(Display); break;
-	case (Gpu1): if (cb.esc && 0) printf("Gpu1\n"); cb.draw(Track); break;
-	case (Port): if (cb.esc && 0) printf("Port\n"); procMetric(); break;
+	case (Rmw0): procRmw0(); break;
+	case (Rmw1): procRmw1(); break;
+	case (Rmw2): procRmw2(); break;
+	case (Copy): procCopy(cb.state); break;
+	case (Save): procCopy(saved); break;
+	case (Dma0): cb.dma(client->mem,client->idx,1); break;
+	case (Dma1): procPierce(); break;
+	case (Dma2): cb.dma(client->mem,client->idx,client->siz); break;
+	case (Gpu0): cb.draw(Display); break;
+	case (Gpu1): cb.draw(Track); break;
+	case (Port): procMetric(); break;
 	default: ERROR(cb.err,-1);}
 }
 

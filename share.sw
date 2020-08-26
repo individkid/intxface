@@ -366,16 +366,12 @@ func swiftMove(event:NSEvent) -> NSEvent?
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
 		cb.move(Double(point.x),Double(point.y))
-		// cb.move(Double(point.x),Double(point.y)) // TEST
 	}
 	return event
 }
 func swiftRoll(event:NSEvent) -> NSEvent?
 {
 	cb.roll(Double(event.deltaX),Double(event.deltaY))
-	// cb.roll(Double(event.deltaX),Double(event.deltaY)) // TEST
-	// let point = getPoint() // TEST
-	// cb.move(Double(point.x),Double(point.y)) // TEST
 	return event
 }
 func swiftCheck(event:NSEvent) -> NSEvent?
