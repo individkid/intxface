@@ -16,7 +16,6 @@
 */
 
 #include "face.h"
-#include "base.h"
 #include "type.h"
 #include "metic.h"
 
@@ -78,3 +77,13 @@ void clientLinear(enum Memory mem, int idx, int siz, int len, struct Linear *ptr
 void clientAffine(enum Memory mem, int idx, int siz, int len, struct Affine *ptr, enum Function *fnc);
 void clientVector(enum Memory mem, int idx, int siz, int len, struct Vector *ptr, enum Function *fnc);
 void clientMode(enum Memory mem, int idx, int siz, int len, struct Mode *ptr, enum Function *fnc);
+void clientClient(enum Memory mem, int idx, int siz, int len, struct Client *ptr, enum Function *fnc);
+void atomicFacet(enum Memory mem, int idx, int siz, int len, struct Facet *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicVertex(enum Memory mem, int idx, int siz, int len, struct Vertex *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicInt(enum Memory mem, int idx, int siz, int len, int *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicArray(enum Memory mem, int idx, int siz, int len, struct Array *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicLinear(enum Memory mem, int idx, int siz, int len, struct Linear *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicAffine(enum Memory mem, int idx, int siz, int len, struct Affine *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicVector(enum Memory mem, int idx, int siz, int len, struct Vector *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicMode(enum Memory mem, int idx, int siz, int len, struct Mode *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicClient(enum Memory mem, int idx, int siz, int len, struct Client *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));

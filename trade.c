@@ -16,7 +16,6 @@
 */
 
 #include "face.h"
-#include "base.h"
 #include "type.h"
 
 jmp_buf errbuf = {0};

@@ -71,6 +71,7 @@ Function = {
 	"Gpu0", -- update display
 	"Gpu1", -- find pierce point
 	"Port", -- send metric
+	"Atom", -- process list of clients
 }
 Memory = {
 	"Triangle", -- plane gouping backlinks decoration
@@ -87,6 +88,7 @@ Memory = {
 	"Pierce", -- find pierce point
 	"Cloud", -- find collisions
 	"User", -- interpret mouse
+	"Process", -- functions to apply atomically
 }
 Matrix = {
 	"Global", -- transorm matrix for all points
@@ -245,6 +247,7 @@ Client = {
 	{"pierce","Vector",{["mem"]={["Pierce"]=true}},"siz"},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
 	{"user","Mode",{["mem"]={["User"]=true}},"siz"},
+	{"process","Client",{["mem"]={["Process"]=true}},"siz"},
 }
 Sculpt = {
 	{"cfg","Ture",{},{}},
@@ -264,7 +267,6 @@ Structs,Structz = listHere("Structs","type.gen")
 function showTypeC()
 	local result = ""
 	result = result.."#include \"face.h\"\n"
-	result = result.."#include \"base.h\"\n"
 	result = result.."#include \"type.h\"\n"
 	result = result..showCallC()
 	return result

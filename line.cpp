@@ -17,7 +17,6 @@
 
 extern "C" {
 #include "face.h"
-#include "base.h"
 #include "type.h"
 #include "portaudio.h"
 }

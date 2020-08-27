@@ -21,7 +21,6 @@ dofile("typra.src")
 function showTyperC()
 	local result = ""
 	result = result.."#include \"face.h\"\n"
-	result = result.."#include \"base.h\"\n"
 	result = result.."#include \"typer.h\"\n"
 	result = result..showCallC().."\n"
 	result = result.."int main(int argc, char **argv)\n".."{\n"..

@@ -197,6 +197,7 @@ Expected = {
 	"};",
 	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
+	"    freeStruct1(ptr);\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        readStruct1(&ptr->next[i],idx);\n"..
@@ -273,6 +274,7 @@ Expected = {
 	"}",
 	"void randStruct1(struct Struct1 *ptr)\n"..
 	"{\n"..
+	"    freeStruct1(ptr);\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
 	"        randStruct1(&ptr->next[i]);\n"..
@@ -350,9 +352,9 @@ Expected = {
 	"}",
 	"void allocStr(char **ptr, const char *str)\n"..
 	"{\n"..
-	"    if (*ptr && str == 0) {void *tmp = *ptr; allocVoid(&tmp,0,1); *ptr = tmp;}\n"..
+	"    if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (str == 0) return;\n"..
-	"    void *tmp = *ptr; allocVoid(&tmp,strlen(str)+1,1); *ptr = tmp;\n"..
+	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
 	"    strcpy(*ptr,str);\n"..
 	"}\n"..
 	"void callStr(const char* str, int trm, void*arg)\n"..
@@ -362,32 +364,33 @@ Expected = {
 	"}",
 	"void allocPtr(void ***ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(void*)); *ptr = tmp;}\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(void*)); *ptr = tmp;\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(void*));\n"..
 	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
 	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(enum Enum1)); *ptr = tmp;}\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(enum Enum1)); *ptr = tmp;\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(enum Enum1));\n"..
+	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr) for (int i = 0; checkVoid(*ptr,i); i++) freeStruct1(&(*ptr)[i]);\n"..
-	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,0); *ptr = tmp;}\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(struct Struct1)); *ptr = tmp;\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(struct Struct1));\n"..
 	"    struct Struct1 init = {0};\n"..
 	"    for (int i = 0; i < siz; i++)\n"..
 	"        memcpy(&(*ptr)[i],&init,sizeof(init));\n"..
 	"}",
 	"void allocInt(int **ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {void *tmp = *ptr; allocVoid(&tmp,0,sizeof(int)); *ptr = tmp;}\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    void *tmp = *ptr; allocVoid(&tmp,siz,sizeof(int)); *ptr = tmp;\n"..
+	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
+	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
 	"data Enum1 =\n"..
 	"    Value11 |\n"..

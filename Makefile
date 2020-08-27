@@ -88,7 +88,6 @@ LIBRARIES = -llua -lportaudio
 
 .PHONY:
 clean:
-	rm -f base.h base.c
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer planra

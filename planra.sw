@@ -18,6 +18,10 @@
 var charz:MTLBuffer!
 var debug:MTLComputePipelineState!
 var once:Bool = false
+var clients:[share.Client]!
+var facets:[share.Facet]!
+var vertexs:[share.Vertex]!
+var indexs:[CInt]!
 
 func getDebug(_ charz:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTLCommandBufferHandler
 {
@@ -140,15 +144,31 @@ func planraInit()
 	var vertex4 = share.Vertex(); vertex4.plane = (1,5,7)
 	var vertex5 = share.Vertex(); vertex5.plane = (1,6,7)
 
-	let planes = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
-	let vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
-	let indexs:[CInt] = [0,1,2,3,4,5]
-
-
-
-	toMutablss(planes,[Copy,Dma2],{(ptr,fnc) in clientFacet(Triangle,0,8,2,ptr,fnc)})
-	toMutablss(vertexs,[Copy,Dma2],{(ptr,fnc) in clientVertex(Corner,0,6,2,ptr,fnc)})
-	toMutablss(indexs,[Copy,Dma2,Gpu1,Gpu0],{(ptr,fnc) in clientInt(Frame,0,6,4,ptr,fnc)})
+	clients = []
+	facets = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
+	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
+	indexs = [0,1,2,3,4,5]
+	toMutabls(clients,
+	{(client:UnsafeMutablePointer<share.Client>?) in
+	toMutablss(facets,[Copy,Dma2],
+	{(ptr:UnsafeMutablePointer<share.Facet>,
+	fnc:UnsafeMutablePointer<share.Function>) in
+	atomicFacet(Triangle,0,8,2,ptr,fnc,0,client,
+	{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	toMutablss(vertexs,[Copy,Dma2],
+	{(ptr:UnsafeMutablePointer<share.Vertex>,
+	fnc:UnsafeMutablePointer<share.Function>) in
+	atomicVertex(Corner,0,6,2,ptr,fnc,num,client,
+	{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	toMutablss(indexs,[Copy,Dma2],{
+	(ptr:UnsafeMutablePointer<CInt>,
+	fnc:UnsafeMutablePointer<share.Function>) in
+	atomicInt(Frame,0,6,2,ptr,fnc,num,client,{
+	(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	toMutabls([Copy,Atom,Gpu1,Gpu0],
+	{(fnc:UnsafeMutablePointer<share.Function>) in
+	clientClient(Process,0,num,4,client,fnc)
+	})})})})})})})})
 }
 
 // MAIN

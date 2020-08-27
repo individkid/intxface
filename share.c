@@ -226,81 +226,129 @@ enum Click shareMachine(enum Click click, int isright)
 	return click;
 }
 
-#define SHARECLIENT0(PTR) \
-	struct Client client; \
-	client.fnc = PTR; \
-	client.mem = mem; \
-	client.idx = idx; \
-	client.siz = siz; \
-	client.len = len; \
+#define SHARECLIENT0(REC,PTR) \
+	REC.fnc = PTR; \
+	REC.mem = mem; \
+	REC.idx = idx; \
+	REC.siz = siz; \
+	REC.len = len; \
     switch (mem) {
-#define SHARECLIENT1(MEM,FLD,PTR) \
-	case (MEM): client.FLD = PTR; break;
+#define SHARECLIENT1(MEM,REC,FLD,PTR) \
+	case (MEM): REC.FLD = PTR; break;
 #define SHARECLIENT2 \
 	default: ERROR(cb.err,-1);}
-#define SHARECLIENT3 \
-	writeClient(&client,cb.tub);
 void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 {
     va_list args;
     va_start(args, len);
 	enum Function function[len];
-	SHARECLIENT0(function);
-	SHARECLIENT1(Triangle,triangle,va_arg(args,struct Facet *));
-	SHARECLIENT1(Corner,corner,va_arg(args,struct Vertex *));
-	SHARECLIENT1(Frame,frame,va_arg(args,int *));
-	SHARECLIENT1(Base,base,va_arg(args,int *));
-	SHARECLIENT1(Range,range,va_arg(args,struct Array *));
-	SHARECLIENT1(Active,active,va_arg(args,struct Array *));
-	SHARECLIENT1(Basis,basis,va_arg(args,struct Linear *));
-	SHARECLIENT1(Subject,subject,va_arg(args,struct Affine *));
-	SHARECLIENT1(Object,object,va_arg(args,struct Affine *));
-	SHARECLIENT1(Feature,feature,va_arg(args,struct Affine *));
-	SHARECLIENT1(Render,render,va_arg(args,struct Vector *));
-	SHARECLIENT1(Pierce,pierce,va_arg(args,struct Vector *));
-	SHARECLIENT1(Cloud,cloud,va_arg(args,struct Vector *));
-	SHARECLIENT1(User,user,va_arg(args,struct Mode *));
+	struct Client client;
+	SHARECLIENT0(client,function);
+	SHARECLIENT1(Triangle,client,triangle,va_arg(args,struct Facet *));
+	SHARECLIENT1(Corner,client,corner,va_arg(args,struct Vertex *));
+	SHARECLIENT1(Frame,client,frame,va_arg(args,int *));
+	SHARECLIENT1(Base,client,base,va_arg(args,int *));
+	SHARECLIENT1(Range,client,range,va_arg(args,struct Array *));
+	SHARECLIENT1(Active,client,active,va_arg(args,struct Array *));
+	SHARECLIENT1(Basis,client,basis,va_arg(args,struct Linear *));
+	SHARECLIENT1(Subject,client,subject,va_arg(args,struct Affine *));
+	SHARECLIENT1(Object,client,object,va_arg(args,struct Affine *));
+	SHARECLIENT1(Feature,client,feature,va_arg(args,struct Affine *));
+	SHARECLIENT1(Render,client,render,va_arg(args,struct Vector *));
+	SHARECLIENT1(Pierce,client,pierce,va_arg(args,struct Vector *));
+	SHARECLIENT1(Cloud,client,cloud,va_arg(args,struct Vector *));
+	SHARECLIENT1(User,client,user,va_arg(args,struct Mode *));
+	SHARECLIENT1(Process,client,process,va_arg(args,struct Client *));
 	SHARECLIENT2;
 	for (int i = 0; i < len; i++) {
 	function[i] = va_arg(args,enum Function);}
-	SHARECLIENT3;
+	writeClient(&client,cb.tub);
     va_end(args);
 }
+#define SHARECLIENS(TYP,NAM,MEM,FLD) \
+void client##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc) \
+{ \
+	struct Client client; \
+	SHARECLIENT0(client,fnc); \
+	SHARECLIENT1(MEM,client,FLD,ptr); \
+	SHARECLIENT2; \
+	writeClient(&client,cb.tub); \
+}
+#define SHARECLIENSS(TYP,NAM,MEM0,FLD0,MEM1,FLD1) \
+void client##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc) \
+{ \
+	struct Client client; \
+	SHARECLIENT0(client,fnc); \
+	SHARECLIENT1(MEM0,client,FLD0,ptr); \
+	SHARECLIENT1(MEM1,client,FLD1,ptr); \
+	SHARECLIENT2; \
+	writeClient(&client,cb.tub); \
+}
+#define SHARECLIENSSS(TYP,NAM,MEM0,FLD0,MEM1,FLD1,MEM2,FLD2) \
+void client##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc) \
+{ \
+	struct Client client; \
+	SHARECLIENT0(client,fnc); \
+	SHARECLIENT1(MEM0,client,FLD0,ptr); \
+	SHARECLIENT1(MEM1,client,FLD1,ptr); \
+	SHARECLIENT1(MEM2,client,FLD2,ptr); \
+	SHARECLIENT2; \
+	writeClient(&client,cb.tub); \
+}
+SHARECLIENS(struct Facet,Facet,Triangle,triangle)
+SHARECLIENS(struct Vertex,Vertex,Corner,corner)
+SHARECLIENSS(int,Int,Frame,frame,Base,base)
+SHARECLIENSS(struct Array,Array,Range,range,Active,active)
+SHARECLIENS(struct Linear,Linear,Basis,basis)
+SHARECLIENSSS(struct Affine,Affine,Subject,subject,Object,object,Feature,feature)
+SHARECLIENSSS(struct Vector,Vector,Render,render,Pierce,pierce,Cloud,cloud)
+SHARECLIENS(struct Mode,Mode,User,user)
+SHARECLIENS(struct Client,Client,Process,process)
 #define SHARECLIENT(TYP,NAM,MEM,FLD) \
-void client##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc) \
+void atomic##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc, \
+	int num, struct Client *ary, void (*func)(int num, struct Client *ptr)) \
 { \
-	SHARECLIENT0(fnc); \
-	SHARECLIENT1(MEM,FLD,ptr); \
+	struct Client client[num+1]; \
+	memcpy(client,ary,num*sizeof(struct Client)); \
+	SHARECLIENT0(client[num],fnc); \
+	SHARECLIENT1(MEM,client[num],FLD,ptr); \
 	SHARECLIENT2; \
-	SHARECLIENT3; \
+	func(num+1,client); \
 }
-#define SHARECLIENTS(TYP,NAM,MEM0,FLD0,MEM1,FLD1) \
-void client##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc) \
+#define SHARECLIENTT(TYP,NAM,MEM0,FLD0,MEM1,FLD1) \
+void atomic##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc, \
+	int num, struct Client *ary, void (*func)(int num, struct Client *ptr)) \
 { \
-	SHARECLIENT0(fnc); \
-	SHARECLIENT1(MEM0,FLD0,ptr); \
-	SHARECLIENT1(MEM1,FLD1,ptr); \
+	struct Client client[num+1]; \
+	memcpy(client,ary,num*sizeof(struct Client)); \
+	SHARECLIENT0(client[num],fnc); \
+	SHARECLIENT1(MEM0,client[num],FLD0,ptr); \
+	SHARECLIENT1(MEM1,client[num],FLD1,ptr); \
 	SHARECLIENT2; \
-	SHARECLIENT3; \
+	func(num+1,client); \
 }
-#define SHARECLIENTSS(TYP,NAM,MEM0,FLD0,MEM1,FLD1,MEM2,FLD2) \
-void client##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc) \
+#define SHARECLIENTTT(TYP,NAM,MEM0,FLD0,MEM1,FLD1,MEM2,FLD2) \
+void atomic##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc, \
+	int num, struct Client *ary, void (*func)(int num, struct Client *ptr)) \
 { \
-	SHARECLIENT0(fnc); \
-	SHARECLIENT1(MEM0,FLD0,ptr); \
-	SHARECLIENT1(MEM1,FLD1,ptr); \
-	SHARECLIENT1(MEM2,FLD2,ptr); \
+	struct Client client[num+1]; \
+	memcpy(client,ary,num*sizeof(struct Client)); \
+	SHARECLIENT0(client[num],fnc); \
+	SHARECLIENT1(MEM0,client[num],FLD0,ptr); \
+	SHARECLIENT1(MEM1,client[num],FLD1,ptr); \
+	SHARECLIENT1(MEM2,client[num],FLD2,ptr); \
 	SHARECLIENT2; \
-	SHARECLIENT3; \
+	func(num+1,client); \
 }
 SHARECLIENT(struct Facet,Facet,Triangle,triangle)
 SHARECLIENT(struct Vertex,Vertex,Corner,corner)
-SHARECLIENTS(int,Int,Frame,frame,Base,base)
-SHARECLIENTS(struct Array,Array,Range,range,Active,active)
+SHARECLIENTT(int,Int,Frame,frame,Base,base)
+SHARECLIENTT(struct Array,Array,Range,range,Active,active)
 SHARECLIENT(struct Linear,Linear,Basis,basis)
-SHARECLIENTSS(struct Affine,Affine,Subject,subject,Object,object,Feature,feature)
-SHARECLIENTSS(struct Vector,Vector,Render,render,Pierce,pierce,Cloud,cloud)
+SHARECLIENTTT(struct Affine,Affine,Subject,subject,Object,object,Feature,feature)
+SHARECLIENTTT(struct Vector,Vector,Render,render,Pierce,pierce,Cloud,cloud)
 SHARECLIENT(struct Mode,Mode,User,user)
+SHARECLIENT(struct Client,Client,Process,process)
 
 void shareWrite(struct Vector *point, struct Vector *normal, int object)
 {
@@ -486,6 +534,7 @@ void procCopy(struct Client **ptr)
 	PROCCOPY(Pierce,pierce,Vector);
 	PROCCOPY(Cloud,cloud,Vector);
 	PROCCOPY(User,user,Mode);
+	PROCCOPY(Process,process,Client);
 	ERROR(cb.err,-1);
 }
 
@@ -506,6 +555,17 @@ void procMetric()
 	writeMetric(&metric,cb.hub);}
 }
 
+void shareProc();
+void procAtom()
+{
+	struct Client *ptr = client;
+	for (int i = 0; i < ptr->siz; i++)
+	if (ptr->idx+i < cb.state[Process]->siz) {
+	client = &cb.state[Process]->process[ptr->idx+i];
+	shareProc();}
+	client = ptr;
+}
+
 void shareProc()
 {
 	for (int i = 0; i < client->len; i++)
@@ -521,6 +581,7 @@ void shareProc()
 	case (Gpu0): cb.draw(Display); break;
 	case (Gpu1): cb.draw(Track); break;
 	case (Port): procMetric(); break;
+	case (Atom): procAtom(); break;
 	default: ERROR(cb.err,-1);}
 }
 
