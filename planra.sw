@@ -68,21 +68,19 @@ func planraDraw(_ shader:share.Shader)
 		count += 1
 		code.commit()
 	}
-	guard let range = getRange() else {print("cannot make range"); return}
 	if (shader == share.Display) {
-		form.set(getRender(0),\Form.feather)
-		form.set(getRender(1),\Form.arrow)
 		guard let code = queue.makeCommandBuffer() else {print("cannot make code"); return}
 	    guard let draw = layer.nextDrawable() else {print("cannot make draw"); return}
 		param.colorAttachments[0].texture = draw.texture
 		param.colorAttachments[0].loadAction = .clear
 		param.depthAttachment.loadAction = .clear
+		guard let range = getRange() else {print("cannot make range"); return}
 		if (range.count == 0) {
 			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 			encode.endEncoding()
 		}
 		for array in range {
-			form.set(UInt32(/*array.tag*/0),\Form.tag)
+			form.set(UInt32(array.tag),\Form.tag)
 			form.set(getRender(0),\Form.feather)
 			form.set(getRender(1),\Form.arrow)
 			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}

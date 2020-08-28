@@ -478,11 +478,11 @@ func swiftDraw(_ shader:share.Shader)
 	switch (shader) {
 	case (share.Display):
 	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
-	guard let range = getRange() else {cb.err(#file,#line,-1);return}
     guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
 	param.colorAttachments[0].texture = draw.texture
 	param.colorAttachments[0].loadAction = .clear
 	param.depthAttachment.loadAction = .clear
+	guard let range = getRange() else {cb.err(#file,#line,-1);return}
 	if (range.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.endEncoding()
