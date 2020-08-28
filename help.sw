@@ -43,18 +43,16 @@ func fromAny<T>(_ x: Any?) -> T?
 {
   return x as? T
 }
-func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
-{
-	let ptr = UnsafeMutablePointer<T>.allocate(capacity:1); ptr[0] = val
-	fnc(ptr)
-	ptr.deallocate()
-}
 func toMutabls<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 {
 	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
 	for (val,idx) in zip(list,Swift.Array(0..<list.count)) {ptr[idx] = val}
 	fnc(ptr)
 	ptr.deallocate()
+}
+func toMutable<T>(_ val:T, _ fnc:(_:UnsafeMutablePointer<T>)->Void)
+{
+	toMutabls([val],fnc)
 }
 func toMutablee<S,T>(_ val0:S, _ val1:T, _ fnc:(_:UnsafeMutablePointer<S>,_:UnsafeMutablePointer<T>)->Void)
 {

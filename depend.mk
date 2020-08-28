@@ -22,6 +22,7 @@ type.c: type.src
 type.h: type.src
 type.hs: type.src
 type.lua: type.src
+type.sw: type.src
 typeC.o: face.h type.h
 typer.c: type.src typra.src
 typer.h: type.src typra.src

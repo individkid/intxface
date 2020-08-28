@@ -281,6 +281,14 @@ end
 -- print("HERE")
 
 -- recursively add dependencies.
+function satisfied(dst,ext)
+	if not dst then return false end
+	for sk,sv in pairs(dst) do
+		sb,se = string.match(sk,fileExpr)
+		if (se == ext) then return true end
+	end
+	return false
+end
 function flatten(str,dst,ext,mid,src,map)
 	-- depend and recurse if non-file that does not depend on src
 	-- depend and recurse if file that has given extension
@@ -289,6 +297,7 @@ function flatten(str,dst,ext,mid,src,map)
 		b,e = string.match(k,fileExpr)
 		if
 			not dst[k] and (k ~= str) and map[k] and not scripts[k] and
+			(e ~= ".sw" or not satisfied(map[mid],".h")) and
 			((b and (e == ext)) or (not b and not map[k][str]))
 		then
 			if b and (e == ext) then
