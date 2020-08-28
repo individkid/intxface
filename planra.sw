@@ -15,22 +15,22 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-var charz:MTLBuffer!
 var debug:MTLComputePipelineState!
-var once:Bool = false
+var checks:MTLBuffer!
 var clients:[share.Client]!
 var facets:[share.Facet]!
 var vertexs:[share.Vertex]!
 var indexs:[CInt]!
+var once:Bool = false
 
-func getDebug(_ charz:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTLCommandBufferHandler
+func getDebug(_ checks:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in
 	var index = 0
 	for expected:CInt in [
 	0,255,500,256,-256,500,-256,-256,500,10,5,0,
 	0,-256,400,256,256,400,-256,256,400,10,10,0] {
-	let actual:CInt = charz.contents().load(fromByteOffset:index,as:CInt.self)
+	let actual:CInt = checks.contents().load(fromByteOffset:index,as:CInt.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
 	} else {
@@ -40,57 +40,86 @@ func getDebug(_ charz:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTLC
 }
 func planraDraw(_ shader:share.Shader)
 {
-	guard let temp = getClient(Frame) else {print("cannot get frame"); return}
-	if (temp.siz < 6) {return}
-	if (shader == share.Track && !once) {
-	once = true
-	form.set(getRender(0),\Form.feather)
-	form.set(getRender(1),\Form.arrow)
-	form.set(UInt32(0),\Form.tag)
-	guard let code = queue.makeCommandBuffer() else {
-		print("cannot make code"); return}
-	guard let encode = code.makeComputeCommandEncoder() else {
-		print("cannot make encode"); return}
-	encode.setComputePipelineState(debug)
-	encode.setBuffer(triangle.get(),offset:0,index:0)
-	encode.setBuffer(corner.get(),offset:0,index:1)
-	encode.setBuffer(frame.get(),offset:0,index:2)
-	encode.setBuffer(object.get(),offset:0,index:3)
-	encode.setBuffer(form.get(),offset:0,index:4)
-	encode.setBuffer(charz,offset:0,index:5)
-	let groups = MTLSize(width:1,height:1,depth:1)
-	let threads = MTLSize(width:2,height:1,depth:1)
-	encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
-	encode.endEncoding()
-	code.addCompletedHandler(getDebug(charz!,0,0,0,0))
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
-	count += 1
-	code.commit()}
-	if (shader == share.Display) {
-	form.set(getRender(0),\Form.feather)
-	form.set(getRender(1),\Form.arrow)
-	guard let code = queue.makeCommandBuffer() else {
-		print("cannot make code"); return}
-    guard let draw = layer.nextDrawable() else {
-		print("cannot make draw"); return}
-	param.colorAttachments[0].texture = draw.texture
-	guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {
-		print("cannot make encode"); return}
-	encode.setRenderPipelineState(render)
-	encode.setDepthStencilState(depth)
-	encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-	encode.setVertexBuffer(corner.get(),offset:0,index:1)
-	encode.setVertexBuffer(frame.get(),offset:0,index:2)
-	encode.setVertexBuffer(object.get(),offset:0,index:3)
-	encode.setVertexBuffer(form.get(),offset:0,index:4)
-	encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
-	encode.endEncoding()
-	code.present(draw)
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
-	count += 1
-	code.commit()}
+	guard let temp = getClient(Frame) else {print("cannot make frame"); return}
+	if (shader == share.Track && temp.siz > 0 && !once) {
+		once = true
+		form.set(getRender(0),\Form.feather)
+		form.set(getRender(1),\Form.arrow)
+		form.set(UInt32(0),\Form.tag)
+		guard let code = queue.makeCommandBuffer() else {
+			print("cannot make code"); return}
+		guard let encode = code.makeComputeCommandEncoder() else {
+			print("cannot make encode"); return}
+		encode.setComputePipelineState(debug)
+		encode.setBuffer(triangle.get(),offset:0,index:0)
+		encode.setBuffer(corner.get(),offset:0,index:1)
+		encode.setBuffer(frame.get(),offset:0,index:2)
+		encode.setBuffer(object.get(),offset:0,index:3)
+		encode.setBuffer(form.get(),offset:0,index:4)
+		encode.setBuffer(checks,offset:0,index:5)
+		let groups = MTLSize(width:1,height:1,depth:1)
+		let threads = MTLSize(width:2,height:1,depth:1)
+		encode.dispatchThreadgroups(groups,threadsPerThreadgroup:threads)
+		encode.endEncoding()
+		code.addCompletedHandler(getDebug(checks!,0,0,0,0))
+		code.addScheduledHandler(getLock())
+		code.addCompletedHandler(getCount())
+		count += 1
+		code.commit()
+	}
+	guard let range = getRange() else {print("cannot make range"); return}
+	if (shader == share.Display && temp.siz > 0 && range.count == 0) {
+		form.set(getRender(0),\Form.feather)
+		form.set(getRender(1),\Form.arrow)
+		guard let code = queue.makeCommandBuffer() else {print("cannot make code"); return}
+	    guard let draw = layer.nextDrawable() else {print("cannot make draw"); return}
+		param.colorAttachments[0].texture = draw.texture
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}
+		encode.setRenderPipelineState(render)
+		encode.setDepthStencilState(depth)
+		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
+		encode.setVertexBuffer(corner.get(),offset:0,index:1)
+		encode.setVertexBuffer(frame.get(),offset:0,index:2)
+		encode.setVertexBuffer(object.get(),offset:0,index:3)
+		encode.setVertexBuffer(form.get(),offset:0,index:4)
+		encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
+		encode.endEncoding()
+		code.present(draw)
+		code.addScheduledHandler(getLock())
+		code.addCompletedHandler(getCount())
+		count += 1
+		code.commit()
+	}
+	if (shader == share.Display && range.count > 0) {
+		form.set(getRender(0),\Form.feather)
+		form.set(getRender(1),\Form.arrow)
+		guard let code = queue.makeCommandBuffer() else {print("cannot make code"); return}
+	    guard let draw = layer.nextDrawable() else {print("cannot make draw"); return}
+		param.colorAttachments[0].texture = draw.texture
+		for array in range {
+			form.set(UInt32(array.tag),\Form.tag)
+			form.set(getRender(0),\Form.feather)
+			form.set(getRender(1),\Form.arrow)
+			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}
+			encode.setRenderPipelineState(render)
+			encode.setDepthStencilState(depth)
+			encode.setVertexBuffer(triangle.get(),offset:0,index:0)
+			encode.setVertexBuffer(corner.get(),offset:0,index:1)
+			encode.setVertexBuffer(frame.get(),offset:0,index:2)
+			encode.setVertexBuffer(object.get(),offset:0,index:3)
+			encode.setVertexBuffer(form.get(),offset:0,index:4)
+			encode.drawPrimitives(
+				type:.triangle,
+				vertexStart:Int(array.idx),
+				vertexCount:Int(array.siz))
+			encode.endEncoding()
+		}
+		code.present(draw)
+		code.addScheduledHandler(getLock())
+		code.addCompletedHandler(getCount())
+		count += 1
+		code.commit()
+	}
 }
 func planraInit()
 {
@@ -106,7 +135,7 @@ func planraInit()
 		print("cannot make kernel_debug"); return;}
 	if let temp = try? device.makeComputePipelineState(function:kernel_debug) {
 		debug = temp} else {print("cannot make debug"); return}
-	charz = device.makeBuffer(length:1000)
+	checks = device.makeBuffer(length:1024)
 
 	let white = (Float(0.0),Float(0.0),Float(0.0),Float(1.0))
 	let yellow = (Float(1.0),Float(1.0),Float(0.0),Float(1.0))
@@ -148,6 +177,7 @@ func planraInit()
 	facets = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
 	indexs = [0,1,2,3,4,5]
+
 	toMutabls(clients)
 		{(client:UnsafeMutablePointer<share.Client>) in
 	toMutablss(facets,[Copy,Dma2])
