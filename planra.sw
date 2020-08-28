@@ -148,27 +148,27 @@ func planraInit()
 	facets = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
 	indexs = [0,1,2,3,4,5]
-	toMutabls(clients,
+	toMutabls(clients)
 	{(client:UnsafeMutablePointer<share.Client>?) in
-	toMutablss(facets,[Copy,Dma2],
+	toMutablss(facets,[Copy,Dma2])
 	{(ptr:UnsafeMutablePointer<share.Facet>,
 	fnc:UnsafeMutablePointer<share.Function>) in
-	atomicFacet(Triangle,0,8,2,ptr,fnc,0,client,
+	atomicFacet(Triangle,0,8,2,ptr,fnc,0,client)
 	{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
-	toMutablss(vertexs,[Copy,Dma2],
+	toMutablss(vertexs,[Copy,Dma2])
 	{(ptr:UnsafeMutablePointer<share.Vertex>,
 	fnc:UnsafeMutablePointer<share.Function>) in
-	atomicVertex(Corner,0,6,2,ptr,fnc,num,client,
+	atomicVertex(Corner,0,6,2,ptr,fnc,num,client)
 	{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
-	toMutablss(indexs,[Copy,Dma2],{
-	(ptr:UnsafeMutablePointer<CInt>,
+	toMutablss(indexs,[Copy,Dma2])
+	{(ptr:UnsafeMutablePointer<CInt>,
 	fnc:UnsafeMutablePointer<share.Function>) in
-	atomicInt(Frame,0,6,2,ptr,fnc,num,client,{
-	(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
-	toMutabls([Copy,Atom,Gpu1,Gpu0],
+	atomicInt(Frame,0,6,2,ptr,fnc,num,client)
+	{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	toMutabls([Copy,Atom,Gpu1,Gpu0])
 	{(fnc:UnsafeMutablePointer<share.Function>) in
 	clientClient(Process,0,num,4,client,fnc)
-	})})})})})})})})
+	}}}}}}}}
 }
 
 // MAIN
