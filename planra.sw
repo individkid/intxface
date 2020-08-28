@@ -21,6 +21,7 @@ var clients:[share.Client]!
 var facets:[share.Facet]!
 var vertexs:[share.Vertex]!
 var indexs:[CInt]!
+var ranges:[share.Array]!
 var once:Bool = false
 
 func getDebug(_ checks:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTLCommandBufferHandler
@@ -68,36 +69,20 @@ func planraDraw(_ shader:share.Shader)
 		code.commit()
 	}
 	guard let range = getRange() else {print("cannot make range"); return}
-	if (shader == share.Display && temp.siz > 0 && range.count == 0) {
+	if (shader == share.Display) {
 		form.set(getRender(0),\Form.feather)
 		form.set(getRender(1),\Form.arrow)
 		guard let code = queue.makeCommandBuffer() else {print("cannot make code"); return}
 	    guard let draw = layer.nextDrawable() else {print("cannot make draw"); return}
 		param.colorAttachments[0].texture = draw.texture
-		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}
-		encode.setRenderPipelineState(render)
-		encode.setDepthStencilState(depth)
-		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-		encode.setVertexBuffer(corner.get(),offset:0,index:1)
-		encode.setVertexBuffer(frame.get(),offset:0,index:2)
-		encode.setVertexBuffer(object.get(),offset:0,index:3)
-		encode.setVertexBuffer(form.get(),offset:0,index:4)
-		encode.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:6)
-		encode.endEncoding()
-		code.present(draw)
-		code.addScheduledHandler(getLock())
-		code.addCompletedHandler(getCount())
-		count += 1
-		code.commit()
-	}
-	if (shader == share.Display && range.count > 0) {
-		form.set(getRender(0),\Form.feather)
-		form.set(getRender(1),\Form.arrow)
-		guard let code = queue.makeCommandBuffer() else {print("cannot make code"); return}
-	    guard let draw = layer.nextDrawable() else {print("cannot make draw"); return}
-		param.colorAttachments[0].texture = draw.texture
+		param.colorAttachments[0].loadAction = .clear
+		param.depthAttachment.loadAction = .clear
+		if (range.count == 0) {
+			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
+			encode.endEncoding()
+		}
 		for array in range {
-			form.set(UInt32(array.tag),\Form.tag)
+			form.set(UInt32(/*array.tag*/0),\Form.tag)
 			form.set(getRender(0),\Form.feather)
 			form.set(getRender(1),\Form.arrow)
 			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}
@@ -113,6 +98,8 @@ func planraDraw(_ shader:share.Shader)
 				vertexStart:Int(array.idx),
 				vertexCount:Int(array.siz))
 			encode.endEncoding()
+			param.colorAttachments[0].loadAction = .load
+			param.depthAttachment.loadAction = .load
 		}
 		code.present(draw)
 		code.addScheduledHandler(getLock())
@@ -173,10 +160,14 @@ func planraInit()
 	var vertex4 = share.Vertex(); vertex4.plane = (1,5,7)
 	var vertex5 = share.Vertex(); vertex5.plane = (1,6,7)
 
+	var range0 = share.Array(); range0.idx = 0; range0.siz = 3; range0.tag = 0
+	var range1 = share.Array(); range1.idx = 3; range1.siz = 3; range1.tag = 0
+
 	clients = []
 	facets = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
 	indexs = [0,1,2,3,4,5]
+	ranges = [range0,range1]
 
 	toMutabls(clients)
 		{(client:UnsafeMutablePointer<share.Client>) in
@@ -195,10 +186,15 @@ func planraInit()
 		fnc:UnsafeMutablePointer<share.Function>) in
 	atomicInt(Frame,0,6,2,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	toMutablss(ranges,[Copy])
+		{(ptr:UnsafeMutablePointer<share.Array>,
+		fnc:UnsafeMutablePointer<share.Function>) in
+	atomicArray(Range,0,2,1,ptr,fnc,num,client)
+		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutabls([Copy,Atom,Gpu1,Gpu0])
 		{(fnc:UnsafeMutablePointer<share.Function>) in
 	clientClient(Process,0,num,4,client,fnc)
-		}}}}}}}}
+		}}}}}}}}}}
 }
 
 // MAIN

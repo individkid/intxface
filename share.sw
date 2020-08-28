@@ -417,10 +417,8 @@ func swiftInit()
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
 	param = MTLRenderPassDescriptor()
 	param.colorAttachments[0].clearColor = color
-	param.colorAttachments[0].loadAction = .clear
 	param.colorAttachments[0].storeAction = .store
 	param.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
-	param.depthAttachment.loadAction = .clear
 	param.depthAttachment.storeAction = .dontCare
 	param.depthAttachment.texture = getTexture(rect)
     let desc = MTLDepthStencilDescriptor()
@@ -483,6 +481,8 @@ func swiftDraw(_ shader:share.Shader)
 	guard let range = getRange() else {cb.err(#file,#line,-1);return}
     guard let draw = layer.nextDrawable() else {cb.err(#file,#line,-1);return}
 	param.colorAttachments[0].texture = draw.texture
+	param.colorAttachments[0].loadAction = .clear
+	param.depthAttachment.loadAction = .clear
 	if (range.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.endEncoding()
@@ -504,6 +504,8 @@ func swiftDraw(_ shader:share.Shader)
 			vertexStart:Int(array.idx),
 			vertexCount:Int(array.siz))
 		encode.endEncoding()
+		param.colorAttachments[0].loadAction = .load
+		param.depthAttachment.loadAction = .load
 	}
 	code.present(draw)
 	code.addScheduledHandler(getLock())
