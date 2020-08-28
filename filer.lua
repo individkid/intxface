@@ -24,7 +24,7 @@ field2 = "OK"
 suffix = " again\n"
 data1 = prefix..field1..suffix
 data2 = prefix..field2..string.sub(data1,string.len(prefix)+string.len(field2)+1)
-name = "filer.txt"
+name = "filer.--"
 
 -- MAIN
 ident = forkExec("file")

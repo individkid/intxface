@@ -73,6 +73,9 @@ LIBRARIES = -llua -lportaudio
 %G.o: %.metal
 	xcrun -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
 
+%.metal: %.g
+	cp $< $@
+
 %.h: %.gen
 	lua $< $@
 %.c: %.gen
@@ -83,8 +86,8 @@ LIBRARIES = -llua -lportaudio
 	lua $< $@
 %.sw: %.gen
 	lua $< $@
-%.metal: %.g
-	cp $< $@
+%.g: %.gen
+	lua $< $@
 
 .PHONY:
 clean:
@@ -93,8 +96,8 @@ clean:
 	rm -f typra facer typer filer planra
 	rm -f trade file line plane space
 	rm -f *C *Hs *Lua *Sw
-	rm -f *.err *.out *.log
-	rm -f *.txt .*.txt ..*.txt ...*.txt
+	rm -f *.err *.out *.log *.txt
+	rm -f *.-- .*.-- ..*.-- ...*.--
 	rm -f *.o *.so *.hi *_stub.h a.* *.metal
 	rm -f depend type main help
 
