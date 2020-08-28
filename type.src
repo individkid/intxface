@@ -1686,15 +1686,13 @@ function showCallH()
 	result = result..showCall(Enums,Enumz,showEnumC).."\n"
 	result = result..showCall(Structs,Structz,showStructC).."\n"
 	prototype = true
-	result = result..showFuncC().."\n"
-	result = result..showShareC()
+	result = result..showFuncC()
 	return result
 end
 function showCallC()
 	local result = ""
 	prototype = false
-	result = result..showFuncC().."\n"
-	result = result..showShareC()
+	result = result..showFuncC()
 	return result
 end
 function showCallHs()

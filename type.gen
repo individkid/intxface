@@ -268,7 +268,14 @@ function showTypeC()
 	local result = ""
 	result = result.."#include \"face.h\"\n"
 	result = result.."#include \"type.h\"\n"
-	result = result..showCallC()
+	result = result..showCallC().."\n"
+	result = result..showShareC()
+	return result
+end
+function showTypeH()
+	local result = ""
+	result = result..showCallH().."\n"
+	result = result..showShareC()
 	return result
 end
 function showTypeHs()
@@ -297,7 +304,7 @@ function showTypeSw()
 end
 if (arg[1] == "type.h") then
 	file = io.open("type.h", "w")
-	file:write(showCallH().."\n")
+	file:write(showTypeH().."\n")
 	file:close()
 end
 if (arg[1] == "type.c") then
