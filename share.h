@@ -71,6 +71,7 @@ void threadInit();
 void threadDone();
 void clientFacet(enum Memory mem, int idx, int siz, int len, struct Facet *ptr, enum Function *fnc);
 void clientVertex(enum Memory mem, int idx, int siz, int len, struct Vertex *ptr, enum Function *fnc);
+void clientIndex(enum Memory mem, int idx, int siz, int len, struct Index *ptr, enum Function *fnc);
 void clientInt(enum Memory mem, int idx, int siz, int len, int *ptr, enum Function *fnc);
 void clientArray(enum Memory mem, int idx, int siz, int len, struct Array *ptr, enum Function *fnc);
 void clientLinear(enum Memory mem, int idx, int siz, int len, struct Linear *ptr, enum Function *fnc);
@@ -80,6 +81,7 @@ void clientMode(enum Memory mem, int idx, int siz, int len, struct Mode *ptr, en
 void clientClient(enum Memory mem, int idx, int siz, int len, struct Client *ptr, enum Function *fnc);
 void atomicFacet(enum Memory mem, int idx, int siz, int len, struct Facet *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
 void atomicVertex(enum Memory mem, int idx, int siz, int len, struct Vertex *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
+void atomicIndex(enum Memory mem, int idx, int siz, int len, struct Index *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
 void atomicInt(enum Memory mem, int idx, int siz, int len, int *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
 void atomicArray(enum Memory mem, int idx, int siz, int len, struct Array *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
 void atomicLinear(enum Memory mem, int idx, int siz, int len, struct Linear *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));

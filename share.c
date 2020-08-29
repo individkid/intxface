@@ -246,7 +246,7 @@ void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 	SHARECLIENT0(client,function);
 	SHARECLIENT1(Triangle,client,triangle,va_arg(args,struct Facet *));
 	SHARECLIENT1(Corner,client,corner,va_arg(args,struct Vertex *));
-	SHARECLIENT1(Frame,client,frame,va_arg(args,int *));
+	SHARECLIENT1(Frame,client,frame,va_arg(args,struct Index *));
 	SHARECLIENT1(Base,client,base,va_arg(args,int *));
 	SHARECLIENT1(Range,client,range,va_arg(args,struct Array *));
 	SHARECLIENT1(Active,client,active,va_arg(args,struct Array *));
@@ -297,7 +297,8 @@ void client##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Func
 }
 SHARECLIENS(struct Facet,Facet,Triangle,triangle)
 SHARECLIENS(struct Vertex,Vertex,Corner,corner)
-SHARECLIENSS(int,Int,Frame,frame,Base,base)
+SHARECLIENS(struct Index,Index,Frame,frame)
+SHARECLIENS(int,Int,Base,base)
 SHARECLIENSS(struct Array,Array,Range,range,Active,active)
 SHARECLIENS(struct Linear,Linear,Basis,basis)
 SHARECLIENSSS(struct Affine,Affine,Subject,subject,Object,object,Feature,feature)
@@ -342,7 +343,8 @@ void atomic##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Func
 }
 SHARECLIENT(struct Facet,Facet,Triangle,triangle)
 SHARECLIENT(struct Vertex,Vertex,Corner,corner)
-SHARECLIENTT(int,Int,Frame,frame,Base,base)
+SHARECLIENT(struct Index,Index,Frame,frame)
+SHARECLIENT(int,Int,Base,base)
 SHARECLIENTT(struct Array,Array,Range,range,Active,active)
 SHARECLIENT(struct Linear,Linear,Basis,basis)
 SHARECLIENTTT(struct Affine,Affine,Subject,subject,Object,object,Feature,feature)
@@ -522,7 +524,7 @@ void procCopy(struct Client **ptr)
 {
 	PROCCOPY(Triangle,triangle,Facet);
 	PROCCOPY(Corner,corner,Vertex);
-	PROCCOPY(Frame,frame,Int);
+	PROCCOPY(Frame,frame,Index);
 	PROCCOPY(Base,base,Int);
 	PROCCOPY(Range,range,Array);
 	PROCCOPY(Active,active,Array);

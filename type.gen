@@ -203,10 +203,13 @@ Vertex = {
 	{"plane","int",{},{3}},
 	{"pad","int",{},{1}},
 }
+Index = {
+	{"point","int",{},{}},
+	{"tag","int",{},{}},
+}
 Array = {
 	{"idx","int",{},{}},
 	{"siz","int",{},{}},
-	{"tag","int",{},{}},
 }
 Affine = {
 	{"val","float",{},{4,4}},
@@ -235,7 +238,7 @@ Client = {
 	{"siz","int",{},{}},
 	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
-	{"frame","int",{["mem"]={["Frame"]=true}},"siz"},
+	{"frame","Index",{["mem"]={["Frame"]=true}},"siz"},
 	{"base","int",{["mem"]={["Base"]=true}},"siz"},
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
 	{"active","Array",{["mem"]={["Active"]=true}},"siz"},

@@ -20,7 +20,7 @@ var checks:MTLBuffer!
 var clients:[share.Client]!
 var facets:[share.Facet]!
 var vertexs:[share.Vertex]!
-var indexs:[CInt]!
+var indexs:[share.Index]!
 var ranges:[share.Array]!
 var once:Bool = false
 
@@ -44,9 +44,6 @@ func planraDraw(_ shader:share.Shader)
 	guard let temp = getMemory(share.Frame,{$0.frame}) else {print("cannot make frame"); return}
 	if (shader == share.Track && temp.count >= 6 && !once) {
 		once = true
-		form.set(getMemory(share.Render,0,{$0.render}),\Form.feather)
-		form.set(getMemory(share.Render,1,{$0.render}),\Form.arrow)
-		form.set(UInt32(0),\Form.tag)
 		guard let code = queue.makeCommandBuffer() else {
 			print("cannot make code"); return}
 		guard let encode = code.makeComputeCommandEncoder() else {
@@ -80,9 +77,6 @@ func planraDraw(_ shader:share.Shader)
 			encode.endEncoding()
 		}
 		for array in temp {
-			form.set(UInt32(array.tag),\Form.tag)
-			form.set(getMemory(share.Render,0,{$0.render}),\Form.feather)
-			form.set(getMemory(share.Render,1,{$0.render}),\Form.arrow)
 			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}
 			encode.setRenderPipelineState(render)
 			encode.setDepthStencilState(depth)
@@ -108,7 +102,7 @@ func planraDraw(_ shader:share.Shader)
 }
 func planraInit()
 {
-	print("Form.tag \(MemoryLayout<Form>.offset(of:\Form.tag)!)")
+	print("Form.hand \(MemoryLayout<Form>.offset(of:\Form.hand)!)")
 	print("Facet.tag \(offsetFacetTag())")
 
 	swiftInit()
@@ -158,13 +152,20 @@ func planraInit()
 	var vertex4 = share.Vertex(); vertex4.plane = (1,5,7)
 	var vertex5 = share.Vertex(); vertex5.plane = (1,6,7)
 
-	var range0 = share.Array(); range0.idx = 0; range0.siz = 3; range0.tag = 0
-	var range1 = share.Array(); range1.idx = 3; range1.siz = 3; range1.tag = 0
+	var index0 = share.Index(); index0.point = 0; index0.tag = 0
+	var index1 = share.Index(); index1.point = 1; index1.tag = 0
+	var index2 = share.Index(); index2.point = 2; index2.tag = 0
+	var index3 = share.Index(); index3.point = 3; index3.tag = 0
+	var index4 = share.Index(); index4.point = 4; index4.tag = 0
+	var index5 = share.Index(); index5.point = 5; index5.tag = 0
+
+	var range0 = share.Array(); range0.idx = 0; range0.siz = 3
+	var range1 = share.Array(); range1.idx = 3; range1.siz = 3
 
 	clients = []
 	facets = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
-	indexs = [0,1,2,3,4,5]
+	indexs = [index0,index1,index2,index3,index4,index5]
 	ranges = [range0,range1]
 
 	toMutable(clients)
@@ -182,10 +183,10 @@ func planraInit()
 	atomicVertex(Corner,0,6,2,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(indexs)
-		{(ptr:UnsafeMutablePointer<CInt>) in
+		{(ptr:UnsafeMutablePointer<share.Index>) in
 	toMutable([Copy,Dma2])
 		{(fnc:UnsafeMutablePointer<share.Function>) in
-	atomicInt(Frame,0,6,2,ptr,fnc,num,client)
+	atomicIndex(Frame,0,6,2,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(ranges)
 		{(ptr:UnsafeMutablePointer<share.Array>) in

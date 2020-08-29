@@ -30,7 +30,8 @@ struct Vertex {
 	uint3 plane; // planes intersect in point
 };
 struct Index {
-	uint3 point; // points form triangle
+	uint point;
+	uint tag;
 };
 struct Qualify {
 	float quality;
@@ -62,8 +63,10 @@ struct State {
 	float3 basis[3][3];
 	metal::float4x4 subject;
 	metal::float4x4 feature;
-	float3 feather; // near for pierce; focal for display
-	float3 arrow; // far for pierce; picture for display
+	float3 feather; // near for pierce
+	float3 arrow; // far for pierce
+	float3 focal; // focal for display
+	float3 picture; // picture for display
 	uint siz; // for bounce shader
 	uint hand; // which plane to apply feature transformation to
 	uint tag; // which planes of polytope to render this pass

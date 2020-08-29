@@ -186,6 +186,7 @@ Expand transform(Expand plane, metal::float4x4 matrix)
    return result;
 }
 uint copoint(
+   uint tag,
    uint3 map,
    const device Facet *plane,
    const device State *state)
@@ -193,7 +194,7 @@ uint copoint(
    uint result = 0;
    for (uint i = 0; i < 3; i++) {
       uint index = map[i];
-      if (plane[index].tag == state->tag) result = index;}
+      if (plane[index].tag == tag) result = index;}
    return result;
 }
 uint coplane(
@@ -251,10 +252,10 @@ float4 perspective(
    const device State *state)
 {
    float3 result;
-   result.z = given.z/state->arrow.z;
-   float ratio = (given.z-state->feather.z)/(state->arrow.z-state->feather.z);
-   result.x = (given.x-state->feather.x)/(state->arrow.x-state->feather.x);
-   result.y = (given.y-state->feather.y)/(state->arrow.y-state->feather.y);
+   result.z = given.z/state->picture.z;
+   float ratio = (given.z-state->focal.z)/(state->picture.z-state->focal.z);
+   result.x = (given.x-state->focal.x)/(state->picture.x-state->focal.x);
+   result.y = (given.y-state->focal.y)/(state->picture.y-state->focal.y);
    return float4(result,given[3]*ratio);
 }
 struct VertexOutput {
@@ -266,14 +267,15 @@ struct VertexOutput {
 vertex VertexOutput vertex_render(
    const device Facet *plane [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
-   const device uint *order [[buffer(2)]],
+   const device Index *order [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
    uint id [[vertex_id]])
 {
    VertexOutput out;
-   uint ident = order[id];
-   uint face = copoint(point[ident].plane,plane,state); // which plane of point is the face being rendered
+   uint ident = order[id].point;
+   uint tag = order[id].tag;
+   uint face = copoint(tag,point[ident].plane,plane,state); // which plane of point is the face being rendered
    uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
    Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
    out.position = perspective(convert(face,triple,plane,object,state),state);
@@ -330,15 +332,16 @@ struct Bytes {
 kernel void kernel_debug(
    const device Facet *plane [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
-   const device uint *order [[buffer(2)]],
+   const device Index *order [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
    uint id [[thread_position_in_grid]],
    device Bytes *bytes [[buffer(5)]])
 {
    for (int i = 0; i < 3; i++) {
-   uint ident = order[id*3+i];
-   uint face = copoint(point[ident].plane,plane,state);
+   uint ident = order[id*3+i].point;
+   uint tag = order[id*3+i].tag;
+   uint face = copoint(tag,point[ident].plane,plane,state);
    uint corner = coplane(plane[face].point,ident);
    Triple triple = explode(point[ident].plane,plane,state);
    float4 result = convert(face,triple,plane,object,state);

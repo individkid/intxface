@@ -33,7 +33,7 @@ var threads:MTLSize!
 
 var triangle = Pend<share.Facet>()
 var corner = Pend<share.Vertex>()
-var frame = Pend<CInt>()
+var frame = Pend<share.Index>()
 var base = Pend<CInt>()
 var object = Pend<share.Affine>()
 var cloud = Pend<share.Vector>()
@@ -51,10 +51,12 @@ struct Form
 	var feature:share.Affine
 	var feather:share.Vector
 	var arrow:share.Vector
+	var focal:share.Vector
+	var picture:share.Vector
 	var siz:uint
 	var hand:uint
-	var tag:uint
-	var pad:uint
+	var pad0:uint
+	var pad1:uint
 }
 struct Pierce
 {
@@ -70,7 +72,7 @@ class Refer
 
 func toMutable<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 {
-	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
+	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count)
 	for (val,idx) in zip(list,Swift.Array(0..<list.count)) {ptr[idx] = val}
 	fnc(ptr)
 	ptr.deallocate()
@@ -138,24 +140,6 @@ class Pend<T>
 			pend = nil
 		}
 		if (last != nil) {
-			lock.append(refer)
-			refer.lock += 1
-		}
-		return last
-	}
-	func get(_ len:Int) -> MTLBuffer
-	{
-		let unit:Int = MemoryLayout<T>.size
-		let length:Int = len*unit
-		if (pend != nil && pend.length == length) {
-			last = pend
-			pend = nil
-		} else {
-			last = device.makeBuffer(length:length)
-			pend = nil
-		}
-		if (last != nil) {
-			refer = Refer()
 			lock.append(refer)
 			refer.lock += 1
 		}
@@ -459,8 +443,8 @@ func swiftDma(_ mem:share.Memory, _ idx:CInt, _ siz:CInt)
 	case (share.Feature):
 	form.set(getMemory(mem,0,{$0.feature}),\Form.feature)
 	case (share.Render):
-	form.set(getMemory(mem,0,{$0.render}),\Form.feather)
-	form.set(getMemory(mem,1,{$0.render}),\Form.arrow)
+	form.set(getMemory(mem,0,{$0.render}),\Form.focal)
+	form.set(getMemory(mem,1,{$0.render}),\Form.picture)
 	case (share.Pierce):
 	form.set(getMemory(mem,0,{$0.pierce}),\Form.feather)
 	form.set(getMemory(mem,1,{$0.pierce}),\Form.arrow)
@@ -491,9 +475,6 @@ func swiftDraw(_ shader:share.Shader)
 		encode.endEncoding()
 	}
 	for array in range {
-		form.set(UInt32(array.tag),\Form.tag)
-		form.set(getMemory(share.Render,0,{$0.render}),\Form.feather)
-		form.set(getMemory(share.Render,1,{$0.render}),\Form.arrow)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
@@ -520,9 +501,6 @@ func swiftDraw(_ shader:share.Shader)
 	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
 	guard let active = getMemory(share.Active,{$0.active}) else {cb.err(#file,#line,-1);return}
 	for array in active {
-		form.set(UInt32(array.tag),\Form.tag)
-		form.set(getMemory(share.Pierce,0,{$0.pierce}),\Form.feather)
-		form.set(getMemory(share.Pierce,1,{$0.pierce}),\Form.arrow)
 		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 		var nums:[Int] = []
 		var pers:[Int] = []
