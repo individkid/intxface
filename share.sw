@@ -116,8 +116,7 @@ class Pend<T>
 		let base = siz*index
 		let limit = base+siz*vals.count
 		toMutable(vals) {(ptr) in
-		let raw = UnsafePointer<T>(ptr)
-		set(raw,base..<limit)}
+		set(UnsafePointer<T>(ptr),base..<limit)}
 	}
 	func set(_ val: [T]?, _ index: Int)
 	{
@@ -129,8 +128,7 @@ class Pend<T>
 		guard let fld = MemoryLayout<T>.offset(of:field) else {cb.err(#file,#line,-1);return}
 		let siz = MemoryLayout<S>.size
 		toMutable([val]) {(ptr) in
-		let raw = UnsafePointer<S>(ptr)
-		set(raw,fld..<fld+siz)}
+		set(UnsafePointer<S>(ptr),fld..<fld+siz)}
 	}
 	func get() -> MTLBuffer
 	{
