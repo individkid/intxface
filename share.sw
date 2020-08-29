@@ -68,7 +68,7 @@ class Refer
 	var lock:Int = 0
 }
 
-func toMutabl<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
+func toMutable<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
 {
 	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
 	for (val,idx) in zip(list,Swift.Array(0..<list.count)) {ptr[idx] = val}
@@ -113,7 +113,7 @@ class Pend<T>
 		let siz = MemoryLayout<T>.size
 		let base = siz*index
 		let limit = base+siz*vals.count
-		toMutabl(vals) {(ptr) in
+		toMutable(vals) {(ptr) in
 		let raw = UnsafePointer<T>(ptr)
 		set(raw,base..<limit)}
 	}
@@ -126,7 +126,7 @@ class Pend<T>
 	{
 		guard let fld = MemoryLayout<T>.offset(of:field) else {cb.err(#file,#line,-1);return}
 		let siz = MemoryLayout<S>.size
-		toMutabl([val]) {(ptr) in
+		toMutable([val]) {(ptr) in
 		let raw = UnsafePointer<S>(ptr)
 		set(raw,fld..<fld+siz)}
 	}
@@ -291,9 +291,9 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			index = object
 		}
 	}
-	toMutabl([found.point])
+	toMutable([found.point])
 		{(point:UnsafeMutablePointer<share.Vector>) in
-	toMutabl([found.normal])
+	toMutable([found.normal])
 		{(normal:UnsafeMutablePointer<share.Vector>) in
 	cb.write(point,normal,CInt(index))
 		}}
@@ -303,9 +303,9 @@ func swiftEmpty()
 	let found:Pierce = Pierce()
 	guard let object = getClient(Object,1) else {cb.err(#file,#line,-1);return}
 	let index = Int(object.siz)
-	toMutabl([found.point])
+	toMutable([found.point])
 		{(point:UnsafeMutablePointer<share.Vector>) in
-	toMutabl([found.normal])
+	toMutable([found.normal])
 		{(normal:UnsafeMutablePointer<share.Vector>) in
 	cb.write(point,normal,CInt(index))
 		}}
