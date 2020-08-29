@@ -166,7 +166,7 @@ func getMemory<T>(_ mem:share.Memory, _ idx:Int, _ len:Int, _ fnc:(share.Client)
 {
 	guard let client = getClient(mem,idx+len) else {return nil}
 	guard let ptr = fnc(client) else {return []}
-	return Swift.Array(0..<len).map({(sub) in ptr[idx+sub]})
+	return Swift.Array(0..<len).map() {(sub) in ptr[idx+sub]}
 }
 func getMemory<T>(_ mem:share.Memory, _ idx:Int, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> T?
 {
@@ -179,7 +179,7 @@ func getMemory<T>(_ mem:share.Memory, _ fnc:(share.Client) -> UnsafeMutablePoint
 	guard let client = getClient(mem,0) else {return nil}
 	let len = Int(client.siz)
 	guard let ptr = fnc(client) else {return []}
-	return Swift.Array(0..<len).map({(sub) in ptr[sub]})
+	return Swift.Array(0..<len).map() {(sub) in ptr[sub]}
 }
 func getRect() -> NSRect
 {
@@ -265,10 +265,10 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 	var index = Int(object.siz)
 	let raw = buffer.contents()
 	let siz = MemoryLayout<Pierce>.size
-	let pierces:[Pierce] = Swift.Array(0..<size).map()
-		{(sub) in raw.advanced(by:sub*siz).load(as:Pierce.self)}
+	let pierces:[Pierce] = Swift.Array(0..<size).map() {(sub) in
+	raw.advanced(by:sub*siz).load(as:Pierce.self)}
 	for (pierce,object) in zip(pierces,0..<size) {
-		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
+		if (pierce.valid && (!found.valid || pierce.point.val.2 > found.point.val.2)) {
 			found = pierce
 			index = object
 		}
