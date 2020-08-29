@@ -34,7 +34,7 @@ typer.log: typerC typerHs typerLua typerSw
 	./typerC > typer.log
 	cat $@
 filer.log: filerLua file
-	rm -f *.txt .*.txt ..*.txt ...*.txt
+	rm -f *.-- .*.-- ..*.-- ...*.--
 	./filerLua > filer.log
 	cat $@
 
