@@ -113,61 +113,11 @@ class Pend<T>
 		guard let vals = val else {return}
 		set(vals,index)
 	}
-	func set(_ val: T, _ index: Int)
-	{
-		set([val],index)
-	}
-	func set(_ vals: [T])
-	{
-		set(vals,0)
-	}
-	func set(_ val: [T]?)
-	{
-		guard let vals = val else {return}
-		set(vals)
-	}
-	func set(_ val: T)
-	{
-		set([val])
-	}
-	func set<S>(_ vals: [S], _ index: Int, _ field: Int)
-	{
-		let siz = MemoryLayout<S>.size
-		let size = MemoryLayout<T>.size
-		let base = size*index+field
-		let limit = base+siz*vals.count
-		toPointrs(vals,{(ptr) in set(ptr,base..<limit)})
-	}
-	func set<S>(_ val: [S]?, _ index: Int, _ field: Int)
-	{
-		guard let vals = val else {return}
-		set(vals,index,field)
-	}
-	func set<S>(_ val: S, _ index: Int, _ field: Int)
-	{
-		set([val],index,field)
-	}
-	func set<S>(_ val: S, _ field: Int)
-	{
-		set(val,0,field)
-	}
-	func set<S>(_ vals: [S], _ index: Int, _ field: PartialKeyPath<T>)
-	{
-		guard let fld = MemoryLayout<T>.offset(of:field) else {cb.err(#file,#line,-1);return}
-		set(vals,index,fld)
-	}
-	func set<S>(_ val: [S]?, _ index: Int, _ field: PartialKeyPath<T>)
-	{
-		guard let vals = val else {return}
-		set(vals,index,field)
-	}
-	func set<S>(_ val: S, _ index: Int, _ field: PartialKeyPath<T>)
-	{
-		set([val],index,field)
-	}
 	func set<S>(_ val: S, _ field: PartialKeyPath<T>)
 	{
-		set(val,0,field)
+		guard let fld = MemoryLayout<T>.offset(of:field) else {cb.err(#file,#line,-1);return}
+		let siz = MemoryLayout<S>.size
+		toPointre(val,{(ptr) in set(ptr,fld..<fld+siz)})
 	}
 	func get() -> MTLBuffer
 	{
