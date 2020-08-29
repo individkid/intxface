@@ -68,6 +68,13 @@ class Refer
 	var lock:Int = 0
 }
 
+func toMutabl<T>(_ list:[T], _ fnc:(_:UnsafeMutablePointer<T>)->Void)
+{
+	let ptr = UnsafeMutablePointer<T>.allocate(capacity:list.count);
+	for (val,idx) in zip(list,Swift.Array(0..<list.count)) {ptr[idx] = val}
+	fnc(ptr)
+	ptr.deallocate()
+}
 class Pend<T>
 {
 	var pend:MTLBuffer!
@@ -106,7 +113,9 @@ class Pend<T>
 		let siz = MemoryLayout<T>.size
 		let base = siz*index
 		let limit = base+siz*vals.count
-		toPointrs(vals,{(ptr) in set(ptr,base..<limit)})
+		toMutabl(vals) {(ptr) in
+		let raw = UnsafePointer<T>(ptr)
+		set(raw,base..<limit)}
 	}
 	func set(_ val: [T]?, _ index: Int)
 	{
@@ -117,7 +126,9 @@ class Pend<T>
 	{
 		guard let fld = MemoryLayout<T>.offset(of:field) else {cb.err(#file,#line,-1);return}
 		let siz = MemoryLayout<S>.size
-		toPointre(val,{(ptr) in set(ptr,fld..<fld+siz)})
+		toMutabl([val]) {(ptr) in
+		let raw = UnsafePointer<S>(ptr)
+		set(raw,fld..<fld+siz)}
 	}
 	func get() -> MTLBuffer
 	{
@@ -163,13 +174,13 @@ func setPierce() -> Int?
 func getClient(_ mem:share.Memory, _ siz:Int) -> share.Client?
 {
 	let any = Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))
-	let client:UnsafeMutablePointer<share.Client>? = fromAny(any)
+	let client = any as? UnsafeMutablePointer<share.Client>
 	guard let temp = client?.pointee else {return nil}
 	if (temp.siz < siz) {return nil}
 	if (temp.mem != mem) {return nil}
 	return temp
 }
-func getArray<T>(_ mem:share.Memory, _ idx:Int, _ len:Int, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> [T]?
+func getMemory<T>(_ mem:share.Memory, _ idx:Int, _ len:Int, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> [T]?
 {
 	guard let client = getClient(mem,idx+len) else {return nil}
 	guard let ptr = fnc(client) else {return []}
@@ -181,13 +192,7 @@ func getMemory<T>(_ mem:share.Memory, _ idx:Int, _ fnc:(share.Client) -> UnsafeM
 	guard let ptr = fnc(client) else {return nil}
 	return ptr[idx]
 }
-func getMemory<T>(_ mem:share.Memory, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> T?
-{
-	guard let client = getClient(mem,1) else {return nil}
-	guard let ptr = fnc(client) else {return nil}
-	return ptr.pointee
-}
-func getArray<T>(_ mem:share.Memory, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> [T]?
+func getMemory<T>(_ mem:share.Memory, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> [T]?
 {
 	guard let client = getClient(mem,0) else {return nil}
 	let len = Int(client.siz)
@@ -286,14 +291,24 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			index = object
 		}
 	}
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,CInt(index))})
+	toMutabl([found.point])
+		{(point:UnsafeMutablePointer<share.Vector>) in
+	toMutabl([found.normal])
+		{(normal:UnsafeMutablePointer<share.Vector>) in
+	cb.write(point,normal,CInt(index))
+		}}
 }
 func swiftEmpty()
 {
 	let found:Pierce = Pierce()
 	guard let object = getClient(Object,1) else {cb.err(#file,#line,-1);return}
 	let index = Int(object.siz)
-	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,CInt(index))})
+	toMutabl([found.point])
+		{(point:UnsafeMutablePointer<share.Vector>) in
+	toMutabl([found.normal])
+		{(normal:UnsafeMutablePointer<share.Vector>) in
+	cb.write(point,normal,CInt(index))
+		}}
 }
 func swiftSize()
 {
@@ -426,29 +441,39 @@ func swiftWarp(xpos:Double, ypos:Double)
 }
 func swiftDma(_ mem:share.Memory, _ idx:CInt, _ siz:CInt)
 {
-	guard let client = getClient(mem,Int(idx+siz)) else {cb.err(#file,#line,-1);return}
 	switch (mem) {
-	case (share.Triangle): triangle.set(getArray(mem,Int(idx),Int(siz),{$0.triangle}),Int(idx))
-	case (share.Corner): corner.set(getArray(mem,Int(idx),Int(siz),{$0.corner}),Int(idx))
-	case (share.Frame): frame.set(getArray(mem,Int(idx),Int(siz),{$0.frame}),Int(idx))
-	case (share.Base): base.set(getArray(mem,Int(idx),Int(siz),{$0.base}),Int(idx))
+	case (share.Triangle):
+	triangle.set(getMemory(mem,Int(idx),Int(siz),{$0.triangle}),Int(idx))
+	case (share.Corner):
+	corner.set(getMemory(mem,Int(idx),Int(siz),{$0.corner}),Int(idx))
+	case (share.Frame):
+	frame.set(getMemory(mem,Int(idx),Int(siz),{$0.frame}),Int(idx))
+	case (share.Base):
+	base.set(getMemory(mem,Int(idx),Int(siz),{$0.base}),Int(idx))
 	case (share.Basis):
-	form.set(fromPtr(client.basis),\Form.basis)
+	form.set(getMemory(mem,0,{$0.basis}),\Form.basis)
 	case (share.Subject):
-	form.set(fromPtr(client.subject),\Form.subject)
-	case (share.Object): object.set(fromPtr(client.object,Int(idx),Int(siz)),Int(idx))
+	form.set(getMemory(mem,0,{$0.subject}),\Form.subject)
+	case (share.Object):
+	object.set(getMemory(mem,Int(idx),Int(siz),{$0.object}),Int(idx))
 	case (share.Feature):
-	form.set(fromPtr(client.feature),\Form.feature)
+	form.set(getMemory(mem,0,{$0.feature}),\Form.feature)
 	case (share.Render):
-	form.set(fromPtr(client.render,0),\Form.feather)
-	form.set(fromPtr(client.render,1),\Form.arrow)
+	form.set(getMemory(mem,0,{$0.render}),\Form.feather)
+	form.set(getMemory(mem,1,{$0.render}),\Form.arrow)
 	case (share.Pierce):
-	form.set(fromPtr(client.pierce,0),\Form.feather)
-	form.set(fromPtr(client.pierce,1),\Form.arrow)
-	case (share.Cloud): cloud.set(fromPtr(client.cloud,Int(idx),Int(siz)),Int(idx))
-	form.set(client.siz,\Form.siz)
+	form.set(getMemory(mem,0,{$0.pierce}),\Form.feather)
+	form.set(getMemory(mem,1,{$0.pierce}),\Form.arrow)
+	case (share.Cloud):
+	let memory = getMemory(mem,Int(idx),Int(siz),{$0.cloud})
+	cloud.set(memory,Int(idx))
+	if let temp = memory {
+	form.set(temp.count,\Form.siz)} else {
+	form.set(0,\Form.siz)}
 	case (share.User):
-	form.set(fromPtr(client.user).hand,\Form.hand)
+	if let temp = getMemory(mem,0,{$0.user}) {
+	form.set(temp.hand,\Form.hand)} else {
+	form.set(0,\Form.hand)}
 	default: cb.err(#file,#line,-1);return}
 }
 func swiftDraw(_ shader:share.Shader)
@@ -460,7 +485,7 @@ func swiftDraw(_ shader:share.Shader)
 	param.colorAttachments[0].texture = draw.texture
 	param.colorAttachments[0].loadAction = .clear
 	param.depthAttachment.loadAction = .clear
-	guard let range:[share.Array] = getArray(share.Range,{$0.range}) else {cb.err(#file,#line,-1);return}
+	guard let range:[share.Array] = getMemory(share.Range,{$0.range}) else {cb.err(#file,#line,-1);return}
 	if (range.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.endEncoding()
@@ -493,7 +518,7 @@ func swiftDraw(_ shader:share.Shader)
 	case (share.Track):
 	guard let size = setPierce() else {cb.err(#file,#line,-1);return}
 	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
-	guard let active = getArray(share.Active,{$0.active}) else {cb.err(#file,#line,-1);return}
+	guard let active = getMemory(share.Active,{$0.active}) else {cb.err(#file,#line,-1);return}
 	for array in active {
 		form.set(UInt32(array.tag),\Form.tag)
 		form.set(getMemory(share.Pierce,0,{$0.pierce}),\Form.feather)

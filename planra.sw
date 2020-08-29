@@ -41,7 +41,7 @@ func getDebug(_ checks:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTL
 }
 func planraDraw(_ shader:share.Shader)
 {
-	guard let temp = getArray(Frame,{$0.frame}) else {print("cannot make frame"); return}
+	guard let temp = getMemory(share.Frame,{$0.frame}) else {print("cannot make frame"); return}
 	if (shader == share.Track && temp.count >= 6 && !once) {
 		once = true
 		form.set(getMemory(share.Render,0,{$0.render}),\Form.feather)
@@ -74,7 +74,7 @@ func planraDraw(_ shader:share.Shader)
 		param.colorAttachments[0].texture = draw.texture
 		param.colorAttachments[0].loadAction = .clear
 		param.depthAttachment.loadAction = .clear
-		guard let temp = getArray(Range,{$0.range}) else {print("cannot make range"); return}
+		guard let temp = getMemory(share.Range,{$0.range}) else {print("cannot make range"); return}
 		if (temp.count == 0) {
 			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 			encode.endEncoding()
@@ -167,32 +167,36 @@ func planraInit()
 	indexs = [0,1,2,3,4,5]
 	ranges = [range0,range1]
 
-	toMutabls(clients)
+	toMutabl(clients)
 		{(client:UnsafeMutablePointer<share.Client>) in
-	toMutablss(facets,[Copy,Dma2])
-		{(ptr:UnsafeMutablePointer<share.Facet>,
-		fnc:UnsafeMutablePointer<share.Function>) in
+	toMutabl(facets)
+		{(ptr:UnsafeMutablePointer<share.Facet>) in
+	toMutabl([Copy,Dma2])
+		{(fnc:UnsafeMutablePointer<share.Function>) in
 	atomicFacet(Triangle,0,8,2,ptr,fnc,0,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
-	toMutablss(vertexs,[Copy,Dma2])
-		{(ptr:UnsafeMutablePointer<share.Vertex>,
-		fnc:UnsafeMutablePointer<share.Function>) in
+	toMutabl(vertexs)
+		{(ptr:UnsafeMutablePointer<share.Vertex>) in
+	toMutabl([Copy,Dma2])
+		{(fnc:UnsafeMutablePointer<share.Function>) in
 	atomicVertex(Corner,0,6,2,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
-	toMutablss(indexs,[Copy,Dma2])
-		{(ptr:UnsafeMutablePointer<CInt>,
-		fnc:UnsafeMutablePointer<share.Function>) in
+	toMutabl(indexs)
+		{(ptr:UnsafeMutablePointer<CInt>) in
+	toMutabl([Copy,Dma2])
+		{(fnc:UnsafeMutablePointer<share.Function>) in
 	atomicInt(Frame,0,6,2,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
-	toMutablss(ranges,[Copy])
-		{(ptr:UnsafeMutablePointer<share.Array>,
-		fnc:UnsafeMutablePointer<share.Function>) in
+	toMutabl(ranges)
+		{(ptr:UnsafeMutablePointer<share.Array>) in
+	toMutabl([Copy])
+		{(fnc:UnsafeMutablePointer<share.Function>) in
 	atomicArray(Range,0,2,1,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
-	toMutabls([Copy,Atom,Gpu1,Gpu0])
+	toMutabl([Copy,Atom,Gpu1,Gpu0])
 		{(fnc:UnsafeMutablePointer<share.Function>) in
 	clientClient(Process,0,num,4,client,fnc)
-		}}}}}}}}}}
+		}}}}}}}}}}}}}}
 }
 
 // MAIN
