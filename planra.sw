@@ -41,11 +41,11 @@ func getDebug(_ checks:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTL
 }
 func planraDraw(_ shader:share.Shader)
 {
-	guard let temp = getClient(Frame) else {print("cannot make frame"); return}
-	if (shader == share.Track && temp.siz > 0 && !once) {
+	guard let temp = getArray(Frame,{$0.frame}) else {print("cannot make frame"); return}
+	if (shader == share.Track && temp.count >= 6 && !once) {
 		once = true
-		form.set(getRender(0),\Form.feather)
-		form.set(getRender(1),\Form.arrow)
+		form.set(getMemory(share.Render,0,{$0.render}),\Form.feather)
+		form.set(getMemory(share.Render,1,{$0.render}),\Form.arrow)
 		form.set(UInt32(0),\Form.tag)
 		guard let code = queue.makeCommandBuffer() else {
 			print("cannot make code"); return}
@@ -74,15 +74,15 @@ func planraDraw(_ shader:share.Shader)
 		param.colorAttachments[0].texture = draw.texture
 		param.colorAttachments[0].loadAction = .clear
 		param.depthAttachment.loadAction = .clear
-		guard let range = getRange() else {print("cannot make range"); return}
-		if (range.count == 0) {
+		guard let temp = getArray(Range,{$0.range}) else {print("cannot make range"); return}
+		if (temp.count == 0) {
 			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 			encode.endEncoding()
 		}
-		for array in range {
+		for array in temp {
 			form.set(UInt32(array.tag),\Form.tag)
-			form.set(getRender(0),\Form.feather)
-			form.set(getRender(1),\Form.arrow)
+			form.set(getMemory(share.Render,0,{$0.render}),\Form.feather)
+			form.set(getMemory(share.Render,1,{$0.render}),\Form.arrow)
 			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}
 			encode.setRenderPipelineState(render)
 			encode.setDepthStencilState(depth)

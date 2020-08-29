@@ -15,18 +15,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-func fromRaw<T>(_ raw:UnsafeRawPointer, _ idx:Int, _ len:Int) -> [T]
-{
-	return Swift.Array(0..<len).map({(sub) in raw.advanced(by:(idx+sub)*MemoryLayout<T>.size).load(as:T.self)})
-}
-func fromRaw<T>(_ raw:UnsafeRawPointer, _ idx:Int) -> T
-{
-	return raw.advanced(by:idx*MemoryLayout<T>.size).load(as:T.self)
-}
-func fromRaw<T>(_ raw:UnsafeRawPointer) -> T
-{
-	return raw.load(as:T.self)
-}
 func fromPtr<T>(_ ptr:UnsafePointer<T>, _ idx:Int, _ len:Int) -> [T]
 {
 	return Swift.Array(0..<len).map({(sub) in ptr[idx+sub]})

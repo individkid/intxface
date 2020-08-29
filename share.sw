@@ -101,12 +101,34 @@ class Pend<T>
 			pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
 		}
 	}
-	func set(_ val: [T], _ index: Int)
+	func set(_ vals: [T], _ index: Int)
 	{
 		let siz = MemoryLayout<T>.size
 		let base = siz*index
-		let limit = base+siz*val.count
-		toPointrs(val,{(ptr) in set(ptr,base..<limit)})
+		let limit = base+siz*vals.count
+		toPointrs(vals,{(ptr) in set(ptr,base..<limit)})
+	}
+	func set(_ val: [T]?, _ index: Int)
+	{
+		guard let vals = val else {return}
+		set(vals,index)
+	}
+	func set(_ val: T, _ index: Int)
+	{
+		set([val],index)
+	}
+	func set(_ vals: [T])
+	{
+		set(vals,0)
+	}
+	func set(_ val: [T]?)
+	{
+		guard let vals = val else {return}
+		set(vals)
+	}
+	func set(_ val: T)
+	{
+		set([val])
 	}
 	func set<S>(_ vals: [S], _ index: Int, _ field: Int)
 	{
@@ -115,6 +137,11 @@ class Pend<T>
 		let base = size*index+field
 		let limit = base+siz*vals.count
 		toPointrs(vals,{(ptr) in set(ptr,base..<limit)})
+	}
+	func set<S>(_ val: [S]?, _ index: Int, _ field: Int)
+	{
+		guard let vals = val else {return}
+		set(vals,index,field)
 	}
 	func set<S>(_ val: S, _ index: Int, _ field: Int)
 	{
@@ -129,6 +156,11 @@ class Pend<T>
 		guard let fld = MemoryLayout<T>.offset(of:field) else {cb.err(#file,#line,-1);return}
 		set(vals,index,fld)
 	}
+	func set<S>(_ val: [S]?, _ index: Int, _ field: PartialKeyPath<T>)
+	{
+		guard let vals = val else {return}
+		set(vals,index,field)
+	}
 	func set<S>(_ val: S, _ index: Int, _ field: PartialKeyPath<T>)
 	{
 		set([val],index,field)
@@ -136,18 +168,6 @@ class Pend<T>
 	func set<S>(_ val: S, _ field: PartialKeyPath<T>)
 	{
 		set(val,0,field)
-	}
-	func set(_ val: T, _ index: Int)
-	{
-		set([val],index)
-	}
-	func set(_ val: [T])
-	{
-		set(val,0)
-	}
-	func set(_ val: T)
-	{
-		set([val])
 	}
 	func get() -> MTLBuffer
 	{
@@ -183,42 +203,46 @@ class Pend<T>
 }
 func setPierce() -> Int?
 {
-	guard let client = getClient(share.Base) else {return nil}
+	guard let client = getClient(share.Base,1) else {return nil}
 	let siz = Int(client.siz)
 	let zero = Pierce()
 	let vals = Swift.Array(repeating: zero, count: siz)
 	pierce.set(vals,0)
 	return siz
 }
-func getRange() -> [share.Array]?
-{
-	guard let client = getClient(share.Range) else {return nil}
-	if (client.siz == 0) {return []}
-	return fromPtr(client.range,0,Int(client.siz))
-}
-func getActive() -> [share.Array]?
-{
-	guard let client = getClient(share.Active) else {return nil}
-	if (client.siz == 0) {return []}
-	return fromPtr(client.active,0,Int(client.siz))
-}
-func getRender(_ idx:Int) -> share.Vector?
-{
-	guard let client = getClient(share.Render) else {return nil}
-	if (client.siz <= idx) {return nil}
-	return fromPtr(client.render,idx)
-}
-func getPierce(_ idx:Int) -> share.Vector?
-{
-	guard let client = getClient(share.Pierce) else {return nil}
-	if (client.siz <= idx) {return nil}
-	return fromPtr(client.pierce,idx)
-}
-func getClient(_ mem:share.Memory) -> share.Client?
+func getClient(_ mem:share.Memory, _ siz:Int) -> share.Client?
 {
 	let any = Mirror(reflecting: cb.state).descendant(Int(mem.rawValue))
 	let client:UnsafeMutablePointer<share.Client>? = fromAny(any)
-	return client?.pointee
+	guard let temp = client?.pointee else {return nil}
+	if (temp.siz < siz) {return nil}
+	if (temp.mem != mem) {return nil}
+	return temp
+}
+func getArray<T>(_ mem:share.Memory, _ idx:Int, _ len:Int, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> [T]?
+{
+	guard let client = getClient(mem,idx+len) else {return nil}
+	guard let ptr = fnc(client) else {return []}
+	return Swift.Array(0..<len).map({(sub) in ptr[idx+sub]})
+}
+func getMemory<T>(_ mem:share.Memory, _ idx:Int, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> T?
+{
+	guard let client = getClient(mem,idx+1) else {return nil}
+	guard let ptr = fnc(client) else {return nil}
+	return ptr[idx]
+}
+func getMemory<T>(_ mem:share.Memory, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> T?
+{
+	guard let client = getClient(mem,1) else {return nil}
+	guard let ptr = fnc(client) else {return nil}
+	return ptr.pointee
+}
+func getArray<T>(_ mem:share.Memory, _ fnc:(share.Client) -> UnsafeMutablePointer<T>?) -> [T]?
+{
+	guard let client = getClient(mem,0) else {return nil}
+	let len = Int(client.siz)
+	guard let ptr = fnc(client) else {return []}
+	return Swift.Array(0..<len).map({(sub) in ptr[sub]})
 }
 func getRect() -> NSRect
 {
@@ -293,15 +317,19 @@ class getEvent : NSObject, NSWindowDelegate
 
 func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
+	if (buffer.length < size*MemoryLayout<Pierce>.size) {cb.err(#file,#line,-1);return}
 	var found:Pierce = Pierce()
-	guard let focal = getPierce(0) else {print("cannot get pierce"); return}
+	guard let focal = getMemory(share.Pierce,0,{$0.pierce}) else {cb.err(#file,#line,-1);return}
 	let xpos = focal.val.0; let ypos = focal.val.1
 	found.point.val.0 = xpos; found.normal.val.0 = xpos
 	found.point.val.1 = ypos; found.normal.val.1 = ypos
 	found.point.val.2 = 0.0; found.normal.val.2 = 1.0
-	guard let object = getClient(Object) else {print("cannot get object"); return}
+	guard let object = getClient(Object,1) else {cb.err(#file,#line,-1);return}
 	var index = Int(object.siz)
-	let pierces:[Pierce] = fromRaw(buffer.contents(),0,size)
+	let raw = buffer.contents()
+	let siz = MemoryLayout<Pierce>.size
+	let pierces:[Pierce] = Swift.Array(0..<size).map()
+		{(sub) in raw.advanced(by:sub*siz).load(as:Pierce.self)}
 	for (pierce,object) in zip(pierces,0..<size) {
 		if (pierce.valid && (!found.valid || pierce.point.val.2 < found.point.val.2)) {
 			found = pierce
@@ -313,7 +341,7 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 func swiftEmpty()
 {
 	let found:Pierce = Pierce()
-	guard let object = getClient(Object) else {print("cannot get object"); return}
+	guard let object = getClient(Object,1) else {cb.err(#file,#line,-1);return}
 	let index = Int(object.siz)
 	toMutablee(found.point,found.normal,{(pnt,nml) in cb.write(pnt,nml,CInt(index))})
 }
@@ -401,13 +429,13 @@ func swiftInit()
 	window.delegate = event
 	queue = device.makeCommandQueue()
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"plane.so") else {
-		print("cannot make library"); return}
+		print("cannot make library");cb.err(#file,#line,-1);return}
 	guard let vertex_render = library.makeFunction(name:"vertex_render") else {
-		print("cannot make vertex_render"); return}
+		print("cannot make vertex_render");cb.err(#file,#line,-1);return}
 	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
-		print("cannot make fragment_render"); return}
+		print("cannot make fragment_render");cb.err(#file,#line,-1);return}
 	guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {
-		print("cannot make kernel_pierce"); return}
+		print("cannot make kernel_pierce");cb.err(#file,#line,-1);return}
 	let pipe = MTLRenderPipelineDescriptor()
 	pipe.vertexFunction = vertex_render
 	pipe.fragmentFunction = fragment_render
@@ -448,12 +476,12 @@ func swiftWarp(xpos:Double, ypos:Double)
 }
 func swiftDma(_ mem:share.Memory, _ idx:CInt, _ siz:CInt)
 {
-	guard let client = getClient(mem) else {cb.err(#file,#line,-1);return}
+	guard let client = getClient(mem,Int(idx+siz)) else {cb.err(#file,#line,-1);return}
 	switch (mem) {
-	case (share.Triangle): triangle.set(fromPtr(client.triangle,Int(idx),Int(siz)),Int(idx))
-	case (share.Corner): corner.set(fromPtr(client.corner,Int(idx),Int(siz)),Int(idx))
-	case (share.Frame): frame.set(fromPtr(client.frame,Int(idx),Int(siz)),Int(idx))
-	case (share.Base): base.set(fromPtr(client.base,Int(idx),Int(siz)),Int(idx))
+	case (share.Triangle): triangle.set(getArray(mem,Int(idx),Int(siz),{$0.triangle}),Int(idx))
+	case (share.Corner): corner.set(getArray(mem,Int(idx),Int(siz),{$0.corner}),Int(idx))
+	case (share.Frame): frame.set(getArray(mem,Int(idx),Int(siz),{$0.frame}),Int(idx))
+	case (share.Base): base.set(getArray(mem,Int(idx),Int(siz),{$0.base}),Int(idx))
 	case (share.Basis):
 	form.set(fromPtr(client.basis),\Form.basis)
 	case (share.Subject):
@@ -482,15 +510,15 @@ func swiftDraw(_ shader:share.Shader)
 	param.colorAttachments[0].texture = draw.texture
 	param.colorAttachments[0].loadAction = .clear
 	param.depthAttachment.loadAction = .clear
-	guard let range = getRange() else {cb.err(#file,#line,-1);return}
+	guard let range:[share.Array] = getArray(share.Range,{$0.range}) else {cb.err(#file,#line,-1);return}
 	if (range.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.endEncoding()
 	}
 	for array in range {
 		form.set(UInt32(array.tag),\Form.tag)
-		form.set(getRender(0),\Form.feather)
-		form.set(getRender(1),\Form.arrow)
+		form.set(getMemory(share.Render,0,{$0.render}),\Form.feather)
+		form.set(getMemory(share.Render,1,{$0.render}),\Form.arrow)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
@@ -515,11 +543,11 @@ func swiftDraw(_ shader:share.Shader)
 	case (share.Track):
 	guard let size = setPierce() else {cb.err(#file,#line,-1);return}
 	guard let code = queue.makeCommandBuffer() else {cb.err(#file,#line,-1);return}
-	guard let active = getActive() else {cb.err(#file,#line,-1);return}
+	guard let active = getArray(share.Active,{$0.active}) else {cb.err(#file,#line,-1);return}
 	for array in active {
 		form.set(UInt32(array.tag),\Form.tag)
-		form.set(getPierce(0),\Form.feather)
-		form.set(getPierce(1),\Form.arrow)
+		form.set(getMemory(share.Pierce,0,{$0.pierce}),\Form.feather)
+		form.set(getMemory(share.Pierce,1,{$0.pierce}),\Form.arrow)
 		var offset = Int(array.idx)*MemoryLayout<share.Vertex>.size
 		var nums:[Int] = []
 		var pers:[Int] = []
@@ -567,8 +595,7 @@ func swiftDone()
 func loopConf(_ config:share.Config) -> Double
 {
 	let rect = getRect()
-	guard let screen:NSRect = NSScreen.main?.frame else {
-		print("cannot make screen"); return 0.0}
+	guard let screen:NSRect = NSScreen.main?.frame else {cb.err(#file,#line,-1);return 0.0}
 	let wide = rect.maxX-rect.minX
 	let high = rect.maxY-rect.minY
 	switch (config) {
