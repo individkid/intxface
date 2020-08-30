@@ -23,6 +23,7 @@ var vertexs:[share.Vertex]!
 var indexs:[share.Index]!
 var bases:[Int32]!
 var ranges:[share.Array]!
+var actives:[share.Array]!
 var once:Bool = false
 
 func getDebug(_ checks:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTLCommandBufferHandler
@@ -65,40 +66,8 @@ func planraDraw(_ shader:share.Shader)
 		code.addCompletedHandler(getCount())
 		count += 1
 		code.commit()
-	}
-	if (shader == share.Display) {
-		guard let code = queue.makeCommandBuffer() else {print("cannot make code"); return}
-	    guard let draw = layer.nextDrawable() else {print("cannot make draw"); return}
-		param.colorAttachments[0].texture = draw.texture
-		param.colorAttachments[0].loadAction = .clear
-		param.depthAttachment.loadAction = .clear
-		guard let temp = getMemory(share.Range,{$0.range}) else {print("cannot make range"); return}
-		if (temp.count == 0) {
-			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {cb.err(#file,#line,-1);return}
-			encode.endEncoding()
-		}
-		for array in temp {
-			guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {print("cannot make encode"); return}
-			encode.setRenderPipelineState(render)
-			encode.setDepthStencilState(depth)
-			encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-			encode.setVertexBuffer(corner.get(),offset:0,index:1)
-			encode.setVertexBuffer(frame.get(),offset:0,index:2)
-			encode.setVertexBuffer(object.get(),offset:0,index:3)
-			encode.setVertexBuffer(form.get(),offset:0,index:4)
-			encode.drawPrimitives(
-				type:.triangle,
-				vertexStart:Int(array.idx),
-				vertexCount:Int(array.siz))
-			encode.endEncoding()
-			param.colorAttachments[0].loadAction = .load
-			param.depthAttachment.loadAction = .load
-		}
-		code.present(draw)
-		code.addScheduledHandler(getLock())
-		code.addCompletedHandler(getCount())
-		count += 1
-		code.commit()
+	} else {
+		swiftDraw(shader)
 	}
 }
 func planraInit()
@@ -163,12 +132,15 @@ func planraInit()
 	var range0 = share.Array(); range0.idx = 0; range0.siz = 3
 	var range1 = share.Array(); range1.idx = 3; range1.siz = 3
 
+	var active0 = share.Array(); active0.idx = 0; active0.siz = 2;
+
 	clients = []
 	facets = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
 	indexs = [index0,index1,index2,index3,index4,index5]
 	bases = [0,1]
 	ranges = [range0,range1]
+	actives = [active0]
 
 	toMutable(clients)
 		{(client:UnsafeMutablePointer<share.Client>) in
@@ -202,10 +174,16 @@ func planraInit()
 		{(fnc:UnsafeMutablePointer<share.Function>) in
 	atomicArray(Range,0,2,1,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	toMutable(actives)
+		{(ptr:UnsafeMutablePointer<share.Array>) in
+	toMutable([Copy])
+		{(fnc:UnsafeMutablePointer<share.Function>) in
+	atomicArray(Active,0,1,1,ptr,fnc,num,client)
+		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable([Copy,Atom,Gpu1,Gpu0])
 		{(fnc:UnsafeMutablePointer<share.Function>) in
 	clientClient(Process,0,num,4,client,fnc)
-		}}}}}}}}}}}}}}}}}
+		}}}}}}}}}}}}}}}}}}}}
 }
 
 // MAIN

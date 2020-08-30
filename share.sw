@@ -146,7 +146,7 @@ class Pend<T>
 }
 func setPierce() -> Int?
 {
-	guard let client = getClient(share.Base,1) else {return nil}
+	guard let client = getClient(share.Base,0) else {return nil}
 	let siz = Int(client.siz)
 	let zero = Pierce()
 	let vals = Swift.Array(repeating: zero, count: siz)
@@ -258,19 +258,18 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 	var found:Pierce = Pierce()
 	guard let focal = getMemory(share.Pierce,0,{$0.pierce}) else {cb.err(#file,#line,-1);return}
 	let xpos = focal.val.0; let ypos = focal.val.1
-	found.point.val.0 = xpos; found.normal.val.0 = xpos
-	found.point.val.1 = ypos; found.normal.val.1 = ypos
+	found.point.val.0 = xpos; found.normal.val.0 = 0.0
+	found.point.val.1 = ypos; found.normal.val.1 = 0.0
 	found.point.val.2 = 0.0; found.normal.val.2 = 1.0
-	guard let object = getClient(Object,1) else {cb.err(#file,#line,-1);return}
-	var index = Int(object.siz)
+	var index = size
 	let raw = buffer.contents()
 	let siz = MemoryLayout<Pierce>.size
 	let pierces:[Pierce] = Swift.Array(0..<size).map() {(sub) in
 	raw.advanced(by:sub*siz).load(as:Pierce.self)}
-	for (pierce,object) in zip(pierces,0..<size) {
+	for (pierce,plane) in zip(pierces,0..<size) {
 		if (pierce.valid && (!found.valid || pierce.point.val.2 > found.point.val.2)) {
 			found = pierce
-			index = object
+			index = plane
 		}
 	}
 	toMutable([found.point])
