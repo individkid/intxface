@@ -375,7 +375,7 @@ void sharePierce()
 	struct Vector vector[2];
 	vector[1].val[0] = vector[0].val[0] = render[0][0] + xmove;
 	vector[1].val[1] = vector[0].val[1] = render[0][1] + ymove;
-	vector[1].val[2] = render[1][2]; vector[0].val[2] = 0.0;
+	vector[1].val[2] = 0.0; vector[0].val[2] = render[1][2];
 	shareClient(Pierce,0,2,3,vector,Copy,Dma0,Gpu1);
 }
 

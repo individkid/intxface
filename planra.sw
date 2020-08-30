@@ -30,8 +30,8 @@ func getDebug(_ checks:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTL
 	return {(MTLCommandBuffer) in
 	var index = 0
 	for expected:CInt in [
-	0,2,3,0,2,4,0,3,4,4,3,2,
-	1,5,6,1,5,7,1,6,7,7,6,5] {
+	0,2,3,0,2,4,0,3,4,0,0,0,
+	1,5,6,1,5,7,1,6,7,0,0,0] {
 	let actual:CInt = checks.contents().load(fromByteOffset:index,as:CInt.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")

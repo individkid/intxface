@@ -305,20 +305,34 @@ kernel void kernel_pierce(
    Qualify hole = intrasect(face,state->feather,state->arrow);
    if (hole.quality == INFINITY) {
       pierce[ident].valid = false; return;}
-   Expand edge[3];
    float3 apex[3];
-   uint3 index;
-   for (uint i = 0; i < 3; i++) {
+   for (uint i = 0; i < 3; i++) { // for each corner
       uint corner = plane[ident].point[i];
       Triple triple = explode(point[corner].plane,plane,state);
       apex[i] = convert(ident,triple,plane,object,state).xyz;
-      for (uint j = 0; j < 3; j++) {
-         uint line = point[corner].plane[j];
-         bool found = false;
-         for (uint k = 0; k < i; k++)
-            if (index[k] == line) found = true;
-         if (!found && line != ident) index[i] = line;}
-      edge[i] = expand(plane[index[i]],state);}
+   }
+   Expand edge[3];
+   uint3 index;
+   for (uint i = 0; i < 3; i++) { // for each corner
+      uint corner = plane[ident].point[i];
+      for (uint j = 0; j < 3; j++) { // for each point of base
+         uint pointOfBase = plane[ident].point[j];
+         if (pointOfBase != corner) { // except for corner
+            for (uint k = 0; k < 3; k++) { // for each plane of point
+               uint planeOfPoint = point[pointOfBase].plane[k];
+               if (planeOfPoint != ident) { // except base
+                  bool found = false; // except any of corner
+                  for (uint l = 0; l < 3; l++) {
+                     uint planeOfCorner = point[corner].plane[l];
+                     if (planeOfCorner == planeOfPoint) found = true;
+                  }
+                  if (!found) index[i] = planeOfPoint;
+               }
+            }
+         }
+      }
+      edge[i] = expand(plane[index[i]],state);
+   }
    for (uint i = 0; i < 3; i++)
       if (opposite(edge[i],hole.point,apex[i])) {
          pierce[ident].valid = false; return;}
@@ -339,13 +353,18 @@ kernel void kernel_debug(
    device Bytes *bytes [[buffer(5)]])
 {
    uint ident = order[id];
-   Expand edge[3];
+   Expand face = prepare(ident,plane,object,state);
+   Qualify hole = intrasect(face,float3(0.0,0.0,512.0),float3(0.0,0.0,0.0));
    float3 apex[3];
-   uint3 index;
    for (uint i = 0; i < 3; i++) { // for each corner
       uint corner = plane[ident].point[i];
       Triple triple = explode(point[corner].plane,plane,state);
       apex[i] = convert(ident,triple,plane,object,state).xyz;
+   }
+   Expand edge[3];
+   uint3 index;
+   for (uint i = 0; i < 3; i++) { // for each corner
+      uint corner = plane[ident].point[i];
       for (uint j = 0; j < 3; j++) { // for each point of base
          uint pointOfBase = plane[ident].point[j];
          if (pointOfBase != corner) { // except for corner
@@ -365,7 +384,9 @@ kernel void kernel_debug(
       bytes[id].bytes[0+i*3] = point[corner].plane[0];
       bytes[id].bytes[1+i*3] = point[corner].plane[1];
       bytes[id].bytes[2+i*3] = point[corner].plane[2];
-      bytes[id].bytes[9+i] = index[i];
       edge[i] = expand(plane[index[i]],state);
+   }
+   for (uint i = 0; i < 3; i++) {
+      bytes[id].bytes[9+i] = opposite(edge[i],hole.point,apex[i]);
    }
 }
