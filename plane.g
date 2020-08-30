@@ -301,10 +301,12 @@ kernel void kernel_pierce(
    uint ident = order[id];
    Expand face = prepare(ident,plane,object,state);
    if (!opposite(face,state->feather,state->arrow)) {
-      pierce[ident].valid = false; return;}
+      pierce[ident].valid = false; return;
+   }
    Qualify hole = intrasect(face,state->feather,state->arrow);
    if (hole.quality == INFINITY) {
-      pierce[ident].valid = false; return;}
+      pierce[ident].valid = false; return;
+   }
    float3 apex[3];
    for (uint i = 0; i < 3; i++) { // for each corner
       uint corner = plane[ident].point[i];
@@ -336,9 +338,11 @@ kernel void kernel_pierce(
       }
       edge[i] = expand(plane[index[i]],state);
    }
-   for (uint i = 0; i < 3; i++)
+   for (uint i = 0; i < 3; i++) {
       if (opposite(edge[i],hole.point,apex[i])) {
-         pierce[ident].valid = false; return;}
+         pierce[ident].valid = false; return;
+      }
+   }
    pierce[ident].normal = normal(face);
    pierce[ident].point = hole.point;
    pierce[ident].valid = true;

@@ -43,6 +43,7 @@ var pierce = Pend<Pierce>()
 var lock = [Refer]()
 var count = Int(0)
 let event = getEvent()
+var saved = Int(0)
 
 struct Form
 {
@@ -270,11 +271,14 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 	let pierces:[Pierce] = Swift.Array(0..<size).map() {(sub) in
 	raw.advanced(by:sub*siz).load(as:Pierce.self)}
 	for (pierce,plane) in zip(pierces,0..<size) {
-		// print("swiftReady \(plane) \(pierce.valid) \(pierce.point.val.2) \(pierce.debug0) \(pierce.debug1) \(pierce.debug2)")
 		if (pierce.valid && (!found.valid || pierce.point.val.2 > found.point.val.2)) {
 			found = pierce
 			index = plane
 		}
+	}
+	if (index != saved) {
+		print("swiftReady \(index)")
+		saved = index
 	}
 	toMutable([found.point])
 		{(point:UnsafeMutablePointer<share.Vector>) in
