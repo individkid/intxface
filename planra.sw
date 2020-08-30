@@ -21,6 +21,7 @@ var clients:[share.Client]!
 var facets:[share.Facet]!
 var vertexs:[share.Vertex]!
 var indexs:[share.Index]!
+var bases:[Int32]!
 var ranges:[share.Array]!
 var once:Bool = false
 
@@ -29,8 +30,8 @@ func getDebug(_ checks:MTLBuffer, _ a:CInt, _ b:CInt, _ c:CInt, _ d:CInt) -> MTL
 	return {(MTLCommandBuffer) in
 	var index = 0
 	for expected:CInt in [
-	0,255,500,256,-256,500,-256,-256,500,10,5,0,
-	0,-256,400,256,256,400,-256,256,400,10,10,0] {
+	0,2,3,0,2,4,0,3,4,4,3,2,
+	1,5,6,1,5,7,1,6,7,7,6,5] {
 	let actual:CInt = checks.contents().load(fromByteOffset:index,as:CInt.self)
 	if (expected != actual) {
 		print("mismatch index(\(index)): expected(\(expected)) != actual(\(actual))")
@@ -51,7 +52,7 @@ func planraDraw(_ shader:share.Shader)
 		encode.setComputePipelineState(debug)
 		encode.setBuffer(triangle.get(),offset:0,index:0)
 		encode.setBuffer(corner.get(),offset:0,index:1)
-		encode.setBuffer(frame.get(),offset:0,index:2)
+		encode.setBuffer(base.get(),offset:0,index:2)
 		encode.setBuffer(object.get(),offset:0,index:3)
 		encode.setBuffer(form.get(),offset:0,index:4)
 		encode.setBuffer(checks,offset:0,index:5)
@@ -166,6 +167,7 @@ func planraInit()
 	facets = [plane0,plane1,plane2,plane3,plane4,plane5,plane6,plane7]
 	vertexs = [vertex0,vertex1,vertex2,vertex3,vertex4,vertex5]
 	indexs = [index0,index1,index2,index3,index4,index5]
+	bases = [0,1]
 	ranges = [range0,range1]
 
 	toMutable(clients)
@@ -188,6 +190,12 @@ func planraInit()
 		{(fnc:UnsafeMutablePointer<share.Function>) in
 	atomicIndex(Frame,0,6,2,ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	toMutable(bases)
+		{(ptr:UnsafeMutablePointer<Int32>) in
+	toMutable([Copy,Dma2])
+		{(fnc:UnsafeMutablePointer<share.Function>) in
+	atomicInt(Base,0,2,2,ptr,fnc,num,client)
+		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(ranges)
 		{(ptr:UnsafeMutablePointer<share.Array>) in
 	toMutable([Copy])
@@ -197,7 +205,7 @@ func planraInit()
 	toMutable([Copy,Atom,Gpu1,Gpu0])
 		{(fnc:UnsafeMutablePointer<share.Function>) in
 	clientClient(Process,0,num,4,client,fnc)
-		}}}}}}}}}}}}}}
+		}}}}}}}}}}}}}}}}}
 }
 
 // MAIN

@@ -332,21 +332,40 @@ struct Bytes {
 kernel void kernel_debug(
    const device Facet *plane [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
-   const device Index *order [[buffer(2)]],
+   const device uint *order [[buffer(2)]],
    const device Object *object [[buffer(3)]],
    const device State *state [[buffer(4)]],
    uint id [[thread_position_in_grid]],
    device Bytes *bytes [[buffer(5)]])
 {
-   for (int i = 0; i < 3; i++) {
-   uint ident = order[id*3+i].point;
-   uint tag = order[id*3+i].tag;
-   uint face = copoint(tag,point[ident].plane,plane,state);
-   uint corner = coplane(plane[face].point,ident);
-   Triple triple = explode(point[ident].plane,plane,state);
-   float4 result = convert(face,triple,plane,object,state);
-   bytes[id].bytes[i*3+0] = result.x;
-   bytes[id].bytes[i*3+1] = result.y;
-   bytes[id].bytes[i*3+2] = result.z;
-   bytes[id].bytes[9+i] = plane[face].color[corner][i]*10.0;}
+   uint ident = order[id];
+   Expand edge[3];
+   float3 apex[3];
+   uint3 index;
+   for (uint i = 0; i < 3; i++) { // for each corner
+      uint corner = plane[ident].point[i];
+      Triple triple = explode(point[corner].plane,plane,state);
+      apex[i] = convert(ident,triple,plane,object,state).xyz;
+      for (uint j = 0; j < 3; j++) { // for each point of base
+         uint pointOfBase = plane[ident].point[j];
+         if (pointOfBase != corner) { // except for corner
+            for (uint k = 0; k < 3; k++) { // for each plane of point
+               uint planeOfPoint = point[pointOfBase].plane[k];
+               if (planeOfPoint != ident) { // except base
+                  bool found = false; // except any of corner
+                  for (uint l = 0; l < 3; l++) {
+                     uint planeOfCorner = point[corner].plane[l];
+                     if (planeOfCorner == planeOfPoint) found = true;
+                  }
+                  if (!found) index[i] = planeOfPoint;
+               }
+            }
+         }
+      }
+      bytes[id].bytes[0+i*3] = point[corner].plane[0];
+      bytes[id].bytes[1+i*3] = point[corner].plane[1];
+      bytes[id].bytes[2+i*3] = point[corner].plane[2];
+      bytes[id].bytes[9+i] = index[i];
+      edge[i] = expand(plane[index[i]],state);
+   }
 }
