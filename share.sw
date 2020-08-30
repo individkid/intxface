@@ -43,7 +43,6 @@ var pierce = Pend<Pierce>()
 var lock = [Refer]()
 var count = Int(0)
 let event = getEvent()
-var saved = Int(0)
 
 struct Form
 {
@@ -65,9 +64,6 @@ struct Pierce
 	var pad:(uint,uint,uint) = (0,0,0)
 	var point:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
 	var normal:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
-	var debug0:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
-	var debug1:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
-	var debug2:share.Vector = share.Vector(val:(0.0,0.0,0.0,0.0))
 }
 class Refer
 {
@@ -275,10 +271,6 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 			found = pierce
 			index = plane
 		}
-	}
-	if (index != saved) {
-		print("swiftReady \(index)")
-		saved = index
 	}
 	toMutable([found.point])
 		{(point:UnsafeMutablePointer<share.Vector>) in

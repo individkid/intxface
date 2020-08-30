@@ -52,9 +52,6 @@ struct Pierce { // intrasect plane with line through points
 	bool valid; // valid if points opposite plane
 	float3 point;
 	float3 normal;
-	float3 debug0;
-	float3 debug1;
-	float3 debug2;
 };
 struct Object {
 	metal::float4x4 object;

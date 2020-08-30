@@ -313,9 +313,6 @@ kernel void kernel_pierce(
       Triple triple = explode(point[corner].plane,plane,state);
       apex[i] = convert(ident,triple,plane,object,state).xyz;
    }
-   pierce[ident].debug0 = state->feather;
-   pierce[ident].debug1 = state->focal;
-   pierce[ident].debug2 = state->picture;
    Expand edge[3];
    uint3 index;
    for (uint i = 0; i < 3; i++) { // for each corner
