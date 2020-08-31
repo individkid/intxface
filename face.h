@@ -43,6 +43,7 @@
 #define WINHIGH 512
 #define WINDEEP 512
 #define WINSTOP 128
+#define TIPDEEP 128
 #define NUMFILE 64
 #define BUFSIZE 64
 #define NUMINET 16

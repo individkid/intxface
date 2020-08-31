@@ -47,76 +47,25 @@ void exitErr(const char *str, int num, int idx)
 	fprintf(stderr,"%s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	exit(-1);
 }
-void setupLua(char **mem, const char *str, int idx)
-{
-	if (mem[idx]) free(mem[idx]);
-	mem[idx] = malloc(strlen(str)+1);
-	strcpy(mem[idx],str);
-}
-void callLua(lua_State *lua, const char *fnc, const char *str, int num, int idx)
-{
-	if (lua == 0) ERROR(exitErr,0)
-	lua_getglobal(lua,fnc);
-	lua_pushstring(lua,str);
-	lua_pushnumber(lua,num);
-	lua_pushnumber(lua,idx);
-	if (lua_pcall(lua, 3, 0, 0) != 0) ERROR(exitErr,0)
-}
-void noteLua(const char *str, int num, int idx)
-{
-	callLua(luaerr,exclua[idx],str,num,idx);
-}
-void readLua(const char *str, int num, int idx)
-{
-	callLua(luaerr,inplua[idx],str,num,idx);
-}
-void writeLua(const char *str, int num, int idx)
-{
-	callLua(luaerr,outlua[idx],str,num,idx);
-}
 void readNote(eftype exc, int idx)
 {
        if (idx < 0 || idx >= len) ERROR(exitErr,0)
        inpexc[idx] = exc;
-}
-int readNoteLua(lua_State *lua)
-{
-       setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-       readNote(noteLua,(int)lua_tonumber(lua,2));
-       return 0;
 }
 void readJump(eftype err, int idx)
 {
 	if (idx < 0 || idx >= len) ERROR(exitErr,0)
 	inperr[idx] = err;
 }
-int readJumpLua(lua_State *lua)
-{
-	setupLua(inplua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	readJump(readLua,(int)lua_tonumber(lua,2));
-	return 0;
-}
 void writeJump(eftype err, int idx)
 {
 	if (idx < 0 || idx >= len) ERROR(exitErr,0)
 	outerr[idx] = err;
 }
-int writeJumpLua(lua_State *lua)
-{
-	setupLua(outlua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	writeJump(writeLua,(int)lua_tonumber(lua,2));
-	return 0;
-}
 void bothJump(eftype err, int idx)
 {
 	readJump(err,idx);
 	writeJump(err,idx);
-}
-int bothJumpLua(lua_State *lua)
-{
-	readJumpLua(lua);
-	writeJumpLua(lua);
-	return 0;	
 }
 void closeIdent(int idx)
 {
@@ -130,12 +79,6 @@ void closeIdent(int idx)
 	}
 	while (len > 0 && fdt[len-1] == None) len--;
 }
-int closeIdentLua(lua_State *lua)
-{
-	luaerr = lua;
-	closeIdent((int)lua_tonumber(lua,1));
-	return 0;
-}
 void moveIdent(int idx0, int idx1)
 {
 	if (idx1 < 0 || idx1 >= len) ERROR(inperr[idx1],idx1);
@@ -148,12 +91,6 @@ void moveIdent(int idx0, int idx1)
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
 }
-int moveIdentLua(lua_State *lua)
-{
-	luaerr = lua;
-	moveIdent((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
 int openPipe()
 {
 	int fd[2] = {0};
@@ -163,12 +100,6 @@ int openPipe()
 	out[len] = fd[1];
 	fdt[len] = Wait;
 	return len++;
-}
-int openPipeLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openPipe());
-	return 1;
 }
 int openFifo(const char *str)
 {
@@ -185,12 +116,6 @@ int openFifo(const char *str)
 	fdt[len] = Poll;
 	return len++;
 }
-int openFifoLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openFifo(lua_tostring(lua,1)));
-	return 1;
-}
 int openFile(const char *str)
 {
 	int fd = 0;
@@ -200,12 +125,6 @@ int openFile(const char *str)
 	out[len] = fd;
 	fdt[len] = Seek;
 	return len++;
-}
-int openFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openFile(lua_tostring(lua,1)));
-	return 1;
 }
 struct sockaddr_in6 *scanInet6(struct sockaddr_in6 *in6, const char *adr, const char *num)
 {
@@ -242,12 +161,6 @@ int openInet(const char *adr, const char *num)
 	out[len] = fd;
 	return len++;
 }
-int openInetLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openInet(lua_tostring(lua,1),lua_tostring(lua,2)));
-	return 1;
-}
 int forkExec(const char *exe)
 {
 	int c2p[2], p2c[2], val;
@@ -274,12 +187,6 @@ int forkExec(const char *exe)
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
 	return ret;
 }
-int forkExecLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,forkExec(lua_tostring(lua,1)));
-	return 1;
-}
 int pipeInit(const char *av1, const char *av2)
 {
 	int val;
@@ -290,12 +197,6 @@ int pipeInit(const char *av1, const char *av2)
 	len++;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
 	return ret;
-}
-int pipeInitLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pipeInit(lua_tostring(lua,1),lua_tostring(lua,2)));
-	return 1;
 }
 int pselectAny(struct timespec *dly)
 {
@@ -332,24 +233,12 @@ int waitAny()
 {
 	return pselectAny(0);
 }
-int waitAnyLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,waitAny());
-	return 1;
-}
 int pauseAny(double dly)
 {
 	struct timespec delay = {0};
 	delay.tv_sec = (long long)dly;
 	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
 	return pselectAny(&delay);
-}
-int pauseAnyLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pauseAny(lua_tonumber(lua,1)));
-	return 1;
 }
 int pollPipe(int idx)
 {
@@ -364,12 +253,6 @@ int pollPipe(int idx)
 	if (FD_ISSET(inp[idx],&fds)) return 1;
 	return 0;
 }
-int pollPipeLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pollPipe((int)lua_tonumber(lua,1)));
-	return 1;
-}
 int pollFile(int idx)
 {
 	off_t pos, siz;
@@ -379,35 +262,17 @@ int pollFile(int idx)
 	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERROR(inperr[idx],idx);
 	return (siz > pos);
 }
-int pollFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pollFile((int)lua_tonumber(lua,1)));
-	return 1;
-}
 void seekFile(long long arg, int idx)
 {
 	off_t pos = arg;
 	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERROR(inperr[idx],idx);
 	if (lseek(out[idx],pos,SEEK_SET) < 0) ERROR(outerr[idx],idx);
 }
-int seekFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	seekFile((long long)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
 void truncFile(int idx)
 {
 	seekFile(0,idx);
 	if (ftruncate(inp[idx],0) < 0) ERROR(inperr[idx],idx);
 	if (ftruncate(out[idx],0) < 0) ERROR(outerr[idx],idx);
-}
-int truncFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	truncFile((int)lua_tonumber(lua,1));
-	return 0;
 }
 long long checkFile(int idx)
 {
@@ -418,21 +283,9 @@ long long checkFile(int idx)
 	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
 	return siz;
 }
-int checkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkFile((int)lua_tonumber(lua,1)));
-	return 1;
-}
 int pollInet(const char *adr, const char *num)
 {
 	return (checkInet(adr,num) < NUMINET);
-}
-int pollInetLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pollInet(lua_tostring(lua,1),lua_tostring(lua,2)));
-	return 1;
 }
 int checkInet(const char *adr, const char *num)
 {
@@ -442,12 +295,6 @@ int checkInet(const char *adr, const char *num)
 	if (memcmp(&addr[i],&comp,sizeof(comp)) == 0)
 	return i;
 	return NUMINET;
-}
-int checkInetLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkInet(lua_tostring(lua,1),lua_tostring(lua,2)));
-	return 1;
 }
 int rdlkFile(long long arg0, long long arg1, int idx)
 {
@@ -460,12 +307,6 @@ int rdlkFile(long long arg0, long long arg1, int idx)
 	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
 	return (val==0);
 }
-int rdlkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,rdlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
-	return 1;
-}
 int wrlkFile(long long arg0, long long arg1, int idx)
 {
 	struct flock lock = {0};
@@ -477,12 +318,6 @@ int wrlkFile(long long arg0, long long arg1, int idx)
 	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
 	return (val==0);
 }
-int wrlkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,wrlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
-	return 1;
-}
 void unlkFile(long long arg0, long long arg1, int idx)
 {
 	struct flock lock = {0};
@@ -491,12 +326,6 @@ void unlkFile(long long arg0, long long arg1, int idx)
 	lock.l_type = F_UNLCK;
 	lock.l_whence = SEEK_SET;
 	if (fcntl(inp[idx],F_SETLK,&lock) < 0) ERROR(inperr[idx],idx);
-}
-int unlkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	unlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
 }
 void rdlkwFile(long long arg0, long long arg1, int idx)
 {
@@ -507,12 +336,6 @@ void rdlkwFile(long long arg0, long long arg1, int idx)
 	lock.l_whence = SEEK_SET;
 	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERROR(inperr[idx],idx);
 }
-int rdlkwFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	rdlkwFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
-}
 void wrlkwFile(long long arg0, long long arg1, int idx)
 {
 	struct flock lock = {0};
@@ -522,21 +345,9 @@ void wrlkwFile(long long arg0, long long arg1, int idx)
 	lock.l_whence = SEEK_SET;
 	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERROR(inperr[idx],idx);
 }
-int wrlkwFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	wrlkwFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
-}
 int checkRead(int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) return 0;
-	return 1;
-}
-int checkReadLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkRead((int)lua_tonumber(lua,1)));
 	return 1;
 }
 int checkWrite(int idx)
@@ -544,21 +355,9 @@ int checkWrite(int idx)
 	if (idx < 0 || idx >= len || fdt[idx] == None) return 0;
 	return 1;
 }
-int checkWriteLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkWrite((int)lua_tonumber(lua,1)));
-	return 1;
-}
 void sleepSec(int sec)
 {
 	sleep(sec);
-}
-int sleepSecLua(lua_State *lua)
-{
-	luaerr = lua;
-	sleep((int)lua_tonumber(lua,1));
-	return 0;
 }
 void readStr(cftype fnc, void *arg, int idx)
 {
@@ -584,18 +383,6 @@ void readStrHs(hftype fnc, int idx)
 {
 	readStr(readStrHsFnc,fnc,idx);
 }
-void readStrLuaFnc(const char *buf, int trm, void *arg)
-{
-	lua_State *lua = arg;
-	lua_pushstring(lua,buf);
-	lua_pushnumber(lua,trm);
-}
-int readStrLua(lua_State *lua)
-{
-	luaerr = lua;
-	readStr(readStrLuaFnc,lua,(int)lua_tonumber(lua,1));
-	return 2;
-}
 int readInt(int idx)
 {
 	int arg;
@@ -606,12 +393,6 @@ int readInt(int idx)
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
-int readIntLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readInt((int)lua_tonumber(lua,1)));
-	return 1;
-}
 double readNum(int idx)
 {
 	double arg;
@@ -621,12 +402,6 @@ double readNum(int idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
-}
-int readNumLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readNum((int)lua_tonumber(lua,1)));
-	return 1;
 }
 long long readNew(int idx)
 {
@@ -639,12 +414,6 @@ long long readNew(int idx)
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
-int readNewLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readNew((int)lua_tonumber(lua,1)));
-	return 1;
-}
 float readOld(int idx)
 {
 	float arg;
@@ -656,12 +425,6 @@ float readOld(int idx)
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
-int readOldLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,(double)readOld((int)lua_tonumber(lua,1)));
-	return 1;
-}
 void writeStr(const char *arg, int trm, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
@@ -669,23 +432,11 @@ void writeStr(const char *arg, int trm, int idx)
 	int val = write(out[idx],arg,siz);
 	if (val < siz) ERROR(outerr[idx],idx)
 }
-int writeStrLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
-}
 void writeInt(int arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = write(out[idx],(char *)&arg,sizeof(int));
 	if (val < (int)sizeof(int)) ERROR(outerr[idx],idx)
-}
-int writeIntLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeInt((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
 }
 void writeNum(double arg, int idx)
 {
@@ -693,23 +444,11 @@ void writeNum(double arg, int idx)
 	int val = write(out[idx],(char *)&arg,sizeof(double));
 	if (val < (int)sizeof(double)) ERROR(outerr[idx],idx)
 }
-int writeNumLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeNum((double)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
 void writeNew(long long arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = write(out[idx],(char *)&arg,sizeof(long long));
 	if (val < (int)sizeof(long long)) ERROR(outerr[idx],idx)
-}
-int writeNewLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeNew((long long)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
 }
 void writeOld(float arg, int idx)
 {
@@ -717,12 +456,275 @@ void writeOld(float arg, int idx)
 	int val = write(out[idx],(char *)&arg,sizeof(float));
 	if (val < (int)sizeof(float)) ERROR(outerr[idx],idx)
 }
+
+void setupLua(char **mem, const char *str, int idx)
+{
+	if (mem[idx]) free(mem[idx]);
+	mem[idx] = malloc(strlen(str)+1);
+	strcpy(mem[idx],str);
+}
+void callLua(lua_State *lua, const char *fnc, const char *str, int num, int idx)
+{
+	if (lua == 0) ERROR(exitErr,0)
+	lua_getglobal(lua,fnc);
+	lua_pushstring(lua,str);
+	lua_pushnumber(lua,num);
+	lua_pushnumber(lua,idx);
+	if (lua_pcall(lua, 3, 0, 0) != 0) ERROR(exitErr,0)
+}
+void noteLua(const char *str, int num, int idx)
+{
+	callLua(luaerr,exclua[idx],str,num,idx);
+}
+void readLua(const char *str, int num, int idx)
+{
+	callLua(luaerr,inplua[idx],str,num,idx);
+}
+void writeLua(const char *str, int num, int idx)
+{
+	callLua(luaerr,outlua[idx],str,num,idx);
+}
+int readNoteLua(lua_State *lua)
+{
+       setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+       readNote(noteLua,(int)lua_tonumber(lua,2));
+       return 0;
+}
+int readJumpLua(lua_State *lua)
+{
+	setupLua(inplua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+	readJump(readLua,(int)lua_tonumber(lua,2));
+	return 0;
+}
+int writeJumpLua(lua_State *lua)
+{
+	setupLua(outlua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+	writeJump(writeLua,(int)lua_tonumber(lua,2));
+	return 0;
+}
+int bothJumpLua(lua_State *lua)
+{
+	readJumpLua(lua);
+	writeJumpLua(lua);
+	return 0;
+}
+int closeIdentLua(lua_State *lua)
+{
+	luaerr = lua;
+	closeIdent((int)lua_tonumber(lua,1));
+	return 0;
+}
+int moveIdentLua(lua_State *lua)
+{
+	luaerr = lua;
+	moveIdent((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
+	return 0;
+}
+int openPipeLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,openPipe());
+	return 1;
+}
+int openFifoLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,openFifo(lua_tostring(lua,1)));
+	return 1;
+}
+int openFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,openFile(lua_tostring(lua,1)));
+	return 1;
+}
+int openInetLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,openInet(lua_tostring(lua,1),lua_tostring(lua,2)));
+	return 1;
+}
+int forkExecLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,forkExec(lua_tostring(lua,1)));
+	return 1;
+}
+int pipeInitLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,pipeInit(lua_tostring(lua,1),lua_tostring(lua,2)));
+	return 1;
+}
+int waitAnyLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,waitAny());
+	return 1;
+}
+int pauseAnyLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,pauseAny(lua_tonumber(lua,1)));
+	return 1;
+}
+int pollPipeLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,pollPipe((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int pollFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,pollFile((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int seekFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	seekFile((long long)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
+	return 0;
+}
+int truncFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	truncFile((int)lua_tonumber(lua,1));
+	return 0;
+}
+int checkFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,checkFile((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int pollInetLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,pollInet(lua_tostring(lua,1),lua_tostring(lua,2)));
+	return 1;
+}
+int checkInetLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,checkInet(lua_tostring(lua,1),lua_tostring(lua,2)));
+	return 1;
+}
+int rdlkFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,rdlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
+	return 1;
+}
+int wrlkFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,wrlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
+	return 1;
+}
+int unlkFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	unlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
+	return 0;
+}
+int rdlkwFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	rdlkwFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
+	return 0;
+}
+int wrlkwFileLua(lua_State *lua)
+{
+	luaerr = lua;
+	wrlkwFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
+	return 0;
+}
+int checkReadLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,checkRead((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int checkWriteLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,checkWrite((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int sleepSecLua(lua_State *lua)
+{
+	luaerr = lua;
+	sleep((int)lua_tonumber(lua,1));
+	return 0;
+}
+void readStrLuaFnc(const char *buf, int trm, void *arg)
+{
+	lua_State *lua = arg;
+	lua_pushstring(lua,buf);
+	lua_pushnumber(lua,trm);
+}
+int readStrLua(lua_State *lua)
+{
+	luaerr = lua;
+	readStr(readStrLuaFnc,lua,(int)lua_tonumber(lua,1));
+	return 2;
+}
+int readIntLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,readInt((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int readNumLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,readNum((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int readNewLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,readNew((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int readOldLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,(double)readOld((int)lua_tonumber(lua,1)));
+	return 1;
+}
+int writeStrLua(lua_State *lua)
+{
+	luaerr = lua;
+	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
+	return 0;
+}
+int writeIntLua(lua_State *lua)
+{
+	luaerr = lua;
+	writeInt((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
+	return 0;
+}
+int writeNumLua(lua_State *lua)
+{
+	luaerr = lua;
+	writeNum((double)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
+	return 0;
+}
+int writeNewLua(lua_State *lua)
+{
+	luaerr = lua;
+	writeNew((long long)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
+	return 0;
+}
 int writeOldLua(lua_State *lua)
 {
 	luaerr = lua;
 	writeOld((float)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
 	return 0;
 }
+
 int luaopen_face (lua_State *L)
 {
 	lua_pushcfunction(L, readNoteLua);

@@ -113,8 +113,9 @@ void fixedMatrix(float *result, float *pierce)
 void offsetVector(float *result)
 {
 	struct Mode *user = cb.state[User]->user;
-	float cur[3]; cur[0] = xmove; cur[1] = ymove; cur[2] = -1.0;
-	float pix[3]; pix[2] = -1.0;
+	float cur[3]; cur[0] = xmove; cur[1] = ymove;
+	cur[2] = vector[2];
+	float pix[3]; pix[2] = 0.0;
 	for (int i = 0; i < 2; i++) pix[i] = vector[i];
 	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
 }
@@ -130,6 +131,10 @@ void transformMatrix(float *result)
 	float mat[16]; jumpmat(copymat(mat,piemat,4),lon,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
+	// first translate so pierce point is at origin
+	// then rotate about z so that rotate axis is x
+	// then rotate about x axis
+	// then undo rotate about z and translate 
 	break;}
 	case (Slide): { // translate parallel to fixed facet
 	float vec[3]; offsetVector(vec);
@@ -440,7 +445,7 @@ void shareClick(int isright)
 	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
-	vector[0] = xmove; vector[1] = ymove; vector[2] = -1.0; offset = 0.0;
+	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep); offset = 0.0;
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);

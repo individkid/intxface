@@ -69,5 +69,4 @@ struct State {
 	float3 picture; // picture for display
 	uint siz; // for bounce shader
 	uint hand; // which plane to apply feature transformation to
-	uint tag; // which planes of polytope to render this pass
 };
