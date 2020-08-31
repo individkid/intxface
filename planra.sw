@@ -143,46 +143,46 @@ func planraInit()
 	actives = [active0]
 
 	toMutable(clients)
-		{(client:UnsafeMutablePointer<share.Client>) in
+		{(len:Int,client:UnsafeMutablePointer<share.Client>) in
 	toMutable(facets)
-		{(ptr:UnsafeMutablePointer<share.Facet>) in
+		{(ptrs:Int,ptr:UnsafeMutablePointer<share.Facet>) in
 	toMutable([Copy,Dma2])
-		{(fnc:UnsafeMutablePointer<share.Function>) in
-	atomicFacet(Triangle,0,8,2,ptr,fnc,0,client)
+		{(fncs:Int,fnc:UnsafeMutablePointer<share.Function>) in
+	atomicFacet(Triangle,0,Int32(ptrs),Int32(fncs),ptr,fnc,0,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(vertexs)
-		{(ptr:UnsafeMutablePointer<share.Vertex>) in
+		{(ptrs:Int,ptr:UnsafeMutablePointer<share.Vertex>) in
 	toMutable([Copy,Dma2])
-		{(fnc:UnsafeMutablePointer<share.Function>) in
-	atomicVertex(Corner,0,6,2,ptr,fnc,num,client)
+		{(fncs:Int,fnc:UnsafeMutablePointer<share.Function>) in
+	atomicVertex(Corner,0,Int32(ptrs),Int32(fncs),ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(indexs)
-		{(ptr:UnsafeMutablePointer<share.Index>) in
+		{(ptrs:Int,ptr:UnsafeMutablePointer<share.Index>) in
 	toMutable([Copy,Dma2])
-		{(fnc:UnsafeMutablePointer<share.Function>) in
-	atomicIndex(Frame,0,6,2,ptr,fnc,num,client)
+		{(fncs:Int,fnc:UnsafeMutablePointer<share.Function>) in
+	atomicIndex(Frame,0,Int32(ptrs),Int32(fncs),ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(bases)
-		{(ptr:UnsafeMutablePointer<Int32>) in
+		{(ptrs:Int,ptr:UnsafeMutablePointer<Int32>) in
 	toMutable([Copy,Dma2])
-		{(fnc:UnsafeMutablePointer<share.Function>) in
-	atomicInt(Base,0,2,2,ptr,fnc,num,client)
+		{(fncs:Int,fnc:UnsafeMutablePointer<share.Function>) in
+	atomicInt(Base,0,Int32(ptrs),Int32(fncs),ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(ranges)
-		{(ptr:UnsafeMutablePointer<share.Array>) in
+		{(ptrs:Int,ptr:UnsafeMutablePointer<share.Array>) in
 	toMutable([Copy])
-		{(fnc:UnsafeMutablePointer<share.Function>) in
-	atomicArray(Range,0,2,1,ptr,fnc,num,client)
+		{(fncs:Int,fnc:UnsafeMutablePointer<share.Function>) in
+	atomicArray(Range,0,Int32(ptrs),Int32(fncs),ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable(actives)
-		{(ptr:UnsafeMutablePointer<share.Array>) in
+		{(ptrs:Int,ptr:UnsafeMutablePointer<share.Array>) in
 	toMutable([Copy])
-		{(fnc:UnsafeMutablePointer<share.Function>) in
-	atomicArray(Active,0,1,1,ptr,fnc,num,client)
+		{(fncs:Int,fnc:UnsafeMutablePointer<share.Function>) in
+	atomicArray(Active,0,Int32(ptrs),Int32(fncs),ptr,fnc,num,client)
 		{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	toMutable([Copy,Atom,Gpu1,Gpu0])
-		{(fnc:UnsafeMutablePointer<share.Function>) in
-	clientClient(Process,0,num,4,client,fnc)
+		{(fncs:Int,fnc:UnsafeMutablePointer<share.Function>) in
+	clientClient(Process,0,num,Int32(fncs),client,fnc)
 		}}}}}}}}}}}}}}}}}}}}
 }
 
