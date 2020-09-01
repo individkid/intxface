@@ -165,16 +165,18 @@ float *minmat(float *u, int n)
 {
     int m = n*n; float v[m];
     for (int i = 0; i < m; i++) {
-        float w[m]; submat(copymat(w,u,n),i,n);
-        v[i%n*n+i/n] = detmat(w,n-1);}
+        float w[m];
+        submat(copymat(w,u,n),i,n);
+        v[i] = detmat(w,n-1);}
     return copymat(u,v,n);
 }
 
 float *cofmat(float *u, int n)
 {
     int m = n*n;
+    minmat(u,n);
     for (int i = 0; i < m; i++)
-    u[i] = ((i/n)%2!=(i%n)%2?-u[i]:u[i]);
+    u[i] = ((i/n+i%n)%2!=0?-u[i]:u[i]);
     return u;
 }
 
@@ -184,8 +186,10 @@ float detmat(float *u, int n)
     int m = n*n; float det = 0.0;
     for (int i = 0; i < n; i++) {
     float v[m];
-    float s = detmat(submat(copymat(v,u,n),i,n),n-1);
-    det += ((i/n)%2!=(i%n)%2?-s:s);}
+    submat(copymat(v,u,n),i,n);
+    float s = detmat(v,n-1);
+    s *= u[i];
+    det += ((i/n+i%n)%2!=0?-s:s);}
     return det;
 }
 
@@ -223,7 +227,7 @@ float *crossvecs(float *u, int n)
     int j = (i+1)*n-1;
     float v[m];
     float s = detmat(submat(copyvec(v,u,m),j,n),n-1);
-    w[i] = ((j/n)%2!=(j%n)%2?-s:s);}
+    w[i] = ((j/n+j%n)%2!=0?-s:s);}
     return copyvec(u,w,n);
 }
 

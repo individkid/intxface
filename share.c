@@ -120,6 +120,7 @@ void offsetVector(float *result)
 	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
 }
 
+float *submat(float *u, int i, int n);
 void transformMatrix(float *result)
 {
 	struct Mode *user = cb.state[User]->user;
@@ -134,7 +135,18 @@ void transformMatrix(float *result)
 	// first translate so pierce point is at origin
 	// then rotate about z so that rotate axis is x
 	// then rotate about x axis
-	// then undo rotate about z and translate 
+	// then undo rotate about z and translate
+	/*float res[16]; timesmat(copymat(res,mat,4),inv,4);
+	printf("res %f\n",detmat(res,4));
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			if (j == 0) printf(" ");
+			else printf(",");
+			printf("%f",res[j*4+i]);
+		}
+		printf("\n");
+	}
+	identmat(result,4);*/
 	break;}
 	case (Slide): { // translate parallel to fixed facet
 	float vec[3]; offsetVector(vec);
