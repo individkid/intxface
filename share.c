@@ -120,7 +120,6 @@ void offsetVector(float *result)
 	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
 }
 
-float *submat(float *u, int i, int n);
 void transformMatrix(float *result)
 {
 	struct Mode *user = cb.state[User]->user;
@@ -421,9 +420,8 @@ void shareRoll(double xoffset, double yoffset)
 	else if (user->click == Transform) {
 	struct Affine affine[2]; toggle = 1;
 	transformMatrix(&affine[1].val[0][0]);
-	copymat(matrix,&affine[1].val[0][0],4);
 	composeMatrix(&affine[0].val[0][0]);
-	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw2,Dma0,Gpu0);}
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),2,4,affine,Rmw2,Rmw0,Dma0,Gpu0);}
 }
 
 void shareMove(double xpos, double ypos)
@@ -435,7 +433,7 @@ void shareMove(double xpos, double ypos)
 	struct Affine affine[2]; toggle = 0;
 	transformMatrix(&affine[0].val[0][0]);
 	composeMatrix(&affine[1].val[0][0]);
-	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw2,Dma0,Gpu0);}
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),2,4,affine,Rmw2,Rmw0,Dma0,Gpu0);}
 	else if (user->click == Transform) {
 	struct Affine affine[1];
 	transformMatrix(&affine[0].val[0][0]);
@@ -448,7 +446,8 @@ void shareClick(int isright)
 	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
-	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep); offset = 0.0;
+	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
+	offset = 0.0;
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
@@ -502,12 +501,8 @@ void procRmw2() // transition between move and roll
 	if (saved[client->mem] == 0) ERROR(cb.err,-1);
 	// A = B*C
 	// A = B'*C'
-	// A = B*B'*D
-	// A = B'*B*D
-	// C = B'*D
-	// C' = B*D
-	// D = (1/B')*C
-	// C' = B*(1/B')*C
+	// B*C = B'*C'
+	// C' = (1/B')*B*C
 	// C = saved[idx]
 	// B = client[1]
 	// B' = client[0]
@@ -515,7 +510,7 @@ void procRmw2() // transition between move and roll
 	float *give0 = procMat(client,0);
 	float *give1 = procMat(client,1);
 	float inv[16]; invmat(copymat(inv,give0,4),4);
-	jumpmat(jumpmat(save,inv,4),give1,4);
+	jumpmat(jumpmat(save,give1,4),inv,4);
 }
 
 #define PROCCOPY(ENUM,FIELD,TYPE) \

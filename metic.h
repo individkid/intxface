@@ -34,6 +34,7 @@ float *copymat(float *u, float *v, int n);
 float *compmat(float *u, float *v, int n);
 float *crossmat(float *u);
 float *crossvec(float *u, float *v);
+float *submat(float *u, int i, int n);
 float *minmat(float *u, int n);
 float *cofmat(float *u, int n);
 float detmat(float *u, int n);
