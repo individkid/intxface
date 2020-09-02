@@ -51,10 +51,10 @@ void longitudeMatrix(float *result, float *vector)
 	float vec[2];
 	identmat(result,4);
 	if (!normvec(copyvec(vec,vector,2),2)) return;
-	result[0*4+0] = vec[1];
-	result[0*4+1] = vec[0];
-	result[1*4+0] = -vec[0];
-	result[1*4+1] = vec[1];
+	result[0*4+0] = vec[0];
+	result[0*4+1] = vec[1];
+	result[1*4+0] = -vec[1];
+	result[1*4+1] = vec[0];
 }
 
 void latitudeMatrix(float *result, float *vector)
@@ -129,24 +129,15 @@ void transformMatrix(float *result)
 	float vec[3]; offsetVector(vec);
 	float lon[16]; longitudeMatrix(lon,vec);
 	latitudeMatrix(result,vec);
-	float mat[16]; jumpmat(copymat(mat,piemat,4),lon,4);
+	float mat[16]; timesmat(copymat(mat,piemat,4),lon,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
+	// float test[4]; copyvec(test,pievec,3); test[3] = 1.0; jumpvec(test,inv,4);
+	// printf("test %f %f %f\n",test[0],test[1],test[2]);
 	// first translate so pierce point is at origin
 	// then rotate about z so that rotate axis is x
 	// then rotate about x axis
 	// then undo rotate about z and translate
-	/*float res[16]; timesmat(copymat(res,mat,4),inv,4);
-	printf("res %f\n",detmat(res,4));
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			if (j == 0) printf(" ");
-			else printf(",");
-			printf("%f",res[j*4+i]);
-		}
-		printf("\n");
-	}
-	identmat(result,4);*/
 	break;}
 	case (Slide): { // translate parallel to fixed facet
 	float vec[3]; offsetVector(vec);
@@ -486,7 +477,7 @@ void procRmw0() // continuation of move or roll
 	float *stat = procMat(cb.state[client->mem],client->idx);
 	float *save = procMat(saved[client->mem],client->idx);
 	float *give = procMat(client,0);
-	copymat(stat,timesmat(save,give,4),4);
+	jumpmat(copymat(stat,give,4),save,4);
 }
 
 void procRmw1() // from outside parallel since last Rmw1 or Save
@@ -655,7 +646,7 @@ void shareInit()
     for (enum Memory mem = 0; mem < Memorys; mem++) {
     shareClient(mem,0,0,1,0,Copy);}
     struct Mode mode = {0}; mode.matrix = Global;
-    mode.click = Complete; mode.move = Moves; mode.roll = Rolls;
+    mode.click = Complete; mode.move = Rotate; mode.roll = Rolls;
     shareClient(User,0,1,2,&mode,Copy,Dma0);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
 	shareClient(Subject,0,1,2,&affine,Copy,Dma0);
