@@ -29,7 +29,6 @@ pthread_t pthread = {0};
 struct Client *client = 0;
 struct Client *saved[Memorys] = {0};
 struct Callback cb = {0};
-int toggle = 0;
 float xmove = 0.0;
 float ymove = 0.0;
 float vector[3] = {0};
@@ -410,7 +409,7 @@ void shareRoll(double xoffset, double yoffset)
 	render[1][2] += dif;
 	shareRender();}
 	if (user->click == Transform) {
-	struct Affine affine[2]; toggle = 1;
+	struct Affine affine[2];
 	transformMatrix(&affine[1].val[0][0]);
 	copymat(matrix,&affine[1].val[0][0],4);
 	composeMatrix(&affine[0].val[0][0]);
@@ -424,7 +423,7 @@ void shareMove(double xpos, double ypos)
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
 	if (user->click == Transform) {
-	struct Affine affine[2]; toggle = 1;
+	struct Affine affine[2];
 	transformMatrix(&affine[1].val[0][0]);
 	copymat(matrix,&affine[1].val[0][0],4);
 	composeMatrix(&affine[0].val[0][0]);
@@ -443,7 +442,6 @@ void shareClick(int isright)
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
 	offset = 0.0;
-	toggle = 0;
 	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
 	user.click = shareMachine(user.click,isright);
 	shareClient(User,0,1,1,&user,Copy);
