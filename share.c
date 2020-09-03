@@ -131,12 +131,6 @@ void transformMatrix(float *result)
 	float mat[16]; timesmat(copymat(mat,piemat,4),lon,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
-	// float test[4]; copyvec(test,pievec,3); test[3] = 1.0; jumpvec(test,inv,4);
-	// printf("test %f %f %f\n",test[0],test[1],test[2]);
-	// first translate so pierce point is at origin
-	// then rotate about z so that rotate axis is x
-	// then rotate about x axis
-	// then undo rotate about z and translate
 	break;}
 	case (Slide): { // translate parallel to fixed facet
 	float vec[3]; offsetVector(vec);
@@ -413,15 +407,13 @@ void shareRoll(double xoffset, double yoffset)
 	if (render[0][2] > render[1][2]+dif+cb.conf(DefaultStop))
 	render[1][2] += dif;
 	shareRender();}
-	else if (user->click == Transform && toggle) {
-	struct Affine affine[1];
-	composeMatrix(&affine[0].val[0][0]);
-	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
-	else if (user->click == Transform) {
+	if (user->click == Transform) {
 	struct Affine affine[2]; toggle = 1;
 	transformMatrix(&affine[1].val[0][0]);
+	copymat(matrix,&affine[1].val[0][0],4);
 	composeMatrix(&affine[0].val[0][0]);
-	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),2,4,affine,Rmw2,Rmw0,Dma0,Gpu0);}
+	timesmat(&affine[0].val[0][0],&affine[1].val[0][0],4);
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
 }
 
 void shareMove(double xpos, double ypos)
@@ -429,14 +421,12 @@ void shareMove(double xpos, double ypos)
 	xmove = xpos; ymove = ypos;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
-	if (user->click == Transform && toggle) {
-	struct Affine affine[2]; toggle = 0;
-	transformMatrix(&affine[0].val[0][0]);
-	composeMatrix(&affine[1].val[0][0]);
-	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),2,4,affine,Rmw2,Rmw0,Dma0,Gpu0);}
-	else if (user->click == Transform) {
-	struct Affine affine[1];
-	transformMatrix(&affine[0].val[0][0]);
+	if (user->click == Transform) {
+	struct Affine affine[2]; toggle = 1;
+	transformMatrix(&affine[1].val[0][0]);
+	copymat(matrix,&affine[1].val[0][0],4);
+	composeMatrix(&affine[0].val[0][0]);
+	timesmat(&affine[0].val[0][0],&affine[1].val[0][0],4);
 	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
 	else sharePierce();
 }
@@ -447,10 +437,10 @@ void shareClick(int isright)
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
 	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
-	offset = 0.0;
 	normalMatrix(normat,norvec);
 	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
+	offset = 0.0;
 	toggle = 0;
 	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
 	user.click = shareMachine(user.click,isright);
@@ -641,7 +631,7 @@ void shareInit()
     for (enum Memory mem = 0; mem < Memorys; mem++) {
     shareClient(mem,0,0,1,0,Copy);}
     struct Mode mode = {0}; mode.matrix = Global;
-    mode.click = Complete; mode.move = Rotate; mode.roll = Rolls;
+    mode.click = Complete; mode.move = Rotate; mode.roll = Cylinder;
     shareClient(User,0,1,2,&mode,Copy,Dma0);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
 	shareClient(Subject,0,1,2,&affine,Copy,Dma0);
