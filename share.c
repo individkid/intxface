@@ -113,7 +113,6 @@ void fixedMatrix(float *result, float *pierce)
 
 void offsetVector(float *result)
 {
-	struct Mode *user = cb.state[User]->user;
 	float cur[3]; cur[0] = xmove; cur[1] = ymove;
 	cur[2] = vector[2];
 	float pix[3]; pix[2] = 0.0;
@@ -123,8 +122,7 @@ void offsetVector(float *result)
 
 void transformMatrix(float *result)
 {
-	struct Mode *user = cb.state[User]->user;
-	switch (user->move) {
+	switch (cb.state[User]->user->move) {
 	case (Rotate): { // rotate about fixed pierce point
 	float vec[3]; offsetVector(vec);
 	float lon[16]; longitudeMatrix(lon,vec);
@@ -151,9 +149,7 @@ void transformMatrix(float *result)
 
 void composeMatrix(float *result)
 {
-	float mat[16];
-	struct Mode *user = cb.state[User]->user;
-	switch (user->roll) {
+	switch (cb.state[User]->user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
 	angleMatrix(result,offset);
 	float mat[16]; jumpmat(copymat(mat,piemat,4),matrix,4);
@@ -638,10 +634,10 @@ void shareInit()
 	shareClient(Object,0,1,2,&affine,Copy,Dma0);
 	shareClient(Feature,0,1,2,&affine,Copy,Dma0);
 	double wide = cb.conf(DefaultWide); double high = cb.conf(DefaultHigh);
-	double xpos = -wide/2.0; double ypos = -high/2.0; double zpos = 0.0;
 	double deep = cb.conf(DefaultDeep); double leng = cb.conf(DefaultLong);
+	double xhalf = wide/2.0; double yhalf = high/2.0; double zhalf = deep/2.0;
+	double xpos = -xhalf; double ypos = -yhalf; double zpos = -zhalf;
 	double xmax = cb.conf(ScreenWide); double ymax = cb.conf(ScreenHigh);
-	double xhalf = wide/2.0; double yhalf = high/2.0;
 	struct Linear linear = {0};
 	linear.val[1][1] = linear.val[2][2] = xhalf/2.0;
 	linear.val[4][2] = linear.val[5][0] = xhalf/2.0;
