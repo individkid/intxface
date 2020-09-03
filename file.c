@@ -15,6 +15,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// share state change
+
 #include "face.h"
 #include "type.h"
 #include <pthread.h>

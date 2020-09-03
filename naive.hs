@@ -1,4 +1,4 @@
- --
+--
 --    naive.hs
 --
 --    This program is free software: you can redistribute it and/or modify
@@ -14,6 +14,8 @@
 --    You should have received a copy of the GNU General Public License
 --    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --
+
+-- symbolic numeric geometric
 
 module Naive where
 
