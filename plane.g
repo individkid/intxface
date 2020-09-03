@@ -252,7 +252,7 @@ float4 perspective(
    const device State *state)
 {
    float3 result;
-   result.z = given.z/state->picture.z;
+   result.z = (given.z+state->picture.z)/(2.0*state->picture.z);
    float ratio = (given.z-state->focal.z)/(state->picture.z-state->focal.z);
    result.x = (given.x-state->focal.x)/(state->picture.x-state->focal.x);
    result.y = (given.y-state->focal.y)/(state->picture.y-state->focal.y);
