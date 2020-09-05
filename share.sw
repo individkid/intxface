@@ -256,11 +256,11 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	if (buffer.length < size*MemoryLayout<Pierce>.size) {cb.err(#file,#line,-1);return}
 	var found:Pierce = Pierce()
-	/*guard let focal = getMemory(share.Pierce,0,{$0.pierce}) else {cb.err(#file,#line,-1);return}
-	let xpos = focal.val.0; let ypos = focal.val.1
+	guard let cursor = getMemory(share.Archer,0,{$0.archer}) else {cb.err(#file,#line,-1);return}
+	let xpos = cursor.val.0; let ypos = cursor.val.1
 	found.point.val.0 = xpos; found.normal.val.0 = 0.0
 	found.point.val.1 = ypos; found.normal.val.1 = 0.0
-	found.point.val.2 = 0.0; found.normal.val.2 = 1.0*/
+	found.point.val.2 = 0.0; found.normal.val.2 = 1.0
 	var index = size
 	let raw = buffer.contents()
 	let siz = MemoryLayout<Pierce>.size
