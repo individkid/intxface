@@ -111,6 +111,21 @@ void fixedMatrix(float *result, float *pierce)
 	translateMatrix(result,pierce);
 }
 
+void affineMatrix(float *result)
+{
+	float inv[16]; invmat(copymat(inv,&saved[Subject]->subject->val[0][0],4),4);
+	// TODO depending on object, apply Object and Feature
+	jumpmat(result,inv,4);
+}
+
+void linearMatrix(float *result)
+{
+	return; // TODO
+	float inv[9]; invmat(copyary(inv,&saved[Subject]->subject->val[0][0],3,4,9),3);
+	// TODO depending on object, apply Object and Feature
+	jumpmat(result,inv,3);
+}
+
 void offsetVector(float *result)
 {
 	float cur[3]; cur[0] = xmove; cur[1] = ymove;
@@ -118,7 +133,6 @@ void offsetVector(float *result)
 	float pix[3]; pix[2] = 0.0;
 	for (int i = 0; i < 2; i++) pix[i] = vector[i];
 	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
-	// TODO apply 3x3 inv of saved
 }
 
 void transformMatrix(float *result)
@@ -310,8 +324,8 @@ void shareClick(int isright)
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
 	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
-	normalMatrix(normat,norvec); // TODO apply 3x3 inverse of saved here instead of in procPierce
-	fixedMatrix(piemat,pievec); // TODO apply inverse of saved here instead of in procPierce
+	normalMatrix(normat,norvec); linearMatrix(normat);
+	fixedMatrix(piemat,pievec); affineMatrix(piemat);
 	identmat(matrix,4);
 	offset = 0.0;
 	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
@@ -536,11 +550,9 @@ void procCopy(struct Client **ptr)
 
 void procPierce()
 {
-	object = client->idx; // TODO get polytope and apply Object and Feature
-	float mat[16]; invmat(copymat(mat,&saved[Subject]->subject->val[0][0],4),4);
-	float vec[4]; copyvec(vec,client->pierce[0].val,3); vec[3] = 1.0;
-	copyvec(pievec,jumpvec(vec,mat,4),3);
-	memcpy(norvec,client->pierce[1].val,sizeof(norvec)); // TODO apply 3x3 inv
+	object = client->idx;
+	memcpy(pievec,client->pierce[0].val,sizeof(pievec));
+	memcpy(norvec,client->pierce[1].val,sizeof(norvec));
 }
 
 void procMetric()
