@@ -118,6 +118,7 @@ void offsetVector(float *result)
 	float pix[3]; pix[2] = 0.0;
 	for (int i = 0; i < 2; i++) pix[i] = vector[i];
 	plusvec(copyvec(result,cur,3),scalevec(pix,-1.0,3),3);
+	// TODO apply 3x3 inv of saved
 }
 
 void transformMatrix(float *result)
@@ -309,8 +310,8 @@ void shareClick(int isright)
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
 	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
-	normalMatrix(normat,norvec);
-	fixedMatrix(piemat,pievec);
+	normalMatrix(normat,norvec); // TODO apply 3x3 inverse of saved here instead of in procPierce
+	fixedMatrix(piemat,pievec); // TODO apply inverse of saved here instead of in procPierce
 	identmat(matrix,4);
 	offset = 0.0;
 	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
@@ -535,7 +536,6 @@ void procCopy(struct Client **ptr)
 
 void procPierce()
 {
-	// TODO correct tip direction for upside down or front to back
 	object = client->idx; // TODO get polytope and apply Object and Feature
 	float mat[16]; invmat(copymat(mat,&saved[Subject]->subject->val[0][0],4),4);
 	float vec[4]; copyvec(vec,client->pierce[0].val,3); vec[3] = 1.0;
