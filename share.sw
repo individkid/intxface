@@ -256,11 +256,11 @@ func swiftReady(_ buffer:MTLBuffer, _ size:Int)
 {
 	if (buffer.length < size*MemoryLayout<Pierce>.size) {cb.err(#file,#line,-1);return}
 	var found:Pierce = Pierce()
-	guard let focal = getMemory(share.Pierce,0,{$0.pierce}) else {cb.err(#file,#line,-1);return}
+	/*guard let focal = getMemory(share.Pierce,0,{$0.pierce}) else {cb.err(#file,#line,-1);return}
 	let xpos = focal.val.0; let ypos = focal.val.1
 	found.point.val.0 = xpos; found.normal.val.0 = 0.0
 	found.point.val.1 = ypos; found.normal.val.1 = 0.0
-	found.point.val.2 = 0.0; found.normal.val.2 = 1.0
+	found.point.val.2 = 0.0; found.normal.val.2 = 1.0*/
 	var index = size
 	let raw = buffer.contents()
 	let siz = MemoryLayout<Pierce>.size
@@ -442,9 +442,9 @@ func swiftDma(_ mem:share.Memory, _ idx:CInt, _ siz:CInt)
 	case (share.Render):
 	form.set(getMemory(mem,0,{$0.render}),\Form.focal)
 	form.set(getMemory(mem,1,{$0.render}),\Form.picture)
-	case (share.Pierce):
-	form.set(getMemory(mem,0,{$0.pierce}),\Form.feather)
-	form.set(getMemory(mem,1,{$0.pierce}),\Form.arrow)
+	case (share.Archer):
+	form.set(getMemory(mem,0,{$0.archer}),\Form.feather)
+	form.set(getMemory(mem,1,{$0.archer}),\Form.arrow)
 	case (share.Cloud):
 	let memory = getMemory(mem,Int(idx),Int(siz),{$0.cloud})
 	cloud.set(memory,Int(idx))
@@ -558,6 +558,8 @@ func loopConf(_ config:share.Config) -> Double
 	case (share.DefaultDeep): return Double(WINDEEP)
 	case (share.DefaultLong): return Double(WINLONG)
 	case (share.DefaultStop): return Double(WINSTOP)
+	case (share.DefaultUnit): return Double(LENGTH)
+	case (share.DefaultPole): return Double(ANGLE)
 	case (share.ScreenWide): return Double(screen.maxX)
 	case (share.ScreenHigh): return Double(screen.maxY)
 	case (share.LeverDeep): return Double(TIPDEEP)

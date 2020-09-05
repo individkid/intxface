@@ -27,7 +27,8 @@ enum Config {
 	PictureWide,PictureHigh,PictureDeep,
 	DefaultWide,DefaultHigh,
 	DefaultDeep,DefaultLong,DefaultStop,
-	ScreenWide,ScreenHigh, LeverDeep,
+	DefaultUnit,DefaultPole,
+	ScreenWide,ScreenHigh,LeverDeep,
 };
 
 struct Callback {

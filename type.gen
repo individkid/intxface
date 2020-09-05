@@ -62,12 +62,10 @@ Source = {
 Function = {
 	"Rmw0", -- update matrix from user
 	"Rmw1", -- update matrix from other
-	"Rmw2", -- update matrix from recompose
 	"Copy", -- directly update current matrix
 	"Save", -- directly update saved matrix
 	"Dma0", -- transfer single to gpu
-	"Dma1", -- transfer closest from gpu
-	"Dma2", -- transfer multiple to gpu
+	"Dma1", -- transfer multiple to gpu
 	"Gpu0", -- update display
 	"Gpu1", -- find pierce point
 	"Port", -- send metric
@@ -85,8 +83,9 @@ Memory = {
 	"Object", -- transform file points
 	"Feature", -- transform plane points
 	"Render", -- apply clipping perspective
-	"Pierce", -- find pierce point
+	"Archer", -- find pierce point
 	"Cloud", -- find collisions
+	"Pierce", -- found pierce point
 	"User", -- interpret mouse
 	"Process", -- functions to apply atomically
 }
@@ -211,17 +210,19 @@ Array = {
 	{"idx","int",{},{}},
 	{"siz","int",{},{}},
 }
-Affine = {
-	{"val","float",{},{4,4}},
-}
 Linear = {
 	{"val","float",{},{9,4}},
+}
+Affine = {
+	{"val","float",{},{4,4}},
 }
 Vector = {
 	{"val","float",{},{4}},
 }
-Cursor = {
-	{"val","float",{},{2}},
+Result = {
+	{"plane","int",{},{}},
+	{"point","float",{},{4}},
+	{"normal","float",{},{4}},
 }
 Mode = {
 	{"matrix","Matrix",{},{}},
@@ -247,8 +248,9 @@ Client = {
 	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},
 	{"feature","Affine",{["mem"]={["Feature"]=true}},"siz"},
 	{"render","Vector",{["mem"]={["Render"]=true}},"siz"},
-	{"pierce","Vector",{["mem"]={["Pierce"]=true}},"siz"},
+	{"archer","Vector",{["mem"]={["Archer"]=true}},"siz"},
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
+	{"pierce","Result",{["mem"]={["Pierce"]=true}},"siz"},
 	{"user","Mode",{["mem"]={["User"]=true}},"siz"},
 	{"process","Client",{["mem"]={["Process"]=true}},"siz"},
 }

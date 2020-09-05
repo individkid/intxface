@@ -34,11 +34,8 @@ float ymove = 0.0;
 float vector[3] = {0};
 float offset = 0.0;
 float matrix[16] = {0};
-float piemat[16] = {0};
-float normat[16] = {0};
-float pievec[3] = {0};
-float norvec[3] = {0};
-int object = 0;
+float pierce[16] = {0};
+float normal[16] = {0};
 float render[3][3] = {0};
 
 void exiterr(const char *str, int num, int arg)
@@ -102,8 +99,11 @@ void scaleMatrix(float *result, float scale)
 void inverseMatrix(float *result)
 {
 	identmat(result,4);
-	if (object == cb.state[User]->user->hand) jumpmat(result,&saved[Feature]->feature->val[0][0],4);
-	if (object < saved[Object]->siz) jumpmat(result,&saved[Object]->object[object].val[0][0],4);
+	int plane = cb.state[Pierce]->pierce->plane;
+	if (plane == cb.state[User]->user->hand)
+		jumpmat(result,&saved[Feature]->feature->val[0][0],4);
+	if (plane < saved[Object]->siz)
+		jumpmat(result,&saved[Object]->object[plane].val[0][0],4);
 	invmat(jumpmat(result,&saved[Subject]->subject->val[0][0],4),4);
 }
 
@@ -140,14 +140,14 @@ void transformMatrix(float *result)
 	float vec[3]; offsetVector(vec);
 	float lon[16]; longitudeMatrix(lon,vec);
 	latitudeMatrix(result,vec);
-	float mat[16]; timesmat(copymat(mat,piemat,4),lon,4);
+	float mat[16]; timesmat(copymat(mat,pierce,4),lon,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slide): { // translate parallel to fixed facet
 	float vec[3]; offsetVector(vec);
 	translateMatrix(result,vec);
-	float mat[16]; copymat(mat,normat,4);
+	float mat[16]; copymat(mat,normal,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -165,31 +165,31 @@ void composeMatrix(float *result)
 	switch (cb.state[User]->user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
 	angleMatrix(result,offset);
-	float mat[16]; jumpmat(copymat(mat,piemat,4),matrix,4);
+	float mat[16]; jumpmat(copymat(mat,pierce,4),matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Clock): { // rotate with fixed normal to picture plane
 	angleMatrix(result,offset);
-	float mat[16]; copymat(mat,piemat,4);
+	float mat[16]; copymat(mat,pierce,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Compass): { // rotate with fixed normal to facet
 	angleMatrix(result,offset);
-	float mat[16]; jumpmat(jumpmat(copymat(mat,piemat,4),normat,4),matrix,4);
+	float mat[16]; jumpmat(jumpmat(copymat(mat,pierce,4),normal,4),matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Normal): { // translate with fixed normal to facet
 	lengthMatrix(result,offset);
-	float mat[16]; copymat(mat,normat,4);
+	float mat[16]; copymat(mat,normal,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Balloon): { // scale with fixed pierce point
 	scaleMatrix(result,offset);
-	float mat[16]; copymat(mat,piemat,4);
+	float mat[16]; copymat(mat,pierce,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -212,7 +212,7 @@ int shareIndex(enum Matrix matrix)
 {
 	switch (matrix) {
 	case (Global): return 0;
-	case (Several): return object;
+	case (Several): return cb.state[Pierce]->pierce->plane;
 	case (Single): return 0;
 	default: ERROR(cb.err,-1);}
 	return 0;
@@ -222,7 +222,7 @@ struct Affine *shareAffine(enum Matrix matrix)
 {
 	switch (matrix) {
 	case (Global): return cb.state[Subject]->subject;
-	case (Several): return cb.state[Object]->object+object;
+	case (Several): return cb.state[Object]->object+cb.state[Pierce]->pierce->plane;
 	case (Single): return cb.state[Feature]->feature;
 	default: ERROR(cb.err,-1);}
 	return 0;
@@ -238,13 +238,14 @@ enum Click shareMachine(enum Click click, int isright)
 }
 
 void shareClient(enum Memory mem, int idx, int siz, int len, ...);
-void shareWrite(struct Vector *point, struct Vector *normal, int object)
+void shareWrite(struct Vector *point, struct Vector *normal, int plane)
 {
-	struct Vector vector[2];
+	struct Result result;
+	result.plane = plane;
 	for (int i = 0; i < 3; i++) {
-	vector[0].val[i] = point->val[i];
-	vector[1].val[i] = normal->val[i];}
-	shareClient(Pierce,object,2,1,vector,Dma1);
+	result.point[i] = point->val[i];
+	result.normal[i] = normal->val[i];}
+	shareClient(Pierce,0,1,1,&result,Copy);
 }
 
 void shareRender()
@@ -265,7 +266,7 @@ void sharePierce()
 	float ratio = (vector[1].val[2]-render[0][2])/(render[1][2]-render[0][2]);
 	vector[1].val[0] *= ratio;
 	vector[1].val[1] *= ratio;
-	shareClient(Pierce,0,2,3,vector,Copy,Dma0,Gpu1);
+	shareClient(Archer,0,2,3,vector,Copy,Dma0,Gpu1);
 }
 
 void shareDrag(double xmid, double ymid, double xmax, double ymax)
@@ -280,10 +281,10 @@ void shareDrag(double xmid, double ymid, double xmax, double ymax)
 void shareRoll(double xoffset, double yoffset)
 {
 	if (yoffset == 0.0) return;
-	offset += yoffset*ANGLE;
+	offset += yoffset*cb.conf(DefaultPole);
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
-	float dif = yoffset*LENGTH;
+	float dif = yoffset*cb.conf(DefaultUnit);
 	if (user->click == Transform && user->roll == Focal) {
 	if (render[0][2]+dif > render[1][2]+cb.conf(DefaultStop))
 	render[0][2] += dif;
@@ -322,8 +323,8 @@ void shareClick(int isright)
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
 	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
-	normalMatrix(normat,norvec);
-	fixedMatrix(piemat,pievec);
+	normalMatrix(normal,cb.state[Pierce]->pierce->normal);
+	fixedMatrix(pierce,cb.state[Pierce]->pierce->point);
 	identmat(matrix,4);
 	offset = 0.0;
 	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
@@ -360,8 +361,9 @@ void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 	SHARECLIENT1(Object,client,object,va_arg(args,struct Affine *));
 	SHARECLIENT1(Feature,client,feature,va_arg(args,struct Affine *));
 	SHARECLIENT1(Render,client,render,va_arg(args,struct Vector *));
-	SHARECLIENT1(Pierce,client,pierce,va_arg(args,struct Vector *));
+	SHARECLIENT1(Archer,client,archer,va_arg(args,struct Vector *));
 	SHARECLIENT1(Cloud,client,cloud,va_arg(args,struct Vector *));
+	SHARECLIENT1(Pierce,client,pierce,va_arg(args,struct Result *));
 	SHARECLIENT1(User,client,user,va_arg(args,struct Mode *));
 	SHARECLIENT1(Process,client,process,va_arg(args,struct Client *));
 	SHARECLIENT2;
@@ -407,7 +409,8 @@ SHARECLIENS(int,Int,Base,base)
 SHARECLIENSS(struct Array,Array,Range,range,Active,active)
 SHARECLIENS(struct Linear,Linear,Basis,basis)
 SHARECLIENSSS(struct Affine,Affine,Subject,subject,Object,object,Feature,feature)
-SHARECLIENSSS(struct Vector,Vector,Render,render,Pierce,pierce,Cloud,cloud)
+SHARECLIENSSS(struct Vector,Vector,Render,render,Archer,archer,Cloud,cloud)
+SHARECLIENS(struct Result,Result,Pierce,pierce)
 SHARECLIENS(struct Mode,Mode,User,user)
 SHARECLIENS(struct Client,Client,Process,process)
 #define SHARECLIENT(TYP,NAM,MEM,FLD) \
@@ -453,7 +456,8 @@ SHARECLIENT(int,Int,Base,base)
 SHARECLIENTT(struct Array,Array,Range,range,Active,active)
 SHARECLIENT(struct Linear,Linear,Basis,basis)
 SHARECLIENTTT(struct Affine,Affine,Subject,subject,Object,object,Feature,feature)
-SHARECLIENTTT(struct Vector,Vector,Render,render,Pierce,pierce,Cloud,cloud)
+SHARECLIENTTT(struct Vector,Vector,Render,render,Archer,archer,Cloud,cloud)
+SHARECLIENT(struct Result,Result,Pierce,pierce)
 SHARECLIENT(struct Mode,Mode,User,user)
 SHARECLIENT(struct Client,Client,Process,process)
 
@@ -479,7 +483,7 @@ void procRmw0() // continuation of move or roll
 	jumpmat(copymat(stat,give,4),save,4);
 }
 
-void procRmw1() // from outside parallel since last Rmw1 or Save
+void procRmw1() // from outside parallel since last Rmw1 or Port
 {
 	if (cb.state[client->mem] == 0) ERROR(cb.err,-1);
 	if (saved[client->mem] == 0) ERROR(cb.err,-1);
@@ -494,23 +498,6 @@ void procRmw1() // from outside parallel since last Rmw1 or Save
 	float *save = procMat(saved[client->mem],client->idx); invmat(save,4);
 	float *stat = procMat(cb.state[client->mem],client->idx); timesmat(stat,save,4);
 	float *give = procMat(client,0); copymat(save,give,4); timesmat(stat,give,4);
-}
-
-void procRmw2() // transition between move and roll
-{
-	if (saved[client->mem] == 0) ERROR(cb.err,-1);
-	// A = B*C
-	// A = B'*C'
-	// B*C = B'*C'
-	// C' = (1/B')*B*C
-	// C = saved[idx]
-	// B = client[1]
-	// B' = client[0]
-	float *save = procMat(saved[client->mem],client->idx);
-	float *give0 = procMat(client,0);
-	float *give1 = procMat(client,1);
-	float inv[16]; invmat(copymat(inv,give0,4),4);
-	jumpmat(jumpmat(save,give1,4),inv,4);
 }
 
 #define PROCCOPY(ENUM,FIELD,TYPE) \
@@ -539,18 +526,12 @@ void procCopy(struct Client **ptr)
 	PROCCOPY(Object,object,Affine);
 	PROCCOPY(Feature,feature,Affine);
 	PROCCOPY(Render,render,Vector);
-	PROCCOPY(Pierce,pierce,Vector);
+	PROCCOPY(Archer,archer,Vector);
 	PROCCOPY(Cloud,cloud,Vector);
+	PROCCOPY(Pierce,pierce,Result);
 	PROCCOPY(User,user,Mode);
 	PROCCOPY(Process,process,Client);
 	ERROR(cb.err,-1);
-}
-
-void procPierce()
-{
-	object = client->idx;
-	memcpy(pievec,client->pierce[0].val,sizeof(pievec));
-	memcpy(norvec,client->pierce[1].val,sizeof(norvec));
 }
 
 void procMetric()
@@ -580,12 +561,10 @@ void shareProc()
 	switch (client->fnc[i]) {
 	case (Rmw0): procRmw0(); break;
 	case (Rmw1): procRmw1(); break;
-	case (Rmw2): procRmw2(); break;
 	case (Copy): procCopy(cb.state); break;
 	case (Save): procCopy(saved); break;
 	case (Dma0): cb.dma(client->mem,client->idx,1); break;
-	case (Dma1): procPierce(); break;
-	case (Dma2): cb.dma(client->mem,client->idx,client->siz); break;
+	case (Dma1): cb.dma(client->mem,client->idx,client->siz); break;
 	case (Gpu0): cb.draw(Display); break;
 	case (Gpu1): cb.draw(Track); break;
 	case (Port): procMetric(); break;
