@@ -224,6 +224,100 @@ enum Click shareMachine(enum Click click, int isright)
 	return click;
 }
 
+void shareClient(enum Memory mem, int idx, int siz, int len, ...);
+void shareWrite(struct Vector *point, struct Vector *normal, int object)
+{
+	struct Vector vector[2];
+	for (int i = 0; i < 3; i++) {
+	vector[0].val[i] = point->val[i];
+	vector[1].val[i] = normal->val[i];}
+	shareClient(Pierce,object,2,1,vector,Dma1);
+}
+
+void shareRender()
+{
+	struct Vector vector[2];
+	for (int i = 0; i < 3; i++) {
+	vector[0].val[i] = render[0][i];
+	vector[1].val[i] = render[1][i];}
+	shareClient(Render,0,2,3,vector,Copy,Dma0,Gpu0);
+}
+
+void sharePierce()
+{
+	struct Vector vector[2];
+	vector[1].val[0] = vector[0].val[0] = xmove - render[1][0];
+	vector[1].val[1] = vector[0].val[1] = ymove - render[1][1];
+	vector[1].val[2] = 0.0; vector[0].val[2] = render[1][2];
+	float ratio = (vector[1].val[2]-render[0][2])/(render[1][2]-render[0][2]);
+	vector[1].val[0] *= ratio;
+	vector[1].val[1] *= ratio;
+	shareClient(Pierce,0,2,3,vector,Copy,Dma0,Gpu1);
+}
+
+void shareDrag(double xmid, double ymid, double xmax, double ymax)
+{
+	render[0][0] = xmid;
+	render[0][1] = ymid;
+	render[1][0] = xmax;
+	render[1][1] = ymax;
+	shareRender();
+}
+
+void shareRoll(double xoffset, double yoffset)
+{
+	if (yoffset == 0.0) return;
+	offset += yoffset*ANGLE;
+	if (cb.state[User] == 0) ERROR(cb.err,-1);
+	struct Mode *user = cb.state[User]->user;
+	float dif = yoffset*LENGTH;
+	if (user->click == Transform && user->roll == Focal) {
+	if (render[0][2]+dif > render[1][2]+cb.conf(DefaultStop))
+	render[0][2] += dif;
+	shareRender();}
+	else if (user->click == Transform && user->roll == Picture) {
+	if (render[0][2] > render[1][2]+dif+cb.conf(DefaultStop))
+	render[1][2] += dif;
+	shareRender();}
+	if (user->click == Transform) {
+	struct Affine affine[2];
+	transformMatrix(&affine[1].val[0][0]);
+	copymat(matrix,&affine[1].val[0][0],4);
+	composeMatrix(&affine[0].val[0][0]);
+	timesmat(&affine[0].val[0][0],&affine[1].val[0][0],4);
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
+}
+
+void shareMove(double xpos, double ypos)
+{
+	xmove = xpos; ymove = ypos;
+	if (cb.state[User] == 0) ERROR(cb.err,-1);
+	struct Mode *user = cb.state[User]->user;
+	if (user->click == Transform) {
+	struct Affine affine[2];
+	transformMatrix(&affine[1].val[0][0]);
+	copymat(matrix,&affine[1].val[0][0],4);
+	composeMatrix(&affine[0].val[0][0]);
+	timesmat(&affine[0].val[0][0],&affine[1].val[0][0],4);
+	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
+	else sharePierce();
+}
+
+void shareClick(int isright)
+{
+	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
+	struct Mode user = *cb.state[User]->user;
+	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
+	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
+	normalMatrix(normat,norvec);
+	fixedMatrix(piemat,pievec);
+	identmat(matrix,4);
+	offset = 0.0;
+	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
+	user.click = shareMachine(user.click,isright);
+	shareClient(User,0,1,1,&user,Copy);
+}
+
 #define SHARECLIENT0(REC,PTR) \
 	REC.fnc = PTR; \
 	REC.mem = mem; \
@@ -350,99 +444,6 @@ SHARECLIENTTT(struct Vector,Vector,Render,render,Pierce,pierce,Cloud,cloud)
 SHARECLIENT(struct Mode,Mode,User,user)
 SHARECLIENT(struct Client,Client,Process,process)
 
-void shareWrite(struct Vector *point, struct Vector *normal, int object)
-{
-	struct Vector vector[2];
-	for (int i = 0; i < 3; i++) {
-	vector[0].val[i] = point->val[i];
-	vector[1].val[i] = normal->val[i];}
-	shareClient(Pierce,object,2,1,vector,Dma1);
-}
-
-void shareRender()
-{
-	struct Vector vector[2];
-	for (int i = 0; i < 3; i++) {
-	vector[0].val[i] = render[0][i];
-	vector[1].val[i] = render[1][i];}
-	shareClient(Render,0,2,3,vector,Copy,Dma0,Gpu0);
-}
-
-void sharePierce()
-{
-	struct Vector vector[2];
-	vector[1].val[0] = vector[0].val[0] = xmove - render[1][0];
-	vector[1].val[1] = vector[0].val[1] = ymove - render[1][1];
-	vector[1].val[2] = 0.0; vector[0].val[2] = render[1][2];
-	float ratio = (vector[1].val[2]-render[0][2])/(render[1][2]-render[0][2]);
-	vector[1].val[0] *= ratio;
-	vector[1].val[1] *= ratio;
-	shareClient(Pierce,0,2,3,vector,Copy,Dma0,Gpu1);
-}
-
-void shareDrag(double xmid, double ymid, double xmax, double ymax)
-{
-	render[0][0] = xmid;
-	render[0][1] = ymid;
-	render[1][0] = xmax;
-	render[1][1] = ymax;
-	shareRender();
-}
-
-void shareRoll(double xoffset, double yoffset)
-{
-	if (yoffset == 0.0) return;
-	offset += yoffset*ANGLE;
-	if (cb.state[User] == 0) ERROR(cb.err,-1);
-	struct Mode *user = cb.state[User]->user;
-	float dif = yoffset*LENGTH;
-	if (user->click == Transform && user->roll == Focal) {
-	if (render[0][2]+dif > render[1][2]+cb.conf(DefaultStop))
-	render[0][2] += dif;
-	shareRender();}
-	else if (user->click == Transform && user->roll == Picture) {
-	if (render[0][2] > render[1][2]+dif+cb.conf(DefaultStop))
-	render[1][2] += dif;
-	shareRender();}
-	if (user->click == Transform) {
-	struct Affine affine[2];
-	transformMatrix(&affine[1].val[0][0]);
-	copymat(matrix,&affine[1].val[0][0],4);
-	composeMatrix(&affine[0].val[0][0]);
-	timesmat(&affine[0].val[0][0],&affine[1].val[0][0],4);
-	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
-}
-
-void shareMove(double xpos, double ypos)
-{
-	xmove = xpos; ymove = ypos;
-	if (cb.state[User] == 0) ERROR(cb.err,-1);
-	struct Mode *user = cb.state[User]->user;
-	if (user->click == Transform) {
-	struct Affine affine[2];
-	transformMatrix(&affine[1].val[0][0]);
-	copymat(matrix,&affine[1].val[0][0],4);
-	composeMatrix(&affine[0].val[0][0]);
-	timesmat(&affine[0].val[0][0],&affine[1].val[0][0],4);
-	shareClient(shareMemory(user->matrix),shareIndex(user->matrix),1,3,affine,Rmw0,Dma0,Gpu0);}
-	else sharePierce();
-}
-
-void shareClick(int isright)
-{
-	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
-	struct Mode user = *cb.state[User]->user;
-	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
-	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
-	normalMatrix(normat,norvec);
-	fixedMatrix(piemat,pievec);
-	identmat(matrix,4);
-	offset = 0.0;
-	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
-	user.click = shareMachine(user.click,isright);
-	shareClient(User,0,1,1,&user,Copy);
-}
-
 float *procMat(struct Client *client, int idx)
 {
 	switch (client->mem) {
@@ -534,9 +535,12 @@ void procCopy(struct Client **ptr)
 
 void procPierce()
 {
-	memcpy(pievec,client->pierce[0].val,sizeof(pievec));
-	memcpy(norvec,client->pierce[1].val,sizeof(norvec));
-	object = client->idx;
+	// TODO correct tip direction for upside down or front to back
+	object = client->idx; // TODO get polytope and apply Object and Feature
+	float mat[16]; invmat(copymat(mat,&saved[Subject]->subject->val[0][0],4),4);
+	float vec[4]; copyvec(vec,client->pierce[0].val,3); vec[3] = 1.0;
+	copyvec(pievec,jumpvec(vec,mat,4),3);
+	memcpy(norvec,client->pierce[1].val,sizeof(norvec)); // TODO apply 3x3 inv
 }
 
 void procMetric()
@@ -630,13 +634,13 @@ void shareInit()
     mode.click = Complete; mode.move = Rotate; mode.roll = Cylinder;
     shareClient(User,0,1,2,&mode,Copy,Dma0);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
-	shareClient(Subject,0,1,2,&affine,Copy,Dma0);
-	shareClient(Object,0,1,2,&affine,Copy,Dma0);
-	shareClient(Feature,0,1,2,&affine,Copy,Dma0);
+	shareClient(Subject,0,1,3,&affine,Save,Copy,Dma0);
+	shareClient(Object,0,1,3,&affine,Save,Copy,Dma0);
+	shareClient(Feature,0,1,3,&affine,Save,Copy,Dma0);
 	double wide = cb.conf(DefaultWide); double high = cb.conf(DefaultHigh);
 	double deep = cb.conf(DefaultDeep); double leng = cb.conf(DefaultLong);
 	double xhalf = wide/2.0; double yhalf = high/2.0; double zhalf = deep/2.0;
-	double xpos = -xhalf; double ypos = -yhalf; double zpos = -zhalf;
+	double xpos = -xhalf; double ypos = -yhalf; double zpos = 0.0;
 	double xmax = cb.conf(ScreenWide); double ymax = cb.conf(ScreenHigh);
 	struct Linear linear = {0};
 	linear.val[1][1] = linear.val[2][2] = xhalf/2.0;

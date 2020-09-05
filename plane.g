@@ -243,8 +243,8 @@ Expand prepare(
 {
    Expand face = expand(plane[index],state);
    if (state->hand == index) face = transform(face,state->feature);
-   transform(face,object[plane[index].poly].object);
-   transform(face,state->subject);
+   face = transform(face,object[plane[index].poly].object);
+   face = transform(face,state->subject);
    return face;
 }
 float4 perspective(
@@ -333,7 +333,7 @@ kernel void kernel_pierce(
             }
          }
       }
-      edge[i] = expand(plane[index[i]],state);
+      edge[i] = prepare(index[i],plane,object,state);
    }
    for (uint i = 0; i < 3; i++) {
       if (opposite(edge[i],hole.point,apex[i])) {

@@ -99,7 +99,7 @@ func planraInit()
 	var plane5 = share.Facet(); plane5.versor = 1 // (0,-256,0),(0,-256,128),(128,0,0)
 	var plane6 = share.Facet(); plane6.versor = 1 // (0,-256,0),(0,-256,128),(128,-512,0)
 	var plane7 = share.Facet(); plane7.versor = 1 // (0,256,0),(0,256,128),(128,256,0)
-	plane0.plane = (100.0,100.0,100.0); plane1.plane = (-100.0,-100.0,-100.0)
+	plane0.plane = (500.0,500.0,500.0); plane1.plane = (400.0,400.0,400.0)
 	plane2.plane = (256.0,256.0,0.0); plane3.plane = (256.0,256.0,512.0); plane4.plane = (-256.0,-256.0,-256.0)
 	plane5.plane = (-256.0,-256.0,0.0); plane6.plane = (-256.0,-256.0,-512.0); plane7.plane = (256.0,256.0,256.0)
 	plane0.poly = 0; plane1.poly = 0
