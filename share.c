@@ -99,31 +99,29 @@ void scaleMatrix(float *result, float scale)
 	result[i*4+i] = scale;
 }
 
+void inverseMatrix(float *result)
+{
+	identmat(result,4);
+	if (object == cb.state[User]->user->hand) jumpmat(result,&saved[Feature]->feature->val[0][0],4);
+	if (object < saved[Object]->siz) jumpmat(result,&saved[Object]->object[object].val[0][0],4);
+	invmat(jumpmat(result,&saved[Subject]->subject->val[0][0],4),4);
+}
+
 void normalMatrix(float *result, float *normal)
 {
 	float lon[16]; longitudeMatrix(lon,normal);
 	float lat[16]; latitudeMatrix(lat,normal);
 	timesmat(copymat(result,lat,4),lon,4);
+	float mat[16]; inverseMatrix(mat);
+	mat[12] = mat[13] = mat[14] = 0.0;
+	jumpmat(result,mat,4);
 }
 
 void fixedMatrix(float *result, float *pierce)
 {
 	translateMatrix(result,pierce);
-}
-
-void affineMatrix(float *result)
-{
-	float inv[16]; invmat(copymat(inv,&saved[Subject]->subject->val[0][0],4),4);
-	// TODO depending on object, apply Object and Feature
-	jumpmat(result,inv,4);
-}
-
-void linearMatrix(float *result)
-{
-	return; // TODO
-	float inv[9]; invmat(copyary(inv,&saved[Subject]->subject->val[0][0],3,4,9),3);
-	// TODO depending on object, apply Object and Feature
-	jumpmat(result,inv,3);
+	float mat[16]; inverseMatrix(mat);
+	jumpmat(result,mat,4);
 }
 
 void offsetVector(float *result)
@@ -324,8 +322,8 @@ void shareClick(int isright)
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
 	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
-	normalMatrix(normat,norvec); linearMatrix(normat);
-	fixedMatrix(piemat,pievec); affineMatrix(piemat);
+	normalMatrix(normat,norvec);
+	fixedMatrix(piemat,pievec);
 	identmat(matrix,4);
 	offset = 0.0;
 	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
