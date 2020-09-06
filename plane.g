@@ -148,20 +148,7 @@ Qualify intersect(Triple point)
 }
 float3 normal(Expand plane)
 {
-   uint versor = squashed(plane);
-   int other[2];
-   for (uint i = versor+1; i < versor+3; i++)
-      other[i-versor-1] = i%3;
-   float x = plane.point[other[0]].x;
-   float y = plane.point[other[0]].y;
-   float z = plane.point[other[0]].z;
-   metal::float3x3 u;
-   u[0][0] =  0; u[1][0] = -z; u[2][0] =  y;
-   u[0][1] =  z; u[1][1] =  0; u[2][1] = -x;
-   u[0][2] = -y; u[1][2] =  x; u[2][2] =  0;
-   float3 cross = u*plane.point[other[1]];
-   float magnitude = metal::sqrt(metal::dot(cross,cross));
-   return cross/magnitude;
+   return metal::normalize( metal::cross( plane.point[1] - plane.point[0] , plane.point[2] - plane.point[0] ) );
 }
 float3 average3(Expand plane)
 {

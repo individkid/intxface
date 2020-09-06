@@ -145,15 +145,17 @@ void transformMatrix(float *result)
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slide): { // translate parallel to fixed facet
-	float vec[3]; offsetVector(vec);
+	float vec[3]; offsetVector(vec); vec[2] = 0.0;
 	translateMatrix(result,vec);
 	float mat[16]; copymat(mat,normal,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slate): { // translate parallel to picture plane
-	float vec[3]; offsetVector(vec);
+	float vec[3]; offsetVector(vec); vec[2] = 0.0;
 	translateMatrix(result,vec);
+	float fix[16]; invmat(copymat(fix,pierce,4),4);
+	timesmat(jumpmat(result,pierce,4),fix,4);
 	break;}
 	default: {
 	identmat(result,4);
