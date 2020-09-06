@@ -29,7 +29,7 @@
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define INVALID 1.0e30
 #define ANGLE 0.0333
-#define LENGTH 20.0
+#define LENGTH 10.0
 #define SATURATE 1000000000000.0
 #define INFINITE 1000000000ull
 #define SEC2NANO 1000000000.0

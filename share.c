@@ -169,7 +169,7 @@ void composeMatrix(float *result)
 {
 	switch (cb.state[User]->user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
-	angleMatrix(result,offset);
+	angleMatrix(result,offset*cb.conf(DefaultPole));
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
@@ -178,7 +178,7 @@ void composeMatrix(float *result)
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Clock): { // rotate with fixed normal to picture plane
-	angleMatrix(result,offset);
+	angleMatrix(result,offset*cb.conf(DefaultPole));
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
@@ -186,7 +186,7 @@ void composeMatrix(float *result)
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Compass): { // rotate with fixed normal to facet
-	angleMatrix(result,offset);
+	angleMatrix(result,offset*cb.conf(DefaultPole));
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
@@ -195,15 +195,16 @@ void composeMatrix(float *result)
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Normal): { // translate with fixed normal to facet
-	lengthMatrix(result,offset);
+	lengthMatrix(result,offset*cb.conf(DefaultUnit));
 	float mat[16]; copymat(mat,normal,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
+	jumpmat(mat,matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Balloon): { // scale with fixed pierce point
-	scaleMatrix(result,offset);
+	scaleMatrix(result,offset*cb.conf(DefaultUnit));
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
@@ -298,17 +299,16 @@ void shareDrag(double xmid, double ymid, double xmax, double ymax)
 void shareRoll(double xoffset, double yoffset)
 {
 	if (yoffset == 0.0) return;
-	offset += yoffset*cb.conf(DefaultPole);
+	offset += yoffset;
 	if (cb.state[User] == 0) ERROR(cb.err,-1);
 	struct Mode *user = cb.state[User]->user;
-	float dif = yoffset*cb.conf(DefaultUnit);
 	if (user->click == Transform && user->roll == Focal) {
-	if (render[0][2]+dif > render[1][2]+cb.conf(DefaultStop))
-	render[0][2] += dif;
+	if (render[0][2]+offset*cb.conf(DefaultUnit) > render[1][2]+cb.conf(DefaultStop))
+	render[0][2] += offset*cb.conf(DefaultUnit);
 	shareRender();}
 	else if (user->click == Transform && user->roll == Picture) {
-	if (render[0][2] > render[1][2]+dif+cb.conf(DefaultStop))
-	render[1][2] += dif;
+	if (render[0][2] > render[1][2]+offset*cb.conf(DefaultUnit)+cb.conf(DefaultStop))
+	render[1][2] += offset*cb.conf(DefaultUnit);
 	shareRender();}
 	if (user->click == Transform) {
 	struct Affine affine[2];
@@ -638,7 +638,7 @@ void shareInit()
     for (enum Memory mem = 0; mem < Memorys; mem++) {
     shareClient(mem,0,0,1,0,Copy);}
     struct Mode mode = {0}; mode.matrix = Global;
-    mode.click = Complete; mode.move = Rotate; mode.roll = Clock;
+    mode.click = Complete; mode.move = Rotate; mode.roll = Cylinder;
     shareClient(User,0,1,2,&mode,Copy,Dma0);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
 	shareClient(Subject,0,1,3,&affine,Save,Copy,Dma0);
