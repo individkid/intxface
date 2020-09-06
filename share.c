@@ -112,16 +112,11 @@ void normalMatrix(float *result, float *normal)
 	float lon[16]; longitudeMatrix(lon,normal);
 	float lat[16]; latitudeMatrix(lat,normal);
 	timesmat(copymat(result,lat,4),lon,4);
-	float mat[16]; inverseMatrix(mat);
-	mat[12] = mat[13] = mat[14] = 0.0;
-	jumpmat(result,mat,4);
 }
 
 void fixedMatrix(float *result, float *pierce)
 {
 	translateMatrix(result,pierce);
-	float mat[16]; inverseMatrix(mat);
-	jumpmat(result,mat,4);
 }
 
 void offsetVector(float *result)
@@ -140,7 +135,10 @@ void transformMatrix(float *result)
 	float vec[3]; offsetVector(vec);
 	float lon[16]; longitudeMatrix(lon,vec);
 	latitudeMatrix(result,vec);
-	float mat[16]; timesmat(copymat(mat,pierce,4),lon,4);
+	float mat[16]; copymat(mat,pierce,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
+	timesmat(mat,lon,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -148,14 +146,19 @@ void transformMatrix(float *result)
 	float vec[3]; offsetVector(vec); vec[2] = 0.0;
 	translateMatrix(result,vec);
 	float mat[16]; copymat(mat,normal,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Slate): { // translate parallel to picture plane
 	float vec[3]; offsetVector(vec); vec[2] = 0.0;
 	translateMatrix(result,vec);
-	float fix[16]; invmat(copymat(fix,pierce,4),4);
-	timesmat(jumpmat(result,pierce,4),fix,4);
+	float mat[16]; copymat(mat,pierce,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
+	float inv[16]; invmat(copymat(inv,mat,4),4);
+	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	default: {
 	identmat(result,4);
@@ -167,31 +170,43 @@ void composeMatrix(float *result)
 	switch (cb.state[User]->user->roll) {
 	case (Cylinder): { // rotate with rotated fixed axis
 	angleMatrix(result,offset);
-	float mat[16]; jumpmat(copymat(mat,pierce,4),matrix,4);
+	float mat[16]; copymat(mat,pierce,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
+	jumpmat(mat,matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Clock): { // rotate with fixed normal to picture plane
 	angleMatrix(result,offset);
 	float mat[16]; copymat(mat,pierce,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Compass): { // rotate with fixed normal to facet
 	angleMatrix(result,offset);
-	float mat[16]; jumpmat(jumpmat(copymat(mat,pierce,4),normal,4),matrix,4);
+	float mat[16]; copymat(mat,pierce,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
+	jumpmat(jumpmat(mat,normal,4),matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Normal): { // translate with fixed normal to facet
 	lengthMatrix(result,offset);
 	float mat[16]; copymat(mat,normal,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Balloon): { // scale with fixed pierce point
 	scaleMatrix(result,offset);
 	float mat[16]; copymat(mat,pierce,4);
+	float sav[16]; inverseMatrix(sav);
+	jumpmat(mat,sav,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
