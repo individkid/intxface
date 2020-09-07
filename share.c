@@ -31,6 +31,8 @@ struct Client *saved[Memorys] = {0};
 struct Callback cb = {0};
 float xmove = 0.0;
 float ymove = 0.0;
+float xwarp = 0.0;
+float ywarp = 0.0;
 float vector[3] = {0};
 float offset = 0.0;
 float matrix[16] = {0};
@@ -341,13 +343,15 @@ void shareClick(int isright)
 {
 	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
 	struct Mode user = *cb.state[User]->user;
-	if (user.click == Suspend && isright) cb.warp(vector[0],vector[1]);
-	vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
+	if (user.click == Suspend && isright) {
+	xmove = xwarp; ymove = ywarp; cb.warp(xmove,ymove);}
+	else if (isright) {xwarp = xmove; ywarp = ymove;}
+	else {vector[0] = xmove; vector[1] = ymove; vector[2] = cb.conf(LeverDeep);
 	normalMatrix(normal,cb.state[Pierce]->pierce->normal);
 	fixedMatrix(pierce,cb.state[Pierce]->pierce->point);
 	identmat(matrix,4);
 	offset = 0.0;
-	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);
+	shareClient(shareMemory(user.matrix),shareIndex(user.matrix),1,2,shareAffine(user.matrix),Save,Port);}
 	user.click = shareMachine(user.click,isright);
 	shareClient(User,0,1,1,&user,Copy);
 	if (user.click != Transform) sharePierce();

@@ -415,9 +415,9 @@ func swiftInit()
 }
 func swiftWarp(xpos:Double, ypos:Double)
 {
-	let point = getPoint()
 	let frame:CGRect = window.frame
-	let coord = CGPoint(x:NSMinX(frame)+point.x,y:NSMinY(frame)+point.y)
+	guard let screen:NSRect = NSScreen.main?.frame else {cb.err(#file,#line,-1);return}
+	let coord = CGPoint(x:NSMinX(frame)+CGFloat(xpos),y:screen.maxY-NSMinY(frame)-CGFloat(ypos))
     CGWarpMouseCursorPosition(coord);	
 }
 func swiftDma(_ mem:share.Memory, _ idx:CInt, _ siz:CInt)
