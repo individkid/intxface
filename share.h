@@ -27,7 +27,7 @@ enum Config {
 	PictureWide,PictureHigh,PictureDeep,
 	DefaultWide,DefaultHigh,
 	DefaultDeep,DefaultLong,DefaultStop,
-	DefaultUnit,DefaultPole,
+	DefaultUnit,DefaultPole,DefaultBase,
 	ScreenWide,ScreenHigh,LeverDeep,
 };
 

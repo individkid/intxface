@@ -560,6 +560,7 @@ func loopConf(_ config:share.Config) -> Double
 	case (share.DefaultStop): return Double(WINSTOP)
 	case (share.DefaultUnit): return Double(LENGTH)
 	case (share.DefaultPole): return Double(ANGLE)
+	case (share.DefaultBase): return Double(POWER)
 	case (share.ScreenWide): return Double(screen.maxX)
 	case (share.ScreenHigh): return Double(screen.maxY)
 	case (share.LeverDeep): return Double(TIPDEEP)

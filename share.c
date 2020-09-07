@@ -88,9 +88,9 @@ void lengthMatrix(float *result, float length)
 	result[3*4+2] = length;
 }
 
-void scaleMatrix(float *result, float scale)
+void scaleMatrix(float *result, float given)
 {
-	scale = logf(scale);
+	float scale = 1.0+given;
 	identmat(result,4);
 	for (int i = 0; i < 3; i++)
 	result[i*4+i] = scale;
@@ -145,9 +145,10 @@ void transformMatrix(float *result)
 	case (Slide): { // translate parallel to fixed facet
 	float vec[3]; offsetVector(vec); vec[2] = 0.0;
 	translateMatrix(result,vec);
-	float mat[16]; copymat(mat,normal,4);
+	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
+	jumpmat(mat,normal,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -190,21 +191,23 @@ void composeMatrix(float *result)
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
-	jumpmat(jumpmat(mat,normal,4),matrix,4);
+	jumpmat(mat,normal,4);
+	jumpmat(mat,matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Normal): { // translate with fixed normal to facet
 	lengthMatrix(result,offset*cb.conf(DefaultUnit));
-	float mat[16]; copymat(mat,normal,4);
+	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
+	jumpmat(mat,normal,4);
 	jumpmat(mat,matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
 	case (Balloon): { // scale with fixed pierce point
-	scaleMatrix(result,offset*cb.conf(DefaultUnit));
+	scaleMatrix(result,offset*cb.conf(DefaultBase));
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	jumpmat(mat,sav,4);
