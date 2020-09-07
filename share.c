@@ -647,7 +647,7 @@ void shareInit()
 	double wide = cb.conf(DefaultWide); double high = cb.conf(DefaultHigh);
 	double deep = cb.conf(DefaultDeep); double leng = cb.conf(DefaultLong);
 	double xhalf = wide/2.0; double yhalf = high/2.0; double zhalf = deep/2.0;
-	double xpos = -xhalf; double ypos = -yhalf; double zpos = 0.0;
+	double xpos = -xhalf; double ypos = -yhalf; double zpos = -zhalf;
 	double xmax = cb.conf(ScreenWide); double ymax = cb.conf(ScreenHigh);
 	struct Linear linear = {0};
 	linear.val[1][1] = linear.val[2][2] = xhalf/2.0;
