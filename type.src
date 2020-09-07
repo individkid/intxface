@@ -489,7 +489,9 @@ end
 function showStreamCF(name,field,lim)
 	local result = "alloc"
 	local cast = ""
-	if (name == "int") then
+	if (name == "char") then
+		result = result.."Chr"
+	elseif (name == "int") then
 		result = result.."Int"
 	elseif (name == "long long") then
 		result = result.."New"
@@ -586,7 +588,9 @@ function showStreamC(name,struct,show,pre,post)
 end
 function showReadCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "int") then
+	if (v[2] == "char") then
+		result = result.."ptr->"..v[1]..sub.." = readChr(idx);"..ebr.."\n"
+	elseif (v[2] == "int") then
 		result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
 	elseif (v[2] == "long long") then
 		result = result.."ptr->"..v[1]..sub.." = readNew(idx);"..ebr.."\n"
@@ -607,7 +611,9 @@ function showReadCF(v,ebr,sub)
 end
 function showWriteCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "int") then
+	if (v[2] == "char") then
+		result = result.."writeChr(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "int") then
 		result = result.."writeInt(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	elseif (v[2] == "long long") then
 		result = result.."writeNew(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
@@ -703,18 +709,22 @@ function showFreeCF(v,ebr,sub)
 	end
 	return result
 end
-randInt = 0
-randNew = 10
+randChr = 1
+randInt = 10
+randNew = 100
 randNum = 0.1
 randOld = 0.2
 function showRandCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "int") then
+	if (v[2] == "char") then
+		result = result.."ptr->"..v[1]..sub.." = "..randChr..";"..ebr.."\n"
+		randChr = randChr + 1;
+	elseif (v[2] == "int") then
 		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
 		randInt = randInt + 1;
 	elseif (v[2] == "long long") then
 		result = result.."ptr->"..v[1]..sub.." = "..randNew..";"..ebr.."\n"
-		randInt = randInt + 1;
+		randNew = randNew + 1;
 	elseif (v[2] == "double") then
 		result = result.."ptr->"..v[1]..sub.." = "..randNum..";"..ebr.."\n"
 		randNum = randNum + 1.0
@@ -736,9 +746,8 @@ function showRandCF(v,ebr,sub)
 end
 function showCompCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "int") or (v[2] == "long long") or (v[2] == "double") or (v[2] == "float") or (Enumz[v[2]]~=nil) then
+	if (v[2] == "char") or (v[2] == "int") or (v[2] == "long long") or (v[2] == "double") or (v[2] == "float") or (Enumz[v[2]]~=nil) then
 		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return 0;"..ebr.."\n"
-		randInt = randInt + 1;
 	elseif (v[2] == "char*") then
 		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
 	elseif (Structz[v[2]]~=nil) then
@@ -750,7 +759,7 @@ function showCompCF(v,ebr,sub)
 end
 function showSizeCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "int") or (v[2] == "long long") or (v[2] == "double") or (v[2] == "float") then
+	if (v[2] == "char") or (v[2] == "int") or (v[2] == "long long") or (v[2] == "double") or (v[2] == "float") then
 		result = result.."result = result + sizeof("..v[2]..");"..ebr.."\n"
 	elseif (Enumz[v[2]]~=nil) then
 		result = result.."result = result + sizeof(int);"..ebr.."\n"
@@ -840,7 +849,11 @@ function showStructHsF(val)
 end
 function showStructHsG(name,pre,post)
 	local result = ""
-	if (name == "int") and language then
+	if (name == "char") and language then
+		result = result..pre.."Character"..post
+	elseif (name == "char") then
+		result = result..pre.."Char"..post
+	elseif (name == "int") and language then
 		result = result..pre.."Int32"..post
 	elseif (name == "int") then
 		result = result..pre.."Int"..post
@@ -1115,7 +1128,8 @@ function showReadHsG(struct,index,depth)
 		result = result.."listHelp "..field[4].." ("
 		count = count + 1
 	end
-	if (field[2] == "int") then result = result.."readInt"
+	if (field[2] == "char") then result = result.."readChr"
+	elseif (field[2] == "int") then result = result.."readInt"
 	elseif (field[2] == "long long") then result = result.."readNew"
 	elseif (field[2] == "double") then result = result.."readNum"
 	elseif (field[2] == "float") then result = result.."readOld"
@@ -1273,7 +1287,8 @@ function showWriteHsH(struct,index)
 		anon = true
 		result = result.."\\x -> "
 	end
-	if (field[2] == "int") then result = result.."writeInt"
+	if (field[2] == "char") then result = result.."writeChr"
+	elseif (field[2] == "int") then result = result.."writeInt"
 	elseif (field[2] == "long long") then result = result.."writeNew"
 	elseif (field[2] == "double") then result = result.."writeNum"
 	elseif (field[2] == "float") then result = result.."writeOld"
@@ -1506,7 +1521,8 @@ function showReadLua(name,struct)
 		end
 		result = result..showIndent(count+1).."tab"..show(".","[\"")..field[1]..show("","\"]")
 		if language and super then result = result..sup..".append(" else result = result..sub.." = " end
-		if (field[2] == "int") then result = result.."readInt(idx)"
+		if (field[2] == "char") then result = result.."readChr(idx)"
+		elseif (field[2] == "int") then result = result.."readInt(idx)"
 		elseif (field[2] == "long long") then result = result.."readNew(idx)"
 		elseif (field[2] == "double") then result = result.."readNum(idx)"
 		elseif (field[2] == "float") then result = result.."readOld(idx)"
@@ -1573,7 +1589,8 @@ function showWriteLua(name,struct)
 		end
 		local value = "tab"..show(".","[\"")..field[1]..show("","\"]")..sub
 		result = result..showIndent(count+1)
-		if (field[2] == "int") then result = result.."writeInt("..value..",idx)"
+		if (field[2] == "char") then result = result.."writeChr("..value..",idx)"
+		elseif (field[2] == "int") then result = result.."writeInt("..value..",idx)"
 		elseif (field[2] == "long long") then result = result.."writeNew("..value..",idx)"
 		elseif (field[2] == "double") then result = result.."writeNum("..value..",idx)"
 		elseif (field[2] == "float") then result = result.."writeOld("..value..",idx)"
@@ -1660,6 +1677,7 @@ function showCall(list,map,func)
 end
 function showShareC()
 	local result = ""
+	result = result..showAllocC("Chr","char").."\n"
 	result = result..showAllocC("Int","int").."\n"
 	result = result..showAllocC("New","long long").."\n"
 	result = result..showAllocC("Num","double").."\n"

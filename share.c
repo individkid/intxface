@@ -390,6 +390,7 @@ void shareClient(enum Memory mem, int idx, int siz, int len, ...)
 	SHARECLIENT1(Cloud,client,cloud,va_arg(args,struct Vector *));
 	SHARECLIENT1(Pierce,client,pierce,va_arg(args,struct Result *));
 	SHARECLIENT1(User,client,user,va_arg(args,struct Mode *));
+	SHARECLIENT1(Macro,client,macro,va_arg(args,char *));
 	SHARECLIENT1(Process,client,process,va_arg(args,struct Client *));
 	SHARECLIENT2;
 	for (int i = 0; i < len; i++) {
@@ -437,6 +438,7 @@ SHARECLIENSSS(struct Affine,Affine,Subject,subject,Object,object,Feature,feature
 SHARECLIENSSS(struct Vector,Vector,Render,render,Archer,archer,Cloud,cloud)
 SHARECLIENS(struct Result,Result,Pierce,pierce)
 SHARECLIENS(struct Mode,Mode,User,user)
+SHARECLIENS(char,Chr,Macro,macro)
 SHARECLIENS(struct Client,Client,Process,process)
 #define SHARECLIENT(TYP,NAM,MEM,FLD) \
 void atomic##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc, \
@@ -484,6 +486,7 @@ SHARECLIENTTT(struct Affine,Affine,Subject,subject,Object,object,Feature,feature
 SHARECLIENTTT(struct Vector,Vector,Render,render,Archer,archer,Cloud,cloud)
 SHARECLIENT(struct Result,Result,Pierce,pierce)
 SHARECLIENT(struct Mode,Mode,User,user)
+SHARECLIENT(char,Chr,Macro,macro)
 SHARECLIENT(struct Client,Client,Process,process)
 
 float *procMat(struct Client *client, int idx)
@@ -555,6 +558,7 @@ void procCopy(struct Client **ptr)
 	PROCCOPY(Cloud,cloud,Vector);
 	PROCCOPY(Pierce,pierce,Result);
 	PROCCOPY(User,user,Mode);
+	PROCCOPY(Macro,macro,Chr);
 	PROCCOPY(Process,process,Client);
 	ERROR(cb.err,-1);
 }

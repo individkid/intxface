@@ -87,6 +87,7 @@ Memory = {
 	"Cloud", -- find collisions
 	"Pierce", -- found pierce point
 	"User", -- interpret mouse
+	"Macro", -- capture keystrokes
 	"Process", -- functions to apply atomically
 }
 Matrix = {
@@ -252,6 +253,7 @@ Client = {
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
 	{"pierce","Result",{["mem"]={["Pierce"]=true}},"siz"},
 	{"user","Mode",{["mem"]={["User"]=true}},"siz"},
+	{"macro","char",{["mem"]={["Macro"]=true}},"siz"},
 	{"process","Client",{["mem"]={["Process"]=true}},"siz"},
 }
 Sculpt = {

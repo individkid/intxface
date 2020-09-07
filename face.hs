@@ -55,11 +55,13 @@ foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
 foreign import ccall "wrapper" wrapStr :: (CString -> CInt -> IO ()) -> IO (FunPtr (CString -> CInt -> IO ()))
 foreign import ccall "readStrHs" readStrC :: FunPtr (CString -> CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "readChr" readChrC :: CInt -> IO CChar
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
 foreign import ccall "readNew" readNewC :: CInt -> IO CLLong
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
 foreign import ccall "readOld" readOldC :: CInt -> IO CFloat
 foreign import ccall "writeStr" writeStrC :: CString -> CInt -> CInt -> IO ()
+foreign import ccall "writeChr" writeChrC :: CChar -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
 foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
@@ -125,6 +127,8 @@ readStr a = do
  c <- wrapStr (readStrF b)
  readStrC c (fromIntegral a)
  readIORef b
+readChr :: Int -> IO Char
+readChr a = fmap castCCharToChar (readChrC (fromIntegral a))
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
 readNew :: Int -> IO Integer
@@ -136,6 +140,8 @@ readOld a = (readOldC (fromIntegral a)) >>= (\(CFloat x) -> return x)
 writeStr :: String -> Bool -> Int -> IO ()
 writeStr a False b = (newCString a) >>= (\x -> writeStrC x (fromIntegral 0) (fromIntegral b))
 writeStr a True b = (newCString a) >>= (\x -> writeStrC x (fromIntegral 1) (fromIntegral b))
+writeChr :: Char -> Int -> IO ()
+writeChr a b = writeChrC (castCharToCChar a) (fromIntegral b)
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
 writeNew :: Integer -> Int -> IO ()

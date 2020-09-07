@@ -383,6 +383,16 @@ void readStrHs(hftype fnc, int idx)
 {
 	readStr(readStrHsFnc,fnc,idx);
 }
+char readChr(int idx)
+{
+	char arg;
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
+	int val = read(inp[idx],(char *)&arg,sizeof(char));
+	if (val != 0 && val < (int)sizeof(char)) ERROR(inperr[idx],idx)
+	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
+	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
+	return arg;
+}
 int readInt(int idx)
 {
 	int arg;
@@ -431,6 +441,12 @@ void writeStr(const char *arg, int trm, int idx)
 	int siz = strlen(arg)+trm;
 	int val = write(out[idx],arg,siz);
 	if (val < siz) ERROR(outerr[idx],idx)
+}
+void writeChr(char arg, int idx)
+{
+	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
+	int val = write(out[idx],(char *)&arg,sizeof(char));
+	if (val < (int)sizeof(char)) ERROR(outerr[idx],idx)
 }
 void writeInt(int arg, int idx)
 {
@@ -670,6 +686,12 @@ int readStrLua(lua_State *lua)
 	readStr(readStrLuaFnc,lua,(int)lua_tonumber(lua,1));
 	return 2;
 }
+int readChrLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,readChr((int)lua_tonumber(lua,1)));
+	return 1;
+}
 int readIntLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -698,6 +720,12 @@ int writeStrLua(lua_State *lua)
 {
 	luaerr = lua;
 	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
+	return 0;
+}
+int writeChrLua(lua_State *lua)
+{
+	luaerr = lua;
+	writeChr((char)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
 	return 0;
 }
 int writeIntLua(lua_State *lua)
@@ -779,6 +807,8 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "sleepSec");
 	lua_pushcfunction(L, readStrLua);
 	lua_setglobal(L, "readStr");
+	lua_pushcfunction(L, readChrLua);
+	lua_setglobal(L, "readChr");
 	lua_pushcfunction(L, readIntLua);
 	lua_setglobal(L, "readInt");
 	lua_pushcfunction(L, readNumLua);
@@ -789,6 +819,8 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "readOld");
 	lua_pushcfunction(L, writeStrLua);
 	lua_setglobal(L, "writeStr");
+	lua_pushcfunction(L, writeChrLua);
+	lua_setglobal(L, "writeChr");
 	lua_pushcfunction(L, writeIntLua);
 	lua_setglobal(L, "writeInt");
 	lua_pushcfunction(L, writeNumLua);

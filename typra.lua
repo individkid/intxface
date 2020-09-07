@@ -284,29 +284,29 @@ Expected = {
 	"        ptr->field2[i1] = 1.1;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            ptr->field3[i1][i2] = 0;\n"..
+	"            ptr->field3[i1][i2] = 10;\n"..
 	"    {const char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        ptr->field5[i] = 1;\n"..
-	"    ptr->field6 = 2%Enum1s;\n"..
-	"    ptr->field7 = 3%Enum2s;\n"..
+	"        ptr->field5[i] = 11;\n"..
+	"    ptr->field6 = 12%Enum1s;\n"..
+	"    ptr->field7 = 13%Enum2s;\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        ptr->field8 = 4;}\n"..
+	"        ptr->field8 = 14;}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        ptr->field9 = 5;}\n"..
+	"        ptr->field9 = 15;}\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        ptr->field10 = 6;}\n"..
+	"        ptr->field10 = 16;}\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        ptr->field11 = 7;}\n"..
+	"        ptr->field11 = 17;}\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        ptr->field12 = 8;}\n"..
+	"        ptr->field12 = 18;}\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        ptr->field13 = 9;}\n"..
-	"    ptr->field14 = 10;\n"..
+	"        ptr->field13 = 19;}\n"..
+	"    ptr->field14 = 20;\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        ptr->field15[i] = 11;\n"..
+	"        ptr->field15[i] = 21;\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
 	"        randStruct2(&ptr->field16[i]);\n"..
