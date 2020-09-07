@@ -64,7 +64,7 @@ their values, or which is used for sound.
 
 plane.c planer.lua planra.c test opengl display mouse keyboard.
 This has four shaders, one to find pierce points,
-one to display facets, and one to stream framebuffers,
+one to display facets, one to stream framebuffers,
 and one to detect focal point proximity to planes.
 This maintains a global transformation matrix,
 a matrix per polytope,
@@ -79,16 +79,16 @@ classifies sets of regions as polytopes, samples polytopes as region sets,
 finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
-sculpt.lua starts plane space to manipulate double dash polytopes.
+sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
-to and from commands in other processes.
+to and from commands this and other processes.
 
-print.lua starts space to find and tweak inflated spaces or tetrahedron overlaps.
+print.lua starts file space to find and tweak inflated spaces or tetrahedron overlaps.
 This applies heuristics to samples from space
 to find canonical examples of complete classes of spaces and overlaps,
 and writes specifications to double dash files.
 
-play.lua starts line plane space to record user polytope sound interact.
+play.lua starts file line plane space to record user polytope sound interact.
 This reads double dash files at the rate they were written,
 inserts user manipulations and activations,
 writes the result to a new double dash file,
