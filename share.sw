@@ -569,7 +569,7 @@ func loopConf(_ config:share.Config) -> Double
 func loopInit()
 {
 	let _ = NSApplication.shared
-	NSApp.setActivationPolicy(.regular)
+	NSApp.setActivationPolicy(.accessory)
 	NSApp.activate(ignoringOtherApps: true)
     cb.conf = loopConf
 	cb.call = loopCall
