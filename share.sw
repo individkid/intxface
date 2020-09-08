@@ -407,8 +407,10 @@ func swiftInit()
 	cb.full = swiftFull
 	cb.done = swiftDone
 	setEvent(.keyDown,swiftKey)
-	setEvent(.leftMouseDown,swiftLeft)
-	setEvent(.rightMouseDown,swiftRight)
+	setEvent(.leftMouseUp,swiftLeft)
+	setEvent(.rightMouseUp,swiftRight)
+	setEvent(.leftMouseDown,swiftMove)
+	setEvent(.rightMouseDown,swiftMove)
 	setEvent(.mouseMoved,swiftMove)
 	setEvent(.scrollWheel,swiftRoll)
 	setEvent(.applicationDefined,swiftCheck)
