@@ -312,6 +312,11 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	else if (key == 13) {if (cb.esc == 1) {cb.esc = 2}}
 	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
 	print("key(\(key)) esc(\(cb.esc))")
+	toMutable([Int8(key)])
+	{(siz:Int,ptr:UnsafeMutablePointer<Int8>) in
+	atomicChr(Macro,0,Int32(siz),0,ptr,nil,0,nil)
+	{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
+	clientMetric(client);}}
 	if (cb.esc >= 2) {loopStop()}
 	return nil
 }

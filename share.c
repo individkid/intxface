@@ -440,6 +440,14 @@ SHARECLIENS(struct Result,Result,Pierce,pierce)
 SHARECLIENS(struct Mode,Mode,User,user)
 SHARECLIENS(char,Chr,Macro,macro)
 SHARECLIENS(struct Client,Client,Process,process)
+void clientMetric(struct Client *ptr)
+{
+	struct Metric metric = {0};
+	metric.src = Plane;
+	metric.plane = ptr;
+	if (cb.hub >= 0) {
+	writeMetric(&metric,cb.hub);}
+}
 #define SHARECLIENT(TYP,NAM,MEM,FLD) \
 void atomic##NAM(enum Memory mem, int idx, int siz, int len, TYP *ptr, enum Function *fnc, \
 	int num, struct Client *ary, void (*func)(int num, struct Client *ptr)) \
