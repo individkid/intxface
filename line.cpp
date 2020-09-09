@@ -315,7 +315,8 @@ void stock()
 	case (Timer):
 		if (timer.find(event->idx) != timer.end()) {
 		allocEvent(&timer[event->idx],0);}
-		timer[event->idx] = event; event = 0;
+		timer[event->idx] = event;
+		allocEvent(&event,1);
 		break;
 	case (Audio): {
 		if (audio.find(event->idx) != audio.end()) {
@@ -382,7 +383,7 @@ void flow()
 		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
 		float val[line->req[i]];
 		copywave(val,channel,1,line->req[i],nowtime,SATURATE);
-		for (int j = 0; j < line->req[i]; j++)
+		for (int j = 0; j < line->req[i] && ptr-line->rsp < line->tot; j++)
 		*(ptr++) = val[j];}}
 		Metric metric;
 		metric.src = Line; metric.line = line;
