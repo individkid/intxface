@@ -325,7 +325,7 @@ func swiftLeft(event:NSEvent) -> NSEvent?
 	let point = getPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
-		cb.click(0)
+		cb.click(Double(point.x),Double(point.y),0)
 	}
 	return event
 }
@@ -334,7 +334,7 @@ func swiftRight(event:NSEvent) -> NSEvent?
 	let point = getPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
-		cb.click(1)
+		cb.click(Double(point.x),Double(point.y),1)
 	}
 	return event
 }
@@ -356,6 +356,11 @@ func swiftCheck(event:NSEvent) -> NSEvent?
 {
 	let _ = getCheck()
 	return nil
+}
+func swiftActive(event:NSEvent) -> NSEvent?
+{
+	NSApp.activate(ignoringOtherApps: true)
+	return event
 }
 
 func swiftInit()
@@ -414,8 +419,8 @@ func swiftInit()
 	setEvent(.keyDown,swiftKey)
 	setEvent(.leftMouseUp,swiftLeft)
 	setEvent(.rightMouseUp,swiftRight)
-	setEvent(.leftMouseDown,swiftMove)
-	setEvent(.rightMouseDown,swiftMove)
+	setEvent(.leftMouseDown,swiftActive)
+	setEvent(.rightMouseDown,swiftActive)
 	setEvent(.mouseMoved,swiftMove)
 	setEvent(.scrollWheel,swiftRoll)
 	setEvent(.applicationDefined,swiftCheck)

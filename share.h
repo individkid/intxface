@@ -36,7 +36,7 @@ struct Callback {
 	// kvm to share; read from state; write to pipe
 	void (*move)(double xpos, double ypos);
 	void (*roll)(double xoffset, double yoffset);
-	void (*click)(int isright);
+	void (*click)(double xpos, double ypos, int isright);
 	void (*drag)(double xmid, double ymid, double xmax, double ymax);
 	void (*write)(struct Vector *point, struct Vector *normal, int object);
 	// share to kvm; read from state; write to gpu

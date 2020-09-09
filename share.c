@@ -339,8 +339,9 @@ void shareMove(double xpos, double ypos)
 	else sharePierce();
 }
 
-void shareClick(int isright)
+void shareClick(double xpos, double ypos, int isright)
 {
+	xmove = xpos; ymove = ypos;
 	if (cb.state[User] == 0 || cb.state[User]->user == 0) ERROR(cb.err,-1);
 	struct Mode user = *cb.state[User]->user;
 	if (user.click == Suspend && isright) {
