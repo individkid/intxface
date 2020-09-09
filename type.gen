@@ -178,7 +178,11 @@ Event = {
 	{"flw","Flow",{["tag"]={["Bind"]=true}},{}},
 	{"siz","int",{["tag"]={["Wave"]=true}},{}},
 	{"buf","double",{["tag"]={["Wave"]=true}},"siz"},
-	{"met","Metric",{["tag"]={["Timer"]=true}},1},
+	{"num","int",{["tag"]={["Timer"]=true}},{}},
+	{"tot","int",{["tag"]={["Timer"]=true}},{}},
+	{"ids","int",{["tag"]={["Timer"]=true}},"num"},
+	{"req","int",{["tag"]={["Timer"]=true}},"num"},
+	{"rsp","double",{["tag"]={["Timer"]=true}},"tot"},
 	{"wrp","double",{["tag"]={["Audio"]=true}},{}},
 	{"gap","int",{["tag"]={["Audio"]=true}},{}},
 	{"cdt","int",{["tag"]={["Audio"]=true}},{}},
@@ -261,11 +265,7 @@ Sculpt = {
 }
 Metric = {
 	{"src","Source",{},{}},
-	{"num","int",{["src"]={["Line"]=true}},{}},
-	{"tot","int",{["src"]={["Line"]=true}},{}},
-	{"siz","int",{["src"]={["Line"]=true}},"num"},
-	{"idx","int",{["src"]={["Line"]=true}},"num"},
-	{"val","double",{["src"]={["Line"]=true}},"tot"},
+	{"line","Event",{["src"]={["Line"]=true}},1},
 	{"plane","Client",{["src"]={["Plane"]=true}},1},
 }
 --HERE

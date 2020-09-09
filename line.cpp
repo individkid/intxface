@@ -70,7 +70,7 @@ struct Update {
 
 std::map < int, Event* > state;
 std::map < double, Update* > change;
-std::map < int, Metric* > timer;
+std::map < int, Event* > timer;
 std::map < int, Channel* > audio;
 jmp_buf errbuf = {0};
 int numbug = 0;
@@ -314,8 +314,8 @@ void stock()
 		break;
 	case (Timer):
 		if (timer.find(event->idx) != timer.end()) {
-		allocMetric(&timer[event->idx],0);}
-		timer[event->idx] = event->met; event->met = 0;
+		allocEvent(&timer[event->idx],0);}
+		timer[event->idx] = event; event = 0;
 		break;
 	case (Audio): {
 		if (audio.find(event->idx) != audio.end()) {
@@ -373,18 +373,20 @@ void flow()
 		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Store): {
-		Metric *metric = timer[head->oth];
-		double *ptr = metric->val;
-		for (int i = 0; i < metric->num && ptr-metric->val < metric->tot; i++) {
-		if (metric->siz[i] == 0)
-		*(ptr++) = state[metric->idx[i]]->val; else {
-		Channel *channel = audio[metric->idx[i]];
+		Event *line = timer[head->oth];
+		double *ptr = line->rsp;
+		for (int i = 0; i < line->num && ptr-line->rsp < line->tot; i++) {
+		if (line->req[i] == 0)
+		*(ptr++) = state[line->ids[i]]->val; else {
+		Channel *channel = audio[line->ids[i]];
 		double strtime = (channel->str ? Pa_GetStreamTime(channel->str) : nowtime);
-		float val[metric->siz[i]];
-		copywave(val,channel,1,metric->siz[i],nowtime,SATURATE);
-		for (int j = 0; j < metric->siz[i]; j++)
+		float val[line->req[i]];
+		copywave(val,channel,1,line->req[i],nowtime,SATURATE);
+		for (int j = 0; j < line->req[i]; j++)
 		*(ptr++) = val[j];}}
-		writeMetric(metric,hub);
+		Metric metric;
+		metric.src = Line; metric.line = line;
+		writeMetric(&metric,hub);
 		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Load): {
