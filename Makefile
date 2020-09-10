@@ -96,7 +96,7 @@ clean:
 	rm -f typra facer typer filer planra
 	rm -f trade file line plane space
 	rm -f *C *Hs *Lua *Sw
-	rm -f *.err *.out *.log *.txt
+	rm -f *.err *.out *.log *.tmp
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	rm -f *.o *.so *.hi *_stub.h a.* *.metal
 	rm -f depend type main help

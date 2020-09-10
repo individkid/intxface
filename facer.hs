@@ -74,7 +74,7 @@ main = getArgs >>= mainF
 mainF :: [String] -> IO ()
 mainF [] = do
  mainFF mainA -- start processes
- file <- openFile "oops.txt"
+ file <- openFile "oops.tmp"
  sleepSec 1
  mainFG 0 mainB -- send stimulus
  mainFH mainC mainB -- check responses

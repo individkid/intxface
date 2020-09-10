@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 	if (forkExec("facerHs") != 1) {printf("b.out\n"); return -1;}
 	if (forkExec("facerLua") != 2) {printf("facer.ex\n"); return -1;}
 	for (int i = 0; i < 3; i++) readNote(excfunc,i);
-	int handle = openFile("oops.txt"); bothJump(errfunc,handle);
+	int handle = openFile("oops.tmp"); bothJump(errfunc,handle);
 	sleepSec(1);
 	int expectInt[] = {0,1,2};
 	double expectNum[] = {0.1,1.1,2.1};

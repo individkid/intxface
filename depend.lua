@@ -90,8 +90,8 @@ while true do
 fileExpr = "(.*)(%..*)"
 files = {}
 extants = {}
-os.execute("ls -1 > depend.txt")
-dirlist = io.open("depend.txt")
+os.execute("ls -1 > depend.tmp")
+dirlist = io.open("depend.tmp")
 for line in dirlist:lines() do
 	files[#files+1] = line
 	extants[line] = true
@@ -130,14 +130,14 @@ end
 if not goback then break end
 end
 scripts = {}
-os.execute("grep -l -- 'int main(int argc' *.c > depend.txt")
-os.execute("grep -l -- 'int main(int argc' *.cpp >> depend.txt")
-os.execute("grep -l -- 'int main(void)' *.m >> depend.txt")
-os.execute("grep -l -- 'main :: IO ()' *.hs >> depend.txt")
-os.execute("grep -l -- '-- MAIN' *.lua >> depend.txt")
-os.execute("grep -l -- '// MAIN' *.sw >> depend.txt")
-os.execute("grep -l -- '// MAIN' *.g >> depend.txt")
-greplist = io.open("depend.txt")
+os.execute("grep -l -- 'int main(int argc' *.c > depend.tmp")
+os.execute("grep -l -- 'int main(int argc' *.cpp >> depend.tmp")
+os.execute("grep -l -- 'int main(void)' *.m >> depend.tmp")
+os.execute("grep -l -- 'main :: IO ()' *.hs >> depend.tmp")
+os.execute("grep -l -- '-- MAIN' *.lua >> depend.tmp")
+os.execute("grep -l -- '// MAIN' *.sw >> depend.tmp")
+os.execute("grep -l -- '// MAIN' *.g >> depend.tmp")
+greplist = io.open("depend.tmp")
 for line in greplist:lines() do
 	scripts[line] = true
 end

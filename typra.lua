@@ -787,7 +787,7 @@ function linesOf(str)
 	return result
 end
 -- MAIN
-file = io.open("type.txt","w")
+file = io.open("type.tmp","w")
 io.output(file)
 abbrev = {}
 for k,v in ipairs(Stimulus) do
@@ -827,7 +827,7 @@ for k,v in ipairs(Stimulus) do
 	end
 end
 io.close(file)
-file = io.open("type.txt","r")
+file = io.open("type.tmp","r")
 io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do

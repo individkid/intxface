@@ -308,16 +308,11 @@ func swiftKey(event:NSEvent) -> NSEvent?
 	guard let str:String = event.characters else {return nil}
 	let unicode = str.unicodeScalars
 	let key = Int(unicode[unicode.startIndex].value)
-	if (key == 27) {if (cb.esc == 0) {cb.esc = 1}}
-	else if (key == 13) {if (cb.esc == 1) {cb.esc = 2}}
-	else {if (key == 32) {_ = swiftRight(event:event)}; cb.esc = 0}
-	print("key(\(key)) esc(\(cb.esc))")
 	toMutable([Int8(key)])
 	{(siz:Int,ptr:UnsafeMutablePointer<Int8>) in
 	atomicChr(Macro,0,Int32(siz),0,ptr,nil,0,nil)
 	{(num:CInt,client:UnsafeMutablePointer<share.Client>?) in
 	clientMetric(client);}}
-	if (cb.esc >= 2) {loopStop()}
 	return nil
 }
 func swiftLeft(event:NSEvent) -> NSEvent?
@@ -325,7 +320,9 @@ func swiftLeft(event:NSEvent) -> NSEvent?
 	let point = getPoint()
 	let rect:CGRect = layer.frame
 	if (NSPointInRect(point,rect)) {
-		cb.click(Double(point.x),Double(point.y),0)
+		if event.modifierFlags.contains(.control) {
+		cb.click(Double(point.x),Double(point.y),1)}
+		else {cb.click(Double(point.x),Double(point.y),0)}
 	}
 	return event
 }
