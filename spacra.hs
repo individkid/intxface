@@ -72,9 +72,11 @@ prop_holes = forAll (prop_subsetsH 10) $
 	\c -> let
 	d = nub' (map abs c)
 	e = holes b d
+	f = d Naive.++ e
 	in (prop_holesF d e) &&
-	((length (d Naive.++ e)) == (b + (length d))) &&
-	(((indices b) Naive.\\ (d Naive.++ e)) == [])
+	((length e) == b) &&
+	((length f) == (b + (length d))) &&
+	(((indices b) Naive.\\ f) == [])
 
 mainF :: Result -> IO ()
 mainF a
