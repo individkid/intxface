@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log line plane space trade planra
+all: facer.log typra.log typer.log filer.log spacra.log line plane space trade planra
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
@@ -26,17 +26,15 @@ facer.log: facerC facerHs facerLua
 	./facerC > facer.log
 	./facerHs >> facer.log
 	./facerLua >> facer.log
-	cat $@
 typra.log: typraLua
 	./typraLua > typra.log
-	cat $@
 typer.log: typerC typerHs typerLua typerSw
 	./typerC > typer.log
-	cat $@
 filer.log: filerLua file
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	./filerLua > filer.log
-	cat $@
+spacra.log: spacra
+	./spacra > spacra.log
 
 %: %C
 	ln -f $< $@

@@ -19,6 +19,8 @@ module Main where
 
 import Naive
 import Test.QuickCheck
+import Test.QuickCheck.Test
+import System.Exit
 
 instance Arbitrary Side where
 	arbitrary = frequency [(4, elements [Side 0]), (1, elements [Side 1])]
@@ -74,8 +76,12 @@ prop_holes = forAll (prop_subsetsH 10) $
 	((length (d Naive.++ e)) == (b + (length d))) &&
 	(((indices b) Naive.\\ (d Naive.++ e)) == [])
 
+mainF :: Result -> IO ()
+mainF a
+	| isSuccess a = return ()
+	| otherwise = exitFailure
 main = do
-	quickCheck prop_boolToSide
-	quickCheck prop_sideToBool
-	quickCheck prop_subsets
-	quickCheck prop_holes
+	quickCheckResult prop_boolToSide >>= mainF
+	quickCheckResult prop_sideToBool >>= mainF
+	quickCheckResult prop_subsets >>= mainF
+	quickCheckResult prop_holes >>= mainF
