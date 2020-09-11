@@ -82,10 +82,9 @@ prop_tetrahedron = forAll (vector 4) $
  bounds = map Boundary a
  power = powerSpace bounds
  regions = regionsOfPlace power
- in forAll (Test.QuickCheck.choose (0,((length regions) - 1))) $
+ in forAll (elements regions) $
  \b -> let
- region = regions !! b
- degen = degenSpace region power
+ degen = degenSpace b power
  space = placeToSpace degen
  in isLinear 3 space
 
