@@ -136,8 +136,8 @@ a ++ b = plusPlusF a (b \\ a)
 
 plusPlusF :: Ord a => [a] -> [a] -> [a]
 plusPlusF (a:b) (c:d)
- | a > c = c : (slashSlashF (a:b) d)
- | a < c = a : (slashSlashF b (c:d))
+ | a > c = c : (plusPlusF (a:b) d)
+ | a < c = a : (plusPlusF b (c:d))
  | a == c = undefined
 plusPlusF [] a = a
 plusPlusF a [] = a
