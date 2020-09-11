@@ -81,12 +81,18 @@ prop_simplex =
  forAll (Test.QuickCheck.choose (2,4)) $ \a ->
  forAll (vector (a + 1)) $ \b -> let
  bounds = map Boundary b
- power = powerSpace bounds
- regions = regionsOfPlace power
+ place = powerSpace bounds
+ regions = regionsOfPlace place
  in forAll (elements regions) $ \c -> let
- degen = degenSpace c power
+ degen = degenSpace c place
  space = placeToSpace degen
- in isLinear a space
+ power = placeToSpace place
+ in (isLinear a space) &&
+ (not (isLinear (a + 1) space)) &&
+ (not (isLinear (a - 1) space)) &&
+ (not (isLinear a power)) &&
+ (isLinear (a + 1) power) &&
+ (not (isLinear (a - 1) power))
 
 mainF :: Result -> IO ()
 mainF a
