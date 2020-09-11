@@ -76,17 +76,17 @@ prop_holes = forAll (prop_subsetsH 10) $
  ((length f) == (b + (length d))) &&
  (((indices b) Naive.\\ f) == [])
 
-prop_tetrahedron :: Property
-prop_tetrahedron = forAll (vector 4) $
- \a -> let
- bounds = map Boundary a
+prop_simplex :: Property
+prop_simplex =
+ forAll (Test.QuickCheck.choose (2,4)) $ \a ->
+ forAll (vector (a + 1)) $ \b -> let
+ bounds = map Boundary b
  power = powerSpace bounds
  regions = regionsOfPlace power
- in forAll (elements regions) $
- \b -> let
- degen = degenSpace b power
+ in forAll (elements regions) $ \c -> let
+ degen = degenSpace c power
  space = placeToSpace degen
- in isLinear 3 space
+ in isLinear a space
 
 mainF :: Result -> IO ()
 mainF a
@@ -97,4 +97,4 @@ main = do
  quickCheckResult prop_sideToBool >>= mainF
  quickCheckResult prop_subsets >>= mainF
  quickCheckResult prop_holes >>= mainF
- quickCheckResult prop_tetrahedron >>= mainF
+ quickCheckResult prop_simplex >>= mainF
