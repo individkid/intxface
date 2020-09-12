@@ -476,8 +476,8 @@ takeRegions s t = let
  shared = (boundariesOfPlace s) +\ (boundariesOfPlace t)
  plual = placeToPlual t
  (regions,dual) = unzipPlual plual
- sSub = map2 (\x -> checkSort (shared +\ x)) (placeToDual s)
- tSub = map2 (\x -> checkSort (shared +\ x)) dual
+ sSub = map2 (\x -> shared +\ x) (placeToDual s)
+ tSub = map2 (\x -> shared +\ x) dual
  in preimage sSub (zipPlual regions tSub)
 
 -- reverse sidedness of given boundary
