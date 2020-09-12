@@ -78,27 +78,6 @@ prop_holes = forAll (prop_subsetsH 10) $
  ((length f) == (b + (length d))) &&
  (((indices b) Naive.\\ f) == [])
 
-putstr_simplex :: IO ()
-putstr_simplex = let
- n = 4
- nindexs = indices (n + 1)
- nbounds = map Boundary nindexs
- nplace = powerSpace nbounds
- nspace = placeToSpace nplace
- nregions = regionsOfPlace nplace
- tindexs = indices (shift 1 (n + 1))
- tregions = map Region tindexs
- r = Region 8
- rplace = degenSpace r nplace
- rspace = placeToSpace rplace
- rindex = elemIndex' r tregions
- rregions = unplace rindex tregions
- one = 1 :: Int
- in do
- putStrLn (show (sort (regionsOfPlace rplace)))
- putStrLn (show rregions)
- putStrLn (show ((sort (regionsOfPlace rplace)) == rregions))
- -- ((regionsOfPlace rplace) == rregions) &&
 prop_simplex :: Property
 prop_simplex =
  forAll (Test.QuickCheck.choose (2,4)) $ \n -> let
@@ -138,5 +117,4 @@ main = do
  quickCheckResult prop_sideToBool >>= mainF
  quickCheckResult prop_subsets >>= mainF
  quickCheckResult prop_holes >>= mainF
- -- putstr_simplex
  quickCheckResult prop_simplex >>= mainF
