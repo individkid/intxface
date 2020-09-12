@@ -132,7 +132,7 @@ welldefF [] = []
 
 -- ++ is as in Data.List except welldef
 (++) :: Ord a => [a] -> [a] -> [a]
-a ++ b = plusPlusF a (b \\ a)
+a ++ b = plusPlusF (checkSort a) (b \\ a)
 
 plusPlusF :: Ord a => [a] -> [a] -> [a]
 plusPlusF (a:b) (c:d)

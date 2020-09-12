@@ -93,6 +93,8 @@ prop_simplex =
  rspace = placeToSpace rplace
  rindex = elemIndex' r tregions
  rregions = unplace rindex tregions
+ [mregion] = filter (\x -> not (outsideOfRegionExists x rspace)) rregions
+ mspace = migrateSpace mregion rspace
  in (isLinear n rspace) &&
  (not (isLinear (n + 1) rspace)) &&
  (not (isLinear (n - 1) rspace)) &&
@@ -106,7 +108,9 @@ prop_simplex =
  ((boundariesOfPlace nplace) == nbounds) &&
  ((boundariesOfSpace nspace) == nbounds) &&
  ((sort (regionsOfPlace nplace)) == tregions) &&
- ((sort (regionsOfSpace nspace)) == tregions)
+ ((sort (regionsOfSpace nspace)) == tregions) &&
+ (isLinear n mspace) &&
+ (mspace /= rspace)
 
 mainF :: Result -> IO ()
 mainF a
