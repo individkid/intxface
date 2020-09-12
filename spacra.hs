@@ -21,6 +21,8 @@ import Naive
 import Test.QuickCheck
 import Test.QuickCheck.Test
 import System.Exit
+import Data.Bits
+import Data.List
 
 instance Arbitrary Side where
  arbitrary = frequency [(4, elements [Side 0]), (1, elements [Side 1])]
@@ -76,23 +78,56 @@ prop_holes = forAll (prop_subsetsH 10) $
  ((length f) == (b + (length d))) &&
  (((indices b) Naive.\\ f) == [])
 
+putstr_simplex :: IO ()
+putstr_simplex = let
+ n = 4
+ nindexs = indices (n + 1)
+ nbounds = map Boundary nindexs
+ nplace = powerSpace nbounds
+ nspace = placeToSpace nplace
+ nregions = regionsOfPlace nplace
+ tindexs = indices (shift 1 (n + 1))
+ tregions = map Region tindexs
+ r = Region 8
+ rplace = degenSpace r nplace
+ rspace = placeToSpace rplace
+ rindex = elemIndex' r tregions
+ rregions = unplace rindex tregions
+ one = 1 :: Int
+ in do
+ putStrLn (show (sort (regionsOfPlace rplace)))
+ putStrLn (show rregions)
+ putStrLn (show ((sort (regionsOfPlace rplace)) == rregions))
+ -- ((regionsOfPlace rplace) == rregions) &&
 prop_simplex :: Property
 prop_simplex =
- forAll (Test.QuickCheck.choose (2,4)) $ \a ->
- forAll (vector (a + 1)) $ \b -> let
- bounds = map Boundary b
- place = powerSpace bounds
- regions = regionsOfPlace place
- in forAll (elements regions) $ \c -> let
- degen = degenSpace c place
- space = placeToSpace degen
- power = placeToSpace place
- in (isLinear a space) &&
- (not (isLinear (a + 1) space)) &&
- (not (isLinear (a - 1) space)) &&
- (not (isLinear a power)) &&
- (isLinear (a + 1) power) &&
- (not (isLinear (a - 1) power))
+ forAll (Test.QuickCheck.choose (2,4)) $ \n -> let
+ nindexs = indices (n + 1)
+ nbounds = map Boundary nindexs
+ nplace = powerSpace nbounds
+ nspace = placeToSpace nplace
+ nregions = regionsOfPlace nplace
+ tindexs = indices (shift 1 (n + 1))
+ tregions = map Region tindexs
+ in forAll (elements nregions) $ \r -> let
+ rplace = degenSpace r nplace
+ rspace = placeToSpace rplace
+ rindex = elemIndex' r tregions
+ rregions = unplace rindex tregions
+ in (isLinear n rspace) &&
+ (not (isLinear (n + 1) rspace)) &&
+ (not (isLinear (n - 1) rspace)) &&
+ ((boundariesOfPlace rplace) == nbounds) &&
+ ((boundariesOfSpace rspace) == nbounds) &&
+ ((sort (regionsOfPlace rplace)) == rregions) &&
+ ((sort (regionsOfSpace rspace)) == rregions) &&
+ (not (isLinear n nspace)) &&
+ (isLinear (n + 1) nspace) &&
+ (not (isLinear (n - 1) nspace)) &&
+ ((boundariesOfPlace nplace) == nbounds) &&
+ ((boundariesOfSpace nspace) == nbounds) &&
+ ((sort (regionsOfPlace nplace)) == tregions) &&
+ ((sort (regionsOfSpace nspace)) == tregions)
 
 mainF :: Result -> IO ()
 mainF a
@@ -103,4 +138,5 @@ main = do
  quickCheckResult prop_sideToBool >>= mainF
  quickCheckResult prop_subsets >>= mainF
  quickCheckResult prop_holes >>= mainF
+ -- putstr_simplex
  quickCheckResult prop_simplex >>= mainF
