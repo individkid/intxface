@@ -773,10 +773,10 @@ equivPermF _ p = let
 refinePart :: Part -> Part -> [(Boundary,Boundary,Side,Part,Part)]
 refinePart _ [] = []
 refinePart p q = let
- term = Boundary (length p)
+ next = Boundary (length p)
  done (x,y) = p `append` [(x,y)]
  todo x = filter (\(y,_) -> x /= y) q
- tuple (x,y) = (term, x, y, done (x,y), todo x)
+ tuple (x,y) = (next, x, y, done (x,y), todo x)
  in map tuple q
 
 -- starting partial permutation
@@ -825,12 +825,14 @@ refineSpaceF s t (a,b,c,p,q) = let
 
 -- add transposed boundary to fullspace
 refineSpaceG :: Boundary -> Boundary -> Side -> ([[Boundary]],[[Boundary]]) -> [[Boundary]]
-refineSpaceG a b (Side 0) ([s,_],[u,v])
+refineSpaceG a b (Side 0) ([s,t],[u,v])
  | elem b s = [a:u,v]
- | otherwise = [u,a:v]
-refineSpaceG a b (Side 1) ([s,_],[u,v])
+ | elem b t = [u,a:v]
+ | otherwise = undefined
+refineSpaceG a b (Side 1) ([s,t],[u,v])
  | elem b s = [u,a:v]
- | otherwise = [a:u,v]
+ | elem b t = [a:u,v]
+ | otherwise = undefined
 refineSpaceG _ _ _ _ = undefined
 
 --
