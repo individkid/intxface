@@ -49,7 +49,7 @@ prop_subsetsI (a:b) c = let
  g = e Prelude.++ f
  in prop_subsetsI b g
 prop_subsets :: Property
-prop_subsets = forAll (prop_subsetsH 10) $
+prop_subsets = forAll (prop_subsetsH 20) $
  \a -> forAll (prop_subsetsH a) $
  \b -> forAll (prop_subsetsG a) $
  \c -> forAll (prop_subsetsG b) $
@@ -66,10 +66,9 @@ prop_holesF [] (a:b:c) = (a < b) && (prop_holesF [] (b:c))
 prop_holesF (a:b:c) [] = (a < b) && (prop_holesF (b:c) [])
 prop_holesF _ _ = True
 prop_holes :: Property
-prop_holes = forAll (prop_subsetsH 10) $
- \a -> forAll (prop_subsetsH 10) $
- \b -> forAll (prop_subsetsG a) $
- \c -> let
+prop_holes = forAll (prop_subsetsH 20) $ \a ->
+ forAll (prop_subsetsH 20) $ \b ->
+ forAll (prop_subsetsG a) $ \c -> let
  d = nub' (map abs c)
  e = holes b d
  f = d Naive.++ e

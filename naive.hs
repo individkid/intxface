@@ -35,14 +35,14 @@ type Place = [(Boundary,[[Region]])] -- assume one-to-one
 type Plual = [(Region,[[Boundary]])] -- dual of place
 type Part = [(Boundary,Side)]
 class Perm p where
- refinePerm :: p -> [p]
- comparePerm :: p -> p -> Ordering
+ refinePerm :: p -> [p] -- generate permutations of next order of quality significance
+ comparePerm :: p -> p -> Ordering -- permutation equality
 data Spacer = Spacer {
- doneOfSpacer :: Part,
- todoOfSpacer :: Part,
- origOfSpacer :: Dual,
- permOfSpacer :: Dual,
- sortOfSpacer :: Dual}
+ doneOfSpacer :: Part, -- boundary and mirroring chosen
+ todoOfSpacer :: Part, -- boundaries to choose from, and whether to mirror
+ origOfSpacer :: Dual, -- space to permute from
+ permOfSpacer :: Dual, -- space permuted so far
+ sortOfSpacer :: Dual} -- space permuted comparable
 instance Perm Spacer where
  refinePerm = refineSpace
  comparePerm (Spacer {sortOfSpacer = s}) (Spacer {sortOfSpacer = t}) = compare s t
