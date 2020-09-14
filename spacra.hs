@@ -23,6 +23,7 @@ import Test.QuickCheck.Test
 import System.Exit
 import Data.Bits
 import Data.List
+import System.Random
 
 instance Arbitrary Side where
  arbitrary = frequency [(4, elements [Side 0]), (1, elements [Side 1])]
@@ -128,6 +129,17 @@ prop_equiv =
  in (isLinear n requiv) &&
  ((compare rspace requiv) /= LT)
 
+prop_generateF :: (RandomGen g) => (g -> (Double,g)) -> g -> Int -> ([Double],g)
+prop_generateF = catalyze
+prop_generate :: Property
+prop_generate =
+ forAll (Test.QuickCheck.choose (-100000,100000)) $ \a ->
+ forAll (Test.QuickCheck.choose (0,10)) $ \b -> let
+ g = mkStdGen a
+ (c,h) = prop_generateF (\i -> System.Random.randomR (-100.0,100.0) i) g b
+ in ((length c) == b) &&
+ all (\x -> (x >= -100.0) && (x <= 100.0)) c
+
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
@@ -139,3 +151,4 @@ main = do
  quickCheckResult prop_holes >>= mainF
  quickCheckResult prop_simplex >>= mainF
  quickCheckResult prop_equiv >>= mainF
+ quickCheckResult prop_generate >>= mainF
