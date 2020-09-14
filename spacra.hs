@@ -113,6 +113,21 @@ prop_simplex =
  (mspace /= rspace) &&
  (mregion == tregion)
 
+prop_equiv :: Property
+prop_equiv =
+ forAll (Test.QuickCheck.choose (2,4)) $ \n -> let
+ nindexs = indices (n + 1)
+ nbounds = map Boundary nindexs
+ nplace = powerSpace nbounds
+ nspace = placeToSpace nplace
+ nregions = regionsOfPlace nplace
+ in forAll (elements nregions) $ \r -> let
+ rplace = degenSpace r nplace
+ rspace = placeToSpace rplace
+ requiv = equivSpace rspace
+ in (isLinear n requiv) &&
+ ((compare rspace requiv) /= LT)
+
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
@@ -123,3 +138,4 @@ main = do
  quickCheckResult prop_subsets >>= mainF
  quickCheckResult prop_holes >>= mainF
  quickCheckResult prop_simplex >>= mainF
+ quickCheckResult prop_equiv >>= mainF
