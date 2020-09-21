@@ -138,12 +138,12 @@ prop_generate =
  g = mkStdGen a
  (c,h) = prop_generateF (\i -> System.Random.randomR (-100.0,100.0) i) g b
  in ((length c) == b) &&
- all (\x -> (x >= -100.0) && (x <= 100.0)) c
+ (all (\x -> (x >= -100.0) && (x <= 100.0)) c)
 
 prop_space :: Property
 prop_space =
  forAll (Test.QuickCheck.choose(2,3)) $ \n ->
- forAll (Test.QuickCheck.choose(0,7)) $ \m -> let
+ forAll (Test.QuickCheck.choose(0,8)) $ \m -> let
  s = anySpace n m
  in isLinear n s
 
@@ -153,22 +153,24 @@ putstr_space = let
  m = 7
  s = anySpace n (m - 1)
  bounds = boundaryHoles m []
- t = placeToSpace (foldl' (\y x -> superSpace n y (powerSpace [x])) [] bounds)
- in do
- putStrLn (show (isLinear n (placeToSpace (superSpace n (spaceToPlace s) (powerSpace (boundaryHoles 1 (boundariesOfSpace s)))))))
- -- putStrLn (show (isLinear n t))
+ prefix = take (m - 1) bounds
+ suffix = drop (m - 1) bounds
+ place = foldl' (\y x -> superSpace n y (powerSpace [x])) [] prefix
+ space = placeToSpace place
+ t = placeToSpace (superSpace n (spaceToPlace space) (powerSpace suffix))
+ in putStrLn (show (isLinear n t))
 
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
  | otherwise = exitFailure
 main = do
- -- quickCheckResult prop_boolToSide >>= mainF
- -- quickCheckResult prop_sideToBool >>= mainF
- -- quickCheckResult prop_subsets >>= mainF
- -- quickCheckResult prop_holes >>= mainF
- -- quickCheckResult prop_simplex >>= mainF
- -- quickCheckResult prop_equiv >>= mainF
- -- quickCheckResult prop_generate >>= mainF
- putstr_space
+ quickCheckResult prop_boolToSide >>= mainF
+ quickCheckResult prop_sideToBool >>= mainF
+ quickCheckResult prop_subsets >>= mainF
+ quickCheckResult prop_holes >>= mainF
+ quickCheckResult prop_simplex >>= mainF
+ quickCheckResult prop_equiv >>= mainF
+ quickCheckResult prop_generate >>= mainF
  -- quickCheckResult prop_space >>= mainF
+ putstr_space
