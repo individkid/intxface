@@ -140,6 +140,50 @@ prop_generate =
  in ((length c) == b) &&
  all (\x -> (x >= -100.0) && (x <= 100.0)) c
 
+prop_space :: Property
+prop_space =
+ forAll (Test.QuickCheck.choose(2,4)) $ \n ->
+ forAll (Test.QuickCheck.choose(0,10)) $ \m -> let
+ s = anySpace n m
+ in isLinear n s
+
+putstr_space :: IO ()
+putstr_space = let
+ n = 2
+ m = 5
+ s = spaceToPlace (anySpace n 2)
+ t = powerSpace (boundaryHoles 1 (boundariesOfPlace s))
+ sBounds = boundariesOfPlace s
+ tBounds = boundariesOfPlace t
+ sOnly = sBounds Naive.\\ tBounds
+ tOnly = tBounds Naive.\\ sBounds
+ shared = sBounds Naive.+\ tBounds
+ bounds = sBounds Naive.++ tBounds
+ bound = Naive.choose sBounds
+ sup = superSpace n (powerSpace [bound]) t
+ in (\s t -> let
+ sBounds = boundariesOfPlace s
+ tBounds = boundariesOfPlace t
+ sBound = head (sBounds Naive.\\ tBounds)
+ tBound = head (tBounds Naive.\\ sBounds)
+ place = subSpace sBound s
+ sSect = sectionSpace sBound s
+ tSect = sectionSpace tBound t
+ sect = snakeSpace (pred n) (pred n) n sSect tSect place
+ sSup = divideSpace tBound sect sSect 
+ tSup = concatMap (\x -> divideSpace sBound x t) sSup
+ spaces = map placeToSpace tSup
+ in do
+ putStrLn (show (map (isLinear n) spaces))
+ putStrLn (show (map (\x -> isSubSpace x s) tSup))
+ putStrLn (show (map (\x -> isSubSpace x t) tSup))
+ putStrLn (show (map (\x -> (boundariesOfPlace x) Naive.\\ (boundariesOfPlace s)) tSup))
+ putStrLn (show (map (\x -> (boundariesOfPlace x) Naive.\\ (boundariesOfPlace t)) tSup))
+ putStrLn (show (boundariesOfPlace (head tSup)))
+ putStrLn (show (boundariesOfPlace s))
+ putStrLn (show (boundariesOfPlace t))
+ ) s sup
+
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
@@ -152,3 +196,5 @@ main = do
  quickCheckResult prop_simplex >>= mainF
  quickCheckResult prop_equiv >>= mainF
  quickCheckResult prop_generate >>= mainF
+ -- quickCheckResult prop_space >>= mainF
+ putstr_space

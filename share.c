@@ -175,8 +175,8 @@ void composeMatrix(float *result)
 	angleMatrix(result,offset*cb.conf(DefaultPole));
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
-	jumpmat(mat,matrix,4);
 	jumpmat(mat,sav,4);
+	jumpmat(mat,matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -193,8 +193,8 @@ void composeMatrix(float *result)
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	timesmat(mat,normal,4);
-	jumpmat(mat,matrix,4);
 	jumpmat(mat,sav,4);
+	jumpmat(mat,matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}
@@ -203,8 +203,8 @@ void composeMatrix(float *result)
 	float mat[16]; copymat(mat,pierce,4);
 	float sav[16]; inverseMatrix(sav);
 	timesmat(mat,normal,4);
-	jumpmat(mat,matrix,4);
 	jumpmat(mat,sav,4);
+	jumpmat(mat,matrix,4);
 	float inv[16]; invmat(copymat(inv,mat,4),4);
 	timesmat(jumpmat(result,mat,4),inv,4);
 	break;}

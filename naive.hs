@@ -676,7 +676,7 @@ superSpace n s t
  | ((length shared) == 0) && ((length sBounds) == 1) && ((length tBounds) > 1) = superSpace n t s
  | ((length shared) == 0) && ((length sBounds) > 1) = let
   bound = choose sBounds
-  sup = superSpace n (powerSpace [bound]) t -- sBounds becomes just bound from more than bound 
+  sup = superSpace n (powerSpace [bound]) t -- sBounds becomes just bound from more than bound
   in superSpace n s sup -- s and sup share bound
  | ((length sOnly) == 1) && ((length tOnly) == 1) = rabbitSpace n s t -- independent boundary case
  | otherwise = undefined where
