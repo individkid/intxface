@@ -722,7 +722,7 @@ rabbitSpace n s t
 
 -- return whether linear and contains both given
 rabbitSpaceF :: Int -> Place -> Place -> Place -> Bool
-rabbitSpaceF n s t u = (isLinear n (placeToSpace u)) && (isSubSpace u s) && (isSubSpace u t)
+rabbitSpaceF n s t u = (isLinear n (placeToSpace u)) && (isSubSpace s u) && (isSubSpace t u)
 
 -- return space that is section of given spaces
 -- given dimensions correspond to given spaces. first two spaces are sections of third place

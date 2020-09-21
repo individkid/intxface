@@ -142,59 +142,33 @@ prop_generate =
 
 prop_space :: Property
 prop_space =
- forAll (Test.QuickCheck.choose(2,4)) $ \n ->
- forAll (Test.QuickCheck.choose(0,10)) $ \m -> let
+ forAll (Test.QuickCheck.choose(2,3)) $ \n ->
+ forAll (Test.QuickCheck.choose(0,7)) $ \m -> let
  s = anySpace n m
  in isLinear n s
 
 putstr_space :: IO ()
 putstr_space = let
- n = 2
- m = 5
- s = spaceToPlace (anySpace n 2)
- t = powerSpace (boundaryHoles 1 (boundariesOfPlace s))
- sBounds = boundariesOfPlace s
- tBounds = boundariesOfPlace t
- sOnly = sBounds Naive.\\ tBounds
- tOnly = tBounds Naive.\\ sBounds
- shared = sBounds Naive.+\ tBounds
- bounds = sBounds Naive.++ tBounds
- bound = Naive.choose sBounds
- sup = superSpace n (powerSpace [bound]) t
- in (\s t -> let
- sBounds = boundariesOfPlace s
- tBounds = boundariesOfPlace t
- sBound = head (sBounds Naive.\\ tBounds)
- tBound = head (tBounds Naive.\\ sBounds)
- place = subSpace sBound s
- sSect = sectionSpace sBound s
- tSect = sectionSpace tBound t
- sect = snakeSpace (pred n) (pred n) n sSect tSect place
- sSup = divideSpace tBound sect sSect 
- tSup = concatMap (\x -> divideSpace sBound x t) sSup
- spaces = map placeToSpace tSup
+ n = 3
+ m = 7
+ s = anySpace n (m - 1)
+ bounds = boundaryHoles m []
+ t = placeToSpace (foldl' (\y x -> superSpace n y (powerSpace [x])) [] bounds)
  in do
- putStrLn (show (map (isLinear n) spaces))
- putStrLn (show (map (\x -> isSubSpace x s) tSup))
- putStrLn (show (map (\x -> isSubSpace x t) tSup))
- putStrLn (show (map (\x -> (boundariesOfPlace x) Naive.\\ (boundariesOfPlace s)) tSup))
- putStrLn (show (map (\x -> (boundariesOfPlace x) Naive.\\ (boundariesOfPlace t)) tSup))
- putStrLn (show (boundariesOfPlace (head tSup)))
- putStrLn (show (boundariesOfPlace s))
- putStrLn (show (boundariesOfPlace t))
- ) s sup
+ putStrLn (show (isLinear n (placeToSpace (superSpace n (spaceToPlace s) (powerSpace (boundaryHoles 1 (boundariesOfSpace s)))))))
+ -- putStrLn (show (isLinear n t))
 
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
  | otherwise = exitFailure
 main = do
- quickCheckResult prop_boolToSide >>= mainF
- quickCheckResult prop_sideToBool >>= mainF
- quickCheckResult prop_subsets >>= mainF
- quickCheckResult prop_holes >>= mainF
- quickCheckResult prop_simplex >>= mainF
- quickCheckResult prop_equiv >>= mainF
- quickCheckResult prop_generate >>= mainF
- -- quickCheckResult prop_space >>= mainF
+ -- quickCheckResult prop_boolToSide >>= mainF
+ -- quickCheckResult prop_sideToBool >>= mainF
+ -- quickCheckResult prop_subsets >>= mainF
+ -- quickCheckResult prop_holes >>= mainF
+ -- quickCheckResult prop_simplex >>= mainF
+ -- quickCheckResult prop_equiv >>= mainF
+ -- quickCheckResult prop_generate >>= mainF
  putstr_space
+ -- quickCheckResult prop_space >>= mainF
