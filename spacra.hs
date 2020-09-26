@@ -151,26 +151,40 @@ putstr_space :: IO ()
 putstr_space = let
  n = 3
  m = 7
- s = anySpace n (m - 1)
  bounds = boundaryHoles m []
  prefix = take (m - 1) bounds
  suffix = drop (m - 1) bounds
  place = foldl' (\y x -> superSpace n y (powerSpace [x])) [] prefix
  space = placeToSpace place
- t = placeToSpace (superSpace n (spaceToPlace space) (powerSpace suffix))
- in putStrLn (show (isLinear n t))
+ power = powerSpace suffix
+ share = powerSpace [Naive.choose (boundariesOfSpace space)]
+ s = place
+ t = superSpace n share power
+ sBounds = boundariesOfPlace s
+ tBounds = boundariesOfPlace t
+ sOnly = sBounds Naive.\\ tBounds
+ bound = Naive.choose sOnly
+ sup = superSpace n (subSpace bound s) t
+ u = superSpace n s sup
+ in do
+ putStrLn (show (isLinear n space))
+ putStrLn (show (isLinear n (placeToSpace t)))
+ putStrLn (show (isLinear n (placeToSpace u)))
+ putStrLn (show (length (boundariesOfPlace u)))
+ putStrLn (show (boundariesOfPlace u))
+ -- putStrLn (show (anySpace n m))
 
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
  | otherwise = exitFailure
 main = do
- quickCheckResult prop_boolToSide >>= mainF
- quickCheckResult prop_sideToBool >>= mainF
- quickCheckResult prop_subsets >>= mainF
- quickCheckResult prop_holes >>= mainF
- quickCheckResult prop_simplex >>= mainF
- quickCheckResult prop_equiv >>= mainF
- quickCheckResult prop_generate >>= mainF
+ -- quickCheckResult prop_boolToSide >>= mainF
+ -- quickCheckResult prop_sideToBool >>= mainF
+ -- quickCheckResult prop_subsets >>= mainF
+ -- quickCheckResult prop_holes >>= mainF
+ -- quickCheckResult prop_simplex >>= mainF
+ -- quickCheckResult prop_equiv >>= mainF
+ -- quickCheckResult prop_generate >>= mainF
  -- quickCheckResult prop_space >>= mainF
  putstr_space
