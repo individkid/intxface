@@ -140,6 +140,36 @@ prop_generate =
  in ((length c) == b) &&
  (all (\x -> (x >= -100.0) && (x <= 100.0)) c)
 
+prop_take :: Property
+prop_take =
+ forAll (Test.QuickCheck.choose(2,3)) $ \n ->
+ forAll (Test.QuickCheck.choose(0,6)) $ \m ->
+ forAll (Test.QuickCheck.choose(0,(m-1))) $ \b -> let
+ bound = Boundary b
+ space = anySpace n m
+ place = spaceToPlace space
+ s = sectionSpace bound place
+ t = subSpace bound place
+ take = takeRegions s t
+ a = (length take) == (length (regionsOfPlace s))
+ c = isSectionSpace s t
+ in a && c
+
+putstr_take :: IO ()
+putstr_take = let
+ n = 3
+ m = 3
+ b = 0
+ bound = Boundary b
+ space = anySpace n m
+ place = spaceToPlace space
+ s = sectionSpace bound place
+ t = subSpace bound place
+ take = takeRegions s t
+ in do
+ putStrLn (show (sort take))
+ putStrLn (show (sort (regionsOfPlace s)))
+
 prop_space :: Property
 prop_space =
  forAll (Test.QuickCheck.choose(2,3)) $ \n ->
@@ -172,19 +202,21 @@ putstr_space = let
  putStrLn (show (isLinear n (placeToSpace u)))
  putStrLn (show (length (boundariesOfPlace u)))
  putStrLn (show (boundariesOfPlace u))
- -- putStrLn (show (anySpace n m))
+ putStrLn (show (anySpace n m))
 
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
  | otherwise = exitFailure
 main = do
- -- quickCheckResult prop_boolToSide >>= mainF
- -- quickCheckResult prop_sideToBool >>= mainF
- -- quickCheckResult prop_subsets >>= mainF
- -- quickCheckResult prop_holes >>= mainF
- -- quickCheckResult prop_simplex >>= mainF
- -- quickCheckResult prop_equiv >>= mainF
- -- quickCheckResult prop_generate >>= mainF
+ quickCheckResult prop_boolToSide >>= mainF
+ quickCheckResult prop_sideToBool >>= mainF
+ quickCheckResult prop_subsets >>= mainF
+ quickCheckResult prop_holes >>= mainF
+ quickCheckResult prop_simplex >>= mainF
+ quickCheckResult prop_equiv >>= mainF
+ quickCheckResult prop_generate >>= mainF
+ -- quickCheckResult prop_take >>= mainF
  -- quickCheckResult prop_space >>= mainF
- putstr_space
+ -- putstr_take
+ -- putstr_space

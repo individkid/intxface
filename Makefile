@@ -34,7 +34,7 @@ filer.log: filerLua file
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	./filerLua > filer.log
 spacra.log: spacra
-	./spacra > spacra.log
+	./spacra -xc > spacra.log
 
 %: %C
 	ln -f $< $@

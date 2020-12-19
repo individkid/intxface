@@ -285,7 +285,7 @@ void sharePierce()
 	struct Vector vector[2];
 	vector[1].val[0] = vector[0].val[0] = xmove - render[1][0];
 	vector[1].val[1] = vector[0].val[1] = ymove - render[1][1];
-	vector[1].val[2] = 0.0; vector[0].val[2] = render[1][2];
+	vector[1].val[2] = -render[1][2]; vector[0].val[2] = render[1][2];
 	float ratio = (vector[1].val[2]-render[0][2])/(render[1][2]-render[0][2]);
 	vector[1].val[0] *= ratio;
 	vector[1].val[1] *= ratio;
