@@ -134,15 +134,15 @@ void transformMatrix(float *result)
 {
 	switch (cb.state[User]->user->move) {
 	case (Rotate): { // rotate about fixed pierce point
+	// (sav*pie*lon)*lat*(sav*pie*lon)^-1
 	float vec[3]; offsetVector(vec);
 	float lon[16]; longitudeMatrix(lon,vec);
-	latitudeMatrix(result,vec);
-	float mat[16]; copymat(mat,pierce,4);
+	float lat[16]; latitudeMatrix(lat,vec);
+	float pie[16]; copymat(pie,pierce,4);
 	float sav[16]; inverseMatrix(sav);
-	jumpmat(mat,sav,4);
-	timesmat(mat,lon,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
+	float arg[16]; argmat(4,2,copymat(arg,sav,4),pie,lon);
+	float inv[16]; invmat(copymat(inv,arg,4),4);
+	argmat(4,2,copymat(result,arg,4),lat,inv);
 	break;}
 	case (Slide): { // translate parallel to fixed facet
 	float vec[3]; offsetVector(vec); vec[2] = 0.0;

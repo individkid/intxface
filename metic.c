@@ -18,6 +18,7 @@
 
 #include "metic.h"
 #include <stdlib.h>
+#include <stdarg.h>
 
 #define INVALID 1.0e30
 
@@ -91,6 +92,16 @@ float *jumpmat(float *u, float *v, int n)
             u[i*n+j] = 0.0;
             for (int k = 0; k < n; k++) {
                 u[i*n+j] += v[k*n+j]*w[i*n+k];}}}
+    return u;
+}
+
+float *argmat(int n, int m, float *u, ...)
+{
+    va_list args;
+    va_start(args,u);
+    for (int i = 0; i < m; i++) {
+    timesmat(u,va_arg(args,float *),n);}
+    va_end(args);
     return u;
 }
 
