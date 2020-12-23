@@ -659,7 +659,7 @@ void shareInit()
     for (enum Memory mem = 0; mem < Memorys; mem++) {
     shareClient(mem,0,0,1,0,Copy);}
     struct Mode mode = {0}; mode.matrix = Global;
-    mode.click = Complete; mode.move = Slate; mode.roll = Cylinder;
+    mode.click = Complete; mode.move = Rotate; mode.roll = Cylinder;
     shareClient(User,0,1,2,&mode,Copy,Dma0);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
 	shareClient(Subject,0,1,3,&affine,Save,Copy,Dma0);
