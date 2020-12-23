@@ -145,23 +145,24 @@ void transformMatrix(float *result)
 	argmat(4,2,copymat(result,arg,4),lat,inv);
 	break;}
 	case (Slide): { // translate parallel to fixed facet
+	// (sav*pie*nor)*xlt*(sav*pie*nor)^-1
 	float vec[3]; offsetVector(vec); vec[2] = 0.0;
-	translateMatrix(result,vec);
-	float mat[16]; copymat(mat,pierce,4);
+	float xlt[16]; translateMatrix(xlt,vec);
+	float nor[16]; copymat(nor,normal,4);
+	float pie[16]; copymat(pie,pierce,4);
 	float sav[16]; inverseMatrix(sav);
-	timesmat(mat,normal,4);
-	jumpmat(mat,sav,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
+	float arg[16]; argmat(4,2,copymat(arg,sav,4),pie,nor);
+	float inv[16]; invmat(copymat(inv,arg,4),4);
+	argmat(4,2,copymat(result,arg,4),xlt,inv);
 	break;}
 	case (Slate): { // translate parallel to picture plane
+	// sav*xlt*sav^-1
 	float vec[3]; offsetVector(vec); vec[2] = 0.0;
-	translateMatrix(result,vec);
-	float mat[16]; copymat(mat,pierce,4);
+	float xlt[16]; translateMatrix(xlt,vec);
 	float sav[16]; inverseMatrix(sav);
-	jumpmat(mat,sav,4);
-	float inv[16]; invmat(copymat(inv,mat,4),4);
-	timesmat(jumpmat(result,mat,4),inv,4);
+	float arg[16]; copymat(arg,sav,4);
+	float inv[16]; invmat(copymat(inv,arg,4),4);
+	argmat(4,2,copymat(result,arg,4),xlt,inv);
 	break;}
 	default: {
 	identmat(result,4);
@@ -658,7 +659,7 @@ void shareInit()
     for (enum Memory mem = 0; mem < Memorys; mem++) {
     shareClient(mem,0,0,1,0,Copy);}
     struct Mode mode = {0}; mode.matrix = Global;
-    mode.click = Complete; mode.move = Rotate; mode.roll = Cylinder;
+    mode.click = Complete; mode.move = Slate; mode.roll = Cylinder;
     shareClient(User,0,1,2,&mode,Copy,Dma0);
 	struct Affine affine = {0}; identmat(&affine.val[0][0],4);
 	shareClient(Subject,0,1,3,&affine,Save,Copy,Dma0);
