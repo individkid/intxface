@@ -536,8 +536,8 @@ isSubSpace s t = let
 isSectionSpace :: Place -> Place -> Bool
 isSectionSpace s t = let
  a = null ((boundariesOfPlace s) \\ (boundariesOfPlace t))
- b = null ((boundariesOfPlace t) \\ (boundariesOfPlace s))
- c = (length (takeRegions s t)) == (length (regionsOfSpace (placeToSpace s)))
+ b = (length ((boundariesOfPlace t) \\ (boundariesOfPlace s))) == 1
+ c = (length (takeRegions s t)) == (2 * (length (regionsOfSpace (placeToSpace s))))
  in a && b && c
 
 -- representation converters

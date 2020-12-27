@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log spacra.log line plane space trade planra
+all: facer.log typra.log typer.log filer.log spacra.log line plane space trade planra spacra
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
@@ -34,7 +34,7 @@ filer.log: filerLua file
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	./filerLua > filer.log
 spacra.log: spacra
-	./spacra -xc > spacra.log
+	./spacra > spacra.log
 
 %: %C
 	ln -f $< $@
