@@ -27,10 +27,10 @@ Linear:
   A space S is linear iff every subspace of S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions, where n is called the dimension, m is the number of boundaries in the subspace, and f(n,0) = f(0,m) = 1.
 
 Divide:
-  A boundary b of space S0 divides region R of subspace S1 iff b is not in S1, and there are more than one nonempty restrictions of R in S0.
+  A boundary b of space S0 divides region R of subspace S1 iff b is not in S1, and there are more than one nonempty extensions of R in S0.
 
 Section:
-  A space S1 is a section of space S0 iff the regions of S1 have the same sidednesses as regions divided in the subspace of S0.
+  A space S1 is a section of space S0 iff the regions of S1 have the same sidednesses as regions in the subspace of S0 divided by a boundary.
 
 Simplex:
   A simplex is a space with n+1 boundaries, where n is the dimension of the space.
@@ -42,7 +42,7 @@ Apex:
   An apex region of a simplex is one that differs from the inside region by all but one boundary.
 
 Polyant:
-  A polyant is the set of regions on the given sides of a set boundaries.
+  A polyant is the set of regions on the given sides of a set of boundaries.
 
 Corner:
   The corners of a polyant are the regions of the polyant that have nonempty opposites wrt the boundaries of the polyant.
@@ -78,7 +78,7 @@ Simplex:
 
 Apex:
   A space extended by a boundary through the apex regions of a simplex is not linear.
-  Suppose by recursion that the secion by one of the simplex boundaries is not linear. Then by the simplex theorem, either the subspace or given space is not linear. By definition, if the given space is linear, the subspace is linear. Therefore, the given space is not linear.
+  Suppose by recursion that the secion by one of the simplex boundaries is not linear. Then by the section theorem, either the subspace or given space is not linear. By definition, if the given space is linear, the subspace is linear. Therefore, the given space is not linear.
 
 Independent:
   If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
