@@ -83,7 +83,7 @@ Base:
   The section by a boundary of a simplex is a simplex with the inside and its opposite wrt the boundary as inside.
 
 Apex:
-  A space extended by a boundary through the outside vertex regions of a simplex is not linear.
+  A space extended by a boundary through the apex regions of a simplex is not linear.
 
 Independent:
   If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
