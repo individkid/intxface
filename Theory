@@ -30,7 +30,7 @@ Divide:
   A boundary b of space S0 divides region R of subspace S1 iff b is not in S1, and there are more than one nonempty restrictions of R in S0.
 
 Section:
-  A space S1 is a section of space S0 iff the regions of S1 are a subset of the regions of S0.
+  A space S1 is a section of space S0 iff the regions of S1 have the same sidednesses as regions divided in the subspace of S0.
 
 Simplex:
   A simplex is a space with n+1 boundaries, where n is the dimension of the space.
@@ -40,9 +40,6 @@ Opposite:
 
 Outside:
   An outside region is one with an opposite wrt all boundaries that is nonempty.
-
-Base:
-  A base region of a simplex is a region that differs from the inside region by only one boundary.
 
 Apex:
   An apex region of a simplex is one that differs from the inside region by all but one boundary.
@@ -69,22 +66,23 @@ Classification:
 
 Section:
   A section by a linear extension of a linear space is linear.
+  Let S0 be a section of linear S1 extended to linear S2 by boundary b. The number of regions in S0 is the number of regions divided by b, or |S0|. |S2| = |S1| + |S0|. |S0| = |S2| - |S1| = f(n,m) - f(n,m-1) = f(n-1,m-1) + f(n,m-1) - f(n,m-1) = f(n-1,m-1). The same applies to subspaces of S1, so S0 is linear.
 
 Antisection:
   A linear space extended by a linear section is linear.
+  Let S0 be a linear section of S1 extended to linear S2 by boundary b. |S2| = |S1| + |S0|. |S1| = |S2| - |S0| = f(n,m) - f(n-1,m-1) = f(n-1,m-1) + f(n,m-1) - f(n-1,m-1) = f(n,m-1). The same applies to subspaces of S2, so S1 is linear.
 
 Power:
   The number of regions in an n space with n boundaries is 2^n.
+  Because of the classification theorem and that n hyperplanes are linearly independent, every region is nonempty, so f(n,n) = 2^n.
 
 Simplex:
-  The number of regions in a simplex space is 2^n-1.
-
-Base:
-  The section by a boundary of a simplex is a simplex with the inside and base as inside.
-  The regions divided by the boundary in the subspace with the boundary removed are nonempty. Thus, the empty region in the simplex restricts to the empty region in the section simplex, so the inside is the restriction of the inside.
+  The number of regions in a simplex space is 2^(n+1)-1.
+  Note, f(1,2) = 2^2-1. If f(n-1,n) = 2^n-1, then f(n,n+1) = f(n,n) + f(n,n-1) = 2^n + 2^n-1 = 2^(n+1)-1.
 
 Apex:
   A space extended by a boundary through the apex regions of a simplex is not linear.
+  Suppose by recursion that the secion by one of the simplex boundaries is not linear. Then by the simplex theorem, either the subspace or given space is not linear. By definition, if the given space is linear, the subspace is linear. Therefore, the given space is not linear.
 
 Independent:
   If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
