@@ -12,13 +12,13 @@ Space:
   A space is a set of boundaries {b}, points {p}, and map S from {(b,p)} to {0,1}.
 
 Side:
-  Wrt (with regard to) boundary b, points p0 and p1 are on the same side iff S(b,p0) = S(b,p1).
+  Wrt (with regard to) boundary b, points p0 and p1 are on the same side iff (if and only if) S(b,p0) = S(b,p1).
 
 Region:
-  A region is a map R from {b} of S to {0,1}. A point p is said to be in region R if R(b) = S(b,p) for all b in {b}.
+  A region is a map R from {b} of S to {0,1}. A point p is said to be in region R iff R(b) = S(b,p) for all b in {b}.
 
 Empty:
-  A region, R, is nonempty iff there exists p in {p} that is in R.
+  A region R is nonempty iff there exists p in {p} that is in R.
 
 Subspace:
   A space S1 is a subspace of space S0 iff the regions of S1 are restrictions of the regions of S0.
@@ -38,9 +38,6 @@ Simplex:
 Opposite:
   An opposite of a region wrt a set of boundaries is the region that is the same except for the boundaries.
 
-Outside:
-  An outside region is one with an opposite wrt all boundaries that is nonempty.
-
 Apex:
   An apex region of a simplex is one that differs from the inside region by all but one boundary.
 
@@ -52,6 +49,9 @@ Corner:
 
 Vertex:
   A vertex is a set of n boundaries in a space of dimension n.
+
+Outside:
+  An outside region is one with an opposite wrt all boundaries that is nonempty.
 
 Cospace:
   Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space, such that paths from an outside region in the cospace reach boundaries in the same order as paths from the outside region in the space reach the vertices.
