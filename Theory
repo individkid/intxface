@@ -1,99 +1,100 @@
 Undefined:
-
+  
 Boundary:
-Boundaries are like hyperplanes.
+  Boundaries are like hyperplanes.
 
 Point:
-Points are on one side or the other of the hyperplanes.
+  Points are on one side or the other of the hyperplanes.
 
 Definitions:
-
+  
 Space:
-A space is a set of boundaries {b}, points {p}, and map S from {(b,p)} to {0,1}.
+  A space is a set of boundaries {b}, points {p}, and map S from {(b,p)} to {0,1}.
 
 Side:
-Wrt (with regard to) boundary b, points p0 and p1 are on the same side iff S(b,p0) = S(b,p1).
+  Wrt (with regard to) boundary b, points p0 and p1 are on the same side iff S(b,p0) = S(b,p1).
 
 Region:
-A region is a map R from {b} of S to {0,1}. A point p is said to be in region R if R(b) = S(b,p) for all b in {b}.
+  A region is a map R from {b} of S to {0,1}. A point p is said to be in region R if R(b) = S(b,p) for all b in {b}.
 
 Empty:
-A region, R, is nonempty iff there exists p in {p} that is in R.
+  A region, R, is nonempty iff there exists p in {p} that is in R.
 
 Linear:
-A space S is linear iff S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions, where n is called the dimension, m is the number of boundaries, and f(n,0) = f(0,m) = 1.
+  A space S is linear iff S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions, where n is called the dimension, m is the number of boundaries, and f(n,0) = f(0,m) = 1.
 
 Subspace:
-A space S1 is a subspace of space S0 iff the regions of S1 are restrictions of the regions of S0.
+  A space S1 is a subspace of space S0 iff the regions of S1 are restrictions of the regions of S0.
 
 Divide:
-A boundary b of space S0 divides region R of subspace S1 iff b is not in S1, and there are more than one nonempty restrictions of R in S0.
+  A boundary b of space S0 divides region R of subspace S1 iff b is not in S1, and there are more than one nonempty restrictions of R in S0.
 
 Section:
-A space S1 is a section of space S0 iff the regions of S1 are a subset of the regions of S0.
+  A space S1 is a section of space S0 iff the regions of S1 are a subset of the regions of S0.
 
 Simplex:
-A simplex is a space with n+1 boundaries, where n is the dimension of the space.
+  A simplex is a space with n+1 boundaries, where n is the dimension of the space.
 
 Opposite:
-An opposite of a region wrt a set of boundaries is the region that is the same except for the boundaries.
+  An opposite of a region wrt a set of boundaries is the region that is the same except for the boundaries.
 
 Polyant:
-A polyant is the set of regions on the given sides of a set boundaries.
+  A polyant is the set of regions on the given sides of a set boundaries.
 
 Corner:
-The corners of a polyant are the regions of the polyant that have nonempty opposites wrt the boundaries of the polyant.
+  The corners of a polyant are the regions of the polyant that have nonempty opposites wrt the boundaries of the polyant.
 
 Vertex:
-A vertex is a set of n boundaries in a space of dimension n.
+  A vertex is a set of n boundaries in a space of dimension n.
 
 Outside:
-An outside region is one with an opposite wrt all boundaries that is nonempty.
+  An outside region is one with an opposite wrt all boundaries that is nonempty.
 
 Cospace:
-Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space, such that paths from an outside region in the cospace reach boundaries in the same order as paths from the outside region in the space reach the vertices.
+  Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space, such that paths from an outside region in the cospace reach boundaries in the same order as paths from the outside region in the space reach the vertices.
 
 Hyperplane:
-In an n dimensional metric space, a hyperplane is n scalars that measure the parallel distances above n points.
+  In an n dimensional metric space, a hyperplane is n scalars that measure the parallel distances above n points.
 
 Theorems:
-
+  
 Classification:
-With sidedness as above or below hyperplanes, a set of hyperplanes maps to boundaries in a linear space.
+  With sidedness as above or below hyperplanes, a set of hyperplanes maps to boundaries in a linear space.
 
 Power:
-The number of regions in an n space with n boundaries is 2^n.
+  The number of regions in an n space with n boundaries is 2^n.
 
 Simplex:
-The number of regions in a simplex space is 2^n-1.
+  The number of regions in a simplex space is 2^n-1.
 
 Section:
-A section by a linear extension of a linear space is linear.
+  A section by a linear extension of a linear space is linear.
 
 Antisection:
-A linear space extended by a linear section is linear.
+  A linear space extended by a linear section is linear.
 
 Corner:
-Corner regions of a polyant are a section space.
+  Corner regions of a polyant are a section space.
 
 Vertex:
-There is a single corner region of an n polyant in an n space.
+  There is a single corner region of an n polyant in an n space.
 
 Base:
-The section by a boundary of a simplex is a simplex with the inside and its opposite wrt the boundary as inside.
+  The section by a boundary of a simplex is a simplex with the inside and its opposite wrt the boundary as inside.
 
 Apex:
-A space extended by a boundary through the outside vertex regions of a simplex is not linear.
+  A space extended by a boundary through the outside vertex regions of a simplex is not linear.
 
 Independent:
-If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
+  If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
 
 Hyperplane:
-The intersection between hyperplanes is a hyperplane constructed through the hyperplanes as points.
+  The intersection between hyperplanes is a hyperplane constructed through the hyperplanes as points.
 
 Anticlassification:
-For each linear n space S there exist sets of hyperplanes {h} that classify as S.
-Given linear space {b0}, choose boundary b, and assume by recursion that the subspace {b1} = {b0}-{b} has a set of hyperplanes {h1} that classify to {b1}. Choose a point in the cospace of {h1}, and move it across hyperplanes to make sidednesses closer to those of b, until no movement across a hyperplane makes it closer to b. If the hyperplane h does not classify to b, there must be n vertices on the correct side of h, and one vertex on the wrong side of h. Construct hyperplanes arbitrarily close to n tuples of the verties to create a simplex with the vertices in its apex regions. By the independent boundary theorem, find linear space with b and a simplex with the vertices in its apex regions. Then b divides the apex regions, violating the apex theorem. Thus h does classify to b.
+  For each linear n space S there exist sets of hyperplanes {h} that classify as S.
+  Given linear space {b0}, choose boundary b, and assume by recursion that the subspace {b1} = {b0}-{b} has a set of hyperplanes {h1} that classify to {b1}. Choose a point in the cospace of {h1}, and move it across hyperplanes to make sidednesses closer to those of b, until no movement across a hyperplane makes it closer to b. If the hyperplane h does not classify to b, there must be n vertices on the correct side of h, and one vertex on the wrong side of h. Construct hyperplanes arbitrarily close to n tuples of the verties to create a simplex with the vertices in its apex regions. By the independent boundary theorem, find linear space with b and a simplex with the vertices in its apex regions. Then b divides the apex regions, violating the apex theorem. Thus h does
+classify to b.
 
 Outside:
-From each outside region to its opposite wrt all boundaries, there are paths through nonempty regions that cross boundaries only once.
+  From each outside region to its opposite wrt all boundaries, there are paths through nonempty regions that cross boundaries only once.
