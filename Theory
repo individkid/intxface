@@ -38,6 +38,15 @@ Simplex:
 Opposite:
   An opposite of a region wrt a set of boundaries is the region that is the same except for the boundaries.
 
+Outside:
+  An outside region is one with an opposite wrt all boundaries that is nonempty.
+
+Base:
+  A base region of a simplex is a region that differs from the inside region by only one boundary.
+
+Apex:
+  An apex region of a simplex is one that differs from the inside region by all but one boundary.
+
 Polyant:
   A polyant is the set of regions on the given sides of a set boundaries.
 
@@ -46,9 +55,6 @@ Corner:
 
 Vertex:
   A vertex is a set of n boundaries in a space of dimension n.
-
-Outside:
-  An outside region is one with an opposite wrt all boundaries that is nonempty.
 
 Cospace:
   Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space, such that paths from an outside region in the cospace reach boundaries in the same order as paths from the outside region in the space reach the vertices.
@@ -61,29 +67,29 @@ Theorems:
 Classification:
   With sidedness as above or below hyperplanes, a set of hyperplanes maps to boundaries in a linear space.
 
-Power:
-  The number of regions in an n space with n boundaries is 2^n.
-
-Simplex:
-  The number of regions in a simplex space is 2^n-1.
-
 Section:
   A section by a linear extension of a linear space is linear.
 
 Antisection:
   A linear space extended by a linear section is linear.
 
-Corner:
-  Corner regions of a polyant are a section space.
+Power:
+  The number of regions in an n space with n boundaries is 2^n.
 
-Vertex:
-  There is a single corner region of an n polyant in an n space.
+Simplex:
+  The number of regions in a simplex space is 2^n-1.
 
 Base:
   The section by a boundary of a simplex is a simplex with the inside and its opposite wrt the boundary as inside.
 
 Apex:
   A space extended by a boundary through the outside vertex regions of a simplex is not linear.
+
+Corner:
+  Corner regions of a polyant are a section space.
+
+Vertex:
+  There is a single corner region of an n polyant in an n space.
 
 Independent:
   If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
