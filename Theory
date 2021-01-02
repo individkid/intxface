@@ -80,7 +80,8 @@ Simplex:
   The number of regions in a simplex space is 2^n-1.
 
 Base:
-  The section by a boundary of a simplex is a simplex with the inside and its opposite wrt the boundary as inside.
+  The section by a boundary of a simplex is a simplex with the inside and base as inside.
+  The regions divided by the boundary in the subspace with the boundary removed are nonempty. Thus, the empty region in the simplex restricts to the empty region in the section simplex, so the inside is the restriction of the inside.
 
 Apex:
   A space extended by a boundary through the apex regions of a simplex is not linear.
