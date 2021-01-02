@@ -65,12 +65,8 @@ Classification:
   With sidedness as above or below hyperplanes, a set of hyperplanes maps to boundaries in a linear space.
 
 Section:
-  A section by a linear extension of a linear space is linear.
-  Let S0 be a section of linear S1 extended to linear S2 by boundary b. The number of regions in S0 is the number of regions divided by b, or |S0|. |S2| = |S1| + |S0|. |S0| = |S2| - |S1| = f(n,m) - f(n,m-1) = f(n-1,m-1) + f(n,m-1) - f(n,m-1) = f(n-1,m-1). The same applies to subspaces of S1, so S0 is linear.
-
-Antisection:
-  A linear space extended by a linear section is linear.
-  Let S0 be a linear section of S1 extended to linear S2 by boundary b. |S2| = |S1| + |S0|. |S1| = |S2| - |S0| = f(n,m) - f(n-1,m-1) = f(n-1,m-1) + f(n,m-1) - f(n-1,m-1) = f(n,m-1). The same applies to subspaces of S2, so S1 is linear.
+  If any two of a section, space, or extension are linear, the third is linear.
+  Let S0 be a section of S1 extended to S2 by boundary b. The number of regions in S2 is the number of regions in S1 with the number in S0 divided, or |S2| = f(n,m) = f(n,m-1) + f(n-1,m-1) = |S1| + |S0|. The same applies to the subspaces.
 
 Power:
   The number of regions in an n space with n boundaries is 2^n.
@@ -86,7 +82,7 @@ Apex:
 
 Independent:
   If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
-  Choose b in S, and assume by recursion that S0 = the section by b in S + {b0,b1} is linear, and that S1 = S + {b0,b1} - {b} is linear. Choose corner regions of b0 and b1 for b to divide in S1 such that S0 is a section of S1. Apply antisection theorem to find linear S2 = S + {b0,b1}.
+  Choose b in S, and assume by recursion that S0 = the section by b in S + {b0,b1} is linear, and that S1 = S + {b0,b1} - {b} is linear. Choose corner regions of b0 and b1 for b to divide in S1 such that S0 is a section of S1. Apply section theorem to find linear S2 = S + {b0,b1}.
 
 Hyperplane:
   The intersection between hyperplanes is a hyperplane constructed through the hyperplanes as points.
