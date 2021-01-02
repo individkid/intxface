@@ -74,7 +74,7 @@ Power:
 
 Simplex:
   The number of regions in a simplex space is 2^(n+1)-1.
-  Note, f(1,2) = 2^2-1. If f(n-1,n) = 2^n-1, then f(n,n+1) = f(n,n) + f(n,n-1) = 2^n + 2^n-1 = 2^(n+1)-1.
+  Note, f(1,2) = 2^2-1. If f(n-1,n) = 2^n-1, then f(n,n+1) = f(n,n) + f(n-1,n) = 2^n + 2^n-1 = 2^(n+1)-1.
 
 Apex:
   A space extended by a boundary through the apex regions of a simplex is not linear.
