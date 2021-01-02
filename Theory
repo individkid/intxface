@@ -69,8 +69,8 @@ Section:
   Let S0 be a section of S1 extended to S2 by boundary b. The number of regions in S2 is the number of regions in S1 with the number in S0 divided, or |S2| = f(n,m) = f(n,m-1) + f(n-1,m-1) = |S1| + |S0|. The same applies to the subspaces.
 
 Power:
-  The number of regions in an n space with n boundaries is 2^n.
-  Because of the classification theorem and that n hyperplanes are linearly independent, every region is nonempty, so f(n,n) = 2^n.
+  The number of regions in an n space with m <= n boundaries is 2^m.
+  Note, f(n,1) = 2, and f(1,1) = 2. If f(n,m-1) = 2^(m-1), and f(n-1,m-1) = 2^(m-1), then f(n,m) = f(n,m-1) + f(n-1,m-1) = 2^(m-1) + 2^(m-1) = 2^m.
 
 Simplex:
   The number of regions in a simplex space is 2^(n+1)-1.
