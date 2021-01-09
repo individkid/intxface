@@ -27,7 +27,7 @@ Linear:
   A space S is linear iff every subspace of S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions, where n is called the dimension, m is the number of boundaries in the subspace, and f(n,0) = f(0,m) = 1.
 
 Divide:
-  A boundary b of space S0 divides region R of subspace S1 iff b is not in S1, and there are more than one nonempty extensions of R in S0.
+  If a boundary b extends space S0 to S1 then b divides region R of S0 iff there are more than one nonempty extensions of R in S1.
 
 Section:
   A space S1 is a section of space S0 iff the regions of S1 have the same sidednesses as regions in the subspace of S0 divided by a boundary.
