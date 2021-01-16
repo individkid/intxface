@@ -113,3 +113,5 @@ Users have read, write, and execute permissions in their groups.
 Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
+
+main.lua combine commands from sculpt print play ball world.
