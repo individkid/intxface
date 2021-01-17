@@ -174,63 +174,6 @@ prop_sectionspace =
  in isLinear (n - 1) (placeToSpace bplace) &&
  (isSectionSpace bplace rplace)
 
-prop_take :: Property
-prop_take =
- forAll (Test.QuickCheck.choose(2,3)) $ \n ->
- forAll (Test.QuickCheck.choose(0,6)) $ \m ->
- forAll (Test.QuickCheck.choose(0,(m-1))) $ \b -> let
- bound = Boundary b
- space = anySpace n m
- place = spaceToPlace space
- s = sectionSpace bound place
- t = subSpace bound place
- take = takeRegions s t
- a = (length take) == (length (regionsOfPlace s))
- c = isSectionSpace s t
- in a && c
-
-putstr_sectionspace :: IO ()
-putstr_sectionspace = let
- n = 4
- r = Region 10
- b = Boundary 1
- nindexs = indices (n + 1)
- nbounds = map Boundary nindexs
- nplace = powerSpace nbounds
- nspace = placeToSpace nplace
- nregions = regionsOfPlace nplace
- tindexs = indices (shift 1 (n + 1))
- tregions = map Region tindexs
- rplace = degenSpace r nplace
- bplace = sectionSpace b rplace
- abounds = [b] Naive.++ (boundariesOfPlace bplace)
- ay = null (abounds Naive.\\ (boundariesOfPlace rplace))
- bee = null ((boundariesOfPlace rplace) Naive.\\ abounds)
- cee = (length (takeRegions bplace rplace)) == (2 * (length (regionsOfSpace (placeToSpace bplace))))
- in do
- putStrLn (show rplace)
- putStrLn (show bplace)
- putStrLn (show (isLinear (n - 1) (placeToSpace bplace)))
- putStrLn (show (isSectionSpace bplace rplace))
- putStrLn (show ay)
- putStrLn (show bee)
- putStrLn (show cee)
-
-putstr_take :: IO ()
-putstr_take = let
- n = 3
- m = 1
- b = 0
- bound = Boundary b
- space = anySpace n m
- place = spaceToPlace space
- s = sectionSpace bound place
- t = subSpace bound place
- take = takeRegions s t
- in do
- putStrLn (show (sort take))
- putStrLn (show (sort (regionsOfPlace s)))
-
 prop_space :: Property
 prop_space =
  forAll (Test.QuickCheck.choose(2,3)) $ \n ->
@@ -238,10 +181,18 @@ prop_space =
  s = anySpace n m
  in isLinear n s
 
+putstr_linear :: IO ()
+putstr_linear = let
+ n = 3
+ m = 4
+ s = anySpace n m
+ in 
+ putStrLn (show (isLinear n s))
+
 putstr_space :: IO ()
 putstr_space = let
  n = 3
- m = 7
+ m = 3
  bounds = boundaryHoles m []
  prefix = take (m - 1) bounds
  suffix = drop (m - 1) bounds
@@ -280,8 +231,5 @@ main = do
  quickCheckResult prop_generate >>= mainF
  quickCheckResult prop_subspace >>= mainF
  quickCheckResult prop_sectionspace >>= mainF
- -- quickCheckResult prop_take >>= mainF
  -- quickCheckResult prop_space >>= mainF
- -- putstr_sectionspace
- putstr_take
  -- putstr_space
