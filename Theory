@@ -24,7 +24,8 @@ Subspace:
   A space S1 is a subspace of space S0 iff the regions of S1 are restrictions of the regions of S0.
 
 Linear:
-  A space S is linear iff every subspace of S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions, where n is called the dimension, m is the number of boundaries in the subspace, and f(n,0) = f(0,m) = 1.
+  A space S is linear iff every subspace of S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions,
+  where n is called the dimension, m is the number of boundaries in the subspace, and f(n,0) = f(0,m) = 1.
 
 Divide:
   If a boundary b extends space S0 to S1 then b divides region R of S0 iff there are more than one nonempty extensions of R in S1.
@@ -54,7 +55,8 @@ Outside:
   An outside region is one with an opposite wrt all boundaries that is nonempty.
 
 Cospace:
-  Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space, such that paths from an outside region in the cospace reach boundaries in the same order as paths from the outside region in the space reach the vertices.
+  Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space,
+  such that paths from an outside region in the cospace reach boundaries in the same order as paths from the outside region in the space reach the vertices.
 
 Hyperplane:
   In an n dimensional metric space, a hyperplane is n scalars that measure the parallel distances above n points.
@@ -66,7 +68,9 @@ Classify:
 
 Section:
   If any two of a section, space, or extension are linear, the third is linear.
-  Let S0 be a section of S1 extended to S2 by boundary b. The number of regions in S2 is the number of regions in S1 with the number in S0 divided, or |S2| = f(n,m) = f(n,m-1) + f(n-1,m-1) = |S1| + |S0|. The same applies to the subspaces.
+  Let S0 be a section of S1 extended to S2 by boundary b.
+  The number of regions in S2 is the number of regions in S1 with the number in S0 divided, or |S2| = f(n,m) = f(n,m-1) + f(n-1,m-1) = |S1| + |S0|.
+  The same applies to the subspaces.
 
 Power:
   The number of regions in an n space with m <= n boundaries is 2^m.
