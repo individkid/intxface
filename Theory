@@ -102,7 +102,7 @@ Sample:
   Choose hyperplane h as a point in the cospace {h2} of {h1}. Cross hyperplanes in {h2} to move h closer to the sidedness of b, to a region r without crossable hyperplanes. If h does not classify to b, there must be a vertex v between h and b.
   If there is an outside region with crossable regions, start from it so r is inside. If r is an inside region, there is an n polyant p that r is a corner of not divided by v.
   If r is an outside region, use the cospace defining outside region as r. Thus, there is an n polyant p that r is a corner of, such that v does not divide p, because otherwise v would be a crossable hyperplane of r.
-  Because of how p and r are chosen, there is are paths in {h2} that cross each boundary of p between going past h and crossing v. In {h1}, those paths go past {v0} between crossing h and going past v.
+  Because of how p and r are chosen, there are paths in {h2} that cross each boundary of p between going past h and crossing v. In {h1}, those paths go past {v0} between crossing h and going past v.
   From p, get n vertices {v0} on same side of h and b. Construct hyperplanes arbitrarily close to n tuples of {v1} = {v0}+{v} to create a simplex with each of {v1} in its own apex region. By the independent boundary theorem, find linear space with b and the constructed simplex.
   Because the paths get to v after passing through the constructed simplex, b divides the apex region containing v. Because the paths get to each of {v0} before passing through the constructed simplex, b divides the apex regions containing those vertices.
   That b divides the apex regions of the constructed simplex violates the apex theorem. Thus h does classify to b.
