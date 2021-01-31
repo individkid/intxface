@@ -108,6 +108,7 @@ Sample:
   Given linear space {b0}, choose boundary b, and assume by recursion that the subspace {b1} = {b0}-{b} has a set of hyperplanes {h1} that classify to {b1}.
   Choose hyperplane h as a point in the cospace {h2} of {h1}. Cross hyperplanes in {h2} to move h closer to the sidedness of b, to a region r without crossable hyperplanes.
   If h does not classify to b, there must be a vertex v between h and b.
+  If r is outside, any polyant p with r as corner not divided by v. If r is inside, there is a polyant p with r as corner not divided by v.
   From p, get n vertices {v0} on same side of h and b. Construct hyperplanes arbitrarily close to n tuples of {v1} = {v0}+{v} to create a simplex with each of {v1} in its own apex region.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
   Choose origin point o in r corresponding to base hyperplane in {h1}. Note paths from o reach each of {v1} before reaching b. Thus, b divides apex regions containing each of {v1}.
