@@ -113,4 +113,4 @@ Sample:
   By the independent boundary theorem, find linear space with b and the constructed simplex. Choose a path origin on h.
   Because of the relations between h, b, and {v1}, paths from h reach v before (each from {v0} after) reaching b.
   Because h does not divide the constructed simplex, paths from h reach v after (each from {v0} before) the constructed simplex.
-  Thus, b divides apex regions of the constructed simplex violating the apex theorem. Therefore, h does classify to b.
+  Thus, b divides apex regions of the constructed simplex contradicting the apex theorem. Therefore, h does classify to b.
