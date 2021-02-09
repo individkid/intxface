@@ -103,6 +103,12 @@ Outside:
 Hyperplane:
   The intersection between hyperplanes is a hyperplane constructed through the hyperplanes as points.
 
+Path:
+  The polyant not divided by a boundary is after a vertex in a path that crossses the boundary before the vertex.
+  Consider the restriction of the path in the vertex subspace.
+  That the path crosses the boundary before the vertex means the boundary divides the corner of the vertex that the path is in before crossing the vertex.
+  Thus the region not divided is after the vertex, so the undivided polyant is after.
+
 Sample:
   For each linear n space S there exist sets of hyperplanes that classify as S.
   Given linear space {b0}, choose boundary b, and assume by recursion that the subspace {b1} = {b0}-{b} has a set of hyperplanes {h1} that classify to {b1}.
@@ -110,7 +116,5 @@ Sample:
   If h does not classify to b, there must be a vertex v between h and b.
   If r is outside, any polyant p with r as corner is not divided by v. If r is inside, there is a polyant p with r as corner not divided by v.
   From p, get n vertices {v0} on same side of h and b. Construct hyperplanes arbitrarily close to n tuples of {v1} = {v0}+{v} to create a simplex with each of {v1} in its own apex region.
-  By the independent boundary theorem, find linear space with b and the constructed simplex. Choose a path origin on h.
-  Because of the relations between h, b, and {v1}, paths from h reach v before (each from {v0} after) reaching b.
-  Because h does not divide the constructed simplex, paths from h reach v after (each from {v0} before) the constructed simplex.
-  Thus, b divides apex regions of the constructed simplex contradicting the apex theorem. Therefore, h does classify to b.
+  By the independent boundary theorem, find linear space with b and the constructed simplex.
+  By the path theorem, b divides apex regions of the constructed simplex contradicting the apex theorem. Therefore, h does classify to b.
