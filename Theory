@@ -102,7 +102,7 @@ Outside:
 
 Cospace:
   Cospace is well defined.
-  Suppose b is a boundary not of vertex v, and there are two paths, p0 to r0 of v, and p1 to r1 of v, from an outside region.
+  Suppose there are two paths, p0 to corner region r0 of vertex v, and p1 to r1 of v, from an outside region.
   Both r0 and r1 are the same region in the subspace with boundaries of v removed, so p0 and p1 crossed the same boundaries to reach v.
 
 Path:
