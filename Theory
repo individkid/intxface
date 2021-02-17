@@ -123,6 +123,8 @@ Sample:
   From p, get n vertices {v0} on same side of h and b.
   Choose n+1 points {v2}, each in a corner not divided by b of a different one of {v1} = {v0}+{v}, and construct a simplex through those points.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
-  That {v0} are on the same side of b and h, and v is between b and h, mean paths cross b in opposite order of crossing {v0} as crossing v.
-  That b does not divide the polyants containing the constructed vertices means the paths reach the constructed simplex in same order as from b to {v1}.
-  Thus, b divides apex regions of the constructed simplex contradicting the apex theorem. Therefore, h does classify to b.
+  All of {v1} are on the same side of h because, since v does not divide p, any cospace path must cross all of p between passing h and crossing v.
+  Each {v2} is on the same side of b as its {v1} because b does not divide the {v1} polyant containing the {v2}.
+  Consider a path past one of {v1}, past its {v2}, and to the inside of the constructed simplex.
+  The path must cross h first or last, so it must cross b first or last.
+  By the path theorem, b divides the constructed apex regions, contradicting the apex theorem, so h does classify to b.
