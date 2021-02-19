@@ -121,10 +121,8 @@ Sample:
   If h does not classify to b, there must be a vertex v between h and b.
   If r is outside, any polyant p with r as corner is not divided by v. If r is inside, there is a polyant p with r as corner not divided by v.
   From p, get n vertices {v0} on same side of h and b.
-  Choose n+1 points {v2}, each in a corner not divided by b of a different one of {v1} = {v0}+{v}, and construct a simplex through those points.
+  Choose n points {w0}, each in a corner not divided by b of a different one of {v0}. Choose point w in a corner not diveded by b of v.
+  Construct a simplex through {w1} = {w0}+{w}. Without loss of generality, assume paths pass vertices after crossing h.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
-  All of {v1} are on the same side of h because, since v does not divide p, any cospace path must cross one of p between passing h and crossing v.
-  Each {v2} is on the same side of b as its {v1} because b does not divide the {v1} polyant containing the {v2}.
-  Consider a path past one of {v1}, past its {v2}, and to the inside of the constructed simplex.
-  The path must cross h first or last, so it must cross b first or last.
+  Since h divides the constructed polyant opposite v, v is after w, and since b is after v, b is after w. Similarly, each {w0} is before b.
   By the path theorem, b divides the constructed apex regions, contradicting the apex theorem, so h does classify to b.
