@@ -22,6 +22,12 @@ Mouse clicks can add plane, add region, or remove region.
 Asynchronous appends to double dash files wake up the file process
 to change the state of other processes.
 
+The theory file proves that naive.hs is algorithmic.
+
+The make include file depend.mk is auto-generated
+by building all nameable files until no new ones are built,
+and examining the files for dependencies.
+
 face.c face.h facer.lua facer.hs facer.c test fork exec read write processes.
 This has fork/exec/block read*/write* *Int/*Num/*Str/*New/*Old
 for int/double/char*/longlong/float to/from processes in each language.
