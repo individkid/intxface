@@ -126,5 +126,5 @@ Sample:
   Without loss of generality, assume paths pass vertices after crossing h.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
   Since h divides the constructed polyant opposite v, v is after w, and since b is after v, b is after w. Similarly, each {w0} is after b.
-  Because cospace paths from h have to cross {v0} before crossing v, v is after all of {v0}, so {v1} are in the constructed apex regions.
+  Because cospace paths from h have to cross {v0} before crossing v, v is after all of {v0}, so {v1} are in the constructed outside regions.
   By the path theorem, b divides the constructed apex regions, contradicting the apex theorem, so h does classify to b.
