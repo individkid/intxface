@@ -123,8 +123,8 @@ Sample:
   From p, get n vertices {v0} on same side of h and b.
   Construct a simplex through points {w1} = {w0}+{w} with w arbitrarily close to v, and each of {w0} arbitrarily close to a different one of {v0}.
   Tweak w such that v is in the polyant not divided by h. Tweak each {w0} such that its {v0} is in the polyant opposite the one not divided by h.
-  Without loss of generality, assume paths pass vertices after crossing h.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
+  Without loss of generality, assume paths pass vertices after crossing h.
   Since h divides the constructed polyant opposite v, v is after w, and since b is after v, b is after w. Similarly, each {w0} is after b.
   Because cospace paths from h have to cross {v0} before crossing v, v is after all of {v0}, so {v1} are in the constructed outside regions.
   By the path theorem, b divides the constructed apex regions, contradicting the apex theorem, so h does classify to b.
