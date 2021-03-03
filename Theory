@@ -51,8 +51,17 @@ Corner:
 Vertex:
   A vertex is a set of n boundaries in a space of dimension n.
 
+Attached:
+  A region that is a corner of a single boundary polyant and the boundary are attached.
+
 Outside:
   An outside region is one with an opposite wrt all boundaries that is nonempty.
+
+Migration:
+  A migration is a space with a region replaced by a region opposite wrt attached boundaries.
+
+Rotation:
+  Two sections of a space by extensions that divide only outside regions are rotations of one another.
 
 Cospace:
   Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space,
@@ -105,6 +114,15 @@ Cospace:
   Suppose there are two paths, p0 to corner region r0 of vertex v, and p1 to r1 of v, from an outside region.
   Both r0 and r1 are the same region in the subspace with boundaries of v removed, so p0 and p1 crossed the same boundaries to reach v.
 
+Rotation:
+  A migration of an outside region is a rotation.
+
+Duality:
+  Two cospaces formed from two different outside regions of a space are rotations of one another.
+
+Attached:
+  A region not attached to a boundary is not attached in a rotation of the space.
+
 Path:
   The polyant not divided by a boundary is after a vertex in a path that crossses the boundary before the vertex.
   Consider the restriction of the path in the vertex subspace.
@@ -124,7 +142,7 @@ Sample:
   Construct a simplex through points {w1} = {w0}+{w} with w arbitrarily close to v, and each of {w0} arbitrarily close to a different one of {v0}.
   Tweak w such that v is in the polyant not divided by h. Tweak each {w0} such that its {v0} is in the polyant opposite the one not divided by h.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
-  Without loss of generality, assume paths pass vertices after crossing h.
+  By the duality theorem, find a rotation with paths that pass vertices after crossing h. By the attached theorem, r is still not attached to v.
   Since h divides the constructed polyant opposite v, v is after w, and since b is after v, b is after w. Similarly, each {w0} is after b.
   Because cospace paths from h have to cross {v0} before crossing v, v is after all of {v0}, so {v1} are in the constructed outside regions.
   By the path theorem, b divides the constructed apex regions, contradicting the apex theorem, so h does classify to b.
