@@ -114,14 +114,17 @@ Cospace:
   Suppose there are two paths, p0 to corner region r0 of vertex v, and p1 to r1 of v, from an outside region.
   Both r0 and r1 are the same region in the subspace with boundaries of v removed, so p0 and p1 crossed the same boundaries to reach v.
 
+Migration:
+  The migration of a linear space is linear.
+
 Rotation:
-  A migration of an outside region is a rotation.
+  A migration of an outside region is a rotation; a rotation is a migration of an outside region.
 
 Duality:
   Two cospaces formed from two different outside regions of a space are rotations of one another.
 
 Attached:
-  A region not attached to a boundary is not attached in a rotation of the space.
+  A region not attached to a boundary is not attached in a migration of the space.
 
 Path:
   The polyant not divided by a boundary is after a vertex in a path that crossses the boundary before the vertex.
