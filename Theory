@@ -116,9 +116,6 @@ Cospace:
 
 Migration:
   The migration of a linear space is linear.
-  Suppose the migration of region r in linear space {b0} is {b1}.
-  Every subspace of {b0} with all but one boundary attached to r removed is the same as in {b1}.
-  By the independend boundary theorem, {b1} is linear.
 
 Rotation:
   A migration of an outside region is a rotation; a rotation is a migration of an outside region.
