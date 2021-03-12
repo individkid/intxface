@@ -118,7 +118,7 @@ Migration:
   The migration of a linear space is linear.
   If every boundary is attached to the migration region, removing a boundary is still a migration.
   And if a boundary is not attached to the mibration region, removing it is still a migration.
-  So the migration is linear by recursion.
+  So the migration is linear by recursion and the section theorem.
 
 Rotation:
   A migration of an outside region is a rotation; a rotation is a migration of an outside region.
