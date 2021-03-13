@@ -60,9 +60,6 @@ Outside:
 Migration:
   A migration is a space with a region replaced by a region opposite wrt attached boundaries.
 
-Rotation:
-  Two sections of a space by extensions that divide only outside regions are rotations of one another.
-
 Cospace:
   Wrt an outside region of a space, a cospace is the set of boundaries mapped from verties of the space,
   such that paths from an outside region in the cospace reach boundaries in the same order as paths from the outside region in the space reach the vertices.
@@ -120,11 +117,8 @@ Migration:
   And if a boundary is not attached to the mibration region, removing it is still a migration.
   So the migration is linear by recursion and the section theorem.
 
-Rotation:
-  A migration of an outside region is a rotation; a rotation is a migration of an outside region.
-
 Duality:
-  Two cospaces formed from two different outside regions of a space are rotations of one another.
+  Two cospaces formed from two different outside regions of a space are outside region migrations of one another.
 
 Attached:
   A region not attached to a boundary is not attached in a migration of the space.
@@ -148,7 +142,7 @@ Sample:
   Construct a simplex through points {w1} = {w0}+{w} with w arbitrarily close to v, and each of {w0} arbitrarily close to a different one of {v0}.
   Tweak w such that v is in the polyant not divided by h. Tweak each {w0} such that its {v0} is in the polyant opposite the one not divided by h.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
-  By the duality theorem, find a rotation with paths that pass vertices after crossing h. By the attached theorem, r is still not attached to v.
+  By the duality theorem, find a migration with paths that pass vertices after crossing h. By the attached theorem, r is still not attached to v.
   Since h divides the constructed polyant opposite v, v is after w, and since b is after v, b is after w. Similarly, each {w0} is after b.
   Because cospace paths from h have to cross {v0} before crossing v, v is after all of {v0}, so {v1} are in the constructed outside regions.
   By the path theorem, b divides the constructed apex regions, contradicting the apex theorem, so h does classify to b.
