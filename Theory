@@ -118,7 +118,12 @@ Migration:
   So the migration is linear by recursion and the section theorem.
 
 Duality:
-  Two cospaces formed from two different outside regions of a space are outside region migrations of one another.
+  Two cospaces formed from two outside regions opposite a boundary of a space are outside region migrations of one another.
+  An outside region migration moves a vertex across all boundaries not through the vertex. Let outside region r0 be opposite b from outside region r1.
+  Suppose a path from r0 reaches vertex v before (after) crossing b. Then any path from r1 reaches v after (before) crossing b.
+
+Perimeter:
+  There are paths crossing boundaries not more than once from each outside region to each other.
 
 Attached:
   A region not attached to a boundary is not attached in a migration of the space.
@@ -142,7 +147,7 @@ Sample:
   Construct a simplex through points {w1} = {w0}+{w} with w arbitrarily close to v, and each of {w0} arbitrarily close to a different one of {v0}.
   Tweak w such that v is in the polyant not divided by h. Tweak each {w0} such that its {v0} is in the polyant opposite the one not divided by h.
   By the independent boundary theorem, find linear space with b and the constructed simplex.
-  By the duality theorem, find a migration with paths that pass vertices after crossing h. By the attached theorem, r is still not attached to v.
+  By the perimeter and duality theorems, find a migration with paths that pass vertices after crossing h. By the attached theorem, r is still not attached to v.
   Since h divides the constructed polyant opposite v, v is after w, and since b is after v, b is after w. Similarly, each {w0} is after b.
   Because cospace paths from h have to cross {v0} before crossing v, v is after all of {v0}, so {v1} are in the constructed outside regions.
   By the path theorem, b divides the constructed apex regions, contradicting the apex theorem, so h does classify to b.
