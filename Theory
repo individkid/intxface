@@ -118,7 +118,7 @@ Migration:
   So the migration is linear by recursion and the section theorem.
 
 Duality:
-  A cospace of a cospace of S is equivalent to S.
+  A cospace of a cospace of S has a subspace equivalent to S.
 
 Path:
   The polyant not divided by a boundary is after a vertex in a path that crossses the boundary before the vertex.
