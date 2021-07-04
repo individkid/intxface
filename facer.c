@@ -51,10 +51,10 @@ int main(int argc, char **argv)
 	float old = readOld(0);
 	writeOld(old,0);
 	return 0;}
-	if (forkExec("facerC") != 0) {printf("a.out\n"); return -1;}
-	if (forkExec("facerHs") != 1) {printf("b.out\n"); return -1;}
-	if (forkExec("facerLua") != 2) {printf("facer.ex\n"); return -1;}
-	for (int i = 0; i < 3; i++) readNote(excfunc,i);
+	int size = 0;
+	if (forkExec("facerC") != size++) {printf("a.out\n"); return -1;}
+	if (forkExec("facerLua") != size++) {printf("facer.ex\n"); return -1;}
+	for (int i = 0; i < size; i++) readNote(excfunc,i);
 	int handle = openFile("oops.tmp"); bothJump(errfunc,handle);
 	sleepSec(1);
 	int expectInt[] = {0,1,2};
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 	const char *expectStr[] = {"zero","one","two"};
 	long long expectNew[] = {10,11,12};
 	float expectOld[] = {0.2,1.2,2.2};
-	for (int index = 0; index < 3; index++) {
+	for (int index = 0; index < size; index++) {
 		writeInt(expectInt[index],index);
 		writeNum(expectNum[index],index);
 		writeStr(expectStr[index],1,index);
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 		break;}}}
 	char empty[1] = {0}; writeStr(empty,1,handle);
 	seekFile(0,handle); readInt(handle);
-	return (checkRead(0)||checkRead(1)||checkRead(2)||
-		checkWrite(0)||checkWrite(1)||checkWrite(2)||
-		errcheck!=handle || exccheck != 3) ? -1 : 0;
+	for (int i = 0; i < size; i++)
+		if (checkRead(i)||checkWrite(i)) return -1;
+	return (errcheck!=handle || exccheck != 2) ? -1 : 0;
 }

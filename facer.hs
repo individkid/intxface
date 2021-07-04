@@ -68,8 +68,8 @@ showMain (MainC a) = "str "++(show a)
 showMain (MainD a) = "new "++(show a)
 showMain (MainE a) = "old "++(show a)
 
-main :: IO ()
-main = getArgs >>= mainF
+mainX :: IO ()
+mainX = getArgs >>= mainF
 
 mainF :: [String] -> IO ()
 mainF [] = do

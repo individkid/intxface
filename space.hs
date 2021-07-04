@@ -22,8 +22,8 @@ import Face
 import Type
 import System.Environment
 
-main :: IO ()
-main = getArgs >>= mainF
+mainX :: IO ()
+mainX = getArgs >>= mainF
 
 mainF :: [String] -> IO ()
 mainF [a,b,c] = do

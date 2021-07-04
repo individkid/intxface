@@ -319,11 +319,6 @@ if (arg[1] == "type.c") then
 	file:write(showTypeC().."\n")
 	file:close()
 end
-if (arg[1] == "type.hs") then
-	file = io.open("type.hs", "w")
-	file:write(showTypeHs().."\n")
-	file:close()
-end
 if (arg[1] == "type.lua") then
 	file = io.open("type.lua", "w")
 	file:write(showTypeLua().."\n")

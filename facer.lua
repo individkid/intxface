@@ -38,7 +38,6 @@ writeOld(old,0)
 
 else
 readNote("callClose",forkExec("facerC"))
-readNote("callClose",forkExec("facerHs"))
 readNote("callClose",forkExec("facerLua"))
 sleepSec(1)
 expectInt = {0,1,2}
@@ -46,7 +45,7 @@ expectNum = {0.1,1.1,2.1}
 expectStr = {"zero","one","two"}
 expectNew = {10,11,12}
 expectOld = {0.2,1.2,2.2}
-for index=0,2,1 do
+for index=0,1,1 do
 	sub = index+1
 	writeInt(expectInt[sub],index)
 	writeNum(expectNum[sub],index)
@@ -87,8 +86,6 @@ while (index >= 0) do
 end
 assert(checkRead(0) == 0)
 assert(checkRead(1) == 0)
-assert(checkRead(2) == 0)
 assert(checkWrite(0) == 0)
 assert(checkWrite(1) == 0)
-assert(checkWrite(2) == 0)
 end

@@ -795,7 +795,7 @@ function showOffsetC(name,struct)
 		else
 			result = result.."\n"
 			result = result.."{\n"
-			result = result..showIndent(1).."return (int)&(((struct "..name.." *)0)->"..v[1]..");\n"
+			result = result..showIndent(1).."return (int)(long long)&(((struct "..name.." *)0)->"..v[1]..");\n"
 			result = result.."}"
 		end
 	end

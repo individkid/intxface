@@ -34,13 +34,12 @@ function showTyperC()
 	showIndent(1).."return 0;}\n"
 	result = result..
 	showIndent(1).."forkExec(\"typerC\");\n"..
-	showIndent(1).."forkExec(\"typerHs\");\n"..
 	showIndent(1).."forkExec(\"typerLua\");\n"..
 	showIndent(1).."forkExec(\"typerSw\");\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
 	showIndent(1).."struct Struct1 *exp = 0;\n"..
-	showIndent(1).."int size = 4;\n"..
+	showIndent(1).."int size = 3;\n"..
 	showIndent(1).."allocStruct1(&exp,size);\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) randStruct1(exp+i);\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) writeStruct1(exp+i,i);\n"..
@@ -109,11 +108,6 @@ end
 if (arg[1] == "typer.c") then
 	file = io.open("typer.c", "w")
 	file:write(showTyperC().."\n")
-	file:close()
-end
-if (arg[1] == "typer.hs") then
-	file = io.open("typer.hs", "w")
-	file:write(showTyperHs().."\n")
 	file:close()
 end
 if (arg[1] == "typer.lua") then

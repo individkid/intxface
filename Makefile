@@ -15,26 +15,23 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log spacra.log line plane space trade planra spacra
+all: facer.log typra.log typer.log filer.log line plane trade planra
 
 ifndef DEPEND
 # lua depend.lua > depend.mk
 include depend.mk
 endif
 
-facer.log: facerC facerHs facerLua
+facer.log: facerC facerLua
 	./facerC > facer.log
-	./facerHs >> facer.log
 	./facerLua >> facer.log
 typra.log: typraLua
 	./typraLua > typra.log
-typer.log: typerC typerHs typerLua typerSw
+typer.log: typerC typerLua typerSw
 	./typerC > typer.log
 filer.log: filerLua file
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	./filerLua > filer.log
-spacra.log: spacra
-	./spacra > spacra.log
 
 %: %C
 	ln -f $< $@
@@ -89,10 +86,10 @@ LIBRARIES = -llua -lportaudio
 
 .PHONY:
 clean:
-	rm -f type.h type.c type.hs type.lua type.sw
-	rm -f typer.h typer.c typer.hs typer.lua typer.sw
-	rm -f typra facer typer filer planra spacra
-	rm -f trade file line plane space
+	rm -f type.h type.c type.lua type.sw
+	rm -f typer.h typer.c typer.lua typer.sw
+	rm -f typra facer typer filer planra
+	rm -f trade file line plane
 	rm -f *C *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp
 	rm -f *.-- .*.-- ..*.-- ...*.--

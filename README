@@ -61,6 +61,15 @@ local commands are mapped to local file of file on other server.
 remote commands are mapped to local file.
 responses are mapped to local or remote processes.
 
+merge.c merger.lua test keep common fields in files synchronized.
+Control commands can pause and resume merging,
+overwrite from one file to another,
+change the synchronize frequency,
+or change the file topology.
+A control command sends callback command
+with latest state of field for merging,
+and sends callback again for remerging as glitch.
+
 line.c liner.lua linra.c test stock flow sound system.
 This allows simple sums of terms of coefficient
 with one or two variable factors or three variable conditional
@@ -76,7 +85,10 @@ This maintains a global transformation matrix,
 a matrix per polytope,
 one for manipulating individual planes,
 copies of the matrices from when fixed point is saved,
-and copies from when matrices are sent to synchronize with other processes.
+copies from when matrices are sent to synchronize with other processes.
+There are functions to modify a matrices by translation and rotation,
+and a function to three way merge matrices.
+Handles merge callbacks while waiting for synchronize write.
 
 space.hs Naive.hs spacer.lua spacra.hs test specify examine sample classify.
 This keeps track of which side of boundaries regions are on,
@@ -99,10 +111,10 @@ This reads double dash files at the rate they were written,
 inserts user manipulations and activations,
 writes the result to a new double dash file,
 while sound follows and alters polytope appearance metric configuration.
-Each vertex is a harmonic pattern. The vertives facet sizes control
-loudness (where zero visible area is too soft to hear),
-duty cycle (zero visible area is too much silence between attacks to wait for),
-fundamental frequency (visible area of zero is too high to hear).
+Each vertex is a harmonic pattern. The vertice's facet metrics control
+loudness (where zero visible volume is too soft to hear),
+harmonic set frequency (visible area of zero is too high to hear),
+rhythm set duty cycle (zero visible length is too much silence between attacks to wait for).
 
 ball.lua banks the focal point off of framebuffer decorated portions of planes.
 This starts a shader that detects when any of a swarm of detector points,
