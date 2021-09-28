@@ -86,8 +86,11 @@ Independent:
 
 Limit:
   For each section b of space S of dimension n, there exist n vertices {v} such that no boundary or section of S divides the simplex formed by b and any v in {v}.
-  This is true for simplex spaces, so assume there are vertices {v} that nothing separates b from in space S with b0 removed. If b0 separates b from any v in {v} replace v by the vertex formed by b0 and an edge of the simplex of v and b. Then {v} is not separated from b by boundary or section of S.
+  This is true for simplex spaces, so assume there are vertices {v} that nothing separates b from in space S with b0 removed.
+  If b0 separates b from any v in {v} replace v by the vertex formed by b0 and an edge of the simplex of v and b. Then {v} is not separated from b by boundary or section of S.
 
 Sample:
   For each linear n space S there exist sets of hyperplanes that classify as S.
-  This is true for simplex spaces, so assume there is sample space R for linear space S with b removed. From the limit theorem, find vertices {v}, and construct hyperplane p arbitrarily close to {v} in R, such that p has the same sidednesses as b wrt {v}. If p classified to some section other than b, it would violate the limit theorem, so p classifies to b.
+  This is true for simplex spaces, so assume there is sample space R for linear space S with b removed.
+  From the limit theorem, find vertices {v}, and construct hyperplane p arbitrarily close to {v} in R, such that p has the same sidednesses as b wrt {v}.
+  If p classified to some section other than b, it would violate the limit theorem, so p classifies to b.
