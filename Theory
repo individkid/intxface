@@ -31,7 +31,7 @@ Divide:
   If a boundary b extends space S0 to S1 then b divides region R of S0 iff there are more than one nonempty extensions of R in S1.
 
 Section:
-  A space S1 is a section of space S0 iff the regions of S1 have the same sidednesses as regions in the subspace of S0 divided by a boundary or boundaries.
+  A space S1 is a section of a subspace of space S0 iff the regions of S1 have the same sidednesses as regions in the subspace of S0 divided by a boundary or boundaries of S0.
 
 Simplex:
   A simplex is a space with n+1 boundaries, where n is the dimension of the space.
