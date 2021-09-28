@@ -39,9 +39,6 @@ Simplex:
 Opposite:
   An opposite of a region wrt a set of boundaries is the region that is the same except for the boundaries.
 
-Apex:
-  An apex region of a simplex is one that differs from the inside region by all but one boundary.
-
 Polyant:
   A polyant is the set of regions on the given sides of a set of boundaries.
 
