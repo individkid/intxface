@@ -18,7 +18,7 @@ for int/double/char*/longlong/float to/from processes in each language.
 type.gen generates type.h type.c type.hs type.lua typer.h typer.c typer.hs typer.lua.
 This has declarations and read*/write* for each struct/enum in each language.
 
-file.h file.c filer.lua test read write monitor append files.
+file.h file.c filer.lua test read write rmw monitor append files.
 Main pselects on interface pipe,
 waiting for commands.
 Open file command opens the helper named pipe for writing,
@@ -43,15 +43,6 @@ trade.c trader.lua test read write to files on other servers.
 local commands are mapped to local file of file on other server.
 remote commands are mapped to local file.
 responses are mapped to local or remote processes.
-
-merge.c merger.lua test keep common fields in files synchronized.
-Control commands can pause and resume merging,
-overwrite from one file to another,
-change the synchronize frequency,
-or change the file topology.
-A control command sends callback command
-with latest state of field for merging,
-and sends callback again for remerging as glitch.
 
 line.c liner.lua linra.c test stock flow sound system.
 This allows simple sums of terms of coefficient
