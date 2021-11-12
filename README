@@ -56,13 +56,20 @@ This has four shaders, one to find pierce points,
 one to display facets, one to stream framebuffers,
 and one to detect focal point proximity to planes.
 This maintains a global transformation matrix,
-a matrix per polytope,
-one for manipulating individual planes,
-copies of the matrices from when fixed point is saved,
-copies from when matrices are sent to synchronize with other processes.
-There are functions to modify a matrices by translation and rotation,
-and a function to three way merge matrices.
-Handles merge callbacks while waiting for synchronize write.
+a matrix per polytope, and a matrix per plane.
+Each maintained matrix has
+pierce mode, pierce states, pierce deltas,
+to be sent matrix, to be looped back matrix.
+Matrix sent to gpu is maintained composed with
+portion sent, portion to be sent, and pierce delta.
+All but pierce delta is cached to optimize composition.
+Before changing any but pierce delta, invalidate composition cache.
+Before changing pierce mode, apply pierce delta to portion to be sent.
+After applying pierce delta, change pierce state for continuity.
+Before changing maintained to matrix read from processes,
+conditionally remove delta from portion to be looped back.
+After writing portion to be sent, clear it to identity. 
+At will, read matrices, write matrices, and change pierce mode.
 
 space.hs Naive.hs spacer.lua spacra.hs test specify examine sample classify.
 This keeps track of which side of boundaries regions are on,
