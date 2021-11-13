@@ -139,6 +139,7 @@ void normal(struct File *command, int sub, int face, struct Thread **thread)
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] == 0) ERROR(exiterr,-1)
 	if (command->num <= 0) ERROR(exiterr,-1)
+	command->pid = identifier;
 	writeFile(command,thread[command->idx]->named);
 }
 
@@ -148,6 +149,7 @@ void normish(struct File *command, int sub, int face, struct Thread **thread)
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] == 0) ERROR(exiterr,-1)
 	if (command->num <= 0) ERROR(exiterr,-1)
+	if (command->pid != identifier) command->pid = 0;
 	writeFile(command,face);
 }
 
@@ -156,7 +158,7 @@ void final(struct File *command, int sub, int face, struct Thread **thread)
 	if (sub != face) ERROR(exiterr,-1)
 	if (!(command->idx >= 0 && command->idx < NUMFILE)) ERROR(exiterr,-1)
 	if (thread[command->idx] == 0) ERROR(exiterr,-1)
-	command->loc = identifier;
+	command->pid = identifier;
 	writeFile(command,thread[command->idx]->named);
 }
 
@@ -384,7 +386,7 @@ void rreq(struct Thread *thread)
 	// read helper
 	readFile(&cmd,helper);
 	// kill to self, goto Done
-	if (cmd.act == EndThd && cmd.loc == identifier) {
+	if (cmd.act == EndThd && cmd.pid == identifier) {
 		stage = Done; return;}
 	// kill to other, neof helper, goto Rreq
 	if (cmd.act == EndThd && pollFile(helper)) {
@@ -485,7 +487,7 @@ void wlck(struct Thread *thread)
 	// read named
 	readFile(&cmd,named);
 	// kill to self, goto Done
-	if (cmd.act == EndThd && cmd.loc == identifier) {
+	if (cmd.act == EndThd && cmd.pid == identifier) {
 		stage = Done; return;}
 	if (cmd.act == CfgThd) cmd.loc = config;
 	// write given
@@ -524,7 +526,7 @@ void rlck(struct Thread *thread)
 	readFile(&cmd,helper);
 	append += sizeFile(&cmd);
 	// kill to self, goto Done
-	if (cmd.act == EndThd && cmd.loc == identifier) {
+	if (cmd.act == EndThd && cmd.pid == identifier) {
 		stage = Done; return;}
 	// kill to other, goto Wlck
 	if (cmd.act == EndThd) {
