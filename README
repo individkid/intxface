@@ -8,13 +8,13 @@ to change the state of other processes.
 Get brew from https://brew.sh like this, allowing it to change your executable path.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 The brew install also installs xcode command line tools.
-For portaudio and lua, download, build, and install.
+For portaudio and lua, download build and install.
 Get portaudio from http://files.portaudio.com/download.html
 Get lua from http://www.lua.org/download.html
 Get llvm with "brew install llvm", and add /opt/homebrew/opt/llvm/bin to your executable path.
 Get ghcup from https://www.haskell.org/ghcup/ like this, allowing it to change your executable path.
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
-Run ghcup install and set for cabal and ghc.
+Run ghcup list to find if ghcup upgrade install or set is needed.
 Run cabal install --lib for hmatrix random and QuickCheck.
 Get git with "brew install git", and get this source like this.
 git clone https://git.code.sf.net/p/intxface/code intxface-code
