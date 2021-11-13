@@ -92,6 +92,11 @@ if (arg[1] == "typer.c") then
 	file:write(showTyperC().."\n")
 	file:close()
 end
+if (arg[1] == "typer.hs") then
+	file = io.open("typer.hs", "w")
+	file:write(showTyperHs().."\n")
+	file:close()
+end
 if (arg[1] == "typer.lua") then
 	file = io.open("typer.lua", "w")
 	file:write(showTyperLua().."\n")

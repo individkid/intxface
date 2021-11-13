@@ -203,8 +203,8 @@ mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
  | otherwise = exitFailure
-mainX :: IO ()
-mainX = do
+main :: IO ()
+main = do
  quickCheckResult prop_boolToSide >>= mainF
  quickCheckResult prop_sideToBool >>= mainF
  quickCheckResult prop_subsets >>= mainF

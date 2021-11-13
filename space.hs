@@ -5,8 +5,8 @@ import Face
 import Type
 import System.Environment
 
-mainX :: IO ()
-mainX = getArgs >>= mainF
+main :: IO ()
+main = getArgs >>= mainF
 
 mainF :: [String] -> IO ()
 mainF [a,b,c] = do

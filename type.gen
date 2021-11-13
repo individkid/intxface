@@ -220,6 +220,7 @@ Mode = {
 }
 Client = {
 	{"mem","Memory",{},{}},
+	{"lpb","int",{},{}},
 	{"len","int",{},{}},
 	{"fnc","Function",{},"len"},
 	{"idx","int",{},{}},
@@ -299,6 +300,11 @@ end
 if (arg[1] == "type.c") then
 	file = io.open("type.c", "w")
 	file:write(showTypeC().."\n")
+	file:close()
+end
+if (arg[1] == "type.hs") then
+	file = io.open("type.hs", "w")
+	file:write(showTypeHs().."\n")
 	file:close()
 end
 if (arg[1] == "type.lua") then
