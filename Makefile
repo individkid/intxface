@@ -31,7 +31,7 @@ spacra.log: spacra
 
 LIBRARIES = -llua -lportaudio
 %C: %C.o
-	clang++ -o $@ $(filter %C.o,$^) ${LIBRARIES}
+	clang++ -L/usr/local/lib -o $@ $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
 	ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0 2> $*.out
 %Lua: %.lua
@@ -40,16 +40,16 @@ LIBRARIES = -llua -lportaudio
 	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib ${LIBRARIES}
 
 %.so: %C.o
-	clang -o $@ -fPIC -shared $^ -llua
+	clang -L/usr/local/lib -o $@ -fPIC -shared $^ -llua
 %.so: %G.o
 	xcrun -sdk macosx metallib -o $@ $<
 
 %C.o: %.c
-	clang -o $@ -c $< -I /usr/local/include/lua
+	clang -o $@ -c $< -I /usr/local/include
 %C.o: %.m
-	clang -o $@ -c $< -I /usr/local/include/lua
+	clang -o $@ -c $< -I /usr/local/include
 %C.o: %.cpp
-	clang -o $@ -c $< -I /usr/local/include/lua
+	clang -o $@ -c $< -I /usr/local/include
 %Sw.o: %.sw
 	cat $(filter %.sw,$^) | swiftc -o $@ -I . -c -
 %G.o: %.metal
