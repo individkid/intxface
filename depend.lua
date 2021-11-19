@@ -14,81 +14,40 @@ by cumulatively attempting to build all that can be named.
 
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
+function debug1(k,v)
+	io.stderr:write(k..":")
+	for key,val in pairs(v) do
+		io.stderr:write(" "..key)
+	end
+	io.stderr:write("\n")
+end
 function debug(map)
 	for k,v in pairs(map) do
-		io.stderr:write(k..":")
-		for key,val in pairs(v) do
-			io.stderr:write(" "..key)
-		end
-		io.stderr:write("\n")
+		debug1(k,v)
 	end
 end
-function boolStr(val)
-	if val then
-		return "true"
-	end
-	return "false"
+function insert(tab,sub,val,dbg)
+	if not tab[sub] and val and not (val == "") then tab[sub] = {} end
+	if val and not (val == "") then tab[sub][val] = true end
 end
-function depend(dep)
-	pat = string.match(dep,"(.*)C%.o"); if pat then return pat.."C" end
-	pat = string.match(dep,"(.*)%.hs"); if pat then return pat.."Hs" end
-	pat = string.match(dep,"(.*)%.lua"); if pat then return pat.."Lua" end
-	pat = string.match(dep,"(.*)Sw%.o"); if pat then return pat.."Sw" end
-	pat = string.match(dep,"(.*)C%.o"); if pat then return pat..".so" end
-	pat = string.match(dep,"(.*)G%.o"); if pat then return pat..".so" end
-	pat = string.match(dep,"(.*)%.c"); if pat then return pat.."C.o" end
-	pat = string.match(dep,"(.*)%.m"); if pat then return pat.."C.o" end
-	pat = string.match(dep,"(.*)%.cpp"); if pat then return pat.."C.o" end
-	pat = string.match(dep,"(.*)%.sw"); if pat then return pat.."Sw.o" end
-	pat = string.match(dep,"(.*)%.g"); if pat then return pat.."G.o" end
-	return ""
-end
-function source(file)
-	base,ext = string.match(file,fileExpr)
-	if base and (
-		ext == ".h" or
-		ext == ".c" or
-		ext == ".m" or
-		ext == ".cpp" or
-		ext == ".hs" or
-		ext == ".lua" or
-		ext == ".gen" or
-		ext == ".src" or
-		ext == ".sw" or
-		ext == ".g")
-	then
-		return true
-	end
-	return false
-end
-function insert(tab,sub,val)
-	if not tab[sub] then tab[sub] = {} end
-	tab[sub][val] = true
-end
-
--- make until every new target fails.
 while true do
--- find current directory contents
-fileExpr = "(.*)(%..*)"
+-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
 files = {}
-extants = {}
 os.execute("ls -1 > depend.tmp")
 dirlist = io.open("depend.tmp")
 for line in dirlist:lines() do
-	files[#files+1] = line
-	extants[line] = true
+	files[line] = true
 end
 dirlist:close()
--- find targets from makefile rules
+-- Read Makefile for targets of files.
 targets = {}
-table.sort(files)
 makefile = io.open("Makefile", "r")
 for line in makefile:lines() do
 	tgt,pat = string.match(line,"%%(.*): %%(.*)")
 	if tgt then
 		expr = "^(.*)("..string.gsub(pat,"%.","%%.")..")$"
-		for k,v in ipairs(files) do
-			base,ext = string.match(v,expr)
+		for k,v in pairs(files) do
+			base,ext = string.match(k,expr)
 			if base then
 				targets[base..tgt] = true
 			end
@@ -96,11 +55,10 @@ for line in makefile:lines() do
 	end
 end
 makefile:close()
--- attempt to make each target
+-- Call make on each target not in files and note if it was built.
 goback = false
 for k,v in pairs(targets) do
-	if not extants[k] then
-		-- io.stderr:write("make("..k..")\n")
+	if not files[k] then
 		retval = os.execute("make DEPEND=1 "..k.." 2> depend.err > depend.out")
 		retval = retval and os.execute("[ -e "..k.." ]")
 		if retval then
@@ -108,10 +66,10 @@ for k,v in pairs(targets) do
 		end
 	end
 end
--- go back to start if any nontrivial make succeeded
-if not goback then break end
-end
-scripts = {}
+-- Repeat until none built.
+if not goback then break end end
+-- List files with main pattern for extension.
+mains = {}
 os.execute("grep -l -- 'int main(int argc' *.c > depend.tmp")
 os.execute("grep -l -- 'int main(int argc' *.cpp >> depend.tmp")
 os.execute("grep -l -- 'int main(void)' *.m >> depend.tmp")
@@ -121,17 +79,17 @@ os.execute("grep -l -- '// MAIN' *.sw >> depend.tmp")
 os.execute("grep -l -- '// MAIN' *.g >> depend.tmp")
 greplist = io.open("depend.tmp")
 for line in greplist:lines() do
-	scripts[line] = true
+	mains[line] = true
 end
 greplist:close()
-
--- find dependencies based on file extension.
+-- List generated files per extension
+generates = {}
+-- Find dependees dependers includes of the file they are in from multiple regexs per extension.
+fileExpr = "(.*)(%..*)"
 cDeclareExpr = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 swDeclareExpr = "^func%s%s*([a-z][a-zA-Z0-9_]*)"
-hsDeclareExpr = "^([^ ]+) +:: "
 luaDeclareExpr = "^function%s%s*([a-z][a-zA-Z0-9_]*)%("
 cInvokeExpr = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
-hsInvokeExpr = "(.*)%(([a-z][a-zA-Z0-9_]*)"
 includeExpr = "^#include "
 moduleExpr = "^module +([^ ]*) +where"
 importExpr = "^import +([^ ]*)"
@@ -145,42 +103,53 @@ hsOpenExpr = "{-"; hsCloseExpr = "-}"
 swOpenExpr = "/*"; swCloseExpr = "*/"
 cCommentExpr = "//"; luaCommentExpr = "--"
 hsCommentExpr = "--"; swCommentExpr = "//"
-edges = {}
+invokes = {} -- per file depends on funcs
+declares = {} -- per func depends on files
+includes = {} -- per file depends on files
 for k,v in pairs(files) do
-	if source(v) and extants[v] then
-		base,ext = string.match(v,fileExpr)
-		-- io.stderr:write("examine("..v..")\n")
-		edges[v] = {}
-		if
-			(ext == ".lua") or
-			(ext == ".gen") or
-			(ext == ".src")
-		then
-			openExpr = luaOpenExpr
-			closeExpr = luaCloseExpr
-			commentExpr = luaCommentExpr
-			declareExpr = luaDeclareExpr
-			invokeExpr = cInvokeExpr
-		elseif (ext == ".sw") then
-			openExpr = swOpenExpr
-			closeExpr = swCloseExpr
-			commentExpr = swCommentExpr
-			declareExpr = swDeclareExpr
-			invokeExpr = cInvokeExpr
-		elseif (ext == ".hs") then
-			openExpr = hsOpenExpr
-			closeExpr = hsCloseExpr
-			commentExpr = hsCommentExpr
-			declareExpr = hsDeclareExpr
-			invokeExpr = hsInvokeExpr
-		else
-			openExpr = cOpenExpr
-			closeExpr = cCloseExpr
-			commentExpr = cCommentExpr
-			declareExpr = cDeclareExpr
-			invokeExpr = cInvokeExpr
-		end
-		file = io.open(v)
+	base,ext = string.match(k,fileExpr)
+	if
+		base and
+		(ext == ".lua" or
+		ext == ".gen" or
+		ext == ".src") then
+		openExpr = luaOpenExpr
+		closeExpr = luaCloseExpr
+		commentExpr = luaCommentExpr
+		declareExpr = luaDeclareExpr
+		invokeExpr = cInvokeExpr
+	elseif
+		base and
+		ext == ".sw" then
+		openExpr = swOpenExpr
+		closeExpr = swCloseExpr
+		commentExpr = swCommentExpr
+		declareExpr = swDeclareExpr
+		invokeExpr = cInvokeExpr
+	elseif
+		base and
+		ext == ".hs" then
+		openExpr = hsOpenExpr
+		closeExpr = hsCloseExpr
+		commentExpr = hsCommentExpr
+		declareExpr = moduleExpr
+		invokeExpr = importExpr
+	elseif
+		base and
+		(ext == ".h" or
+		ext == ".c" or
+		ext == ".m" or
+		ext == ".cpp") then -- TODO add .g for includes
+		openExpr = cOpenExpr
+		closeExpr = cCloseExpr
+		commentExpr = cCommentExpr
+		declareExpr = cDeclareExpr
+		invokeExpr = cInvokeExpr
+	else
+		base = nil
+	end
+	if base then
+		file = io.open(k)
 		cmnt = false; abrv = false; quot = false
 		for line in file:lines() do
 			more = line
@@ -232,223 +201,152 @@ for k,v in pairs(files) do
 			end
 			declareVal = string.match(more,declareExpr)
 			includeVal = string.match(more,includeExpr)
-			moduleVal = string.match(more,moduleExpr)
-			if (ext == ".hs") then hsImportVal = string.match(more,importExpr) else hsImportVal = nil end
-			if (ext == ".sw") then swImportVal = string.match(more,importExpr) else swImportVal = nil end
-			foreighVal = string.match(more,foreignExpr)
+			if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
+			foreignVal = string.match(more,foreignExpr)
 			dofileVal = string.match(more,dofileExpr)
 			requireVal = string.match(more,requireExpr)
 			if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
-			if includeVal then insert(edges,v,name)
-			elseif moduleVal then insert(edges,moduleVal,v)
-			elseif hsImportVal then insert(edges,v,hsImportVal)
-			elseif swImportVal then insert(edges,v,swImportVal..".h")
-			elseif foreignVal then insert(edges,v,name)
-			elseif dofileVal then insert(edges,v,name)
-			elseif requireVal then insert(edges,v,name..".c")
-			elseif declareVal then insert(edges,declareVal,v)
+			if includeVal then insert(includes,k,name,"includeVal")
+			elseif importVal then insert(includes,k,importVal..".h","importVal")
+			elseif dofileVal then insert(includes,k,name,"dofileVal")
+			elseif requireVal then insert(includes,k,name..".c","requireVal")
+			elseif graphicsVal then insert(includes,k,name,"graphicsVal")
+			elseif declareVal then insert(declares,declareVal,k,"declareVal")
+			elseif foreignVal then insert(invokes,k,name,"foreignVal")
 			else while (1) do
 				more,invokeVal = string.match(more,invokeExpr)
 				if not invokeVal then break end
-				insert(edges,v,invokeVal)
+				insert(invokes,k,invokeVal,"invokeVal")
 			end end
-			if graphicsVal then
-				insert(edges,v,name)
-				if not edges[name] then edges[name] = {} end
-			end
 		end
 	end
 end
--- debug(edges)
--- print("HERE")
-
--- recursively add dependencies.
-function satisfied(dst,ext)
-	if not dst then return false end
-	for sk,sv in pairs(dst) do
-		sb,se = string.match(sk,fileExpr)
-		if (se == ext) then return true end
-	end
-	return false
-end
-function flatten(str,dst,ext,mid,src,map)
-	-- depend and recurse if non-file that does not depend on src
-	-- depend and recurse if file that has given extension
-	ba,ex = string.match(str,fileExpr)
-	if src then for k,v in pairs(src) do
-		b,e = string.match(k,fileExpr)
-		if
-			not dst[k] and (k ~= str) and map[k] and not scripts[k] and
-			(e ~= ".sw" or not satisfied(map[mid],".h")) and
-			((b and (e == ext)) or (not b and not map[k][str]))
-		then
-			if b and (e == ext) then
-				dst[k] = true
-			end
-			if
-				((ex ~= ".lua") and (ex ~= ".gen")) or
-				(e and (e ~= ".c") and (e ~= ".h"))
-			then
-				flatten(str,dst,".h",k,map[k],map)
-				flatten(str,dst,".c",k,map[k],map)
-				flatten(str,dst,".m",k,map[k],map)
-				flatten(str,dst,".cpp",k,map[k],map)
-			end
-			if (ex == ".sw") then flatten(str,dst,".sw",k,map[k],map) end
-			if (ex == ".sw") then flatten(str,dst,".so",k,map[k],map) end
-			if (ex == ".hs") then flatten(str,dst,".hs",k,map[k],map) end
-			if (ex == ".lua") then flatten(str,dst,".src",k,map[k],map) end
-			if (ex == ".lua") then flatten(str,dst,".lua",k,map[k],map) end
-			if (ex == ".gen") then flatten(str,dst,".src",k,map[k],map) end
-		end
-	end end
-end
-flats = {}
-for k,v in pairs(edges) do if source(k) then
-	-- io.stderr:write("flatten("..k..")\n")
-	base,ext = string.match(k,fileExpr)
-	flats[k] = {}
-	flatten(k,flats[k],".h",k,v,edges)
-	flatten(k,flats[k],".c",k,v,edges)
-	flatten(k,flats[k],".m",k,v,edges)
-	flatten(k,flats[k],".cpp",k,v,edges)
-	if (ext == ".sw") then flatten(k,flats[k],".sw",k,v,edges) end
-	if (ext == ".sw") then flatten(k,flats[k],".so",k,v,edges) end
-	if (ext == ".hs") then flatten(k,flats[k],".hs",k,v,edges) end
-	if (ext == ".lua") then flatten(k,flats[k],".src",k,v,edges) end
-	if (ext == ".lua") then flatten(k,flats[k],".lua",k,v,edges) end
-	if (ext == ".gen") then flatten(k,flats[k],".src",k,v,edges) end
-end end
-shareds = {}
-for k,v in pairs(flats) do
-	base,ext = string.match(k,fileExpr)
-	if not base then
-		node = nil
-	elseif (ext == ".lua") or (ext == ".gen") then
-		-- io.stderr:write("node "..k.."\n")
-		node = v
-	elseif extants[base..".gen"] and
-		((ext == ".h") or
-		(ext == ".c") or
-		(ext == ".hs") or
-		(ext == ".lua") or
-		(ext == ".sw"))
-	then
-		-- io.stderr:write("node "..k..": "..base..".gen\n")
-		node = edges[base..".gen"]
-	else
-		node = nil
-	end
-	if node then
-		for key,val in pairs(node) do
-			-- io.stderr:write("check "..key.."\n")
-			b,e = string.match(key,fileExpr)
-			if (e == ".c") or (e == ".m") or (e == ".cpp") then
-				-- io.stderr:write("shared "..k..": "..key.."\n")
-				shareds[key] = true
+-- Eliminate invokes that are declares in same file.
+values = {}
+for k,v in pairs(invokes) do -- file,set-of-func
+	vs = {}
+	for ky,vl in pairs(v) do -- func,true
+		found = false
+		set = declares[ky] -- set-of-file
+		if set then
+			for key,val in pairs(set) do -- file,true
+				if key == k then found = true end
 			end
 		end
+		if not found then vs[ky] = vl end
+	end
+	if next(vs) then values[k] = vs end
+end
+invokes = values
+-- Convert invokes to includes.
+for k,v in pairs(invokes) do -- file,set-of-func
+	b,e = string.match(k,fileExpr)
+	for ky,vl in pairs(v) do -- func,true
+		set = declares[ky] -- set-of-file
+		if set then for key,val in pairs(set) do -- file,true
+			includes[k][key] = true
+		end end
 	end
 end
--- debug(flats)
--- print("HERE")
-
--- convert to makefile expectations.
-function filter(tab,dst,mid,src,pat,rep)
-	ba,ex = string.match(dst,fileExpr)
-	pat = string.gsub(pat,"%.","%%.")
-	if src then for k,v in pairs(src) do
-		str,num = string.gsub(k,pat,rep)
-		b,e = string.match(k,fileExpr)
-		if (num > 0) and (dst ~= k) then
-			insert(tab,dst,str)
+-- io.stderr:write("HERE includes\n"); debug(includes)
+-- Collect dependencies of targets
+function filePairs(ext,src,dst)
+	local todo = {}
+	local vals = {}
+	local done = {}
+	local i = 0
+	local func = function(k,v)
+		if type(dst[k]) == "table" and type(v) == "table" then
+			for ke,va in pairs(v) do dst[k][ke] = va end
+		elseif type(dst[k]) == "table" then
+			dst[k][v] = true
+		elseif type(v) == "table" then
+			local temp = dst[k]
+			dst[k] = v
+			dst[k][temp] = true
+		else
+			dst[k] = v
 		end
-	end end
+	end
+	local gunc = function(k,v)
+		if not done[k] then
+			todo[#todo+1] = k
+			vals[#vals+1] = v
+			done[k] = true
+		end
+	end
+	for k,v in pairs(src) do
+		gunc(k,v)
+	end
+	return function()
+		while i < #todo do
+			local j = 0
+			i = i + 1
+			b,e = string.match(todo[i],fileExpr)
+			while j < #ext do
+				j = j + 1
+				if e == ext[j] then
+					return b,j,vals[i],func,gunc
+				end
+			end
+		end
+		return nil
+	end
 end
-targets = {}
-for k,v in pairs(flats) do
-	-- io.stderr:write("convert("..k..")\n")
-	base,ext = string.match(k,fileExpr)
-	if base then
-		if
-			(ext == ".h") or
-			(ext == ".c") or
-			(ext == ".hs") or
-			(ext == ".lua") or
-			(ext == ".sw")
-		then
-			if extants[base..".gen"] then
-				filter(targets,k,base..".gen",flats[base..".gen"],".src",".src")
-				filter(targets,k,base..".gen",flats[base..".gen"],".c",".so")
-				filter(targets,k,base..".gen",flats[base..".gen"],".m",".so")
-				filter(targets,k,base..".gen",flats[base..".gen"],".cpp",".so")
+function collect(exr,der,srr,exe,dee,sre,dst)
+	for b,i,v,f in filePairs({exr},srr,dst) do
+		vs = {}
+		for ba,j,va,fu,gu in filePairs(exe,sre[b..exr],vs) do
+			for bas,k,val in filePairs(exe,sre[ba..exe[j]]) do
+				fu(bas..dee[k],true) -- for vs
+				gu(bas..exe[k],true) -- more todo after v
 			end
 		end
-		if
-			(ext == ".c") or
-			(ext == ".m") or
-			(ext == ".cpp")
-		then
-			if scripts[k] then
-				filter(targets,base.."C",k,v,".c","C.o")
-				filter(targets,base.."C",k,v,".m","C.o")
-				filter(targets,base.."C",k,v,".cpp","C.o")
-			end
-			if shareds[k] then
-				filter(targets,base..".so",k,v,".c","C.o")
-				filter(targets,base..".so",k,v,".m","C.o")
-				filter(targets,base..".so",k,v,".cpp","C.o")
-			end
-			filter(targets,base.."C.o",k,v,".h",".h")
-		end
-		if (ext == ".g") then
-			filter(targets,base.."G.o",k,v,".h",".h")
-		end
-		if (ext == ".hs") then
-			if scripts[k] then
-				filter(targets,base.."Hs",k,v,".c","C.o")
-				filter(targets,base.."Hs",k,v,".m","C.o")
-				filter(targets,base.."Hs",k,v,".cpp","C.o")
-				filter(targets,base.."Hs",k,v,".hs",".hs")
-			end
-		end
-		if (ext == ".lua") then
-			if scripts[k] then
-				filter(targets,base.."Lua",k,v,".lua",".lua")
-				filter(targets,base.."Lua",k,v,".src",".src")
-				filter(targets,base.."Lua",k,v,".c",".so")
-				filter(targets,base.."Lua",k,v,".m",".so")
-				filter(targets,base.."Lua",k,v,".cpp",".so")
-			end
-		end
-		if (ext == ".sw") then
-			if scripts[k] then
-				filter(targets,base.."Sw",k,v,".c","C.o")
-				filter(targets,base.."Sw",k,v,".m","C.o")
-				filter(targets,base.."Sw",k,v,".cpp","C.o")
-				filter(targets,base.."Sw",k,v,".so",".so")
-				filter(targets,base.."Sw.o",k,v,".sw",".sw")
-				filter(targets,base.."Sw.o",k,v,".h",".h")
-			end
+		f(b..der,vs) -- for dst
+	end
+end
+function include(exr,der,srr,exe,dee,sre,dst)
+	for b,i,v,f in filePairs({exr},srr,dst) do
+		for ba,j,va in filePairs(exe,sre[i]) do
+			f(b..der,ba..dee[j])
 		end
 	end
 end
-
--- print out targets and dependencies.
-orders = {}
-for k,v in pairs(targets) do
-	orders[#orders+1] = k
-end
-table.sort(orders)
-for k,v in ipairs(orders) do
-	str = v..":"
-	ords = {}
-	for key,val in pairs(targets[v]) do
-		ords[#ords+1] = key
-	end
-	table.sort(ords)
-	for key,val in ipairs(ords) do
-		str = str.." "..val
-	end
-	print(str)
+depends = {}
+-- %C: *C.o *.so
+collect(".c","C",mains,{".c",".m",".cpp"},{"C.o","C.o"},includes,depends)
+include(".c","C",mains,{".so"},{".so"},includes,depends)
+collect(".m","C",mains,{".c",".m",".cpp"},{"C.o","C.o"},includes,depends)
+include(".m","C",mains,{".so"},{".so"},includes,depends)
+collect(".cpp","C",mains,{".c",".m",".cpp"},{"C.o","C.o"},includes,depends)
+include(".cpp","C",mains,{".so"},{".so"},includes,depends)
+-- %Hs: *C.o *.hs
+collect(".hs","Hs",mains,{".c"},{"C.o"},includes,depends)
+collect(".hs","Hs",mains,{".hs"},{".hs"},includes,depends)
+-- %Lua: *.so *.lua *.src
+collect(".lua","Lua",mains,{".c"},{".so"},includes,depends)
+collect(".lua","Lua",mains,{".lua",".src"},{".lua",".src"},includes,depends)
+-- %Sw: *C.o
+collect(".sw","Sw",mains,{".c"},{"C.o"},includes,depends)
+-- %C.o: *.h
+collect(".c","C.o",mains,{".h"},{".h"},includes,depends)
+-- %Sw.o: *.sw
+collect(".sw","Sw.o",mains,{".sw"},{".sw"},includes,depends)
+-- %G.o: *.h
+collect(".g","G.o",mains,{".h"},{".h"},includes,depends)
+-- %.*: *.src
+collect(".gen",".h",generates[".h"],{".src"},{".src"},includes,depends)
+collect(".gen",".c",generates[".c"],{".src"},{".src"},includes,depends)
+collect(".gen",".m",generates[".m"],{".src"},{".src"},includes,depends)
+collect(".gen",".cpp",generates[".cpp"],{".src"},{".src"},includes,depends)
+collect(".gen",".hs",generates[".hs"],{".src"},{".src"},includes,depends)
+collect(".gen",".lua",generates[".lua"],{".src"},{".src"},includes,depends)
+collect(".gen",".sw",generates[".sw"],{".src"},{".src"},includes,depends)
+collect(".gen",".g",generates[".g"],{".src"},{".src"},includes,depends)
+io.stderr:write("HERE depends\n"); debug(depends)
+-- Print sorted dependencies
+lines = {}; for k,v in pairs(depends) do lines[#lines+1] = k end; table.sort(lines)
+for k,v in ipairs(lines) do
+	words = {}; for ke,va in pairs(depends[v]) do words[#words+1] = ke end; table.sort(words)
+	str = v..":"; for ke,va in ipairs(words) do str = str.." "..va end; print(str)
 end
