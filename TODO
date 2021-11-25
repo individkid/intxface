@@ -1,0 +1,15 @@
+Create video with
+ GoPro of table and speakers,
+ microphone of outside and turntable,
+ screen capture of coding process,
+ mixed with Roland,
+ recorded through BlackMagic.
+Debug new depend.lua
+Write new type.src
+Change plane.sw according to README.
+Add intxface between space.hs and plane.sw through files.
+Add user manipulation through files.
+Put together plane and space.
+Finish line.cpp and produce sounds.
+Apply heuristic to generated tetrahedron overlaps.
+Enhance video with polytopes and system dynamic music.

@@ -244,11 +244,13 @@ for k,v in pairs(invokes) do -- file,set-of-func
 	for ky,vl in pairs(v) do -- func,true
 		set = declares[ky] -- set-of-file
 		if set then for key,val in pairs(set) do -- file,true
+			if includes[k] == nil then includes[k] = {} end
 			includes[k][key] = true
+			io.stderr:write("debug: "..k.."->"..ky.."->"..key.."\n")
 		end end
 	end
 end
--- io.stderr:write("HERE includes\n"); debug(includes)
+io.stderr:write("HERE includes\n"); debug(includes)
 -- Collect dependencies of targets
 function filePairs(ext,src,dst)
 	local todo = {}
@@ -258,9 +260,9 @@ function filePairs(ext,src,dst)
 	local func = function(k,v)
 		if type(dst[k]) == "table" and type(v) == "table" then
 			for ke,va in pairs(v) do dst[k][ke] = va end
-		elseif type(dst[k]) == "table" then
+		elseif type(dst[k]) == "table" and not v == nil then
 			dst[k][v] = true
-		elseif type(v) == "table" then
+		elseif not dst[k] == nil and type(v) == "table" then
 			local temp = dst[k]
 			dst[k] = v
 			dst[k][temp] = true
@@ -275,8 +277,10 @@ function filePairs(ext,src,dst)
 			done[k] = true
 		end
 	end
-	for k,v in pairs(src) do
-		gunc(k,v)
+	if type(src) == "table" then
+		for k,v in pairs(src) do
+			gunc(k,v)
+		end
 	end
 	return function()
 		while i < #todo do
@@ -307,7 +311,7 @@ function collect(exr,der,srr,exe,dee,sre,dst)
 end
 function include(exr,der,srr,exe,dee,sre,dst)
 	for b,i,v,f in filePairs({exr},srr,dst) do
-		for ba,j,va in filePairs(exe,sre[i]) do
+		for ba,j,va in filePairs(exe,sre) do
 			f(b..der,ba..dee[j])
 		end
 	end
@@ -346,7 +350,9 @@ collect(".gen",".g",generates[".g"],{".src"},{".src"},includes,depends)
 io.stderr:write("HERE depends\n"); debug(depends)
 -- Print sorted dependencies
 lines = {}; for k,v in pairs(depends) do lines[#lines+1] = k end; table.sort(lines)
+io.stderr:write("HERE ",#lines,"\n")
 for k,v in ipairs(lines) do
 	words = {}; for ke,va in pairs(depends[v]) do words[#words+1] = ke end; table.sort(words)
-	str = v..":"; for ke,va in ipairs(words) do str = str.." "..va end; print(str)
+	str = v..":"; for ke,va in ipairs(words) do str = str.." "..va end;
+	if #words > 0 then print(str) end
 end
