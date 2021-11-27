@@ -1,5 +1,5 @@
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log spacra.log line plane space trade planra spacra
+all: facer.log typra.log typer.log filer.log spacra.log line plane space hole planra spacra
 
 facer.log: facerC facerHs facerLua
 	./facerC > facer.log
@@ -80,7 +80,7 @@ clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer planra spacra
-	rm -f trade file line plane space
+	rm -f hole file line plane space
 	rm -f *C *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp
 	rm -f *.-- .*.-- ..*.-- ...*.--

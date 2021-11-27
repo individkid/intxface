@@ -17,8 +17,8 @@ planraSw.o: face.h metic.h share.h share.sw type.h
 shareC.o: face.h metic.h share.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs typeC.o
 spacraHs: naive.hs
-tradeC: faceC.o typeC.o
-tradeC.o: face.h type.h
+holeC: faceC.o typeC.o
+holeC.o: face.h type.h
 type.c: type.src
 type.h: type.src
 type.hs: type.src

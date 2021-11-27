@@ -54,7 +54,7 @@ The readlocker reads the appended command,
 writes to the unnamed pipe,
 and loops back.
 
-trade.c trader.lua test read write to files on other servers.
+hole.c holer.lua test read write to files on other servers.
 local commands are mapped to local file of file on other server.
 remote commands are mapped to local file.
 responses are mapped to local or remote processes.
@@ -129,4 +129,16 @@ Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
-main.lua combine commands from sculpt print play ball world.
+intxface is an Xcode app that opens a filename on a file process,
+presents a readonly scrollable, highlightable text widget,
+allows the user to atomically read and write highlighted fields in an entry widget,
+interprets fields in the given file as commands to
+open new text entry windows for other files,
+start filenames on processes piped to the file process,
+read AV from GoPro through https://github.com/KonradIT/goprowifihack,
+read AV from Thunderbolt through BlackMagic SDK,
+read AV from framebuffers through sockets,
+read AV from files, write AV to files,
+write AV to AirPlay through
+https://stackoverflow.com/questions/11704086/how-can-i-integrate-airplay-in-my-app,
+write AV to framebuffers through sockets.
