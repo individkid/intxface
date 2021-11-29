@@ -129,25 +129,29 @@ Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
-intxface Xcode test open a filename on a file process
+intxface test Xcode app
 https://developer.apple.com/documentation/xcode,
-present a readonly scrollable, highlightable text widget,
+present a readonly scrollable highlightable text widget,
 allow the user to atomically write highlighted fields in an entry widget,
-interpret fields in the given file as commands to
-open new text entry windows for other files,
+open pipe to file process per filenamed text entry tab or window,
+query to close other piped processes when closing or repurposing tab or window,
+close file process without other pipes when closing or repurposing tab or window,
+interpret fields as commands to save load pack commands,
+use text entry window or tab for other files,
 start processes piped to the file process,
-read AV from GoPro MP4 H.264 through
-https://www.ietf.org/rfc/rfc3984.txt
-https://github.com/KonradIT/goprowifihack, 
 read AV from Thunderbolt through BlackMagic SDK,
 read AV from framebuffers through sockets,
-read AV from files, write AV to files,
+read AV from files, write AV to files
+https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFPreface/qtffPreface.html
+https://cconcolato.github.io/mp4ra/index.html,
 write AV to framebuffers through sockets,
-write AV to window or AirPlay through
+write AV to tab, window, or AirPlay through
 https://developer.apple.com/av-foundation/
 https://developer.apple.com/documentation/avfoundation/
 https://developer.apple.com/documentation/avfoundation/media_assets_and_metadata/
 https://developer.apple.com/documentation/avfoundation/avasset
 https://developer.apple.com/documentation/avfoundation/avassetreader
 https://developer.apple.com/documentation/avfoundation/media_playback_and_selection/
-https://developer.apple.com/documentation/avfoundation/media_playback_and_selection/integrating_airplay_for_long-form_video_apps/.
+https://developer.apple.com/documentation/avfoundation/media_playback_and_selection/integrating_airplay_for_long-form_video_apps/,
+write AV audio and video from two different AV,
+with or without synchronization.
