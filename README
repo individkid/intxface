@@ -141,17 +141,11 @@ use text entry window or tab for other files,
 start processes piped to the file process,
 read AV from Thunderbolt through BlackMagic SDK,
 read AV from framebuffers through sockets,
-read AV from files, write AV to files
+read AV from files, write AV to files, tabs, windows through
 https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFPreface/qtffPreface.html
+https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/QTKitApplicationTutorial/BuildingaSimpleQTKitCaptureApplication/BuildingaSimpleQTKitCaptureApplication.html
+https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/QTKitApplicationTutorial/BuildingaSimpleMediaPlayerApplication/BuildingaSimpleMediaPlayerApplication.html
 https://cconcolato.github.io/mp4ra/index.html,
 write AV to framebuffers through sockets,
-write AV to tab, window, or AirPlay through
-https://developer.apple.com/av-foundation/
-https://developer.apple.com/documentation/avfoundation/
-https://developer.apple.com/documentation/avfoundation/media_assets_and_metadata/
-https://developer.apple.com/documentation/avfoundation/avasset
-https://developer.apple.com/documentation/avfoundation/avassetreader
-https://developer.apple.com/documentation/avfoundation/media_playback_and_selection/
-https://developer.apple.com/documentation/avfoundation/media_playback_and_selection/integrating_airplay_for_long-form_video_apps/,
 write AV audio and video from two different AV,
 with or without synchronization.
