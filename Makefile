@@ -1,5 +1,12 @@
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log spacra.log line plane space hole planra spacra
+all: facer.log typra.log typer.log filer.log spacra.log hole line plane space planra spacra
+
+LIBRARIES = -llua -lportaudio
+
+ifndef DEPEND
+# lua depend.lua > depend.mk
+include depend.mk
+endif
 
 facer.log: facerC facerHs facerLua
 	./facerC > facer.log
@@ -24,20 +31,6 @@ spacra.log: spacra
 %: %Sw
 	ln -f $< $@
 
-%.so: %C.o
-	clang -L/usr/local/lib -o $@ -fPIC -shared $^ -llua
-%.so: %G.o
-	xcrun -sdk macosx metallib -o $@ $<
-%.metal: %.g
-	cp $< $@
-
-ifndef DEPEND
-# lua depend.lua > depend.mk
-include depend.mk
-endif
-
-LIBRARIES = -llua -lportaudio
-
 %C: %C.o
 	clang++ -L/usr/local/lib -o $@ $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
@@ -46,6 +39,11 @@ LIBRARIES = -llua -lportaudio
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
 	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib ${LIBRARIES}
+
+%.so: %C.o
+	clang -L/usr/local/lib -o $@ -fPIC -shared $^ -llua
+%.so: %G.o
+	xcrun -sdk macosx metallib -o $@ $<
 
 %C.o: %.c
 	clang -o $@ -c $< -I /usr/local/include
@@ -57,6 +55,9 @@ LIBRARIES = -llua -lportaudio
 	cat $(filter %.sw,$^) | swiftc -o $@ -I . -c -
 %G.o: %.metal
 	xcrun -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
+
+%.metal: %.g
+	cp $< $@
 
 %.h: %.gen
 	lua $< $@

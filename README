@@ -142,10 +142,7 @@ start processes piped to the file process,
 read AV from Thunderbolt through BlackMagic SDK,
 read AV from framebuffers through sockets,
 read AV from files, write AV to files, tabs, windows through
-https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFPreface/qtffPreface.html
-https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/QTKitApplicationTutorial/BuildingaSimpleQTKitCaptureApplication/BuildingaSimpleQTKitCaptureApplication.html
-https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/QTKitApplicationTutorial/BuildingaSimpleMediaPlayerApplication/BuildingaSimpleMediaPlayerApplication.html
-https://cconcolato.github.io/mp4ra/index.html,
+https://developer.apple.com/library/archive/technotes/tn2300/,
 write AV to framebuffers through sockets,
 write AV audio and video from two different AV,
 with or without synchronization.
