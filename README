@@ -129,22 +129,17 @@ Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
-intxface test Xcode app
-https://developer.apple.com/documentation/xcode,
-present a readonly scrollable searchable highlightable text widget,
-present a readonly scrollable searchable clickable list widget of file changes,
-allow the user to atomically write highlighted fields in an entry widget,
-allow the user to configure field separator,
-shift to adjoining fields with up down keys,
-commit changes to fields with enter key,
-open pipe to file process per filenamed text entry tab or window,
-query to close other piped processes when closing or repurposing tab or window,
-close file process without other pipes when closing or repurposing tab or window,
-interpret fields as commands to save load pack,
-use text entry window or tab for other files,
-start processes piped to the file process,
-read AV from files, write AV to files, tabs, windows through
-https://developer.apple.com/library/archive/technotes/tn2300/,
-produce AV audio and video from two AV, with or without synchronization,
-produce AV serialized from multiple AV, with any of several transitions,
-produce AV parallelized from multiple AV, with any of several tilings.
+read test AVAssetReader to pipe frame buffers from file.
+view test AVPlayerView to pipe frame buffers to display.
+tape test BMD BDK to pipe frame buffers to hdmi.
+show test BMD BDK pipe frame buffers from hdmi.
+wave test IOUSBInterfaceInterface to pipe frame buffers from usb waveform.
+desk test AVCaptureScreenInput to pipe frame buffers from screen capture.
+tile test several frame buffers to one.
+
+intxface test app that per tab or window,
+presents a readonly scrollable searchable highlightable text widget,
+a scrollable searchable clickable list widget of file changes,
+an entry widget that atomically writes highlighted fields upon enter,
+menu items to configure field separators, files, and file processes,
+and which file controls a process graph.

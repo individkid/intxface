@@ -4,5 +4,8 @@ Change plane.sw according to README.
 Add intxface between space.hs and plane.sw through files.
 Add user manipulation through files.
 Put together plane and space.
+Write read and write processes.
+Add pipe to frame buffers to facet textures.
+Add render to textures to frame buffers to pipe.
 Finish line.cpp and produce sounds.
 Apply heuristic to generated tetrahedron overlaps.

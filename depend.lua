@@ -14,6 +14,11 @@ by cumulatively attempting to build all that can be named.
 
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
+function debug2(set)
+	for k,v in pairs(set) do
+		io.stderr:write(k.."\n")
+	end
+end
 function debug1(k,v)
 	io.stderr:write(k..":")
 	for key,val in pairs(v) do
@@ -70,13 +75,13 @@ end
 if not goback then break end end
 -- List files with main pattern for extension.
 mains = {}
-os.execute("grep -l -- 'int main(int argc' *.c > depend.tmp")
-os.execute("grep -l -- 'int main(int argc' *.cpp >> depend.tmp")
-os.execute("grep -l -- 'int main(void)' *.m >> depend.tmp")
-os.execute("grep -l -- 'main :: IO ()' *.hs >> depend.tmp")
-os.execute("grep -l -- '-- MAIN' *.lua >> depend.tmp")
-os.execute("grep -l -- '// MAIN' *.sw >> depend.tmp")
-os.execute("grep -l -- '// MAIN' *.g >> depend.tmp")
+os.execute("grep -l -E -- '^int main\\(int argc' *.c > depend.tmp")
+os.execute("grep -l -E -- '^int main\\(int argc' *.cpp >> depend.tmp")
+os.execute("grep -l -E -- '^int main\\(void\\)' *.m >> depend.tmp")
+os.execute("grep -l -E -- '^main :: IO \\(\\)' *.hs >> depend.tmp")
+os.execute("grep -l -E -- '^-- MAIN' *.lua >> depend.tmp")
+os.execute("grep -l -E -- '^// MAIN' *.sw >> depend.tmp")
+os.execute("grep -l -E -- '^// MAIN' *.g >> depend.tmp")
 greplist = io.open("depend.tmp")
 for line in greplist:lines() do
 	mains[line] = true
@@ -258,15 +263,27 @@ function filePairs(ext,src,dst)
 	local done = {}
 	local i = 0
 	local func = function(k,v)
-		if type(dst[k]) == "table" and type(v) == "table" then
-			for ke,va in pairs(v) do dst[k][ke] = va end
-		elseif type(dst[k]) == "table" and not v == nil then
-			dst[k][v] = true
-		elseif not dst[k] == nil and type(v) == "table" then
-			local temp = dst[k]
-			dst[k] = v
-			dst[k][temp] = true
-		else
+                -- FIXME
+		if type(dst[k]) == "table" or type(v) == "table" then
+			-- merge two tables
+			local temp = {}
+			if type(dst[k]) == "table" then
+				for ke,va in pairs(dst[k]) do temp[ke] = va end
+			elseif not (dst[k] == nil) then
+				temp[dst[k]] = true
+			end
+			if type(v) == "table" then
+				for ke,va in pairs(v) do temp[ke] = va end
+			elseif not (v == nil) then
+				temp[v] = true
+			end
+			dst[k] = {}
+			for ke,va in pairs(temp) do dst[k][ke] = va end
+		elseif not (dst[k] == nil) and not (v == nil) and not (dst[k] == v) then
+			-- make two singles into set of two
+			dst[k] = {[dst[k]]=true,[v]=true}
+		elseif (dst[k] == nil) and not (v == nil) then
+			-- make single
 			dst[k] = v
 		end
 	end
@@ -310,12 +327,20 @@ function collect(exr,der,srr,exe,dee,sre,dst)
 	end
 end
 function include(exr,der,srr,exe,dee,sre,dst)
-	for b,i,v,f in filePairs({exr},srr,dst) do
+	for b,i,v,f in filePairs({".c",".m",".cpp"},srr,dst) do
 		for ba,j,va in filePairs(exe,sre) do
 			f(b..der,ba..dee[j])
 		end
 	end
 end
+io.stderr:write("HERE mains\n"); debug2(mains)
+vs = {}
+for ba,j,va,fu,gu in filePairs({".h"},includes["hole.c"],vs) do
+	io.stderr:write(string.format("%s %d\n",ba,j))
+	fu("hole.c",{[ba..".h"]=true})
+end
+io.stderr:write("HERE vs\n"); debug(vs)
+--[[
 depends = {}
 -- %C: *C.o *.so
 collect(".c","C",mains,{".c",".m",".cpp"},{"C.o","C.o"},includes,depends)
@@ -356,3 +381,4 @@ for k,v in ipairs(lines) do
 	str = v..":"; for ke,va in ipairs(words) do str = str.." "..va end;
 	if #words > 0 then print(str) end
 end
+--]]
