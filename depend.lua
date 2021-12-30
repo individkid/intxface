@@ -14,26 +14,226 @@ by cumulatively attempting to build all that can be named.
 
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
-function debug2(set)
-	for k,v in pairs(set) do
-		io.stderr:write(k.."\n")
+function modify(given,control)
+	local list = {true} -- path of keys to leaf of given
+	local work = {given} -- references to values of keys
+	local todo = {{}} -- keys subsequent to each key
+	local retval = given
+	if type(given) == "table" then
+		for k,v in pairs(given) do
+			todo[#todo][k] = true
+		end
+	else
+		todo[#todo][given] = true
 	end
-end
-function debug1(k,v)
-	io.stderr:write(k..":")
-	for key,val in pairs(v) do
-		io.stderr:write(" "..key)
+	while todo[#todo] do
+		local workref = work[#work]
+		local todoref = todo[#todo]
+		local append,replace,consume
+		list[#list] = next(todoref)
+		append,replace,consume = control(list)
+		if not append then append = {} end
+		if not (type(append) == "table") then append = {append} end
+		if not replace then replace = {} end
+		if not (type(replace) == "table") then replace = {replace} end
+		if not consume then consume = {} end
+		if not (type(consume) == "table") then consume = {consume} end
+		for k,v in ipairs(append) do
+			local value,isfunc,istab,isval,isbool
+			if type(replace[k]) == "function" then isfunc = true else isfunc = false end
+			if type(workref) == "table" then istab = true else istab = false end
+			if isfunc and istab then
+				value,isval = replace[k](workref[v],true)
+			elseif isfunc then
+				value,isval = replace[k](work[#work],false)
+			else
+				value = replace[k]
+				if value then isval = true else isval = false end
+			end
+			if type(isval) == "boolean" then isbool = true else isbool = false end
+			if isbool and isval then
+				todoref[v] = true
+			elseif isbool then
+				todoref[v] = nil
+			end
+			if istab then
+				workref[v] = value
+			elseif value and isfunc then
+				work[#work] = value
+			elseif value then
+				work[#work] = {}
+				work[#work][v] = value
+			else
+				work[#work] = v
+			end
+		end
+		for k,v in ipairs(consume) do
+			todoref[v] = nil
+		end
+		if not (type(workref) == "table") then
+			todoref[list[#list]] = nil
+		end
+		while todo[#todo] and not next(todo[#todo]) do
+			if #work == 1 then
+				retval = work[#work]
+			end
+			list[#list] = nil
+			work[#work] = nil
+			todo[#todo] = nil
+			if todo[#todo] then
+				todo[#todo][list[#list]] = nil
+			end
+		end
+		if todo[#todo] and todo[#todo][list[#list]] and type(work[#work]) == "table" then
+			local key = list[#list]
+			local tab = work[#work]
+			local val = tab[key]
+			list[#list+1] = true
+			work[#work+1] = val
+			todo[#todo+1] = {}
+			if type(val) == "table" then
+				for k,v in pairs(work[#work]) do
+					todo[#todo][k] = true
+				end
+			else
+				todo[#todo][val] = true
+			end
+		end
 	end
-	io.stderr:write("\n")
+	return retval
 end
-function debug(map)
-	for k,v in pairs(map) do
-		debug1(k,v)
+function copy(given)
+	local function control(list)
+		local append = {}
+		local temp = given
+		for k,v in ipairs(list) do
+			if type(temp) == "table" then
+				temp = temp[v]
+			else
+				temp = v
+			end
+		end
+		if type(temp) == "table" then
+			append[#append+1] = list[#list]
+			for k,v in pairs(temp) do
+				append[#append+1] = k
+				if type(k) == "table" then
+					replace[#append] = true
+				else
+					replace[#append] = k
+				end
+			end
+		else
+			append[#append+1] = temp
+		end
+		return append
 	end
+	return modify(true,control)
 end
-function insert(tab,sub,val,dbg)
-	if not tab[sub] and val and not (val == "") then tab[sub] = {} end
-	if val and not (val == "") then tab[sub][val] = true end
+function debug(given)
+	local str = ""
+	-- local depth = 0
+	local first = true
+	local open = false
+	local pend = {}
+	local done = 0
+	local function control(list)
+		-- io.stderr:write(tostring(first).." "..tostring(open).." "..tostring(done).." "..tostring(#list).." "..tostring(#pend).."\n")
+		-- for k,v in pairs(list) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
+		-- for k,v in pairs(pend) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
+		if #list < #pend then
+			while done < (#pend-3) do
+				done = done+1
+				if open then
+					open = false
+					str = str..")"
+				end
+				if first then
+					first = false
+				else
+					str = str.."\n"
+				end
+				local count = 1
+				while count < done do
+					str = str.." "
+					count = count + 1
+				end
+				str = str..pend[done]..":"
+			end
+			while done < (#pend-2) do
+				done = done+1
+				if open then
+					open = false
+					str = str..")"
+				end
+				str = str.." "..pend[done]
+			end
+			while done < (#pend-1) do
+				done = done+1
+				if not open then
+					open = true
+					str = str.." ("
+				else
+					str = str.." "
+				end
+				str = str..pend[done]
+			end
+		end
+		pend = {}
+		for k,v in ipairs(list) do
+			pend[k] = v
+		end
+		if done >= #pend then
+			done = #pend - 1
+		end
+		-- io.stderr:write(str.."\n")
+		-- for k,v in pairs(pend) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
+		-- for k,v in pairs(list) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
+		-- io.stderr:write(tostring(first).." "..tostring(open).." "..tostring(done).." "..tostring(#list).." "..tostring(#pend).."\n")
+		-- io.stderr:write("---\n")
+	end
+	modify(given,control)
+	str = str..")\n"
+	io.stderr:write(str)
+end
+function collect(given,include,from,to)
+	local function control(list)
+		local append = {}
+		local replace = {}
+		local consume = {}
+		if #list == 2 and from(list[2]) then
+			-- list[1] is depender
+			-- list[2] is dependee
+			-- list[3] would be intermediary between depender and dependee
+			-- list[4] would be true
+			consume[#consume+1] = list[2]
+			for k,v in pairs(include[list[2]]) do
+				-- k is dependee of dependee-cum-intermediary
+				local deb = list[2]
+				local function merge(work)
+					-- work is set of intermediaries for key
+					local value,isval
+					if work then isval = nil else isval = true end
+					-- if work is nil then key is a new dependee.
+					-- isval of true indicates unvisited.
+					-- if work is already a dependee then
+					-- it may or may not have been visited.
+					-- isval of nil leaves whether visited alone.
+					if isval then value = {} else value = work end
+					-- a new dependee has no intermediaries yet.
+					value[deb] = true
+					-- add dependee-cum-intermediary to dependee
+					return value,isval
+				end
+				if to(key) then
+					append[#append+1] = k
+					replace[#replace+1] = merge
+				end
+			end
+		end
+		return append,replace,consume
+	end
+	return modify(given,control)
 end
 while true do
 -- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
@@ -86,6 +286,7 @@ greplist = io.open("depend.tmp")
 for line in greplist:lines() do
 	mains[line] = true
 end
+io.stderr:write("HERE mains\n"); debug(mains)
 greplist:close()
 -- List generated files per extension
 generates = {}
@@ -111,6 +312,19 @@ hsCommentExpr = "--"; swCommentExpr = "//"
 invokes = {} -- per file depends on funcs
 declares = {} -- per func depends on files
 includes = {} -- per file depends on files
+function copy1(tbl,set,val)
+	for k,v in pairs(val) do
+		set[k] = v
+	end
+end
+function insert1(set,val,dbg)
+	if val and not (val == "") and not set[val] then set[val] = {} end
+	if val and not (val == "") then set[val][dbg] = true end
+end
+function insert(tab,sub,val,dbg)
+	if val and not (val == "") and not tab[sub] then tab[sub] = {} end
+	insert1(tab[sub],val,dbg)
+end
 for k,v in pairs(files) do
 	base,ext = string.match(k,fileExpr)
 	if
@@ -226,159 +440,6 @@ for k,v in pairs(files) do
 		end
 	end
 end
--- Eliminate invokes that are declares in same file.
-values = {}
-for k,v in pairs(invokes) do -- file,set-of-func
-	vs = {}
-	for ky,vl in pairs(v) do -- func,true
-		found = false
-		set = declares[ky] -- set-of-file
-		if set then
-			for key,val in pairs(set) do -- file,true
-				if key == k then found = true end
-			end
-		end
-		if not found then vs[ky] = vl end
-	end
-	if next(vs) then values[k] = vs end
-end
-invokes = values
--- Convert invokes to includes.
-for k,v in pairs(invokes) do -- file,set-of-func
-	b,e = string.match(k,fileExpr)
-	for ky,vl in pairs(v) do -- func,true
-		set = declares[ky] -- set-of-file
-		if set then for key,val in pairs(set) do -- file,true
-			if includes[k] == nil then includes[k] = {} end
-			includes[k][key] = true
-			io.stderr:write("debug: "..k.."->"..ky.."->"..key.."\n")
-		end end
-	end
-end
 io.stderr:write("HERE includes\n"); debug(includes)
--- Collect dependencies of targets
-function filePairs(ext,src,dst)
-	local todo = {}
-	local vals = {}
-	local done = {}
-	local i = 0
-	local func = function(k,v)
-                -- FIXME
-		if type(dst[k]) == "table" or type(v) == "table" then
-			-- merge two tables
-			local temp = {}
-			if type(dst[k]) == "table" then
-				for ke,va in pairs(dst[k]) do temp[ke] = va end
-			elseif not (dst[k] == nil) then
-				temp[dst[k]] = true
-			end
-			if type(v) == "table" then
-				for ke,va in pairs(v) do temp[ke] = va end
-			elseif not (v == nil) then
-				temp[v] = true
-			end
-			dst[k] = {}
-			for ke,va in pairs(temp) do dst[k][ke] = va end
-		elseif not (dst[k] == nil) and not (v == nil) and not (dst[k] == v) then
-			-- make two singles into set of two
-			dst[k] = {[dst[k]]=true,[v]=true}
-		elseif (dst[k] == nil) and not (v == nil) then
-			-- make single
-			dst[k] = v
-		end
-	end
-	local gunc = function(k,v)
-		if not done[k] then
-			todo[#todo+1] = k
-			vals[#vals+1] = v
-			done[k] = true
-		end
-	end
-	if type(src) == "table" then
-		for k,v in pairs(src) do
-			gunc(k,v)
-		end
-	end
-	return function()
-		while i < #todo do
-			local j = 0
-			i = i + 1
-			b,e = string.match(todo[i],fileExpr)
-			while j < #ext do
-				j = j + 1
-				if e == ext[j] then
-					return b,j,vals[i],func,gunc
-				end
-			end
-		end
-		return nil
-	end
-end
-function collect(exr,der,srr,exe,dee,sre,dst)
-	for b,i,v,f in filePairs({exr},srr,dst) do
-		vs = {}
-		for ba,j,va,fu,gu in filePairs(exe,sre[b..exr],vs) do
-			for bas,k,val in filePairs(exe,sre[ba..exe[j]]) do
-				fu(bas..dee[k],true) -- for vs
-				gu(bas..exe[k],true) -- more todo after v
-			end
-		end
-		f(b..der,vs) -- for dst
-	end
-end
-function include(exr,der,srr,exe,dee,sre,dst)
-	for b,i,v,f in filePairs({".c",".m",".cpp"},srr,dst) do
-		for ba,j,va in filePairs(exe,sre) do
-			f(b..der,ba..dee[j])
-		end
-	end
-end
-io.stderr:write("HERE mains\n"); debug2(mains)
-vs = {}
-for ba,j,va,fu,gu in filePairs({".h"},includes["hole.c"],vs) do
-	io.stderr:write(string.format("%s %d\n",ba,j))
-	fu("hole.c",{[ba..".h"]=true})
-end
-io.stderr:write("HERE vs\n"); debug(vs)
---[[
-depends = {}
--- %C: *C.o *.so
-collect(".c","C",mains,{".c",".m",".cpp"},{"C.o","C.o"},includes,depends)
-include(".c","C",mains,{".so"},{".so"},includes,depends)
-collect(".m","C",mains,{".c",".m",".cpp"},{"C.o","C.o"},includes,depends)
-include(".m","C",mains,{".so"},{".so"},includes,depends)
-collect(".cpp","C",mains,{".c",".m",".cpp"},{"C.o","C.o"},includes,depends)
-include(".cpp","C",mains,{".so"},{".so"},includes,depends)
--- %Hs: *C.o *.hs
-collect(".hs","Hs",mains,{".c"},{"C.o"},includes,depends)
-collect(".hs","Hs",mains,{".hs"},{".hs"},includes,depends)
--- %Lua: *.so *.lua *.src
-collect(".lua","Lua",mains,{".c"},{".so"},includes,depends)
-collect(".lua","Lua",mains,{".lua",".src"},{".lua",".src"},includes,depends)
--- %Sw: *C.o
-collect(".sw","Sw",mains,{".c"},{"C.o"},includes,depends)
--- %C.o: *.h
-collect(".c","C.o",mains,{".h"},{".h"},includes,depends)
--- %Sw.o: *.sw
-collect(".sw","Sw.o",mains,{".sw"},{".sw"},includes,depends)
--- %G.o: *.h
-collect(".g","G.o",mains,{".h"},{".h"},includes,depends)
--- %.*: *.src
-collect(".gen",".h",generates[".h"],{".src"},{".src"},includes,depends)
-collect(".gen",".c",generates[".c"],{".src"},{".src"},includes,depends)
-collect(".gen",".m",generates[".m"],{".src"},{".src"},includes,depends)
-collect(".gen",".cpp",generates[".cpp"],{".src"},{".src"},includes,depends)
-collect(".gen",".hs",generates[".hs"],{".src"},{".src"},includes,depends)
-collect(".gen",".lua",generates[".lua"],{".src"},{".src"},includes,depends)
-collect(".gen",".sw",generates[".sw"],{".src"},{".src"},includes,depends)
-collect(".gen",".g",generates[".g"],{".src"},{".src"},includes,depends)
-io.stderr:write("HERE depends\n"); debug(depends)
--- Print sorted dependencies
-lines = {}; for k,v in pairs(depends) do lines[#lines+1] = k end; table.sort(lines)
-io.stderr:write("HERE ",#lines,"\n")
-for k,v in ipairs(lines) do
-	words = {}; for ke,va in pairs(depends[v]) do words[#words+1] = ke end; table.sort(words)
-	str = v..":"; for ke,va in ipairs(words) do str = str.." "..va end;
-	if #words > 0 then print(str) end
-end
---]]
+io.stderr:write("HERE invokes\n"); debug(invokes)
+io.stderr:write("HERE declares\n"); debug(declares)
