@@ -27,10 +27,8 @@ function modify(given,control)
 		todo[#todo][given] = true
 	end
 	while todo[#todo] do
-		local workref = work[#work]
-		local todoref = todo[#todo]
 		local append,replace,consume
-		list[#list] = next(todoref)
+		list[#list] = next(todo[#todo])
 		append,replace,consume = control(list)
 		if not append then append = {} end
 		if not (type(append) == "table") then append = {append} end
@@ -41,9 +39,9 @@ function modify(given,control)
 		for k,v in ipairs(append) do
 			local value,isfunc,istab,isval,isbool
 			if type(replace[k]) == "function" then isfunc = true else isfunc = false end
-			if type(workref) == "table" then istab = true else istab = false end
+			if type(work[#work]) == "table" then istab = true else istab = false end
 			if isfunc and istab then
-				value,isval = replace[k](workref[v],true)
+				value,isval = replace[k](work[#work][v],true)
 			elseif isfunc then
 				value,isval = replace[k](work[#work],false)
 			else
@@ -51,13 +49,14 @@ function modify(given,control)
 				if value then isval = true else isval = false end
 			end
 			if type(isval) == "boolean" then isbool = true else isbool = false end
+			-- io.stderr:write(" #work "..#work.." #todo "..#todo.." isbool "..tostring(isbool).." isval "..tostring(isval).." istab "..tostring(istab).." v "..tostring(v).." value "..tostring(value).."\n")
 			if isbool and isval then
-				todoref[v] = true
+				todo[#todo][v] = true
 			elseif isbool then
-				todoref[v] = nil
+				todo[#todo][v] = nil
 			end
 			if istab then
-				workref[v] = value
+				work[#work][v] = value
 			elseif value and isfunc then
 				work[#work] = value
 			elseif value then
@@ -66,12 +65,15 @@ function modify(given,control)
 			else
 				work[#work] = v
 			end
+			if not istab and #work > 1 then
+				work[#work-1][list[#list-1]] = work[#work]
+			end
 		end
 		for k,v in ipairs(consume) do
-			todoref[v] = nil
+			todo[#todo][v] = nil
 		end
-		if not (type(workref) == "table") then
-			todoref[list[#list]] = nil
+		if not (type(work[#work]) == "table") then
+			todo[#todo][list[#list]] = nil
 		end
 		while todo[#todo] and not next(todo[#todo]) do
 			if #work == 1 then
@@ -84,55 +86,24 @@ function modify(given,control)
 				todo[#todo][list[#list]] = nil
 			end
 		end
-		if todo[#todo] and todo[#todo][list[#list]] and type(work[#work]) == "table" then
-			local key = list[#list]
-			local tab = work[#work]
-			local val = tab[key]
+		if todo[#todo] and todo[#todo][list[#list]] and (type(work[#work]) == "table") and work[#work][list[#list]] then
+			local value = work[#work][list[#list]]
 			list[#list+1] = true
-			work[#work+1] = val
+			work[#work+1] = value
 			todo[#todo+1] = {}
-			if type(val) == "table" then
+			if type(work[#work]) == "table" then
 				for k,v in pairs(work[#work]) do
 					todo[#todo][k] = true
 				end
 			else
-				todo[#todo][val] = true
+				todo[#todo][work[#work]] = true
 			end
 		end
 	end
 	return retval
 end
-function copy(given)
-	local function control(list)
-		local append = {}
-		local temp = given
-		for k,v in ipairs(list) do
-			if type(temp) == "table" then
-				temp = temp[v]
-			else
-				temp = v
-			end
-		end
-		if type(temp) == "table" then
-			append[#append+1] = list[#list]
-			for k,v in pairs(temp) do
-				append[#append+1] = k
-				if type(k) == "table" then
-					replace[#append] = true
-				else
-					replace[#append] = k
-				end
-			end
-		else
-			append[#append+1] = temp
-		end
-		return append
-	end
-	return modify(true,control)
-end
 function debug(given)
 	local str = ""
-	-- local depth = 0
 	local first = true
 	local open = false
 	local pend = {}
@@ -142,48 +113,43 @@ function debug(given)
 		-- for k,v in pairs(list) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
 		-- for k,v in pairs(pend) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
 		if #list < #pend then
-			while done < (#pend-3) do
-				done = done+1
-				if open then
-					open = false
-					str = str..")"
-				end
-				if first then
-					first = false
-				else
-					str = str.."\n"
-				end
+			if (done+1) < (#pend-1) and open then
+				open = false
+				str = str..")"
+			end
+			if (done+1) < (#pend-2) and first then
+				first = false
+			elseif (done+1) < (#pend-2) then
+				str = str.."\n"
+			end
+			while (done+1) < (#pend-0) do
 				local count = 1
-				while count < done do
+				done = done+1
+				-- done < #pend
+				-- #pend is true
+				-- #pend-1 is set value (not indented, not colonized, parenthesized)
+				-- #pend-2 is key of set (not indented, colonized, not parenthesized)
+				-- #pend-3 is key of key (indented, colonized, not parenthesized)
+				while done < (#pend-2) and count < done do
 					str = str.." "
 					count = count + 1
 				end
-				str = str..pend[done]..":"
-			end
-			while done < (#pend-2) do
-				done = done+1
-				if open then
-					open = false
-					str = str..")"
-				end
-				str = str.." "..pend[done]
-			end
-			while done < (#pend-1) do
-				done = done+1
-				if not open then
+				str = str.." "
+				if done > (#pend-2) and not open then
 					open = true
-					str = str.." ("
-				else
-					str = str.." "
+					str = str.."("
 				end
 				str = str..pend[done]
+				if done < (#pend-2) then
+					str = str..":"
+				end
 			end
 		end
 		pend = {}
 		for k,v in ipairs(list) do
 			pend[k] = v
 		end
-		if done >= #pend then
+		if done > (#pend-1) then
 			done = #pend - 1
 		end
 		-- io.stderr:write(str.."\n")
@@ -195,6 +161,30 @@ function debug(given)
 	modify(given,control)
 	str = str..")\n"
 	io.stderr:write(str)
+end
+function copy(given)
+	local function control(list)
+		local append = {}
+		local replace = {}
+		local temp = given
+		local match = true
+		for k,v in ipairs(list) do
+			if type(temp) == "table" and temp[v] then
+				temp = temp[v]
+			else
+				match = false
+			end
+		end
+		if type(temp) == "table" and not match then
+			append[#append+1] = list[#list]
+			for k,v in pairs(temp) do
+				append[#append+1] = k
+				replace[#append] = true
+			end
+		end
+		return append,replace
+	end
+	return modify(true,control)
 end
 function collect(given,include,from,to)
 	local function control(list)
@@ -234,6 +224,8 @@ function collect(given,include,from,to)
 		return append,replace,consume
 	end
 	return modify(given,control)
+end
+function connect(given,invokes,declares)
 end
 while true do
 -- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
@@ -443,3 +435,8 @@ end
 io.stderr:write("HERE includes\n"); debug(includes)
 io.stderr:write("HERE invokes\n"); debug(invokes)
 io.stderr:write("HERE declares\n"); debug(declares)
+io.stderr:write("HERE copy\n")
+local copy = copy(includes); debug(copy)
+local count1 = 0; for k,v in pairs(includes) do count1 = count1 + 1 end
+local count2 = 0; for k,v in pairs(copy) do count2 = count2 + 1 end
+io.stderr:write("#includes "..tostring(count1).." #copy "..tostring(count2).."\n")
