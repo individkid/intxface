@@ -186,6 +186,20 @@ function copy(given)
 	end
 	return modify(true,control)
 end
+function contour(given,mapping,level)
+	function control(list)
+		local append = {}
+		local replace = {}
+		if #list == level then
+			given[list[#list]] = true
+		end
+		return append,replace
+	end
+	modify(mapping,control)
+	return given
+end
+function connect(given,invokes,declares)
+end
 function collect(given,include,from,to)
 	local function control(list)
 		local append = {}
@@ -224,8 +238,6 @@ function collect(given,include,from,to)
 		return append,replace,consume
 	end
 	return modify(given,control)
-end
-function connect(given,invokes,declares)
 end
 while true do
 -- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
@@ -440,3 +452,5 @@ local copy = copy(includes); debug(copy)
 local count1 = 0; for k,v in pairs(includes) do count1 = count1 + 1 end
 local count2 = 0; for k,v in pairs(copy) do count2 = count2 + 1 end
 io.stderr:write("#includes "..tostring(count1).." #copy "..tostring(count2).."\n")
+local complete = {}; contour(complete,invokes,1); contour(complete,declares,2)
+io.stderr:write("HERE complete\n"); debug(complete)
