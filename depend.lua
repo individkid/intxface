@@ -27,15 +27,13 @@ function modify(given,control)
 		todo[#todo][given] = true
 	end
 	while todo[#todo] do
-		local append,replace,consume
+		local append,replace
 		list[#list] = next(todo[#todo])
-		append,replace,consume = control(list)
+		append,replace = control(list)
 		if not append then append = {} end
 		if not (type(append) == "table") then append = {append} end
 		if not replace then replace = {} end
 		if not (type(replace) == "table") then replace = {replace} end
-		if not consume then consume = {} end
-		if not (type(consume) == "table") then consume = {consume} end
 		for k,v in ipairs(append) do
 			local value,isfunc,istab,isval,isbool
 			if type(replace[k]) == "function" then isfunc = true else isfunc = false end
@@ -65,12 +63,9 @@ function modify(given,control)
 			else
 				work[#work] = v
 			end
-			if not istab and #work > 1 then
+			if not (istab and (type(work[#work]) == "table")) and #work > 1 then
 				work[#work-1][list[#list-1]] = work[#work]
 			end
-		end
-		for k,v in ipairs(consume) do
-			todo[#todo][v] = nil
 		end
 		if not (type(work[#work]) == "table") then
 			todo[#todo][list[#list]] = nil
@@ -210,53 +205,58 @@ function contour(given,mapping,level)
 	return given
 end
 function connect(given,invokes,declares)
-end
-function collect(given,include,from,to)
-	local function control(list)
+	local done = {}
+	function control(list)
 		local append = {}
 		local replace = {}
-		local consume = {}
-		if #list == 2 and from(list[2]) then
-			-- list[1] is depender
-			-- list[2] is dependee
-			-- list[3] would be intermediary between depender and dependee
-			-- list[4] would be true
-			consume[#consume+1] = list[2]
-			for k,v in pairs(include[list[2]]) do
-				-- k is dependee of dependee-cum-intermediary
-				local deb = list[2]
-				local function merge(work)
-					-- work is set of intermediaries for key
-					local value,isval
-					if work then isval = nil else isval = true end
-					-- if work is nil then key is a new dependee.
-					-- isval of true indicates unvisited.
-					-- if work is already a dependee then
-					-- it may or may not have been visited.
-					-- isval of nil leaves whether visited alone.
-					if isval then value = {} else value = work end
-					-- a new dependee has no intermediaries yet.
-					value[deb] = true
-					-- add dependee-cum-intermediary to dependee
-					return value,isval
-				end
-				if to(key) then
-					append[#append+1] = k
-					replace[#replace+1] = merge
+		-- for k,v in pairs(list) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
+		if #list == 2 and not done[list[1]] and invokes[list[1]] then
+			done[list[1]] = {}
+			append[#append+1] = true
+			for k,v in pairs(invokes[list[1]]) do
+				if type(declares[k]) == "table" and next(declares[k]) then 
+					append[#append+1] = next(declares[k])
+					replace[#append] = true
 				end
 			end
 		end
-		return append,replace,consume
+		if #list == 3 and not done[list[1]][list[2]] then
+			done[list[1]][list[2]] = true
+			append[#append+1] = true
+			for k,v in pairs(invokes[list[1]]) do
+				if type(declares[k]) == "table" and declares[k][list[2]] then
+					append[#append+1] = k
+					replace[#append] = true
+				end
+			end
+		end
+		return append,replace
+	end
+	modify(given,control)
+end
+function direct(given,include)
+	local function control(list)
+		local append = {}
+		local replace = {}
+		return append,replace
 	end
 	return modify(given,control)
 end
-function insert1(set,val,dbg)
-	if val and not (val == "") and not set[val] then set[val] = {} end
-	if val and not (val == "") then set[val][dbg] = true end
+function collect(given,include)
+	local function control(list)
+		local append = {}
+		local replace = {}
+		return append,replace
+	end
+	return modify(given,control)
 end
-function insert(tab,sub,val,dbg)
-	if val and not (val == "") and not tab[sub] then tab[sub] = {} end
-	insert1(tab[sub],val,dbg)
+function finish(given,reasons,from,to)
+	local function control(list)
+		local append = {}
+		local replace = {}
+		return append,replace
+	end
+	return modify(reasons,control)
 end
 function make()
 	while true do
@@ -322,6 +322,14 @@ function glob(mains,files)
 	greplist:close()
 end
 function parse(invokes,declares,includes)
+	local function insert1(set,val,dbg)
+		if val and not (val == "") and not set[val] then set[val] = {} end
+		if val and not (val == "") then set[val][dbg] = true end
+	end
+	local function insert(tab,sub,val,dbg)
+		if val and not (val == "") and not tab[sub] then tab[sub] = {} end
+		insert1(tab[sub],val,dbg)
+	end
 	-- Find dependees dependers includes of the file they are in from multiple regexs per extension.
 	local fileExpr = "(.*)(%..*)"
 	local cDeclareExpr = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
@@ -459,27 +467,53 @@ function parse(invokes,declares,includes)
 		end
 	end
 end
+function depender(file)
+end
+function dependee(file)
+end
 mains = {} -- set of main files
 files = {} -- set of all files
 invokes = {} -- per file depends on funcs
 declares = {} -- per func depends on files
 includes = {} -- per file depends on files
+reasons = {}
 depends = {}
+dependers = {}
+dependees = {}
 make()
 glob(mains,files)
 parse(invokes,declares,includes)
-contour(depends,mains,1)
-contour(depends,invokes,1)
-contour(depends,declares,2)
-contour(depends,includes,1)
-contour(depends,includes,2)
-inboth(depends,files,1)
-
-example = copy(includes)
-count1 = 0; for k,v in pairs(includes) do count1 = count1 + 1 end
+contour(reasons,mains,1)
+contour(reasons,invokes,1)
+contour(reasons,declares,2)
+contour(reasons,includes,1)
+contour(reasons,includes,2)
+inboth(reasons,files,1)
+connect(reasons,invokes,declares)
+-- direct(reasons,includes)
+-- collect(reasons,includes)
+--[[
+io.stderr:write("HERE reasons\n"); debug(reasons)
+example = copy(reasons)
+count1 = 0; for k,v in pairs(reasons) do count1 = count1 + 1 end
 count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
-io.stderr:write("#includes "..tostring(count1).." #example "..tostring(count2).."\n")
-example = copy(depends)
-count1 = 0; for k,v in pairs(depends) do count1 = count1 + 1 end
-count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
-io.stderr:write("#depends "..tostring(count1).." #example "..tostring(count2).."\n")
+io.stderr:write("#reasons "..tostring(count1).." "..tostring(reasons).." #example "..tostring(count2).." "..tostring(example).."\n")
+--]]
+-- finish(depends,reasons,depender,dependee)
+for k,v in pairs(depends) do
+	local sorted = {}
+	dependers[#dependers+1] = k
+	for ky,vl in pairs(v) do
+		sorted[#sorted+1] = ky
+	end
+	table.sort(sorted)
+	dependees[k] = sorted
+end
+table.sort(dependers)
+for k,v in ipairs(dependers) do
+	local str = v..":"
+	for ky,vl in ipairs(dependees[v]) do
+		str = str.." "..vl
+	end
+	print(str)
+end
