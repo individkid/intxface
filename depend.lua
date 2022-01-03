@@ -186,6 +186,17 @@ function copy(given)
 	end
 	return modify(true,control)
 end
+function inboth(given,files,level)
+	local function control(list)
+		local append = {}
+		local replace = {}
+		if #list == level and not files[list[#list]] then
+			append[#append+1] = list[#list]
+		end
+		return append,replace
+	end
+	return modify(given,control)
+end
 function contour(given,mapping,level)
 	function control(list)
 		local append = {}
@@ -288,7 +299,7 @@ function make()
 		if not goback then break end
 	end
 end
-function glob(mains)
+function glob(mains,files)
 	-- List files with main pattern for extension.
 	os.execute("grep -l -E -- '^int main\\(int argc' *.c > depend.tmp")
 	os.execute("grep -l -E -- '^int main\\(int argc' *.cpp >> depend.tmp")
@@ -297,11 +308,17 @@ function glob(mains)
 	os.execute("grep -l -E -- '^-- MAIN' *.lua >> depend.tmp")
 	os.execute("grep -l -E -- '^// MAIN' *.sw >> depend.tmp")
 	os.execute("grep -l -E -- '^// MAIN' *.g >> depend.tmp")
-	greplist = io.open("depend.tmp")
+	local greplist = io.open("depend.tmp")
 	for line in greplist:lines() do
 		mains[line] = true
 	end
-	io.stderr:write("HERE mains\n"); debug(mains)
+	greplist:close()
+	-- List all files
+	os.execute("ls > depend.tmp")
+	greplist = io.open("depend.tmp")
+	for line in greplist:lines() do
+		files[line] = true
+	end
 	greplist:close()
 end
 function parse(invokes,declares,includes)
@@ -443,19 +460,32 @@ function parse(invokes,declares,includes)
 	end
 end
 mains = {} -- set of main files
+files = {} -- set of all files
 invokes = {} -- per file depends on funcs
 declares = {} -- per func depends on files
 includes = {} -- per file depends on files
 make()
-glob(mains)
+glob(mains,files)
 parse(invokes,declares,includes)
-io.stderr:write("HERE includes\n"); debug(includes)
+io.stderr:write("HERE mains\n"); debug(mains)
+io.stderr:write("HERE files\n"); debug(files)
 io.stderr:write("HERE invokes\n"); debug(invokes)
 io.stderr:write("HERE declares\n"); debug(declares)
-io.stderr:write("HERE copy\n")
+io.stderr:write("HERE includes\n"); debug(includes)
+local depends = {}
+contour(depends,mains,1)
+contour(depends,invokes,1)
+contour(depends,declares,2)
+contour(depends,includes,1)
+contour(depends,includes,2)
+inboth(depends,files,1)
+io.stderr:write("HERE depends\n"); debug(depends)
+
 local example = copy(includes); debug(example)
 local count1 = 0; for k,v in pairs(includes) do count1 = count1 + 1 end
 local count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
 io.stderr:write("#includes "..tostring(count1).." #example "..tostring(count2).."\n")
-local complete = {}; contour(complete,invokes,1); contour(complete,declares,2)
-io.stderr:write("HERE complete\n"); debug(complete)
+example = copy(depends); debug(example)
+count1 = 0; for k,v in pairs(depends) do count1 = count1 + 1 end
+count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
+io.stderr:write("#depends "..tostring(count1).." #example "..tostring(count2).."\n")
