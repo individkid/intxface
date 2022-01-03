@@ -453,9 +453,9 @@ io.stderr:write("HERE includes\n"); debug(includes)
 io.stderr:write("HERE invokes\n"); debug(invokes)
 io.stderr:write("HERE declares\n"); debug(declares)
 io.stderr:write("HERE copy\n")
-local copy = copy(includes); debug(copy)
+local example = copy(includes); debug(example)
 local count1 = 0; for k,v in pairs(includes) do count1 = count1 + 1 end
-local count2 = 0; for k,v in pairs(copy) do count2 = count2 + 1 end
-io.stderr:write("#includes "..tostring(count1).." #copy "..tostring(count2).."\n")
+local count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
+io.stderr:write("#includes "..tostring(count1).." #example "..tostring(count2).."\n")
 local complete = {}; contour(complete,invokes,1); contour(complete,declares,2)
 io.stderr:write("HERE complete\n"); debug(complete)
