@@ -239,88 +239,6 @@ function collect(given,include,from,to)
 	end
 	return modify(given,control)
 end
-while true do
--- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
-files = {}
-os.execute("ls -1 > depend.tmp")
-dirlist = io.open("depend.tmp")
-for line in dirlist:lines() do
-	files[line] = true
-end
-dirlist:close()
--- Read Makefile for targets of files.
-targets = {}
-makefile = io.open("Makefile", "r")
-for line in makefile:lines() do
-	tgt,pat = string.match(line,"%%(.*): %%(.*)")
-	if tgt then
-		expr = "^(.*)("..string.gsub(pat,"%.","%%.")..")$"
-		for k,v in pairs(files) do
-			base,ext = string.match(k,expr)
-			if base then
-				targets[base..tgt] = true
-			end
-		end
-	end
-end
-makefile:close()
--- Call make on each target not in files and note if it was built.
-goback = false
-for k,v in pairs(targets) do
-	if not files[k] then
-		retval = os.execute("make DEPEND=1 "..k.." 2> depend.err > depend.out")
-		retval = retval and os.execute("[ -e "..k.." ]")
-		if retval then
-			goback = true
-		end
-	end
-end
--- Repeat until none built.
-if not goback then break end end
--- List files with main pattern for extension.
-mains = {}
-os.execute("grep -l -E -- '^int main\\(int argc' *.c > depend.tmp")
-os.execute("grep -l -E -- '^int main\\(int argc' *.cpp >> depend.tmp")
-os.execute("grep -l -E -- '^int main\\(void\\)' *.m >> depend.tmp")
-os.execute("grep -l -E -- '^main :: IO \\(\\)' *.hs >> depend.tmp")
-os.execute("grep -l -E -- '^-- MAIN' *.lua >> depend.tmp")
-os.execute("grep -l -E -- '^// MAIN' *.sw >> depend.tmp")
-os.execute("grep -l -E -- '^// MAIN' *.g >> depend.tmp")
-greplist = io.open("depend.tmp")
-for line in greplist:lines() do
-	mains[line] = true
-end
-io.stderr:write("HERE mains\n"); debug(mains)
-greplist:close()
--- List generated files per extension
-generates = {}
--- Find dependees dependers includes of the file they are in from multiple regexs per extension.
-fileExpr = "(.*)(%..*)"
-cDeclareExpr = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
-swDeclareExpr = "^func%s%s*([a-z][a-zA-Z0-9_]*)"
-luaDeclareExpr = "^function%s%s*([a-z][a-zA-Z0-9_]*)%("
-cInvokeExpr = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
-includeExpr = "^#include "
-moduleExpr = "^module +([^ ]*) +where"
-importExpr = "^import +([^ ]*)"
-foreignExpr = "^foreign import ccall "
-dofileExpr = "^dofile%("
-requireExpr = "^require +"
-graphicsExpr = "makeLibrary%(filepath:"
-cOpenExpr = "/*"; cCloseExpr = "*/"
-luaOpenExpr = "-[["; luaCloseExpr = "-]]"
-hsOpenExpr = "{-"; hsCloseExpr = "-}"
-swOpenExpr = "/*"; swCloseExpr = "*/"
-cCommentExpr = "//"; luaCommentExpr = "--"
-hsCommentExpr = "--"; swCommentExpr = "//"
-invokes = {} -- per file depends on funcs
-declares = {} -- per func depends on files
-includes = {} -- per file depends on files
-function copy1(tbl,set,val)
-	for k,v in pairs(val) do
-		set[k] = v
-	end
-end
 function insert1(set,val,dbg)
 	if val and not (val == "") and not set[val] then set[val] = {} end
 	if val and not (val == "") then set[val][dbg] = true end
@@ -329,121 +247,208 @@ function insert(tab,sub,val,dbg)
 	if val and not (val == "") and not tab[sub] then tab[sub] = {} end
 	insert1(tab[sub],val,dbg)
 end
-for k,v in pairs(files) do
-	base,ext = string.match(k,fileExpr)
-	if
-		base and
-		(ext == ".lua" or
-		ext == ".gen" or
-		ext == ".src") then
-		openExpr = luaOpenExpr
-		closeExpr = luaCloseExpr
-		commentExpr = luaCommentExpr
-		declareExpr = luaDeclareExpr
-		invokeExpr = cInvokeExpr
-	elseif
-		base and
-		ext == ".sw" then
-		openExpr = swOpenExpr
-		closeExpr = swCloseExpr
-		commentExpr = swCommentExpr
-		declareExpr = swDeclareExpr
-		invokeExpr = cInvokeExpr
-	elseif
-		base and
-		ext == ".hs" then
-		openExpr = hsOpenExpr
-		closeExpr = hsCloseExpr
-		commentExpr = hsCommentExpr
-		declareExpr = moduleExpr
-		invokeExpr = importExpr
-	elseif
-		base and
-		(ext == ".h" or
-		ext == ".c" or
-		ext == ".m" or
-		ext == ".cpp") then -- TODO add .g for includes
-		openExpr = cOpenExpr
-		closeExpr = cCloseExpr
-		commentExpr = cCommentExpr
-		declareExpr = cDeclareExpr
-		invokeExpr = cInvokeExpr
-	else
-		base = nil
+function make()
+	while true do
+		-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
+		files = {}
+		os.execute("ls -1 > depend.tmp")
+		dirlist = io.open("depend.tmp")
+		for line in dirlist:lines() do
+			files[line] = true
+		end
+		dirlist:close()
+		-- Read Makefile for targets of files.
+		targets = {}
+		makefile = io.open("Makefile", "r")
+		for line in makefile:lines() do
+			tgt,pat = string.match(line,"%%(.*): %%(.*)")
+			if tgt then
+				expr = "^(.*)("..string.gsub(pat,"%.","%%.")..")$"
+				for k,v in pairs(files) do
+					base,ext = string.match(k,expr)
+					if base then
+						targets[base..tgt] = true
+					end
+				end
+			end
+		end
+		makefile:close()
+		-- Call make on each target not in files and note if it was built.
+		goback = false
+		for k,v in pairs(targets) do
+			if not files[k] then
+				retval = os.execute("make DEPEND=1 "..k.." 2> depend.err > depend.out")
+				retval = retval and os.execute("[ -e "..k.." ]")
+				if retval then
+					goback = true
+				end
+			end
+		end
+		-- Repeat until none built.
+		if not goback then break end
 	end
-	if base then
-		file = io.open(k)
-		cmnt = false; abrv = false; quot = false
-		for line in file:lines() do
-			more = line
-			name = ""
-			len = more:len() - 1
-			bgn = 1; ndg = 1
-			if (not quot) and (not cmnt) and (not abrv) then
-				while (bgn<=len) do
-					if (more:sub(bgn,bgn+1)==openExpr) then break end
-					if (more:sub(bgn,bgn+1)==commentExpr) then break end
-					if (more:sub(bgn,bgn)=="\"") then break end
-					bgn = bgn + 1
+end
+function glob(mains)
+	-- List files with main pattern for extension.
+	os.execute("grep -l -E -- '^int main\\(int argc' *.c > depend.tmp")
+	os.execute("grep -l -E -- '^int main\\(int argc' *.cpp >> depend.tmp")
+	os.execute("grep -l -E -- '^int main\\(void\\)' *.m >> depend.tmp")
+	os.execute("grep -l -E -- '^main :: IO \\(\\)' *.hs >> depend.tmp")
+	os.execute("grep -l -E -- '^-- MAIN' *.lua >> depend.tmp")
+	os.execute("grep -l -E -- '^// MAIN' *.sw >> depend.tmp")
+	os.execute("grep -l -E -- '^// MAIN' *.g >> depend.tmp")
+	greplist = io.open("depend.tmp")
+	for line in greplist:lines() do
+		mains[line] = true
+	end
+	io.stderr:write("HERE mains\n"); debug(mains)
+	greplist:close()
+end
+function parse(invokes,declares,includes)
+	-- Find dependees dependers includes of the file they are in from multiple regexs per extension.
+	local fileExpr = "(.*)(%..*)"
+	local cDeclareExpr = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
+	local swDeclareExpr = "^func%s%s*([a-z][a-zA-Z0-9_]*)"
+	local luaDeclareExpr = "^function%s%s*([a-z][a-zA-Z0-9_]*)%("
+	local cInvokeExpr = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
+	local includeExpr = "^#include "
+	local moduleExpr = "^module +([^ ]*) +where"
+	local importExpr = "^import +([^ ]*)"
+	local foreignExpr = "^foreign import ccall "
+	local dofileExpr = "^dofile%("
+	local requireExpr = "^require +"
+	local graphicsExpr = "makeLibrary%(filepath:"
+	local cOpenExpr = "/*"; local cCloseExpr = "*/"
+	local luaOpenExpr = "-[["; local luaCloseExpr = "-]]"
+	local hsOpenExpr = "{-"; local hsCloseExpr = "-}"
+	local swOpenExpr = "/*"; local swCloseExpr = "*/"
+	local cCommentExpr = "//"; local luaCommentExpr = "--"
+	local hsCommentExpr = "--"; local swCommentExpr = "//"
+	for k,v in pairs(files) do
+		local openExpr,commentExpr,declareExpr,invokeExpr
+		local base,ext = string.match(k,fileExpr)
+		if
+			base and
+			(ext == ".lua" or
+			ext == ".gen" or
+			ext == ".src") then
+			openExpr = luaOpenExpr
+			closeExpr = luaCloseExpr
+			commentExpr = luaCommentExpr
+			declareExpr = luaDeclareExpr
+			invokeExpr = cInvokeExpr
+		elseif
+			base and
+			ext == ".sw" then
+			openExpr = swOpenExpr
+			closeExpr = swCloseExpr
+			commentExpr = swCommentExpr
+			declareExpr = swDeclareExpr
+			invokeExpr = cInvokeExpr
+		elseif
+			base and
+			ext == ".hs" then
+			openExpr = hsOpenExpr
+			closeExpr = hsCloseExpr
+			commentExpr = hsCommentExpr
+			declareExpr = moduleExpr
+			invokeExpr = importExpr
+		elseif
+			base and
+			(ext == ".h" or
+			ext == ".c" or
+			ext == ".m" or
+			ext == ".cpp") then -- TODO add .g for includes
+			openExpr = cOpenExpr
+			closeExpr = cCloseExpr
+			commentExpr = cCommentExpr
+			declareExpr = cDeclareExpr
+			invokeExpr = cInvokeExpr
+		else
+			base = nil
+		end
+		if base then
+			local file = io.open(k);
+			local cmnt = false; local abrv = false; local quot = false
+			for line in file:lines() do
+				local more = line
+				local name = ""
+				local len = more:len() - 1
+				local bgn = 1; local ndg = 1
+				if (not quot) and (not cmnt) and (not abrv) then
+					while (bgn<=len) do
+						if (more:sub(bgn,bgn+1)==openExpr) then break end
+						if (more:sub(bgn,bgn+1)==commentExpr) then break end
+						if (more:sub(bgn,bgn)=="\"") then break end
+						bgn = bgn + 1
+					end
+					if (bgn<=len) then
+						if (more:sub(bgn,bgn+1)==openExpr) then cmnt = true end
+						if (more:sub(bgn,bgn+1)==commentExpr) then abrv = true end
+						if (more:sub(bgn,bgn)=="\"") then quot = true end
+					end
 				end
-				if (bgn<=len) then
-					if (more:sub(bgn,bgn+1)==openExpr) then cmnt = true end
-					if (more:sub(bgn,bgn+1)==commentExpr) then abrv = true end
-					if (more:sub(bgn,bgn)=="\"") then quot = true end
-				end
-			end
-			if cmnt then
-				ndg = bgn
-				while (ndg<=len) do
-					if (more:sub(ndg,ndg+1)==closeExpr) then break end
-					ndg = ndg + 1
-				end
-			end
-			if abrv then
-				ndg = more:len()
-			end
-			if quot then
-				ndg = bgn + 1
-				while (ndg<=more:len()) do
-					if (more:sub(ndg,ndg)=="\"") then break end
-					ndg = ndg + 1
-				end
-			end
-			if cmnt or abrv or quot then
-				if cmnt and (more:sub(ndg,ndg+1)==closeExpr) then
-					cmnt = false;
+				if cmnt then
+					ndg = bgn
+					while (ndg<=len) do
+						if (more:sub(ndg,ndg+1)==closeExpr) then break end
+						ndg = ndg + 1
+					end
 				end
 				if abrv then
-					abrv = false;
+					ndg = more:len()
 				end
-				if quot and (more:sub(ndg,ndg)=="\"") then
-					name = more:sub(bgn+1,ndg-1)
-					quot = false
+				if quot then
+					ndg = bgn + 1
+					while (ndg<=more:len()) do
+						if (more:sub(ndg,ndg)=="\"") then break end
+						ndg = ndg + 1
+					end
 				end
-				more = more:sub(1,bgn-1)..more:sub(ndg+2)
+				if cmnt or abrv or quot then
+					if cmnt and (more:sub(ndg,ndg+1)==closeExpr) then
+						cmnt = false;
+					end
+					if abrv then
+						abrv = false;
+					end
+					if quot and (more:sub(ndg,ndg)=="\"") then
+						name = more:sub(bgn+1,ndg-1)
+						quot = false
+					end
+					more = more:sub(1,bgn-1)..more:sub(ndg+2)
+				end
+				local declareVal,includeVal,importVal,foreignVal,dofileVal,requireVal,graphicsVal
+				declareVal = string.match(more,declareExpr)
+				includeVal = string.match(more,includeExpr)
+				if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
+				foreignVal = string.match(more,foreignExpr)
+				dofileVal = string.match(more,dofileExpr)
+				requireVal = string.match(more,requireExpr)
+				if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
+				if includeVal then insert(includes,k,name,"includeVal")
+				elseif importVal then insert(includes,k,importVal..".h","importVal")
+				elseif dofileVal then insert(includes,k,name,"dofileVal")
+				elseif requireVal then insert(includes,k,name..".c","requireVal")
+				elseif graphicsVal then insert(includes,k,name,"graphicsVal")
+				elseif declareVal then insert(declares,declareVal,k,"declareVal")
+				elseif foreignVal then insert(invokes,k,name,"foreignVal")
+				else while (1) do
+					more,invokeVal = string.match(more,invokeExpr)
+					if not invokeVal then break end
+					insert(invokes,k,invokeVal,"invokeVal")
+				end end
 			end
-			declareVal = string.match(more,declareExpr)
-			includeVal = string.match(more,includeExpr)
-			if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
-			foreignVal = string.match(more,foreignExpr)
-			dofileVal = string.match(more,dofileExpr)
-			requireVal = string.match(more,requireExpr)
-			if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
-			if includeVal then insert(includes,k,name,"includeVal")
-			elseif importVal then insert(includes,k,importVal..".h","importVal")
-			elseif dofileVal then insert(includes,k,name,"dofileVal")
-			elseif requireVal then insert(includes,k,name..".c","requireVal")
-			elseif graphicsVal then insert(includes,k,name,"graphicsVal")
-			elseif declareVal then insert(declares,declareVal,k,"declareVal")
-			elseif foreignVal then insert(invokes,k,name,"foreignVal")
-			else while (1) do
-				more,invokeVal = string.match(more,invokeExpr)
-				if not invokeVal then break end
-				insert(invokes,k,invokeVal,"invokeVal")
-			end end
 		end
 	end
 end
+mains = {} -- set of main files
+invokes = {} -- per file depends on funcs
+declares = {} -- per func depends on files
+includes = {} -- per file depends on files
+make()
+glob(mains)
+parse(invokes,declares,includes)
 io.stderr:write("HERE includes\n"); debug(includes)
 io.stderr:write("HERE invokes\n"); debug(invokes)
 io.stderr:write("HERE declares\n"); debug(declares)
