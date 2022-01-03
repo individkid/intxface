@@ -464,28 +464,22 @@ files = {} -- set of all files
 invokes = {} -- per file depends on funcs
 declares = {} -- per func depends on files
 includes = {} -- per file depends on files
+depends = {}
 make()
 glob(mains,files)
 parse(invokes,declares,includes)
-io.stderr:write("HERE mains\n"); debug(mains)
-io.stderr:write("HERE files\n"); debug(files)
-io.stderr:write("HERE invokes\n"); debug(invokes)
-io.stderr:write("HERE declares\n"); debug(declares)
-io.stderr:write("HERE includes\n"); debug(includes)
-local depends = {}
 contour(depends,mains,1)
 contour(depends,invokes,1)
 contour(depends,declares,2)
 contour(depends,includes,1)
 contour(depends,includes,2)
 inboth(depends,files,1)
-io.stderr:write("HERE depends\n"); debug(depends)
 
-local example = copy(includes); debug(example)
-local count1 = 0; for k,v in pairs(includes) do count1 = count1 + 1 end
-local count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
+example = copy(includes)
+count1 = 0; for k,v in pairs(includes) do count1 = count1 + 1 end
+count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
 io.stderr:write("#includes "..tostring(count1).." #example "..tostring(count2).."\n")
-example = copy(depends); debug(example)
+example = copy(depends)
 count1 = 0; for k,v in pairs(depends) do count1 = count1 + 1 end
 count2 = 0; for k,v in pairs(example) do count2 = count2 + 1 end
 io.stderr:write("#depends "..tostring(count1).." #example "..tostring(count2).."\n")
