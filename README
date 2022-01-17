@@ -129,17 +129,55 @@ Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
-read test AVAssetReader to pipe frame buffers from file.
-view test AVPlayerView to pipe frame buffers to display.
-tape test BMD BDK to pipe frame buffers to hdmi.
-show test BMD BDK pipe frame buffers from hdmi.
-wave test IOUSBInterfaceInterface to pipe frame buffers from usb waveform.
-desk test AVCaptureScreenInput to pipe frame buffers from screen capture.
-tile test several frame buffers to one.
+text test file to pipe face structs to/from file structs.
+ -i (single) environment variable name for read pipe descriptor
+ -o (ordered) environment variable name for write pipe descriptor
+ -f (optional) environment variable name pair for file descriptor
+ -s (ordered) for lua script to filter to subsequent -o
+ -e (ordered) lua expression to filter to subsequent -o
+ -x (ordered) regular expression to filter to subsequent -o
+ -z (ordered) prior -s -e -x do not apply to following -o
+save test AVAssetWriter to pipe data structs to file and forward to pipe.
+ -i (single) environment variable name for read pipe descriptor
+ -o (multiple) environment variable name for write pipe descriptor
+ -f (optional) file name to write audio video to
+read test AVAssetReader to pipe data structs from file.
+ -o (single) environment variable name for write pipe descriptor
+ -f (single) file name to read audio video from
+view test AVPlayerView to pipe data structs to display.
+ -i (single) environment variable name for read pipe descriptor
+tape test BMD-SDK to pipe data structs from hdmi.
+ -o (single) environment variable name for write pipe descriptor
+show test BMD-SDK pipe data structs to hdmi.
+ -i (single) environment variable name for read pipe descriptor
+wave test IOUSBInterfaceInterface to pipe data structs from usb waveform.
+ -o (single) environment variable name for write pipe descriptor
+desk test AVCaptureScreenInput to pipe data structs from screen capture.
+ -o (single) environment variable name for write pipe descriptor
+tile test serial or parallel data structs to one.
+ -i (ordered) environment variable name for read pipe descriptor
+ -o (single) environment variable name for write pipe descriptor
+ -p (ordered) priority of overlapping data structs from following -i
+ -r (ordered) frame rate for following -i, 0.0 frozen, 1.0 realtime
+ -a -b -c (ordered) clipping shaping placement for following -i
+ -d (ordered) delay before following -p -r -a -b -c take effect
+ -t (ordered) time for following -p -r -a -b -c to take effect
+ -z (ordered) prior -p -r -a -b -c -d -t do not apply to following -i
+ -c (optional) write as fast as possible, rates and times are relative
 
-intxface test app that per tab or window,
-presents a readonly scrollable searchable highlightable text widget,
+edit test file handle per tab or window.
+This presents a readonly scrollable searchable highlightable text widget,
 a scrollable searchable clickable list widget of file changes,
 an entry widget that atomically writes highlighted fields upon enter,
-menu items to configure field separators, files, and file processes,
-and which file controls a process graph.
+menu items to configure file process, and per tab or window,
+field separators, file name, process given file pipes and name.
+
+link test file to start processes connected by pipes.
+Each line in a control file is space separated arguments,
+pipe setting read and write ends of pipe to environment variables,
+save taking read and write av pipes,
+text, hole, line, plane, space taking read and write face pipes,
+view, show taking read av pipes,
+read, tape, wave, desk taking write av pipes,
+tile taking read and write av pipes.
+
