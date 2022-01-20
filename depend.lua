@@ -139,6 +139,30 @@ function contour(dst,src,lev)
 	end
 	modify(src,control)
 end
+function inboth(src1,src2)
+	local retval = {}
+	local function control(tab,set,key)
+		local temp = src2
+		for k,v in ipairs(key) do
+			if not (type(temp) == "table") then return end
+			if (type(temp[v]) == "nil") then return end
+			temp = temp[v]
+		end
+		temp = retval
+		for k,v in ipairs(key) do
+			if (type(temp[v]) == "nil") then
+				if (type(tab[k][v]) == "table") then
+					temp[v] = {}
+				else
+					temp[v] = tab[k][v]
+				end
+			end
+			temp = temp[v]
+		end
+	end
+	modify(src1,control)
+	return retval
+end
 function make()
 	while true do
 		-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
@@ -369,6 +393,7 @@ files = {} -- set of all files
 invokes = {} -- per file depends on funcs
 declares = {} -- per func depends on files
 includes = {} -- per file depends on files
+depends = {}
 reasons = {}
 depends = {}
 dependers = {}
@@ -378,19 +403,16 @@ glob(mains,files)
 parse(invokes,declares,includes)
 io.stderr:write("HERE invokes\n"); debug(invokes)
 io.stderr:write("HERE declares\n"); debug(declares)
-example = copy(invokes)
-io.stderr:write("HERE example\n"); debug(example)
-io.stderr:write("HERE mains\n"); debug(mains)
-contour(reasons,mains,1)
-io.stderr:write("HERE reasons\n"); debug(reasons)
---[[
-contour(reasons,invokes,1)
-contour(reasons,declares,2)
-contour(reasons,includes,1)
-contour(reasons,includes,2)
-io.stderr:write("HERE contour\n"); debug(reasons)
-inboth(reasons,files,1)
+contour(depends,mains,1)
+contour(depends,invokes,1)
+contour(depends,declares,2)
+contour(depends,includes,1)
+contour(depends,includes,2)
+io.stderr:write("HERE contour\n"); debug(depends)
+io.stderr:write("HERE files\n"); debug(files)
+reasons = inboth(depends,files)
 io.stderr:write("HERE inboth\n"); debug(reasons)
+--[[
 verbose = 100; connect(reasons,invokes,declares); verbose = 0
 io.stderr:write("HERE connect\n"); debug(reasons)
 direct(reasons,includes)
