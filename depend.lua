@@ -45,8 +45,9 @@ function modify(given,control)
 		local twork = {}
 		local ttodo = {}
 		local tlist = {}
-		-- clean off invalid
 		local last = work[1]
+		control(work,todo,list)
+		-- clean off invalid
 		for k,v in ipairs(list) do
 			if not (work[k] == last) or not (type(work[k]) == "table") or not work[k][v] then break end
 			last = work[k][v]
@@ -68,7 +69,6 @@ function modify(given,control)
 		list = tlist
 		work = twork
 		todo = ttodo
-		control(work,todo,list)
 	until (#work == 0)
 end
 function debug(given)
@@ -89,8 +89,6 @@ function debug(given)
 		while (#done < #key) do
 			local temp = key[#done+1]
 			local count = 1
-			-- io.stderr:write("#done "..tostring(#done).." #key "..tostring(#key).." temp "..tostring(temp).."\n")
-			-- str = str.."<"..tostring(#done)..","..tostring(same)..","..tostring(key[same])..">"
 			done[#done+1] = temp
 			if (#done == #key) and open then
 				str = str..", "
@@ -103,7 +101,7 @@ function debug(given)
 				open = false
 				str = str..")\n"
 			end
-			while (count < #done) and (#done < #key) do
+			while (#done < #key) and (count < #done) do
 				count = count + 1
 				str = str.." "
 			end
@@ -134,6 +132,12 @@ function copy(given)
 	end
 	modify(given,control)
 	return retval
+end
+function contour(dst,src,lev)
+	local function control(tab,set,key)
+		if (#key >= lev) then dst[key[lev]] = true end
+	end
+	modify(src,control)
 end
 function make()
 	while true do
@@ -376,8 +380,10 @@ io.stderr:write("HERE invokes\n"); debug(invokes)
 io.stderr:write("HERE declares\n"); debug(declares)
 example = copy(invokes)
 io.stderr:write("HERE example\n"); debug(example)
---[[
+io.stderr:write("HERE mains\n"); debug(mains)
 contour(reasons,mains,1)
+io.stderr:write("HERE reasons\n"); debug(reasons)
+--[[
 contour(reasons,invokes,1)
 contour(reasons,declares,2)
 contour(reasons,includes,1)
