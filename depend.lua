@@ -42,11 +42,16 @@ function modify(given,control)
 	local list = {}
 	follow(work,todo,list,given)
 	repeat
+		-- follow to leaf
+		while (#work > 0) and (type(work[#work][list[#list]]) == "table") and
+			not (type(next(work[#work][list[#list]])) == "nil") do
+			follow(work,todo,list,work[#work][list[#list]])
+		end
+		control(work,todo,list)
 		local twork = {}
 		local ttodo = {}
 		local tlist = {}
 		local last = work[1]
-		control(work,todo,list)
 		-- clean off invalid
 		for k,v in ipairs(list) do
 			if not (work[k] == last) or not (type(work[k]) == "table") or not work[k][v] then break end
@@ -60,11 +65,6 @@ function modify(given,control)
 		-- consume next
 		if (#twork > 0) then
 			consume(ttodo,tlist)
-		end
-		-- follow to leaf
-		while (#twork > 0) and (type(twork[#twork][tlist[#tlist]]) == "table") and
-			not (type(next(twork[#twork][tlist[#tlist]])) == "nil") do
-			follow(twork,ttodo,tlist,twork[#twork][tlist[#tlist]])
 		end
 		list = tlist
 		work = twork
