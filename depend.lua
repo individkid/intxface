@@ -15,321 +15,125 @@ by cumulatively attempting to build all that can be named.
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
 verbose = 0
-function modify(given,control)
-	local list = {true} -- path of keys to leaf of given
-	local work = {given} -- references to values of keys
-	local todo = {{}} -- keys subsequent to each key
-	local retval = given
-	if type(given) == "table" then
-		for k,v in pairs(given) do
-			todo[#todo][k] = true
-		end
-	else
-		todo[#todo][given] = true
-	end
-	while todo[#todo] do
-		local append,replace
-		list[#list] = next(todo[#todo])
-		for k,v in ipairs(list) do
-			if type(work[k]) == "table" then
-				if not work[k][v] then
-					io.stderr:write(" OOPS")
-					for ky,vl in pairs(work[k]) do io.stderr:write(" "..tostring(ky)) end
-					io.stderr:write(" "..tostring(v).."\n")
-					return
-				end
-			else
-				if not (work[k] == v) then io.stderr:write(" OoPs "..tostring(v).."\n") return end
-			end
-		end
-		if verbose > 0 then io.stderr:write("#list:"..tostring(#list)) end
-		if verbose > 0 and #list > 1 then io.stderr:write(" -1:"..tostring(list[#list-1])) end
-		if verbose > 0 and #list > 0 then io.stderr:write(" -0:"..tostring(list[#list-0])) end
-		append,replace = control(list)
-		if not append then append = {} end
-		if not (type(append) == "table") then append = {append} end
-		if not replace then replace = {} end
-		if not (type(replace) == "table") then replace = {replace} end
-		for k,v in ipairs(append) do
-			local value,isfunc,istab,isval,isbool
-			if type(replace[k]) == "function" then isfunc = true else isfunc = false end
-			if type(work[#work]) == "table" then istab = true else istab = false end
-			if isfunc and istab then
-				value,isval = replace[k](work[#work][v],true)
-				if verbose > 0 then io.stderr:write(";true") end
-			elseif isfunc then
-				value,isval = replace[k](work[#work],false)
-				if verbose > 0 then io.stderr:write(";false") end
-			else
-				value = replace[k]
-				if value then isval = true else isval = false end
-			end
-			if type(isval) == "boolean" then isbool = true else isbool = false end
-			if isbool and isval then
-				if verbose > 0 then io.stderr:write(" produce") end
-				todo[#todo][v] = true
-			elseif isbool then
-				if verbose > 0 then io.stderr:write(" consume") end
-				todo[#todo][v] = nil
-			else
-				if verbose > 0 then io.stderr:write(" ignore") end
-			end
-			if istab then
-				work[#work][v] = value
-			elseif value and isfunc then
-				work[#work] = value
-			elseif value then
-				work[#work] = {}
-				work[#work][v] = value
-			else
-				work[#work] = v
-			end
-			if not (istab and (type(work[#work]) == "table")) and #work > 1 then
-				work[#work-1][list[#list-1]] = work[#work]
-			end
-		end
-		if not (type(work[#work]) == "table") then
-			if verbose > 0 then io.stderr:write(" consume") end
-			todo[#todo][list[#list]] = nil
-		end
-		while todo[#todo] and not next(todo[#todo]) do
-			if verbose > 0 then io.stderr:write(" shed") end
-			if #work == 1 then
-				retval = work[#work]
-			end
-			list[#list] = nil
-			work[#work] = nil
-			todo[#todo] = nil
-			if todo[#todo] then
-				todo[#todo][list[#list]] = nil
-			end
-		end
-		if todo[#todo] and todo[#todo][list[#list]] and (type(work[#work]) == "table") and work[#work][list[#list]] then
-			if verbose > 0 then io.stderr:write(" nest") end
-			local value = work[#work][list[#list]]
-			list[#list+1] = true
-			work[#work+1] = value
-			todo[#todo+1] = {}
-			if type(work[#work]) == "table" then
-				for k,v in pairs(work[#work]) do
-					todo[#todo][k] = true
-				end
-			else
-				todo[#todo][work[#work]] = true
-			end
-		end
-		if verbose > 0 then io.stderr:write("\n"); verbose = verbose - 1 end
-	end
-	return retval
+function precede(work,todo,list,tab,set,key)
+	work[#work+1] = tab
+	todo[#todo+1] = set
+	list[#list+1] = key
 end
-function merge(key,dee,new,chk)
-	local k = key
-	local d = dee
-	local n = new
-	local c = chk
-	return function (work,istab)
-		local val,ref,vis
-		if istab and type(work) == "table" then
-			if verbose > 0 then io.stderr:write(" table:") end
-			val = work
-			ref = val
-			vis = n
-		elseif istab then
-			if verbose > 0 then io.stderr:write(" istab:") end
-			val = {}
-			ref = val
-			vis = n
-		else
-			if verbose > 0 then io.stderr:write(" merge:") end
-			val = {}
-			val[d] = {}
-			ref = val[d]
-			vis = n
+function finish(work,todo,list)
+	work[#work] = nil;
+	todo[#todo] = nil;
+	list[#list] = nil;
+end
+function consume(todo,list)
+	list[#list] = next(todo[#todo])
+	todo[#todo][list[#list]] = nil
+end
+function follow(work,todo,list,tab)
+	work[#work+1] = tab
+	todo[#todo+1] = {}
+	for k,v in pairs(work[#work]) do todo[#todo][k] = true end
+	list[#list+1] = false
+	consume(todo,list)
+end
+function modify(given,control)
+	local work = {}
+	local todo = {}
+	local list = {}
+	follow(work,todo,list,given)
+	repeat
+		local twork = {}
+		local ttodo = {}
+		local tlist = {}
+		-- clean off invalid
+		local last = work[1]
+		for k,v in ipairs(list) do
+			if not (work[k] == last) or not (type(work[k]) == "table") or not work[k][v] then break end
+			last = work[k][v]
+			precede(twork,ttodo,tlist,work[k],todo[k],v)
 		end
-		if vis and c then io.stderr:write("oops\n") end
-		if verbose > 0 then io.stderr:write(tostring(d)..";"..tostring(k)) end
-		ref[k] = true
-		return val,vis
-	end
+		-- clean off finished
+		while (#twork > 0) and (type(next(ttodo[#ttodo])) == "nil") do
+			finish(twork,ttodo,tlist)
+		end
+		-- consume next
+		if (#twork > 0) then
+			consume(ttodo,tlist)
+		end
+		-- follow to leaf
+		while (#twork > 0) and (type(twork[#twork][tlist[#tlist]]) == "table") and
+			not (type(next(twork[#twork][tlist[#tlist]])) == "nil") do
+			follow(twork,ttodo,tlist,twork[#twork][tlist[#tlist]])
+		end
+		list = tlist
+		work = twork
+		todo = ttodo
+		control(work,todo,list)
+	until (#work == 0)
 end
 function debug(given)
 	local str = ""
-	local first = true
 	local open = false
-	local pend = {}
-	local done = 0
-	local function control(list)
-		if #list < #pend then
-			-- io.stderr:write("#list "..tostring(#list).." #pend "..tostring(#pend).." done "..tostring(done).." open "..tostring(open))
-			if (done+1) < (#pend-1) and open then
+	local done = {}
+	local function control(tab,set,key)
+		local same = 0
+		while (#done > #key) do
+			done[#done] = nil
+		end
+		while (same < #done) and (done[same+1] == key[same+1]) do
+			same = same + 1
+		end
+		while (#done > 0) and (same < #done) do
+			done[#done] = nil
+		end
+		while (#done < #key) do
+			local temp = key[#done+1]
+			local count = 1
+			-- io.stderr:write("#done "..tostring(#done).." #key "..tostring(#key).." temp "..tostring(temp).."\n")
+			-- str = str.."<"..tostring(#done)..","..tostring(same)..","..tostring(key[same])..">"
+			done[#done+1] = temp
+			if (#done == #key) and open then
+				str = str..", "
+			end
+			if (#done == #key) and not open then
+				open = true
+				str = str.." ("
+			end
+			if (#done < #key) and open then
 				open = false
-				str = str..")"
+				str = str..")\n"
 			end
-			if (done+1) < (#pend-2) and first then
-				first = false
-			elseif (done+1) < (#pend-2) then
-				str = str.."\n"
-			end
-			while (done+1) < (#pend-0) do
-				local count = 1
-				done = done+1
-				-- done < #pend
-				-- #pend is true
-				-- #pend-1 is set value (not indented, not colonized, parenthesized)
-				-- #pend-2 is key of set (not indented, colonized, not parenthesized)
-				-- #pend-3 is key of key (indented, colonized, not parenthesized)
-				while done < (#pend-2) and count < done do
-					str = str.." "
-					count = count + 1
-				end
+			while (count < #done) and (#done < #key) do
+				count = count + 1
 				str = str.." "
-				if done > (#pend-2) and not open then
-					open = true
-					str = str.."("
-				end
-				-- io.stderr:write(" "..pend[done])
-				str = str..pend[done]
-				if done < (#pend-2) then
-					str = str..":"
-				end
 			end
-			-- io.stderr:write("\n")
-		end
-		pend = {}
-		for k,v in ipairs(list) do
-			pend[k] = v
-		end
-		if done > (#pend-1) then
-			done = #pend - 1
+			str = str..temp
+			if (#done < (#key-1)) then
+				str = str..":\n"
+			end
 		end
 	end
 	modify(given,control)
-	control({})
 	if open then str = str..")" end
 	io.stderr:write(str.."\n")
 end
 function copy(given)
-	local function control(list)
-		local append = {}
-		local replace = {}
-		local temp = given
-		local match = true
-		for k,v in ipairs(list) do
-			if type(temp) == "table" and temp[v] then
-				temp = temp[v]
-			else
-				match = false
-			end
-		end
-		if type(temp) == "table" and not match then
-			append[#append+1] = list[#list]
-			for k,v in pairs(temp) do
-				append[#append+1] = k
-				replace[#append] = true
-			end
-		end
-		return append,replace
-	end
-	return modify(true,control)
-end
-function inboth(given,files,level)
-	local function control(list)
-		local append = {}
-		local replace = {}
-		if #list == level and not files[list[#list]] then
-			append[#append+1] = list[#list]
-		end
-		return append,replace
-	end
-	return modify(given,control)
-end
-function contour(given,mapping,level)
-	function control(list)
-		local append = {}
-		local replace = {}
-		if #list == level then
-			given[list[#list]] = true
-		end
-		return append,replace
-	end
-	modify(mapping,control)
-	return given
-end
-function connect(given,invokes,declares)
-	done = {}
-	function control(list)
-		local append = {}
-		local replace = {}
-		if verbose > 0 then io.stderr:write(" connect:"..tostring(#list)) end
-		if #list == 2 and invokes[list[1]] and not done[list[1]] then
-			if verbose > 0 then io.stderr:write(";"..tostring(list[#list-1])) end
-			done[list[1]] = true
-			for k,v in pairs(invokes[list[1]]) do
-				if declares[k] then
-					for ky,vl in pairs(declares[k]) do
-						if verbose > 0 then io.stderr:write(" control:"..tostring(ky)..";"..tostring(k)) end
-						append[#append+1] = ky
-						replace[#append] = merge(k,ky,false)
-					end
+	local retval = {}
+	local function control(tab,set,key)
+		local temp = retval
+		for k,v in ipairs(key) do
+			if (type(temp[v]) == "nil") then
+				if (type(tab[k][v]) == "table") then
+					temp[v] = {}
+				else
+					temp[v] = tab[k][v]
 				end
 			end
+			temp = temp[v]
 		end
-		return append,replace
 	end
 	modify(given,control)
-end
-function direct(given,includes)
-	local done = {}
-	local function control(list)
-		local append = {}
-		local replace = {}
-		-- for k,v in pairs(list) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
-		if #list == 2 and includes[list[1]] and not done[list[1]] then
-			done[list[1]] = true -- no need to add to depender more than once
-			for k,v in pairs(includes[list[1]]) do -- k is dependee of list[1]; v is set of reasons
-				for ky,vl in pairs(v) do -- ky is reason; vl is true
-					append[#append+1] = k -- add dependee to depender
-					replace[#append] = merge(ky,k)
-				end
-			end
-		end
-		return append,replace
-	end
-	return modify(given,control)
-end
-function collect(given,includes)
-	local done = {}
-	local function control(list)
-		local append = {}
-		local replace = {}
-		-- for k,v in pairs(list) do io.stderr:write(" "..tostring(v)) end; io.stderr:write("\n")
-		if #list == 2 and includes[list[1]] then
-			if not done[list[1]] then done[list[1]] = {} end
-			for k,v in pairs(includes[list[1]]) do -- k is dependee of list[1]
-				done[list[1]][k] = true
-				for ky,vl in pairs(includes[k]) do -- ky is indirect dependee of list[1]
-					append[#append+1] = ky -- add indirect dependee
-					replace[#append] = merge(k,ky,true,done[list[1]][ky])
-				end
-			end
-		end
-		return append,replace
-	end
-	return modify(given,control)
-end
-function finish(given,reasons,depender,dependee)
-	local function control(list)
-		local append = {}
-		local replace = {}
-		if #list == 2 then
-			if not given[depender(list[1])] then
-				given[depender(list[1])] = {}
-			end
-			given[depender(list[1])][dependee(list[2])] = true
-		end
-		return append,replace
-	end
-	return modify(reasons,control)
+	return retval
 end
 function make()
 	while true do
@@ -568,6 +372,11 @@ dependees = {}
 make()
 glob(mains,files)
 parse(invokes,declares,includes)
+io.stderr:write("HERE invokes\n"); debug(invokes)
+io.stderr:write("HERE declares\n"); debug(declares)
+example = copy(invokes)
+io.stderr:write("HERE example\n"); debug(example)
+--[[
 contour(reasons,mains,1)
 contour(reasons,invokes,1)
 contour(reasons,declares,2)
@@ -576,7 +385,6 @@ contour(reasons,includes,2)
 io.stderr:write("HERE contour\n"); debug(reasons)
 inboth(reasons,files,1)
 io.stderr:write("HERE inboth\n"); debug(reasons)
---[[
 verbose = 100; connect(reasons,invokes,declares); verbose = 0
 io.stderr:write("HERE connect\n"); debug(reasons)
 direct(reasons,includes)
