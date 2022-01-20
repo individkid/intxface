@@ -14,7 +14,6 @@ by cumulatively attempting to build all that can be named.
 
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
-verbose = 0
 function precede(work,todo,list,tab,set,key)
 	work[#work+1] = tab
 	todo[#todo+1] = set
@@ -162,6 +161,26 @@ function inboth(src1,src2)
 	end
 	modify(src1,control)
 	return retval
+end
+function connect(given,derfun,fundee)
+	local function control(tab,set,key)
+		if (#key < 1) then return end
+		local work,der = tab[1],key[1]
+		if (type(derfun[der]) == "table") then
+			for k,v in pairs(derfun[der]) do
+				local why = k
+				if (type(fundee[why]) == "table") then
+					for ky,vl in pairs(fundee[why]) do
+						local dee = ky
+						if not (type(work[der]) == "table") then work[der] = {} end
+						if not (type(work[der][dee]) == "table") then work[der][dee] = {} end
+						work[der][dee][why] = true
+					end
+				end
+			end
+		end
+	end
+	modify(given,control)
 end
 function make()
 	while true do
@@ -395,7 +414,7 @@ declares = {} -- per func depends on files
 includes = {} -- per file depends on files
 depends = {}
 reasons = {}
-depends = {}
+finals = {}
 dependers = {}
 dependees = {}
 make()
@@ -403,21 +422,21 @@ glob(mains,files)
 parse(invokes,declares,includes)
 io.stderr:write("HERE invokes\n"); debug(invokes)
 io.stderr:write("HERE declares\n"); debug(declares)
+io.stderr:write("HERE includes\n"); debug(includes)
 contour(depends,mains,1)
 contour(depends,invokes,1)
 contour(depends,declares,2)
 contour(depends,includes,1)
 contour(depends,includes,2)
-io.stderr:write("HERE contour\n"); debug(depends)
+io.stderr:write("HERE depends\n"); debug(depends)
 io.stderr:write("HERE files\n"); debug(files)
 reasons = inboth(depends,files)
-io.stderr:write("HERE inboth\n"); debug(reasons)
+connect(reasons,invokes,declares)
+io.stderr:write("HERE reasons\n"); debug(reasons)
 --[[
-verbose = 100; connect(reasons,invokes,declares); verbose = 0
-io.stderr:write("HERE connect\n"); debug(reasons)
 direct(reasons,includes)
 collect(reasons,includes)
-finish(depends,reasons,depender,dependee)
+finish(finals,reasons,depender,dependee)
 for k,v in pairs(depends) do
 	local sorted = {}
 	dependers[#dependers+1] = k
