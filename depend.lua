@@ -220,6 +220,24 @@ function collect(given,derdee)
 	end
 	modify(given,control)
 end
+function depend(tab,key,val)
+	if not (type(tab[key]) == "table") then tab[key] = {} end
+	tab[key][val] = true
+end
+function convert(given,mains)
+	local retval = {}
+	local function control(tab,set,key)
+		if (#key < 2) then return end
+		local der,dee = key[1],key[2]
+		local fileExpr = "(.*)(%..*)"
+		local baser,exter = string.match(der,fileExpr)
+		local basee,extee = string.match(dee,fileExpr)
+		if mains[der] and (exter == ".c") and (extee == ".c") then depend(retval,baser.."C",basee.."C.o") end
+		if mains[der] and (exter == ".cpp") and (extee == ".c") then depend(retval,baser.."C",basee.."C.o") end
+	end
+	modify(given,control)
+	return retval
+end
 function make()
 	while true do
 		-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
@@ -429,22 +447,6 @@ function parse(invokes,declares,includes)
 		end
 	end
 end
-function depender(file)
-	local fileExpr = "(.*)(%..*)"
-	local base,ext = string.match(file,fileExpr)
-	if mains[file] then
-		return base.."C"
-	end
-	return nil
-end
-function dependee(file)
-	local fileExpr = "(.*)(%..*)"
-	local base,ext = string.match(file,fileExpr)
-	if ext ==  ".c" then
-		return base.."C.o"
-	end
-	return nil
-end
 mains = {} -- set of main files
 files = {} -- set of all files
 invokes = {} -- per file depends on funcs
@@ -452,7 +454,7 @@ declares = {} -- per func depends on files
 includes = {} -- per file depends on files
 depends = {}
 reasons = {}
-finals = {}
+converts = {}
 dependers = {}
 dependees = {}
 make()
@@ -473,9 +475,10 @@ connect(reasons,invokes,declares)
 direct(reasons,includes)
 collect(reasons,includes)
 io.stderr:write("HERE reasons\n"); debug(reasons)
+converts = convert(reasons,mains)
+io.stderr:write("HERE converts\n"); debug(converts)
 --[[
-finish(finals,reasons,depender,dependee)
-for k,v in pairs(depends) do
+for k,v in pairs(converts) do
 	local sorted = {}
 	dependers[#dependers+1] = k
 	for ky,vl in pairs(v) do
