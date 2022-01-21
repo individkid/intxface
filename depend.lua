@@ -182,6 +182,44 @@ function connect(given,derfun,fundee)
 	end
 	modify(given,control)
 end
+function direct(given,derdee)
+	local function control(tab,set,key)
+		if (#key < 1) then return end
+		local work,der = tab[1],key[1]
+		if (type(derdee[der]) == "table") then
+			for k,v in pairs(derdee[der]) do
+				local dee = k
+				if (type(v) == "table") then
+					for ky,vl in pairs(v) do
+						local why = ky
+						if not (type(work[der]) == "table") then work[der] = {} end
+						if not (type(work[der][dee]) == "table") then work[der][dee] = {} end
+						work[der][dee][why] = true
+					end
+				end
+			end
+		end
+	end
+	modify(given,control)
+end
+function collect(given,derdee)
+	local function control(tab,set,key)
+		if (#key < 2) then return end
+		local der = key[1]
+		local work,todo,why = tab[2],set[2],key[2]
+		if (type(derdee[why]) == "table") then
+			for k,v in pairs(derdee[why]) do
+				local dee = k
+				if not (type(work[dee]) == "table") then
+					work[dee] = {}
+					todo[dee] = true
+				end
+				work[dee][why] = true
+			end
+		end
+	end
+	modify(given,control)
+end
 function make()
 	while true do
 		-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
@@ -432,10 +470,10 @@ io.stderr:write("HERE depends\n"); debug(depends)
 io.stderr:write("HERE files\n"); debug(files)
 reasons = inboth(depends,files)
 connect(reasons,invokes,declares)
-io.stderr:write("HERE reasons\n"); debug(reasons)
---[[
 direct(reasons,includes)
 collect(reasons,includes)
+io.stderr:write("HERE reasons\n"); debug(reasons)
+--[[
 finish(finals,reasons,depender,dependee)
 for k,v in pairs(depends) do
 	local sorted = {}
