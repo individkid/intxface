@@ -460,24 +460,23 @@ dependees = {}
 make()
 glob(mains,files)
 parse(invokes,declares,includes)
-io.stderr:write("HERE invokes\n"); debug(invokes)
-io.stderr:write("HERE declares\n"); debug(declares)
-io.stderr:write("HERE includes\n"); debug(includes)
+-- io.stderr:write("HERE invokes\n"); debug(invokes)
+-- io.stderr:write("HERE declares\n"); debug(declares)
+-- io.stderr:write("HERE includes\n"); debug(includes)
 contour(depends,mains,1)
 contour(depends,invokes,1)
 contour(depends,declares,2)
 contour(depends,includes,1)
 contour(depends,includes,2)
-io.stderr:write("HERE depends\n"); debug(depends)
-io.stderr:write("HERE files\n"); debug(files)
+-- io.stderr:write("HERE depends\n"); debug(depends)
+-- io.stderr:write("HERE files\n"); debug(files)
 reasons = inboth(depends,files)
 connect(reasons,invokes,declares)
 direct(reasons,includes)
 collect(reasons,includes)
-io.stderr:write("HERE reasons\n"); debug(reasons)
+-- io.stderr:write("HERE reasons\n"); debug(reasons)
 converts = convert(reasons,mains)
-io.stderr:write("HERE converts\n"); debug(converts)
---[[
+-- io.stderr:write("HERE converts\n"); debug(converts)
 for k,v in pairs(converts) do
 	local sorted = {}
 	dependers[#dependers+1] = k
@@ -495,4 +494,3 @@ for k,v in ipairs(dependers) do
 	end
 	print(str)
 end
---]]
