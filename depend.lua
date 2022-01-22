@@ -404,8 +404,8 @@ function parse(files,invokes,declares,includes)
 			openExpr = luaOpenExpr
 			closeExpr = luaCloseExpr
 			commentExpr = luaCommentExpr
-			declareExpr = luaDeclareExpr
-			invokeExpr = cInvokeExpr
+			declareExpr = nil
+			invokeExpr = nil
 		elseif
 			base and
 			ext == ".sw" then
@@ -488,7 +488,7 @@ function parse(files,invokes,declares,includes)
 					more = more:sub(1,bgn-1)..more:sub(ndg+2)
 				end
 				local declareVal,includeVal,importVal,foreignVal,dofileVal,requireVal,graphicsVal,invokeVal
-				declareVal = string.match(more,declareExpr)
+				if declareExpr then declareVal = string.match(more,declareExpr) else declareVal = nil end
 				includeVal = string.match(more,includeExpr)
 				if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
 				foreignVal = string.match(more,foreignExpr)
@@ -504,7 +504,7 @@ function parse(files,invokes,declares,includes)
 				elseif declareVal then insert2(declares,declareVal,k,"declareVal")
 				elseif foreignVal then insert2(invokes,k,name,"foreignVal")
 				elseif invokeVal then insert2(invokes,k,invokeVal,"invokeVal")
-				else while (1) do
+				elseif invokeExpr then while (1) do
 					more,invokeVal = string.match(more,invokeExpr)
 					if not invokeVal then break end
 					insert2(invokes,k,invokeVal,"invokeVal")
@@ -526,12 +526,6 @@ dependees = {}
 make()
 glob(mains,files)
 parse(files,invokes,declares,includes)
-invokes = distill(invokes,{".*%.lua"})
-invokes = distill(invokes,{".*%.gen"})
-invokes = distill(invokes,{".*%.src"})
-declares = distill(declares,{nil,".*%.lua"})
-declares = distill(declares,{nil,".*%.gen"})
-declares = distill(declares,{nil,".*%.src"})
 contour(depends,mains,1)
 contour(depends,invokes,1)
 contour(depends,declares,2)
