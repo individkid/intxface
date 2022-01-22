@@ -21,11 +21,11 @@ function sizeof(tab)
 	end
 	return count
 end
-function nonempty(tab)
+function empty(tab)
 	for k,v in pairs(tab) do
-		return true
+		return false
 	end
-	return false
+	return true
 end
 function isin(tab,key,val)
 	local temp = tab
@@ -305,16 +305,16 @@ end
 function make()
 	while true do
 		-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
-		files = {}
+		local files = {}
 		os.execute("ls -1 > depend.tmp")
-		dirlist = io.open("depend.tmp")
+		local dirlist = io.open("depend.tmp")
 		for line in dirlist:lines() do
 			files[line] = true
 		end
 		dirlist:close()
 		-- Read Makefile for targets of files.
-		targets = {}
-		makefile = io.open("Makefile", "r")
+		local targets = {}
+		local makefile = io.open("Makefile", "r")
 		for line in makefile:lines() do
 			tgt,pat = string.match(line,"%%(.*): %%(.*)")
 			if tgt then
@@ -329,10 +329,10 @@ function make()
 		end
 		makefile:close()
 		-- Call make on each target not in files and note if it was built.
-		goback = false
+		local goback = false
 		for k,v in pairs(targets) do
 			if not files[k] then
-				retval = os.execute("make DEPEND=1 "..k.." 2> depend.err > depend.out")
+				local retval = os.execute("make DEPEND=1 "..k.." 2> depend.err > depend.out")
 				retval = retval and os.execute("[ -e "..k.." ]")
 				if retval then
 					goback = true
@@ -365,7 +365,7 @@ function glob(mains,files)
 	end
 	greplist:close()
 end
-function parse(invokes,declares,includes)
+function parse(files,invokes,declares,includes)
 	local function insert1(set,val,dbg)
 		if val and not (val == "") and not set[val] then set[val] = {} end
 		if val and not (val == "") then set[val][dbg] = true end
@@ -525,31 +525,24 @@ dependers = {}
 dependees = {}
 make()
 glob(mains,files)
-parse(invokes,declares,includes)
+parse(files,invokes,declares,includes)
 invokes = distill(invokes,{".*%.lua"})
 invokes = distill(invokes,{".*%.gen"})
 invokes = distill(invokes,{".*%.src"})
 declares = distill(declares,{nil,".*%.lua"})
 declares = distill(declares,{nil,".*%.gen"})
 declares = distill(declares,{nil,".*%.src"})
-io.stderr:write("HERE invokes\n"); debug(invokes)
-io.stderr:write("HERE declares\n"); debug(declares)
--- io.stderr:write("HERE includes\n"); debug(includes)
 contour(depends,mains,1)
 contour(depends,invokes,1)
 contour(depends,declares,2)
 contour(depends,includes,1)
 contour(depends,includes,2)
-io.stderr:write("HERE depends\n"); debug(depends)
--- io.stderr:write("HERE files\n"); debug(files)
-reasons = inboth(depends,files)
-connect(reasons,invokes,declares)
-io.stderr:write("HERE connect\n"); debug(reasons)
-direct(reasons,includes)
-collect(reasons,includes)
-io.stderr:write("HERE reasons\n"); debug(reasons)
-converts = convert(reasons,mains)
--- io.stderr:write("HERE converts\n"); debug(converts)
+depends = inboth(depends,files)
+connect(depends,invokes,declares)
+direct(depends,includes)
+directs = copy(depends)
+collect(depends,directs)
+converts = convert(depends,mains)
 for k,v in pairs(converts) do
 	local sorted = {}
 	dependers[#dependers+1] = k
