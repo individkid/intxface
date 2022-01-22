@@ -14,6 +14,62 @@ by cumulatively attempting to build all that can be named.
 
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
+function sizeof(tab)
+	local count = 0
+	for k,v in pairs(tab) do
+		count = count + 1
+	end
+	return count
+end
+function nonempty(tab)
+	for k,v in pairs(tab) do
+		return true
+	end
+	return false
+end
+function isin(tab,key,val)
+	local temp = tab
+	for k,v in ipairs(key) do
+		if not (type(temp) == "table") then return false end
+		if (type(temp[v]) == "nil") then return false end
+		temp = temp[v]
+	end
+	if not (temp == val) then return false end
+	return true
+end
+function ismatch(key,exp)
+	for k,v in ipairs(key) do
+		if (type(exp[k]) == "string") then
+			if not string.match(v,exp[k]) then
+				return false
+			end
+		end
+	end
+	return true
+end
+function andwhy(work,der,dee,why)
+	if not (type(work[der]) == "table") then work[der] = {} end
+	if not (type(work[der][dee]) == "table") then work[der][dee] = {} end
+	work[der][dee][why] = true
+end
+function depend(tab,key,val)
+	if not (type(tab[key]) == "table") then tab[key] = {} end
+	tab[key][val] = true
+end
+function insert(work,tab,key)
+	if not (type(work) == "table") then return end
+	local temp = work
+	for k,v in ipairs(key) do
+		if not (type(temp[v]) == "table") then
+			if (type(tab[k][v]) == "table") or (type(tab[k][v]) == "nil") then
+				temp[v] = {}
+			else
+				temp[v] = tab[k][v]
+			end
+		end
+		temp = temp[v]
+	end
+end
 function precede(work,todo,list,tab,set,key)
 	work[#work+1] = tab
 	todo[#todo+1] = set
@@ -32,8 +88,8 @@ function follow(work,todo,list,tab)
 	work[#work+1] = tab
 	todo[#todo+1] = {}
 	for k,v in pairs(work[#work]) do todo[#todo][k] = true end
-	list[#list+1] = false
-	consume(todo,list)
+	list[#list+1] = next(todo[#todo])
+	todo[#todo][list[#list]] = nil
 end
 function modify(given,control)
 	local work = {}
@@ -117,17 +173,52 @@ end
 function copy(given)
 	local retval = {}
 	local function control(tab,set,key)
-		local temp = retval
-		for k,v in ipairs(key) do
-			if (type(temp[v]) == "nil") then
-				if (type(tab[k][v]) == "table") then
-					temp[v] = {}
-				else
-					temp[v] = tab[k][v]
-				end
-			end
-			temp = temp[v]
-		end
+		insert(retval,tab,key)
+	end
+	modify(given,control)
+	return retval
+end
+function inboth(src1,src2)
+	local retval = {}
+	local function control(tab,set,key)
+		if not isin(src2,key,tab[#tab][key[#key]]) then return end
+		insert(retval,tab,key)
+	end
+	modify(src1,control)
+	return retval
+end
+function ineither(src1,src2)
+	local retval = {}
+	local function control(tab,set,key)
+		insert(retval,tab,key)
+	end
+	modify(src1,control)
+	modify(src2,control)
+	return retval
+end
+function infirst(src1,src2)
+	local retval = {}
+	local function control(tab,set,key)
+		if isin(src2,key,tab[#tab][key[#key]]) then return end
+		insert(retval,tab,key)
+	end
+	modify(src1,control)
+	return retval
+end
+function filter(given,exp)
+	local retval = {}
+	local function control(tab,set,key)
+		if not ismatch(key,exp) then return end
+		insert(retval,tab,key)
+	end
+	modify(given,control)
+	return retval
+end
+function distill(given,exp)
+	local retval = {}
+	local function control(tab,set,key)
+		if ismatch(key,exp) then return end
+		insert(retval,tab,key)
 	end
 	modify(given,control)
 	return retval
@@ -137,30 +228,6 @@ function contour(dst,src,lev)
 		if (#key >= lev) then dst[key[lev]] = true end
 	end
 	modify(src,control)
-end
-function inboth(src1,src2)
-	local retval = {}
-	local function control(tab,set,key)
-		local temp = src2
-		for k,v in ipairs(key) do
-			if not (type(temp) == "table") then return end
-			if (type(temp[v]) == "nil") then return end
-			temp = temp[v]
-		end
-		temp = retval
-		for k,v in ipairs(key) do
-			if (type(temp[v]) == "nil") then
-				if (type(tab[k][v]) == "table") then
-					temp[v] = {}
-				else
-					temp[v] = tab[k][v]
-				end
-			end
-			temp = temp[v]
-		end
-	end
-	modify(src1,control)
-	return retval
 end
 function connect(given,derfun,fundee)
 	local function control(tab,set,key)
@@ -172,9 +239,7 @@ function connect(given,derfun,fundee)
 				if (type(fundee[why]) == "table") then
 					for ky,vl in pairs(fundee[why]) do
 						local dee = ky
-						if not (type(work[der]) == "table") then work[der] = {} end
-						if not (type(work[der][dee]) == "table") then work[der][dee] = {} end
-						work[der][dee][why] = true
+						andwhy(work,der,dee,why)
 					end
 				end
 			end
@@ -192,9 +257,7 @@ function direct(given,derdee)
 				if (type(v) == "table") then
 					for ky,vl in pairs(v) do
 						local why = ky
-						if not (type(work[der]) == "table") then work[der] = {} end
-						if not (type(work[der][dee]) == "table") then work[der][dee] = {} end
-						work[der][dee][why] = true
+						andwhy(work,der,dee,why)
 					end
 				end
 			end
@@ -220,20 +283,21 @@ function collect(given,derdee)
 	end
 	modify(given,control)
 end
-function depend(tab,key,val)
-	if not (type(tab[key]) == "table") then tab[key] = {} end
-	tab[key][val] = true
-end
-function convert(given,mains)
+function convert(given,mains,files)
 	local retval = {}
 	local function control(tab,set,key)
-		if (#key < 2) then return end
-		local der,dee = key[1],key[2]
+		if (#key < 3) then return end
+		local der,dee,why = key[1],key[2],tab[3]
 		local fileExpr = "(.*)(%..*)"
 		local baser,exter = string.match(der,fileExpr)
 		local basee,extee = string.match(dee,fileExpr)
-		if mains[der] and (exter == ".c") and (extee == ".c") then depend(retval,baser.."C",basee.."C.o") end
-		if mains[der] and (exter == ".cpp") and (extee == ".c") then depend(retval,baser.."C",basee.."C.o") end
+		if (exter == ".c") and (extee == ".c") and mains[der] and not (der == dee) then depend(retval,baser.."C",basee.."C.o") end
+		if (exter == ".cpp") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
+		if (exter == ".hs") and (extee == ".hs") and mains[der] and not (der == dee) then depend(retval,baser.."Hs",dee) end
+		if (exter == ".hs") and (extee == ".c") and mains[der] then depend(retval,baser.."Hs",basee.."C.o") end
+		if (exter == ".lua") and (extee == ".lua") and mains[der] and not (der == dee) then depend(retval,baser.."Lua",dee) end
+		if (exter == ".lua") and (extee == ".src") and mains[der] then depend(retval,baser.."Lua",dee) end
+		if (exter == ".lua") and (extee == ".c") and mains[der] then depend(retval,baser.."Lua",basee..".so") end
 	end
 	modify(given,control)
 	return retval
@@ -306,7 +370,7 @@ function parse(invokes,declares,includes)
 		if val and not (val == "") and not set[val] then set[val] = {} end
 		if val and not (val == "") then set[val][dbg] = true end
 	end
-	local function insert(tab,sub,val,dbg)
+	local function insert2(tab,sub,val,dbg)
 		if val and not (val == "") and not tab[sub] then tab[sub] = {} end
 		insert1(tab[sub],val,dbg)
 	end
@@ -423,7 +487,7 @@ function parse(invokes,declares,includes)
 					end
 					more = more:sub(1,bgn-1)..more:sub(ndg+2)
 				end
-				local declareVal,includeVal,importVal,foreignVal,dofileVal,requireVal,graphicsVal
+				local declareVal,includeVal,importVal,foreignVal,dofileVal,requireVal,graphicsVal,invokeVal
 				declareVal = string.match(more,declareExpr)
 				includeVal = string.match(more,includeExpr)
 				if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
@@ -431,17 +495,19 @@ function parse(invokes,declares,includes)
 				dofileVal = string.match(more,dofileExpr)
 				requireVal = string.match(more,requireExpr)
 				if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
-				if includeVal then insert(includes,k,name,"includeVal")
-				elseif importVal then insert(includes,k,importVal..".h","importVal")
-				elseif dofileVal then insert(includes,k,name,"dofileVal")
-				elseif requireVal then insert(includes,k,name..".c","requireVal")
-				elseif graphicsVal then insert(includes,k,name,"graphicsVal")
-				elseif declareVal then insert(declares,declareVal,k,"declareVal")
-				elseif foreignVal then insert(invokes,k,name,"foreignVal")
+				if (ext == ".hs") then invokeVal = string.match(more,invokeExpr) else invokeVal = nil end
+				if includeVal then insert2(includes,k,name,"includeVal")
+				elseif importVal then insert2(includes,k,importVal..".h","importVal")
+				elseif dofileVal then insert2(includes,k,name,"dofileVal")
+				elseif requireVal then insert2(includes,k,name..".c","requireVal")
+				elseif graphicsVal then insert2(includes,k,name,"graphicsVal")
+				elseif declareVal then insert2(declares,declareVal,k,"declareVal")
+				elseif foreignVal then insert2(invokes,k,name,"foreignVal")
+				elseif invokeVal then insert2(invokes,k,invokeVal,"invokeVal")
 				else while (1) do
 					more,invokeVal = string.match(more,invokeExpr)
 					if not invokeVal then break end
-					insert(invokes,k,invokeVal,"invokeVal")
+					insert2(invokes,k,invokeVal,"invokeVal")
 				end end
 			end
 		end
@@ -460,21 +526,28 @@ dependees = {}
 make()
 glob(mains,files)
 parse(invokes,declares,includes)
--- io.stderr:write("HERE invokes\n"); debug(invokes)
--- io.stderr:write("HERE declares\n"); debug(declares)
+invokes = distill(invokes,{".*%.lua"})
+invokes = distill(invokes,{".*%.gen"})
+invokes = distill(invokes,{".*%.src"})
+declares = distill(declares,{nil,".*%.lua"})
+declares = distill(declares,{nil,".*%.gen"})
+declares = distill(declares,{nil,".*%.src"})
+io.stderr:write("HERE invokes\n"); debug(invokes)
+io.stderr:write("HERE declares\n"); debug(declares)
 -- io.stderr:write("HERE includes\n"); debug(includes)
 contour(depends,mains,1)
 contour(depends,invokes,1)
 contour(depends,declares,2)
 contour(depends,includes,1)
 contour(depends,includes,2)
--- io.stderr:write("HERE depends\n"); debug(depends)
+io.stderr:write("HERE depends\n"); debug(depends)
 -- io.stderr:write("HERE files\n"); debug(files)
 reasons = inboth(depends,files)
 connect(reasons,invokes,declares)
+io.stderr:write("HERE connect\n"); debug(reasons)
 direct(reasons,includes)
 collect(reasons,includes)
--- io.stderr:write("HERE reasons\n"); debug(reasons)
+io.stderr:write("HERE reasons\n"); debug(reasons)
 converts = convert(reasons,mains)
 -- io.stderr:write("HERE converts\n"); debug(converts)
 for k,v in pairs(converts) do
