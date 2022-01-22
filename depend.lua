@@ -70,6 +70,14 @@ function insert(work,tab,key)
 		temp = temp[v]
 	end
 end
+function insert1(set,val,dbg)
+	if val and not (val == "") and not set[val] then set[val] = {} end
+	if val and not (val == "") then set[val][dbg] = true end
+end
+function insert2(tab,sub,val,dbg)
+	if val and not (val == "") and not tab[sub] then tab[sub] = {} end
+	insert1(tab[sub],val,dbg)
+end
 function precede(work,todo,list,tab,set,key)
 	work[#work+1] = tab
 	todo[#todo+1] = set
@@ -283,25 +291,6 @@ function collect(given,derdee)
 	end
 	modify(given,control)
 end
-function convert(given,mains,files)
-	local retval = {}
-	local function control(tab,set,key)
-		if (#key < 3) then return end
-		local der,dee,why = key[1],key[2],tab[3]
-		local fileExpr = "(.*)(%..*)"
-		local baser,exter = string.match(der,fileExpr)
-		local basee,extee = string.match(dee,fileExpr)
-		if (exter == ".c") and (extee == ".c") and mains[der] and not (der == dee) then depend(retval,baser.."C",basee.."C.o") end
-		if (exter == ".cpp") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
-		if (exter == ".hs") and (extee == ".hs") and mains[der] and not (der == dee) then depend(retval,baser.."Hs",dee) end
-		if (exter == ".hs") and (extee == ".c") and mains[der] then depend(retval,baser.."Hs",basee.."C.o") end
-		if (exter == ".lua") and (extee == ".lua") and mains[der] and not (der == dee) then depend(retval,baser.."Lua",dee) end
-		if (exter == ".lua") and (extee == ".src") and mains[der] then depend(retval,baser.."Lua",dee) end
-		if (exter == ".lua") and (extee == ".c") and mains[der] then depend(retval,baser.."Lua",basee..".so") end
-	end
-	modify(given,control)
-	return retval
-end
 function make()
 	while true do
 		-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
@@ -366,14 +355,6 @@ function glob(mains,files)
 	greplist:close()
 end
 function parse(files,invokes,declares,includes)
-	local function insert1(set,val,dbg)
-		if val and not (val == "") and not set[val] then set[val] = {} end
-		if val and not (val == "") then set[val][dbg] = true end
-	end
-	local function insert2(tab,sub,val,dbg)
-		if val and not (val == "") and not tab[sub] then tab[sub] = {} end
-		insert1(tab[sub],val,dbg)
-	end
 	-- Find dependees dependers includes of the file they are in from multiple regexs per extension.
 	local fileExpr = "(.*)(%..*)"
 	local cDeclareExpr = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
@@ -420,8 +401,8 @@ function parse(files,invokes,declares,includes)
 			openExpr = hsOpenExpr
 			closeExpr = hsCloseExpr
 			commentExpr = hsCommentExpr
-			declareExpr = moduleExpr
-			invokeExpr = importExpr
+			declareExpr = nil
+			invokeExpr = nil
 		elseif
 			base and
 			(ext == ".h" or
@@ -487,23 +468,25 @@ function parse(files,invokes,declares,includes)
 					end
 					more = more:sub(1,bgn-1)..more:sub(ndg+2)
 				end
-				local declareVal,includeVal,importVal,foreignVal,dofileVal,requireVal,graphicsVal,invokeVal
+				local declareVal,includeVal,importVal,foreignVal,dofileVal,requireVal,graphicsVal,haskellVal,moduleVal,invokeVal
 				if declareExpr then declareVal = string.match(more,declareExpr) else declareVal = nil end
 				includeVal = string.match(more,includeExpr)
-				if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
 				foreignVal = string.match(more,foreignExpr)
 				dofileVal = string.match(more,dofileExpr)
 				requireVal = string.match(more,requireExpr)
 				if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
-				if (ext == ".hs") then invokeVal = string.match(more,invokeExpr) else invokeVal = nil end
+				if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
+				if (ext == ".hs") then haskellVal = string.match(more,importExpr) else haskellVal = nil end
+				if (ext == ".hs") then moduleVal = string.match(more,moduleExpr) else moduleVal = nil end
 				if includeVal then insert2(includes,k,name,"includeVal")
 				elseif importVal then insert2(includes,k,importVal..".h","importVal")
 				elseif dofileVal then insert2(includes,k,name,"dofileVal")
 				elseif requireVal then insert2(includes,k,name..".c","requireVal")
 				elseif graphicsVal then insert2(includes,k,name,"graphicsVal")
 				elseif declareVal then insert2(declares,declareVal,k,"declareVal")
+				elseif moduleVal then insert2(declares,moduleVal,k,"moduleVal")
 				elseif foreignVal then insert2(invokes,k,name,"foreignVal")
-				elseif invokeVal then insert2(invokes,k,invokeVal,"invokeVal")
+				elseif haskellVal then insert2(invokes,k,haskellVal,"haskellVal")
 				elseif invokeExpr then while (1) do
 					more,invokeVal = string.match(more,invokeExpr)
 					if not invokeVal then break end
@@ -513,19 +496,53 @@ function parse(files,invokes,declares,includes)
 		end
 	end
 end
+function complete(files,includes)
+	local fileExpr = "(.*)(%..*)"
+	local generate = {}
+	for k,v in pairs(files) do
+		local basee,extee = string.match(k,fileExpr)
+		if basee and (extee == ".gen") then
+			generate[basee] = true
+		end
+	end
+	for k,v in pairs(files) do
+		local baser,exter = string.match(k,fileExpr)
+		if baser and generate[baser] and not (exter == ".gen") then
+			insert2(includes,k,baser..".gen","complete")
+		end
+	end
+end
+function convert(given,mains,files)
+	local retval = {}
+	local fileExpr = "(.*)(%..*)"
+	local function control(tab,set,key)
+		if (#key < 3) then return end
+		local der,dee,why = key[1],key[2],tab[3]
+		local baser,exter = string.match(der,fileExpr)
+		local basee,extee = string.match(dee,fileExpr)
+		if (exter == ".c") and (extee == ".c") and mains[der] and not (der == dee) then depend(retval,baser.."C",basee.."C.o") end
+		if (exter == ".cpp") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
+		if (exter == ".hs") and (extee == ".hs") and mains[der] and not (der == dee) then depend(retval,baser.."Hs",dee) end
+		if (exter == ".hs") and (extee == ".c") and mains[der] then depend(retval,baser.."Hs",basee.."C.o") end
+		if (exter == ".lua") and (extee == ".lua") and mains[der] and not (der == dee) then depend(retval,baser.."Lua",dee) end
+		if (exter == ".lua") and (extee == ".src") and mains[der] then depend(retval,baser.."Lua",dee) end
+		if (exter == ".lua") and (extee == ".c") and mains[der] then depend(retval,baser.."Lua",basee..".so") end
+	end
+	modify(given,control)
+	return retval
+end
 mains = {} -- set of main files
 files = {} -- set of all files
 invokes = {} -- per file depends on funcs
 declares = {} -- per func depends on files
 includes = {} -- per file depends on files
 depends = {}
-reasons = {}
-converts = {}
 dependers = {}
 dependees = {}
 make()
 glob(mains,files)
 parse(files,invokes,declares,includes)
+complete(files,includes)
 contour(depends,mains,1)
 contour(depends,invokes,1)
 contour(depends,declares,2)
@@ -536,8 +553,8 @@ connect(depends,invokes,declares)
 direct(depends,includes)
 directs = copy(depends)
 collect(depends,directs)
-converts = convert(depends,mains)
-for k,v in pairs(converts) do
+depends = convert(depends,mains)
+for k,v in pairs(depends) do
 	local sorted = {}
 	dependers[#dependers+1] = k
 	for ky,vl in pairs(v) do
