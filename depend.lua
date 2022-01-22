@@ -37,16 +37,6 @@ function isin(tab,key,val)
 	if not (temp == val) then return false end
 	return true
 end
-function ismatch(key,exp)
-	for k,v in ipairs(key) do
-		if (type(exp[k]) == "string") then
-			if not string.match(v,exp[k]) then
-				return false
-			end
-		end
-	end
-	return true
-end
 function andwhy(work,der,dee,why)
 	if not (type(work[der]) == "table") then work[der] = {} end
 	if not (type(work[der][dee]) == "table") then work[der][dee] = {} end
@@ -213,19 +203,12 @@ function infirst(src1,src2)
 	modify(src1,control)
 	return retval
 end
-function filter(given,exp)
+function filter(given,func)
 	local retval = {}
 	local function control(tab,set,key)
-		if not ismatch(key,exp) then return end
-		insert(retval,tab,key)
-	end
-	modify(given,control)
-	return retval
-end
-function distill(given,exp)
-	local retval = {}
-	local function control(tab,set,key)
-		if ismatch(key,exp) then return end
+		for k,v in ipairs(key) do
+			if func[k] and not func[k](v) then return end
+		end
 		insert(retval,tab,key)
 	end
 	modify(given,control)
@@ -375,7 +358,7 @@ function parse(files,invokes,declares,includes)
 	local cCommentExpr = "//"; local luaCommentExpr = "--"
 	local hsCommentExpr = "--"; local swCommentExpr = "//"
 	for k,v in pairs(files) do
-		local openExpr,commentExpr,declareExpr,invokeExpr
+		local openExpr,commentExpr,declareExpr,invokeExpr,suffixVal
 		local base,ext = string.match(k,fileExpr)
 		if
 			base and
@@ -387,6 +370,7 @@ function parse(files,invokes,declares,includes)
 			commentExpr = luaCommentExpr
 			declareExpr = nil
 			invokeExpr = nil
+			suffixVal = nil
 		elseif
 			base and
 			ext == ".sw" then
@@ -395,6 +379,7 @@ function parse(files,invokes,declares,includes)
 			commentExpr = swCommentExpr
 			declareExpr = swDeclareExpr
 			invokeExpr = cInvokeExpr
+			suffixVal = "Sw"
 		elseif
 			base and
 			ext == ".hs" then
@@ -403,6 +388,7 @@ function parse(files,invokes,declares,includes)
 			commentExpr = hsCommentExpr
 			declareExpr = nil
 			invokeExpr = nil
+			suffixVal = nil
 		elseif
 			base and
 			(ext == ".h" or
@@ -414,6 +400,7 @@ function parse(files,invokes,declares,includes)
 			commentExpr = cCommentExpr
 			declareExpr = cDeclareExpr
 			invokeExpr = cInvokeExpr
+			suffixVal = "C"
 		else
 			base = nil
 		end
@@ -483,14 +470,14 @@ function parse(files,invokes,declares,includes)
 				elseif dofileVal then insert2(includes,k,name,"dofileVal")
 				elseif requireVal then insert2(includes,k,name..".c","requireVal")
 				elseif graphicsVal then insert2(includes,k,name,"graphicsVal")
-				elseif declareVal then insert2(declares,declareVal,k,"declareVal")
-				elseif moduleVal then insert2(declares,moduleVal,k,"moduleVal")
-				elseif foreignVal then insert2(invokes,k,name,"foreignVal")
-				elseif haskellVal then insert2(invokes,k,haskellVal,"haskellVal")
+				elseif declareVal then insert2(declares,declareVal..suffixVal,k,"declareVal")
+				elseif moduleVal then insert2(declares,moduleVal.."Hs",k,"moduleVal")
+				elseif foreignVal then insert2(invokes,k,name.."C","foreignVal")
+				elseif haskellVal then insert2(invokes,k,haskellVal.."Hs","haskellVal")
 				elseif invokeExpr then while (1) do
 					more,invokeVal = string.match(more,invokeExpr)
 					if not invokeVal then break end
-					insert2(invokes,k,invokeVal,"invokeVal")
+					insert2(invokes,k,invokeVal..suffixVal,"invokeVal")
 				end end
 			end
 		end
@@ -520,11 +507,16 @@ function convert(given,mains,files)
 		local der,dee,why = key[1],key[2],tab[3]
 		local baser,exter = string.match(der,fileExpr)
 		local basee,extee = string.match(dee,fileExpr)
-		if (exter == ".c") and (extee == ".c") and mains[der] and not (der == dee) then depend(retval,baser.."C",basee.."C.o") end
+		-- TODO filter makes not mains unnecessary; test if even filter is needed
+		if (exter == ".c") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
 		if (exter == ".cpp") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
-		if (exter == ".hs") and (extee == ".hs") and mains[der] and not (der == dee) then depend(retval,baser.."Hs",dee) end
+		if (exter == ".sw") and (extee == ".h") and mains[der] and files[dee] then depend(retval,baser.."Sw",basee.."C.o") end
+		if (exter == ".sw") and (extee == ".so") and mains[der] then depend(retval,baser.."Sw",dee) end
+		if (exter == ".sw") and (extee == ".h") and mains[der] and files[dee] then depend(retval,baser.."Sw.o",dee) end
+		if (exter == ".sw") and (extee == ".sw") and mains[der] then depend(retval,baser.."Sw.o",dee) end
+		if (exter == ".hs") and (extee == ".hs") and mains[der] then depend(retval,baser.."Hs",dee) end
 		if (exter == ".hs") and (extee == ".c") and mains[der] then depend(retval,baser.."Hs",basee.."C.o") end
-		if (exter == ".lua") and (extee == ".lua") and mains[der] and not (der == dee) then depend(retval,baser.."Lua",dee) end
+		if (exter == ".lua") and (extee == ".lua") and mains[der] then depend(retval,baser.."Lua",dee) end
 		if (exter == ".lua") and (extee == ".src") and mains[der] then depend(retval,baser.."Lua",dee) end
 		if (exter == ".lua") and (extee == ".c") and mains[der] then depend(retval,baser.."Lua",basee..".so") end
 	end
@@ -551,9 +543,10 @@ contour(depends,includes,2)
 depends = inboth(depends,files)
 connect(depends,invokes,declares)
 direct(depends,includes)
+depends = filter(depends,{nil,function (key) return not mains[key] end})
 directs = copy(depends)
 collect(depends,directs)
-depends = convert(depends,mains)
+depends = convert(depends,mains,files)
 for k,v in pairs(depends) do
 	local sorted = {}
 	dependers[#dependers+1] = k
