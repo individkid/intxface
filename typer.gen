@@ -9,7 +9,7 @@ function showTyperC()
 	result = result.."int main(int argc, char **argv)\n".."{\n"..
 	showIndent(1).."if (argc == 4) {\n"..
 	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
-	showIndent(1).."struct Struct1 *ptr;\n"..
+	showIndent(1).."struct Struct1 *ptr = 0;\n"..
 	showIndent(1).."allocStruct1(&ptr,1);\n"..
 	showIndent(1).."readStruct1(ptr,0);\n"..
 	showIndent(1).."writeStruct1(ptr,0);\n"..
