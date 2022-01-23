@@ -6,6 +6,8 @@ facerLua: face.so
 fileC: faceC.o typeC.o
 fileC.o: face.h type.h
 filerLua: face.so type.lua
+holeC: faceC.o typeC.o
+holeC.o: face.h type.h
 lineC: faceC.o typeC.o
 lineC.o: face.h type.h
 meticC.o: metic.h
@@ -15,10 +17,8 @@ planeSw.o: face.h metic.h share.h share.sw type.h
 planraSw: faceC.o meticC.o plane.so shareC.o typeC.o
 planraSw.o: face.h metic.h share.h share.sw type.h
 shareC.o: face.h metic.h share.h type.h
-spaceHs: face.hs faceC.o naive.hs type.hs typeC.o
+spaceHs: face.hs faceC.o naive.hs type.hs
 spacraHs: naive.hs
-holeC: faceC.o typeC.o
-holeC.o: face.h type.h
 type.c: type.src
 type.h: type.src
 type.hs: type.src

@@ -43,7 +43,7 @@ function showTyperHs()
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
 	result = result.."--\n"
-	result = result..showCallHs()
+	result = result..showCallHs().."\n"
 	result = result.."mainF :: [String] -> IO ()\n"
 	result = result.."mainF [a,b,c] = do\n"
 	result = result..showIndent(1).."pipeInit a b\n"
@@ -60,7 +60,7 @@ function showTyperLua()
 	local result = ""
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
-	result = result..showCallLua()
+	result = result..showCallLua().."\n"
 	result = result.."-- MAIN\n"
 	result = result.."if (arg[1] and arg[2] and arg[3]) then\n"
 	result = result.."pipeInit(arg[1],arg[2])\n"
@@ -73,7 +73,7 @@ function showTyperSw()
 	local result = ""
 	result = result.."import face\n"
 	result = result.."//\n"
-	result = result..showCallSw()
+	result = result..showCallSw().."\n"
 	result = result.."// MAIN\n"
 	result = result..showIndent(1).."if (CommandLine.arguments.count == 4) {\n"
 	result = result..showIndent(1).."pipeInit(CommandLine.arguments[1],CommandLine.arguments[2])\n"
