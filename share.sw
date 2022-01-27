@@ -596,13 +596,13 @@ func loopDone()
 }
 
 	for arg in CommandLine.arguments {
-	shareArg(arg)}
-	loopInit() // can read from pipes
-	shareInit() // can write to pipes
-	cb.start() // can schedule events
-	threadInit() // will schedule pipe reads
-	cb.call() // will handle events
-	threadDone()
-	cb.done()
-	shareDone()
-	loopDone()
+	shareArg(arg)} // share.c:shareArg
+	loopInit() // share.sw:loopInit // can read from pipes
+	shareInit() // share.c:shareInit // can write to pipes
+	cb.start() // share.sw:swiftInit // can schedule events
+	threadInit() // share.c:threadInit // will schedule pipe reads
+	cb.call() // share.sw:loopCall // will handle events
+	threadDone() // share.c:threadDone
+	cb.done() // share.sw:swiftDone
+	shareDone() // share.c:shareDone
+	loopDone() // share.sw:loopDone

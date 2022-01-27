@@ -1503,7 +1503,8 @@ function showReadLua(name,struct)
 		end
 		result = result..showIndent(count+1).."tab"..show(".","[\"")..field[1]..show("","\"]")
 		if language and super then result = result..sup..".append(" else result = result..sub.." = " end
-		if (field[2] == "char") then result = result.."readChr(idx)"
+		if (field[2] == "char") and language then result = result.."Character(UnicodeScalar(UInt8(readChr(idx))))"
+		elseif (field[2] == "char") then result = result.."readChr(idx)"
 		elseif (field[2] == "int") then result = result.."readInt(idx)"
 		elseif (field[2] == "long long") then result = result.."readNew(idx)"
 		elseif (field[2] == "double") then result = result.."readNum(idx)"
@@ -1571,7 +1572,8 @@ function showWriteLua(name,struct)
 		end
 		local value = "tab"..show(".","[\"")..field[1]..show("","\"]")..sub
 		result = result..showIndent(count+1)
-		if (field[2] == "char") then result = result.."writeChr("..value..",idx)"
+		if (field[2] == "char") and language then result = result.."writeChr(Int8("..value..".asciiValue!),idx)"
+		elseif (field[2] == "char") then result = result.."writeChr("..value..",idx)"
 		elseif (field[2] == "int") then result = result.."writeInt("..value..",idx)"
 		elseif (field[2] == "long long") then result = result.."writeNew("..value..",idx)"
 		elseif (field[2] == "double") then result = result.."writeNum("..value..",idx)"

@@ -1,5 +1,5 @@
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log spacra.log hole line plane space planra spacra
+all: facer.log typra.log typer.log filer.log spacra.log hole line plane space spacra
 
 LIBRARIES = -llua -lportaudio
 
@@ -42,7 +42,7 @@ spacra.log: spacra
 
 %.so: %C.o
 	clang -L/usr/local/lib -o $@ -fPIC -shared $^ -llua
-%.so: %G.o
+%G.so: %G.o
 	xcrun -sdk macosx metallib -o $@ $<
 
 %C.o: %.c

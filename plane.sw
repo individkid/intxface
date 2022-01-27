@@ -1,7 +1,20 @@
-func planeInit()
+import face
+import plane
+import AppKit
+import Metal
+
+func makeLibrary(filepath: String)
 {
-	swiftInit()
+	print(filepath)
+}
+func cmdWake(_ idx: CInt)
+{
+	let cmd = readFile(idx)
+	print("cmdWake \(cmd.num!)")
 }
 
 // MAIN
-	cb.start = planeInit
+
+makeLibrary(filepath:"planeG.so")
+let cmdpipe = pipeInit("helo", "ok")
+callInit(cmdWake, cmdpipe)

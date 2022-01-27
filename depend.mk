@@ -11,11 +11,8 @@ holeC.o: face.h type.h
 lineC: faceC.o typeC.o
 lineC.o: face.h type.h
 meticC.o: metic.h
-planeG.o: plane.h
-planeSw: faceC.o meticC.o plane.so shareC.o typeC.o
-planeSw.o: face.h metic.h share.h share.sw type.h
-planraSw: faceC.o meticC.o plane.so shareC.o typeC.o
-planraSw.o: face.h metic.h share.h share.sw type.h
+planeSw: faceC.o meticC.o planeC.o planeG.so
+planeSw.o: face.h metic.h plane.h type.sw
 shareC.o: face.h metic.h share.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 spacraHs: naive.hs

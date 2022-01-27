@@ -66,7 +66,9 @@ to schedule evaluations, variable changes, and interface writes on a timewheel.
 Interface reads can change the set variables, their simple sums,
 their values, or which is used for sound.
 
-plane.c planer.lua planra.c test opengl display mouse keyboard.
+plane.sw planer.lua planra.sw test display mouse keyboard.
+plane.c, plane.h maintain matrices according to mode.
+plane.sw, plane.g maintain and trigger graphics.
 This has four shaders, one to find pierce points,
 one to display facets, one to stream framebuffers,
 and one to detect focal point proximity to planes.

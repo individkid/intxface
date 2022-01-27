@@ -42,6 +42,7 @@
 // NUMPEND connection request queue length
 // CMDSIZE field buffer array limit
 
+typedef void (*wftype)(int);
 typedef void (*eftype)(const char*,int,int);
 typedef void (*hftype)(const char*,int);
 typedef void (*cftype)(const char*,int,void*);
@@ -59,6 +60,7 @@ int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
 int waitAny();
 int pauseAny(double dly);
+void callInit(wftype fnc, int idx);
 int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);

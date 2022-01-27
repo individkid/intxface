@@ -23,6 +23,8 @@ foreign import ccall "forkExec" forkExecC :: CString -> IO CInt
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO CInt
 foreign import ccall "waitAny" waitAnyC :: IO CInt
 foreign import ccall "pauseAny" pauseAnyC :: CDouble -> IO CInt
+foreign import ccall "wrapper" wrapCall :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
+foreign import ccall "callInit" callInitC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "pollPipe" pollPipeC :: CInt -> IO CInt
 foreign import ccall "pollFile" pollFileC :: CInt -> IO CInt
 foreign import ccall "seekFile" seekFileC :: CLLong -> CInt -> IO ()
@@ -76,6 +78,8 @@ waitAny :: IO Int
 waitAny = fmap fromIntegral waitAnyC
 pauseAny :: Double -> IO Int
 pauseAny a = fmap fromIntegral (pauseAnyC (CDouble a))
+callInit :: (Int -> IO ()) -> Int -> IO ()
+callInit a b = (wrapCall (\x -> a (fromIntegral x))) >>= (\x -> callInitC x (fromIntegral b))
 pollPipe :: Int -> IO Int
 pollPipe a = fmap fromIntegral (pollPipeC (fromIntegral a))
 pollFile :: Int -> IO Int
