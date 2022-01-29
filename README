@@ -132,40 +132,44 @@ Each user may create decorated boundaries for groups they have write permission 
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
 text test file to pipe face structs to/from file structs.
- -i (single) environment variable name for read pipe descriptor
+ -r (optional) environment variable name for file read descriptor
+ -w (optional) environment variable name for file write descriptor
+ -i (ordered) environment variable name for read pipe descriptor
  -o (ordered) environment variable name for write pipe descriptor
- -f (optional) environment variable name pair for file descriptor
- -s (ordered) for lua script to filter to subsequent -o
- -e (ordered) lua expression to filter to subsequent -o
- -x (ordered) regular expression to filter to subsequent -o
- -z (ordered) prior -s -e -x do not apply to following -o
-save test AVAssetWriter to pipe data structs to file and forward to pipe.
+ -f (ordered) double dash file name
+ -s (ordered) for lua script to filter to subsequent -i -o -f
+ -e (ordered) lua expression to filter to subsequent -i -o -f
+ -x (ordered) regular expression to filter to subsequent -i -o -f
+ -z (ordered) prior -s -e -x do not apply to following -i -o -f
+save test AVAssetWriter to pipe av structs to file and forward to pipe.
  -i (single) environment variable name for read pipe descriptor
  -o (multiple) environment variable name for write pipe descriptor
  -f (optional) file name to write audio video to
-read test AVAssetReader to pipe data structs from file.
+read test AVAssetReader to pipe av structs from file.
  -o (single) environment variable name for write pipe descriptor
  -f (single) file name to read audio video from
-view test AVPlayerView to pipe data structs to display.
+view test AVPlayerView to pipe av structs to display.
  -i (single) environment variable name for read pipe descriptor
-tape test BMD-SDK to pipe data structs from hdmi.
+tape test BMD-SDK to pipe av structs from hdmi.
  -o (single) environment variable name for write pipe descriptor
-show test BMD-SDK pipe data structs to hdmi.
+show test BMD-SDK pipe av structs to hdmi.
  -i (single) environment variable name for read pipe descriptor
-wave test IOUSBInterfaceInterface to pipe data structs from usb waveform.
+wave test IOUSBInterfaceInterface to pipe av structs from usb waveform.
  -o (single) environment variable name for write pipe descriptor
-desk test AVCaptureScreenInput to pipe data structs from screen capture.
+desk test AVCaptureScreenInput to pipe av structs from screen capture.
  -o (single) environment variable name for write pipe descriptor
-tile test serial or parallel data structs to one.
+tile test serial or parallel av structs to one.
  -i (ordered) environment variable name for read pipe descriptor
  -o (single) environment variable name for write pipe descriptor
- -p (ordered) priority of overlapping data structs from following -i
- -r (ordered) frame rate for following -i, 0.0 frozen, 1.0 realtime
+ -p (ordered) priority of overlapping av structs from following -i
+ -s (ordered) frame rate for following -i, 0.0 frozen, 1.0 realtime
  -a -b -c (ordered) clipping shaping placement for following -i
- -d (ordered) delay before following -p -r -a -b -c take effect
- -t (ordered) time for following -p -r -a -b -c to take effect
- -z (ordered) prior -p -r -a -b -c -d -t do not apply to following -i
- -c (optional) write as fast as possible, rates and times are relative
+ -d (ordered) delay before following -p -s -a -b -c take effect
+ -t (ordered) time for following -p -s -a -b -c to take effect
+ -z (ordered) prior -p -s -a -b -c -d -t do not apply to following
+ -n (ordered) following -m -i relative to last -d
+ -m (ordered) following -d relative to last -n instead of last -d
+ -v (optional) write as fast as possible, rates and times are relative
 
 edit test file handle per tab or window.
 This presents a readonly scrollable searchable highlightable text widget,

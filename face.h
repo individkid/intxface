@@ -1,6 +1,3 @@
-#ifndef FACE_H
-#define FACE_H
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/errno.h>
@@ -89,5 +86,3 @@ void writeInt(int arg, int idx);
 void writeNum(double arg, int idx);
 void writeNew(long long arg, int idx);
 void writeOld(float arg, int idx);
-
-#endif
