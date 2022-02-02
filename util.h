@@ -65,29 +65,12 @@ struct UtilFunc {
 		UtilHashBT bt;
 	} hash;
 };
-void utilAlloc1(int siz, int **buf);
-void utilAlloc2(int now, int siz1, int siz2, int ***buf);
-void utilAlloc3(int siz, const char ***buf);
-void utilAlloc4(int now, int siz1, int siz2, union UtilHash ***buf);
 void utilAlloc(int argc, int prtc, int cmpc);
 void utilOpt(const char *str, int opt);
 void utilArg(const char *str, int arg);
 void utilMerge(UtilCompBT func, int size, int *index);
-union UtilHash utilCallC(int val);
-union UtilHash utilCallI(int val);
-union UtilHash utilCallS(int val);
-union UtilHash utilCallL(long long val);
-union UtilHash utilCall(struct UtilFunc func, int opt, int one, int oth, int alt);
-int utilCall1(struct UtilFunc func, int opt, int one, int oth);
-int utilCall2(struct UtilFunc func, int opt, int one);
-union UtilHash utilCall3(struct UtilFunc func, int opt, int one);
 void utilLink(struct UtilFunc func, int opt);
-int utilFlagIdent(int opt, const char *arg);
 struct UtilFunc utilFlagFact();
-void utilCheck1(int opt, const char *str);
-void utilCheck2(int arg, const char *str);
-void utilCheck3(int opt, int typ, const char *str);
-void utilCheck(int opt, int arg, const char *str);
 int utilListMin(int opt); // -> arg
 int utilListMax(int opt); // -> arg
 int utilLast(int opt, int arg); // -> arg
