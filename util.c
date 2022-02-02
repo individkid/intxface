@@ -43,21 +43,21 @@ void utilAlloc4(int now, int siz1, int siz2, union UtilHash ***buf)
 	free(*buf); *buf = calloc(siz1,sizeof(*buf));
 	for (int i = 0; i < siz1; i++) (*buf)[i] = calloc(siz2,sizeof(***buf));
 }
-void utilAlloc(int argc, int prtc, int cmpc)
+void utilAlloc(int argc, int prtc, int optc)
 {
-	utilAlloc1(cmpc,&min);
-	utilAlloc2(uoptc,cmpc,prtc,&last2);
-	utilAlloc2(uoptc,cmpc,argc,&last1);
-	utilAlloc2(uoptc,cmpc,argc,&last);
-	utilAlloc2(uoptc,cmpc,argc,&ident);
-	utilAlloc2(uoptc,cmpc,argc,&next);
-	utilAlloc2(uoptc,cmpc,argc,&next1);
-	utilAlloc2(uoptc,cmpc,prtc,&next2);
-	utilAlloc1(cmpc,&max);
-	utilAlloc4(uoptc,cmpc,prtc,&hash);
+	utilAlloc1(optc,&min);
+	utilAlloc2(uoptc,optc,prtc,&last2);
+	utilAlloc2(uoptc,optc,argc,&last1);
+	utilAlloc2(uoptc,optc,argc,&last);
+	utilAlloc2(uoptc,optc,argc,&ident);
+	utilAlloc2(uoptc,optc,argc,&next);
+	utilAlloc2(uoptc,optc,argc,&next1);
+	utilAlloc2(uoptc,optc,prtc,&next2);
+	utilAlloc1(optc,&max);
+	utilAlloc4(uoptc,optc,prtc,&hash);
 	utilAlloc3(argc,&uargv);
-	utilAlloc3(cmpc,&uoptv);
-	uargc = argc; uprtc = prtc; uoptc = cmpc;
+	utilAlloc3(optc,&uoptv);
+	uargc = argc; uprtc = prtc; uoptc = optc;
 }
 void utilOpt(const char *str, int opt)
 {

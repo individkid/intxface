@@ -65,7 +65,7 @@ struct UtilFunc {
 		UtilHashBT bt;
 	} hash;
 };
-void utilAlloc(int argc, int prtc, int cmpc);
+void utilAlloc(int argc, int prtc, int optc);
 void utilOpt(const char *str, int opt);
 void utilArg(const char *str, int arg);
 void utilMerge(UtilCompBT func, int size, int *index);

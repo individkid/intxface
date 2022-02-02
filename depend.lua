@@ -338,7 +338,7 @@ end
 function parse(files,invokes,declares,includes)
 	-- Find dependees dependers includes of the file they are in from multiple regexs per extension.
 	local fileExpr = "(.*)(%..*)"
-	local cDeclareExpr = "^[^%s].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
+	local cDeclareExpr = "^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
 	local swDeclareExpr = "^func%s%s*([a-z][a-zA-Z0-9_]*)"
 	local luaDeclareExpr = "^function%s%s*([a-z][a-zA-Z0-9_]*)%("
 	local cInvokeExpr = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
