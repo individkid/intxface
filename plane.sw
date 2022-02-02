@@ -14,7 +14,6 @@ func cmdWake(_ idx: CInt)
 
 // MAIN
 
-for arg in CommandLine.arguments {planeArg(arg)}
 makeLibrary(filepath:"planeG.so")
 let cmdpipe = pipeInit("helo", "ok")
 callInit(cmdWake, cmdpipe)
