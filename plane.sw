@@ -14,12 +14,13 @@ func cmdWake(_ idx: CInt)
 
 // MAIN
 
-var argc = 0;
-var prtc = 0;
-let optc = 10;
+var argc = 0
+var optc = 0
+var lstc = 3
+let opts = "iof"
 for _ in CommandLine.arguments {argc = argc + 1}
-if (argc < optc) {prtc = optc} else {prtc = argc}
-utilAlloc(Int32(argc),Int32(prtc),Int32(optc));
+for _ in opts {optc = optc + 1}
+utilAlloc(Int32(argc),Int32(optc),Int32(lstc));
 argc = 0; for arg in CommandLine.arguments {utilArg(arg,Int32(argc)); argc = argc + 1}
 utilOpt("io",Int32(0))
 

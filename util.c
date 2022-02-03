@@ -14,10 +14,10 @@ int **next2 = 0; // ident fore
 int *max = 0; // ident
 union UtilHash **hash = 0; // info per part
 const char **uargv = 0; // string per step
-const char **uoptv = 0; // string per pass
+const char **ulstv = 0; // string per pass
 int uargc = 0; // number of steps
-int uprtc = 0; // number of parts
-int uoptc = 0; // number of passes
+int uoptc = 0; // number of parts
+int ulstc = 0; // number of passes
 
 void utilAlloc1(int siz, int **buf)
 {
@@ -43,26 +43,26 @@ void utilAlloc4(int now, int siz1, int siz2, union UtilHash ***buf)
 	free(*buf); *buf = calloc(siz1,sizeof(*buf));
 	for (int i = 0; i < siz1; i++) (*buf)[i] = calloc(siz2,sizeof(***buf));
 }
-void utilAlloc(int argc, int prtc, int optc)
+void utilAlloc(int argc, int optc, int lstc)
 {
-	utilAlloc1(optc,&min);
-	utilAlloc2(uoptc,optc,prtc,&last2);
-	utilAlloc2(uoptc,optc,argc,&last1);
-	utilAlloc2(uoptc,optc,argc,&last);
-	utilAlloc2(uoptc,optc,argc,&ident);
-	utilAlloc2(uoptc,optc,argc,&next);
-	utilAlloc2(uoptc,optc,argc,&next1);
-	utilAlloc2(uoptc,optc,prtc,&next2);
-	utilAlloc1(optc,&max);
-	utilAlloc4(uoptc,optc,prtc,&hash);
+	utilAlloc1(lstc,&min);
+	utilAlloc2(ulstc,lstc,optc,&last2);
+	utilAlloc2(ulstc,lstc,argc,&last1);
+	utilAlloc2(ulstc,lstc,argc,&last);
+	utilAlloc2(ulstc,lstc,argc,&ident);
+	utilAlloc2(ulstc,lstc,argc,&next);
+	utilAlloc2(ulstc,lstc,argc,&next1);
+	utilAlloc2(ulstc,lstc,optc,&next2);
+	utilAlloc1(lstc,&max);
+	utilAlloc4(ulstc,lstc,optc,&hash);
 	utilAlloc3(argc,&uargv);
-	utilAlloc3(optc,&uoptv);
-	uargc = argc; uprtc = prtc; uoptc = optc;
+	utilAlloc3(lstc,&ulstv);
+	uargc = argc; uoptc = optc; ulstc = lstc;
 }
-void utilOpt(const char *str, int opt)
+void utilOpt(const char *str, int lst)
 {
-	if (opt < 0 || opt >= uoptc) {fprintf(stderr,"too many opts\n"); exit(-1);}
-	uoptv[opt] = str;
+	if (lst < 0 || lst >= ulstc) {fprintf(stderr,"too many opts\n"); exit(-1);}
+	ulstv[lst] = str;
 }
 void utilArg(const char *str, int arg)
 {
@@ -108,105 +108,107 @@ union UtilHash utilCallL(long long val)
 {
 	union UtilHash retval; retval.l = val; return retval;
 }
-union UtilHash utilCall(struct UtilFunc func, int opt, int one, int oth, int alt)
+union UtilHash utilCall(struct UtilFunc func, int lst, int one, int oth, int alt)
 {
 	if (alt != -1) {
-		if (func.ovl == UtilASTag && func.hash.as) return func.hash.as(opt,uargv[one]);
+		if (func.ovl == UtilASTag && func.hash.as) return func.hash.as(lst,uargv[one]);
 		else if (func.ovl == UtilBSTag && func.hash.bs) return func.hash.bs(uargv[one]);
-		else if (func.ovl == UtilATTag && func.hash.at) return func.hash.at(opt,one);
+		else if (func.ovl == UtilATTag && func.hash.at) return func.hash.at(lst,one);
 		else if (func.ovl == UtilBTTag && func.hash.bt) return func.hash.bt(one);
 		else {fprintf(stderr,"invalid hash overload\n"); exit(-1);}
 	} else if (func.tag == UtilCompTag) {
-		if (func.ovl == UtilASTag && func.comp.as) return utilCallC(func.comp.as(opt,uargv[one],uargv[oth]));
+		if (func.ovl == UtilASTag && func.comp.as) return utilCallC(func.comp.as(lst,uargv[one],uargv[oth]));
 		else if (func.ovl == UtilBSTag && func.comp.bs) return utilCallC(func.comp.bs(uargv[one],uargv[oth]));
-		else if (func.ovl == UtilATTag && func.comp.at) return utilCallC(func.comp.at(opt,one,oth));
+		else if (func.ovl == UtilATTag && func.comp.at) return utilCallC(func.comp.at(lst,one,oth));
 		else if (func.ovl == UtilBTTag && func.comp.bt) return utilCallC(func.comp.bt(one,oth));
 		else {fprintf(stderr,"invalid comp overload\n"); exit(-1);}
 	} else if (func.tag == UtilIdentTag) {
-		if (func.ovl == UtilASTag && func.ident.as) return utilCallI(func.ident.as(opt,uargv[one]));
+		if (func.ovl == UtilASTag && func.ident.as) return utilCallI(func.ident.as(lst,uargv[one]));
 		else if (func.ovl == UtilBSTag && func.ident.bs) return utilCallI(func.ident.bs(uargv[one]));
-		else if (func.ovl == UtilATTag && func.ident.at) return utilCallI(func.ident.at(opt,one));
+		else if (func.ovl == UtilATTag && func.ident.at) return utilCallI(func.ident.at(lst,one));
 		else if (func.ovl == UtilBTTag && func.ident.bt) return utilCallI(func.ident.bt(one));
 		else {fprintf(stderr,"invalid ident overload\n"); exit(-1);}
 	} else if (func.tag == UtilStepTag || func.tag == UtilSetupTag) {
-		if (func.ovl == UtilASTag && func.test.as) return utilCallS(func.test.as(opt,uargv[one]));
+		if (func.ovl == UtilASTag && func.test.as) return utilCallS(func.test.as(lst,uargv[one]));
 		else if (func.ovl == UtilBSTag && func.test.bs) return utilCallS(func.test.bs(uargv[one]));
-		else if (func.ovl == UtilATTag && func.test.at) return utilCallS(func.test.at(opt,one));
+		else if (func.ovl == UtilATTag && func.test.at) return utilCallS(func.test.at(lst,one));
 		else if (func.ovl == UtilBTTag && func.test.bt) return utilCallS(func.test.bt(one));
 		else {fprintf(stderr,"invalid test overload\n"); exit(-1);}
 	} else {fprintf(stderr,"invalid func tag\n"); exit(-1);}
 	return utilCallL(-1);
 }
-int utilCall1(struct UtilFunc func, int opt, int one, int oth)
+int utilCall1(struct UtilFunc func, int lst, int one, int oth)
 {
-	return utilCall(func,opt,one,oth,-1).i;
+	return utilCall(func,lst,one,oth,-1).i;
 }
-int utilCall2(struct UtilFunc func, int opt, int one)
+int utilCall2(struct UtilFunc func, int lst, int one)
 {
-	return utilCall(func,opt,one,-1,-1).i;
+	return utilCall(func,lst,one,-1,-1).i;
 }
-union UtilHash utilCall3(struct UtilFunc func, int opt, int one)
+union UtilHash utilCall3(struct UtilFunc func, int lst, int one)
 {
-	return utilCall(func,opt,one,-1,0);
+	return utilCall(func,lst,one,-1,0);
 }
-void utilLink(struct UtilFunc func, int opt)
+void utilLink(struct UtilFunc func, int lst)
 {
-	if (opt < 0 || opt >= uoptc || uargc == 0) return;
+	if (lst < 0 || lst >= ulstc || uargc == 0) return;
+	min[lst] = -1;
+	max[lst] = -1;
 	for (int i = 0; i < uargc; i++) {
-		last2[opt][i] = -1;
-		next2[opt][i] = -1;
-		hash[opt][i].l = -1;
+		last2[lst][i] = -1;
+		next2[lst][i] = -1;
+		hash[lst][i].l = -1;
 	}
 	for (int i = 0; i < uargc; i++) {
 		int id = -1;
 		if (func.tag == UtilCompTag) {
-			for (int k = 0; last2[opt][k] != -1 && id == -1; k++) {
+			for (int k = 0; last2[lst][k] != -1 && id == -1; k++) {
 				if (k == uargc) {fprintf(stderr,"no type in comp\n"); exit(-1);}
-				if (utilCall1(func,opt,i,last2[opt][k]) == 0) id = k;
+				if (utilCall1(func,lst,i,last2[lst][k]) == 0) id = k;
 			}
 		} else if (func.tag == UtilIdentTag) {
-			id = utilCall2(func,opt,i);
+			id = utilCall2(func,lst,i);
 			if (id < 0 || id >= uargc) id = -1;
 		} else if (func.tag == UtilStepTag) {
-			if (i != 0 && !utilCall2(func,opt,i)) id = ident[opt][i-1];
+			if (i != 0 && !utilCall2(func,lst,i)) id = ident[lst][i-1];
 		} else if (func.tag == UtilSetupTag) {
-			if (i == 0 || !utilCall2(func,opt,i-1)) id = 0;
+			if (i == 0 || !utilCall2(func,lst,i-1)) id = 0;
 		}
 		if (id == -1) {
 			for (int k = 0; k < uargc && id == -1; k++) {
-				if (last2[opt][k] == -1) id = k;
+				if (last2[lst][k] == -1) id = k;
 			}
 			if (id == -1) {fprintf(stderr,"no free ident\n"); exit(-1);}
 		}
-		ident[opt][i] = id;
-		if (last2[opt][id] == -1) {
-			last2[opt][id] = i;
-			if (func.act) hash[opt][id] = utilCall3(func,opt,i);
+		ident[lst][i] = id;
+		if (last2[lst][id] == -1) {
+			last2[lst][id] = i;
+			if (func.act) hash[lst][id] = utilCall3(func,lst,i);
 		}
-		if (id < min[opt]) min[opt] = id;
-		if (id > max[opt]) max[opt] = id;
-		if (next2[opt][id] == -1 && id == 0) {
-			last[opt][i] = -1;
-		} else if (next2[opt][id] == -1) {
-			if (next2[opt][id-1] < 0) {fprintf(stderr,"no previous type ident\n"); exit(-1);}
-			last[opt][i] = next2[opt][id-1];
-			next[opt][next2[opt][id-1]] = i;
+		if (min[lst] == -1 || id < min[lst]) min[lst] = id;
+		if (max[lst] == -1 || id > max[lst]) max[lst] = id;
+		if (next2[lst][id] == -1 && id == 0) {
+			last[lst][i] = -1;
+		} else if (next2[lst][id] == -1) {
+			if (next2[lst][id-1] < 0) {fprintf(stderr,"no previous type ident\n"); exit(-1);}
+			last[lst][i] = next2[lst][id-1];
+			next[lst][next2[lst][id-1]] = i;
 		} else {
-			if (next2[opt][id] < 0) {fprintf(stderr,"invalid previous type ident\n"); exit(-1);}
-			last[opt][i] = next2[opt][id];
-			next[opt][next2[opt][id]] = i;
+			if (next2[lst][id] < 0) {fprintf(stderr,"invalid previous type ident\n"); exit(-1);}
+			last[lst][i] = next2[lst][id];
+			next[lst][next2[lst][id]] = i;
 		}
-		next2[opt][id] = i;
-		next[opt][i] = -1;
+		next2[lst][id] = i;
+		next[lst][i] = -1;
 	}
 	for (int i = 0; i < uargc; i++) {
-		for (int j = i; j > 0 && ident[opt][j-1] == ident[opt][i]; j--) last1[opt][i] = j;
-		for (int j = i; j < uargc-1 && ident[opt][j+1] == ident[opt][i]; j++) next1[opt][i] = j;
+		for (int j = i; j > 0 && ident[lst][j-1] == ident[lst][i]; j--) last1[lst][i] = j;
+		for (int j = i; j < uargc-1 && ident[lst][j+1] == ident[lst][i]; j++) next1[lst][i] = j;
 	}
 }
-int utilFlagIdent(int opt, const char *arg)
+int utilFlagIdent(int lst, const char *arg)
 {
-	const char *str = (uoptv[opt] ? uoptv[opt] : "");
+	const char *str = (ulstv[lst] ? ulstv[lst] : "");
 	for (int i = 0; str[i]; i++) {
 		char tmp[3]; tmp[0] = '-'; tmp[1] = str[i]; tmp[2] = 0;
 		if (strcmp(str,arg) == 0) return i;
@@ -223,84 +225,84 @@ struct UtilFunc utilFlagFact()
 	retval.hash.as = 0;
 	return retval;
 }
-void utilCheck1(int opt, const char *str)
+void utilCheck1(int lst, const char *str)
 {
-	if (opt < 0 || opt >= uoptc) {fprintf(stderr,"invalid %s opt\n",str); exit(-1);}	
+	if (lst < 0 || lst >= ulstc) {fprintf(stderr,"invalid %s lst\n",str); exit(-1);}
 }
 void utilCheck2(int arg, const char *str)
 {
 	if (arg < 0 || arg >= uargc) {fprintf(stderr,"invalid %s arg\n",str); exit(-1);}
 }
-void utilCheck3(int opt, int typ, const char *str)
+void utilCheck3(int lst, int opt, const char *str)
 {
-	utilCheck1(opt,str);
-	if (typ < 0 || typ >= uprtc) {fprintf(stderr,"invalid %s typ\n",str); exit(-1);}
+	utilCheck1(lst,str);
+	if (opt < 0 || opt >= uoptc) {fprintf(stderr,"invalid %s opt\n",str); exit(-1);}
 }
-void utilCheck(int opt, int arg, const char *str)
+void utilCheck(int lst, int arg, const char *str)
 {
-	utilCheck1(opt,str);
+	utilCheck1(lst,str);
 	utilCheck2(arg,str);
 }
-int utilListMin(int opt) // -> arg
+int utilListMin(int lst) // -> arg
 {
-	return utilPartMin(opt,utilMinPart(opt));
+	return utilPartMin(lst,utilMinPart(lst));
 }
-int utilListMax(int opt) // -> arg
+int utilListMax(int lst) // -> arg
 {
-	return utilPartMax(opt,utilMaxPart(opt));
+	return utilPartMax(lst,utilMaxPart(lst));
 }
-int utilLast(int opt, int arg) // -> arg
+int utilLast(int lst, int arg) // -> arg
 {
-	utilCheck(opt,arg,"last");
-	return last[opt][arg];
+	utilCheck(lst,arg,"last");
+	return last[lst][arg];
 }
-int utilNext(int opt, int arg) // -> arg
+int utilNext(int lst, int arg) // -> arg
 {
-	utilCheck(opt,arg,"next");
-	return next[opt][arg];
+	utilCheck(lst,arg,"next");
+	return next[lst][arg];
 }
-int utilLastMin(int opt, int arg) // -> arg
+int utilLastMin(int lst, int arg) // -> arg
 {
-	utilCheck(opt,arg,"lastmin");
-	return last1[opt][arg];
+	utilCheck(lst,arg,"lastmin");
+	return last1[lst][arg];
 }
-int utilNextMax(int opt, int arg) // -> arg
+int utilNextMax(int lst, int arg) // -> arg
 {
-	utilCheck(opt,arg,"nextmax");
-	return next1[opt][arg];
+	utilCheck(lst,arg,"nextmax");
+	return next1[lst][arg];
 }
-int utilLastMax(int opt, int arg) // -> arg
+int utilLastMax(int lst, int arg) // -> arg
 {
-	return utilLast(opt,utilLastMin(opt,arg));
+	return utilLast(lst,utilLastMin(lst,arg));
 }
-int utilNextMin(int opt, int arg) // -> arg
+int utilNextMin(int lst, int arg) // -> arg
 {
-	return utilNext(opt,utilNextMax(opt,arg));
+	return utilNext(lst,utilNextMax(lst,arg));
 }
-int utilPart(int opt, int arg) // -> typ
+int utilPart(int lst, int arg) // -> opt
 {
-	utilCheck(opt,arg,"part");
-	return ident[opt][arg];
+	utilCheck(lst,arg,"part");
+	return ident[lst][arg];
 }
-int utilMinPart(int opt) // -> typ
+int utilMinPart(int lst) // -> opt
 {
-	utilCheck1(opt,"minpart");
-	return min[opt];
+	utilCheck1(lst,"minpart");
+	return min[lst];
 }
-int utilMaxPart(int opt) // -> typ
+int utilMaxPart(int lst) // -> opt
 {
-	utilCheck1(opt,"maxpart");
-	return max[opt];
+	utilCheck1(lst,"maxpart");
+	return max[lst];
 }
-int utilPartMin(int opt, int typ) // -> arg
+int utilPartMin(int lst, int opt) // -> arg
 {
-	utilCheck3(opt,typ,"partmin");
-	return last2[opt][typ];
+	utilCheck3(lst,opt,"partmin");
+	return last2[lst][opt];
 }
-int utilPartMax(int opt, int typ) // -> arg
+int utilPartMax(int lst, int opt) // -> arg
 {
-	utilCheck3(opt,typ,"partmax");
-	return next2[opt][typ];
+	utilCheck3(lst,opt,"partmax");
+	return next2[lst][opt];
 }
 int utilIsList(int arg) // -> bool
 {
@@ -308,18 +310,18 @@ int utilIsList(int arg) // -> bool
 	utilCheck2(arg,"islist");
 	return 1;
 }
-int utilIsPart(int opt, int typ) // -> bool
+int utilIsPart(int lst, int opt) // -> bool
 {
-	if (typ == -1) return 0;
-	return utilIsList(utilPartMin(opt,typ));
+	if (opt == -1) return 0;
+	return utilIsList(utilPartMin(lst,opt));
 }
-int utilEquiv(int opt, int one, int oth) // -> bool
+int utilEquiv(int lst, int one, int oth) // -> bool
 {
 	if (one == -1 || oth == -1) return 0;
-	return (utilPart(opt,one) == utilPart(opt,oth));
+	return (utilPart(lst,one) == utilPart(lst,oth));
 }
-union UtilHash utilHash(int opt, int typ)
+union UtilHash utilHash(int lst, int opt)
 {
-	utilCheck3(opt,typ,"partval");
-	return hash[opt][typ];
+	utilCheck3(lst,opt,"partval");
+	return hash[lst][opt];
 }
