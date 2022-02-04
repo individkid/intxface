@@ -15,13 +15,12 @@ func cmdWake(_ idx: CInt)
 // MAIN
 
 var argc = 0
-var optc = 2
+var optc = 3
 var lstc = 3
 for _ in CommandLine.arguments {argc = argc + 1}
 utilAlloc(Int32(argc),Int32(optc),Int32(lstc));
 argc = 0; for arg in CommandLine.arguments {utilArg(Int32(argc),arg); argc = argc + 1}
-utilFlag(Int32(0),"i")
-utilFlag(Int32(1),"o")
+utilEnvInt(Int32(0),"io")
 
 
 makeLibrary(filepath:"planeG.so")
