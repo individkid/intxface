@@ -59,17 +59,17 @@ void utilAlloc(int argc, int optc, int lstc)
 	utilAlloc3(lstc,&ulstv);
 	uargc = argc; uoptc = optc; ulstc = lstc;
 }
-void utilOpt(const char *str, int lst)
+void utilArg(int arg, const char *str)
 {
-	if (lst < 0 || lst >= ulstc) {fprintf(stderr,"too many opts\n"); exit(-1);}
-	ulstv[lst] = str;
-}
-void utilArg(const char *str, int arg)
-{
-	if (arg < 0 || arg >= uargc) {fprintf(stderr,"too many args\n"); exit(-1);}
+	if (arg < 0 || arg >= uargc) {fprintf(stderr,"invalid given arg\n"); exit(-1);}
 	uargv[arg] = str;
 }
-void utilMerge(UtilCompBT func, int size, int *index)
+void utilList(int lst, const char *str)
+{
+	if (lst < 0 || lst >= ulstc) {fprintf(stderr,"invalid given lst\n"); exit(-1);}
+	ulstv[lst] = str;
+}
+void utilMerge(int size, int *index, UtilCompBT func)
 {
 	int lsiz = size/2;
 	int rsiz = size/2+size%2;
@@ -80,8 +80,8 @@ void utilMerge(UtilCompBT func, int size, int *index)
 	right = calloc(rsiz,sizeof(*right));
 	for (int i = 0; i < lsiz; i++) left[i] = index[i];
 	for (int i = 0; i < rsiz; i++) right[i] = index[lsiz+i];
-	utilMerge(func,lsiz,left);
-	utilMerge(func,rsiz,right);
+	utilMerge(lsiz,left,func);
+	utilMerge(rsiz,right,func);
 	for (int i = 0, j = 0, k = 0; i < size/2 || j < size/2+size%2; k++) {
 		if (i < size/2 && func(left[i],right[j]) < 0) {
 			index[k] = left[i]; i++;
@@ -92,138 +92,183 @@ void utilMerge(UtilCompBT func, int size, int *index)
 	free(left);
 	free(right);
 }
-union UtilHash utilCallC(int val)
-{
-	union UtilHash retval; retval.c = val; return retval;
-}
-union UtilHash utilCallI(int val)
+union UtilHash utilUnionI(int val)
 {
 	union UtilHash retval; retval.i = val; return retval;
 }
-union UtilHash utilCallS(int val)
-{
-	union UtilHash retval; retval.s = val; return retval;
-}
-union UtilHash utilCallL(long long val)
+union UtilHash utilUnionL(long long val)
 {
 	union UtilHash retval; retval.l = val; return retval;
 }
-union UtilHash utilCall(struct UtilFunc func, int lst, int one, int oth, int alt)
+union UtilHash utilCall(int lst, int one, int oth, int alt, struct UtilFunc func)
 {
-	if (alt != -1) {
+	if (alt == 0) {
 		if (func.ovl == UtilASTag && func.hash.as) return func.hash.as(lst,uargv[one]);
 		else if (func.ovl == UtilBSTag && func.hash.bs) return func.hash.bs(uargv[one]);
 		else if (func.ovl == UtilATTag && func.hash.at) return func.hash.at(lst,one);
 		else if (func.ovl == UtilBTTag && func.hash.bt) return func.hash.bt(one);
 		else {fprintf(stderr,"invalid hash overload\n"); exit(-1);}
-	} else if (func.tag == UtilCompTag) {
-		if (func.ovl == UtilASTag && func.comp.as) return utilCallC(func.comp.as(lst,uargv[one],uargv[oth]));
-		else if (func.ovl == UtilBSTag && func.comp.bs) return utilCallC(func.comp.bs(uargv[one],uargv[oth]));
-		else if (func.ovl == UtilATTag && func.comp.at) return utilCallC(func.comp.at(lst,one,oth));
-		else if (func.ovl == UtilBTTag && func.comp.bt) return utilCallC(func.comp.bt(one,oth));
-		else {fprintf(stderr,"invalid comp overload\n"); exit(-1);}
-	} else if (func.tag == UtilIdentTag) {
-		if (func.ovl == UtilASTag && func.ident.as) return utilCallI(func.ident.as(lst,uargv[one]));
-		else if (func.ovl == UtilBSTag && func.ident.bs) return utilCallI(func.ident.bs(uargv[one]));
-		else if (func.ovl == UtilATTag && func.ident.at) return utilCallI(func.ident.at(lst,one));
-		else if (func.ovl == UtilBTTag && func.ident.bt) return utilCallI(func.ident.bt(one));
+	} else if (alt == 1) {
+		if (func.ovl == UtilASTag && func.dflt.as) return utilUnionI(func.dflt.as(lst));
+		else if (func.ovl == UtilBSTag && func.dflt.bs) return utilUnionI(func.dflt.bs());
+		else if (func.ovl == UtilATTag && func.dflt.at) return utilUnionI(func.dflt.at(lst));
+		else if (func.ovl == UtilBTTag && func.dflt.bt) return utilUnionI(func.dflt.bt());
+		else {fprintf(stderr,"invalid dflt overload\n"); exit(-1);}
+	} else if (alt == 2 || func.tag == UtilIdentTag) {
+		if (func.ovl == UtilASTag && func.ident.as) return utilUnionI(func.ident.as(lst,uargv[one]));
+		else if (func.ovl == UtilBSTag && func.ident.bs) return utilUnionI(func.ident.bs(uargv[one]));
+		else if (func.ovl == UtilATTag && func.ident.at) return utilUnionI(func.ident.at(lst,one));
+		else if (func.ovl == UtilBTTag && func.ident.bt) return utilUnionI(func.ident.bt(one));
 		else {fprintf(stderr,"invalid ident overload\n"); exit(-1);}
-	} else if (func.tag == UtilStepTag || func.tag == UtilSetupTag) {
-		if (func.ovl == UtilASTag && func.test.as) return utilCallS(func.test.as(lst,uargv[one]));
-		else if (func.ovl == UtilBSTag && func.test.bs) return utilCallS(func.test.bs(uargv[one]));
-		else if (func.ovl == UtilATTag && func.test.at) return utilCallS(func.test.at(lst,one));
-		else if (func.ovl == UtilBTTag && func.test.bt) return utilCallS(func.test.bt(one));
-		else {fprintf(stderr,"invalid test overload\n"); exit(-1);}
+	} else if (alt == 3 || func.tag == UtilCompTag) {
+		if (func.ovl == UtilASTag && func.comp.as) return utilUnionI(func.comp.as(lst,uargv[one],uargv[oth]));
+		else if (func.ovl == UtilBSTag && func.comp.bs) return utilUnionI(func.comp.bs(uargv[one],uargv[oth]));
+		else if (func.ovl == UtilATTag && func.comp.at) return utilUnionI(func.comp.at(lst,one,oth));
+		else if (func.ovl == UtilBTTag && func.comp.bt) return utilUnionI(func.comp.bt(one,oth));
+		else {fprintf(stderr,"invalid comp overload\n"); exit(-1);}
 	} else {fprintf(stderr,"invalid func tag\n"); exit(-1);}
-	return utilCallL(-1);
+	return utilUnionL(-1);
 }
-int utilCall1(struct UtilFunc func, int lst, int one, int oth)
+int utilComp(int lst, int one, int oth, struct UtilFunc func)
 {
-	return utilCall(func,lst,one,oth,-1).i;
+	return utilCall(lst,one,oth,3,func).i;
 }
-int utilCall2(struct UtilFunc func, int lst, int one)
+int utilIdent(int lst, int one, struct UtilFunc func)
 {
-	return utilCall(func,lst,one,-1,-1).i;
+	return utilCall(lst,one,-1,2,func).i;
 }
-union UtilHash utilCall3(struct UtilFunc func, int lst, int one)
+union UtilHash utilUnion(int lst, int one, struct UtilFunc func)
 {
-	return utilCall(func,lst,one,-1,0);
+	return utilCall(lst,one,-1,0,func);
 }
-void utilLink(struct UtilFunc func, int lst)
+int utilDflt(int lst, struct UtilFunc func)
 {
-	if (lst < 0 || lst >= ulstc || uargc == 0) return;
+	return utilCall(lst,-1,-1,1,func).i;
+}
+int utilHole(int lst)
+{
+	int id = -1;
+	for (int k = 0; k < uoptc && id == -1; k++) {
+		if (last2[lst][k] == -1) id = k;
+	}
+	if (id == -1) {fprintf(stderr,"no free ident\n"); exit(-1);}
+	return id;
+}
+int utilFind(int lst, int arg, struct UtilFunc func)
+{
+	int id = -1;
+	for (int k = 0; last2[lst][k] != -1 && id == -1; k++) {
+		if (k == uoptc) {fprintf(stderr,"no type in comp\n"); exit(-1);}
+		if (utilComp(lst,arg,last2[lst][k],func) == 0) id = k;
+	}
+	return id;
+}
+int utilBoth(int lst, int arg, struct UtilFunc func)
+{
+	int id = -1;
+	for (int k = 0; k < uoptc && last2[lst][k] != -1 && id == -1; k++) {
+		if (utilComp(lst,arg,last2[lst][k],func) == 0) id = k;
+	}
+	if (id == -1) id = utilIdent(lst,arg,func);
+	return id;
+}
+int utilSafe(int lst, struct UtilFunc func)
+{
+	int id = -1;
+	if (func.def == UtilCustTag) id = utilDflt(lst,func);
+	if (id == -1) id = utilHole(lst);
+	if (id < 0 || id >= uoptc) {fprintf(stderr,"invalid id\n"); exit(-1);}
+	return id;
+}
+void utilLink(int lst, struct UtilFunc func)
+{
+	if (lst < 0 || lst >= ulstc) {fprintf(stderr,"invalid lst\n"); exit(-1);}
 	min[lst] = -1;
 	max[lst] = -1;
-	for (int i = 0; i < uargc; i++) {
+	for (int i = 0; i < uoptc; i++) {
 		last2[lst][i] = -1;
 		next2[lst][i] = -1;
 		hash[lst][i].l = -1;
 	}
 	for (int i = 0; i < uargc; i++) {
 		int id = -1;
-		if (func.tag == UtilCompTag) {
-			for (int k = 0; last2[lst][k] != -1 && id == -1; k++) {
-				if (k == uargc) {fprintf(stderr,"no type in comp\n"); exit(-1);}
-				if (utilCall1(func,lst,i,last2[lst][k]) == 0) id = k;
-			}
-		} else if (func.tag == UtilIdentTag) {
-			id = utilCall2(func,lst,i);
-			if (id < 0 || id >= uargc) id = -1;
-		} else if (func.tag == UtilStepTag) {
-			if (i != 0 && !utilCall2(func,lst,i)) id = ident[lst][i-1];
-		} else if (func.tag == UtilSetupTag) {
-			if (i == 0 || !utilCall2(func,lst,i-1)) id = 0;
-		}
-		if (id == -1) {
-			for (int k = 0; k < uargc && id == -1; k++) {
-				if (last2[lst][k] == -1) id = k;
-			}
-			if (id == -1) {fprintf(stderr,"no free ident\n"); exit(-1);}
-		}
+		if (func.tag == UtilCompTag && func.arg == UtilArgTag) id = utilFind(lst,i,func);
+		else if (func.tag == UtilCompTag && func.arg == UtilPreTag && i > 0) id = utilFind(lst,i-1,func);
+		else if (func.tag == UtilIdentTag && func.arg == UtilArgTag) id = utilIdent(lst,i,func);
+		else if (func.tag == UtilIdentTag && func.arg == UtilPreTag && i > 0) id = utilIdent(lst,i-1,func);
+		else if (func.tag == UtilBothTag && func.arg == UtilArgTag) id = utilBoth(lst,i,func);
+		else if (func.tag == UtilBothTag && func.arg == UtilPreTag && i > 0) id = utilBoth(lst,i-1,func);
+		if (id < 0 || id >= uoptc) id = -1;
+		if (func.act == UtilEveryTag && id == -1) hash[lst][id = utilSafe(lst,func)] = utilUnion(lst,i,func);
+		else if (func.act == UtilEveryTag && id != -1) hash[lst][id] = utilUnion(lst,i,func);
+		else if (func.act == UtilValidTag && id != -1) hash[lst][id] = utilUnion(lst,i,func);
+		else if (func.act == UtilFirstTag && id != -1 && last2[lst][id] == -1) hash[lst][id] = utilUnion(lst,i,func);
+		else if (id == -1) id = utilSafe(lst,func);
 		ident[lst][i] = id;
-		if (last2[lst][id] == -1) {
-			last2[lst][id] = i;
-			if (func.act) hash[lst][id] = utilCall3(func,lst,i);
-		}
-		if (min[lst] == -1 || id < min[lst]) min[lst] = id;
-		if (max[lst] == -1 || id > max[lst]) max[lst] = id;
-		if (next2[lst][id] == -1 && id == 0) {
-			last[lst][i] = -1;
-		} else if (next2[lst][id] == -1) {
-			if (next2[lst][id-1] < 0) {fprintf(stderr,"no previous type ident\n"); exit(-1);}
-			last[lst][i] = next2[lst][id-1];
-			next[lst][next2[lst][id-1]] = i;
+		if (last2[lst][id] == -1 && min[lst] == -1) {
+			last[lst][i] = next[lst][i] = -1;
+			last2[lst][id] = next2[lst][id] = i;
+			max[lst] = min[lst] = id;
+		} else if (last2[lst][id] == -1) {
+			if (max[lst] == -1) {fprintf(stderr,"invalid max\n"); exit(-1);}
+			if (next2[lst][max[lst]] == -1) {fprintf(stderr,"invalid next2 of max\n"); exit(-1);}
+			last[lst][i] = next2[lst][max[lst]];
+			next[lst][next2[lst][max[lst]]] = i;
+			next[lst][i] = -1;
+			last2[lst][id] = next2[lst][id] = i;
+			max[lst] = id;
 		} else {
-			if (next2[lst][id] < 0) {fprintf(stderr,"invalid previous type ident\n"); exit(-1);}
+			if (next2[lst][id] == -1) {fprintf(stderr,"invalid next2\n"); exit(-1);}
 			last[lst][i] = next2[lst][id];
 			next[lst][next2[lst][id]] = i;
+			next[lst][i] = -1;
+			next2[lst][id] = i;
 		}
-		next2[lst][id] = i;
-		next[lst][i] = -1;
 	}
 	for (int i = 0; i < uargc; i++) {
 		for (int j = i; j > 0 && ident[lst][j-1] == ident[lst][i]; j--) last1[lst][i] = j;
 		for (int j = i; j < uargc-1 && ident[lst][j+1] == ident[lst][i]; j++) next1[lst][i] = j;
+		if (last1[lst][i] != last2[lst][ident[lst][i]]) {fprintf(stderr,"invalid last\n"); exit(-1);}
+		if (next1[lst][i] != next2[lst][ident[lst][i]]) {fprintf(stderr,"invalid next\n"); exit(-1);}
 	}
 }
-int utilFlagIdent(int lst, const char *arg)
+int utilASFunc(int lst, const char *opt)
 {
 	const char *str = (ulstv[lst] ? ulstv[lst] : "");
 	for (int i = 0; str[i]; i++) {
 		char tmp[3]; tmp[0] = '-'; tmp[1] = str[i]; tmp[2] = 0;
-		if (strcmp(str,arg) == 0) return i;
+		if (strcmp(str,opt) == 0) return i;
 	}
+	return -1;
+}
+int utilASDflt(int lst)
+{
+	const char *str = (ulstv[lst] ? ulstv[lst] : "");
 	return strlen(str);
 }
-struct UtilFunc utilFlagFact()
+struct UtilFunc utilASFact(enum UtilFuncTag tag, enum UtilHowTag arg, enum UtilWhenTag act, UtilHashAS fnc)
 {
 	struct UtilFunc retval;
-	retval.tag = UtilIdentTag;
+	retval.tag = tag;
 	retval.ovl = UtilASTag;
-	retval.act = 0;
-	retval.ident.as = utilFlagIdent;
-	retval.hash.as = 0;
+	retval.arg = arg;
+	retval.act = act;
+	retval.def = UtilCustTag;
+	retval.comp.as = 0;
+	retval.ident.as = utilASFunc;
+	retval.hash.as = fnc;
+	retval.dflt.as = utilASDflt;
 	return retval;
+}
+void utilFlag(int lst, const char *opt)
+{
+	utilList(lst,opt);
+	utilLink(lst,utilASFact(UtilIdentTag,UtilArgTag,UtilNeverTag,0));
+}
+void utilSetup(int lst, const char *opt, UtilHashAS fnc)
+{
+	utilList(lst,opt);
+	utilLink(lst,utilASFact(UtilIdentTag,UtilPreTag,UtilValidTag,fnc));
 }
 void utilCheck1(int lst, const char *str)
 {
@@ -233,12 +278,16 @@ void utilCheck2(int arg, const char *str)
 {
 	if (arg < 0 || arg >= uargc) {fprintf(stderr,"invalid %s arg\n",str); exit(-1);}
 }
-void utilCheck3(int lst, int opt, const char *str)
+void utilCheck3(int opt, const char *str)
 {
-	utilCheck1(lst,str);
 	if (opt < 0 || opt >= uoptc) {fprintf(stderr,"invalid %s opt\n",str); exit(-1);}
 }
-void utilCheck(int lst, int arg, const char *str)
+void utilCheck13(int lst, int opt, const char *str)
+{
+	utilCheck1(lst,str);
+	utilCheck3(opt,str);
+}
+void utilCheck12(int lst, int arg, const char *str)
 {
 	utilCheck1(lst,str);
 	utilCheck2(arg,str);
@@ -253,22 +302,22 @@ int utilListMax(int lst) // -> arg
 }
 int utilLast(int lst, int arg) // -> arg
 {
-	utilCheck(lst,arg,"last");
+	utilCheck12(lst,arg,"last");
 	return last[lst][arg];
 }
 int utilNext(int lst, int arg) // -> arg
 {
-	utilCheck(lst,arg,"next");
+	utilCheck12(lst,arg,"next");
 	return next[lst][arg];
 }
 int utilLastMin(int lst, int arg) // -> arg
 {
-	utilCheck(lst,arg,"lastmin");
+	utilCheck12(lst,arg,"lastmin");
 	return last1[lst][arg];
 }
 int utilNextMax(int lst, int arg) // -> arg
 {
-	utilCheck(lst,arg,"nextmax");
+	utilCheck12(lst,arg,"nextmax");
 	return next1[lst][arg];
 }
 int utilLastMax(int lst, int arg) // -> arg
@@ -281,7 +330,7 @@ int utilNextMin(int lst, int arg) // -> arg
 }
 int utilPart(int lst, int arg) // -> opt
 {
-	utilCheck(lst,arg,"part");
+	utilCheck12(lst,arg,"part");
 	return ident[lst][arg];
 }
 int utilMinPart(int lst) // -> opt
@@ -296,12 +345,12 @@ int utilMaxPart(int lst) // -> opt
 }
 int utilPartMin(int lst, int opt) // -> arg
 {
-	utilCheck3(lst,opt,"partmin");
+	utilCheck13(lst,opt,"partmin");
 	return last2[lst][opt];
 }
 int utilPartMax(int lst, int opt) // -> arg
 {
-	utilCheck3(lst,opt,"partmax");
+	utilCheck13(lst,opt,"partmax");
 	return next2[lst][opt];
 }
 int utilIsList(int arg) // -> bool
@@ -322,6 +371,6 @@ int utilEquiv(int lst, int one, int oth) // -> bool
 }
 union UtilHash utilHash(int lst, int opt)
 {
-	utilCheck3(lst,opt,"partval");
+	utilCheck13(lst,opt,"partval");
 	return hash[lst][opt];
 }

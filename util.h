@@ -1,7 +1,5 @@
 union UtilHash {
-	int c;
 	int i;
-	int s;
 	long long l;
 	float f;
 	double d;
@@ -14,19 +12,18 @@ typedef int (*UtilIdentAS)(int lst, const char *arg);
 typedef int (*UtilIdentBS)(const char *arg);
 typedef int (*UtilIdentAT)(int lst, int arg);
 typedef int (*UtilIdentBT)(int arg);
-typedef int (*UtilTestAS)(int lst, const char *arg);
-typedef int (*UtilTestBS)(const char *arg);
-typedef int (*UtilTestAT)(int lst, int arg);
-typedef int (*UtilTestBT)(int arg);
 typedef union UtilHash (*UtilHashAS)(int lst, const char *arg);
 typedef union UtilHash (*UtilHashBS)(const char *arg);
 typedef union UtilHash (*UtilHashAT)(int lst, int arg);
 typedef union UtilHash (*UtilHashBT)(int arg);
+typedef int (*UtilDfltAS)(int lst);
+typedef int (*UtilDfltBS)();
+typedef int (*UtilDfltAT)(int lst);
+typedef int (*UtilDfltBT)();
 enum UtilFuncTag {
 	UtilCompTag,
 	UtilIdentTag,
-	UtilStepTag,
-	UtilSetupTag,
+	UtilBothTag,
 };
 enum UtilOverTag {
 	UtilASTag,
@@ -34,43 +31,58 @@ enum UtilOverTag {
 	UtilATTag,
 	UtilBTTag,
 };
+enum UtilHowTag {
+	UtilArgTag,
+	UtilPreTag,
+};
+enum UtilWhenTag {
+	UtilNeverTag,
+	UtilFirstTag,
+	UtilValidTag,
+	UtilEveryTag,
+};
+enum UtilDfltTag {
+	UtilCustTag,
+	UtilHoleTag,
+};
 struct UtilFunc {
 	enum UtilFuncTag tag;
 	enum UtilOverTag ovl;
-	int act;
+	enum UtilHowTag arg;
+	enum UtilWhenTag act;
+	enum UtilDfltTag def;
 	union {
-		union {
-			UtilCompAS as;
-			UtilCompBS bs;
-			UtilCompAT at;
-			UtilCompBT bt;
-		} comp;
-		union {
-			UtilIdentAS as;
-			UtilIdentBS bs;
-			UtilIdentAT at;
-			UtilIdentBT bt;
-		} ident;
-		union {
-			UtilTestAS as;
-			UtilTestBS bs;
-			UtilTestAT at;
-			UtilTestBT bt;
-		} test;
-	};
+		UtilCompAS as;
+		UtilCompBS bs;
+		UtilCompAT at;
+		UtilCompBT bt;
+	} comp;
+	union {
+		UtilIdentAS as;
+		UtilIdentBS bs;
+		UtilIdentAT at;
+		UtilIdentBT bt;
+	} ident;
 	union {
 		UtilHashAS as;
 		UtilHashBS bs;
 		UtilHashAT at;
 		UtilHashBT bt;
 	} hash;
+	union {
+		UtilDfltAS as;
+		UtilDfltBS bs;
+		UtilDfltAT at;
+		UtilDfltBT bt;
+	} dflt;
 };
-void utilAlloc(int argc, int prtc, int lstc);
-void utilOpt(const char *str, int lst);
-void utilArg(const char *str, int arg);
-void utilMerge(UtilCompBT func, int size, int *index);
-void utilLink(struct UtilFunc func, int lst);
-struct UtilFunc utilFlagFact();
+void utilAlloc(int argc, int optc, int lstc);
+void utilArg(int arg, const char *str);
+void utilList(int lst, const char *str);
+void utilMerge(int size, int *index, UtilCompBT func);
+void utilLink(int lst, struct UtilFunc func);
+void utilFlag(int lst, const char *opt);
+void utilSetup(int lst, const char *opt, UtilHashAS fnc);
 int utilListMin(int lst); // -> arg
 int utilListMax(int lst); // -> arg
 int utilLast(int lst, int arg); // -> arg
