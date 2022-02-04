@@ -44,6 +44,8 @@ enum UtilWhenTag {
 enum UtilDfltTag {
 	UtilCustTag,
 	UtilHoleTag,
+	UtilOnceTag,
+	UtilZeroTag,
 };
 struct UtilFunc {
 	enum UtilFuncTag tag;
@@ -81,8 +83,8 @@ void utilArg(int arg, const char *str);
 void utilList(int lst, const char *str);
 void utilMerge(int size, int *index, UtilCompBT func);
 void utilLink(int lst, struct UtilFunc func);
-void utilFlag(int lst, const char *opt);
-void utilSetup(int lst, const char *opt, UtilHashAS fnc);
+void utilFlag(int lst, const char *str);
+void utilEnvInt(int lst, const char *str);
 int utilListMin(int lst); // -> arg
 int utilListMax(int lst); // -> arg
 int utilLast(int lst, int arg); // -> arg

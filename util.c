@@ -172,14 +172,6 @@ int utilBoth(int lst, int arg, struct UtilFunc func)
 	if (id == -1) id = utilIdent(lst,arg,func);
 	return id;
 }
-int utilSafe(int lst, struct UtilFunc func)
-{
-	int id = -1;
-	if (func.def == UtilCustTag) id = utilDflt(lst,func);
-	if (id == -1) id = utilHole(lst);
-	if (id < 0 || id >= uoptc) {fprintf(stderr,"invalid id\n"); exit(-1);}
-	return id;
-}
 void utilLink(int lst, struct UtilFunc func)
 {
 	if (lst < 0 || lst >= ulstc) {fprintf(stderr,"invalid lst\n"); exit(-1);}
@@ -198,12 +190,20 @@ void utilLink(int lst, struct UtilFunc func)
 		else if (func.tag == UtilIdentTag && func.arg == UtilPreTag && i > 0) id = utilIdent(lst,i-1,func);
 		else if (func.tag == UtilBothTag && func.arg == UtilArgTag) id = utilBoth(lst,i,func);
 		else if (func.tag == UtilBothTag && func.arg == UtilPreTag && i > 0) id = utilBoth(lst,i-1,func);
-		if (id < 0 || id >= uoptc) id = -1;
-		if (func.act == UtilEveryTag && id == -1) hash[lst][id = utilSafe(lst,func)] = utilUnion(lst,i,func);
-		else if (func.act == UtilEveryTag && id != -1) hash[lst][id] = utilUnion(lst,i,func);
-		else if (func.act == UtilValidTag && id != -1) hash[lst][id] = utilUnion(lst,i,func);
-		else if (func.act == UtilFirstTag && id != -1 && last2[lst][id] == -1) hash[lst][id] = utilUnion(lst,i,func);
-		else if (id == -1) id = utilSafe(lst,func);
+		if (id < 0 || id >= uoptc) {
+			if (func.def == UtilCustTag) id = utilDflt(lst,func);
+			else if (func.def == UtilHoleTag) id = utilHole(lst);
+			else if (func.def == UtilOnceTag && i == 0) id = utilDflt(lst,func);
+			else if (func.def == UtilOnceTag && i != 0) id = ident[lst][i-1];
+			else if (func.def == UtilZeroTag && i == 0) id = 0;
+			else if (func.def == UtilZeroTag && i != 0) id = ident[lst][i-1];
+			if (id < 0 || id >= uoptc) {fprintf(stderr,"invalid id\n"); exit(-1);}
+			if (func.act == UtilEveryTag) hash[lst][id] = utilUnion(lst,i,func);
+		} else {
+			if (func.act == UtilEveryTag) hash[lst][id] = utilUnion(lst,i,func);
+			else if (func.act == UtilValidTag) hash[lst][id] = utilUnion(lst,i,func);
+			else if (func.act == UtilFirstTag && last2[lst][id] == -1) hash[lst][id] = utilUnion(lst,i,func);
+		}
 		ident[lst][i] = id;
 		if (last2[lst][id] == -1 && min[lst] == -1) {
 			last[lst][i] = next[lst][i] = -1;
@@ -232,12 +232,12 @@ void utilLink(int lst, struct UtilFunc func)
 		if (next1[lst][i] != next2[lst][ident[lst][i]]) {fprintf(stderr,"invalid next\n"); exit(-1);}
 	}
 }
-int utilASFunc(int lst, const char *opt)
+int utilASIdent(int lst, const char *arg)
 {
 	const char *str = (ulstv[lst] ? ulstv[lst] : "");
 	for (int i = 0; str[i]; i++) {
-		char tmp[3]; tmp[0] = '-'; tmp[1] = str[i]; tmp[2] = 0;
-		if (strcmp(str,opt) == 0) return i;
+		char str[3]; str[0] = '-'; str[1] = str[i]; str[2] = 0;
+		if (strcmp(str,arg) == 0) return i;
 	}
 	return -1;
 }
@@ -246,29 +246,37 @@ int utilASDflt(int lst)
 	const char *str = (ulstv[lst] ? ulstv[lst] : "");
 	return strlen(str);
 }
-struct UtilFunc utilASFact(enum UtilFuncTag tag, enum UtilHowTag arg, enum UtilWhenTag act, UtilHashAS fnc)
+union UtilHash utilEIHash(int lst, const char *arg)
+{
+	const char *str = getenv(arg);
+	if (!str) return utilUnionL(-1);
+	return utilUnionI(atoi(str));
+}
+struct UtilFunc utilASFact(enum UtilHowTag arg, enum UtilWhenTag act, enum UtilDfltTag def, UtilCompAS comp, UtilIdentAS ident, UtilHashAS hash, UtilDfltAS dflt)
 {
 	struct UtilFunc retval;
-	retval.tag = tag;
+	if (comp&&ident) retval.tag = UtilBothTag;
+	else if (comp) retval.tag = UtilCompTag;
+	else retval.tag = UtilIdentTag;
 	retval.ovl = UtilASTag;
 	retval.arg = arg;
 	retval.act = act;
-	retval.def = UtilCustTag;
-	retval.comp.as = 0;
-	retval.ident.as = utilASFunc;
-	retval.hash.as = fnc;
-	retval.dflt.as = utilASDflt;
+	retval.def = def;
+	retval.comp.as = comp;
+	retval.ident.as = ident;
+	retval.hash.as = hash;
+	retval.dflt.as = dflt;
 	return retval;
 }
-void utilFlag(int lst, const char *opt)
+void utilFlag(int lst, const char *str)
 {
-	utilList(lst,opt);
-	utilLink(lst,utilASFact(UtilIdentTag,UtilArgTag,UtilNeverTag,0));
+	utilList(lst,str);
+	utilLink(lst,utilASFact(UtilArgTag,UtilNeverTag,UtilCustTag,0,utilASIdent,0,utilASDflt));
 }
-void utilSetup(int lst, const char *opt, UtilHashAS fnc)
+void utilEnvInt(int lst, const char *str)
 {
-	utilList(lst,opt);
-	utilLink(lst,utilASFact(UtilIdentTag,UtilPreTag,UtilValidTag,fnc));
+	utilList(lst,str);
+	utilLink(lst,utilASFact(UtilPreTag,UtilFirstTag,UtilOnceTag,0,utilASIdent,utilEIHash,utilASDflt));
 }
 void utilCheck1(int lst, const char *str)
 {
