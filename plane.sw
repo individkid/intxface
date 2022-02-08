@@ -14,14 +14,19 @@ func cmdWake(_ idx: CInt)
 
 // MAIN
 
+let lstv = ["io","f"]
+let fncv = [utilEnv,utilPipe]
+let glbv = ["iopass","ipart","opart"]
 var argc = 0
-var optc = 3
-var lstc = 3
+var lstc = 0
+var glbc = 0
 for _ in CommandLine.arguments {argc = argc + 1}
-utilAlloc(Int32(argc),Int32(optc),Int32(lstc));
-argc = 0; for arg in CommandLine.arguments {utilArg(Int32(argc),arg); argc = argc + 1}
-utilEnvInt(Int32(0),"io")
-
+for _ in lstv {lstc = lstc + 1}
+for _ in glbv {glbc = glbc + 1}
+utilAlloc(Int32(argc),Int32(lstc),Int32(glbc));
+glbc = 0; for glb in glbv {utilGlbv(Int32(glbc),utilUnionS(glb)); glbc = glbc + 1}
+argc = 0; for arg in CommandLine.arguments {utilArgv(Int32(argc),Int32(0),utilUnionS(arg)); argc = argc + 1}
+lstc = 0; for (lst,fnc) in zip(lstv,fncv) {fnc(Int32(lstc),lst); lstc = lstc + 1}
 
 makeLibrary(filepath:"planeG.so")
 let cmdpipe = pipeInit("helo", "ok")

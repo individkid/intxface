@@ -26,6 +26,8 @@ spacra.log: spacra
 	ln -f $< $@
 %: %Hs
 	ln -f $< $@
+%: %A
+	ln -f $< $@
 %: %Lua
 	ln -f $< $@
 %: %Sw
@@ -35,6 +37,8 @@ spacra.log: spacra
 	clang++ -L/usr/local/lib -o $@ $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
 	ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0 2> $*.out
+%A: %.agda
+	agda --compile --ghc-flag=-o --ghc-flag=$@ $<
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
@@ -57,6 +61,8 @@ spacra.log: spacra
 	xcrun -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
 
 %.metal: %.g
+	cp $< $@
+%.agda: %.a
 	cp $< $@
 
 %.h: %.gen
@@ -82,9 +88,10 @@ clean:
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer planra spacra
 	rm -f hole file line plane space
-	rm -f *C *Hs *Lua *Sw
+	rm -f *C *Hs *A *Lua *Sw
 	rm -f *.err *.out *.log *.tmp
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	rm -f *.o *.so *.hi *_stub.h a.* *.metal
+	rm -rf *.agda *.agdai MAlonzo
 	rm -f depend type main help
 
