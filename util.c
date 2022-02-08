@@ -14,7 +14,8 @@ int *ubndc = 0; // binding
 union UtilUnion **uovrv = 0;
 union UtilUnion **ubndv = 0;
 union UtilUnion *uglbv = 0;
-UtilFunc *ufnc = 0;
+union UtilUnion **uvalv = 0;
+int **uidtv = 0;
 jmp_buf uenv[4] = {0};
 int uenc = 0;
 
@@ -41,11 +42,6 @@ void utilAlloc2(int siz, union UtilUnion **buf)
 	if (!buf) utilError("invalid union reference\n");
 	free(*buf); *buf = calloc(siz,sizeof(**buf));
 }
-void utilAlloc3(int siz, UtilFunc **buf)
-{
-	if (!buf) utilError("invalid function reference\n");
-	free(*buf); *buf = calloc(siz,sizeof(**buf));
-}
 void utilAlloc4(int now, int siz, int ***buf)
 {
 	if (!buf) utilError("invalid int pointer reference\n");
@@ -54,7 +50,7 @@ void utilAlloc4(int now, int siz, int ***buf)
 }
 void utilAlloc5(int now, int siz, union UtilUnion ***buf)
 {
-	if (!buf) utilError("invalid struct pointer reference\n");
+	if (!buf) utilError("invalid union pointer reference\n");
 	if (*buf) for (int i = 0; i < now; i++) free((*buf)[i]);
 	free(*buf); *buf = calloc(siz,sizeof(**buf));
 }
@@ -66,7 +62,12 @@ void utilAlloc(int lstc, int argc, int glbc)
 	utilAlloc5(uargc,argc,&uovrv);
 	utilAlloc5(ulstc,lstc,&ubndv);
 	utilAlloc2(glbc,&uglbv);
-	utilAlloc3(lstc,&ufnc);
+	utilAlloc5(ulstc,lstc,&uvalv);
+	utilAlloc4(ulstc,lstc,&uidtv);
+	for (int i = 0; i < lstc; i++) {
+		utilAlloc2(argc,uvalv+i);
+		utilAlloc1(argc,uidtv+i);
+	}
 	ulstc = lstc;
 	uargc = argc;
 	uglbc = glbc;
@@ -76,8 +77,6 @@ void utilArgc(int arg, int siz)
 	if (arg < 0 || arg >= uargc) utilError("invalid argc index\n");
 	utilAlloc2(siz,uovrv+arg);
 	uovrc[arg] = siz;
-	if (siz > 0) uovrv[arg][0] = utilUnionI(siz);
-	if (siz > 1) uovrv[arg][1] = utilUnionI(arg);
 }
 void utilArgv(int arg, int idx, union UtilUnion val)
 {
@@ -89,8 +88,6 @@ void utilLstc(int lst, int siz)
 	if (lst < 0 || lst >= ulstc) utilError("invalid lstc index\n");
 	utilAlloc2(siz,ubndv+lst);
 	ubndc[lst] = siz;
-	if (siz > 0) ubndv[lst][0] = utilUnionI(siz);
-	if (siz > 1) ubndv[lst][1] = utilUnionI(lst);
 }
 void utilLstv(int lst, int idx, union UtilUnion val)
 {
@@ -99,8 +96,12 @@ void utilLstv(int lst, int idx, union UtilUnion val)
 }
 void utilFunc(int lst, UtilFunc func)
 {
-	if (lst < 0 || lst >= ulstc) utilError("invalid lstc index\n");
-	ufnc[lst] = func;
+	if (lst < 0 || lst >= ulstc) utilError("invalid func index\n");
+	for (int i = 0; i < uargc; i++) {
+		struct UtilStruct val = func(lst,i);
+		uidtv[lst][i] = val.i;
+		uvalv[lst][i] = val.u;
+	}
 }
 void utilGlbv(int glb, union UtilUnion val)
 {
@@ -173,7 +174,7 @@ void utilCheck12(int lst, int arg, const char *str)
 int utilComp(int lst, int arg, int opt)
 {
 	utilCheck12(lst,arg,"comp");
-	int ident = (opt == -1 ? opt : ufnc[lst](lst,arg).i);
+	int ident = (opt == -1 ? opt : uidtv[lst][arg]);
 	if (ident < opt) return -1;
 	if (ident > opt) return 1;
 	return 0;
@@ -202,7 +203,7 @@ union UtilUnion utilOver(int lst, int arg, int opt, int cnt, int cmp, int idx)
 union UtilUnion utilHash(int lst, int arg, int opt, int cnt, int cmp)
 {
 	utilCheck1(lst,"hash");
-	return ufnc[lst](lst,utilFind(lst,arg,opt,cnt,cmp,"hash")).u;
+	return uvalv[lst][utilFind(lst,arg,opt,cnt,cmp,"hash")];
 }
 union UtilUnion utilBind(int lst, int idx)
 {
@@ -281,8 +282,8 @@ struct UtilStruct utilPipeFunc(int lst, int arg)
 	const char *pat = utilBind(lst,PAT).s;
 	int raw = utilGlob(RAW).i;
 	int env = utilGlob(ENV).i;
-	int iprt = strstr(utilBind(env,PAT).s,ICH)-utilBind(env,PAT).s;
-	int oprt = strstr(utilBind(env,PAT).s,OCH)-utilBind(env,PAT).s;
+	int iprt = strstr(utilBind(env,PAT).s,utilGlob(ICH).s)-utilBind(env,PAT).s;
+	int oprt = strstr(utilBind(env,PAT).s,utilGlob(OCH).s)-utilBind(env,PAT).s;
 	if (setjmp(uenv[uenc++])) return utilStructI(strlen(pat),-1);
 	const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
 	int ident = utilMatch(pat,word);

@@ -4,6 +4,8 @@
 #define PAT 0 // idx for bind
 #define RAW 0 // glb for lst
 #define ENV 1 // glb for lst
+#define ICH 2 // glb for char
+#define OCH 3 // glb for char
 #define NUM 0 // opt for raw
 #define STR 1 // opt for raw
 #define OPT 2 // opt for raw
@@ -11,8 +13,6 @@
 #define INP 1 // cnt for raw num
 #define OUT 2 // cnt for raw num
 #define EQU 0 // cmp for opt
-#define ICH "i" // pat for opt
-#define OCH "o" // pat for opt
 union UtilUnion {
 	int i;
 	long long l;
