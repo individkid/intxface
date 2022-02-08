@@ -1,3 +1,18 @@
+#define MIN 0 // arg
+#define WLD -1 // opt for any
+#define WRD 0 // idx for over
+#define PAT 0 // idx for bind
+#define RAW 0 // glb for lst
+#define ENV 1 // glb for lst
+#define NUM 0 // opt for raw
+#define STR 1 // opt for raw
+#define OPT 2 // opt for raw
+#define LST -1 // cnt for last
+#define INP 1 // cnt for raw num
+#define OUT 2 // cnt for raw num
+#define EQU 0 // cmp for opt
+#define ICH "i" // pat for opt
+#define OCH "o" // pat for opt
 union UtilUnion {
 	int i;
 	long long l;
@@ -20,29 +35,18 @@ void utilOptc(int lst, int siz);
 void utilFunc(int lst, UtilFunc fnc);
 void utilGlbv(int glb, union UtilUnion val);
 void utilMerge(int size, int *index, UtilComp func);
-int utilListMin(int lst); // -> arg
-int utilListMax(int lst); // -> arg
-int utilLast(int lst, int arg); // -> arg
-int utilNext(int lst, int arg); // -> arg
-int utilLastMin(int lst, int arg); // -> arg
-int utilNextMax(int lst, int arg); // -> arg
-int utilLastMax(int lst, int arg); // -> arg
-int utilNextMin(int lst, int arg); // -> arg
-int utilMinPart(int lst); // -> opt
-int utilMaxPart(int lst); // -> opt
-int utilPartMin(int lst, int opt); // -> arg
-int utilPartMax(int lst, int opt); // -> arg
-int utilIsList(int arg); // -> bool
-int utilIsPart(int lst, int opt); // -> bool
-int utilEquiv(int lst, int one, int oth); // -> bool
-int utilPart(int lst, int arg); // -> opt
-union UtilUnion utilHash(int lst, int arg);
 union UtilUnion utilUnionI(int i);
 union UtilUnion utilUnionL(long long l);
 union UtilUnion utilUnionS(const char *s);
 struct UtilStruct utilStructI(int i, int u);
 struct UtilStruct utilStructL(int i, long long u);
 struct UtilStruct utilStructS(int i, const char *u);
+union UtilUnion utilOver(int lst, int arg, int opt, int cnt, int cmp, int idx);
+union UtilUnion utilHash(int lst, int arg, int opt, int cnt, int cmp);
+union UtilUnion utilBind(int lst, int idx);
+union UtilUnion utilSelf(int arg, int idx);
+union UtilUnion utilGlob(int glb);
 void utilFlag(int lst, const char *str);
+void utilRaw(int lst, const char *str);
 void utilEnv(int lst, const char *str);
 void utilPipe(int lst, const char *str);
