@@ -228,20 +228,20 @@ int utilMatch(const char *lst, const char *arg)
 		char str[3]; str[0] = '-'; str[1] = lst[i]; str[2] = 0;
 		if (strcmp(str,arg) == 0) return i;
 	}
-	if (uenc) longjmp(uenv[--uenc],1);
+	utilError("invalid match str\n");
 	return strlen(lst);
 }
 const char *utilGetenv(const char *wrd)
 {
 	const char *str = getenv(wrd);
-	if (str == 0 && uenc) longjmp(uenv[--uenc],1);
+	if (str == 0) utilError("invalid getenv str\n");
 	return str;
 }
 int utilAtoi(const char *str)
 {
 	errno = 0;
 	int val = atoi(str);
-	if (errno && uenc) longjmp(uenv[--uenc],1);
+	if (errno) utilError("invalid atoi str\n");
 	return val;
 }
 struct UtilStruct utilFlagFunc(int lst, int arg)
