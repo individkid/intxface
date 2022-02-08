@@ -419,8 +419,8 @@ void utilEnv(int lst, const char *str)
 	utilLstv(lst,0,utilUnionS(str));
 	utilFunc(lst,utilEnvFunc);
 	*utilGlob(0) = utilUnionI(lst);
-	*utilGlob(1) = utilUnionI(strstr(str,"i")-str);
-	*utilGlob(2) = utilUnionI(strstr(str,"o")-str);
+	*utilGlob(1) = utilUnionI(strstr(str,utilGlob(1)->s)-str);
+	*utilGlob(2) = utilUnionI(strstr(str,utilGlob(2)->s)-str);
 }
 void utilPipe(int lst, const char *str)
 {

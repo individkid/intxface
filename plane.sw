@@ -16,7 +16,7 @@ func cmdWake(_ idx: CInt)
 
 let lstv = ["io","f"]
 let fncv = [utilEnv,utilPipe]
-let glbv = ["iopass","ipart","opart"]
+let glbv = ["","i","o"]
 var argc = 0
 var lstc = 0
 var glbc = 0
