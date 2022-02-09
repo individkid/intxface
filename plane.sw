@@ -6,17 +6,17 @@ func makeLibrary(filepath: String)
 {
 	print(filepath)
 }
-func cmdWake(_ idx: CInt)
+func cmdWake(_ sub: CInt)
 {
-	let cmd = readFile(idx)
+	let cmd = readFile(sub)
 	print("cmdWake \(cmd.num!)")
 }
 
 // MAIN
 
-let lstv = ["iof","io","f"]
-let fncv = [utilRaw,utilEnv,utilPipe]
-let glbv = ["","","i","o"]
+let lstv = ["iof-","iof","io","iof",""]
+let fncv = [utilUsage,utilRaw,utilEnv,utilPipe,utilFile]
+let glbv = ["","","",""]
 var argc = 0
 var lstc = 0
 var glbc = 0
@@ -27,7 +27,7 @@ utilAlloc(Int32(argc),Int32(lstc),Int32(glbc));
 glbc = 0; for glb in glbv {utilGlbv(Int32(glbc),utilUnionS(glb)); glbc = glbc + 1}
 argc = 0; for arg in CommandLine.arguments {utilArgv(Int32(argc),Int32(0),utilUnionS(arg)); argc = argc + 1}
 lstc = 0; for (lst,fnc) in zip(lstv,fncv) {fnc(Int32(lstc),lst); lstc = lstc + 1}
-
 makeLibrary(filepath:"planeG.so")
-let cmdpipe = pipeInit("helo", "ok")
-callInit(cmdWake, cmdpipe)
+let lst = utilGlob(SUB).i;
+let sub = utilHash(lst,MIN,utilStrstr(lst,lst,FCH),1,EQU).i;
+callInit(cmdWake,sub)

@@ -5,6 +5,13 @@
 #include <pthread.h>
 #include <dlfcn.h>
 #include <time.h>
+#include <setjmp.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/errno.h>
+#include <string.h>
 
 long long identifier = 0;
 jmp_buf errbuf = {0};

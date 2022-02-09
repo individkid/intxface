@@ -1,14 +1,24 @@
+#ifndef UTIL_H
+#define UTIL_H
+#include "face.h"
+#include "type.h"
+
 #define MIN 0 // arg
 #define WLD -1 // opt for any
 #define WRD 0 // idx for over
 #define PAT 0 // idx for bind
-#define RAW 0 // glb for lst
-#define ENV 1 // glb for lst
-#define ICH 2 // glb for char
-#define OCH 3 // glb for char
+#define ICH 0 // sub for pat
+#define OCH 1 // sub for pat
+#define FCH 2 // sub for pat
+#define RAW 0 // glb for raw lst
+#define ENV 1 // glb for env lst
+#define SUB 2 // glb for pipe lst
+#define IDX 3 // glb for file lst
 #define NUM 0 // opt for raw
 #define STR 1 // opt for raw
 #define OPT 2 // opt for raw
+#define THD 0 // opt for file
+#define INV 1 // opt for file
 #define LST -1 // cnt for last
 #define INP 1 // cnt for raw num
 #define OUT 2 // cnt for raw num
@@ -46,7 +56,14 @@ union UtilUnion utilHash(int lst, int arg, int opt, int cnt, int cmp);
 union UtilUnion utilBind(int lst, int idx);
 union UtilUnion utilSelf(int arg, int idx);
 union UtilUnion utilGlob(int glb);
+int utilMatch(const char *lst, const char *arg);
+const char *utilGetenv(const char *wrd);
+int utilAtoi(const char *str);
+int utilStrstr(int hay, int ndl, int ndx);
 void utilFlag(int lst, const char *str);
 void utilRaw(int lst, const char *str);
 void utilEnv(int lst, const char *str);
 void utilPipe(int lst, const char *str);
+void utilFile(int lst, const char *str);
+void utilUsage(int lst, const char *str);
+#endif

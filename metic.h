@@ -1,5 +1,3 @@
-#include <math.h>
-
 float dotvec(float *u, float *v, int n);
 float *plusvec(float *u, float *v, int n);
 float *scalevec(float *u, float s, int n);

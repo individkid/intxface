@@ -5,6 +5,8 @@ function showTyperC()
 	result = result.."#include \"face.h\"\n"
 	result = result.."#include \"type.h\"\n"
 	result = result.."#include \"typer.h\"\n"
+	result = result.."#include <stdlib.h>\n"
+	result = result.."#include <string.h>\n"
 	result = result..showCallC().."\n"
 	result = result.."int main(int argc, char **argv)\n".."{\n"..
 	showIndent(1).."if (argc == 4) {\n"..

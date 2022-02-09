@@ -265,6 +265,8 @@ function showTypeC()
 	local result = ""
 	result = result.."#include \"face.h\"\n"
 	result = result.."#include \"type.h\"\n"
+	result = result.."#include <stdlib.h>\n"
+	result = result.."#include <string.h>\n"
 	result = result..showCallC().."\n"
 	result = result..showShareC()
 	return result

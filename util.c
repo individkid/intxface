@@ -1,10 +1,10 @@
 #include "util.h"
-#include "face.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <setjmp.h>
 #include <stdarg.h>
+#include <sys/errno.h>
 
 int uargc = 0; // line
 int ulstc = 0; // pass
@@ -191,6 +191,7 @@ int utilFind(int lst, int arg, int opt, int cnt, int cmp, const char *str)
 		if (i == -1) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	} else {
 		i = arg;
+		if (utilComp(lst,i,opt) != cmp) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	}
 	return i;
 }
@@ -244,6 +245,12 @@ int utilAtoi(const char *str)
 	if (errno) utilError("invalid atoi str\n");
 	return val;
 }
+int utilStrstr(int hay, int ndl, int ndx)
+{
+	const char *str = utilBind(hay,PAT).s;
+	const char pat[] = {utilBind(ndl,PAT).s[ndx],0};
+	return strstr(str,pat)-str;
+}
 struct UtilStruct utilFlagFunc(int lst, int arg)
 {
 	const char *wrd = utilSelf(arg,WRD).s;
@@ -279,15 +286,15 @@ struct UtilStruct utilEnvFunc(int lst, int arg)
 struct UtilStruct utilPipeFunc(int lst, int arg)
 {
 	const char *wrd = utilSelf(arg,WRD).s;
-	const char *pat = utilBind(lst,PAT).s;
+	const char pat[] = {utilBind(lst,PAT).s[FCH],0};
 	int raw = utilGlob(RAW).i;
 	int env = utilGlob(ENV).i;
-	int iprt = strstr(utilBind(env,PAT).s,utilGlob(ICH).s)-utilBind(env,PAT).s;
-	int oprt = strstr(utilBind(env,PAT).s,utilGlob(OCH).s)-utilBind(env,PAT).s;
+	int iprt = utilStrstr(env,lst,ICH);
+	int oprt = utilStrstr(env,lst,OCH);
 	if (setjmp(uenv[uenc++])) return utilStructI(strlen(pat),-1);
 	const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
 	int ident = utilMatch(pat,word);
-	int num = utilHash(lst,arg,ident,-1,0).i;
+	int pnum = utilHash(lst,arg,ident,LST,EQU).i;
 	int inum; if (setjmp(uenv[uenc++])) {inum = utilHash(raw,MIN,NUM,INP,EQU).i;}
 	else {inum = utilHash(env,arg,iprt,LST,EQU).i; uenc--;}
 	const char *istr; if (setjmp(uenv[uenc++])) {istr = utilOver(raw,MIN,NUM,INP,EQU,WRD).s;}
@@ -296,8 +303,19 @@ struct UtilStruct utilPipeFunc(int lst, int arg)
 	else {onum = utilHash(env,arg,oprt,LST,EQU).i; uenc--;}
 	const char *ostr; if (setjmp(uenv[uenc++])) {ostr = utilOver(raw,MIN,NUM,OUT,EQU,WRD).s;}
 	else {ostr = utilOver(env,arg,oprt,LST,EQU,WRD).s; uenc--;}
-	if (num == -1 || inp[num] != inum || out[num] != onum) num = pipeInit(istr,ostr);
-	uenc--; return utilStructI(ident,num);
+	if (pnum == -1 || inp[pnum] != inum || out[pnum] != onum) pnum = pipeInit(istr,ostr);
+	uenc--; return utilStructI(ident,pnum);
+}
+struct UtilStruct utilFileFunc(int lst, int arg)
+{
+	int sub = utilGlob(SUB).i;
+	if (setjmp(uenv[uenc++])) return utilStructI(INV,-1);
+	int pnum = utilHash(sub,arg,NUM,EQU,EQU).i;
+	const char *name = utilOver(sub,arg,NUM,EQU,EQU,WRD).s;
+	int fnum = 0; // TODO choose unique file.idx
+	struct File file; // TODO fill in to open name
+	writeFile(&file,pnum);
+	uenc--; return utilStructI(THD,fnum);
 }
 void utilFlag(int lst, const char *str)
 {
@@ -309,19 +327,31 @@ void utilRaw(int lst, const char *str)
 {
 	utilLstc(lst,1);
 	utilLstv(lst,0,utilUnionS(str));
+	utilGlbv(RAW,utilUnionI(lst));
 	utilFunc(lst,utilRawFunc);
-	utilGlbv(0,utilUnionI(lst));
 }
 void utilEnv(int lst, const char *str)
 {
 	utilLstc(lst,1);
 	utilLstv(lst,0,utilUnionS(str));
+	utilGlbv(ENV,utilUnionI(lst));
 	utilFunc(lst,utilEnvFunc);
-	utilGlbv(1,utilUnionI(lst));
 }
 void utilPipe(int lst, const char *str)
 {
 	utilLstc(lst,1);
 	utilLstv(lst,0,utilUnionS(str));
+	utilGlbv(SUB,utilUnionI(lst));
 	utilFunc(lst,utilPipeFunc);
+}
+void utilFile(int lst, const char *str)
+{
+	utilLstc(lst,0);
+	utilGlbv(IDX,utilUnionI(lst));
+	utilFunc(lst,utilFileFunc);
+}
+void utilUsage(int lst, const char *str)
+{
+	utilLstc(lst,1);
+	utilLstv(lst,0,utilUnionS(str));
 }

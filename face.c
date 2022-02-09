@@ -1,4 +1,10 @@
 #include "face.h"
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <setjmp.h>
 #include <pthread.h>
 #include <fcntl.h>
 #include <sys/types.h>

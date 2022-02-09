@@ -5,6 +5,8 @@ extern "C" {
 #include "type.h"
 #include "portaudio.h"
 }
+#include <setjmp.h>
+#include <unistd.h>
 #include <time.h>
 #include <math.h>
 #include <map>

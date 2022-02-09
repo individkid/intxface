@@ -519,7 +519,7 @@ function convert(given,mains,files,autos)
 		local basee,extee = string.match(dee,fileExpr)
 		if (exter == ".c") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
 		if (exter == ".cpp") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
-		if (exter == ".sw") and (extee == ".h") and mains[der] and files[dee] then depend(retval,baser.."Sw",basee.."C.o") end
+		if (exter == ".sw") and (extee == ".h") and mains[der] and files[basee..".c"] then depend(retval,baser.."Sw",basee.."C.o") end
 		if (exter == ".sw") and (extee == ".so") and mains[der] then depend(retval,baser.."Sw",dee) end
 		if (exter == ".sw") and (extee == ".h") and mains[der] and files[dee] then depend(retval,baser.."Sw.o",dee) end
 		if (exter == ".sw") and (extee == ".sw") and mains[der] then depend(retval,baser.."Sw.o",dee) end

@@ -1,4 +1,5 @@
 #include "metic.h"
+#include <math.h>
 #include <stdlib.h>
 #include <stdarg.h>
 

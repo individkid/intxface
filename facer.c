@@ -1,4 +1,6 @@
 #include "face.h"
+#include <string.h>
+#include <stdio.h>
 
 int errcheck = 0;
 int exccheck = 0;

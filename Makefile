@@ -56,7 +56,7 @@ spacra.log: spacra
 %C.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include
 %Sw.o: %.sw
-	cat $(filter %.sw,$^) | swiftc -o $@ -I . -c -
+	cat $(filter-out $<, $(filter %.sw,$^)) $< | swiftc -o $@ -I . -c -
 %G.o: %.metal
 	xcrun -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
 

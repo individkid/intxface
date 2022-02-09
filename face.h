@@ -1,10 +1,3 @@
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <setjmp.h>
-
 #define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define INVALID 1.0e30

@@ -1,5 +1,10 @@
 #include "face.h"
 #include "type.h"
+#include <setjmp.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/errno.h>
 
 jmp_buf errbuf = {0};
 int mapping[NUMINET][NUMOPEN] = {0}; // to NUMOPEN
