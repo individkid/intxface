@@ -16,6 +16,7 @@ union UtilUnion **ubndv = 0;
 union UtilUnion *uglbv = 0;
 union UtilUnion **uvalv = 0;
 int **uidtv = 0;
+int **ucntv = 0;
 jmp_buf uenv[4] = {0};
 int uenc = 0;
 
@@ -64,10 +65,13 @@ void utilAlloc(int lstc, int argc, int glbc)
 	utilAlloc2(glbc,&uglbv);
 	utilAlloc5(ulstc,lstc,&uvalv);
 	utilAlloc4(ulstc,lstc,&uidtv);
+	utilAlloc4(ulstc,lstc,&ucntv);
 	for (int i = 0; i < lstc; i++) {
 		utilAlloc2(argc,uvalv+i);
 		utilAlloc1(argc,uidtv+i);
+		utilAlloc1(argc,ucntv+i);
 	}
+
 	ulstc = lstc;
 	uargc = argc;
 	uglbc = glbc;
@@ -97,17 +101,23 @@ void utilLstv(int lst, int idx, union UtilUnion val)
 void utilFunc(int lst, UtilFunc func)
 {
 	if (lst < 0 || lst >= ulstc) utilError("invalid func index\n");
+	for (int i = 0; i < uargc; i++) ucntv[lst][i] = -1;
 	for (int i = 0; i < uargc; i++) {
 		struct UtilStruct val = func(lst,i);
 		uidtv[lst][i] = val.i;
 		uvalv[lst][i] = val.u;
+		ucntv[lst][i] = 0;
+		for (int j = 0; j < i; j++) {
+			if (uidtv[lst][i] < uidtv[lst][j]) uidtv[lst][j]++;
+			if (uidtv[lst][i] > uidtv[lst][j]) uidtv[lst][i]++;
+		}
 	}
 }
 void utilGlbv(int glb, union UtilUnion val)
 {
 	uglbv[glb] = val;
 }
-void utilMerge(int size, int *index, UtilComp func)
+void utilMerge(int lst, int size, int *index, UtilComp func)
 {
 	int lsiz = size/2;
 	int rsiz = size/2+size%2;
@@ -118,10 +128,10 @@ void utilMerge(int size, int *index, UtilComp func)
 	right = calloc(rsiz,sizeof(*right));
 	for (int i = 0; i < lsiz; i++) left[i] = index[i];
 	for (int i = 0; i < rsiz; i++) right[i] = index[lsiz+i];
-	utilMerge(lsiz,left,func);
-	utilMerge(rsiz,right,func);
+	utilMerge(lst,lsiz,left,func);
+	utilMerge(lst,rsiz,right,func);
 	for (int i = 0, j = 0, k = 0; i < size/2 || j < size/2+size%2; k++) {
-		if (i < size/2 && func(left[i],right[j]) < 0) {
+		if (i < size/2 && func(lst,left[i],right[j]) < 0) {
 			index[k] = left[i]; i++;
 		} else {
 			index[k] = right[j]; j++;
@@ -130,10 +140,13 @@ void utilMerge(int size, int *index, UtilComp func)
 	free(left);
 	free(right);
 }
-int utilComp(int left, int right)
+int utilComp(int lst, int left, int right)
 {
-	if (left < right) return -1;
-	if (left > right) return 1;
+	if (lst < 0 || lst >= ulstc) utilError("invalid comp index\n");
+	if (left < 0 || left >= uargc) utilError("invalid comp left\n");
+	if (right < 0 || right >= uargc) utilError("invalid comp right\n");
+	if (uidtv[lst][left] < uidtv[lst][right]) return -1;
+	if (uidtv[lst][left] > uidtv[lst][right]) return 1;
 	return 0;
 }
 union UtilUnion utilUnionI(int i)
@@ -177,23 +190,25 @@ void utilCheck12(int lst, int arg, const char *str)
 	utilCheck1(lst,str);
 	utilCheck2(arg,str);
 }
+int utilEqual(int lst, int lft, int rgt, int opt)
+{
+	return (opt == -1 || (rgt != -1 && uidtv[lst][lft] == uidtv[lst][rgt]));
+}
 int utilFind(int lst, int arg, int opt, int cnt, int cmp, const char *str)
 {
 	utilCheck12(lst,arg,str);
 	int i,j,k;
-	int count[uargc];
-	for (i = 0; i != uargc; i++) {count[i] = 0; for (j = 0; j < uargc; j++) if (uidtv[lst][i] < uidtv[lst][j]) count[i]++;}
-	for (i = 0, j = -1; opt != -1 && i != uargc && j == -1; i++) if (uidtv[lst][i] == opt) j = i;
-	for (i = 0, k = -1; j != -1 && i != uargc && k == -1; i++) if (count[i] == count[j] + cmp) k = i;
+	for (i = 0, j = -1; opt != -1 && i != uargc && j == -1; i++) if (ucntv[lst][i] != -1 && uidtv[lst][i] == opt) j = i;
+	for (i = 0, k = -1; j != -1 && i != uargc && k == -1; i++) if (ucntv[lst][i] != -1 && ucntv[lst][i] == ucntv[lst][j] + cmp) k = i;
 	if (cnt > 0) {
-		for (i = arg, j = cnt; i != uargc && j > 0; i++) if (k == -1 || uidtv[lst][i] == uidtv[lst][k]) j--;
+		for (i = arg, j = cnt; i != uargc && j > 0; i++) if (utilEqual(lst,i,k,opt)) j--;
 		if (i == uargc) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	} else if (cnt < 0) {
-		for (i = uargc-1, j = cnt; i != -1 && j < 0; i--) if (k == -1 || uidtv[lst][i] == uidtv[lst][k]) j++;
+		for (i = arg, j = cnt; i != -1 && j < 0; i--) if (utilEqual(lst,i,k,opt)) j++;
 		if (i == -1) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	} else {
 		i = arg;
-		if (!(k == -1 || uidtv[lst][i] == uidtv[lst][k])) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
+		if (!utilEqual(lst,i,k,opt)) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	}
 	return i;
 }
