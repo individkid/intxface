@@ -29,5 +29,5 @@ argc = 0; for arg in CommandLine.arguments {utilArgv(Int32(argc),Int32(0),utilUn
 lstc = 0; for (lst,fnc) in zip(lstv,fncv) {fnc(Int32(lstc),lst); lstc = lstc + 1}
 makeLibrary(filepath:"planeG.so")
 let lst = utilGlob(SUB).i;
-let sub = utilHash(lst,MIN,utilStrstr(lst,lst,FCH),1,EQU).i;
-callInit(cmdWake,sub)
+let opt = utilStrstr(lst,lst,FCH);
+var arg:Int32 = 0; while (utilTest(lst,arg,opt,NXT,EQU) != 0) {callInit(cmdWake,utilHash(lst,arg,opt,NXT,EQU).i); arg = arg + 1}

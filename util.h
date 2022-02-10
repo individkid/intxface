@@ -4,25 +4,26 @@
 #include "type.h"
 
 #define MIN 0 // arg
-#define WLD -1 // opt for any
 #define WRD 0 // idx for over
 #define PAT 0 // idx for bind
 #define ICH 0 // sub for pat
 #define OCH 1 // sub for pat
 #define FCH 2 // sub for pat
-#define RAW 0 // glb for raw lst
-#define ENV 1 // glb for env lst
-#define SUB 2 // glb for pipe lst
-#define IDX 3 // glb for file lst
+#define RAW 0 // glb for raw
+#define ENV 1 // glb for env
+#define SUB 2 // glb for pipe
+#define IDX 3 // glb for file
 #define NUM 0 // opt for raw
 #define STR 1 // opt for raw
 #define OPT 2 // opt for raw
 #define THD 0 // opt for file
 #define INV 1 // opt for file
-#define LST -1 // cnt for last
+#define WLD -1 // opt for any
 #define INP 1 // cnt for raw num
 #define OUT 2 // cnt for raw num
-#define EQU 0 // cmp for opt
+#define LST -1 // cnt or cmp
+#define NXT 1 // cnt or cmp
+#define EQU 0 // cnt or cmp
 union UtilUnion {
 	int i;
 	long long l;
@@ -45,12 +46,14 @@ void utilOptc(int lst, int siz);
 void utilFunc(int lst, UtilFunc fnc);
 void utilGlbv(int glb, union UtilUnion val);
 void utilMerge(int size, int *index, UtilComp func);
+int utilComp(int left, int right);
 union UtilUnion utilUnionI(int i);
 union UtilUnion utilUnionL(long long l);
 union UtilUnion utilUnionS(const char *s);
 struct UtilStruct utilStructI(int i, int u);
 struct UtilStruct utilStructL(int i, long long u);
 struct UtilStruct utilStructS(int i, const char *u);
+int utilTest(int lst, int arg, int opt, int cnt, int cmp);
 union UtilUnion utilOver(int lst, int arg, int opt, int cnt, int cmp, int idx);
 union UtilUnion utilHash(int lst, int arg, int opt, int cnt, int cmp);
 union UtilUnion utilBind(int lst, int idx);

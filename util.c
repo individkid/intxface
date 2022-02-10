@@ -130,6 +130,12 @@ void utilMerge(int size, int *index, UtilComp func)
 	free(left);
 	free(right);
 }
+int utilComp(int left, int right)
+{
+	if (left < right) return -1;
+	if (left > right) return 1;
+	return 0;
+}
 union UtilUnion utilUnionI(int i)
 {
 	union UtilUnion u; u.i = i; return u;
@@ -171,29 +177,31 @@ void utilCheck12(int lst, int arg, const char *str)
 	utilCheck1(lst,str);
 	utilCheck2(arg,str);
 }
-int utilComp(int lst, int arg, int opt)
-{
-	utilCheck12(lst,arg,"comp");
-	int ident = (opt == -1 ? opt : uidtv[lst][arg]);
-	if (ident < opt) return -1;
-	if (ident > opt) return 1;
-	return 0;
-}
 int utilFind(int lst, int arg, int opt, int cnt, int cmp, const char *str)
 {
 	utilCheck12(lst,arg,str);
-	int i,j;
+	int i,j,k;
+	int count[uargc];
+	for (i = 0; i != uargc; i++) {count[i] = 0; for (j = 0; j < uargc; j++) if (uidtv[lst][i] < uidtv[lst][j]) count[i]++;}
+	for (i = 0, j = -1; opt != -1 && i != uargc && j == -1; i++) if (uidtv[lst][i] == opt) j = i;
+	for (i = 0, k = -1; j != -1 && i != uargc && k == -1; i++) if (count[i] == count[j] + cmp) k = i;
 	if (cnt > 0) {
-		for (i = arg, j = cnt; i < uargc && j > 0; i++) if (utilComp(lst,i,opt) == cmp) j--;
+		for (i = arg, j = cnt; i != uargc && j > 0; i++) if (k == -1 || uidtv[lst][i] == uidtv[lst][k]) j--;
 		if (i == uargc) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	} else if (cnt < 0) {
-		for (i = uargc-1, j = cnt; i > -1 && j < 0; i--) if (utilComp(lst,i,opt) == cmp) j++;
+		for (i = uargc-1, j = cnt; i != -1 && j < 0; i--) if (k == -1 || uidtv[lst][i] == uidtv[lst][k]) j++;
 		if (i == -1) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	} else {
 		i = arg;
-		if (utilComp(lst,i,opt) != cmp) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
+		if (!(k == -1 || uidtv[lst][i] == uidtv[lst][k])) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	}
 	return i;
+}
+int utilTest(int lst, int arg, int opt, int cnt, int cmp)
+{
+	if (setjmp(uenv[uenc++])) return 0;
+	utilFind(lst,arg,opt,cnt,cmp,"test");
+	uenc--; return 1;
 }
 union UtilUnion utilOver(int lst, int arg, int opt, int cnt, int cmp, int idx)
 {
