@@ -201,10 +201,10 @@ int utilFind(int lst, int arg, int opt, int cnt, int cmp, const char *str)
 	for (i = 0, j = -1; opt != -1 && i != uargc && j == -1; i++) if (ucntv[lst][i] != -1 && uidtv[lst][i] == opt) j = i;
 	for (i = 0, k = -1; j != -1 && i != uargc && k == -1; i++) if (ucntv[lst][i] != -1 && ucntv[lst][i] == ucntv[lst][j] + cmp) k = i;
 	if (cnt > 0) {
-		for (i = arg, j = cnt; i != uargc && j > 0; i++) if (utilEqual(lst,i,k,opt)) j--;
+		for (i = arg, j = cnt; i != uargc; i++) if (utilEqual(lst,i,k,opt) && --j == 0) break;
 		if (i == uargc) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	} else if (cnt < 0) {
-		for (i = arg, j = cnt; i != -1 && j < 0; i--) if (utilEqual(lst,i,k,opt)) j++;
+		for (i = arg, j = cnt; i != -1; i--) if (utilEqual(lst,i,k,opt) && ++j == 0) break;
 		if (i == -1) utilError("invalid %s %d %d %d %d %d\n",str,lst,arg,opt,cnt,cmp);
 	} else {
 		i = arg;
