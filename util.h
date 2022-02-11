@@ -19,11 +19,12 @@
 #define THD 0 // opt for file
 #define INV 1 // opt for file
 #define WLD -1 // opt for any
-#define INP 1 // cnt for raw num
-#define OUT 2 // cnt for raw num
+#define INP 1 // cnt for raw
+#define OUT 2 // cnt for raw
 #define LST -1 // cnt or cmp
 #define NXT 1 // cnt or cmp
 #define EQU 0 // cnt or cmp
+#define JMP 4 // lim for jmp
 union UtilUnion {
 	int i;
 	long long l;

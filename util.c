@@ -17,8 +17,9 @@ union UtilUnion *uglbv = 0;
 union UtilUnion **uvalv = 0;
 int **uidtv = 0;
 int **ucntv = 0;
-jmp_buf uenv[4] = {0};
+jmp_buf uenv[JMP] = {0};
 int uenc = 0;
+int uholc = 0;
 
 extern int inp[];
 extern int out[];
@@ -71,7 +72,6 @@ void utilAlloc(int lstc, int argc, int glbc)
 		utilAlloc1(argc,uidtv+i);
 		utilAlloc1(argc,ucntv+i);
 	}
-
 	ulstc = lstc;
 	uargc = argc;
 	uglbc = glbc;
@@ -335,10 +335,20 @@ struct UtilStruct utilFileFunc(int lst, int arg)
 	if (setjmp(uenv[uenc++])) return utilStructI(INV,-1);
 	int pnum = utilHash(sub,arg,NUM,EQU,EQU).i;
 	const char *name = utilOver(sub,arg,NUM,EQU,EQU,WRD).s;
-	int fnum = 0; // TODO choose unique file.idx
-	struct File file; // TODO fill in to open name
+	char buf[strlen(name)+1]; strcpy(buf,name);
+	int fnum = uholc++;
+	struct File file; file.act = NewThd; file.idx = fnum; file.num = 1;
+	int siz[1]; (file.siz = siz)[0] = strlen(name);
+	char *ptr[1]; (file.ptr = ptr)[0] = buf;
 	writeFile(&file,pnum);
 	uenc--; return utilStructI(THD,fnum);
+}
+struct UtilStruct utilUsageFunc(int lst, int arg)
+{
+	const char *wrd = utilSelf(arg,WRD).s;
+	const char *pat = utilBind(lst,PAT).s;
+	int ident = utilMatch(pat,wrd);
+	return utilStructI(ident,-1);
 }
 void utilFlag(int lst, const char *str)
 {
@@ -377,4 +387,5 @@ void utilUsage(int lst, const char *str)
 {
 	utilLstc(lst,1);
 	utilLstv(lst,0,utilUnionS(str));
+	utilFunc(lst,utilUsageFunc);
 }
