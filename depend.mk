@@ -9,7 +9,7 @@ filerLua: face.so type.lua
 holeC: faceC.o typeC.o
 holeC.o: face.h type.h
 lineC: faceC.o typeC.o
-lineC.o: face.h type.h
+lineC.o: face.h type.h typer.h
 meticC.o: metic.h
 planeC.o: face.h metic.h plane.h type.h util.h
 planeSw: faceC.o meticC.o planeC.o planeG.so typeC.o utilC.o
@@ -28,8 +28,8 @@ typer.h: type.src typra.src
 typer.hs: type.src typra.src
 typer.lua: type.src typra.src
 typer.sw: type.src typra.src
-typerC: faceC.o typeC.o
-typerC.o: face.h type.h typer.h
+typerC: faceC.o
+typerC.o: face.h typer.h
 typerHs: face.hs faceC.o
 typerLua: face.so
 typerSw: faceC.o

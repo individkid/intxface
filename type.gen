@@ -267,14 +267,12 @@ function showTypeC()
 	result = result.."#include \"type.h\"\n"
 	result = result.."#include <stdlib.h>\n"
 	result = result.."#include <string.h>\n"
-	result = result..showCallC().."\n"
-	result = result..showShareC()
+	result = result..showCallC()
 	return result
 end
 function showTypeH()
 	local result = ""
-	result = result..showCallH().."\n"
-	result = result..showShareC()
+	result = result..showCallH()
 	return result
 end
 function showTypeHs()

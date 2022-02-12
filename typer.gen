@@ -3,7 +3,6 @@ dofile("typra.src")
 function showTyperC()
 	local result = ""
 	result = result.."#include \"face.h\"\n"
-	result = result.."#include \"type.h\"\n"
 	result = result.."#include \"typer.h\"\n"
 	result = result.."#include <stdlib.h>\n"
 	result = result.."#include <string.h>\n"

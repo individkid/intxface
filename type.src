@@ -1637,7 +1637,7 @@ function listHere(name,file)
 		local set = false
 		local clear = false
 		if (string.find(line,"^--HERE "..name)) then set = true
-		elseif(string.find(line,"^--HERE")) then clear = true end
+		elseif (string.find(line,"^--HERE")) then clear = true end
 		if clear then found = false end
 		if found then
 			local match
@@ -1659,21 +1659,25 @@ function showCall(list,map,func)
 	end
 	return result
 end
-function showShareC()
-	local result = ""
-	result = result..showAllocC("Chr","char").."\n"
-	result = result..showAllocC("Int","int").."\n"
-	result = result..showAllocC("New","long long").."\n"
-	result = result..showAllocC("Num","double").."\n"
-	result = result..showAllocC("Old","float").."\n"
-	result = result..showAllocC("Str","char*").."\n"
-	result = result..showAllocC("Ptr","char*")
-	return result
+Types = {"Chr","Int","New","Num","Old","Str","Ptr"}
+Typez = {["Chr"]="char",["Int"]="int",["New"]="long long",["Num"]="double",["Old"]="float",["Str"]="char*",["Ptr"]="char*"}
+function showShowC(name,typ)
+	return ""
+end
+function showHideC(name,typ)
+	return ""
 end
 function showFuncC()
 	local result = ""
-	result = result..showCall(Structs,Structz,showOffsetC).."\n"
+	result = result..showCall(Types,Typez,showShowC).."\n"
+	result = result..showCall(Types,Typez,showHideC).."\n"
+	result = result..showCall(Types,Typez,showAllocC).."\n"
+	result = result..showCall(Enums,Enumz,showShowC).."\n"
+	result = result..showCall(Enums,Enumz,showHideC).."\n"
 	result = result..showCall(Enums,Enumz,showAllocC).."\n"
+	result = result..showCall(Structs,Structz,showShowC).."\n"
+	result = result..showCall(Structs,Structz,showHideC).."\n"
+	result = result..showCall(Structs,Structz,showOffsetC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"
