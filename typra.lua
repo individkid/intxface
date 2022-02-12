@@ -796,7 +796,7 @@ for k,v in ipairs(Stimulus) do
 		chunk = chunk..expand
 	end
 	chunk = chunk..")"
-	print(chunk)
+	--print(chunk)
 	func = assert(load(chunk))
 	actual = func()
 	io.write(v[1].." "..actual.."\n")

@@ -1661,11 +1661,59 @@ function showCall(list,map,func)
 end
 Types = {"Chr","Int","New","Num","Old","Str","Ptr"}
 Typez = {["Chr"]="char",["Int"]="int",["New"]="long long",["Num"]="double",["Old"]="float",["Str"]="char*",["Ptr"]="char*"}
+function showShowCF(name)
+	local result = ""
+	if (name == "Chr") then
+		result = result.."c"
+	elseif (name == "Int") then
+		result = result.."d"
+	elseif (name == "New") then
+		result = result.."lld"
+	elseif (name == "Num") then
+		result = result.."lf"
+	elseif (name == "Old") then
+		result = result.."f"
+	elseif (name == "Str") then
+		result = result.."s"
+	elseif (name == "Ptr") then
+		result = result.."p"
+	end
+	return result
+end
 function showShowC(name,typ)
-	return ""
+	local result = ""
+	if (Enumz[name] ~= nil) then
+	elseif (Structz[name] ~= nil) then
+	else
+		result = result.."void show"..name.."(char **str, "..typ.." val)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."asprintf(str,\""..name.."(%"..showShowCF(name)..")\",val);\n"
+		result = result.."}" end
+	end
+	return result
 end
 function showHideC(name,typ)
-	return ""
+	local result = ""
+	if (Enumz[name] ~= nil) then
+	elseif (Structz[name] ~= nil) then
+	elseif (name == "Str") then
+		result = result.."int hide"..name.."(const char *str, "..typ.." *val)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."int base,limit,len,num;\n"
+		result = result..showIndent(1).."sscanf(str,\" "..name.." ( %n%*s%n )\",&base,&limit);\n"
+		result = result..showIndent(1).."*val = malloc(limit-base+1);\n"
+		result = result..showIndent(1).."num = sscanf(str,\" "..name.." ( %s )%n\",*val,&len);\n"
+		result = result..showIndent(1).."return (num ? len : 0);\n"
+		result = result.."}" end
+	else
+		result = result.."int hide"..name.."(const char *str, "..typ.." *val)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."int len,num;\n"
+		result = result..showIndent(1).."num = sscanf(str,\" "..name.." ( %"..showShowCF(name).." )%n\",val,&len);\n"
+		result = result..showIndent(1).."return (num ? len : 0);\n"
+		result = result.."}" end
+	end
+	return result
 end
 function showFuncC()
 	local result = ""
