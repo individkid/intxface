@@ -1683,6 +1683,15 @@ end
 function showShowC(name,typ)
 	local result = ""
 	if (Enumz[name] ~= nil) then
+		result = result.."void show"..name.."(char **str, enum "..name.." val)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."switch (val) {\n"
+		for i,v in ipairs(typ) do
+			result = result..showIndent(2).."case("..v.."): asprintf(str,\""..name.."("..v..")\"); break;\n"
+		end
+		result = result..showIndent(2).."case("..name.."s): asprintf(str,\""..name.."("..name.."s)\"); break;\n"
+		result = result..showIndent(1).."}\n"
+		result = result.."}" end
 	elseif (Structz[name] ~= nil) then
 	else
 		result = result.."void show"..name.."(char **str, "..typ.." val)"
@@ -1695,6 +1704,19 @@ end
 function showHideC(name,typ)
 	local result = ""
 	if (Enumz[name] ~= nil) then
+		result = result.."int hide"..name.."(const char *str, enum "..name.." *val)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."int len;\n"
+		for i,v in ipairs(typ) do
+			result = result..showIndent(1).."len = -1; "
+			result = result.."sscanf(str,\" "..name.." ( "..v.." )%n\",&len); "
+			result = result.."if (len != -1) {*val = "..v.."; return len;}\n"
+		end
+		result = result..showIndent(1).."len = -1; "
+		result = result.."sscanf(str,\" "..name.." ( "..name.."s )%n\",&len); "
+		result = result.."if (len != -1) {*val = "..name.."s; return len;}\n"
+		result = result..showIndent(1).."return 0;\n"
+		result = result.."}" end
 	elseif (Structz[name] ~= nil) then
 	elseif (name == "Str") then
 		result = result.."int hide"..name.."(const char *str, "..typ.." *val)"
