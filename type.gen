@@ -108,47 +108,47 @@ Ture = {
 File = {
 	{"act","Action",{},{}},
 	{"opc","Opcode",{["act"]={["FncThd"]=true,["CmdThd"]=true}},{}},
-	{"idx","int",{["act"]={["NewThd"]=true,["FncThd"]=true,
+	{"idx","Int",{["act"]={["NewThd"]=true,["FncThd"]=true,
 		["EndThd"]=true,["ThdEnd"]=true,
 		["CfgThd"]=true,["ThdCfg"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"loc","long long",{["act"]={["ThdCfg"]=true,
+	{"loc","New",{["act"]={["ThdCfg"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"pid","long long",{["act"]={["EndThd"]=true,
+	{"pid","New",{["act"]={["EndThd"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"num","int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
+	{"num","Int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
 		["CfgThd"]=true,["ThdCfg"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"siz","int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
+	{"siz","Int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
 		["CmdThd"]=true,
 		["CfgThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},"num"},
-	{"ptr","char*",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
+	{"ptr","Str",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
 		["CmdThd"]=true,
 		["CfgThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},"num"},
 }
 Term0 = {
-	{"cff","double",{},{}},
+	{"cff","Num",{},{}},
 }
 Term1 = {
-	{"cff","double",{},{}},
-	{"vry","int",{},{1}},
+	{"cff","Num",{},{}},
+	{"vry","Int",{},{1}},
 }
 Term2 = {
-	{"cff","double",{},{}},
-	{"vry","int",{},{2}},
+	{"cff","Num",{},{}},
+	{"vry","Int",{},{2}},
 }
 Term3 = {
-	{"cff","double",{},{}},
-	{"vry","int",{},{3}},
+	{"cff","Num",{},{}},
+	{"vry","Int",{},{3}},
 }
 Nomial = {
-	{"num0","int",{},{}},
+	{"num0","Int",{},{}},
 	{"trm0","Term0",{},"num0"},
-	{"num1","int",{},{}},
+	{"num1","Int",{},{}},
 	{"trm1","Term1",{},"num1"},
-	{"num2","int",{},{}},
+	{"num2","Int",{},{}},
 	{"trm2","Term2",{},"num2"},
-	{"num3","int",{},{}},
+	{"num3","Int",{},{}},
 	{"trm3","Term3",{},"num3"},
 }
 Ratio = {
@@ -157,85 +157,85 @@ Ratio = {
 }
 Event = {
 	{"tag","State",{},{}},
-	{"idx","int",{},{}},
-	{"oth","int",{},{}},
-	{"key","double",{},{}},
-	{"val","double",{},{}},
+	{"idx","Int",{},{}},
+	{"oth","Int",{},{}},
+	{"key","Num",{},{}},
+	{"val","Num",{},{}},
     {"upd","Ratio",{["tag"]={["Stock"]=true}},{}},
     {"dly","Ratio",{["tag"]={["Stock"]=true}},{}},
     {"sch","Ratio",{["tag"]={["Stock"]=true}},{}},
 	{"flw","Flow",{["tag"]={["Bind"]=true}},{}},
-	{"siz","int",{["tag"]={["Wave"]=true}},{}},
-	{"buf","double",{["tag"]={["Wave"]=true}},"siz"},
-	{"num","int",{["tag"]={["Timer"]=true}},{}},
-	{"tot","int",{["tag"]={["Timer"]=true}},{}},
-	{"ids","int",{["tag"]={["Timer"]=true}},"num"},
-	{"req","int",{["tag"]={["Timer"]=true}},"num"},
-	{"rsp","double",{["tag"]={["Timer"]=true}},"tot"},
-	{"wrp","double",{["tag"]={["Audio"]=true}},{}},
-	{"gap","int",{["tag"]={["Audio"]=true}},{}},
-	{"cdt","int",{["tag"]={["Audio"]=true}},{}},
-	{"len","int",{["tag"]={["Audio"]=true}},{}},
-	{"enb","int",{["tag"]={["Audio"]=true}},{}},
+	{"siz","Int",{["tag"]={["Wave"]=true}},{}},
+	{"buf","Num",{["tag"]={["Wave"]=true}},"siz"},
+	{"num","Int",{["tag"]={["Timer"]=true}},{}},
+	{"tot","Int",{["tag"]={["Timer"]=true}},{}},
+	{"ids","Int",{["tag"]={["Timer"]=true}},"num"},
+	{"req","Int",{["tag"]={["Timer"]=true}},"num"},
+	{"rsp","Num",{["tag"]={["Timer"]=true}},"tot"},
+	{"wrp","Num",{["tag"]={["Audio"]=true}},{}},
+	{"gap","Int",{["tag"]={["Audio"]=true}},{}},
+	{"cdt","Int",{["tag"]={["Audio"]=true}},{}},
+	{"len","Int",{["tag"]={["Audio"]=true}},{}},
+	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
 Facet = {
-	{"plane","float",{},{3}}, -- 0+12
-	{"pad0","int",{},{1}}, -- 12+4
-	{"versor","int",{},{}}, -- 16+4
-	{"pad1","int",{},{3}}, -- 20+12
-	{"point","int",{},{3}}, -- 32+12
-	{"pad2","int",{},{1}}, -- 44+4
-	{"coord","float",{},{3,2}}, -- 48+24
-	{"pad3","int",{},{2}}, -- 72+8
-	{"color","float",{},{3,4}}, -- 80+48
-	{"poly","int",{},{}}, -- 128+4
-	{"tag","int",{},{}}, -- 132+4
-	{"pad4","int",{},{2}}, -- 136+8
+	{"plane","Old",{},{3}}, -- 0+12
+	{"pad0","Int",{},{1}}, -- 12+4
+	{"versor","Int",{},{}}, -- 16+4
+	{"pad1","Int",{},{3}}, -- 20+12
+	{"point","Int",{},{3}}, -- 32+12
+	{"pad2","Int",{},{1}}, -- 44+4
+	{"coord","Old",{},{3,2}}, -- 48+24
+	{"pad3","Int",{},{2}}, -- 72+8
+	{"color","Old",{},{3,4}}, -- 80+48
+	{"poly","Int",{},{}}, -- 128+4
+	{"tag","Int",{},{}}, -- 132+4
+	{"pad4","Int",{},{2}}, -- 136+8
 }
 Vertex = {
-	{"plane","int",{},{3}},
-	{"pad","int",{},{1}},
+	{"plane","Int",{},{3}},
+	{"pad","Int",{},{1}},
 }
 Index = {
-	{"point","int",{},{}},
-	{"tag","int",{},{}},
+	{"point","Int",{},{}},
+	{"tag","Int",{},{}},
 }
 Array = {
-	{"idx","int",{},{}},
-	{"siz","int",{},{}},
+	{"idx","Int",{},{}},
+	{"siz","Int",{},{}},
 }
 Linear = {
-	{"val","float",{},{9,4}},
+	{"val","Old",{},{9,4}},
 }
 Affine = {
-	{"val","float",{},{4,4}},
+	{"val","Old",{},{4,4}},
 }
 Vector = {
-	{"val","float",{},{4}},
+	{"val","Old",{},{4}},
 }
 Result = {
-	{"plane","int",{},{}},
-	{"point","float",{},{4}},
-	{"normal","float",{},{4}},
+	{"plane","Int",{},{}},
+	{"point","Old",{},{4}},
+	{"normal","Old",{},{4}},
 }
 Mode = {
 	{"matrix","Matrix",{},{}},
 	{"click","Click",{},{}},
 	{"move","Move",{},{}},
 	{"roll","Roll",{},{}},
-	{"hand","int",{},{}},
+	{"hand","Int",{},{}},
 }
 Client = {
 	{"mem","Memory",{},{}},
-	{"lpb","int",{},{}},
-	{"len","int",{},{}},
+	{"lpb","Int",{},{}},
+	{"len","Int",{},{}},
 	{"fnc","Function",{},"len"},
-	{"idx","int",{},{}},
-	{"siz","int",{},{}},
+	{"idx","Int",{},{}},
+	{"siz","Int",{},{}},
 	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
 	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
 	{"frame","Index",{["mem"]={["Frame"]=true}},"siz"},
-	{"base","int",{["mem"]={["Base"]=true}},"siz"},
+	{"base","Int",{["mem"]={["Base"]=true}},"siz"},
 	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
 	{"active","Array",{["mem"]={["Active"]=true}},"siz"},
 	{"basis","Linear",{["mem"]={["Basis"]=true}},"siz"},
@@ -247,7 +247,7 @@ Client = {
 	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
 	{"pierce","Result",{["mem"]={["Pierce"]=true}},"siz"},
 	{"user","Mode",{["mem"]={["User"]=true}},"siz"},
-	{"macro","char",{["mem"]={["Macro"]=true}},"siz"},
+	{"macro","Chr",{["mem"]={["Macro"]=true}},"siz"},
 	{"process","Client",{["mem"]={["Process"]=true}},"siz"},
 }
 Sculpt = {

@@ -376,6 +376,20 @@ function showStructCH(val)
 		decl = "enum "..val[2]
 	elseif (Structz[val[2]]~=nil) then
 		decl = "struct "..val[2]
+	elseif (val[2] == "Chr") then
+		decl = "char"
+	elseif (val[2] == "Int") then
+		decl = "int"
+	elseif (val[2] == "New") then
+		decl = "long long"
+	elseif (val[2] == "Num") then
+		decl = "double"
+	elseif (val[2] == "Old") then
+		decl = "float"
+	elseif (val[2] == "Str") then
+		decl = "char*"
+	elseif (val[2] == "Ptr") then
+		decl = "char*"
 	else
 		decl = val[2]
 	end
@@ -471,17 +485,7 @@ end
 function showStreamCF(name,field,lim)
 	local result = "alloc"
 	local cast = ""
-	if (name == "char") then
-		result = result.."Chr"
-	elseif (name == "int") then
-		result = result.."Int"
-	elseif (name == "long long") then
-		result = result.."New"
-	elseif (name == "double") then
-		result = result.."Num"
-	elseif (name == "float") then
-		result = result.."Old"
-	elseif (name == "char*") then
+	if (name == "Str") then
 		result = result.."Ptr"
 		cast = "(void***)"
 	else
@@ -570,47 +574,27 @@ function showStreamC(name,struct,show,pre,post)
 end
 function showReadCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "char") then
-		result = result.."ptr->"..v[1]..sub.." = readChr(idx);"..ebr.."\n"
-	elseif (v[2] == "int") then
-		result = result.."ptr->"..v[1]..sub.." = readInt(idx);"..ebr.."\n"
-	elseif (v[2] == "long long") then
-		result = result.."ptr->"..v[1]..sub.." = readNew(idx);"..ebr.."\n"
-	elseif (v[2] == "double") then
-		result = result.."ptr->"..v[1]..sub.." = readNum(idx);"..ebr.."\n"
-	elseif (v[2] == "float") then
-		result = result.."ptr->"..v[1]..sub.." = readOld(idx);"..ebr.."\n"
-	elseif (v[2] == "char*") then
-		result = result.."readStr(callStr,&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (Enumz[v[2]]~=nil) then
+	if (Enumz[v[2]]~=nil) then
 		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
 	elseif (Structz[v[2]]~=nil) then
 		result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "Str") then
+		result = result.."readStr(callStr,&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	else
-		result = result..ebr.."; // "..showAny(v).."\n"
+		result = result.."ptr->"..v[1]..sub.." = read"..v[2].."(idx);"..ebr.."\n"
 	end
 	return result
 end
 function showWriteCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "char") then
-		result = result.."writeChr(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "int") then
-		result = result.."writeInt(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "long long") then
-		result = result.."writeNew(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "double") then
-		result = result.."writeNum(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "float") then
-		result = result.."writeOld(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "char*") then
-		result = result.."writeStr(ptr->"..v[1]..sub..",1,idx);"..ebr.."\n"
-	elseif (Enumz[v[2]]~=nil) then
+	if (Enumz[v[2]]~=nil) then
 		result = result.."{int temp = ptr->"..v[1]..sub.."; writeInt(temp,idx);}"..ebr.."\n"
 	elseif (Structz[v[2]]~=nil) then
 		result = result.."write"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "Str") then
+		result = result.."writeStr(ptr->"..v[1]..sub..",1,idx);"..ebr.."\n"
 	else
-		result = result..ebr.."; // "..showAny(v).."\n"
+		result = result.."write"..v[2].."(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	end
 	return result
 end
@@ -698,29 +682,29 @@ randNum = 0.1
 randOld = 0.2
 function showRandCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "char") then
-		result = result.."ptr->"..v[1]..sub.." = "..randChr..";"..ebr.."\n"
-		randChr = randChr + 1;
-	elseif (v[2] == "int") then
-		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
-		randInt = randInt + 1;
-	elseif (v[2] == "long long") then
-		result = result.."ptr->"..v[1]..sub.." = "..randNew..";"..ebr.."\n"
-		randNew = randNew + 1;
-	elseif (v[2] == "double") then
-		result = result.."ptr->"..v[1]..sub.." = "..randNum..";"..ebr.."\n"
-		randNum = randNum + 1.0
-	elseif (v[2] == "float") then
-		result = result.."ptr->"..v[1]..sub.." = "..randOld..";"..ebr.."\n"
-		randNum = randNum + 1.0
-	elseif (v[2] == "char*") then
-		result = result.."{const char *temp = \"hello ok again\"; "
-		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
-	elseif (Enumz[v[2]]~=nil) then
+	if (Enumz[v[2]]~=nil) then
 		result = result.."ptr->"..v[1]..sub.." = "..randInt.."%"..v[2].."s;"..ebr.."\n"
 		randInt = randInt + 1;
 	elseif (Structz[v[2]]~=nil) then
 		result = result.."rand"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
+	elseif (v[2] == "Chr") then
+		result = result.."ptr->"..v[1]..sub.." = "..randChr..";"..ebr.."\n"
+		randChr = randChr + 1;
+	elseif (v[2] == "Int") then
+		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
+		randInt = randInt + 1;
+	elseif (v[2] == "New") then
+		result = result.."ptr->"..v[1]..sub.." = "..randNew..";"..ebr.."\n"
+		randNew = randNew + 1;
+	elseif (v[2] == "Num") then
+		result = result.."ptr->"..v[1]..sub.." = "..randNum..";"..ebr.."\n"
+		randNum = randNum + 1.0
+	elseif (v[2] == "Old") then
+		result = result.."ptr->"..v[1]..sub.." = "..randOld..";"..ebr.."\n"
+		randNum = randNum + 1.0
+	elseif (v[2] == "Str") then
+		result = result.."{const char *temp = \"hello ok again\"; "
+		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end
@@ -728,12 +712,12 @@ function showRandCF(v,ebr,sub)
 end
 function showCompCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "char") or (v[2] == "int") or (v[2] == "long long") or (v[2] == "double") or (v[2] == "float") or (Enumz[v[2]]~=nil) then
-		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return 0;"..ebr.."\n"
-	elseif (v[2] == "char*") then
-		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
-	elseif (Structz[v[2]]~=nil) then
+	if (Structz[v[2]]~=nil) then
 		result = result.."if (!comp"..v[2].."(&ptr->"..v[1]..sub..", &cmp->"..v[1]..sub..")) return 0;"..ebr.."\n"
+	elseif (v[2] == "Chr") or (v[2] == "Int") or (v[2] == "New") or (v[2] == "Num") or (v[2] == "Old") or (Enumz[v[2]]~=nil) then
+		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return 0;"..ebr.."\n"
+	elseif (v[2] == "Str") then
+		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
 	end
@@ -741,14 +725,22 @@ function showCompCF(v,ebr,sub)
 end
 function showSizeCF(v,ebr,sub)
 	local result = ""
-	if (v[2] == "char") or (v[2] == "int") or (v[2] == "long long") or (v[2] == "double") or (v[2] == "float") then
-		result = result.."result = result + sizeof("..v[2]..");"..ebr.."\n"
-	elseif (Enumz[v[2]]~=nil) then
+	if (Enumz[v[2]]~=nil) then
 		result = result.."result = result + sizeof(int);"..ebr.."\n"
-	elseif (v[2] == "char*") then
+	elseif (v[2] == "Str") then
 		result = result.."result = result + strlen(ptr->"..v[1]..sub..") + 1;"..ebr.."\n"
 	elseif (Structz[v[2]]~=nil) then
 		result = result.."result = result + size"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
+	elseif (v[2] == "Chr") then
+		result = result.."result = result + sizeof(char);"..ebr.."\n"
+	elseif (v[2] == "Int") then
+		result = result.."result = result + sizeof(int);"..ebr.."\n"
+	elseif (v[2] == "New") then
+		result = result.."result = result + sizeof(long long);"..ebr.."\n"
+	elseif (v[2] == "Num") then
+		result = result.."result = result + sizeof(double);"..ebr.."\n"
+	elseif (v[2] == "Old") then
+		result = result.."result = result + sizeof(float);"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
 	end
@@ -831,23 +823,23 @@ function showStructHsF(val)
 end
 function showStructHsG(name,pre,post)
 	local result = ""
-	if (name == "char") and language then
+	if (name == "Chr") and language then
 		result = result..pre.."Character"..post
-	elseif (name == "char") then
+	elseif (name == "Chr") then
 		result = result..pre.."Char"..post
-	elseif (name == "int") and language then
+	elseif (name == "Int") and language then
 		result = result..pre.."Int32"..post
-	elseif (name == "int") then
+	elseif (name == "Int") then
 		result = result..pre.."Int"..post
-	elseif (name == "long long") and language then
+	elseif (name == "New") and language then
 		result = result..pre.."Int64"..post
-	elseif (name == "long long") then
+	elseif (name == "New") then
 		result = result..pre.."Integer"..post
-	elseif (name == "double") then
+	elseif (name == "Num") then
 		result = result..pre.."Double"..post
-	elseif (name == "float") then
+	elseif (name == "Old") then
 		result = result..pre.."Float"..post
-	elseif (name == "char*") then
+	elseif (name == "Str") then
 		result = result..pre.."String"..post
 	else
 		result = result..pre..name..post
@@ -1110,12 +1102,7 @@ function showReadHsG(struct,index,depth)
 		result = result.."listHelp "..field[4].." ("
 		count = count + 1
 	end
-	if (field[2] == "char") then result = result.."readChr"
-	elseif (field[2] == "int") then result = result.."readInt"
-	elseif (field[2] == "long long") then result = result.."readNew"
-	elseif (field[2] == "double") then result = result.."readNum"
-	elseif (field[2] == "float") then result = result.."readOld"
-	elseif (field[2] == "char*") then
+	if (field[2] == "Str") then
 		result = result.."fmap fst (readStr"
 		count = count + 1
 	else result = result.."read"..field[2] end
@@ -1269,23 +1256,17 @@ function showWriteHsH(struct,index)
 		anon = true
 		result = result.."\\x -> "
 	end
-	if (field[2] == "char") then result = result.."writeChr"
-	elseif (field[2] == "int") then result = result.."writeInt"
-	elseif (field[2] == "long long") then result = result.."writeNew"
-	elseif (field[2] == "double") then result = result.."writeNum"
-	elseif (field[2] == "float") then result = result.."writeOld"
-	elseif (field[2] == "char*") then result = result.."writeStr"
-	else result = result.."write"..field[2] end
-	if anon and (field[2] == "float") then
+	result = result.."write"..field[2]
+	if anon and (field[2] == "Old") then
 		result = result.." x"
-	elseif anon and (field[2] ~= "float") then
+	elseif anon and (field[2] ~= "Old") then
 		result = result.." x"
-	elseif not anon and (field[2] == "float") then
+	elseif not anon and (field[2] == "Old") then
 		result = result.." a"..index
-	elseif not anon and (field[2] ~= "float") then
+	elseif not anon and (field[2] ~= "Old") then
 		result = result.." a"..index
 	end
-	if (field[2] == "char*") then result = result.." True" end
+	if (field[2] == "Str") then result = result.." True" end
 	result = result.." idx"
 	while (count > 0) do
 		result = result..")"
@@ -1503,14 +1484,8 @@ function showReadLua(name,struct)
 		end
 		result = result..showIndent(count+1).."tab"..show(".","[\"")..field[1]..show("","\"]")
 		if language and super then result = result..sup..".append(" else result = result..sub.." = " end
-		if (field[2] == "char") and language then result = result.."Character(UnicodeScalar(UInt8(readChr(idx))))"
-		elseif (field[2] == "char") then result = result.."readChr(idx)"
-		elseif (field[2] == "int") then result = result.."readInt(idx)"
-		elseif (field[2] == "long long") then result = result.."readNew(idx)"
-		elseif (field[2] == "double") then result = result.."readNum(idx)"
-		elseif (field[2] == "float") then result = result.."readOld(idx)"
-		elseif (field[2] == "char*") and language then result = result.."callReadStr(idx)"
-		elseif (field[2] == "char*") then result = result.."readStr(idx)"
+		if (field[2] == "Chr") and language then result = result.."Character(UnicodeScalar(UInt8(readChr(idx))))"
+		elseif (field[2] == "Str") and language then result = result.."callReadStr(idx)"
 		else result = result.."read"..field[2].."(idx)" end
 		if language and super then result = result..")" end
 		if (cond ~= "True") then nest = 1 end
@@ -1572,13 +1547,8 @@ function showWriteLua(name,struct)
 		end
 		local value = "tab"..show(".","[\"")..field[1]..show("","\"]")..sub
 		result = result..showIndent(count+1)
-		if (field[2] == "char") and language then result = result.."writeChr(Int8("..value..".asciiValue!),idx)"
-		elseif (field[2] == "char") then result = result.."writeChr("..value..",idx)"
-		elseif (field[2] == "int") then result = result.."writeInt("..value..",idx)"
-		elseif (field[2] == "long long") then result = result.."writeNew("..value..",idx)"
-		elseif (field[2] == "double") then result = result.."writeNum("..value..",idx)"
-		elseif (field[2] == "float") then result = result.."writeOld("..value..",idx)"
-		elseif (field[2] == "char*") then result = result.."writeStr("..value..",1,idx)"
+		if (field[2] == "Chr") and language then result = result.."writeChr(Int8("..value..".asciiValue!),idx)"
+		elseif (field[2] == "Str") then result = result.."writeStr("..value..",1,idx)"
 		else result = result.."write"..field[2].."("..value..",idx)" end
 		if (cond ~= "True") then nest = 1 end
 		result = result.."\n"
