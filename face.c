@@ -389,6 +389,7 @@ void readStrHs(hftype fnc, int idx)
 {
 	readStr(readStrHsFnc,fnc,idx);
 }
+
 char readChr(int idx)
 {
 	char arg;
@@ -477,6 +478,123 @@ void writeOld(float arg, int idx)
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	int val = write(out[idx],(char *)&arg,sizeof(float));
 	if (val < (int)sizeof(float)) ERROR(outerr[idx],idx)
+}
+
+void allocChr(char **ptr, int siz)
+{
+    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+    if (siz == 0) return;
+    *ptr = realloc(*ptr,siz*sizeof(char));
+    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
+void allocInt(int **ptr, int siz)
+{
+    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+    if (siz == 0) return;
+    *ptr = realloc(*ptr,siz*sizeof(int));
+    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
+void allocNew(long long **ptr, int siz)
+{
+    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+    if (siz == 0) return;
+    *ptr = realloc(*ptr,siz*sizeof(long long));
+    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
+void allocNum(double **ptr, int siz)
+{
+    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+    if (siz == 0) return;
+    *ptr = realloc(*ptr,siz*sizeof(double));
+    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
+void allocOld(float **ptr, int siz)
+{
+    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+    if (siz == 0) return;
+    *ptr = realloc(*ptr,siz*sizeof(float));
+    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
+void allocStr(char **ptr, const char *str)
+{
+    if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
+    if (str == 0) return;
+    *ptr = realloc(*ptr,strlen(str)+1);
+    strcpy(*ptr,str);
+}
+void callStr(const char* str, int trm, void*arg)
+{
+    char **ptr = arg;
+    allocStr(ptr,str);
+}
+void allocPtr(void ***ptr, int siz)
+{
+    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+    if (siz == 0) return;
+    *ptr = realloc(*ptr,siz*sizeof(void*));
+    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
+void showChr(char **str, char val)
+{
+    asprintf(str,"Chr(%c)",val);
+}
+void showInt(char **str, int val)
+{
+    asprintf(str,"Int(%d)",val);
+}
+void showNew(char **str, long long val)
+{
+    asprintf(str,"New(%lld)",val);
+}
+void showNum(char **str, double val)
+{
+    asprintf(str,"Num(%lf)",val);
+}
+void showOld(char **str, float val)
+{
+    asprintf(str,"Old(%f)",val);
+}
+void showStr(char **str, char* val)
+{
+    asprintf(str,"Str(%s)",val);
+}
+int hideChr(const char *str, char *val)
+{
+    int len,num;
+    num = sscanf(str," Chr ( %c )%n",val,&len);
+    return (num ? len : 0);
+}
+int hideInt(const char *str, int *val)
+{
+    int len,num;
+    num = sscanf(str," Int ( %d )%n",val,&len);
+    return (num ? len : 0);
+}
+int hideNew(const char *str, long long *val)
+{
+    int len,num;
+    num = sscanf(str," New ( %lld )%n",val,&len);
+    return (num ? len : 0);
+}
+int hideNum(const char *str, double *val)
+{
+    int len,num;
+    num = sscanf(str," Num ( %lf )%n",val,&len);
+    return (num ? len : 0);
+}
+int hideOld(const char *str, float *val)
+{
+    int len,num;
+    num = sscanf(str," Old ( %f )%n",val,&len);
+    return (num ? len : 0);
+}
+int hideStr(const char *str, char* *val)
+{
+    int base,limit,len,num;
+    sscanf(str," Str ( %n%*s%n )",&base,&limit);
+    *val = malloc(limit-base+1);
+    num = sscanf(str," Str ( %s )%n",*val,&len);
+    return (num ? len : 0);
 }
 
 void setupLua(char **mem, const char *str, int idx)

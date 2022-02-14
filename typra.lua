@@ -29,11 +29,8 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
-	{"\"Str\""},
-	{"\"Ptr\""},
 	{"\"Enum1\""},
 	{"\"Struct1\",Struct1"},
-	{"\"Int\",\"int\""},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
@@ -78,9 +75,6 @@ Monitor = {
 	"showWriteC",
 	"showRandC",
 	"showCompC",
-	"showAllocC",
-	"showAllocC",
-	"showAllocC",
 	"showAllocC",
 	"showAllocC",
 	"showEnumHs",
@@ -332,25 +326,6 @@ Expected = {
 	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return 0;\n"..
 	"    return 1;\n"..
 	"}",
-	"void allocStr(char **ptr, const char *str)\n"..
-	"{\n"..
-	"    if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"..
-	"    if (str == 0) return;\n"..
-	"    *ptr = realloc(*ptr,strlen(str)+1);\n"..
-	"    strcpy(*ptr,str);\n"..
-	"}\n"..
-	"void callStr(const char* str, int trm, void*arg)\n"..
-	"{\n"..
-	"    char **ptr = arg;\n"..
-	"    allocStr(ptr,str);\n"..
-	"}",
-	"void allocPtr(void ***ptr, int siz)\n"..
-	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
-	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(void*));\n"..
-	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
-	"}",
 	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
 	"{\n"..
 	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
@@ -366,13 +341,6 @@ Expected = {
 	"    struct Struct1 init = {0};\n"..
 	"    for (int i = 0; i < siz; i++)\n"..
 	"        memcpy(&(*ptr)[i],&init,sizeof(init));\n"..
-	"}",
-	"void allocInt(int **ptr, int siz)\n"..
-	"{\n"..
-	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
-	"    if (siz == 0) return;\n"..
-	"    *ptr = realloc(*ptr,siz*sizeof(int));\n"..
-	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
 	"data Enum1 =\n"..
 	"    Value11 |\n"..

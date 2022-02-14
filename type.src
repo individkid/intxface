@@ -505,6 +505,8 @@ function showStreamC(name,struct,show,pre,post)
 	if (show == showRandCF or show == showReadCF) then
 		result = result..showIndent(1).."free"..name.."(ptr);\n"
 	end
+	if (show == showShowCF) then
+	end
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
 		local depth = 1
@@ -569,7 +571,71 @@ function showStreamC(name,struct,show,pre,post)
 	if (show == showSizeCF) then
 		result = result..showIndent(1).."return result;\n"
 	end
+	if (show == showShowCF) then
+	end
 	result = result.."}"
+	return result
+end
+function showOffsetC(name,struct)
+	local result = ""
+	for k,v in ipairs(struct) do
+		local camel = string.upper(string.sub(v[1],1,1))..string.sub(v[1],2)
+		if result ~= "" then result = result.."\n" end
+		result = result.."int offset"..name..camel.."()"
+		if prototype then
+			result = result..";"
+		else
+			result = result.."\n"
+			result = result.."{\n"
+			result = result..showIndent(1).."return (int)(long long)&(((struct "..name.." *)0)->"..v[1]..");\n"
+			result = result.."}"
+		end
+	end
+	return result
+end
+function showFreeCF(v,ebr,sub)
+	local result = ""
+	if (Structz[v[2]]~=nil) then
+		local depth = 1; while (string.sub(ebr,depth,1) == "}") do depth = depth + 1 end
+		result = result.."free"..v[2].."("
+		if (sub ~= "") or (type(v[4]) == "table") then result = result.."&" end
+		result = result.."ptr->"..v[1]..sub..");"
+		if (type(v[4]) == "number") or (type(v[4]) == "string") then
+			result = result.."\n"..showIndent(depth)
+			result = result..showStreamCF(v[2],v[1],"0")
+		end
+		result = result..ebr.."\n"
+	elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
+		result = result..showStreamCF(v[2],v[1],"0")..ebr.."\n"
+	else
+		result = result..ebr.." // "..showAny(v).."\n"
+	end
+	return result
+end
+function showFreeC(name,struct)
+	return showStreamC(name,struct,showFreeCF,"void free","")
+end
+function showAllocC(name,typ)
+	local result = ""
+	if (Enumz[name] ~= nil) then
+		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
+		if prototype then return result..";" else result = result.."\n{\n" end
+		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (siz == 0) return;\n"
+		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
+		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
+		result = result.."}"
+	elseif (Structz[name] ~= nil) then
+		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
+		if prototype then return result..";" else result = result.."\n{\n" end
+		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+		result = result..showIndent(1).."if (siz == 0) return;\n"
+		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
+		result = result..showIndent(1).."struct "..name.." init = {0};\n"
+		result = result..showIndent(1).."for (int i = 0; i < siz; i++)\n"
+		result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));\n"
+		result = result.."}"
+	end
 	return result
 end
 function showReadCF(v,ebr,sub)
@@ -603,77 +669,6 @@ function showReadC(name,struct)
 end
 function showWriteC(name,struct)
 	return showStreamC(name,struct,showWriteCF,"void write",", int idx")
-end
-function showAllocC(name,typ)
-	local result = ""
-	if (name == "Str") then
-		result = result.."void allocStr(char **ptr, const char *str)"
-		if prototype then result = result..";\n" else result = result.."\n{\n"
-		result = result..showIndent(1).."if (*ptr && str == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (str == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,strlen(str)+1);\n"
-		result = result..showIndent(1).."strcpy(*ptr,str);\n"
-		result = result.."}\n" end
-		result = result.."void callStr(const char* str, int trm, void*arg)"
-		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."char **ptr = arg;\n"
-		result = result..showIndent(1).."allocStr(ptr,str);\n"
-		result = result.."}"
-	elseif (name == "Ptr") then
-		result = result.."void allocPtr(void ***ptr, int siz)"
-		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(void*));\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
-		result = result.."}"
-	elseif (Enumz[name] ~= nil) then
-		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
-		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
-		result = result.."}"
-	elseif (Structz[name] ~= nil) then
-		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
-		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
-		result = result..showIndent(1).."struct "..name.." init = {0};\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++)\n"
-		result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));\n"
-		result = result.."}"
-	else
-		result = result.."void alloc"..name.."("..typ.." **ptr, int siz)"
-		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof("..typ.."));\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
-		result = result.."}"
-	end
-	return result
-end
-function showFreeCF(v,ebr,sub)
-	local result = ""
-	if (Structz[v[2]]~=nil) then
-		local depth = 1; while (string.sub(ebr,depth,1) == "}") do depth = depth + 1 end
-		result = result.."free"..v[2].."("
-		if (sub ~= "") or (type(v[4]) == "table") then result = result.."&" end
-		result = result.."ptr->"..v[1]..sub..");"
-		if (type(v[4]) == "number") or (type(v[4]) == "string") then
-			result = result.."\n"..showIndent(depth)
-			result = result..showStreamCF(v[2],v[1],"0")
-		end
-		result = result..ebr.."\n"
-	elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
-		result = result..showStreamCF(v[2],v[1],"0")..ebr.."\n"
-	else
-		result = result..ebr.." // "..showAny(v).."\n"
-	end
-	return result
 end
 randChr = 1
 randInt = 10
@@ -746,9 +741,6 @@ function showSizeCF(v,ebr,sub)
 	end
 	return result
 end
-function showFreeC(name,struct)
-	return showStreamC(name,struct,showFreeCF,"void free","")
-end
 function showRandC(name,struct)
 	return showStreamC(name,struct,showRandCF,"void rand","")
 end
@@ -758,20 +750,64 @@ end
 function showSizeC(name,struct)
 	return showStreamC(name,struct,showSizeCF,"int size","")
 end
-function showOffsetC(name,struct)
+function showShowCG(name)
 	local result = ""
-	for k,v in ipairs(struct) do
-		local camel = string.upper(string.sub(v[1],1,1))..string.sub(v[1],2)
-		if result ~= "" then result = result.."\n" end
-		result = result.."int offset"..name..camel.."()"
-		if prototype then
-			result = result..";"
-		else
-			result = result.."\n"
-			result = result.."{\n"
-			result = result..showIndent(1).."return (int)(long long)&(((struct "..name.." *)0)->"..v[1]..");\n"
-			result = result.."}"
+	if (name == "Chr") then
+		result = result.."c"
+	elseif (name == "Int") then
+		result = result.."d"
+	elseif (name == "New") then
+		result = result.."lld"
+	elseif (name == "Num") then
+		result = result.."lf"
+	elseif (name == "Old") then
+		result = result.."f"
+	elseif (name == "Str") then
+		result = result.."s"
+	elseif (name == "Ptr") then
+		result = result.."p"
+	end
+	return result
+end
+function showShowCF()
+end
+function showHideCF()
+end
+function showShowC(name,typ)
+	local result = ""
+	if (Enumz[name] ~= nil) then
+		result = result.."void show"..name.."(char **str, enum "..name.." val)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."switch (val) {\n"
+		for i,v in ipairs(typ) do
+			result = result..showIndent(2).."case("..v.."): asprintf(str,\""..name.."("..v..")\"); break;\n"
 		end
+		result = result..showIndent(2).."case("..name.."s): asprintf(str,\""..name.."("..name.."s)\"); break;\n"
+		result = result..showIndent(1).."}\n"
+		result = result.."}" end
+	elseif (Structz[name] ~= nil) then
+		--return showStreamC(name,struct,showWriteCF,"void write",", int idx")
+	end
+	return result
+end
+function showHideC(name,typ)
+	local result = ""
+	if (Enumz[name] ~= nil) then
+		result = result.."int hide"..name.."(const char *str, enum "..name.." *val)"
+		if prototype then result = result..";\n" else result = result.."\n{\n"
+		result = result..showIndent(1).."int len;\n"
+		for i,v in ipairs(typ) do
+			result = result..showIndent(1).."len = -1; "
+			result = result.."sscanf(str,\" "..name.." ( "..v.." )%n\",&len); "
+			result = result.."if (len != -1) {*val = "..v.."; return len;}\n"
+		end
+		result = result..showIndent(1).."len = -1; "
+		result = result.."sscanf(str,\" "..name.." ( "..name.."s )%n\",&len); "
+		result = result.."if (len != -1) {*val = "..name.."s; return len;}\n"
+		result = result..showIndent(1).."return 0;\n"
+		result = result.."}" end
+	elseif (Structz[name] ~= nil) then
+		--return showStreamC(name,struct,showReadCF,"void read",", int idx")
 	end
 	return result
 end
@@ -1629,94 +1665,11 @@ function showCall(list,map,func)
 	end
 	return result
 end
-Types = {"Chr","Int","New","Num","Old","Str","Ptr"}
-Typez = {["Chr"]="char",["Int"]="int",["New"]="long long",["Num"]="double",["Old"]="float",["Str"]="char*",["Ptr"]="char*"}
-function showShowCF(name)
-	local result = ""
-	if (name == "Chr") then
-		result = result.."c"
-	elseif (name == "Int") then
-		result = result.."d"
-	elseif (name == "New") then
-		result = result.."lld"
-	elseif (name == "Num") then
-		result = result.."lf"
-	elseif (name == "Old") then
-		result = result.."f"
-	elseif (name == "Str") then
-		result = result.."s"
-	elseif (name == "Ptr") then
-		result = result.."p"
-	end
-	return result
-end
-function showShowC(name,typ)
-	local result = ""
-	if (Enumz[name] ~= nil) then
-		result = result.."void show"..name.."(char **str, enum "..name.." val)"
-		if prototype then result = result..";\n" else result = result.."\n{\n"
-		result = result..showIndent(1).."switch (val) {\n"
-		for i,v in ipairs(typ) do
-			result = result..showIndent(2).."case("..v.."): asprintf(str,\""..name.."("..v..")\"); break;\n"
-		end
-		result = result..showIndent(2).."case("..name.."s): asprintf(str,\""..name.."("..name.."s)\"); break;\n"
-		result = result..showIndent(1).."}\n"
-		result = result.."}" end
-	elseif (Structz[name] ~= nil) then
-	else
-		result = result.."void show"..name.."(char **str, "..typ.." val)"
-		if prototype then result = result..";\n" else result = result.."\n{\n"
-		result = result..showIndent(1).."asprintf(str,\""..name.."(%"..showShowCF(name)..")\",val);\n"
-		result = result.."}" end
-	end
-	return result
-end
-function showHideC(name,typ)
-	local result = ""
-	if (Enumz[name] ~= nil) then
-		result = result.."int hide"..name.."(const char *str, enum "..name.." *val)"
-		if prototype then result = result..";\n" else result = result.."\n{\n"
-		result = result..showIndent(1).."int len;\n"
-		for i,v in ipairs(typ) do
-			result = result..showIndent(1).."len = -1; "
-			result = result.."sscanf(str,\" "..name.." ( "..v.." )%n\",&len); "
-			result = result.."if (len != -1) {*val = "..v.."; return len;}\n"
-		end
-		result = result..showIndent(1).."len = -1; "
-		result = result.."sscanf(str,\" "..name.." ( "..name.."s )%n\",&len); "
-		result = result.."if (len != -1) {*val = "..name.."s; return len;}\n"
-		result = result..showIndent(1).."return 0;\n"
-		result = result.."}" end
-	elseif (Structz[name] ~= nil) then
-	elseif (name == "Str") then
-		result = result.."int hide"..name.."(const char *str, "..typ.." *val)"
-		if prototype then result = result..";\n" else result = result.."\n{\n"
-		result = result..showIndent(1).."int base,limit,len,num;\n"
-		result = result..showIndent(1).."sscanf(str,\" "..name.." ( %n%*s%n )\",&base,&limit);\n"
-		result = result..showIndent(1).."*val = malloc(limit-base+1);\n"
-		result = result..showIndent(1).."num = sscanf(str,\" "..name.." ( %s )%n\",*val,&len);\n"
-		result = result..showIndent(1).."return (num ? len : 0);\n"
-		result = result.."}" end
-	else
-		result = result.."int hide"..name.."(const char *str, "..typ.." *val)"
-		if prototype then result = result..";\n" else result = result.."\n{\n"
-		result = result..showIndent(1).."int len,num;\n"
-		result = result..showIndent(1).."num = sscanf(str,\" "..name.." ( %"..showShowCF(name).." )%n\",val,&len);\n"
-		result = result..showIndent(1).."return (num ? len : 0);\n"
-		result = result.."}" end
-	end
-	return result
-end
 function showFuncC()
 	local result = ""
-	result = result..showCall(Types,Typez,showShowC).."\n"
-	result = result..showCall(Types,Typez,showHideC).."\n"
-	result = result..showCall(Types,Typez,showAllocC).."\n"
+	result = result..showCall(Enums,Enumz,showAllocC).."\n"
 	result = result..showCall(Enums,Enumz,showShowC).."\n"
 	result = result..showCall(Enums,Enumz,showHideC).."\n"
-	result = result..showCall(Enums,Enumz,showAllocC).."\n"
-	result = result..showCall(Structs,Structz,showShowC).."\n"
-	result = result..showCall(Structs,Structz,showHideC).."\n"
 	result = result..showCall(Structs,Structz,showOffsetC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
@@ -1724,7 +1677,9 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showWriteC).."\n"
 	result = result..showCall(Structs,Structz,showRandC).."\n"
 	result = result..showCall(Structs,Structz,showCompC).."\n"
-	result = result..showCall(Structs,Structz,showSizeC)
+	result = result..showCall(Structs,Structz,showSizeC).."\n"
+	result = result..showCall(Structs,Structz,showShowC).."\n"
+	result = result..showCall(Structs,Structz,showHideC)
 	return result
 end
 function showCallH()
