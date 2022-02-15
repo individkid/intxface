@@ -506,6 +506,12 @@ function showStreamC(name,struct,show,pre,post)
 		result = result..showIndent(1).."free"..name.."(ptr);\n"
 	end
 	if (show == showShowCF) then
+		result = result..showIndent(1).."char *tmp = 0;\n"
+		result = result..showIndent(1).."int num, len = 0;\n"
+		result = result..showIndent(1).."*str = 0;\n"
+	end
+	if (show == showHideCF) then
+		result = result..showIndent(1).."int num, len = 0;\n"
 	end
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
@@ -547,7 +553,7 @@ function showStreamC(name,struct,show,pre,post)
 			sub = ""
 		end
 		if lim then
-			if (show == showReadCF) or (show == showRandCF) then
+			if (show == showReadCF) or (show == showRandCF) or (show == showHideCF) then
 				result = result..showIndent(depth)
 				result = result..showStreamCF(v[2],v[1],lim).."\n"
 			end
@@ -571,7 +577,8 @@ function showStreamC(name,struct,show,pre,post)
 	if (show == showSizeCF) then
 		result = result..showIndent(1).."return result;\n"
 	end
-	if (show == showShowCF) then
+	if (show == showHideCF) then
+		result = result..showIndent(1).."return len;\n"
 	end
 	result = result.."}"
 	return result
@@ -769,14 +776,24 @@ function showShowCG(name)
 	end
 	return result
 end
-function showShowCF()
+function showShowCF(v,ebr,sub)
+	local result = ""
+	result = result.."{show"..v[2].."("
+	if (Structz[v[2]]~=nil) then
+		result = result.."&"
+	end
+	result = result.."ptr->"..v[1]..sub..",&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}"..ebr.."\n"
+	return result
 end
-function showHideCF()
+function showHideCF(v,ebr,sub)
+	local result = ""
+	result = result.."if ((num = hide"..v[2].."(&ptr->"..v[1]..sub..",str+len))) len += num; else return 0;"..ebr.."\n"
+	return result
 end
 function showShowC(name,typ)
 	local result = ""
 	if (Enumz[name] ~= nil) then
-		result = result.."void show"..name.."(char **str, enum "..name.." val)"
+		result = result.."void show"..name.."(enum "..name.." val, char **str)"
 		if prototype then result = result..";\n" else result = result.."\n{\n"
 		result = result..showIndent(1).."switch (val) {\n"
 		for i,v in ipairs(typ) do
@@ -786,14 +803,14 @@ function showShowC(name,typ)
 		result = result..showIndent(1).."}\n"
 		result = result.."}" end
 	elseif (Structz[name] ~= nil) then
-		--return showStreamC(name,struct,showWriteCF,"void write",", int idx")
+		return showStreamC(name,typ,showShowCF,"void show",", char **str")
 	end
 	return result
 end
 function showHideC(name,typ)
 	local result = ""
 	if (Enumz[name] ~= nil) then
-		result = result.."int hide"..name.."(const char *str, enum "..name.." *val)"
+		result = result.."int hide"..name.."(enum "..name.." *val, const char *str)"
 		if prototype then result = result..";\n" else result = result.."\n{\n"
 		result = result..showIndent(1).."int len;\n"
 		for i,v in ipairs(typ) do
@@ -807,7 +824,7 @@ function showHideC(name,typ)
 		result = result..showIndent(1).."return 0;\n"
 		result = result.."}" end
 	elseif (Structz[name] ~= nil) then
-		--return showStreamC(name,struct,showReadCF,"void read",", int idx")
+		return showStreamC(name,typ,showHideCF,"int hide",", const char *str")
 	end
 	return result
 end

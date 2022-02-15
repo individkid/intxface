@@ -41,8 +41,8 @@ void exitErr(const char *str, int num, int idx)
 }
 void readNote(eftype exc, int idx)
 {
-       if (idx < 0 || idx >= len) ERROR(exitErr,0)
-       inpexc[idx] = exc;
+	if (idx < 0 || idx >= len) ERROR(exitErr,0)
+	inpexc[idx] = exc;
 }
 void readJump(eftype err, int idx)
 {
@@ -365,6 +365,11 @@ void sleepSec(int sec)
 {
 	sleep(sec);
 }
+void callStr(const char* str, int trm, void*arg)
+{
+    char **ptr = arg;
+    allocStr(ptr,str);
+}
 void readStr(cftype fnc, void *arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
@@ -522,11 +527,6 @@ void allocStr(char **ptr, const char *str)
     *ptr = realloc(*ptr,strlen(str)+1);
     strcpy(*ptr,str);
 }
-void callStr(const char* str, int trm, void*arg)
-{
-    char **ptr = arg;
-    allocStr(ptr,str);
-}
 void allocPtr(void ***ptr, int siz)
 {
     if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
@@ -534,67 +534,70 @@ void allocPtr(void ***ptr, int siz)
     *ptr = realloc(*ptr,siz*sizeof(void*));
     for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
-void showChr(char **str, char val)
+void showChr(char val, char **str)
 {
-    asprintf(str,"Chr(%c)",val);
+	asprintf(str,"Chr(%c)",val);
 }
-void showInt(char **str, int val)
+void showInt(int val, char **str)
 {
-    asprintf(str,"Int(%d)",val);
+	asprintf(str,"Int(%d)",val);
 }
-void showNew(char **str, long long val)
+void showNew(long long val, char **str)
 {
-    asprintf(str,"New(%lld)",val);
+	asprintf(str,"New(%lld)",val);
 }
-void showNum(char **str, double val)
+void showNum(double val, char **str)
 {
-    asprintf(str,"Num(%lf)",val);
+	asprintf(str,"Num(%lf)",val);
 }
-void showOld(char **str, float val)
+void showOld(float val, char **str)
 {
-    asprintf(str,"Old(%f)",val);
+	asprintf(str,"Old(%f)",val);
 }
-void showStr(char **str, char* val)
+void showStr(const char* val, char **str)
 {
-    asprintf(str,"Str(%s)",val);
+	asprintf(str,"Str(%s)",val);
 }
-int hideChr(const char *str, char *val)
+int hideChr(char *val, const char *str)
 {
     int len,num;
     num = sscanf(str," Chr ( %c )%n",val,&len);
     return (num ? len : 0);
 }
-int hideInt(const char *str, int *val)
+int hideInt(int *val, const char *str)
 {
     int len,num;
     num = sscanf(str," Int ( %d )%n",val,&len);
     return (num ? len : 0);
 }
-int hideNew(const char *str, long long *val)
+int hideNew(long long *val, const char *str)
 {
     int len,num;
     num = sscanf(str," New ( %lld )%n",val,&len);
     return (num ? len : 0);
 }
-int hideNum(const char *str, double *val)
+int hideNum(double *val, const char *str)
 {
     int len,num;
     num = sscanf(str," Num ( %lf )%n",val,&len);
     return (num ? len : 0);
 }
-int hideOld(const char *str, float *val)
+int hideOld(float *val, const char *str)
 {
     int len,num;
     num = sscanf(str," Old ( %f )%n",val,&len);
     return (num ? len : 0);
 }
-int hideStr(const char *str, char* *val)
+int hideStr(char* *val, const char *str)
 {
-    int base,limit,len,num;
-    sscanf(str," Str ( %n%*s%n )",&base,&limit);
-    *val = malloc(limit-base+1);
-    num = sscanf(str," Str ( %s )%n",*val,&len);
-    return (num ? len : 0);
+	int base = -1;
+	int lim = -1;
+	int num,limit;
+	num = sscanf(str," Str ( %n",&base);
+	limit = base; while (num == 0 && str[limit] && lim == -1) num = sscanf(str+(++limit)," )%n",&lim);
+	*val = malloc(limit-base+1);
+	strncpy(*val,str+base,limit-base); (*val)[limit-base] = 0;
+	return (num == 0 ? limit+lim : 0);
 }
 
 void setupLua(char **mem, const char *str, int idx)
@@ -635,9 +638,9 @@ void funcLua(int idx)
 int readNoteLua(lua_State *lua)
 {
 	luaerr = lua;
-       setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-       readNote(noteLua,(int)lua_tonumber(lua,2));
-       return 0;
+	setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+	readNote(noteLua,(int)lua_tonumber(lua,2));
+	return 0;
 }
 int readJumpLua(lua_State *lua)
 {
@@ -723,9 +726,9 @@ int pauseAnyLua(lua_State *lua)
 int callInitLua(lua_State *lua)
 {
 	luaerr = lua;
-       setupLua(fnclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-       callInit(funcLua,(int)lua_tonumber(lua,2));
-       return 0;
+	setupLua(fnclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
+	callInit(funcLua,(int)lua_tonumber(lua,2));
+	return 0;
 }
 int pollPipeLua(lua_State *lua)
 {

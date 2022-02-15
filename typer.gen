@@ -32,9 +32,16 @@ function showTyperC()
 	showIndent(1).."allocStruct1(&act,size);\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) readStruct1(act+i,i);\n"..
 	showIndent(1).."int pass = 0;\n"..
-	showIndent(1).."for (int i = 0; i < size; i++) pass += compStruct1(exp+i,act+i);\n"
+	showIndent(1).."for (int i = 0; i < size; i++) {\n"..
+	showIndent(1).."char *str = 0;\n"..
+	showIndent(1).."struct Struct1 tmp = {0};\n"..
+	showIndent(1).."showStruct1(exp+i,&str);\n"..
+	showIndent(1).."hideStruct1(&tmp,str);\n"..
+	showIndent(1).."free(str);\n"..
+	showIndent(1).."pass += compStruct1(&tmp,act+i);\n"..
+	showIndent(1).."freeStruct1(&tmp);}\n"
 	result = result..
-	showIndent(1).."return pass!=size?-1:0;\n"..
+	showIndent(1).."return (pass!=size?-1:0);\n"..
 	"}"
 	return result
 end
