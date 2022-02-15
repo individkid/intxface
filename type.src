@@ -507,11 +507,14 @@ function showStreamC(name,struct,show,pre,post)
 	end
 	if (show == showShowCF) then
 		result = result..showIndent(1).."char *tmp = 0;\n"
-		result = result..showIndent(1).."int num, len = 0;\n"
-		result = result..showIndent(1).."*str = 0;\n"
+		result = result..showIndent(1).."int num, len;\n"
+		result = result..showIndent(1).."asprintf(str,\""..name.."(\");\n"
+		result = result..showIndent(1).."len = strlen(*str);\n"
 	end
 	if (show == showHideCF) then
-		result = result..showIndent(1).."int num, len = 0;\n"
+		result = result..showIndent(1).."int len = 0;\n"
+		result = result..showIndent(1).."int num = -1;\n"
+		result = result..showIndent(1).."if (sscanf(str,\" "..name.." ( %n\",&num) == 0 && num != -1) len += num; else return 0;\n"
 	end
 	local all = structTagSpace(struct)
 	for k,v in ipairs(struct) do
@@ -577,7 +580,13 @@ function showStreamC(name,struct,show,pre,post)
 	if (show == showSizeCF) then
 		result = result..showIndent(1).."return result;\n"
 	end
+	if (show == showShowCF) then
+		result = result..showIndent(1).."*str = realloc(*str,len+2);\n"
+		result = result..showIndent(1).."memcpy(*str+len,\")\",2);\n"
+	end
 	if (show == showHideCF) then
+		result = result..showIndent(1).."num = -1;\n"
+		result = result..showIndent(1).."if (sscanf(str+len,\" ) %n\",&num) == 0 && num != -1) len += num; else return 0;\n"
 		result = result..showIndent(1).."return len;\n"
 	end
 	result = result.."}"
@@ -803,7 +812,8 @@ function showShowC(name,typ)
 		result = result..showIndent(1).."}\n"
 		result = result.."}" end
 	elseif (Structz[name] ~= nil) then
-		return showStreamC(name,typ,showShowCF,"void show",", char **str")
+		result = result..showStreamC(name,typ,showShowCF,"void show",", char **str")
+		return result
 	end
 	return result
 end
