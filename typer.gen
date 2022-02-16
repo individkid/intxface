@@ -35,7 +35,8 @@ function showTyperC()
 	showIndent(1).."for (int i = 0; i < size; i++) {\n"..
 	showIndent(1).."char *str = 0;\n"..
 	showIndent(1).."struct Struct1 tmp = {0};\n"..
-	showIndent(1).."showStruct1(exp+i,&str);\n"..
+	showIndent(1).."int len = 0;\n"..
+	showIndent(1).."showStruct1(exp+i,&str,&len);\n"..
 	showIndent(1).."hideStruct1(&tmp,str);\n"..
 	showIndent(1).."free(str);\n"..
 	showIndent(1).."pass += compStruct1(&tmp,act+i);\n"..

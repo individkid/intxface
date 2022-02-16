@@ -346,47 +346,43 @@ Expected = {
 	"    for (int i = 0; i < siz; i++)\n"..
 	"        memcpy(&(*ptr)[i],&init,sizeof(init));\n"..
 	"}",
-	"void showStruct1(struct Struct1 *ptr, char **str)\n"..
+	"void showStruct1(struct Struct1 *ptr, char **str, int *len)\n"..
 	"{\n"..
-	"    char *tmp = 0;\n"..
-	"    int num, len;\n"..
-	"    asprintf(str,\"Struct1(\");\n"..
-	"    len = strlen(*str);\n"..
+	"    showHelp(\"Struct1(\",str,len);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        {showStruct1(&ptr->next[i],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"        {showHelp(\"next[i]:\",str,len); showStruct1(&ptr->next[i],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showOld(ptr->field1[i1],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"        {showHelp(\"field1[i1]:\",str,len); showOld(ptr->field1[i1],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        {showNum(ptr->field2[i1],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"        {showHelp(\"field2[i1]:\",str,len); showNum(ptr->field2[i1],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            {showInt(ptr->field3[i1][i2],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
-	"    {showStr(ptr->field4,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"            {showHelp(\"field3[i1][i2]:\",str,len); showInt(ptr->field3[i1][i2],str,len);}\n"..
+	"    {showHelp(\"field4:\",str,len); showStr(ptr->field4,str,len);}\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        {showInt(ptr->field5[i],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
-	"    {showEnum1(ptr->field6,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
-	"    {showEnum2(ptr->field7,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"        {showHelp(\"field5[i]:\",str,len); showInt(ptr->field5[i],str,len);}\n"..
+	"    {showHelp(\"field6:\",str,len); showEnum1(ptr->field6,str,len);}\n"..
+	"    {showHelp(\"field7:\",str,len); showEnum2(ptr->field7,str,len);}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showInt(ptr->field8,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}}\n"..
+	"        {showHelp(\"field8:\",str,len); showInt(ptr->field8,str,len);}}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showInt(ptr->field9,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}}\n"..
+	"        {showHelp(\"field9:\",str,len); showInt(ptr->field9,str,len);}}\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        {showInt(ptr->field10,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}}\n"..
+	"        {showHelp(\"field10:\",str,len); showInt(ptr->field10,str,len);}}\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        {showInt(ptr->field11,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}}\n"..
+	"        {showHelp(\"field11:\",str,len); showInt(ptr->field11,str,len);}}\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        {showInt(ptr->field12,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}}\n"..
+	"        {showHelp(\"field12:\",str,len); showInt(ptr->field12,str,len);}}\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        {showInt(ptr->field13,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}}\n"..
-	"    {showInt(ptr->field14,&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"        {showHelp(\"field13:\",str,len); showInt(ptr->field13,str,len);}}\n"..
+	"    {showHelp(\"field14:\",str,len); showInt(ptr->field14,str,len);}\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        {showInt(ptr->field15[i],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"        {showHelp(\"field15[i]:\",str,len); showInt(ptr->field15[i],str,len);}\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        {showStruct2(&ptr->field16[i],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
+	"        {showHelp(\"field16[i]:\",str,len); showStruct2(&ptr->field16[i],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showStruct2(&ptr->field17[i1],&tmp); num = strlen(tmp); *str = realloc(*str,len+num+1); memcpy(*str+len,tmp,num+1); free(tmp); len += num;}\n"..
-	"    *str = realloc(*str,len+2);\n"..
-	"    memcpy(*str+len,\")\",2);\n"..
+	"        {showHelp(\"field17[i1]:\",str,len); showStruct2(&ptr->field17[i1],str,len);}\n"..
+	"    showHelp(\")\",str,len);\n"..
 	"}",
 	"int hideStruct1(struct Struct1 *ptr, const char *str)\n"..
 	"{\n"..
@@ -395,41 +391,41 @@ Expected = {
 	"    if (sscanf(str,\" Struct1 ( %n\",&num) == 0 && num != -1) len += num; else return 0;\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        if ((num = hideStruct1(&ptr->next[i],str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" next[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStruct1(&ptr->next[i],str+len))) len += num; else return 0;}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if ((num = hideOld(&ptr->field1[i1],str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" field1[i1] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideOld(&ptr->field1[i1],str+len))) len += num; else return 0;}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        if ((num = hideNum(&ptr->field2[i1],str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" field2[i1] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideNum(&ptr->field2[i1],str+len))) len += num; else return 0;}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            if ((num = hideInt(&ptr->field3[i1][i2],str+len))) len += num; else return 0;\n"..
-	"    if ((num = hideStr(&ptr->field4,str+len))) len += num; else return 0;\n"..
+	"            {num = -1; if (sscanf(str+len,\" field3[i1][i2] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field3[i1][i2],str+len))) len += num; else return 0;}\n"..
+	"    {num = -1; if (sscanf(str+len,\" field4 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStr(&ptr->field4,str+len))) len += num; else return 0;}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        if ((num = hideInt(&ptr->field5[i],str+len))) len += num; else return 0;\n"..
-	"    if ((num = hideEnum1(&ptr->field6,str+len))) len += num; else return 0;\n"..
-	"    if ((num = hideEnum2(&ptr->field7,str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" field5[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field5[i],str+len))) len += num; else return 0;}\n"..
+	"    {num = -1; if (sscanf(str+len,\" field6 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideEnum1(&ptr->field6,str+len))) len += num; else return 0;}\n"..
+	"    {num = -1; if (sscanf(str+len,\" field7 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideEnum2(&ptr->field7,str+len))) len += num; else return 0;}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if ((num = hideInt(&ptr->field8,str+len))) len += num; else return 0;}\n"..
+	"        {num = -1; if (sscanf(str+len,\" field8 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field8,str+len))) len += num; else return 0;}}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if ((num = hideInt(&ptr->field9,str+len))) len += num; else return 0;}\n"..
+	"        {num = -1; if (sscanf(str+len,\" field9 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field9,str+len))) len += num; else return 0;}}\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        if ((num = hideInt(&ptr->field10,str+len))) len += num; else return 0;}\n"..
+	"        {num = -1; if (sscanf(str+len,\" field10 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field10,str+len))) len += num; else return 0;}}\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        if ((num = hideInt(&ptr->field11,str+len))) len += num; else return 0;}\n"..
+	"        {num = -1; if (sscanf(str+len,\" field11 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field11,str+len))) len += num; else return 0;}}\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        if ((num = hideInt(&ptr->field12,str+len))) len += num; else return 0;}\n"..
+	"        {num = -1; if (sscanf(str+len,\" field12 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field12,str+len))) len += num; else return 0;}}\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        if ((num = hideInt(&ptr->field13,str+len))) len += num; else return 0;}\n"..
-	"    if ((num = hideInt(&ptr->field14,str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" field13 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field13,str+len))) len += num; else return 0;}}\n"..
+	"    {num = -1; if (sscanf(str+len,\" field14 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field14,str+len))) len += num; else return 0;}\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        if ((num = hideInt(&ptr->field15[i],str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" field15[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field15[i],str+len))) len += num; else return 0;}\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        if ((num = hideStruct2(&ptr->field16[i],str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" field16[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStruct2(&ptr->field16[i],str+len))) len += num; else return 0;}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if ((num = hideStruct2(&ptr->field17[i1],str+len))) len += num; else return 0;\n"..
+	"        {num = -1; if (sscanf(str+len,\" field17[i1] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStruct2(&ptr->field17[i1],str+len))) len += num; else return 0;}\n"..
 	"    num = -1;\n"..
 	"    if (sscanf(str+len,\" ) %n\",&num) == 0 && num != -1) len += num; else return 0;\n"..
 	"    return len;\n"..

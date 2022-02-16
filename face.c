@@ -534,29 +534,82 @@ void allocPtr(void ***ptr, int siz)
     *ptr = realloc(*ptr,siz*sizeof(void*));
     for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
-void showChr(char val, char **str)
+void showHelp(const char* val, char **str, int *len)
 {
-	asprintf(str,"Chr(%c)",val);
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"%s",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
 }
-void showInt(int val, char **str)
+void showChr(char val, char **str, int *len)
 {
-	asprintf(str,"Int(%d)",val);
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"Chr(%c)",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
 }
-void showNew(long long val, char **str)
+void showInt(int val, char **str, int *len)
 {
-	asprintf(str,"New(%lld)",val);
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"Int(%d)",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
 }
-void showNum(double val, char **str)
+void showNew(long long val, char **str, int *len)
 {
-	asprintf(str,"Num(%lf)",val);
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"New(%lld)",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
 }
-void showOld(float val, char **str)
+void showNum(double val, char **str, int *len)
 {
-	asprintf(str,"Old(%f)",val);
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"Num(%lf)",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
 }
-void showStr(const char* val, char **str)
+void showOld(float val, char **str, int *len)
 {
-	asprintf(str,"Str(%s)",val);
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"Old(%f)",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
+}
+void showStr(const char* val, char **str, int *len)
+{
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"Str(%s)",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
 }
 int hideChr(char *val, const char *str)
 {
