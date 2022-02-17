@@ -367,8 +367,8 @@ void sleepSec(int sec)
 }
 void callStr(const char* str, int trm, void*arg)
 {
-    char **ptr = arg;
-    allocStr(ptr,str);
+	char **ptr = arg;
+	allocStr(ptr,str);
 }
 void readStr(cftype fnc, void *arg, int idx)
 {
@@ -487,58 +487,102 @@ void writeOld(float arg, int idx)
 
 void allocChr(char **ptr, int siz)
 {
-    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-    if (siz == 0) return;
-    *ptr = realloc(*ptr,siz*sizeof(char));
-    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	*ptr = realloc(*ptr,siz*sizeof(char));
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocInt(int **ptr, int siz)
 {
-    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-    if (siz == 0) return;
-    *ptr = realloc(*ptr,siz*sizeof(int));
-    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	*ptr = realloc(*ptr,siz*sizeof(int));
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocNew(long long **ptr, int siz)
 {
-    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-    if (siz == 0) return;
-    *ptr = realloc(*ptr,siz*sizeof(long long));
-    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	*ptr = realloc(*ptr,siz*sizeof(long long));
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocNum(double **ptr, int siz)
 {
-    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-    if (siz == 0) return;
-    *ptr = realloc(*ptr,siz*sizeof(double));
-    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	*ptr = realloc(*ptr,siz*sizeof(double));
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocOld(float **ptr, int siz)
 {
-    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-    if (siz == 0) return;
-    *ptr = realloc(*ptr,siz*sizeof(float));
-    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	*ptr = realloc(*ptr,siz*sizeof(float));
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocStr(char **ptr, const char *str)
 {
-    if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
-    if (str == 0) return;
-    *ptr = realloc(*ptr,strlen(str)+1);
-    strcpy(*ptr,str);
+	if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
+	if (str == 0) return;
+	*ptr = realloc(*ptr,strlen(str)+1);
+	strcpy(*ptr,str);
 }
 void allocPtr(void ***ptr, int siz)
 {
-    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-    if (siz == 0) return;
-    *ptr = realloc(*ptr,siz*sizeof(void*));
-    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	*ptr = realloc(*ptr,siz*sizeof(void*));
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
-void showHelp(const char* val, char **str, int *len)
+void showEnum(const char *typ, const char* val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"%s",val);
+	asprintf(&tmp,"%s(%s)",typ,val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
+}
+void showStruct(const char* bef, int val, const char *aft, char **str, int *len)
+{
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"%s%d%s",bef,val,aft);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
+}
+void showField(const char* val, char **str, int *len)
+{
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"%s:",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
+}
+void showOpen(const char* val, char **str, int *len)
+{
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,"%s(",val);
+	num = strlen(tmp);
+	*str = realloc(*str,*len+num+1);
+	memcpy(*str+*len,tmp,num+1);
+	free(tmp);
+	*len += num;
+}
+void showClose(char **str, int *len)
+{
+	char *tmp = 0;
+	int num;
+	asprintf(&tmp,")");
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
 	memcpy(*str+*len,tmp,num+1);
@@ -611,46 +655,116 @@ void showStr(const char* val, char **str, int *len)
 	free(tmp);
 	*len += num;
 }
-int hideChr(char *val, const char *str)
+int hideEnum(const char* typ, const char *val, const char *str, int *len)
 {
-    int len,num;
-    num = sscanf(str," Chr ( %c )%n",val,&len);
-    return (num ? len : 0);
+	char *tmp = 0;
+	int num = -1;
+	asprintf(&tmp," %s ( %s ) %%n",typ,val);
+	sscanf(str+*len,tmp,&num);
+	free(tmp);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
 }
-int hideInt(int *val, const char *str)
+int hideStruct(const char* bef, int val, const char *aft, const char *str, int *len)
 {
-    int len,num;
-    num = sscanf(str," Int ( %d )%n",val,&len);
-    return (num ? len : 0);
+	char *tmp = 0;
+	int num = -1;
+	asprintf(&tmp," %s %d %s%%n",bef,val,aft);
+	sscanf(str+*len,tmp,&num);
+	free(tmp);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
 }
-int hideNew(long long *val, const char *str)
+int hideField(const char *val, const char *str, int *len)
 {
-    int len,num;
-    num = sscanf(str," New ( %lld )%n",val,&len);
-    return (num ? len : 0);
+	char *tmp = 0;
+	int num = -1;
+	asprintf(&tmp," %s : %%n",val);
+	sscanf(str+*len,tmp,&num);
+	free(tmp);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
 }
-int hideNum(double *val, const char *str)
+int hideOpen(const char *val, const char *str, int *len)
 {
-    int len,num;
-    num = sscanf(str," Num ( %lf )%n",val,&len);
-    return (num ? len : 0);
+	char *tmp = 0;
+	int num = -1;
+	asprintf(&tmp," %s ( %%n",val);
+	sscanf(str+*len,tmp,&num);
+	free(tmp);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
 }
-int hideOld(float *val, const char *str)
+int hideClose(const char *str, int *len)
 {
-    int len,num;
-    num = sscanf(str," Old ( %f )%n",val,&len);
-    return (num ? len : 0);
+	char *tmp = 0;
+	int num = -1;
+	asprintf(&tmp," ) %%n");
+	sscanf(str+*len,tmp,&num);
+	free(tmp);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
 }
-int hideStr(char* *val, const char *str)
+int hideChr(char *val, const char *str, int *len)
 {
+	int num = -1;
+	sscanf(str+*len," Chr ( %c )%n",val,&num);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
+}
+int hideInt(int *val, const char *str, int *len)
+{
+	int num = -1;
+	sscanf(str+*len," Int ( %d )%n",val,&num);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
+}
+int hideNew(long long *val, const char *str, int *len)
+{
+	int num = -1;
+	sscanf(str+*len," New ( %lld )%n",val,&num);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
+}
+int hideNum(double *val, const char *str, int *len)
+{
+	int num = -1;
+	sscanf(str+*len," Num ( %lf )%n",val,&num);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
+}
+int hideOld(float *val, const char *str, int *len)
+{
+	int num = -1;
+	sscanf(str+*len," Old ( %f )%n",val,&num);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
+}
+int hideStr(char* *val, const char *str, int *len)
+{
+	char *tmp = 0;
 	int base = -1;
-	int lim = -1;
-	int num,limit;
-	num = sscanf(str," Str ( %n",&base);
-	limit = base; while (num == 0 && str[limit] && lim == -1) num = sscanf(str+(++limit)," )%n",&lim);
-	*val = malloc(limit-base+1);
-	strncpy(*val,str+base,limit-base); (*val)[limit-base] = 0;
-	return (num == 0 ? limit+lim : 0);
+	int num = -1;
+	int limit = -1;
+	sscanf(str+*len," Str ( %n",&base);
+	limit = base; while (base != -1 && str[limit] && num == -1) sscanf(str+*len+(++limit)," )%n",&num);
+	if (num == -1) return 0;
+	tmp = malloc(limit-base+1);
+	strncpy(tmp,str+*len+base,limit-base); tmp[limit-base] = 0;
+	allocStr(val,tmp);
+	free(tmp);
+	*len += limit+num;
+	return 1;
 }
 
 void setupLua(char **mem, const char *str, int idx)

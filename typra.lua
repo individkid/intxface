@@ -348,87 +348,84 @@ Expected = {
 	"}",
 	"void showStruct1(struct Struct1 *ptr, char **str, int *len)\n"..
 	"{\n"..
-	"    showHelp(\"Struct1(\",str,len);\n"..
+	"    showOpen(\"Struct1\",str,len);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        {showHelp(\"next[i]:\",str,len); showStruct1(&ptr->next[i],str,len);}\n"..
+	"        {showStruct(\"next[\",i,\"]:\",str,len); showStruct1(&ptr->next[i],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showHelp(\"field1[i1]:\",str,len); showOld(ptr->field1[i1],str,len);}\n"..
+	"        {showStruct(\"field1[\",i1,\"]:\",str,len); showOld(ptr->field1[i1],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        {showHelp(\"field2[i1]:\",str,len); showNum(ptr->field2[i1],str,len);}\n"..
+	"        {showStruct(\"field2[\",i1,\"]:\",str,len); showNum(ptr->field2[i1],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            {showHelp(\"field3[i1][i2]:\",str,len); showInt(ptr->field3[i1][i2],str,len);}\n"..
-	"    {showHelp(\"field4:\",str,len); showStr(ptr->field4,str,len);}\n"..
+	"            {showStruct(\"field3[\",i1,\"]\",str,len); showStruct(\"[\",i2,\"]:\",str,len); showInt(ptr->field3[i1][i2],str,len);}\n"..
+	"    {showField(\"field4\",str,len); showStr(ptr->field4,str,len);}\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        {showHelp(\"field5[i]:\",str,len); showInt(ptr->field5[i],str,len);}\n"..
-	"    {showHelp(\"field6:\",str,len); showEnum1(ptr->field6,str,len);}\n"..
-	"    {showHelp(\"field7:\",str,len); showEnum2(ptr->field7,str,len);}\n"..
+	"        {showStruct(\"field5[\",i,\"]:\",str,len); showInt(ptr->field5[i],str,len);}\n"..
+	"    {showField(\"field6\",str,len); showEnum1(ptr->field6,str,len);}\n"..
+	"    {showField(\"field7\",str,len); showEnum2(ptr->field7,str,len);}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showHelp(\"field8:\",str,len); showInt(ptr->field8,str,len);}}\n"..
+	"        {showField(\"field8\",str,len); showInt(ptr->field8,str,len);}}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showHelp(\"field9:\",str,len); showInt(ptr->field9,str,len);}}\n"..
+	"        {showField(\"field9\",str,len); showInt(ptr->field9,str,len);}}\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        {showHelp(\"field10:\",str,len); showInt(ptr->field10,str,len);}}\n"..
+	"        {showField(\"field10\",str,len); showInt(ptr->field10,str,len);}}\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        {showHelp(\"field11:\",str,len); showInt(ptr->field11,str,len);}}\n"..
+	"        {showField(\"field11\",str,len); showInt(ptr->field11,str,len);}}\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        {showHelp(\"field12:\",str,len); showInt(ptr->field12,str,len);}}\n"..
+	"        {showField(\"field12\",str,len); showInt(ptr->field12,str,len);}}\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        {showHelp(\"field13:\",str,len); showInt(ptr->field13,str,len);}}\n"..
-	"    {showHelp(\"field14:\",str,len); showInt(ptr->field14,str,len);}\n"..
+	"        {showField(\"field13\",str,len); showInt(ptr->field13,str,len);}}\n"..
+	"    {showField(\"field14\",str,len); showInt(ptr->field14,str,len);}\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        {showHelp(\"field15[i]:\",str,len); showInt(ptr->field15[i],str,len);}\n"..
+	"        {showStruct(\"field15[\",i,\"]:\",str,len); showInt(ptr->field15[i],str,len);}\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        {showHelp(\"field16[i]:\",str,len); showStruct2(&ptr->field16[i],str,len);}\n"..
+	"        {showStruct(\"field16[\",i,\"]:\",str,len); showStruct2(&ptr->field16[i],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showHelp(\"field17[i1]:\",str,len); showStruct2(&ptr->field17[i1],str,len);}\n"..
-	"    showHelp(\")\",str,len);\n"..
+	"        {showStruct(\"field17[\",i1,\"]:\",str,len); showStruct2(&ptr->field17[i1],str,len);}\n"..
+	"    showClose(str,len);\n"..
 	"}",
-	"int hideStruct1(struct Struct1 *ptr, const char *str)\n"..
+	"int hideStruct1(struct Struct1 *ptr, const char *str, int *len)\n"..
 	"{\n"..
-	"    int len = 0;\n"..
-	"    int num = -1;\n"..
-	"    if (sscanf(str,\" Struct1 ( %n\",&num) == 0 && num != -1) len += num; else return 0;\n"..
+	"    if (!hideOpen(\"Struct1\",str,len)) return 0;\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        {num = -1; if (sscanf(str+len,\" next[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStruct1(&ptr->next[i],str+len))) len += num; else return 0;}\n"..
+	"        if (!hideStruct(\"next[\",i,\"]:\",str,len) || !hideStruct1(&ptr->next[i],str,len)) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {num = -1; if (sscanf(str+len,\" field1[i1] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideOld(&ptr->field1[i1],str+len))) len += num; else return 0;}\n"..
+	"        if (!hideStruct(\"field1[\",i1,\"]:\",str,len) || !hideOld(&ptr->field1[i1],str,len)) return 0;\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        {num = -1; if (sscanf(str+len,\" field2[i1] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideNum(&ptr->field2[i1],str+len))) len += num; else return 0;}\n"..
+	"        if (!hideStruct(\"field2[\",i1,\"]:\",str,len) || !hideNum(&ptr->field2[i1],str,len)) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            {num = -1; if (sscanf(str+len,\" field3[i1][i2] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field3[i1][i2],str+len))) len += num; else return 0;}\n"..
-	"    {num = -1; if (sscanf(str+len,\" field4 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStr(&ptr->field4,str+len))) len += num; else return 0;}\n"..
+	"            if (!hideStruct(\"field3[\",i1,\"]\",str,len) || !hideStruct(\"[\",i2,\"]:\",str,len) || !hideInt(&ptr->field3[i1][i2],str,len)) return 0;\n"..
+	"    if (!hideField(\"field4\",str,len) || !hideStr(&ptr->field4,str,len)) return 0;\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        {num = -1; if (sscanf(str+len,\" field5[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field5[i],str+len))) len += num; else return 0;}\n"..
-	"    {num = -1; if (sscanf(str+len,\" field6 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideEnum1(&ptr->field6,str+len))) len += num; else return 0;}\n"..
-	"    {num = -1; if (sscanf(str+len,\" field7 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideEnum2(&ptr->field7,str+len))) len += num; else return 0;}\n"..
+	"        if (!hideStruct(\"field5[\",i,\"]:\",str,len) || !hideInt(&ptr->field5[i],str,len)) return 0;\n"..
+	"    if (!hideField(\"field6\",str,len) || !hideEnum1(&ptr->field6,str,len)) return 0;\n"..
+	"    if (!hideField(\"field7\",str,len) || !hideEnum2(&ptr->field7,str,len)) return 0;\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {num = -1; if (sscanf(str+len,\" field8 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field8,str+len))) len += num; else return 0;}}\n"..
+	"        if (!hideField(\"field8\",str,len) || !hideInt(&ptr->field8,str,len)) return 0;}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {num = -1; if (sscanf(str+len,\" field9 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field9,str+len))) len += num; else return 0;}}\n"..
+	"        if (!hideField(\"field9\",str,len) || !hideInt(&ptr->field9,str,len)) return 0;}\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        {num = -1; if (sscanf(str+len,\" field10 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field10,str+len))) len += num; else return 0;}}\n"..
+	"        if (!hideField(\"field10\",str,len) || !hideInt(&ptr->field10,str,len)) return 0;}\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        {num = -1; if (sscanf(str+len,\" field11 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field11,str+len))) len += num; else return 0;}}\n"..
+	"        if (!hideField(\"field11\",str,len) || !hideInt(&ptr->field11,str,len)) return 0;}\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        {num = -1; if (sscanf(str+len,\" field12 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field12,str+len))) len += num; else return 0;}}\n"..
+	"        if (!hideField(\"field12\",str,len) || !hideInt(&ptr->field12,str,len)) return 0;}\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        {num = -1; if (sscanf(str+len,\" field13 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field13,str+len))) len += num; else return 0;}}\n"..
-	"    {num = -1; if (sscanf(str+len,\" field14 : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field14,str+len))) len += num; else return 0;}\n"..
+	"        if (!hideField(\"field13\",str,len) || !hideInt(&ptr->field13,str,len)) return 0;}\n"..
+	"    if (!hideField(\"field14\",str,len) || !hideInt(&ptr->field14,str,len)) return 0;\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        {num = -1; if (sscanf(str+len,\" field15[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideInt(&ptr->field15[i],str+len))) len += num; else return 0;}\n"..
+	"        if (!hideStruct(\"field15[\",i,\"]:\",str,len) || !hideInt(&ptr->field15[i],str,len)) return 0;\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        {num = -1; if (sscanf(str+len,\" field16[i] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStruct2(&ptr->field16[i],str+len))) len += num; else return 0;}\n"..
+	"        if (!hideStruct(\"field16[\",i,\"]:\",str,len) || !hideStruct2(&ptr->field16[i],str,len)) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {num = -1; if (sscanf(str+len,\" field17[i1] : %n\",&num) == 0 && num != -1) len += num; else return 0; if ((num = hideStruct2(&ptr->field17[i1],str+len))) len += num; else return 0;}\n"..
-	"    num = -1;\n"..
-	"    if (sscanf(str+len,\" ) %n\",&num) == 0 && num != -1) len += num; else return 0;\n"..
-	"    return len;\n"..
+	"        if (!hideStruct(\"field17[\",i1,\"]:\",str,len) || !hideStruct2(&ptr->field17[i1],str,len)) return 0;\n"..
+	"    if (!hideClose(str,len)) return 0;\n"..
+	"    return 1;\n"..
 	"}",
 	"data Enum1 =\n"..
 	"    Value11 |\n"..
