@@ -46,6 +46,9 @@ void *func(void *arg)
 	char name[strlen(ptr->str)+3];
 	for (int i = 0; i < 2; i++) name[i] = '.';
 	strcpy(name+2,ptr->str);
+	help[ptr->idx] = openFile(name);
+	fifo[ptr->idx] = openAtom(name+1);
+	give[ptr->idx] = openFile(name+2);
 // find head with read lock on previous head and head
 	// read given and write to anonymous pipe
 	for (long long siz = 0, loc = 0; (siz = lockRead(ptr->idx,loc,0,BUFSIZE)); loc += siz);
@@ -61,7 +64,7 @@ void *func(void *arg)
 // goon to read
 
 // retry from here
-// release lock on tail put keep previous to prevent wrap
+// release lock on tail but keep previous to prevent wrap
 // try for write lock on role and ready bytes in given
 // goto switch to read if try failed
 // goto switch to write if try succeeded
@@ -72,6 +75,7 @@ void *func(void *arg)
 // goon to read
 
 // switch to write from here
+// release lock on previous
 // wait for write lock on tail
 // release write lock from ready byte
 
