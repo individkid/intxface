@@ -22,7 +22,6 @@
 #define BUFSIZE 64
 #define NUMINET 16
 #define NUMPEND 10
-#define CMDSIZE 4
 // INFINITE longer than any given file
 // FILESIZE rough limit to helper file
 // NUMOPEN total number of file descriptors
@@ -30,7 +29,6 @@
 // BUFSIZE amount read from file at a time
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
-// CMDSIZE field buffer array limit
 
 typedef void (*wftype)(int);
 typedef void (*eftype)(const char*,int,int);
@@ -66,15 +64,19 @@ void wrlkwFile(long long arg0, long long arg1, int idx);
 int checkRead(int idx);
 int checkWrite(int idx);
 void sleepSec(int sec);
-void callStr(const char* str, int trm, void*arg);
+void callStr(const char *str, int trm, void *arg);
 void readStr(cftype fnc, void *arg, int idx);
+void preadStr(cftype fnc, void *arg, int idx, long long loc, long long siz);
 void readStrHs(hftype fnc, int idx);
 char readChr(int idx);
 int readInt(int idx);
 long long readNew(int idx);
 double readNum(int idx);
 float readOld(int idx);
+int writeBuf(int idx, const void *arg, size_t siz);
+void flushBuf(int idx);
 void writeStr(const char *arg, int trm, int idx);
+void pwriteStr(const char *arg, int trm, int idx, long long loc, long long siz);
 void writeChr(char arg, int idx);
 void writeInt(int arg, int idx);
 void writeNum(double arg, int idx);
@@ -86,7 +88,6 @@ void allocNew(long long **ptr, int siz);
 void allocNum(double **ptr, int siz);
 void allocOld(float **ptr, int siz);
 void allocStr(char **ptr, const char *str);
-void allocPtr(void ***ptr, int siz);
 void showEnum(const char *typ, const char* val, char **str, int *len);
 void showStruct(const char* bef, int val, const char *aft, char **str, int *len);
 void showField(const char* val, char **str, int *len);

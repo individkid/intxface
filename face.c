@@ -16,8 +16,11 @@
 
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};
-enum {None,Wait,Poll,Seek,Inet} fdt[NUMOPEN] = {0};
+enum {None,Wait,Poll,Seek,Inet,Atom} fdt[NUMOPEN] = {0};
 pid_t pid[NUMOPEN] = {0};
+char *atom[NUMOPEN] = {0};
+int atoms[NUMOPEN] = {0};
+int atomz[NUMOPEN] = {0};
 int len = 0;
 int bufsize = BUFSIZE;
 eftype inpexc[NUMOPEN] = {0};
@@ -107,6 +110,12 @@ int openFifo(const char *str)
 	out[len] = fo;
 	fdt[len] = Poll;
 	return len++;
+}
+int openAtom(const char *str)
+{
+	int idx = openFifo(str);
+	fdt[idx] = Atom;
+	return idx;
 }
 int openFile(const char *str)
 {
@@ -304,6 +313,7 @@ int checkInet(const char *adr, const char *num)
 }
 int rdlkFile(long long arg0, long long arg1, int idx)
 {
+	// TODO add mutex to support multiple idx to same file
 	struct flock lock = {0};
 	lock.l_start = arg0;
 	lock.l_len = arg1;
@@ -365,25 +375,52 @@ void sleepSec(int sec)
 {
 	sleep(sec);
 }
-void callStr(const char* str, int trm, void*arg)
+void callStr(const char *str, int trm, void *arg)
 {
 	char **ptr = arg;
 	allocStr(ptr,str);
 }
 void readStr(cftype fnc, void *arg, int idx)
 {
-	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	char buf[bufsize]; memset(buf,0,bufsize);
-	int trm = 0;
-	for (int i = 0; i < bufsize-1; i++) {
-		int val = read(inp[idx],buf+i,1);
-		if (val < 0) ERROR(inperr[idx],idx);
-		// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
-		if (val == 0 && i == 0) NOTICE(inpexc[idx],idx)
-		if (val == 0) {buf[i] = 0; break;}
-		if (buf[i] == 0) {trm = 1; break;}}
-	buf[bufsize-1] = 0;
+	char *buf = 0;
+	int size = 0; // num valid
+	size_t tmp = 0; // num attempted
+	ssize_t val = 0; // num read
+	int num = 0; // num nonzero
+	int trm = 0; // num zero
+	if (idx < 0 || idx >= len || fdt[idx] == None/* || fdt[idx] != Seek*/) ERROR(exitErr,0)
+	while (/*size < siz && */val == num && val == tmp) {
+		tmp = /*siz-size; if (tmp > bufsize) tmp = */bufsize;
+		buf = realloc(buf,size+tmp+1);
+		val = /*p*/read(inp[idx],buf+size,tmp/*,loc+size*/);
+		if (val < 0) ERROR(outerr[idx],idx)
+		for (num = 0; num != val && buf[size+num]; num++);
+		size += num;
+	}
+	if (val == num) buf[size] = 0; else trm = 1;
 	fnc(buf,trm,arg);
+	free(buf);
+}
+void preadStr(cftype fnc, void *arg, int idx, long long loc, long long siz)
+{
+	char *buf = 0;
+	int size = 0; // num valid
+	size_t tmp = 0; // num attempted
+	ssize_t val = 0; // num read
+	int num = 0; // num nonzero
+	int trm = 0; // num zero
+	if (idx < 0 || idx >= len || fdt[idx] == None || fdt[idx] != Seek) ERROR(exitErr,0)
+	while (size < siz && val == num && val == tmp) {
+		tmp = siz-size; if (tmp > bufsize) tmp = bufsize;
+		buf = realloc(buf,size+tmp+1);
+		val = pread(inp[idx],buf+size,tmp,loc+size);
+		if (val < 0) ERROR(outerr[idx],idx)
+		for (num = 0; num != val && buf[size+num]; num++);
+		size += num;
+	}
+	if (val == num) buf[size] = 0; else trm = 1;
+	fnc(buf,trm,arg);
+	free(buf);
 }
 void readStrHsFnc(const char *buf, int trm, void *arg)
 {
@@ -447,41 +484,82 @@ float readOld(int idx)
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
-void writeStr(const char *arg, int trm, int idx)
+int writeBuf(int idx, const void *arg, size_t siz)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int siz = strlen(arg)+trm;
-	int val = write(out[idx],arg,siz);
-	if (val < siz) ERROR(outerr[idx],idx)
+	if (fdt[idx] == Atom) {
+		while (atoms[idx]+siz > atomz[idx]) atom[idx] = realloc(atom[idx],atomz[idx]*=2);
+		memcpy(atom[idx]+atoms[idx],arg,siz);
+		atoms[idx] += siz;
+		return siz;}
+	return write(out[idx],arg,siz);
+}
+void flushBuf(int idx)
+{
+	if (idx < 0 || idx >= len || fdt[idx] != Atom) ERROR(exitErr,0)
+	if (write(out[idx],atom[idx],atoms[idx]) < 0) ERROR(exitErr,0)
+	atoms[idx] = 0;
+}
+void writeStr(const char *arg, int trm, int idx)
+{
+	int size = 0; // num valid
+	size_t tmp = 0; // num attempted
+	ssize_t val = 0; // num read
+	int num = 0; // num nonzero
+	if (idx < 0 || idx >= len || fdt[idx] == None/* || fdt[idx] != Seek*/) ERROR(exitErr,0)
+	while (/*size < siz && */val == num && val == tmp) {
+		for (num = 0; num != bufsize/* && num != siz-size*/ && arg[size+num]; num++);
+		tmp = /*siz-size; if (tmp > bufsize) tmp = */bufsize;
+		val = writeBuf(idx,arg+size,num); // val = /*p*/write(out[idx],arg+size,num/*,loc+size*/);
+		if (val != num) ERROR(outerr[idx],idx)
+		size += val;
+	}
+	if (/*size < siz && */trm && /*p*/write(out[idx],arg+size,1/*,loc+size*/) != 1) ERROR(outerr[idx],idx)
+}
+void pwriteStr(const char *arg, int trm, int idx, long long loc, long long siz)
+{
+	int size = 0; // num valid
+	size_t tmp = 0; // num attempted
+	ssize_t val = 0; // num read
+	int num = 0; // num nonzero
+	if (idx < 0 || idx >= len || fdt[idx] == None || fdt[idx] != Seek) ERROR(exitErr,0)
+	while (size < siz && val == num && val == tmp) {
+		for (num = 0; num != bufsize && num != siz-size && arg[size+num]; num++);
+		tmp = siz-size; if (tmp > bufsize) tmp = bufsize;
+		val = pwrite(out[idx],arg+size,num,loc+size);
+		if (val != num) ERROR(outerr[idx],idx)
+		size += val;
+	}
+	if (size < siz && trm && pwrite(out[idx],arg+size,1,loc+size) != 1) ERROR(outerr[idx],idx)
 }
 void writeChr(char arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = write(out[idx],(char *)&arg,sizeof(char));
+	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(char));
 	if (val < (int)sizeof(char)) ERROR(outerr[idx],idx)
 }
 void writeInt(int arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = write(out[idx],(char *)&arg,sizeof(int));
+	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(int));
 	if (val < (int)sizeof(int)) ERROR(outerr[idx],idx)
 }
 void writeNum(double arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = write(out[idx],(char *)&arg,sizeof(double));
+	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(double));
 	if (val < (int)sizeof(double)) ERROR(outerr[idx],idx)
 }
 void writeNew(long long arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = write(out[idx],(char *)&arg,sizeof(long long));
+	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(long long));
 	if (val < (int)sizeof(long long)) ERROR(outerr[idx],idx)
 }
 void writeOld(float arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = write(out[idx],(char *)&arg,sizeof(float));
+	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(float));
 	if (val < (int)sizeof(float)) ERROR(outerr[idx],idx)
 }
 
@@ -526,13 +604,6 @@ void allocStr(char **ptr, const char *str)
 	if (str == 0) return;
 	*ptr = realloc(*ptr,strlen(str)+1);
 	strcpy(*ptr,str);
-}
-void allocPtr(void ***ptr, int siz)
-{
-	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-	if (siz == 0) return;
-	*ptr = realloc(*ptr,siz*sizeof(void*));
-	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void showEnum(const char *typ, const char* val, char **str, int *len)
 {

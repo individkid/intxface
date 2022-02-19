@@ -2,22 +2,10 @@ dofile("type.src")
 
 --HERE Enums
 Action = {
-	"NewThd",
-	"FncThd",
-	"TstThd",
-	"CmdThd",
-	"CfgThd",
-	"ThdCmd",
-	"ThdCfg",
-	"EndThd",
-	"ThdEnd",
-	"EndPrc",
-	"PrcEnd",
-}
-Opcode = {
-	"Replace",
-	"Compose",
-	"Apply",
+	"NewThd", -- initialize idx with file name
+	"CmdThd", -- forward to idx through named pipe
+	"ThdCmd", -- forward from idx to process pipe
+	"ThdThd", -- forward to from given through helper file
 }
 State = {
 	"Stock",
@@ -107,24 +95,15 @@ Ture = {
 --HERE Structs
 File = {
 	{"act","Action",{},{}},
-	{"opc","Opcode",{["act"]={["FncThd"]=true,["CmdThd"]=true}},{}},
-	{"idx","Int",{["act"]={["NewThd"]=true,["FncThd"]=true,
-		["EndThd"]=true,["ThdEnd"]=true,
-		["CfgThd"]=true,["ThdCfg"]=true,
+	{"idx","Int",{["act"]={["NewThd"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"loc","New",{["act"]={["ThdCfg"]=true,
+	{"loc","New",{["act"]={["ThdThd"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"pid","New",{["act"]={["EndThd"]=true,
+	{"pid","New",{["act"]={["ThdCmd"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"num","Int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
-		["CfgThd"]=true,["ThdCfg"]=true,
+	{"str","Str",{["act"]={["NewThd"]=true,
 		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"siz","Int",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
-		["CmdThd"]=true,
-		["CfgThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},"num"},
-	{"ptr","Str",{["act"]={["NewThd"]=true,["FncThd"]=true,["TstThd"]=true,
-		["CmdThd"]=true,
-		["CfgThd"]=true,["ThdCmd"]=true,["ThdCfg"]=true}},"num"},
+	{"siz","New",{["act"]={["ThdThd"]=true}},{}},
 }
 Term0 = {
 	{"cff","Num",{},{}},

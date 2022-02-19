@@ -388,8 +388,6 @@ function showStructCH(val)
 		decl = "float"
 	elseif (val[2] == "Str") then
 		decl = "char*"
-	elseif (val[2] == "Ptr") then
-		decl = "char*"
 	else
 		decl = val[2]
 	end
@@ -483,15 +481,8 @@ function showCondC(struct,dset)
 	return cond
 end
 function showStreamCF(name,field,lim)
-	local result = "alloc"
-	local cast = ""
-	if (name == "Str") then
-		result = result.."Ptr"
-		cast = "(void***)"
-	else
-		result = result..name
-	end
-	result = result.."("..cast.."&ptr->"..field..","..lim..");"
+	local result = ""
+	result = result.."alloc"..name.."(&ptr->"..field..","..lim..");"
 	return result
 end
 function showStreamC(name,struct,show,pre,post)
@@ -521,7 +512,7 @@ function showStreamC(name,struct,show,pre,post)
 		local arg = nil
 		local lim = nil
 		local ebr = ""
-		if (show==showFreeCF) and (Structz[v[2]]==nil) and
+		if (show==showFreeCF) and (Structz[v[2]]==nil) and (v[2] ~= "Str") and
 			(type(v[4]) ~= "number") and (type(v[4]) ~= "string") then
 			cond = "1"
 		end
@@ -552,13 +543,13 @@ function showStreamC(name,struct,show,pre,post)
 			sub = ""
 			arg = {}
 			lim = "ptr->"..v[4]
-		elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
+		elseif (type(v[4]) == "number") or (type(v[4]) == "string") or
+			(v[2] == "Str" and show == showFreeCF) then
 			sub = ""
 		end
 		if lim then
 			if (show == showReadCF) or (show == showRandCF) or (show == showHideCF) then
-				result = result..showIndent(depth)
-				result = result..showStreamCF(v[2],v[1],lim).."\n"
+				result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..","..lim..");\n"
 			end
 			result = result..showIndent(depth)
 			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
@@ -616,12 +607,12 @@ function showFreeCF(v,ebr,sub)
 		if (sub ~= "") or (type(v[4]) == "table") then result = result.."&" end
 		result = result.."ptr->"..v[1]..sub..");"
 		if (type(v[4]) == "number") or (type(v[4]) == "string") then
-			result = result.."\n"..showIndent(depth)
-			result = result..showStreamCF(v[2],v[1],"0")
+			result = result.."\n"
+			result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..",0);\n"
 		end
 		result = result..ebr.."\n"
-	elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
-		result = result..showStreamCF(v[2],v[1],"0")..ebr.."\n"
+	elseif (type(v[4]) == "number") or (type(v[4]) == "string" or (v[2] == "Str")) then
+		result = result.."alloc"..v[2].."(&ptr->"..v[1]..",0);"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end
@@ -779,8 +770,6 @@ function showShowCG(name)
 		result = result.."f"
 	elseif (name == "Str") then
 		result = result.."s"
-	elseif (name == "Ptr") then
-		result = result.."p"
 	end
 	return result
 end
