@@ -313,7 +313,6 @@ int checkInet(const char *adr, const char *num)
 }
 int rdlkFile(long long arg0, long long arg1, int idx)
 {
-	// TODO add mutex to support multiple idx to same file
 	struct flock lock = {0};
 	lock.l_start = arg0;
 	lock.l_len = arg1;
