@@ -39,23 +39,23 @@ void fileStr(const char *str, int trm, void *arg)
 	else allocStr(&command->str,str);
 }
 
-long long readGive(long long loc, long long pid, long long fieldsiz, int idx)
+int readGive(long long loc, long long pid, int siz, int idx)
 {
 	struct File command = {0};
-	command.act = ThdCmd;
+	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
 	while (command.str == 0) {
-		rdlkwFile(loc,fieldsiz,give[idx]);
-		preadStr(fileStr,&command,idx,loc,fieldsiz);
-		unlkFile(loc,fieldsiz,give[idx]);
+		rdlkwFile(loc,siz,give[idx]); // TODO avoid locking twice as much as needed
+		preadStr(fileStr,&command,give[idx],loc,siz);
+		unlkFile(loc,siz,give[idx]);
 		if (command.loc == -1) return 0;
-		fieldsiz *= 2;}
+		siz *= 2;}
 	writeFile(&command,anon[idx]);
-	fieldsiz = strlen(command.str);
+	siz = strlen(command.str);
 	freeFile(&command);
-	return fieldsiz;
+	return siz;
 }
 
 void writeGive(long long loc, long long pid, const char *str, int idx)
@@ -64,7 +64,7 @@ void writeGive(long long loc, long long pid, const char *str, int idx)
 	wrlkwFile(loc,fieldsiz,give[idx]);
 	pwriteStr(str,1,idx,loc,strlen(str));
 	unlkFile(loc,fieldsiz,give[idx]);
-	command.act = ThdCmd;
+	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
@@ -111,6 +111,7 @@ void clearHelp(int loc, int idx)
 #define ACT ptr->act
 #define IDX ptr->idx
 #define PID ptr->pid
+#define SLF ptr->slf
 #define STR ptr->str
 #define NXT(LOC,INC) (LOC+INC*fieldsiz)%filesiz
 #define TAIL tail[IDX]
@@ -194,7 +195,7 @@ int main(int argc, char **argv)
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(ptr,sub);
 	switch (ACT) {
-		case (NewThd): {
+		case (NewHub): {
 		// TODO check that idx is unused
 		// TODO duplicate from other idx instead of starting new thread if file already open
 		char name[strlen(STR)+3];
@@ -207,14 +208,16 @@ int main(int argc, char **argv)
 		if (pthread_create(&THRD,0,func,ptr) < 0) ERROR(huberr,-1)
 		allocFile(&ptr,1);
 		break;}
-		case (CmdThd): {
+		case (CfgHub): {
 		if (sub != face) ERROR(huberr,-1)
+		ACT = HubThd;
 		PID = identifier;
 		writeFile(ptr,FIFO);
 		flushBuf(FIFO);}
-		case (ThdCmd): {
+		case (ThdHub): {
 		if (sub != ANON) ERROR(huberr,-1)
-		PID = (PID == identifier);
+		ACT = HubCfg;
+		SLF = (PID == identifier);
 		writeFile(ptr,face);}
 		default: {
 		ERROR(huberr,-1)

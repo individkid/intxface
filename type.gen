@@ -2,10 +2,12 @@ dofile("type.src")
 
 --HERE Enums
 Action = {
-	"NewThd", -- initialize idx with file name
-	"CmdThd", -- forward to idx through named pipe
-	"ThdCmd", -- forward from idx to process pipe
-	"ThdThd", -- forward to from given through helper file
+	"NewHub",
+	"CfgHub",
+	"HubCfg",
+	"ThdHub",
+	"HubThd",
+	"ThdThd",
 }
 State = {
 	"Stock",
@@ -95,14 +97,16 @@ Ture = {
 --HERE Structs
 File = {
 	{"act","Action",{},{}},
-	{"idx","Int",{["act"]={["NewThd"]=true,
-		["CmdThd"]=true,["ThdCmd"]=true}},{}},
+	{"idx","Int",{},{}},
 	{"loc","New",{["act"]={["ThdThd"]=true,
-		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"pid","New",{["act"]={["ThdCmd"]=true,
-		["CmdThd"]=true,["ThdCmd"]=true}},{}},
-	{"str","Str",{["act"]={["NewThd"]=true,
-		["CmdThd"]=true,["ThdCmd"]=true}},{}},
+		["HubThd"]=true,["ThdHub"]=true,
+		["HubCfg"]=true,["CfgHub"]=true}},{}},
+	{"pid","New",{["act"]={["ThdThd"]=true,
+		["HubThd"]=true,["ThdHub"]=true}},{}},
+	{"slf","Int",{["act"]={["HubCfg"]=true}},{}},
+	{"str","Str",{["act"]={["NewHub"]=true,
+		["HubThd"]=true,["ThdHub"]=true,
+		["HubCfg"]=true,["CfgHub"]=true}},{}},
 	{"siz","New",{["act"]={["ThdThd"]=true}},{}},
 }
 Term0 = {
