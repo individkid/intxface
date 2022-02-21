@@ -370,9 +370,12 @@ int checkWrite(int idx)
 	if (idx < 0 || idx >= len || fdt[idx] == None) return 0;
 	return 1;
 }
-void sleepSec(int sec)
+void sleepSec(double sec)
 {
-	sleep(sec);
+	struct timespec delay = {0};
+	delay.tv_sec = (long long)sec;
+	delay.tv_nsec = (sec-(long long)sec)*SEC2NANO;
+	if (pselect(0,0,0,0,&delay,0) < 0 && errno != EINTR) ERROR(exitErr,0)
 }
 void callStr(const char *str, int trm, void *arg)
 {

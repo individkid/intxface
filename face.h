@@ -65,7 +65,7 @@ void rdlkwFile(long long arg0, long long arg1, int idx);
 void wrlkwFile(long long arg0, long long arg1, int idx);
 int checkRead(int idx);
 int checkWrite(int idx);
-void sleepSec(int sec);
+void sleepSec(double sec);
 void callStr(const char *str, int trm, void *arg);
 void readStr(cftype fnc, void *arg, int idx);
 void preadStr(cftype fnc, void *arg, int idx, long long loc, long long siz);

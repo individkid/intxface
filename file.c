@@ -128,13 +128,12 @@ void *func(void *arg)
 	HELP = openFile(name);
 	FIFO = openAtom(name+1);
 	GIVE = openFile(name+2);
-	for (TAIL = filesiz; TAIL == filesiz; sleepSec(backoff), backoff += amount) {
+	for (TAIL = filesiz; TAIL == filesiz || (backoff = 0.0); sleepSec(backoff), backoff += amount) {
 		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
 			if (rdlkFile(loc,fieldsiz,HELP)) {
 				if (TAIL != filesiz) unlkFile(TAIL,fieldsiz,HELP);
 				if (checkHelp(TAIL = loc,IDX) && !checkHelp(NEXT,IDX)) break;}
 			else if (TAIL != filesiz) break;}}
-	backoff = 0.0;
 	// previous is read locked
 	for (int siz = 0, loc = 0;
 		(siz = readGive(loc,0,bufsize,IDX));
