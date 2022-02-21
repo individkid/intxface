@@ -1,6 +1,11 @@
 #include "face.h"
 #include "type.h"
 #include <unistd.h>
+#include <pthread.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/errno.h>
 
 int help[NUMFILE] = {0};
 int anon[NUMFILE] = {0};
@@ -11,15 +16,25 @@ pthread_t thread[NUMFILE] = {0};
 long long identifier = 0;
 int face = 0;
 int fieldsiz = sizeof(struct File);
-int filesiz = FILESIZE - FILESIZE%fieldsiz;
-int halfsiz = (FILESIZE/2) - (FILESIZE/2)%fieldsiz;
+int filesiz = FILESIZE - FILESIZE%sizeof(struct File);
+int halfsiz = (FILESIZE/2) - (FILESIZE/2)%(FILESIZE - FILESIZE%sizeof(struct File));
 int safesiz = 3;
 double amount = BACKOFF;
-int bufsize = BUFSIZE;
+extern int bufsize;
+
+void exiterr(const char *str, int num, int arg)
+{
+	exit(arg);
+}
+
+void huberr(const char *str, int num, int arg)
+{
+	exit(arg);
+}
 
 void fileStr(const char *str, int trm, void *arg)
 {
-	struct File command *ptr = arg;
+	struct File *command = arg;
 	if (!*str && !trm) command->loc = -1;
 	else if (!trm) allocStr(&command->str,0);
 	else allocStr(&command->str,str);
@@ -71,21 +86,26 @@ void writeHelp(long long loc, long long pid, long long siz, int tail, int idx)
 	writeFile(&command,help[idx]);
 }
 
-void readHelp(struct File *command, int tail, int idx)
+void readHelp(struct File *command, int loc, int idx)
 {
-	seekFile(tail,help[idx]);
+	seekFile(loc,help[idx]);
 	readFile(command,help[idx]);
 }
 
 int checkHelp(int loc, int idx)
 {
-	// TODO return 1 if loc is valid ThdThd
-	return 0;
+	struct File command = {0};
+	seekFile(loc,help[idx]);
+	readFile(&command,help[idx]);
+	return (command.pid != 0);
 }
 
 void clearHelp(int loc, int idx)
 {
-	// TODO write lock loc and mark as invalid ThdThd
+	struct File command = {0};
+	command.act = ThdThd;
+	seekFile(loc,help[idx]);
+	writeFile(&command,help[idx]);
 }
 
 #define IDX ptr->idx
@@ -108,33 +128,35 @@ void *func(void *arg)
 	HELP = openFile(name);
 	FIFO = openAtom(name+1);
 	GIVE = openFile(name+2);
-	for (int loc = 0; loc < filesiz; loc += fieldsiz) {
-		TAIL = loc;
-		if (rdlckFile(loc,fieldsiz,HELP)) {
-			if (checkHelp(loc,IDX) && !checkHelp(NXT(loc,1),IDX)) break;
-			else unlckFile(loc,fieldsiz,HELP);}}
+	for (TAIL = filesiz; TAIL == filesiz; sleepSec(backoff), backoff += amount) {
+		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
+			if (rdlkFile(loc,fieldsiz,HELP)) {
+				if (TAIL != filesiz) unlkFile(TAIL,fieldsiz,HELP);
+				if (checkHelp(TAIL = loc,IDX) && !checkHelp(NEXT,IDX)) break;}
+			else if (TAIL != filesiz) break;}}
+	backoff = 0.0;
 	// previous is read locked
 	for (int siz = 0, loc = 0;
 		(siz = readGive(loc,0,bufsize,IDX));
 		loc += siz);
+	goto goRead;
 
 	goRole:
 	// previous and next are read locked
-	unlckFile(NEXT,fieldsiz,HELP);
+	unlkFile(NEXT,fieldsiz,HELP);
 	// previous is read locked 
 	sleepSec(backoff); backoff += amount;
-	if (wrlckFile(filesiz,2,HELP)) {
-		backoff = 0.0; goto toWrite;}
+	if (wrlkFile(filesiz,2,HELP)) goto toWrite;
 
 	goRead:
 	// previous is read locked
-	rdlckwFile(NEXT,fieldsiz,HELP);
+	rdlkwFile(NEXT,fieldsiz,HELP);
 	// previous and next are read locked
 	if (!checkHelp(NEXT,IDX)) goto goRole;
 	else backoff = 0.0;
 	readHelp(&temp,NEXT,IDX);
 	readGive(temp.loc,temp.pid,fieldsiz,IDX);
-	unlckFile(TAIL,fieldsiz,HELP);
+	unlkFile(TAIL,fieldsiz,HELP);
 	// next is locked
 	TAIL = NEXT;
 	// previous is read locked
@@ -142,11 +164,11 @@ void *func(void *arg)
 
 	toWrite:
 	// previous is read locked and filesiz+1 is write locked
-	unlckFile(TAIL,fieldsiz,HELP);
+	unlkFile(TAIL,fieldsiz,HELP);
 	// filesize+1 is write locked
 	TAIL = NEXT;
-	wrlckwFile(TAIL,fieldsiz,HELP);
-	unlckFile(fieldsiz+1,1,HELP);
+	wrlkwFile(TAIL,fieldsiz,HELP);
+	unlkFile(fieldsiz+1,1,HELP);
 	// invalid previous is write locked
 
 	goWrite:
@@ -156,12 +178,12 @@ void *func(void *arg)
 		loc = NXT(loc,1))
 		clearHelp(loc,IDX);
 	readFile(&temp,FIFO);
-	writeGive(temp.loc,temp.pid,temp.str,IDX);	
-	writeHelp(temp.loc,temp.pid,strlen(temp.str,IDX),TAIL);
+	writeGive(temp.loc,temp.pid,temp.str,IDX);
+	writeHelp(temp.loc,temp.pid,strlen(temp.str),TAIL,IDX);
 	// valid previous is write locked
-	wrlckwFile(NEXT,fieldsiz,HELP);
+	wrlkwFile(NEXT,fieldsiz,HELP);
 	// valid previous and invalid next are write locked
-	unlckFile(TAIL,HELP);
+	unlkFile(TAIL,fieldsiz,HELP);
 	// invalid next is write locked
 	TAIL = NEXT;
 	// invalid previous is write locked
@@ -172,7 +194,7 @@ int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
-	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(0,-1);
+	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	struct File *ptr = 0; allocFile(&ptr,1);
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(ptr,sub);
@@ -183,6 +205,8 @@ int main(int argc, char **argv)
 		if (pthread_create(&thread[ptr->idx],0,func,ptr->str) < 0) ERROR(huberr,-1)
 		allocFile(&ptr,1);
 		break;
-	}
+		default:
+		ERROR(huberr,-1)
+	}}
 	return 0;
 }

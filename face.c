@@ -483,7 +483,7 @@ float readOld(int idx)
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
-int writeBuf(int idx, const void *arg, size_t siz)
+int writeBuf(int idx, const void *arg, long long siz)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	if (fdt[idx] == Atom) {
