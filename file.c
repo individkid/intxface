@@ -6,11 +6,16 @@ int help[NUMFILE] = {0};
 int anon[NUMFILE] = {0};
 int fifo[NUMFILE] = {0};
 int give[NUMFILE] = {0};
-off_t head[NUMFILE] = {0};
 off_t tail[NUMFILE] = {0};
 pthread_t thread[NUMFILE] = {0};
 long long identifier = 0;
 int face = 0;
+int fieldsiz = sizeof(struct File);
+int filesiz = FILESIZE - FILESIZE%fieldsiz;
+int halfsiz = (FILESIZE/2) - (FILESIZE/2)%fieldsiz;
+int safesiz = 3;
+double amount = BACKOFF;
+int bufsize = BUFSIZE;
 
 void fileStr(const char *str, int trm, void *arg)
 {
@@ -20,7 +25,7 @@ void fileStr(const char *str, int trm, void *arg)
 	else allocStr(&command->str,str);
 }
 
-long long lockRead(int idx, long long loc, long long pid, long long siz)
+long long readGive(long long loc, long long pid, long long fieldsiz, int idx)
 {
 	struct File command = {0};
 	command.act = ThdCmd;
@@ -28,23 +33,23 @@ long long lockRead(int idx, long long loc, long long pid, long long siz)
 	command.loc = loc;
 	command.pid = pid;
 	while (command.str == 0) {
-		rdlkwFile(loc,siz,give[idx]);
-		preadStr(fileStr,&command,idx,loc,siz);
-		unlkFile(loc,siz,give[idx]);
+		rdlkwFile(loc,fieldsiz,give[idx]);
+		preadStr(fileStr,&command,idx,loc,fieldsiz);
+		unlkFile(loc,fieldsiz,give[idx]);
 		if (command.loc == -1) return 0;
-		siz *= 2;}
+		fieldsiz *= 2;}
 	writeFile(&command,anon[idx]);
-	siz = strlen(command.str);
+	fieldsiz = strlen(command.str);
 	freeFile(&command);
-	return siz;
+	return fieldsiz;
 }
 
-void lockWrite(int idx, long long loc, long long pid, const char *str)
+void writeGive(long long loc, long long pid, const char *str, int idx)
 {
 	struct File command = {0};
-	wrlkwFile(loc,siz,give[idx]);
+	wrlkwFile(loc,fieldsiz,give[idx]);
 	pwriteStr(str,1,idx,loc,strlen(str));
-	unlkFile(loc,siz,give[idx]);
+	unlkFile(loc,fieldsiz,give[idx]);
 	command.act = ThdCmd;
 	command.idx = idx;
 	command.loc = loc;
@@ -54,104 +59,112 @@ void lockWrite(int idx, long long loc, long long pid, const char *str)
 	freeFile(&command);
 }
 
+void writeHelp(long long loc, long long pid, long long siz, int tail, int idx)
+{
+	struct File command = {0};
+	command.act = ThdThd;
+	command.idx = idx;
+	command.loc = loc;
+	command.pid = pid;
+	command.siz = siz;
+	seekFile(tail,help[idx]);
+	writeFile(&command,help[idx]);
+}
+
+void readHelp(struct File *command, int tail, int idx)
+{
+	seekFile(tail,help[idx]);
+	readFile(command,help[idx]);
+}
+
+int checkHelp(int loc, int idx)
+{
+	// TODO return 1 if loc is valid ThdThd
+	return 0;
+}
+
+void clearHelp(int loc, int idx)
+{
+	// TODO write lock loc and mark as invalid ThdThd
+}
+
+#define IDX ptr->idx
+#define NXT(LOC,INC) (LOC+INC*fieldsiz)%filesiz
+#define TAIL tail[IDX]
+#define NEXT NXT(TAIL,1)
+#define HELP help[IDX]
+#define FIFO fifo[IDX]
+#define GIVE give[IDX]
+
 void *func(void *arg)
 {
 	struct File *ptr = arg;
-	int siz = sizeof(struct File);
-	int filesiz = FILESIZE - FILESIZE%siz;
-	int next = 0;
 	struct File temp = {0};
-	int save = 0;
-	// open files
+	double backoff = 0.0;
 	char name[strlen(ptr->str)+3];
+	// open files
 	for (int i = 0; i < 2; i++) name[i] = '.';
 	strcpy(name+2,ptr->str);
-	help[ptr->idx] = openFile(name);
-	fifo[ptr->idx] = openAtom(name+1);
-	give[ptr->idx] = openFile(name+2);
-	// find head with read lock on previous head and head
-	head[ptr->idx] = filesiz;
-	for (int loc = 0, hlf = halfsiz; head[ptr->idx] == filesiz; loc=(loc+siz)%filesiz, hlf=(hlf+siz)%filesiz) {
-		if (rdlckFile(loc,siz,help[ptr->idx]) && !validHelp(loc,ptr->idx)) head[ptr->idx] = loc;
-		else unlkFile(loc,siz,help[ptr->idx]);
-		if (rdlckFile(hlf,siz,help[ptr->idx]) && !validHelp(hlf,ptr->idx)) head[ptr->idx] = hlf;
-		else unlkFile(hlf,siz,help[ptr->idx]);}
-	for (int ofs = 0; ofs < filesiz; ofs += siz) {
-		next = (head[ptr->idx]+siz)%filesiz;
-		if (validHelp(next,ptr->idx)) break;
-		if (!rdlckFile(next,siz,help[ptr->idx])) break;
-		unlkFile(head[ptr->idx],help[ptr->idx]);
-		head[ptr->idx] = next;}
-	// lock read given and write anonymous
-	for (long long siz = 0, loc = 0; (siz = lockRead(ptr->idx,loc,0,BUFSIZE)); loc += siz);
-	// use head locks as tail locks
-	tail[ptr->idx] = head[ptr->idx];
+	HELP = openFile(name);
+	FIFO = openAtom(name+1);
+	GIVE = openFile(name+2);
+	for (int loc = 0; loc < filesiz; loc += fieldsiz) {
+		TAIL = loc;
+		if (rdlckFile(loc,fieldsiz,HELP)) {
+			if (checkHelp(loc,IDX) && !checkHelp(NXT(loc,1),IDX)) break;
+			else unlckFile(loc,fieldsiz,HELP);}}
+	// previous is read locked
+	for (int siz = 0, loc = 0;
+		(siz = readGive(loc,0,bufsize,IDX));
+		loc += siz);
 
-	// goon to read from here
-	goRead:
-	// wait for read lock on tail
-	next = (tail[ptr->idx]+siz)%filesiz;
-	rdlckwFile(next,siz,help[ptr->idx]);
-	// if tail is invalid goto retry
-	if (!validHelp(next,ptr->idx)) goto goRole;
-	// read from helper at tail
-	seekFile(next,help[ptr->idx]);
-	readFile(&temp,help[ptr->idx]);
-	// lock read given and write anonymous
-	lockRead(ptr->idx,temp.loc,temp.pid,temp.siz);
-	// release lock on previous tail
-	unlckFile(tail[ptr->idx],siz,help[ptr->idx]);
-	tail[ptr->idx] = next;
-	// goon to read
-	goto goRead;
-
-	// retry from here
 	goRole:
-	// release lock on tail but keep previous to prevent wrap
-	unlckFile(next,siz,help[ptr->idx]);
-	// try for write lock on role and ready bytes in given
-	// goto switch to read if try failed
-	// goto switch to write if try succeeded
-	if (wrlckFile(INFINITE,2,give[ptr->idx])) goto toRead; else goto toWrite;
+	// previous and next are read locked
+	unlckFile(NEXT,fieldsiz,HELP);
+	// previous is read locked 
+	sleepSec(backoff); backoff += amount;
+	if (wrlckFile(filesiz,2,HELP)) {
+		backoff = 0.0; goto toWrite;}
 
-	// switch to read from here
-	toRead:
-	// wait for and release read lock on ready byte
-	rdlckwFile(INFINITE+1,1,give[ptr->idx]);
-	unlckFile(INFINITE+1,1,give[ptr->idx])
-	// goon to read
+	goRead:
+	// previous is read locked
+	rdlckwFile(NEXT,fieldsiz,HELP);
+	// previous and next are read locked
+	if (!checkHelp(NEXT,IDX)) goto goRole;
+	else backoff = 0.0;
+	readHelp(&temp,NEXT,IDX);
+	readGive(temp.loc,temp.pid,fieldsiz,IDX);
+	unlckFile(TAIL,fieldsiz,HELP);
+	// next is locked
+	TAIL = NEXT;
+	// previous is read locked
 	goto goRead;
 
-	// switch to write from here
 	toWrite:
-	// release lock on previous tail
-	unlckFile(tail[ptr->idx],siz,help[ptr->idx]);
-	tail[ptr->idx] = next;
-	// wait for write lock on next tail
-	wrlckwFile(tail[ptr->idx],siz,help[ptr->idx]);
-	// release write lock from ready byte
-	unlckFile(INFINITE+1,1,give[ptr->idx]);
+	// previous is read locked and filesiz+1 is write locked
+	unlckFile(TAIL,fieldsiz,HELP);
+	// filesize+1 is write locked
+	TAIL = NEXT;
+	wrlckwFile(TAIL,fieldsiz,HELP);
+	unlckFile(fieldsiz+1,1,HELP);
+	// invalid previous is write locked
 
-	// goon to write from here
 	goWrite:
-	// wait read from named pipe
-	readFile(&temp,fifo[ptr->idx]);
-	// lock write given and write anonymous
-	lockWrite(ptr->idx,temp.loc,temp.pid,temp.str);	
-	// write indication to helper at tail
-	save = strlen(temp.str);
-	freeFile(&temp);
-	temp.act = ThdThd;
-	temp.siz = save;
-	seekFile(tail[ptr->idx],help[ptr->idx]);
-	writeFile(&temp,help[ptr->idx]);
-	// wait for write lock on next tail
-	next = (tail[ptr->idx]+siz)%filesiz;
-	wrlckwFile(next,siz,help[ptr->idx]);
-	// releasae lock on previous tail
-	unlckFile(tail[ptr->idx],help[ptr->idx]);
-	tail[ptr->idx] = next;
-	// goon to write
+	// invalid previous is write locked
+	for (int loc = NEXT, num = 0;
+		num < safesiz;
+		loc = NXT(loc,1))
+		clearHelp(loc,IDX);
+	readFile(&temp,FIFO);
+	writeGive(temp.loc,temp.pid,temp.str,IDX);	
+	writeHelp(temp.loc,temp.pid,strlen(temp.str,IDX),TAIL);
+	// valid previous is write locked
+	wrlckwFile(NEXT,fieldsiz,HELP);
+	// valid previous and invalid next are write locked
+	unlckFile(TAIL,HELP);
+	// invalid next is write locked
+	TAIL = NEXT;
+	// invalid previous is write locked
 	goto goWrite;
 }
 
