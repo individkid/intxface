@@ -18,7 +18,6 @@ int face = 0;
 int fieldsiz = sizeof(struct File);
 int filesiz = FILESIZE - FILESIZE%sizeof(struct File);
 int halfsiz = (FILESIZE/2) - (FILESIZE/2)%(FILESIZE - FILESIZE%sizeof(struct File));
-int safesiz = 3;
 double amount = BACKOFF;
 extern int bufsize;
 
@@ -92,9 +91,10 @@ void readHelp(struct File *command, int loc, int idx)
 	readFile(command,help[idx]);
 }
 
-int checkHelp(int loc, int idx)
+int checkHelp(int loc, int siz, int idx)
 {
 	struct File command = {0};
+	if (checkFile(help[idx]) < loc+siz) return 0;
 	seekFile(loc,help[idx]);
 	readFile(&command,help[idx]);
 	return (command.pid != 0);
@@ -108,31 +108,31 @@ void clearHelp(int loc, int idx)
 	writeFile(&command,help[idx]);
 }
 
+#define ACT ptr->act
 #define IDX ptr->idx
+#define PID ptr->pid
+#define STR ptr->str
 #define NXT(LOC,INC) (LOC+INC*fieldsiz)%filesiz
 #define TAIL tail[IDX]
 #define NEXT NXT(TAIL,1)
 #define HELP help[IDX]
 #define FIFO fifo[IDX]
 #define GIVE give[IDX]
+#define ANON anon[IDX]
+#define THRD thread[IDX]
 
 void *func(void *arg)
 {
 	struct File *ptr = arg;
 	struct File temp = {0};
 	double backoff = 0.0;
-	char name[strlen(ptr->str)+3];
-	// open files
-	for (int i = 0; i < 2; i++) name[i] = '.';
-	strcpy(name+2,ptr->str);
-	HELP = openFile(name);
-	FIFO = openAtom(name+1);
-	GIVE = openFile(name+2);
-	for (TAIL = filesiz; TAIL == filesiz || (backoff = 0.0); sleepSec(backoff), backoff += amount) {
+	for (TAIL = filesiz; TAIL == filesiz || (backoff = 0.0); sleepSec(backoff += amount)) {
 		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
 			if (rdlkFile(loc,fieldsiz,HELP)) {
 				if (TAIL != filesiz) unlkFile(TAIL,fieldsiz,HELP);
-				if (checkHelp(TAIL = loc,IDX) && !checkHelp(NEXT,IDX)) break;}
+				TAIL = loc;
+				if (!checkHelp(TAIL,fieldsiz,IDX)) clearHelp(TAIL,IDX);
+				else if (!checkHelp(NEXT,fieldsiz,IDX)) break;}
 			else if (TAIL != filesiz) break;}}
 	// previous is read locked
 	for (int siz = 0, loc = 0;
@@ -140,52 +140,48 @@ void *func(void *arg)
 		loc += siz);
 	goto goRead;
 
-	goRole:
+	toRead:
 	// previous and next are read locked
 	unlkFile(NEXT,fieldsiz,HELP);
 	// previous is read locked 
-	sleepSec(backoff); backoff += amount;
-	if (wrlkFile(filesiz,2,HELP)) goto toWrite;
+	if (wrlkFile(filesiz,1,HELP)) goto toWrite;
 
 	goRead:
 	// previous is read locked
 	rdlkwFile(NEXT,fieldsiz,HELP);
 	// previous and next are read locked
-	if (!checkHelp(NEXT,IDX)) goto goRole;
+	if (!checkHelp(NEXT,fieldsiz,IDX)) {
+	sleepSec(backoff); backoff += amount; goto toRead;}
 	else backoff = 0.0;
 	readHelp(&temp,NEXT,IDX);
 	readGive(temp.loc,temp.pid,fieldsiz,IDX);
 	unlkFile(TAIL,fieldsiz,HELP);
-	// next is locked
+	// next is read locked
 	TAIL = NEXT;
 	// previous is read locked
 	goto goRead;
 
 	toWrite:
-	// previous is read locked and filesiz+1 is write locked
+	// previous is read locked
 	unlkFile(TAIL,fieldsiz,HELP);
-	// filesize+1 is write locked
+	// nothing is read locked
 	TAIL = NEXT;
 	wrlkwFile(TAIL,fieldsiz,HELP);
-	unlkFile(fieldsiz+1,1,HELP);
-	// invalid previous is write locked
+	// previous is write locked
+	clearHelp(TAIL,IDX);
 
 	goWrite:
-	// invalid previous is write locked
-	for (int loc = NEXT, num = 0;
-		num < safesiz;
-		loc = NXT(loc,1))
-		clearHelp(loc,IDX);
+	// previous is write locked
+	wrlkwFile(NEXT,fieldsiz,HELP);
+	// previous and next are write locked
+	clearHelp(NEXT,IDX);
 	readFile(&temp,FIFO);
 	writeGive(temp.loc,temp.pid,temp.str,IDX);
 	writeHelp(temp.loc,temp.pid,strlen(temp.str),TAIL,IDX);
-	// valid previous is write locked
-	wrlkwFile(NEXT,fieldsiz,HELP);
-	// valid previous and invalid next are write locked
 	unlkFile(TAIL,fieldsiz,HELP);
-	// invalid next is write locked
+	// next is write locked
 	TAIL = NEXT;
-	// invalid previous is write locked
+	// previous is write locked
 	goto goWrite;
 }
 
@@ -197,15 +193,31 @@ int main(int argc, char **argv)
 	struct File *ptr = 0; allocFile(&ptr,1);
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(ptr,sub);
-	switch (ptr->act) {
-		case(NewThd):
+	switch (ACT) {
+		case (NewThd): {
+		// TODO check that idx is unused
 		// TODO duplicate from other idx instead of starting new thread if file already open
-		anon[ptr->idx] = openPipe();
-		if (pthread_create(&thread[ptr->idx],0,func,ptr->str) < 0) ERROR(huberr,-1)
+		char name[strlen(STR)+3];
+		for (int i = 0; i < 2; i++) name[i] = '.';
+		strcpy(name+2,STR);
+		GIVE = openFile(name+2);
+		FIFO = openAtom(name+1);
+		HELP = openFile(name);
+		ANON = openPipe();
+		if (pthread_create(&THRD,0,func,ptr) < 0) ERROR(huberr,-1)
 		allocFile(&ptr,1);
-		break;
-		default:
+		break;}
+		case (CmdThd): {
+		if (sub != face) ERROR(huberr,-1)
+		PID = identifier;
+		writeFile(ptr,FIFO);
+		flushBuf(FIFO);}
+		case (ThdCmd): {
+		if (sub != ANON) ERROR(huberr,-1)
+		PID = (PID == identifier);
+		writeFile(ptr,face);}
+		default: {
 		ERROR(huberr,-1)
-	}}
+		break;}}}
 	return 0;
 }
