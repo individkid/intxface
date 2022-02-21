@@ -82,6 +82,7 @@ void moveIdent(int idx0, int idx1)
 	inp[idx1] = inp[idx0];
 	out[idx1] = out[idx0];
 	fdt[idx1] = fdt[idx0];
+	pid[idx1] = pid[idx0];
 	inpexc[idx1] = inpexc[idx0];
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
@@ -94,6 +95,7 @@ int openPipe()
 	inp[len] = fd[0];
 	out[len] = fd[1];
 	fdt[len] = Wait;
+	pid[len] = 0;
 	return len++;
 }
 int openFifo(const char *str)
@@ -109,6 +111,7 @@ int openFifo(const char *str)
 	inp[len] = fi;
 	out[len] = fo;
 	fdt[len] = Poll;
+	pid[len] = 0;
 	return len++;
 }
 int openAtom(const char *str)
@@ -125,6 +128,7 @@ int openFile(const char *str)
 	inp[len] = fd;
 	out[len] = fd;
 	fdt[len] = Seek;
+	pid[len] = 0;
 	return len++;
 }
 struct sockaddr_in6 *scanInet6(struct sockaddr_in6 *in6, const char *adr, const char *num)
@@ -151,12 +155,14 @@ int openInet(const char *adr, const char *num)
 	if (scanInet6(&adr,0,num) == 0) return -1;
 	if (bind(fd, (struct sockaddr*)&adr, sizeof(adr)) < 0) return -1;
 	if (listen(fd, NUMPEND) < 0) return -1;
-	fdt[len] = Inet;} else {
+	fdt[len] = Inet;
+	pid[len] = 0;} else {
 	if (ads >= NUMINET) return -1;
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
 	if (scanInet6(&addr[ads],adr,num) == 0) return -1;
 	if (connect(fd, (struct sockaddr*)&addr[ads], sizeof(addr[ads])) < 0) return -1;
 	fdt[len] = Wait;
+	pid[len] = 0;
 	ads++;}
 	inp[len] = fd;
 	out[len] = fd;
@@ -194,6 +200,7 @@ int pipeInit(const char *av1, const char *av2)
 	val = sscanf(av1,"%d",&inp[len]); if (val != 1) return -1;
 	val = sscanf(av2,"%d",&out[len]); if (val != 1) return -1;
 	fdt[len] = Wait;
+	pid[len] = 0;
 	int ret = len;
 	len++;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
@@ -227,6 +234,7 @@ int pselectAny(struct timespec *dly, int idx)
 		inp[len] = out[len] = accept(inp[i],(struct sockaddr*)&adr,&len);
 		if (inp[len] < 0) continue;
 		fdt[len] = Wait;
+		pid[len] = 0;
 		return len++;}}
 	} return -1;
 }
@@ -240,6 +248,12 @@ int pauseAny(double dly)
 	delay.tv_sec = (long long)dly;
 	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
 	return pselectAny(&delay,-1);
+}
+void waitAll()
+{
+	int val;
+	while (wait(&val) != -1);
+	if (errno != ECHILD) ERROR(exitErr,0)
 }
 void *callCall(void *arg)
 {
@@ -963,6 +977,12 @@ int pauseAnyLua(lua_State *lua)
 	lua_pushnumber(lua,pauseAny(lua_tonumber(lua,1)));
 	return 1;
 }
+int waitAllLua(lua_State *lua)
+{
+	luaerr = lua;
+	waitAll();
+	return 0;
+}
 int callInitLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1165,6 +1185,8 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "pipeInit");
 	lua_pushcfunction(L, waitAnyLua);
 	lua_setglobal(L, "waitAny");
+	lua_pushcfunction(L, waitAllLua);
+	lua_setglobal(L, "waitAll");
 	lua_pushcfunction(L, callInitLua);
 	lua_setglobal(L, "callInit");
 	lua_pushcfunction(L, pollPipeLua);

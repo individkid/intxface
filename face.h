@@ -50,6 +50,7 @@ int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
 int waitAny();
 int pauseAny(double dly);
+void waitAll();
 void callInit(wftype fnc, int idx);
 int pollPipe(int idx);
 int pollFile(int idx);
