@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/errno.h>
+#include <setjmp.h>
 
 int help[NUMFILE] = {0};
 int anon[NUMFILE] = {0};
@@ -13,6 +14,9 @@ int fifo[NUMFILE] = {0};
 int give[NUMFILE] = {0};
 off_t tail[NUMFILE] = {0};
 pthread_t thread[NUMFILE] = {0};
+jmp_buf jmpbuf[NUMFILE] = {0};
+int number[NUMOPEN] = {0};
+jmp_buf errbuf = {0};
 long long identifier = 0;
 int face = 0;
 int fieldsiz = sizeof(struct File);
@@ -21,12 +25,17 @@ int halfsiz = (FILESIZE/2) - (FILESIZE/2)%(FILESIZE - FILESIZE%sizeof(struct Fil
 double amount = BACKOFF;
 extern int bufsize;
 
-void exiterr(const char *str, int num, int arg)
+void spokerr(const char *str, int num, int arg)
 {
-	exit(arg);
+	longjmp(jmpbuf[number[arg]],1);
 }
 
 void huberr(const char *str, int num, int arg)
+{
+	longjmp(errbuf,1);
+}
+
+void exiterr(const char *str, int num, int arg)
 {
 	exit(arg);
 }
@@ -121,12 +130,14 @@ void clearHelp(int loc, int idx)
 #define GIVE give[IDX]
 #define ANON anon[IDX]
 #define THRD thread[IDX]
+#define JBUF jmpbuf[IDX]
 
 void *func(void *arg)
 {
 	struct File *ptr = arg;
 	struct File temp = {0};
 	double backoff = 0.0;
+	if (setjmp(JBUF) != 0) return 0;
 	for (TAIL = filesiz; TAIL == filesiz || (backoff = 0.0); sleepSec(backoff += amount)) {
 		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
 			if (rdlkFile(loc,fieldsiz,HELP)) {
@@ -184,6 +195,7 @@ void *func(void *arg)
 	TAIL = NEXT;
 	// previous is write locked
 	goto goWrite;
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -192,6 +204,7 @@ int main(int argc, char **argv)
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	struct File *ptr = 0; allocFile(&ptr,1);
+	if (setjmp(errbuf) != 0) ERROR(exiterr,-1)
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(ptr,sub);
 	switch (ACT) {
@@ -201,10 +214,13 @@ int main(int argc, char **argv)
 		char name[strlen(STR)+3];
 		for (int i = 0; i < 2; i++) name[i] = '.';
 		strcpy(name+2,STR);
-		GIVE = openFile(name+2);
-		FIFO = openAtom(name+1);
-		HELP = openFile(name);
-		ANON = openPipe();
+		GIVE = openFile(name+2); number[GIVE] = IDX;
+		FIFO = openAtom(name+1); number[FIFO] = IDX;
+		HELP = openFile(name); number[HELP] = IDX;
+		ANON = openPipe(); number[ANON] = IDX;
+		readJump(huberr,ANON); writeJump(huberr,FIFO);
+		writeJump(spokerr,ANON); readJump(spokerr,FIFO);
+		bothJump(spokerr,HELP); bothJump(spokerr,GIVE);
 		if (pthread_create(&THRD,0,func,ptr) < 0) ERROR(huberr,-1)
 		allocFile(&ptr,1);
 		break;}

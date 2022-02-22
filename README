@@ -33,26 +33,21 @@ for int/double/char*/longlong/float to/from processes in each language.
 type.gen generates type.h type.c type.hs type.lua typer.h typer.c typer.hs typer.lua.
 This has declarations and read*/write* for each struct/enum in each language.
 
-file.h file.c filer.lua test read write rmw monitor append files.
-Main pselects on interface pipe,
-waiting for commands.
+file.h file.c filer.lua test open write monitor files.
+Main pselects on interface pipe, waiting for commands.
 Open file command opens the helper named pipe for writing,
-creates a pthread with unnamed pipe,
-and opens given file.
+creates a pthread with unnamed pipe, and opens given file.
 Write command forwards to indicated named pipe.
 Main pselects unnamed pipes and interface pipe.
-The created pthread round robin lock reads from given files til eof,
-and tries for writelock on youngest helper file,
-or waits for readlock.
+The created pthread lock reads from given file til eof,
+and tries for writelock on eof of helper file,
+or waits for readlock on tail of circular buffer helper file.
 The writelocker waits for commands in the named pipe,
-lock changes the given file,
-appends to the helper file,
-writes to the unnamed pipe,
-opens younger helper file if current one is too long,
-and loops back.
-The readlocker reads the appended command,
-writes to the unnamed pipe,
-and loops back.
+lock changes the given file, writes to unnamed pipe,
+and writes location and size to tail,
+writes to the unnamed pipe, and loops back.
+The readlocker reads the location and size from tail,
+lock reads given file, writes to unnamed, and loops back.
 
 hole.c holer.lua test read write to files on other servers.
 local commands are mapped to local file of file on other server.
@@ -88,6 +83,8 @@ remove if is loopback from portion sent.
 After writing portion to send, apply to portion sent,
 and clear to identity portion to send. 
 At will, read matrices, write matrices, and change pierce mode.
+Each plane process monitors any number of plane files containing,
+data streams for points facets arrays and matrices.
 
 space.hs Naive.hs spacer.lua spacra.hs test specify examine sample classify.
 This keeps track of which side of boundaries regions are on,
