@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <sys/errno.h>
 #include <setjmp.h>
+#include <libgen.h>
 
 int help[NUMFILE] = {0};
 int anon[NUMFILE] = {0};
@@ -25,19 +26,14 @@ int halfsiz = (FILESIZE/2) - (FILESIZE/2)%(FILESIZE - FILESIZE%sizeof(struct Fil
 double amount = BACKOFF;
 extern int bufsize;
 
-void spokerr(const char *str, int num, int arg)
+void spokErr(const char *str, int num, int arg)
 {
 	longjmp(jmpbuf[number[arg]],1);
 }
 
-void huberr(const char *str, int num, int arg)
+void hubErr(const char *str, int num, int arg)
 {
 	longjmp(errbuf,1);
-}
-
-void exiterr(const char *str, int num, int arg)
-{
-	exit(arg);
 }
 
 void fileStr(const char *str, int trm, void *arg)
@@ -200,43 +196,52 @@ void *func(void *arg)
 
 int main(int argc, char **argv)
 {
-	if (argc != 4) return -1;
+	if (argc != 4) ERROR(exitErr,-1);
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
-	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
+	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exitErr,-1);
+	readJump(hubErr,face); writeJump(hubErr,face);
 	struct File *ptr = 0; allocFile(&ptr,1);
-	if (setjmp(errbuf) != 0) ERROR(exiterr,-1)
+	if (setjmp(errbuf) != 0) ERROR(exitErr,-1)
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(ptr,sub);
 	switch (ACT) {
 		case (NewHub): {
-		// TODO check that idx is unused
-		// TODO duplicate from other idx instead of starting new thread if file already open
-		char name[strlen(STR)+3];
-		for (int i = 0; i < 2; i++) name[i] = '.';
-		strcpy(name+2,STR);
-		GIVE = openFile(name+2); number[GIVE] = IDX;
-		FIFO = openAtom(name+1); number[FIFO] = IDX;
-		HELP = openFile(name); number[HELP] = IDX;
-		ANON = openPipe(); number[ANON] = IDX;
-		readJump(huberr,ANON); writeJump(huberr,FIFO);
-		writeJump(spokerr,ANON); readJump(spokerr,FIFO);
-		bothJump(spokerr,HELP); bothJump(spokerr,GIVE);
-		if (pthread_create(&THRD,0,func,ptr) < 0) ERROR(huberr,-1)
+		int len = strlen(STR);
+		char basestr[len+1];
+		char dirstr[len+1];
+		char name[len+4];
+		if (IDX < 0 || IDX >= NUMFILE) ERROR(hubErr,-1)
+		strcpy(basestr,basename(STR));
+		strcpy(dirstr,dirname(STR));
+		if (checkRead(GIVE)) ERROR(hubErr,-1)
+		strcat(strcat(strcpy(name,dirstr),"/"),basestr);
+		if (findIdent(name) != -1) ERROR(hubErr,-1)
+		if ((GIVE = openFile(name)) == -1) ERROR(hubErr,-1)
+		else {number[GIVE] = IDX; readJump(spokErr,GIVE); writeJump(spokErr,GIVE);}
+		strcat(strcat(strcpy(name,dirstr),"/."),basestr);
+		if ((FIFO = openAtom(name)) == -1) ERROR(hubErr,-1)
+		else {number[FIFO] = IDX; readJump(spokErr,FIFO); writeJump(hubErr,FIFO);}
+		strcat(strcat(strcpy(name,dirstr),"/.."),basestr);
+		if ((HELP = openFile(name)) == -1) ERROR(hubErr,-1)
+		else {number[HELP] = IDX; readJump(spokErr,HELP); writeJump(spokErr,HELP);}
+		if ((ANON = openPipe()) == -1) ERROR(hubErr,-1)
+		else {number[ANON] = IDX; readJump(hubErr,ANON); writeJump(spokErr,ANON);}
+		if (pthread_create(&THRD,0,func,ptr) != 0) ERROR(hubErr,-1)
 		allocFile(&ptr,1);
 		break;}
 		case (CfgHub): {
-		if (sub != face) ERROR(huberr,-1)
+		if (sub != face) ERROR(hubErr,-1)
 		ACT = HubThd;
 		PID = identifier;
 		writeFile(ptr,FIFO);
 		flushBuf(FIFO);}
 		case (ThdHub): {
-		if (sub != ANON) ERROR(huberr,-1)
+		if (sub != ANON) ERROR(hubErr,-1)
 		ACT = HubCfg;
 		SLF = (PID == identifier);
 		writeFile(ptr,face);}
 		default: {
-		ERROR(huberr,-1)
+		ERROR(hubErr,-1)
 		break;}}}
 	return 0;
 }

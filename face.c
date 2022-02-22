@@ -57,11 +57,6 @@ void writeJump(eftype err, int idx)
 	if (idx < 0 || idx >= len) ERROR(exitErr,0)
 	outerr[idx] = err;
 }
-void bothJump(eftype err, int idx)
-{
-	readJump(err,idx);
-	writeJump(err,idx);
-}
 void closeIdent(int idx)
 {
 	if (fdt[idx] != None) {
@@ -86,6 +81,17 @@ void moveIdent(int idx0, int idx1)
 	inpexc[idx1] = inpexc[idx0];
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
+}
+int findIdent(const char *str)
+{
+	struct stat old;
+	struct stat new;
+	if (stat(str,&new) != 0) return -1;
+	for (int i = 0; i < len; i++) {
+		if (fdt[i] == Wait || fdt[i] == None) continue;
+		if (fstat(inp[i],&old) != 0) return -1;
+		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) return i;}
+	return -1;
 }
 int openPipe()
 {
@@ -408,6 +414,7 @@ void readStr(cftype fnc, void *arg, int idx)
 	while (/*size < siz && */val == num && val == tmp) {
 		tmp = /*siz-size; if (tmp > bufsize) tmp = */bufsize;
 		buf = realloc(buf,size+tmp+1);
+		if (buf == 0) ERROR(outerr[idx],idx)
 		val = /*p*/read(inp[idx],buf+size,tmp/*,loc+size*/);
 		if (val < 0) ERROR(outerr[idx],idx)
 		for (num = 0; num != val && buf[size+num]; num++);
@@ -429,6 +436,7 @@ void preadStr(cftype fnc, void *arg, int idx, long long loc, long long siz)
 	while (size < siz && val == num && val == tmp) {
 		tmp = siz-size; if (tmp > bufsize) tmp = bufsize;
 		buf = realloc(buf,size+tmp+1);
+		if (buf == 0) ERROR(outerr[idx],idx)
 		val = pread(inp[idx],buf+size,tmp,loc+size);
 		if (val < 0) ERROR(outerr[idx],idx)
 		for (num = 0; num != val && buf[size+num]; num++);
@@ -505,6 +513,7 @@ int writeBuf(int idx, const void *arg, long long siz)
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	if (fdt[idx] == Atom) {
 		while (atoms[idx]+siz > atomz[idx]) atom[idx] = realloc(atom[idx],atomz[idx]*=2);
+		if (atom[idx] == 0) ERROR(outerr[idx],idx)
 		memcpy(atom[idx]+atoms[idx],arg,siz);
 		atoms[idx] += siz;
 		return siz;}
@@ -513,7 +522,7 @@ int writeBuf(int idx, const void *arg, long long siz)
 void flushBuf(int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] != Atom) ERROR(exitErr,0)
-	if (write(out[idx],atom[idx],atoms[idx]) < 0) ERROR(exitErr,0)
+	if (write(out[idx],atom[idx],atoms[idx]) < 0) ERROR(outerr[idx],idx)
 	atoms[idx] = 0;
 }
 void writeStr(const char *arg, int trm, int idx)
@@ -584,6 +593,7 @@ void allocChr(char **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	*ptr = realloc(*ptr,siz*sizeof(char));
+	if (*ptr == 0) ERROR(exitErr,-1)
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocInt(int **ptr, int siz)
@@ -591,6 +601,7 @@ void allocInt(int **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	*ptr = realloc(*ptr,siz*sizeof(int));
+	if (*ptr == 0) ERROR(exitErr,-1)
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocNew(long long **ptr, int siz)
@@ -598,6 +609,7 @@ void allocNew(long long **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	*ptr = realloc(*ptr,siz*sizeof(long long));
+	if (*ptr == 0) ERROR(exitErr,-1)
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocNum(double **ptr, int siz)
@@ -605,6 +617,7 @@ void allocNum(double **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	*ptr = realloc(*ptr,siz*sizeof(double));
+	if (*ptr == 0) ERROR(exitErr,-1)
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocOld(float **ptr, int siz)
@@ -612,6 +625,7 @@ void allocOld(float **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	*ptr = realloc(*ptr,siz*sizeof(float));
+	if (*ptr == 0) ERROR(exitErr,-1)
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocStr(char **ptr, const char *str)
@@ -619,15 +633,17 @@ void allocStr(char **ptr, const char *str)
 	if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
 	if (str == 0) return;
 	*ptr = realloc(*ptr,strlen(str)+1);
+	if (*ptr == 0) ERROR(exitErr,-1)
 	strcpy(*ptr,str);
 }
 void showEnum(const char *typ, const char* val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"%s(%s)",typ,val);
+	if (asprintf(&tmp,"%s(%s)",typ,val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -636,9 +652,10 @@ void showStruct(const char* bef, int val, const char *aft, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"%s%d%s",bef,val,aft);
+	if (asprintf(&tmp,"%s%d%s",bef,val,aft) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -647,9 +664,10 @@ void showField(const char* val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"%s:",val);
+	if (asprintf(&tmp,"%s:",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -658,9 +676,10 @@ void showOpen(const char* val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"%s(",val);
+	if (asprintf(&tmp,"%s(",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -669,9 +688,10 @@ void showClose(char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,")");
+	if (asprintf(&tmp,")") < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -680,9 +700,10 @@ void showChr(char val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"Chr(%c)",val);
+	if (asprintf(&tmp,"Chr(%c)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -691,9 +712,10 @@ void showInt(int val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"Int(%d)",val);
+	if (asprintf(&tmp,"Int(%d)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -702,9 +724,10 @@ void showNew(long long val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"New(%lld)",val);
+	if (asprintf(&tmp,"New(%lld)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -713,9 +736,10 @@ void showNum(double val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"Num(%lf)",val);
+	if (asprintf(&tmp,"Num(%lf)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -724,9 +748,10 @@ void showOld(float val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"Old(%f)",val);
+	if (asprintf(&tmp,"Old(%f)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -735,9 +760,10 @@ void showStr(const char* val, char **str, int *len)
 {
 	char *tmp = 0;
 	int num;
-	asprintf(&tmp,"Str(%s)",val);
+	if (asprintf(&tmp,"Str(%s)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
 	*str = realloc(*str,*len+num+1);
+	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
@@ -746,10 +772,10 @@ int hideEnum(const char* typ, const char *val, const char *str, int *len)
 {
 	char *tmp = 0;
 	int num = -1;
-	asprintf(&tmp," %s ( %s ) %%n",typ,val);
+	if (asprintf(&tmp," %s ( %s ) %%n",typ,val) < 0) ERROR(exitErr,-1)
 	sscanf(str+*len,tmp,&num);
 	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -757,10 +783,10 @@ int hideStruct(const char* bef, int val, const char *aft, const char *str, int *
 {
 	char *tmp = 0;
 	int num = -1;
-	asprintf(&tmp," %s %d %s%%n",bef,val,aft);
+	if (asprintf(&tmp," %s %d %s%%n",bef,val,aft) < 0) ERROR(exitErr,-1)
 	sscanf(str+*len,tmp,&num);
 	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -768,10 +794,10 @@ int hideField(const char *val, const char *str, int *len)
 {
 	char *tmp = 0;
 	int num = -1;
-	asprintf(&tmp," %s : %%n",val);
+	if (asprintf(&tmp," %s : %%n",val) < 0) ERROR(exitErr,-1)
 	sscanf(str+*len,tmp,&num);
 	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -779,10 +805,10 @@ int hideOpen(const char *val, const char *str, int *len)
 {
 	char *tmp = 0;
 	int num = -1;
-	asprintf(&tmp," %s ( %%n",val);
+	if (asprintf(&tmp," %s ( %%n",val) < 0) ERROR(exitErr,-1)
 	sscanf(str+*len,tmp,&num);
 	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -790,10 +816,10 @@ int hideClose(const char *str, int *len)
 {
 	char *tmp = 0;
 	int num = -1;
-	asprintf(&tmp," ) %%n");
+	if (asprintf(&tmp," ) %%n") < 0) ERROR(exitErr,-1)
 	sscanf(str+*len,tmp,&num);
 	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -801,7 +827,7 @@ int hideChr(char *val, const char *str, int *len)
 {
 	int num = -1;
 	sscanf(str+*len," Chr ( %c )%n",val,&num);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -809,7 +835,7 @@ int hideInt(int *val, const char *str, int *len)
 {
 	int num = -1;
 	sscanf(str+*len," Int ( %d )%n",val,&num);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -817,7 +843,7 @@ int hideNew(long long *val, const char *str, int *len)
 {
 	int num = -1;
 	sscanf(str+*len," New ( %lld )%n",val,&num);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -825,7 +851,7 @@ int hideNum(double *val, const char *str, int *len)
 {
 	int num = -1;
 	sscanf(str+*len," Num ( %lf )%n",val,&num);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -833,7 +859,7 @@ int hideOld(float *val, const char *str, int *len)
 {
 	int num = -1;
 	sscanf(str+*len," Old ( %f )%n",val,&num);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	*len += num;
 	return 1;
 }
@@ -845,8 +871,9 @@ int hideStr(char* *val, const char *str, int *len)
 	int limit = -1;
 	sscanf(str+*len," Str ( %n",&base);
 	limit = base; while (base != -1 && str[limit] && num == -1) sscanf(str+*len+(++limit)," )%n",&num);
-	if (num == -1) return 0;
+	if (num == -1) ERROR(exitErr,-1)
 	tmp = malloc(limit-base+1);
+	if (tmp == 0) return 0;
 	strncpy(tmp,str+*len+base,limit-base); tmp[limit-base] = 0;
 	allocStr(val,tmp);
 	free(tmp);
@@ -858,6 +885,7 @@ void setupLua(char **mem, const char *str, int idx)
 {
 	if (mem[idx]) free(mem[idx]);
 	mem[idx] = malloc(strlen(str)+1);
+	if (mem[idx] == 0) ERROR(exitErr,0)
 	strcpy(mem[idx],str);
 }
 void callLua(lua_State *lua, const char *fnc, const char *str, int num, int idx)

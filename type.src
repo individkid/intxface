@@ -629,6 +629,7 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
 		result = result..showIndent(1).."if (siz == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(enum "..name.."));\n"
+		result = result..showIndent(1).."if (*ptr == 0) ERROR(exitErr,-1)\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
 		result = result.."}"
 	elseif (Structz[name] ~= nil) then
@@ -637,6 +638,7 @@ function showAllocC(name,typ)
 		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
 		result = result..showIndent(1).."if (siz == 0) return;\n"
 		result = result..showIndent(1).."*ptr = realloc(*ptr,siz*sizeof(struct "..name.."));\n"
+		result = result..showIndent(1).."if (*ptr == 0) ERROR(exitErr,-1)\n"
 		result = result..showIndent(1).."struct "..name.." init = {0};\n"
 		result = result..showIndent(1).."for (int i = 0; i < siz; i++)\n"
 		result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));\n"
