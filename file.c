@@ -39,24 +39,26 @@ void hubErr(const char *str, int num, int arg)
 void fileStr(const char *str, int trm, void *arg)
 {
 	struct File *command = arg;
-	if (!*str && !trm) command->loc = -1;
-	else if (!trm) allocStr(&command->str,0);
-	else allocStr(&command->str,str);
+	command->trm = trm;
+	allocStr(&command->str,str);
 }
 
 int readGive(long long loc, long long pid, int siz, int idx)
 {
 	struct File command = {0};
+	command.act = StrThd;
+	while (1) {
+		rdlkwFile(loc,siz,give[idx]);
+		preadStr(fileStr,&command,give[idx],loc,siz);
+		unlkFile(loc,siz,give[idx]);
+		if (command.trm == 1) break;
+		if (strlen(command.str) != siz) {
+			freeFile(&command); return 0;}
+		siz += bufsize;}
 	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
-	while (command.str == 0) {
-		rdlkwFile(loc,siz,give[idx]); // TODO avoid locking twice as much as needed
-		preadStr(fileStr,&command,give[idx],loc,siz);
-		unlkFile(loc,siz,give[idx]);
-		if (command.loc == -1) return 0;
-		siz *= 2;}
 	writeFile(&command,anon[idx]);
 	siz = strlen(command.str);
 	freeFile(&command);
