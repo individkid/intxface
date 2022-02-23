@@ -40,22 +40,23 @@ int readGive(long long loc, long long pid, int idx)
 	struct File command = {0};
 	struct Text text = {0};
 	int siz = bufsize;
+	int val = 0;
 	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
 	text.str = &command.str;
 	while (1) {
-		rdlkwFile(loc,siz,give[idx]);
-		preadStr(textStr,&text,give[idx],loc,siz);
-		unlkFile(loc,siz,give[idx]);
-		if (text.trm == 1) break;
-		if (strlen(command.str) != siz) {freeFile(&command); return -1;}
-		siz += bufsize;}
+		rdlkwFile(loc,siz+1,give[idx]);
+		preadStr(textStr,&text,loc,give[idx]);
+		unlkFile(loc,siz+1,give[idx]);
+		val = strlen(command.str);
+		if (val <= siz && text.trm == 1) break;
+		if (val <= siz) {freeFile(&command); return -1;}
+		siz = val;}
 	writeFile(&command,anon[idx]);
-	siz = strlen(command.str);
 	freeFile(&command);
-	return siz;
+	return val;
 }
 
 void writeGive(long long loc, long long pid, const char *str, int idx)

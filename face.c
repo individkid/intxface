@@ -412,16 +412,14 @@ void readStr(cftype fnc, void *arg, int idx)
 {
 	char *buf = 0;
 	int size = 0; // num valid
-	size_t tmp = 0; // num attempted
 	ssize_t val = 0; // num read
 	int num = 0; // num nonzero
 	int trm = 0; // num zero
 	if (idx < 0 || idx >= len || fdt[idx] == None/* || fdt[idx] != Seek*/) ERROR(exitErr,0)
-	while (/*size < siz && */val == num && val == tmp) {
-		tmp = /*siz-size; if (tmp > bufsize) tmp = */bufsize;
-		buf = realloc(buf,size+tmp+1);
+	while (val == num && val == bufsize) {
+		buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERROR(outerr[idx],idx)
-		val = /*p*/read(inp[idx],buf+size,tmp/*,loc+size*/);
+		val = /*p*/read(inp[idx],buf+size,bufsize/*,loc+size*/);
 		if (val < 0) ERROR(outerr[idx],idx)
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
@@ -430,20 +428,18 @@ void readStr(cftype fnc, void *arg, int idx)
 	fnc(buf,trm,arg);
 	free(buf);
 }
-void preadStr(cftype fnc, void *arg, long long loc, long long siz, int idx)
+void preadStr(cftype fnc, void *arg, long long loc, int idx)
 {
 	char *buf = 0;
 	int size = 0; // num valid
-	size_t tmp = 0; // num attempted
 	ssize_t val = 0; // num read
 	int num = 0; // num nonzero
 	int trm = 0; // num zero
 	if (idx < 0 || idx >= len || fdt[idx] == None || fdt[idx] != Seek) ERROR(exitErr,0)
-	while (size < siz && val == num && val == tmp) {
-		tmp = siz-size; if (tmp > bufsize) tmp = bufsize;
-		buf = realloc(buf,size+tmp+1);
+	while (val == num && val == bufsize) {
+		buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERROR(outerr[idx],idx)
-		val = pread(inp[idx],buf+size,tmp,loc+size);
+		val = pread(inp[idx],buf+size,bufsize,loc+size);
 		if (val < 0) ERROR(outerr[idx],idx)
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;

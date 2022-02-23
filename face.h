@@ -75,7 +75,7 @@ void sleepSec(double sec);
 void callStr(const char *str, int trm, void *arg);
 void textStr(const char *str, int trm, void *arg);
 void readStr(cftype fnc, void *arg, int idx);
-void preadStr(cftype fnc, void *arg, long long loc, long long siz, int idx);
+void preadStr(cftype fnc, void *arg, long long loc, int idx);
 void readStrHs(hftype fnc, int idx);
 char readChr(int idx);
 int readInt(int idx);
