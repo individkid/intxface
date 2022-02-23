@@ -4,11 +4,13 @@ dofile("type.src")
 Action = {
 	"NewHub",
 	"CfgHub",
-	"HubCfg",
+	"AppHub",
 	"ThdHub",
 	"HubThd",
+	"AppThd",
 	"ThdThd",
 	"StrThd",
+	"HubCfg",
 }
 State = {
 	"Stock",
@@ -100,15 +102,15 @@ File = {
 	{"act","Action",{},{}},
 	{"idx","Int",{},{}},
 	{"loc","New",{["act"]={["ThdThd"]=true,
-		["HubThd"]=true,["ThdHub"]=true,
-		["HubCfg"]=true,["CfgHub"]=true}},{}},
+		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true,
+		["HubCfg"]=true,["CfgHub"]=true,["AppHub"]=true}},{}},
 	{"pid","New",{["act"]={["ThdThd"]=true,
-		["HubThd"]=true,["ThdHub"]=true}},{}},
+		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true}},{}},
 	{"slf","Int",{["act"]={["HubCfg"]=true}},{}},
 	{"trm","Int",{["act"]={["StrThd"]=true}},{}},
 	{"str","Str",{["act"]={["NewHub"]=true,["StrThd"]=true,
-		["HubThd"]=true,["ThdHub"]=true,
-		["HubCfg"]=true,["CfgHub"]=true}},{}},
+		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true,
+		["HubCfg"]=true,["CfgHub"]=true,["AppHub"]=true}},{}},
 	{"siz","New",{["act"]={["ThdThd"]=true}},{}},
 }
 Term0 = {

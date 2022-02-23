@@ -68,8 +68,28 @@ int readGive(long long loc, long long pid, int siz, int idx)
 void writeGive(long long loc, long long pid, const char *str, int idx)
 {
 	struct File command = {0};
+	int siz = strlen(str);
 	wrlkwFile(loc,fieldsiz,give[idx]);
-	pwriteStr(str,1,idx,loc,strlen(str));
+	pwriteStr(str,1,idx,loc,siz);
+	unlkFile(loc,fieldsiz,give[idx]);
+	command.act = ThdHub;
+	command.idx = idx;
+	command.loc = loc;
+	command.pid = pid;
+	allocStr(&command.str,str);
+	writeFile(&command,anon[idx]);
+	freeFile(&command);
+}
+
+void appendGive(long long pid, const char *str, int idx)
+{
+	struct File command = {0};
+	int siz = strlen(str);
+	long long loc = -1;
+	while (checkFile(idx) != loc) {
+		loc = checkFile(idx);
+		wrlkwFile(loc,siz,give[idx]);}
+	pwriteStr(str,1,idx,loc,siz);
 	unlkFile(loc,fieldsiz,give[idx]);
 	command.act = ThdHub;
 	command.idx = idx;
@@ -186,7 +206,8 @@ void *func(void *arg)
 	// previous and next are write locked
 	clearHelp(NEXT,IDX);
 	readFile(&temp,FIFO);
-	writeGive(temp.loc,temp.pid,temp.str,IDX);
+	if (temp.act == HubThd) writeGive(temp.loc,temp.pid,temp.str,IDX);
+	else appendGive(temp.pid,temp.str,IDX);
 	writeHelp(temp.loc,temp.pid,strlen(temp.str),TAIL,IDX);
 	unlkFile(TAIL,fieldsiz,HELP);
 	// next is write locked
@@ -231,9 +252,9 @@ int main(int argc, char **argv)
 		if (pthread_create(&THRD,0,func,ptr) != 0) ERROR(hubErr,-1)
 		allocFile(&ptr,1);
 		break;}
-		case (CfgHub): {
+		case (CfgHub): case (AppHub): {
 		if (sub != face) ERROR(hubErr,-1)
-		ACT = HubThd;
+		ACT = (ACT == CfgHub ? HubThd : AppThd );
 		PID = identifier;
 		writeFile(ptr,FIFO);
 		flushBuf(FIFO);}
