@@ -31,6 +31,10 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
+struct Text {
+	char **str;
+	int trm;
+};
 typedef void (*wftype)(int);
 typedef void (*eftype)(const char*,int,int);
 typedef void (*hftype)(const char*,int);
@@ -69,6 +73,7 @@ int checkRead(int idx);
 int checkWrite(int idx);
 void sleepSec(double sec);
 void callStr(const char *str, int trm, void *arg);
+void textStr(const char *str, int trm, void *arg);
 void readStr(cftype fnc, void *arg, int idx);
 void preadStr(cftype fnc, void *arg, long long loc, long long siz, int idx);
 void readStrHs(hftype fnc, int idx);
@@ -80,7 +85,7 @@ float readOld(int idx);
 int writeBuf(const void *arg, long long siz, int idx);
 void flushBuf(int idx);
 void writeStr(const char *arg, int trm, int idx);
-void pwriteStr(const char *arg, int trm, long long loc, long long siz, int idx);
+void pwriteStr(const char *arg, int trm, long long loc, int idx);
 void writeChr(char arg, int idx);
 void writeInt(int arg, int idx);
 void writeNum(double arg, int idx);

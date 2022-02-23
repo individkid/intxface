@@ -9,7 +9,6 @@ Action = {
 	"HubThd",
 	"AppThd",
 	"ThdThd",
-	"StrThd",
 	"HubCfg",
 }
 State = {
@@ -107,8 +106,7 @@ File = {
 	{"pid","New",{["act"]={["ThdThd"]=true,
 		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true}},{}},
 	{"slf","Int",{["act"]={["HubCfg"]=true}},{}},
-	{"trm","Int",{["act"]={["StrThd"]=true}},{}},
-	{"str","Str",{["act"]={["NewHub"]=true,["StrThd"]=true,
+	{"str","Str",{["act"]={["NewHub"]=true,
 		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true,
 		["HubCfg"]=true,["CfgHub"]=true,["AppHub"]=true}},{}},
 	{"siz","New",{["act"]={["ThdThd"]=true}},{}},

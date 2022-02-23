@@ -402,6 +402,12 @@ void callStr(const char *str, int trm, void *arg)
 	char **ptr = arg;
 	allocStr(ptr,str);
 }
+void textStr(const char *str, int trm, void *arg)
+{
+	struct Text *text = arg;
+	text->trm = trm;
+	allocStr(text->str,str);
+}
 void readStr(cftype fnc, void *arg, int idx)
 {
 	char *buf = 0;
@@ -531,22 +537,24 @@ void writeStr(const char *arg, int trm, int idx)
 	size_t tmp = 0; // num attempted
 	ssize_t val = 0; // num read
 	int num = 0; // num nonzero
+	int siz = strlen(arg);
 	if (idx < 0 || idx >= len || fdt[idx] == None/* || fdt[idx] != Seek*/) ERROR(exitErr,0)
 	while (/*size < siz && */val == num && val == tmp) {
-		for (num = 0; num != bufsize/* && num != siz-size*/ && arg[size+num]; num++);
-		tmp = /*siz-size; if (tmp > bufsize) tmp = */bufsize;
+		for (num = 0; num != bufsize && num != siz-size && arg[size+num]; num++);
+		tmp = siz-size; if (tmp > bufsize) tmp = bufsize;
 		val = writeBuf(arg+size,num,idx); // val = /*p*/write(out[idx],arg+size,num/*,loc+size*/);
 		if (val != num) ERROR(outerr[idx],idx)
 		size += val;
 	}
 	if (/*size < siz && */trm && /*p*/write(out[idx],arg+size,1/*,loc+size*/) != 1) ERROR(outerr[idx],idx)
 }
-void pwriteStr(const char *arg, int trm, long long loc, long long siz, int idx)
+void pwriteStr(const char *arg, int trm, long long loc, int idx)
 {
 	int size = 0; // num valid
 	size_t tmp = 0; // num attempted
 	ssize_t val = 0; // num read
 	int num = 0; // num nonzero
+	int siz = strlen(arg);
 	if (idx < 0 || idx >= len || fdt[idx] == None || fdt[idx] != Seek) ERROR(exitErr,0)
 	while (size < siz && val == num && val == tmp) {
 		for (num = 0; num != bufsize && num != siz-size && arg[size+num]; num++);

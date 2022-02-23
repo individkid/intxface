@@ -20,9 +20,8 @@ int number[NUMOPEN] = {0};
 jmp_buf errbuf = {0};
 long long identifier = 0;
 int face = 0;
-int fieldsiz = sizeof(struct File);
-int filesiz = FILESIZE - FILESIZE%sizeof(struct File);
-int halfsiz = (FILESIZE/2) - (FILESIZE/2)%(FILESIZE - FILESIZE%sizeof(struct File));
+int fieldsiz = 0;
+int filesiz = 0;
 double amount = BACKOFF;
 extern int bufsize;
 
@@ -36,29 +35,23 @@ void hubErr(const char *str, int num, int arg)
 	longjmp(errbuf,1);
 }
 
-void fileStr(const char *str, int trm, void *arg)
-{
-	struct File *command = arg;
-	command->trm = trm;
-	allocStr(&command->str,str);
-}
-
-int readGive(long long loc, long long pid, int siz, int idx)
+int readGive(long long loc, long long pid, int idx)
 {
 	struct File command = {0};
-	command.act = StrThd;
-	while (1) {
-		rdlkwFile(loc,siz,give[idx]);
-		preadStr(fileStr,&command,give[idx],loc,siz);
-		unlkFile(loc,siz,give[idx]);
-		if (command.trm == 1) break;
-		if (strlen(command.str) != siz) {
-			freeFile(&command); return -1;}
-		siz += bufsize;}
+	struct Text text = {0};
+	int siz = bufsize;
 	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
+	text.str = &command.str;
+	while (1) {
+		rdlkwFile(loc,siz,give[idx]);
+		preadStr(textStr,&text,give[idx],loc,siz);
+		unlkFile(loc,siz,give[idx]);
+		if (text.trm == 1) break;
+		if (strlen(command.str) != siz) {freeFile(&command); return -1;}
+		siz += bufsize;}
 	writeFile(&command,anon[idx]);
 	siz = strlen(command.str);
 	freeFile(&command);
@@ -69,9 +62,9 @@ void writeGive(long long loc, long long pid, const char *str, int idx)
 {
 	struct File command = {0};
 	int siz = strlen(str);
-	wrlkwFile(loc,fieldsiz,give[idx]);
-	pwriteStr(str,1,idx,loc,siz);
-	unlkFile(loc,fieldsiz,give[idx]);
+	wrlkwFile(loc,siz+1,give[idx]);
+	pwriteStr(str,1,give[idx],loc);
+	unlkFile(loc,siz+1,give[idx]);
 	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
@@ -88,9 +81,9 @@ void appendGive(long long pid, const char *str, int idx)
 	long long loc = -1;
 	while (checkFile(idx) != loc) {
 		loc = checkFile(idx);
-		wrlkwFile(loc,siz,give[idx]);}
-	pwriteStr(str,1,idx,loc,siz);
-	unlkFile(loc,fieldsiz,give[idx]);
+		wrlkwFile(loc,siz+1,give[idx]);}
+	pwriteStr(str,1,give[idx],loc);
+	unlkFile(loc,siz+1,give[idx]);
 	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
@@ -118,9 +111,10 @@ void readHelp(struct File *command, int loc, int idx)
 	readFile(command,help[idx]);
 }
 
-int checkHelp(int loc, int siz, int idx)
+int checkHelp(int loc, int idx)
 {
 	struct File command = {0};
+	int siz = fieldsiz;
 	if (checkFile(help[idx]) < loc+siz) return 0;
 	seekFile(loc,help[idx]);
 	readFile(&command,help[idx]);
@@ -161,12 +155,12 @@ void *func(void *arg)
 			if (rdlkFile(loc,fieldsiz,HELP)) {
 				if (TAIL != filesiz) unlkFile(TAIL,fieldsiz,HELP);
 				TAIL = loc;
-				if (!checkHelp(TAIL,fieldsiz,IDX)) clearHelp(TAIL,IDX);
-				else if (!checkHelp(NEXT,fieldsiz,IDX)) break;}
+				if (!checkHelp(TAIL,IDX)) clearHelp(TAIL,IDX);
+				else if (!checkHelp(NEXT,IDX)) break;}
 			else if (TAIL != filesiz) break;}}
 	// previous is read locked
 	for (int siz = 0, loc = 0;
-		(siz = readGive(loc,0,bufsize,IDX)) != -1;
+		(siz = readGive(loc,0,IDX)) != -1;
 		loc += siz);
 	goto goRead;
 
@@ -180,11 +174,11 @@ void *func(void *arg)
 	// previous is read locked
 	rdlkwFile(NEXT,fieldsiz,HELP);
 	// previous and next are read locked
-	if (!checkHelp(NEXT,fieldsiz,IDX)) {
+	if (!checkHelp(NEXT,IDX)) {
 	sleepSec(backoff); backoff += amount; goto toRead;}
 	else backoff = 0.0;
 	readHelp(&temp,NEXT,IDX);
-	readGive(temp.loc,temp.pid,fieldsiz,IDX);
+	readGive(temp.loc,temp.pid,IDX);
 	unlkFile(TAIL,fieldsiz,HELP);
 	// next is read locked
 	TAIL = NEXT;
@@ -224,6 +218,8 @@ int main(int argc, char **argv)
 	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exitErr,-1);
 	readJump(hubErr,face); writeJump(hubErr,face);
 	struct File *ptr = 0; allocFile(&ptr,1);
+	ptr->act = ThdThd; fieldsiz = sizeFile(ptr);
+	filesiz = FILESIZE - FILESIZE%fieldsiz;
 	if (setjmp(errbuf) != 0) ERROR(exitErr,-1)
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(ptr,sub);
