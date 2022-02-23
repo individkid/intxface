@@ -53,7 +53,7 @@ int readGive(long long loc, long long pid, int siz, int idx)
 		unlkFile(loc,siz,give[idx]);
 		if (command.trm == 1) break;
 		if (strlen(command.str) != siz) {
-			freeFile(&command); return 0;}
+			freeFile(&command); return -1;}
 		siz += bufsize;}
 	command.act = ThdHub;
 	command.idx = idx;
@@ -146,7 +146,7 @@ void *func(void *arg)
 			else if (TAIL != filesiz) break;}}
 	// previous is read locked
 	for (int siz = 0, loc = 0;
-		(siz = readGive(loc,0,bufsize,IDX));
+		(siz = readGive(loc,0,bufsize,IDX)) != -1;
 		loc += siz);
 	goto goRead;
 

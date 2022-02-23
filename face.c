@@ -331,51 +331,51 @@ int checkInet(const char *adr, const char *num)
 	return i;
 	return NUMINET;
 }
-int rdlkFile(long long arg0, long long arg1, int idx)
+int rdlkFile(long long loc, long long siz, int idx)
 {
 	struct flock lock = {0};
-	lock.l_start = arg0;
-	lock.l_len = arg1;
+	lock.l_start = loc;
+	lock.l_len = siz;
 	lock.l_type = F_RDLCK;
 	lock.l_whence = SEEK_SET;
 	int val = 0;
 	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
 	return (val==0);
 }
-int wrlkFile(long long arg0, long long arg1, int idx)
+int wrlkFile(long long loc, long long siz, int idx)
 {
 	struct flock lock = {0};
-	lock.l_start = arg0;
-	lock.l_len = arg1;
+	lock.l_start = loc;
+	lock.l_len = siz;
 	lock.l_type = F_WRLCK;
 	lock.l_whence = SEEK_SET;
 	int val = 0;
 	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
 	return (val==0);
 }
-void unlkFile(long long arg0, long long arg1, int idx)
+void unlkFile(long long loc, long long siz, int idx)
 {
 	struct flock lock = {0};
-	lock.l_start = arg0;
-	lock.l_len = arg1;
+	lock.l_start = loc;
+	lock.l_len = siz;
 	lock.l_type = F_UNLCK;
 	lock.l_whence = SEEK_SET;
 	if (fcntl(inp[idx],F_SETLK,&lock) < 0) ERROR(inperr[idx],idx);
 }
-void rdlkwFile(long long arg0, long long arg1, int idx)
+void rdlkwFile(long long loc, long long siz, int idx)
 {
 	struct flock lock = {0};
-	lock.l_start = arg0;
-	lock.l_len = arg1;
+	lock.l_start = loc;
+	lock.l_len = siz;
 	lock.l_type = F_RDLCK;
 	lock.l_whence = SEEK_SET;
 	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERROR(inperr[idx],idx);
 }
-void wrlkwFile(long long arg0, long long arg1, int idx)
+void wrlkwFile(long long loc, long long siz, int idx)
 {
 	struct flock lock = {0};
-	lock.l_start = arg0;
-	lock.l_len = arg1;
+	lock.l_start = loc;
+	lock.l_len = siz;
 	lock.l_type = F_WRLCK;
 	lock.l_whence = SEEK_SET;
 	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERROR(inperr[idx],idx);
@@ -424,7 +424,7 @@ void readStr(cftype fnc, void *arg, int idx)
 	fnc(buf,trm,arg);
 	free(buf);
 }
-void preadStr(cftype fnc, void *arg, int idx, long long loc, long long siz)
+void preadStr(cftype fnc, void *arg, long long loc, long long siz, int idx)
 {
 	char *buf = 0;
 	int size = 0; // num valid
@@ -508,7 +508,7 @@ float readOld(int idx)
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
 	return arg;
 }
-int writeBuf(int idx, const void *arg, long long siz)
+int writeBuf(const void *arg, long long siz, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
 	if (fdt[idx] == Atom) {
@@ -535,13 +535,13 @@ void writeStr(const char *arg, int trm, int idx)
 	while (/*size < siz && */val == num && val == tmp) {
 		for (num = 0; num != bufsize/* && num != siz-size*/ && arg[size+num]; num++);
 		tmp = /*siz-size; if (tmp > bufsize) tmp = */bufsize;
-		val = writeBuf(idx,arg+size,num); // val = /*p*/write(out[idx],arg+size,num/*,loc+size*/);
+		val = writeBuf(arg+size,num,idx); // val = /*p*/write(out[idx],arg+size,num/*,loc+size*/);
 		if (val != num) ERROR(outerr[idx],idx)
 		size += val;
 	}
 	if (/*size < siz && */trm && /*p*/write(out[idx],arg+size,1/*,loc+size*/) != 1) ERROR(outerr[idx],idx)
 }
-void pwriteStr(const char *arg, int trm, int idx, long long loc, long long siz)
+void pwriteStr(const char *arg, int trm, long long loc, long long siz, int idx)
 {
 	int size = 0; // num valid
 	size_t tmp = 0; // num attempted
@@ -560,31 +560,31 @@ void pwriteStr(const char *arg, int trm, int idx, long long loc, long long siz)
 void writeChr(char arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(char));
+	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(char), idx);
 	if (val < (int)sizeof(char)) ERROR(outerr[idx],idx)
 }
 void writeInt(int arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(int));
+	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(int), idx);
 	if (val < (int)sizeof(int)) ERROR(outerr[idx],idx)
 }
 void writeNum(double arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(double));
+	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(double), idx);
 	if (val < (int)sizeof(double)) ERROR(outerr[idx],idx)
 }
 void writeNew(long long arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(long long));
+	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(long long), idx);
 	if (val < (int)sizeof(long long)) ERROR(outerr[idx],idx)
 }
 void writeOld(float arg, int idx)
 {
 	if (idx < 0 || idx >= len || fdt[idx] == None) ERROR(exitErr,0)
-	int val = writeBuf(idx/*write(out[idx]*/,(char *)&arg,sizeof(float));
+	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(float), idx);
 	if (val < (int)sizeof(float)) ERROR(outerr[idx],idx)
 }
 
