@@ -37,7 +37,9 @@ int main(int argc, char **argv)
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	if ((fub = forkExec("file")) < 0) ERROR(exiterr,-1);
 	if ((rub = openInet(0,argv[3])) < 0) ERROR(exiterr,-1);
-	bothJump(huberr,hub); bothJump(huberr,fub); bothJump(huberr,rub);
+	readJump(huberr,hub); writeJump(huberr,hub);
+	readJump(huberr,fub); writeJump(huberr,fub);
+	readJump(huberr,rub); writeJump(huberr,rub);
 	layer[hub] = Cluster; layer[fub] = System;
 	while (1) {if (setjmp(errbuf) == 0) {
 	for (sub = waitAny(); sub >= 0; sub = waitAny()) {

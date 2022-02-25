@@ -397,7 +397,7 @@ int main(int argc, char **argv)
 	if (argc != 4) return -1;
 	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
-	bothJump(huberr,hub); allocEvent(&event,1); goon = 1;
+	readJump(huberr,hub); writeJump(huberr,hub); allocEvent(&event,1); goon = 1;
 	while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
 	for (head = deloc(nowtime = gettime()); head; head = deloc(nowtime)) flow();
 	if (adloc()) sub = pauseAny(adloc(nowtime)); else sub = waitAny();

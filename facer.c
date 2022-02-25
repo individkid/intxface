@@ -1,6 +1,7 @@
 #include "face.h"
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 int errcheck = 0;
 int exccheck = 0;
@@ -40,7 +41,7 @@ int main(int argc, char **argv)
 	if (forkExec("facerC") != size++) {printf("a.out\n"); return -1;}
 	if (forkExec("facerLua") != size++) {printf("facer.ex\n"); return -1;}
 	for (int i = 0; i < size; i++) readNote(excfunc,i);
-	int handle = openFile("oops.tmp"); bothJump(errfunc,handle);
+	int handle = openFile("oops.tmp"); readJump(errfunc,handle); writeJump(errfunc,handle);
 	sleepSec(1);
 	int expectInt[] = {0,1,2};
 	double expectNum[] = {0.1,1.1,2.1};
@@ -52,7 +53,8 @@ int main(int argc, char **argv)
 		writeNum(expectNum[index],index);
 		writeStr(expectStr[index],1,index);
 		writeNew(expectNew[index],index);
-		writeOld(expectOld[index],index);}
+		writeOld(expectOld[index],index);
+	}
 	int done[3] = {0};
 	for (int index = waitAny(); index >= 0; index = waitAny()) {
 	switch (done[index]) {
