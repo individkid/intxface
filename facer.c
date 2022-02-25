@@ -38,10 +38,12 @@ int main(int argc, char **argv)
 	writeOld(old,0);
 	return 0;}
 	int size = 0;
-	if (forkExec("facerC") != size++) {printf("a.out\n"); return -1;}
-	if (forkExec("facerLua") != size++) {printf("facer.ex\n"); return -1;}
+	if (forkExec("facerC") != size++) {printf("facerC\n"); return -1;}
+	if (forkExec("facerLua") != size++) {printf("facerLua\n"); return -1;}
+	if (forkExec("facerHs") != size++) {printf("facerHs\n"); return -1;}
 	for (int i = 0; i < size; i++) readNote(excfunc,i);
 	int handle = openFile("oops.tmp"); readJump(errfunc,handle); writeJump(errfunc,handle);
+	int hello = openFile("hello.tmp");
 	sleepSec(1);
 	int expectInt[] = {0,1,2};
 	double expectNum[] = {0.1,1.1,2.1};
@@ -68,8 +70,7 @@ int main(int argc, char **argv)
 		done[index]++; break;}
 	case (2): {
 		readStr(buffunc,0,index);
-		const char *value = buffer;
-		if (strcmp(value,expectStr[index]) != 0) {printf("mismatch %s %d %d\n",value,index,done[index]); return -1;}
+		if (strcmp(buffer,expectStr[index]) != 0) {printf("mismatch %s %d %d\n",buffer,index,done[index]); return -1;}
 		strcpy(buffer,"oops");
 		done[index]++; break;}
 	case (3): {
@@ -81,11 +82,17 @@ int main(int argc, char **argv)
 		if (value != expectOld[index]) {printf("mismatch %f %d %d\n",value,index,done[index]); return -1;}
 		done[index]++; break;}
 	default: {
-		readInt(index);
+		readInt(index); // increment exccheck
 		break;}}}
 	char empty[1] = {0}; writeStr(empty,1,handle);
 	seekFile(0,handle); readInt(handle);
 	for (int i = 0; i < size; i++)
 		if (checkRead(i)||checkWrite(i)) return -1;
-	return (errcheck!=handle || exccheck != 2) ? -1 : 0;
+	writeStr("hello ok again and again",1,hello);
+	pwriteStr("again",1,strlen("hello ok "),hello);
+	preadStr(buffunc,0,strlen("hello ok again")+1,hello);
+	if (strcmp(buffer,"and again") != 0) {printf("mismatch %s\n",buffer); return -1;}
+	preadStr(buffunc,0,0,hello);
+	if (strcmp(buffer,"hello ok again") != 0) {printf("mismatch %s\n",buffer); return -1;}
+	return (errcheck!=handle || exccheck != size) ? -1 : 0;
 }
