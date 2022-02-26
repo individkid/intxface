@@ -44,6 +44,8 @@ int main(int argc, char **argv)
 	for (int i = 0; i < size; i++) readNote(excfunc,i);
 	int handle = openFile("oops.tmp"); readJump(errfunc,handle); writeJump(errfunc,handle);
 	int hello = openFile("hello.tmp");
+	int ok = openFifo("ok.tmp");
+	int again = openAtom("again.tmp");
 	sleepSec(1);
 	int expectInt[] = {0,1,2};
 	double expectNum[] = {0.1,1.1,2.1};
@@ -94,5 +96,9 @@ int main(int argc, char **argv)
 	if (strcmp(buffer,"and again") != 0) {printf("mismatch %s\n",buffer); return -1;}
 	preadStr(buffunc,0,0,hello);
 	if (strcmp(buffer,"hello ok again") != 0) {printf("mismatch %s\n",buffer); return -1;}
-	return (errcheck!=handle || exccheck != size) ? -1 : 0;
+	writeInt(123,ok);
+	int fifo = readInt(ok);
+	writeInt(456,again); flushBuf(again);
+	int atom = readInt(again);
+	return (fifo != 123 || atom != 456 || errcheck!=handle || exccheck != size) ? -1 : 0;
 }

@@ -27,11 +27,13 @@ extern int bufsize;
 
 void spokErr(const char *str, int num, int arg)
 {
+	fprintf(stderr,"spokeErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid()); fflush(stderr);
 	longjmp(jmpbuf[number[arg]],1);
 }
 
 void hubErr(const char *str, int num, int arg)
 {
+	fprintf(stderr,"hubErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid()); fflush(stderr);
 	longjmp(errbuf,1);
 }
 
@@ -64,7 +66,7 @@ void writeGive(long long loc, long long pid, const char *str, int idx)
 	struct File command = {0};
 	int siz = strlen(str);
 	wrlkwFile(loc,siz+1,give[idx]);
-	pwriteStr(str,1,give[idx],loc);
+	pwriteStr(str,1,loc,give[idx]);
 	unlkFile(loc,siz+1,give[idx]);
 	command.act = ThdHub;
 	command.idx = idx;
@@ -83,7 +85,7 @@ void appendGive(long long pid, const char *str, int idx)
 	while (checkFile(idx) != loc) {
 		loc = checkFile(idx);
 		wrlkwFile(loc,siz+1,give[idx]);}
-	pwriteStr(str,1,give[idx],loc);
+	pwriteStr(str,1,loc,give[idx]);
 	unlkFile(loc,siz+1,give[idx]);
 	command.act = ThdHub;
 	command.idx = idx;
@@ -220,10 +222,13 @@ int main(int argc, char **argv)
 	readJump(hubErr,face); writeJump(hubErr,face);
 	struct File *ptr = 0; allocFile(&ptr,1);
 	ptr->act = ThdThd; fieldsiz = sizeFile(ptr);
+	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;
 	filesiz = FILESIZE - FILESIZE%fieldsiz;
 	if (setjmp(errbuf) != 0) ERROR(exitErr,-1)
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
+	fprintf(stderr,"sub %d face %d\n",sub,face); fflush(stderr);
 	readFile(ptr,sub);
+	fprintf(stderr,"act %d\n",ACT); fflush(stderr);
 	switch (ACT) {
 		case (NewHub): {
 		int len = strlen(STR);
@@ -235,6 +240,7 @@ int main(int argc, char **argv)
 		strcpy(dirstr,dirname(STR));
 		if (checkRead(GIVE)) ERROR(hubErr,-1)
 		strcat(strcat(strcpy(name,dirstr),"/"),basestr);
+		fprintf(stderr,"face %d IDX %d name %s basestr %s dirstr %s str %s\n",face,IDX,name,basestr,dirstr,STR); fflush(stderr);
 		if (findIdent(name) != -1) ERROR(hubErr,-1)
 		if ((GIVE = openFile(name)) == -1) ERROR(hubErr,-1)
 		else {number[GIVE] = IDX; readJump(spokErr,GIVE); writeJump(spokErr,GIVE);}
@@ -246,6 +252,7 @@ int main(int argc, char **argv)
 		else {number[HELP] = IDX; readJump(spokErr,HELP); writeJump(spokErr,HELP);}
 		if ((ANON = openPipe()) == -1) ERROR(hubErr,-1)
 		else {number[ANON] = IDX; readJump(hubErr,ANON); writeJump(spokErr,ANON);}
+		writeInt(123,FIFO); flushBuf(FIFO); fprintf(stderr,"check %d\n",readInt(FIFO)); fflush(stdout);
 		if (pthread_create(&THRD,0,func,ptr) != 0) ERROR(hubErr,-1)
 		allocFile(&ptr,1);
 		break;}
@@ -253,13 +260,17 @@ int main(int argc, char **argv)
 		if (sub != face) ERROR(hubErr,-1)
 		ACT = (ACT == CfgHub ? HubThd : AppThd );
 		PID = identifier;
+		fprintf(stderr,"calling writeFile FIFO %d GIVE %d HELP %d ANON %d\n",FIFO,GIVE,HELP,ANON); fflush(stderr);
 		writeFile(ptr,FIFO);
-		flushBuf(FIFO);}
+		fprintf(stderr,"called writeFile\n"); fflush(stderr);
+		flushBuf(FIFO);
+		break;}
 		case (ThdHub): {
 		if (sub != ANON) ERROR(hubErr,-1)
 		ACT = HubCfg;
 		SLF = (PID == identifier);
-		writeFile(ptr,face);}
+		writeFile(ptr,face);
+		break;}
 		default: {
 		ERROR(hubErr,-1)
 		break;}}}

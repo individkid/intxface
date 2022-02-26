@@ -15,7 +15,7 @@ ident1 = forkExec("file")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
-file["str"] = {name}
+file["str"] = name
 writeFile(file,ident1)
 file = {}
 file["act"] = "CfgHub"
@@ -34,7 +34,7 @@ ident2 = forkExec("file")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
-file["str"] = {name}
+file["str"] = name
 writeFile(file,ident2)
 file = readFile(ident2)
 assert(file["act"] == "HubCfg")
@@ -65,7 +65,7 @@ ident3 = forkExec("file")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
-file["str"] = {name}
+file["str"] = name
 writeFile(file,ident3)
 file = readFile(ident3)
 assert(file["act"] == "HubCfg")
