@@ -70,6 +70,7 @@ int readGive(long long loc, long long pid, int idx)
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
+	text.trm = 1;
 	text.str = &command.str;
 	while (1) {
 		rdlkwFile(loc,siz+1,give[idx]);
@@ -79,7 +80,7 @@ int readGive(long long loc, long long pid, int idx)
 		if (val <= siz && text.trm == 1) break;
 		if (val <= siz) {freeFile(&command); return -1;}
 		siz = val;}
-	fprintf(stderr,"readGive %lld %s\n",command.loc,command.str); fflush(stderr);
+	// fprintf(stderr,"readGive %lld %s\n",command.loc,command.str); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);
 	return val;
@@ -97,7 +98,7 @@ void writeGive(long long loc, long long pid, const char *str, int idx)
 	command.loc = loc;
 	command.pid = pid;
 	allocStr(&command.str,str);
-	fprintf(stderr,"writeGive loc %lld\n",loc); fflush(stderr);
+	// fprintf(stderr,"writeGive loc %lld\n",loc); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);
 }
@@ -117,7 +118,7 @@ void appendGive(long long pid, const char *str, int idx)
 	command.loc = loc;
 	command.pid = pid;
 	allocStr(&command.str,str);
-	fprintf(stderr,"appendGive loc %lld\n",loc); fflush(stderr);
+	// fprintf(stderr,"appendGive loc %lld\n",loc); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);
 }
@@ -131,7 +132,7 @@ void writeHelp(long long loc, long long pid, long long siz, int tail, int idx)
 	command.pid = pid;
 	command.siz = siz;
 	seekFile(tail,help[idx]);
-	fprintf(stderr,"writeHelp tail %d loc %lld\n",tail,loc); fflush(stderr);
+	// fprintf(stderr,"writeHelp tail %d loc %lld\n",tail,loc); fflush(stderr);
 	writeFile(&command,help[idx]);
 }
 
@@ -139,7 +140,7 @@ void readHelp(struct File *command, int loc, int idx)
 {
 	seekFile(loc,help[idx]);
 	readFile(command,help[idx]);
-	fprintf(stderr,"readHelp tail %d loc %lld\n",loc,command->loc); fflush(stderr);
+	// fprintf(stderr,"readHelp tail %d loc %lld\n",loc,command->loc); fflush(stderr);
 }
 
 int checkHelp(int loc, int idx)
@@ -181,6 +182,7 @@ void *func(void *arg)
 	struct File temp = {0};
 	double backoff = 0.0;
 	if (setjmp(JBUF) != 0) {writeThd(IDX); return 0;}
+	// fprintf(stderr,"%d func\n",getpid()); fflush(stderr);
 	for (TAIL = filesiz; TAIL == filesiz || (backoff = 0.0); sleepSec(backoff += amount)) {
 		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
 			if (rdlkFile(loc,fieldsiz,HELP)) {
@@ -192,17 +194,18 @@ void *func(void *arg)
 	// previous is read locked
 	for (int siz = 0, loc = 0;
 		(siz = readGive(loc,0,IDX)) != -1;
-		loc += siz);
-	fprintf(stderr,"goto goRead\n"); fflush(stderr);
+		loc += siz+1);
 	goto goRead;
 
 	toRead:
+	// fprintf(stderr,"%d toRead\n",getpid()); fflush(stderr);
 	// previous and next are read locked
 	unlkFile(NEXT,fieldsiz,HELP);
 	// previous is read locked 
 	if (wrlkFile(filesiz,1,HELP)) goto toWrite;
 
 	goRead:
+	// fprintf(stderr,"%d goRead\n",getpid()); fflush(stderr);
 	// previous is read locked
 	rdlkwFile(NEXT,fieldsiz,HELP);
 	// previous and next are read locked
@@ -218,6 +221,7 @@ void *func(void *arg)
 	goto goRead;
 
 	toWrite:
+	// fprintf(stderr,"%d toWrite\n",getpid()); fflush(stderr);
 	// previous is read locked
 	unlkFile(TAIL,fieldsiz,HELP);
 	// nothing is read locked
@@ -227,6 +231,7 @@ void *func(void *arg)
 	clearHelp(TAIL,IDX);
 
 	goWrite:
+	// fprintf(stderr,"%d goWrite\n",getpid()); fflush(stderr);
 	// previous is write locked
 	wrlkwFile(NEXT,fieldsiz,HELP);
 	// previous and next are write locked

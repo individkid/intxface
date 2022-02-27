@@ -14,6 +14,7 @@ function checkRead(ident)
 	file = readFile(ident)
 	if (file["act"] == "ThdErr") then print("ThdErr "..file["str"].." "..file["idx"]); exit() end
 	if (file["act"] == "HubErr") then print("HubErr "..file["str"]); exit() end
+	-- debugStr("ident "..ident.." slf "..file["slf"].." loc "..file["loc"].." ("..file["str"]..")")
 	return file
 end
 
@@ -23,19 +24,14 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
-debugStr("before writeFile 1")
 writeFile(file,ident1)
-debugStr("after writeFile 1")
 file = {}
 file["act"] = "CfgHub"
 file["idx"] = 0
 file["loc"] = 0
 file["str"] = data1
-debugStr("before writeFile 2")
 writeFile(file,ident1)
-debugStr("after writeFile 2")
 file = checkRead(ident1)
-debugStr("after checkRead 2")
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
@@ -47,11 +43,8 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
-debugStr("before writeFile 3")
 writeFile(file,ident2)
-debugStr("after writeFile 3")
 file = checkRead(ident2)
-debugStr("after checkRead 3")
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
@@ -62,20 +55,14 @@ file["act"] = "CfgHub"
 file["idx"] = 0
 file["loc"] = string.len(prefix)
 file["str"] = field2
-debugStr("before writeFile 4")
 writeFile(file,ident2)
-debugStr("after writeFile 4")
 file = checkRead(ident2)
-debugStr("after checkRead 4")
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
-debugStr("loc "..file["loc"].." "..string.len(prefix).." ("..file["str"]..")")
 assert(file["loc"] == string.len(prefix))
 assert(file["slf"] == 1)
 assert(file["str"] == field2)
-debugStr("before checkRead 5")
 file = checkRead(ident1)
-debugStr("after checkRead 5")
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(prefix))
@@ -97,7 +84,7 @@ assert(file["str"] == data2)
 file = checkRead(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
-assert(file["loc"] == 0)
+assert(file["loc"] == 9)
 assert(file["slf"] == 0)
 assert(file["str"] == data3)
 
