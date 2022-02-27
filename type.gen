@@ -10,6 +10,8 @@ Action = {
 	"AppThd",
 	"ThdThd",
 	"HubCfg",
+	"ThdErr",
+	"HubErr",
 }
 State = {
 	"Stock",
@@ -99,17 +101,32 @@ Ture = {
 --HERE Structs
 File = {
 	{"act","Action",{},{}},
-	{"idx","Int",{},{}},
-	{"loc","New",{["act"]={["ThdThd"]=true,
-		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true,
-		["HubCfg"]=true,["CfgHub"]=true,["AppHub"]=true}},{}},
-	{"pid","New",{["act"]={["ThdThd"]=true,
-		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true}},{}},
-	{"slf","Int",{["act"]={["HubCfg"]=true}},{}},
-	{"str","Str",{["act"]={["NewHub"]=true,
-		["HubThd"]=true,["AppThd"]=true,["ThdHub"]=true,
-		["HubCfg"]=true,["CfgHub"]=true,["AppHub"]=true}},{}},
-	{"siz","New",{["act"]={["ThdThd"]=true}},{}},
+	{"idx","Int",{["act"]={
+		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
+		["HubCfg"]=true,
+		["ThdErr"]=true
+	}},{}},
+	{"loc","New",{["act"]={
+		["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
+		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true,
+		["HubCfg"]=true
+	}},{}},
+	{"pid","New",{["act"]={
+		["ThdHub"]=true,
+		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true
+	}},{}},
+	{"slf","Int",{["act"]={
+		["HubCfg"]=true
+	}},{}},
+	{"str","Str",{["act"]={
+		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
+		["HubThd"]=true,["AppThd"]=true,
+		["HubCfg"]=true,
+		["ThdErr"]=true,["HubErr"]=true
+	}},{}},
+	{"siz","New",{
+		["act"]={["ThdThd"]=true
+	}},{}},
 }
 Term0 = {
 	{"cff","Num",{},{}},

@@ -24,17 +24,40 @@ int fieldsiz = 0;
 int filesiz = 0;
 double amount = BACKOFF;
 extern int bufsize;
+char *errstr = 0;
+
+void faceErr(const char *str, int num, int arg)
+{
+	exit(-1);
+}
 
 void spokErr(const char *str, int num, int arg)
 {
-	fprintf(stderr,"spokeErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid()); fflush(stderr);
+	asprintf(&errstr,"spokeErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	longjmp(jmpbuf[number[arg]],1);
 }
 
 void hubErr(const char *str, int num, int arg)
 {
-	fprintf(stderr,"hubErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid()); fflush(stderr);
+	asprintf(&errstr,"hubErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	longjmp(errbuf,1);
+}
+
+void writeThd(int idx)
+{
+	struct File command = {0};
+	command.act = ThdErr;
+	command.idx = idx;
+	allocStr(&command.str,errstr);
+	writeFile(&command,anon[idx]);
+}
+
+void writeHub()
+{
+	struct File command = {0};
+	command.act = HubErr;
+	allocStr(&command.str,errstr);
+	writeFile(&command,face);
 }
 
 int readGive(long long loc, long long pid, int idx)
@@ -56,6 +79,7 @@ int readGive(long long loc, long long pid, int idx)
 		if (val <= siz && text.trm == 1) break;
 		if (val <= siz) {freeFile(&command); return -1;}
 		siz = val;}
+	fprintf(stderr,"readGive %lld %s\n",command.loc,command.str); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);
 	return val;
@@ -73,6 +97,7 @@ void writeGive(long long loc, long long pid, const char *str, int idx)
 	command.loc = loc;
 	command.pid = pid;
 	allocStr(&command.str,str);
+	fprintf(stderr,"writeGive loc %lld\n",loc); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);
 }
@@ -92,6 +117,7 @@ void appendGive(long long pid, const char *str, int idx)
 	command.loc = loc;
 	command.pid = pid;
 	allocStr(&command.str,str);
+	fprintf(stderr,"appendGive loc %lld\n",loc); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);
 }
@@ -105,6 +131,7 @@ void writeHelp(long long loc, long long pid, long long siz, int tail, int idx)
 	command.pid = pid;
 	command.siz = siz;
 	seekFile(tail,help[idx]);
+	fprintf(stderr,"writeHelp tail %d loc %lld\n",tail,loc); fflush(stderr);
 	writeFile(&command,help[idx]);
 }
 
@@ -112,6 +139,7 @@ void readHelp(struct File *command, int loc, int idx)
 {
 	seekFile(loc,help[idx]);
 	readFile(command,help[idx]);
+	fprintf(stderr,"readHelp tail %d loc %lld\n",loc,command->loc); fflush(stderr);
 }
 
 int checkHelp(int loc, int idx)
@@ -152,7 +180,7 @@ void *func(void *arg)
 	struct File *ptr = arg;
 	struct File temp = {0};
 	double backoff = 0.0;
-	if (setjmp(JBUF) != 0) return 0;
+	if (setjmp(JBUF) != 0) {writeThd(IDX); return 0;}
 	for (TAIL = filesiz; TAIL == filesiz || (backoff = 0.0); sleepSec(backoff += amount)) {
 		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
 			if (rdlkFile(loc,fieldsiz,HELP)) {
@@ -165,6 +193,7 @@ void *func(void *arg)
 	for (int siz = 0, loc = 0;
 		(siz = readGive(loc,0,IDX)) != -1;
 		loc += siz);
+	fprintf(stderr,"goto goRead\n"); fflush(stderr);
 	goto goRead;
 
 	toRead:
@@ -219,16 +248,14 @@ int main(int argc, char **argv)
 	if (argc != 4) ERROR(exitErr,-1);
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exitErr,-1);
-	readJump(hubErr,face); writeJump(hubErr,face);
+	readNote(faceErr,face); readJump(faceErr,face); writeJump(faceErr,face);
 	struct File *ptr = 0; allocFile(&ptr,1);
 	ptr->act = ThdThd; fieldsiz = sizeFile(ptr);
 	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;
 	filesiz = FILESIZE - FILESIZE%fieldsiz;
-	if (setjmp(errbuf) != 0) ERROR(exitErr,-1)
+	if (setjmp(errbuf) != 0) {writeHub(); return -1;}
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
-	fprintf(stderr,"sub %d face %d\n",sub,face); fflush(stderr);
 	readFile(ptr,sub);
-	fprintf(stderr,"act %d\n",ACT); fflush(stderr);
 	switch (ACT) {
 		case (NewHub): {
 		int len = strlen(STR);
@@ -240,19 +267,17 @@ int main(int argc, char **argv)
 		strcpy(dirstr,dirname(STR));
 		if (checkRead(GIVE)) ERROR(hubErr,-1)
 		strcat(strcat(strcpy(name,dirstr),"/"),basestr);
-		fprintf(stderr,"face %d IDX %d name %s basestr %s dirstr %s str %s\n",face,IDX,name,basestr,dirstr,STR); fflush(stderr);
 		if (findIdent(name) != -1) ERROR(hubErr,-1)
 		if ((GIVE = openFile(name)) == -1) ERROR(hubErr,-1)
-		else {number[GIVE] = IDX; readJump(spokErr,GIVE); writeJump(spokErr,GIVE);}
+		else {number[GIVE] = IDX; readNote(spokErr,GIVE); readJump(spokErr,GIVE); writeJump(spokErr,GIVE);}
 		strcat(strcat(strcpy(name,dirstr),"/."),basestr);
 		if ((FIFO = openAtom(name)) == -1) ERROR(hubErr,-1)
-		else {number[FIFO] = IDX; readJump(spokErr,FIFO); writeJump(hubErr,FIFO);}
+		else {number[FIFO] = IDX; readNote(spokErr,FIFO); readJump(spokErr,FIFO); writeJump(hubErr,FIFO);}
 		strcat(strcat(strcpy(name,dirstr),"/.."),basestr);
 		if ((HELP = openFile(name)) == -1) ERROR(hubErr,-1)
-		else {number[HELP] = IDX; readJump(spokErr,HELP); writeJump(spokErr,HELP);}
+		else {number[HELP] = IDX; readNote(spokErr,HELP); readJump(spokErr,HELP); writeJump(spokErr,HELP);}
 		if ((ANON = openPipe()) == -1) ERROR(hubErr,-1)
-		else {number[ANON] = IDX; readJump(hubErr,ANON); writeJump(spokErr,ANON);}
-		writeInt(123,FIFO); flushBuf(FIFO); fprintf(stderr,"check %d\n",readInt(FIFO)); fflush(stdout);
+		else {number[ANON] = IDX; readNote(hubErr,ANON); readJump(hubErr,ANON); writeJump(spokErr,ANON);}
 		if (pthread_create(&THRD,0,func,ptr) != 0) ERROR(hubErr,-1)
 		allocFile(&ptr,1);
 		break;}
@@ -260,15 +285,16 @@ int main(int argc, char **argv)
 		if (sub != face) ERROR(hubErr,-1)
 		ACT = (ACT == CfgHub ? HubThd : AppThd );
 		PID = identifier;
-		fprintf(stderr,"calling writeFile FIFO %d GIVE %d HELP %d ANON %d\n",FIFO,GIVE,HELP,ANON); fflush(stderr);
 		writeFile(ptr,FIFO);
-		fprintf(stderr,"called writeFile\n"); fflush(stderr);
 		flushBuf(FIFO);
 		break;}
 		case (ThdHub): {
 		if (sub != ANON) ERROR(hubErr,-1)
 		ACT = HubCfg;
 		SLF = (PID == identifier);
+		writeFile(ptr,face);
+		break;}
+		case (ThdErr): {
 		writeFile(ptr,face);
 		break;}
 		default: {

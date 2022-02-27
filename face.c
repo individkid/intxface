@@ -43,6 +43,10 @@ int memptrz = 0;
 int memptrs = 0;
 void ***memptr = 0;
 
+void debugStr(const char *str)
+{
+	fprintf(stderr,"%s\n",str); fflush(stderr);
+}
 void exitErr(const char *str, int num, int idx)
 {
 	fprintf(stderr,"exitErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
@@ -476,12 +480,13 @@ void allocStr(char **ptr, const char *str)
 	if (*ptr == 0) ERROR(exitErr,-1)
 	strcpy(*ptr,str);
 }
-void callStr(const char *str, int trm, void *arg)
+void callStr(const char *str, int trm, int idx, void *arg)
 {
 	char **ptr = arg;
+	if (trm == 0) NOTICE(inpexc[idx],idx)
 	allocStr(ptr,str);
 }
-void textStr(const char *str, int trm, void *arg)
+void textStr(const char *str, int trm, int idx, void *arg)
 {
 	struct Text *text = arg;
 	text->trm = trm;
@@ -504,7 +509,7 @@ void readStr(cftype fnc, void *arg, int idx)
 		size += num;
 	}
 	if (val == num) buf[size] = 0; else trm = 1;
-	fnc(buf,trm,arg);
+	fnc(buf,trm,idx,arg);
 	free(buf);
 }
 void preadStr(cftype fnc, void *arg, long long loc, int idx)
@@ -524,10 +529,10 @@ void preadStr(cftype fnc, void *arg, long long loc, int idx)
 		size += num;
 	}
 	if (val == num) buf[size] = 0; else trm = 1;
-	fnc(buf,trm,arg);
+	fnc(buf,trm,idx,arg);
 	free(buf);
 }
-void readStrHsFnc(const char *buf, int trm, void *arg)
+void readStrHsFnc(const char *buf, int trm, int idx, void *arg)
 {
 	hftype fnc = arg;
 	fnc(buf,trm);
@@ -931,6 +936,12 @@ void funcLua(int idx)
 	lua_pushnumber(lua,idx);
 	if (lua_pcall(lua, 1, 0, 0) != 0) ERROR(exitErr,0)
 }
+int debugStrLua(lua_State *lua)
+{
+	luaerr = lua;
+	debugStr(lua_tostring(lua,1));
+	return 0;
+}
 int readNoteLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -950,13 +961,6 @@ int writeJumpLua(lua_State *lua)
 	luaerr = lua;
 	setupLua(outlua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
 	writeJump(writeLua,(int)lua_tonumber(lua,2));
-	return 0;
-}
-int bothJumpLua(lua_State *lua)
-{
-	luaerr = lua;
-	readJumpLua(lua);
-	writeJumpLua(lua);
 	return 0;
 }
 int closeIdentLua(lua_State *lua)
@@ -981,6 +985,12 @@ int openFifoLua(lua_State *lua)
 {
 	luaerr = lua;
 	lua_pushnumber(lua,openFifo(lua_tostring(lua,1)));
+	return 1;
+}
+int openAtomLua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,openAtom(lua_tostring(lua,1)));
 	return 1;
 }
 int openFileLua(lua_State *lua)
@@ -1122,7 +1132,7 @@ int sleepSecLua(lua_State *lua)
 	sleep((int)lua_tonumber(lua,1));
 	return 0;
 }
-void readStrLuaFnc(const char *buf, int trm, void *arg)
+void readStrLuaFnc(const char *buf, int trm, int idx, void *arg)
 {
 	lua_State *lua = arg;
 	lua_pushstring(lua,buf);
@@ -1203,14 +1213,14 @@ int writeOldLua(lua_State *lua)
 
 int luaopen_face (lua_State *L)
 {
+	lua_pushcfunction(L, debugStrLua);
+	lua_setglobal(L, "debugStr");
 	lua_pushcfunction(L, readNoteLua);
 	lua_setglobal(L, "readNote");
 	lua_pushcfunction(L, readJumpLua);
 	lua_setglobal(L, "readJump");
 	lua_pushcfunction(L, writeJumpLua);
 	lua_setglobal(L, "writeJump");
-	lua_pushcfunction(L, bothJumpLua);
-	lua_setglobal(L, "bothJump");
 	lua_pushcfunction(L, closeIdentLua);
 	lua_setglobal(L, "closeIdent");
 	lua_pushcfunction(L, moveIdentLua);
@@ -1219,6 +1229,8 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "openPipe");
 	lua_pushcfunction(L, openFifoLua);
 	lua_setglobal(L, "openFifo");
+	lua_pushcfunction(L, openAtomLua);
+	lua_setglobal(L, "openAtom");
 	lua_pushcfunction(L, openFileLua);
 	lua_setglobal(L, "openFile");
 	lua_pushcfunction(L, forkExecLua);
