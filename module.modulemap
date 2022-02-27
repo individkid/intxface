@@ -1,6 +1,9 @@
 module face {
 	header "face.h"
 }
+module type {
+	header "type.h"
+}
 module util {
 	header "util.h"
 }

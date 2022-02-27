@@ -9,11 +9,11 @@ filerLua: face.so type.lua
 holeC: faceC.o typeC.o
 holeC.o: face.h type.h
 lineC: faceC.o typeC.o
-lineC.o: face.h type.h typer.h
+lineC.o: face.h type.h
 meticC.o: metic.h
-planeC.o: face.h metic.h plane.h type.h util.h
-planeSw: faceC.o meticC.o planeC.o planeG.so typeC.o utilC.o
-planeSw.o: face.h metic.h plane.h type.h type.sw util.h
+planeC.o: face.h metic.h plane.h util.h
+planeSw: faceC.o planeC.o planeG.so typeC.o utilC.o
+planeSw.o: face.h plane.h type.h type.sw util.h
 shareC.o: face.h metic.h share.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 spacraHs: naive.hs
