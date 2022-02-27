@@ -1,8 +1,3 @@
-#ifndef UTIL_H
-#define UTIL_H
-#include "face.h"
-#include "type.h"
-
 #define MIN 0 // arg
 #define WRD 0 // idx for over
 #define PAT 0 // idx for bind
@@ -70,4 +65,3 @@ void utilEnv(int lst, const char *str);
 void utilPipe(int lst, const char *str);
 void utilFile(int lst, const char *str);
 void utilUsage(int lst, const char *str);
-#endif

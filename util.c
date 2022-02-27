@@ -1,4 +1,6 @@
 #include "util.h"
+#include "face.h"
+#include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -337,9 +339,7 @@ struct UtilStruct utilFileFunc(int lst, int arg)
 	const char *name = utilOver(sub,arg,NUM,EQU,EQU,WRD).s;
 	char buf[strlen(name)+1]; strcpy(buf,name);
 	int fnum = uholc++;
-	struct File file; file.act = NewThd; file.idx = fnum; file.num = 1;
-	int siz[1]; (file.siz = siz)[0] = strlen(name);
-	char *ptr[1]; (file.ptr = ptr)[0] = buf;
+	struct File file; file.act = NewHub; file.idx = fnum; file.str = buf;
 	writeFile(&file,pnum);
 	uenc--; return utilStructI(THD,fnum);
 }

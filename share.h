@@ -1,9 +1,3 @@
-#ifndef SHARE_H
-#define SHARE_H
-#include "face.h"
-#include "type.h"
-#include "metic.h"
-
 enum Shader {
 	Display,Track,Shaders
 };
@@ -80,4 +74,3 @@ void atomicResult(enum Memory mem, int idx, int siz, int len, struct Result *ptr
 void atomicMode(enum Memory mem, int idx, int siz, int len, struct Mode *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
 void atomicChr(enum Memory mem, int idx, int siz, int len, char *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
 void atomicClient(enum Memory mem, int idx, int siz, int len, struct Client *ptr, enum Function *fnc, int num, struct Client *ary, void (*func)(int num, struct Client *ptr));
-#endif

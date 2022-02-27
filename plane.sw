@@ -1,3 +1,4 @@
+import util
 import plane
 import AppKit
 import Metal
@@ -9,7 +10,7 @@ func makeLibrary(filepath: String)
 func cmdWake(_ sub: CInt)
 {
 	let cmd = readFile(sub)
-	print("cmdWake \(cmd.num!)")
+	print("cmdWake \(cmd.act!)")
 }
 
 // MAIN

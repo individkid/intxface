@@ -26,6 +26,21 @@ void exiterr(const char *str, int num, int arg)
 	exit(arg);
 }
 
+int splitStr(char **str, char **adr, char **num)
+{
+	char *tmp[3] = {0};
+	int val = -1;
+	for (int i = 0; i < 3; i++) allocStr(tmp+i,*str);
+	if (*str == 0 || sscanf(*str," %s %s %s",tmp[0],tmp[1],tmp[2]) != 3) {
+		for (int i = 0; i < 3; i++) allocStr(tmp+i,0);
+		return 0;}
+	allocStr(str,tmp[0]);
+	allocStr(adr,tmp[1]);
+	allocStr(num,tmp[2]);
+	for (int i = 0; i < 3; i++) allocStr(tmp+i,0);
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
@@ -33,6 +48,8 @@ int main(int argc, char **argv)
 	int fub = 0; // file system
 	int hub = 0; // process cluster
 	int sub = 0; // hub, fub, connect, or accept
+	char *adr = 0;
+	char *num = 0;
 	struct File file = {0};
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
 	if ((fub = forkExec("file")) < 0) ERROR(exiterr,-1);
@@ -47,11 +64,11 @@ int main(int argc, char **argv)
 	readFile(&file,sub);
 	// find new mappings
 	int snd = rub;
-	if (layer[sub] == Cluster && file.act == NewThd && file.num == 3) {
-	if (pollInet(file.ptr[1],file.ptr[2])) snd = checkInet(file.ptr[1],file.ptr[2]);
-	else {snd = openInet(file.ptr[1],file.ptr[2]); layer[snd] = Server;}}
+	if (layer[sub] == Cluster && file.act == NewHub && splitStr(&file.str,&adr,&num)) {
+	if (pollInet(adr,num)) snd = checkInet(adr,num);
+	else {snd = openInet(adr,num); layer[snd] = Server;}}
 	else if (layer[sub] == Unused) {snd = fub; layer[sub] = Client;}
-	else if (file.act == NewThd) snd = fub;
+	else if (file.act == NewHub) snd = fub;
 	// set up new mapping
 	if (snd != rub) {
 	address[sub][file.idx] = snd;
