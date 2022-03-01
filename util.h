@@ -1,3 +1,22 @@
+/*
+This is glob(als) and a spreadsheet with
+an array of bind(ings) per row (aka l(i)st),
+an array of over(loads) per collumn (aka arg(ument)),
+a val(ue) (aka hash) per cell (aka self),
+an id(en)t(ifier) (aka opt(ion)) per cell,
+and a c(ou)nt per cell of lesser id(en)t(ifiers) in the row.
+Cells in a row are filled in by calling the given function
+for each collumn before starting the next row.
+Typically, command line arguments are the first overload,
+and command line dash option characters are the first binding.
+Accessors utilHash utilOver utilTest pass their arguments to utilFind
+to search for a cell in the given row aka l(i)st,
+where arg(ument) is where to search from in the list,
+opt(ion) is which id(en)t(ifier) to find,
+c(ou)nt is number and direction of matches to find,
+c(o)mp(are) is sparse relation to id(en)t(ifier) to find.
+*/
+
 #define MIN 0 // arg
 #define WRD 0 // idx for over
 #define PAT 0 // idx for bind
@@ -38,7 +57,6 @@ void utilArgc(int arg, int siz);
 void utilArgv(int arg, int idx, union UtilUnion val);
 void utilLstc(int lst, int siz);
 void utilLstv(int lst, int idx, union UtilUnion val);
-void utilOptc(int lst, int siz);
 void utilFunc(int lst, UtilFunc fnc);
 void utilGlbv(int glb, union UtilUnion val);
 void utilMerge(int lst, int size, int *index, UtilComp func);

@@ -110,8 +110,8 @@ void utilFunc(int lst, UtilFunc func)
 		uvalv[lst][i] = val.u;
 		ucntv[lst][i] = 0;
 		for (int j = 0; j < i; j++) {
-			if (uidtv[lst][i] < uidtv[lst][j]) uidtv[lst][j]++;
-			if (uidtv[lst][i] > uidtv[lst][j]) uidtv[lst][i]++;
+			if (uidtv[lst][i] < uidtv[lst][j]) ucntv[lst][j]++;
+			if (uidtv[lst][i] > uidtv[lst][j]) ucntv[lst][i]++;
 		}
 	}
 }
@@ -217,8 +217,9 @@ int utilFind(int lst, int arg, int opt, int cnt, int cmp, const char *str)
 int utilTest(int lst, int arg, int opt, int cnt, int cmp)
 {
 	if (setjmp(uenv[uenc++])) return 0;
-	utilFind(lst,arg,opt,cnt,cmp,"test");
-	uenc--; return 1;
+		utilFind(lst,arg,opt,cnt,cmp,"test");
+	uenc--;
+	return 1;
 }
 union UtilUnion utilOver(int lst, int arg, int opt, int cnt, int cmp, int idx)
 {
@@ -276,13 +277,21 @@ int utilStrstr(int hay, int ndl, int ndx)
 	const char pat[] = {utilBind(ndl,PAT).s[ndx],0};
 	return strstr(str,pat)-str;
 }
+struct UtilStruct utilUsageFunc(int lst, int arg)
+{
+	const char *wrd = utilSelf(arg,WRD).s;
+	const char *pat = utilBind(lst,PAT).s;
+	int ident = utilMatch(pat,wrd);
+	return utilStructI(ident,-1);
+}
 struct UtilStruct utilFlagFunc(int lst, int arg)
 {
 	const char *wrd = utilSelf(arg,WRD).s;
 	const char *pat = utilBind(lst,PAT).s;
 	if (setjmp(uenv[uenc++])) return utilStructI(strlen(pat),-1);
-	int ident = utilMatch(pat,wrd);
-	uenc--; return utilStructI(ident,-1);
+		int ident = utilMatch(pat,wrd);
+	uenc--;
+	return utilStructI(ident,-1);
 }
 struct UtilStruct utilRawFunc(int lst, int arg)
 {
@@ -290,23 +299,25 @@ struct UtilStruct utilRawFunc(int lst, int arg)
 	const char *pat = utilBind(lst,PAT).s;
 	if (setjmp(uenv[uenc++])) {
 		if (setjmp(uenv[uenc++])) return utilStructS(STR,wrd);
-		int num = utilAtoi(wrd);
-		uenc--; return utilStructI(NUM,num);
-	}
-	const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
-	utilMatch(pat,word);
-	uenc--; return utilStructS(OPT,wrd);
+			int num = utilAtoi(wrd);
+		uenc--; 
+		return utilStructI(NUM,num);}
+		const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
+		utilMatch(pat,word);
+	uenc--;
+	return utilStructS(OPT,wrd);
 }
 struct UtilStruct utilEnvFunc(int lst, int arg)
 {
 	const char *wrd = utilSelf(arg,WRD).s;
 	const char *pat = utilBind(lst,PAT).s;
 	if (setjmp(uenv[uenc++])) return utilStructI(strlen(pat),-1);
-	const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
-	int ident = utilMatch(pat,word);
-	const char *str = utilGetenv(wrd);
-	int num = utilAtoi(str);
-	uenc--; return utilStructI(ident,num);
+		const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
+		int ident = utilMatch(pat,word);
+		const char *str = utilGetenv(wrd);
+		int num = utilAtoi(str);
+	uenc--;
+	return utilStructI(ident,num);
 }
 struct UtilStruct utilPipeFunc(int lst, int arg)
 {
@@ -317,38 +328,42 @@ struct UtilStruct utilPipeFunc(int lst, int arg)
 	int iprt = utilStrstr(env,lst,ICH);
 	int oprt = utilStrstr(env,lst,OCH);
 	if (setjmp(uenv[uenc++])) return utilStructI(strlen(pat),-1);
-	const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
-	int ident = utilMatch(pat,word);
-	int pnum = utilHash(lst,arg,ident,LST,EQU).i;
-	int inum; if (setjmp(uenv[uenc++])) {inum = utilHash(raw,MIN,NUM,INP,EQU).i;}
-	else {inum = utilHash(env,arg,iprt,LST,EQU).i; uenc--;}
-	const char *istr; if (setjmp(uenv[uenc++])) {istr = utilOver(raw,MIN,NUM,INP,EQU,WRD).s;}
-	else {istr = utilOver(env,arg,iprt,LST,EQU,WRD).s; uenc--;}
-	int onum; if (setjmp(uenv[uenc++])) {onum = utilHash(raw,MIN,NUM,OUT,EQU).i;}
-	else {onum = utilHash(env,arg,oprt,LST,EQU).i; uenc--;}
-	const char *ostr; if (setjmp(uenv[uenc++])) {ostr = utilOver(raw,MIN,NUM,OUT,EQU,WRD).s;}
-	else {ostr = utilOver(env,arg,oprt,LST,EQU,WRD).s; uenc--;}
+		const char *word = utilOver(lst,arg,WLD,LST,EQU,WRD).s;
+		int ident = utilMatch(pat,word);
+	uenc--;
+	if (setjmp(uenv[uenc++])) {uenc--; return utilStructI(ident,forkExec("file"));}
+		int pnum; if (setjmp(uenv[uenc++])) {pnum = -1;}
+		else {pnum = utilHash(lst,arg,ident,LST,EQU).i; uenc--;}
+		int inum; if (setjmp(uenv[uenc++])) {inum = utilHash(raw,MIN,NUM,INP,EQU).i;}
+		else {inum = utilHash(env,arg,iprt,LST,EQU).i; uenc--;}
+		const char *istr; if (setjmp(uenv[uenc++])) {istr = utilOver(raw,MIN,NUM,INP,EQU,WRD).s;}
+		else {istr = utilOver(env,arg,iprt,LST,EQU,WRD).s; uenc--;}
+		int onum; if (setjmp(uenv[uenc++])) {onum = utilHash(raw,MIN,NUM,OUT,EQU).i;}
+		else {onum = utilHash(env,arg,oprt,LST,EQU).i; uenc--;}
+		const char *ostr; if (setjmp(uenv[uenc++])) {ostr = utilOver(raw,MIN,NUM,OUT,EQU,WRD).s;}
+		else {ostr = utilOver(env,arg,oprt,LST,EQU,WRD).s; uenc--;}
+	uenc--;
 	if (pnum == -1 || inp[pnum] != inum || out[pnum] != onum) pnum = pipeInit(istr,ostr);
-	uenc--; return utilStructI(ident,pnum);
+	return utilStructI(ident,pnum);
 }
 struct UtilStruct utilFileFunc(int lst, int arg)
 {
 	int sub = utilGlob(SUB).i;
 	if (setjmp(uenv[uenc++])) return utilStructI(INV,-1);
-	int pnum = utilHash(sub,arg,NUM,EQU,EQU).i;
-	const char *name = utilOver(sub,arg,NUM,EQU,EQU,WRD).s;
+		int pnum = utilHash(sub,arg,THD,EQU,EQU).i;
+		const char *name = utilOver(sub,arg,THD,EQU,EQU,WRD).s;
+	uenc--;
 	char buf[strlen(name)+1]; strcpy(buf,name);
 	int fnum = uholc++;
 	struct File file; file.act = NewHub; file.idx = fnum; file.str = buf;
 	writeFile(&file,pnum);
-	uenc--; return utilStructI(THD,fnum);
+	return utilStructI(THD,fnum);
 }
-struct UtilStruct utilUsageFunc(int lst, int arg)
+void utilUsage(int lst, const char *str)
 {
-	const char *wrd = utilSelf(arg,WRD).s;
-	const char *pat = utilBind(lst,PAT).s;
-	int ident = utilMatch(pat,wrd);
-	return utilStructI(ident,-1);
+	utilLstc(lst,1);
+	utilLstv(lst,0,utilUnionS(str));
+	utilFunc(lst,utilUsageFunc);
 }
 void utilFlag(int lst, const char *str)
 {
@@ -382,10 +397,4 @@ void utilFile(int lst, const char *str)
 	utilLstc(lst,0);
 	utilGlbv(IDX,utilUnionI(lst));
 	utilFunc(lst,utilFileFunc);
-}
-void utilUsage(int lst, const char *str)
-{
-	utilLstc(lst,1);
-	utilLstv(lst,0,utilUnionS(str));
-	utilFunc(lst,utilUsageFunc);
 }
