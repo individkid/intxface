@@ -27,23 +27,22 @@ function showTyperC()
 	result = result..
 	showIndent(1).."struct Struct1 *exp = 0;\n"..
 	showIndent(1).."int size = 4;\n"..
+	showIndent(1).."int *show = 0;\n"..
+	showIndent(1).."int *hide = 0;\n"..
+	showIndent(1).."char **src = 0;\n"..
+	showIndent(1).."char **dst = 0;\n"..
 	showIndent(1).."allocStruct1(&exp,size);\n"..
+	showIndent(1).."allocInt(&show,size); for (int i = 0; i < size; i++) show[i] = 0;\n"..
+	showIndent(1).."allocInt(&hide,size); for (int i = 0; i < size; i++) hide[i] = 0;\n"..
+	showIndent(1).."allocStr(&src,size); for (int i = 0; i < size; i++) src[i] = 0;\n"..
+	showIndent(1).."allocStr(&dst,size); for (int i = 0; i < size; i++) dst[i] = 0;\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) randStruct1(exp+i);\n"..
-	showIndent(1).."for (int i = 0; i < size; i++) writeStruct1(exp+i,i);\n"..
+	showIndent(1).."for (int i = 0; i < size; i++) {showStruct1(exp+i,src+i,show+i); writeStruct(src[i],identStruct(\"Struct1\"),i);}\n"..
 	showIndent(1).."struct Struct1 *act = 0;\n"..
 	showIndent(1).."allocStruct1(&act,size);\n"..
-	showIndent(1).."for (int i = 0; i < size; i++) readStruct1(act+i,i);\n"..
+	showIndent(1).."for (int i = 0; i < size; i++) {readStruct(callStr,dst+i,identStruct(\"Struct1\"),i); hideStruct1(act+i,dst[i],hide+i);}\n"..
 	showIndent(1).."int pass = 0;\n"..
-	showIndent(1).."for (int i = 0; i < size; i++) {\n"..
-	showIndent(1).."char *str = 0;\n"..
-	showIndent(1).."struct Struct1 tmp = {0};\n"..
-	showIndent(1).."int show = 0;\n"..
-	showIndent(1).."int hide = 0;\n"..
-	showIndent(1).."showStruct1(exp+i,&str,&show);\n"..
-	showIndent(1).."hideStruct1(&tmp,str,&hide);\n"..
-	showIndent(1).."free(str);\n"..
-	showIndent(1).."pass += compStruct1(&tmp,act+i);\n"..
-	showIndent(1).."freeStruct1(&tmp);}\n"
+	showIndent(1).."for (int i = 0; i < size; i++) pass += compStruct1(exp+i,act+i);\n"
 	result = result..
 	showIndent(1).."return (pass!=size?-1:0);\n"..
 	"}"

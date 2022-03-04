@@ -265,7 +265,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
 	"            ptr->field3[i1][i2] = 10;\n"..
-	"    {const char *temp = \"hello ok again\"; allocStr(&ptr->field4,temp);}\n"..
+	"    {const char *temp = \"hello ok again\"; assignStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
 	"        ptr->field5[i] = 11;\n"..

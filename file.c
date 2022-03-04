@@ -48,7 +48,7 @@ void writeThd(int idx)
 	struct File command = {0};
 	command.act = ThdErr;
 	command.idx = idx;
-	allocStr(&command.str,errstr);
+	assignStr(&command.str,errstr);
 	writeFile(&command,anon[idx]);
 }
 
@@ -56,7 +56,7 @@ void writeHub()
 {
 	struct File command = {0};
 	command.act = HubErr;
-	allocStr(&command.str,errstr);
+	assignStr(&command.str,errstr);
 	writeFile(&command,face);
 }
 
@@ -97,7 +97,7 @@ void writeGive(long long loc, long long pid, const char *str, int idx)
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
-	allocStr(&command.str,str);
+	assignStr(&command.str,str);
 	// fprintf(stderr,"writeGive loc %lld\n",loc); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);
@@ -117,7 +117,7 @@ void appendGive(long long pid, const char *str, int idx)
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
-	allocStr(&command.str,str);
+	assignStr(&command.str,str);
 	// fprintf(stderr,"appendGive loc %lld\n",loc); fflush(stderr);
 	writeFile(&command,anon[idx]);
 	freeFile(&command);

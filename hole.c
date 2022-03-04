@@ -30,14 +30,14 @@ int splitStr(char **str, char **adr, char **num)
 {
 	char *tmp[3] = {0};
 	int val = -1;
-	for (int i = 0; i < 3; i++) allocStr(tmp+i,*str);
+	for (int i = 0; i < 3; i++) assignStr(tmp+i,*str);
 	if (*str == 0 || sscanf(*str," %s %s %s",tmp[0],tmp[1],tmp[2]) != 3) {
-		for (int i = 0; i < 3; i++) allocStr(tmp+i,0);
+		for (int i = 0; i < 3; i++) assignStr(tmp+i,0);
 		return 0;}
-	allocStr(str,tmp[0]);
-	allocStr(adr,tmp[1]);
-	allocStr(num,tmp[2]);
-	for (int i = 0; i < 3; i++) allocStr(tmp+i,0);
+	assignStr(str,tmp[0]);
+	assignStr(adr,tmp[1]);
+	assignStr(num,tmp[2]);
+	for (int i = 0; i < 3; i++) assignStr(tmp+i,0);
 	return 1;
 }
 

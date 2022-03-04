@@ -277,6 +277,7 @@ function showTypeC()
 end
 function showTypeH()
 	local result = ""
+	result = result.."typedef void (*cftype)(const char*,int,int,void*);\n"
 	result = result..showCallH()
 	return result
 end

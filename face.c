@@ -472,7 +472,15 @@ void allocOld(float **ptr, int siz)
 	if (*ptr == 0) ERROR(exitErr,-1)
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
-void allocStr(char **ptr, const char *str)
+void allocStr(char* **ptr, int siz)
+{
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	allocMem((void**)ptr,siz*sizeof(char*));
+	if (*ptr == 0) ERROR(exitErr,-1)
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
+void assignStr(char **ptr, const char *str)
 {
 	if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
 	if (str == 0) return;
@@ -484,13 +492,13 @@ void callStr(const char *str, int trm, int idx, void *arg)
 {
 	char **ptr = arg;
 	if (trm == 0) NOTICE(inpexc[idx],idx)
-	allocStr(ptr,str);
+	assignStr(ptr,str);
 }
 void textStr(const char *str, int trm, int idx, void *arg)
 {
 	struct Text *text = arg;
 	text->trm = trm;
-	allocStr(text->str,str);
+	assignStr(text->str,str);
 }
 void readStr(cftype fnc, void *arg, int idx)
 {
@@ -661,7 +669,7 @@ void showEnum(const char *typ, const char* val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"%s(%s)",typ,val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -673,7 +681,7 @@ void showStruct(const char* bef, int val, const char *aft, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"%s%d%s",bef,val,aft) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -685,7 +693,7 @@ void showField(const char* val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"%s:",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -697,7 +705,7 @@ void showOpen(const char* val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"%s(",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -709,7 +717,7 @@ void showClose(char **str, int *len)
 	int num;
 	if (asprintf(&tmp,")") < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -721,7 +729,7 @@ void showChr(char val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"Chr(%c)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -733,7 +741,7 @@ void showInt(int val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"Int(%d)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -745,7 +753,7 @@ void showNew(long long val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"New(%lld)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -757,7 +765,7 @@ void showNum(double val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"Num(%lf)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -769,7 +777,7 @@ void showOld(float val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"Old(%f)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
@@ -781,11 +789,22 @@ void showStr(const char* val, char **str, int *len)
 	int num;
 	if (asprintf(&tmp,"Str(%s)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	*str = realloc(*str,*len+num+1);
+	allocMem((void**)str,*len+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
 	memcpy(*str+*len,tmp,num+1);
 	free(tmp);
 	*len += num;
+}
+int hideIdent(const char *val, const char *str, int *len)
+{
+	char *tmp = 0;
+	int num = -1;
+	if (asprintf(&tmp," %s %%n",val) < 0) ERROR(exitErr,-1)
+	sscanf(str+*len,tmp,&num);
+	free(tmp);
+	if (num == -1) return 0;
+	*len += num;
+	return 1;
 }
 int hideEnum(const char* typ, const char *val, const char *str, int *len)
 {
@@ -894,7 +913,7 @@ int hideStr(char **val, const char *str, int *len)
 	tmp = malloc(limit-base+1);
 	if (tmp == 0) return 0;
 	strncpy(tmp,str+*len+base,limit-base); tmp[limit-base] = 0;
-	allocStr(val,tmp);
+	assignStr(val,tmp);
 	free(tmp);
 	*len += limit+num;
 	return 1;

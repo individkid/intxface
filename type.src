@@ -613,8 +613,10 @@ function showFreeCF(v,ebr,sub)
 			result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..",0);\n"
 		end
 		result = result..ebr.."\n"
-	elseif (type(v[4]) == "number") or (type(v[4]) == "string" or (v[2] == "Str")) then
+	elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
 		result = result.."alloc"..v[2].."(&ptr->"..v[1]..",0);"..ebr.."\n"
+	elseif (v[2] == "Str") then
+		result = result.."assignStr(&ptr->"..v[1]..",0);"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end
@@ -709,7 +711,7 @@ function showRandCF(v,ebr,sub)
 		randNum = randNum + 1.0
 	elseif (v[2] == "Str") then
 		result = result.."{const char *temp = \"hello ok again\"; "
-		result = result.."allocStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+		result = result.."assignStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end
@@ -856,6 +858,58 @@ function showHideC(name,typ)
 	elseif (Structz[name] ~= nil) then
 		return showStreamC(name,typ,showHideCF,"int hide",", const char *str, int *len")
 	end
+	return result
+end
+function showRstructC(list)
+	local result = ""
+	result = result.."void readStruct(cftype fnc, void *arg, int typ, int idx)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."char *str = 0;\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case("..(k-1).."): {\n"
+		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
+		result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
+		result = result..showIndent(2).."show"..v.."(&tmp,&str,&len);\n"
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."}\n"
+	result = result..showIndent(1).."fnc(str,1,idx,arg);\n"
+	result = result..showIndent(1).."free(str);\n"
+	result = result.."}\n"
+	return result
+end
+function showWstructC(list)
+	local result = ""
+	result = result.."void writeStruct(const char *str, int typ, int idx)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case("..(k-1).."): {\n"
+		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
+		result = result..showIndent(2).."hide"..v.."(&tmp,str,&len);\n"
+		result = result..showIndent(2).."write"..v.."(&tmp,idx);\n"
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."}\n"
+	result = result.."}\n"
+	return result
+end
+function showIstructC(list)
+	local result = ""
+	result = result.."int identStruct(const char *str)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."if (hideIdent(\""..v.."\",str,&len)) return "..(k-1)..";\n"
+	end
+	result = result..showIndent(1).."return -1;\n"
+	result = result.."}\n"
 	return result
 end
 function showEnumHs(name,enum)
@@ -1726,7 +1780,10 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showCompC).."\n"
 	result = result..showCall(Structs,Structz,showSizeC).."\n"
 	result = result..showCall(Structs,Structz,showShowC).."\n"
-	result = result..showCall(Structs,Structz,showHideC)
+	result = result..showCall(Structs,Structz,showHideC).."\n"
+	result = result..showRstructC(Structs).."\n"
+	result = result..showWstructC(Structs).."\n"
+	result = result..showIstructC(Structs)
 	return result
 end
 function showCallH()
