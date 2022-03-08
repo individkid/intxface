@@ -862,7 +862,7 @@ function showHideC(name,typ)
 end
 function showRstructC(list)
 	local result = ""
-	result = result.."void readStruct(cftype fnc, void *arg, int typ, int idx)"
+	result = result.."void readStruct(sftype fnc, void *arg, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."int len = 0;\n"

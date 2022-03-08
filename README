@@ -129,41 +129,50 @@ Each user may create decorated boundaries for groups they have write permission 
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
 copy test arguments that control how subsequent non-dash arguments are interpreted and used.
-default input and output file descriptors are dev/null.
-default field descriptor is wildcard.
-non-dash arguments after the following are,
+Each face identifier has input output file descriptor,
+file descriptor type, read write show hide function pointers,
+link to next and last, and how it is the one of several.
+Command line state includes option state machine,
+whether following is input, output, or both,
+whether following is direct number, environment variable, or unique name, and
+whether following is number, name, executable, inet, asset, bmd, usb, display,
+immediate, machine, expression, or conversion.
+Default input and output file descriptors are /dev/null.
+Default filter is passthrough. Default field name is error.
+Non-dash arguments replace defaults but are never replaced.
+Non-dash arguments after the following are,
  -a text file descriptors.
  -b binary file descriptors.
- -c conversion strings.
+ -c field names.
  -f file names.
  -g executable names.
  -h inet names.
  -i input file descriptors.
  -j output file descriptors.
  -k configure file descriptors.
- -l separate from previous.
- -m series with previous.
- -n parallel to previous.
+ -l start after finishing previous.
+ -m round robin several to one.
+ -n duplicate or prioritize several to one.
  -u port numbers.
  -v environment variables.
  -w unique names.
  -e filter expressions.
  -s immediate strings.
  -o option state machines.
- --read AVAssetReader to pipe av structs from file.
- --save AVAssetWriter to pipe av structs to file.
- --tape BMD-SDK to pipe av structs from hdmi.
- --show BMD-SDK pipe av structs to hdmi.
- --wave IOUSBInterfaceInterface to pipe av structs from usb waveform.
- --prog IOUSBInterfaceInterface to pipe av structs to usb waveform.
- --view AVPlayerView to pipe av structs to display.
- --desk AVCaptureScreenInput to pipe av structs from screen capture.
  -x -y -z clipping shaping placement of av structs.
  -p priority of overlapping av structs.
  -r frame rate, 0.0 frozen, 1.0 realtime.
  -d delay before starting effect.
  -t time to start effect.
  -q rates delays and times are relative.
+ --read AVAssetReader to pipe av structs from file names.
+ --save AVAssetWriter to pipe av structs to file names.
+ --tape BMD-SDK to pipe av structs from hdmi.
+ --show BMD-SDK pipe av structs to hdmi.
+ --wave IOUSBInterfaceInterface to pipe av structs from usb waveform.
+ --prog IOUSBInterfaceInterface to pipe av structs to usb waveform.
+ --view AVPlayerView to pipe av structs to display.
+ --desk AVCaptureScreenInput to pipe av structs from screen capture.
 
 edit test file handle per tab or window.
 This presents a readonly scrollable searchable highlightable text widget,

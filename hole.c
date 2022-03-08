@@ -65,8 +65,7 @@ int main(int argc, char **argv)
 	// find new mappings
 	int snd = rub;
 	if (layer[sub] == Cluster && file.act == NewHub && splitStr(&file.str,&adr,&num)) {
-	if (pollInet(adr,num)) snd = checkInet(adr,num);
-	else {snd = openInet(adr,num); layer[snd] = Server;}}
+	if ((snd = inetIdent(adr,num)) == -1) {snd = openInet(adr,num); layer[snd] = Server;}}
 	else if (layer[sub] == Unused) {snd = fub; layer[sub] = Client;}
 	else if (file.act == NewHub) snd = fub;
 	// set up new mapping

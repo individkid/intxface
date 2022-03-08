@@ -31,14 +31,32 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
+enum Fan {
+	Fan0, // several to one
+	Fan1, // one to several
+	Fans,
+};
+enum How {
+	How0, // round robin
+	How1, // copy or drop
+	Hows,
+};
+enum Grp {
+	Grp0, // parallel
+	Grp1, // series
+	Grps,
+};
 struct Text {
 	char **str;
 	int trm;
 };
-typedef void (*wftype)(int);
-typedef void (*eftype)(const char*,int,int);
-typedef void (*hftype)(const char*,int);
-typedef void (*cftype)(const char*,int,int,void*);
+typedef void (*rftype)(char **,int); // read and show
+typedef void (*wftype)(const char*,int); // hide and write
+typedef void (*pftype)(int,int); // peek and write
+typedef void (*cftype)(int); // enqueue dequeue discard callback
+typedef void (*eftype)(const char*,int,int); // error throws
+typedef void (*sftype)(const char*,int,int,void*); // string callback
+typedef void (*hftype)(const char*,int); // haskell string wrapper
 void debugStr(const char *str);
 void exitErr(const char *str, int num, int idx);
 void readNote(eftype exc, int idx);
@@ -47,6 +65,8 @@ void writeJump(eftype err, int idx);
 void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);
+int inetIdent(const char *adr, const char *num);
+int mergeIdent(enum Fan f, enum How h, enum Grp g, cftype e, cftype d, cftype i, pftype o);
 int openPipe();
 int openFifo(const char *str);
 int openAtom(const char *str);
@@ -57,14 +77,12 @@ int pipeInit(const char *av1, const char *av2);
 int waitAny();
 int pauseAny(double dly);
 void waitAll();
-void callInit(wftype fnc, int idx);
+void callInit(cftype fnc, int idx);
 int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);
 void truncFile(int idx);
 long long checkFile(int idx);
-int pollInet(const char *adr, const char *num);
-int checkInet(const char *adr, const char *num);
 int rdlkFile(long long loc, long long siz, int idx);
 int wrlkFile(long long loc, long long siz, int idx);
 void unlkFile(long long loc, long long siz, int idx);
@@ -86,8 +104,8 @@ void allocStr(char* **ptr, int siz);
 void assignStr(char **ptr, const char *str);
 void callStr(const char *str, int trm, int idx, void *arg);
 void textStr(const char *str, int trm, int idx, void *arg);
-void readStr(cftype fnc, void *arg, int idx);
-void preadStr(cftype fnc, void *arg, long long loc, int idx);
+void readStr(sftype fnc, void *arg, int idx);
+void preadStr(sftype fnc, void *arg, long long loc, int idx);
 void readStrHs(hftype fnc, int idx);
 char readChr(int idx);
 int readInt(int idx);

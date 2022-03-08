@@ -276,7 +276,7 @@ int main(int argc, char **argv)
 		if ((GIVE = openFile(name)) == -1) ERROR(hubErr,-1)
 		else {number[GIVE] = IDX; readNote(spokErr,GIVE); readJump(spokErr,GIVE); writeJump(spokErr,GIVE);}
 		strcat(strcat(strcpy(name,dirstr),"/."),basestr);
-		if ((FIFO = openAtom(name)) == -1) ERROR(hubErr,-1)
+		if ((FIFO = openFifo(name)) == -1) ERROR(hubErr,-1)
 		else {number[FIFO] = IDX; readNote(spokErr,FIFO); readJump(spokErr,FIFO); writeJump(hubErr,FIFO);}
 		strcat(strcat(strcpy(name,dirstr),"/.."),basestr);
 		if ((HELP = openFile(name)) == -1) ERROR(hubErr,-1)
