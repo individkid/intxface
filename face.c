@@ -24,11 +24,9 @@ enum {None, // unused
 	Inet, // pselect-able meta-pipe
 	Sock, // pselect-able received pipe
 } fdt[NUMOPEN] = {0};
-enum Auto aut[NUMOPEN] = {0}; // flow control condition
-enum Mate mat[NUMOPEN] = {0}; // flow control action
 int lft[NUMOPEN] = {0}; // flow control opens
 int rgt[NUMOPEN] = {0}; // flow control closes
-int imm[NUMOPEN] = {0}; // flow control immediate
+void *arg[NUMOPEN] = {0}; // per-fnc argument
 pftype fnc[NUMOPEN] = {0}; // read and/or write
 int max = 0;
 
@@ -101,8 +99,7 @@ void closeIdent(int idx)
 	inperr[idx] = 0;
 	outerr[idx] = 0;
 	fnc[idx] = 0;
-	aut[max] = Autos;
-	while (max > 0 && fdt[max] == None && fnc[max] == 0 && aut[max] == Autos && mat[max] == Mates) max--;
+	while (max > 0 && fdt[max] == None && fnc[max] == 0) max--;
 }
 void moveIdent(int idx0, int idx1)
 {
@@ -117,10 +114,9 @@ void moveIdent(int idx0, int idx1)
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
 	fnc[idx1] = fnc[idx0];
-	aut[idx1] = aut[idx0];
+	arg[idx1] = arg[idx0];
 	lft[idx1] = lft[idx0];
 	rgt[idx1] = rgt[idx0];
-	imm[idx1] = imm[idx0];
 }
 int findIdent(const char *str)
 {
@@ -154,23 +150,14 @@ int inetIdent(const char *adr, const char *num)
 	return i;
 	return -1;
 }
-int openAuto(enum Auto a, enum Mate m, int l, int r, int i)
-{
-	while (max < NUMOPEN && aut[max] != Autos && mat[max] != Mates) max++;
-	if (max == NUMOPEN) return -1;
-	if ((a == Autos) != (m == Mates)) return -1;
-	aut[max] = a;
-	mat[max] = m;
-	lft[max] = l;
-	rgt[max] = r;
-	imm[max] = i;
-	return max;
-}
-int openFunc(pftype f)
+int openFunc(pftype f, void *a, int l, int r)
 {
 	while (max < NUMOPEN && fnc[max] != 0) max++;
 	if (max == NUMOPEN) return -1;
 	fnc[max] = f;
+	arg[max] = a;
+	lft[max] = l;
+	rgt[max] = r;
 	return max;
 }
 int openPipe()
@@ -346,7 +333,22 @@ void callInit(cftype fnc, int idx)
 }
 void procFace()
 {
-	// TODO what buffer does a nest produce
+	char *buf = 0;
+	int siz = 0;
+	int idx = 0;
+	while (idx <= max) {
+		int i = fdt[idx] == None ? -1 : inp[idx];
+		int o = fdt[idx] == None ? -1 : out[idx];
+		int ret = fnc[idx](&buf,&siz,arg[idx],i,o);
+		if (ret == 0) idx++;
+		while (ret > 0 && idx <= max) {
+			if (rgt[idx] < ret) ret -= rgt[idx];
+			else ret = 0;
+			idx++;}
+		while (ret < 0 && idx > 0) {
+			if (lft[idx] < -ret) ret += lft[idx];
+			else ret = 0;
+			if (ret < 0 && idx > 0) idx--;}}
 }
 int pollPipe(int idx)
 {

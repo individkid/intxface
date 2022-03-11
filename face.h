@@ -31,33 +31,15 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
-enum Auto {
-	Auto0, // all conditions are 0
-	Auto1, // all conditions are 1
-	Auto2, // some conditions are 0
-	Auto3, // some conditions are 1
-	Auto4, // both conditions are present
-	Auto5, // any conditions are present
-	Autos,
-};
-enum Mate {
-	Mate0, // restart
-	Mate1, // finish
-	Mate2, // continue
-	Mate3, // wait and restart
-	Mate4, // wait and finish
-	Mate5, // wait and continue
-	Mates,
-};
 struct Text {
 	char **str;
 	int trm;
 };
-typedef void (*pftype)(char **,int *,double *,int *,int,int); // read and/or write
-typedef void (*cftype)(int); // thread callback
-typedef void (*eftype)(const char*,int,int); // error throws
-typedef void (*sftype)(const char*,int,int,void*); // string callback
-typedef void (*hftype)(const char*,int); // haskell string wrapper
+typedef int (*pftype)(char **buf, int *siz, void *, int inp, int out); // read and/or write
+typedef void (*cftype)(int idx); // thread callback
+typedef void (*eftype)(const char *str, int num, int idx); // error throws
+typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
+typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
 void debugStr(const char *str);
 void exitErr(const char *str, int num, int idx);
 void readNote(eftype exc, int idx);
@@ -67,9 +49,7 @@ void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);
 int inetIdent(const char *adr, const char *num);
-void procFace();
-int openAuto(enum Auto a, enum Mate m, int l, int r, int i);
-int openFunc(pftype f);
+int openFunc(pftype f, void *a, int l, int r);
 int openPipe();
 int openFifo(const char *str);
 int openAtom(const char *str);
@@ -81,6 +61,7 @@ int waitAny();
 int pauseAny(double dly);
 void waitAll();
 void callInit(cftype fnc, int idx);
+void procFace();
 int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);
