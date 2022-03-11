@@ -31,15 +31,24 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
-struct Text {
-	char **str;
-	int trm;
-};
-typedef int (*pftype)(char **buf, int *siz, void *, int inp, int out); // read and/or write
+typedef int (*pftype)(char **buf, int *siz, void **loc, void *arg, int inp, int out); // read and/or write
+typedef void (*qftype)(char *buf, int xfd); // read and/or write
 typedef void (*cftype)(int idx); // thread callback
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
+struct Text {
+	char **str;
+	int trm;
+};
+struct Over {
+};
+struct Bind {
+	qftype inp;
+	qftype out;
+	int siz;
+	int ret;
+};
 void debugStr(const char *str);
 void exitErr(const char *str, int num, int idx);
 void readNote(eftype exc, int idx);

@@ -331,15 +331,30 @@ void callInit(cftype fnc, int idx)
 	cbfnc[idx] = fnc;
 	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERROR(exitErr,0);
 }
+int procFunc(char **buf, int *siz, void **loc, void *arg, int inp, int out)
+{
+	struct Over *ovr = (*loc == 0 ? realloc(*loc,sizeof(struct Over)) : *loc);
+	struct Bind *bnd = arg;
+	if (inp != -1) {
+		int tmp = *siz;
+		*siz += bnd->siz;
+		*buf = realloc(*buf,*siz);
+		bnd->inp(*buf+tmp,inp);}
+	if (out != -1) {
+		for (int i = 0; i < *siz; i += bnd->siz) bnd->out(*buf+i,out);
+		*siz = 0;}
+	return bnd->ret;
+}
 void procFace()
 {
 	char *buf = 0;
 	int siz = 0;
+	void *loc = 0;
 	int idx = 0;
 	while (idx <= max) {
 		int i = fdt[idx] == None ? -1 : inp[idx];
 		int o = fdt[idx] == None ? -1 : out[idx];
-		int ret = fnc[idx](&buf,&siz,arg[idx],i,o);
+		int ret = fnc[idx](&buf,&siz,&loc,arg[idx],i,o);
 		if (ret == 0) idx++;
 		while (ret > 0 && idx <= max) {
 			if (rgt[idx] < ret) ret -= rgt[idx];
