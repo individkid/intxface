@@ -24,13 +24,12 @@ enum {None, // unused
 	Inet, // pselect-able meta-pipe
 	Sock, // pselect-able received pipe
 } fdt[NUMOPEN] = {0};
-cftype enq[NUMOPEN] = {0}; // read and enqueue
-cftype deq[NUMOPEN] = {0}; // deque and write
-cftype ign[NUMOPEN] = {0}; // deque and ignore
-pftype obs[NUMOPEN] = {0}; // observe and write
-enum Fan fan[NUMOPEN] = {0};
-enum How how[NUMOPEN] = {0};
-enum Grp grp[NUMOPEN] = {0};
+enum Auto aut[NUMOPEN] = {0}; // flow control condition
+enum Mate mat[NUMOPEN] = {0}; // flow control action
+int lft[NUMOPEN] = {0}; // flow control opens
+int rgt[NUMOPEN] = {0}; // flow control closes
+int imm[NUMOPEN] = {0}; // flow control immediate
+pftype fnc[NUMOPEN] = {0}; // read and/or write
 int max = 0;
 
 // process identifier for waiting for child to finish
@@ -101,13 +100,9 @@ void closeIdent(int idx)
 	inpexc[idx] = 0;
 	inperr[idx] = 0;
 	outerr[idx] = 0;
-	fan[idx] = Fans;
-	how[idx] = Hows;
-	grp[idx] = Grps;
-	enq[idx] = 0;
-	deq[idx] = 0;
-	ign[idx] = 0;
-	obs[idx] = 0;
+	fnc[idx] = 0;
+	aut[max] = Autos;
+	while (max > 0 && fdt[max] == None && fnc[max] == 0 && aut[max] == Autos && mat[max] == Mates) max--;
 }
 void moveIdent(int idx0, int idx1)
 {
@@ -121,13 +116,11 @@ void moveIdent(int idx0, int idx1)
 	inpexc[idx1] = inpexc[idx0];
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
-	fan[idx1] = fan[idx0];
-	how[idx1] = how[idx0];
-	grp[idx1] = grp[idx0];
-	enq[idx1] = enq[idx0];
-	deq[idx1] = deq[idx0];
-	ign[idx1] = ign[idx0];
-	obs[idx1] = obs[idx0];
+	fnc[idx1] = fnc[idx0];
+	aut[idx1] = aut[idx0];
+	lft[idx1] = lft[idx0];
+	rgt[idx1] = rgt[idx0];
+	imm[idx1] = imm[idx0];
 }
 int findIdent(const char *str)
 {
@@ -161,25 +154,23 @@ int inetIdent(const char *adr, const char *num)
 	return i;
 	return -1;
 }
-int mergeIdent(enum Fan f, enum How h, enum Grp g,
-	cftype e, cftype d, cftype i, pftype o)
+int openAuto(enum Auto a, enum Mate m, int l, int r, int i)
 {
-	while (max < NUMOPEN && (
-		(fan[max] != Fans && f != Fans) ||
-		(how[max] != Hows && h != Hows) ||
-		(grp[max] != Grps && g != Grps) ||
-		(enq[max] != 0 && e != 0) ||
-		(deq[max] != 0 && d != 0) ||
-		(ign[max] != 0 && i != 0) ||
-		(obs[max] != 0 && o != 0))) max++;
+	while (max < NUMOPEN && aut[max] != Autos && mat[max] != Mates) max++;
 	if (max == NUMOPEN) return -1;
-	if (f != Fans) fan[max] = f;
-	if (h != Hows) how[max] = h;
-	if (g != Grps) grp[max] = g;
-	if (e != 0) enq[max] = e;
-	if (d != 0) deq[max] = d;
-	if (i != 0) ign[max] = i;
-	if (o != 0) obs[max] = o;
+	if ((a == Autos) != (m == Mates)) return -1;
+	aut[max] = a;
+	mat[max] = m;
+	lft[max] = l;
+	rgt[max] = r;
+	imm[max] = i;
+	return max;
+}
+int openFunc(pftype f)
+{
+	while (max < NUMOPEN && fnc[max] != 0) max++;
+	if (max == NUMOPEN) return -1;
+	fnc[max] = f;
 	return max;
 }
 int openPipe()
@@ -352,6 +343,10 @@ void callInit(cftype fnc, int idx)
 	if (idx < 0 || idx > max || (fdt[idx] != Wait && fdt[idx] != Sock)) ERROR(exitErr,0);
 	cbfnc[idx] = fnc;
 	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERROR(exitErr,0);
+}
+void procFace()
+{
+	// TODO what buffer does a nest produce
 }
 int pollPipe(int idx)
 {

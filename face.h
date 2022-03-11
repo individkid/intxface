@@ -31,29 +31,30 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
-enum Fan {
-	Fan0, // several to one
-	Fan1, // one to several
-	Fans,
+enum Auto {
+	Auto0, // all conditions are 0
+	Auto1, // all conditions are 1
+	Auto2, // some conditions are 0
+	Auto3, // some conditions are 1
+	Auto4, // both conditions are present
+	Auto5, // any conditions are present
+	Autos,
 };
-enum How {
-	How0, // round robin
-	How1, // copy or drop
-	Hows,
-};
-enum Grp {
-	Grp0, // parallel
-	Grp1, // series
-	Grps,
+enum Mate {
+	Mate0, // restart
+	Mate1, // finish
+	Mate2, // continue
+	Mate3, // wait and restart
+	Mate4, // wait and finish
+	Mate5, // wait and continue
+	Mates,
 };
 struct Text {
 	char **str;
 	int trm;
 };
-typedef void (*rftype)(char **,int); // read and show
-typedef void (*wftype)(const char*,int); // hide and write
-typedef void (*pftype)(int,int); // peek and write
-typedef void (*cftype)(int); // enqueue dequeue discard callback
+typedef void (*pftype)(char **,int *,double *,int *,int,int); // read and/or write
+typedef void (*cftype)(int); // thread callback
 typedef void (*eftype)(const char*,int,int); // error throws
 typedef void (*sftype)(const char*,int,int,void*); // string callback
 typedef void (*hftype)(const char*,int); // haskell string wrapper
@@ -66,7 +67,9 @@ void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);
 int inetIdent(const char *adr, const char *num);
-int mergeIdent(enum Fan f, enum How h, enum Grp g, cftype e, cftype d, cftype i, pftype o);
+void procFace();
+int openAuto(enum Auto a, enum Mate m, int l, int r, int i);
+int openFunc(pftype f);
 int openPipe();
 int openFifo(const char *str);
 int openAtom(const char *str);

@@ -131,7 +131,7 @@ Decorations include posts, remote framebuffers, altenate spaces, and system soun
 copy test arguments that control how subsequent non-dash arguments are interpreted and used.
 Each face identifier has input output file descriptor,
 file descriptor type, read write show hide function pointers,
-link to next and last, and how it is the one of several.
+and how it is the one of several.
 Command line state includes option state machine,
 whether following is input, output, or both,
 whether following is direct number, environment variable, or unique name, and
