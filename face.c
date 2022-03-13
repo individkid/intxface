@@ -349,6 +349,7 @@ void procFace(void *ovr)
 struct Over {
 	char *buf;
 	int siz;
+	int val;
 	int idx;
 	int cnt;
 };
@@ -373,43 +374,47 @@ int procFanin(void *bnd, void *ovr)
 {
 	struct Over *over = ovr;
 	struct Bind *bind = bnd;
-	if (bind->ifd != 0) {
-		over->buf = realloc(over->buf,over->siz+bind->siz);
-		over->siz += bind->ifn(over->buf+over->siz,bind->ifd);}
+	if (bind->ifd != 0 && over->val == over->siz) {
+		over->siz += bind->siz;
+		over->buf = realloc(over->buf,over->siz);
+		over->val += bind->ifn(over->buf+over->val,bind->ifd);}
 	if (bind->ofd != 0) {
 		for (int i = 0; i < over->siz; i += bind->siz)
 			bind->ofn(over->buf+i,bind->ofd);
-		over->siz = 0;}
-	return bind->ret; // TODO zero if no progress
+		over->siz = over->val = 0;}
+	return (over->val == over->siz ? bind->ret : 0);
 }
 int procFanout(void *bnd, void *ovr)
 {
 	struct Over *over = ovr;
 	struct Bind *bind = bnd;
-	if (bind->ifd != 0) {
+	if (bind->ifd != 0 && over->val == over->siz) {
 		over->idx = 0;
-		over->buf = realloc(over->buf,bind->siz);
+		over->val = bind->siz;
+		over->buf = realloc(over->buf,over->val);
 		over->siz += bind->ifn(over->buf,bind->ifd);}
 	if (bind->ofd != 0) {
 		if (over->idx == over->cnt && over->siz != 0) {
 			bind->ofn(over->buf,bind->ofd);
-			over->siz = 0;
+			over->siz = over->val = 0;
 			over->cnt++;}
 		over->idx++;}
-	return bind->ret; // TODO zero if no progress
+	return (over->val == over->siz ? bind->ret : 0);
 }
-int openFanin(aftype ifn, aftype ofn)
+int openFanin(aftype ifn, aftype ofn, int siz)
 {
 	struct Bind bind = {0};
 	bind.ifn = ifn;
 	bind.ofn = ofn;
+	bind.siz = siz;
 	return openFunc(procFanin,procBind,&bind,0,0);
 }
-int openFanout(aftype ifn, aftype ofn)
+int openFanout(aftype ifn, aftype ofn, int siz)
 {
 	struct Bind bind = {0};
 	bind.ifn = ifn;
 	bind.ofn = ofn;
+	bind.siz = siz;
 	return openFunc(procFanout,procBind,&bind,0,0);
 }
 void procFanio()
