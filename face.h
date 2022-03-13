@@ -31,8 +31,9 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
-typedef int (*pftype)(char **buf, int *siz, void **loc, void *arg, int inp, int out); // read and/or write
-typedef void (*qftype)(char *buf, int xfd); // read and/or write
+typedef int (*pftype)(void *bnd, void *ovr); // process iteration
+typedef int (*aftype)(void *buf, int xfd); // read or write
+typedef void (*bftype)(void *bnd, int idx); // bind argument
 typedef void (*cftype)(int idx); // thread callback
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
@@ -42,10 +43,16 @@ struct Text {
 	int trm;
 };
 struct Over {
+	char *buf;
+	int siz;
+	int idx;
+	int cnt;
 };
 struct Bind {
-	qftype inp;
-	qftype out;
+	aftype ifn;
+	aftype ofn;
+	int ifd;
+	int ofd;
 	int siz;
 	int ret;
 };
@@ -58,7 +65,7 @@ void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);
 int inetIdent(const char *adr, const char *num);
-int openFunc(pftype f, void *a, int l, int r);
+int openFunc(pftype f, bftype g, void *a, int l, int r);
 int openPipe();
 int openFifo(const char *str);
 int openAtom(const char *str);
@@ -70,7 +77,10 @@ int waitAny();
 int pauseAny(double dly);
 void waitAll();
 void callInit(cftype fnc, int idx);
-void procFace();
+void procFace(void *ovr);
+void procBind(void *bnd, int idx);
+int procFanin(void *bnd, void *ovr);
+int procFanout(void *bnd, void *ovr);
 int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);

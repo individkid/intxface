@@ -150,12 +150,12 @@ int inetIdent(const char *adr, const char *num)
 	return i;
 	return -1;
 }
-int openFunc(pftype f, void *a, int l, int r)
+int openFunc(pftype f, bftype g, void *a, int l, int r)
 {
 	while (max < NUMOPEN && fnc[max] != 0) max++;
 	if (max == NUMOPEN) return -1;
 	fnc[max] = f;
-	arg[max] = a;
+	arg[max] = a; g(a,max);
 	lft[max] = l;
 	rgt[max] = r;
 	return max;
@@ -331,30 +331,11 @@ void callInit(cftype fnc, int idx)
 	cbfnc[idx] = fnc;
 	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERROR(exitErr,0);
 }
-int procFunc(char **buf, int *siz, void **loc, void *arg, int inp, int out)
+void procFace(void *ovr)
 {
-	struct Over *ovr = (*loc == 0 ? realloc(*loc,sizeof(struct Over)) : *loc);
-	struct Bind *bnd = arg;
-	if (inp != -1) {
-		int tmp = *siz;
-		*siz += bnd->siz;
-		*buf = realloc(*buf,*siz);
-		bnd->inp(*buf+tmp,inp);}
-	if (out != -1) {
-		for (int i = 0; i < *siz; i += bnd->siz) bnd->out(*buf+i,out);
-		*siz = 0;}
-	return bnd->ret;
-}
-void procFace()
-{
-	char *buf = 0;
-	int siz = 0;
-	void *loc = 0;
 	int idx = 0;
 	while (idx <= max) {
-		int i = fdt[idx] == None ? -1 : inp[idx];
-		int o = fdt[idx] == None ? -1 : out[idx];
-		int ret = fnc[idx](&buf,&siz,&loc,arg[idx],i,o);
+		int ret = fnc[idx](ovr,arg[idx]);
 		if (ret == 0) idx++;
 		while (ret > 0 && idx <= max) {
 			if (rgt[idx] < ret) ret -= rgt[idx];
@@ -364,6 +345,44 @@ void procFace()
 			if (lft[idx] < -ret) ret += lft[idx];
 			else ret = 0;
 			if (ret < 0 && idx > 0) idx--;}}
+}
+void procBind(void *bnd, int idx)
+{
+	struct Bind *bind = bnd;
+	if (fdt[idx] == None) {
+	bind->ifd = bind->ofd = 0;}
+	else {
+	bind->ifd = inp[idx];
+	bind->ofd = out[idx];}
+}
+int procFanin(void *bnd, void *ovr)
+{
+	struct Over *over = ovr;
+	struct Bind *bind = bnd;
+	if (bind->ifd != 0) {
+		over->buf = realloc(over->buf,over->siz+bind->siz);
+		over->siz += bind->ifn(over->buf+over->siz,bind->ifd);}
+	if (bind->ofd != 0) {
+		for (int i = 0; i < over->siz; i += bind->siz)
+			bind->ofn(over->buf+i,bind->ofd);
+		over->siz = 0;}
+	return bind->ret;
+}
+int procFanout(void *bnd, void *ovr)
+{
+	struct Over *over = ovr;
+	struct Bind *bind = bnd;
+	if (bind->ifd != 0) {
+		over->idx = 0;
+		over->buf = realloc(over->buf,bind->siz);
+		over->siz += bind->ifn(over->buf,bind->ifd);}
+	if (bind->ofd != 0) {
+		if (over->idx == over->cnt && over->siz != 0) {
+			bind->ofn(over->buf,bind->ofd);
+			over->siz = 0;
+			over->cnt++;}
+		over->idx++;}
+	return bind->ret;
 }
 int pollPipe(int idx)
 {
