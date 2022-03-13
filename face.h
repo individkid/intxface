@@ -42,20 +42,6 @@ struct Text {
 	char **str;
 	int trm;
 };
-struct Over {
-	char *buf;
-	int siz;
-	int idx;
-	int cnt;
-};
-struct Bind {
-	aftype ifn;
-	aftype ofn;
-	int ifd;
-	int ofd;
-	int siz;
-	int ret;
-};
 void debugStr(const char *str);
 void exitErr(const char *str, int num, int idx);
 void readNote(eftype exc, int idx);
@@ -81,6 +67,9 @@ void procFace(void *ovr);
 void procBind(void *bnd, int idx);
 int procFanin(void *bnd, void *ovr);
 int procFanout(void *bnd, void *ovr);
+int openFanin(aftype ifn, aftype ofn);
+int openFanout(aftype ifn, aftype ofn);
+void procFanio();
 int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);

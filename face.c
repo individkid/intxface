@@ -346,6 +346,20 @@ void procFace(void *ovr)
 			else ret = 0;
 			if (ret < 0 && idx > 0) idx--;}}
 }
+struct Over {
+	char *buf;
+	int siz;
+	int idx;
+	int cnt;
+};
+struct Bind {
+	aftype ifn;
+	aftype ofn;
+	int ifd;
+	int ofd;
+	int siz;
+	int ret;
+};
 void procBind(void *bnd, int idx)
 {
 	struct Bind *bind = bnd;
@@ -383,6 +397,25 @@ int procFanout(void *bnd, void *ovr)
 			over->cnt++;}
 		over->idx++;}
 	return bind->ret;
+}
+int openFanin(aftype ifn, aftype ofn)
+{
+	struct Bind bind = {0};
+	bind.ifn = ifn;
+	bind.ofn = ofn;
+	return openFunc(procFanin,procBind,&bind,0,0);
+}
+int openFanout(aftype ifn, aftype ofn)
+{
+	struct Bind bind = {0};
+	bind.ifn = ifn;
+	bind.ofn = ofn;
+	return openFunc(procFanout,procBind,&bind,0,0);
+}
+void procFanio()
+{
+	struct Over over = {0};
+	procFace(&over);
 }
 int pollPipe(int idx)
 {
