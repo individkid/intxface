@@ -380,7 +380,7 @@ int procFanin(void *bnd, void *ovr)
 		for (int i = 0; i < over->siz; i += bind->siz)
 			bind->ofn(over->buf+i,bind->ofd);
 		over->siz = 0;}
-	return bind->ret;
+	return bind->ret; // TODO zero if no progress
 }
 int procFanout(void *bnd, void *ovr)
 {
@@ -396,7 +396,7 @@ int procFanout(void *bnd, void *ovr)
 			over->siz = 0;
 			over->cnt++;}
 		over->idx++;}
-	return bind->ret;
+	return bind->ret; // TODO zero if no progress
 }
 int openFanin(aftype ifn, aftype ofn)
 {
@@ -415,6 +415,14 @@ int openFanout(aftype ifn, aftype ofn)
 void procFanio()
 {
 	struct Over over = {0};
+	for (int i = 0; i <= max; i++) if (fnc[i] != 0) {
+		lft[i] = 1;
+		break;}
+	for (int i = max; i >= 0; i--) if (fnc[i] != 0) {
+		struct Bind *bind = arg[i];
+		bind->ret = -1;
+		rgt[i] = 1;
+		break;}
 	procFace(&over);
 }
 int pollPipe(int idx)
