@@ -24,10 +24,6 @@ enum {None, // unused
 	Inet, // pselect-able meta-pipe
 	Sock, // pselect-able received pipe
 } fdt[NUMOPEN] = {0};
-int lft[NUMOPEN] = {0}; // flow control opens
-int rgt[NUMOPEN] = {0}; // flow control closes
-void *arg[NUMOPEN] = {0}; // per-fnc argument
-pftype fnc[NUMOPEN] = {0}; // read and/or write
 int max = 0;
 
 // process identifier for waiting for child to finish
@@ -98,8 +94,7 @@ void closeIdent(int idx)
 	inpexc[idx] = 0;
 	inperr[idx] = 0;
 	outerr[idx] = 0;
-	fnc[idx] = 0;
-	while (max > 0 && fdt[max] == None && fnc[max] == 0) max--;
+	while (max > 0 && fdt[max] == None) max--;
 }
 void moveIdent(int idx0, int idx1)
 {
@@ -113,10 +108,6 @@ void moveIdent(int idx0, int idx1)
 	inpexc[idx1] = inpexc[idx0];
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
-	fnc[idx1] = fnc[idx0];
-	arg[idx1] = arg[idx0];
-	lft[idx1] = lft[idx0];
-	rgt[idx1] = rgt[idx0];
 }
 int findIdent(const char *str)
 {
@@ -149,16 +140,6 @@ int inetIdent(const char *adr, const char *num)
 	if (fdt[i] == Sock && memcmp(&addr[i],&comp,sizeof(comp)) == 0)
 	return i;
 	return -1;
-}
-int openFunc(pftype f, bftype g, void *a, int l, int r)
-{
-	while (max < NUMOPEN && fnc[max] != 0) max++;
-	if (max == NUMOPEN) return -1;
-	fnc[max] = f;
-	arg[max] = a; g(a,max);
-	lft[max] = l;
-	rgt[max] = r;
-	return max;
 }
 int openPipe()
 {
@@ -330,105 +311,6 @@ void callInit(cftype fnc, int idx)
 	if (idx < 0 || idx > max || (fdt[idx] != Wait && fdt[idx] != Sock)) ERROR(exitErr,0);
 	cbfnc[idx] = fnc;
 	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERROR(exitErr,0);
-}
-void procFace(void *ovr)
-{
-	int idx = 0;
-	while (idx <= max) {
-		int ret = fnc[idx](ovr,arg[idx]);
-		if (ret == 0) idx++;
-		while (ret > 0 && idx <= max) {
-			if (rgt[idx] < ret) ret -= rgt[idx];
-			else ret = 0;
-			idx++;}
-		while (ret < 0 && idx > 0) {
-			if (lft[idx] < -ret) ret += lft[idx];
-			else ret = 0;
-			if (ret < 0 && idx > 0) idx--;}}
-}
-struct Over {
-	char *buf;
-	int siz;
-	int val;
-	int idx;
-	int cnt;
-};
-struct Bind {
-	aftype ifn;
-	aftype ofn;
-	int ifd;
-	int ofd;
-	int siz;
-	int ret;
-};
-void procBind(void *bnd, int idx)
-{
-	struct Bind *bind = bnd;
-	if (fdt[idx] == None) {
-	bind->ifd = bind->ofd = 0;}
-	else {
-	bind->ifd = inp[idx];
-	bind->ofd = out[idx];}
-}
-int procFanin(void *bnd, void *ovr)
-{
-	struct Over *over = ovr;
-	struct Bind *bind = bnd;
-	if (bind->ifd != 0 && over->val == over->siz) {
-		over->siz += bind->siz;
-		over->buf = realloc(over->buf,over->siz);
-		over->val += bind->ifn(over->buf+over->val,bind->ifd);}
-	if (bind->ofd != 0) {
-		for (int i = 0; i < over->siz; i += bind->siz)
-			bind->ofn(over->buf+i,bind->ofd);
-		over->siz = over->val = 0;}
-	return (over->val == over->siz ? bind->ret : 0);
-}
-int procFanout(void *bnd, void *ovr)
-{
-	struct Over *over = ovr;
-	struct Bind *bind = bnd;
-	if (bind->ifd != 0 && over->val == over->siz) {
-		over->idx = 0;
-		over->val = bind->siz;
-		over->buf = realloc(over->buf,over->val);
-		over->siz += bind->ifn(over->buf,bind->ifd);}
-	if (bind->ofd != 0) {
-		if (over->idx == over->cnt && over->siz != 0) {
-			bind->ofn(over->buf,bind->ofd);
-			over->siz = over->val = 0;
-			over->cnt++;}
-		over->idx++;}
-	return (over->val == over->siz ? bind->ret : 0);
-}
-int openFanin(aftype ifn, aftype ofn, int siz)
-{
-	struct Bind bind = {0};
-	bind.ifn = ifn;
-	bind.ofn = ofn;
-	bind.siz = siz;
-	return openFunc(procFanin,procBind,&bind,0,0);
-}
-int openFanout(aftype ifn, aftype ofn, int siz)
-{
-	struct Bind bind = {0};
-	bind.ifn = ifn;
-	bind.ofn = ofn;
-	bind.siz = siz;
-	return openFunc(procFanout,procBind,&bind,0,0);
-}
-void procFanio()
-{
-	struct Over over = {0};
-	for (int i = 0; i <= max; i++) if (fnc[i] != 0) {
-		lft[i] = 1;
-		break;}
-	for (int i = max; i >= 0; i--) if (fnc[i] != 0) {
-		struct Bind *bind = arg[i];
-		bind->ret = -1;
-		rgt[i] = 1;
-		break;}
-	procFace(&over);
 }
 int pollPipe(int idx)
 {
