@@ -24,7 +24,7 @@ enum {None, // unused
 	Inet, // pselect-able meta-pipe
 	Sock, // pselect-able received pipe
 } fdt[NUMOPEN] = {0};
-int max = 0;
+int lim = 0;
 
 // process identifier for waiting for child to finish
 pid_t pid[NUMOPEN] = {0};
@@ -72,17 +72,17 @@ void exitErr(const char *str, int num, int idx)
 }
 void readNote(eftype exc, int idx)
 {
-	if (idx < 0 || idx > max) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim) ERROR(exitErr,0)
 	inpexc[idx] = exc;
 }
 void readJump(eftype err, int idx)
 {
-	if (idx < 0 || idx > max) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim) ERROR(exitErr,0)
 	inperr[idx] = err;
 }
 void writeJump(eftype err, int idx)
 {
-	if (idx < 0 || idx > max) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim) ERROR(exitErr,0)
 	outerr[idx] = err;
 }
 void closeIdent(int idx)
@@ -94,12 +94,12 @@ void closeIdent(int idx)
 	inpexc[idx] = 0;
 	inperr[idx] = 0;
 	outerr[idx] = 0;
-	while (max > 0 && fdt[max] == None) max--;
+	while (lim > 0 && fdt[lim-1] == None) lim--;
 }
 void moveIdent(int idx0, int idx1)
 {
-	if (idx1 < 0 || idx1 > max) ERROR(inperr[idx1],idx1);
-	if (idx0 < 0 || idx0 > max) ERROR(inperr[idx1],idx1);
+	if (idx1 < 0 || idx1 >= lim) ERROR(inperr[idx1],idx1);
+	if (idx0 < 0 || idx0 >= lim) ERROR(inperr[idx1],idx1);
 	closeIdent(idx1);
 	inp[idx1] = inp[idx0];
 	out[idx1] = out[idx0];
@@ -114,7 +114,7 @@ int findIdent(const char *str)
 	struct stat old;
 	struct stat new;
 	if (stat(str,&new) != 0) return -1;
-	for (int i = 0; i <= max; i++) {
+	for (int i = 0; i < lim; i++) {
 		if (fdt[i] == Wait || fdt[i] == Sock || fdt[i] == None) continue;
 		if (fstat(inp[i],&old) != 0) return -1;
 		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) return i;}
@@ -144,48 +144,40 @@ int inetIdent(const char *adr, const char *num)
 int openPipe()
 {
 	int fd[2] = {0};
-	while (max < NUMOPEN && fdt[max] != None) max++;
-	if (max == NUMOPEN) return -1;
 	if (pipe(fd) < 0) return -1;
-	inp[max] = fd[0];
-	out[max] = fd[1];
-	fdt[max] = Wait;
-	pid[max] = 0;
-	return max;
+	inp[lim] = fd[0];
+	out[lim] = fd[1];
+	fdt[lim] = Wait;
+	pid[lim] = 0;
+	return lim++;
 }
 int openFifo(const char *str)
 {
 	int fi = 0;
 	int fo = 0;
-	while (max < NUMOPEN && fdt[max] != None) max++;
-	if (max == NUMOPEN) return -1;
 	if ((mkfifo(str,0666) < 0) && errno != EEXIST) return -1;
 	if ((fi = open(str,O_RDONLY | O_NONBLOCK)) < 0) return -1;
 	if ((fo = open(str,O_WRONLY | O_NONBLOCK)) < 0) return -1;
 	if (fcntl(fi,F_SETFL,0) < 0) return -1;
 	if (fcntl(fo,F_SETFL,0) < 0) return -1;
-	inp[max] = fi;
-	out[max] = fo;
-	fdt[max] = Poll;
-	pid[max] = 0;
-	return max;
+	inp[lim] = fi;
+	out[lim] = fo;
+	fdt[lim] = Poll;
+	pid[lim] = 0;
+	return lim++;
 }
 int openFile(const char *str)
 {
 	int fd = 0;
-	while (max < NUMOPEN && fdt[max] != None) max++;
-	if (max == NUMOPEN) return -1;
 	if ((fd = open(str,O_RDWR|O_CREAT,0666)) < 0) return -1;
-	inp[max] = fd;
-	out[max] = fd;
-	fdt[max] = Seek;
-	pid[max] = 0;
-	return max;
+	inp[lim] = fd;
+	out[lim] = fd;
+	fdt[lim] = Seek;
+	pid[lim] = 0;
+	return lim++;
 }
 int openInet(const char *adr, const char *num)
 {
-	while (max < NUMOPEN && fdt[max] != None) max++;
-	if (max == NUMOPEN) return -1;
 	int fd = 0;
 	if (adr == 0) {
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
@@ -195,55 +187,53 @@ int openInet(const char *adr, const char *num)
 	if (scanInet6(&adr,0,num) == 0) return -1;
 	if (bind(fd, (struct sockaddr*)&adr, sizeof(adr)) < 0) return -1;
 	if (listen(fd, NUMPEND) < 0) return -1;
-	fdt[max] = Inet;
-	pid[max] = 0;} else {
+	fdt[lim] = Inet;
+	pid[lim] = 0;} else {
 	if (mad == NUMINET) return -1;
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
 	if (scanInet6(&addr[mad],adr,num) == 0) return -1;
 	if (connect(fd, (struct sockaddr*)&addr[mad], sizeof(addr[mad])) < 0) return -1;
-	fdt[max] = Sock;
-	pid[max] = 0;
+	fdt[lim] = Sock;
+	pid[lim] = 0;
 	mad++;}
-	inp[max] = fd;
-	out[max] = fd;
-	return max;
+	inp[lim] = fd;
+	out[lim] = fd;
+	return lim++;
 }
 int forkExec(const char *exe)
 {
 	int c2p[2], p2c[2], val;
-	while (max < NUMOPEN && fdt[max] != None) max++;
-	if (max == NUMOPEN) return -1;
 	val = pipe(c2p); if (val < 0) return -1;
 	val = pipe(p2c); if (val < 0) return -1;
-	pid[max] = fork(); if (pid[max] < 0) return -1;
-	if (pid[max] == 0) {
+	pid[lim] = fork(); if (pid[lim] < 0) return -1;
+	if (pid[lim] == 0) {
 		char ist[33], ost[33], idt[33];
 		val = close(c2p[0]); if (val < 0) return -1;
 		val = close(p2c[1]); if (val < 0) return -1;
 		val = snprintf(ost,32,"%d",c2p[1]); if (val < 0 || val > 32) return -1;
 		val = snprintf(ist,32,"%d",p2c[0]); if (val < 0 || val > 32) return -1;
-		val = snprintf(idt,32,"%d",max); if (val < 0 || val > 32) return -1;
+		val = snprintf(idt,32,"%d",lim); if (val < 0 || val > 32) return -1;
 		val = execl(exe,exe,ist,ost,idt,0); if (val < 0) return -1;
 		return -1;}
 	val = close(c2p[1]); if (val < 0) return -1;
 	val = close(p2c[0]); if (val < 0) return -1;
-	inp[max] = c2p[0];
-	out[max] = p2c[1];
-	fdt[max] = Wait;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
-	return max;
+	inp[lim] = c2p[0];
+	out[lim] = p2c[1];
+	fdt[lim] = Wait;
+	val = lim++;
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	return val;
 }
 int pipeInit(const char *av1, const char *av2)
 {
 	int val;
-	while (max < NUMOPEN && fdt[max] != None) max++;
-	if (max == NUMOPEN) return -1;
-	val = sscanf(av1,"%d",&inp[max]); if (val != 1) return -1;
-	val = sscanf(av2,"%d",&out[max]); if (val != 1) return -1;
-	fdt[max] = Wait;
-	pid[max] = 0;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) return -1;
-	return max;
+	val = sscanf(av1,"%d",&inp[lim]); if (val != 1) return -1;
+	val = sscanf(av2,"%d",&out[lim]); if (val != 1) return -1;
+	fdt[lim] = Wait;
+	pid[lim] = 0;
+	val = lim++;
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	return val;
 }
 int pselectAny(struct timespec *dly, int idx)
 {
@@ -251,7 +241,7 @@ int pselectAny(struct timespec *dly, int idx)
 	int val;
 	int nfd = 0;
 	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
-	for (int i = 0; i <= max; i++) if (idx < 0 || idx == i) {
+	for (int i = 0; i < lim; i++) if (idx < 0 || idx == i) {
 		if (fdt[i] == Wait && nfd <= inp[i]) nfd = inp[i]+1;
 		if (fdt[i] == Wait) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}
 		if (fdt[i] == Sock && nfd <= inp[i]) nfd = inp[i]+1;
@@ -263,22 +253,22 @@ int pselectAny(struct timespec *dly, int idx)
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,dly,0);
 	if (val < 0) ERROR(exitErr,0);
 	if (val == 0) return -1;
-	nfd = 0; for (int i = 0; i <= max; i++) if (idx < 0 || idx == i) {
+	nfd = 0; for (int i = 0; i < lim; i++) if (idx < 0 || idx == i) {
 		if (fdt[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
 		if (fdt[i] == Sock && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
 		if (fdt[i] == Inet && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}}
-	if (nfd == 0) for (int i = 0; i <= max; i++) if (idx < 0 || idx == i) {
+	if (nfd == 0) for (int i = 0; i < lim; i++) if (idx < 0 || idx == i) {
 		if (fdt[i] == Wait && FD_ISSET(inp[i],&fds)) return i;
 		if (fdt[i] == Sock && FD_ISSET(inp[i],&fds)) return i;
 		if (fdt[i] == Inet && FD_ISSET(inp[i],&fds)) {
 		struct sockaddr_in6 adr = {0};
-		socklen_t max = sizeof(adr);
-		if (max >= NUMOPEN) {closeIdent(i); continue;}
-		inp[max] = out[max] = accept(inp[i],(struct sockaddr*)&adr,&max);
-		if (inp[max] < 0) continue;
-		fdt[max] = Wait;
-		pid[max] = 0;
-		return max++;}}
+		socklen_t siz = sizeof(adr);
+		if (siz >= NUMOPEN) {closeIdent(i); continue;}
+		inp[lim] = out[lim] = accept(inp[i],(struct sockaddr*)&adr,&siz);
+		if (inp[lim] < 0) continue;
+		fdt[lim] = Wait;
+		pid[lim] = 0;
+		return lim++;}}
 	} return -1;
 }
 int waitAny()
@@ -308,7 +298,7 @@ void *callCall(void *arg)
 }
 void callInit(cftype fnc, int idx)
 {
-	if (idx < 0 || idx > max || (fdt[idx] != Wait && fdt[idx] != Sock)) ERROR(exitErr,0);
+	if (idx < 0 || idx >= lim || (fdt[idx] != Wait && fdt[idx] != Sock)) ERROR(exitErr,0);
 	cbfnc[idx] = fnc;
 	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERROR(exitErr,0);
 }
@@ -317,7 +307,7 @@ int pollPipe(int idx)
 	int val;
 	int nfd = 0;
 	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
-	if (idx < 0 || idx > max || fdt[idx] != Poll) return 0;
+	if (idx < 0 || idx >= lim || fdt[idx] != Poll) return 0;
 	if (nfd <= inp[idx]) nfd = inp[idx]+1;
 	FD_SET(inp[idx],&fds); FD_SET(inp[idx],&ers);
 	val = -1; while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
@@ -328,7 +318,7 @@ int pollPipe(int idx)
 int pollFile(int idx)
 {
 	off_t pos, siz;
-	if (idx < 0 || idx > max || fdt[idx] != Seek) return 0;
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
 	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
 	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERROR(inperr[idx],idx);
@@ -349,7 +339,7 @@ void truncFile(int idx)
 long long checkFile(int idx)
 {
 	off_t pos, siz;
-	if (idx < 0 || idx > max || fdt[idx] != Seek) return 0;
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
 	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
 	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
@@ -406,12 +396,12 @@ void wrlkwFile(long long loc, long long siz, int idx)
 }
 int checkRead(int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) return 0;
+	if (idx < 0 || idx >= lim || fdt[idx] == None) return 0;
 	return 1;
 }
 int checkWrite(int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) return 0;
+	if (idx < 0 || idx >= lim || fdt[idx] == None) return 0;
 	return 1;
 }
 void sleepSec(double sec)
@@ -521,7 +511,7 @@ void readStr(sftype fnc, void *arg, int idx)
 	ssize_t val = 1/*bufsize*/; // num read
 	int num = 1/*bufsize*/; // num nonzero
 	int trm = 0; // num zero
-	if (idx < 0 || idx > max || fdt[idx] == None/*!= Seek*/) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None/*!= Seek*/) ERROR(exitErr,0)
 	while (num == 1/*bufsize*/ && val == 1/*bufsize*/) {
 		if ((size % bufsize) == 0) buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERROR(outerr[idx],idx)
@@ -541,7 +531,7 @@ void preadStr(sftype fnc, void *arg, long long loc, int idx)
 	ssize_t val = bufsize; // num read
 	int num = bufsize; // num nonzero
 	int trm = 0; // num zero
-	if (idx < 0 || idx > max || fdt[idx] != Seek) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERROR(exitErr,0)
 	while (num == bufsize && val == bufsize) {
 		/*if ((size % bufsize) == 0) */buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERROR(outerr[idx],idx)
@@ -567,7 +557,7 @@ void readStrHs(hftype fnc, int idx)
 char readChr(int idx)
 {
 	char arg;
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(char));
 	if (val != 0 && val < (int)sizeof(char)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
@@ -577,7 +567,7 @@ char readChr(int idx)
 int readInt(int idx)
 {
 	int arg;
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(int));
 	if (val != 0 && val < (int)sizeof(int)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
@@ -587,7 +577,7 @@ int readInt(int idx)
 double readNum(int idx)
 {
 	double arg;
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = read(inp[idx],(char *)&arg,sizeof(double));
 	if (val != 0 && val < (int)sizeof(double)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
@@ -597,7 +587,7 @@ double readNum(int idx)
 long long readNew(int idx)
 {
 	long long arg;
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(long long));
 	if (val != 0 && val < (int)sizeof(long long)) ERROR(inperr[idx],idx)
@@ -608,7 +598,7 @@ long long readNew(int idx)
 float readOld(int idx)
 {
 	float arg;
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = read(inp[idx],(char *)&arg,sizeof(float));
 	if (val != 0 && val < (int)sizeof(float)) ERROR(inperr[idx],idx)
@@ -618,7 +608,7 @@ float readOld(int idx)
 }
 int writeBuf(const void *arg, long long siz, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	if (fdt[idx] == Poll) {
 		while (atoms[idx]+siz > atomz[idx]) atom[idx] = realloc(atom[idx],atomz[idx]+=bufsize);
 		if (atom[idx] == 0) ERROR(outerr[idx],idx)
@@ -629,307 +619,307 @@ int writeBuf(const void *arg, long long siz, int idx)
 }
 void flushBuf(int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] != Poll) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] != Poll) ERROR(exitErr,0)
 	if (write(out[idx],atom[idx],atoms[idx]) < 0) ERROR(outerr[idx],idx)
 	atoms[idx] = 0;
 }
 void writeStr(const char *arg, int trm, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int siz = strlen(arg)+trm;
 	int val = writeBuf(/*write(out[idx],*/arg,siz,idx);
 	if (val < siz) ERROR(outerr[idx],idx)
 }
 void pwriteStr(const char *arg, int trm, long long loc, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] != Seek) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERROR(exitErr,0)
 	int siz = strlen(arg)+trm;
 	int val = pwrite(out[idx],arg,siz,loc);
 	if (val < siz) ERROR(outerr[idx],idx)
 }
 void writeChr(char arg, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(char), idx);
 	if (val < (int)sizeof(char)) ERROR(outerr[idx],idx)
 }
 void writeInt(int arg, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(int), idx);
 	if (val < (int)sizeof(int)) ERROR(outerr[idx],idx)
 }
 void writeNum(double arg, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(double), idx);
 	if (val < (int)sizeof(double)) ERROR(outerr[idx],idx)
 }
 void writeNew(long long arg, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(long long), idx);
 	if (val < (int)sizeof(long long)) ERROR(outerr[idx],idx)
 }
 void writeOld(float arg, int idx)
 {
-	if (idx < 0 || idx > max || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(float), idx);
 	if (val < (int)sizeof(float)) ERROR(outerr[idx],idx)
 }
-void showEnum(const char *typ, const char* val, char **str, int *max)
+void showEnum(const char *typ, const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"%s(%s)",typ,val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showStruct(const char* bef, int val, const char *aft, char **str, int *max)
+void showStruct(const char* bef, int val, const char *aft, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"%s%d%s",bef,val,aft) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showField(const char* val, char **str, int *max)
+void showField(const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"%s:",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showOpen(const char* val, char **str, int *max)
+void showOpen(const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"%s(",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showClose(char **str, int *max)
+void showClose(char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,")") < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showChr(char val, char **str, int *max)
+void showChr(char val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Chr(%c)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showInt(int val, char **str, int *max)
+void showInt(int val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Int(%d)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showNew(long long val, char **str, int *max)
+void showNew(long long val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"New(%lld)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showNum(double val, char **str, int *max)
+void showNum(double val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Num(%lf)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showOld(float val, char **str, int *max)
+void showOld(float val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Old(%f)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-void showStr(const char* val, char **str, int *max)
+void showStr(const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Str(%s)",val) < 0) ERROR(exitErr,-1)
 	num = strlen(tmp);
-	allocMem((void**)str,*max+num+1);
+	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERROR(exitErr,-1)
-	memcpy(*str+*max,tmp,num+1);
+	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
-	*max += num;
+	*siz += num;
 }
-int hideIdent(const char *val, const char *str, int *max)
+int hideIdent(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
 	if (asprintf(&tmp," %s %%n",val) < 0) ERROR(exitErr,-1)
-	sscanf(str+*max,tmp,&num);
+	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideEnum(const char* typ, const char *val, const char *str, int *max)
+int hideEnum(const char* typ, const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
 	if (asprintf(&tmp," %s ( %s ) %%n",typ,val) < 0) ERROR(exitErr,-1)
-	sscanf(str+*max,tmp,&num);
+	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideStruct(const char* bef, int val, const char *aft, const char *str, int *max)
+int hideStruct(const char* bef, int val, const char *aft, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
 	if (asprintf(&tmp," %s %d %s%%n",bef,val,aft) < 0) ERROR(exitErr,-1)
-	sscanf(str+*max,tmp,&num);
+	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideField(const char *val, const char *str, int *max)
+int hideField(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
 	if (asprintf(&tmp," %s : %%n",val) < 0) ERROR(exitErr,-1)
-	sscanf(str+*max,tmp,&num);
+	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideOpen(const char *val, const char *str, int *max)
+int hideOpen(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
 	if (asprintf(&tmp," %s ( %%n",val) < 0) ERROR(exitErr,-1)
-	sscanf(str+*max,tmp,&num);
+	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideClose(const char *str, int *max)
+int hideClose(const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
 	if (asprintf(&tmp," ) %%n") < 0) ERROR(exitErr,-1)
-	sscanf(str+*max,tmp,&num);
+	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideChr(char *val, const char *str, int *max)
+int hideChr(char *val, const char *str, int *siz)
 {
 	int num = -1;
-	sscanf(str+*max," Chr ( %c )%n",val,&num);
+	sscanf(str+*siz," Chr ( %c )%n",val,&num);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideInt(int *val, const char *str, int *max)
+int hideInt(int *val, const char *str, int *siz)
 {
 	int num = -1;
-	sscanf(str+*max," Int ( %d )%n",val,&num);
+	sscanf(str+*siz," Int ( %d )%n",val,&num);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideNew(long long *val, const char *str, int *max)
+int hideNew(long long *val, const char *str, int *siz)
 {
 	int num = -1;
-	sscanf(str+*max," New ( %lld )%n",val,&num);
+	sscanf(str+*siz," New ( %lld )%n",val,&num);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideNum(double *val, const char *str, int *max)
+int hideNum(double *val, const char *str, int *siz)
 {
 	int num = -1;
-	sscanf(str+*max," Num ( %lf )%n",val,&num);
+	sscanf(str+*siz," Num ( %lf )%n",val,&num);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideOld(float *val, const char *str, int *max)
+int hideOld(float *val, const char *str, int *siz)
 {
 	int num = -1;
-	sscanf(str+*max," Old ( %f )%n",val,&num);
+	sscanf(str+*siz," Old ( %f )%n",val,&num);
 	if (num == -1) return 0;
-	*max += num;
+	*siz += num;
 	return 1;
 }
-int hideStr(char **val, const char *str, int *max)
+int hideStr(char **val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int base = -1;
 	int num = -1;
 	int limit = -1;
-	sscanf(str+*max," Str ( %n",&base);
-	limit = base; while (base != -1 && str[limit] && num == -1) sscanf(str+*max+(++limit)," )%n",&num);
+	sscanf(str+*siz," Str ( %n",&base);
+	limit = base; while (base != -1 && str[limit] && num == -1) sscanf(str+*siz+(++limit)," )%n",&num);
 	if (num == -1) return 0;
 	tmp = malloc(limit-base+1);
 	if (tmp == 0) return 0;
-	strncpy(tmp,str+*max+base,limit-base); tmp[limit-base] = 0;
+	strncpy(tmp,str+*siz+base,limit-base); tmp[limit-base] = 0;
 	assignStr(val,tmp);
 	free(tmp);
-	*max += limit+num;
+	*siz += limit+num;
 	return 1;
 }
 
