@@ -8,7 +8,6 @@ void *bnd[NUMCALL] = {0}; // per-idx argument
 struct {
 	int rgt; // towards leaf
 	int nxt; // towards larger key
-	int lst; // towards smaller key
 	long long key;
 	int box;
 } lnk[NUMNODE] = {0}; // linked list tree
@@ -17,99 +16,108 @@ int dep = 0; // dedep of caller stack
 int lft[NUMCALL] = {0}; // flow control opens
 int rgt[NUMCALL] = {0}; // flow control closes
 int lim = 0;
-int initCall(void *arg, tftype tfn, fftype ffn, nftype nfn, int lft, int rgt)
+int pth[NUMCALL] = {0}; // path through links
+int poo = 0; // unused from lnk
+int initCall(void *arg, tftype tfn, fftype ffn, nftype nfn, int brg, int crg)
 {
 	if (lim >= NUMCALL) {fprintf(stderr,"full list\n"); exit(-1);}
 	clk[lim] = tfn;
 	flw[lim] = ffn;
 	nst[lim] = nfn;
 	bnd[lim] = arg;
+	lft[lim] = brg;
+	rgt[lim] = crg;
 	return lim++;
 }
 int takeTime()
 {
-	int idx = lnk[0].lst;
-	if (idx == 0) {fprintf(stderr,"empty pool\n"); exit(-1);}
-	lnk[0].lst = lnk[idx].lst;
+	int idx = poo;
+	if (poo == 0 && lnk[0].rgt == 0) for (int i = 0; i < NUMNODE; i++) lnk[i].rgt = i+1;
+	if (poo == NUMNODE) {fprintf(stderr,"empty pool\n"); exit(-1);}
+	poo = lnk[idx].rgt;
 	return idx;
-}
-void makeTime(int idx, int rgt, long long val, int box)
-{
-	int tak = takeTime();
-	lnk[tak].key = val;
-	lnk[tak].box = box;
-	lnk[tak].lst = lnk[idx].lst;
-	lnk[tak].nxt = idx;
-	lnk[tak].rgt = rgt;
-	lnk[idx].lst = tak;
-}
-void postTime(int idx, int rgt, long long val, int box)
-{
-	int tak = takeTime();
-	lnk[tak].key = val;
-	lnk[tak].box = box;
-	lnk[tak].lst = idx;
-	lnk[tak].nxt = lnk[idx].nxt;
-	lnk[tak].rgt = rgt;
-	lnk[idx].nxt = tak;
 }
 void freeTime(int idx)
 {
-	lnk[idx].lst = lnk[0].lst;
-	lnk[0].lst = idx;
+	lnk[idx].rgt = poo;
+	poo = idx;
 }
-void countTime(int *num, int *mid, int lvl)
+int makeTime(int lft, int rgt, int lst, int nxt, int box, long long val)
 {
-	num[lvl]++;
-	if ((num[lvl] % 2) == 0) mid[lvl] = lnk[mid[lvl]].nxt;
+	int tak = takeTime();
+	if (lft != -1 && rgt != 0 && lnk[lft].rgt != rgt) {fprintf(stderr,"conflicting left right\n"); exit(-1);}
+	if (lst != -1 && nxt != 0 && lnk[lst].nxt != nxt) {fprintf(stderr,"conflicting last next\n"); exit(-1);}
+	if (lft != -1) {rgt = lnk[lft].rgt; lnk[lft].rgt = tak;}
+	if (lst != -1) {nxt = lnk[lst].nxt; lnk[lst].nxt = tak;}
+	lnk[tak].key = val;
+	lnk[tak].box = box;
+	lnk[tak].nxt = nxt;
+	lnk[tak].rgt = rgt;
+	return tak;
 }
-void pendTime(void *ovr, int box, long long val)
+int pathTime(int *pth, long long val)
 {
-	int idx = 0;
-	int lvl = 0;
-	int num[NUMLEVEL];
-	int mid[NUMLEVEL];
-	int pth[NUMLEVEL];
-	if (val <= 0) {fprintf(stderr,"negative value\n"); exit(-1);}
-	while (1) {
-		pth[lvl] = idx;
-		mid[lvl] = idx;
-		while (lnk[idx].nxt != 0 && lnk[idx].key < val) {
-			countTime(num,mid,lvl);
-			idx = lnk[idx].nxt;}
-		lvl++;
-		if (lvl >= NUMLEVEL) {fprintf(stderr,"infinite path\n"); exit(-1);}
-		idx = lnk[idx].rgt;
-		if (idx == 0) break;}
-	mid[lvl] = 0;
-	while (lvl > 0) {
-		lvl--;
-		if (lnk[pth[lvl]].key < val) {
-			postTime(pth[lvl],mid[lvl+1],val,box);
-			countTime(num,mid,lvl);}
-		else {
-			makeTime(pth[lvl],mid[lvl+1],val,box);}
-		if (num[lvl] < NUMEACH) break;
-		val = lnk[pth[lvl]].key;}
-	if (lnk[0].nxt != 0) {
-		idx = takeTime();
-		lnk[idx] = lnk[0];
-		lnk[0].rgt = idx;
-		lnk[0].nxt = 0;}
+	int rgt = lnk[0].rgt;
+	int len = 0;
+	pth[len++] = 0;
+	while (rgt != 0) {
+		int lst = rgt;
+		int nxt = lnk[rgt].nxt;
+		while (nxt != 0 && lnk[nxt].key < val) {
+			lst = nxt;
+			nxt = lnk[nxt].nxt;}
+		pth[len++] = lst;
+		rgt = lnk[rgt].rgt;}
+	return len;
+}
+int findTime(int lst, int rgt)
+{
+	int nxt =rgt;
+	int cnt = 0;
+	int lim = lnk[lst].nxt;
+	if (lim != 0) lim = lnk[lim].rgt;
+	while (nxt != lim) {
+		if ((++cnt)%2 == 0) rgt = lnk[rgt].nxt;
+		nxt = lnk[nxt].nxt;}
+	if (cnt < NUMEACH) return 0;
+	return rgt;
+}
+void saveTime(void *ovr, int box, long long val)
+{
+	int len = pathTime(pth,val);
+	if (len-- != 0) {
+		int lst = pth[len];
+		int nxt = lnk[lst].nxt;
+		if (lst == 0) lst = makeTime(0,0,-1,0,0,0);
+		makeTime(-1,0,lst,nxt,box,val);}
+	while (len-- != 0) {
+		int lst = pth[len];
+		int rgt = lnk[lst].rgt;
+		rgt = findTime(lst,rgt);
+		if (rgt != 0) {
+			int nxt = lnk[lst].nxt;
+			if (lst == 0) lst = makeTime(0,lnk[0].rgt,-1,0,0,0);
+			makeTime(-1,rgt,lst,nxt,box,val);}}
 }
 void callTime(void *ovr, long long val)
 {
-	int idx = lnk[0].rgt;
-	while (idx != 0) {
-		int rgt = lnk[idx].rgt;
-		while (lnk[idx].key < val) {
-			int nxt = lnk[idx].nxt;
-			if (lnk[idx].rgt == 0) {
-				int box = lnk[idx].box;
-				clk[box](bnd[box],ovr,lnk[idx].key);}
-			freeTime(idx);
-			idx = nxt;}
-		idx = rgt;}
+	int rgt = lnk[0].rgt;
+	while (rgt != 0) {
+		int tmp = lnk[rgt].rgt;
+		int nxt = lnk[rgt].nxt;
+		if (tmp == 0) while (nxt != 0 && lnk[nxt].key < val) {
+			int tmp = lnk[nxt].nxt;
+			int box = lnk[nxt].box;
+			idt[dep++] = box; clk[box](bnd[box],ovr,lnk[nxt].key); dep--;
+			freeTime(nxt);
+			nxt = tmp;}
+		else while (nxt != 0 && lnk[nxt].key < val) {
+			int tmp = lnk[nxt].nxt;
+			freeTime(nxt);
+			nxt = tmp;}
+		rgt = tmp;}
+	while ((rgt = lnk[0].rgt) != 0 && lnk[rgt].nxt == 0) {
+		freeTime(rgt);}
 }
 void callFlow(void *ovr, int idx)
 {
