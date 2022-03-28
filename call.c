@@ -7,8 +7,8 @@ nftype nst[NUMCALL] = {0}; // flow control function
 void *bnd[NUMCALL] = {0}; // per-idx argument
 struct {
 	int rgt; // towards leaf
-	int nxt; // towards larger key
-	long long key;
+	int nxt; // towards larger val
+	long long val;
 	int box;
 } lnk[NUMNODE] = {0}; // linked list tree
 int idt[NUMCALL] = {0}; // stack of caller idx
@@ -37,8 +37,13 @@ int takeTime()
 	poo = lnk[idx].rgt;
 	return idx;
 }
-void freeTime(int idx)
+void freeTime(int lst, int lft)
 {
+	int idx = -1;
+	if (lst != -1 && lft != -1) {fprintf(stderr, "conflicting last left\n"); exit(-1);}
+	if (lst != -1) {idx = lnk[lst].nxt; lnk[lst].nxt = lnk[idx].nxt;}
+	if (lft != -1) {idx = lnk[lft].rgt; lnk[lft].rgt = lnk[idx].rgt;}
+	if (idx == -1) {fprintf(stderr, "missing last left\n"); exit(-1);}
 	lnk[idx].rgt = poo;
 	poo = idx;
 }
@@ -49,7 +54,7 @@ int makeTime(int lft, int rgt, int lst, int nxt, int box, long long val)
 	if (lst != -1 && nxt != 0 && lnk[lst].nxt != nxt) {fprintf(stderr,"conflicting last next\n"); exit(-1);}
 	if (lft != -1) {rgt = lnk[lft].rgt; lnk[lft].rgt = tak;}
 	if (lst != -1) {nxt = lnk[lst].nxt; lnk[lst].nxt = tak;}
-	lnk[tak].key = val;
+	lnk[tak].val = val;
 	lnk[tak].box = box;
 	lnk[tak].nxt = nxt;
 	lnk[tak].rgt = rgt;
@@ -63,7 +68,7 @@ int pathTime(int *pth, long long val)
 	while (rgt != 0) {
 		int lst = rgt;
 		int nxt = lnk[rgt].nxt;
-		while (nxt != 0 && lnk[nxt].key < val) {
+		while (nxt != 0 && lnk[nxt].val < val) {
 			lst = nxt;
 			nxt = lnk[nxt].nxt;}
 		pth[len++] = lst;
@@ -96,6 +101,8 @@ void saveTime(void *ovr, int box, long long val)
 		rgt = findTime(lst,rgt);
 		if (rgt != 0) {
 			int nxt = lnk[lst].nxt;
+			box = lnk[rgt].box;
+			val = lnk[rgt].val;
 			if (lst == 0) lst = makeTime(0,lnk[0].rgt,-1,0,0,0);
 			makeTime(-1,rgt,lst,nxt,box,val);}}
 }
@@ -105,19 +112,19 @@ void callTime(void *ovr, long long val)
 	while (rgt != 0) {
 		int tmp = lnk[rgt].rgt;
 		int nxt = lnk[rgt].nxt;
-		if (tmp == 0) while (nxt != 0 && lnk[nxt].key < val) {
+		if (tmp == 0) while (nxt != 0 && lnk[nxt].val < val) {
 			int tmp = lnk[nxt].nxt;
 			int box = lnk[nxt].box;
-			idt[dep++] = box; clk[box](bnd[box],ovr,lnk[nxt].key); dep--;
-			freeTime(nxt);
+			idt[dep++] = box; clk[box](bnd[box],ovr,lnk[nxt].val); dep--;
+			freeTime(rgt,-1);
 			nxt = tmp;}
-		else while (nxt != 0 && lnk[nxt].key < val) {
+		else while (nxt != 0 && lnk[nxt].val < val) {
 			int tmp = lnk[nxt].nxt;
-			freeTime(nxt);
+			freeTime(rgt,-1);
 			nxt = tmp;}
 		rgt = tmp;}
 	while ((rgt = lnk[0].rgt) != 0 && lnk[rgt].nxt == 0) {
-		freeTime(rgt);}
+		freeTime(-1,0);}
 }
 void callFlow(void *ovr, int idx)
 {
