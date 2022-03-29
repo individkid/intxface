@@ -16,7 +16,6 @@ int dep = 0; // dedep of caller stack
 int lft[NUMCALL] = {0}; // flow control opens
 int rgt[NUMCALL] = {0}; // flow control closes
 int lim = 0;
-int pth[NUMCALL] = {0}; // path through links
 int poo = 0; // unused from lnk
 int initCall(void *arg, tftype tfn, fftype ffn, nftype nfn, int brg, int crg)
 {
@@ -89,6 +88,7 @@ int findTime(int lst, int rgt)
 }
 void saveTime(void *ovr, int box, long long val)
 {
+	int pth[NUMLEVEL];
 	int len = pathTime(pth,val);
 	if (len-- != 0) {
 		int lst = pth[len];
