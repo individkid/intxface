@@ -28,8 +28,10 @@ struct {
 	long long val;
 	eftype fnc;
 	void *bnd;
-} edg[NUMCALL] = {0}; // state machine function
-int elm = 0;
+} edg[NUMMASK][NUMCALL] = {0}; // state machine function
+int elm[NUMMASK] = {0};
+long long msk[NUMMASK] = {0};
+int mlm = 0;
 long long now = 0;
 int rdy = 0;
 int takeTime()
@@ -93,7 +95,7 @@ int findTime(int lst, int rgt)
 }
 void makeTime(void *ovr, tftype fnc, void *bnd, long long val)
 {
-	int pth[NUMLEVEL];
+	int pth[NUMPATH];
 	int len = markTime(pth,val);
 	if (len-- != 0) {
 		int lst = pth[len];
@@ -171,57 +173,77 @@ void callNest(void *ovr)
 			else ret = 0;
 			if (ret < 0 && idx > 0) idx--;}}
 }
-void sortEdge(int sub, int min, int lim)
+void sortEdge(int sub, int alt, int min, int lim)
 {
 	int mid = (min+lim)/2;
 	if (mid == min) return;
 	for (int i = min; i < lim; i++) {
-		edg[i].srt[!sub] = edg[i].srt[sub];}
-	sortEdge(!sub,min,mid);
-	sortEdge(!sub,mid,lim);
+		edg[sub][i].srt[!alt] = edg[sub][i].srt[alt];}
+	sortEdge(sub,!alt,min,mid);
+	sortEdge(sub,!alt,mid,lim);
 	for (int i = min, j = min, k = mid; i < lim; i++) {
-		if (j < mid && k < lim && edg[edg[j].srt[!sub]].val < edg[edg[k].srt[!sub]].val) {
-			edg[i].srt[sub] = edg[j].srt[!sub];}
+		int p = edg[sub][j].srt[!alt];
+		int q = edg[sub][k].srt[!alt];
+		if (j < mid && k < lim && edg[sub][p].val < edg[sub][q].val) {
+			edg[sub][i].srt[alt] = j++;}
 		else if (j < mid && k < lim) {
-			edg[i].srt[sub] = k++;}
+			edg[sub][i].srt[alt] = k++;}
 		else if (j < mid) {
-			edg[i].srt[sub] = j++;}
+			edg[sub][i].srt[alt] = j++;}
 		else {
-			edg[i].srt[sub] = k++;}}
+			edg[sub][i].srt[alt] = k++;}}
 }
-int makeEdge(eftype fnc, void *bnd, long long src, long long dst)
+int findEdge(int sub, long long val)
+{
+	val &= msk[sub];
+	int idx = elm[sub]/2;
+	int siz = idx/2;
+	while (1) {
+		int srt = edg[sub][idx].srt[0];
+		long long key = edg[sub][srt].val;
+		if (val == key) return srt;
+		if (val < key) {
+			idx -= siz;}
+		else {
+			idx += siz;}
+		siz /= 2;
+		if (siz == 0) break;}
+	return -1;
+}
+int makeEdge(eftype fnc, void *bnd, long long now, long long new, long long sel)
 {
 	int bit = sizeof(long long)*4;
-	long long msk = (1 << bit) - 1;
-	if (elm == NUMCALL) {fprintf(stderr, "empty edge\n"); exit(-1);}
-	edg[elm].val = (src & msk) | ((dst & msk) << bit);
-	edg[elm].fnc = fnc;
-	edg[elm].bnd = bnd;
-	return elm++;
+	long long lsb = (1 << bit) - 1;
+	int sub = 0;
+	if (rdy) {fprintf(stderr, "already ready\n"); exit(-1);}
+	while (sub < mlm && msk[sub] != sel) sub++;
+	if (sub == NUMMASK) {fprintf(stderr,"full mask\n"); exit(-1);}
+	if (sub == mlm) msk[mlm++] = sel;
+	if (elm[sub] == NUMCALL) {fprintf(stderr, "full edge\n"); exit(-1);}
+	edg[sub][elm[sub]].val = ((now & lsb) | ((new & lsb) << bit) & sel);
+	edg[sub][elm[sub]].fnc = fnc;
+	edg[sub][elm[sub]].bnd = bnd;
+	return elm[sub]++;
 }
-void callEdge(void *ovr, long long how, long long sel)
+void callEdge(void *ovr, long long how, long long who)
 {
 	int bit = sizeof(long long)*4;
-	long long msk = (1 << bit) - 1;
-	long long set = how & sel;
-	long long clr = ~how & sel;
-	long long src = now;
-	long long dst = ((src | set) & clr);
-	long long val = (src & msk) | ((dst & msk) << bit);
-	int sub = elm/2;
-	int mid = sub/2;
+	long long lsb = (1 << bit) - 1;
+	long long set = how & who;
+	long long clr = ~how & who;
+	long long new = ((now | set) & clr);
+	long long val = ((now & lsb) | ((new & lsb) << bit));
 	if (!rdy) {
-		for (int i = 0; i < elm; i++) {
-			edg[i].srt[0] = i;}
-		sortEdge(0,0,elm);
+		for (int sub = 0; sub < mlm; sub++) {
+			for (int i = 0; i < elm[sub]; i++) {
+				edg[sub][i].srt[0] = i;}
+			sortEdge(sub,0,0,elm[sub]);}
 		rdy = 1;}
-	while (val != edg[sub].val && mid != 0) {
-		if (val < edg[sub].val) {
-			sub -= mid;}
-		else {
-			sub += mid;}
-		mid /= 2;}
-	if (val != edg[sub].val) {fprintf(stderr,"missing edge\n"); exit(-1);}
-	now = dst;
-	edg[sub].fnc(edg[sub].bnd,ovr,src,dst);
+	for (int sub = 0; sub < mlm; sub++) {
+		int idx = findEdge(sub,val);
+		if (idx < 0) continue;
+		now = new;
+		edg[sub][idx].fnc(edg[sub][idx].bnd,ovr);
+		return;}
+	{fprintf(stderr,"missing edge\n"); exit(-1);}
 }
