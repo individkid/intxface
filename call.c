@@ -243,7 +243,7 @@ void callEdge(void *ovr, long long how, long long who)
 		int idx = findEdge(sub,val);
 		if (idx < 0) continue;
 		now = new;
-		edg[sub][idx].fnc(edg[sub][idx].bnd,ovr);
+		edg[sub][idx].fnc(edg[sub][idx].bnd,ovr,now,new,how,who);
 		return;}
 	{fprintf(stderr,"missing edge\n"); exit(-1);}
 }

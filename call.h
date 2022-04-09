@@ -5,7 +5,7 @@
 typedef void (*tftype)(void *bnd, void *ovr, long long val); // triggered by callTime
 typedef void (*fftype)(void *bnd, void *ovr, int idx); // triggered by callFlow
 typedef int (*nftype)(void *bnd, void *ovr); // triggered by callNest
-typedef void (*eftype)(void *bnd, void *ovr); // triggered by callEdge
+typedef void (*eftype)(void *bnd, void *ovr, int src, int dst, int how, int who); // triggered by callEdge
 void makeTime(void *ovr, tftype fnc, void *bnd, long long val);
 void callTime(void *ovr, long long val);
 int makeFlow(fftype fnc, void *bnd);
