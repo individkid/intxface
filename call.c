@@ -10,19 +10,14 @@ struct {
 } lnk[NUMCALL] = {0}; // linked list tree
 int tlm = 0;
 struct {
-	fftype fnc;
-	void *bnd;
-} flw[NUMCALL] = {0}; // data flow function
-int flm = 0;
-int idt[NUMCALL] = {0}; // stack of caller idx
-int dep = 0; // dedep of caller stack
-struct {
 	int lft;
 	int rgt;
+	int mod;
 	nftype fnc;
 	void *bnd;
 } nst[NUMCALL] = {0}; // flow control function
 int nlm = 0;
+int ret[NUMTURN] = {0};
 struct {
 	int srt[2];
 	long long val;
@@ -133,26 +128,12 @@ void callTime(void *ovr, long long val)
 	while ((rgt = lnk[0].rgt) != 0 && lnk[rgt].nxt == 0) {
 		freeTime(-1,0);}
 }
-int makeFlow(fftype fnc, void *bnd)
-{
-	if (flm == NUMCALL) {fprintf(stderr, "empty flow\n"); exit(-1);}
-	flw[flm].fnc = fnc;
-	flw[flm].bnd = bnd;
-	return flm++;
-}
-void callFlow(void *ovr, int idx)
-{
-	int tmp = 0;
-	if (dep > 0) tmp = idt[dep-1];
-	idt[dep++] = idx;
-	flw[idx].fnc(flw[idx].bnd,ovr,tmp);
-	dep--;
-}
-int makeNest(nftype fnc, void *bnd, int lft, int rgt)
+int makeNest(nftype fnc, void *bnd, int lft, int rgt, int mod)
 {
 	if (nlm == NUMCALL) {fprintf(stderr, "empty nest\n"); exit(-1);}
 	nst[nlm].lft = lft;
 	nst[nlm].rgt = rgt;
+	nst[nlm].mod = mod;
 	nst[nlm].fnc = fnc;
 	nst[nlm].bnd = bnd;
 	return nlm++;
@@ -161,17 +142,21 @@ void callNest(void *ovr)
 {
 	int idx = 0;
 	while (idx < nlm) {
-		int ret;
-		ret = nst[idx].fnc(nst[idx].bnd,ovr);
-		if (ret == 0) idx++;
-		while (ret > 0 && idx < nlm) {
-			if (nst[idx].rgt < ret) ret -= nst[idx].rgt;
-			else ret = 0;
+		int val = nst[idx].fnc(nst[idx].bnd,ovr);
+		int mod = nst[idx].mod;
+		if (mod && val > 0 && val < NUMTURN) {
+			ret[val] = idx++;}
+		if (mod && val < 0 && -val < NUMTURN) {
+			idx = ret[-val];}
+		if (val == 0) idx++;
+		while (!mod && val > 0 && idx < nlm) {
+			if (nst[idx].rgt < val) val -= nst[idx].rgt;
+			else val = 0;
 			idx++;}
-		while (ret < 0 && idx > 0) {
-			if (nst[idx].lft < -ret) ret += nst[idx].lft;
-			else ret = 0;
-			if (ret < 0 && idx > 0) idx--;}}
+		while (!mod && val < 0 && idx > 0) {
+			if (nst[idx].lft < -val) val += nst[idx].lft;
+			else val = 0;
+			if (val < 0 && idx > 0) idx--;}}
 }
 void sortEdge(int sub, int alt, int min, int lim)
 {
