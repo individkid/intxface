@@ -14,6 +14,8 @@
 #include <arpa/inet.h>
 #include <lua.h>
 
+lua_State *luaptr = 0; // globally shared
+
 // per identifier state
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};
