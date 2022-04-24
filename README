@@ -141,30 +141,23 @@ Default input and output file descriptors are /dev/null.
 Default filter is passthrough. Default field name is error.
 Non-dash arguments replace defaults but are never replaced.
 Non-dash arguments after the following are,
- -a text file descriptors.
- -b binary file descriptors.
- -c field names.
- -f file names.
- -g executable names.
- -h inet names.
- -i input file descriptors.
- -j output file descriptors.
- -k configure file descriptors.
- -l start after finishing previous.
- -m round robin several to one.
- -n duplicate or prioritize several to one.
- -u port numbers.
- -v environment variables.
- -w unique names.
- -e filter expressions.
- -s immediate strings.
- -o option state machines.
- -x -y -z clipping shaping placement of av structs.
- -p priority of overlapping av structs.
- -r frame rate, 0.0 frozen, 1.0 realtime.
- -d delay before starting effect.
- -t time to start effect.
- -q rates delays and times are relative.
+
+ -a text descriptors
+ -b binary descriptors
+ -c type name or varies
+ -d side effects
+ -e lua output and input
+ -f file output and input
+ -g executable output and input
+ -h inet output and input
+ -i input descriptors
+ -j jump or set
+ -k push or pop
+ -l loop or break
+ -m open or close
+ -n forward or back
+ -o output descriptors
+ -pqrstuvwxyz control delay and parallelism
  --read AVAssetReader to pipe av structs from file names.
  --save AVAssetWriter to pipe av structs to file names.
  --tape BMD-SDK to pipe av structs from hdmi.
