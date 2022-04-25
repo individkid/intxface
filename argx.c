@@ -26,18 +26,17 @@ const char *dst[NUMMODE] = {0}; // name of custom stream
 sftype dfn[NUMMODE] = {0}; // function for custom stream
 int dlm = 0; // double dash like custom undashed
 
-int getValue(const char *str)
-{
-	// TODO return atoi identifier or lua evaluation
-	return 0;
-}
 struct ArgxCnst getConst(const char *str)
 {
 	struct ArgxCnst cnst = {0};
 	// TODO return idx if str is constant, otherwise return str
 	return cnst;
 }
-
+int getValue(const char *str)
+{
+	// TODO return atoi identifier or lua evaluation
+	return 0;
+}
 fftype setFactory(fftype fnc)
 {
 	fftype tmp = fac;
