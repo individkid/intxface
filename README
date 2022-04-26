@@ -129,34 +129,28 @@ Each user may create decorated boundaries for groups they have write permission 
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
 copy test arguments that control how subsequent non-dash arguments are interpreted and used.
-Each face identifier has input output file descriptor,
-file descriptor type, read write show hide function pointers,
-and how it is the one of several.
-Command line state includes option state machine,
-whether following is input, output, or both,
-whether following is direct number, environment variable, or unique name, and
-whether following is number, name, executable, inet, asset, bmd, usb, display,
-immediate, machine, expression, or conversion.
-Default input and output file descriptors are /dev/null.
-Default filter is passthrough. Default field name is error.
-Non-dash arguments replace defaults but are never replaced.
-Non-dash arguments after the following are,
+Except as noted, one hot flag sets, and expressions evaluated to numbers,
+hint how to interpret undashed unconsumed arguments to open streams.
+Expressions consumed as hints to streams are evaluated once.
+Expressions saved as flow control are repeatedly evaluated.
+Double dash arguments consume expressions and ignore hints to open stream.
+Position of stream opens on command line indicates usage in flow control context.
 
- -a text descriptors
- -b binary descriptors
- -c type name or varies
- -d side effects
- -e lua output and input
- -f file output and input
- -g executable output and input
- -h inet output and input
- -i input descriptors
- -j jump or set
- -k push or pop
- -l loop or break
- -m open or close
- -n forward or back
- -o output descriptors
+ -a text descriptors (text to/from stream converted)
+ -b binary descriptors (data to/from stream not converted)
+ -c type name or varies (argument to pass to stream factory)
+ -d side effects (nesting flow control no-opcode)
+ -e lua output and input (ignored for non-script)
+ -f file output and input (ignored for non-filename)
+ -g executable output and input (ignored for non-elfname)
+ -h inet output and input (ignored for non-portname)
+ -i input descriptors (output descriptor is cached)
+ -j jump or set (flow takes constant or script)
+ -k push or pop (flow takes constant or script)
+ -l loop or break (flow takes constant or script)
+ -m open or close (flow takes constant or script)
+ -n forward or back (flow takes constant or script)
+ -o output descriptors (input descriptor is cached)
  -pqrstuvwxyz control delay and parallelism
  --read AVAssetReader to pipe av structs from file names.
  --save AVAssetWriter to pipe av structs to file names.

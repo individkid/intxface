@@ -1,5 +1,5 @@
 #define NUMNEST 128
-#define NUMMODE 32
+#define NUMMODE 16
 typedef void (*sftype)(int idx, int *typ, int *siz, void **dat);
 struct ArgxFlow {
 	sftype fnc; // stream function
