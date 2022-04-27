@@ -3,7 +3,7 @@
 #include <lua.h>
 
 extern lua_State *luaptr; // global context for expressions
-char *str = 0;
+const char *scr = 0; // script to execute before consuming undashed
 struct ArgxNest nst[NUMNEST] = {0}; // data flow control steps
 int nlm = 0; // number of steps
 void *dat = 0; // data to flow between streams
@@ -29,16 +29,31 @@ int drg[NUMMODE][NUMMODE] = {0}; // arg value
 int djm[NUMMODE] = {0}; // number of args to change
 int dim = 0; // double dash multiple arg changes
 
-struct ArgxCnst getConst(const char *str)
+void initLua();
+const char *getString(const char *scr, const char *str)
 {
-	struct ArgxCnst cnst = {0};
-	// TODO return idx if str is constant, otherwise return str
-	return cnst;
+	if (!luaptr) initLua();
+	// TODO execute given script in luaptr environment
+	return 0;
 }
-int getValue(const char *str)
+int getValue(const char *scr)
 {
+	if (!luaptr) initLua();
 	// TODO return atoi identifier or lua evaluation
 	return 0;
+}
+struct ArgxCnst getConst(const char *scr)
+{
+	struct ArgxCnst cnst = {0};
+	if (!luaptr) initLua();
+	// TODO return idx if scr is constant, otherwise return scr
+	return cnst;
+}
+const char *setScript(const char *str)
+{
+	const char *tmp = scr;
+	scr = str;
+	return tmp;
 }
 fftype setFactory(fftype fnc)
 {
@@ -63,13 +78,17 @@ int addMode(const char *str)
 	ctr[cim] = str;
 	return cim++;
 }
-int addCustom(const char *str, int idx, int arg)
+int addMulti(const char *str)
+{
+	djm[dim] = 0;
+	dtr[dim] = str;
+	return dim++;
+}
+int addElem(int dim, int idx, int arg)
 {
 	drg[dim][djm[dim]] = arg;
 	ddx[dim][djm[dim]] = idx;
-	djm[dim]++;
-	dtr[dim] = str;
-	return dim++;
+	return djm[dim]++;
 }
 int useArgument(const char *str)
 {
@@ -92,6 +111,7 @@ int useArgument(const char *str)
 			if (str[0] == '-' && str[1] == atr[i][j] && str[2] == 0) {
 				arg[adx[i]] = j;
 				return nlm;}}}
+	if (scr) str = getString(scr,str);
 	if (idx) {
 		arg[idx-1] = getValue(str);
 		idx = 0;
@@ -114,4 +134,8 @@ int useArgument(const char *str)
 void runProgram()
 {
 	// TODO
+}
+void initLua()
+{
+	// TODO has access to lots of the above
 }
