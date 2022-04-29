@@ -1,5 +1,7 @@
-#define NUMNEST 128
+#define NUMNEST 256
+#define NUMJUMP 16
 #define NUMMODE 16
+typedef void (*lftype)(void *lua);
 typedef void (*sftype)(int idx, int *typ, int *siz, void **dat);
 struct ArgxFlow {
 	sftype fnc; // stream function

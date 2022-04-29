@@ -3,15 +3,14 @@
 #include <lua.h>
 
 extern lua_State *luaptr; // global context for expressions
+lftype env = 0; // function to initialize lua environment
 const char *scr = 0; // script to execute before consuming undashed
 struct ArgxNest nst[NUMNEST] = {0}; // data flow control steps
 int nlm = 0; // number of steps
-void *dat = 0; // data to flow between streams
-int siz = 0; // size of data to flow
-int typ = 0; // type of data to flow
-int stp = 0; // index into program steps
 int arg[NUMMODE] = {0}; // arguments passed to factory
 int mlm = 0; // number of factory arguments
+int lab[NUMJUMP] = {0}; // label stack and heap
+int llm = 0; // label stack depth
 int idx = 0; // for constant or immediate expression next
 enum ArgxCode opc; // for consuming next undashed argument
 fftype fac = 0; // factory for undashed arguments
@@ -42,12 +41,23 @@ int getValue(const char *scr)
 	// TODO return atoi identifier or lua evaluation
 	return 0;
 }
+int getCount(int idx)
+{
+	if (nst[idx].str) return getValue(nst[idx].str);
+	return nst[idx].idx;
+}
 struct ArgxCnst getConst(const char *scr)
 {
 	struct ArgxCnst cnst = {0};
 	if (!luaptr) initLua();
 	// TODO return idx if scr is constant, otherwise return scr
 	return cnst;
+}
+lftype setLua(lftype fnc)
+{
+	lftype tmp = env;
+	env = fnc;
+	return tmp;
 }
 const char *setScript(const char *str)
 {
@@ -133,9 +143,53 @@ int useArgument(const char *str)
 }
 void runProgram()
 {
-	// TODO
+	void *dat = 0; // data to flow between streams
+	int siz = 0; // size of data to flow
+	int typ = 0; // type of data to flow
+	int idx = 0;
+	while (idx < nlm) {
+		switch (nst[idx].opc) {
+		case(FlowArgx): {
+			nst[idx].fnc(nst[idx].idx,&typ,&siz,&dat);
+			idx++;
+			break;}
+		case(NestArgx): {
+			idx++;
+			break;}
+		case(JumpArgx): {
+			int val = getCount(idx);
+			if (val > 0) lab[val-1] = ++idx;
+			else if (val < 0) idx = lab[val+1];
+			else idx++;
+			break;}
+		case(PushArgx): {
+			int val = getCount(idx);
+			for (idx++;val > 0;val--) lab[llm++] = idx;
+			for (;val < 0;val++) idx = lab[--llm];
+			break;}
+		case(LoopArgx): {
+			int val = getCount(idx);
+			while (val > 0 && ++idx < nlm) {
+				if (nst[idx].opc == NestArgx) {
+					val += getCount(idx);
+					if (val < 0) val = 0;}}
+			while (val < 0 && --idx > 0) {
+				if (nst[idx].opc == NestArgx) {
+					val += getCount(idx);
+					if (val > 0) val = 0;}}
+			break;}
+		case(BackArgx): {
+			int val = getCount(idx);
+			if (val == 0) idx++;
+			for (;val > 0 && idx < nlm;idx++) if (nst[idx].opc == FlowArgx) val--;
+			for (;val < 0 && idx > 0;idx--) if (nst[idx].opc == FlowArgx) val++;
+			break;}
+		default: {
+			idx++;
+			break;}}}
 }
 void initLua()
 {
 	// TODO has access to lots of the above
+	// TODO call env if nonzero to give even more access
 }
