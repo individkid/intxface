@@ -158,14 +158,14 @@ void runProgram()
 			break;}
 		case(JumpArgx): {
 			int val = getCount(idx);
-			if (val > 0) lab[val-1] = ++idx;
-			else if (val < 0) idx = lab[val+1];
+			if (val > 0 && val-1 < NUMJUMP) lab[val-1] = ++idx;
+			else if (val < 0 && 1-val < NUMJUMP) idx = lab[1-val];
 			else idx++;
 			break;}
 		case(PushArgx): {
 			int val = getCount(idx);
-			for (idx++;val > 0;val--) lab[llm++] = idx;
-			for (;val < 0;val++) idx = lab[--llm];
+			for (idx++;val > 0 && llm < NUMJUMP;val--) lab[llm++] = idx;
+			for (;val < 0 && llm > 0;val++) idx = lab[--llm];
 			break;}
 		case(LoopArgx): {
 			int val = getCount(idx);
