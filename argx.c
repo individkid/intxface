@@ -1,8 +1,10 @@
 #include "argx.h"
+#include "type.h"
+#include "face.h"
 #include <string.h>
 #include <lua.h>
 
-extern lua_State *luaptr; // global context for expressions
+lua_State *luaptr = 0; // global context for expressions
 lftype env = 0; // function to initialize lua environment
 const char *scr = 0; // script to execute before consuming undashed
 struct ArgxNest nst[NUMNEST] = {0}; // data flow control steps
@@ -29,6 +31,11 @@ int djm[NUMMODE] = {0}; // number of args to change
 int dim = 0; // double dash multiple arg changes
 
 void initLua();
+void luaStream(const char *str, int idx, int *typ, int *siz, void **dat)
+{
+	if (!luaptr) initLua();
+	// TODO modify data according to given script
+}
 const char *getString(const char *scr, const char *str)
 {
 	if (!luaptr) initLua();
@@ -134,10 +141,7 @@ int useArgument(const char *str)
 		opc = 0;
 		return nlm++;}
 	else if (fac) {
-		struct ArgxFlow flow = fac(str,arg,mlm);
-		nst[nlm].opc = FlowArgx;
-		nst[nlm].fnc = flow.fnc;
-		nst[nlm].idx = flow.idx;
+		nst[nlm] = fac(str,arg,mlm);
 		return nlm++;}
 	return -1;
 }
@@ -150,7 +154,8 @@ void runProgram()
 	while (idx < nlm) {
 		switch (nst[idx].opc) {
 		case(FlowArgx): {
-			nst[idx].fnc(nst[idx].idx,&typ,&siz,&dat);
+			if (nst[idx].str) luaStream(nst[idx].str,nst[idx].idx,&typ,&siz,&dat);
+			else nst[idx].fnc(nst[idx].idx,&typ,&siz,&dat);
 			idx++;
 			break;}
 		case(NestArgx): {
@@ -192,4 +197,11 @@ void initLua()
 {
 	// TODO has access to lots of the above
 	// TODO call env if nonzero to give even more access
+}
+struct ArgxNest streamFactory(const char *arg, int *mod, int lim)
+{
+	struct ArgxNest nest = {0};
+	// TODO open stream with face.h if not already open and
+	// TODO return arg as script or stream function from type.h
+	return nest;
 }

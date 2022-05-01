@@ -14,8 +14,6 @@
 #include <arpa/inet.h>
 #include <lua.h>
 
-lua_State *luaptr = 0; // globally shared
-
 // per identifier state
 int inp[NUMOPEN] = {0};
 int out[NUMOPEN] = {0};
@@ -25,11 +23,16 @@ enum {None, // unused
 	Seek, // non-blocking file
 	Inet, // pselect-able meta-pipe
 	Sock, // pselect-able received pipe
+	Punt, // given stream function
 } fdt[NUMOPEN] = {0};
 int lim = 0;
 
 // process identifier for waiting for child to finish
 pid_t pid[NUMOPEN] = {0};
+
+// function pointers to use instead of read and write
+pftype rfn[NUMOPEN] = {0};
+qftype wfn[NUMOPEN] = {0};
 
 // write buffers
 char *atom[NUMOPEN] = {0};
@@ -107,6 +110,8 @@ void moveIdent(int idx0, int idx1)
 	out[idx1] = out[idx0];
 	fdt[idx1] = fdt[idx0];
 	pid[idx1] = pid[idx0];
+	rfn[idx1] = rfn[idx0];
+	wfn[idx1] = wfn[idx0];
 	inpexc[idx1] = inpexc[idx0];
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
@@ -117,7 +122,7 @@ int findIdent(const char *str)
 	struct stat new;
 	if (stat(str,&new) != 0) return -1;
 	for (int i = 0; i < lim; i++) {
-		if (fdt[i] == Wait || fdt[i] == Sock || fdt[i] == None) continue;
+		if (fdt[i] == Wait || fdt[i] == Sock || fdt[i] == Punt || fdt[i] == None) continue;
 		if (fstat(inp[i],&old) != 0) return -1;
 		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) return i;}
 	return -1;
@@ -151,6 +156,8 @@ int openPipe()
 	out[lim] = fd[1];
 	fdt[lim] = Wait;
 	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
 	return lim++;
 }
 int openFifo(const char *str)
@@ -166,6 +173,8 @@ int openFifo(const char *str)
 	out[lim] = fo;
 	fdt[lim] = Poll;
 	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
 	return lim++;
 }
 int openFile(const char *str)
@@ -176,6 +185,8 @@ int openFile(const char *str)
 	out[lim] = fd;
 	fdt[lim] = Seek;
 	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
 	return lim++;
 }
 int openInet(const char *adr, const char *num)
@@ -190,13 +201,17 @@ int openInet(const char *adr, const char *num)
 	if (bind(fd, (struct sockaddr*)&adr, sizeof(adr)) < 0) return -1;
 	if (listen(fd, NUMPEND) < 0) return -1;
 	fdt[lim] = Inet;
-	pid[lim] = 0;} else {
+	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;} else {
 	if (mad == NUMINET) return -1;
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
 	if (scanInet6(&addr[mad],adr,num) == 0) return -1;
 	if (connect(fd, (struct sockaddr*)&addr[mad], sizeof(addr[mad])) < 0) return -1;
 	fdt[lim] = Sock;
 	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
 	mad++;}
 	inp[lim] = fd;
 	out[lim] = fd;
@@ -221,6 +236,8 @@ int forkExec(const char *exe)
 	val = close(p2c[0]); if (val < 0) return -1;
 	inp[lim] = c2p[0];
 	out[lim] = p2c[1];
+	rfn[lim] = 0;
+	wfn[lim] = 0;
 	fdt[lim] = Wait;
 	val = lim++;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
@@ -233,9 +250,22 @@ int pipeInit(const char *av1, const char *av2)
 	val = sscanf(av2,"%d",&out[lim]); if (val != 1) return -1;
 	fdt[lim] = Wait;
 	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
 	val = lim++;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
 	return val;
+}
+int puntInit(int rdx, int wdx, pftype rpf, qftype wpf)
+{
+	// TODO here and above return error if lim too large
+	fdt[lim] = Punt;
+	inp[lim] = rdx;
+	out[lim] = wdx;
+	pid[lim] = 0;
+	rfn[lim] = rpf;
+	wfn[lim] = wpf;
+	return lim++;
 }
 int pselectAny(struct timespec *dly, int idx)
 {
@@ -517,7 +547,8 @@ void readStr(sftype fnc, void *arg, int idx)
 	while (num == 1/*bufsize*/ && val == 1/*bufsize*/) {
 		if ((size % bufsize) == 0) buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERROR(outerr[idx],idx)
-		val = /*p*/read(inp[idx],buf+size,1/*bufsize,loc+size*/);
+		if (fdt[idx] == Punt) val = rfn[idx](inp[idx],buf+size,1);
+		else val = /*p*/read(inp[idx],buf+size,1/*bufsize,loc+size*/);
 		if (val < 0) ERROR(outerr[idx],idx)
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
@@ -560,7 +591,9 @@ char readChr(int idx)
 {
 	char arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
-	int val = read(inp[idx],(char *)&arg,sizeof(char));
+	int val = 0;
+	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
+	else val = read(inp[idx],(char *)&arg,sizeof(char));
 	if (val != 0 && val < (int)sizeof(char)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
@@ -570,7 +603,9 @@ int readInt(int idx)
 {
 	int arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
-	int val = read(inp[idx],(char *)&arg,sizeof(int));
+	int val = 0;
+	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(int));
+	else val = read(inp[idx],(char *)&arg,sizeof(int));
 	if (val != 0 && val < (int)sizeof(int)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
@@ -580,7 +615,9 @@ double readNum(int idx)
 {
 	double arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
-	int val = read(inp[idx],(char *)&arg,sizeof(double));
+	int val = 0;
+	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(double));
+	else val = read(inp[idx],(char *)&arg,sizeof(double));
 	if (val != 0 && val < (int)sizeof(double)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
@@ -591,7 +628,9 @@ long long readNew(int idx)
 	long long arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	if (inp[idx] < 0) {arg = 0; return arg;}
-	int val = read(inp[idx],(char *)&arg,sizeof(long long));
+	int val = 0;
+	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(long long));
+	else val = read(inp[idx],(char *)&arg,sizeof(long long));
 	if (val != 0 && val < (int)sizeof(long long)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
@@ -602,7 +641,9 @@ float readOld(int idx)
 	float arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
-	int val = read(inp[idx],(char *)&arg,sizeof(float));
+	int val = 0;
+	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
+	else val = read(inp[idx],(char *)&arg,sizeof(float));
 	if (val != 0 && val < (int)sizeof(float)) ERROR(inperr[idx],idx)
 	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
@@ -617,6 +658,7 @@ int writeBuf(const void *arg, long long siz, int idx)
 		memcpy(atom[idx]+atoms[idx],arg,siz);
 		atoms[idx] += siz;
 		return siz;}
+	if (fdt[idx] == Punt) return wfn[idx](out[idx],arg,siz);
 	return write(out[idx],arg,siz);
 }
 void flushBuf(int idx)

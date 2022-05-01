@@ -35,6 +35,8 @@ typedef void (*cftype)(int idx); // thread callback
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
+typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
+typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 struct Text {
 	char **str;
 	int trm;
@@ -55,6 +57,7 @@ int openFile(const char *str);
 int openInet(const char *adr, const char *num);
 int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
+int puntInit(int rdx, int wdx, pftype rpf, qftype wpf);
 int waitAny();
 int pauseAny(double dly);
 void waitAll();
