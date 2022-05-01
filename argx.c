@@ -5,7 +5,6 @@
 #include <lua.h>
 
 lua_State *luaptr = 0; // global context for expressions
-lftype env = 0; // function to initialize lua environment
 const char *scr = 0; // script to execute before consuming undashed
 struct ArgxNest nst[NUMNEST] = {0}; // data flow control steps
 int nlm = 0; // number of steps
@@ -59,12 +58,6 @@ struct ArgxCnst getConst(const char *scr)
 	if (!luaptr) initLua();
 	// TODO return idx if scr is constant, otherwise return scr
 	return cnst;
-}
-lftype setLua(lftype fnc)
-{
-	lftype tmp = env;
-	env = fnc;
-	return tmp;
 }
 const char *setScript(const char *str)
 {
@@ -150,7 +143,7 @@ void runProgram()
 	void *dat = 0; // data to flow between streams
 	int siz = 0; // size of data to flow
 	int typ = 0; // type of data to flow
-	int idx = 0;
+	int idx = 0; // program counter
 	while (idx < nlm) {
 		switch (nst[idx].opc) {
 		case(FlowArgx): {
@@ -201,7 +194,19 @@ void initLua()
 struct ArgxNest streamFactory(const char *arg, int *mod, int lim)
 {
 	struct ArgxNest nest = {0};
+	// TODO see readmeInit for interpretation of mod arguments
 	// TODO open stream with face.h if not already open and
 	// TODO return arg as script or stream function from type.h
 	return nest;
+}
+void readmeInit()
+{
+	addFlags("ab",0); // text or binary
+	addFlags("efgh",1); // type of stream
+	addFlags("io",2); // direction of stream
+	addConst("c",3); // type streamed
+	addMode("mjklnd"); // flow control
+	setFactory(streamFactory); // for unconsumed arguments
+	// TODO setScript for initial unconsumed arguments
+	// TODO use addMulti and addElem for double dashes
 }
