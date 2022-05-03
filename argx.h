@@ -2,6 +2,7 @@
 #define NUMJUMP 16
 #define NUMMODE 16
 typedef void (*nftype)(int idx, int *typ, int *siz, void **dat);
+typedef const char *(*mftype)(const char *str, int arg, int rep);
 enum ArgxCode {
 	FlowArgx, // data flow stream
 	NestArgx, // nesting control
@@ -25,6 +26,7 @@ struct ArgxCnst {
 };
 const char *setScript(const char *str);
 fftype setFactory(fftype fnc);
+int setArg(int val, int idx);
 int addFlags(const char *str, int idx);
 int addConst(const char *str, int idx);
 int addMode(const char *str);

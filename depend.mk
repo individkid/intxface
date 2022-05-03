@@ -15,9 +15,10 @@ meticC.o: metic.h
 planeC.o: face.h metic.h plane.h
 planeSw: argxC.o faceC.o planeC.o planeG.so typeC.o
 planeSw.o: argx.h face.h plane.h type.h type.sw
-shareC.o: face.h metic.h share.h type.h
+shareC.o: argx.h face.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 spacraHs: naive.hs
+tempC.o: face.h metic.h type.h
 type.c: type.src
 type.h: type.src
 type.hs: type.src

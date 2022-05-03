@@ -5,16 +5,15 @@
 #include <lua.h>
 
 lua_State *luaptr = 0; // global context for expressions
-const char *scr = 0; // script to execute before consuming undashed
+mftype scr = 0; // script to execute before consuming undashed
+int slm = 0; // count of number of arguments
 struct ArgxNest nst[NUMNEST] = {0}; // data flow control steps
 int nlm = 0; // number of steps
 int arg[NUMMODE] = {0}; // arguments passed to factory
 int mlm = 0; // number of factory arguments
-int lab[NUMJUMP] = {0}; // label stack and heap
-int llm = 0; // label stack depth
+fftype fac = 0; // factory for undashed arguments
 int idx = 0; // for constant or immediate expression next
 enum ArgxCode opc; // for consuming next undashed argument
-fftype fac = 0; // factory for undashed arguments
 const char *atr[NUMMODE] = {0}; // char pos is arg value
 int adx[NUMMODE] = {0}; // which arg to change
 int aim = 0; // mututally exclusive arg values
@@ -35,12 +34,6 @@ void luaStream(const char *str, int idx, int *typ, int *siz, void **dat)
 	if (!luaptr) initLua();
 	// TODO modify data according to given script
 }
-const char *getString(const char *scr, const char *str)
-{
-	if (!luaptr) initLua();
-	// TODO execute given script in luaptr environment
-	return 0;
-}
 int getValue(const char *scr)
 {
 	if (!luaptr) initLua();
@@ -59,16 +52,22 @@ struct ArgxCnst getConst(const char *scr)
 	// TODO return idx if scr is constant, otherwise return scr
 	return cnst;
 }
-const char *setScript(const char *str)
+mftype setScript(mftype fnc)
 {
-	const char *tmp = scr;
-	scr = str;
+	mftype tmp = scr;
+	scr = fnc;
 	return tmp;
 }
 fftype setFactory(fftype fnc)
 {
 	fftype tmp = fac;
 	fac = fnc;
+	return tmp;
+}
+int setArg(int val, int idx)
+{
+	int tmp = arg[idx];
+	arg[idx] = val;
 	return tmp;
 }
 int addFlags(const char *str, int idx)
@@ -102,6 +101,7 @@ int addElem(int dim, int idx, int arg)
 }
 int useArgument(const char *str)
 {
+	for (int rep = 0; (scr == 0 && rep == 0) || (str = scr(str,slm,rep)); rep++) {
 	for (int i = 0; i < dim; i++) {
 		if (str[0] == '-' && str[1] == '-' && strcmp(str+2,dtr[i]) == 0) {
 			for (int j = 0; j < djm[i]; j++) {
@@ -121,7 +121,6 @@ int useArgument(const char *str)
 			if (str[0] == '-' && str[1] == atr[i][j] && str[2] == 0) {
 				arg[adx[i]] = j;
 				return nlm;}}}
-	if (scr) str = getString(scr,str);
 	if (idx) {
 		arg[idx-1] = getValue(str);
 		idx = 0;
@@ -135,7 +134,8 @@ int useArgument(const char *str)
 		return nlm++;}
 	else if (fac) {
 		nst[nlm] = fac(str,arg,mlm);
-		return nlm++;}
+		return nlm++;}}
+	slm++;
 	return -1;
 }
 void runProgram()
@@ -144,6 +144,8 @@ void runProgram()
 	int siz = 0; // size of data to flow
 	int typ = 0; // type of data to flow
 	int idx = 0; // program counter
+	int lab[NUMJUMP] = {0}; // label stack and heap
+	int llm = 0; // label stack depth
 	while (idx < nlm) {
 		switch (nst[idx].opc) {
 		case(FlowArgx): {
@@ -188,25 +190,5 @@ void runProgram()
 }
 void initLua()
 {
-	// TODO has access to lots of the above
-	// TODO call env if nonzero to give even more access
-}
-struct ArgxNest streamFactory(const char *arg, int *mod, int lim)
-{
-	struct ArgxNest nest = {0};
-	// TODO see readmeInit for interpretation of mod arguments
-	// TODO open stream with face.h if not already open and
-	// TODO return arg as script or stream function from type.h
-	return nest;
-}
-void readmeInit()
-{
-	addFlags("ab",0); // text or binary
-	addFlags("efgh",1); // type of stream
-	addFlags("io",2); // direction of stream
-	addConst("c",3); // type streamed
-	addMode("mjklnd"); // flow control
-	setFactory(streamFactory); // for unconsumed arguments
-	// TODO setScript for initial unconsumed arguments
-	// TODO use addMulti and addElem for double dashes
+	// TODO lua has access to lots of the above
 }
