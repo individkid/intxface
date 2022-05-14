@@ -138,20 +138,22 @@ Position of stream opens on command line indicates usage in flow control context
 
  -a text descriptors (text to/from stream converted)
  -b binary descriptors (data to/from stream not converted)
- -c type name or varies (argument to pass to stream factory)
- -d side effects (nesting flow control no-opcode)
- -e lua output and input (ignored for non-script)
- -f file output and input (ignored for non-filename)
- -g executable output and input (ignored for non-elfname)
- -h inet output and input (ignored for non-portname)
+ -c side effects (nesting flow control no-opcode)
+ -d delay to wait for input (zero for infinite)
+ -e executable output and input
+ -f file output and input
+ -g inet output and input
+ -h lua output and input
  -i input descriptors (output descriptor is cached)
  -j jump or set (flow takes constant or script)
- -k push or pop (flow takes constant or script)
+ -k forward or back (flow takes constant or script)
  -l loop or break (flow takes constant or script)
  -m open or close (flow takes constant or script)
- -n forward or back (flow takes constant or script)
+ -n type name or varies (argument to pass to stream factory)
  -o output descriptors (input descriptor is cached)
- -pqrstuvwxyz control delay and parallelism
+ -p pipe descriptor output or input
+ -q fifo output and input
+ -rstuvwxyz control delay and parallelism
  --read AVAssetReader to pipe av structs from file names.
  --save AVAssetWriter to pipe av structs to file names.
  --tape BMD-SDK to pipe av structs from hdmi.

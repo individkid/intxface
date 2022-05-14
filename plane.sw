@@ -1,4 +1,5 @@
 import argx
+import share
 import type
 import plane
 import AppKit
@@ -17,7 +18,7 @@ func cmdWake(_ sub: CInt)
 // MAIN
 
 // TODO initialize window and graphics and internal
-readmeInit()
+shareInit()
 // TODO change the factory to call cmdWake and such
 for arg in CommandLine.arguments {useArgument(arg)}
 makeLibrary(filepath:"planeG.so")

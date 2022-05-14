@@ -5,7 +5,7 @@
 #include <lua.h>
 
 lua_State *luaptr = 0; // global context for expressions
-mftype scr = 0; // script to execute before consuming undashed
+gftype scr = 0; // script to execute before consuming undashed
 int slm = 0; // count of number of arguments
 struct ArgxNest nst[NUMNEST] = {0}; // data flow control steps
 int nlm = 0; // number of steps
@@ -29,7 +29,12 @@ int djm[NUMMODE] = {0}; // number of args to change
 int dim = 0; // double dash multiple arg changes
 
 void initLua();
-void luaStream(const char *str, int idx, int *typ, int *siz, void **dat)
+void luaSwitch(const char *str, int idx, int *typ, int *siz, void **dat)
+{
+	if (!luaptr) initLua();
+	// TODO modify data according to given script
+}
+void luaStream(const char *str, int idx, int *siz, void **dat)
 {
 	if (!luaptr) initLua();
 	// TODO modify data according to given script
@@ -37,13 +42,23 @@ void luaStream(const char *str, int idx, int *typ, int *siz, void **dat)
 int getValue(const char *scr)
 {
 	if (!luaptr) initLua();
-	// TODO return atoi identifier or lua evaluation
-	return 0;
+	return 0; // TODO return lua evaluation of str
+}
+void getNone(int idx)
+{
+	if (!luaptr) initLua();
+	// TODO just execute nst[idx].str
+}
+double getNumber(int idx)
+{
+	if (!luaptr) initLua();
+	if (nst[idx].str == 0) return 0.0;
+	return 0.0; // TODO return lua evaluation of nst[idx].str
 }
 int getCount(int idx)
 {
-	if (nst[idx].str) return getValue(nst[idx].str);
-	return nst[idx].idx;
+	if (nst[idx].str == 0) return nst[idx].idx;
+	return getValue(nst[idx].str);
 }
 struct ArgxCnst getConst(const char *scr)
 {
@@ -52,9 +67,9 @@ struct ArgxCnst getConst(const char *scr)
 	// TODO return idx if scr is constant, otherwise return scr
 	return cnst;
 }
-mftype setScript(mftype fnc)
+gftype setScript(gftype fnc)
 {
-	mftype tmp = scr;
+	gftype tmp = scr;
 	scr = fnc;
 	return tmp;
 }
@@ -101,7 +116,7 @@ int addElem(int dim, int idx, int arg)
 }
 int useArgument(const char *str)
 {
-	for (int rep = 0; (scr == 0 && rep == 0) || (str = scr(str,slm,rep)); rep++) {
+	for (int rep = 0; (scr == 0 && rep == 0) || ((str = scr(str,slm,rep)) != 0); rep++) {
 	for (int i = 0; i < dim; i++) {
 		if (str[0] == '-' && str[1] == '-' && strcmp(str+2,dtr[i]) == 0) {
 			for (int j = 0; j < djm[i]; j++) {
@@ -129,7 +144,7 @@ int useArgument(const char *str)
 		struct ArgxCnst cnst = getConst(str);
 		nst[nlm].opc = opc;
 		nst[nlm].str = cnst.str;
-		nst[nlm].idx = cnst.idx;
+		nst[nlm].cnt = cnst.cnt;
 		opc = 0;
 		return nlm++;}
 	else if (fac) {
@@ -148,26 +163,36 @@ void runProgram()
 	int llm = 0; // label stack depth
 	while (idx < nlm) {
 		switch (nst[idx].opc) {
-		case(FlowArgx): {
-			if (nst[idx].str) luaStream(nst[idx].str,nst[idx].idx,&typ,&siz,&dat);
-			else nst[idx].fnc(nst[idx].idx,&typ,&siz,&dat);
+		case (FlowArgx): {
+			if (nst[idx].typ == -1) {
+				if (nst[idx].str) luaSwitch(nst[idx].str,nst[idx].idx,&typ,&siz,&dat);
+				else nst[idx].fnc(nst[idx].idx,&typ,&siz,&dat);}
+			else {
+				if (nst[idx].str) luaStream(nst[idx].str,nst[idx].idx,&siz,&dat);
+				else nst[idx].gnc(nst[idx].idx,&siz,&dat);
+				typ = nst[idx].typ;}
 			idx++;
 			break;}
-		case(NestArgx): {
-			idx++;
+		case (NoneArgx): {
+			getNone(idx);
 			break;}
-		case(JumpArgx): {
+		case (WaitArgx): {
+			double val = getNumber(idx);
+			pauseAny(val);
+			break;}
+		case (BackArgx): {
+			int val = getCount(idx);
+			if (val == 0) idx++;
+			for (;val > 0 && idx < nlm;idx++) if (nst[idx].opc == FlowArgx) val--;
+			for (;val < 0 && idx > 0;idx--) if (nst[idx].opc == FlowArgx) val++;
+			break;}
+		case (JumpArgx): {
 			int val = getCount(idx);
 			if (val > 0 && val-1 < NUMJUMP) lab[val-1] = ++idx;
 			else if (val < 0 && 1-val < NUMJUMP) idx = lab[1-val];
 			else idx++;
 			break;}
-		case(PushArgx): {
-			int val = getCount(idx);
-			for (idx++;val > 0 && llm < NUMJUMP;val--) lab[llm++] = idx;
-			for (;val < 0 && llm > 0;val++) idx = lab[--llm];
-			break;}
-		case(LoopArgx): {
+		case (LoopArgx): {
 			int val = getCount(idx);
 			while (val > 0 && ++idx < nlm) {
 				if (nst[idx].opc == NestArgx) {
@@ -178,11 +203,8 @@ void runProgram()
 					val += getCount(idx);
 					if (val > 0) val = 0;}}
 			break;}
-		case(BackArgx): {
-			int val = getCount(idx);
-			if (val == 0) idx++;
-			for (;val > 0 && idx < nlm;idx++) if (nst[idx].opc == FlowArgx) val--;
-			for (;val < 0 && idx > 0;idx--) if (nst[idx].opc == FlowArgx) val++;
+		case (NestArgx): {
+			idx++;
 			break;}
 		default: {
 			idx++;

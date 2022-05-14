@@ -39,6 +39,9 @@ char *atom[NUMOPEN] = {0};
 int atoms[NUMOPEN] = {0};
 int atomz[NUMOPEN] = {0};
 
+// whether and how to check for already open
+enum {Off,Fwd,Rev} cache = 0;
+
 // error function pointers
 eftype inpexc[NUMOPEN] = {0};
 eftype inperr[NUMOPEN] = {0};
@@ -52,6 +55,7 @@ lua_State *luaerr = 0;
 // server address for checking if already connected
 struct sockaddr_in6 addr[NUMINET] = {0};
 int mad = 0;
+int idnt[NUMOPEN] = {0};
 
 // thread to call function when pipe is readable
 pthread_t cbpth[NUMOPEN] = {0};
@@ -115,13 +119,39 @@ void moveIdent(int idx0, int idx1)
 	inpexc[idx1] = inpexc[idx0];
 	inperr[idx1] = inperr[idx0];
 	outerr[idx1] = outerr[idx0];
+	closeIdent(idx0);
+}
+int puntIdent(int idx, pftype fnc)
+{
+	// TODO here and below search backwards if cache == Rev
+	for (int i = 0; i < lim; i++)
+	if (fdt[i] == Punt && inp[i] == idx && rfn[i] == fnc) return i;
+	return -1;
+}
+int quntIdent(int idx, qftype fnc)
+{
+	for (int i = 0; i < lim; i++)
+	if (fdt[i] == Punt && out[i] == idx && wfn[i] == fnc) return i;
+	return -1;
+}
+int raitIdent(int rfd)
+{
+	for (int i = 0; i< lim; i++)
+	if (fdt[i] == Wait && inp[i] == rfd) return i;
+	return -1;
+}
+int waitIdent(int wfd)
+{
+	for (int i = 0; i< lim; i++)
+	if (fdt[i] == Wait && out[i] == wfd) return i;
+	return -1;
 }
 int findIdent(const char *str)
 {
 	struct stat old;
 	struct stat new;
-	if (stat(str,&new) != 0) return -1;
-	for (int i = 0; i < lim; i++) {
+	if (cache == Off || stat(str,&new) != 0) return -1;
+	for (int i = 0; i < lim; i++) { // TODO search backwards if cache == Rev
 		if (fdt[i] == Wait || fdt[i] == Sock || fdt[i] == Punt || fdt[i] == None) continue;
 		if (fstat(inp[i],&old) != 0) return -1;
 		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) return i;}
@@ -142,15 +172,17 @@ struct sockaddr_in6 *scanInet6(struct sockaddr_in6 *in6, const char *adr, const 
 int inetIdent(const char *adr, const char *num)
 {
 	struct sockaddr_in6 comp = {0};
-	if (scanInet6(&comp,adr,num) == 0) return -1;
-	for (int i = 0; i <= mad; i++)
-	if (fdt[i] == Sock && memcmp(&addr[i],&comp,sizeof(comp)) == 0)
+	if (adr == 0) adr = "127.0.0.1";
+	if (cache == Off || scanInet6(&comp,adr,num) == 0) return -1;
+	for (int i = 0; i <= lim; i++)
+	if (fdt[i] == Sock && memcmp(&addr[idnt[i]],&comp,sizeof(comp)) == 0)
 	return i;
 	return -1;
 }
 int openPipe()
 {
 	int fd[2] = {0};
+	if (lim == NUMOPEN) return -1;
 	if (pipe(fd) < 0) return -1;
 	inp[lim] = fd[0];
 	out[lim] = fd[1];
@@ -164,6 +196,9 @@ int openFifo(const char *str)
 {
 	int fi = 0;
 	int fo = 0;
+	int idx = 0;
+	if ((idx = findIdent(str)) != -1) return idx;
+	if (lim == NUMOPEN) return -1;
 	if ((mkfifo(str,0666) < 0) && errno != EEXIST) return -1;
 	if ((fi = open(str,O_RDONLY | O_NONBLOCK)) < 0) return -1;
 	if ((fo = open(str,O_WRONLY | O_NONBLOCK)) < 0) return -1;
@@ -180,6 +215,9 @@ int openFifo(const char *str)
 int openFile(const char *str)
 {
 	int fd = 0;
+	int idx = 0;
+	if ((idx = findIdent(str)) != -1) return idx;
+	if (lim == NUMOPEN) return -1;
 	if ((fd = open(str,O_RDWR|O_CREAT,0666)) < 0) return -1;
 	inp[lim] = fd;
 	out[lim] = fd;
@@ -192,6 +230,9 @@ int openFile(const char *str)
 int openInet(const char *adr, const char *num)
 {
 	int fd = 0;
+	int idx = 0;
+	if ((inetIdent(adr, num)) != -1) return idx;
+	if (lim == NUMOPEN) return -1;
 	if (adr == 0) {
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
 	int flag = 1;
@@ -208,6 +249,7 @@ int openInet(const char *adr, const char *num)
 	if ((fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) return -1;
 	if (scanInet6(&addr[mad],adr,num) == 0) return -1;
 	if (connect(fd, (struct sockaddr*)&addr[mad], sizeof(addr[mad])) < 0) return -1;
+	idnt[lim] = mad;
 	fdt[lim] = Sock;
 	pid[lim] = 0;
 	rfn[lim] = 0;
@@ -220,6 +262,7 @@ int openInet(const char *adr, const char *num)
 int forkExec(const char *exe)
 {
 	int c2p[2], p2c[2], val;
+	if (lim == NUMOPEN) return -1;
 	val = pipe(c2p); if (val < 0) return -1;
 	val = pipe(p2c); if (val < 0) return -1;
 	pid[lim] = fork(); if (pid[lim] < 0) return -1;
@@ -245,23 +288,38 @@ int forkExec(const char *exe)
 }
 int pipeInit(const char *av1, const char *av2)
 {
-	int val;
-	val = sscanf(av1,"%d",&inp[lim]); if (val != 1) return -1;
-	val = sscanf(av2,"%d",&out[lim]); if (val != 1) return -1;
-	fdt[lim] = Wait;
-	pid[lim] = 0;
-	rfn[lim] = 0;
-	wfn[lim] = 0;
-	val = lim++;
+	int val, rfd, wfd, rdx, wdx;
+	val = sscanf(av1,"%d",&rfd); if (val != 1) return -1;
+	val = sscanf(av2,"%d",&wfd); if (val != 1) return -1;
+	rdx = raitIdent(rfd);
+	wdx = waitIdent(wfd);
+	if (rdx != -1 && wdx != -1 && rdx == wdx) val = rdx;
+	else if (rdx != -1 && wdx == -1 && out[rdx] == 0) val = rdx;
+	else if (rdx == -1 && wdx != -1 && inp[wdx] == 0) val = wdx;
+	else if (lim == NUMOPEN) return -1;
+	else val = lim++;
+	inp[val] = rfd;
+	out[val] = wfd;
+	fdt[val] = Wait;
+	pid[val] = 0;
+	rfn[val] = 0;
+	wfn[val] = 0;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
 	return val;
 }
-int puntInit(int rdx, int wdx, pftype rpf, qftype wpf)
+int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 {
-	// TODO here and above return error if lim too large
+	int val, rdx, wdx;
+	rdx = puntIdent(rfd,rpf);
+	wdx = quntIdent(wfd,wpf);
+	if (rdx != -1 && wdx != -1 && rdx == wdx) val = rdx;
+	else if (rdx != -1 && wdx == -1 && wfn[rdx] == 0) val = rdx;
+	else if (rdx == -1 && wdx != -1 && rfn[wdx] == 0) val = wdx;
+	else if (lim == NUMOPEN) return -1;
+	else val = lim++;
 	fdt[lim] = Punt;
-	inp[lim] = rdx;
-	out[lim] = wdx;
+	inp[lim] = rfd;
+	out[lim] = wfd;
 	pid[lim] = 0;
 	rfn[lim] = rpf;
 	wfn[lim] = wpf;
@@ -310,6 +368,7 @@ int waitAny()
 int pauseAny(double dly)
 {
 	struct timespec delay = {0};
+	if (dly == 0.0) return waitAny();
 	delay.tv_sec = (long long)dly;
 	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
 	return pselectAny(&delay,-1);
