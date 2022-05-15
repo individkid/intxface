@@ -34,7 +34,7 @@ int setArg(int val, int idx);
 int addFlags(const char *str, int idx);
 int addConst(const char *str, int idx);
 int addMode(const char *str);
-int addMulti(const char *str);
+int addMulti(const char *str, int mod);
 int addElem(int dim, int idx, int arg);
 int useArgument(const char *str);
 void runProgram();

@@ -26,6 +26,7 @@ const char *dtr[NUMMODE] = {0}; // name of arg changes
 int ddx[NUMMODE][NUMMODE] = {0}; // arg index
 int drg[NUMMODE][NUMMODE] = {0}; // arg value
 int djm[NUMMODE] = {0}; // number of args to change
+int dod[NUMMODE] = {0}; // whether to factory
 int dim = 0; // double dash multiple arg changes
 
 void initLua();
@@ -102,9 +103,10 @@ int addMode(const char *str)
 	ctr[cim] = str;
 	return cim++;
 }
-int addMulti(const char *str)
+int addMulti(const char *str, int mod)
 {
 	djm[dim] = 0;
+	dod[dim] = mod;
 	dtr[dim] = str;
 	return dim++;
 }
@@ -120,7 +122,10 @@ int useArgument(const char *str)
 	for (int i = 0; i < dim; i++) {
 		if (str[0] == '-' && str[1] == '-' && strcmp(str+2,dtr[i]) == 0) {
 			for (int j = 0; j < djm[i]; j++) {
-				arg[ddx[i][j]] = drg[i][j];
+				arg[ddx[i][j]] = drg[i][j];}
+			if (dod[i] != 0) {
+				opc = dod[i];
+			} else {
 				return nlm;}}}
 	for (int i = 1; i < cim && i < ArgxArgx; i++) {
 		if (str[0] == '-' && strcmp(str+1,ctr[i-1]) == 0) {
