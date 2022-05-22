@@ -1,11 +1,6 @@
 #define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
 #define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
-#define INVALID 1.0e30
-#define ANGLE 0.0333
-#define LENGTH 10.0
-#define POWER 0.01
 #define SATURATE 1000000000000.0
-#define INFINITE 1000000000ull
 #define SEC2NANO 1000000000.0
 #define NANO2SEC 0.000000001
 #define BACKOFF 0.001
@@ -13,19 +8,18 @@
 #define FILESIZE 4096
 #define NUMOPEN 1024
 #define NUMPOOL 1024
-#define WINLONG 1024
-#define WINWIDE 512
-#define WINHIGH 512
-#define WINDEEP 512
-#define WINSTOP 128
-#define TIPDEEP 128
 #define NUMFILE 64
 #define BUFSIZE 64
 #define NUMINET 16
 #define NUMPEND 10
-// INFINITE longer than any given file
+// SATURATE largest stock value
+// SEC2NANO for pselect delay
+// NANO2SEC for timewheel stamp
+// BACKOFF file process livelock
+// CALLRATE portaudio sample rate
 // FILESIZE rough limit to helper file
 // NUMOPEN total number of file descriptors
+// NUMPOOL number of pending stock changes
 // NUMFILE limit on number of file threads
 // BUFSIZE amount read from file at a time
 // NUMINET open address port pair limit
