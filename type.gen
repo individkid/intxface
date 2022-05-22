@@ -1,7 +1,7 @@
 dofile("type.src")
 
 --HERE Enums
-Action = {
+Goal = {
 	"NewHub",
 	"CfgHub",
 	"AppHub",
@@ -30,69 +30,67 @@ Flow = {
 	"Store",
 	"Load",
 }
-Source = {
-	"Line", -- metric comes from sound system
-	"Plane", -- metric comes from video system
-	"Space", -- metric comes from idea system
+Command = {
+	"AtwCmd", -- set atwill
+	"ActCmd", -- set action
+	"SelCmd", -- set select
+	"MchCmd", -- set machine
+	"ShaCmd", -- set shader
+	"HrkCmd", -- hand work
+	"HooCmd", -- hand tool
+	"FrkCmd", -- finger work
+	"FooCmd", -- finger tool
+	"TstCmd", -- return pixel
+	"BufCmd", -- return results
+	"HndCmd", -- warp hand
+	"FgrCmd", -- warp finger
+	"PlnCmd", -- plane ranges
+	"PntCmd", -- point ranges
+	"RefCmd", -- plane triplets
+	"AryCmd", -- point triplets
+	"VecCmd", -- vector array
+	"TagCmd", -- textag array
+	"TexCmd", -- tagged texture
+	"SubCmd", -- subject matrix
+	"ObjCmd", -- object matrix
+	"FacCmd", -- facet matrix
 }
-Function = {
-	"Rmw0", -- update matrix from user
-	"Rmw1", -- update matrix from other
-	"Copy", -- directly update current matrix
-	"Save", -- directly update saved matrix
-	"Dma0", -- transfer single to gpu
-	"Dma1", -- transfer multiple to gpu
-	"Gpu0", -- update display
-	"Gpu1", -- find pierce point
-	"Port", -- send metric
-	"Atom", -- process list of clients
+Atwill = {
+	"Atoften", -- hand or finger
+	"Atrarely", -- change to enum
+	"Atonce", -- just once now
+	"Atnever", -- upon request
 }
-Memory = {
-	"Triangle", -- plane gouping backlinks decoration
-	"Corner", -- links to planes
-	"Frame", -- link to point, arrayed by three
-	"Base", -- link to plane, randomly arrayed
-	"Range", -- grouping of link to point
-	"Active", -- grouping of link to plane
-	"Basis", -- convert plane to points
-	"Subject", -- transform all points
-	"Object", -- transform file points
-	"Feature", -- transform plane points
-	"Render", -- apply clipping perspective
-	"Archer", -- find pierce point
-	"Cloud", -- find collisions
-	"Pierce", -- found pierce point
-	"User", -- interpret mouse
-	"Macro", -- capture keystrokes
-	"Process", -- functions to apply atomically
+Action = {
+	"Transform", -- pierce or display
+	"Additive", -- pierce and identify
+	"Subtract", -- pierce and identify
 }
-Matrix = {
-	"Global", -- transorm matrix for all points
-	"Several", -- transform matrix for file points
-	"Single", -- transform matrix for plane points
+Select = {
+	"Subject", -- entire view
+	"Object", -- set of planes
+	"Facet", -- single plane
 }
-Click = {
-	"Complete", -- wait for pierce point
-	"Transform", -- apply move and roll to transform matrix
-	"Refine", -- add random point through pierce point
-	"Additive", -- add region over pierce point
-	"Subtractive", -- remove region under pierce point
-	"Script", -- execute script on pierce point
-	"Suspend", -- temporarily ignore mouse
+Machine = {
+	"Idle", -- run no shader
+	"Solve", -- run cospace shader
+	"Test", -- run test shader
+	"Select", -- run pierce shader
+	"Move", -- run display shader
+	"Roll", -- run display shader
 }
-Move = {
-	"Rotate", -- rotate about fixed pierce point
-	"Slide", -- translate parallel to fixed facet
-	"Slate", -- translate parallel to picture plane
+Shader = {
+	"Points",
+	"Planes",
 }
-Roll = {
-	"Cylinder", -- rotate with rotated fixed axis
-	"Clock", -- rotate with fixed normal to picture plane
-	"Compass", -- rotate with fixed normal to facet
-	"Normal", -- translate with fixed normal to facet
-	"Balloon", -- scale with fixed pierce point
-	"Focal", -- adjust focal length
-	"Picture", -- adjust frustrum height
+Work = {
+	"Picture", -- picture plane normal
+	"Normal", -- pierced plane normal
+	"Pierce", -- from cursor to pierce
+}
+Tool = {
+	"Translate", -- parallel or perpendicular
+	"Rotate", -- around axis or point
 }
 Ture = {
 	"Table",
@@ -100,7 +98,7 @@ Ture = {
 }
 --HERE Structs
 File = {
-	{"act","Action",{},{}},
+	{"act","Goal",{},{}},
 	{"idx","Int",{["act"]={
 		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
 		["HubCfg"]=true,
@@ -180,85 +178,44 @@ Event = {
 	{"len","Int",{["tag"]={["Audio"]=true}},{}},
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
-Facet = {
-	{"plane","Old",{},{3}}, -- 0+12
-	{"pad0","Int",{},{1}}, -- 12+4
-	{"versor","Int",{},{}}, -- 16+4
-	{"pad1","Int",{},{3}}, -- 20+12
-	{"point","Int",{},{3}}, -- 32+12
-	{"pad2","Int",{},{1}}, -- 44+4
-	{"coord","Old",{},{3,2}}, -- 48+24
-	{"pad3","Int",{},{2}}, -- 72+8
-	{"color","Old",{},{3,4}}, -- 80+48
-	{"poly","Int",{},{}}, -- 128+4
-	{"tag","Int",{},{}}, -- 132+4
-	{"pad4","Int",{},{2}}, -- 136+8
-}
-Vertex = {
-	{"plane","Int",{},{3}},
-	{"pad","Int",{},{1}},
-}
-Index = {
-	{"point","Int",{},{}},
-	{"tag","Int",{},{}},
-}
-Array = {
-	{"idx","Int",{},{}},
-	{"siz","Int",{},{}},
-}
-Linear = {
-	{"val","Old",{},{9,4}},
-}
-Affine = {
-	{"val","Old",{},{4,4}},
-}
-Vector = {
-	{"val","Old",{},{4}},
-}
-Result = {
-	{"plane","Int",{},{}},
-	{"point","Old",{},{4}},
-	{"normal","Old",{},{4}},
-}
-Mode = {
-	{"matrix","Matrix",{},{}},
-	{"click","Click",{},{}},
-	{"move","Move",{},{}},
-	{"roll","Roll",{},{}},
-	{"hand","Int",{},{}},
-}
 Client = {
-	{"mem","Memory",{},{}},
-	{"lpb","Int",{},{}},
-	{"len","Int",{},{}},
-	{"fnc","Function",{},"len"},
-	{"idx","Int",{},{}},
+	{"cmd","Command",{},{}},
 	{"siz","Int",{},{}},
-	{"triangle","Facet",{["mem"]={["Triangle"]=true}},"siz"},
-	{"corner","Vertex",{["mem"]={["Corner"]=true}},"siz"},
-	{"frame","Index",{["mem"]={["Frame"]=true}},"siz"},
-	{"base","Int",{["mem"]={["Base"]=true}},"siz"},
-	{"range","Array",{["mem"]={["Range"]=true}},"siz"},
-	{"active","Array",{["mem"]={["Active"]=true}},"siz"},
-	{"basis","Linear",{["mem"]={["Basis"]=true}},"siz"},
-	{"subject","Affine",{["mem"]={["Subject"]=true}},"siz"},
-	{"object","Affine",{["mem"]={["Object"]=true}},"siz"},
-	{"feature","Affine",{["mem"]={["Feature"]=true}},"siz"},
-	{"render","Vector",{["mem"]={["Render"]=true}},"siz"},
-	{"archer","Vector",{["mem"]={["Archer"]=true}},"siz"},
-	{"cloud","Vector",{["mem"]={["Cloud"]=true}},"siz"},
-	{"pierce","Result",{["mem"]={["Pierce"]=true}},"siz"},
-	{"user","Mode",{["mem"]={["User"]=true}},"siz"},
-	{"macro","Chr",{["mem"]={["Macro"]=true}},"siz"},
-	{"process","Client",{["mem"]={["Process"]=true}},"siz"},
+	{"idx","Int",{},{}},
+	{"vec","Num",{["cmd"]={
+		["VecCmd"]=true,
+		["SubCmd"]=true,
+		["ObjCmd"]=true,
+		["FacCmd"]=true,
+		["BufCmd"]=true,
+		["HndCmd"]=true,
+		["FgrCmd"]=true}},"siz"},
+	{"ref","Int",{["cmd"]={
+		["PlnCmd"]=true,
+		["PntCmd"]=true,
+		["RefCmd"]=true,
+		["TagCmd"]=true,
+		["TexCmd"]=true,
+		["TstCmd"]=true}},"siz"},
+	{"atw","Atwill",{["cmd"]={
+		["AtwCmd"]=true}},{}},
+	{"act","Action",{["cmd"]={
+		["ActCmd"]=true}},{}},
+	{"sel","Select",{["cmd"]={
+		["SelCmd"]=true}},{}},
+	{"mch","Machine",{["cmd"]={
+		["MchCmd"]=true}},{}},
+	{"sha","Shader",{["cmd"]={
+		["ShaCmd"]=true}},{}},
+	{"wrk","Work",{["cmd"]={
+		["HrkCmd"]=true,
+		["FrkCmd"]=true}},{}},
+	{"too","Tool",{["cmd"]={
+		["HooCmd"]=true,
+		["FooCmd"]=true}},{}},
 }
 Sculpt = {
 	{"cfg","Ture",{},{}},
-}
-Metric = {
-	{"src","Source",{},{}},
-	{"line","Event",{["src"]={["Line"]=true}},1},
-	{"plane","Client",{["src"]={["Plane"]=true}},1},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")

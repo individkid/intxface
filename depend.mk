@@ -12,7 +12,7 @@ holeC.o: face.h type.h
 lineC: faceC.o typeC.o
 lineC.o: face.h type.h
 meticC.o: metic.h
-planeC.o: face.h metic.h plane.h
+planeC.o: face.h metic.h plane.h type.h
 planeSw: argxC.o faceC.o planeC.o planeG.so shareC.o typeC.o
 planeSw.o: argx.h face.h plane.h share.h type.h type.sw
 shareC.o: argx.h face.h share.h type.h

@@ -48,12 +48,13 @@ int getValue(const char *scr)
 void getNone(int idx)
 {
 	if (!luaptr) initLua();
+	if (nst[idx].str == 0) return;
 	// TODO just execute nst[idx].str
 }
 double getNumber(int idx)
 {
 	if (!luaptr) initLua();
-	if (nst[idx].str == 0) return 0.0;
+	if (nst[idx].str == 0) return nst[idx].idx;
 	return 0.0; // TODO return lua evaluation of nst[idx].str
 }
 int getCount(int idx)

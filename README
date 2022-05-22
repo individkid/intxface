@@ -71,7 +71,7 @@ This maintains a global transformation matrix,
 a matrix per polytope, and a matrix per plane.
 Each maintained matrix has
 pierce mode, pierce states, pierce deltas,
-portion to send matrix,  portion sent matrix.
+portion to send matrix, portion sent matrix.
 Matrix sent to gpu is maintained composed with
 portion sent, portion to send, and pierce delta.
 All but pierce delta is cached to optimize composition.

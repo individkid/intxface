@@ -370,9 +370,7 @@ void flow()
 		copywave(val,channel,1,line->req[i],nowtime,SATURATE);
 		for (int j = 0; j < line->req[i] && ptr-line->rsp < line->tot; j++)
 		*(ptr++) = val[j];}}
-		Metric metric;
-		metric.src = Line; metric.line = line;
-		writeMetric(&metric,hub);
+		writeEvent(line,hub);
 		alloc(nowtime+evaluate(&event->sch));
 		break;}
 	case (Load): {
