@@ -2,8 +2,10 @@
 #include "face.h"
 #include "metic.h"
 #include "type.h"
+#include <stdlib.h>
+#include <stdio.h>
 
-struct Matrix {
+struct Kernel {
 	int valid; // optimized
 	float compose[16]; // optimization
 	float maintain[16]; // change to points
@@ -26,6 +28,14 @@ struct Apply hand = {0};
 struct Apply finger = {0};
 int *points[3] = {0};
 int *planes[3] = {0};
-struct Matrix subject = {0};
-struct Matrix object[NUMFILE] = {0};
-struct Matrix facet = {0};
+struct Kernel subject = {0};
+struct Kernel object[NUMFILE] = {0};
+struct Kernel facet = {0};
+
+void planeInit()
+{
+}
+float planeConfig(enum Configure cfg)
+{
+	return 0.0;
+}

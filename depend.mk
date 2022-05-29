@@ -14,7 +14,7 @@ lineC.o: face.h type.h
 meticC.o: metic.h
 planeC.o: face.h metic.h plane.h type.h
 planeSw: argxC.o faceC.o planeC.o planeG.so shareC.o typeC.o
-planeSw.o: argx.h face.h plane.h share.h type.h type.sw
+planeSw.o: argx.h face.h plane.h share.h type.h
 shareC.o: argx.h face.h share.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 spacraHs: naive.hs
