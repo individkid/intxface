@@ -32,14 +32,10 @@ struct Kernel subject = {0};
 struct Kernel object[NUMFILE] = {0};
 struct Kernel facet = {0};
 
-void planeInit(vftype dma, vftype prep, vftype draw)
+void planeInit(dftype dma, vftype prep, vftype draw)
 {
 }
 float planeConfig(enum Configure cfg)
 {
 	return 0.0;
-}
-struct Client *planeClient()
-{
-	return 0;
 }

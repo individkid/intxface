@@ -8,6 +8,6 @@ enum Configure {
 };
 struct Client;
 typedef void (*vftype)();
-void planeInit(vftype dma, vftype prep, vftype draw);
+typedef void (*dftype)(struct Client *client);
+void planeInit(dftype dma, vftype prep, vftype draw);
 float planeConfig(enum Configure cfg);
-struct Client *planeClient();

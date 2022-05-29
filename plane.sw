@@ -200,9 +200,9 @@ func swiftInit()
 	// setEvent(.scrollWheel,swiftRoll)
 	// setEvent(.applicationDefined,swiftCheck)
 }
-func swiftMemory()
+func swiftMemory(_ ptr: UnsafeMutablePointer<type.Client>?)
 {
-	let client = planeClient()!.pointee
+	let client = ptr!.pointee
 	let siz = Int(client.siz)
 	let idx = Int(client.idx)
 	switch (client.mem) {
