@@ -20,6 +20,8 @@ var threads:MTLSize!
 var lock = [Refer]()
 let event = getEvent()
 
+var numeric = Pend<type.Numeric>()
+
 class Refer
 {
 	var lock:Int = 0
@@ -198,6 +200,15 @@ func swiftInit()
 	// setEvent(.scrollWheel,swiftRoll)
 	// setEvent(.applicationDefined,swiftCheck)
 }
+func swiftMemory()
+{
+	let client = planeClient()!.pointee
+	let siz = Int(client.siz)
+	let idx = Int(client.idx)
+	switch (client.mem) {
+	case (Numerics): numeric.set(Swift.Array(0..<siz).map() {(sub) in client.num![sub]},idx)
+	default: exitErr(#file,#line,-1)}
+}
 func swiftPierce()
 {
 }
@@ -208,7 +219,7 @@ func swiftDisplay()
 // MAIN
 
 shareInit()
-planeInit()
+planeInit(swiftMemory,swiftPierce,swiftDisplay)
 for arg in CommandLine.arguments {useArgument(arg)}
 swiftInit()
 runProgram()

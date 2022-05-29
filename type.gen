@@ -232,7 +232,7 @@ Client = {
 	{"mem","Memory",{},{}},
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
-	{"fac","Numeric",{["cmd"]={["SetCmd"]=true},["mem"]={["Numerics"]=true}},"siz"},
+	{"num","Numeric",{["cmd"]={["SetCmd"]=true},["mem"]={["Numerics"]=true}},"siz"},
 	{"vtx","Vertex",{["cmd"]={["SetCmd"]=true},["mem"]={["Vertexs"]=true}},"siz"},
 	{"pol","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Polytopes"]=true}},"siz"},
 	{"swa","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Swarms"]=true}},"siz"},
