@@ -12,19 +12,19 @@ holeC.o: face.h type.h
 lineC: faceC.o typeC.o
 lineC.o: face.h type.h
 meticC.o: metic.h
-planeC.o: face.h metic.h plane.h type.h
-planeSw: argxC.o faceC.o planeC.o planeG.so shareC.o typeC.o
-planeSw.o: argx.h face.h plane.h share.h type.h
+planeC.o: argx.h face.h metic.h plane.h share.h type.h
+planeSw: argxC.o faceC.o planeC.o planeG.so shareC.o
+planeSw.o: argx.h face.h metic.h plane.h share.h type.h
 shareC.o: argx.h face.h share.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 spacraHs: naive.hs
-tempC.o: face.h metic.h share.h type.h
 type.c: type.src
 type.h: type.src
 type.hs: type.src
 type.lua: type.src
 type.sw: type.src
 typeC.o: face.h type.h
+typeSw.o: face.h
 typer.c: type.src typra.src
 typer.h: type.src typra.src
 typer.hs: type.src typra.src

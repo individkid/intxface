@@ -1,5 +1,4 @@
 import argx
-import share
 import type
 import plane
 import face
@@ -145,6 +144,7 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> 
 }
 func swiftInit()
 {
+	for arg in CommandLine.arguments {useArgument(arg)}
 	device = MTLCreateSystemDefaultDevice()
 	let rect = NSMakeRect(
 		CGFloat(planeConfig(plane.PictureMinX)), CGFloat(planeConfig(plane.PictureMinY)),
@@ -218,8 +218,4 @@ func swiftDisplay()
 
 // MAIN
 
-shareInit()
-planeInit(swiftMemory,swiftPierce,swiftDisplay)
-for arg in CommandLine.arguments {useArgument(arg)}
-swiftInit()
-runProgram()
+	planeInit(swiftInit,swiftMemory,swiftPierce,swiftDisplay)

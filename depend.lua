@@ -34,6 +34,7 @@ function isin(tab,key,val)
 		if (type(temp[v]) == "nil") then return false end
 		temp = temp[v]
 	end
+	if (val == nil) then return true end
 	if not (temp == val) then return false end
 	return true
 end
@@ -509,6 +510,36 @@ function complete(files,includes)
 	end
 	return retval
 end
+function translate(given,declares,includes)
+	local fileExpr = "(.*)(%..*)"
+	local langExpr = "(.*)(Sw)"
+	local function control(tab,set,key)
+		if (#key < 2) then return end
+		local der,dee,work = key[1],key[2],tab[2]
+		local baser,exter = string.match(der,fileExpr)
+		local basee,extee = string.match(dee,langExpr)
+		io.stderr:write("der "..der.." dee "..dee.." #key "..#key.." why "..key[3].."\n")
+		if (exter == ".sw") and (extee == "Sw") then
+			local incs = includes[der]
+			local decs = declares[basee.."C"]
+			if (type(incs) == "table") and (type(decs) == "table") then
+				for ky,vl in pairs(decs) do
+					local bas,ext = string.match(ky,fileExpr)
+					for k,v in pairs(vl) do
+						io.stderr:write("ky "..ky.." k "..k.."\n")
+					end
+					if (ext == ".h") and not (type(incs[ky]) == "nil") then
+						for k,v in pairs(incs[ky]) do
+							io.stderr:write("basee "..basee.." k "..k.."\n")
+							insert1(work,basee.."C",k)
+						end
+					end
+				end
+			end
+		end
+	end
+	modify(given,control)
+end
 function convert(given,mains,files,autos)
 	local retval = {}
 	local fileExpr = "(.*)(%..*)"
@@ -519,9 +550,9 @@ function convert(given,mains,files,autos)
 		local basee,extee = string.match(dee,fileExpr)
 		if (exter == ".c") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
 		if (exter == ".cpp") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
-		if (exter == ".sw") and (extee == ".h") and mains[der] and files[basee..".c"] then depend(retval,baser.."Sw",basee.."C.o") end
+		if (exter == ".sw") and (extee == ".c") and mains[der] then depend(retval,baser.."Sw",basee.."C.o") end
 		if (exter == ".sw") and (extee == ".so") and mains[der] then depend(retval,baser.."Sw",dee) end
-		if (exter == ".sw") and (extee == ".h") and mains[der] and files[dee] then depend(retval,baser.."Sw.o",dee) end
+		if (exter == ".sw") and (extee == ".h") and files[dee] then depend(retval,baser.."Sw.o",dee) end
 		if (exter == ".sw") and (extee == ".sw") and mains[der] then depend(retval,baser.."Sw.o",dee) end
 		if (exter == ".hs") and (extee == ".hs") and mains[der] then depend(retval,baser.."Hs",dee) end
 		if (exter == ".hs") and (extee == ".c") and mains[der] then depend(retval,baser.."Hs",basee.."C.o") end
@@ -556,14 +587,15 @@ autodeps = {}
 make()
 glob(mains,files)
 parse(files,invokes,declares,includes)
-invokes = filter(invokes,function (key) return not declares[key[2]] or not declares[key[2]][key[1]] end)
-contour(depends,invokes,1)
-contour(depends,includes,1)
-connect(depends,invokes,declares)
-direct(depends,includes)
-depends = filter(depends,function (key) return not mains[key[2]] end)
+invokes = filter(invokes,function (key) return not declares[key[2]] or not declares[key[2]][key[1]] end) -- don't depend on depender
+translate(invokes,declares,includes)
+contour(depends,invokes,1) -- add without dependencies
+contour(depends,includes,1) -- add without dependencies
+connect(depends,invokes,declares) -- add function dependencies
+direct(depends,includes) -- add include dependencies
+depends = filter(depends,function (key) return not mains[key[2]] end) -- don't depend on mains
 directs = copy(depends)
-collect(depends,directs)
+collect(depends,directs) -- add indirect dependencies
 autos = complete(files,autoincs)
 contour(autodeps,autoincs,1)
 direct(autodeps,autoincs)

@@ -2,6 +2,8 @@
 #include "face.h"
 #include "metic.h"
 #include "type.h"
+#include "argx.h"
+#include "share.h"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -32,8 +34,12 @@ struct Kernel subject = {0};
 struct Kernel object[NUMFILE] = {0};
 struct Kernel facet = {0};
 
-void planeInit(dftype dma, vftype prep, vftype draw)
+void planeInit(vftype init, dftype dma, vftype prep, vftype draw)
 {
+	shareInit();
+	// TODO set factory and script for face and loop
+	init(); // this calls useArgument
+	runProgram();
 }
 float planeConfig(enum Configure cfg)
 {
