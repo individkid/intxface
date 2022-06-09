@@ -48,27 +48,26 @@ Command = {
 	"RspCmd", -- got memory
 }
 Memory = {
-	"Numerics",
-	"Vertexs",
-	"Polytopes",
-	"Swarms",
-	"Textures",
-	"Submats",
-	"Monmats",
-	"Feathers",
-	"Arrows",
-	"Focals",
-	"Pictures",
-	"Currents",
-	"Indexs",
-	"Sizes",
-	"Pierces",
-	"Coplanes",
-	"Copoints",
-	"Debugs",
-	"Fixeds",
-	"Normals",
-	"Valids",
+	"Numerics", -- distances of plane above selected base
+	"Vertexs", -- intersection of backlinked planes
+	"Polytopes", -- matrix per set of planes
+	"Swarms", -- array of points around focal point
+	"Textures", -- memory for textures
+	"Bases", -- base for each dimension
+	"Allmats", -- whole view transformation
+	"Onemats", -- single face transformation
+	"Feathers", -- pierce direction
+	"Arrows", -- pierce start position
+	"Focals", -- focal point
+	"Pictures", -- picture plane origin
+	"Currents", -- index into polytope matrix array
+	"Passes", -- index into backreferences
+	"Indexs", -- index into texture array
+	"Sizes", -- number of swarm points
+	"Pierces", -- pierce point normal and valid
+	"Coplanes", -- intersection results
+	"Copoints", -- construction results
+	"Debugs", -- computation results
 }
 Atwill = {
 	"Atoften", -- hand or finger
@@ -194,6 +193,7 @@ Event = {
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
 Uniform = {
+	{"bas","Old",{},{24}},
 	{"all","Old",{},{16}},
 	{"one","Old",{},{16}},
 	{"fea","Old",{},{4}},
@@ -201,25 +201,31 @@ Uniform = {
 	{"foc","Old",{},{4}},
 	{"pic","Old",{},{4}},
 	{"pol","Int",{},{}}, -- which polytope matrix to use
+	{"pss","Int",{},{}}, -- current backreference index
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
-	{"pad","Int",{},{}},
 }
 Numeric = {
-	{"vec","Old",{},{4}},
-	{"ref","Int",{},{4}},
-	{"tex","Int",{},{}},
-	{"pad","Int",{},{3}},
+	{"vec","Old",{},{4}}, -- distances above basis
+	{"ref","Int",{},{4}}, -- points on plane
+	{"bas","Int",{},{}}, -- basis selector
+	{"pol","Int",{},{}}, -- polytope plane is in
+	{"pss","Int",{},{}}, -- backreference index
+	{"tex","Int",{},{}}, -- texture index
 }
 Vertex = {
+	{"vec","Old",{},{4}}, -- intersection of planes
+	{"ref","Int",{},{8}}, -- backreference to planes
+	{"vld","Int",{},{4}}, -- which backreferences are valid
+}
+Vector = {
 	{"vec","Old",{},{4}},
-	{"ref","Int",{},{4}},
 }
 Matrix = {
 	{"mat","Old",{},{16}},
 }
-Vector = {
-	{"vec","Old",{},{4}},
+Basis = {
+	{"mat","Matrix",{},{3}},
 }
 Pierce = {
 	{"fix","Old",{},{4}},
@@ -237,13 +243,15 @@ Client = {
 	{"pol","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Polytopes"]=true}},"siz"},
 	{"swa","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Swarms"]=true}},"siz"},
 	{"tex","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Textures"]=true}},"siz"},
-	{"all","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Submats"]=true}},"siz"},
-	{"one","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Monmats"]=true}},"siz"},
+	{"bas","Basis",{["cmd"]={["SetCmd"]=true},["mem"]={["Bases"]=true}},"siz"},
+	{"all","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Allmats"]=true}},"siz"},
+	{"one","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Onemats"]=true}},"siz"},
 	{"fea","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Feathers"]=true}},"siz"},
 	{"arw","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Arrows"]=true}},"siz"},
 	{"foc","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Focals"]=true}},"siz"},
 	{"pic","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Pictures"]=true}},"siz"},
 	{"cur","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Currents"]=true}},"siz"},
+	{"pss","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Passes"]=true}},"siz"},
 	{"idt","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Indexs"]=true}},"siz"},
 	{"sze","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Sizes"]=true}},"siz"},
 	{"pie","Pierce",{["cmd"]={["RspCmd"]=true},["mem"]={["Pierces"]=true}},"siz"},

@@ -14,6 +14,13 @@ by cumulatively attempting to build all that can be named.
 
 A file's dependencies are deducible if it and its dependencies exist.
 --]]
+function extension(file)
+	local fileExpr = "(.*)(%..*)"
+	if not file then return "" end
+	local base,ext = string.match(file,fileExpr)
+	if not ext then return "" end
+	return ext
+end
 function sizeof(tab)
 	local count = 0
 	for k,v in pairs(tab) do
@@ -518,7 +525,7 @@ function translate(given,declares,includes)
 		local der,dee,work = key[1],key[2],tab[2]
 		local baser,exter = string.match(der,fileExpr)
 		local basee,extee = string.match(dee,langExpr)
-		io.stderr:write("der "..der.." dee "..dee.." #key "..#key.." why "..key[3].."\n")
+		-- io.stderr:write("der "..der.." dee "..dee.." #key "..#key.." why "..key[3].."\n")
 		if (exter == ".sw") and (extee == "Sw") then
 			local incs = includes[der]
 			local decs = declares[basee.."C"]
@@ -526,11 +533,11 @@ function translate(given,declares,includes)
 				for ky,vl in pairs(decs) do
 					local bas,ext = string.match(ky,fileExpr)
 					for k,v in pairs(vl) do
-						io.stderr:write("ky "..ky.." k "..k.."\n")
+						-- io.stderr:write("ky "..ky.." k "..k.."\n")
 					end
 					if (ext == ".h") and not (type(incs[ky]) == "nil") then
 						for k,v in pairs(incs[ky]) do
-							io.stderr:write("basee "..basee.." k "..k.."\n")
+							-- io.stderr:write("basee "..basee.." k "..k.."\n")
 							insert1(work,basee.."C",k)
 						end
 					end
@@ -578,6 +585,7 @@ invokes = {} -- per file depends on funcs
 declares = {} -- per func depends on files
 includes = {} -- per file depends on files
 depends = {}
+collects = {}
 directs = {}
 actuals = {}
 dependers = {}
@@ -595,7 +603,8 @@ connect(depends,invokes,declares) -- add function dependencies
 direct(depends,includes) -- add include dependencies
 depends = filter(depends,function (key) return not mains[key[2]] end) -- don't depend on mains
 directs = copy(depends)
-collect(depends,directs) -- add indirect dependencies
+collects = filter(directs,function (key) return not (extension(key[1]) == ".c") or not (extension(key[2]) == ".h") end) -- don't #include .c
+collect(depends,collects) -- add indirect dependencies
 autos = complete(files,autoincs)
 contour(autodeps,autoincs,1)
 direct(autodeps,autoincs)
