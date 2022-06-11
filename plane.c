@@ -9,13 +9,13 @@
 
 struct Kernel {
 	int valid; // optimized
-	float compose[16]; // optimization
-	float maintain[16]; // change to points
-	float written[16]; // portion written
-	float towrite[16]; // portion to write
-	float fixed[3]; // fixed point
-	float start[3]; // start axis
-	float current[3]; // current axis
+	struct Matrix compose; // optimization
+	struct Matrix maintain; // change to points
+	struct Matrix written; // portion written
+	struct Matrix towrite; // portion to write
+	struct Vector fixed; // fixed point
+	struct Vector start; // start axis
+	struct Vector current; // current axis
 };
 struct Apply {
 	enum Work work;
@@ -28,18 +28,18 @@ enum Machine machine = 0;
 enum Shader shader = 0;
 struct Apply hand = {0};
 struct Apply finger = {0};
-int *points[3] = {0};
-int *planes[3] = {0};
 struct Kernel subject = {0};
 struct Kernel object[NUMFILE] = {0};
 struct Kernel facet = {0};
+struct Ranje *range = {0};
+int ranges = 0;
 
-void planeInit(vftype init, dftype dma, vftype prep, vftype draw)
+void planeInit(vftype init, uftype dma, wftype draw, wftype prep, wftype comp, wftype test)
 {
-	shareInit();
+	shareInit(); // from share.h
 	// TODO set factory and script for face and loop
-	init(); // this calls useArgument
-	runProgram();
+	init(); // this calls useArgument from argx.h
+	runProgram(); // from argx.h
 }
 float planeConfig(enum Configure cfg)
 {

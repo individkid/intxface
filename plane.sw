@@ -206,16 +206,22 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<type.Client>?)
 	let siz = Int(client.siz)
 	let idx = Int(client.idx)
 	switch (client.mem) {
-	case (Numerics): numeric.set(Swift.Array(0..<siz).map() {(sub) in client.num![sub]},idx)
+	case (Numericz): numeric.set(Swift.Array(0..<siz).map() {(sub) in client.num![sub]},idx)
 	default: exitErr(#file,#line,-1)}
 }
-func swiftPierce()
+func swiftDisplay(_ shader: type.Shader)
 {
 }
-func swiftDisplay()
+func swiftPierce(_ shader: type.Shader)
+{
+}
+func swiftCompute(_ shader: type.Shader)
+{
+}
+func swiftTest(_ shader: type.Shader)
 {
 }
 
 // MAIN
 
-	planeInit(swiftInit,swiftMemory,swiftPierce,swiftDisplay)
+	planeInit(swiftInit,swiftMemory,swiftDisplay,swiftPierce,swiftCompute,swiftTest)

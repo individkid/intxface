@@ -7,7 +7,9 @@ enum Configure {
 	WindowHigh,
 };
 struct Client;
+enum Shader;
 typedef void (*vftype)();
-typedef void (*dftype)(struct Client *client);
-void planeInit(vftype init, dftype dma, vftype prep, vftype draw);
+typedef void (*wftype)(enum Shader cospace);
+typedef void (*uftype)(struct Client *client);
+void planeInit(vftype init, uftype dma, wftype draw, wftype prep, wftype comp, wftype test);
 float planeConfig(enum Configure cfg);

@@ -31,43 +31,41 @@ Flow = {
 	"Load",
 }
 Command = {
-	"AtwCmd", -- set atwill
-	"ActCmd", -- set action
-	"SelCmd", -- set select
-	"MchCmd", -- set machine
-	"ShaCmd", -- set shader
-	"HrkCmd", -- hand work
-	"HooCmd", -- hand tool
-	"FrkCmd", -- finger work
-	"FooCmd", -- finger tool
-	"HndCmd", -- warp hand
-	"FgrCmd", -- warp finger
-	"ClcCmd", -- warp click
 	"SetCmd", -- set memory
-	"ReqCmd", -- get memory
-	"RspCmd", -- got memory
+	"GetCmd", -- get memory
+	"GotCmd", -- got memory
+	"UseCmd", -- use memory
+	"FixCmd", -- fix memory
 }
 Memory = {
-	"Numerics", -- distances of plane above selected base
-	"Vertexs", -- intersection of backlinked planes
-	"Polytopes", -- matrix per set of planes
-	"Swarms", -- array of points around focal point
-	"Textures", -- memory for textures
-	"Bases", -- base for each dimension
-	"Allmats", -- whole view transformation
-	"Onemats", -- single face transformation
-	"Feathers", -- pierce direction
-	"Arrows", -- pierce start position
-	"Focals", -- focal point
-	"Pictures", -- picture plane origin
-	"Currents", -- index into polytope matrix array
-	"Passes", -- index into backreferences
-	"Indexs", -- index into texture array
-	"Sizes", -- number of swarm points
-	"Pierces", -- pierce point normal and valid
-	"Coplanes", -- intersection results
-	"Copoints", -- construction results
-	"Debugs", -- computation results
+	"Numericz", -- distances of plane above selected base
+	"Vertexz", -- intersection of backlinked planes
+	"Polytopez", -- matrix per set of planes
+	"Swarmz", -- array of points around focal point
+	"Texturez", -- memory for textures
+	"Basez", -- base for each dimension
+	"Allmatz", -- whole view transformation
+	"Onematz", -- single face transformation
+	"Featherz", -- pierce direction
+	"Arrowz", -- pierce start position
+	"Focalz", -- focal point
+	"Picturez", -- picture plane origin
+	"Indexz", -- index into texture array
+	"Sizez", -- number of swarm points
+	"Piercez", -- pierce point normal and valid
+	"Ranjez", -- plane or point index ranges
+	"Atwillz", -- set atwill
+	"Actionz", -- set action
+	"Selectz", -- set select
+	"Machinez", -- set machine
+	"Shaderz", -- set shader
+	"HandWorkz", -- hand work
+	"HandToolz", -- hand tool
+	"FingerWorkz", -- finger work
+	"FingerToolz", -- finger tool
+	"WarpHandz", -- warp hand
+	"WarpFingerz", -- warp finger
+	"WarpClickz", -- warp click
 }
 Atwill = {
 	"Atoften", -- hand or finger
@@ -94,8 +92,8 @@ Machine = {
 	"Roll", -- run display shader
 }
 Shader = {
-	"Contain",
-	"Compute",
+	"Contain", -- use points
+	"Compute", -- use planes
 }
 Work = {
 	"Picture", -- picture plane normal
@@ -193,30 +191,28 @@ Event = {
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
 Uniform = {
-	{"bas","Old",{},{24}},
+	{"bas","Old",{},{36}},
 	{"all","Old",{},{16}},
 	{"one","Old",{},{16}},
 	{"fea","Old",{},{4}},
 	{"arw","Old",{},{4}},
 	{"foc","Old",{},{4}},
 	{"pic","Old",{},{4}},
-	{"pol","Int",{},{}}, -- which polytope matrix to use
-	{"pss","Int",{},{}}, -- current backreference index
-	{"idx","Int",{},{}}, -- which plane to apply one matrix to
-	{"siz","Int",{},{}}, -- how many swarm points there are
+	{"idt","Int",{},{}}, -- which plane to apply one matrix to
+	{"sze","Int",{},{}}, -- how many swarm points there are
+	{"pad","Int",{},{2}},
 }
 Numeric = {
 	{"vec","Old",{},{4}}, -- distances above basis
 	{"ref","Int",{},{4}}, -- points on plane
 	{"bas","Int",{},{}}, -- basis selector
 	{"pol","Int",{},{}}, -- polytope plane is in
-	{"pss","Int",{},{}}, -- backreference index
 	{"tex","Int",{},{}}, -- texture index
+	{"pad","Int",{},{}},
 }
 Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
-	{"ref","Int",{},{8}}, -- backreference to planes
-	{"vld","Int",{},{4}}, -- which backreferences are valid
+	{"ref","Int",{},{4}}, -- backreference to planes
 }
 Vector = {
 	{"vec","Old",{},{4}},
@@ -225,7 +221,7 @@ Matrix = {
 	{"mat","Old",{},{16}},
 }
 Basis = {
-	{"mat","Matrix",{},{3}},
+	{"mat","Vector",{},{9}},
 }
 Pierce = {
 	{"fix","Old",{},{4}},
@@ -233,38 +229,45 @@ Pierce = {
 	{"vld","Int",{},{}},
 	{"pad","Int",{},{3}},
 }
+Ranje = {
+	{"idx","Int",{},{}},
+	{"siz","Int",{},{}},
+	{"pad","Int",{},{2}},
+}
 Client = {
 	{"cmd","Command",{},{}},
 	{"mem","Memory",{},{}},
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
-	{"num","Numeric",{["cmd"]={["SetCmd"]=true},["mem"]={["Numerics"]=true}},"siz"},
-	{"vtx","Vertex",{["cmd"]={["SetCmd"]=true},["mem"]={["Vertexs"]=true}},"siz"},
-	{"pol","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Polytopes"]=true}},"siz"},
-	{"swa","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Swarms"]=true}},"siz"},
-	{"tex","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Textures"]=true}},"siz"},
-	{"bas","Basis",{["cmd"]={["SetCmd"]=true},["mem"]={["Bases"]=true}},"siz"},
-	{"all","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Allmats"]=true}},"siz"},
-	{"one","Matrix",{["cmd"]={["SetCmd"]=true},["mem"]={["Onemats"]=true}},"siz"},
-	{"fea","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Feathers"]=true}},"siz"},
-	{"arw","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Arrows"]=true}},"siz"},
-	{"foc","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Focals"]=true}},"siz"},
-	{"pic","Vector",{["cmd"]={["SetCmd"]=true},["mem"]={["Pictures"]=true}},"siz"},
-	{"cur","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Currents"]=true}},"siz"},
-	{"pss","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Passes"]=true}},"siz"},
-	{"idt","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Indexs"]=true}},"siz"},
-	{"sze","Int",{["cmd"]={["SetCmd"]=true},["mem"]={["Sizes"]=true}},"siz"},
-	{"pie","Pierce",{["cmd"]={["RspCmd"]=true},["mem"]={["Pierces"]=true}},"siz"},
-	{"cpl","Vector",{["cmd"]={["RspCmd"]=true},["mem"]={["Coplanes"]=true}},"siz"},
-	{"cpn","Vector",{["cmd"]={["RspCmd"]=true},["mem"]={["Copoints"]=true}},"siz"},
-	{"deb","Vector",{["cmd"]={["RspCmd"]=true},["mem"]={["Debugs"]=true}},"siz"},
-	{"atw","Atwill",{["cmd"]={["AtwCmd"]=true}},{}},
-	{"act","Action",{["cmd"]={["ActCmd"]=true}},{}},
-	{"sel","Select",{["cmd"]={["SelCmd"]=true}},{}},
-	{"mch","Machine",{["cmd"]={["MchCmd"]=true}},{}},
-	{"sha","Shader",{["cmd"]={["ShaCmd"]=true}},{}},
-	{"wrk","Work",{["cmd"]={["HrkCmd"]=true,["FrkCmd"]=true}},{}},
-	{"too","Tool",{["cmd"]={["HooCmd"]=true,["FooCmd"]=true}},{}},
+	{"slf","Int",{},{}},
+	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
+	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
+	{"pol","Matrix",{["mem"]={["Polytopez"]=true}},"siz"},
+	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
+	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
+	{"bas","Basis",{["mem"]={["Basez"]=true}},"siz"},
+	{"all","Matrix",{["mem"]={["Allmatz"]=true}},"siz"},
+	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
+	{"fea","Vector",{["mem"]={["Featherz"]=true}},"siz"},
+	{"arw","Vector",{["mem"]={["Arrowz"]=true}},"siz"},
+	{"foc","Vector",{["mem"]={["Focalz"]=true}},"siz"},
+	{"pic","Vector",{["mem"]={["Picturez"]=true}},"siz"},
+	{"idt","Int",{["mem"]={["Indexz"]=true}},"siz"},
+	{"sze","Int",{["mem"]={["Sizez"]=true}},"siz"},
+	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
+	{"rng","Ranje",{["mem"]={["Ranjez"]=true}},"siz"},
+	{"atw","Atwill",{["mem"]={["Atwillz"]=true}},"siz"},
+	{"act","Action",{["mem"]={["Actionz"]=true}},"siz"},
+	{"sel","Select",{["mem"]={["Selectz"]=true}},"siz"},
+	{"mac","Machine",{["mem"]={["Machinez"]=true}},"siz"},
+	{"sha","Shader",{["mem"]={["Shaderz"]=true}},"siz"},
+	{"hws","Work",{["mem"]={["HandWorkz"]=true}},"siz"},
+	{"hts","Tool",{["mem"]={["HandToolz"]=true}},"siz"},
+	{"fws","Work",{["mem"]={["FingerWorkz"]=true}},"siz"},
+	{"fts","Tool",{["mem"]={["FingerToolz"]=true}},"siz"},
+	{"whs","Old",{["mem"]={["WarpHandz"]=true}},"siz"},
+	{"wfs","Old",{["mem"]={["WarpFingerz"]=true}},"siz"},
+	{"wcs","Old",{["mem"]={["WarpClickz"]=true}},"siz"},
 }
 Sculpt = {
 	{"cfg","Ture",{},{}},
