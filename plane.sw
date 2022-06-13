@@ -19,13 +19,13 @@ var threads:MTLSize!
 var lock = [Refer]()
 let event = getEvent()
 
-var triangle = Pend<type.Triangle>()
-var numeric = Pend<type.Numeric>()
-var vertex = Pend<type.Vertex>()
-var polytope = Pend<type.Matrix>()
-var swarm = Pend<type.Vector>()
-var texture = Pend<type.Vector>()
-var uniform = Pend<type.Uniform>()
+var triangle = Pend<Triangle>()
+var numeric = Pend<Numeric>()
+var vertex = Pend<Vertex>()
+var polytope = Pend<Matrix>()
+var swarm = Pend<Vector>()
+var texture = Pend<Vector>()
+var uniform = Pend<Uniform>()
 
 class Refer
 {
@@ -206,7 +206,7 @@ func swiftInit()
 	// setEvent(.scrollWheel,swiftRoll)
 	// setEvent(.applicationDefined,swiftCheck)
 }
-func swiftMemory(_ ptr: UnsafeMutablePointer<type.Client>?)
+func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 {
 	let client = ptr!.pointee
 	let siz = Int(client.siz)
@@ -221,7 +221,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<type.Client>?)
 	case (Basisz): uniform.set(client.bas![0],\Uniform.bas)
 	default: exitErr(#file,#line,-1)}
 }
-func swiftDraw(_ shader: type.Shader, _ range: UnsafeMutablePointer<type.Ranje>?)
+func swiftDraw(_ shader: Shader, _ range: UnsafeMutablePointer<Ranje>?)
 {
 }
 
