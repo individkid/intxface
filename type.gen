@@ -195,8 +195,8 @@ Uniform = {
 	{"pad","Int",{},{2}},
 }
 Triangle = {
-	{"pnt","Int",{},{4}}, -- points of triangle
-	{"pln","Int",{},{}}, -- plane of points
+	{"vtx","Int",{},{4}}, -- points of triangle
+	{"num","Int",{},{}}, -- plane of points
 	{"tex","Int",{},{}}, -- texture of triangle
 	{"pol","Int",{},{}}, -- polytope triangle is in
 	{"pad","Int",{},{}},
