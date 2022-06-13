@@ -51,7 +51,7 @@ Memory = {
 	"Arrowz", -- pierce start position
 	"Focalz", -- focal point
 	"Picturez", -- picture plane origin
-	"Indexz", -- index into texture array
+	"Indexz", -- index triangle array
 	"Sizez", -- number of swarm points
 	"Piercez", -- pierce point normal and valid
 	"Ranjez", -- plane or point index ranges
