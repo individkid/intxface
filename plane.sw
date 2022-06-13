@@ -17,6 +17,7 @@ var compute:MTLComputePipelineState!
 var threads:MTLSize!
 
 var lock = [Refer]()
+var count = Int(0)
 let event = getEvent()
 
 var triangle = Pend<Triangle>()
@@ -26,6 +27,7 @@ var polytope = Pend<Matrix>()
 var swarm = Pend<Vector>()
 var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
+var pierce = Pend<Pierce>()
 
 class Refer
 {
@@ -132,6 +134,22 @@ func getTexture(_ rect:NSRect) -> MTLTexture?
 	text.storageMode = .private
 	return device.makeTexture(descriptor:text)
 }
+func getLock() -> MTLCommandBufferHandler
+{
+	let temp = lock
+	lock = []
+	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
+}
+func getReady(_ size: Int) -> MTLCommandBufferHandler
+{
+	if (size == 0) {return {(MTLCommandBuffer) in setEmpty()}}
+	let last = pierce.get()
+	return {(MTLCommandBuffer) in setReady(last,size)}
+}
+func getCount() -> MTLCommandBufferHandler
+{
+	return {(MTLCommandBuffer) in count -= 1; planeWake()}
+}
 class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
@@ -147,6 +165,12 @@ class getEvent : NSObject, NSWindowDelegate
 func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
+}
+func setReady(_ buffer: MTLBuffer, _ size: Int)
+{
+}
+func setEmpty()
+{
 }
 func swiftInit()
 {
@@ -231,6 +255,40 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 }
 func swiftDraw(_ shader: Shader, _ range: UnsafeMutablePointer<Ranje>?)
 {
+	switch (shader) {
+	case (Dipoint):
+	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
+    guard let draw = layer.nextDrawable() else {exitErr(#file,#line,-1);return}
+	param.colorAttachments[0].texture = draw.texture
+	param.colorAttachments[0].loadAction = .clear
+	param.depthAttachment.loadAction = .clear
+	if (range![0].siz == 0) {
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
+		encode.endEncoding()
+	} else {
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
+		encode.setRenderPipelineState(render)
+		encode.setDepthStencilState(depth)
+		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
+		encode.setVertexBuffer(numeric.get(),offset:0,index:1)
+		encode.setVertexBuffer(vertex.get(),offset:0,index:2)
+		encode.setVertexBuffer(polytope.get(),offset:0,index:3)
+		encode.setVertexBuffer(uniform.get(),offset:0,index:4)
+		encode.drawPrimitives(
+			type:.triangle,
+			vertexStart:Int(range![0].idx),
+			vertexCount:Int(range![0].siz))
+		encode.endEncoding()
+		param.colorAttachments[0].loadAction = .load
+		param.depthAttachment.loadAction = .load
+	}
+	code.present(draw)
+	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
+	count += 1
+	code.commit()
+	default: exitErr(#file,#line,-1);return
+	}
 }
 
 // MAIN

@@ -14,3 +14,4 @@ typedef void (*wftype)(enum Shader cospace, struct Ranje *range);
 typedef void (*uftype)(struct Client *client);
 void planeInit(vftype init, uftype dma, wftype draw);
 float planeConfig(enum Configure cfg);
+void planeWake();

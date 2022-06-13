@@ -39,3 +39,6 @@ float planeConfig(enum Configure cfg)
 {
 	return 0.0;
 }
+void planeWake()
+{
+}

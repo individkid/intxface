@@ -89,8 +89,8 @@ Select = {
 	"Single", -- single plane
 }
 Shader = {
-	"Repoint", -- display from points
-	"Replane", -- display from planes
+	"Dipoint", -- display from points
+	"Diplane", -- display from planes
 	"Adpoint", -- find pierce points from points
 	"Adplane", -- find pierce points from planes
 	"Copoint", -- find planes from points
