@@ -8,8 +8,9 @@ enum Configure {
 };
 struct Client;
 enum Shader;
+struct Ranje;
 typedef void (*vftype)();
-typedef void (*wftype)(enum Shader cospace);
+typedef void (*wftype)(enum Shader cospace, struct Ranje *range);
 typedef void (*uftype)(struct Client *client);
-void planeInit(vftype init, uftype dma, wftype draw, wftype prep, wftype comp, wftype test);
+void planeInit(vftype init, uftype dma, wftype draw);
 float planeConfig(enum Configure cfg);

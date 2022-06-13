@@ -19,7 +19,13 @@ var threads:MTLSize!
 var lock = [Refer]()
 let event = getEvent()
 
+var triangle = Pend<type.Triangle>()
 var numeric = Pend<type.Numeric>()
+var vertex = Pend<type.Vertex>()
+var polytope = Pend<type.Matrix>()
+var swarm = Pend<type.Vector>()
+var texture = Pend<type.Vector>()
+var uniform = Pend<type.Uniform>()
 
 class Refer
 {
@@ -206,22 +212,19 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<type.Client>?)
 	let siz = Int(client.siz)
 	let idx = Int(client.idx)
 	switch (client.mem) {
+	case (Trianglez): triangle.set(Swift.Array(0..<siz).map() {(sub) in client.tri![sub]},idx)
 	case (Numericz): numeric.set(Swift.Array(0..<siz).map() {(sub) in client.num![sub]},idx)
+	case (Vertexz): vertex.set(Swift.Array(0..<siz).map() {(sub) in client.vtx![sub]},idx)
+	case (Polytopez): polytope.set(Swift.Array(0..<siz).map() {(sub) in client.pol![sub]},idx)
+	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in client.swa![sub]},idx)
+	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in client.tex![sub]},idx)
+	case (Basisz): uniform.set(client.bas![0],\Uniform.bas)
 	default: exitErr(#file,#line,-1)}
 }
-func swiftDisplay(_ shader: type.Shader)
-{
-}
-func swiftPierce(_ shader: type.Shader)
-{
-}
-func swiftCompute(_ shader: type.Shader)
-{
-}
-func swiftTest(_ shader: type.Shader)
+func swiftDraw(_ shader: type.Shader, _ range: UnsafeMutablePointer<type.Ranje>?)
 {
 }
 
 // MAIN
 
-	planeInit(swiftInit,swiftMemory,swiftDisplay,swiftPierce,swiftCompute,swiftTest)
+	planeInit(swiftInit,swiftMemory,swiftDraw)

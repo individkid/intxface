@@ -38,12 +38,13 @@ Command = {
 	"FixCmd", -- fix memory
 }
 Memory = {
+	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
 	"Polytopez", -- matrix per set of planes
 	"Swarmz", -- array of points around focal point
 	"Texturez", -- memory for textures
-	"Basez", -- base for each dimension
+	"Basisz", -- base for each dimension
 	"Allmatz", -- whole view transformation
 	"Onematz", -- single face transformation
 	"Featherz", -- pierce direction
@@ -57,52 +58,43 @@ Memory = {
 	"Atwillz", -- set atwill
 	"Actionz", -- set action
 	"Selectz", -- set select
-	"Machinez", -- set machine
 	"Shaderz", -- set shader
-	"HandWorkz", -- hand work
-	"HandToolz", -- hand tool
-	"FingerWorkz", -- finger work
-	"FingerToolz", -- finger tool
 	"WarpHandz", -- warp hand
 	"WarpFingerz", -- warp finger
 	"WarpClickz", -- warp click
 }
 Atwill = {
-	"Atoften", -- hand or finger
-	"Atrarely", -- change to enum
-	"Atonce", -- just once now
-	"Atnever", -- upon request
+	"Athand", -- hand to run, finger to Atfinger, click to Atclick
+	"Atfinger", -- finger to run, hand to Athand, click to Atclick
+	"Atclick", -- hand to run, click to Athand
+	"Atonce", -- run, to Atnever
+	"Atnever", -- don't run
 }
 Action = {
-	"Transform", -- pierce or display
-	"Additive", -- pierce and identify
-	"Subtract", -- pierce and identify
+	"Additive", -- include region above pierce
+	"Subtract", -- exclude region below pierce
+	"Refine", -- add random plane through pierce
+	"Translate", -- rigidly move,
+		-- by hand parallel, by finger perpendicular
+	"Rotate", -- vector is pierce to hand on picture
+		-- perpendicular to vector paralelle to picture is hand axis
+		-- vector is finger axis
+	"Scale", -- pierce point moved by hand is fixed for finger
+	"Stretch", -- for finger parallel, for hand perpendicular,
+		-- to picture through pierce fixed
 }
 Select = {
 	"Universe", -- entire view
 	"Polytope", -- set of planes
-	"Triangle", -- single plane
-}
-Machine = {
-	"Idle", -- run no shader
-	"Solve", -- run cospace shader
-	"Test", -- run test shader
-	"Select", -- run pierce shader
-	"Move", -- run display shader
-	"Roll", -- run display shader
+	"Single", -- single plane
 }
 Shader = {
-	"Contain", -- use points
-	"Compute", -- use planes
-}
-Work = {
-	"Picture", -- picture plane normal
-	"Surface", -- pierced plane normal
-	"Cursor", -- from cursor to pierce
-}
-Tool = {
-	"Translate", -- parallel or perpendicular
-	"Rotate", -- around axis or point
+	"Repoint", -- display from points
+	"Replane", -- display from planes
+	"Adpoint", -- find pierce points from points
+	"Adplane", -- find pierce points from planes
+	"Copoint", -- find planes from points
+	"Coplane", -- find points from planes
 }
 Ture = {
 	"Table",
@@ -202,13 +194,17 @@ Uniform = {
 	{"sze","Int",{},{}}, -- how many swarm points there are
 	{"pad","Int",{},{2}},
 }
+Triangle = {
+	{"pnt","Int",{},{4}}, -- points of triangle
+	{"pln","Int",{},{}}, -- plane of points
+	{"tex","Int",{},{}}, -- texture of triangle
+	{"pol","Int",{},{}}, -- polytope triangle is in
+	{"pad","Int",{},{}},
+}
 Numeric = {
 	{"vec","Old",{},{4}}, -- distances above basis
-	{"ref","Int",{},{4}}, -- points on plane
 	{"bas","Int",{},{}}, -- basis selector
-	{"pol","Int",{},{}}, -- polytope plane is in
-	{"tex","Int",{},{}}, -- texture index
-	{"pad","Int",{},{}},
+	{"pad","Int",{},{3}},
 }
 Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
@@ -240,12 +236,13 @@ Client = {
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"slf","Int",{},{}},
+	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"pol","Matrix",{["mem"]={["Polytopez"]=true}},"siz"},
 	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
 	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
-	{"bas","Basis",{["mem"]={["Basez"]=true}},"siz"},
+	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"all","Matrix",{["mem"]={["Allmatz"]=true}},"siz"},
 	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
 	{"fea","Vector",{["mem"]={["Featherz"]=true}},"siz"},
@@ -259,12 +256,7 @@ Client = {
 	{"atw","Atwill",{["mem"]={["Atwillz"]=true}},"siz"},
 	{"act","Action",{["mem"]={["Actionz"]=true}},"siz"},
 	{"sel","Select",{["mem"]={["Selectz"]=true}},"siz"},
-	{"mac","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"sha","Shader",{["mem"]={["Shaderz"]=true}},"siz"},
-	{"hws","Work",{["mem"]={["HandWorkz"]=true}},"siz"},
-	{"hts","Tool",{["mem"]={["HandToolz"]=true}},"siz"},
-	{"fws","Work",{["mem"]={["FingerWorkz"]=true}},"siz"},
-	{"fts","Tool",{["mem"]={["FingerToolz"]=true}},"siz"},
 	{"whs","Old",{["mem"]={["WarpHandz"]=true}},"siz"},
 	{"wfs","Old",{["mem"]={["WarpFingerz"]=true}},"siz"},
 	{"wcs","Old",{["mem"]={["WarpClickz"]=true}},"siz"},

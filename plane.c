@@ -17,17 +17,10 @@ struct Kernel {
 	struct Vector start; // start axis
 	struct Vector current; // current axis
 };
-struct Apply {
-	enum Work work;
-	enum Tool tool;
-};
 enum Atwill atwill = 0;
 enum Action action = 0;
 enum Select select = 0;
-enum Machine machine = 0;
 enum Shader shader = 0;
-struct Apply hand = {0};
-struct Apply finger = {0};
 struct Kernel subject = {0};
 struct Kernel *object = {0};
 int objects = 0;
@@ -35,7 +28,7 @@ struct Kernel facet = {0};
 struct Ranje *range = {0};
 int ranges = 0;
 
-void planeInit(vftype init, uftype dma, wftype draw, wftype prep, wftype comp, wftype test)
+void planeInit(vftype init, uftype dma, wftype draw)
 {
 	shareInit(); // from share.h
 	// TODO set factory and script for face and loop
