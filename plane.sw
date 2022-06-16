@@ -28,6 +28,7 @@ var swarm = Pend<Vector>()
 var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
+var array = [Ranje]()
 
 class Refer
 {
@@ -142,13 +143,13 @@ func getLock() -> MTLCommandBufferHandler
 }
 func getReady(_ size: Int) -> MTLCommandBufferHandler
 {
-	if (size == 0) {return {(MTLCommandBuffer) in setEmpty()}}
+	if (size == 0) {return {(MTLCommandBuffer) in planeEmpty()}}
 	let last = pierce.get()
-	return {(MTLCommandBuffer) in setReady(last,size)}
+	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents())),Int32(size))}
 }
 func getCount() -> MTLCommandBufferHandler
 {
-	return {(MTLCommandBuffer) in count -= 1; planeWake()}
+	return {(MTLCommandBuffer) in count -= 1; planeWake(Int32(count))}
 }
 class getEvent : NSObject, NSWindowDelegate
 {
@@ -162,15 +163,18 @@ class getEvent : NSObject, NSWindowDelegate
 		// swiftSize()
 	}
 }
+func setPierce(_ array: [Ranje]) -> Int
+{
+	var size = 0
+	for range in array {if (range.idx+range.siz > size) {size = Int(range.idx+range.siz)}}
+	let zero = Pierce()
+	let vals = Swift.Array(repeating: zero, count: size)
+	pierce.set(vals,0)
+	return size
+}
 func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
-}
-func setReady(_ buffer: MTLBuffer, _ size: Int)
-{
-}
-func setEmpty()
-{
 }
 func swiftInit()
 {
@@ -251,9 +255,10 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Picturez): uniform.set(client.pic![0],\Uniform.pic)
 	case (Indexz): uniform.set(client.idt![0],\Uniform.idt)
 	case (Sizez): uniform.set(client.sze![0],\Uniform.sze)
+	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
 	default: exitErr(#file,#line,-1)}
 }
-func swiftDraw(_ shader: Shader, _ range: UnsafeMutablePointer<Ranje>?)
+func swiftDraw(_ shader: Shader)
 {
 	switch (shader) {
 	case (Dipoint):
@@ -262,10 +267,11 @@ func swiftDraw(_ shader: Shader, _ range: UnsafeMutablePointer<Ranje>?)
 	param.colorAttachments[0].texture = draw.texture
 	param.colorAttachments[0].loadAction = .clear
 	param.depthAttachment.loadAction = .clear
-	if (range![0].siz == 0) {
+	if (array.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
 		encode.endEncoding()
-	} else {
+	}
+	for range in array {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
@@ -276,13 +282,49 @@ func swiftDraw(_ shader: Shader, _ range: UnsafeMutablePointer<Ranje>?)
 		encode.setVertexBuffer(uniform.get(),offset:0,index:4)
 		encode.drawPrimitives(
 			type:.triangle,
-			vertexStart:Int(range![0].idx),
-			vertexCount:Int(range![0].siz))
+			vertexStart:Int(range.idx),
+			vertexCount:Int(range.siz))
 		encode.endEncoding()
 		param.colorAttachments[0].loadAction = .load
 		param.depthAttachment.loadAction = .load
 	}
 	code.present(draw)
+	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount())
+	count += 1
+	code.commit()
+	case (Adpoint):
+	let size = setPierce(array)
+	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
+	for range in array {
+		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
+		var nums:[Int] = []
+		var pers:[Int] = []
+		let quotient = Int(range.siz)/threads.width
+		let remainder = Int(range.siz)%threads.width
+		if (quotient > 0) {
+			nums.append(quotient)
+			pers.append(threads.width)}
+		if (remainder > 0) {
+			nums.append(1)
+			pers.append(remainder)}
+		for (n,p) in zip(nums,pers) {
+			guard let encode = code.makeComputeCommandEncoder() else {exitErr(#file,#line,-1);return}
+			encode.setComputePipelineState(compute)
+			encode.setBuffer(triangle.get(),offset:offset,index:0)
+			encode.setBuffer(numeric.get(),offset:0,index:1)
+			encode.setBuffer(vertex.get(),offset:0,index:2)
+			encode.setBuffer(polytope.get(),offset:0,index:3)
+			encode.setBuffer(uniform.get(),offset:0,index:4)
+			encode.setBuffer(pierce.get(),offset:0,index:5)
+			let num = MTLSize(width:n,height:1,depth:1)
+			let per = MTLSize(width:p,height:1,depth:1)
+			encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
+			encode.endEncoding()
+			offset += n*p*MemoryLayout<Triangle>.size
+		}
+	}
+	code.addCompletedHandler(getReady(size))
 	code.addScheduledHandler(getLock())
 	code.addCompletedHandler(getCount())
 	count += 1

@@ -39,6 +39,12 @@ float planeConfig(enum Configure cfg)
 {
 	return 0.0;
 }
-void planeWake()
+void planeWake(int count)
+{
+}
+void planeReady(struct Pierce *pierce, int size)
+{
+}
+void planeEmpty()
 {
 }
