@@ -29,6 +29,7 @@ var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
 var array = [Ranje]()
+var size = 0
 
 class Refer
 {
@@ -141,7 +142,7 @@ func getLock() -> MTLCommandBufferHandler
 	lock = []
 	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
 }
-func getReady(_ size: Int) -> MTLCommandBufferHandler
+func getReady() -> MTLCommandBufferHandler
 {
 	if (size == 0) {return {(MTLCommandBuffer) in planeEmpty()}}
 	let last = pierce.get()
@@ -162,15 +163,6 @@ class getEvent : NSObject, NSWindowDelegate
 	{
 		// swiftSize()
 	}
-}
-func setPierce(_ array: [Ranje]) -> Int
-{
-	var size = 0
-	for range in array {if (range.idx+range.siz > size) {size = Int(range.idx+range.siz)}}
-	let zero = Pierce()
-	let vals = Swift.Array(repeating: zero, count: size)
-	pierce.set(vals,0)
-	return size
 }
 func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
 {
@@ -240,7 +232,9 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	let siz = Int(client.siz)
 	let idx = Int(client.idx)
 	switch (client.mem) {
-	case (Trianglez): triangle.set(Swift.Array(0..<siz).map() {(sub) in client.tri![sub]},idx)
+	case (Trianglez): size = siz
+		triangle.set(Swift.Array(0..<siz).map() {(sub) in client.tri![sub]},idx)
+		pierce.set(Swift.Array(repeating: Pierce(), count: siz),idx)
 	case (Numericz): numeric.set(Swift.Array(0..<siz).map() {(sub) in client.num![sub]},idx)
 	case (Vertexz): vertex.set(Swift.Array(0..<siz).map() {(sub) in client.vtx![sub]},idx)
 	case (Polytopez): polytope.set(Swift.Array(0..<siz).map() {(sub) in client.pol![sub]},idx)
@@ -294,7 +288,6 @@ func swiftDraw(_ shader: Shader)
 	count += 1
 	code.commit()
 	case (Adpoint):
-	let size = setPierce(array)
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
 	for range in array {
 		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
@@ -324,7 +317,7 @@ func swiftDraw(_ shader: Shader)
 			offset += n*p*MemoryLayout<Triangle>.size
 		}
 	}
-	code.addCompletedHandler(getReady(size))
+	code.addCompletedHandler(getReady())
 	code.addScheduledHandler(getLock())
 	code.addCompletedHandler(getCount())
 	count += 1
