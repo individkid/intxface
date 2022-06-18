@@ -29,7 +29,6 @@ var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
 var array = [Ranje]()
-var third = [Ranje]()
 var size = 0
 
 class Refer
@@ -257,9 +256,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Picturez): uniform.set(client.pic![0],\Uniform.pic)
 	case (Indexz): uniform.set(client.idt![0],\Uniform.idt)
 	case (Sizez): uniform.set(client.sze![0],\Uniform.sze)
-	case (Ranjez):
-		array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
-		third = Swift.Array(0..<siz).map() {(sub) in getThird(client.rng![sub])}
+	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
 	default: exitErr(#file,#line,-1)}
 }
 func swiftDraw(_ shader: Shader)
@@ -299,12 +296,12 @@ func swiftDraw(_ shader: Shader)
 	code.commit()
 	case (Adpoint):
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
-	for range in third {
-		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
+	for range in array {
+		var offset = (Int(range.idx)*MemoryLayout<Triangle>.size)/3
 		var nums:[Int] = []
 		var pers:[Int] = []
-		let quotient = Int(range.siz)/threads.width
-		let remainder = Int(range.siz)%threads.width
+		let quotient = (Int(range.siz)/threads.width)/3
+		let remainder = (Int(range.siz)%threads.width)/3
 		if (quotient > 0) {
 			nums.append(quotient)
 			pers.append(threads.width)}
