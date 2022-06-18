@@ -29,6 +29,7 @@ var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
 var array = [Ranje]()
+var third = [Ranje]()
 var size = 0
 
 class Refer
@@ -152,6 +153,13 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; planeWake(Int32(count))}
 }
+func getThird(_ range: Ranje) -> Ranje
+{
+	var result = Ranje()
+	result.idx = range.idx/3
+	result.siz = range.siz/3
+	return result
+}
 class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
@@ -249,7 +257,9 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Picturez): uniform.set(client.pic![0],\Uniform.pic)
 	case (Indexz): uniform.set(client.idt![0],\Uniform.idt)
 	case (Sizez): uniform.set(client.sze![0],\Uniform.sze)
-	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
+	case (Ranjez):
+		array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
+		third = Swift.Array(0..<siz).map() {(sub) in getThird(client.rng![sub])}
 	default: exitErr(#file,#line,-1)}
 }
 func swiftDraw(_ shader: Shader)
@@ -289,7 +299,7 @@ func swiftDraw(_ shader: Shader)
 	code.commit()
 	case (Adpoint):
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
-	for range in array {
+	for range in third {
 		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
 		var nums:[Int] = []
 		var pers:[Int] = []
