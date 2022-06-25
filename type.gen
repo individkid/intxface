@@ -41,7 +41,7 @@ Memory = {
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
-	"Polytopez", -- matrix per set of planes
+	"Fewmatz", -- matrix per set of planes
 	"Swarmz", -- array of points around focal point
 	"Texturez", -- memory for textures
 	"Basisz", -- base for each dimension
@@ -59,14 +59,14 @@ Memory = {
 	"Actionz", -- set action
 	"Selectz", -- set select
 	"Shaderz", -- set shader
-	"WarpHandz", -- warp hand
-	"WarpFingerz", -- warp finger
-	"WarpClickz", -- warp click
+	"Handz", -- warp hand
+	"Fingerz", -- warp finger
+	"Clickz", -- warp click
 }
 Atwill = {
-	"Athand", -- hand to run, finger to Atfinger, click to Atclick
-	"Atfinger", -- finger to run, hand to Athand, click to Atclick
-	"Atclick", -- hand to run, click to Athand
+	"Atmouse", -- hand or finger to draw, click to Atclick
+	"Atclick", -- hand to pierce, click to Athand
+	"Atsend", -- hand to pierce, click to send
 	"Atonce", -- run, to Atnever
 	"Atnever", -- don't run
 }
@@ -74,19 +74,16 @@ Action = {
 	"Additive", -- include region above pierce
 	"Subtract", -- exclude region below pierce
 	"Refine", -- add random plane through pierce
-	"Translate", -- rigidly move,
-		-- by hand parallel, by finger perpendicular
-	"Rotate", -- vector is pierce to hand on picture
-		-- perpendicular to vector paralelle to picture is hand axis
-		-- vector is finger axis
-	"Scale", -- pierce point moved by hand is fixed for finger
-	"Stretch", -- for finger parallel, for hand perpendicular,
-		-- to picture through pierce fixed
+}
+Xsform = {
+	"Translate", -- to picture, hand parallel, finger normal
+	"Rotate", -- start to moved with fixed of, hand cross, finger moved
+	"Scale", -- to pictue fixed of, hand normal, finger paralellel
 }
 Select = {
 	"Universe", -- entire view
 	"Polytope", -- set of planes
-	"Single", -- single plane
+	"Element", -- single plane
 }
 Shader = {
 	"Dipoint", -- display from points
@@ -239,7 +236,7 @@ Client = {
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
-	{"pol","Matrix",{["mem"]={["Polytopez"]=true}},"siz"},
+	{"few","Matrix",{["mem"]={["Fewmatz"]=true}},"siz"},
 	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
 	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
@@ -257,9 +254,9 @@ Client = {
 	{"act","Action",{["mem"]={["Actionz"]=true}},"siz"},
 	{"sel","Select",{["mem"]={["Selectz"]=true}},"siz"},
 	{"sha","Shader",{["mem"]={["Shaderz"]=true}},"siz"},
-	{"whs","Old",{["mem"]={["WarpHandz"]=true}},"siz"},
-	{"wfs","Old",{["mem"]={["WarpFingerz"]=true}},"siz"},
-	{"wcs","Old",{["mem"]={["WarpClickz"]=true}},"siz"},
+	{"whs","Old",{["mem"]={["Handz"]=true}},"siz"},
+	{"wfs","Old",{["mem"]={["Fingerz"]=true}},"siz"},
+	{"wcs","Old",{["mem"]={["Clickz"]=true}},"siz"},
 }
 Sculpt = {
 	{"cfg","Ture",{},{}},

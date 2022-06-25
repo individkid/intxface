@@ -16,9 +16,11 @@ struct Kernel {
 	struct Vector fixed; // fixed point
 	struct Vector start; // start axis
 	struct Vector current; // current axis
+	float angle; // roller delta
 };
 enum Atwill atwill = 0;
 enum Action action = 0;
+enum Xsform xsform = 0;
 enum Select select = 0;
 enum Shader shader = 0;
 struct Kernel subject = {0};
@@ -28,6 +30,21 @@ struct Kernel facet = {0};
 struct Ranje *range = {0};
 int ranges = 0;
 
+void planeAlize(float *dir, const float *vec)
+{
+}
+void planeCross(float *axe, const float *fix, const float *pic, const float *cur)
+{
+}
+void planeXtate(float *mat, const float *fix, const float *pic, const float *cur, float ang)
+{
+}
+void planeXlate(float *mat, const float *fix, const float *pic, const float *cur, float ang)
+{
+}
+void planeScale(float *mat, const float *fix, const float *pic, const float *cur, float ang)
+{
+}
 void planeInit(vftype init, uftype dma, wftype draw)
 {
 	shareInit(); // from share.h
