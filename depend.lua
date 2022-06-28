@@ -1,630 +1,120 @@
---[[
-Theory:
-Files are buildable or not.
-
-Adding dependies to a makefile does not add build rules.
-So, if a file is buildable in the presence of some set of files,
-then it is buildable by a makefile without dependencies.
-
-If a makefile has wildcards, the wildcards must also be after the colons.
-So, if a file can be built, its name is known from makefile and listing.
-
-Thus, we can build all buildable files,
-by cumulatively attempting to build all that can be named.
-
-A file's dependencies are deducible if it and its dependencies exist.
---]]
-function extension(file)
-	local fileExpr = "(.*)(%..*)"
-	if not file then return "" end
-	local base,ext = string.match(file,fileExpr)
-	if not ext then return "" end
-	return ext
-end
-function sizeof(tab)
-	local count = 0
-	for k,v in pairs(tab) do
-		count = count + 1
+function debug()
+	local greplist = io.open("depend.err")
+	for line in greplist:lines() do
+		io.stderr:write(line.."\n")
 	end
-	return count
+	greplist:close()
 end
-function empty(tab)
-	for k,v in pairs(tab) do
-		return false
+todo = {}
+copy = {}
+fileExp = "(.*)(%..*)"
+autoExt = {".h",".c",".m",".cpp",".hs",".lua",".sw"}
+mainExt = {".c",".cpp",".m",".hs",".lua",".sw"}
+mainSuf = {"C","Cpp","M","Hs","Lua","Sw"}
+copySuf = {"C.o","Cpp.o","M.o",".hs",".lua","Sw.o"}
+mainPat = {"^int main\\(int argc",
+	"^int main\\(int argc",
+	"^int main\\(void\\)",
+	"^main :: IO \\(\\)",
+	"^-- MAIN",
+	"^// MAIN",
+	"^// MAIN"}
+function matchCall1(pat,exp,fnc)
+	local one = string.match(pat,exp)
+	if one then fnc(one); return true end
+	return false
+end
+function matchCall2(pat,exp,fnc)
+	local one,two = string.match(pat,exp)
+	if one and two then fnc(one,two); return true end
+	return false
+end
+function matchCall3(pat,exp,fnc)
+	local one,two,three = string.match(pat,exp)
+	if one and two and three then fnc(one,two,three); return true end
+	return false
+end
+function appendTarget(der,dee)
+	todo[#todo+1] = der
+	copy[der] = {[dee] = true}
+end
+function appendDepend(der,dee,set)
+	if copy[dee] then
+		for k,v in pairs(copy[dee]) do
+			set[k] = true
+		end
+	else
+		set[dee] = true
 	end
+	os.execute("echo "..der..": "..dee.." >> depend.mk")
+end
+function executeCopy(top,set)
+	local retval = true
+	io.stderr:write("copy")
+	for k,v in pairs(set) do
+		io.stderr:write(" "..k)
+		os.execute("cp "..k.." depend 2> depend.err > depend.out")
+		local greplist = io.open("depend.err")
+		local done = true
+		local lines = {}
+		for line in greplist:lines() do
+			lines[#lines+1] = line
+			if matchCall1(line,"^cp: (.*)Sw.o: No such file or directory$",function(base) io.stderr:write("\ncopy 1 "..line); appendTarget(base.."Sw.o",base..".sw") end) then done = false; break end
+		end
+		greplist:close()
+		if not (#lines == 0) and not done then retval = false; break end
+		if not (#lines == 0) and done then for k,v in ipairs(lines) do io.stderr:write("\ncopy: "..v.."\n") end os.exit() end
+	end
+	io.stderr:write("\n")
+	return retval
+end
+function executeMake(top,set)
+	io.stderr:write("make "..top.."\n")
+	os.execute("make -C depend "..top.." 2> depend.err > depend.out")
+	local greplist = io.open("depend.err")
+	local done = true
+	local lines = {}
+	for line in greplist:lines() do
+		lines[#lines+1] = line
+		if matchCall1(line,"^lua: cannot open (.*): No such file or directory$",function(dofile) io.stderr:write("make 1 "..line.."\n"); appendDepend(top,dofile,set) end) then done = false; break end
+		if matchCall1(line,"error: header '(.*)' not found$",function(header) io.stderr:write("make 2 "..line.."\n"); appendDepend(top,header,set) end) then done = false; break end
+	end
+	greplist:close()
+	if not (#lines == 0) and not done then return false end
+	if not (#lines == 0) and done then for k,v in ipairs(lines) do io.stderr:write("make: "..v.."\n") end os.exit() end
 	return true
 end
-function isin(tab,key,val)
-	local temp = tab
-	for k,v in ipairs(key) do
-		if not (type(temp) == "table") then return false end
-		if (type(temp[v]) == "nil") then return false end
-		temp = temp[v]
-	end
-	if (val == nil) then return true end
-	if not (temp == val) then return false end
-	return true
-end
-function andwhy(work,der,dee,why)
-	if not (type(work[der]) == "table") then work[der] = {} end
-	if not (type(work[der][dee]) == "table") then work[der][dee] = {} end
-	work[der][dee][why] = true
-end
-function depend(tab,key,val)
-	if not (type(tab[key]) == "table") then tab[key] = {} end
-	tab[key][val] = true
-end
-function insert(work,tab,key)
-	if not (type(work) == "table") then return end
-	local temp = work
-	for k,v in ipairs(key) do
-		if not (type(temp[v]) == "table") then
-			if (type(tab[k][v]) == "table") or (type(tab[k][v]) == "nil") then
-				temp[v] = {}
-			else
-				temp[v] = tab[k][v]
-			end
-		end
-		temp = temp[v]
-	end
-end
-function insert1(set,val,dbg)
-	if val and not (val == "") and not set[val] then set[val] = {} end
-	if val and not (val == "") then set[val][dbg] = true end
-end
-function insert2(tab,sub,val,dbg)
-	if val and not (val == "") and not tab[sub] then tab[sub] = {} end
-	insert1(tab[sub],val,dbg)
-end
-function precede(work,todo,list,tab,set,key)
-	work[#work+1] = tab
-	todo[#todo+1] = set
-	list[#list+1] = key
-end
-function finish(work,todo,list)
-	work[#work] = nil;
-	todo[#todo] = nil;
-	list[#list] = nil;
-end
-function consume(todo,list)
-	list[#list] = next(todo[#todo])
-	todo[#todo][list[#list]] = nil
-end
-function follow(work,todo,list,tab)
-	work[#work+1] = tab
-	todo[#todo+1] = {}
-	for k,v in pairs(work[#work]) do todo[#todo][k] = true end
-	list[#list+1] = next(todo[#todo])
-	todo[#todo][list[#list]] = nil
-end
-function modify(given,control)
-	local work = {}
-	local todo = {}
-	local list = {}
-	follow(work,todo,list,given)
-	repeat
-		-- follow to leaf
-		while (#work > 0) and (type(work[#work][list[#list]]) == "table") and
-			not (type(next(work[#work][list[#list]])) == "nil") do
-			follow(work,todo,list,work[#work][list[#list]])
-		end
-		control(work,todo,list)
-		local twork = {}
-		local ttodo = {}
-		local tlist = {}
-		local last = work[1]
-		-- clean off invalid
-		for k,v in ipairs(list) do
-			if not (work[k] == last) or not (type(work[k]) == "table") or not work[k][v] then break end
-			last = work[k][v]
-			precede(twork,ttodo,tlist,work[k],todo[k],v)
-		end
-		-- clean off finished
-		while (#twork > 0) and (type(next(ttodo[#ttodo])) == "nil") do
-			finish(twork,ttodo,tlist)
-		end
-		-- consume next
-		if (#twork > 0) then
-			consume(ttodo,tlist)
-		end
-		list = tlist
-		work = twork
-		todo = ttodo
-	until (#work == 0)
-end
-function debug(given)
-	local str = ""
-	local open = false
-	local done = {}
-	local function control(tab,set,key)
-		local same = 0
-		while (#done > #key) do
-			done[#done] = nil
-		end
-		while (same < #done) and (done[same+1] == key[same+1]) do
-			same = same + 1
-		end
-		while (#done > 0) and (same < #done) do
-			done[#done] = nil
-		end
-		while (#done < #key) do
-			local temp = key[#done+1]
-			local count = 1
-			done[#done+1] = temp
-			if (#done == #key) and open then
-				str = str..", "
-			end
-			if (#done == #key) and not open then
-				open = true
-				str = str.." ("
-			end
-			if (#done < #key) and open then
-				open = false
-				str = str..")\n"
-			end
-			while (#done < #key) and (count < #done) do
-				count = count + 1
-				str = str.." "
-			end
-			str = str..temp
-			if (#done < (#key-1)) then
-				str = str..":\n"
-			end
-		end
-	end
-	modify(given,control)
-	if open then str = str..")" end
-	io.stderr:write(str.."\n")
-end
-function copy(given)
-	local retval = {}
-	local function control(tab,set,key)
-		insert(retval,tab,key)
-	end
-	modify(given,control)
-	return retval
-end
-function inboth(src1,src2)
-	local retval = {}
-	local function control(tab,set,key)
-		if not isin(src2,key,tab[#tab][key[#key]]) then return end
-		insert(retval,tab,key)
-	end
-	modify(src1,control)
-	return retval
-end
-function ineither(src1,src2)
-	local retval = {}
-	local function control(tab,set,key)
-		insert(retval,tab,key)
-	end
-	modify(src1,control)
-	modify(src2,control)
-	return retval
-end
-function infirst(src1,src2)
-	local retval = {}
-	local function control(tab,set,key)
-		if isin(src2,key,tab[#tab][key[#key]]) then return end
-		insert(retval,tab,key)
-	end
-	modify(src1,control)
-	return retval
-end
-function filter(given,func)
-	local retval = {}
-	local function control(tab,set,key)
-		if not func(key) then return end
-		insert(retval,tab,key)
-	end
-	modify(given,control)
-	return retval
-end
-function contour(dst,src,lev)
-	local function control(tab,set,key)
-		if (#key >= lev) then dst[key[lev]] = true end
-	end
-	modify(src,control)
-end
-function connect(given,derfun,fundee)
-	local function control(tab,set,key)
-		if (#key < 1) then return end
-		local work,der = tab[1],key[1]
-		if (type(derfun[der]) == "table") then
-			for k,v in pairs(derfun[der]) do
-				local why = k
-				if (type(fundee[why]) == "table") then
-					for ky,vl in pairs(fundee[why]) do
-						local dee = ky
-						andwhy(work,der,dee,why)
-					end
-				end
-			end
-		end
-	end
-	modify(given,control)
-end
-function direct(given,derdee)
-	local function control(tab,set,key)
-		if (#key < 1) then return end
-		local work,der = tab[1],key[1]
-		if (type(derdee[der]) == "table") then
-			for k,v in pairs(derdee[der]) do
-				local dee = k
-				if (type(v) == "table") then
-					for ky,vl in pairs(v) do
-						local why = ky
-						andwhy(work,der,dee,why)
-					end
-				end
-			end
-		end
-	end
-	modify(given,control)
-end
-function collect(given,derdee)
-	local function control(tab,set,key)
-		if (#key < 2) then return end
-		local der = key[1]
-		local work,todo,why = tab[2],set[2],key[2]
-		if (type(derdee[why]) == "table") then
-			for k,v in pairs(derdee[why]) do
-				local dee = k
-				if not (type(work[dee]) == "table") then
-					work[dee] = {}
-					todo[dee] = true
-				end
-				work[dee][why] = true
-			end
-		end
-	end
-	modify(given,control)
-end
-function make()
-	while true do
-		-- List .c .hs .sw .cpp .lua .gen .src .metal .g .o files.
-		local files = {}
-		os.execute("ls -1 > depend.tmp")
-		local dirlist = io.open("depend.tmp")
-		for line in dirlist:lines() do
-			files[line] = true
-		end
-		dirlist:close()
-		-- Read Makefile for targets of files.
-		local targets = {}
-		local makefile = io.open("Makefile", "r")
-		for line in makefile:lines() do
-			tgt,pat = string.match(line,"%%(.*): %%(.*)")
-			if tgt then
-				expr = "^(.*)("..string.gsub(pat,"%.","%%.")..")$"
-				for k,v in pairs(files) do
-					base,ext = string.match(k,expr)
-					if base then
-						targets[base..tgt] = true
-					end
-				end
-			end
-		end
-		makefile:close()
-		-- Call make on each target not in files and note if it was built.
-		local goback = false
-		for k,v in pairs(targets) do
-			if not files[k] then
-				local retval = os.execute("make DEPEND=1 "..k.." 2> depend.err > depend.out")
-				retval = retval and os.execute("[ -e "..k.." ]")
-				if retval then
-					goback = true
-				end
-			end
-		end
-		-- Repeat until none built.
-		if not goback then break end
-	end
-end
-function glob(mains,files)
-	-- List files with main pattern for extension.
-	os.execute("grep -l -E -- '^int main\\(int argc' *.c > depend.tmp")
-	os.execute("grep -l -E -- '^int main\\(int argc' *.cpp >> depend.tmp")
-	os.execute("grep -l -E -- '^int main\\(void\\)' *.m >> depend.tmp")
-	os.execute("grep -l -E -- '^main :: IO \\(\\)' *.hs >> depend.tmp")
-	os.execute("grep -l -E -- '^-- MAIN' *.lua >> depend.tmp")
-	os.execute("grep -l -E -- '^// MAIN' *.sw >> depend.tmp")
-	os.execute("grep -l -E -- '^// MAIN' *.g >> depend.tmp")
+-- List files with main pattern
+for k,v in ipairs(mainExt) do
+	os.execute("grep -l -E -- '"..mainPat[k].."' *"..v.." > depend.tmp")
 	local greplist = io.open("depend.tmp")
 	for line in greplist:lines() do
-		mains[line] = true
-	end
-	greplist:close()
-	-- List all files
-	os.execute("ls > depend.tmp")
-	greplist = io.open("depend.tmp")
-	for line in greplist:lines() do
-		files[line] = true
+		local baser,exter = string.match(line,fileExp)
+		appendTarget(baser..mainSuf[k],baser..copySuf[k])
 	end
 	greplist:close()
 end
-function parse(files,invokes,declares,includes)
-	-- Find dependees dependers includes of the file they are in from multiple regexs per extension.
-	local fileExpr = "(.*)(%..*)"
-	local cDeclareExpr = "^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%("
-	local swDeclareExpr = "^func%s%s*([a-z][a-zA-Z0-9_]*)"
-	local luaDeclareExpr = "^function%s%s*([a-z][a-zA-Z0-9_]*)%("
-	local cInvokeExpr = "(.*)[^a-zA-Z0-9_.]([a-z][a-zA-Z0-9_]*)%("
-	local includeExpr = "^#include "
-	local moduleExpr = "^module +([^ ]*) +where"
-	local importExpr = "^import +([^ ]*)"
-	local foreignExpr = "^foreign import ccall "
-	local dofileExpr = "^dofile%("
-	local requireExpr = "^require +"
-	local graphicsExpr = "makeLibrary%(filepath:"
-	local cOpenExpr = "/*"; local cCloseExpr = "*/"
-	local luaOpenExpr = "-[["; local luaCloseExpr = "-]]"
-	local hsOpenExpr = "{-"; local hsCloseExpr = "-}"
-	local swOpenExpr = "/*"; local swCloseExpr = "*/"
-	local cCommentExpr = "//"; local luaCommentExpr = "--"
-	local hsCommentExpr = "--"; local swCommentExpr = "//"
-	for k,v in pairs(files) do
-		local openExpr,commentExpr,declareExpr,invokeExpr,suffixVal
-		local base,ext = string.match(k,fileExpr)
-		if
-			base and
-			(ext == ".lua" or
-			ext == ".gen" or
-			ext == ".src") then
-			openExpr = luaOpenExpr
-			closeExpr = luaCloseExpr
-			commentExpr = luaCommentExpr
-			declareExpr = nil
-			invokeExpr = nil
-			suffixVal = nil
-		elseif
-			base and
-			ext == ".sw" then
-			openExpr = swOpenExpr
-			closeExpr = swCloseExpr
-			commentExpr = swCommentExpr
-			declareExpr = swDeclareExpr
-			invokeExpr = cInvokeExpr
-			suffixVal = "Sw"
-		elseif
-			base and
-			ext == ".hs" then
-			openExpr = hsOpenExpr
-			closeExpr = hsCloseExpr
-			commentExpr = hsCommentExpr
-			declareExpr = nil
-			invokeExpr = nil
-			suffixVal = nil
-		elseif
-			base and
-			(ext == ".h" or
-			ext == ".c" or
-			ext == ".m" or
-			ext == ".cpp") then
-			openExpr = cOpenExpr
-			closeExpr = cCloseExpr
-			commentExpr = cCommentExpr
-			declareExpr = cDeclareExpr
-			invokeExpr = cInvokeExpr
-			suffixVal = "C"
-		elseif
-			base and
-			ext == ".g" then
-			openExpr = cOpenExpr
-			closeExpr = cCloseExpr
-			commentExpr = cCommentExpr
-			declareExpr = nil
-			invokeExpr = nil
-			suffixVal = nil
-		else
-			base = nil
-		end
-		if base then
-			local file = io.open(k);
-			local cmnt = false; local abrv = false; local quot = false
-			for line in file:lines() do
-				local more = line
-				local name = ""
-				local len = more:len() - 1
-				local bgn = 1; local ndg = 1
-				if (not quot) and (not cmnt) and (not abrv) then
-					while (bgn<=len) do
-						if (more:sub(bgn,bgn+1)==openExpr) then break end
-						if (more:sub(bgn,bgn+1)==commentExpr) then break end
-						if (more:sub(bgn,bgn)=="\"") then break end
-						bgn = bgn + 1
-					end
-					if (bgn<=len) then
-						if (more:sub(bgn,bgn+1)==openExpr) then cmnt = true end
-						if (more:sub(bgn,bgn+1)==commentExpr) then abrv = true end
-						if (more:sub(bgn,bgn)=="\"") then quot = true end
-					end
-				end
-				if cmnt then
-					ndg = bgn
-					while (ndg<=len) do
-						if (more:sub(ndg,ndg+1)==closeExpr) then break end
-						ndg = ndg + 1
-					end
-				end
-				if abrv then
-					ndg = more:len()
-				end
-				if quot then
-					ndg = bgn + 1
-					while (ndg<=more:len()) do
-						if (more:sub(ndg,ndg)=="\"") then break end
-						ndg = ndg + 1
-					end
-				end
-				if cmnt or abrv or quot then
-					if cmnt and (more:sub(ndg,ndg+1)==closeExpr) then
-						cmnt = false;
-					end
-					if abrv then
-						abrv = false;
-					end
-					if quot and (more:sub(ndg,ndg)=="\"") then
-						name = more:sub(bgn+1,ndg-1)
-						quot = false
-					end
-					more = more:sub(1,bgn-1)..more:sub(ndg+2)
-				end
-				local declareVal,includeVal,importVal,foreignVal,dofileVal,requireVal,graphicsVal,haskellVal,moduleVal,invokeVal
-				if declareExpr then declareVal = string.match(more,declareExpr) else declareVal = nil end
-				includeVal = string.match(more,includeExpr)
-				foreignVal = string.match(more,foreignExpr)
-				dofileVal = string.match(more,dofileExpr)
-				requireVal = string.match(more,requireExpr)
-				if (ext == ".sw") then graphicsVal = string.match(more,graphicsExpr) else graphicsVal = nil end
-				if (ext == ".sw") then importVal = string.match(more,importExpr) else importVal = nil end
-				if (ext == ".hs") then haskellVal = string.match(more,importExpr) else haskellVal = nil end
-				if (ext == ".hs") then moduleVal = string.match(more,moduleExpr) else moduleVal = nil end
-				if includeVal then insert2(includes,k,name,"includeVal")
-				elseif importVal then insert2(includes,k,importVal..".h","importVal")
-				elseif dofileVal then insert2(includes,k,name,"dofileVal")
-				elseif requireVal then insert2(includes,k,name..".c","requireVal")
-				elseif graphicsVal then insert2(includes,k,name,"graphicsVal")
-				elseif declareVal then insert2(declares,declareVal..suffixVal,k,"declareVal")
-				elseif moduleVal then insert2(declares,moduleVal.."Hs",k,"moduleVal")
-				elseif foreignVal then insert2(invokes,k,name.."C","foreignVal")
-				elseif haskellVal then insert2(invokes,k,haskellVal.."Hs","haskellVal")
-				elseif invokeExpr then while (1) do
-					more,invokeVal = string.match(more,invokeExpr)
-					if not invokeVal then break end
-					insert2(invokes,k,invokeVal..suffixVal,"invokeVal")
-				end end
-			end
-		end
+-- List generated files
+os.execute("ls *.gen > depend.tmp")
+greplist = io.open("depend.tmp")
+for line in greplist:lines() do
+	local baser,exter = string.match(line,fileExp)
+	for k,v in ipairs(autoExt) do
+		appendTarget(baser..v,line)
 	end
 end
-function complete(files,includes)
-	local retval = {}
-	local fileExpr = "(.*)(%..*)"
-	local generate = {}
-	for k,v in pairs(files) do
-		local basee,extee = string.match(k,fileExpr)
-		if basee and (extee == ".gen") then
-			generate[basee] = true
-		end
+-- If make reports an error, append to depend.mk and add to copy
+-- If copy reports an error, append to todo and copy
+os.execute("rm -f depend.mk")
+os.execute("touch depend.mk")
+greplist:close()
+while #todo > 0 do
+	os.execute("rm -rf depend depend.err depend.out")
+	os.execute("mkdir depend")
+	os.execute("touch depend.err depend.out")
+	os.execute("cp Makefile depend.mk module.modulemap depend")
+	if executeCopy(todo[#todo],copy[todo[#todo]]) and executeMake(todo[#todo],copy[todo[#todo]]) then
+		os.execute("cp depend/* .")
+		todo[#todo] = nil
 	end
-	for k,v in pairs(files) do
-		local baser,exter = string.match(k,fileExpr)
-		if baser and generate[baser] and not (exter == ".gen") then
-			insert2(includes,k,baser..".gen","complete")
-			retval[k] = true
-		end
-	end
-	return retval
-end
-function translate(given,declares,includes)
-	local fileExpr = "(.*)(%..*)"
-	local langExpr = "(.*)(Sw)"
-	local function control(tab,set,key)
-		if (#key < 2) then return end
-		local der,dee,work = key[1],key[2],tab[2]
-		local baser,exter = string.match(der,fileExpr)
-		local basee,extee = string.match(dee,langExpr)
-		-- io.stderr:write("der "..der.." dee "..dee.." #key "..#key.." why "..key[3].."\n")
-		if (exter == ".sw") and (extee == "Sw") then
-			local incs = includes[der]
-			local decs = declares[basee.."C"]
-			if (type(incs) == "table") and (type(decs) == "table") then
-				for ky,vl in pairs(decs) do
-					local bas,ext = string.match(ky,fileExpr)
-					for k,v in pairs(vl) do
-						-- io.stderr:write("ky "..ky.." k "..k.."\n")
-					end
-					if (ext == ".h") and not (type(incs[ky]) == "nil") then
-						for k,v in pairs(incs[ky]) do
-							-- io.stderr:write("basee "..basee.." k "..k.."\n")
-							insert1(work,basee.."C",k)
-						end
-					end
-				end
-			end
-		end
-	end
-	modify(given,control)
-end
-function convert(given,mains,files,autos)
-	local retval = {}
-	local fileExpr = "(.*)(%..*)"
-	local function control(tab,set,key)
-		if (#key < 3) then return end
-		local der,dee,why = key[1],key[2],tab[3]
-		local baser,exter = string.match(der,fileExpr)
-		local basee,extee = string.match(dee,fileExpr)
-		if (exter == ".c") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
-		if (exter == ".cpp") and (extee == ".c") and mains[der] then depend(retval,baser.."C",basee.."C.o") end
-		if (exter == ".sw") and (extee == ".c") and mains[der] then depend(retval,baser.."Sw",basee.."C.o") end
-		if (exter == ".sw") and (extee == ".so") and mains[der] then depend(retval,baser.."Sw",dee) end
-		if (exter == ".sw") and (extee == ".h") and files[dee] then depend(retval,baser.."Sw.o",dee) end
-		if (exter == ".sw") and (extee == ".sw") and mains[der] then depend(retval,baser.."Sw.o",dee) end
-		if (exter == ".hs") and (extee == ".hs") and mains[der] then depend(retval,baser.."Hs",dee) end
-		if (exter == ".hs") and (extee == ".c") and mains[der] then depend(retval,baser.."Hs",basee.."C.o") end
-		if (exter == ".lua") and (extee == ".lua") and mains[der] then depend(retval,baser.."Lua",dee) end
-		if (exter == ".lua") and (extee == ".src") and mains[der] and not autos[der] then depend(retval,baser.."Lua",dee) end
-		if (exter == ".lua") and (extee == ".c") and mains[der] then depend(retval,baser.."Lua",basee..".so") end
-		if (exter == ".c") and (extee == ".h") and files[dee] then depend(retval,baser.."C.o",dee) end
-		if (exter == ".cpp") and (extee == ".h") and files[dee] then depend(retval,baser.."C.o",dee) end
-		if (exter == ".g") and (extee == ".h") and files[dee] then depend(retval,baser.."G.o",dee) end
-		if (exter == ".c") and (extee == ".src") and autos[der] then depend(retval,der,dee) end
-		if (exter == ".h") and (extee == ".src") and autos[der] then depend(retval,der,dee) end
-		if (exter == ".sw") and (extee == ".src") and autos[der] then depend(retval,der,dee) end
-		if (exter == ".hs") and (extee == ".src") and autos[der] then depend(retval,der,dee) end
-		if (exter == ".lua") and (extee == ".src") and autos[der] then depend(retval,der,dee) end
-	end
-	modify(given,control)
-	return retval
-end
-mains = {} -- set of main files
-files = {} -- set of all files
-autos = {} -- set of autogenerated files
-invokes = {} -- per file depends on funcs
-declares = {} -- per func depends on files
-includes = {} -- per file depends on files
-depends = {}
-collects = {}
-directs = {}
-actuals = {}
-dependers = {}
-dependees = {}
-autoincs = {}
-autodeps = {}
-make()
-glob(mains,files)
-parse(files,invokes,declares,includes)
-invokes = filter(invokes,function (key) return not declares[key[2]] or not declares[key[2]][key[1]] end) -- don't depend on depender
-translate(invokes,declares,includes)
-contour(depends,invokes,1) -- add without dependencies
-contour(depends,includes,1) -- add without dependencies
-connect(depends,invokes,declares) -- add function dependencies
-direct(depends,includes) -- add include dependencies
-depends = filter(depends,function (key) return not mains[key[2]] end) -- don't depend on mains
-directs = copy(depends)
-collects = filter(directs,function (key) return not (extension(key[1]) == ".c") or not (extension(key[2]) == ".h") end) -- don't #include .c
-collect(depends,collects) -- add indirect dependencies
-autos = complete(files,autoincs)
-contour(autodeps,autoincs,1)
-direct(autodeps,autoincs)
-collect(autodeps,directs)
-depends = ineither(depends,autodeps)
-actuals = convert(depends,mains,files,autos)
-for k,v in pairs(actuals) do
-	local sorted = {}
-	dependers[#dependers+1] = k
-	for ky,vl in pairs(v) do
-		sorted[#sorted+1] = ky
-	end
-	table.sort(sorted)
-	dependees[k] = sorted
-end
-table.sort(dependers)
-for k,v in ipairs(dependers) do
-	local str = v..":"
-	for ky,vl in ipairs(dependees[v]) do
-		str = str.." "..vl
-	end
-	print(str)
 end

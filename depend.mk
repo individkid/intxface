@@ -9,8 +9,8 @@ fileC.o: face.h type.h
 filerLua: face.so type.lua
 holeC: faceC.o typeC.o
 holeC.o: face.h type.h
-lineC: faceC.o typeC.o
-lineC.o: face.h type.h
+lineCpp: faceC.o typeC.o
+lineCpp.o: face.h type.h
 meticC.o: metic.h
 planeC.o: argx.h face.h metic.h plane.h share.h type.h
 planeSw: argxC.o faceC.o planeC.o planeG.so shareC.o

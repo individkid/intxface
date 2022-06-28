@@ -24,6 +24,10 @@ spacra.log: spacra
 
 %: %C
 	ln -f $< $@
+%: %M
+	ln -f $< $@
+%: %Cpp
+	ln -f $< $@
 %: %Hs
 	ln -f $< $@
 %: %A
@@ -35,6 +39,10 @@ spacra.log: spacra
 
 %C: %C.o
 	clang++ -L/usr/local/lib -o $@ $(filter %C.o,$^) ${LIBRARIES}
+%M: %M.o
+	clang++ -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES}
+%Cpp: %Cpp.o
+	clang++ -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
 	ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0 2> $*.out
 %A: %.agda
@@ -51,9 +59,9 @@ spacra.log: spacra
 
 %C.o: %.c
 	clang -o $@ -c $< -I /usr/local/include
-%C.o: %.m
+%M.o: %.m
 	clang -o $@ -c $< -I /usr/local/include
-%C.o: %.cpp
+%Cpp.o: %.cpp
 	clang -o $@ -c $< -I /usr/local/include
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | swiftc -o $@ -I . -c -
@@ -88,10 +96,10 @@ clean:
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer planra spacra
 	rm -f hole file line plane space
-	rm -f *C *Hs *A *Lua *Sw
+	rm -f *C *M *Cpp *Hs *A *Lua *Sw
 	rm -f *.err *.out *.log *.tmp
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	rm -f *.o *.so *.hi *_stub.h a.* *.metal
-	rm -rf *.agda *.agdai MAlonzo
-	rm -f depend type main help
+	rm -rf *.agda *.agdai MAlonzo depend
+	rm -f type main help
 
