@@ -7,6 +7,7 @@ function debug()
 end
 todo = {}
 copy = {}
+done = {}
 fileExp = "(.*)(%..*)"
 autoExt = {".h",".c",".m",".cpp",".hs",".lua",".sw"}
 mainExt = {".c",".cpp",".m",".hs",".lua",".sw"}
@@ -37,6 +38,7 @@ end
 function appendTarget(der,dee)
 	todo[#todo+1] = der
 	copy[der] = {[dee] = true}
+	done[der] = {}
 end
 function appendDepend(der,dee,set)
 	if copy[dee] then
@@ -46,7 +48,32 @@ function appendDepend(der,dee,set)
 	else
 		set[dee] = true
 	end
-	os.execute("echo "..der..": "..dee.." >> depend.mk")
+	done[der][dee] = true
+end
+function findDepend(pat,ext,exp,suf)
+	local retval = ""
+	os.execute("ls *"..ext.." > depend.tmp")
+	local filelist = io.open("depend.tmp")
+	for file in filelist:lines() do
+		local basee,extee = string.match(file,fileExp)
+		local linelist = io.open(file)
+		for line in linelist:lines() do
+			local found = string.match(line,exp)
+			if found == pat then retval = basee..suf; break end
+		end
+		linelist:close()
+		if not (retval == "") then break end
+	end
+	filelist:close()
+	if retval == "" then io.stderr:write("error: "..pat.."\n"); os.exit() end
+	io.stderr:write("find "..pat.." "..retval.."\n")
+	return retval
+end
+function nameDepend(name)
+	return findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","C.o")
+end
+function moduleDepend(module)
+	return findDepend(module,".hs","^module ([a-zA-Z]*) where",".hs")
 end
 function executeCopy(top,set)
 	local retval = true
@@ -55,15 +82,17 @@ function executeCopy(top,set)
 		io.stderr:write(" "..k)
 		os.execute("cp "..k.." depend 2> depend.err > depend.out")
 		local greplist = io.open("depend.err")
-		local done = true
+		local found = false
 		local lines = {}
 		for line in greplist:lines() do
 			lines[#lines+1] = line
-			if matchCall1(line,"^cp: (.*)Sw.o: No such file or directory$",function(base) io.stderr:write("\ncopy 1 "..line); appendTarget(base.."Sw.o",base..".sw") end) then done = false; break end
+			if matchCall1(line,"^cp: (.*)Sw.o: No such file or directory$",function(base) io.stderr:write("\ncopy 1 "..line); appendTarget(base.."Sw.o",base..".sw") end) then found = true; break end
+			if matchCall1(line,"^cp: (.*)C.o: No such file or directory$",function(base) io.stderr:write("\ncopy 2 "..line); appendTarget(base.."C.o",base..".c") end) then found = true; break end
+			if matchCall1(line,"^cp: (.*)Cpp.o: No such file or directory$",function(base) io.stderr:write("\ncopy 3 "..line); appendTarget(base.."Cpp.o",base..".cpp") end) then found = true; break end
 		end
 		greplist:close()
-		if not (#lines == 0) and not done then retval = false; break end
-		if not (#lines == 0) and done then for k,v in ipairs(lines) do io.stderr:write("\ncopy: "..v.."\n") end os.exit() end
+		if not (#lines == 0) and found then retval = false; break end
+		if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("\ncopy: "..v.."\n") end os.exit() end
 	end
 	io.stderr:write("\n")
 	return retval
@@ -72,16 +101,19 @@ function executeMake(top,set)
 	io.stderr:write("make "..top.."\n")
 	os.execute("make -C depend "..top.." 2> depend.err > depend.out")
 	local greplist = io.open("depend.err")
-	local done = true
+	local found = false
 	local lines = {}
 	for line in greplist:lines() do
 		lines[#lines+1] = line
-		if matchCall1(line,"^lua: cannot open (.*): No such file or directory$",function(dofile) io.stderr:write("make 1 "..line.."\n"); appendDepend(top,dofile,set) end) then done = false; break end
-		if matchCall1(line,"error: header '(.*)' not found$",function(header) io.stderr:write("make 2 "..line.."\n"); appendDepend(top,header,set) end) then done = false; break end
+		if matchCall1(line,"^lua: cannot open (.*): No such file or directory$",function(dofile) io.stderr:write("make 1 "..line.."\n"); appendDepend(top,dofile,set) end) then found = true; break end
+		if matchCall1(line,"error: header '(.*)' not found$",function(header) io.stderr:write("make 2 "..line.."\n"); appendDepend(top,header,set) end) then found = true; break end
+		if matchCall1(line,"^ *._(.*)., referenced from:",function(name) io.stderr:write("make 3 "..line.."\n"); appendDepend(top,nameDepend(name),set) end) then found = true; break end
+		if matchCall1(line,"fatal error: '(.*)' file not found",function(include) io.stderr:write("make 4 "..line.."\n"); appendDepend(top,include,set) end) then found = true; break end
+		if matchCall1(line,"^[0-9]* *| import ([a-zA-z]*)",function(module) io.stderr:write("make 5 "..line.."\n"); appendDepend(top,moduleDepend(module),set) end) then found = true; break end
 	end
 	greplist:close()
-	if not (#lines == 0) and not done then return false end
-	if not (#lines == 0) and done then for k,v in ipairs(lines) do io.stderr:write("make: "..v.."\n") end os.exit() end
+	if not (#lines == 0) and found then return false end
+	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("make: "..v.."\n") end os.exit() end
 	return true
 end
 -- List files with main pattern
@@ -105,10 +137,28 @@ for line in greplist:lines() do
 end
 -- If make reports an error, append to depend.mk and add to copy
 -- If copy reports an error, append to todo and copy
-os.execute("rm -f depend.mk")
-os.execute("touch depend.mk")
 greplist:close()
 while #todo > 0 do
+	local dep = {}
+	os.execute("rm -f depend.mk")
+	os.execute("touch depend.mk")
+	for k,v in pairs(done) do
+		dep[#dep+1] = k
+	end
+	table.sort(dep)
+	for k,v in ipairs(dep) do
+		local cmd = "echo "..v..":"
+		local dee = {}
+		for ky,vl in pairs(done[v]) do
+			dee[#dee+1] = ky
+		end
+		table.sort(dee)
+		for ky,vl in ipairs(dee) do
+			cmd = cmd.." "..vl
+		end
+		cmd = cmd.." >> depend.mk"
+		if not (#dee == 0) then os.execute(cmd) end
+	end
 	os.execute("rm -rf depend depend.err depend.out")
 	os.execute("mkdir depend")
 	os.execute("touch depend.err depend.out")

@@ -44,7 +44,7 @@ spacra.log: spacra
 %Cpp: %Cpp.o
 	clang++ -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
-	ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0 2> $*.out
+	ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0 2>&1 | grep -E '^[0-9]* *\|'
 %A: %.agda
 	agda --compile --ghc-flag=-o --ghc-flag=$@ $<
 %Lua: %.lua
