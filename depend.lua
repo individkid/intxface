@@ -238,7 +238,7 @@ function checkMake()
 		if matchCall(line,"^ *._([.%w]*)., referenced from:",function(check) io.stdout:write(line); checkError(objectDepend(check)) end) then found = true; break end
 		if matchCall(line,"^[0-9]* *%| import ([%w]*)$",function(check) io.stdout:write(line); checkError(moduleDepend(check)) end) then found = true; break end
 		if matchCall(line,"error: no such file or directory: '([.%w]*)'$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
-		if matchCall(line,"^cannot execute ([%w]*)$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
+		if matchCall(line,"^error: cannot execute file: ([%w]*)$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
 		if matchCall(line,"^lua: cannot open ([.%w]*):",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
 		if matchCall(line,"module '([%w]*)' not found",function(check) io.stdout:write(line); checkError(check..".so") end) then found = true; break end
 		if matchCall(line,"error: header '([.%w]*)' not found$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end

@@ -20,6 +20,8 @@ end
 
 -- MAIN
 ident1 = forkExec("file")
+if ident1 == -1 then io.stderr:write("error: cannot execute file: file\n"); os.exit(-1) end
+io.stdout:write("ident1 "..ident1.."\n")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0

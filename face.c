@@ -275,6 +275,7 @@ int forkExec(const char *exe)
 		val = snprintf(idt,32,"%d",lim); if (val < 0 || val > 32) return -1;
 		val = execl(exe,exe,ist,ost,idt,0); if (val < 0) return -1;
 		return -1;}
+        if (pid[lim] == -1) return -1;
 	val = close(c2p[1]); if (val < 0) return -1;
 	val = close(p2c[0]); if (val < 0) return -1;
 	inp[lim] = c2p[0];

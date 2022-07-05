@@ -38,9 +38,9 @@ int main(int argc, char **argv)
 	writeOld(old,0);
 	return 0;}
 	int size = 0;
-	if (forkExec("facerC") != size++) {fprintf(stderr,"cannot execute facerC\n"); return -1;}
-	if (forkExec("facerLua") != size++) {fprintf(stderr,"cannot execute facerLua\n"); return -1;}
-	if (forkExec("facerHs") != size++) {fprintf(stderr,"cannot execute facerHs\n"); return -1;}
+	if (forkExec("facerC") != size++) {fprintf(stderr,"error: cannot execute file: facerC\n"); return -1;}
+	if (forkExec("facerLua") != size++) {fprintf(stderr,"error: cannot execute file: facerLua\n"); return -1;}
+	if (forkExec("facerHs") != size++) {fprintf(stderr,"cerror: annot execute file: facerHs\n"); return -1;}
 	for (int i = 0; i < size; i++) readNote(excfunc,i);
 	int handle = openFile("oops.tmp"); readJump(errfunc,handle); writeJump(errfunc,handle);
 	int hello = openFile("hello.tmp");
