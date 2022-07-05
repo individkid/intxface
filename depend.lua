@@ -155,24 +155,27 @@ function checkError(check,rule)
 	local isroot = (top == "")
 	local ischeck = (check == top)
 	local isrule = (rule == top)
+	local isnil = (rule == nil)
 	local exists = fileExists(check)
 	local isdone = not not done[top][check]
-	local cond = bools({isroot,ischeck,isrule,exists,isdone})
+	local cond = bools({isroot,ischeck,isrule,isnil,exists,isdone})
 	io.stdout:write(" "..cond)
-	if cond == "10000" then pushError(check); return end
-	if cond == "01000" then ruleError(check); return end
-	if cond == "01010" then copyError(check); return end
-	if cond == "00010" then doneError(check); return end
-	if cond == "00111" then copyError(check); return end
-	if cond == "00000" then doneError(check); return end
-	if cond == "00101" then pushError(check); return end
-	if cond == "10010" then copyError(check); return end
-	if cond == "00011" then pushError(check); return end
-	if cond == "00110" then doneError(check); return end
+	if cond == "100100" then pushError(check); return end
+	if cond == "010100" then ruleError(check); return end
+	if cond == "010110" then copyError(check); return end
+	if cond == "000110" then doneError(check); return end
+	if cond == "001011" then copyError(check); return end
+	if cond == "000100" then doneError(check); return end
+	if cond == "001001" then pushError(check); return end
+	if cond == "000010" then copyError(check); return end
+	if cond == "000111" then copyError(check); return end
+	if cond == "100110" then copyError(check); return end
+	if cond == "100000" then pushError(check); return end
+	if cond == "100010" then copyError(check); return end
 	io.stdout:write("\n")
 	io.stderr:write("checkError '"..top.."'"..check)
 	if rule then io.stderr:write("'"..rule) end
-	io.stderr:write("' "..bools({isroot,ischeck,isrule,exists,isdone,iscopy}).."\n"); os.exit()
+	io.stderr:write("' "..cond.."\n"); os.exit()
 end
 function checkSetup()
 	local dep = {}
@@ -228,6 +231,7 @@ function checkMake()
 	for line in greplist:lines() do
 		lines[#lines+1] = line
 		if matchCall(line,"^/bin/sh: ./([.%w]*): No such file or directory$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
+		if matchCall(line,"^/bin/sh: ./([%w]*): No such file or directory$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
 		if matchCall(line,"No rule to make target `([.%w]*)'.  Stop.$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
 		if matchCall(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$",function(check,rule) io.stdout:write(line); checkError(check,rule) end) then found = true; break end
 		if matchCall(line,"fatal error: '([.%w]*)' file not found$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
@@ -237,6 +241,8 @@ function checkMake()
 		if matchCall(line,"^cannot execute ([%w]*)$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
 		if matchCall(line,"^lua: cannot open ([.%w]*):",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
 		if matchCall(line,"module '([%w]*)' not found",function(check) io.stdout:write(line); checkError(check..".so") end) then found = true; break end
+		if matchCall(line,"error: header '([.%w]*)' not found$",function(check) io.stdout:write(line); checkError(check) end) then found = true; break end
+		if matchCall(line,"ld: file not found: ([.%w]*)$",function(check) io.stdout:write(line); checkError(check)  end) then found = true; break end
 	end
 	greplist:close()
 	if not (#lines == 0) and found then return false end
