@@ -261,6 +261,7 @@ int main(int argc, char **argv)
 	if (setjmp(errbuf) != 0) {writeHub(); return -1;}
 	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
 	readFile(ptr,sub);
+	printf("ACT %d %s\n",ACT,STR);
 	switch (ACT) {
 		case (NewHub): {
 		int len = strlen(STR);

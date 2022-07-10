@@ -67,6 +67,8 @@ function fileExists(file)
 end
 function findDepend(pat,ext,exp,suf)
 	local retval = ""
+	os.execute("ls *.gen | cut -f 1 -d '.' > depend.out")
+	os.execute("for file in `cat depend.out`; do make $file"..ext.."; done")
 	os.execute("ls *"..ext.." > depend.tmp")
 	local filelist = io.open("depend.tmp")
 	for file in filelist:lines() do
@@ -80,7 +82,8 @@ function findDepend(pat,ext,exp,suf)
 		if not (retval == "") then break end
 	end
 	filelist:close()
-	if retval == "" then io.stderr:write("error: "..pat.."\n"); os.exit() end
+	os.execute("rm `cat depend.out`")
+	if retval == "" then io.stdout:write("\n"); io.stderr:write("findDepend "..pat.."\n"); os.exit() end
 	return retval
 end
 function sourceDepend(name)
@@ -125,6 +128,7 @@ function ruleError(rule)
 	if matchCall(rule,"^(.*).lua$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).sw$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).g$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
+	io.stdout:write("\n"); io.stderr:write("ruleError "..rule.."\n"); os.exit()
 end
 function copyError(file)
 	io.stdout:write(" copyError\n")

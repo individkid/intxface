@@ -19,9 +19,8 @@ function checkRead(ident)
 end
 
 -- MAIN
-ident1 = forkExec("file")
-if ident1 == -1 then io.stderr:write("error: cannot execute file: file\n"); os.exit(-1) end
-io.stdout:write("ident1 "..ident1.."\n")
+ident1 = forkExec("fileC")
+if ident1 == -1 then io.stderr:write("error: cannot execute file: fileC\n"); os.exit(-1) end
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
@@ -40,7 +39,7 @@ assert(file["loc"] == 0)
 assert(file["slf"] == 1)
 assert(file["str"] == data1)
 
-ident2 = forkExec("file")
+ident2 = forkExec("fileC")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
@@ -71,7 +70,7 @@ assert(file["loc"] == string.len(prefix))
 assert(file["slf"] == 0)
 assert(file["str"] == field2)
 
-ident3 = forkExec("file")
+ident3 = forkExec("fileC")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0

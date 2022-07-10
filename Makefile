@@ -16,11 +16,11 @@ typra.log: typraLua
 	./typraLua > typra.log
 typer.log: typerC typerHs typerLua typerSw
 	./typerC > typer.log
-filer.log: filerLua file
+filer.log: filerLua fileC
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	./filerLua > filer.log
-spacra.log: spacra
-	./spacra > spacra.log
+spacra.log: spacraHs
+	./spacraHs > spacra.log
 
 %: %C
 	ln -f $< $@
