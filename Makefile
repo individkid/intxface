@@ -1,6 +1,8 @@
 .SECONDARY:
 all: facer.log typra.log typer.log filer.log spacra.log hole line plane space spacra
 
+.SUFFIXES:
+
 LIBRARIES = -llua -lportaudio
 
 ifndef DEPEND
@@ -98,7 +100,7 @@ clean:
 	rm -f typra facer typer filer planra spacra
 	rm -f hole file line plane space
 	rm -f *C *M *Cpp *Hs *A *Lua *Sw
-	rm -f *.err *.out *.log *.tmp
+	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	rm -f *.o *.so *.hi *_stub.h a.* *.metal
 	rm -rf *.agda *.agdai MAlonzo depend
