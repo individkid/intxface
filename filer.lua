@@ -20,7 +20,7 @@ end
 
 -- MAIN
 ident1 = forkExec("fileC")
-if ident1 == -1 then io.stderr:write("error: cannot execute file: fileC\n"); os.exit(-1) end
+if ident1 == -1 then io.stderr:write("filerLua: cannot execute file: fileC\n"); os.exit(-1) end
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0

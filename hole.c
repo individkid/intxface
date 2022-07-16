@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 	char *num = 0;
 	struct File file = {0};
 	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
-	if ((fub = forkExec("fileC")) < 0) {fprintf(stderr,"error: cannot execute file: facerHs\n"); return -1;}
+	if ((fub = forkExec("fileC")) < 0) {fprintf(stderr,"holeC: cannot execute file: facerHs\n"); return -1;}
 	if ((rub = openInet(0,argv[3])) < 0) ERROR(exiterr,-1);
 	readJump(huberr,hub); writeJump(huberr,hub);
 	readJump(huberr,fub); writeJump(huberr,fub);

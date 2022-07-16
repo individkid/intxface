@@ -67,8 +67,8 @@ function fileExists(file)
 end
 function findDepend(pat,ext,exp,suf)
 	local retval = ""
-	os.execute("ls *.gen | cut -f 1 -d '.' > depend.out")
-	os.execute("for file in `cat depend.out`; do make $file"..ext.." > depend.err 2>&1; done")
+	os.execute("ls *.gen | cut -f 1 -d '.' > depend.rm 2>&1")
+	os.execute("for file in `cat depend.rm`; do make $file"..ext.." > depend.out 2>&1; done")
 	os.execute("ls *"..ext.." > depend.ls 2>&1")
 	local filelist = io.open("depend.ls")
 	for file in filelist:lines() do
@@ -82,7 +82,7 @@ function findDepend(pat,ext,exp,suf)
 		if not (retval == "") then break end
 	end
 	filelist:close()
-	os.execute("for file in `cat depend.out`; do rm $file"..ext.." > depend.rm 2>&1; done")
+	os.execute("for file in `cat depend.rm`; do rm $file"..ext.." > depend.out 2>&1; done")
 	if retval == "" then io.stdout:write("\n"); io.stderr:write("findDepend "..pat.."\n"); os.exit() end
 	return retval
 end
@@ -137,23 +137,31 @@ function ruleError(rule)
 	if fileExists(rule..".sw") then io.stdout:write(" ruleError "..rule.."Sw"); pushError(rule.."Sw"); return end
 	io.stdout:write("\n"); io.stderr:write("ruleError "..rule.."\n"); os.exit()
 end
+function bothError(file)
+	io.stdout:write(" bothError\n")
+	local top = todo[#todo]
+	local set = done[top]
+	local map = copy[top]
+	set[file] = true
+	map[file] = true
+end
 function copyError(file)
 	io.stdout:write(" copyError\n")
 	local top = todo[#todo]
-	local set = copy[top]
-	set[file] = true
+	local map = copy[top]
+	map[file] = true
 end
 function doneError(file)
-	io.stdout:write(" doneError\n")
+	io.stdout:write(" doneError")
 	local top = todo[#todo]
 	local set = done[top]
 	set[file] = true
+	pushError(file)
 end
-function fixError(der,dee)
-	io.stdout:write(" fixError")
-	local set = done[der]
-	set[dee] = true
-	pushError(der)
+function runError(dep,dee)
+	io.stdout:write(" runError")
+	done[dep][dee] = true
+	pushError(dee)
 end
 function popError()
 	local top = todo[#todo]
@@ -167,35 +175,38 @@ function popError()
 		end
 	end
 end
-function checkError(check,rule)
-	io.stdout:write("checkError "..check)
-	if rule then io.stdout:write(" "..rule) end
+function checkError(check,rule,id)
 	local top = todo[#todo]
 	local isroot = (top == "")
-	local ischeck = (check == top)
-	local isrule = (rule == top)
-	local isnil = (rule == nil) or (rule == "all")
-	local exists = fileExists(check)
-	local isdone = not not done[top][check]
-	local cond = bools({isroot,ischeck,isrule,isnil,exists,isdone})
-	io.stdout:write(" "..cond)
-	if cond == "100000" then pushError(rule); return end
-	if cond == "100100" then pushError(check); return end
-	if cond == "001000" then doneError(check); return end
-	if cond == "010100" then ruleError(check); return end
-	if cond == "010110" then copyError(check); return end
-	if cond == "000110" then doneError(check); return end
-	if cond == "001011" then copyError(check); return end
-	if cond == "000100" then doneError(check); return end
-	if cond == "001001" then pushError(check); return end
-	if cond == "000010" then pushError(rule); return end
-	if cond == "000111" then copyError(check); return end
-	if cond == "000101" then pushError(check); return end
-	if cond == "000000" then fixError(rule,check); return end
+	local issame = (check == rule)
+	local ischeck = (check == top) or (check == "all")
+	local isrule = (rule == top) or (rule == "all")
+	local excheck = fileExists(check)
+	local exrule = fileExists(rule)
+	local docheck = not not done[top][check]
+	local dorule = not not done[top][rule]
+	local cond = id..bools({isroot,issame,ischeck,isrule,excheck,exrule,docheck,dorule})
+	io.stdout:write("checkError '"..top.."'"..rule.."'"..check.."' "..cond)
+	if cond == "a10000000" then pushError(rule); return end
+	if cond == "l00010000" then pushError(check); return end
+	if cond == "f00000001" then doneError(check); return end
+	if cond == "a00010000" then doneError(check); return end
+	if cond == "d00000000" then doneError(check); return end
+	if cond == "e00010000" then doneError(check); return end
+	if cond == "j00011000" then doneError(check); return end
+	if cond == "b01110000" then ruleError(check); return end
+	if cond == "i01110000" then ruleError(check); return end
+	if cond == "b01111100" then copyError(check); return end
+	if cond == "c00001101" then copyError(check); return end
+	if cond == "h00011010" then copyError(check); return end
+	if cond == "h00001000" then copyError(check); return end
+	if cond == "c00001100" then bothError(check); return end
+	if cond == "d00001000" then bothError(check); return end
+	if cond == "d00001100" then bothError(check); return end
+	if cond == "g00011000" then bothError(check); return end
+	if cond == "k00000001" then runError(rule,check); return end
 	io.stdout:write("\n")
-	io.stderr:write("checkError '"..top.."'"..check)
-	if rule then io.stderr:write("'"..rule) end
-	io.stderr:write("' "..cond.."\n"); os.exit()
+	io.stderr:write("checkError '"..top.."'"..rule.."'"..check.."' "..cond.."\n"); os.exit()
 end
 function checkRule()
 	local retval = nil
@@ -204,10 +215,12 @@ function checkRule()
 	local lines = {}
 	for line in greplist:lines() do
 		lines[#lines+1] = line
-		if matchCall(line, "^make: %*%*%* %[([.%w]*)%] Error",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; break end
+		if not found and matchCall(line,"^make: %*%*%* %[([.%w]*)%] Error",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; break end
+		if not found and matchCall(line,"^error: failed to make ([.%w]*)$",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; break end
+		if matchCall(line,"^[%s]*([.%w]*):[0-9]*: in main chunk$",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; end
 	end
 	greplist:close()
-	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("make: "..v.."\n") end os.exit() end
+	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("checkRule: "..v.."\n") end os.exit() end
 	return retval
 end
 function checkSetup()
@@ -249,7 +262,7 @@ function checkCopy()
 		end
 		greplist:close()
 		if not (#lines == 0) and found then retval = false; break end
-		if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("\ncopy: "..v.."\n") end os.exit() end
+		if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("\ncheckCopy: "..v.."\n") end os.exit() end
 	end
 	return retval
 end
@@ -258,33 +271,31 @@ function checkMake()
 	local cmd = "make -C depend "..top.." 2> depend.err > depend.out"
 	io.stdout:write(cmd.."\n")
 	os.execute(cmd)
+	local greplist = io.open("depend.err")
+	local found = false
+	local lines = {}
 	if #todo > 1 then
 		cmd = "if [ ! -e depend/"..top.." ] ; then echo \"error: failed to make "..top.."\" >> depend.err ; fi"
 		os.execute(cmd.."\n")
 	end
-	local greplist = io.open("depend.err")
-	local found = false
-	local lines = {}
 	for line in greplist:lines() do
 		lines[#lines+1] = line
-		if matchCall(line,"^/bin/sh: ./([.%w]*): No such file or directory$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule()) end) then found = true; break end
-		if matchCall(line,"^/bin/sh: ./([%w]*): No such file or directory$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule()) end) then found = true; break end
-		if matchCall(line,"No rule to make target `([.%w]*)'.  Stop.$",function(check) io.stdout:write(line.."\n"); checkError(check) end) then found = true; break end
-		if matchCall(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$",function(check,rule) io.stdout:write(line.."\n"); checkError(check,rule) end) then found = true; break end
-		if matchCall(line,"fatal error: '([.%w]*)' file not found$",function(check) io.stdout:write(line.."\n"); checkError(check) end) then found = true; break end
-		if matchCall(line,"^ *._([.%w]*)., referenced from:",function(check) io.stdout:write(line.."\n"); checkError(objectDepend(check)) end) then found = true; break end
-		if matchCall(line,"^[0-9]* *%| import ([%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(moduleDepend(check)) end) then found = true; break end
-		if matchCall(line,"error: no such file or directory: '([.%w]*)'$",function(check) io.stdout:write(line.."\n"); checkError(check) end) then found = true; break end
-		if matchCall(line,"^error: cannot execute file: ([%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule()) end) then found = true; break end
-		if matchCall(line,"^lua: cannot open ([.%w]*):",function(check) io.stdout:write(line.."\n"); checkError(check) end) then found = true; break end
-		if matchCall(line,"^lua: ([.%w]*):[0-9]*: module '([%w]*)' not found",function(rule,check) io.stdout:write(line.."\n"); checkError(check..".so",rule) end) then found = true; break end
-		if matchCall(line,"error: header '([.%w]*)' not found$",function(check) io.stdout:write(line.."\n"); checkError(check) end) then found = true; break end
-		if matchCall(line,"ld: file not found: ([.%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(check)  end) then found = true; break end
-		if matchCall(line,"^error: failed to make ([.%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(check) end) then found = true; break end
+		if matchCall(line,"^/bin/sh: ./([%w]*): No such file or directory$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"a") end) then found = true; break end
+		if matchCall(line,"No rule to make target `([.%w]*)'.  Stop.$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"b") end) then found = true; break end
+		if matchCall(line,"^lua: cannot open ([.%w]*):",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"c") end) then found = true; break end
+		if matchCall(line,"^([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"d") end) then found = true; break end
+		if matchCall(line,"^ *._([.%w]*)., referenced from:$",function(check) io.stdout:write(line.."\n"); checkError(objectDepend(check),checkRule(),"e") end) then found = true; break end
+		if matchCall(line,"^([%w]*): cannot execute file: ([%w]*)$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"f") end) then found = true; break end
+		if matchCall(line,"error: header '([.%w]*)' not found$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"g") end) then found = true; break end
+		if matchCall(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$",function(check,rule) io.stdout:write(line.."\n"); checkError(check,rule,"h") end) then found = true; break end
+		if (#lines == 1) and matchCall(line,"^error: failed to make ([.%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"i") end) then found = true; break end
+		if matchCall(line,"^[0-9]* *%| import ([%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(moduleDepend(check),checkRule(),"j") end) then found = true; break end
+		if matchCall(line,"^lua: [.%w]*:[0-9]*: module '([%w]*)' not found",function(check) io.stdout:write(line.."\n"); checkError(check..".so",checkRule(),"k") end) then found = true; break end
+		if matchCall(line,"error: no such file or directory: '([.%w]*)'$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"l") end) then found = true; break end
 	end
 	greplist:close()
 	if not (#lines == 0) and found then return false end
-	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("make: "..v.."\n") end os.exit() end
+	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("checkMake: "..v.."\n") end os.exit() end
 	return true
 end
 pushError("")

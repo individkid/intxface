@@ -19,10 +19,10 @@ function showTyperC()
 	showIndent(1).."writeStruct1(ptr,0);\n"..
 	showIndent(1).."return 0;}\n"
 	result = result..
-	showIndent(1).."if (forkExec(\"typerC\") < 0) {fprintf(stderr,\"error: cannot execute file: typerC\\n\"); return -1;}\n"..
-	showIndent(1).."if (forkExec(\"typerLua\") < 0) {fprintf(stderr,\"error: cannot execute file: typerLua\\n\"); return -1;}\n"..
-	showIndent(1).."if (forkExec(\"typerSw\") < 0) {fprintf(stderr,\"error: cannot execute file: typerSw\\n\"); return -1;}\n"..
-	showIndent(1).."if (forkExec(\"typerHs\") < 0) {fprintf(stderr,\"error: cannot execute file: typerHs\\n\"); return -1;}\n"..
+	showIndent(1).."if (forkExec(\"typerC\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerC\\n\"); return -1;}\n"..
+	showIndent(1).."if (forkExec(\"typerLua\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerLua\\n\"); return -1;}\n"..
+	showIndent(1).."if (forkExec(\"typerSw\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerSw\\n\"); return -1;}\n"..
+	showIndent(1).."if (forkExec(\"typerHs\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerHs\\n\"); return -1;}\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
 	showIndent(1).."struct Struct1 *exp = 0;\n"..
