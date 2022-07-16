@@ -197,14 +197,15 @@ function checkError(check,rule,id)
 	if cond == "b01110000" then ruleError(check); return end
 	if cond == "i01110000" then ruleError(check); return end
 	if cond == "b01111100" then copyError(check); return end
-	if cond == "c00001101" then copyError(check); return end
 	if cond == "h00011010" then copyError(check); return end
 	if cond == "h00001000" then copyError(check); return end
 	if cond == "c00001100" then bothError(check); return end
+	if cond == "c00011000" then bothError(check); return end
 	if cond == "d00001000" then bothError(check); return end
 	if cond == "d00001100" then bothError(check); return end
 	if cond == "g00011000" then bothError(check); return end
 	if cond == "k00000001" then runError(rule,check); return end
+	if cond == "c00001001" then runError(rule,check); return end
 	io.stdout:write("\n")
 	io.stderr:write("checkError '"..top.."'"..rule.."'"..check.."' "..cond.."\n"); os.exit()
 end
@@ -218,6 +219,8 @@ function checkRule()
 		if not found and matchCall(line,"^make: %*%*%* %[([.%w]*)%] Error",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; break end
 		if not found and matchCall(line,"^error: failed to make ([.%w]*)$",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; break end
 		if matchCall(line,"^[%s]*([.%w]*):[0-9]*: in main chunk$",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; end
+		if matchCall(line,"^[%s]*%./([%w]*):[0-9]*: in main chunk$",function(rule) io.stdout:write(line.."\n"); retval = rule end) then found = true; end
+		if found and string.match(retval,"^[%w]*%.gen$") then found = false end
 	end
 	greplist:close()
 	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("checkRule: "..v.."\n") end os.exit() end
