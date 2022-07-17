@@ -10,18 +10,18 @@ ifndef DEPEND
 include depend.mk
 endif
 
-facer.log: facerC facerHs facerLua
+facer.log:
 	./facerC > facer.log
 	./facerHs >> facer.log
 	./facerLua >> facer.log
-typra.log: typraLua
+typra.log:
 	./typraLua > typra.log
-typer.log: typerC typerHs typerLua typerSw
+typer.log:
 	./typerC > typer.log
-filer.log: filerLua fileC
+filer.log:
 	rm -f *.-- .*.-- ..*.-- ...*.--
 	./filerLua > filer.log
-spacra.log: spacraHs
+spacra.log:
 	./spacraHs > spacra.log
 
 %: %C
@@ -46,7 +46,6 @@ spacra.log: spacraHs
 %Cpp: %Cpp.o
 	clang++ -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
-	# ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0 2>&1 | grep -E '^[0-9]* *\||, referenced from:' 1>&2
 	ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0
 %A: %.agda
 	agda --compile --ghc-flag=-o --ghc-flag=$@ $<

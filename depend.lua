@@ -40,17 +40,6 @@ function debugTodo()
 	io.stdout:write(")\n")
 end
 fileExp = "(.*)(%..*)"
-autoExt = {".h",".c",".m",".cpp",".hs",".lua",".sw"}
-mainExt = {".c",".cpp",".m",".hs",".lua",".sw"}
-mainSuf = {"C","Cpp","M","Hs","Lua","Sw"}
-copySuf = {"C.o","Cpp.o","M.o",".hs",".lua","Sw.o"}
-mainPat = {"^int main\\(int argc",
-	"^int main\\(int argc",
-	"^int main\\(void\\)",
-	"^main :: IO \\(\\)",
-	"^-- MAIN",
-	"^// MAIN",
-	"^// MAIN"}
 function matchCall(pat,exp,fnc)
 	local one,two = string.match(pat,exp)
 	if one then fnc(one,two); return true end
@@ -64,6 +53,14 @@ function fileExists(file)
 		if found then return false end
 	end
 	return true
+end
+function mainExists(file,exp)
+	os.execute("grep -l -E '"..exp.."' "..file.." > depend.ls 2>&1")
+	local greplist = io.open("depend.ls")
+	for line in greplist:lines() do
+		if line == file then return true end
+	end
+	return false
 end
 function findDepend(pat,ext,exp,suf)
 	local retval = ""
@@ -94,6 +91,9 @@ function objectDepend(name)
 end
 function moduleDepend(name)
 	return findDepend(name,".hs","^module ([a-zA-Z]*) where",".hs")
+end
+function classDepend(name)
+	return findDepend(name,".hs","^data [a-zA-Z]* = ([a-zA-Z]*)$",".hs")
 end
 function pushError(push)
 	io.stdout:write(" pushError\n")
@@ -128,13 +128,13 @@ function ruleError(rule)
 	if matchCall(rule,"^(.*).lua$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).sw$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).g$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
-	if fileExists(rule..".c") then io.stdout:write(" ruleError "..rule.."C"); pushError(rule.."C"); return end
-	if fileExists(rule..".m") then io.stdout:write(" ruleError "..rule.."M"); pushError(rule.."M"); return end
-	if fileExists(rule..".cpp") then io.stdout:write(" ruleError "..rule.."Cpp"); pushError(rule.."Cpp"); return end
-	if fileExists(rule..".hs") then io.stdout:write(" ruleError "..rule.."Hs"); pushError(rule.."Hs"); return end
-	if fileExists(rule..".agda") then io.stdout:write(" ruleError "..rule.."A"); pushError(rule.."A"); return end
-	if fileExists(rule..".lua") then io.stdout:write(" ruleError "..rule.."Lua"); pushError(rule.."Lua"); return end
-	if fileExists(rule..".sw") then io.stdout:write(" ruleError "..rule.."Sw"); pushError(rule.."Sw"); return end
+	if mainExists(rule..".c","^int main\\(") then io.stdout:write(" ruleError "..rule.."C"); pushError(rule.."C"); return end
+	if mainExists(rule..".m","^int main\\(") then io.stdout:write(" ruleError "..rule.."M"); pushError(rule.."M"); return end
+	if mainExists(rule..".cpp","^int main\\(") then io.stdout:write(" ruleError "..rule.."Cpp"); pushError(rule.."Cpp"); return end
+	if mainExists(rule..".hs","^main :: IO \\(") then io.stdout:write(" ruleError "..rule.."Hs"); pushError(rule.."Hs"); return end
+	if mainExists(rule..".agda","^int main\\(") then io.stdout:write(" ruleError "..rule.."A"); pushError(rule.."A"); return end
+	if mainExists(rule..".lua","^-- MAIN") then io.stdout:write(" ruleError "..rule.."Lua"); pushError(rule.."Lua"); return end
+	if mainExists(rule..".sw","^// MAIN") then io.stdout:write(" ruleError "..rule.."Sw"); pushError(rule.."Sw"); return end
 	io.stdout:write("\n"); io.stderr:write("ruleError "..rule.."\n"); os.exit()
 end
 function bothError(file)
@@ -177,7 +177,7 @@ function popError()
 end
 function checkError(check,rule,id)
 	local top = todo[#todo]
-	local isroot = (top == "")
+	local isroot = (top == "") or (top == "all")
 	local issame = (check == rule)
 	local ischeck = (check == top) or (check == "all")
 	local isrule = (rule == top) or (rule == "all")
@@ -189,11 +189,15 @@ function checkError(check,rule,id)
 	io.stdout:write("checkError '"..top.."'"..rule.."'"..check.."' "..cond)
 	if cond == "a10000000" then pushError(rule); return end
 	if cond == "l00010000" then pushError(check); return end
+	if cond == "h10010000" then pushError(check); return end
 	if cond == "f00000001" then doneError(check); return end
 	if cond == "a00010000" then doneError(check); return end
 	if cond == "d00000000" then doneError(check); return end
+	if cond == "d00000100" then doneError(check); return end
 	if cond == "e00010000" then doneError(check); return end
 	if cond == "j00011000" then doneError(check); return end
+	if cond == "m00010000" then doneError(check); return end
+	if cond == "g00010000" then doneError(check); return end
 	if cond == "b01110000" then ruleError(check); return end
 	if cond == "i01110000" then ruleError(check); return end
 	if cond == "b01111100" then copyError(check); return end
@@ -206,6 +210,7 @@ function checkError(check,rule,id)
 	if cond == "g00011000" then bothError(check); return end
 	if cond == "k00000001" then runError(rule,check); return end
 	if cond == "c00001001" then runError(rule,check); return end
+	if cond == "c00000001" then runError(rule,check); return end
 	io.stdout:write("\n")
 	io.stderr:write("checkError '"..top.."'"..rule.."'"..check.."' "..cond.."\n"); os.exit()
 end
@@ -295,6 +300,7 @@ function checkMake()
 		if matchCall(line,"^[0-9]* *%| import ([%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(moduleDepend(check),checkRule(),"j") end) then found = true; break end
 		if matchCall(line,"^lua: [.%w]*:[0-9]*: module '([%w]*)' not found",function(check) io.stdout:write(line.."\n"); checkError(check..".so",checkRule(),"k") end) then found = true; break end
 		if matchCall(line,"error: no such file or directory: '([.%w]*)'$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"l") end) then found = true; break end
+		if matchCall(line,"Not in scope: type constructor or class ‘([%w]*)’",function(check) io.stdout:write(line.."\n"); checkError(classDepend(check),checkRule(),"m") end) then found = true; break end
 	end
 	greplist:close()
 	if not (#lines == 0) and found then return false end
