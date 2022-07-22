@@ -33,9 +33,9 @@ Flow = {
 Command = {
 	"SetCmd", -- set memory
 	"GetCmd", -- get memory
-	"GotCmd", -- got memory
-	"UseCmd", -- use memory
-	"FixCmd", -- fix memory
+	"GotCmd", -- response to GetCmd
+	"UseCmd", -- notice that matrix changed
+	"FixCmd", -- request to revert matrix and change plane
 }
 Memory = {
 	"Trianglez", -- indices of vertices of facet
@@ -65,8 +65,9 @@ Memory = {
 }
 Atwill = {
 	"Atmouse", -- hand or finger to draw, click to Atclick
-	"Atclick", -- hand to pierce, click to Athand
+	"Atclick", -- hand to pierce, click to Atmouse
 	"Atsend", -- hand to pierce, click to send
+	"Atinit", -- run coplane, to Atclick
 	"Atonce", -- run, to Atnever
 	"Atnever", -- don't run
 }

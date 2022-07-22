@@ -1,14 +1,13 @@
 .SECONDARY:
-all: facer.log typra.log typer.log filer.log spacra.log hole line plane space spacra
-
 .SUFFIXES:
+.DELETE_ON_ERROR:
+
+all: facer.log typra.log typer.log filer.log spacra.log hole line plane space spacra
 
 LIBRARIES = -llua -lportaudio
 
-ifndef DEPEND
 # lua depend.lua > depend.mk
 include depend.mk
-endif
 
 facer.log:
 	./facerC > facer.log
