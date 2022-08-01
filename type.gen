@@ -215,8 +215,8 @@ Uniform = {
 	{"one","Old",{},{16}},
 	{"fea","Old",{},{4}},
 	{"arw","Old",{},{4}},
-	{"foc","Old",{},{4}},
 	{"pic","Old",{},{4}},
+	{"foc","Old",{},{4}},
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
 	{"tsz","Int",{},{}}, -- size of trinagle buffer

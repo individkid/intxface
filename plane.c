@@ -30,16 +30,16 @@ struct Kernel facet = {0};
 struct Ranje *range = {0};
 int ranges = 0;
 
-void planeAlize(float *dir, const float *vec)
+void planeAlize(float *dir, const float *vec) // normalize
 {
 }
 void planeCross(float *axe, const float *fix, const float *pic, const float *cur)
 {
 }
-void planeXtate(float *mat, const float *fix, const float *pic, const float *cur, float ang)
+void planeXtate(float *mat, const float *fix, const float *pic, const float *cur, float ang) // rotate
 {
 }
-void planeXlate(float *mat, const float *fix, const float *pic, const float *cur, float ang)
+void planeXlate(float *mat, const float *fix, const float *pic, const float *cur, float ang) // translate
 {
 }
 void planeScale(float *mat, const float *fix, const float *pic, const float *cur, float ang)

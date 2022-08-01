@@ -251,6 +251,24 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Allmatz): uniform.set(client.all![0],\Uniform.all)
 	case (Onematz): uniform.set(client.one![0],\Uniform.one)
 	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
+	case (Configurez): for sub in Swift.Array(0..<siz) {
+		switch client.cfg![sub] {
+			case (UniformFeather): uniform.set(Float(client.val![sub]),\Uniform.fea)
+			case (UniformArrow): uniform.set(Float(client.val![sub]),\Uniform.arw)
+			case (UniformPicture): uniform.set(Float(client.val![sub]),\Uniform.pic)
+			case (UniformFocal): uniform.set(Float(client.val![sub]),\Uniform.foc)
+			case (UniformIndex): uniform.set(client.val![sub],\Uniform.idx)
+			case (UniformSize): uniform.set(client.val![sub],\Uniform.siz)
+			case (TriangleSize): uniform.set(client.val![sub],\Uniform.tsz)
+			case (TriangleLimit): uniform.set(client.val![sub],\Uniform.tlm)
+			case (TriangleIndex): uniform.set(client.val![sub],\Uniform.tid)
+			case (NumericSize): uniform.set(client.val![sub],\Uniform.nsz)
+			case (NumericLimit): uniform.set(client.val![sub],\Uniform.nlm)
+			case (NumericIndex): uniform.set(client.val![sub],\Uniform.nid)
+			case (VertexSize): uniform.set(client.val![sub],\Uniform.vsz)
+			case (VertexLimit): uniform.set(client.val![sub],\Uniform.vlm)
+			case (VertexIndex): uniform.set(client.val![sub],\Uniform.vid)
+			default: break}}
 	default: exitErr(#file,#line,-1)}
 }
 func swiftDraw(_ shader: Shader)
