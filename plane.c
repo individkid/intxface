@@ -18,17 +18,13 @@ struct Kernel {
 	struct Vector current; // current axis
 	float angle; // roller delta
 };
-enum Atwill atwill = 0;
-enum Action action = 0;
-enum Transform xsform = 0;
-enum Select select = 0;
-enum Shader shader = 0;
 struct Kernel subject = {0};
 struct Kernel *object = {0};
-int objects = 0;
 struct Kernel facet = {0};
-struct Ranje *range = {0};
-int ranges = 0;
+struct Indicate *indicate = {0};
+struct Argument *argument = {0};
+struct Machine *machine = {0};
+int configure[Configures] = {0};
 
 void planeAlize(float *dir, const float *vec) // normalize
 {

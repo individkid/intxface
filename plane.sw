@@ -29,7 +29,7 @@ var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
 var array = [Ranje]()
-var size = 0
+var size = 0 // TODO use planeConfig(Pierce*)
 
 class Refer
 {
@@ -239,16 +239,15 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	let siz = Int(client.siz)
 	let idx = Int(client.idx)
 	switch (client.mem) {
-	case (Trianglez): size = siz
-		triangle.set(Swift.Array(0..<siz).map() {(sub) in client.tri![sub]},idx)
-		pierce.set(Swift.Array(repeating: Pierce(), count: siz),idx)
+	case (Trianglez): triangle.set(Swift.Array(0..<siz).map() {(sub) in client.tri![sub]},idx)
 	case (Numericz): numeric.set(Swift.Array(0..<siz).map() {(sub) in client.num![sub]},idx)
 	case (Vertexz): vertex.set(Swift.Array(0..<siz).map() {(sub) in client.vtx![sub]},idx)
-	case (Fewmatz): matrix.set(Swift.Array(0..<siz).map() {(sub) in client.few![sub]},idx)
+	case (Piercez): pierce.set(Swift.Array(repeating: Pierce(), count: siz),idx)
 	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in client.swa![sub]},idx)
 	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in client.tex![sub]},idx)
 	case (Basisz): uniform.set(client.bas![0],\Uniform.bas)
 	case (Allmatz): uniform.set(client.all![0],\Uniform.all)
+	case (Fewmatz): matrix.set(Swift.Array(0..<siz).map() {(sub) in client.few![sub]},idx)
 	case (Onematz): uniform.set(client.one![0],\Uniform.one)
 	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
 	case (Configurez): for sub in Swift.Array(0..<siz) {
@@ -268,6 +267,18 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 			case (VertexSize): uniform.set(client.val![sub],\Uniform.vsz)
 			case (VertexLimit): uniform.set(client.val![sub],\Uniform.vlm)
 			case (VertexIndex): uniform.set(client.val![sub],\Uniform.vid)
+			case (PierceSize): uniform.set(client.val![sub],\Uniform.psz)
+			case (PierceLimit): uniform.set(client.val![sub],\Uniform.plm)
+			case (PierceIndex): uniform.set(client.val![sub],\Uniform.pid)
+			case (ObjectSize): uniform.set(client.val![sub],\Uniform.osz)
+			case (ObjectLimit): uniform.set(client.val![sub],\Uniform.olm)
+			case (ObjectIndex): uniform.set(client.val![sub],\Uniform.oid)
+			case (SwarmSize): uniform.set(client.val![sub],\Uniform.ssz)
+			case (SwarmLimit): uniform.set(client.val![sub],\Uniform.slm)
+			case (SwarmIndex): uniform.set(client.val![sub],\Uniform.sid)
+			case (TextureSize): uniform.set(client.val![sub],\Uniform.xsz)
+			case (TextureLimit): uniform.set(client.val![sub],\Uniform.xlm)
+			case (TextureIndex): uniform.set(client.val![sub],\Uniform.xid)
 			default: break}}
 	default: exitErr(#file,#line,-1)}
 }

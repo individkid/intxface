@@ -41,13 +41,13 @@ Memory = {
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
-	"Fewmatz", -- matrix per set of planes
+	"Piercez", -- pierce point normal and valid
 	"Swarmz", -- array of points around focal point
 	"Texturez", -- memory for textures
 	"Basisz", -- base for each dimension
 	"Allmatz", -- whole view transformation
+	"Fewmatz", -- matrix per set of planes
 	"Onematz", -- single face transformation
-	"Piercez", -- pierce point normal and valid
 	"Ranjez", -- plane or point index ranges
 	"Indicatez", -- predraw mode
 	"Argumentz", -- draw mode
@@ -64,6 +64,18 @@ Configure = {
 	"VertexSize",
 	"VertexLimit",
 	"VertexIndex",
+	"PierceSize",
+	"PierceLimit",
+	"PierceIndex",
+	"ObjectSize",
+	"ObjectLimit",
+	"ObjectIndex",
+	"SwarmSize",
+	"SwarmLimit",
+	"SwarmIndex",
+	"TextureSize",
+	"TextureLimit",
+	"TextureIndex",
 	"RanjeSize",
 	"RanjeLimit",
 	"RanjeIndex",
@@ -84,6 +96,7 @@ Configure = {
 	"UniformSize",
 	"DrawStart",
 	"DrawStop",
+	"StateCurrent",
 	"WindowLeft",
 	"WindowBase",
 	"WindowWide",
@@ -230,6 +243,18 @@ Uniform = {
 	{"vsz","Int",{},{}}, -- size of vertex buffer
 	{"vlm","Int",{},{}}, -- largest vertex index
 	{"vid","Int",{},{}}, -- starting vertex index
+	{"psz","Int",{},{}}, -- size of pierce buffer
+	{"plm","Int",{},{}}, -- largest pierce index
+	{"pid","Int",{},{}}, -- starting pierce index
+	{"osz","Int",{},{}}, -- size of object buffer
+	{"olm","Int",{},{}}, -- largest object index
+	{"oid","Int",{},{}}, -- starting object index
+	{"ssz","Int",{},{}}, -- size of swarm buffer
+	{"slm","Int",{},{}}, -- largest swarm index
+	{"sid","Int",{},{}}, -- starting swarm index
+	{"xsz","Int",{},{}}, -- size of texture buffer
+	{"xlm","Int",{},{}}, -- largest texture index
+	{"xid","Int",{},{}}, -- starting texture index
 	{"pad","Int",{},{}},
 }
 Triangle = {
