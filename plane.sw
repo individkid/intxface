@@ -284,7 +284,7 @@ func swiftDraw(_ shader: Shader)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
 		encode.endEncoding()
 	}
-	for range in array {
+	for range in array { // use planeConfig(DrawStart) and planeConfig(DrawStop)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
@@ -308,7 +308,7 @@ func swiftDraw(_ shader: Shader)
 	code.commit()
 	case (Adpoint):
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
-	for range in array {
+	for range in array { // use planeConfig(DrawStart) and planeConfig(DrawStop)
 		var offset = (Int(range.idx)*MemoryLayout<Triangle>.size)/3
 		var nums:[Int] = []
 		var pers:[Int] = []

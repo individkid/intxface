@@ -82,6 +82,8 @@ Configure = {
 	"UniformFocal",
 	"UniformIndex",
 	"UniformSize",
+	"DrawStart",
+	"DrawStop",
 	"WindowLeft",
 	"WindowBase",
 	"WindowWide",
