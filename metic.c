@@ -96,21 +96,38 @@ float *identmat(float *u, int n)
     return u;
 }
 
-float *copyary(float *u, float *v, int duty, int stride, int size)
+float *copyary(float *u, float *v, int duty, int stride, int start, int size)
 {
+    // set upper submatrix: duty > 0; stride > 0
+    // set lower submatrix; duty < 0; stride > 0
     // duty is number to copy in chunk; negative for number to skip
-    // stride is size of chunks
-    // size is total number to copy
+    // stride is size of dest chunks; negative for size of src chunks
+    // start is total number to skip; size is total number to copy
     float *w = u;
     int i = 0;
     int j = 0;
     int k = 0;
-    if (duty == 0 || stride <= 0 || size < 0) return 0;
+    if (duty == 0 || stride == 0 || start < 0 || size < 0) return 0;
+    if (stride > 0) {
+        v += start;}
+    else {
+        w += start;}
     while (i < size) {
         if (k == 0) {j = duty; k = stride;}
-        if (j > 0 && duty > 0) *w = v[i++];
-        if (j == 0 && duty < 0) *w = v[i++];
-        w++; k--;
+        if (stride > 0) {
+            if (duty > 0) {
+                if (j > 0) *w = v[i++];}
+            else {
+                if (j == 0) *w = v[i++];}
+            w++;}
+        else {
+            if (duty > 0) {
+                if (j > 0) w[i++] = *v;}
+            else {
+                if (j == 0) w[i++] = *v;}
+            v++;}
+        if (k > 0) k--;
+        if (k < 0) k++;
         if (j > 0) j--;
         if (j < 0) j++;}
     return u;

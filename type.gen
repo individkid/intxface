@@ -47,36 +47,44 @@ Memory = {
 	"Basisz", -- base for each dimension
 	"Allmatz", -- whole view transformation
 	"Onematz", -- single face transformation
-	"Featherz", -- pierce direction
-	"Arrowz", -- pierce start position
-	"Focalz", -- focal point
-	"Picturez", -- picture plane origin
-	"Indexz", -- index triangle array
-	"Sizez", -- number of swarm points
 	"Piercez", -- pierce point normal and valid
 	"Ranjez", -- plane or point index ranges
-	"Atwillz", -- set atwill
-	"Actionz", -- set action
-	"Selectz", -- set select
-	"Shaderz", -- set shader
-	"Handz", -- warp hand
-	"Fingerz", -- warp finger
-	"Clickz", -- warp click
+	"Indicatez", -- predraw mode
+	"Configurez", -- configure to value
+	"Machinez", -- state machine lines
 }
-Atwill = {
-	"Atmouse", -- hand or finger to draw, click to Atclick
-	"Atclick", -- hand to pierce, click to Atmouse
-	"Atsend", -- hand to pierce, click to send
-	"Atinit", -- run coplane, to Atclick
-	"Atonce", -- run, to Atnever
-	"Atnever", -- don't run
+Configure = {
+	"Triangley",
+	"Numericy",
+	"Vertexy",
+	"Ranjey",
+	"Indicatey",
+	"Machiney",
+	"Feathery",
+	"Arrowy",
+	"Picturey",
+	"Focaly",
+	"Oney",
+	"Swarmy",
+	"Windowy",
+}
+Modifier = {
+	"Sizey",
+	"Limity",
+	"Indexy",
+	"Starty",
+	"Stopy",
+	"Lefty",
+	"Basey",
+	"Widey",
+	"Highy",
 }
 Action = {
 	"Additive", -- include region above pierce
 	"Subtract", -- exclude region below pierce
 	"Refine", -- add random plane through pierce
 }
-Xsform = {
+Transform = {
 	"Translate", -- to picture, hand parallel, finger normal
 	"Rotate", -- start to moved with fixed of, hand cross, finger moved
 	"Scale", -- to pictue fixed of, hand normal, finger paralellel
@@ -86,6 +94,11 @@ Select = {
 	"Polytope", -- set of planes
 	"Element", -- single plane
 }
+Between = {
+	"Manip", -- change indicated matrix
+	"Permute", -- send indicated pierce point
+	"Complete", -- send indicated memory
+}
 Shader = {
 	"Dipoint", -- display from points
 	"Diplane", -- display from planes
@@ -93,6 +106,13 @@ Shader = {
 	"Adplane", -- find pierce points from planes
 	"Copoint", -- find planes from points
 	"Coplane", -- find points from planes
+}
+Atwill = {
+	"Athand", -- machine line for mouse move
+	"Atfinger", -- machine lines for mouse roller
+	"Atclick", -- machine line foe mouse click
+	"Atpipe", -- machine line for pipe read
+	"Atdelay", -- machine line for timer expire
 }
 Ture = {
 	"Table",
@@ -188,9 +208,18 @@ Uniform = {
 	{"arw","Old",{},{4}},
 	{"foc","Old",{},{4}},
 	{"pic","Old",{},{4}},
-	{"idt","Int",{},{}}, -- which plane to apply one matrix to
-	{"sze","Int",{},{}}, -- how many swarm points there are
-	{"pad","Int",{},{2}},
+	{"idx","Int",{},{}}, -- which plane to apply one matrix to
+	{"siz","Int",{},{}}, -- how many swarm points there are
+	{"tsz","Int",{},{}}, -- size of trinagle buffer
+	{"tlm","Int",{},{}}, -- largest triangle index
+	{"tid","Int",{},{}}, -- starting trangle index
+	{"nsz","Int",{},{}}, -- size of numeric buffer
+	{"nlm","Int",{},{}}, -- largest numeric index
+	{"nid","Int",{},{}}, -- starting numeric index
+	{"vsz","Int",{},{}}, -- size of vertex buffer
+	{"vlm","Int",{},{}}, -- largest vertex index
+	{"vid","Int",{},{}}, -- starting vertex index
+	{"pad","Int",{},{}},
 }
 Triangle = {
 	{"vtx","Int",{},{4}}, -- points of triangle
@@ -228,6 +257,28 @@ Ranje = {
 	{"siz","Int",{},{}},
 	{"pad","Int",{},{2}},
 }
+Indicate = {
+	{"act","Action",{},{}}, -- click change way
+	{"xfm","Transform",{},{}}, -- matrix change way
+	{"sel","Select",{},{}}, -- matrix to change
+	{"cmd","Command",{},{}}, -- command for send
+	{"mem","Memory",{},{}}, -- memory for send
+	{"siz","Int",{},{}}, -- size for send
+	{"idx","Int",{},{}}, -- index for send
+	{"hnd","Int",{},{}}, -- hand warp
+	{"fng","Int",{},{}}, -- finger warp
+	{"clk","Int",{},{}}, -- click warp
+}
+Machine = {
+	{"idx","Int",{},{}}, -- current state
+	{"atw","Atwill",{},{}}, -- change initiator
+	{"cmd","Command",{},{}}, -- atpipe qualifier
+	{"mem","Memory",{},{}}, -- atpipe qualifier
+	{"ind","Int",{},{}}, -- indicate index to do
+	{"bet","Between",{},{}}, -- do before shader
+	{"sha","Shader",{},{}}, -- shader to start
+	{"nxt","Int",{},{}}, -- then goto this state
+}
 Client = {
 	{"cmd","Command",{},{}},
 	{"mem","Memory",{},{}},
@@ -243,21 +294,13 @@ Client = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"all","Matrix",{["mem"]={["Allmatz"]=true}},"siz"},
 	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
-	{"fea","Vector",{["mem"]={["Featherz"]=true}},"siz"},
-	{"arw","Vector",{["mem"]={["Arrowz"]=true}},"siz"},
-	{"foc","Vector",{["mem"]={["Focalz"]=true}},"siz"},
-	{"pic","Vector",{["mem"]={["Picturez"]=true}},"siz"},
-	{"idt","Int",{["mem"]={["Indexz"]=true}},"siz"},
-	{"sze","Int",{["mem"]={["Sizez"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Ranje",{["mem"]={["Ranjez"]=true}},"siz"},
-	{"atw","Atwill",{["mem"]={["Atwillz"]=true}},"siz"},
-	{"act","Action",{["mem"]={["Actionz"]=true}},"siz"},
-	{"sel","Select",{["mem"]={["Selectz"]=true}},"siz"},
-	{"sha","Shader",{["mem"]={["Shaderz"]=true}},"siz"},
-	{"whs","Old",{["mem"]={["Handz"]=true}},"siz"},
-	{"wfs","Old",{["mem"]={["Fingerz"]=true}},"siz"},
-	{"wcs","Old",{["mem"]={["Clickz"]=true}},"siz"},
+	{"ind","Indicate",{["mem"]={["Indicatez"]=true}},"siz"},
+	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
+	{"mod","Modifier",{["mem"]={["Configurez"]=true}},"siz"},
+	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
+	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 }
 Sculpt = {
 	{"cfg","Ture",{},{}},

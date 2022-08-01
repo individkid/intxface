@@ -20,7 +20,7 @@ struct Kernel {
 };
 enum Atwill atwill = 0;
 enum Action action = 0;
-enum Xsform xsform = 0;
+enum Transform xsform = 0;
 enum Select select = 0;
 enum Shader shader = 0;
 struct Kernel subject = {0};
@@ -52,7 +52,7 @@ void planeInit(vftype init, uftype dma, wftype draw)
 	init(); // this calls useArgument from argx.h
 	runProgram(); // from argx.h
 }
-float planeConfig(enum Configure cfg)
+float planeConfig(enum Configure cfg, enum Modifier mod)
 {
 	return 0.0;
 }

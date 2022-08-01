@@ -115,8 +115,8 @@ func getRect() -> NSRect
 		return temp.contentRect(forFrameRect:temp.frame)
 	} else {
 		return NSMakeRect(0.0, 0.0, 
-			CGFloat(planeConfig(plane.WindowWide)),
-			CGFloat(planeConfig(plane.WindowHigh)))
+			CGFloat(planeConfig(Windowy,Widey)),
+			CGFloat(planeConfig(Windowy,Highy)))
 	}
 }
 func getPoint() -> NSPoint
@@ -180,8 +180,8 @@ func swiftInit()
 	for arg in CommandLine.arguments {useArgument(arg)}
 	device = MTLCreateSystemDefaultDevice()
 	let rect = NSMakeRect(
-		CGFloat(planeConfig(plane.PictureMinX)), CGFloat(planeConfig(plane.PictureMinY)),
-		CGFloat(planeConfig(plane.PictureWide)), CGFloat(planeConfig(plane.PictureHigh)))
+		CGFloat(planeConfig(Picturey,Lefty)), CGFloat(planeConfig(Picturey,Basey)),
+		CGFloat(planeConfig(Picturey,Widey)), CGFloat(planeConfig(Picturey,Highy)))
 	layer = CAMetalLayer()
 	layer.device = device
 	layer.pixelFormat = .bgra8Unorm
@@ -250,12 +250,6 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Basisz): uniform.set(client.bas![0],\Uniform.bas)
 	case (Allmatz): uniform.set(client.all![0],\Uniform.all)
 	case (Onematz): uniform.set(client.one![0],\Uniform.one)
-	case (Featherz): uniform.set(client.fea![0],\Uniform.fea)
-	case (Arrowz): uniform.set(client.arw![0],\Uniform.arw)
-	case (Focalz): uniform.set(client.foc![0],\Uniform.foc)
-	case (Picturez): uniform.set(client.pic![0],\Uniform.pic)
-	case (Indexz): uniform.set(client.idt![0],\Uniform.idt)
-	case (Sizez): uniform.set(client.sze![0],\Uniform.sze)
 	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
 	default: exitErr(#file,#line,-1)}
 }
