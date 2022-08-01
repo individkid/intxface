@@ -52,7 +52,7 @@ void planeInit(vftype init, uftype dma, wftype draw)
 	init(); // this calls useArgument from argx.h
 	runProgram(); // from argx.h
 }
-float planeConfig(enum Configure cfg, enum Modifier mod)
+float planeConfig(enum Configure cfg)
 {
 	return 0.0;
 }

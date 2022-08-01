@@ -115,8 +115,8 @@ func getRect() -> NSRect
 		return temp.contentRect(forFrameRect:temp.frame)
 	} else {
 		return NSMakeRect(0.0, 0.0, 
-			CGFloat(planeConfig(Windowy,Widey)),
-			CGFloat(planeConfig(Windowy,Highy)))
+			CGFloat(planeConfig(WindowWide)),
+			CGFloat(planeConfig(WindowHigh)))
 	}
 }
 func getPoint() -> NSPoint
@@ -180,8 +180,8 @@ func swiftInit()
 	for arg in CommandLine.arguments {useArgument(arg)}
 	device = MTLCreateSystemDefaultDevice()
 	let rect = NSMakeRect(
-		CGFloat(planeConfig(Picturey,Lefty)), CGFloat(planeConfig(Picturey,Basey)),
-		CGFloat(planeConfig(Picturey,Widey)), CGFloat(planeConfig(Picturey,Highy)))
+		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
+		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
 	layer = CAMetalLayer()
 	layer.device = device
 	layer.pixelFormat = .bgra8Unorm

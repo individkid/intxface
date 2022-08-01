@@ -54,30 +54,37 @@ Memory = {
 	"Machinez", -- state machine lines
 }
 Configure = {
-	"Triangley",
-	"Numericy",
-	"Vertexy",
-	"Ranjey",
-	"Indicatey",
-	"Machiney",
-	"Feathery",
-	"Arrowy",
-	"Picturey",
-	"Focaly",
-	"Oney",
-	"Swarmy",
-	"Windowy",
-}
-Modifier = {
-	"Sizey",
-	"Limity",
-	"Indexy",
-	"Starty",
-	"Stopy",
-	"Lefty",
-	"Basey",
-	"Widey",
-	"Highy",
+	"TriangleSize",
+	"TriangleLimit",
+	"TriangleIndex",
+	"NumericSize",
+	"NumericLimit",
+	"NumericIndex",
+	"VertexSize",
+	"VertexLimit",
+	"VertexIndex",
+	"RanjeSize",
+	"RanjeLimit",
+	"RanjeIndex",
+	"IndicateSize",
+	"IndicateLimit",
+	"IndicateIndex",
+	"ArgumentSize",
+	"ArgumentLimit",
+	"ArgumentIndex",
+	"MachineLimit",
+	"MachineSize",
+	"MachineIndex",
+	"UniformFeather",
+	"UniformArrow",
+	"UniformPicture",
+	"UniformFocal",
+	"UniformIndex",
+	"UniformSize",
+	"WindowLeft",
+	"WindowBase",
+	"WindowWide",
+	"WindowHigh",
 }
 Action = {
 	"Additive", -- include region above pierce
@@ -98,6 +105,7 @@ Between = {
 	"Manip", -- change indicated matrix
 	"Permute", -- send indicated pierce point
 	"Complete", -- send indicated memory
+	"Debug", -- emulate user action
 }
 Shader = {
 	"Dipoint", -- display from points
@@ -258,16 +266,22 @@ Ranje = {
 	{"pad","Int",{},{2}},
 }
 Indicate = {
-	{"act","Action",{},{}}, -- click change way
-	{"xfm","Transform",{},{}}, -- matrix change way
-	{"sel","Select",{},{}}, -- matrix to change
-	{"cmd","Command",{},{}}, -- command for send
-	{"mem","Memory",{},{}}, -- memory for send
-	{"siz","Int",{},{}}, -- size for send
-	{"idx","Int",{},{}}, -- index for send
-	{"hnd","Int",{},{}}, -- hand warp
-	{"fng","Int",{},{}}, -- finger warp
-	{"clk","Int",{},{}}, -- click warp
+	{"bet","Between",{},{}}, -- what to change
+	{"xfm","Transform",{["bet"]={["Manip"]=true}},{}}, -- matrix change way
+	{"sel","Select",{["bet"]={["Manip"]=true}},{}}, -- matrix to change
+	{"act","Action",{["bet"]={["Permute"]=true}},{}}, -- click permute way
+	{"cmd","Command",{["bet"]={["Complete"]=true}},{}}, -- command for send
+	{"mem","Memory",{["bet"]={["Complete"]=true}},{}}, -- memory for send
+	{"siz","Int",{["bet"]={["Complete"]=true}},{}}, -- size for send
+	{"idx","Int",{["bet"]={["Complete"]=true}},{}}, -- index for send
+	{"hnd","Int",{["bet"]={["Debug"]=true}},{}}, -- hand warp
+	{"fng","Int",{["bet"]={["Debug"]=true}},{}}, -- finger warp
+	{"clk","Int",{["bet"]={["Debug"]=true}},{}}, -- click warp
+}
+Argument = {
+	{"sha","Shader",{},{}}, -- shader to start
+	{"srt","Int",{},{}}, -- index to start at
+	{"stp","Int",{},{}}, -- index to stop before
 }
 Machine = {
 	{"idx","Int",{},{}}, -- current state
@@ -275,8 +289,7 @@ Machine = {
 	{"cmd","Command",{},{}}, -- atpipe qualifier
 	{"mem","Memory",{},{}}, -- atpipe qualifier
 	{"ind","Int",{},{}}, -- indicate index to do
-	{"bet","Between",{},{}}, -- do before shader
-	{"sha","Shader",{},{}}, -- shader to start
+	{"arg","Int",{},{}}, -- arguments to start
 	{"nxt","Int",{},{}}, -- then goto this state
 }
 Client = {
@@ -297,8 +310,8 @@ Client = {
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Ranje",{["mem"]={["Ranjez"]=true}},"siz"},
 	{"ind","Indicate",{["mem"]={["Indicatez"]=true}},"siz"},
+	{"arg","Argument",{["mem"]={["Argumentz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
-	{"mod","Modifier",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 }
