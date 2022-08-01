@@ -50,6 +50,7 @@ Memory = {
 	"Piercez", -- pierce point normal and valid
 	"Ranjez", -- plane or point index ranges
 	"Indicatez", -- predraw mode
+	"Argumentz", -- draw mode
 	"Configurez", -- configure to value
 	"Machinez", -- state machine lines
 }
