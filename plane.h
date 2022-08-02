@@ -9,7 +9,6 @@ typedef void (*wftype)(enum Shader shader);
 typedef void (*uftype)(struct Client *client);
 void planeInit(vftype init, uftype dma, wftype draw);
 float planeConfig(enum Configure cfg);
-void planeReconfig(enum Configure cfg, float val);
 void planeWake(int count);
 void planeReady(struct Pierce *pierce, int size);
 void planeEmpty();

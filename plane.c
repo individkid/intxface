@@ -50,7 +50,7 @@ void planeInit(vftype init, uftype dma, wftype draw)
 }
 float planeConfig(enum Configure cfg)
 {
-	return 0.0;
+	return configure[cfg];
 }
 void planeWake(int count)
 {
