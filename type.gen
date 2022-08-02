@@ -340,7 +340,7 @@ Client = {
 	{"ind","Indicate",{["mem"]={["Indicatez"]=true}},"siz"},
 	{"arg","Argument",{["mem"]={["Argumentz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
-	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
+	{"val","Old",{["mem"]={["Configurez"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 }
 Sculpt = {

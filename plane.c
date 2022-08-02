@@ -24,7 +24,7 @@ struct Kernel facet = {0};
 struct Indicate *indicate = {0};
 struct Argument *argument = {0};
 struct Machine *machine = {0};
-int configure[Configures] = {0};
+float configure[Configures] = {0};
 
 void planeAlize(float *dir, const float *vec) // normalize
 {

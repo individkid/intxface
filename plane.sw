@@ -83,6 +83,15 @@ class Pend<T>
 		toMutable(vals) {(len,ptr) in
 		set(UnsafePointer<T>(ptr),base..<limit)}
 	}
+	func set(_ vals:[T], _ index: Int, _ length : Int)
+	{
+		var sub = 0
+		var idx = index%length
+		while (vals.count-sub > length) {
+			set(Array(vals[sub...(sub+length-idx-1)]),idx)
+			sub = sub + length - idx; idx = 0}
+		set(Array(vals[sub...(vals.count-1)]),idx)
+	}
 	func set(_ val: [T]?, _ index: Int)
 	{
 		guard let vals = val else {return}
@@ -250,36 +259,35 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Fewmatz): matrix.set(Swift.Array(0..<siz).map() {(sub) in client.few![sub]},idx)
 	case (Onematz): uniform.set(client.one![0],\Uniform.one)
 	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]}
-	case (Configurez): for sub in Swift.Array(0..<siz) {
-		switch client.cfg![sub] {
-			case (UniformFeather): uniform.set(Float(client.val![sub]),\Uniform.fea)
-			case (UniformArrow): uniform.set(Float(client.val![sub]),\Uniform.arw)
-			case (UniformPicture): uniform.set(Float(client.val![sub]),\Uniform.pic)
-			case (UniformFocal): uniform.set(Float(client.val![sub]),\Uniform.foc)
-			case (UniformIndex): uniform.set(client.val![sub],\Uniform.idx)
-			case (UniformSize): uniform.set(client.val![sub],\Uniform.siz)
-			case (TriangleSize): uniform.set(client.val![sub],\Uniform.tsz)
-			case (TriangleLimit): uniform.set(client.val![sub],\Uniform.tlm)
-			case (TriangleIndex): uniform.set(client.val![sub],\Uniform.tid)
-			case (NumericSize): uniform.set(client.val![sub],\Uniform.nsz)
-			case (NumericLimit): uniform.set(client.val![sub],\Uniform.nlm)
-			case (NumericIndex): uniform.set(client.val![sub],\Uniform.nid)
-			case (VertexSize): uniform.set(client.val![sub],\Uniform.vsz)
-			case (VertexLimit): uniform.set(client.val![sub],\Uniform.vlm)
-			case (VertexIndex): uniform.set(client.val![sub],\Uniform.vid)
-			case (PierceSize): uniform.set(client.val![sub],\Uniform.psz)
-			case (PierceLimit): uniform.set(client.val![sub],\Uniform.plm)
-			case (PierceIndex): uniform.set(client.val![sub],\Uniform.pid)
-			case (ObjectSize): uniform.set(client.val![sub],\Uniform.osz)
-			case (ObjectLimit): uniform.set(client.val![sub],\Uniform.olm)
-			case (ObjectIndex): uniform.set(client.val![sub],\Uniform.oid)
-			case (SwarmSize): uniform.set(client.val![sub],\Uniform.ssz)
-			case (SwarmLimit): uniform.set(client.val![sub],\Uniform.slm)
-			case (SwarmIndex): uniform.set(client.val![sub],\Uniform.sid)
-			case (TextureSize): uniform.set(client.val![sub],\Uniform.xsz)
-			case (TextureLimit): uniform.set(client.val![sub],\Uniform.xlm)
-			case (TextureIndex): uniform.set(client.val![sub],\Uniform.xid)
-			default: break}}
+	case (Configurez): for sub in Swift.Array(0..<siz) {switch client.cfg![sub] {
+		case (UniformFeather): uniform.set(client.val![sub],\Uniform.fea)
+		case (UniformArrow): uniform.set(client.val![sub],\Uniform.arw)
+		case (UniformPicture): uniform.set(client.val![sub],\Uniform.pic)
+		case (UniformFocal): uniform.set(client.val![sub],\Uniform.foc)
+		case (UniformIndex): uniform.set(Int(client.val![sub]),\Uniform.idx)
+		case (UniformSize): uniform.set(Int(client.val![sub]),\Uniform.siz)
+		case (TriangleSize): uniform.set(Int(client.val![sub]),\Uniform.tsz)
+		case (TriangleLimit): uniform.set(Int(client.val![sub]),\Uniform.tlm)
+		case (TriangleIndex): uniform.set(Int(client.val![sub]),\Uniform.tid)
+		case (NumericSize): uniform.set(Int(client.val![sub]),\Uniform.nsz)
+		case (NumericLimit): uniform.set(Int(client.val![sub]),\Uniform.nlm)
+		case (NumericIndex): uniform.set(Int(client.val![sub]),\Uniform.nid)
+		case (VertexSize): uniform.set(Int(client.val![sub]),\Uniform.vsz)
+		case (VertexLimit): uniform.set(Int(client.val![sub]),\Uniform.vlm)
+		case (VertexIndex): uniform.set(Int(client.val![sub]),\Uniform.vid)
+		case (PierceSize): uniform.set(Int(client.val![sub]),\Uniform.psz)
+		case (PierceLimit): uniform.set(Int(client.val![sub]),\Uniform.plm)
+		case (PierceIndex): uniform.set(Int(client.val![sub]),\Uniform.pid)
+		case (ObjectSize): uniform.set(Int(client.val![sub]),\Uniform.osz)
+		case (ObjectLimit): uniform.set(Int(client.val![sub]),\Uniform.olm)
+		case (ObjectIndex): uniform.set(Int(client.val![sub]),\Uniform.oid)
+		case (SwarmSize): uniform.set(Int(client.val![sub]),\Uniform.ssz)
+		case (SwarmLimit): uniform.set(Int(client.val![sub]),\Uniform.slm)
+		case (SwarmIndex): uniform.set(Int(client.val![sub]),\Uniform.sid)
+		case (TextureSize): uniform.set(Int(client.val![sub]),\Uniform.xsz)
+		case (TextureLimit): uniform.set(Int(client.val![sub]),\Uniform.xlm)
+		case (TextureIndex): uniform.set(Int(client.val![sub]),\Uniform.xid)
+		default: break}}
 	default: exitErr(#file,#line,-1)}
 }
 func swiftDraw(_ shader: Shader)
