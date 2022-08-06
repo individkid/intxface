@@ -1,24 +1,8 @@
-struct Client;
 enum Shader;
 enum Configure;
-enum Modifier;
-struct Ranje;
+enum Query;
 struct Pierce;
-enum Query {
-	PictureLeft,
-	PictureBase,
-	PictureWide,
-	PictureHigh,
-	CursorLeft,
-	CursorBase,
-	RollerChange,
-	ButtonLeft,
-	ButtonRight,
-	KeyPress,
-	WakeCall,
-	DrawDone,
-	Querys
-};
+struct Client;
 typedef void (*vftype)(); // init and run
 typedef void (*uftype)(struct Client *client); // dma
 typedef float (*rftype)(enum Query query); // info

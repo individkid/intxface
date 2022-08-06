@@ -297,7 +297,7 @@ func swiftWake()
 {
 	// TODO create event
 }
-func swiftInfo(_ query: plane.Query) -> Float
+func swiftInfo(_ query: Query) -> Float
 {
 	if (query == DrawDone) {return Float(count)}
 	return 0.0

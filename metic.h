@@ -9,7 +9,7 @@ float *timesmat(float *u, float *v, int n);
 float *jumpmat(float *u, float *v, int n);
 float *argmat(int n, int m, float *u, ...);
 float *identmat(float *u, int n);
-float *copyary(float *u, float *v, int duty, int stride, int size);
+float *copyary(float *u, float *v, int duty, int stride, int start, int size);
 float *copyvec(float *u, float *v, int n);
 float *copymat(float *u, float *v, int n);
 float *compmat(float *u, float *v, int n);

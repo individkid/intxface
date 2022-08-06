@@ -88,7 +88,7 @@ Configure = {
 	"MachineLimit",
 	"MachineSize",
 	"MachineIndex",
-	"MachineCurrent",
+	"MachineState",
 	"UniformFeather",
 	"UniformArrow",
 	"UniformPicture",
@@ -117,6 +117,7 @@ Select = {
 }
 Between = {
 	"Manip", -- change indicated matrix
+	"Gesture", -- change indicated fixed
 	"Permute", -- send indicated pierce point
 	"Complete", -- send indicated memory
 	"Debug", -- emulate user action
@@ -129,12 +130,19 @@ Shader = {
 	"Copoint", -- find planes from points
 	"Coplane", -- find points from planes
 }
-Atwill = {
-	"Athand", -- machine line for mouse move
-	"Atfinger", -- machine lines for mouse roller
-	"Atclick", -- machine line foe mouse click
-	"Atpipe", -- machine line for pipe read
-	"Atdelay", -- machine line for timer expire
+Query = {
+	"PictureLeft",
+	"PictureBase",
+	"PictureWide",
+	"PictureHigh",
+	"CursorLeft",
+	"CursorBase",
+	"RollerChange",
+	"ButtonLeft",
+	"ButtonRight",
+	"KeyPress",
+	"WakeCall",
+	"DrawDone",
 }
 Ture = {
 	"Table",
@@ -293,8 +301,8 @@ Ranje = {
 }
 Indicate = {
 	{"bet","Between",{},{}}, -- what to change
-	{"xfm","Transform",{["bet"]={["Manip"]=true}},{}}, -- matrix change way
 	{"sel","Select",{["bet"]={["Manip"]=true}},{}}, -- matrix to change
+	{"xfm","Transform",{["bet"]={["Manip"]=true}},{}}, -- matrix change way
 	{"act","Action",{["bet"]={["Permute"]=true}},{}}, -- click permute way
 	{"cmd","Command",{["bet"]={["Complete"]=true}},{}}, -- command for send
 	{"mem","Memory",{["bet"]={["Complete"]=true}},{}}, -- memory for send
@@ -311,9 +319,10 @@ Argument = {
 }
 Machine = {
 	{"idx","Int",{},{}}, -- current state
-	{"atw","Atwill",{},{}}, -- change initiator
+	{"que","Query",{},{}}, -- change initiator
 	{"cmd","Command",{},{}}, -- atpipe qualifier
 	{"mem","Memory",{},{}}, -- atpipe qualifier
+	{"str","Str",{},{}}, -- string qualifier
 	{"ind","Int",{},{}}, -- indicate index to do
 	{"arg","Int",{},{}}, -- arguments to start
 	{"nxt","Int",{},{}}, -- then goto this state

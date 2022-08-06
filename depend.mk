@@ -12,8 +12,9 @@ holeC: faceC.o typeC.o
 holeC.o: face.h type.h
 lineCpp: faceC.o typeC.o
 lineCpp.o: face.h type.h
+meticC.o: metic.h
 planeC.o: face.h metic.h plane.h share.h type.h
-planeSw: faceC.o planeC.o typeC.o
+planeSw: faceC.o meticC.o planeC.o typeC.o
 planeSw.o: face.h plane.h type.h
 spaceHs: face.hs faceC.o naive.hs type.hs
 spacra.log: spacraHs
