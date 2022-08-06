@@ -43,6 +43,7 @@ void planeAlize(float *dir, const float *vec) // normalize
 void planeCross(float *axe, const float *fix, const float *pic)
 {
 }
+typedef void (*planeXform)(float *mat, const float *fix, const float *pic, float ang);
 void planeXtate(float *mat, const float *fix, const float *pic, float ang) // rotate
 {
 }
@@ -100,6 +101,7 @@ void planeWake(enum Query hint)
 	struct Vector fixed = {0};
 	float angle = 0;
 	struct Kernel *kernel = 0;
+	planeXform transform = 0;
 	enum Command command = Commands;
 	enum Memory memory = Memorys;
 	int state = configure[MachineState];
@@ -142,19 +144,20 @@ void planeWake(enum Query hint)
 		switch (cate->bet) {
 			case (Manip): {
 			switch (cate->sel) {
-				case (Subject): kernel = &subject; memory = Allmatz; break;
-				case (Object): kernel = object+(int)configure[UniformIndex]; memory = Fewmatz; break;
-				case (Element): kernel = &element; memory = Onematz; break;
+				case (Subject): memory = Allmatz; client.all = &matrix; client.idx = 0; kernel = &subject; break;
+				case (Object): memory = Fewmatz; client.few = &matrix; client.idx = (int)configure[UniformIndex]; kernel = object+client.idx%(int)configure[ObjectSize]; break;
+				case (Element): memory = Onematz; client.one = &matrix; client.idx = 0; kernel = &element; break;
+				default: break;}
+			switch (cate->xfm) {
+				case (Translate): transform = planeXlate; break;
+				case (Rotate): transform = planeXtate; break;
+				case (Scale): transform = planeScale; break;
+				case (Zoom): transform = planeFocal; break; // TODO add normalize step to shaders
 				default: break;}
 			vector.vec[0] = callInfo(CursorLeft); vector.vec[1] = callInfo(CursorBase); angle = kernel->angle += callInfo(RollerChange);
 			copymat(matrix.mat,kernel->compose.mat,4); copyvec(fixed.vec,kernel->fixed.vec,4);
-			switch (cate->xfm) {
-				case (Translate): planeXlate(matrix.mat,fixed.vec,vector.vec,angle); break;
-				case (Rotate): planeXtate(matrix.mat,fixed.vec,vector.vec,angle); break;
-				case (Scale): planeScale(matrix.mat,fixed.vec,vector.vec,angle); break;
-				case (Zoom): planeFocal(matrix.mat,fixed.vec,vector.vec,angle); break; // TODO add normalize step to shaders
-				default: break;}
-			client.mem = memory; client.siz = 1; client.idx = 0; client.one = &matrix; // it's a union
+			transform(matrix.mat,fixed.vec,vector.vec,angle);
+			client.mem = memory; client.siz = 1;
 			callDma(&client);
 			break;}
 			case (Gesture): {
