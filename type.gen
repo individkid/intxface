@@ -109,10 +109,11 @@ Transform = {
 	"Translate", -- to picture, hand parallel, finger normal
 	"Rotate", -- start to moved with fixed of, hand cross, finger moved
 	"Scale", -- to pictue fixed of, hand normal, finger paralellel
+	"Zoom", -- change focal point and focal length
 }
 Select = {
-	"Universe", -- entire view
-	"Polytope", -- set of planes
+	"Subject", -- entire view
+	"Object", -- set of planes
 	"Element", -- single plane
 }
 Between = {
