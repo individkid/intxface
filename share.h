@@ -5,5 +5,5 @@ enum Share {
 	TypeShare,
 	ShareShare
 };
-struct ArgxNest shareFactory(const char *arg, int *mod, int lim);
+struct ArgxNest shareFactory(const char *arg, int *mod);
 void shareInit();

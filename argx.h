@@ -23,7 +23,7 @@ struct ArgxNest {
 	mftype gnc; // str fnc or gnc if FlowArgx
 	const char *str; // punt stream or nesting count
 };
-typedef struct ArgxNest (*fftype)(const char *arg, int *mod, int lim);
+typedef struct ArgxNest (*fftype)(const char *arg, int *mod);
 struct ArgxCnst {
 	const char *str; // zero if value is constant idx
 	int cnt; // ignored if str is not zero

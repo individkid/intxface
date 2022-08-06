@@ -1,4 +1,3 @@
-import argx
 import type
 import plane
 import face
@@ -153,13 +152,13 @@ func getLock() -> MTLCommandBufferHandler
 }
 func getReady() -> MTLCommandBufferHandler
 {
-	if (size == 0) {return {(MTLCommandBuffer) in planeEmpty()}}
+	if (size == 0) {return {(MTLCommandBuffer) in planeReady(nil,0)}}
 	let last = pierce.get()
 	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents())),Int32(size))}
 }
 func getCount() -> MTLCommandBufferHandler
 {
-	return {(MTLCommandBuffer) in count -= 1; planeWake(Int32(count))}
+	return {(MTLCommandBuffer) in count -= 1; planeWake(DrawDone)}
 }
 func getThird(_ range: Ranje) -> Ranje
 {
@@ -186,7 +185,7 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> 
 }
 func swiftInit()
 {
-	for arg in CommandLine.arguments {useArgument(arg)}
+	for arg in CommandLine.arguments {planeArgument(arg)}
 	device = MTLCreateSystemDefaultDevice()
 	let rect = NSMakeRect(
 		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
@@ -242,6 +241,10 @@ func swiftInit()
 	// setEvent(.scrollWheel,swiftRoll)
 	// setEvent(.applicationDefined,swiftCheck)
 }
+func swiftRun()
+{
+	NSApp.run()
+}
 func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 {
 	let client = ptr!.pointee
@@ -290,7 +293,16 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 		default: break}}
 	default: exitErr(#file,#line,-1)}
 }
-func swiftDraw(_ shader: Shader)
+func swiftWake()
+{
+	// TODO create event
+}
+func swiftInfo(_ query: plane.Query) -> Float
+{
+	if (query == DrawDone) {return Float(count)}
+	return 0.0
+}
+func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 {
 	switch (shader) {
 	case (Dipoint):
@@ -303,7 +315,7 @@ func swiftDraw(_ shader: Shader)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
 		encode.endEncoding()
 	}
-	for range in array { // use planeConfig(DrawStart) and planeConfig(DrawStop)
+	for range in array { // TODO use start and stop
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param) else {exitErr(#file,#line,-1);return}
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
@@ -327,7 +339,7 @@ func swiftDraw(_ shader: Shader)
 	code.commit()
 	case (Adpoint):
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
-	for range in array { // use planeConfig(DrawStart) and planeConfig(DrawStop)
+	for range in array { // TODO use start and stopf
 		var offset = (Int(range.idx)*MemoryLayout<Triangle>.size)/3
 		var nums:[Int] = []
 		var pers:[Int] = []
@@ -366,4 +378,4 @@ func swiftDraw(_ shader: Shader)
 
 // MAIN
 
-	planeInit(swiftInit,swiftMemory,swiftDraw)
+	planeInit(swiftInit,swiftRun,swiftMemory,swiftWake,swiftInfo,swiftDraw)

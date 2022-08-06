@@ -326,13 +326,13 @@ int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 	wfn[lim] = wpf;
 	return lim++;
 }
-int pselectAny(struct timespec *dly, int idx)
+int pselectAny(struct timespec *dly, int msk)
 {
 	while (1) {
 	int val;
 	int nfd = 0;
 	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
-	for (int i = 0; i < lim; i++) if (idx < 0 || idx == i) {
+	for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
 		if (fdt[i] == Wait && nfd <= inp[i]) nfd = inp[i]+1;
 		if (fdt[i] == Wait) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}
 		if (fdt[i] == Sock && nfd <= inp[i]) nfd = inp[i]+1;
@@ -344,11 +344,11 @@ int pselectAny(struct timespec *dly, int idx)
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,dly,0);
 	if (val < 0) ERROR(exitErr,0);
 	if (val == 0) return -1;
-	nfd = 0; for (int i = 0; i < lim; i++) if (idx < 0 || idx == i) {
+	nfd = 0; for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
 		if (fdt[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
 		if (fdt[i] == Sock && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
 		if (fdt[i] == Inet && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}}
-	if (nfd == 0) for (int i = 0; i < lim; i++) if (idx < 0 || idx == i) {
+	if (nfd == 0) for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
 		if (fdt[i] == Wait && FD_ISSET(inp[i],&fds)) return i;
 		if (fdt[i] == Sock && FD_ISSET(inp[i],&fds)) return i;
 		if (fdt[i] == Inet && FD_ISSET(inp[i],&fds)) {

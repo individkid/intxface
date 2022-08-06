@@ -21,40 +21,39 @@ const char *maybeName(const char *str, int dir)
 {
 	return 0;
 }
-struct ArgxNest shareFactory(const char *arg, int *mod, int lim)
+struct ArgxNest shareFactory(const char *str, int *arg)
 {
 	struct ArgxNest nest = {0};
-	if (lim < 4) return nest;
 	nest.opc = FlowArgx;
-	nest.typ = mod[TypeShare];
-	switch (mod[FlowShare]) {
-		case (0): nest.idx = forkExec(arg); break;
-		case (1): nest.idx = openFile(arg); break;
-		case (2): nest.idx = openInet(headName(arg),tailName(arg)); break;
-		case (3): nest.str = arg; return nest;
-		case (4): nest.idx = pipeInit(maybeName(arg,mod[GateShare]),maybeName(arg,!mod[GateShare])); break;
-		case (5): nest.idx = openFifo(arg); break;
+	nest.typ = arg[TypeShare];
+	switch (arg[FlowShare]) {
+		case (0/*e*/): nest.idx = forkExec(str); break;
+		case (1/*f*/): nest.idx = openFile(str); break;
+		case (2/*g*/): nest.idx = openInet(headName(str),tailName(str)); break;
+		case (3/*h*/): nest.str = str; return nest;
+		case (4/*p*/): nest.idx = pipeInit(maybeName(str,arg[GateShare]),maybeName(str,!arg[GateShare])); break;
+		case (5/*q*/): nest.idx = openFifo(str); break;
 		default: break;}
-	if (mod[TypeShare] == -1) {
-		switch (mod[GateShare]) {
-			case (0): switch (mod[WrapShare]) {
-				case (0): nest.fnc = 0; break; // TODO generated read text switch
-				case (1): nest.fnc = 0; break; // TODO generated read binary switch
+	if (arg[TypeShare]/*generte type identifier*/ == -1) {
+		switch (arg[GateShare]) {
+			case (0/*i*/): switch (arg[WrapShare]) {
+				case (0/*a*/): nest.fnc = 0; break; // TODO generated read text switch
+				case (1/*b*/): nest.fnc = 0; break; // TODO generated read binary switch
 				default: break;} break;
-			case (1): switch (mod[WrapShare]) {
-				case (0): nest.fnc = 0; break; // TODO generated write text switch
-				case (1): nest.fnc = 0; break; // TODO generated write binary switch
+			case (1/*o*/): switch (arg[WrapShare]) {
+				case (0/*a*/): nest.fnc = 0; break; // TODO generated write text switch
+				case (1/*b*/): nest.fnc = 0; break; // TODO generated write binary switch
 				default: break;} break;
 			default: break;}}
 	else {
-		switch (mod[GateShare]) {
-			case (0): switch (mod[WrapShare]) {
-				case (0): nest.gnc = 0; break; // TODO type generated read text
-				case (1): nest.gnc = 0; break; // TODO type generated read binary
+		switch (arg[GateShare]) {
+			case (0/*i*/): switch (arg[WrapShare]) {
+				case (0/*a*/): nest.gnc = 0; break; // TODO type generated read text
+				case (1/*b*/): nest.gnc = 0; break; // TODO type generated read binary
 				default: break;} break;
-			case (1): switch (mod[WrapShare]) {
-				case (0): nest.gnc = 0; break; // TODO type generated write text
-				case (1): nest.gnc = 0; break; // TODO type generated write binary
+			case (1/*o*/): switch (arg[WrapShare]) {
+				case (0/*a*/): nest.gnc = 0; break; // TODO type generated write text
+				case (1/*b*/): nest.gnc = 0; break; // TODO type generated write binary
 				default: break;} break;
 			default: break;}}
 	return nest;

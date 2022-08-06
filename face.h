@@ -35,6 +35,7 @@ struct Text {
 	char **str;
 	int trm;
 };
+struct timespec;
 void debugStr(const char *str);
 void exitErr(const char *str, int num, int idx);
 void readNote(eftype exc, int idx);
@@ -52,6 +53,7 @@ int openInet(const char *adr, const char *num);
 int forkExec(const char *exe);
 int pipeInit(const char *av1, const char *av2);
 int puntInit(int rdx, int wdx, pftype rpf, qftype wpf);
+int pselectAny(struct timespec *dly, int msk);
 int waitAny();
 int pauseAny(double dly);
 void waitAll();

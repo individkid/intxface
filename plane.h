@@ -4,11 +4,27 @@ enum Configure;
 enum Modifier;
 struct Ranje;
 struct Pierce;
-typedef void (*vftype)();
-typedef void (*wftype)(enum Shader shader);
-typedef void (*uftype)(struct Client *client);
-void planeInit(vftype init, uftype dma, wftype draw);
+enum Query {
+	PictureLeft,
+	PictureBase,
+	PictureWide,
+	PictureHigh,
+	CursorLeft,
+	CursorBase,
+	RollerChange,
+	ButtonLeft,
+	ButtonRight,
+	KeyPress,
+	WakeCall,
+	DrawDone,
+	Querys
+};
+typedef void (*vftype)(); // init and run
+typedef void (*uftype)(struct Client *client); // dma
+typedef float (*rftype)(enum Query query); // info
+typedef void (*wftype)(enum Shader shader, int start, int stop); // draw
+void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw);
+void planeArgument(const char *str);
 float planeConfig(enum Configure cfg);
-void planeWake(int count);
+void planeWake(enum Query hint);
 void planeReady(struct Pierce *pierce, int size);
-void planeEmpty();

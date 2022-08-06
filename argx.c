@@ -10,7 +10,6 @@ int slm = 0; // count of number of arguments
 struct ArgxNest nst[NUMNEST] = {0}; // data flow control steps
 int nlm = 0; // number of steps
 int arg[NUMMODE] = {0}; // arguments passed to factory
-int mlm = 0; // number of factory arguments
 fftype fac = 0; // factory for undashed arguments
 int idx = 0; // for constant or immediate expression next
 enum ArgxCode opc; // for consuming next undashed argument
@@ -154,7 +153,7 @@ int useArgument(const char *str)
 		opc = 0;
 		return nlm++;}
 	else if (fac) {
-		nst[nlm] = fac(str,arg,mlm);
+		nst[nlm] = fac(str,arg);
 		return nlm++;}}
 	slm++;
 	return -1;
