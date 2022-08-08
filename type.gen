@@ -50,7 +50,6 @@ Memory = {
 	"Onematz", -- single face transformation
 	"Ranjez", -- plane or point index ranges
 	"Indicatez", -- predraw mode
-	"Argumentz", -- draw mode
 	"Configurez", -- configure to value
 	"Machinez", -- state machine lines
 }
@@ -82,17 +81,12 @@ Configure = {
 	"IndicateSize",
 	"IndicateLimit",
 	"IndicateIndex",
-	"ArgumentSize",
-	"ArgumentLimit",
-	"ArgumentIndex",
 	"MachineLimit",
 	"MachineSize",
 	"MachineIndex",
 	"MachineState",
-	"UniformFeather",
-	"UniformArrow",
-	"UniformPicture",
-	"UniformFocal",
+	"UniformLeft",
+	"UniformBase",
 	"UniformIndex",
 	"UniformSize",
 	"WindowLeft",
@@ -116,12 +110,24 @@ Select = {
 	"Object", -- set of planes
 	"Element", -- single plane
 }
+Qualify = {
+	"ByQuery",
+	"ByCommand",
+	"ByMemory",
+	"ByStr",
+}
 Between = {
+	"Read", -- read internal pipe
+	"Write", -- dma to gpu
+	"Send", -- write external pipe
 	"Manip", -- change indicated matrix
 	"Gesture", -- change indicated fixed
 	"Permute", -- send indicated pierce point
 	"Complete", -- send indicated memory
 	"Debug", -- emulate user action
+	"Draw", -- start shader
+	"Reconfig", -- change configuration
+	"Take", -- read query value
 }
 Shader = {
 	"Dipoint", -- display from points
@@ -235,10 +241,8 @@ Uniform = {
 	{"bas","Old",{},{36}},
 	{"all","Old",{},{16}},
 	{"one","Old",{},{16}},
-	{"fea","Old",{},{4}},
-	{"arw","Old",{},{4}},
-	{"pic","Old",{},{4}},
-	{"foc","Old",{},{4}},
+	{"lat","Old",{},{}},
+	{"lon","Old",{},{}},
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
 	{"tsz","Int",{},{}}, -- size of trinagle buffer
@@ -262,7 +266,7 @@ Uniform = {
 	{"xsz","Int",{},{}}, -- size of texture buffer
 	{"xlm","Int",{},{}}, -- largest texture index
 	{"xid","Int",{},{}}, -- starting texture index
-	{"pad","Int",{},{}},
+	{"pad","Int",{},{3}},
 }
 Triangle = {
 	{"vtx","Int",{},{4}}, -- points of triangle
@@ -301,6 +305,7 @@ Ranje = {
 	{"pad","Int",{},{2}},
 }
 Indicate = {
+	{"nxt","Int",{},{}}, -- linked list
 	{"bet","Between",{},{}}, -- what to change
 	{"sel","Select",{["bet"]={["Manip"]=true}},{}}, -- matrix to change
 	{"xfm","Transform",{["bet"]={["Manip"]=true}},{}}, -- matrix change way
@@ -312,21 +317,24 @@ Indicate = {
 	{"hnd","Int",{["bet"]={["Debug"]=true}},{}}, -- hand warp
 	{"fng","Int",{["bet"]={["Debug"]=true}},{}}, -- finger warp
 	{"clk","Int",{["bet"]={["Debug"]=true}},{}}, -- click warp
-}
-Argument = {
-	{"sha","Shader",{},{}}, -- shader to start
-	{"srt","Int",{},{}}, -- index to start at
-	{"stp","Int",{},{}}, -- index to stop before
+	{"sha","Shader",{["bet"]={["Draw"]=true}},{}}, -- shader to start
+	{"srt","Int",{["bet"]={["Draw"]=true}},{}}, -- index to start at
+	{"stp","Int",{["bet"]={["Draw"]=true}},{}}, -- index to stop before
+	{"cfg","Configure",{["bet"]={["Reconfig"]=true}},{}}, -- configuration to change
+	{"val","Old",{["bet"]={["Reconfig"]=true}},{}}, -- configuration value
+	{"que","Query",{["bet"]={["Take"]=true}},{}}, -- value to query
 }
 Machine = {
 	{"idx","Int",{},{}}, -- current state
-	{"que","Query",{},{}}, -- change initiator
-	{"cmd","Command",{},{}}, -- atpipe qualifier
-	{"mem","Memory",{},{}}, -- atpipe qualifier
-	{"str","Str",{},{}}, -- string qualifier
+	{"nxt","Int",{},{}}, -- next state
+	{"bef","Int",{},{}}, -- && state before indicate
 	{"ind","Int",{},{}}, -- indicate index to do
-	{"arg","Int",{},{}}, -- arguments to start
-	{"nxt","Int",{},{}}, -- then goto this state
+	{"aft","Int",{},{}}, -- && state after indicate
+	{"qua","Qualify",{},{}}, -- comparison to make
+	{"que","Query",{["qua"]={["ByQuery"]=true}},{}}, -- change hint
+	{"cmd","Command",{["qua"]={["ByCommand"]=true}},{}}, -- from pipe read
+	{"mem","Memory",{["qua"]={["ByMemory"]=true}},{}}, -- from pipe read
+	{"str","Str",{["qua"]={["ByStr"]=true}},{}}, -- string qualifier
 }
 Client = {
 	{"cmd","Command",{},{}},
@@ -346,7 +354,6 @@ Client = {
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Ranje",{["mem"]={["Ranjez"]=true}},"siz"},
 	{"ind","Indicate",{["mem"]={["Indicatez"]=true}},"siz"},
-	{"arg","Argument",{["mem"]={["Argumentz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Old",{["mem"]={["Configurez"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
