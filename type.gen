@@ -41,17 +41,17 @@ Memory = {
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
-	"Piercez", -- pierce point normal and valid
 	"Swarmz", -- array of points around focal point
 	"Texturez", -- memory for textures
 	"Basisz", -- base for each dimension
 	"Allmatz", -- whole view transformation
 	"Fewmatz", -- matrix per set of planes
 	"Onematz", -- single face transformation
+	"Piercez", -- pierce point normal and valid
 	"Slicez", -- plane or point index ranges
-	"Indicatez", -- predraw mode
-	"Configurez", -- configure to value
+	"Stringz", -- keyboard comparison strings
 	"Machinez", -- state machine lines
+	"Configurez", -- configure to value
 }
 Configure = {
 	"TriangleSize",
@@ -78,6 +78,9 @@ Configure = {
 	"SliceSize",
 	"SliceLimit",
 	"SliceIndex",
+	"StringSize",
+	"StringLimit",
+	"StringIndex",
 	"MachineLimit",
 	"MachineSize",
 	"MachineIndex",
@@ -86,7 +89,6 @@ Configure = {
 	"MachineCommand",
 	"MachineMemory",
 	"MachineSelf",
-	"MachineValid",
 	"MachineXform",
 	"MachineCompare",
 	"MachineSelect",
@@ -94,6 +96,10 @@ Configure = {
 	"MachineStart",
 	"MachineStop",
 	"MachineResponse",
+	"PierceLeft",
+	"PierceBase",
+	"PierceNear",
+	"PierceFound",
 	"UniformLeft",
 	"UniformBase",
 	"UniformIndex",
@@ -116,6 +122,7 @@ Transfer = {
 	"Write", -- write external pipe
 	"Save", -- client, pierce, or query to configure
 	"Force", -- machine to configure
+	"Collect", -- query to collect
 	"Setup", -- configure to client
 	"Manip", -- kernel to client
 	"Lead", -- cursor to kernel
@@ -285,7 +292,8 @@ Pierce = {
 	{"fix","Old",{},{4}},
 	{"nml","Old",{},{4}},
 	{"vld","Int",{},{}},
-	{"pad","Int",{},{3}},
+	{"idx","Int",{},{}},
+	{"pad","Int",{},{2}},
 }
 Slice = {
 	{"idx","Int",{},{}},
@@ -321,9 +329,10 @@ Client = {
 	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
+	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
+	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Old",{["mem"]={["Configurez"]=true}},"siz"},
-	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 }
 Sculpt = {
 	{"cfg","Ture",{},{}},

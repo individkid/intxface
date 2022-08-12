@@ -19,10 +19,11 @@ struct Kernel {
 	struct Vector fixed; // fixed point
 };
 struct Kernel subject = {0};
-struct Kernel *object = {0};
+struct Kernel *object = 0;
 struct Kernel element = {0};
-struct Indicate *indicate = {0};
-struct Machine *machine = {0};
+struct Pierce *pierce = 0;
+char **strings = 0;
+struct Machine *machine = 0;
 float configure[Configures] = {0};
 char collect[BUFSIZE] = {0};
 int internal = 0;
@@ -112,6 +113,30 @@ enum Shader planeShader()
 		default: break;}
 	return Shaders;
 }
+void *planeRealloc(void *ptr, int siz, int tmp, int mod)
+{
+	char *result = realloc(ptr,siz*mod);
+	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
+	return result;
+}
+void planeReconfig(enum Configure cfg, float val)
+{
+	switch (cfg) {
+		case (PierceSize): pierce = planeRealloc(pierce,val,configure[PierceSize],sizeof(struct Pierce)); break;
+		case (ObjectSize): object = planeRealloc(object,val,configure[ObjectSize],sizeof(struct Kernel)); break;
+		case (StringSize): strings = planeRealloc(strings,val,configure[StringSize],sizeof(char *)); break;
+		case (MachineSize): machine = planeRealloc(machine,val,configure[MachineSize],sizeof(struct Machine)); break;
+		default: break;}
+	configure[cfg] = val;
+}
+struct Pierce *planePierce()
+{
+	struct Pierce *found = 0;
+	for (int i = configure[PierceIndex]; i < configure[PierceLimit]; i++) {
+		struct Pierce *temp = pierce + i%(int)configure[PierceSize];
+		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
+	return found;
+}
 void *planeThread(void *arg)
 {
 	while (goon) {
@@ -168,9 +193,10 @@ void planeWake(enum Configure hint)
 				case (MachineCommand): configure[MachineCommand] = client.cmd; break;
 				case (MachineMemory): configure[MachineMemory] = client.mem; break;
 				case (MachineSelf): configure[MachineSelf] = client.slf; break;
-				case (UniformLeft): configure[UniformLeft] = 0/*TODO pierce*/; break;
-				case (UniformBase): configure[UniformBase] = 0/*TODO pierce*/; break;
-				case (UniformIndex): configure[UniformIndex] = 0/*TODO pierce*/; break;
+				case (PierceLeft): configure[PierceLeft] = planePierce()->fix[0]; break;
+				case (PierceBase): configure[PierceBase] = planePierce()->fix[1]; break;
+				case (PierceNear): configure[PierceNear] = planePierce()->fix[2]; break;
+				case (PierceFound): configure[PierceFound] = planePierce()->idx; break;
 				case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
 				case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
 				case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
@@ -178,9 +204,23 @@ void planeWake(enum Configure hint)
 				case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
 				case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
 				case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
+				case (ButtonClick): configure[ButtonClick] = callInfo(ButtonClick); break;
+				case (ButtonDrag): configure[ButtonDrag] = callInfo(ButtonDrag); break;
+				case (ButtonPress): configure[ButtonPress] = callInfo(ButtonPress); break;
+				case (ButtonHold): configure[ButtonHold] = callInfo(ButtonHold); break;
+				case (DrawDone): configure[DrawDone] = callInfo(DrawDone); break;
 				default: break;}
 			break;}
-			case (Force): configure[mptr->cfg] = mptr->val; break; // machine to configure
+			case (Force): planeReconfig(mptr->cfg,mptr->val); break; // machine to configure
+			case (Collect): { // query to collect
+			char single[2] = {0};
+			float *index = 0;
+			single[0] = callInfo(ButtonPress); single[1] = 0;
+			index = configure + MachineCompare;
+			if (strlen(collect) < BUFSIZE-1) strcat(collect,single);
+			for (*index = configure[StringIndex]; *index < configure[StringLimit]; (*index)++) {
+				if (strcmp(collect,strings[(int)*index%(int)configure[StringSize]]) == 0) break;}
+			break;}
 			case (Setup): { // configure to client
 			if (client.mem != Configurez) {
 				freeClient(&client);
@@ -218,7 +258,9 @@ void planeWake(enum Configure hint)
 			case (Give): callDma(&client); break; // dma to gpu
 			case (Keep): { // dma to cpu
 			switch (client.mem) {
-				case (Machinez): break; // TODO wrap on MachineSize
+				case (Stringz): for (int i = 0; i < client.siz; i++) assignStr(strings+(client.idx+i)%(int)configure[StringSize],client.str[i]); break;
+				case (Machinez): for (int i = 0; i < client.siz; i++) machine[(client.idx+i)%(int)configure[MachineSize]] = client.mch[i]; break;
+				case (Configurez): for (int i = 0; i < client.siz; i++) planeReconfig(client.cfg[i],client.val[i]); break;
 				default: break;}
 			break;}
 			case (Draw): callDraw(planeShader(),configure[MachineStart],configure[MachineStop]); break; // start shader
@@ -230,7 +272,7 @@ void planeWake(enum Configure hint)
 			default: break;}
 		configure[MachineLine] = next;}
 }
-void planeReady(struct Pierce *pierce, int size)
+void planeReady(struct Pierce *given, int size)
 {
-	// TODO save pierce points for use by planeWake
+	for (int i = 0; i < size; i++) pierce[(given->idx+i)%(int)configure[PierceSize]] = given[i];
 }
