@@ -48,7 +48,7 @@ Memory = {
 	"Allmatz", -- whole view transformation
 	"Fewmatz", -- matrix per set of planes
 	"Onematz", -- single face transformation
-	"Ranjez", -- plane or point index ranges
+	"Slicez", -- plane or point index ranges
 	"Indicatez", -- predraw mode
 	"Configurez", -- configure to value
 	"Machinez", -- state machine lines
@@ -75,16 +75,25 @@ Configure = {
 	"TextureSize",
 	"TextureLimit",
 	"TextureIndex",
-	"RanjeSize",
-	"RanjeLimit",
-	"RanjeIndex",
-	"IndicateSize",
-	"IndicateLimit",
-	"IndicateIndex",
+	"SliceSize",
+	"SliceLimit",
+	"SliceIndex",
 	"MachineLimit",
 	"MachineSize",
 	"MachineIndex",
-	"MachineState",
+	"MachineLine",
+	"MachineHint",
+	"MachineCommand",
+	"MachineMemory",
+	"MachineSelf",
+	"MachineValid",
+	"MachineXform",
+	"MachineCompare",
+	"MachineSelect",
+	"MachineShader",
+	"MachineStart",
+	"MachineStop",
+	"MachineResponse",
 	"UniformLeft",
 	"UniformBase",
 	"UniformIndex",
@@ -93,41 +102,34 @@ Configure = {
 	"WindowBase",
 	"WindowWide",
 	"WindowHigh",
+	"CursorLeft",
+	"CursorBase",
+	"CursorAngle",
+	"ButtonClick",
+	"ButtonDrag",
+	"ButtonPress",
+	"ButtonHold",
+	"DrawDone",
 }
-Action = {
-	"Additive", -- include region above pierce
-	"Subtract", -- exclude region below pierce
-	"Refine", -- add random plane through pierce
-}
-Transform = {
-	"Translate", -- to picture, hand parallel, finger normal
-	"Rotate", -- start to moved with fixed of, hand cross, finger moved
-	"Scale", -- to pictue fixed of, hand normal, finger paralellel
-	"Zoom", -- change focal point and focal length
-}
-Select = {
-	"Subject", -- entire view
-	"Object", -- set of planes
-	"Element", -- single plane
-}
-Qualify = {
-	"ByQuery",
-	"ByCommand",
-	"ByMemory",
-	"ByStr",
-}
-Between = {
+Transfer = {
 	"Read", -- read internal pipe
-	"Write", -- dma to gpu
-	"Send", -- write external pipe
-	"Manip", -- change indicated matrix
-	"Gesture", -- change indicated fixed
-	"Permute", -- send indicated pierce point
-	"Complete", -- send indicated memory
-	"Debug", -- emulate user action
+	"Write", -- write external pipe
+	"Save", -- client, pierce, or query to configure
+	"Force", -- machine to configure
+	"Setup", -- configure to client
+	"Manip", -- kernel to client
+	"Lead", -- cursor to kernel
+	"Merge", -- echo to kernel
+	"Follow", -- other to kernel
+	"Compose", -- make kernel valid
+	"Give", -- dma to gpu
+	"Keep", -- dma to cpu
 	"Draw", -- start shader
-	"Reconfig", -- change configuration
-	"Take", -- read query value
+	"Equal", -- jump if equal
+	"Noteq", -- jump not equal
+	"Less", -- jump if less
+	"More", -- jump if more
+	"Goto", -- jump regardless
 }
 Shader = {
 	"Dipoint", -- display from points
@@ -136,20 +138,6 @@ Shader = {
 	"Adplane", -- find pierce points from planes
 	"Copoint", -- find planes from points
 	"Coplane", -- find points from planes
-}
-Query = {
-	"PictureLeft",
-	"PictureBase",
-	"PictureWide",
-	"PictureHigh",
-	"CursorLeft",
-	"CursorBase",
-	"RollerChange",
-	"ButtonLeft",
-	"ButtonRight",
-	"KeyPress",
-	"WakeCall",
-	"DrawDone",
 }
 Ture = {
 	"Table",
@@ -241,8 +229,8 @@ Uniform = {
 	{"bas","Old",{},{36}},
 	{"all","Old",{},{16}},
 	{"one","Old",{},{16}},
-	{"lat","Old",{},{}},
 	{"lon","Old",{},{}},
+	{"lat","Old",{},{}},
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
 	{"tsz","Int",{},{}}, -- size of trinagle buffer
@@ -299,42 +287,22 @@ Pierce = {
 	{"vld","Int",{},{}},
 	{"pad","Int",{},{3}},
 }
-Ranje = {
+Slice = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 	{"pad","Int",{},{2}},
 }
-Indicate = {
-	{"nxt","Int",{},{}}, -- linked list
-	{"bet","Between",{},{}}, -- what to change
-	{"sel","Select",{["bet"]={["Manip"]=true}},{}}, -- matrix to change
-	{"xfm","Transform",{["bet"]={["Manip"]=true}},{}}, -- matrix change way
-	{"act","Action",{["bet"]={["Permute"]=true}},{}}, -- click permute way
-	{"cmd","Command",{["bet"]={["Complete"]=true}},{}}, -- command for send
-	{"mem","Memory",{["bet"]={["Complete"]=true}},{}}, -- memory for send
-	{"siz","Int",{["bet"]={["Complete"]=true}},{}}, -- size for send
-	{"idx","Int",{["bet"]={["Complete"]=true}},{}}, -- index for send
-	{"hnd","Int",{["bet"]={["Debug"]=true}},{}}, -- hand warp
-	{"fng","Int",{["bet"]={["Debug"]=true}},{}}, -- finger warp
-	{"clk","Int",{["bet"]={["Debug"]=true}},{}}, -- click warp
-	{"sha","Shader",{["bet"]={["Draw"]=true}},{}}, -- shader to start
-	{"srt","Int",{["bet"]={["Draw"]=true}},{}}, -- index to start at
-	{"stp","Int",{["bet"]={["Draw"]=true}},{}}, -- index to stop before
-	{"cfg","Configure",{["bet"]={["Reconfig"]=true}},{}}, -- configuration to change
-	{"val","Old",{["bet"]={["Reconfig"]=true}},{}}, -- configuration value
-	{"que","Query",{["bet"]={["Take"]=true}},{}}, -- value to query
-}
 Machine = {
-	{"idx","Int",{},{}}, -- current state
-	{"nxt","Int",{},{}}, -- next state
-	{"bef","Int",{},{}}, -- && state before indicate
-	{"ind","Int",{},{}}, -- indicate index to do
-	{"aft","Int",{},{}}, -- && state after indicate
-	{"qua","Qualify",{},{}}, -- comparison to make
-	{"que","Query",{["qua"]={["ByQuery"]=true}},{}}, -- change hint
-	{"cmd","Command",{["qua"]={["ByCommand"]=true}},{}}, -- from pipe read
-	{"mem","Memory",{["qua"]={["ByMemory"]=true}},{}}, -- from pipe read
-	{"str","Str",{["qua"]={["ByStr"]=true}},{}}, -- string qualifier
+	{"xfr","Transfer",{},{}}, -- what to change
+	{"cfg","Configure",{["xfr"]={
+		["Save"]=true,["Force"]=true,["Setup"]=true,
+		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
+	{"val","Old",{["xfr"]={
+		["Force"]=true,["Setup"]=true,
+		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
+	{"idx","Int",{["xfr"]={
+		["Setup"]=true,
+		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true,["Goto"]=true}},{}},
 }
 Client = {
 	{"cmd","Command",{},{}},
@@ -352,8 +320,7 @@ Client = {
 	{"all","Matrix",{["mem"]={["Allmatz"]=true}},"siz"},
 	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
-	{"rng","Ranje",{["mem"]={["Ranjez"]=true}},"siz"},
-	{"ind","Indicate",{["mem"]={["Indicatez"]=true}},"siz"},
+	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Old",{["mem"]={["Configurez"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},

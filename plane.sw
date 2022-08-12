@@ -27,7 +27,7 @@ var swarm = Pend<Vector>()
 var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
-var array = [Ranje]()
+var array = [Slice]()
 var size = 0 // TODO use planeConfig(Pierce*)
 
 class Refer
@@ -160,9 +160,9 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; planeWake(DrawDone)}
 }
-func getThird(_ range: Ranje) -> Ranje
+func getThird(_ range: Slice) -> Slice
 {
-	var result = Ranje()
+	var result = Slice()
 	result.idx = range.idx/3
 	result.siz = range.siz/3
 	return result
@@ -261,10 +261,10 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Allmatz): uniform.set(client.all![0],\Uniform.all)
 	case (Fewmatz): matrix.set(Swift.Array(0..<siz).map() {(sub) in client.few![sub]},idx,Int(planeConfig(ObjectSize)))
 	case (Onematz): uniform.set(client.one![0],\Uniform.one)
-	case (Ranjez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]} // TODO use idx to insert into array of size planeConfig(RanjeSize)
+	case (Slicez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]} // TODO use idx to insert into array of size planeConfig(SliceSize)
 	case (Configurez): for sub in Swift.Array(0..<siz) {switch client.cfg![sub] {
-		case (UniformLeft): uniform.set(client.val![sub],\Uniform.lat)
-		case (UniformBase): uniform.set(client.val![sub],\Uniform.lon)
+		case (UniformLeft): uniform.set(client.val![sub],\Uniform.lon)
+		case (UniformBase): uniform.set(client.val![sub],\Uniform.lat)
 		case (UniformIndex): uniform.set(Int(client.val![sub]),\Uniform.idx)
 		case (UniformSize): uniform.set(Int(client.val![sub]),\Uniform.siz)
 		case (TriangleSize): uniform.set(Int(client.val![sub]),\Uniform.tsz)
@@ -295,7 +295,7 @@ func swiftWake()
 {
 	// TODO create event
 }
-func swiftInfo(_ query: Query) -> Float
+func swiftInfo(_ query: Configure) -> Float
 {
 	if (query == DrawDone) {return Float(count)}
 	return 0.0

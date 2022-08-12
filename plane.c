@@ -17,7 +17,6 @@ struct Kernel {
 	struct Matrix written; // portion written
 	struct Matrix towrite; // portion to write
 	struct Vector fixed; // fixed point
-	float angle; // cumulative angle
 };
 struct Kernel subject = {0};
 struct Kernel *object = {0};
@@ -54,6 +53,64 @@ void planeScale(float *mat, const float *pic, const float *cor, const float *fix
 }
 void planeFocal(float *mat, const float *pic, const float *cor, const float *fix, const float *cur, float ang)
 {
+}
+struct Matrix **planeMatrix(struct Client *client)
+{
+	switch ((int)configure[MachineSelect]) {
+		case (0): return &client->all;
+		case (1): return &client->few;
+		case (2): return &client->one;
+		defalut: break;}
+	return 0;
+}
+int planeIndex()
+{
+	switch ((int)configure[MachineSelect]) {
+		case (0): return 0;
+		case (1): return (int)configure[UniformIndex];
+		case (2): return 0;
+		default: break;}
+	return 0;
+}
+enum Memory planeMemory()
+{
+	switch ((int)configure[MachineSelect]) {
+		case (0): return Allmatz;
+		case (1): return Fewmatz;
+		case (2): return Onematz;
+		defalut: break;}
+	return Memorys;
+}
+struct Kernel *planeKernel()
+{
+	switch ((int)configure[MachineSelect]) {
+		case (0): return &subject;
+		case (1): return object+planeIndex();
+		case (2): return &element;
+		default: break;}
+	return 0;
+}
+planeXform planeFunc()
+{
+	switch ((int)configure[MachineXform]) {
+		case (0): return planeXlate;
+		case (1): return planeXtate;
+		case (2): return planeScale;
+		case (3): return planeFocal; // TODO add normalize step to shaders
+		default: break;}
+	return 0;
+}
+enum Shader planeShader()
+{
+	switch ((int)configure[MachineShader]) {
+		case (0): return Dipoint;
+		case (1): return Diplane;
+		case (2): return Adpoint;
+		case (3): return Adplane;
+		case (4): return Copoint;
+		case (5): return Coplane;
+		default: break;}
+	return Shaders;
 }
 void *planeThread(void *arg)
 {
@@ -92,91 +149,86 @@ float planeConfig(enum Configure cfg)
 {
 	return configure[cfg];
 }
-void planeWake(enum Query hint)
+void planeWake(enum Configure hint)
 {
-	struct Client client = {0};
 	struct Matrix matrix = {0};
-	struct Vector picture = {0};
-	struct Vector corner = {0};
 	struct Vector vector = {0};
-	struct Vector fixed = {0};
-	enum Configure array[2] = {0};
-	float angle = 0;
-	struct Kernel *kernel = 0;
-	planeXform transform = 0;
-	enum Command command = Commands;
-	enum Memory memory = Memorys;
-	int state = configure[MachineState];
-	int index = configure[MachineIndex];
-	while (index >= configure[MachineIndex] && index < configure[MachineLimit]) {
-		struct Machine *mptr = machine+index%(int)configure[MachineSize];
-		int number = mptr->ind;
-		int found = 0;
-		if (mptr->idx != state) {index = mptr->nxt; continue;}
-		switch (mptr->qua) {
-			case (ByQuery): if (mptr->que == hint) found = 1; break;
-			case (ByCommand): if (mptr->cmd == command) found = 1; break;
-			case (ByMemory): if (mptr->mem == memory) found = 1; break;
-			case (ByStr): if (strcmp(mptr->str,collect) == 0) found = 1; break;
-			default: break;}
-		if (!found) {index++; continue;}
-		if (mptr->bef != mptr->idx) {state = mptr->bef; index = configure[MachineIndex]; continue;}
-		while (number < configure[IndicateIndex] && number >= configure[IndicateLimit]) {
-			struct Indicate *iptr = indicate+number%(int)configure[IndicateSize];
-			switch (iptr->bet) {
-				case (Read): readClient(&client,internal); command = client.cmd; memory = client.mem; break;
-				case (Write): callDma(&client); break;
-				case (Send): writeClient(&client,external); break;
-				case (Manip): {
-				switch (iptr->sel) {
-					case (Subject): memory = Allmatz; client.all = &matrix; client.idx = 0; kernel = &subject; break;
-					case (Object): memory = Fewmatz; client.few = &matrix; client.idx = (int)configure[UniformIndex]; kernel = object+client.idx%(int)configure[ObjectSize]; break;
-					case (Element): memory = Onematz; client.one = &matrix; client.idx = 0; kernel = &element; break;
-					default: break;}
-				switch (iptr->xfm) {
-					case (Translate): transform = planeXlate; break;
-					case (Rotate): transform = planeXtate; break;
-					case (Scale): transform = planeScale; break;
-					case (Zoom): transform = planeFocal; break; // TODO add normalize step to shaders
-					default: break;}
-				picture.vec[0] = callInfo(PictureLeft); picture.vec[1] = callInfo(PictureBase);
-				corner.vec[0] = callInfo(PictureWide); corner.vec[1] = callInfo(PictureHigh);
-				vector.vec[0] = callInfo(CursorLeft); vector.vec[1] = callInfo(CursorBase); angle = kernel->angle += callInfo(RollerChange);
-				copymat(matrix.mat,kernel->compose.mat,4); copyvec(fixed.vec,kernel->fixed.vec,4);
-				transform(matrix.mat,picture.vec,corner.vec,fixed.vec,vector.vec,angle);
-				client.mem = memory; client.siz = 1;
-				break;}
-				case (Gesture): {
-				switch (iptr->sel) {
-					case (Subject): {
-					// TODO consult README for what to do before updating subject.fixed
-					// TODO search through pierce points to get pierce for subject.fixed
-					subject.angle = 0;
-					break;}
-					case (Object): break;
-					case (Element): break;
-					default: break;}
-				break;}
-				case (Permute): break; // TODO fill in Piercez client
-				case (Complete): break; // TODO fill in indicated memory
-				case (Debug): break; // TODO emulate user action
-				case (Draw): callDraw(iptr->sha,iptr->srt,iptr->stp); break;
-				case (Reconfig): {
-				vector.vec[0] = configure[array[0] = iptr->cfg] = iptr->val;
-				client.cfg = array; client.val = vector.vec; client.idx = 0; client.mem = Configurez; client.siz = 1;
-				break;}
-				case (Take): {
-				switch (iptr->que) {
-					case (CursorLeft): case (CursorBase): {
-					vector.vec[0] = configure[array[0] = UniformLeft] = callInfo(CursorLeft);
-					vector.vec[1] = configure[array[1] = UniformBase] = callInfo(CursorBase);
-					client.cfg = array; client.val = vector.vec; client.idx = 0; client.mem = Configurez; client.siz = 2;
-					break;}
-					default: break;}
-				break;}
+	struct Client client = {0};
+	char collect[BUFSIZE] = {0};
+	configure[MachineLine] = configure[MachineIndex];
+	configure[MachineHint] = hint;
+	while (configure[MachineLine] >= configure[MachineIndex] && configure[MachineLine] < configure[MachineLimit]) {
+		struct Machine *mptr = machine+(int)configure[MachineLine]%(int)configure[MachineSize];
+		int next = (int)configure[MachineLine]+1;
+		switch (mptr->xfr) {
+			case (Read): readClient(&client,internal); break; // read internal pipe
+			case (Write): writeClient(&client,external); break; // write external pipe
+			case (Save): { // client, pierce, or query to configure
+			switch (mptr->cfg) {
+				case (MachineCommand): configure[MachineCommand] = client.cmd; break;
+				case (MachineMemory): configure[MachineMemory] = client.mem; break;
+				case (MachineSelf): configure[MachineSelf] = client.slf; break;
+				case (UniformLeft): configure[UniformLeft] = 0/*TODO pierce*/; break;
+				case (UniformBase): configure[UniformBase] = 0/*TODO pierce*/; break;
+				case (UniformIndex): configure[UniformIndex] = 0/*TODO pierce*/; break;
+				case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
+				case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
+				case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
+				case (WindowHigh): configure[WindowHigh] = callInfo(WindowHigh); break;
+				case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
+				case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
+				case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
 				default: break;}
-			number = iptr->nxt;}
-		if (mptr->aft != mptr->idx) {state = mptr->aft; index = configure[MachineIndex]; continue;}}
+			break;}
+			case (Force): configure[mptr->cfg] = mptr->val; break; // machine to configure
+			case (Setup): { // configure to client
+			if (client.mem != Configurez) {
+				freeClient(&client);
+				client.cmd = configure[MachineResponse];
+				client.mem = Configurez; client.idx = 0; client.siz = 0;}
+			if (mptr->idx >= client.siz) {
+				allocConfigure(&client.cfg,mptr->idx+1);
+				allocOld(&client.val,mptr->idx+1);
+				client.siz = mptr->idx+1;}
+			client.cfg[mptr->idx] = mptr->cfg; client.val[mptr->idx] = mptr->val;
+			break;}
+			case (Manip): { // kernel to client
+			struct Vector picture = {0};
+			struct Vector corner = {0};
+			struct Vector fixed = {0};
+			struct Vector cursor = {0};
+			float angle = 0;
+			client.cmd = configure[MachineResponse];
+			client.mem = planeMemory();
+			client.idx = planeIndex();
+			client.siz = 1; client.slf = 0;
+			*planeMatrix(&client) = &matrix;
+			picture.vec[0] = configure[WindowLeft]; picture.vec[1] = configure[WindowBase];
+			corner.vec[0] = configure[WindowWide]; corner.vec[1] = configure[WindowHigh];
+			cursor.vec[0] = configure[CursorLeft]; cursor.vec[1] = configure[CursorBase];
+			angle = configure[CursorAngle];
+			copymat(matrix.mat,planeKernel()->compose.mat,4);
+			copyvec(fixed.vec,planeKernel()->fixed.vec,4);
+			planeFunc()(matrix.mat,picture.vec,corner.vec,fixed.vec,cursor.vec,angle);
+			break;}
+			case (Lead): break; // TODO configure to kernel
+			case (Merge): break; // TODO echo to kernel
+			case (Follow): break; // TODO other to kernel
+			case (Compose): break; // TODO make kernel valid
+			case (Give): callDma(&client); break; // dma to gpu
+			case (Keep): { // dma to cpu
+			switch (client.mem) {
+				case (Machinez): break; // TODO wrap on MachineSize
+				default: break;}
+			break;}
+			case (Draw): callDraw(planeShader(),configure[MachineStart],configure[MachineStop]); break; // start shader
+			case (Equal): if (configure[mptr->cfg] == mptr->val) next = mptr->idx; break; // jump if equal
+			case (Noteq): if (configure[mptr->cfg] != mptr->val) next = mptr->idx; break; // jump not equal
+			case (Less): if (configure[mptr->cfg] < mptr->val) next = mptr->idx; break; // jump if less
+			case (More): if (configure[mptr->cfg] > mptr->val) next = mptr->idx; break; // jump if more
+			case (Goto): next = mptr->idx; break; // jump regardless
+			default: break;}
+		configure[MachineLine] = next;}
 }
 void planeReady(struct Pierce *pierce, int size)
 {
