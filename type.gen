@@ -84,18 +84,21 @@ Configure = {
 	"MachineLimit",
 	"MachineSize",
 	"MachineIndex",
-	"MachineLine",
-	"MachineHint",
-	"MachineCommand",
-	"MachineMemory",
-	"MachineSelf",
-	"MachineXform",
-	"MachineCompare",
-	"MachineSelect",
-	"MachineShader",
-	"MachineStart",
-	"MachineStop",
-	"MachineResponse",
+	"StateLine",
+	"StateHint",
+	"StateCommand",
+	"StateMemory",
+	"StateSize",
+	"StateIndex",
+	"StateSelf",
+	"StateCompare",
+	"ClientResponse",
+	"ClientIndex",
+	"ClientXform",
+	"ClientSelect",
+	"ArgumentShader",
+	"ArgumentStart",
+	"ArgumentStop",
 	"PierceLeft",
 	"PierceBase",
 	"PierceNear",
@@ -121,6 +124,7 @@ Transfer = {
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
 	"Save", -- client, pierce, or query to configure
+	"Copy", -- configure to configure
 	"Force", -- machine to configure
 	"Collect", -- query to collect
 	"Setup", -- configure to client
@@ -303,10 +307,12 @@ Slice = {
 Machine = {
 	{"xfr","Transfer",{},{}}, -- what to change
 	{"cfg","Configure",{["xfr"]={
-		["Save"]=true,["Force"]=true,["Setup"]=true,
+		["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,
 		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
+	{"oth","Configure",{["xfr"]={
+		["Copy"]=true}},{}},
 	{"val","Old",{["xfr"]={
-		["Force"]=true,["Setup"]=true,
+		["Force"]=true,
 		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
 	{"idx","Int",{["xfr"]={
 		["Setup"]=true,
