@@ -57,7 +57,7 @@ void planeFocal(float *mat, const float *pic, const float *cor, const float *fix
 }
 struct Matrix **planeMatrix(struct Client *client)
 {
-	switch ((int)configure[ClientSelect]) {
+	switch ((int)configure[StateSelect]) {
 		case (0): return &client->all;
 		case (1): return &client->few;
 		case (2): return &client->one;
@@ -66,16 +66,16 @@ struct Matrix **planeMatrix(struct Client *client)
 }
 int planeIndex()
 {
-	switch ((int)configure[ClientSelect]) {
+	switch ((int)configure[StateSelect]) {
 		case (0): return 0;
-		case (1): return (int)configure[ClientIndex];
+		case (1): return (int)configure[StateIndex];
 		case (2): return 0;
 		default: break;}
 	return 0;
 }
 enum Memory planeMemory()
 {
-	switch ((int)configure[ClientSelect]) {
+	switch ((int)configure[StateSelect]) {
 		case (0): return Allmatz;
 		case (1): return Fewmatz;
 		case (2): return Onematz;
@@ -84,7 +84,7 @@ enum Memory planeMemory()
 }
 struct Kernel *planeKernel()
 {
-	switch ((int)configure[ClientSelect]) {
+	switch ((int)configure[StateSelect]) {
 		case (0): return &subject;
 		case (1): return object+planeIndex();
 		case (2): return &element;
@@ -93,7 +93,7 @@ struct Kernel *planeKernel()
 }
 planeXform planeFunc()
 {
-	switch ((int)configure[ClientXform]) {
+	switch ((int)configure[StateXform]) {
 		case (0): return planeXlate;
 		case (1): return planeXtate;
 		case (2): return planeScale;
@@ -184,21 +184,21 @@ void planeWake(enum Configure hint)
 	struct Vector vector = {0};
 	struct Client client = {0};
 	char collect[BUFSIZE] = {0};
-	configure[StateLine] = configure[MachineIndex];
-	configure[StateHint] = hint;
-	while (configure[StateLine] >= configure[MachineIndex] && configure[StateLine] < configure[MachineLimit]) {
-		struct Machine *mptr = machine+(int)configure[StateLine]%(int)configure[MachineSize];
-		int next = (int)configure[StateLine]+1;
+	configure[MachineLine] = configure[MachineIndex];
+	configure[MachineHint] = hint;
+	while (configure[MachineLine] >= configure[MachineIndex] && configure[MachineLine] < configure[MachineLimit]) {
+		struct Machine *mptr = machine+(int)configure[MachineLine]%(int)configure[MachineSize];
+		int next = (int)configure[MachineLine]+1;
 		switch (mptr->xfr) {
 			case (Read): readClient(&client,internal); break; // read internal pipe
 			case (Write): writeClient(&client,external); break; // write external pipe
 			case (Save): { // client, pierce, or query to configure
 			switch (mptr->cfg) {
-				case (StateCommand): configure[StateCommand] = client.cmd; break;
-				case (StateMemory): configure[StateMemory] = client.mem; break;
-				case (StateSize): configure[StateSize] = client.siz; break;
-				case (StateIndex): configure[StateIndex] = client.idx; break;
-				case (StateSelf): configure[StateSelf] = client.slf; break;
+				case (ClientCommand): configure[ClientCommand] = client.cmd; break;
+				case (ClientMemory): configure[ClientMemory] = client.mem; break;
+				case (ClientSize): configure[ClientSize] = client.siz; break;
+				case (ClientIndex): configure[ClientIndex] = client.idx; break;
+				case (ClientSelf): configure[ClientSelf] = client.slf; break;
 				case (PierceLeft): configure[PierceLeft] = planePierce()->fix[0]; break;
 				case (PierceBase): configure[PierceBase] = planePierce()->fix[1]; break;
 				case (PierceNear): configure[PierceNear] = planePierce()->fix[2]; break;
@@ -223,7 +223,7 @@ void planeWake(enum Configure hint)
 			char single[2] = {0};
 			float *index = 0;
 			single[0] = callInfo(ButtonPress); single[1] = 0;
-			index = configure + StateCompare;
+			index = configure + StringCompare;
 			if (strlen(collect) < BUFSIZE-1) strcat(collect,single);
 			for (*index = configure[StringIndex]; *index < configure[StringLimit]; (*index)++) {
 				if (strcmp(collect,strings[(int)*index%(int)configure[StringSize]]) == 0) break;}
@@ -231,7 +231,7 @@ void planeWake(enum Configure hint)
 			case (Setup): { // configure to client
 			if (client.mem != Configurez) {
 				freeClient(&client);
-				client.cmd = configure[ClientResponse];
+				client.cmd = configure[StateResponse];
 				client.mem = Configurez; client.idx = 0; client.siz = 0;}
 			if (mptr->idx >= client.siz) {
 				allocConfigure(&client.cfg,mptr->idx+1);
@@ -245,7 +245,7 @@ void planeWake(enum Configure hint)
 			struct Vector fixed = {0};
 			struct Vector cursor = {0};
 			float angle = 0;
-			client.cmd = configure[ClientResponse];
+			client.cmd = configure[StateResponse];
 			client.mem = planeMemory();
 			client.idx = planeIndex();
 			client.siz = 1; client.slf = 0;
@@ -277,7 +277,7 @@ void planeWake(enum Configure hint)
 			case (More): if (configure[mptr->cfg] > mptr->val) next = mptr->idx; break; // jump if more
 			case (Goto): next = mptr->idx; break; // jump regardless
 			default: break;}
-		configure[StateLine] = next;}
+		configure[MachineLine] = next;}
 }
 void planeReady(struct Pierce *given, int size)
 {
