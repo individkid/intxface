@@ -24,7 +24,7 @@ struct Kernel element = {0};
 struct Pierce *pierce = 0;
 char **strings = 0;
 struct Machine *machine = 0;
-float configure[Configures] = {0};
+int configure[Configures] = {0};
 char collect[BUFSIZE] = {0};
 int internal = 0;
 int external = 0;
@@ -57,7 +57,7 @@ void planeFocal(float *mat, const float *pic, const float *cor, const float *fix
 }
 struct Matrix **planeMatrix(struct Client *client)
 {
-	switch ((int)configure[StateSelect]) {
+	switch (configure[StateSelect]) {
 		case (0): return &client->all;
 		case (1): return &client->few;
 		case (2): return &client->one;
@@ -66,16 +66,16 @@ struct Matrix **planeMatrix(struct Client *client)
 }
 int planeIndex()
 {
-	switch ((int)configure[StateSelect]) {
+	switch (configure[StateSelect]) {
 		case (0): return 0;
-		case (1): return (int)configure[StateIndex];
+		case (1): return configure[StateIndex];
 		case (2): return 0;
 		default: break;}
 	return 0;
 }
 enum Memory planeMemory()
 {
-	switch ((int)configure[StateSelect]) {
+	switch (configure[StateSelect]) {
 		case (0): return Allmatz;
 		case (1): return Fewmatz;
 		case (2): return Onematz;
@@ -84,7 +84,7 @@ enum Memory planeMemory()
 }
 struct Kernel *planeKernel()
 {
-	switch ((int)configure[StateSelect]) {
+	switch (configure[StateSelect]) {
 		case (0): return &subject;
 		case (1): return object+planeIndex();
 		case (2): return &element;
@@ -93,7 +93,7 @@ struct Kernel *planeKernel()
 }
 planeXform planeFunc()
 {
-	switch ((int)configure[StateXform]) {
+	switch (configure[StateXform]) {
 		case (0): return planeXlate;
 		case (1): return planeXtate;
 		case (2): return planeScale;
@@ -101,9 +101,24 @@ planeXform planeFunc()
 		default: break;}
 	return 0;
 }
+void planeCalculate(struct Matrix *matrix)
+{
+	struct Vector picture = {0};
+	struct Vector corner = {0};
+	struct Vector fixed = {0};
+	struct Vector cursor = {0};
+	float angle = 0;
+	picture.vec[0] = configure[WindowLeft]; picture.vec[1] = configure[WindowBase];
+	corner.vec[0] = configure[WindowWide]; corner.vec[1] = configure[WindowHigh];
+	cursor.vec[0] = configure[CursorLeft]; cursor.vec[1] = configure[CursorBase];
+	angle = configure[CursorAngle];
+	copymat(matrix->mat,planeKernel()->compose.mat,4);
+	copyvec(fixed.vec,planeKernel()->fixed.vec,4);
+	planeFunc()(matrix->mat,picture.vec,corner.vec,fixed.vec,cursor.vec,angle);
+}
 enum Shader planeShader()
 {
-	switch ((int)configure[ArgumentShader]) {
+	switch (configure[ArgumentShader]) {
 		case (0): return Dipoint;
 		case (1): return Diplane;
 		case (2): return Adpoint;
@@ -137,7 +152,7 @@ struct Pierce *planePierce()
 {
 	struct Pierce *found = 0;
 	for (int i = configure[PierceIndex]; i < configure[PierceLimit]; i++) {
-		struct Pierce *temp = pierce + i%(int)configure[PierceSize];
+		struct Pierce *temp = pierce + i%configure[PierceSize];
 		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
 	return found;
 }
@@ -174,26 +189,26 @@ void planeArgument(const char *str)
 	else if (!output) output = str;
 	else ERROR(exitErr,0);
 }
-float planeConfig(enum Configure cfg)
+int planeConfig(enum Configure cfg)
 {
 	return configure[cfg];
 }
 void planeWake(enum Configure hint)
 {
-	struct Matrix matrix = {0};
-	struct Vector vector = {0};
 	struct Client client = {0};
 	char collect[BUFSIZE] = {0};
-	configure[MachineLine] = configure[MachineIndex];
-	configure[MachineHint] = hint;
-	while (configure[MachineLine] >= configure[MachineIndex] && configure[MachineLine] < configure[MachineLimit]) {
-		struct Machine *mptr = machine+(int)configure[MachineLine]%(int)configure[MachineSize];
-		int next = (int)configure[MachineLine]+1;
+	configure[RegisterLine] = configure[MachineIndex];
+	configure[RegisterHint] = hint;
+	while (configure[RegisterLine] >= configure[MachineIndex] && configure[RegisterLine] < configure[MachineLimit]) {
+		struct Machine *mptr = machine+configure[RegisterLine]%configure[MachineSize];
+		int next = configure[RegisterLine]+1;
 		switch (mptr->xfr) {
 			case (Read): readClient(&client,internal); break; // read internal pipe
 			case (Write): writeClient(&client,external); break; // write external pipe
-			case (Save): { // client, pierce, or query to configure
+			case (Save): { // kernel, client, pierce, or query to configure
 			switch (mptr->cfg) {
+				case (RegisterValid): configure[RegisterValid] = planeKernel()->valid; break;
+				case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 				case (ClientCommand): configure[ClientCommand] = client.cmd; break;
 				case (ClientMemory): configure[ClientMemory] = client.mem; break;
 				case (ClientSize): configure[ClientSize] = client.siz; break;
@@ -214,19 +229,18 @@ void planeWake(enum Configure hint)
 				case (ButtonDrag): configure[ButtonDrag] = callInfo(ButtonDrag); break;
 				case (ButtonPress): configure[ButtonPress] = callInfo(ButtonPress); break;
 				case (ButtonHold): configure[ButtonHold] = callInfo(ButtonHold); break;
-				case (DrawDone): configure[DrawDone] = callInfo(DrawDone); break;
 				default: break;}
 			break;}
 			case (Copy): configure[mptr->cfg] = configure[mptr->oth]; break; // configure to configure
 			case (Force): planeReconfig(mptr->cfg,mptr->val); break; // machine to configure
 			case (Collect): { // query to collect
 			char single[2] = {0};
-			float *index = 0;
+			int *index = 0;
 			single[0] = callInfo(ButtonPress); single[1] = 0;
-			index = configure + StringCompare;
+			index = configure + RegisterCompare;
 			if (strlen(collect) < BUFSIZE-1) strcat(collect,single);
 			for (*index = configure[StringIndex]; *index < configure[StringLimit]; (*index)++) {
-				if (strcmp(collect,strings[(int)*index%(int)configure[StringSize]]) == 0) break;}
+				if (strcmp(collect,strings[(int)*index%configure[StringSize]]) == 0) break;}
 			break;}
 			case (Setup): { // configure to client
 			if (client.mem != Configurez) {
@@ -240,33 +254,22 @@ void planeWake(enum Configure hint)
 			client.cfg[mptr->idx] = mptr->cfg; client.val[mptr->idx] = configure[mptr->cfg];
 			break;}
 			case (Manip): { // kernel to client
-			struct Vector picture = {0};
-			struct Vector corner = {0};
-			struct Vector fixed = {0};
-			struct Vector cursor = {0};
-			float angle = 0;
 			client.cmd = configure[StateResponse];
 			client.mem = planeMemory();
 			client.idx = planeIndex();
 			client.siz = 1; client.slf = 0;
-			*planeMatrix(&client) = &matrix;
-			picture.vec[0] = configure[WindowLeft]; picture.vec[1] = configure[WindowBase];
-			corner.vec[0] = configure[WindowWide]; corner.vec[1] = configure[WindowHigh];
-			cursor.vec[0] = configure[CursorLeft]; cursor.vec[1] = configure[CursorBase];
-			angle = configure[CursorAngle];
-			copymat(matrix.mat,planeKernel()->compose.mat,4);
-			copyvec(fixed.vec,planeKernel()->fixed.vec,4);
-			planeFunc()(matrix.mat,picture.vec,corner.vec,fixed.vec,cursor.vec,angle);
+			allocMatrix(planeMatrix(&client),1);
+			planeCalculate(*planeMatrix(&client));
 			break;}
-			case (Lead): break; // TODO configure to kernel
-			case (Merge): break; // TODO echo to kernel
-			case (Follow): break; // TODO other to kernel
-			case (Compose): break; // TODO make kernel valid
+			case (Lead): break; // configure to kernel TODO maintain followed by calculate to maintain, change fixed, clear valid
+			case (Merge): break; // echo to kernel TODO written followed by towrite to written, clear towrite, maintain followed by read to maintain, clear valid
+			case (Follow): break; // other to kernel TODO maintain followed by read to maintain, clear valid
+			case (Compose): break; // make kernel valid TODO maintain followed by inverse written to compose, set valid
 			case (Give): callDma(&client); break; // dma to gpu
 			case (Keep): { // dma to cpu
 			switch (client.mem) {
-				case (Stringz): for (int i = 0; i < client.siz; i++) assignStr(strings+(client.idx+i)%(int)configure[StringSize],client.str[i]); break;
-				case (Machinez): for (int i = 0; i < client.siz; i++) machine[(client.idx+i)%(int)configure[MachineSize]] = client.mch[i]; break;
+				case (Stringz): for (int i = 0; i < client.siz; i++) assignStr(strings+(client.idx+i)%configure[StringSize],client.str[i]); break;
+				case (Machinez): for (int i = 0; i < client.siz; i++) machine[(client.idx+i)%configure[MachineSize]] = client.mch[i]; break;
 				case (Configurez): for (int i = 0; i < client.siz; i++) planeReconfig(client.cfg[i],client.val[i]); break;
 				default: break;}
 			break;}
@@ -277,9 +280,9 @@ void planeWake(enum Configure hint)
 			case (More): if (configure[mptr->cfg] > mptr->val) next = mptr->idx; break; // jump if more
 			case (Goto): next = mptr->idx; break; // jump regardless
 			default: break;}
-		configure[MachineLine] = next;}
+		configure[RegisterLine] = next;}
 }
 void planeReady(struct Pierce *given, int size)
 {
-	for (int i = 0; i < size; i++) pierce[(given->idx+i)%(int)configure[PierceSize]] = given[i];
+	for (int i = 0; i < size; i++) pierce[(given->idx+i)%configure[PierceSize]] = given[i];
 }

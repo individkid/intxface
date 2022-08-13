@@ -81,12 +81,14 @@ Configure = {
 	"StringSize",
 	"StringLimit",
 	"StringIndex",
-	"StringCompare",
 	"MachineLimit",
 	"MachineSize",
 	"MachineIndex",
-	"MachineLine",
-	"MachineHint",
+	"RegisterLine",
+	"RegisterHint",
+	"RegisterValid",
+	"RegisterCompare",
+	"RegisterDone",
 	"ClientCommand",
 	"ClientMemory",
 	"ClientSize",
@@ -118,7 +120,6 @@ Configure = {
 	"ButtonDrag",
 	"ButtonPress",
 	"ButtonHold",
-	"DrawDone",
 }
 Transfer = {
 	"Read", -- read internal pipe

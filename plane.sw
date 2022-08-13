@@ -158,7 +158,7 @@ func getReady() -> MTLCommandBufferHandler
 }
 func getCount() -> MTLCommandBufferHandler
 {
-	return {(MTLCommandBuffer) in count -= 1; planeWake(DrawDone)}
+	return {(MTLCommandBuffer) in count -= 1; planeWake(RegisterDone)}
 }
 func getThird(_ range: Slice) -> Slice
 {
@@ -295,10 +295,10 @@ func swiftWake()
 {
 	// TODO create event
 }
-func swiftInfo(_ query: Configure) -> Float
+func swiftInfo(_ query: Configure) -> Int32
 {
-	if (query == DrawDone) {return Float(count)}
-	return 0.0
+	if (query == RegisterDone) {return Int32(count)}
+	return 0
 }
 func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 {
