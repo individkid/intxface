@@ -109,18 +109,6 @@ enum Shader planeShader()
 		default: break;}
 	return Shaders;
 }
-void planePreconfig(int idx, enum Configure cfg)
-{
-	if (client.mem != Configurez) {
-		freeClient(&client);
-		client.cmd = configure[StateResponse];
-		client.mem = Configurez; client.idx = 0; client.siz = 0;}
-	if (idx >= client.siz) {
-		allocConfigure(&client.cfg,idx+1);
-		allocOld(&client.val,idx+1);
-		client.siz = idx+1;}
-	client.cfg[idx] = cfg; client.val[idx] = configure[cfg];
-}
 struct Matrix *planeMatrix(enum Accumulate accumulate)
 {
 	switch (accumulate){
@@ -145,6 +133,14 @@ struct Matrix *planeMatrix(enum Accumulate accumulate)
 		default: break;}
 	return 0;
 }
+struct Pierce *planePierce()
+{
+	struct Pierce *found = 0;
+	for (int i = configure[PierceIndex]; i < configure[PierceLimit]; i++) {
+		struct Pierce *temp = pierce + i%configure[PierceSize];
+		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
+	return found;
+}
 void planeCalculate(struct Matrix *matrix)
 {
 	struct Vector picture = {0};
@@ -159,7 +155,45 @@ void planeCalculate(struct Matrix *matrix)
 	angle = configure[CursorAngle];
 	planeFunc()(matrix->mat,picture.vec,corner.vec,fixed.vec,cursor.vec,angle);
 }
-void planeReconfig(enum Configure cfg, float val)
+void planePreconfig(enum Configure cfg)
+{
+	switch (cfg) {
+		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
+		case (ClientCommand): configure[ClientCommand] = client.cmd; break;
+		case (ClientMemory): configure[ClientMemory] = client.mem; break;
+		case (ClientSize): configure[ClientSize] = client.siz; break;
+		case (ClientIndex): configure[ClientIndex] = client.idx; break;
+		case (ClientSelf): configure[ClientSelf] = client.slf; break;
+		case (PierceLeft): configure[PierceLeft] = planePierce()->fix[0]; break;
+		case (PierceBase): configure[PierceBase] = planePierce()->fix[1]; break;
+		case (PierceNear): configure[PierceNear] = planePierce()->fix[2]; break;
+		case (PierceFound): configure[PierceFound] = planePierce()->idx; break;
+		case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
+		case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
+		case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
+		case (WindowHigh): configure[WindowHigh] = callInfo(WindowHigh); break;
+		case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
+		case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
+		case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
+		case (ButtonClick): configure[ButtonClick] = callInfo(ButtonClick); break;
+		case (ButtonDrag): configure[ButtonDrag] = callInfo(ButtonDrag); break;
+		case (ButtonPress): configure[ButtonPress] = callInfo(ButtonPress); break;
+		case (ButtonHold): configure[ButtonHold] = callInfo(ButtonHold); break;
+		default: break;}
+}
+void planePostconfig(enum Configure cfg, int idx)
+{
+	if (client.mem != Configurez) {
+		freeClient(&client);
+		client.cmd = configure[StateResponse];
+		client.mem = Configurez; client.idx = 0; client.siz = 0;}
+	if (idx >= client.siz) {
+		allocConfigure(&client.cfg,idx+1);
+		allocOld(&client.val,idx+1);
+		client.siz = idx+1;}
+	client.cfg[idx] = cfg; client.val[idx] = configure[cfg];
+}
+void planeReconfig(enum Configure cfg, int val)
 {
 	int tmp = configure[cfg];
 	configure[cfg] = val;
@@ -188,13 +222,12 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
-struct Pierce *planePierce()
-{
-	struct Pierce *found = 0;
-	for (int i = configure[PierceIndex]; i < configure[PierceLimit]; i++) {
-		struct Pierce *temp = pierce + i%configure[PierceSize];
-		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
-	return found;
+void planeBuffer() {
+	switch (client.mem) {
+		case (Stringz): for (int i = 0; i < client.siz; i++) assignStr(strings+(client.idx+i)%configure[StringSize],client.str[i]); break;
+		case (Machinez): for (int i = 0; i < client.siz; i++) machine[(client.idx+i)%configure[MachineSize]] = client.mch[i]; break;
+		case (Configurez): for (int i = 0; i < client.siz; i++) planeReconfig(client.cfg[i],client.val[i]); break;
+		default: break;}
 }
 void *planeThread(void *arg)
 {
@@ -243,44 +276,18 @@ void planeWake(enum Configure hint)
 		switch (mptr->xfr) {
 			case (Read): readClient(&client,internal); break; // read internal pipe
 			case (Write): writeClient(&client,external); break; // write external pipe
-			case (Save): switch (mptr->cfg) { // kernel, client, pierce, or query to configure
-				case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-				case (ClientCommand): configure[ClientCommand] = client.cmd; break;
-				case (ClientMemory): configure[ClientMemory] = client.mem; break;
-				case (ClientSize): configure[ClientSize] = client.siz; break;
-				case (ClientIndex): configure[ClientIndex] = client.idx; break;
-				case (ClientSelf): configure[ClientSelf] = client.slf; break;
-				case (PierceLeft): configure[PierceLeft] = planePierce()->fix[0]; break;
-				case (PierceBase): configure[PierceBase] = planePierce()->fix[1]; break;
-				case (PierceNear): configure[PierceNear] = planePierce()->fix[2]; break;
-				case (PierceFound): configure[PierceFound] = planePierce()->idx; break;
-				case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
-				case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
-				case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
-				case (WindowHigh): configure[WindowHigh] = callInfo(WindowHigh); break;
-				case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
-				case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
-				case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
-				case (ButtonClick): configure[ButtonClick] = callInfo(ButtonClick); break;
-				case (ButtonDrag): configure[ButtonDrag] = callInfo(ButtonDrag); break;
-				case (ButtonPress): configure[ButtonPress] = callInfo(ButtonPress); break;
-				case (ButtonHold): configure[ButtonHold] = callInfo(ButtonHold); break;
-				default: break;} break;
+			case (Save): planePreconfig(mptr->cfg); break; // kernel, client, pierce, or query to configure
 			case (Copy): configure[mptr->cfg] = configure[mptr->oth]; break; // configure to configure
 			case (Force): planeReconfig(mptr->cfg,mptr->val); break; // machine to configure
 			case (Collect): planeCollect(); break; // query to collect
-			case (Setup): planePreconfig(mptr->idx,mptr->cfg); break; // configure to client
+			case (Setup): planePostconfig(mptr->cfg,mptr->idx); break; // configure to client
 			case (Clear): identmat(planeMatrix(mptr->dst)->mat,4); break; // identity to matrix
 			case (Invert): invmat(planeMatrix(mptr->dst)->mat,4); break; // invert in matrix
 			case (Manip): planeCalculate(planeMatrix(mptr->dst)); break; // manip to matrix
 			case (Follow): jumpmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply to matrix
 			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix
 			case (Give): callDma(&client); break; // dma to gpu
-			case (Keep): switch (client.mem) { // dma to cpu
-				case (Stringz): for (int i = 0; i < client.siz; i++) assignStr(strings+(client.idx+i)%configure[StringSize],client.str[i]); break;
-				case (Machinez): for (int i = 0; i < client.siz; i++) machine[(client.idx+i)%configure[MachineSize]] = client.mch[i]; break;
-				case (Configurez): for (int i = 0; i < client.siz; i++) planeReconfig(client.cfg[i],client.val[i]); break;
-				default: break;} break;
+			case (Keep): planeBuffer(); break; // dma to cpu
 			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader
 			case (Equal): if (configure[mptr->cfg] == mptr->val) next = mptr->idx; break; // jump if equal
 			case (Noteq): if (configure[mptr->cfg] != mptr->val) next = mptr->idx; break; // jump not equal

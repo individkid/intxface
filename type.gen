@@ -319,7 +319,7 @@ Machine = {
 		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
 	{"oth","Configure",{["xfr"]={
 		["Copy"]=true}},{}},
-	{"val","Old",{["xfr"]={
+	{"val","Int",{["xfr"]={
 		["Force"]=true,
 		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
 	{"idx","Int",{["xfr"]={
