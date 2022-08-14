@@ -86,7 +86,6 @@ Configure = {
 	"MachineIndex",
 	"RegisterLine",
 	"RegisterHint",
-	"RegisterValid",
 	"RegisterCompare",
 	"RegisterDone",
 	"ClientCommand",
@@ -129,11 +128,11 @@ Transfer = {
 	"Force", -- machine to configure
 	"Collect", -- query to collect
 	"Setup", -- configure to client
-	"Manip", -- kernel to client
-	"Lead", -- cursor to kernel
-	"Merge", -- echo to kernel
-	"Follow", -- other to kernel
-	"Compose", -- make kernel valid
+	"Clear", -- identity to matrix
+	"Invert", -- invert in matrix
+	"Manip", -- manip to matrix
+	"Follow", -- multiply to matrix
+	"Precede", -- multiply by matrix
 	"Give", -- dma to gpu
 	"Keep", -- dma to cpu
 	"Draw", -- start shader
@@ -142,6 +141,14 @@ Transfer = {
 	"Less", -- jump if less
 	"More", -- jump if more
 	"Goto", -- jump regardless
+	"Swap", -- exchange machine lines
+}
+Accumulate = {
+	"Compose", -- kernel optimization
+	"Maintain", -- kernel checkpoint
+	"Written", -- kernel echoed
+	"Towrite", -- kernel written
+	"OfClient", -- client memory
 }
 Shader = {
 	"Dipoint", -- display from points
@@ -317,7 +324,17 @@ Machine = {
 		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
 	{"idx","Int",{["xfr"]={
 		["Setup"]=true,
-		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true,["Goto"]=true}},{}},
+		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true,
+		["Goto"]=true,["Swap"]=true}},{}},
+	{"cal","Int",{["xfr"]={
+		["Swap"]=true}},{}},
+	{"ret","Int",{["xfr"]={
+		["Swap"]=true}},{}},
+	{"src","Accumulate",{["xfr"]={
+		["Follow"]=true,["Precede"]=true}},{}},
+	{"dst","Accumulate",{["xfr"]={
+		["Clear"]=true,["Manip"]=true,
+		["Follow"]=true,["Precede"]=true}},{}},
 }
 Client = {
 	{"cmd","Command",{},{}},
