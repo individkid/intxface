@@ -54,6 +54,18 @@ function fileExists(file)
 	end
 	return true
 end
+function matchExists(pat,exp,rep,fnc)
+	local one,two = string.match(pat,exp)
+	if not one then return false end
+	os.execute("ls "..rep(one,two).." depend > depend.ls 2>&1")
+	local greplist = io.open("depend.ls")
+	for line in greplist:lines() do
+		local found = string.match(line,"No such file or directory")
+		if found then return false end
+	end
+	fnc(one,two)
+	return true
+end
 function mainExists(file,exp)
 	os.execute("grep -l -E '"..exp.."' "..file.." > depend.ls 2>&1")
 	local greplist = io.open("depend.ls")
@@ -123,18 +135,22 @@ function ruleError(rule)
 	if matchCall(rule,"^(.*).h$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).c$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).m$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
+	if matchExists(rule,"^(.*).cpp$",function(base) return base..".cppx" end,function(base) io.stdout:write(" ruleError "..base..".cppx"); pushError(base..".cppx") end) then return end
 	if matchCall(rule,"^(.*).cpp$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).hs$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).lua$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
+	if matchExists(rule,"^(.*).sw$",function(base) return base..".swy" end,function(base) io.stdout:write(" ruleError "..base..".swy"); pushError(base..".swy") end) then return end
 	if matchCall(rule,"^(.*).sw$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).g$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if mainExists(rule..".c","^int main\\(") then io.stdout:write(" ruleError "..rule.."C"); pushError(rule.."C"); return end
 	if mainExists(rule..".m","^int main\\(") then io.stdout:write(" ruleError "..rule.."M"); pushError(rule.."M"); return end
 	if mainExists(rule..".cpp","^int main\\(") then io.stdout:write(" ruleError "..rule.."Cpp"); pushError(rule.."Cpp"); return end
+	if mainExists(rule..".cppx","^int main\\(") then io.stdout:write(" ruleError "..rule.."Cpp"); pushError(rule.."Cpp"); return end
 	if mainExists(rule..".hs","^main :: IO \\(") then io.stdout:write(" ruleError "..rule.."Hs"); pushError(rule.."Hs"); return end
 	if mainExists(rule..".agda","^int main\\(") then io.stdout:write(" ruleError "..rule.."A"); pushError(rule.."A"); return end
 	if mainExists(rule..".lua","^-- MAIN") then io.stdout:write(" ruleError "..rule.."Lua"); pushError(rule.."Lua"); return end
 	if mainExists(rule..".sw","^// MAIN") then io.stdout:write(" ruleError "..rule.."Sw"); pushError(rule.."Sw"); return end
+	if mainExists(rule..".swy","^// MAIN") then io.stdout:write(" ruleError "..rule.."Sw"); pushError(rule.."Sw"); return end
 	io.stdout:write("\n"); io.stderr:write("ruleError "..rule.."\n"); os.exit()
 end
 function bothError(file)
@@ -233,8 +249,16 @@ function checkRule()
 end
 function checkSetup()
 	local dep = {}
-	os.execute("rm -f depend.mk")
-	os.execute("touch depend.mk")
+	local ext = ""
+	os.execute("uname > depend.out 2>&1")
+	local greplist = io.open("depend.out")
+	for line in greplist:lines() do
+		if line == "Linux" then ext = "x" end
+		if line == "Darwin" then ext = "y" end
+	end
+	greplist:close()
+	os.execute("rm -f depend.mk"..ext)
+	os.execute("touch depend.mk"..ext)
 	for k,v in pairs(done) do
 		dep[#dep+1] = k
 	end
@@ -249,13 +273,13 @@ function checkSetup()
 		for ky,vl in ipairs(dee) do
 			cmd = cmd.." "..vl
 		end
-		cmd = cmd.." >> depend.mk"
+		cmd = cmd.." >> depend.mk"..ext
 		if not (#dee == 0) then os.execute(cmd) end
 	end
 	os.execute("rm -rf depend depend.cp depend.ls depend.rm depend.err depend.out")
 	os.execute("mkdir depend")
 	os.execute("touch depend.cp depend.ls depend.rm depend.err")
-	os.execute("cp Makefile depend.mk module.modulemap depend")
+	os.execute("cp Makefile depend.mk"..ext.." module.modulemap depend")
 end
 function checkCopy()
 	local set = copy[todo[#todo]]
