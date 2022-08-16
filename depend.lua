@@ -115,41 +115,39 @@ function pushError(push)
 end
 function ruleError(rule)
 	if matchCall(rule,"^(.*)C$",function(base) io.stdout:write(" ruleError "..base.."C.o"); pushError(base.."C.o") end) then return end
-	if matchCall(rule,"^(.*)M$",function(base) io.stdout:write(" ruleError "..base.."M.o"); pushError(base.."M.o") end) then return end
 	if matchCall(rule,"^(.*)Cpp$",function(base) io.stdout:write(" ruleError "..base.."Cpp.o"); pushError(base.."Cpp.o") end) then return end
 	if matchCall(rule,"^(.*)Hs$",function(base) io.stdout:write(" ruleError "..base..".hs"); pushError(base..".hs") end) then return end
 	if matchCall(rule,"^(.*)A$",function(base) io.stdout:write(" ruleError "..base..".agda"); pushError(base..".agda") end) then return end
 	if matchCall(rule,"^(.*)Lua$",function(base) io.stdout:write(" ruleError "..base..".lua"); pushError(base..".lua") end) then return end
+	if matchCall(rule,"^(.*)M$",function(base) io.stdout:write(" ruleError "..base.."M.o"); pushError(base.."M.o") end) then return end
 	if matchCall(rule,"^(.*)Sw$",function(base) io.stdout:write(" ruleError "..base.."Sw.o"); pushError(base.."Sw.o") end) then return end
 	if matchCall(rule,"^(.*).so$",function(base) io.stdout:write(" ruleError "..base.."C.o"); pushError(base.."C.o") end) then return end
 	if matchCall(rule,"^(.*)G.so$",function(base) io.stdout:write(" ruleError "..base.."G.o"); pushError(base.."G.o") end) then return end
-	if matchCall(rule,"^(.*).so$",function(base) io.stdout:write(" ruleError "..base.."C.o"); pushError(base.."C.o") end) then return end
-	if matchCall(rule,"^(.*)G.so$",function(base) io.stdout:write(" ruleError "..base.."G.o"); pushError(base.."G.o") end) then return end
 	if matchCall(rule,"^(.*)C.o$",function(base) io.stdout:write(" ruleError "..base..".c"); pushError(base..".c") end) then return end
-	if matchCall(rule,"^(.*)M.o$",function(base) io.stdout:write(" ruleError "..base..".m"); pushError(base..".m") end) then return end
 	if matchCall(rule,"^(.*)Cpp.o$",function(base) io.stdout:write(" ruleError "..base..".cpp"); pushError(base..".cpp") end) then return end
+	if matchCall(rule,"^(.*)M.o$",function(base) io.stdout:write(" ruleError "..base..".m"); pushError(base..".m") end) then return end
 	if matchCall(rule,"^(.*)Sw.o$",function(base) io.stdout:write(" ruleError "..base..".sw"); pushError(base..".sw") end) then return end
 	if matchCall(rule,"^(.*)G.o$",function(base) io.stdout:write(" ruleError "..base..".metal"); pushError(base..".metal") end) then return end
 	if matchCall(rule,"^(.*).metal$",function(base) io.stdout:write(" ruleError "..base..".g"); pushError(base..".g") end) then return end
 	if matchCall(rule,"^(.*).agda$",function(base) io.stdout:write(" ruleError "..base..".a"); pushError(base..".a") end) then return end
+	if matchExists(rule,"^(.*).cpp$",function(base) return base..".cppx" end,function(base) io.stdout:write(" ruleError "..base..".cppx"); pushError(base..".cppx") end) then return end
+	if matchExists(rule,"^(.*).sw$",function(base) return base..".swy" end,function(base) io.stdout:write(" ruleError "..base..".swy"); pushError(base..".swy") end) then return end
 	if matchCall(rule,"^(.*).h$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).c$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
-	if matchCall(rule,"^(.*).m$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
-	if matchExists(rule,"^(.*).cpp$",function(base) return base..".cppx" end,function(base) io.stdout:write(" ruleError "..base..".cppx"); pushError(base..".cppx") end) then return end
 	if matchCall(rule,"^(.*).cpp$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).hs$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).lua$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
-	if matchExists(rule,"^(.*).sw$",function(base) return base..".swy" end,function(base) io.stdout:write(" ruleError "..base..".swy"); pushError(base..".swy") end) then return end
+	if matchCall(rule,"^(.*).m$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).sw$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).g$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if mainExists(rule..".c","^int main\\(") then io.stdout:write(" ruleError "..rule.."C"); pushError(rule.."C"); return end
-	if mainExists(rule..".m","^int main\\(") then io.stdout:write(" ruleError "..rule.."M"); pushError(rule.."M"); return end
 	if mainExists(rule..".cpp","^int main\\(") then io.stdout:write(" ruleError "..rule.."Cpp"); pushError(rule.."Cpp"); return end
-	if mainExists(rule..".cppx","^int main\\(") then io.stdout:write(" ruleError "..rule.."Cpp"); pushError(rule.."Cpp"); return end
 	if mainExists(rule..".hs","^main :: IO \\(") then io.stdout:write(" ruleError "..rule.."Hs"); pushError(rule.."Hs"); return end
 	if mainExists(rule..".agda","^int main\\(") then io.stdout:write(" ruleError "..rule.."A"); pushError(rule.."A"); return end
 	if mainExists(rule..".lua","^-- MAIN") then io.stdout:write(" ruleError "..rule.."Lua"); pushError(rule.."Lua"); return end
+	if mainExists(rule..".m","^int main\\(") then io.stdout:write(" ruleError "..rule.."M"); pushError(rule.."M"); return end
 	if mainExists(rule..".sw","^// MAIN") then io.stdout:write(" ruleError "..rule.."Sw"); pushError(rule.."Sw"); return end
+	if mainExists(rule..".cppx","^int main\\(") then io.stdout:write(" ruleError "..rule.."Cpp"); pushError(rule.."Cpp"); return end
 	if mainExists(rule..".swy","^// MAIN") then io.stdout:write(" ruleError "..rule.."Sw"); pushError(rule.."Sw"); return end
 	io.stdout:write("\n"); io.stderr:write("ruleError "..rule.."\n"); os.exit()
 end
