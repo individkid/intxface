@@ -121,8 +121,8 @@ function ruleError(rule)
 	if matchCall(rule,"^(.*)Lua$",function(base) io.stdout:write(" ruleError "..base..".lua"); pushError(base..".lua") end) then return end
 	if matchCall(rule,"^(.*)M$",function(base) io.stdout:write(" ruleError "..base.."M.o"); pushError(base.."M.o") end) then return end
 	if matchCall(rule,"^(.*)Sw$",function(base) io.stdout:write(" ruleError "..base.."Sw.o"); pushError(base.."Sw.o") end) then return end
-	if matchCall(rule,"^(.*).so$",function(base) io.stdout:write(" ruleError "..base.."C.o"); pushError(base.."C.o") end) then return end
 	if matchCall(rule,"^(.*)G.so$",function(base) io.stdout:write(" ruleError "..base.."G.o"); pushError(base.."G.o") end) then return end
+	if matchCall(rule,"^(.*).so$",function(base) io.stdout:write(" ruleError "..base.."C.o"); pushError(base.."C.o") end) then return end
 	if matchCall(rule,"^(.*)C.o$",function(base) io.stdout:write(" ruleError "..base..".c"); pushError(base..".c") end) then return end
 	if matchCall(rule,"^(.*)Cpp.o$",function(base) io.stdout:write(" ruleError "..base..".cpp"); pushError(base..".cpp") end) then return end
 	if matchCall(rule,"^(.*)M.o$",function(base) io.stdout:write(" ruleError "..base..".m"); pushError(base..".m") end) then return end
@@ -205,6 +205,7 @@ function checkError(check,rule,id)
 	if cond == "l00010000" then pushError(check); return end
 	if cond == "h10010000" then pushError(check); return end
 	if cond == "f00000001" then doneError(check); return end
+	if cond == "n00000001" then doneError(check); return end
 	if cond == "a00010000" then doneError(check); return end
 	if cond == "d00000000" then doneError(check); return end
 	if cond == "d00000100" then doneError(check); return end
@@ -323,6 +324,7 @@ function checkMake()
 		if matchCall(line,"^lua: [.%w]*:[0-9]*: module '([%w]*)' not found",function(check) io.stdout:write(line.."\n"); checkError(check..".so",checkRule(),"k") end) then found = true; break end
 		if matchCall(line,"error: no such file or directory: '([.%w]*)'$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"l") end) then found = true; break end
 		if matchCall(line,"Not in scope: type constructor or class ‘([%w]*)’",function(check) io.stdout:write(line.."\n"); checkError(classDepend(check),checkRule(),"m") end) then found = true; break end
+		if matchCall(line,"^([%w]*): cannot load library: ([.%w]*)$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"n") end) then found = true; break end
 	end
 	greplist:close()
 	if not (#lines == 0) and found then return false end

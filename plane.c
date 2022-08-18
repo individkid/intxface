@@ -243,6 +243,7 @@ void *planeThread(void *arg)
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
 {
 	pthread_t pthread;
+	// TODO set up initial configure
 	init(); // this calls planeArgument
 	callDma = dma;
 	callWake = wake;
@@ -252,7 +253,7 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wf
 	external = pipeInit(input,output);
 	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR(exitErr,0);
-	run();
+	// TODO run();
 	goon = 0;
 	if (pthread_join(pthread,0) != 0) ERROR(exitErr,0);
 }

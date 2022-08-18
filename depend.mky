@@ -13,6 +13,7 @@ holeC.o: face.h type.h
 lineCpp: faceC.o typeC.o
 lineCpp.o: face.h type.h
 meticC.o: metic.h
+plane.log: plane planeG.so
 planeC.o: face.h metic.h plane.h share.h type.h
 planeSw: faceC.o meticC.o planeC.o typeC.o
 planeSw.o: face.h plane.h type.h
