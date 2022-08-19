@@ -646,7 +646,15 @@ void readStrHs(hftype fnc, int idx)
 {
 	readStr(readStrHsFnc,fnc,idx);
 }
-
+void readEof(int idx)
+{
+	char arg;
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)	int val = 0;
+	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
+	else val = read(inp[idx],(char *)&arg,sizeof(char));
+	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
+	if (val != 0) NOTICE(inpexc[idx],idx)
+}
 char readChr(int idx)
 {
 	char arg;
@@ -1259,6 +1267,12 @@ int readStrLua(lua_State *lua)
 	readStr(readStrLuaFnc,lua,(int)lua_tonumber(lua,1));
 	return 2;
 }
+int readEofLua(lua_State *lua)
+{
+	luaerr = lua;
+	readEof((int)lua_tonumber(lua,1));
+	return 0;
+}
 int readChrLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1384,6 +1398,8 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "sleepSec");
 	lua_pushcfunction(L, readStrLua);
 	lua_setglobal(L, "readStr");
+	lua_pushcfunction(L, readEofLua);
+	lua_setglobal(L, "readEof");
 	lua_pushcfunction(L, readChrLua);
 	lua_setglobal(L, "readChr");
 	lua_pushcfunction(L, readIntLua);

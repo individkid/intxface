@@ -27,8 +27,10 @@ struct Client client = {0};
 char collect[BUFSIZE] = {0};
 int internal = 0;
 int external = 0;
+const char *self = 0;
 const char *input = 0;
 const char *output = 0;
+const char *ident = 0;
 int goon = 0;
 uftype callDma = 0;
 vftype callWake = 0;
@@ -234,7 +236,11 @@ void *planeThread(void *arg)
 	while (goon) {
 	struct Client client = {0};
 	int sub = pselectAny(0,1<<external);
-	if (sub != external) ERROR(exitErr,0);
+	if (sub != external) break;
+	if (!goon) break;
+	if (!checkRead(external)) break;
+	if (!checkWrite(internal)) break;
+	printf("planeThread calling readClient\n");
 	readClient(&client,external);
 	writeClient(&client,internal);
 	callWake();}
@@ -243,7 +249,8 @@ void *planeThread(void *arg)
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
 {
 	pthread_t pthread;
-	// TODO set up initial configure
+	configure[WindowWide] = WINWIDE;
+	configure[WindowHigh] = WINHIGH;
 	init(); // this calls planeArgument
 	callDma = dma;
 	callWake = wake;
@@ -254,13 +261,17 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wf
 	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR(exitErr,0);
 	// TODO run();
+	closeIdent(internal);
+	closeIdent(external);
 	goon = 0;
 	if (pthread_join(pthread,0) != 0) ERROR(exitErr,0);
 }
 void planeArgument(const char *str)
 {
-	if (!input) input = str;
+	if (!self) self = str;
+	else if (!input) input = str;
 	else if (!output) output = str;
+	else if (!ident) ident = str;
 	else ERROR(exitErr,0);
 }
 int planeConfig(enum Configure cfg)

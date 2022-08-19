@@ -232,7 +232,6 @@ func swiftInit()
 	param.colorAttachments[0].storeAction = .store
 	param.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	param.depthAttachment.storeAction = .dontCare
-	return;
 	// TODO
 	// param.depthAttachment.texture = getTexture(rect)
     // let desc = MTLDepthStencilDescriptor()

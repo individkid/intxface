@@ -87,6 +87,7 @@ void textStr(const char *str, int trm, int idx, void *arg);
 void readStr(sftype fnc, void *arg, int idx);
 void preadStr(sftype fnc, void *arg, long long loc, int idx);
 void readStrHs(hftype fnc, int idx);
+void readEof(int idx);
 char readChr(int idx);
 int readInt(int idx);
 long long readNew(int idx);

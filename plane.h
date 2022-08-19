@@ -11,3 +11,5 @@ void planeArgument(const char *str);
 int planeConfig(enum Configure cfg);
 void planeWake(enum Configure hint);
 void planeReady(struct Pierce *pierce, int size);
+#define WINWIDE 512
+#define WINHIGH 512

@@ -10,7 +10,7 @@ data2 = prefix..field2
 data3 = suffix
 name = "filer.--"
 
-function checkRead(ident)
+function readCheck(ident)
 	file = readFile(ident)
 	if (file["act"] == "ThdErr") then print("ThdErr "..file["str"].." "..file["idx"]); exit() end
 	if (file["act"] == "HubErr") then print("HubErr "..file["str"]); exit() end
@@ -32,7 +32,7 @@ file["idx"] = 0
 file["loc"] = 0
 file["str"] = data1
 writeFile(file,ident1)
-file = checkRead(ident1)
+file = readCheck(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
@@ -45,7 +45,7 @@ file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
 writeFile(file,ident2)
-file = checkRead(ident2)
+file = readCheck(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
@@ -57,13 +57,13 @@ file["idx"] = 0
 file["loc"] = string.len(prefix)
 file["str"] = field2
 writeFile(file,ident2)
-file = checkRead(ident2)
+file = readCheck(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(prefix))
 assert(file["slf"] == 1)
 assert(file["str"] == field2)
-file = checkRead(ident1)
+file = readCheck(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(prefix))
@@ -76,13 +76,13 @@ file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
 writeFile(file,ident3)
-file = checkRead(ident3)
+file = readCheck(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["slf"] == 0)
 assert(file["str"] == data2)
-file = checkRead(ident3)
+file = readCheck(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 9)
