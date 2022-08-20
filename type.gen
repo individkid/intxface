@@ -151,12 +151,17 @@ Accumulate = {
 	"OfClient", -- client memory
 }
 Shader = {
-	"Dipoint", -- display from points
-	"Diplane", -- display from planes
-	"Adpoint", -- find pierce points from points
-	"Adplane", -- find pierce points from planes
-	"Copoint", -- find planes from points
+	"Dipoint", -- display from triangles of points
+	"Diplane", -- display from triangles of points from planes
+	"Adpoint", -- find pierce points from triangles of points
+	"Adplane", -- find pierce points from triangles of points from planes
+	"Copoint", -- find planes from triangles of points
 	"Coplane", -- find points from planes
+	"Onpoint", -- fill triangle with plane shared by corners
+	"Onplane", -- fill pierce with points on given plane
+	"Depoint", -- copy points to pierces
+	"Deplane", -- copy planes to pierces
+
 }
 Ture = {
 	"Table",

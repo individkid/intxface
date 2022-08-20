@@ -132,6 +132,7 @@ function ruleError(rule)
 	if matchCall(rule,"^(.*).agda$",function(base) io.stdout:write(" ruleError "..base..".a"); pushError(base..".a") end) then return end
 	if matchExists(rule,"^(.*).cpp$",function(base) return base..".cppx" end,function(base) io.stdout:write(" ruleError "..base..".cppx"); pushError(base..".cppx") end) then return end
 	if matchExists(rule,"^(.*).sw$",function(base) return base..".swy" end,function(base) io.stdout:write(" ruleError "..base..".swy"); pushError(base..".swy") end) then return end
+	if matchExists(rule,"^(.*).g$",function(base) return base..".gy" end,function(base) io.stdout:write(" ruleError "..base..".gy"); pushError(base..".gy") end) then return end
 	if matchCall(rule,"^(.*).h$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).c$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end
 	if matchCall(rule,"^(.*).cpp$",function(base) io.stdout:write(" ruleError "..base..".gen"); pushError(base..".gen") end) then return end

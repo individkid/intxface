@@ -171,7 +171,7 @@ class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		// loopStop()
+		NSApp.stop(nil)
 		return true
 	}
 	func windowDidResize(_ notification: Notification)
@@ -183,9 +183,9 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> 
 {
 	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
 }
-func swiftKey(event: NSEvent) -> NSEvent?
+func swiftLeft(event: NSEvent) -> NSEvent?
 {
-	print("keyEvent")
+	print("swiftLeft")
 	planeWake(ButtonClick)
 	return event
 }
@@ -232,16 +232,15 @@ func swiftInit()
 	param.colorAttachments[0].storeAction = .store
 	param.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
 	param.depthAttachment.storeAction = .dontCare
-	// TODO
-	// param.depthAttachment.texture = getTexture(rect)
-    // let desc = MTLDepthStencilDescriptor()
-    // desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
-    // desc.isDepthWriteEnabled = true
-    // depth = device.makeDepthStencilState(descriptor: desc)
+	param.depthAttachment.texture = getTexture(rect)
+    let desc = MTLDepthStencilDescriptor()
+    desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
+    desc.isDepthWriteEnabled = true
+    depth = device.makeDepthStencilState(descriptor: desc)
 	// compute = try? device.makeComputePipelineState(function:kernel_pierce)
     // threads = device.maxThreadsPerThreadgroup
 	// setEvent(.keyDown,swiftKey)
-	// setEvent(.leftMouseUp,swiftLeft)
+	setEvent(.leftMouseUp,swiftLeft)
 	// setEvent(.rightMouseUp,swiftRight)
 	// setEvent(.leftMouseDown,swiftActive)
 	// setEvent(.rightMouseDown,swiftActive)

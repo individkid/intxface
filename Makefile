@@ -10,11 +10,19 @@ UNAME = $(shell uname)
 ifeq ($(UNAME),Linux)
 	CXX = g++
 	CC = gcc
+	GHC = ghc
+	AGC = agda
+	SWC = oops
+	GC = oops
 	EXT = x
 endif
 ifeq ($(UNAME),Darwin)
 	CXX = clang++
 	CC = clang
+	GHC = ghc
+	AGC = agda
+	SWC = swiftc
+	GC = xcrun
 	EXT = y
 endif
 
@@ -47,62 +55,52 @@ spacra.log:
 	ln -f $< $@
 %: %Lua
 	ln -f $< $@
-ifeq ($(UNAME),Darwin)
 %: %M
 	ln -f $< $@
 %: %Sw
 	ln -f $< $@
-endif
 
 %C: %C.o
 	$(CXX) -L/usr/local/lib -o $@ $(filter %C.o,$^) ${LIBRARIES}
 %Cpp: %Cpp.o
 	$(CXX) -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES}
 %Hs: %.hs
-	ghc -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0
+	$(GHC) -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES} -v0
 %A: %.agda
-	agda --compile --ghc-flag=-o --ghc-flag=$@ $<
+	$(AGC) --compile --ghc-flag=-o --ghc-flag=$@ $<
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-ifeq ($(UNAME),Darwin)
 %M: %M.o
 	$(CXX) -L/usr/local/lib -o $@ $< $(filter %C.o,$^) ${LIBRARIES}
 %Sw: %Sw.o
-	swiftc -o $@ $< $(filter %C.o,$^) -L /usr/local/lib ${LIBRARIES}
-endif
+	$(SWC) -o $@ $< $(filter %C.o,$^) -L /usr/local/lib ${LIBRARIES}
 
 %.so: %C.o
 	$(CC) -L/usr/local/lib -o $@ -fPIC -shared $^ -llua
-ifeq ($(UNAME),Darwin)
 %G.so: %G.o
-	xcrun -sdk macosx metallib -o $@ $<
-endif
+	$(GC) -sdk macosx metallib -o $@ $<
 
 %C.o: %.c
 	$(CC) -o $@ -c $< -I /usr/local/include
 %Cpp.o: %.cpp
 	$(CC) -o $@ -c $< -I /usr/local/include
-ifeq ($(UNAME),Darwin)
 %M.o: %.m
 	$(CC) -o $@ -c $< -I /usr/local/include
 %Sw.o: %.sw
-	cat $(filter-out $<, $(filter %.sw,$^)) $< | swiftc -o $@ -I . -c -
+	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 %G.o: %.metal
-	xcrun -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
-endif
+	$(GC) -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
 
 %.agda: %.a
 	cp $< $@
-ifeq ($(UNAME),Linux)
 %.cpp: %.cpp$(EXT)
 	cp $< $@
-endif
-ifeq ($(UNAME),Darwin)
 %.sw: %.sw$(EXT)
+	cp $< $@
+%.g: %.g$(EXT)
 	cp $< $@
 %.metal: %.g
 	cp $< $@
-endif
 
 %.h: %.gen
 	lua $< $@
@@ -114,20 +112,18 @@ endif
 	lua $< $@
 %.lua: %.gen
 	lua $< $@
-ifeq ($(UNAME),Darwin)
 %.m: %.gen
 	lua $< $@
 %.sw: %.gen
 	lua $< $@
 %.g: %.gen
 	lua $< $@
-endif
 
 .PHONY:
 clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
-	rm -f plane.sw plane.cpp
+	rm -f plane.sw plane.cpp plane.g
 	rm -f typra facer typer filer planra spacra
 	rm -f hole file line plane space
 	rm -f *C *M *Cpp *Hs *A *Lua *Sw

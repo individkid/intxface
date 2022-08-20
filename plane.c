@@ -260,7 +260,7 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wf
 	external = pipeInit(input,output);
 	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR(exitErr,0);
-	// TODO run();
+	// run();
 	closeIdent(internal);
 	closeIdent(external);
 	goon = 0;
