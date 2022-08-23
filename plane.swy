@@ -325,10 +325,9 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 		encode.setRenderPipelineState(render)
 		encode.setDepthStencilState(depth)
 		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-		encode.setVertexBuffer(numeric.get(),offset:0,index:1)
-		encode.setVertexBuffer(vertex.get(),offset:0,index:2)
-		encode.setVertexBuffer(matrix.get(),offset:0,index:3)
-		encode.setVertexBuffer(uniform.get(),offset:0,index:4)
+		encode.setVertexBuffer(vertex.get(),offset:0,index:1)
+		encode.setVertexBuffer(matrix.get(),offset:0,index:2)
+		encode.setVertexBuffer(uniform.get(),offset:0,index:3)
 		encode.drawPrimitives(
 			type:.triangle,
 			vertexStart:Int(range.idx),

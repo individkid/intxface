@@ -250,11 +250,11 @@ Event = {
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
 Uniform = {
-	{"bas","Old",{},{36}},
+	{"bas","Old",{},{3,3,4}},
 	{"all","Old",{},{16}},
 	{"one","Old",{},{16}},
-	{"lon","Old",{},{}},
-	{"lat","Old",{},{}},
+	{"lon","Old",{},{}}, -- horizontal axis of cursor
+	{"lat","Old",{},{}}, -- vertical axis of cursor
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
 	{"tsz","Int",{},{}}, -- size of trinagle buffer
@@ -294,7 +294,15 @@ Numeric = {
 }
 Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
-	{"ref","Int",{},{4}}, -- backreference to planes
+	{"ref","Int",{},{3}}, -- backreference to planes
+	{"pad","Int",{},{}},
+}
+Pierce = {
+	{"fix","Old",{},{4}},
+	{"nml","Old",{},{4}},
+	{"vld","Int",{},{}},
+	{"idx","Int",{},{}},
+	{"pad","Int",{},{2}},
 }
 Vector = {
 	{"vec","Old",{},{4}},
@@ -305,17 +313,9 @@ Matrix = {
 Basis = {
 	{"mat","Vector",{},{9}},
 }
-Pierce = {
-	{"fix","Old",{},{4}},
-	{"nml","Old",{},{4}},
-	{"vld","Int",{},{}},
-	{"idx","Int",{},{}},
-	{"pad","Int",{},{2}},
-}
 Slice = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"pad","Int",{},{2}},
 }
 Machine = {
 	{"xfr","Transfer",{},{}}, -- what to change

@@ -1,65 +1,71 @@
 #include <metal_matrix>
 
-struct Facet {
-	float3 plane; // distances above expanded basis plane
-	uint versor; // which expanded plane in basis to use
-	uint3 point; // match to point to choose coord and color
-	float2 coord[3];
-	float4 color[3];
-	uint poly; // which polytope plane is in
-	uint tag; // which of 7 sets plane is in
+struct Triangle {
+   uint4 vtx;
+   uint num;
+   uint tex;
+   uint pol;
+   uint pad;
+};
+struct Numeric {
+   float4 vec;
+   uint bas;
+   uint pad0, pad1, pad2;
 };
 struct Vertex {
-	uint3 plane; // planes intersect in point
+   float4 vec;
+   uint4 ref;
 };
-struct Index {
-	uint point;
-	uint tag;
-};
-struct Qualify {
-	float quality;
-	float3 point;
-};
-struct Quality {
-	float quality;
-	float3 left;
-	float3 right;
-};
-struct Expand {
-	float3 point[3]; // plane expanded to points by basis
-};
-struct Triple { // expanded planes for intersect
-	Expand plane[3];
-};
-struct Pierce { // intrasect plane with line through points
-	bool valid; // valid if points opposite plane
-	float3 point;
-	float3 normal;
+struct Pierce {
+   float4 fix;
+   float4 nml;
+   uint vld;
+   uint idx;
+   uint pad0, pad1;
 };
 struct Object {
-	metal::float4x4 object;
+   metal::float4x4 mat;
 };
-struct Cloud {
-	float3 point;
-};
-struct State {
-	float3 basis[3][3];
-	metal::float4x4 subject;
-	metal::float4x4 feature;
-	float3 feather; // near for pierce
-	float3 arrow; // far for pierce
-	float3 focal; // focal for display
-	float3 picture; // picture for display
-	uint siz; // for bounce shader
-	uint hand; // which plane to apply feature transformation to
+struct Uniform {
+   float4 bas[3][3];
+   metal::float4x4 all;
+   metal::float4x4 one;
+   float lon;
+   float lat;
+   uint idx;
+   uint siz;
+   uint tsz, tlm,tid;
+   uint nsz, nlm,nid;
+   uint vsz, vlm,vid;
+   uint psz, plm,pid;
+   uint osz, olm,oid;
+   uint ssz, slm,sid;
+   uint xsz, xlm,xid;
+   uint pad0, pad1, pad2;
 };
 
-Expand expand(Facet plane, const device State *state)
+struct Expand {
+   float3 point[3];
+};
+struct Triple {
+   Expand plane[3];
+};
+struct Qualify {
+   float quality;
+   float3 point;
+};
+struct Quality {
+   float quality;
+   float3 left;
+   float3 right;
+};
+
+Expand expand(Numeric plane, const device Uniform *state)
 {
    Expand result;
    for (uint i = 0; i < 3; i++) {
-      result.point[i] = state->basis[plane.versor][i];
-      result.point[i][plane.versor] = plane.plane[i];}
+      result.point[i] = state->bas[plane.bas][i].xyz;
+      result.point[i][plane.bas] = plane.vec[i];}
    return result;
 }
 float3 barrycentric(Expand plane, uint versor, float3 point)
@@ -80,15 +86,11 @@ float3 barrycentric(Expand plane, uint versor, float3 point)
    lambda.z = 1.0-lambda.x-lambda.y;
    return lambda;
 }
-float cartesian(Expand plane, uint versor, float3 lambda)
-{
-   float value = 0.0;
-   for (uint i = 0; i < 3; i++) value += lambda[i]*plane.point[i][versor];
-   return value;
-}
 float3 project(Expand plane, uint versor, float3 point)
 {
-   point[versor] = cartesian(plane,versor,barrycentric(plane,versor,point));
+   float3 lambda = barrycentric(plane,versor,point);
+   point[versor] = 0.0;
+   for (uint i = 0; i < 3; i++) point[versor] += lambda[i]*plane.point[i][versor];
    return point;
 }
 float extreme(Expand plane, uint versor)
@@ -206,81 +208,8 @@ Expand transform(Expand plane, metal::float4x4 matrix)
    for (uint i = 0; i < 3; i++) {
       result.point[i] = plane.point[i];
       float4 affine = float4(result.point[i],1.0);
-      result.point[i] = (matrix*affine).xyz;}
+      result.point[i] = metal::normalize(matrix*affine).xyz;}
    return result;
-}
-uint copoint(
-   uint tag,
-   uint3 map,
-   const device Facet *plane,
-   const device State *state)
-{
-   uint result = 0;
-   for (uint i = 0; i < 3; i++) {
-      uint index = map[i];
-      if (plane[index].tag == tag) result = index;}
-   return result;
-}
-uint coplane(
-   uint3 map,
-   uint ident)
-{
-   uint result = 0;
-   for (uint i = 0; i < 3; i++)
-      if (map[i] == ident) result = i;
-   return result;
-}
-Triple explode(
-   uint3 map,
-   const device Facet *plane,
-   const device State *state)
-{
-   Triple result;
-   for (uint i = 0; i < 3; i++) {
-      uint index = map[i];
-      result.plane[i] = expand(plane[index],state);
-      if (state->hand == index) for (uint j = 0; j < 3; j++) {
-         float4 affine = float4(result.plane[i].point[j],1.0);
-         result.plane[i].point[j] = (state->feature*affine).xyz;}}
-   return result;
-}
-float4 convert(
-   uint index,
-   Triple triple,
-   const device Facet *plane,
-   const device Object *object,
-   const device State *state)
-{
-   Qualify qualify = intersect(triple);
-   float4 position = float4(0.0,0.0,0.0,0.0);
-   if (qualify.quality < INFINITY) {
-   position = float4(qualify.point,1.0);}
-   position = object[plane[index].poly].object*position;
-   position = state->subject*position;
-   return position;
-}
-Expand prepare(
-   uint index,
-   const device Facet *plane,
-   const device Object *object,
-   const device State *state)
-{
-   Expand face = expand(plane[index],state);
-   if (state->hand == index) face = transform(face,state->feature);
-   face = transform(face,object[plane[index].poly].object);
-   face = transform(face,state->subject);
-   return face;
-}
-float4 perspective(
-   float4 given,
-   const device State *state)
-{
-   float3 result;
-   result.z = (given.z+state->picture.z)/(2.0*state->picture.z);
-   float ratio = (given.z-state->focal.z)/(state->picture.z-state->focal.z);
-   result.x = (given.x-state->focal.x)/(state->picture.x-state->focal.x);
-   result.y = (given.y-state->focal.y)/(state->picture.y-state->focal.y);
-   return float4(result,given[3]*ratio);
 }
 struct VertexOutput {
    float4 position [[position]];
@@ -289,24 +218,14 @@ struct VertexOutput {
    float2 coord;
 };
 vertex VertexOutput vertex_render(
-   const device Facet *plane [[buffer(0)]],
+   const device Triangle *corner [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
-   const device Index *order [[buffer(2)]],
-   const device Object *object [[buffer(3)]],
-   const device State *state [[buffer(4)]],
+   const device Object *object [[buffer(2)]],
+   const device Uniform *state [[buffer(3)]],
    uint id [[vertex_id]])
 {
    VertexOutput out;
-   uint ident = order[id].point;
-   uint tag = order[id].tag;
-   uint face = copoint(tag,point[ident].plane,plane,state); // which plane of point is the face being rendered
-   uint corner = coplane(plane[face].point,ident); // which color and coord in face is being rendered
-   Triple triple = explode(point[ident].plane,plane,state); // planes defined by several points each
-   out.position = perspective(convert(face,triple,plane,object,state),state);
-   out.normal = normal3(triple);
-   out.color = plane[face].color[corner];
-   out.coord = plane[face].coord[corner];
-   return out;
+   return out; // TODO
 }
 fragment half4 fragment_render(
    VertexOutput in [[stage_in]])
@@ -314,107 +233,13 @@ fragment half4 fragment_render(
    return half4(in.color);
 }
 kernel void kernel_pierce(
-   const device Facet *plane [[buffer(0)]],
+   const device Triangle *corner [[buffer(0)]],
    const device Vertex *point [[buffer(1)]],
-   const device uint *order [[buffer(2)]],
+   const device Numeric *plane [[buffer(2)]],
    const device Object *object [[buffer(3)]],
-   const device State *state [[buffer(4)]],
+   const device Uniform *state [[buffer(4)]],
    uint id [[thread_position_in_grid]],
    device Pierce *pierce [[buffer(5)]])
 {
-   uint ident = order[id];
-   Expand face = prepare(ident,plane,object,state);
-   if (!opposite(face,state->feather,state->arrow)) {
-      pierce[ident].valid = false; return;
-   }
-   Qualify hole = intrasect(face,state->feather,state->arrow);
-   if (hole.quality == INFINITY) {
-      pierce[ident].valid = false; return;
-   }
-   float3 apex[3];
-   for (uint i = 0; i < 3; i++) { // for each corner
-      uint corner = plane[ident].point[i];
-      Triple triple = explode(point[corner].plane,plane,state);
-      apex[i] = convert(ident,triple,plane,object,state).xyz;
-   }
-   Expand edge[3];
-   uint3 index;
-   for (uint i = 0; i < 3; i++) { // for each corner
-      uint corner = plane[ident].point[i];
-      for (uint j = 0; j < 3; j++) { // for each point of base
-         uint pointOfBase = plane[ident].point[j];
-         if (pointOfBase != corner) { // except for corner
-            for (uint k = 0; k < 3; k++) { // for each plane of point
-               uint planeOfPoint = point[pointOfBase].plane[k];
-               if (planeOfPoint != ident) { // except base
-                  bool found = false; // except any of corner
-                  for (uint l = 0; l < 3; l++) {
-                     uint planeOfCorner = point[corner].plane[l];
-                     if (planeOfCorner == planeOfPoint) found = true;
-                  }
-                  if (!found) index[i] = planeOfPoint;
-               }
-            }
-         }
-      }
-      edge[i] = prepare(index[i],plane,object,state);
-   }
-   for (uint i = 0; i < 3; i++) {
-      if (opposite(edge[i],hole.point,apex[i])) {
-         pierce[ident].valid = false; return;
-      }
-   }
-   pierce[ident].normal = normal(face);
-   pierce[ident].point = hole.point;
-   pierce[ident].valid = true;
-}
-struct Bytes {
-   int bytes[12];
-};
-kernel void kernel_debug(
-   const device Facet *plane [[buffer(0)]],
-   const device Vertex *point [[buffer(1)]],
-   const device uint *order [[buffer(2)]],
-   const device Object *object [[buffer(3)]],
-   const device State *state [[buffer(4)]],
-   uint id [[thread_position_in_grid]],
-   device Bytes *bytes [[buffer(5)]])
-{
-   uint ident = order[id];
-   Expand face = prepare(ident,plane,object,state);
-   Qualify hole = intrasect(face,float3(0.0,0.0,512.0),float3(0.0,0.0,0.0));
-   float3 apex[3];
-   for (uint i = 0; i < 3; i++) { // for each corner
-      uint corner = plane[ident].point[i];
-      Triple triple = explode(point[corner].plane,plane,state);
-      apex[i] = convert(ident,triple,plane,object,state).xyz;
-   }
-   Expand edge[3];
-   uint3 index;
-   for (uint i = 0; i < 3; i++) { // for each corner
-      uint corner = plane[ident].point[i];
-      for (uint j = 0; j < 3; j++) { // for each point of base
-         uint pointOfBase = plane[ident].point[j];
-         if (pointOfBase != corner) { // except for corner
-            for (uint k = 0; k < 3; k++) { // for each plane of point
-               uint planeOfPoint = point[pointOfBase].plane[k];
-               if (planeOfPoint != ident) { // except base
-                  bool found = false; // except any of corner
-                  for (uint l = 0; l < 3; l++) {
-                     uint planeOfCorner = point[corner].plane[l];
-                     if (planeOfCorner == planeOfPoint) found = true;
-                  }
-                  if (!found) index[i] = planeOfPoint;
-               }
-            }
-         }
-      }
-      bytes[id].bytes[0+i*3] = point[corner].plane[0];
-      bytes[id].bytes[1+i*3] = point[corner].plane[1];
-      bytes[id].bytes[2+i*3] = point[corner].plane[2];
-      edge[i] = expand(plane[index[i]],state);
-   }
-   for (uint i = 0; i < 3; i++) {
-      bytes[id].bytes[9+i] = opposite(edge[i],hole.point,apex[i]);
-   }
+   // TODO
 }
