@@ -213,13 +213,12 @@ func swiftInit()
 	queue = device.makeCommandQueue()
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"planeG.so") else {
 		fputs("plane: cannot load library: planeG.so\n",stderr);exitErr(#file,#line,-1);return}
+	for shader in 0...UInt32(Shaders.rawValue-1) {if (shader == Dipoint.rawValue || shader == Adpoint.rawValue) {switch (Initial__Shader__Special(Shader(shader))) {
+	case (Display):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
 		print("cannot make vertex_render");exitErr(#file,#line,-1);return}
-	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
+	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Fragment)!)) else {
 		print("cannot make fragment_render");exitErr(#file,#line,-1);return}
-	// TOOD
-	// guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {
-	// 	print("cannot make kernel_pierce");exitErr(#file,#line,-1);return}
 	let pipe = MTLRenderPipelineDescriptor()
 	pipe.vertexFunction = vertex_render
 	pipe.fragmentFunction = fragment_render
@@ -237,8 +236,13 @@ func swiftInit()
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
     desc.isDepthWriteEnabled = true
     depth = device.makeDepthStencilState(descriptor: desc)
-	// compute = try? device.makeComputePipelineState(function:kernel_pierce)
-    // threads = device.maxThreadsPerThreadgroup
+    case (Compute):
+	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Shader__Str(Adpoint)!)) else {
+	 	print("cannot make kernel_pierce");exitErr(#file,#line,-1);return}
+	compute = try? device.makeComputePipelineState(function:kernel_pierce)
+    threads = device.maxThreadsPerThreadgroup
+    default: print("invalid shader type");exitErr(#file,#line,-1); return
+	}}}
 	// setEvent(.keyDown,swiftKey)
 	setEvent(.leftMouseUp,swiftLeft)
 	// setEvent(.rightMouseUp,swiftRight)

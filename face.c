@@ -290,6 +290,7 @@ int forkExec(const char *exe)
 int pipeInit(const char *av1, const char *av2)
 {
 	int val, rfd, wfd, rdx, wdx;
+	if (!av1 || !av2) return -1;
 	val = sscanf(av1,"%d",&rfd); if (val != 1) return -1;
 	val = sscanf(av2,"%d",&wfd); if (val != 1) return -1;
 	rdx = raitIdent(rfd);

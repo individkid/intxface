@@ -27,10 +27,10 @@ struct Client client = {0};
 char collect[BUFSIZE] = {0};
 int internal = 0;
 int external = 0;
-const char *self = 0;
-const char *input = 0;
-const char *output = 0;
-const char *ident = 0;
+char *self = 0;
+char *input = 0;
+char *output = 0;
+char *ident = 0;
 int goon = 0;
 uftype callDma = 0;
 vftype callWake = 0;
@@ -258,6 +258,7 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wf
 	callDraw = draw;
 	internal = openPipe();
 	external = pipeInit(input,output);
+	if (external < 0) ERROR(exitErr,0);
 	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR(exitErr,0);
 	// run();
@@ -268,10 +269,10 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wf
 }
 void planeArgument(const char *str)
 {
-	if (!self) self = str;
-	else if (!input) input = str;
-	else if (!output) output = str;
-	else if (!ident) ident = str;
+	if (!self) assignStr(&self,str);
+	else if (!input) assignStr(&input,str);
+	else if (!output) assignStr(&output,str);
+	else if (!ident) assignStr(&ident,str);
 	else ERROR(exitErr,0);
 }
 int planeConfig(enum Configure cfg)

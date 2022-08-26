@@ -182,7 +182,7 @@ Initial = {
 	{"Shader","Diplane","Stage","Corner","Str","diplane_vertex"},
 	{"Shader","Diplane","Stage","Fragment","Str","diplane_fragment"},
 	{"Shader","Diplane","Special","Display"},
-	{"Shader","Adpoint","Str","adpoint_compute"},
+	{"Shader","Adpoint","Str","kernel_pierce"},
 	{"Shader","Adpoint","Special","Compute"},
 	{"Shader","Adplane","Str","adplane_compute"},
 	{"Shader","Adplane","Special","Compute"},
