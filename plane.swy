@@ -213,9 +213,9 @@ func swiftInit()
 	queue = device.makeCommandQueue()
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"planeG.so") else {
 		fputs("plane: cannot load library: planeG.so\n",stderr);exitErr(#file,#line,-1);return}
-	guard let vertex_render = library.makeFunction(name:"vertex_render") else {
+	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
 		print("cannot make vertex_render");exitErr(#file,#line,-1);return}
-	guard let fragment_render = library.makeFunction(name:"fragment_render") else {
+	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
 		print("cannot make fragment_render");exitErr(#file,#line,-1);return}
 	// TOOD
 	// guard let kernel_pierce = library.makeFunction(name:"kernel_pierce") else {

@@ -11,6 +11,15 @@ Enum2 = {
 	"Value22",
 	"Value23",
 }
+--HERE Constants
+Constant1 = {
+	{"Enum1","Value11","Str","hello"},
+	{"Enum1","Value12","Str","ok"},
+	{"Enum1","Value13","Str","again"},
+	{"Enum1","Value11","Enum2","Value21","Str","hello"},
+	{"Enum1","Value11","Enum2","Value22","Str","ok"},
+	{"Enum1","Value11","Enum2","Value23","Str","again"},
+}
 --HERE Structs
 Struct2 = {
 	{"field1","Int",{},{}},
@@ -38,4 +47,5 @@ Struct1 = {
 }
 --HERE
 Enums,Enumz = listHere("Enums","typra.src")
+Constants,Constantz = listHere("Constants","typra.src")
 Structs,Structz = listHere("Structs","typra.src")

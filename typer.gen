@@ -11,6 +11,8 @@ function showTyperC()
 	result = result.."#include <sys/errno.h>\n"
 	result = result..showCallC().."\n"
 	result = result.."int main(int argc, char **argv)\n".."{\n"..
+	showIndent(1).."for (int i = 0, j = 0; i < Enum1s && j < Enum2s; i++, j++)\n"..
+	showIndent(2).."if (strcmp(Constant1__Enum1__Str(i),(Constant1__Enum1__Enum2_Str(Value11))(j)) != 0) return -1;\n"..
 	showIndent(1).."if (argc == 4) {\n"..
 	showIndent(1).."pipeInit(argv[1],argv[2]);\n"..
 	showIndent(1).."struct Struct1 *ptr = 0;\n"..

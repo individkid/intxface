@@ -161,11 +161,43 @@ Shader = {
 	"Onplane", -- fill pierce with points on given plane
 	"Depoint", -- copy points to pierces
 	"Deplane", -- copy planes to pierces
-
+}
+Stage = {
+	"Corner",
+	"Fragment",
+}
+Special = {
+	"Display",
+	"Compute",
 }
 Ture = {
 	"Table",
 	"Sides",
+}
+--HERE Constants
+Initial = {
+	{"Shader","Dipoint","Stage","Corner","Str","vertex_render"},
+	{"Shader","Dipoint","Stage","Fragment","Str","fragment_render"},
+	{"Shader","Dipoint","Special","Display"},
+	{"Shader","Diplane","Stage","Corner","Str","diplane_vertex"},
+	{"Shader","Diplane","Stage","Fragment","Str","diplane_fragment"},
+	{"Shader","Diplane","Special","Display"},
+	{"Shader","Adpoint","Str","adpoint_compute"},
+	{"Shader","Adpoint","Special","Compute"},
+	{"Shader","Adplane","Str","adplane_compute"},
+	{"Shader","Adplane","Special","Compute"},
+	{"Shader","Copoint","Str","copoint_compute"},
+	{"Shader","Copoint","Special","Compute"},
+	{"Shader","Coplane","Str","coplane_compute"},
+	{"Shader","Coplane","Special","Compute"},
+	{"Shader","Onpoint","Str","onpoint_compute"},
+	{"Shader","Onpoint","Special","Compute"},
+	{"Shader","Onplane","Str","onplane_compute"},
+	{"Shader","Onplane","Special","Compute"},
+	{"Shader","Depoint","Str","depoint_compute"},
+	{"Shader","Depoint","Special","Compute"},
+	{"Shader","Deplane","Str","deplane_compute"},
+	{"Shader","Deplane","Special","Compute"},
 }
 --HERE Structs
 File = {
@@ -368,6 +400,7 @@ Sculpt = {
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
+Constants,Constantz = listHere("Constants","type.gen")
 Structs,Structz = listHere("Structs","type.gen")
 function showTypeC()
 	local result = ""

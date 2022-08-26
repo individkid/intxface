@@ -860,6 +860,106 @@ function showHideC(name,typ)
 	end
 	return result
 end
+function showConstantCF(name,sub,list)
+	local result = name
+	local last = nil
+	if k == #list then
+		return list[#list]
+	end
+	for k,v in ipairs(list) do
+		if last then
+			if k < sub and sub < #list then
+				result = result.."_"..string.gsub(v," ","_")
+			elseif k == sub and sub == #list and string.find(v," ") then
+				result = "\""..v.."\""
+			elseif k == sub and sub == #list and not string.find(v,"^[A-Z]") and not string.find(v,"^[0-9]") then
+				result = "\""..v.."\""
+			elseif k == sub and sub == #list then
+				result = v
+			elseif k == sub then
+				result = result.."__"..last
+			elseif k == (sub+2) then
+				result = result.."__"..last
+			else
+				result = result.."_"..last
+			end
+			last = nil
+		else
+			last = v
+		end
+	end
+	return result
+end
+function showConstantCG(sub,list)
+	local result = {}
+	local last = nil
+	for k,v in ipairs(list) do
+		if last then
+			if k >= sub and last == "Str" then
+				result[#result+1] = "char *"
+			elseif k >= sub and last == "Int" then
+				result[#result+1] = "int"
+			elseif k >= sub then
+				result[#result+1] = "enum "..last
+			end
+			last = nil
+		else
+			last = v
+		end
+	end
+	return result
+end
+function showConstantC(name,constant)
+	local result = ""
+	local mapping = {}
+	local arguments = {}
+	for key,val in ipairs(constant) do
+		local last = nil
+		for k,v in ipairs(val) do
+			if last then -- last is type, v is constant
+				local func = showConstantCF(name,k,val)
+				local gunc = showConstantCF(name,k+2,val)
+				local args = showConstantCG(k,val)
+				if not arguments[func] then arguments[func] = args end
+				if not mapping[func] then mapping[func] = {} end
+				mapping[func][v] = gunc
+				last = nil
+			else -- v is type
+				last = v
+			end
+		end
+	end
+	for key,val in pairs(arguments) do if #val > 1 then
+		local declare = key.." ("
+		-- result = result.."func "..key.."(_ arg: "
+		for k,v in ipairs(val) do
+			if k == #val then
+				declare = v.." "..declare
+				if prototype then
+					result = result..declare..";\n"
+				else
+					result = result..declare.."\n"
+					result = result.."{\n"
+					result = result.."    switch (arg) {\n"
+				end
+			elseif k == 1 then
+				declare = declare..v.." arg)"
+			else
+				declare = "(*"..declare..")("..v..")"
+			end
+		end
+		if not prototype then
+			for k,v in pairs(mapping[key]) do
+				result = result.."        case ("..k.."): return "..v..";\n"
+			end
+			result = result.."        default : return 0;\n"
+			result = result.."    }\n"
+			result = result.."}\n"
+		end
+	end end
+	result = result.."//"
+	return result
+end
 function showRstructC(list)
 	local result = ""
 	result = result.."void readStruct(sftype fnc, void *arg, int typ, int idx)"
@@ -1771,6 +1871,7 @@ function showFuncC()
 	result = result..showCall(Enums,Enumz,showAllocC).."\n"
 	result = result..showCall(Enums,Enumz,showShowC).."\n"
 	result = result..showCall(Enums,Enumz,showHideC).."\n"
+	result = result..showCall(Constants,Constantz,showConstantC).."\n"
 	result = result..showCall(Structs,Structz,showOffsetC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
