@@ -33,7 +33,7 @@ char *output = 0;
 char *ident = 0;
 int goon = 0;
 uftype callDma = 0;
-iftype callWake = 0;
+vftype callWake = 0;
 rftype callInfo = 0;
 wftype callDraw = 0;
 
@@ -161,6 +161,7 @@ void planePreconfig(enum Configure cfg)
 {
 	switch (cfg) {
 		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
+		case (RegisterOpen): configure[RegisterOpen] = callInfo(RegisterOpen); break;
 		case (ClientCommand): configure[ClientCommand] = client.cmd; break;
 		case (ClientMemory): configure[ClientMemory] = client.mem; break;
 		case (ClientSize): configure[ClientSize] = client.siz; break;
@@ -243,10 +244,10 @@ void *planeThread(void *arg)
 	printf("planeThread calling readClient\n");
 	readClient(&client,external);
 	writeClient(&client,internal);
-	callWake(0);}
+	callWake();}
 	return 0;
 }
-void planeInit(vftype init, vftype run, uftype dma, iftype wake, rftype info, wftype draw)
+void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
 {
 	pthread_t pthread;
 	configure[WindowWide] = WINWIDE;

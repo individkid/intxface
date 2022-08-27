@@ -173,6 +173,7 @@ class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
+		running = 0
 		NSApp.stop(nil)
 		return true
 	}
@@ -257,7 +258,6 @@ func swiftRun()
 {
 	running = 1
 	NSApp.run()
-	running = 0
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 {
@@ -302,12 +302,12 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 		case (TextureSize): uniform.set(Int(client.val![sub]),\Uniform.xsz)
 		case (TextureLimit): uniform.set(Int(client.val![sub]),\Uniform.xlm)
 		case (TextureIndex): uniform.set(Int(client.val![sub]),\Uniform.xid)
+		case (RegisterOpen): running = Int(client.val![sub]); if (running == 0) {NSApp.stop(nil)}
 		default: break}}
 	default: exitErr(#file,#line,-1)}
 }
-func swiftWake(_ stop: Int32)
+func swiftWake()
 {
-	if (stop != 0) {NSApp.stop(nil); return}
 	// TODO create event
 }
 func swiftInfo(_ query: Configure) -> Int32
