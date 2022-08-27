@@ -117,24 +117,6 @@ class Pend<T>
 		return last
 	}
 }
-func getRect() -> NSRect
-{
-	if let temp = window {
-		return temp.contentRect(forFrameRect:temp.frame)
-	} else {
-		return NSMakeRect(0.0, 0.0, 
-			CGFloat(planeConfig(WindowWide)),
-			CGFloat(planeConfig(WindowHigh)))
-	}
-}
-func getPoint() -> NSPoint
-{
-	var point = NSEvent.mouseLocation
-	let frame:CGRect = window.frame
-	point.x = point.x - NSMinX(frame)
-	point.y = point.y - NSMinY(frame)
-	return point
-}
 func getTexture(_ rect:NSRect) -> MTLTexture?
 {
 	let text = MTLTextureDescriptor()
@@ -162,13 +144,6 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; planeWake(RegisterDone)}
 }
-func getThird(_ range: Slice) -> Slice
-{
-	var result = Slice()
-	result.idx = range.idx/3
-	result.siz = range.siz/3
-	return result
-}
 class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
@@ -182,14 +157,9 @@ class getEvent : NSObject, NSWindowDelegate
 		// swiftSize()
 	}
 }
-func setEvent(_ type:NSEvent.EventTypeMask, _ handler: @escaping (_:NSEvent) -> NSEvent?)
+func setEvent(_ type:NSEvent.EventTypeMask, _ hint: Configure)
 {
-	NSEvent.addLocalMonitorForEvents(matching:type,handler:handler)
-}
-func swiftLeft(event: NSEvent) -> NSEvent?
-{
-	planeWake(ButtonClick)
-	return event
+	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in planeWake(hint); return event})
 }
 func swiftInit()
 {
@@ -245,13 +215,13 @@ func swiftInit()
     threads[sub] = device.maxThreadsPerThreadgroup
     default: print("invalid shader type");exitErr(#file,#line,-1); return}}}
 	// setEvent(.keyDown,swiftKey)
-	setEvent(.leftMouseUp,swiftLeft)
+	setEvent(.leftMouseUp,ButtonClick)
 	// setEvent(.rightMouseUp,swiftRight)
 	// setEvent(.leftMouseDown,swiftActive)
 	// setEvent(.rightMouseDown,swiftActive)
 	// setEvent(.mouseMoved,swiftMove)
 	// setEvent(.scrollWheel,swiftRoll)
-	// setEvent(.applicationDefined,swiftCheck)
+	setEvent(.applicationDefined,RegisterHint)
 }
 func swiftRun()
 {
@@ -307,7 +277,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 }
 func swiftWake()
 {
-	// TODO create event
+	// TODO trigger applicationDefined event
 }
 func swiftInfo(_ query: Configure) -> Int32
 {
