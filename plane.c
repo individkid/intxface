@@ -33,7 +33,7 @@ char *output = 0;
 char *ident = 0;
 int goon = 0;
 uftype callDma = 0;
-vftype callWake = 0;
+iftype callWake = 0;
 rftype callInfo = 0;
 wftype callDraw = 0;
 
@@ -152,7 +152,7 @@ void planeCalculate(struct Matrix *matrix)
 	float angle = 0;
 	picture.vec[0] = configure[WindowLeft]; picture.vec[1] = configure[WindowBase];
 	corner.vec[0] = configure[WindowWide]; corner.vec[1] = configure[WindowHigh];
-	fixed.vec[0] = configure[PierceLeft]; fixed.vec[1] = configure[PierceBase];
+	fixed.vec[0] = configure[ClosestLeft]; fixed.vec[1] = configure[ClosestBase];
 	cursor.vec[0] = configure[CursorLeft]; cursor.vec[1] = configure[CursorBase];
 	angle = configure[CursorAngle];
 	planeFunc()(matrix->mat,picture.vec,corner.vec,fixed.vec,cursor.vec,angle);
@@ -166,10 +166,10 @@ void planePreconfig(enum Configure cfg)
 		case (ClientSize): configure[ClientSize] = client.siz; break;
 		case (ClientIndex): configure[ClientIndex] = client.idx; break;
 		case (ClientSelf): configure[ClientSelf] = client.slf; break;
-		case (PierceLeft): configure[PierceLeft] = planePierce()->fix[0]; break;
-		case (PierceBase): configure[PierceBase] = planePierce()->fix[1]; break;
-		case (PierceNear): configure[PierceNear] = planePierce()->fix[2]; break;
-		case (PierceFound): configure[PierceFound] = planePierce()->idx; break;
+		case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
+		case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
+		case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
+		case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
 		case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
 		case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
 		case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
@@ -243,10 +243,10 @@ void *planeThread(void *arg)
 	printf("planeThread calling readClient\n");
 	readClient(&client,external);
 	writeClient(&client,internal);
-	callWake();}
+	callWake(0);}
 	return 0;
 }
-void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
+void planeInit(vftype init, vftype run, uftype dma, iftype wake, rftype info, wftype draw)
 {
 	pthread_t pthread;
 	configure[WindowWide] = WINWIDE;
@@ -311,7 +311,7 @@ void planeWake(enum Configure hint)
 			default: break;}
 		configure[RegisterLine] = next;}
 }
-void planeReady(struct Pierce *given, int size)
+void planeReady(struct Pierce *given, int index, int limit)
 {
-	for (int i = 0; i < size; i++) pierce[(given->idx+i)%configure[PierceSize]] = given[i];
+	for (int i = index; i < limit; i++) pierce[i%configure[PierceSize]] = given[i%configure[PierceSize]];
 }

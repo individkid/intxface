@@ -18,6 +18,7 @@ var threads = [MTLSize?]()
 var lock = [Refer]()
 var count = Int(0)
 let event = getEvent()
+var running = Int(0)
 
 var triangle = Pend<Triangle>()
 var numeric = Pend<Numeric>()
@@ -28,7 +29,6 @@ var texture = Pend<Vector>()
 var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
 var array = [Slice]()
-var size = 0 // TODO use planeConfig(Pierce*)
 
 class Refer
 {
@@ -152,9 +152,11 @@ func getLock() -> MTLCommandBufferHandler
 }
 func getReady() -> MTLCommandBufferHandler
 {
-	if (size == 0) {return {(MTLCommandBuffer) in planeReady(nil,0)}}
+	let index = Int32(planeConfig(PierceIndex))
+	let limit = Int32(planeConfig(PierceLimit))-index
+	if (index == limit) {return {(MTLCommandBuffer) in planeReady(nil,index,limit)}}
 	let last = pierce.get()
-	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents())),Int32(size))}
+	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents())),index,limit)}
 }
 func getCount() -> MTLCommandBufferHandler
 {
@@ -213,7 +215,7 @@ func swiftInit()
 	queue = device.makeCommandQueue()
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"planeG.so") else {
 		fputs("plane: cannot load library: planeG.so\n",stderr);exitErr(#file,#line,-1);return}
-	for shader in 0...Int(Shaders.rawValue-1) {if (shader == Dipoint.rawValue || shader == Adpoint.rawValue) {switch (Initial__Shader__Special(Shader(UInt32(shader)))) {
+	for sub in 0...Int(Shaders.rawValue-1) {let shader = Shader(UInt32(sub)); if (shader == Dipoint || shader == Adpoint) {switch (Initial__Shader__Special(shader)) {
 	case (Display):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
 		print("cannot make vertex_render");exitErr(#file,#line,-1);return}
@@ -224,25 +226,24 @@ func swiftInit()
 	pipe.fragmentFunction = fragment_render
 	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
 	pipe.depthAttachmentPixelFormat = .depth32Float
-	render[shader] = try? device.makeRenderPipelineState(descriptor:pipe)
+	render[sub] = try? device.makeRenderPipelineState(descriptor:pipe)
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
-	param[shader] = MTLRenderPassDescriptor()
-	param[shader]!.colorAttachments[0].clearColor = color
-	param[shader]!.colorAttachments[0].storeAction = .store
-	param[shader]!.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
-	param[shader]!.depthAttachment.storeAction = .dontCare
-	param[shader]!.depthAttachment.texture = getTexture(rect)
+	param[sub] = MTLRenderPassDescriptor()
+	param[sub]!.colorAttachments[0].clearColor = color
+	param[sub]!.colorAttachments[0].storeAction = .store
+	param[sub]!.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
+	param[sub]!.depthAttachment.storeAction = .dontCare
+	param[sub]!.depthAttachment.texture = getTexture(rect)
     let desc = MTLDepthStencilDescriptor()
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
     desc.isDepthWriteEnabled = true
-    depth[shader] = device.makeDepthStencilState(descriptor: desc)
+    depth[sub] = device.makeDepthStencilState(descriptor: desc)
     case (Compute):
-	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Shader__Str(Shader(UInt32(shader)))!)) else {
+	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Shader__Str(Shader(UInt32(sub)))!)) else {
 	 	print("cannot make kernel_pierce");exitErr(#file,#line,-1);return}
-	compute[shader] = try? device.makeComputePipelineState(function:kernel_pierce)
-    threads[shader] = device.maxThreadsPerThreadgroup
-    default: print("invalid shader type");exitErr(#file,#line,-1); return
-	}}}
+	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
+    threads[sub] = device.maxThreadsPerThreadgroup
+    default: print("invalid shader type");exitErr(#file,#line,-1); return}}}
 	// setEvent(.keyDown,swiftKey)
 	setEvent(.leftMouseUp,swiftLeft)
 	// setEvent(.rightMouseUp,swiftRight)
@@ -254,7 +255,9 @@ func swiftInit()
 }
 func swiftRun()
 {
+	running = 1
 	NSApp.run()
+	running = 0
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 {
@@ -302,13 +305,18 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 		default: break}}
 	default: exitErr(#file,#line,-1)}
 }
-func swiftWake()
+func swiftWake(_ stop: Int32)
 {
+	if (stop != 0) {NSApp.stop(nil); return}
 	// TODO create event
 }
 func swiftInfo(_ query: Configure) -> Int32
 {
-	if (query == RegisterDone) {return Int32(count)}
+	switch (query) {
+	case (RegisterDone): return Int32(count)
+	case (RegisterOpen): return Int32(running)
+	// TODO cursor, window, keyboard, read from uniform
+	default: break}
 	return 0
 }
 func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)

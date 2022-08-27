@@ -54,70 +54,71 @@ Memory = {
 	"Configurez", -- configure to value
 }
 Configure = {
-	"TriangleSize",
+	"TriangleSize", -- refers to corners
 	"TriangleLimit",
 	"TriangleIndex",
-	"NumericSize",
+	"NumericSize", -- planes for corners
 	"NumericLimit",
 	"NumericIndex",
-	"VertexSize",
+	"VertexSize", -- corners of frame
 	"VertexLimit",
 	"VertexIndex",
-	"PierceSize",
+	"PierceSize", -- result of compute
 	"PierceLimit",
 	"PierceIndex",
-	"ObjectSize",
+	"ObjectSize", -- per polytope matrix
 	"ObjectLimit",
 	"ObjectIndex",
-	"SwarmSize",
+	"SwarmSize", -- early warning system
 	"SwarmLimit",
 	"SwarmIndex",
-	"TextureSize",
+	"TextureSize", -- how to decorate
 	"TextureLimit",
 	"TextureIndex",
-	"SliceSize",
+	"SliceSize", -- ranges per draw
 	"SliceLimit",
 	"SliceIndex",
-	"StringSize",
+	"StringSize", -- to compare to
 	"StringLimit",
 	"StringIndex",
-	"MachineLimit",
+	"MachineLimit", -- vending machine lines
 	"MachineSize",
 	"MachineIndex",
-	"RegisterLine",
-	"RegisterHint",
-	"RegisterCompare",
-	"RegisterDone",
-	"ClientCommand",
+	"RegisterLine", -- state of machine
+	"RegisterHint", -- argument from graphics
+	"RegisterCompare", -- index into strings
+	"RegisterDone", -- shaders running count
+	"RegisterOpen", -- windows open count
+	"ClientCommand", -- fields from client
 	"ClientMemory",
 	"ClientSize",
 	"ClientIndex",
 	"ClientSelf",
-	"StateResponse",
+	"StateResponse", -- fields to client
 	"StateIndex",
 	"StateXform",
 	"StateSelect",
-	"ArgumentShader",
+	"ArgumentShader", -- pass to draw
 	"ArgumentStart",
 	"ArgumentStop",
-	"PierceLeft",
-	"PierceBase",
-	"PierceNear",
-	"PierceFound",
-	"UniformLeft",
-	"UniformBase",
-	"UniformIndex",
-	"UniformSize",
-	"WindowLeft",
+	"ClosestLeft", -- search through pierce
+	"ClosestBase",
+	"ClosestNear",
+	"ClosestFound",
+	"UniformLeft", -- pierce point horizontal
+	"UniformBase", -- pierce pont vertical
+	"UniformIndex", -- manipulate plane select
+	"UniformSize", -- early warning points
+	"WindowLeft", -- window into screen
 	"WindowBase",
 	"WindowWide",
 	"WindowHigh",
-	"CursorLeft",
+	"CursorLeft", -- user input mouse
 	"CursorBase",
 	"CursorAngle",
-	"ButtonClick",
+	"ButtonClick", -- user input button
 	"ButtonDrag",
-	"ButtonPress",
+	"ButtonPress", -- user input keyboard
 	"ButtonHold",
 }
 Transfer = {
