@@ -241,7 +241,6 @@ void *planeThread(void *arg)
 	if (!goon) break;
 	if (!checkRead(external)) break;
 	if (!checkWrite(internal)) break;
-	printf("planeThread calling readClient\n");
 	readClient(&client,external);
 	writeClient(&client,internal);
 	callWake();}
@@ -250,8 +249,13 @@ void *planeThread(void *arg)
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
 {
 	pthread_t pthread;
+	int size = 0;
+	for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
 	configure[WindowWide] = WINWIDE;
 	configure[WindowHigh] = WINHIGH;
+	planeReconfig(MachineSize,size);
+	for (int i = 0; Bootstrap__Int__Str(i); i++) {
+	int len = 0; if (hideMachine(machine+i,Bootstrap__Int__Str(i),&len) != 1) ERROR(exitErr,0);}
 	init(); // this calls planeArgument
 	callDma = dma;
 	callWake = wake;

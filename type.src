@@ -872,10 +872,14 @@ function showConstantCF(name,sub,list)
 				result = result.."_"..string.gsub(v," ","_")
 			elseif k == sub and sub == #list and string.find(v," ") then
 				result = "\""..v.."\""
-			elseif k == sub and sub == #list and not string.find(v,"^[A-Z]") and not string.find(v,"^[0-9]") then
+			elseif k == sub and sub == #list and string.find(v,"%(") then
 				result = "\""..v.."\""
-			elseif k == sub and sub == #list then
+			elseif k == sub and sub == #list and string.find(v,"^[A-Z]") then
 				result = v
+			elseif k == sub and sub == #list and string.find(v,"^[0-9]") then
+				result = v
+			elseif k == sub and sub == #list then
+				result = "\""..v.."\""
 			elseif k == sub then
 				result = result.."__"..last
 			elseif k == (sub+2) then

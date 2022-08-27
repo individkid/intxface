@@ -200,6 +200,9 @@ Initial = {
 	{"Shader","Deplane","Str","deplane_compute"},
 	{"Shader","Deplane","Special","Compute"},
 }
+Bootstrap = {
+	{"Int","0","Str","Machine(xfr:Transfer(Keep))"}
+}
 --HERE Structs
 File = {
 	{"act","Goal",{},{}},
