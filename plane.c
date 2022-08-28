@@ -248,30 +248,13 @@ void *planeThread(void *arg)
 }
 void planeBoot()
 {
-	int size = 0;
-	int mems[Memorys] = {0};
-	int idx[Memorys] = {0};
-	for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
-	for (int i = 0; i < size; i++) {
-	enum Memory mem = Bootstrap__Int__Memory(i);
-	mems[mem]++; idx[mem] = 0;}
-	for (enum Memory i = 0; i < Memorys; i++) {
-	enum Configure cfg = Bootstrap__Int__Configure(i);
-	if (mems[i]) planeReconfig(cfg,mems[i]);}
-	for (int i = 0; i < size; i++) {
+	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	int len = 0;
-	enum Process pro = Bootstrap__Int__Process(i);
-	enum Memory mem = Bootstrap__Int__Memory(i);
-	const char *str = Bootstrap__Int__Str(i);
-	const char *fld = Bootstrap__Memory__Str(mem);
-	char *shw = 0;
-	int sub = idx[mem]++;
-	char *tmp = 0;
-	len = 0; showMemory(mem,&shw,&len);
-	asprintf(&tmp,"Client(cmd:Command(SetCmd)mem:%ssiz:Int(1)idx:(%d)slf:Int(1)%s[0]:%s)",shw,sub,fld,str);
-	len = 0; hideClient(&client,tmp,&len);
-	switch (pro) {case (Graphics): callDma(&client); break; case (Central): planeBuffer(); break; default: break;}
-	allocMem((void**)&shw,0); free(tmp); tmp = 0;}
+	hideClient(&client,Bootstrap__Int__Str(i),&len);
+	switch (Bootstrap__Memory__Process(client.mem)) {
+	case (Graphics): callDma(&client); break;
+	case (Central): planeBuffer(); break;
+	default: break;}}
 	configure[WindowWide] = WINWIDE;
 	configure[WindowHigh] = WINHIGH;
 }

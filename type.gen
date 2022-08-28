@@ -205,11 +205,8 @@ Initial = {
 	{"Shader","Deplane","Special","Compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Machine(xfr:Transfer(Give))"},
-	{"Int","0","Process","Central"},
-	{"Int","0","Memory","Machinez"},
-	{"Int","0","Configure","MachineSize"},
-	{"Memory","Machinez","Str","mch"},
+	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(1)idx:(0)slf:Int(1)mch[0]:Machine(xfr:Transfer(Give)))"},
+	{"Memory","Machinez","Process","Central"},
 }
 --HERE Structs
 File = {
