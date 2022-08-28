@@ -869,17 +869,13 @@ function showConstantCF(name,sub,list)
 	for k,v in ipairs(list) do
 		if last then
 			if k < sub and sub < #list then
-				result = result.."_"..string.gsub(v," ","_")
-			elseif k == sub and sub == #list and string.find(v," ") then
+				result = result.."_"..string.gsub(v,"[ ():]","_")
+			elseif k == sub and sub == #list and last == "Str" then
 				result = "\""..v.."\""
-			elseif k == sub and sub == #list and string.find(v,"%(") then
-				result = "\""..v.."\""
-			elseif k == sub and sub == #list and string.find(v,"^[A-Z]") then
-				result = v
-			elseif k == sub and sub == #list and string.find(v,"^[0-9]") then
-				result = v
+			elseif k == sub and sub == #list and last == "Int" then
+				result = "(int)"..v
 			elseif k == sub and sub == #list then
-				result = "\""..v.."\""
+				result = v
 			elseif k == sub then
 				result = result.."__"..last
 			elseif k == (sub+2) then

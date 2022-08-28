@@ -171,6 +171,10 @@ Special = {
 	"Display",
 	"Compute",
 }
+Process = {
+	"Central",
+	"Graphics",
+}
 Ture = {
 	"Table",
 	"Sides",
@@ -201,7 +205,11 @@ Initial = {
 	{"Shader","Deplane","Special","Compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Machine(xfr:Transfer(Keep))"}
+	{"Int","0","Str","Machine(xfr:Transfer(Give))"},
+	{"Int","0","Process","Central"},
+	{"Int","0","Memory","Machinez"},
+	{"Int","0","Configure","MachineSize"},
+	{"Memory","Machinez","Str","mch"},
 }
 --HERE Structs
 File = {
