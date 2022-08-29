@@ -85,6 +85,7 @@ Configure = {
 	"MachineSize",
 	"MachineIndex",
 	"RegisterLine", -- state of machine
+	"RegisterNest",
 	"RegisterHint", -- argument from graphics
 	"RegisterCompare", -- index into strings
 	"RegisterDone", -- shaders running count
@@ -137,12 +138,21 @@ Transfer = {
 	"Give", -- dma to gpu
 	"Keep", -- dma to cpu
 	"Draw", -- start shader
-	"Equal", -- jump if equal
-	"Noteq", -- jump not equal
-	"Less", -- jump if less
-	"More", -- jump if more
-	"Goto", -- jump regardless
+	"Every", -- jump if every
+	"None", -- jump not none
+	"Both", -- jump if both
+	"Eorb", -- jump not none
+	"Norb", -- jump not every
+	"Nest", -- jump to here
 	"Swap", -- exchange machine lines
+}
+Sense = {
+	"Less",
+	"More",
+	"Equal",
+	"Nless",
+	"Nmore",
+	"Nequal",
 }
 Accumulate = {
 	"Compose", -- kernel optimization
@@ -205,8 +215,46 @@ Initial = {
 	{"Shader","Deplane","Special","Compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(1)idx:(0)slf:Int(1)mch[0]:Machine(xfr:Transfer(Give)))"},
-	{"Memory","Machinez","Process","Central"},
+	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)\\\
+		Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\\\
+		cfg[0]:Configure(WindowWide)val[0]:Int(512)\\\
+		cfg[1]:Configure(WindowWide)val[1]:Int(512)\\\
+		cfg[2]:Configure(MachineSize)val[2]:Int(3)"},
+	{"Int","1","Str","Machine(xfr:Transfer(Read)))"},
+	{"Int","2","Str","Machine(xfr:Transfer(Give)))"},
+	{"Int","3","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)\\\
+		Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(2)\\\
+		cfg[0]:Configure(MachineIndex)val[0]:Int(1)\\\
+		cfg[1]:Configure(MachineLimit)val[1]:Int(3)"},
+	{"Int","0","Process","Central"},
+	{"Int","1","Process","Central"},
+	{"Int","2","Process","Central"},
+	{"Int","3","Process","Central"},
+--	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)"},
+--	{"Int","0","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
+--		cfg[0]:Configure(WindowWide)val[0]:Int(512)\
+--		cfg[1]:Configure(WindowWide)val[1]:Int(512)\
+--		cfg[2]:Configure(MachineSize)val[2]:Int(10)"},
+--	{"Int","%(i=1($i%0i=i+1,i<9?%-1))","Str","Client(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(1)idx:Int(%($i-1%0%-1))slf:Int(1)mch[0]:"},
+--	{"Int","1","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
+--		cfg[0]:Configure(RegisterHint)val[0]:Int%Configure(RegisterHint)))"},
+--	{"Int","2","Str","Machine(xfr:Transfer(Read)))"},
+--	{"Int","3","Str","Machine(xfr:Transfer(Save)cfg:siz:Int(2)\
+--		cfg[0]:Configure(ClientCommand)cfg[1]:Configure(ClientMemory)))"},
+--	{"Int","4","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
+--		cfg[0]:Configure(ClientCommand)val[0]:Int%Command(SetCmd)idx:Int(-1)))"},
+--	{"Int","5","Str","Machine(xfr:Transfer(Eorb)idx:Int(-1)sns:Sense(Equal)siz:Int(3)\
+--		cfg[0]:Configure(ClientMemory)val[0]:Int%Memory(Stringz)\
+--		cfg[1]:Configure(ClientMemory)val[1]:Int%Memory(Machinez)\
+--		cfg[2]:Configure(ClientMemory)val[2]:Int%Memory(Configurez)))"},
+--	{"Int","6","Str","Machine(xfr:Transfer(Give)))"},
+--	{"Int","7","Str","Machine(xfr:Transfer(Every)idx:Int(-1)sns:Sense(Equal)siz:Int(10)))"},
+--	{"Int","8","Str","Machine(xfr:Transfer(Keep)))"},
+--	{"Int","9","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)"},
+--	{"Int","9","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(2)\
+--		cfg[0]:Configure(MachineIndex)val[0]:Int(1)\
+--		cfg[1]:Configure(MachineLimit)val[1]:Int(9)"},
+--	{"Int","%(i=0($i%0i=i+1,i<10?%-1))","Process","Central"},
 }
 --HERE Structs
 File = {
@@ -358,28 +406,53 @@ Slice = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 }
+-- "Read", -- read internal pipe --
+-- "Write", -- write external pipe --
+-- "Save", -- client, pierce, or query to configure -- siz cfg
+-- "Copy", -- configure to configure -- siz cfg oth
+-- "Force", -- machine to configure -- siz cfg val
+-- "Collect", -- query to collect --
+-- "Setup", -- configure to client -- siz cfg val
+-- "Clear", -- identity to matrix -- dst
+-- "Invert", -- invert in matrix -- dst
+-- "Manip", -- manip to matrix -- dst
+-- "Follow", -- multiply to matrix -- src dst
+-- "Precede", -- multiply by matrix -- src dst
+-- "Give", -- dma to gpu
+-- "Keep", -- dma to cpu
+-- "Draw", -- start shader
+-- "Every", -- jump if every -- siz cfg val idx
+-- "None", -- jump not none -- siz cfg val idx
+-- "Both", -- jump if both -- siz cfg val idx
+-- "Eorb", -- jump not none -- siz cfg val idx
+-- "Norb", -- jump not every -- siz cfg val idx
+-- "Swap", -- exchange machine lines -- idx ret
 Machine = {
-	{"xfr","Transfer",{},{}}, -- what to change
+	{"xfr","Transfer",{},{}},
+	{"siz","Int",{
+--		["xfr"]={
+--		["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,
+--		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}
+	},{}},
 	{"cfg","Configure",{["xfr"]={
 		["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,
-		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
+		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},"siz"},
 	{"oth","Configure",{["xfr"]={
-		["Copy"]=true}},{}},
+		["Copy"]=true}},"siz"},
 	{"val","Int",{["xfr"]={
-		["Force"]=true,
-		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true}},{}},
+		["Force"]=true,["Setup"]=true,
+		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},"siz"},
 	{"idx","Int",{["xfr"]={
-		["Setup"]=true,
-		["Equal"]=true,["Noteq"]=true,["Less"]=true,["More"]=true,
-		["Goto"]=true,["Swap"]=true}},{}},
-	{"cal","Int",{["xfr"]={
-		["Swap"]=true}},{}},
+		["Swap"]=true,
+		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},{}},
 	{"ret","Int",{["xfr"]={
 		["Swap"]=true}},{}},
+	{"sns","Sense",{["xfr"]={
+		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},{}},
 	{"src","Accumulate",{["xfr"]={
 		["Follow"]=true,["Precede"]=true}},{}},
 	{"dst","Accumulate",{["xfr"]={
-		["Clear"]=true,["Manip"]=true,
+		["Clear"]=true,["Invert"]=true,["Manip"]=true,
 		["Follow"]=true,["Precede"]=true}},{}},
 }
 Client = {

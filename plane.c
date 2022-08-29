@@ -219,6 +219,16 @@ void planeCollect() {
 	for (*index = configure[StringIndex]; *index < configure[StringLimit]; (*index)++) {
 		if (strcmp(collect,strings[(int)*index%configure[StringSize]]) == 0) break;}
 }
+int planeCompare(enum Configure *cfg, int *val, int siz)
+{
+	// TODO
+	return 0;
+}
+int planeNext(int idx)
+{
+	// TODO
+	return 0;
+}
 void planeExchange(int cal, int ret)
 {
 	struct Machine temp = machine[cal%configure[MachineSize]];
@@ -248,15 +258,14 @@ void *planeThread(void *arg)
 }
 void planeBoot()
 {
+	// TODO parse and concatenate 
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	int len = 0;
 	hideClient(&client,Bootstrap__Int__Str(i),&len);
-	switch (Bootstrap__Memory__Process(client.mem)) {
+	switch (Bootstrap__Int__Process(client.mem)) {
 	case (Graphics): callDma(&client); break;
 	case (Central): planeBuffer(); break;
 	default: break;}}
-	configure[WindowWide] = WINWIDE;
-	configure[WindowHigh] = WINHIGH;
 }
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
 {
@@ -292,19 +301,19 @@ int planeConfig(enum Configure cfg)
 }
 void planeWake(enum Configure hint)
 {
-	configure[RegisterLine] = configure[MachineIndex];
 	configure[RegisterHint] = hint;
+	if (configure[RegisterLine] < configure[MachineIndex] || configure[RegisterLine] >= configure[MachineLimit]) configure[RegisterLine] = configure[MachineIndex];
 	while (configure[RegisterLine] >= configure[MachineIndex] && configure[RegisterLine] < configure[MachineLimit]) {
 		struct Machine *mptr = machine+configure[RegisterLine]%configure[MachineSize];
 		int next = configure[RegisterLine]+1;
 		switch (mptr->xfr) {
 			case (Read): readClient(&client,internal); break; // read internal pipe
 			case (Write): writeClient(&client,external); break; // write external pipe
-			case (Save): planePreconfig(mptr->cfg); break; // kernel, client, pierce, or query to configure
-			case (Copy): configure[mptr->cfg] = configure[mptr->oth]; break; // configure to configure
-			case (Force): planeReconfig(mptr->cfg,mptr->val); break; // machine to configure
+			case (Save): for (int i = 0; i < mptr->siz; i++) planePreconfig(mptr->cfg[i]); break; // kernel, client, pierce, or query to configure
+			case (Copy): for (int i = 0; i < mptr->siz; i++) configure[mptr->cfg[i]] = configure[mptr->oth[i]]; break; // configure to configure
+			case (Force): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure
 			case (Collect): planeCollect(); break; // query to collect
-			case (Setup): planePostconfig(mptr->cfg,mptr->idx); break; // configure to client
+			case (Setup): for (int i = 0; i < mptr->siz; i++) planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to client
 			case (Clear): identmat(planeMatrix(mptr->dst)->mat,4); break; // identity to matrix
 			case (Invert): invmat(planeMatrix(mptr->dst)->mat,4); break; // invert in matrix
 			case (Manip): planeCalculate(planeMatrix(mptr->dst)); break; // manip to matrix
@@ -313,14 +322,17 @@ void planeWake(enum Configure hint)
 			case (Give): callDma(&client); break; // dma to gpu
 			case (Keep): planeBuffer(); break; // dma to cpu
 			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader
-			case (Equal): if (configure[mptr->cfg] == mptr->val) next = mptr->idx; break; // jump if equal
-			case (Noteq): if (configure[mptr->cfg] != mptr->val) next = mptr->idx; break; // jump not equal
-			case (Less): if (configure[mptr->cfg] < mptr->val) next = mptr->idx; break; // jump if less
-			case (More): if (configure[mptr->cfg] > mptr->val) next = mptr->idx; break; // jump if more
-			case (Goto): next = mptr->idx; break; // jump regardless
-			case (Swap): planeExchange(mptr->cal,mptr->ret); break; // exchange machine lines
+			case (Every): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) == mptr->siz) next = planeNext(mptr->idx); break;
+			case (None): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) == 0) next = planeNext(mptr->idx); break;
+			case (Both): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) > 0 && planeCompare(mptr->cfg,mptr->val,mptr->siz) < mptr->siz) next = planeNext(mptr->idx); break;
+			case (Eorb): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) > 0) next = planeNext(mptr->idx); break;
+			case (Norb): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) < mptr->siz) next = planeNext(mptr->idx); break;
+			case (Nest): configure[RegisterNest] += mptr->idx; break;
+			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines
 			default: break;}
-		configure[RegisterLine] = next;}
+		if (next == configure[RegisterLine]) break;
+		configure[RegisterLine] = next;
+	}
 }
 void planeReady(struct Pierce *given, int index, int limit)
 {
