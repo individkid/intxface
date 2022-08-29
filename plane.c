@@ -310,8 +310,8 @@ void planeWake(enum Configure hint)
 			case (Read): readClient(&client,internal); break; // read internal pipe
 			case (Write): writeClient(&client,external); break; // write external pipe
 			case (Save): for (int i = 0; i < mptr->siz; i++) planePreconfig(mptr->cfg[i]); break; // kernel, client, pierce, or query to configure
-			case (Copy): for (int i = 0; i < mptr->siz; i++) configure[mptr->cfg[i]] = configure[mptr->oth[i]]; break; // configure to configure
-			case (Eval): for (int i = 0; i < mptr->siz; i++) configure[mptr->cfg[i]] = planeEval(mptr->str,mptr->val[i]); break; // script to configure
+			case (Copy): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],configure[mptr->oth[i]]); break; // configure to configure
+			case (Eval): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],planeEval(mptr->str,mptr->val[i])); break; // script to configure
 			case (Force): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure
 			case (Collect): planeCollect(); break; // query to collect
 			case (Setup): for (int i = 0; i < mptr->siz; i++) planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to client
