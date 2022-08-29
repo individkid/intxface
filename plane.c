@@ -219,14 +219,14 @@ void planeCollect() {
 	for (*index = configure[StringIndex]; *index < configure[StringLimit]; (*index)++) {
 		if (strcmp(collect,strings[(int)*index%configure[StringSize]]) == 0) break;}
 }
-int planeCompare(enum Configure *cfg, int *val, int siz)
+int planeEscape(int lvl, int nxt)
 {
-	// TODO
-	return 0;
+	// TODO given old nxt and nest lines in machine return new next to get to change nest by given lvl
+	return nxt;
 }
-int planeNext(int idx)
+int planeEval(const char *str, int arg)
 {
-	// TODO
+	// TODO evaluate str to int given arg and confgure
 	return 0;
 }
 void planeExchange(int cal, int ret)
@@ -311,6 +311,7 @@ void planeWake(enum Configure hint)
 			case (Write): writeClient(&client,external); break; // write external pipe
 			case (Save): for (int i = 0; i < mptr->siz; i++) planePreconfig(mptr->cfg[i]); break; // kernel, client, pierce, or query to configure
 			case (Copy): for (int i = 0; i < mptr->siz; i++) configure[mptr->cfg[i]] = configure[mptr->oth[i]]; break; // configure to configure
+			case (Eval): for (int i = 0; i < mptr->siz; i++) configure[mptr->cfg[i]] = planeEval(mptr->str,mptr->val[i]); break; // script to configure
 			case (Force): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure
 			case (Collect): planeCollect(); break; // query to collect
 			case (Setup): for (int i = 0; i < mptr->siz; i++) planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to client
@@ -322,15 +323,12 @@ void planeWake(enum Configure hint)
 			case (Give): callDma(&client); break; // dma to gpu
 			case (Keep): planeBuffer(); break; // dma to cpu
 			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader
-			case (Every): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) == mptr->siz) next = planeNext(mptr->idx); break;
-			case (None): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) == 0) next = planeNext(mptr->idx); break;
-			case (Both): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) > 0 && planeCompare(mptr->cfg,mptr->val,mptr->siz) < mptr->siz) next = planeNext(mptr->idx); break;
-			case (Eorb): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) > 0) next = planeNext(mptr->idx); break;
-			case (Norb): if (planeCompare(mptr->cfg,mptr->val,mptr->siz) < mptr->siz) next = planeNext(mptr->idx); break;
-			case (Nest): configure[RegisterNest] += mptr->idx; break;
+			case (Goto): next = planeEval(mptr->str,mptr->idx); break;
+			case (Escape): next = planeEscape(planeEval(mptr->str,mptr->lvl),next); break;
+			case (Nest): configure[RegisterNest] += mptr->lvl; break;
 			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines
 			default: break;}
-		if (next == configure[RegisterLine]) break;
+		if (next == configure[RegisterLine]) {configure[RegisterLine] = next+1; break;}
 		configure[RegisterLine] = next;
 	}
 }

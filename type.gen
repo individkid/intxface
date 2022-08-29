@@ -127,6 +127,7 @@ Transfer = {
 	"Write", -- write external pipe
 	"Save", -- client, pierce, or query to configure
 	"Copy", -- configure to configure
+	"Eval", -- script to configure
 	"Force", -- machine to configure
 	"Collect", -- query to collect
 	"Setup", -- configure to client
@@ -138,21 +139,10 @@ Transfer = {
 	"Give", -- dma to gpu
 	"Keep", -- dma to cpu
 	"Draw", -- start shader
-	"Every", -- jump if every
-	"None", -- jump not none
-	"Both", -- jump if both
-	"Eorb", -- jump not none
-	"Norb", -- jump not every
-	"Nest", -- jump to here
+	"Goto", -- jump to eval
+	"Escape", -- seek to level
+	"Nest", -- nest to level
 	"Swap", -- exchange machine lines
-}
-Sense = {
-	"Less",
-	"More",
-	"Equal",
-	"Nless",
-	"Nmore",
-	"Nequal",
 }
 Accumulate = {
 	"Compose", -- kernel optimization
@@ -411,6 +401,7 @@ Slice = {
 -- "Save", -- client, pierce, or query to configure -- siz cfg
 -- "Copy", -- configure to configure -- siz cfg oth
 -- "Force", -- machine to configure -- siz cfg val
+-- "Eval", -- script to configure -- siz cfg val str
 -- "Collect", -- query to collect --
 -- "Setup", -- configure to client -- siz cfg val
 -- "Clear", -- identity to matrix -- dst
@@ -421,34 +412,29 @@ Slice = {
 -- "Give", -- dma to gpu
 -- "Keep", -- dma to cpu
 -- "Draw", -- start shader
--- "Every", -- jump if every -- siz cfg val idx
--- "None", -- jump not none -- siz cfg val idx
--- "Both", -- jump if both -- siz cfg val idx
--- "Eorb", -- jump not none -- siz cfg val idx
--- "Norb", -- jump not every -- siz cfg val idx
+-- "Goto", -- jump to eval -- str idx
+-- "Escape" -- seek to level -- str lvl
+-- "Nest", -- nest to level -- lvl
 -- "Swap", -- exchange machine lines -- idx ret
 Machine = {
 	{"xfr","Transfer",{},{}},
-	{"siz","Int",{
---		["xfr"]={
---		["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,
---		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}
-	},{}},
+	{"siz","Int",{},{}},
 	{"cfg","Configure",{["xfr"]={
 		["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,
-		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},"siz"},
+		["Goto"]=true,["Eval"]=true}},"siz"},
 	{"oth","Configure",{["xfr"]={
 		["Copy"]=true}},"siz"},
 	{"val","Int",{["xfr"]={
 		["Force"]=true,["Setup"]=true,
-		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},"siz"},
+		["Goto"]=true,["Eval"]=true}},"siz"},
+	{"str","Str",{["xfr"]={
+		["Escape"]=true,["Goto"]=true,["Eval"]=true}},{}},
+	{"lvl","Int",{["xfr"]={
+		["Escape"]=true,["Nest"]=true}},{}},
 	{"idx","Int",{["xfr"]={
-		["Swap"]=true,
-		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},{}},
+		["Goto"]=true,["Swap"]=true}},{}},
 	{"ret","Int",{["xfr"]={
 		["Swap"]=true}},{}},
-	{"sns","Sense",{["xfr"]={
-		["Every"]=true,["None"]=true,["Both"]=true,["Eorb"]=true,["Norb"]=true}},{}},
 	{"src","Accumulate",{["xfr"]={
 		["Follow"]=true,["Precede"]=true}},{}},
 	{"dst","Accumulate",{["xfr"]={
