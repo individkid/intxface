@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/errno.h>
 #include <string.h>
+#include <lua.h>
 
 struct Kernel {
 	struct Matrix compose; // optimization
@@ -36,6 +37,7 @@ uftype callDma = 0;
 vftype callWake = 0;
 rftype callInfo = 0;
 wftype callDraw = 0;
+lua_State *luastate = 0;
 
 void planeAlize(float *dir, const float *vec) // normalize
 {
@@ -228,10 +230,23 @@ int planeEscape(int lvl, int nxt)
 	lvl += machine[nxt].idx*inc; configure[RegisterNest] += machine[nxt].idx*inc;}
 	return nxt;
 }
+void *planeAlloc(void *ud, void *ptr, size_t osize, size_t nsize)
+{
+	if (nsize == 0) {free(ptr); return 0;}
+	return realloc(ptr, nsize);
+}
 int planeEval(const char *str, int arg)
 {
-	// TODO evaluate str to int given arg and confgure
-	return 0;
+	int result = 0;
+	if (!luastate) luastate = lua_newstate(planeAlloc,0);
+	lua_getglobal(luastate,"load");
+	lua_pushstring(luastate,str);
+	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(exitErr,0)
+	lua_pushnumber(luastate,arg);
+	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(exitErr,0)
+	result = lua_tonumber(luastate,1);
+	lua_pop(luastate,1);
+	return result;
 }
 int planeCompare(enum Configure cfg, int val, enum Compare cmp)
 {
