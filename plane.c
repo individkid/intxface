@@ -233,9 +233,9 @@ int planeEval(const char *str, int arg)
 	// TODO evaluate str to int given arg and confgure
 	return 0;
 }
-int planeCompare(enum Configure cfg, int val, enum Sense sns)
+int planeCompare(enum Configure cfg, int val, enum Compare cmp)
 {
-	switch (sns) {
+	switch (cmp) {
 		case (Less): return (cfg < val);
 		case (More): return (cfg > val);
 		case (Equal): return (cfg == val);
@@ -245,9 +245,9 @@ int planeCompare(enum Configure cfg, int val, enum Sense sns)
 		default: break;}
 	return 0;
 }
-int planeCondition(int sum, int siz, enum Compare cmp)
+int planeCondition(int sum, int siz, enum Condition cnd)
 {
-	switch (cmp) {
+	switch (cnd) {
 		case (Every): return (sum == siz);
 		case (None): return (sum == 0);
 		case (Both): return (sum > 0 && sum < siz);
@@ -344,8 +344,8 @@ void planeWake(enum Configure hint)
 			case (Force): planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure -- siz cfg val
 			case (Forces): planeReconfig(mptr->cfg[i],planeEval(mptr->str,mptr->val[i])); break; // script to configure -- siz cfg val str
 			case (Setup): planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to client -- siz cfg val
-			case (Jump): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->sns[i]); break; // skip if true -- siz cfg val sns cmp idx
-			case (Goto): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->sns[i]); break; // jump if true -- siz cfg val sns cmp idx
+			case (Jump): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // skip if true -- siz cfg val cmp cnd idx
+			case (Goto): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // jump if true -- siz cfg val cmp cnd idx
 			default: break;}
 		switch (mptr->xfr) {
 			case (Read): readClient(&client,internal); break; // read internal pipe --
@@ -359,8 +359,8 @@ void planeWake(enum Configure hint)
 			case (Give): callDma(&client); break; // dma to gpu --
 			case (Keep): planeBuffer(); break; // dma to cpu --
 			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
-			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cmp) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val sns cmp idx
-			case (Goto): next = (planeCondition(accum,size,mptr->cmp) ? mptr->idx : next); break; // jump if true -- siz cfg val sns cmp idx
+			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val sns cmp idx
+			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Jumps): next = planeEscape(planeEval(mptr->str,next),next); // skip to eval -- str
 			case (Gotos): next = planeEval(mptr->str,next); break; // jump to eval -- str
 			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
