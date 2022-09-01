@@ -334,7 +334,7 @@ void planeWake(enum Configure hint)
 		struct Machine *mptr = machine+configure[RegisterLine]%configure[MachineSize];
 		int next = configure[RegisterLine]+1;
 		int accum = 0;
-		int size = 1;
+		int size = 0;
 		switch (mptr->xfr) {
 			case (Save): case (Copy): case (Force): case (Forces): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
 			default: break;}
