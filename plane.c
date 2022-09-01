@@ -221,12 +221,39 @@ void planeCollect() {
 }
 int planeEscape(int lvl, int nxt)
 {
-	// TODO given old nxt and nest lines in machine return new next to get to change nest by given lvl
+	int level = configure[RegisterNest];
+	int inc = (lvl > 0 ? 1 : -1);
+	lvl *= inc;
+	while (lvl > 0 && (nxt += inc) < configure[MachineLimit]) if (machine[nxt].xfr == Nest) {
+	lvl += machine[nxt].idx*inc; configure[RegisterNest] += machine[nxt].idx*inc;}
 	return nxt;
 }
 int planeEval(const char *str, int arg)
 {
 	// TODO evaluate str to int given arg and confgure
+	return 0;
+}
+int planeCompare(enum Configure cfg, int val, enum Sense sns)
+{
+	switch (sns) {
+		case (Less): return (cfg < val);
+		case (More): return (cfg > val);
+		case (Equal): return (cfg == val);
+		case (Nless): return (cfg >= val);
+		case (Nmore): return (cfg <= val);
+		case (Nequal): return (cfg != val);
+		default: break;}
+	return 0;
+}
+int planeCondition(int sum, int siz, enum Compare cmp)
+{
+	switch (cmp) {
+		case (Every): return (sum == siz);
+		case (None): return (sum == 0);
+		case (Both): return (sum > 0 && sum < siz);
+		case (Eorb): return (sum > 0);
+		case (Norb): return (sum < siz);
+		default: break;}
 	return 0;
 }
 void planeExchange(int cal, int ret)
@@ -262,9 +289,9 @@ void planeBoot()
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	int len = 0;
 	hideClient(&client,Bootstrap__Int__Str(i),&len);
-	switch (Bootstrap__Int__Process(client.mem)) {
-	case (Graphics): callDma(&client); break;
-	case (Central): planeBuffer(); break;
+	switch (Bootstrap__Int__Special(i)) {
+	case (Display): case (Process): callDma(&client); break;
+	case (Compute): planeBuffer(); break;
 	default: break;}}
 }
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
@@ -306,31 +333,41 @@ void planeWake(enum Configure hint)
 	while (configure[RegisterLine] >= configure[MachineIndex] && configure[RegisterLine] < configure[MachineLimit]) {
 		struct Machine *mptr = machine+configure[RegisterLine]%configure[MachineSize];
 		int next = configure[RegisterLine]+1;
+		int accum = 0;
+		int size = 1;
 		switch (mptr->xfr) {
-			case (Read): readClient(&client,internal); break; // read internal pipe
-			case (Write): writeClient(&client,external); break; // write external pipe
-			case (Save): for (int i = 0; i < mptr->siz; i++) planePreconfig(mptr->cfg[i]); break; // kernel, client, pierce, or query to configure
-			case (Copy): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],configure[mptr->oth[i]]); break; // configure to configure
-			case (Eval): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],planeEval(mptr->str,mptr->val[i])); break; // script to configure
-			case (Force): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure
-			case (Collect): planeCollect(); break; // query to collect
-			case (Setup): for (int i = 0; i < mptr->siz; i++) planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to client
-			case (Clear): identmat(planeMatrix(mptr->dst)->mat,4); break; // identity to matrix
-			case (Invert): invmat(planeMatrix(mptr->dst)->mat,4); break; // invert in matrix
-			case (Manip): planeCalculate(planeMatrix(mptr->dst)); break; // manip to matrix
-			case (Follow): jumpmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply to matrix
-			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix
-			case (Give): callDma(&client); break; // dma to gpu
-			case (Keep): planeBuffer(); break; // dma to cpu
-			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader
-			case (Goto): next = planeEval(mptr->str,mptr->idx); break;
-			case (Escape): next = planeEscape(planeEval(mptr->str,mptr->lvl),next); break;
-			case (Nest): configure[RegisterNest] += mptr->lvl; break;
-			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines
+			case (Save): case (Copy): case (Force): case (Forces): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
+			default: break;}
+		for (int i = 0; i < size; i++) switch (mptr->xfr) {
+			case (Save): planePreconfig(mptr->cfg[i]); break; // kernel, client, pierce, or query to configure -- siz cfg
+			case (Copy): planeReconfig(mptr->cfg[i],configure[mptr->oth[i]]); break; // configure to configure -- siz cfg oth
+			case (Force): planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure -- siz cfg val
+			case (Forces): planeReconfig(mptr->cfg[i],planeEval(mptr->str,mptr->val[i])); break; // script to configure -- siz cfg val str
+			case (Setup): planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to client -- siz cfg val
+			case (Jump): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->sns[i]); break; // skip if true -- siz cfg val sns cmp idx
+			case (Goto): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->sns[i]); break; // jump if true -- siz cfg val sns cmp idx
+			default: break;}
+		switch (mptr->xfr) {
+			case (Read): readClient(&client,internal); break; // read internal pipe --
+			case (Write): writeClient(&client,external); break; // write external pipe --
+			case (Collect): planeCollect(); break; // query to collect --
+			case (Clear): identmat(planeMatrix(mptr->dst)->mat,4); break; // identity to matrix -- dst
+			case (Invert): invmat(planeMatrix(mptr->dst)->mat,4); break; // invert in matrix -- dst
+			case (Manip): planeCalculate(planeMatrix(mptr->dst)); break; // manip to matrix -- dst
+			case (Follow): jumpmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply to matrix -- src dst
+			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix -- src dst
+			case (Give): callDma(&client); break; // dma to gpu --
+			case (Keep): planeBuffer(); break; // dma to cpu --
+			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
+			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cmp) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val sns cmp idx
+			case (Goto): next = (planeCondition(accum,size,mptr->cmp) ? mptr->idx : next); break; // jump if true -- siz cfg val sns cmp idx
+			case (Jumps): next = planeEscape(planeEval(mptr->str,next),next); // skip to eval -- str
+			case (Gotos): next = planeEval(mptr->str,next); break; // jump to eval -- str
+			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
+			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines -- idx ret
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] = next+1; break;}
-		configure[RegisterLine] = next;
-	}
+		configure[RegisterLine] = next;}
 }
 void planeReady(struct Pierce *given, int index, int limit)
 {

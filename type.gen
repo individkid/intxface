@@ -127,8 +127,8 @@ Transfer = {
 	"Write", -- write external pipe
 	"Save", -- client, pierce, or query to configure
 	"Copy", -- configure to configure
-	"Eval", -- script to configure
 	"Force", -- machine to configure
+	"Forces", -- script to configure
 	"Collect", -- query to collect
 	"Setup", -- configure to client
 	"Clear", -- identity to matrix
@@ -139,8 +139,10 @@ Transfer = {
 	"Give", -- dma to gpu
 	"Keep", -- dma to cpu
 	"Draw", -- start shader
-	"Goto", -- jump to eval
-	"Escape", -- seek to level
+	"Jump", -- skip if true
+	"Goto", -- jump if true
+	"Jumps", -- skip to eval
+	"Gotos", -- jump to eval
 	"Nest", -- nest to level
 	"Swap", -- exchange machine lines
 }
@@ -169,11 +171,23 @@ Stage = {
 }
 Special = {
 	"Display",
+	"Process",
 	"Compute",
 }
-Process = {
-	"Central",
-	"Graphics",
+Sense = {
+	"Less",
+	"More",
+	"Equal",
+	"Nless",
+	"Nmore",
+	"Nequal",
+}
+Compare = {
+	"Every",
+	"None",
+	"Both",
+	"Eorb",
+	"Norb",
 }
 Ture = {
 	"Table",
@@ -188,21 +202,21 @@ Initial = {
 	{"Shader","Diplane","Stage","Fragment","Str","diplane_fragment"},
 	{"Shader","Diplane","Special","Display"},
 	{"Shader","Adpoint","Str","kernel_pierce"},
-	{"Shader","Adpoint","Special","Compute"},
+	{"Shader","Adpoint","Special","Process"},
 	{"Shader","Adplane","Str","adplane_compute"},
-	{"Shader","Adplane","Special","Compute"},
+	{"Shader","Adplane","Special","Process"},
 	{"Shader","Copoint","Str","copoint_compute"},
-	{"Shader","Copoint","Special","Compute"},
+	{"Shader","Copoint","Special","Process"},
 	{"Shader","Coplane","Str","coplane_compute"},
-	{"Shader","Coplane","Special","Compute"},
+	{"Shader","Coplane","Special","Process"},
 	{"Shader","Onpoint","Str","onpoint_compute"},
-	{"Shader","Onpoint","Special","Compute"},
+	{"Shader","Onpoint","Special","Process"},
 	{"Shader","Onplane","Str","onplane_compute"},
-	{"Shader","Onplane","Special","Compute"},
+	{"Shader","Onplane","Special","Process"},
 	{"Shader","Depoint","Str","depoint_compute"},
-	{"Shader","Depoint","Special","Compute"},
+	{"Shader","Depoint","Special","Process"},
 	{"Shader","Deplane","Str","deplane_compute"},
-	{"Shader","Deplane","Special","Compute"},
+	{"Shader","Deplane","Special","Process"},
 }
 Bootstrap = {
 	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)\\\
@@ -216,10 +230,10 @@ Bootstrap = {
 		Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(2)\\\
 		cfg[0]:Configure(MachineIndex)val[0]:Int(1)\\\
 		cfg[1]:Configure(MachineLimit)val[1]:Int(3)"},
-	{"Int","0","Process","Central"},
-	{"Int","1","Process","Central"},
-	{"Int","2","Process","Central"},
-	{"Int","3","Process","Central"},
+	{"Int","0","Special","Compute"},
+	{"Int","1","Special","Compute"},
+	{"Int","2","Special","Compute"},
+	{"Int","3","Special","Compute"},
 --	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)"},
 --	{"Int","0","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
 --		cfg[0]:Configure(WindowWide)val[0]:Int(512)\
@@ -396,50 +410,19 @@ Slice = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 }
--- "Read", -- read internal pipe --
--- "Write", -- write external pipe --
--- "Save", -- client, pierce, or query to configure -- siz cfg
--- "Copy", -- configure to configure -- siz cfg oth
--- "Force", -- machine to configure -- siz cfg val
--- "Eval", -- script to configure -- siz cfg val str
--- "Collect", -- query to collect --
--- "Setup", -- configure to client -- siz cfg val
--- "Clear", -- identity to matrix -- dst
--- "Invert", -- invert in matrix -- dst
--- "Manip", -- manip to matrix -- dst
--- "Follow", -- multiply to matrix -- src dst
--- "Precede", -- multiply by matrix -- src dst
--- "Give", -- dma to gpu
--- "Keep", -- dma to cpu
--- "Draw", -- start shader
--- "Goto", -- jump to eval -- str idx
--- "Escape" -- seek to level -- str lvl
--- "Nest", -- nest to level -- lvl
--- "Swap", -- exchange machine lines -- idx ret
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"cfg","Configure",{["xfr"]={
-		["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,
-		["Goto"]=true,["Eval"]=true}},"siz"},
-	{"oth","Configure",{["xfr"]={
-		["Copy"]=true}},"siz"},
-	{"val","Int",{["xfr"]={
-		["Force"]=true,["Setup"]=true,
-		["Goto"]=true,["Eval"]=true}},"siz"},
-	{"str","Str",{["xfr"]={
-		["Escape"]=true,["Goto"]=true,["Eval"]=true}},{}},
-	{"lvl","Int",{["xfr"]={
-		["Escape"]=true,["Nest"]=true}},{}},
-	{"idx","Int",{["xfr"]={
-		["Goto"]=true,["Swap"]=true}},{}},
-	{"ret","Int",{["xfr"]={
-		["Swap"]=true}},{}},
-	{"src","Accumulate",{["xfr"]={
-		["Follow"]=true,["Precede"]=true}},{}},
-	{"dst","Accumulate",{["xfr"]={
-		["Clear"]=true,["Invert"]=true,["Manip"]=true,
-		["Follow"]=true,["Precede"]=true}},{}},
+	{"cfg","Configure",{["xfr"]={["Save"]=true,["Copy"]=true,["Force"]=true,["Forces"]=true,["Setup"]=true,["Jump"]=true}},"siz"},
+	{"oth","Configure",{["xfr"]={["Copy"]=true}},"siz"},
+	{"val","Int",{["xfr"]={["Force"]=true,["Forces"]=true,["Setup"]=true,["Jump"]=true}},"siz"},
+	{"sns","Sense",{["xfr"]={["Jump"]=true}},"siz"},
+	{"str","Str",{["xfr"]={["Forces"]=true,["Jumps"]=true,["Gotos"]=true}},{}},
+	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true,["Nest"]=true,["Swap"]=true}},{}},
+	{"ret","Int",{["xfr"]={["Swap"]=true}},{}},
+	{"cmp","Compare",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
+	{"src","Accumulate",{["xfr"]={["Follow"]=true,["Precede"]=true}},{}},
+	{"dst","Accumulate",{["xfr"]={["Clear"]=true,["Invert"]=true,["Manip"]=true,["Follow"]=true,["Precede"]=true}},{}},
 }
 Client = {
 	{"cmd","Command",{},{}},

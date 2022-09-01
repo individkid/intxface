@@ -208,7 +208,7 @@ func swiftInit()
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
     desc.isDepthWriteEnabled = true
     depth[sub] = device.makeDepthStencilState(descriptor: desc)
-    case (Compute):
+    case (Process):
 	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Shader__Str(Shader(UInt32(sub)))!)) else {
 	 	print("cannot make kernel_pierce");exitErr(#file,#line,-1);return}
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
