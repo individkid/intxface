@@ -237,7 +237,7 @@ int planeEscape(int lvl, int nxt)
 	lvl += machine[nxt].idx*inc; configure[RegisterNest] += machine[nxt].idx*inc;}
 	return nxt;
 }
-void *planeAlloc(void *ud, void *ptr, size_t osize, size_t nsize)
+void *planeLua(void *ud, void *ptr, size_t osize, size_t nsize)
 {
 	if (nsize == 0) {free(ptr); return 0;}
 	return realloc(ptr, nsize);
@@ -245,7 +245,7 @@ void *planeAlloc(void *ud, void *ptr, size_t osize, size_t nsize)
 int planeEval(const char *str, int arg)
 {
 	int result = 0;
-	if (!luastate) luastate = lua_newstate(planeAlloc,0);
+	if (!luastate) luastate = lua_newstate(planeLua,0);
 	lua_getglobal(luastate,"load");
 	lua_pushstring(luastate,str);
 	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(exitErr,0)
@@ -330,7 +330,7 @@ int identEnum(const char *str)
 	// TODO in type.src
 	return 0;
 }
-char *planePercent(const char *str, struct Enter **ent, int *dim)
+char *planeAlloc(const char *str, struct Enter **ent, int *dim)
 {
 	char *ret = 0;
 	regex_t castex = {0};
@@ -394,15 +394,16 @@ void planeBoot()
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	struct Enter *ent = 0;
 	int dim = 0;
-	const char *str = 0;
-	while ((str = planePercent(Bootstrap__Int__Str(i),&ent,&dim))) {
-	enum Special unt = Bootstrap__Int__Special(i);
+	char *str = 0;
+	while ((str = planeAlloc(Bootstrap__Int__Str(i),&ent,&dim))) {
+	enum Special unit = Bootstrap__Int__Special(i);
 	int len = 0;
 	hideClient(&client,str,&len);
-	switch (unt) {
+	switch (unit) {
 	case (Process): callDma(&client); break;
 	case (Compute): planeBuffer(); break;
-	default: break;}}}
+	default: break;}}
+	free(str);}
 }
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
 {
