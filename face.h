@@ -31,6 +31,7 @@ typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string 
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
+typedef int (*lftype)(int *val, const char *typ, const char *str, int *siz); // hide given enum type
 struct Text {
 	char **str;
 	int trm;
@@ -125,3 +126,6 @@ int hideNew(long long *val, const char *str, int *len);
 int hideNum(double *val, const char *str, int *len);
 int hideOld(float *val, const char *str, int *len);
 int hideStr(char* *val, const char *str, int *len);
+int hidePercent(char **ret, const char *str, lftype fnc);
+int hideScript(int *val, const char *str, int arg);
+
