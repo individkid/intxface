@@ -12,8 +12,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <lua.h>
 #include <regex.h>
+#include <lua.h>
 
 // per identifier state
 int inp[NUMOPEN] = {0};
@@ -63,6 +63,7 @@ struct Enter {
 struct Enter *ent = 0;
 int dim = 0;
 lua_State *luastate = 0;
+lua_State *luatemp = 0;
 
 // server address for checking if already connected
 struct sockaddr_in6 addr[NUMINET] = {0};
@@ -1074,7 +1075,6 @@ int hidePercent(char **ret, const char *str, lftype fnc)
 	if (regcomp(&exprex,"(.*)%(",REG_MINIMAL) != 0) ERROR(exitErr,0);
 	while (regexec(&castex,*ret,5,match,0) == 0) {
 		int val = 0;
-		char *num = 0;
 		int nln = 0;
 		char *tmp[4] = {0};
 		int ofs[4] = {0};
@@ -1086,10 +1086,8 @@ int hidePercent(char **ret, const char *str, lftype fnc)
 		for (int i = 0; i < 4; i++) tmp[i][len[i]] = 0;
 		nln = strlen(tmp[2]);
 		if (!fnc(&val,tmp[1],tmp[2],&nln)) ERROR(exitErr,0);
-		showInt(val,&num,&nln);
 		free(*ret); *ret = 0;
-		if (asprintf(ret,"%sInt(%s)%s",tmp[0],num,tmp[3]) < 0) ERROR(exitErr,0);
-		allocMem((void **)&num,0);
+		if (asprintf(ret,"%sInt(%d)%s",tmp[0],val,tmp[3]) < 0) ERROR(exitErr,0);
 		for (int i = 0; i < 4; i++) free(tmp[i]);}
 	if (!ent) {
 		char *exp = 0;
@@ -1444,6 +1442,37 @@ int writeOldLua(lua_State *lua)
 	writeOld((float)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
 	return 0;
 }
+int funcPercent(int *val, const char *typ, const char *str, int *siz)
+{
+	int ret = 0;
+	lua_pushinteger(luatemp,0);
+	lua_copy(luatemp,2,1);
+	lua_pushstring(luatemp,typ);
+	lua_pushstring(luatemp,str);
+	lua_call(luatemp,2,3);
+	*val = lua_tonumber(luatemp,1);
+	*siz = lua_tonumber(luatemp,2);
+	ret = lua_tonumber(luatemp,3);
+	lua_pop(luatemp,3);
+	return ret;
+}
+int hidePercentLua(lua_State *lua)
+{
+	const char *str = lua_tostring(lua,1);
+	char *ret = 0;
+	lua_pop(lua,1);
+	luatemp = lua;
+	lua_pushnumber(lua,hidePercent(&ret,str,funcPercent));
+	lua_pushstring(lua,ret);
+	return 2;
+}
+int hideScriptLua(lua_State *lua)
+{
+	int val = 0;
+	lua_pushnumber(lua,hideScript(&val, lua_tostring(lua,1), lua_tonumber(lua,2)));
+	lua_pushnumber(lua,val);
+	return 2;
+}
 
 int luaopen_face (lua_State *L)
 {
@@ -1527,5 +1556,9 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "writeNew");
 	lua_pushcfunction(L, writeOldLua);
 	lua_setglobal(L, "writeOld");
+	lua_pushcfunction(L, hidePercentLua);
+	lua_setglobal(L, "hidePercent");
+	lua_pushcfunction(L, hideScriptLua);
+	lua_setglobal(L, "hideScript");
 	return 0;
 }
