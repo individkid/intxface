@@ -204,21 +204,30 @@ function checkError(check,rule,id)
 	io.stdout:write("checkError '"..top.."'"..rule.."'"..check.."' "..cond)
 	if cond == "a10000000" then pushError(rule); return end
 	if cond == "l00010000" then pushError(check); return end
+	if cond == "l00011100" then pushError(check); return end
 	if cond == "h10010000" then pushError(check); return end
+	if cond == "h00001100" then pushError(check); return end
+	if cond == "l00001101" then pushError(check); return end
+	if cond == "l00001100" then pushError(check); return end
 	if cond == "f00000001" then doneError(check); return end
 	if cond == "n00000001" then doneError(check); return end
 	if cond == "a00010000" then doneError(check); return end
 	if cond == "d00000000" then doneError(check); return end
 	if cond == "d00000100" then doneError(check); return end
 	if cond == "e00010000" then doneError(check); return end
+	if cond == "e00011000" then doneError(check); return end
 	if cond == "j00011000" then doneError(check); return end
+	if cond == "k00011000" then doneError(check); return end
 	if cond == "m00010000" then doneError(check); return end
 	if cond == "g00010000" then doneError(check); return end
+	if cond == "k00010000" then doneError(check); return end
 	if cond == "b01110000" then ruleError(check); return end
 	if cond == "i01110000" then ruleError(check); return end
+	if cond == "i01111100" then ruleError(check); return end
 	if cond == "b01111100" then copyError(check); return end
 	if cond == "h00011010" then copyError(check); return end
 	if cond == "h00001000" then copyError(check); return end
+	if cond == "h00011110" then copyError(check); return end
 	if cond == "c00001100" then bothError(check); return end
 	if cond == "c00011000" then bothError(check); return end
 	if cond == "d00001000" then bothError(check); return end
