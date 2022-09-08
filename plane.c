@@ -287,16 +287,13 @@ int hideCast(int *val, const char *typ, const char *str, int *siz)
 void planeBoot()
 {
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	char *str = 0;
-	while (hidePercent(&str,Bootstrap__Int__Str(i),hideCast)) {
 	enum Special unit = Bootstrap__Int__Special(i);
 	int len = 0;
-	hideClient(&client,str,&len);
+	hideClient(&client,Bootstrap__Int__Str(i),&len);
 	switch (unit) {
 	case (Process): callDma(&client); break;
 	case (Compute): planeBuffer(); break;
 	default: break;}}
-	free(str);}
 }
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
 {
