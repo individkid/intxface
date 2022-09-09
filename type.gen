@@ -478,7 +478,7 @@ function showTypeC()
 end
 function showTypeH()
 	local result = ""
-	result = result.."typedef void (*sftype)(const char*,int,int,void*);\n"
+	result = result.."#include \"proto.h\"\n"
 	result = result..showCallH()
 	return result
 end

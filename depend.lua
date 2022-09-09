@@ -232,6 +232,8 @@ function checkError(check,rule,id)
 	if cond == "c00011000" then bothError(check); return end
 	if cond == "d00001000" then bothError(check); return end
 	if cond == "d00001100" then bothError(check); return end
+	if cond == "d00001101" then bothError(check); return end
+	if cond == "d00001001" then bothError(check); return end
 	if cond == "g00011000" then bothError(check); return end
 	if cond == "k00000001" then runError(rule,check); return end
 	if cond == "c00001001" then runError(rule,check); return end
@@ -324,7 +326,8 @@ function checkMake()
 		if matchCall(line,"^/bin/sh: ./([%w]*): No such file or directory$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"a") end) then found = true; break end
 		if matchCall(line,"No rule to make target `([.%w]*)'.  Stop.$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"b") end) then found = true; break end
 		if matchCall(line,"^lua: cannot open ([.%w]*):",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"c") end) then found = true; break end
-		if matchCall(line,"^([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"d") end) then found = true; break end
+		if matchCall(line,"([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"d") end) then found = true; break end
+		if matchCall(line,"([.%w]*):[0-9]*:[0-9]*: error: '([.%w]*)' file not found$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"d") end) then found = true; break end
 		if matchCall(line,"^ *._([.%w]*)., referenced from:$",function(check) io.stdout:write(line.."\n"); checkError(objectDepend(check),checkRule(),"e") end) then found = true; break end
 		if matchCall(line,"^([%w]*): cannot execute file: ([%w]*)$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"f") end) then found = true; break end
 		if matchCall(line,"error: header '([.%w]*)' not found$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"g") end) then found = true; break end
