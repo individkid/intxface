@@ -11,13 +11,20 @@
 
 // lua function state
 struct Enter {
-	int wrp;
-	int pos;
-	int nst;
-	char *str;
+	int idx; // index into string array
+	int bas; // 
+	int len; // length of exp in string
+	int wrp; // whether evaluation wrapped
+	int pos; // position of yield
+	int nst; // nesting level of yield
+	char *str; // result of last evaluation
 };
-struct Enter *ent = 0;
-int dim = 0;
+struct Enter *ent = 0; // expressions of line
+int dim = 0; // number of expressions in line
+int max = 0; // size of expression array
+const char **line = 0; // strings of line
+int mline = 0; // number of strings in line
+int msize = 0; // size of string array
 lua_State *luastate = 0;
 lua_State *luatemp = 0;
 
@@ -40,6 +47,11 @@ int hideNest(char **str)
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
 }
+// TODO first nestDone allocates the line string array
+// TODO then nestElem records a line string
+// TODO then nestLine finds expressions
+// TODO then nestPass evaluates the wrapped or top expressions to update the result strings
+// TODO then nestNext gets indicated string with result string replacements
 int hidePercent(char **ret, const char *str, lftype fnc)
 {
 	regex_t castex = {0};
@@ -124,9 +136,9 @@ int funcPercent(int *val, const char *typ, const char *str, int *siz)
 	lua_pushstring(luatemp,typ);
 	lua_pushstring(luatemp,str);
 	lua_call(luatemp,2,3);
-	*val = lua_tonumber(luatemp,1);
-	*siz = lua_tonumber(luatemp,2);
-	ret = lua_tonumber(luatemp,3);
+	ret = lua_tonumber(luatemp,1);
+	*val = lua_tonumber(luatemp,2);
+	*siz = lua_tonumber(luatemp,3);
 	lua_pop(luatemp,3);
 	return ret;
 }

@@ -915,16 +915,22 @@ function showConstantC(name,constant)
 	local result = ""
 	local mapping = {}
 	local arguments = {}
+	local values = {} -- apply hidePercent to each line, adding lines until hidePercent is done
 	for key,val in ipairs(constant) do
 		local last = nil
 		for k,v in ipairs(val) do
-			if last then -- last is type, v is constant
-				local func = showConstantCF(name,k,val)
-				local gunc = showConstantCF(name,k+2,val)
-				local args = showConstantCG(k,val)
+			if last and (k < #val) then -- last is type, v is constant
+				local func = showConstantCF(name,k,val) -- func is containing function
+				local gunc = showConstantCF(name,k+2,val) -- gunc is return value
+				local args = showConstantCG(k,val) -- args are argument types
+				-- io.stderr:write("func "..func.." v "..v.." gunc "..gunc.." k "..k.."/"..#val.."\n")
 				if not arguments[func] then arguments[func] = args end
 				if not mapping[func] then mapping[func] = {} end
-				mapping[func][v] = gunc
+				if k+2 == #val then -- concatenate gunc if mapping[func][v] exists
+					mapping[func][v] = gunc
+				else
+					mapping[func][v] = gunc
+				end
 				last = nil
 			else -- v is type
 				last = v
@@ -935,8 +941,10 @@ function showConstantC(name,constant)
 		local declare = key.." ("
 		-- result = result.."func "..key.."(_ arg: "
 		for k,v in ipairs(val) do
+			-- io.stderr:write("k "..k.."/"..#val.." v "..v.."\n")
 			if k == #val then
 				declare = v.." "..declare
+				-- io.stderr:write("declare "..declare.."\n")
 				if prototype then
 					result = result..declare..";\n"
 				else
