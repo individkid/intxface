@@ -35,7 +35,7 @@ char *ident = 0;
 int goon = 0;
 uftype callDma = 0;
 vftype callWake = 0;
-rftype callInfo = 0;
+xftype callInfo = 0;
 wftype callDraw = 0;
 
 void planeAlize(float *dir, const float *vec) // normalize
@@ -295,7 +295,7 @@ void planeBoot()
 	case (Compute): planeBuffer(); break;
 	default: break;}}
 }
-void planeInit(vftype init, vftype run, uftype dma, vftype wake, rftype info, wftype draw)
+void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wftype draw)
 {
 	pthread_t pthread;
 	planeBoot();
