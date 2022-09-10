@@ -5,7 +5,6 @@ struct Text {
 };
 struct timespec;
 void debugStr(const char *str);
-void exitErr(const char *str, int num, int idx);
 void readNote(eftype exc, int idx);
 void readJump(eftype err, int idx);
 void writeJump(eftype err, int idx);

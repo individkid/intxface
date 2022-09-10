@@ -74,11 +74,6 @@ void debugStr(const char *str)
 {
 	fprintf(stderr,"%s\n",str); fflush(stderr);
 }
-void exitErr(const char *str, int num, int idx)
-{
-	fprintf(stderr,"exitErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
-	exit(-1);
-}
 void readNote(eftype exc, int idx)
 {
 	if (idx < 0 || idx >= lim) ERROR(exitErr,0)

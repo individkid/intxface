@@ -1,25 +1,27 @@
+face.so: protoC.o
 faceC.o: face.h proto.h
 facer.log: facerC facerHs facerLua
-facerC: faceC.o
+facerC: faceC.o protoC.o
 facerC.o: face.h proto.h
-facerHs: face.hs faceC.o
+facerHs: face.hs faceC.o protoC.o
 facerLua: face.so
-fileC: faceC.o typeC.o
+fileC: faceC.o protoC.o typeC.o
 fileC.o: face.h proto.h type.h
 filer.log: fileC filerLua
 filerLua: face.so type.lua
-holeC: faceC.o typeC.o
+holeC: faceC.o protoC.o typeC.o
 holeC.o: face.h proto.h type.h
-lineCpp: faceC.o typeC.o
+lineCpp: faceC.o protoC.o typeC.o
 lineCpp.o: face.h proto.h type.h
 meticC.o: metic.h
 nestC.o: nest.h
 planeC.o: face.h metic.h nest.h plane.h proto.h share.h type.h
-planeSw: faceC.o meticC.o nestC.o planeC.o typeC.o
+planeSw: faceC.o meticC.o nestC.o planeC.o protoC.o typeC.o
 planeSw.o: face.h plane.h proto.h type.h
 planer.log: plane planerLua
 planerLua: face.so type.lua
-spaceHs: face.hs faceC.o naive.hs type.hs
+protoC.o: proto.h
+spaceHs: face.hs faceC.o naive.hs protoC.o type.hs
 spacra.log: spacraHs
 spacraHs: naive.hs
 type.c: nest.so type.src
@@ -33,11 +35,11 @@ typer.hs: nest.so type.src typra.src
 typer.log: typerC typerHs typerLua typerSw
 typer.lua: nest.so type.src typra.src
 typer.sw: nest.so type.src typra.src
-typerC: faceC.o
+typerC: faceC.o protoC.o
 typerC.o: face.h proto.h typer.h
-typerHs: face.hs faceC.o
+typerHs: face.hs faceC.o protoC.o
 typerLua: face.so
-typerSw: faceC.o
+typerSw: faceC.o protoC.o
 typerSw.o: face.h proto.h
 typra.log: typraLua
 typraLua: nest.so type.src typra.src

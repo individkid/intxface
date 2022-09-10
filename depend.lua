@@ -209,6 +209,7 @@ function checkError(check,rule,id)
 	if cond == "h00001100" then pushError(check); return end
 	if cond == "l00001101" then pushError(check); return end
 	if cond == "l00001100" then pushError(check); return end
+	if cond == "l00010010" then pushError(check); return end
 	if cond == "f00000001" then doneError(check); return end
 	if cond == "n00000001" then doneError(check); return end
 	if cond == "a00010000" then doneError(check); return end
@@ -236,6 +237,7 @@ function checkError(check,rule,id)
 	if cond == "d00001001" then bothError(check); return end
 	if cond == "g00011000" then bothError(check); return end
 	if cond == "k00000001" then runError(rule,check); return end
+	if cond == "k00001001" then runError(rule,check); return end
 	if cond == "c00001001" then runError(rule,check); return end
 	if cond == "c00000001" then runError(rule,check); return end
 	io.stdout:write("\n")
