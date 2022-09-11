@@ -14,10 +14,11 @@ holeC.o: face.h proto.h type.h
 lineCpp: faceC.o protoC.o typeC.o
 lineCpp.o: face.h proto.h type.h
 meticC.o: metic.h
-nestC.o: nest.h
+nest.so: protoC.o
+nestC.o: nest.h proto.h
 planeC.o: face.h metic.h nest.h plane.h proto.h share.h type.h
 planeSw: faceC.o meticC.o nestC.o planeC.o protoC.o typeC.o
-planeSw.o: face.h plane.h proto.h type.h
+planeSw.o: face.h plane.h type.h
 planer.log: plane planerLua
 planerLua: face.so type.lua
 protoC.o: proto.h
@@ -28,7 +29,7 @@ type.c: nest.so type.src
 type.h: nest.so type.src
 type.hs: nest.so type.src
 type.lua: nest.so type.src
-typeC.o: face.h proto.h type.h
+typeC.o: face.h type.h
 typer.c: nest.so type.src typra.src
 typer.h: nest.so type.src typra.src
 typer.hs: nest.so type.src typra.src
@@ -36,10 +37,10 @@ typer.log: typerC typerHs typerLua typerSw
 typer.lua: nest.so type.src typra.src
 typer.sw: nest.so type.src typra.src
 typerC: faceC.o protoC.o
-typerC.o: face.h proto.h typer.h
+typerC.o: face.h typer.h
 typerHs: face.hs faceC.o protoC.o
 typerLua: face.so
 typerSw: faceC.o protoC.o
-typerSw.o: face.h proto.h
+typerSw.o: face.h
 typra.log: typraLua
 typraLua: nest.so type.src typra.src

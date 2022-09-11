@@ -33,7 +33,27 @@ typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string 
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
-typedef void (*sftype)(const char*,int,int,void*); // generic struct string wrapper
+typedef int (*lftype)(int *val, const char *typ, const char *str, int *siz);
+
+enum Prototype {
+	Cftype,
+	Eftype,
+	Sftype,
+	Hftype,
+	Pftype,
+	Qftype,
+	Lftype,
+};
+union Proto {
+	cftype cf;
+	eftype ef;
+	sftype sf;
+	hftype hf;
+	pftype pf;
+	qftype qf;
+	lftype lf;
+	void *vp;
+};
 
 void exitErr(const char *str, int num, int idx);
 #endif

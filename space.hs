@@ -16,6 +16,6 @@ mainF [a,b,c] = do
  mainG sculpt
 mainF _ = undefined
 
-mainG :: Sculpt -> IO ()
+mainG :: Type.Sculpt -> IO ()
 mainG _ = undefined
 

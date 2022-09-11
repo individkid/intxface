@@ -40,6 +40,7 @@ function debugTodo()
 	io.stdout:write(")\n")
 end
 fileExp = "(.*)(%..*)"
+findExp = ".*/(.*)(%..*)"
 function matchCall(pat,exp,fnc)
 	local one,two = string.match(pat,exp)
 	if one then fnc(one,two); return true end
@@ -76,12 +77,12 @@ function mainExists(file,exp)
 end
 function findDepend(pat,ext,exp,suf)
 	local retval = ""
-	os.execute("ls *.gen | cut -f 1 -d '.' > depend.rm 2>&1")
-	os.execute("for file in `cat depend.rm`; do make $file"..ext.." > depend.out 2>&1; done")
-	os.execute("ls *"..ext.." > depend.ls 2>&1")
+	os.execute("(cd depend; ls *.gen) | cut -f 1 -d '.' > depend.rm 2>/dev/null")
+	os.execute("for file in `cat depend.rm`; do make -C depend $file"..ext.." > depend.out 2>&1; done")
+	os.execute("find . -name '*"..ext.."' > depend.ls 2>&1")
 	local filelist = io.open("depend.ls")
 	for file in filelist:lines() do
-		local basee,extee = string.match(file,fileExp)
+		local basee,extee = string.match(file,findExp)
 		local linelist = io.open(file)
 		for line in linelist:lines() do
 			local found = string.match(line,exp)
@@ -91,8 +92,7 @@ function findDepend(pat,ext,exp,suf)
 		if not (retval == "") then break end
 	end
 	filelist:close()
-	os.execute("for file in `cat depend.rm`; do rm $file"..ext.." > depend.out 2>&1; done")
-	if retval == "" then io.stdout:write("\n"); io.stderr:write("findDepend "..pat.."\n"); os.exit() end
+	if retval == "" then io.stdout:write("\n"); io.stderr:write("findDepend "..pat.." "..ext.."\n"); os.exit() end
 	return retval
 end
 function sourceDepend(name)
@@ -105,7 +105,7 @@ function moduleDepend(name)
 	return findDepend(name,".hs","^module ([a-zA-Z]*) where",".hs")
 end
 function classDepend(name)
-	return findDepend(name,".hs","^data [a-zA-Z]* = ([a-zA-Z]*)$",".hs")
+	return string.lower(string.sub(name,1,1))..string.sub(name,2)..".hs"
 end
 function pushError(push)
 	io.stdout:write(" pushError\n")
@@ -204,12 +204,10 @@ function checkError(check,rule,id)
 	io.stdout:write("checkError '"..top.."'"..rule.."'"..check.."' "..cond)
 	if cond == "a10000000" then pushError(rule); return end
 	if cond == "l00010000" then pushError(check); return end
-	if cond == "l00011100" then pushError(check); return end
 	if cond == "h10010000" then pushError(check); return end
-	if cond == "h00001100" then pushError(check); return end
-	if cond == "l00001101" then pushError(check); return end
-	if cond == "l00001100" then pushError(check); return end
 	if cond == "l00010010" then pushError(check); return end
+	if cond == "l00000001" then pushError(check); return end
+	if cond == "l00000000" then pushError(check); return end
 	if cond == "f00000001" then doneError(check); return end
 	if cond == "n00000001" then doneError(check); return end
 	if cond == "a00010000" then doneError(check); return end
@@ -235,6 +233,7 @@ function checkError(check,rule,id)
 	if cond == "d00001100" then bothError(check); return end
 	if cond == "d00001101" then bothError(check); return end
 	if cond == "d00001001" then bothError(check); return end
+	if cond == "h00001001" then bothError(check); return end
 	if cond == "g00011000" then bothError(check); return end
 	if cond == "k00000001" then runError(rule,check); return end
 	if cond == "k00001001" then runError(rule,check); return end
@@ -338,7 +337,7 @@ function checkMake()
 		if matchCall(line,"^[0-9]* *%| import ([%w]*)$",function(check) io.stdout:write(line.."\n"); checkError(moduleDepend(check),checkRule(),"j") end) then found = true; break end
 		if matchCall(line,"^lua: [.%w]*:[0-9]*: module '([%w]*)' not found",function(check) io.stdout:write(line.."\n"); checkError(check..".so",checkRule(),"k") end) then found = true; break end
 		if matchCall(line,"error: no such file or directory: '([.%w]*)'$",function(check) io.stdout:write(line.."\n"); checkError(check,checkRule(),"l") end) then found = true; break end
-		if matchCall(line,"Not in scope: type constructor or class ‘([%w]*)’",function(check) io.stdout:write(line.."\n"); checkError(classDepend(check),checkRule(),"m") end) then found = true; break end
+		if matchCall(line,"Module ‘([%w]*)’ does not export",function(check) io.stdout:write(line.."\n"); checkError(classDepend(check),checkRule(),"m") end) then found = true; break end
 		if matchCall(line,"^([%w]*): cannot load library: ([.%w]*)$",function(rule,check) io.stdout:write(line.."\n"); checkError(check,rule,"n") end) then found = true; break end
 	end
 	greplist:close()

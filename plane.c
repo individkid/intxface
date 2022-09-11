@@ -330,7 +330,7 @@ int planeConfig(enum Configure cfg)
 int planeEval(const char *str, int arg)
 {
 	int ret = 0;
-	if (!hideScript(&ret,str,arg)) ERROR(exitErr,0);
+	if (!nestScript(&ret,str,arg)) ERROR(exitErr,0);
 	return ret;
 }
 void planeWake(enum Configure hint)

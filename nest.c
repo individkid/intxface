@@ -12,159 +12,163 @@
 // lua function state
 struct Enter {
 	int idx; // index into string array
-	int bas; // 
-	int len; // length of exp in string
-	int wrp; // whether evaluation wrapped
-	int pos; // position of yield
-	int nst; // nesting level of yield
+	int pos; // expression in string
+	int wrp; // whether resume completed
+	char *exp; // copy of exp in string
 	char *str; // result of last evaluation
+	lua_State *lua; // subcontext for expression
 };
 struct Enter *ent = 0; // expressions of line
 int dim = 0; // number of expressions in line
-int max = 0; // size of expression array
 const char **line = 0; // strings of line
+char **rslt = 0; // with expressions replaced
 int mline = 0; // number of strings in line
 int msize = 0; // size of string array
 lua_State *luastate = 0;
 lua_State *luatemp = 0;
 
-void nestErr(const char *str, int num, int idx)
-{
-	fprintf(stderr,"nestErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
-	exit(-1);
-}
-void *hideLua(void *ud, void *ptr, size_t osize, size_t nsize)
+void *nestLua(void *ud, void *ptr, size_t osize, size_t nsize)
 {
 	if (nsize == 0) {free(ptr); return 0;}
 	return realloc(ptr, nsize);
 }
-int hideNest(char **str)
+const char *nestReader(lua_State *L, void *data, size_t *size)
+{
+	struct Enter *ent = (struct Enter *)data;
+	if (ent->wrp == 0) {*size = 0; return 0;}
+	*size = strlen(ent->exp);
+	ent->wrp = 0;
+	return ent->exp;
+}
+int nestSkip(const char **str)
  {
 	char *bas = strchr(*str,'(');
 	char *lim = strchr(*str,')');
-	if (!lim) ERROR(nestErr,0);
+	if (!lim) ERROR(exitErr,0);
 	if (bas && bas < lim) {*str = bas+1; return 1;}
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
 }
-// TODO first nestDone allocates the line string array
-// TODO then nestElem records a line string
-// TODO then nestLine finds expressions
-// TODO then nestPass evaluates the wrapped or top expressions to update the result strings
-// TODO then nestNext gets indicated string with result string replacements
-int hidePercent(char **ret, const char *str, lftype fnc)
+int nestClosure(lua_State *L)
 {
-	regex_t castex = {0};
+	enum Prototype pro = lua_tointeger(L, lua_upvalueindex(1));
+	union Proto typ = {0};
+	typ.vp = lua_touserdata(L, lua_upvalueindex(2));
+	switch (pro) {
+		case (Lftype): {
+			int val = 0;
+			int ret = 0;
+			int len = lua_type(L,3)==LUA_TNONE?0:lua_tointeger(L,3);
+			ret = typ.lf(&val,lua_tostring(L,1),lua_tostring(L,2),&len);
+			lua_pushinteger(L,val);
+			lua_pushinteger(L,len);
+			lua_pushinteger(L,ret);
+			return 3;}
+		default: return 0;}
+}
+void nestFunc(const char *str, enum Prototype pro, union Proto typ)
+{
+	if (!luastate) luastate = lua_newstate(nestLua,0);
+	lua_pushinteger(luastate, pro);
+	lua_pushlightuserdata(luastate, typ.vp);
+	lua_pushcclosure(luastate, nestClosure, 2);
+	lua_setglobal(luastate, str);
+}
+void nestDone(int siz)
+{
+	if (!luastate) luastate = lua_newstate(nestLua,0);
+	for (int i = 0; i < mline; i++) if (rslt[i]) free(rslt[i]); mline = 0;
+	if (msize != siz && msize == 0) {line = malloc(siz); rslt = malloc(siz); msize = siz;}
+	else if (msize != siz && siz == 0) {free(line); free(rslt); line = 0; msize = 0;}
+	else if (msize != siz) {line = realloc(line,siz); rslt = realloc(rslt,siz); msize = siz;}
+	for (int i = 0; i < msize; i++) rslt[i] = 0;
+	for (int i = 0; i < dim; i++) if (ent[i].str) free(ent[i].str);
+	if (dim != 0) {free(ent); ent = 0; dim = 0;}
+	lua_settop(luastate,0);
+}
+void nestElem(const char *str)
+{
+	if (mline == msize) ERROR(exitErr,0);
+	line[mline++] = str;
+}
+void nestLine()
+{
+	const char *exp = 0;
 	regex_t exprex = {0};
 	regmatch_t match[5];
-	if (!luastate) luastate = lua_newstate(hideLua,0);
-	if (asprintf(ret,"%s",str) < 0) ERROR(nestErr,0);
-	if (dim < 0) {dim = 0; return 0;}
-	if (ent && ent[dim - 1].wrp) {free(ent); ent = 0; dim = 0; return 0;}
-	if (regcomp(&castex,"(.*)Int%([A-F][A-Fa-f0-9]*)\\(([A-F][A-Fa-f0-9]*)\\)(.*)",REG_MINIMAL) != 0) ERROR(nestErr,0);
-	if (regcomp(&exprex,"(.*)%(",REG_MINIMAL) != 0) ERROR(nestErr,0);
-	while (regexec(&castex,*ret,5,match,0) == 0) {
-		int val = 0;
-		int nln = 0;
-		char *tmp[4] = {0};
-		int ofs[4] = {0};
-		int len[4] = {0};
-		for (int i = 0; i < 4; i++) ofs[i] = match[i+1].rm_so;
-		for (int i = 0; i < 4; i++) len[i] = match[i+1].rm_eo-ofs[i];
-		for (int i = 0; i < 4; i++) tmp[i] = malloc(len[i]+1);
-		for (int i = 0; i < 4; i++) strncpy(tmp[i],*ret+ofs[i],len[i]);
-		for (int i = 0; i < 4; i++) tmp[i][len[i]] = 0;
-		nln = strlen(tmp[2]);
-		if (!fnc(&val,tmp[1],tmp[2],&nln)) ERROR(nestErr,0);
-		free(*ret); *ret = 0;
-		if (asprintf(ret,"%sInt(%d)%s",tmp[0],val,tmp[3]) < 0) ERROR(nestErr,0);
-		for (int i = 0; i < 4; i++) free(tmp[i]);}
-	if (!ent) {
-		char *exp = 0;
-		for (dim = 0, exp = *ret; regexec(&exprex,exp,2,match,0) == 0; dim += 1) {
-			exp += match[1].rm_eo + 2; for (int nst = 1; nst; nst += hideNest(&exp));}
-		if (dim) ent = malloc((dim)*sizeof(struct Enter));
-		for (dim = 0, exp = *ret; regexec(&exprex,exp,2,match,0) == 0; dim += 1) {
-			char *str = 0;
-			char *bas = 0;
-			char *lim = 0;
-			bas = exp += match[1].rm_eo + 2; for (int nst = 1; nst; nst += hideNest(&exp));
-			lim = exp - 1;
-			ent[dim].wrp = 0;
-			ent[dim].pos = 0;
-			ent[dim].nst = 0;
-			ent[dim].str = str = malloc(lim-bas+1);
-			strncpy(str,bas,lim-bas);
-			str[lim-bas] = 0;}}
-	for (dim = 0; regexec(&exprex,*ret,2,match,0) == 0; dim += 1) {
-		int num = 0;
-		char *tmp[2] = {0};
-		int ofs[2] = {0};
-		int len[2] = {0};
-		char *exp = 0;
-		ofs[0] = 0; len[0] = match[1].rm_eo;
-		exp = *ret + match[1].rm_eo + 2; for (int nst = 1; nst; nst += hideNest(&exp));
-		ofs[1] = exp-*ret; len[1] = strlen(*ret) - ofs[1];
-		for (int i = 0; i < 2; i++) tmp[i] = malloc(len[i]+1);
-		for (int i = 0; i < 2; i++) strncpy(tmp[i],*ret+ofs[i],len[i]);
-		for (int i = 0; i < 2; i++) tmp[i][len[i]] = 0;
-		num = 0; // TODO planeEnter(ent,dim); increment pos if dim is 0 or ent of dim-1 is wrp; set wrp if pos wraps
-		free(*ret); *ret = 0;
-		if (asprintf(ret,"%s%d%s",tmp[0],num,tmp[1]) < 0) ERROR(nestErr,0);
-		for (int i = 0; i < 2; i++) free(tmp[i]);}
-	if (!dim) dim = -1;
+	if (!luastate) luastate = lua_newstate(nestLua,0);
+	if (dim != 0) ERROR(exitErr,0);
+	if (regcomp(&exprex,"(.*)%(",REG_MINIMAL) != 0) ERROR(exitErr,0);
+	for (int i = 0; i < mline; i++) for (dim = 0, exp = line[i]; regexec(&exprex,exp,2,match,0) == 0; dim += 1) {
+	exp += match[1].rm_eo + 2; for (int nst = 1; nst; nst += nestSkip(&exp));}
+	if (dim) ent = malloc((dim)*sizeof(struct Enter));
+	for (int i = 0; i < mline; i++) for (dim = 0, exp = line[i]; regexec(&exprex,exp,2,match,0) == 0; dim += 1) {
+		const char *bas = 0;
+		const char *lim = 0;
+		bas = exp += match[1].rm_eo + 2; for (int nst = 1; nst; nst += nestSkip(&exp));
+		lim = exp - 1;
+		ent[dim].idx = i;
+		ent[dim].pos = bas-line[i];
+		ent[dim].wrp = 1;
+		ent[dim].exp = malloc(lim-bas+1);
+		strncpy(ent[dim].exp,bas,lim-bas);
+		ent[dim].exp[lim-bas] = 0;
+		ent[dim].str = 0;
+		ent[dim].lua = lua_newthread(luastate);}
+}
+int nestPass()
+{
+	int sub = 0;
+	if (!luastate) luastate = lua_newstate(nestLua,0);
+	for (sub = dim-1; sub > 0 && ent[sub].wrp; sub--);
+	if (sub == 0 && ent[sub].wrp && ent[sub].str != 0) return 0;
+	while (sub < dim) {
+		int nrslt = 0;
+		const char *str = 0;
+		int ret = 0;
+		if (ent[sub].wrp) lua_load(ent[sub].lua,nestReader,(void*)(ent+sub),"","bt");
+		ret = lua_resume(ent[sub].lua,luastate,0,&nrslt);
+		if (ret == LUA_OK) ent[sub].wrp = 1;
+		else if (ret == LUA_YIELD) ent[sub].wrp = 0;
+		else ERROR(exitErr,0);
+		if (nrslt != 1) ERROR(exitErr,0);
+		str = lua_tostring(ent[sub].lua,1);
+		ent[sub].str = realloc(ent[sub].str,strlen(str)+1);
+		strcpy(ent[sub].str,str);
+		lua_pop(ent[sub].lua,1); // pop str
+		if (ent[sub].wrp) lua_pop(ent[sub].lua,1); // pop exp
+		sub++;}
 	return 1;
 }
-int hideScript(int *val, const char *str, int arg)
+const char *nestNext(int i)
 {
-	if (!luastate) luastate = lua_newstate(hideLua,0);
+	if (i < 0 || i >= mline) ERROR(exitErr,0);
+	return rslt[i];
+}
+int nestScript(int *val, const char *str, int arg)
+{
+	if (!luastate) luastate = lua_newstate(nestLua,0);
 	lua_getglobal(luastate,"load");
 	lua_pushstring(luastate,str);
-	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(nestErr,0)
+	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(exitErr,0)
 	lua_pushnumber(luastate,arg);
-	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(nestErr,0)
+	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(exitErr,0)
 	*val = lua_tonumber(luastate,1);
 	lua_pop(luastate,1);
 	return 1;
 }
 
-int funcPercent(int *val, const char *typ, const char *str, int *siz)
-{
-	int ret = 0;
-	lua_pushinteger(luatemp,0);
-	lua_copy(luatemp,2,1);
-	lua_pushstring(luatemp,typ);
-	lua_pushstring(luatemp,str);
-	lua_call(luatemp,2,3);
-	ret = lua_tonumber(luatemp,1);
-	*val = lua_tonumber(luatemp,2);
-	*siz = lua_tonumber(luatemp,3);
-	lua_pop(luatemp,3);
-	return ret;
-}
-int hidePercentLua(lua_State *lua)
-{
-	const char *str = lua_tostring(lua,1);
-	char *ret = 0;
-	lua_pop(lua,1);
-	luatemp = lua;
-	lua_pushnumber(lua,hidePercent(&ret,str,funcPercent));
-	lua_pushstring(lua,ret);
-	return 2;
-}
-int hideScriptLua(lua_State *lua)
+int nestScriptLua(lua_State *L)
 {
 	int val = 0;
-	lua_pushnumber(lua,hideScript(&val, lua_tostring(lua,1), lua_tonumber(lua,2)));
-	lua_pushnumber(lua,val);
+	lua_pushnumber(L,nestScript(&val, lua_tostring(L,1), lua_tonumber(L,2)));
+	lua_pushnumber(L,val);
 	return 2;
 }
 
 int luaopen_nest(lua_State *L)
 {
-	lua_pushcfunction(L, hidePercentLua);
-	lua_setglobal(L, "hidePercent");
-	lua_pushcfunction(L, hideScriptLua);
-	lua_setglobal(L, "hideScript");
+	lua_pushcfunction(L, nestScriptLua);
+	lua_setglobal(L, "nestScript");
 	return 0;
 }
