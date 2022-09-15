@@ -506,6 +506,10 @@ function showTypeSw()
 	result = result..showCallSw()
 	return result
 end
+if (arg[1] == "type.dep") then
+	file = io.open("type.dep", "w")
+	file:close()
+end
 if (arg[1] == "type.h") then
 	file = io.open("type.h", "w")
 	file:write(showTypeH().."\n")
