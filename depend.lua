@@ -141,7 +141,38 @@ function ruleDepend(rule)
 	if mainExists(rule..".swy","^// MAIN") then retval = rule.."Sw"; return retval end
 	return retval
 end
-oops = false
+function listDepend(top,rule)
+	if top == rule then return {rule} end
+	local list = {}
+	local next = ruleDepend(top)
+	if not (next == "") then list[#list+1] = next end
+	if done[top] then for k,v in pairs(done[top]) do list[#list+1] = k end end
+	for k,v in ipairs(list) do
+		local temp = listDepend(v,rule)
+		if #temp > 0 then
+			local retval = {v}
+			for ky,vl in ipairs(temp) do retval[#retval+1] = vl end
+			return retval
+		end
+	end
+	return {}
+end
+function firstDepend(list)
+	for k,v in ipairs(list) do
+		local bas,ext = string.match(v,fileExp)
+		local found = false
+		if ext == ".h" then found = true end
+		if ext == ".c" then found = true end
+		if ext == ".cpp" then found = true end
+		if ext == ".hs" then found = true end
+		if ext == ".lua" then found = true end
+		if ext == ".m" then found = true end
+		if ext == ".sw" then found = true end
+		if ext == ".g" then found = true end
+		if not found then return v end
+	end
+	return nil
+end
 function pushError(push)
 	io.stdout:write(" pushError "..push)
 	todo[#todo+1] = push
@@ -151,7 +182,6 @@ end
 function doneError(file)
 	local top = todo[#todo]
 	local set = done[top]
-	if (top == "type.h") and (file == "protoC.o") then oops = true end
 	io.stdout:write(" doneError "..top..": "..file)
 	set[file] = true
 	pushError(file)
@@ -160,7 +190,6 @@ function bothError(file)
 	local top = todo[#todo]
 	local set = done[top]
 	local map = copy[top]
-	if (top == "type.h") and (file == "protoC.o") then oops = true end
 	io.stdout:write(" bothError "..top..": "..file)
 	set[file] = true
 	map[file] = true
@@ -190,26 +219,28 @@ function popError()
 	end
 end
 finite = 0
-limit = 91
-prevent = ""
+limit = 200
 function checkError(check,rule,id)
 	local top = todo[#todo]
 	if (top == "all") and not (rule == "all") then check = rule end
-	local tbas,text = string.match(top,fileExp)
 	local next = ruleDepend(check)
+	local list = listDepend(top,rule)
+	local first = firstDepend(list)
 	local found = nil
 	finite = finite + 1
 	-- os.execute("cat depend.err")
 	-- debugTodo()
 	io.stdout:write("checkError"..id.."("..top..","..rule..","..check..","..next..") ")
 	for k,v in ipairs(todo) do io.stdout:write("'"..v) end
-	io.stdout:write("' ")
+	io.stdout:write(":")
+	for k,v in ipairs(list) do io.stdout:write(v.."'") end
+	io.stdout:write(" ")
 
 	if not found and (top == "all") then found = "1"; io.stdout:write(found); pushError(check) end
 
 	if not found and (top == check) and fileExists(next) then found = "2a"; io.stdout:write(found); copyError(next) end
 	if not found and (top == check) and not fileExists(next) then found = "2b"; io.stdout:write(found); pushError(next) end
-	if not found and not (top == rule) and string.match("hd",id) then found = "2c"; io.stdout:write(found); pushError(rule) end
+	if not found and not (top == rule) and string.match("hd",id) then found = "2c"; io.stdout:write(found); pushError(first) end
 
 	if not found and not doneExists(top,check) and fileExists(check) then found = "3a"; io.stdout:write(found); bothError(check) end
 	if not found and doneExists(top,check) and fileExists(check) then found = "3b"; io.stdout:write(found); copyError(check) end
@@ -218,7 +249,7 @@ function checkError(check,rule,id)
 
 	if not found or finite > 300 then io.stdout:write("\n"); os.exit() end
 	io.write(" "..finite)
-	if (finite >= limit) or (prevent == found) or oops then io.read(); return end
+	if finite >= limit then io.read(); return end
 	io.stdout:write("\n")
 end
 function checkRule()

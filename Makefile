@@ -2,7 +2,7 @@
 .SUFFIXES:
 .DELETE_ON_ERROR:
 
-all: facer.log typra.log typer.log filer.log planer.log spacra.log hole line plane space spacra
+all: type.dep typer.dep facer.log typra.log typer.log filer.log planer.log spacra.log hole line plane space spacra
 
 LIBRARIES = -llua -lportaudio
 UNAME = $(shell uname)
@@ -102,22 +102,24 @@ spacra.log:
 %.metal: %.g
 	cp $< $@
 
-%.h: %.gen
+%.dep: %.gen
 	lua $< $@
-%.c: %.gen
-	lua $< $@
-%.cpp: %.gen
-	lua $< $@
-%.hs: %.gen
-	lua $< $@
-%.lua: %.gen
-	lua $< $@
-%.m: %.gen
-	lua $< $@
-%.sw: %.gen
-	lua $< $@
-%.g: %.gen
-	lua $< $@
+%.h: %.dep
+	lua $*.gen $@
+%.c: %.dep
+	lua $*.gen $@
+%.cpp: %.dep
+	lua $*.gen $@
+%.hs: %.dep
+	lua $*.gen $@
+%.lua: %.dep
+	lua $*.gen $@
+%.m: %.dep
+	lua $*.gen $@
+%.sw: %.dep
+	lua $*.gen $@
+%.g: %.dep
+	lua $*.gen $@
 
 .PHONY:
 clean:
@@ -129,7 +131,7 @@ clean:
 	rm -f *C *M *Cpp *Hs *A *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.-- .*.-- ..*.-- ...*.--
-	rm -f *.o *.so *.hi *_stub.h a.* *.metal
+	rm -f *.o *.so *.hi *_stub.h a.* *.metal *.dep
 	rm -rf *.agda *.agdai MAlonzo depend
 	rm -f type main help
 
