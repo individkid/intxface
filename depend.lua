@@ -26,11 +26,6 @@ function debugTodo()
 	end
 	io.stdout:write(")\n")
 end
-function callExists(pat,exp,fnc)
-	local one,two = string.match(pat,exp)
-	if one then fnc(one,two); return true end
-	return false
-end
 function doneExists(dep,dee)
 	if done[dep] and done[dep][dee] then return true end
 	return false
@@ -44,18 +39,6 @@ function fileExists(file)
 		local found = string.match(line,"No such file or directory")
 		if found then return false end
 	end
-	return true
-end
-function matchExists(pat,exp,rep,fnc)
-	local one,two = string.match(pat,exp)
-	if not one then return false end
-	os.execute("ls "..rep(one,two).." depend > depend.ls 2>&1")
-	local greplist = io.open("depend.ls")
-	for line in greplist:lines() do
-		local found = string.match(line,"No such file or directory")
-		if found then return false end
-	end
-	fnc(one,two)
 	return true
 end
 function mainExists(file,exp)
@@ -99,47 +82,30 @@ end
 function classDepend(name)
 	return findDepend(name,".hs","^data [a-zA-Z]* = ([a-zA-Z]*)$",".hs")
 end
+execMap = {{"C","C.o"},{"Cpp","Cpp.o"},{"Hs",".hs"},{"A",".agda"},{"Lua",".lua"},{"M","M.o"},{"Sw","Sw.o"}}
+sharedMap = {{"G%.so","G.o"},{"%.so","C.o"}}
+objectMap = {{"C%.o",".c"},{"Cpp%.o",".cpp"},{"M%.o",".m"},{"Sw%.o",".sw"},{"G%.o",".metal"}}
+renameMap = {{"%.metal",".g"},{"%.agda",".a"}}
+unameMap = {{"%.cpp",".cppx"},{"%.sw",".swy"},{"%.g",".gy"}}
+generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua","%.m","%.sw","%.g"}
+mainMap = {{".c","^int main\\(","C"},{".cpp","^int main\\(","Cpp"},{".hs","^main :: IO \\(","Hs"},{".agda","^int main\\(","A"},{".lua","^-- MAIN","Lua"},{".m","^int main\\(","M"},{".sw","^// MAIN","Sw"},{".cppx","^int main\\(","Cpp"},{".swy","^// MAIN","Sw"}}
 function ruleDepend(rule)
-	local retval = ""
-	if callExists(rule,"^$",function(base) retval = "all" end) then return retval end
-	if callExists(rule,"^(.*)C$",function(base) retval = base.."C.o" end) then return retval end
-	if callExists(rule,"^(.*)Cpp$",function(base) retval = base.."Cpp.o" end) then return retval end
-	if callExists(rule,"^(.*)Hs$",function(base) retval = base..".hs" end) then return retval end
-	if callExists(rule,"^(.*)A$",function(base) retval = base..".agda" end) then return retval end
-	if callExists(rule,"^(.*)Lua$",function(base) retval = base..".lua" end) then return retval end
-	if callExists(rule,"^(.*)M$",function(base) retval = base.."M.o" end) then return retval end
-	if callExists(rule,"^(.*)Sw$",function(base) retval = base.."Sw.o" end) then return retval end
-	if callExists(rule,"^(.*)G%.so$",function(base) retval = base.."G.o" end) then return retval end
-	if callExists(rule,"^(.*)%.so$",function(base) retval = base.."C.o" end) then return retval end
-	if callExists(rule,"^(.*)C%.o$",function(base) retval = base..".c" end) then return retval end
-	if callExists(rule,"^(.*)Cpp%.o$",function(base) retval = base..".cpp" end) then return retval end
-	if callExists(rule,"^(.*)M%.o$",function(base) retval = base..".m" end) then return retval end
-	if callExists(rule,"^(.*)Sw%.o$",function(base) retval = base..".sw" end) then return retval end
-	if callExists(rule,"^(.*)G%.o$",function(base) retval = base..".metal" end) then return retval end
-	if callExists(rule,"^(.*)%.metal$",function(base) retval = base..".g" end) then return retval end
-	if callExists(rule,"^(.*)%.agda$",function(base) retval = base..".a" end) then return retval end
-	if matchExists(rule,"^(.*)%.cpp$",function(base) return base..".cppx" end,function(base) retval = base..".cppx" end) then return retval end
-	if matchExists(rule,"^(.*)%.sw$",function(base) return base..".swy" end,function(base) retval = base..".swy" end) then return retval end
-	if matchExists(rule,"^(.*)%.g$",function(base) return base..".gy" end,function(base) retval = base..".gy" end) then return retval end
-	if callExists(rule,"^(.*)%.dep$",function(base) retval = base..".gen" end) then return retval end
-	if callExists(rule,"^(.*)%.h$",function(base) retval = base..".dep" end) then return retval end
-	if callExists(rule,"^(.*)%.c$",function(base) retval = base..".dep" end) then return retval end
-	if callExists(rule,"^(.*)%.cpp$",function(base) retval = base..".dep" end) then return retval end
-	if callExists(rule,"^(.*)%.hs$",function(base) retval = base..".dep" end) then return retval end
-	if callExists(rule,"^(.*)%.lua$",function(base) retval = base..".dep" end) then return retval end
-	if callExists(rule,"^(.*)%.m$",function(base) retval = base..".dep" end) then return retval end
-	if callExists(rule,"^(.*)%.sw$",function(base) retval = base..".dep" end) then return retval end
-	if callExists(rule,"^(.*)%.g$",function(base) retval = base..".dep" end) then return retval end
-	if mainExists(rule..".c","^int main\\(") then retval = rule.."C"; return retval end
-	if mainExists(rule..".cpp","^int main\\(") then retval = rule.."Cpp"; return retval end
-	if mainExists(rule..".hs","^main :: IO \\(") then retval = rule.."Hs"; return retval end
-	if mainExists(rule..".agda","^int main\\(") then retval = rule.."A"; return retval end
-	if mainExists(rule..".lua","^-- MAIN") then retval = rule.."Lua"; return retval end
-	if mainExists(rule..".m","^int main\\(") then retval = rule.."M"; return retval end
-	if mainExists(rule..".sw","^// MAIN") then retval = rule.."Sw"; return retval end
-	if mainExists(rule..".cppx","^int main\\(") then retval = rule.."Cpp"; return retval end
-	if mainExists(rule..".swy","^// MAIN") then retval = rule.."Sw"; return retval end
-	return retval
+	local left, right, base = {},{},nil
+	for k,v in ipairs({execMap,sharedMap,objectMap}) do for ky,vl in ipairs(v) do left[#left+1] = vl[1]; right[#right+1] = vl[2] end end
+	for k in ipairs(left) do local base = string.match(rule,"^(.*)"..left[k].."$"); if base then return base..right[k] end end
+	for k,v in ipairs(unameMap) do local base = string.match(rule,"^(.*)"..v[1].."$"); if base and fileExists(base..v[2]) then return base..v[2] end end
+	base = string.match(rule,"^(.*)".."%.dep".."$") if base then return base..".gen" end
+	for k,v in ipairs(generateMap) do local base = string.match(rule,"^(.*)"..v.."$"); if base then return base..".dep" end end
+	for k,v in ipairs(mainMap) do if mainExists(rule..v[1],v[2]) then return rule..v[3] end end
+	return ""
+end
+function firstDepend(list)
+	for k,v in ipairs(list) do
+		local found = false
+		for ky,vl in ipairs(generateMap) do if string.match(v,"^.*"..vl.."$") then found = true end end
+		if not found then return v end
+	end
+	return nil
 end
 function listDepend(top,rule)
 	if top == rule then return {rule} end
@@ -156,22 +122,6 @@ function listDepend(top,rule)
 		end
 	end
 	return {}
-end
-function firstDepend(list)
-	for k,v in ipairs(list) do
-		local bas,ext = string.match(v,fileExp)
-		local found = false
-		if ext == ".h" then found = true end
-		if ext == ".c" then found = true end
-		if ext == ".cpp" then found = true end
-		if ext == ".hs" then found = true end
-		if ext == ".lua" then found = true end
-		if ext == ".m" then found = true end
-		if ext == ".sw" then found = true end
-		if ext == ".g" then found = true end
-		if not found then return v end
-	end
-	return nil
 end
 function pushError(push)
 	io.stdout:write(" pushError "..push)
@@ -253,16 +203,17 @@ function checkError(check,rule,id)
 	io.stdout:write("\n")
 end
 function checkRule()
-	local retval = nil
+	local base = nil
+	local retval = ""
 	local greplist = io.open("depend.err")
 	local found = false
 	local lines = {}
 	for line in greplist:lines() do
 		lines[#lines+1] = line
-		if not found and callExists(line,"^make: %*%*%* %[([.%w]*)%] Error",function(rule) --[[io.stdout:write(line.."\n");]] retval = rule end) then found = true; break end
-		if not found and callExists(line,"^error: failed to make ([.%w]*)$",function(rule) --[[io.stdout:write(line.."\n");]] retval = rule end) then found = true; break end
-		if callExists(line,"^[%s]*([.%w]*):[0-9]*: in main chunk$",function(rule) --[[io.stdout:write(line.."\n");]] retval = rule end) then found = true; end
-		if callExists(line,"^[%s]*%./([.%w]*):[0-9]*: in main chunk$",function(rule) --[[io.stdout:write(line.."\n");]] retval = rule end) then found = true; end
+		base = string.match(line,"^make: %*%*%* %[([.%w]*)%] Error"); if not found and base then retval = base; found = true end
+		base = string.match(line,"^error: failed to make ([.%w]*)$"); if not found and base then retval = base; found = true end
+		base = string.match(line,"^[%s]*([.%w]*):[0-9]*: in main chunk$"); if base then retval = base; found = true end
+		base = string.match(line,"^[%s]*%./([.%w]*):[0-9]*: in main chunk$"); if base then retval = base; found = true end
 	end
 	greplist:close()
 	if found and string.match(retval,"^[%w]*%.gen$") then retval = string.match(retval,"^([%w]*)%.gen$")..".dep" end
@@ -333,22 +284,23 @@ function checkMake()
 		os.execute(cmd.."\n")
 	end
 	for line in greplist:lines() do
+		local check,rule = nil,nil
 		lines[#lines+1] = line
-		if callExists(line,"^/bin/sh: ./([%w]*): No such file or directory$",function(check) --[[io.stdout:write(line.."\n");]] checkError(check,checkRule(),"a") end) then found = true; break end
-		if callExists(line,"No rule to make target `([.%w]*)'.  Stop.$",function(check) --[[io.stdout:write(line.."\n");]] checkError(check,check,"b") end) then found = true; break end
-		if callExists(line,"^lua: cannot open ([.%w]*):",function(check) --[[io.stdout:write(line.."\n");]] checkError(check,checkRule(),"c") end) then found = true; break end
-		if callExists(line,"([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$",function(rule,check) --[[io.stdout:write(line.."\n");]] checkError(check,checkRule(),"d") end) then found = true; break end
-		if callExists(line,"([.%w]*):[0-9]*:[0-9]*: error: '([.%w]*)' file not found$",function(rule,check) --[[io.stdout:write(line.."\n");]] checkError(check,rule,"d") end) then found = true; break end
-		if callExists(line,"^ *._([.%w]*)., referenced from:$",function(check) --[[io.stdout:write(line.."\n");]] checkError(objectDepend(check),checkRule(),"e") end) then found = true; break end
-		if callExists(line,"^([%w]*): cannot execute file: ([%w]*)$",function(rule,check) --[[io.stdout:write(line.."\n");]] checkError(check,rule,"f") end) then found = true; break end
-		if callExists(line,"error: header '([.%w]*)' not found$",function(check) --[[io.stdout:write(line.."\n");]] checkError(check,checkRule(),"g") end) then found = true; break end
-		if callExists(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$",function(check,rule) --[[io.stdout:write(line.."\n");]] checkError(check,rule,"h") end) then found = true; break end
-		if (#lines == 1) and callExists(line,"^error: failed to make ([.%w]*)$",function(check) --[[io.stdout:write(line.."\n");]] checkError(check,checkRule(),"i") end) then found = true; break end
-		if callExists(line,"^[0-9]* *%| import ([%w]*)$",function(check) --[[io.stdout:write(line.."\n");]] checkError(moduleDepend(check),checkRule(),"j") end) then found = true; break end
-		if callExists(line,"^lua: [.%w]*:[0-9]*: module '([%w]*)' not found",function(check) --[[io.stdout:write(line.."\n");]] checkError(check..".so",checkRule(),"k") end) then found = true; break end
-		if callExists(line,"error: no such file or directory: '([.%w]*)'$",function(check) --[[io.stdout:write(line.."\n");]] checkError(check,checkRule(),"l") end) then found = true; break end
-		if callExists(line,"Not in scope: type constructor or class ‘([%w]*)’$",function(check) --[[io.stdout:write(line.."\n");]] checkError(classDepend(check),checkRule(),"m") end) then found = true; break end
-		if callExists(line,"^([%w]*): cannot load library: ([.%w]*)$",function(rule,check) --[[io.stdout:write(line.."\n");]] checkError(check,rule,"n") end) then found = true; break end
+		check = string.match(line,"^/bin/sh: ./([%w]*): No such file or directory$"); if check then checkError(check,checkRule(),"a"); found = true; break end
+		check = string.match(line,"No rule to make target `([.%w]*)'.  Stop.$"); if check then checkError(check,check,"b"); found = true; break end
+		check = string.match(line,"^lua: cannot open ([.%w]*):"); if check then checkError(check,checkRule(),"c"); found = true; break end
+		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$"); if rule and check then checkError(check,checkRule(),"d"); found = true; break end
+		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: error: '([.%w]*)' file not found$"); if rule and check then checkError(check,rule,"d"); found = true; break end
+		check = string.match(line,"^ *._([.%w]*)., referenced from:$"); if check then checkError(objectDepend(check),checkRule(),"e"); found = true; break end
+		rule,check = string.match(line,"^([%w]*): cannot execute file: ([%w]*)$"); if rule and check then checkError(check,rule,"f"); found = true; break end
+		check = string.match(line,"error: header '([.%w]*)' not found$"); if check then checkError(check,checkRule(),"g"); found = true; break end
+		check,rule = string.match(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$"); if rule and check then checkError(check,rule,"h"); found = true; break end
+		check = string.match(line,"^error: failed to make ([.%w]*)$"); if (#lines == 1) and check then checkError(check,checkRule(),"i"); found = true; break end
+		check = string.match(line,"^[0-9]* *%| import ([%w]*)$"); if check then checkError(moduleDepend(check),checkRule(),"j"); found = true; break end
+		check = string.match(line,"^lua: [.%w]*:[0-9]*: module '([%w]*)' not found"); if check then checkError(check..".so",checkRule(),"k"); found = true; break end
+		check = string.match(line,"error: no such file or directory: '([.%w]*)'$"); if check then checkError(check,checkRule(),"l"); found = true; break end
+		check = string.match(line,"Not in scope: type constructor or class ‘([%w]*)’$"); if check then checkError(classDepend(check),checkRule(),"m"); found = true; break end
+		rule,check = string.match(line,"^([%w]*): cannot load library: ([.%w]*)$"); if rule and check then checkError(check,rule,"n"); found = true; break end
 	end
 	greplist:close()
 	if not (#lines == 0) and found then return false end
