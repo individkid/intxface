@@ -7,25 +7,20 @@
 #include <regex.h>
 #include <lua.h>
 
-#define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
-
-// lua function state
 struct Enter {
 	int idx; // index into string array
 	int pos; // expression in string
 	int wrp; // whether resume completed
 	char *exp; // copy of exp in string
-	char *str; // result of last evaluation
+	char *str; // copy of last result
 	lua_State *lua; // subcontext for expression
 };
 struct Enter *ent = 0; // expressions of line
 int dim = 0; // number of expressions in line
 const char **line = 0; // strings of line
 char **rslt = 0; // with expressions replaced
-int mline = 0; // number of strings in line
-int msize = 0; // size of string array
+int lsiz = 0; // number of strings in line
 lua_State *luastate = 0;
-lua_State *luatemp = 0;
 
 void *nestLua(void *ud, void *ptr, size_t osize, size_t nsize)
 {
@@ -34,11 +29,9 @@ void *nestLua(void *ud, void *ptr, size_t osize, size_t nsize)
 }
 const char *nestReader(lua_State *L, void *data, size_t *size)
 {
-	struct Enter *ent = (struct Enter *)data;
-	if (ent->wrp == 0) {*size = 0; return 0;}
-	*size = strlen(ent->exp);
-	ent->wrp = 0;
-	return ent->exp;
+	const char *exp = (const char *)data;
+	*size = strlen(exp);
+	return exp;
 }
 int nestSkip(const char **str)
  {
@@ -66,6 +59,17 @@ int nestClosure(lua_State *L)
 			return 3;}
 		default: return 0;}
 }
+int nestScript(int *val, const char *exp, int arg)
+{
+	int ret = 0;
+	if (!luastate) luastate = lua_newstate(nestLua,0);
+	lua_load(luastate,nestReader,(void*)exp,"","bt");
+	lua_pushinteger(luastate,arg);
+	ret = lua_pcall(luastate,1,1,0);
+	*val = lua_tonumber(luastate,-1);
+	lua_pop(luastate,1);
+	return (ret == LUA_OK);
+}
 void nestFunc(const char *str, enum Prototype pro, union Proto typ)
 {
 	if (!luastate) luastate = lua_newstate(nestLua,0);
@@ -74,101 +78,128 @@ void nestFunc(const char *str, enum Prototype pro, union Proto typ)
 	lua_pushcclosure(luastate, nestClosure, 2);
 	lua_setglobal(luastate, str);
 }
-void nestDone(int siz)
+void nestInit(int siz)
+{
+	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
+	rslt = realloc(rslt,siz); line = realloc(line,siz); lsiz = siz;
+}
+void nestFree()
 {
 	if (!luastate) luastate = lua_newstate(nestLua,0);
-	for (int i = 0; i < mline; i++) if (rslt[i]) free(rslt[i]); mline = 0;
-	if (msize != siz && msize == 0) {line = malloc(siz); rslt = malloc(siz); msize = siz;}
-	else if (msize != siz && siz == 0) {free(line); free(rslt); line = 0; msize = 0;}
-	else if (msize != siz) {line = realloc(line,siz); rslt = realloc(rslt,siz); msize = siz;}
-	for (int i = 0; i < msize; i++) rslt[i] = 0;
 	for (int i = 0; i < dim; i++) if (ent[i].str) free(ent[i].str);
+	for (int i = 0; i < dim; i++) if (ent[i].exp) free(ent[i].exp);
 	if (dim != 0) {free(ent); ent = 0; dim = 0;}
-	lua_settop(luastate,0);
+	lua_settop(luastate,0);	
 }
-void nestElem(const char *str)
+void nestElem(int i, const char *str)
 {
-	if (mline == msize) ERROR(exitErr,0);
-	line[mline++] = str;
+	if (i < 0 || i >= lsiz) ERROR(exitErr,0);
+	if (dim) nestFree();
+	line[i] = str;
 }
-void nestLine()
+int nestScan()
 {
-	const char *exp = 0;
-	regex_t exprex = {0};
-	regmatch_t match[5];
 	if (!luastate) luastate = lua_newstate(nestLua,0);
-	if (dim != 0) ERROR(exitErr,0);
-	if (regcomp(&exprex,"(.*)%(",REG_MINIMAL) != 0) ERROR(exitErr,0);
-	for (int i = 0; i < mline; i++) for (dim = 0, exp = line[i]; regexec(&exprex,exp,2,match,0) == 0; dim += 1) {
-	exp += match[1].rm_eo + 2; for (int nst = 1; nst; nst += nestSkip(&exp));}
-	if (dim) ent = malloc((dim)*sizeof(struct Enter));
-	for (int i = 0; i < mline; i++) for (dim = 0, exp = line[i]; regexec(&exprex,exp,2,match,0) == 0; dim += 1) {
-		const char *bas = 0;
-		const char *lim = 0;
-		bas = exp += match[1].rm_eo + 2; for (int nst = 1; nst; nst += nestSkip(&exp));
-		lim = exp - 1;
-		ent[dim].idx = i;
-		ent[dim].pos = bas-line[i];
-		ent[dim].wrp = 1;
-		ent[dim].exp = malloc(lim-bas+1);
-		strncpy(ent[dim].exp,bas,lim-bas);
-		ent[dim].exp[lim-bas] = 0;
-		ent[dim].str = 0;
-		ent[dim].lua = lua_newthread(luastate);}
+	if (dim) nestFree();	
+	for (int i = 0; i < lsiz; i++)
+	for (const char *str = line[i]; *(str = strstr(str,"%(")) && *(str += 2); dim++)
+	for (int nst = 1; nst; nst += nestSkip(&str));
+	ent = realloc(ent,dim); dim = 0;
+	for (int i = 0; i < lsiz; i++)
+	for (const char *str = line[i]; *(str = strstr(str,"%(")) && *(str += 2); dim++) {
+		int pos, len;
+		ent[dim].pos = pos = str-line[i];
+		for (int nst = 1; nst; nst += nestSkip(&str));
+		len = str-line[i]-pos-1;
+		ent[dim].exp = realloc(ent[dim].exp,len+1);
+		strncpy(ent[dim].exp,line[i]+pos,len);
+		ent[dim].exp[len] = 0;}
+	for (int i = 0; i < dim; i++) {
+		ent[i].wrp = 0;
+		ent[i].str = 0;
+		ent[i].lua = lua_newthread(luastate);}
+	return dim;
+}
+int nestEval(int i)
+{
+	int num = 0;
+	int len = 0;
+	if (i < 0 || i >= dim) ERROR(exitErr,0);
+	if (!luastate) luastate = lua_newstate(nestLua,0);
+	if (!ent[i].wrp) lua_load(ent[i].lua,nestReader,(void*)(ent[i].exp),"","bt");
+	ent[i].wrp = (lua_resume(luastate,ent[i].lua,0,&num) == LUA_YIELD);
+	for (int j = 0; j < num; j++) len += strlen(lua_tostring(ent[i].lua,j-num));
+	ent[i].str = realloc(ent[i].str,len+1); ent[i].str[0] = 0;
+	for (int j = 0; j < num; j++) strcat(ent[i].str,lua_tostring(ent[i].lua,j-num));
+	lua_pop(ent[i].lua,num);
+	return ent[i].wrp;
 }
 int nestPass()
 {
-	int sub = 0;
-	if (!luastate) luastate = lua_newstate(nestLua,0);
-	for (sub = dim-1; sub > 0 && ent[sub].wrp; sub--);
-	if (sub == 0 && ent[sub].wrp && ent[sub].str != 0) return 0;
-	while (sub < dim) {
-		int nrslt = 0;
-		const char *str = 0;
-		int ret = 0;
-		if (ent[sub].wrp) lua_load(ent[sub].lua,nestReader,(void*)(ent+sub),"","bt");
-		ret = lua_resume(ent[sub].lua,luastate,0,&nrslt);
-		if (ret == LUA_OK) ent[sub].wrp = 1;
-		else if (ret == LUA_YIELD) ent[sub].wrp = 0;
-		else ERROR(exitErr,0);
-		if (nrslt != 1) ERROR(exitErr,0);
-		str = lua_tostring(ent[sub].lua,1);
-		ent[sub].str = realloc(ent[sub].str,strlen(str)+1);
-		strcpy(ent[sub].str,str);
-		lua_pop(ent[sub].lua,1); // pop str
-		if (ent[sub].wrp) lua_pop(ent[sub].lua,1); // pop exp
-		sub++;}
-	return 1;
+	int retval = 0;
+	for (int i = 0; i < dim; i++) retval |= nestEval(i);
+	return 0;
 }
-const char *nestNext(int i)
+const char *nestRepl(int i)
 {
-	if (i < 0 || i >= mline) ERROR(exitErr,0);
+	int length = 0;
+	int pos = 0;
+	if (i < 0 || i >= lsiz) ERROR(exitErr,0);
+	length = strlen(line[i]);
+	for (int j = 0; j < dim; j++) if (ent[j].idx == i) {
+	length -= strlen(ent[j].exp)+3; length += strlen(ent[j].str);}
+	rslt[i] = realloc(rslt[i],length+1); length = 0;
+	for (int j = 0; j < dim; j++) if (ent[j].idx == i) {
+		int len = ent[j].pos-pos-2;
+		strncpy(rslt[i]+length,line[i]+pos,len); length += len; pos += len+strlen(ent[j].exp)+3;
+		strcat(rslt[i]+length,ent[j].str); length += strlen(ent[j].str);}
 	return rslt[i];
 }
-int nestScript(int *val, const char *str, int arg)
+
+int nestInitLua(lua_State *L)
 {
-	if (!luastate) luastate = lua_newstate(nestLua,0);
-	lua_getglobal(luastate,"load");
-	lua_pushstring(luastate,str);
-	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(exitErr,0)
-	lua_pushnumber(luastate,arg);
-	if (lua_pcall(luastate, 1, 1, 0) != 0) ERROR(exitErr,0)
-	*val = lua_tonumber(luastate,1);
-	lua_pop(luastate,1);
+	nestInit(lua_tonumber(L,1));
+	return 0;
+}
+int nestElemLua(lua_State *L)
+{
+	nestElem((int)lua_tonumber(L,1),lua_tostring(L,2));
+	return 0;
+}
+int nestScanLua(lua_State *L)
+{
+	lua_pushnumber(L,nestScan());
 	return 1;
 }
-
-int nestScriptLua(lua_State *L)
+int nestEvalLua(lua_State *L)
 {
-	int val = 0;
-	lua_pushnumber(L,nestScript(&val, lua_tostring(L,1), lua_tonumber(L,2)));
-	lua_pushnumber(L,val);
-	return 2;
+	lua_pushnumber(L,nestEval((int)lua_tonumber(L,1)));
+	return 1;
+}
+int nestPassLua(lua_State *L)
+{
+	lua_pushnumber(L,nestPass());
+	return 1;
+}
+int nestReplLua(lua_State *L)
+{
+	lua_pushstring(L,nestRepl((int)lua_tonumber(L,1)));
+	return 1;
 }
 
 int luaopen_nest(lua_State *L)
 {
-	lua_pushcfunction(L, nestScriptLua);
-	lua_setglobal(L, "nestScript");
+	lua_pushcfunction(L, nestInitLua);
+	lua_setglobal(L, "nestInit");
+	lua_pushcfunction(L, nestElemLua);
+	lua_setglobal(L, "nestElem");
+	lua_pushcfunction(L, nestScanLua);
+	lua_setglobal(L, "nestScan");
+	lua_pushcfunction(L, nestEvalLua);
+	lua_setglobal(L, "nestEval");
+	lua_pushcfunction(L, nestPassLua);
+	lua_setglobal(L, "nestPass");
+	lua_pushcfunction(L, nestReplLua);
+	lua_setglobal(L, "nestRepl");
 	return 0;
 }
