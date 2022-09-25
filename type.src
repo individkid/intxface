@@ -915,8 +915,22 @@ function showConstantC(name,constant)
 	local result = ""
 	local mapping = {}
 	local arguments = {}
-	local values = {} -- apply hidePercent to each line, adding lines until hidePercent is done
+	local values = {}
+	-- TODO call nestFunc for castEnum
 	for key,val in ipairs(constant) do
+		local goon = true
+		nestInit(#val+1)
+		for k,v in ipairs(val) do nestElem(k-1,v) end
+		nestScan()
+		while goon do
+			local line = {}
+			goon = not (nestPass() == 0)
+			for k,v in ipairs(val) do line[#line+1] = nestRepl(k-1) end
+			values[#values+1] = line
+		end
+	end
+	nestInit(0)
+	for key,val in ipairs(values) do
 		local last = nil
 		for k,v in ipairs(val) do
 			if last and (k < #val) then -- last is type, v is constant
@@ -926,11 +940,7 @@ function showConstantC(name,constant)
 				-- io.stderr:write("func "..func.." v "..v.." gunc "..gunc.." k "..k.."/"..#val.."\n")
 				if not arguments[func] then arguments[func] = args end
 				if not mapping[func] then mapping[func] = {} end
-				if k+2 == #val then -- concatenate gunc if mapping[func][v] exists
-					mapping[func][v] = gunc
-				else
-					mapping[func][v] = gunc
-				end
+				mapping[func][v] = gunc
 				last = nil
 			else -- v is type
 				last = v

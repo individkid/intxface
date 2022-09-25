@@ -6,21 +6,25 @@
 #include <string.h>
 #include <regex.h>
 #include <lua.h>
+#include <lualib.h>
 
-struct Enter {
+struct Fiber {
 	int idx; // index into string array
 	int pos; // expression in string
-	int wrp; // whether resume completed
 	char *exp; // copy of exp in string
 	char *str; // copy of last result
 	lua_State *lua; // subcontext for expression
 };
-struct Enter *ent = 0; // expressions of line
+struct Fiber *fiber = 0; // expressions of line
 int dim = 0; // number of expressions in line
-const char **line = 0; // strings of line
+char **line = 0; // strings of line
 char **rslt = 0; // with expressions replaced
 int lsiz = 0; // number of strings in line
 lua_State *luastate = 0;
+struct Reader {
+   int vld;
+   char *str;
+} reader = {0};
 
 void *nestLua(void *ud, void *ptr, size_t osize, size_t nsize)
 {
@@ -29,9 +33,19 @@ void *nestLua(void *ud, void *ptr, size_t osize, size_t nsize)
 }
 const char *nestReader(lua_State *L, void *data, size_t *size)
 {
-	const char *exp = (const char *)data;
-	*size = strlen(exp);
-	return exp;
+	struct Reader *reader = (struct Reader *)data;
+	if (!reader->vld) {*size = 0; return 0;}
+	*size = strlen(reader->str);
+	reader->vld = 0;
+	return reader->str;
+}
+void nestLoad(const char *exp)
+{
+	int retval = 0;
+	asprintf(&reader.str,"%s",exp);
+	reader.vld = 1;
+	retval = lua_load(luastate,nestReader,(void*)&reader,"","t");
+	free(reader.str);
 }
 int nestSkip(const char **str)
  {
@@ -62,7 +76,7 @@ int nestClosure(lua_State *L)
 int nestScript(int *val, const char *exp, int arg)
 {
 	int ret = 0;
-	if (!luastate) luastate = lua_newstate(nestLua,0);
+	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
 	lua_load(luastate,nestReader,(void*)exp,"","bt");
 	lua_pushinteger(luastate,arg);
 	ret = lua_pcall(luastate,1,1,0);
@@ -72,7 +86,7 @@ int nestScript(int *val, const char *exp, int arg)
 }
 void nestFunc(const char *str, enum Prototype pro, union Proto typ)
 {
-	if (!luastate) luastate = lua_newstate(nestLua,0);
+	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
 	lua_pushinteger(luastate, pro);
 	lua_pushlightuserdata(luastate, typ.vp);
 	lua_pushcclosure(luastate, nestClosure, 2);
@@ -81,58 +95,67 @@ void nestFunc(const char *str, enum Prototype pro, union Proto typ)
 void nestInit(int siz)
 {
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
-	rslt = realloc(rslt,siz); line = realloc(line,siz); lsiz = siz;
+	rslt = realloc(rslt,siz*sizeof(char *)); line = realloc(line,siz*sizeof(char *));
+	for (int i = lsiz; i < siz; i++) {rslt[i] = 0; line[i] = 0;}
+	lsiz = siz;
 }
 void nestFree()
 {
-	if (!luastate) luastate = lua_newstate(nestLua,0);
-	for (int i = 0; i < dim; i++) if (ent[i].str) free(ent[i].str);
-	for (int i = 0; i < dim; i++) if (ent[i].exp) free(ent[i].exp);
-	if (dim != 0) {free(ent); ent = 0; dim = 0;}
+	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
+	for (int i = 0; i < dim; i++) if (fiber[i].str) free(fiber[i].str);
+	for (int i = 0; i < dim; i++) if (fiber[i].exp) free(fiber[i].exp);
+	if (dim != 0) {free(fiber); fiber = 0; dim = 0;}
 	lua_settop(luastate,0);	
 }
 void nestElem(int i, const char *str)
 {
 	if (i < 0 || i >= lsiz) ERROR(exitErr,0);
 	if (dim) nestFree();
-	line[i] = str;
+	line[i] = realloc(line[i],strlen(str)+1);
+	strcpy(line[i],str);
 }
 int nestScan()
 {
-	if (!luastate) luastate = lua_newstate(nestLua,0);
+	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
 	if (dim) nestFree();	
-	for (int i = 0; i < lsiz; i++)
-	for (const char *str = line[i]; *(str = strstr(str,"%(")) && *(str += 2); dim++)
-	for (int nst = 1; nst; nst += nestSkip(&str));
-	ent = realloc(ent,dim); dim = 0;
-	for (int i = 0; i < lsiz; i++)
-	for (const char *str = line[i]; *(str = strstr(str,"%(")) && *(str += 2); dim++) {
+	for (int i = 0; i < lsiz; i++) {
+	for (const char *str = line[i]; str && strstr(str,"%(") && *(str = strstr(str,"%(")) && *(str += 2); dim++) {
+	for (int nst = 1; nst; nst += nestSkip(&str)) {}}}
+	fiber = realloc(fiber,dim*sizeof(struct Fiber)); dim = 0;
+	for (int i = 0; i < lsiz; i++) {
+	for (const char *str = line[i]; str && strstr(str,"%(") && *(str = strstr(str,"%(")) && *(str += 2); dim++) {
 		int pos, len;
-		ent[dim].pos = pos = str-line[i];
-		for (int nst = 1; nst; nst += nestSkip(&str));
+		fiber[dim].pos = pos = str-line[i];
+		for (int nst = 1; nst; nst += nestSkip(&str)) {}
 		len = str-line[i]-pos-1;
-		ent[dim].exp = realloc(ent[dim].exp,len+1);
-		strncpy(ent[dim].exp,line[i]+pos,len);
-		ent[dim].exp[len] = 0;}
-	for (int i = 0; i < dim; i++) {
-		ent[i].wrp = 0;
-		ent[i].str = 0;
-		ent[i].lua = lua_newthread(luastate);}
+		fiber[dim].exp = malloc(len+1);
+		strncpy(fiber[dim].exp,line[i]+pos,len);
+		fiber[dim].exp[len] = 0;
+		fiber[dim].str = 0;
+		fiber[dim].lua = 0;
+		fiber[dim].idx = i;}}
 	return dim;
 }
 int nestEval(int i)
 {
+	int ret = 0;
 	int num = 0;
 	int len = 0;
+	int arg = 0;
 	if (i < 0 || i >= dim) ERROR(exitErr,0);
-	if (!luastate) luastate = lua_newstate(nestLua,0);
-	if (!ent[i].wrp) lua_load(ent[i].lua,nestReader,(void*)(ent[i].exp),"","bt");
-	ent[i].wrp = (lua_resume(luastate,ent[i].lua,0,&num) == LUA_YIELD);
-	for (int j = 0; j < num; j++) len += strlen(lua_tostring(ent[i].lua,j-num));
-	ent[i].str = realloc(ent[i].str,len+1); ent[i].str[0] = 0;
-	for (int j = 0; j < num; j++) strcat(ent[i].str,lua_tostring(ent[i].lua,j-num));
-	lua_pop(ent[i].lua,num);
-	return ent[i].wrp;
+	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
+	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); nestLoad(fiber[i].exp);}
+	ret = lua_resume(luastate,fiber[i].lua,0,&num);
+	if (ret != LUA_OK && ret != LUA_YIELD) {
+		printf("lua %s\n",lua_tostring(luastate,-1));
+		ERROR(exitErr,0);}
+	if (ret == LUA_OK) fiber[i].lua = 0;
+	if (ret == LUA_YIELD) arg = num; else arg = num - 1;
+	for (int j = 0; j < arg; j++) len += strlen(lua_tostring(luastate,j-arg));
+	fiber[i].str = realloc(fiber[i].str,len+1); fiber[i].str[0] = 0;
+	for (int j = 0; j < arg; j++) strcat(fiber[i].str,lua_tostring(luastate,j-arg));
+	lua_pop(luastate,num);
+	return (fiber[i].lua != 0);
 }
 int nestPass()
 {
@@ -146,13 +169,15 @@ const char *nestRepl(int i)
 	int pos = 0;
 	if (i < 0 || i >= lsiz) ERROR(exitErr,0);
 	length = strlen(line[i]);
-	for (int j = 0; j < dim; j++) if (ent[j].idx == i) {
-	length -= strlen(ent[j].exp)+3; length += strlen(ent[j].str);}
+	for (int j = 0; j < dim; j++) if (fiber[j].idx == i) {
+	length -= strlen(fiber[j].exp)+3; length += strlen(fiber[j].str);}
 	rslt[i] = realloc(rslt[i],length+1); length = 0;
-	for (int j = 0; j < dim; j++) if (ent[j].idx == i) {
-		int len = ent[j].pos-pos-2;
-		strncpy(rslt[i]+length,line[i]+pos,len); length += len; pos += len+strlen(ent[j].exp)+3;
-		strcat(rslt[i]+length,ent[j].str); length += strlen(ent[j].str);}
+	for (int j = 0; j < dim; j++) if (fiber[j].idx == i) {
+		int len = fiber[j].pos-pos-2;
+		strncpy(rslt[i]+length,line[i]+pos,len); length += len; pos += len+strlen(fiber[j].exp)+3;
+		strcpy(rslt[i]+length,fiber[j].str); length += strlen(fiber[j].str);}
+	strcpy(rslt[i]+length,line[i]+pos);
+	if (strcmp(line[i],rslt[i]) != 0) printf("nestRepl %s -> %s\n",line[i],rslt[i]);
 	return rslt[i];
 }
 

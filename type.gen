@@ -230,22 +230,10 @@ Bootstrap = {
 		Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(2)\\\
 		cfg[0]:Configure(MachineIndex)val[0]:Int(1)\\\
 		cfg[1]:Configure(MachineLimit)val[1]:Int(3)"},
-	{"Int","0","Special","Compute"},
+	{"Int","0","Special","%(return \"Compute\")"},
 	{"Int","1","Special","Compute"},
 	{"Int","2","Special","Compute"},
 	{"Int","3","Special","Compute"},
--- %() is an expression; in an exp,
---   $exp is return value,
---   %exp is yield if exp is 0, and escape nest forward if poisitive, and bacward if negative
---   exp?exp is the second if the first is true
---   exp?exp:exp is the second if the first is true, and the third otherwise
---   exp,exp is the second after the first is evaluated
---   var=exp is the exp after assigning to the global variable
--- global variables are available from one evaluation to another
--- an expression that yields produces more than one line
--- if the value of a type on two lines are the same, they concatenate
--- type%type(value) is the value of the second type cast to the first type
---	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)"},
 --	{"Int","0","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
 --		cfg[0]:Configure(WindowWide)val[0]:Int(512)\
 --		cfg[1]:Configure(WindowWide)val[1]:Int(512)\
