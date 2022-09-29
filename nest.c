@@ -116,8 +116,16 @@ int nestSkip(const char **str)
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
 }
+void nestFree()
+{
+	for (int i = 0; i < dim; i++) if (fiber[i].str) free(fiber[i].str);
+	for (int i = 0; i < dim; i++) if (fiber[i].exp) free(fiber[i].exp);
+	if (dim) free(fiber); fiber = 0; dim = 0;
+	lua_settop(luastate,0);
+}
 void nestInit(int siz)
 {
+	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
 	if (siz) {rslt = realloc(rslt,siz*sizeof(char *)); line = realloc(line,siz*sizeof(char *));}
 	else {free(rslt); rslt = 0; free(line); line = 0;}
@@ -133,11 +141,7 @@ void nestElem(int i, const char *str)
 int nestScan()
 {
 	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
-	if (dim) {
-		for (int i = 0; i < dim; i++) if (fiber[i].str) free(fiber[i].str);
-		for (int i = 0; i < dim; i++) if (fiber[i].exp) free(fiber[i].exp);
-		free(fiber); fiber = 0; dim = 0;
-		lua_settop(luastate,0);}
+	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) {
 	for (const char *str = line[i]; str && strstr(str,"%(") && *(str = strstr(str,"%(")) && *(str += 2); dim++) {
 	for (int nst = 1; nst; nst += nestSkip(&str)) {}}}
