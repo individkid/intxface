@@ -916,7 +916,6 @@ function showConstantC(name,constant)
 	local mapping = {}
 	local arguments = {}
 	local values = {}
-	-- TODO call nestFunc for castEnum
 	for key,val in ipairs(constant) do
 		local goon = true
 		nestInit(#val+1)
@@ -1575,6 +1574,20 @@ function showWriteHs(name,struct)
 	result = result.."--"
 	return result
 end
+function showCastLua(name,enum)
+	local result = ""
+	result = result.."function cast"..name.."(val)\n"
+	for key,val in ipairs(enum) do
+		if (key == 1) then
+			result = result..showIndent(1).."if (val == \""..val.."\") then return "..(key-1).."\n"
+		else
+			result = result..showIndent(1).."elseif (val == \""..val.."\") then return "..(key-1).."\n"
+		end
+	end
+	result = result..showIndent(1).."else return nil end\n"
+	result = result.."end"
+	return result
+end
 function showCodeLua(name,enum)
 	local result = ""
 	result = result.."function read"..name.."(idx)\n"
@@ -1891,6 +1904,7 @@ function showFuncC()
 	result = result..showCall(Enums,Enumz,showAllocC).."\n"
 	result = result..showCall(Enums,Enumz,showShowC).."\n"
 	result = result..showCall(Enums,Enumz,showHideC).."\n"
+	for k,v in ipairs(Enums) do nestSide(showCastLua(v,Enumz[v])) end
 	result = result..showCall(Constants,Constantz,showConstantC).."\n"
 	result = result..showCall(Structs,Structz,showOffsetC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
