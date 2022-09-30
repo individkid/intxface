@@ -168,7 +168,7 @@ int nestEval(int i)
 	int len = 0;
 	if (i < 0 || i >= dim) ERROR(exitErr,0);
 	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
-	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); luaL_openlibs(fiber[i].lua); fiber[i].top = lua_gettop(luastate); nestLoad(fiber[i].lua,fiber[i].exp);}
+	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); nestLoad(fiber[i].lua,fiber[i].exp);}
 	ret = lua_resume(fiber[i].lua,0,0,&num);
 	if (ret != LUA_OK && ret != LUA_YIELD) {
 		printf("lua %s\n",lua_tostring(fiber[i].lua,-1));

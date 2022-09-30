@@ -230,7 +230,16 @@ Bootstrap = {
 		Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(2)\\\
 		cfg[0]:Configure(MachineIndex)val[0]:Int(1)\\\
 		cfg[1]:Configure(MachineLimit)val[1]:Int(3)"},
-	{"Int","%(function yield(k) compute = \"Compute/*\"..tostring(k)..\"*/\"; return k end for k=0,2 do coroutine.yield(yield(k)) end return yield(3))","Special","%(return compute)"},
+	{"Int","%("..
+		"function yield(k,v)\n"..
+		"	compute = \"Compute/*\"..tostring(castMemory(v))..\"*/\"\n"..
+		"	return k\n"..
+		"end\n"..
+		"for k,v in ipairs({\"Trianglez\",\"Numericz\",\"Vertexz\"}) do\n"..
+		"	coroutine.yield(yield(k-1,v))\n"..
+		"end\n"..
+		"return yield(3,\"Swarmz\"))\n",
+		"Special","%(return compute)"},
 --	{"Int","0","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
 --		cfg[0]:Configure(WindowWide)val[0]:Int(512)\
 --		cfg[1]:Configure(WindowWide)val[1]:Int(512)\
