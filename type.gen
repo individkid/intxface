@@ -136,8 +136,7 @@ Transfer = {
 	"Manip", -- manip to matrix
 	"Follow", -- multiply to matrix
 	"Precede", -- multiply by matrix
-	"Give", -- dma to gpu
-	"Keep", -- dma to cpu
+	"Share", -- dma to cpu or gpu
 	"Draw", -- start shader
 	"Jump", -- skip if true
 	"Goto", -- jump if true
@@ -197,73 +196,28 @@ Ture = {
 Initial = {
 	{"Shader","Dipoint","Stage","Corner","Str","vertex_render"},
 	{"Shader","Dipoint","Stage","Fragment","Str","fragment_render"},
-	{"Shader","Dipoint","Special","Display"},
 	{"Shader","Diplane","Stage","Corner","Str","diplane_vertex"},
 	{"Shader","Diplane","Stage","Fragment","Str","diplane_fragment"},
-	{"Shader","Diplane","Special","Display"},
 	{"Shader","Adpoint","Str","kernel_pierce"},
-	{"Shader","Adpoint","Special","Process"},
 	{"Shader","Adplane","Str","adplane_compute"},
-	{"Shader","Adplane","Special","Process"},
 	{"Shader","Copoint","Str","copoint_compute"},
-	{"Shader","Copoint","Special","Process"},
 	{"Shader","Coplane","Str","coplane_compute"},
-	{"Shader","Coplane","Special","Process"},
 	{"Shader","Onpoint","Str","onpoint_compute"},
-	{"Shader","Onpoint","Special","Process"},
 	{"Shader","Onplane","Str","onplane_compute"},
-	{"Shader","Onplane","Special","Process"},
 	{"Shader","Depoint","Str","depoint_compute"},
-	{"Shader","Depoint","Special","Process"},
 	{"Shader","Deplane","Str","deplane_compute"},
-	{"Shader","Deplane","Special","Process"},
 }
 Bootstrap = {
-	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)\\\
-		Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\\\
-		cfg[0]:Configure(WindowWide)val[0]:Int(512)\\\
-		cfg[1]:Configure(WindowWide)val[1]:Int(512)\\\
-		cfg[2]:Configure(MachineSize)val[2]:Int(3)"},
-	{"Int","1","Str","Machine(xfr:Transfer(Read)))"},
-	{"Int","2","Str","Machine(xfr:Transfer(Give)))"},
-	{"Int","3","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)\\\
-		Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(2)\\\
-		cfg[0]:Configure(MachineIndex)val[0]:Int(1)\\\
-		cfg[1]:Configure(MachineLimit)val[1]:Int(3)"},
-	{"Int","%("..
-		"function yield(k,v)\n"..
-		"	compute = \"Compute/*\"..tostring(castMemory(v))..\"*/\"\n"..
-		"	return k\n"..
-		"end\n"..
-		"for k,v in ipairs({\"Trianglez\",\"Numericz\",\"Vertexz\"}) do\n"..
-		"	coroutine.yield(yield(k-1,v))\n"..
-		"end\n"..
-		"return yield(3,\"Swarmz\"))\n",
-		"Special","%(return compute)"},
---	{"Int","0","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
---		cfg[0]:Configure(WindowWide)val[0]:Int(512)\
---		cfg[1]:Configure(WindowWide)val[1]:Int(512)\
---		cfg[2]:Configure(MachineSize)val[2]:Int(10)"},
---	{"Int","%(i=1($i%0i=i+1,i<9?%-1))","Str","Client(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(1)idx:Int(%($i-1%0%-1))slf:Int(1)mch[0]:"},
---	{"Int","1","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
---		cfg[0]:Configure(RegisterHint)val[0]:Int%Configure(RegisterHint)))"},
---	{"Int","2","Str","Machine(xfr:Transfer(Read)))"},
---	{"Int","3","Str","Machine(xfr:Transfer(Save)cfg:siz:Int(2)\
---		cfg[0]:Configure(ClientCommand)cfg[1]:Configure(ClientMemory)))"},
---	{"Int","4","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(1)\
---		cfg[0]:Configure(ClientCommand)val[0]:Int%Command(SetCmd)idx:Int(-1)))"},
---	{"Int","5","Str","Machine(xfr:Transfer(Eorb)idx:Int(-1)sns:Sense(Equal)siz:Int(3)\
---		cfg[0]:Configure(ClientMemory)val[0]:Int%Memory(Stringz)\
---		cfg[1]:Configure(ClientMemory)val[1]:Int%Memory(Machinez)\
---		cfg[2]:Configure(ClientMemory)val[2]:Int%Memory(Configurez)))"},
---	{"Int","6","Str","Machine(xfr:Transfer(Give)))"},
---	{"Int","7","Str","Machine(xfr:Transfer(Every)idx:Int(-1)sns:Sense(Equal)siz:Int(10)))"},
---	{"Int","8","Str","Machine(xfr:Transfer(Keep)))"},
---	{"Int","9","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)"},
---	{"Int","9","Str","Machine(xfr:Transfer(None)idx:Int(-1)sns:Sense(Equal)siz:Int(2)\
---		cfg[0]:Configure(MachineIndex)val[0]:Int(1)\
---		cfg[1]:Configure(MachineLimit)val[1]:Int(9)"},
---	{"Int","%(i=0($i%0i=i+1,i<10?%-1))","Process","Central"},
+	{"Int","0","Str","Client(\\\n"..
+		"cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)idx:Int(0)slf:Int(0)\\\n"..
+		"cfg[0]:Configure(WindowWide)val[0]:Int(512)\\\n"..
+		"cfg[1]:Configure(WindowWide)val[1]:Int(512)\\\n"..
+		"cfg[2]:Configure(MachineSize)val[2]:Int(3))"},
+	{"Int","1","Str","Client(\\\n"..
+		"cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(2)idx:Int(0)slf:Int(0)\\\n"..
+		"mch[0]:Machine(xfr:Transfer(Read)siz:Int(0))\\\n"..
+		"mch[1]:Machine(xfr:Transfer(Share)siz:Int(0))\\\n"..
+		"mch[2]:Machine(xfr:Transfer(Goto)siz:Int(0)cnd:Condition(Equal)idx:Int(-1)))"},
 }
 --HERE Structs
 File = {

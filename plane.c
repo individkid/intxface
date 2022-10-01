@@ -263,7 +263,7 @@ void planeBuffer() {
 		case (Stringz): for (int i = 0; i < client.siz; i++) assignStr(strings+(client.idx+i)%configure[StringSize],client.str[i]); break;
 		case (Machinez): for (int i = 0; i < client.siz; i++) machine[(client.idx+i)%configure[MachineSize]] = client.mch[i]; break;
 		case (Configurez): for (int i = 0; i < client.siz; i++) planeReconfig(client.cfg[i],client.val[i]); break;
-		default: break;}
+		default: callDma(&client); break;}
 }
 void *planeThread(void *arg)
 {
@@ -287,13 +287,9 @@ int hideCast(int *val, const char *typ, const char *str, int *siz)
 void planeBoot()
 {
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	enum Special unit = Bootstrap__Int__Special(i);
 	int len = 0;
 	hideClient(&client,Bootstrap__Int__Str(i),&len);
-	switch (unit) {
-	case (Process): callDma(&client); break;
-	case (Compute): planeBuffer(); break;
-	default: break;}}
+	planeBuffer();}
 }
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wftype draw)
 {
@@ -363,8 +359,7 @@ void planeWake(enum Configure hint)
 			case (Manip): planeCalculate(planeMatrix(mptr->dst)); break; // manip to matrix -- dst
 			case (Follow): jumpmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply to matrix -- src dst
 			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix -- src dst
-			case (Give): callDma(&client); break; // dma to gpu --
-			case (Keep): planeBuffer(); break; // dma to cpu --
+			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val sns cmp idx
 			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
