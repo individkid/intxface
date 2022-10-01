@@ -214,10 +214,14 @@ Bootstrap = {
 		"cfg[1]:Configure(WindowWide)val[1]:Int(512)\\\n"..
 		"cfg[2]:Configure(MachineSize)val[2]:Int(3))"},
 	{"Int","1","Str","Client(\\\n"..
-		"cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(2)idx:Int(0)slf:Int(0)\\\n"..
-		"mch[0]:Machine(xfr:Transfer(Read)siz:Int(0))\\\n"..
-		"mch[1]:Machine(xfr:Transfer(Share)siz:Int(0))\\\n"..
-		"mch[2]:Machine(xfr:Transfer(Goto)siz:Int(0)cnd:Condition(Equal)idx:Int(-1)))"},
+		"cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(3)idx:Int(0)slf:Int(0)\\\n"..
+		"mch[0]:Machine(xfr:Transfer(Jump)siz:Int(1)cfg[0]:Configure(RegisterHint)val[0]:Int(%(return castConfigure(\"RegisterHint\")))cmp[0]:Compare(Equal)cnd:Condition(None)idx:Int(-1))\\\n"..
+		"mch[1]:Machine(xfr:Transfer(Read)siz:Int(0))\\\n"..
+		"mch[2]:Machine(xfr:Transfer(Share)siz:Int(0)))"},
+	{"Int","3","Str","Client(\\\n"..
+		"cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(2)idx:Int(0)slf:Int(0)\\\
+		cfg[0]:Configure(MachineIndex)val[0]:Int(0)\\\
+		cfg[1]:Configure(MachineLimit)val[1]:Int(2)"},
 }
 --HERE Structs
 File = {

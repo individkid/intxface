@@ -152,9 +152,21 @@ class getEvent : NSObject, NSWindowDelegate
 		NSApp.stop(nil)
 		return true
 	}
+	func windowWillMove(_ notification: Notification)
+	{
+		swiftWake(WindowLeft)
+	}
+	func windowDidMove(_ notification: Notification)
+	{
+		swiftWake(WindowBase)
+	}
+	func windowWillResize(_ notification: Notification)
+	{
+		swiftWake(WindowWide)
+	}
 	func windowDidResize(_ notification: Notification)
 	{
-		// swiftSize()
+		swiftWake(WindowHigh)
 	}
 }
 func setEvent(_ type:NSEvent.EventTypeMask, _ hint: Configure)
@@ -213,14 +225,15 @@ func swiftInit()
 	 	print("cannot make kernel_pierce");exitErr(#file,#line,-1);return}
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
     threads[sub] = device.maxThreadsPerThreadgroup}}}
-	// setEvent(.keyDown,swiftKey)
-	setEvent(.leftMouseUp,ButtonClick)
-	// setEvent(.rightMouseUp,swiftRight)
-	// setEvent(.leftMouseDown,swiftActive)
-	// setEvent(.rightMouseDown,swiftActive)
-	// setEvent(.mouseMoved,swiftMove)
-	// setEvent(.scrollWheel,swiftRoll)
-	setEvent(.applicationDefined,RegisterHint)
+	setEvent(.keyDown,ButtonPress)
+	setEvent(.keyUp,ButtonHold)
+	setEvent(.leftMouseUp,ButtonDrag)
+	setEvent(.rightMouseUp,ButtonDrag)
+	setEvent(.leftMouseDown,ButtonClick)
+	setEvent(.rightMouseDown,ButtonClick)
+	setEvent(.mouseMoved,CursorLeft)
+	setEvent(.scrollWheel,CursorAngle)
+	NSEvent.addLocalMonitorForEvents(matching:.applicationDefined, handler: {(event: NSEvent) in planeWake(Configure(UInt32(event.data1))); return event})
 }
 func swiftRun()
 {
@@ -274,9 +287,20 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 		default: break}}
 	default: exitErr(#file,#line,-1)}
 }
-func swiftWake()
+func swiftWake(_ hint: Configure)
 {
-	// TODO trigger applicationDefined event
+	NSApp.postEvent(
+		NSEvent.otherEvent(
+		with:.applicationDefined,
+		location:NSZeroPoint,
+		modifierFlags:.command,
+		timestamp:0.0,
+		windowNumber:0,
+		context:nil,
+		subtype:0,
+		data1:Int(hint.rawValue),
+		data2:0)!,
+		atStart:false)	
 }
 func swiftInfo(_ query: Configure) -> Int32
 {
@@ -324,7 +348,7 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 	code.commit()
 	default:
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
-	for range in array { // TODO use start and stopf
+	for range in array { // TODO use start and stop
 		var offset = (Int(range.idx)*MemoryLayout<Triangle>.size)/3
 		var nums:[Int] = []
 		var pers:[Int] = []

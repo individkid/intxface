@@ -34,7 +34,7 @@ char *output = 0;
 char *ident = 0;
 int goon = 0;
 uftype callDma = 0;
-vftype callWake = 0;
+yftype callWake = 0;
 xftype callInfo = 0;
 wftype callDraw = 0;
 
@@ -276,12 +276,7 @@ void *planeThread(void *arg)
 	if (!checkWrite(internal)) break;
 	readClient(&client,external);
 	writeClient(&client,internal);
-	callWake();}
-	return 0;
-}
-int hideCast(int *val, const char *typ, const char *str, int *siz)
-{
-	// TODO in type.src
+	callWake(RegisterHint);}
 	return 0;
 }
 void planeBoot()
