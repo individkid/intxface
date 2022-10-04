@@ -66,38 +66,38 @@ void *planeRealloc(void *ptr, int siz, int tmp, int mod)
 }
 int planeIndex()
 {
-	switch (configure[StateSelect]) {
-		case ((int)Subject): return 0;
-		case ((int)Object): return configure[StateIndex];
-		case ((int)Element): return 0;
+	switch ((enum Select)configure[StateSelect]) {
+		case (Subject): return 0;
+		case (Object): return configure[StateIndex];
+		case (Element): return 0;
 		default: break;}
 	return 0;
 }
 enum Memory planeMemory()
 {
-	switch (configure[StateSelect]) {
-		case ((int)Subject): return Allmatz;
-		case ((int)Object): return Fewmatz;
-		case ((int)Element): return Onematz;
+	switch ((enum Select)configure[StateSelect]) {
+		case (Subject): return Allmatz;
+		case (Object): return Fewmatz;
+		case (Element): return Onematz;
 		defalut: break;}
 	return Memorys;
 }
 struct Kernel *planeKernel()
 {
-	switch (configure[StateSelect]) {
-		case ((int)Subject): return &subject;
-		case ((int)Object): return object+planeIndex();
-		case ((int)Element): return &element;
+	switch ((enum Select)configure[StateSelect]) {
+		case (Subject): return &subject;
+		case (Object): return object+planeIndex();
+		case (Element): return &element;
 		default: break;}
 	return 0;
 }
 planeXform planeFunc()
 {
-	switch (configure[StateXform]) {
-		case ((int)Translate): return planeXlate;
-		case ((int)Rotate): return planeXtate;
-		case ((int)Scale): return planeScale;
-		case ((int)Zoom): return planeFocal;
+	switch ((enum Transform)configure[StateXform]) {
+		case (Translate): return planeXlate;
+		case (Rotate): return planeXtate;
+		case (Scale): return planeScale;
+		case (Zoom): return planeFocal;
 		default: break;}
 	return 0;
 }
