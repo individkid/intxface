@@ -21,6 +21,7 @@ struct Kernel subject = {0};
 struct Kernel *object = 0;
 struct Kernel element = {0};
 struct Pierce *pierce = 0;
+struct Pierce *found = 0;
 char **strings = 0;
 struct Machine *machine = 0;
 int configure[Configures] = {0};
@@ -66,51 +67,39 @@ void *planeRealloc(void *ptr, int siz, int tmp, int mod)
 int planeIndex()
 {
 	switch (configure[StateSelect]) {
-		case (0): return 0;
-		case (1): return configure[StateIndex];
-		case (2): return 0;
+		case ((int)Subject): return 0;
+		case ((int)Object): return configure[StateIndex];
+		case ((int)Element): return 0;
 		default: break;}
 	return 0;
 }
 enum Memory planeMemory()
 {
 	switch (configure[StateSelect]) {
-		case (0): return Allmatz;
-		case (1): return Fewmatz;
-		case (2): return Onematz;
+		case ((int)Subject): return Allmatz;
+		case ((int)Object): return Fewmatz;
+		case ((int)Element): return Onematz;
 		defalut: break;}
 	return Memorys;
 }
 struct Kernel *planeKernel()
 {
 	switch (configure[StateSelect]) {
-		case (0): return &subject;
-		case (1): return object+planeIndex();
-		case (2): return &element;
+		case ((int)Subject): return &subject;
+		case ((int)Object): return object+planeIndex();
+		case ((int)Element): return &element;
 		default: break;}
 	return 0;
 }
 planeXform planeFunc()
 {
 	switch (configure[StateXform]) {
-		case (0): return planeXlate;
-		case (1): return planeXtate;
-		case (2): return planeScale;
-		case (3): return planeFocal;
+		case ((int)Translate): return planeXlate;
+		case ((int)Rotate): return planeXtate;
+		case ((int)Scale): return planeScale;
+		case ((int)Zoom): return planeFocal;
 		default: break;}
 	return 0;
-}
-enum Shader planeShader()
-{
-	switch (configure[ArgumentShader]) {
-		case (0): return Dipoint;
-		case (1): return Diplane;
-		case (2): return Adpoint;
-		case (3): return Adplane;
-		case (4): return Copoint;
-		case (5): return Coplane;
-		default: break;}
-	return Shaders;
 }
 struct Matrix *planeMatrix(enum Accumulate accumulate)
 {
@@ -138,7 +127,7 @@ struct Matrix *planeMatrix(enum Accumulate accumulate)
 }
 struct Pierce *planePierce()
 {
-	struct Pierce *found = 0;
+	if (found) return found;
 	for (int i = configure[PierceIndex]; i < configure[PierceLimit]; i++) {
 		struct Pierce *temp = pierce + i%configure[PierceSize];
 		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
@@ -262,7 +251,7 @@ void planeBuffer() {
 	switch (client.mem) {
 		case (Stringz): for (int i = 0; i < client.siz; i++) assignStr(strings+(client.idx+i)%configure[StringSize],client.str[i]); break;
 		case (Machinez): for (int i = 0; i < client.siz; i++) machine[(client.idx+i)%configure[MachineSize]] = client.mch[i]; break;
-		case (Configurez): for (int i = 0; i < client.siz; i++) planeReconfig(client.cfg[i],client.val[i]); break;
+		case (Configurez): for (int i = 0; i < client.siz; i++) planeReconfig(client.cfg[i],client.val[i]); callDma(&client); break;
 		default: callDma(&client); break;}
 }
 void *planeThread(void *arg)
@@ -355,7 +344,7 @@ void planeWake(enum Configure hint)
 			case (Follow): jumpmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply to matrix -- src dst
 			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix -- src dst
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
-			case (Draw): callDraw(planeShader(),configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
+			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val sns cmp idx
 			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Jumps): next = planeEscape(planeEval(mptr->str,next),next); // skip to eval -- str
@@ -368,5 +357,6 @@ void planeWake(enum Configure hint)
 }
 void planeReady(struct Pierce *given, int index, int limit)
 {
+	found = 0;
 	for (int i = index; i < limit; i++) pierce[i%configure[PierceSize]] = given[i%configure[PierceSize]];
 }

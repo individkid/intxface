@@ -152,6 +152,17 @@ Accumulate = {
 	"Towrite", -- kernel written
 	"OfClient", -- client memory
 }
+Select = {
+	"Subject",
+	"Object",
+	"Element",
+}
+Transform = {
+	"Translate",
+	"Rotate",
+	"Scale",
+	"Zoom",
+}
 Shader = {
 	"Dipoint", -- display from triangles of points
 	"Diplane", -- display from triangles of points from planes
@@ -167,11 +178,6 @@ Shader = {
 Stage = {
 	"Corner",
 	"Fragment",
-}
-Special = {
-	"Display",
-	"Process",
-	"Compute",
 }
 Compare = {
 	"Less",
@@ -213,11 +219,25 @@ Bootstrap = {
 		"cfg[0]:Configure(WindowWide)val[0]:Int(512)\\\n"..
 		"cfg[1]:Configure(WindowWide)val[1]:Int(512)\\\n"..
 		"cfg[2]:Configure(MachineSize)val[2]:Int(3))"},
-	{"Int","1","Str","Client(\\\n"..
-		"cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(3)idx:Int(0)slf:Int(0)\\\n"..
-		"mch[0]:Machine(xfr:Transfer(Jump)siz:Int(1)cfg[0]:Configure(RegisterHint)val[0]:Int(%(return castConfigure(\"RegisterHint\")))cmp[0]:Compare(Equal)cnd:Condition(None)idx:Int(-1))\\\n"..
+	{"Int","1","Str","Client(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(3)idx:Int(0)slf:Int(0)\\\n"..
+		"mch[0]:Machine(xfr:Transfer(Jump)siz:Int(1)cnd:Condition(Norb)idx:Int(10)\\\n"..
+			"cfg[0]:Configure(RegisterHint)val[0]:Int(%(return castConfigure(\"RegisterHint\")))cmp[0]:Compare(Equal))\\\n"..
 		"mch[1]:Machine(xfr:Transfer(Read)siz:Int(0))\\\n"..
-		"mch[2]:Machine(xfr:Transfer(Share)siz:Int(0)))"},
+		"mch[2]:Machine(xfr:Transfer(Save)siz:Int(1))\\\n"..
+			"cfg[0]:Configure(ClientCommand))\\\n"..
+		"mch[3]:Machine(xfr:Transfer(Jump)siz:Int(1)cnd:Condition(Norb)idx:Int(5)\\\n"..
+			"cfg[0]:Configure(ClientCommand)val[0]:Int(%(return castCommand(\"SetCmd\")))cmp[0]:Compare(Equal))\\\n"..
+		"mch[4]:Machine(xfr:Transfer(Share)siz:Int(0)))\\\n"..
+		"mch[5]:Machine(xfr:Transfer(Jump)siz:Int(1)cnd:Condition(Norb)idx:Int(-1)\\\n"..
+			"cfg[0]:Configure(ClientCommand)val[0]:Int(%(return castCommand(\"GetCmd\")))cmp[0]:Compare(Equal))\\\n"..
+		"mch[6]:Machine(xfr:Transfer(Force)siz:Int(1)\\\n"..
+			"cfg[0]:Configure(ArgumentShader)val[0]:Int(%(return castShader(\"Dipoint\"))))\\\n"..
+		"mch[7]:Machine(xfr:Transfer(Draw)siz:Int(0))\\\n"..
+		"mch[8]:Machine(xfr:Transfer(Force)siz:Int(1)\\\n"..
+			"cfg[0]:Configure(ArgumentShader)val[0]:Int(%(return castShader(\"Adpoint\"))))\\\n"..
+		"mch[9]:Machine(xfr:Transfer(Draw)siz:Int(0))\\\n"..
+		-- TODO compare registerHint cfg registerDone val; Save registerDone cfg for compare to val 0; Force cfg for Setup and Write
+		")"},
 	{"Int","3","Str","Client(\\\n"..
 		"cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(2)idx:Int(0)slf:Int(0)\\\
 		cfg[0]:Configure(MachineIndex)val[0]:Int(0)\\\
