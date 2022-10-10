@@ -173,6 +173,9 @@ int nestEval(int i)
 	if (ret != LUA_OK && ret != LUA_YIELD) {
 		printf("lua %s\n",lua_tostring(fiber[i].lua,-1));
 		ERROR(exitErr,0);}
+	for (int j = 0; j < num; j++) if (!lua_tostring(fiber[i].lua,j-num)) {
+		printf("lua returned null: %s\n",fiber[i].exp);
+		ERROR(exitErr,0);}
 	for (int j = 0; j < num; j++) len += strlen(lua_tostring(fiber[i].lua,j-num));
 	fiber[i].str = realloc(fiber[i].str,len+1); fiber[i].str[0] = 0;
 	for (int j = 0; j < num; j++) strcat(fiber[i].str,lua_tostring(fiber[i].lua,j-num));

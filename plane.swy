@@ -41,6 +41,36 @@ func toMutable<T>(_ list:[T], _ fnc:(_:Int,_:UnsafeMutablePointer<T>)->Void)
 	fnc(list.count,ptr)
 	ptr.deallocate()
 }
+func toArray<T>(_ list: [T], _ vals: [T], _ index: Int, _ limit: Int) -> [T]
+{
+	var result = list
+	var todo = vals.count
+	var done = 0
+	var idx = index%limit
+	var bas = 0
+	if (idx > result.count) {
+		todo = todo + idx - result.count
+		bas = (vals.count - (idx - result.count) % vals.count) % vals.count
+	}
+	while (done < todo) {
+		var lim = vals.count
+		if (idx + lim - bas > limit) {
+			lim = limit - idx + bas
+		}
+		if (idx < result.count && idx + lim - bas > result.count) {
+			lim = result.count - idx + bas
+		}
+		if (idx < result.count) {
+			result[idx...(idx+lim-bas - 1)] = vals[bas...(lim-1)]
+		} else {
+			result.append(contentsOf:vals[bas...(lim-1)])
+		}
+		done = done + lim - bas
+		idx = (idx + lim - bas) % limit
+		bas = lim % vals.count
+	}
+	return result
+}
 class Pend<T>
 {
 	var pend:MTLBuffer!
@@ -253,10 +283,10 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in client.swa![sub]},idx,Int(planeConfig(SwarmSize)))
 	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in client.tex![sub]},idx,Int(planeConfig(TextureSize)))
 	case (Basisz): uniform.set(client.bas![0],\Uniform.bas)
-	case (Allmatz): uniform.set(client.all![0],\Uniform.all)
+	case (Allmatz): uniform.set(client.all![0],\Uniform.all) // TODO change to array of views
 	case (Fewmatz): matrix.set(Swift.Array(0..<siz).map() {(sub) in client.few![sub]},idx,Int(planeConfig(ObjectSize)))
-	case (Onematz): uniform.set(client.one![0],\Uniform.one)
-	case (Slicez): array = Swift.Array(0..<siz).map() {(sub) in client.rng![sub]} // TODO use idx to insert into array of size planeConfig(SliceSize)
+	case (Onematz): uniform.set(client.one![0],\Uniform.one) // TODO change to array of manipulations
+	case (Slicez): array = toArray(array,Swift.Array(0..<siz).map() {(sub) in client.rng![sub]},idx,Int(planeConfig(SliceSize)))
 	case (Configurez): for sub in Swift.Array(0..<siz) {switch client.cfg![sub] {
 		case (UniformLeft): uniform.set(client.val![sub],\Uniform.lon)
 		case (UniformBase): uniform.set(client.val![sub],\Uniform.lat)
@@ -274,9 +304,15 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Client>?)
 		case (PierceSize): uniform.set(Int(client.val![sub]),\Uniform.psz)
 		case (PierceLimit): uniform.set(Int(client.val![sub]),\Uniform.plm)
 		case (PierceIndex): uniform.set(Int(client.val![sub]),\Uniform.pid)
-		case (ObjectSize): uniform.set(Int(client.val![sub]),\Uniform.osz)
-		case (ObjectLimit): uniform.set(Int(client.val![sub]),\Uniform.olm)
-		case (ObjectIndex): uniform.set(Int(client.val![sub]),\Uniform.oid)
+		case (SubjectSize): uniform.set(Int(client.val![sub]),\Uniform.asz)
+		case (SubjectLimit): uniform.set(Int(client.val![sub]),\Uniform.alm)
+		case (SubjectIndex): uniform.set(Int(client.val![sub]),\Uniform.aid)
+		case (ObjectSize): uniform.set(Int(client.val![sub]),\Uniform.fsz)
+		case (ObjectLimit): uniform.set(Int(client.val![sub]),\Uniform.flm)
+		case (ObjectIndex): uniform.set(Int(client.val![sub]),\Uniform.fid)
+		case (ElementSize): uniform.set(Int(client.val![sub]),\Uniform.osz)
+		case (ElementLimit): uniform.set(Int(client.val![sub]),\Uniform.olm)
+		case (ElementIndex): uniform.set(Int(client.val![sub]),\Uniform.oid)
 		case (SwarmSize): uniform.set(Int(client.val![sub]),\Uniform.ssz)
 		case (SwarmLimit): uniform.set(Int(client.val![sub]),\Uniform.slm)
 		case (SwarmIndex): uniform.set(Int(client.val![sub]),\Uniform.sid)

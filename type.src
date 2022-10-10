@@ -918,7 +918,7 @@ function showConstantC(name,constant)
 	local values = {}
 	for key,val in ipairs(constant) do
 		local goon = true
-		nestInit(#val+1)
+		nestInit(#val)
 		for k,v in ipairs(val) do nestElem(k-1,v) end
 		nestScan()
 		while goon do

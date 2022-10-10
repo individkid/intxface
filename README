@@ -128,6 +128,10 @@ Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
 
+drive test AVAssetReader AVAssetWriter to and from av struct pipe.
+tape test BMD-SDK to and from av struct pipe.
+wave test IOUSBInterfaceInterface to and from av struct pipe.
+frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted and used.
 Except as noted, one hot flag sets, and expressions evaluated to numbers,
 hint how to interpret undashed unconsumed arguments to open streams.

@@ -17,9 +17,9 @@ struct Kernel {
 	struct Matrix written; // portion written
 	struct Matrix towrite; // portion to write
 };
-struct Kernel subject = {0};
+struct Kernel *subject = {0};
 struct Kernel *object = 0;
-struct Kernel element = {0};
+struct Kernel *element = {0};
 struct Pierce *pierce = 0;
 struct Pierce *found = 0;
 char **strings = 0;
@@ -64,36 +64,46 @@ void *planeRealloc(void *ptr, int siz, int tmp, int mod)
 	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
 	return result;
 }
-int planeIndex()
+struct Matrix *planePointer()
 {
-	switch ((enum Select)configure[StateSelect]) {
-		case (Subject): return 0;
-		case (Object): return configure[StateIndex];
-		case (Element): return 0;
+	int index = configure[RegisterIndex] - client.idx;
+	if (index < 0 || index >= client.siz) return 0;
+	if (client.mem != (enum Memory)configure[RegisterMemory]) return 0;
+	switch(client.mem) {
+		case (Allmatz): return client.all + index;
+		case (Fewmatz): return client.few + index;
+		case (Onematz): return client.one + index;
 		default: break;}
 	return 0;
 }
-enum Memory planeMemory()
+int planeKernelH(int offset, int base, int limit, int size)
 {
-	switch ((enum Select)configure[StateSelect]) {
-		case (Subject): return Allmatz;
-		case (Object): return Fewmatz;
-		case (Element): return Onematz;
-		defalut: break;}
-	return Memorys;
+	if (offset < base || offset >= limit) return -1;
+	return offset%size;
+}
+int planeKernelG(enum Configure offset, enum Configure base, enum Configure limit, enum Configure size)
+{
+	return planeKernelH(configure[offset],configure[base],configure[limit],configure[size]);
+}
+struct Kernel *planeKernelF(enum Configure offset, enum Configure base, enum Configure limit, enum Configure size, struct Kernel *ptr)
+{
+	int index = planeKernelG(offset,base,limit,size);
+	if (index < 0) return 0;
+	return ptr + index;
 }
 struct Kernel *planeKernel()
 {
-	switch ((enum Select)configure[StateSelect]) {
-		case (Subject): return &subject;
-		case (Object): return object+planeIndex();
-		case (Element): return &element;
+	int index = configure[RegisterIndex] - configure[ObjectIndex];
+	switch ((enum Memory)configure[RegisterMemory]) {
+		case (Allmatz): return planeKernelF(RegisterIndex,SubjectIndex,SubjectLimit,SubjectSize,subject);
+		case (Fewmatz): return planeKernelF(RegisterIndex,ObjectIndex,ObjectLimit,ObjectSize,object);
+		case (Onematz): return planeKernelF(RegisterIndex,ElementIndex,ElementLimit,ElementSize,element);
 		default: break;}
 	return 0;
 }
 planeXform planeFunc()
 {
-	switch ((enum Transform)configure[StateXform]) {
+	switch ((enum Transform)configure[RegisterXform]) {
 		case (Translate): return planeXlate;
 		case (Rotate): return planeXtate;
 		case (Scale): return planeScale;
@@ -109,19 +119,9 @@ struct Matrix *planeMatrix(enum Accumulate accumulate)
 		case (Written): return &planeKernel()->written;
 		case (Towrite): return &planeKernel()->towrite;
 		case (OfClient): {
-			struct Matrix **matrix = 0;
-			enum Memory memory = planeMemory();
-			switch (memory) {
-				case (Allmatz): matrix = &client.all; break;
-				case (Fewmatz): matrix = &client.few; break;
-				case (Onematz): matrix = &client.one; break;
-				default: return 0;}
-			if (client.mem != memory) allocMatrix(matrix,1);
-			client.cmd = configure[StateResponse];
-			client.mem = memory;
-			client.idx = planeIndex();
-			client.siz = 1; client.slf = 0;
-			return *matrix;}
+			struct Matrix *matrix = planePointer();
+			if (matrix == 0) return 0;
+			return matrix;}
 		default: break;}
 	return 0;
 }
@@ -176,15 +176,9 @@ void planePreconfig(enum Configure cfg)
 }
 void planePostconfig(enum Configure cfg, int idx)
 {
-	if (client.mem != Configurez) {
-		freeClient(&client);
-		client.cmd = configure[StateResponse];
-		client.mem = Configurez; client.idx = 0; client.siz = 0;}
-	if (idx >= client.siz) {
-		allocConfigure(&client.cfg,idx+1);
-		allocOld(&client.val,idx+1);
-		client.siz = idx+1;}
-	client.cfg[idx] = cfg; client.val[idx] = configure[cfg];
+	if (client.mem != Configurez || idx < 0 || idx >= client.siz) return;
+	client.cfg[idx] = cfg;
+	client.val[idx] = configure[cfg];
 }
 void planeReconfig(enum Configure cfg, int val)
 {
@@ -200,6 +194,23 @@ void planeReconfig(enum Configure cfg, int val)
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
 		default: break;}
 }
+void planeAlloc()
+{
+	freeClient(&client);
+	client.cmd = (enum Command)configure[ClientCommand];
+	client.mem = (enum Memory)configure[ClientMemory];
+	client.idx = configure[ClientIndex];
+	client.siz = configure[ClientSize];
+	client.slf = configure[ClientSelf];
+	switch (client.mem) {
+		case (Allmatz): allocMatrix(&client.all,client.siz); break;
+		case (Fewmatz): allocMatrix(&client.few,client.siz); break;
+		case (Onematz): allocMatrix(&client.one,client.siz); break;
+		case (Piercez): allocPierce(&client.pie,client.siz); break;
+		case (Stringz): allocStr(&client.str,client.siz); break;
+		case (Configurez): allocConfigure(&client.cfg,client.siz); allocInt(&client.val,client.siz); break;
+		default: client.siz = 0; break;}
+}
 void planeCollect() {
 	char single[2] = {0};
 	int *index = 0;
@@ -207,7 +218,28 @@ void planeCollect() {
 	index = configure + RegisterCompare;
 	if (strlen(collect) < BUFSIZE-1) strcat(collect,single);
 	for (*index = configure[StringIndex]; *index < configure[StringLimit]; (*index)++) {
-		if (strcmp(collect,strings[(int)*index%configure[StringSize]]) == 0) break;}
+		if (strcmp(collect,strings[*index%configure[StringSize]]) == 0) break;}
+}
+void planeEcho() {
+	switch (client.mem) {
+		case (Piercez): { // from some to all
+			int index = configure[RegisterIndex]%configure[PierceSize];
+			if (index < 0) index += configure[PierceSize];
+			for (int i = 0; i < client.siz; i++, index++)
+				if (index >= configure[PierceIndex] && index < configure[PierceLimit])
+					client.pie[i] = pierce[index%configure[PierceSize]];
+			break;}
+		case (Collectz): { // from only to one
+			int index = (configure[RegisterIndex]-client.idx)%client.siz;
+			if (index < 0) index += client.siz;
+			assignStr(client.col+index,collect);
+			break;}
+		case (Configurez): { // from some to all
+			int index = configure[RegisterIndex]%Configures;
+			if (index < 0) index += Configures;
+			for (int i = 0; i < client.siz; i++, index++) planePostconfig((enum Configure)(index%Configures),i);
+			break;}
+		default: break;}
 }
 int planeEscape(int lvl, int nxt)
 {
@@ -337,7 +369,9 @@ void planeWake(enum Configure hint)
 		switch (mptr->xfr) {
 			case (Read): readClient(&client,internal); break; // read internal pipe --
 			case (Write): writeClient(&client,external); break; // write external pipe --
+			case (Alloc): planeAlloc(); break; // configure to client --
 			case (Collect): planeCollect(); break; // query to collect --
+			case (Echo): planeEcho(); break; // memory to client --
 			case (Clear): identmat(planeMatrix(mptr->dst)->mat,4); break; // identity to matrix -- dst
 			case (Invert): invmat(planeMatrix(mptr->dst)->mat,4); break; // invert in matrix -- dst
 			case (Manip): planeCalculate(planeMatrix(mptr->dst)); break; // manip to matrix -- dst
