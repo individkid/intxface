@@ -56,44 +56,20 @@ Memory = {
 }
 Configure = {
 	"TriangleSize", -- refers to corners
-	"TriangleLimit",
-	"TriangleIndex",
 	"NumericSize", -- planes for corners
-	"NumericLimit",
-	"NumericIndex",
 	"VertexSize", -- corners of frame
-	"VertexLimit",
-	"VertexIndex",
+	"SubjectSize", -- per view matrix
+	"ObjectSize", -- per polytope matrix
+	"ElementSize", -- per plane matrix
+	"SwarmSize", -- early warning system
+	"TextureSize", -- how to decorate
+	"BasisSize", -- cospace converters
 	"PierceSize", -- result of compute
 	"PierceLimit",
 	"PierceIndex",
-	"SubjectSize", -- per view matrix
-	"SubjectLimit",
-	"SubjectIndex",
-	"ObjectSize", -- per polytope matrix
-	"ObjectLimit",
-	"ObjectIndex",
-	"ElementSize", -- per plane matrix
-	"ElementLimit",
-	"ElementIndex",
-	"SwarmSize", -- early warning system
-	"SwarmLimit",
-	"SwarmIndex",
-	"TextureSize", -- how to decorate
-	"TextureLimit",
-	"TextureIndex",
-	"BasisSize", -- cospace converters
-	"BasisLimit",
-	"BasisIndex",
 	"SliceSize", -- ranges per draw
-	"SliceLimit",
-	"SliceIndex",
 	"StringSize", -- to compare to
-	"StringLimit",
-	"StringIndex",
-	"MachineLimit", -- vending machine lines
-	"MachineSize",
-	"MachineIndex",
+	"MachineSize", -- vending machine lines
 	"RegisterLine", -- state of machine
 	"RegisterNest",
 	"RegisterXform",
@@ -361,41 +337,20 @@ Uniform = {
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
 	{"bas","Int",{},{}}, -- which basis to use
-	{"tsz","Int",{},{}}, -- size of trinagle buffe
+	{"tsz","Int",{},{}}, -- size of trinagle buffer
 
-	{"tlm","Int",{},{}}, -- largest triangle index
-	{"tid","Int",{},{}}, -- starting trangle index
 	{"nsz","Int",{},{}}, -- size of numeric buffer
-	{"nlm","Int",{},{}}, -- largest numeric index
-
-	{"nid","Int",{},{}}, -- starting numeric index
 	{"vsz","Int",{},{}}, -- size of vertex buffer
-	{"vlm","Int",{},{}}, -- largest vertex index
-	{"vid","Int",{},{}}, -- starting vertex index
+	{"asz","Int",{},{}}, -- size of subject buffer
+	{"fsz","Int",{},{}}, -- size of object buffer
+
+	{"osz","Int",{},{}}, -- size of element buffer
+	{"ssz","Int",{},{}}, -- size of swarm buffer
+	{"xsz","Int",{},{}}, -- size of texture buffer
+	{"bsz","Int",{},{}}, -- size of basis buffer
 
 	{"psz","Int",{},{}}, -- size of pierce buffer
-	{"plm","Int",{},{}}, -- largest pierce index
-	{"pid","Int",{},{}}, -- starting pierce index
-	{"asz","Int",{},{}}, -- size of subject buffer
-
-	{"alm","Int",{},{}}, -- largest subject index
-	{"aid","Int",{},{}}, -- starting subject index
-	{"fsz","Int",{},{}}, -- size of object buffer
-	{"flm","Int",{},{}}, -- largest object index
-
-	{"fid","Int",{},{}}, -- starting object index
-	{"osz","Int",{},{}}, -- size of element buffer
-	{"olm","Int",{},{}}, -- largest element index
-	{"oid","Int",{},{}}, -- starting element index
-
-	{"ssz","Int",{},{}}, -- size of swarm buffer
-	{"slm","Int",{},{}}, -- largest swarm index
-	{"sid","Int",{},{}}, -- starting swarm index
-	{"xsz","Int",{},{}}, -- size of texture buffer
-
-	{"xlm","Int",{},{}}, -- largest texture index
-	{"xid","Int",{},{}}, -- starting texture index
-	{"pad","Int",{},{2}},
+	{"pad","Int",{},{3}},
 }
 Triangle = {
 	{"vtx","Int",{},{4}}, -- points of triangle
@@ -458,12 +413,12 @@ Client = {
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
-	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
-	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
-	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"all","Matrix",{["mem"]={["Allmatz"]=true}},"siz"},
 	{"few","Matrix",{["mem"]={["Fewmatz"]=true}},"siz"},
 	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
+	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
+	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
+	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},

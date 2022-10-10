@@ -76,28 +76,13 @@ struct Matrix *planePointer()
 		default: break;}
 	return 0;
 }
-int planeKernelH(int offset, int base, int limit, int size)
-{
-	if (offset < base || offset >= limit) return -1;
-	return offset%size;
-}
-int planeKernelG(enum Configure offset, enum Configure base, enum Configure limit, enum Configure size)
-{
-	return planeKernelH(configure[offset],configure[base],configure[limit],configure[size]);
-}
-struct Kernel *planeKernelF(enum Configure offset, enum Configure base, enum Configure limit, enum Configure size, struct Kernel *ptr)
-{
-	int index = planeKernelG(offset,base,limit,size);
-	if (index < 0) return 0;
-	return ptr + index;
-}
 struct Kernel *planeKernel()
 {
-	int index = configure[RegisterIndex] - configure[ObjectIndex];
+	int index = configure[RegisterIndex];
 	switch ((enum Memory)configure[RegisterMemory]) {
-		case (Allmatz): return planeKernelF(RegisterIndex,SubjectIndex,SubjectLimit,SubjectSize,subject);
-		case (Fewmatz): return planeKernelF(RegisterIndex,ObjectIndex,ObjectLimit,ObjectSize,object);
-		case (Onematz): return planeKernelF(RegisterIndex,ElementIndex,ElementLimit,ElementSize,element);
+		case (Allmatz): return subject + configure[RegisterIndex] % configure[SubjectSize];
+		case (Fewmatz): return object + configure[RegisterIndex] % configure[ObjectSize];
+		case (Onematz): return element + configure[RegisterIndex] % configure[ElementSize];
 		default: break;}
 	return 0;
 }
@@ -128,7 +113,7 @@ struct Matrix *planeMatrix(enum Accumulate accumulate)
 struct Pierce *planePierce()
 {
 	if (found) return found;
-	for (int i = configure[PierceIndex]; i < configure[PierceLimit]; i++) {
+	for (int i = 0; i < configure[PierceSize]; i++) {
 		struct Pierce *temp = pierce + i%configure[PierceSize];
 		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
 	return found;
@@ -186,7 +171,9 @@ void planeReconfig(enum Configure cfg, int val)
 	configure[cfg] = val;
 	switch (cfg) {
 		case (PierceSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
+		case (SubjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
+		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (StringSize): {
 		for (int i = val; i < tmp; i++) free(strings[i]);
 		strings = planeRealloc(strings,val,tmp,sizeof(char *));
@@ -217,8 +204,8 @@ void planeCollect() {
 	single[0] = callInfo(ButtonPress); single[1] = 0;
 	index = configure + RegisterCompare;
 	if (strlen(collect) < BUFSIZE-1) strcat(collect,single);
-	for (*index = configure[StringIndex]; *index < configure[StringLimit]; (*index)++) {
-		if (strcmp(collect,strings[*index%configure[StringSize]]) == 0) break;}
+	for (*index = 0; *index < configure[StringSize]; (*index)++) {
+		if (strcmp(collect,strings[*index]) == 0) break;}
 }
 void planeEcho() {
 	switch (client.mem) {
@@ -226,8 +213,7 @@ void planeEcho() {
 			int index = configure[RegisterIndex]%configure[PierceSize];
 			if (index < 0) index += configure[PierceSize];
 			for (int i = 0; i < client.siz; i++, index++)
-				if (index >= configure[PierceIndex] && index < configure[PierceLimit])
-					client.pie[i] = pierce[index%configure[PierceSize]];
+				client.pie[i] = pierce[index%configure[PierceSize]];
 			break;}
 		case (Collectz): { // from only to one
 			int index = (configure[RegisterIndex]-client.idx)%client.siz;
@@ -246,7 +232,7 @@ int planeEscape(int lvl, int nxt)
 	int level = configure[RegisterNest];
 	int inc = (lvl > 0 ? 1 : -1);
 	lvl *= inc;
-	while (lvl > 0 && (nxt += inc) < configure[MachineLimit]) if (machine[nxt].xfr == Nest) {
+	while (lvl > 0 && (nxt += inc) < configure[MachineSize]) if (machine[nxt].xfr == Nest) {
 	lvl += machine[nxt].idx*inc; configure[RegisterNest] += machine[nxt].idx*inc;}
 	return nxt;
 }
@@ -348,9 +334,9 @@ int planeEval(const char *str, int arg)
 void planeWake(enum Configure hint)
 {
 	configure[RegisterHint] = hint;
-	if (configure[RegisterLine] < configure[MachineIndex] || configure[RegisterLine] >= configure[MachineLimit]) configure[RegisterLine] = configure[MachineIndex];
-	while (configure[RegisterLine] >= configure[MachineIndex] && configure[RegisterLine] < configure[MachineLimit]) {
-		struct Machine *mptr = machine+configure[RegisterLine]%configure[MachineSize];
+	if (configure[RegisterLine] < 0 || configure[RegisterLine] >= configure[MachineSize]) configure[RegisterLine] = 0;
+	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize]) {
+		struct Machine *mptr = machine+configure[RegisterLine];
 		int next = configure[RegisterLine]+1;
 		int accum = 0;
 		int size = 0;
