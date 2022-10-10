@@ -82,6 +82,9 @@ Configure = {
 	"TextureSize", -- how to decorate
 	"TextureLimit",
 	"TextureIndex",
+	"BasisSize", -- cospace converters
+	"BasisLimit",
+	"BasisIndex",
 	"SliceSize", -- ranges per draw
 	"SliceLimit",
 	"SliceIndex",
@@ -112,10 +115,13 @@ Configure = {
 	"ClosestBase",
 	"ClosestNear",
 	"ClosestFound",
+	"UniformAll", -- which subject matrix
+	"UniformOne", -- which element matrix
 	"UniformLeft", -- pierce point horizontal
 	"UniformBase", -- pierce pont vertical
 	"UniformIndex", -- manipulate plane select
 	"UniformSize", -- early warning points
+	"UniformBasis", -- which cospace basis
 	"WindowLeft", -- window into screen
 	"WindowBase",
 	"WindowWide",
@@ -347,8 +353,6 @@ Event = {
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
 Uniform = {
-	{"bas","Old",{},{3,3,4}},
-
 	{"all","Int",{},{}}, -- which subject to use
 	{"one","Int",{},{}}, -- which element to use
 	{"lon","Old",{},{}}, -- horizontal axis of cursor
@@ -356,41 +360,42 @@ Uniform = {
 
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
-	{"tsz","Int",{},{}}, -- size of trinagle buffer
-	{"tlm","Int",{},{}}, -- largest triangle index
+	{"bas","Int",{},{}}, -- which basis to use
+	{"tsz","Int",{},{}}, -- size of trinagle buffe
 
+	{"tlm","Int",{},{}}, -- largest triangle index
 	{"tid","Int",{},{}}, -- starting trangle index
 	{"nsz","Int",{},{}}, -- size of numeric buffer
 	{"nlm","Int",{},{}}, -- largest numeric index
-	{"nid","Int",{},{}}, -- starting numeric index
 
+	{"nid","Int",{},{}}, -- starting numeric index
 	{"vsz","Int",{},{}}, -- size of vertex buffer
 	{"vlm","Int",{},{}}, -- largest vertex index
 	{"vid","Int",{},{}}, -- starting vertex index
-	{"psz","Int",{},{}}, -- size of pierce buffer
 
+	{"psz","Int",{},{}}, -- size of pierce buffer
 	{"plm","Int",{},{}}, -- largest pierce index
 	{"pid","Int",{},{}}, -- starting pierce index
 	{"asz","Int",{},{}}, -- size of subject buffer
-	{"alm","Int",{},{}}, -- largest subject index
 
+	{"alm","Int",{},{}}, -- largest subject index
 	{"aid","Int",{},{}}, -- starting subject index
 	{"fsz","Int",{},{}}, -- size of object buffer
 	{"flm","Int",{},{}}, -- largest object index
-	{"fid","Int",{},{}}, -- starting object index
 
+	{"fid","Int",{},{}}, -- starting object index
 	{"osz","Int",{},{}}, -- size of element buffer
 	{"olm","Int",{},{}}, -- largest element index
 	{"oid","Int",{},{}}, -- starting element index
-	{"ssz","Int",{},{}}, -- size of swarm buffer
 
+	{"ssz","Int",{},{}}, -- size of swarm buffer
 	{"slm","Int",{},{}}, -- largest swarm index
 	{"sid","Int",{},{}}, -- starting swarm index
 	{"xsz","Int",{},{}}, -- size of texture buffer
-	{"xlm","Int",{},{}}, -- largest texture index
 
+	{"xlm","Int",{},{}}, -- largest texture index
 	{"xid","Int",{},{}}, -- starting texture index
-	{"pad","Int",{},{3}},
+	{"pad","Int",{},{2}},
 }
 Triangle = {
 	{"vtx","Int",{},{4}}, -- points of triangle
@@ -423,7 +428,8 @@ Matrix = {
 	{"mat","Old",{},{16}},
 }
 Basis = {
-	{"mat","Vector",{},{9}},
+	{"mat","Old",{},{27}},
+	{"pad","Old",{},{}},
 }
 Slice = {
 	{"idx","Int",{},{}},
