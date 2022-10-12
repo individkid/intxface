@@ -350,7 +350,9 @@ Uniform = {
 	{"bsz","Int",{},{}}, -- size of basis buffer
 
 	{"psz","Int",{},{}}, -- size of pierce buffer
-	{"pad","Int",{},{3}},
+	{"pid","Int",{},{}}, -- start in pierce buffer
+	{"plm","Int",{},{}}, -- limit in pierce buffer
+	{"pad","Int",{},{}},
 }
 Triangle = {
 	{"vtx","Int",{},{4}}, -- points of triangle

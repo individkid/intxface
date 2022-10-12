@@ -127,6 +127,7 @@ void nestInit(int siz)
 {
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
+	for (int i = 0; i < lsiz; i++) if (line[i]) {free(line[i]); line[i] = 0;}
 	if (siz) {rslt = realloc(rslt,siz*sizeof(char *)); line = realloc(line,siz*sizeof(char *));}
 	else {free(rslt); rslt = 0; free(line); line = 0;}
 	for (int i = lsiz; i < siz; i++) {rslt[i] = 0; line[i] = 0;}
@@ -138,7 +139,7 @@ void nestElem(int i, const char *str)
 	line[i] = realloc(line[i],strlen(str)+1);
 	strcpy(line[i],str);
 }
-int nestScan()
+void nestScan()
 {
 	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
 	if (dim) nestFree();
@@ -159,7 +160,6 @@ int nestScan()
 		fiber[dim].lua = 0;
 		fiber[dim].top = 0;
 		fiber[dim].idx = i;}}
-	return dim;
 }
 int nestEval(int i)
 {
@@ -224,13 +224,8 @@ int nestElemLua(lua_State *L)
 }
 int nestScanLua(lua_State *L)
 {
-	lua_pushnumber(L,nestScan());
-	return 1;
-}
-int nestEvalLua(lua_State *L)
-{
-	lua_pushnumber(L,nestEval((int)lua_tonumber(L,1)));
-	return 1;
+	nestScan();
+	return 0;
 }
 int nestPassLua(lua_State *L)
 {
@@ -253,8 +248,6 @@ int luaopen_nest(lua_State *L)
 	lua_setglobal(L, "nestElem");
 	lua_pushcfunction(L, nestScanLua);
 	lua_setglobal(L, "nestScan");
-	lua_pushcfunction(L, nestEvalLua);
-	lua_setglobal(L, "nestEval");
 	lua_pushcfunction(L, nestPassLua);
 	lua_setglobal(L, "nestPass");
 	lua_pushcfunction(L, nestReplLua);
