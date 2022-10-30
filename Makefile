@@ -2,7 +2,7 @@
 .SUFFIXES:
 .DELETE_ON_ERROR:
 
-all: type.dep typer.dep facer.log typra.log typer.log filer.log planer.log spacra.log hole line plane space spacra
+all: type.dep typer.dep facer.log typra.log typer.log filer.log planer.log spacra.log hole line plane space spacra share
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
@@ -118,7 +118,7 @@ clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f plane.sw plane.cpp plane.g
-	rm -f typra facer typer filer planra spacra
+	rm -f typra facer typer filer planra spacra share
 	rm -f hole file line plane space
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm

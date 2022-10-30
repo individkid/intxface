@@ -149,23 +149,15 @@ Position of stream opens on command line indicates usage in flow control context
  -g inet output and input
  -h lua output and input
  -i input descriptors (output descriptor is cached)
- -j jump or set (flow takes constant or script)
- -k forward or back (flow takes constant or script)
+ -j other descriptor (skip count for ungiven descriptor)
+ -k open or close (flow takes constant or script)
  -l loop or break (flow takes constant or script)
- -m open or close (flow takes constant or script)
- -n type name or varies (argument to pass to stream factory)
+ -m type name or varies (argument to pass to stream factory)
+ -n field name or whole (read to and write from field)
  -o output descriptors (input descriptor is cached)
  -p pipe descriptor output or input
  -q fifo output and input
  -rstuvwxyz control delay and parallelism
- --read AVAssetReader to pipe av structs from file names.
- --save AVAssetWriter to pipe av structs to file names.
- --tape BMD-SDK to pipe av structs from hdmi.
- --show BMD-SDK pipe av structs to hdmi.
- --wave IOUSBInterfaceInterface to pipe av structs from usb waveform.
- --prog IOUSBInterfaceInterface to pipe av structs to usb waveform.
- --view AVPlayerView to pipe av structs to display.
- --desk AVCaptureScreenInput to pipe av structs from screen capture.
 
 edit test file handle per tab or window.
 This presents a readonly scrollable searchable highlightable text widget,

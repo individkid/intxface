@@ -3,7 +3,6 @@
 #include "nest.h"
 #include "metic.h"
 #include "type.h"
-#include "share.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>

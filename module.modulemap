@@ -7,9 +7,6 @@ module type {
 module argx {
 	header "argx.h"
 }
-module share {
-	header "share.h"
-}
 module plane {
 	header "plane.h"
 }

@@ -125,6 +125,7 @@ function listDepend(top,rule)
 end
 function pushError(push)
 	io.stdout:write(" pushError "..push)
+	if push == "" then io.stdout:write("blank\n"); os.exit() end
 	todo[#todo+1] = push
 	if not copy[push] then copy[push] = {} end
 	if not done[push] then done[push] = {} end

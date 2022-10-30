@@ -116,31 +116,6 @@ void moveIdent(int idx0, int idx1)
 	outerr[idx1] = outerr[idx0];
 	closeIdent(idx0);
 }
-int puntIdent(int idx, pftype fnc)
-{
-	// TODO here and below search backwards if cache == Rev
-	for (int i = 0; i < lim; i++)
-	if (fdt[i] == Punt && inp[i] == idx && rfn[i] == fnc) return i;
-	return -1;
-}
-int quntIdent(int idx, qftype fnc)
-{
-	for (int i = 0; i < lim; i++)
-	if (fdt[i] == Punt && out[i] == idx && wfn[i] == fnc) return i;
-	return -1;
-}
-int raitIdent(int rfd)
-{
-	for (int i = 0; i< lim; i++)
-	if (fdt[i] == Wait && inp[i] == rfd) return i;
-	return -1;
-}
-int waitIdent(int wfd)
-{
-	for (int i = 0; i< lim; i++)
-	if (fdt[i] == Wait && out[i] == wfd) return i;
-	return -1;
-}
 int findIdent(const char *str)
 {
 	struct stat old;
@@ -284,17 +259,19 @@ int forkExec(const char *exe)
 }
 int pipeInit(const char *av1, const char *av2)
 {
-	int val, rfd, wfd, rdx, wdx;
+	int val, rfd, wfd;
 	if (!av1 || !av2) return -1;
 	val = sscanf(av1,"%d",&rfd); if (val != 1) return -1;
 	val = sscanf(av2,"%d",&wfd); if (val != 1) return -1;
-	rdx = raitIdent(rfd);
-	wdx = waitIdent(wfd);
-	if (rdx != -1 && wdx != -1 && rdx == wdx) val = rdx;
-	else if (rdx != -1 && wdx == -1 && out[rdx] == 0) val = rdx;
-	else if (rdx == -1 && wdx != -1 && inp[wdx] == 0) val = wdx;
-	else if (lim == NUMOPEN) return -1;
-	else val = lim++;
+	// TODO here and below search backwards if cache == Rev
+	// TODO allow unused descriptor to be negative incremented when skipped
+	for (val = 0; val < lim; val++) if (fdt[val] == Wait &&
+	(wfd == 0 || out[val] == 0 || out[val] == wfd) &&
+	(rfd == 0 || inp[val] == 0 || inp[val] == rfd)) break;
+	if (val < lim && rfd == 0) rfd = inp[val];
+	if (val < lim && wfd == 0) wfd = out[val];
+	if (val == lim && lim == NUMOPEN) return -1;
+	if (val == lim) lim++;
 	inp[val] = rfd;
 	out[val] = wfd;
 	fdt[val] = Wait;
@@ -306,21 +283,21 @@ int pipeInit(const char *av1, const char *av2)
 }
 int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 {
-	int val, rdx, wdx;
-	rdx = puntIdent(rfd,rpf);
-	wdx = quntIdent(wfd,wpf);
-	if (rdx != -1 && wdx != -1 && rdx == wdx) val = rdx;
-	else if (rdx != -1 && wdx == -1 && wfn[rdx] == 0) val = rdx;
-	else if (rdx == -1 && wdx != -1 && rfn[wdx] == 0) val = wdx;
-	else if (lim == NUMOPEN) return -1;
-	else val = lim++;
-	fdt[lim] = Punt;
-	inp[lim] = rfd;
-	out[lim] = wfd;
-	pid[lim] = 0;
-	rfn[lim] = rpf;
-	wfn[lim] = wpf;
-	return lim++;
+	int val;
+	for (val = 0; val < lim; val++) if (fdt[val] == Punt &&
+	(wfd == 0 || out[val] == 0 || out[val] == wfd) &&
+	(rfd == 0 || inp[val] == 0 || inp[val] == rfd)) break;
+	if (val < lim && rfd == 0) {rfd = inp[val]; rpf = rfn[val];}
+	if (val < lim && wfd == 0) {wfd = out[val]; wpf = wfn[val];}
+	if (val == lim && lim == NUMOPEN) return -1;
+	if (val == lim) lim++;
+	fdt[val] = Punt;
+	inp[val] = rfd;
+	out[val] = wfd;
+	pid[val] = 0;
+	rfn[val] = rpf;
+	wfn[val] = wpf;
+	return val;
 }
 int pselectAny(struct timespec *dly, int msk)
 {
