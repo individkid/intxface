@@ -1,7 +1,7 @@
 #include "plane.h"
 #include "face.h"
 #include "nest.h"
-#include "metic.h"
+#include "metx.h"
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>

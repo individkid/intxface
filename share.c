@@ -1,4 +1,5 @@
 #include "argx.h"
+#include "memx.h"
 
 int main(int argc, char **argv)
 {
@@ -14,5 +15,6 @@ int main(int argc, char **argv)
 	// TODO call addDflt for default behavior
 	for (int i = 1; i < argc; i++) useArgument(argv[i]);
 	runProgram();
+	helloOkAgain();
 	return 0;
 }

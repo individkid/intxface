@@ -67,20 +67,28 @@ function findDepend(pat,ext,exp,suf)
 		if not (retval == "") then break end
 	end
 	filelist:close()
-	if retval == "" then io.stdout:write("\n"); io.stderr:write("findDepend "..pat.." "..ext.."\n"); os.exit() end
 	return retval
 end
 function sourceDepend(name)
-	return findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(",".c")
+	local retval = findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(",".c")
+	if retval == "" then io.stdout:write("\n"); io.stderr:write("sourceDepend "..name.."\n"); os.exit() end
+	return retval
 end
 function objectDepend(name)
-	return findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","C.o")
+	local retval = findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","C.o")
+	if retval == "" then retval = findDepend(name,".cpp","^extern[%s]*\"C\".*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","Cpp.o") end
+	if retval == "" then io.stdout:write("\n"); io.stderr:write("objectDepend "..name.."\n"); os.exit() end
+	return retval
 end
 function moduleDepend(name)
-	return findDepend(name,".hs","^module ([a-zA-Z]*) where",".hs")
+	local retval = findDepend(name,".hs","^module ([a-zA-Z]*) where",".hs")
+	if retval == "" then io.stdout:write("\n"); io.stderr:write("moduleDepend "..name.."\n"); os.exit() end
+	return retval
 end
 function classDepend(name)
-	return findDepend(name,".hs","^data [a-zA-Z]* = ([a-zA-Z]*)$",".hs")
+	local retval = findDepend(name,".hs","^data [a-zA-Z]* = ([a-zA-Z]*)$",".hs")
+	if retval == "" then io.stdout:write("\n"); io.stderr:write("classDepend "..name.."\n"); os.exit() end
+	return retval
 end
 execMap = {{"C","C.o"},{"Cpp","Cpp.o"},{"Hs",".hs"},{"A",".agda"},{"Lua",".lua"},{"M","M.o"},{"Sw","Sw.o"}}
 sharedMap = {{"G%.so","G.o"},{"%.so","C.o"}}
@@ -313,7 +321,7 @@ pushError("all")
 io.stdout:write("\n")
 while #todo > 0 do
 	checkSetup()
-	-- debugTodo()
+	debugTodo()
 	if checkCopy() and checkMake() then popError() end
 end
 io.stdout:write("all done\n")

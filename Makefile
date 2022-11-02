@@ -59,17 +59,17 @@ spacra.log:
 	ln -f $< $@
 
 %C: %C.o
-	$(CXX) -o $@ $(filter %C.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Cpp: %Cpp.o
-	$(CXX) -o $@ $< $(filter %C.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
-	$(GHC) -o $@ $< $(filter %C.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
+	$(GHC) -o $@ $< $(filter %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %M: %M.o
-	$(CXX) -o $@ $< $(filter %C.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ $< $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Sw: %Sw.o
-	$(SWC) -o $@ $< $(filter %C.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(SWC) -o $@ $< $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 
 %.so: %C.o
 	$(CC) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
