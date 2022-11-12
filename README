@@ -133,30 +133,34 @@ tape test BMD-SDK to and from av struct pipe.
 wave test IOUSBInterfaceInterface to and from av struct pipe.
 frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted and used.
-Except as noted, one hot flag sets, and expressions evaluated to numbers,
-hint how to interpret undashed unconsumed arguments to open streams.
-Expressions consumed as hints to streams are evaluated once.
-Expressions saved as flow control are repeatedly evaluated.
-Double dash arguments consume expressions and ignore hints to open stream.
-Position of stream opens on command line indicates usage in flow control context.
-
- -a text descriptors (text to/from stream converted)
- -b binary descriptors (data to/from stream not converted)
- -c side effects (nesting flow control no-opcode)
- -d delay to wait for input (zero for infinite)
- -e executable output and input
- -f file output and input
- -g inet output and input
- -h lua output and input
- -i input descriptors (output descriptor is cached)
- -j other descriptor (skip count for ungiven descriptor)
- -k open or close (flow takes constant or script)
- -l loop or break (flow takes constant or script)
- -m type name or varies (argument to pass to stream factory)
- -n field name or whole (read to and write from field)
- -o output descriptors (input descriptor is cached)
- -p pipe descriptor output or input
- -q fifo output and input
+each argument sets up an argument for "factory flow" which sets up an argument first.
+"pipe" arguments get arguments through memx from face functions.
+"nest path" arguments control flow, or get arguments from the past.
+"delay" "instead" and "aswell" access current or past accumulated arguments.
+argx has function to set number of arguments,
+add per dash argument given arguments and string,
+add per dash opcode (nesting argument reference collect).
+ -a type or varies (factory argumewnt)
+ -b field or whole (factory argument)
+ -c factory flow (operation name)
+  encode decode insert extract read write filter copy
+ -d flow delay (zero for infinite)
+ -e executable pipe (executable name)
+ -f file pipe (file name)
+ -g fifo pipe (file name)
+ -h inet pipe (host port)
+ -i input from (nest path)
+ -j loop or break (nest path)
+  +/- for forward/backward, (/)/= for enter/exit/skip
+ -k open or close (nest count)
+ -l lua pipe (script string)
+ -m instead from (nest path)
+ -n aswell from (nest path)
+  face idents for delay are instead or aswell at path
+ -o output from (nest path)
+  input or output ident for factory is at path
+ -p output pipe (descrptor)
+ -q input pipe (descriptor)
  -rstuvwxyz control delay and parallelism
 
 edit test file handle per tab or window.

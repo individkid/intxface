@@ -1,53 +1,41 @@
-#define NUMNEST 256
-#define NUMMODE 16
-#define NUMDFLT 64
-typedef void (*nftype)(int idx, int *typ, int *siz, void **dat);
-typedef void (*mftype)(int idx, int *siz, void **dat);
-enum Argx {
-	FlowArgx, // data flow stream
-	NoneArgx, // just execute script
-	WaitArgx, // pselect on inputs
-	JumpArgx, // loop break nest
-	NestArgx, // nesting control
-	ArgxArgx
+#define NUMARGX 256
+struct ArgxNest;
+typedef void (*nftype)(int idx, struct ArgxNest *nst);
+typedef void *(*mftype)(int idx, struct ArgxNest *nst);
+typedef int (*oftype)(int idx, struct ArgxNest *nst);
+enum ArgxTag {
+	FlowTag, // data flow stream
+	JumpTag, // loop break nest
+	NestTag, // nesting control
+	NoopTag, // data container
+	ArgxTags
+};
+enum ArgxStep {
+	FwdSkpStep,
+	RevSkpStep,
+	FwdEntStep,
+	RevEntStep,
+	FwdExtStep,
+	RevExtStep,
+	ArgxSteps
 };
 struct ArgxNest {
-	enum Argx opc; // type of data flow control step
-	int cnt; // nesting or jump count
-	int typ; // type to pass to stream
-	int idx; // file descriptor for stream
-	nftype fnc; // str fnc or gnc if FlowArgx
-	mftype gnc; // str fnc or gnc if FlowArgx
-	const char *str; // punt stream or nesting count
+	enum ArgxTag opt; // type of data flow control step
+	int idx; // dash char from before str
+	const char *str; // string after dash option
+	void *arg; // configuration data
+	union {
+		nftype fnc;
+		mftype gnc;
+		oftype hnc;
+	};
 };
-typedef struct ArgxNest (*fftype)(const char *arg, int *mod);
-struct ArgxCnst {
-	const char *str; // zero if value is constant idx
-	int cnt; // ignored if str is not zero
-};
-fftype setFactory(fftype fnc);
-int setArg(int val, int idx);
-const char *setMode(const char *str);
-int addFlags(const char *str, int idx);
-int addConst(const char *str, int idx);
-int addMulti(const char *str, int mod);
-int addElem(int dim, int idx, int arg);
+int nestJump(int idx, struct ArgxNest *nst, void *jmp);
+int addFlow(const char *opt, nftype fnc);
+int addJump(const char *opt, mftype gnc);
+int addNest(const char *opt, oftype hnc);
+int useAcum(int idx);
+int useHist(int idx);
+int useNoop();
 int useArgument(const char *str);
 void runProgram();
-void initLua();
-enum Share {
-	WrapShare,
-	FlowShare,
-	GateShare,
-	TypeShare,
-	FieldShare,
-	SkipShare,
-	ShareShare
-};
-struct ArgxNest argxFactory(const char *arg, int *mod);
-enum Dflt {
-	ArgxDflt, // set arg to default
-	JumpDflt, // continue or break
-	NestDflt, // open or close nest
-	DfltDflt
-};
