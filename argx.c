@@ -14,9 +14,39 @@ int lpt = 0; // number of types
 int use = 0; // which fnc to use
 int dsh = 0; // which dash matched
 
+int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
+{
+	int dpt = 0;
+	if (dir > 1 || dir < -1 || dir == 0) ERROR(exitErr,0);
+	if (cmp > 1 || cmp < -1 || cmp == 0) ERROR(exitErr,0);
+	while (idx >= 0 && idx < lst && cnt > 0) {
+		int cnd = 0; // maybe count if flow or nest exit
+		if (nst[idx].opt == NestTag) {
+			int dif = nst[idx].hnc(idx,nst);
+			dpt += dir*dif;
+			cnd = ((dir > 0) != (dif > 0));}
+		if (nst[idx].opt == FlowTag) cnd = 1;
+		// count if given level is given relation to nest level
+		if (cnd && ((cmp > 0) == (dpt > lvl) || dpt == lvl)) cnt -= 1;
+		idx += dir;}
+	return idx;
+}
 int nestJump(int idx, struct ArgxNest *nst, void *jmp)
 {
-	return 0;
+	int stp = 0;
+	while (idx >= 0 && idx < lst) {
+		enum ArgxStep dir = memxInt(memxElem(memxElem(jmp,stp),0));
+		int cnt = memxInt(memxElem(memxElem(jmp,stp),1));
+		switch (dir) {
+		case (FwdSkpStep): idx = nestJumpF(idx,1,cnt,-1,0); break;
+		case (RevSkpStep): idx = nestJumpF(idx,-1,cnt,-1,0); break;
+		case (FwdEntStep): idx = nestJumpF(idx,1,1,1,cnt); break;
+		case (RevEntStep): idx = nestJumpF(idx,-1,1,1,cnt); break;
+		case (FwdExtStep): idx = nestJumpF(idx,1,1,-1,-cnt); break;
+		case (RevExtStep): idx = nestJumpF(idx,-1,1,-1,-cnt); break;
+		default: break;}
+	}
+	return lst;
 }
 int addFlow(const char *str, nftype nft)
 {

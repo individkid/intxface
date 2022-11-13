@@ -36,7 +36,5 @@ int main(int argc, char **argv)
 	acum = useAcum(face); // accumulated face idx
 	hist = useHist(acum); // history of accumulated face idx
 	runProgram();
-	helloOkAgain();
-	debugStr("hello ok again");
 	return 0;
 }
