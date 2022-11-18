@@ -48,50 +48,36 @@ int nestJump(int idx, struct ArgxNest *nst, void *jmp)
 	}
 	return lst;
 }
-int addFlow(const char *str, nftype nft)
+int addFlow(const char *str, nftype nft, nftype nit)
 {
 	if (lpt == NUMARGX) ERROR(exitErr,0);
 	opt[lpt] = str;
 	fnc[lpt].opt = FlowTag;
 	fnc[lpt].fnc = nft;
+	fnc[lpt].nit = nit;
 	return lpt++;
 }
-int addJump(const char *str, mftype mft)
+int addJump(const char *str, mftype mft, nftype nit)
 {
 	if (lpt == NUMARGX) ERROR(exitErr,0);
 	opt[lpt] = str;
 	fnc[lpt].opt = JumpTag;
 	fnc[lpt].gnc = mft;
+	fnc[lpt].nit = nit;
 	return lpt++;
 }
-int addNest(const char *str, oftype oft)
+int addNest(const char *str, oftype oft, nftype nit)
 {
 	if (lpt == NUMARGX) ERROR(exitErr,0);
 	opt[lpt] = str;
 	fnc[lpt].opt = NestTag;
 	fnc[lpt].hnc = oft;
+	fnc[lpt].nit = nit;
 	return lpt++;
 }
-int useAcum(int idx)
+int useLocation(const char *opt)
 {
-	if (lpt == NUMARGX) ERROR(exitErr,0);
-	fnc[lpt].opt = NoopTag;
-	fnc[lpt].arg = memxAcum(fnc[idx].arg);
-	return lpt++;
-}
-int useHist(int idx)
-{
-	if (lpt == NUMARGX) ERROR(exitErr,0);
-	fnc[lpt].opt = NoopTag;
-	fnc[lpt].arg = memxHist(fnc[idx].arg);
-	return lpt++;
-}
-int useNoop()
-{
-	if (lpt == NUMARGX) ERROR(exitErr,0);
-	fnc[lpt].opt = NoopTag;
-	fnc[lpt].arg = memxNoop();
-	return lpt++;
+	return lst++; // TODO remember opt for flows to cache into lst
 }
 int useArgument(const char *str)
 {
@@ -105,6 +91,7 @@ int useArgument(const char *str)
 		nst[lst] = fnc[use];
 		nst[lst].idx = dsh;
 		nst[lst].str = str;
+		nst[lst].nit(lst,nst);
 		lst++;}
 	return result;
 }

@@ -1,0 +1,9 @@
+Add wave.cpp to convert digiscope into struct AV pipe, and tape.cpp to convert BMD to and from struct AV pipe, and frame.cpp to display and capture AV between screen and struct AV pipe.
+
+Add phone.cpp that inputs and outputs audio to AV pipe. Finish line.cpp. Write stomp.lua that mixes audio. Make stomp box that adds phase shifted locked delayed audio.
+
+Put in microcode stubs. Add planer.lua that writes points, array, configurations, requests read, and reads pierce point. Incrementally replace stubs with microcode.
+
+Finish space.hs, and enhance quick checks. Write sculpt.lua that starts file plane space, loads complete plane machine, and optionally runs tests with warps.
+
+Write play.lua that integrates files, audio, video, and polytopes. Plug BMD into Mac. Plug Digiscope and Audient into Dell. Test hole.cpp between Dell and Mac. Connect and use Roland.

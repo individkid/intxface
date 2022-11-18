@@ -24,6 +24,7 @@ struct ArgxNest {
 	int idx; // dash char from before str
 	const char *str; // string after dash option
 	void *arg; // configuration data
+	nftype nit;
 	union {
 		nftype fnc;
 		mftype gnc;
@@ -31,11 +32,9 @@ struct ArgxNest {
 	};
 };
 int nestJump(int idx, struct ArgxNest *nst, void *jmp);
-int addFlow(const char *opt, nftype fnc);
-int addJump(const char *opt, mftype gnc);
-int addNest(const char *opt, oftype hnc);
-int useAcum(int idx);
-int useHist(int idx);
-int useNoop();
+int addFlow(const char *opt, nftype fnc, nftype nit);
+int addJump(const char *opt, mftype gnc, nftype nit);
+int addNest(const char *opt, oftype hnc, nftype nit);
+int useLocation(const char *opt);
 int useArgument(const char *str);
 void runProgram();
