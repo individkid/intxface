@@ -35,8 +35,8 @@ int nestJump(int idx, struct ArgxNest *nst, void *jmp)
 {
 	int stp = 0;
 	while (idx >= 0 && idx < lst) {
-		enum ArgxStep dir = memxInt(memxElem(memxElem(jmp,stp),0));
-		int cnt = memxInt(memxElem(memxElem(jmp,stp),1));
+		enum ArgxStep dir = memxInt(memxSkip(memxSkip(jmp,stp),0));
+		int cnt = memxInt(memxSkip(memxSkip(jmp,stp),1));
 		switch (dir) {
 		case (FwdSkpStep): idx = nestJumpF(idx,1,cnt,-1,0); break;
 		case (RevSkpStep): idx = nestJumpF(idx,-1,cnt,-1,0); break;
