@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 	addFlow(flow,runFlow,useFlow);
 	addJump("j",runJump,useJump);
 	addNest("k",runNest,useNest);
-	face = useLocation(""); // TODO identify dashes that get idx from face.h
+	face = useLocation("",memxKeep); // TODO identify dashes that get idx from face.h
 	// TODO call useLocation for type, field, input, output
 	for (int i = 1; i < argc; i++) useArgument(argv[i]);
 	runProgram();

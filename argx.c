@@ -1,4 +1,3 @@
-#include "proto.h"
 #include "argx.h"
 #include "memx.h"
 #include <stdio.h>
@@ -11,6 +10,10 @@ int lst = 0; // number of steps
 const char *opt[NUMARGX] = {0}; // dash option types
 struct ArgxNest fnc[NUMARGX] = {0}; // function to use
 int lpt = 0; // number of types
+const char *col[NUMARGX] = {0}; // dash option types
+zftype cft[NUMARGX] = {0}; // collection type
+int cdx[NUMARGX] = {0}; // collection index
+int lol = 0; // number of collections
 int use = 0; // which fnc to use
 int dsh = 0; // which dash matched
 
@@ -75,9 +78,12 @@ int addNest(const char *str, oftype oft, nftype nit)
 	fnc[lpt].nit = nit;
 	return lpt++;
 }
-int useLocation(const char *opt)
+int useLocation(const char *opt, zftype zft)
 {
-	return lst++; // TODO remember opt for flows to cache into lst
+	col[lol] = opt;
+	cft[lol] = zft;
+	cdx[lol++] = lst;
+	return lst++;
 }
 int useArgument(const char *str)
 {

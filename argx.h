@@ -1,3 +1,4 @@
+#include "proto.h"
 #define NUMARGX 256
 struct ArgxNest;
 typedef void (*nftype)(int idx, struct ArgxNest *nst);
@@ -35,6 +36,6 @@ int nestJump(int idx, struct ArgxNest *nst, void *jmp);
 int addFlow(const char *opt, nftype fnc, nftype nit);
 int addJump(const char *opt, mftype gnc, nftype nit);
 int addNest(const char *opt, oftype hnc, nftype nit);
-int useLocation(const char *opt);
+int useLocation(const char *opt, zftype vft);
 int useArgument(const char *str);
 void runProgram();

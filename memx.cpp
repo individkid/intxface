@@ -28,7 +28,7 @@ extern "C" void memxMark(void **mem)
 extern "C" void memxDone(void **mem)
 {
 }
-extern "C" void memxCall(void **mem, void (*call)(void **mem, void *giv), void *giv)
+extern "C" void memxCall(void **mem, zftype fnc, void **giv)
 {
 }
 extern "C" void *memxFirst(void *giv)

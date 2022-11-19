@@ -34,6 +34,7 @@ typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*lftype)(int *val, const char *typ, const char *str, int *siz);
+typedef void (*zftype)(void **mem, void *giv);
 
 enum Prototype {
 	Cftype,
