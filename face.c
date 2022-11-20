@@ -339,13 +339,21 @@ int waitAny()
 {
 	return pselectAny(0,-1);
 }
-int pauseAny(double dly)
+int waitMsk(int msk)
+{
+	return pselectAny(0,msk);
+}
+int pauseMsk(double dly, int msk)
 {
 	struct timespec delay = {0};
 	if (dly == 0.0) return waitAny();
 	delay.tv_sec = (long long)dly;
 	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
-	return pselectAny(&delay,-1);
+	return pselectAny(&delay,msk);
+}
+int pauseAny(double dly)
+{
+	return pauseMsk(dly,-1);
 }
 void waitAll()
 {

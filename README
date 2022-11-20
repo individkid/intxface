@@ -162,6 +162,8 @@ add per dash opcode (nesting argument reference collect).
  -p output pipe (descrptor)
  -q input pipe (descriptor)
  -rstuvwxyz control delay and parallelism
+ -efghlpq update face latch and faces set
+ -ab update type and field latches
 
 edit test file handle per tab or window.
 This presents a readonly scrollable searchable highlightable text widget,

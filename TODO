@@ -1,3 +1,5 @@
+Write luax.c and luax.h for all uses of lua interpreter in one place.
+
 Add wave.cpp to convert digiscope into struct AV pipe, and tape.cpp to convert BMD to and from struct AV pipe, and frame.cpp to display and capture AV between screen and struct AV pipe.
 
 Add phone.cpp that inputs and outputs audio to AV pipe. Finish line.cpp. Write stomp.lua that mixes audio. Make stomp box that adds phase shifted locked delayed audio.

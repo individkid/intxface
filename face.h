@@ -22,6 +22,8 @@ int pipeInit(const char *av1, const char *av2);
 int puntInit(int rdx, int wdx, pftype rpf, qftype wpf);
 int pselectAny(struct timespec *dly, int msk);
 int waitAny();
+int waitMsk(int msk);
+int pauseMsk(double dly, int msk);
 int pauseAny(double dly);
 void waitAll();
 void callInit(cftype fnc, int idx);
