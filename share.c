@@ -47,18 +47,20 @@ void useFlow(int idx, struct ArgxNest *nst)
 }
 void runFlowF(int idx, struct ArgxNest *nst)
 {
-		int tmp, typ;
-		struct File file; // TODO use generic generated function
-		tmp = memxInt(nst[face].arg);
-		typ = memxInt(nst[idx].arg);
-		readFile(&file,tmp);
+	int tmp, typ;
+	struct File file; // TODO use generic generated function
+	tmp = memxInt(nst[face].arg);
+	typ = memxInt(nst[idx].arg);
+	readFile(&file,tmp);
 }
 void runFlowG(int idx, struct ArgxNest *nst)
 {
+	union ArgxValue val;
 	int dly = memxInt(nst[idx].arg);
 	int msk = memxMsk(nst[faces].arg);
-	if (dly == 0) waitMsk(msk);
-	else pauseMsk(dly,msk);
+	if (dly == 0) val.vad = waitMsk(msk);
+	else val.vad = pauseMsk(dly,msk);
+	memxForm(&nst[face].arg,ArgxInt,val);
 }
 void runFlow(int idx, struct ArgxNest *nst)
 {
