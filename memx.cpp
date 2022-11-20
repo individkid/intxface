@@ -27,6 +27,9 @@ extern "C" void *memxRun(void *ptr)
 extern "C" void memxInit(void **mem, const char *str)
 {
 }
+extern "C" void memxForm(void **mem, enum ArgxType tag, union ArgxValue val)
+{
+}
 extern "C" void memxCopy(void **mem, void *giv)
 {
 }

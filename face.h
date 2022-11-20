@@ -14,7 +14,6 @@ int findIdent(const char *str);
 int inetIdent(const char *adr, const char *num);
 int openPipe();
 int openFifo(const char *str);
-int openAtom(const char *str);
 int openFile(const char *str);
 int openInet(const char *adr, const char *num);
 int forkExec(const char *exe);

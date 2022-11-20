@@ -35,6 +35,8 @@ typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*lftype)(int *val, const char *typ, const char *str, int *siz);
 typedef void (*zftype)(void **mem, void *giv);
+typedef int (*fftype)(const char *str);
+typedef int (*gftype)(const char *one, const char *oth);
 
 enum Prototype {
 	Cftype,
