@@ -1,5 +1,6 @@
 #include "argx.h"
 #include "memx.h"
+#include "nest.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/errno.h>
@@ -118,7 +119,7 @@ int useArgument(const char *arg)
 }
 void runProgram()
 {
-	// TODO initialize map, + - for forward backward, ( ) = for enter exit skip
+	nestSide(ArgxStepCast);
 	while (idx >= 0 && idx < lst) {
 		if (nst[idx].opt != NoopTag) memxCall(&nst[idx].run,nst[idx].use,nst[idx].gnc);
 		if (nst[idx].opt == JumpTag) idx = memxInt(nst[idx].run);
