@@ -13,7 +13,8 @@ void memxList(void **mem, void *giv); // adds given to target in order
 void memxKeep(void **mem, void *giv); // adds given to target unordered
 void memxDone(void **mem); // deletes target
 void memxCall(void **mem, void *giv, struct Prototype fnc); // call function on mem with giv
-void memxBack(void **mem, void **giv, struct Prototype fnc); // causes given call on given with target as given
+void memxBack(void **mem, void **giv, struct Prototype fnc); // nontrivial change causes call on giv with mem
+void memxDflt(void **mem, void **giv, struct Prototype fnc); // trivial change causes call on mem with giv
 void *memxFirst(void *giv); // get iterator from given
 int memxLast(void *giv); // check iterator of given
 void *memxNext(void *giv); // get iterator from given iterator

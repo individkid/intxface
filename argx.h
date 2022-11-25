@@ -34,6 +34,6 @@ int argxHere();
 int getLocation();
 int addOption(const char *opt, enum ArgxTag tag, struct Prototype fnc, struct Prototype gnc);
 int mapCallback(const char *str, int ref, struct Prototype fnc);
+int mapDefault(const char *str, int ref, struct Prototype fnc);
 int useArgument(const char *str);
-void setCallback(int idx, int ref, struct Prototype fnc);
 void runProgram();

@@ -10,15 +10,16 @@ int field = 0;
 int iface = 0;
 int oface = 0;
 int misc = 0;
+int zero = 0;
 
 void shareRunC(void **run, void *use)
 {
-	int tmp, typ;
+	int tmp, opc;
 	struct File file; // TODO use generic generated function
 	tmp = memxInt(argxGet(iface)->run);
-	typ = memxInt(use);
-	readFile(&file,tmp); // TODO read to run instead
+	opc = memxInt(use);
 	// TODO write from misc
+	readFile(&file,tmp); // TODO read to run instead
 }
 int shareRunD(void *use)
 {
@@ -65,7 +66,8 @@ int main(int argc, char **argv)
 	iface = getLocation();
 	oface = getLocation();
 	misc = getLocation();
-	// TODO add global memx to lua interpreter
+	zero = getLocation();
+	// TODO add global locations to lua interpreter
 	addOption("a",FlowTag,protoTypeN(memxInit),protoTypeM(memxCopy));
 	addOption("b",FlowTag,protoTypeN(memxInit),protoTypeM(memxCopy));
 	addOption("c",FlowTag,protoTypeN(memxInit),protoTypeM(shareRunC));
@@ -90,6 +92,10 @@ int main(int argc, char **argv)
 	mapCallback("efghlop",oface,protoTypeM(memxCopy));
 	mapCallback("efghlpq",faces,protoTypeM(memxKeep));
 	mapCallback("mn",faces,protoTypeM(memxCopy));
+	mapDefault("i",iface,protoTypeM(memxCopy));
+	mapDefault("o",oface,protoTypeM(memxCopy));
+	mapDefault("m",zero,protoTypeM(memxCopy));
+	mapDefault("n",faces,protoTypeM(memxCopy));
 	for (int i = 1; i < argc; i++) useArgument(argv[i]);
 	runProgram();
 	return 0;

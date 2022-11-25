@@ -96,6 +96,10 @@ int mapCallback(const char *str, int ref, struct Prototype fnc)
 {
 	return 0; // TODO add globals
 }
+int mapDefault(const char *str, int ref, struct Prototype fnc)
+{
+	return 0; // TODO add globals
+}
 int useArgument(const char *arg)
 {
 	int result = lst;
@@ -111,10 +115,6 @@ int useArgument(const char *arg)
 		memxCall(&nst[lst].use,nst[lst].str,nst[lst].fnc);
 		lst++;}
 	return result;
-}
-void setCallback(int idx, int ref, struct Prototype fnc)
-{
-	memxBack(&nst[idx].run,nst[idx].use,fnc);
 }
 void runProgram()
 {
