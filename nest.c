@@ -84,26 +84,26 @@ int nestPerm(int *val, const char *exp, int arg)
 }
 int nestClosure(lua_State *L)
 {
-	enum Prototype pro = lua_tointeger(L, lua_upvalueindex(1));
-	union Proto typ = {0};
-	typ.vp = lua_touserdata(L, lua_upvalueindex(2));
-	switch (pro) {
+	struct Prototype fnc = {0};
+	fnc.ft = lua_tointeger(L, lua_upvalueindex(1));
+	fnc.vp = lua_touserdata(L, lua_upvalueindex(2));
+	switch (fnc.ft) {
 		case (Lftype): {
 			int val = 0;
 			int ret = 0;
 			int len = lua_type(L,3)==LUA_TNONE?0:lua_tointeger(L,3);
-			ret = typ.lf(&val,lua_tostring(L,1),lua_tostring(L,2),&len);
+			ret = fnc.lf(&val,lua_tostring(L,1),lua_tostring(L,2),&len);
 			lua_pushinteger(L,val);
 			lua_pushinteger(L,len);
 			lua_pushinteger(L,ret);
 			return 3;}
 		default: return 0;}
 }
-void nestFunc(const char *str, enum Prototype pro, union Proto typ)
+void nestFunc(const char *str, struct Prototype fnc)
 {
 	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
-	lua_pushinteger(luastate, pro);
-	lua_pushlightuserdata(luastate, typ.vp);
+	lua_pushinteger(luastate, fnc.ft);
+	lua_pushlightuserdata(luastate, fnc.vp);
 	lua_pushcclosure(luastate, nestClosure, 2);
 	lua_setglobal(luastate, str);
 }

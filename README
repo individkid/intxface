@@ -151,7 +151,7 @@ add per dash opcode (nesting argument reference collect).
  -h inet pipe (host port)
  -i input from (nest path)
  -j loop or break (nest path)
-  +/- for forward/backward, (/)/= for enter/exit/skip
+  + - for forward backward, ( ) = for enter exit skip
  -k open or close (nest count)
  -l lua pipe (script string)
  -m instead from (nest path)

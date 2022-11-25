@@ -34,29 +34,48 @@ typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*lftype)(int *val, const char *typ, const char *str, int *siz);
-typedef void (*zftype)(void **mem, void *giv);
 typedef int (*fftype)(const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
+typedef int (*oftype)(void *arg);
+typedef void (*nftype)(void **use, const char *str);
+typedef void (*mftype)(void **run, void *use);
 
-enum Prototype {
-	Cftype,
-	Eftype,
-	Sftype,
-	Hftype,
-	Pftype,
-	Qftype,
-	Lftype,
+struct Prototype {
+	enum {
+		Cftype,
+		Eftype,
+		Sftype,
+		Hftype,
+		Pftype,
+		Qftype,
+		Lftype,
+		Fftype,
+		Gftype,
+		Oftype,
+		Nftype,
+		Mftype,
+	} ft;
+	union {
+		cftype cf;
+		eftype ef;
+		sftype sf;
+		hftype hf;
+		pftype pf;
+		qftype qf;
+		lftype lf;
+		fftype ff;
+		gftype gf;
+		oftype of;
+		nftype nf;
+		mftype mf;
+		void *vp;
+	};
 };
-union Proto {
-	cftype cf;
-	eftype ef;
-	sftype sf;
-	hftype hf;
-	pftype pf;
-	qftype qf;
-	lftype lf;
-	void *vp;
-};
+struct Prototype protoTypeF(fftype fnc);
+struct Prototype protoTypeG(gftype fnc);
+struct Prototype protoTypeO(oftype fnc);
+struct Prototype protoTypeN(nftype fnc);
+struct Prototype protoTypeM(mftype fnc);
 
 void exitErr(const char *str, int num, int idx);
 #endif

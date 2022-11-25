@@ -1,9 +1,6 @@
 #include "proto.h"
 #define NUMARGX 256
 struct ArgxNest;
-typedef void (*nftype)(int idx, struct ArgxNest *nst);
-typedef void *(*mftype)(int idx, struct ArgxNest *nst);
-typedef int (*oftype)(int idx, struct ArgxNest *nst);
 enum ArgxTag {
 	FlowTag, // data flow stream
 	JumpTag, // loop break nest
@@ -21,21 +18,22 @@ enum ArgxStep {
 	ArgxSteps
 };
 struct ArgxNest {
-	enum ArgxTag opt; // type of data flow control step
-	int idx; // dash char from before str
-	const char *str; // string after dash option
-	void *arg; // configuration data
-	nftype nit;
-	union {
-		nftype fnc;
-		mftype gnc;
-		oftype hnc;
-	};
+	enum ArgxTag opc; // type of data flow control step
+	char opt; // dash char from before str
+	void *str; // string after dash option
+	void *use; // script or constant
+	void *run; // result or copy
+	struct Prototype fnc; // for str to use
+	struct Prototype gnc; // for use to run
 };
-int nestJump(int idx, struct ArgxNest *nst, void *jmp);
-int addFlow(const char *opt, nftype fnc, nftype nit);
-int addJump(const char *opt, mftype gnc, nftype nit);
-int addNest(const char *opt, oftype hnc, nftype nit);
-int useLocation(const char *opt, zftype aft);
+int argxJump(void *jmp);
+void argxCopy(void **run, void *use);
+void argxKeep(void **run, void *use);
+struct ArgxNest *argxGet(int idx);
+int argxHere();
+int getLocation();
+int addOption(const char *opt, enum ArgxTag tag, struct Prototype fnc, struct Prototype gnc);
+int mapCallback(const char *str, int ref, struct Prototype fnc);
 int useArgument(const char *str);
+void setCallback(int idx, int ref, struct Prototype fnc);
 void runProgram();

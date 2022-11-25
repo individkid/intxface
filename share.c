@@ -4,103 +4,92 @@
 #include "type.h"
 #include <string.h>
 
-int face = 0;
 int faces = 0;
 int type = 0;
 int field = 0;
-const char *flow = "abcdefghilmnopq";
+int iface = 0;
+int oface = 0;
+int misc = 0;
 
-void useFlowF(int idx, struct ArgxNest *nst, fftype fnc)
-{
-	union ArgxValue val;
-	const char *str;
-	memxInit(&nst[idx].arg,nst[idx].str);
-	str = memxStr(nst[idx].arg);
-	val.vad = fnc(str);
-	memxForm(&nst[idx].arg,ArgxInt,val);
-}
-void useFlowG(int idx, struct ArgxNest *nst, gftype fnc)
-{
-	union ArgxValue val;
-	const char *one, *oth;
-	void *fst, *nxt;
-	memxInit(&nst[idx].arg,nst[idx].str);
-	fst = memxFirst(nst[idx].arg);
-	nxt = memxNext(fst);
-	one = memxStr(fst);
-	oth = memxStr(nxt);
-	val.vad = fnc(one,oth);
-	memxForm(&nst[idx].arg,ArgxInt,val);
-}
-void useFlow(int idx, struct ArgxNest *nst)
-{
-	switch (flow[nst[idx].idx]) {
-	case ('a'): memxInit(&nst[idx].arg,nst[idx].str); break;
-	case ('b'): memxInit(&nst[idx].arg,nst[idx].str); break;
-	case ('c'): memxInit(&nst[idx].arg,nst[idx].str); break; 
-	case ('d'): memxInit(&nst[idx].arg,nst[idx].str); break;
-	case ('e'): useFlowF(idx,nst,forkExec); break;
-	case ('f'): useFlowF(idx,nst,openFile); break;
-	case ('g'): useFlowF(idx,nst,openFifo); break;
-	case ('h'): useFlowG(idx,nst,openInet); break;
-	default: break;}
-}
-void runFlowF(int idx, struct ArgxNest *nst)
+void shareRunC(void **run, void *use)
 {
 	int tmp, typ;
 	struct File file; // TODO use generic generated function
-	tmp = memxInt(nst[face].arg);
-	typ = memxInt(nst[idx].arg);
-	readFile(&file,tmp);
+	tmp = memxInt(argxGet(iface)->run);
+	typ = memxInt(use);
+	readFile(&file,tmp); // TODO read to run instead
+	// TODO write from misc
 }
-void runFlowG(int idx, struct ArgxNest *nst)
+int shareRunD(void *use)
 {
-	union ArgxValue val;
-	int dly = memxInt(nst[idx].arg);
-	int msk = memxMsk(nst[faces].arg);
-	if (dly == 0) val.vad = waitMsk(msk);
-	else val.vad = pauseMsk(dly,msk);
-	memxForm(&nst[face].arg,ArgxInt,val);
+	int msk, dly, val;
+	msk = memxMask(argxGet(faces)->run);
+	dly = memxInt(use);
+	if (dly == 0) val = waitMask(msk);
+	else val = pauseMask(dly,msk);
+	return val;
 }
-void runFlow(int idx, struct ArgxNest *nst)
+int shareUseLF(int idx, void *buf, int nbyte)
 {
-	switch (flow[nst[idx].idx]) {
-	case ('a'): memxCopy(&nst[idx].arg,memxRun(nst[idx].arg)); break;
-	case ('b'): memxCopy(&nst[idx].arg,memxRun(nst[idx].arg)); break;
-	case ('c'): runFlowF(idx,nst); break;
-	case ('d'): runFlowG(idx,nst); break;
-	case ('e'): memxCopy(&nst[idx].arg,nst[idx].arg); break;
-	case ('f'): memxCopy(&nst[idx].arg,nst[idx].arg); break;
-	case ('g'): memxCopy(&nst[idx].arg,nst[idx].arg); break;
-	case ('h'): memxCopy(&nst[idx].arg,nst[idx].arg); break;
-	default: break;}
-	
+	// TODO read buf frim script at argxGet(idx)->run[1]
+	return 0; // TODO number of bytes read
 }
-void useJump(int idx, struct ArgxNest *nst)
+int shareUseLG(int idx, const void *buf, int nbyte)
 {
-	// TODO initialize nst[idx].arg
+	// TODO write buf to script at argxGet(idx)->run[2]
+	return 0; // TODO number of bytes written
 }
-void *runJump(int idx, struct ArgxNest *nst)
+void shareUseL(void **use, const char *str)
 {
-	return memxRun(nst[idx].arg);
+	// TODO split str into read and write scripts
+	int idx = puntInit(argxHere(),argxHere(),shareUseLF,shareUseLG);
+	// TODO init use as tuple of idx, read script, write script
 }
-void useNest(int idx, struct ArgxNest *nst)
+void shareRunL(void **run, void *use)
 {
-	// TODO initialize nst[idx].arg
+	memxCopy(run,memxSkip(use,0));
 }
-int runNest(int idx, struct ArgxNest *nst)
+int shareUseP(const char *str)
 {
-	return memxInt(nst[idx].arg);
+	return rdfdInit(memxInt(memxTemp(str,0)),memxInt(argxGet(oface)->run));
+}
+int shareUseQ(const char *str)
+{
+	return wrfdInit(memxInt(memxTemp(str,0)),memxInt(argxGet(iface)->run));
 }
 int main(int argc, char **argv)
 {
-	addFlow(flow,runFlow,useFlow);
-	addJump("j",runJump,useJump);
-	addNest("k",runNest,useNest);
-	face = useLocation("efghlpq",memxCopy);
-	faces = useLocation("efghlpq",memxKeep);
-	type = useLocation("a",memxCopy);
-	field = useLocation("b",memxCopy);
+	faces = getLocation();
+	type = getLocation();
+	field = getLocation();
+	iface = getLocation();
+	oface = getLocation();
+	misc = getLocation();
+	// TODO add global memx to lua interpreter
+	addOption("a",FlowTag,protoTypeN(memxInit),protoTypeM(memxCopy));
+	addOption("b",FlowTag,protoTypeN(memxInit),protoTypeM(memxCopy));
+	addOption("c",FlowTag,protoTypeN(memxInit),protoTypeM(shareRunC));
+	addOption("d",FlowTag,protoTypeN(memxInit),protoTypeO(shareRunD));
+	addOption("e",FlowTag,protoTypeF(forkExec),protoTypeM(memxCopy));
+	addOption("f",FlowTag,protoTypeF(openFile),protoTypeM(memxCopy));
+	addOption("g",FlowTag,protoTypeF(openFifo),protoTypeM(memxCopy));
+	addOption("h",FlowTag,protoTypeG(openInet),protoTypeM(memxCopy));
+	addOption("i",FlowTag,protoTypeN(memxInit),protoTypeM(argxCopy));
+	addOption("j",JumpTag,protoTypeN(memxInit),protoTypeO(argxJump));
+	addOption("k",NestTag,protoTypeN(memxInit),protoTypeM(memxCopy));
+	addOption("l",FlowTag,protoTypeN(shareUseL),protoTypeM(shareRunL));
+	addOption("m",FlowTag,protoTypeN(memxInit),protoTypeM(argxKeep));
+	addOption("n",FlowTag,protoTypeN(memxInit),protoTypeM(argxCopy));
+	addOption("o",FlowTag,protoTypeN(memxInit),protoTypeM(argxCopy));
+	addOption("p",FlowTag,protoTypeF(shareUseP),protoTypeM(memxCopy));
+	addOption("q",FlowTag,protoTypeF(shareUseQ),protoTypeM(memxCopy));
+	mapCallback("a",type,protoTypeM(memxCopy));
+	mapCallback("b",field,protoTypeM(memxCopy));
+	mapCallback("c",misc,protoTypeM(memxList));
+	mapCallback("diefghlq",iface,protoTypeM(memxCopy));
+	mapCallback("efghlop",oface,protoTypeM(memxCopy));
+	mapCallback("efghlpq",faces,protoTypeM(memxKeep));
+	mapCallback("mn",faces,protoTypeM(memxCopy));
 	for (int i = 1; i < argc; i++) useArgument(argv[i]);
 	runProgram();
 	return 0;

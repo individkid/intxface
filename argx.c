@@ -7,15 +7,13 @@
 
 struct ArgxNest nst[NUMARGX] = {0}; // data flow control steps
 int lst = 0; // number of steps
-const char *opt[NUMARGX] = {0}; // dash option types
+const char *str[NUMARGX] = {0}; // dash option types
 struct ArgxNest fnc[NUMARGX] = {0}; // function to use
-int lpt = 0; // number of types
-const char *col[NUMARGX] = {0}; // dash option types
-zftype cft[NUMARGX] = {0}; // collection type
-int cdx[NUMARGX] = {0}; // collection index
-int lol = 0; // number of collections
+int ltr = 0; // number of types
 int use = 0; // which fnc to use
-int dsh = 0; // which dash matched
+int opt = 0; // which dash matched
+int idx = 0; // program counter
+void *map = 0; // format for jump
 
 int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 {
@@ -25,7 +23,7 @@ int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 	while (idx >= 0 && idx < lst && cnt > 0) {
 		int cnd = 0; // maybe count if flow or nest exit
 		if (nst[idx].opt == NestTag) {
-			int dif = nst[idx].hnc(idx,nst);
+			int dif = memxInt(nst[idx].run);
 			dpt += dir*dif;
 			cnd = ((dir > 0) != (dif > 0));}
 		if (nst[idx].opt == FlowTag) cnd = 1;
@@ -34,10 +32,10 @@ int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 		idx += dir;}
 	return idx;
 }
-int nestJump(int idx, struct ArgxNest *nst, void *jmp)
+int nestJump(int idx, void *jmp)
 {
 	int stp = 0;
-	while (idx >= 0 && idx < lst) {
+	while (idx >= 0 && idx < lst && stp < memxSize(jmp)) {
 		enum ArgxStep dir = memxInt(memxSkip(memxSkip(jmp,stp),0));
 		int cnt = memxInt(memxSkip(memxSkip(jmp,stp),1));
 		switch (dir) {
@@ -49,64 +47,80 @@ int nestJump(int idx, struct ArgxNest *nst, void *jmp)
 		case (RevExtStep): idx = nestJumpF(idx,-1,1,-1,-cnt); break;
 		default: break;}
 	}
-	return lst;
+	return idx;
 }
-int addFlow(const char *str, nftype nft, nftype nit)
+int argxJump(void *use)
 {
-	if (lpt == NUMARGX) ERROR(exitErr,0);
-	opt[lpt] = str;
-	fnc[lpt].opt = FlowTag;
-	fnc[lpt].fnc = nft;
-	fnc[lpt].nit = nit;
-	return lpt++;
+	void *tmp = 0;
+	const char *str = 0;
+	void *mem = 0;
+	int val = 0;
+	memxCopy(&tmp,use);
+	str = memxStr(tmp);
+	memxForm(&mem,str,map);
+	val = nestJump(idx,mem);
+	memxDone(&tmp);
+	memxDone(&mem);
+	return val;
 }
-int addJump(const char *str, mftype mft, nftype nit)
+void argxCopy(void **run, void *use)
 {
-	if (lpt == NUMARGX) ERROR(exitErr,0);
-	opt[lpt] = str;
-	fnc[lpt].opt = JumpTag;
-	fnc[lpt].gnc = mft;
-	fnc[lpt].nit = nit;
-	return lpt++;
+	memxCopy(run,nst[nestJump(idx,use)].run);
 }
-int addNest(const char *str, oftype oft, nftype nit)
+void argxKeep(void **run, void *use)
 {
-	if (lpt == NUMARGX) ERROR(exitErr,0);
-	opt[lpt] = str;
-	fnc[lpt].opt = NestTag;
-	fnc[lpt].hnc = oft;
-	fnc[lpt].nit = nit;
-	return lpt++;
+	memxKeep(run,nst[nestJump(idx,use)].run);
 }
-int useLocation(const char *opt, zftype zft)
+struct ArgxNest *argxGet(int idx)
 {
-	col[lol] = opt;
-	cft[lol] = zft;
-	cdx[lol++] = lst;
+	return nst+idx;
+}
+int argxHere()
+{
+	return idx;
+}
+int getLocation()
+{
+	nst[lst].opt = NoopTag;
 	return lst++;
 }
-int useArgument(const char *str)
+int addOption(const char *opt, enum ArgxTag opc, struct Prototype use, struct Prototype run)
+{
+	str[ltr] = opt;
+	fnc[ltr].opc = opc;
+	fnc[ltr].fnc = use;
+	fnc[ltr].gnc = run;
+	return ltr++;
+}
+int mapCallback(const char *str, int ref, struct Prototype fnc)
+{
+	return 0; // TODO add globals
+}
+int useArgument(const char *arg)
 {
 	int result = lst;
-	if (str[0] == '-' && str[1] != '-') {
-		for (int i = 0; i < lpt; i++) {
-			for (int j = 0; opt[i][j]; j++) {
-				if (str[1] == opt[i][j]) {
-					use = i; dsh = j;}}}}
+	if (arg[0] == '-' && arg[1] != '-') {
+		for (int i = 0; i < ltr; i++) {
+			for (int j = 0; str[i][j]; j++) {
+				if (arg[1] == str[i][j]) {
+					use = i; opt = j;}}}}
 	else {
 		nst[lst] = fnc[use];
-		nst[lst].idx = dsh;
-		nst[lst].str = str;
-		nst[lst].nit(lst,nst);
+		nst[lst].opt = opt;
+		memxInit(&nst[lst].str,arg);
+		memxCall(&nst[lst].use,nst[lst].str,nst[lst].fnc);
 		lst++;}
 	return result;
 }
+void setCallback(int idx, int ref, struct Prototype fnc)
+{
+	memxBack(&nst[idx].run,nst[idx].use,fnc);
+}
 void runProgram()
 {
-	int idx = 0;
-	while (idx >= 0 && idx < lst) switch (nst[idx].opt) {
-	case (FlowTag): nst[idx].fnc(idx,nst); idx++; break;
-	case (JumpTag): idx = nestJump(idx,nst,nst[idx].gnc(idx,nst)); break;
-	case (NestTag): idx++; break; // hnc called by nestJump
-	default: ERROR(exitErr,0); break;}
+	// TODO initialize map, + - for forward backward, ( ) = for enter exit skip
+	while (idx >= 0 && idx < lst) {
+		if (nst[idx].opt != NoopTag) memxCall(&nst[idx].run,nst[idx].use,nst[idx].gnc);
+		if (nst[idx].opt == JumpTag) idx = memxInt(nst[idx].run);
+		else idx++;}
 }

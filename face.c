@@ -281,6 +281,14 @@ int pipeInit(const char *av1, const char *av2)
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
 	return val;
 }
+int rdfdInit(int rdfd, int hint)
+{
+	return 0; // TODO
+}
+int wrfdInit(int wrfd, int hint)
+{
+	return 0; // TODO
+}
 int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 {
 	int val;
@@ -339,11 +347,11 @@ int waitAny()
 {
 	return pselectAny(0,-1);
 }
-int waitMsk(int msk)
+int waitMask(int msk)
 {
 	return pselectAny(0,msk);
 }
-int pauseMsk(double dly, int msk)
+int pauseMask(double dly, int msk)
 {
 	struct timespec delay = {0};
 	if (dly == 0.0) return waitAny();
@@ -353,7 +361,7 @@ int pauseMsk(double dly, int msk)
 }
 int pauseAny(double dly)
 {
-	return pauseMsk(dly,-1);
+	return pauseMask(dly,-1);
 }
 void waitAll()
 {

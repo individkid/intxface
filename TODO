@@ -1,4 +1,4 @@
-Write luax.c and luax.h for all uses of lua interpreter in one place.
+Write luax.c and luax.h for all uses of lua interpreter in one place; use it instead of nest in plane. Reduce number of wrapper functions in face.
 
 Add wave.cpp to convert digiscope into struct AV pipe, and tape.cpp to convert BMD to and from struct AV pipe, and frame.cpp to display and capture AV between screen and struct AV pipe.
 

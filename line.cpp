@@ -1,4 +1,4 @@
-// volume tempo tone
+// phase delay lock
 
 extern "C" {
 #include "face.h"
