@@ -1,4 +1,4 @@
-Rename nest.c and nest.h as luax.c and luax.h for all uses of lua interpreter in one place. Reduce number of wrapper functions in face.
+Write liner.lua sharer.lua planer.lua. Reduce number of wrapper functions in face.
 
 Add wave.cpp to convert digiscope into struct AV pipe, and tape.cpp to convert BMD to and from struct AV pipe, and frame.cpp to display and capture AV between screen and struct AV pipe.
 

@@ -1,5 +1,6 @@
 #include "argx.h"
 #include "memx.h"
+#include "luax.h"
 #include "face.h"
 #include "type.h"
 #include <string.h>
@@ -58,8 +59,22 @@ int shareUseQ(const char *str)
 {
 	return wrfdInit(memxInt(memxTemp(str,0)),memxInt(argxGet(iface)->run));
 }
+int shareLuax(const char *str)
+{
+	if (strcmp(str,"faces") == 0) return faces;
+	else if (strcmp(str,"type") == 0) return type;
+	else if (strcmp(str,"field") == 0) return field;
+	else if (strcmp(str,"iface") == 0) return iface;
+	else if (strcmp(str,"oface") == 0) return oface;
+	else if (strcmp(str,"misc") == 0) return misc;
+	else if (strcmp(str,"zero") == 0) return zero;
+	// TODO add throw error to luax
+	return 0;
+}
 int main(int argc, char **argv)
 {
+	memxLuax();
+	luaxFunc("shareLuax",protoTypeF(shareLuax));
 	faces = getLocation();
 	type = getLocation();
 	field = getLocation();
@@ -67,7 +82,6 @@ int main(int argc, char **argv)
 	oface = getLocation();
 	misc = getLocation();
 	zero = getLocation();
-	// TODO add global locations to lua interpreter
 	addOption("a",protoTypeN(memxInit),protoTypeM(memxCopy));
 	addOption("b",protoTypeN(memxInit),protoTypeM(memxCopy));
 	addOption("c",protoTypeN(memxInit),protoTypeM(shareRunC));

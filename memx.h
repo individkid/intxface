@@ -1,12 +1,11 @@
 #include "proto.h"
 
+void memxLuax(); // add memx functions to lua interpreter
 int memxSize(void *ptr); // get size
 int memxInt(void *ptr); // get int
 int memxMask(void *ptr); // mask from collection
 const char *memxStr(void *mem); // get string
-void memxEval(void **mem, void *giv); // evaluate script
 void memxInit(void **mem, const char *str); // convert from string
-void memxForm(void **mem, const char *str, void *map); // map separators to domain
 void *memxTemp(const char *str, int idx); // realloc indexed memory
 void memxCopy(void **mem, void *giv); // replaces target with given
 void memxList(void **mem, void *giv); // adds given to target in order

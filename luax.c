@@ -97,6 +97,15 @@ int luaxClosure(lua_State *L)
 			lua_pushinteger(L,len);
 			lua_pushinteger(L,ret);
 			return 3;}
+		case (Fftype): {
+			lua_pushinteger(L,fnc.ff(lua_tostring(L,1)));
+			return 1;}
+		case (Gftype): {
+			lua_pushinteger(L,fnc.gf(lua_tostring(L,1),lua_tostring(L,2)));
+			return 1;}
+// typedef int (*oftype)(void *arg);
+// typedef void (*nftype)(void **use, const char *str);
+// typedef void (*mftype)(void **run, void *use);
 		default: return 0;}
 }
 void luaxFunc(const char *str, struct Prototype fnc)

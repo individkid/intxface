@@ -1,16 +1,20 @@
 extern "C" {
 #include "memx.h"
-#include "type.h"
-// TODO add lua interpreter
+#include "luax.h"
 }
 
+extern "C" void memxLuax()
+{
+	luaxFunc("memxInit",protoTypeN(memxInit));
+	luaxFunc("memxCopy",protoTypeM(memxCopy));
+	luaxFunc("memxList",protoTypeM(memxList));
+	luaxFunc("memxKeep",protoTypeM(memxKeep));
+}
 extern "C" int memxSize(void *ptr) {return 0;} // get size
 extern "C" int memxInt(void *ptr) {return 0;} // get int
 extern "C" int memxMask(void *ptr) {return 0;} // mask from collection
 extern "C" const char *memxStr(void *mem) {return 0;} // get string
-extern "C" void memxEval(void **mem, void *giv) {} // evaluate script
 extern "C" void memxInit(void **mem, const char *str) {} // convert from string
-extern "C" void memxForm(void **mem, const char *str, void *map) {} // map separators to domain
 extern "C" void *memxTemp(const char *str, int idx) {return 0;} // realloc indexed memory
 extern "C" void memxCopy(void **mem, void *giv) {} // replaces target with given
 extern "C" void memxList(void **mem, void *giv) {} // adds given to target in order

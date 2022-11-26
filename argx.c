@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 struct ArgxNest nst[NUMARGX] = {0}; // data flow control steps
-int lst = 0; // number of steps
+int nim = 0; // number of steps
 const char *str[NUMARGX] = {0}; // dash option types
 struct ArgxNest fnc[NUMARGX] = {0}; // function to use
 int sim = 0; // number of types
@@ -18,7 +18,7 @@ int cim = 0; // number of types
 const char *dtr[NUMARGX] = {0}; // dash option default
 struct Prototype dnc[NUMARGX] = {0}; // function to use
 int def[NUMARGX] = {0}; // reference for function
-int dim = 0; // number of types
+int aim = 0; // number of types
 int use = 0; // which fnc to use
 int opt = 0; // which dash matched
 int idx = 0; // program counter
@@ -28,7 +28,7 @@ int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 	int dpt = 0;
 	if (dir > 1 || dir < -1 || dir == 0) ERROR(exitErr,0);
 	if (cmp > 1 || cmp < -1 || cmp == 0) ERROR(exitErr,0);
-	while (idx >= 0 && idx < lst && cnt > 0) {
+	while (idx >= 0 && idx < nim && cnt > 0) {
 		int cnd = 0; // maybe count if flow or nest exit
 		if (nst[idx].opt == NestTag) {
 			int dif = memxInt(nst[idx].run);
@@ -43,7 +43,7 @@ int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 int nestJump(int idx, void *jmp)
 {
 	int stp = 0;
-	while (idx >= 0 && idx < lst && stp < memxSize(jmp)) {
+	while (idx >= 0 && idx < nim && stp < memxSize(jmp)) {
 		enum Step dir = memxInt(memxSkip(memxSkip(jmp,stp),0));
 		int cnt = memxInt(memxSkip(memxSkip(jmp,stp),1));
 		switch (dir) {
@@ -85,8 +85,8 @@ int argxHere()
 }
 int getLocation()
 {
-	nst[lst].opt = NoopTag;
-	return lst++;
+	nst[nim].opt = NoopTag;
+	return nim++;
 }
 int addOption(const char *opt, struct Prototype use, struct Prototype run)
 {
@@ -121,10 +121,10 @@ int mapCallback(const char *opt, int ref, struct Prototype fnc)
 }
 int mapDefault(const char *opt, int ref, struct Prototype fnc)
 {
-	str[dim] = opt;
-	dnc[dim] = fnc;
-	def[dim] = ref;
-	return dim++;
+	str[aim] = opt;
+	dnc[aim] = fnc;
+	def[aim] = ref;
+	return aim++;
 }
 int useArgument(const char *arg)
 {
@@ -133,24 +133,24 @@ int useArgument(const char *arg)
 			for (int j = 0; str[i][j]; j++) {
 				if (arg[1] == str[i][j]) {
 					use = i; opt = j;}}}
-		return lst;}
-	nst[lst] = fnc[use];
-	nst[lst].opt = opt;
-	memxInit(&nst[lst].str,arg);
-	memxCall(&nst[lst].use,nst[lst].str,nst[lst].fnc);
+		return nim;}
+	nst[nim] = fnc[use];
+	nst[nim].opt = opt;
+	memxInit(&nst[nim].str,arg);
+	memxCall(&nst[nim].use,nst[nim].str,nst[nim].fnc);
 	for (int i = 0; i < cim; i++) {
 		for (int j = 0; ctr[i][j]; j++) {
 			if (opt == ctr[i][j]) {
-				memxBack(&nst[lst].use,&nst[cef[i]].use,cnc[i]);}}}
-	for (int i = 0; i < dim; i++) {
+				memxBack(&nst[nim].use,&nst[cef[i]].use,cnc[i]);}}}
+	for (int i = 0; i < aim; i++) {
 		for (int j = 0; dtr[i][j]; j++) {
 			if (opt == dtr[i][j]) {
-				memxDflt(&nst[lst].use,&nst[def[i]].use,dnc[i]);}}}
-	return lst++;
+				memxDflt(&nst[nim].use,&nst[def[i]].use,dnc[i]);}}}
+	return nim++;
 }
 void runProgram()
 {
-	while (idx >= 0 && idx < lst) {
+	while (idx >= 0 && idx < nim) {
 		if (nst[idx].opt != NoopTag) memxCall(&nst[idx].run,nst[idx].use,nst[idx].gnc);
 		if (nst[idx].opt == JumpTag) idx = memxInt(nst[idx].run);
 		else idx++;}

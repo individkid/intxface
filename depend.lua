@@ -69,11 +69,6 @@ function findDepend(pat,ext,exp,suf)
 	filelist:close()
 	return retval
 end
-function sourceDepend(name)
-	local retval = findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(",".c")
-	if retval == "" then io.stdout:write("\n"); io.stderr:write("sourceDepend "..name.."\n"); os.exit() end
-	return retval
-end
 function objectDepend(name)
 	local retval = findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","C.o")
 	if retval == "" then retval = findDepend(name,".cpp","^extern[%s]*\"C\".*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","Cpp.o") end
