@@ -1,4 +1,4 @@
-require "nest"
+require "luax"
 
 function showBool(bool)
 	local str = ""
@@ -1904,7 +1904,7 @@ function showFuncC()
 	result = result..showCall(Enums,Enumz,showAllocC).."\n"
 	result = result..showCall(Enums,Enumz,showShowC).."\n"
 	result = result..showCall(Enums,Enumz,showHideC).."\n"
-	for k,v in ipairs(Enums) do nestSide(showCastLua(v,Enumz[v])) end
+	for k,v in ipairs(Enums) do luaxSide(showCastLua(v,Enumz[v])) end
 	result = result..showCall(Constants,Constantz,showConstantC).."\n"
 	result = result..showCall(Structs,Structz,showOffsetC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"

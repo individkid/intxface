@@ -1,6 +1,6 @@
 #include "plane.h"
 #include "face.h"
-#include "nest.h"
+#include "luax.h"
 #include "metx.h"
 #include "type.h"
 #include <stdlib.h>
@@ -327,7 +327,7 @@ int planeConfig(enum Configure cfg)
 int planeEval(const char *str, int arg)
 {
 	int ret = 0;
-	if (!nestPerm(&ret,str,arg)) ERROR(exitErr,0);
+	if (!luaxPerm(&ret,str,arg)) ERROR(exitErr,0);
 	return ret;
 }
 void planeWake(enum Configure hint)

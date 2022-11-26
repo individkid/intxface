@@ -1,4 +1,4 @@
-#include "nest.h"
+#include "luax.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -27,12 +27,12 @@ char **rslt = 0; // with expressions replaced
 int lsiz = 0; // number of strings in line
 lua_State *luastate = 0;
 
-void *nestLua(void *ud, void *ptr, size_t osize, size_t nsize)
+void *luaxLua(void *ud, void *ptr, size_t osize, size_t nsize)
 {
 	if (nsize == 0) {free(ptr); return 0;}
 	return realloc(ptr, nsize);
 }
-const char *nestReader(lua_State *L, void *data, size_t *size)
+const char *luaxReader(lua_State *L, void *data, size_t *size)
 {
 	struct Reader *reader = (struct Reader *)data;
 	if (!reader->vld) {*size = 0; return 0;}
@@ -40,49 +40,49 @@ const char *nestReader(lua_State *L, void *data, size_t *size)
 	reader->vld = 0;
 	return reader->str;
 }
-void nestLoad(lua_State *luastate, const char *exp) // TODO return error code
+void luaxLoad(lua_State *luastate, const char *exp) // TODO return error code
 {
 	int retval = 0;
 	struct Reader reader = {0};
 	asprintf(&reader.str,"%s",exp);
 	reader.vld = 1;
-	retval = lua_load(luastate,nestReader,(void*)&reader,"","t");
+	retval = lua_load(luastate,luaxReader,(void*)&reader,"","t");
 	free(reader.str);
 	if (retval != LUA_OK) {
 		printf("lua %s\n",lua_tostring(luastate,-1));
 		ERROR(exitErr,0);}
 }
-int nestSide(const char *exp)
+int luaxSide(const char *exp)
 {
 	int ret = 0;
-	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
-	nestLoad(luastate,exp);
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	luaxLoad(luastate,exp);
 	ret = lua_pcall(luastate,0,0,0);
 	return (ret == LUA_OK);	
 }
-int nestDict(char **val, const char *exp, const char *arg)
+int luaxDict(char **val, const char *exp, const char *arg)
 {
 	int ret = 0;
-	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
-	nestLoad(luastate,exp);
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	luaxLoad(luastate,exp);
 	lua_pushstring(luastate,arg);
 	ret = lua_pcall(luastate,1,1,0);
 	asprintf(val,"%s",lua_tostring(luastate,-1));
 	lua_pop(luastate,1);
 	return (ret == LUA_OK);
 }
-int nestPerm(int *val, const char *exp, int arg)
+int luaxPerm(int *val, const char *exp, int arg)
 {
 	int ret = 0;
-	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
-	nestLoad(luastate,exp);
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	luaxLoad(luastate,exp);
 	lua_pushinteger(luastate,arg);
 	ret = lua_pcall(luastate,1,1,0);
 	*val = lua_tonumber(luastate,-1);
 	lua_pop(luastate,1);
 	return (ret == LUA_OK);
 }
-int nestClosure(lua_State *L)
+int luaxClosure(lua_State *L)
 {
 	struct Prototype fnc = {0};
 	fnc.ft = lua_tointeger(L, lua_upvalueindex(1));
@@ -99,12 +99,12 @@ int nestClosure(lua_State *L)
 			return 3;}
 		default: return 0;}
 }
-void nestFunc(const char *str, struct Prototype fnc)
+void luaxFunc(const char *str, struct Prototype fnc)
 {
-	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	lua_pushinteger(luastate, fnc.ft);
 	lua_pushlightuserdata(luastate, fnc.vp);
-	lua_pushcclosure(luastate, nestClosure, 2);
+	lua_pushcclosure(luastate, luaxClosure, 2);
 	lua_setglobal(luastate, str);
 }
 int nestSkip(const char **str)
@@ -141,7 +141,7 @@ void nestElem(int i, const char *str)
 }
 void nestScan()
 {
-	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) {
 	for (const char *str = line[i]; str && strstr(str,"%(") && *(str = strstr(str,"%(")) && *(str += 2); dim++) {
@@ -167,8 +167,8 @@ int nestEval(int i)
 	int num = 0;
 	int len = 0;
 	if (i < 0 || i >= dim) ERROR(exitErr,0);
-	if (!luastate) {luastate = lua_newstate(nestLua,0); luaL_openlibs(luastate);}
-	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); nestLoad(fiber[i].lua,fiber[i].exp);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); luaxLoad(fiber[i].lua,fiber[i].exp);}
 	ret = lua_resume(fiber[i].lua,0,0,&num);
 	if (ret != LUA_OK && ret != LUA_YIELD) {
 		printf("lua %s\n",lua_tostring(fiber[i].lua,-1));
@@ -207,9 +207,9 @@ const char *nestRepl(int i)
 	return rslt[i];
 }
 
-int nestSideLua(lua_State *L)
+int luaxSideLua(lua_State *L)
 {
-	nestSide(lua_tostring(L,1));
+	luaxSide(lua_tostring(L,1));
 	return 0;
 }
 int nestInitLua(lua_State *L)
@@ -238,10 +238,10 @@ int nestReplLua(lua_State *L)
 	return 1;
 }
 
-int luaopen_nest(lua_State *L)
+int luaopen_luax(lua_State *L)
 {
-	lua_pushcfunction(L, nestSideLua);
-	lua_setglobal(L, "nestSide");
+	lua_pushcfunction(L, luaxSideLua);
+	lua_setglobal(L, "luaxSide");
 	lua_pushcfunction(L, nestInitLua);
 	lua_setglobal(L, "nestInit");
 	lua_pushcfunction(L, nestElemLua);
