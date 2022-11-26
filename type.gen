@@ -183,6 +183,14 @@ Ture = {
 	"Table",
 	"Sides",
 }
+Step = {
+	"FwdSkpStep",
+	"RevSkpStep",
+	"FwdEntStep",
+	"RevEntStep",
+	"FwdExtStep",
+	"RevExtStep",
+}
 --HERE Constants
 Initial = {
 	{"Shader","Dipoint","Stage","Corner","Str","vertex_render"},

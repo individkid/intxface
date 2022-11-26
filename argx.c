@@ -1,6 +1,6 @@
 #include "argx.h"
 #include "memx.h"
-#include "nest.h"
+#include "type.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/errno.h>
@@ -37,7 +37,7 @@ int nestJump(int idx, void *jmp)
 {
 	int stp = 0;
 	while (idx >= 0 && idx < lst && stp < memxSize(jmp)) {
-		enum ArgxStep dir = memxInt(memxSkip(memxSkip(jmp,stp),0));
+		enum Step dir = memxInt(memxSkip(memxSkip(jmp,stp),0));
 		int cnt = memxInt(memxSkip(memxSkip(jmp,stp),1));
 		switch (dir) {
 		case (FwdSkpStep): idx = nestJumpF(idx,1,cnt,-1,0); break;
@@ -119,7 +119,6 @@ int useArgument(const char *arg)
 }
 void runProgram()
 {
-	nestSide(ArgxStepCast);
 	while (idx >= 0 && idx < lst) {
 		if (nst[idx].opt != NoopTag) memxCall(&nst[idx].run,nst[idx].use,nst[idx].gnc);
 		if (nst[idx].opt == JumpTag) idx = memxInt(nst[idx].run);
