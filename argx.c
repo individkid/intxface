@@ -10,11 +10,18 @@ struct ArgxNest nst[NUMARGX] = {0}; // data flow control steps
 int lst = 0; // number of steps
 const char *str[NUMARGX] = {0}; // dash option types
 struct ArgxNest fnc[NUMARGX] = {0}; // function to use
-int ltr = 0; // number of types
+int sim = 0; // number of types
+const char *ctr[NUMARGX] = {0}; // dash option callback
+struct Prototype cnc[NUMARGX] = {0}; // function to use
+int cef[NUMARGX] = {0}; // reference for function
+int cim = 0; // number of types
+const char *dtr[NUMARGX] = {0}; // dash option default
+struct Prototype dnc[NUMARGX] = {0}; // function to use
+int def[NUMARGX] = {0}; // reference for function
+int dim = 0; // number of types
 int use = 0; // which fnc to use
 int opt = 0; // which dash matched
 int idx = 0; // program counter
-void *map = 0; // format for jump
 
 int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 {
@@ -54,14 +61,10 @@ int argxJump(void *use)
 {
 	void *tmp = 0;
 	const char *str = 0;
-	void *mem = 0;
 	int val = 0;
 	memxCopy(&tmp,use);
-	str = memxStr(tmp);
-	memxForm(&mem,str,map);
-	val = nestJump(idx,mem);
+	val = nestJump(idx,tmp);
 	memxDone(&tmp);
-	memxDone(&mem);
 	return val;
 }
 void argxCopy(void **run, void *use)
@@ -85,37 +88,65 @@ int getLocation()
 	nst[lst].opt = NoopTag;
 	return lst++;
 }
-int addOption(const char *opt, enum ArgxTag opc, struct Prototype use, struct Prototype run)
+int addOption(const char *opt, struct Prototype use, struct Prototype run)
 {
-	str[ltr] = opt;
-	fnc[ltr].opc = opc;
-	fnc[ltr].fnc = use;
-	fnc[ltr].gnc = run;
-	return ltr++;
+	str[sim] = opt;
+	fnc[sim].opc = FlowTag;
+	fnc[sim].fnc = use;
+	fnc[sim].gnc = run;
+	return sim++;
 }
-int mapCallback(const char *str, int ref, struct Prototype fnc)
+int addJump(const char *opt, struct Prototype use, struct Prototype run)
 {
-	return 0; // TODO add globals
+	str[sim] = opt;
+	fnc[sim].opc = JumpTag;
+	fnc[sim].fnc = use;
+	fnc[sim].gnc = run;
+	return sim++;
 }
-int mapDefault(const char *str, int ref, struct Prototype fnc)
+int addNest(const char *opt, struct Prototype use, struct Prototype run)
 {
-	return 0; // TODO add globals
+	str[sim] = opt;
+	fnc[sim].opc = NestTag;
+	fnc[sim].fnc = use;
+	fnc[sim].gnc = run;
+	return sim++;
+}
+int mapCallback(const char *opt, int ref, struct Prototype fnc)
+{
+	str[cim] = opt;
+	cnc[cim] = fnc;
+	cef[cim] = ref;
+	return cim++;
+}
+int mapDefault(const char *opt, int ref, struct Prototype fnc)
+{
+	str[dim] = opt;
+	dnc[dim] = fnc;
+	def[dim] = ref;
+	return dim++;
 }
 int useArgument(const char *arg)
 {
-	int result = lst;
 	if (arg[0] == '-' && arg[1] != '-') {
-		for (int i = 0; i < ltr; i++) {
+		for (int i = 0; i < sim; i++) {
 			for (int j = 0; str[i][j]; j++) {
 				if (arg[1] == str[i][j]) {
-					use = i; opt = j;}}}}
-	else {
-		nst[lst] = fnc[use];
-		nst[lst].opt = opt;
-		memxInit(&nst[lst].str,arg);
-		memxCall(&nst[lst].use,nst[lst].str,nst[lst].fnc);
-		lst++;}
-	return result;
+					use = i; opt = j;}}}
+		return lst;}
+	nst[lst] = fnc[use];
+	nst[lst].opt = opt;
+	memxInit(&nst[lst].str,arg);
+	memxCall(&nst[lst].use,nst[lst].str,nst[lst].fnc);
+	for (int i = 0; i < cim; i++) {
+		for (int j = 0; ctr[i][j]; j++) {
+			if (opt == ctr[i][j]) {
+				memxBack(&nst[lst].use,&nst[cef[i]].use,cnc[i]);}}}
+	for (int i = 0; i < dim; i++) {
+		for (int j = 0; dtr[i][j]; j++) {
+			if (opt == dtr[i][j]) {
+				memxDflt(&nst[lst].use,&nst[def[i]].use,dnc[i]);}}}
+	return lst++;
 }
 void runProgram()
 {
