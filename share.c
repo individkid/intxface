@@ -4,6 +4,10 @@
 #include "face.h"
 #include "type.h"
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/errno.h>
+#include <stdlib.h>
 
 int faces = 0;
 int type = 0;
@@ -68,7 +72,7 @@ int shareLuax(const char *str)
 	else if (strcmp(str,"oface") == 0) return oface;
 	else if (strcmp(str,"misc") == 0) return misc;
 	else if (strcmp(str,"zero") == 0) return zero;
-	// TODO add throw error to luax
+	ERROR(exitErr,0);
 	return 0;
 }
 int main(int argc, char **argv)
