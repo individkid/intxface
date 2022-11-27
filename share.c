@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/errno.h>
 #include <stdlib.h>
+#include <libgen.h>
 
 int faces = 0;
 int type = 0;
@@ -78,9 +79,12 @@ int shareLuax(const char *str)
 }
 int main(int argc, char **argv)
 {
+	char *temp = 0;
+	asprintf(&temp,"dofile(\"%s/oops.lua\")\n",dirname(realpath(argv[0],0)));
+	if (!luaxSide(temp)) {fprintf(stderr,"shareC: cannot load file: type.lua\n"); return -1;}
+	free(temp);
 	memxLuax();
 	luaxFunc("shareLuax",protoTypeF(shareLuax));
-	luaxFile("type.lua");
 	faces = getLocation();
 	type = getLocation();
 	field = getLocation();

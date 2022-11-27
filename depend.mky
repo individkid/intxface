@@ -23,6 +23,7 @@ planer.log: face.so plane planerLua type.lua
 protoC.o: proto.h
 shareC: argxC.o faceC.o luaxC.o memxCpp.o protoC.o typeC.o
 shareC.o: argx.h face.h luax.h memx.h proto.h type.h
+sharer.log: face.so share sharerLua type.lua
 spaceHs: face.hs faceC.o naive.hs protoC.o type.hs
 spacra.log: spacraHs
 spacraHs: naive.hs

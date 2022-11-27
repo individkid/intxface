@@ -24,6 +24,7 @@ struct Fiber *fiber = 0; // expressions of line
 int dim = 0; // number of expressions in line
 char **line = 0; // strings of line
 char **rslt = 0; // with expressions replaced
+char **temp = 0; // to exp or str
 int lsiz = 0; // number of strings in line
 lua_State *luastate = 0;
 
@@ -40,7 +41,7 @@ const char *luaxReader(lua_State *L, void *data, size_t *size)
 	reader->vld = 0;
 	return reader->str;
 }
-void luaxLoad(lua_State *luastate, const char *exp) // TODO return error code
+int luaxLoad(lua_State *luastate, const char *exp)
 {
 	int retval = 0;
 	struct Reader reader = {0};
@@ -48,39 +49,37 @@ void luaxLoad(lua_State *luastate, const char *exp) // TODO return error code
 	reader.vld = 1;
 	retval = lua_load(luastate,luaxReader,(void*)&reader,"","t");
 	free(reader.str);
-	if (retval != LUA_OK) {
-		printf("lua %s\n",lua_tostring(luastate,-1));
-		ERROR(exitErr,0);}
+	return (retval == LUA_OK ? 0 : -1);
 }
 int luaxSide(const char *exp)
 {
 	int ret = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	luaxLoad(luastate,exp);
+	if (luaxLoad(luastate,exp) != 0) return -2;
 	ret = lua_pcall(luastate,0,0,0);
-	return (ret == LUA_OK);	
+	return (ret == LUA_OK ? 0 : -1);	
 }
 int luaxDict(char **val, const char *exp, const char *arg)
 {
 	int ret = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	luaxLoad(luastate,exp);
+	if (!luaxLoad(luastate,exp)) return -2;
 	lua_pushstring(luastate,arg);
 	ret = lua_pcall(luastate,1,1,0);
 	asprintf(val,"%s",lua_tostring(luastate,-1));
 	lua_pop(luastate,1);
-	return (ret == LUA_OK);
+	return (ret == LUA_OK ? 0 : -1);
 }
 int luaxPerm(int *val, const char *exp, int arg)
 {
 	int ret = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	luaxLoad(luastate,exp);
+	if (!luaxLoad(luastate,exp)) return -2;
 	lua_pushinteger(luastate,arg);
 	ret = lua_pcall(luastate,1,1,0);
 	*val = lua_tonumber(luastate,-1);
 	lua_pop(luastate,1);
-	return (ret == LUA_OK);
+	return (ret == LUA_OK ? 0 : -1);
 }
 int luaxClosure(lua_State *L)
 {
@@ -103,10 +102,8 @@ int luaxClosure(lua_State *L)
 		case (Gftype): {
 			lua_pushinteger(L,fnc.gf(lua_tostring(L,1),lua_tostring(L,2)));
 			return 1;}
-// typedef int (*oftype)(void *arg);
-// typedef void (*nftype)(void **use, const char *str);
-// typedef void (*mftype)(void **run, void *use);
-		default: return 0;}
+		default: break;}
+	return 0;
 }
 void luaxFunc(const char *str, struct Prototype fnc)
 {
@@ -116,12 +113,8 @@ void luaxFunc(const char *str, struct Prototype fnc)
 	lua_pushcclosure(luastate, luaxClosure, 2);
 	lua_setglobal(luastate, str);
 }
-void luaxFile(const char *str)
-{
-	// TODO
-}
 int nestSkip(const char **str)
- {
+{
 	char *bas = strchr(*str,'(');
 	char *lim = strchr(*str,')');
 	if (!lim) ERROR(exitErr,0);
@@ -141,7 +134,7 @@ void nestInit(int siz)
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
 	for (int i = 0; i < lsiz; i++) if (line[i]) {free(line[i]); line[i] = 0;}
-	if (siz) {rslt = realloc(rslt,siz*sizeof(char *)); line = realloc(line,siz*sizeof(char *));}
+	if (siz) {rslt = realloc(rslt,siz*sizeof(char *)); temp = realloc(temp,siz*sizeof(char *)); line = realloc(line,siz*sizeof(char *));}
 	else {free(rslt); rslt = 0; free(line); line = 0;}
 	for (int i = lsiz; i < siz; i++) {rslt[i] = 0; line[i] = 0;}
 	lsiz = siz;
@@ -181,7 +174,7 @@ int nestEval(int i)
 	int len = 0;
 	if (i < 0 || i >= dim) ERROR(exitErr,0);
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); luaxLoad(fiber[i].lua,fiber[i].exp);}
+	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); if (luaxLoad(fiber[i].lua,fiber[i].exp) != 0) return 0;}
 	ret = lua_resume(fiber[i].lua,0,0,&num);
 	if (ret != LUA_OK && ret != LUA_YIELD) {
 		printf("lua %s\n",lua_tostring(fiber[i].lua,-1));
@@ -208,13 +201,17 @@ const char *nestRepl(int i)
 	int pos = 0;
 	if (i < 0 || i >= lsiz) ERROR(exitErr,0);
 	length = strlen(line[i]);
-	for (int j = 0; j < dim; j++) if (fiber[j].idx == i) {
-	length -= strlen(fiber[j].exp)+3; length += strlen(fiber[j].str);}
+	for (int j = 0; j < dim; j++) if (fiber[j].idx == i) if (fiber[j].str) {
+		length -= strlen(fiber[j].exp)+3; length += strlen(fiber[j].str);}
 	rslt[i] = realloc(rslt[i],length+1); length = 0;
 	for (int j = 0; j < dim; j++) if (fiber[j].idx == i) {
 		int len = fiber[j].pos-pos-2;
-		strncpy(rslt[i]+length,line[i]+pos,len); length += len; pos += len+strlen(fiber[j].exp)+3;
-		strcpy(rslt[i]+length,fiber[j].str); length += strlen(fiber[j].str);}
+		int exp = strlen(fiber[j].exp)+3;
+		int siz = (fiber[j].str ? strlen(fiber[j].str) : 0);
+		strncpy(rslt[i]+length,line[i]+pos,len); length += len; pos += len;
+		if (fiber[j].str) {strcpy(rslt[i]+length,fiber[j].str); length += siz;}
+		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
+		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
 	// if (strcmp(line[i],rslt[i]) != 0) printf("nestRepl %s -> %s\n",line[i],rslt[i]);
 	return rslt[i];

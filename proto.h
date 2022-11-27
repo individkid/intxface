@@ -78,4 +78,6 @@ struct Prototype protoTypeN(nftype fnc);
 struct Prototype protoTypeM(mftype fnc);
 
 void exitErr(const char *str, int num, int idx);
+void setExestr(const char *str);
+const char *getExestr();
 #endif

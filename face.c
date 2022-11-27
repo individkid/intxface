@@ -1060,6 +1060,12 @@ void funcLua(int idx)
 	lua_pushnumber(lua,idx);
 	if (lua_pcall(lua, 1, 0, 0) != 0) ERROR(exitErr,0)
 }
+int setExestrLua(lua_State *lua)
+{
+	luaerr = lua;
+	setExestr(lua_tostring(lua,1));
+	return 0;
+}
 int debugStrLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1331,6 +1337,8 @@ int writeOldLua(lua_State *lua)
 
 int luaopen_face (lua_State *L)
 {
+	lua_pushcfunction(L, setExestrLua);
+	lua_setglobal(L, "setExestr");
 	lua_pushcfunction(L, debugStrLua);
 	lua_setglobal(L, "debugStr");
 	lua_pushcfunction(L, readNoteLua);
