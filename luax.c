@@ -116,6 +116,10 @@ void luaxFunc(const char *str, struct Prototype fnc)
 	lua_pushcclosure(luastate, luaxClosure, 2);
 	lua_setglobal(luastate, str);
 }
+void luaxFile(const char *str)
+{
+	// TODO
+}
 int nestSkip(const char **str)
  {
 	char *bas = strchr(*str,'(');

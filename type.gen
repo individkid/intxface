@@ -184,12 +184,22 @@ Ture = {
 	"Sides",
 }
 Step = {
-	"FwdSkpStep",
-	"RevSkpStep",
-	"FwdEntStep",
-	"RevEntStep",
-	"FwdExtStep",
-	"RevExtStep",
+	"FwdSkp",
+	"RevSkp",
+	"FwdEnt",
+	"RevEnt",
+	"FwdExt",
+	"RevExt",
+}
+Stream = {
+	"EncodeStream",
+	"DecodeStream",
+	"InsertStream",
+	"ExtractStream",
+	"ReadStream",
+	"WriteStream",
+	"FilterStream",
+	"CopyStream",
 }
 --HERE Constants
 Initial = {

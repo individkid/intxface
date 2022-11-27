@@ -19,12 +19,13 @@ int zero = 0;
 
 void shareRunC(void **run, void *use)
 {
-	int tmp, opc;
+	int tmp;
+	enum Stream opc;
 	struct File file; // TODO use generic generated function
 	tmp = memxInt(argxGet(iface)->run);
 	opc = memxInt(use);
-	// TODO write from misc
-	readFile(&file,tmp); // TODO read to run instead
+	// TODO write from misc, depending on opc
+	readFile(&file,tmp); // TODO read to run instead, depending on opc
 }
 int shareRunD(void *use)
 {
@@ -79,6 +80,7 @@ int main(int argc, char **argv)
 {
 	memxLuax();
 	luaxFunc("shareLuax",protoTypeF(shareLuax));
+	luaxFile("type.lua");
 	faces = getLocation();
 	type = getLocation();
 	field = getLocation();

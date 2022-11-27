@@ -47,12 +47,12 @@ int nestJump(int idx, void *jmp)
 		enum Step dir = memxInt(memxSkip(memxSkip(jmp,stp),0));
 		int cnt = memxInt(memxSkip(memxSkip(jmp,stp),1));
 		switch (dir) {
-		case (FwdSkpStep): idx = nestJumpF(idx,1,cnt,-1,0); break;
-		case (RevSkpStep): idx = nestJumpF(idx,-1,cnt,-1,0); break;
-		case (FwdEntStep): idx = nestJumpF(idx,1,1,1,cnt); break;
-		case (RevEntStep): idx = nestJumpF(idx,-1,1,1,cnt); break;
-		case (FwdExtStep): idx = nestJumpF(idx,1,1,-1,-cnt); break;
-		case (RevExtStep): idx = nestJumpF(idx,-1,1,-1,-cnt); break;
+		case (FwdSkp): idx = nestJumpF(idx,1,cnt,-1,0); break;
+		case (RevSkp): idx = nestJumpF(idx,-1,cnt,-1,0); break;
+		case (FwdEnt): idx = nestJumpF(idx,1,1,1,cnt); break;
+		case (RevEnt): idx = nestJumpF(idx,-1,1,1,cnt); break;
+		case (FwdExt): idx = nestJumpF(idx,1,1,-1,-cnt); break;
+		case (RevExt): idx = nestJumpF(idx,-1,1,-1,-cnt); break;
 		default: break;}
 	}
 	return idx;
