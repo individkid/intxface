@@ -398,7 +398,7 @@ int main(int argc, char **argv)
 	readJump(huberr,hub); writeJump(huberr,hub); allocEvent(&event,1); goon = 1;
 	while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
 	for (head = deloc(nowtime = gettime()); head; head = deloc(nowtime)) flow();
-	if (adloc()) sub = pauseAny(adloc(nowtime)); else sub = waitAny();
+	if (adloc()) sub = waitRead(adloc(nowtime),-1); else sub = waitRead(0.0,-1);
 	if (sub < 0) continue; readEvent(event,sub); stock();}}}
 	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
 	return 0;

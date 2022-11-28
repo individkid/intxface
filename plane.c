@@ -275,7 +275,7 @@ void *planeThread(void *arg)
 {
 	while (goon) {
 	struct Client client = {0};
-	int sub = pselectAny(0,1<<external);
+	int sub = waitRead(0,1<<external);
 	if (sub != external) break;
 	if (!goon) break;
 	if (!checkRead(external)) break;

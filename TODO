@@ -1,4 +1,7 @@
-Reduce number of wrapper functions in face.
+int waitAny();
+int waitMask(int msk);
+int pauseMask(double dly, int msk);
+int pauseAny(double dly);
 
 Write liner.lua sharer.lua planer.lua holer.lua.
 

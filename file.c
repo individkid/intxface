@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;
 	filesiz = FILESIZE - FILESIZE%fieldsiz;
 	if (setjmp(errbuf) != 0) {writeHub(); return -1;}
-	for (int sub = waitAny(); sub >= 0; sub = waitAny()) {
+	for (int sub = waitRead(0.0,-1); sub >= 0; sub = waitRead(0.0,-1)) {
 	readFile(ptr,sub);
 	switch (ACT) {
 		case (NewHub): {

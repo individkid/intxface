@@ -1,4 +1,6 @@
 #include "proto.h"
+int luaxFile(const char *exp); // call dofile with path from getExestr
+int luaxLib(const char *exp); // call require with path from getExestr
 int luaxSide(const char *exp); // call the lua script
 int luaxDict(char **val, const char *exp, const char *arg); // call the lua script with one arg and one return value
 int luaxPerm(int *val, const char *exp, int arg); // call the lua script with one arg and one return value

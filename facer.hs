@@ -90,7 +90,7 @@ mainFGF _ [] = return ()
 mainFGF a (b:c) = (writeMain b a) >> (mainFGF a c)
 
 mainFH :: [[MainABC]] -> [[MainABC]] -> IO ()
-mainFH a b = waitAny >>= (mainFHF a b)
+mainFH a b = (waitRead 0.0 (negate 1)) >>= (mainFHF a b)
 
 mainFHF :: [[MainABC]] -> [[MainABC]] -> Int -> IO ()
 mainFHF a b c
@@ -143,7 +143,7 @@ mainFI a b
 mainFJ :: [MainABC] -> IO ()
 mainFJ [] = return ()
 mainFJ (a:b) = do
- index <- waitAny
+ index <- (waitRead 0.0 (negate 1))
  value <- readMain a index
  writeMain value index
  mainFJ b

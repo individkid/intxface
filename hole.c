@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 	readJump(huberr,rub); writeJump(huberr,rub);
 	layer[hub] = Cluster; layer[fub] = System;
 	while (1) {if (setjmp(errbuf) == 0) {
-	for (sub = waitAny(); sub >= 0; sub = waitAny()) {
+	for (sub = waitRead(0.0,-1); sub >= 0; sub = waitRead(0.0,-1)) {
 	// read from readable
 	readFile(&file,sub);
 	// find new mappings

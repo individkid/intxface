@@ -20,8 +20,7 @@ foreign import ccall "openFifo" openFifoC :: CString -> IO CInt
 foreign import ccall "openFile" openFileC :: CString -> IO CInt
 foreign import ccall "forkExec" forkExecC :: CString -> IO CInt
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO CInt
-foreign import ccall "waitAny" waitAnyC :: IO CInt
-foreign import ccall "pauseAny" pauseAnyC :: CDouble -> IO CInt
+foreign import ccall "waitRead" waitReadC :: CDouble -> CInt -> IO CInt
 foreign import ccall "wrapper" wrapCall :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
 foreign import ccall "callInit" callInitC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "pollPipe" pollPipeC :: CInt -> IO CInt
@@ -71,10 +70,8 @@ forkExec :: String -> IO Int
 forkExec a = fmap fromIntegral ((newCString a) >>= forkExecC)
 pipeInit :: String -> String -> IO Int
 pipeInit a b = fmap fromIntegral ((newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x)))
-waitAny :: IO Int
-waitAny = fmap fromIntegral waitAnyC
-pauseAny :: Double -> IO Int
-pauseAny a = fmap fromIntegral (pauseAnyC (CDouble a))
+waitRead :: Double -> Int -> IO Int
+waitRead a b = fmap fromIntegral (waitReadC (CDouble a) (fromIntegral b))
 callInit :: (Int -> IO ()) -> Int -> IO ()
 callInit a b = (wrapCall (\x -> a (fromIntegral x))) >>= (\x -> callInitC x (fromIntegral b))
 pollPipe :: Int -> IO Int

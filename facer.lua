@@ -36,7 +36,7 @@ for index=0,1,1 do
 	writeOld(expectOld[sub],index)
 end
 done = {0,0,0}
-index = waitAny()
+index = waitRead(0.0,-1)
 while (index >= 0) do
 	sub = index+1
 	if (done[sub] == 0) then
@@ -64,7 +64,7 @@ while (index >= 0) do
 	else
 		readInt(index)
 	end
-	index = waitAny()
+	index = waitRead(0.0,-1)
 end
 assert(checkRead(0) == 0)
 assert(checkRead(1) == 0)

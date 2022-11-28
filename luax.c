@@ -51,6 +51,14 @@ int luaxLoad(lua_State *luastate, const char *exp)
 	free(reader.str);
 	return (retval == LUA_OK ? 0 : -1);
 }
+int luaxFile(const char *exp)
+{
+	return 0; // TODO
+}
+int luaxLib(const char *exp)
+{
+	return 0; // TODO
+}
 int luaxSide(const char *exp)
 {
 	int ret = 0;

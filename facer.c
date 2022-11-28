@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 		writeOld(expectOld[index],index);
 	}
 	int done[3] = {0};
-	for (int index = waitAny(); index >= 0; index = waitAny()) {
+	for (int index = waitRead(0.0,-1); index >= 0; index = waitRead(0.0,-1)) {
 	switch (done[index]) {
 	case (0): {
 		int value = readInt(index);

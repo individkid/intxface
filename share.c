@@ -33,8 +33,8 @@ int shareRunD(void *use)
 	int msk, dly, val;
 	msk = memxMask(argxGet(faces)->run);
 	dly = memxInt(use);
-	if (dly == 0) val = waitMask(msk);
-	else val = pauseMask(dly,msk);
+	if (dly == 0) val = waitRead(0.0,msk);
+	else val = waitRead(dly,msk);
 	return val;
 }
 int shareUseLF(int idx, void *buf, int nbyte)
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 {
 	char *temp = 0;
 	asprintf(&temp,"dofile(\"%s/oops.lua\")\n",dirname(realpath(argv[0],0)));
-	if (!luaxSide(temp)) {fprintf(stderr,"shareC: cannot load file: type.lua\n"); return -1;}
+	if (luaxSide(temp) != 0) {fprintf(stderr,"shareC: cannot load file: type.lua\n"); return -1;}
 	free(temp);
 	memxLuax();
 	luaxFunc("shareLuax",protoTypeF(shareLuax));

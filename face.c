@@ -307,8 +307,13 @@ int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 	wfn[val] = wpf;
 	return val;
 }
-int pselectAny(struct timespec *dly, int msk)
+int waitRead(double dly, int msk)
 {
+	struct timespec delay = {0};
+	struct timespec *ptr = &delay;
+	delay.tv_sec = (long long)dly;
+	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
+	if (dly == 0.0) ptr = 0;
 	while (1) {
 	int val;
 	int nfd = 0;
@@ -322,7 +327,7 @@ int pselectAny(struct timespec *dly, int msk)
 		if (fdt[i] == Inet) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
-	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,dly,0);
+	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,ptr,0);
 	if (val < 0) ERROR(exitErr,0);
 	if (val == 0) return -1;
 	nfd = 0; for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
@@ -343,37 +348,18 @@ int pselectAny(struct timespec *dly, int msk)
 		return lim++;}}
 	} return -1;
 }
-int waitAny()
+int waitExit()
 {
-	return pselectAny(0,-1);
-}
-int waitMask(int msk)
-{
-	return pselectAny(0,msk);
-}
-int pauseMask(double dly, int msk)
-{
-	struct timespec delay = {0};
-	if (dly == 0.0) return waitAny();
-	delay.tv_sec = (long long)dly;
-	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
-	return pselectAny(&delay,msk);
-}
-int pauseAny(double dly)
-{
-	return pauseMask(dly,-1);
-}
-void waitAll()
-{
-	int val;
-	while (wait(&val) != -1);
-	if (errno != ECHILD) ERROR(exitErr,0)
+	int val = 0;
+	while (wait(&val) != -1) if (WIFEXITED(val) && (val = WEXITSTATUS(val))) return val;
+	if (errno != ECHILD) ERROR(exitErr,0);
+	return 0;
 }
 void *callCall(void *arg)
 {
 	int idx = (int)(size_t)arg;
 	while (1) {
-		int sub = pselectAny(0,idx);
+		int sub = waitRead(0.0,idx);
 		if (sub == idx) cbfnc[idx](idx);
 	}
 }
@@ -1141,22 +1127,16 @@ int pipeInitLua(lua_State *lua)
 	lua_pushnumber(lua,pipeInit(lua_tostring(lua,1),lua_tostring(lua,2)));
 	return 1;
 }
-int waitAnyLua(lua_State *lua)
+int waitReadLua(lua_State *lua)
 {
 	luaerr = lua;
-	lua_pushnumber(lua,waitAny());
+	lua_pushnumber(lua,waitRead(lua_tonumber(lua,1),(int)lua_tonumber(lua,2)));
 	return 1;
 }
-int pauseAnyLua(lua_State *lua)
+int waitExitLua(lua_State *lua)
 {
 	luaerr = lua;
-	lua_pushnumber(lua,pauseAny(lua_tonumber(lua,1)));
-	return 1;
-}
-int waitAllLua(lua_State *lua)
-{
-	luaerr = lua;
-	waitAll();
+	waitExit();
 	return 0;
 }
 int callInitLua(lua_State *lua)
@@ -1361,10 +1341,10 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "forkExec");
 	lua_pushcfunction(L, pipeInitLua);
 	lua_setglobal(L, "pipeInit");
-	lua_pushcfunction(L, waitAnyLua);
-	lua_setglobal(L, "waitAny");
-	lua_pushcfunction(L, waitAllLua);
-	lua_setglobal(L, "waitAll");
+	lua_pushcfunction(L, waitReadLua);
+	lua_setglobal(L, "waitRead");
+	lua_pushcfunction(L, waitExitLua);
+	lua_setglobal(L, "waitExit");
 	lua_pushcfunction(L, callInitLua);
 	lua_setglobal(L, "callInit");
 	lua_pushcfunction(L, pollPipeLua);
