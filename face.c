@@ -351,7 +351,7 @@ int waitRead(double dly, int msk)
 int waitExit()
 {
 	int val = 0;
-	while (wait(&val) != -1) if (WIFEXITED(val) && (val = WEXITSTATUS(val))) return val;
+	while (wait(&val) != -1) if (WIFEXITED(val) && (val = WEXITSTATUS(val)) < 0) return val;
 	if (errno != ECHILD) ERROR(exitErr,0);
 	return 0;
 }

@@ -51,13 +51,42 @@ int luaxLoad(lua_State *luastate, const char *exp)
 	free(reader.str);
 	return (retval == LUA_OK ? 0 : -1);
 }
+int luaxForm(fftype fnc, const char *fmt, ...)
+{
+	char *temp = 0;
+	va_list args = {0};
+	int val = 0;
+	va_start(args,fmt);
+	asprintf(&temp,fmt,args);
+	va_end(args);
+	val = fnc(temp);
+	free(temp);
+	return val;
+}
+int luaxPathF(const char *exp)
+{
+	return access(exp,R_OK);
+}
+int luaxPathG(const char *exp)
+{
+	const char *str = 0;
+	for (int i = 0; (str = getExedir(i)); i++)
+	if (luaxForm(luaxPathF,"%s%s",str,exp) == 0) return i;
+	return -1;
+}
+int luaxPath(const char *exp, const char *fnc)
+{
+	int i = luaxPathG(exp);
+	if (i < 0) return -1;
+	return luaxForm(luaxSide,"%s(\"%s%s\")",fnc,getExedir(i),exp);
+}
 int luaxFile(const char *exp)
 {
-	return 0; // TODO
+	return luaxPath(exp,"dofile");
 }
 int luaxLib(const char *exp)
 {
-	return 0; // TODO
+	return luaxPath(exp,"require");
 }
 int luaxSide(const char *exp)
 {

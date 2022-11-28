@@ -22,7 +22,7 @@ int rdfdInit(int rdfd, int hint);
 int wrfdInit(int wrfd, int hint);
 int puntInit(int rdx, int wdx, pftype rpf, qftype wpf);
 int waitRead(double dly, int msk);
-int waitExit();
+int waitExit(); // TODO add dly and msk
 void callInit(cftype fnc, int idx);
 int pollPipe(int idx);
 int pollFile(int idx);

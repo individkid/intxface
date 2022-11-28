@@ -79,10 +79,7 @@ int shareLuax(const char *str)
 }
 int main(int argc, char **argv)
 {
-	char *temp = 0;
-	asprintf(&temp,"dofile(\"%s/oops.lua\")\n",dirname(realpath(argv[0],0)));
-	if (luaxSide(temp) != 0) {fprintf(stderr,"shareC: cannot load file: type.lua\n"); return -1;}
-	free(temp);
+	if (luaxFile("type.lua") < 0) {fprintf(stderr,"shareC: cannot load file: type.lua\n"); return -1;}
 	memxLuax();
 	luaxFunc("shareLuax",protoTypeF(shareLuax));
 	faces = getLocation();

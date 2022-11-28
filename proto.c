@@ -3,8 +3,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/errno.h>
+#include <string.h>
+#include <libgen.h>
 
-const char *exestr = 0;
+char *exestr = 0;
+char *tmpstr = 0;
 
 struct Prototype protoTypeF(fftype fnc)
 {
@@ -32,9 +35,23 @@ void exitErr(const char *str, int num, int idx)
 }
 void setExestr(const char *str)
 {
-	exestr = str;
+	int len = 0;
+	if (exestr) {
+		exestr = realloc(exestr,strlen(exestr)+1+strlen(str)+1);
+		strcat(exestr,":");
+		strcat(exestr,str);}
+	else {
+		exestr = malloc(strlen(str)+1);
+		strcpy(exestr,str);}
+	tmpstr = realloc(tmpstr,len = strlen(exestr));
+	strcpy(tmpstr,exestr);
+	for (int i = 0; i < len; i++) if (exestr[i] == ':') tmpstr[i] = 0;
 }
-const char *getExestr()
+const char *getExedir(int i)
 {
-	return exestr;
+	int len = strlen(exestr);
+	int j = 0;
+	if (i == 0) return "";
+	for (j = 0, i--; j < len && i > 0; j++) if (exestr[j] == ':') i--;
+	return (i == 0 ? dirname(tmpstr+j) : 0);
 }
