@@ -78,6 +78,9 @@ struct Prototype protoTypeN(nftype fnc);
 struct Prototype protoTypeM(mftype fnc);
 
 void exitErr(const char *str, int num, int idx);
-void setExestr(const char *str);
-const char *getExedir(int i);
+void protoSet(const char *str);
+const char *protoGet(int i);
+int protoForm(fftype fnc, const char *fmt, ...);
+int protoPathF(const char *exp);
+int protoPath(const char *exp);
 #endif
