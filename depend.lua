@@ -1,6 +1,7 @@
 todo = {}
 copy = {}
 done = {}
+verbose = false
 fileExp = "(.*)(%..*)"
 findExp = ".*/(.*)(%..*)"
 function debugTodo()
@@ -127,8 +128,10 @@ function listDepend(top,rule)
 	return {}
 end
 function pushError(push)
-	io.stdout:write(" pushError "..push)
-	if push == "" then io.stdout:write("blank\n"); os.exit() end
+	if verbose then
+		io.stdout:write(" pushError "..push)
+		if push == "" then io.stdout:write("blank\n"); os.exit() end
+	end
 	todo[#todo+1] = push
 	if not copy[push] then copy[push] = {} end
 	if not done[push] then done[push] = {} end
@@ -136,7 +139,7 @@ end
 function doneError(file)
 	local top = todo[#todo]
 	local set = done[top]
-	io.stdout:write(" doneError "..top..": "..file)
+	if verbose then io.stdout:write(" doneError "..top..": "..file) end
 	set[file] = true
 	pushError(file)
 end
@@ -144,14 +147,14 @@ function bothError(file)
 	local top = todo[#todo]
 	local set = done[top]
 	local map = copy[top]
-	io.stdout:write(" bothError "..top..": "..file)
+	if verbose then io.stdout:write(" bothError "..top..": "..file) end
 	set[file] = true
 	map[file] = true
 end
 function copyError(file)
 	local top = todo[#todo]
 	local map = copy[top]
-	io.stdout:write(" copyError "..file)
+	if verbose then io.stdout:write(" copyError "..file) end
 	map[file] = true
 end
 function popError()
@@ -160,20 +163,26 @@ function popError()
 	todo[#todo] = nil
 	if #todo > 0 then
 		local next = todo[#todo]
-		io.stdout:write("popError "..next..":")
-		for each in pairs(copy[next]) do
-			io.stdout:write(" "..each)
+		if verbose then
+			io.stdout:write("popError "..next..":")
+			for each in pairs(copy[next]) do
+				io.stdout:write(" "..each)
+			end
+			io.stdout:write(";")
+			for each in pairs(copy[top]) do
+				io.stdout:write(" "..each)
+			end
+			io.stdout:write("\n")
 		end
-		io.stdout:write(";")
 		for each in pairs(copy[top]) do
-			io.stdout:write(" "..each)
 			copy[next][each] = true
 		end
-		io.stdout:write("\n")
 	end
 end
 finite = 0
-limit = 200
+limit = 300 -- when to go interactive
+maximum = 300 -- when to exit
+finish = 300 -- when to set verbose
 function checkError(check,rule,id)
 	local top = todo[#todo]
 	if (top == "all") and not (rule == "all") then check = rule end
@@ -182,29 +191,32 @@ function checkError(check,rule,id)
 	local first = firstDepend(list)
 	local found = nil
 	finite = finite + 1
-	-- os.execute("cat depend.err")
-	-- debugTodo()
-	io.stdout:write("checkError"..id.."("..top..","..rule..","..check..","..next..") ")
-	for k,v in ipairs(todo) do io.stdout:write("'"..v) end
-	io.stdout:write(":")
-	for k,v in ipairs(list) do io.stdout:write(v.."'") end
-	io.stdout:write(" ")
+	if verbose then
+		os.execute("cat depend.err")
+		debugTodo()
+		io.stdout:write("checkError"..id.."("..top..","..rule..","..check..","..next..") ")
+		for k,v in ipairs(todo) do io.stdout:write("'"..v) end
+		io.stdout:write(":")
+		for k,v in ipairs(list) do io.stdout:write(v.."'") end
+		io.stdout:write(" ")
+	end
+	if not found and (top == "all") then found = "1"; if verbose then io.stdout:write(found) end; pushError(check) end
 
-	if not found and (top == "all") then found = "1"; io.stdout:write(found); pushError(check) end
+	if not found and (top == check) and fileExists(next) then found = "2a"; if verbose then io.stdout:write(found) end; copyError(next) end
+	if not found and (top == check) and not fileExists(next) then found = "2b"; if verbose then io.stdout:write(found) end; pushError(next) end
+	if not found and not (top == rule) and string.match("hd",id) then found = "2c"; if verbose then io.stdout:write(found) end; pushError(first) end
 
-	if not found and (top == check) and fileExists(next) then found = "2a"; io.stdout:write(found); copyError(next) end
-	if not found and (top == check) and not fileExists(next) then found = "2b"; io.stdout:write(found); pushError(next) end
-	if not found and not (top == rule) and string.match("hd",id) then found = "2c"; io.stdout:write(found); pushError(first) end
+	if not found and not doneExists(top,check) and fileExists(check) then found = "3a"; if verbose then io.stdout:write(found) end; bothError(check) end
+	if not found and doneExists(top,check) and fileExists(check) then found = "3b"; if verbose then io.stdout:write(found) end; copyError(check) end
+	if not found and not doneExists(top,check) and not fileExists(check) then found = "3c"; if verbose then io.stdout:write(found) end; doneError(check) end
+	if not found and doneExists(top,check) and not fileExists(check) then found = "3d"; if verbose then io.stdout:write(found) end; pushError(check) end
 
-	if not found and not doneExists(top,check) and fileExists(check) then found = "3a"; io.stdout:write(found); bothError(check) end
-	if not found and doneExists(top,check) and fileExists(check) then found = "3b"; io.stdout:write(found); copyError(check) end
-	if not found and not doneExists(top,check) and not fileExists(check) then found = "3c"; io.stdout:write(found); doneError(check) end
-	if not found and doneExists(top,check) and not fileExists(check) then found = "3d"; io.stdout:write(found); pushError(check) end
-
-	if not found or finite > 300 then io.stdout:write("\n"); os.exit() end
-	io.write(" "..finite)
-	if finite >= limit then io.read(); return end
-	io.stdout:write("\n")
+	if verbose then
+		if finite >= limit then io.read(); return end
+		io.stdout:write("\n")
+	end
+	if not found or finite > maximum then os.exit() end
+	if finite >= finish then verbose = true end
 end
 function checkRule()
 	local base = nil
@@ -278,7 +290,7 @@ end
 function checkMake()
 	local top = todo[#todo]
 	local cmd = "make -C depend "..top.." 2> depend.err > depend.out"
-	io.stdout:write(cmd.."\n")
+	io.stdout:write(cmd.." "..finite.."\n")
 	os.execute(cmd)
 	local greplist = io.open("depend.err")
 	local found = false
@@ -301,7 +313,7 @@ function checkMake()
 		check,rule = string.match(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$"); if rule and check then checkError(check,rule,"h"); found = true; break end
 		check = string.match(line,"^error: failed to make ([.%w]*)$"); if (#lines == 1) and check then checkError(check,checkRule(),"i"); found = true; break end
 		check = string.match(line,"^[0-9]* *%| import ([%w]*)$"); if check then checkError(moduleDepend(check),checkRule(),"j"); found = true; break end
-		check = string.match(line,"^lua: [.%w]*:[0-9]*: module '([%w]*)' not found"); if check then checkError(check..".so",checkRule(),"k"); found = true; break end
+		check = string.match(line,"[.%w]*:[0-9]*: module '([%w]*)' not found"); if check then checkError(check..".so",checkRule(),"k"); found = true; break end
 		check = string.match(line,"error: no such file or directory: '([.%w]*)'$"); if check then checkError(check,checkRule(),"l"); found = true; break end
 		check = string.match(line,"Not in scope: type constructor or class ‘([%w]*)’$"); if check then checkError(classDepend(check),checkRule(),"m"); found = true; break end
 		rule,check = string.match(line,"^([%w]*): cannot load library: ([.%w]*)$"); if rule and check then checkError(check,rule,"n"); found = true; break end
@@ -316,7 +328,6 @@ pushError("all")
 io.stdout:write("\n")
 while #todo > 0 do
 	checkSetup()
-	debugTodo()
 	if checkCopy() and checkMake() then popError() end
 end
 io.stdout:write("all done\n")

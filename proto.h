@@ -80,6 +80,8 @@ struct Prototype protoTypeM(mftype fnc);
 void exitErr(const char *str, int num, int idx);
 void protoSet(const char *str);
 const char *protoGet(int i);
+void protoErr(const char *fmt, ...);
+const char *protoMsg();
 int protoForm(fftype fnc, const char *fmt, ...);
 int protoPathF(const char *exp);
 int protoPath(const char *exp);

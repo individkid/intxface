@@ -27,6 +27,11 @@ char **temp = 0; // to exp or str
 int lsiz = 0; // number of strings in line
 lua_State *luastate = 0;
 
+void luaxErr()
+{
+	protoErr("%s\n",lua_tostring(luastate,-1));
+	lua_pop(luastate,1);
+}
 void *luaxLua(void *ud, void *ptr, size_t osize, size_t nsize)
 {
 	if (nsize == 0) {free(ptr); return 0;}
@@ -48,7 +53,8 @@ int luaxLoad(lua_State *luastate, const char *exp)
 	reader.vld = 1;
 	retval = lua_load(luastate,luaxReader,(void*)&reader,"","t");
 	free(reader.str);
-	return (retval == LUA_OK ? 0 : -1);
+	if (retval != LUA_OK) {luaxErr(); return -1;}
+	return 0;
 }
 int luaxPath(const char *exp, const char *fnc)
 {
@@ -66,33 +72,30 @@ int luaxLib(const char *exp)
 }
 int luaxSide(const char *exp)
 {
-	int ret = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	if (luaxLoad(luastate,exp) != 0) return -2;
-	ret = lua_pcall(luastate,0,0,0);
-	return (ret == LUA_OK ? 0 : -1);	
+	if (lua_pcall(luastate,0,0,0) != LUA_OK) {luaxErr(); return -1;}
+	return 0;	
 }
 int luaxDict(char **val, const char *exp, const char *arg)
 {
-	int ret = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	if (!luaxLoad(luastate,exp)) return -2;
+	if (luaxLoad(luastate,exp) != 0) return -2;
 	lua_pushstring(luastate,arg);
-	ret = lua_pcall(luastate,1,1,0);
+	if (lua_pcall(luastate,1,1,0) != LUA_OK) {luaxErr(); return -1;}
 	asprintf(val,"%s",lua_tostring(luastate,-1));
 	lua_pop(luastate,1);
-	return (ret == LUA_OK ? 0 : -1);
+	return 0;
 }
 int luaxPerm(int *val, const char *exp, int arg)
 {
-	int ret = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	if (!luaxLoad(luastate,exp)) return -2;
+	if (luaxLoad(luastate,exp) != 0) return -2;
 	lua_pushinteger(luastate,arg);
-	ret = lua_pcall(luastate,1,1,0);
+	if (lua_pcall(luastate,1,1,0) != LUA_OK) {luaxErr(); return -1;}
 	*val = lua_tonumber(luastate,-1);
 	lua_pop(luastate,1);
-	return (ret == LUA_OK ? 0 : -1);
+	return 0;
 }
 int luaxClosure(lua_State *L)
 {

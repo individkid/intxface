@@ -8,7 +8,9 @@
 #include <stdarg.h>
 
 char *exestr = 0;
-char *tmpstr = 0;
+char *exetmp = 0;
+char *msgstr = 0;
+char *msgtmp = 0;
 
 struct Prototype protoTypeF(fftype fnc)
 {
@@ -44,17 +46,41 @@ void protoSet(const char *str)
 	else {
 		exestr = malloc(strlen(str)+1);
 		strcpy(exestr,str);}
-	tmpstr = realloc(tmpstr,len = strlen(exestr));
-	strcpy(tmpstr,exestr);
-	for (int i = 0; i < len; i++) if (exestr[i] == ':') tmpstr[i] = 0;
+	exetmp = realloc(exetmp,len = strlen(exestr));
+	strcpy(exetmp,exestr);
+	for (int i = 0; i < len; i++) if (exestr[i] == ':') exetmp[i] = 0;
 }
 const char *protoGet(int i)
 {
-	int len = strlen(exestr);
+	int len = 0;
 	int j = 0;
 	if (i == 0) return "";
+	if (exestr == 0) return 0;
+	len = strlen(exestr);
 	for (j = 0, i--; j < len && i > 0; j++) if (exestr[j] == ':') i--;
-	return (i == 0 ? dirname(tmpstr+j) : 0);
+	return (i == 0 ? dirname(exetmp+j) : 0);
+}
+void protoErr(const char *fmt, ...)
+{
+	char *temp = 0;
+	va_list args = {0};
+	va_start(args,fmt);
+	vasprintf(&temp,fmt,args);
+	va_end(args);
+	if (msgstr) {
+		msgstr = realloc(msgstr,strlen(msgstr)+strlen(temp)+1);
+		strcat(msgstr,temp);}
+	else {
+		msgstr = malloc(strlen(temp)+1);
+		strcpy(msgstr,temp);}
+	free(temp);
+}
+const char *protoMsg()
+{
+	if (msgtmp) free(msgtmp);
+	msgtmp = msgstr;
+	msgstr = 0;
+	return msgtmp;
 }
 int protoForm(fftype fnc, const char *fmt, ...)
 {
@@ -62,7 +88,7 @@ int protoForm(fftype fnc, const char *fmt, ...)
 	va_list args = {0};
 	int val = 0;
 	va_start(args,fmt);
-	asprintf(&temp,fmt,args);
+	vasprintf(&temp,fmt,args);
 	va_end(args);
 	val = fnc(temp);
 	free(temp);
@@ -75,7 +101,7 @@ int protoPathF(const char *exp)
 int protoPath(const char *exp)
 {
 	const char *str = 0;
-	for (int i = 0; (str = protoGet(i)); i++)
-	if (protoForm(protoPathF,"%s%s",str,exp) == 0) return i;
+	for (int i = 0; (str = protoGet(i)); i++) {
+	if (protoForm(protoPathF,"%s%s",str,exp) == 0) return i;}
 	return -1;
 }
