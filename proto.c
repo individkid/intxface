@@ -32,6 +32,34 @@ struct Prototype protoTypeM(mftype fnc)
 {
 	struct Prototype ret = {.ft = Mftype, {.mf = fnc}}; return ret;
 }
+struct Prototype protoTypeD(dftype fnc)
+{
+	struct Prototype ret = {.ft = Dftype, {.df = fnc}}; return ret;
+}
+struct Prototype protoTypeA(aftype fnc)
+{
+	struct Prototype ret = {.ft = Aftype, {.af = fnc}}; return ret;
+}
+struct Prototype protoTypeI(iftype fnc)
+{
+	struct Prototype ret = {.ft = Iftype, {.it = fnc}}; return ret;
+}
+struct Prototype protoTypeJ(jftype fnc)
+{
+	struct Prototype ret = {.ft = Jftype, {.jf = fnc}}; return ret;
+}
+struct Prototype protoTypeK(kftype fnc)
+{
+	struct Prototype ret = {.ft = Kftype, {.kf = fnc}}; return ret;
+}
+struct Prototype protoTypeR(rftype fnc)
+{
+	struct Prototype ret = {.ft = Rftype, {.rf = fnc}}; return ret;
+}
+struct Prototype protoTypeT(tftype fnc)
+{
+	struct Prototype ret = {.ft = Tftype, {.tf = fnc}}; return ret;
+}
 void exitErr(const char *str, int num, int idx)
 {
 	fprintf(stderr,"exitErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid()); exit(-1);

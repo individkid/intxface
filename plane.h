@@ -1,9 +1,9 @@
 enum Shader;
 enum Configure;
 struct Pierce;
-struct Client;
+struct Center;
 typedef void (*vftype)(); // init run
-typedef void (*uftype)(struct Client *client); // dma
+typedef void (*uftype)(struct Center *center); // dma
 typedef void (*yftype)(enum Configure hint); // wake
 typedef int (*xftype)(enum Configure query); // info
 typedef void (*wftype)(enum Shader shader, int start, int stop); // draw

@@ -21,6 +21,8 @@ int argxJump(void *jmp);
 void argxCopy(void **run, void *use);
 void argxKeep(void **run, void *use);
 struct ArgxNest *argxGet(int idx);
+void *argxUse(int idx);
+void *argxRun(int idx);
 int argxHere();
 int getLocation();
 int addOption(const char *opt, struct Prototype fnc, struct Prototype gnc);

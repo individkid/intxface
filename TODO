@@ -1,13 +1,11 @@
-int waitAny();
-int waitMask(int msk);
-int pauseMask(double dly, int msk);
-int pauseAny(double dly);
 
 Write liner.lua sharer.lua planer.lua holer.lua.
 
-Write wave.cpp to convert digiscope into struct AV pipe.
+Write drive.cpp to read and write file with struct AV.
 
 Write tape.cpp to convert BMD to and from struct AV pipe.
+
+Write wave.cpp to convert digiscope into struct AV pipe.
 
 Write frame.cpp to display and capture AV between screen and struct AV pipe.
 

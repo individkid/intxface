@@ -103,15 +103,6 @@ int luaxClosure(lua_State *L)
 	fnc.ft = lua_tointeger(L, lua_upvalueindex(1));
 	fnc.vp = lua_touserdata(L, lua_upvalueindex(2));
 	switch (fnc.ft) {
-		case (Lftype): {
-			int val = 0;
-			int ret = 0;
-			int len = lua_type(L,3)==LUA_TNONE?0:lua_tointeger(L,3);
-			ret = fnc.lf(&val,lua_tostring(L,1),lua_tostring(L,2),&len);
-			lua_pushinteger(L,val);
-			lua_pushinteger(L,len);
-			lua_pushinteger(L,ret);
-			return 3;}
 		case (Fftype): {
 			lua_pushinteger(L,fnc.ff(lua_tostring(L,1)));
 			return 1;}

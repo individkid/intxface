@@ -33,12 +33,18 @@ typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string 
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
-typedef int (*lftype)(int *val, const char *typ, const char *str, int *siz);
 typedef int (*fftype)(const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
 typedef int (*oftype)(void *arg);
 typedef void (*nftype)(void **use, const char *str);
 typedef void (*mftype)(void **run, void *use);
+typedef void (*dftype)(void **mem);
+typedef const char *(*aftype)(void *mem);
+typedef void (*iftype)(void **mem, int key);
+typedef void (*jftype)(void **mem, void *giv, void *key);
+typedef void (*kftype)(void **mem, void *giv, int key);
+typedef void *(*rftype)(int idx);
+typedef void *(*tftype)(void *giv);
 
 struct Prototype {
 	enum {
@@ -48,12 +54,18 @@ struct Prototype {
 		Hftype,
 		Pftype,
 		Qftype,
-		Lftype,
 		Fftype,
 		Gftype,
 		Oftype,
 		Nftype,
 		Mftype,
+		Dftype,
+		Aftype,
+		Iftype,
+		Jftype,
+		Kftype,
+		Rftype,
+		Tftype,
 	} ft;
 	union {
 		cftype cf;
@@ -62,12 +74,18 @@ struct Prototype {
 		hftype hf;
 		pftype pf;
 		qftype qf;
-		lftype lf;
 		fftype ff;
 		gftype gf;
 		oftype of;
 		nftype nf;
 		mftype mf;
+		dftype df;
+		aftype af;
+		iftype it;
+		jftype jf;
+		kftype kf;
+		rftype rf;
+		tftype tf;
 		void *vp;
 	};
 };
@@ -76,6 +94,13 @@ struct Prototype protoTypeG(gftype fnc);
 struct Prototype protoTypeO(oftype fnc);
 struct Prototype protoTypeN(nftype fnc);
 struct Prototype protoTypeM(mftype fnc);
+struct Prototype protoTypeD(dftype fnc);
+struct Prototype protoTypeA(aftype fnc);
+struct Prototype protoTypeI(iftype fnc);
+struct Prototype protoTypeJ(jftype fnc);
+struct Prototype protoTypeK(kftype fnc);
+struct Prototype protoTypeR(rftype fnc);
+struct Prototype protoTypeT(tftype fnc);
 
 void exitErr(const char *str, int num, int idx);
 void protoSet(const char *str);

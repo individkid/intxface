@@ -44,9 +44,10 @@ int nestJump(int idx, void *jmp)
 {
 	int stp = 0;
 	while (idx >= 0 && idx < nim && stp < memxSize(jmp)) {
-		enum Step dir = memxInt(memxSkip(memxSkip(jmp,stp),0));
-		int cnt = memxInt(memxSkip(memxSkip(jmp,stp),1));
-		switch (dir) {
+		void *mem = memxTemp(0); memxSkip(&mem,jmp,stp);
+		void *tmp = memxTemp(1);
+		int cnt = (memxSkip(&tmp,mem,1), memxInt(tmp));
+		switch (memxSkip(&tmp,mem,0), (enum Step)memxInt(tmp)) {
 		case (FwdSkp): idx = nestJumpF(idx,1,cnt,-1,0); break;
 		case (RevSkp): idx = nestJumpF(idx,-1,cnt,-1,0); break;
 		case (FwdEnt): idx = nestJumpF(idx,1,1,1,cnt); break;
@@ -78,6 +79,14 @@ void argxKeep(void **run, void *use)
 struct ArgxNest *argxGet(int idx)
 {
 	return nst+idx;
+}
+void *argxUse(int idx)
+{
+	return nst[idx].use;
+}
+void *argxRun(int idx)
+{
+	return nst[idx].run;
 }
 int argxHere()
 {

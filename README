@@ -93,6 +93,44 @@ classifies sets of regions as polytopes, samples polytopes as region sets,
 finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
+drive test AVAssetReader AVAssetWriter to and from av struct pipe.
+tape test BMD-SDK to and from av struct pipe.
+wave test IOUSBInterfaceInterface to and from av struct pipe.
+frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.
+phone test av struct to from audio.
+share test arguments that control how subsequent non-dash arguments are interpreted and used.
+each argument sets up an argument for "factory flow" which sets up an argument first.
+"pipe" arguments get arguments through memx from face functions.
+"nest path" arguments control flow, or get arguments from the past.
+"delay" "instead" and "aswell" access current or past accumulated arguments.
+argx has function to set number of arguments,
+add per dash argument given arguments and string,
+add per dash opcode (nesting argument reference collect).
+ -a type or varies (factory argumewnt)
+ -b field or whole (factory argument)
+ -c factory flow (operation name)
+  encode decode insert extract read write filter copy
+ -d flow delay (zero for infinite)
+ -e executable pipe (executable name)
+ -f file pipe (file name)
+ -g fifo pipe (file name)
+ -h inet pipe (host port)
+ -i input from (nest path)
+ -j loop or break (nest path)
+  + - for forward backward, ( ) = for enter exit skip
+ -k open or close (nest count)
+ -l lua pipe (script string)
+ -m instead from (nest path)
+ -n aswell from (nest path)
+  face idents for delay are instead or aswell at path
+ -o output from (nest path)
+  input or output ident for factory is at path
+ -p output pipe (descrptor)
+ -q input pipe (descriptor)
+ -rstuvwxyz control delay and parallelism
+ -efghlpq update face latch and faces set
+ -ab update type and field latches
+
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
 to and from commands this and other processes.
@@ -127,49 +165,3 @@ Users have read, write, and execute permissions in their groups.
 Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
 Decorations include posts, remote framebuffers, altenate spaces, and system sound.
-
-drive test AVAssetReader AVAssetWriter to and from av struct pipe.
-tape test BMD-SDK to and from av struct pipe.
-wave test IOUSBInterfaceInterface to and from av struct pipe.
-frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.
-share test arguments that control how subsequent non-dash arguments are interpreted and used.
-each argument sets up an argument for "factory flow" which sets up an argument first.
-"pipe" arguments get arguments through memx from face functions.
-"nest path" arguments control flow, or get arguments from the past.
-"delay" "instead" and "aswell" access current or past accumulated arguments.
-argx has function to set number of arguments,
-add per dash argument given arguments and string,
-add per dash opcode (nesting argument reference collect).
- -a type or varies (factory argumewnt)
- -b field or whole (factory argument)
- -c factory flow (operation name)
-  encode decode insert extract read write filter copy
- -d flow delay (zero for infinite)
- -e executable pipe (executable name)
- -f file pipe (file name)
- -g fifo pipe (file name)
- -h inet pipe (host port)
- -i input from (nest path)
- -j loop or break (nest path)
-  + - for forward backward, ( ) = for enter exit skip
- -k open or close (nest count)
- -l lua pipe (script string)
- -m instead from (nest path)
- -n aswell from (nest path)
-  face idents for delay are instead or aswell at path
- -o output from (nest path)
-  input or output ident for factory is at path
- -p output pipe (descrptor)
- -q input pipe (descriptor)
- -rstuvwxyz control delay and parallelism
- -efghlpq update face latch and faces set
- -ab update type and field latches
-
-edit test file handle per tab or window.
-This presents a readonly scrollable searchable highlightable text widget,
-a scrollable searchable clickable list widget of file changes,
-an entry widget that atomically writes highlighted fields upon enter.
-
-link test file to start processes connected by pipes.
-Each line in a control file is space separated arguments,
-or pipe setting read and write ends of pipe to environment variables.

@@ -20,18 +20,44 @@ int zero = 0;
 
 void shareRunC(void **run, void *use)
 {
-	int tmp;
-	enum Stream opc;
-	struct File file; // TODO use generic generated function
-	tmp = memxInt(argxGet(iface)->run);
-	opc = memxInt(use);
-	// TODO write from misc, depending on opc
-	readFile(&file,tmp); // TODO read to run instead, depending on opc
+	int len = memxSize(use);
+	void *acc = 0; memxSkip(&acc,run,0);
+	void *aux = 0; memxSkip(&aux,run,1);
+	int ifd = memxInt(argxRun(iface));
+	int ofd = memxInt(argxRun(oface));
+	void *que = argxRun(misc);
+	int typ = memxInt(argxRun(type));
+	int fld = memxInt(argxRun(field));
+	void *mem = memxTemp(0);
+	struct File file; readFile(&file,ifd); // TODO use generic generated function
+	for (int i = 0; i < len; i++)
+	switch (memxSkip(&mem,use,i), (enum Stream) memxInt(mem)) {
+	case (RdTypP): break;
+	case (RdTypHd): break;
+	case (RdTypTl): break;
+	case (RdTypRnd): break;
+	case (RdTypAux): break;
+	case (RdFldP): break;
+	case (RdFldHd): break;
+	case (RdFldTl): break;
+	case (RdFldRnd): break;
+	case (RdFldAux): break;
+	case (WrTypP): break;
+	case (WrTypHd): break;
+	case (WrTypTl): break;
+	case (WrTypRnd): break;
+	case (WrTypAux): break;
+	case (WrFldP): break;
+	case (WrFldHd): break;
+	case (WrFldTl): break;
+	case (WrFldRnd): break;
+	case (WrFldAux): break;
+	default: ERROR(exitErr,0); break;}
 }
 int shareRunD(void *use)
 {
 	int msk, dly, val;
-	msk = memxMask(argxGet(faces)->run);
+	msk = memxMask(argxRun(faces));
 	dly = memxInt(use);
 	if (dly == 0) val = waitRead(0.0,msk);
 	else val = waitRead(dly,msk);
@@ -55,15 +81,15 @@ void shareUseL(void **use, const char *str)
 }
 void shareRunL(void **run, void *use)
 {
-	memxCopy(run,memxSkip(use,0));
+	void *mem = memxTemp(0); memxSkip(&mem,use,0); memxCopy(run,mem);
 }
 int shareUseP(const char *str)
 {
-	return rdfdInit(memxInt(memxTemp(str,0)),memxInt(argxGet(oface)->run));
+	void *mem = memxTemp(0); memxInit(&mem,str); return rdfdInit(memxInt(mem),memxInt(argxRun(oface)));
 }
 int shareUseQ(const char *str)
 {
-	return wrfdInit(memxInt(memxTemp(str,0)),memxInt(argxGet(iface)->run));
+	void *mem = memxTemp(0); memxInit(&mem,str); return wrfdInit(memxInt(mem),memxInt(argxRun(iface)));
 }
 int shareLuax(const char *str)
 {
@@ -80,8 +106,10 @@ int shareLuax(const char *str)
 int main(int argc, char **argv)
 {
 	if (luaxFile("type.lua") < 0) {protoErr("shareC: cannot load library: type.lua\n"); fprintf(stderr,"%s",protoMsg()); return -1;}
-	memxLuax();
 	luaxFunc("shareLuax",protoTypeF(shareLuax));
+	luaxFunc("argxUse",protoTypeR(argxUse));
+	luaxFunc("argxRun",protoTypeR(argxRun));
+	memxLuax();
 	faces = getLocation();
 	type = getLocation();
 	field = getLocation();
@@ -108,7 +136,6 @@ int main(int argc, char **argv)
 	addOption("q",protoTypeF(shareUseQ),protoTypeM(memxCopy));
 	mapCallback("a",type,protoTypeM(memxCopy));
 	mapCallback("b",field,protoTypeM(memxCopy));
-	mapCallback("c",misc,protoTypeM(memxList));
 	mapCallback("diefghlq",iface,protoTypeM(memxCopy));
 	mapCallback("efghlop",oface,protoTypeM(memxCopy));
 	mapCallback("efghlpq",faces,protoTypeM(memxKeep));

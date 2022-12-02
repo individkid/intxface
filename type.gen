@@ -79,11 +79,11 @@ Configure = {
 	"RegisterCompare", -- index into strings
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- windows open count
-	"ClientCommand", -- fields to from client
-	"ClientMemory",
-	"ClientSize",
-	"ClientIndex",
-	"ClientSelf",
+	"CenterCommand", -- fields to from client
+	"CenterMemory",
+	"CenterSize",
+	"CenterIndex",
+	"CenterSelf",
 	"ArgumentShader", -- pass to draw
 	"ArgumentStart",
 	"ArgumentStop",
@@ -140,7 +140,7 @@ Accumulate = {
 	"Maintain", -- kernel checkpoint
 	"Written", -- kernel echoed
 	"Towrite", -- kernel written
-	"OfClient", -- client memory
+	"OfCenter", -- client memory
 }
 Transform = {
 	"Translate",
@@ -192,14 +192,26 @@ Step = {
 	"RevExt",
 }
 Stream = {
-	"EncodeStream",
-	"DecodeStream",
-	"InsertStream",
-	"ExtractStream",
-	"ReadStream",
-	"WriteStream",
-	"FilterStream",
-	"CopyStream",
+	"RdTypP",
+	"RdTypHd",
+	"RdTypTl",
+	"RdTypRnd",
+	"RdTypAux",
+	"RdFldP",
+	"RdFldHd",
+	"RdFldTl",
+	"RdFldRnd",
+	"RdFldAux",
+	"WrTypP",
+	"WrTypHd",
+	"WrTypTl",
+	"WrTypRnd",
+	"WrTypAux",
+	"WrFldP",
+	"WrFldHd",
+	"WrFldTl",
+	"WrFldRnd",
+	"WrFldAux",
 }
 --HERE Constants
 Initial = {
@@ -217,22 +229,22 @@ Initial = {
 	{"Shader","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)idx:Int(0)slf:Int(0)"..
+	{"Int","0","Str","Center(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(3)idx:Int(0)slf:Int(0)"..
 		"cfg[0]:Configure(WindowWide)val[0]:Int(512)"..
 		"cfg[1]:Configure(WindowWide)val[1]:Int(512)"..
 		"cfg[2]:Configure(MachineSize)val[2]:Int(17)"..
 	")"},
-	{"Int","1","Str","Client(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(17)idx:Int(0)slf:Int(0)"..
+	{"Int","1","Str","Center(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(17)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Jump)siz:Int(1)cnd:Condition(Norb)idx:Int(10)"..
 			"cfg[0]:Configure(RegisterHint)val[0]:Int(%(return castConfigure(\"RegisterHint\")))cmp[0]:Compare(Equal))"..
 		"mch[1]:Machine(xfr:Transfer(Read)siz:Int(0))"..
 		"mch[2]:Machine(xfr:Transfer(Save)siz:Int(1)"..
-			"cfg[0]:Configure(ClientCommand))"..
+			"cfg[0]:Configure(CenterCommand))"..
 		"mch[3]:Machine(xfr:Transfer(Jump)siz:Int(1)cnd:Condition(Norb)idx:Int(5)"..
-			"cfg[0]:Configure(ClientCommand)val[0]:Int(%(return castCommand(\"SetCmd\")))cmp[0]:Compare(Equal))"..
+			"cfg[0]:Configure(CenterCommand)val[0]:Int(%(return castCommand(\"SetCmd\")))cmp[0]:Compare(Equal))"..
 		"mch[4]:Machine(xfr:Transfer(Share)siz:Int(0)))"..
 		"mch[5]:Machine(xfr:Transfer(Jump)siz:Int(1)cnd:Condition(Norb)idx:Int(-1)"..
-			"cfg[0]:Configure(ClientCommand)val[0]:Int(%(return castCommand(\"GetCmd\")))cmp[0]:Compare(Equal))"..
+			"cfg[0]:Configure(CenterCommand)val[0]:Int(%(return castCommand(\"GetCmd\")))cmp[0]:Compare(Equal))"..
 		"mch[6]:Machine(xfr:Transfer(Force)siz:Int(1)"..
 			"cfg[0]:Configure(ArgumentShader)val[0]:Int(%(return castShader(\"Dipoint\"))))"..
 		"mch[7]:Machine(xfr:Transfer(Draw)siz:Int(0))"..
@@ -246,11 +258,11 @@ Bootstrap = {
 		"mch[12]:Machine(xfr:Transfer(Jump)siz:Int(1)cnd:Condition(Norb)idx:Int(-1)"..
 			"cfg[0]:Configure(RegisterDone)val[0]:Int(0)cmp[0]:Compare(Equal))"..
 		"mch[13]:Machine(xfr:Transfer(Force)siz:Int(5)"..
-			"cfg[0]:Configure(ClientCommand)val[0]:Int(%(return castCommand(\"GotCmd\")))"..
-			"cfg[0]:Configure(ClientMemory)val[0]:Int(%(return castMemory(\"Configurez\")))"..
-			"cfg[0]:Configure(ClientSize)val[0]:Int(4)"..
-			"cfg[0]:Configure(ClientIndex)val[0]:Int(0)"..
-			"cfg[0]:Configure(ClientSelf)val[0]:Int(0))"..
+			"cfg[0]:Configure(CenterCommand)val[0]:Int(%(return castCommand(\"GotCmd\")))"..
+			"cfg[0]:Configure(CenterMemory)val[0]:Int(%(return castMemory(\"Configurez\")))"..
+			"cfg[0]:Configure(CenterSize)val[0]:Int(4)"..
+			"cfg[0]:Configure(CenterIndex)val[0]:Int(0)"..
+			"cfg[0]:Configure(CenterSelf)val[0]:Int(0))"..
 		"mch[14]:Machine(xfr:Transfer(Alloc)siz:Int(0))"..
 		"mch[15]:Machine(xfr:Transfer(Setup)siz:Int(4)"..
 			"cfg[0]:Configure(ClosestLeft)val[0]:Int(0)"..
@@ -259,7 +271,7 @@ Bootstrap = {
 			"cfg[3]:Configure(ClosestFound)val[3]:Int(3))"..
 		"mch[16]:Machine(xfr:Transfer(Write)siz:Int(0))"..
 	")"},
-	{"Int","2","Str","Client(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(2)idx:Int(0)slf:Int(0)"..
+	{"Int","2","Str","Center(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(2)idx:Int(0)slf:Int(0)"..
 		"cfg[0]:Configure(MachineIndex)val[0]:Int(0)"..
 		"cfg[1]:Configure(MachineLimit)val[1]:Int(17)"..
 	")"},
@@ -424,7 +436,7 @@ Machine = {
 	{"src","Accumulate",{["xfr"]={["Follow"]=true,["Precede"]=true}},{}},
 	{"dst","Accumulate",{["xfr"]={["Clear"]=true,["Invert"]=true,["Manip"]=true,["Follow"]=true,["Precede"]=true}},{}},
 }
-Client = {
+Center = {
 	{"cmd","Command",{},{}},
 	{"mem","Memory",{},{}},
 	{"siz","Int",{},{}},
