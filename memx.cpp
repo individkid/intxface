@@ -14,8 +14,8 @@ extern "C" void memxLuax()
 	luaxFunc("memxList",protoTypeM(memxList));
 	luaxFunc("memxKeep",protoTypeM(memxKeep));
 	luaxFunc("memxDone",protoTypeD(memxDone));
-	luaxFunc("memxFirst",protoTypeT(memxFirst));
-	luaxFunc("memxLast",protoTypeO(memxLast));
+	luaxFunc("memxFirst",protoTypeM(memxFirst));
+	luaxFunc("memxTest",protoTypeO(memxTest));
 	luaxFunc("memxNext",protoTypeM(memxNext));
 	luaxFunc("memxFind",protoTypeJ(memxFind));
 	luaxFunc("memxSkip",protoTypeK(memxSkip));
@@ -35,8 +35,8 @@ extern "C" void memxDone(void **mem) {} // deletes target
 extern "C" void memxCall(void **mem, void *giv, struct Prototype fnc) {} // call function on mem with giv
 extern "C" void memxBack(void **mem, void **giv, struct Prototype fnc) {} // causes given call on given with target as given
 extern "C" void memxDflt(void **mem, void **giv, struct Prototype fnc) {} // trivial change causes call on mem with giv
-extern "C" void *memxFirst(void *giv) {return 0;} // get iterator from given
-extern "C" int memxLast(void *giv) {return 0;} // check iterator of given
+extern "C" void memxFirst(void **mem, void *giv) {} // get iterator from given
+extern "C" int memxTest(void *giv) {return 0;} // check iterator of given
 extern "C" void memxNext(void **mem, void *giv) {} // get iterator from given iterator
 extern "C" void memxFind(void **mem, void *giv, void *key) {} // find iterator with given as first
 extern "C" void memxSkip(void **mem, void *giv, int key) {} // skip to given iterator

@@ -30,8 +30,8 @@ void shareRunC(void **run, void *use)
 	int fld = memxInt(argxRun(field));
 	void *mem = memxTemp(0);
 	struct File file; readFile(&file,ifd); // TODO use generic generated function
-	for (int i = 0; i < len; i++)
-	switch (memxSkip(&mem,use,i), (enum Stream) memxInt(mem)) {
+	for (memxFirst(&mem,use); memxTest(mem); memxNext(&mem,mem))
+	switch ((enum Stream) memxInt(mem)) {
 	case (RdTypP): break;
 	case (RdTypHd): break;
 	case (RdTypTl): break;
