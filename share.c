@@ -18,40 +18,52 @@ int oface = 0;
 int misc = 0;
 int zero = 0;
 
+void shareRunCF(const char *str, int trm, int idx, void *arg)
+{
+	memxInit(&arg,str);
+}
 void shareRunC(void **run, void *use)
 {
 	int len = memxSize(use);
 	void *acc = 0; memxSkip(&acc,run,0);
 	void *aux = 0; memxSkip(&aux,run,1);
+	int bcc = memxOpen(&acc);
+	int bux = memxOpen(&aux);
 	int ifd = memxInt(argxRun(iface));
 	int ofd = memxInt(argxRun(oface));
 	void *que = argxRun(misc);
 	int typ = memxInt(argxRun(type));
 	int fld = memxInt(argxRun(field));
 	void *mem = memxTemp(0);
-	struct File file; readFile(&file,ifd); // TODO use generic generated function
+	void *tmp = 0;
 	for (memxFirst(&mem,use); memxTest(mem); memxNext(&mem,mem))
 	switch ((enum Stream) memxInt(mem)) {
-	case (RdTypP): break;
-	case (RdTypHd): break;
-	case (RdTypTl): break;
-	case (RdTypRnd): break;
-	case (RdTypAux): break;
+	case (RdTypP): loopStruct(typ,ifd,bcc); break;
+	case (RdTypHd): memxSkip(&acc,que,0); memxDel(&que,0); break;
+	case (RdTypTl): memxSkip(&acc,que,memxSize(que)-1); memxDel(&que,memxSize(que)-1); break;
+	case (RdTypAux): loopStruct(typ,bux,bcc); break;
 	case (RdFldP): break;
 	case (RdFldHd): break;
 	case (RdFldTl): break;
-	case (RdFldRnd): break;
 	case (RdFldAux): break;
-	case (WrTypP): break;
-	case (WrTypHd): break;
-	case (WrTypTl): break;
-	case (WrTypRnd): break;
-	case (WrTypAux): break;
+	case (RdStrP): readStruct(shareRunCF,acc,typ,ifd); break; // read from raw to string
+	case (RdStrHd): memxSkip(&acc,que,0); memxDel(&que,0); readStruct(shareRunCF,acc,typ,bcc); break;
+	case (RdStrTl): memxSkip(&acc,que,memxSize(que)-1); memxDel(&que,memxSize(que)-1); readStruct(shareRunCF,acc,typ,bcc); break;
+	case (RdStrAux): readStruct(shareRunCF,acc,typ,bux); break;
+	// TODO case (RdRawP): break; // read to raw from string
+	case (WrTypP): loopStruct(typ,bcc,ofd); break;
+	case (WrTypHd): memxAdd(&acc,que,0); break;
+	case (WrTypTl): memxAdd(&acc,que,memxSize(que)); break;
+	case (WrTypAux): loopStruct(typ,bcc,bux); break;
 	case (WrFldP): break;
 	case (WrFldHd): break;
 	case (WrFldTl): break;
-	case (WrFldRnd): break;
 	case (WrFldAux): break;
+	case (WrStrP): writeStruct(memxStr(acc),typ,ofd); break; // write to raw from string
+	case (WrStrHd): tmp = memxTemp(0); memxCopy(tmp,acc); writeStruct(memxStr(acc),typ,bcc); memxAdd(&acc,que,0); memxCopy(acc,tmp); break;
+	case (WrStrTl): tmp = memxTemp(0); memxCopy(tmp,acc); writeStruct(memxStr(acc),typ,bcc); memxAdd(&acc,que,memxSize(que)); memxCopy(acc,tmp); break;
+	case (WrStrAux): writeStruct(memxStr(acc),typ,bux); break;
+	// TODO case (WrRawP): break; // write from raw to string
 	default: ERROR(exitErr,0); break;}
 }
 int shareRunD(void *use)
