@@ -43,7 +43,8 @@ typedef const char *(*aftype)(void *mem);
 typedef void (*iftype)(void **mem, int key);
 typedef void (*jftype)(void **mem, void *giv, void *key);
 typedef void (*kftype)(void **mem, void *giv, int key);
-typedef void *(*rftype)(int idx);
+typedef void *(*tftype)(int idx);
+typedef int(*lftype)(void **mem);
 
 struct Prototype {
 	enum {
@@ -63,7 +64,8 @@ struct Prototype {
 		Iftype,
 		Jftype,
 		Kftype,
-		Rftype,
+		Tftype,
+		Lftype,
 	} ft;
 	union {
 		cftype cf;
@@ -82,7 +84,8 @@ struct Prototype {
 		iftype it;
 		jftype jf;
 		kftype kf;
-		rftype rf;
+		tftype tf;
+		lftype lf;
 		void *vp;
 	};
 };
@@ -96,7 +99,8 @@ struct Prototype protoTypeA(aftype fnc);
 struct Prototype protoTypeI(iftype fnc);
 struct Prototype protoTypeJ(jftype fnc);
 struct Prototype protoTypeK(kftype fnc);
-struct Prototype protoTypeR(rftype fnc);
+struct Prototype protoTypeT(tftype fnc);
+struct Prototype protoTypeL(lftype fnc);
 
 void exitErr(const char *str, int num, int idx);
 void protoSet(const char *str);

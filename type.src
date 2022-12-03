@@ -1018,6 +1018,24 @@ function showWstructC(list)
 	result = result.."}\n"
 	return result
 end
+function showLstructC(list)
+	local result = ""
+	result = result.."void loopStruct(int typ, int one, int oth)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case("..(k-1).."): {\n"
+		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
+		result = result..showIndent(2).."read"..v.."(&tmp,one);\n"
+		result = result..showIndent(2).."write"..v.."(&tmp,oth);\n"
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."}\n"
+	result = result.."}\n"
+	return result
+end
 function showIstructC(list)
 	local result = ""
 	result = result.."int identStruct(const char *str)"
@@ -1918,6 +1936,7 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showHideC).."\n"
 	result = result..showRstructC(Structs).."\n"
 	result = result..showWstructC(Structs).."\n"
+	result = result..showLstructC(Structs).."\n"
 	result = result..showIstructC(Structs)
 	return result
 end

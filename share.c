@@ -107,8 +107,8 @@ int main(int argc, char **argv)
 {
 	if (luaxFile("type.lua") < 0) {protoErr("shareC: cannot load library: type.lua\n"); fprintf(stderr,"%s",protoMsg()); return -1;}
 	luaxFunc("shareLuax",protoTypeF(shareLuax));
-	luaxFunc("argxUse",protoTypeR(argxUse));
-	luaxFunc("argxRun",protoTypeR(argxRun));
+	luaxFunc("argxUse",protoTypeT(argxUse));
+	luaxFunc("argxRun",protoTypeT(argxRun));
 	memxLuax();
 	faces = getLocation();
 	type = getLocation();

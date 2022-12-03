@@ -52,9 +52,13 @@ struct Prototype protoTypeK(kftype fnc)
 {
 	struct Prototype ret = {.ft = Kftype, {.kf = fnc}}; return ret;
 }
-struct Prototype protoTypeR(rftype fnc)
+struct Prototype protoTypeT(tftype fnc)
 {
-	struct Prototype ret = {.ft = Rftype, {.rf = fnc}}; return ret;
+	struct Prototype ret = {.ft = Tftype, {.tf = fnc}}; return ret;
+}
+struct Prototype protoTypeL(lftype fnc)
+{
+	struct Prototype ret = {.ft = Lftype, {.lf = fnc}}; return ret;
 }
 void exitErr(const char *str, int num, int idx)
 {

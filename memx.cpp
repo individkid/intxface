@@ -10,6 +10,8 @@ extern "C" void memxLuax()
 	luaxFunc("memxMask",protoTypeO(memxMask));
 	luaxFunc("memxStr",protoTypeA(memxStr));
 	luaxFunc("memxInit",protoTypeN(memxInit));
+	luaxFunc("memxTemp",protoTypeT(memxTemp));
+	luaxFunc("memxOpen",protoTypeL(memxOpen));
 	luaxFunc("memxCopy",protoTypeM(memxCopy));
 	luaxFunc("memxList",protoTypeM(memxList));
 	luaxFunc("memxKeep",protoTypeM(memxKeep));
@@ -28,6 +30,7 @@ extern "C" int memxMask(void *ptr) {return 0;} // mask from collection
 extern "C" const char *memxStr(void *mem) {return 0;} // get string
 extern "C" void memxInit(void **mem, const char *str) {} // convert from string
 extern "C" void *memxTemp(int idx) {return 0;} // realloc indexed memory
+extern "C" int memxOpen(void **ptr) {return 0;} // get pipe punted to given
 extern "C" void memxCopy(void **mem, void *giv) {} // replaces target with given
 extern "C" void memxList(void **mem, void *giv) {} // adds given to target in order
 extern "C" void memxKeep(void **mem, void *giv) {} // adds given to target unordered

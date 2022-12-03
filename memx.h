@@ -7,6 +7,7 @@ int memxMask(void *ptr); // mask from collection
 const char *memxStr(void *mem); // get string
 void memxInit(void **mem, const char *str); // convert from string
 void *memxTemp(int idx); // realloc indexed memory
+int memxOpen(void **ptr); // get pipe punted to given
 void memxCopy(void **mem, void *giv); // replaces target with given
 void memxList(void **mem, void *giv); // adds given to target in order
 void memxKeep(void **mem, void *giv); // adds given to target unordered
