@@ -35,7 +35,7 @@ void shareRunC(void **run, void *use)
 	int typ = memxInt(argxRun(type));
 	int fld = memxInt(argxRun(field));
 	void *mem = memxTemp(0);
-	void *tmp = 0;
+	void *tmp = memxTemp(1);
 	for (memxFirst(&mem,use); memxTest(mem); memxNext(&mem,mem))
 	switch ((enum Stream) memxInt(mem)) {
 	case (RdTypP): loopStruct(typ,ifd,bcc); break;
@@ -60,8 +60,8 @@ void shareRunC(void **run, void *use)
 	case (WrFldTl): break;
 	case (WrFldAux): break;
 	case (WrStrP): writeStruct(memxStr(acc),typ,ofd); break; // write to raw from string
-	case (WrStrHd): tmp = memxTemp(0); memxCopy(tmp,acc); writeStruct(memxStr(acc),typ,bcc); memxAdd(&acc,que,0); memxCopy(acc,tmp); break;
-	case (WrStrTl): tmp = memxTemp(0); memxCopy(tmp,acc); writeStruct(memxStr(acc),typ,bcc); memxAdd(&acc,que,memxSize(que)); memxCopy(acc,tmp); break;
+	case (WrStrHd): memxCopy(tmp,acc); writeStruct(memxStr(acc),typ,bcc); memxAdd(&acc,que,0); memxCopy(acc,tmp); break;
+	case (WrStrTl): memxCopy(tmp,acc); writeStruct(memxStr(acc),typ,bcc); memxAdd(&acc,que,memxSize(que)); memxCopy(acc,tmp); break;
 	case (WrStrAux): writeStruct(memxStr(acc),typ,bux); break;
 	// TODO case (WrRawP): break; // write from raw to string
 	default: ERROR(exitErr,0); break;}
