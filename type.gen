@@ -204,6 +204,10 @@ Stream = {
 	"RdStrHd",
 	"RdStrTl",
 	"RdStrAux",
+	"RdRawP",
+	"RdRawHd",
+	"RdRawTl",
+	"RdRawAux",
 	"WrTypP",
 	"WrTypHd",
 	"WrTypTl",
@@ -216,6 +220,10 @@ Stream = {
 	"WrStrHd",
 	"WrStrTl",
 	"WrStrAux",
+	"WrRawP",
+	"WrRawHd",
+	"WrRawTl",
+	"WrRawAux",
 }
 --HERE Constants
 Initial = {
