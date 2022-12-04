@@ -2,7 +2,8 @@
 #define NUMARGX 256
 struct ArgxNest;
 enum ArgxTag {
-	FlowTag, // data flow stream
+	FlowTag, // data flow
+	FlagTag, // option flag
 	JumpTag, // loop break nest
 	NestTag, // nesting control
 	NoopTag, // data container
@@ -26,9 +27,11 @@ void *argxRun(int idx);
 int argxHere();
 int getLocation();
 int addOption(const char *opt, struct Prototype fnc, struct Prototype gnc);
+int addFlag(const char *opt, struct Prototype fnc, struct Prototype gnc);
 int addJump(const char *opt, struct Prototype fnc, struct Prototype gnc);
 int addNest(const char *opt, struct Prototype fnc, struct Prototype gnc);
 int mapCallback(const char *str, int ref, struct Prototype fnc);
 int mapDefault(const char *str, int ref, struct Prototype fnc);
+int mapContext(const char *str, int ref, struct Prototype fnc);
 int useArgument(const char *str);
 void runProgram();

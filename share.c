@@ -81,12 +81,12 @@ int shareRunD(void *use)
 }
 int shareUseLF(int idx, void *buf, int nbyte)
 {
-	// TODO read buf frim script at argxGet(idx)->run[1]
+	// TODO read buf from script at memxSkip(argxUse(idx),1)
 	return 0; // TODO number of bytes read
 }
 int shareUseLG(int idx, const void *buf, int nbyte)
 {
-	// TODO write buf to script at argxGet(idx)->run[2]
+	// TODO write buf to script at memxSkip(argxUse(idx),2)
 	return 0; // TODO number of bytes written
 }
 void shareUseL(void **use, const char *str)
@@ -97,15 +97,15 @@ void shareUseL(void **use, const char *str)
 }
 void shareRunL(void **run, void *use)
 {
-	void *mem = memxTemp(0); memxSkip(&mem,use,0); memxCopy(run,mem);
+	memxSkip(run,use,0);
 }
 int shareUseP(const char *str)
 {
-	void *mem = memxTemp(0); memxInit(&mem,str); return rdfdInit(memxInt(mem),memxInt(argxRun(oface)));
+	void *mem = memxTemp(0); memxInit(&mem,str); return rdfdInit(memxInt(mem),memxInt(argxUse(oface)));
 }
 int shareUseQ(const char *str)
 {
-	void *mem = memxTemp(0); memxInit(&mem,str); return wrfdInit(memxInt(mem),memxInt(argxRun(iface)));
+	void *mem = memxTemp(0); memxInit(&mem,str); return wrfdInit(memxInt(mem),memxInt(argxUse(iface)));
 }
 int shareLuax(const char *str)
 {
@@ -152,14 +152,16 @@ int main(int argc, char **argv)
 	addOption("q",protoTypeF(shareUseQ),protoTypeM(memxCopy));
 	mapCallback("a",type,protoTypeM(memxCopy));
 	mapCallback("b",field,protoTypeM(memxCopy));
-	mapCallback("diefghlq",iface,protoTypeM(memxCopy));
-	mapCallback("efghlop",oface,protoTypeM(memxCopy));
+	mapCallback("diefghlp",iface,protoTypeM(memxCopy));
+	mapCallback("efghloq",oface,protoTypeM(memxCopy));
 	mapCallback("efghlpq",faces,protoTypeM(memxKeep));
 	mapCallback("mn",faces,protoTypeM(memxCopy));
 	mapDefault("i",iface,protoTypeM(memxCopy));
 	mapDefault("o",oface,protoTypeM(memxCopy));
 	mapDefault("m",zero,protoTypeM(memxCopy));
 	mapDefault("n",faces,protoTypeM(memxCopy));
+	mapContext("p",iface,protoTypeM(memxCopy));
+	mapContext("q",oface,protoTypeM(memxCopy));
 	for (int i = 1; i < argc; i++) useArgument(argv[i]);
 	runProgram();
 	return 0;

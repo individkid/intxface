@@ -97,6 +97,7 @@ int luaxPerm(int *val, const char *exp, int arg)
 	lua_pop(luastate,1);
 	return 0;
 }
+// TODO call lua_pushlightuserdata for shareUseL
 int luaxClosure(lua_State *L)
 {
 	struct Prototype fnc = {0};
@@ -109,6 +110,7 @@ int luaxClosure(lua_State *L)
 		case (Gftype): {
 			lua_pushinteger(L,fnc.gf(lua_tostring(L,1),lua_tostring(L,2)));
 			return 1;}
+		// TODO every other from proto.h
 		default: break;}
 	return 0;
 }

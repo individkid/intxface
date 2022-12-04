@@ -6,8 +6,6 @@
 #include <sys/errno.h>
 #include <stdlib.h>
 
-struct ArgxNest nst[NUMARGX] = {0}; // data flow control steps
-int nim = 0; // number of steps
 const char *str[NUMARGX] = {0}; // dash option types
 struct ArgxNest fnc[NUMARGX] = {0}; // function to use
 int sim = 0; // number of types
@@ -19,8 +17,17 @@ const char *dtr[NUMARGX] = {0}; // dash option default
 struct Prototype dnc[NUMARGX] = {0}; // function to use
 int def[NUMARGX] = {0}; // reference for function
 int aim = 0; // number of types
+const char *etr[NUMARGX] = {0}; // dash option context
+struct Prototype enc[NUMARGX] = {0}; // function to use
+int eef[NUMARGX] = {0}; // reference for function
+int eim = 0; // number of types
+
+struct ArgxNest nst[NUMARGX] = {0}; // data flow control steps
+int nim = 0; // number of steps
+
 int use = 0; // which fnc to use
 int opt = 0; // which dash matched
+
 int idx = 0; // program counter
 
 int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
@@ -105,6 +112,14 @@ int addOption(const char *opt, struct Prototype use, struct Prototype run)
 	fnc[sim].gnc = run;
 	return sim++;
 }
+int addFlag(const char *opt, struct Prototype use, struct Prototype run)
+{
+	str[sim] = opt;
+	fnc[sim].opc = FlagTag;
+	fnc[sim].fnc = use;
+	fnc[sim].gnc = run;
+	return sim++;
+}
 int addJump(const char *opt, struct Prototype use, struct Prototype run)
 {
 	str[sim] = opt;
@@ -123,17 +138,24 @@ int addNest(const char *opt, struct Prototype use, struct Prototype run)
 }
 int mapCallback(const char *opt, int ref, struct Prototype fnc)
 {
-	str[cim] = opt;
+	ctr[cim] = opt;
 	cnc[cim] = fnc;
 	cef[cim] = ref;
 	return cim++;
 }
 int mapDefault(const char *opt, int ref, struct Prototype fnc)
 {
-	str[aim] = opt;
+	dtr[aim] = opt;
 	dnc[aim] = fnc;
 	def[aim] = ref;
 	return aim++;
+}
+int mapContext(const char *opt, int ref, struct Prototype fnc)
+{
+	etr[eim] = opt;
+	enc[eim] = fnc;
+	eef[eim] = ref;
+	return eim++;
 }
 int useArgument(const char *arg)
 {
@@ -142,19 +164,23 @@ int useArgument(const char *arg)
 			for (int j = 0; str[i][j]; j++) {
 				if (arg[1] == str[i][j]) {
 					use = i; opt = j;}}}
-		return nim;}
+		if (fnc[use].opc != FlagTag) return nim;}
 	nst[nim] = fnc[use];
 	nst[nim].opt = opt;
 	memxInit(&nst[nim].str,arg);
+	for (int i = 0; i < eim; i++) {
+		for (int j = 0; etr[i][j]; j++) {
+			if (opt == etr[i][j]) {
+				memxBack(&nst[nim].use,nst[eef[i]].use,enc[i]);}}}
 	memxCall(&nst[nim].use,nst[nim].str,nst[nim].fnc);
 	for (int i = 0; i < cim; i++) {
 		for (int j = 0; ctr[i][j]; j++) {
 			if (opt == ctr[i][j]) {
-				memxBack(&nst[nim].use,&nst[cef[i]].use,cnc[i]);}}}
+				memxBack(&nst[nim].run,&nst[cef[i]].run,cnc[i]);}}}
 	for (int i = 0; i < aim; i++) {
 		for (int j = 0; dtr[i][j]; j++) {
 			if (opt == dtr[i][j]) {
-				memxDflt(&nst[nim].use,&nst[def[i]].use,dnc[i]);}}}
+				memxDflt(&nst[nim].run,&nst[def[i]].run,dnc[i]);}}}
 	return nim++;
 }
 void runProgram()
