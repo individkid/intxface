@@ -107,7 +107,7 @@ argx has function to set number of arguments,
 add per dash argument given arguments and string,
 add per dash opcode (nesting argument reference collect).
  -a type or varies (factory argumewnt)
- -b field or whole (factory argument)
+ -b script result (script to evaluate)
  -c factory flow (operation name)
   encode decode insert extract read write filter copy
  -d flow delay (zero for infinite)
