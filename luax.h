@@ -1,5 +1,4 @@
 #include "proto.h"
-int luaxForm(fftype fnc, const char *fmt, ...);
 int luaxFile(const char *exp); // call dofile with path from getExestr
 int luaxLib(const char *exp); // call require with path from getExestr
 int luaxSide(const char *exp); // call the lua script

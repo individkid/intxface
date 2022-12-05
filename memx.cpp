@@ -29,6 +29,7 @@ extern "C" int memxInt(void *ptr) {return 0;} // get int
 extern "C" int memxMask(void *ptr) {return 0;} // mask from collection
 extern "C" const char *memxStr(void *mem) {return 0;} // get string
 extern "C" void memxInit(void **mem, const char *str) {} // convert from string
+extern "C" void memxForm(void **mem, const char *fmt, ...) {} // use vasprintf
 extern "C" void *memxTemp(int idx) {return 0;} // realloc indexed memory
 extern "C" int memxOpen(void **ptr) {return 0;} // get pipe punted to given
 extern "C" void memxCopy(void **mem, void *giv) {} // replaces target with given

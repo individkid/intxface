@@ -81,13 +81,7 @@ int shareUseLG(int idx, const void *buf, int nbyte)
 }
 void shareUseL(void **use, const char *str)
 {
-	int idx = puntInit(argxHere(),argxHere(),shareUseLF,shareUseLG);
-	void *tmp = memxTemp(0);
-	char *num = 0;
-	asprintf(&num,"%d",idx);
-	memxInit(use,num);
-	memxAdd(use,tmp,0);
-	free(num);
+	memxForm(use,":%d;%s",puntInit(argxHere(),argxHere(),shareUseLF,shareUseLG),str);
 }
 void shareRunL(void **run, void *use)
 {

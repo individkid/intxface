@@ -6,6 +6,7 @@ int memxInt(void *ptr); // get int
 int memxMask(void *ptr); // mask from collection
 const char *memxStr(void *mem); // get string
 void memxInit(void **mem, const char *str); // convert from string
+void memxForm(void **mem, const char *fmt, ...); // use vasprintf
 void *memxTemp(int idx); // realloc indexed memory
 int memxOpen(void **ptr); // get pipe punted to given
 void memxCopy(void **mem, void *giv); // replaces target with given
