@@ -13,9 +13,9 @@ void memxCopy(void **mem, void *giv); // replaces target with given
 void memxList(void **mem, void *giv); // adds given to target in order
 void memxKeep(void **mem, void *giv); // adds given to target unordered
 void memxDone(void **mem); // deletes target
-void memxCall(void **mem, void *giv, struct Prototype fnc); // call function on mem with giv
-void memxBack(void **mem, void **giv, struct Prototype fnc); // nontrivial change causes call on giv with mem
-void memxDflt(void **mem, void **giv, struct Prototype fnc); // trivial change causes call on mem with giv
+void memxCall(void **mem, void *giv, struct Function fnc); // call function on mem with giv
+void memxBack(void **mem, void **giv, struct Function fnc); // nontrivial change causes call on giv with mem
+void memxDflt(void **mem, void **giv, struct Function fnc); // trivial change causes call on mem with giv
 void memxFirst(void **mem, void *giv); // get iterator from given
 int memxTest(void *giv); // check iterator of given
 void memxNext(void **mem, void *giv); // get iterator from given iterator

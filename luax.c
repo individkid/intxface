@@ -25,6 +25,9 @@ char **line = 0; // strings of line
 char **rslt = 0; // with expressions replaced
 char **temp = 0; // to exp or str
 int lsiz = 0; // number of strings in line
+int irslt = 0;
+void *prslt = 0;
+char *srslt = 0;
 lua_State *luastate = 0;
 
 void luaxErr()
@@ -59,8 +62,13 @@ int luaxLoad(lua_State *luastate, const char *exp)
 int luaxPath(const char *exp, const char *fnc)
 {
 	int i = protoPath(exp);
+	char *temp = 0;
+	int val = 0;
 	if (i < 0) return -1;
-	return protoForm(luaxSide,"%s(\"%s%s\")",fnc,protoGet(i),exp);
+	asprintf(&temp,"%s(\"%s%s\")",fnc,protoGet(i),exp);
+	val = luaxSide(temp);
+	free(temp);
+	return val;
 }
 int luaxFile(const char *exp)
 {
@@ -77,30 +85,33 @@ int luaxSide(const char *exp)
 	if (lua_pcall(luastate,0,0,0) != LUA_OK) {luaxErr(); return -1;}
 	return 0;	
 }
-int luaxDict(char **val, const char *exp, const char *arg)
+int luaxCall(const char *str, struct Closure fnc)
 {
+	int val = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	if (luaxLoad(luastate,exp) != 0) return -2;
-	lua_pushstring(luastate,arg);
-	if (lua_pcall(luastate,1,1,0) != LUA_OK) {luaxErr(); return -1;}
-	asprintf(val,"%s",lua_tostring(luastate,-1));
-	lua_pop(luastate,1);
-	return 0;
+	for (int i = 0; i < fnc.na; i++) {
+		struct Argument *arg = fnc.aa+i;
+		switch (arg->at) {
+		case (Iatype): lua_pushinteger(luastate,arg->ia); break;
+		// TODO other argument types
+		default: break;}}
+	val = luaxSide(str);
+	if (val < 0) {
+		// TODO handle error
+		return -1;}
+	for (int i = 0; i < fnc.nb; i++) {
+		struct Argument *arg = fnc.ab+i;
+		switch (arg->at) {
+		case (Iatype): arg->ia = lua_tonumber(luastate,i+1); break;
+		// TODO other result types
+		// TODO for pftype how to get bytes with zeroes
+		default: break;}}
+	lua_pop(luastate,fnc.nb);
+	return val;
 }
-int luaxPerm(int *val, const char *exp, int arg)
-{
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	if (luaxLoad(luastate,exp) != 0) return -2;
-	lua_pushinteger(luastate,arg);
-	if (lua_pcall(luastate,1,1,0) != LUA_OK) {luaxErr(); return -1;}
-	*val = lua_tonumber(luastate,-1);
-	lua_pop(luastate,1);
-	return 0;
-}
-// TODO call lua_pushlightuserdata for shareUseL
 int luaxClosure(lua_State *L)
 {
-	struct Prototype fnc = {0};
+	struct Function fnc = {0};
 	fnc.ft = lua_tointeger(L, lua_upvalueindex(1));
 	fnc.vp = lua_touserdata(L, lua_upvalueindex(2));
 	switch (fnc.ft) {
@@ -114,7 +125,7 @@ int luaxClosure(lua_State *L)
 		default: break;}
 	return 0;
 }
-void luaxFunc(const char *str, struct Prototype fnc)
+void luaxAdd(const char *str, struct Function fnc)
 {
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	lua_pushinteger(luastate, fnc.ft);

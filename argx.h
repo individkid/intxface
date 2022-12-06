@@ -15,8 +15,8 @@ struct ArgxNest {
 	void *str; // string after dash option
 	void *use; // script or constant
 	void *run; // result or copy
-	struct Prototype fnc; // for str to use
-	struct Prototype gnc; // for use to run
+	struct Function fnc; // for str to use
+	struct Function gnc; // for use to run
 };
 int argxJump(void *jmp);
 void argxCopy(void **run, void *use);
@@ -26,12 +26,12 @@ void *argxUse(int idx);
 void *argxRun(int idx);
 int argxHere();
 int getLocation();
-int addOption(const char *opt, struct Prototype fnc, struct Prototype gnc);
-int addFlag(const char *opt, struct Prototype fnc, struct Prototype gnc);
-int addJump(const char *opt, struct Prototype fnc, struct Prototype gnc);
-int addNest(const char *opt, struct Prototype fnc, struct Prototype gnc);
-int mapCallback(const char *str, int ref, struct Prototype fnc);
-int mapDefault(const char *str, int ref, struct Prototype fnc);
-int mapContext(const char *str, int ref, struct Prototype fnc);
+int addOption(const char *opt, struct Function fnc, struct Function gnc);
+int addFlag(const char *opt, struct Function fnc, struct Function gnc);
+int addJump(const char *opt, struct Function fnc, struct Function gnc);
+int addNest(const char *opt, struct Function fnc, struct Function gnc);
+int mapCallback(const char *str, int ref, struct Function fnc);
+int mapDefault(const char *str, int ref, struct Function fnc);
+int mapContext(const char *str, int ref, struct Function fnc);
 int useArgument(const char *str);
 void runProgram();

@@ -12,54 +12,92 @@ char *exetmp = 0;
 char *msgstr = 0;
 char *msgtmp = 0;
 
-struct Prototype protoTypeF(fftype fnc)
+struct Function protoTypeF(fftype fnc)
 {
-	struct Prototype ret = {.ft = Fftype, {.ff = fnc}}; return ret;
+	struct Function ret = {.ft = Fftype, {.ff = fnc}}; return ret;
 }
-struct Prototype protoTypeG(gftype fnc)
+struct Function protoTypeG(gftype fnc)
 {
-	struct Prototype ret = {.ft = Gftype, {.gf = fnc}}; return ret;
+	struct Function ret = {.ft = Gftype, {.gf = fnc}}; return ret;
 }
-struct Prototype protoTypeO(oftype fnc)
+struct Function protoTypeO(oftype fnc)
 {
-	struct Prototype ret = {.ft = Oftype, {.of = fnc}}; return ret;
+	struct Function ret = {.ft = Oftype, {.of = fnc}}; return ret;
 }
-struct Prototype protoTypeN(nftype fnc)
+struct Function protoTypeN(nftype fnc)
 {
-	struct Prototype ret = {.ft = Nftype, {.nf = fnc}}; return ret;
+	struct Function ret = {.ft = Nftype, {.nf = fnc}}; return ret;
 }
-struct Prototype protoTypeM(mftype fnc)
+struct Function protoTypeM(mftype fnc)
 {
-	struct Prototype ret = {.ft = Mftype, {.mf = fnc}}; return ret;
+	struct Function ret = {.ft = Mftype, {.mf = fnc}}; return ret;
 }
-struct Prototype protoTypeD(dftype fnc)
+struct Function protoTypeD(dftype fnc)
 {
-	struct Prototype ret = {.ft = Dftype, {.df = fnc}}; return ret;
+	struct Function ret = {.ft = Dftype, {.df = fnc}}; return ret;
 }
-struct Prototype protoTypeA(aftype fnc)
+struct Function protoTypeA(aftype fnc)
 {
-	struct Prototype ret = {.ft = Aftype, {.af = fnc}}; return ret;
+	struct Function ret = {.ft = Aftype, {.af = fnc}}; return ret;
 }
-struct Prototype protoTypeI(iftype fnc)
+struct Function protoTypeI(iftype fnc)
 {
-	struct Prototype ret = {.ft = Iftype, {.it = fnc}}; return ret;
+	struct Function ret = {.ft = Iftype, {.it = fnc}}; return ret;
 }
-struct Prototype protoTypeJ(jftype fnc)
+struct Function protoTypeJ(jftype fnc)
 {
-	struct Prototype ret = {.ft = Jftype, {.jf = fnc}}; return ret;
+	struct Function ret = {.ft = Jftype, {.jf = fnc}}; return ret;
 }
-struct Prototype protoTypeK(kftype fnc)
+struct Function protoTypeK(kftype fnc)
 {
-	struct Prototype ret = {.ft = Kftype, {.kf = fnc}}; return ret;
+	struct Function ret = {.ft = Kftype, {.kf = fnc}}; return ret;
 }
-struct Prototype protoTypeT(tftype fnc)
+struct Function protoTypeT(tftype fnc)
 {
-	struct Prototype ret = {.ft = Tftype, {.tf = fnc}}; return ret;
+	struct Function ret = {.ft = Tftype, {.tf = fnc}}; return ret;
 }
-struct Prototype protoTypeL(lftype fnc)
+struct Function protoTypeL(lftype fnc)
 {
-	struct Prototype ret = {.ft = Lftype, {.lf = fnc}}; return ret;
+	struct Function ret = {.ft = Lftype, {.lf = fnc}}; return ret;
 }
+
+struct Closure protoCloseB(const char *arg)
+{
+	struct Closure ret = {0};
+	return ret; // TODO
+}
+struct Closure protoCloseR(int arg)
+{
+	struct Closure ret = {0};
+	return ret; // TODO
+}
+struct Closure protoCloseP(int idx, int nbyte)
+{
+	struct Closure ret = {0};
+	return ret; // TODO
+}
+struct Closure protoCloseQ(int idx, const char *buf, int nbyte)
+{
+	struct Closure ret = {0};
+	return ret; // TODO
+}
+void protoResultB(char *val)
+{
+	// TODO
+}
+void protoResultR(int *val)
+{
+	// TODO
+}
+int protoResultP(char *buf)
+{
+	return 0; // TODO
+}
+int protoResultQ()
+{
+	return 0; // TODO
+}
+
 void exitErr(const char *str, int num, int idx)
 {
 	fprintf(stderr,"exitErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid()); exit(-1);
@@ -110,26 +148,15 @@ const char *protoMsg()
 	msgstr = 0;
 	return msgtmp;
 }
-int protoForm(fftype fnc, const char *fmt, ...)
-{
-	char *temp = 0;
-	va_list args = {0};
-	int val = 0;
-	va_start(args,fmt);
-	vasprintf(&temp,fmt,args);
-	va_end(args);
-	val = fnc(temp);
-	free(temp);
-	return val;
-}
-int protoPathF(const char *exp)
-{
-	return access(exp,R_OK);
-}
 int protoPath(const char *exp)
 {
 	const char *str = 0;
+	char *temp = 0;
+	int val = 0;
 	for (int i = 0; (str = protoGet(i)); i++) {
-	if (protoForm(protoPathF,"%s%s",str,exp) == 0) return i;}
+	asprintf(&temp,"%s%s",str,exp);
+	val = access(temp,R_OK);
+	free(temp);
+	if (val == 0) return i;}
 	return -1;
 }

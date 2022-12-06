@@ -31,27 +31,31 @@ typedef void (*cftype)(int idx); // thread callback
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
+typedef void (*bftype)(char *val, const char *arg); // dictionary
+typedef void (*rftype)(int *val, int arg); // permutation
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*fftype)(const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
 typedef int (*oftype)(void *arg);
+typedef const char *(*aftype)(void *mem);
 typedef void (*nftype)(void **use, const char *str);
 typedef void (*mftype)(void **run, void *use);
 typedef void (*dftype)(void **mem);
-typedef const char *(*aftype)(void *mem);
 typedef void (*iftype)(void **mem, int key);
 typedef void (*jftype)(void **mem, void *giv, void *key);
 typedef void (*kftype)(void **mem, void *giv, int key);
 typedef void *(*tftype)(int idx);
-typedef int(*lftype)(void **mem);
+typedef int (*lftype)(void **mem);
 
-struct Prototype {
+struct Function {
 	enum {
 		Cftype,
 		Eftype,
 		Sftype,
 		Hftype,
+		Bftype,
+		Rftype,
 		Pftype,
 		Qftype,
 		Fftype,
@@ -72,6 +76,8 @@ struct Prototype {
 		eftype ef;
 		sftype sf;
 		hftype hf;
+		bftype bf;
+		rftype rf;
 		pftype pf;
 		qftype qf;
 		fftype ff;
@@ -89,25 +95,48 @@ struct Prototype {
 		void *vp;
 	};
 };
-struct Prototype protoTypeF(fftype fnc);
-struct Prototype protoTypeG(gftype fnc);
-struct Prototype protoTypeO(oftype fnc);
-struct Prototype protoTypeN(nftype fnc);
-struct Prototype protoTypeM(mftype fnc);
-struct Prototype protoTypeD(dftype fnc);
-struct Prototype protoTypeA(aftype fnc);
-struct Prototype protoTypeI(iftype fnc);
-struct Prototype protoTypeJ(jftype fnc);
-struct Prototype protoTypeK(kftype fnc);
-struct Prototype protoTypeT(tftype fnc);
-struct Prototype protoTypeL(lftype fnc);
+struct Function protoTypeF(fftype fnc);
+struct Function protoTypeG(gftype fnc);
+struct Function protoTypeO(oftype fnc);
+struct Function protoTypeN(nftype fnc);
+struct Function protoTypeM(mftype fnc);
+struct Function protoTypeD(dftype fnc);
+struct Function protoTypeA(aftype fnc);
+struct Function protoTypeI(iftype fnc);
+struct Function protoTypeJ(jftype fnc);
+struct Function protoTypeK(kftype fnc);
+struct Function protoTypeT(tftype fnc);
+struct Function protoTypeL(lftype fnc);
+
+struct Argument {
+	enum {
+		Iatype,
+		Satype,
+		Patype,
+	} at;
+	union {
+		int ia;
+		char *sa;
+		void *pa;
+	};
+};
+struct Closure {
+	int na,nb;
+	struct Argument *aa,*ab;
+};
+struct Closure protoCloseB(const char *arg);
+struct Closure protoCloseR(int arg);
+struct Closure protoCloseP(int idx, int nbyte);
+struct Closure protoCloseQ(int idx, const char *buf, int nbyte);
+void protoResultB(char *val);
+void protoResultR(int *val);
+int protoResultP(char *buf);
+int protoResultQ();
 
 void exitErr(const char *str, int num, int idx);
 void protoSet(const char *str);
 const char *protoGet(int i);
 void protoErr(const char *fmt, ...);
 const char *protoMsg();
-int protoForm(fftype fnc, const char *fmt, ...);
-int protoPathF(const char *exp);
 int protoPath(const char *exp);
 #endif

@@ -98,18 +98,11 @@ tape test BMD-SDK to and from av struct pipe.
 wave test IOUSBInterfaceInterface to and from av struct pipe.
 frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.
 phone test av struct to from audio.
-share test arguments that control how subsequent non-dash arguments are interpreted and used.
-each argument sets up an argument for "factory flow" which sets up an argument first.
-"pipe" arguments get arguments through memx from face functions.
-"nest path" arguments control flow, or get arguments from the past.
-"delay" "instead" and "aswell" access current or past accumulated arguments.
-argx has function to set number of arguments,
-add per dash argument given arguments and string,
-add per dash opcode (nesting argument reference collect).
- -a type or varies (factory argumewnt)
+share test arguments that control how subsequent non-dash arguments are interpreted.
+ -a flow type (factory argumewnt)
  -b script result (script to evaluate)
- -c factory flow (operation name)
-  encode decode insert extract read write filter copy
+ -c factory flow (operation names)
+  encode decode read write reque deque enque unque
  -d flow delay (zero for infinite)
  -e executable pipe (executable name)
  -f file pipe (file name)
@@ -117,9 +110,9 @@ add per dash opcode (nesting argument reference collect).
  -h inet pipe (host port)
  -i input from (nest path)
  -j loop or break (nest path)
-  + - for forward backward, ( ) = for enter exit skip
+  pairs of skip mode and amount
  -k open or close (nest count)
- -l lua pipe (script string)
+ -l lua pipe (script strings)
  -m instead from (nest path)
  -n aswell from (nest path)
   face idents for delay are instead or aswell at path
@@ -128,9 +121,7 @@ add per dash opcode (nesting argument reference collect).
  -p output pipe (descrptor)
  -q input pipe (descriptor)
  -rstuvwxyz control delay and parallelism
- -efghlpq update face latch and faces set
- -ab update type and field latches
-
+ 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
 to and from commands this and other processes.

@@ -11,7 +11,7 @@ Write frame.cpp to display and capture AV between screen and struct AV pipe.
 
 Write phone.cpp that inputs and outputs audio to AV pipe.
 
-Write microcode stunbs and ncrementally replace with production.
+Write microcode stubs and incrementally replace with production.
 
 Write sculpt.lua and production plane state machine.
 
@@ -21,6 +21,6 @@ Write play.lua that integrates files, audio, video, and polytopes.
 
 Write stomp.lua that mixes audio.
 
-Make stomp box that adds phase shifted locked delayed audio.
+Make stomp boxes that add wave with frequency multiplied or divided.
 
 Plug BMD into Mac. Plug Digiscope and Audient into Dell. Connect and use Roland.

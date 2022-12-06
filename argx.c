@@ -10,15 +10,15 @@ const char *str[NUMARGX] = {0}; // dash option types
 struct ArgxNest fnc[NUMARGX] = {0}; // function to use
 int sim = 0; // number of types
 const char *ctr[NUMARGX] = {0}; // dash option callback
-struct Prototype cnc[NUMARGX] = {0}; // function to use
+struct Function cnc[NUMARGX] = {0}; // function to use
 int cef[NUMARGX] = {0}; // reference for function
 int cim = 0; // number of types
 const char *dtr[NUMARGX] = {0}; // dash option default
-struct Prototype dnc[NUMARGX] = {0}; // function to use
+struct Function dnc[NUMARGX] = {0}; // function to use
 int def[NUMARGX] = {0}; // reference for function
 int aim = 0; // number of types
 const char *etr[NUMARGX] = {0}; // dash option context
-struct Prototype enc[NUMARGX] = {0}; // function to use
+struct Function enc[NUMARGX] = {0}; // function to use
 int eef[NUMARGX] = {0}; // reference for function
 int eim = 0; // number of types
 
@@ -104,7 +104,7 @@ int getLocation()
 	nst[nim].opt = NoopTag;
 	return nim++;
 }
-int addOption(const char *opt, struct Prototype use, struct Prototype run)
+int addOption(const char *opt, struct Function use, struct Function run)
 {
 	str[sim] = opt;
 	fnc[sim].opc = FlowTag;
@@ -112,7 +112,7 @@ int addOption(const char *opt, struct Prototype use, struct Prototype run)
 	fnc[sim].gnc = run;
 	return sim++;
 }
-int addFlag(const char *opt, struct Prototype use, struct Prototype run)
+int addFlag(const char *opt, struct Function use, struct Function run)
 {
 	str[sim] = opt;
 	fnc[sim].opc = FlagTag;
@@ -120,7 +120,7 @@ int addFlag(const char *opt, struct Prototype use, struct Prototype run)
 	fnc[sim].gnc = run;
 	return sim++;
 }
-int addJump(const char *opt, struct Prototype use, struct Prototype run)
+int addJump(const char *opt, struct Function use, struct Function run)
 {
 	str[sim] = opt;
 	fnc[sim].opc = JumpTag;
@@ -128,7 +128,7 @@ int addJump(const char *opt, struct Prototype use, struct Prototype run)
 	fnc[sim].gnc = run;
 	return sim++;
 }
-int addNest(const char *opt, struct Prototype use, struct Prototype run)
+int addNest(const char *opt, struct Function use, struct Function run)
 {
 	str[sim] = opt;
 	fnc[sim].opc = NestTag;
@@ -136,21 +136,21 @@ int addNest(const char *opt, struct Prototype use, struct Prototype run)
 	fnc[sim].gnc = run;
 	return sim++;
 }
-int mapCallback(const char *opt, int ref, struct Prototype fnc)
+int mapCallback(const char *opt, int ref, struct Function fnc)
 {
 	ctr[cim] = opt;
 	cnc[cim] = fnc;
 	cef[cim] = ref;
 	return cim++;
 }
-int mapDefault(const char *opt, int ref, struct Prototype fnc)
+int mapDefault(const char *opt, int ref, struct Function fnc)
 {
 	dtr[aim] = opt;
 	dnc[aim] = fnc;
 	def[aim] = ref;
 	return aim++;
 }
-int mapContext(const char *opt, int ref, struct Prototype fnc)
+int mapContext(const char *opt, int ref, struct Function fnc)
 {
 	etr[eim] = opt;
 	enc[eim] = fnc;

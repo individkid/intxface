@@ -71,13 +71,17 @@ int shareRunD(void *use)
 }
 int shareUseLF(int idx, void *buf, int nbyte)
 {
-	// TODO read buf from script at memxSkip(argxUse(idx),1)
-	return 0; // TODO number of bytes read
+	void *mem = 0;
+	memxSkip(&mem,argxUse(idx),1);
+	if (luaxCall(memxStr(mem),protoCloseP(idx,nbyte)) < 0) ERROR(exitErr,0);
+	return protoResultP(buf);
 }
 int shareUseLG(int idx, const void *buf, int nbyte)
 {
-	// TODO write buf to script at memxSkip(argxUse(idx),2)
-	return 0; // TODO number of bytes written
+	void *mem = 0;
+	memxSkip(&mem,argxUse(idx),2);
+	if (luaxCall(memxStr(mem),protoCloseQ(idx,buf,nbyte)) < 0) ERROR(exitErr,0);
+	return protoResultQ();
 }
 void shareUseL(void **use, const char *str)
 {
@@ -110,9 +114,9 @@ int shareLuax(const char *str)
 int main(int argc, char **argv)
 {
 	if (luaxFile("type.lua") < 0) {protoErr("shareC: cannot load library: type.lua\n"); fprintf(stderr,"%s",protoMsg()); return -1;}
-	luaxFunc("shareLuax",protoTypeF(shareLuax));
-	luaxFunc("argxUse",protoTypeT(argxUse));
-	luaxFunc("argxRun",protoTypeT(argxRun));
+	luaxAdd("shareLuax",protoTypeF(shareLuax));
+	luaxAdd("argxUse",protoTypeT(argxUse));
+	luaxAdd("argxRun",protoTypeT(argxRun));
 	memxLuax();
 	faces = getLocation();
 	type = getLocation();
