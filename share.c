@@ -22,42 +22,64 @@ void shareRunCF(const char *str, int trm, int idx, void *arg)
 {
 	memxInit(&arg,str);
 }
+void shareRunCG(void **run)
+{
+	void *que = argxRun(misc);
+	memxSkip(run,que,0);
+	memxDel(&que,0);
+}
+void shareRunCH(void **run)
+{
+	void *que = argxRun(misc);
+	memxSkip(run,que,memxSize(que)-1);
+	memxDel(&que,memxSize(que)-1);
+}
+void shareRunCI(void **run)
+{
+	void *que = argxRun(misc);
+	memxAdd(&que,*run,0);
+}
+void shareRunCJ(void **run)
+{
+	void *que = argxRun(misc);
+	memxAdd(&que,*run,memxSize(que));
+}
 void shareRunC(void **run, void *use)
 {
 	int len = memxSize(use);
 	int rfd = memxOpen(run);
 	int ifd = memxInt(argxRun(iface));
 	int ofd = memxInt(argxRun(oface));
-	void *que = argxRun(misc);
 	int typ = memxInt(argxRun(type));
 	void *mem = memxTemp(0);
 	void *tmp = memxTemp(1);
+	int tfd = memxOpen(tmp);
 	for (memxFirst(&mem,use); memxTest(mem); memxNext(&mem,mem))
 	switch ((enum Stream) memxInt(mem)) {
 	// read from type to type
 	case (RdTypP): loopStruct(typ,ifd,rfd); break;
-	case (RdTypHd): memxSkip(run,que,0); memxDel(&que,0); break;
-	case (RdTypTl): memxSkip(run,que,memxSize(que)-1); memxDel(&que,memxSize(que)-1); break;
+	case (RdTypHd): shareRunCG(run); break;
+	case (RdTypTl): shareRunCH(run); break;
 	// read from raw to string
 	case (RdStrP): readStruct(shareRunCF,*run,typ,ifd); break;
-	case (RdStrHd): memxSkip(run,que,0); memxDel(&que,0); readStruct(shareRunCF,*run,typ,rfd); break;
-	case (RdStrTl): memxSkip(run,que,memxSize(que)-1); memxDel(&que,memxSize(que)-1); readStruct(shareRunCF,*run,typ,rfd); break;
+	case (RdStrHd): shareRunCG(run); readStruct(shareRunCF,*run,typ,rfd); break;
+	case (RdStrTl): shareRunCH(run); readStruct(shareRunCF,*run,typ,rfd); break;
 	// read to raw from string
 	case (RdRawP): loopStruct(typ,ifd,rfd); writeStruct(memxStr(*run),typ,rfd); break;
-	case (RdRawHd): memxSkip(run,que,0); memxDel(&que,0); writeStruct(memxStr(*run),typ,rfd); break;
-	case (RdRawTl): memxSkip(run,que,memxSize(que)-1); memxDel(&que,memxSize(que)-1); writeStruct(memxStr(*run),typ,rfd); break;
+	case (RdRawHd): shareRunCG(run); writeStruct(memxStr(*run),typ,rfd); break;
+	case (RdRawTl): shareRunCH(run); writeStruct(memxStr(*run),typ,rfd); break;
 	// write from type to type
 	case (WrTypP): loopStruct(typ,rfd,ofd); break;
-	case (WrTypHd): memxAdd(run,que,0); break;
-	case (WrTypTl): memxAdd(run,que,memxSize(que)); break;
+	case (WrTypHd): shareRunCI(run); break;
+	case (WrTypTl): shareRunCJ(run); break;
 	// write to raw from string
 	case (WrStrP): writeStruct(memxStr(*run),typ,ofd); break;
-	case (WrStrHd): memxCopy(tmp,*run); writeStruct(memxStr(*run),typ,rfd); memxAdd(run,que,0); memxCopy(*run,tmp); break;
-	case (WrStrTl): memxCopy(tmp,*run); writeStruct(memxStr(*run),typ,rfd); memxAdd(run,que,memxSize(que)); memxCopy(*run,tmp); break;
+	case (WrStrHd): writeStruct(memxStr(*run),typ,tfd); shareRunCI(tmp); break;
+	case (WrStrTl): writeStruct(memxStr(*run),typ,tfd); shareRunCJ(tmp); break;
 	// write from raw to string
 	case (WrRawP): readStruct(shareRunCF,tmp,typ,rfd); writeStr(memxStr(tmp),1,ofd); break;
-	case (WrRawHd): memxCopy(tmp,*run); memxSkip(run,que,0); memxDel(&que,0); readStruct(shareRunCF,*run,typ,rfd); writeStr(memxStr(*run),1,ofd); memxCopy(*run,tmp); break;
-	case (WrRawTl): memxCopy(tmp,*run); memxSkip(run,que,memxSize(que)-1); memxDel(&que,memxSize(que)-1); readStruct(shareRunCF,*run,typ,rfd); writeStr(memxStr(*run),1,ofd); memxCopy(*run,tmp); break;
+	case (WrRawHd): readStruct(shareRunCF,tmp,typ,rfd); shareRunCI(tmp); break;
+	case (WrRawTl): readStruct(shareRunCF,tmp,typ,rfd); shareRunCJ(tmp); break;
 	default: ERROR(exitErr,0); break;}
 }
 int shareRunD(void *use)
