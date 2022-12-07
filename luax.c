@@ -88,23 +88,26 @@ int luaxSide(const char *exp)
 int luaxCall(const char *str, struct Closure fnc)
 {
 	int val = 0;
+	const char *ptr = 0;
+	size_t len = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	for (int i = 0; i < fnc.na; i++) {
 		struct Argument *arg = fnc.aa+i;
 		switch (arg->at) {
 		case (Iatype): lua_pushinteger(luastate,arg->ia); break;
-		// TODO other argument types
+		case (Satype): lua_pushstring(luastate,arg->sa); break;
+		case (Latype): lua_pushlstring(luastate,arg->sa,arg->la); break;
+		case (Patype): lua_pushlightuserdata(luastate,arg->pa); break;
 		default: break;}}
 	val = luaxSide(str);
-	if (val < 0) {
-		// TODO handle error
-		return -1;}
+	if (val < 0) return -1;
 	for (int i = 0; i < fnc.nb; i++) {
 		struct Argument *arg = fnc.ab+i;
 		switch (arg->at) {
 		case (Iatype): arg->ia = lua_tonumber(luastate,i+1); break;
-		// TODO other result types
-		// TODO for pftype how to get bytes with zeroes
+		case (Satype): ptr = lua_tostring(luastate,i+1); arg->sa = realloc(arg->sa,strlen(ptr)+1); strcpy(arg->sa,ptr); break;
+		case (Latype): len = arg->la; ptr = lua_tolstring(luastate,i+1,&len); arg->la = len; arg->sa = realloc(arg->sa,arg->la); memcpy(arg->sa,ptr,arg->la); break;
+		case (Patype): arg->pa = lua_touserdata(luastate,i+1); break;
 		default: break;}}
 	lua_pop(luastate,fnc.nb);
 	return val;
@@ -112,16 +115,34 @@ int luaxCall(const char *str, struct Closure fnc)
 int luaxClosure(lua_State *L)
 {
 	struct Function fnc = {0};
+	void *mem = 0;
 	fnc.ft = lua_tointeger(L, lua_upvalueindex(1));
 	fnc.vp = lua_touserdata(L, lua_upvalueindex(2));
 	switch (fnc.ft) {
-		case (Fftype): {
-			lua_pushinteger(L,fnc.ff(lua_tostring(L,1)));
-			return 1;}
-		case (Gftype): {
-			lua_pushinteger(L,fnc.gf(lua_tostring(L,1),lua_tostring(L,2)));
-			return 1;}
-		// TODO every other from proto.h
+		// typedef int (*fftype)(const char *str);
+		case (Fftype): lua_pushinteger(L,fnc.ff(lua_tostring(L,1))); return 1;
+		// typedef int (*gftype)(const char *one, const char *oth);
+		case (Gftype): lua_pushinteger(L,fnc.gf(lua_tostring(L,1),lua_tostring(L,2))); return 1;
+		// typedef int (*oftype)(void *arg);
+		case (Oftype): lua_pushinteger(L,fnc.of(lua_touserdata(L,1))); return 1;
+		// typedef const char *(*aftype)(void *mem);
+		case (Aftype): lua_pushstring(L,fnc.af(lua_touserdata(L,1))); return 1;
+		// typedef void (*nftype)(void **use, const char *str);
+		case (Nftype): mem = lua_touserdata(L,1); fnc.nf(&mem,lua_tostring(L,2)); lua_pushlightuserdata(L,mem); return 1;
+		// typedef void (*mftype)(void **run, void *use);
+		case (Mftype): mem = lua_touserdata(L,1); fnc.mf(&mem,lua_touserdata(L,2)); lua_pushlightuserdata(L,mem); return 1;
+		// typedef void (*dftype)(void **mem);
+		case (Dftype): mem = lua_touserdata(L,1); fnc.df(&mem); lua_pushlightuserdata(L,mem); return 1;
+		// typedef void (*iftype)(void **mem, int key);
+		case (Iftype): mem = lua_touserdata(L,1); fnc.it(&mem,lua_tointeger(L,2)); lua_pushlightuserdata(L,mem); return 1;
+		// typedef void (*jftype)(void **mem, void *giv, void *key);
+		case (Jftype): mem = lua_touserdata(L,1); fnc.jf(&mem,lua_touserdata(L,2),lua_touserdata(L,3)); lua_pushlightuserdata(L,mem); return 1;
+		// typedef void (*kftype)(void **mem, void *giv, int key);
+		case (Kftype): mem = lua_touserdata(L,1); fnc.kf(&mem,lua_touserdata(L,2),lua_tointeger(L,3)); lua_pushlightuserdata(L,mem); return 1;
+		// typedef void *(*tftype)(int idx);
+		case (Tftype): lua_pushlightuserdata(L,fnc.tf(lua_tointeger(L,1))); return 1;
+		// typedef int (*lftype)(void **mem);
+		case (Lftype): mem = lua_touserdata(L,1); lua_pushinteger(L,fnc.lf(&mem)); lua_pushlightuserdata(L,mem); return 2;
 		default: break;}
 	return 0;
 }

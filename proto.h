@@ -98,10 +98,10 @@ struct Function {
 struct Function protoTypeF(fftype fnc);
 struct Function protoTypeG(gftype fnc);
 struct Function protoTypeO(oftype fnc);
+struct Function protoTypeA(aftype fnc);
 struct Function protoTypeN(nftype fnc);
 struct Function protoTypeM(mftype fnc);
 struct Function protoTypeD(dftype fnc);
-struct Function protoTypeA(aftype fnc);
 struct Function protoTypeI(iftype fnc);
 struct Function protoTypeJ(jftype fnc);
 struct Function protoTypeK(kftype fnc);
@@ -112,6 +112,7 @@ struct Argument {
 	enum {
 		Iatype,
 		Satype,
+		Latype,
 		Patype,
 	} at;
 	union {
@@ -119,6 +120,7 @@ struct Argument {
 		char *sa;
 		void *pa;
 	};
+	int la;
 };
 struct Closure {
 	int na,nb;
@@ -127,10 +129,10 @@ struct Closure {
 struct Closure protoCloseB(const char *arg);
 struct Closure protoCloseR(int arg);
 struct Closure protoCloseP(int idx, int nbyte);
-struct Closure protoCloseQ(int idx, const char *buf, int nbyte);
+struct Closure protoCloseQ(int idx, const void *buf, int nbyte);
 void protoResultB(char *val);
 void protoResultR(int *val);
-int protoResultP(char *buf);
+int protoResultP(void *buf);
 int protoResultQ();
 
 void exitErr(const char *str, int num, int idx);

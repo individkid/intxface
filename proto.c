@@ -76,7 +76,7 @@ struct Closure protoCloseP(int idx, int nbyte)
 	struct Closure ret = {0};
 	return ret; // TODO
 }
-struct Closure protoCloseQ(int idx, const char *buf, int nbyte)
+struct Closure protoCloseQ(int idx, const void *buf, int nbyte)
 {
 	struct Closure ret = {0};
 	return ret; // TODO
@@ -89,7 +89,7 @@ void protoResultR(int *val)
 {
 	// TODO
 }
-int protoResultP(char *buf)
+int protoResultP(void *buf)
 {
 	return 0; // TODO
 }
