@@ -25,6 +25,18 @@ struct Function protoTypeO(oftype fnc)
 {
 	struct Function ret = {.ft = Oftype, {.of = fnc}}; return ret;
 }
+struct Function protoTypeR(rftype fnc)
+{
+	struct Function ret = {.ft = Rftype, {.rf = fnc}}; return ret;
+}
+struct Function protoTypeA(aftype fnc)
+{
+	struct Function ret = {.ft = Aftype, {.af = fnc}}; return ret;
+}
+struct Function protoTypeB(bftype fnc)
+{
+	struct Function ret = {.ft = Bftype, {.bf = fnc}}; return ret;
+}
 struct Function protoTypeN(nftype fnc)
 {
 	struct Function ret = {.ft = Nftype, {.nf = fnc}}; return ret;
@@ -36,10 +48,6 @@ struct Function protoTypeM(mftype fnc)
 struct Function protoTypeD(dftype fnc)
 {
 	struct Function ret = {.ft = Dftype, {.df = fnc}}; return ret;
-}
-struct Function protoTypeA(aftype fnc)
-{
-	struct Function ret = {.ft = Aftype, {.af = fnc}}; return ret;
 }
 struct Function protoTypeI(iftype fnc)
 {
@@ -110,18 +118,6 @@ const struct Closure *protoClose(int na, int nb)
 	for (int i = 0; i < argbuf.nb; i++) argbuf.ab[i] = zero;
 	return &argbuf;
 }
-const struct Closure *protoCloseR(int arg)
-{
-	protoClose(1,1);
-	protoMakeI(&argbuf.aa[0],arg);
-	return &argbuf;
-}
-const struct Closure *protoCloseB(const char *arg)
-{
-	protoClose(1,1);
-	protoMakeS(&argbuf.aa[0],arg);
-	return &argbuf;
-}
 const struct Closure *protoCloseP(int idx, int nbyte)
 {
 	protoClose(2,2);
@@ -137,13 +133,17 @@ const struct Closure *protoCloseQ(int idx, const void *buf, int nbyte)
 	protoMakeI(&argbuf.aa[2],nbyte);
 	return &argbuf;
 }
-int protoResultR()
+const struct Closure *protoCloseR(int arg)
 {
-	return argbuf.ab[0].ia;
+	protoClose(1,1);
+	protoMakeI(&argbuf.aa[0],arg);
+	return &argbuf;
 }
-const char *protoResultB()
+const struct Closure *protoCloseB(const char *arg)
 {
-	return argbuf.ab[0].sa;
+	protoClose(1,1);
+	protoMakeS(&argbuf.aa[0],arg);
+	return &argbuf;
 }
 int protoResultP(void *buf)
 {
@@ -153,6 +153,14 @@ int protoResultP(void *buf)
 int protoResultQ()
 {
 	return argbuf.ab[0].ia;
+}
+int protoResultR()
+{
+	return argbuf.ab[0].ia;
+}
+const char *protoResultB()
+{
+	return argbuf.ab[0].sa;
 }
 
 void exitErr(const char *str, int num, int idx)

@@ -59,12 +59,12 @@ struct Function {
 		Fftype,
 		Gftype,
 		Oftype,
-		Nftype,
-		Mftype,
-		Dftype,
 		Rftype,
 		Aftype,
 		Bftype,
+		Nftype,
+		Mftype,
+		Dftype,
 		Iftype,
 		Jftype,
 		Kftype,
@@ -81,12 +81,12 @@ struct Function {
 		fftype ff;
 		gftype gf;
 		oftype of;
-		nftype nf;
-		mftype mf;
-		dftype df;
 		rftype rf;
 		aftype af;
 		bftype bf;
+		nftype nf;
+		mftype mf;
+		dftype df;
 		iftype it;
 		jftype jf;
 		kftype kf;
@@ -98,10 +98,12 @@ struct Function {
 struct Function protoTypeF(fftype fnc);
 struct Function protoTypeG(gftype fnc);
 struct Function protoTypeO(oftype fnc);
+struct Function protoTypeR(rftype fnc);
+struct Function protoTypeA(aftype fnc);
+struct Function protoTypeB(bftype fnc);
 struct Function protoTypeN(nftype fnc);
 struct Function protoTypeM(mftype fnc);
 struct Function protoTypeD(dftype fnc);
-struct Function protoTypeA(aftype fnc);
 struct Function protoTypeI(iftype fnc);
 struct Function protoTypeJ(jftype fnc);
 struct Function protoTypeK(kftype fnc);
@@ -133,14 +135,14 @@ struct Closure {
 	struct Argument *aa,*ab;
 };
 const struct Closure *protoClose(int na, int nb);
-const struct Closure *protoCloseR(int arg);
-const struct Closure *protoCloseB(const char *arg);
 const struct Closure *protoCloseP(int idx, int nbyte);
 const struct Closure *protoCloseQ(int idx, const void *buf, int nbyte);
-int protoResultR();
-const char *protoResultB();
+const struct Closure *protoCloseR(int arg);
+const struct Closure *protoCloseB(const char *arg);
 int protoResultP(void *buf);
 int protoResultQ();
+int protoResultR();
+const char *protoResultB();
 
 void exitErr(const char *str, int num, int idx);
 void protoSet(const char *str);
