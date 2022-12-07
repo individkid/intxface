@@ -326,10 +326,8 @@ int planeConfig(enum Configure cfg)
 }
 int planeEval(const char *str, int arg)
 {
-	int ret = 0;
 	if (luaxCall(str,protoCloseR(arg)) < 0) ERROR(exitErr,0);
-	protoResultR(&ret);
-	return ret;
+	return protoResultR();
 }
 void planeWake(enum Configure hint)
 {

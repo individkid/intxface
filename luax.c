@@ -85,14 +85,14 @@ int luaxSide(const char *exp)
 	if (lua_pcall(luastate,0,0,0) != LUA_OK) {luaxErr(); return -1;}
 	return 0;	
 }
-int luaxCall(const char *str, struct Closure fnc)
+int luaxCall(const char *str, const struct Closure *fnc)
 {
 	int val = 0;
 	const char *ptr = 0;
 	size_t len = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	for (int i = 0; i < fnc.na; i++) {
-		struct Argument *arg = fnc.aa+i;
+	for (int i = 0; i < fnc->na; i++) {
+		struct Argument *arg = fnc->aa+i;
 		switch (arg->at) {
 		case (Iatype): lua_pushinteger(luastate,arg->ia); break;
 		case (Satype): lua_pushstring(luastate,arg->sa); break;
@@ -101,15 +101,15 @@ int luaxCall(const char *str, struct Closure fnc)
 		default: break;}}
 	val = luaxSide(str);
 	if (val < 0) return -1;
-	for (int i = 0; i < fnc.nb; i++) {
-		struct Argument *arg = fnc.ab+i;
+	for (int i = 0; i < fnc->nb; i++) {
+		struct Argument *arg = fnc->ab+i;
 		switch (arg->at) {
-		case (Iatype): arg->ia = lua_tonumber(luastate,i+1); break;
-		case (Satype): ptr = lua_tostring(luastate,i+1); arg->sa = realloc(arg->sa,strlen(ptr)+1); strcpy(arg->sa,ptr); break;
-		case (Latype): len = arg->la; ptr = lua_tolstring(luastate,i+1,&len); arg->la = len; arg->sa = realloc(arg->sa,arg->la); memcpy(arg->sa,ptr,arg->la); break;
-		case (Patype): arg->pa = lua_touserdata(luastate,i+1); break;
+		case (Iatype): protoMakeI(arg,lua_tonumber(luastate,i+1)); break;
+		case (Satype): ptr = lua_tostring(luastate,i+1); protoMakeS(arg,ptr); break;
+		case (Latype): ptr = lua_tolstring(luastate,i+1,&len); protoMakeL(arg,ptr,len); break;
+		case (Patype): protoMakeP(arg,lua_touserdata(luastate,i+1)); break;
 		default: break;}}
-	lua_pop(luastate,fnc.nb);
+	lua_pop(luastate,fnc->nb);
 	return val;
 }
 int luaxClosure(lua_State *L)

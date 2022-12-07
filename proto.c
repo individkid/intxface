@@ -11,6 +11,7 @@ char *exestr = 0;
 char *exetmp = 0;
 char *msgstr = 0;
 char *msgtmp = 0;
+struct Closure argbuf = {0};
 
 struct Function protoTypeF(fftype fnc)
 {
@@ -61,41 +62,97 @@ struct Function protoTypeL(lftype fnc)
 	struct Function ret = {.ft = Lftype, {.lf = fnc}}; return ret;
 }
 
-struct Closure protoCloseB(const char *arg)
+void protoMake(struct Argument *arg)
 {
-	struct Closure ret = {0};
-	return ret; // TODO
+	switch (arg->at) {
+	case (Iatype): arg->ia = 0; break;
+	case (Satype): free (arg->sa); arg->sa = 0; break;
+	case (Latype): free (arg->pa); arg->pa = 0; arg->la = 0; break;
+	case (Patype): arg->pa = 0; break;
+	default: break;}
 }
-struct Closure protoCloseR(int arg)
+void protoMakeI(struct Argument *arg, int val)
 {
-	struct Closure ret = {0};
-	return ret; // TODO
+	protoMake(arg);
+	arg->at = Iatype;
+	arg->ia = val;
 }
-struct Closure protoCloseP(int idx, int nbyte)
+void protoMakeS(struct Argument *arg, const char *val)
 {
-	struct Closure ret = {0};
-	return ret; // TODO
+	protoMake(arg);
+	arg->at = Satype;
+	arg->sa = malloc(strlen(val)+1);
+	strcpy(arg->sa,val);
 }
-struct Closure protoCloseQ(int idx, const void *buf, int nbyte)
+void protoMakeL(struct Argument *arg, const void *val, int len)
 {
-	struct Closure ret = {0};
-	return ret; // TODO
+	protoMake(arg);
+	arg->at = Latype;
+	arg->pa = malloc(len);
+	memcpy(arg->pa,val,len);
+	arg->la = len;
 }
-void protoResultB(char *val)
+void protoMakeP(struct Argument *arg, void *val)
 {
-	// TODO
+	protoMake(arg);
+	arg->at = Patype;
+	arg->pa = val;
 }
-void protoResultR(int *val)
+
+const struct Closure *protoClose(int na, int nb)
 {
-	// TODO
+	struct Argument zero = {0};
+	for (int i = 0; i < argbuf.na; i++) protoMake(argbuf.aa+i);
+	free(argbuf.aa); argbuf.aa = malloc(sizeof(argbuf.aa)*na); argbuf.na = na;
+	for (int i = 0; i < argbuf.na; i++) argbuf.aa[i] = zero;
+	for (int i = 0; i < argbuf.nb; i++) protoMake(argbuf.ab+i);
+	free(argbuf.ab); argbuf.ab = malloc(sizeof(argbuf.ab)*nb); argbuf.nb = nb;
+	for (int i = 0; i < argbuf.nb; i++) argbuf.ab[i] = zero;
+	return &argbuf;
+}
+const struct Closure *protoCloseR(int arg)
+{
+	protoClose(1,1);
+	protoMakeI(&argbuf.aa[0],arg);
+	return &argbuf;
+}
+const struct Closure *protoCloseB(const char *arg)
+{
+	protoClose(1,1);
+	protoMakeS(&argbuf.aa[0],arg);
+	return &argbuf;
+}
+const struct Closure *protoCloseP(int idx, int nbyte)
+{
+	protoClose(2,2);
+	protoMakeI(&argbuf.aa[0],idx);
+	protoMakeI(&argbuf.aa[1],nbyte);
+	return &argbuf;
+}
+const struct Closure *protoCloseQ(int idx, const void *buf, int nbyte)
+{
+	protoClose(3,1);
+	protoMakeI(&argbuf.aa[0],idx);
+	protoMakeL(&argbuf.aa[1],buf,nbyte);
+	protoMakeI(&argbuf.aa[2],nbyte);
+	return &argbuf;
+}
+int protoResultR()
+{
+	return argbuf.ab[0].ia;
+}
+const char *protoResultB()
+{
+	return argbuf.ab[0].sa;
 }
 int protoResultP(void *buf)
 {
-	return 0; // TODO
+	memcpy(buf,argbuf.ab[1].pa,argbuf.ab[1].la);
+	return argbuf.ab[0].ia;
 }
 int protoResultQ()
 {
-	return 0; // TODO
+	return argbuf.ab[0].ia;
 }
 
 void exitErr(const char *str, int num, int idx)

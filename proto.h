@@ -31,14 +31,14 @@ typedef void (*cftype)(int idx); // thread callback
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
-typedef void (*bftype)(char *val, const char *arg); // dictionary
-typedef void (*rftype)(int *val, int arg); // permutation
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*fftype)(const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
 typedef int (*oftype)(void *arg);
+typedef int (*rftype)(int arg); // permutation
 typedef const char *(*aftype)(void *mem);
+typedef const char *(*bftype)(const char *arg); // dictionary
 typedef void (*nftype)(void **use, const char *str);
 typedef void (*mftype)(void **run, void *use);
 typedef void (*dftype)(void **mem);
@@ -54,8 +54,6 @@ struct Function {
 		Eftype,
 		Sftype,
 		Hftype,
-		Bftype,
-		Rftype,
 		Pftype,
 		Qftype,
 		Fftype,
@@ -64,7 +62,9 @@ struct Function {
 		Nftype,
 		Mftype,
 		Dftype,
+		Rftype,
 		Aftype,
+		Bftype,
 		Iftype,
 		Jftype,
 		Kftype,
@@ -76,8 +76,6 @@ struct Function {
 		eftype ef;
 		sftype sf;
 		hftype hf;
-		bftype bf;
-		rftype rf;
 		pftype pf;
 		qftype qf;
 		fftype ff;
@@ -86,7 +84,9 @@ struct Function {
 		nftype nf;
 		mftype mf;
 		dftype df;
+		rftype rf;
 		aftype af;
+		bftype bf;
 		iftype it;
 		jftype jf;
 		kftype kf;
@@ -98,10 +98,10 @@ struct Function {
 struct Function protoTypeF(fftype fnc);
 struct Function protoTypeG(gftype fnc);
 struct Function protoTypeO(oftype fnc);
-struct Function protoTypeA(aftype fnc);
 struct Function protoTypeN(nftype fnc);
 struct Function protoTypeM(mftype fnc);
 struct Function protoTypeD(dftype fnc);
+struct Function protoTypeA(aftype fnc);
 struct Function protoTypeI(iftype fnc);
 struct Function protoTypeJ(jftype fnc);
 struct Function protoTypeK(kftype fnc);
@@ -122,16 +122,23 @@ struct Argument {
 	};
 	int la;
 };
+void protoMake(struct Argument *arg);
+void protoMakeI(struct Argument *arg, int val);
+void protoMakeS(struct Argument *arg, const char *val);
+void protoMakeL(struct Argument *arg, const void *val, int len);
+void protoMakeP(struct Argument *arg, void *val);
+
 struct Closure {
 	int na,nb;
 	struct Argument *aa,*ab;
 };
-struct Closure protoCloseB(const char *arg);
-struct Closure protoCloseR(int arg);
-struct Closure protoCloseP(int idx, int nbyte);
-struct Closure protoCloseQ(int idx, const void *buf, int nbyte);
-void protoResultB(char *val);
-void protoResultR(int *val);
+const struct Closure *protoClose(int na, int nb);
+const struct Closure *protoCloseR(int arg);
+const struct Closure *protoCloseB(const char *arg);
+const struct Closure *protoCloseP(int idx, int nbyte);
+const struct Closure *protoCloseQ(int idx, const void *buf, int nbyte);
+int protoResultR();
+const char *protoResultB();
 int protoResultP(void *buf);
 int protoResultQ();
 
