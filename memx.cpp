@@ -17,10 +17,16 @@ std::map<int,Memx*> memy;
 std::map<Memx*,int> memz;
 std::map<int,Memx*> memt;
 
+int numstr(const char *str, int *val) {
+	char *ptr = const_cast<char*>(str);
+	int tmp = (errno = 0, strtoimax(str,&ptr,0));
+	if (errno != 0 || ptr == str) return 0; *val = tmp;
+	return ptr-str;}
+int rawstr(const char *str, std::vector<char> *raw) {
+	// TODO
+	return 0;}
 char *repstr(char *str, int sub, int len) {
 	char *tmp = strndup(str+sub,len); free(str); return tmp;}
-int numstr(const char *str, int *val) {
-	char *ptr = const_cast<char*>(str); *val = strtoimax(str,&ptr,0); return ptr-str;}
 void repstr(char *&d, int &l) {
 	while (l > 0 && isspace(*d)) d = repstr(d,1,--l);
 	while (l > 0 && isspace(d[l-1])) d = repstr(d,0,--l);}
@@ -35,8 +41,9 @@ char *repstr(char *exp) {
 	int len = strlen(str);
 	char *tmp = strdup(str);
 	int val = 0;
+	std::vector<char> vec;
 	repstr(tmp,len);
-	if (numstr(tmp,&val) != len) {
+	if (rawstr(tmp,&vec) != len && numstr(tmp,&val) != len) {
 		char *pre = strdup("\"");
 		char *pst = strdup("\"");
 		str = repstr(pre,repstr(str,pst));}
@@ -75,7 +82,7 @@ struct Memx {
 	std::vector<char> raw;
 	struct Function fnc; void **fem;
 	struct Function gnc; void **gem;
-	Memx(const char *s) {
+	Memx(const char *s): val(0) {
 		memy[memx] = this; memz[this] = memx; memx++;
 		if (s == 0) {
 			opt = MemxNul; return;}
@@ -95,6 +102,8 @@ struct Memx {
 			opt = MemxLst; free(d); return;}
 		if (numstr(d,&val) == l) {
 			opt = MemxInt; free(d); return;}
+		if (rawstr(d,&raw) == l) {
+			opt = MemxRaw; free(d); return;}
 		if (d[0] == '"' && quote(d) == l-1) {
 			opt = MemxStr; d = repstr(d,1,l-2); str = d; free(d); return;}
 		if (d[0] == '(') {

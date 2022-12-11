@@ -93,7 +93,7 @@ classifies sets of regions as polytopes, samples polytopes as region sets,
 finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
-drive test AVAssetReader AVAssetWriter to and from av struct pipe.
+core test AVAssetReader AVAssetWriter to and from av struct pipe.
 tape test BMD-SDK to and from av struct pipe.
 wave test IOUSBInterfaceInterface to and from av struct pipe.
 frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.

@@ -1,7 +1,7 @@
 
 Write liner.lua sharer.lua planer.lua holer.lua.
 
-Write drive.cpp to read and write file with struct AV.
+Write core.cpp to read and write file with struct AV.
 
 Write tape.cpp to convert BMD to and from struct AV pipe.
 
@@ -20,6 +20,8 @@ Write print.lua to find all overlaps and spaces.
 Write play.lua that integrates files, audio, video, and polytopes.
 
 Write stomp.lua that mixes audio.
+
+Replace Theory by an agda proof.
 
 Make stomp boxes that add wave with frequency multiplied or divided.
 

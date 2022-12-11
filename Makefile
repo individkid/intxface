@@ -120,8 +120,8 @@ clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f plane.sw plane.cpp plane.g
-	rm -f typra facer typer filer planra spacra share
-	rm -f hole file line plane space
+	rm -f typra facer typer filer planra spacra
+	rm -f hole file line plane space share
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.-- .*.-- ..*.-- ...*.--
