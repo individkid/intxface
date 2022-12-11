@@ -104,10 +104,10 @@ int luaxCall(const char *str, const struct Closure *fnc)
 	for (int i = 0; i < fnc->nb; i++) {
 		struct Argument *arg = fnc->ab+i;
 		switch (arg->at) {
-		case (Iatype): protoMakeI(arg,lua_tonumber(luastate,i+1)); break;
-		case (Satype): ptr = lua_tostring(luastate,i+1); protoMakeS(arg,ptr); break;
-		case (Latype): ptr = lua_tolstring(luastate,i+1,&len); protoMakeL(arg,ptr,len); break;
-		case (Patype): protoMakeP(arg,lua_touserdata(luastate,i+1)); break;
+		case (Iatype): protoMakeIf(arg,lua_tonumber(luastate,i+1)); break;
+		case (Satype): ptr = lua_tostring(luastate,i+1); protoMakeSf(arg,ptr); break;
+		case (Latype): ptr = lua_tolstring(luastate,i+1,&len); protoMakeLf(arg,ptr,len); break;
+		case (Patype): protoMakePf(arg,lua_touserdata(luastate,i+1)); break;
 		default: break;}}
 	lua_pop(luastate,fnc->nb);
 	return val;

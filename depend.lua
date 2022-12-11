@@ -52,7 +52,7 @@ function mainExists(file,exp)
 end
 function findDepend(pat,ext,exp,suf)
 	local retval = ""
-	os.execute("cp *.c *.h *.src *.gen depend")
+	os.execute("cp *.c *.h *.src *.gen depend") -- TODO this assumes that .dep is done in depend.mk
 	os.execute("(cd depend; ls *.gen) | cut -f 1 -d '.' > depend.rm 2>/dev/null")
 	os.execute("for file in `cat depend.rm`; do make -C depend $file"..ext.." > depend.out 2>&1; done")
 	os.execute("find . -name '*"..ext.."' > depend.ls 2>&1")
@@ -65,6 +65,7 @@ function findDepend(pat,ext,exp,suf)
 			if found == pat then retval = basee..suf; break end
 		end
 		linelist:close()
+		for k,v in ipairs(mainMap) do if extee == v[1] and mainExists(file,v[2]) then retval = "" end end
 		if not (retval == "") then break end
 	end
 	filelist:close()
@@ -179,10 +180,6 @@ function popError()
 		end
 	end
 end
-finite = 0
-limit = 300 -- when to go interactive
-maximum = 300 -- when to exit
-finish = 300 -- when to set verbose
 function checkError(check,rule,id)
 	local top = todo[#todo]
 	if (top == "all") and not (rule == "all") then check = rule end
@@ -190,10 +187,9 @@ function checkError(check,rule,id)
 	local list = listDepend(top,rule)
 	local first = firstDepend(list)
 	local found = nil
-	finite = finite + 1
 	if verbose then
 		os.execute("cat depend.err")
-		debugTodo()
+		-- debugTodo()
 		io.stdout:write("checkError"..id.."("..top..","..rule..","..check..","..next..") ")
 		for k,v in ipairs(todo) do io.stdout:write("'"..v) end
 		io.stdout:write(":")
@@ -212,11 +208,9 @@ function checkError(check,rule,id)
 	if not found and doneExists(top,check) and not fileExists(check) then found = "3d"; if verbose then io.stdout:write(found) end; pushError(check) end
 
 	if verbose then
-		if finite >= limit then io.read(); return end
 		io.stdout:write("\n")
 	end
-	if not found or finite > maximum then os.exit() end
-	if finite >= finish then verbose = true end
+	if not found then os.exit() end
 end
 function checkRule()
 	local base = nil
@@ -287,10 +281,16 @@ function checkCopy()
 	end
 	return retval
 end
+finite = 0
+maximum = 300 -- when to exit
+finish = 300 -- when to set verbose
 function checkMake()
 	local top = todo[#todo]
 	local cmd = "make -C depend "..top.." 2> depend.err > depend.out"
 	io.stdout:write(cmd.." "..finite.."\n")
+	if finite >= finish then verbose = true end
+	if finite > maximum then os.exit() end
+	finite = finite + 1
 	os.execute(cmd)
 	local greplist = io.open("depend.err")
 	local found = false

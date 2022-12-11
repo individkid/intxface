@@ -37,8 +37,10 @@ typedef int (*fftype)(const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
 typedef int (*oftype)(void *arg);
 typedef int (*rftype)(int arg); // permutation
+typedef int (*rgtype)();
 typedef const char *(*aftype)(void *mem);
 typedef const char *(*bftype)(const char *arg); // dictionary
+typedef const char *(*bgtype)();
 typedef void (*nftype)(void **use, const char *str);
 typedef void (*mftype)(void **run, void *use);
 typedef void (*dftype)(void **mem);
@@ -60,8 +62,10 @@ struct Function {
 		Gftype,
 		Oftype,
 		Rftype,
+		Rgtype,
 		Aftype,
 		Bftype,
+		Bgtype,
 		Nftype,
 		Mftype,
 		Dftype,
@@ -82,8 +86,10 @@ struct Function {
 		gftype gf;
 		oftype of;
 		rftype rf;
+		rgtype rg;
 		aftype af;
 		bftype bf;
+		bgtype bg;
 		nftype nf;
 		mftype mf;
 		dftype df;
@@ -95,20 +101,22 @@ struct Function {
 		void *vp;
 	};
 };
-struct Function protoTypeF(fftype fnc);
-struct Function protoTypeG(gftype fnc);
-struct Function protoTypeO(oftype fnc);
-struct Function protoTypeR(rftype fnc);
-struct Function protoTypeA(aftype fnc);
-struct Function protoTypeB(bftype fnc);
-struct Function protoTypeN(nftype fnc);
-struct Function protoTypeM(mftype fnc);
-struct Function protoTypeD(dftype fnc);
-struct Function protoTypeI(iftype fnc);
-struct Function protoTypeJ(jftype fnc);
-struct Function protoTypeK(kftype fnc);
-struct Function protoTypeT(tftype fnc);
-struct Function protoTypeL(lftype fnc);
+struct Function protoTypeFf(fftype fnc);
+struct Function protoTypeGf(gftype fnc);
+struct Function protoTypeOf(oftype fnc);
+struct Function protoTypeRf(rftype fnc);
+struct Function protoTypeRg(rgtype fnc);
+struct Function protoTypeAf(aftype fnc);
+struct Function protoTypeBf(bftype fnc);
+struct Function protoTypeBg(bgtype fnc);
+struct Function protoTypeNf(nftype fnc);
+struct Function protoTypeMf(mftype fnc);
+struct Function protoTypeDf(dftype fnc);
+struct Function protoTypeIf(iftype fnc);
+struct Function protoTypeJf(jftype fnc);
+struct Function protoTypeKf(kftype fnc);
+struct Function protoTypeTf(tftype fnc);
+struct Function protoTypeLf(lftype fnc);
 
 struct Argument {
 	enum {
@@ -125,24 +133,28 @@ struct Argument {
 	int la;
 };
 void protoMake(struct Argument *arg);
-void protoMakeI(struct Argument *arg, int val);
-void protoMakeS(struct Argument *arg, const char *val);
-void protoMakeL(struct Argument *arg, const void *val, int len);
-void protoMakeP(struct Argument *arg, void *val);
+void protoMakeIf(struct Argument *arg, int val);
+void protoMakeSf(struct Argument *arg, const char *val);
+void protoMakeLf(struct Argument *arg, const void *val, int len);
+void protoMakePf(struct Argument *arg, void *val);
 
 struct Closure {
 	int na,nb;
 	struct Argument *aa,*ab;
 };
 const struct Closure *protoClose(int na, int nb);
-const struct Closure *protoCloseP(int idx, int nbyte);
-const struct Closure *protoCloseQ(int idx, const void *buf, int nbyte);
-const struct Closure *protoCloseR(int arg);
-const struct Closure *protoCloseB(const char *arg);
-int protoResultP(void *buf);
-int protoResultQ();
-int protoResultR();
-const char *protoResultB();
+const struct Closure *protoClosePf(int idx, int nbyte);
+const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte);
+const struct Closure *protoCloseRf(int arg);
+const struct Closure *protoCloseRg();
+const struct Closure *protoCloseBf(const char *arg);
+const struct Closure *protoCloseBg();
+int protoResultPf(void *buf);
+int protoResultQf();
+int protoResultRf();
+int protoResultRg();
+const char *protoResultBf();
+const char *protoResultBg();
 
 void exitErr(const char *str, int num, int idx);
 void protoSet(const char *str);

@@ -14,7 +14,7 @@ lineCpp: faceC.o protoC.o typeC.o
 lineCpp.o: face.h proto.h type.h
 luax.so: protoC.o
 luaxC.o: luax.h proto.h
-memxCpp.o: luax.h memx.h proto.h
+memxCpp.o: face.h luax.h memx.h proto.h
 metxC.o: metx.h
 planeC.o: face.h luax.h metx.h plane.h proto.h type.h
 planeSw: faceC.o luaxC.o metxC.o planeC.o protoC.o typeC.o

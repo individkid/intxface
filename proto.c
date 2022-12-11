@@ -13,59 +13,67 @@ char *msgstr = 0;
 char *msgtmp = 0;
 struct Closure argbuf = {0};
 
-struct Function protoTypeF(fftype fnc)
+struct Function protoTypeFf(fftype fnc)
 {
 	struct Function ret = {.ft = Fftype, {.ff = fnc}}; return ret;
 }
-struct Function protoTypeG(gftype fnc)
+struct Function protoTypeGf(gftype fnc)
 {
 	struct Function ret = {.ft = Gftype, {.gf = fnc}}; return ret;
 }
-struct Function protoTypeO(oftype fnc)
+struct Function protoTypeOf(oftype fnc)
 {
 	struct Function ret = {.ft = Oftype, {.of = fnc}}; return ret;
 }
-struct Function protoTypeR(rftype fnc)
+struct Function protoTypeRf(rftype fnc)
 {
 	struct Function ret = {.ft = Rftype, {.rf = fnc}}; return ret;
 }
-struct Function protoTypeA(aftype fnc)
+struct Function protoTypeRg(rgtype fnc)
+{
+	struct Function ret = {.ft = Rgtype, {.rg = fnc}}; return ret;
+}
+struct Function protoTypeAf(aftype fnc)
 {
 	struct Function ret = {.ft = Aftype, {.af = fnc}}; return ret;
 }
-struct Function protoTypeB(bftype fnc)
+struct Function protoTypeBf(bftype fnc)
 {
 	struct Function ret = {.ft = Bftype, {.bf = fnc}}; return ret;
 }
-struct Function protoTypeN(nftype fnc)
+struct Function protoTypeBg(bgtype fnc)
+{
+	struct Function ret = {.ft = Bgtype, {.bg = fnc}}; return ret;
+}
+struct Function protoTypeNf(nftype fnc)
 {
 	struct Function ret = {.ft = Nftype, {.nf = fnc}}; return ret;
 }
-struct Function protoTypeM(mftype fnc)
+struct Function protoTypeMf(mftype fnc)
 {
 	struct Function ret = {.ft = Mftype, {.mf = fnc}}; return ret;
 }
-struct Function protoTypeD(dftype fnc)
+struct Function protoTypeDf(dftype fnc)
 {
 	struct Function ret = {.ft = Dftype, {.df = fnc}}; return ret;
 }
-struct Function protoTypeI(iftype fnc)
+struct Function protoTypeIf(iftype fnc)
 {
 	struct Function ret = {.ft = Iftype, {.it = fnc}}; return ret;
 }
-struct Function protoTypeJ(jftype fnc)
+struct Function protoTypeJf(jftype fnc)
 {
 	struct Function ret = {.ft = Jftype, {.jf = fnc}}; return ret;
 }
-struct Function protoTypeK(kftype fnc)
+struct Function protoTypeKf(kftype fnc)
 {
 	struct Function ret = {.ft = Kftype, {.kf = fnc}}; return ret;
 }
-struct Function protoTypeT(tftype fnc)
+struct Function protoTypeTf(tftype fnc)
 {
 	struct Function ret = {.ft = Tftype, {.tf = fnc}}; return ret;
 }
-struct Function protoTypeL(lftype fnc)
+struct Function protoTypeLf(lftype fnc)
 {
 	struct Function ret = {.ft = Lftype, {.lf = fnc}}; return ret;
 }
@@ -79,20 +87,20 @@ void protoMake(struct Argument *arg)
 	case (Patype): arg->pa = 0; break;
 	default: break;}
 }
-void protoMakeI(struct Argument *arg, int val)
+void protoMakeIf(struct Argument *arg, int val)
 {
 	protoMake(arg);
 	arg->at = Iatype;
 	arg->ia = val;
 }
-void protoMakeS(struct Argument *arg, const char *val)
+void protoMakeSf(struct Argument *arg, const char *val)
 {
 	protoMake(arg);
 	arg->at = Satype;
 	arg->sa = malloc(strlen(val)+1);
 	strcpy(arg->sa,val);
 }
-void protoMakeL(struct Argument *arg, const void *val, int len)
+void protoMakeLf(struct Argument *arg, const void *val, int len)
 {
 	protoMake(arg);
 	arg->at = Latype;
@@ -100,7 +108,7 @@ void protoMakeL(struct Argument *arg, const void *val, int len)
 	memcpy(arg->pa,val,len);
 	arg->la = len;
 }
-void protoMakeP(struct Argument *arg, void *val)
+void protoMakePf(struct Argument *arg, void *val)
 {
 	protoMake(arg);
 	arg->at = Patype;
@@ -118,47 +126,65 @@ const struct Closure *protoClose(int na, int nb)
 	for (int i = 0; i < argbuf.nb; i++) argbuf.ab[i] = zero;
 	return &argbuf;
 }
-const struct Closure *protoCloseP(int idx, int nbyte)
+const struct Closure *protoClosePf(int idx, int nbyte)
 {
 	protoClose(2,2);
-	protoMakeI(&argbuf.aa[0],idx);
-	protoMakeI(&argbuf.aa[1],nbyte);
+	protoMakeIf(&argbuf.aa[0],idx);
+	protoMakeIf(&argbuf.aa[1],nbyte);
 	return &argbuf;
 }
-const struct Closure *protoCloseQ(int idx, const void *buf, int nbyte)
+const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte)
 {
 	protoClose(3,1);
-	protoMakeI(&argbuf.aa[0],idx);
-	protoMakeL(&argbuf.aa[1],buf,nbyte);
-	protoMakeI(&argbuf.aa[2],nbyte);
+	protoMakeIf(&argbuf.aa[0],idx);
+	protoMakeLf(&argbuf.aa[1],buf,nbyte);
+	protoMakeIf(&argbuf.aa[2],nbyte);
 	return &argbuf;
 }
-const struct Closure *protoCloseR(int arg)
+const struct Closure *protoCloseRf(int arg)
 {
 	protoClose(1,1);
-	protoMakeI(&argbuf.aa[0],arg);
+	protoMakeIf(&argbuf.aa[0],arg);
 	return &argbuf;
 }
-const struct Closure *protoCloseB(const char *arg)
+const struct Closure *protoCloseRg()
+{
+	protoClose(0,1);
+	return &argbuf;
+}
+const struct Closure *protoCloseBf(const char *arg)
 {
 	protoClose(1,1);
-	protoMakeS(&argbuf.aa[0],arg);
+	protoMakeSf(&argbuf.aa[0],arg);
 	return &argbuf;
 }
-int protoResultP(void *buf)
+const struct Closure *protoCloseBg()
+{
+	protoClose(0,1);
+	return &argbuf;
+}
+int protoResultPf(void *buf)
 {
 	memcpy(buf,argbuf.ab[1].pa,argbuf.ab[1].la);
 	return argbuf.ab[0].ia;
 }
-int protoResultQ()
+int protoResultQf()
 {
 	return argbuf.ab[0].ia;
 }
-int protoResultR()
+int protoResultRf()
 {
 	return argbuf.ab[0].ia;
 }
-const char *protoResultB()
+int protoResultRg()
+{
+	return argbuf.ab[0].ia;
+}
+const char *protoResultBf()
+{
+	return argbuf.ab[0].sa;
+}
+const char *protoResultBg()
 {
 	return argbuf.ab[0].sa;
 }

@@ -171,7 +171,7 @@ int useArgument(const char *arg)
 	for (int i = 0; i < eim; i++) {
 		for (int j = 0; etr[i][j]; j++) {
 			if (opt == etr[i][j]) {
-				memxBack(&nst[nim].use,nst[eef[i]].use,enc[i]);}}}
+				memxBack(&nst[nim].use,&nst[eef[i]].use,enc[i]);}}}
 	memxCall(&nst[nim].use,nst[nim].str,nst[nim].fnc);
 	for (int i = 0; i < cim; i++) {
 		for (int j = 0; ctr[i][j]; j++) {

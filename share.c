@@ -95,15 +95,15 @@ int shareUseLF(int idx, void *buf, int nbyte)
 {
 	void *mem = 0;
 	memxSkip(&mem,argxUse(idx),1);
-	if (luaxCall(memxStr(mem),protoCloseP(idx,nbyte)) < 0) ERROR(exitErr,0);
-	return protoResultP(buf);
+	if (luaxCall(memxStr(mem),protoClosePf(idx,nbyte)) < 0) ERROR(exitErr,0);
+	return protoResultPf(buf);
 }
 int shareUseLG(int idx, const void *buf, int nbyte)
 {
 	void *mem = 0;
 	memxSkip(&mem,argxUse(idx),2);
-	if (luaxCall(memxStr(mem),protoCloseQ(idx,buf,nbyte)) < 0) ERROR(exitErr,0);
-	return protoResultQ();
+	if (luaxCall(memxStr(mem),protoCloseQf(idx,buf,nbyte)) < 0) ERROR(exitErr,0);
+	return protoResultQf();
 }
 void shareUseL(void **use, const char *str)
 {
@@ -136,9 +136,9 @@ int shareLuax(const char *str)
 int main(int argc, char **argv)
 {
 	if (luaxFile("type.lua") < 0) {protoErr("shareC: cannot load library: type.lua\n"); fprintf(stderr,"%s",protoMsg()); return -1;}
-	luaxAdd("shareLuax",protoTypeF(shareLuax));
-	luaxAdd("argxUse",protoTypeT(argxUse));
-	luaxAdd("argxRun",protoTypeT(argxRun));
+	luaxAdd("shareLuax",protoTypeFf(shareLuax));
+	luaxAdd("argxUse",protoTypeTf(argxUse));
+	luaxAdd("argxRun",protoTypeTf(argxRun));
 	memxLuax();
 	faces = getLocation();
 	type = getLocation();
@@ -146,34 +146,34 @@ int main(int argc, char **argv)
 	oface = getLocation();
 	misc = getLocation();
 	zero = getLocation();
-	addOption("a",protoTypeN(memxInit),protoTypeM(memxCopy));
-	addOption("b",protoTypeN(memxInit),protoTypeM(memxCopy));
-	addOption("c",protoTypeN(memxInit),protoTypeM(shareRunC));
-	addOption("d",protoTypeN(memxInit),protoTypeO(shareRunD));
-	addOption("e",protoTypeF(forkExec),protoTypeM(memxCopy));
-	addOption("f",protoTypeF(openFile),protoTypeM(memxCopy));
-	addOption("g",protoTypeF(openFifo),protoTypeM(memxCopy));
-	addOption("h",protoTypeG(openInet),protoTypeM(memxCopy));
-	addOption("i",protoTypeN(memxInit),protoTypeM(argxCopy));
-	addJump("j",protoTypeN(memxInit),protoTypeO(argxJump));
-	addNest("k",protoTypeN(memxInit),protoTypeM(memxCopy));
-	addOption("l",protoTypeN(shareUseL),protoTypeM(shareRunL));
-	addOption("m",protoTypeN(memxInit),protoTypeM(argxKeep));
-	addOption("n",protoTypeN(memxInit),protoTypeM(argxCopy));
-	addOption("o",protoTypeN(memxInit),protoTypeM(argxCopy));
-	addOption("p",protoTypeF(shareUseP),protoTypeM(memxCopy));
-	addOption("q",protoTypeF(shareUseQ),protoTypeM(memxCopy));
-	mapCallback("a",type,protoTypeM(memxCopy));
-	mapCallback("diefghlp",iface,protoTypeM(memxCopy));
-	mapCallback("efghloq",oface,protoTypeM(memxCopy));
-	mapCallback("efghlpq",faces,protoTypeM(memxKeep));
-	mapCallback("mn",faces,protoTypeM(memxCopy));
-	mapDefault("i",iface,protoTypeM(memxCopy));
-	mapDefault("o",oface,protoTypeM(memxCopy));
-	mapDefault("m",zero,protoTypeM(memxCopy));
-	mapDefault("n",faces,protoTypeM(memxCopy));
-	mapContext("p",iface,protoTypeM(memxCopy));
-	mapContext("q",oface,protoTypeM(memxCopy));
+	addOption("a",protoTypeNf(memxInit),protoTypeMf(memxCopy));
+	addOption("b",protoTypeNf(memxInit),protoTypeMf(memxCopy));
+	addOption("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));
+	addOption("d",protoTypeNf(memxInit),protoTypeOf(shareRunD));
+	addOption("e",protoTypeFf(forkExec),protoTypeMf(memxCopy));
+	addOption("f",protoTypeFf(openFile),protoTypeMf(memxCopy));
+	addOption("g",protoTypeFf(openFifo),protoTypeMf(memxCopy));
+	addOption("h",protoTypeGf(openInet),protoTypeMf(memxCopy));
+	addOption("i",protoTypeNf(memxInit),protoTypeMf(argxCopy));
+	addJump("j",protoTypeNf(memxInit),protoTypeOf(argxJump));
+	addNest("k",protoTypeNf(memxInit),protoTypeMf(memxCopy));
+	addOption("l",protoTypeNf(shareUseL),protoTypeMf(shareRunL));
+	addOption("m",protoTypeNf(memxInit),protoTypeMf(argxKeep));
+	addOption("n",protoTypeNf(memxInit),protoTypeMf(argxCopy));
+	addOption("o",protoTypeNf(memxInit),protoTypeMf(argxCopy));
+	addOption("p",protoTypeFf(shareUseP),protoTypeMf(memxCopy));
+	addOption("q",protoTypeFf(shareUseQ),protoTypeMf(memxCopy));
+	mapCallback("a",type,protoTypeMf(memxCopy));
+	mapCallback("diefghlp",iface,protoTypeMf(memxCopy));
+	mapCallback("efghloq",oface,protoTypeMf(memxCopy));
+	mapCallback("efghlpq",faces,protoTypeMf(memxKeep));
+	mapCallback("mn",faces,protoTypeMf(memxCopy));
+	mapDefault("i",iface,protoTypeMf(memxCopy));
+	mapDefault("o",oface,protoTypeMf(memxCopy));
+	mapDefault("m",zero,protoTypeMf(memxCopy));
+	mapDefault("n",faces,protoTypeMf(memxCopy));
+	mapContext("p",iface,protoTypeMf(memxCopy));
+	mapContext("q",oface,protoTypeMf(memxCopy));
 	for (int i = 1; i < argc; i++) useArgument(argv[i]);
 	runProgram();
 	return 0;
