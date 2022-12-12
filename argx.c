@@ -60,7 +60,7 @@ int nestJump(int idx, void *jmp)
 		case (RevEnt): idx = nestJumpF(idx,-1,1,1,cnt); break;
 		case (FwdExt): idx = nestJumpF(idx,1,1,-1,-cnt); break;
 		case (RevExt): idx = nestJumpF(idx,-1,1,-1,-cnt); break;
-		default: break;}
+		default: ERROR(exitErr,0);}
 	}
 	return idx;
 }

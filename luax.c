@@ -98,7 +98,7 @@ int luaxCall(const char *str, const struct Closure *fnc)
 		case (Satype): lua_pushstring(luastate,arg->sa); break;
 		case (Latype): lua_pushlstring(luastate,arg->sa,arg->la); break;
 		case (Patype): lua_pushlightuserdata(luastate,arg->pa); break;
-		default: break;}}
+		default: ERROR(exitErr,0);}}
 	val = luaxSide(str);
 	if (val < 0) return -1;
 	for (int i = 0; i < fnc->nb; i++) {
@@ -108,7 +108,7 @@ int luaxCall(const char *str, const struct Closure *fnc)
 		case (Satype): ptr = lua_tostring(luastate,i+1); protoMakeSf(arg,ptr); break;
 		case (Latype): ptr = lua_tolstring(luastate,i+1,&len); protoMakeLf(arg,ptr,len); break;
 		case (Patype): protoMakePf(arg,lua_touserdata(luastate,i+1)); break;
-		default: break;}}
+		default: ERROR(exitErr,0);}}
 	lua_pop(luastate,fnc->nb);
 	return val;
 }
@@ -143,7 +143,7 @@ int luaxClosure(lua_State *L)
 		case (Tftype): lua_pushlightuserdata(L,fnc.tf(lua_tointeger(L,1))); return 1;
 		// typedef int (*lftype)(void **mem);
 		case (Lftype): mem = lua_touserdata(L,1); lua_pushinteger(L,fnc.lf(&mem)); lua_pushlightuserdata(L,mem); return 2;
-		default: break;}
+		default: ERROR(exitErr,0);}
 	return 0;
 }
 void luaxAdd(const char *str, struct Function fnc)

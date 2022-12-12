@@ -80,7 +80,7 @@ void shareRunC(void **run, void *use)
 	case (WrRawP): readStruct(shareRunCF,tmp,typ,rfd); writeStr(memxStr(tmp),1,ofd); break;
 	case (WrRawHd): readStruct(shareRunCF,tmp,typ,rfd); shareRunCI(tmp); break;
 	case (WrRawTl): readStruct(shareRunCF,tmp,typ,rfd); shareRunCJ(tmp); break;
-	default: ERROR(exitErr,0); break;}}
+	default: ERROR(exitErr,0);}}
 }
 int shareRunD(void *use)
 {
