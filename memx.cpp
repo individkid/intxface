@@ -83,6 +83,7 @@ struct Memx {
 	struct Function fnc; void **fem;
 	struct Function gnc; void **gem;
 	int idx;
+	std::vector<Memx*> del;
 	Memx(const char *s): opt(MemxNul), idx(0) {
 		fnc.vp = 0; gnc.vp = 0;
 		memy[memx] = this; memz[this] = memx; memx++;
@@ -116,9 +117,10 @@ struct Memx {
 			opt = MemxLst; free(d); return;}
 		opt = MemxLua; lua = d; free(d);}
 	~Memx() {
+		std::vector<Memx*>::iterator i;
 		if (memz.find(this) == memz.end()) ERROR(exitErr,0);
 		memy.erase(memz[this]); memz.erase(this);
-		for (std::vector<Memx*>::iterator i = lst.begin(); i != lst.end(); i++) delete *i;}
+		for (i = del.begin(); i != del.end(); i++) delete *i;}
 	void done() {
 		switch (opt) {
 		case (MemxNul): break;
@@ -172,7 +174,10 @@ struct Memx {
 		if (gnc.vp) {void *tmp = this; memxCall(&tmp,*gem,gnc);}}
 };
 Memx *cast(void *ptr) {
-		return static_cast<Memx*>(ptr);}
+	return static_cast<Memx*>(ptr);}
+Memx *cast(void **mem) {
+	if (!*mem) *mem = new Memx(0);
+	return cast(*mem);}
 extern "C" int memxRd(int fildes, void *buf, int nbyte) {
 	Memx *ptr = memy[fildes];
 	return 0;}
@@ -191,6 +196,7 @@ extern "C" void memxLuax()
 	luaxAdd("memxCopy",protoTypeMf(memxCopy));
 	luaxAdd("memxList",protoTypeMf(memxList));
 	luaxAdd("memxKeep",protoTypeMf(memxKeep));
+	luaxAdd("memxMake",protoTypeMf(memxMake));
 	luaxAdd("memxDone",protoTypeDf(memxDone));
 	luaxAdd("memxFind",protoTypeJf(memxFind));
 	luaxAdd("memxSkip",protoTypeKf(memxSkip));
@@ -233,7 +239,7 @@ extern "C" void *memxTemp(int idx) { // realloc indexed memory
 	if (memt.find(idx) != memt.end()) delete memt[idx];
 	memt[idx] = new Memx(0); return memt[idx];}
 extern "C" int memxOpen(void **mem) { // get pipe punted to given
-	Memx *ptr = cast(*mem);
+	Memx *ptr = cast(mem);
 	if (!ptr->idx) ptr->idx = puntInit(memz[ptr],memz[ptr],memxRd,memxWr);
 	return ptr->idx;}
 extern "C" void memxCopy(void **mem, void *giv) { // replaces target with given
@@ -248,6 +254,9 @@ extern "C" void memxKeep(void **mem, void *giv) { // sorts given into target
 	if (*mem) {if (*mem == giv) cast(*mem)->dflt();
 	else {cast(*mem)->sort(cast(giv)); cast(*mem)->back();}}
 	else {*mem = new Memx(0); cast(*mem)->sort(cast(giv));}}
+extern "C" void memxMake(void **mem, void *giv) { // delete of mem also deletes giv
+	Memx *ptr = cast(mem);
+	ptr->del.push_back(cast(giv));}
 extern "C" void memxDone(void **mem) { // deletes target
 	delete cast(*mem); *mem = 0;}
 extern "C" void memxCall(void **mem, void *giv, struct Function fnc) { // call function on mem with giv

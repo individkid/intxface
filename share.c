@@ -105,8 +105,11 @@ int shareUseLG(int idx, const void *buf, int nbyte)
 }
 void shareUseL(void **use, const char *str)
 {
-	memxForm(use,":%d;%s",puntInit(argxHere(),argxHere(),shareUseLF,shareUseLG),str); // TODO use memxMake
-}
+	void *tmp0 = 0; void *tmp1 = 0;
+	memxInit(use,"");
+	memxForm(&tmp0,"%d",puntInit(argxHere(),argxHere(),shareUseLF,shareUseLG)); memxInit(&tmp1,str);
+	memxList(use,tmp0); memxList(use,tmp1);
+	memxMake(use,tmp0); memxMake(use,tmp1);}
 void shareRunL(void **run, void *use)
 {
 	memxCopy(run,memxSkip(use,0));

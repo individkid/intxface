@@ -13,6 +13,7 @@ int memxOpen(void **mem); // get pipe punted to given
 void memxCopy(void **mem, void *giv); // replaces target with given
 void memxList(void **mem, void *giv); // adds given to target in order
 void memxKeep(void **mem, void *giv); // adds given to target unordered
+void memxMake(void **mem, void *giv); // delete of mem also deletes giv
 void memxDone(void **mem); // deletes target
 void memxCall(void **mem, void *giv, struct Function fnc); // call function on mem with giv
 void memxBack(void **mem, void **giv, struct Function fnc); // nontrivial change causes call on giv with mem
