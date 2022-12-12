@@ -22,9 +22,19 @@ int numstr(const char *str, int *val) {
 	int tmp = (errno = 0, strtoimax(str,&ptr,0));
 	if (errno != 0 || ptr == str) return 0; *val = tmp;
 	return ptr-str;}
+int dgtstr(const char *str, int *val) {
+	char ptr[3] = {0}; ptr[0] = str[0]; ptr[1] = str[1]; ptr[2] = 0;
+	return numstr(ptr,val);}
 int rawstr(const char *str, std::vector<char> *raw) {
-	// TODO
-	return 0;}
+	char *ptr = const_cast<char*>(str);
+	char *tmp = 0; int val = 0; int odd = 0; int len = 0;
+	if (ptr[0] != '0' || (ptr[1] != 'x' && ptr[1] == 'X')) return 0;
+	for (len = 0; (odd = dgtstr(ptr+len+2,&val)); len += odd);
+	if (len & 1) asprintf(&tmp,"0%s",ptr+2);
+	else asprintf(&tmp,"%s",ptr+2);
+	for (len = 0; dgtstr(tmp+len,&val) == 2; len += 2) raw->push_back(val);
+	free(tmp);
+	return len+2;}
 char *repstr(char *str, int sub, int len) {
 	char *tmp = strndup(str+sub,len); free(str); return tmp;}
 void repstr(char *&d, int &l) {
@@ -43,7 +53,7 @@ char *repstr(char *exp) {
 	int val = 0;
 	std::vector<char> vec;
 	repstr(tmp,len);
-	if (rawstr(tmp,&vec) != len && numstr(tmp,&val) != len) {
+	if (numstr(tmp,&val) != len && rawstr(tmp,&vec) != len) {
 		char *pre = strdup("\"");
 		char *pst = strdup("\"");
 		str = repstr(pre,repstr(str,pst));}
@@ -191,6 +201,11 @@ struct Memx {
 		else lst.insert(lst.begin()+key,giv);}}
 	void del(int key) {
 		if (tag == MemxLst) lst.erase(lst.begin()+key);}
+	int mcpy(const char *buf, int len) {
+		done();
+		tag = MemxRaw;
+		for (int i = 0; i < len; i++) raw.push_back(buf[i]);
+		return len;}
 	void back() {
 		if (fnc.vp) memxCall(fem,this,fnc);}
 	void dflt() {
@@ -202,11 +217,14 @@ Memx *cast(void **mem) {
 	if (!*mem) *mem = new Memx(0);
 	return cast(*mem);}
 extern "C" int memxRd(int fildes, void *buf, int nbyte) {
-	Memx *ptr = memy[fildes]; // TODO
-	return 0;}
+	Memx *ptr = memy[fildes]; const char *tmp = 0; int len = 0;
+	tmp = memxRaw(ptr,&len);
+	if (len > nbyte) len = nbyte;
+	memcpy(buf,tmp,len);
+	return len;}
 extern "C" int memxWr(int fildes, const void *buf, int nbyte) {
-	Memx *ptr = memy[fildes]; // TODO
-	return 0;}
+	Memx *ptr = memy[fildes];
+	return ptr->mcpy(static_cast<const char *>(buf),nbyte);}
 extern "C" void memxLuax()
 {
 	luaxAdd("memxSize",protoTypeOf(memxSize));
@@ -247,6 +265,7 @@ extern "C" const char *memxStr(void *mem) { // get string
 extern "C" const char *memxRaw(void *mem, int *len) { // get bytes
 	Memx *ptr = cast(mem);
 	if (ptr->tag == Memx::MemxRaw) {*len = ptr->raw.size(); return ptr->raw.data();}
+	if (ptr->tag == Memx::MemxInt) {*len = sizeof(ptr->val); return (char*)&ptr->val;}
 	if (ptr->tag == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseBh()),protoResultBh(len));
 	return 0;}
 extern "C" void memxInit(void **mem, const char *str) { // interpret string
