@@ -74,7 +74,7 @@ struct Memx {
 		MemxLst,
 		MemxLua,
 		MemxRaw,
-	} opt;
+	} tag;
 	int val;
 	std::string str;
 	std::vector<Memx*> lst;
@@ -83,12 +83,12 @@ struct Memx {
 	struct Function fnc; void **fem;
 	struct Function gnc; void **gem;
 	int idx;
-	std::vector<Memx*> del;
-	Memx(const char *s): opt(MemxNul), idx(0) {
+	std::vector<Memx*> mak;
+	Memx(const char *s): tag(MemxNul), idx(0) {
 		fnc.vp = 0; gnc.vp = 0;
 		memy[memx] = this; memz[this] = memx; memx++;
 		if (s == 0) {
-			opt = MemxNul; return;}
+			tag = MemxNul; return;}
 		char *d = strdup(s);
 		int l = strlen(d);
 		int o = open(d);
@@ -102,27 +102,27 @@ struct Memx {
 			l = strlen(d); o = open(d); c = close(d);}
 		repstr(d,l);
 		if (l == 0) {
-			opt = MemxLst; free(d); return;}
+			tag = MemxLst; free(d); return;}
 		if (numstr(d,&val) == l) {
-			opt = MemxInt; free(d); return;}
+			tag = MemxInt; free(d); return;}
 		if (rawstr(d,&raw) == l) {
-			opt = MemxRaw; free(d); return;}
+			tag = MemxRaw; free(d); return;}
 		if (d[0] == '"' && quote(d) == l-1) {
-			opt = MemxStr; d = repstr(d,1,l-2); str = d; free(d); return;}
+			tag = MemxStr; d = repstr(d,1,l-2); str = d; free(d); return;}
 		if (d[0] == '(') {
 			while (d[0] == '(') {
 				int c = para(d);
 				lst.push_back(new Memx(repstr(strdup(d),1,c-2)));
 				d = repstr(d,c+1,l-=c+1); repstr(d,l);}
-			opt = MemxLst; free(d); return;}
-		opt = MemxLua; lua = d; free(d);}
+			tag = MemxLst; free(d); return;}
+		tag = MemxLua; lua = d; free(d);}
 	~Memx() {
 		std::vector<Memx*>::iterator i;
 		if (memz.find(this) == memz.end()) ERROR(exitErr,0);
 		memy.erase(memz[this]); memz.erase(this);
-		for (i = del.begin(); i != del.end(); i++) delete *i;}
+		for (i = mak.begin(); i != mak.end(); i++) delete *i;}
 	void done() {
-		switch (opt) {
+		switch (tag) {
 		case (MemxNul): break;
 		case (MemxInt): val = 0; break;
 		case (MemxStr): str.clear(); break;
@@ -130,10 +130,10 @@ struct Memx {
 		case (MemxLua): lua.clear(); break;
 		case (MemxRaw): raw.clear(); break;
 		default: break;}
-		opt = MemxNul;}
+		tag = MemxNul;}
 	void init(Memx *giv) {
 		done();
-		switch (giv->opt) {
+		switch (giv->tag) {
 		case (MemxNul): break;
 		case (MemxInt): val = giv->val; break;
 		case (MemxStr): str = giv->str; break;
@@ -141,9 +141,9 @@ struct Memx {
 		case (MemxLua): lua = giv->lua; break;
 		case (MemxRaw): raw = giv->raw; break;
 		default: break;}
-		opt = giv->opt;}
+		tag = giv->tag;}
 	void list() {
-		if (opt != MemxLst) {lst.push_back(this); opt = MemxLst;}}
+		if (tag != MemxLst) {lst.push_back(this); tag = MemxLst;}}
 	void list(Memx *giv) {
 		list(); lst.push_back(giv);}
 	void sort(Memx *giv) {
@@ -154,10 +154,10 @@ struct Memx {
 		Memx *rgt = new Memx("");
 		std::vector<Memx*>::iterator i, j;
 		bool odd = false;
-		if (giv->opt == MemxLst && giv->lst.size() == 0) return;
+		if (giv->tag == MemxLst && giv->lst.size() == 0) return;
 		cpy->init(giv);
-		if (opt != MemxLst) list();
-		if (cpy->opt != MemxLst) cpy->list();
+		if (tag != MemxLst) list();
+		if (cpy->tag != MemxLst) cpy->list();
 		for (i = lst.begin(), odd = false; i != lst.end(); i++, odd = !odd)
 		if (odd) one->lst.push_back(*i); else lft->lst.push_back(*i);
 		for (i = cpy->lst.begin(), odd = false; i != cpy->lst.end(); i++, odd = !odd)
@@ -168,6 +168,29 @@ struct Memx {
 		if (i == lft->lst.end() || *j < *i) {lst.push_back(*j); j++;}
 		else {lst.push_back(*i); i++;}}
 		delete cpy; delete one; delete oth; delete lft; delete rgt;}
+	void sort() {
+		Memx *giv = new Memx("");
+		sort(giv);
+		delete giv;}
+	void uniq(Memx *giv) {
+		std::vector<Memx*>::iterator i,j;
+		sort(giv);
+		for (i = lst.begin(); i != lst.end(); i++)
+		if ((j = i, j++) != lst.end() && *i == *j) i = lst.erase(i);}
+	void uniq() {
+		Memx *giv = new Memx("");
+		uniq(giv);
+		delete giv;}
+	Memx *skip(int key) {
+		if (tag == MemxLst && key < lst.size()) return lst[key];
+		return 0;}
+	void add(Memx *giv, int key) {
+		if (tag == MemxLst) {
+		while (lst.size() < key-1) lst.push_back(0);
+		if (key == lst.size()) lst.push_back(giv);
+		else lst.insert(lst.begin()+key,giv);}}
+	void del(int key) {
+		if (tag == MemxLst) lst.erase(lst.begin()+key);}
 	void back() {
 		if (fnc.vp) memxCall(fem,this,fnc);}
 	void dflt() {
@@ -179,10 +202,10 @@ Memx *cast(void **mem) {
 	if (!*mem) *mem = new Memx(0);
 	return cast(*mem);}
 extern "C" int memxRd(int fildes, void *buf, int nbyte) {
-	Memx *ptr = memy[fildes];
+	Memx *ptr = memy[fildes]; // TODO
 	return 0;}
 extern "C" int memxWr(int fildes, const void *buf, int nbyte) {
-	Memx *ptr = memy[fildes];
+	Memx *ptr = memy[fildes]; // TODO
 	return 0;}
 extern "C" void memxLuax()
 {
@@ -198,20 +221,19 @@ extern "C" void memxLuax()
 	luaxAdd("memxKeep",protoTypeMf(memxKeep));
 	luaxAdd("memxMake",protoTypeMf(memxMake));
 	luaxAdd("memxDone",protoTypeDf(memxDone));
-	luaxAdd("memxFind",protoTypeJf(memxFind));
 	luaxAdd("memxSkip",protoTypeKf(memxSkip));
 	luaxAdd("memxAdd",protoTypeIg(memxAdd));
 	luaxAdd("memxDel",protoTypeIf(memxDel));
 }
 extern "C" int memxSize(void *mem) { // get size
 	Memx *ptr = cast(mem);
-	if (ptr->opt == Memx::MemxLst) return ptr->lst.size();
-	if (ptr->opt == Memx::MemxRaw) return ptr->raw.size();
+	if (ptr->tag == Memx::MemxLst) return ptr->lst.size();
+	if (ptr->tag == Memx::MemxRaw) return ptr->raw.size();
 	return 0;}
 extern "C" int memxInt(void *mem) { // get int
 	Memx *ptr = cast(mem);
-	if (ptr->opt == Memx::MemxInt) return ptr->val;
-	if (ptr->opt == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseRg()),protoResultRg());
+	if (ptr->tag == Memx::MemxInt) return ptr->val;
+	if (ptr->tag == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseRg()),protoResultRg());
 	return 0;}
 extern "C" int memxMask(void *mem) { // mask from collection
 	int val = 0; int len = memxSize(mem);
@@ -219,13 +241,13 @@ extern "C" int memxMask(void *mem) { // mask from collection
 	return val;}
 extern "C" const char *memxStr(void *mem) { // get string
 	Memx *ptr = cast(mem);
-	if (ptr->opt == Memx::MemxStr) return ptr->str.c_str();
-	if (ptr->opt == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseBg()),protoResultBg());
+	if (ptr->tag == Memx::MemxStr) return ptr->str.c_str();
+	if (ptr->tag == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseBg()),protoResultBg());
 	return 0;}
 extern "C" const char *memxRaw(void *mem, int *len) { // get bytes
 	Memx *ptr = cast(mem);
-	if (ptr->opt == Memx::MemxRaw) {*len = ptr->raw.size(); return ptr->raw.data();}
-	if (ptr->opt == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseBh()),protoResultBh(len));
+	if (ptr->tag == Memx::MemxRaw) {*len = ptr->raw.size(); return ptr->raw.data();}
+	if (ptr->tag == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseBh()),protoResultBh(len));
 	return 0;}
 extern "C" void memxInit(void **mem, const char *str) { // interpret string
 	Memx *tmp = new Memx(str);
@@ -252,12 +274,12 @@ extern "C" void memxList(void **mem, void *giv) { // adds given to target in ord
 	else {*mem = new Memx(0); cast(*mem)->list(cast(giv));}}
 extern "C" void memxKeep(void **mem, void *giv) { // sorts given into target
 	if (*mem) {if (*mem == giv) cast(*mem)->dflt();
-	else {cast(*mem)->sort(cast(giv)); cast(*mem)->back();}}
-	else {*mem = new Memx(0); cast(*mem)->sort(cast(giv));}}
+	else {cast(*mem)->uniq(cast(giv)); cast(*mem)->back();}}
+	else {*mem = new Memx(0); cast(*mem)->uniq(cast(giv));}}
 extern "C" void memxMake(void **mem, void *giv) { // delete of mem also deletes giv
 	Memx *ptr = cast(mem);
-	ptr->del.push_back(cast(giv));}
-extern "C" void memxDone(void **mem) { // deletes target
+	ptr->mak.push_back(cast(giv));}
+extern "C" void memxDone(void **mem) { // delete now
 	delete cast(*mem); *mem = 0;}
 extern "C" void memxCall(void **mem, void *giv, struct Function fnc) { // call function on mem with giv
 	switch (fnc.ft) {
@@ -280,7 +302,9 @@ extern "C" void memxBack(void **mem, void **giv, struct Function fnc) { // cause
 	if (!*mem) *mem = new Memx(0); cast(*mem)->fnc = fnc; cast(*mem)->fem = giv;}
 extern "C" void memxDflt(void **mem, void **giv, struct Function fnc) { // trivial change causes call on mem with giv
 	if (!*mem) *mem = new Memx(0); cast(*mem)->gnc = fnc; cast(*mem)->gem = giv;}
-extern "C" void *memxFind(void *giv, void *key) {return 0;} // find iterator with given as first
-extern "C" void *memxSkip(void *giv, int key) {return 0;} // skip to given iterator
-extern "C" void memxAdd(void **mem, void *giv, int key) {} // insert at given location
-extern "C" void memxDel(void **mem, int key) {} // delete at given location
+extern "C" void *memxSkip(void *mem, int key) { // skip to given iterator
+	return cast(mem)->skip(key);}
+extern "C" void memxAdd(void **mem, void *giv, int key) { // insert at given location
+	cast(mem)->add(cast(giv),key);}
+extern "C" void memxDel(void **mem, int key) { // delete at given location
+	cast(mem)->del(key);}

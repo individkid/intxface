@@ -14,11 +14,10 @@ void memxCopy(void **mem, void *giv); // replaces target with given
 void memxList(void **mem, void *giv); // adds given to target in order
 void memxKeep(void **mem, void *giv); // adds given to target unordered
 void memxMake(void **mem, void *giv); // delete of mem also deletes giv
-void memxDone(void **mem); // deletes target
+void memxDone(void **mem); // delete now
 void memxCall(void **mem, void *giv, struct Function fnc); // call function on mem with giv
 void memxBack(void **mem, void **giv, struct Function fnc); // nontrivial change causes call on giv with mem
 void memxDflt(void **mem, void **giv, struct Function fnc); // trivial change causes call on mem with giv
-void *memxFind(void *giv, void *key); // find iterator with given as first
-void *memxSkip(void *giv, int key); // skip to given iterator
+void *memxSkip(void *mem, int key); // skip to given iterator
 void memxAdd(void **mem, void *giv, int key); // insert at given location
 void memxDel(void **mem, int key); // delete at given location
