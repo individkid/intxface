@@ -61,6 +61,10 @@ struct Function protoTypeIf(iftype fnc)
 {
 	struct Function ret = {.ft = Iftype, {.it = fnc}}; return ret;
 }
+struct Function protoTypeIg(igtype fnc)
+{
+	struct Function ret = {.ft = Igtype, {.ig = fnc}}; return ret;
+}
 struct Function protoTypeJf(jftype fnc)
 {
 	struct Function ret = {.ft = Jftype, {.jf = fnc}}; return ret;
@@ -104,8 +108,8 @@ void protoMakeLf(struct Argument *arg, const void *val, int len)
 {
 	protoMake(arg);
 	arg->at = Latype;
-	arg->pa = malloc(len);
-	memcpy(arg->pa,val,len);
+	arg->sa = malloc(len);
+	memcpy(arg->sa,val,len);
 	arg->la = len;
 }
 void protoMakePf(struct Argument *arg, void *val)
@@ -163,6 +167,11 @@ const struct Closure *protoCloseBg()
 	protoClose(0,1);
 	return &argbuf;
 }
+const struct Closure *protoCloseBh()
+{
+	protoClose(0,1);
+	return &argbuf;
+}
 int protoResultPf(void *buf)
 {
 	memcpy(buf,argbuf.ab[1].pa,argbuf.ab[1].la);
@@ -186,6 +195,11 @@ const char *protoResultBf()
 }
 const char *protoResultBg()
 {
+	return argbuf.ab[0].sa;
+}
+const char *protoResultBh(int *len)
+{
+	*len = argbuf.ab[0].la;
 	return argbuf.ab[0].sa;
 }
 

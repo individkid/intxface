@@ -51,10 +51,9 @@ int nestJump(int idx, void *jmp)
 {
 	int stp = 0;
 	while (idx >= 0 && idx < nim && stp < memxSize(jmp)) {
-		void *mem = memxTemp(0); memxSkip(&mem,jmp,stp);
-		void *tmp = memxTemp(1);
-		int cnt = (memxSkip(&tmp,mem,1), memxInt(tmp));
-		switch (memxSkip(&tmp,mem,0), (enum Step)memxInt(tmp)) {
+		void *mem = memxSkip(jmp,stp);
+		int cnt = memxInt(memxSkip(mem,1));
+		switch ((enum Step)memxInt(memxSkip(mem,0))) {
 		case (FwdSkp): idx = nestJumpF(idx,1,cnt,-1,0); break;
 		case (RevSkp): idx = nestJumpF(idx,-1,cnt,-1,0); break;
 		case (FwdEnt): idx = nestJumpF(idx,1,1,1,cnt); break;

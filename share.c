@@ -25,13 +25,13 @@ void shareRunCF(const char *str, int trm, int idx, void *arg)
 void shareRunCG(void **run)
 {
 	void *que = argxRun(misc);
-	memxSkip(run,que,0);
+	memxCopy(run,memxSkip(que,0));
 	memxDel(&que,0);
 }
 void shareRunCH(void **run)
 {
 	void *que = argxRun(misc);
-	memxSkip(run,que,memxSize(que)-1);
+	memxCopy(run,memxSkip(que,memxSize(que)-1));
 	memxDel(&que,memxSize(que)-1);
 }
 void shareRunCI(void **run)
@@ -51,10 +51,10 @@ void shareRunC(void **run, void *use)
 	int ifd = memxInt(argxRun(iface));
 	int ofd = memxInt(argxRun(oface));
 	int typ = memxInt(argxRun(type));
-	void *mem = memxTemp(0);
-	void *tmp = memxTemp(1);
+	void *tmp = memxTemp(0);
 	int tfd = memxOpen(tmp);
-	for (memxFirst(&mem,use); memxTest(mem); memxNext(&mem,mem))
+	for (int i = 0; i < memxSize(use); i++) {
+	void *mem = memxSkip(use,i);
 	switch ((enum Stream) memxInt(mem)) {
 	// read from type to type
 	case (RdTypP): loopStruct(typ,ifd,rfd); break;
@@ -80,7 +80,7 @@ void shareRunC(void **run, void *use)
 	case (WrRawP): readStruct(shareRunCF,tmp,typ,rfd); writeStr(memxStr(tmp),1,ofd); break;
 	case (WrRawHd): readStruct(shareRunCF,tmp,typ,rfd); shareRunCI(tmp); break;
 	case (WrRawTl): readStruct(shareRunCF,tmp,typ,rfd); shareRunCJ(tmp); break;
-	default: ERROR(exitErr,0); break;}
+	default: ERROR(exitErr,0); break;}}
 }
 int shareRunD(void *use)
 {
@@ -93,25 +93,23 @@ int shareRunD(void *use)
 }
 int shareUseLF(int idx, void *buf, int nbyte)
 {
-	void *mem = 0;
-	memxSkip(&mem,argxUse(idx),1);
+	void *mem = memxSkip(argxUse(idx),1);
 	if (luaxCall(memxStr(mem),protoClosePf(idx,nbyte)) < 0) ERROR(exitErr,0);
 	return protoResultPf(buf);
 }
 int shareUseLG(int idx, const void *buf, int nbyte)
 {
-	void *mem = 0;
-	memxSkip(&mem,argxUse(idx),2);
+	void *mem = memxSkip(argxUse(idx),2);
 	if (luaxCall(memxStr(mem),protoCloseQf(idx,buf,nbyte)) < 0) ERROR(exitErr,0);
 	return protoResultQf();
 }
 void shareUseL(void **use, const char *str)
 {
-	memxForm(use,":%d;%s",puntInit(argxHere(),argxHere(),shareUseLF,shareUseLG),str);
+	memxForm(use,":%d;%s",puntInit(argxHere(),argxHere(),shareUseLF,shareUseLG),str); // TODO use memxMake
 }
 void shareRunL(void **run, void *use)
 {
-	memxSkip(run,use,0);
+	memxCopy(run,memxSkip(use,0));
 }
 int shareUseP(const char *str)
 {
@@ -166,7 +164,7 @@ int main(int argc, char **argv)
 	mapCallback("a",type,protoTypeMf(memxCopy));
 	mapCallback("diefghlp",iface,protoTypeMf(memxCopy));
 	mapCallback("efghloq",oface,protoTypeMf(memxCopy));
-	mapCallback("efghlpq",faces,protoTypeMf(memxKeep));
+	mapCallback("efghlpq",faces,protoTypeMf(memxList));
 	mapCallback("mn",faces,protoTypeMf(memxCopy));
 	mapDefault("i",iface,protoTypeMf(memxCopy));
 	mapDefault("o",oface,protoTypeMf(memxCopy));

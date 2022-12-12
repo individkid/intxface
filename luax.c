@@ -135,10 +135,10 @@ int luaxClosure(lua_State *L)
 		case (Dftype): mem = lua_touserdata(L,1); fnc.df(&mem); lua_pushlightuserdata(L,mem); return 1;
 		// typedef void (*iftype)(void **mem, int key);
 		case (Iftype): mem = lua_touserdata(L,1); fnc.it(&mem,lua_tointeger(L,2)); lua_pushlightuserdata(L,mem); return 1;
-		// typedef void (*jftype)(void **mem, void *giv, void *key);
-		case (Jftype): mem = lua_touserdata(L,1); fnc.jf(&mem,lua_touserdata(L,2),lua_touserdata(L,3)); lua_pushlightuserdata(L,mem); return 1;
-		// typedef void (*kftype)(void **mem, void *giv, int key);
-		case (Kftype): mem = lua_touserdata(L,1); fnc.kf(&mem,lua_touserdata(L,2),lua_tointeger(L,3)); lua_pushlightuserdata(L,mem); return 1;
+		// typedef void *(*jftype)(void *giv, void *key);
+		case (Jftype): lua_pushlightuserdata(L,fnc.jf(lua_touserdata(L,1),lua_touserdata(L,2))); return 1;
+		// typedef void *(*kftype)(void *giv, int key);
+		case (Kftype): lua_pushlightuserdata(L,fnc.kf(lua_touserdata(L,1),lua_tointeger(L,2))); return 1;
 		// typedef void *(*tftype)(int idx);
 		case (Tftype): lua_pushlightuserdata(L,fnc.tf(lua_tointeger(L,1))); return 1;
 		// typedef int (*lftype)(void **mem);

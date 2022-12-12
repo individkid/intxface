@@ -41,12 +41,14 @@ typedef int (*rgtype)();
 typedef const char *(*aftype)(void *mem);
 typedef const char *(*bftype)(const char *arg); // dictionary
 typedef const char *(*bgtype)();
+typedef const char *(*bhtype)(int *len);
 typedef void (*nftype)(void **use, const char *str);
 typedef void (*mftype)(void **run, void *use);
 typedef void (*dftype)(void **mem);
 typedef void (*iftype)(void **mem, int key);
-typedef void (*jftype)(void **mem, void *giv, void *key);
-typedef void (*kftype)(void **mem, void *giv, int key);
+typedef void (*igtype)(void **mem, void *giv, int key);
+typedef void *(*jftype)(void *giv, void *key);
+typedef void *(*kftype)(void *giv, int key);
 typedef void *(*tftype)(int idx);
 typedef int (*lftype)(void **mem);
 
@@ -70,6 +72,7 @@ struct Function {
 		Mftype,
 		Dftype,
 		Iftype,
+		Igtype,
 		Jftype,
 		Kftype,
 		Tftype,
@@ -94,6 +97,7 @@ struct Function {
 		mftype mf;
 		dftype df;
 		iftype it;
+		igtype ig;
 		jftype jf;
 		kftype kf;
 		tftype tf;
@@ -113,6 +117,7 @@ struct Function protoTypeNf(nftype fnc);
 struct Function protoTypeMf(mftype fnc);
 struct Function protoTypeDf(dftype fnc);
 struct Function protoTypeIf(iftype fnc);
+struct Function protoTypeIg(igtype fnc);
 struct Function protoTypeJf(jftype fnc);
 struct Function protoTypeKf(kftype fnc);
 struct Function protoTypeTf(tftype fnc);
@@ -149,12 +154,14 @@ const struct Closure *protoCloseRf(int arg);
 const struct Closure *protoCloseRg();
 const struct Closure *protoCloseBf(const char *arg);
 const struct Closure *protoCloseBg();
+const struct Closure *protoCloseBh();
 int protoResultPf(void *buf);
 int protoResultQf();
 int protoResultRf();
 int protoResultRg();
 const char *protoResultBf();
 const char *protoResultBg();
+const char *protoResultBh(int *len);
 
 void exitErr(const char *str, int num, int idx);
 void protoSet(const char *str);
