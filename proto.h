@@ -28,6 +28,7 @@
 // NUMPEND connection request queue length
 
 typedef void (*cftype)(int idx); // thread callback
+typedef void (*cgtype)(int idx0, int idx1);
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
@@ -55,6 +56,7 @@ typedef int (*lftype)(void **mem);
 struct Function {
 	enum {
 		Cftype,
+		Cgtype,
 		Eftype,
 		Sftype,
 		Hftype,
@@ -80,6 +82,7 @@ struct Function {
 	} ft;
 	union {
 		cftype cf;
+		cgtype cg;
 		eftype ef;
 		sftype sf;
 		hftype hf;
@@ -105,6 +108,8 @@ struct Function {
 		void *vp;
 	};
 };
+struct Function protoTypeCf(cftype fnc);
+struct Function protoTypeCg(cgtype fnc);
 struct Function protoTypeFf(fftype fnc);
 struct Function protoTypeGf(gftype fnc);
 struct Function protoTypeOf(oftype fnc);

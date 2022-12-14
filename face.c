@@ -39,9 +39,6 @@ char *atom[NUMOPEN] = {0};
 int atoms[NUMOPEN] = {0};
 int atomz[NUMOPEN] = {0};
 
-// whether and how to check for already open
-enum {Off,Fwd,Rev} cache = 0;
-
 // error function pointers
 eftype inpexc[NUMOPEN] = {0};
 eftype inperr[NUMOPEN] = {0};
@@ -120,8 +117,8 @@ int findIdent(const char *str)
 {
 	struct stat old;
 	struct stat new;
-	if (cache == Off || stat(str,&new) != 0) return -1;
-	for (int i = 0; i < lim; i++) { // TODO search backwards if cache == Rev
+	if (stat(str,&new) != 0) return -1;
+	for (int i = 0; i < lim; i++) {
 		if (fdt[i] == Wait || fdt[i] == Sock || fdt[i] == Punt || fdt[i] == None) continue;
 		if (fstat(inp[i],&old) != 0) return -1;
 		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) return i;}
@@ -143,7 +140,7 @@ int inetIdent(const char *adr, const char *num)
 {
 	struct sockaddr_in6 comp = {0};
 	if (adr == 0) adr = "127.0.0.1";
-	if (cache == Off || scanInet6(&comp,adr,num) == 0) return -1;
+	if (scanInet6(&comp,adr,num) == 0) return -1;
 	for (int i = 0; i <= lim; i++)
 	if (fdt[i] == Sock && memcmp(&addr[idnt[i]],&comp,sizeof(comp)) == 0)
 	return i;
@@ -263,31 +260,45 @@ int pipeInit(const char *av1, const char *av2)
 	if (!av1 || !av2) return -1;
 	val = sscanf(av1,"%d",&rfd); if (val != 1) return -1;
 	val = sscanf(av2,"%d",&wfd); if (val != 1) return -1;
-	// TODO here and below search backwards if cache == Rev
-	// TODO allow unused descriptor to be negative incremented when skipped
-	for (val = 0; val < lim; val++) if (fdt[val] == Wait &&
-	(wfd == 0 || out[val] == 0 || out[val] == wfd) &&
-	(rfd == 0 || inp[val] == 0 || inp[val] == rfd)) break;
-	if (val < lim && rfd == 0) rfd = inp[val];
-	if (val < lim && wfd == 0) wfd = out[val];
-	if (val == lim && lim == NUMOPEN) return -1;
-	if (val == lim) lim++;
-	inp[val] = rfd;
-	out[val] = wfd;
-	fdt[val] = Wait;
-	pid[val] = 0;
-	rfn[val] = 0;
-	wfn[val] = 0;
+	if (lim == NUMOPEN) return -1;
+	inp[lim] = rfd;
+	out[lim] = wfd;
+	fdt[lim] = Wait;
+	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
-	return val;
+	return lim++;
 }
 int rdfdInit(int rdfd, int hint)
 {
-	return 0; // TODO
+	for (int i = 0; i < lim; i++)
+	if (fdt[i] == Wait && inp[i] == 0 && out[i] == hint) {
+	inp[i] = rdfd; return i;}
+	if (lim == NUMOPEN) return -1;
+	inp[lim] = rdfd;
+	out[lim] = 0;
+	fdt[lim] = Wait;
+	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	return lim++;
 }
 int wrfdInit(int wrfd, int hint)
 {
-	return 0; // TODO
+	for (int i = 0; i < lim; i++)
+	if (fdt[i] == Wait && inp[i] == hint && out[i] == 0) {
+	out[i] = wrfd; return i;}
+	if (lim == NUMOPEN) return -1;
+	inp[lim] = 0;
+	out[lim] = wrfd;
+	fdt[lim] = Wait;
+	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	return lim++;
 }
 int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 {

@@ -13,6 +13,14 @@ char *msgstr = 0;
 char *msgtmp = 0;
 struct Closure argbuf = {0};
 
+struct Function protoTypeCf(cftype fnc)
+{
+	struct Function ret = {.ft = Cftype, {.cf = fnc}}; return ret;
+}
+struct Function protoTypeCg(cgtype fnc)
+{
+	struct Function ret = {.ft = Cgtype, {.cg = fnc}}; return ret;
+}
 struct Function protoTypeFf(fftype fnc)
 {
 	struct Function ret = {.ft = Fftype, {.ff = fnc}}; return ret;

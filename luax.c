@@ -119,6 +119,10 @@ int luaxClosure(lua_State *L)
 	fnc.ft = lua_tointeger(L, lua_upvalueindex(1));
 	fnc.vp = lua_touserdata(L, lua_upvalueindex(2));
 	switch (fnc.ft) {
+		// typedef void (*cftype)(int idx);
+		case (Cftype): fnc.cf(lua_tointeger(L,1)); return 0;
+		//typedef void (*cgtype)(int idx0, int idx1);
+		case (Cgtype): fnc.cg(lua_tointeger(L,1),lua_tointeger(L,2)); return 0;
 		// typedef int (*fftype)(const char *str);
 		case (Fftype): lua_pushinteger(L,fnc.ff(lua_tostring(L,1))); return 1;
 		// typedef int (*gftype)(const char *one, const char *oth);
