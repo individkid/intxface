@@ -21,6 +21,14 @@ struct Function protoTypeCg(cgtype fnc)
 {
 	struct Function ret = {.ft = Cgtype, {.cg = fnc}}; return ret;
 }
+struct Function protoTypeCh(cgtype fnc)
+{
+	struct Function ret = {.ft = Chtype, {.ch = fnc}}; return ret;
+}
+struct Function protoTypeHg(hgtype fnc)
+{
+	struct Function ret = {.ft = Hgtype, {.hg = fnc}}; return ret;
+}
 struct Function protoTypeFf(fftype fnc)
 {
 	struct Function ret = {.ft = Fftype, {.ff = fnc}}; return ret;
@@ -40,6 +48,10 @@ struct Function protoTypeRf(rftype fnc)
 struct Function protoTypeRg(rgtype fnc)
 {
 	struct Function ret = {.ft = Rgtype, {.rg = fnc}}; return ret;
+}
+struct Function protoTypeRh(rhtype fnc)
+{
+	struct Function ret = {.ft = Rhtype, {.rh = fnc}}; return ret;
 }
 struct Function protoTypeAf(aftype fnc)
 {

@@ -1,16 +1,16 @@
 argxC.o: argx.h memx.h proto.h type.h
-face.so: protoC.o
-faceC.o: face.h proto.h
+face.so: luaxC.o protoC.o
+faceC.o: face.h luax.h proto.h
 facer.log: face.so facerC facerHs facerLua
-facerC: faceC.o protoC.o
+facerC: faceC.o luaxC.o protoC.o
 facerC.o: face.h proto.h
 facerHs: face.hs faceC.o protoC.o
-fileC: faceC.o protoC.o typeC.o
+fileC: faceC.o luaxC.o protoC.o typeC.o
 fileC.o: face.h proto.h type.h
 filer.log: face.so fileC filerLua type.lua
-holeC: faceC.o protoC.o typeC.o
+holeC: faceC.o luaxC.o protoC.o typeC.o
 holeC.o: face.h proto.h type.h
-lineCpp: faceC.o protoC.o typeC.o
+lineCpp: faceC.o luaxC.o protoC.o typeC.o
 lineCpp.o: face.h proto.h type.h
 luax.so: protoC.o
 luaxC.o: luax.h proto.h
@@ -31,9 +31,9 @@ type.dep: luax.so type.src
 typeC.o: face.h type.h
 typer.dep: luax.so type.src typra.src
 typer.log: face.so typerC typerHs typerLua typerSw
-typerC: faceC.o protoC.o
+typerC: faceC.o luaxC.o protoC.o
 typerC.o: face.h typer.h
 typerHs: face.hs faceC.o protoC.o
-typerSw: faceC.o protoC.o
+typerSw: faceC.o luaxC.o protoC.o
 typerSw.o: face.h
 typra.log: luax.so type.src typra.src typraLua

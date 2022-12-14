@@ -1,4 +1,5 @@
 #include "face.h"
+#include "luax.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/errno.h>
@@ -1057,6 +1058,13 @@ void funcLua(int idx)
 	lua_pushnumber(lua,idx);
 	if (lua_pcall(lua, 1, 0, 0) != 0) ERROR(exitErr,0)
 }
+void readStrLuaFnc(const char *buf, int trm, int idx, void *arg)
+{
+	lua_State *lua = arg;
+	lua_pushstring(lua,buf);
+	lua_pushnumber(lua,trm);
+}
+
 int debugStrLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1084,54 +1092,7 @@ int writeJumpLua(lua_State *lua)
 	writeJump(writeLua,(int)lua_tonumber(lua,2));
 	return 0;
 }
-int closeIdentLua(lua_State *lua)
-{
-	luaerr = lua;
-	closeIdent((int)lua_tonumber(lua,1));
-	return 0;
-}
-int moveIdentLua(lua_State *lua)
-{
-	luaerr = lua;
-	moveIdent((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int openPipeLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openPipe());
-	return 1;
-}
-int openFifoLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openFifo(lua_tostring(lua,1)));
-	return 1;
-}
-int openFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openFile(lua_tostring(lua,1)));
-	return 1;
-}
-int openInetLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,openInet(lua_tostring(lua,1),lua_tostring(lua,2)));
-	return 1;
-}
-int forkExecLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,forkExec(lua_tostring(lua,1)));
-	return 1;
-}
-int pipeInitLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pipeInit(lua_tostring(lua,1),lua_tostring(lua,2)));
-	return 1;
-}
+
 int waitReadLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1235,12 +1196,6 @@ int sleepSecLua(lua_State *lua)
 	sleep((int)lua_tonumber(lua,1));
 	return 0;
 }
-void readStrLuaFnc(const char *buf, int trm, int idx, void *arg)
-{
-	lua_State *lua = arg;
-	lua_pushstring(lua,buf);
-	lua_pushnumber(lua,trm);
-}
 int readStrLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1320,6 +1275,7 @@ int writeOldLua(lua_State *lua)
 	return 0;
 }
 
+void luaxExtend(lua_State *L, const char *str, struct Function fnc);
 int luaopen_face (lua_State *L)
 {
 	lua_pushcfunction(L, debugStrLua);
@@ -1330,20 +1286,16 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "readJump");
 	lua_pushcfunction(L, writeJumpLua);
 	lua_setglobal(L, "writeJump");
-	lua_pushcfunction(L, closeIdentLua);
-	lua_setglobal(L, "closeIdent");
-	lua_pushcfunction(L, moveIdentLua);
-	lua_setglobal(L, "moveIdent");
-	lua_pushcfunction(L, openPipeLua);
-	lua_setglobal(L, "openPipe");
-	lua_pushcfunction(L, openFifoLua);
-	lua_setglobal(L, "openFifo");
-	lua_pushcfunction(L, openFileLua);
-	lua_setglobal(L, "openFile");
-	lua_pushcfunction(L, forkExecLua);
-	lua_setglobal(L, "forkExec");
-	lua_pushcfunction(L, pipeInitLua);
-	lua_setglobal(L, "pipeInit");
+	luaxExtend(L,"closeIdent",protoTypeCf(closeIdent));
+	luaxExtend(L,"moveIdent",protoTypeCg(moveIdent));
+	luaxExtend(L,"findIdent",protoTypeFf(findIdent));
+	luaxExtend(L,"inetIdent",protoTypeGf(inetIdent));
+	luaxExtend(L,"openPipe",protoTypeRg(openPipe));
+	luaxExtend(L,"openPipe",protoTypeFf(openPipe));
+	luaxExtend(L,"openFile",protoTypeFf(openFile));
+	luaxExtend(L,"openInet",protoTypeGf(openInet));
+	luaxExtend(L,"forkExec",protoTypeFf(forkExec));
+	luaxExtend(L,"pipeInit",protoTypeGf(pipeInit));
 	lua_pushcfunction(L, waitReadLua);
 	lua_setglobal(L, "waitRead");
 	lua_pushcfunction(L, waitExitLua);

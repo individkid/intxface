@@ -123,12 +123,22 @@ int luaxClosure(lua_State *L)
 		case (Cftype): fnc.cf(lua_tointeger(L,1)); return 0;
 		//typedef void (*cgtype)(int idx0, int idx1);
 		case (Cgtype): fnc.cg(lua_tointeger(L,1),lua_tointeger(L,2)); return 0;
+		// typedef void (*chtype)();
+		case (Chtype): fnc.ch(); return 0;
+		// typedef void (*hgtype)(int i, const char *str);
+		case (Hgtype): fnc.hg(lua_tointeger(L,1),lua_tostring(L,2)); return 0;
 		// typedef int (*fftype)(const char *str);
 		case (Fftype): lua_pushinteger(L,fnc.ff(lua_tostring(L,1))); return 1;
 		// typedef int (*gftype)(const char *one, const char *oth);
 		case (Gftype): lua_pushinteger(L,fnc.gf(lua_tostring(L,1),lua_tostring(L,2))); return 1;
 		// typedef int (*oftype)(void *arg);
 		case (Oftype): lua_pushinteger(L,fnc.of(lua_touserdata(L,1))); return 1;
+		// typedef int (*rftype)(int arg);
+		case (Rftype): lua_pushinteger(L,fnc.rf(lua_tointeger(L,1))); return 1;
+		// typedef int (*rgtype)();
+		case (Rgtype): lua_pushinteger(L,fnc.rg()); return 1;
+		// typedef const char *(*rhtype)(int i);
+		case (Rhtype): lua_pushstring(L,fnc.rh(lua_tointeger(L,1))); return 1;
 		// typedef const char *(*aftype)(void *mem);
 		case (Aftype): lua_pushstring(L,fnc.af(lua_touserdata(L,1))); return 1;
 		// typedef void (*nftype)(void **use, const char *str);
@@ -150,13 +160,17 @@ int luaxClosure(lua_State *L)
 		default: ERROR(exitErr,0);}
 	return 0;
 }
+void luaxExtend(lua_State *L, const char *str, struct Function fnc)
+{
+	lua_pushinteger(L, fnc.ft);
+	lua_pushlightuserdata(L, fnc.vp);
+	lua_pushcclosure(L, luaxClosure, 2);
+	lua_setglobal(L, str);
+}
 void luaxAdd(const char *str, struct Function fnc)
 {
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	lua_pushinteger(luastate, fnc.ft);
-	lua_pushlightuserdata(luastate, fnc.vp);
-	lua_pushcclosure(luastate, luaxClosure, 2);
-	lua_setglobal(luastate, str);
+	luaxExtend(luastate,str,fnc);
 }
 int nestSkip(const char **str)
 {
@@ -262,50 +276,13 @@ const char *nestRepl(int i)
 	return rslt[i];
 }
 
-int luaxSideLua(lua_State *L)
-{
-	luaxSide(lua_tostring(L,1));
-	return 0;
-}
-int nestInitLua(lua_State *L)
-{
-	nestInit(lua_tonumber(L,1));
-	return 0;
-}
-int nestElemLua(lua_State *L)
-{
-	nestElem((int)lua_tonumber(L,1),lua_tostring(L,2));
-	return 0;
-}
-int nestScanLua(lua_State *L)
-{
-	nestScan();
-	return 0;
-}
-int nestPassLua(lua_State *L)
-{
-	lua_pushnumber(L,nestPass());
-	return 1;
-}
-int nestReplLua(lua_State *L)
-{
-	lua_pushstring(L,nestRepl((int)lua_tonumber(L,1)));
-	return 1;
-}
-
 int luaopen_luax(lua_State *L)
 {
-	lua_pushcfunction(L, luaxSideLua);
-	lua_setglobal(L, "luaxSide");
-	lua_pushcfunction(L, nestInitLua);
-	lua_setglobal(L, "nestInit");
-	lua_pushcfunction(L, nestElemLua);
-	lua_setglobal(L, "nestElem");
-	lua_pushcfunction(L, nestScanLua);
-	lua_setglobal(L, "nestScan");
-	lua_pushcfunction(L, nestPassLua);
-	lua_setglobal(L, "nestPass");
-	lua_pushcfunction(L, nestReplLua);
-	lua_setglobal(L, "nestRepl");
+	luaxExtend(L,"luaxSide",protoTypeFf(luaxSide));
+	luaxExtend(L,"nestInit",protoTypeCf(nestInit));
+	luaxExtend(L,"nestElem",protoTypeHg(nestElem));
+	luaxExtend(L,"nestScan",protoTypeCh(nestScan));
+	luaxExtend(L,"nestPass",protoTypeRg(nestPass));
+	luaxExtend(L,"nestRepl",protoTypeRh(nestRepl));
 	return 0;
 }

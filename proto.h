@@ -29,9 +29,11 @@
 
 typedef void (*cftype)(int idx); // thread callback
 typedef void (*cgtype)(int idx0, int idx1);
+typedef void (*chtype)();
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
+typedef void (*hgtype)(int i, const char *str);
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*fftype)(const char *str);
@@ -39,6 +41,7 @@ typedef int (*gftype)(const char *one, const char *oth);
 typedef int (*oftype)(void *arg);
 typedef int (*rftype)(int arg); // permutation
 typedef int (*rgtype)();
+typedef const char *(*rhtype)(int i);
 typedef const char *(*aftype)(void *mem);
 typedef const char *(*bftype)(const char *arg); // dictionary
 typedef const char *(*bgtype)();
@@ -57,9 +60,11 @@ struct Function {
 	enum {
 		Cftype,
 		Cgtype,
+		Chtype,
 		Eftype,
 		Sftype,
 		Hftype,
+		Hgtype,
 		Pftype,
 		Qftype,
 		Fftype,
@@ -67,6 +72,7 @@ struct Function {
 		Oftype,
 		Rftype,
 		Rgtype,
+		Rhtype,
 		Aftype,
 		Bftype,
 		Bgtype,
@@ -83,9 +89,11 @@ struct Function {
 	union {
 		cftype cf;
 		cgtype cg;
+		chtype ch;
 		eftype ef;
 		sftype sf;
 		hftype hf;
+		hgtype hg;
 		pftype pf;
 		qftype qf;
 		fftype ff;
@@ -93,6 +101,7 @@ struct Function {
 		oftype of;
 		rftype rf;
 		rgtype rg;
+		rhtype rh;
 		aftype af;
 		bftype bf;
 		bgtype bg;
@@ -110,11 +119,14 @@ struct Function {
 };
 struct Function protoTypeCf(cftype fnc);
 struct Function protoTypeCg(cgtype fnc);
+struct Function protoTypeCh(chtype fnc);
+struct Function protoTypeHg(hgtype fnc);
 struct Function protoTypeFf(fftype fnc);
 struct Function protoTypeGf(gftype fnc);
 struct Function protoTypeOf(oftype fnc);
 struct Function protoTypeRf(rftype fnc);
 struct Function protoTypeRg(rgtype fnc);
+struct Function protoTypeRh(rhtype fnc);
 struct Function protoTypeAf(aftype fnc);
 struct Function protoTypeBf(bftype fnc);
 struct Function protoTypeBg(bgtype fnc);
