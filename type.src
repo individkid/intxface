@@ -586,23 +586,6 @@ function showStreamC(name,struct,show,pre,post)
 	result = result.."}"
 	return result
 end
-function showOffsetC(name,struct)
-	local result = ""
-	for k,v in ipairs(struct) do
-		local camel = string.upper(string.sub(v[1],1,1))..string.sub(v[1],2)
-		if result ~= "" then result = result.."\n" end
-		result = result.."int offset"..name..camel.."()"
-		if prototype then
-			result = result..";"
-		else
-			result = result.."\n"
-			result = result.."{\n"
-			result = result..showIndent(1).."return (int)(long long)&(((struct "..name.." *)0)->"..v[1]..");\n"
-			result = result.."}"
-		end
-	end
-	return result
-end
 function showFreeCF(v,ebr,sub)
 	local result = ""
 	if (Structz[v[2]]~=nil) then
@@ -1045,6 +1028,113 @@ function showIstructC(list)
 	for k,v in ipairs(list) do
 		result = result..showIndent(1).."if (hideIdent(\""..v.."\",str,&len)) return "..(k-1)..";\n"
 	end
+	result = result..showIndent(1).."return -1;\n"
+	result = result.."}\n"
+	return result
+end
+function showRfieldC(list,map)
+	local result = ""
+	result = result.."void readField(int typ, int fld, int idx, int ifd, int xfd, int ofd)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case("..(k-1).."): {\n"
+		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
+		result = result..showIndent(2).."read"..v.."(&tmp,ifd);\n"
+		result = result..showIndent(2).."switch (fld) {\n"
+		for ky,vl in ipairs(map[v]) do
+			result = result..showIndent(2).."case("..(ky-1).."): {\n"
+			lval = "tmp."..vl[1]
+			if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+				lval = "((int*)("..lval.."))"
+			end
+			if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+				lval = lval.."[idx]"
+			end
+			if (not (Structz[vl[2]] == nil)) then
+				result = result..showIndent(3).."read"..vl[2].."(&"..lval
+			elseif (not (Enumz[vl[2]] == nil)) then
+				result = result..showIndent(3)..lval
+			elseif (vl[2] == "Str") then
+				result = result..showIndent(3).."readStr(callStr,&"..lval
+			else
+				result = result..showIndent(3)..lval
+			end
+			if (not (Structz[vl[2]] == nil)) then
+				result = result..",xfd);\n"
+			elseif (not (Enumz[vl[2]] == nil)) then
+				result = result.." = readInt(xfd);\n"
+			elseif (vl[2] == "Str") then
+				result = result..",xfd);\n"
+			else
+				result = result.." = read"..vl[2].."(xfd);\n"
+			end
+			result = result..showIndent(3).."write"..v.."(&tmp,ofd);\n"
+			result = result..showIndent(3).."break;}\n"
+		end
+		result = result..showIndent(2).."}\n"
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."}\n"
+	result = result.."}\n"
+	return result
+end
+function showWfieldC(list,map)
+	local result = ""
+	result = result.."void writeField(int typ, int fld, int idx, int ifd, int ofd)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case("..(k-1).."): {\n"
+		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
+		result = result..showIndent(2).."read"..v.."(&tmp,ifd);\n"
+		result = result..showIndent(2).."switch (fld) {\n"
+		for ky,vl in ipairs(map[v]) do
+			result = result..showIndent(2).."case("..(ky-1).."): {\n"
+			lval = "tmp."..vl[1]
+			if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+				lval = "((int*)("..lval.."))"
+			end
+			if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+				lval = lval.."[idx]"
+			end
+			if (not (Structz[vl[2]] == nil)) then
+				result = result..showIndent(3).."write"..vl[2].."(&"..lval
+			elseif (not (Enumz[vl[2]] == nil)) then
+				result = result..showIndent(3).."writeInt("..lval
+			else
+				result = result..showIndent(3).."write"..vl[2].."("..lval
+			end
+			if (vl[2] == "Str") then
+				result = result..",1"
+			end
+			result = result..",ofd);\n"
+			result = result..showIndent(3).."break;}\n"
+		end
+		result = result..showIndent(2).."}\n"
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."}\n"
+	result = result.."}\n"
+	return result
+end
+function showIfieldC(list,map)
+	local result = ""
+	result = result.."int identField(int typ, const char *str)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case ("..(k-1).."): // "..v.."\n"
+		for ky,vl in ipairs(map[v]) do
+			result = result..showIndent(2).."if (hideIdent(\""..vl[1].."\",str,&len)) return "..(ky-1)..";\n"
+		end
+		result = result..showIndent(1).."break;\n"
+	end
+	result = result..showIndent(1).."}\n"
 	result = result..showIndent(1).."return -1;\n"
 	result = result.."}\n"
 	return result
@@ -1924,7 +2014,6 @@ function showFuncC()
 	result = result..showCall(Enums,Enumz,showHideC).."\n"
 	for k,v in ipairs(Enums) do luaxSide(showCastLua(v,Enumz[v])) end
 	result = result..showCall(Constants,Constantz,showConstantC).."\n"
-	result = result..showCall(Structs,Structz,showOffsetC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
 	result = result..showCall(Structs,Structz,showAllocC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"
@@ -1937,7 +2026,10 @@ function showFuncC()
 	result = result..showRstructC(Structs).."\n"
 	result = result..showWstructC(Structs).."\n"
 	result = result..showLstructC(Structs).."\n"
-	result = result..showIstructC(Structs)
+	result = result..showIstructC(Structs).."\n"
+	result = result..showRfieldC(Structs,Structz).."\n"
+	result = result..showWfieldC(Structs,Structz).."\n"
+	result = result..showIfieldC(Structs,Structz)
 	return result
 end
 function showCallH()

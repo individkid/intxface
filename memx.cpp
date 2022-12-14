@@ -20,8 +20,8 @@ std::map<int,Memx*> memt;
 int numstr(const char *str, int *val) {
 	char *ptr = const_cast<char*>(str);
 	int tmp = (errno = 0, strtoimax(str,&ptr,0));
-	if (errno != 0 || ptr == str) return 0; *val = tmp;
-	return ptr-str;}
+	if (errno != 0 || ptr == str) return 0;
+	*val = tmp; return ptr-str;}
 int dgtstr(const char *str, int *val) {
 	char ptr[3] = {0}; ptr[0] = str[0]; ptr[1] = str[1]; ptr[2] = 0;
 	return numstr(ptr,val);}
@@ -97,8 +97,7 @@ struct Memx {
 	Memx(const char *s): tag(MemxNul), idx(0) {
 		fnc.vp = 0; gnc.vp = 0;
 		memy[memx] = this; memz[this] = memx; memx++;
-		if (s == 0) {
-			tag = MemxNul; return;}
+		if (s == 0) return;
 		char *d = strdup(s);
 		int l = strlen(d);
 		int o = open(d);
@@ -115,8 +114,10 @@ struct Memx {
 			tag = MemxLst; free(d); return;}
 		if (numstr(d,&val) == l) {
 			tag = MemxInt; free(d); return;}
+		else val = 0;
 		if (rawstr(d,&raw) == l) {
 			tag = MemxRaw; free(d); return;}
+		else raw.clear();
 		if (d[0] == '"' && quote(d) == l-1) {
 			tag = MemxStr; d = repstr(d,1,l-2); str = d; free(d); return;}
 		if (d[0] == '(') {
@@ -128,9 +129,11 @@ struct Memx {
 		tag = MemxLua; lua = d; free(d);}
 	~Memx() {
 		std::vector<Memx*>::iterator i;
+		done();
 		if (memz.find(this) == memz.end()) ERROR(exitErr,0);
 		memy.erase(memz[this]); memz.erase(this);
-		for (i = mak.begin(); i != mak.end(); i++) delete *i;}
+		for (i = mak.begin(); i != mak.end(); i++) delete *i;
+		mak.clear();}
 	void done() {
 		switch (tag) {
 		case (MemxNul): break;
