@@ -1682,14 +1682,42 @@ function showWriteHs(name,struct)
 	result = result.."--"
 	return result
 end
-function showCastLua(name,enum)
+function showCastLua(name,list)
 	local result = ""
 	result = result.."function cast"..name.."(val)\n"
-	for key,val in ipairs(enum) do
+	for key,val in ipairs(list) do
 		if (key == 1) then
 			result = result..showIndent(1).."if (val == \""..val.."\") then return "..(key-1).."\n"
 		else
 			result = result..showIndent(1).."elseif (val == \""..val.."\") then return "..(key-1).."\n"
+		end
+	end
+	result = result..showIndent(1).."else return nil end\n"
+	result = result.."end"
+	return result
+end
+function showIdentLua(list)
+	local result = ""
+	result = result.."function castStruct(val)\n"
+	for key,val in ipairs(list) do
+		if (key == 1) then
+			result = result..showIndent(1).."if (val == \""..val.."\") then return "..(key-1).."\n"
+		else
+			result = result..showIndent(1).."elseif (val == \""..val.."\") then return "..(key-1).."\n"
+		end
+	end
+	result = result..showIndent(1).."else return nil end\n"
+	result = result.."end"
+	return result
+end
+function showFieldLua(name,list)
+	local result = ""
+	result = result.."function cast"..name.."(val)\n"
+	for key,val in ipairs(list) do
+		if (key == 1) then
+			result = result..showIndent(1).."if (val == \""..val[1].."\") then return "..(key-1).."\n"
+		else
+			result = result..showIndent(1).."elseif (val == \""..val[1].."\") then return "..(key-1).."\n"
 		end
 	end
 	result = result..showIndent(1).."else return nil end\n"
@@ -2063,6 +2091,8 @@ function showCallLua()
 	language = false
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	result = result..showCall(Enums,Enumz,showCastLua).."\n"
+	result = result..showIdentLua(Structs).."\n"
+	result = result..showCall(Structs,Structz,showFieldLua).."\n"
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
 	result = result..showCall(Structs,Structz,showWriteLua)
 	return result
