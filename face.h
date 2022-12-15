@@ -6,6 +6,8 @@ struct Text {
 struct timespec;
 void noteFunc(eftype fnc);
 void errFunc(eftype fnc);
+void callNote(int idx);
+void callErr(int idx);
 void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);

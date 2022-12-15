@@ -993,7 +993,7 @@ function showWstructC(list)
 	for k,v in ipairs(list) do
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
 		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
-		result = result..showIndent(2).."hide"..v.."(&tmp,str,&len);\n"
+		result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
 		result = result..showIndent(2).."write"..v.."(&tmp,idx);\n"
 		result = result..showIndent(2).."break;}\n"
 	end

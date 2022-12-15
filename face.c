@@ -84,6 +84,14 @@ void errFunc(eftype fnc)
 {
 	errfnc = fnc;
 }
+void callNote(int idx)
+{
+	NOTICE(idx);
+}
+void callErr(int idx)
+{
+	ERRFNC(idx);
+}
 void closeIdent(int idx)
 {
 	if (fdt[idx] != None) {
