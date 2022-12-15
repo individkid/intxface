@@ -59,7 +59,6 @@ void shareRunC(void **run, void *use)
 	for (int i = 0; i < memxSize(use); i++) {
 	void *mem = memxSkip(use,i);
 	switch ((enum Stream) memxInt(mem)) {
-	// TODO add call to ERRFNC(IDX) in new face.h function callErr(int idx); and have writeStruct call callErr if its hide funtion returns 0
 	// read to type from type
 	case (RdTypP): loopStruct(typ,ifd,rfd); break;
 	case (RdTypHd): shareRunCG(run); break;
