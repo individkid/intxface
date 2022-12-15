@@ -47,7 +47,7 @@ char *repstr(char *one, char *oth) {
 	strlcat(ret,oth,len); free(oth);
 	return ret;}
 char *repstr(char *exp) {
-	char *str = (luaxCall(exp,protoCloseBg()),strdup(protoResultBg()));
+	char *str = (luaxExpr(exp,protoCloseBg()),strdup(protoResultBg()));
 	int len = strlen(str);
 	char *tmp = strdup(str);
 	int val = 0;
@@ -254,7 +254,7 @@ extern "C" int memxSize(void *mem) { // get size
 extern "C" int memxInt(void *mem) { // get int
 	Memx *ptr = cast(mem);
 	if (ptr->tag == Memx::MemxInt) return ptr->val;
-	if (ptr->tag == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseRg()),protoResultRg());
+	if (ptr->tag == Memx::MemxLua) return (luaxExpr(ptr->lua.c_str(),protoCloseRg()),protoResultRg());
 	return 0;}
 extern "C" int memxMask(void *mem) { // mask from collection
 	int val = 0; int len = memxSize(mem);
@@ -263,13 +263,13 @@ extern "C" int memxMask(void *mem) { // mask from collection
 extern "C" const char *memxStr(void *mem) { // get string
 	Memx *ptr = cast(mem);
 	if (ptr->tag == Memx::MemxStr) return ptr->str.c_str();
-	if (ptr->tag == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseBg()),protoResultBg());
+	if (ptr->tag == Memx::MemxLua) return (luaxExpr(ptr->lua.c_str(),protoCloseBg()),protoResultBg());
 	return 0;}
 extern "C" const char *memxRaw(void *mem, int *len) { // get bytes
 	Memx *ptr = cast(mem);
 	if (ptr->tag == Memx::MemxRaw) {*len = ptr->raw.size(); return ptr->raw.data();}
 	if (ptr->tag == Memx::MemxInt) {*len = sizeof(ptr->val); return (char*)&ptr->val;}
-	if (ptr->tag == Memx::MemxLua) return (luaxCall(ptr->lua.c_str(),protoCloseBh()),protoResultBh(len));
+	if (ptr->tag == Memx::MemxLua) return (luaxExpr(ptr->lua.c_str(),protoCloseBh()),protoResultBh(len));
 	return 0;}
 extern "C" void memxInit(void **mem, const char *str) { // interpret string
 	Memx *tmp = new Memx(str);

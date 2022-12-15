@@ -105,13 +105,13 @@ int shareRunD(void *use)
 int shareUseLF(int idx, void *buf, int nbyte)
 {
 	void *mem = memxSkip(argxUse(idx),1);
-	if (luaxCall(memxStr(mem),protoClosePf(idx,nbyte)) < 0) ERROR();
+	if (luaxExpr(memxStr(mem),protoClosePf(idx,nbyte)) < 0) ERROR();
 	return protoResultPf(buf);
 }
 int shareUseLG(int idx, const void *buf, int nbyte)
 {
 	void *mem = memxSkip(argxUse(idx),2);
-	if (luaxCall(memxStr(mem),protoCloseQf(idx,buf,nbyte)) < 0) ERROR();
+	if (luaxExpr(memxStr(mem),protoCloseQf(idx,buf,nbyte)) < 0) ERROR();
 	return protoResultQf();
 }
 void shareUseL(void **use, const char *str)

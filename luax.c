@@ -78,19 +78,11 @@ int luaxLib(const char *exp)
 {
 	return luaxPath(exp,"require");
 }
-int luaxSide(const char *exp)
-{
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	if (luaxLoad(luastate,exp) != 0) return -2;
-	if (lua_pcall(luastate,0,0,0) != LUA_OK) {luaxErr(); return -1;}
-	return 0;	
-}
-int luaxCall(const char *str, const struct Closure *fnc)
+int luaxClose(const struct Closure *fnc)
 {
 	const char *ptr = 0;
 	size_t len = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	lua_getglobal(luastate,str);
 	for (int i = 0; i < fnc->na; i++) {
 		struct Argument *arg = fnc->aa+i;
 		switch (arg->at) {
@@ -109,7 +101,23 @@ int luaxCall(const char *str, const struct Closure *fnc)
 		case (Patype): protoMakePf(arg,lua_touserdata(luastate,i+1)); break;
 		default: ERROR();}}
 	lua_pop(luastate,fnc->nb);
-	return 0;
+	return 0;	
+}
+int luaxSide(const char *exp)
+{
+	return luaxExpr(exp,protoClose(0,0));
+}
+int luaxExpr(const char *exp, const struct Closure *fnc)
+{
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	if (luaxLoad(luastate,exp) != 0) return -2;
+	return luaxClose(fnc);	
+}
+int luaxCall(const char *str, const struct Closure *fnc)
+{
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	lua_getglobal(luastate,str);
+	return luaxClose(fnc);
 }
 int luaxClosure(lua_State *L)
 {
