@@ -1,7 +1,6 @@
 #ifndef PROTO_H
 #define PROTO_H
-#define ERROR(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
-#define NOTICE(FNC,ARG) {if (FNC) FNC(__FILE__,__LINE__,ARG); else {fprintf(stderr,"%s(%d): %d %lld\n",__FILE__,__LINE__,errno,(long long)getpid()); exit(-1);}}
+#define ERROR() exitErr(__FILE__,__LINE__)
 #define SATURATE 1000000000000.0
 #define SEC2NANO 1000000000.0
 #define NANO2SEC 0.000000001
@@ -34,6 +33,7 @@ typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
 typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
 typedef void (*hgtype)(int i, const char *str);
+typedef void (*hhtype)(const char *str);
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*fftype)(const char *str);
@@ -65,6 +65,7 @@ struct Function {
 		Sftype,
 		Hftype,
 		Hgtype,
+		Hhtype,
 		Pftype,
 		Qftype,
 		Fftype,
@@ -94,6 +95,7 @@ struct Function {
 		sftype sf;
 		hftype hf;
 		hgtype hg;
+		hhtype hh;
 		pftype pf;
 		qftype qf;
 		fftype ff;
@@ -121,6 +123,7 @@ struct Function protoTypeCf(cftype fnc);
 struct Function protoTypeCg(cgtype fnc);
 struct Function protoTypeCh(chtype fnc);
 struct Function protoTypeHg(hgtype fnc);
+struct Function protoTypeHh(hhtype fnc);
 struct Function protoTypeFf(fftype fnc);
 struct Function protoTypeGf(gftype fnc);
 struct Function protoTypeOf(oftype fnc);
@@ -165,6 +168,7 @@ struct Closure {
 	struct Argument *aa,*ab;
 };
 const struct Closure *protoClose(int na, int nb);
+const struct Closure *protoCloseEf(const char *str, int num, int idx);
 const struct Closure *protoClosePf(int idx, int nbyte);
 const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte);
 const struct Closure *protoCloseRf(int arg);
@@ -172,6 +176,7 @@ const struct Closure *protoCloseRg();
 const struct Closure *protoCloseBf(const char *arg);
 const struct Closure *protoCloseBg();
 const struct Closure *protoCloseBh();
+void protoResultEf();
 int protoResultPf(void *buf);
 int protoResultQf();
 int protoResultRf();
@@ -180,7 +185,7 @@ const char *protoResultBf();
 const char *protoResultBg();
 const char *protoResultBh(int *len);
 
-void exitErr(const char *str, int num, int idx);
+void exitErr(const char *file, int line);
 void protoSet(const char *str);
 const char *protoGet(int i);
 void protoErr(const char *fmt, ...);

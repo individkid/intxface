@@ -131,7 +131,7 @@ class Pend<T>
 	}
 	func set<S>(_ val: S, _ field: PartialKeyPath<T>)
 	{
-		guard let fld = MemoryLayout<T>.offset(of:field) else {exitErr(#file,#line,-1);return}
+		guard let fld = MemoryLayout<T>.offset(of:field) else {exitErr(#file,#line);return}
 		let siz = MemoryLayout<S>.size
 		toMutable([val]) {(len,ptr) in
 		set(UnsafePointer<S>(ptr),fld..<fld+siz)}
@@ -229,13 +229,13 @@ func swiftInit()
 	window.delegate = event
 	queue = device.makeCommandQueue()
 	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"planeG.so") else {
-		fputs("plane: cannot load library: planeG.so\n",stderr);exitErr(#file,#line,-1);return}
+		fputs("plane: cannot load library: planeG.so\n",stderr);exitErr(#file,#line);return}
 	for sub in 0...Int(Shaders.rawValue-1) {let shader = Shader(UInt32(sub)); if (shader == Dipoint || shader == Adpoint) {switch (shader) {
 	case (Dipoint): fallthrough case (Diplane):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
-		print("cannot make vertex_render");exitErr(#file,#line,-1);return}
+		print("cannot make vertex_render");exitErr(#file,#line);return}
 	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Fragment)!)) else {
-		print("cannot make fragment_render");exitErr(#file,#line,-1);return}
+		print("cannot make fragment_render");exitErr(#file,#line);return}
 	let pipe = MTLRenderPipelineDescriptor()
 	pipe.vertexFunction = vertex_render
 	pipe.fragmentFunction = fragment_render
@@ -255,7 +255,7 @@ func swiftInit()
     depth[sub] = device.makeDepthStencilState(descriptor: desc)
     default:
 	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Shader__Str(Shader(UInt32(sub)))!)) else {
-	 	print("cannot make kernel_pierce");exitErr(#file,#line,-1);return}
+	 	print("cannot make kernel_pierce");exitErr(#file,#line);return}
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
     threads[sub] = device.maxThreadsPerThreadgroup}}}
 	setEvent(.keyDown,ButtonPress)
@@ -312,7 +312,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		case (PierceLimit): uniform.set(Int(center.val![sub]),\Uniform.plm)
 		case (RegisterOpen): running = Int(center.val![sub]); if (running == 0) {NSApp.stop(nil)}
 		default: break}}
-	default: exitErr(#file,#line,-1)}
+	default: exitErr(#file,#line)}
 }
 func swiftWake(_ hint: Configure)
 {
@@ -343,17 +343,17 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 	let sub = Int(shader.rawValue)
 	switch (shader) {
 	case (Dipoint): fallthrough case (Diplane):
-	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
-    guard let draw = layer.nextDrawable() else {exitErr(#file,#line,-1);return}
+	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line);return}
+    guard let draw = layer.nextDrawable() else {exitErr(#file,#line);return}
 	param[sub]!.colorAttachments[0].texture = draw.texture
 	param[sub]!.colorAttachments[0].loadAction = .clear
 	param[sub]!.depthAttachment.loadAction = .clear
 	if (array.count == 0) {
-		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line,-1);return}
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.endEncoding()
 	}
 	for range in array { // TODO use start and stop
-		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line,-1);return}
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.setRenderPipelineState(render[sub]!)
 		encode.setDepthStencilState(depth[sub]!)
 		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
@@ -376,7 +376,7 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 	count += 1
 	code.commit()
 	default:
-	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line,-1);return}
+	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line);return}
 	for range in array { // TODO use start and stop
 		var offset = (Int(range.idx)*MemoryLayout<Triangle>.size)/3
 		var nums:[Int] = []
@@ -390,7 +390,7 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 			nums.append(1)
 			pers.append(remainder)}
 		for (n,p) in zip(nums,pers) {
-			guard let encode = code.makeComputeCommandEncoder() else {exitErr(#file,#line,-1);return}
+			guard let encode = code.makeComputeCommandEncoder() else {exitErr(#file,#line);return}
 			encode.setComputePipelineState(compute[sub]!)
 			encode.setBuffer(triangle.get(),offset:offset,index:0)
 			encode.setBuffer(numeric.get(),offset:0,index:1)

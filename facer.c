@@ -41,8 +41,8 @@ int main(int argc, char **argv)
 	if (forkExec("facerC") != size++) {fprintf(stderr,"facerC: cannot execute file: facerC\n"); return -1;}
 	if (forkExec("facerLua") != size++) {fprintf(stderr,"facerC: cannot execute file: facerLua\n"); return -1;}
 	if (forkExec("facerHs") != size++) {fprintf(stderr,"facerC: cannot execute file: facerHs\n"); return -1;}
-	for (int i = 0; i < size; i++) readNote(excfunc,i);
-	int handle = openFile("oops.tmp"); readJump(errfunc,handle); writeJump(errfunc,handle);
+	for (int i = 0; i < size; i++) noteFunc(excfunc);
+	int handle = openFile("oops.tmp"); errFunc(errfunc); errFunc(errfunc);
 	int hello = openFile("hello.tmp");
 	int ok = openFifo("ok.tmp");
 	int again = openFifo("again.tmp");

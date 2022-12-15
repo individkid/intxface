@@ -130,7 +130,7 @@ struct Memx {
 	~Memx() {
 		std::vector<Memx*>::iterator i;
 		done();
-		if (memz.find(this) == memz.end()) ERROR(exitErr,0);
+		if (memz.find(this) == memz.end()) ERROR();
 		memy.erase(memz[this]); memz.erase(this);
 		for (i = mak.begin(); i != mak.end(); i++) delete *i;
 		mak.clear();}
@@ -142,7 +142,7 @@ struct Memx {
 		case (MemxLst): lst.clear(); break;
 		case (MemxLua): lua.clear(); break;
 		case (MemxRaw): raw.clear(); break;
-		default: ERROR(exitErr,0);}
+		default: ERROR();}
 		tag = MemxNul;}
 	void init(Memx *giv) {
 		done();
@@ -153,7 +153,7 @@ struct Memx {
 		case (MemxLst): lst = giv->lst; break;
 		case (MemxLua): lua = giv->lua; break;
 		case (MemxRaw): raw = giv->raw; break;
-		default: ERROR(exitErr,0);}
+		default: ERROR();}
 		tag = giv->tag;}
 	void list() {
 		if (tag != MemxLst) {lst.push_back(this); tag = MemxLst;}}
@@ -319,7 +319,7 @@ extern "C" void memxCall(void **mem, void *giv, struct Function fnc) { // call f
 		memxCopy(mem,tmp); memxDone(&tmp); break;}
 	case (Function::Nftype): fnc.nf(mem,memxStr(giv)); break;
 	case (Function::Mftype): fnc.mf(mem,giv); break;
-	default: ERROR(exitErr,0);}}
+	default: ERROR();}}
 extern "C" void memxBack(void **mem, void **giv, struct Function fnc) { // causes given call on given with target as given
 	if (!*mem) *mem = new Memx(0); cast(*mem)->fnc = fnc; cast(*mem)->fem = giv;}
 extern "C" void memxDflt(void **mem, void **giv, struct Function fnc) { // trivial change causes call on mem with giv

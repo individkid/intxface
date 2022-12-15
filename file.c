@@ -26,18 +26,14 @@ double amount = BACKOFF;
 extern int bufsize;
 char *errstr = 0;
 
-void faceErr(const char *str, int num, int arg)
+void errNote(const char *str, int num, int arg)
 {
-	exit(-1);
-}
-
-void spokErr(const char *str, int num, int arg)
-{
+	if (arg == face) exit(-1);
 	asprintf(&errstr,"spokeErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	longjmp(jmpbuf[number[arg]],1);
 }
 
-void hubErr(const char *str, int num, int arg)
+void hubErr(const char *str, int num)
 {
 	asprintf(&errstr,"hubErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	longjmp(errbuf,1);
@@ -250,10 +246,10 @@ void *func(void *arg)
 
 int main(int argc, char **argv)
 {
-	if (argc != 4) ERROR(exitErr,-1);
+	if (argc != 4) exitErr(__FILE__,__LINE__);
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
-	if ((face = pipeInit(argv[1],argv[2])) < 0) ERROR(exitErr,-1);
-	readNote(faceErr,face); readJump(faceErr,face); writeJump(faceErr,face);
+	if ((face = pipeInit(argv[1],argv[2])) < 0) exitErr(__FILE__,__LINE__);
+	noteFunc(errNote); errFunc(errNote);
 	struct File *ptr = 0; allocFile(&ptr,1);
 	ptr->act = ThdThd; fieldsiz = sizeFile(ptr);
 	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;
@@ -267,34 +263,34 @@ int main(int argc, char **argv)
 		char basestr[len+1];
 		char dirstr[len+1];
 		char name[len+4];
-		if (IDX < 0 || IDX >= NUMFILE) ERROR(hubErr,-1)
+		if (IDX < 0 || IDX >= NUMFILE) hubErr(__FILE__,__LINE__);
 		strcpy(basestr,basename(STR));
 		strcpy(dirstr,dirname(STR));
-		if (checkRead(GIVE)) ERROR(hubErr,-1)
+		if (checkRead(GIVE)) hubErr(__FILE__,__LINE__);
 		strcat(strcat(strcpy(name,dirstr),"/"),basestr);
-		if (findIdent(name) != -1) ERROR(hubErr,-1)
-		if ((GIVE = openFile(name)) == -1) ERROR(hubErr,-1)
-		else {number[GIVE] = IDX; readNote(spokErr,GIVE); readJump(spokErr,GIVE); writeJump(spokErr,GIVE);}
+		if (findIdent(name) != -1) hubErr(__FILE__,__LINE__);
+		if ((GIVE = openFile(name)) == -1) hubErr(__FILE__,__LINE__);
+		else number[GIVE] = IDX;
 		strcat(strcat(strcpy(name,dirstr),"/."),basestr);
-		if ((FIFO = openFifo(name)) == -1) ERROR(hubErr,-1)
-		else {number[FIFO] = IDX; readNote(spokErr,FIFO); readJump(spokErr,FIFO); writeJump(hubErr,FIFO);}
+		if ((FIFO = openFifo(name)) == -1) hubErr(__FILE__,__LINE__);
+		else number[FIFO] = IDX;
 		strcat(strcat(strcpy(name,dirstr),"/.."),basestr);
-		if ((HELP = openFile(name)) == -1) ERROR(hubErr,-1)
-		else {number[HELP] = IDX; readNote(spokErr,HELP); readJump(spokErr,HELP); writeJump(spokErr,HELP);}
-		if ((ANON = openPipe()) == -1) ERROR(hubErr,-1)
-		else {number[ANON] = IDX; readNote(hubErr,ANON); readJump(hubErr,ANON); writeJump(spokErr,ANON);}
-		if (pthread_create(&THRD,0,func,ptr) != 0) ERROR(hubErr,-1)
+		if ((HELP = openFile(name)) == -1) hubErr(__FILE__,__LINE__);
+		else number[HELP] = IDX;
+		if ((ANON = openPipe()) == -1) hubErr(__FILE__,__LINE__);
+		else number[ANON] = IDX;
+		if (pthread_create(&THRD,0,func,ptr) != 0) hubErr(__FILE__,__LINE__);
 		allocFile(&ptr,1);
 		break;}
 		case (CfgHub): case (AppHub): {
-		if (sub != face) ERROR(hubErr,-1)
+		if (sub != face) hubErr(__FILE__,__LINE__);
 		ACT = (ACT == CfgHub ? HubThd : AppThd );
 		PID = identifier;
 		writeFile(ptr,FIFO);
 		flushBuf(FIFO);
 		break;}
 		case (ThdHub): {
-		if (sub != ANON) ERROR(hubErr,-1)
+		if (sub != ANON) hubErr(__FILE__,__LINE__);
 		ACT = HubCfg;
 		SLF = (PID == identifier);
 		writeFile(ptr,face);
@@ -303,7 +299,7 @@ int main(int argc, char **argv)
 		writeFile(ptr,face);
 		break;}
 		default: {
-		ERROR(hubErr,-1)
+		hubErr(__FILE__,__LINE__);
 		break;}}}
 	return 0;
 }

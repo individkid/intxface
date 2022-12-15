@@ -33,8 +33,8 @@ int idx = 0; // program counter
 int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 {
 	int dpt = 0;
-	if (dir > 1 || dir < -1 || dir == 0) ERROR(exitErr,0);
-	if (cmp > 1 || cmp < -1 || cmp == 0) ERROR(exitErr,0);
+	if (dir > 1 || dir < -1 || dir == 0) ERROR();
+	if (cmp > 1 || cmp < -1 || cmp == 0) ERROR();
 	while (idx >= 0 && idx < nim && cnt > 0) {
 		int cnd = 0; // maybe count if flow or nest exit
 		if (nst[idx].opt == NestTag) {
@@ -60,7 +60,7 @@ int nestJump(int idx, void *jmp)
 		case (RevEnt): idx = nestJumpF(idx,-1,1,1,cnt); break;
 		case (FwdExt): idx = nestJumpF(idx,1,1,-1,-cnt); break;
 		case (RevExt): idx = nestJumpF(idx,-1,1,-1,-cnt); break;
-		default: ERROR(exitErr,0);}
+		default: ERROR();}
 	}
 	return idx;
 }

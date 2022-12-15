@@ -29,6 +29,10 @@ struct Function protoTypeHg(hgtype fnc)
 {
 	struct Function ret = {.ft = Hgtype, {.hg = fnc}}; return ret;
 }
+struct Function protoTypeHh(hhtype fnc)
+{
+	struct Function ret = {.ft = Hhtype, {.hh = fnc}}; return ret;
+}
 struct Function protoTypeFf(fftype fnc)
 {
 	struct Function ret = {.ft = Fftype, {.ff = fnc}}; return ret;
@@ -143,11 +147,19 @@ const struct Closure *protoClose(int na, int nb)
 {
 	struct Argument zero = {0};
 	for (int i = 0; i < argbuf.na; i++) protoMake(argbuf.aa+i);
-	free(argbuf.aa); argbuf.aa = malloc(sizeof(argbuf.aa)*na); argbuf.na = na;
+	free(argbuf.aa); argbuf.aa = malloc(sizeof(struct Argument)*na); argbuf.na = na;
 	for (int i = 0; i < argbuf.na; i++) argbuf.aa[i] = zero;
 	for (int i = 0; i < argbuf.nb; i++) protoMake(argbuf.ab+i);
-	free(argbuf.ab); argbuf.ab = malloc(sizeof(argbuf.ab)*nb); argbuf.nb = nb;
+	free(argbuf.ab); argbuf.ab = malloc(sizeof(struct Argument)*nb); argbuf.nb = nb;
 	for (int i = 0; i < argbuf.nb; i++) argbuf.ab[i] = zero;
+	return &argbuf;
+}
+const struct Closure *protoCloseEf(const char *str, int num, int idx)
+{
+	protoClose(3,0);
+	protoMakeSf(&argbuf.aa[0],str);
+	protoMakeIf(&argbuf.aa[1],num);
+	protoMakeIf(&argbuf.aa[2],idx);
 	return &argbuf;
 }
 const struct Closure *protoClosePf(int idx, int nbyte)
@@ -192,6 +204,9 @@ const struct Closure *protoCloseBh()
 	protoClose(0,1);
 	return &argbuf;
 }
+void protoResultEf()
+{
+}
 int protoResultPf(void *buf)
 {
 	memcpy(buf,argbuf.ab[1].pa,argbuf.ab[1].la);
@@ -223,9 +238,9 @@ const char *protoResultBh(int *len)
 	return argbuf.ab[0].sa;
 }
 
-void exitErr(const char *str, int num, int idx)
+void exitErr(const char *file, int line)
 {
-	fprintf(stderr,"exitErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid()); exit(-1);
+	fprintf(stderr,"%s(%d): %d %lld\n",file,line,errno,(long long)getpid()); exit(-1);
 }
 void protoSet(const char *str)
 {

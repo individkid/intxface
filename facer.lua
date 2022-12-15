@@ -19,8 +19,10 @@ old = readOld(0)
 writeOld(old,0)
 
 else
-readNote("callClose",forkExec("facerC"))
-readNote("callClose",forkExec("facerLua"))
+noteFunc("callClose")
+errFunc("callClose")
+forkExec("facerC")
+forkExec("facerLua")
 sleepSec(1)
 expectInt = {0,1,2}
 expectNum = {0.1,1.1,2.1}

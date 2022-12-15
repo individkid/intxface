@@ -87,10 +87,10 @@ int luaxSide(const char *exp)
 }
 int luaxCall(const char *str, const struct Closure *fnc)
 {
-	int val = 0;
 	const char *ptr = 0;
 	size_t len = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	lua_getglobal(luastate,str);
 	for (int i = 0; i < fnc->na; i++) {
 		struct Argument *arg = fnc->aa+i;
 		switch (arg->at) {
@@ -98,9 +98,8 @@ int luaxCall(const char *str, const struct Closure *fnc)
 		case (Satype): lua_pushstring(luastate,arg->sa); break;
 		case (Latype): lua_pushlstring(luastate,arg->sa,arg->la); break;
 		case (Patype): lua_pushlightuserdata(luastate,arg->pa); break;
-		default: ERROR(exitErr,0);}}
-	val = luaxSide(str);
-	if (val < 0) return -1;
+		default: ERROR();}}
+	if (lua_pcall(luastate,fnc->na,fnc->nb,0) != LUA_OK) {luaxErr(); return -1;}
 	for (int i = 0; i < fnc->nb; i++) {
 		struct Argument *arg = fnc->ab+i;
 		switch (arg->at) {
@@ -108,9 +107,9 @@ int luaxCall(const char *str, const struct Closure *fnc)
 		case (Satype): ptr = lua_tostring(luastate,i+1); protoMakeSf(arg,ptr); break;
 		case (Latype): ptr = lua_tolstring(luastate,i+1,&len); protoMakeLf(arg,ptr,len); break;
 		case (Patype): protoMakePf(arg,lua_touserdata(luastate,i+1)); break;
-		default: ERROR(exitErr,0);}}
+		default: ERROR();}}
 	lua_pop(luastate,fnc->nb);
-	return val;
+	return 0;
 }
 int luaxClosure(lua_State *L)
 {
@@ -127,6 +126,8 @@ int luaxClosure(lua_State *L)
 		case (Chtype): fnc.ch(); return 0;
 		// typedef void (*hgtype)(int i, const char *str);
 		case (Hgtype): fnc.hg(lua_tointeger(L,1),lua_tostring(L,2)); return 0;
+		// typedef void (*hhtype)(const char *str);
+		case (Hhtype): fnc.hh(lua_tostring(L,1)); return 0;
 		// typedef int (*fftype)(const char *str);
 		case (Fftype): lua_pushinteger(L,fnc.ff(lua_tostring(L,1))); return 1;
 		// typedef int (*gftype)(const char *one, const char *oth);
@@ -157,7 +158,7 @@ int luaxClosure(lua_State *L)
 		case (Tftype): lua_pushlightuserdata(L,fnc.tf(lua_tointeger(L,1))); return 1;
 		// typedef int (*lftype)(void **mem);
 		case (Lftype): mem = lua_touserdata(L,1); lua_pushinteger(L,fnc.lf(&mem)); lua_pushlightuserdata(L,mem); return 2;
-		default: ERROR(exitErr,0);}
+		default: ERROR();}
 	return 0;
 }
 void luaxExtend(lua_State *L, const char *str, struct Function fnc)
@@ -176,7 +177,7 @@ int nestSkip(const char **str)
 {
 	char *bas = strchr(*str,'(');
 	char *lim = strchr(*str,')');
-	if (!lim) ERROR(exitErr,0);
+	if (!lim) ERROR();
 	if (bas && bas < lim) {*str = bas+1; return 1;}
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
@@ -200,7 +201,7 @@ void nestInit(int siz)
 }
 void nestElem(int i, const char *str)
 {
-	if (i < 0 || i >= lsiz) ERROR(exitErr,0);
+	if (i < 0 || i >= lsiz) ERROR();
 	line[i] = realloc(line[i],strlen(str)+1);
 	strcpy(line[i],str);
 }
@@ -231,16 +232,16 @@ int nestEval(int i)
 	int ret = 0;
 	int num = 0;
 	int len = 0;
-	if (i < 0 || i >= dim) ERROR(exitErr,0);
+	if (i < 0 || i >= dim) ERROR();
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); if (luaxLoad(fiber[i].lua,fiber[i].exp) != 0) return 0;}
 	ret = lua_resume(fiber[i].lua,0,0,&num);
 	if (ret != LUA_OK && ret != LUA_YIELD) {
 		printf("lua %s\n",lua_tostring(fiber[i].lua,-1));
-		ERROR(exitErr,0);}
+		ERROR();}
 	for (int j = 0; j < num; j++) if (!lua_tostring(fiber[i].lua,j-num)) {
 		printf("lua returned null: %s\n",fiber[i].exp);
-		ERROR(exitErr,0);}
+		ERROR();}
 	for (int j = 0; j < num; j++) len += strlen(lua_tostring(fiber[i].lua,j-num));
 	fiber[i].str = realloc(fiber[i].str,len+1); fiber[i].str[0] = 0;
 	for (int j = 0; j < num; j++) strcat(fiber[i].str,lua_tostring(fiber[i].lua,j-num));
@@ -258,7 +259,7 @@ const char *nestRepl(int i)
 {
 	int length = 0;
 	int pos = 0;
-	if (i < 0 || i >= lsiz) ERROR(exitErr,0);
+	if (i < 0 || i >= lsiz) ERROR();
 	length = strlen(line[i]);
 	for (int j = 0; j < dim; j++) if (fiber[j].idx == i) if (fiber[j].str) {
 		length -= strlen(fiber[j].exp)+3; length += strlen(fiber[j].str);}
@@ -278,6 +279,7 @@ const char *nestRepl(int i)
 
 int luaopen_luax(lua_State *L)
 {
+	luastate = L;
 	luaxExtend(L,"luaxSide",protoTypeFf(luaxSide));
 	luaxExtend(L,"nestInit",protoTypeCf(nestInit));
 	luaxExtend(L,"nestElem",protoTypeHg(nestElem));

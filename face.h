@@ -4,10 +4,8 @@ struct Text {
 	int trm;
 };
 struct timespec;
-void debugStr(const char *str);
-void readNote(eftype exc, int idx);
-void readJump(eftype err, int idx);
-void writeJump(eftype err, int idx);
+void noteFunc(eftype fnc);
+void errFunc(eftype fnc);
 void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);

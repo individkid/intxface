@@ -303,14 +303,14 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wf
 	callDraw = draw;
 	internal = openPipe();
 	external = pipeInit(input,output);
-	if (external < 0) ERROR(exitErr,0);
+	if (external < 0) ERROR();
 	goon = 1;
-	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR(exitErr,0);
+	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR();
 	// run();
 	closeIdent(internal);
 	closeIdent(external);
 	goon = 0;
-	if (pthread_join(pthread,0) != 0) ERROR(exitErr,0);
+	if (pthread_join(pthread,0) != 0) ERROR();
 }
 void planeArgument(const char *str)
 {
@@ -318,7 +318,7 @@ void planeArgument(const char *str)
 	else if (!input) assignStr(&input,str);
 	else if (!output) assignStr(&output,str);
 	else if (!ident) assignStr(&ident,str);
-	else ERROR(exitErr,0);
+	else ERROR();
 }
 int planeConfig(enum Configure cfg)
 {
@@ -326,7 +326,7 @@ int planeConfig(enum Configure cfg)
 }
 int planeEval(const char *str, int arg)
 {
-	if (luaxCall(str,protoCloseRf(arg)) < 0) ERROR(exitErr,0);
+	if (luaxCall(str,protoCloseRf(arg)) < 0) ERROR();
 	return protoResultRf();
 }
 void planeWake(enum Configure hint)

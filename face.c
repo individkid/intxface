@@ -68,24 +68,21 @@ int memptrz = 0;
 int memptrs = 0;
 void ***memptr = 0;
 
-void debugStr(const char *str)
+// error handling
+eftype notice = 0;
+eftype errfnc = 0;
+char *luanote = 0;
+char *luafunc = 0;
+#define ERRFNC(IDX) {if (errfnc) errfnc(__FILE__,__LINE__,IDX); else ERROR();}
+#define NOTICE(IDX) {if (notice) notice(__FILE__,__LINE__,IDX); else ERRFNC(IDX);}
+
+void noteFunc(eftype fnc)
 {
-	fprintf(stderr,"%s\n",str); fflush(stderr);
+	notice = fnc;
 }
-void readNote(eftype exc, int idx)
+void errFunc(eftype fnc)
 {
-	if (idx < 0 || idx >= lim) ERROR(exitErr,0)
-	inpexc[idx] = exc;
-}
-void readJump(eftype err, int idx)
-{
-	if (idx < 0 || idx >= lim) ERROR(exitErr,0)
-	inperr[idx] = err;
-}
-void writeJump(eftype err, int idx)
-{
-	if (idx < 0 || idx >= lim) ERROR(exitErr,0)
-	outerr[idx] = err;
+	errfnc = fnc;
 }
 void closeIdent(int idx)
 {
@@ -93,15 +90,12 @@ void closeIdent(int idx)
 		close(inp[idx]);
 		if (inp[idx] != out[idx]) close(out[idx]);
 		fdt[idx] = None;}
-	inpexc[idx] = 0;
-	inperr[idx] = 0;
-	outerr[idx] = 0;
 	while (lim > 0 && fdt[lim-1] == None) lim--;
 }
 void moveIdent(int idx0, int idx1)
 {
-	if (idx1 < 0 || idx1 >= lim) ERROR(inperr[idx1],idx1);
-	if (idx0 < 0 || idx0 >= lim) ERROR(inperr[idx1],idx1);
+	if (idx1 < 0 || idx1 >= lim) ERRFNC(idx0);
+	if (idx0 < 0 || idx0 >= lim) ERRFNC(idx1);
 	closeIdent(idx1);
 	inp[idx1] = inp[idx0];
 	out[idx1] = out[idx0];
@@ -109,9 +103,6 @@ void moveIdent(int idx0, int idx1)
 	pid[idx1] = pid[idx0];
 	rfn[idx1] = rfn[idx0];
 	wfn[idx1] = wfn[idx0];
-	inpexc[idx1] = inpexc[idx0];
-	inperr[idx1] = inperr[idx0];
-	outerr[idx1] = outerr[idx0];
 	closeIdent(idx0);
 }
 int findIdent(const char *str)
@@ -252,7 +243,7 @@ int forkExec(const char *exe)
 	wfn[lim] = 0;
 	fdt[lim] = Wait;
 	val = lim++;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERRFNC(lim);
 	return val;
 }
 int pipeInit(const char *av1, const char *av2)
@@ -268,7 +259,7 @@ int pipeInit(const char *av1, const char *av2)
 	pid[lim] = 0;
 	rfn[lim] = 0;
 	wfn[lim] = 0;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERRFNC(lim);
 	return lim++;
 }
 int rdfdInit(int rdfd, int hint)
@@ -283,7 +274,7 @@ int rdfdInit(int rdfd, int hint)
 	pid[lim] = 0;
 	rfn[lim] = 0;
 	wfn[lim] = 0;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERRFNC(lim);
 	return lim++;
 }
 int wrfdInit(int wrfd, int hint)
@@ -298,7 +289,7 @@ int wrfdInit(int wrfd, int hint)
 	pid[lim] = 0;
 	rfn[lim] = 0;
 	wfn[lim] = 0;
-	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERROR(exitErr,0)
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERRFNC(lim);
 	return lim++;
 }
 int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
@@ -340,7 +331,7 @@ int waitRead(double dly, int msk)
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,ptr,0);
-	if (val < 0) ERROR(exitErr,0);
+	if (val < 0) ERRFNC(-1);
 	if (val == 0) return -1;
 	nfd = 0; for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
 		if (fdt[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
@@ -364,7 +355,7 @@ int waitExit()
 {
 	int val = 0;
 	while (wait(&val) != -1) if (WIFEXITED(val) && (val = WEXITSTATUS(val)) < 0) return val;
-	if (errno != ECHILD) ERROR(exitErr,0);
+	if (errno != ECHILD) ERRFNC(-1);
 	return 0;
 }
 void *callCall(void *arg)
@@ -377,9 +368,9 @@ void *callCall(void *arg)
 }
 void callInit(cftype fnc, int idx)
 {
-	if (idx < 0 || idx >= lim || (fdt[idx] != Wait && fdt[idx] != Sock)) ERROR(exitErr,0);
+	if (idx < 0 || idx >= lim || (fdt[idx] != Wait && fdt[idx] != Sock)) ERRFNC(idx);
 	cbfnc[idx] = fnc;
-	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERROR(exitErr,0);
+	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERRFNC(idx);
 }
 int pollPipe(int idx)
 {
@@ -390,7 +381,7 @@ int pollPipe(int idx)
 	if (nfd <= inp[idx]) nfd = inp[idx]+1;
 	FD_SET(inp[idx],&fds); FD_SET(inp[idx],&ers);
 	val = -1; while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
-	if (val <= 0) ERROR(inperr[idx],idx)
+	if (val <= 0) ERRFNC(idx);
 	if (FD_ISSET(inp[idx],&fds)) return 1;
 	return 0;
 }
@@ -398,30 +389,30 @@ int pollFile(int idx)
 {
 	off_t pos, siz;
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) return 0;
-	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
-	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
-	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERROR(inperr[idx],idx);
+	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERRFNC(idx);
+	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERRFNC(idx);
+	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERRFNC(idx);
 	return (siz > pos);
 }
 void seekFile(long long arg, int idx)
 {
 	off_t pos = arg;
-	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERROR(inperr[idx],idx);
-	if (lseek(out[idx],pos,SEEK_SET) < 0) ERROR(outerr[idx],idx);
+	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERRFNC(idx);
+	if (lseek(out[idx],pos,SEEK_SET) < 0) ERRFNC(idx);
 }
 void truncFile(int idx)
 {
 	seekFile(0,idx);
-	if (ftruncate(inp[idx],0) < 0) ERROR(inperr[idx],idx);
-	if (ftruncate(out[idx],0) < 0) ERROR(outerr[idx],idx);
+	if (ftruncate(inp[idx],0) < 0) ERRFNC(idx);
+	if (ftruncate(out[idx],0) < 0) ERRFNC(idx);
 }
 long long checkFile(int idx)
 {
 	off_t pos, siz;
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) return 0;
-	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERROR(inperr[idx],idx);
-	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERROR(inperr[idx],idx);
-	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERROR(inperr[idx],idx);
+	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERRFNC(idx);
+	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERRFNC(idx);
+	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERRFNC(idx);
 	return siz;
 }
 int rdlkFile(long long loc, long long siz, int idx)
@@ -432,7 +423,7 @@ int rdlkFile(long long loc, long long siz, int idx)
 	lock.l_type = F_RDLCK;
 	lock.l_whence = SEEK_SET;
 	int val = 0;
-	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
+	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERRFNC(idx);
 	return (val==0);
 }
 int wrlkFile(long long loc, long long siz, int idx)
@@ -443,7 +434,7 @@ int wrlkFile(long long loc, long long siz, int idx)
 	lock.l_type = F_WRLCK;
 	lock.l_whence = SEEK_SET;
 	int val = 0;
-	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERROR(inperr[idx],idx);
+	if ((val = fcntl(inp[idx],F_SETLK,&lock)) < 0 && errno != EAGAIN) ERRFNC(idx);
 	return (val==0);
 }
 void unlkFile(long long loc, long long siz, int idx)
@@ -453,7 +444,7 @@ void unlkFile(long long loc, long long siz, int idx)
 	lock.l_len = siz;
 	lock.l_type = F_UNLCK;
 	lock.l_whence = SEEK_SET;
-	if (fcntl(inp[idx],F_SETLK,&lock) < 0) ERROR(inperr[idx],idx);
+	if (fcntl(inp[idx],F_SETLK,&lock) < 0) ERRFNC(idx);
 }
 void rdlkwFile(long long loc, long long siz, int idx)
 {
@@ -462,7 +453,7 @@ void rdlkwFile(long long loc, long long siz, int idx)
 	lock.l_len = siz;
 	lock.l_type = F_RDLCK;
 	lock.l_whence = SEEK_SET;
-	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERROR(inperr[idx],idx);
+	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERRFNC(idx);
 }
 void wrlkwFile(long long loc, long long siz, int idx)
 {
@@ -471,7 +462,7 @@ void wrlkwFile(long long loc, long long siz, int idx)
 	lock.l_len = siz;
 	lock.l_type = F_WRLCK;
 	lock.l_whence = SEEK_SET;
-	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERROR(inperr[idx],idx);
+	if (fcntl(inp[idx],F_SETLKW,&lock) < 0) ERRFNC(idx);
 }
 int checkRead(int idx)
 {
@@ -488,7 +479,7 @@ void sleepSec(double sec)
 	struct timespec delay = {0};
 	delay.tv_sec = (long long)sec;
 	delay.tv_nsec = (sec-(long long)sec)*SEC2NANO;
-	if (pselect(0,0,0,0,&delay,0) < 0 && errno != EINTR) ERROR(exitErr,0)
+	if (pselect(0,0,0,0,&delay,0) < 0 && errno != EINTR) ERRFNC(-1);
 }
 void allocMark()
 {
@@ -497,12 +488,12 @@ void allocMark()
 }
 void allocKeep()
 {
-	if (memmrks == 0) ERROR(exitErr,-1)
+	if (memmrks == 0) ERRFNC(-1);
 	memmrks--;
 }
 void allocDrop()
 {
-	if (memmrks == 0) ERROR(exitErr,-1)
+	if (memmrks == 0) ERRFNC(-1);
 	while (memptrs > memmrk[memmrks-1]) {
 		free(*memptr[memptrs]);
 		*memptr[memptrs] = 0;
@@ -520,7 +511,7 @@ void allocChr(char **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	allocMem((void**)ptr,siz*sizeof(char));
-	if (*ptr == 0) ERROR(exitErr,-1)
+	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocInt(int **ptr, int siz)
@@ -528,7 +519,7 @@ void allocInt(int **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	allocMem((void**)ptr,siz*sizeof(int));
-	if (*ptr == 0) ERROR(exitErr,-1)
+	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocNew(long long **ptr, int siz)
@@ -536,7 +527,7 @@ void allocNew(long long **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	allocMem((void**)ptr,siz*sizeof(long long));
-	if (*ptr == 0) ERROR(exitErr,-1)
+	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocNum(double **ptr, int siz)
@@ -544,7 +535,7 @@ void allocNum(double **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	allocMem((void**)ptr,siz*sizeof(double));
-	if (*ptr == 0) ERROR(exitErr,-1)
+	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocOld(float **ptr, int siz)
@@ -552,7 +543,7 @@ void allocOld(float **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	allocMem((void**)ptr,siz*sizeof(float));
-	if (*ptr == 0) ERROR(exitErr,-1)
+	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void allocStr(char* **ptr, int siz)
@@ -560,7 +551,7 @@ void allocStr(char* **ptr, int siz)
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
 	allocMem((void**)ptr,siz*sizeof(char*));
-	if (*ptr == 0) ERROR(exitErr,-1)
+	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
 void assignStr(char **ptr, const char *str)
@@ -568,13 +559,13 @@ void assignStr(char **ptr, const char *str)
 	if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
 	if (str == 0) return;
 	allocMem((void**)ptr,strlen(str)+1);
-	if (*ptr == 0) ERROR(exitErr,-1)
+	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
 void callStr(const char *str, int trm, int idx, void *arg)
 {
 	char **ptr = arg;
-	if (trm == 0) NOTICE(inpexc[idx],idx)
+	if (trm == 0) NOTICE(idx);
 	assignStr(ptr,str);
 }
 void textStr(const char *str, int trm, int idx, void *arg)
@@ -590,13 +581,13 @@ void readStr(sftype fnc, void *arg, int idx)
 	ssize_t val = 1/*bufsize*/; // num read
 	int num = 1/*bufsize*/; // num nonzero
 	int trm = 0; // num zero
-	if (idx < 0 || idx >= lim || fdt[idx] == None/*!= Seek*/) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None/*!= Seek*/) ERRFNC(idx);
 	while (num == 1/*bufsize*/ && val == 1/*bufsize*/) {
 		if ((size % bufsize) == 0) buf = realloc(buf,size+bufsize+1);
-		if (buf == 0) ERROR(outerr[idx],idx)
+		if (buf == 0) ERRFNC(idx);
 		if (fdt[idx] == Punt) val = rfn[idx](inp[idx],buf+size,1);
 		else val = /*p*/read(inp[idx],buf+size,1/*bufsize,loc+size*/);
-		if (val < 0) ERROR(outerr[idx],idx)
+		if (val < 0) ERRFNC(idx);
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
 	}
@@ -611,12 +602,12 @@ void preadStr(sftype fnc, void *arg, long long loc, int idx)
 	ssize_t val = bufsize; // num read
 	int num = bufsize; // num nonzero
 	int trm = 0; // num zero
-	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
 	while (num == bufsize && val == bufsize) {
 		/*if ((size % bufsize) == 0) */buf = realloc(buf,size+bufsize+1);
-		if (buf == 0) ERROR(outerr[idx],idx)
+		if (buf == 0) ERRFNC(idx);
 		val = pread(inp[idx],buf+size,bufsize,loc+size);
-		if (val < 0) ERROR(outerr[idx],idx)
+		if (val < 0) ERRFNC(idx);
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
 	}
@@ -636,80 +627,80 @@ void readStrHs(hftype fnc, int idx)
 void readEof(int idx)
 {
 	char arg;
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)	int val = 0;
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx); int val = 0;
 	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
 	else val = read(inp[idx],(char *)&arg,sizeof(char));
-	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
-	if (val != 0) NOTICE(inpexc[idx],idx)
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val != 0) NOTICE(idx);
 }
 char readChr(int idx)
 {
 	char arg;
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
 	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
 	else val = read(inp[idx],(char *)&arg,sizeof(char));
-	if (val != 0 && val < (int)sizeof(char)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
-	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
+	if (val != 0 && val < (int)sizeof(char)) ERRFNC(idx);
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
 int readInt(int idx)
 {
 	int arg;
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
 	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(int));
 	else val = read(inp[idx],(char *)&arg,sizeof(int));
-	if (val != 0 && val < (int)sizeof(int)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
-	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
+	if (val != 0 && val < (int)sizeof(int)) ERRFNC(idx);
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
 double readNum(int idx)
 {
 	double arg;
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
 	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(double));
 	else val = read(inp[idx],(char *)&arg,sizeof(double));
-	if (val != 0 && val < (int)sizeof(double)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
-	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
+	if (val != 0 && val < (int)sizeof(double)) ERRFNC(idx);
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val == 0) {arg = 0.0; NOTICE(idx);}
 	return arg;
 }
 long long readNew(int idx)
 {
 	long long arg;
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = 0;
 	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(long long));
 	else val = read(inp[idx],(char *)&arg,sizeof(long long));
-	if (val != 0 && val < (int)sizeof(long long)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
-	if (val == 0) {arg = 0; NOTICE(inpexc[idx],idx)}
+	if (val != 0 && val < (int)sizeof(long long)) ERRFNC(idx);
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
 float readOld(int idx)
 {
 	float arg;
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = 0;
 	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
 	else val = read(inp[idx],(char *)&arg,sizeof(float));
-	if (val != 0 && val < (int)sizeof(float)) ERROR(inperr[idx],idx)
-	// TODO reopen before calling NOTICE if val == 0 and fdt[idx] == Poll
-	if (val == 0) {arg = 0.0; NOTICE(inpexc[idx],idx)}
+	if (val != 0 && val < (int)sizeof(float)) ERRFNC(idx);
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val == 0) {arg = 0.0; NOTICE(idx);}
 	return arg;
 }
 int writeBuf(const void *arg, long long siz, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (fdt[idx] == Poll) {
 		while (atoms[idx]+siz > atomz[idx]) atom[idx] = realloc(atom[idx],atomz[idx]+=bufsize);
-		if (atom[idx] == 0) ERROR(outerr[idx],idx)
+		if (atom[idx] == 0) ERRFNC(idx);
 		memcpy(atom[idx]+atoms[idx],arg,siz);
 		atoms[idx] += siz;
 		return siz;}
@@ -718,62 +709,62 @@ int writeBuf(const void *arg, long long siz, int idx)
 }
 void flushBuf(int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] != Poll) ERROR(exitErr,0)
-	if (write(out[idx],atom[idx],atoms[idx]) < 0) ERROR(outerr[idx],idx)
+	if (idx < 0 || idx >= lim || fdt[idx] != Poll) ERRFNC(idx);
+	if (write(out[idx],atom[idx],atoms[idx]) < 0) ERRFNC(idx);
 	atoms[idx] = 0;
 }
 void writeStr(const char *arg, int trm, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int siz = strlen(arg)+trm;
 	int val = writeBuf(/*write(out[idx],*/arg,siz,idx);
-	if (val < siz) ERROR(outerr[idx],idx)
+	if (val < siz) ERRFNC(idx);
 }
 void pwriteStr(const char *arg, int trm, long long loc, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
 	int siz = strlen(arg)+trm;
 	int val = pwrite(out[idx],arg,siz,loc);
-	if (val < siz) ERROR(outerr[idx],idx)
+	if (val < siz) ERRFNC(idx);
 }
 void writeChr(char arg, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(char), idx);
-	if (val < (int)sizeof(char)) ERROR(outerr[idx],idx)
+	if (val < (int)sizeof(char)) ERRFNC(idx);
 }
 void writeInt(int arg, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(int), idx);
-	if (val < (int)sizeof(int)) ERROR(outerr[idx],idx)
+	if (val < (int)sizeof(int)) ERRFNC(idx);
 }
 void writeNum(double arg, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(double), idx);
-	if (val < (int)sizeof(double)) ERROR(outerr[idx],idx)
+	if (val < (int)sizeof(double)) ERRFNC(idx);
 }
 void writeNew(long long arg, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(long long), idx);
-	if (val < (int)sizeof(long long)) ERROR(outerr[idx],idx)
+	if (val < (int)sizeof(long long)) ERRFNC(idx);
 }
 void writeOld(float arg, int idx)
 {
-	if (idx < 0 || idx >= lim || fdt[idx] == None) ERROR(exitErr,0)
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(float), idx);
-	if (val < (int)sizeof(float)) ERROR(outerr[idx],idx)
+	if (val < (int)sizeof(float)) ERRFNC(idx);
 }
 void showEnum(const char *typ, const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"%s(%s)",typ,val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"%s(%s)",typ,val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -782,10 +773,10 @@ void showStruct(const char* bef, int val, const char *aft, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"%s%d%s",bef,val,aft) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"%s%d%s",bef,val,aft) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -794,10 +785,10 @@ void showField(const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"%s:",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"%s:",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -806,10 +797,10 @@ void showOpen(const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"%s(",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"%s(",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -818,10 +809,10 @@ void showClose(char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,")") < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,")") < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -830,10 +821,10 @@ void showChr(char val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"Chr(%c)",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"Chr(%c)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -842,10 +833,10 @@ void showInt(int val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"Int(%d)",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"Int(%d)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -854,10 +845,10 @@ void showNew(long long val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"New(%lld)",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"New(%lld)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -866,10 +857,10 @@ void showNum(double val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"Num(%lf)",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"Num(%lf)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -878,10 +869,10 @@ void showOld(float val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"Old(%f)",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"Old(%f)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -890,10 +881,10 @@ void showStr(const char* val, char **str, int *siz)
 {
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"Str(%s)",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp,"Str(%s)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERROR(exitErr,-1)
+	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
@@ -902,7 +893,7 @@ int hideIdent(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
-	if (asprintf(&tmp," %s %%n",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp," %s %%n",val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
@@ -913,7 +904,7 @@ int hideEnum(const char* typ, const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
-	if (asprintf(&tmp," %s ( %s ) %%n",typ,val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp," %s ( %s ) %%n",typ,val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
@@ -924,7 +915,7 @@ int hideStruct(const char* bef, int val, const char *aft, const char *str, int *
 {
 	char *tmp = 0;
 	int num = -1;
-	if (asprintf(&tmp," %s %d %s%%n",bef,val,aft) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp," %s %d %s%%n",bef,val,aft) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
@@ -935,7 +926,7 @@ int hideField(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
-	if (asprintf(&tmp," %s : %%n",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp," %s : %%n",val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
@@ -946,7 +937,7 @@ int hideOpen(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
-	if (asprintf(&tmp," %s ( %%n",val) < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp," %s ( %%n",val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
@@ -957,7 +948,7 @@ int hideClose(const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
-	if (asprintf(&tmp," ) %%n") < 0) ERROR(exitErr,-1)
+	if (asprintf(&tmp," ) %%n") < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
@@ -1022,77 +1013,6 @@ int hideStr(char **val, const char *str, int *siz)
 	return 1;
 }
 
-void setupLua(char **mem, const char *str, int idx)
-{
-	if (mem[idx]) free(mem[idx]);
-	mem[idx] = malloc(strlen(str)+1);
-	if (mem[idx] == 0) ERROR(exitErr,0)
-	strcpy(mem[idx],str);
-}
-void callLua(lua_State *lua, const char *fnc, const char *str, int num, int idx)
-{
-	if (lua == 0) ERROR(exitErr,0)
-	lua_getglobal(lua,fnc);
-	lua_pushstring(lua,str);
-	lua_pushnumber(lua,num);
-	lua_pushnumber(lua,idx);
-	if (lua_pcall(lua, 3, 0, 0) != 0) ERROR(exitErr,0)
-}
-void noteLua(const char *str, int num, int idx)
-{
-	callLua(luaerr,exclua[idx],str,num,idx);
-}
-void readLua(const char *str, int num, int idx)
-{
-	callLua(luaerr,inplua[idx],str,num,idx);
-}
-void writeLua(const char *str, int num, int idx)
-{
-	callLua(luaerr,outlua[idx],str,num,idx);
-}
-void funcLua(int idx)
-{
-	lua_State *lua = luaerr;
-	const char *fnc = fnclua[idx];
-	lua_getglobal(lua,fnc);
-	lua_pushnumber(lua,idx);
-	if (lua_pcall(lua, 1, 0, 0) != 0) ERROR(exitErr,0)
-}
-void readStrLuaFnc(const char *buf, int trm, int idx, void *arg)
-{
-	lua_State *lua = arg;
-	lua_pushstring(lua,buf);
-	lua_pushnumber(lua,trm);
-}
-
-int debugStrLua(lua_State *lua)
-{
-	luaerr = lua;
-	debugStr(lua_tostring(lua,1));
-	return 0;
-}
-int readNoteLua(lua_State *lua)
-{
-	luaerr = lua;
-	setupLua(exclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	readNote(noteLua,(int)lua_tonumber(lua,2));
-	return 0;
-}
-int readJumpLua(lua_State *lua)
-{
-	luaerr = lua;
-	setupLua(inplua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	readJump(readLua,(int)lua_tonumber(lua,2));
-	return 0;
-}
-int writeJumpLua(lua_State *lua)
-{
-	luaerr = lua;
-	setupLua(outlua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	writeJump(writeLua,(int)lua_tonumber(lua,2));
-	return 0;
-}
-
 int waitReadLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1103,13 +1023,6 @@ int waitExitLua(lua_State *lua)
 {
 	luaerr = lua;
 	waitExit();
-	return 0;
-}
-int callInitLua(lua_State *lua)
-{
-	luaerr = lua;
-	setupLua(fnclua,lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	callInit(funcLua,(int)lua_tonumber(lua,2));
 	return 0;
 }
 int pollPipeLua(lua_State *lua)
@@ -1196,6 +1109,12 @@ int sleepSecLua(lua_State *lua)
 	sleep((int)lua_tonumber(lua,1));
 	return 0;
 }
+void readStrLuaFnc(const char *buf, int trm, int idx, void *arg)
+{
+	lua_State *lua = arg;
+	lua_pushstring(lua,buf);
+	lua_pushnumber(lua,trm);
+}
 int readStrLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1275,17 +1194,35 @@ int writeOldLua(lua_State *lua)
 	return 0;
 }
 
+void noteLua(const char *str, int num, int idx)
+{
+	int val = luaxCall(luanote,protoCloseEf(str,num,idx));
+	if (val < 0) ERROR();
+}
+void errLua(const char *str, int num, int idx)
+{
+	int val = luaxCall(luafunc,protoCloseEf(str,num,idx));
+	if (val < 0) ERROR();
+}
+void noteFuncLua(const char *str)
+{
+	noteFunc(noteLua);
+	if (luanote) free(luanote);
+	luanote = strdup(str);
+}
+void errFuncLua(const char *str)
+{
+	errFunc(errLua);
+	if (luaerr) free(luaerr);
+	luafunc = strdup(str);
+}
 void luaxExtend(lua_State *L, const char *str, struct Function fnc);
+int luaopen_luax(lua_State *L);
 int luaopen_face (lua_State *L)
 {
-	lua_pushcfunction(L, debugStrLua);
-	lua_setglobal(L, "debugStr");
-	lua_pushcfunction(L, readNoteLua);
-	lua_setglobal(L, "readNote");
-	lua_pushcfunction(L, readJumpLua);
-	lua_setglobal(L, "readJump");
-	lua_pushcfunction(L, writeJumpLua);
-	lua_setglobal(L, "writeJump");
+	luaopen_luax(L);
+	luaxExtend(L,"noteFunc",protoTypeHh(noteFuncLua));
+	luaxExtend(L,"errFunc",protoTypeHh(errFuncLua));
 	luaxExtend(L,"closeIdent",protoTypeCf(closeIdent));
 	luaxExtend(L,"moveIdent",protoTypeCg(moveIdent));
 	luaxExtend(L,"findIdent",protoTypeFf(findIdent));
@@ -1300,8 +1237,6 @@ int luaopen_face (lua_State *L)
 	lua_setglobal(L, "waitRead");
 	lua_pushcfunction(L, waitExitLua);
 	lua_setglobal(L, "waitExit");
-	lua_pushcfunction(L, callInitLua);
-	lua_setglobal(L, "callInit");
 	lua_pushcfunction(L, pollPipeLua);
 	lua_setglobal(L, "pollPipe");
 	lua_pushcfunction(L, pollFileLua);

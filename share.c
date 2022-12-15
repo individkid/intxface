@@ -91,7 +91,7 @@ void shareRunC(void **run, void *use)
 	case (WrFldP): writeField(typ,fld,idx,rfd,ofd); break;
 	case (WrFldHd): writeField(typ,fld,idx,rfd,tfd); shareRunCI(tmp); break;
 	case (WrFldTl): writeField(typ,fld,idx,rfd,tfd); shareRunCJ(tmp); break;
-	default: ERROR(exitErr,0);}}
+	default: ERROR();}}
 }
 int shareRunD(void *use)
 {
@@ -105,13 +105,13 @@ int shareRunD(void *use)
 int shareUseLF(int idx, void *buf, int nbyte)
 {
 	void *mem = memxSkip(argxUse(idx),1);
-	if (luaxCall(memxStr(mem),protoClosePf(idx,nbyte)) < 0) ERROR(exitErr,0);
+	if (luaxCall(memxStr(mem),protoClosePf(idx,nbyte)) < 0) ERROR();
 	return protoResultPf(buf);
 }
 int shareUseLG(int idx, const void *buf, int nbyte)
 {
 	void *mem = memxSkip(argxUse(idx),2);
-	if (luaxCall(memxStr(mem),protoCloseQf(idx,buf,nbyte)) < 0) ERROR(exitErr,0);
+	if (luaxCall(memxStr(mem),protoCloseQf(idx,buf,nbyte)) < 0) ERROR();
 	return protoResultQf();
 }
 void shareUseL(void **use, const char *str)
@@ -142,7 +142,7 @@ int shareLuax(const char *str)
 	else if (strcmp(str,"oface") == 0) return oface;
 	else if (strcmp(str,"misc") == 0) return misc;
 	else if (strcmp(str,"zero") == 0) return zero;
-	ERROR(exitErr,0);
+	ERROR();
 	return 0;
 }
 int main(int argc, char **argv)

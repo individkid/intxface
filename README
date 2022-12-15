@@ -23,8 +23,8 @@ Run the tests with "cd intxface-code", and "make".
 The Theory file proves that naive.hs is algorithmic.
 
 The make include file depend.mk is auto-generated
-by building all nameable files until no new ones are built,
-and examining the files for dependencies.
+by executing make in a clean directory, examining error messages,
+copying files, examining files, and recording dependencies.
 
 face.c face.h facer.lua facer.hs facer.c test fork exec read write processes.
 This has fork/exec/block read*/write* *Int/*Num/*Str/*New/*Old

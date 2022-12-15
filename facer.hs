@@ -62,7 +62,7 @@ mainF [] = do
  mainFG 0 mainB -- send stimulus
  mainFH mainC mainB -- check responses
  var <- newIORef 0
- readJump (\_ _ a -> writeIORef var a) file
+ errFunc (\_ _ a -> writeIORef var a)
  writeStr "" True file
  seekFile 0 file
  readInt file
@@ -76,7 +76,7 @@ mainF _ = undefined
 
 mainFF :: [String] -> IO ()
 mainFF [] = return ()
-mainFF (a:b) = (forkExec a) >>= (readNote mainFFF) >> (mainFF b)
+mainFF (a:b) = (forkExec a) >> noteFunc mainFFF >> (mainFF b)
 
 mainFFF :: String -> Int -> Int -> IO ()
 mainFFF _ _ a = closeIdent a

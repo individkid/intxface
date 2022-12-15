@@ -10,9 +10,8 @@ import System.Environment
 import System.Exit
 
 foreign import ccall "wrapper" wrapJump :: (CString -> CInt -> CInt -> IO ()) -> IO (FunPtr (CString -> CInt -> CInt -> IO ()))
-foreign import ccall "readNote" readNoteC :: FunPtr (CString -> CInt -> CInt -> IO ()) -> CInt -> IO ()
-foreign import ccall "readJump" readJumpC :: FunPtr (CString -> CInt -> CInt -> IO ()) -> CInt -> IO ()
-foreign import ccall "writeJump" writeJumpC :: FunPtr (CString -> CInt -> CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "noteFunc" noteFuncC :: FunPtr (CString -> CInt -> CInt -> IO ()) -> IO ()
+foreign import ccall "errFunc" errFuncC :: FunPtr (CString -> CInt -> CInt -> IO ()) -> IO ()
 foreign import ccall "closeIdent" closeIdentC :: CInt -> IO ()
 foreign import ccall "moveIdent" moveIdentC :: CInt -> CInt -> IO ()
 foreign import ccall "openPipe" openPipeC :: IO CInt
@@ -50,12 +49,10 @@ foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
 
-readNote :: (String -> Int -> Int -> IO ()) -> Int -> IO ()
-readNote a b = (wrapJump (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= (\x -> readNoteC x (fromIntegral b))
-readJump :: (String -> Int -> Int -> IO ()) -> Int -> IO ()
-readJump a b = (wrapJump (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= (\x -> readJumpC x (fromIntegral b))
-writeJump :: (String -> Int -> Int -> IO ()) -> Int -> IO ()
-writeJump a b = (wrapJump (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= (\x -> readJumpC x (fromIntegral b))
+noteFunc :: (String -> Int -> Int -> IO ()) -> IO ()
+noteFunc a = (wrapJump (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= noteFuncC
+errFunc :: (String -> Int -> Int -> IO ()) -> IO ()
+errFunc a = (wrapJump (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= errFuncC
 closeIdent :: Int -> IO ()
 closeIdent a = closeIdentC (fromIntegral a)
 moveIdent :: Int -> Int -> IO ()

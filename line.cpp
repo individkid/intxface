@@ -5,7 +5,6 @@ extern "C" {
 #include "type.h"
 #include "portaudio.h"
 }
-#include <setjmp.h>
 #include <unistd.h>
 #include <time.h>
 #include <math.h>
@@ -57,7 +56,6 @@ std::map < int, Event* > state;
 std::map < double, Update* > change;
 std::map < int, Event* > timer;
 std::map < int, Channel* > audio;
-jmp_buf errbuf = {0};
 int numbug = 0;
 double nowtime = 0;
 int hub = 0;
@@ -87,11 +85,6 @@ Update *Update::deloc(double k)
 	if (ptr->nxt == 0) change.erase(change.begin());
 	else (*change.begin()).second = ptr->nxt;
 	ptr->nxt = upd; upd = ptr; return ptr;
-}
-
-void huberr(const char *str, int num, int arg)
-{
-	longjmp(errbuf,1);
 }
 
 void exiterr(const char *str, int num, int arg)
@@ -255,7 +248,7 @@ double evaluate(Ratio *ratio)
 double gettime()
 {
 	struct timespec ts = {0};
-	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR(exiterr,-1);
+	if (clock_gettime(CLOCK_MONOTONIC,&ts) < 0) ERROR();
 	return (double)ts.tv_sec+((double)ts.tv_nsec)*NANO2SEC;
 }
 
@@ -306,7 +299,7 @@ void stock()
 	case (Audio): {
 		if (audio.find(event->idx) != audio.end()) {
 		if (audio[event->idx]->str)
-		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR(huberr,-1);
+		if (Pa_CloseStream(audio[event->idx]->str) != paNoError) ERROR();
 		delete audio[event->idx]; audio[event->idx] = 0;}
 		Channel *channel = audio[event->idx] =
 		new Channel(event->wrp,event->gap,event->cdt,event->len);
@@ -317,13 +310,13 @@ void stock()
 		for (Channel *ptr = channel; ptr; ptr = ptr->nxt) count++;
 		if (event->enb > 0) outputs = count; else inputs = count;
 		if (Pa_OpenDefaultStream(&channel->str,inputs,outputs,paFloat32,CALLRATE,
-		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR(huberr,-1);
-		if (Pa_StartStream(channel->str) != paNoError) ERROR(huberr,-1);}
+		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR();
+		if (Pa_StartStream(channel->str) != paNoError) ERROR();}
 		break;}
 	case (States): {
 		goon = 0;
 		break;}
-	default: ERROR(huberr,-1);}
+	default: ERROR();}
 }
 
 void flow()
@@ -387,19 +380,19 @@ void flow()
 	case (Flows): {
 		printf("numbug %d\n",numbug); fflush(stdout);
 		break;}
-	default: ERROR(huberr,-1);}
+	default: ERROR();}
 }
 
 int main(int argc, char **argv)
 {
 	if (argc != 4) return -1;
-	if (Pa_Initialize() != paNoError) ERROR(exiterr,-1);
-	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
-	readJump(huberr,hub); writeJump(huberr,hub); allocEvent(&event,1); goon = 1;
-	while (goon) {if (setjmp(errbuf) == 0) {while (goon) {
+	if (Pa_Initialize() != paNoError) ERROR();
+	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR();
+	allocEvent(&event,1); goon = 1;
+	while (goon) {
 	for (head = deloc(nowtime = gettime()); head; head = deloc(nowtime)) flow();
 	if (adloc()) sub = waitRead(adloc(nowtime),-1); else sub = waitRead(0.0,-1);
-	if (sub < 0) continue; readEvent(event,sub); stock();}}}
-	if (Pa_Terminate() != paNoError) ERROR(exiterr,-1);
+	if (sub < 0) continue; readEvent(event,sub); stock();}
+	if (Pa_Terminate() != paNoError) ERROR();
 	return 0;
 }

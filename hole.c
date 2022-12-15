@@ -16,16 +16,6 @@ enum {Unused,Cluster,System,Server,Client} layer[NUMINET] = {0};
 // sub might be any of Server to main
 // sub might be any of Client of main
 
-void huberr(const char *str, int num, int arg)
-{
-	longjmp(errbuf,1);
-}
-
-void exiterr(const char *str, int num, int arg)
-{
-	exit(arg);
-}
-
 int splitStr(char **str, char **adr, char **num)
 {
 	char *tmp[3] = {0};
@@ -51,12 +41,9 @@ int main(int argc, char **argv)
 	char *adr = 0;
 	char *num = 0;
 	struct File file = {0};
-	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR(exiterr,-1);
+	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR();
 	if ((fub = forkExec("fileC")) < 0) {fprintf(stderr,"holeC: cannot execute file: fileC\n"); return -1;}
-	if ((rub = openInet(0,argv[3])) < 0) ERROR(exiterr,-1);
-	readJump(huberr,hub); writeJump(huberr,hub);
-	readJump(huberr,fub); writeJump(huberr,fub);
-	readJump(huberr,rub); writeJump(huberr,rub);
+	if ((rub = openInet(0,argv[3])) < 0) ERROR();
 	layer[hub] = Cluster; layer[fub] = System;
 	while (1) {if (setjmp(errbuf) == 0) {
 	for (sub = waitRead(0.0,-1); sub >= 0; sub = waitRead(0.0,-1)) {

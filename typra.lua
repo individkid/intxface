@@ -335,7 +335,7 @@ Expected = {
 	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
 	"    allocMem((void**)ptr,siz*sizeof(enum Enum1));\n"..
-	"    if (*ptr == 0) ERROR(exitErr,-1)\n"..
+	"    if (*ptr == 0) ERROR();\n"..
 	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
@@ -343,7 +343,7 @@ Expected = {
 	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
 	"    allocMem((void**)ptr,siz*sizeof(struct Struct1));\n"..
-	"    if (*ptr == 0) ERROR(exitErr,-1)\n"..
+	"    if (*ptr == 0) ERROR();\n"..
 	"    struct Struct1 init = {0};\n"..
 	"    for (int i = 0; i < siz; i++)\n"..
 	"        memcpy(&(*ptr)[i],&init,sizeof(init));\n"..
