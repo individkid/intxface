@@ -1,13 +1,13 @@
 
 Write liner.lua sharer.lua planer.lua holer.lua.
 
-Write core.cpp to read and write file with struct AV.
-
-Write tape.cpp to convert BMD to and from struct AV pipe.
+Write page.cpp to read and write file from widgets.
 
 Write wave.cpp to convert digiscope into struct AV pipe.
 
 Write frame.cpp to display and capture AV between screen and struct AV pipe.
+
+Write tape.cpp to convert BMD to and from struct AV pipe.
 
 Write phone.cpp that inputs and outputs audio to AV pipe.
 

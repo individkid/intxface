@@ -98,6 +98,7 @@ tape test BMD-SDK to and from av struct pipe.
 wave test IOUSBInterfaceInterface to and from av struct pipe.
 frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.
 phone test av struct to from audio.
+page test file struct to from gui.
 share test arguments that control how subsequent non-dash arguments are interpreted.
  -a flow type (factory argumewnt)
  -b script result (script to evaluate)
@@ -121,7 +122,53 @@ share test arguments that control how subsequent non-dash arguments are interpre
  -p output pipe (descrptor)
  -q input pipe (descriptor)
  -rstuvwxyz control delay and parallelism
- 
+
+Analog input to phone includes bugle and found object percussion,
+distorted by interpolation of signal at different frequencies.
+ a) two levels to edge, (positive feedback)
+ b) level to edge: (phase locked loop)
+  output=l(d(f(input,e(output))))
+ c) level to slope, (differentiator)
+ d) slope to level, (integrator)
+ e) signal negative, (such that it adds to zero)
+ f) signal sum, (sum of two)
+ g) signal product, (voltage controlled amplifier)
+ h) knob to level. (center tap of potentiometer)
+ i) two edges to edge, (on off flip flop)
+ j) several edges to edge, (logic)
+ k) edge skipper, (counter and switch)
+ l) level to edge, (voltage controlled oscilator)
+ m) edges and byte to edge (mux)
+ n) edge and byte to edges (demux)
+ o) four forty hertz edge, (crystal)
+ p) level to byte (series of comparators)
+ q) byte to level, (bunch of precise resistors)
+ r) edge to random byte, (noise from transistor)
+ A) square to triangle: (wave)
+  output=d(slope),
+  slope=g(scale,f(offset,input)),
+  offset=f(higher,nlower),
+  scale=f(delta,f(nhigher,nlower)),
+  nhigher=e(higher), // negative of how long
+  nlower=e(lower), // negative of how long
+  higher=d(above), // how long it was higher
+  lower=d(below), // how long it was lower
+  above=a(input,high), // whether too high
+  below=a(low,input), // whether too low
+  delta=h(), // what is too long
+  high=h(), // what is too high
+  low=h(), // what is too low
+ B) triangle to edge: (phase)
+  output=j(sign^rising^above),
+  rising=a(0,c(input)),
+  above=a(input,level),
+  sign=j(),
+  level=h(),
+ C) edge to triangle: (single)
+ D) square multiplier:
+ E) square divider:
+ F) interpolation of signal at different frequency:
+
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
 to and from commands this and other processes.
