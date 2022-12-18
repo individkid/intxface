@@ -125,13 +125,11 @@ share test arguments that control how subsequent non-dash arguments are interpre
 
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
-Input to two of w, one with direct feedback,
-and the other through an s and t,
-which fan out to several u.
+Input to two of w, one with direct feedback, and the other through an s and t.
+The w fan out to several u each.
 The u from the direct feedback go to e with input.
 The u from the indirect feedback go to v.
 The v and e go to f which go to h to output. 
-Output of w and v go to 
  a) two levels to level, (1 opamp; no feedback)
  b) two levels to edge, (1 opamp, 1 diode, 1 resistor; no feedback)
  c) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
