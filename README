@@ -133,7 +133,7 @@ The v and e go to f which go to h to output.
  a) two levels to level, (1 opamp; no feedback)
  b) two levels to edge, (1 opamp, 1 diode, 1 resistor; no feedback)
  c) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
- d) level to slope, (1 opamp, 1 capacitor, 1 resistor; differential)
+ d) level to negative slope, (1 opamp, 1 capacitor, 1 resistor; differential)
  e) edge and level to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
  f) signal product, (1 opamp, 4 resistors, 2 jfet; vca)
  g) signal difference (1 opamp, 4 resistors; difference between two)
@@ -151,9 +151,9 @@ The v and e go to f which go to h to output.
  s) edge skipper, (counter and switch)
  t) edge inserter, (counter equals skipper)
  u) triangle to edge: (phase)
-  output=j(sign^rising^above),
-  rising=b(d(input),0),
-  above=b(input,level),
+  output=j(sign^falling^below),
+  falling=b(d(input),0),
+  below=b(level,input),
   sign=j(),
   level=l(),
  v) edge to triangle: (single)
