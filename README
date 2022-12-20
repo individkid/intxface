@@ -131,16 +131,16 @@ The u from the direct feedback go to e with input.
 The u from the indirect feedback go to v.
 The v and e go to f which go to h to output. 
  a) two levels to level, (1 opamp; no feedback)
- b) two levels to edge, (1 opamp, 1 diode, 1 resistor; no feedback)
- c) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
+ b) two levels to level, (1 opamp, 1 diode, 1 resistor; no feedback)
+ c) latched follower, (1 opamp, 1 diode)
  d) level to negative slope, (1 opamp, 1 capacitor, 1 resistor; differential)
- e) edge and level to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
+ e) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
  f) signal product, (1 opamp, 4 resistors, 2 jfet; vca)
  g) signal difference (1 opamp, 4 resistors; difference between two)
  h) signal sum, (1 opamp, 4 resistors; sum of two)
- i) several edges to edge, (dip switch not to and to or)
- j) several edges to edge, (dip switch not to and from xor)
- k) two edges to edge, (on off flip flop)
+ i) several edges to edge, (logic)
+ j) two edges to edge, (on off flip flop)
+ k) edge and level to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
  l) knob to level, (center tap of potentiometer)
  m) edges and byte to edge (mux)
  n) edge and byte to edges (demux)
@@ -151,26 +151,30 @@ The v and e go to f which go to h to output.
  s) edge skipper, (counter and switch)
  t) edge inserter, (counter equals skipper)
  u) triangle to edge: (phase)
-  output=j(sign^falling^below),
-  falling=b(d(input),0),
-  below=b(level,input),
-  sign=j(),
-  level=l(),
+  output=j(stable,above),
+  stable=i(below&!between),
+  above=b(input,high),
+  between=b(input,mid),
+  below=b(input,low),
+  high=l(),
+  mid=l(),
+  low=l(),
  v) edge to triangle: (single)
-  output=c(slope),
-  slope=f(length,sign),
-  sign=a(k(below,above),0.5),
+  output=c(e(slope)),
+  slope=f(length,square),
+  square=a(j(input,above),0.5),
   above=b(output,high),
-  below=b(0,output),
   length=l(),
   high=l(),
+  low=l(),
  w) level to level: (vco pll)
   output=(triangle,square),
   (reference,feedback)=input,
-  square=a(k(below,above),0.5),
+  triangle=e(slope),
+  slope=f(error,feedback)
+  square=a(j(below,above),0.5),
   above=b(triangle,high),
   below=b(low,triangle),
-  triangle=c(f(feedback,error)),
   error=g(reference,triangle),
   high=l(),
   low=l(),
@@ -204,8 +208,9 @@ become visible, so framebuffer textures can be dedicated for them.
 This also distorts sounds to hammer home which lines of sight are broken.
 
 world.lua moves focal point towards or through pierce point.
+User accounts are files of polytopes and transformed file references.
 Moving through a pierce point can add a user to a permissions group.
 Users have read, write, and execute permissions in their groups.
 Execute permission is a graph instead of a hierarchy.
 Each user may create decorated boundaries for groups they have write permission in.
-Decorations include posts, remote framebuffers, altenate spaces, and system sound.
+Decorations include opinions, remote framebuffers, altenate spaces, and system sound.
