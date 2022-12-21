@@ -132,7 +132,7 @@ The u from the indirect feedback go to v.
 The v and e go to f which go to h to output. 
  a) two levels to level, (1 opamp; no feedback)
  b) two levels to level, (1 opamp, 2 diode, 1 resistor; no feedback)
- c) level to level, (1 opamp, 2 diode; latched follower)
+ c) level to level, (1 opamp, 2 diode, 1 resistor; latched follower)
  d) level to negative slope, (1 opamp, 1 capacitor, 1 resistor; differential)
  e) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
  f) signal product, (1 opamp, 4 resistors, 2 jfet; vca)
