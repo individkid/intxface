@@ -130,16 +130,18 @@ The w fan out to several u each.
 The u from the direct feedback go to e with input.
 The u from the indirect feedback go to v.
 The v and e go to f which go to h to output.
- a) two levels to level, (1 opamp; no feedback)
- b) two levels to level, (1 opamp, 2 diode, 1 resistor; no feedback)
- c) level to level, (1 opamp, 2 diode, 1 resistor; latched follower)
+ a) two levels to level, (1 opamp; no feedback; neg, pos)
+ b) two levels to level, (1 opamp, 2 diode, 1 resistor; no feedback; 0, 5)
+ c) level to level, (1 opamp, 2 diode, 1 resistor; latched follower; base, pos)
  d) level to negative slope, (1 opamp, 1 capacitor, 1 resistor; differential)
  e) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
  f) three levels to level, (1 opamp, 2 mosfet; select)
  g) signal difference (1 opamp, 4 resistors; difference between two)
  h) signal sum, (1 opamp, 4 resistors; sum of two)
  i) several edges to edge, (logic)
- j) two edges to edge, (on off flip flop)
+ j) two edges to edge: (on off flip flop)
+  output=i(set|(!clear&output)),
+  (set,clear)=input,
  k) edge and level to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
  l) knob to level, (center tap of potentiometer)
  m) edges and byte to edge (mux)
@@ -160,20 +162,26 @@ The v and e go to f which go to h to output.
   mid=l(),
   low=l(),
  v) edge to triangle: (single)
-  output=c(e(slope)),
+  output=c(triangle),
+  triangle=e(slope),
   slope=f(length,negative,square),
-  square=a(j(input,above),0.5),
+  square=a(sign,0.5),
+  sign=j(stable,above),
+  stable=i(input&below),
   above=b(output,high),
+  below=b(low,output),
   negative=g(0,length),
   length=l(),
   high=l(),
   low=l(),
+  base=l(),
  w) level to level: (vco pll)
-  output=(triangle,square),
+  output=(triangle,edge),
   (reference,feedback)=input,
   triangle=e(slope),
-  slope=f(error,negative,feedback)
-  square=a(j(below,above),0.5),
+  slope=f(error,negative,square),
+  square=a(feedback,0.5),
+  edge=j(below,above),
   above=b(triangle,high),
   below=b(low,triangle),
   negative=g(triangle,reference),
