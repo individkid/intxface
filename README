@@ -125,11 +125,11 @@ share test arguments that control how subsequent non-dash arguments are interpre
 
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
-Input to two of w, one with direct feedback, and the other through an s and t.
-The w fan out to several u each.
-The u from the direct feedback go to e with input.
-The u from the indirect feedback go to v.
-The v and e go to f which go to h to output.
+Input to two of m, one with direct feedback,
+and the other whth feedback and output through k to another m.
+The m outputs go to several o.
+The o from the direct feedback go to l with input.
+The o from the indirect feedback go to n with high and rate from l.
  a) two levels to level, (1 opamp; no feedback; neg, pos)
  b) two levels to level, (1 opamp, 2 diode, 1 resistor; no feedback; 0, 5)
  c) level to level, (1 opamp, 2 diode, 1 resistor; latched follower; base, pos)
@@ -142,40 +142,9 @@ The v and e go to f which go to h to output.
  j) two edges to edge: (on off flip flop)
   output=i(set|(!clear&output)),
   (set,clear)=input,
- k) edge and level to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
- l) knob to level, (center tap of potentiometer)
- m) edges and byte to edge (mux)
- n) edge and byte to edges (demux)
- o) four forty hertz level, (crystal)
- p) level to byte (series of comparators)
- q) byte to level, (bunch of precise resistors)
- r) edge to random byte, (noise from transistor)
- s) edge skipper, (counter and switch)
- t) edge inserter, (counter equals skipper)
- u) triangle to edge: (phase)
-  output=j(stable,above),
-  stable=i(below&!between),
-  above=b(input,high),
-  between=b(input,mid),
-  below=b(input,low),
-  high=l(),
-  mid=l(),
-  low=l(),
- v) edge to triangle: (single)
-  output=c(triangle),
-  triangle=e(slope),
-  slope=f(length,negative,square),
-  square=a(sign,0.5),
-  sign=j(stable,above),
-  stable=i(input&below),
-  above=b(output,high),
-  below=b(low,output),
-  negative=g(0,length),
-  length=l(),
-  high=l(),
-  low=l(),
-  base=l(),
- w) level to level: (vco pll)
+ k) edge to edge, (count and compare)
+ l) edge and level to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
+ m) level to level: (vco pll; high, low)
   output=(triangle,edge),
   (reference,feedback)=input,
   triangle=e(slope),
@@ -186,8 +155,22 @@ The v and e go to f which go to h to output.
   below=b(low,triangle),
   negative=g(triangle,reference),
   error=g(reference,triangle),
-  high=l(),
-  low=l(),
+ n) edge to triangle: (single; high, low, base, rate)
+  output=c(triangle),
+  triangle=e(slope),
+  slope=f(rate,negative,square),
+  square=a(sign,0.5),
+  sign=j(stable,above),
+  stable=i(input&below),
+  above=b(output,high),
+  below=b(low,output),
+  negative=g(0,rate),
+ o) triangle to edge: (phase; high, mid, low)
+  output=j(stable,above),
+  stable=i(below&!between),
+  above=b(input,high),
+  between=b(input,mid),
+  below=b(input,low),
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
