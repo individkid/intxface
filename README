@@ -125,52 +125,47 @@ share test arguments that control how subsequent non-dash arguments are interpre
 
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
-Input to two of m, one with direct feedback,
-and the other whth feedback and output through k to another m.
-The m outputs go to several o.
-The o from the direct feedback go to l with input.
-The o from the indirect feedback go to n with high and rate from l.
+Input to two of h, one with direct feedback,
+and the other whth feedback and output through divider to another h.
+The h outputs go to several g.
+The g from the direct feedback go to e with input.
+The g from the indirectfeedback go to g with rate from e.
  a) two levels to level, (1 opamp; no feedback; neg, pos)
  b) two levels to level, (1 opamp, 2 diode, 1 resistor; no feedback; 0, 5)
- c) level to level, (1 opamp, 2 diode, 1 resistor; latched follower; base, pos)
- d) level to negative slope, (1 opamp, 1 capacitor, 1 resistor; differential)
- e) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
- f) three levels to level, (1 opamp, 2 mosfet; select)
- g) signal difference (1 opamp, 4 resistors; difference between two)
- h) signal sum, (1 opamp, 4 resistors; sum of two)
- i) several edges to edge, (logic)
- j) two edges to edge: (on off flip flop)
-  output=i(set|(!clear&output)),
-  (set,clear)=input,
- k) edge to edge, (count and compare)
- l) edge and level to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
- m) level to level: (vco pll; high, low)
-  output=(triangle,edge),
-  (reference,feedback)=input,
-  triangle=e(slope),
-  slope=f(error,negative,square),
-  square=a(feedback,0.5),
-  edge=j(below,above),
+ c) level to level, (1 opamp, 1 resistor; negative)
+ d) two levels to level, (1 opamp, 4 resistors; difference between two)
+ e) level and edge to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
+ f) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
+ g) triangle to triangle: (single; high, mid, low, rate)
+  output=f(slope),
+  slope=i(zero,maybe,higher),
+  maybe=i(zero,nonzero,lower),
+  nonzero=i(reverse,rate,middle),
+  reverse=c(rate),
+  higher=a(input,high),
+  lower=a(low,input),
+  middle=a(input,mid),
+  zero=a(0,output),
+ h) level to level: (vco pll; high, low)
+  output=(triangle,square),
+  (signal,feed)=input,
+  triangle=f(slope),
+  slope=i(poslev,neglev,back),
+  poslev=f(poserr),
+  neglev=f(negerr),
+  poserr=i(error,0,feed),
+  negerr=i(error,0,back),
+  error=d(signal,trianlge),
+  back=c(feed),
+  square=a(edge,0.5),
+  edge=k(below,above),
   above=b(triangle,high),
   below=b(low,triangle),
-  negative=g(triangle,reference),
-  error=g(reference,triangle),
- n) edge to triangle: (single; high, low, base, rate)
-  output=c(triangle),
-  triangle=e(slope),
-  slope=f(rate,negative,square),
-  square=a(sign,0.5),
-  sign=j(stable,above),
-  stable=i(input&below),
-  above=b(output,high),
-  below=b(low,output),
-  negative=g(0,rate),
- o) triangle to edge: (phase; high, mid, low)
-  output=j(stable,above),
-  stable=i(below&!between),
-  above=b(input,high),
-  between=b(input,mid),
-  below=b(input,low),
+ i) three levels to level, (1 opamp, 2 mosfet; select)
+ j) several edges to edge, (logic)
+ k) two edges to edge: (on off flip flop)
+  output=j(set|(!clear&output)),
+  (set,clear)=input,
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files

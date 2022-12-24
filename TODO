@@ -1,15 +1,19 @@
 
 Write liner.lua sharer.lua planer.lua holer.lua.
 
-Write page.cpp to read and write file from widgets.
+Write core.cpp to convert proprietary into AV pipe.
 
-Write wave.cpp to convert digiscope into struct AV pipe.
+Write tape.cpp to convert BMD to and from AV pipe.
 
-Write frame.cpp to display and capture AV between screen and struct AV pipe.
+Write wave.cpp to convert digiscope into AV pipe.
 
-Write tape.cpp to convert BMD to and from struct AV pipe.
+Write frame.cpp to display and capture with AV pipe.
 
 Write phone.cpp that inputs and outputs audio to AV pipe.
+
+Write page.cpp to read and write file from widgets.
+
+Write Dell versions of core tape wave frame phone page plane.
 
 Write microcode stubs and incrementally replace with production.
 
@@ -18,8 +22,6 @@ Write sculpt.lua and production plane state machine.
 Write print.lua to find all overlaps and spaces.
 
 Write play.lua that integrates files, audio, video, and polytopes.
-
-Write stomp.lua that mixes audio.
 
 Replace Theory by an agda proof.
 
