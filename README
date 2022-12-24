@@ -138,13 +138,16 @@ The A from the indirectfeedback go to A with rate from e.
  e) level and edge to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
  f) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
  g) level to slope, (1 opamp, 1 capacitor, 1 resistor; differential)
- h) three levels to level, (1 opamp, 2 mosfet; select)
+ h) level to level, (absolute value)
+ i) three levels to level, (1 opamp, 2 mosfet; select)
+ j) two levels to level, (left and right)
+ k) two levels to level, (average)
 
  A) triangle to triangle: (single; slope, low, mid, high)
   output=f(slope),
-  slope=h(zero,maybe,higher),
-  maybe=h(zero,nonzero,lower),
-  nonzero=h(reverse,rate,middle),
+  slope=i(zero,maybe,higher),
+  maybe=i(zero,nonzero,lower),
+  nonzero=i(reverse,rate,middle),
   reverse=b(rate),
   higher=a(input,high),
   lower=a(low,input),
@@ -153,16 +156,16 @@ The A from the indirectfeedback go to A with rate from e.
 
  B) square to triangle: (convert; small, high, low)
   output=f(slope)
-  slope=h(positive,negative,input)
+  slope=i(positive,negative,input)
   positive=f(higher)
   higher=d(small,possum)
   possum=f(posval)
-  posval=h(above,0,possgn)
+  posval=i(above,0,possgn)
   possgn=a(above,0)
   above=d(output,high)
   lower=d(negsum,small)
   negsum=f(negval)
-  negval=h(below,0,negsgn)
+  negval=i(below,0,negsgn)
   negsgn=a(below,0)
   below=d(low,output)
 
@@ -172,34 +175,26 @@ The A from the indirectfeedback go to A with rate from e.
   output=a(0,opposite)
 
  D) level to square (vco; small, high, low)
-  postab=f(posval)
-  posval=h(negput,input,neglow)
-  negtab=f(negval)
-  negval=h(negput,input,negsgn)
-  negsgn=h(pos,poshigh,more)
-  more=a(posless,negtab)
-  posless=d(postab,small)
-  poshigh=a(postab,high)
-  neglow=a(low,negtab)
-  negput=b(input)
-  both=c(postab,negtab)
-  output=a(both,0)
+  output=a(table,0)
+  table=k(postab,negtab)
+  postab=f(level)
+  negtab=f(above)
+  just=d(negtab,small)
+  area=a(postab,just)
+  both=j(above,area)
+  level=c(below,both)
+  above=a(postab,high)
+  below=a(low,negtab)
 
  E) two squares to square: (pll; small, high, low)
   (reference,feedback)=input
   output=D(level)
   refval=g(reference)
-  refneg=b(refval)
-  refsgn=a(refval,0)
-  refabs=h(refval,refneg,refsgn)
-  reftab=f(refabs)
+  refabs=h(refval)
   feedval=g(feedback)
-  feedneg=b(feedval)
-  feedsgn=a(feedval,0)
-  feedabs=h(feedval,feedneg,feedsgn)
-  feedtab=f(feedabs)
-  error=d(reftab,feedtab)
-  level=f(error)
+  feedabs=h(feedval)
+  slope=d(refabs,feedabs)
+  level=f(slope)
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
