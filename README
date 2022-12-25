@@ -141,22 +141,29 @@ The B from the indirect feedback go to A with rate from e.
  i) three levels to level, (1 opamp, 2 mosfet; select)
  j) two levels to level, (left and right)
  k) two levels to level, (average)
+ l) two levels to level, (equal)
 
- A) triangle to triangle: (single; slope, low, mid, high)
+ A) triangle to triangle: (single; slope, sign, low, mid, high)
+  (triangle,square)=input,
   output=f(slope),
-  slope=i(zero,maybe,higher),
-  maybe=i(zero,nonzero,lower),
-  nonzero=i(reverse,rate,middle),
+  slope=i(nonzero,zero,active),
+  active=j(between,same),
+  between=j(higher,lower),
   reverse=b(rate),
-  higher=a(input,high),
-  lower=a(low,input),
-  middle=a(input,mid),
   zero=a(0,output),
+  nonzero=i(reverse,rate,middle),
+  higher=a(triangle,high),
+  lower=a(low,triangle),
+  middle=a(triangle,mid),
+  same=l(square,sign),
 
- B) triangle to edge: (low, high)
-  output=j(higher,lower)
-  higher=a(input,low)
-  lower=a(high,input)
+ B) triangle to edge: (sign, low, high)
+  (triangle,square)=input
+  output=j(betwen,same)
+  between=j(higher,lower)
+  higher=a(triangle,low)
+  lower=a(high,triangle)
+  same=l(square,sign),
 
  C) signal to square: (convert)
   orthogonal=f(input)
