@@ -125,12 +125,11 @@ share test arguments that control how subsequent non-dash arguments are interpre
 
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
-Input through C to two of E, one with direct feedback, to B,
-and the other whth feedback through divider,
-and output through divider to B.
-The B outputs go to several A.
-The A from the direct feedback go to e with input.
-The A from the indirectfeedback go to A with rate from e.
+Input through C to two of E, one directly with direct feedback,
+and the other through diveder with feedback through divider.
+The E outputs go to several B.
+The B from the direct feedback go to e with input.
+The B from the indirect feedback go to A with rate from e.
  a) two levels to level, (1 opamp; no feedback)
  b) level to level, (1 opamp, 1 resistor; negative)
  c) two levels to level, (1 opamp, 4 resistors; sum of two)
@@ -154,41 +153,39 @@ The A from the indirectfeedback go to A with rate from e.
   middle=a(input,mid),
   zero=a(0,output),
 
- B) square to triangle: (convert; small, high, low)
-  output=f(slope)
-  slope=i(positive,negative,input)
-  positive=f(higher)
-  higher=d(small,possum)
-  possum=f(posval)
-  posval=i(above,0,possgn)
-  possgn=a(above,0)
-  above=d(output,high)
-  lower=d(negsum,small)
-  negsum=f(negval)
-  negval=i(below,0,negsgn)
-  negsgn=a(below,0)
-  below=d(low,output)
+ B) triangle to edge: (low, high)
+  output=j(higher,lower)
+  higher=a(input,low)
+  lower=a(high,input)
 
  C) signal to square: (convert)
   orthogonal=f(input)
   opposite=f(orthogonal)
   output=a(0,opposite)
 
- D) level to square (vco; small, high, low)
-  output=a(table,0)
-  table=k(postab,negtab)
-  postab=f(level)
-  negtab=f(above)
-  just=d(negtab,small)
-  area=a(postab,just)
-  both=j(above,area)
-  level=c(below,both)
-  above=a(postab,high)
-  below=a(low,negtab)
+ D) level to square (vco; high, low)
+  done=c(input)
+  poshigh=a(poslvl,high)
+  poslow=a(low,poslvl)
+  posnlow=b(poslow)
+  posand=j(poshigh,negnhigh)
+  posor=c(neglow,posand)
+  posval=i(input,done,posor)
+  poslvl=f(posval)
+  neghigh=a(neglvl,high)
+  neglow=a(low,neglvl)
+  negnhigh=b(neghigh)
+  negand=j(neghigh,posnlow)
+  negor=c(poshigh,negand)
+  negval=i(input,done,negor)
+  neglvl=f(negval)
+  triangle=k(poslvl,neglvl)
+  square=c(poshigh,neglow)
+  output=(triangle,square)
 
  E) two squares to square: (pll; small, high, low)
   (reference,feedback)=input
-  output=D(level)
+  output=C(level)
   refval=g(reference)
   refabs=h(refval)
   feedval=g(feedback)
