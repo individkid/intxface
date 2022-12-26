@@ -127,18 +127,17 @@ Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
 Input through C to two of DE, one directly with direct feedback,
 and the other through diveder with feedback through divider.
-The DE outputs go to several B.
-The B from the direct feedback go to e with input.
-The B from the indirect feedback go to A with rate from e.
+The DE with direct feedback goes to swveral B to e with input.
+The DE with indirect feedback goes to severalA with rate from e.
  a) two levels to level, (1 opamp; no feedback)
  b) level to level, (absolute value)
  c) two levels to level, (average)
  d) two levels to level, (1 opamp, 4 resistors; difference)
  e) level and edge to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
  f) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
- g) level to slope, (1 opamp, 1 capacitor, 1 resistor; differential)
+ g) level to slope, (1 opamp, 1 capacitor, 1 resistor; negative differential)
 
- A) triangle to triangle: (6 opamps; single; rate, sign, low, mid, high)
+ A) triangle to triangle: (8 opamps; single; rate, sign, width, high)
   (triangle,square)=input,
   output=f(!higher&!lower&(square=sign)?(middle?done:rate):zero),
   higher=a(triangle,high),
@@ -146,12 +145,15 @@ The B from the indirect feedback go to A with rate from e.
   middle=a(triangle,mid),
   zero=a(0,output),
   done=d(0,rate),
+  mid=d(high,width),
+  low=d(mid,width),
 
- B) triangle to edge: (3 opamps; detect; sign, low, high)
+ B) triangle to edge: (4 opamps; detect; sign, width, high)
   (triangle,square)=input
-  output=a(!higher&!lower&(square=sign),0)
+  output=a(!higher&!lower&(square=sign),pos,neg)
   higher=a(triangle,high),
   lower=a(low,triangle),
+  low=d(high,width),
 
  C) signal to square: (3 opamps; convert)
   orthogonal=f(input)
@@ -161,14 +163,14 @@ The B from the indirect feedback go to A with rate from e.
  D) level to square (8 opamps; vco; high, low)
   poshigh=a(poslvl,high)
   poslow=a(low,poslvl)
-  poslvl=f(neglow|(poshigh&!neghigh)?input:done)
+  poslvl=f(neglow|(poshigh&!neghigh)?input:unput)
   neghigh=a(neglvl,high)
   neglow=a(low,neglvl)
-  neglvl=f(poshigh|(neghigh&!poslow)?input:done)
+  neglvl=f(poshigh|(neghigh&!poslow)?input:unput)
   triangle=c(poslvl,neglvl)
   square=a(poshigh|neglow,0)
   output=(triangle,square)
-  done=d(0,input)
+  unput=d(0,input)
 
  E) two squares to level: (6 opamps; pll; small, high, low)
   (reference,feedback)=input
