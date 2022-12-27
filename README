@@ -135,22 +135,26 @@ The DE with indirect feedback goes to severalA with rate from f.
  d) level to slope, (1 opamp, 1 capacitor, 1 resistor; negative differential)
  e) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
  f) level and edge to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
- A) triangle to triangle: (8 opamps; single; rate, sign, width, high)
+ A) triangle to triangle: (10 opamps; single; rate, width, high)
   (triangle,square)=input,
   output=e(!higher&!lower&(square=sign)?(middle?done:rate):zero),
-  higher=a(triangle,high),
+  higher=a(triangle,half),
   lower=a(low,triangle),
   middle=a(triangle,mid),
   zero=a(0,output),
   done=b(0,rate),
-  mid=b(high,width),
+  mid=b(half,width),
   low=b(mid,width),
- B) triangle to edge: (4 opamps; detect; sign, width, high)
+  half=c(sign,high)
+  sign=a(high),
+ B) triangle to edge: (6 opamps; detect; width, high)
   (triangle,square)=input
   output=a(!higher&!lower&(square=sign),pos,neg)
-  higher=a(triangle,high),
+  higher=a(triangle,half),
   lower=a(low,triangle),
-  low=b(high,width),
+  low=b(half,width),
+  half=c(sign,high)
+  sign=a(high),
  C) signal to square: (3 opamps; convert)
   orthogonal=e(input)
   opposite=e(orthogonal)
@@ -166,12 +170,14 @@ The DE with indirect feedback goes to severalA with rate from f.
   square=a(poshigh|neglow,0)
   output=(triangle,square)
   unput=b(0,input)
- E) two squares to level: (6 opamps; pll; small, high, low)
+ E) two squares to level: (8 opamps; pll; small, high, low)
   (reference,feedback)=input
   refval=d(reference)
-  refabs=b(refval?refval:0,refval?0:refval)
+  refsgn=a(refval)
+  refabs=b(refsgn?refval:0,refsgn?0:refval)
   feedval=d(feedback)
-  feedabs=b(feedval?feedval:0,feedval?0:feedval)
+  feedsgn=a(feedval)
+  feedabs=b(feedsgn?feedval:0,feedsgn?0:feedval)
   slope=b(refabs,feedabs)
   output=e(slope)
 
