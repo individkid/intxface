@@ -127,8 +127,8 @@ Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
 Input through C to two of DE, one directly with direct feedback,
 and the other through diveder with feedback through divider.
-The DE with direct feedback goes to swveral B to f with input.
-The DE with indirect feedback goes to severalA with rate from f.
+The DE with direct feedback goes to several B to f with input.
+The DE with indirect feedback goes to several A with rate from f.
  a) two levels to level, (1 opamp; no feedback)
  b) two levels to level, (1 opamp, 4 resistors; difference)
  c) two levels to level, (1 opamp, 4 resistors; average)
