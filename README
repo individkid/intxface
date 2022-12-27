@@ -127,59 +127,53 @@ Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
 Input through C to two of DE, one directly with direct feedback,
 and the other through diveder with feedback through divider.
-The DE with direct feedback goes to swveral B to e with input.
-The DE with indirect feedback goes to severalA with rate from e.
+The DE with direct feedback goes to swveral B to f with input.
+The DE with indirect feedback goes to severalA with rate from f.
  a) two levels to level, (1 opamp; no feedback)
- b) level to level, (absolute value)
- c) two levels to level, (average)
- d) two levels to level, (1 opamp, 4 resistors; difference)
- e) level and edge to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
- f) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
- g) level to slope, (1 opamp, 1 capacitor, 1 resistor; negative differential)
-
+ b) two levels to level, (1 opamp, 4 resistors; difference)
+ c) two levels to level, (1 opamp, 4 resistors; average)
+ d) level to slope, (1 opamp, 1 capacitor, 1 resistor; negative differential)
+ e) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
+ f) level and edge to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
  A) triangle to triangle: (8 opamps; single; rate, sign, width, high)
   (triangle,square)=input,
-  output=f(!higher&!lower&(square=sign)?(middle?done:rate):zero),
+  output=e(!higher&!lower&(square=sign)?(middle?done:rate):zero),
   higher=a(triangle,high),
   lower=a(low,triangle),
   middle=a(triangle,mid),
   zero=a(0,output),
-  done=d(0,rate),
-  mid=d(high,width),
-  low=d(mid,width),
-
+  done=b(0,rate),
+  mid=b(high,width),
+  low=b(mid,width),
  B) triangle to edge: (4 opamps; detect; sign, width, high)
   (triangle,square)=input
   output=a(!higher&!lower&(square=sign),pos,neg)
   higher=a(triangle,high),
   lower=a(low,triangle),
-  low=d(high,width),
-
+  low=b(high,width),
  C) signal to square: (3 opamps; convert)
-  orthogonal=f(input)
-  opposite=f(orthogonal)
+  orthogonal=e(input)
+  opposite=e(orthogonal)
   output=a(0,opposite)
-
  D) level to square (8 opamps; vco; high, low)
   poshigh=a(poslvl,high)
   poslow=a(low,poslvl)
-  poslvl=f(neglow|(poshigh&!neghigh)?input:unput)
+  poslvl=e(neglow|(poshigh&!neghigh)?input:unput)
   neghigh=a(neglvl,high)
   neglow=a(low,neglvl)
-  neglvl=f(poshigh|(neghigh&!poslow)?input:unput)
+  neglvl=e(poshigh|(neghigh&!poslow)?input:unput)
   triangle=c(poslvl,neglvl)
   square=a(poshigh|neglow,0)
   output=(triangle,square)
-  unput=d(0,input)
-
+  unput=b(0,input)
  E) two squares to level: (6 opamps; pll; small, high, low)
   (reference,feedback)=input
-  refval=g(reference)
-  refabs=b(refval)
-  feedval=g(feedback)
-  feedabs=b(feedval)
-  slope=d(refabs,feedabs)
-  output=f(slope)
+  refval=d(reference)
+  refabs=b(refval?refval:0,refval?0:refval)
+  feedval=d(feedback)
+  feedabs=b(feedval?feedval:0,feedval?0:feedval)
+  slope=b(refabs,feedabs)
+  output=e(slope)
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
