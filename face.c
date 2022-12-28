@@ -570,6 +570,14 @@ void assignStr(char **ptr, const char *str)
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
+void assignDat(void **ptr, const void *dat)
+{
+	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
+	if (dat == 0) return;
+	allocMem(ptr,*(int*)(dat)+sizeof(int));
+	if (*ptr == 0) ERRFNC(-1);
+	memcpy((void*)(((int*)(*ptr))+1),(void*)(((int*)dat)+1),*(int*)dat);
+}
 void callStr(const char *str, int trm, int idx, void *arg)
 {
 	char **ptr = arg;
@@ -631,6 +639,18 @@ void readStrHsFnc(const char *buf, int trm, int idx, void *arg)
 void readStrHs(hftype fnc, int idx)
 {
 	readStr(readStrHsFnc,fnc,idx);
+}
+void readDat(void *dat, int idx)
+{
+	int size = readInt(idx);
+	int val = 0;
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
+	allocMem(&dat,sizeof(int)+size);
+	*(int*)dat = size;
+	val = read(inp[idx],(void*)(((int*)dat)+1),size);
+	if (val != 0 && val < size) ERRFNC(idx);
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val == 0)  NOTICE(idx);
 }
 void readEof(int idx)
 {
@@ -733,6 +753,13 @@ void pwriteStr(const char *arg, int trm, long long loc, int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
 	int siz = strlen(arg)+trm;
 	int val = pwrite(out[idx],arg,siz,loc);
+	if (val < siz) ERRFNC(idx);
+}
+void writeDat(const void *dat, int idx)
+{
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
+	int siz = *(int*)dat;
+	int val = writeBuf((void*)(((int*)dat)+1),siz,idx);
 	if (val < siz) ERRFNC(idx);
 }
 void writeChr(char arg, int idx)
@@ -897,6 +924,18 @@ void showStr(const char* val, char **str, int *siz)
 	free(tmp);
 	*siz += num;
 }
+void showDat(const void* val, char **str, int *siz)
+{
+	char *tmp = 0;
+	int num;
+	if (asprintf(&tmp,"Dat(TODO)") < 0) ERRFNC(-1);
+	num = strlen(tmp);
+	allocMem((void**)str,*siz+num+1);
+	if (*str == 0) ERRFNC(-1);
+	memcpy(*str+*siz,tmp,num+1);
+	free(tmp);
+	*siz += num;
+}
 int hideIdent(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
@@ -1019,6 +1058,10 @@ int hideStr(char **val, const char *str, int *siz)
 	free(tmp);
 	*siz += limit+num;
 	return 1;
+}
+int hideDat(void **val, const char *str, int *siz)
+{
+	return 0; // TODO
 }
 
 int waitReadLua(lua_State *lua)

@@ -390,6 +390,8 @@ function showStructCH(val)
 		decl = "float"
 	elseif (val[2] == "Str") then
 		decl = "char*"
+	elseif (val[2] == "Dat") then
+		decl = "void*"
 	else
 		decl = val[2]
 	end
@@ -515,7 +517,7 @@ function showStreamC(name,struct,show,pre,post)
 		local arg = nil
 		local lim = nil
 		local ebr = ""
-		if (show==showFreeCF) and (Structz[v[2]]==nil) and (v[2] ~= "Str") and
+		if (show==showFreeCF) and (Structz[v[2]]==nil) and (v[2] ~= "Str") and (v[2] ~="Dat") and
 			(type(v[4]) ~= "number") and (type(v[4]) ~= "string") then
 			cond = "1"
 		end
@@ -547,7 +549,8 @@ function showStreamC(name,struct,show,pre,post)
 			arg = {}
 			lim = "ptr->"..v[4]
 		elseif (type(v[4]) == "number") or (type(v[4]) == "string") or
-			(v[2] == "Str" and show == showFreeCF) then
+			(v[2] == "Str" and show == showFreeCF) or
+			(v[2] == "Dat" and show == showFreeCF) then
 			sub = ""
 		end
 		if lim then
@@ -602,6 +605,8 @@ function showFreeCF(v,ebr,sub)
 		result = result.."alloc"..v[2].."(&ptr->"..v[1]..",0);"..ebr.."\n"
 	elseif (v[2] == "Str") then
 		result = result.."assignStr(&ptr->"..v[1]..",0);"..ebr.."\n"
+	elseif (v[2] == "Dat") then
+		result = result.."assignDat(&ptr->"..v[1]..",0);"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end
@@ -643,6 +648,8 @@ function showReadCF(v,ebr,sub)
 		result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	elseif (v[2] == "Str") then
 		result = result.."readStr(callStr,&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
+	elseif (v[2] == "Dat") then
+		result = result.."readDat(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	else
 		result = result.."ptr->"..v[1]..sub.." = read"..v[2].."(idx);"..ebr.."\n"
 	end
@@ -656,6 +663,8 @@ function showWriteCF(v,ebr,sub)
 		result = result.."write"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	elseif (v[2] == "Str") then
 		result = result.."writeStr(ptr->"..v[1]..sub..",1,idx);"..ebr.."\n"
+	elseif (v[2] == "Dat") then
+		result = result.."writeDat(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	else
 		result = result.."write"..v[2].."(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	end
@@ -697,6 +706,9 @@ function showRandCF(v,ebr,sub)
 	elseif (v[2] == "Str") then
 		result = result.."{const char *temp = \"hello ok again\"; "
 		result = result.."assignStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
+	elseif (v[2] == "Dat") then
+		result = result.."{const char *temp = \"hello ok again\"; "
+		result = result.."assignDat(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end
@@ -710,6 +722,8 @@ function showCompCF(v,ebr,sub)
 		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return 0;"..ebr.."\n"
 	elseif (v[2] == "Str") then
 		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
+	elseif (v[2] == "Dat") then
+		result = result.."if (memcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..",*(int*)ptr->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
 	else
 		result = result..ebr.."; // "..showAny(v).."\n"
 	end
@@ -721,6 +735,8 @@ function showSizeCF(v,ebr,sub)
 		result = result.."result = result + sizeof(int);"..ebr.."\n"
 	elseif (v[2] == "Str") then
 		result = result.."result = result + strlen(ptr->"..v[1]..sub..") + 1;"..ebr.."\n"
+	elseif (v[2] == "Dat") then
+		result = result.."result = result + *(int*)(ptr->"..v[1]..sub..") + sizeof(int);"..ebr.."\n"
 	elseif (Structz[v[2]]~=nil) then
 		result = result.."result = result + size"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
 	elseif (v[2] == "Chr") then
@@ -746,23 +762,6 @@ function showCompC(name,struct)
 end
 function showSizeC(name,struct)
 	return showStreamC(name,struct,showSizeCF,"int size","")
-end
-function showShowCG(name)
-	local result = ""
-	if (name == "Chr") then
-		result = result.."c"
-	elseif (name == "Int") then
-		result = result.."d"
-	elseif (name == "New") then
-		result = result.."lld"
-	elseif (name == "Num") then
-		result = result.."lf"
-	elseif (name == "Old") then
-		result = result.."f"
-	elseif (name == "Str") then
-		result = result.."s"
-	end
-	return result
 end
 function showShowCH(pre,i)
 	local result = ""
@@ -1058,6 +1057,8 @@ function showRfieldC(list,map)
 				result = result..showIndent(3)..lval
 			elseif (vl[2] == "Str") then
 				result = result..showIndent(3).."readStr(callStr,&"..lval
+			elseif (vl[2] == "Dat") then
+				result = result..showIndent(3).."readDat(&"..lval
 			else
 				result = result..showIndent(3)..lval
 			end
@@ -1066,6 +1067,8 @@ function showRfieldC(list,map)
 			elseif (not (Enumz[vl[2]] == nil)) then
 				result = result.." = readInt(xfd);\n"
 			elseif (vl[2] == "Str") then
+				result = result..",xfd);\n"
+			elseif (vl[2] == "Dat") then
 				result = result..",xfd);\n"
 			else
 				result = result.." = read"..vl[2].."(xfd);\n"
@@ -1205,6 +1208,8 @@ function showStructHsG(name,pre,post)
 		result = result..pre.."Float"..post
 	elseif (name == "Str") then
 		result = result..pre.."String"..post
+	elseif (name == "Dat") then
+		result = result..pre.."Dat"..post
 	else
 		result = result..pre..name..post
 	end

@@ -466,6 +466,12 @@ Center = {
 Sculpt = {
 	{"cfg","Ture",{},{}},
 }
+Data = {
+	{"siz","Int",{},{}},
+	{"met","Int",{},"siz"},
+	{"rst","Int",{},"siz"},
+	{"dat","Dat",{},{}},
+}
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
 Constants,Constantz = listHere("Constants","type.gen")
@@ -496,6 +502,7 @@ function showTypeHs()
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
 	result = result.."--\n"
+	result = result.."type Dat = Int -- TODO\n"
 	result = result..showCallHs()
 	return result
 end
