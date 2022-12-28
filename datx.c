@@ -30,6 +30,7 @@ void *datxNext(int sub, int num, int idx)
 	int tot = 0;
 	int lst = 0;
 	datxOpen(idx);
+	if (sub < 0 || sub >= base[idx]->siz) ERROR();
 	dat = base[idx];
 	nxt = next[idx];
 	tot = totl[idx];
@@ -60,13 +61,11 @@ void *datxNext(int sub, int num, int idx)
 		last[idx] = tot;}
 	return data[idx];
 }
-void datxBack(int sub, int num, int idx)
-{
-	// TODO
-}
 int datxMeta(int sub, int idx)
 {
-	return 0; // TODO
+	datxOpen(idx);
+	if (sub < 0 || sub >= base[idx]->siz) ERROR();
+	return next[idx][sub];
 }
 int datxPtrs(void *dat)
 {

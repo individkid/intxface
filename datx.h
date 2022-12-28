@@ -1,7 +1,6 @@
 void datxOpen(int idx);
 void datxClose(int idx);
 void *datxNext(int sub, int num, int idx);
-void datxBack(int sub, int num, int idx);
 int datxMeta(int sub, int idx);
 int datxPtrs(void *dat);
 int datxChrs(void *dat);
