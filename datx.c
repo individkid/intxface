@@ -1,6 +1,5 @@
 #include "type.h"
 #include "face.h"
-#include "datx.h"
 
 struct Data *base[NUMOPEN] = {0};
 void *data[NUMOPEN] = {0};
@@ -35,7 +34,7 @@ void *datxNext(int sub, int num, int idx)
 	nxt = next[idx];
 	tot = totl[idx];
 	lst = last[idx];
-	while (num > 0 && tot-lst < datxPtrs(dat->dat)) {
+	while (num > 0 && tot-lst < *(int*)(dat->dat)) {
 		tot++;
 		for (int i = 0; i < dat->siz; i++) {
 			nxt[i]++;}
@@ -48,7 +47,7 @@ void *datxNext(int sub, int num, int idx)
 	if (num > 0) ERROR();
 	assignDat(&data[idx],dat->dat,tot-lst,tot-totl[idx]);
 	totl[idx] = tot;
-	if (tot-lst >= datxPtrs(dat->dat)) {
+	if (tot-lst >= *(int*)(dat->dat)) {
 		struct Data *tmp = 0;
 		allocData(&tmp,1);
 		readData(tmp,idx);
