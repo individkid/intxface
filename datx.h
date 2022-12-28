@@ -1,0 +1,14 @@
+void datxOpen(int idx);
+void datxClose(int idx);
+void *datxNext(int sub, int num, int idx);
+void datxBack(int sub, int num, int idx);
+int datxMeta(int sub, int idx);
+int datxPtrs(void *dat);
+int datxChrs(void *dat);
+int datxInts(void *dat);
+void *datxData(void *dat);
+void *datxPtr(int num, void *dat);
+char *datxChrz(int num, void *dat);
+int *datxIntz(int num, void *dat);
+char datxChr(int num, void *dat);
+int datxInt(int num, void *dat);

@@ -570,13 +570,15 @@ void assignStr(char **ptr, const char *str)
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
-void assignDat(void **ptr, const void *dat)
+void assignDat(void **ptr, const void *dat, int num, int siz)
 {
 	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
 	if (dat == 0) return;
-	allocMem(ptr,*(int*)(dat)+sizeof(int));
+	allocMem(ptr,siz+sizeof(int));
 	if (*ptr == 0) ERRFNC(-1);
-	memcpy((void*)(((int*)(*ptr))+1),(void*)(((int*)dat)+1),*(int*)dat);
+	*(int*)ptr = siz;
+	if (siz > *(int*)dat) siz = *(int*)dat;
+	memcpy((void*)(((int*)(*ptr))+1),(void*)(((char*)(((int*)dat)+1))+num),siz);
 }
 void callStr(const char *str, int trm, int idx, void *arg)
 {

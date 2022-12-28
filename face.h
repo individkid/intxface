@@ -48,7 +48,7 @@ void allocNum(double **ptr, int siz);
 void allocOld(float **ptr, int siz);
 void allocStr(char* **ptr, int siz);
 void assignStr(char **ptr, const char *str);
-void assignDat(void **ptr, const void *dat);
+void assignDat(void **ptr, const void *dat, int num, int siz);
 void callStr(const char *str, int trm, int idx, void *arg);
 void textStr(const char *str, int trm, int idx, void *arg);
 void readStr(sftype fnc, void *arg, int idx);
