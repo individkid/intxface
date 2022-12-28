@@ -35,14 +35,16 @@ void *datxNext(int sub, int num, int idx)
 	tot = totl[idx];
 	lst = last[idx];
 	while (num > 0 && tot-lst < *(int*)(dat->dat)) {
+		int more = 1;
 		tot++;
 		for (int i = 0; i < dat->siz; i++) {
 			nxt[i]++;}
-		for (int i = 0; i < dat->siz; i++) {
-			int rst = dat->rst[i];
-			if (nxt[rst] == dat->met[rst]) nxt[i] = 0;}
-		for (int i = 0; i < dat->siz; i++) {
-			if (nxt[i] == dat->met[i]) nxt[i] = 0;}
+		while (more) {
+			more = 0;
+			for (int i = 0; i < dat->siz; i++) {
+				int rst = dat->rst[i];
+				if ((nxt[i] == dat->met[i] || nxt[rst] == 0) && nxt[i] != 0) {
+					nxt[i] = 0; more = 1;}}}
 		if (nxt[sub] == 0) num--;}
 	if (num > 0) ERROR();
 	assignDat(&data[idx],dat->dat,tot-lst,tot-totl[idx]);
