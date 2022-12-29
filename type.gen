@@ -221,12 +221,8 @@ Logic = {
 	"NoWrap",
 	"DoWrap",
 	"OrTest",
-	"OrSelf",
 	"NoTest",
-	"NoSelf",
 	"DoTest",
-	"DoSelf",
-	"IsTest",
 	"IsSelf",
 }
 --HERE Constants

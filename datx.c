@@ -28,24 +28,19 @@ int datxProg(int sub, int idx)
 	int *nxt = 0;
 	int *opc = 0;
 	int jmp = 0;
-	int tst = sub;
 	datxOpen(idx);
 	if (sub < 0 || sub >= base[idx]->siz) ERROR();
 	dat = base[idx];
 	nxt = next[idx];
 	opc = dat->opc;
 	jmp = dat->jmp[sub];
-	while (jmp >= 0 && jmp < dat->len && tst >= 0 && tst < dat->siz && sub >= 0 && sub < dat->siz) {
+	while (jmp >= 0 && jmp < dat->len && sub >= 0 && sub < dat->siz) {
 	switch ((enum Logic)(opc[jmp]&0xf)) {
 	case (NoWrap): return 0;
 	case (DoWrap): return 1;
-	case (OrTest): jmp = ((nxt[tst]==0 || nxt[tst]==dat->met[tst]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (OrSelf): jmp = ((nxt[sub]==0 || nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (NoTest): jmp = ((nxt[tst]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (NoSelf): jmp = ((nxt[sub]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (DoTest): jmp = ((nxt[tst]==dat->met[tst]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (DoSelf): jmp = ((nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (IsTest): tst = (opc[jmp]>>4); break;
+	case (OrTest): jmp = ((nxt[sub]==0 || nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (NoTest): jmp = ((nxt[sub]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (DoTest): jmp = ((nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
 	case (IsSelf): sub = (opc[jmp]>>4); break;
 	default: return -1;}}
 	return -1;
