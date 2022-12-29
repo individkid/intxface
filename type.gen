@@ -217,6 +217,18 @@ Stream = {
 	"WrFldHd",
 	"WrFldTl",
 }
+Logic = {
+	"NoWrap",
+	"DoWrap",
+	"OrTest",
+	"OrSelf",
+	"NoTest",
+	"NoSelf",
+	"DoTest",
+	"DoSelf",
+	"IsTest",
+	"IsSelf",
+}
 --HERE Constants
 Initial = {
 	{"Shader","Dipoint","Stage","Corner","Str","vertex_render"},
@@ -469,7 +481,10 @@ Sculpt = {
 Data = {
 	{"siz","Int",{},{}},
 	{"met","Int",{},"siz"},
-	{"rst","Int",{},"siz"},
+	{"opt","Int",{},"siz"},
+	{"jmp","Int",{},"siz"},
+	{"len","Int",{},{}},
+	{"opc","Int",{},"len"},
 	{"dat","Dat",{},{}},
 }
 --HERE

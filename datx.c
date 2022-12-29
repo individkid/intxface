@@ -22,6 +22,34 @@ void datxClose(int idx)
 	if (next[idx] != 0) allocInt(&next[idx],0);
 	totl[idx] = 0; last[idx] = 0;
 }
+int datxProg(int sub, int idx)
+{
+	struct Data *dat = 0;
+	int *nxt = 0;
+	int *opc = 0;
+	int jmp = 0;
+	int tst = sub;
+	datxOpen(idx);
+	if (sub < 0 || sub >= base[idx]->siz) ERROR();
+	dat = base[idx];
+	nxt = next[idx];
+	opc = dat->opc;
+	jmp = dat->jmp[sub];
+	while (jmp >= 0 && jmp < dat->len && tst >= 0 && tst < dat->siz && sub >= 0 && sub < dat->siz) {
+	switch ((enum Logic)(opc[jmp]&0xf)) {
+	case (NoWrap): return 0;
+	case (DoWrap): return 1;
+	case (OrTest): jmp = ((nxt[tst]==0 || nxt[tst]==dat->met[tst]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (OrSelf): jmp = ((nxt[sub]==0 || nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (NoTest): jmp = ((nxt[tst]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (NoSelf): jmp = ((nxt[sub]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (DoTest): jmp = ((nxt[tst]==dat->met[tst]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (DoSelf): jmp = ((nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (IsTest): tst = (opc[jmp]>>4); break;
+	case (IsSelf): sub = (opc[jmp]>>4); break;
+	default: return -1;}}
+	return -1;
+}
 void *datxNext(int sub, int num, int idx)
 {
 	struct Data *dat = 0;
@@ -34,17 +62,18 @@ void *datxNext(int sub, int num, int idx)
 	nxt = next[idx];
 	tot = totl[idx];
 	lst = last[idx];
-	while (num > 0 && tot-lst < *(int*)(dat->dat)) {
-		int more = 1;
-		tot++;
+	while (num > 0) {
+		int inc = (*(int*)(dat->dat))-(tot-lst);
+		if (inc <= 0) break;
 		for (int i = 0; i < dat->siz; i++) {
-			nxt[i]++;}
-		while (more) {
-			more = 0;
-			for (int i = 0; i < dat->siz; i++) {
-				int rst = dat->rst[i];
-				if ((nxt[i] == dat->met[i] || nxt[rst] == 0) && nxt[i] != 0) {
-					nxt[i] = 0; more = 1;}}}
+			int dif = dat->met[i]-nxt[i];
+			if (dat->opt[i] && dif < inc) inc = dif;}
+		tot += inc;
+		for (int i = 0; i < dat->siz; i++) {
+			if (nxt[i] < dat->met[i]) nxt[i] += inc;}
+		for (int j = 1; (j ? ((j=0),1) : 0);) {
+			for (int i = 0; i < dat->siz; i++, j=0) {
+				if (datxProg(i,idx)) {nxt[i] = 0; j = 1;}}}
 		if (nxt[sub] == 0) num--;}
 	if (num > 0) ERROR();
 	assignDat(&data[idx],dat->dat,tot-lst,tot-totl[idx]);
