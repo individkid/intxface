@@ -218,12 +218,22 @@ Stream = {
 	"WrFldTl",
 }
 Logic = {
-	"NoWrap",
+	"DoKeep",
+	"OrKeep",
+	"ExKeep",
+	"AdKeep",
 	"DoWrap",
-	"OrTest",
-	"NoTest",
-	"DoTest",
-	"IsSelf",
+	"OrWrap",
+	"ExWrap",
+	"AdWrap",
+	"DoJump",
+	"OrJump",
+	"ExJump",
+	"AdJump",
+	"DoSelf",
+	"OrSelf",
+	"ExSelf",
+	"AdSelf",
 }
 --HERE Constants
 Initial = {
