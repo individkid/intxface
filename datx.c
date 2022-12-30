@@ -52,10 +52,18 @@ int datxProg(int sub, int idx)
 	case (OrSelf): sub = ((nxt[sub]==0 || nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
 	case (ExSelf): sub = ((nxt[sub]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
 	case (AdSelf): sub = ((nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
+	case (DoIncr): dat->run[opc[jmp]>>4] = 1;
+	case (OrIncr): if (nxt[sub]==0 || nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 1; break;
+	case (ExIncr): if (nxt[sub]==0) dat->run[opc[jmp]>>4] = 1; break;
+	case (AdIncr): if (nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 1; break;
+	case (DoIntr): dat->run[opc[jmp]>>4] = 0;
+	case (OrIntr): if (nxt[sub]==0 || nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 0; break;
+	case (ExIntr): if (nxt[sub]==0) dat->run[opc[jmp]>>4] = 0; break;
+	case (AdIntr): if (nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 0; break;
 	default: return -1;}}
 	return -1;
 }
-void *datxNext(int sub, int num, int idx)
+void *datxRead(int sub, int num, int idx)
 {
 	struct Data *dat = 0;
 	int *nxt = 0;
@@ -72,14 +80,14 @@ void *datxNext(int sub, int num, int idx)
 		if (inc <= 0) break;
 		for (int i = 0; i < dat->siz; i++) {
 			int dif = dat->met[i]-nxt[i];
-			if (dat->opt[i] && dif < inc) inc = dif;}
-		tot += inc;
+			if (dat->run[i] && dif > 0 && dif < inc) inc = dif;}
 		for (int i = 0; i < dat->siz; i++) {
-			if (nxt[i] < dat->met[i]) nxt[i] += inc;}
+			if (dat->run[i] && nxt[i] < dat->met[i]) nxt[i] += inc;}
 		for (int j = 1; (j ? ((j=0),1) : 0);) {
-			for (int i = 0; i < dat->siz; i++, j=0) {
+			for (int i = 0; i < dat->siz; i++) {
 				if (datxProg(i,idx)) {nxt[i] = 0; j = 1;}}}
-		if (nxt[sub] == 0) num--;}
+		if (nxt[sub] == 0) num--;
+		tot += inc;}
 	if (num > 0) ERROR();
 	assignDat(&data[idx],dat->dat,tot-lst,tot-totl[idx]);
 	totl[idx] = tot;
@@ -120,14 +128,17 @@ void *datxData(void *dat)
 }
 void *datxPtr(int num, void *dat)
 {
+	if (num >= datxPtrs(dat)) ERROR();
 	return (void*)(((char*)datxData(dat))+num);
 }
 char *datxChrz(int num, void *dat)
 {
+	if (num >= datxChrs(dat)) ERROR();
 	return (char*)datxPtr(num*sizeof(char),dat);
 }
 int *datxIntz(int num, void *dat)
 {
+	if (num >= datxInts(dat)) ERROR();
 	return (int*)datxPtr(num*sizeof(int),dat);
 }
 char datxChr(int num, void *dat)

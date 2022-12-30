@@ -234,6 +234,14 @@ Logic = {
 	"OrSelf",
 	"ExSelf",
 	"AdSelf",
+	"DoIncr",
+	"OrIncr",
+	"ExIncr",
+	"AdIncr",
+	"DoIntr",
+	"OrIntr",
+	"ExIntr",
+	"AdIntr",
 }
 --HERE Constants
 Initial = {
@@ -293,7 +301,7 @@ Bootstrap = {
 			"cfg[3]:Configure(ClosestFound)val[3]:Int(3))"..
 		"mch[16]:Machine(xfr:Transfer(Write)siz:Int(0))"..
 	")"},
-	{"Int","2","Str","Center(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(2)idx:Int(0)slf:Int(0)"..
+	{"Int","0","Str","Center(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(2)idx:Int(0)slf:Int(0)"..
 		"cfg[0]:Configure(MachineIndex)val[0]:Int(0)"..
 		"cfg[1]:Configure(MachineLimit)val[1]:Int(17)"..
 	")"},
@@ -487,7 +495,7 @@ Sculpt = {
 Data = {
 	{"siz","Int",{},{}},
 	{"met","Int",{},"siz"},
-	{"opt","Int",{},"siz"},
+	{"run","Int",{},"siz"},
 	{"jmp","Int",{},"siz"},
 	{"len","Int",{},{}},
 	{"opc","Int",{},"len"},
