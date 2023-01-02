@@ -2,69 +2,67 @@
 #include "face.h"
 
 struct Data *base[NUMOPEN] = {0};
-void *data[NUMOPEN] = {0};
 int *next[NUMOPEN] = {0};
 int totl[NUMOPEN] = {0};
 int last[NUMOPEN] = {0};
+int *todo[NUMOPEN] = {0};
+int done[NUMOPEN] = {0};
+int save[NUMOPEN] = {0};
+int *limt[NUMOPEN] = {0};
+int *jump[NUMOPEN] = {0};
+int lmts[NUMOPEN] = {0};
 void datxOpen(int idx)
 {
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
-	if (base[idx] == 0) allocData(&base[idx],1);
-	if (base[idx]->siz == 0) {
+	if (base[idx] == 0) {
+		allocData(&base[idx],1);
 		readData(base[idx],idx);
-		allocInt(&next[idx],base[idx]->siz+1);}
+		allocInt(&next[idx],base[idx]->siz);}
 }
 void datxClose(int idx)
 {
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
 	if (base[idx] != 0) allocData(&base[idx],0);
-	if (data[idx] != 0) assignDat(data[idx],0,0,0);
 	if (next[idx] != 0) allocInt(&next[idx],0);
-	totl[idx] = 0; last[idx] = 0;
+	if (todo[idx] != 0) allocInt(&todo[idx],0);
+	if (limt[idx] != 0) allocInt(&limt[idx],0);
+	if (jump[idx] != 0) allocInt(&jump[idx],0);
+	totl[idx] = 0; last[idx] = 0; done[idx] = 0; save[idx] = 0; lmts[idx] = 0;
 }
-int datxProg(int sub, int idx)
+void datxProg(int idx, int sub)
 {
 	struct Data *dat = 0;
 	int *nxt = 0;
-	int *opc = 0;
+	enum Logic *opc = 0;
+	int *lim = 0;
 	int jmp = 0;
+	int loc = 0;
 	datxOpen(idx);
 	if (sub < 0 || sub >= base[idx]->siz) ERROR();
 	dat = base[idx];
 	nxt = next[idx];
 	opc = dat->opc;
-	jmp = dat->jmp[sub];
-	while (jmp >= 0 && jmp < dat->len && sub >= 0 && sub < dat->siz) {
+	lim = dat->lim;
+	loc = jmp = dat->jmp[sub];
+	while (jmp >= 0 && jmp < dat->len) {
+	int opd = opc[jmp]>>4;
 	switch ((enum Logic)(opc[jmp]&0xf)) {
-	case (DoKeep): return 0;
-	case (OrKeep): if (nxt[sub]==0 || nxt[sub]==dat->met[sub]) return 0; break;
-	case (ExKeep): if (nxt[sub]==0) return 0; break;
-	case (AdKeep): if (nxt[sub]==dat->met[sub]) return 0; break;
-	case (DoWrap): return 1;
-	case (OrWrap): if (nxt[sub]==0 || nxt[sub]==dat->met[sub]) return 1; break;
-	case (ExWrap): if (nxt[sub]==0) return 1; break;
-	case (AdWrap): if (nxt[sub]==dat->met[sub]) return 1; break;
-	case (DoJump): jmp = (opc[jmp]>>4); break;
-	case (OrJump): jmp = ((nxt[sub]==0 || nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (ExJump): jmp = ((nxt[sub]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (AdJump): jmp = ((nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (DoSelf): sub = (opc[jmp]>>4); break;
-	case (OrSelf): sub = ((nxt[sub]==0 || nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (ExSelf): sub = ((nxt[sub]==0) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (AdSelf): sub = ((nxt[sub]==dat->met[sub]) ? ((opc[jmp]>>4)&0xff) : (opc[jmp]>>12)); break;
-	case (DoIncr): dat->run[opc[jmp]>>4] = 1;
-	case (OrIncr): if (nxt[sub]==0 || nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 1; break;
-	case (ExIncr): if (nxt[sub]==0) dat->run[opc[jmp]>>4] = 1; break;
-	case (AdIncr): if (nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 1; break;
-	case (DoIntr): dat->run[opc[jmp]>>4] = 0;
-	case (OrIntr): if (nxt[sub]==0 || nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 0; break;
-	case (ExIntr): if (nxt[sub]==0) dat->run[opc[jmp]>>4] = 0; break;
-	case (AdIntr): if (nxt[sub]==dat->met[sub]) dat->run[opc[jmp]>>4] = 0; break;
-	default: return -1;}}
-	return -1;
+	case (WrpVal): if (nxt[opd] == lim[opd]) jmp = loc; break;
+	case (WrpYld): if (nxt[opd] == lim[opd]) {jmp = loc; return;} break;
+	case (RunVal): if (nxt[opd] < lim[opd]) jmp = loc; break;
+	case (RunYld): if (nxt[opd] < lim[opd]) {jmp = loc; return;} break;
+	case (ClrVal): nxt[opd] = 0; break;
+	case (ClrJmp): nxt[opd] = 0; jmp = loc; break;
+	case (ClrYld): nxt[opd] = 0; jmp = loc; return;
+	case (SkpVal): nxt[opd] = lim[opd]; break;
+	case (SkpJmp): nxt[opd] = lim[opd]; jmp = loc; break;
+	case (SkpYld): nxt[opd] = lim[opd]; jmp = loc; return;
+	case (SetJmp): loc = opd; break;
+	default: ERROR();}}
 }
-void *datxRead(int sub, int num, int idx)
+void datxRead(void **ptr, int sub, int num, int idx)
 {
+	void *ret = 0;
 	struct Data *dat = 0;
 	int *nxt = 0;
 	int tot = 0;
@@ -79,30 +77,78 @@ void *datxRead(int sub, int num, int idx)
 		int inc = (*(int*)(dat->dat))-(tot-lst);
 		if (inc <= 0) break;
 		for (int i = 0; i < dat->siz; i++) {
-			int dif = dat->met[i]-nxt[i];
-			if (dat->run[i] && dif > 0 && dif < inc) inc = dif;}
+			int dif = dat->lim[i]-nxt[i];
+			if (dif > 0 && dif < inc) inc = dif;}
 		for (int i = 0; i < dat->siz; i++) {
-			if (dat->run[i] && nxt[i] < dat->met[i]) nxt[i] += inc;}
-		for (int j = 1; (j ? ((j=0),1) : 0);) {
-			for (int i = 0; i < dat->siz; i++) {
-				if (datxProg(i,idx)) {nxt[i] = 0; j = 1;}}}
+			if (nxt[i] < dat->lim[i]) nxt[i] += inc;}
+		for (int i = 0; i < dat->siz; i++) {
+			datxProg(idx,i);}
 		if (nxt[sub] == 0) num--;
 		tot += inc;}
 	if (num > 0) ERROR();
-	assignDat(&data[idx],dat->dat,tot-lst,tot-totl[idx]);
+	allocDat(ptr,tot-totl[idx]);
+	assignDat(ptr,dat->dat,0,tot-lst,tot-totl[idx]);
 	totl[idx] = tot;
 	if (tot-lst >= *(int*)(dat->dat)) {
 		struct Data *tmp = 0;
 		allocData(&tmp,1);
 		readData(tmp,idx);
 		if (tmp->siz == 0) {
-			assignDat(&dat->dat,tmp->dat,0,*(int*)(tmp->dat));
-			allocData(&tmp,0);}
+			allocDat(&dat->dat,0);
+			dat->dat = tmp->dat;
+			allocDat(&tmp->dat,0);}
 		else {
 			allocData(&base[idx],0);
 			base[idx] = tmp;}
 		last[idx] = tot;}
-	return data[idx];
+}
+void datxInit(int sub, int lim, int idx)
+{
+	if (done[idx] > 0) {
+	appendInt(&todo[idx],Logics,&done[idx]);}
+	if (lmts[idx] <= sub) {
+	resizeInt(&limt[idx],sub,sub+1);
+	resizeInt(&jump[idx],sub,sub+1);
+	lmts[idx] = sub+1;}
+	limt[idx][sub] = lim; jump[idx][sub] = done[idx]; save[idx] = sub;
+	appendInt(&todo[idx],(done[idx]<<4)|SetJmp,&done[idx]);
+}
+void datxNowr(int sub, int idx)
+{
+	appendInt(&todo[idx],((sub<<4)|WrpYld),&done[idx]);
+}
+void datxNorn(int sub, int idx)
+{
+	appendInt(&todo[idx],((sub<<4)|RunYld),&done[idx]);
+}
+void datxDocl(int idx)
+{
+	appendInt(&todo[idx],((save[idx]<<4)|ClrYld),&done[idx]);
+}
+void datxDosk(int idx)
+{
+	appendInt(&todo[idx],((save[idx]<<4)|SkpYld),&done[idx]);
+}
+void datxWrite(void *dat, int idx)
+{
+	struct Data tmp = {0};
+	if (idx < 0 || idx >= NUMOPEN) ERROR();
+	if (done[idx] != 0) {
+	appendInt(&todo[idx],Logics,&done[idx]);
+	allocInt(&(tmp.lim),lmts[idx]);
+	allocInt(&(tmp.jmp),lmts[idx]);
+	allocLogic(&(tmp.opc),done[idx]);
+	for (int i = 0; i < lmts[idx]; i++) tmp.lim[i] = limt[idx][i];
+	for (int i = 0; i < lmts[idx]; i++) tmp.jmp[i] = jump[idx][i];
+	for (int i = 0; i < done[idx]; i++) tmp.opc[i] = todo[idx][i];
+	allocInt(&limt[idx],0);
+	allocInt(&jump[idx],0);
+	allocInt(&todo[idx],0);
+	tmp.siz = lmts[idx]; tmp.len = done[idx];
+	done[idx] = 0; save[idx] = 0; lmts[idx] = 0;}
+	assignDat(&tmp.dat,dat,0,0,*(int*)dat);
+	writeData(&tmp,idx);
+	freeData(&tmp);
 }
 int datxMeta(int sub, int idx)
 {

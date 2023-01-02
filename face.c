@@ -530,6 +530,17 @@ void allocInt(int **ptr, int siz)
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
+void resizeInt(int **ptr, int sav, int siz)
+{
+	int *tmp = *ptr; allocInt(&tmp,siz);
+	for (int i = 0; i < sav && i < siz; i++) tmp[i] = (*ptr)[i];
+	allocInt(ptr,0); *ptr = tmp;
+}
+void appendInt(int **ptr, int val, int *siz)
+{
+	resizeInt(ptr,(*siz)+1);
+	(*ptr)[(*siz)++] = val;
+}
 void allocNew(long long **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
@@ -570,15 +581,35 @@ void assignStr(char **ptr, const char *str)
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
-void assignDat(void **ptr, const void *dat, int num, int siz)
+void allocDat(void **ptr, int siz)
 {
-	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
-	if (dat == 0) return;
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
 	allocMem(ptr,siz+sizeof(int));
 	if (*ptr == 0) ERRFNC(-1);
-	*(int*)ptr = siz;
-	if (siz > *(int*)dat) siz = *(int*)dat;
-	memcpy((void*)(((int*)(*ptr))+1),(void*)(((char*)(((int*)dat)+1))+num),siz);
+	memset(*ptr,0,siz+sizeof(int));
+	*(int*)(*ptr) = siz;
+}
+void assignDat(void **ptr, const void *dat, int ofs, int num, int siz)
+{
+	void *src = 0;
+	void *dst = 0;
+	int len = 0;
+	if (*ptr == 0) {
+		allocDat(ptr,ofs+siz);
+		*(int*)(*ptr) = ofs+siz;}
+	if (ofs+siz > *(int*)(*ptr)) {
+		void *tmp = 0;
+		allocDat(&tmp,ofs+siz);
+		memcpy(tmp,*ptr,ofs+siz+sizeof(int));
+		*(int*)tmp = ofs+siz;
+		allocDat(ptr,0);
+		*ptr = tmp;}
+	if (dat == 0) return; // TODO use zeroes
+	if (num+siz >= *(int*)dat) return; // TODO use zeroes from beyond end
+	src = (void*)((char*)(((int*)dat)+1)+num);
+	dst = (void*)((char*)(((int*)ptr)+1)+ofs);
+	memcpy(dst,src,siz);
 }
 void callStr(const char *str, int trm, int idx, void *arg)
 {

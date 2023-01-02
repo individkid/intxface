@@ -218,30 +218,17 @@ Stream = {
 	"WrFldTl",
 }
 Logic = {
-	"DoKeep",
-	"OrKeep",
-	"ExKeep",
-	"AdKeep",
-	"DoWrap",
-	"OrWrap",
-	"ExWrap",
-	"AdWrap",
-	"DoJump",
-	"OrJump",
-	"ExJump",
-	"AdJump",
-	"DoSelf",
-	"OrSelf",
-	"ExSelf",
-	"AdSelf",
-	"DoIncr",
-	"OrIncr",
-	"ExIncr",
-	"AdIncr",
-	"DoIntr",
-	"OrIntr",
-	"ExIntr",
-	"AdIntr",
+	"WrpVal",
+	"WrpYld",
+	"RunVal",
+	"RunYld",
+	"ClrVal",
+	"ClrJmp",
+	"ClrYld",
+	"SkpVal",
+	"SkpJmp",
+	"SkpYld",
+	"SetJmp",
 }
 --HERE Constants
 Initial = {
@@ -494,11 +481,10 @@ Sculpt = {
 }
 Data = {
 	{"siz","Int",{},{}},
-	{"met","Int",{},"siz"},
-	{"run","Int",{},"siz"},
+	{"lim","Int",{},"siz"},
 	{"jmp","Int",{},"siz"},
 	{"len","Int",{},{}},
-	{"opc","Int",{},"len"},
+	{"opc","Logic",{},"len"},
 	{"dat","Dat",{},{}},
 }
 --HERE
