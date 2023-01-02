@@ -1,7 +1,13 @@
 void datxOpen(int idx);
 void datxClose(int idx);
-int datxProg(int sub, int idx);
-void *datxRead(int sub, int num, int idx);
+void datxProg(int sub, int idx);
+void datxRead(void **ptr, int sub, int num, int idx);
+void datxInit(int sub, int lim, int idx);
+void datxNowr(int sub, int idx);
+void datxNorn(int sub, int idx);
+void datxDocl(int idx);
+void datxDosk(int idx);
+void datxWrite(void *dat, int idx);
 int datxMeta(int sub, int idx);
 int datxPtrs(void *dat);
 int datxChrs(void *dat);

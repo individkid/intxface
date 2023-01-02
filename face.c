@@ -538,7 +538,7 @@ void resizeInt(int **ptr, int sav, int siz)
 }
 void appendInt(int **ptr, int val, int *siz)
 {
-	resizeInt(ptr,(*siz)+1);
+	resizeInt(ptr,(*siz),(*siz)+1);
 	(*ptr)[(*siz)++] = val;
 }
 void allocNew(long long **ptr, int siz)

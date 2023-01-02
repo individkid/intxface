@@ -1,5 +1,6 @@
 #include "type.h"
 #include "face.h"
+#include "datx.h"
 
 struct Data *base[NUMOPEN] = {0};
 int *next[NUMOPEN] = {0};
@@ -29,7 +30,7 @@ void datxClose(int idx)
 	if (jump[idx] != 0) allocInt(&jump[idx],0);
 	totl[idx] = 0; last[idx] = 0; done[idx] = 0; save[idx] = 0; lmts[idx] = 0;
 }
-void datxProg(int idx, int sub)
+void datxProg(int sub, int idx)
 {
 	struct Data *dat = 0;
 	int *nxt = 0;
