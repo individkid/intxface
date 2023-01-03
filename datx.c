@@ -2,16 +2,18 @@
 #include "face.h"
 #include "datx.h"
 
-struct Data *base[NUMOPEN] = {0};
-int *next[NUMOPEN] = {0};
-int totl[NUMOPEN] = {0};
-int last[NUMOPEN] = {0};
-int *todo[NUMOPEN] = {0};
-int done[NUMOPEN] = {0};
+struct Data *base[NUMOPEN] = {0}; // last read
+int *next[NUMOPEN] = {0}; // bytes per sub
+int totl[NUMOPEN] = {0}; // bytes since open
+int last[NUMOPEN] = {0}; // bytes at last read
+int *todo[NUMOPEN] = {0}; // opcode to wrap
+int done[NUMOPEN] = {0}; // opcode count
 int save[NUMOPEN] = {0};
 int *limt[NUMOPEN] = {0};
 int *jump[NUMOPEN] = {0};
 int lmts[NUMOPEN] = {0};
+int mark[NUMOPEN] = {0};
+int strt[NUMOPEN] = {0};
 void datxOpen(int idx)
 {
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
@@ -58,6 +60,8 @@ void datxProg(int sub, int idx)
 	case (SkpVal): nxt[opd] = lim[opd]; break;
 	case (SkpJmp): nxt[opd] = lim[opd]; jmp = loc; break;
 	case (SkpYld): nxt[opd] = lim[opd]; jmp = loc; return;
+	case (ImmJmp): jmp = opd; break;
+	case (ImmYld): jmp = opd; return;
 	case (SetJmp): loc = opd; break;
 	default: ERROR();}}
 }
@@ -111,22 +115,20 @@ void datxInit(int sub, int lim, int idx)
 	resizeInt(&limt[idx],sub,sub+1);
 	resizeInt(&jump[idx],sub,sub+1);
 	lmts[idx] = sub+1;}
-	limt[idx][sub] = lim; jump[idx][sub] = done[idx]; save[idx] = sub;
-	appendInt(&todo[idx],(done[idx]<<4)|SetJmp,&done[idx]);
+	limt[idx][sub] = lim; jump[idx][sub] = done[idx]; save[idx] = sub; strt[idx] = done[idx]; mark[idx] = -1;
 }
-void datxNowr(int sub, int idx)
+void datxConj(int sub, int idx)
 {
+	if (mark[idx] >= 0 && todo[idx][mark[idx]] == Logics) {
+	todo[idx][mark[idx]] = ((mark[idx]<<4)|SetJmp); mark[idx] = done[idx];
+	appendInt(&todo[idx],Logics,&done[idx]);}
 	appendInt(&todo[idx],((sub<<4)|WrpYld),&done[idx]);
 }
-void datxNorn(int sub, int idx)
-{
-	appendInt(&todo[idx],((sub<<4)|RunYld),&done[idx]);
-}
-void datxDocl(int idx)
+void datxWrap(int idx)
 {
 	appendInt(&todo[idx],((save[idx]<<4)|ClrYld),&done[idx]);
 }
-void datxDosk(int idx)
+void datxSkip(int idx)
 {
 	appendInt(&todo[idx],((save[idx]<<4)|SkpYld),&done[idx]);
 }
@@ -135,7 +137,9 @@ void datxWrite(void *dat, int idx)
 	struct Data tmp = {0};
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
 	if (done[idx] != 0) {
-	appendInt(&todo[idx],Logics,&done[idx]);
+	if (mark[idx] >= 0 && todo[idx][mark[idx]] == Logics) {
+	todo[idx][mark[idx]] = ((mark[idx]<<4)|SetJmp);}
+	appendInt(&todo[idx],((strt[idx]<<4)|ImmYld),&done[idx]);
 	allocInt(&(tmp.lim),lmts[idx]);
 	allocInt(&(tmp.jmp),lmts[idx]);
 	allocLogic(&(tmp.opc),done[idx]);

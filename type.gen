@@ -228,6 +228,8 @@ Logic = {
 	"SkpVal",
 	"SkpJmp",
 	"SkpYld",
+	"ImmJmp",
+	"ImmYld",
 	"SetJmp",
 }
 --HERE Constants
