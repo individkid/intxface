@@ -218,9 +218,9 @@ Stream = {
 	"WrFldTl",
 }
 Logic = {
-	"WrpVal",
+	"WrpJmp",
 	"WrpYld",
-	"RunVal",
+	"RunJmp",
 	"RunYld",
 	"ClrVal",
 	"ClrJmp",

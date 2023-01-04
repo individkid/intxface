@@ -6,13 +6,13 @@ struct Data *base[NUMOPEN] = {0}; // last read
 int *next[NUMOPEN] = {0}; // bytes per sub
 int totl[NUMOPEN] = {0}; // bytes since open
 int last[NUMOPEN] = {0}; // bytes at last read
-int *todo[NUMOPEN] = {0}; // opcode to wrap
-int done[NUMOPEN] = {0}; // opcode count
-int *limt[NUMOPEN] = {0};
-int *jump[NUMOPEN] = {0};
-int lmts[NUMOPEN] = {0};
-int mark[NUMOPEN] = {0};
-int strt[NUMOPEN] = {0};
+int *todo[NUMOPEN] = {0}; // opcodes to run
+int done[NUMOPEN] = {0}; // opcodes total
+int *limt[NUMOPEN] = {0}; // bytes per sub
+int *jump[NUMOPEN] = {0}; // opcode per sub
+int lmts[NUMOPEN] = {0}; // subs total
+int mark[NUMOPEN] = {0}; // opcode to jump
+int strt[NUMOPEN] = {0}; // opcode to restart
 void datxOpen(int idx)
 {
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
@@ -49,9 +49,9 @@ void datxProg(int sub, int idx)
 	while (jmp >= 0 && jmp < dat->len) {
 	int opd = opc[jmp]>>4;
 	switch ((enum Logic)(opc[jmp]&0xf)) {
-	case (WrpVal): if (nxt[opd] == lim[opd]) jmp = loc; break;
+	case (WrpJmp): if (nxt[opd] == lim[opd]) jmp = loc; break;
 	case (WrpYld): if (nxt[opd] == lim[opd]) {jmp = loc; return;} break;
-	case (RunVal): if (nxt[opd] < lim[opd]) jmp = loc; break;
+	case (RunJmp): if (nxt[opd] < lim[opd]) jmp = loc; break;
 	case (RunYld): if (nxt[opd] < lim[opd]) {jmp = loc; return;} break;
 	case (ClrVal): nxt[opd] = 0; break;
 	case (ClrJmp): nxt[opd] = 0; jmp = loc; break;
@@ -99,8 +99,8 @@ void datxRead(void **ptr, int sub, int num, int idx)
 		readData(tmp,idx);
 		if (tmp->siz == 0) {
 			allocDat(&dat->dat,0);
-			dat->dat = tmp->dat;
-			allocDat(&tmp->dat,0);}
+			dat->dat = tmp->dat; tmp->dat = 0;
+			allocData(&tmp,0);}
 		else {
 			allocData(&base[idx],0);
 			base[idx] = tmp;}
@@ -117,8 +117,11 @@ void datxInit(int sub, int lim, int idx)
 	limt[idx][sub] = lim; jump[idx][sub] = done[idx]; strt[idx] = done[idx]; mark[idx] = done[idx];
 	appendInt(&todo[idx],Logics,&done[idx]);
 }
-void datxCond(int sub, enum Logic opc, int idx)
+void datxStep(int sub, enum Logic opc, int idx)
 {
+	if (idx < 0 || idx >= NUMOPEN) ERROR();
+	if (sub < 0 || sub >= lmts[idx]) ERROR();
+	if (opc < 0 || sub >= ImmJmp) ERROR();
 	appendInt(&todo[idx],((sub<<4)|opc),&done[idx]);
 }
 void datxMark(int idx)
