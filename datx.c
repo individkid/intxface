@@ -117,11 +117,11 @@ void datxInit(int sub, int lim, int idx)
 	limt[idx][sub] = lim; jump[idx][sub] = done[idx]; strt[idx] = done[idx]; mark[idx] = done[idx];
 	appendInt(&todo[idx],Logics,&done[idx]);
 }
-void datxStep(int sub, enum Logic opc, int idx)
+void datxStep(int sub, int opc, int idx)
 {
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
 	if (sub < 0 || sub >= lmts[idx]) ERROR();
-	if (opc < 0 || sub >= ImmJmp) ERROR();
+	if (opc < 0 || opc >= ImmJmp) ERROR();
 	appendInt(&todo[idx],((sub<<4)|opc),&done[idx]);
 }
 void datxMark(int idx)
