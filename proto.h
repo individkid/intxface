@@ -9,6 +9,7 @@
 #define FILESIZE 4096
 #define NUMOPEN 1024
 #define NUMPOOL 1024
+#define NUMARGX 256
 #define NUMFILE 64
 #define BUFSIZE 64
 #define NUMINET 16

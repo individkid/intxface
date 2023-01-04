@@ -6,6 +6,23 @@
 #include <sys/errno.h>
 #include <stdlib.h>
 
+enum ArgxTag {
+	FlowTag, // data flow
+	FlagTag, // option flag
+	JumpTag, // loop break nest
+	NestTag, // nesting control
+	NoopTag, // data container
+	ArgxTags
+};
+struct ArgxNest {
+	enum ArgxTag opc; // type of data flow control step
+	char opt; // dash char from before str
+	void *str; // string after dash option
+	void *use; // script or constant
+	void *run; // result or copy
+	struct Function fnc; // for str to use
+	struct Function gnc; // for use to run
+};
 const char *str[NUMARGX] = {0}; // dash option types
 struct ArgxNest fnc[NUMARGX] = {0}; // function to use
 int sim = 0; // number of types
@@ -27,6 +44,7 @@ int nim = 0; // number of steps
 
 int use = 0; // which fnc to use
 int opt = 0; // which dash matched
+int vld = 0; // whether dash matched
 
 int idx = 0; // program counter
 
@@ -103,37 +121,29 @@ int getLocation()
 	nst[nim].opt = NoopTag;
 	return nim++;
 }
-int addOption(const char *opt, struct Function use, struct Function run)
+int addOption(const char *opt, struct Function use, struct Function run, enum ArgxTag opc)
 {
 	str[sim] = opt;
-	fnc[sim].opc = FlowTag;
+	fnc[sim].opc = opc;
 	fnc[sim].fnc = use;
 	fnc[sim].gnc = run;
 	return sim++;
+}
+int addFlow(const char *opt, struct Function use, struct Function run)
+{
+	return addOption(opt,use,run,FlowTag);
 }
 int addFlag(const char *opt, struct Function use, struct Function run)
 {
-	str[sim] = opt;
-	fnc[sim].opc = FlagTag;
-	fnc[sim].fnc = use;
-	fnc[sim].gnc = run;
-	return sim++;
+	return addOption(opt,use,run,FlagTag);
 }
 int addJump(const char *opt, struct Function use, struct Function run)
 {
-	str[sim] = opt;
-	fnc[sim].opc = JumpTag;
-	fnc[sim].fnc = use;
-	fnc[sim].gnc = run;
-	return sim++;
+	return addOption(opt,use,run,JumpTag);
 }
 int addNest(const char *opt, struct Function use, struct Function run)
 {
-	str[sim] = opt;
-	fnc[sim].opc = NestTag;
-	fnc[sim].fnc = use;
-	fnc[sim].gnc = run;
-	return sim++;
+	return addOption(opt,use,run,NestTag);
 }
 int mapCallback(const char *opt, int ref, struct Function fnc)
 {
@@ -158,12 +168,21 @@ int mapContext(const char *opt, int ref, struct Function fnc)
 }
 int useArgument(const char *arg)
 {
-	if (arg[0] == '-' && arg[1] != '-') {
+	if (arg[0] == '-' && arg[1] == '-') {
+		vld = 0; return nim;}
+	if (arg[0] == '-') {
+		vld = 0;
 		for (int i = 0; i < sim; i++) {
 			for (int j = 0; str[i][j]; j++) {
 				if (arg[1] == str[i][j]) {
-					use = i; opt = j;}}}
+					use = i; opt = j; vld = 1;}}}
+		if (!vld) ERROR(); // unrecognized option
 		if (fnc[use].opc != FlagTag) return nim;}
+	if (!vld) { // initially or after double dash
+		for (int i = 0; i < sim; i++) {
+			if (str[i][0] == 0) {
+				use = i; opt = 0; vld = 1;}}}
+	if (!vld) ERROR(); // no default
 	nst[nim] = fnc[use];
 	nst[nim].opt = opt;
 	memxInit(&nst[nim].str,arg);
