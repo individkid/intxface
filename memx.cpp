@@ -1,8 +1,8 @@
 extern "C" {
-#include "memx.h"
 #include "luax.h"
 #include "face.h"
 }
+#include "memx.h"
 #include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
@@ -11,7 +11,6 @@ extern "C" {
 #include <string>
 #include <map>
 
-class Memx;
 int memx = 0;
 std::map<int,Memx*> memy;
 std::map<Memx*,int> memz;

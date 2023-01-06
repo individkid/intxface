@@ -4,3 +4,4 @@ if ident == -1 then io.stderr:write("planerLua: cannot execute file: planeSw\n")
 sub = waitRead(0.0,-1)
 if not (sub == ident) then io.stderr:write("unexpected ident\n"); os.exit(-1) end
 readEof(ident)
+if waitExit() < 0 then io.stderr:write("planerLua: bad exit status: planeSw\n"); os.exit(-1) end

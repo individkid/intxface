@@ -836,7 +836,6 @@ function showHideC(name,typ)
 			result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..v.."\",str,len)) {*val = "..v.."; return 1;}\n"
 		end
 		result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..name.."s\",str,len)) {*val = "..name.."s; return 1;}\n"
-		result = result..showIndent(1).."allocDrop();\n"
 		result = result..showIndent(1).."return 0;\n"
 		result = result.."}" end
 	elseif (Structz[name] ~= nil) then

@@ -361,10 +361,14 @@ int waitRead(double dly, int msk)
 }
 int waitExit()
 {
+	while (1) {
 	int val = 0;
-	while (wait(&val) != -1) if (WIFEXITED(val) && (val = WEXITSTATUS(val)) < 0) return val;
-	if (errno != ECHILD) ERRFNC(-1);
-	return 0;
+	int ret = wait(&val);
+	if (ret < 0 && errno == ECHILD) return 0;
+	if (ret < 0) return -1;
+	if (!WIFEXITED(val)) return -1;
+	if (WEXITSTATUS(val) != 0) return -1;}
+	return -1;
 }
 void *callCall(void *arg)
 {
@@ -1106,8 +1110,8 @@ int waitReadLua(lua_State *lua)
 int waitExitLua(lua_State *lua)
 {
 	luaerr = lua;
-	waitExit();
-	return 0;
+	lua_pushnumber(lua,waitExit());
+	return 1;
 }
 int pollPipeLua(lua_State *lua)
 {

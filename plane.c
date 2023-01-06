@@ -264,7 +264,8 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
-void planeBuffer() {
+void planeBuffer()
+{
 	switch (center.mem) {
 		case (Stringz): for (int i = 0; i < center.siz; i++) assignStr(strings+(center.idx+i)%configure[StringSize],center.str[i]); break;
 		case (Machinez): for (int i = 0; i < center.siz; i++) machine[(center.idx+i)%configure[MachineSize]] = center.mch[i]; break;
@@ -289,18 +290,18 @@ void planeBoot()
 {
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	int len = 0;
-	hideCenter(&center,Bootstrap__Int__Str(i),&len);
+	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
 	planeBuffer();}
 }
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wftype draw)
 {
 	pthread_t pthread;
-	planeBoot();
-	init(); // this calls planeArgument
 	callDma = dma;
 	callWake = wake;
 	callInfo = info;
 	callDraw = draw;
+	planeBoot();
+	init(); // this calls planeArgument
 	internal = openPipe();
 	external = pipeInit(input,output);
 	if (external < 0) ERROR();
@@ -363,7 +364,7 @@ void planeWake(enum Configure hint)
 			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix -- src dst
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
-			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val sns cmp idx
+			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp idx
 			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Jumps): next = planeEscape(planeEval(mptr->str,next),next); // skip to eval -- str
 			case (Gotos): next = planeEval(mptr->str,next); break; // jump to eval -- str

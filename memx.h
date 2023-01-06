@@ -1,5 +1,9 @@
 #include "proto.h"
 
+#ifdef __cplusplus
+class Memx; // indicate to swiftc that this is c++
+extern "C" {
+#endif
 void memxLuax(); // add memx functions to lua interpreter
 int memxSize(void *mem); // get size
 int memxInt(void *mem); // get int
@@ -21,3 +25,6 @@ void memxDflt(void **mem, void **giv, struct Function fnc); // trivial change ca
 void *memxSkip(void *mem, int key); // skip to given iterator
 void memxAdd(void **mem, void *giv, int key); // insert at given location
 void memxDel(void **mem, int key); // delete at given location
+#ifdef __cplusplus
+}
+#endif
