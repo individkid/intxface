@@ -89,11 +89,10 @@ function classDepend(name)
 end
 execMap = {{"C","C.o"},{"Cpp","Cpp.o"},{"Hs",".hs"},{"A",".agda"},{"Lua",".lua"},{"M","M.o"},{"Sw","Sw.o"}}
 sharedMap = {{"G%.so","G.o"},{"%.so","C.o"}}
-objectMap = {{"C%.o",".c"},{"Cpp%.o",".cpp"},{"M%.o",".m"},{"Sw%.o",".sw"},{"G%.o",".metal"}}
-renameMap = {{"%.metal",".g"},{"%.agda",".a"}}
-unameMap = {{"%.cpp",".cppx"},{"%.sw",".swy"},{"%.g",".gy"}}
-generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua","%.m","%.sw","%.g"}
-mainMap = {{".c","^int main\\(","C"},{".cpp","^int main\\(","Cpp"},{".hs","^main :: IO \\(","Hs"},{".agda","^int main\\(","A"},{".lua","^-- MAIN","Lua"},{".m","^int main\\(","M"},{".sw","^// MAIN","Sw"},{".cppx","^int main\\(","Cpp"},{".swy","^// MAIN","Sw"}}
+objectMap = {{"C%.o",".c"},{"Cpp%.o",".cpp"},{"Sw%.o",".sw"},{"G%.o",".metal"}}
+unameMap = {{"%.cpp",".cppx"},{"%.sw",".swy"},{"%.metal",".gy"},{"%.agda",".a"}}
+generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua","%.sw"}
+mainMap = {{".c","^int main\\(","C"},{".cpp","^int main\\(","Cpp"},{".hs","^main :: IO \\(","Hs"},{".agda","^int main\\(","A"},{".lua","^-- MAIN","Lua"},{".sw","^// MAIN","Sw"},{".cppx","^int main\\(","Cpp"},{".swy","^// MAIN","Sw"}}
 function ruleDepend(rule)
 	local left, right, base = {},{},nil
 	for k,v in ipairs({execMap,sharedMap,objectMap}) do for ky,vl in ipairs(v) do left[#left+1] = vl[1]; right[#right+1] = vl[2] end end
@@ -282,8 +281,8 @@ function checkCopy()
 	return retval
 end
 finite = 0
-maximum = 300 -- when to exit
-finish = 300 -- when to set verbose
+maximum = 400 -- when to exit
+finish = 400 -- when to set verbose
 function checkMake()
 	local top = todo[#todo]
 	local cmd = "make -C depend "..top.." 2> depend.err > depend.out"

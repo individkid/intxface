@@ -2,7 +2,7 @@
 .SUFFIXES:
 .DELETE_ON_ERROR:
 
-all: facer.log typra.log typer.log filer.log planer.log sharer.log spacra.log hole line plane space share
+all: facer.log typra.log typer.log filer.log planer.log sharer.log spacra.log hole line plane space share core
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
@@ -55,8 +55,6 @@ spacra.log:
 	ln -f $< $@
 %: %Lua
 	ln -f $< $@
-%: %M
-	ln -f $< $@
 %: %Sw
 	ln -f $< $@
 
@@ -68,8 +66,6 @@ spacra.log:
 	$(GHC) -o $@ $< $(filter %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
-%M: %M.o
-	$(CXX) -o $@ $< $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Sw: %Sw.o
 	$(SWC) -o $@ $< $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 
@@ -81,8 +77,6 @@ spacra.log:
 %C.o: %.c
 	$(CC) -o $@ -c $< ${INCLUDEPATH}
 %Cpp.o: %.cpp
-	$(CC) -o $@ -c $< ${INCLUDEPATH}
-%M.o: %.m
 	$(CC) -o $@ -c $< ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
@@ -108,11 +102,7 @@ spacra.log:
 	lua $*.gen $@
 %.lua: %.dep
 	lua $*.gen $@
-%.m: %.dep
-	lua $*.gen $@
 %.sw: %.dep
-	lua $*.gen $@
-%.g: %.dep
 	lua $*.gen $@
 
 .PHONY:
