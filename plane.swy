@@ -1,6 +1,7 @@
 import type
-import plane
 import face
+import argx
+import plane
 import AppKit
 import Metal
 
@@ -208,7 +209,8 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ hint: Configure)
 }
 func swiftInit()
 {
-	for arg in CommandLine.arguments {planeArgument(arg)}
+	for arg in CommandLine.arguments {useArgument(arg)}
+	for arg in CommandLine.arguments {planeArgument(arg)} // TODO remove after memxStr fixed
 	device = MTLCreateSystemDefaultDevice()
 	let rect = NSMakeRect(
 		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),

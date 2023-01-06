@@ -6,6 +6,7 @@
 #include <string.h>
 #include <libgen.h>
 #include <stdarg.h>
+#include <execinfo.h>
 
 char *exestr = 0;
 char *exetmp = 0;
@@ -240,6 +241,14 @@ const char *protoResultBh(int *len)
 
 void exitErr(const char *file, int line)
 {
+  void *array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
 	fprintf(stderr,"%s(%d): %d %lld\n",file,line,errno,(long long)getpid()); exit(-1);
 }
 void protoSet(const char *str)

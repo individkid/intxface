@@ -2,6 +2,8 @@
 #include "face.h"
 #include "luax.h"
 #include "metx.h"
+#include "argx.h"
+#include "memx.h"
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -293,6 +295,10 @@ void planeBoot()
 	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
 	planeBuffer();}
 }
+void planeRun(void **mem, void *giv)
+{
+	planeArgument(memxStr(giv));
+}
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wftype draw)
 {
 	pthread_t pthread;
@@ -301,13 +307,15 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wf
 	callInfo = info;
 	callDraw = draw;
 	planeBoot();
-	init(); // this calls planeArgument
+	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeRun));
+	init(); // this calls useArgument
+	// runProgram(); // TODO fix memxStr
 	internal = openPipe();
 	external = pipeInit(input,output);
 	if (external < 0) ERROR();
 	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR();
-	// run();
+	// run(); // TODO
 	closeIdent(internal);
 	closeIdent(external);
 	goon = 0;

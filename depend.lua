@@ -71,9 +71,10 @@ function findDepend(pat,ext,exp,suf)
 	filelist:close()
 	return retval
 end
-function objectDepend(name)
+function objectDepend(name,swift)
 	local retval = findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","C.o")
-	if retval == "" then retval = findDepend(name,".cpp","^extern[%s]*\"C\".*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","Cpp.o") end
+	if retval == "" and swift then retval = findDepend(name,".cpp","^extern[%s]*\"C\".*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","Cpp.so") end
+	if retval == "" and not swift then retval = findDepend(name,".cpp","^extern[%s]*\"C\".*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","Cpp.o") end
 	if retval == "" then io.stdout:write("\n"); io.stderr:write("objectDepend "..name.."\n"); os.exit() end
 	return retval
 end
@@ -88,7 +89,7 @@ function classDepend(name)
 	return retval
 end
 execMap = {{"C","C.o"},{"Cpp","Cpp.o"},{"Hs",".hs"},{"A",".agda"},{"Lua",".lua"},{"M","M.o"},{"Sw","Sw.o"}}
-sharedMap = {{"G%.so","G.o"},{"%.so","C.o"}}
+sharedMap = {{"G%.so","G.o"},{"Cpp%.so","Cpp.o"},{"%.so","C.o"}}
 objectMap = {{"C%.o",".c"},{"Cpp%.o",".cpp"},{"Sw%.o",".sw"},{"G%.o",".metal"}}
 unameMap = {{"%.cpp",".cppx"},{"%.sw",".swy"},{"%.metal",".gy"},{"%.agda",".a"}}
 generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua","%.sw"}
@@ -306,7 +307,7 @@ function checkMake()
 		check = string.match(line,"^lua: cannot open ([.%w]*):"); if check then checkError(check,checkRule(),"c"); found = true; break end
 		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$"); if rule and check then checkError(check,checkRule(),"d"); found = true; break end
 		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: error: '([.%w]*)' file not found$"); if rule and check then checkError(check,rule,"d"); found = true; break end
-		check = string.match(line,"^ *._([.%w]*)., referenced from:$"); if check then checkError(objectDepend(check),checkRule(),"e"); found = true; break end
+		check = string.match(line,"^ *._([.%w]*)., referenced from:$"); if check then checkError(objectDepend(check,string.match(checkRule(),"^(.*)Sw$")),checkRule(),"e"); found = true; break end
 		rule,check = string.match(line,"^([%w]*): cannot execute file: ([%w]*)$"); if rule and check then checkError(check,rule,"f"); found = true; break end
 		check = string.match(line,"error: header '([.%w]*)' not found$"); if check then checkError(check,checkRule(),"g"); found = true; break end
 		check,rule = string.match(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$"); if rule and check then checkError(check,rule,"h"); found = true; break end

@@ -67,17 +67,21 @@ spacra.log:
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
-	$(SWC) -o $@ $< $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(SWC) -o $@ $< $(filter %C.o %.so,$^) ${LIBRARIES} ${LIBRARYPATH}
 
-%.so: %C.o
-	$(CC) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
+ifeq ($(UNAME),Darwin)
 %G.so: %G.o
 	$(GC) -sdk macosx metallib -o $@ $<
+endif
+%Cpp.so: %Cpp.o
+	$(CXX) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
+%.so: %C.o
+	$(CC) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
 
 %C.o: %.c
 	$(CC) -o $@ -c $< ${INCLUDEPATH}
 %Cpp.o: %.cpp
-	$(CC) -o $@ -c $< ${INCLUDEPATH}
+	$(CXX) -o $@ -c $< ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 %G.o: %.metal
@@ -87,8 +91,10 @@ spacra.log:
 	cp $< $@
 %.sw: %.sw$(EXT)
 	cp $< $@
+ifeq ($(UNAME),Darwin)
 %.metal: %.g$(EXT)
 	cp $< $@
+endif
 
 %.dep: %.gen
 	lua $< $@

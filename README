@@ -98,7 +98,7 @@ wave test IOUSBInterfaceInterface to and from av struct pipe.
 page test file struct to from gui.
 phone test av struct to from audio.
 core test AVAssetReader AVAssetWriter to and from av struct pipe.
-frame test AVPlayerView AVCaptureScreenInput to and from av struct pipe.
+frame test AVPlayerLayer AVCaptureScreenInput to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted.
  -a flow type (factory argument)
  -b script result (script to evaluate)

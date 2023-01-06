@@ -7,8 +7,8 @@
 #define BACKOFF 0.001
 #define CALLRATE 44100
 #define FILESIZE 4096
-#define NUMOPEN 1024
 #define NUMPOOL 1024
+#define NUMOPEN 1024
 #define NUMARGX 256
 #define NUMFILE 64
 #define BUFSIZE 64
@@ -20,8 +20,9 @@
 // BACKOFF file process livelock
 // CALLRATE portaudio sample rate
 // FILESIZE rough limit to helper file
-// NUMOPEN total number of file descriptors
 // NUMPOOL number of pending stock changes
+// NUMOPEN total number of file descriptors
+// NUMARGX number of argument types
 // NUMFILE limit on number of file threads
 // BUFSIZE amount read from file at a time
 // NUMINET open address port pair limit

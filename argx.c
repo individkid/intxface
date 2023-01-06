@@ -43,7 +43,7 @@ struct ArgxNest nst[NUMARGX] = {0}; // data flow control steps
 int nim = 0; // number of steps
 
 int use = 0; // which fnc to use
-int opt = 0; // which dash matched
+char opt = 0; // which dash matched
 int vld = 0; // whether dash matched
 
 int idx = 0; // program counter
@@ -118,7 +118,7 @@ int argxHere()
 }
 int getLocation()
 {
-	nst[nim].opt = NoopTag;
+	nst[nim].opc = NoopTag;
 	return nim++;
 }
 int addOption(const char *opt, struct Function use, struct Function run, enum ArgxTag opc)
@@ -175,7 +175,7 @@ int useArgument(const char *arg)
 		for (int i = 0; i < sim; i++) {
 			for (int j = 0; str[i][j]; j++) {
 				if (arg[1] == str[i][j]) {
-					use = i; opt = j; vld = 1;}}}
+					use = i; opt = arg[1]; vld = 1;}}}
 		if (!vld) ERROR(); // unrecognized option
 		if (fnc[use].opc != FlagTag) return nim;}
 	if (!vld) { // initially or after double dash
@@ -187,15 +187,21 @@ int useArgument(const char *arg)
 	nst[nim].opt = opt;
 	memxInit(&nst[nim].str,arg);
 	for (int i = 0; i < eim; i++) {
+		if (etr[i][0] == 0 && opt == 0) {
+			memxBack(&nst[nim].use,&nst[eef[i]].use,enc[i]);}
 		for (int j = 0; etr[i][j]; j++) {
 			if (opt == etr[i][j]) {
 				memxBack(&nst[nim].use,&nst[eef[i]].use,enc[i]);}}}
 	memxCall(&nst[nim].use,nst[nim].str,nst[nim].fnc);
 	for (int i = 0; i < cim; i++) {
+		if (ctr[i][0] == 0 && opt == 0) {
+			memxBack(&nst[nim].run,&nst[cef[i]].run,cnc[i]);}
 		for (int j = 0; ctr[i][j]; j++) {
 			if (opt == ctr[i][j]) {
 				memxBack(&nst[nim].run,&nst[cef[i]].run,cnc[i]);}}}
 	for (int i = 0; i < aim; i++) {
+		if (dtr[i][0] == 0 && opt == 0) {
+			memxDflt(&nst[nim].run,&nst[def[i]].run,dnc[i]);}
 		for (int j = 0; dtr[i][j]; j++) {
 			if (opt == dtr[i][j]) {
 				memxDflt(&nst[nim].run,&nst[def[i]].run,dnc[i]);}}}
@@ -204,7 +210,7 @@ int useArgument(const char *arg)
 void runProgram()
 {
 	while (idx >= 0 && idx < nim) {
-		if (nst[idx].opt != NoopTag) memxCall(&nst[idx].run,nst[idx].use,nst[idx].gnc);
-		if (nst[idx].opt == JumpTag) idx = memxInt(nst[idx].run);
+		if (nst[idx].opc != NoopTag) memxCall(&nst[idx].run,nst[idx].use,nst[idx].gnc);
+		if (nst[idx].opc == JumpTag) idx = memxInt(nst[idx].run);
 		else idx++;}
 }

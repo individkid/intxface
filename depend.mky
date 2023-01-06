@@ -15,10 +15,11 @@ lineCpp.o: face.h proto.h type.h
 luax.so: protoC.o
 luaxC.o: luax.h proto.h
 memxCpp.o: face.h luax.h memx.h proto.h
+memxCpp.so: faceC.o luaxC.o protoC.o
 metxC.o: metx.h
-planeC.o: face.h luax.h metx.h plane.h proto.h type.h
-planeSw: faceC.o luaxC.o metxC.o planeC.o protoC.o typeC.o
-planeSw.o: face.h plane.h type.h
+planeC.o: argx.h face.h luax.h memx.h metx.h plane.h proto.h type.h
+planeSw: argxC.o faceC.o luaxC.o memxCpp.so metxC.o planeC.o protoC.o typeC.o
+planeSw.o: argx.h face.h plane.h type.h
 planer.log: face.so planeG.so planeSw planerLua type.lua
 protoC.o: proto.h
 shareC: argxC.o faceC.o luaxC.o memxCpp.o protoC.o typeC.o
