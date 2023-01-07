@@ -94,11 +94,11 @@ finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
 tape test BMD-SDK to and from av struct pipe.
-wave test IOUSBInterfaceInterface to and from av struct pipe.
-page test file struct to from gui.
-phone test av struct to from audio.
+wave test Bitscope /dev/cu.usbserial-BSEEK46 to and from av struct pipe.
+page test file struct to from NSGridView.
+phone test av struct to from portaudio.
 core test AVAssetReader AVAssetWriter to and from av struct pipe.
-frame test AVPlayerLayer AVCaptureScreenInput to and from av struct pipe.
+frame test AVPlayerLayer SCStream to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted.
  -a flow type (factory argument)
  -b script result (script to evaluate)
