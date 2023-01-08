@@ -30,10 +30,6 @@ struct Center center = {0};
 char collect[BUFSIZE] = {0};
 int internal = 0;
 int external = 0;
-char *self = 0;
-char *input = 0;
-char *output = 0;
-char *ident = 0;
 int goon = 0;
 uftype callDma = 0;
 yftype callWake = 0;
@@ -295,23 +291,23 @@ void planeBoot()
 	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
 	planeBuffer();}
 }
-void planeRun(void **mem, void *giv)
-{
-	planeArgument(memxStr(giv));
-}
 void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wftype draw)
 {
 	pthread_t pthread;
+	int args = 0;
 	callDma = dma;
 	callWake = wake;
 	callInfo = info;
 	callDraw = draw;
 	planeBoot();
-	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeRun));
+	args = getLocation();
+	addFlow("",protoTypeNf(memxInit),protoTypeMf(memxCopy));
+	mapCallback("",args,protoTypeMf(memxList));
 	init(); // this calls useArgument
-	// runProgram(); // TODO fix memxStr
+	runProgram(); // this lists to args
 	internal = openPipe();
-	external = pipeInit(input,output);
+	if (internal < 0) ERROR();
+	external = pipeInit(memxStr(memxSkip(argxRun(args),1)),memxStr(memxSkip(argxRun(args),2)));
 	if (external < 0) ERROR();
 	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR();
@@ -320,14 +316,6 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wf
 	closeIdent(external);
 	goon = 0;
 	if (pthread_join(pthread,0) != 0) ERROR();
-}
-void planeArgument(const char *str)
-{
-	if (!self) assignStr(&self,str);
-	else if (!input) assignStr(&input,str);
-	else if (!output) assignStr(&output,str);
-	else if (!ident) assignStr(&ident,str);
-	else ERROR();
 }
 int planeConfig(enum Configure cfg)
 {
