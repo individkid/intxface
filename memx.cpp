@@ -258,6 +258,7 @@ extern "C" int memxSize(void *mem) { // get size
 	return 0;}
 extern "C" int memxInt(void *mem) { // get int
 	Memx *ptr = cast(mem);
+	if (ptr->tag == Memx::MemxStr) {std::stringstream sstr; sstr.str(ptr->str); sstr >> ptr->val; ptr->tag = Memx::MemxInt;}
 	if (ptr->tag == Memx::MemxInt) return ptr->val;
 	if (ptr->tag == Memx::MemxLua) return (luaxExpr(ptr->lua.c_str(),protoCloseRg()),protoResultRg());
 	return 0;}
@@ -275,6 +276,7 @@ extern "C" const char *memxRaw(void *mem, int *len) { // get bytes
 	Memx *ptr = cast(mem);
 	if (ptr->tag == Memx::MemxRaw) {*len = ptr->raw.size(); return ptr->raw.data();}
 	if (ptr->tag == Memx::MemxInt) {*len = sizeof(ptr->val); return (char*)&ptr->val;}
+	if (ptr->tag == Memx::MemxStr) {*len = ptr->str.size(); return ptr->str.c_str();}
 	if (ptr->tag == Memx::MemxLua) return (luaxExpr(ptr->lua.c_str(),protoCloseBh()),protoResultBh(len));
 	return 0;}
 extern "C" void memxInit(void **mem, const char *str) { // interpret string
