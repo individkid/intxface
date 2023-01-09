@@ -30,7 +30,6 @@ struct Center center = {0};
 char collect[BUFSIZE] = {0};
 int internal = 0;
 int external = 0;
-int goon = 0;
 uftype callDma = 0;
 yftype callWake = 0;
 xftype callInfo = 0;
@@ -278,11 +277,10 @@ void planeBuffer()
 }
 void *planeThread(void *arg)
 {
-	while (goon) {
+	while (1) {
 	struct Center center = {0};
 	int sub = waitRead(0,1<<external);
 	if (sub != external) break;
-	if (!goon) break;
 	if (!checkRead(external)) break;
 	if (!checkWrite(internal)) break;
 	readCenter(&center,external);
@@ -315,12 +313,10 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wf
 	if (internal < 0) ERROR();
 	external = pipeInit(memxStr(memxSkip(argxRun(args),1)),memxStr(memxSkip(argxRun(args),2)));
 	if (external < 0) ERROR();
-	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR();
 	run();
 	closeIdent(internal);
 	closeIdent(external);
-	goon = 0;
 	if (pthread_join(pthread,0) != 0) ERROR();
 }
 int planeConfig(enum Configure cfg)

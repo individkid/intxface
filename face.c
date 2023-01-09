@@ -325,10 +325,11 @@ int waitRead(double dly, int msk)
 	delay.tv_sec = (long long)dly;
 	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
 	if (dly == 0.0) ptr = 0;
-	while (1) {
-	int val;
+	int val = 0;
 	int nfd = 0;
-	fd_set fds, ers; FD_ZERO(&fds); FD_ZERO(&ers);
+	fd_set fds, ers;
+	while (1) {
+	FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
 	for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
 		if (fdt[i] == Wait && nfd <= inp[i]) nfd = inp[i]+1;
 		if (fdt[i] == Wait) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}
@@ -337,10 +338,11 @@ int waitRead(double dly, int msk)
 		if (fdt[i] == Inet && nfd <= inp[i]) nfd = inp[i]+1;
 		if (fdt[i] == Inet) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
 	if (nfd == 0) return -1;
-	val = -1; errno = EINTR;
-	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,ptr,0);
-	if (val < 0) return -1; // TODO recalculate nfd if errno == EINTR, and call ERRFNC(-1) here
-	if (val <= 0) return -1;
+	val = pselect(nfd,&fds,0,&ers,ptr,0);
+	if (val < 0 && errno == EINTR) continue;
+	if (val < 0 && errno == EBADF) return -1;
+	if (val == 0) return -1;
+	if (val < 0) ERRFNC(-1);
 	nfd = 0; for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
 		if (fdt[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
 		if (fdt[i] == Sock && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
