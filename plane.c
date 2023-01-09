@@ -180,10 +180,7 @@ void planeReconfig(enum Configure cfg, int val)
 		case (SubjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
-		case (StringSize): {
-		for (int i = val; i < tmp; i++) free(strings[i]);
-		strings = planeRealloc(strings,val,tmp,sizeof(char *));
-		break;}
+		case (StringSize): strings = planeRealloc(strings,val,tmp,sizeof(char *)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
 		default: break;}
 }
