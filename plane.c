@@ -61,6 +61,15 @@ void *planeRealloc(void *ptr, int siz, int tmp, int mod)
 	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
 	return result;
 }
+void planeCopy(struct Machine *dst, struct Machine *src)
+{
+	char *str = 0;
+	int len = 0;
+	showMachine(src,&str,&len);
+	len = 0;
+	hideMachine(dst,str,&len);
+	free(str);
+}
 struct Matrix *planePointer()
 {
 	int index = configure[RegisterIndex] - center.idx;
@@ -266,7 +275,7 @@ void planeBuffer()
 {
 	switch (center.mem) {
 		case (Stringz): for (int i = 0; i < center.siz; i++) assignStr(strings+(center.idx+i)%configure[StringSize],center.str[i]); break;
-		case (Machinez): for (int i = 0; i < center.siz; i++) machine[(center.idx+i)%configure[MachineSize]] = center.mch[i]; break;
+		case (Machinez): for (int i = 0; i < center.siz; i++) planeCopy(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
 		case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
 		default: callDma(&center); break;}
 }
@@ -338,6 +347,8 @@ void planeWake(enum Configure hint)
 		switch (mptr->xfr) {
 			case (Save): case (Copy): case (Force): case (Forces): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
 			default: break;}
+		printf("planeWake %d %d\n",size,mptr->xfr);
+		if (mptr->xfr == Force) printf("planeWake cfg %d val %d\n",mptr->cfg[0],mptr->val[0]);
 		for (int i = 0; i < size; i++) switch (mptr->xfr) {
 			case (Save): planePreconfig(mptr->cfg[i]); break; // kernel, center, pierce, or query to configure -- siz cfg
 			case (Copy): planeReconfig(mptr->cfg[i],configure[mptr->oth[i]]); break; // configure to configure -- siz cfg oth

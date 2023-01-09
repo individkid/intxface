@@ -260,7 +260,7 @@ Bootstrap = {
 		"cfg[8]:Configure(RegisterIndex)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
-		"val[2]:Int(3)"..
+		"val[2]:Int(4)"..
 		"val[3]:Int(%(return castCommand(\"SetCmd\")))"..
 		"val[4]:Int(%(return castMemory(\"Configurez\")))"..
 		"val[5]:Int(0)"..
@@ -268,10 +268,13 @@ Bootstrap = {
 		"val[7]:Int(0)"..
 		"val[8]:Int(%(return castConfigure(\"RegisterOpen\"))))"..
 	")"},
-	{"Int","1","Str","Center(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(3)idx:Int(0)slf:Int(0)"..
+	{"Int","1","Str","Center(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(4)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Alloc)siz:Int(0))"..
-		"mch[1]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
-		"mch[2]:Machine(xfr:Transfer(Share)siz:Int(0))"..
+		"mch[1]:Machine(xfr:Transfer(Force)siz:Int(1)"..
+			"cfg[0]:Configure(RegisterOpen)"..
+			"val[0]:Int(0))"..
+		"mch[2]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
+		"mch[3]:Machine(xfr:Transfer(Share)siz:Int(0))"..
 	")"},
 }
 --HERE Structs
