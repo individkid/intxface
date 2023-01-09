@@ -311,7 +311,7 @@ void planeInit(vftype init, vftype run, uftype dma, vftype wake, xftype info, wf
 	if (external < 0) ERROR();
 	goon = 1;
 	if (pthread_create(&pthread,0,planeThread,0) != 0) ERROR();
-	// run(); // TODO
+	run();
 	closeIdent(internal);
 	closeIdent(external);
 	goon = 0;
@@ -360,7 +360,7 @@ void planeWake(enum Configure hint)
 			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix -- src dst
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
-			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp idx
+			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
 			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Jumps): next = planeEscape(planeEval(mptr->str,next),next); // skip to eval -- str
 			case (Gotos): next = planeEval(mptr->str,next); break; // jump to eval -- str

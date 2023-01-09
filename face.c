@@ -339,8 +339,8 @@ int waitRead(double dly, int msk)
 	if (nfd == 0) return -1;
 	val = -1; errno = EINTR;
 	while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,ptr,0);
-	if (val < 0) ERRFNC(-1);
-	if (val == 0) return -1;
+	if (val < 0) return -1; // TODO recalculate nfd if errno == EINTR, and call ERRFNC(-1) here
+	if (val <= 0) return -1;
 	nfd = 0; for (int i = 0; i < lim; i++) if (((msk < 0) && (1<<i) == 0) || (msk & (1<<i))) {
 		if (fdt[i] == Wait && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
 		if (fdt[i] == Sock && FD_ISSET(inp[i],&ers)) {closeIdent(i); nfd++;}
@@ -1001,9 +1001,9 @@ int hideStruct(const char* bef, int val, const char *aft, const char *str, int *
 	int num = -1;
 	if (asprintf(&tmp," %s %d %s%%n",bef,val,aft) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
-	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) {printf("hideStruct\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
 	*siz += num;
+	free(tmp);
 	return 1;
 }
 int hideField(const char *val, const char *str, int *siz)
@@ -1012,9 +1012,9 @@ int hideField(const char *val, const char *str, int *siz)
 	int num = -1;
 	if (asprintf(&tmp," %s : %%n",val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
-	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) {printf("hideField\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
 	*siz += num;
+	free(tmp);
 	return 1;
 }
 int hideOpen(const char *val, const char *str, int *siz)
