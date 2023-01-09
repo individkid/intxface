@@ -340,8 +340,6 @@ void planeWake(enum Configure hint)
 		switch (mptr->xfr) {
 			case (Save): case (Copy): case (Force): case (Forces): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
 			default: break;}
-		printf("planeWake %d %d\n",size,mptr->xfr);
-		if (mptr->xfr == Force) printf("planeWake cfg %d val %d\n",mptr->cfg[0],mptr->val[0]);
 		for (int i = 0; i < size; i++) switch (mptr->xfr) {
 			case (Save): planePreconfig(mptr->cfg[i]); break; // kernel, center, pierce, or query to configure -- siz cfg
 			case (Copy): planeReconfig(mptr->cfg[i],configure[mptr->oth[i]]); break; // configure to configure -- siz cfg oth
