@@ -18,6 +18,11 @@ int oface = 0;
 int misc = 0;
 int zero = 0;
 
+void shareRunA(void **run, void *use)
+{
+	nestScan();
+	memxCopy(run,use);
+}
 void shareRunCF(const char *str, int trm, int idx, void *arg)
 {
 	void **mem = (void**)arg;
@@ -158,7 +163,7 @@ int main(int argc, char **argv)
 	oface = getLocation();
 	misc = getLocation();
 	zero = getLocation();
-	addFlow("a",protoTypeNf(memxInit),protoTypeMf(memxCopy));
+	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
 	addFlow("b",protoTypeNf(memxInit),protoTypeMf(memxCopy));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));
 	addFlow("d",protoTypeNf(memxInit),protoTypeOf(shareRunD));
@@ -175,7 +180,7 @@ int main(int argc, char **argv)
 	addFlow("o",protoTypeNf(memxInit),protoTypeMf(argxCopy));
 	addFlow("p",protoTypeFf(shareUseP),protoTypeMf(memxCopy));
 	addFlow("q",protoTypeFf(shareUseQ),protoTypeMf(memxCopy));
-	mapCallback("a",type,protoTypeMf(memxCopy));
+	mapCallback("b",type,protoTypeMf(memxCopy));
 	mapCallback("diefghlp",iface,protoTypeMf(memxCopy));
 	mapCallback("efghloq",oface,protoTypeMf(memxCopy));
 	mapCallback("efghlpq",faces,protoTypeMf(memxList));

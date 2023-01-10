@@ -100,7 +100,7 @@ page test file struct to from NSGridView.
 core test AVAssetReader AVAssetWriter to and from av struct pipe.
 frame test AVPlayerLayer SCStream to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted.
- -a flow type (factory argument)
+ -a script result (nestScan and evaluate)
  -b script result (script to evaluate)
  -c factory flow (operation names)
   encode decode read write reque deque enque unque

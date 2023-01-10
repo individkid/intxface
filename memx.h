@@ -1,15 +1,24 @@
 #include "proto.h"
 
 #ifdef __cplusplus
-class Memx; // indicate to swiftc that this is c++
 extern "C" {
 #endif
+enum MemxTag {
+	MemxNul,
+	MemxInt,
+	MemxStr,
+	MemxLst,
+	MemxLua,
+	MemxRaw,
+};
+void memxScan();
 void memxLuax(); // add memx functions to lua interpreter
 int memxSize(void *mem); // get size
 int memxInt(void *mem); // get int
 int memxMask(void *mem); // mask from collection
 const char *memxStr(void *mem); // get string
 const char *memxRaw(void *mem, int *len); // get bytes
+void memxConst(void **mem, enum MemxTag tag, const char *str); // init as string
 void memxInit(void **mem, const char *str); // convert from string
 void memxForm(void **mem, const char *fmt, ...); // use vasprintf
 void *memxTemp(int idx); // realloc indexed memory

@@ -185,7 +185,7 @@ int useArgument(const char *arg)
 	if (!vld) ERROR(); // no default
 	nst[nim] = fnc[use];
 	nst[nim].opt = opt;
-	memxInit(&nst[nim].str,arg);
+	memxConst(&nst[nim].str,MemxStr,arg);
 	for (int i = 0; i < eim; i++) {
 		if (etr[i][0] == 0 && opt == 0) {
 			memxBack(&nst[nim].use,&nst[eef[i]].use,enc[i]);}
@@ -209,6 +209,7 @@ int useArgument(const char *arg)
 }
 void runProgram()
 {
+	memxScan();
 	while (idx >= 0 && idx < nim) {
 		if (nst[idx].opc != NoopTag) memxCall(&nst[idx].run,nst[idx].use,nst[idx].gnc);
 		if (nst[idx].opc == JumpTag) idx = memxInt(nst[idx].run);
