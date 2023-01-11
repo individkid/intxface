@@ -22,7 +22,7 @@ std::map<int,Memx*> memt;
 struct Memx;
 int scan(const char *giv, int &val);
 int scan(const char *giv, std::vector<Memx*> &lst);
-int scan(const char *giv, std::string &exp, int &lua);
+int scan(const char *giv, std::string &exp);
 
 struct Memx {
 	MemxTag tag;
@@ -37,10 +37,9 @@ struct Memx {
 	int idx;
 	Memx() {init();}
 	Memx(const char *giv) {init();
-		// TODO fix double free
-		// if (scan(giv,exp,lua)) {tag = MemxLua; return;}
-		// if (scan(giv,lst)) {tag = MemxLst; return;}
-		// if (scan(giv,val)) {tag = MemxInt; return;}
+		if (scan(giv,exp)) {tag = MemxLua; return;}
+		if (scan(giv,lst)) {tag = MemxLst; return;}
+		if (scan(giv,val)) {tag = MemxInt; return;}
 		tag = MemxStr; str = giv;}
 	Memx(enum MemxTag t, const char *giv) {init();
 		switch (t) {
@@ -48,7 +47,7 @@ struct Memx {
 		case (MemxInt): scan(giv,val); break;
 		case (MemxStr): str = giv; break;
 		case (MemxLst): scan(giv,lst); break;
-		case (MemxLua): scan(giv,exp,lua); break;
+		case (MemxLua): scan(giv,exp); break;
 		case (MemxRaw): for (int i = 0; giv[i]; i++) raw.push_back(giv[i]); raw.push_back(0); break;
 		default: ERROR();}
 		tag = t; str = giv;}
@@ -61,10 +60,6 @@ struct Memx {
 		memy.erase(memz[this]); memz.erase(this);
 		for (i = mak.begin(); i != mak.end(); i++) delete *i;
 		mak.clear();}
-	void init() {
-		tag = MemxNul; val = 0; idx = 0;
-		fnc.vp = 0; fem = 0; gnc.vp = 0; gem = 0;
-		memy[memx] = this; memz[this] = memx; memx++;}
 	void done() {
 		switch (tag) {
 		case (MemxNul): break;
@@ -86,6 +81,10 @@ struct Memx {
 		case (MemxRaw): raw = giv->raw; break;
 		default: ERROR();}
 		tag = giv->tag;}
+	void init() {
+		tag = MemxNul; val = 0; idx = 0;
+		fnc.vp = 0; fem = 0; gnc.vp = 0; gem = 0;
+		memy[memx] = this; memz[this] = memx; memx++;}
 	void list() {
 		if (tag != MemxLst) {
 		if (tag != MemxNul) lst.push_back(new Memx(this));
@@ -151,29 +150,37 @@ int scan(const char *giv) {
 	for (int i = 0; giv[i]; i++) if (!isspace(giv[i])) return 0;
 	return 1;}
 int scan(const char *giv, int &val) {
-	std::stringstream sstr(giv); char *pst = 0;
-	sstr >> val; sstr >> pst;
-	return scan(pst);}
-int scan(const char *giv, char *&pre, char *&mid, char *&pst) {
-	int lvl = 0;
-	// TODO strndup pre to first open
-	// TODO strdup pst from after first matching close
-	// TODO strndup mid from after first open to before matching close
+	std::stringstream sstr(giv); std::string pst;
+	if (!(sstr >> val)) return 0; sstr >> pst;
+	return scan(pst.c_str());}
+int scan(const char *giv, std::string &pre, std::string &mid, std::string &pst) {
+	int lvl = 0; int cmt = 0; int esc = 0;
+	for (int i = 0; giv[i]; i++) {
+	if (!esc && !cmt && giv[i] == '(') {lvl++;
+	if (lvl == 1) pre = std::string(giv,0,i);}
+	if (!esc && !cmt && giv[i] == ')') {lvl--;
+	if (lvl == 0) {pst = std::string(giv,i+1,strlen(giv)); mid = std::string(giv,pre.size()+1,i); return 1;}}
+	if (!esc && giv[i] == '"') cmt = !cmt;
+	esc = (!esc && giv[i] == '\\');}
 	return 0;}
 int scan(const char *giv, std::vector<Memx*> &lst) {
-	int ret = 0; char *pre = 0; char *mid = 0; char *pst;
-	char *tmp = strdup(giv);
-	while (scan(tmp,pre,mid,pst) && scan(pre)) {
-	char *tmp = strdup(pst);
-	lst.push_back(new Memx(mid));
-	free(pre); free(mid); free(pst);}
-	ret = scan(pst);
-	free(pre); free(mid); free(pst);
-	return ret;}
-int scan(const char *giv, std::string &exp, int &lua) {
-	int lvl = 0; int ret = 0;
-	// TODO set ret to 1 if pre at any level ends with %
-	return ret;}
+	std::string pre,mid,pst;
+	for (std::string tmp = giv;
+	scan(tmp.c_str(),pre,mid,pst) && scan(pre.c_str());
+	tmp = pst) lst.push_back(new Memx(mid.c_str()));
+	if (!scan(pst.c_str())) {
+	for (std::vector<Memx*>::iterator i = lst.begin();
+	i != lst.end(); i++) delete(*i);
+	lst.clear();}
+	return (lst.size() > 0);}
+int scan(const char *giv, std::string &exp) {
+	std::string pre,mid,pst;
+	if (!scan(giv,pre,mid,pst)) return 0;
+	if (pre.size() > 0 && pre[pre.size()-1] == '%') {
+	exp = giv; return 1;}
+	if (scan(mid.c_str(),exp)) return 1;
+	if (scan(pst.c_str(),exp)) return 1;
+	return 0;}
 Memx *cast(void *ptr) {
 	return static_cast<Memx*>(ptr);}
 Memx *cast(void **mem) {
@@ -221,18 +228,17 @@ extern "C" int memxSize(void *mem) { // get size
 	return 0;}
 extern "C" int memxInt(void *mem) { // get int
 	Memx *ptr = cast(mem); int val = 0;
-	if (ptr->tag == MemxInt) val = ptr->val; else {
-	const char *str = 0; std::stringstream sstr;
-	if (ptr->tag == MemxStr) str = ptr->str.c_str();
-	if (ptr->tag == MemxLua) str = nestRepl(ptr->lua);
-	sstr.str(ptr->str); sstr >> val;}
-	return val;}
+	if (ptr->tag == MemxInt) val = ptr->val;
+	if (ptr->tag == MemxStr) scan(ptr->str.c_str(),val);
+	if (ptr->tag == MemxLua) scan(nestRepl(ptr->lua),val);
+	return 0;}
 extern "C" int memxMask(void *mem) { // mask from collection
 	int val = 0; int len = memxSize(mem);
 	for (int i = 0; i < len; i++) val |= (1 << memxInt(memxSkip(mem,i)));
 	return val;}
 extern "C" const char *memxStr(void *mem) { // get string
 	Memx *ptr = cast(mem);
+	if (ptr->tag == MemxInt) {std::stringstream sstr; sstr << ptr->val; ptr->str = sstr.str(); return ptr->str.c_str();}
 	if (ptr->tag == MemxStr) return ptr->str.c_str();
 	if (ptr->tag == MemxLua) return nestRepl(ptr->lua);
 	return 0;}
