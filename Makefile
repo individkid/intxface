@@ -70,7 +70,7 @@ spacra.log:
 	$(SWC) -o $@ $< $(filter %C.o %.so,$^) ${LIBRARIES} ${LIBRARYPATH}
 
 ifeq ($(UNAME),Darwin)
-%G.so: %G.o
+%.metallib: %G.o
 	$(GC) -sdk macosx metallib -o $@ $<
 endif
 %Cpp.so: %Cpp.o

@@ -229,8 +229,9 @@ func swiftInit()
 	window.contentView = view
 	window.delegate = event
 	queue = device.makeCommandQueue()
-	guard let library:MTLLibrary = try? device.makeLibrary(filepath:"planeG.so") else {
-		fputs("plane: cannot load library: planeG.so\n",stderr);exitErr(#file,#line);return}
+	let url = URL(fileURLWithPath: "plane.metallib")
+	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
+		fputs("plane: cannot load library: plane.metallib\n",stderr);exitErr(#file,#line);return}
 	for sub in 0...Int(Shaders.rawValue-1) {let shader = Shader(UInt32(sub)); if (shader == Dipoint || shader == Adpoint) {switch (shader) {
 	case (Dipoint): fallthrough case (Diplane):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
