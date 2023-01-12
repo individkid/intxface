@@ -56,7 +56,7 @@ int addGunc(enum ArgxOpc opc, const char *opt, struct Function use, struct Funct
 	prg->gnc = run;
 	return len[opc]++;
 }
-int nestFind(enum ArgxOpc opc, char opt, struct ArgxNest **use)
+int argxFind(enum ArgxOpc opc, char opt, struct ArgxNest **use)
 {
 	for (int i = 0; i < len[opc]; i++) {
 		struct ArgxNest *prg = &arg[opc][i];
@@ -65,7 +65,6 @@ int nestFind(enum ArgxOpc opc, char opt, struct ArgxNest **use)
 			if (opt == prg->opt[j]) {*use = &arg[opc][i]; return 1;}}}
 	return 0;
 }
-
 int nestJumpF(int idx, int dir, int cnt, int cmp, int lvl)
 {
 	int dpt = 0;
@@ -138,11 +137,6 @@ int argxHere()
 {
 	return idx;
 }
-int getLocation()
-{
-	arg[InstOpc][len[InstOpc]].tag = NoopTag;
-	return len[InstOpc]++;
-}
 int addOption(const char *opt, struct Function use, struct Function run, enum ArgxTag tag)
 {
 	return addGunc(TypeOpc,opt,use,run,tag);
@@ -175,6 +169,11 @@ int mapContext(const char *opt, int ref, struct Function fnc)
 {
 	return addFunc(CompOpc,opt,ref,fnc);
 }
+int getLocation()
+{
+	arg[InstOpc][len[InstOpc]].tag = NoopTag;
+	return len[InstOpc]++;
+}
 int useArgument(const char *giv)
 {
 	int ret = argxLen(); struct ArgxNest *ptr = argxGet(ret);
@@ -183,15 +182,14 @@ int useArgument(const char *giv)
 	if (!vld && giv[0] == '-') opt = giv[1];
 	if (!vld && giv[0] != '-') opt = 0;
 	if (!vld && opt == '-') {vld = 0; return ret;}
-	if (!vld && !nestFind(TypeOpc,opt,&use)) ERROR();
+	if (!vld && !argxFind(TypeOpc,opt,&use)) ERROR();
 	if (!vld && opt && use->tag != FlagTag) {vld = 1; return ret;}
 	*ptr = *use; len[InstOpc]++;
-	printf("calling memxConst %d %s\n",ret,giv);
 	memxConst(&ptr->str,MemxStr,giv);
-	if (nestFind(CompOpc,opt,&tmp)) memxBack(&ptr->use,&argxGet(tmp->ref)->use,tmp->fnc);
+	if (argxFind(CompOpc,opt,&tmp)) memxBack(&ptr->use,&argxGet(tmp->ref)->use,tmp->fnc);
 	memxCall(&ptr->use,ptr->str,ptr->fnc);
-	if (nestFind(CallOpc,opt,&tmp)) memxBack(&ptr->run,&argxGet(tmp->ref)->run,tmp->fnc);
-	if (nestFind(DfltOpc,opt,&tmp)) memxDflt(&ptr->run,&argxGet(tmp->ref)->run,tmp->fnc);
+	if (argxFind(CallOpc,opt,&tmp)) memxBack(&ptr->run,&argxGet(tmp->ref)->run,tmp->fnc);
+	if (argxFind(DfltOpc,opt,&tmp)) memxDflt(&ptr->run,&argxGet(tmp->ref)->run,tmp->fnc);
 	if (use->tag == FlagTag) return ret;
 	vld = 1; return ret;
 }

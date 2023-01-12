@@ -121,6 +121,6 @@ clean:
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.-- .*.-- ..*.-- ...*.--
-	rm -f *.o *.so *.hi *_stub.h *.metal *.dep
+	rm -f *.o *.so *.hi *_stub.h *.metal *.metallib *.dep
 	rm -rf depend
 

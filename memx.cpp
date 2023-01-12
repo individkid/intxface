@@ -23,14 +23,15 @@ struct Memx;
 int scan(const char *giv, int &val);
 int scan(const char *giv, std::vector<Memx*> &lst);
 int scan(const char *giv, std::string &exp);
+int scan(const char *giv, std::vector<char> &raw);
 
 struct Memx {
-	MemxTag tag;
 	int val;
 	std::string str;
 	std::vector<Memx*> lst;
 	std::string exp; int lua;
 	std::vector<char> raw;
+	MemxTag tag;
 	struct Function fnc; void **fem;
 	struct Function gnc; void **gem;
 	std::vector<Memx*> mak;
@@ -41,16 +42,15 @@ struct Memx {
 		if (scan(giv,lst)) {tag = MemxLst; return;}
 		if (scan(giv,val)) {tag = MemxInt; return;}
 		tag = MemxStr; str = giv;}
-	Memx(enum MemxTag t, const char *giv) {init();
-		switch (t) {
+	Memx(enum MemxTag t, const char *giv) {init(); tag = t;
+		switch (tag) {
 		case (MemxNul): break;
 		case (MemxInt): scan(giv,val); break;
 		case (MemxStr): str = giv; break;
 		case (MemxLst): scan(giv,lst); break;
 		case (MemxLua): scan(giv,exp); break;
-		case (MemxRaw): for (int i = 0; giv[i]; i++) raw.push_back(giv[i]); raw.push_back(0); break;
-		default: ERROR();}
-		tag = t; str = giv;}
+		case (MemxRaw): scan(giv,raw); break;
+		default: ERROR();}}
 	Memx(const Memx *giv) {init();
 		init(giv);}
 	~Memx() {
@@ -181,6 +181,9 @@ int scan(const char *giv, std::string &exp) {
 	if (scan(mid.c_str(),exp)) return 1;
 	if (scan(pst.c_str(),exp)) return 1;
 	return 0;}
+int scan(const char *giv, std::vector<char> &raw) {
+        // TODO convert from hex digits
+        return 0;}
 Memx *cast(void *ptr) {
 	return static_cast<Memx*>(ptr);}
 Memx *cast(void **mem) {
@@ -245,8 +248,6 @@ extern "C" const char *memxStr(void *mem) { // get string
 extern "C" const char *memxRaw(void *mem, int *len) { // get bytes
 	Memx *ptr = cast(mem);
 	if (ptr->tag == MemxRaw) {*len = ptr->raw.size(); return ptr->raw.data();}
-	if (ptr->tag == MemxInt) {*len = sizeof(ptr->val); return (char*)&ptr->val;}
-	if (ptr->tag == MemxStr) {*len = ptr->str.size(); return ptr->str.c_str();}
 	return 0;}
 extern "C" void memxConst(void **mem, enum MemxTag tag, const char *str) { // init as string
 	Memx *tmp = new Memx(tag,str);
