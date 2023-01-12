@@ -1,0 +1,51 @@
+import AppKit
+class getEvent : NSObject, NSWindowDelegate
+{
+	func windowShouldClose(_ sender: NSWindow) -> Bool
+	{
+		NSApp.stop(nil)
+		return true
+	}
+	func windowWillMove(_ notification: Notification)
+	{
+		print("windowWillMove")
+	}
+	func windowDidMove(_ notification: Notification)
+	{
+		print("windowDidMove")
+	}
+	func windowWillResize(_ notification: Notification)
+	{
+		print("windowWillResize")
+	}
+	func windowDidResize(_ notification: Notification)
+	{
+		print("windowDidResize")
+	}
+}
+func setEvent(_ type:NSEvent.EventTypeMask, _ hint: String)
+{
+	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in print(hint); return event})
+}
+// MAIN
+	let event = getEvent()
+	let rect = NSMakeRect(
+		CGFloat(0), CGFloat(0),
+		CGFloat(1024), CGFloat(512))
+	let view = NSGridView(frame:rect)
+	let mask:NSWindow.StyleMask = [.titled]
+	let window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
+	window.title = "page"
+	window.makeKeyAndOrderFront(nil)
+	window.contentView = view
+	window.delegate = event
+	setEvent(.keyDown,"keyDown")
+	setEvent(.keyUp,"keyUp")
+	setEvent(.leftMouseUp,"leftMouseUp")
+	setEvent(.rightMouseUp,"rightMouseUp")
+	setEvent(.leftMouseDown,"leftMouseDown")
+	setEvent(.rightMouseDown,"rightMouseDown")
+	setEvent(.mouseMoved,"mouseMoved")
+	setEvent(.scrollWheel,"scrollWheel")
+	setEvent(.applicationDefined,"applicationDefined")
+	NSApp.run()

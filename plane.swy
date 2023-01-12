@@ -222,7 +222,7 @@ func swiftInit()
 	view = NSView(frame:rect)
 	view.wantsLayer = true
 	view.layer = layer
-	let mask:NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
+	let mask:NSWindow.StyleMask = [.titled]
 	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
