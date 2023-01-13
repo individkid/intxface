@@ -200,7 +200,7 @@ func handleDelay() async
 {
 	while (dragging) {
 		planeWake(WindowLeft)
-		try! await Task.sleep(nanoseconds:1_000_000_000)
+		try! await Task.sleep(nanoseconds:1_000_000)
 	}
 }
 func handleHint(_ hint: Configure)

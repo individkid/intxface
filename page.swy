@@ -2,6 +2,22 @@ import AppKit
 var dragging = false
 var window:NSWindow!
 var view:NSView!
+var count = Int(0)
+var last = NSPoint(x:0.0,y:0.0)
+func getCenter() -> NSPoint
+{
+	let rect = window.frame
+	return NSPoint(x:(rect.origin.x+rect.size.width)/2.0,y:(rect.origin.y+rect.size.height)/2.0)
+}
+func getDistance() -> Float
+{
+	let center = getCenter()
+	let dif = NSPoint(x:center.x-last.x,y:center.y-last.y)
+	let square = dif.x*dif.x+dif.y*dif.y
+	let root = square.squareRoot()
+	last = center
+	return Float(root)
+}
 func getRect() -> NSRect
 {
 	var rect = window.frame
@@ -30,29 +46,31 @@ class getEvent : NSObject, NSWindowDelegate
 	func windowDidResize(_ notification: Notification)
 	{
 		if (dragging) {print("already"); dragging = false;}
-		print("windowDidResize \(getRect()) \(getPoint())")
+		count = count + 1
 	}
 }
 func handleDelay() async
 {
+	count = 0
 	while (dragging) {
-		print("windowDidMove \(getRect()) \(getPoint())")
-		try! await Task.sleep(nanoseconds:1_000_000_000)
+		count = count + 1
+		try! await Task.sleep(nanoseconds:1_000_000)
 	}
+	if (count > 0) {print("rate \(getDistance()/Float(count))"); count = 0}
 }
-func handleEvent(_ hint: String, _ event: NSEvent) -> NSEvent
+func handleHint(_ hint: String)
 {
+	if (count > 0) {print("rate \(getDistance()/Float(count))"); count = 0}
 	if (hint == "leftMouseDown") {
 		if (dragging) {print("oops")}
 		else if (getDrag()) {dragging = true; Task(priority:.medium,operation:{await handleDelay()})}}
 	if (hint == "leftMouseUp") {
 		if (dragging) {dragging = false}
-		else {print("here \(getPoint())")}}
-	return event
+		else {print("here")}}
 }
 func setEvent(_ type:NSEvent.EventTypeMask, _ hint: String)
 {
-	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in return handleEvent(hint,event)})
+	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in handleHint(hint); return event})
 }
 // MAIN
 	let event = getEvent()
@@ -74,5 +92,4 @@ func setEvent(_ type:NSEvent.EventTypeMask, _ hint: String)
 	setEvent(.rightMouseDown,"rightMouseDown")
 	setEvent(.mouseMoved,"mouseMoved")
 	setEvent(.scrollWheel,"scrollWheel")
-	setEvent(.applicationDefined,"applicationDefined")
 	NSApp.run()
