@@ -20,6 +20,7 @@ var lock = [Refer]()
 var count = Int(0)
 let event = getEvent()
 var running = Int(0)
+var dragging = false
 
 var triangle = Pend<Triangle>()
 var numeric = Pend<Numeric>()
@@ -178,6 +179,40 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; planeWake(RegisterDone)}
 }
+func getRect() -> NSRect
+{
+	var rect = window.frame
+	let size = view.frame
+	rect.size = size.size
+	return rect
+}
+func getPoint() -> NSPoint
+{
+	return NSEvent.mouseLocation
+}
+func getDrag() -> Bool
+{
+	let rect = getRect()
+	let point = getPoint()
+	return !(point.x > rect.origin.x && point.y > rect.origin.y && point.x < rect.origin.x+rect.size.width && point.y < rect.origin.y+rect.size.height)
+}
+func handleDelay() async
+{
+	while (dragging) {
+		planeWake(WindowLeft)
+		try! await Task.sleep(nanoseconds:1_000_000_000)
+	}
+}
+func handleHint(_ hint: Configure)
+{
+	if (hint == ButtonClick) {
+		if (dragging) {planeWake(RegisterOpen)}
+		else if (getDrag()) {dragging = true; Task(priority:.medium,operation:{await handleDelay()})}}
+	else if (hint == ButtonDrag) {
+		if (dragging) {dragging = false}
+		else {planeWake(ButtonClick)}}
+	else {planeWake(hint)}
+}
 class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
@@ -186,26 +221,15 @@ class getEvent : NSObject, NSWindowDelegate
 		NSApp.stop(nil)
 		return true
 	}
-	func windowWillMove(_ notification: Notification)
-	{
-		swiftWake(WindowLeft)
-	}
-	func windowDidMove(_ notification: Notification)
-	{
-		swiftWake(WindowBase)
-	}
-	func windowWillResize(_ notification: Notification)
-	{
-		swiftWake(WindowWide)
-	}
 	func windowDidResize(_ notification: Notification)
 	{
-		swiftWake(WindowHigh)
+		if (dragging) {dragging = false;}
+		planeWake(WindowLeft)
 	}
 }
 func setEvent(_ type:NSEvent.EventTypeMask, _ hint: Configure)
 {
-	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in planeWake(hint); return event})
+	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in handleHint(hint); return event})
 }
 func swiftInit()
 {
@@ -222,7 +246,7 @@ func swiftInit()
 	view = NSView(frame:rect)
 	view.wantsLayer = true
 	view.layer = layer
-	let mask:NSWindow.StyleMask = [.titled]
+	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
 	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
@@ -263,9 +287,9 @@ func swiftInit()
 	setEvent(.keyDown,ButtonPress)
 	setEvent(.keyUp,ButtonHold)
 	setEvent(.leftMouseUp,ButtonDrag)
-	setEvent(.rightMouseUp,ButtonDrag)
+	// setEvent(.rightMouseUp,ButtonDrag)
 	setEvent(.leftMouseDown,ButtonClick)
-	setEvent(.rightMouseDown,ButtonClick)
+	// setEvent(.rightMouseDown,ButtonClick)
 	setEvent(.mouseMoved,CursorLeft)
 	setEvent(.scrollWheel,CursorAngle)
 	NSEvent.addLocalMonitorForEvents(matching:.applicationDefined, handler: {(event: NSEvent) in planeWake(Configure(UInt32(event.data1))); return event})

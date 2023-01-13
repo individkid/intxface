@@ -192,10 +192,10 @@ Memx *cast(void **mem) {
 extern "C" void memxScan() {
 	int siz = 0;
 	for (std::map<Memx*,int>::iterator i = memz.begin(); i != memz.end(); i++)
-	if ((*i).first->tag == MemxLst) (*i).first->lua = siz++;
+	if ((*i).first->tag == MemxLua) (*i).first->lua = siz++;
 	nestInit(siz);
 	for (std::map<Memx*,int>::iterator i = memz.begin(); i != memz.end(); i++)
-	if ((*i).first->tag == MemxLst) nestElem((*i).first->lua,(*i).first->exp.c_str());
+	if ((*i).first->tag == MemxLua) nestElem((*i).first->lua,(*i).first->exp.c_str());
 	nestScan();}
 extern "C" int memxRd(int fildes, void *buf, int nbyte) {
 	Memx *ptr = memy[fildes]; const char *tmp = 0; int len = 0;

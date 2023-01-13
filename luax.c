@@ -199,6 +199,9 @@ void nestFree()
 }
 void nestInit(int siz)
 {
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	// TODO extend interpreter with function to identify current expression,
+	// enable or disable identified expressions, and make expressions volatile.
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
 	for (int i = 0; i < lsiz; i++) if (line[i]) {free(line[i]); line[i] = 0;}
@@ -281,6 +284,7 @@ const char *nestRepl(int i)
 		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
 		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
+	// TODO reavaluatereplaced expresions if they are volatile
 	// if (strcmp(line[i],rslt[i]) != 0) printf("nestRepl %s -> %s\n",line[i],rslt[i]);
 	return rslt[i];
 }

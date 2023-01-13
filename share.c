@@ -20,8 +20,8 @@ int zero = 0;
 
 void shareRunA(void **run, void *use)
 {
+	memxInit(run,memxStr(use));
 	nestScan();
-	memxCopy(run,use);
 }
 void shareRunCF(const char *str, int trm, int idx, void *arg)
 {

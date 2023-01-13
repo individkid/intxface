@@ -1,40 +1,67 @@
 import AppKit
+var dragging = false
+var window:NSWindow!
+var view:NSView!
+func getRect() -> NSRect
+{
+	var rect = window.frame
+	let size = view.frame
+	rect.size = size.size
+	return rect
+}
+func getPoint() -> NSPoint
+{
+	return NSEvent.mouseLocation
+}
+func getDrag() -> Bool
+{
+	let rect = getRect()
+	let point = getPoint()
+	return !(point.x > rect.origin.x && point.y > rect.origin.y && point.x < rect.origin.x+rect.size.width && point.y < rect.origin.y+rect.size.height)
+}
 class getEvent : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
+		print("windowShouldClose")
 		NSApp.stop(nil)
 		return true
 	}
-	func windowWillMove(_ notification: Notification)
-	{
-		print("windowWillMove")
-	}
-	func windowDidMove(_ notification: Notification)
-	{
-		print("windowDidMove")
-	}
-	func windowWillResize(_ notification: Notification)
-	{
-		print("windowWillResize")
-	}
 	func windowDidResize(_ notification: Notification)
 	{
-		print("windowDidResize")
+		if (dragging) {print("already"); dragging = false;}
+		print("windowDidResize \(getRect()) \(getPoint())")
 	}
+}
+func handleDelay() async
+{
+	while (dragging) {
+		print("windowDidMove \(getRect()) \(getPoint())")
+		try! await Task.sleep(nanoseconds:1_000_000_000)
+	}
+}
+func handleEvent(_ hint: String, _ event: NSEvent) -> NSEvent
+{
+	if (hint == "leftMouseDown") {
+		if (dragging) {print("oops")}
+		else if (getDrag()) {dragging = true; Task(priority:.medium,operation:{await handleDelay()})}}
+	if (hint == "leftMouseUp") {
+		if (dragging) {dragging = false}
+		else {print("here \(getPoint())")}}
+	return event
 }
 func setEvent(_ type:NSEvent.EventTypeMask, _ hint: String)
 {
-	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in print(hint); return event})
+	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in return handleEvent(hint,event)})
 }
 // MAIN
 	let event = getEvent()
 	let rect = NSMakeRect(
 		CGFloat(0), CGFloat(0),
 		CGFloat(1024), CGFloat(512))
-	let view = NSGridView(frame:rect)
-	let mask:NSWindow.StyleMask = [.titled]
-	let window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
+	view = NSView(frame:rect)
+	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
+	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
 	window.title = "page"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
