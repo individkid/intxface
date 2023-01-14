@@ -20,6 +20,8 @@ var lock = [Refer]()
 var count = Int(0)
 let event = getEvent()
 var running = Int(0)
+var moving = false
+var resizing = false
 var dragging = false
 
 var triangle = Pend<Triangle>()
@@ -198,19 +200,24 @@ func getDrag() -> Bool
 }
 func handleDelay() async
 {
-	while (dragging) {
+	if (!moving) {moving = true}
+	if (resizing) {planeWake(RegisterOpen); resizing = false}
+	if (dragging) {planeWake(RegisterOpen); dragging = false}
+	while (moving) {
 		planeWake(WindowLeft)
 		try! await Task.sleep(nanoseconds:1_000_000)
 	}
 }
 func handleHint(_ hint: Configure)
 {
+	if (moving) {moving = false}
+	if (resizing) {resizing = false}
 	if (hint == ButtonClick) {
-		if (dragging) {planeWake(RegisterOpen)}
-		else if (getDrag()) {dragging = true; Task(priority:.medium,operation:{await handleDelay()})}}
+		if (dragging) {planeWake(RegisterOpen); dragging = false}
+		if (getDrag()) {Task(priority:.medium,operation:{await handleDelay()})}
+		else {dragging = true}}
 	else if (hint == ButtonDrag) {
-		if (dragging) {dragging = false}
-		else {planeWake(ButtonClick)}}
+		if (dragging) {planeWake(ButtonClick); dragging = false}}
 	else {planeWake(hint)}
 }
 class getEvent : NSObject, NSWindowDelegate
@@ -223,7 +230,9 @@ class getEvent : NSObject, NSWindowDelegate
 	}
 	func windowDidResize(_ notification: Notification)
 	{
-		if (dragging) {dragging = false;}
+		if (moving) {moving = false}
+		if (!resizing) {resizing = true}
+		if (dragging) {dragging = false}
 		planeWake(WindowLeft)
 	}
 }
@@ -360,7 +369,15 @@ func swiftInfo(_ query: Configure) -> Int32
 	switch (query) {
 	case (RegisterDone): return Int32(count)
 	case (RegisterOpen): return Int32(running)
-	// TODO cursor, window, keyboard, read from uniform
+	case (WindowLeft): return Int32(getRect().origin.x)
+	case (WindowBase): return Int32(getRect().origin.y)
+	case (WindowWide): return Int32(getRect().size.width)
+	case (WindowHigh): return Int32(getRect().size.height)
+	case (CursorLeft): return Int32(getPoint().x)
+	case (CursorBase): return Int32(getPoint().y)
+	case (CursorAngle): if let event = NSApp.currentEvent {return Int32(event.deltaY)} else {return Int32(0)}
+	case (ButtonPress): if let event = NSApp.currentEvent {return Int32(event.keyCode)} else {return Int32(0)}
+	// TODO read from uniform
 	default: break}
 	return 0
 }

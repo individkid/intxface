@@ -1,4 +1,6 @@
 import AppKit
+var moving = false
+var resizing = false
 var dragging = false
 var window:NSWindow!
 var view:NSView!
@@ -7,13 +9,14 @@ var last = NSPoint(x:0.0,y:0.0)
 func getCenter() -> NSPoint
 {
 	let rect = window.frame
-	return NSPoint(x:(rect.origin.x+rect.size.width)/2.0,y:(rect.origin.y+rect.size.height)/2.0)
+	return NSPoint(x:rect.origin.x+rect.size.width/2.0,y:rect.origin.y+rect.size.height/2.0)
 }
 func getDistance() -> Float
 {
 	let center = getCenter()
-	let dif = NSPoint(x:center.x-last.x,y:center.y-last.y)
-	let square = dif.x*dif.x+dif.y*dif.y
+	let x = Float(center.x)-Float(last.x)
+	let y = Float(center.y)-Float(last.y)
+	let square = x*x+y*y
 	let root = square.squareRoot()
 	last = center
 	return Float(root)
@@ -33,7 +36,7 @@ func getDrag() -> Bool
 {
 	let rect = getRect()
 	let point = getPoint()
-	return !(point.x > rect.origin.x && point.y > rect.origin.y && point.x < rect.origin.x+rect.size.width && point.y < rect.origin.y+rect.size.height)
+	return !(point.x >= rect.origin.x && point.y >= rect.origin.y && point.x <= rect.origin.x+rect.size.width && point.y <= rect.origin.y+rect.size.height)
 }
 class getEvent : NSObject, NSWindowDelegate
 {
@@ -45,28 +48,33 @@ class getEvent : NSObject, NSWindowDelegate
 	}
 	func windowDidResize(_ notification: Notification)
 	{
-		if (dragging) {print("already"); dragging = false;}
-		count = count + 1
+		if (moving) {moving = false}
+		if (!resizing) {resizing = true}
+		if (dragging) {dragging = false}
+		count = count + 1;
 	}
 }
 func handleDelay() async
 {
-	count = 0
-	while (dragging) {
-		count = count + 1
+	if (!moving) {moving = true}
+	if (resizing) {print("oops1"); resizing = false}
+	if (dragging) {print("opps2"); dragging = false}
+	while (moving) {
+		count = count + 1;
 		try! await Task.sleep(nanoseconds:1_000_000)
 	}
-	if (count > 0) {print("rate \(getDistance()/Float(count))"); count = 0}
 }
 func handleHint(_ hint: String)
 {
 	if (count > 0) {print("rate \(getDistance()/Float(count))"); count = 0}
+	if (moving) {moving = false}
+	if (resizing) {resizing = false}
 	if (hint == "leftMouseDown") {
-		if (dragging) {print("oops")}
-		else if (getDrag()) {dragging = true; Task(priority:.medium,operation:{await handleDelay()})}}
+		if (dragging) {print("oops3"); dragging = false}
+		if (getDrag()) {Task(priority:.medium,operation:{await handleDelay()})}
+		else {dragging = true}}
 	if (hint == "leftMouseUp") {
-		if (dragging) {dragging = false}
-		else {print("here")}}
+		if (dragging) {print("here \(getPoint())"); dragging = false}}
 }
 func setEvent(_ type:NSEvent.EventTypeMask, _ hint: String)
 {
