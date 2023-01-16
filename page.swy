@@ -1,103 +1,68 @@
 import AppKit
-var moving = false
-var resizing = false
-var dragging = false
-var window:NSWindow!
+var text:CATextLayer!
+var side:CATextLayer!
 var view:NSView!
-var count = Int(0)
-var last = NSPoint(x:0.0,y:0.0)
-func getCenter() -> NSPoint
+var window:NSWindow!
+func handleHint(_ hint: String)
 {
-	let rect = window.frame
-	return NSPoint(x:rect.origin.x+rect.size.width/2.0,y:rect.origin.y+rect.size.height/2.0)
 }
-func getDistance() -> Float
-{
-	let center = getCenter()
-	let x = Float(center.x)-Float(last.x)
-	let y = Float(center.y)-Float(last.y)
-	let square = x*x+y*y
-	let root = square.squareRoot()
-	last = center
-	return Float(root)
-}
-func getRect() -> NSRect
-{
-	var rect = window.frame
-	let size = view.frame
-	rect.size = size.size
-	return rect
-}
-func getPoint() -> NSPoint
-{
-	return NSEvent.mouseLocation
-}
-func getDrag() -> Bool
-{
-	let rect = getRect()
-	let point = getPoint()
-	return !(point.x >= rect.origin.x && point.y >= rect.origin.y && point.x <= rect.origin.x+rect.size.width && point.y <= rect.origin.y+rect.size.height)
-}
-class getEvent : NSObject, NSWindowDelegate
+class getDelegate : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		print("windowShouldClose")
 		NSApp.stop(nil)
 		return true
 	}
 	func windowDidResize(_ notification: Notification)
 	{
-		if (moving) {moving = false}
-		if (!resizing) {resizing = true}
-		if (dragging) {dragging = false}
-		count = count + 1;
+		// CATransaction.begin()
+		// CATransaction.setDisableActions(true)
+		text.frame = view.frame
+		// CATransaction.commit()
+	}
+	func windowWillMove(_ notification: Notification)
+	{
+		print("windowWillMove \(NSEvent.pressedMouseButtons)")
+		Task(priority:.medium,operation:{
+			while (NSEvent.pressedMouseButtons != 0) {
+			try! await Task.sleep(nanoseconds:1_000_000)
+			windowDidResize(notification)}
+			print("awake")})
+		print("window is moving")
 	}
 }
-func handleDelay() async
+class getView : NSView
 {
-	if (!moving) {moving = true}
-	if (resizing) {print("oops1"); resizing = false}
-	if (dragging) {print("opps2"); dragging = false}
-	while (moving) {
-		count = count + 1;
-		try! await Task.sleep(nanoseconds:1_000_000)
+	override func mouseUp(with event: NSEvent)
+	{
+		print("here \(NSEvent.mouseLocation)")
 	}
-}
-func handleHint(_ hint: String)
-{
-	if (count > 0) {print("rate \(getDistance()/Float(count))"); count = 0}
-	if (moving) {moving = false}
-	if (resizing) {resizing = false}
-	if (hint == "leftMouseDown") {
-		if (dragging) {print("oops3"); dragging = false}
-		if (getDrag()) {Task(priority:.medium,operation:{await handleDelay()})}
-		else {dragging = true}}
-	if (hint == "leftMouseUp") {
-		if (dragging) {print("here \(getPoint())"); dragging = false}}
-}
-func setEvent(_ type:NSEvent.EventTypeMask, _ hint: String)
-{
-	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in handleHint(hint); return event})
 }
 // MAIN
-	let event = getEvent()
 	let rect = NSMakeRect(
 		CGFloat(0), CGFloat(0),
 		CGFloat(1024), CGFloat(512))
-	view = NSView(frame:rect)
+	var lines = 0
+	var string = ""
+	while (lines < 100) {string = string+"hello ok again \(lines)\n"; lines += 1}
+	text = CATextLayer()
+	text.string = string
+	text.foregroundColor = CGColor.black
+	text.backgroundColor = CGColor.white
+	text.frame = rect
+	side = CATextLayer()
+	side.string = string
+	side.foregroundColor = CGColor.black
+	side.backgroundColor = CGColor.white
+	view = getView(frame:rect)
+	view.wantsLayer = true
+	view.layer!.addSublayer(text)
 	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
 	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
 	window.title = "page"
-	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
-	window.delegate = event
-	setEvent(.keyDown,"keyDown")
-	setEvent(.keyUp,"keyUp")
-	setEvent(.leftMouseUp,"leftMouseUp")
-	setEvent(.rightMouseUp,"rightMouseUp")
-	setEvent(.leftMouseDown,"leftMouseDown")
-	setEvent(.rightMouseDown,"rightMouseDown")
-	setEvent(.mouseMoved,"mouseMoved")
-	setEvent(.scrollWheel,"scrollWheel")
+	let delegate = getDelegate()
+	window.delegate = delegate
+	window.makeKeyAndOrderFront(nil)
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in handleHint("mouseMoved"); return event})
 	NSApp.run()

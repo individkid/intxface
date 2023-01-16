@@ -106,9 +106,7 @@ Configure = {
 	"CursorBase",
 	"CursorAngle",
 	"ButtonClick", -- user input button
-	"ButtonDrag",
 	"ButtonPress", -- user input keyboard
-	"ButtonHold",
 }
 Transfer = {
 	"Read", -- read internal pipe

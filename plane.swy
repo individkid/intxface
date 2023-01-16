@@ -18,11 +18,7 @@ var threads = [MTLSize?](repeating: nil, count: Int(Shaders.rawValue))
 
 var lock = [Refer]()
 var count = Int(0)
-let event = getEvent()
 var running = Int(0)
-var moving = false
-var resizing = false
-var dragging = false
 
 var triangle = Pend<Triangle>()
 var numeric = Pend<Numeric>()
@@ -181,6 +177,35 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; planeWake(RegisterDone)}
 }
+class getDelegate : NSObject, NSWindowDelegate
+{
+	func windowShouldClose(_ sender: NSWindow) -> Bool
+	{
+		NSApp.stop(nil)
+		return true
+	}
+	func windowDidResize(_ notification: Notification)
+	{
+		CATransaction.begin()
+		CATransaction.setDisableActions(true)
+		layer.frame = view.frame
+		CATransaction.commit()
+	}
+	func windowWillMove(_ notification: Notification)
+	{
+		Task(priority:.medium,operation:{
+			while (NSEvent.pressedMouseButtons != 0) {
+			try! await Task.sleep(nanoseconds:1_000_000)
+			windowDidResize(notification)}})
+	}
+}
+class getView : NSView
+{
+	override func mouseUp(with event: NSEvent)
+	{
+		planeWake(ButtonClick)
+	}
+}
 func getRect() -> NSRect
 {
 	var rect = window.frame
@@ -191,54 +216,6 @@ func getRect() -> NSRect
 func getPoint() -> NSPoint
 {
 	return NSEvent.mouseLocation
-}
-func getDrag() -> Bool
-{
-	let rect = getRect()
-	let point = getPoint()
-	return !(point.x > rect.origin.x && point.y > rect.origin.y && point.x < rect.origin.x+rect.size.width && point.y < rect.origin.y+rect.size.height)
-}
-func handleDelay() async
-{
-	if (!moving) {moving = true}
-	if (resizing) {planeWake(RegisterOpen); resizing = false}
-	if (dragging) {planeWake(RegisterOpen); dragging = false}
-	while (moving) {
-		planeWake(WindowLeft)
-		try! await Task.sleep(nanoseconds:1_000_000)
-	}
-}
-func handleHint(_ hint: Configure)
-{
-	if (moving) {moving = false}
-	if (resizing) {resizing = false}
-	if (hint == ButtonClick) {
-		if (dragging) {planeWake(RegisterOpen); dragging = false}
-		if (getDrag()) {Task(priority:.medium,operation:{await handleDelay()})}
-		else {dragging = true}}
-	else if (hint == ButtonDrag) {
-		if (dragging) {planeWake(ButtonClick); dragging = false}}
-	else {planeWake(hint)}
-}
-class getEvent : NSObject, NSWindowDelegate
-{
-	func windowShouldClose(_ sender: NSWindow) -> Bool
-	{
-		running = 0
-		NSApp.stop(nil)
-		return true
-	}
-	func windowDidResize(_ notification: Notification)
-	{
-		if (moving) {moving = false}
-		if (!resizing) {resizing = true}
-		if (dragging) {dragging = false}
-		planeWake(WindowLeft)
-	}
-}
-func setEvent(_ type:NSEvent.EventTypeMask, _ hint: Configure)
-{
-	NSEvent.addLocalMonitorForEvents(matching:type, handler: {(event: NSEvent) in handleHint(hint); return event})
 }
 func swiftInit()
 {
@@ -252,7 +229,7 @@ func swiftInit()
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
 	layer.frame = rect
-	view = NSView(frame:rect)
+	view = getView(frame:rect)
 	view.wantsLayer = true
 	view.layer = layer
 	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
@@ -260,7 +237,8 @@ func swiftInit()
 	window.title = "plane"
 	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
-	window.delegate = event
+	let delegate = getDelegate()
+	window.delegate = delegate
 	queue = device.makeCommandQueue()
 	let url = URL(fileURLWithPath: "plane.metallib")
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
@@ -293,15 +271,8 @@ func swiftInit()
 	 	print("cannot make kernel_pierce");exitErr(#file,#line);return}
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
     threads[sub] = device.maxThreadsPerThreadgroup}}}
-	setEvent(.keyDown,ButtonPress)
-	setEvent(.keyUp,ButtonHold)
-	setEvent(.leftMouseUp,ButtonDrag)
-	// setEvent(.rightMouseUp,ButtonDrag)
-	setEvent(.leftMouseDown,ButtonClick)
-	// setEvent(.rightMouseDown,ButtonClick)
-	setEvent(.mouseMoved,CursorLeft)
-	setEvent(.scrollWheel,CursorAngle)
-	NSEvent.addLocalMonitorForEvents(matching:.applicationDefined, handler: {(event: NSEvent) in planeWake(Configure(UInt32(event.data1))); return event})
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in planeWake(CursorLeft); return event})
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeWake(Configure(UInt32(event.data1))); return event})
 }
 func swiftRun()
 {

@@ -159,9 +159,7 @@ void planePreconfig(enum Configure cfg)
 		case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
 		case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
 		case (ButtonClick): configure[ButtonClick] = callInfo(ButtonClick); break;
-		case (ButtonDrag): configure[ButtonDrag] = callInfo(ButtonDrag); break;
 		case (ButtonPress): configure[ButtonPress] = callInfo(ButtonPress); break;
-		case (ButtonHold): configure[ButtonHold] = callInfo(ButtonHold); break;
 		default: break;}
 }
 void planePostconfig(enum Configure cfg, int idx)
