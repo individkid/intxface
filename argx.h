@@ -15,3 +15,4 @@ int mapContext(const char *str, int ref, struct Function fnc);
 int getLocation();
 int useArgument(const char *str);
 void runProgram();
+void stopProgram();

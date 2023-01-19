@@ -105,19 +105,17 @@ Configure = {
 	"CursorLeft", -- user input mouse
 	"CursorBase",
 	"CursorAngle",
-	"ButtonClick", -- user input button
-	"ButtonPress", -- user input keyboard
+	"ButtonClick", -- mouse button
 }
 Transfer = {
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
-	"Save", -- client, pierce, or query to configure
+	"Save", -- client, pierce, or info to configure
 	"Copy", -- configure to configure
 	"Force", -- machine to configure
 	"Forces", -- script to configure
 	"Setup", -- configure to client
 	"Alloc", -- configure to client
-	"Collect", -- query to collect
 	"Echo", -- collect to client
 	"Clear", -- identity to matrix
 	"Invert", -- invert in matrix

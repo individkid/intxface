@@ -18,7 +18,6 @@ var threads = [MTLSize?](repeating: nil, count: Int(Shaders.rawValue))
 
 var lock = [Refer]()
 var count = Int(0)
-var running = Int(0)
 
 var triangle = Pend<Triangle>()
 var numeric = Pend<Numeric>()
@@ -276,8 +275,11 @@ func swiftInit()
 }
 func swiftRun()
 {
-	running = 1
 	NSApp.run()
+}
+func swiftStop()
+{
+	NSApp.stop(nil)
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 {
@@ -316,7 +318,6 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		case (PierceSize): uniform.set(Int(center.val![sub]),\Uniform.psz)
 		case (PierceIndex): uniform.set(Int(center.val![sub]),\Uniform.pid)
 		case (PierceLimit): uniform.set(Int(center.val![sub]),\Uniform.plm)
-		case (RegisterOpen): running = Int(center.val![sub]); if (running == 0) {NSApp.stop(nil)}
 		default: break}}
 	default: exitErr(#file,#line)}
 }
@@ -339,7 +340,6 @@ func swiftInfo(_ query: Configure) -> Int32
 {
 	switch (query) {
 	case (RegisterDone): return Int32(count)
-	case (RegisterOpen): return Int32(running)
 	case (WindowLeft): return Int32(getRect().origin.x)
 	case (WindowBase): return Int32(getRect().origin.y)
 	case (WindowWide): return Int32(getRect().size.width)
@@ -347,7 +347,6 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (CursorLeft): return Int32(getPoint().x)
 	case (CursorBase): return Int32(getPoint().y)
 	case (CursorAngle): if let event = NSApp.currentEvent {return Int32(event.deltaY)} else {return Int32(0)}
-	case (ButtonPress): if let event = NSApp.currentEvent {return Int32(event.keyCode)} else {return Int32(0)}
 	// TODO read from uniform
 	default: break}
 	return 0
@@ -432,4 +431,4 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 
 // MAIN
 
-	planeInit(swiftInit,swiftRun,swiftMemory,swiftWake,swiftInfo,swiftDraw)
+	planeInit(swiftInit,swiftRun,swiftStop,swiftMemory,swiftWake,swiftInfo,swiftDraw)

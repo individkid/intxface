@@ -201,3 +201,7 @@ void runProgram()
 		if (argxGet(idx)->tag == JumpTag) idx = memxInt(argxGet(idx)->run);
 		else idx++;}
 }
+void stopProgram()
+{
+	idx = -1; // TODO wakeup memx
+}
