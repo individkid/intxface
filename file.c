@@ -26,10 +26,17 @@ double amount = BACKOFF;
 extern int bufsize;
 char *errstr = 0;
 
-void errNote(const char *str, int num, int arg)
+void errErr(const char *str, int num, int arg)
 {
 	if (arg == face) exit(-1);
 	asprintf(&errstr,"spokeErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
+	longjmp(jmpbuf[number[arg]],1);
+}
+
+void errNote(int arg)
+{
+	if (arg == face) exit(-1);
+	asprintf(&errstr,"spokeErr %d %lld\n",errno,(long long)getpid());
 	longjmp(jmpbuf[number[arg]],1);
 }
 
@@ -249,7 +256,7 @@ int main(int argc, char **argv)
 	if (argc != 4) exitErr(__FILE__,__LINE__);
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = pipeInit(argv[1],argv[2])) < 0) exitErr(__FILE__,__LINE__);
-	noteFunc(errNote); errFunc(errNote);
+	noteFunc(errNote); errFunc(errErr);
 	struct File *ptr = 0; allocFile(&ptr,1);
 	ptr->act = ThdThd; fieldsiz = sizeFile(ptr);
 	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;

@@ -20,6 +20,8 @@
 #else
 #include <semaphore.h>
 #endif
+#include <setjmp.h>
+#include <signal.h>
 
 struct Kernel {
 	struct Matrix compose; // optimization
@@ -59,6 +61,7 @@ sem_t resource;
 sem_t ready;
 sem_t process;
 sem_t restart;
+jmp_buf jmpbuf;
 
 void planeAlize(float *dir, const float *vec) // normalize
 {
@@ -343,8 +346,7 @@ void *planeConsole(void *arg)
 }
 void *planeProgram(void *arg)
 {
-	planeState(&stateProgram);
-	runProgram(); // extend interpreter with call to callWake(RegisterLine)
+	if (setjmp(jmpbuf) == 0) runProgram();
 	planeState(&stateProgram);
 	return 0;
 }
@@ -364,7 +366,7 @@ void *planeWait(void *arg)
 	if (!(val&8) && pro == 2 || pro == 3) {sem_wait(&resource); pro = ++stateProcess; val = running &= ~8; sem_post(&resource); callWake(Configures);}
 	if (!(val&4) && ext == 2 || ext == 3) {sem_wait(&resource); ext = ++stateExternal; val = running &= ~4; sem_post(&resource); closeIdent(external);}
 	if (!(val&2) && con == 2 || con == 3) {sem_wait(&resource); con = ++stateConsole; val = running &= ~2; sem_post(&resource); close(STDIN_FILENO);}
-	if (!(val&1) && prg == 2 || prg == 3) {sem_wait(&resource); prg = ++stateProgram; val = running &= ~1; sem_post(&resource); stopProgram();}
+	if (!(val&1) && prg == 2 || prg == 3) {sem_wait(&resource); prg = ++stateProgram; val = running &= ~1; sem_post(&resource); kill(getpid(),SIGTERM);}
 	if (pro == 4) {sem_wait(&restart); sem_wait(&resource); pro = stateProcess = 0; sem_post(&resource);}
 	if (ext == 4) {if (pthread_join(threadExternal,0) != 0) ERROR(); sem_wait(&resource); ext = stateExternal = 0; sem_post(&resource);}
 	if (con == 4) {if (pthread_join(threadConsole,0) != 0) ERROR(); sem_wait(&resource); con = stateConsole = 0; sem_post(&resource);}
@@ -384,8 +386,22 @@ void planeMemx(void **mem, void *giv)
 {
 	sem_wait(&resource);
 	memxList(mem,giv);
-	if (memxSize(*mem) > 2) sem_post(&ready);
+	if (memxSize(*mem) > 2) {
+		sem_post(&ready);
+		stateProgram++;}
 	sem_post(&resource);
+}
+void planeIntr()
+{
+	if (pthread_self() == threadProgram) longjmp(jmpbuf,1);
+}
+void planeTerm(int sig)
+{
+}
+int planeEval(const char *str, int arg)
+{
+	if (luaxExpr(str,protoCloseRf(arg)) < 0) ERROR();
+	return protoResultRf();
 }
 void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xftype info, wftype draw)
 {
@@ -400,6 +416,11 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	sem_init(&ready,0,0);
 	sem_init(&process,0,0);
 	sem_init(&restart,0,0);
+	struct sigaction act;
+	act.__sigaction_u.__sa_handler = planeTerm;
+	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
+	intrFunc(planeIntr);
+	// TODO extend interpreter with callWake
 	planeBoot();
 	configure[RegisterOpen] = running = 8|4|2|1; // TODO move this to Bootstrap
 	arguments = getLocation();
@@ -420,11 +441,6 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 int planeConfig(enum Configure cfg)
 {
 	return configure[cfg];
-}
-int planeEval(const char *str, int arg)
-{
-	if (luaxExpr(str,protoCloseRf(arg)) < 0) ERROR();
-	return protoResultRf();
 }
 void planeWake(enum Configure hint)
 {

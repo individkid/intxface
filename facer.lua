@@ -1,9 +1,9 @@
 require "face"
 
-function callClose(file,line,idx)
+function errClose(file,line,idx)
 	closeIdent(idx)
 end
-function callNote(idx)
+function noteClose(idx)
 	closeIdent(idx)
 end
 
@@ -22,8 +22,8 @@ old = readOld(0)
 writeOld(old,0)
 
 else
-noteFunc("callNote")
-errFunc("callClose")
+noteFunc("noteClose")
+errFunc("errClose")
 forkExec("facerC")
 forkExec("facerLua")
 sleepSec(1)

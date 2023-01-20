@@ -81,6 +81,10 @@ void errFunc(eftype fnc)
 {
 	errfnc = fnc;
 }
+void callIntr()
+{
+	INTRFN();
+}
 void callNote(int idx)
 {
 	NOTICE(idx);

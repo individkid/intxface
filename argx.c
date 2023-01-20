@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/errno.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 enum ArgxTag {
 	FlowTag, // data flow
@@ -196,13 +197,8 @@ int useArgument(const char *giv)
 void runProgram()
 {
 	memxScan();
-	// TODO push setjmp onto longjmp stack
 	while (idx >= 0 && idx < argxLen()) {
 		if (argxGet(idx)->tag != NoopTag) memxCall(&argxGet(idx)->run,argxGet(idx)->use,argxGet(idx)->gnc);
 		if (argxGet(idx)->tag == JumpTag) idx = memxInt(argxGet(idx)->run);
 		else idx++;}
-}
-void stopProgram()
-{
-	idx = -1; // TODO send signal to cause EINTR which in turn calls longjump if proper thread is running
 }

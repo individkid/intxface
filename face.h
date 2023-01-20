@@ -7,6 +7,7 @@ struct timespec;
 void intrFunc(chtype fnc);
 void noteFunc(cftype fnc);
 void errFunc(eftype fnc);
+void callIntr();
 void callNote(int idx);
 void callErr(int idx);
 void closeIdent(int idx);
