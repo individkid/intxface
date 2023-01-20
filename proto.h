@@ -170,6 +170,7 @@ struct Closure {
 	struct Argument *aa,*ab;
 };
 const struct Closure *protoClose(int na, int nb);
+const struct Closure *protoCloseCf(int idx);
 const struct Closure *protoCloseEf(const char *str, int num, int idx);
 const struct Closure *protoClosePf(int idx, int nbyte);
 const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte);
@@ -178,6 +179,7 @@ const struct Closure *protoCloseRg();
 const struct Closure *protoCloseBf(const char *arg);
 const struct Closure *protoCloseBg();
 const struct Closure *protoCloseBh();
+void protoResultCf();
 void protoResultEf();
 int protoResultPf(void *buf);
 int protoResultQf();

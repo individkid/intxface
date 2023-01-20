@@ -40,16 +40,6 @@ char *atom[NUMOPEN] = {0};
 int atoms[NUMOPEN] = {0};
 int atomz[NUMOPEN] = {0};
 
-// error function pointers
-eftype inpexc[NUMOPEN] = {0};
-eftype inperr[NUMOPEN] = {0};
-eftype outerr[NUMOPEN] = {0};
-char *exclua[NUMOPEN] = {0};
-char *inplua[NUMOPEN] = {0};
-char *outlua[NUMOPEN] = {0};
-char *fnclua[NUMOPEN] = {0};
-lua_State *luaerr = 0;
-
 // server address for checking if already connected
 struct sockaddr_in6 addr[NUMINET] = {0};
 int mad = 0;
@@ -69,14 +59,21 @@ int memptrs = 0;
 void ***memptr = 0;
 
 // error handling
-eftype notice = 0;
+chtype intrfn = 0;
+cftype notice = 0;
 eftype errfnc = 0;
 char *luanote = 0;
 char *luafunc = 0;
+lua_State *luaerr = 0;
 #define ERRFNC(IDX) {if (errfnc) errfnc(__FILE__,__LINE__,IDX); else ERROR();}
-#define NOTICE(IDX) {if (notice) notice(__FILE__,__LINE__,IDX); else ERRFNC(IDX);}
+#define NOTICE(IDX) {if (notice) notice(IDX); else ERRFNC(IDX);}
+#define INTRFN() {if (intrfn) intrfn();}
 
-void noteFunc(eftype fnc)
+void intrFunc(chtype fnc)
+{
+	intrfn = fnc;
+}
+void noteFunc(cftype fnc)
 {
 	notice = fnc;
 }
@@ -339,7 +336,7 @@ int waitRead(double dly, int msk)
 		if (fdt[i] == Inet) {FD_SET(inp[i],&fds); FD_SET(inp[i],&ers);}}
 	if (nfd == 0) return -1;
 	val = pselect(nfd,&fds,0,&ers,ptr,0);
-	if (val < 0 && errno == EINTR) continue;
+	if (val < 0 && errno == EINTR) {INTRFN() continue;}
 	if (val < 0 && errno == EBADF) return -1;
 	if (val == 0) return -1;
 	if (val < 0) ERRFNC(-1);
@@ -640,8 +637,9 @@ void readStr(sftype fnc, void *arg, int idx)
 	while (num == 1/*bufsize*/ && val == 1/*bufsize*/) {
 		if ((size % bufsize) == 0) buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERRFNC(idx);
-		if (fdt[idx] == Punt) val = rfn[idx](inp[idx],buf+size,1);
+		while (1) {if (fdt[idx] == Punt) val = rfn[idx](inp[idx],buf+size,1);
 		else val = /*p*/read(inp[idx],buf+size,1/*bufsize,loc+size*/);
+		if (val < 0 && errno == EINTR) INTRFN() else break;}
 		if (val < 0) ERRFNC(idx);
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
@@ -661,7 +659,8 @@ void preadStr(sftype fnc, void *arg, long long loc, int idx)
 	while (num == bufsize && val == bufsize) {
 		/*if ((size % bufsize) == 0) */buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERRFNC(idx);
-		val = pread(inp[idx],buf+size,bufsize,loc+size);
+		while (1) {val = pread(inp[idx],buf+size,bufsize,loc+size);
+		if (val < 0 && errno == EINTR) INTRFN() else break;}
 		if (val < 0) ERRFNC(idx);
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
@@ -686,7 +685,8 @@ void readDat(void *dat, int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
 	allocMem(&dat,sizeof(int)+size);
 	*(int*)dat = size;
-	val = read(inp[idx],(void*)(((int*)dat)+1),size);
+	while (1) {val = read(inp[idx],(void*)(((int*)dat)+1),size);
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < size) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val == 0)  NOTICE(idx);
@@ -695,8 +695,9 @@ void readEof(int idx)
 {
 	char arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx); int val = 0;
-	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
+	while (1) {if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
 	else val = read(inp[idx],(char *)&arg,sizeof(char));
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val != 0) NOTICE(idx);
 }
@@ -705,8 +706,9 @@ char readChr(int idx)
 	char arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
-	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
+	while (1) {if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
 	else val = read(inp[idx],(char *)&arg,sizeof(char));
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(char)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(idx);}
@@ -717,8 +719,9 @@ int readInt(int idx)
 	int arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
-	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(int));
+	while (1) {if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(int));
 	else val = read(inp[idx],(char *)&arg,sizeof(int));
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(int)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(idx);}
@@ -729,8 +732,9 @@ double readNum(int idx)
 	double arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
-	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(double));
+	while (1) {if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(double));
 	else val = read(inp[idx],(char *)&arg,sizeof(double));
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(double)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(idx);}
@@ -742,8 +746,9 @@ long long readNew(int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = 0;
-	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(long long));
+	while (1) {if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(long long));
 	else val = read(inp[idx],(char *)&arg,sizeof(long long));
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(long long)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0; NOTICE(idx);}
@@ -755,8 +760,9 @@ float readOld(int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = 0;
-	if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
+	while (1) {if (fdt[idx] == Punt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
 	else val = read(inp[idx],(char *)&arg,sizeof(float));
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(float)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val == 0) {arg = 0.0; NOTICE(idx);}
@@ -1284,9 +1290,9 @@ int writeOldLua(lua_State *lua)
 	return 0;
 }
 
-void noteLua(const char *str, int num, int idx)
+void noteLua(int idx)
 {
-	int val = luaxCall(luanote,protoCloseEf(str,num,idx));
+	int val = luaxCall(luanote,protoCloseCf(idx));
 	if (val < 0) ERROR();
 }
 void errLua(const char *str, int num, int idx)

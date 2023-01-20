@@ -3,6 +3,9 @@ require "face"
 function callClose(file,line,idx)
 	closeIdent(idx)
 end
+function callNote(idx)
+	closeIdent(idx)
+end
 
 -- MAIN
 if (arg[1] and arg[2] and arg[3]) then
@@ -19,7 +22,7 @@ old = readOld(0)
 writeOld(old,0)
 
 else
-noteFunc("callClose")
+noteFunc("callNote")
 errFunc("callClose")
 forkExec("facerC")
 forkExec("facerLua")

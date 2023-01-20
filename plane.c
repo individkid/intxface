@@ -395,8 +395,6 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	callWake = wake;
 	callInfo = info;
 	callDraw = draw;
-	internal = openPipe();
-	if (internal < 0) ERROR();
 	sem_init(&complete,0,0);
 	sem_init(&resource,0,1);
 	sem_init(&ready,0,0);
@@ -408,6 +406,8 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	addFlow("",protoTypeNf(memxInit),protoTypeMf(memxCopy));
 	mapCallback("",arguments,protoTypeMf(planeMemx));
 	init(); // this calls useArgument
+	internal = openPipe();
+	if (internal < 0) ERROR();
 	if (pthread_create(&threadWait,0,planeWait,0) != 0) ERROR();
 	sem_wait(&process);
 	planeState(&stateProcess);

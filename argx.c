@@ -196,6 +196,7 @@ int useArgument(const char *giv)
 void runProgram()
 {
 	memxScan();
+	// TODO push setjmp onto longjmp stack
 	while (idx >= 0 && idx < argxLen()) {
 		if (argxGet(idx)->tag != NoopTag) memxCall(&argxGet(idx)->run,argxGet(idx)->use,argxGet(idx)->gnc);
 		if (argxGet(idx)->tag == JumpTag) idx = memxInt(argxGet(idx)->run);
@@ -203,5 +204,5 @@ void runProgram()
 }
 void stopProgram()
 {
-	idx = -1; // TODO wakeup memx
+	idx = -1; // TODO send signal to cause EINTR which in turn calls longjump if proper thread is running
 }

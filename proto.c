@@ -155,6 +155,12 @@ const struct Closure *protoClose(int na, int nb)
 	for (int i = 0; i < argbuf.nb; i++) argbuf.ab[i] = zero;
 	return &argbuf;
 }
+const struct Closure *protoCloseCf(int idx)
+{
+	protoClose(1,0);
+	protoMakeIf(&argbuf.aa[0],idx);
+	return &argbuf;
+}
 const struct Closure *protoCloseEf(const char *str, int num, int idx)
 {
 	protoClose(3,0);
@@ -204,6 +210,9 @@ const struct Closure *protoCloseBh()
 {
 	protoClose(0,1);
 	return &argbuf;
+}
+void protoResultCf()
+{
 }
 void protoResultEf()
 {

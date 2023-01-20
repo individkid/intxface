@@ -10,7 +10,7 @@ void errfunc(const char *str, int num, int arg)
 {
 	errcheck = arg;
 }
-void excfunc(const char *str, int num, int arg)
+void excfunc(int arg)
 {
 	closeIdent(arg);
 	exccheck++;

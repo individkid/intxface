@@ -9,8 +9,9 @@ import Data.IORef
 import System.Environment
 import System.Exit
 
-foreign import ccall "wrapper" wrapJump :: (CString -> CInt -> CInt -> IO ()) -> IO (FunPtr (CString -> CInt -> CInt -> IO ()))
-foreign import ccall "noteFunc" noteFuncC :: FunPtr (CString -> CInt -> CInt -> IO ()) -> IO ()
+foreign import ccall "wrapper" wrapNoteC :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
+foreign import ccall "wrapper" wrapErrC :: (CString -> CInt -> CInt -> IO ()) -> IO (FunPtr (CString -> CInt -> CInt -> IO ()))
+foreign import ccall "noteFunc" noteFuncC :: FunPtr (CInt -> IO ()) -> IO ()
 foreign import ccall "errFunc" errFuncC :: FunPtr (CString -> CInt -> CInt -> IO ()) -> IO ()
 foreign import ccall "closeIdent" closeIdentC :: CInt -> IO ()
 foreign import ccall "moveIdent" moveIdentC :: CInt -> CInt -> IO ()
@@ -51,10 +52,10 @@ foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
 
-noteFunc :: (String -> Int -> Int -> IO ()) -> IO ()
-noteFunc a = (wrapJump (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= noteFuncC
 errFunc :: (String -> Int -> Int -> IO ()) -> IO ()
-errFunc a = (wrapJump (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= errFuncC
+errFunc a = (wrapErrC (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= errFuncC
+noteFunc :: (Int -> IO ()) -> IO ()
+noteFunc a = (wrapNoteC (\x -> a (fromIntegral x))) >>= noteFuncC
 closeIdent :: Int -> IO ()
 closeIdent a = closeIdentC (fromIntegral a)
 moveIdent :: Int -> Int -> IO ()

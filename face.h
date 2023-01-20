@@ -4,7 +4,8 @@ struct Text {
 	int trm;
 };
 struct timespec;
-void noteFunc(eftype fnc);
+void intrFunc(chtype fnc);
+void noteFunc(cftype fnc);
 void errFunc(eftype fnc);
 void callNote(int idx);
 void callErr(int idx);
