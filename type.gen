@@ -80,6 +80,7 @@ Configure = {
 	"RegisterOpen", -- windows open count
 	"CompareString", -- which compare string
 	"ComparePattern", -- which compare pattern
+	"CompareNumber", -- string pattern count
 	"CompareResult", -- string pattern result
 	"CenterCommand", -- fields to from client
 	"CenterMemory",

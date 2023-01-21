@@ -64,8 +64,8 @@ int stateConsole = 0;
 int stateProgram = 0;
 int stateProcess = 0;
 int running = 0;
-int numstr = 0;
 char **strings = 0;
+int numstr = 0;
 // thread safe:
 sem_t complete;
 sem_t resource;
@@ -181,9 +181,14 @@ void planePattern(int idx, const char *str)
 	fprintf(stderr,"regcomp error: %s\n",buf);
 	regfree(pattern+idx);}
 }
-int planeMatch(int str, int pat)
+int planeMatch()
 {
-	return (regexec(pattern+pat,planeGet(str),0,0,0) == 0);
+	int str = configure[CompareString];
+	int pat = configure[ComparePattern];
+	int num = configure[CompareNumber];
+	while (num) if (num > 0) {num--; if (regexec(pattern+pat,planeGet(str),0,0,0) == 0) return str; str++;}
+	else {num++; if (regexec(pattern+pat,planeGet(str),0,0,0) == 0) return pat; pat++;}
+	return -1;
 }
 struct Pierce *planePierce()
 {
@@ -197,7 +202,7 @@ void planePreconfig(enum Configure cfg)
 {
 	switch (cfg) {
 		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-		case (CompareResult): configure[CompareResult] = planeMatch(configure[CompareString],configure[ComparePattern]); break;
+		case (CompareResult): configure[CompareResult] = planeMatch(); break;
 		case (CenterCommand): configure[CenterCommand] = center.cmd; break;
 		case (CenterMemory): configure[CenterMemory] = center.mem; break;
 		case (CenterSize): configure[CenterSize] = center.siz; break;
