@@ -38,6 +38,7 @@ typedef void (*hgtype)(int i, const char *str);
 typedef void (*hhtype)(const char *str);
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
+typedef int (*fhtype)(int idx, const char *str);
 typedef int (*fftype)(const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
 typedef int (*oftype)(void *arg);
@@ -70,6 +71,7 @@ struct Function {
 		Hhtype,
 		Pftype,
 		Qftype,
+		Fhtype,
 		Fftype,
 		Gftype,
 		Oftype,
@@ -100,6 +102,7 @@ struct Function {
 		hhtype hh;
 		pftype pf;
 		qftype qf;
+		fhtype fh;
 		fftype ff;
 		gftype gf;
 		oftype of;
@@ -126,6 +129,7 @@ struct Function protoTypeCg(cgtype fnc);
 struct Function protoTypeCh(chtype fnc);
 struct Function protoTypeHg(hgtype fnc);
 struct Function protoTypeHh(hhtype fnc);
+struct Function protoTypeFh(fhtype fnc);
 struct Function protoTypeFf(fftype fnc);
 struct Function protoTypeGf(gftype fnc);
 struct Function protoTypeOf(oftype fnc);

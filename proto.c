@@ -34,6 +34,10 @@ struct Function protoTypeHh(hhtype fnc)
 {
 	struct Function ret = {.ft = Hhtype, {.hh = fnc}}; return ret;
 }
+struct Function protoTypeFh(fhtype fnc)
+{
+	struct Function ret = {.ft = Fhtype, {.fh = fnc}}; return ret;
+}
 struct Function protoTypeFf(fftype fnc)
 {
 	struct Function ret = {.ft = Fftype, {.ff = fnc}}; return ret;

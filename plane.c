@@ -365,11 +365,11 @@ void planeState(int *ptr)
 {
 	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
 }
-void planeHat(enum Configure hint)
+void planeHat(int hint)
 {
 	sem_wait(&resource); callWake(hint); sem_post(&resource);
 }
-const char *planeGet(int idx)
+const char *planeGet(int idx) // rhtype
 {
 	const char *ret = 0;
 	void *ptr = 0;
@@ -509,7 +509,10 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	act.__sigaction_u.__sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	// TODO extend interpreter with planeHat planeGet planeSet planeCat
+	luaxAdd("planeHat",protoTypeCf(planeHat));
+	luaxAdd("planeGet",protoTypeRh(planeGet));
+	luaxAdd("planeSet",protoTypeFh(planeSet));
+	luaxAdd("planeCat",protoTypeFh(planeCat));
 	intrFunc(planeIntr);
 	sem_init(&complete,0,0);
 	sem_init(&resource,0,1);

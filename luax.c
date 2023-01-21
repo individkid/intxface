@@ -136,6 +136,8 @@ int luaxClosure(lua_State *L)
 		case (Hgtype): fnc.hg(lua_tointeger(L,1),lua_tostring(L,2)); return 0;
 		// typedef void (*hhtype)(const char *str);
 		case (Hhtype): fnc.hh(lua_tostring(L,1)); return 0;
+		// typedef int (*fhtype)(int idx, const char *str);
+		case (Fhtype): lua_pushinteger(L,fnc.fh(lua_tointeger(L,1),lua_tostring(L,2))); return 1;
 		// typedef int (*fftype)(const char *str);
 		case (Fftype): lua_pushinteger(L,fnc.ff(lua_tostring(L,1))); return 1;
 		// typedef int (*gftype)(const char *one, const char *oth);
