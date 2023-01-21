@@ -361,13 +361,13 @@ void planeMemx(void **mem, void *giv)
 		sem_post(&ready);}
 	sem_post(&resource);
 }
-void planeHint(enum Configure hint)
-{
-	sem_wait(&resource); callWake(hint); sem_post(&resource);
-}
 void planeState(int *ptr)
 {
 	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
+}
+void planeHat(enum Configure hint)
+{
+	sem_wait(&resource); callWake(hint); sem_post(&resource);
 }
 const char *planeGet(int idx)
 {
@@ -407,6 +407,14 @@ int planeSet(int idx, const char *str)
 	sem_post(&resource);
 	return ret;
 }
+int planeCat(int idx, const char *str)
+{
+	const char *src = planeGet(idx);
+	char *dst = malloc(strlen(src)+strlen(str)+1);
+	int ret = planeSet(idx,strcat(strcpy(dst,src),str));
+	free(dst);
+	return ret;
+}
 void planeIntr()
 {
 	if (pthread_self() == threadProgram) longjmp(jmpbuf,1);
@@ -442,7 +450,7 @@ void *planeExternal(void *arg)
 }
 void *planeConsole(void *arg)
 {
-	char chr = 0;
+	char chr[2] = {0};
 	int val = 0;
 	int nfd = 0;
 	fd_set fds, ers;
@@ -456,11 +464,11 @@ void *planeConsole(void *arg)
 		if (val < 0 && errno == EBADF) break;
 		if (val == 0) break;
 		if (val < 0) ERROR();
-		val = read(STDIN_FILENO,&chr,1);
+		val = read(STDIN_FILENO,chr,1);
 		if (val == 0) break;
 		if (val < 0) ERROR();
-		// TODO call planeGet and planeSet of configure[CompareConsole]
-		planeHint(CompareConsole);}
+		planeCat(configure[CompareConsole],chr);
+		planeHat(CompareConsole);}
 	planeState(&stateConsole);
 	return 0;
 }
@@ -501,7 +509,7 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	act.__sigaction_u.__sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	// TODO extend interpreter with planeHint planeGet planeSet planeCat
+	// TODO extend interpreter with planeHat planeGet planeSet planeCat
 	intrFunc(planeIntr);
 	sem_init(&complete,0,0);
 	sem_init(&resource,0,1);
