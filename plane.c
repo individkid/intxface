@@ -22,6 +22,7 @@
 #endif
 #include <setjmp.h>
 #include <signal.h>
+#include <regex.h>
 
 struct Kernel {
 	struct Matrix compose; // optimization
@@ -29,15 +30,18 @@ struct Kernel {
 	struct Matrix written; // portion written
 	struct Matrix towrite; // portion to write
 };
+// owned by main thread:
 struct Kernel *subject = {0};
 struct Kernel *object = 0;
 struct Kernel *element = {0};
 struct Pierce *pierce = 0;
 struct Pierce *found = 0;
-char **strings = 0;
 struct Machine *machine = 0;
 int configure[Configures] = {0};
 struct Center center = {0};
+regex_t *pattern = 0;
+int numpat = 0;
+// constant after other threads start:
 int internal = 0;
 int external = 0;
 int arguments = 0;
@@ -51,17 +55,25 @@ pthread_t threadExternal;
 pthread_t threadConsole;
 pthread_t threadProgram;
 pthread_t threadWait;
+pthread_key_t retstr;
+// owned by argx memx luax thread:
+jmp_buf jmpbuf;
+// resource protected:
 int stateExternal = 0;
 int stateConsole = 0;
 int stateProgram = 0;
 int stateProcess = 0;
 int running = 0;
+int numstr = 0;
+char **strings = 0;
+// thread safe:
 sem_t complete;
 sem_t resource;
 sem_t ready;
 sem_t process;
 sem_t restart;
-jmp_buf jmpbuf;
+const char *planeGet(int idx);
+int planeSet(int idx, const char *str);
 
 void planeAlize(float *dir, const float *vec) // normalize
 {
@@ -113,9 +125,9 @@ struct Kernel *planeKernel()
 {
 	int index = configure[RegisterIndex];
 	switch ((enum Memory)configure[RegisterMemory]) {
-		case (Allmatz): return subject + configure[RegisterIndex] % configure[SubjectSize];
-		case (Fewmatz): return object + configure[RegisterIndex] % configure[ObjectSize];
-		case (Onematz): return element + configure[RegisterIndex] % configure[ElementSize];
+		case (Allmatz): return subject + index % configure[SubjectSize];
+		case (Fewmatz): return object + index % configure[ObjectSize];
+		case (Onematz): return element + index % configure[ElementSize];
 		default: break;}
 	return 0;
 }
@@ -143,14 +155,6 @@ struct Matrix *planeMatrix(enum Accumulate accumulate)
 		default: break;}
 	return 0;
 }
-struct Pierce *planePierce()
-{
-	if (found) return found;
-	for (int i = 0; i < configure[PierceSize]; i++) {
-		struct Pierce *temp = pierce + i%configure[PierceSize];
-		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
-	return found;
-}
 void planeCalculate(struct Matrix *matrix)
 {
 	struct Vector picture = {0};
@@ -165,10 +169,35 @@ void planeCalculate(struct Matrix *matrix)
 	angle = configure[CursorAngle];
 	planeFunc()(matrix->mat,picture.vec,corner.vec,fixed.vec,cursor.vec,angle);
 }
+void planePattern(int idx, const char *str)
+{
+	char buf[128] = {0};
+	int val = 0;
+	if (idx >= numpat) {numpat = idx+1;
+	pattern = realloc(pattern,numpat*sizeof(regex_t));}
+	regfree(pattern+idx);
+	if ((val = regcomp(pattern+idx,str,0))) {
+	regerror(val,pattern+idx,buf,128);
+	fprintf(stderr,"regcomp error: %s\n",buf);
+	regfree(pattern+idx);}
+}
+int planeMatch(int str, int pat)
+{
+	return (regexec(pattern+pat,planeGet(str),0,0,0) == 0);
+}
+struct Pierce *planePierce()
+{
+	if (found) return found;
+	for (int i = 0; i < configure[PierceSize]; i++) {
+		struct Pierce *temp = pierce + i%configure[PierceSize];
+		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
+	return found;
+}
 void planePreconfig(enum Configure cfg)
 {
 	switch (cfg) {
 		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
+		case (CompareResult): configure[CompareResult] = planeMatch(configure[CompareString],configure[ComparePattern]); break;
 		case (CenterCommand): configure[CenterCommand] = center.cmd; break;
 		case (CenterMemory): configure[CenterMemory] = center.mem; break;
 		case (CenterSize): configure[CenterSize] = center.siz; break;
@@ -206,7 +235,6 @@ void planeReconfig(enum Configure cfg, int val)
 		case (SubjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
-		case (StringSize): strings = planeRealloc(strings,val,tmp,sizeof(char *)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
 		case (RegisterOpen): if (val == 0) sem_wait(&resource); running = val; sem_post(&resource); sem_post(&complete); break;
 		default: break;}
@@ -231,21 +259,29 @@ void planeAlloc()
 void planeEcho() {
 	switch (center.mem) {
 		case (Piercez): {
-			int index = configure[RegisterIndex]%configure[PierceSize];
+			int index = center.idx%configure[PierceSize];
 			while (index < 0) index += configure[PierceSize];
 			for (int i = 0; i < center.siz; i++, index++) center.pie[i] = pierce[index%configure[PierceSize]];
 			break;}
 		case (Collectz): {
-			int index = configure[RegisterIndex]%memxSize(argxRun(arguments));
-			while (index < 0) index += memxSize(argxRun(arguments));
-			for (int i = 0; i < center.siz; i++, index++) assignStr(center.col+i,memxStr(memxSkip(argxRun(arguments),index%memxSize(argxRun(arguments)))));
+			int index = center.idx;
+			for (int i = 0; i < center.siz; i++, index++) assignStr(center.pat+i,planeGet(index));
 			break;}
 		case (Configurez): {
-			int index = configure[RegisterIndex]%Configures;
+			int index = center.idx%Configures;
 			while (index < 0) index += Configures;
 			for (int i = 0; i < center.siz; i++, index++) planePostconfig((enum Configure)(index%Configures),i);
 			break;}
 		default: break;}
+}
+void planeBuffer()
+{
+	switch (center.mem) {
+		case (Stringz): for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
+		case (Patternz): for (int i = 0; i < center.siz; i++) planePattern(center.idx+i,center.pat[i]); break;
+		case (Machinez): for (int i = 0; i < center.siz; i++) planeCopy(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
+		case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
+		default: callDma(&center); break;}
 }
 int planeEscape(int lvl, int nxt)
 {
@@ -258,12 +294,12 @@ int planeEscape(int lvl, int nxt)
 int planeCompare(enum Configure cfg, int val, enum Compare cmp)
 {
 	switch (cmp) {
-		case (Less): return (cfg < val);
-		case (More): return (cfg > val);
-		case (Equal): return (cfg == val);
-		case (Nless): return (cfg >= val);
-		case (Nmore): return (cfg <= val);
-		case (Nequal): return (cfg != val);
+		case (Less): return (configure[cfg] < val);
+		case (More): return (configure[cfg] > val);
+		case (Equal): return (configure[cfg] == val);
+		case (Nless): return (configure[cfg] >= val);
+		case (Nmore): return (configure[cfg] <= val);
+		case (Nequal): return (configure[cfg] != val);
 		default: break;}
 	return 0;
 }
@@ -284,22 +320,77 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
-void planeBuffer()
+void planeBoot()
 {
-	switch (center.mem) {
-		case (Stringz): for (int i = 0; i < center.siz; i++) assignStr(strings+(center.idx+i)%configure[StringSize],center.str[i]); break;
-		case (Machinez): for (int i = 0; i < center.siz; i++) planeCopy(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
-		case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
-		default: callDma(&center); break;}
+	for (int i = 0; Bootstrap__Int__Str(i); i++) {
+	int len = 0;
+	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
+	planeBuffer();}
 }
 void planeState(int *ptr)
 {
 	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
 }
+void planeMemx(void **mem, void *giv)
+{
+	memxList(mem,giv); // TODO call planeSet with a negative index instead
+	sem_wait(&resource);
+	if (memxSize(*mem) > 2) {
+		stateProgram++;
+		sem_post(&ready);}
+	sem_post(&resource);
+}
+const char *planeGet(int idx)
+{
+	const char *ret = 0;
+	sem_wait(&resource);
+	free(pthread_getspecific(retstr));
+	if (idx >= numstr) {
+		strings = realloc(strings,(idx+1)*sizeof(char*));
+		while (idx >= numstr) strings[numstr++] = strdup("");}
+	if (idx < 0) {
+		numstr--;
+		pthread_setspecific(retstr,strdup(strings[numstr]));
+		free(strings[numstr]);
+		strings = realloc(strings,numstr*sizeof(char*));}
+	else pthread_setspecific(retstr,strdup(strings[idx]));
+	ret = pthread_getspecific(retstr);
+	sem_post(&resource);
+	return ret;
+}
+int planeSet(int idx, const char *str)
+{
+	int ret = 0;
+	sem_wait(&resource);
+	if (idx < 0) {
+		numstr++;
+		strings = realloc(strings,numstr*sizeof(char*));
+		idx = numstr-1;
+		strings[numstr-1] = strdup("");}
+	if (idx >= numstr) {
+		strings = realloc(strings,(idx+1)*sizeof(char*));
+		while (idx >= numstr) strings[numstr++] = strdup("");}
+	free(strings[idx]);
+	strings[idx] = strdup(str);
+	ret = numstr;
+	sem_post(&resource);
+	return ret;
+}
+void planeIntr()
+{
+	if (pthread_self() == threadProgram) longjmp(jmpbuf,1);
+}
+void planeTerm(int sig)
+{
+}
+void planeCall(enum Configure hint)
+{
+	sem_wait(&resource); callWake(hint); sem_post(&resource);
+}
 void *planeExternal(void *arg)
 {
 	sem_wait(&ready);
-	sem_wait(&resource);
+	sem_wait(&resource); // TODO call planeGet instead
 	external = pipeInit(
 		memxStr(memxSkip(argxRun(arguments),1)),
 		memxStr(memxSkip(argxRun(arguments),2)));
@@ -314,7 +405,7 @@ void *planeExternal(void *arg)
 	if (!checkWrite(internal)) break;
 	readCenter(&center,external);
 	writeCenter(&center,internal);
-	callWake(RegisterHint);}
+	planeCall(RegisterHint);}
 	planeState(&stateExternal);
 	return 0;
 }
@@ -337,10 +428,8 @@ void *planeConsole(void *arg)
 		val = read(STDIN_FILENO,&chr,1);
 		if (val == 0) break;
 		if (val < 0) ERROR();
-		sem_wait(&resource);
-		// TODO append chr to configure[RegisterIndex] of arguments
-		sem_post(&resource);
-		callWake(RegisterCompare);}
+		// TODO call planeGet and planeSet
+		planeWake(CompareResult);}
 	planeState(&stateConsole);
 	return 0;
 }
@@ -363,7 +452,7 @@ void *planeWait(void *arg)
 	if ((val&4) && ext == 0) {sem_wait(&resource); ext = ++stateExternal; sem_post(&resource); if (pthread_create(&threadExternal,0,planeExternal,0) != 0) ERROR();}
 	if ((val&2) && con == 0) {sem_wait(&resource); con = ++stateConsole; sem_post(&resource); if (pthread_create(&threadConsole,0,planeConsole,0) != 0) ERROR();}
 	if ((val&1) && prg == 0) {sem_wait(&resource); prg = ++stateProgram; sem_post(&resource); if (pthread_create(&threadProgram,0,planeProgram,0) != 0) ERROR();}
-	if (!(val&8) && pro == 2 || pro == 3) {sem_wait(&resource); pro = ++stateProcess; val = running &= ~8; sem_post(&resource); callWake(Configures);}
+	if (!(val&8) && pro == 2 || pro == 3) {sem_wait(&resource); pro = ++stateProcess; val = running &= ~8; callWake(Configures); sem_post(&resource);}
 	if (!(val&4) && ext == 2 || ext == 3) {sem_wait(&resource); ext = ++stateExternal; val = running &= ~4; sem_post(&resource); closeIdent(external);}
 	if (!(val&2) && con == 2 || con == 3) {sem_wait(&resource); con = ++stateConsole; val = running &= ~2; sem_post(&resource); close(STDIN_FILENO);}
 	if (!(val&1) && prg == 2 || prg == 3) {sem_wait(&resource); prg = ++stateProgram; val = running &= ~1; sem_post(&resource); kill(getpid(),SIGTERM);}
@@ -374,34 +463,6 @@ void *planeWait(void *arg)
 	if (val == 0 && pro == 0 && ext == 0 && con == 0 && prg == 0) break;
 	sem_wait(&complete);}
 	return 0;
-}
-void planeBoot()
-{
-	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	int len = 0;
-	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
-	planeBuffer();}
-}
-void planeMemx(void **mem, void *giv)
-{
-	sem_wait(&resource);
-	memxList(mem,giv);
-	if (memxSize(*mem) > 2) {
-		sem_post(&ready);
-		stateProgram++;}
-	sem_post(&resource);
-}
-void planeIntr()
-{
-	if (pthread_self() == threadProgram) longjmp(jmpbuf,1);
-}
-void planeTerm(int sig)
-{
-}
-int planeEval(const char *str, int arg)
-{
-	if (luaxExpr(str,protoCloseRf(arg)) < 0) ERROR();
-	return protoResultRf();
 }
 void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xftype info, wftype draw)
 {
@@ -420,13 +481,13 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	act.__sigaction_u.__sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	intrFunc(planeIntr);
-	// TODO extend interpreter with callWake
+	// TODO extend interpreter with planeWake planeGet planeSet
 	planeBoot();
 	configure[RegisterOpen] = running = 8|4|2|1; // TODO move this to Bootstrap
-	arguments = getLocation();
+	arguments = getLocation(); // TODO eliminate this unused backing
 	addFlow("",protoTypeNf(memxInit),protoTypeMf(memxCopy));
 	mapCallback("",arguments,protoTypeMf(planeMemx));
-	init(); // this calls useArgument
+	init(); // this calls useArgument; from now on, argx memx luax are only in threadProgram
 	internal = openPipe();
 	if (internal < 0) ERROR();
 	if (pthread_create(&threadWait,0,planeWait,0) != 0) ERROR();
@@ -453,19 +514,18 @@ void planeWake(enum Configure hint)
 		int accum = 0;
 		int size = 0;
 		switch (mptr->xfr) {
-			case (Save): case (Copy): case (Force): case (Forces): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
+			case (Save): case (Copy): case (Force): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
 			default: break;}
 		for (int i = 0; i < size; i++) switch (mptr->xfr) {
 			case (Save): planePreconfig(mptr->cfg[i]); break; // kernel, center, pierce, or info to configure -- siz cfg
 			case (Copy): planeReconfig(mptr->cfg[i],configure[mptr->oth[i]]); break; // configure to configure -- siz cfg oth
 			case (Force): planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure -- siz cfg val
-			case (Forces): planeReconfig(mptr->cfg[i],planeEval(mptr->str,mptr->val[i])); break; // script to configure -- siz cfg val str
 			case (Setup): planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to center -- siz cfg val
 			case (Jump): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // skip if true -- siz cfg val cmp cnd idx
 			case (Goto): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // jump if true -- siz cfg val cmp cnd idx
 			default: break;}
 		switch (mptr->xfr) {
-			case (Read): readCenter(&center,internal); break; // read internal pipe --
+			case (Read): readCenter(&center,internal); break; // read internal pipe -- TODO make nonblocking
 			case (Write): writeCenter(&center,external); break; // write external pipe --
 			case (Alloc): planeAlloc(); break; // configure to center --
 			case (Echo): planeEcho(); break; // memory to center --
@@ -478,8 +538,6 @@ void planeWake(enum Configure hint)
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
 			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
-			case (Jumps): next = planeEscape(planeEval(mptr->str,next),next); // skip to eval -- str
-			case (Gotos): next = planeEval(mptr->str,next); break; // jump to eval -- str
 			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
 			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines -- idx ret
 			default: break;}

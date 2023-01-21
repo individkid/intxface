@@ -50,6 +50,7 @@ Memory = {
 	"Piercez", -- pierce point normal and valid
 	"Slicez", -- plane or point index ranges
 	"Stringz", -- keyboard comparison strings
+	"Patternz", -- comparison regular expressions
 	"Collectz", -- keyboard line entered
 	"Machinez", -- state machine lines
 	"Configurez", -- configure to value
@@ -68,17 +69,18 @@ Configure = {
 	"PierceLimit",
 	"PierceIndex",
 	"SliceSize", -- ranges per draw
-	"StringSize", -- to compare to
 	"MachineSize", -- vending machine lines
 	"RegisterLine", -- state of machine
-	"RegisterNest",
-	"RegisterXform",
-	"RegisterMemory",
-	"RegisterIndex",
+	"RegisterNest", -- current level
+	"RegisterXform", -- which matrix
+	"RegisterMemory", -- which memory
+	"RegisterIndex", -- which memory instance
 	"RegisterHint", -- argument from graphics
-	"RegisterCompare", -- index into strings
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- windows open count
+	"CompareString", -- which compare string
+	"ComparePattern", -- which compare pattern
+	"CompareResult", -- string pattern result
 	"CenterCommand", -- fields to from client
 	"CenterMemory",
 	"CenterSize",
@@ -113,7 +115,6 @@ Transfer = {
 	"Save", -- client, pierce, or info to configure
 	"Copy", -- configure to configure
 	"Force", -- machine to configure
-	"Forces", -- script to configure
 	"Setup", -- configure to client
 	"Alloc", -- configure to client
 	"Echo", -- collect to client
@@ -126,8 +127,6 @@ Transfer = {
 	"Draw", -- start shader
 	"Jump", -- skip if true
 	"Goto", -- jump if true
-	"Jumps", -- skip to eval
-	"Gotos", -- jump to eval
 	"Nest", -- nest to level
 	"Swap", -- exchange machine lines
 }
@@ -422,12 +421,11 @@ Slice = {
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"cfg","Configure",{["xfr"]={["Save"]=true,["Copy"]=true,["Force"]=true,["Forces"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
+	{"cfg","Configure",{["xfr"]={["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
 	{"oth","Configure",{["xfr"]={["Copy"]=true}},"siz"},
-	{"val","Int",{["xfr"]={["Force"]=true,["Forces"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
+	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
 	{"cmp","Compare",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
 	{"cnd","Condition",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
-	{"str","Str",{["xfr"]={["Forces"]=true,["Jumps"]=true,["Gotos"]=true}},{}},
 	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true,["Nest"]=true,["Swap"]=true}},{}},
 	{"ret","Int",{["xfr"]={["Swap"]=true}},{}},
 	{"src","Accumulate",{["xfr"]={["Follow"]=true,["Precede"]=true}},{}},
@@ -451,7 +449,7 @@ Center = {
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
-	{"col","Str",{["mem"]={["Collectz"]=true}},"siz"},
+	{"pat","Str",{["mem"]={["Patternz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
