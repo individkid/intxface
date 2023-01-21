@@ -78,6 +78,7 @@ Configure = {
 	"RegisterHint", -- argument from graphics
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- windows open count
+	"CompareConsole", -- console string index
 	"CompareString", -- which compare string
 	"ComparePattern", -- which compare pattern
 	"CompareNumber", -- string pattern count

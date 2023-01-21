@@ -44,7 +44,6 @@ int numpat = 0;
 // constant after other threads start:
 int internal = 0;
 int external = 0;
-int arguments = 0;
 vftype callRun = 0;
 vftype callStop = 0;
 uftype callDma = 0;
@@ -332,31 +331,39 @@ void planeBoot()
 	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
 	planeBuffer();}
 }
-void planeState(int *ptr)
-{
-	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
-}
 void planeMemx(void **mem, void *giv)
 {
-	memxList(mem,giv); // TODO call planeSet with a negative index instead
+	memxCopy(mem,giv);
+	planeSet(-1,memxStr(*mem));
 	sem_wait(&resource);
-	if (memxSize(*mem) > 2) {
+	if (numstr > 2) {
 		stateProgram++;
 		sem_post(&ready);}
 	sem_post(&resource);
 }
+void planeHint(enum Configure hint)
+{
+	sem_wait(&resource); callWake(hint); sem_post(&resource);
+}
+void planeState(int *ptr)
+{
+	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
+}
 const char *planeGet(int idx)
 {
 	const char *ret = 0;
+	void *ptr = 0;
 	sem_wait(&resource);
-	free(pthread_getspecific(retstr));
+	ptr = pthread_getspecific(retstr);
+	free(ptr);
+	pthread_setspecific(retstr,0);
 	if (idx >= numstr) {
 		strings = realloc(strings,(idx+1)*sizeof(char*));
 		while (idx >= numstr) strings[numstr++] = strdup("");}
 	if (idx < 0) {
 		numstr--;
 		pthread_setspecific(retstr,strdup(strings[numstr]));
-		free(strings[numstr]);
+		free(strings[numstr]); strings[numstr] = 0;
 		strings = realloc(strings,numstr*sizeof(char*));}
 	else pthread_setspecific(retstr,strdup(strings[idx]));
 	ret = pthread_getspecific(retstr);
@@ -375,8 +382,7 @@ int planeSet(int idx, const char *str)
 	if (idx >= numstr) {
 		strings = realloc(strings,(idx+1)*sizeof(char*));
 		while (idx >= numstr) strings[numstr++] = strdup("");}
-	free(strings[idx]);
-	strings[idx] = strdup(str);
+	free(strings[idx]); strings[idx] = strdup(str);
 	ret = numstr;
 	sem_post(&resource);
 	return ret;
@@ -394,12 +400,12 @@ void planeCall(enum Configure hint)
 }
 void *planeExternal(void *arg)
 {
+	char *inp = 0;
+	char *out = 0;
 	sem_wait(&ready);
-	sem_wait(&resource); // TODO call planeGet instead
-	external = pipeInit(
-		memxStr(memxSkip(argxRun(arguments),1)),
-		memxStr(memxSkip(argxRun(arguments),2)));
-	sem_post(&resource);
+	inp = strdup(planeGet(1)); out = strdup(planeGet(2));
+	external = pipeInit(inp,out);
+	free(inp); free(out);
 	if (external < 0) ERROR();
 	planeState(&stateExternal);
 	while (1) {
@@ -433,8 +439,8 @@ void *planeConsole(void *arg)
 		val = read(STDIN_FILENO,&chr,1);
 		if (val == 0) break;
 		if (val < 0) ERROR();
-		// TODO call planeGet and planeSet
-		planeWake(CompareResult);}
+		// TODO call planeGet and planeSet of configure[CompareConsole]
+		planeHint(CompareResult);}
 	planeState(&stateConsole);
 	return 0;
 }
@@ -471,28 +477,27 @@ void *planeWait(void *arg)
 }
 void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xftype info, wftype draw)
 {
+	struct sigaction act;
+	act.__sigaction_u.__sa_handler = planeTerm;
+	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
+	if (pthread_key_create(&retstr,free) != 0) ERROR();
+	// TODO extend interpreter with planeHint planeGet planeSet
+	intrFunc(planeIntr);
+	sem_init(&complete,0,0);
+	sem_init(&resource,0,1);
+	sem_init(&ready,0,0);
+	sem_init(&process,0,0);
+	sem_init(&restart,0,0);
 	callRun = run;
 	callStop = stop;
 	callDma = dma;
 	callWake = wake;
 	callInfo = info;
 	callDraw = draw;
-	sem_init(&complete,0,0);
-	sem_init(&resource,0,1);
-	sem_init(&ready,0,0);
-	sem_init(&process,0,0);
-	sem_init(&restart,0,0);
-	struct sigaction act;
-	act.__sigaction_u.__sa_handler = planeTerm;
-	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
-	intrFunc(planeIntr);
-	// TODO extend interpreter with planeWake planeGet planeSet
 	planeBoot();
 	configure[RegisterOpen] = running = 8|4|2|1; // TODO move this to Bootstrap
-	arguments = getLocation(); // TODO eliminate this unused backing
-	addFlow("",protoTypeNf(memxInit),protoTypeMf(memxCopy));
-	mapCallback("",arguments,protoTypeMf(planeMemx));
-	init(); // this calls useArgument; from now on, argx memx luax are only in threadProgram
+	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
+	init(); // this calls useArgument
 	internal = openPipe();
 	if (internal < 0) ERROR();
 	if (pthread_create(&threadWait,0,planeWait,0) != 0) ERROR();
