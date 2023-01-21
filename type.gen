@@ -51,7 +51,7 @@ Memory = {
 	"Slicez", -- plane or point index ranges
 	"Stringz", -- keyboard comparison strings
 	"Patternz", -- comparison regular expressions
-	"Collectz", -- keyboard line entered
+	"Resultz", -- regular expression substrings
 	"Machinez", -- state machine lines
 	"Configurez", -- configure to value
 }
@@ -82,7 +82,7 @@ Configure = {
 	"CompareString", -- which compare string
 	"ComparePattern", -- which compare pattern
 	"CompareNumber", -- string pattern count
-	"CompareResult", -- string pattern result
+	"CompareSize", -- string pattern result
 	"CenterCommand", -- fields to from client
 	"CenterMemory",
 	"CenterSize",
@@ -452,6 +452,7 @@ Center = {
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"pat","Str",{["mem"]={["Patternz"]=true}},"siz"},
+	{"sub","Str",{["mem"]={["Resultz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},

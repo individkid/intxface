@@ -41,6 +41,7 @@ int configure[Configures] = {0};
 struct Center center = {0};
 regex_t *pattern = 0;
 int numpat = 0;
+char **result = 0;
 // constant after other threads start:
 int internal = 0;
 int external = 0;
@@ -185,9 +186,22 @@ int planeMatch()
 	int str = configure[CompareString];
 	int pat = configure[ComparePattern];
 	int num = configure[CompareNumber];
-	while (num) if (num > 0) {num--; if (regexec(pattern+pat,planeGet(str),0,0,0) == 0) return str; str++;}
-	else {num++; if (regexec(pattern+pat,planeGet(str),0,0,0) == 0) return pat; pat++;}
-	return -1;
+	for (int i = 0; i < configure[CompareSize]; i++) free(result[i]);
+	free(result); result = 0; configure[CompareSize] = 0;
+	if (numpat == 0 || numstr == 0) return 0;
+	while (num) {
+	regex_t *ptr = pattern+(pat%numpat);
+	int siz = ptr->re_nsub+1;
+	regmatch_t pmatch[siz];	
+	if (regexec(ptr,planeGet(str),siz,pmatch,0) != 0) {
+	if (num > 0) {num--; str++;} else {num++; pat++;} continue;}
+	result = malloc(siz*sizeof(char*));
+	for (int i = 0; i < siz; i++) {
+	if (pmatch[i].rm_so < 0) result[i] = strdup("");
+	else result[i] = strndup(planeGet(str)+pmatch[i].rm_so,pmatch[i].rm_eo-pmatch[i].rm_so);}
+	configure[CompareSize] = siz;
+	return siz;}
+	return 0;
 }
 struct Pierce *planePierce()
 {
@@ -201,7 +215,7 @@ void planePreconfig(enum Configure cfg)
 {
 	switch (cfg) {
 		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-		case (CompareResult): configure[CompareResult] = planeMatch(); break;
+		case (CompareSize): configure[CompareSize] = planeMatch(); break;
 		case (CenterCommand): configure[CenterCommand] = center.cmd; break;
 		case (CenterMemory): configure[CenterMemory] = center.mem; break;
 		case (CenterSize): configure[CenterSize] = center.siz; break;
@@ -257,6 +271,7 @@ void planeAlloc()
 		case (Onematz): allocMatrix(&center.one,center.siz); break;
 		case (Piercez): allocPierce(&center.pie,center.siz); break;
 		case (Stringz): allocStr(&center.str,center.siz); break;
+		case (Resultz): allocStr(&center.sub,center.siz); break;
 		case (Configurez): allocConfigure(&center.cfg,center.siz); allocInt(&center.val,center.siz); break;
 		default: center.siz = 0; break;}
 }
@@ -267,9 +282,14 @@ void planeEcho() {
 			while (index < 0) index += configure[PierceSize];
 			for (int i = 0; i < center.siz; i++, index++) center.pie[i] = pierce[index%configure[PierceSize]];
 			break;}
-		case (Collectz): {
+		case (Stringz): {
 			int index = center.idx;
-			for (int i = 0; i < center.siz; i++, index++) assignStr(center.pat+i,planeGet(index));
+			for (int i = 0; i < center.siz; i++, index++) assignStr(center.str+i,planeGet(index));
+			break;}
+		case (Resultz): {
+			int index = center.idx%configure[CompareSize];
+			while (index < 0) index += configure[CompareSize];
+			for (int i = 0; i < center.siz; i++, index++) assignStr(center.sub+i,result[index%configure[CompareSize]]);
 			break;}
 		case (Configurez): {
 			int index = center.idx%Configures;
@@ -440,7 +460,7 @@ void *planeConsole(void *arg)
 		if (val == 0) break;
 		if (val < 0) ERROR();
 		// TODO call planeGet and planeSet of configure[CompareConsole]
-		planeHint(CompareResult);}
+		planeHint(CompareConsole);}
 	planeState(&stateConsole);
 	return 0;
 }
@@ -481,7 +501,7 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	act.__sigaction_u.__sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	// TODO extend interpreter with planeHint planeGet planeSet
+	// TODO extend interpreter with planeHint planeGet planeSet planeCat
 	intrFunc(planeIntr);
 	sem_init(&complete,0,0);
 	sem_init(&resource,0,1);
