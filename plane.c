@@ -76,7 +76,7 @@ sem_t restart;
 void planeMemx(void **mem, void *giv);
 void planeState(int *ptr);
 int planeRun();
-void planeStop(int val);
+void planeTop(int val);
 void planeRead();
 const char *planeGet(int idx);
 int planeSet(int idx, const char *str);
@@ -261,7 +261,7 @@ void planeReconfig(enum Configure cfg, int val)
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
-		case (RegisterOpen): planeStop(val); break;
+		case (RegisterOpen): planeTop(val); break;
 		default: break;}
 }
 void planeAlloc()
@@ -380,7 +380,7 @@ int planeRun()
 	sem_wait(&resource); val = running; sem_post(&resource);
 	return val;
 }
-void planeStop(int val)
+void planeTop(int val)
 {
 	sem_wait(&resource); running = val; sem_post(&complete); sem_post(&resource);
 }
@@ -448,10 +448,6 @@ void planeIntr()
 void planeTerm(int sig)
 {
 }
-void planeCall(enum Configure hint)
-{
-	sem_wait(&resource); callWake(hint); sem_post(&resource);
-}
 void *planeExternal(void *arg)
 {
 	char *inp = 0;
@@ -471,7 +467,7 @@ void *planeExternal(void *arg)
 	readCenter(&center,external);
 	writeCenter(&center,internal);
 	sem_wait(&resource); numpipe++; sem_post(&resource);
-	planeCall(RegisterHint);}
+	planeHat(RegisterHint);}
 	planeState(&stateExternal);
 	return 0;
 }
@@ -553,7 +549,6 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	callInfo = info;
 	callDraw = draw;
 	planeBoot();
-	configure[RegisterOpen] = running = 8|4|2|1; // TODO move this to Bootstrap
 	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
 	init(); // this calls useArgument
 	internal = openPipe();

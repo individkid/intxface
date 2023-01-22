@@ -245,33 +245,21 @@ Initial = {
 	{"Shader","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Center(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(9)idx:Int(0)slf:Int(0)"..
+	{"Int","0","Str","Center(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
-		"cfg[3]:Configure(CenterCommand)"..
-		"cfg[4]:Configure(CenterMemory)"..
-		"cfg[5]:Configure(CenterIndex)"..
-		"cfg[6]:Configure(CenterSize)"..
-		"cfg[7]:Configure(CenterSelf)"..
-		"cfg[8]:Configure(RegisterIndex)"..
+		"cfg[3]:Configure(RegisterOpen)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
-		"val[2]:Int(4)"..
-		"val[3]:Int(%(return castCommand(\"SetCmd\")))"..
-		"val[4]:Int(%(return castMemory(\"Configurez\")))"..
-		"val[5]:Int(0)"..
-		"val[6]:Int(1)"..
-		"val[7]:Int(0)"..
-		"val[8]:Int(%(return castConfigure(\"RegisterOpen\"))))"..
+		"val[2]:Int(1)"..
+		"val[3]:Int(15)"..
 	")"},
-	{"Int","1","Str","Center(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(4)idx:Int(0)slf:Int(0)"..
-		"mch[0]:Machine(xfr:Transfer(Alloc)siz:Int(0))"..
-		"mch[1]:Machine(xfr:Transfer(Force)siz:Int(1)"..
+	{"Int","1","Str","Center(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
+		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)"..
 			"cfg[0]:Configure(RegisterOpen)"..
-			"val[0]:Int(0))"..
-		"mch[2]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
-		"mch[3]:Machine(xfr:Transfer(Share)siz:Int(0))"..
+			"val[0]:Int(0)"..
+		")"..
 	")"},
 }
 --HERE Structs
