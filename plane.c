@@ -73,8 +73,15 @@ sem_t resource;
 sem_t ready;
 sem_t process;
 sem_t restart;
+void planeMemx(void **mem, void *giv);
+void planeState(int *ptr);
+int planeRun();
+void planeStop(int val);
+void planeRead();
 const char *planeGet(int idx);
 int planeSet(int idx, const char *str);
+int planeCat(int idx, const char *str);
+void planeHat(int hint);
 
 void planeAlize(float *dir, const float *vec) // normalize
 {
@@ -240,7 +247,7 @@ void planePostconfig(enum Configure cfg, int idx)
 	if (center.mem != Configurez || idx < 0 || idx >= center.siz) return;
 	center.cfg[idx] = cfg;
 	switch (cfg) {
-	case (RegisterOpen): sem_wait(&resource); configure[RegisterOpen] = running; sem_post(&resource); break;
+	case (RegisterOpen): configure[RegisterOpen] = planeRun(); break;
 	default: break;}
 	center.val[idx] = configure[cfg];
 }
@@ -254,10 +261,10 @@ void planeReconfig(enum Configure cfg, int val)
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
-		case (RegisterOpen): if (val == 0) sem_wait(&resource); running = val; sem_post(&resource); sem_post(&complete); break;
+		case (RegisterOpen): planeStop(val); break;
 		default: break;}
 }
-void planeAlloc() // configure to center
+void planeAlloc()
 {
 	freeCenter(&center);
 	center.cmd = (enum Command)configure[CenterCommand];
@@ -271,11 +278,11 @@ void planeAlloc() // configure to center
 		case (Onematz): allocMatrix(&center.one,center.siz); break;
 		case (Piercez): allocPierce(&center.pie,center.siz); break;
 		case (Stringz): allocStr(&center.str,center.siz); break;
-		case (Resultz): allocStr(&center.sub,center.siz); break;
+		case (Resultz): allocStr(&center.str,center.siz); break;
 		case (Configurez): allocConfigure(&center.cfg,center.siz); allocInt(&center.val,center.siz); break;
 		default: center.siz = 0; break;}
 }
-void planeEcho() // memory to center
+void planeEcho()
 {
 	switch (center.mem) {
 		case (Piercez): {
@@ -290,7 +297,7 @@ void planeEcho() // memory to center
 		case (Resultz): {
 			int index = center.idx%configure[CompareSize];
 			while (index < 0) index += configure[CompareSize];
-			for (int i = 0; i < center.siz; i++, index++) assignStr(center.sub+i,result[index%configure[CompareSize]]);
+			for (int i = 0; i < center.siz; i++, index++) assignStr(center.str+i,result[index%configure[CompareSize]]);
 			break;}
 		case (Configurez): {
 			int index = center.idx%Configures;
@@ -299,11 +306,12 @@ void planeEcho() // memory to center
 			break;}
 		default: break;}
 }
-void planeBuffer() // center to memory
+void planeBuffer()
 {
 	switch (center.mem) {
-		case (Stringz): for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
-		case (Patternz): for (int i = 0; i < center.siz; i++) planePattern(center.idx+i,center.pat[i]); break;
+		case (Stringz): if (center.idx < 0) for (int i = 0; i < center.siz; i++) center.idx = planeSet(-1,center.str[i]);
+		else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
+		case (Patternz): for (int i = 0; i < center.siz; i++) planePattern(center.idx+i,center.str[i]); break;
 		case (Machinez): for (int i = 0; i < center.siz; i++) planeCopy(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
 		case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
 		default: callDma(&center); break;}
@@ -366,16 +374,22 @@ void planeState(int *ptr)
 {
 	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
 }
+int planeRun()
+{
+	int val = 0;
+	sem_wait(&resource); val = running; sem_post(&resource);
+	return val;
+}
+void planeStop(int val)
+{
+	sem_wait(&resource); running = val; sem_post(&complete); sem_post(&resource);
+}
 void planeRead()
 {
 	int num = 0;
 	sem_wait(&resource); if ((num = numpipe)) numpipe--; sem_post(&resource);
 	if (num) readCenter(&center,internal);
 	else {struct Center tmp = {0}; center = tmp;}
-}
-void planeHat(int hint)
-{
-	sem_wait(&resource); callWake(hint); sem_post(&resource);
 }
 const char *planeGet(int idx) // rhtype
 {
@@ -422,6 +436,10 @@ int planeCat(int idx, const char *str)
 	int ret = planeSet(idx,strcat(strcpy(dst,src),str));
 	free(dst);
 	return ret;
+}
+void planeHat(int hint)
+{
+	sem_wait(&resource); callWake(hint); sem_post(&resource);
 }
 void planeIntr()
 {
