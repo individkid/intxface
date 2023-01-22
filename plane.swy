@@ -220,6 +220,9 @@ func swiftInit()
 {
 	for arg in CommandLine.arguments {useArgument(arg)}
 	device = MTLCreateSystemDefaultDevice()
+}
+func swiftRun()
+{
 	let rect = NSMakeRect(
 		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
 		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
@@ -272,9 +275,6 @@ func swiftInit()
     threads[sub] = device.maxThreadsPerThreadgroup}}}
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in planeWake(CursorLeft); return event})
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeWake(Configure(UInt32(event.data1))); return event})
-}
-func swiftRun()
-{
 	NSApp.run()
 }
 func swiftStop()

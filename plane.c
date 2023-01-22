@@ -45,7 +45,6 @@ char **result = 0;
 // constant after other threads start:
 int internal = 0;
 int external = 0;
-vftype callRun = 0;
 vftype callStop = 0;
 uftype callDma = 0;
 yftype callWake = 0;
@@ -542,21 +541,20 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	sem_init(&ready,0,0);
 	sem_init(&process,0,0);
 	sem_init(&restart,0,0);
-	callRun = run;
 	callStop = stop;
 	callDma = dma;
 	callWake = wake;
 	callInfo = info;
 	callDraw = draw;
-	planeBoot();
 	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
-	init(); // this calls useArgument
+	init(); // this calls useArgument and allows calls to callDma and callInfo
+	planeBoot(); // this calls callDma through planeBuffer
 	internal = openPipe();
 	if (internal < 0) ERROR();
 	if (pthread_create(&threadWait,0,planeWait,0) != 0) ERROR();
 	sem_wait(&process);
 	planeState(&stateProcess);
-	callRun();
+	run(); // this opens a window and handles calls to callStop callWake and callDraw
 	planeState(&stateProcess);
 	sem_post(&restart);
 	if (pthread_join(threadWait,0) != 0) ERROR();
