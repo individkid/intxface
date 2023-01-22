@@ -64,6 +64,7 @@ int stateConsole = 0;
 int stateProgram = 0;
 int stateProcess = 0;
 int running = 0;
+int numpipe = 0;
 char **strings = 0;
 int numstr = 0;
 // thread safe:
@@ -181,14 +182,14 @@ void planePattern(int idx, const char *str)
 	fprintf(stderr,"regcomp error: %s\n",buf);
 	regfree(pattern+idx);}
 }
-int planeMatch()
+void planeMatch()
 {
 	int str = configure[CompareString];
 	int pat = configure[ComparePattern];
 	int num = configure[CompareNumber];
 	for (int i = 0; i < configure[CompareSize]; i++) free(result[i]);
 	free(result); result = 0; configure[CompareSize] = 0;
-	if (numpat == 0 || numstr == 0) return 0;
+	if (numpat == 0 || numstr == 0) return;
 	while (num) {
 	regex_t *ptr = pattern+(pat%numpat);
 	int siz = ptr->re_nsub+1;
@@ -200,8 +201,7 @@ int planeMatch()
 	if (pmatch[i].rm_so < 0) result[i] = strdup("");
 	else result[i] = strndup(planeGet(str)+pmatch[i].rm_so,pmatch[i].rm_eo-pmatch[i].rm_so);}
 	configure[CompareSize] = siz;
-	return siz;}
-	return 0;
+	break;}
 }
 struct Pierce *planePierce()
 {
@@ -215,7 +215,7 @@ void planePreconfig(enum Configure cfg)
 {
 	switch (cfg) {
 		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-		case (CompareSize): configure[CompareSize] = planeMatch(); break;
+		case (CompareSize): planeMatch(); break;
 		case (CenterCommand): configure[CenterCommand] = center.cmd; break;
 		case (CenterMemory): configure[CenterMemory] = center.mem; break;
 		case (CenterSize): configure[CenterSize] = center.siz; break;
@@ -257,7 +257,7 @@ void planeReconfig(enum Configure cfg, int val)
 		case (RegisterOpen): if (val == 0) sem_wait(&resource); running = val; sem_post(&resource); sem_post(&complete); break;
 		default: break;}
 }
-void planeAlloc()
+void planeAlloc() // configure to center
 {
 	freeCenter(&center);
 	center.cmd = (enum Command)configure[CenterCommand];
@@ -275,7 +275,8 @@ void planeAlloc()
 		case (Configurez): allocConfigure(&center.cfg,center.siz); allocInt(&center.val,center.siz); break;
 		default: center.siz = 0; break;}
 }
-void planeEcho() {
+void planeEcho() // memory to center
+{
 	switch (center.mem) {
 		case (Piercez): {
 			int index = center.idx%configure[PierceSize];
@@ -298,7 +299,7 @@ void planeEcho() {
 			break;}
 		default: break;}
 }
-void planeBuffer()
+void planeBuffer() // center to memory
 {
 	switch (center.mem) {
 		case (Stringz): for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
@@ -364,6 +365,13 @@ void planeMemx(void **mem, void *giv)
 void planeState(int *ptr)
 {
 	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
+}
+void planeRead()
+{
+	int num = 0;
+	sem_wait(&resource); if ((num = numpipe)) numpipe--; sem_post(&resource);
+	if (num) readCenter(&center,internal);
+	else {struct Center tmp = {0}; center = tmp;}
 }
 void planeHat(int hint)
 {
@@ -444,6 +452,7 @@ void *planeExternal(void *arg)
 	if (!checkWrite(internal)) break;
 	readCenter(&center,external);
 	writeCenter(&center,internal);
+	sem_wait(&resource); numpipe++; sem_post(&resource);
 	planeCall(RegisterHint);}
 	planeState(&stateExternal);
 	return 0;
@@ -566,7 +575,7 @@ void planeWake(enum Configure hint)
 			case (Goto): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // jump if true -- siz cfg val cmp cnd idx
 			default: break;}
 		switch (mptr->xfr) {
-			case (Read): readCenter(&center,internal); break; // read internal pipe -- TODO make nonblocking
+			case (Read): planeRead(); break; // read internal pipe
 			case (Write): writeCenter(&center,external); break; // write external pipe --
 			case (Alloc): planeAlloc(); break; // configure to center --
 			case (Echo): planeEcho(); break; // memory to center --
