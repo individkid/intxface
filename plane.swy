@@ -166,11 +166,10 @@ func getLock() -> MTLCommandBufferHandler
 }
 func getReady() -> MTLCommandBufferHandler
 {
-	let index = Int32(planeConfig(PierceIndex))
-	let limit = Int32(planeConfig(PierceLimit))
-	if (index == limit) {return {(MTLCommandBuffer) in planeReady(nil,index,limit)}}
+	let size = planeConfig(TriangleSize)
+	if (size == 0) {return {(MTLCommandBuffer) in planeReady(nil)}}
 	let last = pierce.get()
-	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents())),index,limit)}
+	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents())))}
 }
 func getCount() -> MTLCommandBufferHandler
 {
@@ -245,8 +244,8 @@ func swiftRun()
 	let url = URL(fileURLWithPath: "plane.metallib")
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
 		fputs("plane: cannot load library: plane.metallib\n",stderr);exitErr(#file,#line);return}
-	for sub in 0...Int(Shaders.rawValue-1) {let shader = Shader(UInt32(sub)); if (shader == Dipoint || shader == Adpoint) {switch (shader) {
-	case (Dipoint): fallthrough case (Diplane):
+	for sub in 0...Int(Shaders.rawValue-1) {let shader = Shader(UInt32(sub)); switch (shader) {
+	case (Dipoint):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Corner)!)) else {
 		print("cannot make vertex_render");exitErr(#file,#line);return}
 	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Shader__Stage_Str(Dipoint)(Fragment)!)) else {
@@ -268,11 +267,12 @@ func swiftRun()
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
     desc.isDepthWriteEnabled = true
     depth[sub] = device.makeDepthStencilState(descriptor: desc)
-    default:
+    case (Adpoint):
 	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Shader__Str(Shader(UInt32(sub)))!)) else {
 	 	print("cannot make kernel_pierce");exitErr(#file,#line);return}
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
-    threads[sub] = device.maxThreadsPerThreadgroup}}}
+    threads[sub] = device.maxThreadsPerThreadgroup
+    default: break}}
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in planeWake(CursorLeft); return event})
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeWake(Configure(UInt32(event.data1))); return event})
 	NSApp.run()
@@ -296,7 +296,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in center.swa![sub]},idx,Int(planeConfig(SwarmSize)))
 	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in center.tex![sub]},idx,Int(planeConfig(TextureSize)))
 	case (Basisz): basis.set(Swift.Array(0..<siz).map() {(sub) in center.bas![sub]},idx,Int(planeConfig(BasisSize)))
-	case (Piercez): pierce.set(Swift.Array(repeating: Pierce(), count: siz),idx,Int(planeConfig(PierceLimit)-planeConfig(PierceIndex)))
+	case (Piercez): pierce.set(Swift.Array(repeating: Pierce(), count: siz),idx,Int(planeConfig(TriangleSize)))
 	case (Slicez): array = toArray(array,Swift.Array(0..<siz).map() {(sub) in center.rng![sub]},idx,Int(planeConfig(SliceSize)))
 	case (Configurez): for sub in Swift.Array(0..<siz) {switch center.cfg![sub] {
 		case (UniformAll): uniform.set(center.val![sub],\Uniform.all)
@@ -315,11 +315,8 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		case (SwarmSize): uniform.set(Int(center.val![sub]),\Uniform.ssz)
 		case (TextureSize): uniform.set(Int(center.val![sub]),\Uniform.xsz)
 		case (BasisSize): uniform.set(Int(center.val![sub]),\Uniform.bsz)
-		case (PierceSize): uniform.set(Int(center.val![sub]),\Uniform.psz)
-		case (PierceIndex): uniform.set(Int(center.val![sub]),\Uniform.pid)
-		case (PierceLimit): uniform.set(Int(center.val![sub]),\Uniform.plm)
 		default: break}}
-	default: exitErr(#file,#line)}
+	default: exitErr(#file,#line);return}
 }
 func swiftWake(_ hint: Configure)
 {
@@ -348,8 +345,7 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (CursorBase): return Int32(getPoint().y)
 	case (CursorAngle): if let event = NSApp.currentEvent {return Int32(event.deltaY)} else {return Int32(0)}
 	// TODO read from uniform
-	default: break}
-	return 0
+	default: exitErr(#file,#line);return 0}
 }
 func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 {
@@ -365,16 +361,18 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.endEncoding()
 	}
-	for range in array { // TODO use start and stop
+	for range in array[Int(start)...Int(stop)] { // TODO use start and stop
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.setRenderPipelineState(render[sub]!)
 		encode.setDepthStencilState(depth[sub]!)
 		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-		encode.setVertexBuffer(vertex.get(),offset:0,index:1)
-		encode.setVertexBuffer(subject.get(),offset:0,index:2)
-		encode.setVertexBuffer(object.get(),offset:0,index:3)
-		encode.setVertexBuffer(element.get(),offset:0,index:4)
-		encode.setVertexBuffer(uniform.get(),offset:0,index:5)
+		encode.setVertexBuffer(numeric.get(),offset:0,index:1)
+		encode.setVertexBuffer(vertex.get(),offset:0,index:2)
+		encode.setVertexBuffer(subject.get(),offset:0,index:3)
+		encode.setVertexBuffer(object.get(),offset:0,index:4)
+		encode.setVertexBuffer(element.get(),offset:0,index:5)
+		encode.setVertexBuffer(basis.get(),offset:0,index:6)
+		encode.setVertexBuffer(uniform.get(),offset:0,index:7)
 		encode.drawPrimitives(
 			type:.triangle,
 			vertexStart:Int(range.idx),
@@ -388,14 +386,14 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 	code.addCompletedHandler(getCount())
 	count += 1
 	code.commit()
-	default:
+	case (Adpoint): fallthrough case (Adplane):
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line);return}
-	for range in array { // TODO use start and stop
-		var offset = (Int(range.idx)*MemoryLayout<Triangle>.size)/3
+	for range in array[Int(start)...Int(stop)] { // TODO use start and stop
+		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
 		var nums:[Int] = []
 		var pers:[Int] = []
-		let quotient = (Int(range.siz)/threads[sub]!.width)/3
-		let remainder = (Int(range.siz)%threads[sub]!.width)/3
+		let quotient = Int(range.siz)/threads[sub]!.width
+		let remainder = Int(range.siz)%threads[sub]!.width
 		if (quotient > 0) {
 			nums.append(quotient)
 			pers.append(threads[sub]!.width)}
@@ -426,7 +424,7 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 	code.addCompletedHandler(getCount())
 	count += 1
 	code.commit()
-	}
+	default: exitErr(#file,#line);return}
 }
 
 // MAIN

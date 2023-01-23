@@ -1,20 +1,20 @@
 #include <metal_matrix>
 
 struct Triangle {
-   uint4 vtx;
-   uint num;
-   uint tex;
-   uint pol;
+   uint4 vtx; // points of triangle
+   uint num; // plane of points
+   uint tex; // texture of triangle
+   uint pol; // polytope triangle is in
    uint pad;
 };
 struct Numeric {
-   float4 vec;
-   uint bas;
+   float4 vec; // distances above basis
+   uint bas; // basis selector
    uint pad0, pad1, pad2;
 };
 struct Vertex {
-   float4 vec;
-   uint4 ref;
+   float4 vec; // intersection of planes
+   uint4 ref; // backreference to planes
 };
 struct Pierce {
    float4 fix;
@@ -23,25 +23,32 @@ struct Pierce {
    uint idx;
    uint pad0, pad1;
 };
-struct Object {
+struct Vector {
+   float4 vec;
+};
+struct Matrix {
    metal::float4x4 mat;
 };
-struct Uniform {
+struct Basis {
    float4 bas[3][3];
-   metal::float4x4 all;
-   metal::float4x4 one;
-   float lon;
-   float lat;
-   uint idx;
-   uint siz;
-   uint tsz, tlm,tid;
-   uint nsz, nlm,nid;
-   uint vsz, vlm,vid;
-   uint psz, plm,pid;
-   uint osz, olm,oid;
-   uint ssz, slm,sid;
-   uint xsz, xlm,xid;
-   uint pad0, pad1, pad2;
+};
+struct Uniform {
+   uint all; // which subject to use
+   uint one; // which element to use
+   float lon; // horizontal axis of cursor
+   float lat; // vertical axis of cursor
+   uint idx; // which plane to apply one matrix to
+   uint siz; // how many swarm points there are
+   uint bas; // which basis to use
+   uint tsz; // size of trinagle buffer
+   uint nsz; // size of numeric buffer
+   uint vsz; // size of vertex buffer
+   uint asz; // size of subject buffer
+   uint fsz; // size of object buffer
+   uint osz; // size of element buffer
+   uint ssz; // size of swarm buffer
+   uint xsz; // size of texture buffer
+   uint bsz; // size of basis buffer
 };
 
 struct Expand {
@@ -60,11 +67,11 @@ struct Quality {
    float3 right;
 };
 
-Expand expand(Numeric plane, const device Uniform *state)
+Expand expand(Numeric plane, const device Basis *basis)
 {
    Expand result;
    for (uint i = 0; i < 3; i++) {
-      result.point[i] = state->bas[plane.bas][i].xyz;
+      result.point[i] = basis->bas[plane.bas][i].xyz;
       result.point[i][plane.bas] = plane.vec[i];}
    return result;
 }
@@ -124,7 +131,7 @@ bool opposite(Expand plane, float3 left, float3 right)
    return temp0^temp1;
 }
 Qualify intrasect(Expand plane, float3 left, float3 right)
-{
+{ // intersection of line through points with plane
    Qualify qualify;
    uint versor = squashed(plane);
    float3 origin = project(plane,versor,left);
@@ -143,7 +150,7 @@ Qualify intrasect(Expand plane, float3 left, float3 right)
    return qualify;
 }
 Quality inteasect(Expand left, Expand right)
-{
+{ // two points on intersection between planes
    Quality best;
    best.quality = INFINITY;
    for (uint i = 0; i < 3; i++) {
@@ -162,7 +169,7 @@ Quality inteasect(Expand left, Expand right)
    return best;
 }
 Quality intrrsect(Expand left, Expand right)
-{
+{ // best point pair on intersection between planes
    Quality fore = inteasect(left,right);
    Quality back = inteasect(right,left);
    if (fore.quality < back.quality)
@@ -170,7 +177,7 @@ Quality intrrsect(Expand left, Expand right)
    return back;
 }
 Qualify intersect(Triple point)
-{
+{ // best intersection between three planes
    Qualify best;
    best.quality = INFINITY;
    for (uint i = 0; i < 3; i++) {
@@ -186,24 +193,24 @@ Qualify intersect(Triple point)
    return best;
 }
 float3 normal(Expand plane)
-{
+{ // normal to plane through three points
    return metal::normalize( metal::cross( plane.point[1] - plane.point[0] , plane.point[2] - plane.point[0] ) );
 }
 float3 average3(Expand plane)
-{
+{ // average between three points
    float3 total = float3(0.0,0.0,0.0);
    for (uint i = 0; i < 3; i++)
       total += plane.point[i];
    return total/3.0;
 }
 float3 normal3(Triple point)
-{
+{ // average normal to three planes
    Expand plane;
    for (uint i = 0; i < 3; i++) plane.point[i] = normal(point.plane[i]);
    return average3(plane);
 }
 Expand transform(Expand plane, metal::float4x4 matrix)
-{
+{ // three points transformed
    Expand result;
    for (uint i = 0; i < 3; i++) {
       result.point[i] = plane.point[i];
@@ -219,9 +226,13 @@ struct VertexOutput {
 };
 vertex VertexOutput vertex_render(
    const device Triangle *corner [[buffer(0)]],
-   const device Vertex *point [[buffer(1)]],
-   const device Object *object [[buffer(2)]],
-   const device Uniform *state [[buffer(3)]],
+   const device Numeric *plane [[buffer(1)]],
+   const device Vertex *point [[buffer(2)]],
+   const device Matrix *subject [[buffer(3)]],
+   const device Matrix *object [[buffer(4)]],
+   const device Matrix *element [[buffer(5)]],
+   const device Basis *basis [[buffer(6)]],
+   const device Uniform *state [[buffer(7)]],
    uint id [[vertex_id]])
 {
    VertexOutput out;
@@ -234,12 +245,21 @@ fragment half4 fragment_render(
 }
 kernel void kernel_pierce(
    const device Triangle *corner [[buffer(0)]],
-   const device Vertex *point [[buffer(1)]],
-   const device Numeric *plane [[buffer(2)]],
-   const device Object *object [[buffer(3)]],
-   const device Uniform *state [[buffer(4)]],
+   const device Numeric *plane [[buffer(1)]],
+   const device Vertex *point [[buffer(2)]],
+   const device Matrix *subject [[buffer(3)]],
+   const device Matrix *object [[buffer(4)]],
+   const device Matrix *element [[buffer(5)]],
+   const device Basis *basis [[buffer(6)]],
+   const device Uniform *state [[buffer(7)]],
    uint id [[thread_position_in_grid]],
-   device Pierce *pierce [[buffer(5)]])
+   device Pierce *pierce [[buffer(8)]])
 {
+   Expand expand;
+   for (uint i = 0; i < 3; i++) expand.point[i] = point[corner[id].vtx[i]].vec.xyz;
+   pierce[id].fix = float4(average3(expand),0.0);
+   pierce[id].nml = float4(normal(expand),0.0);
+   pierce[id].vld = 1;
+   pierce[id].idx = id;
    // TODO
 }

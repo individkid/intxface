@@ -212,8 +212,8 @@ void planeMatch()
 struct Pierce *planePierce()
 {
 	if (found) return found;
-	for (int i = 0; i < configure[PierceSize]; i++) {
-		struct Pierce *temp = pierce + i%configure[PierceSize];
+	for (int i = 0; i < configure[TriangleSize]; i++) {
+		struct Pierce *temp = pierce + i%configure[TriangleSize];
 		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
 	return found;
 }
@@ -255,7 +255,7 @@ void planeReconfig(enum Configure cfg, int val)
 	int tmp = configure[cfg];
 	configure[cfg] = val;
 	switch (cfg) {
-		case (PierceSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
+		case (TriangleSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
 		case (SubjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
@@ -285,9 +285,9 @@ void planeEcho()
 {
 	switch (center.mem) {
 		case (Piercez): {
-			int index = center.idx%configure[PierceSize];
-			while (index < 0) index += configure[PierceSize];
-			for (int i = 0; i < center.siz; i++, index++) center.pie[i] = pierce[index%configure[PierceSize]];
+			int index = center.idx%configure[TriangleSize];
+			while (index < 0) index += configure[TriangleSize];
+			for (int i = 0; i < center.siz; i++, index++) center.pie[i] = pierce[index%configure[TriangleSize]];
 			break;}
 		case (Stringz): {
 			int index = center.idx;
@@ -605,8 +605,7 @@ void planeWake(enum Configure hint)
 		if (next == configure[RegisterLine]) {configure[RegisterLine] = next+1; break;}
 		configure[RegisterLine] = next;}
 }
-void planeReady(struct Pierce *given, int index, int limit)
+void planeReady(struct Pierce *given)
 {
-	found = 0;
-	for (int i = index; i < limit; i++) pierce[i%configure[PierceSize]] = given[i%configure[PierceSize]];
+	for (int i = 0; i < configure[TriangleSize]; i++) pierce[i] = given[i];
 }

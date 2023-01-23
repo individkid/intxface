@@ -65,9 +65,6 @@ Configure = {
 	"SwarmSize", -- early warning system
 	"TextureSize", -- how to decorate
 	"BasisSize", -- cospace converters
-	"PierceSize", -- result of compute
-	"PierceLimit",
-	"PierceIndex",
 	"SliceSize", -- ranges per draw
 	"MachineSize", -- vending machine lines
 	"RegisterLine", -- state of machine
@@ -364,11 +361,6 @@ Uniform = {
 	{"ssz","Int",{},{}}, -- size of swarm buffer
 	{"xsz","Int",{},{}}, -- size of texture buffer
 	{"bsz","Int",{},{}}, -- size of basis buffer
-
-	{"psz","Int",{},{}}, -- size of pierce buffer
-	{"pid","Int",{},{}}, -- start in pierce buffer
-	{"plm","Int",{},{}}, -- limit in pierce buffer
-	{"pad","Int",{},{}},
 }
 Triangle = {
 	{"vtx","Int",{},{4}}, -- points of triangle
@@ -401,8 +393,7 @@ Matrix = {
 	{"mat","Old",{},{16}},
 }
 Basis = {
-	{"mat","Old",{},{27}},
-	{"pad","Old",{},{}},
+	{"mat","Old",{},{36}},
 }
 Slice = {
 	{"idx","Int",{},{}},
