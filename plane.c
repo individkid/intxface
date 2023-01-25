@@ -45,15 +45,15 @@ char **result = 0;
 // constant after other threads start:
 int internal = 0;
 int external = 0;
-vftype callStop = 0;
 uftype callDma = 0;
+vftype callWait = 0;
 yftype callWake = 0;
 xftype callInfo = 0;
 wftype callDraw = 0;
 pthread_t threadExternal;
 pthread_t threadConsole;
 pthread_t threadProgram;
-pthread_t threadWait;
+pthread_t threadThread;
 pthread_key_t retstr;
 // owned by argx memx luax thread:
 jmp_buf jmpbuf;
@@ -73,7 +73,7 @@ sem_t ready;
 sem_t process;
 sem_t restart;
 void planeMemx(void **mem, void *giv);
-void planeState(int *ptr);
+void planeState(int *ptr, int val);
 int planeRun();
 void planeTop(int val);
 void planeRead();
@@ -222,7 +222,7 @@ void planePreconfig(enum Configure cfg)
 	switch (cfg) {
 		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 		case (CompareSize): planeMatch(); break;
-		case (CenterCommand): configure[CenterCommand] = center.cmd; break;
+		case (CenterRequest): configure[CenterRequest] = center.req; break;
 		case (CenterMemory): configure[CenterMemory] = center.mem; break;
 		case (CenterSize): configure[CenterSize] = center.siz; break;
 		case (CenterIndex): configure[CenterIndex] = center.idx; break;
@@ -266,7 +266,7 @@ void planeReconfig(enum Configure cfg, int val)
 void planeAlloc()
 {
 	freeCenter(&center);
-	center.cmd = (enum Command)configure[CenterCommand];
+	center.req = (enum Request)configure[CenterRequest];
 	center.mem = (enum Memory)configure[CenterMemory];
 	center.idx = configure[CenterIndex];
 	center.siz = configure[CenterSize];
@@ -365,13 +365,13 @@ void planeMemx(void **mem, void *giv)
 	planeSet(-1,memxStr(*mem));
 	sem_wait(&resource);
 	if (numstr > 2) {
-		stateProgram++;
+		stateProgram = 2;
 		sem_post(&ready);}
 	sem_post(&resource);
 }
-void planeState(int *ptr)
+void planeState(int *ptr, int val)
 {
-	sem_wait(&resource); ++*ptr; sem_post(&complete); sem_post(&resource);
+	sem_wait(&resource); *ptr = val; sem_post(&complete); sem_post(&resource);
 }
 int planeRun()
 {
@@ -456,7 +456,7 @@ void *planeExternal(void *arg)
 	external = pipeInit(inp,out);
 	free(inp); free(out);
 	if (external < 0) ERROR();
-	planeState(&stateExternal);
+	planeState(&stateExternal,2);
 	while (1) {
 	struct Center center = {0};
 	int sub = waitRead(0,1<<external);
@@ -467,7 +467,7 @@ void *planeExternal(void *arg)
 	writeCenter(&center,internal);
 	sem_wait(&resource); numpipe++; sem_post(&resource);
 	planeHat(RegisterHint);}
-	planeState(&stateExternal);
+	planeState(&stateExternal,3);
 	return 0;
 }
 void *planeConsole(void *arg)
@@ -476,7 +476,7 @@ void *planeConsole(void *arg)
 	int val = 0;
 	int nfd = 0;
 	fd_set fds, ers;
-	planeState(&stateConsole);
+	planeState(&stateConsole,2);
 	while (1) {
 		FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
 		if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
@@ -491,16 +491,16 @@ void *planeConsole(void *arg)
 		if (val < 0) ERROR();
 		planeCat(configure[CompareConsole],chr);
 		planeHat(CompareConsole);}
-	planeState(&stateConsole);
+	planeState(&stateConsole,3);
 	return 0;
 }
 void *planeProgram(void *arg)
 {
 	if (setjmp(jmpbuf) == 0) runProgram();
-	planeState(&stateProgram);
+	planeState(&stateProgram,3);
 	return 0;
 }
-void *planeWait(void *arg)
+void *planeThread(void *arg)
 {
 	int val = 0;
 	int pro = 0;
@@ -509,23 +509,27 @@ void *planeWait(void *arg)
 	int prg = 0;
 	while (1) {
 	sem_wait(&resource); val = running; pro = stateProcess; ext = stateExternal; con = stateConsole; prg = stateProgram; sem_post(&resource);
-	if ((val&8) && pro == 0) {sem_wait(&resource); pro = ++stateProcess; sem_post(&resource); sem_post(&process);}
-	if ((val&4) && ext == 0) {sem_wait(&resource); ext = ++stateExternal; sem_post(&resource); if (pthread_create(&threadExternal,0,planeExternal,0) != 0) ERROR();}
-	if ((val&2) && con == 0) {sem_wait(&resource); con = ++stateConsole; sem_post(&resource); if (pthread_create(&threadConsole,0,planeConsole,0) != 0) ERROR();}
-	if ((val&1) && prg == 0) {sem_wait(&resource); prg = ++stateProgram; sem_post(&resource); if (pthread_create(&threadProgram,0,planeProgram,0) != 0) ERROR();}
-	if (!(val&8) && pro == 2 || pro == 3) {sem_wait(&resource); pro = ++stateProcess; val = running &= ~8; callWake(Configures); sem_post(&resource);}
-	if (!(val&4) && ext == 2 || ext == 3) {sem_wait(&resource); ext = ++stateExternal; val = running &= ~4; sem_post(&resource); closeIdent(external);}
-	if (!(val&2) && con == 2 || con == 3) {sem_wait(&resource); con = ++stateConsole; val = running &= ~2; sem_post(&resource); close(STDIN_FILENO);}
-	if (!(val&1) && prg == 2 || prg == 3) {sem_wait(&resource); prg = ++stateProgram; val = running &= ~1; sem_post(&resource); kill(getpid(),SIGTERM);}
-	if (pro == 4) {sem_wait(&restart); sem_wait(&resource); pro = stateProcess = 0; sem_post(&resource);}
-	if (ext == 4) {if (pthread_join(threadExternal,0) != 0) ERROR(); sem_wait(&resource); ext = stateExternal = 0; sem_post(&resource);}
-	if (con == 4) {if (pthread_join(threadConsole,0) != 0) ERROR(); sem_wait(&resource); con = stateConsole = 0; sem_post(&resource);}
-	if (prg == 4) {if (pthread_join(threadProgram,0) != 0) ERROR(); sem_wait(&resource); prg = stateProgram = 0; sem_post(&resource);}
+	if ((val&8) && pro == 0) {sem_wait(&resource); pro = stateProcess = 1; sem_post(&process); sem_post(&resource);}
+	if ((val&4) && ext == 0) {sem_wait(&resource); ext = stateExternal = 1; if (pthread_create(&threadExternal,0,planeExternal,0) != 0) ERROR(); sem_post(&resource);}
+	if ((val&2) && con == 0) {sem_wait(&resource); con = stateConsole = 1; if (pthread_create(&threadConsole,0,planeConsole,0) != 0) ERROR(); sem_post(&resource);}
+	if ((val&1) && prg == 0) {sem_wait(&resource); prg = stateProgram = 1; if (pthread_create(&threadProgram,0,planeProgram,0) != 0) ERROR(); sem_post(&resource);}
+	if (!(val&8) && pro == 2) {sem_wait(&resource); pro = stateProcess = 3; callWait(Stop); sem_post(&resource);}
+	if (!(val&4) && ext == 2) {sem_wait(&resource); ext = stateExternal = 3; closeIdent(external); sem_post(&resource);}
+	if (!(val&2) && con == 2) {sem_wait(&resource); con = stateConsole = 3; close(STDIN_FILENO); sem_post(&resource);}
+	if (!(val&1) && prg == 2) {sem_wait(&resource); prg = stateProgram = 3; kill(getpid(),SIGTERM); sem_post(&resource);}
+	if ((val&8) && pro == 3) {sem_wait(&resource); val = running &= ~8; sem_post(&resource);}
+	if ((val&4) && ext == 3) {sem_wait(&resource); val = running &= ~4; sem_post(&resource);}
+	if ((val&2) && con == 3) {sem_wait(&resource); val = running &= ~2; sem_post(&resource);}
+	if ((val&1) && prg == 3) {sem_wait(&resource); val = running &= ~1; sem_post(&resource);}
+	if (pro == 3) {sem_wait(&restart); sem_wait(&resource); pro = stateProcess = 0; sem_post(&resource);}
+	if (ext == 3) {if (pthread_join(threadExternal,0) != 0) ERROR(); sem_wait(&resource); ext = stateExternal = 0; sem_post(&resource);}
+	if (con == 3) {if (pthread_join(threadConsole,0) != 0) ERROR(); sem_wait(&resource); con = stateConsole = 0; sem_post(&resource);}
+	if (prg == 3) {if (pthread_join(threadProgram,0) != 0) ERROR(); sem_wait(&resource); prg = stateProgram = 0; sem_post(&resource);}
 	if (val == 0 && pro == 0 && ext == 0 && con == 0 && prg == 0) break;
 	sem_wait(&complete);}
 	return 0;
 }
-void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xftype info, wftype draw)
+void planeInit(uftype dma, vftype wait, yftype wake, xftype info, wftype draw)
 {
 	struct sigaction act;
 	act.__sigaction_u.__sa_handler = planeTerm;
@@ -541,32 +545,35 @@ void planeInit(vftype init, vftype run, vftype stop, uftype dma, yftype wake, xf
 	sem_init(&ready,0,0);
 	sem_init(&process,0,0);
 	sem_init(&restart,0,0);
-	callStop = stop;
 	callDma = dma;
+	callWait = wait;
 	callWake = wake;
 	callInfo = info;
 	callDraw = draw;
 	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
-	init(); // this calls useArgument and allows calls to callDma and callInfo
+	callWait(Open);
 	planeBoot(); // this calls callDma through planeBuffer
 	internal = openPipe();
 	if (internal < 0) ERROR();
-	if (pthread_create(&threadWait,0,planeWait,0) != 0) ERROR();
+	if (pthread_create(&threadThread,0,planeThread,0) != 0) ERROR();
 	sem_wait(&process);
-	planeState(&stateProcess);
-	run(); // this opens a window and handles calls to callStop callWake and callDraw
-	planeState(&stateProcess);
+	planeState(&stateProcess,2);
+	callWait(Start);
+	planeState(&stateProcess,2);
 	sem_post(&restart);
-	if (pthread_join(threadWait,0) != 0) ERROR();
+	if (pthread_join(threadThread,0) != 0) ERROR();
 	closeIdent(internal);
 }
 int planeConfig(enum Configure cfg)
 {
 	return configure[cfg];
 }
+void planeWait(enum Wait wait)
+{
+	// TODO
+}
 void planeWake(enum Configure hint)
 {
-	if (hint == Configures) {callStop(); return;}
 	configure[RegisterHint] = hint;
 	if (configure[RegisterLine] < 0 || configure[RegisterLine] >= configure[MachineSize]) configure[RegisterLine] = 0;
 	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize] && configure[RegisterOpen]) {

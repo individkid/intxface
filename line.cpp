@@ -270,7 +270,7 @@ void stock()
 		state[event->idx] = event;
 		allocEvent(&event,1);
 		break;
-	case (Start): // Sched
+	case (First): // Sched
 		if (event->key > nowtime)
 		alloc(event->key,event->idx);
 		else numbug++;

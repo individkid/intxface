@@ -274,12 +274,12 @@ func swiftRun()
     threads[sub] = device.maxThreadsPerThreadgroup
     default: break}}
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in planeWake(CursorLeft); return event})
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeWake(Configure(UInt32(event.data1))); return event})
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {
+		(event: NSEvent) in
+		if (event.data2 == 0) {planeWake(Configure(UInt32(event.data1)))}
+		if (event.data2 == 1 && Wait(UInt32(event.data1)) == Stop) {NSApp.stop(nil)}
+		return event})
 	NSApp.run()
-}
-func swiftStop()
-{
-	NSApp.stop(nil)
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 {
@@ -318,6 +318,26 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
+func swiftWait(_ wait: Wait)
+{
+	switch(wait) {
+	case (Open): swiftInit()
+	case (Close): window.close()
+	case (Start): swiftRun()
+	case (Stop): NSApp.postEvent(
+		NSEvent.otherEvent(
+		with:.applicationDefined,
+		location:NSZeroPoint,
+		modifierFlags:.command,
+		timestamp:0.0,
+		windowNumber:0,
+		context:nil,
+		subtype:0,
+		data1:Int(wait.rawValue),
+		data2:1)!,
+		atStart:false)
+	default: exitErr(#file,#line)}
+}
 func swiftWake(_ hint: Configure)
 {
 	NSApp.postEvent(
@@ -331,7 +351,7 @@ func swiftWake(_ hint: Configure)
 		subtype:0,
 		data1:Int(hint.rawValue),
 		data2:0)!,
-		atStart:false)	
+		atStart:false)
 }
 func swiftInfo(_ query: Configure) -> Int32
 {
@@ -429,4 +449,4 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 
 // MAIN
 
-	planeInit(swiftInit,swiftRun,swiftStop,swiftMemory,swiftWake,swiftInfo,swiftDraw)
+	planeInit(swiftMemory,swiftWait,swiftWake,swiftInfo,swiftDraw)

@@ -15,7 +15,7 @@ Goal = {
 }
 State = {
 	"Stock",
-	"Start",
+	"First",
 	"Assign",
 	"Bind",
 	"Wave",
@@ -30,12 +30,12 @@ Flow = {
 	"Store",
 	"Load",
 }
-Command = {
-	"SetCmd", -- set memory
-	"GetCmd", -- get memory
-	"GotCmd", -- response to GetCmd
-	"UseCmd", -- notice that matrix changed
-	"FixCmd", -- request to revert matrix and change plane
+Request = {
+	"SetReq", -- set memory
+	"GetReq", -- get memory
+	"GotReq", -- response to GetReq
+	"UseReq", -- notice that matrix changed
+	"FixReq", -- request to revert matrix and change plane
 }
 Memory = {
 	"Trianglez", -- indices of vertices of facet
@@ -80,7 +80,7 @@ Configure = {
 	"ComparePattern", -- which compare pattern
 	"CompareNumber", -- string pattern count
 	"CompareSize", -- string pattern result
-	"CenterCommand", -- fields to from client
+	"CenterRequest", -- fields to from client
 	"CenterMemory",
 	"CenterSize",
 	"CenterIndex",
@@ -157,6 +157,12 @@ Shader = {
 Stage = {
 	"Corner",
 	"Fragment",
+}
+Wait = {
+	"Open",
+	"Close",
+	"Start",
+	"Stop",
 }
 Compare = {
 	"Less",
@@ -242,7 +248,7 @@ Initial = {
 	{"Shader","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Center(cmd:Command(SetCmd)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)"..
+	{"Int","0","Str","Center(req:Request(SetReq)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
@@ -252,7 +258,7 @@ Bootstrap = {
 		"val[2]:Int(1)"..
 		"val[3]:Int(15)"..
 	")"},
-	{"Int","1","Str","Center(cmd:Command(SetCmd)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
+	{"Int","1","Str","Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)"..
 			"cfg[0]:Configure(RegisterOpen)"..
 			"val[0]:Int(0)"..
@@ -413,7 +419,7 @@ Machine = {
 	{"dst","Accumulate",{["xfr"]={["Clear"]=true,["Invert"]=true,["Manip"]=true,["Follow"]=true,["Precede"]=true}},{}},
 }
 Center = {
-	{"cmd","Command",{},{}},
+	{"req","Request",{},{}},
 	{"mem","Memory",{},{}},
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
