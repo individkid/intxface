@@ -173,13 +173,20 @@ func getReady() -> MTLCommandBufferHandler
 }
 func getCount() -> MTLCommandBufferHandler
 {
-	return {(MTLCommandBuffer) in count -= 1; planeWake(RegisterDone)}
+	return {(MTLCommandBuffer) in count -= 1; planeSafe(Waits,RegisterDone)}
+}
+class getApplication : NSObject, NSApplicationDelegate
+{
+	func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool
+	{
+		return false
+	}
 }
 class getDelegate : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		NSApp.stop(nil)
+		planeSafe(Waits,RegisterOpen);
 		return true
 	}
 	func windowDidResize(_ notification: Notification)
@@ -201,7 +208,7 @@ class getView : NSView
 {
 	override func mouseUp(with event: NSEvent)
 	{
-		planeWake(ButtonClick)
+		planeSafe(Waits,ButtonClick)
 	}
 }
 func getRect() -> NSRect
@@ -219,6 +226,7 @@ func swiftInit()
 {
 	for arg in CommandLine.arguments {useArgument(arg)}
 	device = MTLCreateSystemDefaultDevice()
+	NSApp = NSApplication.shared
 }
 func swiftRun()
 {
@@ -240,6 +248,7 @@ func swiftRun()
 	window.contentView = view
 	let delegate = getDelegate()
 	window.delegate = delegate
+	print("swiftInit window")
 	queue = device.makeCommandQueue()
 	let url = URL(fileURLWithPath: "plane.metallib")
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
@@ -273,12 +282,10 @@ func swiftRun()
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
     threads[sub] = device.maxThreadsPerThreadgroup
     default: break}}
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in planeWake(CursorLeft); return event})
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {
-		(event: NSEvent) in
-		if (event.data2 == 0) {planeWake(Configure(UInt32(event.data1)))}
-		if (event.data2 == 1 && Wait(UInt32(event.data1)) == Stop) {NSApp.stop(nil)}
-		return event})
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in planeSafe(Waits,CursorLeft); return event})
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeUser(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return event})
+	let application = getApplication()
+	NSApp.delegate = application
 	NSApp.run()
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
@@ -318,27 +325,16 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
-func swiftWait(_ wait: Wait)
+func swiftUser(_ wait: Wait)
 {
 	switch(wait) {
-	case (Open): swiftInit()
-	case (Close): window.close()
+	case (Open): print("swiftUser Open"); break // TODO
+	case (Close): print("swiftUser Close"); break // TODO window.close()
 	case (Start): swiftRun()
-	case (Stop): NSApp.postEvent(
-		NSEvent.otherEvent(
-		with:.applicationDefined,
-		location:NSZeroPoint,
-		modifierFlags:.command,
-		timestamp:0.0,
-		windowNumber:0,
-		context:nil,
-		subtype:0,
-		data1:Int(wait.rawValue),
-		data2:1)!,
-		atStart:false)
-	default: exitErr(#file,#line)}
+	case (Stop): NSApp.stop(nil)
+	default: exitErr(#file,#line)}	
 }
-func swiftWake(_ hint: Configure)
+func swiftSafe(_ wait: Wait, _ hint: Configure)
 {
 	NSApp.postEvent(
 		NSEvent.otherEvent(
@@ -349,13 +345,14 @@ func swiftWake(_ hint: Configure)
 		windowNumber:0,
 		context:nil,
 		subtype:0,
-		data1:Int(hint.rawValue),
-		data2:0)!,
+		data1:Int(wait.rawValue),
+		data2:Int(hint.rawValue))!,
 		atStart:false)
 }
 func swiftInfo(_ query: Configure) -> Int32
 {
 	switch (query) {
+	case (RegisterOpen): if (NSApp.isRunning) {return Int32(1)} else {return Int32(0)}
 	case (RegisterDone): return Int32(count)
 	case (WindowLeft): return Int32(getRect().origin.x)
 	case (WindowBase): return Int32(getRect().origin.y)
@@ -449,4 +446,4 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 
 // MAIN
 
-	planeInit(swiftMemory,swiftWait,swiftWake,swiftInfo,swiftDraw)
+	planeInit(swiftInit,swiftMemory,swiftSafe,swiftUser,swiftInfo,swiftDraw)

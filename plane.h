@@ -3,13 +3,14 @@ enum Configure;
 enum Wait;
 struct Pierce;
 struct Center;
+typedef void (*zftype)(); // init
 typedef void (*uftype)(struct Center *center); // dma
-typedef void (*vftype)(enum Wait wait); // wait
-typedef void (*yftype)(enum Configure hint); // wake
+typedef void (*vftype)(enum Wait wait, enum Configure hint); // safe
+typedef void (*yftype)(enum Wait wait); // user
 typedef int (*xftype)(enum Configure query); // info
 typedef void (*wftype)(enum Shader shader, int start, int stop); // draw
-void planeInit(uftype dma, vftype wait, yftype wake, xftype info, wftype draw);
+void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, wftype draw);
 int planeConfig(enum Configure cfg);
-void planeWait(enum Wait wait);
-void planeWake(enum Configure hint);
+void planeSafe(enum Wait wait, enum Configure hint);
+void planeUser(enum Wait wait, enum Configure hint);
 void planeReady(struct Pierce *pierce);

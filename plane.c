@@ -45,43 +45,112 @@ char **result = 0;
 // constant after other threads start:
 int internal = 0;
 int external = 0;
+int started = 0;
 uftype callDma = 0;
-vftype callWait = 0;
-yftype callWake = 0;
+vftype callSafe = 0;
+yftype callUser = 0;
 xftype callInfo = 0;
 wftype callDraw = 0;
-pthread_t threadExternal;
-pthread_t threadConsole;
-pthread_t threadProgram;
-pthread_t threadThread;
+pthread_t thread[Concurs];
 pthread_key_t retstr;
 // owned by argx memx luax thread:
 jmp_buf jmpbuf;
 // resource protected:
-int stateExternal = 0;
-int stateConsole = 0;
-int stateProgram = 0;
-int stateProcess = 0;
-int running = 0;
 int numpipe = 0;
 char **strings = 0;
 int numstr = 0;
+int running = 0;
+int qsize = 0;
+int qfull = 0;
+int qhead = 0;
+int qtail = 0;
+enum Configure *hints = 0;
+enum Wait *waits = 0;
+int perpend[Waits] = {0};
 // thread safe:
-sem_t complete;
+void *runmask[Waits] = {0};
 sem_t resource;
-sem_t ready;
-sem_t process;
-sem_t restart;
+sem_t pending;
+sem_t enable[Concurs];
+sem_t ready[Concurs];
+sem_t finish[Concurs];
 void planeMemx(void **mem, void *giv);
-void planeState(int *ptr, int val);
-int planeRun();
-void planeTop(int val);
 void planeRead();
 const char *planeGet(int idx);
 int planeSet(int idx, const char *str);
 int planeCat(int idx, const char *str);
-void planeHat(int hint);
+int planeRunning();
+void planeStarted(int val);
 
+const char *planeWait(enum Wait wait)
+{
+	switch (wait) {
+	case (Open): return "Open";
+	case (Close): return "Close";
+	case (Start): return "Start";
+	case (Stop): return "Stop";
+	case (Waits): return "Waits";
+	default: return "Wait?";}
+	return "oops";
+}
+const char *planeHint(enum Configure hint)
+{
+	switch (hint) {
+	case (TriangleSize): return "TriangleSize";
+	case (NumericSize): return "NumericSize";
+	case (VertexSize): return "VertexSize";
+	case (SubjectSize): return "SubjectSize";
+	case (ObjectSize): return "ObjectSize";
+	case (ElementSize): return "ElementSize";
+	case (SwarmSize): return "SwarmSize";
+	case (TextureSize): return "TextureSize";
+	case (BasisSize): return "BasisSize";
+	case (SliceSize): return "SliceSize";
+	case (MachineSize): return "MachineSize";
+	case (RegisterLine): return "RegisterLine";
+	case (RegisterNest): return "RegisterNest";
+	case (RegisterXform): return "RegisterXform";
+	case (RegisterMemory): return "RegisterMemory";
+	case (RegisterIndex): return "RegisterIndex";
+	case (RegisterHint): return "RegisterHint";
+	case (RegisterDone): return "RegisterDone";
+	case (RegisterOpen): return "RegisterOpen";
+	case (CompareConsole): return "CompareConsole";
+	case (CompareString): return "CompareString";
+	case (ComparePattern): return "ComparePattern";
+	case (CompareNumber): return "CompareNumber";
+	case (CompareSize): return "CompareSize";
+	case (CenterRequest): return "CenterRequest";
+	case (CenterMemory): return "CenterMemory";
+	case (CenterSize): return "CenterSize";
+	case (CenterIndex): return "CenterIndex";
+	case (CenterSelf): return "CenterSelf";
+	case (ArgumentShader): return "ArgumentShader";
+	case (ArgumentStart): return "ArgumentStart";
+	case (ArgumentStop): return "ArgumentStop";
+	case (ClosestLeft): return "ClosestLeft";
+	case (ClosestBase): return "ClosestBase";
+	case (ClosestNear): return "ClosestNear";
+	case (ClosestFound): return "ClosestFound";
+	case (UniformAll): return "UniformAll";
+	case (UniformOne): return "UniformOne";
+	case (UniformLeft): return "UniformLeft";
+	case (UniformBase): return "UniformBase";
+	case (UniformIndex): return "UniformIndex";
+	case (UniformSize): return "UniformSize";
+	case (UniformBasis): return "UniformBasis";
+	case (WindowLeft): return "WindowLeft";
+	case (WindowBase): return "WindowBase";
+	case (WindowWide): return "WindowWide";
+	case (WindowHigh): return "WindowHigh";
+	case (CursorLeft): return "CursorLeft";
+	case (CursorBase): return "CursorBase";
+	case (CursorAngle): return "CursorAngle";
+	case (ButtonClick): return "ButtonClick";
+	case (Configures): return "Configures";
+	default: return "oops";}
+	return "oops";
+}
 void planeAlize(float *dir, const float *vec) // normalize
 {
 }
@@ -246,7 +315,7 @@ void planePostconfig(enum Configure cfg, int idx)
 	if (center.mem != Configurez || idx < 0 || idx >= center.siz) return;
 	center.cfg[idx] = cfg;
 	switch (cfg) {
-	case (RegisterOpen): configure[RegisterOpen] = planeRun(); break;
+	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
 	default: break;}
 	center.val[idx] = configure[cfg];
 }
@@ -260,7 +329,7 @@ void planeReconfig(enum Configure cfg, int val)
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
-		case (RegisterOpen): planeTop(val); break;
+		case (RegisterOpen): planeStarted(val); break;
 		default: break;}
 }
 void planeAlloc()
@@ -352,231 +421,12 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
-void planeBoot()
-{
-	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	int len = 0;
-	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
-	planeBuffer();}
-}
-void planeMemx(void **mem, void *giv)
-{
-	memxCopy(mem,giv);
-	planeSet(-1,memxStr(*mem));
-	sem_wait(&resource);
-	if (numstr > 2) {
-		stateProgram = 2;
-		sem_post(&ready);}
-	sem_post(&resource);
-}
-void planeState(int *ptr, int val)
-{
-	sem_wait(&resource); *ptr = val; sem_post(&complete); sem_post(&resource);
-}
-int planeRun()
-{
-	int val = 0;
-	sem_wait(&resource); val = running; sem_post(&resource);
-	return val;
-}
-void planeTop(int val)
-{
-	sem_wait(&resource); running = val; sem_post(&complete); sem_post(&resource);
-}
-void planeRead()
-{
-	int num = 0;
-	sem_wait(&resource); if ((num = numpipe)) numpipe--; sem_post(&resource);
-	if (num) readCenter(&center,internal);
-	else {struct Center tmp = {0}; center = tmp;}
-}
-const char *planeGet(int idx) // rhtype
-{
-	const char *ret = 0;
-	void *ptr = 0;
-	sem_wait(&resource);
-	ptr = pthread_getspecific(retstr);
-	free(ptr);
-	pthread_setspecific(retstr,0);
-	if (idx >= numstr) {
-		strings = realloc(strings,(idx+1)*sizeof(char*));
-		while (idx >= numstr) strings[numstr++] = strdup("");}
-	if (idx < 0) {
-		numstr--;
-		pthread_setspecific(retstr,strdup(strings[numstr]));
-		free(strings[numstr]); strings[numstr] = 0;
-		strings = realloc(strings,numstr*sizeof(char*));}
-	else pthread_setspecific(retstr,strdup(strings[idx]));
-	ret = pthread_getspecific(retstr);
-	sem_post(&resource);
-	return ret;
-}
-int planeSet(int idx, const char *str)
-{
-	int ret = 0;
-	sem_wait(&resource);
-	if (idx < 0) {
-		numstr++;
-		strings = realloc(strings,numstr*sizeof(char*));
-		idx = numstr-1;
-		strings[numstr-1] = strdup("");}
-	if (idx >= numstr) {
-		strings = realloc(strings,(idx+1)*sizeof(char*));
-		while (idx >= numstr) strings[numstr++] = strdup("");}
-	free(strings[idx]); strings[idx] = strdup(str);
-	ret = numstr;
-	sem_post(&resource);
-	return ret;
-}
-int planeCat(int idx, const char *str)
-{
-	const char *src = planeGet(idx);
-	char *dst = malloc(strlen(src)+strlen(str)+1);
-	int ret = planeSet(idx,strcat(strcpy(dst,src),str));
-	free(dst);
-	return ret;
-}
-void planeHat(int hint)
-{
-	sem_wait(&resource); callWake(hint); sem_post(&resource);
-}
-void planeIntr()
-{
-	if (pthread_self() == threadProgram) longjmp(jmpbuf,1);
-}
-void planeTerm(int sig)
-{
-}
-void *planeExternal(void *arg)
-{
-	char *inp = 0;
-	char *out = 0;
-	sem_wait(&ready);
-	inp = strdup(planeGet(1)); out = strdup(planeGet(2));
-	external = pipeInit(inp,out);
-	free(inp); free(out);
-	if (external < 0) ERROR();
-	planeState(&stateExternal,2);
-	while (1) {
-	struct Center center = {0};
-	int sub = waitRead(0,1<<external);
-	if (sub != external) break;
-	if (!checkRead(external)) break;
-	if (!checkWrite(internal)) break;
-	readCenter(&center,external);
-	writeCenter(&center,internal);
-	sem_wait(&resource); numpipe++; sem_post(&resource);
-	planeHat(RegisterHint);}
-	planeState(&stateExternal,3);
-	return 0;
-}
-void *planeConsole(void *arg)
-{
-	char chr[2] = {0};
-	int val = 0;
-	int nfd = 0;
-	fd_set fds, ers;
-	planeState(&stateConsole,2);
-	while (1) {
-		FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
-		if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
-		FD_SET(STDIN_FILENO,&fds); FD_SET(STDIN_FILENO,&ers);
-		val = pselect(nfd,&fds,0,&ers,0,0);
-		if (val < 0 && errno == EINTR) continue;
-		if (val < 0 && errno == EBADF) break;
-		if (val == 0) break;
-		if (val < 0) ERROR();
-		val = read(STDIN_FILENO,chr,1);
-		if (val == 0) break;
-		if (val < 0) ERROR();
-		planeCat(configure[CompareConsole],chr);
-		planeHat(CompareConsole);}
-	planeState(&stateConsole,3);
-	return 0;
-}
-void *planeProgram(void *arg)
-{
-	if (setjmp(jmpbuf) == 0) runProgram();
-	planeState(&stateProgram,3);
-	return 0;
-}
-void *planeThread(void *arg)
-{
-	int val = 0;
-	int pro = 0;
-	int ext = 0;
-	int con = 0;
-	int prg = 0;
-	while (1) {
-	sem_wait(&resource); val = running; pro = stateProcess; ext = stateExternal; con = stateConsole; prg = stateProgram; sem_post(&resource);
-	if ((val&8) && pro == 0) {sem_wait(&resource); pro = stateProcess = 1; sem_post(&process); sem_post(&resource);}
-	if ((val&4) && ext == 0) {sem_wait(&resource); ext = stateExternal = 1; if (pthread_create(&threadExternal,0,planeExternal,0) != 0) ERROR(); sem_post(&resource);}
-	if ((val&2) && con == 0) {sem_wait(&resource); con = stateConsole = 1; if (pthread_create(&threadConsole,0,planeConsole,0) != 0) ERROR(); sem_post(&resource);}
-	if ((val&1) && prg == 0) {sem_wait(&resource); prg = stateProgram = 1; if (pthread_create(&threadProgram,0,planeProgram,0) != 0) ERROR(); sem_post(&resource);}
-	if (!(val&8) && pro == 2) {sem_wait(&resource); pro = stateProcess = 3; callWait(Stop); sem_post(&resource);}
-	if (!(val&4) && ext == 2) {sem_wait(&resource); ext = stateExternal = 3; closeIdent(external); sem_post(&resource);}
-	if (!(val&2) && con == 2) {sem_wait(&resource); con = stateConsole = 3; close(STDIN_FILENO); sem_post(&resource);}
-	if (!(val&1) && prg == 2) {sem_wait(&resource); prg = stateProgram = 3; kill(getpid(),SIGTERM); sem_post(&resource);}
-	if ((val&8) && pro == 3) {sem_wait(&resource); val = running &= ~8; sem_post(&resource);}
-	if ((val&4) && ext == 3) {sem_wait(&resource); val = running &= ~4; sem_post(&resource);}
-	if ((val&2) && con == 3) {sem_wait(&resource); val = running &= ~2; sem_post(&resource);}
-	if ((val&1) && prg == 3) {sem_wait(&resource); val = running &= ~1; sem_post(&resource);}
-	if (pro == 3) {sem_wait(&restart); sem_wait(&resource); pro = stateProcess = 0; sem_post(&resource);}
-	if (ext == 3) {if (pthread_join(threadExternal,0) != 0) ERROR(); sem_wait(&resource); ext = stateExternal = 0; sem_post(&resource);}
-	if (con == 3) {if (pthread_join(threadConsole,0) != 0) ERROR(); sem_wait(&resource); con = stateConsole = 0; sem_post(&resource);}
-	if (prg == 3) {if (pthread_join(threadProgram,0) != 0) ERROR(); sem_wait(&resource); prg = stateProgram = 0; sem_post(&resource);}
-	if (val == 0 && pro == 0 && ext == 0 && con == 0 && prg == 0) break;
-	sem_wait(&complete);}
-	return 0;
-}
-void planeInit(uftype dma, vftype wait, yftype wake, xftype info, wftype draw)
-{
-	struct sigaction act;
-	act.__sigaction_u.__sa_handler = planeTerm;
-	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
-	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	luaxAdd("planeHat",protoTypeCf(planeHat));
-	luaxAdd("planeGet",protoTypeRh(planeGet));
-	luaxAdd("planeSet",protoTypeFh(planeSet));
-	luaxAdd("planeCat",protoTypeFh(planeCat));
-	intrFunc(planeIntr);
-	sem_init(&complete,0,0);
-	sem_init(&resource,0,1);
-	sem_init(&ready,0,0);
-	sem_init(&process,0,0);
-	sem_init(&restart,0,0);
-	callDma = dma;
-	callWait = wait;
-	callWake = wake;
-	callInfo = info;
-	callDraw = draw;
-	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
-	callWait(Open);
-	planeBoot(); // this calls callDma through planeBuffer
-	internal = openPipe();
-	if (internal < 0) ERROR();
-	if (pthread_create(&threadThread,0,planeThread,0) != 0) ERROR();
-	sem_wait(&process);
-	planeState(&stateProcess,2);
-	callWait(Start);
-	planeState(&stateProcess,2);
-	sem_post(&restart);
-	if (pthread_join(threadThread,0) != 0) ERROR();
-	closeIdent(internal);
-}
-int planeConfig(enum Configure cfg)
-{
-	return configure[cfg];
-}
-void planeWait(enum Wait wait)
-{
-	// TODO
-}
 void planeWake(enum Configure hint)
 {
+	printf("planeWake %s\n",planeHint(hint));
 	configure[RegisterHint] = hint;
 	if (configure[RegisterLine] < 0 || configure[RegisterLine] >= configure[MachineSize]) configure[RegisterLine] = 0;
-	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize] && configure[RegisterOpen]) {
+	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize]) {
 		struct Machine *mptr = machine+configure[RegisterLine];
 		int next = configure[RegisterLine]+1;
 		int accum = 0;
@@ -611,6 +461,258 @@ void planeWake(enum Configure hint)
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] = next+1; break;}
 		configure[RegisterLine] = next;}
+}
+void planeMemx(void **mem, void *giv)
+{
+	memxCopy(mem,giv);
+	planeSet(-1,memxStr(*mem));
+}
+void planeRead()
+{
+	int num = 0;
+	sem_wait(&resource); if ((num = numpipe)) numpipe--; sem_post(&resource);
+	if (num) readCenter(&center,internal);
+	else {struct Center tmp = {0}; center = tmp;}
+}
+const char *planeGet(int idx)
+{
+	const char *ret = 0;
+	void *ptr = 0;
+	sem_wait(&resource);
+	ptr = pthread_getspecific(retstr);
+	free(ptr);
+	pthread_setspecific(retstr,0);
+	if (idx >= numstr) {
+		strings = realloc(strings,(idx+1)*sizeof(char*));
+		while (idx >= numstr) strings[numstr++] = strdup("");}
+	if (idx < 0) {
+		numstr--;
+		pthread_setspecific(retstr,strdup(strings[numstr]));
+		free(strings[numstr]); strings[numstr] = 0;
+		strings = realloc(strings,numstr*sizeof(char*));}
+	else pthread_setspecific(retstr,strdup(strings[idx]));
+	ret = pthread_getspecific(retstr);
+	sem_post(&resource);
+	return ret;
+}
+int planeSet(int idx, const char *str)
+{
+	int ret = 0;
+	sem_wait(&resource);
+	if (idx < 0) {
+		numstr++;
+		strings = realloc(strings,numstr*sizeof(char*));
+		idx = numstr-1;
+		strings[numstr-1] = strdup("");}
+	if (idx >= numstr) {
+		strings = realloc(strings,(idx+1)*sizeof(char*));
+		while (idx >= numstr) strings[numstr++] = strdup("");}
+	free(strings[idx]); strings[idx] = strdup(str);
+	ret = numstr;
+	if (numstr == 3) {sem_post(&ready[Program]);}
+	sem_post(&resource);
+	return ret;
+}
+int planeCat(int idx, const char *str)
+{
+	const char *src = planeGet(idx);
+	char *dst = malloc(strlen(src)+strlen(str)+1);
+	int ret = planeSet(idx,strcat(strcpy(dst,src),str));
+	free(dst);
+	return ret;
+}
+void planeIntr()
+{
+	if (pthread_equal(pthread_self(),thread[Program])) longjmp(jmpbuf,1);
+}
+void planeTerm(int sig)
+{
+}
+void planeExternal()
+{
+	char *inp = 0;
+	char *out = 0;
+	sem_wait(&ready[Program]); sem_post(&ready[Program]);
+	inp = strdup(planeGet(1)); out = strdup(planeGet(2));
+	external = pipeInit(inp,out);
+	free(inp); free(out);
+	if (external < 0) ERROR();
+	sem_post(&enable[External]);
+	while (1) {
+	struct Center center = {0};
+	int sub = waitRead(0,1<<external);
+	if (sub != external) break;
+	if (!checkRead(external)) break;
+	if (!checkWrite(internal)) break;
+	readCenter(&center,external);
+	writeCenter(&center,internal);
+	sem_wait(&resource); numpipe++; sem_post(&resource);
+	planeSafe(Waits,RegisterHint);}
+}
+void planeConsole()
+{
+	char chr[2] = {0};
+	int val = 0;
+	int nfd = 0;
+	fd_set fds, ers;
+	sem_post(&enable[Console]);
+	while (1) {
+		FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
+		if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
+		FD_SET(STDIN_FILENO,&fds); FD_SET(STDIN_FILENO,&ers);
+		val = pselect(nfd,&fds,0,&ers,0,0);
+		if (val < 0 && errno == EINTR) continue;
+		if (val < 0 && errno == EBADF) break;
+		if (val == 0) break;
+		if (val < 0) ERROR();
+		val = read(STDIN_FILENO,chr,1);
+		if (val == 0) break;
+		if (val < 0) ERROR();
+		planeCat(configure[CompareConsole],chr);
+		planeSafe(Waits,CompareConsole);}
+}
+void planeProgram()
+{
+	if (setjmp(jmpbuf) == 0) {sem_post(&enable[Program]); runProgram();}
+}
+void planeWrap(enum Concur bit, enum Wait pre, enum Wait post)
+{
+	planeSafe(pre,Configures); sem_post(&enable[bit]);
+	sem_wait(&finish[bit]); planeSafe(post,Configures);	
+}
+void *planeThread(void *arg)
+{
+	enum Concur bit = (enum Concur)(uintptr_t)arg;
+	switch (bit) {
+	case (External): planeExternal(); break;
+	case (Console): planeConsole(); break;
+	case (Program): planeProgram(); break;
+	case (Window): planeWrap(Window,Open,Close); break;
+	case (Process): planeWrap(Process,Start,Stop); break;
+	default: ERROR();}
+	sem_wait(&resource); running &= ~(1<<bit); sem_post(&resource);
+	return 0;
+}
+void planeFinish(enum Concur bit)
+{
+	switch (bit) {
+	case (External): closeIdent(external); break;
+	case (Console): close(STDIN_FILENO); break;
+	case (Program): kill(getpid(),SIGTERM); break;
+	case (Window): sem_post(&finish[Window]); break;
+	case (Process): sem_post(&finish[Process]); break;
+	default: ERROR();}
+}
+void planeStarted(int val)
+{
+	int dif = 0;
+	sem_wait(&resource); dif = started & ~running; sem_post(&resource); // join each in started but not running
+	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
+	sem_wait(&enable[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&enable[bit]);}
+	sem_wait(&resource); started = running; sem_post(&resource);
+	dif = started & ~val; // join each in started but not val
+	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
+	sem_wait(&enable[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&enable[bit]);}
+	dif = val & ~started; // create each in val but not started
+	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
+	sem_wait(&enable[bit]); if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
+	sem_wait(&resource); started = running = val; sem_post(&resource);
+}
+int planeRunning()
+{
+	int val = 0; sem_wait(&resource); val = running; sem_post(&resource); return val;
+}
+void planeEnque(enum Wait wait, enum Configure hint)
+{
+	sem_wait(&resource);
+	if (wait < Waits) perpend[wait]++;
+	if (qfull == qsize) {qsize++;
+	waits = realloc(waits,qsize*sizeof(enum Wait));
+	hints = realloc(hints,qsize*sizeof(enum Configure));
+	for (int i = qsize-1; i > qhead; i++) {
+	waits[i] = waits[i-1]; hints[i] = hints[i-1];}
+	qhead++; if (qhead == qsize) qhead = 0;}
+	waits[qtail] = wait; hints[qtail] = hint;
+	qtail++; if (qtail == qsize) qtail = 0;
+	qfull++; sem_post(&resource);
+}
+void planeDeque(enum Wait *wait, enum Configure *hint)
+{
+	sem_wait(&resource);
+	if (*wait < Waits) perpend[*wait]--;
+	if (qfull == 0) ERROR();
+	*wait = waits[qhead]; *hint = hints[qhead];
+	qhead++; if (qhead == qsize) qhead = 0;
+	qfull--; sem_post(&resource);
+}
+void planePeek(vftype user)
+{
+	enum Wait wait = 0;
+	enum Configure hint = 0;
+	sem_wait(&pending);
+	sem_wait(&resource);
+	wait = waits[qhead];
+	hint = hints[qhead];
+	sem_post(&resource);
+	user(wait,hint);
+}
+int planeTodo()
+{
+	int val = 0; sem_wait(&resource); val = (qfull || running); sem_post(&resource); return val;
+}
+void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, wftype draw)
+{
+	struct sigaction act;
+	act.__sigaction_u.__sa_handler = planeTerm;
+	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
+	if (pthread_key_create(&retstr,free) != 0) ERROR();
+	luaxAdd("planeGet",protoTypeRh(planeGet));
+	luaxAdd("planeSet",protoTypeFh(planeSet));
+	luaxAdd("planeCat",protoTypeFh(planeCat));
+	intrFunc(planeIntr);
+	sem_init(&resource,0,1);
+	sem_init(&pending,0,0);
+	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&enable[bit],0,1);
+	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,0);
+	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&finish[bit],0,0);
+	callDma = dma;
+	callSafe = safe;
+	callUser = user;
+	callInfo = info;
+	callDraw = draw;
+	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
+	init();
+	for (int i = 0; Bootstrap__Int__Str(i); i++) {
+	int len = 0;
+	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
+	planeBuffer();}
+	if ((internal = openPipe()) < 0) ERROR();
+	while (planeTodo()) planePeek(planeUser);
+	closeIdent(internal);
+}
+int planeConfig(enum Configure cfg)
+{
+	return configure[cfg];
+}
+void planeSafe(enum Wait wait, enum Configure hint)
+{
+	planeEnque(wait,hint);
+	sem_wait(&resource);
+	if (callInfo(RegisterOpen) && perpend[Close] == 0) callSafe(wait,hint);
+	sem_post(&resource);
+	sem_post(&pending)
+}
+void planeUser(enum Wait wait, enum Configure hint)
+{
+	enum Wait wval = 0;
+	enum Configure hval = 0;
+	planeDeque(&wval,&hval);
+	if (wval != wait || hval != hint) ERROR();
+	if (wait == Waits && hint != Configures) planeWake(hint);
+	if (wait != Waits && hint == Configures) callUser(wait);
+	if (wait == Waits && hint == Configures) ERROR();
+	// TODO wait != Waits && hint == RegisterOpen to clear running bit, and call planeWake(hint)
+	if (wait != Waits && hint != Configures) ERROR();
 }
 void planeReady(struct Pierce *given)
 {

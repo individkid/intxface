@@ -164,6 +164,13 @@ Wait = {
 	"Start",
 	"Stop",
 }
+Concur = {
+	"External",
+	"Console",
+	"Program",
+	"Window",
+	"Process",
+}
 Compare = {
 	"Less",
 	"More",
