@@ -583,7 +583,10 @@ void planePeek(vftype user)
 }
 int planeTodo()
 {
-	int val = 0; sem_safe(&resource,{val = (qfull || running);}); return val;
+	int val = 0;
+	sem_safe(&resource,{
+	val = (qfull || running);});
+	return val;
 }
 void planeBoot()
 {
