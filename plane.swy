@@ -18,6 +18,7 @@ var threads = [MTLSize?](repeating: nil, count: Int(Shaders.rawValue))
 
 var lock = [Refer]()
 var count = Int(0)
+var delta = 0.0
 
 var triangle = Pend<Triangle>()
 var numeric = Pend<Numeric>()
@@ -186,7 +187,7 @@ class getDelegate : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		planeSafe(Waits,RegisterOpen);
+		planeSafe(Waits,RegisterOpen)
 		return true
 	}
 	func windowDidResize(_ notification: Notification)
@@ -195,6 +196,7 @@ class getDelegate : NSObject, NSWindowDelegate
 		CATransaction.setDisableActions(true)
 		layer.frame = view.frame
 		CATransaction.commit()
+		// TODO write getRect to uniform
 	}
 	func windowWillMove(_ notification: Notification)
 	{
@@ -281,6 +283,8 @@ func swiftOpen()
 }
 func swiftStart()
 {
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.scrollWheel, handler: {(event: NSEvent) in
+		delta += event.deltaY; return event})
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in
 		planeSafe(Waits,CursorLeft); return event})
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in
@@ -359,7 +363,7 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (WindowHigh): return Int32(getRect().size.height)
 	case (CursorLeft): return Int32(NSEvent.mouseLocation.x)
 	case (CursorBase): return Int32(NSEvent.mouseLocation.x)
-	case (CursorAngle): if let event = NSApp.currentEvent {return Int32(event.deltaY)} else {return Int32(0)}
+	case (CursorAngle): let temp = delta; delta = 0.0; return Int32(temp)
 	case (CursorClick): return Int32(NSEvent.pressedMouseButtons)
 	// TODO read from uniform
 	default: exitErr(#file,#line);return 0}
@@ -378,7 +382,7 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.endEncoding()
 	}
-	for range in array[Int(start)...Int(stop)] { // TODO use start and stop
+	for range in array[Int(start)...Int(stop)] {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.setRenderPipelineState(render[sub]!)
 		encode.setDepthStencilState(depth[sub]!)
@@ -405,7 +409,7 @@ func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)
 	code.commit()
 	case (Adpoint): fallthrough case (Adplane):
 	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line);return}
-	for range in array[Int(start)...Int(stop)] { // TODO use start and stop
+	for range in array[Int(start)...Int(stop)] {
 		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
 		var nums:[Int] = []
 		var pers:[Int] = []

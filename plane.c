@@ -21,6 +21,7 @@
 #include <semaphore.h>
 #endif
 #define sem_sync(S) {sem_wait(S);sem_post(S);}
+#define sem_safe(S,F) {sem_wait(S);F;sem_post(S);}
 #include <setjmp.h>
 #include <signal.h>
 #include <regex.h>
@@ -188,17 +189,18 @@ void planePattern(int idx, const char *str)
 	fprintf(stderr,"regcomp error: %s\n",buf);
 	regfree(pattern+idx);}
 }
-void planeMatch()
+int planeMatch()
 {
 	int str = configure[CompareString];
 	int pat = configure[ComparePattern];
 	int num = configure[CompareNumber];
+	int siz = configure[CompareSize];
 	for (int i = 0; i < configure[CompareSize]; i++) free(result[i]);
-	free(result); result = 0; configure[CompareSize] = 0;
-	if (numpat == 0 || numstr == 0) return;
+	free(result); result = 0; siz = 0;
+	if (numpat == 0 || numstr == 0) return siz;
 	while (num) {
 	regex_t *ptr = pattern+(pat%numpat);
-	int siz = ptr->re_nsub+1;
+	siz = ptr->re_nsub+1;
 	regmatch_t pmatch[siz];	
 	if (regexec(ptr,planeGet(str),siz,pmatch,0) != 0) {
 	if (num > 0) {num--; str++;} else {num++; pat++;} continue;}
@@ -206,8 +208,8 @@ void planeMatch()
 	for (int i = 0; i < siz; i++) {
 	if (pmatch[i].rm_so < 0) result[i] = strdup("");
 	else result[i] = strndup(planeGet(str)+pmatch[i].rm_so,pmatch[i].rm_eo-pmatch[i].rm_so);}
-	configure[CompareSize] = siz;
 	break;}
+	return siz;
 }
 struct Pierce *planePierce()
 {
@@ -221,7 +223,8 @@ void planePreconfig(enum Configure cfg)
 {
 	switch (cfg) {
 		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-		case (CompareSize): planeMatch(); break;
+		case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
+		case (CompareSize): configure[CompareSize] = planeMatch(); break;
 		case (CenterRequest): configure[CenterRequest] = center.req; break;
 		case (CenterMemory): configure[CenterMemory] = center.mem; break;
 		case (CenterSize): configure[CenterSize] = center.siz; break;
@@ -245,9 +248,6 @@ void planePostconfig(enum Configure cfg, int idx)
 {
 	if (center.mem != Configurez || idx < 0 || idx >= center.siz) return;
 	center.cfg[idx] = cfg;
-	switch (cfg) {
-	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
-	default: break;}
 	center.val[idx] = configure[cfg];
 }
 void planeReconfig(enum Configure cfg, int val)
@@ -400,7 +400,7 @@ void planeMemx(void **mem, void *giv)
 void planeRead()
 {
 	int num = 0;
-	sem_wait(&resource); if ((num = numpipe)) numpipe--; sem_post(&resource);
+	sem_safe(&resource,{if ((num = numpipe)) numpipe--;});
 	if (num) readCenter(&center,internal);
 	else {struct Center tmp = {0}; center = tmp;}
 }
@@ -408,7 +408,7 @@ const char *planeGet(int idx)
 {
 	const char *ret = 0;
 	void *ptr = 0;
-	sem_wait(&resource);
+	sem_safe(&resource,{
 	ptr = pthread_getspecific(retstr);
 	free(ptr);
 	pthread_setspecific(retstr,0);
@@ -421,14 +421,13 @@ const char *planeGet(int idx)
 		free(strings[numstr]); strings[numstr] = 0;
 		strings = realloc(strings,numstr*sizeof(char*));}
 	else pthread_setspecific(retstr,strdup(strings[idx]));
-	ret = pthread_getspecific(retstr);
-	sem_post(&resource);
+	ret = pthread_getspecific(retstr);});
 	return ret;
 }
 int planeSet(int idx, const char *str)
 {
 	int ret = 0;
-	sem_wait(&resource);
+	sem_safe(&resource,{
 	if (idx < 0) {
 		numstr++;
 		strings = realloc(strings,numstr*sizeof(char*));
@@ -439,8 +438,7 @@ int planeSet(int idx, const char *str)
 		while (idx >= numstr) strings[numstr++] = strdup("");}
 	free(strings[idx]); strings[idx] = strdup(str);
 	ret = numstr;
-	if (numstr == 3) {sem_post(&ready[Program]);}
-	sem_post(&resource);
+	if (numstr == 3) sem_post(&ready[Program]);});
 	return ret;
 }
 int planeCat(int idx, const char *str)
@@ -475,7 +473,7 @@ void planeExternal()
 	if (!checkWrite(internal)) break;
 	readCenter(&center,external);
 	writeCenter(&center,internal);
-	sem_wait(&resource); numpipe++; sem_post(&resource);
+	sem_safe(&resource,{numpipe++;});
 	planeSafe(Waits,RegisterHint);}
 }
 void planeConsole()
@@ -504,13 +502,6 @@ void planeProgram()
 {
 	if (setjmp(jmpbuf) == 0) runProgram();
 }
-void planeBoot()
-{
-	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	int len = 0;
-	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
-	planeBuffer();}
-}
 void planeWrap(enum Concur bit, enum Wait pre, enum Wait post)
 {
 	planeSafe(pre,Configures); sem_post(&ready[bit]);
@@ -526,7 +517,7 @@ void *planeThread(void *arg)
 	case (Window): planeWrap(Window,Open,Close); break;
 	case (Process): planeWrap(Process,Start,Stop); break;
 	default: ERROR();}
-	sem_wait(&resource); running &= ~(1<<bit); sem_post(&resource);
+	sem_safe(&resource,{running &= ~(1<<bit);});
 	return 0;
 }
 void planeFinish(enum Concur bit)
@@ -542,25 +533,25 @@ void planeFinish(enum Concur bit)
 void planeStarted(int val)
 {
 	int dif = 0;
-	sem_wait(&resource); dif = started & ~running; sem_post(&resource); // join each in started but not running
+	sem_safe(&resource,{dif = started & ~running;}); // join each in started but not running
 	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
-	sem_wait(&ready[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&ready[bit]);}
-	sem_wait(&resource); started = running; sem_post(&resource);
+	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
+	sem_safe(&resource,{started = running;});
 	dif = started & ~val; // join each in started but not val
 	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
-	sem_wait(&ready[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&ready[bit]);}
+	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
 	dif = val & ~started; // create each in val but not started
 	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
-	sem_wait(&ready[bit]); if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
-	sem_wait(&resource); started = running = val; sem_post(&resource);
+	if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
+	sem_safe(&resource,{started = running = val;});
 }
 int planeRunning()
 {
-	int val = 0; sem_wait(&resource); val = running; sem_post(&resource); return val;
+	int val = 0; sem_safe(&resource,{val = running;}); return val;
 }
 void planeEnque(enum Wait wait, enum Configure hint)
 {
-	sem_wait(&resource);
+	sem_safe(&resource,{
 	if (wait < Waits) perpend[wait]++;
 	if (qfull == qsize) {qsize++;
 	waits = realloc(waits,qsize*sizeof(enum Wait));
@@ -570,31 +561,36 @@ void planeEnque(enum Wait wait, enum Configure hint)
 	qhead++; if (qhead == qsize) qhead = 0;}
 	waits[qtail] = wait; hints[qtail] = hint;
 	qtail++; if (qtail == qsize) qtail = 0;
-	qfull++; 
-	sem_post(&resource);
+	qfull++;});
 }
 void planeDeque(enum Wait *wait, enum Configure *hint)
 {
-	sem_wait(&resource);
+	sem_safe(&resource,{
 	if (*wait < Waits) perpend[*wait]--;
 	if (qfull == 0) ERROR();
 	*wait = waits[qhead]; *hint = hints[qhead];
 	qhead++; if (qhead == qsize) qhead = 0;
-	qfull--; sem_post(&resource);
+	qfull--;});
 }
 void planePeek(vftype user)
 {
 	enum Wait wait = 0;
 	enum Configure hint = 0;
-	sem_wait(&resource);
+	sem_safe(&resource,{
 	wait = waits[qhead];
-	hint = hints[qhead];
-	sem_post(&resource);
+	hint = hints[qhead];});
 	user(wait,hint);
 }
 int planeTodo()
 {
-	int val = 0; sem_wait(&resource); val = (qfull || running); sem_post(&resource); return val;
+	int val = 0; sem_safe(&resource,{val = (qfull || running);}); return val;
+}
+void planeBoot()
+{
+	for (int i = 0; Bootstrap__Int__Str(i); i++) {
+	int len = 0;
+	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
+	planeBuffer();}
 }
 void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, wftype draw)
 {
@@ -608,7 +604,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	intrFunc(planeIntr);
 	sem_init(&resource,0,1);
 	sem_init(&pending,0,0);
-	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,1);
+	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,0);
 	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&finish[bit],0,0);
 	callDma = dma;
 	callSafe = safe;
@@ -627,7 +623,7 @@ int planeConfig(enum Configure cfg)
 }
 void planeSafe(enum Wait wait, enum Configure hint)
 {
-	sem_wait(&resource); if (callInfo(RegisterOpen) && perpend[Stop] == 0) callSafe(wait,hint); sem_post(&resource);
+	sem_safe(&resource,{if (callInfo(RegisterOpen) && perpend[Stop] == 0) callSafe(wait,hint);});
 	planeEnque(wait,hint); sem_post(&pending);
 }
 void planeUser(enum Wait wait, enum Configure hint)
