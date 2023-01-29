@@ -208,7 +208,7 @@ class getView : NSView
 {
 	override func mouseUp(with event: NSEvent)
 	{
-		planeSafe(Waits,ButtonClick)
+		planeSafe(Waits,CursorClick)
 	}
 }
 func getRect() -> NSRect
@@ -217,18 +217,6 @@ func getRect() -> NSRect
 	let size = view.frame
 	rect.size = size.size
 	return rect
-}
-func getPoint() -> NSPoint
-{
-	return NSEvent.mouseLocation
-}
-func getIdle() -> NSEvent?
-{
-	return NSApp.nextEvent(matching:NSEvent.EventTypeMask.any,until:nil,inMode:RunLoop.Mode.`default`,dequeue:true)
-}
-func swiftIdle()
-{
-	while (true) {if let event = getIdle() {NSApp.sendEvent(event)} else {break}}
 }
 func swiftInit()
 {
@@ -369,9 +357,10 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (WindowBase): return Int32(getRect().origin.y)
 	case (WindowWide): return Int32(getRect().size.width)
 	case (WindowHigh): return Int32(getRect().size.height)
-	case (CursorLeft): return Int32(getPoint().x)
-	case (CursorBase): return Int32(getPoint().y)
+	case (CursorLeft): return Int32(NSEvent.mouseLocation.x)
+	case (CursorBase): return Int32(NSEvent.mouseLocation.x)
 	case (CursorAngle): if let event = NSApp.currentEvent {return Int32(event.deltaY)} else {return Int32(0)}
+	case (CursorClick): return Int32(NSEvent.pressedMouseButtons)
 	// TODO read from uniform
 	default: exitErr(#file,#line);return 0}
 }

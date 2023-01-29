@@ -238,7 +238,7 @@ void planePreconfig(enum Configure cfg)
 		case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
 		case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
 		case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
-		case (ButtonClick): configure[ButtonClick] = callInfo(ButtonClick); break;
+		case (CursorClick): configure[CursorClick] = callInfo(CursorClick); break;
 		default: break;}
 }
 void planePostconfig(enum Configure cfg, int idx)

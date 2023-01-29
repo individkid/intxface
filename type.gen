@@ -106,7 +106,7 @@ Configure = {
 	"CursorLeft", -- user input mouse
 	"CursorBase",
 	"CursorAngle",
-	"ButtonClick", -- mouse button
+	"CursorClick", -- mouse button
 }
 Transfer = {
 	"Read", -- read internal pipe
