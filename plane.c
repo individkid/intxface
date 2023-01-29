@@ -82,75 +82,6 @@ int planeCat(int idx, const char *str);
 int planeRunning();
 void planeStarted(int val);
 
-const char *planeWait(enum Wait wait)
-{
-	switch (wait) {
-	case (Open): return "Open";
-	case (Close): return "Close";
-	case (Start): return "Start";
-	case (Stop): return "Stop";
-	case (Waits): return "Waits";
-	default: return "Wait?";}
-	return "oops";
-}
-const char *planeHint(enum Configure hint)
-{
-	switch (hint) {
-	case (TriangleSize): return "TriangleSize";
-	case (NumericSize): return "NumericSize";
-	case (VertexSize): return "VertexSize";
-	case (SubjectSize): return "SubjectSize";
-	case (ObjectSize): return "ObjectSize";
-	case (ElementSize): return "ElementSize";
-	case (SwarmSize): return "SwarmSize";
-	case (TextureSize): return "TextureSize";
-	case (BasisSize): return "BasisSize";
-	case (SliceSize): return "SliceSize";
-	case (MachineSize): return "MachineSize";
-	case (RegisterLine): return "RegisterLine";
-	case (RegisterNest): return "RegisterNest";
-	case (RegisterXform): return "RegisterXform";
-	case (RegisterMemory): return "RegisterMemory";
-	case (RegisterIndex): return "RegisterIndex";
-	case (RegisterHint): return "RegisterHint";
-	case (RegisterDone): return "RegisterDone";
-	case (RegisterOpen): return "RegisterOpen";
-	case (CompareConsole): return "CompareConsole";
-	case (CompareString): return "CompareString";
-	case (ComparePattern): return "ComparePattern";
-	case (CompareNumber): return "CompareNumber";
-	case (CompareSize): return "CompareSize";
-	case (CenterRequest): return "CenterRequest";
-	case (CenterMemory): return "CenterMemory";
-	case (CenterSize): return "CenterSize";
-	case (CenterIndex): return "CenterIndex";
-	case (CenterSelf): return "CenterSelf";
-	case (ArgumentShader): return "ArgumentShader";
-	case (ArgumentStart): return "ArgumentStart";
-	case (ArgumentStop): return "ArgumentStop";
-	case (ClosestLeft): return "ClosestLeft";
-	case (ClosestBase): return "ClosestBase";
-	case (ClosestNear): return "ClosestNear";
-	case (ClosestFound): return "ClosestFound";
-	case (UniformAll): return "UniformAll";
-	case (UniformOne): return "UniformOne";
-	case (UniformLeft): return "UniformLeft";
-	case (UniformBase): return "UniformBase";
-	case (UniformIndex): return "UniformIndex";
-	case (UniformSize): return "UniformSize";
-	case (UniformBasis): return "UniformBasis";
-	case (WindowLeft): return "WindowLeft";
-	case (WindowBase): return "WindowBase";
-	case (WindowWide): return "WindowWide";
-	case (WindowHigh): return "WindowHigh";
-	case (CursorLeft): return "CursorLeft";
-	case (CursorBase): return "CursorBase";
-	case (CursorAngle): return "CursorAngle";
-	case (ButtonClick): return "ButtonClick";
-	case (Configures): return "Configures";
-	default: return "oops";}
-	return "oops";
-}
 void planeAlize(float *dir, const float *vec) // normalize
 {
 }
@@ -423,7 +354,6 @@ void planeExchange(int cal, int ret)
 }
 void planeWake(enum Configure hint)
 {
-	printf("planeWake %s\n",planeHint(hint));
 	configure[RegisterHint] = hint;
 	if (configure[RegisterLine] < 0 || configure[RegisterLine] >= configure[MachineSize]) configure[RegisterLine] = 0;
 	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize]) {
@@ -629,12 +559,13 @@ void planeEnque(enum Wait wait, enum Configure hint)
 	if (qfull == qsize) {qsize++;
 	waits = realloc(waits,qsize*sizeof(enum Wait));
 	hints = realloc(hints,qsize*sizeof(enum Configure));
-	for (int i = qsize-1; i > qhead; i++) {
+	for (int i = qsize-1; i > qhead; i--) {
 	waits[i] = waits[i-1]; hints[i] = hints[i-1];}
 	qhead++; if (qhead == qsize) qhead = 0;}
 	waits[qtail] = wait; hints[qtail] = hint;
 	qtail++; if (qtail == qsize) qtail = 0;
-	qfull++; sem_post(&resource);
+	qfull++; 
+	sem_post(&resource);
 }
 void planeDeque(enum Wait *wait, enum Configure *hint)
 {
@@ -649,7 +580,6 @@ void planePeek(vftype user)
 {
 	enum Wait wait = 0;
 	enum Configure hint = 0;
-	sem_wait(&pending);
 	sem_wait(&resource);
 	wait = waits[qhead];
 	hint = hints[qhead];
@@ -696,16 +626,14 @@ int planeConfig(enum Configure cfg)
 }
 void planeSafe(enum Wait wait, enum Configure hint)
 {
-	planeEnque(wait,hint);
-	sem_wait(&resource);
-	if (callInfo(RegisterOpen) && perpend[Close] == 0) callSafe(wait,hint);
-	sem_post(&resource);
-	sem_post(&pending)
+	sem_wait(&resource); if (callInfo(RegisterOpen) && perpend[Stop] == 0) callSafe(wait,hint); sem_post(&resource);
+	planeEnque(wait,hint); sem_post(&pending);
 }
 void planeUser(enum Wait wait, enum Configure hint)
 {
 	enum Wait wval = 0;
 	enum Configure hval = 0;
+	sem_wait(&pending);
 	planeDeque(&wval,&hval);
 	if (wval != wait || hval != hint) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);

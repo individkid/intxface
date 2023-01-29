@@ -222,33 +222,26 @@ func getPoint() -> NSPoint
 {
 	return NSEvent.mouseLocation
 }
+func getIdle() -> NSEvent?
+{
+	return NSApp.nextEvent(matching:NSEvent.EventTypeMask.any,until:nil,inMode:RunLoop.Mode.`default`,dequeue:true)
+}
+func swiftIdle()
+{
+	while (true) {if let event = getIdle() {NSApp.sendEvent(event)} else {break}}
+}
 func swiftInit()
 {
 	for arg in CommandLine.arguments {useArgument(arg)}
+	let application = getApplication()
+	NSApplication.shared.delegate = application
 	device = MTLCreateSystemDefaultDevice()
-	NSApp = NSApplication.shared
 }
-func swiftRun()
+func swiftOpen()
 {
 	let rect = NSMakeRect(
 		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
 		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
-	layer = CAMetalLayer()
-	layer.device = device
-	layer.pixelFormat = .bgra8Unorm
-	layer.framebufferOnly = true
-	layer.frame = rect
-	view = getView(frame:rect)
-	view.wantsLayer = true
-	view.layer = layer
-	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
-	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
-	window.title = "plane"
-	window.makeKeyAndOrderFront(nil)
-	window.contentView = view
-	let delegate = getDelegate()
-	window.delegate = delegate
-	print("swiftInit window")
 	queue = device.makeCommandQueue()
 	let url = URL(fileURLWithPath: "plane.metallib")
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
@@ -282,10 +275,28 @@ func swiftRun()
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
     threads[sub] = device.maxThreadsPerThreadgroup
     default: break}}
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in planeSafe(Waits,CursorLeft); return event})
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeUser(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return event})
-	let application = getApplication()
-	NSApp.delegate = application
+	layer = CAMetalLayer()
+	layer.device = device
+	layer.pixelFormat = .bgra8Unorm
+	layer.framebufferOnly = true
+	layer.frame = rect
+	view = getView(frame:rect)
+	view.wantsLayer = true
+	view.layer = layer
+	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
+	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
+	window.title = "plane"
+	window.makeKeyAndOrderFront(nil)
+	window.contentView = view
+	let delegate = getDelegate()
+	window.delegate = delegate
+}
+func swiftStart()
+{
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in
+		planeSafe(Waits,CursorLeft); return event})
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in
+		planeUser(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return event})
 	NSApp.run()
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
@@ -328,9 +339,9 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 func swiftUser(_ wait: Wait)
 {
 	switch(wait) {
-	case (Open): print("swiftUser Open"); break // TODO
-	case (Close): print("swiftUser Close"); break // TODO window.close()
-	case (Start): swiftRun()
+	case (Open): swiftOpen(); break
+	case (Close): window.close(); break 
+	case (Start): swiftStart()
 	case (Stop): NSApp.stop(nil)
 	default: exitErr(#file,#line)}	
 }

@@ -263,7 +263,7 @@ Bootstrap = {
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
 		"val[2]:Int(1)"..
-		"val[3]:Int(15)"..
+		"val[3]:Int(31)"..
 	")"},
 	{"Int","1","Str","Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)"..
