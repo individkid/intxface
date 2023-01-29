@@ -20,6 +20,7 @@
 #else
 #include <semaphore.h>
 #endif
+#define sem_sync(S) {sem_wait(S);sem_post(S);}
 #include <setjmp.h>
 #include <signal.h>
 #include <regex.h>
@@ -71,7 +72,6 @@ int perpend[Waits] = {0};
 void *runmask[Waits] = {0};
 sem_t resource;
 sem_t pending;
-sem_t enable[Concurs];
 sem_t ready[Concurs];
 sem_t finish[Concurs];
 void planeMemx(void **mem, void *giv);
@@ -462,12 +462,11 @@ void planeExternal()
 {
 	char *inp = 0;
 	char *out = 0;
-	sem_wait(&ready[Program]); sem_post(&ready[Program]);
 	inp = strdup(planeGet(1)); out = strdup(planeGet(2));
 	external = pipeInit(inp,out);
 	free(inp); free(out);
 	if (external < 0) ERROR();
-	sem_post(&enable[External]);
+	sem_post(&ready[External]);
 	while (1) {
 	struct Center center = {0};
 	int sub = waitRead(0,1<<external);
@@ -485,7 +484,7 @@ void planeConsole()
 	int val = 0;
 	int nfd = 0;
 	fd_set fds, ers;
-	sem_post(&enable[Console]);
+	sem_post(&ready[Console]);
 	while (1) {
 		FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
 		if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
@@ -503,18 +502,25 @@ void planeConsole()
 }
 void planeProgram()
 {
-	if (setjmp(jmpbuf) == 0) {sem_post(&enable[Program]); runProgram();}
+	if (setjmp(jmpbuf) == 0) runProgram();
+}
+void planeBoot()
+{
+	for (int i = 0; Bootstrap__Int__Str(i); i++) {
+	int len = 0;
+	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
+	planeBuffer();}
 }
 void planeWrap(enum Concur bit, enum Wait pre, enum Wait post)
 {
-	planeSafe(pre,Configures); sem_post(&enable[bit]);
+	planeSafe(pre,Configures); sem_post(&ready[bit]);
 	sem_wait(&finish[bit]); planeSafe(post,Configures);	
 }
 void *planeThread(void *arg)
 {
 	enum Concur bit = (enum Concur)(uintptr_t)arg;
 	switch (bit) {
-	case (External): planeExternal(); break;
+	case (External): sem_sync(&ready[Program]); planeExternal(); break;
 	case (Console): planeConsole(); break;
 	case (Program): planeProgram(); break;
 	case (Window): planeWrap(Window,Open,Close); break;
@@ -538,14 +544,14 @@ void planeStarted(int val)
 	int dif = 0;
 	sem_wait(&resource); dif = started & ~running; sem_post(&resource); // join each in started but not running
 	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
-	sem_wait(&enable[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&enable[bit]);}
+	sem_wait(&ready[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&ready[bit]);}
 	sem_wait(&resource); started = running; sem_post(&resource);
 	dif = started & ~val; // join each in started but not val
 	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
-	sem_wait(&enable[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&enable[bit]);}
+	sem_wait(&ready[bit]); planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR(); sem_post(&ready[bit]);}
 	dif = val & ~started; // create each in val but not started
 	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
-	sem_wait(&enable[bit]); if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
+	sem_wait(&ready[bit]); if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
 	sem_wait(&resource); started = running = val; sem_post(&resource);
 }
 int planeRunning()
@@ -602,8 +608,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	intrFunc(planeIntr);
 	sem_init(&resource,0,1);
 	sem_init(&pending,0,0);
-	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&enable[bit],0,1);
-	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,0);
+	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,1);
 	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&finish[bit],0,0);
 	callDma = dma;
 	callSafe = safe;
@@ -611,12 +616,8 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	callInfo = info;
 	callDraw = draw;
 	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
-	init();
-	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	int len = 0;
-	if (!hideCenter(&center,Bootstrap__Int__Str(i),&len)) ERROR();
-	planeBuffer();}
 	if ((internal = openPipe()) < 0) ERROR();
+	init(); planeBoot();
 	while (planeTodo()) planePeek(planeUser);
 	closeIdent(internal);
 }
@@ -638,7 +639,6 @@ void planeUser(enum Wait wait, enum Configure hint)
 	if (wval != wait || hval != hint) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
 	if (wait != Waits && hint == Configures) callUser(wait);
-	if (wait == Waits && hint == Configures) ERROR();
 	// TODO wait != Waits && hint == RegisterOpen to clear running bit, and call planeWake(hint)
 	if (wait != Waits && hint != Configures) ERROR();
 }
