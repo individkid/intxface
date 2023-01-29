@@ -176,6 +176,13 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; planeSafe(Waits,RegisterDone)}
 }
+func getRect() -> NSRect
+{
+	var rect = window.frame
+	let size = view.frame
+	rect.size = size.size
+	return rect
+}
 class getApplication : NSObject, NSApplicationDelegate
 {
 	func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool
@@ -192,11 +199,15 @@ class getDelegate : NSObject, NSWindowDelegate
 	}
 	func windowDidResize(_ notification: Notification)
 	{
+		let rect = getRect()
+		uniform.set(Int(rect.origin.x),\Uniform.lft)
+		uniform.set(Int(rect.origin.y),\Uniform.bas)
+		uniform.set(Int(rect.size.width),\Uniform.wdt)
+		uniform.set(Int(rect.size.height),\Uniform.hdt)
 		CATransaction.begin()
 		CATransaction.setDisableActions(true)
 		layer.frame = view.frame
 		CATransaction.commit()
-		// TODO write getRect to uniform
 	}
 	func windowWillMove(_ notification: Notification)
 	{
@@ -212,13 +223,6 @@ class getView : NSView
 	{
 		planeSafe(Waits,CursorClick)
 	}
-}
-func getRect() -> NSRect
-{
-	var rect = window.frame
-	let size = view.frame
-	rect.size = size.size
-	return rect
 }
 func swiftInit()
 {
@@ -309,13 +313,13 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 	case (Piercez): pierce.set(Swift.Array(repeating: Pierce(), count: siz),idx,Int(planeConfig(TriangleSize)))
 	case (Slicez): array = toArray(array,Swift.Array(0..<siz).map() {(sub) in center.rng![sub]},idx,Int(planeConfig(SliceSize)))
 	case (Configurez): for sub in Swift.Array(0..<siz) {switch center.cfg![sub] {
-		case (UniformAll): uniform.set(center.val![sub],\Uniform.all)
-		case (UniformOne): uniform.set(center.val![sub],\Uniform.one)
-		case (UniformLeft): uniform.set(center.val![sub],\Uniform.lon)
-		case (UniformBase): uniform.set(center.val![sub],\Uniform.lat)
+		case (UniformAll): uniform.set(Int(center.val![sub]),\Uniform.all)
+		case (UniformOne): uniform.set(Int(center.val![sub]),\Uniform.one)
+		case (UniformLeft): uniform.set(Int(center.val![sub]),\Uniform.lon)
+		case (UniformBase): uniform.set(Int(center.val![sub]),\Uniform.lat)
 		case (UniformIndex): uniform.set(Int(center.val![sub]),\Uniform.idx)
 		case (UniformSize): uniform.set(Int(center.val![sub]),\Uniform.siz)
-		case (UniformBasis): uniform.set(center.val![sub],\Uniform.bas)
+		case (UniformBasis): uniform.set(Int(center.val![sub]),\Uniform.csp)
 		case (TriangleSize): uniform.set(Int(center.val![sub]),\Uniform.tsz)
 		case (NumericSize): uniform.set(Int(center.val![sub]),\Uniform.nsz)
 		case (VertexSize): uniform.set(Int(center.val![sub]),\Uniform.vsz)
@@ -357,15 +361,10 @@ func swiftInfo(_ query: Configure) -> Int32
 	switch (query) {
 	case (RegisterOpen): if (NSApp.isRunning) {return Int32(1)} else {return Int32(0)}
 	case (RegisterDone): return Int32(count)
-	case (WindowLeft): return Int32(getRect().origin.x)
-	case (WindowBase): return Int32(getRect().origin.y)
-	case (WindowWide): return Int32(getRect().size.width)
-	case (WindowHigh): return Int32(getRect().size.height)
 	case (CursorLeft): return Int32(NSEvent.mouseLocation.x)
 	case (CursorBase): return Int32(NSEvent.mouseLocation.x)
 	case (CursorAngle): let temp = delta; delta = 0.0; return Int32(temp)
 	case (CursorClick): return Int32(NSEvent.pressedMouseButtons)
-	// TODO read from uniform
 	default: exitErr(#file,#line);return 0}
 }
 func swiftDraw(_ shader: Shader, _ start: Int32, _ stop: Int32)

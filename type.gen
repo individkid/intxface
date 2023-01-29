@@ -99,7 +99,7 @@ Configure = {
 	"UniformIndex", -- manipulate plane select
 	"UniformSize", -- early warning points
 	"UniformBasis", -- which cospace basis
-	"WindowLeft", -- window into screen
+	"WindowLeft", -- window initialization
 	"WindowBase",
 	"WindowWide",
 	"WindowHigh",
@@ -357,12 +357,17 @@ Event = {
 Uniform = {
 	{"all","Int",{},{}}, -- which subject to use
 	{"one","Int",{},{}}, -- which element to use
-	{"lon","Old",{},{}}, -- horizontal axis of cursor
-	{"lat","Old",{},{}}, -- vertical axis of cursor
+	{"lon","Int",{},{}}, -- horizontal axis of cursor
+	{"lat","Int",{},{}}, -- vertical axis of cursor
+
+	{"lft","Int",{},{}}, -- horizontal axis of window
+	{"bas","Int",{},{}}, -- vertical axis of window
+	{"wdt","Int",{},{}}, -- horizontal size of window
+	{"hdt","Int",{},{}}, -- vertical size of window
 
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"siz","Int",{},{}}, -- how many swarm points there are
-	{"bas","Int",{},{}}, -- which basis to use
+	{"csp","Int",{},{}}, -- which basis to use
 	{"tsz","Int",{},{}}, -- size of trinagle buffer
 
 	{"nsz","Int",{},{}}, -- size of numeric buffer
