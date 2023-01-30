@@ -146,7 +146,7 @@ Expected = {
 	"    Enum1s\n"..
 	"};",
 	"struct Struct1 {\n"..
-	"    struct { // all\n"..
+	"    // struct { // all\n"..
 	"        struct Struct1* next;\n"..
 	"        float field1[2];\n"..
 	"        double field2[3];\n"..
@@ -155,7 +155,7 @@ Expected = {
 	"        int* field5;\n"..
 	"        enum Enum1 field6;\n"..
 	"        enum Enum2 field7;\n"..
-	"    };\n"..
+	"    // };\n"..
 	"    union {\n"..
 	"        struct { // field6:Value11;field7:Value21,Value22,Value23\n"..
 	"            int field8;\n"..
@@ -168,12 +168,12 @@ Expected = {
 	"        int field12; // field6:Value12;field7:Value22,Value23\n"..
 	"        int field13; // field6:Value13;field7:Value21,Value22,Value23\n"..
 	"    };\n"..
-	"    struct { // all\n"..
+	"    // struct { // all\n"..
 	"        int field14;\n"..
 	"        int* field15;\n"..
 	"        struct Struct2* field16;\n"..
 	"        struct Struct2 field17[2];\n"..
-	"    };\n"..
+	"    // };\n"..
 	"};",
 	"void readStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..

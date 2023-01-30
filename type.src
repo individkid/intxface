@@ -431,7 +431,11 @@ function showStructC(name,struct)
 			depth = depth + 1
 		end
 		if chain[link] and k == chain[link][1] then
-			result = result..showIndent(depth).."struct { // "
+			result = result..showIndent(depth)
+			if depth == 1 then
+				result = result.."// "
+			end
+			result = result.."struct { // "
 			result = result..showPlaid(v[3],all).."\n"
 			single = 0; depth = depth + 1
 		end
@@ -443,7 +447,11 @@ function showStructC(name,struct)
 		end
 		if chain[link] and k == chain[link][2] then
 			single = 1; depth = depth - 1; link = link + 1
-			result = result..showIndent(depth).."};\n"
+			result = result..showIndent(depth)
+			if depth == 1 then
+				result = result.."// "
+			end
+			result = result.."};\n"
 		end
 		if split[step] and k == split[step][2] then
 			depth = depth - 1; step = step + 1

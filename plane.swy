@@ -198,7 +198,7 @@ class getDelegate : NSObject, NSWindowDelegate
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
 		planeSafe(Waits,RegisterOpen)
-		return true
+		return false
 	}
 	func windowDidResize(_ notification: Notification)
 	{
