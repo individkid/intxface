@@ -180,7 +180,10 @@ func getRect() -> NSRect
 {
 	var rect = window.frame
 	let size = view.frame
+	let orig = NSScreen.main!.visibleFrame
 	rect.size = size.size
+	rect.origin.x = rect.origin.x-orig.size.width/2.0
+	rect.origin.y = rect.origin.y-orig.size.height/2.0
 	return rect
 }
 class getApplication : NSObject, NSApplicationDelegate
