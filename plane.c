@@ -354,9 +354,10 @@ void planeExchange(int cal, int ret)
 }
 void planeWake(enum Configure hint)
 {
+	int yield = 0;
 	configure[RegisterHint] = hint;
 	if (configure[RegisterLine] < 0 || configure[RegisterLine] >= configure[MachineSize]) configure[RegisterLine] = 0;
-	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize]) {
+	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize] && !yield) {
 		struct Machine *mptr = machine+configure[RegisterLine];
 		int next = configure[RegisterLine]+1;
 		int accum = 0;
@@ -385,11 +386,11 @@ void planeWake(enum Configure hint)
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
-			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
+			case (Yield): yield = 1; case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
 			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines -- idx ret
 			default: break;}
-		if (next == configure[RegisterLine]) {configure[RegisterLine] = next+1; break;}
+		if (next == configure[RegisterLine]) {configure[RegisterLine] = 0; break;}
 		configure[RegisterLine] = next;}
 }
 void planeMemx(void **mem, void *giv)

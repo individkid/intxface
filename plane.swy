@@ -291,7 +291,8 @@ func swiftOpen()
 func swiftStart()
 {
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.scrollWheel, handler: {(event: NSEvent) in
-		delta += event.deltaY; return event})
+		delta += event.deltaY;
+		planeSafe(Waits,CursorAngle); return event})
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in
 		uniform.set(Int(NSEvent.mouseLocation.x),\Uniform.lon)
 		uniform.set(Int(NSEvent.mouseLocation.y),\Uniform.lat)
@@ -372,7 +373,7 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (WindowHigh): return Int32(getRect().size.height)
 	case (CursorLeft): return Int32(NSEvent.mouseLocation.x)
 	case (CursorBase): return Int32(NSEvent.mouseLocation.x)
-	case (CursorAngle): let temp = delta; delta = 0.0; return Int32(temp)
+	case (CursorAngle): let temp = Int32(delta); delta -= Double(temp); return temp
 	case (CursorClick): return Int32(NSEvent.pressedMouseButtons)
 	default: exitErr(#file,#line);return 0}
 }
