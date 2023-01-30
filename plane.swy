@@ -113,7 +113,7 @@ class Pend<T>
 		let base = siz*index
 		let limit = base+siz*vals.count
 		toMutable(vals) {(len,ptr) in
-		set(UnsafePointer<T>(ptr),base..<limit)}
+		set(ptr,base..<limit)}
 	}
 	func set(_ vals:[T], _ index: Int, _ length : Int)
 	{
@@ -134,7 +134,7 @@ class Pend<T>
 		guard let fld = MemoryLayout<T>.offset(of:field) else {exitErr(#file,#line);return}
 		let siz = MemoryLayout<S>.size
 		toMutable([val]) {(len,ptr) in
-		set(UnsafePointer<S>(ptr),fld..<fld+siz)}
+		set(ptr,fld..<fld+siz)}
 	}
 	func get() -> MTLBuffer
 	{
@@ -315,7 +315,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in center.swa![sub]},idx,Int(planeConfig(SwarmSize)))
 	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in center.tex![sub]},idx,Int(planeConfig(TextureSize)))
 	case (Basisz): basis.set(Swift.Array(0..<siz).map() {(sub) in center.bas![sub]},idx,Int(planeConfig(BasisSize)))
-	case (Piercez): pierce.set(Swift.Array(repeating: Pierce(), count: siz),idx,Int(planeConfig(TriangleSize)))
+	case (Piercez): pierce.set(Swift.Array(0..<siz).map() {(sub) in center.pie![sub]},idx,Int(planeConfig(TriangleSize)))
 	case (Slicez): array = toArray(array,Swift.Array(0..<siz).map() {(sub) in center.rng![sub]},idx,Int(planeConfig(SliceSize)))
 	case (Configurez): for sub in Swift.Array(0..<siz) {switch center.cfg![sub] {
 		case (UniformAll): uniform.set(Int(center.val![sub]),\Uniform.all)
