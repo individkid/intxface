@@ -23,6 +23,8 @@ Write print.lua to find all overlaps and spaces.
 
 Write play.lua that integrates files, audio, video, and polytopes.
 
+Develop Theory for coincidences as sets of hyperplane classifications.
+
 Replace Theory by an agda proof.
 
 Make stomp boxes that add wave with frequency multiplied or divided.

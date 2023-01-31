@@ -125,7 +125,6 @@ Transfer = {
 	"Share", -- dma to cpu or gpu
 	"Draw", -- start shader
 	"Jump", -- skip if true
-	"Yield", -- jump after hint
 	"Goto", -- jump if true
 	"Nest", -- nest to level
 	"Swap", -- exchange machine lines
@@ -421,12 +420,12 @@ Slice = {
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"cfg","Configure",{["xfr"]={["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,["Jump"]=true,["Yield"]=true,["Goto"]=true}},"siz"},
+	{"cfg","Configure",{["xfr"]={["Save"]=true,["Copy"]=true,["Force"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
 	{"oth","Configure",{["xfr"]={["Copy"]=true}},"siz"},
-	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true,["Jump"]=true,["Yield"]=true,["Goto"]=true}},"siz"},
-	{"cmp","Compare",{["xfr"]={["Jump"]=true,["Yield"]=true,["Goto"]=true}},"siz"},
-	{"cnd","Condition",{["xfr"]={["Jump"]=true,["Yield"]=true,["Goto"]=true}},{}},
-	{"idx","Int",{["xfr"]={["Jump"]=true,["Yield"]=true,["Goto"]=true,["Nest"]=true,["Swap"]=true}},{}},
+	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
+	{"cmp","Compare",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
+	{"cnd","Condition",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
+	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true,["Nest"]=true,["Swap"]=true}},{}},
 	{"ret","Int",{["xfr"]={["Swap"]=true}},{}},
 	{"src","Accumulate",{["xfr"]={["Follow"]=true,["Precede"]=true}},{}},
 	{"dst","Accumulate",{["xfr"]={["Clear"]=true,["Invert"]=true,["Manip"]=true,["Follow"]=true,["Precede"]=true}},{}},

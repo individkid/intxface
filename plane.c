@@ -33,11 +33,12 @@ struct Kernel {
 	struct Matrix towrite; // portion to write
 };
 // owned by main thread:
-struct Kernel *subject = {0};
+struct Kernel *subject = 0;
 struct Kernel *object = 0;
-struct Kernel *element = {0};
+struct Kernel *element = 0;
 struct Pierce *pierce = 0;
 struct Pierce *found = 0;
+struct Pierce unfound = {0};
 struct Machine *machine = 0;
 int configure[Configures] = {0};
 struct Center center = {0};
@@ -101,21 +102,6 @@ void planeScale(float *mat, const float *pic, const float *cor, const float *fix
 }
 void planeFocal(float *mat, const float *pic, const float *cor, const float *fix, const float *cur, float ang)
 {
-}
-void *planeRealloc(void *ptr, int siz, int tmp, int mod)
-{
-	char *result = realloc(ptr,siz*mod);
-	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
-	return result;
-}
-void planeCopy(struct Machine *dst, struct Machine *src)
-{
-	char *str = 0;
-	int len = 0;
-	showMachine(src,&str,&len);
-	len = 0;
-	hideMachine(dst,str,&len);
-	free(str);
 }
 struct Matrix *planePointer()
 {
@@ -216,7 +202,13 @@ struct Pierce *planePierce()
 	if (found) return found;
 	for (int i = 0; i < configure[TriangleSize]; i++) {
 		struct Pierce *temp = pierce + i%configure[TriangleSize];
-		if (!found || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
+		if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
+	if (!found) {
+		found = &unfound;
+		unfound.fix[0] = configure[ClosestLeft];
+		unfound.fix[1] = configure[ClosestBase];
+		unfound.fix[2] = configure[ClosestNear];
+		unfound.idx = configure[ClosestFound];}
 	return found;
 }
 void planePreconfig(enum Configure cfg)
@@ -250,15 +242,21 @@ void planePostconfig(enum Configure cfg, int idx)
 	center.cfg[idx] = cfg;
 	center.val[idx] = configure[cfg];
 }
+void *planeRealloc(void *ptr, int siz, int tmp, int mod)
+{
+	char *result = realloc(ptr,siz*mod);
+	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
+	return result;
+}
 void planeReconfig(enum Configure cfg, int val)
 {
 	int tmp = configure[cfg];
 	configure[cfg] = val;
 	switch (cfg) {
 		case (TriangleSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
-		case (SubjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
+		case (SubjectSize): subject = planeRealloc(subject,val,tmp,sizeof(struct Kernel)); break;
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
-		case (ElementSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
+		case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
 		case (RegisterOpen): planeStarted(val); break;
 		default: break;}
@@ -304,6 +302,15 @@ void planeEcho()
 			for (int i = 0; i < center.siz; i++, index++) planePostconfig((enum Configure)(index%Configures),i);
 			break;}
 		default: break;}
+}
+void planeCopy(struct Machine *dst, struct Machine *src)
+{
+	char *str = 0;
+	int len = 0;
+	showMachine(src,&str,&len);
+	len = 0;
+	hideMachine(dst,str,&len);
+	free(str);
 }
 void planeBuffer()
 {
@@ -386,11 +393,11 @@ void planeWake(enum Configure hint)
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
-			case (Yield): yield = 1; case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
+			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
 			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines -- idx ret
 			default: break;}
-		if (next == configure[RegisterLine]) {configure[RegisterLine] = 0; break;}
+		if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
 		configure[RegisterLine] = next;}
 }
 void planeMemx(void **mem, void *giv)
@@ -645,4 +652,5 @@ void planeUser(enum Wait wait, enum Configure hint)
 void planeReady(struct Pierce *given)
 {
 	for (int i = 0; i < configure[TriangleSize]; i++) pierce[i] = given[i];
+	found = 0;
 }
