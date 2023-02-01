@@ -40,6 +40,7 @@ struct Pierce *pierce = 0;
 struct Pierce *found = 0;
 struct Pierce unfound = {0};
 struct Machine *machine = 0;
+struct Expression *function = 0;
 int configure[Configures] = {0};
 struct Center center = {0};
 regex_t *pattern = 0;
@@ -258,6 +259,7 @@ void planeReconfig(enum Configure cfg, int val)
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
+		case (ExpressionSize): function = planeRealloc(function,val,tmp,sizeof(struct Expression)); break;
 		case (RegisterOpen): planeStarted(val); break;
 		default: break;}
 }
@@ -303,7 +305,7 @@ void planeEcho()
 			break;}
 		default: break;}
 }
-void planeCopy(struct Machine *dst, struct Machine *src)
+void copyMachine(struct Machine *dst, struct Machine *src)
 {
 	char *str = 0;
 	int len = 0;
@@ -312,13 +314,23 @@ void planeCopy(struct Machine *dst, struct Machine *src)
 	hideMachine(dst,str,&len);
 	free(str);
 }
+void copyExpression(struct Expression *dst, struct Expression *src)
+{
+	char *str = 0;
+	int len = 0;
+	showExpression(src,&str,&len);
+	len = 0;
+	hideExpression(dst,str,&len);
+	free(str);
+}
 void planeBuffer()
 {
 	switch (center.mem) {
 		case (Stringz): if (center.idx < 0) for (int i = 0; i < center.siz; i++) center.idx = planeSet(-1,center.str[i]);
 		else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
 		case (Patternz): for (int i = 0; i < center.siz; i++) planePattern(center.idx+i,center.str[i]); break;
-		case (Machinez): for (int i = 0; i < center.siz; i++) planeCopy(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
+		case (Machinez): for (int i = 0; i < center.siz; i++) copyMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
+		case (Expressionz): for (int i = 0; i < center.siz; i++) copyExpression(&function[(center.idx+i)%configure[ExpressionSize]],&center.fnc[i]); break;
 		case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
 		default: callDma(&center); break;}
 }
@@ -359,6 +371,70 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
+void planePush(int val)
+{
+	int idx = configure[RegisterStack];
+	struct Expression *ptr = &function[idx];
+	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
+	if (ptr->arg < 0 || ptr->arg >= ptr->iss) ERROR();
+	ptr->ist[ptr->arg++] = val;
+}
+int planePop()
+{
+	int idx = configure[RegisterStack];
+	struct Expression *ptr = &function[idx];
+	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
+	if (ptr->arg <= 0 || ptr->arg > ptr->iss) ERROR();
+	return ptr->ist[--(ptr->arg)];
+}
+void planeEval()
+{
+	int ifm = 0;
+	int oper = 0;
+	int iheap = 0;
+	int istack = 0;
+	int fheap = 0;
+	int fstack = 0;
+	int itmp = 0;
+	float ftmp = 0;
+	int idx = configure[RegisterStack];
+	struct Expression *ptr = &function[idx];
+	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
+	while (oper < ptr->ops) switch (ptr->opr[oper++]) {
+	case (Float): ifm = 1; break;
+	case (Integer): ifm = 0; break;
+	case (Plus):
+		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
+		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] + ptr->fst[fstack-1]; fstack -= 1;}
+		else {ptr->ist[istack-2] = ptr->ist[istack-2] + ptr->ist[istack-1]; istack -= 1;} break;
+	case (Minus):
+		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
+		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] - ptr->fst[fstack-1]; fstack -= 1;}
+		else {ptr->ist[istack-2] = ptr->ist[istack-2] - ptr->ist[istack-1]; istack -= 1;} break;
+	case (Times):
+		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
+		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] * ptr->fst[fstack-1]; fstack -= 1;}
+		else {ptr->ist[istack-2] = ptr->ist[istack-2] * ptr->ist[istack-1]; istack -= 1;} break;
+	case (Divide):
+		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
+		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] / ptr->fst[fstack-1]; fstack -= 1;}
+		else {ptr->ist[istack-2] = ptr->ist[istack-2] / ptr->ist[istack-1]; istack -= 1;} break;
+	case (Remain): break; // TODO
+	case (Power): break; // TODO
+	case (Base): break; // TODO
+	case (Index):
+		if (ifm) {if (fstack >= ptr->fss) ERROR();} else {if (istack >= ptr->iss) ERROR();}
+		if (ifm) {if (fheap >= ptr->fhs) ERROR();} else {if (iheap >= ptr->ihs) ERROR();}
+		if (ifm) {ptr->fst[fstack] = ptr->fhe[fheap]; fstack += 1; fheap += 1;}
+		else {ptr->ist[istack] = ptr->ihe[iheap]; istack += 1; iheap += 1;} break;
+	case (Immed): break; // TODO push index heap
+	case (Later): break; // TODO pop index heap
+	case (Push): break; // TODO push center memory
+	case (Pop): break; // TODO pop center memory
+	case (Call): break; // TODO push call pop
+	case (Return): break;
+	default: break;}
+}
 void planeWake(enum Configure hint)
 {
 	int yield = 0;
@@ -370,17 +446,18 @@ void planeWake(enum Configure hint)
 		int accum = 0;
 		int size = 0;
 		switch (mptr->xfr) {
-			case (Save): case (Copy): case (Force): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
+			case (Save): case (Eval): case (Force): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
 			default: break;}
 		for (int i = 0; i < size; i++) switch (mptr->xfr) {
 			case (Save): planePreconfig(mptr->cfg[i]); break; // kernel, center, pierce, or info to configure -- siz cfg
-			case (Copy): planeReconfig(mptr->cfg[i],configure[mptr->oth[i]]); break; // configure to configure -- siz cfg oth
+			case (Eval): planePush(configure[mptr->cfg[i]]); break; // configure to stack -- siz cfg
 			case (Force): planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure -- siz cfg val
 			case (Setup): planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to center -- siz cfg val
 			case (Jump): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // skip if true -- siz cfg val cmp cnd idx
 			case (Goto): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // jump if true -- siz cfg val cmp cnd idx
 			default: break;}
 		switch (mptr->xfr) {
+			case (Eval): planeEval();
 			case (Read): planeRead(); break; // read internal pipe
 			case (Write): writeCenter(&center,external); break; // write external pipe --
 			case (Alloc): planeAlloc(); break; // configure to center --
@@ -396,6 +473,9 @@ void planeWake(enum Configure hint)
 			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
 			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines -- idx ret
+			default: break;}
+		for (int i = 0; i < size; i++) switch (mptr->xfr) {
+			case (Eval): configure[mptr->cfg[i]] = planePop();
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
 		configure[RegisterLine] = next;}
