@@ -88,6 +88,7 @@ Configure = {
 	"CenterSize",
 	"CenterIndex",
 	"CenterSelf",
+	"CenterRmw",
 	"ArgumentShader", -- pass to draw
 	"ArgumentStart",
 	"ArgumentStop",
@@ -120,11 +121,14 @@ Transfer = {
 	"Setup", -- configure to client
 	"Alloc", -- configure to client
 	"Echo", -- collect to client
-	"Clear", -- identity to matrix
-	"Invert", -- invert in matrix
-	"Manip", -- manip to matrix
-	"Follow", -- multiply to matrix
-	"Precede", -- multiply by matrix
+	"User", -- change center to composition of optimization and cursor/fixed/mode
+	"Pose", -- change center to towrite
+	"Other", -- change center to maintain
+	"Glitch", -- set maintain to center
+	"Check", -- apply center to maintain and unapply to written
+	"Stage", -- apply cursor/fixed/mode to towrite and change fixed for continuity
+	"Apply", -- apply towrite to written and clear towrite
+	"Accum", -- apply written to maintain and clear written
 	"Share", -- dma to cpu or gpu
 	"Draw", -- start shader
 	"Jump", -- skip if true
@@ -148,14 +152,6 @@ Operation = {
 	"Push", -- push center memory
 	"Pop", -- pop center memory
 	"Call", -- push call pop
-	"Return",
-}
-Accumulate = {
-	"Compose", -- kernel optimization
-	"Maintain", -- kernel checkpoint
-	"Written", -- kernel echoed
-	"Towrite", -- kernel written
-	"OfCenter", -- client memory
 }
 Transform = {
 	"Translate",
@@ -276,7 +272,7 @@ Initial = {
 	{"Shader","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Center(req:Request(SetReq)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)"..
+	{"Int","0","Str","Center(req:Request(SetReq)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)rmw:Int(0)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
@@ -286,8 +282,8 @@ Bootstrap = {
 		"val[2]:Int(1)"..
 		"val[3]:Int(31)"..
 	")"},
-	{"Int","1","Str","Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
-		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)"..
+	{"Int","1","Str","Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)rmw:Int(0)"..
+		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)idx:Int(0)"..
 			"cfg[0]:Configure(RegisterOpen)"..
 			"val[0]:Int(0)"..
 		")"..
@@ -441,11 +437,13 @@ Slice = {
 Expression = {
 	{"arg","Int",{},{}},
 	{"ops","Int",{},{}},
+	{"ids","Int",{},{}},
 	{"ihs","Int",{},{}},
 	{"iss","Int",{},{}},
 	{"fhs","Int",{},{}},
 	{"fss","Int",{},{}},
 	{"opr","Operation",{},"ops"},
+	{"idx","Int",{},"ids"},
 	{"ihe","Int",{},"ihs"},
 	{"ist","Int",{},"iss"},
 	{"fhe","Old",{},"fhs"},
@@ -454,14 +452,15 @@ Expression = {
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"cfg","Configure",{["xfr"]={["Save"]=true,["Eval"]=true,["Force"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
-	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true,["Jump"]=true,["Goto"]=true}},"siz"},
+	{"idx","Int",{},{}},
+	{"reg","Configure",{["xfr"]={["Save"]=true,["Eval"]=true}},"siz"},
+	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
+	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
+	{"ccf","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
+	{"cvl","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
 	{"cmp","Compare",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
 	{"cnd","Condition",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
-	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true,["Nest"]=true,["Swap"]=true}},{}},
-	{"ret","Int",{["xfr"]={["Swap"]=true}},{}},
-	{"src","Accumulate",{["xfr"]={["Follow"]=true,["Precede"]=true}},{}},
-	{"dst","Accumulate",{["xfr"]={["Clear"]=true,["Invert"]=true,["Manip"]=true,["Follow"]=true,["Precede"]=true}},{}},
+	{"oth","Int",{["xfr"]={["Swap"]=true}},{}},
 }
 Center = {
 	{"req","Request",{},{}},
@@ -469,6 +468,7 @@ Center = {
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"slf","Int",{},{}},
+	{"rmw","Int",{},{}},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},

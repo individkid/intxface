@@ -91,17 +91,17 @@ void planeAlize(float *dir, const float *vec) // normalize
 void planeCross(float *axe, const float *fix, const float *cur)
 {
 }
-typedef void (*planeXform)(float *mat, const float *pic, const float *cor, const float *fix, const float *cur, float ang);
-void planeXtate(float *mat, const float *pic, const float *cor, const float *fix, const float *cur, float ang) // rotate
+typedef void (*planeXform)(const float *pic, const float *cor, const float *fix, const float *cur, float ang);
+void planeXtate(const float *pic, const float *cor, const float *fix, const float *cur, float ang) // rotate
 {
 }
-void planeXlate(float *mat, const float *pic, const float *cor, const float *fix, const float *cur, float ang) // translate
+void planeXlate(const float *pic, const float *cor, const float *fix, const float *cur, float ang) // translate
 {
 }
-void planeScale(float *mat, const float *pic, const float *cor, const float *fix, const float *cur, float ang)
+void planeScale(const float *pic, const float *cor, const float *fix, const float *cur, float ang)
 {
 }
-void planeFocal(float *mat, const float *pic, const float *cor, const float *fix, const float *cur, float ang)
+void planeFocal(const float *pic, const float *cor, const float *fix, const float *cur, float ang)
 {
 }
 struct Matrix *planePointer()
@@ -135,34 +135,6 @@ planeXform planeFunc()
 		case (Zoom): return planeFocal;
 		default: break;}
 	return 0;
-}
-struct Matrix *planeMatrix(enum Accumulate accumulate)
-{
-	switch (accumulate){
-		case (Compose): return &planeKernel()->compose;
-		case (Maintain): return &planeKernel()->maintain;
-		case (Written): return &planeKernel()->written;
-		case (Towrite): return &planeKernel()->towrite;
-		case (OfCenter): {
-			struct Matrix *matrix = planePointer();
-			if (matrix == 0) return 0;
-			return matrix;}
-		default: break;}
-	return 0;
-}
-void planeCalculate(struct Matrix *matrix)
-{
-	struct Vector picture = {0};
-	struct Vector corner = {0};
-	struct Vector fixed = {0};
-	struct Vector cursor = {0};
-	float angle = 0;
-	picture.vec[0] = configure[WindowLeft]; picture.vec[1] = configure[WindowBase];
-	corner.vec[0] = configure[WindowWide]; corner.vec[1] = configure[WindowHigh];
-	fixed.vec[0] = configure[ClosestLeft]; fixed.vec[1] = configure[ClosestBase];
-	cursor.vec[0] = configure[CursorLeft]; cursor.vec[1] = configure[CursorBase];
-	angle = configure[CursorAngle];
-	planeFunc()(matrix->mat,picture.vec,corner.vec,fixed.vec,cursor.vec,angle);
 }
 void planePattern(int idx, const char *str)
 {
@@ -223,6 +195,7 @@ void planePreconfig(enum Configure cfg)
 		case (CenterSize): configure[CenterSize] = center.siz; break;
 		case (CenterIndex): configure[CenterIndex] = center.idx; break;
 		case (CenterSelf): configure[CenterSelf] = center.slf; break;
+		case (CenterRmw): configure[CenterRmw] = center.rmw; break;
 		case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
 		case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
 		case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
@@ -271,6 +244,7 @@ void planeAlloc()
 	center.idx = configure[CenterIndex];
 	center.siz = configure[CenterSize];
 	center.slf = configure[CenterSelf];
+	center.rmw = configure[CenterRmw];
 	switch (center.mem) {
 		case (Allmatz): allocMatrix(&center.all,center.siz); break;
 		case (Fewmatz): allocMatrix(&center.few,center.siz); break;
@@ -371,29 +345,30 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
-void planePush(int val)
+void planePush(int i, int val)
 {
 	int idx = configure[RegisterStack];
 	struct Expression *ptr = &function[idx];
 	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
 	if (ptr->arg < 0 || ptr->arg >= ptr->iss) ERROR();
-	ptr->ist[ptr->arg++] = val;
+	if (i < 0 || i >= ptr->arg) ERROR();
+	ptr->ist[i] = val;
 }
-int planePop()
+int planePop(int i)
 {
 	int idx = configure[RegisterStack];
 	struct Expression *ptr = &function[idx];
 	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
 	if (ptr->arg <= 0 || ptr->arg > ptr->iss) ERROR();
-	return ptr->ist[--(ptr->arg)];
+	if (i < 0 || i >= ptr->arg) ERROR();
+	return ptr->ist[i];
 }
 void planeEval()
 {
 	int ifm = 0;
 	int oper = 0;
-	int iheap = 0;
+	int index = 0;
 	int istack = 0;
-	int fheap = 0;
 	int fstack = 0;
 	int itmp = 0;
 	float ftmp = 0;
@@ -415,24 +390,19 @@ void planeEval()
 		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
 		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] * ptr->fst[fstack-1]; fstack -= 1;}
 		else {ptr->ist[istack-2] = ptr->ist[istack-2] * ptr->ist[istack-1]; istack -= 1;} break;
-	case (Divide):
-		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
-		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] / ptr->fst[fstack-1]; fstack -= 1;}
-		else {ptr->ist[istack-2] = ptr->ist[istack-2] / ptr->ist[istack-1]; istack -= 1;} break;
-	case (Remain): break; // TODO
+	case (Divide): break; // TODO same for interger anf float
+	case (Remain): break; // TODO same for integer and float
 	case (Power): break; // TODO
 	case (Base): break; // TODO
 	case (Index):
-		if (ifm) {if (fstack >= ptr->fss) ERROR();} else {if (istack >= ptr->iss) ERROR();}
-		if (ifm) {if (fheap >= ptr->fhs) ERROR();} else {if (iheap >= ptr->ihs) ERROR();}
-		if (ifm) {ptr->fst[fstack] = ptr->fhe[fheap]; fstack += 1; fheap += 1;}
-		else {ptr->ist[istack] = ptr->ihe[iheap]; istack += 1; iheap += 1;} break;
+		if (index < 0 || index >= ptr->ids) ERROR();
+		if (istack >= ptr->iss) ERROR();
+		ptr->ist[istack] = ptr->idx[index]; istack += 1; index += 1; break;
 	case (Immed): break; // TODO push index heap
 	case (Later): break; // TODO pop index heap
 	case (Push): break; // TODO push center memory
 	case (Pop): break; // TODO pop center memory
 	case (Call): break; // TODO push call pop
-	case (Return): break;
 	default: break;}
 }
 void planeWake(enum Configure hint)
@@ -449,12 +419,12 @@ void planeWake(enum Configure hint)
 			case (Save): case (Eval): case (Force): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
 			default: break;}
 		for (int i = 0; i < size; i++) switch (mptr->xfr) {
-			case (Save): planePreconfig(mptr->cfg[i]); break; // kernel, center, pierce, or info to configure -- siz cfg
-			case (Eval): planePush(configure[mptr->cfg[i]]); break; // configure to stack -- siz cfg
+			case (Save): planePreconfig(mptr->reg[i]); break; // kernel, center, pierce, or info to configure -- siz cfg
+			case (Eval): planePush(i,configure[mptr->reg[i]]); break; // configure to stack -- siz cfg
 			case (Force): planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure -- siz cfg val
 			case (Setup): planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to center -- siz cfg val
-			case (Jump): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // skip if true -- siz cfg val cmp cnd idx
-			case (Goto): accum += planeCompare(mptr->cfg[i],mptr->val[i],mptr->cmp[i]); break; // jump if true -- siz cfg val cmp cnd idx
+			case (Jump): accum += planeCompare(mptr->ccf[i],mptr->cvl[i],mptr->cmp[i]); break; // skip if true -- siz cfg val cmp cnd idx
+			case (Goto): accum += planeCompare(mptr->ccf[i],mptr->cvl[i],mptr->cmp[i]); break; // jump if true -- siz cfg val cmp cnd idx
 			default: break;}
 		switch (mptr->xfr) {
 			case (Eval): planeEval();
@@ -462,20 +432,23 @@ void planeWake(enum Configure hint)
 			case (Write): writeCenter(&center,external); break; // write external pipe --
 			case (Alloc): planeAlloc(); break; // configure to center --
 			case (Echo): planeEcho(); break; // memory to center --
-			case (Clear): identmat(planeMatrix(mptr->dst)->mat,4); break; // identity to matrix -- dst
-			case (Invert): invmat(planeMatrix(mptr->dst)->mat,4); break; // invert in matrix -- dst
-			case (Manip): planeCalculate(planeMatrix(mptr->dst)); break; // manip to matrix -- dst
-			case (Follow): jumpmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply to matrix -- src dst
-			case (Precede): timesmat(planeMatrix(mptr->dst)->mat,planeMatrix(mptr->src)->mat,4); break; // multiply by matrix -- src dst
+			case (User): break; // TODO set center to compose and cursor/fixed/mode --
+			case (Pose): break; // TODO set center to towrite --
+			case (Other): break; // TODO set center to maintain --
+			case (Glitch): break; // TODO set maintain to center --
+			case (Check): break; // TODO apply center to maintain and unapply to written --
+			case (Stage): break; // TODO apply cursor/fixed/mode to towrite and change fixed for continuity --
+			case (Apply): break; // TODO apply towrite to written and clear towrite --
+			case (Accum): break; // TODO apply written to maintain and clear written --
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
 			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
-			case (Swap): planeExchange(mptr->idx,mptr->ret); break; // exchange machine lines -- idx ret
+			case (Swap): planeExchange(mptr->idx,mptr->oth); break; // exchange machine lines -- idx oth
 			default: break;}
 		for (int i = 0; i < size; i++) switch (mptr->xfr) {
-			case (Eval): configure[mptr->cfg[i]] = planePop();
+			case (Eval): configure[mptr->reg[i]] = planePop(i);
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
 		configure[RegisterLine] = next;}
