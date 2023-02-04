@@ -121,7 +121,7 @@ Transfer = {
 	"Setup", -- configure to client
 	"Alloc", -- configure to client
 	"Echo", -- collect to client
-	"User", -- change center to composition of optimization and cursor/fixed/mode
+	"Comp", -- change center to composition of optimization and cursor/fixed/mode
 	"Pose", -- change center to towrite
 	"Other", -- change center to maintain
 	"Glitch", -- set maintain to center

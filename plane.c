@@ -31,6 +31,8 @@ struct Kernel {
 	struct Matrix maintain; // change to points
 	struct Matrix written; // portion written
 	struct Matrix towrite; // portion to write
+	struct Matrix local; // portion to view
+	struct Matrix inverse; // inverse of center
 };
 // owned by main thread:
 struct Kernel *subject = 0;
@@ -91,28 +93,32 @@ void planeAlize(float *dir, const float *vec) // normalize
 void planeCross(float *axe, const float *fix, const float *cur)
 {
 }
-typedef void (*planeXform)(const float *pic, const float *cor, const float *fix, const float *cur, float ang);
-void planeXtate(const float *pic, const float *cor, const float *fix, const float *cur, float ang) // rotate
+typedef float *(*planeXform)(float *mat, const float *pic, const float *fix, const float *cur, float ang);
+float *planeXtate(float *mat, const float *pic, const float *fix, const float *cur, float ang) // rotate
 {
+	return 0;
 }
-void planeXlate(const float *pic, const float *cor, const float *fix, const float *cur, float ang) // translate
+float *planeXlate(float *mat, const float *pic, const float *fix, const float *cur, float ang) // translate
 {
+	return 0;
 }
-void planeScale(const float *pic, const float *cor, const float *fix, const float *cur, float ang)
+float *planeScale(float *mat, const float *pic, const float *fix, const float *cur, float ang)
 {
+	return 0;
 }
-void planeFocal(const float *pic, const float *cor, const float *fix, const float *cur, float ang)
+float *planeFocal(float *mat, const float *pic, const float *fix, const float *cur, float ang)
 {
+	return 0;
 }
-struct Matrix *planePointer()
+float *planeCenter()
 {
 	int index = configure[RegisterIndex] - center.idx;
 	if (index < 0 || index >= center.siz) return 0;
 	if (center.mem != (enum Memory)configure[RegisterMemory]) return 0;
 	switch(center.mem) {
-		case (Allmatz): return center.all + index;
-		case (Fewmatz): return center.few + index;
-		case (Onematz): return center.one + index;
+		case (Allmatz): return center.all[index].mat;
+		case (Fewmatz): return center.few[index].mat;
+		case (Onematz): return center.one[index].mat;
 		default: break;}
 	return 0;
 }
@@ -126,6 +132,25 @@ struct Kernel *planeKernel()
 		default: break;}
 	return 0;
 }
+float *planeInverse()
+{
+	return invmat(copymat(planeKernel()->inverse.mat,planeCenter(),4),4);
+}
+float *planeMaintain()
+{
+	return planeKernel()->maintain.mat;
+}
+float *planeWritten()
+{
+	return planeKernel()->written.mat;
+}
+float *planeTowrite() {
+	return planeKernel()->towrite.mat;
+}
+float *planeCompose() {
+	// TODO check if needed
+	return timesmat(timesmat(copymat(planeKernel()->compose.mat,planeMaintain(),4),planeWritten(),4),planeTowrite(),4);
+}
 planeXform planeFunc()
 {
 	switch ((enum Transform)configure[RegisterXform]) {
@@ -135,6 +160,23 @@ planeXform planeFunc()
 		case (Zoom): return planeFocal;
 		default: break;}
 	return 0;
+}
+float *planeLocal()
+{
+	float pic[2]; float fix[2]; float cur[2]; float ang[1];
+	pic[0] = configure[WindowLeft];
+	pic[1] = configure[WindowBase];
+	fix[0] = configure[ClosestLeft];
+	fix[1] = configure[ClosestBase];
+	cur[0] = configure[CursorLeft];
+	cur[1] = configure[CursorBase];
+	ang[0] = configure[CursorAngle];
+	return planeFunc()(planeKernel()->local.mat,pic,fix,cur,ang[0]);
+}
+void planeContinue()
+{
+	configure[ClosestLeft] = configure[CursorLeft];
+	configure[ClosestBase] = configure[CursorBase];
 }
 void planePattern(int idx, const char *str)
 {
@@ -430,16 +472,22 @@ void planeWake(enum Configure hint)
 			case (Eval): planeEval();
 			case (Read): planeRead(); break; // read internal pipe
 			case (Write): writeCenter(&center,external); break; // write external pipe --
-			case (Alloc): planeAlloc(); break; // configure to center --
-			case (Echo): planeEcho(); break; // memory to center --
-			case (User): break; // TODO set center to compose and cursor/fixed/mode --
-			case (Pose): break; // TODO set center to towrite --
-			case (Other): break; // TODO set center to maintain --
-			case (Glitch): break; // TODO set maintain to center --
-			case (Check): break; // TODO apply center to maintain and unapply to written --
-			case (Stage): break; // TODO apply cursor/fixed/mode to towrite and change fixed for continuity --
-			case (Apply): break; // TODO apply towrite to written and clear towrite --
-			case (Accum): break; // TODO apply written to maintain and clear written --
+			case (Comp): // set center to compose and cursor/fixed/mode
+				timesmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
+			case (Pose): // set center to towrite
+				copymat(planeCenter(),planeTowrite(),4); break;
+			case (Other): // set center to maintain
+				copymat(planeCenter(),planeTowrite(),4); break;
+			case (Glitch): // set maintain to center
+				copymat(planeMaintain(),planeCenter(),4); break;
+			case (Check): // apply center to maintain and unapply to written
+				timesmat(planeMaintain(),planeCenter(),4); jumpmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
+			case (Stage): // apply cursor/fixed/mode to towrite and change fixed for continuity
+				timesmat(planeTowrite(),planeLocal(),4); planeContinue(); break;
+			case (Apply): // apply towrite to written and clear towrite
+				timesmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
+			case (Accum): // apply written to maintain and clear written
+				timesmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
