@@ -472,22 +472,26 @@ void planeWake(enum Configure hint)
 			case (Eval): planeEval();
 			case (Read): planeRead(); break; // read internal pipe
 			case (Write): writeCenter(&center,external); break; // write external pipe --
-			case (Comp): // set center to compose and cursor/fixed/mode
+			case (Comp): // set center to compose and cursor/fixed/mode --
 				timesmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
-			case (Pose): // set center to towrite
+			case (Pose): // set center to towrite --
 				copymat(planeCenter(),planeTowrite(),4); break;
-			case (Other): // set center to maintain
+			case (Other): // set center to maintain --
 				copymat(planeCenter(),planeTowrite(),4); break;
-			case (Glitch): // set maintain to center
+			case (Glitch): // set maintain to center --
 				copymat(planeMaintain(),planeCenter(),4); break;
-			case (Check): // apply center to maintain and unapply to written
-				timesmat(planeMaintain(),planeCenter(),4); jumpmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-			case (Stage): // apply cursor/fixed/mode to towrite and change fixed for continuity
-				timesmat(planeTowrite(),planeLocal(),4); planeContinue(); break;
-			case (Apply): // apply towrite to written and clear towrite
-				timesmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
-			case (Accum): // apply written to maintain and clear written
-				timesmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
+			case (Check): // apply center to maintain and unapply to written --
+				timesmat(planeMaintain(),planeCenter(),4);
+				jumpmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
+			case (Stage): // apply cursor/fixed/mode to towrite and change fixed for continuity --
+				timesmat(planeTowrite(),planeLocal(),4);
+				planeContinue(); break;
+			case (Apply): // apply towrite to written and clear towrite --
+				timesmat(planeWritten(),planeTowrite(),4);
+				identmat(planeTowrite(),4); break;
+			case (Accum): // apply written to maintain and clear written --
+				timesmat(planeMaintain(),planeWritten(),4);
+				identmat(planeWritten(),4); break;
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
 			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
