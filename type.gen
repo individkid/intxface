@@ -2,16 +2,16 @@ dofile("type.src")
 
 --HERE Enums
 Goal = {
-	"NewHub",
-	"CfgHub",
-	"AppHub",
+	"NewHub", -- open file
 	"ThdHub",
-	"HubThd",
-	"AppThd",
-	"ThdThd",
-	"HubCfg",
-	"ThdErr",
-	"HubErr",
+	"CfgHub", -- set pid and forward
+	"AppHub", -- set pid and forward
+	"HubThd", -- lock write forwarded
+	"AppThd", -- lock append forwarded
+	"ThdThd", -- file change notify
+	"HubCfg", -- identify file change
+	"ThdErr", -- close and report
+	"HubErr", -- report and exit
 }
 State = {
 	"Stock",
@@ -296,28 +296,25 @@ File = {
 		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
 		["HubCfg"]=true,
 		["ThdErr"]=true
-	}},{}},
+	}},{}}, -- identifier for file
 	{"loc","New",{["act"]={
 		["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
 		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true,
 		["HubCfg"]=true
-	}},{}},
+	}},{}}, -- location in file
 	{"pid","New",{["act"]={
 		["ThdHub"]=true,
 		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true
-	}},{}},
+	}},{}}, -- process id for fifo
 	{"slf","Int",{["act"]={
 		["HubCfg"]=true
-	}},{}},
+	}},{}}, -- whether process id is self
 	{"str","Str",{["act"]={
 		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
 		["HubThd"]=true,["AppThd"]=true,
 		["HubCfg"]=true,
 		["ThdErr"]=true,["HubErr"]=true
-	}},{}},
-	{"siz","New",{
-		["act"]={["ThdThd"]=true
-	}},{}},
+	}},{}}, -- file or field
 }
 Term0 = {
 	{"cff","Num",{},{}},

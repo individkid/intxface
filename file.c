@@ -126,14 +126,12 @@ void appendGive(long long pid, const char *str, int idx)
 	freeFile(&command);
 }
 
-void writeHelp(long long loc, long long pid, long long siz, int tail, int idx)
+void writeHelp(long long loc, long long pid, int tail, int idx)
 {
 	struct File command = {0};
 	command.act = ThdThd;
-	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
-	command.siz = siz;
 	seekFile(tail,help[idx]);
 	// fprintf(stderr,"writeHelp tail %d loc %lld\n",tail,loc); fflush(stderr);
 	writeFile(&command,help[idx]);
@@ -169,9 +167,8 @@ void clearHelp(int loc, int idx)
 #define PID ptr->pid
 #define SLF ptr->slf
 #define STR ptr->str
-#define NXT(LOC,INC) (LOC+INC*fieldsiz)%filesiz
 #define TAIL tail[IDX]
-#define NEXT NXT(TAIL,1)
+#define NEXT (tail[IDX]+fieldsiz)%filesiz
 #define HELP help[IDX]
 #define FIFO fifo[IDX]
 #define GIVE give[IDX]
@@ -186,7 +183,7 @@ void *func(void *arg)
 	double backoff = 0.0;
 	if (setjmp(JBUF) != 0) {writeThd(IDX); return 0;}
 	// fprintf(stderr,"%d func\n",getpid()); fflush(stderr);
-	for (TAIL = filesiz; TAIL == filesiz || (backoff = 0.0); sleepSec(backoff += amount)) {
+	for (TAIL = filesiz; TAIL == filesiz; sleepSec(backoff += amount)) {
 		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
 			if (rdlkFile(loc,fieldsiz,HELP)) {
 				if (TAIL != filesiz) unlkFile(TAIL,fieldsiz,HELP);
@@ -198,6 +195,7 @@ void *func(void *arg)
 	for (int siz = 0, loc = 0;
 		(siz = readGive(loc,0,IDX)) != -1;
 		loc += siz+1);
+	backoff = 0.0;
 	goto goRead;
 
 	toRead:
@@ -205,7 +203,7 @@ void *func(void *arg)
 	// previous and next are read locked
 	unlkFile(NEXT,fieldsiz,HELP);
 	// previous is read locked 
-	if (wrlkFile(filesiz,1,HELP)) goto toWrite;
+	if (wrlkFile(filesiz,1,HELP)) {backoff = 0.0; goto toWrite;}
 
 	goRead:
 	// fprintf(stderr,"%d goRead\n",getpid()); fflush(stderr);
@@ -213,7 +211,7 @@ void *func(void *arg)
 	rdlkwFile(NEXT,fieldsiz,HELP);
 	// previous and next are read locked
 	if (!checkHelp(NEXT,IDX)) {
-	sleepSec(backoff); backoff += amount; goto toRead;}
+	sleepSec(backoff += amount); goto toRead;}
 	else backoff = 0.0;
 	readHelp(&temp,NEXT,IDX);
 	readGive(temp.loc,temp.pid,IDX);
@@ -242,7 +240,7 @@ void *func(void *arg)
 	readFile(&temp,FIFO);
 	if (temp.act == HubThd) writeGive(temp.loc,temp.pid,temp.str,IDX);
 	else appendGive(temp.pid,temp.str,IDX);
-	writeHelp(temp.loc,temp.pid,strlen(temp.str),TAIL,IDX);
+	writeHelp(temp.loc,temp.pid,TAIL,IDX);
 	unlkFile(TAIL,fieldsiz,HELP);
 	// next is write locked
 	TAIL = NEXT;
@@ -291,7 +289,7 @@ int main(int argc, char **argv)
 		break;}
 		case (CfgHub): case (AppHub): {
 		if (sub != face) hubErr(__FILE__,__LINE__);
-		ACT = (ACT == CfgHub ? HubThd : AppThd );
+		ACT = (ACT == CfgHub ? HubThd : AppThd);
 		PID = identifier;
 		writeFile(ptr,FIFO);
 		flushBuf(FIFO);
