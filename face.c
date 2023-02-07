@@ -326,6 +326,7 @@ int waitRead(double dly, int msk)
 	delay.tv_sec = (long long)dly;
 	delay.tv_nsec = (dly-(long long)dly)*SEC2NANO;
 	if (dly == 0.0) ptr = 0;
+	if (dly < 0.0) {delay.tv_sec = 0; delay.tv_nsec = 0;}
 	int val = 0;
 	int nfd = 0;
 	fd_set fds, ers;

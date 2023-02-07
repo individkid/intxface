@@ -105,17 +105,22 @@ share test arguments that control how subsequent non-dash arguments are interpre
  -a script result (nestScan and evaluate)
  -b script result (script to evaluate)
  -c factory flow (operation names)
+  prior (poll from path or read and write)
   encode (read string and write type)
   decode (read type and write string)
   insert (write read inserted in read)
-  extract (push extracted from pop)
+  extract (write extracted from read)
   unique (read string and write hole int)
   combine (read several to write one)
-  duplicate (read once and write several times)
-  discard (read seveal to discard)
-  constant (write string)
-  permute (read several and write in different order)
- -d flow delay (zero for infinite)
+  duplicate (read once and write several)
+  discard (read several and write once)
+  replace (read once and replace with string)
+  permute (read once, read from several stages, optionally swap, and write)
+ -d flow delay (delay and path)
+  delay and nest path for jump upon timeout
+  zero and nest path for jump upon unreadable
+  zero and no nest path to wait forever
+  delay and no nest path for unconditional wait
  -e executable pipe (executable name)
  -f file pipe (file name)
  -g fifo pipe (file name)

@@ -11,6 +11,7 @@ enum ArgxTag {
 	FlowTag, // data flow
 	FlagTag, // option flag
 	JumpTag, // loop break nest
+	SideTag, // with side effects
 	NestTag, // nesting control
 	NoopTag, // data container
 	ArgxTags
@@ -154,6 +155,10 @@ int addJump(const char *opt, struct Function use, struct Function run)
 {
 	return addOption(opt,use,run,JumpTag);
 }
+int addSide(const char *opt, struct Function use, struct Function run)
+{
+	return addOption(opt,use,run,SideTag);
+}
 int addNest(const char *opt, struct Function use, struct Function run)
 {
 	return addOption(opt,use,run,NestTag);
@@ -200,5 +205,6 @@ void runProgram()
 	while (idx >= 0 && idx < argxLen()) {
 		if (argxGet(idx)->tag != NoopTag) memxCall(&argxGet(idx)->run,argxGet(idx)->use,argxGet(idx)->gnc);
 		if (argxGet(idx)->tag == JumpTag) idx = memxInt(argxGet(idx)->run);
+		else if (argxGet(idx)->tag == SideTag) idx = memxInt(memxSkip(argxGet(idx)->run,0));
 		else idx++;}
 }

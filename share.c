@@ -98,14 +98,21 @@ void shareRunC(void **run, void *use)
 	case (WrFldTl): writeField(typ,fld,idx,rfd,tfd); shareRunCJ(tmp); break;
 	default: ERROR();}}
 }
-int shareRunD(void *use)
+void shareJump(void **run, void *use)
 {
 	int msk, dly, val;
 	msk = memxMask(argxRun(faces));
-	dly = memxInt(use);
-	if (dly == 0) val = waitRead(0.0,msk);
+	dly = memxInt(memxSkip(use,0));
+	if (dly == 0 && memxSize(memxSkip(use,1)) == 0) val = waitRead(0.0,msk);
+	else if (dly == 0) val = waitRead(-1.0,msk);
+	else if (memxSize(memxSkip(use,1)) == 0) val = waitRead(dly,0);
 	else val = waitRead(dly,msk);
-	return val;
+	if (val < 0) memxForm(run,"(%d)(%d)",val,argxJump(memxSkip(use,1)));
+	else memxForm(run,"(%d)(%d)",val,0);
+}
+void shareCopy(void **run, void *use)
+{
+	memxCopy(run,memxSkip(use,1));
 }
 int shareUseLF(int idx, void *buf, int nbyte)
 {
@@ -166,7 +173,7 @@ int main(int argc, char **argv)
 	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
 	addFlow("b",protoTypeNf(memxInit),protoTypeMf(memxCopy));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));
-	addFlow("d",protoTypeNf(memxInit),protoTypeOf(shareRunD));
+	addSide("d",protoTypeNf(memxInit),protoTypeMf(shareJump));
 	addFlow("e",protoTypeFf(forkExec),protoTypeMf(memxCopy));
 	addFlow("f",protoTypeFf(openFile),protoTypeMf(memxCopy));
 	addFlow("g",protoTypeFf(openFifo),protoTypeMf(memxCopy));
@@ -181,7 +188,8 @@ int main(int argc, char **argv)
 	addFlow("p",protoTypeFf(shareUseP),protoTypeMf(memxCopy));
 	addFlow("q",protoTypeFf(shareUseQ),protoTypeMf(memxCopy));
 	mapCallback("b",type,protoTypeMf(memxCopy));
-	mapCallback("diefghlp",iface,protoTypeMf(memxCopy));
+	mapCallback("d",iface,protoTypeMf(shareCopy));
+	mapCallback("efghilp",iface,protoTypeMf(memxCopy));
 	mapCallback("efghloq",oface,protoTypeMf(memxCopy));
 	mapCallback("efghlpq",faces,protoTypeMf(memxList));
 	mapCallback("mn",faces,protoTypeMf(memxCopy));
