@@ -63,42 +63,22 @@ void shareRunC(void **run, void *use)
 	int tfd = memxOpen(tmp);
 	for (int i = 0; i < memxSize(use); i++) {
 	void *mem = memxSkip(use,i);
-	switch ((enum Stream) memxInt(mem)) {
-	// read to type from type
-	case (RdTypP): loopStruct(typ,ifd,rfd); break;
-	case (RdTypHd): shareRunCG(run); break;
-	case (RdTypTl): shareRunCH(run); break;
-	// read to string from raw
-	case (RdStrP): readStruct(shareRunCF,(void*)run,typ,ifd); break;
-	case (RdStrHd): shareRunCG(run); readStruct(shareRunCF,(void*)run,typ,rfd); break;
-	case (RdStrTl): shareRunCH(run); readStruct(shareRunCF,(void*)run,typ,rfd); break;
-	// read to raw from string
-	case (RdRawP): loopStruct(typ,ifd,rfd); writeStruct(memxStr(*run),typ,rfd); break;
-	case (RdRawHd): shareRunCG(run); writeStruct(memxStr(*run),typ,rfd); break;
-	case (RdRawTl): shareRunCH(run); writeStruct(memxStr(*run),typ,rfd); break;
-	// read to field in type
-	case (RdFldP): readField(typ,fld,idx,rfd,ifd,rfd); break;
-	case (RdFldHd): shareRunCG(&tmp); readField(typ,fld,idx,rfd,tfd,rfd); break;
-	case (RdFldTl): shareRunCH(&tmp); readField(typ,fld,idx,rfd,tfd,rfd); break;
-	// write from type to type
-	case (WrTypP): loopStruct(typ,rfd,ofd); break;
-	case (WrTypHd): shareRunCI(run); break;
-	case (WrTypTl): shareRunCJ(run); break;
-	// write from string to raw
-	case (WrStrP): writeStruct(memxStr(*run),typ,ofd); break;
-	case (WrStrHd): writeStruct(memxStr(*run),typ,tfd); shareRunCI(tmp); break;
-	case (WrStrTl): writeStruct(memxStr(*run),typ,tfd); shareRunCJ(tmp); break;
-	// write from raw to string
-	case (WrRawP): readStruct(shareRunCF,&tmp,typ,rfd); writeStr(memxStr(tmp),1,ofd); break;
-	case (WrRawHd): readStruct(shareRunCF,&tmp,typ,rfd); shareRunCI(tmp); break;
-	case (WrRawTl): readStruct(shareRunCF,&tmp,typ,rfd); shareRunCJ(tmp); break;
-	// write from field in type
-	case (WrFldP): writeField(typ,fld,idx,rfd,ofd); break;
-	case (WrFldHd): writeField(typ,fld,idx,rfd,tfd); shareRunCI(tmp); break;
-	case (WrFldTl): writeField(typ,fld,idx,rfd,tfd); shareRunCJ(tmp); break;
+	enum Stream fst = memxInt(memxSkip(mem,0));
+	switch (fst) {
+	case (Encode): break;
+	case (Decode): break;
+	case (Insert): break;
+	case (Extract): break;
+	case (Unique): break;
+	case (Combine): break;
+	case (Permute): break;
+	case (Constant): break;
+	case (Repeat): break;
+	case (Delete): break;
+	case (Follow): break;
 	default: ERROR();}}
 }
-void shareJump(void **run, void *use)
+void shareRunD(void **run, void *use)
 {
 	int msk, dly, val;
 	msk = memxMask(argxRun(faces));
@@ -173,7 +153,7 @@ int main(int argc, char **argv)
 	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
 	addFlow("b",protoTypeNf(memxInit),protoTypeMf(memxCopy));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));
-	addSide("d",protoTypeNf(memxInit),protoTypeMf(shareJump));
+	addSide("d",protoTypeNf(memxInit),protoTypeMf(shareRunD));
 	addFlow("e",protoTypeFf(forkExec),protoTypeMf(memxCopy));
 	addFlow("f",protoTypeFf(openFile),protoTypeMf(memxCopy));
 	addFlow("g",protoTypeFf(openFifo),protoTypeMf(memxCopy));

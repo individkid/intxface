@@ -216,30 +216,17 @@ Step = {
 	"RevExt",
 }
 Stream = {
-	"RdTypP",
-	"RdTypHd",
-	"RdTypTl",
-	"RdStrP",
-	"RdStrHd",
-	"RdStrTl",
-	"RdRawP",
-	"RdRawHd",
-	"RdRawTl",
-	"RdFldP",
-	"RdFldHd",
-	"RdFldTl",
-	"WrTypP",
-	"WrTypHd",
-	"WrTypTl",
-	"WrStrP",
-	"WrStrHd",
-	"WrStrTl",
-	"WrRawP",
-	"WrRawHd",
-	"WrRawTl",
-	"WrFldP",
-	"WrFldHd",
-	"WrFldTl",
+	"Encode", -- read string and write type
+	"Decode", -- read type and write string
+	"Insert", -- read twice and write second with first inserted
+	"Extract", -- write extracted from read
+	"Unique", -- read string and write hole int
+	"Combine", -- read several to write one
+	"Permute", -- read several and write in different order
+	"Constant", -- read several and write constant after them
+	"Repeat", -- read several and write the last again after them
+	"Delete", -- read several and write all but the last
+	"Follow", -- read several and write from path after them
 }
 Logic = {
 	"WrpJmp",
