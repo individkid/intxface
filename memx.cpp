@@ -56,6 +56,7 @@ struct Memx {
 	~Memx() {
 		std::vector<Memx*>::iterator i;
 		done();
+		if (idx) closeIdent(idx);
 		if (memz.find(this) == memz.end()) ERROR();
 		memy.erase(memz[this]); memz.erase(this);
 		for (i = mak.begin(); i != mak.end(); i++) delete *i;
@@ -261,6 +262,11 @@ extern "C" void memxForm(void **mem, const char *fmt, ...) { // use vasprintf
 	va_list args; char *str;
 	va_start(args,fmt); vasprintf(&str,fmt,args); va_end(args);
 	memxInit(mem,str); free(str);}
+extern "C" void memxAloc(void **mem, void *dat) { // use raw data
+	Memx *tmp = new Memx();
+	if (*mem) {cast(*mem)->init(tmp); delete tmp;}
+	else *mem = tmp;
+	cast(*mem)->mcpy((const char *)(((int*)dat)+1),*(int*)dat);}
 extern "C" void *memxTemp(int idx) { // realloc indexed memory
 	if (memt.find(idx) != memt.end()) delete memt[idx];
 	memt[idx] = new Memx(); return memt[idx];}

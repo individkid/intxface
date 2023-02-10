@@ -614,7 +614,7 @@ function showFreeCF(v,ebr,sub)
 	elseif (v[2] == "Str") then
 		result = result.."assignStr(&ptr->"..v[1]..",0);"..ebr.."\n"
 	elseif (v[2] == "Dat") then
-		result = result.."allocDat(&ptr->"..v[1]..",0);"..ebr.."\n"
+		result = result.."assignDat(&ptr->"..v[1]..",0);"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end
@@ -715,8 +715,8 @@ function showRandCF(v,ebr,sub)
 		result = result.."{const char *temp = \"hello ok again\"; "
 		result = result.."assignStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	elseif (v[2] == "Dat") then
-		result = result.."{const char *temp = \"  hello ok again\"; "
-		result = result.."assignDat(&ptr->"..v[1]..sub..",temp,0,0,14);}"..ebr.."\n"
+		result = result.."{const char *temp = \"\\x0e\\x00\\x00\\x00hello ok again\"; "
+		result = result.."assignDat(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
 	else
 		result = result..ebr.." // "..showAny(v).."\n"
 	end

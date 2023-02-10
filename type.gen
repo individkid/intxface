@@ -221,7 +221,6 @@ Stream = {
 	"Insert", -- read twice and write second with first inserted
 	"Extract", -- write extracted from read
 	"Unique", -- read string and write hole int
-	"Combine", -- read several to write one
 	"Permute", -- read several and write in different order
 	"Constant", -- read several and write constant after them
 	"Repeat", -- read several and write the last again after them

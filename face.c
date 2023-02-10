@@ -589,35 +589,21 @@ void assignStr(char **ptr, const char *str)
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
-void allocDat(void **ptr, int siz)
+void allocDat(void* **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem(ptr,siz+sizeof(int));
+	allocMem((void**)ptr,siz*sizeof(void *));
 	if (*ptr == 0) ERRFNC(-1);
-	memset(*ptr,0,siz+sizeof(int));
-	*(int*)(*ptr) = siz;
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
-void assignDat(void **ptr, const void *dat, int ofs, int num, int siz)
+void assignDat(void **ptr, const void *dat)
 {
-	void *src = 0;
-	void *dst = 0;
-	int len = 0;
-	if (*ptr == 0) {
-		allocDat(ptr,ofs+siz);
-		*(int*)(*ptr) = ofs+siz;}
-	if (ofs+siz > *(int*)(*ptr)) {
-		void *tmp = 0;
-		allocDat(&tmp,ofs+siz);
-		memcpy(tmp,*ptr,ofs+siz+sizeof(int));
-		*(int*)tmp = ofs+siz;
-		allocDat(ptr,0);
-		*ptr = tmp;}
-	if (dat == 0) return; // TODO use zeroes
-	if (num+siz >= *(int*)dat) return; // TODO use zeroes from beyond end
-	src = (void*)((char*)(((int*)dat)+1)+num);
-	dst = (void*)((char*)(((int*)ptr)+1)+ofs);
-	memcpy(dst,src,siz);
+	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
+	if (dat == 0) return;
+	allocMem((void**)ptr,(*(int*)dat)+sizeof(int));
+	if (*ptr == 0) ERRFNC(-1);
+	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));
 }
 void callStr(const char *str, int trm, int idx, void *arg)
 {
@@ -683,14 +669,14 @@ void readStrHs(hftype fnc, int idx)
 {
 	readStr(readStrHsFnc,fnc,idx);
 }
-void readDat(void *dat, int idx)
+void readDat(void **dat, int idx)
 {
 	int size = readInt(idx);
 	int val = 0;
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
-	allocMem(&dat,sizeof(int)+size);
-	*(int*)dat = size;
-	while (1) {val = read(inp[idx],(void*)(((int*)dat)+1),size);
+	allocMem(dat,sizeof(int)+size);
+	*(int*)(*dat) = size;
+	while (1) {val = read(inp[idx],(void*)(((int*)(*dat))+1),size);
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < size) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll

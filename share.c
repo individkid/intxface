@@ -11,7 +11,6 @@
 #include <libgen.h>
 
 int faces = 0;
-int type = 0;
 int field = 0;
 int iface = 0;
 int oface = 0;
@@ -21,62 +20,82 @@ int zero = 0;
 void shareRunA(void **run, void *use)
 {
 	memxInit(run,memxStr(use));
+}
+void shareRunB(void **run, void *use)
+{
+	memxInit(run,memxStr(use));
 	nestScan();
 }
-void shareRunCF(const char *str, int trm, int idx, void *arg)
+void shareDecodeF(void **mem, void *giv, int typ)
 {
-	void **mem = (void**)arg;
-	memxInit(mem,str);
+	char *str;
+	void *tmp = memxTemp(0);
+	int mfd = memxOpen(&tmp);
+	memxCopy(&tmp,giv);
+	allocMark();
+	readStruct(callStr,&str,typ,mfd);
+	memxConst(mem,MemxStr,str);
+	allocDrop();	
 }
-void shareRunCG(void **run)
+void shareDecode(void **dst, void *src, int typ)
 {
-	void *que = argxRun(misc);
-	memxCopy(run,memxSkip(que,0));
-	memxDel(&que,0);
-}
-void shareRunCH(void **run)
-{
-	void *que = argxRun(misc);
-	memxCopy(run,memxSkip(que,memxSize(que)-1));
-	memxDel(&que,memxSize(que)-1);
-}
-void shareRunCI(void **run)
-{
-	void *que = argxRun(misc);
-	memxAdd(&que,*run,0);
-}
-void shareRunCJ(void **run)
-{
-	void *que = argxRun(misc);
-	memxAdd(&que,*run,memxSize(que));
+	while (memxSize(src) > 0) {
+	void *mem = 0;
+	void *nxt = memxSkip(src,0);
+	memxDel(&src,0);
+	shareDecodeF(&mem,nxt,typ);
+	memxDone(&nxt);
+	memxAdd(dst,mem,memxSize(*dst));}
 }
 void shareRunC(void **run, void *use)
 {
 	int len = memxSize(use);
-	int rfd = memxOpen(run);
 	int ifd = memxInt(argxRun(iface));
 	int ofd = memxInt(argxRun(oface));
-	int typ = memxInt(memxSkip(argxRun(type),0));
-	int fld = memxInt(memxSkip(argxRun(type),1));
-	int idx = memxInt(memxSkip(argxRun(type),2));
-	void *tmp = memxTemp(0);
-	int tfd = memxOpen(tmp);
-	for (int i = 0; i < memxSize(use); i++) {
-	void *mem = memxSkip(use,i);
-	enum Stream fst = memxInt(memxSkip(mem,0));
-	switch (fst) {
-	case (Encode): break;
-	case (Decode): break;
-	case (Insert): break;
-	case (Extract): break;
-	case (Unique): break;
-	case (Combine): break;
-	case (Permute): break;
-	case (Constant): break;
-	case (Repeat): break;
-	case (Delete): break;
-	case (Follow): break;
-	default: ERROR();}}
+	int idx = len-1;
+	int typ = -1;
+	void *src = memxTemp(1);
+	while (idx < len) {
+		int val = 0;
+		void *arg = memxSkip(use,idx);
+		enum Stream tag = memxInt(memxSkip(arg,0));
+		void *dst = memxSkip(*run,idx);
+		switch (tag) {
+		case (Encode): break;
+		case (Decode):
+			if (memxSize(src) == 0) {typ = memxInt(memxSkip(arg,1)); val = -1; break;}
+			if (typ != memxInt(memxSkip(arg,1))) ERROR();
+			shareDecode(&dst,src,typ); typ = -1; val = 1; break;
+		case (Insert): break;
+		case (Extract): break;
+		case (Unique): break;
+		case (Permute): break;
+		case (Constant): break;
+		case (Repeat): break;
+		case (Delete): break;
+		case (Follow): break;
+		default: ERROR();}
+		if (idx == 0 && val > 0 && memxSize(src) != 0) ERROR();
+		if (idx == 0 && val < 0) {
+			void *mem = 0;
+			if (typ < 0) {
+				char *str = 0;
+				readStr(callStr,&str,ifd);
+				memxConst(&mem,MemxStr,str);}
+			else {
+				void *dat = 0;
+				// TODO readIdent(&dat,typ,ifd);
+				memxAloc(&mem,dat);}
+			memxAdd(&src,mem,memxSize(src));
+			val = 0;}
+		if (val > 0) src = dst;
+		idx += val;}
+	while (memxSize(src) > 0) {
+		void *nxt = memxSkip(src,0);
+		memxDel(&src,0);
+		if (typ < 0) writeStr(memxStr(nxt),1,ofd);
+		// TODO else writeIdent(memxDat(nxt),typ,ofd);
+		memxDone(&nxt);}
 }
 void shareRunD(void **run, void *use)
 {
@@ -128,7 +147,6 @@ int shareUseQ(const char *str)
 int shareLuax(const char *str)
 {
 	if (strcmp(str,"faces") == 0) return faces;
-	else if (strcmp(str,"type") == 0) return type;
 	else if (strcmp(str,"field") == 0) return field;
 	else if (strcmp(str,"iface") == 0) return iface;
 	else if (strcmp(str,"oface") == 0) return oface;
@@ -145,13 +163,12 @@ int main(int argc, char **argv)
 	luaxAdd("argxRun",protoTypeTf(argxRun));
 	memxLuax();
 	faces = getLocation();
-	type = getLocation();
 	iface = getLocation();
 	oface = getLocation();
 	misc = getLocation();
 	zero = getLocation();
 	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
-	addFlow("b",protoTypeNf(memxInit),protoTypeMf(memxCopy));
+	addFlow("b",protoTypeNf(memxInit),protoTypeMf(shareRunB));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));
 	addSide("d",protoTypeNf(memxInit),protoTypeMf(shareRunD));
 	addFlow("e",protoTypeFf(forkExec),protoTypeMf(memxCopy));
@@ -167,7 +184,6 @@ int main(int argc, char **argv)
 	addFlow("o",protoTypeNf(memxInit),protoTypeMf(argxCopy));
 	addFlow("p",protoTypeFf(shareUseP),protoTypeMf(memxCopy));
 	addFlow("q",protoTypeFf(shareUseQ),protoTypeMf(memxCopy));
-	mapCallback("b",type,protoTypeMf(memxCopy));
 	mapCallback("d",iface,protoTypeMf(shareCopy));
 	mapCallback("efghilp",iface,protoTypeMf(memxCopy));
 	mapCallback("efghloq",oface,protoTypeMf(memxCopy));
