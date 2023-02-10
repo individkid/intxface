@@ -263,10 +263,7 @@ extern "C" void memxForm(void **mem, const char *fmt, ...) { // use vasprintf
 	va_start(args,fmt); vasprintf(&str,fmt,args); va_end(args);
 	memxInit(mem,str); free(str);}
 extern "C" void memxAloc(void **mem, void *dat) { // use raw data
-	Memx *tmp = new Memx();
-	if (*mem) {cast(*mem)->init(tmp); delete tmp;}
-	else *mem = tmp;
-	cast(*mem)->mcpy((const char *)(((int*)dat)+1),*(int*)dat);}
+	cast(mem)->mcpy((const char *)(((int*)dat)+1),*(int*)dat);}
 extern "C" void *memxTemp(int idx) { // realloc indexed memory
 	if (memt.find(idx) != memt.end()) delete memt[idx];
 	memt[idx] = new Memx(); return memt[idx];}
@@ -275,20 +272,19 @@ extern "C" int memxOpen(void **mem) { // get pipe punted to given
 	if (!ptr->idx) ptr->idx = puntInit(memz[ptr],memz[ptr],memxRd,memxWr);
 	return ptr->idx;}
 extern "C" void memxCopy(void **mem, void *giv) { // replaces target with given
-	if (*mem) {if (*mem == giv) cast(*mem)->dflt();
-	else {cast(*mem)->init(cast(giv)); cast(*mem)->back();}}
-	else {*mem = new Memx(); cast(*mem)->init(cast(giv));}}
+	if (*mem == giv) cast(mem)->dflt();
+	cast(mem)->init(cast(giv));
+	if (*mem != giv) cast(mem)->back();}
 extern "C" void memxList(void **mem, void *giv) { // adds given to target in order
-	if (*mem) {if (*mem == giv) cast(*mem)->dflt();
-	else {cast(*mem)->list(cast(giv)); cast(*mem)->back();}}
-	else {*mem = new Memx(); cast(*mem)->list(cast(giv));}}
+	if (*mem == giv) cast(mem)->dflt();
+	cast(mem)->list(cast(giv));
+	if (*mem != giv) cast(mem)->back();}
 extern "C" void memxKeep(void **mem, void *giv) { // sorts given into target
-	if (*mem) {if (*mem == giv) cast(*mem)->dflt();
-	else {cast(*mem)->uniq(cast(giv)); cast(*mem)->back();}}
-	else {*mem = new Memx(); cast(*mem)->uniq(cast(giv));}}
+	if (*mem == giv) cast(mem)->dflt();
+	cast(mem)->uniq(cast(giv));
+	if (*mem != giv) cast(mem)->back();}
 extern "C" void memxMake(void **mem, void *giv) { // delete of mem also deletes giv
-	Memx *ptr = cast(mem);
-	ptr->mak.push_back(cast(giv));}
+	cast(mem)->mak.push_back(cast(giv));}
 extern "C" void memxDone(void **mem) { // delete now
 	delete cast(*mem); *mem = 0;}
 extern "C" void memxCall(void **mem, void *giv, struct Function fnc) { // call function on mem with giv
@@ -309,9 +305,9 @@ extern "C" void memxCall(void **mem, void *giv, struct Function fnc) { // call f
 	case (Function::Mftype): fnc.mf(mem,giv); break;
 	default: ERROR();}}
 extern "C" void memxBack(void **mem, void **giv, struct Function fnc) { // causes given call on given with target as given
-	if (!*mem) *mem = new Memx(); cast(*mem)->fnc = fnc; cast(*mem)->fem = giv;}
+	cast(mem)->fnc = fnc; cast(mem)->fem = giv;}
 extern "C" void memxDflt(void **mem, void **giv, struct Function fnc) { // trivial change causes call on mem with giv
-	if (!*mem) *mem = new Memx(); cast(*mem)->gnc = fnc; cast(*mem)->gem = giv;}
+	cast(mem)->gnc = fnc; cast(mem)->gem = giv;}
 extern "C" void *memxSkip(void *mem, int key) { // skip to given iterator
 	return cast(mem)->skip(key);}
 extern "C" void memxAdd(void **mem, void *giv, int key) { // insert at given location

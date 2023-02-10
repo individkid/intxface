@@ -16,6 +16,8 @@ int iface = 0;
 int oface = 0;
 int misc = 0;
 int zero = 0;
+void *fdm = 0;
+int mfd = 0;
 
 void shareRunA(void **run, void *use)
 {
@@ -26,24 +28,27 @@ void shareRunB(void **run, void *use)
 	memxInit(run,memxStr(use));
 	nestScan();
 }
-void shareDecodeF(void **mem, void *giv, int typ)
+void shareDecode(void **mem, void *giv, int typ)
 {
 	char *str;
-	void *tmp = memxTemp(0);
-	int mfd = memxOpen(&tmp);
-	memxCopy(&tmp,giv);
+	memxCopy(&fdm,giv);
 	allocMark();
 	readStruct(callStr,&str,typ,mfd);
 	memxConst(mem,MemxStr,str);
 	allocDrop();	
 }
-void shareDecode(void **dst, void *src, int typ)
+void shareEncode(void **mem, void *giv, int typ)
+{
+	writeStruct(memxStr(giv),typ,mfd);
+	memxCopy(mem,fdm);
+}
+void shareCode(void **dst, void *src, int typ, igtype fnc)
 {
 	while (memxSize(src) > 0) {
 	void *mem = 0;
 	void *nxt = memxSkip(src,0);
 	memxDel(&src,0);
-	shareDecodeF(&mem,nxt,typ);
+	fnc(&mem,nxt,typ);
 	memxDone(&nxt);
 	memxAdd(dst,mem,memxSize(*dst));}
 }
@@ -54,18 +59,22 @@ void shareRunC(void **run, void *use)
 	int ofd = memxInt(argxRun(oface));
 	int idx = len-1;
 	int typ = -1;
-	void *src = memxTemp(1);
+	void *src = memxTemp(0);
 	while (idx < len) {
 		int val = 0;
 		void *arg = memxSkip(use,idx);
 		enum Stream tag = memxInt(memxSkip(arg,0));
-		void *dst = memxSkip(*run,idx);
+		void *dst = memxSkip(*run,idx); // typ is still type of src
 		switch (tag) {
-		case (Encode): break;
+		case (Encode):
+			if (memxSize(src) == 0) {val = -1; break;}
+			if (typ != -1) ERROR();
+			typ = memxInt(memxSkip(arg,1)); shareEncode(&dst,src,typ); break;
+			break;
 		case (Decode):
-			if (memxSize(src) == 0) {typ = memxInt(memxSkip(arg,1)); val = -1; break;}
+			if (memxSize(src) == 0) {val = -1; break;}
 			if (typ != memxInt(memxSkip(arg,1))) ERROR();
-			shareDecode(&dst,src,typ); typ = -1; val = 1; break;
+			shareCode(&dst,src,typ,shareDecode); typ = -1; val = 1; break;
 		case (Insert): break;
 		case (Extract): break;
 		case (Unique): break;
@@ -74,7 +83,7 @@ void shareRunC(void **run, void *use)
 		case (Repeat): break;
 		case (Delete): break;
 		case (Follow): break;
-		default: ERROR();}
+		default: ERROR();} // typ is now typ of dst
 		if (idx == 0 && val > 0 && memxSize(src) != 0) ERROR();
 		if (idx == 0 && val < 0) {
 			void *mem = 0;
@@ -88,7 +97,8 @@ void shareRunC(void **run, void *use)
 				memxAloc(&mem,dat);}
 			memxAdd(&src,mem,memxSize(src));
 			val = 0;}
-		if (val > 0) src = dst;
+		if (val > 0) src = dst; // typ is now type of src
+		if (val < 0) src = memxTemp(1);
 		idx += val;}
 	while (memxSize(src) > 0) {
 		void *nxt = memxSkip(src,0);
@@ -167,6 +177,7 @@ int main(int argc, char **argv)
 	oface = getLocation();
 	misc = getLocation();
 	zero = getLocation();
+	mfd = memxOpen(&fdm);
 	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
 	addFlow("b",protoTypeNf(memxInit),protoTypeMf(shareRunB));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));
