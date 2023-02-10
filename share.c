@@ -69,12 +69,15 @@ void shareRunC(void **run, void *use)
 		case (Encode):
 			if (memxSize(src) == 0) {val = -1; break;}
 			if (typ != -1) ERROR();
-			typ = memxInt(memxSkip(arg,1)); shareEncode(&dst,src,typ); break;
-			break;
+			typ = memxInt(memxSkip(arg,1));
+			shareCode(&dst,src,typ,shareEncode);
+			val = 1; break;
 		case (Decode):
 			if (memxSize(src) == 0) {val = -1; break;}
 			if (typ != memxInt(memxSkip(arg,1))) ERROR();
-			shareCode(&dst,src,typ,shareDecode); typ = -1; val = 1; break;
+			typ = -1;
+			shareCode(&dst,src,typ,shareDecode);
+			val = 1; break;
 		case (Insert): break;
 		case (Extract): break;
 		case (Unique): break;
