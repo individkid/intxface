@@ -250,6 +250,11 @@ extern "C" const char *memxRaw(void *mem, int *len) { // get bytes
 	Memx *ptr = cast(mem);
 	if (ptr->tag == MemxRaw) {*len = ptr->raw.size(); return ptr->raw.data();}
 	return 0;}
+extern "C" const void *memxDat(void *mem) { // get dat
+	int len = 0;
+	const char *dat = memxRaw(mem,&len);
+	if (*(int*)dat != len) ERROR();
+	return dat;}
 extern "C" void memxConst(void **mem, enum MemxTag tag, const char *str) { // init as string
 	Memx *tmp = new Memx(tag,str);
 	if (*mem) {cast(*mem)->init(tmp); delete tmp;}
@@ -262,8 +267,8 @@ extern "C" void memxForm(void **mem, const char *fmt, ...) { // use vasprintf
 	va_list args; char *str;
 	va_start(args,fmt); vasprintf(&str,fmt,args); va_end(args);
 	memxInit(mem,str); free(str);}
-extern "C" void memxAloc(void **mem, void *dat) { // use raw data
-	cast(mem)->mcpy((const char *)(((int*)dat)+1),*(int*)dat);}
+extern "C" void memxAloc(void **mem, const void *dat) { // use raw data
+	cast(mem)->mcpy((const char *)(((const int*)dat)+1),*(const int*)dat);}
 extern "C" void *memxTemp(int idx) { // realloc indexed memory
 	if (memt.find(idx) != memt.end()) delete memt[idx];
 	memt[idx] = new Memx(); return memt[idx];}

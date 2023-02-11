@@ -23,6 +23,7 @@ int pipeInit(const char *av1, const char *av2);
 int rdfdInit(int rdfd, int hint);
 int wrfdInit(int wrfd, int hint);
 int puntInit(int rdx, int wdx, pftype rpf, qftype wpf);
+int buffInit(int rfd, int wfd, pftype rpf, qftype wpf);
 int waitRead(double dly, int msk);
 int waitExit(); // TODO add dly and msk
 void callInit(cftype fnc, int idx);

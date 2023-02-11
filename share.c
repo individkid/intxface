@@ -18,6 +18,7 @@ int misc = 0;
 int zero = 0;
 void *fdm = 0;
 int mfd = 0;
+int bfd = 0;
 
 void shareRunA(void **run, void *use)
 {
@@ -27,6 +28,30 @@ void shareRunB(void **run, void *use)
 {
 	memxInit(run,memxStr(use));
 	nestScan();
+}
+int shareReadF(int fildes, void *buf, int nbyte)
+{
+	return 0;
+}
+int shareReadG(int fildes, const void *buf, int nbyte)
+{
+	void *dat = malloc(nbyte+sizeof(int));
+	*(int*)dat = nbyte;
+	memcpy((void*)(((int*)dat)+1),buf,nbyte);
+	memxAloc(&fdm,dat);
+	free(dat);
+	return nbyte;
+}
+void shareRead(void **dat, int typ, int ifd)
+{
+	loopStruct(typ,ifd,bfd);
+	flushBuf(bfd);
+	memxCopy(dat,fdm);
+}
+void shareWrite(const void *dat, int typ, int ofd)
+{
+	memxAloc(&fdm,dat);
+	loopStruct(typ,mfd,ofd);
 }
 void shareDecode(void **mem, void *giv, int typ)
 {
@@ -78,8 +103,8 @@ void shareRunC(void **run, void *use)
 			typ = -1;
 			shareCode(&dst,src,typ,shareDecode);
 			val = 1; break;
-		case (Insert): break;
-		case (Extract): break;
+		case (Insert): break; // TODO with writeField use xfd/fdx nfd/fdn mfd/fdm initialized in main
+		case (Extract): break; // TODO with readField use xfd/fdx nfd/fdn mfd/fdm initialized in main
 		case (Unique): break;
 		case (Permute): break;
 		case (Constant): break;
@@ -96,7 +121,7 @@ void shareRunC(void **run, void *use)
 				memxConst(&mem,MemxStr,str);}
 			else {
 				void *dat = 0;
-				// TODO readIdent(&dat,typ,ifd);
+				shareRead(&dat,typ,ifd);
 				memxAloc(&mem,dat);}
 			memxAdd(&src,mem,memxSize(src));
 			val = 0;}
@@ -107,7 +132,7 @@ void shareRunC(void **run, void *use)
 		void *nxt = memxSkip(src,0);
 		memxDel(&src,0);
 		if (typ < 0) writeStr(memxStr(nxt),1,ofd);
-		// TODO else writeIdent(memxDat(nxt),typ,ofd);
+		else shareWrite(memxDat(nxt),typ,ofd);
 		memxDone(&nxt);}
 }
 void shareRunD(void **run, void *use)
@@ -181,6 +206,7 @@ int main(int argc, char **argv)
 	misc = getLocation();
 	zero = getLocation();
 	mfd = memxOpen(&fdm);
+	bfd = buffInit(0,0,shareReadF,shareReadG);
 	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
 	addFlow("b",protoTypeNf(memxInit),protoTypeMf(shareRunB));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));

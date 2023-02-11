@@ -18,10 +18,11 @@ int memxInt(void *mem); // get int
 int memxMask(void *mem); // mask from collection
 const char *memxStr(void *mem); // get string
 const char *memxRaw(void *mem, int *len); // get bytes
+const void *memxDat(void *mem); // get dat
 void memxConst(void **mem, enum MemxTag tag, const char *str); // init as string
 void memxInit(void **mem, const char *str); // convert from string
 void memxForm(void **mem, const char *fmt, ...); // use vasprintf
-void memxAloc(void **mem, void *dat); // use raw data
+void memxAloc(void **mem, const void *dat); // use raw data
 void *memxTemp(int idx); // realloc indexed memory
 int memxOpen(void **mem); // get pipe punted to given
 void memxCopy(void **mem, void *giv); // replaces target with given
