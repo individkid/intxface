@@ -38,7 +38,7 @@ int shareReadG(int fildes, const void *buf, int nbyte)
 	void *dat = malloc(nbyte+sizeof(int));
 	*(int*)dat = nbyte;
 	memcpy((void*)(((int*)dat)+1),buf,nbyte);
-	memxAloc(&fdm,dat);
+	memxData(&fdm,dat);
 	free(dat);
 	return nbyte;
 }
@@ -50,7 +50,7 @@ void shareRead(void **dat, int typ, int ifd)
 }
 void shareWrite(const void *dat, int typ, int ofd)
 {
-	memxAloc(&fdm,dat);
+	memxData(&fdm,dat);
 	loopStruct(typ,mfd,ofd);
 }
 void shareDecode(void **mem, void *giv, int typ)
@@ -122,7 +122,7 @@ void shareRunC(void **run, void *use)
 			else {
 				void *dat = 0;
 				shareRead(&dat,typ,ifd);
-				memxAloc(&mem,dat);}
+				memxData(&mem,dat);}
 			memxAdd(&src,mem,memxSize(src));
 			val = 0;}
 		if (val > 0) src = dst; // typ is now type of src
