@@ -1,6 +1,5 @@
 extern "C" {
 #include "luax.h"
-#include "face.h"
 }
 #include "memx.h"
 #include <inttypes.h>
@@ -35,7 +34,6 @@ struct Memx {
 	struct Function fnc; void **fem;
 	struct Function gnc; void **gem;
 	std::vector<Memx*> mak;
-	int idx;
 	Memx() {init();}
 	Memx(const char *giv) {init();
 		if (scan(giv,exp)) {tag = MemxLua; return;}
@@ -56,7 +54,6 @@ struct Memx {
 	~Memx() {
 		std::vector<Memx*>::iterator i;
 		done();
-		if (idx) closeIdent(idx);
 		if (memz.find(this) == memz.end()) ERROR();
 		memy.erase(memz[this]); memz.erase(this);
 		for (i = mak.begin(); i != mak.end(); i++) delete *i;
@@ -83,7 +80,7 @@ struct Memx {
 		default: ERROR();}
 		tag = giv->tag;}
 	void init() {
-		tag = MemxNul; val = 0; idx = 0;
+		tag = MemxNul; val = 0;
 		fnc.vp = 0; fem = 0; gnc.vp = 0; gem = 0;
 		memy[memx] = this; memz[this] = memx; memx++;}
 	void list() {
@@ -199,16 +196,6 @@ extern "C" void memxScan() {
 	for (std::map<Memx*,int>::iterator i = memz.begin(); i != memz.end(); i++)
 	if ((*i).first->tag == MemxLua) nestElem((*i).first->lua,(*i).first->exp.c_str());
 	nestScan();}
-extern "C" int memxRd(int fildes, void *buf, int nbyte) {
-	Memx *ptr = memy[fildes]; const void *tmp = 0; int len = 0;
-	tmp = memxDat(ptr);
-	len = (*(int*)tmp);
-	if (len > nbyte) len = nbyte;
-	memcpy(buf,(const char *)(((int*)tmp)+1),len);
-	return len;}
-extern "C" int memxWr(int fildes, const void *buf, int nbyte) {
-	Memx *ptr = memy[fildes];
-	return ptr->mcpy((const char *)(buf),nbyte);}
 extern "C" void memxLuax()
 {
 	luaxAdd("memxSize",protoTypeOf(memxSize));
@@ -217,7 +204,6 @@ extern "C" void memxLuax()
 	luaxAdd("memxStr",protoTypeAf(memxStr));
 	luaxAdd("memxInit",protoTypeNf(memxInit));
 	luaxAdd("memxTemp",protoTypeTf(memxTemp));
-	luaxAdd("memxOpen",protoTypeLf(memxOpen));
 	luaxAdd("memxCopy",protoTypeMf(memxCopy));
 	luaxAdd("memxList",protoTypeMf(memxList));
 	luaxAdd("memxKeep",protoTypeMf(memxKeep));
@@ -252,6 +238,9 @@ extern "C" const void *memxDat(void *mem) { // get dat
 	Memx *ptr = cast(mem);
 	if (ptr->tag == MemxRaw) return ptr->raw.data();
 	return 0;}
+extern "C" int memxNul(void *mem) { // whether nul
+	Memx *ptr = cast(mem);
+	return (ptr->tag == MemxNul);}
 extern "C" void memxConst(void **mem, enum MemxTag tag, const char *str) { // init as string
 	Memx *tmp = new Memx(tag,str);
 	if (*mem) {cast(*mem)->init(tmp); delete tmp;}
@@ -269,10 +258,6 @@ extern "C" void memxData(void **mem, const void *dat) { // use raw data
 extern "C" void *memxTemp(int idx) { // realloc indexed memory
 	if (memt.find(idx) != memt.end()) delete memt[idx];
 	memt[idx] = new Memx(); return memt[idx];}
-extern "C" int memxOpen(void **mem) { // get pipe punted to given
-	Memx *ptr = cast(mem);
-	if (!ptr->idx) ptr->idx = puntInit(memz[ptr],memz[ptr],memxRd,memxWr);
-	return ptr->idx;}
 extern "C" void memxCopy(void **mem, void *giv) { // replaces target with given
 	if (*mem == giv) cast(mem)->dflt();
 	cast(mem)->init(cast(giv));

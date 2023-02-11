@@ -16,9 +16,8 @@ int iface = 0;
 int oface = 0;
 int misc = 0;
 int zero = 0;
-void *fdm = 0;
-int mfd = 0;
-int bfd = 0;
+void *fdm[3] = {0};
+int mfd[3] = {0};
 
 void shareRunA(void **run, void *use)
 {
@@ -31,51 +30,97 @@ void shareRunB(void **run, void *use)
 }
 int shareReadF(int fildes, void *buf, int nbyte)
 {
-	return 0;
+	const void *dat = memxDat(fdm[fildes]);
+	int len = *(int*)dat;
+	void *rem = 0;
+	if (len > nbyte) {
+	rem = malloc(len-nbyte+sizeof(int));
+	*(int*)rem = len-nbyte;
+	memcpy((void*)(((int*)rem)+1),(void*)(((char*)(((int*)dat)+1))+nbyte),len-nbyte);
+	len = nbyte;}
+	memcpy(buf,(void*)(((int*)dat)+1),len);
+	if (rem) memxData(&fdm[fildes],rem);
+	return len;
 }
-int shareReadG(int fildes, const void *buf, int nbyte)
+int shareWriteF(int fildes, const void *buf, int nbyte)
 {
-	void *dat = malloc(nbyte+sizeof(int));
-	*(int*)dat = nbyte;
-	memcpy((void*)(((int*)dat)+1),buf,nbyte);
-	memxData(&fdm,dat);
+	int len = *(int*)memxDat(fdm[fildes]);
+	void *dat = malloc(len+nbyte+sizeof(int));
+	*(int*)dat = len+nbyte;
+	memcpy((void*)(((char*)(((int*)dat)+1))+len),buf,len+nbyte);
+	memxData(&fdm[fildes],dat);
 	free(dat);
 	return nbyte;
 }
-void shareRead(void **dat, int typ, int ifd)
+void shareRead(void **mem, int typ, int ifd)
 {
-	loopStruct(typ,ifd,bfd);
-	flushBuf(bfd);
-	memxCopy(dat,fdm);
+	loopStruct(typ,ifd,mfd[0]);
+	flushBuf(mfd[0]);
+	memxCopy(mem,fdm[0]);
+	memxDone(&fdm[0]);
 }
-void shareWrite(const void *dat, int typ, int ofd)
+void shareWrite(void *mem, int typ, int ofd)
 {
-	memxData(&fdm,dat);
-	loopStruct(typ,mfd,ofd);
+	memxCopy(&fdm[0],mem);
+	loopStruct(typ,mfd[0],ofd);
+	memxDone(&fdm[0]);
 }
-void shareDecode(void **mem, void *giv, int typ)
+void shareDecode(void *mem, void *giv, int typ)
 {
 	char *str;
-	memxCopy(&fdm,giv);
+	memxCopy(&fdm[0],giv);
 	allocMark();
-	readStruct(callStr,&str,typ,mfd);
-	memxConst(mem,MemxStr,str);
-	allocDrop();	
+	readStruct(callStr,&str,typ,mfd[0]);
+	if (mem == 0) ERROR();
+	memxConst(&mem,MemxStr,str);
+	allocDrop();
+	memxDone(&fdm[0]);
 }
-void shareEncode(void **mem, void *giv, int typ)
+void shareEncode(void *mem, void *giv, int typ)
 {
-	writeStruct(memxStr(giv),typ,mfd);
-	memxCopy(mem,fdm);
+	writeStruct(memxStr(giv),typ,mfd[0]);
+	if (mem == 0) ERROR();
+	memxCopy(&mem,fdm[0]);
+	memxDone(&fdm[0]);
 }
-void shareCode(void **dst, void *src, int typ, igtype fnc)
+void shareInsert(void *mem, void *giv, void *fld, int sid, int fid, int idx)
 {
-	while (memxSize(src) > 0) {
+	memxCopy(&fdm[0],giv);
+	memxCopy(&fdm[1],fld);
+	readField(sid,fid,idx,mfd[0],mfd[1],mfd[2]);
+	if (mem == 0) ERROR();
+	memxCopy(&mem,fdm[2]);
+	for (int i = 0; i < 3; i++) memxDone(&fdm[i]); 
+}
+void shareExtract(void **mem, void *giv, int sid, int fid, int idx)
+{
+	memxCopy(&fdm[0],giv);
+	writeField(sid,fid,idx,mfd[0],mfd[1]);
+	memxCopy(mem,fdm[1]);
+	for (int i = 0; i < 2; i++) memxDone(&fdm[i]); 
+}
+void *sharePop(void *src, int idx, int mod)
+{
+	int sub = 0;
+	int min = 0;
+	void *nxt = 0;
 	void *mem = 0;
-	void *nxt = memxSkip(src,0);
-	memxDel(&src,0);
-	fnc(&mem,nxt,typ);
-	memxDone(&nxt);
-	memxAdd(dst,mem,memxSize(*dst));}
+	min = (mod-memxSize(src)%mod)%mod;
+	sub = idx - min;
+	if (sub < 0) ERROR();
+	nxt = memxSkip(src,sub);
+	mem = memxTemp(1+idx);
+	memxCopy(&mem,nxt);
+	memxConst(&nxt,MemxNul,"");
+	while (memxNul(memxSkip(src,0))) {nxt = memxSkip(src,0); memxDel(&src,0); memxDone(&nxt);}
+	return mem;
+}
+void *sharePush(void **dst)
+{
+	void *mem = 0;
+	memxConst(&mem,MemxNul,"");
+	memxAdd(dst,mem,memxSize(*dst));
+	return mem;
 }
 void shareRunC(void **run, void *use)
 {
@@ -95,16 +140,28 @@ void shareRunC(void **run, void *use)
 			if (memxSize(src) == 0) {val = -1; break;}
 			if (typ != -1) ERROR();
 			typ = memxInt(memxSkip(arg,1));
-			shareCode(&dst,src,typ,shareEncode);
+			while (memxSize(src) > 0) shareEncode(sharePush(&dst),sharePop(src,0,1),typ);
 			val = 1; break;
 		case (Decode):
 			if (memxSize(src) == 0) {val = -1; break;}
 			if (typ != memxInt(memxSkip(arg,1))) ERROR();
-			typ = -1;
-			shareCode(&dst,src,typ,shareDecode);
-			val = 1; break;
-		case (Insert): break; // TODO with writeField use xfd/fdx nfd/fdn mfd/fdm initialized in main
-		case (Extract): break; // TODO with readField use xfd/fdx nfd/fdn mfd/fdm initialized in main
+			while (memxSize(src) > 0) shareDecode(sharePush(&dst),sharePop(src,0,1),typ);
+			typ = -1; val = 1; break;
+		case (Insert): {
+			int fld = memxInt(memxSkip(arg,2));
+			int idx = memxInt(memxSkip(arg,3));
+			if (memxSize(src) < 2 || memxSize(src)%2 != 0) {val = -1; break;}
+			typ = memxInt(memxSkip(arg,1));
+			while (memxSize(src) > 0) shareInsert(sharePush(&dst),sharePop(src,0,2),sharePop(src,1,2),typ,fld,idx);
+			val = 1; break;}
+		case (Extract): {
+			int fld = memxInt(memxSkip(arg,2));
+			int idx = memxInt(memxSkip(arg,3));
+			if (memxSize(src) == 0) {val = -1; break;}
+			if (typ != memxInt(memxSkip(arg,1))) ERROR();
+			while (memxSize(src) > 0) shareExtract(sharePush(&dst),sharePop(src,0,1),typ,fld,idx);
+			// TODO typ = identType(typ,fld);
+			val = 1; break;}
 		case (Unique): break;
 		case (Permute): break;
 		case (Constant): break;
@@ -121,8 +178,7 @@ void shareRunC(void **run, void *use)
 				memxConst(&mem,MemxStr,str);}
 			else {
 				void *dat = 0;
-				shareRead(&dat,typ,ifd);
-				memxData(&mem,dat);}
+				shareRead(&mem,typ,ifd);}
 			memxAdd(&src,mem,memxSize(src));
 			val = 0;}
 		if (val > 0) src = dst; // typ is now type of src
@@ -132,7 +188,7 @@ void shareRunC(void **run, void *use)
 		void *nxt = memxSkip(src,0);
 		memxDel(&src,0);
 		if (typ < 0) writeStr(memxStr(nxt),1,ofd);
-		else shareWrite(memxDat(nxt),typ,ofd);
+		else shareWrite(nxt,typ,ofd);
 		memxDone(&nxt);}
 }
 void shareRunD(void **run, void *use)
@@ -205,8 +261,7 @@ int main(int argc, char **argv)
 	oface = getLocation();
 	misc = getLocation();
 	zero = getLocation();
-	mfd = memxOpen(&fdm);
-	bfd = buffInit(0,0,shareReadF,shareReadG);
+	for (int i = 0; i < 3; i++) mfd[i] = buffInit(i,i,shareReadF,shareWriteF);
 	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
 	addFlow("b",protoTypeNf(memxInit),protoTypeMf(shareRunB));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));
