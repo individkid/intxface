@@ -44,10 +44,12 @@ int shareReadF(int fildes, void *buf, int nbyte)
 }
 int shareWriteF(int fildes, const void *buf, int nbyte)
 {
-	int len = *(int*)memxDat(fdm[fildes]);
+	const void *sav = memxDat(fdm[fildes]);
+	int len = *(const int*)sav;
 	void *dat = malloc(len+nbyte+sizeof(int));
+	memcpy(dat,sav,len+sizeof(int));
 	*(int*)dat = len+nbyte;
-	memcpy((void*)(((char*)(((int*)dat)+1))+len),buf,len+nbyte);
+	memcpy((void*)(((char*)(((int*)dat)+1))+len),buf,nbyte);
 	memxData(&fdm[fildes],dat);
 	free(dat);
 	return nbyte;
@@ -261,7 +263,7 @@ int main(int argc, char **argv)
 	oface = getLocation();
 	misc = getLocation();
 	zero = getLocation();
-	for (int i = 0; i < 3; i++) mfd[i] = buffInit(i,i,shareReadF,shareWriteF);
+	for (int i = 0; i < 3; i++) mfd[i] = buntInit(i,i,shareReadF,shareWriteF);
 	addFlow("a",protoTypeNf(memxInit),protoTypeMf(shareRunA));
 	addFlow("b",protoTypeNf(memxInit),protoTypeMf(shareRunB));
 	addFlow("c",protoTypeNf(memxInit),protoTypeMf(shareRunC));

@@ -25,7 +25,7 @@ enum {None, // unused
 	Inet, // pselect-able meta-pipe
 	Sock, // pselect-able received pipe
 	Punt, // given stream function
-	Buff, // buffered stream function
+	Bunt, // buffered stream function
 } fdt[NUMOPEN] = {0};
 int lim = 0;
 
@@ -121,7 +121,7 @@ int findIdent(const char *str)
 	struct stat new;
 	if (stat(str,&new) != 0) return -1;
 	for (int i = 0; i < lim; i++) {
-		if (fdt[i] == Wait || fdt[i] == Sock || fdt[i] == Punt || fdt[i] == Buff || fdt[i] == None) continue;
+		if (fdt[i] == Wait || fdt[i] == Sock || fdt[i] == Punt || fdt[i] == Bunt || fdt[i] == None) continue;
 		if (fstat(inp[i],&old) != 0) return -1;
 		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) return i;}
 	return -1;
@@ -320,17 +320,17 @@ int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 	wfn[val] = wpf;
 	return val;
 }
-int buffInit(int rfd, int wfd, pftype rpf, qftype wpf)
+int buntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 {
 	int val;
-	for (val = 0; val < lim; val++) if (fdt[val] == Buff &&
+	for (val = 0; val < lim; val++) if (fdt[val] == Bunt &&
 	(wpf == 0 || wfn[val] == 0 || wfn[val] == wpf) &&
 	(rpf == 0 || rfn[val] == 0 || rfn[val] == rpf)) break;
 	if (val < lim && rpf == 0) {rpf = rfn[val];}
 	if (val < lim && wpf == 0) {wpf = wfn[val];}
 	if (val == lim && lim == NUMOPEN) return -1;
 	if (val == lim) lim++;
-	fdt[val] = Buff;
+	fdt[val] = Bunt;
 	inp[val] = rfd;
 	out[val] = wfd;
 	pid[val] = 0;
@@ -647,7 +647,7 @@ void readStr(sftype fnc, void *arg, int idx)
 	while (num == 1/*bufsize*/ && val == 1/*bufsize*/) {
 		if ((size % bufsize) == 0) buf = realloc(buf,size+bufsize+1);
 		if (buf == 0) ERRFNC(idx);
-		while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff || fdt[idx] == Buff) val = rfn[idx](inp[idx],buf+size,1);
+		while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],buf+size,1);
 		else val = /*p*/read(inp[idx],buf+size,1/*bufsize,loc+size*/);
 		if (val < 0 && errno == EINTR) INTRFN() else break;}
 		if (val < 0) ERRFNC(idx);
@@ -695,7 +695,7 @@ void readDat(void **dat, int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	allocMem(dat,sizeof(int)+size);
 	*(int*)(*dat) = size;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff) val = rfn[idx](inp[idx],(void*)(((int*)(*dat))+1),size);
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(void*)(((int*)(*dat))+1),size);
 	else val = read(inp[idx],(void*)(((int*)(*dat))+1),size);
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < size) ERRFNC(idx);
@@ -707,7 +707,7 @@ void readEof(int idx)
 	char arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
 	else val = read(inp[idx],(char *)&arg,sizeof(char));
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
@@ -718,7 +718,7 @@ char readChr(int idx)
 	char arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(char));
 	else val = read(inp[idx],(char *)&arg,sizeof(char));
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(char)) ERRFNC(idx);
@@ -731,7 +731,7 @@ int readInt(int idx)
 	int arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff) val = rfn[idx](inp[idx],(char *)&arg,sizeof(int));
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(int));
 	else val = read(inp[idx],(char *)&arg,sizeof(int));
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(int)) ERRFNC(idx);
@@ -744,7 +744,7 @@ double readNum(int idx)
 	double arg;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = 0;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff) val = rfn[idx](inp[idx],(char *)&arg,sizeof(double));
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(double));
 	else val = read(inp[idx],(char *)&arg,sizeof(double));
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(double)) ERRFNC(idx);
@@ -758,7 +758,7 @@ long long readNew(int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (inp[idx] < 0) {arg = 0; return arg;}
 	int val = 0;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff) val = rfn[idx](inp[idx],(char *)&arg,sizeof(long long));
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(long long));
 	else val = read(inp[idx],(char *)&arg,sizeof(long long));
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(long long)) ERRFNC(idx);
@@ -772,7 +772,7 @@ float readOld(int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = 0;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Buff) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
 	else val = read(inp[idx],(char *)&arg,sizeof(float));
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(float)) ERRFNC(idx);
@@ -783,7 +783,7 @@ float readOld(int idx)
 int writeBuf(const void *arg, long long siz, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
-	if (fdt[idx] == Poll || fdt[idx] == Buff) {
+	if (fdt[idx] == Poll || fdt[idx] == Bunt) {
 		while (atoms[idx]+siz > atomz[idx]) atom[idx] = realloc(atom[idx],atomz[idx]+=bufsize);
 		if (atom[idx] == 0) ERRFNC(idx);
 		memcpy(atom[idx]+atoms[idx],arg,siz);
@@ -795,8 +795,8 @@ int writeBuf(const void *arg, long long siz, int idx)
 void flushBuf(int idx)
 {
 	if (idx < 0 || idx >= lim) ERRFNC(idx);
-	if (fdt[idx] != Poll && fdt[idx] != Buff) ERRFNC(idx);
-	if (fdt[idx] == Buff) {if (wfn[idx](out[idx],atom[idx],atoms[idx]) < 0) ERRFNC(idx);}
+	if (fdt[idx] != Poll && fdt[idx] != Bunt) ERRFNC(idx);
+	if (fdt[idx] == Bunt) {if (wfn[idx](out[idx],atom[idx],atoms[idx]) < 0) ERRFNC(idx);}
 	else {if (write(out[idx],atom[idx],atoms[idx]) < 0) ERRFNC(idx);}
 	atoms[idx] = 0;
 }

@@ -84,8 +84,11 @@ struct Memx {
 		fnc.vp = 0; fem = 0; gnc.vp = 0; gem = 0;
 		memy[memx] = this; memz[this] = memx; memx++;}
 	void list() {
+		if (tag != MemxLst && tag != MemxNul) {
+		Memx *tmp = new Memx(this);
+		done(); tag = MemxLst;
+		lst.push_back(tmp);}
 		if (tag != MemxLst) {
-		if (tag != MemxNul) lst.push_back(new Memx(this));
 		done(); tag = MemxLst;}}
 	void list(Memx *giv) {
 		list(); lst.push_back(giv);}
