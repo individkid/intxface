@@ -144,15 +144,14 @@ void shareRunC(void **run, void *use)
 			void *top = memxTemp(1);
 			void *mem = 0;
 			int stp = 0;
-			int dtp = -1;
 			if (memxSize(src) == 0) {val = -1; break;}
 			shareDeque(&top,&stp,src);
 			shareDecode(&mem,top,stp);
-			shareEnque(&dst,mem,dtp);
+			shareEnque(&dst,mem,-1);
 			val = 1; break;}
 		case (Insert): {
-			void *top = memxTemp(2);
-			void *nxt = memxTemp(3);
+			void *top = memxTemp(1);
+			void *nxt = memxTemp(2);
 			void *mem = 0;
 			int stp = 0;
 			int ftp = 0;
@@ -161,7 +160,7 @@ void shareRunC(void **run, void *use)
 			if (memxSize(src) < 2) {val = -1; break;}
 			shareDeque(&top,&stp,src);
 			shareDeque(&nxt,&ftp,src);
-			// TODO if (ftp != identType(dtp,fld);) ERROR();
+			// TODO if (ftp != identType(stp,fld);) ERROR();
 			shareInsert(&mem,top,nxt,stp,fld,idx);
 			shareEnque(&dst,mem,stp);
 			val = 1; break;}
@@ -174,6 +173,7 @@ void shareRunC(void **run, void *use)
 			int idx = memxInt(memxSkip(arg,2));
 			if (memxSize(src) == 0) {val = -1; break;}
 			shareDeque(&top,&stp,src);
+			// TODO ftp = identType(stp,fld);
 			shareExtract(&mem,top,stp,fld,idx);
 			shareEnque(&dst,mem,ftp);
 			val = 1; break;}

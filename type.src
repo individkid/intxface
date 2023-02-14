@@ -1,4 +1,5 @@
 require "luax"
+require "coroutine"
 
 function showBool(bool)
 	local str = ""
@@ -457,6 +458,201 @@ function showStructC(name,struct)
 			depth = depth - 1; step = step + 1
 			result = result..showIndent(depth).."};\n"
 		end
+	end
+	return "struct "..name.." {\n"..result.."};"
+end
+function overLap(val,field)
+	-- assume there are no disjoint dimensions
+	local share = true
+	for ky,vl in pairs(field[3]) do
+		if val[3][ky] then
+			-- val and field share dimension ky
+			share = false
+			for k,v in pairs(field[3][ky]) do
+				-- k is a region of field[3][ky]
+				if val[3][ky][k] then
+					-- k is a region of val[3][ky]
+					share = true
+				end
+			end
+			if not share then
+				-- this dimension is disjoint
+				break
+			end
+			-- subsequent dimensions might be disjoint
+		end
+	end
+	return share
+end
+function overAny(list,field)
+	for key,val in ipairs(list) do
+		-- val is a field from the list
+		if overLap(val,field) then
+			-- val has no disjoint dimension
+			return true
+		end
+	end
+	-- every one has a disjoint dimension
+	return false
+end
+function equalLap(val,field)
+	for ky,vl in pairs(field[3]) do
+		if not val[3][ky] then
+			return false
+		end
+		for k,v in pairs(field[3][ky]) do
+			if not val[3][ky][k] then
+				return false
+			end
+		end
+	end
+	for ky,vl in pairs(val[3]) do
+		if not field[3][ky] then
+			return false
+		end
+		for k,y in pairs(val[3][ky]) do
+			if not field[3][ky][k] then
+				return false
+			end
+		end
+	end
+	return true
+end
+function equalAll(list,field)
+	for key,val in ipairs(list) do
+		if not equalLap(val,field) then
+			return false
+		end
+	end
+	return true
+end
+function addTo(list,field)
+	list[#list+1] = field
+end
+function howStructCK(field)
+	local result = ""
+	local separate = ""
+	for key,val in pairs(field[3]) do
+		result = result..separate..key..":"
+		separate = ";"
+		local sep = ""
+		for ky,vl in pairs(val) do
+			result = result..sep..ky
+			sep = ","
+		end
+	end
+	return result
+end
+function howStructCJ(field)
+	local result = ""
+	if (type(field[4]) == "table") then
+		for k,v in pairs(field[4]) do
+			result = result.."["..v.."]"
+		end
+	end
+	return result
+end
+function howStructCI(field)
+	local result
+	if (Enumz[field[2]]~=nil) then
+		result = "enum "..field[2]
+	elseif (Structz[field[2]]~=nil) then
+		result = "struct "..field[2]
+	elseif (field[2] == "Chr") then
+		result = "char"
+	elseif (field[2] == "Int") then
+		result = "int"
+	elseif (field[2] == "New") then
+		result = "long long"
+	elseif (field[2] == "Num") then
+		result = "double"
+	elseif (field[2] == "Old") then
+		result = "float"
+	elseif (field[2] == "Str") then
+		result = "char*"
+	elseif (field[2] == "Dat") then
+		result = "void*"
+	else
+		result = field[2]
+	end
+	if (type(field[4]) == "number") then
+		result = result.."*"
+	elseif (type(field[4]) == "string") then
+		result = result.."*"
+	end
+	return result
+end
+function howStructCH(pre,field,post)
+	coroutine.yield(pre..howStructCI(field).." "..field[1]..howStructCJ(field)..";"..post)
+end
+function howStructCG(pre,mid,second,post)
+	local post = ""
+	if #second > 0 then
+		post = howStructCK(second[1])
+	end
+	if #second > 1 then
+		coroutine.yield(pre..mid.."struct { // "..post)
+		for id,fd in ipairs(second) do
+			howStructCH(pre.."    ",fd,"")
+		end
+		coroutine.yield(pre..mid.."};")
+	else
+		for id,fd in ipairs(second) do
+			howStructCH(pre.."",fd," // "..post)
+		end
+	end
+end
+function howStructCF(first,second,struct)
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("// 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			-- coroutine.yield("// 2")
+			howStructCG("    ","// ",second)
+			second = {}
+			addTo(second,fld)
+		elseif #first == 0 then
+			-- coroutine.yield("// 3")
+			coroutine.yield("    union {")
+			howStructCG("        ","",second)
+			second = {}
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			-- coroutine.yield("// 4")
+			howStructCG("        ","",second)
+			second = {}
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			-- coroutine.yield("// 5")
+			howStructCG("        ","",second)
+			coroutine.yield("    };")
+			first = {}
+			second = {}
+			addTo(second,fld)
+		end
+	end
+	if #first == 0 then
+		howStructCG("    ","// ",second)
+	else
+		howStructCG("        ","",second)
+		coroutine.yield("    };")
+	end
+end
+function howStructC(name,struct)
+	local result = ""
+	local first = {}
+	local second = {}
+	local wrap = coroutine.wrap(howStructCF)
+	local line = wrap(first,second,struct)
+	while line do
+		result = result..line.."\n"
+		line = wrap()
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
@@ -2075,7 +2271,7 @@ end
 function showCallH()
 	local result = ""
 	result = result..showCall(Enums,Enumz,showEnumC).."\n"
-	result = result..showCall(Structs,Structz,showStructC).."\n"
+	result = result..showCall(Structs,Structz,howStructC).."\n"
 	prototype = true
 	result = result..showFuncC()
 	return result
