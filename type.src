@@ -364,103 +364,6 @@ function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
-function showEnumC(name,enum)
-	local str = "enum "..name.." {\n"
-	for key,val in ipairs(enum) do
-		str = str..showIndent(1)..val..",\n"
-	end
-	str = str..showIndent(1)..name.."s\n"
-	str = str.."};"
-	return str
-end
-function showStructCH(val)
-	local decl
-	if (Enumz[val[2]]~=nil) then
-		decl = "enum "..val[2]
-	elseif (Structz[val[2]]~=nil) then
-		decl = "struct "..val[2]
-	elseif (val[2] == "Chr") then
-		decl = "char"
-	elseif (val[2] == "Int") then
-		decl = "int"
-	elseif (val[2] == "New") then
-		decl = "long long"
-	elseif (val[2] == "Num") then
-		decl = "double"
-	elseif (val[2] == "Old") then
-		decl = "float"
-	elseif (val[2] == "Str") then
-		decl = "char*"
-	elseif (val[2] == "Dat") then
-		decl = "void*"
-	else
-		decl = val[2]
-	end
-	if (type(val[4]) == "number") then
-		decl = decl.."*"
-	elseif (type(val[4]) == "string") then
-		decl = decl.."*"
-	end
-	return decl
-end
-function showStructCG(val)
-	local ident = val[1]
-	if (type(val[4]) == "table") then
-		for k,v in pairs(val[4]) do
-			ident = ident.."["..v.."]"
-		end
-	end
-	return ident
-end
-function showStructCF(val)
-	local decl = showStructCH(val)
-	local ident = showStructCG(val)
-	return decl.." "..ident..";"
-end
-function showStructC(name,struct)
-	local all = structTagSpace(struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = nestStruct(splitStruct(struct))
-	local result = ""
-	local link = 1
-	local step = 1
-	local depth = 1
-	local single = 1
-	for k,v in ipairs(struct) do
-		if split[step] and k == split[step][1] then
-			result = result..showIndent(depth).."union {\n"
-			depth = depth + 1
-		end
-		if chain[link] and k == chain[link][1] then
-			result = result..showIndent(depth)
-			if depth == 1 then
-				result = result.."// "
-			end
-			result = result.."struct { // "
-			result = result..showPlaid(v[3],all).."\n"
-			single = 0; depth = depth + 1
-		end
-		if single == 1 then
-			result = result..showIndent(depth)..showStructCF(v).." // "
-			result = result..showPlaid(v[3],all).."\n"
-		else
-			result = result..showIndent(depth)..showStructCF(v).."\n"
-		end
-		if chain[link] and k == chain[link][2] then
-			single = 1; depth = depth - 1; link = link + 1
-			result = result..showIndent(depth)
-			if depth == 1 then
-				result = result.."// "
-			end
-			result = result.."};\n"
-		end
-		if split[step] and k == split[step][2] then
-			depth = depth - 1; step = step + 1
-			result = result..showIndent(depth).."};\n"
-		end
-	end
-	return "struct "..name.." {\n"..result.."};"
-end
 function overLap(val,field)
 	-- assume there are no disjoint dimensions
 	local share = true
@@ -529,21 +432,49 @@ end
 function addTo(list,field)
 	list[#list+1] = field
 end
-function howStructCK(field)
+function sortIter(map)
+	local tab = {}
+	for key,val in pairs(map) do
+		table.insert(tab,key)
+	end
+	table.sort(tab)
+	local idx = 0
+	return function()
+		idx = idx + 1
+		return tab[idx],map[tab[idx]]
+	end
+end
+function sizeIter(map)
+	local count = 0
+	for key,val in pairs(map) do
+		count = count + 1
+	end
+	return count
+end
+function showEnumC(name,enum)
+	local str = "enum "..name.." {\n"
+	for key,val in ipairs(enum) do
+		str = str..showIndent(1)..val..",\n"
+	end
+	str = str..showIndent(1)..name.."s\n"
+	str = str.."};"
+	return str
+end
+function showStructCK(field)
 	local result = ""
-	local separate = ""
-	for key,val in pairs(field[3]) do
+	local separate = " "
+	for key,val in sortIter(field[3]) do
 		result = result..separate..key..":"
 		separate = ";"
 		local sep = ""
-		for ky,vl in pairs(val) do
+		for ky,vl in sortIter(val) do
 			result = result..sep..ky
 			sep = ","
 		end
 	end
 	return result
 end
-function howStructCJ(field)
+function showStructCJ(field)
 	local result = ""
 	if (type(field[4]) == "table") then
 		for k,v in pairs(field[4]) do
@@ -552,7 +483,7 @@ function howStructCJ(field)
 	end
 	return result
 end
-function howStructCI(field)
+function showStructCI(field)
 	local result
 	if (Enumz[field[2]]~=nil) then
 		result = "enum "..field[2]
@@ -582,27 +513,27 @@ function howStructCI(field)
 	end
 	return result
 end
-function howStructCH(pre,field,post)
-	coroutine.yield(pre..howStructCI(field).." "..field[1]..howStructCJ(field)..";"..post)
+function showStructCH(pre,field,post)
+	coroutine.yield(pre..showStructCI(field).." "..field[1]..showStructCJ(field)..";"..post)
 end
-function howStructCG(pre,mid,second,post)
+function showStructCG(pre,mid,second)
 	local post = ""
-	if #second > 0 then
-		post = howStructCK(second[1])
+	if #second > 0 then 
+		post = showStructCK(second[1])
 	end
 	if #second > 1 then
-		coroutine.yield(pre..mid.."struct { // "..post)
+		coroutine.yield(pre..mid.."struct { //"..post)
 		for id,fd in ipairs(second) do
-			howStructCH(pre.."    ",fd,"")
+			showStructCH(pre.."    ",fd,"")
 		end
 		coroutine.yield(pre..mid.."};")
 	else
 		for id,fd in ipairs(second) do
-			howStructCH(pre.."",fd," // "..post)
+			showStructCH(pre.."",fd," //"..post)
 		end
 	end
-end
-function howStructCF(first,second,struct)
+end     
+function showStructCF(first,second,struct)
 	for idx,fld in ipairs(struct) do
 		local firster = overAny(first,fld)
 		local seconder = overAny(second,fld)
@@ -612,25 +543,25 @@ function howStructCF(first,second,struct)
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("// 2")
-			howStructCG("    ","// ",second)
+			showStructCG("    ","// ",second)
 			second = {}
 			addTo(second,fld)
 		elseif #first == 0 then
 			-- coroutine.yield("// 3")
 			coroutine.yield("    union {")
-			howStructCG("        ","",second)
+			showStructCG("        ","",second)
 			second = {}
 			addTo(first,fld)
 			addTo(second,fld)
 		elseif not firster then
 			-- coroutine.yield("// 4")
-			howStructCG("        ","",second)
+			showStructCG("        ","",second)
 			second = {}
 			addTo(first,fld)
 			addTo(second,fld)
 		else
 			-- coroutine.yield("// 5")
-			howStructCG("        ","",second)
+			showStructCG("        ","",second)
 			coroutine.yield("    };")
 			first = {}
 			second = {}
@@ -638,23 +569,148 @@ function howStructCF(first,second,struct)
 		end
 	end
 	if #first == 0 then
-		howStructCG("    ","// ",second)
+		showStructCG("    ","// ",second)
 	else
-		howStructCG("        ","",second)
+		showStructCG("        ","",second)
 		coroutine.yield("    };")
 	end
 end
-function howStructC(name,struct)
+function showStructC(name,struct)
 	local result = ""
 	local first = {}
 	local second = {}
-	local wrap = coroutine.wrap(howStructCF)
+	local wrap = coroutine.wrap(showStructCF)
 	local line = wrap(first,second,struct)
 	while line do
 		result = result..line.."\n"
 		line = wrap()
 	end
 	return "struct "..name.." {\n"..result.."};"
+end
+function showReadCJ(pre,field,sub,post)
+	if (Enumz[field[2]]~=nil) then
+		coroutine.yield(pre.."{int temp = readInt(idx); ".."ptr->"..field[1]..sub.." = temp;}"..post)
+	elseif (Structz[field[2]]~=nil) then
+		coroutine.yield(pre.."read"..field[2].."(&ptr->"..field[1]..sub..",idx);"..post)
+	elseif (field[2] == "Str") then
+		coroutine.yield(pre.."readStr(callStr,&ptr->"..field[1]..sub..",idx);"..post)
+	elseif (field[2] == "Dat") then
+		coroutine.yield(pre.."readDat(&ptr->"..field[1]..sub..",idx);"..post)
+	else
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = read"..field[2].."(idx);"..post)
+	end	
+end
+function showReadCI(pre,field,post)
+	local count = 0
+	if (type(field[4]) == "table") then
+		count = sizeIter(field[4])
+	end
+	if (type(field[4]) == "table") and (count == 0) then
+		showReadCJ(pre,field,"",post)
+	elseif (type(field[4]) == "table") then
+		local indent = ""
+		local sub = ""
+		for key,val in ipairs(field[4]) do
+			sub = sub.."[i"..key.."]"
+			coroutine.yield(pre..indent.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)")
+			indent = indent.."    "
+		end
+		showReadCJ(pre..indent,field,sub,post)
+	elseif (type(field[4]) == "number") then
+		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..","..field[4]..");")
+		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
+		showReadCJ(pre.."    ",field,"[i]",post)
+	elseif (type(field[4]) == "string") then
+		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",ptr->"..field[4]..");")
+		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
+		showReadCJ(pre.."    ",field,"[i]",post)
+	end
+end
+function showReadCH(field)
+	local condit = ""
+	local seper = ""
+	local count = sizeIter(field[3])
+	for key,val in sortIter(field[3]) do
+		local cond = ""
+		local sep = ""
+		local cnt = sizeIter(val)
+		for ky,vl in sortIter(val) do
+			if (cnt > 1) or (count > 1) then
+				cond = cond..sep.."(ptr->"..key.." == "..ky..")"
+			else
+				cond = cond..sep.."ptr->"..key.." == "..ky
+			end
+			sep = " || "
+		end
+		if (cnt > 1) then
+			condit = condit..seper.."("..cond..")"
+		else
+			condit = condit..seper..cond
+		end
+		seper = " && "
+	end
+	if (count > 0) then
+		coroutine.yield("    if ("..condit..") {")
+		showReadCI("        ",field,"}")
+	else
+		showReadCI("    ",field,"")
+	end
+end
+function showReadCG(second)
+	for id,fd in ipairs(second) do
+		showReadCH(fd)
+	end
+end
+function showReadCF(first,second,struct)
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("// 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			-- coroutine.yield("// 2")
+			showReadCG(second)
+			second = {}
+			addTo(second,fld)
+		elseif #first == 0 then
+			-- coroutine.yield("// 3")
+			showReadCG(second)
+			second = {}
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			-- coroutine.yield("// 4")
+			showReadCG(second)
+			second = {}
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			-- coroutine.yield("// 5")
+			showReadCG(second)
+			first = {}
+			second = {}
+			addTo(second,fld)
+		end
+	end
+	showReadCG(second)
+end
+function showReadC(name,struct)
+	local result = ""
+	local first = {}
+	local second = {}
+	local wrap = coroutine.wrap(showReadCF)
+	local line = wrap(first,second,struct)
+	result = result.."void read"..name.."(struct "..name.." *ptr, int idx)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result.."    free"..name.."(ptr);\n"
+	while line do
+		result = result..line.."\n"
+		line = wrap()
+	end
+	return result.."}"
 end
 function showCondC(struct,dset)
 	local cond = ""
@@ -701,7 +757,7 @@ function showStreamC(name,struct,show,pre,post)
 	if (show == showSizeCF) then
 		result = result..showIndent(1).."int result = 0;\n"
 	end
-	if (show == showRandCF or show == showReadCF) then
+	if (show == showRandCF or show == sshowReadCF) then
 		result = result..showIndent(1).."free"..name.."(ptr);\n"
 	end
 	if (show == showShowCF) then
@@ -758,7 +814,7 @@ function showStreamC(name,struct,show,pre,post)
 			sub = ""
 		end
 		if lim then
-			if (show == showReadCF) or (show == showRandCF) or (show == showHideCF) then
+			if (show == showRandCF) or (show == showHideCF) then
 				result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..","..lim..");\n"
 			end
 			result = result..showIndent(depth)
@@ -844,21 +900,6 @@ function showAllocC(name,typ)
 	end
 	return result
 end
-function showReadCF(v,ebr,sub)
-	local result = ""
-	if (Enumz[v[2]]~=nil) then
-		result = result.."{int temp = readInt(idx); ptr->"..v[1]..sub.." = temp;}"..ebr.."\n"
-	elseif (Structz[v[2]]~=nil) then
-		result = result.."read"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "Str") then
-		result = result.."readStr(callStr,&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "Dat") then
-		result = result.."readDat(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	else
-		result = result.."ptr->"..v[1]..sub.." = read"..v[2].."(idx);"..ebr.."\n"
-	end
-	return result
-end
 function showWriteCF(v,ebr,sub)
 	local result = ""
 	if (Enumz[v[2]]~=nil) then
@@ -873,9 +914,6 @@ function showWriteCF(v,ebr,sub)
 		result = result.."write"..v[2].."(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
 	end
 	return result
-end
-function showReadC(name,struct)
-	return showStreamC(name,struct,showReadCF,"void read",", int idx")
 end
 function showWriteC(name,struct)
 	return showStreamC(name,struct,showWriteCF,"void write",", int idx")
@@ -2271,7 +2309,7 @@ end
 function showCallH()
 	local result = ""
 	result = result..showCall(Enums,Enumz,showEnumC).."\n"
-	result = result..showCall(Structs,Structz,howStructC).."\n"
+	result = result..showCall(Structs,Structz,showStructC).."\n"
 	prototype = true
 	result = result..showFuncC()
 	return result
