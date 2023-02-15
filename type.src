@@ -712,6 +712,128 @@ function showReadC(name,struct)
 	end
 	return result.."}"
 end
+function showWriteCJ(pre,field,sub,post)
+	if (Enumz[field[2]]~=nil) then
+		coroutine.yield(pre.."{int temp = ptr->"..field[1]..sub.."; writeInt(temp,idx);}"..post)
+	elseif (Structz[field[2]]~=nil) then
+		coroutine.yield(pre.."write"..field[2].."(&ptr->"..field[1]..sub..",idx);"..post)
+	elseif (field[2] == "Str") then
+		coroutine.yield(pre.."writeStr(ptr->"..field[1]..sub..",1,idx);"..post)
+	elseif (field[2] == "Dat") then
+		coroutine.yield(pre.."writeDat(ptr->"..field[1]..sub..",idx);"..post)
+	else
+		coroutine.yield(pre.."write"..field[2].."(ptr->"..field[1]..sub..",idx);"..post)
+	end	
+end
+function showWriteCI(pre,field,post)
+	local count = 0
+	if (type(field[4]) == "table") then
+		count = sizeIter(field[4])
+	end
+	if (type(field[4]) == "table") and (count == 0) then
+		showWriteCJ(pre,field,"",post)
+	elseif (type(field[4]) == "table") then
+		local indent = ""
+		local sub = ""
+		for key,val in ipairs(field[4]) do
+			sub = sub.."[i"..key.."]"
+			coroutine.yield(pre..indent.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)")
+			indent = indent.."    "
+		end
+		showWriteCJ(pre..indent,field,sub,post)
+	elseif (type(field[4]) == "number") then
+		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
+		showWriteCJ(pre.."    ",field,"[i]",post)
+	elseif (type(field[4]) == "string") then
+		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
+		showWriteCJ(pre.."    ",field,"[i]",post)
+	end
+end
+function showWriteCH(field)
+	local condit = ""
+	local seper = ""
+	local count = sizeIter(field[3])
+	for key,val in sortIter(field[3]) do
+		local cond = ""
+		local sep = ""
+		local cnt = sizeIter(val)
+		for ky,vl in sortIter(val) do
+			if (cnt > 1) or (count > 1) then
+				cond = cond..sep.."(ptr->"..key.." == "..ky..")"
+			else
+				cond = cond..sep.."ptr->"..key.." == "..ky
+			end
+			sep = " || "
+		end
+		if (cnt > 1) then
+			condit = condit..seper.."("..cond..")"
+		else
+			condit = condit..seper..cond
+		end
+		seper = " && "
+	end
+	if (count > 0) then
+		coroutine.yield("    if ("..condit..") {")
+		showWriteCI("        ",field,"}")
+	else
+		showWriteCI("    ",field,"")
+	end
+end
+function showWriteCG(second)
+	for id,fd in ipairs(second) do
+		showWriteCH(fd)
+	end
+end
+function showWriteCF(first,second,struct)
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("// 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			-- coroutine.yield("// 2")
+			showWriteCG(second)
+			second = {}
+			addTo(second,fld)
+		elseif #first == 0 then
+			-- coroutine.yield("// 3")
+			showWriteCG(second)
+			second = {}
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			-- coroutine.yield("// 4")
+			showWriteCG(second)
+			second = {}
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			-- coroutine.yield("// 5")
+			showWriteCG(second)
+			first = {}
+			second = {}
+			addTo(second,fld)
+		end
+	end
+	showWriteCG(second)
+end
+function showWriteC(name,struct)
+	local result = ""
+	local first = {}
+	local second = {}
+	local wrap = coroutine.wrap(showWriteCF)
+	local line = wrap(first,second,struct)
+	result = result.."void write"..name.."(struct "..name.." *ptr, int idx)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	while line do
+		result = result..line.."\n"
+		line = wrap()
+	end
+	return result.."}"
+end
 function showCondC(struct,dset)
 	local cond = ""
 	local terms = 0
@@ -899,24 +1021,6 @@ function showAllocC(name,typ)
 		result = result.."}"
 	end
 	return result
-end
-function showWriteCF(v,ebr,sub)
-	local result = ""
-	if (Enumz[v[2]]~=nil) then
-		result = result.."{int temp = ptr->"..v[1]..sub.."; writeInt(temp,idx);}"..ebr.."\n"
-	elseif (Structz[v[2]]~=nil) then
-		result = result.."write"..v[2].."(&ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	elseif (v[2] == "Str") then
-		result = result.."writeStr(ptr->"..v[1]..sub..",1,idx);"..ebr.."\n"
-	elseif (v[2] == "Dat") then
-		result = result.."writeDat(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	else
-		result = result.."write"..v[2].."(ptr->"..v[1]..sub..",idx);"..ebr.."\n"
-	end
-	return result
-end
-function showWriteC(name,struct)
-	return showStreamC(name,struct,showWriteCF,"void write",", int idx")
 end
 randChr = 1
 randInt = 10
