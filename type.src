@@ -364,128 +364,6 @@ function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
-function showCondC(struct,dset)
-	local cond = ""
-	local terms = 0
-	for i,dim in ipairs(listSort(dset)) do
-		local set = dset[dim]
-		local term = ""
-		local factors = 0
-		for idx,fld in ipairs(struct) do
-			if (fld[1] == dim) then
-				for j,val in ipairs(listSort(set)) do
-					local factor = "ptr->"..struct[idx][1].." == "..val
-					if (factors > 0) then term = term.." || " end
-					term = term.."("..factor..")"
-					factors = factors + 1
-				end
-			end
-		end
-		if (terms > 0) then cond = cond.." && " end
-		if (factors > 1) then
-			cond = cond.."("..term..")"
-		else
-			cond = cond..term
-		end
-		terms = terms + 1
-	end
-	if (terms == 0) then
-		cond = "1"
-	elseif (terms > 1) then
-		cond = "("..cond..")"
-	end
-	return cond
-end
-function showStreamCF(name,field,lim)
-	local result = ""
-	result = result.."alloc"..name.."(&ptr->"..field..","..lim..");"
-	return result
-end
-function showStreamC(name,struct,show,pre,post)
-	local result = ""
-	result = result..pre..name.."(struct "..name.." *ptr"..post..")"
-	if prototype then return result..";" end
-	result = result.."\n{\n"
-	if (show == showSizeCF) then
-		result = result..showIndent(1).."int result = 0;\n"
-	end
-	if (show == showRandCF or show == sshowReadCF) then
-		result = result..showIndent(1).."free"..name.."(ptr);\n"
-	end
-	if (show == showHideCF) then
-		result = result..showIndent(1).."allocMark();\n"
-		result = result..showIndent(1).."if (!hideOpen(\""..name.."\",str,len)) {allocDrop(); return 0;}\n"
-	end
-	local all = structTagSpace(struct)
-	for k,v in ipairs(struct) do
-		local depth = 1
-		local plaid = v[3]
-		local fields = listSort(plaid)
-		local cond = showCondC(struct,plaid)
-		local sub = nil
-		local arg = nil
-		local lim = nil
-		local ebr = ""
-		if (cond ~= "1") then
-			result = result..showIndent(depth)
-			result = result.."if "..cond.." {".."\n"
-			ebr = ebr.."}"
-			depth = depth + 1
-		end
-		if (type(v[4]) == "table") then
-			sub = ""
-			arg = {}
-			for key,val in ipairs(v[4]) do
-				result = result..showIndent(depth)
-				result = result.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)\n"
-				sub = sub.."[i"..key.."]"
-				arg[#arg+1] = "i"..key
-				depth = depth + 1
-			end
-		elseif (type(v[4]) == "number") then
-			sub = ""
-			arg = {}
-			lim = v[4]
-		elseif (type(v[4]) == "string") then
-			sub = ""
-			arg = {}
-			lim = "ptr->"..v[4]
-		elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
-			sub = ""
-		end
-		if lim then
-			if (show == showRandCF) or (show == showHideCF) then
-				result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..","..lim..");\n"
-			end
-			result = result..showIndent(depth)
-			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
-			sub = "[i]"
-			arg = {"i"}
-			depth = depth + 1
-			result = result..showIndent(depth)
-		else
-			result = result..showIndent(depth)
-		end
-		if (sub ~= nil) then
-			result = result..show(v,ebr,sub,arg)
-		else
-			result = result..ebr.."// "..showAny(v).."\n"
-		end
-	end
-	if (show == showCompCF) then
-		result = result..showIndent(1).."return 1;\n"
-	end
-	if (show == showSizeCF) then
-		result = result..showIndent(1).."return result;\n"
-	end
-	if (show == showHideCF) then
-		result = result..showIndent(1).."if (!hideClose(str,len)) {allocDrop(); return 0;}\n"
-		result = result..showIndent(1).."allocKeep();\n"
-		result = result..showIndent(1).."return 1;\n"
-	end
-	result = result.."}"
-	return result
-end
 
 function overLap(val,field)
 	-- assume there are no disjoint dimensions
@@ -742,13 +620,13 @@ function showReadCI(pre,field,post)
 		end
 		showReadCJ(pre..indent,field,sub,arg,post)
 	elseif (type(field[4]) == "number") then
-		if (version == "Read") or (version == "Rand") then
+		if (version == "Read") or (version == "Rand") or (version == "Hide") then
 			coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..","..field[4]..");")
 		end
 		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
 		showReadCJ(pre.."    ",field,"[i]","1,i",post)
 	elseif (type(field[4]) == "string") then
-		if (version == "Read") or (version == "Rand") then
+		if (version == "Read") or (version == "Rand") or (version == "Hide") then
 			coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",ptr->"..field[4]..");")
 		end
 		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
@@ -1056,50 +934,36 @@ function showShowSC(name,struct)
 	result = result.."    showClose(str,len);\n"
 	return result.."}"
 end
-function showShowCH(pre,i)
-	local result = ""
-	if (i == 1) then
-		result = result..pre.."["
-	else
-		result = result.."["
-	end
-	return result
+function showHideCJ(pre,field,sub,arg,post)
+	coroutine.yield(pre.."if (!hideField(\""..field[1].."\",str,len,"..arg..") || !hide"..field[2].."(&ptr->"..field[1]..sub..",str,len)) {allocDrop(); return 0;}"..post)
 end
-function showShowCI(i,max)
+function showHideSC(name,struct)
 	local result = ""
-	if (i == max) then
-		result = result.."]:"
-	else
-		result = result.."]"
-	end
-	return result
+	local temp = showReadCJ
+	version = "Hide"
+	result = result.."int hide"..name.."(struct "..name.." *ptr, const char *str, int *len)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result.."    allocMark();\n"
+	result = result.."    if (!hideOpen(\""..name.."\",str,len)) {allocDrop(); return 0;}\n"
+	showReadCJ = showHideCJ
+	result = result..showReadCE(name,struct)
+	showReadCJ = temp
+	result = result.."    if (!hideClose(str,len)) {allocDrop(); return 0;}\n"
+	result = result.."    allocKeep();\n"
+	result = result.."    return 1;\n"
+	return result.."}"
 end
-function showHideCF(v,ebr,sub,arg)
+function showHideEC(name,enum)
 	local result = ""
-	result = result.."if ("
-	if (#arg == 0) then
-		result = result.."!hideField(\""..v[1].."\",str,len) || "
+	result = result.."int hide"..name.."(enum "..name.." *val, const char *str, int *len)"
+	if prototype then result = result..";\n" else result = result.."\n{\n"
+	for i,v in ipairs(enum) do
+		result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..v.."\",str,len)) {*val = "..v.."; return 1;}\n"
 	end
-	for i,_ in ipairs(arg) do
-		result = result.."!hideStruct(\""..showShowCH(v[1],i).."\","..arg[i]..",\""..showShowCI(i,#arg).."\",str,len) || "
-	end
-	result = result.."!hide"..v[2].."(&ptr->"..v[1]..sub..",str,len)) {allocDrop(); return 0;}"..ebr.."\n"
-	return result
-end
-function showHideC(name,typ)
-	local result = ""
-	if (Enumz[name] ~= nil) then
-		result = result.."int hide"..name.."(enum "..name.." *val, const char *str, int *len)"
-		if prototype then result = result..";\n" else result = result.."\n{\n"
-		for i,v in ipairs(typ) do
-			result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..v.."\",str,len)) {*val = "..v.."; return 1;}\n"
-		end
-		result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..name.."s\",str,len)) {*val = "..name.."s; return 1;}\n"
-		result = result..showIndent(1).."return 0;\n"
-		result = result.."}" end
-	elseif (Structz[name] ~= nil) then
-		return showStreamC(name,typ,showHideCF,"int hide",", const char *str, int *len")
-	end
+	result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..name.."s\",str,len)) {*val = "..name.."s; return 1;}\n"
+	result = result..showIndent(1).."return 0;\n"
+	result = result.."}" end
 	return result
 end
 function showConstantCF(name,sub,list)
@@ -1400,6 +1264,7 @@ function showIfieldC(list,map)
 	result = result.."}\n"
 	return result
 end
+
 function showEnumHs(name,enum)
 	local result = "data "..name.." =\n"
 	for key,val in ipairs(enum) do
@@ -2302,7 +2167,7 @@ function showFuncC()
 	local result = ""
 	result = result..showCall(Enums,Enumz,showAllocC).."\n"
 	result = result..showCall(Enums,Enumz,showShowEC).."\n"
-	result = result..showCall(Enums,Enumz,showHideC).."\n"
+	result = result..showCall(Enums,Enumz,showHideEC).."\n"
 	for k,v in ipairs(Enums) do luaxSide(showCastLua(v,Enumz[v])) end
 	result = result..showCall(Constants,Constantz,showConstantC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
@@ -2313,7 +2178,7 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showCompC).."\n"
 	result = result..showCall(Structs,Structz,showSizeC).."\n"
 	result = result..showCall(Structs,Structz,showShowSC).."\n"
-	result = result..showCall(Structs,Structz,showHideC).."\n"
+	result = result..showCall(Structs,Structz,showHideSC).."\n"
 	result = result..showRstructC(Structs).."\n"
 	result = result..showWstructC(Structs).."\n"
 	result = result..showLstructC(Structs).."\n"

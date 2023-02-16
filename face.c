@@ -864,18 +864,6 @@ void showEnum(const char *typ, const char* val, char **str, int *siz)
 	free(tmp);
 	*siz += num;
 }
-void showStruct(const char* bef, int val, const char *aft, char **str, int *siz)
-{
-	char *tmp = 0;
-	int num;
-	if (asprintf(&tmp,"%s%d%s",bef,val,aft) < 0) ERRFNC(-1);
-	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
-	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
-	free(tmp);
-	*siz += num;
-}
 void showField(const char* val, char **str, int *siz, int arg, ...)
 {
 	char *tmp = 0;
@@ -1027,22 +1015,20 @@ int hideEnum(const char* typ, const char *val, const char *str, int *siz)
 	*siz += num;
 	return 1;
 }
-int hideStruct(const char* bef, int val, const char *aft, const char *str, int *siz)
+int hideField(const char *val, const char *str, int *siz, int arg, ...)
 {
 	char *tmp = 0;
+	char *temp = 0;
 	int num = -1;
-	if (asprintf(&tmp," %s %d %s%%n",bef,val,aft) < 0) ERRFNC(-1);
-	sscanf(str+*siz,tmp,&num);
-	if (num == -1) {printf("hideStruct\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
-	*siz += num;
-	free(tmp);
-	return 1;
-}
-int hideField(const char *val, const char *str, int *siz)
-{
-	char *tmp = 0;
-	int num = -1;
-	if (asprintf(&tmp," %s : %%n",val) < 0) ERRFNC(-1);
+	va_list args = {0};
+	if (asprintf(&tmp," %s",val) < 0) ERRFNC(-1);
+	va_start(args,arg);
+	for (int i = 0; i < arg; i++) {
+	if (asprintf(&temp,"%s [ %d ]",tmp,va_arg(args,int)) < 0) ERRFNC(-1);
+	free(tmp); tmp = temp;}
+	va_end(args);
+	if (asprintf(&temp,"%s : %%n",tmp) < 0) ERRFNC(-1);
+	free(tmp); tmp = temp;
 	sscanf(str+*siz,tmp,&num);
 	if (num == -1) {printf("hideField\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
 	*siz += num;
