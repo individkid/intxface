@@ -79,7 +79,7 @@ void writeNew(long long arg, int idx);
 void writeOld(float arg, int idx);
 void showEnum(const char *typ, const char* val, char **str, int *len);
 void showStruct(const char* bef, int val, const char *aft, char **str, int *len);
-void showField(const char* val, char **str, int *len);
+void showField(const char* val, char **str, int *siz, int arg, ...);
 void showOpen(const char* val, char **str, int *len);
 void showClose(char **str, int *len);
 void showChr(char val, char **str, int *len);

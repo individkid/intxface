@@ -5,6 +5,7 @@
 #include <sys/errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include <setjmp.h>
 #include <pthread.h>
 #include <fcntl.h>
@@ -875,11 +876,20 @@ void showStruct(const char* bef, int val, const char *aft, char **str, int *siz)
 	free(tmp);
 	*siz += num;
 }
-void showField(const char* val, char **str, int *siz)
+void showField(const char* val, char **str, int *siz, int arg, ...)
 {
 	char *tmp = 0;
+	char *temp = 0;
 	int num;
-	if (asprintf(&tmp,"%s:",val) < 0) ERRFNC(-1);
+	va_list args = {0};
+	if (asprintf(&tmp,"%s",val) < 0) ERRFNC(-1);
+	va_start(args,arg);
+	for (int i = 0; i < arg; i++) {
+	if (asprintf(&temp,"%s[%d]",tmp,va_arg(args,int)) < 0) ERRFNC(-1);
+	free(tmp); tmp = temp;}
+	va_end(args);
+	if (asprintf(&temp,"%s:",tmp) < 0) ERRFNC(-1);
+	free(tmp); tmp = temp;
 	num = strlen(tmp);
 	allocMem((void**)str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);

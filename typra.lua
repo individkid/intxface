@@ -79,7 +79,7 @@ Monitor = {
 	"showCompC",
 	"showAllocC",
 	"showAllocC",
-	"showShowC",
+	"showShowSC",
 	"showHideC",
 	"showEnumHs",
 	"showStructHs",
@@ -352,38 +352,38 @@ Expected = {
 	"{\n"..
 	"    showOpen(\"Struct1\",str,len);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        {showStruct(\"next[\",i,\"]:\",str,len); showStruct1(&ptr->next[i],str,len);}\n"..
+	"        {showField(\"next\",str,len,1,i); showStruct1(&ptr->next[i],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showStruct(\"field1[\",i1,\"]:\",str,len); showOld(ptr->field1[i1],str,len);}\n"..
+	"        {showField(\"field1\",str,len,1,i1); showOld(ptr->field1[i1],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        {showStruct(\"field2[\",i1,\"]:\",str,len); showNum(ptr->field2[i1],str,len);}\n"..
+	"        {showField(\"field2\",str,len,1,i1); showNum(ptr->field2[i1],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            {showStruct(\"field3[\",i1,\"]\",str,len); showStruct(\"[\",i2,\"]:\",str,len); showInt(ptr->field3[i1][i2],str,len);}\n"..
-	"    {showField(\"field4\",str,len); showStr(ptr->field4,str,len);}\n"..
+	"            {showField(\"field3\",str,len,2,i1,i2); showInt(ptr->field3[i1][i2],str,len);}\n"..
+	"    {showField(\"field4\",str,len,0); showStr(ptr->field4,str,len);}\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        {showStruct(\"field5[\",i,\"]:\",str,len); showInt(ptr->field5[i],str,len);}\n"..
-	"    {showField(\"field6\",str,len); showEnum1(ptr->field6,str,len);}\n"..
-	"    {showField(\"field7\",str,len); showEnum2(ptr->field7,str,len);}\n"..
+	"        {showField(\"field5\",str,len,1,i); showInt(ptr->field5[i],str,len);}\n"..
+	"    {showField(\"field6\",str,len,0); showEnum1(ptr->field6,str,len);}\n"..
+	"    {showField(\"field7\",str,len,0); showEnum2(ptr->field7,str,len);}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showField(\"field8\",str,len); showInt(ptr->field8,str,len);}}\n"..
+	"        {showField(\"field8\",str,len,0); showInt(ptr->field8,str,len);}}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showField(\"field9\",str,len); showInt(ptr->field9,str,len);}}\n"..
+	"        {showField(\"field9\",str,len,0); showInt(ptr->field9,str,len);}}\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        {showField(\"field10\",str,len); showInt(ptr->field10,str,len);}}\n"..
+	"        {showField(\"field10\",str,len,0); showInt(ptr->field10,str,len);}}\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        {showField(\"field11\",str,len); showInt(ptr->field11,str,len);}}\n"..
+	"        {showField(\"field11\",str,len,0); showInt(ptr->field11,str,len);}}\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        {showField(\"field12\",str,len); showInt(ptr->field12,str,len);}}\n"..
+	"        {showField(\"field12\",str,len,0); showInt(ptr->field12,str,len);}}\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        {showField(\"field13\",str,len); showInt(ptr->field13,str,len);}}\n"..
-	"    {showField(\"field14\",str,len); showInt(ptr->field14,str,len);}\n"..
+	"        {showField(\"field13\",str,len,0); showInt(ptr->field13,str,len);}}\n"..
+	"    {showField(\"field14\",str,len,0); showInt(ptr->field14,str,len);}\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        {showStruct(\"field15[\",i,\"]:\",str,len); showInt(ptr->field15[i],str,len);}\n"..
+	"        {showField(\"field15\",str,len,1,i); showInt(ptr->field15[i],str,len);}\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        {showStruct(\"field16[\",i,\"]:\",str,len); showStruct2(&ptr->field16[i],str,len);}\n"..
+	"        {showField(\"field16\",str,len,1,i); showStruct2(&ptr->field16[i],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showStruct(\"field17[\",i1,\"]:\",str,len); showStruct2(&ptr->field17[i1],str,len);}\n"..
+	"        {showField(\"field17\",str,len,1,i1); showStruct2(&ptr->field17[i1],str,len);}\n"..
 	"    showClose(str,len);\n"..
 	"}",
 	"int hideStruct1(struct Struct1 *ptr, const char *str, int *len)\n"..
