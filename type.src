@@ -871,11 +871,11 @@ end
 function showWriteC(name,struct)
 	local result = ""
 	local temp = showReadCJ
-	showReadCJ = showWriteCJ
 	version = "Write"
 	result = result.."void write"..name.."(struct "..name.." *ptr, int idx)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
+	showReadCJ = showWriteCJ
 	result = result..showReadCE(name,struct)
 	showReadCJ = temp
 	return result.."}"
@@ -890,11 +890,11 @@ end
 function showFreeC(name,struct)
 	local result = ""
 	local temp = showReadCI
-	showReadCI = showFreeCI
 	version = "Free"
 	result = result.."void free"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
+	showReadCI = showFreeCI
 	result = result..showReadCE(name,struct)
 	showReadCI = temp
 	return result.."}"
@@ -957,12 +957,12 @@ end
 function showRandC(name,struct)
 	local result = ""
 	local temp = showReadCJ
-	showReadCJ = showRandCJ
 	version = "Rand"
 	result = result.."void rand"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
 	result = result.."    free"..name.."(ptr);\n"
+	showReadCJ = showRandCJ
 	result = result..showReadCE(name,struct)
 	showReadCJ = temp
 	return result.."}"
@@ -981,43 +981,50 @@ end
 function showCompC(name,struct)
 	local result = ""
 	local temp = showReadCJ
-	showReadCJ = showCompCJ
 	version = "Comp"
 	result = result.."int comp"..name.."(struct "..name.." *ptr, struct "..name.." *cmp)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
+	showReadCJ = showCompCJ
 	result = result..showReadCE(name,struct)
 	showReadCJ = temp
 	result = result.."    return 1;\n"
 	return result.."}"
 end
-function showSizeCF(v,ebr,sub)
-	local result = ""
-	if (Enumz[v[2]]~=nil) then
-		result = result.."result = result + sizeof(int);"..ebr.."\n"
-	elseif (v[2] == "Str") then
-		result = result.."result = result + strlen(ptr->"..v[1]..sub..") + 1;"..ebr.."\n"
-	elseif (v[2] == "Dat") then
-		result = result.."result = result + *(int*)(ptr->"..v[1]..sub..") + sizeof(int);"..ebr.."\n"
-	elseif (Structz[v[2]]~=nil) then
-		result = result.."result = result + size"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
-	elseif (v[2] == "Chr") then
-		result = result.."result = result + sizeof(char);"..ebr.."\n"
-	elseif (v[2] == "Int") then
-		result = result.."result = result + sizeof(int);"..ebr.."\n"
-	elseif (v[2] == "New") then
-		result = result.."result = result + sizeof(long long);"..ebr.."\n"
-	elseif (v[2] == "Num") then
-		result = result.."result = result + sizeof(double);"..ebr.."\n"
-	elseif (v[2] == "Old") then
-		result = result.."result = result + sizeof(float);"..ebr.."\n"
-	else
-		result = result..ebr.."; // "..showAny(v).."\n"
+function showSizeCJ(pre,field,sub,post)
+	if (Enumz[field[2]]~=nil) then
+		coroutine.yield(pre.."result = result + sizeof(int);"..post)
+	elseif (field[2] == "Str") then
+		coroutine.yield(pre.."result = result + strlen(ptr->"..field[1]..sub..") + 1;"..post)
+	elseif (field[2] == "Dat") then
+		coroutine.yield(pre.."result = result + *(int*)(ptr->"..field[1]..sub..") + sizeof(int);"..post)
+	elseif (Structz[field[2]]~=nil) then
+		coroutine.yield(pre.."result = result + size"..field[2].."(&ptr->"..field[1]..sub..");"..post)
+	elseif (field[2] == "Chr") then
+		coroutine.yield(pre.."result = result + sizeof(char);"..post)
+	elseif (field[2] == "Int") then
+		coroutine.yield(pre.."result = result + sizeof(int);"..post)
+	elseif (field[2] == "New") then
+		coroutine.yield(pre.."result = result + sizeof(long long);"..post)
+	elseif (field[2] == "Num") then
+		coroutine.yield(pre.."result = result + sizeof(double);"..post)
+	elseif (field[2] == "Old") then
+		coroutine.yield(pre.."result = result + sizeof(float);"..post)
 	end
-	return result
 end
 function showSizeC(name,struct)
-	return showStreamC(name,struct,showSizeCF,"int size","")
+	local result = ""
+	local temp = showReadCJ
+	version = "Size"
+	result = result.."int size"..name.."(struct "..name.." *ptr)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result.."    int result = 0;\n"
+	showReadCJ = showSizeCJ
+	result = result..showReadCE(name,struct)
+	showReadCJ = temp
+	result = result.."    return result;\n"
+	return result.."}"
 end
 function showShowCH(pre,i)
 	local result = ""
