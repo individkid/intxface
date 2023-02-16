@@ -364,6 +364,135 @@ function showIndent(depth)
 	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
 	return indent
 end
+function showCondC(struct,dset)
+	local cond = ""
+	local terms = 0
+	for i,dim in ipairs(listSort(dset)) do
+		local set = dset[dim]
+		local term = ""
+		local factors = 0
+		for idx,fld in ipairs(struct) do
+			if (fld[1] == dim) then
+				for j,val in ipairs(listSort(set)) do
+					local factor = "ptr->"..struct[idx][1].." == "..val
+					if (factors > 0) then term = term.." || " end
+					term = term.."("..factor..")"
+					factors = factors + 1
+				end
+			end
+		end
+		if (terms > 0) then cond = cond.." && " end
+		if (factors > 1) then
+			cond = cond.."("..term..")"
+		else
+			cond = cond..term
+		end
+		terms = terms + 1
+	end
+	if (terms == 0) then
+		cond = "1"
+	elseif (terms > 1) then
+		cond = "("..cond..")"
+	end
+	return cond
+end
+function showStreamCF(name,field,lim)
+	local result = ""
+	result = result.."alloc"..name.."(&ptr->"..field..","..lim..");"
+	return result
+end
+function showStreamC(name,struct,show,pre,post)
+	local result = ""
+	result = result..pre..name.."(struct "..name.." *ptr"..post..")"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	if (show == showSizeCF) then
+		result = result..showIndent(1).."int result = 0;\n"
+	end
+	if (show == showRandCF or show == sshowReadCF) then
+		result = result..showIndent(1).."free"..name.."(ptr);\n"
+	end
+	if (show == showShowCF) then
+		result = result..showIndent(1).."showOpen(\""..name.."\",str,len);\n"
+	end
+	if (show == showHideCF) then
+		result = result..showIndent(1).."allocMark();\n"
+		result = result..showIndent(1).."if (!hideOpen(\""..name.."\",str,len)) {allocDrop(); return 0;}\n"
+	end
+	local all = structTagSpace(struct)
+	for k,v in ipairs(struct) do
+		local depth = 1
+		local plaid = v[3]
+		local fields = listSort(plaid)
+		local cond = showCondC(struct,plaid)
+		local sub = nil
+		local arg = nil
+		local lim = nil
+		local ebr = ""
+		if (cond ~= "1") then
+			result = result..showIndent(depth)
+			result = result.."if "..cond.." {".."\n"
+			ebr = ebr.."}"
+			depth = depth + 1
+		end
+		if (type(v[4]) == "table") then
+			sub = ""
+			arg = {}
+			for key,val in ipairs(v[4]) do
+				result = result..showIndent(depth)
+				result = result.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)\n"
+				sub = sub.."[i"..key.."]"
+				arg[#arg+1] = "i"..key
+				depth = depth + 1
+			end
+		elseif (type(v[4]) == "number") then
+			sub = ""
+			arg = {}
+			lim = v[4]
+		elseif (type(v[4]) == "string") then
+			sub = ""
+			arg = {}
+			lim = "ptr->"..v[4]
+		elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
+			sub = ""
+		end
+		if lim then
+			if (show == showRandCF) or (show == showHideCF) then
+				result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..","..lim..");\n"
+			end
+			result = result..showIndent(depth)
+			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
+			sub = "[i]"
+			arg = {"i"}
+			depth = depth + 1
+			result = result..showIndent(depth)
+		else
+			result = result..showIndent(depth)
+		end
+		if (sub ~= nil) then
+			result = result..show(v,ebr,sub,arg)
+		else
+			result = result..ebr.."// "..showAny(v).."\n"
+		end
+	end
+	if (show == showCompCF) then
+		result = result..showIndent(1).."return 1;\n"
+	end
+	if (show == showSizeCF) then
+		result = result..showIndent(1).."return result;\n"
+	end
+	if (show == showShowCF) then
+		result = result..showIndent(1).."showClose(str,len);\n"
+	end
+	if (show == showHideCF) then
+		result = result..showIndent(1).."if (!hideClose(str,len)) {allocDrop(); return 0;}\n"
+		result = result..showIndent(1).."allocKeep();\n"
+		result = result..showIndent(1).."return 1;\n"
+	end
+	result = result.."}"
+	return result
+end
+
 function overLap(val,field)
 	-- assume there are no disjoint dimensions
 	local share = true
@@ -617,11 +746,15 @@ function showReadCI(pre,field,post)
 		end
 		showReadCJ(pre..indent,field,sub,post)
 	elseif (type(field[4]) == "number") then
-		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..","..field[4]..");")
+		if (version == "Read") or (version == "Rand") then
+			coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..","..field[4]..");")
+		end
 		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
 		showReadCJ(pre.."    ",field,"[i]",post)
 	elseif (type(field[4]) == "string") then
-		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",ptr->"..field[4]..");")
+		if (version == "Read") or (version == "Rand") then
+			coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",ptr->"..field[4]..");")
+		end
 		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
 		showReadCJ(pre.."    ",field,"[i]",post)
 	end
@@ -658,7 +791,11 @@ function showReadCH(field)
 end
 function showReadCG(second)
 	for id,fd in ipairs(second) do
-		showReadCH(fd)
+		if ((type(fd[4]) == "number") or
+			(type(fd[4]) == "string") or
+			not (version == "Free")) then
+			showReadCH(fd)
+		end
 	end
 end
 function showReadCF(first,second,struct)
@@ -696,20 +833,26 @@ function showReadCF(first,second,struct)
 	end
 	showReadCG(second)
 end
-function showReadC(name,struct)
+function showReadCE(name,struct)
 	local result = ""
 	local first = {}
 	local second = {}
 	local wrap = coroutine.wrap(showReadCF)
 	local line = wrap(first,second,struct)
-	result = result.."void read"..name.."(struct "..name.." *ptr, int idx)"
-	if prototype then return result..";" end
-	result = result.."\n{\n"
-	result = result.."    free"..name.."(ptr);\n"
 	while line do
 		result = result..line.."\n"
 		line = wrap()
 	end
+	return result
+end
+function showReadC(name,struct)
+	local result = ""
+	version = "Read"
+	result = result.."void read"..name.."(struct "..name.." *ptr, int idx)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result.."    free"..name.."(ptr);\n"
+	result = result..showReadCE(name,struct)
 	return result.."}"
 end
 function showWriteCJ(pre,field,sub,post)
@@ -725,277 +868,36 @@ function showWriteCJ(pre,field,sub,post)
 		coroutine.yield(pre.."write"..field[2].."(ptr->"..field[1]..sub..",idx);"..post)
 	end	
 end
-function showWriteCI(pre,field,post)
-	local count = 0
-	if (type(field[4]) == "table") then
-		count = sizeIter(field[4])
-	end
-	if (type(field[4]) == "table") and (count == 0) then
-		showWriteCJ(pre,field,"",post)
-	elseif (type(field[4]) == "table") then
-		local indent = ""
-		local sub = ""
-		for key,val in ipairs(field[4]) do
-			sub = sub.."[i"..key.."]"
-			coroutine.yield(pre..indent.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)")
-			indent = indent.."    "
-		end
-		showWriteCJ(pre..indent,field,sub,post)
-	elseif (type(field[4]) == "number") then
-		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
-		showWriteCJ(pre.."    ",field,"[i]",post)
-	elseif (type(field[4]) == "string") then
-		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
-		showWriteCJ(pre.."    ",field,"[i]",post)
-	end
-end
-function showWriteCH(field)
-	local condit = ""
-	local seper = ""
-	local count = sizeIter(field[3])
-	for key,val in sortIter(field[3]) do
-		local cond = ""
-		local sep = ""
-		local cnt = sizeIter(val)
-		for ky,vl in sortIter(val) do
-			if (cnt > 1) or (count > 1) then
-				cond = cond..sep.."(ptr->"..key.." == "..ky..")"
-			else
-				cond = cond..sep.."ptr->"..key.." == "..ky
-			end
-			sep = " || "
-		end
-		if (cnt > 1) then
-			condit = condit..seper.."("..cond..")"
-		else
-			condit = condit..seper..cond
-		end
-		seper = " && "
-	end
-	if (count > 0) then
-		coroutine.yield("    if ("..condit..") {")
-		showWriteCI("        ",field,"}")
-	else
-		showWriteCI("    ",field,"")
-	end
-end
-function showWriteCG(second)
-	for id,fd in ipairs(second) do
-		showWriteCH(fd)
-	end
-end
-function showWriteCF(first,second,struct)
-	for idx,fld in ipairs(struct) do
-		local firster = overAny(first,fld)
-		local seconder = overAny(second,fld)
-		local secondee = equalAll(second,fld)
-		if #second == 0 or secondee then
-			-- coroutine.yield("// 1")
-			addTo(second,fld)
-		elseif #first == 0 and seconder then
-			-- coroutine.yield("// 2")
-			showWriteCG(second)
-			second = {}
-			addTo(second,fld)
-		elseif #first == 0 then
-			-- coroutine.yield("// 3")
-			showWriteCG(second)
-			second = {}
-			addTo(first,fld)
-			addTo(second,fld)
-		elseif not firster then
-			-- coroutine.yield("// 4")
-			showWriteCG(second)
-			second = {}
-			addTo(first,fld)
-			addTo(second,fld)
-		else
-			-- coroutine.yield("// 5")
-			showWriteCG(second)
-			first = {}
-			second = {}
-			addTo(second,fld)
-		end
-	end
-	showWriteCG(second)
-end
 function showWriteC(name,struct)
 	local result = ""
-	local first = {}
-	local second = {}
-	local wrap = coroutine.wrap(showWriteCF)
-	local line = wrap(first,second,struct)
+	local temp = showReadCJ
+	showReadCJ = showWriteCJ
+	version = "Write"
 	result = result.."void write"..name.."(struct "..name.." *ptr, int idx)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	while line do
-		result = result..line.."\n"
-		line = wrap()
-	end
+	result = result..showReadCE(name,struct)
+	showReadCJ = temp
 	return result.."}"
 end
-function showCondC(struct,dset)
-	local cond = ""
-	local terms = 0
-	for i,dim in ipairs(listSort(dset)) do
-		local set = dset[dim]
-		local term = ""
-		local factors = 0
-		for idx,fld in ipairs(struct) do
-			if (fld[1] == dim) then
-				for j,val in ipairs(listSort(set)) do
-					local factor = "ptr->"..struct[idx][1].." == "..val
-					if (factors > 0) then term = term.." || " end
-					term = term.."("..factor..")"
-					factors = factors + 1
-				end
-			end
-		end
-		if (terms > 0) then cond = cond.." && " end
-		if (factors > 1) then
-			cond = cond.."("..term..")"
-		else
-			cond = cond..term
-		end
-		terms = terms + 1
+function showFreeCI(pre,field,post)
+	if (type(field[4]) == "number") then
+		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",0);"..post)
+	elseif (type(field[4]) == "string") then
+		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",0);"..post)
 	end
-	if (terms == 0) then
-		cond = "1"
-	elseif (terms > 1) then
-		cond = "("..cond..")"
-	end
-	return cond
-end
-function showStreamCF(name,field,lim)
-	local result = ""
-	result = result.."alloc"..name.."(&ptr->"..field..","..lim..");"
-	return result
-end
-function showStreamC(name,struct,show,pre,post)
-	local result = ""
-	result = result..pre..name.."(struct "..name.." *ptr"..post..")"
-	if prototype then return result..";" end
-	result = result.."\n{\n"
-	if (show == showSizeCF) then
-		result = result..showIndent(1).."int result = 0;\n"
-	end
-	if (show == showRandCF or show == sshowReadCF) then
-		result = result..showIndent(1).."free"..name.."(ptr);\n"
-	end
-	if (show == showShowCF) then
-		result = result..showIndent(1).."showOpen(\""..name.."\",str,len);\n"
-	end
-	if (show == showHideCF) then
-		result = result..showIndent(1).."allocMark();\n"
-		result = result..showIndent(1).."if (!hideOpen(\""..name.."\",str,len)) {allocDrop(); return 0;}\n"
-	end
-	local all = structTagSpace(struct)
-	for k,v in ipairs(struct) do
-		local depth = 1
-		local plaid = v[3]
-		local fields = listSort(plaid)
-		local cond = showCondC(struct,plaid)
-		local sub = nil
-		local arg = nil
-		local lim = nil
-		local ebr = ""
-		if (show==showFreeCF) and (Structz[v[2]]==nil) and (v[2] ~= "Str") and (v[2] ~="Dat") and
-			(type(v[4]) ~= "number") and (type(v[4]) ~= "string") then
-			cond = "1"
-		end
-		if (cond ~= "1") then
-			result = result..showIndent(depth)
-			result = result.."if "..cond.." {".."\n"
-			ebr = ebr.."}"
-			depth = depth + 1
-		end
-		if (type(v[4]) == "table") and
-			(show ~= showFreeCF or Structz[v[2]]~=nil) then
-			sub = ""
-			arg = {}
-			for key,val in ipairs(v[4]) do
-				result = result..showIndent(depth)
-				result = result.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)\n"
-				sub = sub.."[i"..key.."]"
-				arg[#arg+1] = "i"..key
-				depth = depth + 1
-			end
-		elseif (type(v[4]) == "number") and
-			(show ~= showFreeCF or Structz[v[2]]~=nil) then
-			sub = ""
-			arg = {}
-			lim = v[4]
-		elseif (type(v[4]) == "string") and
-			(show ~= showFreeCF or Structz[v[2]]~=nil) then
-			sub = ""
-			arg = {}
-			lim = "ptr->"..v[4]
-		elseif (type(v[4]) == "number") or (type(v[4]) == "string") or
-			(v[2] == "Str" and show == showFreeCF) or
-			(v[2] == "Dat" and show == showFreeCF) then
-			sub = ""
-		end
-		if lim then
-			if (show == showRandCF) or (show == showHideCF) then
-				result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..","..lim..");\n"
-			end
-			result = result..showIndent(depth)
-			result = result.."for (int i = 0; i < "..lim.."; i++)\n"
-			sub = "[i]"
-			arg = {"i"}
-			depth = depth + 1
-			result = result..showIndent(depth)
-		elseif (sub ~= nil) or (show ~= showFreeCF) then
-			result = result..showIndent(depth)
-		end
-		if (sub ~= nil) then
-			result = result..show(v,ebr,sub,arg)
-		elseif (show ~= showFreeCF) then
-			result = result..ebr.."// "..showAny(v).."\n"
-		end
-	end
-	if (show == showCompCF) then
-		result = result..showIndent(1).."return 1;\n"
-	end
-	if (show == showSizeCF) then
-		result = result..showIndent(1).."return result;\n"
-	end
-	if (show == showShowCF) then
-		result = result..showIndent(1).."showClose(str,len);\n"
-	end
-	if (show == showHideCF) then
-		result = result..showIndent(1).."if (!hideClose(str,len)) {allocDrop(); return 0;}\n"
-		result = result..showIndent(1).."allocKeep();\n"
-		result = result..showIndent(1).."return 1;\n"
-	end
-	result = result.."}"
-	return result
-end
-function showFreeCF(v,ebr,sub)
-	local result = ""
-	if (Structz[v[2]]~=nil) then
-		local depth = 1; while (string.sub(ebr,depth,1) == "}") do depth = depth + 1 end
-		result = result.."free"..v[2].."("
-		if (sub ~= "") or (type(v[4]) == "table") then result = result.."&" end
-		result = result.."ptr->"..v[1]..sub..");"
-		if (type(v[4]) == "number") or (type(v[4]) == "string") then
-			result = result.."\n"
-			result = result..showIndent(depth).."alloc"..v[2].."(&ptr->"..v[1]..",0);\n"
-		end
-		result = result..ebr.."\n"
-	elseif (type(v[4]) == "number") or (type(v[4]) == "string") then
-		result = result.."alloc"..v[2].."(&ptr->"..v[1]..",0);"..ebr.."\n"
-	elseif (v[2] == "Str") then
-		result = result.."assignStr(&ptr->"..v[1]..",0);"..ebr.."\n"
-	elseif (v[2] == "Dat") then
-		result = result.."assignDat(&ptr->"..v[1]..",0);"..ebr.."\n"
-	else
-		result = result..ebr.." // "..showAny(v).."\n"
-	end
-	return result
 end
 function showFreeC(name,struct)
-	return showStreamC(name,struct,showFreeCF,"void free","")
+	local result = ""
+	local temp = showReadCI
+	showReadCI = showFreeCI
+	version = "Free"
+	result = result.."void free"..name.."(struct "..name.." *ptr)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result..showReadCE(name,struct)
+	showReadCI = temp
+	return result.."}"
 end
 function showAllocC(name,typ)
 	local result = ""
@@ -1027,53 +929,67 @@ randInt = 10
 randNew = 100
 randNum = 0.1
 randOld = 0.2
-function showRandCF(v,ebr,sub)
-	local result = ""
-	if (Enumz[v[2]]~=nil) then
-		result = result.."ptr->"..v[1]..sub.." = "..randInt.."%"..v[2].."s;"..ebr.."\n"
+function showRandCJ(pre,field,sub,post)
+	if (Enumz[field[2]]~=nil) then
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt.."%"..field[2].."s;"..post)
+			-- "{int temp = readInt(idx); ".."ptr->"..field[1]..sub.." = temp;}"..post)
 		randInt = randInt + 1;
-	elseif (Structz[v[2]]~=nil) then
-		result = result.."rand"..v[2].."(&ptr->"..v[1]..sub..");"..ebr.."\n"
-	elseif (v[2] == "Chr") then
-		result = result.."ptr->"..v[1]..sub.." = "..randChr..";"..ebr.."\n"
-		randChr = randChr + 1;
-	elseif (v[2] == "Int") then
-		result = result.."ptr->"..v[1]..sub.." = "..randInt..";"..ebr.."\n"
+	elseif (Structz[field[2]]~=nil) then
+		coroutine.yield(pre.."rand"..field[2].."(&ptr->"..field[1]..sub..");"..post)
+	elseif (field[2] == "Int") then
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt..";"..post)
 		randInt = randInt + 1;
-	elseif (v[2] == "New") then
-		result = result.."ptr->"..v[1]..sub.." = "..randNew..";"..ebr.."\n"
+	elseif (field[2] == "New") then
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randNew..";"..post)
 		randNew = randNew + 1;
-	elseif (v[2] == "Num") then
-		result = result.."ptr->"..v[1]..sub.." = "..randNum..";"..ebr.."\n"
+	elseif (field[2] == "Num") then
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randNum..";"..post)
 		randNum = randNum + 1.0
-	elseif (v[2] == "Old") then
-		result = result.."ptr->"..v[1]..sub.." = "..randOld..";"..ebr.."\n"
-		randNum = randNum + 1.0
-	elseif (v[2] == "Str") then
-		result = result.."{const char *temp = \"hello ok again\"; "
-		result = result.."assignStr(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
-	elseif (v[2] == "Dat") then
-		result = result.."{const char *temp = \"\\x0e\\x00\\x00\\x00hello ok again\"; "
-		result = result.."assignDat(&ptr->"..v[1]..sub..",temp);}"..ebr.."\n"
-	else
-		result = result..ebr.." // "..showAny(v).."\n"
-	end
-	return result
+	elseif (field[2] == "Old") then
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randOld..";"..post)
+		randOld = randOld + 1.0
+	elseif (field[2] == "Str") then
+		coroutine.yield(pre.."{const char *temp = \"hello ok again\"; assignStr(&ptr->"..field[1]..sub..",temp);}"..post)
+	elseif (field[2] == "Dat") then
+		coroutine.yield(pre.."{const char *temp = \"\\x0e\\x00\\x00\\x00hello ok again\"; assignDat(&ptr->"..field[1]..sub..",temp);}"..post)
+	end	
 end
-function showCompCF(v,ebr,sub)
+function showRandC(name,struct)
 	local result = ""
-	if (Structz[v[2]]~=nil) then
-		result = result.."if (!comp"..v[2].."(&ptr->"..v[1]..sub..", &cmp->"..v[1]..sub..")) return 0;"..ebr.."\n"
-	elseif (v[2] == "Chr") or (v[2] == "Int") or (v[2] == "New") or (v[2] == "Num") or (v[2] == "Old") or (Enumz[v[2]]~=nil) then
-		result = result.."if (ptr->"..v[1]..sub.." != cmp->"..v[1]..sub..") return 0;"..ebr.."\n"
-	elseif (v[2] == "Str") then
-		result = result.."if (strcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
-	elseif (v[2] == "Dat") then
-		result = result.."if (memcmp(ptr->"..v[1]..sub..",cmp->"..v[1]..sub..",*(int*)ptr->"..v[1]..sub..") != 0) return 0;"..ebr.."\n"
-	else
-		result = result..ebr.."; // "..showAny(v).."\n"
+	local temp = showReadCJ
+	showReadCJ = showRandCJ
+	version = "Rand"
+	result = result.."void rand"..name.."(struct "..name.." *ptr)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result.."    free"..name.."(ptr);\n"
+	result = result..showReadCE(name,struct)
+	showReadCJ = temp
+	return result.."}"
+end
+function showCompCJ(pre,field,sub,post)
+	if (Structz[field[2]]~=nil) then
+		coroutine.yield(pre.."if (!comp"..field[2].."(&ptr->"..field[1]..sub..", &cmp->"..field[1]..sub..")) return 0;"..post)
+	elseif (field[2] == "Chr") or (field[2] == "Int") or (field[2] == "New") or (field[2] == "Num") or (field[2] == "Old") or (Enumz[field[2]]~=nil) then
+		coroutine.yield(pre.."if (ptr->"..field[1]..sub.." != cmp->"..field[1]..sub..") return 0;"..post)
+	elseif (field[2] == "Str") then
+		coroutine.yield(pre.."if (strcmp(ptr->"..field[1]..sub..",cmp->"..field[1]..sub..") != 0) return 0;"..post)
+	elseif (field[2] == "Dat") then
+		coroutine.yield(pre.."if (memcmp(ptr->"..field[1]..sub..",cmp->"..field[1]..sub..",*(int*)ptr->"..field[1]..sub..") != 0) return 0;"..post)
 	end
-	return result
+end
+function showCompC(name,struct)
+	local result = ""
+	local temp = showReadCJ
+	showReadCJ = showCompCJ
+	version = "Comp"
+	result = result.."int comp"..name.."(struct "..name.." *ptr, struct "..name.." *cmp)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result..showReadCE(name,struct)
+	showReadCJ = temp
+	result = result.."    return 1;\n"
+	return result.."}"
 end
 function showSizeCF(v,ebr,sub)
 	local result = ""
@@ -1099,12 +1015,6 @@ function showSizeCF(v,ebr,sub)
 		result = result..ebr.."; // "..showAny(v).."\n"
 	end
 	return result
-end
-function showRandC(name,struct)
-	return showStreamC(name,struct,showRandCF,"void rand","")
-end
-function showCompC(name,struct)
-	return showStreamC(name,struct,showCompCF,"int comp",", struct "..name.." *cmp")
 end
 function showSizeC(name,struct)
 	return showStreamC(name,struct,showSizeCF,"int size","")
