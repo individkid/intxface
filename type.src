@@ -620,15 +620,11 @@ function showReadCI(pre,field,post)
 		end
 		showReadCJ(pre..indent,field,sub,arg,post)
 	elseif (type(field[4]) == "number") then
-		if (version == "Read") or (version == "Rand") or (version == "Hide") then
-			coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..","..field[4]..");")
-		end
+		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..","..field[4]..");")
 		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
 		showReadCJ(pre.."    ",field,"[i]","1,i",post)
 	elseif (type(field[4]) == "string") then
-		if (version == "Read") or (version == "Rand") or (version == "Hide") then
-			coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",ptr->"..field[4]..");")
-		end
+		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",ptr->"..field[4]..");")
 		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
 		showReadCJ(pre.."    ",field,"[i]","1,i",post)
 	end
@@ -665,11 +661,7 @@ function showReadCH(field)
 end
 function showReadCG(second)
 	for id,fd in ipairs(second) do
-		if ((type(fd[4]) == "number") or
-			(type(fd[4]) == "string") or
-			not (version == "Free")) then
-			showReadCH(fd)
-		end
+		showReadCH(fd)
 	end
 end
 function showReadCF(first,second,struct)
@@ -721,7 +713,6 @@ function showReadCE(name,struct)
 end
 function showReadC(name,struct)
 	local result = ""
-	version = "Read"
 	result = result.."void read"..name.."(struct "..name.." *ptr, int idx)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
@@ -742,16 +733,41 @@ function showWriteCJ(pre,field,sub,arg,post)
 		coroutine.yield(pre.."write"..field[2].."(ptr->"..field[1]..sub..",idx);"..post)
 	end	
 end
+function showWriteCI(pre,field,post)
+	local count = 0
+	if (type(field[4]) == "table") then
+		count = sizeIter(field[4])
+	end
+	if (type(field[4]) == "table") and (count == 0) then
+		showWriteCJ(pre,field,"","0",post)
+	elseif (type(field[4]) == "table") then
+		local indent = ""
+		local sub = ""
+		local arg = ""..#field[4]
+		for key,val in ipairs(field[4]) do
+			sub = sub.."[i"..key.."]"
+			arg = arg..",i"..key
+			coroutine.yield(pre..indent.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)")
+			indent = indent.."    "
+		end
+		showWriteCJ(pre..indent,field,sub,arg,post)
+	elseif (type(field[4]) == "number") then
+		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
+		showWriteCJ(pre.."    ",field,"[i]","1,i",post)
+	elseif (type(field[4]) == "string") then
+		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
+		showWriteCJ(pre.."    ",field,"[i]","1,i",post)
+	end
+end
 function showWriteC(name,struct)
 	local result = ""
-	local temp = showReadCJ
-	version = "Write"
+	local temp = showReadCI
 	result = result.."void write"..name.."(struct "..name.." *ptr, int idx)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	showReadCJ = showWriteCJ
+	showReadCI = showWriteCI
 	result = result..showReadCE(name,struct)
-	showReadCJ = temp
+	showReadCI = temp
 	return result.."}"
 end
 function showFreeCI(pre,field,post)
@@ -761,16 +777,23 @@ function showFreeCI(pre,field,post)
 		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",0);"..post)
 	end
 end
+function showFreeCG(second)
+	for id,fd in ipairs(second) do
+		if ((type(fd[4]) == "number") or
+			(type(fd[4]) == "string")) then
+			showReadCH(fd)
+		end
+	end
+end
 function showFreeC(name,struct)
 	local result = ""
-	local temp = showReadCI
-	version = "Free"
+	local temp = table.pack(showReadCG,showReadCI)
 	result = result.."void free"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	showReadCI = showFreeCI
+	showReadCG,showReadCI = showFreeCG,showFreeCI
 	result = result..showReadCE(name,struct)
-	showReadCI = temp
+	showReadCG,showReadCI = table.unpack(temp)
 	return result.."}"
 end
 function showAllocC(name,typ)
@@ -831,7 +854,6 @@ end
 function showRandC(name,struct)
 	local result = ""
 	local temp = showReadCJ
-	version = "Rand"
 	result = result.."void rand"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
@@ -854,14 +876,13 @@ function showCompCJ(pre,field,sub,arg,post)
 end
 function showCompC(name,struct)
 	local result = ""
-	local temp = showReadCJ
-	version = "Comp"
+	local temp = table.pack(showReadCI,showWriteCJ)
 	result = result.."int comp"..name.."(struct "..name.." *ptr, struct "..name.." *cmp)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	showReadCJ = showCompCJ
+	showReadCI,showWriteCJ = showWriteCI,showCompCJ
 	result = result..showReadCE(name,struct)
-	showReadCJ = temp
+	showReadCI,showWriteCJ = table.unpack(temp)
 	result = result.."    return 1;\n"
 	return result.."}"
 end
@@ -888,15 +909,14 @@ function showSizeCJ(pre,field,sub,arg,post)
 end
 function showSizeC(name,struct)
 	local result = ""
-	local temp = showReadCJ
-	version = "Size"
+	local temp = table.pack(showReadCI,showWriteCJ)
 	result = result.."int size"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
 	result = result.."    int result = 0;\n"
-	showReadCJ = showSizeCJ
+	showReadCI,showWriteCJ = showWriteCI,showSizeCJ
 	result = result..showReadCE(name,struct)
-	showReadCJ = temp
+	showReadCI,showWriteCJ = table.unpack(temp)
 	result = result.."    return result;\n"
 	return result.."}"
 end
@@ -922,15 +942,14 @@ function showShowCJ(pre,field,sub,arg,post)
 end
 function showShowSC(name,struct)
 	local result = ""
-	local temp = showReadCJ
-	version = "Show"
+	local temp = table.pack(showReadCI,showWriteCJ)
 	result = result.."void show"..name.."(struct "..name.." *ptr, char **str, int *len)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
 	result = result.."    showOpen(\""..name.."\",str,len);\n"
-	showReadCJ = showShowCJ
+	showReadCI,showWriteCJ = showWriteCI,showShowCJ
 	result = result..showReadCE(name,struct)
-	showReadCJ = temp
+	showReadCI,showWriteCJ = table.unpack(temp)
 	result = result.."    showClose(str,len);\n"
 	return result.."}"
 end
@@ -940,7 +959,6 @@ end
 function showHideSC(name,struct)
 	local result = ""
 	local temp = showReadCJ
-	version = "Hide"
 	result = result.."int hide"..name.."(struct "..name.." *ptr, const char *str, int *len)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
