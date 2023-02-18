@@ -1310,6 +1310,296 @@ function showCodeHs(name,enum)
 	result = result.."--"
 	return result
 end
+function howStructHsK(field)
+	local result = ""
+	local separate = " "
+	for key,val in sortIter(field[3]) do
+		result = result..separate..key..":"
+		separate = ";"
+		local sep = ""
+		for ky,vl in sortIter(val) do
+			result = result..sep..ky
+			sep = ","
+		end
+	end
+	return result
+end
+function howStructHsJ(name,pre,post)
+	local result = ""
+	if (name == "Chr") and language then
+		result = result..pre.."Character"..post
+	elseif (name == "Chr") then
+		result = result..pre.."Char"..post
+	elseif (name == "Int") and language then
+		result = result..pre.."Int32"..post
+	elseif (name == "Int") then
+		result = result..pre.."Int"..post
+	elseif (name == "New") and language then
+		result = result..pre.."Int64"..post
+	elseif (name == "New") then
+		result = result..pre.."Integer"..post
+	elseif (name == "Num") then
+		result = result..pre.."Double"..post
+	elseif (name == "Old") then
+		result = result..pre.."Float"..post
+	elseif (name == "Str") then
+		result = result..pre.."String"..post
+	elseif (name == "Dat") then
+		result = result..pre.."Dat"..post
+	else
+		result = result..pre..name..post
+	end
+	return result
+end
+function howStructHsI(val)
+	local result = ""
+	local pre = ""
+	local post = ""
+	if ((type(val[4]) == "table") and (#val[4] > 0)) then
+		local count = 1
+		while (count <= #val[4]) do
+			pre = pre.."["
+			post = post.."]"
+			count = count + 1
+		end
+	end
+	if (type(val[4]) == "number") or (type(val[4]) == "string") then
+		pre = "["
+		post = "]"
+	end
+	result = result..howStructHsJ(val[2],pre,post)
+	return result
+end
+function howStructHsH(pre,field,mid,post)
+	coroutine.yield(pre..howStructHsI(field)..mid.." -- "..field[1]..post)
+end
+function howStructHsG(pre,mid,second)
+	local last = #second
+	local post = ""
+	if #second > 0 then 
+		post = showStructCK(second[1])
+	end
+	if #second > 1 then
+		local space = "    "
+		if (mid == "") then
+			coroutine.yield("data "..pre.." = "..pre.." --"..post)
+		else
+			coroutine.yield("    "..pre.." -- "..post)
+			space = space.."    "
+		end
+		for id,fd in ipairs(second) do
+			if (id == last) then
+				howStructHsH(space,fd,mid,"")
+			else
+				howStructHsH(space,fd,"","")
+			end
+		end
+	else
+		for id,fd in ipairs(second) do
+			howStructHsH("    "..pre.." ",fd,mid," --"..post)
+		end
+	end
+end     
+function howStructHsF(name,struct,extra)
+	local first = {}
+	local second = {}
+	local index = 1
+	local outer = 1
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("-- 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			-- coroutine.yield("-- 2")
+			howStructHsG(name.."A"..index,"",second)
+			extra[#extra+1] = name.."A"..index
+			coroutine.yield("    deriving (Eq)")
+			second = {}
+			index = idx
+			addTo(second,fld)
+		elseif #first == 0 then
+			-- coroutine.yield("-- 3")
+			coroutine.yield("data "..name.."A"..index.." =")
+			extra[#extra+1] = name.."A"..index
+			outer = index
+			howStructHsG(name.."A"..outer.."B"..index," |",second)
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			-- coroutine.yield("-- 4")
+			howStructHsG(name.."A"..outer.."B"..index," |",second)
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			-- coroutine.yield("-- 5")
+			howStructHsG(name.."A"..outer.."B"..index," |",second)
+			coroutine.yield("    "..name.."A"..outer.."Bs deriving (Eq)")
+			first = {}
+			second = {}
+			index = idx
+			addTo(second,fld)
+		end
+	end
+	if #first == 0 then
+		-- coroutine.yield("-- 6a")
+		howStructHsG(name.."A"..index,"",second)
+		extra[#extra+1] = name.."A"..index
+		coroutine.yield("    deriving (Eq)")
+	else
+		-- coroutine.yield("-- 6b")
+		howStructHsG(name.."A"..outer.."B"..index," |",second)
+		coroutine.yield("    "..name.."A"..outer.."Bs deriving (Eq)")
+	end
+end
+function howStructHs(name,struct)
+	local result = ""
+	local extra = {}
+	local wrap = coroutine.wrap(howStructHsF)
+	local line = wrap(name,struct,extra)
+	while line do
+		result = result..line.."\n"
+		line = wrap()
+	end
+	result = result.."data "..name.." = "..name.."\n"
+	for idx,val in ipairs(extra) do
+		result = result.."    "..val.."\n"
+	end
+	result = result.."    deriving (Eq)\n"
+	return result.."--"
+end
+function howTreeHsG(base,index,type,second)
+	for id,fd in ipairs(second) do
+		coroutine.yield(base+id-1,index,type)
+	end	
+end
+function howTreeHsF(name,struct)
+	local first = {}
+	local second = {}
+	local index = 1
+	local outer = 1
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("-- 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			-- coroutine.yield("-- 2")
+			howTreeHsG(index,index,0,second)
+			second = {}
+			index = idx
+			addTo(second,fld)
+		elseif #first == 0 then
+			-- coroutine.yield("-- 3")
+			outer = index
+			howTreeHsG(index,outer,1,second)
+			howTreeHsG(index,index,0,second)
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			-- coroutine.yield("-- 4")
+			howTreeHsG(index,outer,1,second)
+			howTreeHsG(index,index,0,second)
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			-- coroutine.yield("-- 5")
+			howTreeHsG(index,outer,1,second)
+			howTreeHsG(index,index,0,second)
+			first = {}
+			second = {}
+			index = idx
+			addTo(second,fld)
+		end
+	end
+	if #first == 0 then
+		-- coroutine.yield("-- 6a")
+		howTreeHsG(index,index,0,second)
+	else
+		-- coroutine.yield("-- 6b")
+		howTreeHsG(index,outer,1,second)
+		howTreeHsG(index,index,0,second)
+	end
+end
+function howEqualHs(struct)
+	local result = {}
+	local wrap = coroutine.wrap(howTreeHsF)
+	local key,val,typ = wrap(name,struct,extra)
+	while key do
+		if (typ == 0) then
+			result[key] = val
+		end
+		key,val,typ = wrap()
+	end
+	return result
+end
+function howDisjointHs(struct)
+	local result = {}
+	local wrap = coroutine.wrap(howTreeHsF)
+	local key,val,typ = wrap(name,struct,extra)
+	while key do
+		if (typ == 1) then
+			result[key] = val
+		end
+		key,val,typ = wrap()
+	end
+	return result
+end
+function howAccessHs(name,struct)
+	local equal = howEqualHs(struct)
+	local disjoint = howDisjointHs(struct)
+	local result = ""
+	for k,v in ipairs(struct) do
+		result = result.."get"..name.."C"..v[1].." :: "
+		result = result..name.." -> "..howStructHsI(v).."\n"
+		result = result.."get"..name.."C"..v[1].." ("
+		local sep = ""
+		local last = nil
+		for idx,fld in ipairs(struct) do
+			if ((last == nil) and (disjoint[k] == idx)) then
+				result = result.."("..name.."A"..fld[1]
+				sep = " "
+				last = k
+			end
+			if ((disjoint[k] ~= nil) and (disjoint[k] == disjoint[idx])) then
+				result = result..sep..fld[1]
+				sep = " "
+			end
+			if ((last ~= nil) and disjoint[last] ~= disjoint[k]) then
+				result = result..")"
+				sep = " "
+				last = nil
+			end
+--[[
+			result = result..sep..struct[idx][1].."("
+			if (equal[idx]) then
+				result = result..struct[equal[idx] ][1]
+			end
+			result = result..","
+			if (disjoint[idx]) then
+				result = result..struct[disjoint[idx] ][1]
+			end
+			result = result..")"
+			sep = ","
+--]]
+		end
+		result = result..") = a\n"
+	end
+	result = result.."--"
+	return result
+end
 function showStructHsF(val)
 	local result = ""
 	local pre = ""
@@ -2227,6 +2517,10 @@ function showCallHs()
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
 	result = result..showCall(Structs,Structz,showAccessHs).."\n"
+	result = result.."{-\n"
+	result = result..showCall(Structs,Structz,howStructHs).."\n"
+	result = result..showCall(Structs,Structz,howAccessHs).."\n"
+	result = result.."-}\n"
 	result = result..showHelpHs().."\n"
 	result = result..showCall(Structs,Structz,showReadHs).."\n"
 	result = result..showCall(Structs,Structz,showWriteHs)
