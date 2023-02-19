@@ -1609,9 +1609,99 @@ function howAccessHs(name,struct)
 	result = result.."--"
 	return result
 end
-function howReadHsG(pre,index,second)
+function showHelpHs()
+	local result = ""
+	result = result.."listHelp :: Int -> IO a -> IO [a]\n"
+	result = result.."listHelp 0 b = return []\n"
+	result = result.."listHelp a b = do\n"
+	result = result..showIndent(1).."d <- b\n"
+	result = result..showIndent(1).."e <- listHelp (a-1) b\n"
+	result = result..showIndent(1).."return (d:e)\n"
+	result = result.."assertHelp :: Int -> (a -> IO ()) -> [a] -> IO ()\n"
+	result = result.."assertHelp a _ []\n"
+	result = result..showIndent(1).."| a == 0 = return ()\n"
+	result = result..showIndent(1).."| otherwise = undefined\n"
+	result = result.."assertHelp a f (b:c)\n"
+	result = result..showIndent(1).."| a > 0 = (f b) >> (assertHelp (a-1) f c)\n"
+	result = result..showIndent(1).."| otherwise = undefined\n"
+	result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
+	result = result.."condHelp True _ a = a\n"
+	result = result.."condHelp False a _ = return a\n"
+	result = result.."firstHelp :: Eq a => a -> [a] -> IO a\n"
+	result = result.."firstHelp a [] = return a\n"
+	result = result.."firstHelp a (b:c)\n"
+	result = result..showIndent(1).."| a == b = firstHelp a c\n"
+	result = result..showIndent(1).."| otherwise = return b\n"
+	result = result.."--"
+	return result
+end
+function showCondHs(struct,dset)
+	local cond = ""
+	local terms = 0
+	for i,dim in ipairs(listSort(dset)) do
+		local set = dset[dim]
+		local term = ""
+		local factors = 0
+		for idx,fld in ipairs(struct) do
+			if (fld[1] == dim) then
+				for j,val in ipairs(listSort(set)) do
+					local factor = "a"..idx.." == "..val
+					if (factors > 0) then term = term.." || " end
+					term = term.."("..factor..")"
+					factors = factors + 1
+				end
+			end
+		end
+		if (terms > 0) then cond = cond.." && " end
+		if (factors > 1) then
+			cond = cond.."("..term..")"
+		else
+			cond = cond..term
+		end
+		terms = terms + 1
+	end
+	if (terms == 0) then
+		cond = "True"
+	elseif (terms > 1) then
+		cond = "("..cond..")"
+	end
+	return cond
+end
+function howReadHsH(struct,field)
+	local result = ""
+	local count = 0
+	if (type(field[4]) == "table") then
+		while (count < #field[4]) do
+			count = count + 1
+			result = result.."listHelp "..field[4][count].." ("
+		end
+	end
+	if (type(field[4]) == "string") then
+		local found = "0"
+		for k,v in ipairs(struct) do
+			if (v[1] == field[4]) then found = "a"..k end
+		end
+		result = result.."listHelp "..found.." ("
+		count = count + 1
+	end
+	if (type(field[4]) == "number") then
+		result = result.."listHelp "..field[4].." ("
+		count = count + 1
+	end
+	if (field[2] == "Str") then
+		result = result.."fmap fst (readStr"
+		count = count + 1
+	else result = result.."read"..field[2] end
+	result = result.." idx"
+	while (count > 0) do
+		result = result..")"
+		count = count - 1
+	end
+	return result
+end
+function howReadHsG(pre,index,struct,second)
 	for id,fd in ipairs(second) do
-		coroutine.yield("    "..pre.."a"..(index+id-1).." <- "..fd[2])
+		coroutine.yield("    "..pre.."a"..(index+id-1).." <- "..howReadHsH(struct,fd))
 	end
 end
 function howReadHsF(name,struct,extra)
@@ -1629,7 +1719,7 @@ function howReadHsF(name,struct,extra)
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
-			howReadHsG("",index,second)
+			howReadHsG("",index,struct,second)
 			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
 			coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
 			extra[#extra+1] = "a"..index.."x"
@@ -1640,9 +1730,9 @@ function howReadHsF(name,struct,extra)
 			-- coroutine.yield("-- 3")
 			extra[#extra+1] = "a"..index.."x"
 			outer = index
-			coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
-			howReadHsG("    ",index,second)
+			howReadHsG("    ",index,struct,second)
 			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
 			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
 			second = {}
@@ -1651,9 +1741,9 @@ function howReadHsF(name,struct,extra)
 			addTo(second,fld)
 		elseif not firster then
 			-- coroutine.yield("-- 4")
-			coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
-			howReadHsG("    ",index,second)
+			howReadHsG("    ",index,struct,second)
 			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
 			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
 			second = {}
@@ -1662,9 +1752,9 @@ function howReadHsF(name,struct,extra)
 			addTo(second,fld)
 		else
 			-- coroutine.yield("-- 5")
-			coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
-			howReadHsG("    ",index,second)
+			howReadHsG("    ",index,struct,second)
 			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
 			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
 			local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = " " end
@@ -1678,15 +1768,15 @@ function howReadHsF(name,struct,extra)
 	end
 	if #first == 0 then
 		-- coroutine.yield("-- 6a")
-		howReadHsG("",index,second)
+		howReadHsG("",index,struct,second)
 		local str = ""; for id=index,#struct do str = str.." a"..id end
 		coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
 		extra[#extra+1] = "a"..index.."x"
 	else
 		-- coroutine.yield("-- 6b")
-		coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+		coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 		list[#list+1] = "b"..index.."x"
-		howReadHsG("    ",index,second)
+		howReadHsG("    ",index,struct,second)
 		local str = ""; for id=outer,#struct do str = str.." a"..id end
 		coroutine.yield("    return ("..name.."A"..outer.."B"..index..str.."))")
 		local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = " " end
@@ -1917,64 +2007,6 @@ function showAccessHs(name,struct)
 	end
 	result = result.."--"
 	return result
-end
-function showHelpHs()
-	local result = ""
-	result = result.."listHelp :: Int -> IO a -> IO [a]\n"
-	result = result.."listHelp 0 b = return []\n"
-	result = result.."listHelp a b = do\n"
-	result = result..showIndent(1).."d <- b\n"
-	result = result..showIndent(1).."e <- listHelp (a-1) b\n"
-	result = result..showIndent(1).."return (d:e)\n"
-	result = result.."assertHelp :: Int -> (a -> IO ()) -> [a] -> IO ()\n"
-	result = result.."assertHelp a _ []\n"
-	result = result..showIndent(1).."| a == 0 = return ()\n"
-	result = result..showIndent(1).."| otherwise = undefined\n"
-	result = result.."assertHelp a f (b:c)\n"
-	result = result..showIndent(1).."| a > 0 = (f b) >> (assertHelp (a-1) f c)\n"
-	result = result..showIndent(1).."| otherwise = undefined\n"
-	result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
-	result = result.."condHelp True _ a = a\n"
-	result = result.."condHelp False a _ = return a\n"
-	result = result.."firstHelp :: Eq a => a -> [a] -> IO a\n"
-	result = result.."firstHelp a [] = return a\n"
-	result = result.."firstHelp a (b:c)\n"
-	result = result..showIndent(1).."| a == b = firstHelp a c\n"
-	result = result..showIndent(1).."| otherwise = return b\n"
-	result = result.."--"
-	return result
-end
-function showCondHs(struct,dset)
-	local cond = ""
-	local terms = 0
-	for i,dim in ipairs(listSort(dset)) do
-		local set = dset[dim]
-		local term = ""
-		local factors = 0
-		for idx,fld in ipairs(struct) do
-			if (fld[1] == dim) then
-				for j,val in ipairs(listSort(set)) do
-					local factor = "a"..idx.." == "..val
-					if (factors > 0) then term = term.." || " end
-					term = term.."("..factor..")"
-					factors = factors + 1
-				end
-			end
-		end
-		if (terms > 0) then cond = cond.." && " end
-		if (factors > 1) then
-			cond = cond.."("..term..")"
-		else
-			cond = cond..term
-		end
-		terms = terms + 1
-	end
-	if (terms == 0) then
-		cond = "True"
-	elseif (terms > 1) then
-		cond = "("..cond..")"
-	end
-	return cond
 end
 
 function showReadHsF(name,struct,node,depth)
