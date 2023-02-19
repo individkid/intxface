@@ -23,12 +23,11 @@ function showTyperC()
 	result = result..
 	showIndent(1).."if (forkExec(\"typerC\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerC\\n\"); return -1;}\n"..
 	showIndent(1).."if (forkExec(\"typerLua\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerLua\\n\"); return -1;}\n"..
-	showIndent(1).."if (forkExec(\"typerSw\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerSw\\n\"); return -1;}\n"..
 	showIndent(1).."if (forkExec(\"typerHs\") < 0) {fprintf(stderr,\"typerC: cannot execute file: typerHs\\n\"); return -1;}\n"..
 	showIndent(1).."sleepSec(1);\n"
 	result = result..
 	showIndent(1).."struct Struct1 *exp = 0;\n"..
-	showIndent(1).."int size = 4;\n"..
+	showIndent(1).."int size = 3;\n"..
 	showIndent(1).."int *show = 0;\n"..
 	showIndent(1).."int *hide = 0;\n"..
 	showIndent(1).."char **src = 0;\n"..
@@ -84,19 +83,6 @@ function showTyperLua()
 	result = result.."end\n"
 	return result
 end
-function showTyperSw()
-	local result = ""
-	result = result.."import face\n"
-	result = result.."//\n"
-	result = result..showCallSw().."\n"
-	result = result.."// MAIN\n"
-	result = result..showIndent(1).."if (CommandLine.arguments.count == 4) {\n"
-	result = result..showIndent(1).."pipeInit(CommandLine.arguments[1],CommandLine.arguments[2])\n"
-	result = result..showIndent(1).."let tab = readStruct1(0)\n"
-	result = result..showIndent(1).."writeStruct1(tab,0)\n"
-	result = result..showIndent(1).."}\n"
-	return result
-end
 if (arg[1] == "typer.dep") then
 	file = io.open("typer.dep", "w")
 	file:close()
@@ -119,10 +105,5 @@ end
 if (arg[1] == "typer.lua") then
 	file = io.open("typer.lua", "w")
 	file:write(showTyperLua().."\n")
-	file:close()
-end
-if (arg[1] == "typer.sw") then
-	file = io.open("typer.sw", "w")
-	file:write(showTyperSw().."\n")
 	file:close()
 end

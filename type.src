@@ -534,7 +534,9 @@ function showStructCG(pre,mid,second)
 		end
 	end
 end     
-function showStructCF(first,second,struct)
+function showStructCF(struct)
+	local first = {}
+	local second = {}
 	for idx,fld in ipairs(struct) do
 		local firster = overAny(first,fld)
 		local seconder = overAny(second,fld)
@@ -578,10 +580,8 @@ function showStructCF(first,second,struct)
 end
 function showStructC(name,struct)
 	local result = ""
-	local first = {}
-	local second = {}
 	local wrap = coroutine.wrap(showStructCF)
-	local line = wrap(first,second,struct)
+	local line = wrap(struct)
 	while line do
 		result = result..line.."\n"
 		line = wrap()
@@ -664,7 +664,9 @@ function showReadCG(second)
 		showReadCH(fd)
 	end
 end
-function showReadCF(first,second,struct)
+function showReadCF(struct)
+	local first = {}
+	local second = {}
 	for idx,fld in ipairs(struct) do
 		local firster = overAny(first,fld)
 		local seconder = overAny(second,fld)
@@ -701,10 +703,8 @@ function showReadCF(first,second,struct)
 end
 function showReadCE(name,struct)
 	local result = ""
-	local first = {}
-	local second = {}
 	local wrap = coroutine.wrap(showReadCF)
-	local line = wrap(first,second,struct)
+	local line = wrap(struct)
 	while line do
 		result = result..line.."\n"
 		line = wrap()
@@ -1282,7 +1282,6 @@ function showIfieldC(list,map)
 	result = result.."}\n"
 	return result
 end
-
 function showEnumHs(name,enum)
 	local result = "data "..name.." =\n"
 	for key,val in ipairs(enum) do
@@ -1326,16 +1325,10 @@ function howStructHsK(field)
 end
 function howStructHsJ(name,pre,post)
 	local result = ""
-	if (name == "Chr") and language then
-		result = result..pre.."Character"..post
-	elseif (name == "Chr") then
+	if (name == "Chr") then
 		result = result..pre.."Char"..post
-	elseif (name == "Int") and language then
-		result = result..pre.."Int32"..post
 	elseif (name == "Int") then
 		result = result..pre.."Int"..post
-	elseif (name == "New") and language then
-		result = result..pre.."Int64"..post
 	elseif (name == "New") then
 		result = result..pre.."Integer"..post
 	elseif (name == "Num") then
@@ -1616,6 +1609,113 @@ function howAccessHs(name,struct)
 	result = result.."--"
 	return result
 end
+function howReadHsG(pre,index,second)
+	for id,fd in ipairs(second) do
+		coroutine.yield("    "..pre.."a"..(index+id-1).." <- "..fd[2])
+	end
+end
+function howReadHsF(name,struct,extra)
+	local first = {}
+	local second = {}
+	local list = {}
+	local index = 1
+	local outer = 1
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("-- 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			-- coroutine.yield("-- 2")
+			howReadHsG("",index,second)
+			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
+			coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
+			extra[#extra+1] = "a"..index.."x"
+			second = {}
+			index = idx
+			addTo(second,fld)
+		elseif #first == 0 then
+			-- coroutine.yield("-- 3")
+			extra[#extra+1] = "a"..index.."x"
+			outer = index
+			coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+			list[#list+1] = "b"..index.."x"
+			howReadHsG("    ",index,second)
+			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
+			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			-- coroutine.yield("-- 4")
+			coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+			list[#list+1] = "b"..index.."x"
+			howReadHsG("    ",index,second)
+			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
+			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			-- coroutine.yield("-- 5")
+			coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+			list[#list+1] = "b"..index.."x"
+			howReadHsG("    ",index,second)
+			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
+			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+			local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = " " end
+			coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
+			list = {}
+			first = {}
+			second = {}
+			index = idx
+			addTo(second,fld)
+		end
+	end
+	if #first == 0 then
+		-- coroutine.yield("-- 6a")
+		howReadHsG("",index,second)
+		local str = ""; for id=index,#struct do str = str.." a"..id end
+		coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
+		extra[#extra+1] = "a"..index.."x"
+	else
+		-- coroutine.yield("-- 6b")
+		coroutine.yield("    b"..index.."x <- condHelp () "..name.."A"..outer.."Bs (do")
+		list[#list+1] = "b"..index.."x"
+		howReadHsG("    ",index,second)
+		local str = ""; for id=outer,#struct do str = str.." a"..id end
+		coroutine.yield("    return ("..name.."A"..outer.."B"..index..str.."))")
+		local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = " " end
+		coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
+	end
+end
+function howReadHsE(name,struct,extra)
+	local result = ""
+	local wrap = coroutine.wrap(howReadHsF)
+	local line = wrap(name,struct,extra)
+	while line do
+		result = result..line.."\n"
+		line = wrap()
+	end
+	return result
+end
+function howReadHs(name,struct)
+	local result = ""
+	local extra = {}
+	result = result.."read"..name.." :: Int -> IO "..name.."\n"
+	result = result.."read"..name.." idx = do\n"
+	if prototype then return result..";" end
+	result = result..howReadHsE(name,struct,extra)
+	result = result.."    return ("..name
+	for key,val in ipairs(extra) do
+		result = result.." "..val
+	end
+	return result..")"
+end
 function showStructHsF(val)
 	local result = ""
 	local pre = ""
@@ -1637,16 +1737,10 @@ function showStructHsF(val)
 end
 function showStructHsG(name,pre,post)
 	local result = ""
-	if (name == "Chr") and language then
-		result = result..pre.."Character"..post
-	elseif (name == "Chr") then
+	if (name == "Chr") then
 		result = result..pre.."Char"..post
-	elseif (name == "Int") and language then
-		result = result..pre.."Int32"..post
 	elseif (name == "Int") then
 		result = result..pre.."Int"..post
-	elseif (name == "New") and language then
-		result = result..pre.."Int64"..post
 	elseif (name == "New") then
 		result = result..pre.."Integer"..post
 	elseif (name == "Num") then
@@ -1882,6 +1976,7 @@ function showCondHs(struct,dset)
 	end
 	return cond
 end
+
 function showReadHsF(name,struct,node,depth)
 	local result = ""
 	if (node[3] == "field") then
@@ -2212,15 +2307,14 @@ function showCondLua(struct,dset)
 		for idx,fld in ipairs(struct) do
 			if (fld[1] == dim) then
 				for j,val in ipairs(listSort(set)) do
-					local factor = "tab"..show(".","[\"")..struct[idx][1]..show("","\"]").." == "..show(struct[idx][2].."."..val,"\""..val.."\"")
-					if (factors > 0) then term = term..show(" || "," or ") end
+					local factor = "tab[\""..struct[idx][1].."\"] == \""..val.."\""
+					if (factors > 0) then term = term.." or " end
 					term = term.."("..factor..")"
 					factors = factors + 1
 				end
 			end
 		end
-		if (terms > 0 and language) then cond = cond.." && "
-		elseif (terms > 0) then cond = cond.." and " end
+		if (terms > 0) then cond = cond.." and " end
 		if (factors > 1) then
 			cond = cond.."("..term..")"
 		else
@@ -2235,55 +2329,12 @@ function showCondLua(struct,dset)
 	end
 	return cond
 end
-function showReadLuaF(limit,count,name)
-	local result = ""
-	if (count > 1) then
-		result = result..".append("
-	else
-		result = result.." = "
-	end
-	local pre = ""
-	local post = ""
-	local index = count
-	while (index <= limit) do
-		pre = pre.."["
-		index = index + 1
-	end
-	index = count
-	while (index <= limit) do
-		post = post.."]"
-		index = index + 1
-	end
-	result = result..showStructHsG(name,pre,post).."()"
-	if (count > 1) then
-		result = result..")"
-	end
-	return result
-end
 nest = 0
-function showReadLuaG(count)
-	local result = ""
-	if (count > nest) then
-		result = "var"
-	end
-	if (count ~= nest) then
-		nest = count
-	end
-	return result
-end
-function show(left,right)
-	if language then return left else return right end
-end
 function showReadLua(name,struct)
 	nest = 0
 	local result = ""
-	if language then
-		result = result.."func".." read"..name.."(_ idx: CInt) -> "..name.." {\n"
-		result = result..showIndent(1).."var tab = "..name.."()\n"
-	else
-		result = result.."function".." read"..name.."(idx)\n"
-		result = result..showIndent(1).."local tab = {}\n"
-	end
+	result = result.."function".." read"..name.."(idx)\n"
+	result = result..showIndent(1).."local tab = {}\n"
 	for index,field in ipairs(struct) do
 		local count = 0
 		local conds = 0
@@ -2291,7 +2342,7 @@ function showReadLua(name,struct)
 		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
-			result = result..showIndent(count).."if "..cond.." "..show("{","then").."\n"
+			result = result..showIndent(count).."if "..cond.." ".."then".."\n"
 		end
 		local sub = ""
 		local sup = ""
@@ -2304,17 +2355,16 @@ function showReadLua(name,struct)
 			while (count < limit) do
 				count = count + 1
 				dimen = dimen + 1
-				result = result..showIndent(count).."tab"..show(".","[\"")..field[1]..show("","\"]")
+				result = result..showIndent(count).."tab[\""..field[1].."\"]"
 				local index = square
-				if language then squares = squares-1 end
 				while (index < squares) do
 					result = result.."[i"..index.."]"
 					index = index + 1
 				end
-				result = result..show(showReadLuaF(limit,count,field[2])," = {}").."\n"
+				result = result.." = {}".."\n"
 				squares = squares + 1
-				result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
-				result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4][dimen]..") "..show("{","do").."\n"
+				result = result..showIndent(count).."local".." i"..count.." = 1\n"
+				result = result..showIndent(count).."while (i"..count.." <= "..field[4][dimen]..") do\n"
 				sub = sub.."[i"..count.."]"
 				if (count < limit) then sup = sup.."[i"..count.."]" end
 				super = true
@@ -2326,49 +2376,42 @@ function showReadLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showIndent(count).."tab"..show(".","[\"")..field[1]..show("","\"]")..show(showReadLuaF(1,1,field[2])," = {}").."\n"
-			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
-			result = result..showIndent(count).."while (i"..count..show(" < "," <= ").."tab"..show(".","[\"")..field[4]..show("","\"]")..") "..show("{","do").."\n"
+			result = result..showIndent(count).."tab[\""..field[1].."\"] = {}".."\n"
+			result = result..showIndent(count).."local".." i"..count.." = 1\n"
+			result = result..showIndent(count).."while (i"..count.." <= tab[\""..field[4].."\"]) do\n"
 			sub = sub.."[i"..count.."]"
 			super = true
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showIndent(count).."tab"..show(".","[\"")..field[1]..show("","\"]")..show(showReadLuaF(1,1,field[2])," = {}").."\n"
-			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
-			result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4]..") "..show("{","do").."\n"
+			result = result..showIndent(count).."tab".."[\""..field[1].."\"] = {}\n"
+			result = result..showIndent(count).."local".." i"..count.." = ".."1\n"
+			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
 			sub = sub.."[i"..count.."]"
 			super = true
 		end
-		result = result..showIndent(count+1).."tab"..show(".","[\"")..field[1]..show("","\"]")
-		if language and super then result = result..sup..".append(" else result = result..sub.." = " end
-		if (field[2] == "Chr") and language then result = result.."Character(UnicodeScalar(UInt8(readChr(idx))))"
-		elseif (field[2] == "Str") and language then result = result.."callReadStr(idx)"
-		else result = result.."read"..field[2].."(idx)" end
-		if language and super then result = result..")" end
+		result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"
+		result = result..sub.." = "
+		result = result.."read"..field[2].."(idx)"
 		if (cond ~= "True") then nest = 1 end
 		result = result.."\n"
 		while (count > 0) do
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
 			end
-			result = result..showIndent(count)..show("}","end").."\n"
+			result = result..showIndent(count).."end\n"
 			count = count - 1
 		end
 	end
 	result = result..showIndent(1).."return tab\n"
-	result = result..show("}","end").."\n"
-	result = result..show("//","--")
+	result = result.."end\n"
+	result = result.."--"
 	return result
 end
 function showWriteLua(name,struct)
 	nest = 0
 	local result = ""
-	if language then
-		result = result.."func write"..name.."(_ tab: "..name..", _ idx: CInt) {\n"
-	else
-		result = result.."function write"..name.."(tab,idx)\n"
-	end
+	result = result.."function write"..name.."(tab,idx)\n"
 	for index,field in ipairs(struct) do
 		local count = 0
 		local conds = 0
@@ -2376,14 +2419,14 @@ function showWriteLua(name,struct)
 		if (cond ~= "True") then
 			count = count + 1
 			conds = conds + 1
-			result = result..showIndent(count).."if "..cond.." "..show("{","then").."\n"
+			result = result..showIndent(count).."if "..cond.." ".."then\n"
 		end
 		local sub = ""
 		if (type(field[4]) == "table") then
 			while (count < #field[4]) do
 				count = count + 1
-				result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
-				result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4][count]..") "..show("{","do").."\n"
+				result = result..showIndent(count).."local".." i"..count.." = ".."1\n"
+				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
 				sub = sub.."[i"..count.."]"
 			end
 		end
@@ -2393,20 +2436,19 @@ function showWriteLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
-			result = result..showIndent(count).."while (i"..count..show(" < "," <= ").."tab"..show(".","[\"")..field[4]..show("","\"]")..") "..show("{","do").."\n"
+			result = result..showIndent(count).."local".." i"..count.." = 1\n"
+			result = result..showIndent(count).."while (i"..count.." <= ".."tab[\""..field[4].."\"]) do\n"
 			sub = sub.."[i"..count.."]"
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showIndent(count)..show(showReadLuaG(count),"local").." i"..count.." = "..show("0","1").."\n"
-			result = result..showIndent(count).."while (i"..count..show(" < "," <= ")..field[4]..") "..show("{","do").."\n"
+			result = result..showIndent(count).."local".." i"..count.." = ".."1".."\n"
+			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
 			sub = sub.."[i"..count.."]"
 		end
-		local value = "tab"..show(".","[\"")..field[1]..show("","\"]")..sub
+		local value = "tab[\""..field[1].."\"]"..sub
 		result = result..showIndent(count+1)
-		if (field[2] == "Chr") and language then result = result.."writeChr(Int8("..value..".asciiValue!),idx)"
-		elseif (field[2] == "Str") then result = result.."writeStr("..value..",1,idx)"
+		if (field[2] == "Str") then result = result.."writeStr("..value..",1,idx)"
 		else result = result.."write"..field[2].."("..value..",idx)" end
 		if (cond ~= "True") then nest = 1 end
 		result = result.."\n"
@@ -2414,47 +2456,12 @@ function showWriteLua(name,struct)
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
 			end
-			result = result..showIndent(count)..show("}","end").."\n"
+			result = result..showIndent(count).."end\n"
 			count = count - 1
 		end
 	end
-	result = result..show("}","end").."\n"
-	result = result..show("//","--")
-	return result
-end
-function showEnumSw(name,enum)
-	local result = "enum "..name..": CInt {\n"
-	for key,val in ipairs(enum) do
-		result = result..showIndent(1).."case "..val.."\n"
-	end
-	result = result..showIndent(1).."case "..name.."s\n"
-	result = result.."}\n"
-	return result.."//"
-end
-function showCodeSw(name,enum)
-	local result = ""
-	result = result.."func read"..name.."(_ idx: CInt) -> "..name.." {"..name.."(rawValue: readInt(idx))!}\n"
-	result = result.."func write"..name.."(_ val: "..name..", _ idx: CInt) {writeInt(val.rawValue, idx);}\n"
-	result = result.."//"
-	return result
-end
-function showStructSw(name,struct)
-	local result = "struct "..name.." {\n"
-	for key,val in ipairs(struct) do
-		result = result..showIndent(1).."var "..val[1]..": "..showStructHsF(val).."!\n"
-	end
-	result = result.."}\n"
-	return result.."//"
-end
-function helpStrSw()
-	local result = ""
-	result = result.."var capturedStr: String = \"\"\n"
-	result = result.."func callReadStr(_ idx: CInt) -> String {\n"
-	result = result..showIndent(1).."readStrHs({(str,trm) -> () in\n"
-	result = result..showIndent(1).."capturedStr = String(cString: str!)}, idx);\n"
-	result = result..showIndent(1).."return capturedStr\n"
-	result = result.."}\n"
-	result = result.."//"
+	result = result.."end\n"
+	result = result.."--"
 	return result
 end
 function listHere(name,file)
@@ -2528,7 +2535,6 @@ function showCallC()
 end
 function showCallHs()
 	local result = ""
-	language = false
 	result = result..showCall(Enums,Enumz,showEnumHs).."\n"
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
@@ -2539,27 +2545,18 @@ function showCallHs()
 	result = result.."-}\n"
 	result = result..showHelpHs().."\n"
 	result = result..showCall(Structs,Structz,showReadHs).."\n"
+	result = result.."{-\n"
+	result = result..showCall(Structs,Structz,howReadHs).."\n"
+	result = result.."-}\n"
 	result = result..showCall(Structs,Structz,showWriteHs)
 	return result
 end
 function showCallLua()
 	local result = ""
-	language = false
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	result = result..showCall(Enums,Enumz,showCastLua).."\n"
 	result = result..showIdentLua(Structs).."\n"
 	result = result..showCall(Structs,Structz,showFieldLua).."\n"
-	result = result..showCall(Structs,Structz,showReadLua).."\n"
-	result = result..showCall(Structs,Structz,showWriteLua)
-	return result
-end
-function showCallSw()
-	local result = ""
-	language = true
-	result = result..showCall(Enums,Enumz,showEnumSw).."\n"
-	result = result..showCall(Enums,Enumz,showCodeSw).."\n"
-	result = result..showCall(Structs,Structz,showStructSw).."\n"
-	result = result..helpStrSw().."\n"
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
 	result = result..showCall(Structs,Structz,showWriteLua)
 	return result
