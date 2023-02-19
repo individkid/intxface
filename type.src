@@ -1557,6 +1557,42 @@ function howDisjointHs(struct)
 	end
 	return result
 end
+function howAccessHsF(index,idx,max,list)
+	local ed = (list[idx] ~= nil)
+	local er = (list[idx] ~= nil) and (list[idx] == idx)
+	local ee = (list[idx] ~= nil) and ((idx == max) or (list[idx] ~= nil and list[idx] ~= list[idx+1]))
+	local ea = (list[idx] ~= nil) and (list[index] == list[idx])
+	return ed,er,ee,ea
+end
+function howAccessHsG(name,struct,var,index,equal,disjoint)
+	local result = ""
+	for idx,fld in ipairs(struct) do
+		local eed,eer,eee,eea = howAccessHsF(index,idx,#struct,equal)
+		local ded,der,dee,dea = howAccessHsF(index,idx,#struct,disjoint)
+		if (eer and not ded and eea) then
+			result = result.." ".."("..name.."A"..idx
+		end
+		if (eer and ded and eea) then
+			result = result.." ".."("..name.."A"..disjoint[idx].."B"..idx
+		end
+		if (eea and (index ~= idx)) then
+			result = result.." ".."a"..idx
+		end
+		if (index == idx) then
+			result = result.." "..var
+		end
+		if (eer and not ded and not eea) then
+			result = result.." ".."a"..idx
+		end
+		if (der and not dea) then
+			result = result.." ".."a"..idx
+		end
+		if (eee and eea) then
+			result = result..")"
+		end
+	end
+	return result
+end
 function howAccessHs(name,struct)
 	local equal = howEqualHs(struct)
 	local disjoint = howDisjointHs(struct)
@@ -1564,38 +1600,18 @@ function howAccessHs(name,struct)
 	for k,v in ipairs(struct) do
 		result = result.."get"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..howStructHsI(v).."\n"
-		result = result.."get"..name.."C"..v[1].." ("
-		local sep = ""
-		local last = nil
-		for idx,fld in ipairs(struct) do
-			if ((last == nil) and (disjoint[k] == idx)) then
-				result = result.."("..name.."A"..fld[1]
-				sep = " "
-				last = k
-			end
-			if ((disjoint[k] ~= nil) and (disjoint[k] == disjoint[idx])) then
-				result = result..sep..fld[1]
-				sep = " "
-			end
-			if ((last ~= nil) and disjoint[last] ~= disjoint[k]) then
-				result = result..")"
-				sep = " "
-				last = nil
-			end
---[[
-			result = result..sep..struct[idx][1].."("
-			if (equal[idx]) then
-				result = result..struct[equal[idx] ][1]
-			end
-			result = result..","
-			if (disjoint[idx]) then
-				result = result..struct[disjoint[idx] ][1]
-			end
-			result = result..")"
-			sep = ","
---]]
-		end
+		result = result.."get"..name.."C"..v[1].." ("..name
+		result = result..howAccessHsG(name,struct,"a",k,equal,disjoint)
 		result = result..") = a\n"
+	end
+	for k,v in ipairs(struct) do
+		result = result.."set"..name.."C"..v[1].." :: "
+		result = result..name.." -> "..howStructHsI(v).." -> "..name.."\n"
+		result = result.."set"..name.."C"..v[1].." ("..name
+		result = result..howAccessHsG(name,struct,"_",k,equal,disjoint)
+		result = result..") a = ("..name
+		result = result..howAccessHsG(name,struct,"a",k,equal,disjoint)
+		result = result..")\n"
 	end
 	result = result.."--"
 	return result
