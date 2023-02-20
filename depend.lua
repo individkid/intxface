@@ -91,8 +91,8 @@ end
 execMap = {{"C","C.o"},{"Cpp","Cpp.o"},{"Hs",".hs"},{"A",".agda"},{"Lua",".lua"},{"M","M.o"},{"Sw","Sw.o"}}
 sharedMap = {{"G%.so","G.o"},{"Cpp%.so","Cpp.o"},{"%.so","C.o"}}
 objectMap = {{"C%.o",".c"},{"Cpp%.o",".cpp"},{"Sw%.o",".sw"},{"G%.o",".metal"}}
-unameMap = {{"%.cpp",".cppx"},{"%.sw",".swy"},{"%.metal",".gy"},{"%.agda",".a"}}
-generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua","%.sw"}
+unameMap = {{"%.cpp",".cppx"},{"%.sw",".swy"},{"%.metal",".gy"},{"%.metallib",".gy"},{"%.agda",".a"}}
+generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua"}
 mainMap = {{".c","^int main\\(","C"},{".cpp","^int main\\(","Cpp"},{".hs","^main :: IO \\(","Hs"},{".agda","^int main\\(","A"},{".lua","^-- MAIN","Lua"},{".sw","^// MAIN","Sw"},{".cppx","^int main\\(","Cpp"},{".swy","^// MAIN","Sw"}}
 function ruleDepend(rule)
 	local left, right, base = {},{},nil

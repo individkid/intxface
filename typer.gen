@@ -1,4 +1,4 @@
-dofile("typra.src")
+dofile("test.lua")
 
 function showTyperC()
 	local result = ""

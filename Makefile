@@ -108,8 +108,6 @@ endif
 	lua $*.gen $@
 %.lua: %.dep
 	lua $*.gen $@
-%.sw: %.dep
-	lua $*.gen $@
 
 .PHONY:
 clean:

@@ -1,4 +1,4 @@
-dofile("type.src")
+dofile("show.lua")
 
 --HERE Enums
 Enum1 = {
@@ -46,6 +46,6 @@ Struct1 = {
 	{"field17","Struct2",{},{2}},
 }
 --HERE
-Enums,Enumz = listHere("Enums","typra.src")
-Constants,Constantz = listHere("Constants","typra.src")
-Structs,Structz = listHere("Structs","typra.src")
+Enums,Enumz = listHere("Enums","test.lua")
+Constants,Constantz = listHere("Constants","test.lua")
+Structs,Structz = listHere("Structs","test.lua")

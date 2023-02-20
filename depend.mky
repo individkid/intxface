@@ -14,8 +14,8 @@ lineCpp: faceC.o luaxC.o protoC.o typeC.o
 lineCpp.o: face.h proto.h type.h
 luax.so: protoC.o
 luaxC.o: luax.h proto.h
-memxCpp.o: face.h luax.h memx.h proto.h
-memxCpp.so: faceC.o luaxC.o protoC.o
+memxCpp.o: luax.h memx.h proto.h
+memxCpp.so: luaxC.o protoC.o
 metxC.o: metx.h
 planeC.o: argx.h face.h luax.h memx.h metx.h plane.h proto.h type.h
 planeSw: argxC.o faceC.o luaxC.o memxCpp.so metxC.o planeC.o protoC.o typeC.o
@@ -28,13 +28,11 @@ sharer.log: face.so shareC sharerLua type.lua
 spaceHs: face.hs faceC.o naive.hs protoC.o type.hs
 spacra.log: spacraHs
 spacraHs: naive.hs
-type.dep: luax.so type.src
+type.dep: luax.so show.lua
 typeC.o: face.h type.h
-typer.dep: luax.so type.src typra.src
-typer.log: face.so typerC typerHs typerLua typerSw
+typer.dep: luax.so show.lua test.lua
+typer.log: face.so typerC typerHs typerLua
 typerC: faceC.o luaxC.o protoC.o
 typerC.o: face.h typer.h
 typerHs: face.hs faceC.o protoC.o
-typerSw: faceC.o luaxC.o protoC.o
-typerSw.o: face.h
-typra.log: luax.so type.src typra.src typraLua
+typra.log: luax.so show.lua test.lua typraLua
