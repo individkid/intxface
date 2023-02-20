@@ -52,7 +52,7 @@ function mainExists(file,exp)
 end
 function findDepend(pat,ext,exp,suf)
 	local retval = ""
-	os.execute("cp *.c *.h *.src *.gen depend") -- TODO this assumes that .dep is done in depend.mk
+	os.execute("cp *.c *.h *.lua *.gen depend") -- TODO this assumes that .dep is done in depend.mk
 	os.execute("(cd depend; ls *.gen) | cut -f 1 -d '.' > depend.rm 2>/dev/null")
 	os.execute("for file in `cat depend.rm`; do make -C depend $file"..ext.." > depend.out 2>&1; done")
 	os.execute("find . -name '*"..ext.."' > depend.ls 2>&1")
