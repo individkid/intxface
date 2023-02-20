@@ -1667,7 +1667,7 @@ function showCondHs(struct,dset)
 	end
 	return cond
 end
-function howReadHsH(struct,field)
+function howReadHsH(pre,index,struct,field)
 	local result = ""
 	local count = 0
 	if (type(field[4]) == "table") then
@@ -1697,11 +1697,11 @@ function howReadHsH(struct,field)
 		result = result..")"
 		count = count - 1
 	end
-	return result
+	coroutine.yield("    "..pre.."a"..index.." <- "..result)
 end
 function howReadHsG(pre,index,struct,second)
 	for id,fd in ipairs(second) do
-		coroutine.yield("    "..pre.."a"..(index+id-1).." <- "..howReadHsH(struct,fd))
+		howReadHsH(pre,index+id-1,struct,fd)
 	end
 end
 function howReadHsF(name,struct,extra)
@@ -1798,7 +1798,6 @@ function howReadHs(name,struct)
 	local extra = {}
 	result = result.."read"..name.." :: Int -> IO "..name.."\n"
 	result = result.."read"..name.." idx = do\n"
-	if prototype then return result..";" end
 	result = result..howReadHsE(name,struct,extra)
 	result = result.."    return ("..name
 	for key,val in ipairs(extra) do
@@ -1806,6 +1805,214 @@ function howReadHs(name,struct)
 	end
 	return result..")"
 end
+function howWriteHsK(pre,post,index,second)
+	for id,fd in ipairs(second) do
+		if (id == 1 and id == #second) then
+			coroutine.yield(pre.."a"..(index+id-1)..post)
+		elseif (id == 1) then
+			coroutine.yield(pre.."a"..(index+id-1))
+		elseif (id == #second) then
+			coroutine.yield("a"..(index+id-1)..post)
+		else
+			coroutine.yield("a"..(index+id-1))
+		end
+	end
+end
+function howWriteHsJ(name,struct)
+	local first = {}
+	local second = {}
+	local index = 1
+	local outer = 1
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("-- 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			-- coroutine.yield("-- 2")
+			howWriteHsK("("..name.."A"..index.." ",")",index,second)
+			second = {}
+			index = idx
+			addTo(second,fld)
+		elseif #first == 0 then
+			-- coroutine.yield("-- 3")
+			-- howWriteHsK("("..name.."A"..index.." ","",index,second)
+			coroutine.yield("a"..index)
+			outer = index
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			-- coroutine.yield("-- 4")
+			-- howWriteHsK("","",index,second)
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			-- coroutine.yield("-- 5")
+			-- howWriteHsK("",")",index,second)
+			first = {}
+			second = {}
+			index = idx
+			addTo(second,fld)
+		end
+	end
+	if #first == 0 then
+		-- coroutine.yield("-- 6a")
+		-- howWriteHsK("6a(",")",index,second)
+		howWriteHsK("("..name.."A"..index.." ",")",index,second)
+	else
+		-- coroutine.yield("-- 6b")
+		-- howWriteHsK("",")",index,second)
+	end
+end
+function howWriteHsI(name,struct)
+	local result = ""
+	local wrap = coroutine.wrap(howWriteHsJ)
+	local word = wrap(name,struct)
+	while word do
+		result = result.." "..word
+		word = wrap()
+	end
+	return result
+end
+function howWriteHsH(index,struct,field,var)
+	local result = ""
+	local count = 0
+	local post = ""
+	var = var..index
+	if (type(field[4]) == "table") and (#field[4] > 0) then
+		while (count < #field[4]) do
+			count = count + 1
+			result = result.."assertHelp "..field[4][count].." (\\x -> "
+		end
+		post = " "..var
+		var = "x"
+	end
+	if (type(field[4]) == "string") then
+		local found = "0"
+		for k,v in ipairs(struct) do
+			if (v[1] == field[4]) then found = "a"..k end
+		end
+		result = result.."assertHelp "..found.." (\\x -> "
+		count = count + 1
+		post = " "..var
+		var = "x"
+	end
+	if (type(field[4]) == "number") then
+		result = result.."assertHelp "..field[4].." (\\x -> "
+		count = count + 1
+		post = " "..var
+		var = "x"
+	end
+	if (field[2] == "Str") then
+		result = result.."fmap fst (writeStr"
+		count = count + 1
+	else result = result.."write"..field[2] end
+	result = result.." "..var.." idx"
+	while (count > 0) do
+		result = result..")"
+		count = count - 1
+	end
+	return result..post
+end
+function howWriteHsG(pre,index,outer,limit,name,struct,second)
+	if (pre == "") then
+		for id,fd in ipairs(second) do
+			coroutine.yield("    "..howWriteHsH(index+id-1,struct,fd,"a"))
+		end
+	elseif (#second == 1) then
+		local str = ""; for id=index,(limit-1) do str = str.." b"..id end
+		for id,fd in ipairs(second) do
+			coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> "..howWriteHsH(index+id-1,struct,fd,"b")..") a"..outer..")")
+		end
+	else
+		local str = ""; for id=index,(limit-1) do str = str.." b"..id end
+		coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> do")
+		for id,fd in ipairs(second) do
+			if (id == #second) then
+				coroutine.yield("    "..pre..howWriteHsH(index+id-1,struct,fd,"b")..") a"..outer..")")
+			else
+				coroutine.yield("    "..pre..howWriteHsH(index+id-1,struct,fd,"b"))
+			end
+		end
+	end
+end
+function howWriteHsF(name,struct)
+	local first = {}
+	local second = {}
+	local index = 1
+	local outer = 1
+	for idx,fld in ipairs(struct) do
+		local firster = overAny(first,fld)
+		local seconder = overAny(second,fld)
+		local secondee = equalAll(second,fld)
+		if #second == 0 or secondee then
+			-- coroutine.yield("-- 1")
+			addTo(second,fld)
+		elseif #first == 0 and seconder then
+			coroutine.yield("-- 2")
+			howWriteHsG("",index,outer,idx,name,struct,second)
+			second = {}
+			index = idx
+			addTo(second,fld)
+		elseif #first == 0 then
+			coroutine.yield("-- 3")
+			outer = index
+			howWriteHsG("    ",index,outer,idx,name,struct,second)
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		elseif not firster then
+			coroutine.yield("-- 4")
+			howWriteHsG("    ",index,outer,idx,name,struct,second)
+			second = {}
+			index = idx
+			addTo(first,fld)
+			addTo(second,fld)
+		else
+			coroutine.yield("-- 5")
+			howWriteHsG("    ",index,outer,idx,name,struct,second)
+			list = {}
+			first = {}
+			second = {}
+			index = idx
+			addTo(second,fld)
+		end
+	end
+	if #first == 0 then
+		coroutine.yield("-- 6a")
+		howWriteHsG("",index,outer,#struct,name,struct,second)
+	else
+		coroutine.yield("-- 6b")
+		howWriteHsG("    ",index,outer,#struct,name,struct,second)
+	end
+end
+function howWriteHsE(name,struct)
+	local result = ""
+	local wrap = coroutine.wrap(howWriteHsF)
+	local line = wrap(name,struct)
+	while line do
+		result = result..line.."\n"
+		line = wrap()
+	end
+	return result
+end
+function howWriteHs(name,struct)
+	local result = ""
+	local expand = howWriteHsI(name,struct)
+	result = result.."write"..name.." :: "..name.." -> Int -> IO "..name.."\n"
+	result = result.."write"..name.." ("..name..expand..") idx = do\n"
+	result = result..howWriteHsE(name,struct)
+	result = result.."--"
+	return result
+end
+
 function showStructHsF(val)
 	local result = ""
 	local pre = ""
@@ -2580,7 +2787,10 @@ function showCallHs()
 	result = result.."{-\n"
 	result = result..showCall(Structs,Structz,howReadHs).."\n"
 	result = result.."-}\n"
-	result = result..showCall(Structs,Structz,showWriteHs)
+	result = result..showCall(Structs,Structz,showWriteHs).."\n"
+	result = result.."{-\n"
+	result = result..showCall(Structs,Structz,howWriteHs).."\n"
+	result = result.."-}\n"
 	return result
 end
 function showCallLua()
