@@ -1,18 +1,9 @@
 require "luax"
 require "coroutine"
 
-function showBool(bool)
-	local str = ""
-	if bool then str = "true" else str = "false" end
-	return str
-end
-function showList(list)
-	local str = ""
-	for key,val in ipairs(list) do
-		if str ~= "" then str = str.."," end
-		str = str..val
-	end
-	return str
+function showIndent(depth)
+	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
+	return indent
 end
 function listSort(map)
 	local tab = {}
@@ -22,349 +13,6 @@ function listSort(map)
 	table.sort(tab)
 	return tab
 end
-function showSet(set)
-	if not set then return "universe" end
-	local str = ""
-	for key,val in ipairs(listSort(set)) do
-		if str ~= "" then str = str.."," end
-		if set[val] then str = str..val else str = str.."("..val..")" end
-	end
-	return str
-end
-function allOf(enum)
-	local all = {}
-	for key,val in pairs(enum) do all[val]=true end
-	return all
-end
-function allExcept(enum,set)
-	local all = {}
-	for key,val in pairs(enum) do all[val] = not set[val] end
-	return all
-end
-function allBefore(enum,lim)
-	local all = {}
-	local num = 0
-	for key,val in pairs(enum) do if val == lim then num = key end end
-	for key,val in pairs(enum) do all[val] = key < num end
-	return all
-end
-function equalSetF(lhs,rhs)
-	return (lhs and rhs) or (not lhs and not rhs)
-end
-function equalSet(lhs,rhs)
-	local result = true
-	for k,v in pairs(lhs) do result = result and equalSetF(rhs[k],v) end
-	for k,v in pairs(rhs) do result = result and equalSetF(lhs[k],v) end
-	return result
-end
-function interSet(lhs,rhs)
-	local result = {}
-	for k,v in pairs(lhs) do result[k] = v and rhs[k] end
-	for k,v in pairs(rhs) do result[k] = v and lhs[k] end
-	return result
-end
-function differSet(lhs,rhs)
-	local result = {}
-	for k,v in pairs(lhs) do result[k] = v and not rhs[k] end
-	return result
-end
-function unionSet(lhs,rhs)
-	local result = {}
-	for k,v in pairs(lhs) do result[k] = v or rhs[k] end
-	for k,v in pairs(rhs) do result[k] = v or lhs[k] end
-	return result
-end
--- for Set empty is {}
--- for Set universe is nil
--- for Plaid empty is nil
--- for Plaid universe is {}
--- all cannot be nil
--- all is the universe in a larger universe
--- all of {} is the largest universe
--- if all is {} then all sets are {}
-function showPlaid(ds,all)
-	if not ds then return "empty" end
-	local empty = true; for k,v in pairs(ds) do empty = false end
-	if empty then return "all" end
-	local str = ""
-	for k,v in ipairs(listSort(all)) do
-		if str ~= "" then str = str..";" end
-		if not ds[v] then str = str..v..":"..showSet(all[v])
-		else str = str..v..":"..showSet(interSet(all[v],ds[v])) end
-	end
-	return str
-end
-function equalPlaid(lhs,rhs,all)
-	if lhs == nil and rhs == nil then return true end
-	if rhs == nil or lhs == nil then return false end
-	local result = true
-	for k,v in pairs(all) do
-		local lhv = lhs[k]; -- if not lhv then lhv = all[k] end
-		local rhv = rhs[k]; -- if not rhv then rhv = all[k] end
-		if lhv and rhv then
-			result = result and equalSet(lhv,rhv)
-		else
-			result = result and (not lhv) and (not rhv)
-		end
-	end
-	return result
-end
-function interPlaid(lhs,rhs,all)
-	if lhs == nil or rhs == nil then return nil end
-	local result = {}
-	for k,v in pairs(all) do
-		local lhv = lhs[k]; if not lhv then lhv = all[k] end
-		local rhv = rhs[k]; if not rhv then rhv = all[k] end
-		result[k] = interSet(lhv,rhv)
-		if equalSet(result[k],{}) then return nil end
-	end
-	return result
-end
-function showFind(found)
-	local str = ""
-	for k,v in ipairs(found) do
-		if str ~= "" then str = str..";" end
-		str = str..v[1]..","..v[2]
-	end
-	return str
-end
-function findString(str,pat)
-	local result = {}
-	for i = 1,str:len()-pat:len()+1 do
-		local found = true
-		for j = 1,pat:len() do
-			if str:sub(i+j-1,i+j-1) ~= pat:sub(j,j) then found = false; break end
-		end
-		if found and i+pat:len() <= str:len() and str:sub(i+pat:len(),i+pat:len()) == "(" then
-			table.insert(result,{i,pat:len()})
-		end
-		if found and i+pat:len() <= str:len() and str:sub(i+pat:len(),i+pat:len()) ~= "(" then
-			table.insert(result,{i,-pat:len()})
-		end
-		if found and i+pat:len() > str:len() then
-			table.insert(result,{i,-pat:len()})
-		end
-	end
-	return result
-end
-function showAny(any)
-	local result = ""
-	if type(any) == "nil" then result = "nil"
-	elseif type(any) == "boolean" and not any then result = "false"
-	elseif type(any) == "boolean" and any then result = "true"
-	elseif type(any) == "number" then result = tostring(any)
-	elseif type(any) == "string" then result = "\""..any.."\""
-	elseif type(any) == "table" then
-		result = "{"
-		for k,key in ipairs(listSort(any)) do
-			if result ~= "{" then result = result.."," end
-			result = result.."["..showAny(key).."]="..showAny(any[key])
-		end
-		result = result.."}"
-	else result = type(any) end
-	return result
-end
-function structTagSpace(struct)
-	local all = {}
-	local key = 1
-	while struct[key] do
-		local tags = struct[key][3]
-		for k,v in pairs(tags) do
-			if all[k] then all[k] = unionSet(all[k],v) else all[k] = v end
-		end
-		key = key + 1
-	end
-	return all
-end
--- 1 2 3 4 5 6 7 8 9 a b
--- a a b b b c d e f g g  (b c d mutually disjoint)
---(   |     )       (   )
---    (         )
---(   |         | | |   )
-function flatStruct(chain,split,cond)
-	local last = #cond
-	local link = 1
-	local step = 1
-	local single = 1
-	local result = {}
-	while (single <= last) do
-		if (step <= #split) and (single >= split[step][1]) then
-			if cond[split[step][1]] then result[#result+1] = split[step] end
-			single = split[step][2] + 1
-			while (link <= #chain) and (split[step][2] >= chain[link][2]) do
-				link = link + 1
-			end
-			step = step + 1
-		elseif (link <= #chain) and (single >= chain[link][1]) then
-			if cond[chain[link][1]] then result[#result+1] = chain[link] end
-			single = chain[link][2] + 1
-			link = link + 1
-		else
-			if cond[single] then result[#result+1] = {single,single} end
-			single = single + 1
-		end
-	end
-	return result
-end
-function nestStruct(nest)
-	-- return list of pairs of open on unequal and close on next unequal
-	local result = {}
-	local start = nil
-	for k,v in ipairs(nest) do
-		if v and not start then start = k end
-		if not v and start then result[#result+1] = {start,k}; start = nil end
-	end
-	if start then result[#result+1] = {start,#nest} end
-	return result
-end
-function condStruct(struct)
-	local result = {}
-	for k,v in ipairs(struct) do
-		local empty = true; for k,v in pairs(v[3]) do empty = false end
-		result[#result+1] = not empty
-	end
-	return result
-end
---  1 2 3 4 5 6 7 8 9 a b
---  a a b b b c d e f g g
---  1 0 1 1 0 0 0 0 0 1 0  (0 unequal, 1 equal)
--- + 0 * 0 0 - 0 0 0 + 0 - (+ open, * close/open, - close struct)
---  (1,2),(3,5),(a,b)      (open struct, close before opens)
-function chainStruct(struct)
-	-- return list of bool of whether successive fields are equal with first and last false
-	local all = structTagSpace(struct)
-	local result = {}
-	for k,v in ipairs(struct) do
-		result[#result+1] = (struct[k+1] ~= nil) and equalPlaid(v[3],struct[k+1][3],all)
-	end
-	return result
-end
---  1 2 3 4 5 6 7 8 9 a b
---  a a b b b c d e f g g  (b c d mutually disjoint)
---  0 0 1 1 1 1 0 0 0 0 0  (0 conjoint, 1 disjoint back to conjoint)
--- 0 0 + 0 0 0 0 - 0 0 0 0 (+ open, - close union)
--- (3,7) (open union before open struct, close before opens)
-function splitStructF(field,sofar,all)
-	for k,v in ipairs(sofar) do
-		if not equalPlaid(interPlaid(v,field,all),nil,all) then
-			return false
-		end
-	end
-	return true
-end
-function splitStruct(struct)
-	-- return list of bool of whether successive structs are disjoint with first and last false
-	local all = structTagSpace(struct)
-	local result = {}
-	local sofar = {}
-	local skip = 0
-	local joint = 0
-	for k,v in ipairs(struct) do
-		if (#sofar == 0) then
-			skip = skip + 1
-			sofar = {v[3]}
-		elseif equalPlaid(v[3],sofar[#sofar],all) then
-			skip = skip + 1
-			sofar[#sofar+1] = v[3]
-		elseif splitStructF(v[3],sofar,all) then
-			skip = skip + 1
-			joint = joint + 1
-			sofar[#sofar+1] = v[3]
-		elseif (joint > 0) then
-			while (skip > 0) do result[#result+1] = true; skip = skip - 1 end
-			result[#result] = false
-			skip = skip + 1
-			sofar = {v[3]}
-			joint = 0
-		else
-			while (skip > 0) do result[#result+1] = false; skip = skip - 1 end
-			skip = skip + 1
-			sofar = {v[3]}
-		end
- 	end
- 	if (joint > 0) then
-		while (skip > 0) do result[#result+1] = true; skip = skip - 1 end
- 	else
-		while (skip > 0) do result[#result+1] = false; skip = skip - 1 end
- 	end
-	return result
-end
-function stringStructF(ary,idx,sub,any,dif,cum,sum)
-	if ary[sub] and (idx == ary[sub][1]) then
-		any = any + 1
-		dif = dif + 1
-		sum = sum + 1
-		cum = cum + 1
-	end
-	if ary[sub] and (idx == ary[sub][2]) then
-		any = any + 1
-		dif = dif - 1
-		sum = sum - 1
-		cum = cum - 1
-	end
-	if ary[sub] and (idx == ary[sub][2]) then
-		sum = sum + 1
-	end
-	if (any > 1) then
-		any = any - 1
-	end
-	if ary[sub] and (idx == ary[sub][2]) then
-		sub = sub + 1
-	end
-	return sub,any,dif,cum,sum
-end
-function stringStruct(struct,chain,split,func)
-	local result = ""
-	local link = 1
-	local step = 1
-	local chainz = 0
-	local splitz = 0
-	for k,v in ipairs(struct) do
-		local linkz = 0
-		local links = 0
-		local chains = chainz
-		link,linkz,links,chainz,chains = stringStructF(chain,k,link,linkz,links,chainz,chains)
-		local stepz = 0 -- transition
-		local steps = 0 -- increase or decrease
-		local splits = splitz -- current = cumulative
-		step,stepz,steps,splitz,splits = stringStructF(split,k,step,stepz,steps,splitz,splits)
-		-- index transition direction level
-		result = result..func(k,linkz,stepz,links,steps,chains,splits)
-	end
-	return result
-end
-function treeStruct(limit,chain,split,index,link,step)
-	if (index >= limit) then return {} end
-	local begi = limit; if chain[link] then begi = chain[link][1] end
-	local endi = limit; if chain[link] then endi = chain[link][2] end
-	local mini = limit; if split[step] then mini = split[step][1] end
-	local maxi = limit; if split[step] then maxi = split[step][2] end
-	if (index < begi) and (index < mini) then
-		local head = {index,index,"field",{}}
-		local tail = treeStruct(limit,chain,split,index+1,link,step)
-		table.insert(tail,1,head)
-		return tail
-	end
-	if (index == mini) then
-		local head = {mini,maxi,"union",treeStruct(maxi+1,chain,split,mini,link,step+1)}
-		while chain[link] and (chain[link][1] < split[step][2]) do link = link + 1 end
-		local tail = treeStruct(limit,chain,split,maxi+1,link,step+1)
-		table.insert(tail,1,head)
-		return tail
-	end
-	if (index == begi) then
-		local head = {begi,endi,"struct",treeStruct(endi+1,chain,split,begi,link+1,step)}
-		local tail = treeStruct(limit,chain,split,endi+1,link+1,step)
-		table.insert(tail,1,head)
-		return tail
-	end
-	return {}
-end
-function showIndent(depth)
-	local indent = ""; c = 0 while c < depth do c = c + 1; indent = indent.."    " end
-	return indent
-end
-
 function overLap(val,field)
 	-- assume there are no disjoint dimensions
 	local share = true
@@ -1309,7 +957,7 @@ function showCodeHs(name,enum)
 	result = result.."--"
 	return result
 end
-function howStructHsK(field)
+function showStructHsK(field)
 	local result = ""
 	local separate = " "
 	for key,val in sortIter(field[3]) do
@@ -1323,7 +971,7 @@ function howStructHsK(field)
 	end
 	return result
 end
-function howStructHsJ(name,pre,post)
+function showStructHsJ(name,pre,post)
 	local result = ""
 	if (name == "Chr") then
 		result = result..pre.."Char"..post
@@ -1344,7 +992,7 @@ function howStructHsJ(name,pre,post)
 	end
 	return result
 end
-function howStructHsI(val)
+function showStructHsI(val)
 	local result = ""
 	local pre = ""
 	local post = ""
@@ -1360,13 +1008,13 @@ function howStructHsI(val)
 		pre = "["
 		post = "]"
 	end
-	result = result..howStructHsJ(val[2],pre,post)
+	result = result..showStructHsJ(val[2],pre,post)
 	return result
 end
-function howStructHsH(pre,field,mid,post)
-	coroutine.yield(pre..howStructHsI(field)..mid.." -- "..field[1]..post)
+function showStructHsH(pre,field,mid,post)
+	coroutine.yield(pre..showStructHsI(field)..mid.." -- "..field[1]..post)
 end
-function howStructHsG(pre,mid,second)
+function showStructHsG(pre,mid,second)
 	local last = #second
 	local post = ""
 	if #second > 0 then 
@@ -1377,23 +1025,26 @@ function howStructHsG(pre,mid,second)
 		if (mid == "") then
 			coroutine.yield("data "..pre.." = "..pre.." --"..post)
 		else
-			coroutine.yield("    "..pre.." -- "..post)
+			coroutine.yield("    "..pre.." --"..post)
 			space = space.."    "
 		end
 		for id,fd in ipairs(second) do
 			if (id == last) then
-				howStructHsH(space,fd,mid,"")
+				showStructHsH(space,fd,mid,"")
 			else
-				howStructHsH(space,fd,"","")
+				showStructHsH(space,fd,"","")
 			end
 		end
 	else
+		if (mid == "") then
+			coroutine.yield("data "..pre.." =")
+		end
 		for id,fd in ipairs(second) do
-			howStructHsH("    "..pre.." ",fd,mid," --"..post)
+			showStructHsH("    "..pre.." ",fd,mid," --"..post)
 		end
 	end
 end     
-function howStructHsF(name,struct,extra)
+function showStructHsF(name,struct,extra)
 	local first = {}
 	local second = {}
 	local index = 1
@@ -1407,7 +1058,7 @@ function howStructHsF(name,struct,extra)
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
-			howStructHsG(name.."A"..index,"",second)
+			showStructHsG(name.."A"..index,"",second)
 			extra[#extra+1] = name.."A"..index
 			coroutine.yield("    deriving (Eq)")
 			second = {}
@@ -1418,21 +1069,21 @@ function howStructHsF(name,struct,extra)
 			coroutine.yield("data "..name.."A"..index.." =")
 			extra[#extra+1] = name.."A"..index
 			outer = index
-			howStructHsG(name.."A"..outer.."B"..index," |",second)
+			showStructHsG(name.."A"..outer.."B"..index," |",second)
 			second = {}
 			index = idx
 			addTo(first,fld)
 			addTo(second,fld)
 		elseif not firster then
 			-- coroutine.yield("-- 4")
-			howStructHsG(name.."A"..outer.."B"..index," |",second)
+			showStructHsG(name.."A"..outer.."B"..index," |",second)
 			second = {}
 			index = idx
 			addTo(first,fld)
 			addTo(second,fld)
 		else
 			-- coroutine.yield("-- 5")
-			howStructHsG(name.."A"..outer.."B"..index," |",second)
+			showStructHsG(name.."A"..outer.."B"..index," |",second)
 			coroutine.yield("    "..name.."A"..outer.."Bs deriving (Eq)")
 			first = {}
 			second = {}
@@ -1442,19 +1093,19 @@ function howStructHsF(name,struct,extra)
 	end
 	if #first == 0 then
 		-- coroutine.yield("-- 6a")
-		howStructHsG(name.."A"..index,"",second)
+		showStructHsG(name.."A"..index,"",second)
 		extra[#extra+1] = name.."A"..index
 		coroutine.yield("    deriving (Eq)")
 	else
 		-- coroutine.yield("-- 6b")
-		howStructHsG(name.."A"..outer.."B"..index," |",second)
+		showStructHsG(name.."A"..outer.."B"..index," |",second)
 		coroutine.yield("    "..name.."A"..outer.."Bs deriving (Eq)")
 	end
 end
-function howStructHs(name,struct)
+function showStructHs(name,struct)
 	local result = ""
 	local extra = {}
-	local wrap = coroutine.wrap(howStructHsF)
+	local wrap = coroutine.wrap(showStructHsF)
 	local line = wrap(name,struct,extra)
 	while line do
 		result = result..line.."\n"
@@ -1550,18 +1201,18 @@ function howDisjointHs(struct)
 	end
 	return result
 end
-function howAccessHsF(index,idx,max,list)
+function showAccessHsF(index,idx,max,list)
 	local ed = (list[idx] ~= nil)
 	local er = (list[idx] ~= nil) and (list[idx] == idx)
 	local ee = (list[idx] ~= nil) and ((idx == max) or (list[idx] ~= nil and list[idx] ~= list[idx+1]))
 	local ea = (list[idx] ~= nil) and (list[index] == list[idx])
 	return ed,er,ee,ea
 end
-function howAccessHsG(name,struct,var,index,equal,disjoint)
+function showAccessHsG(name,struct,var,index,equal,disjoint)
 	local result = ""
 	for idx,fld in ipairs(struct) do
-		local eed,eer,eee,eea = howAccessHsF(index,idx,#struct,equal)
-		local ded,der,dee,dea = howAccessHsF(index,idx,#struct,disjoint)
+		local eed,eer,eee,eea = showAccessHsF(index,idx,#struct,equal)
+		local ded,der,dee,dea = showAccessHsF(index,idx,#struct,disjoint)
 		if (eer and not ded and eea) then
 			result = result.." ".."("..name.."A"..idx
 		end
@@ -1586,24 +1237,24 @@ function howAccessHsG(name,struct,var,index,equal,disjoint)
 	end
 	return result
 end
-function howAccessHs(name,struct)
+function showAccessHs(name,struct)
 	local equal = howEqualHs(struct)
 	local disjoint = howDisjointHs(struct)
 	local result = ""
 	for k,v in ipairs(struct) do
 		result = result.."get"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..howStructHsI(v).."\n"
+		result = result..name.." -> "..showStructHsI(v).."\n"
 		result = result.."get"..name.."C"..v[1].." ("..name
-		result = result..howAccessHsG(name,struct,"a",k,equal,disjoint)
+		result = result..showAccessHsG(name,struct,"a",k,equal,disjoint)
 		result = result..") = a\n"
 	end
 	for k,v in ipairs(struct) do
 		result = result.."set"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..howStructHsI(v).." -> "..name.."\n"
+		result = result..name.." -> "..showStructHsI(v).." -> "..name.."\n"
 		result = result.."set"..name.."C"..v[1].." ("..name
-		result = result..howAccessHsG(name,struct,"_",k,equal,disjoint)
+		result = result..showAccessHsG(name,struct,"_",k,equal,disjoint)
 		result = result..") a = ("..name
-		result = result..howAccessHsG(name,struct,"a",k,equal,disjoint)
+		result = result..showAccessHsG(name,struct,"a",k,equal,disjoint)
 		result = result..")\n"
 	end
 	result = result.."--"
@@ -1667,7 +1318,7 @@ function showCondHs(struct,dset)
 	end
 	return cond
 end
-function howReadHsH(pre,index,struct,field)
+function showReadHsH(pre,index,struct,field)
 	local result = ""
 	local count = 0
 	if (type(field[4]) == "table") then
@@ -1699,12 +1350,12 @@ function howReadHsH(pre,index,struct,field)
 	end
 	coroutine.yield("    "..pre.."a"..index.." <- "..result)
 end
-function howReadHsG(pre,index,struct,second)
+function showReadHsG(pre,index,struct,second)
 	for id,fd in ipairs(second) do
-		howReadHsH(pre,index+id-1,struct,fd)
+		showReadHsH(pre,index+id-1,struct,fd)
 	end
 end
-function howReadHsF(name,struct,extra)
+function showReadHsF(name,struct,extra)
 	local first = {}
 	local second = {}
 	local list = {}
@@ -1719,7 +1370,7 @@ function howReadHsF(name,struct,extra)
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
-			howReadHsG("",index,struct,second)
+			showReadHsG("",index,struct,second)
 			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
 			coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
 			extra[#extra+1] = "a"..index.."x"
@@ -1732,8 +1383,8 @@ function howReadHsF(name,struct,extra)
 			outer = index
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
-			howReadHsG("    ",index,struct,second)
-			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
+			showReadHsG("    ",index,struct,second)
+			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
 			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
 			second = {}
 			index = idx
@@ -1743,8 +1394,8 @@ function howReadHsF(name,struct,extra)
 			-- coroutine.yield("-- 4")
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
-			howReadHsG("    ",index,struct,second)
-			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
+			showReadHsG("    ",index,struct,second)
+			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
 			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
 			second = {}
 			index = idx
@@ -1754,10 +1405,10 @@ function howReadHsF(name,struct,extra)
 			-- coroutine.yield("-- 5")
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
-			howReadHsG("    ",index,struct,second)
-			local str = ""; for id=outer,(idx-1) do str = str.." a"..id end
+			showReadHsG("    ",index,struct,second)
+			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
 			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
-			local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = " " end
+			local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = "," end
 			coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
 			list = {}
 			first = {}
@@ -1768,7 +1419,7 @@ function howReadHsF(name,struct,extra)
 	end
 	if #first == 0 then
 		-- coroutine.yield("-- 6a")
-		howReadHsG("",index,struct,second)
+		showReadHsG("",index,struct,second)
 		local str = ""; for id=index,#struct do str = str.." a"..id end
 		coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
 		extra[#extra+1] = "a"..index.."x"
@@ -1776,16 +1427,16 @@ function howReadHsF(name,struct,extra)
 		-- coroutine.yield("-- 6b")
 		coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 		list[#list+1] = "b"..index.."x"
-		howReadHsG("    ",index,struct,second)
-		local str = ""; for id=outer,#struct do str = str.." a"..id end
-		coroutine.yield("    return ("..name.."A"..outer.."B"..index..str.."))")
-		local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = " " end
+		showReadHsG("    ",index,struct,second)
+		local str = ""; for id=index,#struct do str = str.." a"..id end
+		coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+		local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = "," end
 		coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
 	end
 end
-function howReadHsE(name,struct,extra)
+function showReadHsE(name,struct,extra)
 	local result = ""
-	local wrap = coroutine.wrap(howReadHsF)
+	local wrap = coroutine.wrap(showReadHsF)
 	local line = wrap(name,struct,extra)
 	while line do
 		result = result..line.."\n"
@@ -1793,19 +1444,19 @@ function howReadHsE(name,struct,extra)
 	end
 	return result
 end
-function howReadHs(name,struct)
+function showReadHs(name,struct)
 	local result = ""
 	local extra = {}
 	result = result.."read"..name.." :: Int -> IO "..name.."\n"
 	result = result.."read"..name.." idx = do\n"
-	result = result..howReadHsE(name,struct,extra)
+	result = result..showReadHsE(name,struct,extra)
 	result = result.."    return ("..name
 	for key,val in ipairs(extra) do
 		result = result.." "..val
 	end
 	return result..")"
 end
-function howWriteHsK(pre,post,index,second)
+function showWriteHsK(pre,post,index,second)
 	for id,fd in ipairs(second) do
 		if (id == 1 and id == #second) then
 			coroutine.yield(pre.."a"..(index+id-1)..post)
@@ -1818,7 +1469,7 @@ function howWriteHsK(pre,post,index,second)
 		end
 	end
 end
-function howWriteHsJ(name,struct)
+function showWriteHsJ(name,struct)
 	local first = {}
 	local second = {}
 	local index = 1
@@ -1832,13 +1483,13 @@ function howWriteHsJ(name,struct)
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
-			howWriteHsK("("..name.."A"..index.." ",")",index,second)
+			showWriteHsK("("..name.."A"..index.." ",")",index,second)
 			second = {}
 			index = idx
 			addTo(second,fld)
 		elseif #first == 0 then
 			-- coroutine.yield("-- 3")
-			-- howWriteHsK("("..name.."A"..index.." ","",index,second)
+			-- showWriteHsK("("..name.."A"..index.." ","",index,second)
 			coroutine.yield("a"..index)
 			outer = index
 			second = {}
@@ -1847,14 +1498,14 @@ function howWriteHsJ(name,struct)
 			addTo(second,fld)
 		elseif not firster then
 			-- coroutine.yield("-- 4")
-			-- howWriteHsK("","",index,second)
+			-- showWriteHsK("","",index,second)
 			second = {}
 			index = idx
 			addTo(first,fld)
 			addTo(second,fld)
 		else
 			-- coroutine.yield("-- 5")
-			-- howWriteHsK("",")",index,second)
+			-- showWriteHsK("",")",index,second)
 			first = {}
 			second = {}
 			index = idx
@@ -1863,16 +1514,16 @@ function howWriteHsJ(name,struct)
 	end
 	if #first == 0 then
 		-- coroutine.yield("-- 6a")
-		-- howWriteHsK("6a(",")",index,second)
-		howWriteHsK("("..name.."A"..index.." ",")",index,second)
+		-- showWriteHsK("6a(",")",index,second)
+		showWriteHsK("("..name.."A"..index.." ",")",index,second)
 	else
 		-- coroutine.yield("-- 6b")
-		-- howWriteHsK("",")",index,second)
+		-- showWriteHsK("",")",index,second)
 	end
 end
-function howWriteHsI(name,struct)
+function showWriteHsI(name,struct)
 	local result = ""
-	local wrap = coroutine.wrap(howWriteHsJ)
+	local wrap = coroutine.wrap(showWriteHsJ)
 	local word = wrap(name,struct)
 	while word do
 		result = result.." "..word
@@ -1880,7 +1531,7 @@ function howWriteHsI(name,struct)
 	end
 	return result
 end
-function howWriteHsH(index,struct,field,var)
+function showWriteHsH(index,struct,field,var)
 	local result = ""
 	local count = 0
 	local post = ""
@@ -1888,8 +1539,9 @@ function howWriteHsH(index,struct,field,var)
 	if (type(field[4]) == "table") and (#field[4] > 0) then
 		while (count < #field[4]) do
 			count = count + 1
-			result = result.."assertHelp "..field[4][count].." (\\x -> "
+			result = result.."assertHelp "..field[4][count].." ("
 		end
+		result = result.."\\x -> "
 		post = " "..var
 		var = "x"
 	end
@@ -1910,39 +1562,38 @@ function howWriteHsH(index,struct,field,var)
 		var = "x"
 	end
 	if (field[2] == "Str") then
-		result = result.."fmap fst (writeStr"
-		count = count + 1
-	else result = result.."write"..field[2] end
-	result = result.." "..var.." idx"
+		var = var.." True"
+	end
+	result = result.."write"..field[2].." "..var.." idx"
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
 	end
 	return result..post
 end
-function howWriteHsG(pre,index,outer,limit,name,struct,second)
+function showWriteHsG(pre,index,outer,limit,name,struct,second)
 	if (pre == "") then
 		for id,fd in ipairs(second) do
-			coroutine.yield("    "..howWriteHsH(index+id-1,struct,fd,"a"))
+			coroutine.yield("    "..showWriteHsH(index+id-1,struct,fd,"a"))
 		end
 	elseif (#second == 1) then
-		local str = ""; for id=index,(limit-1) do str = str.." b"..id end
+		local str = ""; for id=index,(limit-1) do str = str.." a"..id end
 		for id,fd in ipairs(second) do
-			coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> "..howWriteHsH(index+id-1,struct,fd,"b")..") a"..outer..")")
+			coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> "..showWriteHsH(index+id-1,struct,fd,"a")..") a"..outer..")")
 		end
 	else
-		local str = ""; for id=index,(limit-1) do str = str.." b"..id end
+		local str = ""; for id=index,(limit-1) do str = str.." a"..id end
 		coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> do")
 		for id,fd in ipairs(second) do
 			if (id == #second) then
-				coroutine.yield("    "..pre..howWriteHsH(index+id-1,struct,fd,"b")..") a"..outer..")")
+				coroutine.yield("    "..pre..showWriteHsH(index+id-1,struct,fd,"a")..") a"..outer..")")
 			else
-				coroutine.yield("    "..pre..howWriteHsH(index+id-1,struct,fd,"b"))
+				coroutine.yield("    "..pre..showWriteHsH(index+id-1,struct,fd,"a"))
 			end
 		end
 	end
 end
-function howWriteHsF(name,struct)
+function showWriteHsF(name,struct)
 	local first = {}
 	local second = {}
 	local index = 1
@@ -1955,29 +1606,29 @@ function howWriteHsF(name,struct)
 			-- coroutine.yield("-- 1")
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
-			coroutine.yield("-- 2")
-			howWriteHsG("",index,outer,idx,name,struct,second)
+			-- coroutine.yield("-- 2")
+			showWriteHsG("",index,outer,idx,name,struct,second)
 			second = {}
 			index = idx
 			addTo(second,fld)
 		elseif #first == 0 then
-			coroutine.yield("-- 3")
+			-- coroutine.yield("-- 3")
 			outer = index
-			howWriteHsG("    ",index,outer,idx,name,struct,second)
+			showWriteHsG("    ",index,outer,idx,name,struct,second)
 			second = {}
 			index = idx
 			addTo(first,fld)
 			addTo(second,fld)
 		elseif not firster then
-			coroutine.yield("-- 4")
-			howWriteHsG("    ",index,outer,idx,name,struct,second)
+			-- coroutine.yield("-- 4")
+			showWriteHsG("    ",index,outer,idx,name,struct,second)
 			second = {}
 			index = idx
 			addTo(first,fld)
 			addTo(second,fld)
 		else
-			coroutine.yield("-- 5")
-			howWriteHsG("    ",index,outer,idx,name,struct,second)
+			-- coroutine.yield("-- 5")
+			showWriteHsG("    ",index,outer,idx,name,struct,second)
 			list = {}
 			first = {}
 			second = {}
@@ -1986,16 +1637,16 @@ function howWriteHsF(name,struct)
 		end
 	end
 	if #first == 0 then
-		coroutine.yield("-- 6a")
-		howWriteHsG("",index,outer,#struct,name,struct,second)
+		-- coroutine.yield("-- 6a")
+		showWriteHsG("",index,outer,#struct+1,name,struct,second)
 	else
-		coroutine.yield("-- 6b")
-		howWriteHsG("    ",index,outer,#struct,name,struct,second)
+		-- coroutine.yield("-- 6b")
+		showWriteHsG("    ",index,outer,#struct+1,name,struct,second)
 	end
 end
-function howWriteHsE(name,struct)
+function showWriteHsE(name,struct)
 	local result = ""
-	local wrap = coroutine.wrap(howWriteHsF)
+	local wrap = coroutine.wrap(showWriteHsF)
 	local line = wrap(name,struct)
 	while line do
 		result = result..line.."\n"
@@ -2003,468 +1654,12 @@ function howWriteHsE(name,struct)
 	end
 	return result
 end
-function howWriteHs(name,struct)
-	local result = ""
-	local expand = howWriteHsI(name,struct)
-	result = result.."write"..name.." :: "..name.." -> Int -> IO "..name.."\n"
-	result = result.."write"..name.." ("..name..expand..") idx = do\n"
-	result = result..howWriteHsE(name,struct)
-	result = result.."--"
-	return result
-end
-
-function showStructHsF(val)
-	local result = ""
-	local pre = ""
-	local post = ""
-	if ((type(val[4]) == "table") and (#val[4] > 0)) then
-		local count = 1
-		while (count <= #val[4]) do
-			pre = pre.."["
-			post = post.."]"
-			count = count + 1
-		end
-	end
-	if (type(val[4]) == "number") or (type(val[4]) == "string") then
-		pre = "["
-		post = "]"
-	end
-	result = result..showStructHsG(val[2],pre,post)
-	return result
-end
-function showStructHsG(name,pre,post)
-	local result = ""
-	if (name == "Chr") then
-		result = result..pre.."Char"..post
-	elseif (name == "Int") then
-		result = result..pre.."Int"..post
-	elseif (name == "New") then
-		result = result..pre.."Integer"..post
-	elseif (name == "Num") then
-		result = result..pre.."Double"..post
-	elseif (name == "Old") then
-		result = result..pre.."Float"..post
-	elseif (name == "Str") then
-		result = result..pre.."String"..post
-	elseif (name == "Dat") then
-		result = result..pre.."Dat"..post
-	else
-		result = result..pre..name..post
-	end
-	return result
-end
-function showStructHs(name,struct)
-	local all = structTagSpace(struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
-	local result = ""
-	local structs = 1
-	result = result..stringStruct(struct,chain,split,
-		function(index,linkz,stepz,links,steps,chains,splits)
-		-- index transition direction level
-		local result = ""
-		if (linkz+links > 0) and (splits == 0) then
-			result = result.."data "..name.."A"..chain[structs][1].."X"..chain[structs][2]
-			result = result.." = "..name.."A"..chain[structs][1].."X"..chain[structs][2]
-			result = result.." -- "..showPlaid(struct[index][3],all).."\n"
-		end
-		if (chains == 1) and (splits == 0) then
-			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
-		end
-		if (linkz-links > 0) and (splits == 0) then
-			result = result..showIndent(1).."deriving (Eq)\n"
-		end
-		if (linkz-links > 0) then
-			structs = structs + 1
-		end
-		return result
-	end)
-	local unions = 1
-	structs = 1
-	result = result..stringStruct(struct,chain,split,
-		function(index,linkz,stepz,links,steps,chains,splits)
-		-- index transition direction level
-		local result = ""
-		if (stepz+steps > 0) then
-			result = result.."data "..name.."A"..split[unions][1].."X"..split[unions][2].." =\n"
-		end
-		if (splits == 1) then
-			if (linkz+links > 0) then
-				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-				result = result.."B"..chain[structs][1].."X"..chain[structs][2]
-				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
-			end
-			if (chains == 1) and (linkz-links <= 0) then
-				result = result..showIndent(2)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
-			end
-			if (chains == 1) and (linkz-links > 0) then
-				result = result..showIndent(2)..showStructHsF(struct[index]).." | -- "..struct[index][1].."\n"
-			end
-			if (chains == 0) then
-				result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-				result = result.."B"..index
-				result = result.." "..showStructHsF(struct[index]).." | -- "..struct[index][1]
-				result = result.." -- "..showPlaid(struct[index][3],all).."\n"
-			end
-		end
-		if (stepz-steps > 0) then
-			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2]
-			result = result.."Bs deriving (Eq)\n"
-			unions = unions + 1
-		end
-		if (linkz-links > 0) then
-			structs = structs + 1
-		end
-		return result
-	end)
-	result = result.."data "..name.." = "..name.."\n"
-	unions = 1
-	structs = 1
-	result = result..stringStruct(struct,chain,split,
-		function(index,linkz,stepz,links,steps,chains,splits)
-		-- index transition direction level
-		local result = ""
-		if (linkz+links > 0) and (splits == 0) then
-			result = result..showIndent(1)..name.."A"..chain[structs][1].."X"..chain[structs][2].."\n"
-		end
-		if (linkz+links > 0) then
-			structs = structs + 1
-		end
-		if (stepz+steps > 0) then
-			result = result..showIndent(1)..name.."A"..split[unions][1].."X"..split[unions][2].."\n"
-			unions = unions + 1
-		end
-		if (chains == 0) and (splits == 0) then
-			result = result..showIndent(1)..showStructHsF(struct[index]).." -- "..struct[index][1].."\n"
-		end
-		return result
-	end)
-	result = result..showIndent(1).."deriving (Eq)\n"
-	result = result.."--"
-	return result
-end
-function showAccessHsF(index,field,name,tree)
-	local result = ""
-	local branch = 1
-	while (tree[branch]) do
-		local leaf = " a"..tree[branch][1]
-		local node = " a"..tree[branch][1].."x"..tree[branch][2]
-		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
-			result = result.." "..field
-		end
-		if (tree[branch][3] == "field") and (tree[branch][1] ~= index) then
-			result = result..leaf
-		end
-		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			result = result.." ("..name.."A"..tree[branch][1].."X"..tree[branch][2]
-			result = result..showAccessHsF(index,field,name,tree[branch][4])..")"
-		end
-		if (tree[branch][3] == "struct") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
-			result = result..node
-		end
-		if (tree[branch][3] == "union") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			local extend = "A"..tree[branch][1].."X"..tree[branch][2]
-			result = result..showAccessHsG(index,field,name,tree[branch][4],extend)
-		end
-		if (tree[branch][3] == "union") and not ((tree[branch][1] <= index) and (tree[branch][2] >= index)) then
-			result = result..node
-		end
-		branch = branch + 1
-	end
-	return result
-end
-function showAccessHsG(index,field,name,tree,extend)
-	local result = ""
-	local branch = 1
-	while (tree[branch]) do
-		local clip = "B"..tree[branch][1]
-		local trim = "B"..tree[branch][1].."X"..tree[branch][2]
-		if (tree[branch][3] == "field") and (tree[branch][1] == index) then
-			result = result.." ("..name..extend..clip.." "..field..")"
-		end
-		if (tree[branch][3] == "struct") and (tree[branch][1] <= index) and (tree[branch][2] >= index) then
-			result = result.." ("..name..extend
-			result = result..trim..showAccessHsF(index,field,name,tree[branch][4],nil)..")"
-		end
-		branch = branch + 1
-	end
-	return result
-end
-function showAccessHs(name,struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
-	local tree = treeStruct(#struct+1,chain,split,1,1,1)
-	local result = ""
-	for k,v in ipairs(struct) do
-		result = result.."get"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..showStructHsF(v).."\n"
-		result = result.."get"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"a",name,tree)
-		result = result..") = a\n"
-	end
-	result = result.."--\n"
-	for k,v in ipairs(struct) do
-		result = result.."set"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..showStructHsF(v).." -> "..name.."\n"
-		result = result.."set"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsF(k,"_",name,tree)
-		result = result..") a = ("..name
-		result = result..showAccessHsF(k,"a",name,tree)
-		result = result..")\n"
-	end
-	result = result.."--"
-	return result
-end
-
-function showReadHsF(name,struct,node,depth)
-	local result = ""
-	if (node[3] == "field") then
-		result = result..showReadHsG(struct,node[1],depth)
-	end
-	if (node[3] == "struct") then
-		result = result..showReadHsH(name,struct,node,depth)
-	end
-	if (node[3] == "union") then
-		result = result..showReadHsI(name,struct,node,depth)
-	end
-	return result
-end
-function showReadHsG(struct,index,depth)
-	local result = ""
-	local field = struct[index]
-	result = result..showIndent(depth).."a"..index.." <- "
-	local count = 0
-	if (type(field[4]) == "table") then
-		while (count < #field[4]) do
-			count = count + 1
-			result = result.."listHelp "..field[4][count].." ("
-		end
-	end
-	if (type(field[4]) == "string") then
-		local found = "0"
-		for k,v in ipairs(struct) do
-			if (v[1] == field[4]) then found = "a"..k end
-		end
-		result = result.."listHelp "..found.." ("
-		count = count + 1
-	end
-	if (type(field[4]) == "number") then
-		result = result.."listHelp "..field[4].." ("
-		count = count + 1
-	end
-	if (field[2] == "Str") then
-		result = result.."fmap fst (readStr"
-		count = count + 1
-	else result = result.."read"..field[2] end
-	result = result.." idx"
-	while (count > 0) do
-		result = result..")"
-		count = count - 1
-	end
-	result = result.."\n"
-	return result
-end
-function showReadHsH(name,struct,node,depth)
-	local result = ""
-	local args = ""
-	local tree = node[4]
-	local branch = 1
-	while (tree[branch]) do
-		local temp = tree[branch]
-		local arg = "a"..temp[1]
-		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
-		args = args.." "..arg
-		result = result..showReadHsF(name,struct,temp,depth)
-		branch = branch + 1
-	end
-	if (node[3] == "top") then
-		result = result..showIndent(depth).."return ("..name..args..")\n"
-	else
-		result = result..showIndent(depth).."a"..node[1].."x"..node[2]
-		result = result.." <- return ("..name.."A"..node[1].."X"..node[2]..args..")\n"
-	end
-	return result
-end
-function showReadHsI(name,struct,node,depth)
-	local result = ""
-	local none = name.."A"..node[1].."X"..node[2].."Bs"
-	local args = ""
-	local tree = node[4]
-	local branch = 1
-	while (tree[branch]) do
-		local temp = tree[branch]
-		local func = name.."A"..node[1].."X"..node[2].."B"..temp[1]
-		if (temp[3] ~= "field") then func = func.."X"..temp[2] end
-		local arg = "b"..temp[1]
-		if (temp[3] ~= "field") then arg = arg.."x"..temp[2] end
-		if (args ~= "") then args = args.."," end
-		args = args..arg
-		result = result..showIndent(depth)..arg.." <- condHelp "
-		result = result..showCondHs(struct,struct[temp[1]][3])
-		result = result.." "..none.." (do\n"
-		result = result..showReadHsJ(func,struct,temp,depth+1)
-		branch = branch + 1
-	end
-	result = result..showIndent(depth).."a"..node[1].."x"..node[2]
-	result = result.." <- firstHelp "..none.." ["..args.."]\n"
-	return result
-end
-function showReadHsJ(func,struct,node,depth)
-	local result = ""
-	local tree = node[4]
-	if (node[3] == "field") then tree = {node} end
-	local args = ""
-	local branch = 1
-	while (tree[branch]) do
-		local temp = tree[branch]
-		local arg = "a"..temp[1]
-		if (args ~= "") then args = args.." " end
-		args = args..arg
-		result = result..showReadHsG(struct,temp[1],depth)
-		branch = branch + 1
-	end
-	result = result..showIndent(depth).."return ("..func.." "..args.."))\n"
-	return result
-end
-function showReadHs(name,struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
-	local tree = treeStruct(#struct+1,chain,split,1,1,1)
-	local result = ""
-	result = result.."read"..name.." :: Int -> IO "..name.."\n"
-	result = result.."read"..name.." idx = do\n"
-	result = result..showReadHsH(name,struct,{1,#struct,"top",tree},1)
-	result = result.."--"
-	return result
-end
-function showWriteHsF(name,struct,tree)
-	local result = ""
-	local branch = 1
-	while (tree[branch]) do
-		local node = tree[branch]
-		if (node[3] == "field") then
-			result = result.." a"..node[1]
-		end
-		if (node[3] == "struct") then
-			result = result.." ("..name.."A"..node[1].."X"..node[2]
-			result = result..showWriteHsF(name,struct,node[4])
-			result = result..")"
-		end
-		if (node[3] == "union") then
-			result = result.." a"..node[1].."x"..node[2]
-		end
-		branch = branch + 1
-	end
-	return result
-end
-function showWriteHsG(name,struct,tree,depth)
-	local result = ""
-	local branch = 1
-	while (tree[branch]) do
-		local node = tree[branch]
-		if (node[3] == "field") then
-			result = result..showIndent(depth)
-			result = result..showWriteHsH(struct,node[1])
-		end
-		if (node[3] == "struct") then
-			result = result..showWriteHsG(name,struct,node[4],depth)
-		end
-		if (node[3] == "union") then
-			result = result..showWriteHsI(name,struct,node,depth)
-		end
-		branch = branch + 1
-		if (tree[branch]) then
-			result = result.."\n"
-		end
-	end
-	return result
-end
-function showWriteHsH(struct,index)
-	local result = ""
-	local field = struct[index]
-	local count = 0
-	if (type(field[4]) == "table") and (#field[4] ~= 0) then
-		while (count < #field[4]) do
-			count = count + 1
-			result = result.."assertHelp "..field[4][count].." ("
-		end
-	end
-	if (type(field[4]) == "string") then
-		local found = "0"
-		for k,v in ipairs(struct) do
-			if (v[1] == field[4]) then found = "a"..k end
-		end
-		result = result.."assertHelp "..found.." ("
-		count = count + 1
-	end
-	if (type(field[4]) == "number") then
-		result = result.."assertHelp "..field[4].." ("
-		count = count + 1
-	end
-	local anon = false
-	if (count > 0) then
-		anon = true
-		result = result.."\\x -> "
-	end
-	result = result.."write"..field[2]
-	if anon and (field[2] == "Old") then
-		result = result.." x"
-	elseif anon and (field[2] ~= "Old") then
-		result = result.." x"
-	elseif not anon and (field[2] == "Old") then
-		result = result.." a"..index
-	elseif not anon and (field[2] ~= "Old") then
-		result = result.." a"..index
-	end
-	if (field[2] == "Str") then result = result.." True" end
-	result = result.." idx"
-	while (count > 0) do
-		result = result..")"
-		count = count - 1
-	end
-	if anon then
-		result = result.." a"..index
-	end
-	return result
-end
-function showWriteHsI(name,struct,given,depth)
-	local result = ""
-	local tree = given[4]
-	local branch = 1
-	while (tree[branch]) do
-		local node = tree[branch]
-		result = result..showIndent(depth).."condHelp "
-		result = result..showCondHs(struct,struct[node[1]][3])
-		result = result.." () ((\\("..name.."A"..given[1].."X"..given[2]
-		result = result.."B"..node[1]
-		if (node[3] == "field") then
-			result = result..showWriteHsF(name,struct,{node})
-			result = result..") -> "
-			result = result..showWriteHsH(struct,node[1])
-		else
-			result = result.."X"..node[2]
-			result = result..showWriteHsF(name,struct,node[4])
-			result = result..") -> do\n"
-			result = result..showWriteHsG(name,struct,node[4],depth+1)
-		end
-		result = result..") a"..given[1].."x"..given[2]..")"
-		branch = branch + 1
-		if (tree[branch]) then
-			result = result.."\n"
-		end
-	end
-	return result
-end
 function showWriteHs(name,struct)
-	local chain = nestStruct(chainStruct(struct))
-	local split = flatStruct(chain,nestStruct(splitStruct(struct)),condStruct(struct))
-	local tree = treeStruct(#struct+1,chain,split,1,1,1)
 	local result = ""
+	local expand = showWriteHsI(name,struct)
 	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
-	result = result.."write"..name.." ("..name
-	result = result..showWriteHsF(name,struct,tree)
-	result = result..") idx = do\n"
-	result = result..showWriteHsG(name,struct,tree,1).."\n"
+	result = result.."write"..name.." ("..name..expand..") idx = do\n"
+	result = result..showWriteHsE(name,struct)
 	result = result.."--"
 	return result
 end
@@ -2778,19 +1973,9 @@ function showCallHs()
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
 	result = result..showCall(Structs,Structz,showAccessHs).."\n"
-	result = result.."{-\n"
-	result = result..showCall(Structs,Structz,howStructHs).."\n"
-	result = result..showCall(Structs,Structz,howAccessHs).."\n"
-	result = result.."-}\n"
 	result = result..showHelpHs().."\n"
 	result = result..showCall(Structs,Structz,showReadHs).."\n"
-	result = result.."{-\n"
-	result = result..showCall(Structs,Structz,howReadHs).."\n"
-	result = result.."-}\n"
 	result = result..showCall(Structs,Structz,showWriteHs).."\n"
-	result = result.."{-\n"
-	result = result..showCall(Structs,Structz,howWriteHs).."\n"
-	result = result.."-}\n"
 	return result
 end
 function showCallLua()

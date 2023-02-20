@@ -1,28 +1,6 @@
 dofile("typra.src")
 
 Stimulus = {
-	{"Enumz"},
-	{"Structz"},
-	{"findString(\"hello ok again and again\",\"hello\")"},
-	{"findString(\"hello ok again() and again\",\"again\")"},
-	{"findString(\"hello() ok again and again\",\"hello\")"},
-	{"Enum1"},
-	{"Enum2"},
-	{"allOf(Enum1)"},
-	{"allBefore(Enum1,\"Value12\")"},
-	{"allExcept(Enum1,allBefore)"},
-	{"unionSet(allBefore,allExcept)"},
-	{"differSet(allOf,allBefore)"},
-	{"equalSet(allExcept,differSet)"},
-	{"equalSet(allOf,allExcept)"},
-	{"allBefore(Enum1,\"Value13\")"},
-	{"interSet(differSet,allOf)"},
-	{"structTagSpace(Struct1)","structTagSpace(Struct1)"},
-	{"equalPlaid(structTagSpace,structTagSpace,structTagSpace)"},
-	{"interPlaid({[\"field6\"]=allBefore},structTagSpace,structTagSpace)","structTagSpace"},
-	{"interPlaid({[\"field6\"]=allBefore},{[\"field7\"]=allExcept(Enum1,allBefore)},structTagSpace)","structTagSpace"},
-	{"nestStruct(chainStruct(Struct1))"},
-	{"nestStruct(splitStruct(Struct1))"},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
@@ -49,28 +27,6 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 }
 Monitor = {
-	"showAny",
-	"showAny",
-	"showFind",
-	"showFind",
-	"showFind",
-	"showList",
-	"showList",
-	"showSet",
-	"showSet",
-	"showSet",
-	"showSet",
-	"showSet",
-	"showBool",
-	"showBool",
-	"showSet",
-	"showSet",
-	"showPlaid",
-	"showBool",
-	"showPlaid",
-	"showPlaid",
-	"showAny",
-	"showAny",
 	"showEnumC",
 	"showStructC",
 	"showReadC",
@@ -97,48 +53,6 @@ Monitor = {
 	"showWriteLua",
 }
 Expected = {
-	"{[\"Enum1\"]={[1]=\"Value11\",[2]=\"Value12\",[3]=\"Value13\"},"..
-	"[\"Enum2\"]={[1]=\"Value21\",[2]=\"Value22\",[3]=\"Value23\"}}",
-	"{[\"Struct1\"]={[1]={[1]=\"next\",[2]=\"Struct1\",[3]={},[4]=0},"..
-	"[2]={[1]=\"field1\",[2]=\"Old\",[3]={},[4]={[1]=2}},"..
-	"[3]={[1]=\"field2\",[2]=\"Num\",[3]={},[4]={[1]=3}},"..
-	"[4]={[1]=\"field3\",[2]=\"Int\",[3]={},[4]={[1]=2,[2]=2}},"..
-	"[5]={[1]=\"field4\",[2]=\"Str\",[3]={},[4]={}},"..
-	"[6]={[1]=\"field5\",[2]=\"Int\",[3]={},[4]=3},"..
-	"[7]={[1]=\"field6\",[2]=\"Enum1\",[3]={},[4]={}},"..
-	"[8]={[1]=\"field7\",[2]=\"Enum2\",[3]={},[4]={}},"..
-	"[9]={[1]=\"field8\",[2]=\"Int\",[3]={[\"field6\"]={[\"Value11\"]=true}},[4]={}},"..
-	"[10]={[1]=\"field9\",[2]=\"Int\",[3]={[\"field6\"]={[\"Value11\"]=true}},[4]={}},"..
-	"[11]={[1]=\"field10\",[2]=\"Int\",[3]={[\"field6\"]={[\"Value12\"]=true}},[4]={}},"..
-	"[12]={[1]=\"field11\",[2]=\"Int\",[3]={[\"field6\"]={[\"Value12\"]=true},[\"field7\"]={[\"Value21\"]=true}},[4]={}},"..
-	"[13]={[1]=\"field12\",[2]=\"Int\",[3]={[\"field6\"]={[\"Value12\"]=true},[\"field7\"]={[\"Value22\"]=true,[\"Value23\"]=true}},[4]={}},"..
-	"[14]={[1]=\"field13\",[2]=\"Int\",[3]={[\"field6\"]={[\"Value13\"]=true}},[4]={}},"..
-	"[15]={[1]=\"field14\",[2]=\"Int\",[3]={},[4]={}},"..
-	"[16]={[1]=\"field15\",[2]=\"Int\",[3]={},[4]=\"field14\"},"..
-	"[17]={[1]=\"field16\",[2]=\"Struct2\",[3]={},[4]=2},"..
-	"[18]={[1]=\"field17\",[2]=\"Struct2\",[3]={},[4]={[1]=2}}},"..
-	"[\"Struct2\"]={[1]={[1]=\"field1\",[2]=\"Int\",[3]={},[4]={}},"..
-	"[2]={[1]=\"field2\",[2]=\"Int\",[3]={},[4]={}}}}",
-	"1,-5",
-	"10,5;22,-5",
-	"1,5",
-	"Value11,Value12,Value13",
-	"Value21,Value22,Value23",
-	"Value11,Value12,Value13",
-	"Value11,(Value12),(Value13)",
-	"(Value11),Value12,Value13",
-	"Value11,Value12,Value13",
-	"(Value11),Value12,Value13",
-	"true",
-	"false",
-	"Value11,Value12,(Value13)",
-	"(Value11),Value12,Value13",
-	"field6:Value11,Value12,Value13;field7:Value21,Value22,Value23",
-	"true",
-	"field6:Value11,Value12,(Value13);field7:Value21,Value22,Value23",
-	"empty",
-	"{[1]={[1]=1,[2]=8},[2]={[1]=9,[2]=10},[3]={[1]=15,[2]=18}}",
-	"{[1]={[1]=9,[2]=11},[2]={[1]=12,[2]=14}}",
 	"enum Enum1 {\n"..
 	"    Value11,\n"..
 	"    Value12,\n"..
@@ -437,7 +351,7 @@ Expected = {
 	"    Value13 |\n"..
 	"    Enum1s deriving (Eq)\n"..
 	"--",
-	"data Struct1A1X8 = Struct1A1X8 -- all\n"..
+	"data Struct1A1 = Struct1A1 --\n"..
 	"    [Struct1] -- next\n"..
 	"    [Float] -- field1\n"..
 	"    [Double] -- field2\n"..
@@ -447,105 +361,103 @@ Expected = {
 	"    Enum1 -- field6\n"..
 	"    Enum2 -- field7\n"..
 	"    deriving (Eq)\n"..
-	"data Struct1A15X18 = Struct1A15X18 -- all\n"..
+	"data Struct1A9 =\n"..
+	"    Struct1A9B9 -- field6:Value11\n"..
+	"        Int -- field8\n"..
+	"        Int | -- field9\n"..
+	"    Struct1A9B11 Int | -- field10 -- field6:Value12\n"..
+	"    Struct1A9Bs deriving (Eq)\n"..
+	"data Struct1A12 =\n"..
+	"    Struct1A12B12 Int | -- field11 -- field6:Value12;field7:Value21\n"..
+	"    Struct1A12B13 Int | -- field12 -- field6:Value12;field7:Value22,Value23\n"..
+	"    Struct1A12B14 Int | -- field13 -- field6:Value13\n"..
+	"    Struct1A12Bs deriving (Eq)\n"..
+	"data Struct1A15 = Struct1A15 --\n"..
 	"    Int -- field14\n"..
 	"    [Int] -- field15\n"..
 	"    [Struct2] -- field16\n"..
 	"    [Struct2] -- field17\n"..
 	"    deriving (Eq)\n"..
-	"data Struct1A9X11 =\n"..
-	"    Struct1A9X11B9X10 -- field6:Value11;field7:Value21,Value22,Value23\n"..
-	"        Int -- field8\n"..
-	"        Int | -- field9\n"..
-	"    Struct1A9X11B11 Int | -- field10 -- field6:Value12;field7:Value21,Value22,Value23\n"..
-	"    Struct1A9X11Bs deriving (Eq)\n"..
-	"data Struct1A12X14 =\n"..
-	"    Struct1A12X14B12 Int | -- field11 -- field6:Value12;field7:Value21\n"..
-	"    Struct1A12X14B13 Int | -- field12 -- field6:Value12;field7:Value22,Value23\n"..
-	"    Struct1A12X14B14 Int | -- field13 -- field6:Value13;field7:Value21,Value22,Value23\n"..
-	"    Struct1A12X14Bs deriving (Eq)\n"..
 	"data Struct1 = Struct1\n"..
-	"    Struct1A1X8\n"..
-	"    Struct1A9X11\n"..
-	"    Struct1A12X14\n"..
-	"    Struct1A15X18\n"..
+	"    Struct1A1\n"..
+	"    Struct1A9\n"..
+	"    Struct1A12\n"..
+	"    Struct1A15\n"..
 	"    deriving (Eq)\n"..
 	"--",
-	("getStruct1Cnext :: Struct1 -> [Struct1]\n"..
-	"getStruct1Cnext (Struct1 (Struct1A1X8 a a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cnext :: Struct1 -> [Struct1]\n"..
+	"getStruct1Cnext (Struct1 (Struct1A1 a a2 a3 a4 a5 a6 a7 a8) a9 a12 a15) = a\n"..
 	"getStruct1Cfield1 :: Struct1 -> [Float]\n"..
-	"getStruct1Cfield1 (Struct1 (Struct1A1X8 a1 a a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield1 (Struct1 (Struct1A1 a1 a a3 a4 a5 a6 a7 a8) a9 a12 a15) = a\n"..
 	"getStruct1Cfield2 :: Struct1 -> [Double]\n"..
-	"getStruct1Cfield2 (Struct1 (Struct1A1X8 a1 a2 a a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield2 (Struct1 (Struct1A1 a1 a2 a a4 a5 a6 a7 a8) a9 a12 a15) = a\n"..
 	"getStruct1Cfield3 :: Struct1 -> [[Int]]\n"..
-	"getStruct1Cfield3 (Struct1 (Struct1A1X8 a1 a2 a3 a a5 a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield3 (Struct1 (Struct1A1 a1 a2 a3 a a5 a6 a7 a8) a9 a12 a15) = a\n"..
 	"getStruct1Cfield4 :: Struct1 -> String\n"..
-	"getStruct1Cfield4 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a a6 a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield4 (Struct1 (Struct1A1 a1 a2 a3 a4 a a6 a7 a8) a9 a12 a15) = a\n"..
 	"getStruct1Cfield5 :: Struct1 -> [Int]\n"..
-	"getStruct1Cfield5 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a a7 a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield5 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a a7 a8) a9 a12 a15) = a\n"..
 	"getStruct1Cfield6 :: Struct1 -> Enum1\n"..
-	"getStruct1Cfield6 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a a8) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield6 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a a8) a9 a12 a15) = a\n"..
 	"getStruct1Cfield7 :: Struct1 -> Enum2\n"..
-	"getStruct1Cfield7 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a) a9x11 a12x14 a15x18) = a\n"..
+	"getStruct1Cfield7 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a) a9 a12 a15) = a\n"..
 	"getStruct1Cfield8 :: Struct1 -> Int\n"..
-	"getStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 a a10) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield8 (Struct1 a1 (Struct1A9B9 a a10) a12 a15) = a\n"..
 	"getStruct1Cfield9 :: Struct1 -> Int\n"..
-	"getStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 a9 a) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield9 (Struct1 a1 (Struct1A9B9 a9 a) a12 a15) = a\n"..
 	"getStruct1Cfield10 :: Struct1 -> Int\n"..
-	"getStruct1Cfield10 (Struct1 a1x8 (Struct1A9X11B11 a) a12x14 a15x18) = a\n"..
+	"getStruct1Cfield10 (Struct1 a1 (Struct1A9B11 a) a12 a15) = a\n"..
 	"getStruct1Cfield11 :: Struct1 -> Int\n"..
-	"getStruct1Cfield11 (Struct1 a1x8 a9x11 (Struct1A12X14B12 a) a15x18) = a\n"..
+	"getStruct1Cfield11 (Struct1 a1 a9 (Struct1A12B12 a) a15) = a\n"..
 	"getStruct1Cfield12 :: Struct1 -> Int\n"..
-	"getStruct1Cfield12 (Struct1 a1x8 a9x11 (Struct1A12X14B13 a) a15x18) = a\n"..
+	"getStruct1Cfield12 (Struct1 a1 a9 (Struct1A12B13 a) a15) = a\n"..
 	"getStruct1Cfield13 :: Struct1 -> Int\n"..
-	"getStruct1Cfield13 (Struct1 a1x8 a9x11 (Struct1A12X14B14 a) a15x18) = a\n"..
+	"getStruct1Cfield13 (Struct1 a1 a9 (Struct1A12B14 a) a15) = a\n"..
 	"getStruct1Cfield14 :: Struct1 -> Int\n"..
-	"getStruct1Cfield14 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a a16 a17 a18)) = a\n"..
+	"getStruct1Cfield14 (Struct1 a1 a9 a12 (Struct1A15 a a16 a17 a18)) = a\n"..
 	"getStruct1Cfield15 :: Struct1 -> [Int]\n"..
-	"getStruct1Cfield15 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a a17 a18)) = a\n"..
+	"getStruct1Cfield15 (Struct1 a1 a9 a12 (Struct1A15 a15 a a17 a18)) = a\n"..
 	"getStruct1Cfield16 :: Struct1 -> [Struct2]\n"..
-	"getStruct1Cfield16 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a a18)) = a\n"..
+	"getStruct1Cfield16 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a a18)) = a\n"..
 	"getStruct1Cfield17 :: Struct1 -> [Struct2]\n"..
-	"getStruct1Cfield17 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a)) = a\n"..
-	"--\n")..
-	(
+	"getStruct1Cfield17 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a17 a)) = a\n"..
 	"setStruct1Cnext :: Struct1 -> [Struct1] -> Struct1\n"..
-	"setStruct1Cnext (Struct1 (Struct1A1X8 _ a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cnext (Struct1 (Struct1A1 _ a2 a3 a4 a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a a2 a3 a4 a5 a6 a7 a8) a9 a12 a15)\n"..
 	"setStruct1Cfield1 :: Struct1 -> [Float] -> Struct1\n"..
-	"setStruct1Cfield1 (Struct1 (Struct1A1X8 a1 _ a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a a3 a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield1 (Struct1 (Struct1A1 a1 _ a3 a4 a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a a3 a4 a5 a6 a7 a8) a9 a12 a15)\n"..
 	"setStruct1Cfield2 :: Struct1 -> [Double] -> Struct1\n"..
-	"setStruct1Cfield2 (Struct1 (Struct1A1X8 a1 a2 _ a4 a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a a4 a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield2 (Struct1 (Struct1A1 a1 a2 _ a4 a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a a4 a5 a6 a7 a8) a9 a12 a15)\n"..
 	"setStruct1Cfield3 :: Struct1 -> [[Int]] -> Struct1\n"..
-	"setStruct1Cfield3 (Struct1 (Struct1A1X8 a1 a2 a3 _ a5 a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a a5 a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield3 (Struct1 (Struct1A1 a1 a2 a3 _ a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a a5 a6 a7 a8) a9 a12 a15)\n"..
 	"setStruct1Cfield4 :: Struct1 -> String -> Struct1\n"..
-	"setStruct1Cfield4 (Struct1 (Struct1A1X8 a1 a2 a3 a4 _ a6 a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a a6 a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield4 (Struct1 (Struct1A1 a1 a2 a3 a4 _ a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a a6 a7 a8) a9 a12 a15)\n"..
 	"setStruct1Cfield5 :: Struct1 -> [Int] -> Struct1\n"..
-	"setStruct1Cfield5 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 _ a7 a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a a7 a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield5 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 _ a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a a7 a8) a9 a12 a15)\n"..
 	"setStruct1Cfield6 :: Struct1 -> Enum1 -> Struct1\n"..
-	"setStruct1Cfield6 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 _ a8) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a a8) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield6 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 _ a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a a8) a9 a12 a15)\n"..
 	"setStruct1Cfield7 :: Struct1 -> Enum2 -> Struct1\n"..
-	"setStruct1Cfield7 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 _) a9x11 a12x14 a15x18) a = (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a) a9x11 a12x14 a15x18)\n"..
+	"setStruct1Cfield7 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 _) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a) a9 a12 a15)\n"..
 	"setStruct1Cfield8 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield8 (Struct1 a1x8 (Struct1A9X11B9X10 _ a10) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 a a10) a12x14 a15x18)\n"..
+	"setStruct1Cfield8 (Struct1 a1 (Struct1A9B9 _ a10) a12 a15) a = (Struct1 a1 (Struct1A9B9 a a10) a12 a15)\n"..
 	"setStruct1Cfield9 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield9 (Struct1 a1x8 (Struct1A9X11B9X10 a9 _) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B9X10 a9 a) a12x14 a15x18)\n"..
+	"setStruct1Cfield9 (Struct1 a1 (Struct1A9B9 a9 _) a12 a15) a = (Struct1 a1 (Struct1A9B9 a9 a) a12 a15)\n"..
 	"setStruct1Cfield10 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield10 (Struct1 a1x8 (Struct1A9X11B11 _) a12x14 a15x18) a = (Struct1 a1x8 (Struct1A9X11B11 a) a12x14 a15x18)\n"..
+	"setStruct1Cfield10 (Struct1 a1 (Struct1A9B11 _) a12 a15) a = (Struct1 a1 (Struct1A9B11 a) a12 a15)\n"..
 	"setStruct1Cfield11 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield11 (Struct1 a1x8 a9x11 (Struct1A12X14B12 _) a15x18) a = (Struct1 a1x8 a9x11 (Struct1A12X14B12 a) a15x18)\n"..
+	"setStruct1Cfield11 (Struct1 a1 a9 (Struct1A12B12 _) a15) a = (Struct1 a1 a9 (Struct1A12B12 a) a15)\n"..
 	"setStruct1Cfield12 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield12 (Struct1 a1x8 a9x11 (Struct1A12X14B13 _) a15x18) a = (Struct1 a1x8 a9x11 (Struct1A12X14B13 a) a15x18)\n"..
+	"setStruct1Cfield12 (Struct1 a1 a9 (Struct1A12B13 _) a15) a = (Struct1 a1 a9 (Struct1A12B13 a) a15)\n"..
 	"setStruct1Cfield13 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield13 (Struct1 a1x8 a9x11 (Struct1A12X14B14 _) a15x18) a = (Struct1 a1x8 a9x11 (Struct1A12X14B14 a) a15x18)\n"..
+	"setStruct1Cfield13 (Struct1 a1 a9 (Struct1A12B14 _) a15) a = (Struct1 a1 a9 (Struct1A12B14 a) a15)\n"..
 	"setStruct1Cfield14 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield14 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 _ a16 a17 a18)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a a16 a17 a18))\n"..
+	"setStruct1Cfield14 (Struct1 a1 a9 a12 (Struct1A15 _ a16 a17 a18)) a = (Struct1 a1 a9 a12 (Struct1A15 a a16 a17 a18))\n"..
 	"setStruct1Cfield15 :: Struct1 -> [Int] -> Struct1\n"..
-	"setStruct1Cfield15 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 _ a17 a18)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a a17 a18))\n"..
+	"setStruct1Cfield15 (Struct1 a1 a9 a12 (Struct1A15 a15 _ a17 a18)) a = (Struct1 a1 a9 a12 (Struct1A15 a15 a a17 a18))\n"..
 	"setStruct1Cfield16 :: Struct1 -> [Struct2] -> Struct1\n"..
-	"setStruct1Cfield16 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 _ a18)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a a18))\n"..
+	"setStruct1Cfield16 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 _ a18)) a = (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a a18))\n"..
 	"setStruct1Cfield17 :: Struct1 -> [Struct2] -> Struct1\n"..
-	"setStruct1Cfield17 (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 _)) a = (Struct1 a1x8 a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a))\n"..
-	"--"),
+	"setStruct1Cfield17 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a17 _)) a = (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a17 a))\n"..
+	"--",
 	"listHelp :: Int -> IO a -> IO [a]\n"..
 	"listHelp 0 b = return []\n"..
 	"listHelp a b = do\n"..
@@ -582,32 +494,31 @@ Expected = {
 	"    a6 <- listHelp 3 (readInt idx)\n"..
 	"    a7 <- readEnum1 idx\n"..
 	"    a8 <- readEnum2 idx\n"..
-	"    a1x8 <- return (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8)\n"..
-	"    b9x10 <- condHelp (a7 == Value11) Struct1A9X11Bs (do\n"..
+	"    a1x <- return (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8)\n"..
+	"    b9x <- condHelp (a7 == Value11) Struct1A9Bs (do\n"..
 	"        a9 <- readInt idx\n"..
 	"        a10 <- readInt idx\n"..
-	"        return (Struct1A9X11B9X10 a9 a10))\n"..
-	"    b11 <- condHelp (a7 == Value12) Struct1A9X11Bs (do\n"..
+	"        return (Struct1A9B9 a9 a10))\n"..
+	"    b11x <- condHelp (a7 == Value12) Struct1A9Bs (do\n"..
 	"        a11 <- readInt idx\n"..
-	"        return (Struct1A9X11B11 a11))\n"..
-	"    a9x11 <- firstHelp Struct1A9X11Bs [b9x10,b11]\n"..
-	"    b12 <- condHelp ((a7 == Value12) && (a8 == Value21)) Struct1A12X14Bs (do\n"..
+	"        return (Struct1A9B11 a11))\n"..
+	"    a9x <- firstHelp Struct1A9Bs [b9x,b11x]\n"..
+	"    b12x <- condHelp ((a7 == Value12) && (a8 == Value21)) Struct1A12Bs (do\n"..
 	"        a12 <- readInt idx\n"..
-	"        return (Struct1A12X14B12 a12))\n"..
-	"    b13 <- condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) Struct1A12X14Bs (do\n"..
+	"        return (Struct1A12B12 a12))\n"..
+	"    b13x <- condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) Struct1A12Bs (do\n"..
 	"        a13 <- readInt idx\n"..
-	"        return (Struct1A12X14B13 a13))\n"..
-	"    b14 <- condHelp (a7 == Value13) Struct1A12X14Bs (do\n"..
+	"        return (Struct1A12B13 a13))\n"..
+	"    b14x <- condHelp (a7 == Value13) Struct1A12Bs (do\n"..
 	"        a14 <- readInt idx\n"..
-	"        return (Struct1A12X14B14 a14))\n"..
-	"    a12x14 <- firstHelp Struct1A12X14Bs [b12,b13,b14]\n"..
+	"        return (Struct1A12B14 a14))\n"..
+	"    a12x <- firstHelp Struct1A12Bs [b12x,b13x,b14x]\n"..
 	"    a15 <- readInt idx\n"..
 	"    a16 <- listHelp a15 (readInt idx)\n"..
 	"    a17 <- listHelp 2 (readStruct2 idx)\n"..
 	"    a18 <- listHelp 2 (readStruct2 idx)\n"..
-	"    a15x18 <- return (Struct1A15X18 a15 a16 a17 a18)\n"..
-	"    return (Struct1 a1x8 a9x11 a12x14 a15x18)\n"..
-	"--",
+	"    a15x <- return (Struct1A15 a15 a16 a17 a18)\n"..
+	"    return (Struct1 a1x a9x a12x a15x)\n",
 	"readEnum1F :: Int -> IO Enum1\n"..
 	"readEnum1F 0 = return Value11\n"..
 	"readEnum1F 1 = return Value12\n"..
@@ -624,7 +535,7 @@ Expected = {
 	"writeEnum1 a idx = writeInt (writeEnum1F a) idx\n"..
 	"--",
 	"writeStruct1 :: Struct1 -> Int -> IO ()\n"..
-	"writeStruct1 (Struct1 (Struct1A1X8 a1 a2 a3 a4 a5 a6 a7 a8) a9x11 a12x14 (Struct1A15X18 a15 a16 a17 a18)) idx = do\n"..
+	"writeStruct1 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a8) a9 a12 (Struct1A15 a15 a16 a17 a18)) idx = do\n"..
 	"    assertHelp 0 (\\x -> writeStruct1 x idx) a1\n"..
 	"    assertHelp 2 (\\x -> writeOld x idx) a2\n"..
 	"    assertHelp 3 (\\x -> writeNum x idx) a3\n"..
@@ -633,13 +544,13 @@ Expected = {
 	"    assertHelp 3 (\\x -> writeInt x idx) a6\n"..
 	"    writeEnum1 a7 idx\n"..
 	"    writeEnum2 a8 idx\n"..
-	"    condHelp (a7 == Value11) () ((\\(Struct1A9X11B9X10 a9 a10) -> do\n"..
+	"    condHelp (a7 == Value11) () ((\\(Struct1A9B9 a9 a10) -> do\n"..
 	"        writeInt a9 idx\n"..
-	"        writeInt a10 idx) a9x11)\n"..
-	"    condHelp (a7 == Value12) () ((\\(Struct1A9X11B11 a11) -> writeInt a11 idx) a9x11)\n"..
-	"    condHelp ((a7 == Value12) && (a8 == Value21)) () ((\\(Struct1A12X14B12 a12) -> writeInt a12 idx) a12x14)\n"..
-	"    condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) () ((\\(Struct1A12X14B13 a13) -> writeInt a13 idx) a12x14)\n"..
-	"    condHelp (a7 == Value13) () ((\\(Struct1A12X14B14 a14) -> writeInt a14 idx) a12x14)\n"..
+	"        writeInt a10 idx) a9)\n"..
+	"    condHelp (a7 == Value12) () ((\\(Struct1A9B11 a11) -> writeInt a11 idx) a9)\n"..
+	"    condHelp ((a7 == Value12) && (a8 == Value21)) () ((\\(Struct1A12B12 a12) -> writeInt a12 idx) a12)\n"..
+	"    condHelp ((a7 == Value12) && ((a8 == Value22) || (a8 == Value23))) () ((\\(Struct1A12B13 a13) -> writeInt a13 idx) a12)\n"..
+	"    condHelp (a7 == Value13) () ((\\(Struct1A12B14 a14) -> writeInt a14 idx) a12)\n"..
 	"    writeInt a15 idx\n"..
 	"    assertHelp a15 (\\x -> writeInt x idx) a16\n"..
 	"    assertHelp 2 (\\x -> writeStruct2 x idx) a17\n"..
@@ -871,7 +782,7 @@ io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
 		line = io.read();
-		print(line)
+		-- print(line)
 		if line ~= val then print("error1: "..line..":::"..val); assert(false) end
 	end
 end
