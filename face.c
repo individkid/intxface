@@ -53,12 +53,6 @@ cftype cbfnc[NUMOPEN] = {0};
 
 // garbage collection
 int bufsize = BUFSIZE;
-int memmrkz = 0;
-int memmrks = 0;
-int *memmrk = 0;
-int memptrz = 0;
-int memptrs = 0;
-void ***memptr = 0;
 
 // error handling
 chtype intrfn = 0;
@@ -517,36 +511,11 @@ void sleepSec(double sec)
 	delay.tv_nsec = (sec-(long long)sec)*SEC2NANO;
 	if (pselect(0,0,0,0,&delay,0) < 0 && errno != EINTR) ERRFNC(-1);
 }
-void allocMark()
-{
-	if (memmrks == memmrkz) memmrk = realloc(memmrk,(memmrkz+=bufsize)*sizeof(*memmrk));
-	memmrk[memmrks++] = memptrs;
-}
-void allocKeep()
-{
-	if (memmrks == 0) ERRFNC(-1);
-	memmrks--;
-}
-void allocDrop()
-{
-	if (memmrks == 0) ERRFNC(-1);
-	while (memptrs > memmrk[memmrks-1]) {
-		free(*memptr[memptrs]);
-		*memptr[memptrs] = 0;
-		memptrs--;}
-	memmrks--;
-}
-void allocMem(void **ptr, int siz)
-{
-	if (memptrs == memptrz) memptr = realloc(memptr,(memptrz+=bufsize)*sizeof(*memptr));
-	memptr[memptrs] = ptr;
-	*ptr = realloc(*ptr,siz);
-}
 void allocChr(char **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem((void**)ptr,siz*sizeof(char));
+	*ptr = malloc(siz*sizeof(char));
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
@@ -554,7 +523,7 @@ void allocInt(int **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem((void**)ptr,siz*sizeof(int));
+	*ptr = malloc(siz*sizeof(int));
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
@@ -573,7 +542,7 @@ void allocNew(long long **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem((void**)ptr,siz*sizeof(long long));
+	*ptr = malloc(siz*sizeof(long long));
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
@@ -581,7 +550,7 @@ void allocNum(double **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem((void**)ptr,siz*sizeof(double));
+	*ptr = malloc(siz*sizeof(double));
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
@@ -589,7 +558,7 @@ void allocOld(float **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem((void**)ptr,siz*sizeof(float));
+	*ptr = malloc(siz*sizeof(float));
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
@@ -597,7 +566,7 @@ void allocStr(char* **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem((void**)ptr,siz*sizeof(char*));
+	*ptr = malloc(siz*sizeof(char*));
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
@@ -605,7 +574,7 @@ void assignStr(char **ptr, const char *str)
 {
 	if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
 	if (str == 0) return;
-	allocMem((void**)ptr,strlen(str)+1);
+	*ptr = malloc(strlen(str)+1);
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
@@ -613,7 +582,7 @@ void allocDat(void* **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
 	if (siz == 0) return;
-	allocMem((void**)ptr,siz*sizeof(void *));
+	*ptr = malloc(siz*sizeof(void *));
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
@@ -621,7 +590,7 @@ void assignDat(void **ptr, const void *dat)
 {
 	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
 	if (dat == 0) return;
-	allocMem((void**)ptr,(*(int*)dat)+sizeof(int));
+	*ptr = malloc((*(int*)dat)+sizeof(int));
 	if (*ptr == 0) ERRFNC(-1);
 	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));
 }
@@ -694,7 +663,7 @@ void readDat(void **dat, int idx)
 	int size = readInt(idx);
 	int val = 0;
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
-	allocMem(dat,sizeof(int)+size);
+	*dat = malloc(size+sizeof(int));
 	*(int*)(*dat) = size;
 	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(void*)(((int*)(*dat))+1),size);
 	else val = read(inp[idx],(void*)(((int*)(*dat))+1),size);
@@ -858,7 +827,7 @@ void showEnum(const char *typ, const char* val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"%s(%s)",typ,val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -879,7 +848,7 @@ void showField(const char* val, char **str, int *siz, int arg, ...)
 	if (asprintf(&temp,"%s:",tmp) < 0) ERRFNC(-1);
 	free(tmp); tmp = temp;
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -891,7 +860,7 @@ void showOpen(const char* val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"%s(",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -903,7 +872,7 @@ void showClose(char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,")") < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -915,7 +884,7 @@ void showChr(char val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"Chr(%c)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -927,7 +896,7 @@ void showInt(int val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"Int(%d)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -939,7 +908,7 @@ void showNew(long long val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"New(%lld)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -951,7 +920,7 @@ void showNum(double val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"Num(%lf)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -963,7 +932,7 @@ void showOld(float val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"Old(%f)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -975,7 +944,7 @@ void showStr(const char* val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"Str(%s)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
@@ -987,7 +956,7 @@ void showDat(const void* val, char **str, int *siz)
 	int num;
 	if (asprintf(&tmp,"Dat(TODO)") < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	allocMem((void**)str,*siz+num+1);
+	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);

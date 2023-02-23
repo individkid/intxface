@@ -248,7 +248,7 @@ Expected = {
 	"{\n"..
 	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    allocMem((void**)ptr,siz*sizeof(enum Enum1));\n"..
+	"    *ptr = malloc(siz*sizeof(enum Enum1));\n"..
 	"    if (*ptr == 0) ERROR();\n"..
 	"    for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"..
 	"}",
@@ -256,7 +256,7 @@ Expected = {
 	"{\n"..
 	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
-	"    allocMem((void**)ptr,siz*sizeof(struct Struct1));\n"..
+	"    *ptr = malloc(siz*sizeof(struct Struct1));\n"..
 	"    if (*ptr == 0) ERROR();\n"..
 	"    struct Struct1 init = {0};\n"..
 	"    for (int i = 0; i < siz; i++)\n"..
@@ -302,47 +302,46 @@ Expected = {
 	"}",
 	"int hideStruct1(struct Struct1 *ptr, const char *str, int *len)\n"..
 	"{\n"..
-	"    allocMark();\n"..
-	"    if (!hideOpen(\"Struct1\",str,len)) {allocDrop(); return 0;}\n"..
+	"    freeStruct1(ptr);\n"..
+	"    if (!hideOpen(\"Struct1\",str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
 	"    for (int i = 0; i < 0; i++)\n"..
-	"        if (!hideField(\"next\",str,len,1,i) || !hideStruct1(&ptr->next[i],str,len)) {allocDrop(); return 0;}\n"..
+	"        if (!hideField(\"next\",str,len,1,i) || !hideStruct1(&ptr->next[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!hideField(\"field1\",str,len,1,i1) || !hideOld(&ptr->field1[i1],str,len)) {allocDrop(); return 0;}\n"..
+	"        if (!hideField(\"field1\",str,len,1,i1) || !hideOld(&ptr->field1[i1],str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        if (!hideField(\"field2\",str,len,1,i1) || !hideNum(&ptr->field2[i1],str,len)) {allocDrop(); return 0;}\n"..
+	"        if (!hideField(\"field2\",str,len,1,i1) || !hideNum(&ptr->field2[i1],str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
 	"        for (int i2 = 0; i2 < 2; i2++)\n"..
-	"            if (!hideField(\"field3\",str,len,2,i1,i2) || !hideInt(&ptr->field3[i1][i2],str,len)) {allocDrop(); return 0;}\n"..
-	"    if (!hideField(\"field4\",str,len,0) || !hideStr(&ptr->field4,str,len)) {allocDrop(); return 0;}\n"..
+	"            if (!hideField(\"field3\",str,len,2,i1,i2) || !hideInt(&ptr->field3[i1][i2],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    if (!hideField(\"field4\",str,len,0) || !hideStr(&ptr->field4,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
-	"        if (!hideField(\"field5\",str,len,1,i) || !hideInt(&ptr->field5[i],str,len)) {allocDrop(); return 0;}\n"..
-	"    if (!hideField(\"field6\",str,len,0) || !hideEnum1(&ptr->field6,str,len)) {allocDrop(); return 0;}\n"..
-	"    if (!hideField(\"field7\",str,len,0) || !hideEnum2(&ptr->field7,str,len)) {allocDrop(); return 0;}\n"..
+	"        if (!hideField(\"field5\",str,len,1,i) || !hideInt(&ptr->field5[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    if (!hideField(\"field6\",str,len,0) || !hideEnum1(&ptr->field6,str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    if (!hideField(\"field7\",str,len,0) || !hideEnum2(&ptr->field7,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if (!hideField(\"field8\",str,len,0) || !hideInt(&ptr->field8,str,len)) {allocDrop(); return 0;}}\n"..
+	"        if (!hideField(\"field8\",str,len,0) || !hideInt(&ptr->field8,str,len)) {freeStruct1(ptr); return 0;}}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if (!hideField(\"field9\",str,len,0) || !hideInt(&ptr->field9,str,len)) {allocDrop(); return 0;}}\n"..
+	"        if (!hideField(\"field9\",str,len,0) || !hideInt(&ptr->field9,str,len)) {freeStruct1(ptr); return 0;}}\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        if (!hideField(\"field10\",str,len,0) || !hideInt(&ptr->field10,str,len)) {allocDrop(); return 0;}}\n"..
+	"        if (!hideField(\"field10\",str,len,0) || !hideInt(&ptr->field10,str,len)) {freeStruct1(ptr); return 0;}}\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        if (!hideField(\"field11\",str,len,0) || !hideInt(&ptr->field11,str,len)) {allocDrop(); return 0;}}\n"..
+	"        if (!hideField(\"field11\",str,len,0) || !hideInt(&ptr->field11,str,len)) {freeStruct1(ptr); return 0;}}\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        if (!hideField(\"field12\",str,len,0) || !hideInt(&ptr->field12,str,len)) {allocDrop(); return 0;}}\n"..
+	"        if (!hideField(\"field12\",str,len,0) || !hideInt(&ptr->field12,str,len)) {freeStruct1(ptr); return 0;}}\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        if (!hideField(\"field13\",str,len,0) || !hideInt(&ptr->field13,str,len)) {allocDrop(); return 0;}}\n"..
-	"    if (!hideField(\"field14\",str,len,0) || !hideInt(&ptr->field14,str,len)) {allocDrop(); return 0;}\n"..
+	"        if (!hideField(\"field13\",str,len,0) || !hideInt(&ptr->field13,str,len)) {freeStruct1(ptr); return 0;}}\n"..
+	"    if (!hideField(\"field14\",str,len,0) || !hideInt(&ptr->field14,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
 	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        if (!hideField(\"field15\",str,len,1,i) || !hideInt(&ptr->field15[i],str,len)) {allocDrop(); return 0;}\n"..
+	"        if (!hideField(\"field15\",str,len,1,i) || !hideInt(&ptr->field15[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
 	"    for (int i = 0; i < 2; i++)\n"..
-	"        if (!hideField(\"field16\",str,len,1,i) || !hideStruct2(&ptr->field16[i],str,len)) {allocDrop(); return 0;}\n"..
+	"        if (!hideField(\"field16\",str,len,1,i) || !hideStruct2(&ptr->field16[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!hideField(\"field17\",str,len,1,i1) || !hideStruct2(&ptr->field17[i1],str,len)) {allocDrop(); return 0;}\n"..
-	"    if (!hideClose(str,len)) {allocDrop(); return 0;}\n"..
-	"    allocKeep();\n"..
+	"        if (!hideField(\"field17\",str,len,1,i1) || !hideStruct2(&ptr->field17[i1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    if (!hideClose(str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    return 1;\n"..
 	"}",
 	"data Enum1 =\n"..

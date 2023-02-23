@@ -1,7 +1,7 @@
 
 Write liner.lua sharer.lua planer.lua holer.lua.
 
-Write core.cpp to convert proprietary into AV pipe.
+Write pipe.cpp to convert proprietary into AV pipe.
 
 Write tape.cpp to convert BMD to and from AV pipe.
 
@@ -13,7 +13,7 @@ Write phone.cpp that inputs and outputs audio to AV pipe.
 
 Write page.cpp to read and write file from widgets.
 
-Write Dell versions of page core frame plane.
+Write Dell versions of plane phone page pipe frame.
 
 Write microcode stubs and incrementally replace with production.
 

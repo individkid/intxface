@@ -69,13 +69,12 @@ void shareWrite(void *mem, int typ, int ofd)
 }
 void shareDecode(void *mem, void *giv, int typ)
 {
-	char *str;
+	char *str = 0;
 	memxCopy(&fdm[0],giv);
-	allocMark();
 	readStruct(callStr,&str,typ,mfd[0]);
 	if (mem == 0) ERROR();
 	memxConst(&mem,MemxStr,str);
-	allocDrop();
+	free(str);
 	memxDone(&fdm[0]);
 }
 void shareEncode(void *mem, void *giv, int typ)

@@ -99,7 +99,7 @@ phone test av struct to from portaudio.
 page test file struct to from NSGridView. From left to right,
  highlightable scrollable text, entry per highlight,
  edit select scroll buttons per entry.
-core test AVAssetReader AVAssetWriter to and from av struct pipe.
+pipe test AVAssetReader AVAssetWriter to and from av struct pipe.
 frame test AVPlayerLayer SCStream to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted.
  -a script result (nestScan and evaluate)

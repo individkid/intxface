@@ -476,6 +476,7 @@ Data = {
 	{"siz","Int",{},{}},
 	{"lim","Int",{},"siz"},
 	{"jmp","Int",{},"siz"},
+	{"loc","Int",{},"siz"},
 	{"len","Int",{},{}},
 	{"opc","Logic",{},"len"},
 	{"dat","Dat",{},{}},

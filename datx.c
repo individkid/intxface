@@ -1,6 +1,8 @@
 #include "type.h"
 #include "face.h"
 #include "datx.h"
+#include <stdlib.h>
+#include <string.h>
 
 struct Data *base[NUMOPEN] = {0}; // last read
 int *next[NUMOPEN] = {0}; // bytes per sub
@@ -37,32 +39,45 @@ void datxProg(int sub, int idx)
 	int *nxt = 0;
 	enum Logic *opc = 0;
 	int *lim = 0;
-	int jmp = 0;
-	int loc = 0;
+	int *jmp = 0;
+	int *loc = 0;
 	datxOpen(idx);
 	if (sub < 0 || sub >= base[idx]->siz) ERROR();
 	dat = base[idx];
 	nxt = next[idx];
 	opc = dat->opc;
 	lim = dat->lim;
-	loc = jmp = dat->jmp[sub];
-	while (jmp >= 0 && jmp < dat->len) {
-	int opd = opc[jmp]>>4;
-	switch ((enum Logic)(opc[jmp]&0xf)) {
-	case (WrpJmp): if (nxt[opd] == lim[opd]) jmp = loc; break;
-	case (WrpYld): if (nxt[opd] == lim[opd]) {jmp = loc; return;} break;
-	case (RunJmp): if (nxt[opd] < lim[opd]) jmp = loc; break;
-	case (RunYld): if (nxt[opd] < lim[opd]) {jmp = loc; return;} break;
+	jmp = &dat->jmp[sub];
+	loc = &dat->loc[sub];
+	while (*jmp >= 0 && *jmp < dat->len) {
+	int opd = opc[*jmp]>>4;
+	switch ((enum Logic)(opc[*jmp]&0xf)) {
+	case (WrpJmp): if (nxt[opd] == lim[opd]) *jmp = *loc; break;
+	case (WrpYld): if (nxt[opd] == lim[opd]) {*jmp = *loc; return;} break;
+	case (RunJmp): if (nxt[opd] < lim[opd]) *jmp = *loc; break;
+	case (RunYld): if (nxt[opd] < lim[opd]) {*jmp = *loc; return;} break;
 	case (ClrVal): nxt[opd] = 0; break;
-	case (ClrJmp): nxt[opd] = 0; jmp = loc; break;
-	case (ClrYld): nxt[opd] = 0; jmp = loc; return;
+	case (ClrJmp): nxt[opd] = 0; *jmp = *loc; break;
+	case (ClrYld): nxt[opd] = 0; *jmp = *loc; return;
 	case (SkpVal): nxt[opd] = lim[opd]; break;
-	case (SkpJmp): nxt[opd] = lim[opd]; jmp = loc; break;
-	case (SkpYld): nxt[opd] = lim[opd]; jmp = loc; return;
-	case (ImmJmp): jmp = opd; break;
-	case (ImmYld): jmp = opd; return;
-	case (SetJmp): loc = opd; break;
+	case (SkpJmp): nxt[opd] = lim[opd]; *jmp = *loc; break;
+	case (SkpYld): nxt[opd] = lim[opd]; *jmp = *loc; return;
+	case (ImmJmp): *jmp = opd; break;
+	case (ImmYld): *jmp = opd; return;
+	case (SetJmp): *loc = opd; break;
 	default: ERROR();}}
+}
+void datxCopy(void **ptr, void *dat, int loc, int siz)
+{
+	void *dst = 0;
+	void *src = 0;
+	if (loc+siz > *(int*)dat) ERROR();
+	allocMem(ptr,siz+sizeof(int));
+	*(int*)(*ptr) = siz;
+	src = (void*)(((int*)dat)+1);
+	src = (void*)(((char*)src)+loc);
+	dst = (void*)(((int*)(*ptr))+1);
+	memcpy(dst,src,siz);
 }
 void datxRead(void **ptr, int sub, int num, int idx)
 {
@@ -75,8 +90,8 @@ void datxRead(void **ptr, int sub, int num, int idx)
 	if (sub < 0 || sub >= base[idx]->siz) ERROR();
 	dat = base[idx];
 	nxt = next[idx];
-	tot = totl[idx];
-	lst = last[idx];
+	tot = totl[idx]; // total number copied
+	lst = last[idx]; // start of current dat
 	while (num > 0) {
 		int inc = (*(int*)(dat->dat))-(tot-lst);
 		if (inc <= 0) break;
@@ -90,16 +105,14 @@ void datxRead(void **ptr, int sub, int num, int idx)
 		if (nxt[sub] == 0) num--;
 		tot += inc;}
 	if (num > 0) ERROR();
-	allocDat(ptr,tot-totl[idx]);
-	assignDat(ptr,dat->dat,0,tot-lst,tot-totl[idx]);
+	datxCopy(ptr,dat->dat,totl[idx]-lst,tot-totl[idx]);
 	totl[idx] = tot;
 	if (tot-lst >= *(int*)(dat->dat)) {
 		struct Data *tmp = 0;
 		allocData(&tmp,1);
 		readData(tmp,idx);
 		if (tmp->siz == 0) {
-			allocDat(&dat->dat,0);
-			dat->dat = tmp->dat; tmp->dat = 0;
+			assignDat(dat->dat,tmp->dat);
 			allocData(&tmp,0);}
 		else {
 			allocData(&base[idx],0);
@@ -151,7 +164,7 @@ void datxWrite(void *dat, int idx)
 	allocInt(&todo[idx],0);
 	tmp.siz = lmts[idx]; tmp.len = done[idx];
 	done[idx] = 0; lmts[idx] = 0;}
-	assignDat(&tmp.dat,dat,0,0,*(int*)dat);
+	assignDat(&tmp.dat,dat);
 	writeData(&tmp,idx);
 	freeData(&tmp);
 }
