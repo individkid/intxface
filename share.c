@@ -21,11 +21,11 @@ int mfd[3] = {0};
 
 void shareRunA(void **run, void *use)
 {
-	memxInit(run,memxStr(use));
+	nestScan();
+	// TODO memxForm("%d",nestScan(memxInt(use)));
 }
 void shareRunB(void **run, void *use)
 {
-	nestScan();
 	memxInit(run,memxStr(use));
 }
 int shareReadF(int fildes, void *buf, int nbyte)

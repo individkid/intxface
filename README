@@ -102,7 +102,7 @@ page test file struct to from NSGridView. From left to right,
 pipe test AVAssetReader AVAssetWriter to and from av struct pipe.
 frame test AVPlayerLayer SCStream to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted.
- -a script result (nestScan and evaluate)
+ -a yield mask (resume mask)
  -b script result (script to evaluate)
  -c factory flow (operation names)
   encode (read string and write type)

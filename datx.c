@@ -52,32 +52,25 @@ void datxProg(int sub, int idx)
 	while (*jmp >= 0 && *jmp < dat->len) {
 	int opd = opc[*jmp]>>4;
 	switch ((enum Logic)(opc[*jmp]&0xf)) {
-	case (WrpJmp): if (nxt[opd] == lim[opd]) *jmp = *loc; break;
+	case (WrpJmp): if (nxt[opd] == lim[opd]) {*jmp = *loc; continue;} break;
 	case (WrpYld): if (nxt[opd] == lim[opd]) {*jmp = *loc; return;} break;
-	case (RunJmp): if (nxt[opd] < lim[opd]) *jmp = *loc; break;
+	case (RunJmp): if (nxt[opd] < lim[opd]) {*jmp = *loc; continue;} break;
 	case (RunYld): if (nxt[opd] < lim[opd]) {*jmp = *loc; return;} break;
 	case (ClrVal): nxt[opd] = 0; break;
-	case (ClrJmp): nxt[opd] = 0; *jmp = *loc; break;
+	case (ClrJmp): nxt[opd] = 0; *jmp = *loc; continue;
 	case (ClrYld): nxt[opd] = 0; *jmp = *loc; return;
 	case (SkpVal): nxt[opd] = lim[opd]; break;
-	case (SkpJmp): nxt[opd] = lim[opd]; *jmp = *loc; break;
+	case (SkpJmp): nxt[opd] = lim[opd]; *jmp = *loc; continue;
 	case (SkpYld): nxt[opd] = lim[opd]; *jmp = *loc; return;
-	case (ImmJmp): *jmp = opd; break;
+	case (ImmJmp): *jmp = opd; continue;
 	case (ImmYld): *jmp = opd; return;
 	case (SetJmp): *loc = opd; break;
-	default: ERROR();}}
+	default: ERROR();}
+	*jmp += 1;}
 }
 void datxCopy(void **ptr, void *dat, int loc, int siz)
 {
-	void *dst = 0;
-	void *src = 0;
-	if (loc+siz > *(int*)dat) ERROR();
-	allocMem(ptr,siz+sizeof(int));
-	*(int*)(*ptr) = siz;
-	src = (void*)(((int*)dat)+1);
-	src = (void*)(((char*)src)+loc);
-	dst = (void*)(((int*)(*ptr))+1);
-	memcpy(dst,src,siz);
+	// TODO assignDat(ptr,tmp)
 }
 void datxRead(void **ptr, int sub, int num, int idx)
 {
