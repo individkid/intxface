@@ -56,7 +56,7 @@ int shareWriteF(int fildes, const void *buf, int nbyte)
 }
 void shareRead(void **mem, int typ, int ifd)
 {
-	loopStruct(typ,ifd,mfd[0]);
+	loopType(typ,ifd,mfd[0]);
 	flushBuf(mfd[0]);
 	memxCopy(mem,fdm[0]);
 	memxDone(&fdm[0]);
@@ -64,14 +64,14 @@ void shareRead(void **mem, int typ, int ifd)
 void shareWrite(void *mem, int typ, int ofd)
 {
 	memxCopy(&fdm[0],mem);
-	loopStruct(typ,mfd[0],ofd);
+	loopType(typ,mfd[0],ofd);
 	memxDone(&fdm[0]);
 }
 void shareDecode(void *mem, void *giv, int typ)
 {
 	char *str = 0;
 	memxCopy(&fdm[0],giv);
-	readStruct(callStr,&str,typ,mfd[0]);
+	readType(&str,typ,mfd[0]);
 	if (mem == 0) ERROR();
 	memxConst(&mem,MemxStr,str);
 	free(str);
@@ -79,7 +79,7 @@ void shareDecode(void *mem, void *giv, int typ)
 }
 void shareEncode(void *mem, void *giv, int typ)
 {
-	writeStruct(memxStr(giv),typ,mfd[0]);
+	writeType(memxStr(giv),typ,mfd[0]);
 	if (mem == 0) ERROR();
 	memxCopy(&mem,fdm[0]);
 	memxDone(&fdm[0]);
@@ -135,7 +135,7 @@ void shareRunC(void **run, void *use)
 			int dtp = memxInt(memxSkip(arg,1));
 			if (memxSize(src) == 0) {val = -1; break;}
 			shareDeque(&top,&stp,src);
-			if (stp != -1) ERROR();
+			if (stp != identType("Str")) ERROR();
 			shareEncode(&mem,top,dtp);
 			shareEnque(&dst,mem,dtp);
 			val = 1; break;}
@@ -146,7 +146,7 @@ void shareRunC(void **run, void *use)
 			if (memxSize(src) == 0) {val = -1; break;}
 			shareDeque(&top,&stp,src);
 			shareDecode(&mem,top,stp);
-			shareEnque(&dst,mem,-1);
+			shareEnque(&dst,mem,identType("Str"));
 			val = 1; break;}
 		case (Insert): {
 			void *top = memxTemp(1);
@@ -159,7 +159,7 @@ void shareRunC(void **run, void *use)
 			if (memxSize(src) < 2) {val = -1; break;}
 			shareDeque(&top,&stp,src);
 			shareDeque(&nxt,&ftp,src);
-			// TODO if (ftp != identType(stp,fld);) ERROR();
+			if (ftp != identSubtype(stp,fld)) ERROR();
 			shareInsert(&mem,top,nxt,stp,fld,idx);
 			shareEnque(&dst,mem,stp);
 			val = 1; break;}
@@ -172,10 +172,12 @@ void shareRunC(void **run, void *use)
 			int idx = memxInt(memxSkip(arg,2));
 			if (memxSize(src) == 0) {val = -1; break;}
 			shareDeque(&top,&stp,src);
-			// TODO ftp = identType(stp,fld);
+			ftp = identSubtype(stp,fld);
 			shareExtract(&mem,top,stp,fld,idx);
 			shareEnque(&dst,mem,ftp);
 			val = 1; break;}
+		case (Portion): break;
+		case (Replace): break;
 		case (Unique): break;
 		case (Permute): break;
 		case (Constant): break;
@@ -191,8 +193,7 @@ void shareRunC(void **run, void *use)
 		void *top = memxTemp(1);
 		int typ = 0;
 		shareDeque(&top,&typ,src);
-		if (typ < 0) writeStr(memxStr(top),1,ofd); // TODO accomodate basic types other than Str
-		else shareWrite(top,typ,ofd);}
+		shareWrite(top,typ,ofd);}
 }
 void shareRunD(void **run, void *use)
 {

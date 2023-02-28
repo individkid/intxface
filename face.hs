@@ -36,15 +36,15 @@ foreign import ccall "wrlkwFile" wrlkwFileC :: CLLong -> CLLong -> CInt -> IO ()
 foreign import ccall "checkRead" checkReadC :: CInt -> IO CInt
 foreign import ccall "checkWrite" checkWriteC :: CInt -> IO CInt
 foreign import ccall "sleepSec" sleepSecC :: CInt -> IO ()
-foreign import ccall "wrapper" wrapStr :: (CString -> CInt -> IO ()) -> IO (FunPtr (CString -> CInt -> IO ()))
-foreign import ccall "readStrHs" readStrC :: FunPtr (CString -> CInt -> IO ()) -> CInt -> IO ()
+foreign import ccall "wrapper" wrapStr :: (CString -> IO ()) -> IO (FunPtr (CString -> IO ()))
+foreign import ccall "readStrHs" readStrC :: FunPtr (CString -> IO ()) -> CInt -> IO ()
 foreign import ccall "readDat" readDatC :: CInt -> IO CInt
 foreign import ccall "readChr" readChrC :: CInt -> IO CChar
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
 foreign import ccall "readNew" readNewC :: CInt -> IO CLLong
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
 foreign import ccall "readOld" readOldC :: CInt -> IO CFloat
-foreign import ccall "writeStr" writeStrC :: CString -> CInt -> CInt -> IO ()
+foreign import ccall "writeStr" writeStrC :: CString -> CInt -> IO ()
 foreign import ccall "writeDat" writeDatC :: CInt -> CInt -> IO()
 foreign import ccall "writeChr" writeChrC :: CChar -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
@@ -100,11 +100,11 @@ checkWrite :: Int -> IO Int
 checkWrite a = fmap fromIntegral (checkWriteC (fromIntegral a))
 sleepSec :: Int -> IO ()
 sleepSec a = sleepSecC (fromIntegral a)
-readStrF :: IORef (String,Bool) -> CString -> CInt -> IO ()
-readStrF a b c = (peekCString b) >>= (\x -> (writeIORef a (x,((fromIntegral c) /= 0))))
-readStr :: Int -> IO (String,Bool)
+readStrF :: IORef String -> CString -> IO ()
+readStrF a b = (peekCString b) >>= (writeIORef a)
+readStr :: Int -> IO String
 readStr a = do
- b <- newIORef ("",False)
+ b <- newIORef ""
  c <- wrapStr (readStrF b)
  readStrC c (fromIntegral a)
  readIORef b
@@ -120,9 +120,8 @@ readNum :: Int -> IO Double
 readNum a = (readNumC (fromIntegral a)) >>= (\(CDouble x) -> return x)
 readOld :: Int -> IO Float
 readOld a = (readOldC (fromIntegral a)) >>= (\(CFloat x) -> return x)
-writeStr :: String -> Bool -> Int -> IO ()
-writeStr a False b = (newCString a) >>= (\x -> writeStrC x (fromIntegral 0) (fromIntegral b))
-writeStr a True b = (newCString a) >>= (\x -> writeStrC x (fromIntegral 1) (fromIntegral b))
+writeStr :: String -> Int -> IO ()
+writeStr a b = (newCString a) >>= (\x -> writeStrC x (fromIntegral b))
 writeDat :: Int -> Int -> IO ()
 writeDat a b = writeDatC (fromIntegral a) (fromIntegral b)
 writeChr :: Char -> Int -> IO ()

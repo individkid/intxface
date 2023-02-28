@@ -32,8 +32,8 @@ typedef void (*cftype)(int idx); // thread callback
 typedef void (*cgtype)(int idx0, int idx1);
 typedef void (*chtype)();
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
-typedef void (*sftype)(const char *str, int trm, int idx, void *arg); // string callback
-typedef void (*hftype)(const char *str, int trm); // haskell string wrapper
+typedef void (*sftype)(const char *str, int idx, void *arg); // string callback
+typedef void (*hftype)(const char *str); // haskell string wrapper
 typedef void (*hgtype)(int i, const char *str);
 typedef void (*hhtype)(const char *str);
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to

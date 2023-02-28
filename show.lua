@@ -13,6 +13,20 @@ function listSort(map)
 	table.sort(tab)
 	return tab
 end
+function listFlatten(list)
+	local ret = {}
+	if (type(list) == "table") then
+		for k,v in ipairs(list) do
+			local rec = listFlatten(v)
+			for ky,vl in ipairs(rec) do
+				ret[#ret+1] = vl
+			end
+		end
+	else
+		ret[#ret+1] = list
+	end
+	return ret
+end
 function overLap(val,field)
 	-- assume there are no disjoint dimensions
 	local share = true
@@ -242,7 +256,7 @@ function showReadCJ(pre,field,sub,arg,post)
 	elseif (Structz[field[2]]~=nil) then
 		coroutine.yield(pre.."read"..field[2].."(&ptr->"..field[1]..sub..",idx);"..post)
 	elseif (field[2] == "Str") then
-		coroutine.yield(pre.."readStr(callStr,&ptr->"..field[1]..sub..",idx);"..post)
+		coroutine.yield(pre.."readStr(&ptr->"..field[1]..sub..",idx);"..post)
 	elseif (field[2] == "Dat") then
 		coroutine.yield(pre.."readDat(&ptr->"..field[1]..sub..",idx);"..post)
 	else
@@ -374,7 +388,7 @@ function showWriteCJ(pre,field,sub,arg,post)
 	elseif (Structz[field[2]]~=nil) then
 		coroutine.yield(pre.."write"..field[2].."(&ptr->"..field[1]..sub..",idx);"..post)
 	elseif (field[2] == "Str") then
-		coroutine.yield(pre.."writeStr(ptr->"..field[1]..sub..",1,idx);"..post)
+		coroutine.yield(pre.."writeStr(ptr->"..field[1]..sub..",idx);"..post)
 	elseif (field[2] == "Dat") then
 		coroutine.yield(pre.."writeDat(ptr->"..field[1]..sub..",idx);"..post)
 	else
@@ -819,66 +833,125 @@ function showConstantC(name,constant)
 	result = result.."//"
 	return result
 end
-function showRstructC(list)
+function showTypeCF(type)
 	local result = ""
-	result = result.."void readStruct(sftype fnc, void *arg, int typ, int idx)"
-	if prototype then return result..";\n" end
-	result = result.."\n{\n"
-	result = result..showIndent(1).."int len = 0;\n"
-	result = result..showIndent(1).."char *str = 0;\n"
-	result = result..showIndent(1).."switch (typ) {\n"
-	for k,v in ipairs(list) do
-		result = result..showIndent(1).."case("..(k-1).."): {\n"
-		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
-		result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
-		result = result..showIndent(2).."show"..v.."(&tmp,&str,&len);\n"
-		result = result..showIndent(2).."break;}\n"
+	if (not (Structz[type] == nil)) then
+		result = result.."struct "..type
+	elseif (not (Enumz[type] == nil)) then
+		result = result.."enum "..type
+	elseif (type == "Chr") then
+		result = result.."char"
+	elseif (type == "Int") then
+		result = result.."int"
+	elseif (type == "New") then
+		result = result.."long long"
+	elseif (type == "Num") then
+		result = result.."double"
+	elseif (type == "Old") then
+		result = result.."float"
+	elseif (type == "Str") then
+		result = result.."char*"
+	elseif (type == "Dat") then
+		result = result.."void*"
 	end
-	result = result..showIndent(1).."}\n"
-	result = result..showIndent(1).."fnc(str,1,idx,arg);\n"
-	result = result..showIndent(1).."free(str);\n"
-	result = result.."}\n"
 	return result
 end
-function showWstructC(list)
+function showRtypeC(list)
 	local result = ""
-	result = result.."void writeStruct(const char *str, int typ, int idx)"
-	if prototype then return result..";\n" end
-	result = result.."\n{\n"
-	result = result..showIndent(1).."int len = 0;\n"
-	result = result..showIndent(1).."switch (typ) {\n"
-	for k,v in ipairs(list) do
-		result = result..showIndent(1).."case("..(k-1).."): {\n"
-		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
-		result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
-		result = result..showIndent(2).."write"..v.."(&tmp,idx);\n"
-		result = result..showIndent(2).."break;}\n"
-	end
-	result = result..showIndent(1).."}\n"
-	result = result.."}\n"
-	return result
-end
-function showLstructC(list)
-	local result = ""
-	result = result.."void loopStruct(int typ, int one, int oth)"
+	result = result.."void readType(char **str, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."int len = 0;\n"
 	result = result..showIndent(1).."switch (typ) {\n"
 	for k,v in ipairs(list) do
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
-		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
-		result = result..showIndent(2).."read"..v.."(&tmp,one);\n"
-		result = result..showIndent(2).."write"..v.."(&tmp,oth);\n"
+		if (not (Structz[v] == nil)) then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
+			result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
+			result = result..showIndent(2).."show"..v.."(&tmp,str,&len);\n"
+		elseif (not (Enumz[v] == nil)) then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = readInt(idx);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str,&len);\n"
+		elseif (v == "Dat") or (v == "Str") then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
+			result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str,&len);\n"
+			result = result..showIndent(2).."free(tmp);\n"
+		else
+			result = result..showIndent(2)..showTypeCF(v).." tmp = read"..v.."(idx);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str,&len);\n"
+		end
 		result = result..showIndent(2).."break;}\n"
 	end
 	result = result..showIndent(1).."}\n"
 	result = result.."}\n"
 	return result
 end
-function showIstructC(list)
+function showWtypeC(list)
 	local result = ""
-	result = result.."int identStruct(const char *str)"
+	result = result.."void writeType(const char *str, int typ, int idx)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case("..(k-1).."): {\n"
+		if (not (Structz[v] == nil)) then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."write"..v.."(&tmp,idx);\n"
+		elseif (not (Enumz[v] == nil)) then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."writeInt(tmp,idx);\n"
+		elseif (v == "Dat") or (v == "Str") then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."write"..v.."(tmp,idx);\n"
+		else
+			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."write"..v.."(tmp,idx);\n"
+		end
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."}\n"
+	result = result.."}\n"
+	return result
+end
+function showLtypeC(list)
+	local result = ""
+	result = result.."void loopType(int typ, int one, int oth)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case("..(k-1).."): {\n"
+		if (not (Structz[v] == nil)) then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
+			result = result..showIndent(2).."read"..v.."(&tmp,one);\n"
+			result = result..showIndent(2).."write"..v.."(&tmp,oth);\n"
+		elseif (not (Enumz[v] == nil)) then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = readInt(one);\n"
+			result = result..showIndent(2).."writeInt(tmp,oth);\n"
+		elseif (v == "Dat") or (v == "Str") then
+			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
+			result = result..showIndent(2).."read"..v.."(&tmp,one);\n"
+			result = result..showIndent(2).."write"..v.."(tmp,oth);\n"
+		else
+			result = result..showIndent(2)..showTypeCF(v).." tmp = read"..v.."(one);\n"
+			result = result..showIndent(2).."write"..v.."(tmp,oth);\n"
+		end
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."}\n"
+	result = result.."}\n"
+	return result
+end
+function showIdentC(list)
+	local result = ""
+	result = result.."int identType(const char *str)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."int len = 0;\n"
@@ -914,7 +987,7 @@ function showRfieldC(list,map)
 			elseif (not (Enumz[vl[2]] == nil)) then
 				result = result..showIndent(3)..lval
 			elseif (vl[2] == "Str") then
-				result = result..showIndent(3).."readStr(callStr,&"..lval
+				result = result..showIndent(3).."readStr(&"..lval
 			elseif (vl[2] == "Dat") then
 				result = result..showIndent(3).."readDat(&"..lval
 			else
@@ -968,9 +1041,6 @@ function showWfieldC(list,map)
 			else
 				result = result..showIndent(3).."write"..vl[2].."("..lval
 			end
-			if (vl[2] == "Str") then
-				result = result..",1"
-			end
 			result = result..",ofd);\n"
 			result = result..showIndent(3).."break;}\n"
 		end
@@ -996,6 +1066,27 @@ function showIfieldC(list,map)
 		result = result..showIndent(1).."break;\n"
 	end
 	result = result..showIndent(1).."}\n"
+	result = result..showIndent(1).."return -1;\n"
+	result = result.."}\n"
+	return result
+end
+function showTfieldC(list,map)
+	local result = ""
+	result = result.."int identSubtype(int typ, int pos)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."case ("..(k-1).."): // "..v.."\n"
+		result = result..showIndent(2).."switch (pos) {\n"
+		for ky,vl in ipairs(map[v]) do
+			result = result..showIndent(2).."case ("..(ky-1).."): return identType(\""..vl[2].."\");\n"
+		end
+		result = result..showIndent(2).."default: return -1;}\n"
+		result = result..showIndent(2).."break;\n"
+	end
+	result = result..showIndent(1).."default: return -1;}\n"
 	result = result..showIndent(1).."return -1;\n"
 	result = result.."}\n"
 	return result
@@ -1409,11 +1500,7 @@ function showReadHsH(pre,index,struct,field)
 		result = result.."listHelp "..field[4].." ("
 		count = count + 1
 	end
-	if (field[2] == "Str") then
-		result = result.."fmap fst (readStr"
-		count = count + 1
-	else result = result.."read"..field[2] end
-	result = result.." idx"
+	result = result.."read"..field[2].." idx"
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -1630,9 +1717,6 @@ function showWriteHsH(index,struct,field,var)
 		count = count + 1
 		post = " "..var
 		var = "x"
-	end
-	if (field[2] == "Str") then
-		var = var.." True"
 	end
 	result = result.."write"..field[2].." "..var.." idx"
 	while (count > 0) do
@@ -1952,7 +2036,7 @@ function showWriteLua(name,struct)
 		end
 		local value = "tab[\""..field[1].."\"]"..sub
 		result = result..showIndent(count+1)
-		if (field[2] == "Str") then result = result.."writeStr("..value..",1,idx)"
+		if (field[2] == "Str") then result = result.."writeStr("..value..",idx)"
 		else result = result.."write"..field[2].."("..value..",idx)" end
 		if (cond ~= "True") then nest = 1 end
 		result = result.."\n"
@@ -2014,13 +2098,14 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showSizeC).."\n"
 	result = result..showCall(Structs,Structz,showShowSC).."\n"
 	result = result..showCall(Structs,Structz,showHideSC).."\n"
-	result = result..showRstructC(Structs).."\n"
-	result = result..showWstructC(Structs).."\n"
-	result = result..showLstructC(Structs).."\n"
-	result = result..showIstructC(Structs).."\n"
+	result = result..showRtypeC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showWtypeC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showLtypeC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showIdentC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
 	result = result..showRfieldC(Structs,Structz).."\n"
 	result = result..showWfieldC(Structs,Structz).."\n"
-	result = result..showIfieldC(Structs,Structz)
+	result = result..showIfieldC(Structs,Structz).."\n"
+	result = result..showTfieldC(Structs,Structz)
 	return result
 end
 function showCallH()

@@ -9,6 +9,7 @@
 #include <setjmp.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -594,25 +595,12 @@ void assignDat(void **ptr, const void *dat)
 	if (*ptr == 0) ERRFNC(-1);
 	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));
 }
-void callStr(const char *str, int trm, int idx, void *arg)
-{
-	char **ptr = arg;
-	if (trm == 0) NOTICE(idx);
-	assignStr(ptr,str);
-}
-void textStr(const char *str, int trm, int idx, void *arg)
-{
-	struct Text *text = arg;
-	text->trm = trm;
-	assignStr(text->str,str);
-}
-void readStr(sftype fnc, void *arg, int idx)
+void readStr(char **str, int idx)
 {
 	char *buf = 0;
 	int size = 0; // num valid
 	ssize_t val = 1/*bufsize*/; // num read
 	int num = 1/*bufsize*/; // num nonzero
-	int trm = 0; // num zero
 	if (idx < 0 || idx >= lim || fdt[idx] == None/*!= Seek*/) ERRFNC(idx);
 	while (num == 1/*bufsize*/ && val == 1/*bufsize*/) {
 		if ((size % bufsize) == 0) buf = realloc(buf,size+bufsize+1);
@@ -621,20 +609,20 @@ void readStr(sftype fnc, void *arg, int idx)
 		else val = /*p*/read(inp[idx],buf+size,1/*bufsize,loc+size*/);
 		if (val < 0 && errno == EINTR) INTRFN() else break;}
 		if (val < 0) ERRFNC(idx);
+		if (val == 0) {free(*str); *str = 0; return;}
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
 	}
-	if (val == num) buf[size] = 0; else trm = 1;
-	fnc(buf,trm,idx,arg);
+	if (val == num) buf[size] = 0;
+	assignStr(str,buf);
 	free(buf);
 }
-void preadStr(sftype fnc, void *arg, long long loc, int idx)
+void preadStr(char **str, long long loc, int idx)
 {
 	char *buf = 0;
 	int size = 0; // num valid
 	ssize_t val = bufsize; // num read
 	int num = bufsize; // num nonzero
-	int trm = 0; // num zero
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
 	while (num == bufsize && val == bufsize) {
 		/*if ((size % bufsize) == 0) */buf = realloc(buf,size+bufsize+1);
@@ -642,21 +630,20 @@ void preadStr(sftype fnc, void *arg, long long loc, int idx)
 		while (1) {val = pread(inp[idx],buf+size,bufsize,loc+size);
 		if (val < 0 && errno == EINTR) INTRFN() else break;}
 		if (val < 0) ERRFNC(idx);
+		if (val == 0) {free(*str); *str = 0; return;}
 		for (num = 0; num != val && buf[size+num]; num++);
 		size += num;
 	}
-	if (val == num) buf[size] = 0; else trm = 1;
-	fnc(buf,trm,idx,arg);
+	if (val == num) buf[size] = 0;
+	assignStr(str,buf);
 	free(buf);
-}
-void readStrHsFnc(const char *buf, int trm, int idx, void *arg)
-{
-	hftype fnc = arg;
-	fnc(buf,trm);
 }
 void readStrHs(hftype fnc, int idx)
 {
-	readStr(readStrHsFnc,fnc,idx);
+	char *str = 0;
+	readStr(&str,idx);
+	fnc(str);
+	free(str);
 }
 void readDat(void **dat, int idx)
 {
@@ -770,17 +757,17 @@ void flushBuf(int idx)
 	else {if (write(out[idx],atom[idx],atoms[idx]) < 0) ERRFNC(idx);}
 	atoms[idx] = 0;
 }
-void writeStr(const char *arg, int trm, int idx)
+void writeStr(const char *arg, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
-	int siz = strlen(arg)+trm;
+	int siz = strlen(arg)+1;
 	int val = writeBuf(/*write(out[idx],*/arg,siz,idx);
 	if (val < siz) ERRFNC(idx);
 }
-void pwriteStr(const char *arg, int trm, long long loc, int idx)
+void pwriteStr(const char *arg, long long loc, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
-	int siz = strlen(arg)+trm;
+	int siz = strlen(arg)+1;
 	int val = pwrite(out[idx],arg,siz,loc);
 	if (val < siz) ERRFNC(idx);
 }
@@ -970,6 +957,7 @@ int hideIdent(const char *val, const char *str, int *siz)
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
 	if (num == -1) return 0;
+	if (isalnum(str[*siz+num])) return 0;
 	*siz += num;
 	return 1;
 }
@@ -1184,17 +1172,14 @@ int sleepSecLua(lua_State *lua)
 	sleep((int)lua_tonumber(lua,1));
 	return 0;
 }
-void readStrLuaFnc(const char *buf, int trm, int idx, void *arg)
-{
-	lua_State *lua = arg;
-	lua_pushstring(lua,buf);
-	lua_pushnumber(lua,trm);
-}
 int readStrLua(lua_State *lua)
 {
 	luaerr = lua;
-	readStr(readStrLuaFnc,lua,(int)lua_tonumber(lua,1));
-	return 2;
+	char *str = 0;
+	readStr(&str,(int)lua_tonumber(lua,1));
+	lua_pushstring(lua,str);
+	free(str);
+	return 1;
 }
 int readEofLua(lua_State *lua)
 {
@@ -1235,7 +1220,7 @@ int readOldLua(lua_State *lua)
 int writeStrLua(lua_State *lua)
 {
 	luaerr = lua;
-	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
+	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2));
 	return 0;
 }
 int writeChrLua(lua_State *lua)

@@ -1,8 +1,4 @@
 #include "proto.h"
-struct Text {
-	char **str;
-	int trm;
-};
 struct timespec;
 void intrFunc(chtype fnc);
 void noteFunc(cftype fnc);
@@ -51,10 +47,8 @@ void allocStr(char* **ptr, int siz);
 void assignStr(char **ptr, const char *str);
 void allocDat(void* **ptr, int siz);
 void assignDat(void **ptr, const void *dat);
-void callStr(const char *str, int trm, int idx, void *arg);
-void textStr(const char *str, int trm, int idx, void *arg);
-void readStr(sftype fnc, void *arg, int idx);
-void preadStr(sftype fnc, void *arg, long long loc, int idx);
+void readStr(char **str, int idx);
+void preadStr(char **str, long long loc, int idx);
 void readStrHs(hftype fnc, int idx);
 void readDat(void **dat, int idx);
 void readEof(int idx);
@@ -65,8 +59,8 @@ double readNum(int idx);
 float readOld(int idx);
 int writeBuf(const void *arg, long long siz, int idx);
 void flushBuf(int idx);
-void writeStr(const char *arg, int trm, int idx);
-void pwriteStr(const char *arg, int trm, long long loc, int idx);
+void writeStr(const char *arg, int idx);
+void pwriteStr(const char *arg, long long loc, int idx);
 void writeDat(const void *dat, int idx);
 void writeChr(char arg, int idx);
 void writeInt(int arg, int idx);
