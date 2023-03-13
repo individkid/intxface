@@ -93,14 +93,14 @@ classifies sets of regions as polytopes, samples polytopes as region sets,
 finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
-tape test BMD-SDK to and from av struct pipe.
+pipe test AVAssetReader AVAssetWriter to and from av struct pipe.
+frame test AVPlayerLayer SCStream to and from av struct pipe.
 wave test Bitscope /dev/cu.usbserial-BSEEK46 to and from av struct pipe.
+tape test BMD-SDK to and from av struct pipe.
 phone test av struct to from portaudio.
 page test file struct to from NSGridView. From left to right,
  highlightable scrollable text, entry per highlight,
  edit select scroll buttons per entry.
-pipe test AVAssetReader AVAssetWriter to and from av struct pipe.
-frame test AVPlayerLayer SCStream to and from av struct pipe.
 share test arguments that control how subsequent non-dash arguments are interpreted.
  -a yield mask (resume mask)
  -b script result (script to evaluate)
@@ -153,47 +153,47 @@ The DE with indirect feedback goes to several A with rate from f.
  A) triangle to triangle: (10 opamps; single; rate, width, high)
   (triangle,square)=input,
   output=e(!higher&!lower&(square=sign)?(middle?done:rate):zero),
-  higher=a(triangle,half),
-  lower=a(low,triangle),
-  middle=a(triangle,mid),
-  zero=a(0,output),
-  done=b(0,rate),
-  mid=b(half,width),
-  low=b(mid,width),
-  half=c(sign,high)
-  sign=a(high),
+  higher=a(triangle>half?1:-1),
+  lower=a(low>triangle?1:-1),
+  middle=a(triangle>mid?1:-1),
+  zero=a(0>output?1:-1),
+  done=b(0-rate),
+  mid=b(half-width),
+  low=b(mid-width),
+  half=c((sign+2*high)/2),
+  sign=a(0>high?1:-1),
  B) triangle to edge: (6 opamps; detect; width, high)
   (triangle,square)=input
-  output=a(!higher&!lower&(square=sign),pos,neg)
-  higher=a(triangle,half),
-  lower=a(low,triangle),
-  low=b(half,width),
-  half=c(sign,high)
-  sign=a(high),
+  output=a(!higher&!lower&(square=sign)?1:-1)
+  higher=a(triangle>half?1:-1),
+  lower=a(low>triangle?1:-1),
+  low=b(mid-width),
+  half=c((sign+2*high)/2),
+  sign=a(0>high?1:-1),
  C) signal to square: (3 opamps; convert)
   orthogonal=e(input)
   opposite=e(orthogonal)
-  output=a(0,opposite)
+  output=a(0>opposite?1:-1)
  D) level to square (8 opamps; vco; high, low)
-  poshigh=a(poslvl,high)
-  poslow=a(low,poslvl)
+  poshigh=a(poslvl>high?1:-1)
+  poslow=a(low>poslvl?1:-1)
   poslvl=e(neglow|(poshigh&!neghigh)?input:unput)
-  neghigh=a(neglvl,high)
-  neglow=a(low,neglvl)
+  neghigh=a(neglvl>high?1:-1)
+  neglow=a(low>neglvl?1:-1)
   neglvl=e(poshigh|(neghigh&!poslow)?input:unput)
-  triangle=c(poslvl,neglvl)
-  square=a(poshigh|neglow,0)
+  triangle=c((poslvl+neglvl)/2)
+  square=a(poshigh|neglow>0?1:-1)
   output=(triangle,square)
-  unput=b(0,input)
+  unput=b(0-input)
  E) two squares to level: (8 opamps; pll; small, high, low)
   (reference,feedback)=input
   refval=d(reference)
-  refsgn=a(refval)
-  refabs=b(refsgn?refval:0,refsgn?0:refval)
+  refsgn=a(refval>0?1:-1)
+  refabs=b((refsgn?refval:0)-(refsgn?0:refval))
   feedval=d(feedback)
-  feedsgn=a(feedval)
-  feedabs=b(feedsgn?feedval:0,feedsgn?0:feedval)
-  slope=b(refabs,feedabs)
+  feedsgn=a(feedval>0?1:-1)
+  feedabs=b((feedsgn?feedval:0)(feedsgn?0:feedval))
+  slope=b(refabs-feedabs)
   output=e(slope)
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.

@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <pthread.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -42,6 +43,7 @@ qftype wfn[NUMOPEN] = {0};
 char *atom[NUMOPEN] = {0};
 int atoms[NUMOPEN] = {0};
 int atomz[NUMOPEN] = {0};
+int bufsize = BUFSIZE;
 
 // server address for checking if already connected
 struct sockaddr_in6 addr[NUMINET] = {0};
@@ -52,8 +54,9 @@ int idnt[NUMOPEN] = {0};
 pthread_t cbpth[NUMOPEN] = {0};
 cftype cbfnc[NUMOPEN] = {0};
 
-// garbage collection
-int bufsize = BUFSIZE;
+// read string tokenization
+fgtype termfn = 0;
+void *usr[NUMOPEN] = {0};
 
 // error handling
 chtype intrfn = 0;
@@ -66,6 +69,11 @@ lua_State *luaerr = 0;
 #define NOTICE(IDX) {if (notice) notice(IDX); else ERRFNC(IDX);}
 #define INTRFN() {if (intrfn) intrfn();}
 
+void termFunc(fgtype fnc)
+{
+	termfn = fnc;
+	// >0 valid, 0 not enough, -1 too much, -2 invalid
+}
 void intrFunc(chtype fnc)
 {
 	intrfn = fnc;
@@ -92,6 +100,7 @@ void callErr(int idx)
 }
 void closeIdent(int idx)
 {
+	if (idx < 0 || idx >= lim) ERRFNC(idx);
 	if (fdt[idx] != None) {
 		close(inp[idx]);
 		if (inp[idx] != out[idx]) close(out[idx]);
@@ -144,6 +153,11 @@ int inetIdent(const char *adr, const char *num)
 	return i;
 	return -1;
 }
+void **userIdent(int idx)
+{
+	if (idx < 0 || idx >= lim) ERRFNC(idx);
+	return &usr[idx];
+}
 int openPipe()
 {
 	int fd[2] = {0};
@@ -152,6 +166,19 @@ int openPipe()
 	inp[lim] = fd[0];
 	out[lim] = fd[1];
 	fdt[lim] = Wait;
+	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
+	return lim++;
+}
+int openSide()
+{
+	int fd[2] = {0};
+	if (lim == NUMOPEN) return -1;
+	if (pipe(fd) < 0) return -1;
+	inp[lim] = fd[0];
+	out[lim] = fd[1];
+	fdt[lim] = Poll;
 	pid[lim] = 0;
 	rfn[lim] = 0;
 	wfn[lim] = 0;
@@ -172,6 +199,26 @@ int openFifo(const char *str)
 	inp[lim] = fi;
 	out[lim] = fo;
 	fdt[lim] = Poll;
+	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
+	return lim++;
+}
+int openName(const char *str)
+{
+	int fi = 0;
+	int fo = 0;
+	int idx = 0;
+	if ((idx = findIdent(str)) != -1) return idx;
+	if (lim == NUMOPEN) return -1;
+	if ((mkfifo(str,0666) < 0) && errno != EEXIST) return -1;
+	if ((fi = open(str,O_RDONLY | O_NONBLOCK)) < 0) return -1;
+	if ((fo = open(str,O_WRONLY | O_NONBLOCK)) < 0) return -1;
+	if (fcntl(fi,F_SETFL,0) < 0) return -1;
+	if (fcntl(fo,F_SETFL,0) < 0) return -1;
+	inp[lim] = fi;
+	out[lim] = fo;
+	fdt[lim] = Wait;
 	pid[lim] = 0;
 	rfn[lim] = 0;
 	wfn[lim] = 0;
@@ -411,7 +458,7 @@ int pollPipe(int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] != Poll) return 0;
 	if (nfd <= inp[idx]) nfd = inp[idx]+1;
 	FD_SET(inp[idx],&fds); FD_SET(inp[idx],&ers);
-	val = -1; while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
+	val = -1; errno = EINTR; while (val < 0 && errno == EINTR) val = pselect(nfd,&fds,0,&ers,0,0);
 	if (val <= 0) ERRFNC(idx);
 	if (FD_ISSET(inp[idx],&fds)) return 1;
 	return 0;
@@ -443,7 +490,7 @@ long long checkFile(int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) return 0;
 	if ((pos = lseek(inp[idx],0,SEEK_CUR)) < 0) ERRFNC(idx);
 	if ((siz = lseek(inp[idx],0,SEEK_END)) < 0) ERRFNC(idx);
-	if (lseek(inp[idx],pos,SEEK_CUR) < 0) ERRFNC(idx);
+	if (lseek(inp[idx],pos,SEEK_SET) < 0) ERRFNC(idx);
 	return siz;
 }
 int rdlkFile(long long loc, long long siz, int idx)
@@ -597,44 +644,57 @@ void assignDat(void **ptr, const void *dat)
 }
 void readStr(char **str, int idx)
 {
-	char *buf = 0;
-	int size = 0; // num valid
-	ssize_t val = 1/*bufsize*/; // num read
-	int num = 1/*bufsize*/; // num nonzero
-	if (idx < 0 || idx >= lim || fdt[idx] == None/*!= Seek*/) ERRFNC(idx);
-	while (num == 1/*bufsize*/ && val == 1/*bufsize*/) {
-		if ((size % bufsize) == 0) buf = realloc(buf,size+bufsize+1);
-		if (buf == 0) ERRFNC(idx);
-		while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],buf+size,1);
-		else val = /*p*/read(inp[idx],buf+size,1/*bufsize,loc+size*/);
-		if (val < 0 && errno == EINTR) INTRFN() else break;}
-		if (val < 0) ERRFNC(idx);
-		if (val == 0) {free(*str); *str = 0; return;}
-		for (num = 0; num != val && buf[size+num]; num++);
-		size += num;
-	}
-	if (val == num) buf[size] = 0;
+	char *buf = memset(malloc(bufsize),0,bufsize);
+	int siz = bufsize; // buf size
+	int val = -1; // num read
+	int num = 0; // num valid
+	int tot = 0; // total read
+	if (idx < 0 || idx >= lim || fdt[idx] == None || buf == 0) ERRFNC(idx);
+	while (val != 0 && num == 0) {
+		while (1) {
+		val = ((fdt[idx] == Punt || fdt[idx] == Bunt) ?
+		rfn[idx](inp[idx],buf+tot,1) :
+		read(inp[idx],buf+tot,1));
+		if (val < 0 && errno != EINTR) ERRFNC(idx);
+		if (val < 0 && errno == EINTR) INTRFN();
+		if (val >= 0) break;}
+		tot += val;
+		if (termfn) num = termfn(buf,tot,idx);
+		else if (strnlen(buf,tot) == tot) num = 0;
+		else num = strlen(buf)+1;
+		if (num != 0 && num != tot) ERRFNC(idx);
+		if (tot == siz) {
+		buf = realloc(buf,siz+bufsize);
+		memset(buf+siz,0,bufsize);
+		siz += bufsize;
+		if (buf == 0) ERRFNC(idx);}}
+	buf[num] = 0;
 	assignStr(str,buf);
 	free(buf);
 }
 void preadStr(char **str, long long loc, int idx)
 {
-	char *buf = 0;
-	int size = 0; // num valid
-	ssize_t val = bufsize; // num read
-	int num = bufsize; // num nonzero
-	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
-	while (num == bufsize && val == bufsize) {
-		/*if ((size % bufsize) == 0) */buf = realloc(buf,size+bufsize+1);
-		if (buf == 0) ERRFNC(idx);
-		while (1) {val = pread(inp[idx],buf+size,bufsize,loc+size);
-		if (val < 0 && errno == EINTR) INTRFN() else break;}
-		if (val < 0) ERRFNC(idx);
-		if (val == 0) {free(*str); *str = 0; return;}
-		for (num = 0; num != val && buf[size+num]; num++);
-		size += num;
-	}
-	if (val == num) buf[size] = 0;
+	char *buf = malloc(bufsize);
+	int siz = bufsize; // buf size
+	int val = -1; // num read
+	int num = 0; // num valid
+	int tot = 0; // total read
+	if (idx < 0 || idx >= lim || fdt[idx] != Seek || buf == 0) ERRFNC(idx);
+	while (val != 0 && num == 0) {
+		while (1) {
+		val = pread(inp[idx],buf+tot,siz-tot,loc+tot);
+		if (val < 0 && errno != EINTR) ERRFNC(idx);
+		if (val < 0 && errno == EINTR) INTRFN();
+		if (val >= 0) break;}
+		tot += val;
+		if (termfn) num = termfn(buf,tot,idx);
+		else if (strnlen(buf,tot) == tot) num = 0;
+		else num = strlen(buf)+1;
+		if (tot == siz) {
+		siz += bufsize;
+		buf = realloc(buf,siz);
+		if (buf == 0) ERRFNC(idx);}}
+	buf[num] = 0;
 	assignStr(str,buf);
 	free(buf);
 }
@@ -760,14 +820,16 @@ void flushBuf(int idx)
 void writeStr(const char *arg, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
-	int siz = strlen(arg)+1;
+	int siz = (termfn ? termfn(arg,strlen(arg)+1,idx) : strlen(arg)+1);
+	if (siz <= 0) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx],*/arg,siz,idx);
 	if (val < siz) ERRFNC(idx);
 }
 void pwriteStr(const char *arg, long long loc, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
-	int siz = strlen(arg)+1;
+	int siz = (termfn ? termfn(arg,strlen(arg)+1,idx) : strlen(arg)+1);
+	if (siz <= 0) ERRFNC(idx);
 	int val = pwrite(out[idx],arg,siz,loc);
 	if (val < siz) ERRFNC(idx);
 }

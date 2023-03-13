@@ -1,5 +1,6 @@
 #include "proto.h"
 struct timespec;
+void termFunc(fgtype fnc);
 void intrFunc(chtype fnc);
 void noteFunc(cftype fnc);
 void errFunc(eftype fnc);
@@ -10,8 +11,11 @@ void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);
 int inetIdent(const char *adr, const char *num);
+void **userIdent(int idx);
 int openPipe();
+int openSide();
 int openFifo(const char *str);
+int openName(const char *str);
 int openFile(const char *str);
 int openInet(const char *adr, const char *num);
 int forkExec(const char *exe);

@@ -8,6 +8,7 @@
 #include <sys/errno.h>
 #include <setjmp.h>
 #include <libgen.h>
+#include <signal.h>
 
 int help[NUMFILE] = {0};
 int anon[NUMFILE] = {0};
@@ -23,19 +24,20 @@ int face = 0;
 int fieldsiz = 0;
 int filesiz = 0;
 double amount = BACKOFF;
-extern int bufsize;
+int maxsiz = BUFSIZE;
 char *errstr = 0;
 
 void errErr(const char *str, int num, int arg)
 {
-	if (arg == face) exit(-1);
+	if (arg == face) exitErr(str,num);
+	exitErr(str,num);
 	asprintf(&errstr,"spokeErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	longjmp(jmpbuf[number[arg]],1);
 }
 
 void errNote(int arg)
 {
-	if (arg == face) exit(-1);
+	if (arg == face) exit(0);
 	asprintf(&errstr,"spokeErr %d %lld\n",errno,(long long)getpid());
 	longjmp(jmpbuf[number[arg]],1);
 }
@@ -44,6 +46,39 @@ void hubErr(const char *str, int num)
 {
 	asprintf(&errstr,"hubErr %s(%d): %d %lld\n",str,num,errno,(long long)getpid());
 	longjmp(errbuf,1);
+}
+
+void hubSig(int sig)
+{
+	for (int i = 0; i < NUMFILE; i++)
+	if (thread[i]) {
+	if (pthread_cancel(thread[i]) < 0) ERROR();
+	if (pthread_join(thread[i],0) < 0) ERROR();}
+	fprintf(stderr,"hubSig %d\n",sig); fflush(stderr);
+	stackErr();
+	exit(-1);
+}
+
+void spokeSig(void *arg)
+{
+	for (int i = 0; i < NUMFILE; i++)
+	if (thread[i] && pthread_equal(pthread_self(),thread[i])) {
+	fprintf(stderr,"spokeSig %d\n",i); fflush(stderr);
+	stackErr();}
+}
+
+int fileTerm(const char *str, int len, int idx)
+{
+	int num = 0;
+	if (*userIdent(idx) == 0) {
+	if (strnlen(str,len) == len) return 0;
+	return strlen(str) + 1;}
+	for (int i = 0; i < len; i++) {
+		if (str[i] == '(') num++;
+		if (str[i] == ')' && num == 0) return -1;
+		if (str[i] == ')' && num == 1) return i+1;
+		if (str[i] == ')' && num > 1) num--;}
+	return 0;
 }
 
 void writeThd(int idx)
@@ -66,7 +101,7 @@ void writeHub()
 int readGive(long long loc, long long pid, int idx)
 {
 	struct File command = {0};
-	int siz = bufsize;
+	int siz = maxsiz;
 	int val = 0;
 	char *str = 0;
 	command.act = ThdHub;
@@ -77,8 +112,8 @@ int readGive(long long loc, long long pid, int idx)
 		rdlkwFile(loc,siz,give[idx]);
 		preadStr(&str,loc,give[idx]);
 		unlkFile(loc,siz,give[idx]);
-		if (str == 0) {freeFile(&command); return -1;}
-		val = strlen(str)+1;
+		if (*str == 0) {freeFile(&command); return -1;}
+		val = strlen(str);
 		if (val <= siz) break;
 		siz = val;}
 	assignStr(&command.str,str);
@@ -109,8 +144,8 @@ void appendGive(long long pid, const char *str, int idx)
 	struct File command = {0};
 	int siz = strlen(str);
 	long long loc = -1;
-	while (checkFile(idx) != loc) {
-		loc = checkFile(idx);
+	while (checkFile(give[idx]) != loc) {
+		loc = checkFile(give[idx]);
 		wrlkwFile(loc,siz+1,give[idx]);}
 	pwriteStr(str,loc,give[idx]);
 	unlkFile(loc,siz+1,give[idx]);
@@ -176,7 +211,11 @@ void *func(void *arg)
 	struct File *ptr = arg;
 	struct File temp = {0};
 	double backoff = 0.0;
-	if (setjmp(JBUF) != 0) {writeThd(IDX); return 0;}
+	sigset_t mask = {0};
+	sigemptyset(&mask); sigaddset(&mask,SIGINT);
+	if (pthread_sigmask(SIG_BLOCK,&mask,0) < 0) {writeThd(IDX); return 0;}
+	pthread_cleanup_push(spokeSig,0);
+	if (setjmp(JBUF) != 0) {writeThd(IDX); goto goExit;}
 	for (TAIL = filesiz; TAIL == filesiz; sleepSec(backoff += amount)) {
 		for (int loc = 0; loc < filesiz; loc += fieldsiz) {
 			if (rdlkFile(loc,fieldsiz,HELP)) {
@@ -236,15 +275,21 @@ void *func(void *arg)
 	TAIL = NEXT;
 	// previous is write locked
 	goto goWrite;
+
+	goExit:
+	pthread_cleanup_pop(0);
 	return 0;
 }
 
 int main(int argc, char **argv)
 {
+	struct sigaction act;
+	act.__sigaction_u.__sa_handler = hubSig;
+	if (sigaction(SIGINT,&act,0) < 0) ERROR();
 	if (argc != 4) exitErr(__FILE__,__LINE__);
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = pipeInit(argv[1],argv[2])) < 0) exitErr(__FILE__,__LINE__);
-	noteFunc(errNote); errFunc(errErr);
+	termFunc(fileTerm); noteFunc(errNote); errFunc(errErr);
 	struct File *ptr = 0; allocFile(&ptr,1);
 	ptr->act = ThdThd; fieldsiz = sizeFile(ptr);
 	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;
@@ -265,7 +310,7 @@ int main(int argc, char **argv)
 		strcat(strcat(strcpy(name,dirstr),"/"),basestr);
 		if (findIdent(name) != -1) hubErr(__FILE__,__LINE__);
 		if ((GIVE = openFile(name)) == -1) hubErr(__FILE__,__LINE__);
-		else number[GIVE] = IDX;
+		else {number[GIVE] = IDX; *userIdent(GIVE) = (void*)1;}
 		strcat(strcat(strcpy(name,dirstr),"/."),basestr);
 		if ((FIFO = openFifo(name)) == -1) hubErr(__FILE__,__LINE__);
 		else number[FIFO] = IDX;

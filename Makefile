@@ -38,7 +38,7 @@ typra.log:
 typer.log:
 	./typerC > typer.log
 filer.log:
-	rm -f *.-- .*.-- ..*.-- ...*.--
+	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	./filerLua > filer.log
 planer.log:
 	./planerLua > planer.log
@@ -120,7 +120,7 @@ clean:
 	rm -f pipe page
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
-	rm -f *.-- .*.-- ..*.-- ...*.--
+	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	rm -f *.o *.so *.hi *_stub.h *.metal *.metallib *.dep
 	rm -rf depend
 

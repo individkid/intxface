@@ -1,13 +1,9 @@
 dofile("type.lua")
 
-prefix = "hello "
-field1 = "ok"
-field2 = "OK"
-separator = " "
-suffix = "again"
-data1 = prefix..field1..separator..suffix
-data2 = prefix..field2
-data3 = suffix
+field1 = "Str(hello)"
+field2a = "Str(ok)"
+field2b = "Str(OK)"
+field3 = "Str(again)"
 name = "filer.--"
 
 -- MAIN
@@ -19,17 +15,33 @@ file["idx"] = 0
 file["str"] = name
 writeFile(file,ident1)
 file = {}
-file["act"] = "CfgHub"
+file["act"] = "AppHub"
 file["idx"] = 0
 file["loc"] = 0
-file["str"] = data1
+file["str"] = field1
+writeFile(file,ident1)
+file["str"] = field2a
+writeFile(file,ident1)
+file["str"] = field3
 writeFile(file,ident1)
 file = readFile(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["slf"] == 1)
-assert(file["str"] == data1)
+assert(file["str"] == field1)
+file = readFile(ident1)
+assert(file["act"] == "HubCfg")
+assert(file["idx"] == 0)
+assert(file["loc"] == string.len(field1))
+assert(file["slf"] == 1)
+assert(file["str"] == field2a)
+file = readFile(ident1)
+assert(file["act"] == "HubCfg")
+assert(file["idx"] == 0)
+assert(file["loc"] == string.len(field1)+string.len(field2a))
+assert(file["slf"] == 1)
+assert(file["str"] == field3)
 
 ident2 = forkExec("fileC")
 file = {}
@@ -42,25 +54,37 @@ assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["slf"] == 0)
-assert(file["str"] == data1)
+assert(file["str"] == field1)
+file = readFile(ident2)
+assert(file["act"] == "HubCfg")
+assert(file["idx"] == 0)
+assert(file["loc"] == string.len(field1))
+assert(file["slf"] == 0)
+assert(file["str"] == field2a)
+file = readFile(ident2)
+assert(file["act"] == "HubCfg")
+assert(file["idx"] == 0)
+assert(file["loc"] == string.len(field1)+string.len(field2a))
+assert(file["slf"] == 0)
+assert(file["str"] == field3)
 file = {}
 file["act"] = "CfgHub"
 file["idx"] = 0
-file["loc"] = string.len(prefix)
-file["str"] = field2
+file["loc"] = string.len(field1)
+file["str"] = field2b
 writeFile(file,ident2)
 file = readFile(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
-assert(file["loc"] == string.len(prefix))
+assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 1)
-assert(file["str"] == field2)
+assert(file["str"] == field2b)
 file = readFile(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
-assert(file["loc"] == string.len(prefix))
+assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 0)
-assert(file["str"] == field2)
+assert(file["str"] == field2b)
 
 ident3 = forkExec("fileC")
 file = {}
@@ -73,13 +97,19 @@ assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["slf"] == 0)
-assert(file["str"] == data2)
+assert(file["str"] == field1)
 file = readFile(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
-assert(file["loc"] == 9)
+assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 0)
-assert(file["str"] == data3)
+assert(file["str"] == field2b)
+file = readFile(ident3)
+assert(file["act"] == "HubCfg")
+assert(file["idx"] == 0)
+assert(file["loc"] == string.len(field1)+string.len(field2a))
+assert(file["slf"] == 0)
+assert(file["str"] == field3)
 
 closeIdent(ident1)
 closeIdent(ident2)

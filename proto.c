@@ -34,6 +34,10 @@ struct Function protoTypeHh(hhtype fnc)
 {
 	struct Function ret = {.ft = Hhtype, {.hh = fnc}}; return ret;
 }
+struct Function protoTypeFg(fgtype fnc)
+{
+	struct Function ret = {.ft = Fgtype, {.fg = fnc}}; return ret;
+}
 struct Function protoTypeFh(fhtype fnc)
 {
 	struct Function ret = {.ft = Fhtype, {.fh = fnc}}; return ret;
@@ -252,17 +256,20 @@ const char *protoResultBh(int *len)
 	return argbuf.ab[0].sa;
 }
 
+void stackErr()
+{
+	void *array[10];
+	size_t size;
+	// get void*'s for all entries on the stack
+	size = backtrace(array, 10);
+	// print out all the frames to stderr
+	backtrace_symbols_fd(array, size, STDERR_FILENO);
+}
 void exitErr(const char *file, int line)
 {
-  void *array[10];
-  size_t size;
-
-  // get void*'s for all entries on the stack
-  size = backtrace(array, 10);
-
-  // print out all the frames to stderr
-  backtrace_symbols_fd(array, size, STDERR_FILENO);
-	fprintf(stderr,"%s(%d): %d %lld\n",file,line,errno,(long long)getpid()); exit(-1);
+	stackErr();
+	fprintf(stderr,"exitErr %s(%d): %d %lld\n",file,line,errno,(long long)getpid());
+	exit(-1);
 }
 void protoSet(const char *str)
 {
