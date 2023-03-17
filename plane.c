@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/errno.h>
 #include <string.h>
+#include <math.h>
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
 #define sem_t dispatch_semaphore_t
@@ -42,7 +43,6 @@ struct Pierce *pierce = 0;
 struct Pierce *found = 0;
 struct Pierce unfound = {0};
 struct Machine *machine = 0;
-struct Expression *function = 0;
 int configure[Configures] = {0};
 struct Center center = {0};
 regex_t *pattern = 0;
@@ -74,7 +74,6 @@ enum Configure *hints = 0;
 enum Wait *waits = 0;
 int perpend[Waits] = {0};
 // thread safe:
-void *runmask[Waits] = {0};
 sem_t resource;
 sem_t pending;
 sem_t ready[Concurs];
@@ -93,20 +92,20 @@ void planeAlize(float *dir, const float *vec) // normalize
 void planeCross(float *axe, const float *fix, const float *cur)
 {
 }
-typedef float *(*planeXform)(float *mat, const float *pic, const float *fix, const float *cur, float ang);
-float *planeXtate(float *mat, const float *pic, const float *fix, const float *cur, float ang) // rotate
+typedef float *(*planeXform)(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang);
+float *planeXtate(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang) // rotate
 {
 	return 0;
 }
-float *planeXlate(float *mat, const float *pic, const float *fix, const float *cur, float ang) // translate
+float *planeXlate(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang) // translate
 {
 	return 0;
 }
-float *planeScale(float *mat, const float *pic, const float *fix, const float *cur, float ang)
+float *planeScale(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
 	return 0;
 }
-float *planeFocal(float *mat, const float *pic, const float *fix, const float *cur, float ang)
+float *planeFocal(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
 	return 0;
 }
@@ -134,7 +133,7 @@ struct Kernel *planeKernel()
 }
 float *planeInverse()
 {
-	return invmat(copymat(planeKernel()->inverse.mat,planeCenter(),4),4);
+	return planeKernel()->inverse.mat;
 }
 float *planeMaintain()
 {
@@ -144,12 +143,14 @@ float *planeWritten()
 {
 	return planeKernel()->written.mat;
 }
-float *planeTowrite() {
+float *planeTowrite()
+{
 	return planeKernel()->towrite.mat;
 }
-float *planeCompose() {
+float *planeCompose()
+{
 	// TODO check if needed
-	return timesmat(timesmat(copymat(planeKernel()->compose.mat,planeMaintain(),4),planeWritten(),4),planeTowrite(),4);
+	return jumpmat(jumpmat(copymat(planeKernel()->compose.mat,planeMaintain(),4),planeWritten(),4),planeTowrite(),4);
 }
 planeXform planeFunc()
 {
@@ -163,20 +164,23 @@ planeXform planeFunc()
 }
 float *planeLocal()
 {
-	float pic[2]; float fix[2]; float cur[2]; float ang[1];
+	float pic[2]; float fix[2]; float org[2]; float cur[2]; float ang[1];
 	pic[0] = configure[WindowLeft];
 	pic[1] = configure[WindowBase];
 	fix[0] = configure[ClosestLeft];
 	fix[1] = configure[ClosestBase];
+	org[0] = configure[OriginLeft];
+	org[1] = configure[OriginBase];
 	cur[0] = configure[CursorLeft];
 	cur[1] = configure[CursorBase];
 	ang[0] = configure[CursorAngle];
-	return planeFunc()(planeKernel()->local.mat,pic,fix,cur,ang[0]);
+	return planeFunc()(planeKernel()->local.mat,pic,fix,org,cur,ang[0]);
 }
 void planeContinue()
 {
-	configure[ClosestLeft] = configure[CursorLeft];
-	configure[ClosestBase] = configure[CursorBase];
+	configure[OriginLeft] = configure[CursorLeft];
+	configure[OriginBase] = configure[CursorBase];
+	configure[CursorAngle] = 0;
 }
 void planePattern(int idx, const char *str)
 {
@@ -274,7 +278,6 @@ void planeReconfig(enum Configure cfg, int val)
 		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
 		case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
 		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
-		case (ExpressionSize): function = planeRealloc(function,val,tmp,sizeof(struct Expression)); break;
 		case (RegisterOpen): planeStarted(val); break;
 		default: break;}
 }
@@ -330,15 +333,6 @@ void copyMachine(struct Machine *dst, struct Machine *src)
 	hideMachine(dst,str,&len);
 	free(str);
 }
-void copyExpression(struct Expression *dst, struct Expression *src)
-{
-	char *str = 0;
-	int len = 0;
-	showExpression(src,&str,&len);
-	len = 0;
-	hideExpression(dst,str,&len);
-	free(str);
-}
 void planeBuffer()
 {
 	switch (center.mem) {
@@ -346,7 +340,6 @@ void planeBuffer()
 		else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
 		case (Patternz): for (int i = 0; i < center.siz; i++) planePattern(center.idx+i,center.str[i]); break;
 		case (Machinez): for (int i = 0; i < center.siz; i++) copyMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
-		case (Expressionz): for (int i = 0; i < center.siz; i++) copyExpression(&function[(center.idx+i)%configure[ExpressionSize]],&center.fnc[i]); break;
 		case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
 		default: callDma(&center); break;}
 }
@@ -358,94 +351,72 @@ int planeEscape(int lvl, int nxt)
 	lvl += machine[nxt].idx*inc; configure[RegisterNest] += machine[nxt].idx*inc;}
 	return nxt;
 }
-int planeCompare(enum Configure cfg, int val, enum Compare cmp)
-{
-	switch (cmp) {
-		case (Less): return (configure[cfg] < val);
-		case (More): return (configure[cfg] > val);
-		case (Equal): return (configure[cfg] == val);
-		case (Nless): return (configure[cfg] >= val);
-		case (Nmore): return (configure[cfg] <= val);
-		case (Nequal): return (configure[cfg] != val);
-		default: break;}
-	return 0;
-}
-int planeCondition(int sum, int siz, enum Condition cnd)
-{
-	switch (cnd) {
-		case (Every): return (sum == siz);
-		case (None): return (sum == 0);
-		case (Both): return (sum > 0 && sum < siz);
-		case (Eorb): return (sum > 0);
-		case (Norb): return (sum < siz);
-		default: break;}
-	return 0;
-}
 void planeExchange(int cal, int ret)
 {
 	struct Machine temp = machine[cal%configure[MachineSize]];
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
-void planePush(int i, int val)
+float planeFval(struct Expression *exp);
+int planeIval(struct Expression *exp)
 {
-	int idx = configure[RegisterStack];
-	struct Expression *ptr = &function[idx];
-	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
-	if (ptr->arg < 0 || ptr->arg >= ptr->iss) ERROR();
-	if (i < 0 || i >= ptr->arg) ERROR();
-	ptr->ist[i] = val;
+	switch (exp->opr) {
+	case (Fadd): ERROR();
+	case (Iadd): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])+planeIval(&exp->exp[1]);
+	case (Fsub): ERROR();
+	case (Isub): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])-planeIval(&exp->exp[1]);
+	case (Fmul): ERROR();
+	case (Imul): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])*planeIval(&exp->exp[1]);
+	case (Fdiv): ERROR();
+	case (Idiv): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])/planeIval(&exp->exp[1]);
+	case (Frem): ERROR();
+	case (Irem): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])%planeIval(&exp->exp[1]);
+	case (Ftoi): if (exp->siz != 1) ERROR(); return (int)planeFval(&exp->exp[0]);
+	case (Itof): ERROR();
+	case (Fval): ERROR();
+	case (Ival): return exp->ivl;
+	case (Conf): if (exp->siz != 1 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); return configure[exp->cfg];
+	case (Side): if (exp->siz != 2 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); configure[exp->cfg] = planeIval(&exp->exp[0]); return planeIval(&exp->exp[1]);
+	case (Drop): planeIval(&exp->exp[0]); return planeIval(&exp->exp[1]);
+	case (Cond): return (planeIval(&exp->exp[0])? planeIval(&exp->exp[1]) : planeIval(&exp->exp[2]));
+	default: ERROR();}
+	return 0;
 }
-int planePop(int i)
+float planeFdiv(float val)
 {
-	int idx = configure[RegisterStack];
-	struct Expression *ptr = &function[idx];
-	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
-	if (ptr->arg <= 0 || ptr->arg > ptr->iss) ERROR();
-	if (i < 0 || i >= ptr->arg) ERROR();
-	return ptr->ist[i];
+  double ign,ret;
+  ign = modf(val,&ret);
+  return ret;
 }
-void planeEval()
+float planeFrem(float val)
 {
-	int ifm = 0;
-	int oper = 0;
-	int index = 0;
-	int istack = 0;
-	int fstack = 0;
-	int itmp = 0;
-	float ftmp = 0;
-	int idx = configure[RegisterStack];
-	struct Expression *ptr = &function[idx];
-	if (idx < 0 || idx >= configure[ExpressionSize]) ERROR();
-	while (oper < ptr->ops) switch (ptr->opr[oper++]) {
-	case (Float): ifm = 1; break;
-	case (Integer): ifm = 0; break;
-	case (Plus):
-		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
-		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] + ptr->fst[fstack-1]; fstack -= 1;}
-		else {ptr->ist[istack-2] = ptr->ist[istack-2] + ptr->ist[istack-1]; istack -= 1;} break;
-	case (Minus):
-		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
-		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] - ptr->fst[fstack-1]; fstack -= 1;}
-		else {ptr->ist[istack-2] = ptr->ist[istack-2] - ptr->ist[istack-1]; istack -= 1;} break;
-	case (Times):
-		if (ifm) {if (fstack < 0) ERROR();} else {if (istack < 0) ERROR();}
-		if (ifm) {ptr->fst[fstack-2] = ptr->fst[fstack-2] * ptr->fst[fstack-1]; fstack -= 1;}
-		else {ptr->ist[istack-2] = ptr->ist[istack-2] * ptr->ist[istack-1]; istack -= 1;} break;
-	case (Divide): break; // TODO same for interger anf float
-	case (Remain): break; // TODO same for integer and float
-	case (Power): break; // TODO
-	case (Base): break; // TODO
-	case (Index):
-		if (index < 0 || index >= ptr->ids) ERROR();
-		if (istack >= ptr->iss) ERROR();
-		ptr->ist[istack] = ptr->idx[index]; istack += 1; index += 1; break;
-	case (Immed): break; // TODO push index heap
-	case (Later): break; // TODO pop index heap
-	case (Push): break; // TODO push center memory
-	case (Pop): break; // TODO pop center memory
-	case (Call): break; // TODO push call pop
-	default: break;}
+  double ign,ret;
+  ret = modf(val,&ign);
+  return ret;
+}
+float planeFval(struct Expression *exp)
+{
+	switch (exp->opr) {
+	case (Fadd): if (exp->siz != 2) ERROR(); return planeFval(&exp->exp[0])+planeFval(&exp->exp[1]);
+	case (Iadd): ERROR();
+	case (Fsub): if (exp->siz != 2) ERROR(); return planeFval(&exp->exp[0])-planeFval(&exp->exp[1]);
+	case (Isub): ERROR();
+	case (Fmul): if (exp->siz != 2) ERROR(); return planeFval(&exp->exp[0])*planeFval(&exp->exp[1]);
+	case (Imul): ERROR();
+	case (Fdiv): if (exp->siz != 2) ERROR(); return planeFdiv(planeFval(&exp->exp[0])/planeFval(&exp->exp[1]));
+	case (Idiv): ERROR();
+	case (Frem): if (exp->siz != 2) ERROR(); return planeFrem(planeFval(&exp->exp[0])/planeFval(&exp->exp[1]));
+	case (Irem): ERROR();
+	case (Ftoi): ERROR();
+	case (Itof): if (exp->siz != 1) ERROR(); return (float)planeIval(&exp->exp[0]);
+	case (Fval): return exp->fvl;
+	case (Ival): ERROR();
+	case (Conf): ERROR();
+	case (Side): if (exp->siz != 2 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); configure[exp->cfg] = planeIval(&exp->exp[0]); return planeFval(&exp->exp[1]);
+	case (Drop): planeFval(&exp->exp[0]); return planeFval(&exp->exp[1]);
+	case (Cond): return (planeIval(&exp->exp[0])? planeFval(&exp->exp[1]) : planeFval(&exp->exp[2]));
+	default: ERROR();}
+	return 0.0;
 }
 void planeWake(enum Configure hint)
 {
@@ -455,52 +426,48 @@ void planeWake(enum Configure hint)
 	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize] && !yield) {
 		struct Machine *mptr = machine+configure[RegisterLine];
 		int next = configure[RegisterLine]+1;
-		int accum = 0;
-		int size = 0;
-		switch (mptr->xfr) {
-			case (Save): case (Eval): case (Force): case (Setup): case (Jump): case (Goto): size = mptr->siz; break;
-			default: break;}
-		for (int i = 0; i < size; i++) switch (mptr->xfr) {
-			case (Save): planePreconfig(mptr->reg[i]); break; // kernel, center, pierce, or info to configure -- siz cfg
-			case (Eval): planePush(i,configure[mptr->reg[i]]); break; // configure to stack -- siz cfg
-			case (Force): planeReconfig(mptr->cfg[i],mptr->val[i]); break; // machine to configure -- siz cfg val
-			case (Setup): planePostconfig(mptr->cfg[i],mptr->val[i]); break; // configure to center -- siz cfg val
-			case (Jump): accum += planeCompare(mptr->ccf[i],mptr->cvl[i],mptr->cmp[i]); break; // skip if true -- siz cfg val cmp cnd idx
-			case (Goto): accum += planeCompare(mptr->ccf[i],mptr->cvl[i],mptr->cmp[i]); break; // jump if true -- siz cfg val cmp cnd idx
+		for (int i = 0; i < mptr->siz; i++) switch (mptr->xfr) {
 			default: break;}
 		switch (mptr->xfr) {
-			case (Eval): planeEval();
 			case (Read): planeRead(); break; // read internal pipe
 			case (Write): writeCenter(&center,external); break; // write external pipe --
+			case (Save): // kernel, center, pierce, or info to configure -- siz cfg
+				for (int i = 0; i < mptr->siz; i++)
+				planePreconfig(mptr->cfg[i]); break;
+			case (Force): // machine to configure -- siz cfg val
+				for (int i = 0; i < mptr->siz; i++)
+				planeReconfig(mptr->cfg[i],mptr->val[i]); break;
+			case (Setup): // configure to center -- siz cfg val
+				for (int i = 0; i < mptr->siz; i++)
+				planePostconfig(mptr->cfg[i],mptr->val[i]); break;
+			case (Alloc): planeAlloc(); break; // configure to center --
+			case (Echo): planeEcho(); break; // memory to center --
 			case (Comp): // set center to compose and cursor/fixed/mode --
-				timesmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
+				jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 			case (Pose): // set center to towrite --
 				copymat(planeCenter(),planeTowrite(),4); break;
 			case (Other): // set center to maintain --
-				copymat(planeCenter(),planeTowrite(),4); break;
+				copymat(planeCenter(),planeMaintain(),4); break;
 			case (Glitch): // set maintain to center --
 				copymat(planeMaintain(),planeCenter(),4); break;
 			case (Check): // apply center to maintain and unapply to written --
-				timesmat(planeMaintain(),planeCenter(),4);
-				jumpmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
+				jumpmat(planeMaintain(),planeCenter(),4);
+				timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
 			case (Stage): // apply cursor/fixed/mode to towrite and change fixed for continuity --
-				timesmat(planeTowrite(),planeLocal(),4);
+				jumpmat(planeTowrite(),planeLocal(),4);
 				planeContinue(); break;
 			case (Apply): // apply towrite to written and clear towrite --
-				timesmat(planeWritten(),planeTowrite(),4);
+				jumpmat(planeWritten(),planeTowrite(),4);
 				identmat(planeTowrite(),4); break;
 			case (Accum): // apply written to maintain and clear written --
-				timesmat(planeMaintain(),planeWritten(),4);
+				jumpmat(planeMaintain(),planeWritten(),4);
 				identmat(planeWritten(),4); break;
 			case (Share): planeBuffer(); break; // dma to cpu or gpu --
 			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
-			case (Jump): next = planeEscape((planeCondition(accum,size,mptr->cnd) ? mptr->idx : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
-			case (Goto): next = (planeCondition(accum,size,mptr->cnd) ? mptr->idx : next); break; // jump if true -- siz cfg val cmp cnd idx
+			case (Jump): next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->oth : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
+			case (Goto): next = (planeIval(&mptr->exp[0]) ? mptr->oth : next); break; // jump if true -- siz cfg val cmp cnd idx
 			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
 			case (Swap): planeExchange(mptr->idx,mptr->oth); break; // exchange machine lines -- idx oth
-			default: break;}
-		for (int i = 0; i < size; i++) switch (mptr->xfr) {
-			case (Eval): configure[mptr->reg[i]] = planePop(i);
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
 		configure[RegisterLine] = next;}

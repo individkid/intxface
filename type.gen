@@ -53,7 +53,6 @@ Memory = {
 	"Patternz", -- comparison regular expressions
 	"Resultz", -- regular expression substrings
 	"Machinez", -- state machine lines
-	"Expressionz", -- stack machine functions
 	"Configurez", -- configure to value
 }
 Configure = {
@@ -68,10 +67,8 @@ Configure = {
 	"BasisSize", -- cospace converters
 	"SliceSize", -- ranges per draw
 	"MachineSize", -- vending machine lines
-	"ExpressionSize", -- stack machine functions
 	"RegisterLine", -- state of machine
 	"RegisterNest", -- current level
-	"RegisterStack", -- stack machine function
 	"RegisterXform", -- which matrix
 	"RegisterMemory", -- which memory
 	"RegisterIndex", -- which memory instance
@@ -110,13 +107,14 @@ Configure = {
 	"CursorLeft", -- user input mouse
 	"CursorBase",
 	"CursorAngle",
-	"CursorClick", -- mouse button
+	"CursorClick",
+	"OriginLeft", -- starting cursor
+	"OriginBase",
 }
 Transfer = {
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
 	"Save", -- client, pierce, or info to configure
-	"Eval", -- configure to configure
 	"Force", -- machine to configure
 	"Setup", -- configure to client
 	"Alloc", -- configure to client
@@ -137,21 +135,24 @@ Transfer = {
 	"Swap", -- exchange machine lines
 }
 Operation = {
-	"Float", -- float stack heap
-	"Integer", -- int stack heap
-	"Plus",
-	"Minus",
-	"Times",
-	"Divide",
-	"Remain",
-	"Power",
-	"Base",
-	"Index", -- push postincrement heap
-	"Immed", -- push index heap
-	"Later", -- pop index heap
-	"Push", -- push center memory
-	"Pop", -- pop center memory
-	"Call", -- push call pop
+	"Fadd",
+	"Iadd",
+	"Fsub",
+	"Isub",
+	"Fmul",
+	"Imul",
+	"Fdiv",
+	"Idiv",
+	"Frem",
+	"Irem",
+	"Ftoi",
+	"Itof",
+	"Fval",
+	"Ival",
+	"Conf",
+	"Side",
+	"Drop",
+	"Cond",
 }
 Transform = {
 	"Translate",
@@ -187,21 +188,6 @@ Concur = {
 	"Program",
 	"Window",
 	"Process",
-}
-Compare = {
-	"Less",
-	"More",
-	"Equal",
-	"Nless",
-	"Nmore",
-	"Nequal",
-}
-Condition = {
-	"Every",
-	"None",
-	"Both",
-	"Eorb",
-	"Norb",
 }
 Ture = {
 	"Table",
@@ -420,32 +406,21 @@ Slice = {
 	{"siz","Int",{},{}},
 }
 Expression = {
-	{"arg","Int",{},{}},
-	{"ops","Int",{},{}},
-	{"ids","Int",{},{}},
-	{"ihs","Int",{},{}},
-	{"iss","Int",{},{}},
-	{"fhs","Int",{},{}},
-	{"fss","Int",{},{}},
-	{"opr","Operation",{},"ops"},
-	{"idx","Int",{},"ids"},
-	{"ihe","Int",{},"ihs"},
-	{"ist","Int",{},"iss"},
-	{"fhe","Old",{},"fhs"},
-	{"fst","Old",{},"fss"},
+	{"opr","Operation",{},{}},
+	{"cfg","Configure",{["opr"]={["Conf"]=true,["Side"]=true}},{}},
+	{"ivl","Int",{["opr"]={["Ival"]=true}},{}},
+	{"fvl","Old",{["opr"]={["Fval"]=true}},{}},
+	{"siz","Int",{},{}},
+	{"exp","Expression",{},"siz"},
 }
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
-	{"reg","Configure",{["xfr"]={["Save"]=true,["Eval"]=true}},"siz"},
-	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
+	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true,["Save"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
-	{"ccf","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
-	{"cvl","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
-	{"cmp","Compare",{["xfr"]={["Jump"]=true,["Goto"]=true}},"siz"},
-	{"cnd","Condition",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
 	{"oth","Int",{["xfr"]={["Swap"]=true}},{}},
+	{"exp","Expression",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 }
 Center = {
 	{"req","Request",{},{}},
@@ -469,7 +444,6 @@ Center = {
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
-	{"fnc","Expression",{["mem"]={["Expressionz"]=true}},"siz"},
 }
 Sculpt = {
 	{"cfg","Ture",{},{}},
