@@ -1,29 +1,11 @@
 import AppKit
-var text:CALayer!
-var side:CALayer!
-var file:NSTextView!
-var field:NSTextView!
+var file:NSScrollView!
+var text:NSTextView!
 var view:NSView!
 var window:NSWindow!
-func getRect() -> NSRect
-{
-	let orig = window.frame.origin
-	let size = view.frame.size
-	let full = NSScreen.main!.visibleFrame.size
-	let w = size.width/2.0
-	let h = size.height/2.0
-	let x = orig.x+w-full.width/2.0
-	let y = orig.y+h-full.height/2.0
-	return NSMakeRect(x,y,w,h)
-}
-func getPoint() -> NSPoint
-{
-	let orig = NSEvent.mouseLocation
-	let full = NSScreen.main!.visibleFrame.size
-	let x = orig.x-full.width/2.0
-	let y = orig.y-full.height/2.0
-	return NSMakePoint(x,y)
-}
+var char:NSRange!
+var field:NSRange!
+var saved:String!
 func setFrame()
 {
 	file.frame = view.frame
@@ -37,54 +19,44 @@ class getDelegate : NSObject, NSWindowDelegate
 	}
 	func windowDidResize(_ notification: Notification)
 	{
-		// CATransaction.begin()
-		// CATransaction.setDisableActions(true)
 		setFrame()
-		// CATransaction.commit()
-	}
-	func windowWillMove(_ notification: Notification)
-	{
-		print("windowWillMove begin \(getPoint())")
-		Task(priority:.medium,operation:{
-			while (NSEvent.pressedMouseButtons != 0) {
-			try! await Task.sleep(nanoseconds:1_000_000)
-			windowDidResize(notification)}
-			print("windowWillMove done \(getPoint())")})
 	}
 }
 class getView : NSView
 {
-	override func mouseEntered(with event: NSEvent)
+	override func hitTest(_ point: NSPoint) -> NSView?
 	{
-		print("mouseEntered \(getPoint())")
+		var result = super.hitTest(point)
+		if (result == text)
+		{
+			result = self
+		}
+		return result
 	}
-	override func mouseExited(with event: NSEvent)
-	{
-		print("mouseExited \(getPoint())")
-	}
-	override func mouseMoved(with event: NSEvent)
-	{
-		// print("mouseMoved \(getPoint())")
-	}
-	override func mouseUp(with event: NSEvent)
-	{
-		print("mouseUp \(getPoint())")
-	}
-	override func scrollWheel(with event: NSEvent)
-	{
-		print("scrollWheel \(event.deltaY)")
-	}
-}
-class getTextView : NSTextView
-{
 	override func mouseDown(with event: NSEvent)
 	{
 		var textLocation = NSEvent.mouseLocation
 		let textOrigin = window!.frame.origin
 		textLocation.x = textLocation.x-textOrigin.x
-		textLocation.y = frame.size.height-(textLocation.y-textOrigin.y)
-		let index = layoutManager!.characterIndex(for:textLocation,in:textContainer!,fractionOfDistanceBetweenInsertionPoints:nil)
-		print("mouseDown \(getPoint()) \(index)")
+		textLocation.y = textLocation.y-textOrigin.y
+		textLocation.y = file.documentVisibleRect.size.height+file.documentVisibleRect.origin.y-textLocation.y
+		let index = text.layoutManager!.characterIndex(for:textLocation,in:text.textContainer!,fractionOfDistanceBetweenInsertionPoints:nil)
+		if (char != nil)
+		{
+			text.textStorage!.removeAttribute(.foregroundColor,range:char)
+		}
+		char = NSRange(location:index,length:1)
+		text.textStorage!.addAttribute(.foregroundColor,value:NSColor.red.withAlphaComponent(0.25),range:char!)
+		if (field != nil && (index < field!.location || index >= field!.location+field!.length))
+		{
+			text.textStorage!.removeAttribute(.backgroundColor,range:field)
+			// write text at field
+		}
+		if (field == nil || index < field!.location || index >= field!.location+field!.length)
+		{
+			field = NSRange(location:index,length:5) // expand range with nesting
+		}
+		text.textStorage!.addAttribute(.backgroundColor,value:NSColor.blue.withAlphaComponent(0.25),range:field!)
 	}	
 }
 // MAIN
@@ -93,35 +65,34 @@ class getTextView : NSTextView
 		CGFloat(1024), CGFloat(512))
 	var lines = 0
 	var string = ""
-	while (lines < 10) {string = string+"hello ok again \(lines)\n"; lines += 1}
+	while (lines < 20) {
+		string = string+"comment Str(hello) comment Str(ok) comment Str(again) \(lines)\n"
+		lines += 1
+	}
 
-	file = getTextView(frame:rect)
+	file = NSTextView.scrollableTextView()
+	text = file.documentView as? NSTextView
 	let font = NSFont.userFont(ofSize:36.0)
-	file.font = font
-	file.string = string
-	file.backgroundColor = NSColor.white
-	file.textColor = NSColor.black
-	file.allowsUndo = false
-	file.isEditable = false
-	file.isSelectable = false
-	file.isFieldEditor = false
-	file.isRichText = false
-	file.importsGraphics = false
-	file.usesFontPanel = false
+	text.font = font
+	text.string = string
+	text.backgroundColor = NSColor.white
+	text.textColor = NSColor.black
+	text.isEditable = false
 
 	view = getView(frame:rect)
 	view.addSubview(file)
-	let tracking = NSTrackingArea(rect:rect,options:[.mouseMoved,.mouseEnteredAndExited,.inVisibleRect,.activeInKeyWindow],owner:view)
-	view.addTrackingArea(tracking)
 
 	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
 	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: false)
 	window.title = "page"
-	window.contentView = view
+	window.contentView = view // change to whole
 	let delegate = getDelegate()
 	window.delegate = delegate
 	window.makeKeyAndOrderFront(nil)
+	setFrame()
 
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.keyDown, handler: {(event: NSEvent) in
+		print("keyPressed \(event.characters!)"); return event})
 	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
 	NSApp.activate(ignoringOtherApps:true)
 	NSApp.run()

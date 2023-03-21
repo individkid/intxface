@@ -251,6 +251,10 @@ class getView : NSView
 		delta += event.deltaY
 		planeSafe(Waits,CursorAngle)
 	}
+	override func keyDown(with event: NSEvent)
+	{
+		print("keyDown event.characters")
+	}
 }
 func swiftInit()
 {
