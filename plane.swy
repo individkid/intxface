@@ -33,6 +33,29 @@ var uniform = Pend<Uniform>()
 var pierce = Pend<Pierce>()
 var array = [Slice]()
 
+func getRect() -> NSRect
+{
+	let orig = window.frame.origin
+	let size = view.frame.size
+	let full = NSScreen.main!.visibleFrame.size
+	let w = size.width/2.0
+	let h = size.height/2.0
+	let x = orig.x+w-full.width/2.0
+	let y = orig.y+h-full.height/2.0
+	return NSMakeRect(x,y,w,h)
+}
+func getPoint() -> NSPoint
+{
+	let orig = NSEvent.mouseLocation
+	let full = NSScreen.main!.visibleFrame.size
+	let x = orig.x-full.width/2.0
+	let y = orig.y-full.height/2.0
+	return NSMakePoint(x,y)
+}
+func setFrame()
+{
+	layer.frame = view.frame
+}
 class Refer
 {
 	var lock:Int = 0
@@ -176,16 +199,6 @@ func getCount() -> MTLCommandBufferHandler
 {
 	return {(MTLCommandBuffer) in count -= 1; planeSafe(Waits,RegisterDone)}
 }
-func getRect() -> NSRect
-{
-	var rect = window.frame
-	let size = view.frame
-	let orig = NSScreen.main!.visibleFrame
-	rect.size = size.size
-	rect.origin.x = rect.origin.x-orig.size.width/2.0
-	rect.origin.y = rect.origin.y-orig.size.height/2.0
-	return rect
-}
 class getApplication : NSObject, NSApplicationDelegate
 {
 	func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool
@@ -209,8 +222,9 @@ class getDelegate : NSObject, NSWindowDelegate
 		uniform.set(Int(rect.size.height),\Uniform.hdt)
 		CATransaction.begin()
 		CATransaction.setDisableActions(true)
-		layer.frame = view.frame
+		setFrame()
 		CATransaction.commit()
+		planeSafe(Waits,WindowLeft)
 	}
 	func windowWillMove(_ notification: Notification)
 	{
@@ -222,9 +236,20 @@ class getDelegate : NSObject, NSWindowDelegate
 }
 class getView : NSView
 {
-	override func mouseUp(with event: NSEvent)
+	override func mouseDown(with event: NSEvent)
 	{
 		planeSafe(Waits,CursorClick)
+	}
+	override func mouseMoved(with event: NSEvent)
+	{
+		uniform.set(Int(getPoint().x),\Uniform.lon)
+		uniform.set(Int(getPoint().y),\Uniform.lat)
+		planeSafe(Waits,CursorLeft)
+	}
+	override func scrollWheel(with event: NSEvent)
+	{
+		delta += event.deltaY
+		planeSafe(Waits,CursorAngle)
 	}
 }
 func swiftInit()
@@ -272,33 +297,38 @@ func swiftOpen()
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
     threads[sub] = device.maxThreadsPerThreadgroup
     default: break}}
+}
+func swiftStart()
+{
+	let rect = NSMakeRect(
+		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
+		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
+
 	layer = CAMetalLayer()
 	layer.device = device
 	layer.pixelFormat = .bgra8Unorm
 	layer.framebufferOnly = true
 	layer.frame = rect
+
 	view = getView(frame:rect)
 	view.wantsLayer = true
-	view.layer = layer
+	view.layer!.addSublayer(layer)
+	let tracking = NSTrackingArea(rect:rect,options:[.mouseMoved,.mouseEnteredAndExited,.inVisibleRect,.activeInKeyWindow],owner:view)
+	view.addTrackingArea(tracking)
+	setFrame()
+
 	let mask:NSWindow.StyleMask = [.titled,.closable,.miniaturizable,.resizable]
-	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: true)
+	window = NSWindow(contentRect: rect, styleMask: mask, backing: .buffered, defer: false)
 	window.title = "plane"
-	window.makeKeyAndOrderFront(nil)
 	window.contentView = view
 	let delegate = getDelegate()
 	window.delegate = delegate
-}
-func swiftStart()
-{
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.scrollWheel, handler: {(event: NSEvent) in
-		delta += event.deltaY;
-		planeSafe(Waits,CursorAngle); return event})
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.mouseMoved, handler: {(event: NSEvent) in
-		uniform.set(Int(NSEvent.mouseLocation.x),\Uniform.lon)
-		uniform.set(Int(NSEvent.mouseLocation.y),\Uniform.lat)
-		planeSafe(Waits,CursorLeft); return event})
+	window.makeKeyAndOrderFront(nil)
+
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in
-		planeUser(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return event})
+		planeUser(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return nil})
+	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
+	NSApp.activate(ignoringOtherApps:true)
 	NSApp.run()
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
@@ -371,8 +401,8 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (WindowBase): return Int32(getRect().origin.y)
 	case (WindowWide): return Int32(getRect().size.width)
 	case (WindowHigh): return Int32(getRect().size.height)
-	case (CursorLeft): return Int32(NSEvent.mouseLocation.x)
-	case (CursorBase): return Int32(NSEvent.mouseLocation.x)
+	case (CursorLeft): return Int32(getPoint().x)
+	case (CursorBase): return Int32(getPoint().y)
 	case (CursorAngle): let temp = Int32(delta); delta -= Double(temp); return temp
 	case (CursorClick): return Int32(NSEvent.pressedMouseButtons)
 	default: exitErr(#file,#line);return 0}

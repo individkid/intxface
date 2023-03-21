@@ -429,8 +429,10 @@ void planeWake(enum Configure hint)
 		for (int i = 0; i < mptr->siz; i++) switch (mptr->xfr) {
 			default: break;}
 		switch (mptr->xfr) {
-			case (Read): planeRead(); break; // read internal pipe
-			case (Write): writeCenter(&center,external); break; // write external pipe --
+			case (Read): // read internal pipe
+				planeRead(); break;
+			case (Write): // write external pipe --
+				writeCenter(&center,external); break;
 			case (Save): // kernel, center, pierce, or info to configure -- siz cfg
 				for (int i = 0; i < mptr->siz; i++)
 				planePreconfig(mptr->cfg[i]); break;
@@ -440,8 +442,10 @@ void planeWake(enum Configure hint)
 			case (Setup): // configure to center -- siz cfg val
 				for (int i = 0; i < mptr->siz; i++)
 				planePostconfig(mptr->cfg[i],mptr->val[i]); break;
-			case (Alloc): planeAlloc(); break; // configure to center --
-			case (Echo): planeEcho(); break; // memory to center --
+			case (Alloc): // configure to center --
+				planeAlloc(); break;
+			case (Echo): // memory to center --
+				planeEcho(); break;
 			case (Comp): // set center to compose and cursor/fixed/mode --
 				jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 			case (Pose): // set center to towrite --
@@ -462,12 +466,18 @@ void planeWake(enum Configure hint)
 			case (Accum): // apply written to maintain and clear written --
 				jumpmat(planeMaintain(),planeWritten(),4);
 				identmat(planeWritten(),4); break;
-			case (Share): planeBuffer(); break; // dma to cpu or gpu --
-			case (Draw): callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break; // start shader --
-			case (Jump): next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->oth : configure[RegisterNest]),next); break; // skip if true -- siz cfg val cmp cnd idx
-			case (Goto): next = (planeIval(&mptr->exp[0]) ? mptr->oth : next); break; // jump if true -- siz cfg val cmp cnd idx
-			case (Nest): configure[RegisterNest] += mptr->idx; break; // nest to level -- idx
-			case (Swap): planeExchange(mptr->idx,mptr->oth); break; // exchange machine lines -- idx oth
+			case (Share): // dma to cpu or gpu --
+				planeBuffer(); break;
+			case (Draw): // start shader --
+				callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break;
+			case (Jump): // skip if true -- siz cfg val cmp cnd idx
+				next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->idx : configure[RegisterNest]),next); break;
+			case (Goto): // jump if true -- idx
+				next = (planeIval(&mptr->exp[0]) ? mptr->idx : next); break;
+			case (Nest): // nest to level -- idx
+				configure[RegisterNest] += mptr->idx; break;
+			case (Swap): // exchange machine lines -- idx oth
+				planeExchange(mptr->idx,mptr->oth); break;
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
 		configure[RegisterLine] = next;}
