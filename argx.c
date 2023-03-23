@@ -1,6 +1,5 @@
 #include "argx.h"
 #include "memx.h"
-#include "type.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/errno.h>
@@ -23,6 +22,14 @@ enum ArgxOpc {
 	CompOpc, // compile callback
 	InstOpc, // operation instance
 	ArgxOpcs,
+};
+enum ArgxJmp {
+	FwdSkp,
+	RevSkp,
+	FwdEnt,
+	RevEnt,
+	FwdExt,
+	RevExt,
 };
 struct ArgxNest {
 	enum ArgxTag tag; // type of data flow control step
@@ -90,7 +97,7 @@ int nestJump(int idx, void *jmp)
 	while (idx >= 0 && idx < len[InstOpc] && stp < memxSize(jmp)) {
 		void *mem = memxSkip(jmp,stp);
 		int cnt = memxInt(memxSkip(mem,1));
-		switch ((enum Step)memxInt(memxSkip(mem,0))) {
+		switch ((enum ArgxJmp)memxInt(memxSkip(mem,0))) {
 		case (FwdSkp): idx = nestJumpF(idx,1,cnt,-1,0); break;
 		case (RevSkp): idx = nestJumpF(idx,-1,cnt,-1,0); break;
 		case (FwdEnt): idx = nestJumpF(idx,1,1,1,cnt); break;

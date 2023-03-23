@@ -193,14 +193,6 @@ Ture = {
 	"Table",
 	"Sides",
 }
-Step = {
-	"FwdSkp",
-	"RevSkp",
-	"FwdEnt",
-	"RevEnt",
-	"FwdExt",
-	"RevExt",
-}
 Stream = {
 	"Encode", -- read string and write type
 	"Decode", -- read type and write string
