@@ -29,7 +29,7 @@ Struct1 = {
 	{"next","Struct1",{},0},
 	{"field1","Old",{},{2}},
 	{"field2","Num",{},{3}},
-	{"field3","Int",{},{2,2}},
+	{"field3","Int",{},{2,3}},
 	{"field4","Str",{},{}},
 	{"field5","Int",{},3},
 	{"field6","Enum1",{},{}},

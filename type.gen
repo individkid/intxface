@@ -1,7 +1,7 @@
 dofile("show.lua")
 
 --HERE Enums
-Goal = {
+Goal = { -- File-tag for file.c
 	"NewHub", -- open file
 	"ThdHub",
 	"CfgHub", -- set pid and forward
@@ -13,7 +13,7 @@ Goal = {
 	"ThdErr", -- close and report
 	"HubErr", -- report and exit
 }
-State = {
+State = { -- Event-tag for line.c
 	"Stock",
 	"First",
 	"Assign",
@@ -22,7 +22,7 @@ State = {
 	"Timer",
 	"Audio",
 }
-Flow = {
+Flow = { -- Event-mod for line.c
 	"Sched",
 	"Back",
 	"Peek",
@@ -30,14 +30,14 @@ Flow = {
 	"Store",
 	"Load",
 }
-Request = {
+Request = { -- Center-mod for plane.c
 	"SetReq", -- set memory
 	"GetReq", -- get memory
 	"GotReq", -- response to GetReq
 	"UseReq", -- notice that matrix changed
 	"FixReq", -- request to revert matrix and change plane
 }
-Memory = {
+Memory = { -- Center-tag for plane.c
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
@@ -55,7 +55,7 @@ Memory = {
 	"Machinez", -- state machine lines
 	"Configurez", -- configure to value
 }
-Configure = {
+Configure = { -- Center-elem for plane.c
 	"TriangleSize", -- refers to corners
 	"NumericSize", -- planes for corners
 	"VertexSize", -- corners of frame
@@ -111,7 +111,7 @@ Configure = {
 	"OriginLeft", -- starting cursor
 	"OriginBase",
 }
-Transfer = {
+Transfer = { -- Machine-tag for plane.c
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
 	"Save", -- client, pierce, or info to configure
@@ -134,7 +134,7 @@ Transfer = {
 	"Nest", -- nest to level
 	"Swap", -- exchange machine lines
 }
-Operation = {
+Operation = { -- Expression-tag for plane.c
 	"Fadd",
 	"Iadd",
 	"Fsub",
@@ -154,7 +154,7 @@ Operation = {
 	"Drop",
 	"Cond",
 }
-Transform = {
+Transform = { -- Configure-cast for plane.c
 	"Translate",
 	"Rotate",
 	"Scale",
@@ -172,28 +172,28 @@ Shader = {
 	"Depoint", -- copy points to pierces
 	"Deplane", -- copy planes to pierces
 }
-Stage = {
+Stage = { -- Configure-cast for plane.c
 	"Corner",
 	"Fragment",
 }
-Wait = {
+Wait = { -- Configure-cast for plane.c
 	"Open",
 	"Close",
 	"Start",
 	"Stop",
 }
-Concur = {
+Concur = { -- Configure-cast for plane.c
 	"External",
 	"Console",
 	"Program",
 	"Window",
 	"Process",
 }
-Ture = {
+Ture = { -- Sculpt-tag for space.c
 	"Table",
 	"Sides",
 }
-Stream = {
+Stream = { -- Memx-cast for share.c
 	"Encode", -- read string and write type
 	"Decode", -- read type and write string
 	"Insert", -- read twice and write second with first inserted
@@ -207,7 +207,7 @@ Stream = {
 	"Delete", -- read several and write all but the last
 	"Follow", -- read several and write from path after them
 }
-Logic = {
+Logic = { -- Data-elem for datx.c
 	"WrpJmp",
 	"WrpYld",
 	"RunJmp",
@@ -221,6 +221,19 @@ Logic = {
 	"ImmJmp",
 	"ImmYld",
 	"SetJmp",
+}
+Proc = { -- Cess-tag for show.c
+	"Filez",
+	"Holez",
+	"Linez",
+	"Planez",
+	"Spacez",
+	"Pagez",
+	"Pipez",
+	"Framez",
+	"Wavez",
+	"Tapez",
+	"Phonez",
 }
 --HERE Constants
 Initial = {
@@ -254,6 +267,19 @@ Bootstrap = {
 			"val[0]:Int(0)"..
 		")"..
 	")"},
+}
+Execname = {
+	{"Proc","Filez","Str","./file"},
+	{"Proc","Holez","Str","./hole"},
+	{"Proc","Linez","Str","./line"},
+	{"Proc","Planez","Str","./plane"},
+	{"Proc","Spacez","Str","./space"},
+	{"Proc","Pagez","Str","./page"},
+	{"Proc","Pipez","Str","./pipe"},
+	{"Proc","Framez","Str","./frame"},
+	{"Proc","Wavez","Str","./wave"},
+	{"Proc","Tapez","Str","./tape"},
+	{"Proc","Phonez","Str","./phone"},
 }
 --HERE Structs
 File = {
@@ -311,7 +337,7 @@ Ratio = {
 	{"num","Nomial",{},{}},
 	{"den","Nomial",{},{}},
 }
-Event = {
+Event = { -- for line process
 	{"tag","State",{},{}},
 	{"idx","Int",{},{}},
 	{"oth","Int",{},{}},
@@ -360,6 +386,7 @@ Uniform = {
 	{"xsz","Int",{},{}}, -- size of texture buffer
 	{"bsz","Int",{},{}}, -- size of basis buffer
 }
+-- TODO Int32 type
 Triangle = {
 	{"vtx","Int",{},{4}}, -- points of triangle
 	{"num","Int",{},{}}, -- plane of points
@@ -449,6 +476,11 @@ Data = {
 	{"opc","Logic",{},"len"},
 	{"dat","Dat",{},{}},
 }
+Cess = {
+	{"pro","Proc",{},{}},
+	{"inp","Int",{},{}},
+	{"out","Int",{},{}},
+}
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
 Constants,Constantz = listHere("Constants","type.gen")
@@ -478,6 +510,7 @@ function showTypeHs()
 	result = result.."import Face\n"
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
+	result = result.."import Data.IORef\n"
 	result = result.."--\n"
 	result = result.."type Dat = Int -- TODO\n"
 	result = result..showCallHs()

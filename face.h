@@ -19,6 +19,8 @@ int openName(const char *str);
 int openFile(const char *str);
 int openInet(const char *adr, const char *num);
 int forkExec(const char *exe);
+int openFork(const char *exe, cgtype fnc);
+void openExec(const char *pre);
 int pipeInit(const char *av1, const char *av2);
 int rdfdInit(int rdfd, int hint);
 int wrfdInit(int wrfd, int hint);

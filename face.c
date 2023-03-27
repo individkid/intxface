@@ -45,6 +45,9 @@ int atoms[NUMOPEN] = {0};
 int atomz[NUMOPEN] = {0};
 int bufsize = BUFSIZE;
 
+// double callback buffer
+char *prep = 0;
+
 // server address for checking if already connected
 struct sockaddr_in6 addr[NUMINET] = {0};
 int mad = 0;
@@ -298,6 +301,36 @@ int forkExec(const char *exe)
 	val = lim++;
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERRFNC(lim);
 	return val;
+}
+int openFork(const char *exe, cgtype fnc)
+{
+	int c2p[2], p2c[2], val;
+	if (lim == NUMOPEN) return -1;
+	val = pipe(c2p); if (val < 0) return -1;
+	val = pipe(p2c); if (val < 0) return -1;
+	pid[lim] = fork(); if (pid[lim] < 0) return -1;
+	if (pid[lim] == 0) {
+		val = close(c2p[0]); if (val < 0) return -1;
+		val = close(p2c[1]); if (val < 0) return -1;
+		fnc(p2c[0],c2p[1]);
+		val = execl(exe,exe,prep,0); if (val < 0) return -1;
+		return -1;}
+        if (pid[lim] == -1) return -1;
+	val = close(c2p[1]); if (val < 0) return -1;
+	val = close(p2c[0]); if (val < 0) return -1;
+	inp[lim] = c2p[0];
+	out[lim] = p2c[1];
+	rfn[lim] = 0;
+	wfn[lim] = 0;
+	fdt[lim] = Wait;
+	val = lim++;
+	sig_t tmp = signal(SIGPIPE,SIG_IGN); if (tmp == SIG_ERR) ERRFNC(lim);
+	return val;
+}
+void openExec(const char *pre)
+{
+	if (prep) {free(prep); prep = 0;}
+	prep = strdup(pre);
 }
 int pipeInit(const char *av1, const char *av2)
 {

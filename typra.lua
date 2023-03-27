@@ -64,7 +64,7 @@ Expected = {
 	"        struct Struct1* next;\n"..
 	"        float field1[2];\n"..
 	"        double field2[3];\n"..
-	"        int field3[2][2];\n"..
+	"        int field3[2][3];\n"..
 	"        char* field4;\n"..
 	"        int* field5;\n"..
 	"        enum Enum1 field6;\n"..
@@ -100,7 +100,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        ptr->field2[i1] = readNum(idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"        for (int i2 = 0; i2 < 3; i2++)\n"..
 	"            ptr->field3[i1][i2] = readInt(idx);\n"..
 	"    readStr(&ptr->field4,idx);\n"..
 	"    allocInt(&ptr->field5,3);\n"..
@@ -139,7 +139,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        writeNum(ptr->field2[i1],idx);\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"        for (int i2 = 0; i2 < 3; i2++)\n"..
 	"            writeInt(ptr->field3[i1][i2],idx);\n"..
 	"    writeStr(ptr->field4,idx);\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
@@ -177,7 +177,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        ptr->field2[i1] = 0.1;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"        for (int i2 = 0; i2 < 3; i2++)\n"..
 	"            ptr->field3[i1][i2] = 10;\n"..
 	"    {const char *temp = \"hello ok again\"; assignStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
@@ -216,7 +216,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        if (ptr->field2[i1] != cmp->field2[i1]) return 0;\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"        for (int i2 = 0; i2 < 3; i2++)\n"..
 	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return 0;\n"..
 	"    if (strcmp(ptr->field4,cmp->field4) != 0) return 0;\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
@@ -272,7 +272,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        {showField(\"field2\",str,len,1,i1); showNum(ptr->field2[i1],str,len);}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"        for (int i2 = 0; i2 < 3; i2++)\n"..
 	"            {showField(\"field3\",str,len,2,i1,i2); showInt(ptr->field3[i1][i2],str,len);}\n"..
 	"    {showField(\"field4\",str,len,0); showStr(ptr->field4,str,len);}\n"..
 	"    for (int i = 0; i < 3; i++)\n"..
@@ -312,7 +312,7 @@ Expected = {
 	"    for (int i1 = 0; i1 < 3; i1++)\n"..
 	"        if (!hideField(\"field2\",str,len,1,i1) || !hideNum(&ptr->field2[i1],str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 2; i2++)\n"..
+	"        for (int i2 = 0; i2 < 3; i2++)\n"..
 	"            if (!hideField(\"field3\",str,len,2,i1,i2) || !hideInt(&ptr->field3[i1][i2],str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    if (!hideField(\"field4\",str,len,0) || !hideStr(&ptr->field4,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
@@ -488,7 +488,7 @@ Expected = {
 	"    a1 <- listHelp 0 (readStruct1 idx)\n"..
 	"    a2 <- listHelp 2 (readOld idx)\n"..
 	"    a3 <- listHelp 3 (readNum idx)\n"..
-	"    a4 <- listHelp 2 (listHelp 2 (readInt idx))\n"..
+	"    a4 <- listHelp 2 (listHelp 3 (readInt idx))\n"..
 	"    a5 <- readStr idx\n"..
 	"    a6 <- listHelp 3 (readInt idx)\n"..
 	"    a7 <- readEnum1 idx\n"..
@@ -538,7 +538,7 @@ Expected = {
 	"    assertHelp 0 (\\x -> writeStruct1 x idx) a1\n"..
 	"    assertHelp 2 (\\x -> writeOld x idx) a2\n"..
 	"    assertHelp 3 (\\x -> writeNum x idx) a3\n"..
-	"    assertHelp 2 (assertHelp 2 (\\x -> writeInt x idx)) a4\n"..
+	"    assertHelp 2 (assertHelp 3 (\\x -> writeInt x idx)) a4\n"..
 	"    writeStr a5 idx\n"..
 	"    assertHelp 3 (\\x -> writeInt x idx) a6\n"..
 	"    writeEnum1 a7 idx\n"..
@@ -594,7 +594,7 @@ Expected = {
 	"    while (i1 <= 2) do\n"..
 	"        tab[\"field3\"][i1] = {}\n"..
 	"        local i2 = 1\n"..
-	"        while (i2 <= 2) do\n"..
+	"        while (i2 <= 3) do\n"..
 	"            tab[\"field3\"][i1][i2] = readInt(idx)\n"..
 	"            i2 = i2 + 1\n"..
 	"        end\n"..
@@ -668,7 +668,7 @@ Expected = {
 	"    local i1 = 1\n"..
 	"    while (i1 <= 2) do\n"..
 	"        local i2 = 1\n"..
-	"        while (i2 <= 2) do\n"..
+	"        while (i2 <= 3) do\n"..
 	"            writeInt(tab[\"field3\"][i1][i2],idx)\n"..
 	"            i2 = i2 + 1\n"..
 	"        end\n"..

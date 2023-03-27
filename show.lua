@@ -709,9 +709,9 @@ function showHideEC(name,enum)
 	result = result.."int hide"..name.."(enum "..name.." *val, const char *str, int *len)"
 	if prototype then result = result..";\n" else result = result.."\n{\n"
 	for i,v in ipairs(enum) do
-		result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..v.."\",str,len)) {*val = "..v.."; return 1;}\n"
+		result = result..showIndent(1).."if (hideEnum(\""..name.."\",\""..v.."\",str,len)) {*val = "..v.."; return 1;}\n"
 	end
-	result = result..showIndent(1).."if (hideEnum(\" "..name.."\",\""..name.."s\",str,len)) {*val = "..name.."s; return 1;}\n"
+	result = result..showIndent(1).."if (hideEnum(\""..name.."\",\""..name.."s\",str,len)) {*val = "..name.."s; return 1;}\n"
 	result = result..showIndent(1).."return 0;\n"
 	result = result.."}" end
 	return result
@@ -1101,20 +1101,35 @@ function showEnumHs(name,enum)
 end
 function showCodeHs(name,enum)
 	local result = ""
-	result = result.."read"..name.."F :: Int -> IO "..name.."\n"
-	for key,val in ipairs(enum) do
-		result = result.."read"..name.."F "..(key-1).." = return "..val.."\n"
+	if showhide then
+		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
+		result = result.."hide"..name.." idx = do\n"
+		result = result..showIndent(1).."a0 <- return Nothing\n"
+		for key,val in ipairs(enum) do
+			result = result..showIndent(1).."a"..key.." <- enumHelp (hideEnum \""..name.."\" \""..val.."\" idx) "..val.." (return a"..(key-1)..")\n"
+		end
+		result = result..showIndent(1).."return a"..#enum.."\n"
+		result = result.."show"..name.." :: "..name.." -> IORef String -> IO ()\n"
+		for key,val in ipairs(enum) do
+			result = result.."show"..name.." "..val.." = showEnum \""..name.."\" \""..val.."\"\n"
+		end
+		result = result .. "show"..name.." "..name.."s = showEnum \""..name.."\" \""..name.."s\"\n"
+	else
+		result = result.."read"..name.."F :: Int -> IO "..name.."\n"
+		for key,val in ipairs(enum) do
+			result = result.."read"..name.."F "..(key-1).." = return "..val.."\n"
+		end
+		result = result.."read"..name.."F _ = return "..name.."s\n"
+		result = result.."read"..name.." :: Int -> IO "..name.."\n"
+		result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
+		result = result.."write"..name.."F :: "..name.." -> Int\n"
+		for key,val in ipairs(enum) do
+			result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
+		end
+		result = result.."write"..name.."F _ = "..#enum.."\n"
+		result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
+		result = result.."write"..name.." a idx = writeInt (write"..name.."F a) idx\n"
 	end
-	result = result.."read"..name.."F _ = return "..name.."s\n"
-	result = result.."read"..name.." :: Int -> IO "..name.."\n"
-	result = result.."read"..name.." idx = (readInt idx) >>= read"..name.."F\n"
-	result = result.."write"..name.."F :: "..name.." -> Int\n"
-	for key,val in ipairs(enum) do
-		result = result.."write"..name.."F "..val.." = "..(key-1).."\n"
-	end
-	result = result.."write"..name.."F _ = "..#enum.."\n"
-	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
-	result = result.."write"..name.." a idx = writeInt (write"..name.."F a) idx\n"
 	result = result.."--"
 	return result
 end
@@ -1423,27 +1438,51 @@ function showAccessHs(name,struct)
 end
 function showHelpHs()
 	local result = ""
-	result = result.."listHelp :: Int -> IO a -> IO [a]\n"
-	result = result.."listHelp 0 b = return []\n"
-	result = result.."listHelp a b = do\n"
-	result = result..showIndent(1).."d <- b\n"
-	result = result..showIndent(1).."e <- listHelp (a-1) b\n"
-	result = result..showIndent(1).."return (d:e)\n"
-	result = result.."assertHelp :: Int -> (a -> IO ()) -> [a] -> IO ()\n"
-	result = result.."assertHelp a _ []\n"
-	result = result..showIndent(1).."| a == 0 = return ()\n"
-	result = result..showIndent(1).."| otherwise = undefined\n"
-	result = result.."assertHelp a f (b:c)\n"
-	result = result..showIndent(1).."| a > 0 = (f b) >> (assertHelp (a-1) f c)\n"
-	result = result..showIndent(1).."| otherwise = undefined\n"
-	result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
-	result = result.."condHelp True _ a = a\n"
-	result = result.."condHelp False a _ = return a\n"
-	result = result.."firstHelp :: Eq a => a -> [a] -> IO a\n"
-	result = result.."firstHelp a [] = return a\n"
-	result = result.."firstHelp a (b:c)\n"
-	result = result..showIndent(1).."| a == b = firstHelp a c\n"
-	result = result..showIndent(1).."| otherwise = return b\n"
+	if showhide then
+		result = result.."hideHelp :: Int -> IO (Maybe a) -> IO (Maybe [a])\n"
+		result = result.."hideHelp 0 b = return (Just [])\n"
+		result = result.."hideHelp a b = do\n"
+		result = result..showIndent(1).."d <- b\n"
+		result = result..showIndent(1).."e <- hideHelp (a-1) b\n"
+		result = result..showIndent(1).."return (Just (:) <*> d <*> e)\n"
+		result = result.."enumHelp :: IO (Bool) -> String -> IO (Maybe String) -> IO (Maybe String)\n"
+		result = result.."enumHelp a b c = do\n"
+		result = result..showIndent(1).."x <- a\n"
+		result = result..showIndent(1).."y <- c\n"
+		result = result..showIndent(1).."case (x,y) of\n"
+		result = result..showIndent(2).."(False,_) -> c\n"
+		result = result..showIndent(2).."(True,Nothing) -> return (Just b)\n"
+		result = result..showIndent(2).."(True,Just _) -> c\n"
+		result = result.."showHelp :: Int -> Int -> ([Int] -> a -> IO ()) -> [Int] -> [a] -> IO ()\n"
+		result = result.."showHelp a b _ _ []\n"
+		result = result..showIndent(1).."| a == b = return ()\n"
+		result = result..showIndent(1).."| otherwise = undefined\n"
+		result = result.."showHelp a b f c (d:e)\n"
+		result = result..showIndent(1).."| a > b = (f (b:c) d) >> (showHelp a (b+1) f c e)\n"
+		result = result..showIndent(1).."| otherwise = undefined\n"
+	else
+		result = result.."listHelp :: Int -> IO a -> IO [a]\n"
+		result = result.."listHelp 0 b = return []\n"
+		result = result.."listHelp a b = do\n"
+		result = result..showIndent(1).."d <- b\n"
+		result = result..showIndent(1).."e <- listHelp (a-1) b\n"
+		result = result..showIndent(1).."return (d:e)\n"
+		result = result.."assertHelp :: Int -> (a -> IO ()) -> [a] -> IO ()\n"
+		result = result.."assertHelp a _ []\n"
+		result = result..showIndent(1).."| a == 0 = return ()\n"
+		result = result..showIndent(1).."| otherwise = undefined\n"
+		result = result.."assertHelp a f (b:c)\n"
+		result = result..showIndent(1).."| a > 0 = (f b) >> (assertHelp (a-1) f c)\n"
+		result = result..showIndent(1).."| otherwise = undefined\n"
+		result = result.."condHelp :: Bool -> a -> IO a -> IO a\n"
+		result = result.."condHelp True _ a = a\n"
+		result = result.."condHelp False a _ = return a\n"
+		result = result.."firstHelp :: Eq a => a -> [a] -> IO a\n"
+		result = result.."firstHelp a [] = return a\n"
+		result = result.."firstHelp a (b:c)\n"
+		result = result..showIndent(1).."| a == b = firstHelp a c\n"
+		result = result..showIndent(1).."| otherwise = return b\n"
+	end
 	result = result.."--"
 	return result
 end
@@ -1479,13 +1518,47 @@ function showCondHs(struct,dset)
 	end
 	return cond
 end
+function showReadHsK()
+	if showhide then
+		return "hide"
+	else
+		return "read"
+	end
+end
+function showReadHsJ()
+	if showhide then
+		return "hideHelp"
+	else
+		return "listHelp"
+	end
+end
+function showReadHsI(name,args,before)
+	local result = ""
+	result = result.."return ("
+	if showhide then
+		for k,v in ipairs(before) do
+			result = result..v.." >> "
+		end
+		result = result.."Just "..name
+		for k,v in ipairs(args) do
+			result = result.." <*> "..v
+		end
+	else
+		result = result..name
+		for k,v in ipairs(args) do
+			result = result.." "..v
+		end
+	end
+	result = result..")"
+	return result
+end
 function showReadHsH(pre,index,struct,field)
 	local result = ""
 	local count = 0
 	if (type(field[4]) == "table") then
 		while (count < #field[4]) do
 			count = count + 1
-			result = result.."listHelp "..field[4][count].." ("
+			result = result..showReadHsJ().." "..field[4][count].." ("
 		end
 	end
 	if (type(field[4]) == "string") then
@@ -1493,14 +1566,14 @@ function showReadHsH(pre,index,struct,field)
 		for k,v in ipairs(struct) do
 			if (v[1] == field[4]) then found = "a"..k end
 		end
-		result = result.."listHelp "..found.." ("
+		result = result..showReadHsJ().." "..found.." ("
 		count = count + 1
 	end
 	if (type(field[4]) == "number") then
-		result = result.."listHelp "..field[4].." ("
+		result = result..showReadHsJ().." "..field[4].." ("
 		count = count + 1
 	end
-	result = result.."read"..field[2].." idx"
+	result = result..showReadHsK()..field[2].." idx"
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -1528,8 +1601,8 @@ function showReadHsF(name,struct,extra)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
 			showReadHsG("",index,struct,second)
-			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
-			coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
+			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
+			coroutine.yield("    a"..index.."x <- "..showReadHsI(name.."A"..index,args,{}))
 			extra[#extra+1] = "a"..index.."x"
 			second = {}
 			index = idx
@@ -1541,8 +1614,8 @@ function showReadHsF(name,struct,extra)
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
 			showReadHsG("    ",index,struct,second)
-			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
-			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
+			coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
 			second = {}
 			index = idx
 			addTo(first,fld)
@@ -1552,8 +1625,8 @@ function showReadHsF(name,struct,extra)
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
 			showReadHsG("    ",index,struct,second)
-			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
-			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
+			coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
 			second = {}
 			index = idx
 			addTo(first,fld)
@@ -1563,8 +1636,8 @@ function showReadHsF(name,struct,extra)
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 			list[#list+1] = "b"..index.."x"
 			showReadHsG("    ",index,struct,second)
-			local str = ""; for id=index,(idx-1) do str = str.." a"..id end
-			coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
+			coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
 			local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = "," end
 			coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
 			list = {}
@@ -1577,16 +1650,16 @@ function showReadHsF(name,struct,extra)
 	if #first == 0 then
 		-- coroutine.yield("-- 6a")
 		showReadHsG("",index,struct,second)
-		local str = ""; for id=index,#struct do str = str.." a"..id end
-		coroutine.yield("    a"..index.."x <- return ("..name.."A"..index..str..")")
+		local args = {}; for id=index,#struct do args[#args+1] = "a"..id end
+		coroutine.yield("    a"..index.."x <- "..showReadHsI(name.."A"..index,args,{}))
 		extra[#extra+1] = "a"..index.."x"
 	else
 		-- coroutine.yield("-- 6b")
 		coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
 		list[#list+1] = "b"..index.."x"
 		showReadHsG("    ",index,struct,second)
-		local str = ""; for id=index,#struct do str = str.." a"..id end
-		coroutine.yield("        return ("..name.."A"..outer.."B"..index..str.."))")
+		local args = {}; for id=index,#struct do args[#args+1] = "a"..id end
+		coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
 		local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = "," end
 		coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
 	end
@@ -1604,14 +1677,20 @@ end
 function showReadHs(name,struct)
 	local result = ""
 	local extra = {}
-	result = result.."read"..name.." :: Int -> IO "..name.."\n"
-	result = result.."read"..name.." idx = do\n"
-	result = result..showReadHsE(name,struct,extra)
-	result = result.."    return ("..name
-	for key,val in ipairs(extra) do
-		result = result.." "..val
+	if showhide then
+		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
+		result = result.."hide"..name.." idx = do\n"
+		result = result.."    x <- toMaybe <*> hideOpen \""..name.."\" idx <*> return True\n"
+	else
+		result = result.."read"..name.." :: Int -> IO "..name.."\n"
+		result = result.."read"..name.." idx = do\n"
 	end
-	return result..")"
+	result = result..showReadHsE(name,struct,extra)
+	if showhide then
+		result = result.."    y <- toMaybe <*> hideClose idx <*> return True\n"
+	end
+	result = result.."    "..showReadHsI(name,extra,{"x","y"})
+	return result
 end
 function showWriteHsK(pre,post,index,second)
 	for id,fd in ipairs(second) do
@@ -1688,37 +1767,61 @@ function showWriteHsI(name,struct)
 	end
 	return result
 end
-function showWriteHsH(index,struct,field,var)
+function showWriteHsH(index,struct,field)
 	local result = ""
 	local count = 0
 	local post = ""
-	var = var..index
+	local pvar = "a"..index
+	local qvar = pvar
 	if (type(field[4]) == "table") and (#field[4] > 0) then
 		while (count < #field[4]) do
 			count = count + 1
-			result = result.."assertHelp "..field[4][count].." ("
+			if showhide then
+				result = result.."showHelp "..field[4][count].." 0 ("
+			else
+				result = result.."assertHelp "..field[4][count].." ("
+			end
 		end
-		result = result.."\\x -> "
-		post = " "..var
-		var = "x"
+		if showhide then
+			result = result.."\\x y -> "
+			post = post.." []"
+		else
+			result = result.."\\x -> "
+		end
+		post = post.." "..pvar
+		qvar = "x"
 	end
 	if (type(field[4]) == "string") then
 		local found = "0"
 		for k,v in ipairs(struct) do
 			if (v[1] == field[4]) then found = "a"..k end
 		end
-		result = result.."assertHelp "..found.." (\\x -> "
+		if showhide then
+			result = result.."showHelp "..found.." 0 (\\x y -> "
+			post = post.." []"
+		else
+			result = result.."assertHelp "..found.." (\\x -> "
+		end
 		count = count + 1
-		post = " "..var
-		var = "x"
+		post = post.." "..pvar
+		qvar = "x"
 	end
 	if (type(field[4]) == "number") then
-		result = result.."assertHelp "..field[4].." (\\x -> "
+		if showhide then
+			result = result.."showHelp "..field[4].." 0 (\\x y -> "
+			post = post.." []"
+		else
+			result = result.."assertHelp "..field[4].." (\\x -> "
+		end
 		count = count + 1
-		post = " "..var
-		var = "x"
+		post = post.." "..pvar
+		qvar = "x"
 	end
-	result = result.."write"..field[2].." "..var.." idx"
+	if showhide then
+		result = result.."(showField \""..field[1].."\" y idx) >> show"..field[2].." "..qvar.." idx"
+	else
+		result = result.."write"..field[2].." "..qvar.." idx"
+	end
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -1728,21 +1831,21 @@ end
 function showWriteHsG(pre,index,outer,limit,name,struct,second)
 	if (pre == "") then
 		for id,fd in ipairs(second) do
-			coroutine.yield("    "..showWriteHsH(index+id-1,struct,fd,"a"))
+			coroutine.yield("    "..showWriteHsH(index+id-1,struct,fd))
 		end
 	elseif (#second == 1) then
 		local str = ""; for id=index,(limit-1) do str = str.." a"..id end
 		for id,fd in ipairs(second) do
-			coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> "..showWriteHsH(index+id-1,struct,fd,"a")..") a"..outer..")")
+			coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> "..showWriteHsH(index+id-1,struct,fd)..") a"..outer..")")
 		end
 	else
 		local str = ""; for id=index,(limit-1) do str = str.." a"..id end
 		coroutine.yield("    condHelp "..showCondHs(struct,struct[index][3]).." () ((\\("..name.."A"..outer.."B"..index..str..") -> do")
 		for id,fd in ipairs(second) do
 			if (id == #second) then
-				coroutine.yield("    "..pre..showWriteHsH(index+id-1,struct,fd,"a")..") a"..outer..")")
+				coroutine.yield("    "..pre..showWriteHsH(index+id-1,struct,fd)..") a"..outer..")")
 			else
-				coroutine.yield("    "..pre..showWriteHsH(index+id-1,struct,fd,"a"))
+				coroutine.yield("    "..pre..showWriteHsH(index+id-1,struct,fd))
 			end
 		end
 	end
@@ -1811,9 +1914,18 @@ end
 function showWriteHs(name,struct)
 	local result = ""
 	local expand = showWriteHsI(name,struct)
-	result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
-	result = result.."write"..name.." ("..name..expand..") idx = do\n"
+	if showhide then
+		result = result.."show"..name.." :: "..name.." -> IORef String -> IO ()\n"
+		result = result.."show"..name.." ("..name..expand..") idx = do\n"
+		result = result.."    showOpen \""..name.."\" idx\n"
+	else
+		result = result.."write"..name.." :: "..name.." -> Int -> IO ()\n"
+		result = result.."write"..name.." ("..name..expand..") idx = do\n"
+	end
 	result = result..showWriteHsE(name,struct)
+	if showhide then
+		result = result.."    showClose idx\n"
+	end
 	result = result.."--"
 	return result
 end
@@ -1861,6 +1973,22 @@ function showFieldLua(name,list)
 end
 function showCodeLua(name,enum)
 	local result = ""
+	if showhide then
+		result = result.."function hide"..name.."(str)\n"
+		for key,val in ipairs(enum) do
+			result = result..showIndent(1).."val,str = hideEnum(\""..name.."\",\""..val.."\",str); if not (val == nil) then return val,str end\n"
+		end
+		result = result..showIndent(1).."return nil,str\n"
+		result = result.."end\n"
+		result = result.."function show"..name.."(val,str)\n"
+		for key,val in ipairs(enum) do
+			result = result..showIndent(1).."if (val == \""..val.."\") then str = showEnum(\""..name.."\",\""..val.."\",str) end\n"
+		end
+		result = result..showIndent(1).."return str\n"
+		result = result.."end\n"
+		result = result.."--"
+		return result
+	end
 	result = result.."function read"..name.."(idx)\n"
 	result = result..showIndent(1).."val = readInt(idx)\n"
 	for key,val in ipairs(enum) do
@@ -1884,6 +2012,9 @@ function showCodeLua(name,enum)
 	result = result.."end\n"
 	result = result.."--"
 	return result
+end
+function showHideLua(name,enum)
+	local result = ""
 end
 function showCondLua(struct,dset)
 	local cond = ""
@@ -1921,7 +2052,11 @@ nest = 0
 function showReadLua(name,struct)
 	nest = 0
 	local result = ""
-	result = result.."function".." read"..name.."(idx)\n"
+	if showhide then
+		result = result.."function".." hide"..name.."(str)\n"
+	else
+		result = result.."function".." read"..name.."(idx)\n"
+	end
 	result = result..showIndent(1).."local tab = {}\n"
 	for index,field in ipairs(struct) do
 		local count = 0
@@ -1978,11 +2113,12 @@ function showReadLua(name,struct)
 			sub = sub.."[i"..count.."]"
 			super = true
 		end
-		result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"
-		result = result..sub.." = "
-		result = result.."read"..field[2].."(idx)"
+		if showhide then
+			result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"..sub..", str = hide"..field[2].."(str); if (tab".."[\""..field[1].."\"]"..sub.." == nil) then return nil,str end\n"
+		else
+			result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"..sub.." = ".."read"..field[2].."(idx)\n"
+		end
 		if (cond ~= "True") then nest = 1 end
-		result = result.."\n"
 		while (count > 0) do
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
@@ -1991,7 +2127,11 @@ function showReadLua(name,struct)
 			count = count - 1
 		end
 	end
-	result = result..showIndent(1).."return tab\n"
+	if showhide then
+		result = result..showIndent(1).."return tab,str\n"
+	else
+		result = result..showIndent(1).."return tab\n"
+	end
 	result = result.."end\n"
 	result = result.."--"
 	return result
@@ -1999,7 +2139,12 @@ end
 function showWriteLua(name,struct)
 	nest = 0
 	local result = ""
-	result = result.."function write"..name.."(tab,idx)\n"
+	if showhide then
+		result = result.."function show"..name.."(tab,str)\n"
+		result = result..showIndent(1).."str = str..showOpen(\""..name.."\")\n"
+	else
+		result = result.."function write"..name.."(tab,idx)\n"
+	end
 	for index,field in ipairs(struct) do
 		local count = 0
 		local conds = 0
@@ -2010,12 +2155,14 @@ function showWriteLua(name,struct)
 			result = result..showIndent(count).."if "..cond.." ".."then\n"
 		end
 		local sub = ""
+		local arg = ""
 		if (type(field[4]) == "table") then
 			while (count < #field[4]) do
 				count = count + 1
 				result = result..showIndent(count).."local".." i"..count.." = ".."1\n"
 				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
 				sub = sub.."[i"..count.."]"
+				arg = arg..",i"..count
 			end
 		end
 		if (type(field[4]) == "string") then
@@ -2027,19 +2174,23 @@ function showWriteLua(name,struct)
 			result = result..showIndent(count).."local".." i"..count.." = 1\n"
 			result = result..showIndent(count).."while (i"..count.." <= ".."tab[\""..field[4].."\"]) do\n"
 			sub = sub.."[i"..count.."]"
+			arg = arg..",i"..count
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
 			result = result..showIndent(count).."local".." i"..count.." = ".."1".."\n"
 			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
 			sub = sub.."[i"..count.."]"
+			arg = arg..",i"..count
 		end
 		local value = "tab[\""..field[1].."\"]"..sub
 		result = result..showIndent(count+1)
-		if (field[2] == "Str") then result = result.."writeStr("..value..",idx)"
-		else result = result.."write"..field[2].."("..value..",idx)" end
+		if showhide then
+			result = result.."str = str..showField(\""..field[1].."\""..arg..")..show"..field[2].."("..value..")\n"
+		else
+			result = result.."write"..field[2].."("..value..",idx)\n"
+		end
 		if (cond ~= "True") then nest = 1 end
-		result = result.."\n"
 		while (count > 0) do
 			if (count > conds) then
 				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
@@ -2047,6 +2198,10 @@ function showWriteLua(name,struct)
 			result = result..showIndent(count).."end\n"
 			count = count - 1
 		end
+	end
+	if showhide then
+		result = result..showIndent(1).."str = str..showClose()\n"
+		result = result..showIndent(1).."return str\n"
 	end
 	result = result.."end\n"
 	result = result.."--"
@@ -2125,21 +2280,38 @@ end
 function showCallHs()
 	local result = ""
 	result = result..showCall(Enums,Enumz,showEnumHs).."\n"
+	showhide = false
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
+	showhide = true
+	-- result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
 	result = result..showCall(Structs,Structz,showAccessHs).."\n"
+	showhide = false
 	result = result..showHelpHs().."\n"
+	showhide = true
+	result = result..showHelpHs().."\n"
+	showhide = false
 	result = result..showCall(Structs,Structz,showReadHs).."\n"
 	result = result..showCall(Structs,Structz,showWriteHs).."\n"
+	showhide = true
+	-- result = result..showCall(Structs,Structz,showReadHs).."\n"
+	-- result = result..showCall(Structs,Structz,showWriteHs).."\n"
 	return result
 end
 function showCallLua()
 	local result = ""
+	showhide = false
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
+	showhide = true
+	-- result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	result = result..showCall(Enums,Enumz,showCastLua).."\n"
 	result = result..showIdentLua(Structs).."\n"
 	result = result..showCall(Structs,Structz,showFieldLua).."\n"
+	showhide = false
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
-	result = result..showCall(Structs,Structz,showWriteLua)
+	result = result..showCall(Structs,Structz,showWriteLua).."\n"
+	showhide = true
+	-- result = result..showCall(Structs,Structz,showReadLua).."\n"
+	-- result = result..showCall(Structs,Structz,showWriteLua)
 	return result
 end
