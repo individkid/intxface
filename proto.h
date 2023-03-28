@@ -32,10 +32,12 @@ typedef void (*cftype)(int idx); // thread callback
 typedef void (*cgtype)(int idx0, int idx1);
 typedef void (*chtype)();
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
-typedef void (*sftype)(const char *str, int idx, void *arg); // string callback
-typedef void (*hftype)(const char *str); // haskell string wrapper
-typedef void (*hgtype)(int i, const char *str);
-typedef void (*hhtype)(const char *str);
+typedef void (*sftype)(int idx, const char *str); // add string
+typedef void (*hftype)(const char *val); // haskell wrapper
+typedef void (*hgtype)(int val); // haskell wrapper
+typedef void (*hhtype)(double val); // haskell wrapper
+typedef void (*hitype)(long long val); // haskell wrapper
+typedef void (*hjtype)(float val); // haskell wrapper
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*fgtype)(const char *str, int len, int idx);
@@ -68,8 +70,6 @@ struct Function {
 		Eftype,
 		Sftype,
 		Hftype,
-		Hgtype,
-		Hhtype,
 		Pftype,
 		Qftype,
 		Fgtype,
@@ -100,8 +100,6 @@ struct Function {
 		eftype ef;
 		sftype sf;
 		hftype hf;
-		hgtype hg;
-		hhtype hh;
 		pftype pf;
 		qftype qf;
 		fgtype fg;
@@ -130,8 +128,8 @@ struct Function {
 struct Function protoTypeCf(cftype fnc);
 struct Function protoTypeCg(cgtype fnc);
 struct Function protoTypeCh(chtype fnc);
-struct Function protoTypeHg(hgtype fnc);
-struct Function protoTypeHh(hhtype fnc);
+struct Function protoTypeSf(sftype fnc);
+struct Function protoTypeHf(hftype fnc);
 struct Function protoTypeFg(fgtype fnc);
 struct Function protoTypeFh(fhtype fnc);
 struct Function protoTypeFf(fftype fnc);

@@ -915,6 +915,14 @@ void showEnum(const char *typ, const char* val, char **str, int *siz)
 	free(tmp);
 	*siz += num;
 }
+void showEnumHs(const char *typ, const char *val, const char *str, hftype fnc)
+{
+	int len = 0;
+	char *tmp = strdup(str);
+	showEnum(typ,val,&tmp,&len);
+	fnc(tmp);
+	free(tmp);
+}
 void showField(const char* val, char **str, int *siz, int arg, ...)
 {
 	char *tmp = 0;
@@ -948,6 +956,14 @@ void showOpen(const char* val, char **str, int *siz)
 	free(tmp);
 	*siz += num;
 }
+void showOpenHs(const char *typ, const char *str, hftype fnc)
+{
+	int len = 0;
+	char *tmp = strdup(str);
+	showOpen(typ,&tmp,&len);
+	fnc(tmp);
+	free(tmp);
+}
 void showClose(char **str, int *siz)
 {
 	char *tmp = 0;
@@ -959,6 +975,14 @@ void showClose(char **str, int *siz)
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
+}
+void showCloseHs(const char *str, hftype fnc)
+{
+	int len = 0;
+	char *tmp = strdup(str);
+	showClose(&tmp,&len);
+	fnc(tmp);
+	free(tmp);
 }
 void showChr(char val, char **str, int *siz)
 {
@@ -1067,6 +1091,13 @@ int hideEnum(const char* typ, const char *val, const char *str, int *siz)
 	*siz += num;
 	return 1;
 }
+int hideEnumHs(const char *typ, const char *val, const char *str, hftype fnc)
+{
+	int len = 0;
+	if (!hideEnum(typ,val,str,&len)) return 0;
+	fnc(str+len);
+	return 1;
+}
 int hideField(const char *val, const char *str, int *siz, int arg, ...)
 {
 	char *tmp = 0;
@@ -1098,6 +1129,13 @@ int hideOpen(const char *val, const char *str, int *siz)
 	*siz += num;
 	return 1;
 }
+int hideOpenHs(const char *typ, const char *str, hftype fnc)
+{
+	int len = 0;
+	if (!hideOpen(typ,str,&len)) return 0;
+	fnc(str+len);
+	return 1;
+}
 int hideClose(const char *str, int *siz)
 {
 	char *tmp = 0;
@@ -1107,6 +1145,13 @@ int hideClose(const char *str, int *siz)
 	free(tmp);
 	if (num == -1) return 0;
 	*siz += num;
+	return 1;
+}
+int hideCloseHs(const char *str, hftype fnc)
+{
+	int len = 0;
+	if (!hideClose(str,&len)) return 0;
+	fnc(str+len);
 	return 1;
 }
 int hideChr(char *val, const char *str, int *siz)
@@ -1169,6 +1214,47 @@ int hideStr(char **val, const char *str, int *siz)
 int hideDat(void **val, const char *str, int *siz)
 {
 	return 0; // TODO
+}
+
+int hideStrHs(hftype val, const char *str, hftype fnc)
+{
+	return 0; // TODO
+}
+int hideIntHs(hgtype val, const char *str, hftype fnc)
+{
+	return 0; // TODO
+}
+int hideNumHs(hhtype val, const char *str, hftype fnc)
+{
+	return 0; // TODO
+}
+int hideNewHs(hitype val, const char *str, hftype fnc)
+{
+	return 0; // TODO
+}
+int hideOldHs(hjtype val, const char *str, hftype fnc)
+{
+	return 0; // TODO
+}
+void showStrHs(const char *val, const char *str, hftype fnc)
+{
+	// TODO
+}
+void showIntHs(int val, const char *str, hftype fnc)
+{
+	// TODO
+}
+void showNumHs(double val, const char *str, hftype fnc)
+{
+	// TODO
+}
+void showNewHs(long long val, const char *str, hftype fnc)
+{
+	// TODO
+}
+void showOldHs(float val, const char *str, hftype fnc)
+{
+	// TODO
 }
 
 int waitReadLua(lua_State *lua)
@@ -1376,8 +1462,8 @@ int luaopen_luax(lua_State *L);
 int luaopen_face (lua_State *L)
 {
 	luaopen_luax(L);
-	luaxExtend(L,"noteFunc",protoTypeHh(noteFuncLua));
-	luaxExtend(L,"errFunc",protoTypeHh(errFuncLua));
+	luaxExtend(L,"noteFunc",protoTypeHf(noteFuncLua));
+	luaxExtend(L,"errFunc",protoTypeHf(errFuncLua));
 	luaxExtend(L,"closeIdent",protoTypeCf(closeIdent));
 	luaxExtend(L,"moveIdent",protoTypeCg(moveIdent));
 	luaxExtend(L,"findIdent",protoTypeFf(findIdent));

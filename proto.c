@@ -22,17 +22,17 @@ struct Function protoTypeCg(cgtype fnc)
 {
 	struct Function ret = {.ft = Cgtype, {.cg = fnc}}; return ret;
 }
-struct Function protoTypeCh(cgtype fnc)
+struct Function protoTypeCh(chtype fnc)
 {
 	struct Function ret = {.ft = Chtype, {.ch = fnc}}; return ret;
 }
-struct Function protoTypeHg(hgtype fnc)
+struct Function protoTypeSf(sftype fnc)
 {
-	struct Function ret = {.ft = Hgtype, {.hg = fnc}}; return ret;
+	struct Function ret = {.ft = Sftype, {.sf = fnc}}; return ret;
 }
-struct Function protoTypeHh(hhtype fnc)
+struct Function protoTypeHf(hftype fnc)
 {
-	struct Function ret = {.ft = Hhtype, {.hh = fnc}}; return ret;
+	struct Function ret = {.ft = Hftype, {.hf = fnc}}; return ret;
 }
 struct Function protoTypeFg(fgtype fnc)
 {

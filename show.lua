@@ -1439,13 +1439,14 @@ end
 function showHelpHs()
 	local result = ""
 	if showhide then
-		result = result.."hideHelp :: Int -> IO (Maybe a) -> IO (Maybe [a])\n"
-		result = result.."hideHelp 0 b = return (Just [])\n"
-		result = result.."hideHelp a b = do\n"
+		result = result.."hideHelp :: Maybe Int -> IO (Maybe a) -> IO (Maybe [a])\n"
+		result = result.."hideHelp Nothing _ = return Nothing\n"
+		result = result.."hideHelp (Just 0) b = return (Just [])\n"
+		result = result.."hideHelp (Just a) b = do\n"
 		result = result..showIndent(1).."d <- b\n"
-		result = result..showIndent(1).."e <- hideHelp (a-1) b\n"
+		result = result..showIndent(1).."e <- hideHelp (Just (a-1)) b\n"
 		result = result..showIndent(1).."return (Just (:) <*> d <*> e)\n"
-		result = result.."enumHelp :: IO (Bool) -> String -> IO (Maybe String) -> IO (Maybe String)\n"
+		result = result.."enumHelp :: IO (Bool) -> a -> IO (Maybe a) -> IO (Maybe a)\n"
 		result = result.."enumHelp a b c = do\n"
 		result = result..showIndent(1).."x <- a\n"
 		result = result..showIndent(1).."y <- c\n"
@@ -1486,6 +1487,13 @@ function showHelpHs()
 	result = result.."--"
 	return result
 end
+function showCondHsF(val)
+	if showhide == "hide" then
+		return "(Just "..val..")"
+	else
+		return val
+	end
+end
 function showCondHs(struct,dset)
 	local cond = ""
 	local terms = 0
@@ -1496,7 +1504,8 @@ function showCondHs(struct,dset)
 		for idx,fld in ipairs(struct) do
 			if (fld[1] == dim) then
 				for j,val in ipairs(listSort(set)) do
-					local factor = "a"..idx.." == "..val
+					local wrap = showCondHsF(val)
+					local factor = "a"..idx.." == "..wrap
 					if (factors > 0) then term = term.." || " end
 					term = term.."("..factor..")"
 					factors = factors + 1
@@ -1525,11 +1534,11 @@ function showReadHsK()
 		return "read"
 	end
 end
-function showReadHsJ()
+function showReadHsJ(pre,val,post)
 	if showhide then
-		return "hideHelp"
+		return "hideHelp "..pre..val..post
 	else
-		return "listHelp"
+		return "listHelp "..val
 	end
 end
 function showReadHsI(name,args,before)
@@ -1558,7 +1567,7 @@ function showReadHsH(pre,index,struct,field)
 	if (type(field[4]) == "table") then
 		while (count < #field[4]) do
 			count = count + 1
-			result = result..showReadHsJ().." "..field[4][count].." ("
+			result = result..showReadHsJ("(Just ",field[4][count],")").." ("
 		end
 	end
 	if (type(field[4]) == "string") then
@@ -1566,11 +1575,11 @@ function showReadHsH(pre,index,struct,field)
 		for k,v in ipairs(struct) do
 			if (v[1] == field[4]) then found = "a"..k end
 		end
-		result = result..showReadHsJ().." "..found.." ("
+		result = result..showReadHsJ("",found,"").." ("
 		count = count + 1
 	end
 	if (type(field[4]) == "number") then
-		result = result..showReadHsJ().." "..field[4].." ("
+		result = result..showReadHsJ("(Just ",field[4],")").." ("
 		count = count + 1
 	end
 	result = result..showReadHsK()..field[2].." idx"
@@ -1611,7 +1620,7 @@ function showReadHsF(name,struct,extra)
 			-- coroutine.yield("-- 3")
 			extra[#extra+1] = "a"..index.."x"
 			outer = index
-			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
+			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
 			list[#list+1] = "b"..index.."x"
 			showReadHsG("    ",index,struct,second)
 			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
@@ -1622,7 +1631,7 @@ function showReadHsF(name,struct,extra)
 			addTo(second,fld)
 		elseif not firster then
 			-- coroutine.yield("-- 4")
-			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
+			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
 			list[#list+1] = "b"..index.."x"
 			showReadHsG("    ",index,struct,second)
 			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
@@ -1633,13 +1642,13 @@ function showReadHsF(name,struct,extra)
 			addTo(second,fld)
 		else
 			-- coroutine.yield("-- 5")
-			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
+			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
 			list[#list+1] = "b"..index.."x"
 			showReadHsG("    ",index,struct,second)
 			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
 			coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
 			local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = "," end
-			coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
+			coroutine.yield("    a"..outer.."x <- firstHelp "..showCondHsF(name.."A"..outer.."Bs").." ["..str.."]")
 			list = {}
 			first = {}
 			second = {}
@@ -1655,13 +1664,13 @@ function showReadHsF(name,struct,extra)
 		extra[#extra+1] = "a"..index.."x"
 	else
 		-- coroutine.yield("-- 6b")
-		coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..name.."A"..outer.."Bs (do")
+		coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
 		list[#list+1] = "b"..index.."x"
 		showReadHsG("    ",index,struct,second)
 		local args = {}; for id=index,#struct do args[#args+1] = "a"..id end
 		coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
 		local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = "," end
-		coroutine.yield("    a"..outer.."x <- firstHelp "..name.."A"..outer.."Bs ["..str.."]")
+		coroutine.yield("    a"..outer.."x <- firstHelp "..showCondHsF(name.."A"..outer.."Bs").." ["..str.."]")
 	end
 end
 function showReadHsE(name,struct,extra)
@@ -1680,14 +1689,14 @@ function showReadHs(name,struct)
 	if showhide then
 		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
 		result = result.."hide"..name.." idx = do\n"
-		result = result.."    x <- toMaybe <*> hideOpen \""..name.."\" idx <*> return True\n"
+		result = result.."    x <- fmap (\\x -> case x of; True -> Just True; False -> Nothing) (hideOpen \""..name.."\" idx)\n"
 	else
 		result = result.."read"..name.." :: Int -> IO "..name.."\n"
 		result = result.."read"..name.." idx = do\n"
 	end
 	result = result..showReadHsE(name,struct,extra)
 	if showhide then
-		result = result.."    y <- toMaybe <*> hideClose idx <*> return True\n"
+		result = result.."    y <- fmap (\\x -> case x of; True -> Just True; False -> Nothing) (hideClose idx)\n"
 	end
 	result = result.."    "..showReadHsI(name,extra,{"x","y"})
 	return result
@@ -1773,6 +1782,7 @@ function showWriteHsH(index,struct,field)
 	local post = ""
 	local pvar = "a"..index
 	local qvar = pvar
+	local sub = "[]"
 	if (type(field[4]) == "table") and (#field[4] > 0) then
 		while (count < #field[4]) do
 			count = count + 1
@@ -1785,11 +1795,13 @@ function showWriteHsH(index,struct,field)
 		if showhide then
 			result = result.."\\x y -> "
 			post = post.." []"
+			sub = "x"
+			qvar = "y"
 		else
 			result = result.."\\x -> "
+			qvar = "x"
 		end
 		post = post.." "..pvar
-		qvar = "x"
 	end
 	if (type(field[4]) == "string") then
 		local found = "0"
@@ -1799,26 +1811,30 @@ function showWriteHsH(index,struct,field)
 		if showhide then
 			result = result.."showHelp "..found.." 0 (\\x y -> "
 			post = post.." []"
+			sub = "x"
+			qvar = "y"
 		else
 			result = result.."assertHelp "..found.." (\\x -> "
+			qvar = "x"
 		end
 		count = count + 1
 		post = post.." "..pvar
-		qvar = "x"
 	end
 	if (type(field[4]) == "number") then
 		if showhide then
 			result = result.."showHelp "..field[4].." 0 (\\x y -> "
 			post = post.." []"
+			sub = "x"
+			qvar = "y"
 		else
 			result = result.."assertHelp "..field[4].." (\\x -> "
+			qvar = "x"
 		end
 		count = count + 1
 		post = post.." "..pvar
-		qvar = "x"
 	end
 	if showhide then
-		result = result.."(showField \""..field[1].."\" y idx) >> show"..field[2].." "..qvar.." idx"
+		result = result.."(showField \""..field[1].."\" "..sub.." idx) >> show"..field[2].." "..qvar.." idx"
 	else
 		result = result.."write"..field[2].." "..qvar.." idx"
 	end
@@ -2283,7 +2299,7 @@ function showCallHs()
 	showhide = false
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	showhide = true
-	-- result = result..showCall(Enums,Enumz,showCodeHs).."\n"
+	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
 	result = result..showCall(Structs,Structz,showAccessHs).."\n"
 	showhide = false
@@ -2293,9 +2309,10 @@ function showCallHs()
 	showhide = false
 	result = result..showCall(Structs,Structz,showReadHs).."\n"
 	result = result..showCall(Structs,Structz,showWriteHs).."\n"
-	showhide = true
-	-- result = result..showCall(Structs,Structz,showReadHs).."\n"
-	-- result = result..showCall(Structs,Structz,showWriteHs).."\n"
+	showhide = "hide"
+	result = result..showCall(Structs,Structz,showReadHs).."\n"
+	showhide = "show"
+	result = result..showCall(Structs,Structz,showWriteHs).."\n"
 	return result
 end
 function showCallLua()
@@ -2303,15 +2320,16 @@ function showCallLua()
 	showhide = false
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	showhide = true
-	-- result = result..showCall(Enums,Enumz,showCodeLua).."\n"
+	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	result = result..showCall(Enums,Enumz,showCastLua).."\n"
 	result = result..showIdentLua(Structs).."\n"
 	result = result..showCall(Structs,Structz,showFieldLua).."\n"
 	showhide = false
 	result = result..showCall(Structs,Structz,showReadLua).."\n"
 	result = result..showCall(Structs,Structz,showWriteLua).."\n"
-	showhide = true
-	-- result = result..showCall(Structs,Structz,showReadLua).."\n"
-	-- result = result..showCall(Structs,Structz,showWriteLua)
+	showhide = "hide"
+	result = result..showCall(Structs,Structz,showReadLua).."\n"
+	showhide = "show"
+	result = result..showCall(Structs,Structz,showWriteLua)
 	return result
 end

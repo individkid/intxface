@@ -56,6 +56,7 @@ function showTyperHs()
 	result = result.."import Face\n"
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
+	result = result.."import Data.IORef\n"
 	result = result.."--\n"
 	result = result..showCallHs().."\n"
 	result = result.."mainF :: [String] -> IO ()\n"

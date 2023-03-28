@@ -512,7 +512,7 @@ function showTypeHs()
 	result = result.."import System.Exit\n"
 	result = result.."import Data.IORef\n"
 	result = result.."--\n"
-	result = result.."type Dat = Int -- TODO\n"
+	result = result.."type Dat = [Char] -- TODO\n"
 	result = result..showCallHs()
 	return result
 end

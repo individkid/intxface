@@ -133,9 +133,9 @@ int luaxClosure(lua_State *L)
 		// typedef void (*chtype)();
 		case (Chtype): fnc.ch(); return 0;
 		// typedef void (*hgtype)(int i, const char *str);
-		case (Hgtype): fnc.hg(lua_tointeger(L,1),lua_tostring(L,2)); return 0;
-		// typedef void (*hhtype)(const char *str);
-		case (Hhtype): fnc.hh(lua_tostring(L,1)); return 0;
+		case (Sftype): fnc.sf(lua_tointeger(L,1),lua_tostring(L,2)); return 0;
+		// typedef void (*hftype)(const char *str);
+		case (Hftype): fnc.hf(lua_tostring(L,1)); return 0;
 		// typedef int (*fhtype)(int idx, const char *str);
 		case (Fhtype): lua_pushinteger(L,fnc.fh(lua_tointeger(L,1),lua_tostring(L,2))); return 1;
 		// typedef int (*fftype)(const char *str);
@@ -296,7 +296,7 @@ int luaopen_luax(lua_State *L)
 	luastate = L;
 	luaxExtend(L,"luaxSide",protoTypeFf(luaxSide));
 	luaxExtend(L,"nestInit",protoTypeCf(nestInit));
-	luaxExtend(L,"nestElem",protoTypeHg(nestElem));
+	luaxExtend(L,"nestElem",protoTypeSf(nestElem));
 	luaxExtend(L,"nestScan",protoTypeCh(nestScan));
 	luaxExtend(L,"nestPass",protoTypeRg(nestPass));
 	luaxExtend(L,"nestRepl",protoTypeRh(nestRepl));
