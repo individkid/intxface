@@ -5,6 +5,7 @@ module Face where
 import Foreign.C.Types
 import Foreign.C.String
 import Foreign.Ptr
+import Foreign.Marshal.Array
 import Data.IORef
 import System.Environment
 import System.Exit
@@ -68,6 +69,7 @@ foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
 foreign import ccall "hideEnumHs" hideEnumC :: CString -> CString -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideOpenHs" hideOpenC :: CString -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideCloseHs" hideCloseC :: CString -> FunPtr (CString -> IO ()) -> IO Int
+foreign import ccall "hideFieldHs" hideFieldC :: CString -> CInt -> Ptr CInt -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideStrHs" hideStrC :: FunPtr (CString -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideIntHs" hideIntC :: FunPtr (CInt -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideNumHs" hideNumC :: FunPtr (CDouble -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
@@ -77,6 +79,7 @@ foreign import ccall "hideOldHs" hideOldC :: FunPtr (CFloat -> IO ()) -> CString
 foreign import ccall "showEnumHs" showEnumC :: CString -> CString -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showOpenHs" showOpenC :: CString -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showCloseHs" showCloseC :: CString -> FunPtr (CString -> IO ()) -> IO ()
+foreign import ccall "showFieldHs" showFieldC :: CString -> CInt -> Ptr CInt -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showStrHs" showStrC :: CString -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showIntHs" showIntC :: CInt -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showNumHs" showNumC :: CDouble -> CString -> FunPtr (CString -> IO ()) -> IO ()
@@ -174,6 +177,7 @@ hideEnum a b c = do
  d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
  x <- hideEnumC ax bx cx dx
+ readIORef d >>= writeIORef c
  case (fromIntegral x) of
   0 -> return False
   _ -> return True
@@ -184,6 +188,7 @@ hideOpen a c = do
  d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
  x <- hideOpenC ax cx dx
+ readIORef d >>= writeIORef c
  case (fromIntegral x) of
   0 -> return False
   _ -> return True
@@ -193,39 +198,51 @@ hideClose c = do
  d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
  x <- hideCloseC cx dx
+ readIORef d >>= writeIORef c
  case (fromIntegral x) of
   0 -> return False
   _ -> return True
+hideField :: String -> [Int] -> IORef String -> IO Bool
+hideField a b c = do
+ ax <- newCString a
+ bx <- newArray (map fromIntegral b)
+ cx <- readIORef c >>= newCString
+ d <- newIORef ""
+ dx <- wrapStr (wrapStrF d)
+ x <- hideFieldC ax (fromIntegral (length b)) bx cx dx
+ readIORef d >>= writeIORef c
+ case (fromIntegral x) of
+  0 -> return False
+  _ -> return True
+hideType :: (IORef a -> CString -> FunPtr (CString -> IO ()) -> IO Int) -> a -> IORef String -> IO (Maybe a)
+hideType i f c = do
+ cx <- readIORef c >>= newCString -- src string
+ d <- newIORef "" -- dst string ref
+ dx <- wrapStr (wrapStrF d)
+ e <- newIORef f -- val ref
+ x <- i e cx dx
+ readIORef d >>= writeIORef c
+ case x of
+  0 -> return Nothing
+  1 -> fmap Just (readIORef e)
+x0 :: (x -> b) -> (a -> x) -> a -> b
+x0 f g a = f (g a)
+y2 :: (y -> b -> c -> IO d) -> (a -> IO y) -> a -> b -> c -> IO d
+y2 f g a c d = do
+ b <- g a
+ f b c d
 hideDat :: IORef String -> IO (Maybe [Char])
 hideDat = undefined
 hideStr :: IORef String -> IO (Maybe String)
-hideStr c = do
- cx <- readIORef c >>= newCString -- src string
- d <- newIORef "" -- dst string ref
- dx <- wrapStr (wrapStrF d)
- e <- newIORef "" -- val string ref
- ex <- wrapStr (wrapStrF e)
- x <- hideStrC ex cx dx
- case (fromIntegral x) of
-  0 -> return Nothing
-  1 -> fmap Just (readIORef e)
+hideStr = hideType (y2 hideStrC (x0 wrapStr wrapStrF)) ""
 hideInt :: IORef String -> IO (Maybe Int)
-hideInt c = do
- cx <- readIORef c >>= newCString -- src string
- d <- newIORef "" -- dst string ref
- dx <- wrapStr (wrapStrF d)
- e <- newIORef 0 -- val int ref
- ex <- wrapInt (wrapIntF e)
- x <- hideIntC ex cx dx
- case (fromIntegral x) of
-  0 -> return Nothing
-  1 -> fmap Just (readIORef e)
+hideInt = hideType (y2 hideIntC (x0 wrapInt wrapIntF)) 0
 hideNum :: IORef String -> IO (Maybe Double)
-hideNum c = undefined
+hideNum = hideType (y2 hideNumC (x0 wrapNum wrapNumF)) 0
 hideNew :: IORef String -> IO (Maybe Integer)
-hideNew c = undefined
+hideNew = hideType (y2 hideNewC (x0 wrapNew wrapNewF)) 0
 hideOld :: IORef String -> IO (Maybe Float)
-hideOld c = undefined
+hideOld = hideType (y2 hideOldC (x0 wrapOld wrapOldF)) 0
 
 showEnum :: String -> String -> IORef String -> IO ()
 showEnum a b c = do
@@ -235,6 +252,7 @@ showEnum a b c = do
  d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
  showEnumC ax bx cx dx
+ readIORef d >>= writeIORef c
 showOpen :: String -> IORef String -> IO ()
 showOpen a c = do
  ax <- newCString a
@@ -242,14 +260,22 @@ showOpen a c = do
  d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
  showOpenC ax cx dx
+ readIORef d >>= writeIORef c
 showClose :: IORef String -> IO ()
 showClose c = do
  cx <- readIORef c >>= newCString
  d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
  showCloseC cx dx
+ readIORef d >>= writeIORef c
 showField :: String -> [Int] -> IORef String -> IO ()
-showField a b c = undefined
+showField a b c = do
+ ax <- newCString a
+ bx <- newArray (map fromIntegral b)
+ cx <- readIORef c >>= newCString
+ d <- newIORef ""
+ dx <- wrapStr (wrapStrF d)
+ showFieldC ax (fromIntegral (length b)) bx cx dx
 showDat :: [Char] -> IORef String -> IO ()
 showDat a b = undefined
 showStr :: String -> IORef String -> IO ()

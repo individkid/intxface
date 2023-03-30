@@ -731,13 +731,6 @@ void preadStr(char **str, long long loc, int idx)
 	assignStr(str,buf);
 	free(buf);
 }
-void readStrHs(hftype fnc, int idx)
-{
-	char *str = 0;
-	readStr(&str,idx);
-	fnc(str);
-	free(str);
-}
 void readDat(void **dat, int idx)
 {
 	int size = readInt(idx);
@@ -915,14 +908,6 @@ void showEnum(const char *typ, const char* val, char **str, int *siz)
 	free(tmp);
 	*siz += num;
 }
-void showEnumHs(const char *typ, const char *val, const char *str, hftype fnc)
-{
-	int len = 0;
-	char *tmp = strdup(str);
-	showEnum(typ,val,&tmp,&len);
-	fnc(tmp);
-	free(tmp);
-}
 void showField(const char* val, char **str, int *siz, int arg, ...)
 {
 	char *tmp = 0;
@@ -956,14 +941,6 @@ void showOpen(const char* val, char **str, int *siz)
 	free(tmp);
 	*siz += num;
 }
-void showOpenHs(const char *typ, const char *str, hftype fnc)
-{
-	int len = 0;
-	char *tmp = strdup(str);
-	showOpen(typ,&tmp,&len);
-	fnc(tmp);
-	free(tmp);
-}
 void showClose(char **str, int *siz)
 {
 	char *tmp = 0;
@@ -975,14 +952,6 @@ void showClose(char **str, int *siz)
 	memcpy(*str+*siz,tmp,num+1);
 	free(tmp);
 	*siz += num;
-}
-void showCloseHs(const char *str, hftype fnc)
-{
-	int len = 0;
-	char *tmp = strdup(str);
-	showClose(&tmp,&len);
-	fnc(tmp);
-	free(tmp);
 }
 void showChr(char val, char **str, int *siz)
 {
@@ -1091,13 +1060,6 @@ int hideEnum(const char* typ, const char *val, const char *str, int *siz)
 	*siz += num;
 	return 1;
 }
-int hideEnumHs(const char *typ, const char *val, const char *str, hftype fnc)
-{
-	int len = 0;
-	if (!hideEnum(typ,val,str,&len)) return 0;
-	fnc(str+len);
-	return 1;
-}
 int hideField(const char *val, const char *str, int *siz, int arg, ...)
 {
 	char *tmp = 0;
@@ -1129,13 +1091,6 @@ int hideOpen(const char *val, const char *str, int *siz)
 	*siz += num;
 	return 1;
 }
-int hideOpenHs(const char *typ, const char *str, hftype fnc)
-{
-	int len = 0;
-	if (!hideOpen(typ,str,&len)) return 0;
-	fnc(str+len);
-	return 1;
-}
 int hideClose(const char *str, int *siz)
 {
 	char *tmp = 0;
@@ -1145,13 +1100,6 @@ int hideClose(const char *str, int *siz)
 	free(tmp);
 	if (num == -1) return 0;
 	*siz += num;
-	return 1;
-}
-int hideCloseHs(const char *str, hftype fnc)
-{
-	int len = 0;
-	if (!hideClose(str,&len)) return 0;
-	fnc(str+len);
 	return 1;
 }
 int hideChr(char *val, const char *str, int *siz)
@@ -1216,25 +1164,106 @@ int hideDat(void **val, const char *str, int *siz)
 	return 0; // TODO
 }
 
-int hideStrHs(hftype val, const char *str, hftype fnc)
+void readStrHs(hftype fnc, int idx)
+{
+	char *str = 0;
+	readStr(&str,idx);
+	fnc(str);
+	free(str);
+}
+int hideEnumHs(const char *typ, const char *val, const char *str, hftype fnc)
+{
+	int len = 0;
+	if (!hideEnum(typ,val,str,&len)) return 0;
+	fnc(str+len);
+	return 1;
+}
+int hideOpenHs(const char *typ, const char *str, hftype fnc)
+{
+	int len = 0;
+	if (!hideOpen(typ,str,&len)) return 0;
+	fnc(str+len);
+	return 1;
+}
+int hideCloseHs(const char *str, hftype fnc)
+{
+	int len = 0;
+	if (!hideClose(str,&len)) return 0;
+	fnc(str+len);
+	return 1;
+}
+int hideFieldHs(const char *typ, int arg, int *ptr, const char *str, hftype fnc)
 {
 	return 0; // TODO
+}
+int hideStrHs(hftype val, const char *str, hftype fnc)
+{
+	char *tmp = 0;
+	int len = 0;
+	int ret = hideStr(&tmp, str, &len);
+	if (ret) {val(tmp); fnc(str+len);}
+	free(tmp);
+	return ret;
 }
 int hideIntHs(hgtype val, const char *str, hftype fnc)
 {
-	return 0; // TODO
+	int tmp = 0;
+	int len = 0;
+	int ret = hideInt(&tmp, str, &len);
+	if (ret) {val(tmp); fnc(str+len);}
+	return ret;
 }
 int hideNumHs(hhtype val, const char *str, hftype fnc)
 {
-	return 0; // TODO
+	double tmp = 0;
+	int len = 0;
+	int ret = hideNum(&tmp, str, &len);
+	if (ret) {val(tmp); fnc(str+len);}
+	return ret;
 }
 int hideNewHs(hitype val, const char *str, hftype fnc)
 {
-	return 0; // TODO
+	long long tmp = 0;
+	int len = 0;
+	int ret = hideNew(&tmp, str, &len);
+	if (ret) {val(tmp); fnc(str+len);}
+	return ret;
 }
 int hideOldHs(hjtype val, const char *str, hftype fnc)
 {
-	return 0; // TODO
+	float tmp = 0;
+	int len = 0;
+	int ret = hideOld(&tmp, str, &len);
+	if (ret) {val(tmp); fnc(str+len);}
+	return ret;
+}
+void showEnumHs(const char *typ, const char *val, const char *str, hftype fnc)
+{
+	int len = 0;
+	char *tmp = strdup(str);
+	showEnum(typ,val,&tmp,&len);
+	fnc(tmp);
+	free(tmp);
+}
+void showOpenHs(const char *typ, const char *str, hftype fnc)
+{
+	int len = 0;
+	char *tmp = strdup(str);
+	showOpen(typ,&tmp,&len);
+	fnc(tmp);
+	free(tmp);
+}
+void showCloseHs(const char *str, hftype fnc)
+{
+	int len = 0;
+	char *tmp = strdup(str);
+	showClose(&tmp,&len);
+	fnc(tmp);
+	free(tmp);
+}
+void showFieldHs(const char *typ, int arg, int *ptr, const char *str, hftype fnc)
+{
+	// TODO
 }
 void showStrHs(const char *val, const char *str, hftype fnc)
 {
