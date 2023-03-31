@@ -1439,6 +1439,11 @@ end
 function showHelpHs()
 	local result = ""
 	if showhide then
+		result = result.."fieldHelp :: IO (Maybe a) -> IO (Maybe b) -> IO (Maybe b)\n"
+		result = result.."fieldHelp a b = do\n"
+		result = result..showIndent(1).."ax <- a\n"
+		result = result..showIndent(1).."bx <- b\n"
+		result = result..showIndent(1).."return (ax >> bx)\n"
 		result = result.."hideHelp :: Maybe Int -> IO (Maybe a) -> IO (Maybe [a])\n"
 		result = result.."hideHelp Nothing _ = return Nothing\n"
 		result = result.."hideHelp (Just 0) b = return (Just [])\n"
@@ -1446,14 +1451,14 @@ function showHelpHs()
 		result = result..showIndent(1).."d <- b\n"
 		result = result..showIndent(1).."e <- hideHelp (Just (a-1)) b\n"
 		result = result..showIndent(1).."return (Just (:) <*> d <*> e)\n"
-		result = result.."enumHelp :: IO (Bool) -> a -> IO (Maybe a) -> IO (Maybe a)\n"
+		result = result.."enumHelp :: IO (Maybe Bool) -> a -> IO (Maybe a) -> IO (Maybe a)\n"
 		result = result.."enumHelp a b c = do\n"
 		result = result..showIndent(1).."x <- a\n"
 		result = result..showIndent(1).."y <- c\n"
 		result = result..showIndent(1).."case (x,y) of\n"
-		result = result..showIndent(2).."(False,_) -> c\n"
-		result = result..showIndent(2).."(True,Nothing) -> return (Just b)\n"
-		result = result..showIndent(2).."(True,Just _) -> c\n"
+		result = result..showIndent(2).."(Nothing,_) -> c\n"
+		result = result..showIndent(2).."(_,Nothing) -> return (Just b)\n"
+		result = result..showIndent(2).."(_,Just _) -> c\n"
 		result = result.."showHelp :: Int -> Int -> ([Int] -> a -> IO ()) -> [Int] -> [a] -> IO ()\n"
 		result = result.."showHelp a b _ _ []\n"
 		result = result..showIndent(1).."| a == b = return ()\n"
@@ -1527,9 +1532,17 @@ function showCondHs(struct,dset)
 	end
 	return cond
 end
-function showReadHsK()
+function showReadHsK(fld,lst)
 	if showhide then
-		return "hide"
+		result = "hideField \""..fld.."\" ["
+		for k,v in ipairs(lst) do
+			if k > 1 then
+				result = result..","
+			end
+			result = result..v
+		end
+		return result.."] idx `fieldHelp` hide"
+
 	else
 		return "read"
 	end
@@ -1564,10 +1577,12 @@ end
 function showReadHsH(pre,index,struct,field)
 	local result = ""
 	local count = 0
+	local list = {}
 	if (type(field[4]) == "table") then
 		while (count < #field[4]) do
 			count = count + 1
 			result = result..showReadHsJ("(Just ",field[4][count],")").." ("
+			list[#list+1] = "(Just "..field[4][count]..")"
 		end
 	end
 	if (type(field[4]) == "string") then
@@ -1577,12 +1592,14 @@ function showReadHsH(pre,index,struct,field)
 		end
 		result = result..showReadHsJ("",found,"").." ("
 		count = count + 1
+		list[#list+1] = found
 	end
 	if (type(field[4]) == "number") then
 		result = result..showReadHsJ("(Just ",field[4],")").." ("
 		count = count + 1
+		list[#list+1] = "(Just "..field[4]..")"
 	end
-	result = result..showReadHsK()..field[2].." idx"
+	result = result..showReadHsK(field[1],list)..field[2].." idx"
 	while (count > 0) do
 		result = result..")"
 		count = count - 1
@@ -1689,14 +1706,14 @@ function showReadHs(name,struct)
 	if showhide then
 		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
 		result = result.."hide"..name.." idx = do\n"
-		result = result.."    x <- fmap (\\x -> case x of; True -> Just True; False -> Nothing) (hideOpen \""..name.."\" idx)\n"
+		result = result.."    x <- hideOpen \""..name.."\" idx\n"
 	else
 		result = result.."read"..name.." :: Int -> IO "..name.."\n"
 		result = result.."read"..name.." idx = do\n"
 	end
 	result = result..showReadHsE(name,struct,extra)
 	if showhide then
-		result = result.."    y <- fmap (\\x -> case x of; True -> Just True; False -> Nothing) (hideClose idx)\n"
+		result = result.."    y <- hideClose idx\n"
 	end
 	result = result.."    "..showReadHsI(name,extra,{"x","y"})
 	return result
