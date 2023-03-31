@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Face where
 
@@ -169,6 +170,78 @@ writeNum a b = writeNumC (CDouble a) (fromIntegral b)
 writeOld :: Float -> Int -> IO ()
 writeOld a b = writeOldC (CFloat a) (fromIntegral b)
 
+class StrIO a where
+ choose :: IO a
+ wrap :: (a -> IO ()) -> IO (FunPtr (a -> IO()))
+ hide :: FunPtr (a -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
+ showt :: a -> CString -> FunPtr (CString -> IO ()) -> IO ()
+
+instance StrIO CString where
+ choose = newCString ""
+ wrap = wrapStr
+ hide = hideStrC
+ showt = showStrC
+instance StrIO CInt where
+ choose = return 0
+ wrap = wrapInt
+ hide = hideIntC
+ showt = showIntC
+instance StrIO CDouble where
+ choose = return 0
+ wrap = wrapNum
+ hide = hideNumC
+ showt = showNumC
+instance StrIO CLLong where
+ choose = return 0
+ wrap = wrapNew
+ hide = hideNewC
+ showt = showNewC
+instance StrIO CFloat where
+ choose = return 0
+ wrap = wrapOld
+ hide = hideOldC
+ showt = showOldC
+
+hideType :: StrIO a => IORef String -> IO (Maybe a)
+hideType c = do
+ cx <- readIORef c >>= newCString
+ d <- newIORef ""
+ dx <- wrapStr (wrapStrF d)
+ e <- choose >>= newIORef
+ ex <- wrap (\b -> writeIORef e b)
+ x <- hide ex cx dx
+ readIORef d >>= writeIORef c
+ case x of
+  0 -> return Nothing
+  1 -> fmap Just (readIORef e)
+
+hideStrF :: Maybe CString -> IO (Maybe String)
+hideStrF Nothing = return Nothing
+hideStrF (Just a) = peekCString a >>= return . Just
+hideIntF :: Maybe CInt -> IO (Maybe Int)
+hideIntF = return . fmap fromIntegral
+hideNumF :: Maybe CDouble -> IO (Maybe Double)
+hideNumF Nothing = return Nothing
+hideNumF (Just (CDouble a)) = return (Just a)
+hideNewF :: Maybe CLLong -> IO (Maybe Integer)
+hideNewF = return . fmap fromIntegral
+hideOldF :: Maybe CFloat -> IO (Maybe Float)
+hideOldF Nothing = return Nothing
+hideOldF (Just (CFloat a)) = return (Just a)
+
+hideDat :: IORef String -> IO (Maybe [Char])
+hideDat = undefined
+hideStr :: IORef String -> IO (Maybe String)
+hideStr a = hideType a >>= hideStrF
+hideInt :: IORef String -> IO (Maybe Int)
+hideInt a = hideType a >>= hideIntF
+hideNum :: IORef String -> IO (Maybe Double)
+hideNum a = hideType a >>= hideNumF
+hideNew :: IORef String -> IO (Maybe Integer)
+hideNew a = hideType a >>= hideNewF
+hideOld :: IORef String -> IO (Maybe Float)
+hideOld a = hideType a >>= hideOldF
+
 hideEnum :: String -> String -> IORef String -> IO Bool
 hideEnum a b c = do
  ax <- newCString a
@@ -214,35 +287,38 @@ hideField a b c = do
  case (fromIntegral x) of
   0 -> return False
   _ -> return True
-hideType :: (IORef a -> CString -> FunPtr (CString -> IO ()) -> IO Int) -> a -> IORef String -> IO (Maybe a)
-hideType i f c = do
- cx <- readIORef c >>= newCString -- src string
- d <- newIORef "" -- dst string ref
+
+showType :: StrIO a => a -> IORef String -> IO ()
+showType a c = do
+ cx <- readIORef c >>= newCString
+ d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
- e <- newIORef f -- val ref
- x <- i e cx dx
+ showt a cx dx
  readIORef d >>= writeIORef c
- case x of
-  0 -> return Nothing
-  1 -> fmap Just (readIORef e)
-x0 :: (x -> b) -> (a -> x) -> a -> b
-x0 f g a = f (g a)
-y2 :: (y -> b -> c -> IO d) -> (a -> IO y) -> a -> b -> c -> IO d
-y2 f g a c d = do
- b <- g a
- f b c d
-hideDat :: IORef String -> IO (Maybe [Char])
-hideDat = undefined
-hideStr :: IORef String -> IO (Maybe String)
-hideStr = hideType (y2 hideStrC (x0 wrapStr wrapStrF)) ""
-hideInt :: IORef String -> IO (Maybe Int)
-hideInt = hideType (y2 hideIntC (x0 wrapInt wrapIntF)) 0
-hideNum :: IORef String -> IO (Maybe Double)
-hideNum = hideType (y2 hideNumC (x0 wrapNum wrapNumF)) 0
-hideNew :: IORef String -> IO (Maybe Integer)
-hideNew = hideType (y2 hideNewC (x0 wrapNew wrapNewF)) 0
-hideOld :: IORef String -> IO (Maybe Float)
-hideOld = hideType (y2 hideOldC (x0 wrapOld wrapOldF)) 0
+
+showStrF :: String -> IO CString
+showStrF a = newCString a
+showIntF :: Int -> IO CInt
+showIntF a = return (fromIntegral a)
+showNumF :: Double -> IO CDouble
+showNumF a = return (CDouble a)
+showNewF :: Integer -> IO CLLong
+showNewF a = return (fromIntegral a)
+showOldF :: Float -> IO CFloat
+showOldF a = return (CFloat a)
+
+showDat :: [Char] -> IORef String -> IO ()
+showDat = undefined
+showStr :: String -> IORef String -> IO ()
+showStr a b = showStrF a >>= (\x -> showType x b)
+showInt :: Int -> IORef String -> IO ()
+showInt a b = showIntF a >>= (\x -> showType x b)
+showNum :: Double -> IORef String -> IO ()
+showNum a b = showNumF a >>= (\x -> showType x b)
+showNew :: Integer -> IORef String -> IO ()
+showNew a b = showNewF a >>= (\x -> showType x b)
+showOld :: Float -> IORef String -> IO ()
+showOld a b = showOldF a >>= (\x -> showType x b)
 
 showEnum :: String -> String -> IORef String -> IO ()
 showEnum a b c = do
@@ -276,15 +352,4 @@ showField a b c = do
  d <- newIORef ""
  dx <- wrapStr (wrapStrF d)
  showFieldC ax (fromIntegral (length b)) bx cx dx
-showDat :: [Char] -> IORef String -> IO ()
-showDat a b = undefined
-showStr :: String -> IORef String -> IO ()
-showStr a c = undefined
-showInt :: Int -> IORef String -> IO ()
-showInt a c = undefined
-showNum :: Double -> IORef String -> IO ()
-showNum a c = undefined
-showNew :: Integer -> IORef String -> IO ()
-showNew a c = undefined
-showOld :: Float -> IORef String -> IO ()
-showOld a c = undefined
+ readIORef d >>= writeIORef c
