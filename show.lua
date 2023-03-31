@@ -2046,9 +2046,6 @@ function showCodeLua(name,enum)
 	result = result.."--"
 	return result
 end
-function showHideLua(name,enum)
-	local result = ""
-end
 function showCondLua(struct,dset)
 	local cond = ""
 	local terms = 0
@@ -2087,6 +2084,7 @@ function showReadLua(name,struct)
 	local result = ""
 	if showhide then
 		result = result.."function".." hide"..name.."(str)\n"
+		result = result..showIndent(1).."vld,str = hideOpen(str,\""..name.."\"); if (vld == nil) then return nil,str end\n"
 	else
 		result = result.."function".." read"..name.."(idx)\n"
 	end
@@ -2100,6 +2098,7 @@ function showReadLua(name,struct)
 			conds = conds + 1
 			result = result..showIndent(count).."if "..cond.." ".."then".."\n"
 		end
+		local list = ""
 		local sub = ""
 		local sup = ""
 		local super = false
@@ -2122,6 +2121,7 @@ function showReadLua(name,struct)
 				result = result..showIndent(count).."local".." i"..count.." = 1\n"
 				result = result..showIndent(count).."while (i"..count.." <= "..field[4][dimen]..") do\n"
 				sub = sub.."[i"..count.."]"
+				list = list..",".."i"..count
 				if (count < limit) then sup = sup.."[i"..count.."]" end
 				super = true
 			end
@@ -2136,6 +2136,7 @@ function showReadLua(name,struct)
 			result = result..showIndent(count).."local".." i"..count.." = 1\n"
 			result = result..showIndent(count).."while (i"..count.." <= tab[\""..field[4].."\"]) do\n"
 			sub = sub.."[i"..count.."]"
+			list = list..",".."i"..count
 			super = true
 		end
 		if (type(field[4]) == "number") then
@@ -2144,10 +2145,11 @@ function showReadLua(name,struct)
 			result = result..showIndent(count).."local".." i"..count.." = ".."1\n"
 			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
 			sub = sub.."[i"..count.."]"
+			list = list..",".."i"..count
 			super = true
 		end
 		if showhide then
-			result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"..sub..", str = hide"..field[2].."(str); if (tab".."[\""..field[1].."\"]"..sub.." == nil) then return nil,str end\n"
+			result = result..showIndent(count+1).."vld,str = hideField(str,\""..field[1].."\""..list.."); if (vld == nil) then return nil,str end; tab".."[\""..field[1].."\"]"..sub..", str = hide"..field[2].."(str); if (tab".."[\""..field[1].."\"]"..sub.." == nil) then return nil,str end\n"
 		else
 			result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"..sub.." = ".."read"..field[2].."(idx)\n"
 		end
@@ -2161,6 +2163,7 @@ function showReadLua(name,struct)
 		end
 	end
 	if showhide then
+		result = result..showIndent(1).."vld,str = hideClose(str); if (vld == nil) then return nil,str end\n"
 		result = result..showIndent(1).."return tab,str\n"
 	else
 		result = result..showIndent(1).."return tab\n"
