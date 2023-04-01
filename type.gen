@@ -511,8 +511,9 @@ function showTypeHs()
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
 	result = result.."import Data.IORef\n"
+	result = result.."import Foreign.C.Types\n"
 	result = result.."--\n"
-	result = result.."type Dat = [Char] -- TODO\n"
+	result = result.."type Dat = [CChar]\n"
 	result = result..showCallHs()
 	return result
 end

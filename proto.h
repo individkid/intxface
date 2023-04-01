@@ -38,6 +38,7 @@ typedef void (*hgtype)(int val); // haskell wrapper
 typedef void (*hhtype)(double val); // haskell wrapper
 typedef void (*hitype)(long long val); // haskell wrapper
 typedef void (*hjtype)(float val); // haskell wrapper
+typedef void (*hktype)(int len, const char *val); // haskell wrapper
 typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
 typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
 typedef int (*fgtype)(const char *str, int len, int idx);

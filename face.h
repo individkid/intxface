@@ -96,6 +96,8 @@ int hideOld(float *val, const char *str, int *len);
 int hideStr(char* *val, const char *str, int *len);
 int hideDat(void **val, const char *str, int *siz);
 void readStrHs(hftype fnc, int idx);
+void readDatHs(hktype fnc, int idx);
+void writeDatHs(int len, const char *val, int idx);
 int hideEnumHs(const char *typ, const char *val, const char *str, hftype fnc);
 int hideOpenHs(const char *typ, const char *str, hftype fnc);
 int hideCloseHs(const char *str, hftype fnc);
