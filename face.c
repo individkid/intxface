@@ -1560,6 +1560,12 @@ int readIntLua(lua_State *lua)
 	lua_pushnumber(lua,readInt((int)lua_tonumber(lua,1)));
 	return 1;
 }
+int readInt32Lua(lua_State *lua)
+{
+	luaerr = lua;
+	lua_pushnumber(lua,readInt32((int)lua_tonumber(lua,1)));
+	return 1;
+}
 int readNumLua(lua_State *lua)
 {
 	luaerr = lua;
@@ -1594,6 +1600,12 @@ int writeIntLua(lua_State *lua)
 {
 	luaerr = lua;
 	writeInt((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
+	return 0;
+}
+int writeInt32Lua(lua_State *lua)
+{
+	luaerr = lua;
+	writeInt32((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
 	return 0;
 }
 int writeNumLua(lua_State *lua)
@@ -1680,6 +1692,18 @@ int hideIntLua(lua_State *lua)
 	char *str = strdup(lua_tostring(lua,1));
 	luaerr = lua;
 	if (hideInt(&val,str,&siz))
+	lua_pushnumber(lua,val); else lua_pushnil(lua);
+	lua_pushstring(lua,str+siz);
+	free(str);
+	return 2;
+}
+int hideInt32Lua(lua_State *lua)
+{
+	int32_t val = 0;
+	int siz = 0;
+	char *str = strdup(lua_tostring(lua,1));
+	luaerr = lua;
+	if (hideInt32(&val,str,&siz))
 	lua_pushnumber(lua,val); else lua_pushnil(lua);
 	lua_pushstring(lua,str+siz);
 	free(str);
@@ -1788,6 +1812,15 @@ int showIntLua(lua_State *lua)
 	lua_pushstring(lua,str);
 	return 1;
 }
+int showInt32Lua(lua_State *lua)
+{
+	int siz = 0;
+	char *str = 0;
+	luaerr = lua;
+	showInt32(lua_tonumber(lua,1),&str,&siz);
+	lua_pushstring(lua,str);
+	return 1;
+}
 int showNumLua(lua_State *lua)
 {
 	int siz = 0;
@@ -1875,6 +1908,7 @@ int luaopen_face (lua_State *L)
 	// lua_pushcfunction(L, readDatLua); lua_setglobal(L, "readDat"); // TODO
 	lua_pushcfunction(L, readChrLua); lua_setglobal(L, "readChr");
 	lua_pushcfunction(L, readIntLua); lua_setglobal(L, "readInt");
+	lua_pushcfunction(L, readInt32Lua); lua_setglobal(L, "readInt32");
 	lua_pushcfunction(L, readNumLua); lua_setglobal(L, "readNum");
 	lua_pushcfunction(L, readNewLua); lua_setglobal(L, "readNew");
 	lua_pushcfunction(L, readOldLua); lua_setglobal(L, "readOld");
@@ -1882,6 +1916,7 @@ int luaopen_face (lua_State *L)
 	// lua_pushcfunction(L, writeDatLua); lua_setglobal(L, "writeDat"); // TODO
 	lua_pushcfunction(L, writeChrLua); lua_setglobal(L, "writeChr");
 	lua_pushcfunction(L, writeIntLua); lua_setglobal(L, "writeInt");
+	lua_pushcfunction(L, writeInt32Lua); lua_setglobal(L, "writeInt32");
 	lua_pushcfunction(L, writeNumLua); lua_setglobal(L, "writeNum");
 	lua_pushcfunction(L, writeNewLua); lua_setglobal(L, "writeNew");
 	lua_pushcfunction(L, writeOldLua); lua_setglobal(L, "writeOld");
@@ -1892,6 +1927,7 @@ int luaopen_face (lua_State *L)
 	lua_pushcfunction(L, hideStrLua); lua_setglobal(L, "hideStr");
 	// lua_pushcfunction(L, hideDatLua); lua_setglobal(L, "hideDat"); // TODO
 	lua_pushcfunction(L, hideIntLua); lua_setglobal(L, "hideInt");
+	lua_pushcfunction(L, hideInt32Lua); lua_setglobal(L, "hideInt32");
 	lua_pushcfunction(L, hideNumLua); lua_setglobal(L, "hideNum");
 	lua_pushcfunction(L, hideNewLua); lua_setglobal(L, "hideNew");
 	lua_pushcfunction(L, hideOldLua); lua_setglobal(L, "hideOld");
@@ -1902,6 +1938,7 @@ int luaopen_face (lua_State *L)
 	lua_pushcfunction(L, showStrLua); lua_setglobal(L, "showStr");
 	// lua_pushcfunction(L, showDatLua); lua_setglobal(L, "showDat"); // TODO
 	lua_pushcfunction(L, showIntLua); lua_setglobal(L, "showInt");
+	lua_pushcfunction(L, showInt32Lua); lua_setglobal(L, "showInt32");
 	lua_pushcfunction(L, showNumLua); lua_setglobal(L, "showNum");
 	lua_pushcfunction(L, showNewLua); lua_setglobal(L, "showNew");
 	lua_pushcfunction(L, showOldLua); lua_setglobal(L, "showOld");
