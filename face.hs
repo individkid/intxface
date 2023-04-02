@@ -31,6 +31,11 @@ foreign import ccall "openFifo" openFifoC :: CString -> IO CInt
 foreign import ccall "openFile" openFileC :: CString -> IO CInt
 foreign import ccall "forkExec" forkExecC :: CString -> IO CInt
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO CInt
+foreign import ccall "openFork" openForkC :: IO CInt
+foreign import ccall "openCheck" openCheckC :: CInt -> IO CInt
+foreign import ccall "openRdfd" openRdfd :: CInt -> IO CInt
+foreign import ccall "openWrfd" openWrfd :: CInt -> IO CInt
+foreign import ccall "openExec" openExecC :: CString -> CString -> IO CInt
 foreign import ccall "waitRead" waitReadC :: Double -> CInt -> IO CInt
 foreign import ccall "callInit" callInitC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "pollPipe" pollPipeC :: CInt -> IO CInt

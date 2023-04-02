@@ -154,7 +154,7 @@ struct Function protoTypeKf(kftype fnc);
 struct Function protoTypeTf(tftype fnc);
 struct Function protoTypeLf(lftype fnc);
 
-struct Argument {
+struct Parameter {
 	enum {
 		Iatype,
 		Satype,
@@ -168,21 +168,22 @@ struct Argument {
 	};
 	int la;
 };
-void protoMake(struct Argument *arg);
-void protoMakeIf(struct Argument *arg, int val);
-void protoMakeSf(struct Argument *arg, const char *val);
-void protoMakeLf(struct Argument *arg, const void *val, int len);
-void protoMakePf(struct Argument *arg, void *val);
+void protoMake(struct Parameter *arg);
+void protoMakeIf(struct Parameter *arg, int val);
+void protoMakeSf(struct Parameter *arg, const char *val);
+void protoMakeLf(struct Parameter *arg, const void *val, int len);
+void protoMakePf(struct Parameter *arg, void *val);
 
 struct Closure {
 	int na,nb;
-	struct Argument *aa,*ab;
+	struct Parameter *aa,*ab;
 };
 const struct Closure *protoClose(int na, int nb);
 const struct Closure *protoCloseCf(int idx);
 const struct Closure *protoCloseEf(const char *str, int num, int idx);
 const struct Closure *protoClosePf(int idx, int nbyte);
 const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte);
+const struct Closure *protoCloseGf(const char *one, const char *oth);
 const struct Closure *protoCloseRf(int arg);
 const struct Closure *protoCloseRg();
 const struct Closure *protoCloseBf(const char *arg);
@@ -192,6 +193,7 @@ void protoResultCf();
 void protoResultEf();
 int protoResultPf(void *buf);
 int protoResultQf();
+int protoResultGf();
 int protoResultRf();
 int protoResultRg();
 const char *protoResultBf();

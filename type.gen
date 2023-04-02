@@ -222,7 +222,7 @@ Logic = { -- Data-elem for datx.c
 	"ImmYld",
 	"SetJmp",
 }
-Proc = { -- Cess-tag for show.c
+Process = { -- Argument-tag for show.c
 	"Filez",
 	"Holez",
 	"Linez",
@@ -269,17 +269,17 @@ Bootstrap = {
 	")"},
 }
 Execname = {
-	{"Proc","Filez","Str","./file"},
-	{"Proc","Holez","Str","./hole"},
-	{"Proc","Linez","Str","./line"},
-	{"Proc","Planez","Str","./plane"},
-	{"Proc","Spacez","Str","./space"},
-	{"Proc","Pagez","Str","./page"},
-	{"Proc","Pipez","Str","./pipe"},
-	{"Proc","Framez","Str","./frame"},
-	{"Proc","Wavez","Str","./wave"},
-	{"Proc","Tapez","Str","./tape"},
-	{"Proc","Phonez","Str","./phone"},
+	{"Process","Filez","Str","./file"},
+	{"Process","Holez","Str","./hole"},
+	{"Process","Linez","Str","./line"},
+	{"Process","Planez","Str","./plane"},
+	{"Process","Spacez","Str","./space"},
+	{"Process","Pagez","Str","./page"},
+	{"Process","Pipez","Str","./pipe"},
+	{"Process","Framez","Str","./frame"},
+	{"Process","Wavez","Str","./wave"},
+	{"Process","Tapez","Str","./tape"},
+	{"Process","Phonez","Str","./phone"},
 }
 --HERE Structs
 File = {
@@ -476,8 +476,8 @@ Data = {
 	{"opc","Logic",{},"len"},
 	{"dat","Dat",{},{}},
 }
-Cess = {
-	{"pro","Proc",{},{}},
+Argument = {
+	{"pro","Process",{},{}},
 	{"inp","Int",{},{}},
 	{"out","Int",{},{}},
 }

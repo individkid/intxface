@@ -84,7 +84,7 @@ int luaxClose(const struct Closure *fnc)
 	size_t len = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	for (int i = 0; i < fnc->na; i++) {
-		struct Argument *arg = fnc->aa+i;
+		struct Parameter *arg = fnc->aa+i;
 		switch (arg->at) {
 		case (Iatype): lua_pushinteger(luastate,arg->ia); break;
 		case (Satype): lua_pushstring(luastate,arg->sa); break;
@@ -93,7 +93,7 @@ int luaxClose(const struct Closure *fnc)
 		default: ERROR();}}
 	if (lua_pcall(luastate,fnc->na,fnc->nb,0) != LUA_OK) {luaxErr(); return -1;}
 	for (int i = 0; i < fnc->nb; i++) {
-		struct Argument *arg = fnc->ab+i;
+		struct Parameter *arg = fnc->ab+i;
 		switch (arg->at) {
 		case (Iatype): protoMakeIf(arg,lua_tonumber(luastate,i+1)); break;
 		case (Satype): ptr = lua_tostring(luastate,i+1); protoMakeSf(arg,ptr); break;

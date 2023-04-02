@@ -45,9 +45,6 @@ int atoms[NUMOPEN] = {0};
 int atomz[NUMOPEN] = {0};
 int bufsize = BUFSIZE;
 
-// double callback buffer
-char *prep = 0;
-
 // server address for checking if already connected
 struct sockaddr_in6 addr[NUMINET] = {0};
 int mad = 0;
@@ -302,7 +299,23 @@ int forkExec(const char *exe)
 	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERRFNC(lim);
 	return val;
 }
-int openFork(const char *exe, cgtype fnc)
+int pipeInit(const char *av1, const char *av2)
+{
+	int val, rfd, wfd;
+	if (!av1 || !av2) return -1;
+	val = sscanf(av1,"%d",&rfd); if (val != 1) return -1;
+	val = sscanf(av2,"%d",&wfd); if (val != 1) return -1;
+	if (lim == NUMOPEN) return -1;
+	inp[lim] = rfd;
+	out[lim] = wfd;
+	fdt[lim] = Wait;
+	pid[lim] = 0;
+	rfn[lim] = 0;
+	wfn[lim] = 0;
+	sig_t fnc = signal(SIGPIPE,SIG_IGN); if (fnc == SIG_ERR) ERRFNC(lim);
+	return lim++;
+}
+int openFork()
 {
 	int c2p[2], p2c[2], val;
 	if (lim == NUMOPEN) return -1;
@@ -312,10 +325,10 @@ int openFork(const char *exe, cgtype fnc)
 	if (pid[lim] == 0) {
 		val = close(c2p[0]); if (val < 0) return -1;
 		val = close(p2c[1]); if (val < 0) return -1;
-		fnc(p2c[0],c2p[1]);
-		val = execl(exe,exe,prep,0); if (val < 0) return -1;
-		return -1;}
-        if (pid[lim] == -1) return -1;
+		inp[lim] = p2c[0];
+		out[lim] = c2p[1];
+		return lim;}
+	if (pid[lim] == -1) return -1;
 	val = close(c2p[1]); if (val < 0) return -1;
 	val = close(p2c[0]); if (val < 0) return -1;
 	inp[lim] = c2p[0];
@@ -327,17 +340,28 @@ int openFork(const char *exe, cgtype fnc)
 	sig_t tmp = signal(SIGPIPE,SIG_IGN); if (tmp == SIG_ERR) ERRFNC(lim);
 	return val;
 }
-void openExec(const char *pre)
+int openCheck(int idx)
 {
-	if (prep) {free(prep); prep = 0;}
-	prep = strdup(pre);
+	if (idx != lim) return -1;
+	return 1;
 }
-int pipeInit(const char *av1, const char *av2)
+int openRdfd(int idx)
 {
-	int val, rfd, wfd;
-	if (!av1 || !av2) return -1;
-	val = sscanf(av1,"%d",&rfd); if (val != 1) return -1;
-	val = sscanf(av2,"%d",&wfd); if (val != 1) return -1;
+	if (idx != lim) return -1;
+	return inp[lim];
+}
+int openWrfd(int idx)
+{
+	if (idx != lim) return -1;
+	return out[lim];
+}
+int openExec(const char *exe, const char *arg)
+{
+	execl(exe,exe,arg,0);
+	return -1;
+}
+int rdwrInit(int rfd, int wfd)
+{
 	if (lim == NUMOPEN) return -1;
 	inp[lim] = rfd;
 	out[lim] = wfd;
@@ -1896,6 +1920,11 @@ int luaopen_face (lua_State *L)
 	luaxExtend(L,"openInet",protoTypeGf(openInet));
 	luaxExtend(L,"forkExec",protoTypeFf(forkExec));
 	luaxExtend(L,"pipeInit",protoTypeGf(pipeInit));
+	luaxExtend(L,"openFork",protoTypeRg(openFork));
+	luaxExtend(L,"openCheck",protoTypeRf(openCheck));
+	luaxExtend(L,"openRdfd",protoTypeRf(openRdfd));
+	luaxExtend(L,"openWrfd",protoTypeRf(openWrfd));
+	luaxExtend(L,"openExec",protoTypeGf(openExec));
 	lua_pushcfunction(L, waitReadLua); lua_setglobal(L, "waitRead");
 	lua_pushcfunction(L, waitExitLua); lua_setglobal(L, "waitExit");
 	lua_pushcfunction(L, pollPipeLua); lua_setglobal(L, "pollPipe");

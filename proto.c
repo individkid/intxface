@@ -115,7 +115,7 @@ struct Function protoTypeLf(lftype fnc)
 	struct Function ret = {.ft = Lftype, {.lf = fnc}}; return ret;
 }
 
-void protoMake(struct Argument *arg)
+void protoMake(struct Parameter *arg)
 {
 	switch (arg->at) {
 	case (Iatype): arg->ia = 0; break;
@@ -124,20 +124,20 @@ void protoMake(struct Argument *arg)
 	case (Patype): arg->pa = 0; break;
 	default: break;}
 }
-void protoMakeIf(struct Argument *arg, int val)
+void protoMakeIf(struct Parameter *arg, int val)
 {
 	protoMake(arg);
 	arg->at = Iatype;
 	arg->ia = val;
 }
-void protoMakeSf(struct Argument *arg, const char *val)
+void protoMakeSf(struct Parameter *arg, const char *val)
 {
 	protoMake(arg);
 	arg->at = Satype;
 	arg->sa = malloc(strlen(val)+1);
 	strcpy(arg->sa,val);
 }
-void protoMakeLf(struct Argument *arg, const void *val, int len)
+void protoMakeLf(struct Parameter *arg, const void *val, int len)
 {
 	protoMake(arg);
 	arg->at = Latype;
@@ -145,7 +145,7 @@ void protoMakeLf(struct Argument *arg, const void *val, int len)
 	memcpy(arg->sa,val,len);
 	arg->la = len;
 }
-void protoMakePf(struct Argument *arg, void *val)
+void protoMakePf(struct Parameter *arg, void *val)
 {
 	protoMake(arg);
 	arg->at = Patype;
@@ -154,12 +154,12 @@ void protoMakePf(struct Argument *arg, void *val)
 
 const struct Closure *protoClose(int na, int nb)
 {
-	struct Argument zero = {0};
+	struct Parameter zero = {0};
 	for (int i = 0; i < argbuf.na; i++) protoMake(argbuf.aa+i);
-	free(argbuf.aa); argbuf.aa = malloc(sizeof(struct Argument)*na); argbuf.na = na;
+	free(argbuf.aa); argbuf.aa = malloc(sizeof(struct Parameter)*na); argbuf.na = na;
 	for (int i = 0; i < argbuf.na; i++) argbuf.aa[i] = zero;
 	for (int i = 0; i < argbuf.nb; i++) protoMake(argbuf.ab+i);
-	free(argbuf.ab); argbuf.ab = malloc(sizeof(struct Argument)*nb); argbuf.nb = nb;
+	free(argbuf.ab); argbuf.ab = malloc(sizeof(struct Parameter)*nb); argbuf.nb = nb;
 	for (int i = 0; i < argbuf.nb; i++) argbuf.ab[i] = zero;
 	return &argbuf;
 }

@@ -2021,7 +2021,7 @@ function showCodeLua(name,enum)
 	if showhide then
 		result = result.."function hide"..name.."(str)\n"
 		for key,val in ipairs(enum) do
-			result = result..showIndent(1).."val,str = hideEnum(\""..name.."\",\""..val.."\",str); if not (val == nil) then return val,str end\n"
+			result = result..showIndent(1).."val,str = hideEnum(\""..name.."\",\""..val.."\",str); if not (val == nil) then return \""..val.."\",str end\n"
 		end
 		result = result..showIndent(1).."return nil,str\n"
 		result = result.."end\n"
@@ -2189,7 +2189,7 @@ function showWriteLua(name,struct)
 	local result = ""
 	if showhide then
 		result = result.."function show"..name.."(tab,str)\n"
-		result = result..showIndent(1).."str = str..showOpen(\""..name.."\")\n"
+		result = result..showIndent(1).."str = showOpen(\""..name.."\")\n"
 	else
 		result = result.."function write"..name.."(tab,idx)\n"
 	end
