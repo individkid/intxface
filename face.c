@@ -1392,9 +1392,17 @@ void showStrHs(const char *val, const char *str, hftype fnc)
 	fnc(tmp);
 	free(tmp);
 }
-void showDatHs(int len, const char *val, const char *str, hftype fnc)
+void showDatHs(int siz, const char *val, const char *str, hftype fnc)
 {
-	// TODO
+	int len = strlen(str);
+	char *tmp = strdup(str);
+	char *cpy = malloc(siz+sizeof(int));
+	*(int*)cpy = siz;
+	memcpy(cpy+sizeof(int),val,siz);
+	showDat(cpy,&tmp,&len);
+	fnc(tmp);
+	free(tmp);
+	free(cpy);
 }
 void showIntHs(int val, const char *str, hftype fnc)
 {
