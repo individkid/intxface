@@ -156,6 +156,8 @@ function showStructCI(field)
 		result = "char"
 	elseif (field[2] == "Int") then
 		result = "int"
+	elseif (field[2] == "Int32") then
+		result = "int32_t"
 	elseif (field[2] == "New") then
 		result = "long long"
 	elseif (field[2] == "Num") then
@@ -554,6 +556,7 @@ end
 randChr = 1
 randInt = 10
 randNew = 100
+randInt32 = 1000
 randNum = 0.1
 randOld = 0.2
 function showRandCJ(pre,field,sub,arg,post)
@@ -566,6 +569,9 @@ function showRandCJ(pre,field,sub,arg,post)
 	elseif (field[2] == "Int") then
 		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt..";"..post)
 		randInt = randInt + 1;
+	elseif (field[2] == "Int32") then
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt32..";"..post)
+		randInt32 = randInt32 + 1;
 	elseif (field[2] == "New") then
 		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randNew..";"..post)
 		randNew = randNew + 1;
@@ -596,7 +602,7 @@ end
 function showCompCJ(pre,field,sub,arg,post)
 	if (Structz[field[2]]~=nil) then
 		coroutine.yield(pre.."if (!comp"..field[2].."(&ptr->"..field[1]..sub..", &cmp->"..field[1]..sub..")) return 0;"..post)
-	elseif (field[2] == "Chr") or (field[2] == "Int") or (field[2] == "New") or (field[2] == "Num") or (field[2] == "Old") or (Enumz[field[2]]~=nil) then
+	elseif (field[2] == "Chr") or (field[2] == "Int") or (field[2] == "Int32") or (field[2] == "New") or (field[2] == "Num") or (field[2] == "Old") or (Enumz[field[2]]~=nil) then
 		coroutine.yield(pre.."if (ptr->"..field[1]..sub.." != cmp->"..field[1]..sub..") return 0;"..post)
 	elseif (field[2] == "Str") then
 		coroutine.yield(pre.."if (strcmp(ptr->"..field[1]..sub..",cmp->"..field[1]..sub..") != 0) return 0;"..post)
@@ -629,6 +635,8 @@ function showSizeCJ(pre,field,sub,arg,post)
 		coroutine.yield(pre.."result = result + sizeof(char);"..post)
 	elseif (field[2] == "Int") then
 		coroutine.yield(pre.."result = result + sizeof(int);"..post)
+	elseif (field[2] == "Int32") then
+		coroutine.yield(pre.."result = result + sizeof(int32_t);"..post)
 	elseif (field[2] == "New") then
 		coroutine.yield(pre.."result = result + sizeof(long long);"..post)
 	elseif (field[2] == "Num") then
@@ -843,6 +851,8 @@ function showTypeCF(type)
 		result = result.."char"
 	elseif (type == "Int") then
 		result = result.."int"
+	elseif (type == "Int32") then
+		result = result.."int32_t"
 	elseif (type == "New") then
 		result = result.."long long"
 	elseif (type == "Num") then
@@ -1153,6 +1163,8 @@ function showStructHsJ(name,pre,post)
 		result = result..pre.."Char"..post
 	elseif (name == "Int") then
 		result = result..pre.."Int"..post
+	elseif (name == "Int32") then
+		result = result..pre.."Int32"..post
 	elseif (name == "New") then
 		result = result..pre.."Integer"..post
 	elseif (name == "Num") then
@@ -2289,10 +2301,10 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showSizeC).."\n"
 	result = result..showCall(Structs,Structz,showShowSC).."\n"
 	result = result..showCall(Structs,Structz,showHideSC).."\n"
-	result = result..showRtypeC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showWtypeC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showLtypeC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showIdentC(listFlatten({{"Chr","Int","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showRtypeC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showWtypeC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showLtypeC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showIdentC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
 	result = result..showRfieldC(Structs,Structz).."\n"
 	result = result..showWfieldC(Structs,Structz).."\n"
 	result = result..showIfieldC(Structs,Structz).."\n"

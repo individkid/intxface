@@ -8,6 +8,7 @@ import Foreign.C.String
 import Foreign.Ptr
 import Foreign.Marshal.Array
 import Data.IORef
+import Data.Int
 import System.Environment
 import System.Exit
 
@@ -16,6 +17,7 @@ foreign import ccall "wrapper" wrapErr :: (CString -> CInt -> CInt -> IO ()) -> 
 foreign import ccall "wrapper" wrapStr :: (CString -> IO ()) -> IO (FunPtr (CString -> IO ()))
 foreign import ccall "wrapper" wrapDat :: (CInt -> Ptr CChar -> IO ()) -> IO (FunPtr (CInt -> Ptr CChar -> IO ()))
 foreign import ccall "wrapper" wrapInt :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
+foreign import ccall "wrapper" wrapInt32 :: (Int32 -> IO ()) -> IO (FunPtr (Int32 -> IO ()))
 foreign import ccall "wrapper" wrapNum :: (CDouble -> IO ()) -> IO (FunPtr (CDouble -> IO ()))
 foreign import ccall "wrapper" wrapNew :: (CLLong -> IO ()) -> IO (FunPtr (CLLong -> IO ()))
 foreign import ccall "wrapper" wrapOld :: (CFloat -> IO ()) -> IO (FunPtr (CFloat -> IO ()))
@@ -48,6 +50,7 @@ foreign import ccall "readStrHs" readStrC :: FunPtr (CString -> IO ()) -> CInt -
 foreign import ccall "readDatHs" readDatC :: FunPtr (CInt -> Ptr CChar -> IO ()) -> CInt -> IO ()
 foreign import ccall "readChr" readChrC :: CInt -> IO CChar
 foreign import ccall "readInt" readIntC :: CInt -> IO CInt
+foreign import ccall "readInt32" readInt32C :: CInt -> IO Int32
 foreign import ccall "readNew" readNewC :: CInt -> IO CLLong
 foreign import ccall "readNum" readNumC :: CInt -> IO CDouble
 foreign import ccall "readOld" readOldC :: CInt -> IO CFloat
@@ -55,6 +58,7 @@ foreign import ccall "writeStr" writeStrC :: CString -> CInt -> IO ()
 foreign import ccall "writeDatHs" writeDatC :: CInt -> Ptr CChar -> CInt -> IO ()
 foreign import ccall "writeChr" writeChrC :: CChar -> CInt -> IO ()
 foreign import ccall "writeInt" writeIntC :: CInt -> CInt -> IO ()
+foreign import ccall "writeInt32" writeInt32C :: Int32 -> CInt -> IO ()
 foreign import ccall "writeNew" writeNewC :: CLLong -> CInt -> IO ()
 foreign import ccall "writeNum" writeNumC :: CDouble -> CInt -> IO ()
 foreign import ccall "writeOld" writeOldC :: CFloat -> CInt -> IO ()
@@ -66,6 +70,7 @@ foreign import ccall "hideFieldHs" hideFieldC :: CString -> CInt -> Ptr CInt -> 
 foreign import ccall "hideStrHs" hideStrC :: FunPtr (CString -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideDatHs" hideDatC :: FunPtr (CInt -> Ptr CChar -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideIntHs" hideIntC :: FunPtr (CInt -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
+foreign import ccall "hideInt32Hs" hideInt32C :: FunPtr (Int32 -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideNumHs" hideNumC :: FunPtr (CDouble -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideNewHs" hideNewC :: FunPtr (CLLong -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideOldHs" hideOldC :: FunPtr (CFloat -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
@@ -77,6 +82,7 @@ foreign import ccall "showFieldHs" showFieldC :: CString -> CInt -> Ptr CInt -> 
 foreign import ccall "showStrHs" showStrC :: CString -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showDatHs" showDatC :: CInt -> Ptr CChar -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showIntHs" showIntC :: CInt -> CString -> FunPtr (CString -> IO ()) -> IO ()
+foreign import ccall "showInt32Hs" showInt32C :: Int32 -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showNumHs" showNumC :: CDouble -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showNewHs" showNewC :: CLLong -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showOldHs" showOldC :: CFloat -> CString -> FunPtr (CString -> IO ()) -> IO ()
@@ -146,6 +152,8 @@ readChr :: Int -> IO Char
 readChr a = fmap castCCharToChar (readChrC (fromIntegral a))
 readInt :: Int -> IO Int
 readInt a = fmap fromIntegral (readIntC (fromIntegral a))
+readInt32 :: Int -> IO Int32
+readInt32 a = readInt32C (fromIntegral a)
 readNew :: Int -> IO Integer
 readNew a = fmap toInteger (readNewC (fromIntegral a))
 readNum :: Int -> IO Double
@@ -161,6 +169,8 @@ writeChr :: Char -> Int -> IO ()
 writeChr a b = writeChrC (castCharToCChar a) (fromIntegral b)
 writeInt :: Int -> Int -> IO ()
 writeInt a b = writeIntC (fromIntegral a) (fromIntegral b)
+writeInt32 :: Int32 -> Int -> IO ()
+writeInt32 a b = writeInt32C a (fromIntegral b)
 writeNew :: Integer -> Int -> IO ()
 writeNew a b = writeNewC (fromInteger a) (fromIntegral b)
 writeNum :: Double -> Int -> IO ()
@@ -184,6 +194,11 @@ instance StrIO CInt where
  wrap = wrapInt
  hide = hideIntC
  showt = showIntC
+instance StrIO Int32 where
+ choose = return 0
+ wrap = wrapInt32
+ hide = hideInt32C
+ showt = showInt32C
 instance StrIO CDouble where
  choose = return 0
  wrap = wrapNum
@@ -241,6 +256,8 @@ hideStr :: IORef String -> IO (Maybe String)
 hideStr a = hideType a >>= hideStrF
 hideInt :: IORef String -> IO (Maybe Int)
 hideInt a = hideType a >>= hideIntF
+hideInt32 :: IORef String -> IO (Maybe Int32)
+hideInt32 a = hideType a
 hideNum :: IORef String -> IO (Maybe Double)
 hideNum a = hideType a >>= hideNumF
 hideNew :: IORef String -> IO (Maybe Integer)
@@ -316,6 +333,8 @@ showStr :: String -> IORef String -> IO ()
 showStr a b = showStrF a >>= (\x -> showType x b)
 showInt :: Int -> IORef String -> IO ()
 showInt a b = showIntF a >>= (\x -> showType x b)
+showInt32 :: Int32 -> IORef String -> IO ()
+showInt32 a b = showType a b
 showNum :: Double -> IORef String -> IO ()
 showNum a b = showNumF a >>= (\x -> showType x b)
 showNew :: Integer -> IORef String -> IO ()

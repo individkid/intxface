@@ -388,28 +388,28 @@ Uniform = {
 }
 -- TODO Int32 type
 Triangle = {
-	{"vtx","Int",{},{4}}, -- points of triangle
-	{"num","Int",{},{}}, -- plane of points
-	{"tex","Int",{},{}}, -- texture of triangle
-	{"pol","Int",{},{}}, -- polytope triangle is in
-	{"pad","Int",{},{}},
+	{"vtx","Int32",{},{4}}, -- points of triangle
+	{"num","Int32",{},{}}, -- plane of points
+	{"tex","Int32",{},{}}, -- texture of triangle
+	{"pol","Int32",{},{}}, -- polytope triangle is in
+	{"pad","Int32",{},{}},
 }
 Numeric = {
 	{"vec","Old",{},{4}}, -- distances above basis
-	{"bas","Int",{},{}}, -- basis selector
-	{"pad","Int",{},{3}},
+	{"bas","Int32",{},{}}, -- basis selector
+	{"pad","Int32",{},{3}},
 }
 Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
-	{"ref","Int",{},{3}}, -- backreference to planes
-	{"pad","Int",{},{}},
+	{"ref","Int32",{},{3}}, -- backreference to planes
+	{"pad","Int32",{},{}},
 }
 Pierce = {
 	{"fix","Old",{},{4}},
 	{"nml","Old",{},{4}},
-	{"vld","Int",{},{}},
-	{"idx","Int",{},{}},
-	{"pad","Int",{},{2}},
+	{"vld","Int32",{},{}},
+	{"idx","Int32",{},{}},
+	{"pad","Int32",{},{2}},
 }
 Vector = {
 	{"vec","Old",{},{4}},
@@ -511,6 +511,7 @@ function showTypeHs()
 	result = result.."import System.Environment\n"
 	result = result.."import System.Exit\n"
 	result = result.."import Data.IORef\n"
+	result = result.."import Data.Int\n"
 	result = result.."import Foreign.C.Types\n"
 	result = result.."--\n"
 	result = result.."type Dat = [CChar]\n"

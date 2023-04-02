@@ -619,6 +619,14 @@ void appendInt(int **ptr, int val, int *siz)
 	resizeInt(ptr,(*siz),(*siz)+1);
 	(*ptr)[(*siz)++] = val;
 }
+void allocInt32(int32_t **ptr, int siz)
+{
+	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
+	if (siz == 0) return;
+	*ptr = malloc(siz*sizeof(int32_t));
+	if (*ptr == 0) ERRFNC(-1);
+	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
+}
 void allocNew(long long **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
@@ -782,6 +790,19 @@ int readInt(int idx)
 	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
+int32_t readInt32(int idx)
+{
+	int32_t arg;
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
+	int val = 0;
+	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(int32_t));
+	else val = read(inp[idx],(char *)&arg,sizeof(int32_t));
+	if (val < 0 && errno == EINTR) INTRFN() else break;}
+	if (val != 0 && val < (int)sizeof(int32_t)) ERRFNC(idx);
+	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
+	if (val == 0) {arg = 0; NOTICE(idx);}
+	return arg;
+}
 double readNum(int idx)
 {
 	double arg;
@@ -877,6 +898,12 @@ void writeInt(int arg, int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(int), idx);
 	if (val < (int)sizeof(int)) ERRFNC(idx);
+}
+void writeInt32(int32_t arg, int idx)
+{
+	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
+	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(int32_t), idx);
+	if (val < (int)sizeof(int32_t)) ERRFNC(idx);
 }
 void writeNum(double arg, int idx)
 {
@@ -977,6 +1004,18 @@ void showInt(int val, char **str, int *siz)
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Int(%d)",val) < 0) ERRFNC(-1);
+	num = strlen(tmp);
+	*str = realloc(*str,*siz+num+1);
+	if (*str == 0) ERRFNC(-1);
+	memcpy(*str+*siz,tmp,num+1);
+	free(tmp);
+	*siz += num;
+}
+void showInt32(int32_t val, char **str, int *siz)
+{
+	char *tmp = 0;
+	int num;
+	if (asprintf(&tmp,"Int32(%ld)",(long)val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	*str = realloc(*str,*siz+num+1);
 	if (*str == 0) ERRFNC(-1);
@@ -1134,6 +1173,15 @@ int hideInt(int *val, const char *str, int *siz)
 	*siz += num;
 	return 1;
 }
+int hideInt32(int32_t *val, const char *str, int *siz)
+{
+	int num = -1;
+	long tmp = 0;
+	sscanf(str+*siz," Int32 ( %ld )%n",&tmp,&num);
+	if (num == -1) return 0;
+	*val = tmp; *siz += num;
+	return 1;
+}
 int hideNew(long long *val, const char *str, int *siz)
 {
 	int num = -1;
@@ -1271,6 +1319,14 @@ int hideIntHs(hgtype val, const char *str, hftype fnc)
 	if (ret) {val(tmp); fnc(str+len);}
 	return ret;
 }
+int hideInt32Hs(hltype val, const char *str, hftype fnc)
+{
+	int32_t tmp = 0;
+	int len = 0;
+	int ret = hideInt32(&tmp, str, &len);
+	if (ret) {val(tmp); fnc(str+len);}
+	return ret;
+}
 int hideNumHs(hhtype val, const char *str, hftype fnc)
 {
 	double tmp = 0;
@@ -1345,6 +1401,14 @@ void showIntHs(int val, const char *str, hftype fnc)
 	int len = strlen(str);
 	char *tmp = strdup(str);
 	showInt(val,&tmp,&len);
+	fnc(tmp);
+	free(tmp);
+}
+void showInt32Hs(int32_t val, const char *str, hftype fnc)
+{
+	int len = strlen(str);
+	char *tmp = strdup(str);
+	showInt32(val,&tmp,&len);
 	fnc(tmp);
 	free(tmp);
 }
