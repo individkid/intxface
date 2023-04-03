@@ -494,13 +494,29 @@ function showTypeC()
 	result = result.."#include <stdio.h>\n"
 	result = result.."#include <unistd.h>\n"
 	result = result.."#include <sys/errno.h>\n"
-	result = result..showCallC()
+	result = result..showCallC().."\n"
+	result = result.."int wrapExec(enum Process typ, const char *fork, const char *exec) {\n"
+	result = result..showIndent(1).."int idx = openFork();\n"
+	result = result..showIndent(1).."if (idx < 0) return -1;\n"
+	result = result..showIndent(1).."if (openCheck(idx) >= 0) {\n"
+	result = result..showIndent(2).."struct Argument arg = {0};\n"
+	result = result..showIndent(2).."char *str = 0; int len = 0;\n"
+	result = result..showIndent(2).."showArgument(&arg,&str,&len);\n"
+	result = result..showIndent(2).."openExec(exec,str); fprintf(stderr,\"%s: cannot execute file: %s\\n\",fork,exec); ERROR();}\n"
+	result = result..showIndent(1).."return idx;}\n"
+	result = result.."int wrapInit(const char *str) {\n"
+	result = result..showIndent(1).."struct Argument arg = {0};\n"
+	result = result..showIndent(1).."int len = 0;\n"
+	result = result..showIndent(1).."if (!hideArgument(&arg,str,&len)) return -1;\n"
+	result = result..showIndent(1).."return rdwrInit(arg.inp,arg.out);}"
 	return result
 end
 function showTypeH()
 	local result = ""
 	result = result.."#include \"proto.h\"\n"
-	result = result..showCallH()
+	result = result..showCallH().."\n"
+	result = result.."int wrapExec(enum Process typ, const char *fork, const char *exec);\n"
+	result = result.."int wrapInit(const char *str);"
 	return result
 end
 function showTypeHs()
@@ -515,7 +531,11 @@ function showTypeHs()
 	result = result.."import Foreign.C.Types\n"
 	result = result.."--\n"
 	result = result.."type Dat = [CChar]\n"
-	result = result..showCallHs()
+	result = result..showCallHs().."\n"
+	result = result.."wrapExec :: Process -> String -> String -> IO Int\n"
+	result = result.."wrapExec = undefined\n"
+	result = result.."wrapInit :: String -> IO Int\n"
+	result = result.."wrapInit = undefined\n"
 	return result
 end
 function showTypeLua()
@@ -527,10 +547,15 @@ function showTypeLua()
 	result = result..showIndent(1).."idx = openFork()\n"
 	result = result..showIndent(1).."if (idx < 0) then return -1 end\n"
 	result = result..showIndent(1).."if (openCheck(idx) >= 0) then\n"
-	result = result..showIndent(1).."	arg = showArgument({[\"pro\"]=enum,[\"inp\"]=openRdfd(idx),[\"out\"]=openWrfd(idx)})\n"
-	result = result..showIndent(1).."	openExec(exec,arg); io.stderr:write(fork..\": cannot execute file: \"..exec..\"\\n\"); os.exit(-1)\n"
+	result = result..showIndent(2).."arg = showArgument({[\"pro\"]=enum,[\"inp\"]=openRdfd(idx),[\"out\"]=openWrfd(idx)})\n"
+	result = result..showIndent(2).."openExec(exec,arg); io.stderr:write(fork..\": cannot execute file: \"..exec..\"\\n\"); os.exit(-1)\n"
 	result = result..showIndent(1).."end\n"
 	result = result..showIndent(1).."return idx\n"
+	result = result.."end\n"
+	result = result.."function wrapInit(str)\n"
+	result = result..showIndent(1).."arg,str = hideArgument(str)\n"
+	result = result..showIndent(1).."if (arg == nil) then return -1 end\n"
+	result = result..showIndent(1).."return rdwrInit(arg[\"inp\"],arg[\"out\"])\n"
 	result = result.."end"
 	return result
 end

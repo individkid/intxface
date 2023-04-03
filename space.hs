@@ -9,9 +9,9 @@ main :: IO ()
 main = getArgs >>= mainF
 
 mainF :: [String] -> IO ()
-mainF [a,b,c] = do
+mainF [a] = do
  putStrLn (show (boolToSide False))
- idx <- pipeInit a b
+ idx <- wrapInit a
  sculpt <- readSculpt idx
  mainG sculpt
 mainF _ = undefined

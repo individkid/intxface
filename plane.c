@@ -548,10 +548,7 @@ void planeTerm(int sig)
 }
 void planeExternal()
 {
-	struct Argument arg = {0}; int len = 0;
-	if (!hideArgument(&arg,planeGet(1),&len)) exitErr(__FILE__,__LINE__);
-	if ((external = rdwrInit(arg.inp,arg.out)) < 0) exitErr(__FILE__,__LINE__);
-	if (external < 0) ERROR();
+	if ((external = wrapInit(planeGet(1))) < 0) exitErr(__FILE__,__LINE__);
 	sem_post(&ready[External]);
 	while (1) {
 	struct Center center = {0};

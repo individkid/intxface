@@ -385,9 +385,8 @@ void flow()
 
 int main(int argc, char **argv)
 {
-	if (argc != 4) return -1;
 	if (Pa_Initialize() != paNoError) ERROR();
-	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR();
+	if ((hub = wrapInit(argv[1])) < 0) ERROR();
 	allocEvent(&event,1); goon = 1;
 	while (goon) {
 	for (head = deloc(nowtime = gettime()); head; head = deloc(nowtime)) flow();

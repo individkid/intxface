@@ -41,8 +41,8 @@ int main(int argc, char **argv)
 	char *adr = 0;
 	char *num = 0;
 	struct File file = {0};
-	if ((hub = pipeInit(argv[1],argv[2])) < 0) ERROR();
-	if ((fub = forkExec("fileC")) < 0) {fprintf(stderr,"holeC: cannot execute file: fileC\n"); return -1;}
+	if ((hub = wrapInit(argv[1])) < 0) ERROR();
+	if ((fub = wrapExec(Filez,argv[0],"fileC")) < 0) {fprintf(stderr,"holeC: cannot fork process\n"); return -1;}
 	if ((rub = openInet(0,argv[3])) < 0) ERROR();
 	layer[hub] = Cluster; layer[fub] = System;
 	while (1) {if (setjmp(errbuf) == 0) {
