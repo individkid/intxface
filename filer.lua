@@ -7,11 +7,7 @@ field3 = "Str(again)"
 name = "filer.--"
 
 -- MAIN
-ident1 = openFork()
-if (openCheck(ident1)) then
-	arg = showArgument({["pro"]="Filez",["inp"]=openRdfd(ident1),["out"]=openWrfd(ident1)})
-	openExec("fileC",arg); io.stderr:write("filerLua: cannot execute file: fileC\n"); os.exit(-1)
-end
+ident1 = wrapExec("Filez","fielerLua","fileC")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
@@ -46,7 +42,7 @@ assert(file["loc"] == string.len(field1)+string.len(field2a))
 assert(file["slf"] == 1)
 assert(file["str"] == field3)
 
-ident2 = forkExec("fileC")
+ident2 = wrapExec("Filez","fielerLua","fileC")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
@@ -89,7 +85,7 @@ assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 0)
 assert(file["str"] == field2b)
 
-ident3 = forkExec("fileC")
+ident3 = wrapExec("Filez","fielerLua","fileC")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0

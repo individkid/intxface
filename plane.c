@@ -528,7 +528,7 @@ int planeSet(int idx, const char *str)
 		while (idx >= numstr) strings[numstr++] = strdup("");}
 	free(strings[idx]); strings[idx] = strdup(str);
 	ret = numstr;
-	if (numstr == 3) sem_post(&ready[Program]);});
+	if (numstr == 2) sem_post(&ready[Program]);});
 	return ret;
 }
 int planeCat(int idx, const char *str)
@@ -548,11 +548,9 @@ void planeTerm(int sig)
 }
 void planeExternal()
 {
-	char *inp = 0;
-	char *out = 0;
-	inp = strdup(planeGet(1)); out = strdup(planeGet(2));
-	external = pipeInit(inp,out);
-	free(inp); free(out);
+	struct Argument arg = {0}; int len = 0;
+	if (!hideArgument(&arg,planeGet(1),&len)) exitErr(__FILE__,__LINE__);
+	if ((external = rdwrInit(arg.inp,arg.out)) < 0) exitErr(__FILE__,__LINE__);
 	if (external < 0) ERROR();
 	sem_post(&ready[External]);
 	while (1) {

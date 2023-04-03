@@ -522,7 +522,16 @@ function showTypeLua()
 	local result = ""
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
-	result = result..showCallLua()
+	result = result..showCallLua().."\n"
+	result = result.."function wrapExec(enum,fork,exec)\n"
+	result = result..showIndent(1).."idx = openFork()\n"
+	result = result..showIndent(1).."if (idx < 0) then return -1 end\n"
+	result = result..showIndent(1).."if (openCheck(idx) >= 0) then\n"
+	result = result..showIndent(1).."	arg = showArgument({[\"pro\"]=enum,[\"inp\"]=openRdfd(idx),[\"out\"]=openWrfd(idx)})\n"
+	result = result..showIndent(1).."	openExec(exec,arg); io.stderr:write(fork..\": cannot execute file: \"..exec..\"\\n\"); os.exit(-1)\n"
+	result = result..showIndent(1).."end\n"
+	result = result..showIndent(1).."return idx\n"
+	result = result.."end"
 	return result
 end
 if (arg[1] == "type.dep") then

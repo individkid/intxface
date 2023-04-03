@@ -283,13 +283,12 @@ void *func(void *arg)
 
 int main(int argc, char **argv)
 {
-	struct Argument arg = {0};
-	int len = 0;
 	struct sigaction act;
 	act.__sigaction_u.__sa_handler = hubSig;
 	if (sigaction(SIGINT,&act,0) < 0) ERROR();
-	if (argc != 2) exitErr(__FILE__,__LINE__);
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
+	struct Argument arg = {0}; int len = 0;
+	if (argc != 2) exitErr(__FILE__,__LINE__);
 	if (!hideArgument(&arg,argv[1],&len)) exitErr(__FILE__,__LINE__);
 	if ((face = rdwrInit(arg.inp,arg.out)) < 0) exitErr(__FILE__,__LINE__);
 	termFunc(fileTerm); noteFunc(errNote); errFunc(errErr);

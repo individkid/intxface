@@ -343,7 +343,7 @@ int openFork()
 int openCheck(int idx)
 {
 	if (idx != lim) return -1;
-	return 1;
+	return 0;
 }
 int openRdfd(int idx)
 {
@@ -1925,6 +1925,7 @@ int luaopen_face (lua_State *L)
 	luaxExtend(L,"openRdfd",protoTypeRf(openRdfd));
 	luaxExtend(L,"openWrfd",protoTypeRf(openWrfd));
 	luaxExtend(L,"openExec",protoTypeGf(openExec));
+	luaxExtend(L,"rdwrInit",protoTypeGg(rdwrInit));
 	lua_pushcfunction(L, waitReadLua); lua_setglobal(L, "waitRead");
 	lua_pushcfunction(L, waitExitLua); lua_setglobal(L, "waitExit");
 	lua_pushcfunction(L, pollPipeLua); lua_setglobal(L, "pollPipe");

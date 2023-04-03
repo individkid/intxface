@@ -47,6 +47,7 @@ typedef int (*fgtype)(const char *str, int len, int idx);
 typedef int (*fhtype)(int idx, const char *str);
 typedef int (*fftype)(const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
+typedef int (*ggtype)(int rfd, int wfd);
 typedef int (*oftype)(void *arg);
 typedef int (*rftype)(int arg); // permutation
 typedef int (*rgtype)();
@@ -79,6 +80,7 @@ struct Function {
 		Fhtype,
 		Fftype,
 		Gftype,
+		Ggtype,
 		Oftype,
 		Rftype,
 		Rgtype,
@@ -109,6 +111,7 @@ struct Function {
 		fhtype fh;
 		fftype ff;
 		gftype gf;
+		ggtype gg;
 		oftype of;
 		rftype rf;
 		rgtype rg;
@@ -137,6 +140,7 @@ struct Function protoTypeFg(fgtype fnc);
 struct Function protoTypeFh(fhtype fnc);
 struct Function protoTypeFf(fftype fnc);
 struct Function protoTypeGf(gftype fnc);
+struct Function protoTypeGg(ggtype fnc);
 struct Function protoTypeOf(oftype fnc);
 struct Function protoTypeRf(rftype fnc);
 struct Function protoTypeRg(rgtype fnc);
@@ -184,6 +188,7 @@ const struct Closure *protoCloseEf(const char *str, int num, int idx);
 const struct Closure *protoClosePf(int idx, int nbyte);
 const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte);
 const struct Closure *protoCloseGf(const char *one, const char *oth);
+const struct Closure *protoCloseGg(int rfd, int wfd);
 const struct Closure *protoCloseRf(int arg);
 const struct Closure *protoCloseRg();
 const struct Closure *protoCloseBf(const char *arg);
@@ -194,6 +199,7 @@ void protoResultEf();
 int protoResultPf(void *buf);
 int protoResultQf();
 int protoResultGf();
+int protoResultGg();
 int protoResultRf();
 int protoResultRg();
 const char *protoResultBf();

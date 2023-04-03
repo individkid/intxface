@@ -36,6 +36,7 @@ foreign import ccall "openCheck" openCheckC :: CInt -> IO CInt
 foreign import ccall "openRdfd" openRdfd :: CInt -> IO CInt
 foreign import ccall "openWrfd" openWrfd :: CInt -> IO CInt
 foreign import ccall "openExec" openExecC :: CString -> CString -> IO CInt
+foreign import ccall "rdwrInit" rdwrInitC :: CInt -> CInt -> IO CInt
 foreign import ccall "waitRead" waitReadC :: Double -> CInt -> IO CInt
 foreign import ccall "callInit" callInitC :: FunPtr (CInt -> IO ()) -> CInt -> IO ()
 foreign import ccall "pollPipe" pollPipeC :: CInt -> IO CInt

@@ -50,6 +50,10 @@ struct Function protoTypeGf(gftype fnc)
 {
 	struct Function ret = {.ft = Gftype, {.gf = fnc}}; return ret;
 }
+struct Function protoTypeGg(ggtype fnc)
+{
+	struct Function ret = {.ft = Ggtype, {.gg = fnc}}; return ret;
+}
 struct Function protoTypeOf(oftype fnc)
 {
 	struct Function ret = {.ft = Oftype, {.of = fnc}}; return ret;
@@ -192,6 +196,20 @@ const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte)
 	protoMakeIf(&argbuf.aa[2],nbyte);
 	return &argbuf;
 }
+const struct Closure *protoCloseGf(const char *one, const char *oth)
+{
+	protoClose(2,1);
+	protoMakeSf(&argbuf.aa[0],one);
+	protoMakeSf(&argbuf.aa[1],oth);
+	return &argbuf;
+}
+const struct Closure *protoCloseGg(int rfd, int wfd)
+{
+	protoClose(2,1);
+	protoMakeIf(&argbuf.aa[0],rfd);
+	protoMakeIf(&argbuf.aa[1],wfd);
+	return &argbuf;
+}
 const struct Closure *protoCloseRf(int arg)
 {
 	protoClose(1,1);
@@ -231,6 +249,14 @@ int protoResultPf(void *buf)
 	return argbuf.ab[0].ia;
 }
 int protoResultQf()
+{
+	return argbuf.ab[0].ia;
+}
+int protoResultGf()
+{
+	return argbuf.ab[0].ia;
+}
+int protoResultGg()
 {
 	return argbuf.ab[0].ia;
 }
