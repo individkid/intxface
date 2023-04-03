@@ -477,9 +477,11 @@ Data = {
 	{"dat","Dat",{},{}},
 }
 Argument = {
-	{"pro","Process",{},{}},
+	{"typ","Process",{},{}},
 	{"inp","Int",{},{}},
 	{"out","Int",{},{}},
+	{"idx","Int",{},{}},
+	{"str","Str",{["typ"]={["Holez"]=true}},{}},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
@@ -495,28 +497,39 @@ function showTypeC()
 	result = result.."#include <unistd.h>\n"
 	result = result.."#include <sys/errno.h>\n"
 	result = result..showCallC().."\n"
-	result = result.."int wrapExec(enum Process typ, const char *fork, const char *exec) {\n"
+	result = result.."int wrapExec(struct Argument *arg, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."int idx = openFork();\n"
 	result = result..showIndent(1).."if (idx < 0) return -1;\n"
 	result = result..showIndent(1).."if (openCheck(idx) >= 0) {\n"
 	result = result..showIndent(2).."struct Argument arg = {0};\n"
 	result = result..showIndent(2).."char *str = 0; int len = 0;\n"
+	result = result..showIndent(2).."arg.inp=openRdfd(idx); arg.out=openWrfd(idx);\n"
 	result = result..showIndent(2).."showArgument(&arg,&str,&len);\n"
 	result = result..showIndent(2).."openExec(exec,str); fprintf(stderr,\"%s: cannot execute file: %s\\n\",fork,exec); ERROR();}\n"
 	result = result..showIndent(1).."return idx;}\n"
-	result = result.."int wrapInit(const char *str) {\n"
+	result = result.."int wrapType(enum Process typ, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."struct Argument arg = {0};\n"
+	result = result..showIndent(1).."arg.typ = typ;\n"
+	result = result..showIndent(1).."return wrapExec(&arg,fork,exec);}\n"
+	result = result.."int wrapInit(struct Argument *arg, const char *str) {\n"
 	result = result..showIndent(1).."int len = 0;\n"
-	result = result..showIndent(1).."if (!hideArgument(&arg,str,&len)) return -1;\n"
-	result = result..showIndent(1).."return rdwrInit(arg.inp,arg.out);}"
+	result = result..showIndent(1).."if (!hideArgument(arg,str,&len)) return -1;\n"
+	result = result..showIndent(1).."arg->idx = rdwrInit(arg->inp,arg->out);\n"
+	result = result..showIndent(1).."return 0;}\n"
+	result = result.."int wrapIdent(enum Process typ, const char *str) {\n"
+	result = result..showIndent(1).."struct Argument arg = {0};\n"
+	result = result..showIndent(1).."if (wrapInit(&arg,str) < 0 || arg.typ != typ) return -1;\n"
+	result = result..showIndent(1).."return arg.idx;}"
 	return result
 end
 function showTypeH()
 	local result = ""
 	result = result.."#include \"proto.h\"\n"
 	result = result..showCallH().."\n"
-	result = result.."int wrapExec(enum Process typ, const char *fork, const char *exec);\n"
-	result = result.."int wrapInit(const char *str);"
+	result = result.."int wrapExec(struct Argument *arg, const char *fork, const char *exec);\n"
+	result = result.."int wrapType(enum Process typ, const char *fork, const char *exec);\n"
+	result = result.."int wrapInit(struct Argument *arg, const char *str);"
+	result = result.."int wrapIdent(enum Process typ, const char *str);\n"
 	return result
 end
 function showTypeHs()
@@ -532,10 +545,14 @@ function showTypeHs()
 	result = result.."--\n"
 	result = result.."type Dat = [CChar]\n"
 	result = result..showCallHs().."\n"
-	result = result.."wrapExec :: Process -> String -> String -> IO Int\n"
+	result = result.."wrapExec :: Argument -> String -> String -> IO Int\n"
 	result = result.."wrapExec = undefined\n"
-	result = result.."wrapInit :: String -> IO Int\n"
+	result = result.."wrapType :: Process -> String -> String -> IO Int\n"
+	result = result.."wrapType = undefined\n"
+	result = result.."wrapInit :: String -> IO (Maybe Argument)\n"
 	result = result.."wrapInit = undefined\n"
+	result = result.."wrapIdent :: Process -> String -> IO Int\n"
+	result = result.."wrapIdent = undefined"
 	return result
 end
 function showTypeLua()
@@ -543,19 +560,31 @@ function showTypeLua()
 	result = result.."require \"face\"\n"
 	result = result.."--\n"
 	result = result..showCallLua().."\n"
-	result = result.."function wrapExec(enum,fork,exec)\n"
+	result = result.."function wrapExec(arg,fork,exec)\n"
 	result = result..showIndent(1).."idx = openFork()\n"
 	result = result..showIndent(1).."if (idx < 0) then return -1 end\n"
 	result = result..showIndent(1).."if (openCheck(idx) >= 0) then\n"
-	result = result..showIndent(2).."arg = showArgument({[\"pro\"]=enum,[\"inp\"]=openRdfd(idx),[\"out\"]=openWrfd(idx)})\n"
-	result = result..showIndent(2).."openExec(exec,arg); io.stderr:write(fork..\": cannot execute file: \"..exec..\"\\n\"); os.exit(-1)\n"
+	result = result..showIndent(1).."arg[\"inp\"]=openRdfd(idx); arg[\"out\"]=openWrfd(idx); arg[\"idx\"]=-1\n"
+	result = result..showIndent(1).."if (arg[\"typ\"] == nil) then arg[\"typ\"] = \"Processs\"end\n"
+	result = result..showIndent(2).."str = showArgument(arg,\"\")\n"
+	result = result..showIndent(2).."openExec(exec,str); io.stderr:write(fork..\": cannot execute file: \"..exec..\"\\n\"); os.exit(-1)\n"
 	result = result..showIndent(1).."end\n"
 	result = result..showIndent(1).."return idx\n"
 	result = result.."end\n"
+	result = result.."function wrapType(typ,fork,exec)\n"
+	result = result..showIndent(1).."arg[\"typ\"] = typ\n"
+	result = result..showIndent(1).."return wrapExec(arg,fork,exec)\n"
+	result = result.."end\n"
 	result = result.."function wrapInit(str)\n"
 	result = result..showIndent(1).."arg,str = hideArgument(str)\n"
-	result = result..showIndent(1).."if (arg == nil) then return -1 end\n"
-	result = result..showIndent(1).."return rdwrInit(arg[\"inp\"],arg[\"out\"])\n"
+	result = result..showIndent(1).."if (arg == nil) then return nil end\n"
+	result = result..showIndent(1).."arg[\"idx\"] = rdwrInit(arg[\"inp\"],arg[\"out\"])\n"
+	result = result..showIndent(1).."return arg\n"
+	result = result.."end\n"
+	result = result.."function wrapIdent(typ,str)\n"
+	result = result..showIndent(1).."arg = wrapInit(str)\n"
+	result = result..showIndent(1).."if (arg == nil) or not (arg[\"typ\"] == typ) then return -1 end\n"
+	result = result..showIndent(1).."return arg[\"idx\"]\n"
 	result = result.."end"
 	return result
 end

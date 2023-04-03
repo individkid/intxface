@@ -33,7 +33,7 @@ int splitStr(char **str, char **adr, char **num)
 
 int main(int argc, char **argv)
 {
-	if (argc != 4) return -1;
+	struct Argument arg = {0};
 	int rub = 0; // unused listen
 	int fub = 0; // file system
 	int hub = 0; // process cluster
@@ -41,9 +41,11 @@ int main(int argc, char **argv)
 	char *adr = 0;
 	char *num = 0;
 	struct File file = {0};
-	if ((hub = wrapInit(argv[1])) < 0) ERROR();
-	if ((fub = wrapExec(Filez,argv[0],"fileC")) < 0) {fprintf(stderr,"holeC: cannot fork process\n"); return -1;}
-	if ((rub = openInet(0,argv[3])) < 0) ERROR();
+	if (wrapInit(&arg,argv[1]) < 0 || arg.typ != Holez) ERROR();
+	if ((hub = arg.idx) < 0) ERROR();
+	if (wrapType(Filez,argv[0],"fileC") < 0) {fprintf(stderr,"holeC: cannot fork process\n"); return -1;}
+	if ((fub = arg.idx) < 0) ERROR();
+	if ((rub = openInet(0,arg.str)) < 0) ERROR();
 	layer[hub] = Cluster; layer[fub] = System;
 	while (1) {if (setjmp(errbuf) == 0) {
 	for (sub = waitRead(0.0,-1); sub >= 0; sub = waitRead(0.0,-1)) {

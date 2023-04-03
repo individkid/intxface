@@ -566,7 +566,7 @@ Expected = {
 	"    if (val == \"Value11\") then writeInt(0,idx)\n"..
 	"    elseif (val == \"Value12\") then writeInt(1,idx)\n"..
 	"    elseif (val == \"Value13\") then writeInt(2,idx)\n"..
-	"    else writeInt(4,idx) end\n"..
+	"    else writeInt(3,idx) end\n"..
 	"end\n"..
 	"--",
 	"function readStruct1(idx)\n"..

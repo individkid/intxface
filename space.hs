@@ -11,7 +11,7 @@ main = getArgs >>= mainF
 mainF :: [String] -> IO ()
 mainF [a] = do
  putStrLn (show (boolToSide False))
- idx <- wrapInit a
+ idx <- wrapIdent Type.Spacez a
  sculpt <- readSculpt idx
  mainG sculpt
 mainF _ = undefined

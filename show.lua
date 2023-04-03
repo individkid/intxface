@@ -2053,7 +2053,7 @@ function showCodeLua(name,enum)
 			result = result..showIndent(1).."elseif (val == \""..val.."\") then writeInt("..(key-1)..",idx)\n"
 		end
 	end
-	result = result..showIndent(1).."else writeInt("..(#enum+1)..",idx) end\n"
+	result = result..showIndent(1).."else writeInt("..(#enum)..",idx) end\n"
 	result = result.."end\n"
 	result = result.."--"
 	return result
