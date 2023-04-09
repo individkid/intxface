@@ -517,7 +517,7 @@ Expected = {
 	"    a17 <- listHelp 2 (readStruct2 idx)\n"..
 	"    a18 <- listHelp 2 (readStruct2 idx)\n"..
 	"    a15x <- return (Struct1A15 a15 a16 a17 a18)\n"..
-	"    return (Struct1 a1x a9x a12x a15x)\n",
+	"    return (Struct1 a1x b9x b12x a15x)\n",
 	"readEnum1F :: Int -> IO Enum1\n"..
 	"readEnum1F 0 = return Value11\n"..
 	"readEnum1F 1 = return Value12\n"..
@@ -781,7 +781,7 @@ io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
 		line = io.read();
-		-- print(line)
+		print(line)
 		if line ~= val then print("error1: "..line..":::"..val); assert(false) end
 	end
 end

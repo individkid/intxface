@@ -33,8 +33,8 @@ foreign import ccall "forkExec" forkExecC :: CString -> IO CInt
 foreign import ccall "pipeInit" pipeInitC :: CString -> CString -> IO CInt
 foreign import ccall "openFork" openForkC :: IO CInt
 foreign import ccall "openCheck" openCheckC :: CInt -> IO CInt
-foreign import ccall "openRdfd" openRdfd :: CInt -> IO CInt
-foreign import ccall "openWrfd" openWrfd :: CInt -> IO CInt
+foreign import ccall "openRdfd" openRdfdC :: CInt -> IO CInt
+foreign import ccall "openWrfd" openWrfdC :: CInt -> IO CInt
 foreign import ccall "openExec" openExecC :: CString -> CString -> IO CInt
 foreign import ccall "rdwrInit" rdwrInitC :: CInt -> CInt -> IO CInt
 foreign import ccall "waitRead" waitReadC :: Double -> CInt -> IO CInt
@@ -93,6 +93,8 @@ foreign import ccall "showNumHs" showNumC :: Double -> CString -> FunPtr (CStrin
 foreign import ccall "showNewHs" showNewC :: CLLong -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showOldHs" showOldC :: Float -> CString -> FunPtr (CString -> IO ()) -> IO ()
 
+callExit :: Int -> IO ()
+callExit = undefined
 errFunc :: (String -> Int -> Int -> IO ()) -> IO ()
 errFunc a = (wrapErr (\x y z -> (peekCString x) >>= (\x -> a x (fromIntegral y) (fromIntegral z)))) >>= errFuncC
 noteFunc :: (Int -> IO ()) -> IO ()
@@ -111,6 +113,14 @@ forkExec :: String -> IO Int
 forkExec a = fmap fromIntegral ((newCString a) >>= forkExecC)
 pipeInit :: String -> String -> IO Int
 pipeInit a b = fmap fromIntegral ((newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x)))
+openFork  :: IO Int
+openFork = fmap fromIntegral openForkC
+openCheck :: Int -> IO Int
+openCheck a = fmap fromIntegral (openCheckC (fromIntegral a))
+openExec :: String -> String -> IO Int
+openExec a b = fmap fromIntegral ((newCString a) >>= (\x -> (newCString b) >>= (openExecC x)))
+rdwrInit :: Int -> Int -> IO Int
+rdwrInit a b = fmap fromIntegral (rdwrInitC (fromIntegral a) (fromIntegral b))
 waitRead :: Double -> Int -> IO Int
 waitRead a b = fmap fromIntegral (waitReadC a (fromIntegral b))
 callInit :: (Int -> IO ()) -> Int -> IO ()

@@ -24,6 +24,7 @@ Constant1 = {
 Struct2 = {
 	{"field1","Int",{},{}},
 	{"field2","Int",{},{}},
+	{"field3","Int",{["field1"]={[1]=true}},{}},
 }
 Struct1 = {
 	{"next","Struct1",{},0},

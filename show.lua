@@ -235,11 +235,16 @@ function showStructCF(struct)
 			addTo(second,fld)
 		end
 	end
-	if #first == 0 then
+	if sizeIter(second[1][3]) == 0 then
+		-- coroutine.yield("// 6")
 		showStructCG("    ","// ",second)
+	elseif #first == 0 then
+		-- coroutine.yield("// 7")
+		showStructCG("    ","",second)
 	else
-		showStructCG("        ","",second)
+		-- coroutine.yield("// 8")
 		coroutine.yield("    };")
+		showStructCG("    ","// ",second)
 	end
 end
 function showStructC(name,struct)
@@ -1242,7 +1247,18 @@ function showStructHsF(name,struct,extra)
 		local seconder = overAny(second,fld)
 		local secondee = equalAll(second,fld)
 		if #second == 0 or secondee then
+			-- coroutine.yield("-- 0")
+			addTo(second,fld)
+		elseif #first == 0 and seconder and sizeIter(second[1][3]) > 0 then
 			-- coroutine.yield("-- 1")
+			coroutine.yield("data "..name.."A"..index.." =")
+			extra[#extra+1] = name.."A"..index
+			outer = index
+			showStructHsG(name.."A"..outer.."B"..index," |",second)
+			coroutine.yield("    "..name.."A"..outer.."Bs deriving (Eq)")
+			first = {}
+			second = {}
+			index = idx
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
@@ -1262,7 +1278,7 @@ function showStructHsF(name,struct,extra)
 			index = idx
 			addTo(first,fld)
 			addTo(second,fld)
-		elseif not firster then
+		elseif #first > 0 and not firster then
 			-- coroutine.yield("-- 4")
 			showStructHsG(name.."A"..outer.."B"..index," |",second)
 			second = {}
@@ -1279,13 +1295,20 @@ function showStructHsF(name,struct,extra)
 			addTo(second,fld)
 		end
 	end
-	if #first == 0 then
+	if #first == 0 and sizeIter(second[1][3]) > 0 then
 		-- coroutine.yield("-- 6a")
+		coroutine.yield("data "..name.."A"..index.." =")
+		extra[#extra+1] = name.."A"..index
+		outer = index
+		showStructHsG(name.."A"..outer.."B"..index," |",second)
+		coroutine.yield("    "..name.."A"..outer.."Bs deriving (Eq)")
+	elseif #first == 0 then
+		-- coroutine.yield("-- 6b")
 		showStructHsG(name.."A"..index,"",second)
 		extra[#extra+1] = name.."A"..index
 		coroutine.yield("    deriving (Eq)")
 	else
-		-- coroutine.yield("-- 6b")
+		-- coroutine.yield("-- 6c")
 		showStructHsG(name.."A"..outer.."B"..index," |",second)
 		coroutine.yield("    "..name.."A"..outer.."Bs deriving (Eq)")
 	end
@@ -1321,7 +1344,16 @@ function howTreeHsF(name,struct)
 		local seconder = overAny(second,fld)
 		local secondee = equalAll(second,fld)
 		if #second == 0 or secondee then
+			-- coroutine.yield("-- 0")
+			addTo(second,fld)
+		elseif #first == 0 and seconder and sizeIter(second[1][3]) > 0 then
 			-- coroutine.yield("-- 1")
+			outer = index
+			howTreeHsG(index,outer,1,second)
+			howTreeHsG(index,index,0,second)
+			first = {}
+			second = {}
+			index = idx
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
@@ -1356,11 +1388,16 @@ function howTreeHsF(name,struct)
 			addTo(second,fld)
 		end
 	end
-	if #first == 0 then
+	if #first == 0 and sizeIter(second[1][3]) > 0 then
 		-- coroutine.yield("-- 6a")
+		outer = index
+		howTreeHsG(index,outer,1,second)
+		howTreeHsG(index,index,0,second)
+	elseif #first == 0 then
+		-- coroutine.yield("-- 6b")
 		howTreeHsG(index,index,0,second)
 	else
-		-- coroutine.yield("-- 6b")
+		-- coroutine.yield("-- 6c")
 		howTreeHsG(index,outer,1,second)
 		howTreeHsG(index,index,0,second)
 	end
@@ -1396,54 +1433,77 @@ function showAccessHsF(index,idx,max,list)
 	local ea = (list[idx] ~= nil) and (list[index] == list[idx])
 	return ed,er,ee,ea
 end
+function sb(val)
+	if val then return "1" else return "0" end
+end
 function showAccessHsG(name,struct,var,index,equal,disjoint)
 	local result = ""
+	local comment = ""
 	for idx,fld in ipairs(struct) do
 		local eed,eer,eee,eea = showAccessHsF(index,idx,#struct,equal)
 		local ded,der,dee,dea = showAccessHsF(index,idx,#struct,disjoint)
 		if (eer and not ded and eea) then
+			-- comment = comment.." "..idx.."->1"
 			result = result.." ".."("..name.."A"..idx
 		end
 		if (eer and ded and eea) then
+			-- comment = comment.." "..idx.."->2"
 			result = result.." ".."("..name.."A"..disjoint[idx].."B"..idx
 		end
 		if (eea and (index ~= idx)) then
+			-- comment = comment.." "..idx.."->3"
 			result = result.." ".."a"..idx
 		end
 		if (index == idx) then
+			-- comment = comment.." "..idx.."->4"
 			result = result.." "..var
 		end
 		if (eer and not ded and not eea) then
+			-- comment = comment.." "..idx.."->5"
 			result = result.." ".."a"..idx
 		end
 		if (der and not dea) then
+			-- comment = comment.." "..idx.."->6"
 			result = result.." ".."a"..idx
 		end
 		if (eee and eea) then
+			-- comment = comment.." "..idx.."->7"
 			result = result..")"
 		end
 	end
-	return result
+	return result,comment
 end
 function showAccessHs(name,struct)
 	local equal = howEqualHs(struct)
 	local disjoint = howDisjointHs(struct)
 	local result = ""
+	local comment = ""
 	for k,v in ipairs(struct) do
 		result = result.."get"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..showStructHsI(v).."\n"
 		result = result.."get"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsG(name,struct,"a",k,equal,disjoint)
-		result = result..") = a\n"
+		tempr,tempc = showAccessHsG(name,struct,"a",k,equal,disjoint)
+		result = result..tempr
+		comment = comment..tempc
+		if comment ~= "" then comment = " --1"..comment end
+		result = result..") = a"..comment.."\n"
+		comment = ""
 	end
 	for k,v in ipairs(struct) do
 		result = result.."set"..name.."C"..v[1].." :: "
 		result = result..name.." -> "..showStructHsI(v).." -> "..name.."\n"
 		result = result.."set"..name.."C"..v[1].." ("..name
-		result = result..showAccessHsG(name,struct,"_",k,equal,disjoint)
+		tempr,tempc = showAccessHsG(name,struct,"_",k,equal,disjoint)
+		result = result..tempr
+		comment = comment..tempc
+		if comment ~= "" then comment = " --2"..comment end
 		result = result..") a = ("..name
-		result = result..showAccessHsG(name,struct,"a",k,equal,disjoint)
-		result = result..")\n"
+		tempr,tempc = showAccessHsG(name,struct,"a",k,equal,disjoint)
+		result = result..tempr
+		comment = comment..tempc
+		if comment ~= "" then comment = " --3"..comment end
+		result = result..")"..comment.."\n"
+		comment = ""
 	end
 	result = result.."--"
 	return result
@@ -1519,6 +1579,7 @@ function showCondHs(struct,dset)
 		local term = ""
 		local factors = 0
 		for idx,fld in ipairs(struct) do
+			-- coroutine.yield("-- "..idx.." : "..fld[1].." == "..dim)
 			if (fld[1] == dim) then
 				for j,val in ipairs(listSort(set)) do
 					local wrap = showCondHsF(val)
@@ -1634,7 +1695,20 @@ function showReadHsF(name,struct,extra)
 		local seconder = overAny(second,fld)
 		local secondee = equalAll(second,fld)
 		if #second == 0 or secondee then
+			-- coroutine.yield("-- 0")
+			addTo(second,fld)
+		elseif #first == 0 and seconder and sizeIter(second[1][3]) > 0 then
 			-- coroutine.yield("-- 1")
+			extra[#extra+1] = "b"..index.."x"
+			outer = index
+			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
+			showReadHsG("    ",index,struct,second)
+			local args = {}; for id=index,(idx-1) do args[#args+1] = "a"..id end
+			coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
+			list = {}
+			first = {}
+			second = {}
+			index = idx
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
@@ -1647,7 +1721,7 @@ function showReadHsF(name,struct,extra)
 			addTo(second,fld)
 		elseif #first == 0 then
 			-- coroutine.yield("-- 3")
-			extra[#extra+1] = "a"..index.."x"
+			extra[#extra+1] = "b"..index.."x"
 			outer = index
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
 			list[#list+1] = "b"..index.."x"
@@ -1685,14 +1759,25 @@ function showReadHsF(name,struct,extra)
 			addTo(second,fld)
 		end
 	end
-	if #first == 0 then
+	if #first == 0 and sizeIter(second[1][3]) > 0 then
 		-- coroutine.yield("-- 6a")
+		extra[#extra+1] = "b"..index.."x"
+		outer = index
+		coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
+		list[#list+1] = "b"..index.."x"
+		showReadHsG("    ",index,struct,second)
+		local args = {}; for id=index,#struct do args[#args+1] = "a"..id end
+		coroutine.yield("        "..showReadHsI(name.."A"..outer.."B"..index,args,{})..")")
+		local sep,str = "",""; for id,vl in ipairs(list) do str = str..sep..vl; sep = "," end
+		coroutine.yield("    a"..outer.."x <- firstHelp "..showCondHsF(name.."A"..outer.."Bs").." ["..str.."]")
+	elseif #first == 0 then
+		-- coroutine.yield("-- 6b")
 		showReadHsG("",index,struct,second)
 		local args = {}; for id=index,#struct do args[#args+1] = "a"..id end
 		coroutine.yield("    a"..index.."x <- "..showReadHsI(name.."A"..index,args,{}))
 		extra[#extra+1] = "a"..index.."x"
 	else
-		-- coroutine.yield("-- 6b")
+		-- coroutine.yield("-- 6c")
 		coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
 		list[#list+1] = "b"..index.."x"
 		showReadHsG("    ",index,struct,second)
@@ -1753,7 +1838,15 @@ function showWriteHsJ(name,struct)
 		local seconder = overAny(second,fld)
 		local secondee = equalAll(second,fld)
 		if #second == 0 or secondee then
+			-- coroutine.yield("-- 0")
+			addTo(second,fld)
+		elseif #first == 0 and seconder and sizeIter(second[1][3]) > 0 then
 			-- coroutine.yield("-- 1")
+			coroutine.yield("a"..index)
+			outer = index
+			first = {}
+			second = {}
+			index = idx
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
@@ -1763,7 +1856,6 @@ function showWriteHsJ(name,struct)
 			addTo(second,fld)
 		elseif #first == 0 then
 			-- coroutine.yield("-- 3")
-			-- showWriteHsK("("..name.."A"..index.." ","",index,second)
 			coroutine.yield("a"..index)
 			outer = index
 			second = {}
@@ -1772,27 +1864,26 @@ function showWriteHsJ(name,struct)
 			addTo(second,fld)
 		elseif not firster then
 			-- coroutine.yield("-- 4")
-			-- showWriteHsK("","",index,second)
 			second = {}
 			index = idx
 			addTo(first,fld)
 			addTo(second,fld)
 		else
 			-- coroutine.yield("-- 5")
-			-- showWriteHsK("",")",index,second)
 			first = {}
 			second = {}
 			index = idx
 			addTo(second,fld)
 		end
 	end
-	if #first == 0 then
+	if #first == 0 and sizeIter(second[1][3]) > 0 then
 		-- coroutine.yield("-- 6a")
-		-- showWriteHsK("6a(",")",index,second)
+		coroutine.yield("a"..index)
+	elseif #first == 0 then
+		-- coroutine.yield("-- 6b")
 		showWriteHsK("("..name.."A"..index.." ",")",index,second)
 	else
-		-- coroutine.yield("-- 6b")
-		-- showWriteHsK("",")",index,second)
+		-- coroutine.yield("-- 6c")
 	end
 end
 function showWriteHsI(name,struct)
@@ -1905,7 +1996,16 @@ function showWriteHsF(name,struct)
 		local seconder = overAny(second,fld)
 		local secondee = equalAll(second,fld)
 		if #second == 0 or secondee then
+			-- coroutine.yield("-- 0")
+			addTo(second,fld)
+		elseif #first == 0 and seconder and sizeIter(second[1][3]) > 0 then
 			-- coroutine.yield("-- 1")
+			outer = index
+			showWriteHsG("    ",index,outer,idx,name,struct,second)
+			list = {}
+			first = {}
+			second = {}
+			index = idx
 			addTo(second,fld)
 		elseif #first == 0 and seconder then
 			-- coroutine.yield("-- 2")
@@ -1938,11 +2038,15 @@ function showWriteHsF(name,struct)
 			addTo(second,fld)
 		end
 	end
-	if #first == 0 then
+	if #first == 0 and sizeIter(second[1][3]) > 0 then
 		-- coroutine.yield("-- 6a")
+		outer = index
+		showWriteHsG("    ",index,outer,#struct+1,name,struct,second)
+	elseif #first == 0 then
+		-- coroutine.yield("-- 6b")
 		showWriteHsG("",index,outer,#struct+1,name,struct,second)
 	else
-		-- coroutine.yield("-- 6b")
+		-- coroutine.yield("-- 6c")
 		showWriteHsG("    ",index,outer,#struct+1,name,struct,second)
 	end
 end
