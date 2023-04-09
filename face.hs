@@ -113,8 +113,12 @@ forkExec :: String -> IO Int
 forkExec a = fmap fromIntegral ((newCString a) >>= forkExecC)
 pipeInit :: String -> String -> IO Int
 pipeInit a b = fmap fromIntegral ((newCString a) >>= (\x -> (newCString b) >>= (pipeInitC x)))
-openFork  :: IO Int
+openFork :: IO Int
 openFork = fmap fromIntegral openForkC
+openRdfd :: Int -> IO Int
+openRdfd a = fmap fromIntegral (openRdfdC (fromIntegral a))
+openWrfd :: Int -> IO Int
+openWrfd a = fmap fromIntegral (openWrfdC (fromIntegral a))
 openCheck :: Int -> IO Int
 openCheck a = fmap fromIntegral (openCheckC (fromIntegral a))
 openExec :: String -> String -> IO Int
