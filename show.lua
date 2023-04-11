@@ -1117,7 +1117,7 @@ end
 function showCodeHs(name,enum)
 	local result = ""
 	if showhide then
-		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
+		result = result.."hide"..name.." :: RefStr -> IO (Maybe "..name..")\n"
 		result = result.."hide"..name.." idx = do\n"
 		result = result..showIndent(1).."a0 <- return Nothing\n"
 		for key,val in ipairs(enum) do
@@ -1801,7 +1801,7 @@ function showReadHs(name,struct)
 	local result = ""
 	local extra = {}
 	if showhide then
-		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
+		result = result.."hide"..name.." :: RefStr -> IO (Maybe "..name..")\n"
 		result = result.."hide"..name.." idx = do\n"
 		result = result.."    x <- hideOpen \""..name.."\" idx\n"
 	else

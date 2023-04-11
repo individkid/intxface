@@ -594,7 +594,7 @@ function showTypeHs()
 	result = result..showIndent(1).."idx <- rdwrInit (getArgumentCinp arg) (getArgumentCout arg)\n"
 	result = result..showIndent(1).."return (Just (setArgumentCidx arg idx))\n"
 	result = result.."wrapInit :: String -> IO (Maybe Argument)\n"
-	result = result.."wrapInit str = newIORef str >>= hideArgument >>= wrapInitF\n"
+	result = result.."wrapInit str = newRefStr str >>= hideArgument >>= wrapInitF\n"
 	-- result = result.."int wrapIdent(enum Process typ, const char *str) {\n"
 	-- result = result..showIndent(1).."struct Argument arg = {0};\n"
 	-- result = result..showIndent(1).."if (wrapInit(&arg,str) < 0 || arg.typ != typ) return -1;\n"

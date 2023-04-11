@@ -16,21 +16,22 @@ var depth = [MTLDepthStencilState?](repeating: nil, count: Int(Shaders.rawValue)
 var compute = [MTLComputePipelineState?](repeating: nil, count: Int(Shaders.rawValue))
 var threads = [MTLSize?](repeating: nil, count: Int(Shaders.rawValue))
 
-var lock = [Refer]()
+var lock1 = Lock()
+var lock2 = Lock()
 var count = Int(0)
 var delta = 0.0
 
-var triangle = Pend<Triangle>()
-var numeric = Pend<Numeric>()
-var vertex = Pend<Vertex>()
-var subject = Pend<Matrix>()
-var object = Pend<Matrix>()
-var element = Pend<Matrix>()
-var swarm = Pend<Vector>()
-var texture = Pend<Vector>()
-var basis = Pend<Basis>()
-var uniform = Pend<Uniform>()
-var pierce = Pend<Pierce>()
+var triangle = Pend<Triangle>(lock1)
+var numeric = Pend<Numeric>(lock1)
+var vertex = Pend<Vertex>(lock1)
+var subject = Pend<Matrix>(lock1)
+var object = Pend<Matrix>(lock1)
+var element = Pend<Matrix>(lock1)
+var swarm = Pend<Vector>(lock1)
+var texture = Pend<Vector>(lock1)
+var basis = Pend<Basis>(lock1)
+var uniform = Pend<Uniform>(lock1)
+var pierce = Pend<Pierce>(lock2)
 var array = [Slice]()
 
 func getRect() -> NSRect
@@ -97,11 +98,20 @@ func toArray<T>(_ list: [T], _ vals: [T], _ index: Int, _ limit: Int) -> [T]
 	}
 	return result
 }
+class Lock
+{
+	var lock = [Refer]()
+}
 class Pend<T>
 {
 	var pend:MTLBuffer!
 	var last:MTLBuffer!
 	var refer:Refer!
+	var lock:Lock!
+	init(_ l: Lock)
+	{
+		lock = l
+	}
 	func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
 		let len:Int = range.upperBound
@@ -167,7 +177,7 @@ class Pend<T>
 			pend = nil
 		}
 		if (last != nil) {
-			lock.append(refer)
+			lock.lock.append(refer)
 			refer.lock += 1
 		}
 		return last
@@ -184,16 +194,21 @@ func getTexture(_ rect:NSRect) -> MTLTexture?
 }
 func getLock() -> MTLCommandBufferHandler
 {
-	let temp = lock
-	lock = []
+	let temp = lock1.lock
+	lock1.lock = []
 	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
+}
+func setLock()
+{
+	for ref in lock2.lock {ref.lock -= 1}
+	lock2.lock = []
 }
 func getReady() -> MTLCommandBufferHandler
 {
 	let size = planeConfig(TriangleSize)
 	if (size == 0) {return {(MTLCommandBuffer) in planeReady(nil)}}
 	let last = pierce.get()
-	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents())))}
+	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents()))); setLock()}
 }
 func getCount() -> MTLCommandBufferHandler
 {
