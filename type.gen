@@ -544,24 +544,6 @@ function showTypeHs()
 	result = result.."--\n"
 	result = result.."type Dat = [CChar]\n"
 	result = result..showCallHs().."\n"
-	-- foreign import ccall "openFork" openForkC :: IO CInt
-	-- foreign import ccall "openCheck" openCheckC :: CInt -> IO CInt
-	-- foreign import ccall "openRdfd" openRdfdC :: CInt -> IO CInt
-	-- foreign import ccall "openWrfd" openWrfdC :: CInt -> IO CInt
-	-- foreign import ccall "openExec" openExecC :: CString -> CString -> IO CInt
-	-- foreign import ccall "rdwrInit" rdwrInitC :: CInt -> CInt -> IO CInt
-	-- showArgument :: Argument -> IORef String -> IO ()
-	-- setArgumentCinp :: Argument -> Int -> Argument
-	-- getArgumentCinp :: Argument -> Int
-	-- result = result.."int wrapExec(struct Argument *arg, const char *fork, const char *exec) {\n"
-	-- result = result..showIndent(1).."int idx = openFork();\n"
-	-- result = result..showIndent(1).."if (idx < 0) return -1;\n"
-	-- result = result..showIndent(1).."if (openCheck(idx) >= 0) {\n"
-	-- result = result..showIndent(2).."char *str = 0; int len = 0;\n"
-	-- result = result..showIndent(2).."arg->inp=openRdfd(idx); arg->out=openWrfd(idx);\n"
-	-- result = result..showIndent(2).."showArgument(arg,&str,&len);\n"
-	-- result = result..showIndent(2).."openExec(exec,str); fprintf(stderr,\"%s: cannot execute file: %s\\n\",fork,exec); ERROR();}\n"
-	-- result = result..showIndent(1).."return idx;}\n"
 	result = result.."wrapExec :: Argument -> String -> String -> IO (Maybe Int)\n"
 	result = result.."wrapExec arg fork exec = do\n"
 	result = result..showIndent(1).."idx <- openFork\n"
@@ -577,17 +559,8 @@ function showTypeHs()
 	result = result..showIndent(3).."hPutStrLn stderr (fork ++ \": cannot execute file: \" ++ exec)\n"
 	result = result..showIndent(3).."callExit (negate 1)\n"
 	result = result..showIndent(3).."return Nothing\n"
-	-- result = result.."int wrapType(enum Process typ, const char *fork, const char *exec) {\n"
-	-- result = result..showIndent(1).."struct Argument arg = {0};\n"
-	-- result = result..showIndent(1).."arg.typ = typ;\n"
-	-- result = result..showIndent(1).."return wrapExec(&arg,fork,exec);}\n"
 	result = result.."wrapType :: Process -> String -> String -> IO (Maybe Int)\n"
 	result = result.."wrapType typ fork exec = wrapExec (Argument (ArgumentA1 typ 0 0 0) ArgumentA5Bs) fork exec\n"
-	-- result = result.."int wrapInit(struct Argument *arg, const char *str) {\n"
-	-- result = result..showIndent(1).."int len = 0;\n"
-	-- result = result..showIndent(1).."if (!hideArgument(arg,str,&len)) return -1;\n"
-	-- result = result..showIndent(1).."arg->idx = rdwrInit(arg->inp,arg->out);\n"
-	-- result = result..showIndent(1).."return 0;}\n"
 	result = result.."wrapInitF :: Maybe Argument -> IO (Maybe Argument)\n"
 	result = result.."wrapInitF Nothing = return Nothing\n"
 	result = result.."wrapInitF (Just arg) = do\n"
@@ -595,10 +568,6 @@ function showTypeHs()
 	result = result..showIndent(1).."return (Just (setArgumentCidx arg idx))\n"
 	result = result.."wrapInit :: String -> IO (Maybe Argument)\n"
 	result = result.."wrapInit str = newRefStr str >>= hideArgument >>= wrapInitF\n"
-	-- result = result.."int wrapIdent(enum Process typ, const char *str) {\n"
-	-- result = result..showIndent(1).."struct Argument arg = {0};\n"
-	-- result = result..showIndent(1).."if (wrapInit(&arg,str) < 0 || arg.typ != typ) return -1;\n"
-	-- result = result..showIndent(1).."return arg.idx;}"
 	result = result.."wrapIdentF :: Process -> Maybe Argument -> IO (Maybe Int)\n"
 	result = result.."wrapIdentF _ Nothing = return Nothing\n"
 	result = result.."wrapIdentF typ (Just arg) = if typ /= (getArgumentCtyp arg) then\n"
