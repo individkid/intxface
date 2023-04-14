@@ -1,7 +1,7 @@
 dofile("show.lua")
 
 --HERE Enums
-Goal = { -- File-tag for file.c
+Goal = {
 	"NewHub", -- open file
 	"ThdHub",
 	"CfgHub", -- set pid and forward
@@ -13,7 +13,7 @@ Goal = { -- File-tag for file.c
 	"ThdErr", -- close and report
 	"HubErr", -- report and exit
 }
-State = { -- Event-tag for line.c
+State = {
 	"Stock",
 	"First",
 	"Assign",
@@ -22,7 +22,7 @@ State = { -- Event-tag for line.c
 	"Timer",
 	"Audio",
 }
-Flow = { -- Event-mod for line.c
+Flow = {
 	"Sched",
 	"Back",
 	"Peek",
@@ -30,14 +30,14 @@ Flow = { -- Event-mod for line.c
 	"Store",
 	"Load",
 }
-Request = { -- Center-mod for plane.c
+Request = {
 	"SetReq", -- set memory
 	"GetReq", -- get memory
 	"GotReq", -- response to GetReq
 	"UseReq", -- notice that matrix changed
 	"FixReq", -- request to revert matrix and change plane
 }
-Memory = { -- Center-tag for plane.c
+Memory = {
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
@@ -55,7 +55,7 @@ Memory = { -- Center-tag for plane.c
 	"Machinez", -- state machine lines
 	"Configurez", -- configure to value
 }
-Configure = { -- Center-elem for plane.c
+Configure = {
 	"TriangleSize", -- refers to corners
 	"NumericSize", -- planes for corners
 	"VertexSize", -- corners of frame
@@ -86,7 +86,7 @@ Configure = { -- Center-elem for plane.c
 	"CenterIndex",
 	"CenterSelf",
 	"CenterRmw",
-	"ArgumentShader", -- pass to draw
+	"ArgumentMicro", -- pass to draw
 	"ArgumentStart",
 	"ArgumentStop",
 	"ClosestLeft", -- search through pierce
@@ -111,7 +111,7 @@ Configure = { -- Center-elem for plane.c
 	"OriginLeft", -- starting cursor
 	"OriginBase",
 }
-Transfer = { -- Machine-tag for plane.c
+Transfer = {
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
 	"Save", -- client, pierce, or info to configure
@@ -124,7 +124,7 @@ Transfer = { -- Machine-tag for plane.c
 	"Other", -- change center to maintain
 	"Glitch", -- set maintain to center
 	"Check", -- apply center to maintain and unapply to written
-	"Stage", -- apply cursor/fixed/mode to towrite and change fixed for continuity
+	"Fixed", -- apply cursor/fixed/mode to towrite and change fixed for continuity
 	"Apply", -- apply towrite to written and clear towrite
 	"Accum", -- apply written to maintain and clear written
 	"Share", -- dma to cpu or gpu
@@ -134,7 +134,7 @@ Transfer = { -- Machine-tag for plane.c
 	"Nest", -- nest to level
 	"Swap", -- exchange machine lines
 }
-Operation = { -- Expression-tag for plane.c
+Operation = {
 	"Fadd",
 	"Iadd",
 	"Fsub",
@@ -154,13 +154,13 @@ Operation = { -- Expression-tag for plane.c
 	"Drop",
 	"Cond",
 }
-Transform = { -- Configure-cast for plane.c
+Transform = {
 	"Translate",
 	"Rotate",
 	"Scale",
 	"Zoom",
 }
-Shader = {
+Micro = {
 	"Dipoint", -- display from triangles of points
 	"Diplane", -- display from triangles of points from planes
 	"Adpoint", -- find pierce points from triangles of points
@@ -172,42 +172,51 @@ Shader = {
 	"Depoint", -- copy points to pierces
 	"Deplane", -- copy planes to pierces
 }
-Stage = { -- Configure-cast for plane.c
+Code = {
 	"Corner",
 	"Fragment",
 }
-Wait = { -- Configure-cast for plane.c
+Wait = {
 	"Open",
 	"Close",
 	"Start",
 	"Stop",
 }
-Concur = { -- Configure-cast for plane.c
+Concur = {
 	"External",
 	"Console",
-	"Program",
 	"Window",
 	"Process",
 }
-Ture = { -- Sculpt-tag for space.c
+Ture = {
 	"Table",
 	"Sides",
 }
-Stream = { -- Memx-cast for share.c
-	"Encode", -- read string and write type
-	"Decode", -- read type and write string
-	"Insert", -- read twice and write second with first inserted
-	"Extract", -- write extracted from read
-	"Portion", -- read Data and write portion of Dat
-	"Replace", -- read Data and Dat and replace portion
-	"Unique", -- read several strings and write hole int
-	"Permute", -- read several and write in different order
-	"Constant", -- read several and write constant after them
-	"Repeat", -- read several and write the last again after them
-	"Delete", -- read several and write all but the last
-	"Follow", -- read several and write from path after them
+Stream = { -- read several and
+	"Encode", -- convert string to type
+	"Decode", -- convert type to string
+	"Insert", -- insert one to next
+	"Extract", -- extract one from last
+	"Portion", -- write portion of Data
+	"Replace", -- replace portion of Data
+	"Unique", -- convert several string to Int
+	"Permute", -- reorder several
+	"Constant", -- append constant
+	"Repeat", -- repeat the last
+	"Delete", -- delete the last
+	"Follow", -- append from named
+	"Stagew", -- name a pipelilne
+	"Stagex", -- transfer from pipeline
+	"Stagey", -- transfer to pipeline
+	"Stagez", -- append stage to pipeline
+	"Pipew", -- name a pipe
+	"Fifow", -- name a fifo
+	"Execw", -- name a filter
+	"Filew", -- name a file
+	"Luaw", -- name a lua script
+	"Select", -- map names to names
 }
-Logic = { -- Data-elem for datx.c
+Logic = {
 	"WrpJmp",
 	"WrpYld",
 	"RunJmp",
@@ -222,7 +231,7 @@ Logic = { -- Data-elem for datx.c
 	"ImmYld",
 	"SetJmp",
 }
-Process = { -- Argument-tag for show.c
+Process = {
 	"Filez",
 	"Holez",
 	"Linez",
@@ -237,18 +246,18 @@ Process = { -- Argument-tag for show.c
 }
 --HERE Constants
 Initial = {
-	{"Shader","Dipoint","Stage","Corner","Str","vertex_render"},
-	{"Shader","Dipoint","Stage","Fragment","Str","fragment_render"},
-	{"Shader","Diplane","Stage","Corner","Str","diplane_vertex"},
-	{"Shader","Diplane","Stage","Fragment","Str","diplane_fragment"},
-	{"Shader","Adpoint","Str","kernel_pierce"},
-	{"Shader","Adplane","Str","adplane_compute"},
-	{"Shader","Copoint","Str","copoint_compute"},
-	{"Shader","Coplane","Str","coplane_compute"},
-	{"Shader","Onpoint","Str","onpoint_compute"},
-	{"Shader","Onplane","Str","onplane_compute"},
-	{"Shader","Depoint","Str","depoint_compute"},
-	{"Shader","Deplane","Str","deplane_compute"},
+	{"Micro","Dipoint","Code","Corner","Str","vertex_render"},
+	{"Micro","Dipoint","Code","Fragment","Str","fragment_render"},
+	{"Micro","Diplane","Code","Corner","Str","diplane_vertex"},
+	{"Micro","Diplane","Code","Fragment","Str","diplane_fragment"},
+	{"Micro","Adpoint","Str","kernel_pierce"},
+	{"Micro","Adplane","Str","adplane_compute"},
+	{"Micro","Copoint","Str","copoint_compute"},
+	{"Micro","Coplane","Str","coplane_compute"},
+	{"Micro","Onpoint","Str","onpoint_compute"},
+	{"Micro","Onplane","Str","onplane_compute"},
+	{"Micro","Depoint","Str","depoint_compute"},
+	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
 	{"Int","0","Str","Center(req:Request(SetReq)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)rmw:Int(0)"..
@@ -482,6 +491,11 @@ Argument = {
 	{"out","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"str","Str",{["typ"]={["Holez"]=true}},{}},
+}
+Stage = {
+	{"tag","Stream",{},{}},
+	{"num","Int",{},{}},
+	{"typ","Int",{["tag"]={["Encode"]=true,["Decode"]=true}},{}},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")

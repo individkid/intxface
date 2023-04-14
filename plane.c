@@ -1,9 +1,6 @@
 #include "plane.h"
 #include "face.h"
-#include "luax.h"
 #include "metx.h"
-#include "argx.h"
-#include "memx.h"
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -59,8 +56,6 @@ xftype callInfo = 0;
 wftype callDraw = 0;
 pthread_t thread[Concurs];
 pthread_key_t retstr;
-// owned by argx memx luax thread:
-jmp_buf jmpbuf;
 // resource protected:
 int numpipe = 0;
 char **strings = 0;
@@ -78,7 +73,6 @@ sem_t resource;
 sem_t pending;
 sem_t ready[Concurs];
 sem_t finish[Concurs];
-void planeMemx(void **mem, void *giv);
 void planeRead();
 const char *planeGet(int idx);
 int planeSet(int idx, const char *str);
@@ -457,7 +451,7 @@ void planeWake(enum Configure hint)
 			case (Check): // apply center to maintain and unapply to written --
 				jumpmat(planeMaintain(),planeCenter(),4);
 				timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-			case (Stage): // apply cursor/fixed/mode to towrite and change fixed for continuity --
+			case (Fixed): // apply cursor/fixed/mode to towrite and change fixed for continuity --
 				jumpmat(planeTowrite(),planeLocal(),4);
 				planeContinue(); break;
 			case (Apply): // apply towrite to written and clear towrite --
@@ -469,7 +463,7 @@ void planeWake(enum Configure hint)
 			case (Share): // dma to cpu or gpu --
 				planeBuffer(); break;
 			case (Draw): // start shader --
-				callDraw((enum Shader)configure[ArgumentShader],configure[ArgumentStart],configure[ArgumentStop]); break;
+				callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
 			case (Jump): // skip if true -- siz cfg val cmp cnd idx
 				next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->idx : configure[RegisterNest]),next); break;
 			case (Goto): // jump if true -- idx
@@ -481,11 +475,6 @@ void planeWake(enum Configure hint)
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
 		configure[RegisterLine] = next;}
-}
-void planeMemx(void **mem, void *giv)
-{
-	memxCopy(mem,giv);
-	planeSet(-1,memxStr(*mem));
 }
 void planeRead()
 {
@@ -527,8 +516,7 @@ int planeSet(int idx, const char *str)
 		strings = realloc(strings,(idx+1)*sizeof(char*));
 		while (idx >= numstr) strings[numstr++] = strdup("");}
 	free(strings[idx]); strings[idx] = strdup(str);
-	ret = numstr;
-	if (numstr == 2) sem_post(&ready[Program]);});
+	ret = numstr;});
 	return ret;
 }
 int planeCat(int idx, const char *str)
@@ -538,10 +526,6 @@ int planeCat(int idx, const char *str)
 	int ret = planeSet(idx,strcat(strcpy(dst,src),str));
 	free(dst);
 	return ret;
-}
-void planeIntr()
-{
-	if (pthread_equal(pthread_self(),thread[Program])) longjmp(jmpbuf,1);
 }
 void planeTerm(int sig)
 {
@@ -584,10 +568,6 @@ void planeConsole()
 		planeCat(configure[CompareConsole],chr);
 		planeSafe(Waits,CompareConsole);}
 }
-void planeProgram()
-{
-	if (setjmp(jmpbuf) == 0) runProgram();
-}
 void planeWrap(enum Concur bit, enum Wait pre, enum Wait post)
 {
 	planeSafe(pre,Configures); sem_post(&ready[bit]);
@@ -597,9 +577,8 @@ void *planeThread(void *arg)
 {
 	enum Concur bit = (enum Concur)(uintptr_t)arg;
 	switch (bit) {
-	case (External): sem_sync(&ready[Program]); planeExternal(); break;
+	case (External): planeExternal(); break;
 	case (Console): planeConsole(); break;
-	case (Program): planeProgram(); break;
 	case (Window): planeWrap(Window,Open,Close); break;
 	case (Process): planeWrap(Process,Start,Stop); break;
 	default: ERROR();}
@@ -611,7 +590,6 @@ void planeFinish(enum Concur bit)
 	switch (bit) {
 	case (External): closeIdent(external); break;
 	case (Console): close(STDIN_FILENO); break;
-	case (Program): kill(getpid(),SIGTERM); break;
 	case (Window): sem_post(&finish[Window]); break;
 	case (Process): sem_post(&finish[Process]); break;
 	default: ERROR();}
@@ -687,10 +665,6 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	act.__sigaction_u.__sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	luaxAdd("planeGet",protoTypeRh(planeGet));
-	luaxAdd("planeSet",protoTypeFh(planeSet));
-	luaxAdd("planeCat",protoTypeFh(planeCat));
-	intrFunc(planeIntr);
 	sem_init(&resource,0,1);
 	sem_init(&pending,0,0);
 	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,0);
@@ -700,7 +674,6 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	callUser = user;
 	callInfo = info;
 	callDraw = draw;
-	addFlow("",protoTypeNf(memxInit),protoTypeMf(planeMemx));
 	if ((internal = openPipe()) < 0) ERROR();
 	init(); planeBoot();
 	while (planeTodo()) planePeek(planeUser);
