@@ -493,6 +493,7 @@ Argument = {
 	{"str","Str",{["typ"]={["Holez"]=true}},{}},
 }
 Stage = {
+	{"nxt","Stage",{},0},
 	{"tag","Stream",{},{}},
 	{"num","Int",{},{}},
 	{"typ","Int",{["tag"]={["Encode"]=true,["Decode"]=true}},{}},
