@@ -4,9 +4,6 @@ module face {
 module type {
 	header "type.h"
 }
-module argx {
-	header "argx.h"
-}
 module plane {
 	header "plane.h"
 }
