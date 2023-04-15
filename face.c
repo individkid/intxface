@@ -687,7 +687,7 @@ void assignStr(char **ptr, const char *str)
 {
 	if (*ptr && str == 0) {free(*ptr); *ptr = 0;}
 	if (str == 0) return;
-	*ptr = malloc(strlen(str)+1);
+	*ptr = realloc(*ptr,strlen(str)+1);
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
@@ -703,7 +703,7 @@ void assignDat(void **ptr, const void *dat)
 {
 	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
 	if (dat == 0) return;
-	*ptr = malloc((*(int*)dat)+sizeof(int));
+	*ptr = realloc(*ptr,(*(int*)dat)+sizeof(int));
 	if (*ptr == 0) ERRFNC(-1);
 	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));
 }

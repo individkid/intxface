@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 struct Between {
+	int msb;
 	int siz;
 	int *typ;
 	void **dat;
@@ -42,6 +43,15 @@ int shareType(const char *str, int *len)
 		if (note == 0) return typ;}
 	return -1;
 }
+void addBetween(struct Between *bet, void *dat)
+{
+	if (bet->siz == 1<<bet->msb) {
+	void **tmp = bet->dat;
+	allocDat(&bet->dat,1<<++bet->msb);
+	for (int j = 0; j < bet->siz; j++) bet->dat[j] = tmp[j];
+	allocDat(&tmp,0);}
+	assignDat(bet->dat[(bet->siz)++],dat);
+}
 
 int runStage(struct Between *dst, const struct Between *src, const struct Stage *ptr)
 {
@@ -74,12 +84,7 @@ int main(int argc, char **argv)
 			fprintf(stderr,"^\n");
 			exit(-1);}
 		else if (done || typ != identType("Stage")) {
-			int siz = src.siz;
-			void **tmp = src.dat;
-			allocDat(&src.dat,++src.siz);
-			for (int j = 0; j < siz; j++) src.dat[j] = tmp[j];
-			allocDat(&tmp,0);
-			assignDat(src.dat[siz],dat);}
+			addBetween(&src,dat);}
 		else {
 			allocStage(next,1);
 			hideStage(*next,argv[i],&len);
@@ -87,7 +92,6 @@ int main(int argc, char **argv)
 	runPipe(&dst,&src,start);
 	for (int i = 0; i < dst.siz; i++) {
 		char *str = 0;
-		free(dat); dat = 0;
 		assignDat(dat,dst.dat[i]);
 		readType(&str,dst.typ[i],idx);
 		printf("%s\n",str);}
