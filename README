@@ -101,42 +101,7 @@ phone test av struct to from portaudio.
 page test file struct to from NSGridView. From left to right,
  highlightable scrollable text, entry per highlight,
  edit select scroll buttons per entry.
-share test arguments that control how subsequent non-dash arguments are interpreted.
- -a yield mask (resume mask)
- -b script result (script to evaluate)
- -c factory flow (operation names)
-  encode (read string and write type)
-  decode (read type and write string)
-  insert (read twice and write second with first inserted)
-  extract (write extracted from read)
-  unique (read several strings and write hole int)
-  permute (read several and write in different order)
-  constant (read several and write constant after them)
-  repeat (read several and write the last again after them)
-  delete (read several and write all but the last)
-  follow (read several and write from path after them)
- -d flow delay (delay and path)
-  delay and nest path for jump upon timeout
-  zero and nest path for jump upon unreadable
-  zero and no nest path to wait forever
-  delay and no nest path for unconditional wait
- -e executable pipe (executable name)
- -f file pipe (file name)
- -g fifo pipe (file name)
- -h inet pipe (host port)
- -i input from (nest path)
- -j loop or break (nest path)
-  pairs of skip mode and amount
- -k open or close (nest count)
- -l lua pipe (script strings)
- -m instead from (nest path)
- -n aswell from (nest path)
-  face idents for delay are instead or aswell at path
- -o output from (nest path)
-  input or output ident for factory is at path
- -p output pipe (descrptor)
- -q input pipe (descriptor)
- -rstuvwxyz control delay and parallelism
+share test queues between stages that permute and modify pipe streams.
 
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
@@ -195,6 +160,23 @@ The DE with indirect feedback goes to several A with rate from f.
   feedabs=b((feedsgn?feedval:0)(feedsgn?0:feedval))
   slope=b(refabs-feedabs)
   output=e(slope)
+Phasebox has power, 2 channel signal input, square input output, signal triangle output.
+ One channel is to produce the triangle; one is pass through.
+ This produces whatever triangle slope needed so square of input equals square input,
+ where square output is sw user of triangle.
+Fractionbox has power, square input output, phase slope input.
+ Slope is how much to increment per input edge.
+ Phase is when to reset and send output edge.
+Stompbox has power, phase slope output, button and two pots.
+ Output remains unchanged until button pressed.
+Bucketbox has power, pot for delay, phase slope input, phase slope output.
+Latchbox has power, signal triangle input, phase slope input, phase slope output.
+ Phase is passed through. Slope is of latch gate.
+ Slope output is what was latched at phase.
+ This requires trim pot for length of gate.
+Hatbox has power, signal triangle input, phase slope input, signal triangle output.
+ Phase input is when top of hat should be. Slope input is of hat.
+ This requires trim pot for length of hat.
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
