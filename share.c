@@ -5,9 +5,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-struct Between {
+struct Queue {
 	int msb;
 	int siz;
+	int fst;
 	int *typ;
 	void **dat;
 };
@@ -43,32 +44,86 @@ int shareType(const char *str, int *len)
 		if (note == 0) return typ;}
 	return -1;
 }
-void addBetween(struct Between *bet, void *dat)
+void **planeEntry(struct Queue *que, int idx)
 {
-	if (bet->siz == 1<<bet->msb) {
-	void **tmp = bet->dat;
-	allocDat(&bet->dat,1<<++bet->msb);
-	for (int j = 0; j < bet->siz; j++) bet->dat[j] = tmp[j];
-	allocDat(&tmp,0);}
-	assignDat(bet->dat[(bet->siz)++],dat);
+	if (idx >= que->siz) return 0;
+	return &que->dat[(que->fst+idx) % (1<<que->msb)];
 }
-
-int runStage(struct Between *dst, const struct Between *src, const struct Stage *ptr)
+int *planeType(struct Queue *que, int idx)
 {
+	if (idx >= que->siz) return 0;
+	return &que->typ[(que->fst+idx) % (1<<que->msb)];
+}
+void planeAlloc(struct Queue *que, int idx)
+{
+	while (idx >= que->siz)
+	if (que->siz == 1<<que->msb) {
+	void **dat = 0;
+	int *typ = 0;
+	int msb = que->msb+1;
+	allocDat(&dat,1<<msb);
+	allocInt(&typ,1<<msb);
+	for (int j = 0; j < que->siz; j++) {
+	dat[j] = *planeEntry(que,j);
+	typ[j] = *planeType(que,j);}
+	for (int j = que->siz; j < 1<<msb; j++) {
+	dat[j] = 0; typ[j] = -1;}
+	allocDat(&que->dat,0);
+	allocInt(&que->typ,0);
+	que->dat = dat;
+	que->typ = typ;
+	que->fst = 0;
+	que->msb = msb;
+	que->siz += 1;}
+}
+void planeEnque(struct Queue *que, void *dat, int typ)
+{
+	int sub = que->siz++;
+	planeAlloc(que,sub);
+	assignDat(planeEntry(que,sub),dat);
+	*planeType(que,sub) = typ;
+}
+void planeDeque(struct Queue *que, void **dat, int *typ)
+{
+	if (que->siz == 0) ERROR();
+	assignDat(dat,*planeEntry(que,0));
+	*typ = *planeType(que,0);
+	que->siz -= 1;
+	que->fst = (que->fst+1) % (1<<que->msb);
+}
+void planeConcat(struct Queue *dst, struct Queue *src)
+{
+	for (int i = 0; i < src->siz; i++)
+	planeEnque(dst,*planeEntry(src,i),*planeType(src,i));
+}
+int runStage(struct Queue *dst, struct Queue *src, const struct Stage *ptr)
+{
+	// TODO deque as many from src as needed to enque the required to dst
 	return 0; // TODO return -1 for more in src; return 1 for stage done
 }
-void runPipe(struct Between *dst, const struct Between *src, const struct Stage *ptr)
+void runPipe(struct Queue *dst, struct Queue *src, const struct Stage *ptr)
 {
-	// TODO count links; allocate array of links; start with last; go back on -1;
-	// use src for first; return dst on 1 from last; use dst as src of nxt on 1;
+	int val = -1;
+	int sub = 0;
+	int siz = 0;
+	const struct Stage **lst = 0;
+	struct Queue *que = 0;
+	for (const struct Stage *tmp = ptr; tmp; tmp = tmp->nxt) siz++;
+	lst = malloc(siz*sizeof(struct Stage*));
+	que = malloc(siz*sizeof(struct Queue));
+	for (const struct Stage *tmp = ptr; tmp; tmp = tmp->nxt) lst[sub++] = tmp;
+	planeAlloc(&que[0],src->siz);
+	while ((sub += val) < siz) {
+	val = runStage(dst,&que[sub],lst[sub]);
+	if (val == 1) planeConcat(&que[sub+1],dst);}
 }
 
 int main(int argc, char **argv)
 {
 	struct Stage *start = 0;
 	struct Stage **next = &start;
-	struct Between dst = {0};
-	struct Between src = {0};
+	struct Queue dst = {0};
+	struct Queue src = {0};
 	int done = 0;
 	noteFunc(shareNote);
 	idx = buntInit(0,0,shareRead,shareWrite);
@@ -84,7 +139,7 @@ int main(int argc, char **argv)
 			fprintf(stderr,"^\n");
 			exit(-1);}
 		else if (done || typ != identType("Stage")) {
-			addBetween(&src,dat);}
+			planeEnque(&src,dat,typ);}
 		else {
 			allocStage(next,1);
 			hideStage(*next,argv[i],&len);
