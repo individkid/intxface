@@ -98,9 +98,7 @@ frame test AVPlayerLayer SCStream to and from av struct pipe.
 wave test Bitscope /dev/cu.usbserial-BSEEK46 to and from av struct pipe.
 tape test BMD-SDK to and from av struct pipe.
 phone test av struct to from portaudio.
-page test file struct to from NSGridView. From left to right,
- highlightable scrollable text, entry per highlight,
- edit select scroll buttons per entry.
+page test file struct to from field structured NSTextView.
 share test queues between stages that permute and modify pipe streams.
 
 Analog input to phone includes bugle and found object percussion,
