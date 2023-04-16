@@ -492,8 +492,16 @@ Argument = {
 	{"idx","Int",{},{}},
 	{"str","Str",{["typ"]={["Holez"]=true}},{}},
 }
+Queue = {
+	{"siz","Int",{},{}},
+	{"lim","Int",{},{}},
+	{"fst","Int",{},{}},
+	{"typ","Int",{},"siz"},
+	{"dat","Dat",{},"siz"},
+};
 Stage = {
 	{"nxt","Stage",{},0},
+	{"que","Queue",{},{}},
 	{"tag","Stream",{},{}},
 	{"num","Int",{},{}},
 	{"typ","Int",{["tag"]={["Encode"]=true,["Decode"]=true}},{}},
