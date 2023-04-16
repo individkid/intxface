@@ -91,11 +91,6 @@ void planeDeque(struct Queue *que, void **dat, int *typ)
 	que->siz -= 1;
 	que->fst = (que->fst+1) % (1<<que->msb);
 }
-void planeConcat(struct Queue *dst, struct Queue *src)
-{
-	for (int i = 0; i < src->siz; i++)
-	planeEnque(dst,*planeEntry(src,i),*planeType(src,i));
-}
 int runStage(struct Queue *dst, struct Queue *src, const struct Stage *ptr)
 {
 	// TODO deque as many from src as needed to enque the required to dst
@@ -103,7 +98,6 @@ int runStage(struct Queue *dst, struct Queue *src, const struct Stage *ptr)
 }
 void runPipe(struct Queue *dst, struct Queue *src, const struct Stage *ptr)
 {
-	int val = -1;
 	int sub = 0;
 	int siz = 0;
 	const struct Stage **lst = 0;
@@ -113,9 +107,14 @@ void runPipe(struct Queue *dst, struct Queue *src, const struct Stage *ptr)
 	que = malloc(siz*sizeof(struct Queue));
 	for (const struct Stage *tmp = ptr; tmp; tmp = tmp->nxt) lst[sub++] = tmp;
 	planeAlloc(&que[0],src->siz);
-	while ((sub += val) < siz) {
-	val = runStage(dst,&que[sub],lst[sub]);
-	if (val == 1) planeConcat(&que[sub+1],dst);}
+	sub -= 1; while (sub < siz) {
+	int val = runStage(dst,&que[sub],lst[sub]);
+	if (val == 1) while (dst->siz > 0) {
+	void *dat = 0;
+	int typ = 0;
+	planeDeque(dst,&dat,&typ);
+	planeEnque(&que[sub+1],dat,typ);}
+	sub += val;}
 }
 
 int main(int argc, char **argv)
@@ -142,7 +141,7 @@ int main(int argc, char **argv)
 			planeEnque(&src,dat,typ);}
 		else {
 			allocStage(next,1);
-			hideStage(*next,argv[i],&len);
+			len = 0; hideStage(*next,argv[i],&len);
 			next = &(*next)->nxt;}}
 	runPipe(&dst,&src,start);
 	for (int i = 0; i < dst.siz; i++) {
