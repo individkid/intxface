@@ -501,10 +501,14 @@ Queue = {
 };
 Stage = {
 	{"nxt","Stage",{},0},
-	{"que","Queue",{},{}},
 	{"tag","Stream",{},{}},
 	{"num","Int",{},{}},
 	{"typ","Int",{["tag"]={["Encode"]=true,["Decode"]=true}},{}},
+}
+Pipe = {
+	{"siz","Int",{},{}},
+	{"stg","Stage",{},"siz"},
+	{"que","Queue",{},"siz"},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")

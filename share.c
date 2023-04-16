@@ -25,7 +25,7 @@ void shareNote(int idx)
 {
 	note = 1;
 }
-int shareType(const char *str, int *len)
+int sharePeek(const char *str, int *len)
 {
 	for (int typ = 0; identSubtype(typ,0)!=-1; typ++) {
 		int tmp = 0;
@@ -36,17 +36,17 @@ int shareType(const char *str, int *len)
 		if (note == 0) return typ;}
 	return -1;
 }
-void **planeEntry(struct Queue *que, int idx)
+void **shareEntry(struct Queue *que, int idx)
 {
 	if (idx >= que->lim) return 0;
 	return &que->dat[(que->fst+idx) % que->siz];
 }
-int *planeType(struct Queue *que, int idx)
+int *shareType(struct Queue *que, int idx)
 {
 	if (idx >= que->lim) return 0;
 	return &que->typ[(que->fst+idx) % que->siz];
 }
-void planeAlloc(struct Queue *que, int idx)
+void shareAlloc(struct Queue *que, int idx)
 {
 	while (idx >= que->lim)
 	if (que->lim == que->siz) {
@@ -56,8 +56,8 @@ void planeAlloc(struct Queue *que, int idx)
 	allocDat(&dat,siz);
 	allocInt(&typ,siz);
 	for (int j = 0; j < que->lim; j++) {
-	dat[j] = *planeEntry(que,j);
-	typ[j] = *planeType(que,j);}
+	dat[j] = *shareEntry(que,j);
+	typ[j] = *shareType(que,j);}
 	for (int j = que->lim; j < siz; j++) {
 	dat[j] = 0; typ[j] = -1;}
 	allocDat(&que->dat,0);
@@ -68,70 +68,69 @@ void planeAlloc(struct Queue *que, int idx)
 	que->siz = siz;
 	que->lim += 1;}
 }
-void planeEnque(struct Queue *que, void *dat, int typ)
+void shareEnque(struct Queue *que, void *dat, int typ)
 {
 	int sub = que->lim++;
-	planeAlloc(que,sub);
-	assignDat(planeEntry(que,sub),dat);
-	*planeType(que,sub) = typ;
+	shareAlloc(que,sub);
+	assignDat(shareEntry(que,sub),dat);
+	*shareType(que,sub) = typ;
 }
-void planeDeque(struct Queue *que, void **dat, int *typ)
+void shareDeque(struct Queue *que, void **dat, int *typ)
 {
 	if (que->lim == 0) ERROR();
-	assignDat(dat,*planeEntry(que,0));
-	*typ = *planeType(que,0);
+	assignDat(dat,*shareEntry(que,0));
+	*typ = *shareType(que,0);
 	que->lim -= 1;
 	que->fst = (que->fst+1) % que->siz;
 }
-int runStage(struct Queue *que, struct Stage *ptr)
+void sharePipe(struct Queue *que, struct Pipe *ptr);
+int shareStage(struct Queue *que, struct Stage *ptr)
 {
 	// TODO deque as many from ptr->que as needed to enque the required to que
 	return 0; // TODO return -1 for more in ptr->que; return 1 for stage done
 }
-void runPipe(struct Queue *que, struct Stage *ptr)
+void sharePipe(struct Queue *que, struct Pipe *ptr)
 {
-	struct Stage **lst = 0; int siz = 0;
-	for (struct Stage *tmp = ptr; tmp; tmp = tmp->nxt) siz++;
-	lst = malloc(siz*sizeof(struct Stage*)); siz = 0;
-	for (struct Stage *tmp = ptr; tmp; tmp = tmp->nxt) lst[siz++] = tmp;
-	for (int sub = 0, val = 1; sub < siz && sub >= 0; sub += val) {
+	for (int sub = 0, val = 1; sub < ptr->siz && sub >= 0; sub += val) {
 	if (val == 1) while (que->lim > 0) {
 	void *dat = 0; int typ = 0;
-	planeDeque(que,&dat,&typ);
-	planeEnque(&lst[sub]->que,dat,typ);}
-	val = runStage(que,lst[sub]);}
+	shareDeque(que,&dat,&typ);
+	shareEnque(&ptr->que[sub],dat,typ);}
+	val = shareStage(que,&ptr->stg[sub]);}
 }
 
 int main(int argc, char **argv)
 {
-	struct Stage *start = 0;
-	struct Stage **next = &start;
-	struct Queue que = {0};
-	int done = 0;
+	struct Pipe pipe = {0};
+	struct Queue queue = {0};
+	int done = 0; int sub = 0;
+	int len = 0; int typ = 0;
+	char *str = 0;
 	noteFunc(shareNote);
 	idx = buntInit(0,0,shareRead,shareWrite);
 	for (int i = 1; i < argc; i++) {
-		int len = 0;
-		int typ = 0;
-		if (strcmp(argv[i],"--") == 0) {done = 1; continue;}
-		typ = shareType(argv[i],&len);
-		if (typ < 0) {
+		if (strcmp(argv[i],"--") == 0) done = 1;
+		else if ((len = 0, typ = sharePeek(argv[i],&len)) < 0);
+		else if (done || typ != identType("Stage"));
+		else pipe.siz++;}
+	allocStage(&pipe.stg,pipe.siz);
+	allocQueue(&pipe.que,pipe.siz);
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i],"--") == 0) done = 1;
+		else if ((len = 0, typ = sharePeek(argv[i],&len)) < 0) {
 			fprintf(stderr,"ERROR: invalid type: %s\n",argv[i]);
 			fprintf(stderr,"---------------------");
 			for (int j = 0; j < len; j++) fprintf(stderr,"-");
 			fprintf(stderr,"^\n");
 			exit(-1);}
 		else if (done || typ != identType("Stage")) {
-			planeEnque(&que,dat,typ);}
+			shareEnque(&queue,dat,typ);}
 		else {
-			allocStage(next,1);
-			len = 0; hideStage(*next,argv[i],&len);
-			next = &(*next)->nxt;}}
-	runPipe(&que,start);
-	for (int i = 0; i < que.siz; i++) {
-		char *str = 0;
-		assignDat(dat,que.dat[i]);
-		readType(&str,que.typ[i],idx);
+			len = 0; hideStage(&pipe.stg[sub],argv[i],&len); sub += 1;}}
+	sharePipe(&queue,&pipe);
+	for (int i = 0; i < queue.siz; i++) {
+		assignDat(dat,queue.dat[i]);
+		readType(&str,queue.typ[i],idx);
 		printf("%s\n",str);}
 	return 0;
 }
