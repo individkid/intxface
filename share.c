@@ -48,7 +48,7 @@ int *shareType(struct Queue *que, int idx)
 }
 void shareAlloc(struct Queue *que, int idx)
 {
-	while (idx >= que->lim)
+	while (idx >= que->lim) {
 	if (que->lim == que->siz) {
 	void **dat = 0;
 	int *typ = 0;
@@ -65,12 +65,12 @@ void shareAlloc(struct Queue *que, int idx)
 	que->dat = dat;
 	que->typ = typ;
 	que->fst = 0;
-	que->siz = siz;
+	que->siz = siz;}
 	que->lim += 1;}
 }
 void shareEnque(struct Queue *que, void *dat, int typ)
 {
-	int sub = que->lim++;
+	int sub = que->lim + 1;
 	shareAlloc(que,sub);
 	assignDat(shareEntry(que,sub),dat);
 	*shareType(que,sub) = typ;
@@ -83,12 +83,7 @@ void shareDeque(struct Queue *que, void **dat, int *typ)
 	que->lim -= 1;
 	que->fst = (que->fst+1) % que->siz;
 }
-void sharePipe(struct Queue *que, struct Pipe *ptr);
-int shareStage(struct Queue *que, struct Stage *ptr)
-{
-	// TODO deque as many from ptr->que as needed to enque the required to que
-	return 0; // TODO return -1 for more in ptr->que; return 1 for stage done
-}
+int shareStage(struct Queue *que, struct Stage *ptr);
 void sharePipe(struct Queue *que, struct Pipe *ptr)
 {
 	for (int sub = 0, val = 1; sub < ptr->siz && sub >= 0; sub += val) {
@@ -97,6 +92,11 @@ void sharePipe(struct Queue *que, struct Pipe *ptr)
 	shareDeque(que,&dat,&typ);
 	shareEnque(&ptr->que[sub],dat,typ);}
 	val = shareStage(que,&ptr->stg[sub]);}
+}
+int shareStage(struct Queue *que, struct Stage *ptr)
+{
+	// TODO deque as many from ptr->que as needed to enque the required to que
+	return 0; // TODO return -1 for more in ptr->que; return 1 for stage done
 }
 
 int main(int argc, char **argv)
