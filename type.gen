@@ -500,10 +500,11 @@ Queue = {
 	{"dat","Dat",{},"siz"},
 };
 Stage = {
-	{"nxt","Stage",{},0},
 	{"tag","Stream",{},{}},
 	{"num","Int",{},{}},
-	{"typ","Int",{["tag"]={["Encode"]=true,["Decode"]=true}},{}},
+	{"typ","Int",{["tag"]={["Encode"]=true}},{}},
+	{"fld","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
+	{"idx","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 }
 Pipe = {
 	{"siz","Int",{},{}},
