@@ -505,6 +505,8 @@ Stage = {
 	{"typ","Int",{["tag"]={["Encode"]=true}},{}},
 	{"fld","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 	{"idx","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
+	{"siz","Int",{["tag"]={["Permute"]=true}},{}},
+	{"ord","Int",{["tag"]={["Permute"]=true}},"siz"},
 }
 Pipe = {
 	{"siz","Int",{},{}},

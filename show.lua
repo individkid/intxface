@@ -243,8 +243,8 @@ function showStructCF(struct)
 		showStructCG("    ","",second)
 	else
 		-- coroutine.yield("// 8")
+		showStructCG("        ","",second)
 		coroutine.yield("    };")
-		showStructCG("    ","// ",second)
 	end
 end
 function showStructC(name,struct)
