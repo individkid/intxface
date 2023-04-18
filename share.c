@@ -110,6 +110,7 @@ void sharePipe(struct Queue *que, struct Pipe *ptr)
 }
 int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 {
+	struct Queue que = {0};
 	void *dat = 0;
 	void *pre = 0;
 	void *suf = 0;
@@ -126,16 +127,15 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	case (Extract): req = 1; break;
 	case (Divide): req = 1; break;
 	case (Combine): req = 2; break;
-	case (Permute): req = ptr->lim; break;
+	case (Permute): req = ptr->nwr; break;
 	case (Constant): break;
-	case (Unique): req = ptr->lim; break;
-	case (Stagew): break;
-	case (Stagev): req = 1; break;
-	case (Pipew): break;
-	case (Fifow): break;
-	case (Execw): break;
-	case (Filew): break;
-	case (Luaw): break;
+	case (Unique): req = ptr->nun; break;
+	case (Stagex): break;
+	case (Pipex): break;
+	case (Fifox): break;
+	case (Execx): break;
+	case (Filex): break;
+	case (Luax): break;
 	case (Follow): break;
 	case (Select): break;
 	default: ERROR();}
@@ -158,8 +158,13 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		shareEnque(dst,dat0,identType("Str"));
 		break;
 	case (Construct):
+		shareDeque(src,&dat,&typ);
+		if (typ != identType("Dat")) ERROR();
+		shareEnque(dst,dat,ptr->typ);
 		break;
 	case (Destruct):
+		shareDeque(src,&dat,&typ);
+		shareEnque(dst,dat,identType("Dat"));
 		break;
 	case (Insert):
 		shareDeque(src,&dat0,&typ);
@@ -188,16 +193,25 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		datxJoin(dat,pre,suf);
 		shareEnque(dst,dat,typ);
 		break;
-	case (Permute): break;
-	case (Constant): break;
-	case (Unique): break;
-	case (Stagew): break;
-	case (Stagev): break;
-	case (Pipew): break;
-	case (Fifow): break;
-	case (Execw): break;
-	case (Filew): break;
-	case (Luaw): break;
+	case (Permute):
+		for (int i = 0; i < ptr->nrd; i++) {
+			shareDeque(src,&dat,&typ);
+			shareEnque(&que,dat,typ);}
+		for (int i = 0; i < ptr->nwr;) {
+			if (ptr->ord[i] < 0 || ptr->ord[i] >= ptr->nrd) ERROR();
+			shareEnque(dst,que.dat[ptr->ord[i]],que.typ[ptr->ord[i]]);}
+		break;
+	case (Constant):
+		shareEnque(dst,ptr->dat,identType("Dat"));
+		break;
+	case (Unique):
+		break;
+	case (Stagex): break;
+	case (Pipex): break;
+	case (Fifox): break;
+	case (Execx): break;
+	case (Filex): break;
+	case (Luax): break;
 	case (Follow): break;
 	case (Select): break;
 	default: ERROR();}

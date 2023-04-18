@@ -204,13 +204,12 @@ Stream = { -- read several and
 	"Permute", -- reorder several
 	"Constant", -- append constant
 	"Unique", -- convert several Dat to Int
-	"Stagew", -- name a pipelilne
-	"Stagev", -- append stage to pipeline
-	"Pipew", -- name a pipe
-	"Fifow", -- name a fifo
-	"Execw", -- name a filter
-	"Filew", -- name a file
-	"Luaw", -- name a lua script
+	"Stagex", -- name a pipelilne
+	"Pipex", -- name a pipe
+	"Fifox", -- name a fifo
+	"Execx", -- name a filter
+	"Filex", -- name a file
+	"Luax", -- name a lua script
 	"Follow", -- append from named
 	"Select", -- map names to names
 }
@@ -500,13 +499,21 @@ Queue = {
 Stage = {
 	{"tag","Stream",{},{}},
 	{"num","Int",{},{}},
+	{"str","Str",{},{}},
 	{"typ","Int",{["tag"]={["Encode"]=true,["Construct"]=true}},{}},
 	{"fld","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 	{"idx","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
-	{"lim","Int",{["tag"]={["Permute"]=true}},{}},
-	{"siz","Int",{["tag"]={["Permute"]=true}},{}},
-	{"ord","Int",{["tag"]={["Permute"]=true}},"siz"},
+	{"nrd","Int",{["tag"]={["Permute"]=true}},{}},
+	{"nwr","Int",{["tag"]={["Permute"]=true}},{}},
+	{"ord","Int",{["tag"]={["Permute"]=true}},"nwr"},
 	{"len","Int",{["tag"]={["Divide"]=true}},{}},
+	{"dat","Dat",{["tag"]={["Constant"]=true}},{}},
+	{"nun","Int",{["tag"]={["Unique"]=true}},{}},
+	{"nst","Int",{["tag"]={["Stagex"]=true}},{}},
+	{"stg","Stage",{["tag"]={["Stagex"]=true}},"nst"},
+	{"inp","Int",{["tag"]={["Pipex"]=true}},{}},
+	{"out","Int",{["tag"]={["Pipex"]=true}},{}},
+	{"url","Str",{["tag"]={["Fifox"]=true,["Execx"]=true,["Filex"]=true,["Luax"]=true}},{}},
 }
 Pipe = {
 	{"siz","Int",{},{}},
