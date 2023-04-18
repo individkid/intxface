@@ -195,25 +195,23 @@ Ture = {
 Stream = { -- read several and
 	"Encode", -- convert string to type
 	"Decode", -- convert type to string
+	"Construct", -- convert Dat to type
+	"Destruct", -- convert type to Dat
 	"Insert", -- insert one to next
 	"Extract", -- extract one from last
-	"Portion", -- write portion of Data
-	"Replace", -- replace portion of Data
-	"Unique", -- convert several string to Int
+	"Divide", -- divide one Dat into several
+	"Combine", -- combine several Dat into one
 	"Permute", -- reorder several
 	"Constant", -- append constant
-	"Repeat", -- repeat the last
-	"Delete", -- delete the last
-	"Follow", -- append from named
+	"Unique", -- convert several Dat to Int
 	"Stagew", -- name a pipelilne
-	"Stagex", -- transfer from pipeline
-	"Stagey", -- transfer to pipeline
-	"Stagez", -- append stage to pipeline
+	"Stagev", -- append stage to pipeline
 	"Pipew", -- name a pipe
 	"Fifow", -- name a fifo
 	"Execw", -- name a filter
 	"Filew", -- name a file
 	"Luaw", -- name a lua script
+	"Follow", -- append from named
 	"Select", -- map names to names
 }
 Logic = {
@@ -502,11 +500,13 @@ Queue = {
 Stage = {
 	{"tag","Stream",{},{}},
 	{"num","Int",{},{}},
-	{"typ","Int",{["tag"]={["Encode"]=true}},{}},
+	{"typ","Int",{["tag"]={["Encode"]=true,["Construct"]=true}},{}},
 	{"fld","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 	{"idx","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
+	{"lim","Int",{["tag"]={["Permute"]=true}},{}},
 	{"siz","Int",{["tag"]={["Permute"]=true}},{}},
 	{"ord","Int",{["tag"]={["Permute"]=true}},"siz"},
+	{"len","Int",{["tag"]={["Divide"]=true}},{}},
 }
 Pipe = {
 	{"siz","Int",{},{}},

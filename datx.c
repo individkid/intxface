@@ -167,6 +167,18 @@ int datxMeta(int sub, int idx)
 	if (sub < 0 || sub >= base[idx]->siz) ERROR();
 	return next[idx][sub];
 }
+void datxStr(void **dat, const char *str)
+{
+	// TODO
+}
+void datxSplit(void **pre, void **suf, const void *dat, int len)
+{
+	// TODO
+}
+void datxJoin(void **dat, const void *pre, const void *suf)
+{
+	// TODO
+}
 int datxPtrs(void *dat)
 {
 	return *(int*)dat;

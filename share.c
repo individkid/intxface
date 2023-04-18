@@ -13,17 +13,27 @@ int note = 0;
 
 int shareRead(int fildes, void *buf, int nbyte)
 {
-	memcpy(buf,datxData(dat0),*(int*)dat0);
-	// TODO allow for partial read and return number read
-	return 0;
+	void **dat = (fildes == idx0 ? &dat0 : &dat1);
+	void *pre = 0;
+	void *suf = 0;
+	datxSplit(&pre,&suf,*dat,nbyte);
+	if (*(int*)pre != nbyte) return 0;
+	memcpy(buf,datxData(pre),nbyte);
+	assignDat(dat,suf);
+	free(pre);
+	free(suf);
+	return nbyte;
 }
 int shareWrite(int fildes, const void *buf, int nbyte)
 {
-	dat0 = realloc(dat0,nbyte+sizeof(int));
-	*(int*)dat0 = nbyte;
-	memcpy(datxData(dat0),buf,nbyte);
-	// TODO return number written
-	return 0;
+	void **dat = (fildes == idx0 ? &dat0 : &dat1);
+	void *suf = malloc(sizeof(int)+nbyte);
+	void *pre = 0;
+	assignDat(&pre,*dat);
+	datxJoin(dat,pre,suf);
+	free(pre);
+	free(suf);
+	return nbyte;
 }
 void shareNote(int idx)
 {
@@ -100,9 +110,36 @@ void sharePipe(struct Queue *que, struct Pipe *ptr)
 }
 int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 {
+	void *dat = 0;
+	void *pre = 0;
+	void *suf = 0;
 	char *str = 0;
 	int typ = 0;
 	int fld = 0;
+	int req = 0;
+	switch (ptr->tag) {
+	case (Encode): req = 1; break;
+	case (Decode): req = 1; break;
+	case (Construct): req = 1; break;
+	case (Destruct): req = 1; break;
+	case (Insert): req = 2; break;
+	case (Extract): req = 1; break;
+	case (Divide): req = 1; break;
+	case (Combine): req = 2; break;
+	case (Permute): req = ptr->lim; break;
+	case (Constant): break;
+	case (Unique): req = ptr->lim; break;
+	case (Stagew): break;
+	case (Stagev): req = 1; break;
+	case (Pipew): break;
+	case (Fifow): break;
+	case (Execw): break;
+	case (Filew): break;
+	case (Luaw): break;
+	case (Follow): break;
+	case (Select): break;
+	default: ERROR();}
+	if (src->lim < ptr->num+req) return -1;
 	for (int i = 0; i < ptr->num; i++) {
 		shareDeque(src,&dat0,&typ);
 		shareEnque(dst,dat0,typ);}
@@ -111,51 +148,64 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		shareDeque(src,&dat0,&typ);
 		if (typ != identType("Str")) ERROR();
 		readStr(&str,idx0);
-		note = 0; writeType(str,ptr->typ,idx0);
-		flushBuf(idx0); if (note) ERROR();
+		datxStr(&dat0,""); note = 0; writeType(str,ptr->typ,idx0); if (note) ERROR();
 		shareEnque(dst,dat0,ptr->typ);
 		break;
 	case (Decode):
 		shareDeque(src,&dat0,&typ);
 		readType(&str,typ,idx0);
-		writeStr(str,idx0); flushBuf(idx0);
+		datxStr(&dat0,""); writeStr(str,idx0);
 		shareEnque(dst,dat0,identType("Str"));
+		break;
+	case (Construct):
+		break;
+	case (Destruct):
 		break;
 	case (Insert):
 		shareDeque(src,&dat0,&typ);
 		shareDeque(src,&dat1,&fld);
 		if (identSubtype(typ,ptr->fld) != fld) ERROR();
-		readField(typ,ptr->fld,ptr->idx,idx0,idx1,idx0);
-		flushBuf(idx0);
+		datxStr(&dat0,""); note = 0; readField(typ,ptr->fld,ptr->idx,idx0,idx1,idx0); if (note) ERROR();
 		shareEnque(dst,dat0,typ);
 		break;
 	case (Extract):
 		shareDeque(src,&dat0,&typ);
-		writeField(typ,ptr->fld,ptr->idx,idx0,idx1);
-		flushBuf(idx1);
+		datxStr(&dat1,""); note = 0; writeField(typ,ptr->fld,ptr->idx,idx0,idx1); if (note) ERROR();
 		shareEnque(dst,dat1,identSubtype(typ,ptr->fld));
 		break;
-	case (Portion): break;
-	case (Replace): break;
-	case (Unique): break;
+	case (Divide):
+		shareDeque(src,&dat,&typ);
+		if (typ != identType("Dat")) ERROR();
+		datxSplit(&pre,&suf,&dat,ptr->len);
+		shareEnque(dst,pre,typ);
+		shareEnque(dst,suf,typ);
+		break;
+	case (Combine):
+		shareDeque(src,&pre,&typ);
+		if (typ != identType("Dat")) ERROR();
+		shareDeque(src,&suf,&typ);
+		if (typ != identType("Dat")) ERROR();
+		datxJoin(dat,pre,suf);
+		shareEnque(dst,dat,typ);
+		break;
 	case (Permute): break;
 	case (Constant): break;
-	case (Repeat): break;
-	case (Delete): break;
-	case (Follow): break;
+	case (Unique): break;
 	case (Stagew): break;
-	case (Stagex): break;
-	case (Stagey): break;
-	case (Stagez): break;
+	case (Stagev): break;
 	case (Pipew): break;
 	case (Fifow): break;
 	case (Execw): break;
 	case (Filew): break;
 	case (Luaw): break;
+	case (Follow): break;
 	case (Select): break;
 	default: ERROR();}
-	// TODO deque as many from ptr->que as needed to enque the required to que
-	return 0; // TODO return -1 for more in ptr->que; return 1 for stage done
+	free(dat);
+	free(pre);
+	free(suf);
+	free(str);
+	return 1;
 }
 
 int main(int argc, char **argv)
@@ -166,7 +216,8 @@ int main(int argc, char **argv)
 	int len = 0; int typ = 0;
 	char *str = 0;
 	noteFunc(shareNote);
-	idx0 = buntInit(0,0,shareRead,shareWrite);
+	idx0 = puntInit(0,0,shareRead,shareWrite);
+	idx1 = puntInit(0,0,shareRead,shareWrite);
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i],"--") == 0) done = 1;
 		else if ((len = 0, typ = sharePeek(argv[i],&len)) < 0);
