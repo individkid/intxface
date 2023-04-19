@@ -10,6 +10,7 @@ int idx1 = 0;
 void *dat0 = 0;
 void *dat1 = 0;
 int note = 0;
+int unique = 0;
 
 int shareRead(int fildes, void *buf, int nbyte)
 {
@@ -111,6 +112,7 @@ void sharePipe(struct Queue *que, struct Pipe *ptr)
 int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 {
 	struct Queue que = {0};
+	struct Pipe ppe = {0};
 	void *dat = 0;
 	void *pre = 0;
 	void *suf = 0;
@@ -118,6 +120,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	int typ = 0;
 	int fld = 0;
 	int req = 0;
+	int idx = 0;
 	switch (ptr->tag) {
 	case (Encode): req = 1; break;
 	case (Decode): req = 1; break;
@@ -127,15 +130,14 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	case (Extract): req = 1; break;
 	case (Divide): req = 1; break;
 	case (Combine): req = 2; break;
-	case (Permute): req = ptr->nwr; break;
+	case (Permute): req = ptr->nrd; break;
 	case (Constant): break;
 	case (Unique): req = ptr->nun; break;
-	case (Stagex): break;
+	case (Execute): req = ptr->mrd; break;
 	case (Pipex): break;
 	case (Fifox): break;
 	case (Execx): break;
 	case (Filex): break;
-	case (Luax): break;
 	case (Follow): break;
 	case (Select): break;
 	default: ERROR();}
@@ -205,16 +207,66 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		shareEnque(dst,ptr->dat,identType("Dat"));
 		break;
 	case (Unique):
+		shareDeque(src,&dat,&typ);
+		if (typ != identType("Dat")) ERROR();
+		idx = datxFind(1,dat);
+		if (idx == -1) {
+			idx = unique++;
+			datxInsert(1,dat,unique++);}
+		datxStr(&dat0,""); writeInt(idx,idx0);
+		shareEnque(dst,dat0,identType("Int"));
 		break;
-	case (Stagex): break;
-	case (Pipex): break;
-	case (Fifox): break;
-	case (Execx): break;
-	case (Filex): break;
-	case (Luax): break;
-	case (Follow): break;
-	case (Select): break;
+	case (Execute):
+		shareDeque(src,&dat0,&typ);
+		if (typ != identType("Pipe")) ERROR();
+		readPipe(&ppe,idx0);
+		for (int i = 0; i < ptr->nrd; i++) {
+			shareDeque(src,&dat,&typ);
+			shareEnque(&que,dat,typ);}
+		sharePipe(&que,&ppe);
+		for (int i = 0; i < que.lim; i++) {
+			shareDeque(&que,&dat,&typ);
+			shareEnque(dst,&que,typ);}
+		break;
+	case (Pipex):
+		idx = datxFind(0,ptr->str);
+		if (idx == -1) {
+			idx = rdwrInit(ptr->inp,ptr->out);
+			datxStr(&dat0,""); writeStr(ptr->str,idx0);
+			datxInsert(0,dat0,idx);}
+		break;
+	case (Fifox):
+		idx = datxFind(0,ptr->str);
+		if (idx == -1) {
+			idx = openFifo(ptr->url);
+			datxStr(&dat0,""); writeStr(ptr->str,idx0);
+			datxInsert(0,dat0,idx);}
+		break;
+	case (Execx):
+		idx = datxFind(0,ptr->str);
+		if (idx == -1) {
+			idx = forkExec(ptr->url);
+			datxStr(&dat0,""); writeStr(ptr->str,idx0);
+			datxInsert(0,dat0,idx);}
+		break;
+	case (Filex):
+		idx = datxFind(0,ptr->str);
+		if (idx == -1) {
+			idx = openFile(ptr->url);
+			datxStr(&dat0,""); writeStr(ptr->str,idx0);
+			datxInsert(0,dat0,idx);}
+		break;
+	case (Follow):
+		idx = datxFind(0,ptr->str);
+		if (idx == -1) ERROR();
+		datxStr(&dat0,""); loopType(ptr->typ,idx,idx0);
+		shareEnque(dst,dat0,ptr->typ);
+		break;
+	case (Select):
+		break;
 	default: ERROR();}
+	freeQueue(&que);
+	freePipe(&ppe);
 	free(dat);
 	free(pre);
 	free(suf);

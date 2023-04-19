@@ -179,6 +179,18 @@ void datxJoin(void **dat, const void *pre, const void *suf)
 {
 	// TODO
 }
+int datxFind(int dim, void *key)
+{
+	return -1; // TODO
+}
+void datxInsert(int dim, void *key, int val)
+{
+	// TODO
+}
+void datxRemove(int dim, void *key)
+{
+	// TODO
+}
 int datxPtrs(void *dat)
 {
 	return *(int*)dat;
