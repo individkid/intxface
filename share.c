@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 int idx0 = 0;
 int idx1 = 0;
@@ -11,6 +12,11 @@ void *dat0 = 0;
 void *dat1 = 0;
 int note = 0;
 int unique = 0;
+pthread_t thd[NUMOPEN] = {0};
+struct Pipe *gpp[NUMOPEN] = {0};
+int idt[NUMOPEN] = {0};
+int odt[NUMOPEN] = {0};
+int ldt = 0;
 
 int shareRead(int fildes, void *buf, int nbyte)
 {
@@ -39,6 +45,22 @@ int shareWrite(int fildes, const void *buf, int nbyte)
 void shareNote(int idx)
 {
 	note = 1;
+}
+int shareWInput(int fildes, const void *buf, int nbyte)
+{
+	return writeBuf(buf,nbyte,idt[fildes]);
+}
+int shareRInput(int fildes, void *buf, int nbyte)
+{
+	return readBuf(buf,nbyte,idt[fildes]);
+}
+int shareWOutput(int fildes, const void *buf, int nbyte)
+{
+	return writeBuf(buf,nbyte,odt[fildes]);
+}
+int shareROutput(int fildes, void *buf, int nbyte)
+{
+	return readBuf(buf,nbyte,odt[fildes]);
 }
 int sharePeek(const char *str, int *len)
 {
@@ -99,16 +121,7 @@ void shareDeque(struct Queue *que, void **dat, int *typ)
 	que->lim -= 1;
 	que->fst = (que->fst+1) % que->siz;
 }
-int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr);
-void sharePipe(struct Queue *que, struct Pipe *ptr)
-{
-	for (int sub = 0, val = 1; sub < ptr->siz && sub >= 0; sub += val) {
-	if (val == 1) while (que->lim > 0) {
-	void *dat = 0; int typ = 0;
-	shareDeque(que,&dat,&typ);
-	shareEnque(&ptr->que[sub],dat,typ);}
-	val = shareStage(que,&ptr->que[sub],&ptr->stg[sub]);}
-}
+void *shareThread(void *arg);
 int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 {
 	struct Queue que = {0};
@@ -176,37 +189,48 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 			shareEnque(dst,que.dat[ptr->ord[i]],que.typ[ptr->ord[i]]);}
 		break;
 	case (Pipex):
-		idx = datxFind(0,ptr->str);
+		idx = datxFind(ptr->str);
 		if (idx == -1) {
 			idx = rdwrInit(ptr->inp,ptr->out);
 			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(0,dat0,idx);}
+			datxInsert(dat0,idx);}
 		break;
 	case (Fifox):
-		idx = datxFind(0,ptr->str);
+		idx = datxFind(ptr->str);
 		if (idx == -1) {
 			idx = openFifo(ptr->url);
 			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(0,dat0,idx);}
+			datxInsert(dat0,idx);}
 		break;
 	case (Execx):
-		idx = datxFind(0,ptr->str);
+		idx = datxFind(ptr->str);
 		if (idx == -1) {
 			idx = forkExec(ptr->url);
 			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(0,dat0,idx);}
+			datxInsert(dat0,idx);}
 		break;
 	case (Filex):
-		idx = datxFind(0,ptr->str);
+		idx = datxFind(ptr->str);
 		if (idx == -1) {
 			idx = openFile(ptr->url);
 			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(0,dat0,idx);}
+			datxInsert(dat0,idx);}
 		break;
 	case (Threadx):
+		idx = datxFind(ptr->str);
+		if (idx == -1) {
+			gpp[ldt] = malloc(sizeof(struct Pipe));
+			memset(gpp[ldt],0,sizeof(struct Pipe));
+			idt[ldt] = openPipe();
+			idt[ldt] = openPipe();
+			idx = puntInit(ldt,ldt,shareROutput,shareWInput);
+			if (pthread_create(&thd[ldt],0,shareThread,(void*)(size_t)ldt) != 0) ERROR();
+			ldt++;
+			datxStr(&dat0,""); writeStr(ptr->str,idx0);
+			datxInsert(dat0,idx);}
 		break;
 	case (Follow):
-		idx = datxFind(0,ptr->str);
+		idx = datxFind(ptr->str);
 		if (idx == -1) ERROR();
 		datxStr(&dat0,""); loopType(ptr->typ,idx,idx0);
 		shareEnque(dst,dat0,ptr->typ);
@@ -226,11 +250,55 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	free(str);
 	return 1;
 }
+void sharePipe(struct Queue *dst, struct Queue *src, struct Pipe *ptr)
+{
+	void *dat = 0;
+	int typ = 0;
+	for (int sub = ptr->siz-1, val = 1; sub < ptr->siz && sub >= 0; sub += val) {
+	val = shareStage(dst,&ptr->que[sub],&ptr->stg[sub]);
+	if (val < 0 && sub == 0 && src->lim) {
+	shareDeque(src,&dat,&typ);
+	shareEnque(&ptr->que[sub],dat,typ);
+	val = 0;}
+	if (val > 0 && sub < ptr->siz-1) {
+	while (dst->lim) {
+	shareDeque(dst,&dat,&typ);
+	shareEnque(&ptr->que[sub+1],dat,typ);}}}
+	free(dat);
+}
+void *shareThread(void *arg)
+{
+	int ldt = (int)(size_t)arg;
+	int idx = puntInit(ldt,ldt,shareRInput,shareWOutput);
+	struct Pipe *ptr = gpp[ldt];
+	struct Queue dst = {0};
+	void *dat = 0;
+	int typ = 0;
+	for (int sub = ptr->siz-1, val = 1; sub < ptr->siz && sub >= 0; sub += val) {
+	val = shareStage(&dst,&ptr->que[sub],&ptr->stg[sub]);
+	if (val < 0 && sub == 0) {
+	readDat(&dat,idx);
+	shareEnque(&ptr->que[0],dat,identType("Dat"));
+	val = 0;}
+	if (val > 0 && sub == ptr->siz-1) {
+	while (dst.lim) {
+	shareDeque(&dst,&dat0,&typ);
+	loopType(typ,idx0,idx);}
+	val = 0;}
+	if (val > 0 && sub < ptr->siz-1) {
+	while (dst.lim) {
+	shareDeque(&dst,&dat,&typ);
+	shareEnque(&ptr->que[sub+1],dat,typ);}}}
+	freeQueue(&dst);
+	free(dat);
+	return 0;
+}
 
 int main(int argc, char **argv)
 {
-	struct Pipe pipe = {0};
-	struct Queue queue = {0};
+	struct Pipe ppe = {0};
+	struct Queue src = {0};
+	struct Queue dst = {0};
 	int done = 0; int sub = 0;
 	int len = 0; int typ = 0;
 	char *str = 0;
@@ -241,9 +309,9 @@ int main(int argc, char **argv)
 		if (strcmp(argv[i],"--") == 0) done = 1;
 		else if ((len = 0, typ = sharePeek(argv[i],&len)) < 0);
 		else if (done || typ != identType("Stage"));
-		else pipe.siz++;}
-	allocStage(&pipe.stg,pipe.siz);
-	allocQueue(&pipe.que,pipe.siz);
+		else ppe.siz++;}
+	allocStage(&ppe.stg,ppe.siz);
+	allocQueue(&ppe.que,ppe.siz);
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i],"--") == 0) done = 1;
 		else if ((len = 0, typ = sharePeek(argv[i],&len)) < 0) {
@@ -253,13 +321,17 @@ int main(int argc, char **argv)
 			fprintf(stderr,"^\n");
 			exit(-1);}
 		else if (done || typ != identType("Stage")) {
-			shareEnque(&queue,dat0,typ);}
+			shareEnque(&src,dat0,typ);}
 		else {
-			len = 0; hideStage(&pipe.stg[sub],argv[i],&len); sub += 1;}}
-	sharePipe(&queue,&pipe);
-	for (int i = 0; i < queue.siz; i++) {
-		assignDat(dat0,queue.dat[i]);
-		readType(&str,queue.typ[i],idx0);
-		printf("%s\n",str);}
+			len = 0; hideStage(&ppe.stg[sub],argv[i],&len); sub += 1;}}
+	sharePipe(&dst,&src,&ppe);
+	for (int i = 0; i < src.siz; i++) {
+		assignDat(dat0,src.dat[i]);
+		readType(&str,src.typ[i],idx0);
+		printf("src: %s\n",str);}
+	for (int i = 0; i < dst.siz; i++) {
+		assignDat(dat0,dst.dat[i]);
+		readType(&str,dst.typ[i],idx0);
+		printf("dst: %s\n",str);}
 	return 0;
 }

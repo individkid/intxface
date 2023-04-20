@@ -58,6 +58,7 @@ void allocStr(char* **ptr, int siz);
 void assignStr(char **ptr, const char *str);
 void allocDat(void* **ptr, int siz);
 void assignDat(void **ptr, const void *dat);
+int readBuf(void *arg, long long siz, int idx);
 void readStr(char **str, int idx);
 void preadStr(char **str, long long loc, int idx);
 void readDat(void **dat, int idx);

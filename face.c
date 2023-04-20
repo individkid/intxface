@@ -707,6 +707,10 @@ void assignDat(void **ptr, const void *dat)
 	if (*ptr == 0) ERRFNC(-1);
 	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));
 }
+int readBuf(void *arg, long long siz, int idx)
+{
+	return read(inp[idx],arg,siz);
+}
 void readStr(char **str, int idx)
 {
 	char *buf = memset(malloc(bufsize),0,bufsize);
