@@ -124,22 +124,18 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	switch (ptr->tag) {
 	case (Encode): req = 1; break;
 	case (Decode): req = 1; break;
-	case (Construct): req = 1; break;
-	case (Destruct): req = 1; break;
 	case (Insert): req = 2; break;
 	case (Extract): req = 1; break;
-	case (Divide): req = 1; break;
-	case (Combine): req = 2; break;
 	case (Permute): req = ptr->nrd; break;
-	case (Constant): break;
-	case (Unique): req = ptr->nun; break;
-	case (Execute): req = ptr->mrd; break;
 	case (Pipex): break;
 	case (Fifox): break;
 	case (Execx): break;
 	case (Filex): break;
+	case (Threadx): break;
 	case (Follow): break;
+	case (Precede): req = ptr->siz; break;
 	case (Select): break;
+	case (Socket): break;
 	default: ERROR();}
 	if (src->lim < ptr->num+req) return -1;
 	for (int i = 0; i < ptr->num; i++) {
@@ -159,15 +155,6 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		datxStr(&dat0,""); writeStr(str,idx0);
 		shareEnque(dst,dat0,identType("Str"));
 		break;
-	case (Construct):
-		shareDeque(src,&dat,&typ);
-		if (typ != identType("Dat")) ERROR();
-		shareEnque(dst,dat,ptr->typ);
-		break;
-	case (Destruct):
-		shareDeque(src,&dat,&typ);
-		shareEnque(dst,dat,identType("Dat"));
-		break;
 	case (Insert):
 		shareDeque(src,&dat0,&typ);
 		shareDeque(src,&dat1,&fld);
@@ -180,21 +167,6 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		datxStr(&dat1,""); note = 0; writeField(typ,ptr->fld,ptr->idx,idx0,idx1); if (note) ERROR();
 		shareEnque(dst,dat1,identSubtype(typ,ptr->fld));
 		break;
-	case (Divide):
-		shareDeque(src,&dat,&typ);
-		if (typ != identType("Dat")) ERROR();
-		datxSplit(&pre,&suf,&dat,ptr->len);
-		shareEnque(dst,pre,typ);
-		shareEnque(dst,suf,typ);
-		break;
-	case (Combine):
-		shareDeque(src,&pre,&typ);
-		if (typ != identType("Dat")) ERROR();
-		shareDeque(src,&suf,&typ);
-		if (typ != identType("Dat")) ERROR();
-		datxJoin(dat,pre,suf);
-		shareEnque(dst,dat,typ);
-		break;
 	case (Permute):
 		for (int i = 0; i < ptr->nrd; i++) {
 			shareDeque(src,&dat,&typ);
@@ -202,31 +174,6 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		for (int i = 0; i < ptr->nwr;) {
 			if (ptr->ord[i] < 0 || ptr->ord[i] >= ptr->nrd) ERROR();
 			shareEnque(dst,que.dat[ptr->ord[i]],que.typ[ptr->ord[i]]);}
-		break;
-	case (Constant):
-		shareEnque(dst,ptr->dat,identType("Dat"));
-		break;
-	case (Unique):
-		shareDeque(src,&dat,&typ);
-		if (typ != identType("Dat")) ERROR();
-		idx = datxFind(1,dat);
-		if (idx == -1) {
-			idx = unique++;
-			datxInsert(1,dat,unique++);}
-		datxStr(&dat0,""); writeInt(idx,idx0);
-		shareEnque(dst,dat0,identType("Int"));
-		break;
-	case (Execute):
-		shareDeque(src,&dat0,&typ);
-		if (typ != identType("Pipe")) ERROR();
-		readPipe(&ppe,idx0);
-		for (int i = 0; i < ptr->nrd; i++) {
-			shareDeque(src,&dat,&typ);
-			shareEnque(&que,dat,typ);}
-		sharePipe(&que,&ppe);
-		for (int i = 0; i < que.lim; i++) {
-			shareDeque(&que,&dat,&typ);
-			shareEnque(dst,&que,typ);}
 		break;
 	case (Pipex):
 		idx = datxFind(0,ptr->str);
@@ -256,13 +203,19 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 			datxStr(&dat0,""); writeStr(ptr->str,idx0);
 			datxInsert(0,dat0,idx);}
 		break;
+	case (Threadx):
+		break;
 	case (Follow):
 		idx = datxFind(0,ptr->str);
 		if (idx == -1) ERROR();
 		datxStr(&dat0,""); loopType(ptr->typ,idx,idx0);
 		shareEnque(dst,dat0,ptr->typ);
 		break;
+	case (Precede):
+		break;
 	case (Select):
+		break;
+	case (Socket):
 		break;
 	default: ERROR();}
 	freeQueue(&que);

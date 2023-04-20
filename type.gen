@@ -195,22 +195,18 @@ Ture = {
 Stream = { -- read several and
 	"Encode", -- convert string to type
 	"Decode", -- convert type to string
-	"Construct", -- convert Dat to type
-	"Destruct", -- convert type to Dat
-	"Insert", -- insert one to next
-	"Extract", -- extract one from last
-	"Divide", -- divide one Dat into several
-	"Combine", -- combine several Dat into one
+	"Insert", -- set field in next
+	"Extract", -- get field from last
 	"Permute", -- reorder several
-	"Constant", -- append constant
-	"Unique", -- convert several Dat to Int
-	"Execute", -- treat input as Pipe
 	"Pipex", -- name a pipe
 	"Fifox", -- name a fifo
 	"Execx", -- name a filter
 	"Filex", -- name a file
+	"Threadx", -- name a thread
 	"Follow", -- append from named
+	"Precede", -- truncate to named
 	"Select", -- map names to names
+	"Socket", -- bind to thread
 }
 Logic = {
 	"WrpJmp",
@@ -500,18 +496,18 @@ Stage = {
 	{"num","Int",{},{}},
 	{"str","Str",{},{}},
 	{"typ","Int",{},{}},
+	{"siz","Int",{},{}},
 	{"fld","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 	{"idx","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 	{"nrd","Int",{["tag"]={["Permute"]=true}},{}},
 	{"nwr","Int",{["tag"]={["Permute"]=true}},{}},
 	{"ord","Int",{["tag"]={["Permute"]=true}},"nwr"},
-	{"len","Int",{["tag"]={["Divide"]=true}},{}},
-	{"dat","Dat",{["tag"]={["Constant"]=true}},{}},
-	{"nun","Int",{["tag"]={["Unique"]=true}},{}},
-	{"mrd","Int",{["tag"]={["Execute"]=true}},{}},
 	{"inp","Int",{["tag"]={["Pipex"]=true}},{}},
 	{"out","Int",{["tag"]={["Pipex"]=true}},{}},
 	{"url","Str",{["tag"]={["Fifox"]=true,["Execx"]=true,["Filex"]=true}},{}},
+	{"src","Str",{["tag"]={["Select"]=true}},"siz"},
+	{"dst","Str",{["tag"]={["Select"]=true}},"siz"},
+	{"fds","Str",{["tag"]={["Follow"]=true,["Precede"]=true}},"siz"},
 }
 Pipe = {
 	{"siz","Int",{},{}},
