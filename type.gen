@@ -206,7 +206,7 @@ Stream = { -- read several and
 	"Follow", -- append from named
 	"Precede", -- truncate to named
 	"Select", -- map names to names
-	"Socket", -- bind to thread
+	"Unique", -- postincrement static
 }
 Logic = {
 	"WrpJmp",
@@ -495,6 +495,7 @@ Stage = {
 	{"tag","Stream",{},{}},
 	{"num","Int",{},{}},
 	{"str","Str",{},{}},
+	{"nky","Int",{["tag"]={["Unique"]=true}},{}},
 	{"dly","Num",{["tag"]={["Select"]=true}},{}},
 	{"siz","Int",{["tag"]={["Select"]=true}},{}},
 	{"msk","Str",{["tag"]={["Select"]=true}},"siz"},

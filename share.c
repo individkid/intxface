@@ -62,6 +62,28 @@ int shareROutput(int fildes, void *buf, int nbyte)
 {
 	return readBuf(buf,nbyte,odt[fildes]);
 }
+int shareFind(const char *dim, void *suf)
+{
+	void *pre = 0;
+	void *dat = 0;
+	int val = 0;
+	datxStr(&pre,dim);
+	datxJoin(&dat,pre,suf);
+	val = datxFind(dat);
+	free(pre);
+	free(dat);
+	return val;
+}
+void shareInsert(const char *dim, void *suf, int val)
+{
+	void *pre = 0;
+	void *dat = 0;
+	datxStr(&pre,dim);
+	datxJoin(&dat,pre,suf);
+	datxInsert(dat,val);
+	free(pre);
+	free(dat);
+}
 int sharePeek(const char *str, int *len)
 {
 	for (int typ = 0; identSubtype(typ,0)!=-1; typ++) {
@@ -132,6 +154,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	int req = 0;
 	int idx = 0;
 	int msk = 0;
+	int val = 0;
 	switch (ptr->tag) {
 	case (Encode): req = 1; break;
 	case (Decode): req = 1; break;
@@ -146,7 +169,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	case (Follow): break;
 	case (Precede): req = ptr->nds; break;
 	case (Select): break;
-	case (Socket): break;
+	case (Unique): req = 1; break;
 	default: ERROR();}
 	if (src->lim < ptr->num+req) return -1;
 	for (int i = 0; i < ptr->num; i++) {
@@ -187,19 +210,19 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 			shareEnque(dst,que.dat[ptr->ord[i]],que.typ[ptr->ord[i]]);}
 		break;
 	case (Pipex):
-		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,rdwrInit(ptr->inp,ptr->out));}
+		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,rdwrInit(ptr->inp,ptr->out));}
 		break;
 	case (Fifox):
-		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,openFifo(ptr->url));}
+		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,openFifo(ptr->url));}
 		break;
 	case (Execx):
-		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,forkExec(ptr->url));}
+		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,forkExec(ptr->url));}
 		break;
 	case (Filex):
-		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,openFile(ptr->url));}
+		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,openFile(ptr->url));}
 		break;
 	case (Threadx):
-		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,puntInit(ldt,ldt,shareROutput,shareWInput));
+		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,puntInit(ldt,ldt,shareROutput,shareWInput));
 			datxStr(&dat0,""); writeType(ptr->url,identType("Pipe"),idx0);
 			allocPipe(&gpp[ldt],1); readPipe(gpp[ldt],idx0);
 			idt[ldt] = openPipe(); odt[ldt] = openPipe();
@@ -207,19 +230,22 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 			ldt++;}
 		break;
 	case (Follow):
-		for (int i = 0; i < ptr->nsr; i++) {datxStr(&dat0,""); loopType(ptr->fdt[i],datxFind(ptr->src[i]),idx0);shareEnque(dst,dat0,ptr->fdt[i]);}
+		for (int i = 0; i < ptr->nsr; i++) {datxStr(&dat0,""); loopType(ptr->fdt[i],shareFind("D",ptr->src[i]),idx0);shareEnque(dst,dat0,ptr->fdt[i]);}
 		break;
 	case (Precede):
-		for (int i = 0; i < ptr->nds; i++) {shareDeque(src,&dat0,&typ); loopType(typ,idx0,datxFind(ptr->dst[i]));}
+		for (int i = 0; i < ptr->nds; i++) {shareDeque(src,&dat0,&typ); loopType(typ,idx0,shareFind("D",ptr->dst[i]));}
 		break;
 	case (Select):
 		msk = 0;
-		for (int i = 0; i < ptr->siz-1; i++) {msk |= 1<<datxFind(ptr->msk[i]);}
+		for (int i = 0; i < ptr->siz-1; i++) {msk |= 1<<shareFind("D",ptr->msk[i]);}
 		idx = waitRead(ptr->dly,msk);
-		if (idx < 0 && ptr->siz > 0) {idx = datxFind(ptr->msk[ptr->siz-1]);}
-		for (int i = 0; i < ptr->siz; i++) if (idx == datxFind(ptr->msk[i])) {loopType(ptr->how[i],datxFind(ptr->msk[i]),datxFind(ptr->map[i]));}
+		if (idx < 0 && ptr->siz > 0) {idx = shareFind("D",ptr->msk[ptr->siz-1]);}
+		for (int i = 0; i < ptr->siz; i++) if (idx == shareFind("D",ptr->msk[i])) {loopType(ptr->how[i],shareFind("D",ptr->msk[i]),shareFind("D",ptr->map[i]));}
 		break;
-	case (Socket):
+	case (Unique):
+		datxStr(dat0,""); for (int i = 0; i < ptr->nky; i++) {shareDeque(src,&dat1,&typ); loopType(typ,idx1,idx0);}
+		if ((val = shareFind("U",dat0)) == -1) {val = unique++; shareInsert("U",dat0,val);}
+		datxStr(dat0,""); writeInt(val,idx0); shareEnque(dst,dat0,identType("Int"));
 		break;
 	default: ERROR();}
 	freeQueue(&que);
