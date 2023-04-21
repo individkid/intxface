@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <sys/stat.h>
 
 int idx0 = 0;
 int idx1 = 0;
@@ -83,6 +84,24 @@ void shareInsert(const char *dim, void *suf, int val)
 	datxInsert(dat,val);
 	free(pre);
 	free(dat);
+}
+int shareExec(const char *exe)
+{
+	int idx = openFork();
+	struct Argument arg = {0};
+	char *str = 0;
+	struct stat new;
+	if (openCheck(idx) == -1) return idx;
+	arg.typ = Processs;
+	if (stat(exe,&new) == 0) for (enum Process i = 0; i < Processs; i++) {
+		struct stat old;
+		if (stat(Execname__Process__Str(i),&old) != 0) continue;
+		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) {arg.typ = i; break;}}
+	arg.inp = openRdfd(idx);
+	arg.out = openWrfd(idx);
+	datxStr(&dat1,""); writeArgument(&arg,idx1);
+	readType(&str,identType("Argument"),idx1);
+	return openExec(exe,str);
 }
 int sharePeek(const char *str, int *len)
 {
@@ -216,7 +235,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,openFifo(ptr->url));}
 		break;
 	case (Execx):
-		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,forkExec(ptr->url));}
+		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,shareExec(ptr->url));}
 		break;
 	case (Filex):
 		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,openFile(ptr->url));}
