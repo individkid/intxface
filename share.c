@@ -125,15 +125,13 @@ void *shareThread(void *arg);
 int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 {
 	struct Queue que = {0};
-	struct Pipe ppe = {0};
 	void *dat = 0;
-	void *pre = 0;
-	void *suf = 0;
 	char *str = 0;
 	int typ = 0;
 	int fld = 0;
 	int req = 0;
 	int idx = 0;
+	int msk = 0;
 	switch (ptr->tag) {
 	case (Encode): req = 1; break;
 	case (Decode): req = 1; break;
@@ -146,7 +144,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	case (Filex): break;
 	case (Threadx): break;
 	case (Follow): break;
-	case (Precede): req = ptr->siz; break;
+	case (Precede): req = ptr->nds; break;
 	case (Select): break;
 	case (Socket): break;
 	default: ERROR();}
@@ -189,64 +187,43 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 			shareEnque(dst,que.dat[ptr->ord[i]],que.typ[ptr->ord[i]]);}
 		break;
 	case (Pipex):
-		idx = datxFind(ptr->str);
-		if (idx == -1) {
-			idx = rdwrInit(ptr->inp,ptr->out);
-			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(dat0,idx);}
+		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,rdwrInit(ptr->inp,ptr->out));}
 		break;
 	case (Fifox):
-		idx = datxFind(ptr->str);
-		if (idx == -1) {
-			idx = openFifo(ptr->url);
-			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(dat0,idx);}
+		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,openFifo(ptr->url));}
 		break;
 	case (Execx):
-		idx = datxFind(ptr->str);
-		if (idx == -1) {
-			idx = forkExec(ptr->url);
-			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(dat0,idx);}
+		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,forkExec(ptr->url));}
 		break;
 	case (Filex):
-		idx = datxFind(ptr->str);
-		if (idx == -1) {
-			idx = openFile(ptr->url);
-			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(dat0,idx);}
+		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,openFile(ptr->url));}
 		break;
 	case (Threadx):
-		idx = datxFind(ptr->str);
-		if (idx == -1) {
-			gpp[ldt] = malloc(sizeof(struct Pipe));
-			memset(gpp[ldt],0,sizeof(struct Pipe));
-			idt[ldt] = openPipe();
-			idt[ldt] = openPipe();
-			idx = puntInit(ldt,ldt,shareROutput,shareWInput);
+		if (datxFind(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); datxInsert(dat0,puntInit(ldt,ldt,shareROutput,shareWInput));
+			datxStr(&dat0,""); writeType(ptr->url,identType("Pipe"),idx0);
+			allocPipe(&gpp[ldt],1); readPipe(gpp[ldt],idx0);
+			idt[ldt] = openPipe(); odt[ldt] = openPipe();
 			if (pthread_create(&thd[ldt],0,shareThread,(void*)(size_t)ldt) != 0) ERROR();
-			ldt++;
-			datxStr(&dat0,""); writeStr(ptr->str,idx0);
-			datxInsert(dat0,idx);}
+			ldt++;}
 		break;
 	case (Follow):
-		idx = datxFind(ptr->str);
-		if (idx == -1) ERROR();
-		datxStr(&dat0,""); loopType(ptr->typ,idx,idx0);
-		shareEnque(dst,dat0,ptr->typ);
+		for (int i = 0; i < ptr->nsr; i++) {datxStr(&dat0,""); loopType(ptr->fdt[i],datxFind(ptr->src[i]),idx0);shareEnque(dst,dat0,ptr->fdt[i]);}
 		break;
 	case (Precede):
+		for (int i = 0; i < ptr->nds; i++) {shareDeque(src,&dat0,&typ); loopType(typ,idx0,datxFind(ptr->dst[i]));}
 		break;
 	case (Select):
+		msk = 0;
+		for (int i = 0; i < ptr->siz-1; i++) {msk |= 1<<datxFind(ptr->msk[i]);}
+		idx = waitRead(ptr->dly,msk);
+		if (idx < 0 && ptr->siz > 0) {idx = datxFind(ptr->msk[ptr->siz-1]);}
+		for (int i = 0; i < ptr->siz; i++) if (idx == datxFind(ptr->msk[i])) {loopType(ptr->how[i],datxFind(ptr->msk[i]),datxFind(ptr->map[i]));}
 		break;
 	case (Socket):
 		break;
 	default: ERROR();}
 	freeQueue(&que);
-	freePipe(&ppe);
 	free(dat);
-	free(pre);
-	free(suf);
 	free(str);
 	return 1;
 }
