@@ -169,7 +169,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	case (Follow): break;
 	case (Precede): req = ptr->nds; break;
 	case (Select): break;
-	case (Unique): req = 1; break;
+	case (Unique): req = ptr->nky; break;
 	default: ERROR();}
 	if (src->lim < ptr->num+req) return -1;
 	for (int i = 0; i < ptr->num; i++) {
