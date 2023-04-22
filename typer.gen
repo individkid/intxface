@@ -38,11 +38,11 @@ function showTyperC()
 	showIndent(1).."allocStr(&src,size); for (int i = 0; i < size; i++) if (src[i] != 0) return -1;\n"..
 	showIndent(1).."allocStr(&dst,size); for (int i = 0; i < size; i++) if (dst[i] != 0) return -1;\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) randStruct1(exp+i);\n"..
-	showIndent(1).."for (int i = 0; i < size; i++) {showStruct1(exp+i,src+i,show+i); writeType(src[i],identType(\"Struct1\"),i);}\n"..
+	showIndent(1).."for (int i = 0; i < size; i++) {int len = 0; showStruct1(exp+i,src+i,show+i); writeType(src[i],&len,identType(\"Struct1\"),i);}\n"..
 	showIndent(1).."struct Struct1 *act = 0;\n"..
 	showIndent(1).."allocStruct1(&act,size);\n"
 	result = result..
-	showIndent(1).."for (int i = 0; i < size; i++) {readType(dst+i,identType(\"Struct1\"),i); hideStruct1(act+i,dst[i],hide+i);}\n"..
+	showIndent(1).."for (int i = 0; i < size; i++) {int len = 0; readType(dst+i,&len,identType(\"Struct1\"),i); hideStruct1(act+i,dst[i],hide+i);}\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) if (show[i] != hide[i]) return -1;\n"..
 	showIndent(1).."for (int i = 0; i < size; i++) if (!compStruct1(exp+i,act+i)) return -1;\n"..
 	showIndent(1).."return 0;\n"..

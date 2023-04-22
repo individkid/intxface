@@ -873,28 +873,27 @@ function showTypeCF(type)
 end
 function showRtypeC(list)
 	local result = ""
-	result = result.."void readType(char **str, int typ, int idx)"
+	result = result.."void readType(char **str, int *len, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
-	result = result..showIndent(1).."int len = 0;\n"
 	result = result..showIndent(1).."switch (typ) {\n"
 	for k,v in ipairs(list) do
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
 		if (not (Structz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
 			result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
-			result = result..showIndent(2).."show"..v.."(&tmp,str,&len);\n"
+			result = result..showIndent(2).."show"..v.."(&tmp,str,len);\n"
 		elseif (not (Enumz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = readInt(idx);\n"
-			result = result..showIndent(2).."show"..v.."(tmp,str,&len);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str,len);\n"
 		elseif (v == "Dat") or (v == "Str") then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
 			result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
-			result = result..showIndent(2).."show"..v.."(tmp,str,&len);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str,len);\n"
 			result = result..showIndent(2).."free(tmp);\n"
 		else
 			result = result..showIndent(2)..showTypeCF(v).." tmp = read"..v.."(idx);\n"
-			result = result..showIndent(2).."show"..v.."(tmp,str,&len);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str,len);\n"
 		end
 		result = result..showIndent(2).."break;}\n"
 	end
@@ -904,28 +903,27 @@ function showRtypeC(list)
 end
 function showWtypeC(list)
 	local result = ""
-	result = result.."void writeType(const char *str, int typ, int idx)"
+	result = result.."void writeType(const char *str, int *len, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
-	result = result..showIndent(1).."int len = 0;\n"
 	result = result..showIndent(1).."switch (typ) {\n"
 	for k,v in ipairs(list) do
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
 		if (not (Structz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
-			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
 			result = result..showIndent(2).."write"..v.."(&tmp,idx);\n"
 		elseif (not (Enumz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
-			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
 			result = result..showIndent(2).."writeInt(tmp,idx);\n"
 		elseif (v == "Dat") or (v == "Str") then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
-			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
 			result = result..showIndent(2).."write"..v.."(tmp,idx);\n"
 		else
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
-			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,&len)) callNote(idx);\n"
+			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
 			result = result..showIndent(2).."write"..v.."(tmp,idx);\n"
 		end
 		result = result..showIndent(2).."break;}\n"

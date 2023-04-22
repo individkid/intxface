@@ -85,11 +85,28 @@ void shareInsert(const char *dim, void *suf, int val)
 	free(pre);
 	free(dat);
 }
+int shareFindD(void *dat)
+{
+	return shareFind("D",dat);
+}
+void shareInsertD(void *dat, int val)
+{
+	shareInsert("D",dat,val);
+}
+int shareFindU(void *dat)
+{
+	return shareFind("U",dat);
+}
+void shareInsertU(void *dat, int val)
+{
+	shareInsert("U",dat,val);
+}
 int shareExec(const char *exe)
 {
 	int idx = openFork();
 	struct Argument arg = {0};
 	char *str = 0;
+	int len = 0;
 	struct stat new;
 	if (openCheck(idx) == -1) return idx;
 	arg.typ = Processs;
@@ -100,7 +117,7 @@ int shareExec(const char *exe)
 	arg.inp = openRdfd(idx);
 	arg.out = openWrfd(idx);
 	datxStr(&dat1,""); writeArgument(&arg,idx1);
-	readType(&str,identType("Argument"),idx1);
+	readType(&str,&len,identType("Argument"),idx1);
 	return openExec(exe,str);
 }
 int sharePeek(const char *str, int *len)
@@ -108,9 +125,8 @@ int sharePeek(const char *str, int *len)
 	for (int typ = 0; identSubtype(typ,0)!=-1; typ++) {
 		int tmp = 0;
 		note = 0;
-		writeType(str,typ,idx0);
+		writeType(str,&tmp,typ,idx0);
 		flushBuf(idx0);
-		// TODO add &tmp to writeType to indicate how much of str consumed
 		if (tmp > *len) *len = tmp;
 		if (note == 0) return typ;}
 	return -1;
@@ -168,6 +184,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	struct Queue que = {0};
 	void *dat = 0;
 	char *str = 0;
+	int len = 0;
 	int typ = 0;
 	int fld = 0;
 	int req = 0;
@@ -199,12 +216,12 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		shareDeque(src,&dat0,&typ);
 		if (typ != identType("Str")) ERROR();
 		readStr(&str,idx0);
-		datxStr(&dat0,""); note = 0; writeType(str,ptr->typ,idx0); if (note) ERROR();
+		datxStr(&dat0,""); note = 0; len = 0; writeType(str,&len,ptr->typ,idx0); if (note) ERROR();
 		shareEnque(dst,dat0,ptr->typ);
 		break;
 	case (Decode):
 		shareDeque(src,&dat0,&typ);
-		readType(&str,typ,idx0);
+		len = 0; readType(&str,&len,typ,idx0);
 		datxStr(&dat0,""); writeStr(str,idx0);
 		shareEnque(dst,dat0,identType("Str"));
 		break;
@@ -229,41 +246,41 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 			shareEnque(dst,que.dat[ptr->ord[i]],que.typ[ptr->ord[i]]);}
 		break;
 	case (Pipex):
-		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,rdwrInit(ptr->inp,ptr->out));}
+		if (shareFindD(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsertD(dat0,rdwrInit(ptr->inp,ptr->out));}
 		break;
 	case (Fifox):
-		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,openFifo(ptr->url));}
+		if (shareFindD(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsertD(dat0,openFifo(ptr->url));}
 		break;
 	case (Execx):
-		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,shareExec(ptr->url));}
+		if (shareFindD(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsertD(dat0,shareExec(ptr->url));}
 		break;
 	case (Filex):
-		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,openFile(ptr->url));}
+		if (shareFindD(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsertD(dat0,openFile(ptr->url));}
 		break;
 	case (Threadx):
-		if (shareFind("D",ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsert("D",dat0,puntInit(ldt,ldt,shareROutput,shareWInput));
-			datxStr(&dat0,""); writeType(ptr->url,identType("Pipe"),idx0);
+		if (shareFindD(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsertD(dat0,puntInit(ldt,ldt,shareROutput,shareWInput));
+			datxStr(&dat0,""); len = 0; writeType(ptr->url,&len,identType("Pipe"),idx0);
 			allocPipe(&gpp[ldt],1); readPipe(gpp[ldt],idx0);
 			idt[ldt] = openPipe(); odt[ldt] = openPipe();
 			if (pthread_create(&thd[ldt],0,shareThread,(void*)(size_t)ldt) != 0) ERROR();
 			ldt++;}
 		break;
 	case (Follow):
-		for (int i = 0; i < ptr->nsr; i++) {datxStr(&dat0,""); loopType(ptr->fdt[i],shareFind("D",ptr->src[i]),idx0);shareEnque(dst,dat0,ptr->fdt[i]);}
+		for (int i = 0; i < ptr->nsr; i++) {datxStr(&dat0,""); loopType(ptr->fdt[i],shareFindD(ptr->src[i]),idx0);shareEnque(dst,dat0,ptr->fdt[i]);}
 		break;
 	case (Precede):
-		for (int i = 0; i < ptr->nds; i++) {shareDeque(src,&dat0,&typ); loopType(typ,idx0,shareFind("D",ptr->dst[i]));}
+		for (int i = 0; i < ptr->nds; i++) {shareDeque(src,&dat0,&typ); loopType(typ,idx0,shareFindD(ptr->dst[i]));}
 		break;
 	case (Select):
 		msk = 0;
-		for (int i = 0; i < ptr->siz-1; i++) {msk |= 1<<shareFind("D",ptr->msk[i]);}
+		for (int i = 0; i < ptr->siz-1; i++) {msk |= 1<<shareFindD(ptr->msk[i]);}
 		idx = waitRead(ptr->dly,msk);
-		if (idx < 0 && ptr->siz > 0) {idx = shareFind("D",ptr->msk[ptr->siz-1]);}
-		for (int i = 0; i < ptr->siz; i++) if (idx == shareFind("D",ptr->msk[i])) {loopType(ptr->how[i],shareFind("D",ptr->msk[i]),shareFind("D",ptr->map[i]));}
+		if (idx < 0 && ptr->siz > 0) {idx = shareFindD(ptr->msk[ptr->siz-1]);}
+		for (int i = 0; i < ptr->siz; i++) if (idx == shareFindD(ptr->msk[i])) {loopType(ptr->how[i],shareFindD(ptr->msk[i]),shareFindD(ptr->map[i]));}
 		break;
 	case (Unique):
 		datxStr(dat0,""); for (int i = 0; i < ptr->nky; i++) {shareDeque(src,&dat1,&typ); loopType(typ,idx1,idx0);}
-		if ((val = shareFind("U",dat0)) == -1) {val = unique++; shareInsert("U",dat0,val);}
+		if ((val = shareFindU(dat0)) == -1) {val = unique++; shareInsertU(dat0,val);}
 		datxStr(dat0,""); writeInt(val,idx0); shareEnque(dst,dat0,identType("Int"));
 		break;
 	default: ERROR();}
@@ -349,11 +366,11 @@ int main(int argc, char **argv)
 	sharePipe(&dst,&src,&ppe);
 	for (int i = 0; i < src.siz; i++) {
 		assignDat(dat0,src.dat[i]);
-		readType(&str,src.typ[i],idx0);
+		len = 0; readType(&str,&len,src.typ[i],idx0);
 		printf("src: %s\n",str);}
 	for (int i = 0; i < dst.siz; i++) {
 		assignDat(dat0,dst.dat[i]);
-		readType(&str,dst.typ[i],idx0);
+		len = 0; readType(&str,&len,dst.typ[i],idx0);
 		printf("dst: %s\n",str);}
 	return 0;
 }
