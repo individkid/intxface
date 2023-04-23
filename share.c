@@ -205,11 +205,12 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 	case (Execx): break;
 	case (Filex): break;
 	case (Threadx): break;
+	case (Loopx): break;
 	case (Follow): break;
 	case (Precede): req = ptr->nds; break;
 	case (Select): break;
 	case (Unique): req = ptr->nky; break;
-	default: ERROR();}
+	default: break;}
 	if (src->lim < ptr->num+req) return -1;
 	for (int i = 0; i < ptr->num; i++) {
 		shareDeque(src,&dat0,&typ);
@@ -289,7 +290,7 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 		if ((val = shareFindU(dat0)) == -1) {val = unique++; shareInsertU(dat0,val);}
 		datxStr(dat0,""); writeInt(val,idx0); shareEnque(dst,dat0,identType("Int"));
 		break;
-	default: ERROR();}
+	default: break;}
 	freeQueue(&que);
 	free(dat);
 	free(str);
