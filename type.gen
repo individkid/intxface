@@ -203,6 +203,7 @@ Stream = { -- read several and
 	"Execx", -- name a filter
 	"Filex", -- name a file
 	"Threadx", -- name a thread
+	"Loopx", -- loop out to inp
 	"Follow", -- append from named
 	"Precede", -- truncate to named
 	"Select", -- map names to names

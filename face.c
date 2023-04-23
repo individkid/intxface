@@ -171,19 +171,6 @@ int openPipe()
 	wfn[lim] = 0;
 	return lim++;
 }
-int openSide()
-{
-	int fd[2] = {0};
-	if (lim == NUMOPEN) return -1;
-	if (pipe(fd) < 0) return -1;
-	inp[lim] = fd[0];
-	out[lim] = fd[1];
-	fdt[lim] = Poll;
-	pid[lim] = 0;
-	rfn[lim] = 0;
-	wfn[lim] = 0;
-	return lim++;
-}
 int openFifo(const char *str)
 {
 	int fi = 0;
@@ -199,26 +186,6 @@ int openFifo(const char *str)
 	inp[lim] = fi;
 	out[lim] = fo;
 	fdt[lim] = Poll;
-	pid[lim] = 0;
-	rfn[lim] = 0;
-	wfn[lim] = 0;
-	return lim++;
-}
-int openName(const char *str)
-{
-	int fi = 0;
-	int fo = 0;
-	int idx = 0;
-	if ((idx = findIdent(str)) != -1) return idx;
-	if (lim == NUMOPEN) return -1;
-	if ((mkfifo(str,0666) < 0) && errno != EEXIST) return -1;
-	if ((fi = open(str,O_RDONLY | O_NONBLOCK)) < 0) return -1;
-	if ((fo = open(str,O_WRONLY | O_NONBLOCK)) < 0) return -1;
-	if (fcntl(fi,F_SETFL,0) < 0) return -1;
-	if (fcntl(fo,F_SETFL,0) < 0) return -1;
-	inp[lim] = fi;
-	out[lim] = fo;
-	fdt[lim] = Wait;
 	pid[lim] = 0;
 	rfn[lim] = 0;
 	wfn[lim] = 0;

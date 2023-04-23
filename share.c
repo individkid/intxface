@@ -268,6 +268,9 @@ int shareStage(struct Queue *dst, struct Queue *src, struct Stage *ptr)
 			if (pthread_create(&thd[ldt],0,shareThread,(void*)(size_t)ldt) != 0) ERROR();
 			ldt++;}
 		break;
+	case (Loopx):
+		if (shareFindD(ptr->str) == -1) {datxStr(&dat0,""); writeStr(ptr->str,idx0); shareInsertD(dat0,openPipe());}
+		break;
 	case (Follow):
 		for (int i = 0; i < ptr->nsr; i++) {datxStr(&dat0,""); loopType(ptr->fdt[i],shareFindD(ptr->src[i]),idx0);shareEnque(dst,dat0,ptr->fdt[i]);}
 		break;
