@@ -15,6 +15,16 @@ int *jump[NUMOPEN] = {0}; // opcode per sub
 int lmts[NUMOPEN] = {0}; // subs total
 int mark[NUMOPEN] = {0}; // opcode to jump
 int strt[NUMOPEN] = {0}; // opcode to restart
+
+struct Node {
+	void *key;
+	void *box;
+	int siz;
+	struct Node *ptr[3];
+	struct Node *ref;
+	int dep;
+} tree = {0};
+
 void datxOpen(int idx)
 {
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
@@ -70,7 +80,14 @@ void datxProg(int sub, int idx)
 }
 void datxCopy(void **ptr, void *dat, int loc, int siz)
 {
-	// TODO assignDat(ptr,tmp)
+	void *pre = 0;
+	void *suf = 0;
+	void *tmp = 0;
+	datxSplit(&pre,&tmp,dat,loc);
+	datxSplit(ptr,&suf,tmp,siz);
+	free(pre);
+	free(suf);
+	free(tmp);
 }
 void datxRead(void **ptr, int sub, int num, int idx)
 {
@@ -169,27 +186,70 @@ int datxMeta(int sub, int idx)
 }
 void datxStr(void **dat, const char *str)
 {
-	// TODO
+	*dat = realloc(*dat,strlen(str)+sizeof(int));
+	*(int*)*dat = strlen(str);
+	memcpy((void*)((int*)*dat+1),str,strlen(str));
 }
 void datxSplit(void **pre, void **suf, const void *dat, int len)
 {
-	// TODO
+	*pre = realloc(*pre,len+sizeof(int));
+	*suf = realloc(*suf,*(int*)dat-len+sizeof(int));
+	*(int*)*pre = len;
+	*(int*)*suf = *(int*)dat-len;
+	memcpy((void*)((int*)*pre+1),(void*)((int*)dat+1),len);
+	memcpy((void*)((int*)*suf+1),(char*)((int*)dat+1)+len,*(int*)dat-len);
 }
 void datxJoin(void **dat, const void *pre, const void *suf)
 {
-	// TODO
+	*dat = realloc(*dat,*(int*)pre+*(int*)suf+sizeof(int));
+	*(int*)dat = *(int*)pre+*(int*)suf;
+	memcpy((void*)((int*)*dat+1),(void*)((int*)pre+1),*(int*)pre);
+	memcpy((char*)((int*)*dat+1)+*(int*)pre,(void*)((int*)suf+1),*(int*)suf);
 }
-int datxFind(void *key)
+int datxCompare(void *one, void *oth)
 {
-	return -1; // TODO
+	int lne = *(int*)one;
+	int lth = *(int*)oth;
+	int len = lne+sizeof(int);
+	if (lne < lth) return -1;
+	if (lne > lth) return 1;
+	for (int i = sizeof(int); i < len; i++) {
+		if (*((char*)one+i) < *((char*)oth+i)) return -1;
+		if (*((char*)one+i) > *((char*)oth+i)) return 1;}
+	return 0;
 }
-void datxInsert(void *key, int val)
+struct Node *datxNode(void *key)
 {
-	// TODO
+	struct Node *tmp = &tree;
+	while (tmp->dep) for (int i = tmp->siz; i > 0; i--) if (datxCompare(tmp->ptr[i-1]->key,key) <= 0) {
+		tmp = tmp->ptr[i-1]; break;}
+	return tmp;
 }
-void datxRemove(void *key)
+void *datxFind(void *key)
 {
-	// TODO
+	struct Node *leaf = datxNode(key);
+	if (datxCompare(leaf->key,key) == 0) {
+		return leaf->box;}
+	return 0;
+}
+void datxInsert(void *key, void *box)
+{
+	struct Node *leaf = datxNode(key);
+	if (datxCompare(leaf->key,key) == 0) {
+		leaf->box = box; return;}
+	while (leaf->siz == 3 && leaf != &tree) {
+		leaf = leaf->ref;}
+	if (leaf->siz == 3) {
+		struct Node *tmp = malloc(sizeof(struct Node));
+		*tmp = *leaf; tmp->ref = leaf;
+		leaf->siz = 1; leaf->ptr[0] = tmp; leaf->dep++;}
+	while (leaf->dep) for (int i = leaf->siz; i > 0; i--) if (datxCompare(leaf->ptr[i-1]->key,key) > 0) {
+		leaf->ptr[i] = leaf->ptr[i-1];} else {
+		struct Node *tmp = malloc(sizeof(struct Node));
+		tmp->key = key; tmp->box = 0; tmp->siz = 1;
+		tmp->ptr[0] = leaf->ptr[i=1]; tmp->ref = leaf; tmp->dep = leaf->dep-1;
+		leaf->ptr[i-1] = tmp; leaf->siz++; leaf = tmp; break;}
+	leaf->box = box;
 }
 int datxPtrs(void *dat)
 {
@@ -221,12 +281,4 @@ int *datxIntz(int num, void *dat)
 {
 	if (num >= datxInts(dat)) ERROR();
 	return (int*)datxPtr(num*sizeof(int),dat);
-}
-char datxChr(int num, void *dat)
-{
-	return *datxChrz(num,dat);
-}
-int datxInt(int num, void *dat)
-{
-	return *datxIntz(num,dat);
 }

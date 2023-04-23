@@ -70,7 +70,7 @@ int shareFind(const char *dim, void *suf)
 	int val = 0;
 	datxStr(&pre,dim);
 	datxJoin(&dat,pre,suf);
-	val = datxFind(dat);
+	val = *datxIntz(0,datxFind(dat));
 	free(pre);
 	free(dat);
 	return val;
@@ -79,9 +79,12 @@ void shareInsert(const char *dim, void *suf, int val)
 {
 	void *pre = 0;
 	void *dat = 0;
+	void *tmp = malloc(sizeof(int)+sizeof(int));
+	*(int*)tmp = sizeof(int);
+	*datxIntz(0,tmp) = val;
 	datxStr(&pre,dim);
 	datxJoin(&dat,pre,suf);
-	datxInsert(dat,val);
+	datxInsert(dat,tmp);
 	free(pre);
 	free(dat);
 }

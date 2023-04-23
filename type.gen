@@ -387,7 +387,6 @@ Uniform = {
 	{"xsz","Int",{},{}}, -- size of texture buffer
 	{"bsz","Int",{},{}}, -- size of basis buffer
 }
--- TODO Int32 type
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle
 	{"num","Int32",{},{}}, -- plane of points
