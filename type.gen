@@ -154,6 +154,19 @@ Operation = {
 	"Drop",
 	"Cond",
 }
+Operate = {
+	"AddOp",
+	"SubOp",
+	"MulOp",
+	"DivOp",
+	"RemOp",
+	"TotOp",
+	"ValOp",
+	"GetOp",
+	"SetOp",
+	"NonOp",
+	"TriOp",
+}
 Transform = {
 	"Translate",
 	"Rotate",
@@ -197,17 +210,16 @@ Stream = { -- read several and
 	"Decode", -- convert type to string
 	"Insert", -- set field in next
 	"Extract", -- get field from last
-	"Permute", -- reorder several
-	"Pipex", -- name a pipe
-	"Fifox", -- name a fifo
-	"Execx", -- name a filter
-	"Filex", -- name a file
-	"Threadx", -- name a thread
-	"Loopx", -- loop out to inp
-	"Follow", -- append from named
-	"Precede", -- truncate to named
-	"Select", -- map names to names
+	"Flatten", -- convert to Dat
+	"Structure", -- convert from Dat
 	"Unique", -- postincrement static
+	"Fanin", -- read from named pipes
+	"Fanout", -- write to named pipes
+	"Combine", -- buffer(s) to pipe
+	"Bufferx", -- name a buffer
+	"Pipex", -- name a pipe
+	"Execx", -- name a filter
+	"Loopx", -- loop out to inp
 }
 Logic = {
 	"WrpJmp",
@@ -433,6 +445,14 @@ Expression = {
 	{"siz","Int",{},{}},
 	{"exp","Expression",{},"siz"},
 }
+Express = {
+	{"opr","Operate",{},{}},
+	{"cfg","Str",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
+	{"val","Dat",{["opr"]={["ValOp"]=true}},{}},
+	{"typ","Int",{["opr"]={["ValOp"]=true}},{}},
+	{"siz","Int",{},{}},
+	{"exp","Express",{},"siz"},
+}
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
@@ -484,42 +504,27 @@ Argument = {
 	{"idx","Int",{},{}},
 	{"str","Str",{["typ"]={["Holez"]=true}},{}},
 }
-Queue = {
+Buffer = {
 	{"siz","Int",{},{}},
-	{"lim","Int",{},{}},
-	{"fst","Int",{},{}},
-	{"typ","Int",{},"siz"},
-	{"dat","Dat",{},"siz"},
-};
+}
+
 Stage = {
 	{"tag","Stream",{},{}},
-	{"num","Int",{},{}},
 	{"str","Str",{},{}},
-	{"nky","Int",{["tag"]={["Unique"]=true}},{}},
-	{"dly","Num",{["tag"]={["Select"]=true}},{}},
-	{"siz","Int",{["tag"]={["Select"]=true}},{}},
-	{"msk","Str",{["tag"]={["Select"]=true}},"siz"},
-	{"map","Str",{["tag"]={["Select"]=true}},"siz"},
-	{"how","Int",{["tag"]={["Select"]=true}},"siz"},
-	{"nsr","Int",{["tag"]={["Follow"]=true}},{}},
-	{"src","Str",{["tag"]={["Follow"]=true}},"nsr"},
-	{"fdt","Int",{["tag"]={["Follow"]=true}},"nsr"},
-	{"nds","Int",{["tag"]={["Precede"]=true}},{}},
-	{"dst","Str",{["tag"]={["Precede"]=true}},"nds"},
-	{"typ","Int",{["tag"]={["Encode"]=true}},{}},
+	{"typ","Int",{},{}},
 	{"fld","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 	{"idx","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
-	{"nrd","Int",{["tag"]={["Permute"]=true}},{}},
-	{"nwr","Int",{["tag"]={["Permute"]=true}},{}},
-	{"ord","Int",{["tag"]={["Permute"]=true}},"nwr"},
+	{"nky","Int",{["tag"]={["Unique"]=true}},{}},
+	{"nrc","Int",{["tag"]={["Fanin"]=true}},{}},
+	{"src","Str",{["tag"]={["Fanin"]=true}},"nrc"},
+	{"nst","Int",{["tag"]={["Fanout"]=true}},{}},
+	{"dst","Str",{["tag"]={["Fanout"]=true}},"nst"},
+	{"num","Int",{["tag"]={["Combine"]=true}},{}},
+	{"exp","Express",{["tag"]={["Combine"]=true}},"num"},
+	{"val","Str",{["tag"]={["Combine"]=true}},"num"},
 	{"inp","Int",{["tag"]={["Pipex"]=true}},{}},
 	{"out","Int",{["tag"]={["Pipex"]=true}},{}},
-	{"url","Str",{["tag"]={["Fifox"]=true,["Execx"]=true,["Filex"]=true,["Threadx"]=true}},{}},
-}
-Pipe = {
-	{"siz","Int",{},{}},
-	{"stg","Stage",{},"siz"},
-	{"que","Queue",{},"siz"},
+	{"url","Str",{["tag"]={["Execx"]=true}},{}},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")

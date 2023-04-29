@@ -372,7 +372,7 @@ int planeIval(struct Expression *exp)
 	case (Conf): if (exp->siz != 1 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); return configure[exp->cfg];
 	case (Side): if (exp->siz != 2 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); configure[exp->cfg] = planeIval(&exp->exp[0]); return planeIval(&exp->exp[1]);
 	case (Drop): planeIval(&exp->exp[0]); return planeIval(&exp->exp[1]);
-	case (Cond): return (planeIval(&exp->exp[0])? planeIval(&exp->exp[1]) : planeIval(&exp->exp[2]));
+	case (Cond): if (exp->siz != 3) ERROR(); return (planeIval(&exp->exp[0])? planeIval(&exp->exp[1]) : planeIval(&exp->exp[2]));
 	default: ERROR();}
 	return 0;
 }
@@ -408,7 +408,7 @@ float planeFval(struct Expression *exp)
 	case (Conf): ERROR();
 	case (Side): if (exp->siz != 2 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); configure[exp->cfg] = planeIval(&exp->exp[0]); return planeFval(&exp->exp[1]);
 	case (Drop): planeFval(&exp->exp[0]); return planeFval(&exp->exp[1]);
-	case (Cond): return (planeIval(&exp->exp[0])? planeFval(&exp->exp[1]) : planeFval(&exp->exp[2]));
+	case (Cond): if (exp->siz != 3) ERROR(); return (planeIval(&exp->exp[0])? planeFval(&exp->exp[1]) : planeFval(&exp->exp[2]));
 	default: ERROR();}
 	return 0.0;
 }
