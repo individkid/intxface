@@ -83,24 +83,24 @@ int fileTerm(const char *str, int len, int idx)
 
 void writeThd(int idx)
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	command.act = ThdErr;
 	command.idx = idx;
 	assignStr(&command.str,errstr);
-	writeFile(&command,anon[idx]);
+	writePersist(&command,anon[idx]);
 }
 
 void writeHub()
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	command.act = HubErr;
 	assignStr(&command.str,errstr);
-	writeFile(&command,face);
+	writePersist(&command,face);
 }
 
 int readGive(long long loc, long long pid, int idx)
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	int siz = maxsiz;
 	int val = 0;
 	char *str = 0;
@@ -112,20 +112,20 @@ int readGive(long long loc, long long pid, int idx)
 		rdlkwFile(loc,siz,give[idx]);
 		preadStr(&str,loc,give[idx]);
 		unlkFile(loc,siz,give[idx]);
-		if (*str == 0) {freeFile(&command); return -1;}
+		if (*str == 0) {freePersist(&command); return -1;}
 		val = strlen(str);
 		if (val <= siz) break;
 		siz = val;}
 	assignStr(&command.str,str);
 	free(str);
-	writeFile(&command,anon[idx]);
-	freeFile(&command);
+	writePersist(&command,anon[idx]);
+	freePersist(&command);
 	return val;
 }
 
 void writeGive(long long loc, long long pid, const char *str, int idx)
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	int siz = strlen(str);
 	wrlkwFile(loc,siz+1,give[idx]);
 	pwriteStr(str,loc,give[idx]);
@@ -135,13 +135,13 @@ void writeGive(long long loc, long long pid, const char *str, int idx)
 	command.loc = loc;
 	command.pid = pid;
 	assignStr(&command.str,str);
-	writeFile(&command,anon[idx]);
-	freeFile(&command);
+	writePersist(&command,anon[idx]);
+	freePersist(&command);
 }
 
 void appendGive(long long pid, const char *str, int idx)
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	int siz = strlen(str);
 	long long loc = -1;
 	while (checkFile(give[idx]) != loc) {
@@ -154,42 +154,42 @@ void appendGive(long long pid, const char *str, int idx)
 	command.loc = loc;
 	command.pid = pid;
 	assignStr(&command.str,str);
-	writeFile(&command,anon[idx]);
-	freeFile(&command);
+	writePersist(&command,anon[idx]);
+	freePersist(&command);
 }
 
 void writeHelp(long long loc, long long pid, int tail, int idx)
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	command.act = ThdThd;
 	command.loc = loc;
 	command.pid = pid;
 	seekFile(tail,help[idx]);
-	writeFile(&command,help[idx]);
+	writePersist(&command,help[idx]);
 }
 
-void readHelp(struct File *command, int loc, int idx)
+void readHelp(struct Persist *command, int loc, int idx)
 {
 	seekFile(loc,help[idx]);
-	readFile(command,help[idx]);
+	readPersist(command,help[idx]);
 }
 
 int checkHelp(int loc, int idx)
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	int siz = fieldsiz;
 	if (checkFile(help[idx]) < loc+siz) return 0;
 	seekFile(loc,help[idx]);
-	readFile(&command,help[idx]);
+	readPersist(&command,help[idx]);
 	return (command.pid != 0);
 }
 
 void clearHelp(int loc, int idx)
 {
-	struct File command = {0};
+	struct Persist command = {0};
 	command.act = ThdThd;
 	seekFile(loc,help[idx]);
-	writeFile(&command,help[idx]);
+	writePersist(&command,help[idx]);
 }
 
 #define ACT ptr->act
@@ -208,8 +208,8 @@ void clearHelp(int loc, int idx)
 
 void *func(void *arg)
 {
-	struct File *ptr = arg;
-	struct File temp = {0};
+	struct Persist *ptr = arg;
+	struct Persist temp = {0};
 	double backoff = 0.0;
 	sigset_t mask = {0};
 	sigemptyset(&mask); sigaddset(&mask,SIGINT);
@@ -266,7 +266,7 @@ void *func(void *arg)
 	wrlkwFile(NEXT,fieldsiz,HELP);
 	// previous and next are write locked
 	clearHelp(NEXT,IDX);
-	readFile(&temp,FIFO);
+	readPersist(&temp,FIFO);
 	if (temp.act == HubThd) writeGive(temp.loc,temp.pid,temp.str,IDX);
 	else appendGive(temp.pid,temp.str,IDX);
 	writeHelp(temp.loc,temp.pid,TAIL,IDX);
@@ -289,13 +289,13 @@ int main(int argc, char **argv)
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = wrapIdent(Filez,argv[1])) < 0) exitErr(__FILE__,__LINE__);
 	termFunc(fileTerm); noteFunc(errNote); errFunc(errErr);
-	struct File *ptr = 0; allocFile(&ptr,1);
-	ptr->act = ThdThd; fieldsiz = sizeFile(ptr);
+	struct Persist *ptr = 0; allocPersist(&ptr,1);
+	ptr->act = ThdThd; fieldsiz = sizePersist(ptr);
 	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;
 	filesiz = FILESIZE - FILESIZE%fieldsiz;
 	if (setjmp(errbuf) != 0) {writeHub(); return -1;}
 	for (int sub = waitRead(0.0,-1); sub >= 0; sub = waitRead(0.0,-1)) {
-	readFile(ptr,sub);
+	readPersist(ptr,sub);
 	switch (ACT) {
 		case (NewHub): {
 		int len = strlen(STR);
@@ -319,23 +319,23 @@ int main(int argc, char **argv)
 		if ((ANON = openPipe()) == -1) hubErr(__FILE__,__LINE__);
 		else number[ANON] = IDX;
 		if (pthread_create(&THRD,0,func,ptr) != 0) hubErr(__FILE__,__LINE__);
-		allocFile(&ptr,1);
+		allocPersist(&ptr,1);
 		break;}
 		case (CfgHub): case (AppHub): {
 		if (sub != face) hubErr(__FILE__,__LINE__);
 		ACT = (ACT == CfgHub ? HubThd : AppThd);
 		PID = identifier;
-		writeFile(ptr,FIFO);
+		writePersist(ptr,FIFO);
 		flushBuf(FIFO);
 		break;}
 		case (ThdHub): {
 		if (sub != ANON) hubErr(__FILE__,__LINE__);
 		ACT = HubCfg;
 		SLF = (PID == identifier);
-		writeFile(ptr,face);
+		writePersist(ptr,face);
 		break;}
 		case (ThdErr): {
-		writeFile(ptr,face);
+		writePersist(ptr,face);
 		break;}
 		default: {
 		hubErr(__FILE__,__LINE__);

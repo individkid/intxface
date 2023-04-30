@@ -205,18 +205,13 @@ Ture = {
 	"Table",
 	"Sides",
 }
-Stream = { -- read several and
-	"Encode", -- convert string to type
-	"Decode", -- convert type to string
+Stream = {
 	"Insert", -- set field in next
 	"Extract", -- get field from last
-	"Flatten", -- convert to Dat
-	"Structure", -- convert from Dat
 	"Unique", -- postincrement static
-	"Fanin", -- read from named pipes
 	"Fanout", -- write to named pipes
 	"Combine", -- buffer(s) to pipe
-	"Bufferx", -- name a buffer
+	"Buffer", -- name a buffer
 	"Pipex", -- name a pipe
 	"Execx", -- name a filter
 	"Loopx", -- loop out to inp
@@ -296,7 +291,7 @@ Execname = {
 	{"Process","Phonez","Str","./phone"},
 }
 --HERE Structs
-File = {
+Persist = {
 	{"act","Goal",{},{}},
 	{"idx","Int",{["act"]={
 		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
@@ -504,24 +499,16 @@ Argument = {
 	{"idx","Int",{},{}},
 	{"str","Str",{["typ"]={["Holez"]=true}},{}},
 }
-Buffer = {
-	{"siz","Int",{},{}},
-}
-
 Stage = {
 	{"tag","Stream",{},{}},
 	{"str","Str",{},{}},
 	{"typ","Int",{},{}},
-	{"fld","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
-	{"idx","Int",{["tag"]={["Insert"]=true,["Extract"]=true}},{}},
 	{"nky","Int",{["tag"]={["Unique"]=true}},{}},
-	{"nrc","Int",{["tag"]={["Fanin"]=true}},{}},
-	{"src","Str",{["tag"]={["Fanin"]=true}},"nrc"},
-	{"nst","Int",{["tag"]={["Fanout"]=true}},{}},
-	{"dst","Str",{["tag"]={["Fanout"]=true}},"nst"},
+	{"siz","Int",{["tag"]={["Fanout"]=true}},{}},
+	{"dst","Str",{["tag"]={["Fanout"]=true}},"siz"},
+	{"exp","Express",{["tag"]={["Combine"]=true}},1},
 	{"num","Int",{["tag"]={["Combine"]=true}},{}},
-	{"exp","Express",{["tag"]={["Combine"]=true}},"num"},
-	{"val","Str",{["tag"]={["Combine"]=true}},"num"},
+	{"dep","Str",{["tag"]={["Combine"]=true}},"num"},
 	{"inp","Int",{["tag"]={["Pipex"]=true}},{}},
 	{"out","Int",{["tag"]={["Pipex"]=true}},{}},
 	{"url","Str",{["tag"]={["Execx"]=true}},{}},
@@ -530,6 +517,8 @@ Stage = {
 Enums,Enumz = listHere("Enums","type.gen")
 Constants,Constantz = listHere("Constants","type.gen")
 Structs,Structz = listHere("Structs","type.gen")
+elem = genericEnum(Structz,"Tag"); Enums[#Enums+1] = "Tag"; Enumz["Tag"] = elem
+elem = genericStruct(Structz,"Tag"); Structs[#Structs+1] = "Generic"; Structz["Generic"] = elem
 function showTypeC()
 	local result = ""
 	result = result.."#include \"face.h\"\n"

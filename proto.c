@@ -26,6 +26,10 @@ struct Function protoTypeCh(chtype fnc)
 {
 	struct Function ret = {.ft = Chtype, {.ch = fnc}}; return ret;
 }
+struct Function protoTypeDf(dftype fnc)
+{
+	struct Function ret = {.ft = Dftype, {.df = fnc}}; return ret;
+}
 struct Function protoTypeSf(sftype fnc)
 {
 	struct Function ret = {.ft = Sftype, {.sf = fnc}}; return ret;
@@ -82,25 +86,10 @@ struct Function protoTypeBg(bgtype fnc)
 {
 	struct Function ret = {.ft = Bgtype, {.bg = fnc}}; return ret;
 }
-struct Function protoTypeNf(nftype fnc)
-{
-	struct Function ret = {.ft = Nftype, {.nf = fnc}}; return ret;
-}
-struct Function protoTypeMf(mftype fnc)
-{
-	struct Function ret = {.ft = Mftype, {.mf = fnc}}; return ret;
-}
-struct Function protoTypeDf(dftype fnc)
-{
-	struct Function ret = {.ft = Dftype, {.df = fnc}}; return ret;
-}
+/*
 struct Function protoTypeIf(iftype fnc)
 {
 	struct Function ret = {.ft = Iftype, {.it = fnc}}; return ret;
-}
-struct Function protoTypeIg(igtype fnc)
-{
-	struct Function ret = {.ft = Igtype, {.ig = fnc}}; return ret;
 }
 struct Function protoTypeJf(jftype fnc)
 {
@@ -110,14 +99,23 @@ struct Function protoTypeKf(kftype fnc)
 {
 	struct Function ret = {.ft = Kftype, {.kf = fnc}}; return ret;
 }
-struct Function protoTypeTf(tftype fnc)
-{
-	struct Function ret = {.ft = Tftype, {.tf = fnc}}; return ret;
-}
 struct Function protoTypeLf(lftype fnc)
 {
 	struct Function ret = {.ft = Lftype, {.lf = fnc}}; return ret;
 }
+struct Function protoTypeMf(mftype fnc)
+{
+	struct Function ret = {.ft = Mftype, {.mf = fnc}}; return ret;
+}
+struct Function protoTypeNf(nftype fnc)
+{
+	struct Function ret = {.ft = Nftype, {.nf = fnc}}; return ret;
+}
+struct Function protoTypeTf(tftype fnc)
+{
+	struct Function ret = {.ft = Tftype, {.tf = fnc}}; return ret;
+}
+*/
 
 void protoMake(struct Parameter *arg)
 {

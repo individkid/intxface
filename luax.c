@@ -153,6 +153,7 @@ int luaxClosure(lua_State *L)
 		// typedef const char *(*aftype)(void *mem);
 		case (Aftype): lua_pushstring(L,fnc.af(lua_touserdata(L,1))); return 1;
 		// typedef void (*nftype)(void **use, const char *str);
+		/*
 		case (Nftype): mem = lua_touserdata(L,1); fnc.nf(&mem,lua_tostring(L,2)); lua_pushlightuserdata(L,mem); return 1;
 		// typedef void (*mftype)(void **run, void *use);
 		case (Mftype): mem = lua_touserdata(L,1); fnc.mf(&mem,lua_touserdata(L,2)); lua_pushlightuserdata(L,mem); return 1;
@@ -168,6 +169,7 @@ int luaxClosure(lua_State *L)
 		case (Tftype): lua_pushlightuserdata(L,fnc.tf(lua_tointeger(L,1))); return 1;
 		// typedef int (*lftype)(void **mem);
 		case (Lftype): mem = lua_touserdata(L,1); lua_pushinteger(L,fnc.lf(&mem)); lua_pushlightuserdata(L,mem); return 2;
+		*/
 		default: ERROR();}
 	return 0;
 }

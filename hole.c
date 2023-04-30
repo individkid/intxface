@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 	int sub = 0; // hub, fub, connect, or accept
 	char *adr = 0;
 	char *num = 0;
-	struct File file = {0};
+	struct Persist file = {0};
 	if (wrapInit(&arg,argv[1]) < 0 || arg.typ != Holez) ERROR();
 	if ((hub = arg.idx) < 0) ERROR();
 	if (wrapType(Filez,argv[0],"fileC") < 0) {fprintf(stderr,"holeC: cannot fork process\n"); return -1;}
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
 	while (1) {if (setjmp(errbuf) == 0) {
 	for (sub = waitRead(0.0,-1); sub >= 0; sub = waitRead(0.0,-1)) {
 	// read from readable
-	readFile(&file,sub);
+	readPersist(&file,sub);
 	// find new mappings
 	int snd = rub;
 	if (layer[sub] == Cluster && file.act == NewHub && splitStr(&file.str,&adr,&num)) {
@@ -66,6 +66,6 @@ int main(int argc, char **argv)
 	// translate and forward
 	int idx = address[sub][file.idx];
 	file.idx = mapping[sub][file.idx];
-	writeFile(&file,idx);}}}
+	writePersist(&file,idx);}}}
 	return -1;
 }

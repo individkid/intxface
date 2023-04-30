@@ -32,6 +32,7 @@
 typedef void (*cftype)(int idx); // thread callback
 typedef void (*cgtype)(int idx0, int idx1);
 typedef void (*chtype)();
+typedef void (*dftype)(void *dat);
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(int idx, const char *str); // add string
 typedef void (*hftype)(const char *val); // haskell wrapper
@@ -56,21 +57,13 @@ typedef const char *(*aftype)(void *mem);
 typedef const char *(*bftype)(const char *arg); // dictionary
 typedef const char *(*bgtype)();
 typedef const char *(*bhtype)(int *len);
-typedef void (*nftype)(void **use, const char *str);
-typedef void (*mftype)(void **run, void *use);
-typedef void (*dftype)(void **mem);
-typedef void (*iftype)(void **mem, int key);
-typedef void (*igtype)(void **mem, void *giv, int key);
-typedef void *(*jftype)(void *giv, void *key);
-typedef void *(*kftype)(void *giv, int key);
-typedef void *(*tftype)(int idx);
-typedef int (*lftype)(void **mem);
 
 struct Function {
 	enum {
 		Cftype,
 		Cgtype,
 		Chtype,
+		Dftype,
 		Eftype,
 		Sftype,
 		Hftype,
@@ -88,20 +81,21 @@ struct Function {
 		Aftype,
 		Bftype,
 		Bgtype,
-		Nftype,
-		Mftype,
-		Dftype,
+		/*
 		Iftype,
-		Igtype,
 		Jftype,
 		Kftype,
-		Tftype,
 		Lftype,
+		Mftype,
+		Nftype,
+		Tftype,
+		*/
 	} ft;
 	union {
 		cftype cf;
 		cgtype cg;
 		chtype ch;
+		dftype df;
 		eftype ef;
 		sftype sf;
 		hftype hf;
@@ -119,21 +113,22 @@ struct Function {
 		aftype af;
 		bftype bf;
 		bgtype bg;
-		nftype nf;
-		mftype mf;
-		dftype df;
+		/*
 		iftype it;
-		igtype ig;
 		jftype jf;
 		kftype kf;
-		tftype tf;
 		lftype lf;
+		mftype mf;
+		nftype nf;
+		tftype tf;
+		*/
 		void *vp;
 	};
 };
 struct Function protoTypeCf(cftype fnc);
 struct Function protoTypeCg(cgtype fnc);
 struct Function protoTypeCh(chtype fnc);
+struct Function protoTypeDf(dftype fnc);
 struct Function protoTypeSf(sftype fnc);
 struct Function protoTypeHf(hftype fnc);
 struct Function protoTypeFg(fgtype fnc);
@@ -148,15 +143,15 @@ struct Function protoTypeRh(rhtype fnc);
 struct Function protoTypeAf(aftype fnc);
 struct Function protoTypeBf(bftype fnc);
 struct Function protoTypeBg(bgtype fnc);
-struct Function protoTypeNf(nftype fnc);
-struct Function protoTypeMf(mftype fnc);
-struct Function protoTypeDf(dftype fnc);
+/*
 struct Function protoTypeIf(iftype fnc);
-struct Function protoTypeIg(igtype fnc);
 struct Function protoTypeJf(jftype fnc);
 struct Function protoTypeKf(kftype fnc);
-struct Function protoTypeTf(tftype fnc);
 struct Function protoTypeLf(lftype fnc);
+struct Function protoTypeMf(mftype fnc);
+struct Function protoTypeNf(nftype fnc);
+struct Function protoTypeTf(tftype fnc);
+*/
 
 struct Parameter {
 	enum {

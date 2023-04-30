@@ -2379,6 +2379,17 @@ function listHere(name,file)
 	end
 	return list,map
 end
+function genericEnum(structz,name)
+	local enum = {}
+	for k,v in pairs(structz) do enum[#enum+1] = k..name end
+	return enum
+end
+function genericStruct(structz,name)
+	local struct = {}
+	struct[#struct+1] = {"tag",name,{},{}}
+	for k,v in pairs(structz) do struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},{}} end
+	return struct
+end
 function showCall(list,map,func)
 	local result = ""
 	for k,v in ipairs(list) do

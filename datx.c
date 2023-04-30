@@ -184,12 +184,6 @@ int datxMeta(int sub, int idx)
 	if (sub < 0 || sub >= base[idx]->siz) ERROR();
 	return next[idx][sub];
 }
-void datxStr(void **dat, const char *str)
-{
-	*dat = realloc(*dat,strlen(str)+sizeof(int));
-	*(int*)*dat = strlen(str);
-	memcpy((void*)((int*)*dat+1),str,strlen(str));
-}
 void datxSplit(void **pre, void **suf, const void *dat, int len)
 {
 	*pre = realloc(*pre,len+sizeof(int));
@@ -251,6 +245,16 @@ void datxInsert(void *key, void *box)
 		leaf->ptr[i-1] = tmp; leaf->siz++; leaf = tmp; break;}
 	leaf->box = box;
 }
+void datxStr(void **dat, const char *val)
+{
+	*dat = realloc(*dat,strlen(val)+sizeof(int));
+	*(int*)*dat = strlen(val);
+	memcpy((void*)((int*)*dat+1),val,strlen(val));
+}
+void datxInt(void **dat, int val)
+{
+	// TODO
+}
 int datxPtrs(void *dat)
 {
 	return *(int*)dat;
@@ -281,4 +285,16 @@ int *datxIntz(int num, void *dat)
 {
 	if (num >= datxInts(dat)) ERROR();
 	return (int*)datxPtr(num*sizeof(int),dat);
+}
+void *datxEval(struct Express *exp, int typ)
+{
+	return 0; // TODO
+}
+void datxPrefix(const char *str)
+{
+	// TODO
+}
+void datxCallback(dftype fnc)
+{
+	// TODO
 }

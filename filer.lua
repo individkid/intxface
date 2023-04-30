@@ -12,30 +12,30 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
-writeFile(file,ident1)
+writePersist(file,ident1)
 file = {}
 file["act"] = "AppHub"
 file["idx"] = 0
 file["loc"] = 0
 file["str"] = field1
-writeFile(file,ident1)
+writePersist(file,ident1)
 file["str"] = field2a
-writeFile(file,ident1)
+writePersist(file,ident1)
 file["str"] = field3
-writeFile(file,ident1)
-file = readFile(ident1)
+writePersist(file,ident1)
+file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["slf"] == 1)
 assert(file["str"] == field1)
-file = readFile(ident1)
+file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 1)
 assert(file["str"] == field2a)
-file = readFile(ident1)
+file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1)+string.len(field2a))
@@ -47,20 +47,20 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
-writeFile(file,ident2)
-file = readFile(ident2)
+writePersist(file,ident2)
+file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["slf"] == 0)
 assert(file["str"] == field1)
-file = readFile(ident2)
+file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 0)
 assert(file["str"] == field2a)
-file = readFile(ident2)
+file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1)+string.len(field2a))
@@ -71,14 +71,14 @@ file["act"] = "CfgHub"
 file["idx"] = 0
 file["loc"] = string.len(field1)
 file["str"] = field2b
-writeFile(file,ident2)
-file = readFile(ident2)
+writePersist(file,ident2)
+file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 1)
 assert(file["str"] == field2b)
-file = readFile(ident1)
+file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
@@ -90,20 +90,20 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
-writeFile(file,ident3)
-file = readFile(ident3)
+writePersist(file,ident3)
+file = readPersist(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
 assert(file["slf"] == 0)
 assert(file["str"] == field1)
-file = readFile(ident3)
+file = readPersist(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 0)
 assert(file["str"] == field2b)
-file = readFile(ident3)
+file = readPersist(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1)+string.len(field2a))
