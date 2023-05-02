@@ -16,6 +16,7 @@ foreign import ccall "wrapper" wrapNote :: (CInt -> IO ()) -> IO (FunPtr (CInt -
 foreign import ccall "wrapper" wrapErr :: (CString -> CInt -> CInt -> IO ()) -> IO (FunPtr (CString -> CInt -> CInt -> IO ()))
 foreign import ccall "wrapper" wrapStr :: (CString -> IO ()) -> IO (FunPtr (CString -> IO ()))
 foreign import ccall "wrapper" wrapDat :: (CInt -> Ptr CChar -> IO ()) -> IO (FunPtr (CInt -> Ptr CChar -> IO ()))
+foreign import ccall "wrapper" wrapChr :: (CChar -> IO ()) -> IO (FunPtr (CChar -> IO ()))
 foreign import ccall "wrapper" wrapInt :: (CInt -> IO ()) -> IO (FunPtr (CInt -> IO ()))
 foreign import ccall "wrapper" wrapInt32 :: (Int32 -> IO ()) -> IO (FunPtr (Int32 -> IO ()))
 foreign import ccall "wrapper" wrapNum :: (Double -> IO ()) -> IO (FunPtr (Double -> IO ()))
@@ -75,6 +76,7 @@ foreign import ccall "hideCloseHs" hideCloseC :: CString -> FunPtr (CString -> I
 foreign import ccall "hideFieldHs" hideFieldC :: CString -> CInt -> Ptr CInt -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideStrHs" hideStrC :: FunPtr (CString -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideDatHs" hideDatC :: FunPtr (CInt -> Ptr CChar -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
+foreign import ccall "hideChrHs" hideChrC :: FunPtr (CChar -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideIntHs" hideIntC :: FunPtr (CInt -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideInt32Hs" hideInt32C :: FunPtr (Int32 -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
 foreign import ccall "hideNumHs" hideNumC :: FunPtr (Double -> IO ()) -> CString -> FunPtr (CString -> IO ()) -> IO Int
@@ -87,6 +89,7 @@ foreign import ccall "showCloseHs" showCloseC :: CString -> FunPtr (CString -> I
 foreign import ccall "showFieldHs" showFieldC :: CString -> CInt -> Ptr CInt -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showStrHs" showStrC :: CString -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showDatHs" showDatC :: CInt -> Ptr CChar -> CString -> FunPtr (CString -> IO ()) -> IO ()
+foreign import ccall "showChrHs" showChrC :: CChar -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showIntHs" showIntC :: CInt -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showInt32Hs" showInt32C :: Int32 -> CString -> FunPtr (CString -> IO ()) -> IO ()
 foreign import ccall "showNumHs" showNumC :: Double -> CString -> FunPtr (CString -> IO ()) -> IO ()
@@ -209,6 +212,11 @@ instance StrIO CString where
  wrap = wrapStr
  hide = hideStrC
  showt = showStrC
+instance StrIO CChar where
+ choose = return 0
+ wrap = wrapChr
+ hide = hideChrC
+ showt = showChrC
 instance StrIO CInt where
  choose = return 0
  wrap = wrapInt
@@ -269,6 +277,8 @@ showType a c = do
 hideStrF :: Maybe CString -> IO (Maybe String)
 hideStrF Nothing = return Nothing
 hideStrF (Just a) = peekCString a >>= return . Just
+hideChrF :: Maybe CChar -> IO (Maybe Char)
+hideChrF = return . fmap castCCharToChar
 hideIntF :: Maybe CInt -> IO (Maybe Int)
 hideIntF = return . fmap fromIntegral
 hideNewF :: Maybe CLLong -> IO (Maybe Integer)
@@ -278,6 +288,8 @@ hideDat :: RefStr -> IO (Maybe [CChar])
 hideDat = undefined
 hideStr :: RefStr -> IO (Maybe String)
 hideStr a = hideType a >>= hideStrF
+hideChr :: RefStr -> IO (Maybe Char)
+hideChr a = hideType a >>= hideChrF
 hideInt :: RefStr -> IO (Maybe Int)
 hideInt a = hideType a >>= hideIntF
 hideInt32 :: RefStr -> IO (Maybe Int32)
@@ -351,6 +363,8 @@ showDat :: [CChar] -> IORef String -> IO ()
 showDat = undefined
 showStr :: String -> IORef String -> IO ()
 showStr a b = showStrF a >>= (\x -> showType x b)
+showChr :: Char -> IORef String -> IO ()
+showChr a b =  showType (castCharToCChar a) b
 showInt :: Int -> IORef String -> IO ()
 showInt a b = showIntF a >>= (\x -> showType x b)
 showInt32 :: Int32 -> IORef String -> IO ()

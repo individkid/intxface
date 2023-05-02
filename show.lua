@@ -571,6 +571,9 @@ function showRandCJ(pre,field,sub,arg,post)
 		randInt = randInt + 1;
 	elseif (Structz[field[2]]~=nil) then
 		coroutine.yield(pre.."rand"..field[2].."(&ptr->"..field[1]..sub..");"..post)
+	elseif (field[2] == "Chr") then
+		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randChr..";"..post)
+		randChr = randChr + 1;
 	elseif (field[2] == "Int") then
 		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt..";"..post)
 		randInt = randInt + 1;
@@ -898,7 +901,7 @@ function showRtypeC(list)
 		result = result..showIndent(2).."break;}\n"
 	end
 	result = result..showIndent(1).."}\n"
-	result = result.."}\n"
+	result = result.."}"
 	return result
 end
 function showWtypeC(list)
@@ -929,7 +932,7 @@ function showWtypeC(list)
 		result = result..showIndent(2).."break;}\n"
 	end
 	result = result..showIndent(1).."}\n"
-	result = result.."}\n"
+	result = result.."}"
 	return result
 end
 function showLtypeC(list)
@@ -959,7 +962,7 @@ function showLtypeC(list)
 		result = result..showIndent(2).."break;}\n"
 	end
 	result = result..showIndent(1).."}\n"
-	result = result.."}\n"
+	result = result.."}"
 	return result
 end
 function showIdentC(list)
@@ -1024,7 +1027,7 @@ function showRfieldC(list,map)
 		result = result..showIndent(2).."break;}\n"
 	end
 	result = result..showIndent(1).."}\n"
-	result = result.."}\n"
+	result = result.."}"
 	return result
 end
 function showWfieldC(list,map)
@@ -1061,7 +1064,7 @@ function showWfieldC(list,map)
 		result = result..showIndent(2).."break;}\n"
 	end
 	result = result..showIndent(1).."}\n"
-	result = result.."}\n"
+	result = result.."}"
 	return result
 end
 function showIfieldC(list,map)
@@ -1080,7 +1083,7 @@ function showIfieldC(list,map)
 	end
 	result = result..showIndent(1).."}\n"
 	result = result..showIndent(1).."return -1;\n"
-	result = result.."}\n"
+	result = result.."}"
 	return result
 end
 function showTfieldC(list,map)
@@ -1101,7 +1104,7 @@ function showTfieldC(list,map)
 	end
 	result = result..showIndent(1).."default: return -1;}\n"
 	result = result..showIndent(1).."return -1;\n"
-	result = result.."}\n"
+	result = result.."}"
 	return result
 end
 function showEnumHs(name,enum)
@@ -2382,12 +2385,14 @@ end
 function genericEnum(structz,name)
 	local enum = {}
 	for k,v in pairs(structz) do enum[#enum+1] = k..name end
+	for k,v in ipairs({"Chr","Int","Int32","New","Num","Old","Str","Dat"}) do enum[#enum+1] = v..name end
 	return enum
 end
 function genericStruct(structz,name)
 	local struct = {}
 	struct[#struct+1] = {"tag",name,{},{}}
 	for k,v in pairs(structz) do struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},{}} end
+	for k,v in ipairs({"Chr","Int","Int32","New","Num","Old","Str","Dat"}) do struct[#struct+1] = {"v"..v,v,{["tag"]={[v..name]=true}},{}} end
 	return struct
 end
 function showCall(list,map,func)

@@ -219,12 +219,13 @@ struct Node *datxNode(void *key)
 		tmp = tmp->ptr[i-1]; break;}
 	return tmp;
 }
-void *datxFind(void *key)
+void datxFind(void **val, void *key)
 {
 	struct Node *leaf = datxNode(key);
 	if (datxCompare(leaf->key,key) == 0) {
-		return leaf->box;}
-	return 0;
+		assignDat(val,leaf->box);
+		return;}
+	free(*val); *val = 0;
 }
 void datxInsert(void *key, void *box)
 {
@@ -286,9 +287,9 @@ int *datxIntz(int num, void *dat)
 	if (num >= datxInts(dat)) ERROR();
 	return (int*)datxPtr(num*sizeof(int),dat);
 }
-void *datxEval(struct Express *exp, int typ)
+void datxEval(void **dat, struct Express *exp, int typ)
 {
-	return 0; // TODO
+	// TODO
 }
 void datxPrefix(const char *str)
 {

@@ -1306,6 +1306,14 @@ int hideDatHs(hktype val, const char *str, hftype fnc)
 	free(tmp);
 	return ret;
 }
+int hideChrHs(hmtype val, const char *str, hftype fnc)
+{
+	char tmp = 0;
+	int len = 0;
+	int ret = hideChr(&tmp, str, &len);
+	if (ret) {val(tmp); fnc(str+len);}
+	return ret;
+}
 int hideIntHs(hgtype val, const char *str, hftype fnc)
 {
 	int tmp = 0;
@@ -1398,6 +1406,14 @@ void showDatHs(int siz, const char *val, const char *str, hftype fnc)
 	fnc(tmp);
 	free(tmp);
 	free(cpy);
+}
+void showChrHs(char val, const char *str, hftype fnc)
+{
+	int len = strlen(str);
+	char *tmp = strdup(str);
+	showChr(val,&tmp,&len);
+	fnc(tmp);
+	free(tmp);
 }
 void showIntHs(int val, const char *str, hftype fnc)
 {

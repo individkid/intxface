@@ -166,6 +166,9 @@ Operate = {
 	"SetOp",
 	"NonOp",
 	"TriOp",
+	"InsOp",
+	"ExtOp",
+	"UnqOp",
 }
 Transform = {
 	"Translate",
@@ -206,15 +209,10 @@ Ture = {
 	"Sides",
 }
 Stream = {
-	"Insert", -- set field in next
-	"Extract", -- get field from last
-	"Unique", -- postincrement static
-	"Fanout", -- write to named pipes
-	"Combine", -- buffer(s) to pipe
-	"Buffer", -- name a buffer
-	"Pipex", -- name a pipe
-	"Execx", -- name a filter
-	"Loopx", -- loop out to inp
+	"Fanout", -- write to named pipes; one input, multiple outputs
+	"Combine", -- buffer(s) to pipe; no input, multiple outputs
+	"Buffer", -- name a buffer; one input, no output
+	"Execute", -- name a filter; typ is input type, for pipe named by str in successor, with output typ in successor
 }
 Logic = {
 	"WrpJmp",
@@ -501,17 +499,14 @@ Argument = {
 }
 Stage = {
 	{"tag","Stream",{},{}},
-	{"str","Str",{},{}},
-	{"typ","Int",{},{}},
-	{"nky","Int",{["tag"]={["Unique"]=true}},{}},
-	{"siz","Int",{["tag"]={["Fanout"]=true}},{}},
-	{"dst","Str",{["tag"]={["Fanout"]=true}},"siz"},
+	{"siz","Int",{["tag"]={["Fanout"]=true,["Combine"]=true}},{}},
+	{"dst","Str",{["tag"]={["Fanout"]=true,["Combine"]=true}},"siz"},
+	{"typ","Str",{["tag"]={["Fanout"]=true,["Buffer"]=true,["Execute"]=true}},{}},
+	{"str","Str",{["tag"]={["Fanout"]=true,["Buffer"]=true}},{}},
+	{"url","Str",{["tag"]={["Execute"]=true}},{}},
 	{"exp","Express",{["tag"]={["Combine"]=true}},1},
 	{"num","Int",{["tag"]={["Combine"]=true}},{}},
 	{"dep","Str",{["tag"]={["Combine"]=true}},"num"},
-	{"inp","Int",{["tag"]={["Pipex"]=true}},{}},
-	{"out","Int",{["tag"]={["Pipex"]=true}},{}},
-	{"url","Str",{["tag"]={["Execx"]=true}},{}},
 }
 --HERE
 Enums,Enumz = listHere("Enums","type.gen")
