@@ -18,6 +18,7 @@ struct Wrap {
 	int sub; // dst subscript
 	int siz; // dst size
 	struct Wrap **dst; // where to write for tag==Fanout,Combine
+	int vld; // tag==Fanout,Buffer whether idx valid
 	int idx; // tag==Fanout,Buffer reads from here
 	int inp; // type to read from here
 	int out; // type to write to here
@@ -29,6 +30,7 @@ int **back = 0; // per value lists to add to wake
 int *refs = 0; // per value list length
 int vals = 0; // number of values in expressions
 int wake = 0; // first to process before waiting for readable pipe
+int vlds = 0;
 
 int shareReadFp(int fildes, void *buf, int nbyte)
 {
@@ -58,13 +60,6 @@ void shareNote(int idx)
 {
 	note = 1;
 }
-
-void shareCallback(void *key)
-{
-	void *dat = 0; int sub = 0;
-	datxPrefix("V"); datxFind(&dat,key); sub = *datxIntz(0,dat);
-	if (wrap[sub].nxt == args) {wrap[sub].nxt = wake; wake = sub;}
-}
 int shareExec(const char *exe)
 {
 	int idx = openFork();
@@ -83,6 +78,133 @@ int shareExec(const char *exe)
 	datxStr(&dat1,""); writeArgument(&arg,idx1);
 	readType(&str,&len,identType("Argument"),idx1);
 	return openExec(exe,str);
+}
+void shareArgs(int sub, const char *str)
+{
+	args++;
+}
+void shareVals(int sub, const char *str)
+{
+	struct Wrap *ptr = &wrap[sub];
+	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
+	switch (arg.tag) {
+	case (Fanout): {
+		datxStr(&dat0,arg.str); datxInt(&dat1,sub);
+		datxPrefix("P"); datxInsert(dat0,dat1);
+		ptr->vld = -1; ptr->inp = identType(arg.typ);
+		break;}
+	case (Combine): {
+		datxPrefix("V"); for (int i = 0; i < arg.num; i++) {
+		datxStr(&dat0,arg.dep[i]); datxFind(&dat1,dat0);
+		if (dat1 == 0) {datxInt(&dat1,vals++); datxInsert(dat0,dat1);}}
+		break;}
+	case (Buffer): {
+		datxStr(&dat0,arg.str); datxInt(&dat1,sub);
+		datxPrefix("P"); datxInsert(dat0,dat1);
+		ptr->vld = -1; ptr->inp = identType(arg.typ);
+		break;}
+	case (Execute): if (sub+1 == args) {
+		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
+		exit(-1);} else {
+		struct Wrap *nxt = &wrap[sub+1];
+		ptr->idx = nxt->idx = shareExec(arg.url);
+		nxt->vld = 1; nxt->out = identType(arg.typ);
+		break;}
+	default: ERROR();}
+	freeStage(&arg);
+}
+void shareRefs(int sub, const char *str)
+{
+	struct Wrap *ptr = &wrap[sub];
+	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
+	switch (arg.tag) {
+	case (Fanout): {if (ptr->vld == -1) {
+		ptr->vld = 1; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
+		break;}
+	case (Combine): if (ptr->vld) {
+		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
+		exit(-1);} else {
+		datxPrefix("V"); for (int i = 0; i < arg.num; i++) {
+		datxStr(&dat0,arg.dep[i]); datxFind(&dat1,dat0);
+		refs[*datxIntz(0,dat1)] += 1;}
+		break;}
+	case (Buffer): {if (ptr->vld == -1) {
+		ptr->vld = 1; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
+		break;}
+	case (Execute): if (ptr->vld) {
+		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
+		exit(-1);} else {
+		break;}
+	default: ERROR();}
+	freeStage(&arg); vlds++;
+}
+void shareBack(int sub, const char *str)
+{
+	struct Wrap *ptr = &wrap[sub];
+	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
+	switch (arg.tag) {
+	case (Fanout): break;
+	case (Combine): {
+		datxPrefix("V"); for (int i = 0; i < arg.num; i++) {
+		datxStr(&dat0,arg.dep[i]); datxFind(&dat1,dat0);
+		back[*datxIntz(0,dat1)][refs[*datxIntz(0,dat1)]] = sub;
+		refs[*datxIntz(0,dat1)] += 1;}
+		break;}
+	case (Buffer): break;
+	case (Execute): break;
+	default: ERROR();}
+	freeStage(&arg);
+}
+void shareNone(int typ, const char *str)
+{
+}
+void shareConst(int typ, const char *str)
+{
+	if (vlds+1 == args || !wrap[vlds+1].vld) {
+	fprintf(stderr,"ERROR: argument after Constant should be Fanout or Buffer\n");
+	exit(-1);} else {
+	int len = 0; writeType(str,&len,typ,wrap[vlds+1].idx);}
+}
+void shareSyntax(int len, const char *str)
+{
+	fprintf(stderr,"ERROR: invalid type: %s\n",str);
+	fprintf(stderr,"---------------------");
+	for (int j = 0; j < len; j++) fprintf(stderr,"-");
+	fprintf(stderr,"^\n");
+	exit(-1);
+}
+void shareError(int len, const char *str)
+{
+	ERROR();
+}
+int sharePeek(const char *str, int *len)
+{
+	for (int typ = 0; identSubtype(typ,0)!=-1; typ++) {
+		int tmp = 0;
+		note = 0;
+		writeType(str,&tmp,typ,idx0);
+		flushBuf(idx0);
+		if (tmp > *len) *len = tmp;
+		if (note == 0) return typ;}
+	return -1;
+}
+void shareParse(int argc, char **argv, sftype err, sftype arg, sftype stg)
+{
+	for (int i = 1, dne = 0, sub = 0; i < argc; i++) {
+		int len = 0; int typ = 0;
+		if (strcmp(argv[i],"--") == 0) dne = 1;
+		else if ((typ = sharePeek(argv[i],&len)) < 0) err(len,argv[i]);
+		else if (dne || typ != identType("Stage")) arg(typ,argv[i]);
+		else stg(sub,argv[i]); sub += 1;}
+}
+void shareCallback(void *key)
+{
+	void *dat = 0; int ref = 0;
+	datxPrefix("V"); datxFind(&dat,key); ref = *datxIntz(0,dat);
+	for (int i = 0; i < refs[ref]; i++) {
+	int sub = back[ref][refs[ref]];
+	struct Wrap *ptr = &wrap[sub];
+	if (ptr->nxt == args) {ptr->nxt = wake; wake = sub;}}
 }
 void shareLoop(int src, int dst, int stp, int dtp)
 {
@@ -109,72 +231,6 @@ void shareWrap(struct Wrap *ptr)
 	default: ERROR();}
 }
 
-void shareArgs(int sub, const char *str)
-{
-	args++;
-}
-void shareVals(int sub, const char *str)
-{
-	struct Wrap *ptr = &wrap[sub];
-	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
-	// TODO open pipe in idx
-	// TODO map str to sub
-	// TODO increment vals
-}
-void shareRefs(int sub, const char *str)
-{
-	struct Wrap *ptr = &wrap[sub];
-	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
-	// TODO increment refs
-}
-void shareBack(int sub, const char *str)
-{
-	struct Wrap *ptr = &wrap[sub];
-	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
-	// TODO initialize back[refs]
-}
-void shareNone(int typ, const char *str)
-{
-}
-void shareConst(int typ, const char *str)
-{
-	int len = 0;
-	writeType(str,&len,typ,wrap[0].idx);
-}
-void shareMessage(int len, const char *str)
-{
-	fprintf(stderr,"ERROR: invalid type: %s\n",str);
-	fprintf(stderr,"---------------------");
-	for (int j = 0; j < len; j++) fprintf(stderr,"-");
-	fprintf(stderr,"^\n");
-	exit(-1);
-}
-void shareError(int len, const char *str)
-{
-	ERROR();
-}
-
-int sharePeek(const char *str, int *len)
-{
-	for (int typ = 0; identSubtype(typ,0)!=-1; typ++) {
-		int tmp = 0;
-		note = 0;
-		writeType(str,&tmp,typ,idx0);
-		flushBuf(idx0);
-		if (tmp > *len) *len = tmp;
-		if (note == 0) return typ;}
-	return -1;
-}
-void shareParse(int argc, char **argv, sftype err, sftype arg, sftype stg)
-{
-	for (int i = 1, dne = 0, sub = 0; i < argc; i++) {
-		int len = 0; int typ = 0;
-		if (strcmp(argv[i],"--") == 0) dne = 1;
-		else if ((typ = sharePeek(argv[i],&len)) < 0) err(len,argv[i]);
-		else if (dne || typ != identType("Stage")) arg(typ,argv[i]);
-		else stg(sub,argv[i]); sub += 1;}
-}
-
 int main(int argc, char **argv)
 {
 	// prefix "P" for pipe name to wrap index
@@ -182,14 +238,15 @@ int main(int argc, char **argv)
 	noteFunc(shareNote);
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp);
 	idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
-	shareParse(argc,argv,shareMessage,shareNone,shareArgs);
-	wrap = malloc(args*sizeof(struct Wrap)+1);
+	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
+	wrap = malloc(args*sizeof(struct Wrap));
+	for (int i = 0; i < args; i++) {wrap[i].vld = 0;}
 	shareParse(argc,argv,shareError,shareNone,shareVals);
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
+	for (int i = 0; i < vals; i++) {back[i] = 0; refs[i] = 0;}
 	shareParse(argc,argv,shareError,shareConst,shareRefs);
 	for (int i = 0; i < vals; i++) {back[i] = malloc(refs[i]*sizeof(int)); refs[i] = 0;}
 	shareParse(argc,argv,shareError,shareNone,shareBack);
-	// TODO initialize wrap[args]
 	datxPrefix("V"); datxCallback(shareCallback);
 	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
 	while (1) { // TODO think of way to terminate
