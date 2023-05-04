@@ -91,24 +91,26 @@ void shareVals(int sub, const char *str)
 	case (Fanout): {
 		datxStr(&dat0,arg.str); datxInt(&dat1,sub);
 		datxPrefix("P"); datxInsert(dat0,dat1);
-		ptr->vld = -1; ptr->inp = identType(arg.typ);
+		ptr->vld |= 1; ptr->inp = identType(arg.typ);
 		break;}
-	case (Combine): {
-		datxPrefix("V"); for (int i = 0; i < arg.num; i++) {
+	case (Combine): if (sub+1 == args) {
+		fprintf(stderr,"ERROR: argument after Combine should be Fanout or Buffer\n");
+		exit(-1);} else {
+		datxPrefix("R"); for (int i = 0; i < arg.num; i++) {
 		datxStr(&dat0,arg.dep[i]); datxFind(&dat1,dat0);
 		if (dat1 == 0) {datxInt(&dat1,vals++); datxInsert(dat0,dat1);}}
 		break;}
 	case (Buffer): {
 		datxStr(&dat0,arg.str); datxInt(&dat1,sub);
 		datxPrefix("P"); datxInsert(dat0,dat1);
-		ptr->vld = -1; ptr->inp = identType(arg.typ);
+		ptr->vld |= 1; ptr->inp = identType(arg.typ);
 		break;}
 	case (Execute): if (sub+1 == args) {
 		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
 		exit(-1);} else {
 		struct Wrap *nxt = &wrap[sub+1];
 		ptr->idx = nxt->idx = shareExec(arg.url);
-		nxt->vld = 1; nxt->out = identType(arg.typ);
+		nxt->vld |= 6; nxt->out = identType(arg.typ);
 		break;}
 	default: ERROR();}
 	freeStage(&arg);
@@ -118,20 +120,31 @@ void shareRefs(int sub, const char *str)
 	struct Wrap *ptr = &wrap[sub];
 	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
 	switch (arg.tag) {
-	case (Fanout): {if (ptr->vld == -1) {
-		ptr->vld = 1; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
+	case (Fanout): {if (ptr->vld != 1 && ptr->vld != 7) {
+		ERROR();} else if (ptr->vld == 1) {
+		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
+		arg.siz = ptr->siz; arg.dst = malloc(arg.siz*sizeof(struct Wrap *));
+		for (int i = 0; i < arg.siz; i++) {
+		datxPrefix("P"); datxStr(&dat0,arg.dst[i]); datxFind(&dat1,dat0);
+		ptr->dst[i] = &wrap[*datxIntz(0,dat1)];}
 		break;}
-	case (Combine): if (ptr->vld) {
+	case (Combine): if (ptr->vld != 0) {
 		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
 		exit(-1);} else {
-		datxPrefix("V"); for (int i = 0; i < arg.num; i++) {
+		ptr->dst = malloc(sizeof(struct Wrap *));
+		ptr->siz = 1; ptr->dst[0] = &wrap[sub+1];
+		if (ptr->dst[0]->vld == 0) {
+		fprintf(stderr,"ERROR: argument after Combine should be Fanout or Buffer\n");
+		exit(-1);} else {
+		datxPrefix("R"); for (int i = 0; i < arg.num; i++) {
 		datxStr(&dat0,arg.dep[i]); datxFind(&dat1,dat0);
 		refs[*datxIntz(0,dat1)] += 1;}
+		break;}}
+	case (Buffer): {if (ptr->vld != 1 && ptr->vld != 7) {
+		ERROR();} else if (ptr->vld == 1) {
+		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
 		break;}
-	case (Buffer): {if (ptr->vld == -1) {
-		ptr->vld = 1; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
-		break;}
-	case (Execute): if (ptr->vld) {
+	case (Execute): if (ptr->vld != 0) {
 		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
 		exit(-1);} else {
 		break;}
@@ -145,7 +158,7 @@ void shareBack(int sub, const char *str)
 	switch (arg.tag) {
 	case (Fanout): break;
 	case (Combine): {
-		datxPrefix("V"); for (int i = 0; i < arg.num; i++) {
+		datxPrefix("R"); for (int i = 0; i < arg.num; i++) {
 		datxStr(&dat0,arg.dep[i]); datxFind(&dat1,dat0);
 		back[*datxIntz(0,dat1)][refs[*datxIntz(0,dat1)]] = sub;
 		refs[*datxIntz(0,dat1)] += 1;}
@@ -200,9 +213,11 @@ void shareParse(int argc, char **argv, sftype err, sftype arg, sftype stg)
 void shareCallback(void *key)
 {
 	void *dat = 0; int ref = 0;
-	datxPrefix("V"); datxFind(&dat,key); ref = *datxIntz(0,dat);
+	datxPrefix("R"); datxFind(&dat,key);
+	if (dat == 0) return;
+	ref = *datxIntz(0,dat);
 	for (int i = 0; i < refs[ref]; i++) {
-	int sub = back[ref][refs[ref]];
+	int sub = back[ref][i];
 	struct Wrap *ptr = &wrap[sub];
 	if (ptr->nxt == args) {ptr->nxt = wake; wake = sub;}}
 }
@@ -219,9 +234,8 @@ void shareWrap(struct Wrap *ptr)
 		if (++ptr->sub == ptr->siz) ptr->sub = 0;
 		break;}
 	case (Combine): {
-		datxEval(&dat0,ptr->exp,ptr->dst[ptr->sub]->out);
-		shareLoop(idx0,ptr->dst[ptr->sub]->idx,identType("Dat"),ptr->dst[ptr->sub]->out);
-		if (++ptr->sub == ptr->siz) ptr->sub = 0;
+		datxEval(&dat0,ptr->exp,ptr->dst[0]->out);
+		shareLoop(idx0,ptr->dst[0]->idx,identType("Dat"),ptr->dst[0]->out);
 		break;}
 	case (Buffer): {
 		datxStr(&dat0,""); loopType(ptr->inp,ptr->idx,idx0);

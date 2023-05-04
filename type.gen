@@ -499,8 +499,8 @@ Argument = {
 }
 Stage = {
 	{"tag","Stream",{},{}},
-	{"siz","Int",{["tag"]={["Fanout"]=true,["Combine"]=true}},{}},
-	{"dst","Str",{["tag"]={["Fanout"]=true,["Combine"]=true}},"siz"},
+	{"siz","Int",{["tag"]={["Fanout"]=true}},{}},
+	{"dst","Str",{["tag"]={["Fanout"]=true}},"siz"},
 	{"typ","Str",{["tag"]={["Fanout"]=true,["Buffer"]=true,["Execute"]=true}},{}},
 	{"str","Str",{["tag"]={["Fanout"]=true,["Buffer"]=true}},{}},
 	{"url","Str",{["tag"]={["Execute"]=true}},{}},
