@@ -250,12 +250,11 @@ void shareWrap(struct Wrap *ptr)
 
 int main(int argc, char **argv)
 {
-	int trm = openPipe(); noteFunc(shareNote);
-	idx0 = puntInit(0,0,shareReadFp,shareWriteFp);
-	idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
+	idx0 = puntInit(0,0,shareReadFp,shareWriteFp); idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
-	*userIdent(trm) = (void*)(intptr_t)args;
+	wrap[args].idx = openPipe(); wrap[args].out = identType("Str");
+	*userIdent(wrap[args].idx) = (void*)(intptr_t)args;
 	datxStr(&dat0,""); datxInt(&dat1,args); datxPrefix("P"); datxInsert(dat0,dat1);	
 	shareParse(argc,argv,shareError,shareNone,shareVals);
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
@@ -264,10 +263,11 @@ int main(int argc, char **argv)
 	for (int i = 0; i < vals; i++) {back[i] = malloc(refs[i]*sizeof(int)); refs[i] = 0;}
 	shareParse(argc,argv,shareError,shareNone,shareBack);
 	datxPrefix("V"); datxCallback(shareCallback);
-	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
+	noteFunc(shareNote); wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
 	while (1) {int sub = 0; int idx = 0;
 	if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;} else {
-	idx = waitRead(0,-1); if (idx == trm) break;
+	idx = waitRead(0,-1); if (idx == wrap[args].idx) {
+	char *str = 0; readStr(&str,wrap[args].idx); printf("%s",str); break;}
 	sub = (int)(intptr_t)*userIdent(idx);}
 	shareWrap(&wrap[sub]);}
 	return 0;
