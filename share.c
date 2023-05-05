@@ -248,7 +248,7 @@ void shareWrap(struct Wrap *ptr)
 	case (Execute): ERROR();
 	default: ERROR();}
 }
-void shareAppend(char **buf, char **nxt, int *lim, int siz)
+void shareAppend(char **buf, char **nxt, int *lim, int *tot, int siz)
 {
 	int goon = 1; while (goon) {
 	goon = nestPass();
@@ -259,23 +259,25 @@ void shareAppend(char **buf, char **nxt, int *lim, int siz)
 	while (ofs+len > *lim) {
 	if (*lim == 0) *lim = 1; else *lim *= 2;
 	*buf = realloc(*buf,*lim); *nxt = *buf + ofs;}
-	strcpy(*nxt,str); *nxt += len;}}
+	strcpy(*nxt,str); *nxt += len; *tot += 1;}}
 }
 void shareArgv(int *argc, char **argv)
 {
 	int chunks = 0;
-	int *sizes = 0; // strings per chunk; doubles per nestPass
+	int *sizes = 0; // given strings per chunk
 	char *buffer = 0; // reallocatable packed of nestRepl
 	char *space = 0; // usable portion of buffer
 	int limit = 0; // total size of buffer
+	int total = 0; // number of strings in buffer
 	char *save = argv[0];
 	luaxSide("require \"type\""); // now nest interpreter has cast and face functions
 	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; chunks += 1;
 	sizes = malloc(chunks*sizeof(int)); memset(sizes,0,chunks*sizeof(int)); chunks = 0;
 	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; else sizes[chunks] += 1; chunks = 0; nestInit(sizes[0]);
 	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) {
-	shareAppend(&buffer,&space,&limit,sizes[chunks]); chunks += 1; nestInit(sizes[chunks]); sizes[chunks] = 0;} else {
+	shareAppend(&buffer,&space,&limit,&total,sizes[chunks]); chunks += 1; nestInit(sizes[chunks]); sizes[chunks] = 0;} else {
 	nestElem(sizes[chunks],argv[i]); sizes[chunks] += 1;}
+	buffer = realloc(buffer,space-buffer); *argc = total + 1;
 	*argv = malloc(*argc*sizeof(char*)); argv[0] = save; space = buffer;
 	for (int i = 1; i < *argc; i++) {argv[i] = space; space += strlen(space)+1;}
 }
