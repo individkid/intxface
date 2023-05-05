@@ -272,7 +272,7 @@ void *datxData(void *dat)
 {
 	return (void*)(((int*)dat)+1);
 }
-void *datxPtr(int num, void *dat)
+void *datxPtrz(int num, void *dat)
 {
 	if (num >= datxPtrs(dat)) ERROR();
 	return (void*)(((char*)datxData(dat))+num);
@@ -280,12 +280,12 @@ void *datxPtr(int num, void *dat)
 char *datxChrz(int num, void *dat)
 {
 	if (num >= datxChrs(dat)) ERROR();
-	return (char*)datxPtr(num*sizeof(char),dat);
+	return (char*)datxPtrz(num*sizeof(char),dat);
 }
 int *datxIntz(int num, void *dat)
 {
 	if (num >= datxInts(dat)) ERROR();
-	return (int*)datxPtr(num*sizeof(int),dat);
+	return (int*)datxPtrz(num*sizeof(int),dat);
 }
 void datxEval(void **dat, struct Express *exp, int typ)
 {
@@ -296,6 +296,14 @@ void datxPrefix(const char *str)
 	// TODO
 }
 void datxCallback(dftype fnc)
+{
+	// TODO
+}
+void datxSetter(dgtype fnc)
+{
+	// TODO
+}
+void datxGetter(dhtype fnc)
 {
 	// TODO
 }

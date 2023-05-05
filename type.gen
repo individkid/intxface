@@ -134,41 +134,23 @@ Transfer = {
 	"Nest", -- nest to level
 	"Swap", -- exchange machine lines
 }
-Operation = {
-	"Fadd",
-	"Iadd",
-	"Fsub",
-	"Isub",
-	"Fmul",
-	"Imul",
-	"Fdiv",
-	"Idiv",
-	"Frem",
-	"Irem",
-	"Ftoi",
-	"Itof",
-	"Fval",
-	"Ival",
-	"Conf",
-	"Side",
-	"Drop",
-	"Cond",
-}
 Operate = {
-	"AddOp",
-	"SubOp",
-	"MulOp",
-	"DivOp",
-	"RemOp",
-	"TotOp",
-	"ValOp",
-	"GetOp",
-	"SetOp",
-	"NonOp",
-	"TriOp",
-	"InsOp",
-	"ExtOp",
-	"UnqOp",
+	"AddOp", -- siz = 2;
+	"SubOp", -- 2;
+	"MulOp", -- 2;
+	"DivOp", -- 2;
+	"RemOp", -- 2;
+	"CmpOp", -- 2; to neg zero pos
+	"CndOp", -- 4; from neg zero pos
+	"TotOp", -- 1; cast to type
+	"ImmOp", -- 0; built in value
+	"ValOp", -- 0; restore from named
+	"SavOp", -- 2; save to named
+	"GetOp", -- 0; value from callback
+	"SetOp", -- 2; callback with value
+	"InsOp", -- 2; field to struct
+	"ExtOp", -- 1; field from struct
+	"UnqOp", -- 0; magic number
 }
 Transform = {
 	"Translate",
@@ -430,19 +412,12 @@ Slice = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 }
-Expression = {
-	{"opr","Operation",{},{}},
-	{"cfg","Configure",{["opr"]={["Conf"]=true,["Side"]=true}},{}},
-	{"ivl","Int",{["opr"]={["Ival"]=true}},{}},
-	{"fvl","Old",{["opr"]={["Fval"]=true}},{}},
-	{"siz","Int",{},{}},
-	{"exp","Expression",{},"siz"},
-}
 Express = {
 	{"opr","Operate",{},{}},
-	{"cfg","Str",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
-	{"val","Dat",{["opr"]={["ValOp"]=true}},{}},
-	{"typ","Int",{["opr"]={["ValOp"]=true}},{}},
+	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
+	{"str","Str",{["opr"]={["ValOp"]=true,["SavOp"]=true}},{}},
+	{"val","Dat",{["opr"]={["ImmOp"]=true}},{}},
+	{"typ","Int",{["opr"]={["TotOp"]=true,["ImmOp"]=true,["ValOp"]=true,["GetOp"]=true,["UnqOp"]=true}},{}},
 	{"siz","Int",{},{}},
 	{"exp","Express",{},"siz"},
 }
@@ -453,7 +428,7 @@ Machine = {
 	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true,["Save"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
 	{"oth","Int",{["xfr"]={["Swap"]=true}},{}},
-	{"exp","Expression",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
+	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 }
 Center = {
 	{"req","Request",{},{}},

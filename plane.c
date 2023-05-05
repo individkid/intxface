@@ -1,6 +1,7 @@
 #include "plane.h"
 #include "face.h"
 #include "metx.h"
+#include "datx.h"
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -351,66 +352,13 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
-float planeFval(struct Expression *exp);
-int planeIval(struct Expression *exp)
+int planeIval(struct Express *exp)
 {
-	switch (exp->opr) {
-	case (Fadd): ERROR();
-	case (Iadd): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])+planeIval(&exp->exp[1]);
-	case (Fsub): ERROR();
-	case (Isub): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])-planeIval(&exp->exp[1]);
-	case (Fmul): ERROR();
-	case (Imul): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])*planeIval(&exp->exp[1]);
-	case (Fdiv): ERROR();
-	case (Idiv): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])/planeIval(&exp->exp[1]);
-	case (Frem): ERROR();
-	case (Irem): if (exp->siz != 2) ERROR(); return planeIval(&exp->exp[0])%planeIval(&exp->exp[1]);
-	case (Ftoi): if (exp->siz != 1) ERROR(); return (int)planeFval(&exp->exp[0]);
-	case (Itof): ERROR();
-	case (Fval): ERROR();
-	case (Ival): return exp->ivl;
-	case (Conf): if (exp->siz != 1 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); return configure[exp->cfg];
-	case (Side): if (exp->siz != 2 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); configure[exp->cfg] = planeIval(&exp->exp[0]); return planeIval(&exp->exp[1]);
-	case (Drop): planeIval(&exp->exp[0]); return planeIval(&exp->exp[1]);
-	case (Cond): if (exp->siz != 3) ERROR(); return (planeIval(&exp->exp[0])? planeIval(&exp->exp[1]) : planeIval(&exp->exp[2]));
-	default: ERROR();}
-	return 0;
+	return 0; // TODO unwrap datxEval
 }
-float planeFdiv(float val)
+float planeFval(struct Express *exp)
 {
-  double ign,ret;
-  ign = modf(val,&ret);
-  return ret;
-}
-float planeFrem(float val)
-{
-  double ign,ret;
-  ret = modf(val,&ign);
-  return ret;
-}
-float planeFval(struct Expression *exp)
-{
-	switch (exp->opr) {
-	case (Fadd): if (exp->siz != 2) ERROR(); return planeFval(&exp->exp[0])+planeFval(&exp->exp[1]);
-	case (Iadd): ERROR();
-	case (Fsub): if (exp->siz != 2) ERROR(); return planeFval(&exp->exp[0])-planeFval(&exp->exp[1]);
-	case (Isub): ERROR();
-	case (Fmul): if (exp->siz != 2) ERROR(); return planeFval(&exp->exp[0])*planeFval(&exp->exp[1]);
-	case (Imul): ERROR();
-	case (Fdiv): if (exp->siz != 2) ERROR(); return planeFdiv(planeFval(&exp->exp[0])/planeFval(&exp->exp[1]));
-	case (Idiv): ERROR();
-	case (Frem): if (exp->siz != 2) ERROR(); return planeFrem(planeFval(&exp->exp[0])/planeFval(&exp->exp[1]));
-	case (Irem): ERROR();
-	case (Ftoi): ERROR();
-	case (Itof): if (exp->siz != 1) ERROR(); return (float)planeIval(&exp->exp[0]);
-	case (Fval): return exp->fvl;
-	case (Ival): ERROR();
-	case (Conf): ERROR();
-	case (Side): if (exp->siz != 2 || exp->cfg < 0 || exp->cfg >= Configures) ERROR(); configure[exp->cfg] = planeIval(&exp->exp[0]); return planeFval(&exp->exp[1]);
-	case (Drop): planeFval(&exp->exp[0]); return planeFval(&exp->exp[1]);
-	case (Cond): if (exp->siz != 3) ERROR(); return (planeIval(&exp->exp[0])? planeFval(&exp->exp[1]) : planeFval(&exp->exp[2]));
-	default: ERROR();}
-	return 0.0;
+	return 0.0; // TODO unwrap datxEval
 }
 void planeWake(enum Configure hint)
 {

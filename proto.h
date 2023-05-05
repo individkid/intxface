@@ -33,6 +33,8 @@ typedef void (*cftype)(int idx); // thread callback
 typedef void (*cgtype)(int idx0, int idx1);
 typedef void (*chtype)();
 typedef void (*dftype)(void *dat);
+typedef void (*dgtype)(void *dat, int sub);
+typedef void (*dhtype)(void **dat, int sub);
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*sftype)(int idx, const char *str); // add string
 typedef void (*hftype)(const char *val); // haskell wrapper
@@ -65,6 +67,8 @@ struct Function {
 		Cgtype,
 		Chtype,
 		Dftype,
+		Dgtype,
+		Dhtype,
 		Eftype,
 		Sftype,
 		Hftype,
@@ -97,6 +101,8 @@ struct Function {
 		cgtype cg;
 		chtype ch;
 		dftype df;
+		dgtype dg;
+		dhtype dh;
 		eftype ef;
 		sftype sf;
 		hftype hf;
@@ -130,6 +136,8 @@ struct Function protoTypeCf(cftype fnc);
 struct Function protoTypeCg(cgtype fnc);
 struct Function protoTypeCh(chtype fnc);
 struct Function protoTypeDf(dftype fnc);
+struct Function protoTypeDg(dgtype fnc);
+struct Function protoTypeDh(dhtype fnc);
 struct Function protoTypeSf(sftype fnc);
 struct Function protoTypeHf(hftype fnc);
 struct Function protoTypeFg(fgtype fnc);
