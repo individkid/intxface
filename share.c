@@ -236,7 +236,7 @@ void shareWrap(struct Wrap *ptr)
 		shareLoop(idx0,ptr->dst[0]->idx,identType("Dat"),ptr->dst[0]->out);
 		break;}
 	case (Buffer): {
-		datxStr(&dat0,""); note = 0; shareLoop(ptr->idx,idx0,ptr->inp,ptr->inp);
+		datxStr(&dat0,""); note = 0; loopType(ptr->inp,ptr->idx,idx0);
 		if (note == 0) {datxStr(&dat1,ptr->str); datxInsert(dat1,dat0);}
 		break;}
 	case (Execute): ERROR();
@@ -260,7 +260,7 @@ int main(int argc, char **argv)
 	shareParse(argc,argv,shareError,shareNone,shareBack);
 	datxPrefix("V"); datxCallback(shareCallback);
 	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
-	while (1) { // TODO think of way to terminate
+	while (1) {
 		int sub = 0;
 		if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;}
 		else {sub = (int)(intptr_t)*userIdent(waitRead(0,-1));}
