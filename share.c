@@ -229,7 +229,8 @@ void shareWrap(struct Wrap *ptr)
 	switch (ptr->tag) {
 	case (Fanout): {
 		note = 0; shareLoop(ptr->idx,ptr->dst[ptr->sub]->idx,ptr->inp,ptr->dst[ptr->sub]->out);
-		if (note == 0 && (++ptr->sub == ptr->siz)) ptr->sub = 0;
+		if (note == 0) {if (++ptr->sub == ptr->siz) ptr->sub = 0;} else {
+		datxStr(&dat1,""); datxStr(&dat0,ptr->str); datxInsert(dat1,dat0);}
 		break;}
 	case (Combine): {
 		datxEval(&dat0,ptr->exp,ptr->dst[0]->out);
@@ -237,7 +238,8 @@ void shareWrap(struct Wrap *ptr)
 		break;}
 	case (Buffer): {
 		datxStr(&dat0,""); note = 0; loopType(ptr->inp,ptr->idx,idx0);
-		if (note == 0) {datxStr(&dat1,ptr->str); datxInsert(dat1,dat0);}
+		if (note == 0) {datxStr(&dat1,ptr->str); datxInsert(dat1,dat0);} else {
+		datxStr(&dat1,""); datxStr(&dat0,ptr->str); datxInsert(dat1,dat0);}
 		break;}
 	case (Execute): ERROR();
 	default: ERROR();}
@@ -245,9 +247,7 @@ void shareWrap(struct Wrap *ptr)
 
 int main(int argc, char **argv)
 {
-	// TODO read eof causes write of pipe name to ""
-	// TODO write to "" is normal termination
-	noteFunc(shareNote);
+	int trm = openPipe(); noteFunc(shareNote);
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp);
 	idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
@@ -260,10 +260,10 @@ int main(int argc, char **argv)
 	shareParse(argc,argv,shareError,shareNone,shareBack);
 	datxPrefix("V"); datxCallback(shareCallback);
 	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
-	while (1) {
-		int sub = 0;
-		if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;}
-		else {sub = (int)(intptr_t)*userIdent(waitRead(0,-1));}
-		shareWrap(&wrap[sub]);}
+	while (1) {int sub = 0; int idx = 0;
+	if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;} else {
+	idx = waitRead(0,-1); if (idx == trm) break;
+	sub = (int)(intptr_t)*userIdent(idx);}
+	shareWrap(&wrap[sub]);}
 	return 0;
 }
