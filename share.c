@@ -107,7 +107,8 @@ void shareVals(int sub, const char *str)
 		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
 		exit(-1);} else {
 		struct Wrap *nxt = &wrap[sub+1];
-		ptr->idx = nxt->idx = shareExec(arg.url,arg.arg);
+		nxt->idx = shareExec(arg.url,arg.arg);
+		*userIdent(nxt->idx) = (void*)(intptr_t)(sub+1);
 		nxt->vld |= 6; nxt->out = identType(arg.typ);
 		ptr->exp = arg.exp; arg.exp = 0;
 
@@ -122,7 +123,8 @@ void shareRefs(int sub, const char *str)
 	switch (arg.tag) {
 	case (Fanout): {if (ptr->vld != 1 && ptr->vld != 7) {
 		ERROR();} else if (ptr->vld == 1) {
-		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
+		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);
+		*userIdent(ptr->idx) = (void*)(intptr_t)sub;}
 		for (int i = 0; i < ptr->siz; i++) {
 		datxPrefix("P"); datxStr(&dat0,arg.dst[i]); datxFind(&dat1,dat0);
 		ptr->dst[i] = &wrap[*datxIntz(0,dat1)];}
@@ -140,7 +142,8 @@ void shareRefs(int sub, const char *str)
 		break;}}
 	case (Buffer): {if (ptr->vld != 1 && ptr->vld != 7) {
 		ERROR();} else if (ptr->vld == 1) {
-		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
+		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);
+		*userIdent(ptr->idx) = (void*)(intptr_t)sub;}
 		break;}
 	case (Execute): if (ptr->vld != 0) {
 		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
@@ -251,7 +254,9 @@ int main(int argc, char **argv)
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp);
 	idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
-	wrap = malloc(args*sizeof(struct Wrap)); memset(wrap,0,args*sizeof(struct Wrap));
+	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
+	*userIdent(trm) = (void*)(intptr_t)args;
+	datxStr(&dat0,""); datxInt(&dat1,args); datxPrefix("P"); datxInsert(dat0,dat1);	
 	shareParse(argc,argv,shareError,shareNone,shareVals);
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
 	for (int i = 0; i < vals; i++) {back[i] = 0; refs[i] = 0;}
