@@ -1,6 +1,7 @@
 #include "face.h"
 #include "type.h"
 #include "datx.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -173,7 +174,7 @@ void shareNone(int typ, const char *str)
 {
 }
 void shareConst(int typ, const char *str)
-{
+{ // note argument constants cannot be Stage
 	if (vlds+1 == args || !wrap[vlds+1].vld) {
 	fprintf(stderr,"ERROR: argument after Constant should be Fanout or Buffer\n");
 	exit(-1);} else {
@@ -204,11 +205,10 @@ int sharePeek(const char *str, int *len)
 }
 void shareParse(int argc, char **argv, sftype err, sftype arg, sftype stg)
 {
-	for (int i = 1, dne = 0, sub = 0; i < argc; i++) {
+	for (int i = 1, sub = 0; i < argc; i++) {
 		int len = 0; int typ = 0;
-		if (strcmp(argv[i],"--") == 0) dne = 1;
-		else if ((typ = sharePeek(argv[i],&len)) < 0) err(len,argv[i]);
-		else if (dne || typ != identType("Stage")) arg(typ,argv[i]);
+		if ((typ = sharePeek(argv[i],&len)) < 0) err(len,argv[i]);
+		else if (typ != identType("Stage")) arg(typ,argv[i]);
 		else stg(sub,argv[i]); sub += 1;}
 }
 void shareCallback(void *key)
@@ -249,7 +249,7 @@ void shareWrap(struct Wrap *ptr)
 }
 
 int main(int argc, char **argv)
-{
+{ // TODO divide argv into chunks with --, nestElem each argv in the chunk, and repeatedly nestPass the chunk
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp); idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));

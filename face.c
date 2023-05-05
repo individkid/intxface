@@ -1231,7 +1231,7 @@ int hideDat(void **val, const char *str, int *siz)
 	tmp = malloc(limit-base+1);
 	if (tmp == 0) return 0;
 	strncpy(tmp,str+*siz+base,limit-base); tmp[limit-base] = 0;
-	assignDat(val,&len); // TODO
+	// TODO assignDat
 	free(tmp);
 	*siz += limit+num;
 	return 1;

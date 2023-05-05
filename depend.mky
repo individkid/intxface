@@ -20,7 +20,7 @@ planeSw.o: face.h plane.h type.h
 planer.log: face.so plane.metallib planeSw planerLua type.lua
 protoC.o: proto.h
 shareC: datxC.o faceC.o luaxC.o protoC.o typeC.o
-shareC.o: datx.h face.h proto.h type.h
+shareC.o: datx.h face.h luax.h proto.h type.h
 spaceHs: face.hs faceC.o naive.hs protoC.o type.hs
 spacra.log: spacraHs
 spacraHs: naive.hs

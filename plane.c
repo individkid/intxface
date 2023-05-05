@@ -617,6 +617,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	sem_init(&pending,0,0);
 	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,0);
 	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&finish[bit],0,0);
+	// TODO datxSetter datxGetter
 	callDma = dma;
 	callSafe = safe;
 	callUser = user;

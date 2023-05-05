@@ -202,10 +202,8 @@ void nestFree()
 	lua_settop(luastate,0);
 }
 void nestInit(int siz)
-{
+{ // number strings in the repeatable chunk, zero to deallocate
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	// TODO extend interpreter with function to identify current expression,
-	// enable or disable identified expressions, and make expressions volatile.
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
 	for (int i = 0; i < lsiz; i++) if (line[i]) {free(line[i]); line[i] = 0;}
@@ -215,13 +213,13 @@ void nestInit(int siz)
 	lsiz = siz;
 }
 void nestElem(int i, const char *str)
-{
+{ // set given string in chunk
 	if (i < 0 || i >= lsiz) ERROR();
 	line[i] = realloc(line[i],strlen(str)+1);
 	strcpy(line[i],str);
 }
 void nestScan()
-{
+{ // get dim %() expressions from the lsiz strings
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) {
@@ -243,7 +241,7 @@ void nestScan()
 		fiber[dim].idx = i;}}
 }
 int nestEval(int i)
-{
+{ // evaluate given expression, returning if it yielded
 	int ret = 0;
 	int num = 0;
 	int len = 0;
@@ -265,13 +263,13 @@ int nestEval(int i)
 	return (ret == LUA_YIELD);
 }
 int nestPass()
-{
+{ // evaluate all expressions in chunk, returining if chunk should be repeated because any of its expressions yielded
 	int retval = 0;
 	for (int i = 0; i < dim; i++) retval |= nestEval(i);
 	return retval;
 }
 const char *nestRepl(int i)
-{
+{ // get given string with expressions replaced
 	int length = 0;
 	int pos = 0;
 	if (i < 0 || i >= lsiz) ERROR();
