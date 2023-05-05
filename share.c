@@ -1,6 +1,7 @@
 #include "face.h"
 #include "type.h"
 #include "datx.h"
+#include "luax.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -247,9 +248,41 @@ void shareWrap(struct Wrap *ptr)
 	case (Execute): ERROR();
 	default: ERROR();}
 }
+void shareAppend(char **buf, char **nxt, int *lim, int siz)
+{
+	int goon = 1; while (goon) {
+	goon = nestPass();
+	for (int i = 0; i < siz; i++) {
+	const char *str = nestRepl(i);
+	int len = strlen(str)+1;
+	int ofs = *nxt-*buf;
+	while (ofs+len > *lim) {
+	if (*lim == 0) *lim = 1; else *lim *= 2;
+	*buf = realloc(*buf,*lim); *nxt = *buf + ofs;}
+	strcpy(*nxt,str); *nxt += len;}}
+}
+void shareArgv(int *argc, char **argv)
+{
+	int chunks = 0;
+	int *sizes = 0; // strings per chunk; doubles per nestPass
+	char *buffer = 0; // reallocatable packed of nestRepl
+	char *space = 0; // usable portion of buffer
+	int limit = 0; // total size of buffer
+	char *save = argv[0];
+	luaxSide("require \"type\""); // now nest interpreter has cast and face functions
+	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; chunks += 1;
+	sizes = malloc(chunks*sizeof(int)); memset(sizes,0,chunks*sizeof(int)); chunks = 0;
+	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; else sizes[chunks] += 1; chunks = 0; nestInit(sizes[0]);
+	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) {
+	shareAppend(&buffer,&space,&limit,sizes[chunks]); chunks += 1; nestInit(sizes[chunks]); sizes[chunks] = 0;} else {
+	nestElem(sizes[chunks],argv[i]); sizes[chunks] += 1;}
+	*argv = malloc(*argc*sizeof(char*)); argv[0] = save; space = buffer;
+	for (int i = 1; i < *argc; i++) {argv[i] = space; space += strlen(space)+1;}
+}
 
 int main(int argc, char **argv)
-{ // TODO divide argv into chunks with --, nestElem each argv in the chunk, and repeatedly nestPass the chunk
+{
+	shareArgv(&argc,argv);
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp); idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));

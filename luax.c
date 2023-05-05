@@ -49,7 +49,7 @@ const char *luaxReader(lua_State *L, void *data, size_t *size)
 	return reader->str;
 }
 int luaxLoad(lua_State *luastate, const char *exp)
-{
+{ // pushes chunk on the stack
 	int retval = 0;
 	struct Reader reader = {0};
 	asprintf(&reader.str,"%s",exp);
@@ -79,7 +79,7 @@ int luaxLib(const char *exp)
 	return luaxPath(exp,"require");
 }
 int luaxClose(const struct Closure *fnc)
-{
+{ // evaluates the chunk on the stack
 	const char *ptr = 0;
 	size_t len = 0;
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
@@ -104,11 +104,11 @@ int luaxClose(const struct Closure *fnc)
 	return 0;	
 }
 int luaxSide(const char *exp)
-{
+{ // evaluates expression without arguments
 	return luaxExpr(exp,protoClose(0,0));
 }
 int luaxExpr(const char *exp, const struct Closure *fnc)
-{
+{ // evaluates expression with arguments
 	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
 	if (luaxLoad(luastate,exp) != 0) return -2;
 	return luaxClose(fnc);	
@@ -286,8 +286,6 @@ const char *nestRepl(int i)
 		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
 		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
-	// TODO reavaluatereplaced expresions if they are volatile
-	// if (strcmp(line[i],rslt[i]) != 0) printf("nestRepl %s -> %s\n",line[i],rslt[i]);
 	return rslt[i];
 }
 
