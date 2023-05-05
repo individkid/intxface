@@ -504,6 +504,7 @@ Stage = {
 	{"typ","Str",{["tag"]={["Fanout"]=true,["Buffer"]=true,["Execute"]=true}},{}},
 	{"str","Str",{["tag"]={["Fanout"]=true,["Buffer"]=true}},{}},
 	{"url","Str",{["tag"]={["Execute"]=true}},{}},
+	{"arg","Argument",{["tag"]={["Execute"]=true}},1},
 	{"exp","Express",{["tag"]={["Combine"]=true}},1},
 	{"num","Int",{["tag"]={["Combine"]=true}},{}},
 	{"dep","Str",{["tag"]={["Combine"]=true}},"num"},

@@ -23,7 +23,7 @@ struct Wrap {
 	int inp; // type to read from here
 	int out; // type to write to here
 	struct Express *exp; // for tag==Combine
-	const char *str; // for tag==Buffer
+	char *str; // for tag==Buffer
 } *wrap = 0; // per argv that is a Stage
 int args = 0;
 int **back = 0; // per value lists to add to wake
@@ -60,23 +60,17 @@ void shareNote(int idx)
 {
 	note = 1;
 }
-int shareExec(const char *exe)
+int shareExec(const char *exe, struct Argument *arg)
 {
 	int idx = openFork();
-	struct Argument arg = {0};
 	char *str = 0;
 	int len = 0;
 	struct stat new;
 	if (openCheck(idx) == -1) return idx;
-	arg.typ = Processs;
-	if (stat(exe,&new) == 0) for (enum Process i = 0; i < Processs; i++) {
-		struct stat old;
-		if (stat(Execname__Process__Str(i),&old) != 0) continue;
-		if (new.st_dev == old.st_dev && new.st_ino == old.st_ino) {arg.typ = i; break;}}
-	arg.inp = openRdfd(idx);
-	arg.out = openWrfd(idx);
-	datxStr(&dat1,""); writeArgument(&arg,idx1);
-	readType(&str,&len,identType("Argument"),idx1);
+	arg->inp = openRdfd(idx);
+	arg->out = openWrfd(idx);
+	datxStr(&dat0,""); writeArgument(arg,idx0);
+	readType(&str,&len,identType("Argument"),idx0);
 	return openExec(exe,str);
 }
 void shareArgs(int sub, const char *str)
@@ -92,6 +86,7 @@ void shareVals(int sub, const char *str)
 		datxStr(&dat0,arg.str); datxInt(&dat1,sub);
 		datxPrefix("P"); datxInsert(dat0,dat1);
 		ptr->vld |= 1; ptr->inp = identType(arg.typ);
+		ptr->siz = ptr->siz; ptr->dst = malloc(arg.siz*sizeof(struct Wrap *));
 		break;}
 	case (Combine): if (sub+1 == args) {
 		fprintf(stderr,"ERROR: argument after Combine should be Fanout or Buffer\n");
@@ -99,18 +94,22 @@ void shareVals(int sub, const char *str)
 		datxPrefix("R"); for (int i = 0; i < arg.num; i++) {
 		datxStr(&dat0,arg.dep[i]); datxFind(&dat1,dat0);
 		if (dat1 == 0) {datxInt(&dat1,vals++); datxInsert(dat0,dat1);}}
+		ptr->siz = 1; ptr->dst = malloc(sizeof(struct Wrap *));
 		break;}
 	case (Buffer): {
 		datxStr(&dat0,arg.str); datxInt(&dat1,sub);
 		datxPrefix("P"); datxInsert(dat0,dat1);
 		ptr->vld |= 1; ptr->inp = identType(arg.typ);
+		assignStr(&ptr->str,arg.str);
 		break;}
 	case (Execute): if (sub+1 == args) {
 		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
 		exit(-1);} else {
 		struct Wrap *nxt = &wrap[sub+1];
-		ptr->idx = nxt->idx = shareExec(arg.url);
+		ptr->idx = nxt->idx = shareExec(arg.url,arg.arg);
 		nxt->vld |= 6; nxt->out = identType(arg.typ);
+		ptr->exp = arg.exp; arg.exp = 0;
+
 		break;}
 	default: ERROR();}
 	freeStage(&arg);
@@ -123,16 +122,14 @@ void shareRefs(int sub, const char *str)
 	case (Fanout): {if (ptr->vld != 1 && ptr->vld != 7) {
 		ERROR();} else if (ptr->vld == 1) {
 		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
-		arg.siz = ptr->siz; arg.dst = malloc(arg.siz*sizeof(struct Wrap *));
-		for (int i = 0; i < arg.siz; i++) {
+		for (int i = 0; i < ptr->siz; i++) {
 		datxPrefix("P"); datxStr(&dat0,arg.dst[i]); datxFind(&dat1,dat0);
 		ptr->dst[i] = &wrap[*datxIntz(0,dat1)];}
 		break;}
 	case (Combine): if (ptr->vld != 0) {
 		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
 		exit(-1);} else {
-		ptr->dst = malloc(sizeof(struct Wrap *));
-		ptr->siz = 1; ptr->dst[0] = &wrap[sub+1];
+		ptr->dst[0] = &wrap[sub+1];
 		if (ptr->dst[0]->vld == 0) {
 		fprintf(stderr,"ERROR: argument after Combine should be Fanout or Buffer\n");
 		exit(-1);} else {
@@ -247,14 +244,13 @@ void shareWrap(struct Wrap *ptr)
 
 int main(int argc, char **argv)
 {
-	// prefix "P" for pipe name to wrap index
-	// prefix "V" for value name to back index
+	// TODO have read eof mean no Buffer or Fanout write
+	// TODO have SIGPIPE be normal termination
 	noteFunc(shareNote);
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp);
 	idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
-	wrap = malloc(args*sizeof(struct Wrap));
-	for (int i = 0; i < args; i++) {wrap[i].vld = 0;}
+	wrap = malloc(args*sizeof(struct Wrap)); memset(wrap,0,args*sizeof(struct Wrap));
 	shareParse(argc,argv,shareError,shareNone,shareVals);
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
 	for (int i = 0; i < vals; i++) {back[i] = 0; refs[i] = 0;}
@@ -268,6 +264,5 @@ int main(int argc, char **argv)
 		if (wake < args) {idx = wake; wake = wrap[idx].nxt; wrap[idx].nxt = args;}
 		else {idx = (int)(intptr_t)*userIdent(waitRead(0,-1));}
 		shareWrap(&wrap[idx]);}
-	// TODO print each from each wrap[i].idx and wrap[args].idx
 	return 0;
 }
