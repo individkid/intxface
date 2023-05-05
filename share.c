@@ -87,6 +87,7 @@ void shareVals(int sub, const char *str)
 		datxPrefix("P"); datxInsert(dat0,dat1);
 		ptr->vld |= 1; ptr->inp = identType(arg.typ);
 		ptr->siz = ptr->siz; ptr->dst = malloc(arg.siz*sizeof(struct Wrap *));
+		assignStr(&ptr->str,arg.str);
 		break;}
 	case (Combine): if (sub+1 == args) {
 		fprintf(stderr,"ERROR: argument after Combine should be Fanout or Buffer\n");
@@ -227,16 +228,16 @@ void shareWrap(struct Wrap *ptr)
 {
 	switch (ptr->tag) {
 	case (Fanout): {
-		shareLoop(ptr->idx,ptr->dst[ptr->sub]->idx,ptr->inp,ptr->dst[ptr->sub]->out);
-		if (++ptr->sub == ptr->siz) ptr->sub = 0;
+		note = 0; shareLoop(ptr->idx,ptr->dst[ptr->sub]->idx,ptr->inp,ptr->dst[ptr->sub]->out);
+		if (note == 0 && (++ptr->sub == ptr->siz)) ptr->sub = 0;
 		break;}
 	case (Combine): {
 		datxEval(&dat0,ptr->exp,ptr->dst[0]->out);
 		shareLoop(idx0,ptr->dst[0]->idx,identType("Dat"),ptr->dst[0]->out);
 		break;}
 	case (Buffer): {
-		datxStr(&dat0,""); loopType(ptr->inp,ptr->idx,idx0);
-		datxStr(&dat1,ptr->str); datxInsert(dat1,dat0);
+		datxStr(&dat0,""); note = 0; shareLoop(ptr->idx,idx0,ptr->inp,ptr->inp);
+		if (note == 0) {datxStr(&dat1,ptr->str); datxInsert(dat1,dat0);}
 		break;}
 	case (Execute): ERROR();
 	default: ERROR();}
@@ -244,8 +245,8 @@ void shareWrap(struct Wrap *ptr)
 
 int main(int argc, char **argv)
 {
-	// TODO have read eof mean no Buffer or Fanout write
-	// TODO have SIGPIPE be normal termination
+	// TODO read eof causes write of pipe name to ""
+	// TODO write to "" is normal termination
 	noteFunc(shareNote);
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp);
 	idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
@@ -260,9 +261,9 @@ int main(int argc, char **argv)
 	datxPrefix("V"); datxCallback(shareCallback);
 	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
 	while (1) { // TODO think of way to terminate
-		int idx = 0;
-		if (wake < args) {idx = wake; wake = wrap[idx].nxt; wrap[idx].nxt = args;}
-		else {idx = (int)(intptr_t)*userIdent(waitRead(0,-1));}
-		shareWrap(&wrap[idx]);}
+		int sub = 0;
+		if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;}
+		else {sub = (int)(intptr_t)*userIdent(waitRead(0,-1));}
+		shareWrap(&wrap[sub]);}
 	return 0;
 }
