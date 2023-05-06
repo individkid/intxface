@@ -3,6 +3,8 @@
 #include "datx.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <math.h>
 
 struct Data *base[NUMOPEN] = {0}; // last read
 int *next[NUMOPEN] = {0}; // bytes per sub
@@ -257,6 +259,14 @@ void datxInt(void **dat, int val)
 {
 	// TODO
 }
+void datxInt32(void **dat, int32_t val)
+{
+	// TODO
+}
+void datxNum(void **dat, double val)
+{
+	// TODO
+}
 int datxPtrs(void *dat)
 {
 	return *(int*)dat;
@@ -268,6 +278,14 @@ int datxChrs(void *dat)
 int datxInts(void *dat)
 {
 	return *(int*)dat/sizeof(int);
+}
+int datxInt32s(void *dat)
+{
+	return *(int*)dat/sizeof(int32_t);
+}
+int datxNums(void *dat)
+{
+	return *(int*)dat/sizeof(double);
 }
 void *datxData(void *dat)
 {
@@ -288,9 +306,113 @@ int *datxIntz(int num, void *dat)
 	if (num >= datxInts(dat)) ERROR();
 	return (int*)datxPtrz(num*sizeof(int),dat);
 }
-void datxEval(void **dat, struct Express *exp, int typ)
+int32_t *datxInt32z(int num, void *dat)
 {
-	// TODO
+	if (num >= datxInt32s(dat)) ERROR();
+	return (int32_t*)datxPtrz(num*sizeof(int32_t),dat);
+}
+double *datxNumz(int num, void *dat)
+{
+	if (num >= datxNums(dat)) ERROR();
+	return (double*)datxPtrz(num*sizeof(double),dat);
+}
+#define BINARY_CMP(LFT,RGT) strcmp(LFT,RGT)
+#define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
+#define BINARY_ADD(LFT,RGT) (LFT+RGT)
+#define BINARY_SUB(LFT,RGT) (LFT-RGT)
+#define BINARY_MUL(LFT,RGT) (LFT*RGT)
+#define BINARY_DIV(LFT,RGT) (LFT/RGT)
+#define BINARY_REM(LFT,RGT) (LFT%RGT)
+#define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
+#define BINARY_BEGIN()\
+	void *dat0 = 0; void *dat1 = 0;\
+	int typ0 = 0; int typ1 = 0;\
+	if (exp->siz != 2) ERROR();\
+	typ0 = datxEval(&dat0,&exp->exp[0],typ);\
+	typ1 = datxEval(&dat0,&exp->exp[1],typ);\
+	if (typ < 0) typ = typ0;\
+	if (typ0 != typ1) ERROR();
+#define BINARY_FIX(TYP)\
+	void *dat0 = 0; void *dat1 = 0;\
+	int typ0 = 0; int typ1 = 0;\
+	if (exp->siz != 2 || typ != identType(TYP)) ERROR();\
+	typ0 = datxEval(&dat0,&exp->exp[0],-1);\
+	typ1 = datxEval(&dat0,&exp->exp[1],-1);\
+	if (typ0 != typ1) ERROR();
+#define BINARY_TYPE(TYPE,TYP,GET,SET,OP)\
+	if (typ == identType(TYP)) {\
+	TYPE lft = GET(0,dat0);\
+	TYPE rgt = GET(0,dat1);\
+	SET(dat,OP(lft,rgt));}
+#define BINARY_BEGINS(OP)\
+	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
+	BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,OP) else
+#define BINARY_TYPES(OP)\
+	BINARY_BEGINS(OP)\
+	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else
+#define BINARY_FIXS(SET,OP)\
+	BINARY_TYPE(int,"Int",*datxIntz,SET,OP) else\
+	BINARY_TYPE(int32_t,"Int32",*datxInt32z,SET,OP) else\
+	BINARY_TYPE(double,"Num",*datxNumz,SET,OP) else
+#define BINARY_DONE(STR) fprintf(stderr,"unsupported "STR" type %d\n",typ); exit(-1); break;
+#define BINARY_BLOCK(OP,STR) {\
+	BINARY_BEGIN()\
+	BINARY_TYPES(OP)\
+	BINARY_DONE(STR)}
+int datxEval(void **dat, struct Express *exp, int typ)
+{
+	switch (exp->opr) {
+	case (AddOp): BINARY_BLOCK(BINARY_ADD,"add") // siz = 2;
+	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub") // 2;
+	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul") // 2;
+	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div") // 2;
+	case (RemOp): { // 2;
+	BINARY_BEGIN()
+	BINARY_BEGINS(BINARY_REM)
+	BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
+	BINARY_DONE("rem")}
+	case (CmpOp): { // 2; to neg zero pos
+	BINARY_FIX("Int")
+	BINARY_FIXS(datxInt,BINARY_TRI)
+	BINARY_TYPE(char*,"Str",datxChrz,datxInt,BINARY_CMP) else
+	BINARY_DONE("cmp")}
+	case (CndOp): { // 4; from neg zero pos
+		void *dat0 = 0;
+		if (exp->siz != 4) ERROR();
+		datxEval(&dat0,&exp->exp[0],identType("Int"));
+		if (*datxIntz(0,dat0) < 0) datxEval(dat,&exp->exp[1],typ);
+		if (*datxIntz(0,dat0) == 0) datxEval(dat,&exp->exp[2],typ);
+		if (*datxIntz(0,dat0) > 0) datxEval(dat,&exp->exp[3],typ);
+		break;}
+	case (TotOp): { // 1; cast to type
+		// TODO
+		break;}
+	case (ImmOp): { // 0; built in value
+		// TODO
+		break;}
+	case (ValOp): { // 0; restore from named
+		// TODO
+		break;}
+	case (SavOp): { // 2; save to named
+		// TODO
+		break;}
+	case (GetOp): { // 0; value from callback
+		// TODO
+		break;}
+	case (SetOp): { // 2; callback with value
+		// TODO
+		break;}
+	case (InsOp): { // 2; field to struct
+		// TODO move shareReadFp and shareWriteFp to here to use readField and writeField
+		break;}
+	case (ExtOp): { // 1; field from struct
+		// TODO
+		break;}
+	case (UnqOp): { // 0; magic number
+		// TODO
+		break;}
+	default: ERROR();}
+	return typ;
 }
 void datxPrefix(const char *str)
 {

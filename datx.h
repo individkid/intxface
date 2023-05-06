@@ -21,7 +21,7 @@ void *datxPtrz(int num, void *dat);
 char *datxChrz(int num, void *dat);
 int *datxIntz(int num, void *dat);
 struct Express;
-void datxEval(void **dat, struct Express *exp, int typ);
+int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxCallback(dftype fnc);
 void datxSetter(dgtype fnc);
