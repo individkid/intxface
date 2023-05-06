@@ -229,6 +229,7 @@ void datxFind(void **val, void *key)
 }
 void datxInsert(void *key, void *box)
 {
+	// TODO if callback not 0, save prefix, call callback with key, restore prefix
 	struct Node *leaf = datxNode(key);
 	if (datxCompare(leaf->key,key) == 0) {
 		leaf->box = box; return;}

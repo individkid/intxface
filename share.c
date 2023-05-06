@@ -72,7 +72,7 @@ int shareExec(const char *exe, struct Argument *arg)
 	arg->inp = openRdfd(idx);
 	arg->out = openWrfd(idx);
 	datxStr(&dat0,""); writeArgument(arg,idx0);
-	readType(&str,&len,identType("Argument"),idx0);
+	showType(&str,&len,identType("Argument"),idx0);
 	return openExec(exe,str);
 }
 void shareArgs(int sub, const char *str)
@@ -179,7 +179,7 @@ void shareConst(int typ, const char *str)
 	if (vlds+1 == args || !wrap[vlds+1].vld) {
 	fprintf(stderr,"ERROR: argument after Constant should be Fanout or Buffer\n");
 	exit(-1);} else {
-	int len = 0; writeType(str,&len,typ,wrap[vlds+1].idx);}
+	int len = 0; hideType(str,&len,typ,wrap[vlds+1].idx);}
 }
 void shareSyntax(int len, const char *str)
 {
@@ -198,7 +198,7 @@ int sharePeek(const char *str, int *len)
 	for (int typ = 0; identSubtype(typ,0)!=-1; typ++) {
 		int tmp = 0;
 		note = 0;
-		writeType(str,&tmp,typ,idx0);
+		hideType(str,&tmp,typ,idx0);
 		flushBuf(idx0);
 		if (tmp > *len) *len = tmp;
 		if (note == 0) return typ;}
@@ -223,10 +223,42 @@ void shareCallback(void *key)
 	struct Wrap *ptr = &wrap[sub];
 	if (ptr->nxt == args) {ptr->nxt = wake; wake = sub;}}
 }
+void showUnion(char **str, int *len, struct Generic *ptr)
+{
+	// TODO autogenerate
+}
+void hideUnion(const char *str, int *len, int typ, struct Generic *ptr)
+{
+	// TODO autogenerate
+}
+void readUnion(struct Generic *ptr, int typ, int idx)
+{
+	// TODO autogenerate
+}
+void writeUnion(struct Generic *ptr, int idx)
+{
+	// TODO autogenerate
+}
+int identUnion(struct Generic *ptr)
+{
+	return 0; // TODO autogenerate
+}
 void shareLoop(int src, int dst, int stp, int dtp)
 {
-	// TODO convert from any type to Str Dat or Generic
-	// TODO or convert from Str Dat or Generic to any type
+	if (stp == dtp) {loopType(stp,src,dst); return;}
+	if (stp == identType("Dat") && dtp == identType("Str")) ERROR();
+	if (stp == identType("Dat") && dtp == identType("Generic")) ERROR();
+	if (stp == identType("Dat")) {readDat(&dat0,src); loopType(dtp,idx0,dst); return;}
+	if (stp == identType("Str") && dtp == identType("Dat")) {char *str = 0; int len = 0; int typ = 0; readStr(&str,src); datxStr(&dat0,""); typ = sharePeek(str,&len); len = 0; hideType(str,&len,typ,idx0); writeDat(dat0,dst); free(str); return;}
+	if (stp == identType("Str") && dtp == identType("Generic")) {struct Generic gen = {0}; char *str = 0; int len = 0; int typ = 0; readStr(&str,src); typ = sharePeek(str,&len); hideUnion(str,&len,typ,&gen); writeGeneric(&gen,dst); freeGeneric(&gen); free(str); return;}
+	if (stp == identType("Str")) {char *str = 0; int len = 0; readStr(&str,src); hideType(str,&len,dtp,dst); free(str); return;}
+	if (stp == identType("Generic") && dtp == identType("Dat")) {struct Generic gen = {0}; readGeneric(&gen,src); datxStr(&dat0,""); writeUnion(&gen,idx0); writeDat(dat0,dst); freeGeneric(&gen); return;}
+	if (stp == identType("Generic") && dtp == identType("Str")) {struct Generic gen = {0}; char *str = 0; int len = 0; readGeneric(&gen,src); showUnion(&str,&len,&gen); writeStr(str,dst); freeGeneric(&gen); free(str); return;}
+	if (stp == identType("Generic")) {struct Generic gen = {0}; readGeneric(&gen,src); if (identUnion(&gen) != dtp) ERROR(); writeUnion(&gen,dst); freeGeneric(&gen); return;}
+	if (dtp == identType("Dat")) {datxStr(&dat0,""); loopType(stp,src,idx0); writeDat(dat0,dst); return;}
+	if (dtp == identType("Str")) {char *str = 0; int len = 0; showType(&str,&len,stp,src); writeStr(str,dst); free(str); return;}
+	if (dtp == identType("Generic")) {struct Generic gen = {0}; readUnion(&gen,stp,src); writeGeneric(&gen,dst); freeGeneric(&gen); return;}
+	ERROR();
 }
 void shareWrap(struct Wrap *ptr)
 {
@@ -286,17 +318,17 @@ int main(int argc, char **argv)
 {
 	shareArgv(&argc,argv);
 	idx0 = puntInit(0,0,shareReadFp,shareWriteFp); idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
-	shareParse(argc,argv,shareSyntax,shareNone,shareArgs);
+	shareParse(argc,argv,shareSyntax,shareNone,shareArgs); // initialize args
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
 	wrap[args].idx = openPipe(); wrap[args].out = identType("Str");
 	*userIdent(wrap[args].idx) = (void*)(intptr_t)args;
 	datxStr(&dat0,""); datxInt(&dat1,args); datxPrefix("P"); datxInsert(dat0,dat1);	
-	shareParse(argc,argv,shareError,shareNone,shareVals);
+	shareParse(argc,argv,shareError,shareNone,shareVals); // map strings to subscripts; open filters
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
 	for (int i = 0; i < vals; i++) {back[i] = 0; refs[i] = 0;}
-	shareParse(argc,argv,shareError,shareConst,shareRefs);
+	shareParse(argc,argv,shareError,shareConst,shareRefs); // count back list sizes; open pipes
 	for (int i = 0; i < vals; i++) {back[i] = malloc(refs[i]*sizeof(int)); refs[i] = 0;}
-	shareParse(argc,argv,shareError,shareNone,shareBack);
+	shareParse(argc,argv,shareError,shareNone,shareBack); // fill in back lists
 	datxPrefix("V"); datxCallback(shareCallback);
 	noteFunc(shareNote); wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
 	while (1) {int sub = 0; int idx = 0;

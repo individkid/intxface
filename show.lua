@@ -876,7 +876,7 @@ function showTypeCF(type)
 end
 function showRtypeC(list)
 	local result = ""
-	result = result.."void readType(char **str, int *len, int typ, int idx)"
+	result = result.."void showType(char **str, int *len, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (typ) {\n"
@@ -906,7 +906,7 @@ function showRtypeC(list)
 end
 function showWtypeC(list)
 	local result = ""
-	result = result.."void writeType(const char *str, int *len, int typ, int idx)"
+	result = result.."void hideType(const char *str, int *len, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (typ) {\n"
