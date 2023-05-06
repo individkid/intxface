@@ -417,7 +417,9 @@ Express = {
 	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"str","Str",{["opr"]={["ValOp"]=true,["SavOp"]=true}},{}},
 	{"val","Dat",{["opr"]={["ImmOp"]=true}},{}},
-	{"typ","Int",{["opr"]={["TotOp"]=true,["ImmOp"]=true,["ValOp"]=true,["GetOp"]=true,["UnqOp"]=true}},{}},
+	{"typ","Int",{["opr"]={["ImmOp"]=true,["ValOp"]=true,["GetOp"]=true,["UnqOp"]=true}},{}},
+	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
+	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 	{"siz","Int",{},{}},
 	{"exp","Express",{},"siz"},
 }

@@ -17,6 +17,18 @@ int *jump[NUMOPEN] = {0}; // opcode per sub
 int lmts[NUMOPEN] = {0}; // subs total
 int mark[NUMOPEN] = {0}; // opcode to jump
 int strt[NUMOPEN] = {0}; // opcode to restart
+int unique = 0;
+int idx0 = 0;
+int idx1 = 0;
+int idx2 = 0;
+void *dat0 = 0;
+void *dat1 = 0;
+void *dat2 = 0;
+int idinit = 0;
+void *prefix = 0;
+dftype datxCallFp = 0;
+dgtype datxSetFp = 0;
+dhtype datxGetFp = 0;
 
 struct Node {
 	void *key;
@@ -27,6 +39,38 @@ struct Node {
 	int dep;
 } tree = {0};
 
+int datxReadFp(int fildes, void *buf, int nbyte)
+{
+	void **dat = (fildes == 0 ? &dat0 : (fildes == 1 ? &dat1 : &dat2));
+	void *pre = 0;
+	void *suf = 0;
+	datxSplit(&pre,&suf,*dat,nbyte);
+	if (*(int*)pre != nbyte) return 0;
+	memcpy(buf,datxData(pre),nbyte);
+	assignDat(dat,suf);
+	free(pre);
+	free(suf);
+	return nbyte;
+}
+int datxWriteFp(int fildes, const void *buf, int nbyte)
+{
+	void **dat = (fildes == 0 ? &dat0 : (fildes == 1 ? &dat1 : &dat2));
+	void *suf = malloc(sizeof(int)+nbyte);
+	void *pre = 0;
+	assignDat(&pre,*dat);
+	datxJoin(dat,pre,suf);
+	free(pre);
+	free(suf);
+	return nbyte;
+}
+void datxSingle()
+{
+	if (idinit) return;
+	idinit = 1;
+	idx0 = puntInit(0,0,datxReadFp,datxWriteFp);
+	idx1 = puntInit(1,1,datxReadFp,datxWriteFp);
+	idx2 = puntInit(2,2,datxReadFp,datxWriteFp);
+}
 void datxOpen(int idx)
 {
 	if (idx < 0 || idx >= NUMOPEN) ERROR();
@@ -223,17 +267,18 @@ struct Node *datxNode(void *key)
 }
 void datxFind(void **val, void *key)
 {
-	struct Node *leaf = datxNode(key);
-	if (datxCompare(leaf->key,key) == 0) {
+	struct Node *leaf = 0; void *dat = 0;
+	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key); leaf = datxNode(key);
+	if (datxCompare(leaf->key,dat) == 0) {
 		assignDat(val,leaf->box);
-		return;}
-	free(*val); *val = 0;
+		free(dat); return;}
+	free(dat); free(*val); *val = 0;
 }
 void datxInsert(void *key, void *box)
 {
-	// TODO if callback not 0, save prefix, call callback with key, restore prefix
-	struct Node *leaf = datxNode(key);
-	if (datxCompare(leaf->key,key) == 0) {
+	struct Node *leaf = 0; void *dat = 0;
+	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key); leaf = datxNode(dat);
+	if (datxCompare(leaf->key,dat) == 0) {
 		leaf->box = box; return;}
 	while (leaf->siz == 3 && leaf != &tree) {
 		leaf = leaf->ref;}
@@ -241,31 +286,14 @@ void datxInsert(void *key, void *box)
 		struct Node *tmp = malloc(sizeof(struct Node));
 		*tmp = *leaf; tmp->ref = leaf;
 		leaf->siz = 1; leaf->ptr[0] = tmp; leaf->dep++;}
-	while (leaf->dep) for (int i = leaf->siz; i > 0; i--) if (datxCompare(leaf->ptr[i-1]->key,key) > 0) {
+	while (leaf->dep) for (int i = leaf->siz; i > 0; i--) if (datxCompare(leaf->ptr[i-1]->key,dat) > 0) {
 		leaf->ptr[i] = leaf->ptr[i-1];} else {
 		struct Node *tmp = malloc(sizeof(struct Node));
-		tmp->key = key; tmp->box = 0; tmp->siz = 1;
+		tmp->key = dat; tmp->box = 0; tmp->siz = 1;
 		tmp->ptr[0] = leaf->ptr[i=1]; tmp->ref = leaf; tmp->dep = leaf->dep-1;
 		leaf->ptr[i-1] = tmp; leaf->siz++; leaf = tmp; break;}
 	leaf->box = box;
-}
-void datxStr(void **dat, const char *val)
-{
-	*dat = realloc(*dat,strlen(val)+sizeof(int));
-	*(int*)*dat = strlen(val);
-	memcpy((void*)((int*)*dat+1),val,strlen(val));
-}
-void datxInt(void **dat, int val)
-{
-	// TODO
-}
-void datxInt32(void **dat, int32_t val)
-{
-	// TODO
-}
-void datxNum(void **dat, double val)
-{
-	// TODO
+	if (datxCallFp) {void *save = 0; assignDat(&save,prefix); datxCallFp(key); assignDat(prefix,save);}
 }
 int datxPtrs(void *dat)
 {
@@ -316,6 +344,30 @@ double *datxNumz(int num, void *dat)
 	if (num >= datxNums(dat)) ERROR();
 	return (double*)datxPtrz(num*sizeof(double),dat);
 }
+void datxStr(void **dat, const char *val)
+{
+	*dat = realloc(*dat,strlen(val)+sizeof(int));
+	*(int*)*dat = strlen(val);
+	memcpy((void*)((int*)*dat+1),val,strlen(val));
+}
+void datxInt(void **dat, int val)
+{
+	*dat = realloc(*dat,sizeof(val)+sizeof(int));
+	*(int*)*dat = sizeof(val);
+	*datxIntz(0,*dat) = val;
+}
+void datxInt32(void **dat, int32_t val)
+{
+	*dat = realloc(*dat,sizeof(val)+sizeof(int));
+	*(int*)*dat = sizeof(val);
+	*datxInt32z(0,*dat) = val;
+}
+void datxNum(void **dat, double val)
+{
+	*dat = realloc(*dat,sizeof(val)+sizeof(int));
+	*(int*)*dat = sizeof(val);
+	*datxNumz(0,*dat) = val;
+}
 #define BINARY_CMP(LFT,RGT) strcmp(LFT,RGT)
 #define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
 #define BINARY_ADD(LFT,RGT) (LFT+RGT)
@@ -327,15 +379,16 @@ double *datxNumz(int num, void *dat)
 #define BINARY_BEGIN()\
 	void *dat0 = 0; void *dat1 = 0;\
 	int typ0 = 0; int typ1 = 0;\
-	if (exp->siz != 2) ERROR();\
+	if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}\
 	typ0 = datxEval(&dat0,&exp->exp[0],typ);\
 	typ1 = datxEval(&dat0,&exp->exp[1],typ);\
 	if (typ < 0) typ = typ0;\
-	if (typ0 != typ1) ERROR();
+	if (typ0 != typ1) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 #define BINARY_FIX(TYP)\
 	void *dat0 = 0; void *dat1 = 0;\
 	int typ0 = 0; int typ1 = 0;\
-	if (exp->siz != 2 || typ != identType(TYP)) ERROR();\
+	if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}\
+	if (typ != identType(TYP)) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}\
 	typ0 = datxEval(&dat0,&exp->exp[0],-1);\
 	typ1 = datxEval(&dat0,&exp->exp[1],-1);\
 	if (typ0 != typ1) ERROR();
@@ -377,56 +430,87 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	BINARY_TYPE(char*,"Str",datxChrz,datxInt,BINARY_CMP) else
 	BINARY_DONE("cmp")}
 	case (CndOp): { // 4; from neg zero pos
-		void *dat0 = 0;
-		if (exp->siz != 4) ERROR();
+		if (exp->siz != 4) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],identType("Int"));
 		if (*datxIntz(0,dat0) < 0) datxEval(dat,&exp->exp[1],typ);
 		if (*datxIntz(0,dat0) == 0) datxEval(dat,&exp->exp[2],typ);
 		if (*datxIntz(0,dat0) > 0) datxEval(dat,&exp->exp[3],typ);
 		break;}
 	case (TotOp): { // 1; cast to type
-		// TODO
+		int tmp = 0;
+		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		tmp = datxEval(dat,&exp->exp[0],-1);
+		if (typ == -1) typ = tmp;
+		else if (typ == identType("Int") && tmp == identType("Int32")) datxInt(dat,*datxInt32z(0,dat));
+		else if (typ == identType("Int") && tmp == identType("Num")) datxInt(dat,*datxNumz(0,dat));
+		else if (typ == identType("Int32") && tmp == identType("Int")) datxInt32(dat,*datxIntz(0,dat));
+		else if (typ == identType("Int32") && tmp == identType("Num")) datxInt32(dat,*datxNumz(0,dat));
+		else if (typ == identType("Num") && tmp == identType("Int")) datxNum(dat,*datxIntz(0,dat));
+		else if (typ == identType("Num") && tmp == identType("Int32")) datxNum(dat,*datxInt32z(0,dat));
+		else if (typ != tmp) {fprintf(stderr,"cannot cast from %d to %d\n",tmp,typ); exit(-1);}
 		break;}
 	case (ImmOp): { // 0; built in value
-		// TODO
+		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		if (typ == -1) typ = exp->typ;
+		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
+		assignDat(dat,exp->val);
 		break;}
 	case (ValOp): { // 0; restore from named
-		// TODO
+		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		datxStr(&dat0,exp->str); datxFind(dat,dat0);
 		break;}
 	case (SavOp): { // 2; save to named
-		// TODO
+		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		datxEval(&dat0,&exp->exp[0],-1);
+		datxStr(&dat1,exp->str); datxInsert(dat1,dat0);
+		datxEval(dat,&exp->exp[1],typ);
 		break;}
 	case (GetOp): { // 0; value from callback
-		// TODO
+		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		datxGetFp(dat,exp->cfg);
 		break;}
 	case (SetOp): { // 2; callback with value
-		// TODO
+		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		datxEval(&dat0,&exp->exp[0],-1);
+		datxSetFp(dat0,exp->cfg);
+		datxEval(dat,&exp->exp[1],typ);
 		break;}
 	case (InsOp): { // 2; field to struct
-		// TODO move shareReadFp and shareWriteFp to here to use readField and writeField
+		int typ0 = 0; int typ1 = 0; datxSingle();
+		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		typ0 = datxEval(&dat0,&exp->exp[0],typ);
+		typ1 = datxEval(&dat1,&exp->exp[1],identField(typ0,exp->fld));
+		datxStr(&dat2,""); readField(typ0,typ1,exp->idx,idx0,idx1,idx2);
+		assignDat(dat,dat2);
 		break;}
 	case (ExtOp): { // 1; field from struct
-		// TODO
+		int typ0 = 0; datxSingle();
+		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		typ0 = datxEval(&dat0,&exp->exp[0],typ);
+		datxStr(&dat1,""); writeField(typ0,identField(typ0,exp->fld),exp->idx,idx0,idx1);
+		assignDat(dat,dat1);
 		break;}
 	case (UnqOp): { // 0; magic number
-		// TODO
+		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
+		datxInt(dat,unique++);
 		break;}
 	default: ERROR();}
 	return typ;
 }
 void datxPrefix(const char *str)
 {
-	// TODO
+	datxStr(&prefix,str);
 }
 void datxCallback(dftype fnc)
 {
-	// TODO
+	datxCallFp = fnc;
 }
 void datxSetter(dgtype fnc)
 {
-	// TODO
+	datxSetFp = fnc;
 }
 void datxGetter(dhtype fnc)
 {
-	// TODO
+	datxGetFp = fnc;
 }

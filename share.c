@@ -9,10 +9,6 @@
 #include <sys/stat.h>
 #include <stdint.h>
 
-int idx0 = 0;
-int idx1 = 0;
-void *dat0 = 0;
-void *dat1 = 0;
 int note = 0;
 struct Wrap {
 	enum Stream tag;
@@ -33,31 +29,11 @@ int *refs = 0; // per value list length
 int vals = 0; // number of values in expressions
 int wake = 0; // first to process before waiting for readable pipe
 int vlds = 0;
+extern int idx0;
+extern int idx1;
+extern void *dat0;
+extern void *dat1;
 
-int shareReadFp(int fildes, void *buf, int nbyte)
-{
-	void **dat = (fildes == idx0 ? &dat0 : &dat1);
-	void *pre = 0;
-	void *suf = 0;
-	datxSplit(&pre,&suf,*dat,nbyte);
-	if (*(int*)pre != nbyte) return 0;
-	memcpy(buf,datxData(pre),nbyte);
-	assignDat(dat,suf);
-	free(pre);
-	free(suf);
-	return nbyte;
-}
-int shareWriteFp(int fildes, const void *buf, int nbyte)
-{
-	void **dat = (fildes == idx0 ? &dat0 : &dat1);
-	void *suf = malloc(sizeof(int)+nbyte);
-	void *pre = 0;
-	assignDat(&pre,*dat);
-	datxJoin(dat,pre,suf);
-	free(pre);
-	free(suf);
-	return nbyte;
-}
 void shareNote(int idx)
 {
 	note = 1;
@@ -317,7 +293,6 @@ void shareArgv(int *argc, char **argv)
 int main(int argc, char **argv)
 {
 	shareArgv(&argc,argv);
-	idx0 = puntInit(0,0,shareReadFp,shareWriteFp); idx1 = puntInit(0,0,shareReadFp,shareWriteFp);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs); // initialize args
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
 	wrap[args].idx = openPipe(); wrap[args].out = identType("Str");
