@@ -18,17 +18,22 @@ int lmts[NUMOPEN] = {0}; // subs total
 int mark[NUMOPEN] = {0}; // opcode to jump
 int strt[NUMOPEN] = {0}; // opcode to restart
 int unique = 0;
-int idx0 = 0;
-int idx1 = 0;
-int idx2 = 0;
-void *dat0 = 0;
-void *dat1 = 0;
-void *dat2 = 0;
-int idinit = 0;
 void *prefix = 0;
 dftype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
+void ***datx = 0;
+int ndatx = 0;
+int datxSubs = 0;
+int datxSub0 = 0;
+int datxSub1 = 0;
+int datxSub2 = 0;
+int datxIdx0 = 0;
+int datxIdx1 = 0;
+int datxIdx2 = 0;
+void **datxDat0 = 0;
+void **datxDat1 = 0;
+void **datxDat2 = 0;
 
 struct Node {
 	void *key;
@@ -39,9 +44,22 @@ struct Node {
 	int dep;
 } tree = {0};
 
+int datxSub()
+{
+	int sub = ndatx;
+	void *dat = 0; // null dat is allocated when it is passed as a result parameter
+	void **ptr = malloc(sizeof(void*)); *ptr = dat; // ptr is a result parameter, passed as is
+	datx = realloc(datx,(++ndatx)*sizeof(void**)); // datx is an array of result parameters
+	datx[sub] = ptr;
+	return sub;
+}
+void **datxDat(int sub)
+{
+	return datx[sub];
+}
 int datxReadFp(int fildes, void *buf, int nbyte)
 {
-	void **dat = (fildes == 0 ? &dat0 : (fildes == 1 ? &dat1 : &dat2));
+	void **dat = datxDat(fildes);
 	void *pre = 0;
 	void *suf = 0;
 	datxSplit(&pre,&suf,*dat,nbyte);
@@ -54,7 +72,7 @@ int datxReadFp(int fildes, void *buf, int nbyte)
 }
 int datxWriteFp(int fildes, const void *buf, int nbyte)
 {
-	void **dat = (fildes == 0 ? &dat0 : (fildes == 1 ? &dat1 : &dat2));
+	void **dat = datxDat(fildes);
 	void *suf = malloc(sizeof(int)+nbyte);
 	void *pre = 0;
 	assignDat(&pre,*dat);
@@ -65,11 +83,17 @@ int datxWriteFp(int fildes, const void *buf, int nbyte)
 }
 void datxSingle()
 {
-	if (idinit) return;
-	idinit = 1;
-	idx0 = puntInit(0,0,datxReadFp,datxWriteFp);
-	idx1 = puntInit(1,1,datxReadFp,datxWriteFp);
-	idx2 = puntInit(2,2,datxReadFp,datxWriteFp);
+	if (datxSubs) return;
+	datxSubs = 3;
+	datxSub0 = datxSub();
+	datxSub1 = datxSub();
+	datxSub2 = datxSub();
+	datxIdx0 = puntInit(datxSub0,datxSub0,datxReadFp,datxWriteFp);
+	datxIdx1 = puntInit(datxSub1,datxSub1,datxReadFp,datxWriteFp);
+	datxIdx2 = puntInit(datxSub2,datxSub2,datxReadFp,datxWriteFp);
+	datxDat0 = datxDat(datxSub0);
+	datxDat1 = datxDat(datxSub1);
+	datxDat2 = datxDat(datxSub2);
 }
 void datxOpen(int idx)
 {
@@ -395,7 +419,7 @@ void datxNum(void **dat, double val)
 	if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}\
 	if (typ != identType(TYP)) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}\
 	typ0 = datxEval(&dat0,&exp->exp[0],-1);\
-	typ1 = datxEval(&dat0,&exp->exp[1],-1);\
+	typ1 = datxEval(&dat1,&exp->exp[1],-1);\
 	if (typ0 != typ1) ERROR();
 #define BINARY_TYPE(TYPE,TYP,GET,SET,OP)\
 	if (typ == identType(TYP)) {\
@@ -435,11 +459,13 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	BINARY_TYPE(char*,"Str",datxChrz,datxInt,BINARY_CMP) else
 	BINARY_DONE("cmp")}
 	case (CndOp): { // 4; from neg zero pos
+		void *dat0 = 0;
 		if (exp->siz != 4) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],identType("Int"));
 		if (*datxIntz(0,dat0) < 0) datxEval(dat,&exp->exp[1],typ);
 		if (*datxIntz(0,dat0) == 0) datxEval(dat,&exp->exp[2],typ);
 		if (*datxIntz(0,dat0) > 0) datxEval(dat,&exp->exp[3],typ);
+		free(dat0);
 		break;}
 	case (TotOp): { // 1; cast to type
 		int tmp = 0;
@@ -461,16 +487,20 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		assignDat(dat,exp->val);
 		break;}
 	case (ValOp): { // 0; restore from named
+		void *dat0 = 0;
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ == -1) typ = exp->typ;
 		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		datxStr(&dat0,exp->str); datxFind(dat,dat0);
+		free(dat0);
 		break;}
 	case (SavOp): { // 2; save to named
+		void *dat0 = 0; void *dat1 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],-1);
 		datxStr(&dat1,exp->str); datxInsert(dat1,dat0);
 		datxEval(dat,&exp->exp[1],typ);
+		free(dat0); free(dat1);
 		break;}
 	case (GetOp): { // 0; value from callback
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
@@ -480,26 +510,28 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		fprintf(stderr,"getter not set\n"); exit(-1);}
 		break;}
 	case (SetOp): { // 2; callback with value
+		void *dat0 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],-1);
 		if (datxSetFp) {void *save = 0; assignDat(&save,prefix); datxSetFp(dat0,exp->cfg); assignDat(prefix,save);} else {
 		fprintf(stderr,"setter not set\n"); exit(-1);}
 		datxEval(dat,&exp->exp[1],typ);
+		free(dat0);
 		break;}
 	case (InsOp): { // 2; field to struct
 		int typ0 = 0; int typ1 = 0; datxSingle();
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		typ0 = datxEval(&dat0,&exp->exp[0],typ);
-		typ1 = datxEval(&dat1,&exp->exp[1],identField(typ0,exp->fld));
-		datxNone(&dat2); readField(typ0,typ1,exp->idx,idx0,idx1,idx2);
-		assignDat(dat,dat2);
+		typ0 = datxEval(datxDat0,&exp->exp[0],typ);
+		typ1 = datxEval(datxDat1,&exp->exp[1],identField(typ0,exp->fld));
+		datxNone(datxDat2); readField(typ0,typ1,exp->idx,datxIdx0,datxIdx1,datxIdx2);
+		assignDat(dat,*datxDat2);
 		break;}
 	case (ExtOp): { // 1; field from struct
 		int typ0 = 0; datxSingle();
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		typ0 = datxEval(&dat0,&exp->exp[0],typ);
-		datxNone(&dat1); writeField(typ0,identField(typ0,exp->fld),exp->idx,idx0,idx1);
-		assignDat(dat,dat1);
+		typ0 = datxEval(datxDat0,&exp->exp[0],typ);
+		datxNone(datxDat1); writeField(typ0,identField(typ0,exp->fld),exp->idx,datxIdx0,datxIdx1);
+		assignDat(dat,*datxDat1);
 		break;}
 	case (UnqOp): { // 0; magic number
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}

@@ -200,7 +200,7 @@ function checkError(check,rule,id)
 
 	if not found and (top == check) and fileExists(next) then found = "2a"; if verbose then io.stdout:write(found) end; copyError(next) end
 	if not found and (top == check) and not fileExists(next) then found = "2b"; if verbose then io.stdout:write(found) end; pushError(next) end
-	if not found and not (top == rule) and string.match("hd",id) then found = "2c"; if verbose then io.stdout:write(found) end; pushError(first) end
+	if not found and not (top == rule) and string.match("h",id) then found = "2c"; if verbose then io.stdout:write(found) end; pushError(first) end
 
 	if not found and not doneExists(top,check) and fileExists(check) then found = "3a"; if verbose then io.stdout:write(found) end; bothError(check) end
 	if not found and doneExists(top,check) and fileExists(check) then found = "3b"; if verbose then io.stdout:write(found) end; copyError(check) end

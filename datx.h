@@ -1,3 +1,7 @@
+int datxSub();
+void **datxDat(int sub);
+int datxReadFp(int fildes, void *buf, int nbyte);
+int datxWriteFp(int fildes, const void *buf, int nbyte);
 void datxOpen(int idx);
 void datxClose(int idx);
 void datxProg(int sub, int idx);
