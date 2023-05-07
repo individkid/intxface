@@ -305,7 +305,7 @@ int main(int argc, char **argv)
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
 	wrap[args].idx = openPipe(); wrap[args].out = identType("Str");
 	*userIdent(wrap[args].idx) = (void*)(intptr_t)args;
-	datxNone(dat0); datxInt(dat1,args); datxPrefix("P"); datxInsert(*dat0,*dat1);	
+	datxStr(dat0,""); datxInt(dat1,args); datxPrefix("P"); datxInsert(*dat0,*dat1);	
 	shareParse(argc,argv,shareError,shareNone,shareVals); // map strings to subscripts; open filters
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
 	for (int i = 0; i < vals; i++) {back[i] = 0; refs[i] = 0;}
