@@ -47,7 +47,7 @@ int shareExec(const char *exe, struct Argument *arg)
 	if (openCheck(idx) == -1) return idx;
 	arg->inp = openRdfd(idx);
 	arg->out = openWrfd(idx);
-	datxStr(&dat0,""); writeArgument(arg,idx0);
+	datxNone(&dat0); writeArgument(arg,idx0);
 	showType(&str,&len,identType("Argument"),idx0);
 	return openExec(exe,str);
 }
@@ -225,13 +225,13 @@ void shareLoop(int src, int dst, int stp, int dtp)
 	if (stp == identType("Dat") && dtp == identType("Str")) ERROR();
 	if (stp == identType("Dat") && dtp == identType("Generic")) ERROR();
 	if (stp == identType("Dat")) {readDat(&dat0,src); loopType(dtp,idx0,dst); return;}
-	if (stp == identType("Str") && dtp == identType("Dat")) {char *str = 0; int len = 0; int typ = 0; readStr(&str,src); datxStr(&dat0,""); typ = sharePeek(str,&len); len = 0; hideType(str,&len,typ,idx0); writeDat(dat0,dst); free(str); return;}
+	if (stp == identType("Str") && dtp == identType("Dat")) {char *str = 0; int len = 0; int typ = 0; readStr(&str,src); datxNone(&dat0); typ = sharePeek(str,&len); len = 0; hideType(str,&len,typ,idx0); writeDat(dat0,dst); free(str); return;}
 	if (stp == identType("Str") && dtp == identType("Generic")) {struct Generic gen = {0}; char *str = 0; int len = 0; int typ = 0; readStr(&str,src); typ = sharePeek(str,&len); hideUnion(str,&len,typ,&gen); writeGeneric(&gen,dst); freeGeneric(&gen); free(str); return;}
 	if (stp == identType("Str")) {char *str = 0; int len = 0; readStr(&str,src); hideType(str,&len,dtp,dst); free(str); return;}
-	if (stp == identType("Generic") && dtp == identType("Dat")) {struct Generic gen = {0}; readGeneric(&gen,src); datxStr(&dat0,""); writeUnion(&gen,idx0); writeDat(dat0,dst); freeGeneric(&gen); return;}
+	if (stp == identType("Generic") && dtp == identType("Dat")) {struct Generic gen = {0}; readGeneric(&gen,src); datxNone(&dat0); writeUnion(&gen,idx0); writeDat(dat0,dst); freeGeneric(&gen); return;}
 	if (stp == identType("Generic") && dtp == identType("Str")) {struct Generic gen = {0}; char *str = 0; int len = 0; readGeneric(&gen,src); showUnion(&str,&len,&gen); writeStr(str,dst); freeGeneric(&gen); free(str); return;}
 	if (stp == identType("Generic")) {struct Generic gen = {0}; readGeneric(&gen,src); if (identUnion(&gen) != dtp) ERROR(); writeUnion(&gen,dst); freeGeneric(&gen); return;}
-	if (dtp == identType("Dat")) {datxStr(&dat0,""); loopType(stp,src,idx0); writeDat(dat0,dst); return;}
+	if (dtp == identType("Dat")) {datxNone(&dat0); loopType(stp,src,idx0); writeDat(dat0,dst); return;}
 	if (dtp == identType("Str")) {char *str = 0; int len = 0; showType(&str,&len,stp,src); writeStr(str,dst); free(str); return;}
 	if (dtp == identType("Generic")) {struct Generic gen = {0}; readUnion(&gen,stp,src); writeGeneric(&gen,dst); freeGeneric(&gen); return;}
 	ERROR();
@@ -242,16 +242,16 @@ void shareWrap(struct Wrap *ptr)
 	case (Fanout): {
 		note = 0; shareLoop(ptr->idx,ptr->dst[ptr->sub]->idx,ptr->inp,ptr->dst[ptr->sub]->out);
 		if (note == 0) {if (++ptr->sub == ptr->siz) ptr->sub = 0;} else {
-		datxStr(&dat1,""); datxStr(&dat0,ptr->str); datxInsert(dat1,dat0);}
+		datxNone(&dat1); datxStr(&dat0,ptr->str); datxInsert(dat1,dat0);}
 		break;}
 	case (Combine): {
 		datxEval(&dat0,ptr->exp,ptr->dst[0]->out);
 		shareLoop(idx0,ptr->dst[0]->idx,identType("Dat"),ptr->dst[0]->out);
 		break;}
 	case (Buffer): {
-		datxStr(&dat0,""); note = 0; loopType(ptr->inp,ptr->idx,idx0);
+		datxNone(&dat0); note = 0; loopType(ptr->inp,ptr->idx,idx0);
 		if (note == 0) {datxStr(&dat1,ptr->str); datxInsert(dat1,dat0);} else {
-		datxStr(&dat1,""); datxStr(&dat0,ptr->str); datxInsert(dat1,dat0);}
+		datxNone(&dat1); datxStr(&dat0,ptr->str); datxInsert(dat1,dat0);}
 		break;}
 	case (Execute): ERROR();
 	default: ERROR();}
@@ -297,7 +297,7 @@ int main(int argc, char **argv)
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
 	wrap[args].idx = openPipe(); wrap[args].out = identType("Str");
 	*userIdent(wrap[args].idx) = (void*)(intptr_t)args;
-	datxStr(&dat0,""); datxInt(&dat1,args); datxPrefix("P"); datxInsert(dat0,dat1);	
+	datxNone(&dat0); datxInt(&dat1,args); datxPrefix("P"); datxInsert(dat0,dat1);	
 	shareParse(argc,argv,shareError,shareNone,shareVals); // map strings to subscripts; open filters
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
 	for (int i = 0; i < vals; i++) {back[i] = 0; refs[i] = 0;}

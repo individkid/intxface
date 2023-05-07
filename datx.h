@@ -11,6 +11,7 @@ void datxSplit(void **pre, void **suf, const void *dat, int len);
 void datxJoin(void **dat, const void *pre, const void *suf);
 void datxFind(void **val, void *key);
 void datxInsert(void *key, void *val);
+void datxNone(void **dat);
 void datxStr(void **dat, const char *val);
 void datxInt(void **dat, int val);
 int datxPtrs(void *dat);

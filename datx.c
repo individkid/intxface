@@ -344,11 +344,16 @@ double *datxNumz(int num, void *dat)
 	if (num >= datxNums(dat)) ERROR();
 	return (double*)datxPtrz(num*sizeof(double),dat);
 }
+void datxNone(void **dat)
+{
+	*dat = realloc(*dat,sizeof(int));
+	*(int*)*dat = 0;
+}
 void datxStr(void **dat, const char *val)
 {
-	*dat = realloc(*dat,strlen(val)+sizeof(int));
-	*(int*)*dat = strlen(val);
-	memcpy((void*)((int*)*dat+1),val,strlen(val));
+	*dat = realloc(*dat,strlen(val)+1+sizeof(int));
+	*(int*)*dat = strlen(val)+1;
+	memcpy((void*)((int*)*dat+1),val,strlen(val)+1);
 }
 void datxInt(void **dat, int val)
 {
@@ -457,6 +462,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		break;}
 	case (ValOp): { // 0; restore from named
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		if (typ == -1) typ = exp->typ;
+		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		datxStr(&dat0,exp->str); datxFind(dat,dat0);
 		break;}
 	case (SavOp): { // 2; save to named
@@ -467,12 +474,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		break;}
 	case (GetOp): { // 0; value from callback
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		datxGetFp(dat,exp->cfg);
+		if (typ == -1) typ = exp->typ;
+		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
+		if (datxGetFp) {void *save = 0; assignDat(&save,prefix); datxGetFp(dat,exp->cfg); assignDat(prefix,save);} else {
+		fprintf(stderr,"getter not set\n"); exit(-1);}
 		break;}
 	case (SetOp): { // 2; callback with value
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],-1);
-		datxSetFp(dat0,exp->cfg);
+		if (datxSetFp) {void *save = 0; assignDat(&save,prefix); datxSetFp(dat0,exp->cfg); assignDat(prefix,save);} else {
+		fprintf(stderr,"setter not set\n"); exit(-1);}
 		datxEval(dat,&exp->exp[1],typ);
 		break;}
 	case (InsOp): { // 2; field to struct
@@ -480,14 +491,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		typ0 = datxEval(&dat0,&exp->exp[0],typ);
 		typ1 = datxEval(&dat1,&exp->exp[1],identField(typ0,exp->fld));
-		datxStr(&dat2,""); readField(typ0,typ1,exp->idx,idx0,idx1,idx2);
+		datxNone(&dat2); readField(typ0,typ1,exp->idx,idx0,idx1,idx2);
 		assignDat(dat,dat2);
 		break;}
 	case (ExtOp): { // 1; field from struct
 		int typ0 = 0; datxSingle();
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		typ0 = datxEval(&dat0,&exp->exp[0],typ);
-		datxStr(&dat1,""); writeField(typ0,identField(typ0,exp->fld),exp->idx,idx0,idx1);
+		datxNone(&dat1); writeField(typ0,identField(typ0,exp->fld),exp->idx,idx0,idx1);
 		assignDat(dat,dat1);
 		break;}
 	case (UnqOp): { // 0; magic number
