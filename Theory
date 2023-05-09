@@ -102,4 +102,4 @@ Sample:
   This is true for simplex spaces, so assume there is sample space R for linear space S with b removed.
   From the limit theorem, find vertices {v}, and construct hyperplanes p and q arbitrarily close to {v} in R, such that p has the same, and q the opposite, sidednesses as b wrt {v}.
   Migrate the the classification of q across each vertex in {v}. This is linear by the migration theorem, and p classifies to it.
-  If the classification of q is not b, it would violate the limit theorem, so R with q classifies to S with b.
+  If the classification of p is not b, it would violate the limit theorem, so R with p classifies to S with b.

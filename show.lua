@@ -668,35 +668,35 @@ function showSizeC(name,struct)
 end
 function showShowEC(name,enum)
 	local result = ""
-	result = result.."void show"..name.."(enum "..name.." val, char **str, int *len)"
+	result = result.."void show"..name.."(enum "..name.." val, char **str)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (val) {\n"
 	for i,v in ipairs(enum) do
-		result = result..showIndent(2).."case("..v.."): showEnum(\""..name.."\",\""..v.."\",str,len); break;\n"
+		result = result..showIndent(2).."case("..v.."): showEnum(\""..name.."\",\""..v.."\",str); break;\n"
 	end
-	result = result..showIndent(2).."case("..name.."s): showEnum(\""..name.."\",\""..name.."s\",str,len); break;\n"
+	result = result..showIndent(2).."case("..name.."s): showEnum(\""..name.."\",\""..name.."s\",str); break;\n"
 	result = result..showIndent(1).."}\n"
 	return result.."}"
 end
 function showShowCJ(pre,field,sub,arg,post)
 	if (Structz[field[2]]~=nil) then
-		coroutine.yield(pre.."{showField(\""..field[1].."\",str,len,"..arg.."); show"..field[2].."(&ptr->"..field[1]..sub..",str,len);}"..post)
+		coroutine.yield(pre.."{showField(\""..field[1].."\",str,"..arg.."); show"..field[2].."(&ptr->"..field[1]..sub..",str);}"..post)
 	else
-		coroutine.yield(pre.."{showField(\""..field[1].."\",str,len,"..arg.."); show"..field[2].."(ptr->"..field[1]..sub..",str,len);}"..post)
+		coroutine.yield(pre.."{showField(\""..field[1].."\",str,"..arg.."); show"..field[2].."(ptr->"..field[1]..sub..",str);}"..post)
 	end
 end
 function showShowSC(name,struct)
 	local result = ""
 	local temp = table.pack(showReadCI,showWriteCJ)
-	result = result.."void show"..name.."(struct "..name.." *ptr, char **str, int *len)"
+	result = result.."void show"..name.."(struct "..name.." *ptr, char **str)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	result = result.."    showOpen(\""..name.."\",str,len);\n"
+	result = result.."    showOpen(\""..name.."\",str);\n"
 	showReadCI,showWriteCJ = showWriteCI,showShowCJ
 	result = result..showReadCE(name,struct)
 	showReadCI,showWriteCJ = table.unpack(temp)
-	result = result.."    showClose(str,len);\n"
+	result = result.."    showClose(str);\n"
 	return result.."}"
 end
 global_name = "Oops"
@@ -876,7 +876,7 @@ function showTypeCF(type)
 end
 function showRtypeC(list)
 	local result = ""
-	result = result.."void showType(char **str, int *len, int typ, int idx)"
+	result = result.."void showType(char **str, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (typ) {\n"
@@ -885,18 +885,18 @@ function showRtypeC(list)
 		if (not (Structz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
 			result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
-			result = result..showIndent(2).."show"..v.."(&tmp,str,len);\n"
+			result = result..showIndent(2).."show"..v.."(&tmp,str);\n"
 		elseif (not (Enumz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = readInt(idx);\n"
-			result = result..showIndent(2).."show"..v.."(tmp,str,len);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str);\n"
 		elseif (v == "Dat") or (v == "Str") then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
 			result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
-			result = result..showIndent(2).."show"..v.."(tmp,str,len);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str);\n"
 			result = result..showIndent(2).."free(tmp);\n"
 		else
 			result = result..showIndent(2)..showTypeCF(v).." tmp = read"..v.."(idx);\n"
-			result = result..showIndent(2).."show"..v.."(tmp,str,len);\n"
+			result = result..showIndent(2).."show"..v.."(tmp,str);\n"
 		end
 		result = result..showIndent(2).."break;}\n"
 	end
@@ -2124,11 +2124,11 @@ end
 function showCodeLua(name,enum)
 	local result = ""
 	if showhide then
-		result = result.."function hide"..name.."(str)\n"
+		result = result.."function hide"..name.."(str,siz)\n"
 		for key,val in ipairs(enum) do
-			result = result..showIndent(1).."val,str = hideEnum(\""..name.."\",\""..val.."\",str); if not (val == nil) then return \""..val.."\",str end\n"
+			result = result..showIndent(1).."val,tmp = hideEnum(\""..name.."\",\""..val.."\",str,siz); if not (val == nil) then return \""..val.."\",tmp end\n"
 		end
-		result = result..showIndent(1).."return nil,str\n"
+		result = result..showIndent(1).."return nil,siz\n"
 		result = result.."end\n"
 		result = result.."function show"..name.."(val,str)\n"
 		for key,val in ipairs(enum) do
@@ -2200,8 +2200,8 @@ function showReadLua(name,struct)
 	nest = 0
 	local result = ""
 	if showhide then
-		result = result.."function".." hide"..name.."(str)\n"
-		result = result..showIndent(1).."vld,str = hideOpen(str,\""..name.."\"); if (vld == nil) then return nil,str end\n"
+		result = result.."function".." hide"..name.."(str,siz)\n"
+		result = result..showIndent(1).."vld,siz = hideOpen(\""..name.."\",str,siz); if (vld == nil) then return nil,siz end\n"
 	else
 		result = result.."function".." read"..name.."(idx)\n"
 	end
@@ -2266,7 +2266,7 @@ function showReadLua(name,struct)
 			super = true
 		end
 		if showhide then
-			result = result..showIndent(count+1).."vld,str = hideField(str,\""..field[1].."\""..list.."); if (vld == nil) then return nil,str end; tab".."[\""..field[1].."\"]"..sub..", str = hide"..field[2].."(str); if (tab".."[\""..field[1].."\"]"..sub.." == nil) then return nil,str end\n"
+			result = result..showIndent(count+1).."vld,siz = hideField(\""..field[1].."\",str,siz"..list.."); if (vld == nil) then return nil,siz end; tab".."[\""..field[1].."\"]"..sub..", siz = hide"..field[2].."(str,siz); if (tab".."[\""..field[1].."\"]"..sub.." == nil) then return nil,siz end\n"
 		else
 			result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"..sub.." = ".."read"..field[2].."(idx)\n"
 		end
@@ -2280,8 +2280,8 @@ function showReadLua(name,struct)
 		end
 	end
 	if showhide then
-		result = result..showIndent(1).."vld,str = hideClose(str); if (vld == nil) then return nil,str end\n"
-		result = result..showIndent(1).."return tab,str\n"
+		result = result..showIndent(1).."vld,siz = hideClose(str,siz); if (vld == nil) then return nil,siz end\n"
+		result = result..showIndent(1).."return tab,siz\n"
 	else
 		result = result..showIndent(1).."return tab\n"
 	end
@@ -2294,7 +2294,7 @@ function showWriteLua(name,struct)
 	local result = ""
 	if showhide then
 		result = result.."function show"..name.."(tab,str)\n"
-		result = result..showIndent(1).."str = showOpen(\""..name.."\")\n"
+		result = result..showIndent(1).."str = showOpen(\""..name.."\",str)\n"
 	else
 		result = result.."function write"..name.."(tab,idx)\n"
 	end
@@ -2309,6 +2309,7 @@ function showWriteLua(name,struct)
 		end
 		local sub = ""
 		local arg = ""
+		local args = 0
 		if (type(field[4]) == "table") then
 			while (count < #field[4]) do
 				count = count + 1
@@ -2316,6 +2317,7 @@ function showWriteLua(name,struct)
 				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
 				sub = sub.."[i"..count.."]"
 				arg = arg..",i"..count
+				args = args + 1
 			end
 		end
 		if (type(field[4]) == "string") then
@@ -2328,6 +2330,7 @@ function showWriteLua(name,struct)
 			result = result..showIndent(count).."while (i"..count.." <= ".."tab[\""..field[4].."\"]) do\n"
 			sub = sub.."[i"..count.."]"
 			arg = arg..",i"..count
+			args = args + 1
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
@@ -2335,11 +2338,12 @@ function showWriteLua(name,struct)
 			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
 			sub = sub.."[i"..count.."]"
 			arg = arg..",i"..count
+			args = args + 1
 		end
 		local value = "tab[\""..field[1].."\"]"..sub
 		result = result..showIndent(count+1)
 		if showhide then
-			result = result.."str = str..showField(\""..field[1].."\""..arg..")..show"..field[2].."("..value..")\n"
+			result = result.."str = show"..field[2].."("..value..",showField(\""..field[1].."\",str,"..args..arg.."))\n"
 		else
 			result = result.."write"..field[2].."("..value..",idx)\n"
 		end
@@ -2353,7 +2357,7 @@ function showWriteLua(name,struct)
 		end
 	end
 	if showhide then
-		result = result..showIndent(1).."str = str..showClose()\n"
+		result = result..showIndent(1).."str = showClose(str)\n"
 		result = result..showIndent(1).."return str\n"
 	end
 	result = result.."end\n"

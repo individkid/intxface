@@ -14,116 +14,90 @@ char *msgstr = 0;
 char *msgtmp = 0;
 struct Closure argbuf = {0};
 
-struct Function protoTypeCf(cftype fnc)
-{
-	struct Function ret = {.ft = Cftype, {.cf = fnc}}; return ret;
+#define PROTOTYPE(UC,LC)\
+struct Function protoType##UC(LC##type fnc)\
+{\
+	struct Function ret = {.ft = UC##type, {.LC = fnc}}; return ret;\
 }
-struct Function protoTypeCg(cgtype fnc)
-{
-	struct Function ret = {.ft = Cgtype, {.cg = fnc}}; return ret;
-}
-struct Function protoTypeCh(chtype fnc)
-{
-	struct Function ret = {.ft = Chtype, {.ch = fnc}}; return ret;
-}
-struct Function protoTypeDf(dftype fnc)
-{
-	struct Function ret = {.ft = Dftype, {.df = fnc}}; return ret;
-}
-struct Function protoTypeDg(dgtype fnc)
-{
-	struct Function ret = {.ft = Dgtype, {.dg = fnc}}; return ret;
-}
-struct Function protoTypeDh(dhtype fnc)
-{
-	struct Function ret = {.ft = Dhtype, {.dh = fnc}}; return ret;
-}
-struct Function protoTypeSf(sftype fnc)
-{
-	struct Function ret = {.ft = Sftype, {.sf = fnc}}; return ret;
-}
-struct Function protoTypeHf(hftype fnc)
-{
-	struct Function ret = {.ft = Hftype, {.hf = fnc}}; return ret;
-}
-struct Function protoTypeFg(fgtype fnc)
-{
-	struct Function ret = {.ft = Fgtype, {.fg = fnc}}; return ret;
-}
-struct Function protoTypeFh(fhtype fnc)
-{
-	struct Function ret = {.ft = Fhtype, {.fh = fnc}}; return ret;
-}
-struct Function protoTypeFf(fftype fnc)
-{
-	struct Function ret = {.ft = Fftype, {.ff = fnc}}; return ret;
-}
-struct Function protoTypeGf(gftype fnc)
-{
-	struct Function ret = {.ft = Gftype, {.gf = fnc}}; return ret;
-}
-struct Function protoTypeGg(ggtype fnc)
-{
-	struct Function ret = {.ft = Ggtype, {.gg = fnc}}; return ret;
-}
-struct Function protoTypeOf(oftype fnc)
-{
-	struct Function ret = {.ft = Oftype, {.of = fnc}}; return ret;
-}
-struct Function protoTypeRf(rftype fnc)
-{
-	struct Function ret = {.ft = Rftype, {.rf = fnc}}; return ret;
-}
-struct Function protoTypeRg(rgtype fnc)
-{
-	struct Function ret = {.ft = Rgtype, {.rg = fnc}}; return ret;
-}
-struct Function protoTypeRh(rhtype fnc)
-{
-	struct Function ret = {.ft = Rhtype, {.rh = fnc}}; return ret;
-}
-struct Function protoTypeAf(aftype fnc)
-{
-	struct Function ret = {.ft = Aftype, {.af = fnc}}; return ret;
-}
-struct Function protoTypeBf(bftype fnc)
-{
-	struct Function ret = {.ft = Bftype, {.bf = fnc}}; return ret;
-}
-struct Function protoTypeBg(bgtype fnc)
-{
-	struct Function ret = {.ft = Bgtype, {.bg = fnc}}; return ret;
-}
+
+PROTOTYPE(Cf,cf)
+PROTOTYPE(Cg,cg)
+PROTOTYPE(Ch,ch)
+PROTOTYPE(Df,df)
+PROTOTYPE(Dg,dg)
+PROTOTYPE(Dh,dh)
+PROTOTYPE(Ef,ef)
+PROTOTYPE(Eg,eg)
+PROTOTYPE(Eh,eh)
+PROTOTYPE(Pf,pf)
+PROTOTYPE(Qf,qf)
+PROTOTYPE(Ff,ff)
+PROTOTYPE(Fg,fg)
+PROTOTYPE(Fh,fh)
+PROTOTYPE(Gf,gf)
+PROTOTYPE(Gg,gg)
+PROTOTYPE(Of,of)
 /*
-struct Function protoTypeIf(iftype fnc)
-{
-	struct Function ret = {.ft = Iftype, {.it = fnc}}; return ret;
-}
-struct Function protoTypeJf(jftype fnc)
-{
-	struct Function ret = {.ft = Jftype, {.jf = fnc}}; return ret;
-}
-struct Function protoTypeKf(kftype fnc)
-{
-	struct Function ret = {.ft = Kftype, {.kf = fnc}}; return ret;
-}
-struct Function protoTypeLf(lftype fnc)
-{
-	struct Function ret = {.ft = Lftype, {.lf = fnc}}; return ret;
-}
-struct Function protoTypeMf(mftype fnc)
-{
-	struct Function ret = {.ft = Mftype, {.mf = fnc}}; return ret;
-}
-struct Function protoTypeNf(nftype fnc)
-{
-	struct Function ret = {.ft = Nftype, {.nf = fnc}}; return ret;
-}
-struct Function protoTypeTf(tftype fnc)
-{
-	struct Function ret = {.ft = Tftype, {.tf = fnc}}; return ret;
-}
+PROTOTYPE(Af,af)
+PROTOTYPE(Bf,bf)
+PROTOTYPE(If,if)
+PROTOTYPE(Jf,jf)
+PROTOTYPE(Kf,kf)
 */
+
+PROTOTYPE(Tf,tf)
+PROTOTYPE(Tg,tg)
+PROTOTYPE(Th,th)
+PROTOTYPE(Ti,ti)
+PROTOTYPE(Tj,tj)
+PROTOTYPE(Tk,tk)
+PROTOTYPE(Tl,tl)
+PROTOTYPE(Tm,tm)
+PROTOTYPE(Tn,tn)
+
+PROTOTYPE(Sf,sf)
+PROTOTYPE(Sg,sg)
+PROTOTYPE(Sh,sh)
+PROTOTYPE(Si,si)
+PROTOTYPE(Sj,sj)
+PROTOTYPE(Sk,sk)
+PROTOTYPE(Sl,sl)
+PROTOTYPE(Sm,sm)
+PROTOTYPE(Sn,sn)
+
+PROTOTYPE(Lf,lf)
+PROTOTYPE(Lg,lg)
+PROTOTYPE(Lh,lh)
+PROTOTYPE(Li,li)
+PROTOTYPE(Lj,lj)
+PROTOTYPE(Lk,lk)
+PROTOTYPE(Ll,ll)
+PROTOTYPE(Lm,lm)
+PROTOTYPE(Ln,ln)
+
+PROTOTYPE(Mf,mf)
+PROTOTYPE(Mh,mh)
+PROTOTYPE(Mi,mi)
+PROTOTYPE(Mj,mj)
+PROTOTYPE(Mk,mk)
+PROTOTYPE(Ml,ml)
+PROTOTYPE(Mm,mm)
+PROTOTYPE(Mn,mn)
+
+PROTOTYPE(Nf,nf)
+PROTOTYPE(Nh,nh)
+PROTOTYPE(Ni,ni)
+PROTOTYPE(Nj,nj)
+PROTOTYPE(Nk,nk)
+PROTOTYPE(Nl,nl)
+PROTOTYPE(Nm,nm)
+PROTOTYPE(Nn,nn)
+
+PROTOTYPE(Rf,rf)
+PROTOTYPE(Rg,rg)
+PROTOTYPE(Rh,rh)
+PROTOTYPE(Ri,ri)
+PROTOTYPE(Rj,rj)
 
 void protoMake(struct Parameter *arg)
 {
@@ -227,22 +201,6 @@ const struct Closure *protoCloseRg()
 	protoClose(0,1);
 	return &argbuf;
 }
-const struct Closure *protoCloseBf(const char *arg)
-{
-	protoClose(1,1);
-	protoMakeSf(&argbuf.aa[0],arg);
-	return &argbuf;
-}
-const struct Closure *protoCloseBg()
-{
-	protoClose(0,1);
-	return &argbuf;
-}
-const struct Closure *protoCloseBh()
-{
-	protoClose(0,1);
-	return &argbuf;
-}
 void protoResultCf()
 {
 }
@@ -273,19 +231,6 @@ int protoResultRf()
 int protoResultRg()
 {
 	return argbuf.ab[0].ia;
-}
-const char *protoResultBf()
-{
-	return argbuf.ab[0].sa;
-}
-const char *protoResultBg()
-{
-	return argbuf.ab[0].sa;
-}
-const char *protoResultBh(int *len)
-{
-	*len = argbuf.ab[0].la;
-	return argbuf.ab[0].sa;
 }
 
 void stackErr()

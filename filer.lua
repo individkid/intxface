@@ -8,11 +8,13 @@ name = "filer.--"
 
 -- MAIN
 ident1 = wrapType("Filez","fielerLua","fileC")
+print("wrapType")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
 writePersist(file,ident1)
+print("writePersist")
 file = {}
 file["act"] = "AppHub"
 file["idx"] = 0

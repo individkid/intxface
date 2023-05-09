@@ -44,13 +44,12 @@ int shareExec(const char *exe, struct Argument *arg)
 {
 	int idx = openFork();
 	char *str = 0;
-	int len = 0;
 	struct stat new;
 	if (openCheck(idx) == -1) return idx;
 	arg->inp = openRdfd(idx);
 	arg->out = openWrfd(idx);
 	datxNone(dat0); writeArgument(arg,idx0);
-	showType(&str,&len,identType("Argument"),idx0);
+	showType(&str,identType("Argument"),idx0);
 	return openExec(exe,str);
 }
 void shareArgs(int sub, const char *str)
@@ -182,7 +181,7 @@ int sharePeek(const char *str, int *len)
 		if (note == 0) return typ;}
 	return -1;
 }
-void shareParse(int argc, char **argv, sftype err, sftype arg, sftype stg)
+void shareParse(int argc, char **argv, egtype err, egtype arg, egtype stg)
 {
 	for (int i = 1, sub = 0; i < argc; i++) {
 		int len = 0; int typ = 0;
@@ -234,7 +233,7 @@ void shareLoop(int src, int dst, int stp, int dtp)
 	if (stp == identType("Generic") && dtp == identType("Str")) {struct Generic gen = {0}; char *str = 0; int len = 0; readGeneric(&gen,src); showUnion(&str,&len,&gen); writeStr(str,dst); freeGeneric(&gen); free(str); return;}
 	if (stp == identType("Generic")) {struct Generic gen = {0}; readGeneric(&gen,src); if (identUnion(&gen) != dtp) ERROR(); writeUnion(&gen,dst); freeGeneric(&gen); return;}
 	if (dtp == identType("Dat")) {datxNone(dat0); loopType(stp,src,idx0); writeDat(*dat0,dst); return;}
-	if (dtp == identType("Str")) {char *str = 0; int len = 0; showType(&str,&len,stp,src); writeStr(str,dst); free(str); return;}
+	if (dtp == identType("Str")) {char *str = 0; showType(&str,stp,src); writeStr(str,dst); free(str); return;}
 	if (dtp == identType("Generic")) {struct Generic gen = {0}; readUnion(&gen,stp,src); writeGeneric(&gen,dst); freeGeneric(&gen); return;}
 	ERROR();
 }

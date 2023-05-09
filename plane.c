@@ -323,8 +323,7 @@ void copyMachine(struct Machine *dst, struct Machine *src)
 {
 	char *str = 0;
 	int len = 0;
-	showMachine(src,&str,&len);
-	len = 0;
+	showMachine(src,&str);
 	hideMachine(dst,str,&len);
 	free(str);
 }

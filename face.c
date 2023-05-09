@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <pthread.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -254,7 +255,7 @@ int forkExec(const char *exe)
 		val = snprintf(idt,32,"%d",lim); if (val < 0 || val > 32) return -1;
 		val = execl(exe,exe,ist,ost,idt,0); if (val < 0) return -1;
 		return -1;}
-        if (pid[lim] == -1) return -1;
+	 if (pid[lim] == -1) return -1;
 	val = close(c2p[1]); if (val < 0) return -1;
 	val = close(p2c[0]); if (val < 0) return -1;
 	inp[lim] = c2p[0];
@@ -324,6 +325,7 @@ int openWrfd(int idx)
 }
 int openExec(const char *exe, const char *arg)
 {
+	printf("openExec %s %s\n",exe,arg);
 	execl(exe,exe,arg,0);
 	return -1;
 }
@@ -462,9 +464,9 @@ int waitExit()
 }
 void *callCall(void *arg)
 {
-	int idx = (int)(size_t)arg;
+	int idx = (int)(intptr_t)arg;
 	while (1) {
-		int sub = waitRead(0.0,idx);
+		int sub = waitRead(0.0,1<<idx);
 		if (sub == idx) cbfnc[idx](idx);
 	}
 }
@@ -472,7 +474,7 @@ void callInit(cftype fnc, int idx)
 {
 	if (idx < 0 || idx >= lim || (fdt[idx] != Wait && fdt[idx] != Sock)) ERRFNC(idx);
 	cbfnc[idx] = fnc;
-	if (pthread_create(&cbpth[idx],0,callCall,(void*)(size_t)idx) != 0) ERRFNC(idx);
+	if (pthread_create(&cbpth[idx],0,callCall,(void*)(intptr_t)idx) != 0) ERRFNC(idx);
 }
 int pollPipe(int idx)
 {
@@ -831,7 +833,8 @@ float readOld(int idx)
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
 	if (inp[idx] < 0) {arg = 0.0; return arg;}
 	int val = 0;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
+	while (1) {
+	if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(char *)&arg,sizeof(float));
 	else val = read(inp[idx],(char *)&arg,sizeof(float));
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(float)) ERRFNC(idx);
@@ -918,20 +921,21 @@ void writeOld(float arg, int idx)
 	int val = writeBuf(/*write(out[idx]*/(char *)&arg,sizeof(float), idx);
 	if (val < (int)sizeof(float)) ERRFNC(idx);
 }
-void showEnum(const char *typ, const char* val, char **str, int *siz)
+void showEnum(const char *typ, const char* val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"%s(%s)",typ,val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showFieldV(const char* val, char **str, int *siz, int arg, int *sub)
+void showFieldV(const char* val, char **str, int arg, int *sub)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	char *temp = 0;
 	int num;
@@ -942,141 +946,144 @@ void showFieldV(const char* val, char **str, int *siz, int arg, int *sub)
 	if (asprintf(&temp,"%s:",tmp) < 0) ERRFNC(-1);
 	free(tmp); tmp = temp;
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showField(const char* val, char **str, int *siz, int arg, ...)
+void showField(const char* val, char **str, int arg, ...)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	int *sub = malloc(arg*sizeof(int));
 	va_list args = {0};
 	va_start(args,arg);
 	for (int i = 0; i < arg; i++) sub[i] = va_arg(args,int);
 	va_end(args);
-	showFieldV(val,str,siz,arg,sub);
+	showFieldV(val,str,arg,sub);
 	free(sub);
 }
-void showOpen(const char* val, char **str, int *siz)
+void showOpen(const char* val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"%s(",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showClose(char **str, int *siz)
+void showClose(char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,")") < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showChr(char val, char **str, int *siz)
+void showChr(char val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Chr(%c)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showInt(int val, char **str, int *siz)
+void showInt(int val, char **str)
 {
+printf("showInt %p\n",str);
+	int siz = (*str ? strlen(*str) : 0);
+printf("showInt siz %d\n",siz);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Int(%d)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
+printf("showInt %s\n",*str);
 }
-void showInt32(int32_t val, char **str, int *siz)
+void showInt32(int32_t val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Int32(%ld)",(long)val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showNew(long long val, char **str, int *siz)
+void showNew(long long val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"New(%lld)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showNum(double val, char **str, int *siz)
+void showNum(double val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Num(%lf)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showOld(float val, char **str, int *siz)
+void showOld(float val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Old(%f)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showStr(const char* val, char **str, int *siz)
+void showStr(const char* val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Str(%s)",val) < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
-void showDat(const void* val, char **str, int *siz)
+void showDat(const void* val, char **str)
 {
+	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Dat(TODO)") < 0) ERRFNC(-1);
 	num = strlen(tmp);
-	*str = realloc(*str,*siz+num+1);
+	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
-	memcpy(*str+*siz,tmp,num+1);
+	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-	*siz += num;
 }
 int hideIdent(const char *val, const char *str, int *siz)
 {
@@ -1237,6 +1244,83 @@ int hideDat(void **val, const char *str, int *siz)
 	return 1;
 }
 
+int hideEnumLua(lua_State *lua)
+{      
+	luaerr = lua;
+	int siz = lua_tonumber(lua,4);
+	if (hideEnum(lua_tostring(lua,1),lua_tostring(lua,2),lua_tostring(lua,3),&siz))
+	lua_pushnumber(lua,1); else lua_pushnil(lua);
+	lua_pushnumber(lua,siz);
+	return 2;
+}      
+int hideFieldLua(lua_State *lua)
+{      
+	luaerr = lua;
+	int siz = lua_tonumber(lua,3);
+	int arg = lua_tonumber(lua,4);
+	int *sub = malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
+	if (hideFieldV(lua_tostring(lua,1),lua_tostring(lua,2),&siz,arg,sub))
+	lua_pushnumber(lua,1); else lua_pushnil(lua);
+	lua_pushnumber(lua,siz);
+	free(sub);
+	return 2;
+}      
+int hideOpenLua(lua_State *lua)
+{
+	luaerr = lua;
+	int siz = lua_tonumber(lua,3);
+	if (hideOpen(lua_tostring(lua,1),lua_tostring(lua,2),&siz))
+	lua_pushnumber(lua,1); else lua_pushnil(lua);
+	lua_pushnumber(lua,siz);
+	return 2;
+}
+int hideCloseLua(lua_State *lua)
+{
+	luaerr = lua;
+	int siz = lua_tonumber(lua,2);
+	if (hideClose(lua_tostring(lua,1),&siz))
+	lua_pushnumber(lua,1); else lua_pushnil(lua);
+	lua_pushnumber(lua,siz);
+	return 2;
+}
+int showEnumLua(lua_State *lua)
+{      
+	char *str = strdup(lua_tostring(lua,3));
+	luaerr = lua;
+	showEnum(lua_tostring(lua,1),lua_tostring(lua,2),&str);
+	lua_pushstring(lua,str);  free(str);
+	return 1;
+}
+int showFieldLua(lua_State *lua)
+{
+	char *str = strdup(lua_tostring(lua,2));
+	int arg = lua_tonumber(lua,3);
+	int *sub = malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
+	luaerr = lua;
+	showFieldV(lua_tostring(lua,1),&str,arg,sub);
+	lua_pushstring(lua,str); free(str);
+	free(sub);
+	return 1;
+}      
+int showOpenLua(lua_State *lua)
+{
+	char *str = strdup(lua_tostring(lua,2));
+	luaerr = lua;
+	showOpen(lua_tostring(lua,1),&str);
+	lua_pushstring(lua,str); free(str);
+	return 1;
+}
+int showCloseLua(lua_State *lua)
+{
+	char *str = strdup(lua_tostring(lua,1));
+	luaerr = lua;
+	showClose(&str);
+	lua_pushstring(lua,str); free(str);
+	return 1;
+}
+
 void readStrHs(hftype fnc, int idx)
 {
 	char *str = 0;
@@ -1359,7 +1443,7 @@ void showEnumHs(const char *typ, const char *val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showEnum(typ,val,&tmp,&len);
+	showEnum(typ,val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1367,7 +1451,7 @@ void showOpenHs(const char *typ, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showOpen(typ,&tmp,&len);
+	showOpen(typ,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1375,7 +1459,7 @@ void showCloseHs(const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showClose(&tmp,&len);
+	showClose(&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1383,7 +1467,7 @@ void showFieldHs(const char *typ, int arg, int *sub, const char *str, hftype fnc
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showFieldV(typ,&tmp,&len,arg,sub);
+	showFieldV(typ,&tmp,arg,sub);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1391,7 +1475,7 @@ void showStrHs(const char *val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showStr(val,&tmp,&len);
+	showStr(val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1402,7 +1486,7 @@ void showDatHs(int siz, const char *val, const char *str, hftype fnc)
 	char *cpy = malloc(siz+sizeof(int));
 	*(int*)cpy = siz;
 	memcpy(cpy+sizeof(int),val,siz);
-	showDat(cpy,&tmp,&len);
+	showDat(cpy,&tmp);
 	fnc(tmp);
 	free(tmp);
 	free(cpy);
@@ -1411,7 +1495,7 @@ void showChrHs(char val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showChr(val,&tmp,&len);
+	showChr(val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1419,7 +1503,7 @@ void showIntHs(int val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showInt(val,&tmp,&len);
+	showInt(val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1427,7 +1511,7 @@ void showInt32Hs(int32_t val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showInt32(val,&tmp,&len);
+	showInt32(val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1435,7 +1519,7 @@ void showNumHs(double val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showNum(val,&tmp,&len);
+	showNum(val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1443,7 +1527,7 @@ void showNewHs(long long val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showNew(val,&tmp,&len);
+	showNew(val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
@@ -1451,423 +1535,10 @@ void showOldHs(float val, const char *str, hftype fnc)
 {
 	int len = strlen(str);
 	char *tmp = strdup(str);
-	showOld(val,&tmp,&len);
+	showOld(val,&tmp);
 	fnc(tmp);
 	free(tmp);
 }
-
-int waitReadLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,waitRead(lua_tonumber(lua,1),(int)lua_tonumber(lua,2)));
-	return 1;
-}
-int waitExitLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,waitExit());
-	return 1;
-}
-int pollPipeLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pollPipe((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int pollFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,pollFile((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int seekFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	seekFile((long long)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int truncFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	truncFile((int)lua_tonumber(lua,1));
-	return 0;
-}
-int checkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkFile((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int inetIdentLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,inetIdent(lua_tostring(lua,1),lua_tostring(lua,2)));
-	return 1;
-}
-int rdlkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,rdlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
-	return 1;
-}
-int wrlkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,wrlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3)));
-	return 1;
-}
-int unlkFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	unlkFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
-}
-int rdlkwFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	rdlkwFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
-}
-int wrlkwFileLua(lua_State *lua)
-{
-	luaerr = lua;
-	wrlkwFile((long long)lua_tonumber(lua,1),(long long)lua_tonumber(lua,2),(int)lua_tonumber(lua,3));
-	return 0;
-}
-int checkReadLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkRead((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int checkWriteLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,checkWrite((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int sleepSecLua(lua_State *lua)
-{
-	luaerr = lua;
-	sleep((int)lua_tonumber(lua,1));
-	return 0;
-}
-int readStrLua(lua_State *lua)
-{
-	luaerr = lua;
-	char *str = 0;
-	readStr(&str,(int)lua_tonumber(lua,1));
-	lua_pushstring(lua,str);
-	free(str);
-	return 1;
-}
-int readEofLua(lua_State *lua)
-{
-	luaerr = lua;
-	readEof((int)lua_tonumber(lua,1));
-	return 0;
-}
-int readChrLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readChr((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int readIntLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readInt((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int readInt32Lua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readInt32((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int readNumLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readNum((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int readNewLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,readNew((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int readOldLua(lua_State *lua)
-{
-	luaerr = lua;
-	lua_pushnumber(lua,(double)readOld((int)lua_tonumber(lua,1)));
-	return 1;
-}
-int writeStrLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeStr(lua_tostring(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int writeChrLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeChr((char)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int writeIntLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeInt((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int writeInt32Lua(lua_State *lua)
-{
-	luaerr = lua;
-	writeInt32((int)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int writeNumLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeNum((double)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int writeNewLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeNew((long long)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int writeOldLua(lua_State *lua)
-{
-	luaerr = lua;
-	writeOld((float)lua_tonumber(lua,1),(int)lua_tonumber(lua,2));
-	return 0;
-}
-int hideEnumLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,3));
-	luaerr = lua;
-	if (hideEnum(lua_tostring(lua,1),lua_tostring(lua,2),str,&siz))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int hideFieldLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,2));
-	int arg = lua_tonumber(lua,3);
-	int *sub = malloc(arg*sizeof(int));
-	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
-	luaerr = lua;
-	if (hideFieldV(lua_tostring(lua,1),str,&siz,arg,sub))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str); free(sub);
-	return 2;
-}
-int hideOpenLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,2));
-	luaerr = lua;
-	if (hideOpen(lua_tostring(lua,1),str,&siz))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int hideCloseLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	if (hideClose(str,&siz))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int hideStrLua(lua_State *lua)
-{
-	char *val = 0;
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	if (hideStr(&val,str,&siz))
-	lua_pushstring(lua,val); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str); free(val);
-	return 2;
-}
-int hideIntLua(lua_State *lua)
-{
-	int val = 0;
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	if (hideInt(&val,str,&siz))
-	lua_pushnumber(lua,val); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int hideInt32Lua(lua_State *lua)
-{
-	int32_t val = 0;
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	if (hideInt32(&val,str,&siz))
-	lua_pushnumber(lua,val); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int hideNumLua(lua_State *lua)
-{
-	double val = 0;
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	if (hideNum(&val,str,&siz))
-	lua_pushnumber(lua,val); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int hideNewLua(lua_State *lua)
-{
-	long long int val = 0;
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	if (hideNew(&val,str,&siz))
-	lua_pushnumber(lua,val); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int hideOldLua(lua_State *lua)
-{
-	float val = 0;
-	int siz = 0;
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	if (hideOld(&val,str,&siz))
-	lua_pushnumber(lua,val); else lua_pushnil(lua);
-	lua_pushstring(lua,str+siz);
-	free(str);
-	return 2;
-}
-int showEnumLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showEnum(lua_tostring(lua,1),lua_tostring(lua,2),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showFieldLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	int arg = lua_tonumber(lua,2);
-	int *sub = malloc(arg*sizeof(int));
-	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,3+i);
-	luaerr = lua;
-	showFieldV(lua_tostring(lua,1),&str,&siz,arg,sub);
-	lua_pushstring(lua,str);
-	free(sub);
-	return 1;
-}
-int showOpenLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showOpen(lua_tostring(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showCloseLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showClose(&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showStrLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showStr(lua_tostring(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showChrLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showChr(lua_tonumber(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showIntLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showInt(lua_tonumber(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showInt32Lua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showInt32(lua_tonumber(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showNumLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showNum(lua_tonumber(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showNewLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showNew(lua_tonumber(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-int showOldLua(lua_State *lua)
-{
-	int siz = 0;
-	char *str = 0;
-	luaerr = lua;
-	showOld(lua_tonumber(lua,1),&str,&siz);
-	lua_pushstring(lua,str);
-	return 1;
-}
-
 void noteLua(int idx)
 {
 	int val = luaxCall(luanote,protoCloseCf(idx));
@@ -1890,82 +1561,93 @@ void errFuncLua(const char *str)
 	if (luaerr) free(luaerr);
 	luafunc = strdup(str);
 }
-void luaxExtend(lua_State *L, const char *str, struct Function fnc);
 int luaopen_luax(lua_State *L);
+void luaxExtend(lua_State *L, const char *str, struct Function fnc);
 int luaopen_face (lua_State *L)
 {
 	luaopen_luax(L);
-	luaxExtend(L,"noteFunc",protoTypeHf(noteFuncLua));
-	luaxExtend(L,"errFunc",protoTypeHf(errFuncLua));
+	luaxExtend(L,"noteFunc",protoTypeEh(noteFuncLua));
+	luaxExtend(L,"errFunc",protoTypeEh(errFuncLua));
 	luaxExtend(L,"closeIdent",protoTypeCf(closeIdent));
 	luaxExtend(L,"moveIdent",protoTypeCg(moveIdent));
 	luaxExtend(L,"findIdent",protoTypeFf(findIdent));
 	luaxExtend(L,"inetIdent",protoTypeGf(inetIdent));
-	luaxExtend(L,"openPipe",protoTypeRg(openPipe));
+	luaxExtend(L,"openPipe",protoTypeTm(openPipe));
 	luaxExtend(L,"openPipe",protoTypeFf(openPipe));
 	luaxExtend(L,"openFile",protoTypeFf(openFile));
 	luaxExtend(L,"openInet",protoTypeGf(openInet));
 	luaxExtend(L,"forkExec",protoTypeFf(forkExec));
 	luaxExtend(L,"pipeInit",protoTypeGf(pipeInit));
-	luaxExtend(L,"openFork",protoTypeRg(openFork));
-	luaxExtend(L,"openCheck",protoTypeRf(openCheck));
-	luaxExtend(L,"openRdfd",protoTypeRf(openRdfd));
-	luaxExtend(L,"openWrfd",protoTypeRf(openWrfd));
+	luaxExtend(L,"openFork",protoTypeTm(openFork));
+	luaxExtend(L,"openCheck",protoTypeTl(openCheck));
+	luaxExtend(L,"openRdfd",protoTypeTl(openRdfd));
+	luaxExtend(L,"openWrfd",protoTypeTl(openWrfd));
 	luaxExtend(L,"openExec",protoTypeGf(openExec));
 	luaxExtend(L,"rdwrInit",protoTypeGg(rdwrInit));
-	lua_pushcfunction(L, waitReadLua); lua_setglobal(L, "waitRead");
-	lua_pushcfunction(L, waitExitLua); lua_setglobal(L, "waitExit");
-	lua_pushcfunction(L, pollPipeLua); lua_setglobal(L, "pollPipe");
-	lua_pushcfunction(L, pollFileLua); lua_setglobal(L, "pollFile");
-	lua_pushcfunction(L, seekFileLua); lua_setglobal(L, "seekFile");
-	lua_pushcfunction(L, truncFileLua); lua_setglobal(L, "truncFile");
-	lua_pushcfunction(L, checkFileLua); lua_setglobal(L, "checkFile");
-	lua_pushcfunction(L, rdlkFileLua); lua_setglobal(L, "rdlkFile");
-	lua_pushcfunction(L, wrlkFileLua); lua_setglobal(L, "wrlkFile");
-	lua_pushcfunction(L, unlkFileLua); lua_setglobal(L, "unlkFile");
-	lua_pushcfunction(L, rdlkwFileLua); lua_setglobal(L, "rdlkwFile");
-	lua_pushcfunction(L, wrlkwFileLua); lua_setglobal(L, "wrlkwFile");
-	lua_pushcfunction(L, checkReadLua); lua_setglobal(L, "checkRead");
-	lua_pushcfunction(L, checkWriteLua); lua_setglobal(L, "checkWrite");
-	lua_pushcfunction(L, sleepSecLua); lua_setglobal(L, "sleepSec");
-	lua_pushcfunction(L, readStrLua); lua_setglobal(L, "readStr");
-	lua_pushcfunction(L, readEofLua); lua_setglobal(L, "readEof");
-	// lua_pushcfunction(L, readDatLua); lua_setglobal(L, "readDat"); // TODO
-	lua_pushcfunction(L, readChrLua); lua_setglobal(L, "readChr");
-	lua_pushcfunction(L, readIntLua); lua_setglobal(L, "readInt");
-	lua_pushcfunction(L, readInt32Lua); lua_setglobal(L, "readInt32");
-	lua_pushcfunction(L, readNumLua); lua_setglobal(L, "readNum");
-	lua_pushcfunction(L, readNewLua); lua_setglobal(L, "readNew");
-	lua_pushcfunction(L, readOldLua); lua_setglobal(L, "readOld");
-	lua_pushcfunction(L, writeStrLua); lua_setglobal(L, "writeStr");
-	// lua_pushcfunction(L, writeDatLua); lua_setglobal(L, "writeDat"); // TODO
-	lua_pushcfunction(L, writeChrLua); lua_setglobal(L, "writeChr");
-	lua_pushcfunction(L, writeIntLua); lua_setglobal(L, "writeInt");
-	lua_pushcfunction(L, writeInt32Lua); lua_setglobal(L, "writeInt32");
-	lua_pushcfunction(L, writeNumLua); lua_setglobal(L, "writeNum");
-	lua_pushcfunction(L, writeNewLua); lua_setglobal(L, "writeNew");
-	lua_pushcfunction(L, writeOldLua); lua_setglobal(L, "writeOld");
-	lua_pushcfunction(L, hideEnumLua); lua_setglobal(L, "hideEnum");
-	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
-	lua_pushcfunction(L, hideOpenLua); lua_setglobal(L, "hideOpen");
-	lua_pushcfunction(L, hideCloseLua); lua_setglobal(L, "hideClose");
-	lua_pushcfunction(L, hideStrLua); lua_setglobal(L, "hideStr");
-	// lua_pushcfunction(L, hideDatLua); lua_setglobal(L, "hideDat"); // TODO
-	lua_pushcfunction(L, hideIntLua); lua_setglobal(L, "hideInt");
-	lua_pushcfunction(L, hideInt32Lua); lua_setglobal(L, "hideInt32");
-	lua_pushcfunction(L, hideNumLua); lua_setglobal(L, "hideNum");
-	lua_pushcfunction(L, hideNewLua); lua_setglobal(L, "hideNew");
-	lua_pushcfunction(L, hideOldLua); lua_setglobal(L, "hideOld");
+	luaxExtend(L,"waitRead",protoTypeTf(waitRead));
+	luaxExtend(L,"waitExit",protoTypeTm(waitExit));
+	luaxExtend(L,"pollPipe",protoTypeTl(pollPipe));
+	luaxExtend(L,"pollFile",protoTypeTl(pollFile));
+	luaxExtend(L,"seekFile",protoTypeTg(seekFile));
+	luaxExtend(L,"truncFile",protoTypeCf(truncFile));
+
+	luaxExtend(L,"checkFile",protoTypeTi(checkFile));
+	luaxExtend(L,"rdlkFile",protoTypeTh(rdlkFile));
+	luaxExtend(L,"wrlkFile",protoTypeTh(wrlkFile));
+	luaxExtend(L,"unlkFile",protoTypeTj(unlkFile));
+	luaxExtend(L,"rdlkwFile",protoTypeTj(rdlkwFile));
+	luaxExtend(L,"wrlkwFile",protoTypeTj(wrlkwFile));
+	luaxExtend(L,"checkRead",protoTypeTl(checkRead));
+	luaxExtend(L,"checkWrite",protoTypeTl(checkWrite));
+	luaxExtend(L,"sleepSec",protoTypeTk(sleepSec));
+	luaxExtend(L,"readEof",protoTypeTn(readEof));
+
+	luaxExtend(L,"readStr",protoTypeSf(readStr));
+	luaxExtend(L,"preadStr",protoTypeSg(preadStr));
+	luaxExtend(L,"readDat",protoTypeSh(readDat));
+	luaxExtend(L,"readChr",protoTypeSi(readChr));
+	luaxExtend(L,"readInt",protoTypeSj(readInt));
+	luaxExtend(L,"readInt32",protoTypeSk(readInt32));
+	luaxExtend(L,"readNum",protoTypeSl(readNum));
+	luaxExtend(L,"readNew",protoTypeSm(readNew));
+	luaxExtend(L,"readOld",protoTypeSn(readOld));
+
+	luaxExtend(L,"writeStr",protoTypeLf(writeStr));
+	luaxExtend(L,"pwriteStr",protoTypeLg(pwriteStr));
+	luaxExtend(L,"writeDat",protoTypeLh(writeDat));
+	luaxExtend(L,"writeChr",protoTypeLi(writeChr));
+	luaxExtend(L,"writeInt",protoTypeLj(writeInt));
+	luaxExtend(L,"writeInt32",protoTypeLk(writeInt32));
+	luaxExtend(L,"writeNum",protoTypeLl(writeNum));
+	luaxExtend(L,"writeNew",protoTypeLm(writeNew));
+	luaxExtend(L,"writeOld",protoTypeLn(writeOld));
+
 	lua_pushcfunction(L, showEnumLua); lua_setglobal(L, "showEnum");
 	lua_pushcfunction(L, showFieldLua); lua_setglobal(L, "showField");
 	lua_pushcfunction(L, showOpenLua); lua_setglobal(L, "showOpen");
 	lua_pushcfunction(L, showCloseLua); lua_setglobal(L, "showClose");
-	lua_pushcfunction(L, showStrLua); lua_setglobal(L, "showStr");
-	// lua_pushcfunction(L, showDatLua); lua_setglobal(L, "showDat"); // TODO
-	lua_pushcfunction(L, showIntLua); lua_setglobal(L, "showInt");
-	lua_pushcfunction(L, showInt32Lua); lua_setglobal(L, "showInt32");
-	lua_pushcfunction(L, showNumLua); lua_setglobal(L, "showNum");
-	lua_pushcfunction(L, showNewLua); lua_setglobal(L, "showNew");
-	lua_pushcfunction(L, showOldLua); lua_setglobal(L, "showOld");
+
+	luaxExtend(L,"showStr",protoTypeMf(showStr));
+	luaxExtend(L,"showDat",protoTypeMh(showDat));
+	luaxExtend(L,"showChr",protoTypeMi(showChr));
+	luaxExtend(L,"showInt",protoTypeMj(showInt));
+	luaxExtend(L,"showInt32",protoTypeMk(showInt32));
+	luaxExtend(L,"showNum",protoTypeMl(showNum));
+	luaxExtend(L,"showNew",protoTypeMm(showNew));
+	luaxExtend(L,"showOld",protoTypeMn(showOld));
+
+	lua_pushcfunction(L, hideEnumLua); lua_setglobal(L, "hideEnum");
+	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
+	lua_pushcfunction(L, hideOpenLua); lua_setglobal(L, "hideOpen");
+	lua_pushcfunction(L, hideCloseLua); lua_setglobal(L, "hideClose");
+
+	luaxExtend(L,"hideStr",protoTypeNf(hideStr));
+	luaxExtend(L,"hideDat",protoTypeNh(hideDat));
+	luaxExtend(L,"hideChr",protoTypeNi(hideChr));
+	luaxExtend(L,"hideInt",protoTypeNj(hideInt));
+	luaxExtend(L,"hideInt32",protoTypeNk(hideInt32));
+	luaxExtend(L,"hideNum",protoTypeNl(hideNum));
+	luaxExtend(L,"hideNew",protoTypeNm(hideNew));
+	luaxExtend(L,"hideOld",protoTypeNn(hideOld));
 	return 0;
 }
