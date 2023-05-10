@@ -239,6 +239,12 @@ int luaxClosure(lua_State *L)
 		case (Mmtype): str = strdup(lua_tostring(L,2)); fnc.mm(lua_tointeger(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
 		// typedef void (*mntype)(float val, char **str);
 		case (Mntype): str = strdup(lua_tostring(L,2)); fnc.mn(lua_tonumber(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
+		// typedef void (*motype)(const char *typ, const char* val, char **str);
+		case (Motype): str = strdup(lua_tostring(L,3)); fnc.mo(lua_tostring(L,1),lua_tostring(L,2),&str); lua_pushstring(L,str); free(str); ret = 1; break;
+		// typedef void (*mptype)(const char* val, char **str);
+		case (Mptype): str = strdup(lua_tostring(L,2)); fnc.mp(lua_tostring(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
+		// typedef void (*mqtype)(char **str);
+		case (Mqtype): str = strdup(lua_tostring(L,1)); fnc.mq(&str); lua_pushstring(L,str); free(str); ret = 1; break;
 
 		// typedef int (*nftype)(char **val, const char *str, int *siz);
 		case (Nftype): len = lua_tointeger(L,3); if (fnc.nf(&str,lua_tostring(L,1),&len)) lua_pushstring(L,str); else lua_pushnil(L); lua_pushnumber(L,len); free(str); ret = 2; break;
@@ -256,6 +262,12 @@ int luaxClosure(lua_State *L)
 		case (Nmtype): len = lua_tointeger(L,2); if (fnc.nm(&val,lua_tostring(L,1),&len)) lua_pushinteger(L,val); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
 		// typedef int (*nntype)(float *val, const char *str, int *siz);
 		case (Nntype): len = lua_tointeger(L,2); if (fnc.nn(&old,lua_tostring(L,1),&len)) lua_pushnumber(L,old); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
+		// typedef int (*notype)(const char* typ, const char *val, const char *str, int *siz);
+		case (Notype): len = lua_tointeger(L,4); if (fnc.no(lua_tostring(L,1),lua_tostring(L,2),lua_tostring(L,3),&len)) lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
+		// typedef int (*nptype)(const char *val, const char *str, int *siz);
+		case (Nptype): len = lua_tointeger(L,3); if (fnc.np(lua_tostring(L,1),lua_tostring(L,2),&len)) lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
+		// typedef int (*nqtype)(const char *str, int *siz);
+		case (Nqtype): len = lua_tointeger(L,2); if (fnc.nq(lua_tostring(L,1),&len)) lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
 
 		// typedef void (*rftype)(int siz);
 		case (Rftype): fnc.rf(lua_tointeger(L,1)); break;

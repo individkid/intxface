@@ -93,6 +93,9 @@ typedef void (*mktype)(int32_t val, char **str);
 typedef void (*mltype)(double val, char **str);
 typedef void (*mmtype)(long long val, char **str);
 typedef void (*mntype)(float val, char **str);
+typedef void (*motype)(const char *typ, const char* val, char **str);
+typedef void (*mptype)(const char* val, char **str);
+typedef void (*mqtype)(char **str);
 
 typedef int (*nftype)(char **val, const char *str, int *len);
 typedef int (*nhtype)(void **val, const char *str, int *siz);
@@ -102,6 +105,9 @@ typedef int (*nktype)(int32_t *val, const char *str, int *siz);
 typedef int (*nltype)(double *val, const char *str, int *siz);
 typedef int (*nmtype)(long long *val, const char *str, int *siz);
 typedef int (*nntype)(float *val, const char *str, int *siz);
+typedef int (*notype)(const char* typ, const char *val, const char *str, int *siz);
+typedef int (*nptype)(const char *val, const char *str, int *siz);
+typedef int (*nqtype)(const char *str, int *siz);
 
 typedef void (*rftype)(int siz);
 typedef void (*rgtype)(int i, const char *str);
@@ -170,6 +176,9 @@ struct Function {
 		Mltype,
 		Mmtype,
 		Mntype,
+		Motype,
+		Mptype,
+		Mqtype,
 		Nftype,
 		Nhtype,
 		Nitype,
@@ -178,6 +187,9 @@ struct Function {
 		Nltype,
 		Nmtype,
 		Nntype,
+		Notype,
+		Nptype,
+		Nqtype,
 		Rftype,
 		Rgtype,
 		Rhtype,
@@ -244,6 +256,9 @@ struct Function {
 		mltype ml;
 		mmtype mm;
 		mntype mn;
+		motype mo;
+		mptype mp;
+		mqtype mq;
 		nftype nf;
 		nhtype nh;
 		nitype ni;
@@ -252,6 +267,9 @@ struct Function {
 		nltype nl;
 		nmtype nm;
 		nntype nn;
+		notype no;
+		nptype np;
+		nqtype nq;
 		rftype rf;
 		rgtype rg;
 		rhtype rh;
@@ -323,6 +341,9 @@ struct Function protoTypeMk(mktype fnc);
 struct Function protoTypeMl(mltype fnc);
 struct Function protoTypeMm(mmtype fnc);
 struct Function protoTypeMn(mntype fnc);
+struct Function protoTypeMo(motype fnc);
+struct Function protoTypeMp(mptype fnc);
+struct Function protoTypeMq(mqtype fnc);
 
 struct Function protoTypeNf(nftype fnc);
 struct Function protoTypeNh(nhtype fnc);
@@ -332,6 +353,9 @@ struct Function protoTypeNk(nktype fnc);
 struct Function protoTypeNl(nltype fnc);
 struct Function protoTypeNm(nmtype fnc);
 struct Function protoTypeNn(nntype fnc);
+struct Function protoTypeNo(notype fnc);
+struct Function protoTypeNp(nptype fnc);
+struct Function protoTypeNq(nqtype fnc);
 
 struct Function protoTypeRf(rftype fnc);
 struct Function protoTypeRg(rgtype fnc);

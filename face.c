@@ -1000,9 +1000,7 @@ void showChr(char val, char **str)
 }
 void showInt(int val, char **str)
 {
-printf("showInt %p\n",str);
 	int siz = (*str ? strlen(*str) : 0);
-printf("showInt siz %d\n",siz);
 	char *tmp = 0;
 	int num;
 	if (asprintf(&tmp,"Int(%d)",val) < 0) ERRFNC(-1);
@@ -1011,7 +1009,6 @@ printf("showInt siz %d\n",siz);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
-printf("showInt %s\n",*str);
 }
 void showInt32(int32_t val, char **str)
 {
@@ -1622,11 +1619,6 @@ int luaopen_face (lua_State *L)
 	luaxExtend(L,"writeNew",protoTypeLm(writeNew));
 	luaxExtend(L,"writeOld",protoTypeLn(writeOld));
 
-	lua_pushcfunction(L, showEnumLua); lua_setglobal(L, "showEnum");
-	lua_pushcfunction(L, showFieldLua); lua_setglobal(L, "showField");
-	lua_pushcfunction(L, showOpenLua); lua_setglobal(L, "showOpen");
-	lua_pushcfunction(L, showCloseLua); lua_setglobal(L, "showClose");
-
 	luaxExtend(L,"showStr",protoTypeMf(showStr));
 	luaxExtend(L,"showDat",protoTypeMh(showDat));
 	luaxExtend(L,"showChr",protoTypeMi(showChr));
@@ -1635,11 +1627,10 @@ int luaopen_face (lua_State *L)
 	luaxExtend(L,"showNum",protoTypeMl(showNum));
 	luaxExtend(L,"showNew",protoTypeMm(showNew));
 	luaxExtend(L,"showOld",protoTypeMn(showOld));
-
-	lua_pushcfunction(L, hideEnumLua); lua_setglobal(L, "hideEnum");
-	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
-	lua_pushcfunction(L, hideOpenLua); lua_setglobal(L, "hideOpen");
-	lua_pushcfunction(L, hideCloseLua); lua_setglobal(L, "hideClose");
+	luaxExtend(L,"showEnum",protoTypeMo(showEnum));
+	luaxExtend(L,"showOpen",protoTypeMp(showOpen));
+	luaxExtend(L,"showClose",protoTypeMq(showClose));
+	lua_pushcfunction(L, showFieldLua); lua_setglobal(L, "showField");
 
 	luaxExtend(L,"hideStr",protoTypeNf(hideStr));
 	luaxExtend(L,"hideDat",protoTypeNh(hideDat));
@@ -1649,5 +1640,10 @@ int luaopen_face (lua_State *L)
 	luaxExtend(L,"hideNum",protoTypeNl(hideNum));
 	luaxExtend(L,"hideNew",protoTypeNm(hideNew));
 	luaxExtend(L,"hideOld",protoTypeNn(hideOld));
+	luaxExtend(L,"hideEnum",protoTypeNo(hideEnum));
+	luaxExtend(L,"hideOpen",protoTypeNp(hideOpen));
+	luaxExtend(L,"hideClose",protoTypeNq(hideClose));
+	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
+
 	return 0;
 }
