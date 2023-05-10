@@ -200,26 +200,6 @@ void shareCallback(void *key)
 	struct Wrap *ptr = &wrap[sub];
 	if (ptr->nxt == args) {ptr->nxt = wake; wake = sub;}}
 }
-void showUnion(char **str, int *len, struct Generic *ptr)
-{
-	// TODO autogenerate
-}
-void hideUnion(const char *str, int *len, int typ, struct Generic *ptr)
-{
-	// TODO autogenerate
-}
-void readUnion(struct Generic *ptr, int typ, int idx)
-{
-	// TODO autogenerate
-}
-void writeUnion(struct Generic *ptr, int idx)
-{
-	// TODO autogenerate
-}
-int identUnion(struct Generic *ptr)
-{
-	return 0; // TODO autogenerate
-}
 void shareLoop(int src, int dst, int stp, int dtp)
 {
 	if (stp == dtp) {loopType(stp,src,dst); return;}
@@ -227,10 +207,10 @@ void shareLoop(int src, int dst, int stp, int dtp)
 	if (stp == identType("Dat") && dtp == identType("Generic")) ERROR();
 	if (stp == identType("Dat")) {readDat(dat0,src); loopType(dtp,idx0,dst); return;}
 	if (stp == identType("Str") && dtp == identType("Dat")) {char *str = 0; int len = 0; int typ = 0; readStr(&str,src); datxNone(dat0); typ = sharePeek(str,&len); len = 0; hideType(str,&len,typ,idx0); writeDat(*dat0,dst); free(str); return;}
-	if (stp == identType("Str") && dtp == identType("Generic")) {struct Generic gen = {0}; char *str = 0; int len = 0; int typ = 0; readStr(&str,src); typ = sharePeek(str,&len); hideUnion(str,&len,typ,&gen); writeGeneric(&gen,dst); freeGeneric(&gen); free(str); return;}
+	if (stp == identType("Str") && dtp == identType("Generic")) {struct Generic gen = {0}; char *str = 0; int len = 0; int typ = 0; readStr(&str,src); typ = sharePeek(str,&len); hideUnion(&gen,typ,str,&len); writeGeneric(&gen,dst); freeGeneric(&gen); free(str); return;}
 	if (stp == identType("Str")) {char *str = 0; int len = 0; readStr(&str,src); hideType(str,&len,dtp,dst); free(str); return;}
 	if (stp == identType("Generic") && dtp == identType("Dat")) {struct Generic gen = {0}; readGeneric(&gen,src); datxNone(dat0); writeUnion(&gen,idx0); writeDat(*dat0,dst); freeGeneric(&gen); return;}
-	if (stp == identType("Generic") && dtp == identType("Str")) {struct Generic gen = {0}; char *str = 0; int len = 0; readGeneric(&gen,src); showUnion(&str,&len,&gen); writeStr(str,dst); freeGeneric(&gen); free(str); return;}
+	if (stp == identType("Generic") && dtp == identType("Str")) {struct Generic gen = {0}; char *str = 0; readGeneric(&gen,src); showUnion(&gen,&str); writeStr(str,dst); freeGeneric(&gen); free(str); return;}
 	if (stp == identType("Generic")) {struct Generic gen = {0}; readGeneric(&gen,src); if (identUnion(&gen) != dtp) ERROR(); writeUnion(&gen,dst); freeGeneric(&gen); return;}
 	if (dtp == identType("Dat")) {datxNone(dat0); loopType(stp,src,idx0); writeDat(*dat0,dst); return;}
 	if (dtp == identType("Str")) {char *str = 0; showType(&str,stp,src); writeStr(str,dst); free(str); return;}
