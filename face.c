@@ -1241,83 +1241,6 @@ int hideDat(void **val, const char *str, int *siz)
 	return 1;
 }
 
-int hideEnumLua(lua_State *lua)
-{      
-	luaerr = lua;
-	int siz = lua_tonumber(lua,4);
-	if (hideEnum(lua_tostring(lua,1),lua_tostring(lua,2),lua_tostring(lua,3),&siz))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushnumber(lua,siz);
-	return 2;
-}      
-int hideFieldLua(lua_State *lua)
-{      
-	luaerr = lua;
-	int siz = lua_tonumber(lua,3);
-	int arg = lua_tonumber(lua,4);
-	int *sub = malloc(arg*sizeof(int));
-	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
-	if (hideFieldV(lua_tostring(lua,1),lua_tostring(lua,2),&siz,arg,sub))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushnumber(lua,siz);
-	free(sub);
-	return 2;
-}      
-int hideOpenLua(lua_State *lua)
-{
-	luaerr = lua;
-	int siz = lua_tonumber(lua,3);
-	if (hideOpen(lua_tostring(lua,1),lua_tostring(lua,2),&siz))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushnumber(lua,siz);
-	return 2;
-}
-int hideCloseLua(lua_State *lua)
-{
-	luaerr = lua;
-	int siz = lua_tonumber(lua,2);
-	if (hideClose(lua_tostring(lua,1),&siz))
-	lua_pushnumber(lua,1); else lua_pushnil(lua);
-	lua_pushnumber(lua,siz);
-	return 2;
-}
-int showEnumLua(lua_State *lua)
-{      
-	char *str = strdup(lua_tostring(lua,3));
-	luaerr = lua;
-	showEnum(lua_tostring(lua,1),lua_tostring(lua,2),&str);
-	lua_pushstring(lua,str);  free(str);
-	return 1;
-}
-int showFieldLua(lua_State *lua)
-{
-	char *str = strdup(lua_tostring(lua,2));
-	int arg = lua_tonumber(lua,3);
-	int *sub = malloc(arg*sizeof(int));
-	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
-	luaerr = lua;
-	showFieldV(lua_tostring(lua,1),&str,arg,sub);
-	lua_pushstring(lua,str); free(str);
-	free(sub);
-	return 1;
-}      
-int showOpenLua(lua_State *lua)
-{
-	char *str = strdup(lua_tostring(lua,2));
-	luaerr = lua;
-	showOpen(lua_tostring(lua,1),&str);
-	lua_pushstring(lua,str); free(str);
-	return 1;
-}
-int showCloseLua(lua_State *lua)
-{
-	char *str = strdup(lua_tostring(lua,1));
-	luaerr = lua;
-	showClose(&str);
-	lua_pushstring(lua,str); free(str);
-	return 1;
-}
-
 void readStrHs(hftype fnc, int idx)
 {
 	char *str = 0;
@@ -1536,6 +1459,7 @@ void showOldHs(float val, const char *str, hftype fnc)
 	fnc(tmp);
 	free(tmp);
 }
+
 void noteLua(int idx)
 {
 	int val = luaxCall(luanote,protoCloseCf(idx));
@@ -1558,11 +1482,37 @@ void errFuncLua(const char *str)
 	if (luaerr) free(luaerr);
 	luafunc = strdup(str);
 }
+int hideFieldLua(lua_State *lua)
+{
+	luaerr = lua;
+	int siz = lua_tonumber(lua,3);
+	int arg = lua_tonumber(lua,4);
+	int *sub = malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
+	if (hideFieldV(lua_tostring(lua,1),lua_tostring(lua,2),&siz,arg,sub))
+	lua_pushnumber(lua,1); else lua_pushnil(lua);
+	lua_pushnumber(lua,siz);
+	free(sub);
+	return 2;
+}
+int showFieldLua(lua_State *lua)
+{
+	char *str = strdup(lua_tostring(lua,2));
+	int arg = lua_tonumber(lua,3);
+	int *sub = malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
+	luaerr = lua;
+	showFieldV(lua_tostring(lua,1),&str,arg,sub);
+	lua_pushstring(lua,str); free(str);
+	free(sub);
+	return 1;
+}
 int luaopen_luax(lua_State *L);
 void luaxExtend(lua_State *L, const char *str, struct Function fnc);
 int luaopen_face (lua_State *L)
 {
 	luaopen_luax(L);
+
 	luaxExtend(L,"noteFunc",protoTypeEh(noteFuncLua));
 	luaxExtend(L,"errFunc",protoTypeEh(errFuncLua));
 	luaxExtend(L,"closeIdent",protoTypeCf(closeIdent));
