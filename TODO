@@ -1,27 +1,18 @@
 
-Write liner.lua sharer.lua planer.lua holer.lua.
+Add microcode sufficient for hello triangle. Add hello triangle to boot test. Add microcode sufficient for transformation. Finish transformation functions. Demonstrate each transformation. Add per polytope and per plane matrices. Add several triangles to demonstrate each transformation mode separately. At end of boot test, drop into user mode with transform, refine, additive, subtractive mode set by function keys. Add all, some, one distinction to modes. Move boot test triangles from boot code to files created by share in planer.lua. In planer.lua using share, open two processes sharing per polytope files and having their own files for different views, uniquefying boundary identifiers by file and location. Write spacer.lua that converts plane fields to and from sidedness fields according to request fields. Move all but creation of test files from planer.lua and spacer.lua to sculpt.lua. Write plane.cppx for Dell.
 
-Write pipe.cpp to convert proprietary into AV pipe.
+pager.log File -> ./page -> window,keyboard -> ./page -> File
+waver.log Scope -> ./wave -> usb-a -> ./wave -> Data
+framer.log Data -> ./frame -> window,selection -> ./frame -> Data
+taper.log Data -> ./tape -> usb-c -> ./tape -> Data
+phoner.log Data -> ./phone -> speaker,microphone -> ./phone -> Data
+piper.log Data -> ./pipe -> .mov -> ./pipe -> Data
 
-Write frame.cpp to display and capture with AV pipe.
+Perhaps enhance show.lua to use map from enum constant and struct name to basename, with not found a match if no basename given, so the Share struct goes only in share.h. Figure out why lineCpp.o depends on luaxC.o. Suppress alloc*(*,0) and for (*;*<0;*) of zero size field from show.lua.
 
-Write tape.cpp to convert BMD to and from AV pipe.
+Make face.c (NUMOPEN) datx.c (NUMOPEN) argx.c (NUMARGX) file.c (NUMFILE) arrays into array of malloc free struct. Add memxLeak that checks for memory leaks after calling memxDone on each use and run.
 
-Write wave.cpp to convert digiscope into AV pipe.
-
-Write phone.cpp that inputs and outputs audio to AV pipe.
-
-Write page.cpp to read and write file from widgets.
-
-Write Dell versions of plane phone page pipe frame.
-
-Write microcode stubs and incrementally replace with production.
-
-Write sculpt.lua and production plane state machine.
-
-Write print.lua to find all overlaps and spaces.
-
-Write play.lua that integrates files, audio, video, and polytopes.
+Optimize depend.lua to build each target in separate clean directory, and copy from that directory in preference to push.
 
 Develop Theory for coincidences as sets of hyperplane classifications.
 
@@ -29,4 +20,4 @@ Replace Theory by an agda proof.
 
 Make stomp boxes that add wave with frequency multiplied or divided.
 
-Plug in Digiscope BMD Audient Roland.
+Plug in Mac Dell Digiscope BMD Audient Roland.

@@ -103,78 +103,33 @@ share test queues between stages that permute and modify pipe streams.
 
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
-Input through C to two of DE, one directly with direct feedback,
-and the other through diveder with feedback through divider.
-The DE with direct feedback goes to several B to f with input.
-The DE with indirect feedback goes to several A with rate from f.
- a) two levels to level, (1 opamp; no feedback)
- b) two levels to level, (1 opamp, 4 resistors; difference)
- c) two levels to level, (1 opamp, 4 resistors; average)
- d) level to slope, (1 opamp, 1 capacitor, 1 resistor; negative differential)
- e) slope to level, (1 opamp, 1 capacitor, 1 resistor; integral)
- f) level and edge to level, (2 opamps, 1 capacitor, 1 mosfet; sample)
- A) triangle to triangle: (10 opamps; single; rate, width, high)
-  (triangle,square)=input,
-  output=e(!higher&!lower&(square=sign)?(middle?done:rate):zero),
-  higher=a(triangle>half?1:-1),
-  lower=a(low>triangle?1:-1),
-  middle=a(triangle>mid?1:-1),
-  zero=a(0>output?1:-1),
-  done=b(0-rate),
-  mid=b(half-width),
-  low=b(mid-width),
-  half=c((sign+2*high)/2),
-  sign=a(0>high?1:-1),
- B) triangle to edge: (6 opamps; detect; width, high)
-  (triangle,square)=input
-  output=a(!higher&!lower&(square=sign)?1:-1)
-  higher=a(triangle>half?1:-1),
-  lower=a(low>triangle?1:-1),
-  low=b(mid-width),
-  half=c((sign+2*high)/2),
-  sign=a(0>high?1:-1),
- C) signal to square: (3 opamps; convert)
-  orthogonal=e(input)
-  opposite=e(orthogonal)
-  output=a(0>opposite?1:-1)
- D) level to square (8 opamps; vco; high, low)
-  poshigh=a(poslvl>high?1:-1)
-  poslow=a(low>poslvl?1:-1)
-  poslvl=e(neglow|(poshigh&!neghigh)?input:unput)
-  neghigh=a(neglvl>high?1:-1)
-  neglow=a(low>neglvl?1:-1)
-  neglvl=e(poshigh|(neghigh&!poslow)?input:unput)
-  triangle=c((poslvl+neglvl)/2)
-  square=a(poshigh|neglow>0?1:-1)
-  output=(triangle,square)
-  unput=b(0-input)
- E) two squares to level: (8 opamps; pll; small, high, low)
-  (reference,feedback)=input
-  refval=d(reference)
-  refsgn=a(refval>0?1:-1)
-  refabs=b((refsgn?refval:0)-(refsgn?0:refval))
-  feedval=d(feedback)
-  feedsgn=a(feedval>0?1:-1)
-  feedabs=b((feedsgn?feedval:0)(feedsgn?0:feedval))
-  slope=b(refabs-feedabs)
-  output=e(slope)
-Phasebox has power, 2 channel signal input, square input output, signal triangle output.
- One channel is to produce the triangle; one is pass through.
- This produces whatever triangle slope needed so square of input equals square input,
- where square output is sw user of triangle.
-Fractionbox has power, square input output, phase slope input.
- Slope is how much to increment per input edge.
- Phase is when to reset and send output edge.
-Stompbox has power, phase slope output, button and two pots.
- Output remains unchanged until button pressed.
-Bucketbox has power, pot for delay, phase slope input, phase slope output.
-Latchbox has power, signal triangle input, phase slope input, phase slope output.
- Phase is passed through. Slope is of latch gate.
- Slope output is what was latched at phase.
- This requires trim pot for length of gate.
-Hatbox has power, signal triangle input, phase slope input, signal triangle output.
- Phase input is when top of hat should be. Slope input is of hat.
- This requires trim pot for length of hat.
+AB: Alterbox: wave+wave->wave averager
+BB: Bitbox: wave->square double integrator
+OB: Onebox: square->square clock divider
+FB: Flopbox: pulse->square stay opposite to last pulse
+RB: Ratebox: pulse->rate add pulse to constant
+PB: Pulsebox: phase+triangle->pulse pulse at the phase on the triangle
+CB: Clipbox: wave->pulse saturation or zero
+WB: Whatbox: square+square->pulse comparator
+SB: Slopebox: square+rate->triangle increase or decrease at given rate
+TB:Tribox: wave->triangle same frequency IT=SB(BB(IW),RB(CB(IT)))
+PB: Phasebox: potentiometer->phase
+ For potentiometer x from -1 to 1, we want y(-1) = y(0) = y(1) = 0.
+ For x between -1/2 and 1/2, y(x) = 2*(0-x).
+ For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
+DB: Delaybox: potentiometer+phase->phase shift phase
+LB: Lockbox: square+square->square+triangle equalize HS=BB(HT=SB(FB(CB(HT)),RB(WB(IS,FS))))
+HB: Hatbox: rate+phase+triangle->pulse sampler HP=SB(FB(IR-DB(IR)),IR)
+OW: output wave
+HP: harmonic pulse
+HT: harmonic triangle
+HS: harmonic square
+IW: inout wave
+IR: input rate
+OW = AB(IW,HP)
+HP = HB(IR,PB,HT)
+HS+HT = LB(IS,OB(HS))
+IR = RB(HB(IW,PB,TB(IW)))
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
