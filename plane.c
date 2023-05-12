@@ -353,11 +353,27 @@ void planeExchange(int cal, int ret)
 }
 int planeIval(struct Express *exp)
 {
-	return 0; // TODO unwrap datxEval
+	void *dat = 0;
+	int typ = datxEval(&dat,exp,identType("Int"));
+	if (typ != identType("Int")) ERROR();
+	return *datxIntz(0,dat);
 }
 float planeFval(struct Express *exp)
 {
-	return 0.0; // TODO unwrap datxEval
+	void *dat = 0;
+	int typ = datxEval(&dat,exp,identType("Old"));
+	if (typ != identType("Old")) ERROR();
+	return *datxOldz(0,dat);
+}
+void planeSetter(void *dat, int sub)
+{
+	if (sub < 0 || sub >= Configures) ERROR();
+	configure[sub] = *datxIntz(0,dat);
+}
+void planeGetter(void **dat, int sub)
+{
+	if (sub < 0 || sub >= Configures) ERROR();
+	datxInt(dat,configure[sub]);
 }
 void planeWake(enum Configure hint)
 {
@@ -616,7 +632,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	sem_init(&pending,0,0);
 	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,0);
 	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&finish[bit],0,0);
-	// TODO datxSetter datxGetter
+	datxSetter(planeSetter); datxGetter(planeGetter);
 	callDma = dma;
 	callSafe = safe;
 	callUser = user;

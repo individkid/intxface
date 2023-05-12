@@ -106,28 +106,23 @@ distorted by interpolation of signal at different frequencies.
 AB: Alterbox: wave+wave->wave averager
 BB: Bitbox: wave->square double integrator
 OB: Onebox: square->square clock divider
-FB: Flopbox: pulse->square stay opposite to last pulse
-RB: Ratebox: pulse->rate add pulse to constant
-PB: Pulsebox: phase+triangle->pulse pulse at the phase on the triangle
-CB: Clipbox: wave->pulse saturation or zero
-WB: Whatbox: square+square->pulse comparator
+FB: Fishbox: inpulse->square flip flop to stay opposite from last inpulse
+RB: Ratebox: inpulse->rate add inpulse to constant
+PB: Pulsebox: phase+triangle->inpulse inpulse at the phase on the triangle
+CB: Clipbox: wave->inpulse saturated to negative, zero to positive, or to zero
+KB: Knockbox: wave->inpulse saturated to sign, or to zero
+WB: Whatbox: square+square->inpulse comparator
 SB: Slopebox: square+rate->triangle increase or decrease at given rate
-TB:Tribox: wave->triangle same frequency IT=SB(BB(IW),RB(CB(IT)))
+TB: Tripbox: wave->triangle same frequency IT=SB(BB(IW),RB(CB(IT)))
 PB: Phasebox: potentiometer->phase
  For potentiometer x from -1 to 1, we want y(-1) = y(0) = y(1) = 0.
  For x between -1/2 and 1/2, y(x) = 2*(0-x).
  For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
 DB: Delaybox: potentiometer+phase->phase shift phase
-LB: Lockbox: square+square->square+triangle equalize HS=BB(HT=SB(FB(CB(HT)),RB(WB(IS,FS))))
-HB: Hatbox: rate+phase+triangle->pulse sampler HP=SB(FB(IR-DB(IR)),IR)
-OW: output wave
-HP: harmonic pulse
-HT: harmonic triangle
-HS: harmonic square
-IW: inout wave
-IR: input rate
-OW = AB(IW,HP)
-HP = HB(IR,PB,HT)
+LB: Lockbox: square+square->square+triangle equalize HS=BB(HT=SB(FB(KB(HT)),RB(WB(IS,FS))))
+HB: Hatbox: rate+phase+triangle->wave sampler SB(FB(PB(GP,GT)-PB(DB(GP),GT)),GR)
+OW = AB(IW,HW)
+HW = HB(IR,PB,HT)
 HS+HT = LB(IS,OB(HS))
 IR = RB(HB(IW,PB,TB(IW)))
 

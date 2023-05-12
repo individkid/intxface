@@ -339,6 +339,10 @@ int datxNums(void *dat)
 {
 	return *(int*)dat/sizeof(double);
 }
+int datxOlds(void *dat)
+{
+	return *(int*)dat/sizeof(float);
+}
 void *datxData(void *dat)
 {
 	return (void*)(((int*)dat)+1);
@@ -368,6 +372,11 @@ double *datxNumz(int num, void *dat)
 	if (num >= datxNums(dat)) ERROR();
 	return (double*)datxPtrz(num*sizeof(double),dat);
 }
+float *datxOldz(int num, void *dat)
+{
+	if (num >= datxNums(dat)) ERROR();
+	return (float*)datxPtrz(num*sizeof(double),dat);
+}
 void datxNone(void **dat)
 {
 	*dat = realloc(*dat,sizeof(int));
@@ -396,6 +405,12 @@ void datxNum(void **dat, double val)
 	*dat = realloc(*dat,sizeof(val)+sizeof(int));
 	*(int*)*dat = sizeof(val);
 	*datxNumz(0,*dat) = val;
+}
+void datxOld(void **dat, float val)
+{
+	*dat = realloc(*dat,sizeof(val)+sizeof(int));
+	*(int*)*dat = sizeof(val);
+	*datxOldz(0,*dat) = val;
 }
 #define BINARY_CMP(LFT,RGT) strcmp(LFT,RGT)
 #define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
