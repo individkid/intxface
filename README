@@ -105,25 +105,27 @@ Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
 AB: Alterbox: wave+wave->wave averager
 BB: Bitbox: wave->square double integrator
-OB: Onebox: square->square clock divider
-FB: Fishbox: inpulse->square flip flop to stay opposite from last inpulse
-RB: Ratebox: inpulse->rate add inpulse to constant
-PB: Pulsebox: phase+triangle->inpulse inpulse at the phase on the triangle
-CB: Clipbox: wave->inpulse saturated to negative, zero to positive, or to zero
-KB: Knockbox: wave->inpulse saturated to sign, or to zero
-WB: Whatbox: square+square->inpulse comparator
-SB: Slopebox: square+rate->triangle increase or decrease at given rate
-TB: Tripbox: wave->triangle same frequency IT=SB(BB(IW),RB(CB(IT)))
-PB: Phasebox: potentiometer->phase
+CB: Clipbox: wave->impulse saturated to negative, zero to positive, or to zero
+DB: Delaybox: potentiometer+phase->phase shift phase
+FB: Fishbox: impulse->square flip flop to stay opposite from last impulse
+HB: Hatbox: rate+phase+triangle->wave sampler SB(FB(IB(GP,GT)-IB(DB(GP),GT)),GR)
+JB: Justbox: potentiometer->phase
  For potentiometer x from -1 to 1, we want y(-1) = y(0) = y(1) = 0.
  For x between -1/2 and 1/2, y(x) = 2*(0-x).
  For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
-DB: Delaybox: potentiometer+phase->phase shift phase
-LB: Lockbox: square+square->square+triangle equalize HS=BB(HT=SB(FB(KB(HT)),RB(WB(IS,FS))))
-HB: Hatbox: rate+phase+triangle->wave sampler SB(FB(PB(GP,GT)-PB(DB(GP),GT)),GR)
+KB: Knockbox: wave->impulse saturated to sign, or to zero
+LB: Lockbox: square+square->triangle equalize VB(RB(WB(GS,FS)))
+OB: Onebox: square->square clock divider
+PB: Pulsebox: phase+triangle->impulse impulse at the phase on the triangle
+RB: Ratebox: impulse->rate add impulse to constant
+SB: Slopebox: square+rate->triangle increase or decrease at given rate
+TB: Tripbox: wave->triangle same frequency IT=SB(BB(IW),RB(CB(IT)))
+VB: Voltbox: rate->triangle SB(FB(KB(VB)),GR)
+WB: Whatbox: square+square->impulse comparator
 OW = AB(IW,HW)
-HW = HB(IR,PB,HT)
-HS+HT = LB(IS,OB(HS))
+HW = HB(IR,JB,HT)
+HT = LB(IS,OB(HS))
+HS = BB(HT)
 IR = RB(HB(IW,PB,TB(IW)))
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
