@@ -103,30 +103,37 @@ share test queues between stages that permute and modify pipe streams.
 
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
-AB: Alterbox: wave+wave->wave averager
-BB: Bitbox: wave->square double integrator
-CB: Clipbox: wave->impulse saturated to negative, zero to positive, or to zero
-DB: Delaybox: potentiometer+phase->phase shift phase
-FB: Fishbox: impulse->square flip flop to stay opposite from last impulse
-HB: Hatbox: rate+phase+triangle->wave sampler SB(FB(IB(GP,GT)-IB(DB(GP),GT)),GR)
-JB: Justbox: potentiometer->phase
+Mostly constant are phase and rate, phase having an extra sign bit.
+Mostly zero is impulse. Periodic are impulse, wave, triangle, square.
+Alterbox: wave+wave->wave averager
+Gatebox: rate+impulse->wave passthrough or zero
+Lockbox: square+square->triangle pll
+Voltbox: rate->triangle vco
+Slopebox: square+rate->triangle increase or decrease at given rate
+Equalbox: wave->triangle same frequency
+Bitbox: wave->square double integrator
+Fishbox: impulse->square flip flop to stay opposite from last impulse
+Onebox: square->square clock divider
+Pulsebox: triangle+phase->impulse impulse at the phase on the triangle
+Clipbox: wave->impulse saturated to negative, zero to positive, or to zero
+Knockbox: wave->impulse saturated to sign, or to zero
+Whatbox: square+square->impulse comparator
+Ratebox: wave+impulse->rate average wave with constant upon impulse
+Justbox: potentiometer->phase adjuster
  For potentiometer x from -1 to 1, we want y(-1) = y(0) = y(1) = 0.
  For x between -1/2 and 1/2, y(x) = 2*(0-x).
  For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
-KB: Knockbox: wave->impulse saturated to sign, or to zero
-LB: Lockbox: square+square->triangle equalize VB(RB(WB(GS,FS)))
-OB: Onebox: square->square clock divider
-PB: Pulsebox: phase+triangle->impulse impulse at the phase on the triangle
-RB: Ratebox: impulse->rate add impulse to constant
-SB: Slopebox: square+rate->triangle increase or decrease at given rate
-TB: Tripbox: wave->triangle same frequency IT=SB(BB(IW),RB(CB(IT)))
-VB: Voltbox: rate->triangle SB(FB(KB(VB)),GR)
-WB: Whatbox: square+square->impulse comparator
-OW = AB(IW,HW)
-HW = HB(IR,JB,HT)
-HT = LB(IS,OB(HS))
-HS = BB(HT)
-IR = RB(HB(IW,PB,TB(IW)))
+Delaybox: potentiometer+phase->phase trim phase
+inputSquare: inputWave->Bitbox
+inputTriangle: inputWave->Equalbox
+inputPulse: inputTriangle+Justbox->Pulsebox
+inputRate: inputWave+inputPulse->Ratebox
+harmonicSquare: harmonicTriangle->Bitbox
+feedbackSquare: harmonicSquare->Onebox
+harmonicTrianlge: inputSquare+feedbackSquare->Lockbox
+harmonicPulse: harmonicTrianlge+Justbox->Pulsebox
+harmonicWave: inputRate+harmonicPulse->Gatebox
+outputWave: inputWave+harmonicWave->Alterbox
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
