@@ -105,35 +105,49 @@ Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
 Mostly constant are phase and rate, phase having an extra sign bit.
 Mostly zero is impulse. Periodic are impulse, wave, triangle, square.
-Alterbox: wave+wave->wave averager
-Gatebox: rate+impulse->wave passthrough or zero
-Lockbox: square+square->triangle pll
+Alterbox: wave+wave+wave->wave (1-wave2)*wave0+wave2*wave1
+Lockbox: square,square->triangle pll
+ square,square->Whatbox->Nudgebox->Voltbox
 Voltbox: rate->triangle vco
-Slopebox: square+rate->triangle increase or decrease at given rate
-Equalbox: wave->triangle same frequency
+ (triangle->Knockbox->Fishbox),rate->Slopebox
+Slopebox: square,rate->triangle increase or decrease at given rate
+Equalbox: square->triangle same frequency
+ square,(impulse->Nudgebox)->Slopebox->triangle->Clipbox->impulse
 Bitbox: wave->square double integrator
 Fishbox: impulse->square flip flop to stay opposite from last impulse
-Onebox: square->square clock divider
-Pulsebox: triangle+phase->impulse impulse at the phase on the triangle
+ (square>0 && impulse>-1/2) || (square<0 && impulse>1/2)
+Unitbox: potentiometer,square->square clock divider
+Zerobox: impulse->logic negative if zero, or positive
+ impulse>small || impulse<-small ? 1 : -1
+Phasebox: triangle,phase->logic at the phase on the triangle
+ phase->level0,sign0 phase->Delaybox->level1,sign1
+ (triangle>level0 ^ !sign0) && (triangle<level1 ^ !sign1)
 Clipbox: wave->impulse saturated to negative, zero to positive, or to zero
+ (wave>1-small || wave<small-1 ? -1 : (wave>-small && wave<small ? 1 : 0))
 Knockbox: wave->impulse saturated to sign, or to zero
-Whatbox: square+square->impulse comparator
-Ratebox: wave+impulse->rate average wave with constant upon impulse
+ (wave>1-small ? 1 : (wave<small-1 ? -1 : 0))
+Interbox: square->impulse differentiator
+Whatbox: square,square->impulse comparator
+ square0->Interbox->edge0 square1->Interbox->edge1
+ (edge0>0 ? edge0 : -edge0)-(edge1>0 ? edge1 : -edge1)
+Ratebox: wave,logic->rate average wave with constant upon logic
+Nudgebox: impulse->rate average wave with impulse upon nonzero
+ impulse,(impulse->Zerobox)->Ratebox
 Justbox: potentiometer->phase adjuster
  For potentiometer x from -1 to 1, we want y(-1) = y(0) = y(1) = 0.
  For x between -1/2 and 1/2, y(x) = 2*(0-x).
  For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
-Delaybox: potentiometer+phase->phase trim phase
+Delaybox: potentiometer,phase->phase trim phase
 inputSquare: inputWave->Bitbox
-inputTriangle: inputWave->Equalbox
-inputPulse: inputTriangle+Justbox->Pulsebox
-inputRate: inputWave+inputPulse->Ratebox
+inputTriangle: inputSquare->Equalbox
+inputLogic: inputTriangle,Justbox->Phasebox
+inputRate: inputWave,inputLogic->Ratebox
 harmonicSquare: harmonicTriangle->Bitbox
-feedbackSquare: harmonicSquare->Onebox
-harmonicTrianlge: inputSquare+feedbackSquare->Lockbox
-harmonicPulse: harmonicTrianlge+Justbox->Pulsebox
-harmonicWave: inputRate+harmonicPulse->Gatebox
-outputWave: inputWave+harmonicWave->Alterbox
+feedbackSquare: harmonicSquare->Unitbox
+harmonicTrianlge: inputSquare,feedbackSquare->Lockbox
+harmonicLogic: harmonicTrianlge,Justbox->Phasebox
+harmonicWave: harmonicLogic,1->Slopebox
+outputWave: inputWave,inputRate,harmonicWave->Alterbox
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
