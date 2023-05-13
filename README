@@ -106,6 +106,8 @@ distorted by interpolation of signal at different frequencies.
 Mostly constant are phase and rate, phase having an extra sign bit.
 Mostly zero is impulse. Periodic are impulse, wave, triangle, square.
 Alterbox: wave+wave+wave->wave (1-wave2)*wave0+wave2*wave1
+ Supersonic square wave with duty cycle from wave2 selects between
+ wave0 and wave1 for input to audio pass filter.
 Lockbox: square,square->triangle pll
  square,square->Whatbox->Nudgebox->Voltbox
 Voltbox: rate->triangle vco
@@ -146,8 +148,11 @@ harmonicSquare: harmonicTriangle->Bitbox
 feedbackSquare: harmonicSquare->Unitbox
 harmonicTrianlge: inputSquare,feedbackSquare->Lockbox
 harmonicLogic: harmonicTrianlge,Justbox->Phasebox
-harmonicWave: harmonicLogic,1->Slopebox
+harmonicWave: harmonicLogic,potentiometer->Slopebox
 outputWave: inputWave,inputRate,harmonicWave->Alterbox
+Potentiometers include input-phase, harmonic-phase,
+input-width, harmonic-width, harmonic-slope, harmonic-divider,
+vco-responsiveness, input-responsiveness, harmonic-responsiveness.
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
