@@ -104,12 +104,13 @@ share test queues between stages that permute and modify pipe streams.
 Analog input to phone includes bugle and found object percussion,
 distorted by interpolation of signal at different frequencies.
 Mostly constant are phase and rate, phase having an extra sign bit.
-Mostly zero is impulse. Periodic are impulse, wave, triangle, square.
-Alterbox: wave+wave+wave->wave (1-wave2)*wave0+wave2*wave1
- Supersonic square wave with duty cycle from wave2 selects between
- wave0 and wave1 for input to audio pass filter.
+Mostly zero is impulse. Mostly negative is gate.
+Periodic are gate, impulse, wave, triangle, square.
+Alterbox: gate,wave,wave->wave
+ (1/2+wave0/2)*((wave2<0)^(wave1>0))*wave1+(1/2-wave0/2)*wave2
+Gatebox: gate,wave->wave monotonic between negate, zero, and passthrough
 Lockbox: square,square->triangle pll
- square,square->Whatbox->Nudgebox->Voltbox
+ square,square->Makebox->Nudgebox->Voltbox
 Voltbox: rate->triangle vco
  (triangle->Knockbox->Fishbox),rate->Slopebox
 Slopebox: square,rate->triangle increase or decrease at given rate
@@ -119,7 +120,7 @@ Bitbox: wave->square double integrator
 Fishbox: impulse->square flip flop to stay opposite from last impulse
  (square>0 && impulse>-1/2) || (square<0 && impulse>1/2)
 Unitbox: potentiometer,square->square clock divider
-Zerobox: impulse->logic negative if zero, or positive
+Zerobox: impulse->gate negative if zero, or positive
  impulse>small || impulse<-small ? 1 : -1
 Phasebox: triangle,phase->logic at the phase on the triangle
  phase->level0,sign0 phase->Delaybox->level1,sign1
@@ -128,31 +129,44 @@ Clipbox: wave->impulse saturated to negative, zero to positive, or to zero
  (wave>1-small || wave<small-1 ? -1 : (wave>-small && wave<small ? 1 : 0))
 Knockbox: wave->impulse saturated to sign, or to zero
  (wave>1-small ? 1 : (wave<small-1 ? -1 : 0))
-Interbox: square->impulse differentiator
-Whatbox: square,square->impulse comparator
- square0->Interbox->edge0 square1->Interbox->edge1
+Openbox: square->impulse differentiator
+Makebox: square,square->impulse comparator
+ square0->Openbox->edge0 square1->Openbox->edge1
  (edge0>0 ? edge0 : -edge0)-(edge1>0 ? edge1 : -edge1)
-Ratebox: wave,logic->rate average wave with constant upon logic
 Nudgebox: impulse->rate average wave with impulse upon nonzero
  impulse,(impulse->Zerobox)->Ratebox
+Ratebox: wave,gate->rate average wave with constant upon logic
 Justbox: potentiometer->phase adjuster
  For potentiometer x from -1 to 1, we want y(-1) = y(0) = y(1) = 0.
  For x between -1/2 and 1/2, y(x) = 2*(0-x).
  For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
 Delaybox: potentiometer,phase->phase trim phase
-inputSquare: inputWave->Bitbox
-inputTriangle: inputSquare->Equalbox
-inputLogic: inputTriangle,Justbox->Phasebox
-inputRate: inputWave,inputLogic->Ratebox
-harmonicSquare: harmonicTriangle->Bitbox
-feedbackSquare: harmonicSquare->Unitbox
-harmonicTrianlge: inputSquare,feedbackSquare->Lockbox
-harmonicLogic: harmonicTrianlge,Justbox->Phasebox
-harmonicWave: harmonicLogic,potentiometer->Slopebox
-outputWave: inputWave,inputRate,harmonicWave->Alterbox
-Potentiometers include input-phase, harmonic-phase,
-input-width, harmonic-width, harmonic-slope, harmonic-divider,
-vco-responsiveness, input-responsiveness, harmonic-responsiveness.
+Weightbox: triangle,phase,wave->gate latch wave at phase
+ (triangle,phase->Phasebox),wave->Slopebox
+Frombox: inputWave->inputLevel
+ input-phase input-width Ratebox-responsiveness Slopebox-responsiveness
+ inputSquare: inputWave->Bitbox
+ inputTriangle: inputSquare->Equalbox
+ inputWeight: inputTriange,Justbox,inputWave->Weightbox
+ inputLevel: inputWave,inputWeight->Ratebox
+Harmonicbox: inputWave->harmonicTriangle
+ harmonic-divider Nudgebox-responsiveness Slopebox-responsiveness
+ inputSquare: inputWave->Bitbox
+ harmonicTriangle: inputSquare->Harmonicbox
+ harmonicSquare: harmonicTriangle->Bitbox
+ feedbackSquare: harmonicSquare->Unitbox
+ harmonicTriangle: givenSquare,feedbackSquare->Lockbox
+Tobox: inputWave,harmonicTriangle,inputLevel->outputWave
+ harmonic-phase harmonic-width harmonic-slope Slopebox-responsiveness
+ harmonicWave: harmonicTriangle,Justbox,potentiometer->Weightbox
+ outputWave: harmonicWave,inputLevel,inputWave->Alterbox
+Varybox: inputWave->outputWave
+ inputLevel: inputWave->Frombox
+ harmonicTriangle: inputWave->Harmonmicbox
+ outputWave: inputWave,harmonicTriangle,inputLevel->Tobox
+Alterbox,Bitbox,Clipbox,Delaybox,Equalbox,Frombox,Gatebox,Harmonicbox,I,
+Justbox,Knockbox,Levelbox,Makebox,Nudgebox,Openbox,Phasebox,Q,
+Ratebox,Slopebox,Tobox,U,Varybox,Weightbox,X,Y,Z.
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
