@@ -107,7 +107,7 @@ Mostly constant are phase and rate, phase having an extra sign bit.
 Mostly zero is impulse. Mostly negative is gate.
 Periodic are gate, impulse, wave, triangle, square.
 Alterbox: gate,wave,wave->wave
- (1/2+wave0/2)*((wave2<0)^(wave1>0))*wave1+(1/2-wave0/2)*wave2
+ (1/2+gate/2)*((wave2<0)^(wave1>0))*wave1+(1/2-gate/2)*wave2
 Gatebox: gate,wave->wave monotonic between negate, zero, and passthrough
 Lockbox: square,square->triangle pll
  square,square->Makebox->Nudgebox->Voltbox
@@ -147,8 +147,8 @@ Frombox: inputWave->inputLevel
  input-phase input-width Ratebox-responsiveness Slopebox-responsiveness
  inputSquare: inputWave->Bitbox
  inputTriangle: inputSquare->Equalbox
- inputWeight: inputTriange,Justbox,inputWave->Weightbox
- inputLevel: inputWave,inputWeight->Ratebox
+ inputPhase: inputTriangle,Justbox->Phasebox
+ inputLevel: inputWave,inputPhase->Ratebox
 Harmonicbox: inputWave->harmonicTriangle
  harmonic-divider Nudgebox-responsiveness Slopebox-responsiveness
  inputSquare: inputWave->Bitbox
@@ -158,7 +158,8 @@ Harmonicbox: inputWave->harmonicTriangle
  harmonicTriangle: givenSquare,feedbackSquare->Lockbox
 Tobox: inputWave,harmonicTriangle,inputLevel->outputWave
  harmonic-phase harmonic-width harmonic-slope Slopebox-responsiveness
- harmonicWave: harmonicTriangle,Justbox,potentiometer->Weightbox
+ harmonicPhase: harmonicTriangle,Justbox->Phasebox
+ harmonitWave: harmonicPhase,potentiometer->Slopebox
  outputWave: harmonicWave,inputLevel,inputWave->Alterbox
 Varybox: inputWave->outputWave
  inputLevel: inputWave->Frombox
