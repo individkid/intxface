@@ -141,8 +141,6 @@ Justbox: potentiometer->phase adjuster
  For x between -1/2 and 1/2, y(x) = 2*(0-x).
  For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
 Delaybox: potentiometer,phase->phase trim phase
-Weightbox: triangle,phase,wave->gate latch wave at phase
- (triangle,phase->Phasebox),wave->Slopebox
 Frombox: inputWave->inputLevel
  input-phase input-width Ratebox-responsiveness Slopebox-responsiveness
  inputSquare: inputWave->Bitbox
@@ -167,7 +165,7 @@ Varybox: inputWave->outputWave
  outputWave: inputWave,harmonicTriangle,inputLevel->Tobox
 Alterbox,Bitbox,Clipbox,Delaybox,Equalbox,Frombox,Gatebox,Harmonicbox,I,
 Justbox,Knockbox,Levelbox,Makebox,Nudgebox,Openbox,Phasebox,Q,
-Ratebox,Slopebox,Tobox,U,Varybox,Weightbox,X,Y,Z.
+Ratebox,Slopebox,Tobox,U,Varybox,W,X,Y,Z.
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files

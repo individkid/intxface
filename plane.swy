@@ -16,21 +16,23 @@ var compute = [MTLComputePipelineState?](repeating: nil, count: Int(Micros.rawVa
 var threads = [MTLSize?](repeating: nil, count: Int(Micros.rawValue))
 
 var lock1 = Lock()
+var pool1 = Pool()
 var lock2 = Lock()
+var pool2 = Pool()
 var count = Int(0)
 var delta = 0.0
 
-var triangle = Pend<Triangle>(lock1)
-var numeric = Pend<Numeric>(lock1)
-var vertex = Pend<Vertex>(lock1)
-var subject = Pend<Matrix>(lock1)
-var object = Pend<Matrix>(lock1)
-var element = Pend<Matrix>(lock1)
-var swarm = Pend<Vector>(lock1)
-var texture = Pend<Vector>(lock1)
-var basis = Pend<Basis>(lock1)
-var uniform = Pend<Uniform>(lock1)
-var pierce = Pend<Pierce>(lock2)
+var triangle = Pend<Triangle>(lock1,pool1)
+var numeric = Pend<Numeric>(lock1,pool1)
+var vertex = Pend<Vertex>(lock1,pool1)
+var subject = Pend<Matrix>(lock1,pool1)
+var object = Pend<Matrix>(lock1,pool1)
+var element = Pend<Matrix>(lock1,pool1)
+var swarm = Pend<Vector>(lock1,pool1)
+var texture = Pend<Vector>(lock1,pool1)
+var basis = Pend<Basis>(lock1,pool1)
+var uniform = Pend<Uniform>(lock1,pool1)
+var pierce = Pend<Pierce>(lock2,pool2)
 var array = [Slice]()
 
 func getRect() -> NSRect
@@ -59,6 +61,12 @@ func setFrame()
 class Refer
 {
 	var lock:Int = 0
+	var pool:Pool!
+	init(_ l:Int, _ p: Pool)
+	{
+		lock = l
+		pool = p
+	}
 }
 func toMutable<T>(_ list:[T], _ fnc:(_:Int,_:UnsafeMutablePointer<T>)->Void)
 {
@@ -101,42 +109,58 @@ class Lock
 {
 	var lock = [Refer]()
 }
+class Pool
+{
+	var pool = [Int]()
+}
 class Pend<T>
 {
-	var pend:MTLBuffer!
-	var last:MTLBuffer!
-	var refer:Refer!
+	var pend:Int!
+	var last:Int!
 	var lock:Lock!
-	init(_ l: Lock)
+	var pool:Pool!
+	var keep:[MTLBuffer]
+	var refer:[Refer]
+	init(_ l: Lock, _ p: Pool)
 	{
+		refer = [Refer]()
 		lock = l
+		pool = p
+		keep = [MTLBuffer]()
+	}
+	func make(_ length:Int) -> Int
+	{
+		if (pool.pool.count == 0) {
+			pool.pool.append(keep.count)
+			keep.append(device.makeBuffer(length:length)!)
+			refer.append(Refer(refer.count,pool))
+		}
+		return pool.pool.removeFirst()
 	}
 	func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
 	{
 		let len:Int = range.upperBound
 		let unit:Int = MemoryLayout<T>.size
 		let length:Int = len+(unit-len%unit)%unit;
-		if (pend == nil && last != nil && last.length < length) {
-			pend = device.makeBuffer(length:length)
-			pend.contents().copyMemory(from:last.contents(),byteCount:last.length)
-			last = nil
-		}
-		if (pend == nil && last != nil && refer.lock == 0)
-		{
+		if (pend == nil && last != nil && keep[last].length < length) {
+			let buf = device.makeBuffer(length:length)!
+			buf.contents().copyMemory(from:keep[last].contents(),byteCount:keep[last].length)
+			keep[last] = buf
 			pend = last
 			last = nil
 		}
 		if (pend == nil && last != nil) {
-			pend = device.makeBuffer(bytes:last.contents(),length:last.length)
+			pend = make(keep[last].length)
+			keep[pend].contents().copyMemory(from:keep[last].contents(),byteCount:keep[last].length)
 			last = nil
 		}
 		if (pend == nil) {
-			pend = device.makeBuffer(length:length)
+			pend = make(length)
 		}
 		if (pend != nil) {
 			let base:Int = range.lowerBound
 			let size:Int = range.upperBound-range.lowerBound
-			pend.contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
+			keep[pend].contents().advanced(by:base).copyMemory(from:ptr,byteCount:size)
 		}
 	}
 	func set(_ vals: [T], _ index: Int)
@@ -171,15 +195,13 @@ class Pend<T>
 	func get() -> MTLBuffer
 	{
 		if (last == nil && pend != nil) {
-			refer = Refer()
 			last = pend
 			pend = nil
 		}
 		if (last != nil) {
-			lock.lock.append(refer)
-			refer.lock += 1
+			lock.lock.append(refer[last])
 		}
-		return last
+		return keep[last]
 	}
 }
 func getTexture(_ rect:NSRect) -> MTLTexture?
@@ -195,11 +217,11 @@ func getLock() -> MTLCommandBufferHandler
 {
 	let temp = lock1.lock
 	lock1.lock = []
-	return {(MTLCommandBuffer) in for ref in temp {ref.lock -= 1}}
+	return {(MTLCommandBuffer) in for ref in temp {ref.pool.pool.append(ref.lock)}}
 }
 func setLock()
 {
-	for ref in lock2.lock {ref.lock -= 1}
+	for ref in lock2.lock {ref.pool.pool.append(ref.lock)}
 	lock2.lock = []
 }
 func getReady() -> MTLCommandBufferHandler
