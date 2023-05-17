@@ -6,6 +6,7 @@ Finish transformation functions.
 Demonstrate each transformation.
 Add per polytope and per plane matrices.
 Add several triangles to demonstrate each transformation mode separately.
+Add microcode for pierce point, and print pierce point under cursor.
 At end of boot test, drop into user mode
 with transform, refine, additive, subtractive mode set by function keys.
 Add all, some, one distinction to modes.
