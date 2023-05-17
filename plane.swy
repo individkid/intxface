@@ -135,6 +135,9 @@ class Pend<T>
 			keep.append(device.makeBuffer(length:length)!)
 			refer.append(Refer(refer.count,pool))
 		}
+		if (keep[pool.pool[0]].length < length) {
+			keep[pool.pool[0]] = device.makeBuffer(length:length)!
+		}
 		return pool.pool.removeFirst()
 	}
 	func set(_ ptr: UnsafeRawPointer, _ range: Range<Int>)
@@ -142,13 +145,6 @@ class Pend<T>
 		let len:Int = range.upperBound
 		let unit:Int = MemoryLayout<T>.size
 		let length:Int = len+(unit-len%unit)%unit;
-		if (pend == nil && last != nil && keep[last].length < length) {
-			let buf = device.makeBuffer(length:length)!
-			buf.contents().copyMemory(from:keep[last].contents(),byteCount:keep[last].length)
-			keep[last] = buf
-			pend = last
-			last = nil
-		}
 		if (pend == nil && last != nil) {
 			pend = make(keep[last].length)
 			keep[pend].contents().copyMemory(from:keep[last].contents(),byteCount:keep[last].length)
