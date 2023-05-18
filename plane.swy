@@ -14,12 +14,14 @@ var param = [MTLRenderPassDescriptor?](repeating: nil, count: Int(Micros.rawValu
 var depth = [MTLDepthStencilState?](repeating: nil, count: Int(Micros.rawValue))
 var compute = [MTLComputePipelineState?](repeating: nil, count: Int(Micros.rawValue))
 var threads = [MTLSize?](repeating: nil, count: Int(Micros.rawValue))
+var pool = [MTLCommandBuffer]()
 
 var lock1 = Lock()
 var pool1 = Pool()
 var lock2 = Lock()
 var pool2 = Pool()
 var count = Int(0)
+var limit = Int(3)
 var delta = 0.0
 
 var triangle = Pend<Triangle>(lock1,pool1)
@@ -227,9 +229,17 @@ func getReady() -> MTLCommandBufferHandler
 	let last = pierce.get()
 	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents()))); setLock()}
 }
-func getCount() -> MTLCommandBufferHandler
+func getCount(_ code:MTLCommandBuffer) -> MTLCommandBufferHandler
 {
-	return {(MTLCommandBuffer) in count -= 1; planeSafe(Waits,RegisterDone)}
+	count += 1
+	return {(MTLCommandBuffer) in count -= 1; pool.append(code); planeSafe(Waits,RegisterDone)}
+}
+func getCode() -> MTLCommandBuffer
+{
+	if (pool.count == 0) {
+		pool.append(queue.makeCommandBuffer()!)
+	}
+	return pool.removeFirst()
 }
 class getApplication : NSObject, NSApplicationDelegate
 {
@@ -305,7 +315,7 @@ func swiftOpen()
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
 		fputs("plane: cannot load library: plane.metallib\n",stderr);exitErr(#file,#line);return}
 	for sub in 0...Int(Micros.rawValue-1) {let shader = Micro(UInt32(sub)); switch (shader) {
-	case (Dipoint):
+	case (Dipoint): fallthrough case (Diplane):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Corner)!)) else {
 		print("cannot make vertex_render");exitErr(#file,#line);return}
 	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Fragment)!)) else {
@@ -318,16 +328,18 @@ func swiftOpen()
 	render[sub] = try? device.makeRenderPipelineState(descriptor:pipe)
 	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
 	param[sub] = MTLRenderPassDescriptor()
+	param[sub]!.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
+	param[sub]!.depthAttachment.texture = getTexture(rect)
+	param[sub]!.depthAttachment.storeAction = .dontCare
+	param[sub]!.depthAttachment.loadAction = .clear
 	param[sub]!.colorAttachments[0].clearColor = color
 	param[sub]!.colorAttachments[0].storeAction = .store
-	param[sub]!.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
-	param[sub]!.depthAttachment.storeAction = .dontCare
-	param[sub]!.depthAttachment.texture = getTexture(rect)
+	param[sub]!.colorAttachments[0].loadAction = .clear
     let desc = MTLDepthStencilDescriptor()
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
     desc.isDepthWriteEnabled = true
     depth[sub] = device.makeDepthStencilState(descriptor: desc)
-    case (Adpoint):
+	case (Adpoint): fallthrough case (Adplane):
 	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Micro__Str(Micro(UInt32(sub)))!)) else {
 	 	print("cannot make kernel_pierce");exitErr(#file,#line);return}
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
@@ -401,6 +413,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		case (SwarmSize): uniform.set(Int(center.val![sub]),\Uniform.ssz)
 		case (TextureSize): uniform.set(Int(center.val![sub]),\Uniform.xsz)
 		case (BasisSize): uniform.set(Int(center.val![sub]),\Uniform.bsz)
+		case (RegisterDone): limit = Int(center.val![sub])
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
@@ -446,13 +459,11 @@ func swiftInfo(_ query: Configure) -> Int32
 func swiftDraw(_ shader: Micro, _ start: Int32, _ stop: Int32)
 {
 	let sub = Int(shader.rawValue)
+	let code = getCode()
 	switch (shader) {
 	case (Dipoint): fallthrough case (Diplane):
-	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line);return}
     guard let draw = layer.nextDrawable() else {exitErr(#file,#line);return}
 	param[sub]!.colorAttachments[0].texture = draw.texture
-	param[sub]!.colorAttachments[0].loadAction = .clear
-	param[sub]!.depthAttachment.loadAction = .clear
 	if (array.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.endEncoding()
@@ -478,12 +489,7 @@ func swiftDraw(_ shader: Micro, _ start: Int32, _ stop: Int32)
 		param[sub]!.depthAttachment.loadAction = .load
 	}
 	code.present(draw)
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
-	count += 1
-	code.commit()
 	case (Adpoint): fallthrough case (Adplane):
-	guard let code = queue.makeCommandBuffer() else {exitErr(#file,#line);return}
 	for range in array[Int(start)...Int(stop)] {
 		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
 		var nums:[Int] = []
@@ -516,11 +522,10 @@ func swiftDraw(_ shader: Micro, _ start: Int32, _ stop: Int32)
 		}
 	}
 	code.addCompletedHandler(getReady())
-	code.addScheduledHandler(getLock())
-	code.addCompletedHandler(getCount())
-	count += 1
-	code.commit()
 	default: exitErr(#file,#line);return}
+	code.addScheduledHandler(getLock())
+	code.addCompletedHandler(getCount(code))
+	code.commit()
 }
 
 // MAIN

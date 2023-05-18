@@ -108,7 +108,7 @@ Mostly zero is impulse. Mostly negative is gate.
 Periodic are gate, impulse, wave, triangle, square.
 Alterbox: gate,wave,wave->wave
  (1/2+gate/2)*((wave2<0)^(wave1>0))*wave1+(1/2-gate/2)*wave2
-Gatebox: gate,wave->wave monotonic between negate, zero, and passthrough
+Gatebox: impulse,wave->wave monotonic between negate, zero, and passthrough
 Lockbox: square,square->triangle pll
  square,square->Makebox->Nudgebox->Voltbox
 Voltbox: rate->triangle vco
