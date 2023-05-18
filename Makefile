@@ -111,10 +111,10 @@ endif
 clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
-	rm -f plane.sw plane.cpp plane.g
+	rm -f metal.sw plane.cpp plane.g
 	rm -f pipe.sw page.sw
 	rm -f typra facer typer filer planra spacra
-	rm -f hole file line plane space share
+	rm -f hole file line metal space share
 	rm -f pipe page
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
