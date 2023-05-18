@@ -2,7 +2,7 @@
 .SUFFIXES:
 .DELETE_ON_ERROR:
 
-all: facer.log typra.log typer.log filer.log planer.log spacra.log hole line plane space pipe page share
+all: facer.log typra.log typer.log filer.log planer.log spacra.log hole line metal space pipe page share
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
