@@ -21,7 +21,6 @@ var pool1 = Pool()
 var lock2 = Lock()
 var pool2 = Pool()
 var count = Int(0)
-var limit = Int(3)
 var delta = 0.0
 
 var triangle = Pend<Triangle>(lock1,pool1)
@@ -413,7 +412,6 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		case (SwarmSize): uniform.set(Int(center.val![sub]),\Uniform.ssz)
 		case (TextureSize): uniform.set(Int(center.val![sub]),\Uniform.xsz)
 		case (BasisSize): uniform.set(Int(center.val![sub]),\Uniform.bsz)
-		case (RegisterDone): limit = Int(center.val![sub])
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
