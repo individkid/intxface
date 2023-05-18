@@ -315,7 +315,7 @@ func swiftOpen()
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
 		fputs("plane: cannot load library: plane.metallib\n",stderr);exitErr(#file,#line);return}
 	for sub in 0...Int(Micros.rawValue-1) {let shader = Micro(UInt32(sub)); switch (shader) {
-	case (Dipoint): fallthrough case (Diplane):
+	case (Dipoint): // fallthrough case (Diplane):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Corner)!)) else {
 		print("cannot make vertex_render");exitErr(#file,#line);return}
 	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Fragment)!)) else {
@@ -339,7 +339,7 @@ func swiftOpen()
     desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
     desc.isDepthWriteEnabled = true
     depth[sub] = device.makeDepthStencilState(descriptor: desc)
-	case (Adpoint): fallthrough case (Adplane):
+	case (Adpoint): // fallthrough case (Adplane):
 	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Micro__Str(Micro(UInt32(sub)))!)) else {
 	 	print("cannot make kernel_pierce");exitErr(#file,#line);return}
 	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
