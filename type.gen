@@ -69,7 +69,9 @@ Configure = {
 	"MachineSize", -- vending machine lines
 	"RegisterLine", -- state of machine
 	"RegisterNest", -- current level
-	"RegisterXform", -- which matrix
+	"RegisterTrans", -- which function
+	"RegisterForm", -- which function
+	"RegisterTool", -- which function
 	"RegisterMemory", -- which memory
 	"RegisterIndex", -- which memory instance
 	"RegisterHint", -- argument from graphics
@@ -152,11 +154,25 @@ Operate = {
 	"ExtOp", -- 1; field from struct
 	"UnqOp", -- 0; magic number
 }
-Transform = {
-	"Translate",
+Trans = {
+	"Slide",
+	  -- Mouse: pierce-Form-perpendiculars,moving-pierce-point fixed
+	  -- Roller: pierce-Form-parallels fixed
 	"Rotate",
+	  -- Mouse: pierce-point,pierce-Form-perpendicular,moving-axis fixed
+	  -- Roller: pierce-point,pierce-Form fixed
 	"Scale",
 	"Zoom",
+}
+Form = {
+	"Ortho", -- from pierce point to infinite point
+	"Focal", -- from pierce point to focal point
+	"Normal", -- from pierce point to normal point
+	"Axis", -- from pierce point to picture point
+}
+Tool = {
+	"Mouse",
+	"Roller",
 }
 Micro = {
 	"Dipoint", -- display from triangles of points
