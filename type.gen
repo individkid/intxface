@@ -69,9 +69,12 @@ Configure = {
 	"MachineSize", -- vending machine lines
 	"RegisterLine", -- state of machine
 	"RegisterNest", -- current level
-	"RegisterTrans", -- which function
-	"RegisterForm", -- which function
+	"RegisterTransM", -- mouse function
+	"RegisterTransR", -- roller function
+	"RegisterFormM", -- mouse function
+	"RegisterFormR", -- roller function
 	"RegisterTool", -- which function
+	"RegisterToolC", -- which configure
 	"RegisterMemory", -- which memory
 	"RegisterIndex", -- which memory instance
 	"RegisterHint", -- argument from graphics

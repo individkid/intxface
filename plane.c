@@ -278,77 +278,57 @@ float *planeCompose()
 }
 planeXform planeFunc()
 {
-	switch ((enum Trans)configure[RegisterTrans]) {
-	case (Slide): switch ((enum Form)configure[RegisterForm]) {
-	case (Ortho): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeSlideOrthoMouse;
-	case (Roller): return planeSlideOrthoRoller;
+	switch ((enum Tool)configure[RegisterTool]) {
+	case (Mouse): switch ((enum Trans)configure[RegisterTransM]) {
+	case (Slide): switch ((enum Form)configure[RegisterFormM]) {
+	case (Ortho): return planeSlideOrthoMouse;
+	case (Focal): return planeSlideFocalMouse;
+	case (Normal): return planeSlideNormalMouse;
+	case (Axis): return planeSlideAxisMouse;
 	default: ERROR();}
-	case (Focal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeSlideFocalMouse;
-	case (Roller): return planeSlideFocalRoller;
+	case (Rotate): switch ((enum Form)configure[RegisterFormM]) {
+	case (Ortho): return planeRotateOrthoMouse;
+	case (Focal): return planeRotateFocalMouse;
+	case (Normal): return planeRotateNormalMouse;
+	case (Axis): return planeRotateAxisMouse;
 	default: ERROR();}
-	case (Normal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeSlideNormalMouse;
-	case (Roller): return planeSlideNormalRoller;
+	case (Scale): switch ((enum Form)configure[RegisterFormM]) {
+	case (Ortho): return planeScaleOrthoMouse;
+	case (Focal): return planeScaleFocalMouse;
+	case (Normal): return planeScaleNormalMouse;
+	case (Axis): return planeScaleAxisMouse;
 	default: ERROR();}
-	case (Axis): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeSlideAxisMouse;
-	case (Roller): return planeSlideAxisRoller;
-	default: ERROR();}
-	default: ERROR();}
-	case (Rotate): switch ((enum Form)configure[RegisterForm]) {
-	case (Ortho): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeRotateOrthoMouse;
-	case (Roller): return planeRotateOrthoRoller;
-	default: ERROR();}
-	case (Focal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeRotateFocalMouse;
-	case (Roller): return planeRotateFocalRoller;
-	default: ERROR();}
-	case (Normal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeRotateNormalMouse;
-	case (Roller): return planeRotateNormalRoller;
-	default: ERROR();}
-	case (Axis): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeRotateAxisMouse;
-	case (Roller): return planeRotateAxisRoller;
+	case (Zoom): switch ((enum Form)configure[RegisterFormM]) {
+	case (Ortho): return planeZoomOrthoMouse;
+	case (Focal): return planeZoomFocalMouse;
+	case (Normal): return planeZoomNormalMouse;
+	case (Axis): return planeZoomAxisMouse;
 	default: ERROR();}
 	default: ERROR();}
-	case (Scale): switch ((enum Form)configure[RegisterForm]) {
-	case (Ortho): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeScaleOrthoMouse;
-	case (Roller): return planeScaleOrthoRoller;
+	case (Roller): switch ((enum Trans)configure[RegisterTransR]) {
+	case (Slide): switch ((enum Form)configure[RegisterFormR]) {
+	case (Ortho): return planeSlideOrthoRoller;
+	case (Focal): return planeSlideFocalRoller;
+	case (Normal): return planeSlideNormalRoller;
+	case (Axis): return planeSlideAxisRoller;
 	default: ERROR();}
-	case (Focal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeScaleFocalMouse;
-	case (Roller): return planeScaleFocalRoller;
+	case (Rotate): switch ((enum Form)configure[RegisterFormR]) {
+	case (Ortho): return planeSlideOrthoRoller;
+	case (Focal): return planeRotateFocalRoller;
+	case (Normal): return planeRotateNormalRoller;
+	case (Axis): return planeRotateAxisRoller;
 	default: ERROR();}
-	case (Normal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeScaleNormalMouse;
-	case (Roller): return planeScaleNormalRoller;
+	case (Scale): switch ((enum Form)configure[RegisterFormR]) {
+	case (Ortho): return planeSlideOrthoRoller;
+	case (Focal): return planeScaleFocalRoller;
+	case (Normal): return planeScaleNormalRoller;
+	case (Axis): return planeScaleAxisRoller;
 	default: ERROR();}
-	case (Axis): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeScaleAxisMouse;
-	case (Roller): return planeScaleAxisRoller;
-	default: ERROR();}
-	default: ERROR();}
-	case (Zoom): switch ((enum Form)configure[RegisterForm]) {
-	case (Ortho): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeZoomOrthoMouse;
-	case (Roller): return planeZoomOrthoRoller;
-	default: ERROR();}
-	case (Focal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeZoomFocalMouse;
-	case (Roller): return planeZoomFocalRoller;
-	default: ERROR();}
-	case (Normal): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeZoomNormalMouse;
-	case (Roller): return planeZoomNormalRoller;
-	default: ERROR();}
-	case (Axis): switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): return planeZoomAxisMouse;
-	case (Roller): return planeZoomAxisRoller;
+	case (Zoom): switch ((enum Form)configure[RegisterFormR]) {
+	case (Ortho): return planeSlideOrthoRoller;
+	case (Focal): return planeZoomFocalRoller;
+	case (Normal): return planeZoomNormalRoller;
+	case (Axis): return planeZoomAxisRoller;
 	default: ERROR();}
 	default: ERROR();}
 	default: ERROR();}
