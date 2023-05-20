@@ -131,34 +131,22 @@ float *planeRotateAxisMouse(float *mat, const float *pic, const float *fix, cons
 }
 float *planeScaleOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
+	// pierce-ortho,pierce-ortho-perpendicular fixed
 	return 0;
 }
 float *planeScaleFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
+	// pierce-focal,pierce-focal-perpendicular fixed
 	return 0;
 }
 float *planeScaleNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
+	// pierce-normal,pierce-normal-perpendicular fixed
 	return 0;
 }
 float *planeScaleAxisMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	return 0;
-}
-float *planeZoomOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
-	return 0;
-}
-float *planeZoomFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
-	return 0;
-}
-float *planeZoomNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
-	return 0;
-}
-float *planeZoomAxisMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
+	// pierce-axis,pierce-axis-perpendicular fixed
 	return 0;
 }
 float *planeSlideOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
@@ -203,34 +191,22 @@ float *planeRotateAxisRoller(float *mat, const float *pic, const float *fix, con
 }
 float *planeScaleOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
+	// pierce-ortho-perpendiculars fixed
 	return 0;
 }
 float *planeScaleFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
+	// pierce-focal-perpendiculars fixed
 	return 0;
 }
 float *planeScaleNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
+	// pierce-normal-perpendiculars fixed
 	return 0;
 }
 float *planeScaleAxisRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	return 0;
-}
-float *planeZoomOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
-	return 0;
-}
-float *planeZoomFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
-	return 0;
-}
-float *planeZoomNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
-	return 0;
-}
-float *planeZoomAxisRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
-{
+	// pierce-axis-perpendiculars fixed
 	return 0;
 }
 float *planeCenter()
@@ -298,12 +274,6 @@ planeXform planeFunc()
 	case (Normal): return planeScaleNormalMouse;
 	case (Axis): return planeScaleAxisMouse;
 	default: ERROR();}
-	case (Zoom): switch ((enum Form)configure[RegisterFormM]) {
-	case (Ortho): return planeZoomOrthoMouse;
-	case (Focal): return planeZoomFocalMouse;
-	case (Normal): return planeZoomNormalMouse;
-	case (Axis): return planeZoomAxisMouse;
-	default: ERROR();}
 	default: ERROR();}
 	case (Roller): switch ((enum Trans)configure[RegisterTransR]) {
 	case (Slide): switch ((enum Form)configure[RegisterFormR]) {
@@ -323,12 +293,6 @@ planeXform planeFunc()
 	case (Focal): return planeScaleFocalRoller;
 	case (Normal): return planeScaleNormalRoller;
 	case (Axis): return planeScaleAxisRoller;
-	default: ERROR();}
-	case (Zoom): switch ((enum Form)configure[RegisterFormR]) {
-	case (Ortho): return planeSlideOrthoRoller;
-	case (Focal): return planeZoomFocalRoller;
-	case (Normal): return planeZoomNormalRoller;
-	case (Axis): return planeZoomAxisRoller;
 	default: ERROR();}
 	default: ERROR();}
 	default: ERROR();}

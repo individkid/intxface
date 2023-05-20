@@ -158,14 +158,9 @@ Operate = {
 	"UnqOp", -- 0; magic number
 }
 Trans = {
-	"Slide",
-	  -- Mouse: pierce-Form-perpendiculars,moving-pierce-point fixed
-	  -- Roller: pierce-Form-parallels fixed
-	"Rotate",
-	  -- Mouse: pierce-point,pierce-Form-perpendicular,moving-axis fixed
-	  -- Roller: pierce-point,pierce-Form fixed
-	"Scale",
-	"Zoom",
+	"Slide", -- fixed plane or direction
+	"Rotate", -- fixed axis and point
+	"Scale", -- fixed point
 }
 Form = {
 	"Ortho", -- from pierce point to infinite point
