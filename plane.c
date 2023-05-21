@@ -495,46 +495,25 @@ void planeExchange(int cal, int ret)
 }
 void planeEval(struct Express *exp, struct Express *sub)
 {
-	const char *typ = 0;
-	void *dat = 0;
-	datxEval(&dat,sub,identType("Int"));
+	void *dat = 0; int idx = 0;
+	datxEval(&dat,sub,identType("Int")); idx = *datxIntz(0,dat); datxStr(&dat,""); datxNone(dat0);
 	switch (center.mem) {
-	case (Trianglez): typ = "Triangle"; datxNone(dat0); writeTriangle(&center.tri[*datxIntz(0,dat)],idx0); break;
-	case (Numericz): typ = "Numeric"; datxNone(dat0); writeNumeric(&center.num[*datxIntz(0,dat)],idx0); break;
-	case (Vertexz): typ = "Vertex"; datxNone(dat0); writeVertex(&center.vtx[*datxIntz(0,dat)],idx0); break;
-	case (Allmatz): typ = "Matrix"; datxNone(dat0); writeMatrix(&center.all[*datxIntz(0,dat)],idx0); break;
-	case (Fewmatz): typ = "Matrix"; datxNone(dat0); writeMatrix(&center.few[*datxIntz(0,dat)],idx0); break;
-	case (Onematz): typ = "Matrix"; datxNone(dat0); writeMatrix(&center.one[*datxIntz(0,dat)],idx0); break;
-	case (Swarmz): typ = "Vector"; datxNone(dat0); writeVector(&center.swa[*datxIntz(0,dat)],idx0); break;
-	case (Texturez): typ = "Vector"; datxNone(dat0); writeVector(&center.tex[*datxIntz(0,dat)],idx0); break;
-	case (Basisz): typ = "Basis"; datxNone(dat0); writeBasis(&center.bas[*datxIntz(0,dat)],idx0); break;
-	case (Piercez): typ = "Pierce"; datxNone(dat0); writePierce(&center.pie[*datxIntz(0,dat)],idx0); break;
-	case (Slicez): typ = "Slice"; datxNone(dat0); writeSlice(&center.rng[*datxIntz(0,dat)],idx0); break;
-	case (Stringz): typ = "Str"; datxNone(dat0); writeStr(center.str[*datxIntz(0,dat)],idx0); break;
-	case (Patternz): typ = "Str"; datxNone(dat0); writeStr(center.str[*datxIntz(0,dat)],idx0); break;
-	case (Resultz): typ = "Str"; datxNone(dat0); writeStr(center.str[*datxIntz(0,dat)],idx0); break;
-	case (Machinez): typ = "Machine"; datxNone(dat0); writeMachine(&center.mch[*datxIntz(0,dat)],idx0); break;
-	case (Configurez): typ = "Int"; datxNone(dat0); writeInt(center.cfg[*datxIntz(0,dat)],idx0); break;
-	default: ERROR();}
-	datxInsert(dat,dat0);
-	datxEval(dat0,exp,identType(typ));
-	switch (center.mem) {
-	case (Trianglez): readTriangle(&center.tri[*datxIntz(0,dat)],idx0); break;
-	case (Numericz): readNumeric(&center.num[*datxIntz(0,dat)],idx0); break;
-	case (Vertexz): readVertex(&center.vtx[*datxIntz(0,dat)],idx0); break;
-	case (Allmatz): readMatrix(&center.all[*datxIntz(0,dat)],idx0); break;
-	case (Fewmatz): readMatrix(&center.few[*datxIntz(0,dat)],idx0); break;
-	case (Onematz): readMatrix(&center.one[*datxIntz(0,dat)],idx0); break;
-	case (Swarmz): readVector(&center.swa[*datxIntz(0,dat)],idx0); break;
-	case (Texturez): readVector(&center.tex[*datxIntz(0,dat)],idx0); break;
-	case (Basisz): readBasis(&center.bas[*datxIntz(0,dat)],idx0); break;
-	case (Piercez): readPierce(&center.pie[*datxIntz(0,dat)],idx0); break;
-	case (Slicez): readSlice(&center.rng[*datxIntz(0,dat)],idx0); break;
-	case (Stringz): readStr(&center.str[*datxIntz(0,dat)],idx0); break;
-	case (Patternz): readStr(&center.str[*datxIntz(0,dat)],idx0); break;
-	case (Resultz): readStr(&center.str[*datxIntz(0,dat)],idx0); break;
-	case (Machinez): readMachine(&center.mch[*datxIntz(0,dat)],idx0); break;
-	case (Configurez): center.cfg[*datxIntz(0,dat)] = readInt(idx0); break;
+	case (Trianglez): writeTriangle(&center.tri[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Triangle")); readTriangle(&center.tri[idx],idx0); break;
+	case (Numericz): writeNumeric(&center.num[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Numeric")); readNumeric(&center.num[idx],idx0); break;
+	case (Vertexz): writeVertex(&center.vtx[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Vertex")); readVertex(&center.vtx[idx],idx0); break;
+	case (Allmatz): writeMatrix(&center.all[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Matrix")); readMatrix(&center.all[idx],idx0); break;
+	case (Fewmatz): writeMatrix(&center.few[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Matrix")); readMatrix(&center.few[idx],idx0); break;
+	case (Onematz): writeMatrix(&center.one[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Matrix")); readMatrix(&center.one[idx],idx0); break;
+	case (Swarmz): writeVector(&center.swa[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Vector")); readVector(&center.swa[idx],idx0); break;
+	case (Texturez): writeVector(&center.tex[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Vector")); readVector(&center.tex[idx],idx0); break;
+	case (Basisz): writeBasis(&center.bas[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Basis")); readBasis(&center.bas[idx],idx0); break;
+	case (Piercez): writePierce(&center.pie[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Pierce")); readPierce(&center.pie[idx],idx0); break;
+	case (Slicez): writeSlice(&center.rng[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Slice")); readSlice(&center.rng[idx],idx0); break;
+	case (Stringz): writeStr(center.str[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Str")); readStr(&center.str[idx],idx0); break;
+	case (Patternz): writeStr(center.str[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Str")); readStr(&center.str[idx],idx0); break;
+	case (Resultz): writeStr(center.str[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Str")); readStr(&center.str[idx],idx0); break;
+	case (Machinez): writeMachine(&center.mch[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Machine")); readMachine(&center.mch[idx],idx0); break;
+	case (Configurez): writeInt(center.cfg[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Int")); center.cfg[idx] = readInt(idx0); break;
 	default: ERROR();}
 }
 int planeIval(struct Express *exp)
