@@ -90,7 +90,6 @@ Configure = {
 	"CenterSize",
 	"CenterIndex",
 	"CenterSelf",
-	"CenterRmw",
 	"ArgumentMicro", -- pass to draw
 	"ArgumentStart",
 	"ArgumentStop",
@@ -137,25 +136,8 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
+	"Eval", -- expression to client
 	"Swap", -- exchange machine lines
-}
-Operate = {
-	"AddOp", -- siz = 2;
-	"SubOp", -- 2;
-	"MulOp", -- 2;
-	"DivOp", -- 2;
-	"RemOp", -- 2;
-	"CmpOp", -- 2; to neg zero pos
-	"CndOp", -- 4; from neg zero pos
-	"TotOp", -- 1; cast to type
-	"ImmOp", -- 0; built in value
-	"ValOp", -- 0; restore from named
-	"SavOp", -- 2; save to named
-	"GetOp", -- 0; value from callback
-	"SetOp", -- 2; callback with value
-	"InsOp", -- 2; field to struct
-	"ExtOp", -- 1; field from struct
-	"UnqOp", -- 0; magic number
 }
 Trans = {
 	"Slide", -- fixed plane or direction
@@ -194,13 +176,13 @@ Wait = {
 	"Start",
 	"Stop",
 }
-Concur = {
+Thread = {
 	"External",
 	"Console",
 	"Window",
 	"Process",
 }
-Ture = {
+Struc = {
 	"Table",
 	"Sides",
 }
@@ -224,6 +206,24 @@ Logic = {
 	"ImmJmp",
 	"ImmYld",
 	"SetJmp",
+}
+Operate = {
+	"AddOp", -- siz = 2;
+	"SubOp", -- 2;
+	"MulOp", -- 2;
+	"DivOp", -- 2;
+	"RemOp", -- 2;
+	"CmpOp", -- 2; to neg zero pos
+	"CndOp", -- 4; from neg zero pos
+	"TotOp", -- 1; cast to type
+	"ImmOp", -- 0; built in value
+	"ValOp", -- 0; restore from named
+	"SavOp", -- 2; save to named
+	"GetOp", -- 0; value from callback
+	"SetOp", -- 2; callback with value
+	"InsOp", -- 2; field to struct
+	"ExtOp", -- 1; field from struct
+	"UnqOp", -- 0; magic number
 }
 Process = {
 	"Filez",
@@ -254,7 +254,7 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Center(req:Request(SetReq)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)rmw:Int(0)"..
+	{"Int","0","Str","Center(req:Request(SetReq)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
@@ -264,7 +264,7 @@ Bootstrap = {
 		"val[2]:Int(1)"..
 		"val[3]:Int(31)"..
 	")"},
-	{"Int","1","Str","Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)rmw:Int(0)"..
+	{"Int","1","Str","Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)idx:Int(0)"..
 			"cfg[0]:Configure(RegisterOpen)"..
 			"val[0]:Int(0)"..
@@ -444,7 +444,8 @@ Machine = {
 	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true,["Save"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
 	{"oth","Int",{["xfr"]={["Swap"]=true}},{}},
-	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
+	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
+	{"sub","Express",{["xfr"]={["Eval"]=true}},1},
 }
 Center = {
 	{"req","Request",{},{}},
@@ -452,7 +453,6 @@ Center = {
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"slf","Int",{},{}},
-	{"rmw","Int",{},{}},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
@@ -470,7 +470,7 @@ Center = {
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 }
 Sculpt = {
-	{"cfg","Ture",{},{}},
+	{"cfg","Struc",{},{}},
 }
 Data = {
 	{"siz","Int",{},{}},

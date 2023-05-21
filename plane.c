@@ -46,6 +46,9 @@ struct Center center = {0};
 regex_t *pattern = 0;
 int numpat = 0;
 char **result = 0;
+int sub0 = 0;
+int idx0 = 0;
+void **dat0 = 0;
 // constant after other threads start:
 int internal = 0;
 int external = 0;
@@ -55,7 +58,7 @@ vftype callSafe = 0;
 yftype callUser = 0;
 xftype callInfo = 0;
 wftype callDraw = 0;
-pthread_t thread[Concurs];
+pthread_t thread[Threads];
 pthread_key_t retstr;
 // resource protected:
 int numpipe = 0;
@@ -72,8 +75,8 @@ int perpend[Waits] = {0};
 // thread safe:
 sem_t resource;
 sem_t pending;
-sem_t ready[Concurs];
-sem_t finish[Concurs];
+sem_t ready[Threads];
+sem_t finish[Threads];
 void planeRead();
 const char *planeGet(int idx);
 int planeSet(int idx, const char *str);
@@ -91,122 +94,122 @@ typedef float *(*planeXform)(float *mat, const float *pic, const float *fix, con
 // mat:current-matrix pic:focal-point fix:pierce-point org:pierce-cursor cur:current-cursor ang:roller-change
 float *planeSlideOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-ortho-perpendiculars,moving-pierce-point fixed
+	// distance to perpendicular to ortho fixed; cursor mapped
 	return 0;
 }
 float *planeSlideFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-focal-perpendiculars,moving-pierce-point fixed
+	// distance to perpendicular to focal fixed; cursor mapped
 	return 0;
 }
 float *planeSlideNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-normal-perpendiculars,moving-pierce-point fixed
+	// distance to perpendicular to normal fixed; cursor mapped
 	return 0;
 }
 float *planeSlideAxisMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-axis-perpendiculars,moving-pierce-point fixed
+	// distance to perpendicular to axis fixed; cursor mapped
 	return 0;
 }
 float *planeRotateOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-ortho-perpendicular,moving-axis fixed
+	// perpendicular to ortho, parallel to picture plane, fixed; cursor mapped
 	return 0;
 }
 float *planeRotateFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-focal-perpendicular,moving-axis fixed
+	// perpendicular to focal, parallel to picture plane, fixed; cursor mapped
 	return 0;
 }
 float *planeRotateNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-normal-perpendicular,moving-axis fixed
+	// perpendicular to normal, parallel to picture plane, fixed; cursor mapped
 	return 0;
 }
 float *planeRotateAxisMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-axis-perpendicular,moving-axis fixed
+	// perpendicular to axis, parallel to picture plane, fixed; cursor mapped
 	return 0;
 }
 float *planeScaleOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-ortho,pierce-ortho-perpendicular fixed
+	// distance to perpendicular to ortho fixed; cursor mapped
 	return 0;
 }
 float *planeScaleFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-focal,pierce-focal-perpendicular fixed
+	// distance to perpendicular to focal fixed; cursor mapped
 	return 0;
 }
 float *planeScaleNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-normal,pierce-normal-perpendicular fixed
+	// distance to perpendicular to normal fixed; cursor mapped
 	return 0;
 }
 float *planeScaleAxisMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-axis,pierce-axis-perpendicular fixed
+	// distance to perpendicular to axis fixed; cursor mapped
 	return 0;
 }
 float *planeSlideOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-ortho-parallels fixed
+	// distance to perpendicular to ortho offset
 	return 0;
 }
 float *planeSlideFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-focal-parallels fixed
+	// distance to perpendicular to focal offset
 	return 0;
 }
 float *planeSlideNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-normal-parallels fixed
+	// distance to perpendicular to normal offset
 	return 0;
 }
 float *planeSlideAxisRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-axis-parallels fixed
+	// distance to perpendicular to axis offset
 	return 0;
 }
 float *planeRotateOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-ortho fixed
+	// distance to ortho fixed
 	return 0;
 }
 float *planeRotateFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-focal fixed
+	// distance to focal fixed
 	return 0;
 }
 float *planeRotateNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-normal fixed
+	// distance to normal fixed
 	return 0;
 }
 float *planeRotateAxisRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-point,pierce-axis fixed
+	// distance to axis fixed
 	return 0;
 }
 float *planeScaleOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-ortho-perpendiculars fixed
+	// distance to perpendicular to normal scaled
 	return 0;
 }
 float *planeScaleFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-focal-perpendiculars fixed
+	// distance to perpendicular to focal scaled
 	return 0;
 }
 float *planeScaleNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-normal-perpendiculars fixed
+	// distance to perpendicular to normal scaled
 	return 0;
 }
 float *planeScaleAxisRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
 {
-	// pierce-axis-perpendiculars fixed
+	// distance to perpendicular to axis scaled
 	return 0;
 }
 float *planeCenter()
@@ -377,7 +380,6 @@ void planePreconfig(enum Configure cfg)
 		case (CenterSize): configure[CenterSize] = center.siz; break;
 		case (CenterIndex): configure[CenterIndex] = center.idx; break;
 		case (CenterSelf): configure[CenterSelf] = center.slf; break;
-		case (CenterRmw): configure[CenterRmw] = center.rmw; break;
 		case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
 		case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
 		case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
@@ -425,7 +427,6 @@ void planeAlloc()
 	center.idx = configure[CenterIndex];
 	center.siz = configure[CenterSize];
 	center.slf = configure[CenterSelf];
-	center.rmw = configure[CenterRmw];
 	switch (center.mem) {
 		case (Allmatz): allocMatrix(&center.all,center.siz); break;
 		case (Fewmatz): allocMatrix(&center.few,center.siz); break;
@@ -492,6 +493,50 @@ void planeExchange(int cal, int ret)
 	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
 	machine[ret%configure[MachineSize]] = temp;
 }
+void planeEval(struct Express *exp, struct Express *sub)
+{
+	const char *typ = 0;
+	void *dat = 0;
+	datxEval(&dat,sub,identType("Int"));
+	switch (center.mem) {
+	case (Trianglez): typ = "Triangle"; datxNone(dat0); writeTriangle(&center.tri[*datxIntz(0,dat)],idx0); break;
+	case (Numericz): typ = "Numeric"; datxNone(dat0); writeNumeric(&center.num[*datxIntz(0,dat)],idx0); break;
+	case (Vertexz): typ = "Vertex"; datxNone(dat0); writeVertex(&center.vtx[*datxIntz(0,dat)],idx0); break;
+	case (Allmatz): typ = "Matrix"; datxNone(dat0); writeMatrix(&center.all[*datxIntz(0,dat)],idx0); break;
+	case (Fewmatz): typ = "Matrix"; datxNone(dat0); writeMatrix(&center.few[*datxIntz(0,dat)],idx0); break;
+	case (Onematz): typ = "Matrix"; datxNone(dat0); writeMatrix(&center.one[*datxIntz(0,dat)],idx0); break;
+	case (Swarmz): typ = "Vector"; datxNone(dat0); writeVector(&center.swa[*datxIntz(0,dat)],idx0); break;
+	case (Texturez): typ = "Vector"; datxNone(dat0); writeVector(&center.tex[*datxIntz(0,dat)],idx0); break;
+	case (Basisz): typ = "Basis"; datxNone(dat0); writeBasis(&center.bas[*datxIntz(0,dat)],idx0); break;
+	case (Piercez): typ = "Pierce"; datxNone(dat0); writePierce(&center.pie[*datxIntz(0,dat)],idx0); break;
+	case (Slicez): typ = "Slice"; datxNone(dat0); writeSlice(&center.rng[*datxIntz(0,dat)],idx0); break;
+	case (Stringz): typ = "Str"; datxNone(dat0); writeStr(center.str[*datxIntz(0,dat)],idx0); break;
+	case (Patternz): typ = "Str"; datxNone(dat0); writeStr(center.str[*datxIntz(0,dat)],idx0); break;
+	case (Resultz): typ = "Str"; datxNone(dat0); writeStr(center.str[*datxIntz(0,dat)],idx0); break;
+	case (Machinez): typ = "Machine"; datxNone(dat0); writeMachine(&center.mch[*datxIntz(0,dat)],idx0); break;
+	case (Configurez): typ = "Int"; datxNone(dat0); writeInt(center.cfg[*datxIntz(0,dat)],idx0); break;
+	default: ERROR();}
+	datxInsert(dat,dat0);
+	datxEval(dat0,exp,identType(typ));
+	switch (center.mem) {
+	case (Trianglez): readTriangle(&center.tri[*datxIntz(0,dat)],idx0); break;
+	case (Numericz): readNumeric(&center.num[*datxIntz(0,dat)],idx0); break;
+	case (Vertexz): readVertex(&center.vtx[*datxIntz(0,dat)],idx0); break;
+	case (Allmatz): readMatrix(&center.all[*datxIntz(0,dat)],idx0); break;
+	case (Fewmatz): readMatrix(&center.few[*datxIntz(0,dat)],idx0); break;
+	case (Onematz): readMatrix(&center.one[*datxIntz(0,dat)],idx0); break;
+	case (Swarmz): readVector(&center.swa[*datxIntz(0,dat)],idx0); break;
+	case (Texturez): readVector(&center.tex[*datxIntz(0,dat)],idx0); break;
+	case (Basisz): readBasis(&center.bas[*datxIntz(0,dat)],idx0); break;
+	case (Piercez): readPierce(&center.pie[*datxIntz(0,dat)],idx0); break;
+	case (Slicez): readSlice(&center.rng[*datxIntz(0,dat)],idx0); break;
+	case (Stringz): readStr(&center.str[*datxIntz(0,dat)],idx0); break;
+	case (Patternz): readStr(&center.str[*datxIntz(0,dat)],idx0); break;
+	case (Resultz): readStr(&center.str[*datxIntz(0,dat)],idx0); break;
+	case (Machinez): readMachine(&center.mch[*datxIntz(0,dat)],idx0); break;
+	case (Configurez): center.cfg[*datxIntz(0,dat)] = readInt(idx0); break;
+	default: ERROR();}
+}
 int planeIval(struct Express *exp)
 {
 	void *dat = 0;
@@ -529,52 +574,54 @@ void planeWake(enum Configure hint)
 		switch (mptr->xfr) {
 			case (Read): // read internal pipe
 				planeRead(); break;
-			case (Write): // write external pipe --
+			case (Write): // write external pipe
 				writeCenter(&center,external); break;
-			case (Save): // kernel, center, pierce, or info to configure -- siz cfg
+			case (Save): // kernel, center, pierce, or info to configure
 				for (int i = 0; i < mptr->siz; i++)
 				planePreconfig(mptr->cfg[i]); break;
-			case (Force): // machine to configure -- siz cfg val
+			case (Force): // machine to configure
 				for (int i = 0; i < mptr->siz; i++)
 				planeReconfig(mptr->cfg[i],mptr->val[i]); break;
-			case (Setup): // configure to center -- siz cfg val
+			case (Setup): // configure to center
 				for (int i = 0; i < mptr->siz; i++)
 				planePostconfig(mptr->cfg[i],mptr->val[i]); break;
-			case (Alloc): // configure to center --
+			case (Alloc): // configure to center
 				planeAlloc(); break;
-			case (Echo): // memory to center --
+			case (Echo): // memory to center
 				planeEcho(); break;
-			case (Comp): // set center to compose and cursor/fixed/mode --
+			case (Comp): // set center to compose and cursor/fixed/mode
 				jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
-			case (Pose): // set center to towrite --
+			case (Pose): // set center to towrite
 				copymat(planeCenter(),planeTowrite(),4); break;
-			case (Other): // set center to maintain --
+			case (Other): // set center to maintain
 				copymat(planeCenter(),planeMaintain(),4); break;
-			case (Glitch): // set maintain to center --
+			case (Glitch): // set maintain to center
 				copymat(planeMaintain(),planeCenter(),4); break;
-			case (Check): // apply center to maintain and unapply to written --
+			case (Check): // apply center to maintain and unapply to written
 				jumpmat(planeMaintain(),planeCenter(),4);
 				timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-			case (Fixed): // apply cursor/fixed/mode to towrite and change fixed for continuity --
+			case (Fixed): // apply cursor/fixed/mode to towrite and change fixed for continuity
 				jumpmat(planeTowrite(),planeLocal(),4);
 				planeContinue(); break;
-			case (Apply): // apply towrite to written and clear towrite --
+			case (Apply): // apply towrite to written and clear towrite
 				jumpmat(planeWritten(),planeTowrite(),4);
 				identmat(planeTowrite(),4); break;
-			case (Accum): // apply written to maintain and clear written --
+			case (Accum): // apply written to maintain and clear written
 				jumpmat(planeMaintain(),planeWritten(),4);
 				identmat(planeWritten(),4); break;
-			case (Share): // dma to cpu or gpu --
+			case (Share): // dma to cpu or gpu
 				planeBuffer(); break;
-			case (Draw): // start shader --
+			case (Draw): // start shader
 				callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
-			case (Jump): // skip if true -- siz cfg val cmp cnd idx
+			case (Jump): // skip if true
 				next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->idx : configure[RegisterNest]),next); break;
-			case (Goto): // jump if true -- idx
+			case (Goto): // jump if true
 				next = (planeIval(&mptr->exp[0]) ? mptr->idx : next); break;
-			case (Nest): // nest to level -- idx
+			case (Nest): // nest to level
 				configure[RegisterNest] += mptr->idx; break;
-			case (Swap): // exchange machine lines -- idx oth
+			case (Eval): // rmw client memory
+				planeEval(&mptr->exp[0],&mptr->sub[0]); break;
+			case (Swap): // exchange machine lines
 				planeExchange(mptr->idx,mptr->oth); break;
 			default: break;}
 		if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
@@ -672,14 +719,14 @@ void planeConsole()
 		planeCat(configure[CompareConsole],chr);
 		planeSafe(Waits,CompareConsole);}
 }
-void planeWrap(enum Concur bit, enum Wait pre, enum Wait post)
+void planeWrap(enum Thread bit, enum Wait pre, enum Wait post)
 {
 	planeSafe(pre,Configures); sem_post(&ready[bit]);
 	sem_wait(&finish[bit]); planeSafe(post,Configures);	
 }
 void *planeThread(void *arg)
 {
-	enum Concur bit = (enum Concur)(uintptr_t)arg;
+	enum Thread bit = (enum Thread)(uintptr_t)arg;
 	switch (bit) {
 	case (External): planeExternal(); break;
 	case (Console): planeConsole(); break;
@@ -689,7 +736,7 @@ void *planeThread(void *arg)
 	sem_safe(&resource,{running &= ~(1<<bit);});
 	return 0;
 }
-void planeFinish(enum Concur bit)
+void planeFinish(enum Thread bit)
 {
 	switch (bit) {
 	case (External): closeIdent(external); break;
@@ -702,14 +749,14 @@ void planeStarted(int val)
 {
 	int dif = 0;
 	sem_safe(&resource,{dif = started & ~running;}); // join each in started but not running
-	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
+	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
 	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
 	sem_safe(&resource,{started = running;});
 	dif = started & ~val; // join each in started but not val
-	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
+	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
 	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
 	dif = val & ~started; // create each in val but not started
-	for (enum Concur bit = 0; bit < Concurs; bit++) if (dif & (1<<bit)) {
+	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
 	if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
 	sem_safe(&resource,{started = running = val;});
 }
@@ -771,9 +818,10 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
 	sem_init(&resource,0,1);
 	sem_init(&pending,0,0);
-	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&ready[bit],0,0);
-	for (enum Concur bit = 0; bit < Concurs; bit++) sem_init(&finish[bit],0,0);
+	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
+	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&finish[bit],0,0);
 	datxSetter(planeSetter); datxGetter(planeGetter);
+	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma;
 	callSafe = safe;
 	callUser = user;

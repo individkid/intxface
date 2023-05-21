@@ -78,10 +78,10 @@ float *jumpmat(float *u, float *v, int n)
     return u;
 }
 
-float *argmat(int n, int m, float *u, ...)
+float *argmat(float *u, int n, int m, ...)
 {
     va_list args;
-    va_start(args,u);
+    va_start(args,m);
     for (int i = 0; i < m; i++) {
     timesmat(u,va_arg(args,float *),n);}
     va_end(args);
