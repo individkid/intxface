@@ -1,3 +1,4 @@
+require "face"
 require "luax"
 require "coroutine"
 
@@ -1191,7 +1192,7 @@ function showIgenC(list)
 	result = result..showIndent(1).."switch (ptr->tag) {\n"
 	for k,v in ipairs(list) do
 		if ((v ~= "Tag") and (v ~= "Generic")) then
-			result = result..showIndent(1).."case("..v.."Tag): return "..k..";\n"
+			result = result..showIndent(1).."case("..v.."Tag): return "..(k-1)..";\n"
 		end
 	end
 	result = result..showIndent(1).."default: break;}\n"

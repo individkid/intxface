@@ -50,8 +50,6 @@ Memory = {
 	"Piercez", -- pierce point normal and valid
 	"Slicez", -- plane or point index ranges
 	"Stringz", -- keyboard comparison strings
-	"Patternz", -- comparison regular expressions
-	"Resultz", -- regular expression substrings
 	"Machinez", -- state machine lines
 	"Configurez", -- configure to value
 }
@@ -65,8 +63,10 @@ Configure = {
 	"SwarmSize", -- early warning system
 	"TextureSize", -- how to decorate
 	"BasisSize", -- cospace converters
+	"PierceSize", -- pierce points
 	"SliceSize", -- ranges per draw
 	"MachineSize", -- vending machine lines
+	"RegisterPrompt", -- console string index
 	"RegisterLine", -- state of machine
 	"RegisterNest", -- current level
 	"RegisterTransM", -- mouse function
@@ -80,11 +80,6 @@ Configure = {
 	"RegisterHint", -- argument from graphics
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- windows open count
-	"CompareConsole", -- console string index
-	"CompareString", -- which compare string
-	"ComparePattern", -- which compare pattern
-	"CompareNumber", -- string pattern count
-	"CompareSize", -- string pattern result
 	"CenterRequest", -- fields to from client
 	"CenterMemory",
 	"CenterSize",
@@ -118,11 +113,10 @@ Configure = {
 Transfer = {
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
-	"Save", -- client, pierce, or info to configure
+	"Save", -- center, pierce, or info to configure
 	"Force", -- machine to configure
-	"Setup", -- configure to client
-	"Alloc", -- configure to client
-	"Echo", -- collect to client
+	"Setup", -- configure to center
+	"Alloc", -- configure to center
 	"Comp", -- change center to composition of optimization and cursor/fixed/mode
 	"Pose", -- change center to towrite
 	"Other", -- change center to maintain
@@ -136,7 +130,8 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
-	"Eval", -- expression to client
+	"Eval", -- expression to center
+	"Gval", -- generic to center
 	"Swap", -- exchange machine lines
 }
 Trans = {
@@ -146,9 +141,8 @@ Trans = {
 }
 Form = {
 	"Ortho", -- from pierce point to infinite point
-	"Focal", -- from pierce point to focal point
+	"Focal", -- from pierce point to picture point
 	"Normal", -- from pierce point to normal point
-	"Axis", -- from pierce point to picture point
 }
 Tool = {
 	"Mouse",
@@ -254,22 +248,36 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Center(req:Request(SetReq)mem:Memory(Configurez)siz:Int(4)idx:Int(0)slf:Int(0)"..
+	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(9)idx:Int(0)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
 		"cfg[3]:Configure(RegisterOpen)"..
+		"cfg[4]:Configure(CenterRequest)"..
+		"cfg[5]:Configure(CenterMemory)"..
+		"cfg[6]:Configure(CenterSize)"..
+		"cfg[7]:Configure(CenterIndex)"..
+		"cfg[8]:Configure(CenterSelf)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
 		"val[2]:Int(1)"..
 		"val[3]:Int(31)"..
+		"val[4]:%(return showInt(castRequest(\"SetReq\"),\"\"))"..
+		"val[5]:%(return showInt(castMemory(\"Machinez\"),\"\"))"..
+		"val[6]:Int(1)"..
+		"val[7]:Int(0)"..
+		"val[8]:Int(0)"..
 	")"},
-	{"Int","1","Str","Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
-		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)idx:Int(0)"..
+	{"Int","1","Str","Machine(xfr:Transfer(Alloc)siz:Int(0)idx:Int(0))"},
+	{"Int","2","Str","Machine(xfr:Transfer(Gval)siz:Int(1)idx:Int(0)"..
+		"sub[0]:Int(0)"..
+		"gen[0]:Generic(tag:Tag(MachineTag)machine[0]:Machine("..
+			"xfr:Transfer(Force)siz:Int(1)idx:Int(0)"..
 			"cfg[0]:Configure(RegisterOpen)"..
 			"val[0]:Int(0)"..
-		")"..
+		"))"..
 	")"},
+	{"Int","3","Str","Machine(xfr:Transfer(Share)siz:Int(0)idx:Int(0))"},
 }
 Execname = {
 	{"Process","Filez","Str","./file"},
@@ -375,8 +383,8 @@ Uniform = {
 	{"hdt","Int",{},{}}, -- vertical size of window
 
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
-	{"siz","Int",{},{}}, -- how many swarm points there are
 	{"csp","Int",{},{}}, -- which basis to use
+	{"psz","Int",{},{}}, -- size of pierce buffer
 	{"tsz","Int",{},{}}, -- size of trinagle buffer
 
 	{"nsz","Int",{},{}}, -- size of numeric buffer
@@ -430,8 +438,8 @@ Express = {
 	{"opr","Operate",{},{}},
 	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"str","Str",{["opr"]={["ValOp"]=true,["SavOp"]=true}},{}},
-	{"val","Dat",{["opr"]={["ImmOp"]=true}},{}},
-	{"typ","Int",{["opr"]={["ImmOp"]=true,["ValOp"]=true,["GetOp"]=true}},{}},
+	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
+	{"typ","Int",{["opr"]={["ValOp"]=true,["GetOp"]=true}},{}},
 	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 	{"siz","Int",{},{}},
@@ -442,10 +450,12 @@ Machine = {
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true,["Save"]=true}},"siz"},
-	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
+	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
+	{"sub","Int",{["xfr"]={["Setup"]=true,["Gval"]=true}},"siz"},
 	{"oth","Int",{["xfr"]={["Swap"]=true}},{}},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
-	{"sub","Express",{["xfr"]={["Eval"]=true}},1},
+	{"var","Express",{["xfr"]={["Eval"]=true}},1},
+	{"gen","Generic",{["xfr"]={["Gval"]=true}},"siz"},
 }
 Center = {
 	{"req","Request",{},{}},
@@ -464,7 +474,7 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
-	{"str","Str",{["mem"]={["Stringz"]=true,["Patternz"]=true,["Resultz"]=true}},"siz"},
+	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},

@@ -75,6 +75,8 @@ int datxWriteFp(int fildes, const void *buf, int nbyte)
 	void **dat = datxDat(fildes);
 	void *suf = malloc(sizeof(int)+nbyte);
 	void *pre = 0;
+	*(int*)suf = nbyte;
+	memcpy(datxData(suf),buf,nbyte);
 	assignDat(&pre,*dat);
 	datxJoin(dat,pre,suf);
 	free(pre);
@@ -266,7 +268,7 @@ void datxSplit(void **pre, void **suf, const void *dat, int len)
 void datxJoin(void **dat, const void *pre, const void *suf)
 {
 	*dat = realloc(*dat,*(int*)pre+*(int*)suf+sizeof(int));
-	*(int*)dat = *(int*)pre+*(int*)suf;
+	*(int*)*dat = *(int*)pre+*(int*)suf;
 	memcpy((void*)((int*)*dat+1),(void*)((int*)pre+1),*(int*)pre);
 	memcpy((char*)((int*)*dat+1)+*(int*)pre,(void*)((int*)suf+1),*(int*)suf);
 }
@@ -497,9 +499,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		break;}
 	case (ImmOp): { // 0; built in value
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		if (typ == -1) typ = exp->typ;
-		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
-		assignDat(dat,exp->val);
+		if (typ == -1) typ = identUnion(exp->val);
+		if (typ != identUnion(exp->val)) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
+		datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,datxDat0);
 		break;}
 	case (ValOp): { // 0; restore from named
 		void *dat0 = 0;

@@ -134,6 +134,7 @@ struct Function {
 		Egtype,
 		Ehtype,
 		Pftype,
+
 		Qftype,
 		Fftype,
 		Fgtype,
@@ -144,6 +145,7 @@ struct Function {
 		Tftype,
 		Tgtype,
 		Thtype,
+
 		Titype,
 		Tjtype,
 		Tktype,
@@ -154,6 +156,7 @@ struct Function {
 		Sgtype,
 		Shtype,
 		Sitype,
+
 		Sjtype,
 		Sktype,
 		Sltype,
@@ -164,6 +167,7 @@ struct Function {
 		Lhtype,
 		Litype,
 		Ljtype,
+
 		Lktype,
 		Lltype,
 		Lmtype,
@@ -174,6 +178,7 @@ struct Function {
 		Mjtype,
 		Mktype,
 		Mltype,
+
 		Mmtype,
 		Mntype,
 		Motype,
@@ -184,6 +189,7 @@ struct Function {
 		Nitype,
 		Njtype,
 		Nktype,
+
 		Nltype,
 		Nmtype,
 		Nntype,
@@ -194,6 +200,7 @@ struct Function {
 		Rgtype,
 		Rhtype,
 		Ritype,
+
 		Rjtype,
 	} ft;
 	union {
