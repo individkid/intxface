@@ -26,12 +26,12 @@
 #include <regex.h>
 
 struct Kernel {
-	struct Matrix compose; // optimization
-	struct Matrix maintain; // change to points
-	struct Matrix written; // portion written
-	struct Matrix towrite; // portion to write
-	struct Matrix local; // portion to view
-	struct Matrix inverse; // inverse of center
+	struct Matrix compose;
+	struct Matrix maintain;
+	struct Matrix written;
+	struct Matrix towrite;
+	struct Matrix local;
+	struct Matrix inverse;
 };
 // owned by main thread:
 struct Kernel *subject = 0;
@@ -81,7 +81,7 @@ int planeCat(int idx, const char *str);
 int planeRunning();
 void planeStarted(int val);
 
-void planeAlize(float *dir, const float *vec) // normalize
+void planeAlize(float *dir, const float *vec)
 {
 }
 void planeCross(float *axe, const float *fix, const float *cur)
@@ -185,20 +185,20 @@ float *planeCenter()
 	if (index < 0 || index >= center.siz) return 0;
 	if (center.mem != (enum Memory)configure[RegisterMemory]) return 0;
 	switch(center.mem) {
-		case (Allmatz): return center.all[index].mat;
-		case (Fewmatz): return center.few[index].mat;
-		case (Onematz): return center.one[index].mat;
-		default: break;}
+	case (Allmatz): return center.all[index].mat;
+	case (Fewmatz): return center.few[index].mat;
+	case (Onematz): return center.one[index].mat;
+	default: break;}
 	return 0;
 }
 struct Kernel *planeKernel()
 {
 	int index = configure[RegisterIndex];
 	switch ((enum Memory)configure[RegisterMemory]) {
-		case (Allmatz): return subject + index % configure[SubjectSize];
-		case (Fewmatz): return object + index % configure[ObjectSize];
-		case (Onematz): return element + index % configure[ElementSize];
-		default: break;}
+	case (Allmatz): return subject + index % configure[SubjectSize];
+	case (Fewmatz): return object + index % configure[ObjectSize];
+	case (Onematz): return element + index % configure[ElementSize];
+	default: break;}
 	return 0;
 }
 float *planeInverse()
@@ -286,39 +286,39 @@ struct Pierce *planePierce()
 {
 	if (found) return found;
 	for (int i = 0; i < configure[PierceSize]; i++) {
-		struct Pierce *temp = pierce + i%configure[PierceSize];
-		if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
+	struct Pierce *temp = pierce + i%configure[PierceSize];
+	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
 	if (!found) {
-		found = &unfound;
-		unfound.fix[0] = configure[ClosestLeft];
-		unfound.fix[1] = configure[ClosestBase];
-		unfound.fix[2] = configure[ClosestNear];
-		unfound.idx = configure[ClosestFound];}
+	found = &unfound;
+	unfound.fix[0] = configure[ClosestLeft];
+	unfound.fix[1] = configure[ClosestBase];
+	unfound.fix[2] = configure[ClosestNear];
+	unfound.idx = configure[ClosestFound];}
 	return found;
 }
 void planePreconfig(enum Configure cfg)
 {
 	switch (cfg) {
-		case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-		case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
-		case (CenterRequest): configure[CenterRequest] = center.req; break;
-		case (CenterMemory): configure[CenterMemory] = center.mem; break;
-		case (CenterSize): configure[CenterSize] = center.siz; break;
-		case (CenterIndex): configure[CenterIndex] = center.idx; break;
-		case (CenterSelf): configure[CenterSelf] = center.slf; break;
-		case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
-		case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
-		case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
-		case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
-		case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
-		case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
-		case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
-		case (WindowHigh): configure[WindowHigh] = callInfo(WindowHigh); break;
-		case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
-		case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
-		case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
-		case (CursorClick): configure[CursorClick] = callInfo(CursorClick); break;
-		default: break;}
+	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
+	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
+	case (CenterRequest): configure[CenterRequest] = center.req; break;
+	case (CenterMemory): configure[CenterMemory] = center.mem; break;
+	case (CenterSize): configure[CenterSize] = center.siz; break;
+	case (CenterIndex): configure[CenterIndex] = center.idx; break;
+	case (CenterSelf): configure[CenterSelf] = center.slf; break;
+	case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
+	case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
+	case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
+	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
+	case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
+	case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
+	case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
+	case (WindowHigh): configure[WindowHigh] = callInfo(WindowHigh); break;
+	case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
+	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
+	case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
+	case (CursorClick): configure[CursorClick] = callInfo(CursorClick); break;
+	default: break;}
 }
 void planePostconfig(enum Configure cfg, int idx)
 {
@@ -337,13 +337,13 @@ void planeReconfig(enum Configure cfg, int val)
 	int tmp = configure[cfg];
 	configure[cfg] = val;
 	switch (cfg) {
-		case (TriangleSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
-		case (SubjectSize): subject = planeRealloc(subject,val,tmp,sizeof(struct Kernel)); break;
-		case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
-		case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
-		case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
-		case (RegisterOpen): planeStarted(val); break;
-		default: break;}
+	case (PierceSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
+	case (SubjectSize): subject = planeRealloc(subject,val,tmp,sizeof(struct Kernel)); break;
+	case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
+	case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
+	case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
+	case (RegisterOpen): planeStarted(val); break;
+	default: break;}
 }
 void planeAlloc()
 {
@@ -381,11 +381,12 @@ void copyMachine(struct Machine *dst, struct Machine *src)
 void planeBuffer()
 {
 	switch (center.mem) {
-		case (Stringz): if (center.idx < 0) for (int i = 0; i < center.siz; i++) center.idx = planeSet(-1,center.str[i]);
-		else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
-		case (Machinez): for (int i = 0; i < center.siz; i++) copyMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
-		case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
-		default: callDma(&center); break;}
+	case (Piercez): for (int i = 0; i < center.siz; i++) memcpy(&pierce[(center.idx+i)%configure[PierceSize]],&center.pie[i],sizeof(struct Pierce)); break;
+	case (Stringz): if (center.idx < 0) for (int i = 0; i < center.siz; i++) center.idx = planeSet(-1,center.str[i]);
+	else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
+	case (Machinez): for (int i = 0; i < center.siz; i++) copyMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
+	case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
+	default: callDma(&center); break;}
 }
 int planeEscape(int lvl, int nxt)
 {
@@ -464,67 +465,36 @@ void planeGetter(void **dat, int sub)
 int planeSwitch(struct Machine *mptr, int next)
 {
 	switch (mptr->xfr) {
-	case (Read): // read internal pipe
-		planeRead(); break;
-	case (Write): // write external pipe
-		writeCenter(&center,external); break;
-	case (Save): // kernel, center, pierce, or info to configure
-		for (int i = 0; i < mptr->siz; i++)
-		planePreconfig(mptr->cfg[i]); break;
-	case (Force): // machine to configure
-		for (int i = 0; i < mptr->siz; i++)
-		planeReconfig(mptr->cfg[i],mptr->val[i]); break;
-	case (Setup): // configure to center
-		for (int i = 0; i < mptr->siz; i++)
-		planePostconfig(mptr->cfg[i],mptr->sub[i]); break;
-	case (Alloc): // configure to center
-		planeAlloc(); break;
-	case (Comp): // set center to compose and cursor/fixed/mode
-		jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
-	case (Pose): // set center to towrite
-		copymat(planeCenter(),planeTowrite(),4); break;
-	case (Other): // set center to maintain
-		copymat(planeCenter(),planeMaintain(),4); break;
-	case (Glitch): // set maintain to center
-		copymat(planeMaintain(),planeCenter(),4); break;
-	case (Check): // apply center to maintain and unapply to written
-		jumpmat(planeMaintain(),planeCenter(),4);
-		timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-	case (Fixed): // apply cursor/fixed/mode to towrite and change fixed for continuity
-		jumpmat(planeTowrite(),planeLocal(),4);
-		planeContinue(); break;
-	case (Apply): // apply towrite to written and clear towrite
-		jumpmat(planeWritten(),planeTowrite(),4);
-		identmat(planeTowrite(),4); break;
-	case (Accum): // apply written to maintain and clear written
-		jumpmat(planeMaintain(),planeWritten(),4);
-		identmat(planeWritten(),4); break;
-	case (Share): // dma to cpu or gpu
-		planeBuffer(); break;
-	case (Draw): // start shader
-		callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
-	case (Jump): // skip if true
-		next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->idx : configure[RegisterNest]),next); break;
-	case (Goto): // jump if true
-		next = (planeIval(&mptr->exp[0]) ? mptr->idx : next); break;
-	case (Nest): // nest to level
-		configure[RegisterNest] += mptr->idx; break;
-	case (Eval): // rmw center
-		planeEval(&mptr->exp[0],&mptr->var[0]); break;
-	case (Gval): // generic to center
-		for (int i = 0; i < mptr->siz; i++)
-		planeGval(&mptr->gen[0],mptr->sub[i]); break;
-	case (Swap): // exchange machine lines
-		planeExchange(mptr->idx,mptr->oth); break;
+	case (Read): planeRead(); break;
+	case (Write): writeCenter(&center,external); break;
+	case (Save): for (int i = 0; i < mptr->siz; i++) planePreconfig(mptr->cfg[i]); break;
+	case (Force): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],mptr->val[i]); break;
+	case (Setup): for (int i = 0; i < mptr->siz; i++) planePostconfig(mptr->cfg[i],mptr->sub[i]); break;
+	case (Alloc): planeAlloc(); break;
+	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
+	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
+	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
+	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
+	case (Check): jumpmat(planeMaintain(),planeCenter(),4); timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
+	case (Fixed): jumpmat(planeTowrite(),planeLocal(),4); planeContinue(); break;
+	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
+	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
+	case (Share): planeBuffer(); break;
+	case (Draw): callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
+	case (Jump): next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->idx : configure[RegisterNest]),next); break;
+	case (Goto): next = (planeIval(&mptr->exp[0]) ? mptr->idx : next); break;
+	case (Nest): configure[RegisterNest] += mptr->idx; break;
+	case (Eval): planeEval(&mptr->exp[0],&mptr->var[0]); break;
+	case (Gval): for (int i = 0; i < mptr->siz; i++) planeGval(&mptr->gen[0],mptr->sub[i]); break;
+	case (Swap): planeExchange(mptr->idx,mptr->oth); break;
 	default: break;}
 	return next;
 }
 void planeWake(enum Configure hint)
 {
-	int yield = 0;
 	configure[RegisterHint] = hint;
 	if (configure[RegisterLine] < 0 || configure[RegisterLine] >= configure[MachineSize]) configure[RegisterLine] = 0;
-	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize] && !yield) {
+	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[RegisterLine];
 	int next = planeSwitch(mptr,configure[RegisterLine]+1);
 	if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
@@ -540,34 +510,36 @@ void planeRead()
 const char *planeGet(int idx)
 {
 	const char *ret = 0;
-	sem_safe(&resource,{
+	sem_wait(&resource);
 	free(pthread_getspecific(retstr)); pthread_setspecific(retstr,0);
 	if (idx >= numstr) {
-		strings = realloc(strings,(idx+1)*sizeof(char*));
-		while (idx >= numstr) strings[numstr++] = strdup("");}
+	strings = realloc(strings,(idx+1)*sizeof(char*));
+	while (idx >= numstr) strings[numstr++] = strdup("");}
 	if (idx < 0) {
-		numstr--;
-		pthread_setspecific(retstr,strdup(strings[numstr]));
-		free(strings[numstr]); strings[numstr] = 0;
-		strings = realloc(strings,numstr*sizeof(char*));}
+	numstr--;
+	pthread_setspecific(retstr,strdup(strings[numstr]));
+	free(strings[numstr]); strings[numstr] = 0;
+	strings = realloc(strings,numstr*sizeof(char*));}
 	else pthread_setspecific(retstr,strdup(strings[idx]));
-	ret = pthread_getspecific(retstr);});
+	ret = pthread_getspecific(retstr);
+	sem_post(&resource);
 	return ret;
 }
 int planeSet(int idx, const char *str)
 {
 	int ret = 0;
-	sem_safe(&resource,{
+	sem_wait(&resource);
 	if (idx >= numstr) {
-		strings = realloc(strings,(idx+1)*sizeof(char*));
-		while (idx >= numstr) strings[numstr++] = strdup("");}
+	strings = realloc(strings,(idx+1)*sizeof(char*));
+	while (idx >= numstr) strings[numstr++] = strdup("");}
 	if (idx < 0) {
-		numstr++;
-		strings = realloc(strings,numstr*sizeof(char*));
-		idx = numstr-1;
-		strings[numstr-1] = strdup("");}
+	numstr++;
+	strings = realloc(strings,numstr*sizeof(char*));
+	idx = numstr-1;
+	strings[numstr-1] = strdup("");}
 	free(strings[idx]); strings[idx] = strdup(str);
-	ret = numstr;});
+	ret = numstr;
+	sem_post(&resource);
 	return ret;
 }
 int planeCat(int idx, const char *str)
@@ -605,19 +577,19 @@ void planeConsole()
 	fd_set fds, ers;
 	sem_post(&ready[Console]);
 	while (1) {
-		FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
-		if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
-		FD_SET(STDIN_FILENO,&fds); FD_SET(STDIN_FILENO,&ers);
-		val = pselect(nfd,&fds,0,&ers,0,0);
-		if (val < 0 && errno == EINTR) continue;
-		if (val < 0 && errno == EBADF) break;
-		if (val == 0) break;
-		if (val < 0) ERROR();
-		val = read(STDIN_FILENO,chr,1);
-		if (val == 0) break;
-		if (val < 0) ERROR();
-		planeCat(configure[RegisterPrompt],chr);
-		planeSafe(Waits,RegisterPrompt);}
+	FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
+	if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
+	FD_SET(STDIN_FILENO,&fds); FD_SET(STDIN_FILENO,&ers);
+	val = pselect(nfd,&fds,0,&ers,0,0);
+	if (val < 0 && errno == EINTR) continue;
+	if (val < 0 && errno == EBADF) break;
+	if (val == 0) break;
+	if (val < 0) ERROR();
+	val = read(STDIN_FILENO,chr,1);
+	if (val == 0) break;
+	if (val < 0) ERROR();
+	planeCat(configure[RegisterPrompt],chr);
+	planeSafe(Waits,RegisterPrompt);}
 }
 void planeWrap(enum Thread bit, enum Wait pre, enum Wait post)
 {
@@ -648,14 +620,14 @@ void planeFinish(enum Thread bit)
 void planeStarted(int val)
 {
 	int dif = 0;
-	sem_safe(&resource,{dif = started & ~running;}); // join each in started but not running
+	sem_safe(&resource,{dif = started & ~running;});
 	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
 	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
 	sem_safe(&resource,{started = running;});
-	dif = started & ~val; // join each in started but not val
+	dif = started & ~val;
 	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
 	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
-	dif = val & ~started; // create each in val but not started
+	dif = val & ~started;
 	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
 	if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
 	sem_safe(&resource,{started = running = val;});
@@ -666,7 +638,7 @@ int planeRunning()
 }
 void planeEnque(enum Wait wait, enum Configure hint)
 {
-	sem_safe(&resource,{
+	sem_wait(&resource);
 	if (wait < Waits) perpend[wait]++;
 	if (qfull == qsize) {qsize++;
 	waits = realloc(waits,qsize*sizeof(enum Wait));
@@ -676,31 +648,30 @@ void planeEnque(enum Wait wait, enum Configure hint)
 	qhead++; if (qhead == qsize) qhead = 0;}
 	waits[qtail] = wait; hints[qtail] = hint;
 	qtail++; if (qtail == qsize) qtail = 0;
-	qfull++;});
+	qfull++;
+	sem_post(&resource);
 }
 void planeDeque(enum Wait *wait, enum Configure *hint)
 {
-	sem_safe(&resource,{
+	sem_wait(&resource);
 	if (*wait < Waits) perpend[*wait]--;
 	if (qfull == 0) ERROR();
 	*wait = waits[qhead]; *hint = hints[qhead];
 	qhead++; if (qhead == qsize) qhead = 0;
-	qfull--;});
+	qfull--;
+	sem_post(&resource);
 }
 void planePeek(vftype user)
 {
 	enum Wait wait = 0;
 	enum Configure hint = 0;
-	sem_safe(&resource,{
-	wait = waits[qhead];
-	hint = hints[qhead];});
+	sem_safe(&resource,{wait = waits[qhead]; hint = hints[qhead];});
 	user(wait,hint);
 }
 int planeTodo()
 {
 	int val = 0;
-	sem_safe(&resource,{
-	val = (qfull || running);});
+	sem_safe(&resource,{val = (qfull || running);});
 	return val;
 }
 void planeBoot()
@@ -756,6 +727,5 @@ void planeUser(enum Wait wait, enum Configure hint)
 }
 void planeReady(struct Pierce *given)
 {
-	for (int i = 0; i < configure[PierceSize]; i++) pierce[i] = given[i];
-	found = 0;
+	for (int i = 0; i < configure[PierceSize]; i++) pierce[i] = given[i]; found = 0;
 }
