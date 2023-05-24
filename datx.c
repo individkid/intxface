@@ -557,11 +557,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		assignDat(dat,dat0);
 		free(dat0);} break;
 	case (RexOp): { // 2: regex execute
+		int val = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ != identType("Int")) {fprintf(stderr,"wrong type of result %d\n",typ); exit(-1);}
 		datxEval(datxDat0,&exp->exp[0],identType("Str"));
 		datxEval(datxDat1,&exp->exp[1],identType("Dat"));
-		datxInt(dat,regexec(datxData(datxDat0),datxChrz(0,datxDat1),0,0,0));} break;
+		val = regexec(datxData(datxDat0),datxChrz(0,datxDat1),0,0,0);
+		if (val != 0 && val != REG_NOMATCH) {fprintf(stderr,"could not execute regex %d\n",val); exit(-1);}
+		datxInt(dat,(val == 0));} break;
 	default: ERROR();}
 	return typ;
 }
