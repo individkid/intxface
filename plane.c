@@ -23,7 +23,6 @@
 #define sem_safe(S,F) {sem_wait(S);F;sem_post(S);}
 #include <setjmp.h>
 #include <signal.h>
-#include <regex.h>
 
 struct Kernel {
 	struct Matrix compose;

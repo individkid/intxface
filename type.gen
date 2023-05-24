@@ -115,16 +115,16 @@ Transfer = {
 	"Write", -- write external pipe
 	"Save", -- center, pierce, or info to configure
 	"Force", -- machine to configure
-	"Setup", -- configure to center
-	"Alloc", -- configure to center
-	"Comp", -- change center to composition of optimization and cursor/fixed/mode
-	"Pose", -- change center to towrite
-	"Other", -- change center to maintain
-	"Glitch", -- set maintain to center
-	"Check", -- apply center to maintain and unapply to written
-	"Fixed", -- apply cursor/fixed/mode to towrite and change fixed for continuity
-	"Apply", -- apply towrite to written and clear towrite
-	"Accum", -- apply written to maintain and clear written
+	"Setup", -- configure to center configure array
+	"Alloc", -- configure to center fields and array size
+	"Comp", -- composition to center
+	"Pose", -- towrite to center
+	"Other", -- maintain to center
+	"Glitch", -- center to maintain
+	"Check", -- apply center to maintain
+	"Fixed", -- apply cursor/fixed/mode
+	"Apply", -- apply towrite to written
+	"Accum", -- apply written to maintain
 	"Share", -- dma to cpu or gpu
 	"Draw", -- start shader
 	"Jump", -- skip if true
@@ -135,14 +135,14 @@ Transfer = {
 	"Swap", -- exchange machine lines
 }
 Trans = {
-	"Slide", -- fixed plane or direction
-	"Rotate", -- fixed axis and point
-	"Scale", -- fixed point
+	"Slide",
+	"Rotate",
+	"Scale",
 }
 Form = {
-	"Ortho", -- from pierce point to infinite point
-	"Focal", -- from pierce point to picture point
-	"Normal", -- from pierce point to normal point
+	"Ortho",
+	"Focal",
+	"Normal",
 }
 Tool = {
 	"Mouse",
@@ -218,6 +218,8 @@ Operate = {
 	"InsOp", -- 2; field to struct
 	"ExtOp", -- 1; field from struct
 	"UnqOp", -- 0; magic number
+	"RcpOp", -- 1; regex compile
+	"RexOp", -- 2; regex execute
 }
 Process = {
 	"Filez",

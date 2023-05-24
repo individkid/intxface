@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <regex.h>
 
 struct Data *base[NUMOPEN] = {0}; // last read
 int *next[NUMOPEN] = {0}; // bytes per sub
@@ -422,59 +423,51 @@ void datxOld(void **dat, float val)
 #define BINARY_DIV(LFT,RGT) (LFT/RGT)
 #define BINARY_REM(LFT,RGT) (LFT%RGT)
 #define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
-#define BINARY_BEGIN()\
+#define BINARY_FLM(LFT,RGT) fmodf(LFT,RGT)
+#define BINARY_BEGIN(TYP)\
 	void *dat0 = 0; void *dat1 = 0;\
 	int typ0 = 0; int typ1 = 0;\
 	if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}\
-	typ0 = datxEval(&dat0,&exp->exp[0],typ);\
-	typ1 = datxEval(&dat0,&exp->exp[1],typ);\
-	if (typ < 0) typ = typ0;\
+	typ0 = datxEval(&dat0,&exp->exp[0],TYP);\
+	typ1 = datxEval(&dat1,&exp->exp[1],TYP);\
 	if (typ0 != typ1) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
-#define BINARY_FIX(TYP)\
-	void *dat0 = 0; void *dat1 = 0;\
-	int typ0 = 0; int typ1 = 0;\
-	if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}\
-	if (typ != identType(TYP)) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}\
-	typ0 = datxEval(&dat0,&exp->exp[0],-1);\
-	typ1 = datxEval(&dat1,&exp->exp[1],-1);\
-	if (typ0 != typ1) ERROR();
 #define BINARY_TYPE(TYPE,TYP,GET,SET,OP)\
 	if (typ == identType(TYP)) {\
 	TYPE lft = GET(0,dat0);\
 	TYPE rgt = GET(0,dat1);\
 	SET(dat,OP(lft,rgt));}
-#define BINARY_BEGINS(OP)\
-	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
-	BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,OP) else
-#define BINARY_TYPES(OP)\
-	BINARY_BEGINS(OP)\
-	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else
-#define BINARY_FIXS(SET,OP)\
-	BINARY_TYPE(int,"Int",*datxIntz,SET,OP) else\
-	BINARY_TYPE(int32_t,"Int32",*datxInt32z,SET,OP) else\
-	BINARY_TYPE(double,"Num",*datxNumz,SET,OP) else
-#define BINARY_DONE(STR) fprintf(stderr,"unsupported "STR" type %d\n",typ); exit(-1); break;
 #define BINARY_BLOCK(OP,STR) {\
-	BINARY_BEGIN()\
-	BINARY_TYPES(OP)\
-	BINARY_DONE(STR)}
+	BINARY_BEGIN(typ)\
+	if (typ < 0) typ = typ0;\
+	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
+	BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,OP) else\
+	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else\
+	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
+	fprintf(stderr,"unsupported "STR" type %d\n",typ); exit(-1);}
 int datxEval(void **dat, struct Express *exp, int typ)
 {
 	switch (exp->opr) {
-	case (AddOp): BINARY_BLOCK(BINARY_ADD,"add") // siz = 2;
-	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub") // 2;
-	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul") // 2;
-	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div") // 2;
+	case (AddOp): BINARY_BLOCK(BINARY_ADD,"add") break; // siz = 2;
+	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub") break; // 2;
+	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul") break; // 2;
+	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div") break; // 2;
 	case (RemOp): { // 2;
-	BINARY_BEGIN()
-	BINARY_BEGINS(BINARY_REM)
-	BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
-	BINARY_DONE("rem")}
+		BINARY_BEGIN(typ)
+		if (typ < 0) typ = typ0;
+		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_REM) else
+		BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,BINARY_REM) else
+		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
+		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
+		fprintf(stderr,"unsupported rem type %d\n",typ); exit(-1);} break;
 	case (CmpOp): { // 2; to neg zero pos
-	BINARY_FIX("Int")
-	BINARY_FIXS(datxInt,BINARY_TRI)
-	BINARY_TYPE(char*,"Str",datxChrz,datxInt,BINARY_CMP) else
-	BINARY_DONE("cmp")}
+		BINARY_BEGIN(-1)
+		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
+		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_TRI) else
+		BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt,BINARY_TRI) else
+		BINARY_TYPE(double,"Num",*datxNumz,datxInt,BINARY_TRI) else
+		BINARY_TYPE(float,"Old",*datxOldz,datxInt,BINARY_TRI) else
+		BINARY_TYPE(char*,"Str",datxChrz,datxInt,BINARY_CMP) else
+		fprintf(stderr,"unsupported cmp type %d\n",typ); exit(-1);} break;
 	case (CndOp): { // 4; from neg zero pos
 		void *dat0 = 0;
 		if (exp->siz != 4) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
@@ -482,8 +475,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (*datxIntz(0,dat0) < 0) datxEval(dat,&exp->exp[1],typ);
 		if (*datxIntz(0,dat0) == 0) datxEval(dat,&exp->exp[2],typ);
 		if (*datxIntz(0,dat0) > 0) datxEval(dat,&exp->exp[3],typ);
-		free(dat0);
-		break;}
+		free(dat0);} break;
 	case (TotOp): { // 1; cast to type
 		int tmp = 0;
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
@@ -491,41 +483,42 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = tmp;
 		else if (typ == identType("Int") && tmp == identType("Int32")) datxInt(dat,*datxInt32z(0,dat));
 		else if (typ == identType("Int") && tmp == identType("Num")) datxInt(dat,*datxNumz(0,dat));
+		else if (typ == identType("Int") && tmp == identType("Old")) datxInt(dat,*datxOldz(0,dat));
 		else if (typ == identType("Int32") && tmp == identType("Int")) datxInt32(dat,*datxIntz(0,dat));
 		else if (typ == identType("Int32") && tmp == identType("Num")) datxInt32(dat,*datxNumz(0,dat));
+		else if (typ == identType("Int32") && tmp == identType("Old")) datxInt32(dat,*datxOldz(0,dat));
 		else if (typ == identType("Num") && tmp == identType("Int")) datxNum(dat,*datxIntz(0,dat));
 		else if (typ == identType("Num") && tmp == identType("Int32")) datxNum(dat,*datxInt32z(0,dat));
-		else if (typ != tmp) {fprintf(stderr,"cannot cast from %d to %d\n",tmp,typ); exit(-1);}
-		break;}
+		else if (typ == identType("Num") && tmp == identType("Old")) datxNum(dat,*datxOldz(0,dat));
+		else if (typ == identType("Old") && tmp == identType("Int")) datxOld(dat,*datxIntz(0,dat));
+		else if (typ == identType("Old") && tmp == identType("Int32")) datxOld(dat,*datxInt32z(0,dat));
+		else if (typ == identType("Old") && tmp == identType("Num")) datxOld(dat,*datxNumz(0,dat));
+		else if (typ != tmp) {fprintf(stderr,"cannot cast from %d to %d\n",tmp,typ); exit(-1);}} break;
 	case (ImmOp): { // 0; built in value
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ == -1) typ = identUnion(exp->val);
 		if (typ != identUnion(exp->val)) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
-		datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,datxDat0);
-		break;}
+		datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,datxDat0);} break;
 	case (ValOp): { // 0; restore from named
 		void *dat0 = 0;
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ == -1) typ = exp->typ;
 		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		datxStr(&dat0,exp->str); datxFind(dat,dat0);
-		free(dat0);
-		break;}
+		free(dat0);} break;
 	case (SavOp): { // 2; save to named
 		void *dat0 = 0; void *dat1 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],-1);
 		datxStr(&dat1,exp->str); datxInsert(dat1,dat0);
 		datxEval(dat,&exp->exp[1],typ);
-		free(dat0); free(dat1);
-		break;}
+		free(dat0); free(dat1);} break;
 	case (GetOp): { // 0; value from callback
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ == -1) typ = exp->typ;
 		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		if (datxGetFp) {void *save = 0; assignDat(&save,prefix); datxGetFp(dat,exp->cfg); assignDat(prefix,save);} else {
-		fprintf(stderr,"getter not set\n"); exit(-1);}
-		break;}
+		fprintf(stderr,"getter not set\n"); exit(-1);}} break;
 	case (SetOp): { // 2; callback with value
 		void *dat0 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
@@ -533,28 +526,42 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (datxSetFp) {void *save = 0; assignDat(&save,prefix); datxSetFp(dat0,exp->cfg); assignDat(prefix,save);} else {
 		fprintf(stderr,"setter not set\n"); exit(-1);}
 		datxEval(dat,&exp->exp[1],typ);
-		free(dat0);
-		break;}
+		free(dat0);} break;
 	case (InsOp): { // 2; field to struct
 		int typ0 = 0; int typ1 = 0; datxSingle();
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		typ0 = datxEval(datxDat0,&exp->exp[0],typ);
 		typ1 = datxEval(datxDat1,&exp->exp[1],identField(typ0,exp->fld));
 		datxNone(datxDat2); readField(typ0,typ1,exp->idx,datxIdx0,datxIdx1,datxIdx2);
-		assignDat(dat,*datxDat2);
-		break;}
+		assignDat(dat,*datxDat2);} break;
 	case (ExtOp): { // 1; field from struct
 		int typ0 = 0; datxSingle();
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		typ0 = datxEval(datxDat0,&exp->exp[0],typ);
 		datxNone(datxDat1); writeField(typ0,identField(typ0,exp->fld),exp->idx,datxIdx0,datxIdx1);
-		assignDat(dat,*datxDat1);
-		break;}
+		assignDat(dat,*datxDat1);} break;
 	case (UnqOp): { // 0; magic number
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
-		datxInt(dat,unique++);
-		break;}
+		datxInt(dat,unique++);} break;
+	case (RcpOp): { // 1: regex compile
+		void *dat0 = malloc(sizeof(int)+sizeof(regex_t));
+		char *str = 0; int val = 0;
+		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		if (typ != identType("Dat")) {fprintf(stderr,"wrong type of result %d\n",typ); exit(-1);}
+		datxEval(datxDat0,&exp->exp[0],identType("Str"));
+		str = datxChrz(0,datxDat0);
+		*(int*)dat0 = sizeof(regex_t);
+		val = regcomp(datxData(dat0),str,0);
+		if (val != 0) {fprintf(stderr,"could not compile regex (%s) %d\n",str,val); exit(-1);}
+		assignDat(dat,dat0);
+		free(dat0);} break;
+	case (RexOp): { // 2: regex execute
+		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		if (typ != identType("Int")) {fprintf(stderr,"wrong type of result %d\n",typ); exit(-1);}
+		datxEval(datxDat0,&exp->exp[0],identType("Str"));
+		datxEval(datxDat1,&exp->exp[1],identType("Dat"));
+		datxInt(dat,regexec(datxData(datxDat0),datxChrz(0,datxDat1),0,0,0));} break;
 	default: ERROR();}
 	return typ;
 }
