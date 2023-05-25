@@ -618,18 +618,13 @@ void planeFinish(enum Thread bit)
 }
 void planeStarted(int val)
 {
-	int dif = 0;
-	sem_safe(&resource,{dif = started & ~running;});
-	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
-	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
-	sem_safe(&resource,{started = running;});
-	dif = started & ~val;
-	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
-	sem_safe(&ready[bit],{planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();});}
-	dif = val & ~started;
-	for (enum Thread bit = 0; bit < Threads; bit++) if (dif & (1<<bit)) {
-	if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();}
-	sem_safe(&resource,{started = running = val;});
+	int done = 0; int todo = 0;
+	sem_safe(&resource,{done = started & ~(running & val); todo = val & ~(started & ~done); started = running = val;});
+	for (enum Thread bit = 0; bit < Threads; bit++) if (done & (1<<bit)) {
+	planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();}
+	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) {
+	if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();
+	sem_wait(&ready[bit]); sem_post(&ready[bit]);}
 }
 int planeRunning()
 {
@@ -670,7 +665,7 @@ void planePeek(vftype user)
 int planeTodo()
 {
 	int val = 0;
-	sem_safe(&resource,{val = (qfull || running);});
+	sem_safe(&resource,{val = qfull;});
 	return val;
 }
 void planeBoot()
