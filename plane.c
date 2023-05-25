@@ -619,7 +619,7 @@ void planeFinish(enum Thread bit)
 void planeStarted(int val)
 {
 	int done = 0; int todo = 0;
-	sem_safe(&resource,{done = started & ~(running & val); todo = val & ~(started & ~done); started = running = val;});
+	sem_safe(&resource,{running &= val; done = started & ~running; started &= ~done; todo = val & ~started; started = running = val;});
 	for (enum Thread bit = 0; bit < Threads; bit++) if (done & (1<<bit)) {
 	planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();}
 	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) {
