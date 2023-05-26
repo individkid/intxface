@@ -72,7 +72,6 @@ int perpend[Waits] = {0};
 sem_t resource;
 sem_t pending;
 sem_t ready[Threads];
-sem_t finish[Threads];
 void planeRead();
 const char *planeGet(int idx);
 int planeSet(int idx, const char *str);
@@ -552,7 +551,7 @@ int planeCat(int idx, const char *str)
 void planeTerm(int sig)
 {
 }
-void planeExternal()
+void *planeExternal(void *ptr)
 {
 	struct Argument arg = {0};
 	if ((external = wrapIdent(Planez,planeGet(1))) < 0) exitErr(__FILE__,__LINE__);
@@ -567,8 +566,10 @@ void planeExternal()
 	writeCenter(&center,internal);
 	sem_safe(&resource,{numpipe++;});
 	planeSafe(Waits,RegisterHint);}
+	sem_safe(&resource,{running &= ~(1<<External);});
+	return 0;
 }
-void planeConsole()
+void *planeConsole(void *ptr)
 {
 	char chr[2] = {0};
 	int val = 0;
@@ -589,42 +590,33 @@ void planeConsole()
 	if (val < 0) ERROR();
 	planeCat(configure[RegisterPrompt],chr);
 	planeSafe(Waits,RegisterPrompt);}
-}
-void planeWrap(enum Thread bit, enum Wait pre, enum Wait post)
-{
-	planeSafe(pre,Configures); sem_post(&ready[bit]);
-	sem_wait(&finish[bit]); planeSafe(post,Configures);	
-}
-void *planeThread(void *arg)
-{
-	enum Thread bit = (enum Thread)(uintptr_t)arg;
-	switch (bit) {
-	case (External): planeExternal(); break;
-	case (Console): planeConsole(); break;
-	case (Window): planeWrap(Window,Open,Close); break;
-	case (Process): planeWrap(Process,Start,Stop); break;
-	default: ERROR();}
-	sem_safe(&resource,{running &= ~(1<<bit);});
+	sem_safe(&resource,{running &= ~(1<<Console);});
 	return 0;
+}
+void planeThread(enum Thread bit)
+{
+	switch (bit) {
+	case (External): if (pthread_create(&thread[bit],0,planeExternal,0) != 0) ERROR(); break;
+	case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR(); break;
+	case (Window): planeSafe(Open,Configures); sem_post(&ready[bit]); break;
+	case (Process): planeSafe(Start,Configures); sem_post(&ready[bit]); break;
+	default: ERROR();}
 }
 void planeFinish(enum Thread bit)
 {
 	switch (bit) {
-	case (External): closeIdent(external); break;
-	case (Console): close(STDIN_FILENO); break;
-	case (Window): sem_post(&finish[Window]); break;
-	case (Process): sem_post(&finish[Process]); break;
+	case (External): sem_wait(&ready[bit]); closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
+	case (Console): sem_wait(&ready[bit]); close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
+	case (Window): sem_wait(&ready[bit]); planeSafe(Close,Configures); break;
+	case (Process): sem_wait(&ready[bit]); planeSafe(Stop,Configures); break;
 	default: ERROR();}
 }
 void planeStarted(int val)
 {
 	int done = 0; int todo = 0;
 	sem_safe(&resource,{running &= val; done = started & ~running; started &= ~done; todo = val & ~started; started = running = val;});
-	for (enum Thread bit = 0; bit < Threads; bit++) if (done & (1<<bit)) {
-	planeFinish(bit); if (pthread_join(thread[bit],0) != 0) ERROR();}
-	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) {
-	if (pthread_create(&thread[bit],0,planeThread,(void*)(uintptr_t)bit) != 0) ERROR();
-	sem_wait(&ready[bit]); sem_post(&ready[bit]);}
+	for (enum Thread bit = 0; bit < Threads; bit++) if (done & (1<<bit)) planeFinish(bit);
+	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) planeThread(bit);
 }
 int planeRunning()
 {
@@ -659,13 +651,16 @@ void planePeek(vftype user)
 {
 	enum Wait wait = 0;
 	enum Configure hint = 0;
+	int val = 0;
+	sem_safe(&resource,{val = (qfull == 0);});
+	if (val) sem_wait(&pending);
 	sem_safe(&resource,{wait = waits[qhead]; hint = hints[qhead];});
 	user(wait,hint);
 }
 int planeTodo()
 {
 	int val = 0;
-	sem_safe(&resource,{val = qfull;});
+	sem_safe(&resource,{val = (qfull || started);});
 	return val;
 }
 void planeBoot()
@@ -685,7 +680,6 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	sem_init(&resource,0,1);
 	sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
-	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&finish[bit],0,0);
 	datxSetter(planeSetter); datxGetter(planeGetter);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma;
@@ -705,13 +699,13 @@ int planeConfig(enum Configure cfg)
 void planeSafe(enum Wait wait, enum Configure hint)
 {
 	sem_safe(&resource,{if (callInfo(RegisterOpen) && perpend[Stop] == 0) callSafe(wait,hint);});
-	planeEnque(wait,hint); sem_post(&pending);
+	planeEnque(wait,hint);
+	sem_safe(&resource,{if (qfull == 1) sem_post(&pending);});
 }
 void planeUser(enum Wait wait, enum Configure hint)
 {
 	enum Wait wval = 0;
 	enum Configure hval = 0;
-	sem_wait(&pending);
 	planeDeque(&wval,&hval);
 	if (wval != wait || hval != hint) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
