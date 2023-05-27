@@ -692,19 +692,6 @@ void planeDeque(enum Wait *wait, enum Configure *hint)
 	qfull--;
 	sem_post(&resource);
 }
-void planePeek(vftype user)
-{
-	enum Wait wait = 0;
-	enum Configure hint = 0;
-	sem_safe(&pending,{sem_safe(&resource,{wait = waits[qhead]; hint = hints[qhead];});});
-	user(wait,hint);
-}
-int planeTodo()
-{
-	int val = 0;
-	sem_safe(&resource,{val = (qfull || started);});
-	return val;
-}
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
 {
 	struct sigaction act;
@@ -727,7 +714,12 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	callDraw = draw;
 	if ((internal = openPipe()) < 0) ERROR();
 	init(); planeBoot();
-	while (planeTodo()) planePeek(planeMain);
+	while (1) {
+	enum Wait wait = 0;
+	enum Configure hint = 0;
+	sem_safe(&resource,{if (!qfull && !started) break;});
+	sem_safe(&pending,{sem_safe(&resource,{wait = waits[qhead]; hint = hints[qhead];});});
+	planeMain(wait,hint);}
 	closeIdent(internal);
 }
 int planeConfig(enum Configure cfg)
