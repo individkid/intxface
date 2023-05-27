@@ -289,9 +289,9 @@ struct Pierce *planePierce()
 	unfound.idx = configure[ClosestFound];}
 	return found;
 }
-void planeStage(enum Configure cfg)
+void planeStage(const enum Configure *cfg, int siz)
 {
-	switch (cfg) {
+	for (int i = 0; i < siz; i++) switch (cfg[i]) {
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
 	case (CenterRequest): configure[CenterRequest] = center.req; break;
@@ -316,7 +316,29 @@ void planeStage(enum Configure cfg)
 	case (OriginAngle): configure[OriginAngle] = configure[CursorAngle]; configure[CursorAngle] = 0; break;
 	default: break;}
 }
-void planeSetup(enum Configure *cfg, int *val, int siz)
+void *planeRealloc(void *ptr, int siz, int tmp, int mod)
+{
+	char *result = realloc(ptr,siz*mod);
+	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
+	return result;
+}
+void planeThrough(struct Center *ptr)
+{
+	if (ptr->mem != Configurez) ERROR();
+	for (int i = 0; i < ptr->siz; i++) {
+	int tmp = configure[ptr->cfg[i]];
+	configure[ptr->cfg[i]] = ptr->val[i];
+	switch (ptr->cfg[i]) {
+	case (PierceSize): pierce = planeRealloc(pierce,ptr->val[i],tmp,sizeof(struct Pierce)); break;
+	case (SubjectSize): subject = planeRealloc(subject,ptr->val[i],tmp,sizeof(struct Kernel)); break;
+	case (ObjectSize): object = planeRealloc(object,ptr->val[i],tmp,sizeof(struct Kernel)); break;
+	case (ElementSize): element = planeRealloc(element,ptr->val[i],tmp,sizeof(struct Kernel)); break;
+	case (MachineSize): machine = planeRealloc(machine,ptr->val[i],tmp,sizeof(struct Machine)); break;
+	case (RegisterOpen): planeStarted(ptr->val[i]); break;
+	default: break;}}
+	callDma(ptr);
+}
+void planeForce(enum Configure *cfg, int *val, int siz)
 {
 	struct Center tmp = {0};
 	tmp.mem = Configurez;
@@ -326,27 +348,8 @@ void planeSetup(enum Configure *cfg, int *val, int siz)
 	for (int i = 0; i < siz; i++) {
 	tmp.cfg[i] = cfg[i];
 	tmp.val[i] = val[i];}
-	callDma(&tmp);
+	planeThrough(&tmp);
 	freeCenter(&tmp);
-}
-void *planeRealloc(void *ptr, int siz, int tmp, int mod)
-{
-	char *result = realloc(ptr,siz*mod);
-	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
-	return result;
-}
-void planeValue(enum Configure cfg, int val)
-{
-	int tmp = configure[cfg];
-	configure[cfg] = val;
-	switch (cfg) {
-	case (PierceSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
-	case (SubjectSize): subject = planeRealloc(subject,val,tmp,sizeof(struct Kernel)); break;
-	case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
-	case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
-	case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
-	case (RegisterOpen): planeStarted(val); break;
-	default: break;}
 }
 void planeAlloc()
 {
@@ -388,7 +391,7 @@ void planeBuffer()
 	case (Stringz): if (center.idx < 0) for (int i = 0; i < center.siz; i++) center.idx = planeSet(-1,center.str[i]);
 	else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
 	case (Machinez): for (int i = 0; i < center.siz; i++) copyMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
-	case (Configurez): for (int i = 0; i < center.siz; i++) planeValue(center.cfg[i],center.val[i]); callDma(&center); break;
+	case (Configurez): planeThrough(&center); break;
 	default: callDma(&center); break;}
 }
 int planeEscape(int lvl, int nxt)
@@ -458,7 +461,7 @@ int planeIval(struct Express *exp)
 void planeSetter(void *dat, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
-	planeValue(sub,*datxIntz(0,dat));
+	planeForce((enum Configure *)&sub,datxIntz(0,dat),1);
 }
 void planeGetter(void **dat, int sub)
 {
@@ -470,16 +473,15 @@ int planeSwitch(struct Machine *mptr, int next)
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
-	case (Save): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
-	case (Force): for (int i = 0; i < mptr->siz; i++) planeValue(mptr->cfg[i],mptr->val[i]); break;
-	case (Setup): planeSetup(mptr->cfg,mptr->val,mptr->siz); break;
+	case (Save): planeStage(mptr->sav,mptr->siz); break;
+	case (Force): planeForce(mptr->cfg,mptr->val,mptr->siz); break;
 	case (Alloc): planeAlloc(); break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4); timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-	case (Local): jumpmat(planeTowrite(),planeLocal(),4); planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
+	case (Local): jumpmat(planeTowrite(),planeLocal(),4); planeStage((const enum Configure []){OriginLeft,OriginBase,OriginAngle},3); break;
 	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
 	case (Share): planeBuffer(); break;

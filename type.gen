@@ -31,11 +31,11 @@ Flow = {
 	"Load",
 }
 Request = {
-	"SetReq", -- set memory
-	"GetReq", -- get memory
-	"GotReq", -- response to GetReq
-	"UseReq", -- notice that matrix changed
-	"FixReq", -- request to revert matrix and change plane
+	"SetReq", -- set memory in
+	"GetReq", -- get memory in
+	"GotReq", -- GetReq out with memory
+	"FixReq", -- request out to change plane
+	"RevReq", -- FixReq in to revert plane matrix
 }
 Memory = {
 	-- g; gpu
@@ -58,7 +58,7 @@ Memory = {
 }
 Configure = {
 	-- ws; written size; side effects
-	-- cg; changed graphics; used later
+	-- cg; changed graphics; write through
 	-- cp; changed parameter; used later
 	-- cf; changed function; used later
 	-- mv; machine volatile; read only
@@ -127,8 +127,7 @@ Transfer = {
 	"Write", -- write external pipe
 	"Save", -- center fields, pierce, or info to configure
 	"Force", -- machine to configure
-	"Setup", -- from configure to center array
-	"Alloc", -- from configure to center fields
+	"Alloc", -- configure to center fields
 	"Comp", -- composition to center
 	"Pose", -- towrite to center
 	"Other", -- maintain to center
@@ -462,8 +461,8 @@ Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
 	{"sav","Configure",{["xfr"]={["Save"]=true}},"siz"},
-	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
-	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
+	{"cfg","Configure",{["xfr"]={["Force"]=true}},"siz"},
+	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
 	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
