@@ -228,8 +228,6 @@ Operate = {
 	"InsOp", -- 2; field to struct
 	"ExtOp", -- 1; field from struct
 	"UnqOp", -- 0; magic number
-	"RcpOp", -- 1; regex compile
-	"RexOp", -- 2; regex execute
 	"EmbOp", -- 1; script embed
 }
 Process = {

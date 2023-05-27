@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
-#include <regex.h>
 
 struct Data *base[NUMOPEN] = {0}; // last read
 int *next[NUMOPEN] = {0}; // bytes per sub
@@ -23,6 +22,8 @@ void *prefix = 0;
 dftype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
+dgtype datxNamFp = 0;
+dhtype datxRefFp = 0;
 fftype datxEmbFp = 0;
 void ***datx = 0;
 int ndatx = 0;
@@ -515,19 +516,33 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxEval(dat,&exp->exp[1],typ);
 		free(dat0); free(dat1);} break;
 	case (GetOp): { // 0; value from callback
+		void *save = 0;
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ == -1) typ = exp->typ;
 		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
-		if (datxGetFp) {void *save = 0; assignDat(&save,prefix); datxGetFp(dat,exp->cfg); assignDat(prefix,save);} else {
-		fprintf(stderr,"getter not set\n"); exit(-1);}} break;
+		assignDat(&save,prefix);
+		if (typ == identType("Int")) {
+		if (datxGetFp == 0) {fprintf(stderr,"int getter not set\n"); exit(-1);}
+		datxGetFp(dat,exp->cfg);}
+		else if (typ == identType("Str")) {
+		if (datxRefFp == 0) {fprintf(stderr,"str getter not set\n"); exit(-1);}
+		datxRefFp(dat,exp->cfg);}
+		else {fprintf(stderr,"invalid get type %d\n",typ); exit(-1);}
+		assignDat(prefix,save);} break;
 	case (SetOp): { // 2; callback with value
-		void *dat0 = 0;
+		void *dat0 = 0; int typ0 = 0; void *save = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		datxEval(&dat0,&exp->exp[0],-1);
-		if (datxSetFp) {void *save = 0; assignDat(&save,prefix); datxSetFp(dat0,exp->cfg); assignDat(prefix,save);} else {
-		fprintf(stderr,"setter not set\n"); exit(-1);}
+		typ0 = datxEval(&dat0,&exp->exp[0],-1);
+		assignDat(&save,prefix);
+		if (typ0 == identType("Int")) {
+		if (datxSetFp == 0) {fprintf(stderr,"int setter not set\n"); exit(-1);}
+		datxSetFp(dat0,exp->cfg);}
+		else if (typ0 == identType("Str")) {
+		if (datxNamFp == 0) {fprintf(stderr,"str setter not set\n"); exit(-1);}
+		datxNamFp(dat0,exp->cfg);}
+		else {fprintf(stderr,"invalid set type %d\n",typ0); exit(-1);}
 		datxEval(dat,&exp->exp[1],typ);
-		free(dat0);} break;
+		assignDat(prefix,save); free(dat0);} break;
 	case (InsOp): { // 2; field to struct
 		int typ0 = 0; int typ1 = 0; datxSingle();
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
@@ -545,27 +560,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		datxInt(dat,unique++);} break;
-	case (RcpOp): { // 1: regex compile
-		void *dat0 = malloc(sizeof(int)+sizeof(regex_t));
-		char *str = 0; int val = 0;
-		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		if (typ != identType("Dat")) {fprintf(stderr,"wrong type of result %d\n",typ); exit(-1);}
-		datxEval(datxDat0,&exp->exp[0],identType("Str"));
-		str = datxChrz(0,datxDat0);
-		*(int*)dat0 = sizeof(regex_t);
-		val = regcomp(datxData(dat0),str,0);
-		if (val != 0) {fprintf(stderr,"could not compile regex (%s) %d\n",str,val); exit(-1);}
-		assignDat(dat,dat0);
-		free(dat0);} break;
-	case (RexOp): { // 2: regex execute
-		int val = 0;
-		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		if (typ != identType("Int")) {fprintf(stderr,"wrong type of result %d\n",typ); exit(-1);}
-		datxEval(datxDat0,&exp->exp[0],identType("Dat"));
-		datxEval(datxDat1,&exp->exp[1],identType("Str"));
-		val = regexec(datxData(datxDat0),datxChrz(0,datxDat1),0,0,0);
-		if (val != 0 && val != REG_NOMATCH) {fprintf(stderr,"could not execute regex %d\n",val); exit(-1);}
-		datxInt(dat,(val == 0));} break;
 	case (EmbOp): { // 1: script embed
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (datxEmbFp == 0) {fprintf(stderr,"no interpreter embedded\n"); exit(-1);}
@@ -590,6 +584,14 @@ void datxSetter(dgtype fnc)
 void datxGetter(dhtype fnc)
 {
 	datxGetFp = fnc;
+}
+void datxNamer(dgtype fnc)
+{
+	datxNamFp = fnc;
+}
+void datxRefer(dhtype fnc)
+{
+	datxRefFp = fnc;
 }
 void datxEmbed(fftype fnc)
 {

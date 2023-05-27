@@ -555,6 +555,14 @@ void planeGetter(void **dat, int sub)
 	if (sub < 0 || sub >= Configures) ERROR();
 	datxInt(dat,configure[sub]);
 }
+void planeNamer(void *dat, int sub)
+{
+	planeSet(sub,datxChrz(0,dat));
+}
+void planeRefer(void **dat, int sub)
+{
+	datxStr(dat,planeGet(sub));
+}
 void planeSettee(int val, int sub)
 {
 	void *dat = 0;
@@ -706,6 +714,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
 	datxSetter(planeSetter); datxGetter(planeGetter);
+	datxNamer(planeNamer); datxRefer(planeRefer);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
 	luaxAdd("datxSet",protoTypeLj(planeSettee)); luaxAdd("datxGet",protoTypeSj(planeGettee));
