@@ -461,9 +461,9 @@ Express = {
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true,["Save"]=true}},"siz"},
-	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
-	{"sub","Int",{["xfr"]={["Setup"]=true}},"siz"},
+	{"sav","Configure",{["xfr"]={["Save"]=true}},"siz"},
+	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
+	{"val","Int",{["xfr"]={["Force"]=true,["Setup"]=true}},"siz"},
 	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},

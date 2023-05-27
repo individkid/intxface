@@ -316,11 +316,18 @@ void planeStage(enum Configure cfg)
 	case (OriginAngle): configure[OriginAngle] = configure[CursorAngle]; configure[CursorAngle] = 0; break;
 	default: break;}
 }
-void planeSetup(enum Configure cfg, int idx)
+void planeSetup(enum Configure *cfg, int *val, int siz)
 {
-	if (center.mem != Configurez || idx < 0 || idx >= center.siz) return;
-	center.cfg[idx] = cfg;
-	center.val[idx] = configure[cfg];
+	struct Center tmp = {0};
+	tmp.mem = Configurez;
+	tmp.siz = siz;
+	allocConfigure(&tmp.cfg,siz);
+	allocInt(&tmp.val,siz);
+	for (int i = 0; i < siz; i++) {
+	tmp.cfg[i] = cfg[i];
+	tmp.val[i] = val[i];}
+	callDma(&tmp);
+	freeCenter(&tmp);
 }
 void *planeRealloc(void *ptr, int siz, int tmp, int mod)
 {
@@ -463,9 +470,9 @@ int planeSwitch(struct Machine *mptr, int next)
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
-	case (Save): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->cfg[i]); break;
+	case (Save): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
 	case (Force): for (int i = 0; i < mptr->siz; i++) planeValue(mptr->cfg[i],mptr->val[i]); break;
-	case (Setup): for (int i = 0; i < mptr->siz; i++) planeSetup(mptr->cfg[i],mptr->sub[i]); break;
+	case (Setup): planeSetup(mptr->cfg,mptr->val,mptr->siz); break;
 	case (Alloc): planeAlloc(); break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
