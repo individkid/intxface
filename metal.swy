@@ -373,7 +373,7 @@ func swiftStart()
 	window.makeKeyAndOrderFront(nil)
 
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in
-		planeUser(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return nil})
+		planeMain(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return nil})
 	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
 	NSApp.activate(ignoringOtherApps:true)
 	NSApp.run()
@@ -416,7 +416,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
-func swiftUser(_ wait: Wait)
+func swiftMain(_ wait: Wait)
 {
 	switch(wait) {
 	case (Open): swiftOpen(); break
@@ -533,4 +533,4 @@ func swiftDraw(_ shader: Micro, _ start: Int32, _ stop: Int32)
 
 // MAIN
 
-	planeInit(swiftInit,swiftMemory,swiftSafe,swiftUser,swiftInfo,swiftDraw)
+	planeInit(swiftInit,swiftMemory,swiftSafe,swiftMain,swiftInfo,swiftDraw)

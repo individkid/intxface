@@ -13,5 +13,5 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 int planeSet(int idx, const char *str);
 int planeConfig(enum Configure cfg);
 void planeSafe(enum Wait wait, enum Configure hint);
-void planeUser(enum Wait wait, enum Configure hint);
+void planeMain(enum Wait wait, enum Configure hint);
 void planeReady(struct Pierce *pierce);

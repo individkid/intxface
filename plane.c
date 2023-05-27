@@ -52,7 +52,7 @@ int external = 0;
 int started = 0;
 uftype callDma = 0;
 vftype callSafe = 0;
-yftype callUser = 0;
+yftype callMain = 0;
 xftype callInfo = 0;
 wftype callDraw = 0;
 pthread_t thread[Threads];
@@ -705,7 +705,7 @@ int planeTodo()
 	sem_safe(&resource,{val = (qfull || started);});
 	return val;
 }
-void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, wftype draw)
+void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
 {
 	struct sigaction act;
 	act.__sigaction_u.__sa_handler = planeTerm;
@@ -722,12 +722,12 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, w
 	datxEmbed(luaxSide);
 	callDma = dma;
 	callSafe = safe;
-	callUser = user;
+	callMain = main;
 	callInfo = info;
 	callDraw = draw;
 	if ((internal = openPipe()) < 0) ERROR();
 	init(); planeBoot();
-	while (planeTodo()) planePeek(planeUser);
+	while (planeTodo()) planePeek(planeMain);
 	closeIdent(internal);
 }
 int planeConfig(enum Configure cfg)
@@ -740,7 +740,7 @@ void planeSafe(enum Wait wait, enum Configure hint)
 	planeEnque(wait,hint);
 	sem_safe(&resource,{if (qfull == 1) sem_post(&pending);});
 }
-void planeUser(enum Wait wait, enum Configure hint)
+void planeMain(enum Wait wait, enum Configure hint)
 {
 	enum Wait wval = 0;
 	enum Configure hval = 0;
@@ -749,7 +749,7 @@ void planeUser(enum Wait wait, enum Configure hint)
 	sem_safe(&resource,{if (qfull > 0) sem_post(&pending);});
 	if (wval != wait || hval != hint) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
-	if (wait != Waits && hint == Configures) callUser(wait);
+	if (wait != Waits && hint == Configures) callMain(wait);
 	if (wait == Close && hint == RegisterOpen) {sem_safe(&resource,{running &= ~(1<<Window);}); planeWake(hint);}
 	if (wait == Stop && hint == RegisterOpen) {sem_safe(&resource,{running &= ~(1<<Process);}); planeWake(hint);}
 	if (wait != Waits && hint != Configures && hint != RegisterOpen) ERROR();
