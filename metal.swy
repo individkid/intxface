@@ -251,7 +251,7 @@ class getDelegate : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		planeSafe(Waits,RegisterOpen)
+		planeSafe(Close,RegisterOpen)
 		return false
 	}
 	func windowDidResize(_ notification: Notification)
@@ -377,6 +377,7 @@ func swiftStart()
 	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
 	NSApp.activate(ignoringOtherApps:true)
 	NSApp.run()
+	planeSafe(Stop,RegisterOpen)
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 {
@@ -442,7 +443,11 @@ func swiftSafe(_ wait: Wait, _ hint: Configure)
 func swiftInfo(_ query: Configure) -> Int32
 {
 	switch (query) {
-	case (RegisterOpen): if (NSApp.isRunning) {return Int32(1)} else {return Int32(0)}
+	case (RegisterOpen):
+		var val = Int32(0)
+		if (NSApp.isRunning) {val = val | (Int32(1)<<Int32(Window.rawValue))}
+		if (window != nil && window.screen != nil) {val = val | (Int32(1)<<Int32(Process.rawValue))}
+		return val
 	case (RegisterDone): return Int32(count)
 	case (WindowLeft): return Int32(getRect().origin.x)
 	case (WindowBase): return Int32(getRect().origin.y)

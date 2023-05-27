@@ -85,96 +85,96 @@ void planeAlize(float *dir, const float *vec)
 void planeCross(float *axe, const float *fix, const float *cur)
 {
 }
-typedef float *(*planeXform)(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang);
+typedef float *(*planeXform)(float *mat, const float *pic, const float *fix, const float *org, const float *cur);
 // mat:current-matrix pic:focal-point fix:pierce-point org:pierce-cursor cur:current-cursor ang:roller-change
-float *planeSlideOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeSlideOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to ortho fixed; cursor mapped
+	// TODO distance to perpendicular to ortho fixed; cursor mapped
 	return 0;
 }
-float *planeSlideFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeSlideFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to cursor fixed; cursor mapped
+	// TODO distance to perpendicular to cursor fixed; cursor mapped
 	return 0;
 }
-float *planeSlideNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeSlideNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to normal fixed; cursor mapped
+	// TODO distance to perpendicular to normal fixed; cursor mapped
 	return 0;
 }
-float *planeRotateOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeRotateOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// perpendicular to ortho, parallel to picture, fixed; cursor mapped
+	// TODO perpendicular to ortho, parallel to picture, fixed; cursor mapped
 	return 0;
 }
-float *planeRotateFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeRotateFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// perpendicular to cursor, parallel to picture, fixed; cursor mapped
+	// TODO perpendicular to cursor, parallel to picture, fixed; cursor mapped
 	return 0;
 }
-float *planeRotateNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeRotateNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// perpendicular to normal, parallel to picture, fixed; cursor mapped
+	// TODO perpendicular to normal, parallel to picture, fixed; cursor mapped
 	return 0;
 }
-float *planeScaleOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeScaleOrthoMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to ortho fixed; cursor mapped
+	// TODO distance to perpendicular to ortho fixed; cursor mapped
 	return 0;
 }
-float *planeScaleFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeScaleFocalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to cursor fixed; cursor mapped
+	// TODO distance to perpendicular to cursor fixed; cursor mapped
 	return 0;
 }
-float *planeScaleNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeScaleNormalMouse(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to normal fixed; cursor mapped
+	// TODO distance to perpendicular to normal fixed; cursor mapped
 	return 0;
 }
-float *planeSlideOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeSlideOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to ortho offset
+	// TODO distance to perpendicular to ortho offset
 	return 0;
 }
-float *planeSlideFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeSlideFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to cursor offset
+	// TODO distance to perpendicular to cursor offset
 	return 0;
 }
-float *planeSlideNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeSlideNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to normal offset
+	// TODO distance to perpendicular to normal offset
 	return 0;
 }
-float *planeRotateOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeRotateOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to ortho fixed
+	// TODO distance to ortho fixed
 	return 0;
 }
-float *planeRotateFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeRotateFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to cursor fixed
+	// TODO distance to cursor fixed
 	return 0;
 }
-float *planeRotateNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeRotateNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to normal fixed
+	// TODO distance to normal fixed
 	return 0;
 }
-float *planeScaleOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeScaleOrthoRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to normal scaled
+	// TODO distance to perpendicular to normal scaled
 	return 0;
 }
-float *planeScaleFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeScaleFocalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to cursor scaled
+	// TODO distance to perpendicular to cursor scaled
 	return 0;
 }
-float *planeScaleNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur, float ang)
+float *planeScaleNormalRoller(float *mat, const float *pic, const float *fix, const float *org, const float *cur)
 {
-	// distance to perpendicular to normal scaled
+	// TODO distance to perpendicular to normal scaled
 	return 0;
 }
 float *planeCenter()
@@ -217,7 +217,7 @@ float *planeTowrite()
 }
 float *planeCompose()
 {
-	// TODO check if needed
+	// TODO check if can use planeKernel()->compose as is
 	return jumpmat(jumpmat(copymat(planeKernel()->compose.mat,planeMaintain(),4),planeWritten(),4),planeTowrite(),4);
 }
 planeXform planeFunc()
@@ -262,23 +262,18 @@ planeXform planeFunc()
 }
 float *planeLocal()
 {
-	float pic[2]; float fix[2]; float org[2]; float cur[2]; float ang[1];
+	float pic[2]; float fix[2]; float org[3]; float cur[3];
 	pic[0] = configure[WindowLeft];
 	pic[1] = configure[WindowBase];
 	fix[0] = configure[ClosestLeft];
 	fix[1] = configure[ClosestBase];
 	org[0] = configure[OriginLeft];
 	org[1] = configure[OriginBase];
+	org[2] = configure[OriginAngle];
 	cur[0] = configure[CursorLeft];
 	cur[1] = configure[CursorBase];
-	ang[0] = configure[CursorAngle];
-	return planeFunc()(planeKernel()->local.mat,pic,fix,org,cur,ang[0]);
-}
-void planeContinue()
-{
-	configure[OriginLeft] = configure[CursorLeft];
-	configure[OriginBase] = configure[CursorBase];
-	configure[CursorAngle] = 0;
+	cur[2] = configure[CursorAngle];
+	return planeFunc()(planeKernel()->local.mat,pic,fix,org,cur);
 }
 struct Pierce *planePierce()
 {
@@ -294,7 +289,7 @@ struct Pierce *planePierce()
 	unfound.idx = configure[ClosestFound];}
 	return found;
 }
-void planePreconfig(enum Configure cfg)
+void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
@@ -316,9 +311,12 @@ void planePreconfig(enum Configure cfg)
 	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
 	case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
 	case (CursorClick): configure[CursorClick] = callInfo(CursorClick); break;
+	case (OriginLeft): configure[OriginLeft] = configure[CursorLeft]; break;
+	case (OriginBase): configure[OriginBase] = configure[CursorBase]; break;
+	case (OriginAngle): configure[OriginAngle] = configure[CursorAngle]; configure[CursorAngle] = 0; break;
 	default: break;}
 }
-void planePostconfig(enum Configure cfg, int idx)
+void planeSetup(enum Configure cfg, int idx)
 {
 	if (center.mem != Configurez || idx < 0 || idx >= center.siz) return;
 	center.cfg[idx] = cfg;
@@ -330,7 +328,7 @@ void *planeRealloc(void *ptr, int siz, int tmp, int mod)
 	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
 	return result;
 }
-void planeReconfig(enum Configure cfg, int val)
+void planeValue(enum Configure cfg, int val)
 {
 	int tmp = configure[cfg];
 	configure[cfg] = val;
@@ -383,7 +381,7 @@ void planeBuffer()
 	case (Stringz): if (center.idx < 0) for (int i = 0; i < center.siz; i++) center.idx = planeSet(-1,center.str[i]);
 	else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
 	case (Machinez): for (int i = 0; i < center.siz; i++) copyMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
-	case (Configurez): for (int i = 0; i < center.siz; i++) planeReconfig(center.cfg[i],center.val[i]); callDma(&center); break;
+	case (Configurez): for (int i = 0; i < center.siz; i++) planeValue(center.cfg[i],center.val[i]); callDma(&center); break;
 	default: callDma(&center); break;}
 }
 int planeEscape(int lvl, int nxt)
@@ -453,7 +451,7 @@ int planeIval(struct Express *exp)
 void planeSetter(void *dat, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
-	configure[sub] = *datxIntz(0,dat);
+	planeValue(sub,*datxIntz(0,dat));
 }
 void planeGetter(void **dat, int sub)
 {
@@ -465,16 +463,16 @@ int planeSwitch(struct Machine *mptr, int next)
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
-	case (Save): for (int i = 0; i < mptr->siz; i++) planePreconfig(mptr->cfg[i]); break;
-	case (Force): for (int i = 0; i < mptr->siz; i++) planeReconfig(mptr->cfg[i],mptr->val[i]); break;
-	case (Setup): for (int i = 0; i < mptr->siz; i++) planePostconfig(mptr->cfg[i],mptr->sub[i]); break;
+	case (Save): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->cfg[i]); break;
+	case (Force): for (int i = 0; i < mptr->siz; i++) planeValue(mptr->cfg[i],mptr->val[i]); break;
+	case (Setup): for (int i = 0; i < mptr->siz; i++) planeSetup(mptr->cfg[i],mptr->sub[i]); break;
 	case (Alloc): planeAlloc(); break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4); timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-	case (Fixed): jumpmat(planeTowrite(),planeLocal(),4); planeContinue(); break;
+	case (Local): jumpmat(planeTowrite(),planeLocal(),4); planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
 	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
 	case (Share): planeBuffer(); break;
@@ -651,10 +649,7 @@ void planePeek(vftype user)
 {
 	enum Wait wait = 0;
 	enum Configure hint = 0;
-	int val = 0;
-	sem_safe(&resource,{val = (qfull == 0);});
-	if (val) sem_wait(&pending);
-	sem_safe(&resource,{wait = waits[qhead]; hint = hints[qhead];});
+	sem_safe(&pending,{sem_safe(&resource,{wait = waits[qhead]; hint = hints[qhead];});});
 	user(wait,hint);
 }
 int planeTodo()
@@ -698,7 +693,7 @@ int planeConfig(enum Configure cfg)
 }
 void planeSafe(enum Wait wait, enum Configure hint)
 {
-	sem_safe(&resource,{if (callInfo(RegisterOpen) && perpend[Stop] == 0) callSafe(wait,hint);});
+	sem_safe(&resource,{if ((callInfo(RegisterOpen) & (1<<Process)) != 0 && perpend[Stop] == 0) callSafe(wait,hint);});
 	planeEnque(wait,hint);
 	sem_safe(&resource,{if (qfull == 1) sem_post(&pending);});
 }
@@ -706,12 +701,17 @@ void planeUser(enum Wait wait, enum Configure hint)
 {
 	enum Wait wval = 0;
 	enum Configure hval = 0;
+	sem_wait(&pending);
 	planeDeque(&wval,&hval);
+	sem_safe(&resource,{if (qfull > 0) sem_post(&pending);});
 	if (wval != wait || hval != hint) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
 	if (wait != Waits && hint == Configures) callUser(wait);
-	// TODO wait != Waits && hint == RegisterOpen to clear running bit, and call planeWake(hint)
-	if (wait != Waits && hint != Configures) ERROR();
+	if (wait == Close && hint == RegisterOpen) {sem_safe(&resource,{running &= ~(1<<Window);}); planeWake(hint);}
+	if (wait == Stop && hint == RegisterOpen) {sem_safe(&resource,{running &= ~(1<<Process);}); planeWake(hint);}
+	if (wait != Waits && hint != Configures && hint != RegisterOpen) ERROR();
+	if (wait != Waits && hint != Configures && wait != Close && wait != Stop) ERROR();
+	if (wait == Waits && hint == Configures) ERROR();
 }
 void planeReady(struct Pierce *given)
 {
