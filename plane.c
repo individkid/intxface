@@ -477,12 +477,11 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
 	case (Share): planeBuffer(); break;
 	case (Draw): callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
-	case (Jump): next = planeEscape((planeIval(&mptr->exp[0]) ? mptr->idx : configure[RegisterNest]),next); break;
-	case (Goto): next = (planeIval(&mptr->exp[0]) ? mptr->idx : next); break;
+	case (Jump): next = planeEscape((planeIval(&mptr->loc[0]) ? mptr->idx : configure[RegisterNest]),next); break;
+	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->idx : next); break;
 	case (Nest): configure[RegisterNest] += mptr->idx; break;
-	case (Eval): planeEval(&mptr->exp[0],&mptr->var[0]); break;
-	case (Gval): for (int i = 0; i < mptr->siz; i++) planeGval(&mptr->gen[0],mptr->sub[i]); break;
-	case (Swap): planeExchange(mptr->idx,mptr->oth); break;
+	case (Eval): for (int i = 0; i < mptr->siz; i++) planeEval(&mptr->exp[0],&mptr->var[0]); break;
+	case (Gval): for (int i = 0; i < mptr->siz; i++) planeGval(&mptr->gen[i],mptr->num[i]); break;
 	default: break;}
 	return next;
 }

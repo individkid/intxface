@@ -144,7 +144,6 @@ Transfer = {
 	"Nest", -- nest to level
 	"Eval", -- expression to center
 	"Gval", -- generic to center
-	"Swap", -- exchange machine lines
 }
 Trans = {
 	"Slide",
@@ -262,7 +261,7 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(9)idx:Int(0)"..
+	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(9)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
@@ -282,16 +281,16 @@ Bootstrap = {
 		"val[7]:Int(0)"..
 		"val[8]:Int(0)"..
 	")"},
-	{"Int","1","Str","Machine(xfr:Transfer(Alloc)siz:Int(0)idx:Int(0))"},
-	{"Int","2","Str","Machine(xfr:Transfer(Gval)siz:Int(1)idx:Int(0)"..
-		"sub[0]:Int(0)"..
+	{"Int","1","Str","Machine(xfr:Transfer(Alloc)siz:Int(0))"},
+	{"Int","2","Str","Machine(xfr:Transfer(Gval)siz:Int(1)"..
 		"gen[0]:Generic(tag:Tag(MachineTag)machine[0]:Machine("..
-			"xfr:Transfer(Force)siz:Int(1)idx:Int(0)"..
+			"xfr:Transfer(Force)siz:Int(1)"..
 			"cfg[0]:Configure(RegisterOpen)"..
 			"val[0]:Int(0)"..
 		"))"..
+		"num[0]:Int(0)"..
 	")"},
-	{"Int","3","Str","Machine(xfr:Transfer(Share)siz:Int(0)idx:Int(0))"},
+	{"Int","3","Str","Machine(xfr:Transfer(Share)siz:Int(0))"},
 }
 Execname = {
 	{"Process","Filez","Str","./file"},
@@ -462,14 +461,16 @@ Express = {
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"idx","Int",{},{}},
 	{"cfg","Configure",{["xfr"]={["Force"]=true,["Setup"]=true,["Save"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
-	{"sub","Int",{["xfr"]={["Setup"]=true,["Gval"]=true}},"siz"},
-	{"oth","Int",{["xfr"]={["Swap"]=true}},{}},
-	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
+	{"sub","Int",{["xfr"]={["Setup"]=true}},"siz"},
+	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
+	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
+	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
+	{"exp","Express",{["xfr"]={["Eval"]=true}},1},
 	{"var","Express",{["xfr"]={["Eval"]=true}},1},
 	{"gen","Generic",{["xfr"]={["Gval"]=true}},"siz"},
+	{"num","Int",{["xfr"]={["Gval"]=true}},"siz"}
 }
 Center = {
 	{"req","Request",{},{}},
