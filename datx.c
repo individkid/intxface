@@ -23,6 +23,7 @@ void *prefix = 0;
 dftype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
+fftype datxEmbFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -560,11 +561,17 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int val = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		if (typ != identType("Int")) {fprintf(stderr,"wrong type of result %d\n",typ); exit(-1);}
-		datxEval(datxDat0,&exp->exp[0],identType("Str"));
-		datxEval(datxDat1,&exp->exp[1],identType("Dat"));
+		datxEval(datxDat0,&exp->exp[0],identType("Dat"));
+		datxEval(datxDat1,&exp->exp[1],identType("Str"));
 		val = regexec(datxData(datxDat0),datxChrz(0,datxDat1),0,0,0);
 		if (val != 0 && val != REG_NOMATCH) {fprintf(stderr,"could not execute regex %d\n",val); exit(-1);}
 		datxInt(dat,(val == 0));} break;
+	case (EmbOp): { // 1: script embed
+		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		if (datxEmbFp == 0) {fprintf(stderr,"no interpreter embedded\n"); exit(-1);}
+		if (typ != identType("Int")) {fprintf(stderr,"wrong type of result %d\n",typ); exit(-1);}
+		datxEval(datxDat0,&exp->exp[0],identType("Str"));
+		datxInt(dat,datxEmbFp(datxChrz(0,datxDat0)));} break;
 	default: ERROR();}
 	return typ;
 }
@@ -583,4 +590,8 @@ void datxSetter(dgtype fnc)
 void datxGetter(dhtype fnc)
 {
 	datxGetFp = fnc;
+}
+void datxEmbed(fftype fnc)
+{
+	datxEmbFp = fnc;
 }

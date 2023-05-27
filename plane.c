@@ -2,6 +2,7 @@
 #include "face.h"
 #include "metx.h"
 #include "datx.h"
+#include "luax.h"
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -376,13 +377,11 @@ void planeAlloc()
 	case (Configurez): allocConfigure(&center.cfg,center.siz); allocInt(&center.val,center.siz); break;
 	default: center.siz = 0; break;}
 }
-void copyMachine(struct Machine *dst, struct Machine *src)
+void planeMachine(struct Machine *dst, struct Machine *src)
 {
-	char *str = 0;
-	int len = 0;
-	showMachine(src,&str);
-	hideMachine(dst,str,&len);
-	free(str);
+	datxNone(dat0);
+	writeMachine(src,idx0);
+	readMachine(dst,idx0);
 }
 void planeBuffer()
 {
@@ -390,7 +389,7 @@ void planeBuffer()
 	case (Piercez): for (int i = 0; i < center.siz; i++) memcpy(&pierce[(center.idx+i)%configure[PierceSize]],&center.pie[i],sizeof(struct Pierce)); break;
 	case (Stringz): if (center.idx < 0) for (int i = 0; i < center.siz; i++) center.idx = planeSet(-1,center.str[i]);
 	else for (int i = 0; i < center.siz; i++) planeSet(center.idx+i,center.str[i]); break;
-	case (Machinez): for (int i = 0; i < center.siz; i++) copyMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
+	case (Machinez): for (int i = 0; i < center.siz; i++) planeMachine(&machine[(center.idx+i)%configure[MachineSize]],&center.mch[i]); break;
 	case (Configurez): planeThrough(&center); break;
 	default: callDma(&center); break;}
 }
@@ -401,12 +400,6 @@ int planeEscape(int lvl, int nxt)
 	while (lvl > 0 && (nxt += inc) < configure[MachineSize]) if (machine[nxt].xfr == Nest) {
 	lvl += machine[nxt].idx*inc; configure[RegisterNest] += machine[nxt].idx*inc;}
 	return nxt;
-}
-void planeExchange(int cal, int ret)
-{
-	struct Machine temp = machine[cal%configure[MachineSize]];
-	machine[cal%configure[MachineSize]] = machine[ret%configure[MachineSize]];
-	machine[ret%configure[MachineSize]] = temp;
 }
 void planeGval(struct Generic *gen, int idx)
 {
@@ -458,16 +451,6 @@ int planeIval(struct Express *exp)
 	if (typ != identType("Int")) ERROR();
 	return *datxIntz(0,dat);
 }
-void planeSetter(void *dat, int sub)
-{
-	if (sub < 0 || sub >= Configures) ERROR();
-	planeForce((enum Configure *)&sub,datxIntz(0,dat),1);
-}
-void planeGetter(void **dat, int sub)
-{
-	if (sub < 0 || sub >= Configures) ERROR();
-	datxInt(dat,configure[sub]);
-}
 int planeSwitch(struct Machine *mptr, int next)
 {
 	switch (mptr->xfr) {
@@ -503,6 +486,14 @@ void planeWake(enum Configure hint)
 	int next = planeSwitch(mptr,configure[RegisterLine]+1);
 	if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
 	configure[RegisterLine] = next;}
+}
+void planeBoot()
+{
+	for (int i = 0; Bootstrap__Int__Str(i); i++) {
+	struct Machine mptr = {0};
+	int len = 0;
+	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
+	configure[RegisterLine] = planeSwitch(&mptr,configure[RegisterLine]);}
 }
 void planeRead()
 {
@@ -553,6 +544,46 @@ int planeCat(int idx, const char *str)
 	int ret = planeSet(idx,strcat(strcpy(dst,src),str));
 	free(dst);
 	return ret;
+}
+void planeSetter(void *dat, int sub)
+{
+	if (sub < 0 || sub >= Configures) ERROR();
+	planeForce((enum Configure *)&sub,datxIntz(0,dat),1);
+}
+void planeGetter(void **dat, int sub)
+{
+	if (sub < 0 || sub >= Configures) ERROR();
+	datxInt(dat,configure[sub]);
+}
+void planeSettee(int val, int sub)
+{
+	void *dat = 0;
+	datxInt(&dat,val);
+	planeSetter(dat,sub);
+	free(dat);
+}
+int planeGettee(int sub)
+{
+	void *dat = 0; int val = 0;
+	planeGetter(&dat,sub);
+	val = *datxIntz(0,dat);
+	free(dat);
+	return val;
+}
+void planeFind(char **val, const char *key)
+{
+	void *src = 0; void *dst = 0;
+	datxStr(&src,key);
+	datxFind(&dst,src);
+	assignStr(val,datxChrz(0,dst));
+	free(src); free(dst);
+}
+void planeInsert(const char *key, const char *val)
+{
+	void *src = 0; void *dst = 0;
+	datxStr(&src,key); datxStr(&dst,val);
+	datxInsert(src,dst);
+	free(src); free(dst);
 }
 void planeTerm(int sig)
 {
@@ -666,25 +697,20 @@ int planeTodo()
 	sem_safe(&resource,{val = (qfull || started);});
 	return val;
 }
-void planeBoot()
-{
-	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	struct Machine mptr = {0};
-	int len = 0;
-	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
-	configure[RegisterLine] = planeSwitch(&mptr,configure[RegisterLine]);}
-}
 void planeInit(zftype init, uftype dma, vftype safe, yftype user, xftype info, wftype draw)
 {
 	struct sigaction act;
 	act.__sigaction_u.__sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	sem_init(&resource,0,1);
-	sem_init(&pending,0,0);
+	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
 	datxSetter(planeSetter); datxGetter(planeGetter);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
+	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
+	luaxAdd("datxSet",protoTypeLj(planeSettee)); luaxAdd("datxGet",protoTypeSj(planeGettee));
+	luaxAdd("datxFind",protoTypeRk(planeFind)); luaxAdd("datxInsert",protoTypeRl(planeInsert));
+	datxEmbed(luaxSide);
 	callDma = dma;
 	callSafe = safe;
 	callUser = user;

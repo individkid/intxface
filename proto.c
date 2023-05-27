@@ -104,6 +104,8 @@ PROTOTYPE(Rg,rg)
 PROTOTYPE(Rh,rh)
 PROTOTYPE(Ri,ri)
 PROTOTYPE(Rj,rj)
+PROTOTYPE(Rk,rk)
+PROTOTYPE(Rl,rl)
 
 void protoMake(struct Parameter *arg)
 {
