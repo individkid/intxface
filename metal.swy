@@ -419,8 +419,8 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 func swiftMain(_ wait: Wait)
 {
 	switch(wait) {
-	case (Open): swiftOpen(); break
-	case (Close): window.close(); break 
+	case (Open): swiftOpen()
+	case (Close): window.close()
 	case (Start): swiftStart()
 	case (Stop): NSApp.stop(nil)
 	default: exitErr(#file,#line)}	
@@ -445,8 +445,8 @@ func swiftInfo(_ query: Configure) -> Int32
 	switch (query) {
 	case (RegisterOpen):
 		var val = Int32(0)
-		if (NSApp.isRunning) {val = val | (Int32(1)<<Int32(Window.rawValue))}
-		if (window != nil && window.screen != nil) {val = val | (Int32(1)<<Int32(Process.rawValue))}
+		if (NSApp.isRunning) {val = val | (Int32(1)<<Int32(Process.rawValue))}
+		if (window != nil && window.screen != nil) {val = val | (Int32(1)<<Int32(Window.rawValue))}
 		return val
 	case (RegisterDone): return Int32(count)
 	case (WindowLeft): return Int32(getRect().origin.x)

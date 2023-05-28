@@ -728,9 +728,11 @@ int planeConfig(enum Configure cfg)
 }
 void planeSafe(enum Wait wait, enum Configure hint)
 {
-	sem_safe(&resource,{if ((callInfo(RegisterOpen) & (1<<Process)) != 0 && perpend[Stop] == 0) callSafe(wait,hint);});
+	int run = 0;
+	sem_safe(&resource,{run = ((callInfo(RegisterOpen) & (1<<Process)) != 0 && perpend[Stop] == 0);});
 	planeEnque(wait,hint);
 	sem_safe(&resource,{if (qfull == 1) sem_post(&pending);});
+	sem_safe(&resource,{if (run) callSafe(wait,hint);});
 }
 void planeMain(enum Wait wait, enum Configure hint)
 {
