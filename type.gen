@@ -175,12 +175,11 @@ Code = {
 	"Fragment",
 }
 Wait = {
-	"Open",
-	"Close",
 	"Start",
 	"Stop",
+	"Done",
 }
-Thread = {
+Proc = {
 	"External",
 	"Console",
 	"Window",

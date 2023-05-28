@@ -231,7 +231,7 @@ func getReady() -> MTLCommandBufferHandler
 func getCount(_ code:MTLCommandBuffer) -> MTLCommandBufferHandler
 {
 	count += 1
-	return {(MTLCommandBuffer) in count -= 1; pool.append(code); planeSafe(Waits,RegisterDone)}
+	return {(MTLCommandBuffer) in count -= 1; pool.append(code); planeSafe(Procs,Waits,RegisterDone)}
 }
 func getCode() -> MTLCommandBuffer
 {
@@ -251,8 +251,11 @@ class getDelegate : NSObject, NSWindowDelegate
 {
 	func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
-		planeSafe(Close,RegisterOpen)
 		return false
+	}
+	func windowWillClose(_ notification: Notification)
+	{
+		planeSafe(Window,Done,Configures)
 	}
 	func windowDidResize(_ notification: Notification)
 	{
@@ -265,7 +268,7 @@ class getDelegate : NSObject, NSWindowDelegate
 		CATransaction.setDisableActions(true)
 		setFrame()
 		CATransaction.commit()
-		planeSafe(Waits,WindowLeft)
+		planeSafe(Procs,Waits,WindowLeft)
 	}
 	func windowWillMove(_ notification: Notification)
 	{
@@ -279,18 +282,18 @@ class getView : NSView
 {
 	override func mouseDown(with event: NSEvent)
 	{
-		planeSafe(Waits,CursorClick)
+		planeSafe(Procs,Waits,CursorClick)
 	}
 	override func mouseMoved(with event: NSEvent)
 	{
 		uniform.set(Int(getPoint().x),\Uniform.lon)
 		uniform.set(Int(getPoint().y),\Uniform.lat)
-		planeSafe(Waits,CursorLeft)
+		planeSafe(Procs,Waits,CursorLeft)
 	}
 	override func scrollWheel(with event: NSEvent)
 	{
 		delta += event.deltaY
-		planeSafe(Waits,CursorAngle)
+		planeSafe(Procs,Waits,CursorAngle)
 	}
 	override func keyDown(with event: NSEvent)
 	{
@@ -372,12 +375,11 @@ func swiftStart()
 	window.delegate = delegate
 	window.makeKeyAndOrderFront(nil)
 
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in
-		planeMain(Wait(UInt32(event.data1)),Configure(UInt32(event.data2))); return nil})
+	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeMain(); return nil})
 	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
 	NSApp.activate(ignoringOtherApps:true)
 	NSApp.run()
-	planeSafe(Stop,RegisterOpen)
+	planeSafe(Process,Done,Configures)
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 {
@@ -416,16 +418,20 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
-func swiftMain(_ wait: Wait)
+func swiftMain(_ proc: Proc, _ wait: Wait)
 {
 	switch(wait) {
-	case (Open): swiftOpen()
-	case (Close): window.close()
-	case (Start): swiftStart()
-	case (Stop): NSApp.stop(nil)
+	case (Start): switch (proc) {
+		case (Process): swiftStart()
+		case (Window): swiftOpen()
+		default: exitErr(#file,#line)}
+	case (Stop): switch (proc) {
+		case (Process): NSApp.stop(nil)
+		case (Window): window.close()
+		default: exitErr(#file,#line)}
 	default: exitErr(#file,#line)}	
 }
-func swiftSafe(_ wait: Wait, _ hint: Configure)
+func swiftSafe()
 {
 	NSApp.postEvent(
 		NSEvent.otherEvent(
@@ -436,18 +442,13 @@ func swiftSafe(_ wait: Wait, _ hint: Configure)
 		windowNumber:0,
 		context:nil,
 		subtype:0,
-		data1:Int(wait.rawValue),
-		data2:Int(hint.rawValue))!,
+		data1:Int(0),
+		data2:Int(0))!,
 		atStart:false)
 }
 func swiftInfo(_ query: Configure) -> Int32
 {
 	switch (query) {
-	case (RegisterOpen):
-		var val = Int32(0)
-		if (NSApp.isRunning) {val = val | (Int32(1)<<Int32(Process.rawValue))}
-		if (window != nil && window.screen != nil) {val = val | (Int32(1)<<Int32(Window.rawValue))}
-		return val
 	case (RegisterDone): return Int32(count)
 	case (WindowLeft): return Int32(getRect().origin.x)
 	case (WindowBase): return Int32(getRect().origin.y)
