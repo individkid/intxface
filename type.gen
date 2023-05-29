@@ -88,13 +88,13 @@ Configure = {
 	"ArgumentMicro", -- cp; pass to draw
 	"ArgumentStart", -- cp;
 	"ArgumentStop", -- cp;
+	"RegisterMemory", -- cp; which memory
+	"RegisterIndex", -- cp; which memory instance
 	"RegisterTransM", -- cf; mouse function
 	"RegisterTransR", -- cf; roller function
 	"RegisterFormM", -- cf; mouse function
 	"RegisterFormR", -- cf; roller function
 	"RegisterTool", -- cf; which function
-	"RegisterMemory", -- cp; which memory
-	"RegisterIndex", -- cp; which memory instance
 	"RegisterPrompt", -- mv; console string index
 	"RegisterLine", -- mv; state of machine
 	"RegisterNest", -- mv; current level
