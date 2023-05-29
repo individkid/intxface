@@ -55,6 +55,10 @@ func getPoint() -> NSPoint
 	let y = orig.y-full.height/2.0
 	return NSMakePoint(x,y)
 }
+func getSize() -> NSSize
+{
+	return NSScreen.main!.visibleFrame.size
+}
 func setFrame()
 {
 	layer.frame = view.frame
@@ -260,10 +264,12 @@ class getDelegate : NSObject, NSWindowDelegate
 	func windowDidResize(_ notification: Notification)
 	{
 		let rect = getRect()
+		let size = getSize()
 		uniform.set(Int(rect.origin.x),\Uniform.lft)
 		uniform.set(Int(rect.origin.y),\Uniform.bas)
 		uniform.set(Int(rect.size.width),\Uniform.wdt)
 		uniform.set(Int(rect.size.height),\Uniform.hdt)
+		uniform.set(Int(size.width*2.0),\Uniform.len)
 		CATransaction.begin()
 		CATransaction.setDisableActions(true)
 		setFrame()
@@ -404,17 +410,8 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		case (UniformLeft): uniform.set(Int(center.val![sub]),\Uniform.lon)
 		case (UniformBase): uniform.set(Int(center.val![sub]),\Uniform.lat)
 		case (UniformIndex): uniform.set(Int(center.val![sub]),\Uniform.idx)
-		case (UniformBasis): uniform.set(Int(center.val![sub]),\Uniform.csp)
-		case (PierceSize): uniform.set(Int(center.val![sub]),\Uniform.psz)
-		case (TriangleSize): uniform.set(Int(center.val![sub]),\Uniform.tsz)
-		case (NumericSize): uniform.set(Int(center.val![sub]),\Uniform.nsz)
-		case (VertexSize): uniform.set(Int(center.val![sub]),\Uniform.vsz)
-		case (SubjectSize): uniform.set(Int(center.val![sub]),\Uniform.asz)
-		case (ObjectSize): uniform.set(Int(center.val![sub]),\Uniform.fsz)
-		case (ElementSize): uniform.set(Int(center.val![sub]),\Uniform.osz)
-		case (SwarmSize): uniform.set(Int(center.val![sub]),\Uniform.ssz)
-		case (TextureSize): uniform.set(Int(center.val![sub]),\Uniform.xsz)
-		case (BasisSize): uniform.set(Int(center.val![sub]),\Uniform.bsz)
+		case (UniformSize): uniform.set(Int(center.val![sub]),\Uniform.siz)
+		case (UniformBasis): uniform.set(Int(center.val![sub]),\Uniform.use)
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
@@ -452,10 +449,12 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (RegisterDone): return Int32(count)
 	case (WindowLeft): return Int32(getRect().origin.x)
 	case (WindowBase): return Int32(getRect().origin.y)
+	case (WindowNear): return Int32(getSize().width*2.0)
 	case (WindowWide): return Int32(getRect().size.width)
 	case (WindowHigh): return Int32(getRect().size.height)
 	case (CursorLeft): return Int32(getPoint().x)
 	case (CursorBase): return Int32(getPoint().y)
+	case (CursorNear): return Int32(getSize().width*2.0)
 	case (CursorAngle): let temp = Int32(delta); delta -= Double(temp); return temp
 	case (CursorClick): return Int32(NSEvent.pressedMouseButtons)
 	default: exitErr(#file,#line);return 0}

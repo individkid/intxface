@@ -103,6 +103,7 @@ Configure = {
 	"RegisterOpen", -- sv; thread running mask
 	"OriginLeft", -- sp; starting cursor
 	"OriginBase", -- sp;
+	"OriginNear", -- sp;
 	"OriginAngle", -- sp;
 	"ClosestLeft", -- sg; search through pierce
 	"ClosestBase", -- sg;
@@ -110,10 +111,12 @@ Configure = {
 	"ClosestFound", -- sg;
 	"WindowLeft", -- sg; window initialization
 	"WindowBase", -- sg;
+	"WindowNear", -- sg;
 	"WindowWide", -- sg;
 	"WindowHigh", -- sg;
 	"CursorLeft", -- sg; user input mouse
 	"CursorBase", -- sg;
+	"CursorNear", -- sg;
 	"CursorAngle", -- sg;
 	"CursorClick", -- sg;
 	"CenterRequest", -- sw; fields to from client
@@ -398,20 +401,10 @@ Uniform = {
 	{"wdt","Int",{},{}}, -- horizontal size of window
 	{"hdt","Int",{},{}}, -- vertical size of window
 
+	{"len","Int",{},{}}, -- focal length
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
-	{"csp","Int",{},{}}, -- which basis to use
-	{"psz","Int",{},{}}, -- size of pierce buffer
-	{"tsz","Int",{},{}}, -- size of trinagle buffer
-
-	{"nsz","Int",{},{}}, -- size of numeric buffer
-	{"vsz","Int",{},{}}, -- size of vertex buffer
-	{"asz","Int",{},{}}, -- size of subject buffer
-	{"fsz","Int",{},{}}, -- size of object buffer
-
-	{"osz","Int",{},{}}, -- size of element buffer
-	{"ssz","Int",{},{}}, -- size of swarm buffer
-	{"xsz","Int",{},{}}, -- size of texture buffer
-	{"bsz","Int",{},{}}, -- size of basis buffer
+	{"use","Int",{},{}}, -- which basis to use
+	{"siz","Int",{},{}}, -- size of swarm buffer
 }
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle
