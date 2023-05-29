@@ -258,25 +258,31 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(9)"..
+	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(12)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
 		"cfg[3]:Configure(RegisterOpen)"..
-		"cfg[4]:Configure(CenterRequest)"..
-		"cfg[5]:Configure(CenterMemory)"..
-		"cfg[6]:Configure(CenterSize)"..
-		"cfg[7]:Configure(CenterIndex)"..
-		"cfg[8]:Configure(CenterSelf)"..
+		"cfg[4]:Configure(RegisterOpen)"..
+		"cfg[5]:Configure(RegisterOpen)"..
+		"cfg[6]:Configure(RegisterOpen)"..
+		"cfg[7]:Configure(CenterRequest)"..
+		"cfg[8]:Configure(CenterMemory)"..
+		"cfg[9]:Configure(CenterSize)"..
+		"cfg[10]:Configure(CenterIndex)"..
+		"cfg[11]:Configure(CenterSelf)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
 		"val[2]:Int(1)"..
-		"val[3]:Int(15)"..
-		"val[4]:%(return showInt(castRequest(\"SetReq\"),\"\"))"..
-		"val[5]:%(return showInt(castMemory(\"Machinez\"),\"\"))"..
-		"val[6]:Int(1)"..
-		"val[7]:Int(0)"..
-		"val[8]:Int(0)"..
+		"val[3]:Int(8)"..
+		"val[4]:Int(12)"..
+		"val[5]:Int(14)"..
+		"val[6]:Int(15)"..
+		"val[7]:%(return showInt(castRequest(\"SetReq\"),\"\"))"..
+		"val[8]:%(return showInt(castMemory(\"Machinez\"),\"\"))"..
+		"val[9]:Int(1)"..
+		"val[10]:Int(0)"..
+		"val[11]:Int(0)"..
 	")"},
 	{"Int","1","Str","Machine(xfr:Transfer(Alloc)siz:Int(0))"},
 	{"Int","2","Str","Machine(xfr:Transfer(Gval)siz:Int(1)"..

@@ -61,7 +61,7 @@ int numpipe = 0;
 char **strings = 0;
 int numstr = 0;
 int started = 0;
-int stopping = 0;
+int calling = 0;
 int running = 0;
 int qsize = 0;
 int qfull = 0;
@@ -674,7 +674,8 @@ int planeRunning()
 void planeEnque(enum Proc proc, enum Wait wait, enum Configure hint)
 {
 	sem_wait(&resource);
-	if (proc == Process && wait == Stop) stopping++;
+	if (proc == Process && wait == Start) calling++;
+	if (proc == Process && wait == Stop) calling--;
 	if (qfull == qsize) {qsize++;
 	procs = realloc(procs,qsize*sizeof(enum Proc));
 	waits = realloc(waits,qsize*sizeof(enum Wait));
@@ -692,7 +693,6 @@ void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint)
 	sem_wait(&resource);
 	if (qfull == 0) ERROR();
 	*proc = procs[qhead]; *wait = waits[qhead]; *hint = hints[qhead];
-	if (*proc == Process && *wait == Stop) stopping--;
 	qhead++; if (qhead == qsize) qhead = 0;
 	qfull--;
 	sem_post(&resource);
@@ -740,7 +740,7 @@ void planeDebug(const char *str, enum Proc proc, enum Wait wait, enum Configure 
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint)
 {
 	int run = 0;
-	sem_safe(&resource,{run = ((started & (1<<Process)) != 0 && stopping == 0);});
+	sem_safe(&resource,{run = calling;});
 	planeEnque(proc,wait,hint);
 	sem_safe(&resource,{if (qfull == 1) sem_post(&pending);});
 	if (run) callSafe();
