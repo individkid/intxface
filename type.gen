@@ -109,6 +109,9 @@ Configure = {
 	"ClosestBase", -- sg;
 	"ClosestNear", -- sg;
 	"ClosestFound", -- sg;
+	"NormalLeft", -- sg;
+	"NormalBase", -- sg;
+	"NormalNear", -- sg;
 	"WindowLeft", -- sg; window initialization
 	"WindowBase", -- sg;
 	"WindowNear", -- sg;
