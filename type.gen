@@ -52,6 +52,7 @@ Memory = {
 	"Onematz", -- g,c; single face transformation
 	"Piercez", -- g,c; pierce point normal and valid
 	"Slicez", -- a; plane or point index ranges
+	"Floatz", -- c; intermediate storage
 	"Stringz", -- c; keyboard comparison strings
 	"Machinez", -- c; state machine lines
 	"Configurez", -- g,c,a; configure to value
@@ -78,13 +79,15 @@ Configure = {
 	"PierceSize", -- ws; written pierce points
 	"SliceSize", -- ws; written ranges per draw
 	"MachineSize", -- ws; written vending machine lines
+	"FloatSize", -- ws; written intermediate floats
 	"UniformAll", -- cg; which subject matrix
 	"UniformOne", -- cg; which element matrix
 	"UniformLeft", -- cg; pierce point horizontal
 	"UniformBase", -- cg; pierce pont vertical
+	"UniformLong", -- cg; focal length
 	"UniformIndex", -- cg; manipulate plane select
-	"UniformSize", -- cg; early warning points
 	"UniformBasis", -- cg; which cospace basis
+	"UniformSize", -- cg; early warning points
 	"ArgumentMicro", -- cp; pass to draw
 	"ArgumentStart", -- cp;
 	"ArgumentStop", -- cp;
@@ -114,9 +117,11 @@ Configure = {
 	"NormalNear", -- sg;
 	"WindowLeft", -- sg; window initialization
 	"WindowBase", -- sg;
-	"WindowNear", -- sg;
 	"WindowWide", -- sg;
 	"WindowHigh", -- sg;
+	"WindowNear", -- sg;
+	"WindowFar", -- sg;
+	"WindowLength", -- sg;
 	"CursorLeft", -- sg; user input mouse
 	"CursorBase", -- sg;
 	"CursorNear", -- sg;
@@ -142,6 +147,7 @@ Transfer = {
 	"Local", -- apply cursor/fixed/mode
 	"Apply", -- apply towrite to written
 	"Accum", -- apply written to maintain
+	"Proj", -- perspective matrix
 	"Share", -- dma to cpu or gpu
 	"Draw", -- start shader
 	"Jump", -- skip if true
@@ -189,6 +195,7 @@ Proc = {
 	"External",
 	"Console",
 	"Window",
+	"Graphics",
 	"Process",
 }
 Struc = {
@@ -225,9 +232,10 @@ Operate = {
 	"CmpOp", -- 2; to neg zero pos
 	"CndOp", -- 4; from neg zero pos
 	"TotOp", -- 1; cast to type
+	"LenOp", -- 1; length of type
 	"ImmOp", -- 0; built in value
-	"ValOp", -- 0; restore from named
-	"SavOp", -- 2; save to named
+	"ValOp", -- 2; restore from named
+	"SavOp", -- 3; save to named
 	"GetOp", -- 0; value from callback
 	"SetOp", -- 2; callback with value
 	"InsOp", -- 2; field to struct
@@ -280,10 +288,10 @@ Bootstrap = {
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
 		"val[2]:Int(1)"..
-		"val[3]:Int(8)"..
-		"val[4]:Int(12)"..
-		"val[5]:Int(14)"..
-		"val[6]:Int(15)"..
+		"val[3]:Int(1)"..
+		"val[4]:Int(3)"..
+		"val[5]:Int(15)"..
+		"val[6]:Int(31)"..
 		"val[7]:%(return showInt(castRequest(\"SetReq\"),\"\"))"..
 		"val[8]:%(return showInt(castMemory(\"Machinez\"),\"\"))"..
 		"val[9]:Int(1)"..
@@ -398,13 +406,7 @@ Uniform = {
 	{"one","Int",{},{}}, -- which element to use
 	{"lon","Int",{},{}}, -- horizontal axis of cursor
 	{"lat","Int",{},{}}, -- vertical axis of cursor
-
-	{"lft","Int",{},{}}, -- horizontal axis of window
-	{"bas","Int",{},{}}, -- vertical axis of window
-	{"wdt","Int",{},{}}, -- horizontal size of window
-	{"hdt","Int",{},{}}, -- vertical size of window
-
-	{"len","Int",{},{}}, -- focal length
+	{"len","Int",{},{}}, -- which subject for projection
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"use","Int",{},{}}, -- which basis to use
 	{"siz","Int",{},{}}, -- size of swarm buffer
@@ -449,7 +451,6 @@ Slice = {
 Express = {
 	{"opr","Operate",{},{}},
 	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
-	{"str","Str",{["opr"]={["ValOp"]=true,["SavOp"]=true}},{}},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
 	{"typ","Int",{["opr"]={["ValOp"]=true,["GetOp"]=true}},{}},
 	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
@@ -488,6 +489,7 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
+	{"flt","Old",{["mem"]={["Floatz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},

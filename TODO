@@ -10,6 +10,7 @@ Add microcode for pierce point, and print pierce point under cursor.
 At end of boot test, drop into user mode
 with transform, refine, additive, subtractive mode set by function keys.
 Add all, some, one distinction to modes.
+Add 2d additive subtractive texture.
 Move boot test triangles from boot code to files created by share in planer.lua;
 open two processes sharing per polytope files and having their own files for different views,
 uniquefying boundary identifiers by file and location.

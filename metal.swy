@@ -244,6 +244,10 @@ func getCode() -> MTLCommandBuffer
 	}
 	return pool.removeFirst()
 }
+func getDraw() -> CAMetalDrawable?
+{
+	return layer.nextDrawable() // TODO get off screen drawable if layer is nil
+}
 class getApplication : NSObject, NSApplicationDelegate
 {
 	func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool
@@ -263,13 +267,6 @@ class getDelegate : NSObject, NSWindowDelegate
 	}
 	func windowDidResize(_ notification: Notification)
 	{
-		let rect = getRect()
-		let size = getSize()
-		uniform.set(Int(rect.origin.x),\Uniform.lft)
-		uniform.set(Int(rect.origin.y),\Uniform.bas)
-		uniform.set(Int(rect.size.width),\Uniform.wdt)
-		uniform.set(Int(rect.size.height),\Uniform.hdt)
-		uniform.set(Int(size.width*2.0),\Uniform.len)
 		CATransaction.begin()
 		CATransaction.setDisableActions(true)
 		setFrame()
@@ -318,47 +315,6 @@ func swiftOpen()
 	let rect = NSMakeRect(
 		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
 		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
-	queue = device.makeCommandQueue()
-	let url = URL(fileURLWithPath: "plane.metallib")
-	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
-		fputs("plane: cannot load library: plane.metallib\n",stderr);exitErr(#file,#line);return}
-	for sub in 0...Int(Micros.rawValue-1) {let shader = Micro(UInt32(sub)); switch (shader) {
-	case (Dipoint): // fallthrough case (Diplane):
-	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Corner)!)) else {
-		print("cannot make vertex_render");exitErr(#file,#line);return}
-	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Fragment)!)) else {
-		print("cannot make fragment_render");exitErr(#file,#line);return}
-	let pipe = MTLRenderPipelineDescriptor()
-	pipe.vertexFunction = vertex_render
-	pipe.fragmentFunction = fragment_render
-	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
-	pipe.depthAttachmentPixelFormat = .depth32Float
-	render[sub] = try? device.makeRenderPipelineState(descriptor:pipe)
-	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
-	param[sub] = MTLRenderPassDescriptor()
-	param[sub]!.depthAttachment.clearDepth = 0.0 // clip xy -1 to 1; z 0 to 1
-	param[sub]!.depthAttachment.texture = getTexture(rect)
-	param[sub]!.depthAttachment.storeAction = .dontCare
-	param[sub]!.depthAttachment.loadAction = .clear
-	param[sub]!.colorAttachments[0].clearColor = color
-	param[sub]!.colorAttachments[0].storeAction = .store
-	param[sub]!.colorAttachments[0].loadAction = .clear
-    let desc = MTLDepthStencilDescriptor()
-    desc.depthCompareFunction = .greater // left hand rule; z thumb to observer
-    desc.isDepthWriteEnabled = true
-    depth[sub] = device.makeDepthStencilState(descriptor: desc)
-	case (Adpoint): // fallthrough case (Adplane):
-	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Micro__Str(Micro(UInt32(sub)))!)) else {
-	 	print("cannot make kernel_pierce");exitErr(#file,#line);return}
-	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
-    threads[sub] = device.maxThreadsPerThreadgroup
-    default: break}}
-}
-func swiftStart()
-{
-	let rect = NSMakeRect(
-		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
-		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
 
 	layer = CAMetalLayer()
 	layer.device = device
@@ -380,7 +336,50 @@ func swiftStart()
 	let delegate = getDelegate()
 	window.delegate = delegate
 	window.makeKeyAndOrderFront(nil)
-
+}
+func swiftLoad()
+{
+	let rect = NSMakeRect(
+		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
+		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
+	queue = device.makeCommandQueue()
+	let url = URL(fileURLWithPath: "plane.metallib")
+	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
+		fputs("plane: cannot load library: plane.metallib\n",stderr);exitErr(#file,#line);return}
+	for sub in 0...Int(Micros.rawValue-1) {let shader = Micro(UInt32(sub)); switch (shader) {
+	case (Dipoint): // fallthrough case (Diplane):
+	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Corner)!)) else {
+		print("cannot make vertex_render");exitErr(#file,#line);return}
+	guard let fragment_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Fragment)!)) else {
+		print("cannot make fragment_render");exitErr(#file,#line);return}
+	let pipe = MTLRenderPipelineDescriptor()
+	pipe.vertexFunction = vertex_render
+	pipe.fragmentFunction = fragment_render
+	pipe.colorAttachments[0].pixelFormat = .bgra8Unorm
+	pipe.depthAttachmentPixelFormat = .depth32Float
+	render[sub] = try? device.makeRenderPipelineState(descriptor:pipe)
+	let color = MTLClearColor(red: 0.0, green: 104.0/255.0, blue: 55.0/255.0, alpha: 1.0)
+	param[sub] = MTLRenderPassDescriptor()
+	param[sub]!.depthAttachment.clearDepth = -1.0 // clip xyz -1 to 1
+	param[sub]!.depthAttachment.texture = getTexture(rect)
+	param[sub]!.depthAttachment.storeAction = .dontCare
+	param[sub]!.depthAttachment.loadAction = .clear
+	param[sub]!.colorAttachments[0].clearColor = color
+	param[sub]!.colorAttachments[0].storeAction = .store
+	param[sub]!.colorAttachments[0].loadAction = .clear
+    let desc = MTLDepthStencilDescriptor()
+    desc.depthCompareFunction = .less // right hand rule; z thumb away from observer
+    desc.isDepthWriteEnabled = true
+    depth[sub] = device.makeDepthStencilState(descriptor: desc)
+	case (Adpoint): // fallthrough case (Adplane):
+	guard let kernel_pierce = library.makeFunction(name:String(cString: Initial__Micro__Str(Micro(UInt32(sub)))!)) else {
+	 	print("cannot make kernel_pierce");exitErr(#file,#line);return}
+	compute[sub] = try? device.makeComputePipelineState(function:kernel_pierce)
+    threads[sub] = device.maxThreadsPerThreadgroup
+    default: break}}
+}
+func swiftStart()
+{
 	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeMain(); return nil})
 	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
 	NSApp.activate(ignoringOtherApps:true)
@@ -409,9 +408,10 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		case (UniformOne): uniform.set(Int(center.val![sub]),\Uniform.one)
 		case (UniformLeft): uniform.set(Int(center.val![sub]),\Uniform.lon)
 		case (UniformBase): uniform.set(Int(center.val![sub]),\Uniform.lat)
+		case (UniformLong): uniform.set(Int(center.val![sub]),\Uniform.len)
 		case (UniformIndex): uniform.set(Int(center.val![sub]),\Uniform.idx)
-		case (UniformSize): uniform.set(Int(center.val![sub]),\Uniform.siz)
 		case (UniformBasis): uniform.set(Int(center.val![sub]),\Uniform.use)
+		case (UniformSize): uniform.set(Int(center.val![sub]),\Uniform.siz)
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
@@ -420,10 +420,12 @@ func swiftMain(_ proc: Proc, _ wait: Wait)
 	switch(wait) {
 	case (Start): switch (proc) {
 		case (Process): swiftStart()
+		case (Graphics): swiftLoad()
 		case (Window): swiftOpen()
 		default: exitErr(#file,#line)}
 	case (Stop): switch (proc) {
 		case (Process): NSApp.stop(nil)
+		case (Graphics): queue = nil
 		case (Window): window.close()
 		default: exitErr(#file,#line)}
 	default: exitErr(#file,#line)}	
@@ -449,7 +451,6 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (RegisterDone): return Int32(count)
 	case (WindowLeft): return Int32(getRect().origin.x)
 	case (WindowBase): return Int32(getRect().origin.y)
-	case (WindowNear): return Int32(getSize().width*2.0)
 	case (WindowWide): return Int32(getRect().size.width)
 	case (WindowHigh): return Int32(getRect().size.height)
 	case (CursorLeft): return Int32(getPoint().x)
@@ -465,7 +466,7 @@ func swiftDraw(_ shader: Micro, _ start: Int32, _ stop: Int32)
 	let code = getCode()
 	switch (shader) {
 	case (Dipoint): fallthrough case (Diplane):
-    guard let draw = layer.nextDrawable() else {exitErr(#file,#line);return}
+    guard let draw = getDraw() else {exitErr(#file,#line);return}
 	param[sub]!.colorAttachments[0].texture = draw.texture
 	if (array.count == 0) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
