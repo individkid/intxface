@@ -244,6 +244,11 @@ Operate = {
 	"UnqOp", -- 0; magic number
 	"EmbOp", -- 1; script embed
 }
+Etter = {
+	"Configurey",
+	"Stringy",
+	"Floaty",
+}
 Process = {
 	"Filez",
 	"Holez",
@@ -287,12 +292,11 @@ Bootstrap = {
 		"val[3]:Int(1)"..
 		"val[4]:Int(3)"..
 		"val[5]:Int(15)"..
-		"val[6]:Int(31)"..
-	")"},
+		"val[6]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Bval)siz:Int(1)bvl[0]:Center("..
 		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)"..
-			"cfg[0]:Configure(RegisterOpen)val[0]:Int(0))))"},
+		"cfg[0]:Configure(RegisterOpen)val[0]:Int(0))))"},
 }
 Execname = {
 	{"Process","Filez","Str","./file"},
@@ -438,6 +442,7 @@ Express = {
 	{"siz","Int",{},{}},
 	{"exp","Express",{},"siz"},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
+	{"mem","Etter",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},

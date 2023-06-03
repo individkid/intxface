@@ -566,38 +566,31 @@ int planeCat(int idx, const char *str)
 	free(dst);
 	return ret;
 }
-void planeSetter(void *dat, int sub)
+void planeSetter(void *dat, int mem, int sub)
 {
+	switch ((enum Etter)mem) {
+	case (Configurey):
 	if (sub < 0 || sub >= Configures) ERROR();
 	planeForce((enum Configure *)&sub,datxIntz(0,dat),1);
+	break; case (Stringy):
+	planeSet(sub,datxChrz(0,dat));
+	break; case (Floaty):
+	if (sub < 0 || sub >= configure[FloatSize]) ERROR();
+	floats[sub] = *datxOldz(0,dat);
+	break; default: ERROR();}
 }
-void planeGetter(void **dat, int sub)
+void planeGetter(void **dat, int mem, int sub)
 {
+	switch ((enum Etter)mem) {
+	case (Configurey):
 	if (sub < 0 || sub >= Configures) ERROR();
 	datxInt(dat,configure[sub]);
-}
-void planeNamer(void *dat, int sub)
-{
-	planeSet(sub,datxChrz(0,dat));
-}
-void planeRefer(void **dat, int sub)
-{
+	break; case (Stringy):
 	datxStr(dat,planeGet(sub));
-}
-void planeSettee(int val, int sub)
-{
-	void *dat = 0;
-	datxInt(&dat,val);
-	planeSetter(dat,sub);
-	free(dat);
-}
-int planeGettee(int sub)
-{
-	void *dat = 0; int val = 0;
-	planeGetter(&dat,sub);
-	val = *datxIntz(0,dat);
-	free(dat);
-	return val;
+	break; case (Floaty):
+	if (sub < 0 || sub >= configure[FloatSize]) ERROR();
+	datxOld(dat,floats[sub]);
+	break; default: ERROR();}
 }
 void planeFind(char **val, const char *key)
 {
@@ -700,10 +693,8 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	datxSetter(planeSetter); datxGetter(planeGetter);
-	datxNamer(planeNamer); datxRefer(planeRefer);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
-	luaxAdd("datxSet",protoTypeLj(planeSettee)); luaxAdd("datxGet",protoTypeSj(planeGettee));
 	luaxAdd("datxFind",protoTypeRk(planeFind)); luaxAdd("datxInsert",protoTypeRl(planeInsert));
 	datxEmbed(luaxSide);
 	callDma = dma;

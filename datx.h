@@ -41,6 +41,4 @@ void datxPrefix(const char *str);
 void datxCallback(dftype fnc);
 void datxSetter(dgtype fnc);
 void datxGetter(dhtype fnc);
-void datxNamer(dgtype fnc);
-void datxRefer(dhtype fnc);
 void datxEmbed(fftype fnc);

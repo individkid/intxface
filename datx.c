@@ -22,8 +22,6 @@ void *prefix = 0;
 dftype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
-dgtype datxNamFp = 0;
-dhtype datxRefFp = 0;
 fftype datxEmbFp = 0;
 void ***datx = 0;
 int ndatx = 0;
@@ -41,6 +39,7 @@ void **datxDat2 = 0;
 struct Node {
 	void *key;
 	void *box;
+	int typ;
 	int siz;
 	struct Node *ptr[3];
 	struct Node *ref;
@@ -290,14 +289,16 @@ int datxCompare(void *one, void *oth)
 struct Node *datxNode(void *key)
 {
 	struct Node *tmp = &tree;
-	while (tmp->dep) for (int i = tmp->siz; i > 0; i--) if (datxCompare(tmp->ptr[i-1]->key,key) <= 0) {
+	while (tmp->dep) for (int i = tmp->siz; i > 0; i--)
+		if (datxCompare(tmp->ptr[i-1]->key,key) <= 0) {
 		tmp = tmp->ptr[i-1]; break;}
 	return tmp;
 }
 void datxFind(void **val, void *key)
 {
 	struct Node *leaf = 0; void *dat = 0;
-	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key); leaf = datxNode(key);
+	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key);
+	leaf = datxNode(key);
 	if (datxCompare(leaf->key,dat) == 0) {
 		assignDat(val,leaf->box);
 		free(dat); return;}
@@ -306,7 +307,8 @@ void datxFind(void **val, void *key)
 void datxInsert(void *key, void *box)
 {
 	struct Node *leaf = 0; void *dat = 0;
-	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key); leaf = datxNode(dat);
+	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key);
+	leaf = datxNode(dat);
 	if (datxCompare(leaf->key,dat) == 0) {
 		leaf->box = box; return;}
 	while (leaf->siz == 3 && leaf != &tree) {
@@ -517,26 +519,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		void *save = 0;
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		assignDat(&save,prefix);
-		if (typ == identType("Int")) {
-		if (datxGetFp == 0) {fprintf(stderr,"int getter not set\n"); exit(-1);}
-		datxGetFp(dat,exp->cfg);}
-		else if (typ == identType("Str")) {
-		if (datxRefFp == 0) {fprintf(stderr,"str getter not set\n"); exit(-1);}
-		datxRefFp(dat,exp->cfg);}
-		else {fprintf(stderr,"invalid get type %d\n",typ); exit(-1);}
+		if (datxGetFp == 0) {fprintf(stderr,"getter not set\n"); exit(-1);}
+		datxGetFp(dat,exp->mem,exp->cfg);
 		assignDat(prefix,save);} break;
 	case (SetOp): { // 2; callback with value
 		void *dat0 = 0; int typ0 = 0; void *save = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		typ0 = datxEval(&dat0,&exp->exp[0],-1);
 		assignDat(&save,prefix);
-		if (typ0 == identType("Int")) {
-		if (datxSetFp == 0) {fprintf(stderr,"int setter not set\n"); exit(-1);}
-		datxSetFp(dat0,exp->cfg);}
-		else if (typ0 == identType("Str")) {
-		if (datxNamFp == 0) {fprintf(stderr,"str setter not set\n"); exit(-1);}
-		datxNamFp(dat0,exp->cfg);}
-		else {fprintf(stderr,"invalid set type %d\n",typ0); exit(-1);}
+		if (datxSetFp == 0) {fprintf(stderr,"setter not set\n"); exit(-1);}
+		datxSetFp(dat0,exp->mem,exp->cfg);
 		datxEval(dat,&exp->exp[1],typ);
 		assignDat(prefix,save); free(dat0);} break;
 	case (InsOp): { // 2; field to struct
@@ -580,14 +572,6 @@ void datxSetter(dgtype fnc)
 void datxGetter(dhtype fnc)
 {
 	datxGetFp = fnc;
-}
-void datxNamer(dgtype fnc)
-{
-	datxNamFp = fnc;
-}
-void datxRefer(dhtype fnc)
-{
-	datxRefFp = fnc;
 }
 void datxEmbed(fftype fnc)
 {

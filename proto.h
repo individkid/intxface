@@ -33,8 +33,8 @@ typedef void (*cftype)(int idx);
 typedef void (*cgtype)(int idx0, int idx1);
 typedef void (*chtype)();
 typedef void (*dftype)(void *dat);
-typedef void (*dgtype)(void *dat, int sub);
-typedef void (*dhtype)(void **dat, int sub);
+typedef void (*dgtype)(void *dat, int mem, int sub);
+typedef void (*dhtype)(void **dat, int mem, int sub);
 typedef void (*eftype)(const char *str, int num, int idx); // error throws
 typedef void (*egtype)(int idx, const char *str); // add string
 typedef void (*ehtype)(const char *str); // lua wrapper
