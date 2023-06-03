@@ -471,25 +471,36 @@ int planeSwitch(struct Machine *mptr, int next)
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
-	case (Parse): for (int i = 0; i < mptr->siz; i++) planeParse(mptr->sav[i]); break;
-	case (Force): for (int i = 0; i < mptr->siz; i++) planeForce(mptr->cfg[i],mptr->val[i]); break;
+	case (Parse): for (int i = 0; i < mptr->siz; i++)
+	planeParse(mptr->sav[i]); break;
+	case (Force): for (int i = 0; i < mptr->siz; i++)
+	planeForce(mptr->cfg[i],mptr->val[i]); break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
-	case (Check): jumpmat(planeMaintain(),planeCenter(),4); timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-	case (Local): jumpmat(planeTowrite(),planeLocal(),4); planeParse(OriginLeft); planeParse(OriginBase); planeParse(OriginAngle); break;
-	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
-	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
+	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
+	timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
+	case (Local): jumpmat(planeTowrite(),planeLocal(),4);
+	planeParse(OriginLeft); planeParse(OriginBase); planeParse(OriginAngle); break;
+	case (Apply): jumpmat(planeWritten(),planeTowrite(),4);
+	identmat(planeTowrite(),4); break;
+	case (Accum): jumpmat(planeMaintain(),planeWritten(),4);
+	identmat(planeWritten(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
-	case (Draw): callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
-	case (Jump): next = planeEscape((planeIval(&mptr->loc[0]) ? mptr->nxt : configure[RegisterNest]),next); break;
+	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
+	case (Jump): {int tmp = planeIval(&mptr->loc[0]) ? mptr->nxt : configure[RegisterNest];
+	next = planeEscape(tmp,next);} break;
 	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->nxt : next); break;
 	case (Nest): configure[RegisterNest] += mptr->lvl; break;
-	case (Aval): {void *dat = 0; datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0); datxInsert(dat,*dat0);} break;
-	case (Bval): for (int i = 0; i < mptr->siz; i++) planeCopy(&mptr->bvl[i]); break;
-	case (Cval): for (int i = 0; i < mptr->siz; i++) {struct Center tmp = {0}; datxEval(dat0,&mptr->cvl[i],identType("Center")); readCenter(&tmp,idx0); planeCopy(&tmp);} break;
+	case (Aval): {void *dat = 0;
+	datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0); datxInsert(dat,*dat0);} break;
+	case (Bval): for (int i = 0; i < mptr->siz; i++)
+	planeCopy(&mptr->bvl[i]); break;
+	case (Cval): for (int i = 0; i < mptr->siz; i++) {
+	struct Center tmp = {0}; datxEval(dat0,&mptr->cvl[i],identType("Center"));
+	readCenter(&tmp,idx0); planeCopy(&tmp);} break;
 	case (Dval): datxNone(dat0); writeCenter(mptr->dvl,idx0); readCenter(&center,idx0); break;
 	case (Eval): datxEval(dat0,mptr->evl,identType("Center")); readCenter(&center,idx0); break;
 	default: break;}
