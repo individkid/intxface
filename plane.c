@@ -127,7 +127,7 @@ float *planeRotate(float *mat, float *axs, int ang)
 {
 	float cmp = cosf(ang);
 	float smp = sinf(ang);
-	float tmp = 1-cosf(ang);
+	float tmp = 1-cmp;
 	mat[0] = cmp+axs[0]*axs[0]*tmp;
 	mat[1] = axs[1]*axs[0]*tmp+axs[2]*smp;
 	mat[2] = axs[2]*axs[0]*tmp-axs[1]*smp;
@@ -347,7 +347,18 @@ float *planeLocal()
 }
 float *planeProject(float *mat)
 {
-	// TODO use WindowLeft/Base/Wide/High/Near/Far/Length
+	float at0 = -configure[WindowLength];
+	float at1 = (configure[WindowFar]+configure[WindowNear])/2.0;
+	float den = at1-at0;
+	mat[0] = configure[WindowWide]/2.0;
+	mat[5] = configure[WindowHigh]/2.0;
+	mat[10] = (configure[WindowFar]-configure[WindowNear])/2.0;
+	mat[12] = configure[WindowLeft]+mat[0];
+	mat[13] = configure[WindowBase]+mat[5];
+	mat[14] = configure[WindowNear]+mat[10];
+	mat[15] = 1.0; invmat(mat,4);
+	mat[3] = 0.0; mat[7] = 0.0;
+	mat[11] = 1.0/den; mat[15] = -at0/den;
 	return mat;
 }
 struct Pierce *planePierce()
@@ -369,10 +380,13 @@ void planeStage(const enum Configure *cfg, int siz)
 	case (CenterSize): configure[CenterSize] = center.siz; break;
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
 	case (CenterSelf): configure[CenterSelf] = center.slf; break;
+	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
 	case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
 	case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
 	case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
-	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
+	case (NormalLeft): configure[NormalLeft] = planePierce()->nml[0]; break;
+	case (NormalBase): configure[NormalBase] = planePierce()->nml[1]; break;
+	case (NormalNear): configure[NormalNear] = planePierce()->nml[2]; break;
 	case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
 	case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
 	case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
@@ -405,8 +419,8 @@ void planeThrough(struct Center *ptr)
 	case (SubjectSize): subject = planeRealloc(subject,ptr->val[i],tmp,sizeof(struct Kernel)); break;
 	case (ObjectSize): object = planeRealloc(object,ptr->val[i],tmp,sizeof(struct Kernel)); break;
 	case (ElementSize): element = planeRealloc(element,ptr->val[i],tmp,sizeof(struct Kernel)); break;
-	case (FloatSize): floats = planeRealloc(floats,ptr->val[i],tmp,sizeof(float)); break;
 	case (MachineSize): machine = planeRealloc(machine,ptr->val[i],tmp,sizeof(struct Machine)); break;
+	case (FloatSize): floats = planeRealloc(floats,ptr->val[i],tmp,sizeof(float)); break;
 	case (RegisterOpen): planeStarted(ptr->val[i]); break;
 	default: break;}}
 	callDma(ptr);
@@ -423,32 +437,6 @@ void planeForce(enum Configure *cfg, int *val, int siz)
 	tmp.val[i] = val[i];}
 	planeThrough(&tmp);
 	freeCenter(&tmp);
-}
-void planeAlloc(struct Center *ptr)
-{
-	freeCenter(ptr);
-	ptr->req = (enum Request)configure[CenterRequest];
-	ptr->mem = (enum Memory)configure[CenterMemory];
-	ptr->siz = configure[CenterSize];
-	ptr->idx = configure[CenterIndex];
-	ptr->slf = configure[CenterSelf];
-	switch (ptr->mem) {
-	case (Trianglez): allocTriangle(&ptr->tri,ptr->siz); break;
-	case (Numericz): allocNumeric(&ptr->num,ptr->siz); break;
-	case (Vertexz): allocVertex(&ptr->vtx,ptr->siz); break;
-	case (Allmatz): allocMatrix(&ptr->all,ptr->siz); break;
-	case (Fewmatz): allocMatrix(&ptr->few,ptr->siz); break;
-	case (Onematz): allocMatrix(&ptr->one,ptr->siz); break;
-	case (Swarmz): allocVector(&ptr->swa,ptr->siz); break;
-	case (Texturez): allocVector(&ptr->tex,ptr->siz); break;
-	case (Basisz): allocBasis(&ptr->bas,ptr->siz); break;
-	case (Piercez): allocPierce(&ptr->pie,ptr->siz); break;
-	case (Slicez): allocSlice(&ptr->rng,ptr->siz); break;
-	case (Stringz): allocStr(&ptr->str,ptr->siz); break;
-	case (Machinez): allocMachine(&ptr->mch,ptr->siz); break;
-	case (Floatz): allocOld(&ptr->flt,ptr->siz); break;
-	case (Configurez): allocConfigure(&ptr->cfg,ptr->siz); allocInt(&ptr->val,ptr->siz); break;
-	default: ptr->siz = 0; break;}
 }
 void planeMachine(struct Machine *dst, struct Machine *src)
 {
@@ -472,55 +460,8 @@ int planeEscape(int lvl, int nxt)
 	int level = configure[RegisterNest];
 	int inc = (lvl > 0 ? 1 : -1); lvl *= inc;
 	while (lvl > 0 && (nxt += inc) < configure[MachineSize]) if (machine[nxt].xfr == Nest) {
-	lvl += machine[nxt].idx*inc; configure[RegisterNest] += machine[nxt].idx*inc;}
+	lvl += machine[nxt].lvl*inc; configure[RegisterNest] += machine[nxt].lvl*inc;}
 	return nxt;
-}
-void planeGval(struct Center *ptr, struct Generic *gen, int *idx, int siz)
-{
-	for (int i = 0; i < siz; i++) {
-	datxNone(dat0); writeUnion(&gen[i],idx0);
-	if (idx[i] < 0 || idx[i] >= ptr->siz) ERROR();
-	switch (ptr->mem) {
-	case (Trianglez): if (identUnion(&gen[i]) != identType("Triangle")) ERROR(); readTriangle(&ptr->tri[idx[i]],idx0); break;
-	case (Numericz): if (identUnion(&gen[i]) != identType("Numeric")) ERROR(); readNumeric(&ptr->num[idx[i]],idx0); break;
-	case (Vertexz): if (identUnion(&gen[i]) != identType("Vertex")) ERROR(); readVertex(&ptr->vtx[idx[i]],idx0); break;
-	case (Allmatz): if (identUnion(&gen[i]) != identType("Matrix")) ERROR(); readMatrix(&ptr->all[idx[i]],idx0); break;
-	case (Fewmatz): if (identUnion(&gen[i]) != identType("Matrix")) ERROR(); readMatrix(&ptr->few[idx[i]],idx0); break;
-	case (Onematz): if (identUnion(&gen[i]) != identType("Matrix")) ERROR(); readMatrix(&ptr->one[idx[i]],idx0); break;
-	case (Swarmz): if (identUnion(&gen[i]) != identType("Vector")) ERROR(); readVector(&ptr->swa[idx[i]],idx0); break;
-	case (Texturez): if (identUnion(&gen[i]) != identType("Vector")) ERROR(); readVector(&ptr->tex[idx[i]],idx0); break;
-	case (Basisz): if (identUnion(&gen[i]) != identType("Basis")) ERROR(); readBasis(&ptr->bas[idx[i]],idx0); break;
-	case (Piercez): if (identUnion(&gen[i]) != identType("Pierce")) ERROR(); readPierce(&ptr->pie[idx[i]],idx0); break;
-	case (Slicez): if (identUnion(&gen[i]) != identType("Slice")) ERROR(); readSlice(&ptr->rng[idx[i]],idx0); break;
-	case (Stringz): if (identUnion(&gen[i]) != identType("Str")) ERROR(); readStr(&ptr->str[idx[i]],idx0); break;
-	case (Machinez): if (identUnion(&gen[i]) != identType("Machine")) ERROR(); readMachine(&ptr->mch[idx[i]],idx0); break;
-	case (Floatz): if (identUnion(&gen[i]) != identType("Old")) ERROR(); ptr->flt[idx[i]] = readOld(idx0); break;
-	case (Configurez): if (identUnion(&gen[i]) != identType("Int")) ERROR(); ptr->cfg[idx[i]] = readInt(idx0); break;
-	default: ERROR();}}
-}
-void planeEval(struct Center *ptr, struct Express *exp, struct Express *sub, int siz)
-{
-	for (int i = 0; i < siz; i++) {
-	void *dat = 0; int idx = 0;
-	datxEval(&dat,sub,identType("Int")); idx = *datxIntz(0,dat); datxStr(&dat,""); datxNone(dat0);
-	if (idx < 0 || idx >= ptr->siz) ERROR();
-	switch (ptr->mem) {
-	case (Trianglez): writeTriangle(&ptr->tri[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Triangle")); readTriangle(&ptr->tri[idx],idx0); break;
-	case (Numericz): writeNumeric(&ptr->num[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Numeric")); readNumeric(&ptr->num[idx],idx0); break;
-	case (Vertexz): writeVertex(&ptr->vtx[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Vertex")); readVertex(&ptr->vtx[idx],idx0); break;
-	case (Allmatz): writeMatrix(&ptr->all[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Matrix")); readMatrix(&ptr->all[idx],idx0); break;
-	case (Fewmatz): writeMatrix(&ptr->few[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Matrix")); readMatrix(&ptr->few[idx],idx0); break;
-	case (Onematz): writeMatrix(&ptr->one[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Matrix")); readMatrix(&ptr->one[idx],idx0); break;
-	case (Swarmz): writeVector(&ptr->swa[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Vector")); readVector(&ptr->swa[idx],idx0); break;
-	case (Texturez): writeVector(&ptr->tex[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Vector")); readVector(&ptr->tex[idx],idx0); break;
-	case (Basisz): writeBasis(&ptr->bas[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Basis")); readBasis(&ptr->bas[idx],idx0); break;
-	case (Piercez): writePierce(&ptr->pie[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Pierce")); readPierce(&ptr->pie[idx],idx0); break;
-	case (Slicez): writeSlice(&ptr->rng[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Slice")); readSlice(&ptr->rng[idx],idx0); break;
-	case (Stringz): writeStr(ptr->str[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Str")); readStr(&ptr->str[idx],idx0); break;
-	case (Machinez): writeMachine(&ptr->mch[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Machine")); readMachine(&ptr->mch[idx],idx0); break;
-	case (Floatz): writeOld(ptr->flt[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Old")); ptr->flt[idx] = readOld(idx0); break;
-	case (Configurez): writeInt(ptr->cfg[idx],idx0); datxInsert(dat,dat0); datxEval(dat0,exp,identType("Int")); ptr->cfg[idx] = readInt(idx0); break;
-	default: ERROR();}}
 }
 int planeIval(struct Express *exp)
 {
@@ -536,7 +477,6 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Write): writeCenter(&center,external); break;
 	case (Save): planeStage(mptr->sav,mptr->siz); break;
 	case (Force): planeForce(mptr->cfg,mptr->val,mptr->siz); break;
-	case (Alloc): planeAlloc(&center); break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
@@ -548,11 +488,14 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Proj): planeProject(planeCenter()); break;
 	case (Share): planeBuffer(&center); break;
 	case (Draw): callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
-	case (Jump): next = planeEscape((planeIval(&mptr->loc[0]) ? mptr->idx : configure[RegisterNest]),next); break;
-	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->idx : next); break;
-	case (Nest): configure[RegisterNest] += mptr->idx; break;
-	case (Eval): planeEval(&center,&mptr->exp[0],&mptr->var[0],mptr->siz); break;
-	case (Gval): planeGval(&center,mptr->gen,mptr->num,mptr->siz); break;
+	case (Jump): next = planeEscape((planeIval(&mptr->loc[0]) ? mptr->nxt : configure[RegisterNest]),next); break;
+	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->nxt : next); break;
+	case (Nest): configure[RegisterNest] += mptr->lvl; break;
+	case (Aval): {void *dat = 0; datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0); datxInsert(dat,*dat0);} break;
+	case (Bval): for (int i = 0; i < mptr->siz; i++) planeBuffer(&mptr->bvl[i]); break;
+	case (Cval): for (int i = 0; i < mptr->siz; i++) {struct Center tmp = {0}; datxEval(dat0,&mptr->cvl[i],identType("Center")); readCenter(&tmp,idx0); planeBuffer(&tmp);} break;
+	case (Dval): datxNone(dat0); writeCenter(mptr->dvl,idx0); readCenter(&center,idx0); break;
+	case (Eval): datxEval(dat0,mptr->evl,identType("Center")); readCenter(&center,idx0); break;
 	default: break;}
 	return next;
 }

@@ -108,10 +108,10 @@ Configure = {
 	"OriginBase", -- sp;
 	"OriginNear", -- sp;
 	"OriginAngle", -- sp;
-	"ClosestLeft", -- sg; search through pierce
+	"ClosestFound", -- sg; search through pierce
+	"ClosestLeft", -- sg;
 	"ClosestBase", -- sg;
 	"ClosestNear", -- sg;
-	"ClosestFound", -- sg;
 	"NormalLeft", -- sg;
 	"NormalBase", -- sg;
 	"NormalNear", -- sg;
@@ -138,7 +138,6 @@ Transfer = {
 	"Write", -- write external pipe
 	"Save", -- center fields, pierce, or info to configure
 	"Force", -- machine to configure
-	"Alloc", -- configure to center fields
 	"Comp", -- composition to center
 	"Pose", -- towrite to center
 	"Other", -- maintain to center
@@ -153,8 +152,11 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
-	"Eval", -- expression to center
-	"Gval", -- generic to center
+	"Aval", -- pass global Center to datxInsert
+	"Bval", -- passes constant Center to planeBuffer
+	"Cval", -- calls datxEval for Center to pass to planeBuffer
+	"Dval", -- copies constant to global Center
+	"Eval", -- calls datxEval for Center to copy to global
 }
 Trans = {
 	"Slide",
@@ -232,7 +234,6 @@ Operate = {
 	"CmpOp", -- 2; to neg zero pos
 	"CndOp", -- 4; from neg zero pos
 	"TotOp", -- 1; cast to type
-	"LenOp", -- 1; length of type
 	"ImmOp", -- 0; built in value
 	"ValOp", -- 2; restore from named
 	"SavOp", -- 3; save to named
@@ -272,7 +273,7 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(12)"..
+	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(7)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
@@ -280,11 +281,6 @@ Bootstrap = {
 		"cfg[4]:Configure(RegisterOpen)"..
 		"cfg[5]:Configure(RegisterOpen)"..
 		"cfg[6]:Configure(RegisterOpen)"..
-		"cfg[7]:Configure(CenterRequest)"..
-		"cfg[8]:Configure(CenterMemory)"..
-		"cfg[9]:Configure(CenterSize)"..
-		"cfg[10]:Configure(CenterIndex)"..
-		"cfg[11]:Configure(CenterSelf)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
 		"val[2]:Int(1)"..
@@ -292,22 +288,11 @@ Bootstrap = {
 		"val[4]:Int(3)"..
 		"val[5]:Int(15)"..
 		"val[6]:Int(31)"..
-		"val[7]:%(return showInt(castRequest(\"SetReq\"),\"\"))"..
-		"val[8]:%(return showInt(castMemory(\"Machinez\"),\"\"))"..
-		"val[9]:Int(1)"..
-		"val[10]:Int(0)"..
-		"val[11]:Int(0)"..
 	")"},
-	{"Int","1","Str","Machine(xfr:Transfer(Alloc)siz:Int(0))"},
-	{"Int","2","Str","Machine(xfr:Transfer(Gval)siz:Int(1)"..
-		"gen[0]:Generic(tag:Tag(MachineTag)machine[0]:Machine("..
-			"xfr:Transfer(Force)siz:Int(1)"..
-			"cfg[0]:Configure(RegisterOpen)"..
-			"val[0]:Int(0)"..
-		"))"..
-		"num[0]:Int(0)"..
-	")"},
-	{"Int","3","Str","Machine(xfr:Transfer(Share)siz:Int(0))"},
+	{"Int","1","Str","Machine(xfr:Transfer(Bval)siz:Int(1)bvl[0]:Center("..
+		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(1)idx:Int(0)slf:Int(0)"..
+		"mch[0]:Machine(xfr:Transfer(Force)siz:Int(1)"..
+			"cfg[0]:Configure(RegisterOpen)val[0]:Int(0))))"},
 }
 Execname = {
 	{"Process","Filez","Str","./file"},
@@ -450,13 +435,12 @@ Slice = {
 }
 Express = {
 	{"opr","Operate",{},{}},
-	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
-	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
-	{"typ","Int",{["opr"]={["ValOp"]=true,["GetOp"]=true}},{}},
-	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
-	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 	{"siz","Int",{},{}},
 	{"exp","Express",{},"siz"},
+	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
+	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
+	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
+	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 }
 Machine = {
 	{"xfr","Transfer",{},{}},
@@ -465,12 +449,13 @@ Machine = {
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
 	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
-	{"idx","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
+	{"nxt","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
-	{"exp","Express",{["xfr"]={["Eval"]=true}},1},
-	{"var","Express",{["xfr"]={["Eval"]=true}},1},
-	{"gen","Generic",{["xfr"]={["Gval"]=true}},"siz"},
-	{"num","Int",{["xfr"]={["Gval"]=true}},"siz"}
+	{"avl","Str",{["xfr"]={["Aval"]=true}},{}},
+	{"bvl","Center",{["xfr"]={["Bval"]=true}},"siz"},
+	{"cvl","Express",{["xfr"]={["Cval"]=true}},"siz"},
+	{"dvl","Center",{["xfr"]={["Dval"]=true}},1},
+	{"evl","Express",{["xfr"]={["Eval"]=true}},1},
 }
 Center = {
 	{"req","Request",{},{}},

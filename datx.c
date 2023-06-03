@@ -501,17 +501,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identUnion(exp->val);
 		if (typ != identUnion(exp->val)) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,datxDat0);} break;
-	case (LenOp): { // 1; length of value
-		void *dat0 = 0;
-		if (typ == -1) typ = identType("Int");
-		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
-		datxEval(&dat0,&exp->exp[0],-1); datxInt(dat,datxChrs(dat0));
-		free(dat0);} break;
 	case (ValOp): { // 0; restore from named
 		void *dat0 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		if (typ == -1) typ = exp->typ;
-		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],-1); datxFind(dat,dat0);
 		if (dat == 0) datxEval(dat,&exp->exp[1],typ);
 		free(dat0);} break;
@@ -524,8 +516,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (GetOp): { // 0; value from callback
 		void *save = 0;
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		if (typ == -1) typ = exp->typ;
-		if (typ != exp->typ) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		assignDat(&save,prefix);
 		if (typ == identType("Int")) {
 		if (datxGetFp == 0) {fprintf(stderr,"int getter not set\n"); exit(-1);}
