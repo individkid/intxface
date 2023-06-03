@@ -136,7 +136,7 @@ Configure = {
 Transfer = {
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
-	"Save", -- center fields, pierce, or info to configure
+	"Parse", -- center fields, pierce, or info to configure
 	"Force", -- machine to configure
 	"Comp", -- composition to center
 	"Pose", -- towrite to center
@@ -147,7 +147,7 @@ Transfer = {
 	"Apply", -- apply towrite to written
 	"Accum", -- apply written to maintain
 	"Proj", -- perspective matrix
-	"Share", -- dma to cpu or gpu
+	"Copy", -- dma to cpu or gpu
 	"Draw", -- start shader
 	"Jump", -- skip if true
 	"Goto", -- jump if true
@@ -450,7 +450,7 @@ Express = {
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"sav","Configure",{["xfr"]={["Save"]=true}},"siz"},
+	{"sav","Configure",{["xfr"]={["Parse"]=true}},"siz"},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
 	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},

@@ -370,9 +370,9 @@ struct Pierce *planePierce()
 	if (!found) found = &unfound; // TODO set unfound to picture plane
 	return found;
 }
-void planeStage(const enum Configure *cfg, int siz)
+void planeParse(enum Configure cfg)
 {
-	for (int i = 0; i < siz; i++) switch (cfg[i]) {
+	switch (cfg) {
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
 	case (CenterRequest): configure[CenterRequest] = center.req; break;
@@ -425,33 +425,29 @@ void planeThrough(struct Center *ptr)
 	default: break;}}
 	callDma(ptr);
 }
-void planeForce(enum Configure *cfg, int *val, int siz)
+void planeForce(enum Configure cfg, int val)
 {
 	struct Center tmp = {0};
 	tmp.mem = Configurez;
-	tmp.siz = siz;
-	allocConfigure(&tmp.cfg,siz);
-	allocInt(&tmp.val,siz);
-	for (int i = 0; i < siz; i++) {
-	tmp.cfg[i] = cfg[i];
-	tmp.val[i] = val[i];}
+	tmp.siz = 1;
+	allocConfigure(&tmp.cfg,1);
+	allocInt(&tmp.val,1);
+	tmp.cfg[0] = cfg;
+	tmp.val[0] = val;
 	planeThrough(&tmp);
 	freeCenter(&tmp);
 }
-void planeMachine(struct Machine *dst, struct Machine *src)
-{
-	datxNone(dat0);
-	writeMachine(src,idx0);
-	readMachine(dst,idx0);
-}
-void planeBuffer(struct Center *ptr)
+void planeCopy(struct Center *ptr)
 {
 	switch (ptr->mem) {
-	case (Piercez): for (int i = 0; i < ptr->siz; i++) memcpy(&pierce[(ptr->idx+i)%configure[PierceSize]],&ptr->pie[i],sizeof(struct Pierce)); break;
-	case (Stringz): if (ptr->idx < 0) for (int i = 0; i < ptr->siz; i++) ptr->idx = planeSet(-1,ptr->str[i]);
-	else for (int i = 0; i < ptr->siz; i++) planeSet(ptr->idx+i,ptr->str[i]); break;
-	case (Machinez): for (int i = 0; i < ptr->siz; i++) planeMachine(&machine[(ptr->idx+i)%configure[MachineSize]],&ptr->mch[i]); break;
-	case (Floatz): for (int i = 0; i < ptr->siz; i++) floats[(ptr->idx+i)%configure[FloatSize]] = ptr->flt[i]; break;
+	case (Piercez): for (int i = 0; i < ptr->siz; i++)
+	memcpy(&pierce[(ptr->idx+i)%configure[PierceSize]],&ptr->pie[i],sizeof(struct Pierce)); break;
+	case (Stringz): for (int i = 0; i < ptr->siz; i++) if (ptr->idx < 0)
+	ptr->idx = planeSet(-1,ptr->str[i]); else planeSet(ptr->idx+i,ptr->str[i]); break;
+	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
+	datxNone(dat0); writeMachine(&ptr->mch[i],idx0); readMachine(&machine[(ptr->idx+i)%configure[MachineSize]],idx0);} break;
+	case (Floatz): for (int i = 0; i < ptr->siz; i++)
+	floats[(ptr->idx+i)%configure[FloatSize]] = ptr->flt[i]; break;
 	case (Configurez): planeThrough(ptr); break;
 	default: callDma(ptr); break;}
 }
@@ -475,25 +471,25 @@ int planeSwitch(struct Machine *mptr, int next)
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
-	case (Save): planeStage(mptr->sav,mptr->siz); break;
-	case (Force): planeForce(mptr->cfg,mptr->val,mptr->siz); break;
+	case (Parse): for (int i = 0; i < mptr->siz; i++) planeParse(mptr->sav[i]); break;
+	case (Force): for (int i = 0; i < mptr->siz; i++) planeForce(mptr->cfg[i],mptr->val[i]); break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4); timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-	case (Local): jumpmat(planeTowrite(),planeLocal(),4); planeStage((const enum Configure []){OriginLeft,OriginBase,OriginAngle},3); break;
+	case (Local): jumpmat(planeTowrite(),planeLocal(),4); planeParse(OriginLeft); planeParse(OriginBase); planeParse(OriginAngle); break;
 	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
-	case (Share): planeBuffer(&center); break;
+	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw((enum Micro)configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
 	case (Jump): next = planeEscape((planeIval(&mptr->loc[0]) ? mptr->nxt : configure[RegisterNest]),next); break;
 	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->nxt : next); break;
 	case (Nest): configure[RegisterNest] += mptr->lvl; break;
 	case (Aval): {void *dat = 0; datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0); datxInsert(dat,*dat0);} break;
-	case (Bval): for (int i = 0; i < mptr->siz; i++) planeBuffer(&mptr->bvl[i]); break;
-	case (Cval): for (int i = 0; i < mptr->siz; i++) {struct Center tmp = {0}; datxEval(dat0,&mptr->cvl[i],identType("Center")); readCenter(&tmp,idx0); planeBuffer(&tmp);} break;
+	case (Bval): for (int i = 0; i < mptr->siz; i++) planeCopy(&mptr->bvl[i]); break;
+	case (Cval): for (int i = 0; i < mptr->siz; i++) {struct Center tmp = {0}; datxEval(dat0,&mptr->cvl[i],identType("Center")); readCenter(&tmp,idx0); planeCopy(&tmp);} break;
 	case (Dval): datxNone(dat0); writeCenter(mptr->dvl,idx0); readCenter(&center,idx0); break;
 	case (Eval): datxEval(dat0,mptr->evl,identType("Center")); readCenter(&center,idx0); break;
 	default: break;}
@@ -571,7 +567,7 @@ void planeSetter(void *dat, int mem, int sub)
 	switch ((enum Etter)mem) {
 	case (Configurey):
 	if (sub < 0 || sub >= Configures) ERROR();
-	planeForce((enum Configure *)&sub,datxIntz(0,dat),1);
+	planeForce(sub,*datxIntz(0,dat));
 	break; case (Stringy):
 	planeSet(sub,datxChrz(0,dat));
 	break; case (Floaty):
