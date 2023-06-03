@@ -294,17 +294,18 @@ struct Node *datxNode(void *key)
 		tmp = tmp->ptr[i-1]; break;}
 	return tmp;
 }
-void datxFind(void **val, void *key)
+int datxFind(void **val, void *key)
 {
-	struct Node *leaf = 0; void *dat = 0;
+	struct Node *leaf = 0; void *dat = 0; int typ = 0;
 	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key);
 	leaf = datxNode(key);
 	if (datxCompare(leaf->key,dat) == 0) {
-		assignDat(val,leaf->box);
-		free(dat); return;}
+		assignDat(val,leaf->box); typ = leaf->typ;
+		free(dat); return typ;}
 	free(dat); free(*val); *val = 0;
+	return typ;
 }
-void datxInsert(void *key, void *box)
+void datxInsert(void *key, void *box, int typ)
 {
 	struct Node *leaf = 0; void *dat = 0;
 	if (prefix) datxJoin(dat,prefix,key); else assignDat(dat,key);
@@ -324,6 +325,7 @@ void datxInsert(void *key, void *box)
 		tmp->ptr[0] = leaf->ptr[i=1]; tmp->ref = leaf; tmp->dep = leaf->dep-1;
 		leaf->ptr[i-1] = tmp; leaf->siz++; leaf = tmp; break;}
 	leaf->box = box;
+	leaf->typ = typ;
 	if (datxCallFp) {void *save = 0; assignDat(&save,prefix); datxCallFp(key); assignDat(prefix,save);}
 }
 int datxPtrs(void *dat)
@@ -504,15 +506,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ != identUnion(exp->val)) {fprintf(stderr,"wrong type of argument %d\n",typ); exit(-1);}
 		datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,datxDat0);} break;
 	case (ValOp): { // 0; restore from named
-		void *dat0 = 0;
+		void *dat0 = 0; int typ0 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		datxEval(&dat0,&exp->exp[0],-1); datxFind(dat,dat0);
+		datxEval(&dat0,&exp->exp[0],-1); typ0 = datxFind(dat,dat0);
 		if (dat == 0) datxEval(dat,&exp->exp[1],typ);
+		else if (typ0 != typ) {fprintf(stderr,"wrong type of value %d\n",typ0); exit(-1);}
 		free(dat0);} break;
 	case (SavOp): { // 2; save to named
-		void *dat0 = 0; void *dat1 = 0;
+		void *dat0 = 0; void *dat1 = 0; int typ0 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
-		datxEval(&dat0,&exp->exp[0],-1); datxEval(&dat1,&exp->exp[1],-1); datxInsert(dat0,dat1);
+		datxEval(&dat0,&exp->exp[0],-1); typ0 = datxEval(&dat1,&exp->exp[1],-1); datxInsert(dat0,dat1,typ0);
 		datxEval(dat,&exp->exp[2],typ);
 		free(dat0); free(dat1);} break;
 	case (GetOp): { // 0; value from callback

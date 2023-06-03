@@ -279,10 +279,14 @@ int luaxClosure(lua_State *L)
 		case (Ritype): lua_pushinteger(L,fnc.ri()); ret = 1; break;
 		// typedef const char *(*rjtype)(int i);
 		case (Rjtype): lua_pushstring(L,fnc.rj(lua_tointeger(L,1))); ret = 1; break;
+		// typedef int (*rktype)(char **val, const char *key);
+		case (Rktype): lua_pushinteger(L,fnc.rk(&str,lua_tostring(L,1))); lua_pushstring(L,str); free(str); ret = 2; break;
+		// typedef void (*rltype)(const char *key, const char *val, int typ);
+		case (Rltype): fnc.rl(lua_tostring(L,1),lua_tostring(L,2),lua_tointeger(L,3)); break;
 		// typedef void (*rktype)(char **val, const char *key);
-		case (Rktype): fnc.rk(&str,lua_tostring(L,1)); lua_pushstring(L,str); free(str); ret = 1; break;
+		case (Rmtype): fnc.rm(&str,lua_tostring(L,1)); lua_pushstring(L,str); free(str); ret = 1; break;
 		// typedef void (*rltype)(const char *key, const char *val);
-		case (Rltype): fnc.rl(lua_tostring(L,1),lua_tostring(L,2)); break;
+		case (Rntype): fnc.rn(lua_tostring(L,1),lua_tostring(L,2)); break;
 
 		default: ERROR();}
 	return ret;

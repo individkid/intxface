@@ -114,8 +114,10 @@ typedef void (*rgtype)(int i, const char *str);
 typedef void (*rhtype)();
 typedef int (*ritype)();
 typedef const char *(*rjtype)(int i);
-typedef void (*rktype)(char **val, const char *key);
-typedef void (*rltype)(const char *key, const char *val);
+typedef int (*rktype)(char **val, const char *key);
+typedef void (*rltype)(const char *key, const char *val, int typ);
+typedef void (*rmtype)(char **val, const char *key);
+typedef void (*rntype)(const char *key, const char *val);
 
 struct Function {
 	enum {
@@ -206,6 +208,8 @@ struct Function {
 		Rjtype,
 		Rktype,
 		Rltype,
+		Rmtype,
+		Rntype,
 	} ft;
 	union {
 		/*
@@ -288,6 +292,8 @@ struct Function {
 		rjtype rj;
 		rktype rk;
 		rltype rl;
+		rmtype rm;
+		rntype rn;
 		void *vp;
 	};
 };
@@ -377,6 +383,8 @@ struct Function protoTypeRi(ritype fnc);
 struct Function protoTypeRj(rjtype fnc);
 struct Function protoTypeRk(rktype fnc);
 struct Function protoTypeRl(rltype fnc);
+struct Function protoTypeRm(rmtype fnc);
+struct Function protoTypeRn(rntype fnc);
 
 struct Parameter {
 	enum {

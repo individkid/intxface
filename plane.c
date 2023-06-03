@@ -495,7 +495,8 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->nxt : next); break;
 	case (Nest): configure[RegisterNest] += mptr->lvl; break;
 	case (Aval): {void *dat = 0;
-	datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0); datxInsert(dat,*dat0);} break;
+	datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0);
+	datxInsert(dat,*dat0,identType("Center"));} break;
 	case (Bval): for (int i = 0; i < mptr->siz; i++)
 	planeCopy(&mptr->bvl[i]); break;
 	case (Cval): for (int i = 0; i < mptr->siz; i++) {
@@ -601,17 +602,19 @@ void planeGetter(void **dat, int mem, int sub)
 }
 void planeFind(char **val, const char *key)
 {
-	void *src = 0; void *dst = 0;
+	void *src = 0; void *dst = 0; int typ = 0;
 	datxStr(&src,key);
-	datxFind(&dst,src);
+	typ = datxFind(&dst,src);
+	if (typ != identType("Str")) ERROR();
 	assignStr(val,datxChrz(0,dst));
 	free(src); free(dst);
 }
 void planeInsert(const char *key, const char *val)
 {
 	void *src = 0; void *dst = 0;
-	datxStr(&src,key); datxStr(&dst,val);
-	datxInsert(src,dst);
+	datxStr(&src,key);
+	datxStr(&dst,val);
+	datxInsert(src,dst,identType("Str"));
 	free(src); free(dst);
 }
 void planeTerm(int sig)
@@ -702,7 +705,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	datxSetter(planeSetter); datxGetter(planeGetter);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
-	luaxAdd("datxFind",protoTypeRk(planeFind)); luaxAdd("datxInsert",protoTypeRl(planeInsert));
+	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert));
 	datxEmbed(luaxSide);
 	callDma = dma;
 	callSafe = safe;
