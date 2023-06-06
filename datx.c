@@ -513,9 +513,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (dat == 0) datxEval(dat,&exp->exp[1],typ);
 		else if (typ0 != typ) {fprintf(stderr,"wrong type of value %d\n",typ0); exit(-1);}
 		free(dat0);} break;
-	case (SavOp): { // 2; save to named
+	case (SavOp): { // 3; save to named
 		void *dat0 = 0; void *dat1 = 0; int typ0 = 0;
-		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
+		if (exp->siz != 3) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
 		datxEval(&dat0,&exp->exp[0],-1); typ0 = datxEval(&dat1,&exp->exp[1],-1); datxInsert(dat0,dat1,typ0);
 		datxEval(dat,&exp->exp[2],typ);
 		free(dat0); free(dat1);} break;

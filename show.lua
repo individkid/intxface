@@ -147,7 +147,7 @@ function showStructCJ(field)
 	end
 	return result
 end
-function showStructCI(field)
+function showCtypeC(field)
 	local result
 	if (Enumz[field[2]]~=nil) then
 		result = "enum "..field[2]
@@ -172,6 +172,11 @@ function showStructCI(field)
 	else
 		result = field[2]
 	end
+	return result
+end
+function showStructCI(field)
+	local result
+	result = showCtypeC(field)
 	if (type(field[4]) == "number") then
 		result = result.."*"
 	elseif (type(field[4]) == "string") then
@@ -271,6 +276,33 @@ function showReadCJ(pre,field,sub,arg,post)
 		coroutine.yield(pre.."ptr->"..field[1]..sub.." = read"..field[2].."(idx);"..post)
 	end	
 end
+function showLimitC(field)
+	local count = ""
+	if (type(field[4]) == "table") and (sizeIter(field[4]) > 0) then
+		count = 1
+		for key,val in ipairs(field[4]) do
+			count = count*val
+		end
+	elseif (type(field[4]) == "number") then
+		count = field[4]
+	elseif (type(field[4]) == "string") then
+		count = "ptr->"..field[4]
+	end
+	return count
+end
+function showLimitsC(field)
+	local count = {}
+	if (type(field[4]) == "table") and (sizeIter(field[4]) > 0) then
+		for key,val in ipairs(field[4]) do
+			count[#count+1] = val
+		end
+	elseif (type(field[4]) == "number") then
+		count[#count+1] = field[4]
+	elseif (type(field[4]) == "string") then
+		count[#count+1] = "ptr->"..field[4]
+	end
+	return count
+end
 function showReadCI(pre,field,post)
 	local count = 0
 	if (type(field[4]) == "table") then
@@ -299,7 +331,7 @@ function showReadCI(pre,field,post)
 		showReadCJ(pre.."    ",field,"[i]","1,i",post)
 	end
 end
-function showReadCH(field)
+function showCondC(field)
 	local condit = ""
 	local seper = ""
 	local count = sizeIter(field[3])
@@ -322,6 +354,11 @@ function showReadCH(field)
 		end
 		seper = " && "
 	end
+	return condit
+end
+function showReadCH(field)
+	local count = sizeIter(field[3])
+	local condit = showCondC(field)
 	if (count > 0) then
 		coroutine.yield("    if ("..condit..") {")
 		showReadCI("        ",field,"}")
@@ -981,59 +1018,232 @@ function showIdentC(list)
 end
 function showRfieldC(list,map)
 	local result = ""
-	result = result.."void readField(int typ, int fld, int idx, int ifd, int xfd, int ofd)"
+	for k,v in ipairs(list) do
+		result = result.."void copy"..v.."(struct "..v.." *dst, struct "..v.." *ptr)"
+		if prototype then result = result..";\n" else
+			result = result.."\n{\n"
+			result = result..showIndent(1).."free"..v.."(dst);\n"
+			for ky,vl in ipairs(map[v]) do
+				local condit = showCondC(vl)
+				local limits = showLimitsC(vl)
+				local depth = 1
+				if (condit ~= "") then
+					result = result..showIndent(depth).."if ("..condit..") {\n"
+					depth = depth + 1
+				end
+				if (type(vl[4]) == "number") then
+					result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..","..vl[4]..");\n"
+				elseif (type(vl[4]) == "string") then
+					result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..",ptr->"..vl[4]..");\n"
+				end
+				for key,val in ipairs(limits) do
+					result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+					depth = depth + 1
+				end
+				lval = "dst->"..vl[1]
+				rval = "ptr->"..vl[1]
+				for key,val in ipairs(limits) do
+					lval = lval.."[sub"..key.."]"
+					rval = rval.."[sub"..key.."]"
+				end
+				if (not (Structz[vl[2]] == nil)) then
+					result = result..showIndent(depth).."copy"..vl[2].."(&"..lval..",&"..rval..");\n"
+				elseif (not (Enumz[vl[2]] == nil)) then
+					result = result..showIndent(depth)..lval.." = "..rval..";\n"
+				elseif (vl[2] == "Str") then
+					result = result..showIndent(depth).."assignStr(&"..lval..","..rval..");\n"
+				elseif (vl[2] == "Dat") then
+					result = result..showIndent(depth).."assignDat(&"..lval..","..rval..");\n"
+				else
+					result = result..showIndent(depth)..lval.." = "..rval..";\n"
+				end
+				for key,val in ipairs(limits) do
+					depth = depth - 1
+					result = result..showIndent(depth).."}\n"
+				end
+				if (condit ~= "") then
+					depth = depth - 1
+					result = result..showIndent(depth).."}\n"
+				end
+			end
+			result = result.."}\n"
+		end
+		result = result.."int fvalid"..v.."(struct "..v.." *ptr, int fld, int sub)"
+		if prototype then result = result..";\n" else
+			result = result.."\n{\n"
+			result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
+			result = result..showIndent(1).."switch (fld) {\n"
+			for ky,vl in ipairs(map[v]) do
+				local condit = showCondC(vl)
+				local limit = showLimitC(vl)
+				result = result..showIndent(1).."case("..(ky-1).."): {\n"
+				if (condit ~= "") then
+					result = result..showIndent(2).."if (!("..condit..")) return 0;\n"
+				end
+				if (limit == "") then
+					result = result..showIndent(2).."if (sub > 0) return 0;\n"
+				else
+					result = result..showIndent(2).."if (sub >= "..limit..") return 0;\n"
+				end
+				result = result..showIndent(2).."return 1;}\n"
+			end
+			result = result..showIndent(1).."default: break;}\n"
+			result = result..showIndent(1).."return -1;\n"
+			result = result.."}\n"
+		end
+		result = result.."void fread"..v.."(struct "..v.." *ptr, int fld, int sub, int idx)"
+		if prototype then result = result..";\n" else
+			result = result.."\n{\n"
+			result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
+			result = result..showIndent(1).."switch (fld) {\n"
+			for ky,vl in ipairs(map[v]) do
+				local condit = showCondC(vl)
+				local limit = showLimitC(vl)
+				result = result..showIndent(1).."case("..(ky-1).."): {\n"
+				if (condit ~= "") then
+					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+				end
+				if (limit == "") then
+					result = result..showIndent(2).."if (sub > 0) ERROR();\n"
+				else
+					result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
+				end
+				lval = "ptr->"..vl[1]
+				if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+					lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+				end
+				if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+					lval = lval.."[sub]"
+				end
+				if (not (Structz[vl[2]] == nil)) then
+					result = result..showIndent(2).."read"..vl[2].."(&"..lval..",idx);\n"
+				elseif (not (Enumz[vl[2]] == nil)) then
+					result = result..showIndent(2)..lval.." = readInt(idx);\n"
+				elseif (vl[2] == "Str") then
+					result = result..showIndent(2).."readStr(&"..lval..",idx);\n"
+				elseif (vl[2] == "Dat") then
+					result = result..showIndent(2).."readDat(&"..lval..",idx);\n"
+				else
+					result = result..showIndent(2)..lval.." = read"..vl[2].."(idx);\n"
+				end
+				result = result..showIndent(2).."break;}\n"
+			end
+			result = result..showIndent(1).."default: ERROR();}\n"
+			result = result.."}\n"
+		end
+		result = result.."void fcopy"..v.."(struct "..v.." *dst, struct "..v.." *ptr, int fld, int sub)"
+		if prototype then result = result..";\n" else
+			result = result.."\n{\n"
+			result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
+			result = result..showIndent(1).."switch (fld) {\n"
+			for ky,vl in ipairs(map[v]) do
+				local condit = showCondC(vl)
+				local limit = showLimitC(vl)
+				result = result..showIndent(1).."case("..(ky-1).."): {\n"
+				if (condit ~= "") then
+					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+				end
+				if (limit == "") then
+					result = result..showIndent(2).."if (sub > 0) ERROR();\n"
+				else
+					result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
+				end
+				lval = "dst->"..vl[1]
+				rval = "ptr->"..vl[1]
+				if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+					lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+					rval = "(("..showCtypeC(vl).."*)("..rval.."))"
+				end
+				if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+					lval = lval.."[sub]"
+					rval = rval.."[sub]"
+				end
+				if (not (Structz[vl[2]] == nil)) then
+					result = result..showIndent(2).."// TODO copy"..vl[2].."(&"..lval..",&"..rval..")\n"
+				elseif (not (Enumz[vl[2]] == nil)) then
+					result = result..showIndent(2)..lval.." = "..rval..";\n"
+				elseif (vl[2] == "Str") then
+					result = result..showIndent(2).."assignStr(&"..lval..","..rval..");\n"
+				elseif (vl[2] == "Dat") then
+					result = result..showIndent(2).."assignDat(&"..lval..","..rval..");\n"
+				else
+					result = result..showIndent(2)..lval.." = "..rval..";\n"
+				end
+				result = result..showIndent(2).."break;}\n"
+			end
+			result = result..showIndent(1).."default: ERROR();}\n"
+			result = result.."}\n"
+		end
+	end
+	result = result.."void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (typ) {\n"
 	for k,v in ipairs(list) do
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
-		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
-		result = result..showIndent(2).."read"..v.."(&tmp,ifd);\n"
-		result = result..showIndent(2).."switch (fld) {\n"
-		for ky,vl in ipairs(map[v]) do
-			result = result..showIndent(2).."case("..(ky-1).."): {\n"
-			lval = "tmp."..vl[1]
-			if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-				lval = "((int*)("..lval.."))"
-			end
-			if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
-				lval = lval.."[idx]"
-			end
-			if (not (Structz[vl[2]] == nil)) then
-				result = result..showIndent(3).."read"..vl[2].."(&"..lval
-			elseif (not (Enumz[vl[2]] == nil)) then
-				result = result..showIndent(3)..lval
-			elseif (vl[2] == "Str") then
-				result = result..showIndent(3).."readStr(&"..lval
-			elseif (vl[2] == "Dat") then
-				result = result..showIndent(3).."readDat(&"..lval
-			else
-				result = result..showIndent(3)..lval
-			end
-			if (not (Structz[vl[2]] == nil)) then
-				result = result..",xfd);\n"
-			elseif (not (Enumz[vl[2]] == nil)) then
-				result = result.." = readInt(xfd);\n"
-			elseif (vl[2] == "Str") then
-				result = result..",xfd);\n"
-			elseif (vl[2] == "Dat") then
-				result = result..",xfd);\n"
-			else
-				result = result.." = read"..vl[2].."(xfd);\n"
-			end
-			result = result..showIndent(3).."write"..v.."(&tmp,ofd);\n"
-			result = result..showIndent(3).."break;}\n"
-		end
+		result = result..showIndent(2).."int found = 0; int i = 0; int j = 0;\n"
+		result = result..showIndent(2).."struct "..v.." src = {0};\n"
+		result = result..showIndent(2).."struct "..v.." dst = {0};\n"
+		result = result..showIndent(2).."read"..v.."(&src,ifd);\n"
+		result = result..showIndent(2).."while (1) {\n"
+		result = result..showIndent(3).."int vrc = fvalid"..v.."(&src,i,j);\n"
+		result = result..showIndent(3).."int vst = fvalid"..v.."(&dst,i,j);\n"
+		result = result..showIndent(3).."int vld = (i == fld && j == sub);\n"
+		result = result..showIndent(3).."if (vst < 0) break;\n"
+		result = result..showIndent(3).."if (vst != 1) {i++; j = 0; continue;}\n"
+		result = result..showIndent(3).."if (vld) {found = 1; fread"..v.."(&dst,i,j,xfd);}\n"
+		result = result..showIndent(3).."else if (vrc == 1) fcopy"..v.."(&dst,&src,i,j);\n"
+		result = result..showIndent(3).."j++;\n"
 		result = result..showIndent(2).."}\n"
+		result = result..showIndent(2).."if (found != 1) ERROR();\n"
+		result = result..showIndent(2).."write"..v.."(&dst,ofd);\n"
 		result = result..showIndent(2).."break;}\n"
 	end
-	result = result..showIndent(1).."}\n"
+	result = result..showIndent(1).."default: ERROR();}\n"
 	result = result.."}"
 	return result
 end
 function showWfieldC(list,map)
 	local result = ""
-	result = result.."void writeField(int typ, int fld, int idx, int ifd, int ofd)"
+	for k,v in ipairs(list) do
+		result = result.."void fwrite"..v.."(struct "..v.." *ptr, int fld, int sub, int idx)"
+		if prototype then result = result..";\n" else
+			result = result.."\n{\n"
+			result = result..showIndent(1).."switch (fld) {\n"
+			for ky,vl in ipairs(map[v]) do
+				local condit = showCondC(vl)
+				local limit = showLimitC(vl)
+				result = result..showIndent(1).."case("..(ky-1).."): {\n"
+				if (condit ~= "") then
+					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+				end
+				if (limit == "") then
+					result = result..showIndent(2).."if (sub > 0) ERROR();\n"
+				else
+					result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
+				end
+				lval = "ptr->"..vl[1]
+				if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+					lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+				end
+				if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+					lval = lval.."[sub]"
+				end
+				if (not (Structz[vl[2]] == nil)) then
+					result = result..showIndent(2).."write"..vl[2].."(&"..lval
+				elseif (not (Enumz[vl[2]] == nil)) then
+					result = result..showIndent(2).."writeInt("..lval
+				else
+					result = result..showIndent(2).."write"..vl[2].."("..lval
+				end
+				result = result..",idx);\n"
+				result = result..showIndent(2).."break;}\n"
+			end
+			result = result..showIndent(1).."default: ERROR();}\n"
+			result = result.."}\n"
+		end
+	end
+	result = result.."void writeField(int typ, int fld, int sub, int ifd, int ofd)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (typ) {\n"
@@ -1041,30 +1251,10 @@ function showWfieldC(list,map)
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
 		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
 		result = result..showIndent(2).."read"..v.."(&tmp,ifd);\n"
-		result = result..showIndent(2).."switch (fld) {\n"
-		for ky,vl in ipairs(map[v]) do
-			result = result..showIndent(2).."case("..(ky-1).."): {\n"
-			lval = "tmp."..vl[1]
-			if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-				lval = "((int*)("..lval.."))"
-			end
-			if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
-				lval = lval.."[idx]"
-			end
-			if (not (Structz[vl[2]] == nil)) then
-				result = result..showIndent(3).."write"..vl[2].."(&"..lval
-			elseif (not (Enumz[vl[2]] == nil)) then
-				result = result..showIndent(3).."writeInt("..lval
-			else
-				result = result..showIndent(3).."write"..vl[2].."("..lval
-			end
-			result = result..",ofd);\n"
-			result = result..showIndent(3).."break;}\n"
-		end
-		result = result..showIndent(2).."}\n"
+		result = result..showIndent(2).."fwrite"..v.."(&tmp,fld,sub,ofd);\n"
 		result = result..showIndent(2).."break;}\n"
 	end
-	result = result..showIndent(1).."}\n"
+	result = result..showIndent(1).."default: ERROR();}\n"
 	result = result.."}"
 	return result
 end

@@ -440,14 +440,10 @@ void planeForce(enum Configure cfg, int val)
 void planeCopy(struct Center *ptr)
 {
 	switch (ptr->mem) {
-	case (Piercez): for (int i = 0; i < ptr->siz; i++)
-	memcpy(&pierce[(ptr->idx+i)%configure[PierceSize]],&ptr->pie[i],sizeof(struct Pierce)); break;
-	case (Stringz): for (int i = 0; i < ptr->siz; i++) if (ptr->idx < 0)
-	ptr->idx = planeSet(-1,ptr->str[i]); else planeSet(ptr->idx+i,ptr->str[i]); break;
-	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
-	datxNone(dat0); writeMachine(&ptr->mch[i],idx0); readMachine(&machine[(ptr->idx+i)%configure[MachineSize]],idx0);} break;
-	case (Floatz): for (int i = 0; i < ptr->siz; i++)
-	floats[(ptr->idx+i)%configure[FloatSize]] = ptr->flt[i]; break;
+	case (Piercez): for (int i = 0; i < ptr->siz; i++) copyPierce(&pierce[(ptr->idx+i)%configure[PierceSize]],&ptr->pie[i]); break;
+	case (Stringz): for (int i = 0; i < ptr->siz; i++) if (ptr->idx < 0) ptr->idx = planeSet(-1,ptr->str[i]); else planeSet(ptr->idx+i,ptr->str[i]); break;
+	case (Machinez): for (int i = 0; i < ptr->siz; i++) copyMachine(&machine[(ptr->idx+i)%configure[MachineSize]],&ptr->mch[i]); break;
+	case (Floatz): for (int i = 0; i < ptr->siz; i++) floats[(ptr->idx+i)%configure[FloatSize]] = ptr->flt[i]; break;
 	case (Configurez): planeThrough(ptr); break;
 	default: callDma(ptr); break;}
 }
