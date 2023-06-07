@@ -1159,7 +1159,7 @@ function showRfieldC(list,map)
 					rval = rval.."[sub]"
 				end
 				if (not (Structz[vl[2]] == nil)) then
-					result = result..showIndent(2).."// TODO copy"..vl[2].."(&"..lval..",&"..rval..")\n"
+					result = result..showIndent(2).."copy"..vl[2].."(&"..lval..",&"..rval..");\n"
 				elseif (not (Enumz[vl[2]] == nil)) then
 					result = result..showIndent(2)..lval.." = "..rval..";\n"
 				elseif (vl[2] == "Str") then
@@ -1168,6 +1168,27 @@ function showRfieldC(list,map)
 					result = result..showIndent(2).."assignDat(&"..lval..","..rval..");\n"
 				else
 					result = result..showIndent(2)..lval.." = "..rval..";\n"
+				end
+				result = result..showIndent(2).."break;}\n"
+			end
+			result = result..showIndent(1).."default: ERROR();}\n"
+			result = result.."}\n"
+		end
+		result = result.."void falloc"..v.."(struct "..v.." *ptr, int fld)"
+		if prototype then result = result..";\n" else
+			result = result.."\n{\n"
+			result = result..showIndent(1).."if (fld < 0) ERROR();\n"
+			result = result..showIndent(1).."switch (fld) {\n"
+			for ky,vl in ipairs(map[v]) do
+				local condit = showCondC(vl)
+				result = result..showIndent(1).."case("..(ky-1).."): {\n"
+				if (condit ~= "") then
+					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+				end
+				if (type(vl[4]) == "number") then
+					result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..","..vl[4]..");\n"
+				elseif (type(vl[4]) == "string") then
+					result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..",ptr->"..vl[4]..");\n"
 				end
 				result = result..showIndent(2).."break;}\n"
 			end
@@ -1193,6 +1214,7 @@ function showRfieldC(list,map)
 		result = result..showIndent(3).."if (vst != 1) {i++; j = 0; continue;}\n"
 		result = result..showIndent(3).."if (vld) {found = 1; fread"..v.."(&dst,i,j,xfd);}\n"
 		result = result..showIndent(3).."else if (vrc == 1) fcopy"..v.."(&dst,&src,i,j);\n"
+		result = result..showIndent(3).."else if (j == 0) falloc"..v.."(&dst,i);\n"
 		result = result..showIndent(3).."j++;\n"
 		result = result..showIndent(2).."}\n"
 		result = result..showIndent(2).."if (found != 1) ERROR();\n"

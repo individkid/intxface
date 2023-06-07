@@ -17,7 +17,7 @@ luaxC.o: luax.h proto.h
 metalSw: datxC.o faceC.o luaxC.o metxC.o planeC.o protoC.o typeC.o
 metalSw.o: face.h plane.h proto.h type.h
 metxC.o: metx.h
-planeC.o: datx.h face.h metx.h plane.h proto.h type.h
+planeC.o: datx.h face.h luax.h metx.h plane.h proto.h type.h
 planer.log: metalSw plane.metallib planerLua type.lua
 protoC.o: proto.h
 shareC: datxC.o faceC.o luaxC.o protoC.o typeC.o

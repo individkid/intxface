@@ -37,7 +37,8 @@ Write ball.lua and world.lua
 Make face.c (NUMOPEN) datx.c (NUMOPEN) argx.c (NUMARGX) file.c (NUMFILE) arrays into array of malloc struct.
 Optimize depend.lua to build each target in separate clean directory, and copy from that directory in preference to push.
 Enhance show.lua to use map from enum constant and struct name to basename, with not found a match if no basename given,
-so the Share struct goes only in share.h, for example.
+so the Share struct goes only in share.h, for example. Replace makefile by lua script,
+and allow generate script to generate functions needed instead of entire files, so programs are smaller.
 
 Develop Theory for coincidences as sets of hyperplane classifications.
 Replace Theory by an agda proof.
