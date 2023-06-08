@@ -7,7 +7,7 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
-	{"\"Enum1\""},
+	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
 	{"\"Struct1\",Struct1"},
@@ -33,8 +33,8 @@ Monitor = {
 	"showWriteC",
 	"showRandC",
 	"showCompC",
-	"showAllocC",
-	"showAllocC",
+	"showAllocEC",
+	"showAllocSC",
 	"showShowSC",
 	"showHideSC",
 	"showEnumHs",
@@ -93,155 +93,215 @@ Expected = {
 	"{\n"..
 	"    freeStruct1(ptr);\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        readStruct1(&ptr->next[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        ptr->field1[i1] = readOld(idx);\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        ptr->field2[i1] = readNum(idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 3; i2++)\n"..
-	"            ptr->field3[i1][i2] = readInt(idx);\n"..
+	"    for (int sub1 = 0; sub1 < 0; sub1++) {\n"..
+	"        readStruct1(&ptr->next[sub1],idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        ptr->field1[sub1] = readOld(idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        ptr->field2[sub1] = readNum(idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        for (int sub2 = 0; sub2 < 3; sub2++) {\n"..
+	"            ptr->field3[sub1][sub2] = readInt(idx);\n"..
+	"        }\n"..
+	"    }\n"..
 	"    readStr(&ptr->field4,idx);\n"..
 	"    allocInt(&ptr->field5,3);\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        ptr->field5[i] = readInt(idx);\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        ptr->field5[sub1] = readInt(idx);\n"..
+	"    }\n"..
 	"    {int temp = readInt(idx); ptr->field6 = temp;}\n"..
 	"    {int temp = readInt(idx); ptr->field7 = temp;}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        ptr->field8 = readInt(idx);}\n"..
+	"        ptr->field8 = readInt(idx);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        ptr->field9 = readInt(idx);}\n"..
+	"        ptr->field9 = readInt(idx);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        ptr->field10 = readInt(idx);}\n"..
+	"        ptr->field10 = readInt(idx);\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        ptr->field11 = readInt(idx);}\n"..
+	"        ptr->field11 = readInt(idx);\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        ptr->field12 = readInt(idx);}\n"..
+	"        ptr->field12 = readInt(idx);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        ptr->field13 = readInt(idx);}\n"..
+	"        ptr->field13 = readInt(idx);\n"..
+	"    }\n"..
 	"    ptr->field14 = readInt(idx);\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        ptr->field15[i] = readInt(idx);\n"..
+	"    for (int sub1 = 0; sub1 < ptr->field14; sub1++) {\n"..
+	"        ptr->field15[sub1] = readInt(idx);\n"..
+	"    }\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        readStruct2(&ptr->field16[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        readStruct2(&ptr->field17[i1],idx);\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        readStruct2(&ptr->field16[sub1],idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        readStruct2(&ptr->field17[sub1],idx);\n"..
+	"    }\n"..
 	"}",
 	"void writeStruct1(struct Struct1 *ptr, int idx)\n"..
 	"{\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        writeStruct1(&ptr->next[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        writeOld(ptr->field1[i1],idx);\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        writeNum(ptr->field2[i1],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 3; i2++)\n"..
-	"            writeInt(ptr->field3[i1][i2],idx);\n"..
+	"    for (int sub1 = 0; sub1 < 0; sub1++) {\n"..
+	"        writeStruct1(&ptr->next[sub1],idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        writeOld(ptr->field1[sub1],idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        writeNum(ptr->field2[sub1],idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        for (int sub2 = 0; sub2 < 3; sub2++) {\n"..
+	"            writeInt(ptr->field3[sub1][sub2],idx);\n"..
+	"        }\n"..
+	"    }\n"..
 	"    writeStr(ptr->field4,idx);\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        writeInt(ptr->field5[i],idx);\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        writeInt(ptr->field5[sub1],idx);\n"..
+	"    }\n"..
 	"    {int temp = ptr->field6; writeInt(temp,idx);}\n"..
 	"    {int temp = ptr->field7; writeInt(temp,idx);}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        writeInt(ptr->field8,idx);}\n"..
+	"        writeInt(ptr->field8,idx);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        writeInt(ptr->field9,idx);}\n"..
+	"        writeInt(ptr->field9,idx);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        writeInt(ptr->field10,idx);}\n"..
+	"        writeInt(ptr->field10,idx);\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        writeInt(ptr->field11,idx);}\n"..
+	"        writeInt(ptr->field11,idx);\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        writeInt(ptr->field12,idx);}\n"..
+	"        writeInt(ptr->field12,idx);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        writeInt(ptr->field13,idx);}\n"..
+	"        writeInt(ptr->field13,idx);\n"..
+	"    }\n"..
 	"    writeInt(ptr->field14,idx);\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        writeInt(ptr->field15[i],idx);\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        writeStruct2(&ptr->field16[i],idx);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        writeStruct2(&ptr->field17[i1],idx);\n"..
+	"    for (int sub1 = 0; sub1 < ptr->field14; sub1++) {\n"..
+	"        writeInt(ptr->field15[sub1],idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        writeStruct2(&ptr->field16[sub1],idx);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        writeStruct2(&ptr->field17[sub1],idx);\n"..
+	"    }\n"..
 	"}",
 	"void randStruct1(struct Struct1 *ptr)\n"..
 	"{\n"..
 	"    freeStruct1(ptr);\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        randStruct1(&ptr->next[i]);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        ptr->field1[i1] = 0.2;\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        ptr->field2[i1] = 0.1;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 3; i2++)\n"..
-	"            ptr->field3[i1][i2] = 10;\n"..
+	"    for (int sub1 = 0; sub1 < 0; sub1++) {\n"..
+	"        randStruct1(&ptr->next[sub1]);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        ptr->field1[sub1] = 0.2;\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        ptr->field2[sub1] = 0.1;\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        for (int sub2 = 0; sub2 < 3; sub2++) {\n"..
+	"            ptr->field3[sub1][sub2] = 10;\n"..
+	"        }\n"..
+	"    }\n"..
 	"    {const char *temp = \"hello ok again\"; assignStr(&ptr->field4,temp);}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        ptr->field5[i] = 11;\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        ptr->field5[sub1] = 11;\n"..
+	"    }\n"..
 	"    ptr->field6 = 12%Enum1s;\n"..
 	"    ptr->field7 = 13%Enum2s;\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        ptr->field8 = 14;}\n"..
+	"        ptr->field8 = 14;\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        ptr->field9 = 15;}\n"..
+	"        ptr->field9 = 15;\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        ptr->field10 = 16;}\n"..
+	"        ptr->field10 = 16;\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        ptr->field11 = 17;}\n"..
+	"        ptr->field11 = 17;\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        ptr->field12 = 18;}\n"..
+	"        ptr->field12 = 18;\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        ptr->field13 = 19;}\n"..
+	"        ptr->field13 = 19;\n"..
+	"    }\n"..
 	"    ptr->field14 = 20;\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        ptr->field15[i] = 21;\n"..
+	"    for (int sub1 = 0; sub1 < ptr->field14; sub1++) {\n"..
+	"        ptr->field15[sub1] = 21;\n"..
+	"    }\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        randStruct2(&ptr->field16[i]);\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        randStruct2(&ptr->field17[i1]);\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        randStruct2(&ptr->field16[sub1]);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        randStruct2(&ptr->field17[sub1]);\n"..
+	"    }\n"..
 	"}",
 	"int compStruct1(struct Struct1 *ptr, struct Struct1 *cmp)\n"..
 	"{\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        if (!compStruct1(&ptr->next[i], &cmp->next[i])) return 0;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (ptr->field1[i1] != cmp->field1[i1]) return 0;\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        if (ptr->field2[i1] != cmp->field2[i1]) return 0;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 3; i2++)\n"..
-	"            if (ptr->field3[i1][i2] != cmp->field3[i1][i2]) return 0;\n"..
+	"    for (int sub1 = 0; sub1 < 0; sub1++) {\n"..
+	"        if (!compStruct1(&ptr->next[sub1], &cmp->next[sub1])) return 0;\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        if (ptr->field1[sub1] != cmp->field1[sub1]) return 0;\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        if (ptr->field2[sub1] != cmp->field2[sub1]) return 0;\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        for (int sub2 = 0; sub2 < 3; sub2++) {\n"..
+	"            if (ptr->field3[sub1][sub2] != cmp->field3[sub1][sub2]) return 0;\n"..
+	"        }\n"..
+	"    }\n"..
 	"    if (strcmp(ptr->field4,cmp->field4) != 0) return 0;\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        if (ptr->field5[i] != cmp->field5[i]) return 0;\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        if (ptr->field5[sub1] != cmp->field5[sub1]) return 0;\n"..
+	"    }\n"..
 	"    if (ptr->field6 != cmp->field6) return 0;\n"..
 	"    if (ptr->field7 != cmp->field7) return 0;\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if (ptr->field8 != cmp->field8) return 0;}\n"..
+	"        if (ptr->field8 != cmp->field8) return 0;\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if (ptr->field9 != cmp->field9) return 0;}\n"..
+	"        if (ptr->field9 != cmp->field9) return 0;\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        if (ptr->field10 != cmp->field10) return 0;}\n"..
+	"        if (ptr->field10 != cmp->field10) return 0;\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        if (ptr->field11 != cmp->field11) return 0;}\n"..
+	"        if (ptr->field11 != cmp->field11) return 0;\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        if (ptr->field12 != cmp->field12) return 0;}\n"..
+	"        if (ptr->field12 != cmp->field12) return 0;\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        if (ptr->field13 != cmp->field13) return 0;}\n"..
+	"        if (ptr->field13 != cmp->field13) return 0;\n"..
+	"    }\n"..
 	"    if (ptr->field14 != cmp->field14) return 0;\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        if (ptr->field15[i] != cmp->field15[i]) return 0;\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        if (!compStruct2(&ptr->field16[i], &cmp->field16[i])) return 0;\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!compStruct2(&ptr->field17[i1], &cmp->field17[i1])) return 0;\n"..
+	"    for (int sub1 = 0; sub1 < ptr->field14; sub1++) {\n"..
+	"        if (ptr->field15[sub1] != cmp->field15[sub1]) return 0;\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        if (!compStruct2(&ptr->field16[sub1], &cmp->field16[sub1])) return 0;\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        if (!compStruct2(&ptr->field17[sub1], &cmp->field17[sub1])) return 0;\n"..
+	"    }\n"..
 	"    return 1;\n"..
 	"}",
 	"void allocEnum1(enum Enum1 **ptr, int siz)\n"..
@@ -265,39 +325,54 @@ Expected = {
 	"void showStruct1(struct Struct1 *ptr, char **str)\n"..
 	"{\n"..
 	"    showOpen(\"Struct1\",str);\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        {showField(\"next\",str,1,i); showStruct1(&ptr->next[i],str);}\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showField(\"field1\",str,1,i1); showOld(ptr->field1[i1],str);}\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        {showField(\"field2\",str,1,i1); showNum(ptr->field2[i1],str);}\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 3; i2++)\n"..
-	"            {showField(\"field3\",str,2,i1,i2); showInt(ptr->field3[i1][i2],str);}\n"..
-	"    {showField(\"field4\",str,0); showStr(ptr->field4,str);}\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        {showField(\"field5\",str,1,i); showInt(ptr->field5[i],str);}\n"..
-	"    {showField(\"field6\",str,0); showEnum1(ptr->field6,str);}\n"..
-	"    {showField(\"field7\",str,0); showEnum2(ptr->field7,str);}\n"..
+	"    for (int sub1 = 0; sub1 < 0; sub1++) {\n"..
+	"        showField(\"next\",str,1,sub1); showStruct1(&ptr->next[sub1],str);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        showField(\"field1\",str,1,sub1); showOld(ptr->field1[sub1],str);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        showField(\"field2\",str,1,sub1); showNum(ptr->field2[sub1],str);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        for (int sub2 = 0; sub2 < 3; sub2++) {\n"..
+	"            showField(\"field3\",str,2,sub1,sub2); showInt(ptr->field3[sub1][sub2],str);\n"..
+	"        }\n"..
+	"    }\n"..
+	"    showField(\"field4\",str,0); showStr(ptr->field4,str);\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        showField(\"field5\",str,1,sub1); showInt(ptr->field5[sub1],str);\n"..
+	"    }\n"..
+	"    showField(\"field6\",str,0); showEnum1(ptr->field6,str);\n"..
+	"    showField(\"field7\",str,0); showEnum2(ptr->field7,str);\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showField(\"field8\",str,0); showInt(ptr->field8,str);}}\n"..
+	"        showField(\"field8\",str,0); showInt(ptr->field8,str);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        {showField(\"field9\",str,0); showInt(ptr->field9,str);}}\n"..
+	"        showField(\"field9\",str,0); showInt(ptr->field9,str);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        {showField(\"field10\",str,0); showInt(ptr->field10,str);}}\n"..
+	"        showField(\"field10\",str,0); showInt(ptr->field10,str);\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        {showField(\"field11\",str,0); showInt(ptr->field11,str);}}\n"..
+	"        showField(\"field11\",str,0); showInt(ptr->field11,str);\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        {showField(\"field12\",str,0); showInt(ptr->field12,str);}}\n"..
+	"        showField(\"field12\",str,0); showInt(ptr->field12,str);\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        {showField(\"field13\",str,0); showInt(ptr->field13,str);}}\n"..
-	"    {showField(\"field14\",str,0); showInt(ptr->field14,str);}\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        {showField(\"field15\",str,1,i); showInt(ptr->field15[i],str);}\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        {showField(\"field16\",str,1,i); showStruct2(&ptr->field16[i],str);}\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        {showField(\"field17\",str,1,i1); showStruct2(&ptr->field17[i1],str);}\n"..
+	"        showField(\"field13\",str,0); showInt(ptr->field13,str);\n"..
+	"    }\n"..
+	"    showField(\"field14\",str,0); showInt(ptr->field14,str);\n"..
+	"    for (int sub1 = 0; sub1 < ptr->field14; sub1++) {\n"..
+	"        showField(\"field15\",str,1,sub1); showInt(ptr->field15[sub1],str);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        showField(\"field16\",str,1,sub1); showStruct2(&ptr->field16[sub1],str);\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        showField(\"field17\",str,1,sub1); showStruct2(&ptr->field17[sub1],str);\n"..
+	"    }\n"..
 	"    showClose(str);\n"..
 	"}",
 	"int hideStruct1(struct Struct1 *ptr, const char *str, int *len)\n"..
@@ -305,42 +380,57 @@ Expected = {
 	"    freeStruct1(ptr);\n"..
 	"    if (!hideOpen(\"Struct1\",str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocStruct1(&ptr->next,0);\n"..
-	"    for (int i = 0; i < 0; i++)\n"..
-	"        if (!hideField(\"next\",str,len,1,i) || !hideStruct1(&ptr->next[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!hideField(\"field1\",str,len,1,i1) || !hideOld(&ptr->field1[i1],str,len)) {freeStruct1(ptr); return 0;}\n"..
-	"    for (int i1 = 0; i1 < 3; i1++)\n"..
-	"        if (!hideField(\"field2\",str,len,1,i1) || !hideNum(&ptr->field2[i1],str,len)) {freeStruct1(ptr); return 0;}\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        for (int i2 = 0; i2 < 3; i2++)\n"..
-	"            if (!hideField(\"field3\",str,len,2,i1,i2) || !hideInt(&ptr->field3[i1][i2],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    for (int sub1 = 0; sub1 < 0; sub1++) {\n"..
+	"        if (!hideField(\"next\",str,len,1,sub1) || !hideStruct1(&ptr->next[sub1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        if (!hideField(\"field1\",str,len,1,sub1) || !hideOld(&ptr->field1[sub1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        if (!hideField(\"field2\",str,len,1,sub1) || !hideNum(&ptr->field2[sub1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        for (int sub2 = 0; sub2 < 3; sub2++) {\n"..
+	"            if (!hideField(\"field3\",str,len,2,sub1,sub2) || !hideInt(&ptr->field3[sub1][sub2],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"        }\n"..
+	"    }\n"..
 	"    if (!hideField(\"field4\",str,len,0) || !hideStr(&ptr->field4,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocInt(&ptr->field5,3);\n"..
-	"    for (int i = 0; i < 3; i++)\n"..
-	"        if (!hideField(\"field5\",str,len,1,i) || !hideInt(&ptr->field5[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    for (int sub1 = 0; sub1 < 3; sub1++) {\n"..
+	"        if (!hideField(\"field5\",str,len,1,sub1) || !hideInt(&ptr->field5[sub1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if (!hideField(\"field6\",str,len,0) || !hideEnum1(&ptr->field6,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    if (!hideField(\"field7\",str,len,0) || !hideEnum2(&ptr->field7,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if (!hideField(\"field8\",str,len,0) || !hideInt(&ptr->field8,str,len)) {freeStruct1(ptr); return 0;}}\n"..
+	"        if (!hideField(\"field8\",str,len,0) || !hideInt(&ptr->field8,str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value11) {\n"..
-	"        if (!hideField(\"field9\",str,len,0) || !hideInt(&ptr->field9,str,len)) {freeStruct1(ptr); return 0;}}\n"..
+	"        if (!hideField(\"field9\",str,len,0) || !hideInt(&ptr->field9,str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value12) {\n"..
-	"        if (!hideField(\"field10\",str,len,0) || !hideInt(&ptr->field10,str,len)) {freeStruct1(ptr); return 0;}}\n"..
+	"        if (!hideField(\"field10\",str,len,0) || !hideInt(&ptr->field10,str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && (ptr->field7 == Value21)) {\n"..
-	"        if (!hideField(\"field11\",str,len,0) || !hideInt(&ptr->field11,str,len)) {freeStruct1(ptr); return 0;}}\n"..
+	"        if (!hideField(\"field11\",str,len,0) || !hideInt(&ptr->field11,str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if ((ptr->field6 == Value12) && ((ptr->field7 == Value22) || (ptr->field7 == Value23))) {\n"..
-	"        if (!hideField(\"field12\",str,len,0) || !hideInt(&ptr->field12,str,len)) {freeStruct1(ptr); return 0;}}\n"..
+	"        if (!hideField(\"field12\",str,len,0) || !hideInt(&ptr->field12,str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if (ptr->field6 == Value13) {\n"..
-	"        if (!hideField(\"field13\",str,len,0) || !hideInt(&ptr->field13,str,len)) {freeStruct1(ptr); return 0;}}\n"..
+	"        if (!hideField(\"field13\",str,len,0) || !hideInt(&ptr->field13,str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if (!hideField(\"field14\",str,len,0) || !hideInt(&ptr->field14,str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    allocInt(&ptr->field15,ptr->field14);\n"..
-	"    for (int i = 0; i < ptr->field14; i++)\n"..
-	"        if (!hideField(\"field15\",str,len,1,i) || !hideInt(&ptr->field15[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    for (int sub1 = 0; sub1 < ptr->field14; sub1++) {\n"..
+	"        if (!hideField(\"field15\",str,len,1,sub1) || !hideInt(&ptr->field15[sub1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    allocStruct2(&ptr->field16,2);\n"..
-	"    for (int i = 0; i < 2; i++)\n"..
-	"        if (!hideField(\"field16\",str,len,1,i) || !hideStruct2(&ptr->field16[i],str,len)) {freeStruct1(ptr); return 0;}\n"..
-	"    for (int i1 = 0; i1 < 2; i1++)\n"..
-	"        if (!hideField(\"field17\",str,len,1,i1) || !hideStruct2(&ptr->field17[i1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        if (!hideField(\"field16\",str,len,1,sub1) || !hideStruct2(&ptr->field16[sub1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
+	"    for (int sub1 = 0; sub1 < 2; sub1++) {\n"..
+	"        if (!hideField(\"field17\",str,len,1,sub1) || !hideStruct2(&ptr->field17[sub1],str,len)) {freeStruct1(ptr); return 0;}\n"..
+	"    }\n"..
 	"    if (!hideClose(str,len)) {freeStruct1(ptr); return 0;}\n"..
 	"    return 1;\n"..
 	"}",

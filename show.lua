@@ -263,19 +263,6 @@ function showStructC(name,struct)
 	end
 	return "struct "..name.." {\n"..result.."};"
 end
-function showReadCJ(pre,field,sub,arg,post)
-	if (Enumz[field[2]]~=nil) then
-		coroutine.yield(pre.."{int temp = readInt(idx); ".."ptr->"..field[1]..sub.." = temp;}"..post)
-	elseif (Structz[field[2]]~=nil) then
-		coroutine.yield(pre.."read"..field[2].."(&ptr->"..field[1]..sub..",idx);"..post)
-	elseif (field[2] == "Str") then
-		coroutine.yield(pre.."readStr(&ptr->"..field[1]..sub..",idx);"..post)
-	elseif (field[2] == "Dat") then
-		coroutine.yield(pre.."readDat(&ptr->"..field[1]..sub..",idx);"..post)
-	else
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = read"..field[2].."(idx);"..post)
-	end	
-end
 function showLimitC(field)
 	local count = ""
 	if (type(field[4]) == "table") and (sizeIter(field[4]) > 0) then
@@ -303,34 +290,6 @@ function showLimitsC(field)
 	end
 	return count
 end
-function showReadCI(pre,field,post)
-	local count = 0
-	if (type(field[4]) == "table") then
-		count = sizeIter(field[4])
-	end
-	if (type(field[4]) == "table") and (count == 0) then
-		showReadCJ(pre,field,"","0",post)
-	elseif (type(field[4]) == "table") then
-		local indent = ""
-		local sub = ""
-		local arg = ""..#field[4]
-		for key,val in ipairs(field[4]) do
-			sub = sub.."[i"..key.."]"
-			arg = arg..",i"..key
-			coroutine.yield(pre..indent.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)")
-			indent = indent.."    "
-		end
-		showReadCJ(pre..indent,field,sub,arg,post)
-	elseif (type(field[4]) == "number") then
-		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..","..field[4]..");")
-		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
-		showReadCJ(pre.."    ",field,"[i]","1,i",post)
-	elseif (type(field[4]) == "string") then
-		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",ptr->"..field[4]..");")
-		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
-		showReadCJ(pre.."    ",field,"[i]","1,i",post)
-	end
-end
 function showCondC(field)
 	local condit = ""
 	local seper = ""
@@ -356,75 +315,54 @@ function showCondC(field)
 	end
 	return condit
 end
-function showReadCH(field)
-	local count = sizeIter(field[3])
-	local condit = showCondC(field)
-	if (count > 0) then
-		coroutine.yield("    if ("..condit..") {")
-		showReadCI("        ",field,"}")
-	else
-		showReadCI("    ",field,"")
-	end
-end
-function showReadCG(second)
-	for id,fd in ipairs(second) do
-		showReadCH(fd)
-	end
-end
-function showReadCF(struct)
-	local first = {}
-	local second = {}
-	for idx,fld in ipairs(struct) do
-		local firster = overAny(first,fld)
-		local seconder = overAny(second,fld)
-		local secondee = equalAll(second,fld)
-		if #second == 0 or secondee then
-			-- coroutine.yield("// 1")
-			addTo(second,fld)
-		elseif #first == 0 and seconder then
-			-- coroutine.yield("// 2")
-			showReadCG(second)
-			second = {}
-			addTo(second,fld)
-		elseif #first == 0 then
-			-- coroutine.yield("// 3")
-			showReadCG(second)
-			second = {}
-			addTo(first,fld)
-			addTo(second,fld)
-		elseif not firster then
-			-- coroutine.yield("// 4")
-			showReadCG(second)
-			second = {}
-			addTo(first,fld)
-			addTo(second,fld)
-		else
-			-- coroutine.yield("// 5")
-			showReadCG(second)
-			first = {}
-			second = {}
-			addTo(second,fld)
-		end
-	end
-	showReadCG(second)
-end
-function showReadCE(name,struct)
-	local result = ""
-	local wrap = coroutine.wrap(showReadCF)
-	local line = wrap(struct)
-	while line do
-		result = result..line.."\n"
-		line = wrap()
-	end
-	return result
-end
 function showReadC(name,struct)
 	local result = ""
+	local depth = 1
 	result = result.."void read"..name.."(struct "..name.." *ptr, int idx)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	result = result.."    free"..name.."(ptr);\n"
-	result = result..showReadCE(name,struct)
+	result = result..showIndent(depth).."free"..name.."(ptr);\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (Enumz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."{int temp = readInt(idx); "..lval.." = temp;}\n"
+		elseif (Structz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."read"..vl[2].."(&"..lval..",idx);\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."readStr(&"..lval..",idx);\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."readDat(&"..lval..",idx);\n"
+		else
+			result = result..showIndent(depth)..lval.." = read"..vl[2].."(idx);\n"
+		end	
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
 	return result.."}"
 end
 function showWriteCJ(pre,field,sub,arg,post)
@@ -468,13 +406,48 @@ function showWriteCI(pre,field,post)
 end
 function showWriteC(name,struct)
 	local result = ""
-	local temp = showReadCI
+	local depth = 1
 	result = result.."void write"..name.."(struct "..name.." *ptr, int idx)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	showReadCI = showWriteCI
-	result = result..showReadCE(name,struct)
-	showReadCI = temp
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (Enumz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."{int temp = "..lval.."; writeInt(temp,idx);}\n"
+		elseif (Structz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."write"..vl[2].."(&"..lval..",idx);\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."writeStr("..lval..",idx);\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."writeDat("..lval..",idx);\n"
+		else
+			result = result..showIndent(depth).."write"..vl[2].."("..lval..",idx);\n"
+		end	
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
 	return result.."}"
 end
 function showFreeCJ(pre,field,sub,arg,post)
@@ -561,39 +534,80 @@ function showFreeCH(field)
 end
 function showFreeC(name,struct)
 	local result = ""
-	local temp = showReadCH
+	local depth = 1
 	result = result.."void free"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	result = result.."    if (ptr == 0) return;\n"
-	showReadCH = showFreeCH
-	result = result..showReadCE(name,struct)
-	showReadCH = temp
+	result = result..showIndent(depth).."if (ptr == 0) return;\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+			result = result..showIndent(depth).."if (ptr->"..vl[1]..") {\n"
+			depth = depth + 1
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (Structz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."free"..vl[2].."(&"..lval..");\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."assignStr(&"..lval..",0);\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."assignDat(&"..lval..",0);\n"
+		end	
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..",0);\n"
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
 	return result.."}"
 end
-function showAllocC(name,typ)
+function showAllocEC(name,enum)
 	local result = ""
-	if (Enumz[name] ~= nil) then
-		result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
-		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = malloc(siz*sizeof(enum "..name.."));\n"
-		result = result..showIndent(1).."if (*ptr == 0) ERROR();\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
-		result = result.."}"
-	elseif (Structz[name] ~= nil) then
-		result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
-		if prototype then return result..";" else result = result.."\n{\n" end
-		result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
-		result = result..showIndent(1).."if (siz == 0) return;\n"
-		result = result..showIndent(1).."*ptr = malloc(siz*sizeof(struct "..name.."));\n"
-		result = result..showIndent(1).."if (*ptr == 0) ERROR();\n"
-		result = result..showIndent(1).."struct "..name.." init = {0};\n"
-		result = result..showIndent(1).."for (int i = 0; i < siz; i++)\n"
-		result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));\n"
-		result = result.."}"
-	end
+	result = result.."void alloc"..name.."(enum "..name.." **ptr, int siz)"
+	if prototype then return result..";" else result = result.."\n{\n" end
+	result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+	result = result..showIndent(1).."if (siz == 0) return;\n"
+	result = result..showIndent(1).."*ptr = malloc(siz*sizeof(enum "..name.."));\n"
+	result = result..showIndent(1).."if (*ptr == 0) ERROR();\n"
+	result = result..showIndent(1).."for (int i = 0; i < siz; i++) (*ptr)[i] = 0;\n"
+	result = result.."}"
+	return result
+end
+function showAllocSC(name,struct)
+	local result = ""
+	result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
+	if prototype then return result..";" else result = result.."\n{\n" end
+	result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+	result = result..showIndent(1).."if (siz == 0) return;\n"
+	result = result..showIndent(1).."*ptr = malloc(siz*sizeof(struct "..name.."));\n"
+	result = result..showIndent(1).."if (*ptr == 0) ERROR();\n"
+	result = result..showIndent(1).."struct "..name.." init = {0};\n"
+	result = result..showIndent(1).."for (int i = 0; i < siz; i++)\n"
+	result = result..showIndent(2).."memcpy(&(*ptr)[i],&init,sizeof(init));\n"
+	result = result.."}"
 	return result
 end
 randChr = 1
@@ -602,106 +616,176 @@ randNew = 100
 randInt32 = 1000
 randNum = 0.1
 randOld = 0.2
-function showRandCJ(pre,field,sub,arg,post)
-	if (Enumz[field[2]]~=nil) then
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt.."%"..field[2].."s;"..post)
-			-- "{int temp = readInt(idx); ".."ptr->"..field[1]..sub.." = temp;}"..post)
-		randInt = randInt + 1;
-	elseif (Structz[field[2]]~=nil) then
-		coroutine.yield(pre.."rand"..field[2].."(&ptr->"..field[1]..sub..");"..post)
-	elseif (field[2] == "Chr") then
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randChr..";"..post)
-		randChr = randChr + 1;
-	elseif (field[2] == "Int") then
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt..";"..post)
-		randInt = randInt + 1;
-	elseif (field[2] == "Int32") then
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randInt32..";"..post)
-		randInt32 = randInt32 + 1;
-	elseif (field[2] == "New") then
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randNew..";"..post)
-		randNew = randNew + 1;
-	elseif (field[2] == "Num") then
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randNum..";"..post)
-		randNum = randNum + 1.0
-	elseif (field[2] == "Old") then
-		coroutine.yield(pre.."ptr->"..field[1]..sub.." = "..randOld..";"..post)
-		randOld = randOld + 1.0
-	elseif (field[2] == "Str") then
-		coroutine.yield(pre.."{const char *temp = \"hello ok again\"; assignStr(&ptr->"..field[1]..sub..",temp);}"..post)
-	elseif (field[2] == "Dat") then
-		coroutine.yield(pre.."{const char *temp = \"\\x0e\\x00\\x00\\x00hello ok again\"; assignDat(&ptr->"..field[1]..sub..",temp);}"..post)
-	end	
-end
 function showRandC(name,struct)
 	local result = ""
-	local temp = showReadCJ
+	local depth = 1
 	result = result.."void rand"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	result = result.."    free"..name.."(ptr);\n"
-	showReadCJ = showRandCJ
-	result = result..showReadCE(name,struct)
-	showReadCJ = temp
-	return result.."}"
-end
-function showCompCJ(pre,field,sub,arg,post)
-	if (Structz[field[2]]~=nil) then
-		coroutine.yield(pre.."if (!comp"..field[2].."(&ptr->"..field[1]..sub..", &cmp->"..field[1]..sub..")) return 0;"..post)
-	elseif (field[2] == "Chr") or (field[2] == "Int") or (field[2] == "Int32") or (field[2] == "New") or (field[2] == "Num") or (field[2] == "Old") or (Enumz[field[2]]~=nil) then
-		coroutine.yield(pre.."if (ptr->"..field[1]..sub.." != cmp->"..field[1]..sub..") return 0;"..post)
-	elseif (field[2] == "Str") then
-		coroutine.yield(pre.."if (strcmp(ptr->"..field[1]..sub..",cmp->"..field[1]..sub..") != 0) return 0;"..post)
-	elseif (field[2] == "Dat") then
-		coroutine.yield(pre.."if (memcmp(ptr->"..field[1]..sub..",cmp->"..field[1]..sub..",*(int*)ptr->"..field[1]..sub..") != 0) return 0;"..post)
+	result = result..showIndent(depth).."free"..name.."(ptr);\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (Enumz[vl[2]]~=nil) then
+			result = result..showIndent(depth)..lval.." = "..randInt.."%"..vl[2].."s;\n"
+			randInt = randInt + 1;
+		elseif (Structz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."rand"..vl[2].."(&"..lval..");\n"
+		elseif (vl[2] == "Chr") then
+			result = result..showIndent(depth)..lval.." = "..randChr..";\n"
+			randChr = randChr + 1;
+		elseif (vl[2] == "Int") then
+			result = result..showIndent(depth)..lval.." = "..randInt..";\n"
+			randInt = randInt + 1;
+		elseif (vl[2] == "Int32") then
+			result = result..showIndent(depth)..lval.." = "..randInt32..";\n"
+			randInt32 = randInt32 + 1;
+		elseif (vl[2] == "New") then
+			result = result..showIndent(depth)..lval.." = "..randNew..";\n"
+			randNew = randNew + 1;
+		elseif (vl[2] == "Num") then
+			result = result..showIndent(depth)..lval.." = "..randNum..";\n"
+			randNum = randNum + 1.0
+		elseif (vl[2] == "Old") then
+			result = result..showIndent(depth)..lval.." = "..randOld..";\n"
+			randOld = randOld + 1.0
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."{const char *temp = \"hello ok again\"; assignStr(&"..lval..",temp);}\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."{const char *temp = \"\\x0e\\x00\\x00\\x00hello ok again\"; assignDat(&"..lval..",temp);}\n"
+		end	
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
 	end
+	return result.."}"
 end
 function showCompC(name,struct)
 	local result = ""
-	local temp = table.pack(showReadCI,showWriteCJ)
+	local depth = 1
 	result = result.."int comp"..name.."(struct "..name.." *ptr, struct "..name.." *cmp)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	showReadCI,showWriteCJ = showWriteCI,showCompCJ
-	result = result..showReadCE(name,struct)
-	showReadCI,showWriteCJ = table.unpack(temp)
-	result = result.."    return 1;\n"
-	return result.."}"
-end
-function showSizeCJ(pre,field,sub,arg,post)
-	if (Enumz[field[2]]~=nil) then
-		coroutine.yield(pre.."result = result + sizeof(int);"..post)
-	elseif (field[2] == "Str") then
-		coroutine.yield(pre.."result = result + strlen(ptr->"..field[1]..sub..") + 1;"..post)
-	elseif (field[2] == "Dat") then
-		coroutine.yield(pre.."result = result + *(int*)(ptr->"..field[1]..sub..") + sizeof(int);"..post)
-	elseif (Structz[field[2]]~=nil) then
-		coroutine.yield(pre.."result = result + size"..field[2].."(&ptr->"..field[1]..sub..");"..post)
-	elseif (field[2] == "Chr") then
-		coroutine.yield(pre.."result = result + sizeof(char);"..post)
-	elseif (field[2] == "Int") then
-		coroutine.yield(pre.."result = result + sizeof(int);"..post)
-	elseif (field[2] == "Int32") then
-		coroutine.yield(pre.."result = result + sizeof(int32_t);"..post)
-	elseif (field[2] == "New") then
-		coroutine.yield(pre.."result = result + sizeof(long long);"..post)
-	elseif (field[2] == "Num") then
-		coroutine.yield(pre.."result = result + sizeof(double);"..post)
-	elseif (field[2] == "Old") then
-		coroutine.yield(pre.."result = result + sizeof(float);"..post)
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		local rval = "cmp->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			rval = rval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (Structz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."if (!comp"..vl[2].."(&"..lval..", &"..rval..")) return 0;\n"
+		elseif (vl[2] == "Chr") or (vl[2] == "Int") or (vl[2] == "Int32") or (vl[2] == "New") or (vl[2] == "Num") or (vl[2] == "Old") or (Enumz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."if ("..lval.." != "..rval..") return 0;\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."if (strcmp("..lval..","..rval..") != 0) return 0;\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."if (memcmp("..lval..","..rval..",*(int*)"..lval..") != 0) return 0;\n"
+		end
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
 	end
+	result = result..showIndent(depth).."return 1;\n"
+	return result.."}"
 end
 function showSizeC(name,struct)
 	local result = ""
-	local temp = table.pack(showReadCI,showWriteCJ)
+	local depth = 1
 	result = result.."int size"..name.."(struct "..name.." *ptr)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	result = result.."    int result = 0;\n"
-	showReadCI,showWriteCJ = showWriteCI,showSizeCJ
-	result = result..showReadCE(name,struct)
-	showReadCI,showWriteCJ = table.unpack(temp)
-	result = result.."    return result;\n"
+	result = result..showIndent(depth).."int result = 0;\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (Enumz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."result = result + sizeof(int);\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."result = result + strlen("..lval..") + 1;\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."result = result + *(int*)("..lval..") + sizeof(int);\n"
+		elseif (Structz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."result = result + size"..vl[2].."(&"..lval..");\n"
+		elseif (vl[2] == "Chr") then
+			result = result..showIndent(depth).."result = result + sizeof(char);\n"
+		elseif (vl[2] == "Int") then
+			result = result..showIndent(depth).."result = result + sizeof(int);\n"
+		elseif (vl[2] == "Int32") then
+			result = result..showIndent(depth).."result = result + sizeof(int32_t);\n"
+		elseif (vl[2] == "New") then
+			result = result..showIndent(depth).."result = result + sizeof(long long);\n"
+		elseif (vl[2] == "Num") then
+			result = result..showIndent(depth).."result = result + sizeof(double);\n"
+		elseif (vl[2] == "Old") then
+			result = result..showIndent(depth).."result = result + sizeof(float);\n"
+		end
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
+	result = result..showIndent(depth).."return result;\n"
 	return result.."}"
 end
 function showShowEC(name,enum)
@@ -717,45 +801,92 @@ function showShowEC(name,enum)
 	result = result..showIndent(1).."}\n"
 	return result.."}"
 end
-function showShowCJ(pre,field,sub,arg,post)
-	if (Structz[field[2]]~=nil) then
-		coroutine.yield(pre.."{showField(\""..field[1].."\",str,"..arg.."); show"..field[2].."(&ptr->"..field[1]..sub..",str);}"..post)
-	else
-		coroutine.yield(pre.."{showField(\""..field[1].."\",str,"..arg.."); show"..field[2].."(ptr->"..field[1]..sub..",str);}"..post)
-	end
-end
 function showShowSC(name,struct)
 	local result = ""
 	local temp = table.pack(showReadCI,showWriteCJ)
+	local depth = 1
 	result = result.."void show"..name.."(struct "..name.." *ptr, char **str)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	result = result.."    showOpen(\""..name.."\",str);\n"
-	showReadCI,showWriteCJ = showWriteCI,showShowCJ
-	result = result..showReadCE(name,struct)
-	showReadCI,showWriteCJ = table.unpack(temp)
-	result = result.."    showClose(str);\n"
+	result = result..showIndent(depth).."showOpen(\""..name.."\",str);\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (not (Structz[vl[2]] == nil)) then
+			result = result..showIndent(depth).."showField(\""..vl[1].."\",str,"..arg..");"
+			result = result.." ".."show"..vl[2].."(&"..lval..",str);\n"
+		else
+			result = result..showIndent(depth).."showField(\""..vl[1].."\",str,"..arg..");"
+			result = result.." ".."show"..vl[2].."("..lval..",str);\n"
+		end
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
+	result = result..showIndent(depth).."showClose(str);\n"
 	return result.."}"
-end
-global_name = "Oops"
-function showHideCJ(pre,field,sub,arg,post)
-	coroutine.yield(pre.."if (!hideField(\""..field[1].."\",str,len,"..arg..") || !hide"..field[2].."(&ptr->"..field[1]..sub..",str,len)) {free"..global_name.."(ptr); return 0;}"..post)
 end
 function showHideSC(name,struct)
 	local result = ""
-	local temp = showReadCJ
+	local depth = 1
 	result = result.."int hide"..name.."(struct "..name.." *ptr, const char *str, int *len)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
-	result = result.."    free"..name.."(ptr);\n"
-	result = result.."    if (!hideOpen(\""..name.."\",str,len)) {free"..name.."(ptr); return 0;}\n"
-	global_name = name
-	showReadCJ = showHideCJ
-	result = result..showReadCE(name,struct)
-	showReadCJ = temp
-	global_name = "Oops"
-	result = result.."    if (!hideClose(str,len)) {free"..name.."(ptr); return 0;}\n"
-	result = result.."    return 1;\n"
+	result = result..showIndent(depth).."free"..name.."(ptr);\n"
+	result = result..showIndent(depth).."if (!hideOpen(\""..name.."\",str,len)) {free"..name.."(ptr); return 0;}\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			arg = arg..",sub"..key
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		result = result..showIndent(depth).."if (!hideField(\""..vl[1].."\",str,len,"..arg..") || !hide"..vl[2].."(&"..lval..",str,len)) {free"..name.."(ptr); return 0;}\n"
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
+	result = result..showIndent(depth).."if (!hideClose(str,len)) {free"..name.."(ptr); return 0;}\n"
+	result = result..showIndent(depth).."return 1;\n"
 	return result.."}"
 end
 function showHideEC(name,enum)
@@ -1013,189 +1144,202 @@ function showIdentC(list)
 		result = result..showIndent(1).."if (hideIdent(\""..v.."\",str,&len)) return "..(k-1)..";\n"
 	end
 	result = result..showIndent(1).."return -1;\n"
-	result = result.."}\n"
+	result = result.."}"
+	return result
+end
+function showCopyC(name,struct)
+	local result = ""
+	result = result.."void copy"..name.."(struct "..name.." *dst, struct "..name.." *ptr)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."free"..name.."(dst);\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limits = showLimitsC(vl)
+		local depth = 1
+		local lval = "dst->"..vl[1]
+		local rval = "ptr->"..vl[1]
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			rval = rval.."[sub"..key.."]"
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		if (type(vl[4]) == "number") then
+			result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..","..vl[4]..");\n"
+		elseif (type(vl[4]) == "string") then
+			result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..",ptr->"..vl[4]..");\n"
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (not (Structz[vl[2]] == nil)) then
+			result = result..showIndent(depth).."copy"..vl[2].."(&"..lval..",&"..rval..");\n"
+		elseif (not (Enumz[vl[2]] == nil)) then
+			result = result..showIndent(depth)..lval.." = "..rval..";\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."assignStr(&"..lval..","..rval..");\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."assignDat(&"..lval..","..rval..");\n"
+		else
+			result = result..showIndent(depth)..lval.." = "..rval..";\n"
+		end
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
+	result = result.."}"
+	return result
+end
+function showFvalidC(name,struct)
+	local result = ""
+	result = result.."int fvalid"..name.."(struct "..name.." *ptr, int fld, int sub)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
+	result = result..showIndent(1).."switch (fld) {\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		result = result..showIndent(1).."case("..(ky-1).."): {\n"
+		if (condit ~= "") then
+			result = result..showIndent(2).."if (!("..condit..")) return 0;\n"
+		end
+		if (limit == "") then
+			result = result..showIndent(2).."if (sub > 0) return 0;\n"
+		else
+			result = result..showIndent(2).."if (sub >= "..limit..") return 0;\n"
+		end
+		result = result..showIndent(2).."return 1;}\n"
+	end
+	result = result..showIndent(1).."default: break;}\n"
+	result = result..showIndent(1).."return -1;\n"
+	result = result.."}"
+	return result
+end
+function showFreadC(name,struct)
+	local result = ""
+	result = result.."void fread"..name.."(struct "..name.." *ptr, int fld, int sub, int idx)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
+	result = result..showIndent(1).."switch (fld) {\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local lval = "ptr->"..vl[1]
+		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+		end
+		if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+			lval = lval.."[sub]"
+		end
+		result = result..showIndent(1).."case("..(ky-1).."): {\n"
+		if (condit ~= "") then
+			result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+		end
+		if (limit == "") then
+			result = result..showIndent(2).."if (sub > 0) ERROR();\n"
+		else
+			result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
+		end
+		if (not (Structz[vl[2]] == nil)) then
+			result = result..showIndent(2).."read"..vl[2].."(&"..lval..",idx);\n"
+		elseif (not (Enumz[vl[2]] == nil)) then
+			result = result..showIndent(2)..lval.." = readInt(idx);\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(2).."readStr(&"..lval..",idx);\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(2).."readDat(&"..lval..",idx);\n"
+		else
+			result = result..showIndent(2)..lval.." = read"..vl[2].."(idx);\n"
+		end
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."default: ERROR();}\n"
+	result = result.."}"
+	return result
+end
+function showFcopyC(name,struct)
+	local result = ""
+	result = result.."void fcopy"..name.."(struct "..name.." *dst, struct "..name.." *ptr, int fld, int sub)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
+	result = result..showIndent(1).."switch (fld) {\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local lval = "dst->"..vl[1]
+		local rval = "ptr->"..vl[1]
+		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+			rval = "(("..showCtypeC(vl).."*)("..rval.."))"
+		end
+		if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+			lval = lval.."[sub]"
+			rval = rval.."[sub]"
+		end
+		result = result..showIndent(1).."case("..(ky-1).."): {\n"
+		if (condit ~= "") then
+			result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+		end
+		if (limit == "") then
+			result = result..showIndent(2).."if (sub > 0) ERROR();\n"
+		else
+			result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
+		end
+		if (not (Structz[vl[2]] == nil)) then
+			result = result..showIndent(2).."copy"..vl[2].."(&"..lval..",&"..rval..");\n"
+		elseif (not (Enumz[vl[2]] == nil)) then
+			result = result..showIndent(2)..lval.." = "..rval..";\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(2).."assignStr(&"..lval..","..rval..");\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(2).."assignDat(&"..lval..","..rval..");\n"
+		else
+			result = result..showIndent(2)..lval.." = "..rval..";\n"
+		end
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."default: ERROR();}\n"
+	result = result.."}"
+	return result
+end
+function showFallocC(name,struct)
+	local result = ""
+	result = result.."void falloc"..name.."(struct "..name.." *ptr, int fld)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."if (fld < 0) ERROR();\n"
+	result = result..showIndent(1).."switch (fld) {\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		result = result..showIndent(1).."case("..(ky-1).."): {\n"
+		if (condit ~= "") then
+			result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+		end
+		if (type(vl[4]) == "number") then
+			result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..","..vl[4]..");\n"
+		elseif (type(vl[4]) == "string") then
+			result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..",ptr->"..vl[4]..");\n"
+		end
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."default: ERROR();}\n"
+	result = result.."}"
 	return result
 end
 function showRfieldC(list,map)
 	local result = ""
-	for k,v in ipairs(list) do
-		result = result.."void copy"..v.."(struct "..v.." *dst, struct "..v.." *ptr)"
-		if prototype then result = result..";\n" else
-			result = result.."\n{\n"
-			result = result..showIndent(1).."free"..v.."(dst);\n"
-			for ky,vl in ipairs(map[v]) do
-				local condit = showCondC(vl)
-				local limits = showLimitsC(vl)
-				local depth = 1
-				if (condit ~= "") then
-					result = result..showIndent(depth).."if ("..condit..") {\n"
-					depth = depth + 1
-				end
-				if (type(vl[4]) == "number") then
-					result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..","..vl[4]..");\n"
-				elseif (type(vl[4]) == "string") then
-					result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..",ptr->"..vl[4]..");\n"
-				end
-				for key,val in ipairs(limits) do
-					result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
-					depth = depth + 1
-				end
-				lval = "dst->"..vl[1]
-				rval = "ptr->"..vl[1]
-				for key,val in ipairs(limits) do
-					lval = lval.."[sub"..key.."]"
-					rval = rval.."[sub"..key.."]"
-				end
-				if (not (Structz[vl[2]] == nil)) then
-					result = result..showIndent(depth).."copy"..vl[2].."(&"..lval..",&"..rval..");\n"
-				elseif (not (Enumz[vl[2]] == nil)) then
-					result = result..showIndent(depth)..lval.." = "..rval..";\n"
-				elseif (vl[2] == "Str") then
-					result = result..showIndent(depth).."assignStr(&"..lval..","..rval..");\n"
-				elseif (vl[2] == "Dat") then
-					result = result..showIndent(depth).."assignDat(&"..lval..","..rval..");\n"
-				else
-					result = result..showIndent(depth)..lval.." = "..rval..";\n"
-				end
-				for key,val in ipairs(limits) do
-					depth = depth - 1
-					result = result..showIndent(depth).."}\n"
-				end
-				if (condit ~= "") then
-					depth = depth - 1
-					result = result..showIndent(depth).."}\n"
-				end
-			end
-			result = result.."}\n"
-		end
-		result = result.."int fvalid"..v.."(struct "..v.." *ptr, int fld, int sub)"
-		if prototype then result = result..";\n" else
-			result = result.."\n{\n"
-			result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
-			result = result..showIndent(1).."switch (fld) {\n"
-			for ky,vl in ipairs(map[v]) do
-				local condit = showCondC(vl)
-				local limit = showLimitC(vl)
-				result = result..showIndent(1).."case("..(ky-1).."): {\n"
-				if (condit ~= "") then
-					result = result..showIndent(2).."if (!("..condit..")) return 0;\n"
-				end
-				if (limit == "") then
-					result = result..showIndent(2).."if (sub > 0) return 0;\n"
-				else
-					result = result..showIndent(2).."if (sub >= "..limit..") return 0;\n"
-				end
-				result = result..showIndent(2).."return 1;}\n"
-			end
-			result = result..showIndent(1).."default: break;}\n"
-			result = result..showIndent(1).."return -1;\n"
-			result = result.."}\n"
-		end
-		result = result.."void fread"..v.."(struct "..v.." *ptr, int fld, int sub, int idx)"
-		if prototype then result = result..";\n" else
-			result = result.."\n{\n"
-			result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
-			result = result..showIndent(1).."switch (fld) {\n"
-			for ky,vl in ipairs(map[v]) do
-				local condit = showCondC(vl)
-				local limit = showLimitC(vl)
-				result = result..showIndent(1).."case("..(ky-1).."): {\n"
-				if (condit ~= "") then
-					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
-				end
-				if (limit == "") then
-					result = result..showIndent(2).."if (sub > 0) ERROR();\n"
-				else
-					result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
-				end
-				lval = "ptr->"..vl[1]
-				if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-					lval = "(("..showCtypeC(vl).."*)("..lval.."))"
-				end
-				if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
-					lval = lval.."[sub]"
-				end
-				if (not (Structz[vl[2]] == nil)) then
-					result = result..showIndent(2).."read"..vl[2].."(&"..lval..",idx);\n"
-				elseif (not (Enumz[vl[2]] == nil)) then
-					result = result..showIndent(2)..lval.." = readInt(idx);\n"
-				elseif (vl[2] == "Str") then
-					result = result..showIndent(2).."readStr(&"..lval..",idx);\n"
-				elseif (vl[2] == "Dat") then
-					result = result..showIndent(2).."readDat(&"..lval..",idx);\n"
-				else
-					result = result..showIndent(2)..lval.." = read"..vl[2].."(idx);\n"
-				end
-				result = result..showIndent(2).."break;}\n"
-			end
-			result = result..showIndent(1).."default: ERROR();}\n"
-			result = result.."}\n"
-		end
-		result = result.."void fcopy"..v.."(struct "..v.." *dst, struct "..v.." *ptr, int fld, int sub)"
-		if prototype then result = result..";\n" else
-			result = result.."\n{\n"
-			result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
-			result = result..showIndent(1).."switch (fld) {\n"
-			for ky,vl in ipairs(map[v]) do
-				local condit = showCondC(vl)
-				local limit = showLimitC(vl)
-				result = result..showIndent(1).."case("..(ky-1).."): {\n"
-				if (condit ~= "") then
-					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
-				end
-				if (limit == "") then
-					result = result..showIndent(2).."if (sub > 0) ERROR();\n"
-				else
-					result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
-				end
-				lval = "dst->"..vl[1]
-				rval = "ptr->"..vl[1]
-				if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-					lval = "(("..showCtypeC(vl).."*)("..lval.."))"
-					rval = "(("..showCtypeC(vl).."*)("..rval.."))"
-				end
-				if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
-					lval = lval.."[sub]"
-					rval = rval.."[sub]"
-				end
-				if (not (Structz[vl[2]] == nil)) then
-					result = result..showIndent(2).."copy"..vl[2].."(&"..lval..",&"..rval..");\n"
-				elseif (not (Enumz[vl[2]] == nil)) then
-					result = result..showIndent(2)..lval.." = "..rval..";\n"
-				elseif (vl[2] == "Str") then
-					result = result..showIndent(2).."assignStr(&"..lval..","..rval..");\n"
-				elseif (vl[2] == "Dat") then
-					result = result..showIndent(2).."assignDat(&"..lval..","..rval..");\n"
-				else
-					result = result..showIndent(2)..lval.." = "..rval..";\n"
-				end
-				result = result..showIndent(2).."break;}\n"
-			end
-			result = result..showIndent(1).."default: ERROR();}\n"
-			result = result.."}\n"
-		end
-		result = result.."void falloc"..v.."(struct "..v.." *ptr, int fld)"
-		if prototype then result = result..";\n" else
-			result = result.."\n{\n"
-			result = result..showIndent(1).."if (fld < 0) ERROR();\n"
-			result = result..showIndent(1).."switch (fld) {\n"
-			for ky,vl in ipairs(map[v]) do
-				local condit = showCondC(vl)
-				result = result..showIndent(1).."case("..(ky-1).."): {\n"
-				if (condit ~= "") then
-					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
-				end
-				if (type(vl[4]) == "number") then
-					result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..","..vl[4]..");\n"
-				elseif (type(vl[4]) == "string") then
-					result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..",ptr->"..vl[4]..");\n"
-				end
-				result = result..showIndent(2).."break;}\n"
-			end
-			result = result..showIndent(1).."default: ERROR();}\n"
-			result = result.."}\n"
-		end
-	end
 	result = result.."void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
@@ -1225,46 +1369,47 @@ function showRfieldC(list,map)
 	result = result.."}"
 	return result
 end
+function showFwriteC(name,struct)
+	local result = ""
+	result = result.."void fwrite"..name.."(struct "..name.." *ptr, int fld, int sub, int idx)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."switch (fld) {\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local lval = "ptr->"..vl[1]
+		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
+			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+		end
+		if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+			lval = lval.."[sub]"
+		end
+		result = result..showIndent(1).."case("..(ky-1).."): {\n"
+		if (condit ~= "") then
+			result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
+		end
+		if (limit == "") then
+			result = result..showIndent(2).."if (sub > 0) ERROR();\n"
+		else
+			result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
+		end
+		if (not (Structz[vl[2]] == nil)) then
+			result = result..showIndent(2).."write"..vl[2].."(&"..lval
+		elseif (not (Enumz[vl[2]] == nil)) then
+			result = result..showIndent(2).."writeInt("..lval
+		else
+			result = result..showIndent(2).."write"..vl[2].."("..lval
+		end
+		result = result..",idx);\n"
+		result = result..showIndent(2).."break;}\n"
+	end
+	result = result..showIndent(1).."default: ERROR();}\n"
+	result = result.."}\n"
+	return result
+end
 function showWfieldC(list,map)
 	local result = ""
-	for k,v in ipairs(list) do
-		result = result.."void fwrite"..v.."(struct "..v.." *ptr, int fld, int sub, int idx)"
-		if prototype then result = result..";\n" else
-			result = result.."\n{\n"
-			result = result..showIndent(1).."switch (fld) {\n"
-			for ky,vl in ipairs(map[v]) do
-				local condit = showCondC(vl)
-				local limit = showLimitC(vl)
-				result = result..showIndent(1).."case("..(ky-1).."): {\n"
-				if (condit ~= "") then
-					result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
-				end
-				if (limit == "") then
-					result = result..showIndent(2).."if (sub > 0) ERROR();\n"
-				else
-					result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
-				end
-				lval = "ptr->"..vl[1]
-				if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-					lval = "(("..showCtypeC(vl).."*)("..lval.."))"
-				end
-				if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
-					lval = lval.."[sub]"
-				end
-				if (not (Structz[vl[2]] == nil)) then
-					result = result..showIndent(2).."write"..vl[2].."(&"..lval
-				elseif (not (Enumz[vl[2]] == nil)) then
-					result = result..showIndent(2).."writeInt("..lval
-				else
-					result = result..showIndent(2).."write"..vl[2].."("..lval
-				end
-				result = result..",idx);\n"
-				result = result..showIndent(2).."break;}\n"
-			end
-			result = result..showIndent(1).."default: ERROR();}\n"
-			result = result.."}\n"
-		end
-	end
 	result = result.."void writeField(int typ, int fld, int sub, int ifd, int ofd)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
@@ -1299,7 +1444,7 @@ function showIfieldC(list,map)
 	result = result.."}"
 	return result
 end
-function showTfieldC(list,map)
+function showJfieldC(list,map)
 	local result = ""
 	result = result.."int identSubtype(int typ, int pos)"
 	if prototype then return result..";\n" end
@@ -2716,13 +2861,14 @@ function showCall(list,map,func)
 end
 function showFuncC()
 	local result = ""
-	result = result..showCall(Enums,Enumz,showAllocC).."\n"
+	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
+	result = result..showCall(Enums,Enumz,showAllocEC).."\n"
 	result = result..showCall(Enums,Enumz,showShowEC).."\n"
 	result = result..showCall(Enums,Enumz,showHideEC).."\n"
 	for k,v in ipairs(Enums) do luaxSide(showCastLua(v,Enumz[v])) end
 	result = result..showCall(Constants,Constantz,showConstantC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC).."\n"
-	result = result..showCall(Structs,Structz,showAllocC).."\n"
+	result = result..showCall(Structs,Structz,showAllocSC).."\n"
 	result = result..showCall(Structs,Structz,showReadC).."\n"
 	result = result..showCall(Structs,Structz,showWriteC).."\n"
 	result = result..showCall(Structs,Structz,showRandC).."\n"
@@ -2730,19 +2876,25 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showSizeC).."\n"
 	result = result..showCall(Structs,Structz,showShowSC).."\n"
 	result = result..showCall(Structs,Structz,showHideSC).."\n"
-	result = result..showRtypeC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showWtypeC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showLtypeC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showIdentC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
+	result = result..showRtypeC(types).."\n"
+	result = result..showWtypeC(types).."\n"
+	result = result..showLtypeC(types).."\n"
+	result = result..showIdentC(types).."\n"
+	result = result..showCall(Structs,Structz,showCopyC).."\n"
+	result = result..showCall(Structs,Structz,showFvalidC).."\n"
+	result = result..showCall(Structs,Structz,showFreadC).."\n"
+	result = result..showCall(Structs,Structz,showFcopyC).."\n"
+	result = result..showCall(Structs,Structz,showFallocC).."\n"
 	result = result..showRfieldC(Structs,Structz).."\n"
+	result = result..showCall(Structs,Structz,showFwriteC).."\n"
 	result = result..showWfieldC(Structs,Structz).."\n"
 	result = result..showIfieldC(Structs,Structz).."\n"
-	result = result..showTfieldC(Structs,Structz).."\n"
-	result = result..showSgenC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showHgenC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showRgenC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showWgenC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})).."\n"
-	result = result..showIgenC(listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs}))
+	result = result..showJfieldC(Structs,Structz).."\n"
+	result = result..showSgenC(types).."\n"
+	result = result..showHgenC(types).."\n"
+	result = result..showRgenC(types).."\n"
+	result = result..showWgenC(types).."\n"
+	result = result..showIgenC(types)
 	return result
 end
 function showCallH()
