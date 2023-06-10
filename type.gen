@@ -62,6 +62,7 @@ Configure = {
 	-- cg; changed graphics; write through
 	-- cp; changed parameter; used later
 	-- cf; changed function; used later
+	-- ci; changed index; used later
 	-- mv; machine volatile; read only
 	-- sv; staged volatile; fill read
 	-- sp; staged parameter; fill read
@@ -91,6 +92,8 @@ Configure = {
 	"ArgumentMicro", -- cp; pass to draw
 	"ArgumentStart", -- cp;
 	"ArgumentStop", -- cp;
+	"RegisterPrompt", -- ci; prompt string index
+	"RegisterResponse", -- ci; response string index
 	"RegisterMemory", -- cp; which memory
 	"RegisterIndex", -- cp; which memory instance
 	"RegisterTransM", -- cf; mouse function
@@ -98,7 +101,6 @@ Configure = {
 	"RegisterFormM", -- cf; mouse function
 	"RegisterFormR", -- cf; roller function
 	"RegisterTool", -- cf; which function
-	"RegisterPrompt", -- mv; console string index
 	"RegisterLine", -- mv; state of machine
 	"RegisterNest", -- mv; current level
 	"RegisterHint", -- mv; argument from graphics
@@ -136,7 +138,7 @@ Configure = {
 Transfer = {
 	"Read", -- read internal pipe
 	"Write", -- write external pipe
-	"Parse", -- center fields, pierce, or info to configure
+	"Stage", -- center fields, pierce, or info to configure
 	"Force", -- machine to configure
 	"Comp", -- composition to center
 	"Pose", -- towrite to center
@@ -450,7 +452,7 @@ Express = {
 Machine = {
 	{"xfr","Transfer",{},{}},
 	{"siz","Int",{},{}},
-	{"sav","Configure",{["xfr"]={["Parse"]=true}},"siz"},
+	{"sav","Configure",{["xfr"]={["Stage"]=true}},"siz"},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
 	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
@@ -504,7 +506,7 @@ Argument = {
 	{"idx","Int",{},{}},
 	{"str","Str",{["typ"]={["Holez"]=true}},{}},
 }
-Stage = {
+Valve = {
 	{"tag","Stream",{},{}},
 	{"siz","Int",{["tag"]={["Fanout"]=true}},{}},
 	{"dst","Str",{["tag"]={["Fanout"]=true}},"siz"},

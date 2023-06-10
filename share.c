@@ -22,7 +22,7 @@ struct Wrap {
 	int out; // type to write to here
 	struct Express *exp; // for tag==Combine
 	char *str; // for tag==Buffer
-} *wrap = 0; // per argv that is a Stage
+} *wrap = 0; // per argv that is a Valve
 int args = 0;
 int **back = 0; // per value lists to add to wake
 int *refs = 0; // per value list length
@@ -59,7 +59,7 @@ void shareArgs(int sub, const char *str)
 void shareVals(int sub, const char *str)
 {
 	struct Wrap *ptr = &wrap[sub];
-	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
+	struct Valve arg = {0}; int len = 0; hideValve(&arg,str,&len);
 	switch (arg.tag) {
 	case (Fanout): {
 		datxStr(dat0,arg.str); datxInt(dat1,sub);
@@ -93,12 +93,12 @@ void shareVals(int sub, const char *str)
 
 		break;}
 	default: ERROR();}
-	freeStage(&arg);
+	freeValve(&arg);
 }
 void shareRefs(int sub, const char *str)
 {
 	struct Wrap *ptr = &wrap[sub];
-	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
+	struct Valve arg = {0}; int len = 0; hideValve(&arg,str,&len);
 	switch (arg.tag) {
 	case (Fanout): {if (ptr->vld != 1 && ptr->vld != 7) {
 		ERROR();} else if (ptr->vld == 1) {
@@ -131,12 +131,12 @@ void shareRefs(int sub, const char *str)
 		exit(-1);} else {
 		break;}
 	default: ERROR();}
-	freeStage(&arg); vlds++;
+	freeValve(&arg); vlds++;
 }
 void shareBack(int sub, const char *str)
 {
 	struct Wrap *ptr = &wrap[sub];
-	struct Stage arg = {0}; int len = 0; hideStage(&arg,str,&len);
+	struct Valve arg = {0}; int len = 0; hideValve(&arg,str,&len);
 	switch (arg.tag) {
 	case (Fanout): break;
 	case (Combine): {
@@ -149,13 +149,13 @@ void shareBack(int sub, const char *str)
 	case (Buffer): break;
 	case (Execute): break;
 	default: ERROR();}
-	freeStage(&arg);
+	freeValve(&arg);
 }
 void shareNone(int typ, const char *str)
 {
 }
 void shareConst(int typ, const char *str)
-{ // note argument constants cannot be Stage
+{ // note argument constants cannot be Valve
 	if (vlds+1 == args || !wrap[vlds+1].vld) {
 	fprintf(stderr,"ERROR: argument after Constant should be Fanout or Buffer\n");
 	exit(-1);} else {
@@ -189,7 +189,7 @@ void shareParse(int argc, char **argv, egtype err, egtype arg, egtype stg)
 	for (int i = 1, sub = 0; i < argc; i++) {
 		int len = 0; int typ = 0;
 		if ((typ = sharePeek(argv[i],&len)) < 0) err(len,argv[i]);
-		else if (typ != identType("Stage")) arg(typ,argv[i]);
+		else if (typ != identType("Valve")) arg(typ,argv[i]);
 		else stg(sub,argv[i]); sub += 1;}
 }
 void shareCallback(void *key)

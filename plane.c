@@ -64,6 +64,7 @@ pthread_key_t retstr;
 int numpipe = 0;
 char **strings = 0;
 int numstr = 0;
+int rspidx = 0;
 int calling = 0;
 int qsize = 0;
 int qfull = 0;
@@ -370,7 +371,7 @@ struct Pierce *planePierce()
 	if (!found) found = &unfound; // TODO set unfound to picture plane
 	return found;
 }
-void planeParse(enum Configure cfg)
+void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
@@ -408,24 +409,23 @@ void *planeRealloc(void *ptr, int siz, int tmp, int mod)
 	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
 	return result;
 }
-void planeThrough(struct Center *ptr)
+void planeConfig(enum Configure cfg, int val)
 {
-	if (ptr->mem != Configurez) ERROR();
-	for (int i = 0; i < ptr->siz; i++) {
-	int tmp = configure[ptr->cfg[i]];
-	configure[ptr->cfg[i]] = ptr->val[i];
-	switch (ptr->cfg[i]) {
-	case (PierceSize): pierce = planeRealloc(pierce,ptr->val[i],tmp,sizeof(struct Pierce)); break;
-	case (SubjectSize): subject = planeRealloc(subject,ptr->val[i],tmp,sizeof(struct Kernel)); break;
-	case (ObjectSize): object = planeRealloc(object,ptr->val[i],tmp,sizeof(struct Kernel)); break;
-	case (ElementSize): element = planeRealloc(element,ptr->val[i],tmp,sizeof(struct Kernel)); break;
-	case (MachineSize): machine = planeRealloc(machine,ptr->val[i],tmp,sizeof(struct Machine)); break;
-	case (FloatSize): floats = planeRealloc(floats,ptr->val[i],tmp,sizeof(float)); break;
-	case (RegisterOpen): planeStarted(ptr->val[i]); break;
-	default: break;}}
-	callDma(ptr);
+
+	int tmp = configure[cfg];
+	configure[cfg] = val;
+	switch (cfg) {
+	case (PierceSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
+	case (SubjectSize): subject = planeRealloc(subject,val,tmp,sizeof(struct Kernel)); break;
+	case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
+	case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
+	case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
+	case (FloatSize): floats = planeRealloc(floats,val,tmp,sizeof(float)); break;
+	case (RegisterResponse): sem_safe(&resource,{rspidx = val;});
+	case (RegisterOpen): planeStarted(val); break;
+	default: break;}
 }
-void planeForce(enum Configure cfg, int val)
+void planeDma(enum Configure cfg, int val)
 {
 	struct Center tmp = {0};
 	tmp.mem = Configurez;
@@ -434,7 +434,7 @@ void planeForce(enum Configure cfg, int val)
 	allocInt(&tmp.val,1);
 	tmp.cfg[0] = cfg;
 	tmp.val[0] = val;
-	planeThrough(&tmp);
+	callDma(&tmp);
 	freeCenter(&tmp);
 }
 void planeCopy(struct Center *ptr)
@@ -444,7 +444,7 @@ void planeCopy(struct Center *ptr)
 	case (Stringz): for (int i = 0; i < ptr->siz; i++) if (ptr->idx < 0) ptr->idx = planeSet(-1,ptr->str[i]); else planeSet(ptr->idx+i,ptr->str[i]); break;
 	case (Machinez): for (int i = 0; i < ptr->siz; i++) copyMachine(&machine[(ptr->idx+i)%configure[MachineSize]],&ptr->mch[i]); break;
 	case (Floatz): for (int i = 0; i < ptr->siz; i++) floats[(ptr->idx+i)%configure[FloatSize]] = ptr->flt[i]; break;
-	case (Configurez): planeThrough(ptr); break;
+	case (Configurez): for (int i = 0; i < ptr->siz; i++) planeConfig(ptr->cfg[i],ptr->val[i]); callDma(ptr); break;
 	default: callDma(ptr); break;}
 }
 int planeEscape(int lvl, int nxt)
@@ -467,10 +467,10 @@ int planeSwitch(struct Machine *mptr, int next)
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
-	case (Parse): for (int i = 0; i < mptr->siz; i++)
-	planeParse(mptr->sav[i]); break;
-	case (Force): for (int i = 0; i < mptr->siz; i++)
-	planeForce(mptr->cfg[i],mptr->val[i]); break;
+	case (Stage): for (int i = 0; i < mptr->siz; i++)
+	planeStage(mptr->sav[i]); break;
+	case (Force): for (int i = 0; i < mptr->siz; i++) {
+	planeDma(mptr->cfg[i],mptr->val[i]); planeConfig(mptr->cfg[i],mptr->val[i]);} break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
@@ -478,7 +478,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
 	timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
 	case (Local): jumpmat(planeTowrite(),planeLocal(),4);
-	planeParse(OriginLeft); planeParse(OriginBase); planeParse(OriginAngle); break;
+	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
 	case (Apply): jumpmat(planeWritten(),planeTowrite(),4);
 	identmat(planeTowrite(),4); break;
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4);
@@ -558,6 +558,10 @@ int planeSet(int idx, const char *str)
 	idx = numstr-1;
 	strings[numstr-1] = strdup("");}
 	free(strings[idx]); strings[idx] = strdup(str);
+	if (idx == rspidx && strings[idx][strlen(strings[idx])-1] == '\n') {
+	char *ptr = strings[idx];
+	while(strchr(ptr,'\n') != strings[idx]+strlen(strings[idx])-1) ptr = strchr(ptr,'\n')+1;
+	write(STDOUT_FILENO,ptr,strlen(ptr));}
 	ret = numstr;
 	sem_post(&resource);
 	return ret;
@@ -575,7 +579,8 @@ void planeSetter(void *dat, int mem, int sub)
 	switch ((enum Etter)mem) {
 	case (Configurey):
 	if (sub < 0 || sub >= Configures) ERROR();
-	planeForce(sub,*datxIntz(0,dat));
+	planeDma(sub,*datxIntz(0,dat));
+	planeConfig(sub,*datxIntz(0,dat));
 	break; case (Stringy):
 	planeSet(sub,datxChrz(0,dat));
 	break; case (Floaty):
@@ -653,7 +658,8 @@ void *planeConsole(void *ptr)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	planeCat(configure[RegisterPrompt],chr);
+	sem_safe(&resource,{val = configure[RegisterPrompt];});
+	planeCat(val,chr);
 	planeSafe(Procs,Waits,RegisterPrompt);}
 	planeSafe(Console,Done,Configures);
 	return 0;
@@ -717,7 +723,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	planeMain();}
 	closeIdent(internal);
 }
-int planeConfig(enum Configure cfg)
+int planeInfo(enum Configure cfg)
 {
 	return configure[cfg];
 }

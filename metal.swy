@@ -227,7 +227,7 @@ func setLock()
 }
 func getReady() -> MTLCommandBufferHandler
 {
-	let size = planeConfig(TriangleSize)
+	let size = planeInfo(TriangleSize)
 	if (size == 0) {return {(MTLCommandBuffer) in planeReady(nil)}}
 	let last = pierce.get()
 	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents()))); setLock()}
@@ -313,8 +313,8 @@ func swiftInit()
 func swiftOpen()
 {
 	let rect = NSMakeRect(
-		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
-		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
+		CGFloat(planeInfo(WindowLeft)), CGFloat(planeInfo(WindowBase)),
+		CGFloat(planeInfo(WindowWide)), CGFloat(planeInfo(WindowHigh)))
 
 	layer = CAMetalLayer()
 	layer.device = device
@@ -340,8 +340,8 @@ func swiftOpen()
 func swiftLoad()
 {
 	let rect = NSMakeRect(
-		CGFloat(planeConfig(WindowLeft)), CGFloat(planeConfig(WindowBase)),
-		CGFloat(planeConfig(WindowWide)), CGFloat(planeConfig(WindowHigh)))
+		CGFloat(planeInfo(WindowLeft)), CGFloat(planeInfo(WindowBase)),
+		CGFloat(planeInfo(WindowWide)), CGFloat(planeInfo(WindowHigh)))
 	queue = device.makeCommandQueue()
 	let url = URL(fileURLWithPath: "plane.metallib")
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
@@ -392,17 +392,17 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 	let siz = Int(center.siz)
 	let idx = Int(center.idx)
 	switch (center.mem) {
-	case (Trianglez): triangle.set(Swift.Array(0..<siz).map() {(sub) in center.tri![sub]},idx,Int(planeConfig(TriangleSize)))
-	case (Numericz): numeric.set(Swift.Array(0..<siz).map() {(sub) in center.num![sub]},idx,Int(planeConfig(NumericSize)))
-	case (Vertexz): vertex.set(Swift.Array(0..<siz).map() {(sub) in center.vtx![sub]},idx,Int(planeConfig(VertexSize)))
-	case (Allmatz): subject.set(Swift.Array(0..<siz).map() {(sub) in center.all![sub]},idx,Int(planeConfig(SubjectSize)))
-	case (Fewmatz): object.set(Swift.Array(0..<siz).map() {(sub) in center.few![sub]},idx,Int(planeConfig(ObjectSize)))
-	case (Onematz): element.set(Swift.Array(0..<siz).map() {(sub) in center.one![sub]},idx,Int(planeConfig(ElementSize)))
-	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in center.swa![sub]},idx,Int(planeConfig(SwarmSize)))
-	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in center.tex![sub]},idx,Int(planeConfig(TextureSize)))
-	case (Basisz): basis.set(Swift.Array(0..<siz).map() {(sub) in center.bas![sub]},idx,Int(planeConfig(BasisSize)))
-	case (Piercez): pierce.set(Swift.Array(0..<siz).map() {(sub) in center.pie![sub]},idx,Int(planeConfig(PierceSize)))
-	case (Slicez): array = toArray(array,Swift.Array(0..<siz).map() {(sub) in center.rng![sub]},idx,Int(planeConfig(SliceSize)))
+	case (Trianglez): triangle.set(Swift.Array(0..<siz).map() {(sub) in center.tri![sub]},idx,Int(planeInfo(TriangleSize)))
+	case (Numericz): numeric.set(Swift.Array(0..<siz).map() {(sub) in center.num![sub]},idx,Int(planeInfo(NumericSize)))
+	case (Vertexz): vertex.set(Swift.Array(0..<siz).map() {(sub) in center.vtx![sub]},idx,Int(planeInfo(VertexSize)))
+	case (Allmatz): subject.set(Swift.Array(0..<siz).map() {(sub) in center.all![sub]},idx,Int(planeInfo(SubjectSize)))
+	case (Fewmatz): object.set(Swift.Array(0..<siz).map() {(sub) in center.few![sub]},idx,Int(planeInfo(ObjectSize)))
+	case (Onematz): element.set(Swift.Array(0..<siz).map() {(sub) in center.one![sub]},idx,Int(planeInfo(ElementSize)))
+	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in center.swa![sub]},idx,Int(planeInfo(SwarmSize)))
+	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in center.tex![sub]},idx,Int(planeInfo(TextureSize)))
+	case (Basisz): basis.set(Swift.Array(0..<siz).map() {(sub) in center.bas![sub]},idx,Int(planeInfo(BasisSize)))
+	case (Piercez): pierce.set(Swift.Array(0..<siz).map() {(sub) in center.pie![sub]},idx,Int(planeInfo(PierceSize)))
+	case (Slicez): array = toArray(array,Swift.Array(0..<siz).map() {(sub) in center.rng![sub]},idx,Int(planeInfo(SliceSize)))
 	case (Configurez): for sub in Swift.Array(0..<siz) {switch center.cfg![sub] {
 		case (UniformAll): uniform.set(Int(center.val![sub]),\Uniform.all)
 		case (UniformOne): uniform.set(Int(center.val![sub]),\Uniform.one)
