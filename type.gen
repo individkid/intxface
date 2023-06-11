@@ -38,102 +38,101 @@ Request = {
 	"RevReq", -- FixReq in to revert plane matrix
 }
 Memory = {
-	-- g; gpu
-	-- c; cpu
-	-- a; api
-	"Trianglez", -- g; indices of vertices of facet
-	"Numericz", -- g; distances of plane above selected base
-	"Vertexz", -- g; intersection of backlinked planes
-	"Swarmz", -- g; array of points around focal point
-	"Texturez", -- g; memory for textures
-	"Basisz", -- g; base for each dimension
-	"Allmatz", -- g,c; whole view transformation
-	"Fewmatz", -- g,c; matrix per set of planes
-	"Onematz", -- g,c; single face transformation
-	"Piercez", -- g,c; pierce point normal and valid
-	"Slicez", -- a; plane or point index ranges
-	"Floatz", -- c; intermediate storage
-	"Stringz", -- c; keyboard comparison strings
-	"Machinez", -- c; state machine lines
-	"Configurez", -- g,c,a; configure to value
+	"Trianglez", -- indices of vertices of facet
+	"Numericz", -- distances of plane above selected base
+	"Vertexz", -- intersection of backlinked planes
+	"Swarmz", -- array of points around focal point
+	"Texturez", -- memory for textures
+	"Basisz", -- base for each dimension
+	"Allmatz", --c; whole view transformation
+	"Fewmatz", --c; matrix per set of planes
+	"Onematz", --c; single face transformation
+	"Piercez", --c; pierce point normal and valid
+	"Slicez", -- plane or point index ranges
+	"Floatz", -- intermediate storage
+	"Stringz", -- keyboard comparison strings
+	"Machinez", -- state machine lines
+	"Configurez", --c,a; configure to value
 }
 Configure = {
-	-- ws; written size; side effects
-	-- cg; changed graphics; write through
-	-- cp; changed parameter; used later
-	-- cf; changed function; used later
-	-- ci; changed index; used later
-	-- mv; machine volatile; read only
-	-- sv; staged volatile; fill read
-	-- sp; staged parameter; fill read
-	-- sg; staged graphics; fill read
-	-- sw; staged written; fill flush
-	"TriangleSize", -- ws; written refers to corners
-	"NumericSize", -- ws; written planes for corners
-	"VertexSize", -- ws; written corners of frame
-	"SubjectSize", -- ws; written per view matrix
-	"ObjectSize", -- ws; written per polytope matrix
-	"ElementSize", -- ws; written per plane matrix
-	"SwarmSize", -- ws; written early warning system
-	"TextureSize", -- ws; written how to decorate
-	"BasisSize", -- ws; written cospace converters
-	"PierceSize", -- ws; written pierce points
-	"SliceSize", -- ws; written ranges per draw
-	"MachineSize", -- ws; written vending machine lines
-	"FloatSize", -- ws; written intermediate floats
-	"UniformAll", -- cg; which subject matrix
-	"UniformOne", -- cg; which element matrix
-	"UniformLeft", -- cg; pierce point horizontal
-	"UniformBase", -- cg; pierce pont vertical
-	"UniformLong", -- cg; focal length
-	"UniformIndex", -- cg; manipulate plane select
-	"UniformBasis", -- cg; which cospace basis
-	"UniformSize", -- cg; early warning points
-	"ArgumentMicro", -- cp; pass to draw
-	"ArgumentStart", -- cp;
-	"ArgumentStop", -- cp;
-	"RegisterPrompt", -- ci; prompt string index
-	"RegisterResponse", -- ci; response string index
-	"RegisterMemory", -- cp; which memory
-	"RegisterIndex", -- cp; which memory instance
-	"RegisterTransM", -- cf; mouse function
-	"RegisterTransR", -- cf; roller function
-	"RegisterFormM", -- cf; mouse function
-	"RegisterFormR", -- cf; roller function
-	"RegisterTool", -- cf; which function
-	"RegisterLine", -- mv; state of machine
-	"RegisterNest", -- mv; current level
-	"RegisterHint", -- mv; argument from graphics
-	"RegisterDone", -- sv; shaders running count
-	"RegisterOpen", -- sv; thread running mask
-	"OriginLeft", -- sp; starting cursor
-	"OriginBase", -- sp;
-	"OriginNear", -- sp;
-	"OriginAngle", -- sp;
-	"ClosestFound", -- sg; search through pierce
-	"ClosestLeft", -- sg;
-	"ClosestBase", -- sg;
-	"ClosestNear", -- sg;
-	"NormalLeft", -- sg;
-	"NormalBase", -- sg;
-	"NormalNear", -- sg;
-	"WindowLeft", -- sg; window initialization
-	"WindowBase", -- sg;
-	"WindowWide", -- sg;
-	"WindowHigh", -- sg;
-	"WindowNear", -- sg;
-	"WindowFar", -- sg;
-	"WindowLength", -- sg;
-	"CursorLeft", -- sg; user input mouse
-	"CursorBase", -- sg;
-	"CursorNear", -- sg;
-	"CursorAngle", -- sg;
-	"CursorClick", -- sg;
-	"CenterRequest", -- sw; fields to from client
-	"CenterMemory", -- sw;
-	"CenterSize", -- sw;
-	"CenterIndex", -- sw;
-	"CenterSelf", -- sw;
+	"TriangleSize", -- written refers to corners
+	"TriangleBase", --
+	"NumericSize", -- written planes for corners
+	"NumericBase", --
+	"VertexSize", -- written corners of frame
+	"VertexBase", --
+	"SubjectSize", -- written per view matrix
+	"SubjectBase", --
+	"ObjectSize", -- written per polytope matrix
+	"ObjectBase", --
+	"ElementSize", -- written per plane matrix
+	"ElementBase", --
+	"SwarmSize", -- written early warning system
+	"SwarmBase", --
+	"TextureSize", -- written how to decorate
+	"TextureBase", --
+	"BasisSize", -- written cospace converters
+	"BasisBase", --
+	"PierceSize", -- written pierce points
+	"PierceBase", --
+	"SliceSize", -- written ranges per draw
+	"SliceBase", --
+	"MachineSize", -- written vending machine lines
+	"MachineBase", --
+	"FloatSize", -- written intermediate floats
+	"FloatBase", --
+	"UniformAll", -- which subject matrix
+	"UniformOne", -- which element matrix
+	"UniformLeft", -- pierce point horizontal
+	"UniformBase", -- pierce pont vertical
+	"UniformLong", -- focal length
+	"UniformIndex", -- manipulate plane select
+	"UniformBasis", -- which cospace basis
+	"UniformSize", -- early warning points
+	"ArgumentMicro", -- pass to draw
+	"ArgumentStart", --
+	"ArgumentStop", --
+	"RegisterPrompt", -- prompt string index
+	"RegisterResponse", -- response string index
+	"RegisterMemory", -- which memory
+	"RegisterIndex", -- which memory instance
+	"RegisterTransM", -- mouse function
+	"RegisterTransR", -- roller function
+	"RegisterFormM", -- mouse function
+	"RegisterFormR", -- roller function
+	"RegisterTool", -- which function
+	"RegisterLine", -- state of machine
+	"RegisterHint", -- argument from graphics
+	"RegisterDone", -- shaders running count
+	"RegisterOpen", -- thread running mask
+	"OriginLeft", -- starting cursor
+	"OriginBase", --
+	"OriginNear", --
+	"OriginAngle", --
+	"ClosestFound", -- search through pierce
+	"ClosestLeft", --
+	"ClosestBase", --
+	"ClosestNear", --
+	"NormalLeft", --
+	"NormalBase", --
+	"NormalNear", --
+	"WindowLeft", -- window initialization
+	"WindowBase", --
+	"WindowWide", --
+	"WindowHigh", --
+	"WindowNear", --
+	"WindowFar", --
+	"WindowLength", --
+	"CursorLeft", -- user input mouse
+	"CursorBase", --
+	"CursorNear", --
+	"CursorAngle", --
+	"CursorClick", --
+	"CenterRequest", -- fields to from client
+	"CenterMemory", --
+	"CenterSize", --
+	"CenterIndex", --
+	"CenterSelf", --
 }
 Transfer = {
 	"Read", -- read internal pipe

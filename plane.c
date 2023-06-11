@@ -243,24 +243,31 @@ float *planeScaleNormalRoller(float *mat, float *fix, float *nrm, float *org, fl
 }
 float *planeCenter()
 {
-	int index = configure[RegisterIndex] - center.idx;
-	if (index < 0 || index >= center.siz) return 0;
-	if (center.mem != (enum Memory)configure[RegisterMemory]) return 0;
-	switch(center.mem) {
+	int index = configure[RegisterIndex]-center.idx;
+	if (index < 0 || index >= center.siz) ERROR();
+	if (center.mem != configure[RegisterMemory]) ERROR();
+	switch (center.mem) {
 	case (Allmatz): return center.all[index].mat;
 	case (Fewmatz): return center.few[index].mat;
 	case (Onematz): return center.one[index].mat;
-	default: break;}
+	default: ERROR();}
 	return 0;
 }
 struct Kernel *planeKernel()
 {
-	int index = configure[RegisterIndex];
+	int index = 0; int base = 0; int size = 0;
 	switch ((enum Memory)configure[RegisterMemory]) {
-	case (Allmatz): return subject + index % configure[SubjectSize];
-	case (Fewmatz): return object + index % configure[ObjectSize];
-	case (Onematz): return element + index % configure[ElementSize];
-	default: break;}
+	case (Allmatz): base = configure[SubjectBase]; size = configure[SubjectSize]; break;
+	case (Fewmatz): base = configure[ObjectBase]; size = configure[ObjectSize]; break;
+	case (Onematz): base = configure[ElementBase]; size = configure[ElementSize]; break;
+	default: ERROR();}
+	index = configure[RegisterIndex] - base;
+	if (index < 0 || index >= size) ERROR();
+	switch ((enum Memory)configure[RegisterMemory]) {
+	case (Allmatz): return subject + index;
+	case (Fewmatz): return object + index;
+	case (Onematz): return element + index;
+	default: ERROR();}
 	return 0;
 }
 float *planeInverse()
@@ -403,10 +410,23 @@ void planeStage(enum Configure cfg)
 	case (OriginAngle): configure[OriginAngle] = configure[CursorAngle]; configure[CursorAngle] = 0; break;
 	default: break;}
 }
-void *planeRealloc(void *ptr, int siz, int tmp, int mod)
+void *planeResize(void *ptr, int mod, int siz, int tmp)
 {
 	char *result = realloc(ptr,siz*mod);
 	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
+	return result;
+}
+void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
+{
+	char *chrs = ptr;
+	char *result = malloc(siz*mod);
+	int ofs = tmp*mod-bas*mod; // location of old base in new base
+	int lim = siz*mod-tmp*mod+bas*mod; // location of new limit in old base
+	while (ofs < 0) ofs += siz*mod; ofs %= siz*mod;
+	while (lim < 0) lim += siz*mod; lim %= siz*mod;
+	for (int i = 0; i < lim; i++) result[i+ofs] = chrs[i];
+	for (int i = 0; i < ofs; i++) result[i] = chrs[i+lim];
+	free(ptr);
 	return result;
 }
 void planeConfig(enum Configure cfg, int val)
@@ -415,12 +435,18 @@ void planeConfig(enum Configure cfg, int val)
 	int tmp = configure[cfg];
 	configure[cfg] = val;
 	switch (cfg) {
-	case (PierceSize): pierce = planeRealloc(pierce,val,tmp,sizeof(struct Pierce)); break;
-	case (SubjectSize): subject = planeRealloc(subject,val,tmp,sizeof(struct Kernel)); break;
-	case (ObjectSize): object = planeRealloc(object,val,tmp,sizeof(struct Kernel)); break;
-	case (ElementSize): element = planeRealloc(element,val,tmp,sizeof(struct Kernel)); break;
-	case (MachineSize): machine = planeRealloc(machine,val,tmp,sizeof(struct Machine)); break;
-	case (FloatSize): floats = planeRealloc(floats,val,tmp,sizeof(float)); break;
+	case (PierceSize): pierce = planeResize(pierce,sizeof(struct Pierce),val,tmp); break;
+	case (PierceBase): pierce = planeRebase(pierce,sizeof(struct Pierce),configure[PierceSize],val,tmp); break;
+	case (SubjectSize): subject = planeResize(subject,sizeof(struct Kernel),val,tmp); break;
+	case (SubjectBase): subject = planeRebase(subject,sizeof(struct Kernel),configure[SubjectSize],val,tmp); break;
+	case (ObjectSize): object = planeResize(object,sizeof(struct Kernel),val,tmp); break;
+	case (ObjectBase): object = planeRebase(object,sizeof(struct Kernel),configure[ObjectSize],val,tmp); break;
+	case (ElementSize): element = planeResize(element,sizeof(struct Kernel),val,tmp); break;
+	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
+	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
+	case (MachineBase): machine = planeRebase(machine,sizeof(struct Machine),configure[MachineSize],val,tmp); break;
+	case (FloatSize): floats = planeResize(floats,sizeof(float),val,tmp); break;
+	case (FloatBase): floats = planeRebase(floats,sizeof(float),configure[FloatSize],val,tmp); break;
 	case (RegisterResponse): sem_safe(&resource,{rspidx = val;});
 	case (RegisterOpen): planeStarted(val); break;
 	default: break;}
@@ -449,10 +475,9 @@ void planeCopy(struct Center *ptr)
 }
 int planeEscape(int lvl, int nxt)
 {
-	int level = configure[RegisterNest];
-	int inc = (lvl > 0 ? 1 : -1); lvl *= inc;
-	while (lvl > 0 && (nxt += inc) < configure[MachineSize]) if (machine[nxt].xfr == Nest) {
-	lvl += machine[nxt].lvl*inc; configure[RegisterNest] += machine[nxt].lvl*inc;}
+	int inc = (lvl > 0 ? 1 : (lvl == 0 ? 0 : -1)); lvl *= inc;
+	for (nxt += inc; lvl > 0 && nxt < configure[MachineSize] && nxt >= 0; nxt += inc)
+	if (machine[nxt].xfr == Nest) lvl += machine[nxt].lvl*inc;
 	return nxt;
 }
 int planeIval(struct Express *exp)
@@ -486,10 +511,9 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
-	case (Jump): {int tmp = planeIval(&mptr->loc[0]) ? mptr->nxt : configure[RegisterNest];
-	next = planeEscape(tmp,next);} break;
+	case (Jump): next = planeEscape((planeIval(&mptr->loc[0]) ? mptr->nxt : 0),next); break;
 	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->nxt : next); break;
-	case (Nest): configure[RegisterNest] += mptr->lvl; break;
+	case (Nest): break;
 	case (Aval): {void *dat = 0;
 	datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0);
 	datxInsert(dat,*dat0,identType("Center"));} break;
