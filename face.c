@@ -375,7 +375,8 @@ int puntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 	int val;
 	for (val = 0; val < lim; val++) if (fdt[val] == Punt &&
 	(wpf == 0 || wfn[val] == 0 || wfn[val] == wpf) &&
-	(rpf == 0 || rfn[val] == 0 || rfn[val] == rpf)) break;
+	(rpf == 0 || rfn[val] == 0 || rfn[val] == rpf) &&
+	inp[val] == rfd && out[val] == wfd) break;
 	if (val < lim && rpf == 0) {rpf = rfn[val];}
 	if (val < lim && wpf == 0) {wpf = wfn[val];}
 	if (val == lim && lim == NUMOPEN) return -1;
@@ -393,7 +394,8 @@ int buntInit(int rfd, int wfd, pftype rpf, qftype wpf)
 	int val;
 	for (val = 0; val < lim; val++) if (fdt[val] == Bunt &&
 	(wpf == 0 || wfn[val] == 0 || wfn[val] == wpf) &&
-	(rpf == 0 || rfn[val] == 0 || rfn[val] == rpf)) break;
+	(rpf == 0 || rfn[val] == 0 || rfn[val] == rpf) &&
+	inp[val] == rfd && out[val] == wfd) break;
 	if (val < lim && rpf == 0) {rpf = rfn[val];}
 	if (val < lim && wpf == 0) {wpf = wfn[val];}
 	if (val == lim && lim == NUMOPEN) return -1;

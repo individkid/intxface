@@ -519,7 +519,8 @@ void planeBoot()
 	struct Machine mptr = {0};
 	int len = 0;
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
-	configure[RegisterLine] = planeSwitch(&mptr,configure[RegisterLine]);}
+	configure[RegisterLine] = planeSwitch(&mptr,configure[RegisterLine]);
+	}
 }
 void planeRead()
 {
@@ -635,7 +636,7 @@ void *planeExternal(void *ptr)
 	readCenter(&center,external);
 	writeCenter(&center,internal);
 	sem_safe(&resource,{numpipe++;});
-	planeSafe(Procs,Waits,RegisterHint);}
+	planeSafe(Procs,Waits,CenterRequest);}
 	planeSafe(External,Done,Configures);
 	return 0;
 }
@@ -757,14 +758,19 @@ int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint)
 }
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint)
 {
+	int idle = 0;
 	sem_wait(&pending);
 	sem_wait(&resource);
 	if (qfull == 0) ERROR();
 	*proc = procs[qhead]; *wait = waits[qhead]; *hint = hints[qhead];
 	qhead++; if (qhead == qsize) qhead = 0;
 	qfull--;
-	if (qfull > 0) sem_post(&pending);
+	if (qfull > 0) sem_post(&pending)
+	else if (*hint != RegisterHint) idle = 1;
 	sem_post(&resource);
+	if (idle) {
+	planeSafe(Procs,Waits,RegisterHint);
+	}
 }
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint)
 {
