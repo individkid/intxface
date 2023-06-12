@@ -296,11 +296,11 @@ Bootstrap = {
 	{"Int","1","Str","Machine(xfr:Transfer(Bval)siz:Int(1)bvl[0]:Center("..
 		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(2)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Goto)siz:Int(0)nxt:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(5)"..
-			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"CenterRequest\"))))"..
+			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"RegisterHint\"))))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
-			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
-			"exp[3]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
-			"exp[4]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
+			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
+			"exp[3]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
+			"exp[4]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
 		"))"..
 		"mch[1]:Machine(xfr:Transfer(Force)siz:Int(1)cfg[0]:Configure(RegisterOpen)val[0]:Int(0))"..
 	"))"},

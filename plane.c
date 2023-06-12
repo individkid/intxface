@@ -511,8 +511,8 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
-	case (Jump): next = planeEscape((planeIval(&mptr->loc[0]) ? mptr->nxt : 0),next); break;
-	case (Goto): next = (planeIval(&mptr->loc[0]) ? mptr->nxt : next); break;
+	case (Jump): next = planeEscape(planeIval(&mptr->loc[0]),next-1); break;
+	case (Goto): next = planeIval(&mptr->loc[0]) + next-1; break;
 	case (Nest): break;
 	case (Aval): {void *dat = 0;
 	datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0);
@@ -534,7 +534,7 @@ void planeWake(enum Configure hint)
 	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[RegisterLine];
 	int next = planeSwitch(mptr,configure[RegisterLine]+1);
-	if (next == configure[RegisterLine]) {configure[RegisterLine] += 1; break;}
+	if (next == configure[RegisterLine]) break;
 	configure[RegisterLine] = next;}
 }
 void planeBoot()
