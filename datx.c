@@ -433,10 +433,10 @@ void datxOld(void **dat, float val)
 #define BINARY_REM(LFT,RGT) (LFT%RGT)
 #define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
 #define BINARY_FLM(LFT,RGT) fmodf(LFT,RGT)
-#define BINARY_BEGIN(TYP,EXT)\
+#define BINARY_BEGIN(TYP)\
 	void *dat0 = 0; void *dat1 = 0;\
 	int typ0 = 0; int typ1 = 0;\
-	if (exp->siz != 2+EXT) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}\
+	if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}\
 	typ0 = datxEval(&dat0,&exp->exp[0],TYP);\
 	typ1 = datxEval(&dat1,&exp->exp[1],TYP);\
 	if (typ0 != typ1) {fprintf(stderr,"wrong type of argument %d %d\n",typ0,typ1); exit(-1);}
@@ -448,7 +448,7 @@ void datxOld(void **dat, float val)
 	TYPE rgt = GET(0,dat1);\
 	SET(dat,OP(lft,rgt));}
 #define BINARY_BLOCK(OP,STR) {\
-	BINARY_BEGIN(typ,0)\
+	BINARY_BEGIN(typ)\
 	if (typ < 0) typ = typ0;\
 	if (typ != typ0) {fprintf(stderr,"inconsistent type %d\n",typ); exit(-1);}\
 	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
@@ -457,9 +457,45 @@ void datxOld(void **dat, float val)
 	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
 	{fprintf(stderr,"unsupported "STR" type %d\n",typ); exit(-1);}}
 #define BINARY_SET(DAT,VAL) {\
-	if (VAL < 0) datxEval(DAT,&exp->exp[2],typ);\
-	if (VAL == 0) datxEval(DAT,&exp->exp[3],typ);\
-	if (VAL > 0) datxEval(DAT,&exp->exp[4],typ);}
+	int val = datxEcmp(VAL,exp->dmp[i]);\
+	if (val < 0) idx++;\
+	if (val > 0) break;}
+int datxEcmp(int val, enum Cmper dmp)
+{
+	// Keep use current later == 0
+	// Give use next later < 0
+	// Take use current now > 0
+	switch (dmp) {
+	case (LKEKMK): if (val < 0) return 0; else if (val == 0) return 0; else if (val > 0) return 0;
+	case (LKEKMG): if (val < 0) return 0; else if (val == 0) return 0; else if (val > 0) return -1;
+	case (LKEKMT): if (val < 0) return 0; else if (val == 0) return 0; else if (val > 0) return 1;
+	case (LKEGMK): if (val < 0) return 0; else if (val == 0) return -1; else if (val > 0) return 0;
+	case (LKEGMG): if (val < 0) return 0; else if (val == 0) return -1; else if (val > 0) return -1;
+	case (LKEGMT): if (val < 0) return 0; else if (val == 0) return -1; else if (val > 0) return 1;
+	case (LKETMK): if (val < 0) return 0; else if (val == 0) return 1; else if (val > 0) return 0;
+	case (LKETMG): if (val < 0) return 0; else if (val == 0) return 1; else if (val > 0) return -1;
+	case (LKETMT): if (val < 0) return 0; else if (val == 0) return 1; else if (val > 0) return 1;
+	case (LGEKMK): if (val < 0) return -1; else if (val == 0) return 0; else if (val > 0) return 0;
+	case (LGEKMG): if (val < 0) return -1; else if (val == 0) return 0; else if (val > 0) return -1;
+	case (LGEKMT): if (val < 0) return -1; else if (val == 0) return 0; else if (val > 0) return 1;
+	case (LGEGMK): if (val < 0) return -1; else if (val == 0) return -1; else if (val > 0) return 0;
+	case (LGEGMG): if (val < 0) return -1; else if (val == 0) return -1; else if (val > 0) return -1;
+	case (LGEGMT): if (val < 0) return -1; else if (val == 0) return -1; else if (val > 0) return 1;
+	case (LGETMK): if (val < 0) return -1; else if (val == 0) return 1; else if (val > 0) return 0;
+	case (LGETMG): if (val < 0) return -1; else if (val == 0) return 1; else if (val > 0) return -1;
+	case (LGETMT): if (val < 0) return -1; else if (val == 0) return 1; else if (val > 0) return 1;
+	case (LTEKMK): if (val < 0) return 1; else if (val == 0) return 0; else if (val > 0) return 0;
+	case (LTEKMG): if (val < 0) return 1; else if (val == 0) return 0; else if (val > 0) return -1;
+	case (LTEKMT): if (val < 0) return 1; else if (val == 0) return 0; else if (val > 0) return 1;
+	case (LTEGMK): if (val < 0) return 1; else if (val == 0) return -1; else if (val > 0) return 0;
+	case (LTEGMG): if (val < 0) return 1; else if (val == 0) return -1; else if (val > 0) return -1;
+	case (LTEGMT): if (val < 0) return 1; else if (val == 0) return -1; else if (val > 0) return 1;
+	case (LTETMK): if (val < 0) return 1; else if (val == 0) return 1; else if (val > 0) return 0;
+	case (LTETMG): if (val < 0) return 1; else if (val == 0) return 1; else if (val > 0) return -1;
+	case (LTETMT): if (val < 0) return 1; else if (val == 0) return 1; else if (val > 0) return 1;
+	default: ERROR();}
+	return 0;
+}
 int datxEval(void **dat, struct Express *exp, int typ)
 {
 	switch (exp->opr) {
@@ -468,7 +504,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul") break; // 2;
 	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div") break; // 2;
 	case (RemOp): { // 2;
-		BINARY_BEGIN(typ,0)
+		BINARY_BEGIN(typ)
 		if (typ < 0) typ = typ0;
 		if (typ != typ0) {fprintf(stderr,"inconsistent type %d\n",typ); exit(-1);}
 		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_REM) else
@@ -477,15 +513,21 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		{fprintf(stderr,"unsupported rem type %d\n",typ); exit(-1);}
 		BINARY_DONE()} break;
-	case (CmpOp): { // 5; neg zero pos
-		BINARY_BEGIN(-1,3)
+	case (CmpOp): {
+		void *dat0 = 0; int typ0 = 0; int idx = 1;
+		typ0 = datxEval(&dat0,&exp->exp[0],-1);
+		for (int i = 0; i < exp->num; i++) {
+		void *dat1 = 0; int typ1 = 0;
+		typ1 = datxEval(&dat1,&exp->cmp[i],-1);
+		if (typ0 != typ1) {fprintf(stderr,"wrong type of argument %d %d\n",typ0,typ1); exit(-1);}
 		BINARY_TYPE(int,"Int",*datxIntz,BINARY_SET,BINARY_TRI) else
 		BINARY_TYPE(int32_t,"Int32",*datxInt32z,BINARY_SET,BINARY_TRI) else
 		BINARY_TYPE(double,"Num",*datxNumz,BINARY_SET,BINARY_TRI) else
 		BINARY_TYPE(float,"Old",*datxOldz,BINARY_SET,BINARY_TRI) else
 		BINARY_TYPE(char*,"Str",datxChrz,BINARY_SET,BINARY_CMP) else
 		{fprintf(stderr,"unsupported cmp type %d\n",typ); exit(-1);}
-		BINARY_DONE()} break;
+		if (idx >= exp->siz) {fprintf(stderr,"not enough results %d\n",exp->siz); exit(-1);}}
+		datxEval(dat,&exp->exp[idx],typ);} break;
 	case (TotOp): { // 1; cast to type
 		int tmp = 0;
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}

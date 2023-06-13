@@ -232,7 +232,7 @@ Operate = {
 	"MulOp", -- 2;
 	"DivOp", -- 2;
 	"RemOp", -- 2;
-	"CmpOp", -- 5; neg zero pos
+	"CmpOp", -- n; if else compare
 	"TotOp", -- 1; cast to type
 	"ImmOp", -- 0; built in value
 	"ValOp", -- 2; restore from named
@@ -248,6 +248,39 @@ Etter = {
 	"Configurey",
 	"Stringy",
 	"Floaty",
+}
+Cmper = {
+	-- upon Less Equal More
+	-- Keep use current later
+	-- Give use next later
+	-- Take use current now
+	"LKEKMK",
+	"LKEKMG",
+	"LKEKMT",
+	"LKEGMK",
+	"LKEGMG",
+	"LKEGMT",
+	"LKETMK",
+	"LKETMG",
+	"LKETMT",
+	"LGEKMK",
+	"LGEKMG",
+	"LGEKMT",
+	"LGEGMK",
+	"LGEGMG",
+	"LGEGMT",
+	"LGETMK",
+	"LGETMG",
+	"LGETMT",
+	"LTEKMK",
+	"LTEKMG",
+	"LTEKMT",
+	"LTEGMK",
+	"LTEGMG",
+	"LTEGMT",
+	"LTETMK",
+	"LTETMG",
+	"LTETMT",
 }
 Process = {
 	"Filez",
@@ -288,21 +321,23 @@ Bootstrap = {
 		"cfg[6]:Configure(RegisterOpen)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
-		"val[2]:Int(2)"..
+		"val[2]:Int(4)"..
 		"val[3]:Int(1)"..
 		"val[4]:Int(3)"..
 		"val[5]:Int(15)"..
 		"val[6]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Bval)siz:Int(1)bvl[0]:Center("..
-		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(2)idx:Int(0)slf:Int(0)"..
-		"mch[0]:Machine(xfr:Transfer(Goto)siz:Int(0)nxt:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(5)"..
+		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(4)idx:Int(0)slf:Int(0)"..
+		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(1))"..
+		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"RegisterHint\"))))"..
-			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
-			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
-			"exp[3]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
-			"exp[4]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
+			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))".. -- upon match
+			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))num:Int(1)".. -- upon mismatch
+			"cmp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
+			"dmp[0]:Cmper(LGETMG)"..
 		"))"..
-		"mch[1]:Machine(xfr:Transfer(Force)siz:Int(1)cfg[0]:Configure(RegisterOpen)val[0]:Int(0))"..
+		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
+		"mch[3]:Machine(xfr:Transfer(Force)siz:Int(1)cfg[0]:Configure(RegisterOpen)val[0]:Int(0))"..
 	"))"},
 }
 Execname = {
@@ -448,6 +483,9 @@ Express = {
 	{"opr","Operate",{},{}},
 	{"siz","Int",{},{}},
 	{"exp","Express",{},"siz"},
+	{"num","Int",{["opr"]={["CmpOp"]=true}},{}},
+	{"cmp","Express",{["opr"]={["CmpOp"]=true}},"num"},
+	{"dmp","Cmper",{["opr"]={["CmpOp"]=true}},"num"},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
 	{"mem","Etter",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
@@ -460,7 +498,6 @@ Machine = {
 	{"sav","Configure",{["xfr"]={["Stage"]=true}},"siz"},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
-	{"nxt","Int",{["xfr"]={["Jump"]=true,["Goto"]=true}},{}},
 	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 	{"avl","Str",{["xfr"]={["Aval"]=true}},{}},
