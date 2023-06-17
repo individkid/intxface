@@ -249,38 +249,19 @@ Etter = {
 	"Stringy",
 	"Floaty",
 }
+Ineq = {
+	-- Less Equal More
+	-- Open Closed
+	"LOCmp",
+	"LCCmp",
+	"EOCmp",
+	"ECCmp",
+	"MOCmp",
+	"MCCmp",
+}
 Cmper = {
-	-- upon Less Equal More
-	-- Keep use current later
-	-- Give use next later
-	-- Take use current now
-	"LKEKMK",
-	"LKEKMG",
-	"LKEKMT",
-	"LKEGMK",
-	"LKEGMG",
-	"LKEGMT",
-	"LKETMK",
-	"LKETMG",
-	"LKETMT",
-	"LGEKMK",
-	"LGEKMG",
-	"LGEKMT",
-	"LGEGMK",
-	"LGEGMG",
-	"LGEGMT",
-	"LGETMK",
-	"LGETMG",
-	"LGETMT",
-	"LTEKMK",
-	"LTEKMG",
-	"LTEKMT",
-	"LTEGMK",
-	"LTEGMG",
-	"LTEGMT",
-	"LTETMK",
-	"LTETMG",
-	"LTETMT",
+	"Branch",
+	"Leaf",
 }
 Process = {
 	"Filez",
@@ -332,9 +313,17 @@ Bootstrap = {
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"RegisterHint\"))))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))".. -- upon match
-			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))num:Int(1)".. -- upon mismatch
-			"cmp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
-			"dmp[0]:Cmper(LGETMG)"..
+			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))".. -- upon mismatch
+			"flt[0]:Filter(cmp:Cmper(Branch)siz:Int(2)"..
+				"neq[0]:Ineq(ECCmp)"..
+				"neq[1]:Ineq(EOCmp)"..
+				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
+				"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
+				"str[0]:Str(Match)"..
+				"str[1]:Str(Mismatch)"..
+			")"..
+			"flt[1]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(Match))"..
+			"flt[2]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
 		"))"..
 		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
 		"mch[3]:Machine(xfr:Transfer(Force)siz:Int(1)cfg[0]:Configure(RegisterOpen)val[0]:Int(0))"..
@@ -479,13 +468,18 @@ Slice = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 }
+Filter = {
+	{"cmp","Cmper",{},{}},
+	{"siz","Int",{},{}},
+	{"neq","Ineq",{["cmp"]={["Branch"]=true}},"siz"},
+	{"exp","Express",{["cmp"]={["Branch"]=true}},"siz"},
+	{"str","Str",{},"siz"},
+}
 Express = {
 	{"opr","Operate",{},{}},
 	{"siz","Int",{},{}},
 	{"exp","Express",{},"siz"},
-	{"num","Int",{["opr"]={["CmpOp"]=true}},{}},
-	{"cmp","Express",{["opr"]={["CmpOp"]=true}},"num"},
-	{"dmp","Cmper",{["opr"]={["CmpOp"]=true}},"num"},
+	{"flt","Filter",{["opr"]={["CmpOp"]=true}},"siz"},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
 	{"mem","Etter",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},

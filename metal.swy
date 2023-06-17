@@ -254,14 +254,14 @@ func getDraw() -> CAMetalDrawable?
 }
 class getApplication : NSObject, NSApplicationDelegate
 {
-	func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool
+	internal func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool
 	{
 		return false
 	}
 }
 class getDelegate : NSObject, NSWindowDelegate
 {
-	func windowShouldClose(_ sender: NSWindow) -> Bool
+	internal func windowShouldClose(_ sender: NSWindow) -> Bool
 	{
 		return false
 	}

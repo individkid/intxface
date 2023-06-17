@@ -456,43 +456,16 @@ void datxOld(void **dat, float val)
 	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else\
 	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
 	{fprintf(stderr,"unsupported "STR" type %d\n",typ); exit(-1);}}
-#define BINARY_SET(DAT,VAL) {\
-	int val = datxEcmp(VAL,exp->dmp[i]);\
-	if (val < 0) idx++;\
-	if (val > 0) break;}
-int datxEcmp(int val, enum Cmper dmp)
+#define BINARY_SET(DAT,VAL) val = datxEcmp(VAL,exp->flt[i].neq[j]);
+int datxEcmp(int val, enum Ineq neq)
 {
-	// Keep use current later == 0
-	// Give use next later < 0
-	// Take use current now > 0
-	switch (dmp) {
-	case (LKEKMK): if (val < 0) return 0; else if (val == 0) return 0; else if (val > 0) return 0;
-	case (LKEKMG): if (val < 0) return 0; else if (val == 0) return 0; else if (val > 0) return -1;
-	case (LKEKMT): if (val < 0) return 0; else if (val == 0) return 0; else if (val > 0) return 1;
-	case (LKEGMK): if (val < 0) return 0; else if (val == 0) return -1; else if (val > 0) return 0;
-	case (LKEGMG): if (val < 0) return 0; else if (val == 0) return -1; else if (val > 0) return -1;
-	case (LKEGMT): if (val < 0) return 0; else if (val == 0) return -1; else if (val > 0) return 1;
-	case (LKETMK): if (val < 0) return 0; else if (val == 0) return 1; else if (val > 0) return 0;
-	case (LKETMG): if (val < 0) return 0; else if (val == 0) return 1; else if (val > 0) return -1;
-	case (LKETMT): if (val < 0) return 0; else if (val == 0) return 1; else if (val > 0) return 1;
-	case (LGEKMK): if (val < 0) return -1; else if (val == 0) return 0; else if (val > 0) return 0;
-	case (LGEKMG): if (val < 0) return -1; else if (val == 0) return 0; else if (val > 0) return -1;
-	case (LGEKMT): if (val < 0) return -1; else if (val == 0) return 0; else if (val > 0) return 1;
-	case (LGEGMK): if (val < 0) return -1; else if (val == 0) return -1; else if (val > 0) return 0;
-	case (LGEGMG): if (val < 0) return -1; else if (val == 0) return -1; else if (val > 0) return -1;
-	case (LGEGMT): if (val < 0) return -1; else if (val == 0) return -1; else if (val > 0) return 1;
-	case (LGETMK): if (val < 0) return -1; else if (val == 0) return 1; else if (val > 0) return 0;
-	case (LGETMG): if (val < 0) return -1; else if (val == 0) return 1; else if (val > 0) return -1;
-	case (LGETMT): if (val < 0) return -1; else if (val == 0) return 1; else if (val > 0) return 1;
-	case (LTEKMK): if (val < 0) return 1; else if (val == 0) return 0; else if (val > 0) return 0;
-	case (LTEKMG): if (val < 0) return 1; else if (val == 0) return 0; else if (val > 0) return -1;
-	case (LTEKMT): if (val < 0) return 1; else if (val == 0) return 0; else if (val > 0) return 1;
-	case (LTEGMK): if (val < 0) return 1; else if (val == 0) return -1; else if (val > 0) return 0;
-	case (LTEGMG): if (val < 0) return 1; else if (val == 0) return -1; else if (val > 0) return -1;
-	case (LTEGMT): if (val < 0) return 1; else if (val == 0) return -1; else if (val > 0) return 1;
-	case (LTETMK): if (val < 0) return 1; else if (val == 0) return 1; else if (val > 0) return 0;
-	case (LTETMG): if (val < 0) return 1; else if (val == 0) return 1; else if (val > 0) return -1;
-	case (LTETMT): if (val < 0) return 1; else if (val == 0) return 1; else if (val > 0) return 1;
+	switch (neq) {
+	case (LOCmp): return (val < 0);
+	case (LCCmp): return (val <= 0);
+	case (EOCmp): return (val != 0);
+	case (ECCmp): return (val == 0);
+	case (MOCmp): return (val > 0);
+	case (MCCmp): return (val >= 0);
 	default: ERROR();}
 	return 0;
 }
@@ -513,12 +486,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		{fprintf(stderr,"unsupported rem type %d\n",typ); exit(-1);}
 		BINARY_DONE()} break;
-	case (CmpOp): {
-		void *dat0 = 0; int typ0 = 0; int idx = 1;
-		typ0 = datxEval(&dat0,&exp->exp[0],-1);
-		for (int i = 0; i < exp->num; i++) {
-		void *dat1 = 0; int typ1 = 0;
-		typ1 = datxEval(&dat1,&exp->cmp[i],-1);
+	case (CmpOp): {char *str = strdup("");
+		for (int i = 0; i < exp->siz; i++) {
+		if (exp->flt[i].cmp == Branch) {
+		void *dat0 = 0; int typ0 = 0;
+		typ0 = datxEval(&dat0,&exp->exp[i],-1);
+		for (int j = 0; j < exp->flt[i].siz; j++) {
+		void *dat1 = 0; int typ1 = 0; int val = 0;
+		typ1 = datxEval(&dat1,&exp->flt[i].exp[j],-1);
 		if (typ0 != typ1) {fprintf(stderr,"wrong type of argument %d %d\n",typ0,typ1); exit(-1);}
 		BINARY_TYPE(int,"Int",*datxIntz,BINARY_SET,BINARY_TRI) else
 		BINARY_TYPE(int32_t,"Int32",*datxInt32z,BINARY_SET,BINARY_TRI) else
@@ -526,8 +501,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(float,"Old",*datxOldz,BINARY_SET,BINARY_TRI) else
 		BINARY_TYPE(char*,"Str",datxChrz,BINARY_SET,BINARY_CMP) else
 		{fprintf(stderr,"unsupported cmp type %d\n",typ); exit(-1);}
-		if (idx >= exp->siz) {fprintf(stderr,"not enough results %d\n",exp->siz); exit(-1);}}
-		datxEval(dat,&exp->exp[idx],typ);} break;
+		if (val && strncmp(str,exp->flt[i].str[j],strlen(str)) == 0) {
+		free(str); str = strdup(exp->flt[i].str[j]);}}} else {
+		for (int j = 0; j < exp->flt[i].siz; j++) {
+		if (strcmp(str,exp->flt[i].str[j]) == 0) {
+		datxEval(dat,&exp->exp[i],typ); break;}}}}
+		free(str);} break;
 	case (TotOp): { // 1; cast to type
 		int tmp = 0;
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
