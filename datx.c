@@ -486,7 +486,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		{fprintf(stderr,"unsupported rem type %d\n",typ); exit(-1);}
 		BINARY_DONE()} break;
-	case (CmpOp): {char *str = strdup("");
+	case (CmpOp): {const char *str = "";
 		for (int i = 0; i < exp->siz; i++) {
 		if (exp->flt[i].cmp == Branch) {
 		void *dat0 = 0; int typ0 = 0;
@@ -502,11 +502,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(char*,"Str",datxChrz,BINARY_SET,BINARY_CMP) else
 		{fprintf(stderr,"unsupported cmp type %d\n",typ); exit(-1);}
 		if (val && strncmp(str,exp->flt[i].str[j],strlen(str)) == 0) {
-		free(str); str = strdup(exp->flt[i].str[j]);}}} else {
+		str = exp->flt[i].str[j];}}} else {
 		for (int j = 0; j < exp->flt[i].siz; j++) {
 		if (strcmp(str,exp->flt[i].str[j]) == 0) {
-		datxEval(dat,&exp->exp[i],typ); break;}}}}
-		free(str);} break;
+		datxEval(dat,&exp->exp[i],typ); break;}}}}} break;
 	case (TotOp): { // 1; cast to type
 		int tmp = 0;
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); exit(-1);}
