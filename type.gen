@@ -302,14 +302,14 @@ Bootstrap = {
 		"cfg[6]:Configure(RegisterOpen)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
-		"val[2]:Int(7)"..
+		"val[2]:Int(10)"..
 		"val[3]:Int(1)"..
 		"val[4]:Int(3)"..
 		"val[5]:Int(15)"..
 		"val[6]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Bval)siz:Int(1)bvl[0]:Center("..
-		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(7)idx:Int(0)slf:Int(0)"..
-		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(2))"..
+		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(10)idx:Int(0)slf:Int(0)"..
+		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(3))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"RegisterHint\"))))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))".. -- upon match
@@ -326,8 +326,9 @@ Bootstrap = {
 			"flt[2]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
 		"))"..
 		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
-		"mch[3]:Machine(xfr:Transfer(Stage)siz:Int(1)sav[0]:Configure(CenterRequest))"..
-		"mch[4]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
+		"mch[3]:Machine(xfr:Transfer(Read)siz:Int(0))"..
+		"mch[4]:Machine(xfr:Transfer(Stage)siz:Int(1)sav[0]:Configure(CenterRequest))"..
+		"mch[5]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"CenterRequest\"))))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))".. -- upon match
 			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1)))".. -- upon mismatch
@@ -342,8 +343,10 @@ Bootstrap = {
 			"flt[1]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(Match))"..
 			"flt[2]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
 		"))"..
-		"mch[5]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
-		"mch[6]:Machine(xfr:Transfer(Force)siz:Int(1)cfg[0]:Configure(RegisterOpen)val[0]:Int(0))"..
+		"mch[6]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
+		"mch[7]:Machine(xfr:Transfer(Copy)siz:Int(0))"..
+		"mch[8]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
+		"mch[9]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
 	"))"},
 }
 Execname = {
