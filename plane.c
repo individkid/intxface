@@ -431,7 +431,6 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 }
 void planeConfig(enum Configure cfg, int val)
 {
-
 	int tmp = configure[cfg];
 	configure[cfg] = val;
 	switch (cfg) {
@@ -482,10 +481,12 @@ int planeEscape(int lvl, int nxt)
 }
 int planeIval(struct Express *exp)
 {
-	void *dat = 0;
+	void *dat = 0; int val = 0; int *ptr = 0;
 	int typ = datxEval(&dat,exp,identType("Int"));
 	if (typ != identType("Int")) ERROR();
-	return *datxIntz(0,dat);
+	ptr = datxIntz(0,dat);
+	val = *ptr;
+	return val;
 }
 int planeSwitch(struct Machine *mptr, int next)
 {
@@ -510,7 +511,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	identmat(planeWritten(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
-	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentStart],configure[ArgumentStop]); break;
+	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->loc[0]),next-1); break;
 	case (Goto): next = planeIval(&mptr->loc[0]) + next-1; break;
 	case (Nest): break;
@@ -524,6 +525,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	readCenter(&tmp,idx0); planeCopy(&tmp);} break;
 	case (Dval): datxNone(dat0); writeCenter(mptr->dvl,idx0); readCenter(&center,idx0); break;
 	case (Eval): datxEval(dat0,mptr->evl,identType("Center")); readCenter(&center,idx0); break;
+	case (Fval): {void *dat = 0; datxEval(&dat,mptr->fvl,-1);}
 	default: break;}
 	return next;
 }
@@ -792,9 +794,7 @@ void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint)
 	if (qfull > 0) sem_post(&pending)
 	else if (*hint != RegisterHint) idle = 1;
 	sem_post(&resource);
-	if (idle) {
-	planeSafe(Procs,Waits,RegisterHint);
-	}
+	if (idle) planeSafe(Procs,Waits,RegisterHint);
 }
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint)
 {

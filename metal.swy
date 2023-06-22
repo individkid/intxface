@@ -14,7 +14,6 @@ var param = [MTLRenderPassDescriptor?](repeating: nil, count: Int(Micros.rawValu
 var depth = [MTLDepthStencilState?](repeating: nil, count: Int(Micros.rawValue))
 var compute = [MTLComputePipelineState?](repeating: nil, count: Int(Micros.rawValue))
 var threads = [MTLSize?](repeating: nil, count: Int(Micros.rawValue))
-var pool = [MTLCommandBuffer]()
 
 var lock1 = Lock()
 var pool1 = Pool()
@@ -239,14 +238,7 @@ func getReady() -> MTLCommandBufferHandler
 func getCount(_ code:MTLCommandBuffer) -> MTLCommandBufferHandler
 {
 	count += 1
-	return {(MTLCommandBuffer) in count -= 1; pool.append(code); planeSafe(Procs,Waits,RegisterDone)}
-}
-func getCode() -> MTLCommandBuffer
-{
-	if (pool.count == 0) {
-		pool.append(queue.makeCommandBuffer()!)
-	}
-	return pool.removeFirst()
+	return {(MTLCommandBuffer) in count -= 1; planeSafe(Procs,Waits,RegisterDone)}
 }
 func getDraw() -> CAMetalDrawable?
 {
@@ -464,19 +456,19 @@ func swiftInfo(_ query: Configure) -> Int32
 	case (CursorClick): return Int32(NSEvent.pressedMouseButtons)
 	default: exitErr(#file,#line);return 0}
 }
-func swiftDraw(_ shader: Micro, _ start: Int32, _ stop: Int32)
+func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 {
 	let sub = Int(shader.rawValue)
-	let code = getCode()
+	guard let code = queue?.makeCommandBuffer() else {return}
 	switch (shader) {
 	case (Dipoint): fallthrough case (Diplane):
     guard let draw = getDraw() else {exitErr(#file,#line);return}
 	param[sub]!.colorAttachments[0].texture = draw.texture
-	if (array.count == 0) {
+	if (Int(base) < 0 || Int(base) >= Int(limit) || array.count < Int(limit)) {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.endEncoding()
 	}
-	for range in array[Int(start)...Int(stop)] {
+	for range in array[Int(base)..<Int(limit)] {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.setRenderPipelineState(render[sub]!)
 		encode.setDepthStencilState(depth[sub]!)
@@ -498,7 +490,7 @@ func swiftDraw(_ shader: Micro, _ start: Int32, _ stop: Int32)
 	}
 	code.present(draw)
 	case (Adpoint): fallthrough case (Adplane):
-	for range in array[Int(start)...Int(stop)] {
+	for range in array[Int(base)...Int(limit)] {
 		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
 		var nums:[Int] = []
 		var pers:[Int] = []

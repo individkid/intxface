@@ -9,7 +9,7 @@ typedef void (*uftype)(struct Center *center); // dma
 typedef void (*vftype)(); // safe
 typedef void (*yftype)(enum Proc proc, enum Wait wait); // main
 typedef int (*xftype)(enum Configure query); // info
-typedef void (*wftype)(enum Micro shader, int start, int stop); // draw
+typedef void (*wftype)(enum Micro shader, int base, int limit); // draw
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw);
 int planeSet(int idx, const char *str);
 int planeInfo(enum Configure cfg);

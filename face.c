@@ -1071,17 +1071,30 @@ void showStr(const char* val, char **str)
 	memcpy(*str+siz,tmp,num+1);
 	free(tmp);
 }
+char showDatF(int val)
+{
+	if (val < 0 || val >= 16) ERROR();
+	if (val >= 10) return 'a'+(val-10);
+	return '0'+val;
+}
 void showDat(const void* val, char **str)
 {
 	int siz = (*str ? strlen(*str) : 0);
 	char *tmp = 0;
 	int num;
-	if (asprintf(&tmp,"Dat(TODO)") < 0) ERRFNC(-1);
+	int len = (val ? *(int*)val : 0);
+	char *hex = 0;
+	hex = malloc(len*2+1);
+	for (int i = 0; i < len; i++) {
+	hex[i*2] = showDatF((*(((char*)(((int*)val)+1))+i))>>4);
+	hex[i*2+1] = showDatF((*(((char*)(((int*)val)+1))+i))&0xf);}
+	hex[len*2] = 0;
+	if (asprintf(&tmp,"Dat(%s)",hex) < 0) ERRFNC(-1);
 	num = strlen(tmp);
 	*str = realloc(*str,siz+num+1);
 	if (*str == 0) ERRFNC(-1);
 	memcpy(*str+siz,tmp,num+1);
-	free(tmp);
+	free(tmp); free(hex);
 }
 int hideIdent(const char *val, const char *str, int *siz)
 {
