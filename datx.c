@@ -329,17 +329,18 @@ void datxInsertF(void *key, void *val, int typ, void *ptr, struct Box box)
 		box.ptr->box[i] = box.ptr->box[i-1];}
 	box.ptr->siz++;
 	box.ptr->typ[box.idx] = typ;
-	assignDat(&box.ptr->key[box.idx],key);
+	box.ptr->key[box.idx] = key;
 	box.ptr->ptr[box.idx] = ptr;
-	assignDat(&box.ptr->box[box.idx],val);
+	box.ptr->box[box.idx] = val;
 }
 void datxInsert(void *key, void *val, int typ)
 {
 	struct Box box = {0}; void *dat = 0;
-	if (prefix) datxJoin(dat,prefix,key); else assignDat(&dat,key);
-	box = datxFindF(dat);
-	if (box.idx < box.ptr->siz && datxCompare(box.ptr->key[box.idx],dat) == 0) {
-		assignDat(&box.ptr->box[box.idx],val); return;}
+	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key); key = dat;
+	box = datxFindF(key); 
+	if (box.idx < box.ptr->siz && datxCompare(box.ptr->key[box.idx],key) == 0) {
+		assignDat(&box.ptr->box[box.idx],val); free(key); return;}
+	dat = 0; assignDat(&dat,val); val = dat;
 	datxInsertF(key,val,typ,0,box);
 	while (box.ptr->siz > 3) {
 		struct Node tmp = {0};
