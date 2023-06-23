@@ -590,7 +590,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ != identType("Int")) {fprintf(stderr,"wrong type for GetOp %d\n",typ); ERROR();}
 		assignDat(&save,prefix);
 		if (datxGetFp == 0) {fprintf(stderr,"getter not set\n"); ERROR();}
-		datxGetFp(dat,exp->mem,exp->cfg);
+		datxGetFp(dat,exp->cfg);
 		assignDat(&prefix,save);} break;
 	case (SetOp): { // 2; callback with value
 		void *dat0 = 0; int typ0 = 0; void *save = 0;
@@ -598,7 +598,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(&dat0,&exp->exp[0],-1);
 		assignDat(&save,prefix);
 		if (datxSetFp == 0) {fprintf(stderr,"setter not set\n"); ERROR();}
-		datxSetFp(dat0,exp->mem,exp->cfg);
+		datxSetFp(dat0,exp->cfg);
 		datxEval(dat,&exp->exp[1],typ);
 		assignDat(prefix,save); free(dat0);} break;
 	case (InsOp): { // 2; field to struct

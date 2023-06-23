@@ -14,7 +14,8 @@ struct Numeric {
 };
 struct Vertex {
    float4 vec; // intersection of planes
-   uint4 ref; // backreference to planes
+   uint ref; // backreference to planes
+   uint pad0, pad1, pad2;
 };
 struct Pierce {
    float4 fix;
@@ -35,20 +36,12 @@ struct Basis {
 struct Uniform {
    uint all; // which subject to use
    uint one; // which element to use
-   float lon; // horizontal axis of cursor
-   float lat; // vertical axis of cursor
+   uint lon; // horizontal axis of cursor
+   uint lat; // vertical axis of cursor
+   uint len; // which subject for projection
    uint idx; // which plane to apply one matrix to
+   uint use; // which basis to use
    uint siz; // how many swarm points there are
-   uint bas; // which basis to use
-   uint tsz; // size of trinagle buffer
-   uint nsz; // size of numeric buffer
-   uint vsz; // size of vertex buffer
-   uint asz; // size of subject buffer
-   uint fsz; // size of object buffer
-   uint osz; // size of element buffer
-   uint ssz; // size of swarm buffer
-   uint xsz; // size of texture buffer
-   uint bsz; // size of basis buffer
 };
 
 struct Expand {

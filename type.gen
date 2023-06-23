@@ -49,7 +49,6 @@ Memory = {
 	"Onematz", --c; single face transformation
 	"Piercez", --c; pierce point normal and valid
 	"Slicez", -- plane or point index ranges
-	"Floatz", -- intermediate storage
 	"Stringz", -- keyboard comparison strings
 	"Machinez", -- state machine lines
 	"Configurez", --c,a; configure to value
@@ -79,8 +78,6 @@ Configure = {
 	"SliceBase", --
 	"MachineSize", -- written vending machine lines
 	"MachineBase", --
-	"FloatSize", -- written intermediate floats
-	"FloatBase", --
 	"UniformAll", -- which subject matrix
 	"UniformOne", -- which element matrix
 	"UniformLeft", -- pierce point horizontal
@@ -245,11 +242,6 @@ Operate = {
 	"UnqOp", -- 0; magic number
 	"EmbOp", -- 1; script embed
 }
-Etter = {
-	"Configurey",
-	"Stringy",
-	"Floaty",
-}
 Ineq = {
 	-- Less Equal More
 	-- Open Closed
@@ -312,7 +304,7 @@ Bootstrap = {
 		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(15)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(4))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
-			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"RegisterHint\"))))"..
+			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(RegisterHint))"..
 			"exp[1]:Express(opr:Operate(ValOp)siz:Int(2)"..
 				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(StrTag)vStr:Str(Changed)))"..
 				"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
@@ -327,7 +319,7 @@ Bootstrap = {
 				"neq[2]:Ineq(ECCmp)"..
 				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
 				"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"RegisterHint\")))))"..
-				"exp[2]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"RegisterHint\"))))"..
+				"exp[2]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(RegisterHint))"..
 				"str[0]:Str(MatchRead)"..
 				"str[1]:Str(MatchDraw)"..
 				"str[2]:Str(Mismatch)"..
@@ -360,7 +352,7 @@ Bootstrap = {
 		"mch[7]:Machine(xfr:Transfer(Read)siz:Int(0))"..
 		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(1)sav[0]:Configure(CenterRequest))"..
 		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
-			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)mem:Etter(Configurey)cfg:Int(%(return castConfigure(\"CenterRequest\"))))"..
+			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterRequest))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
 			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1)))"..
 			"flt[0]:Filter(cmp:Cmper(Branch)siz:Int(2)"..
@@ -537,8 +529,7 @@ Express = {
 	{"exp","Express",{},"siz"},
 	{"flt","Filter",{["opr"]={["CmpOp"]=true}},"siz"},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
-	{"mem","Etter",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
-	{"cfg","Int",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
+	{"cfg","Configure",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 }
@@ -574,7 +565,6 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
-	{"flt","Old",{["mem"]={["Floatz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},

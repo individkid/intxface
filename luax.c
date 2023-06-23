@@ -136,9 +136,9 @@ int luaxClosure(lua_State *L)
 		// typedef void (*dftype)(void *dat);
 		case (Dftype): fnc.df(lua_touserdata(L,1)); break;
 		// typedef void (*dgtype)(void *dat, int mem, int sub);
-		case (Dgtype): fnc.dg(lua_touserdata(L,1),lua_tointeger(L,2),lua_tointeger(L,3)); break;
+		case (Dgtype): fnc.dg(lua_touserdata(L,1),lua_tointeger(L,2)); break;
 		// typedef void (*dhtype)(void **dat, int mem, int sub);
-		case (Dhtype): fnc.dh(&ptr,lua_tointeger(L,1),lua_tointeger(L,2)); lua_pushlightuserdata(L,ptr); break;
+		case (Dhtype): fnc.dh(&ptr,lua_tointeger(L,1)); lua_pushlightuserdata(L,ptr); break;
 		// typedef void (*eftype)(const char *str, int num, int idx); // error throws
 		case (Eftype): fnc.ef(lua_tostring(L,1),lua_tointeger(L,2),lua_tointeger(L,3)); break;
 		// typedef void (*egtype)(int idx, const char *str); // add string

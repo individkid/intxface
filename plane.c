@@ -40,7 +40,6 @@ struct Pierce *pierce = 0;
 struct Pierce *found = 0;
 struct Pierce unfound = {0};
 struct Machine *machine = 0;
-float *floats = 0;
 int configure[Configures] = {0};
 struct Center center = {0};
 int sub0 = 0;
@@ -444,8 +443,6 @@ void planeConfig(enum Configure cfg, int val)
 	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
 	case (MachineBase): machine = planeRebase(machine,sizeof(struct Machine),configure[MachineSize],val,tmp); break;
-	case (FloatSize): floats = planeResize(floats,sizeof(float),val,tmp); break;
-	case (FloatBase): floats = planeRebase(floats,sizeof(float),configure[FloatSize],val,tmp); break;
 	case (RegisterResponse): sem_safe(&resource,{rspidx = val;});
 	case (RegisterOpen): planeStarted(val); break;
 	default: break;}
@@ -468,7 +465,6 @@ void planeCopy(struct Center *ptr)
 	case (Piercez): for (int i = 0; i < ptr->siz; i++) copyPierce(&pierce[(ptr->idx+i)%configure[PierceSize]],&ptr->pie[i]); break;
 	case (Stringz): for (int i = 0; i < ptr->siz; i++) if (ptr->idx < 0) ptr->idx = planeSet(-1,ptr->str[i]); else planeSet(ptr->idx+i,ptr->str[i]); break;
 	case (Machinez): for (int i = 0; i < ptr->siz; i++) copyMachine(&machine[(ptr->idx+i)%configure[MachineSize]],&ptr->mch[i]); break;
-	case (Floatz): for (int i = 0; i < ptr->siz; i++) floats[(ptr->idx+i)%configure[FloatSize]] = ptr->flt[i]; break;
 	case (Configurez): for (int i = 0; i < ptr->siz; i++) planeConfig(ptr->cfg[i],ptr->val[i]); callDma(ptr); break;
 	default: callDma(ptr); break;}
 }
@@ -601,32 +597,15 @@ int planeCat(int idx, const char *str)
 	free(dst);
 	return ret;
 }
-void planeSetter(void *dat, int mem, int sub)
+void planeSetter(void *dat, int sub)
 {
-	switch ((enum Etter)mem) {
-	case (Configurey):
 	if (sub < 0 || sub >= Configures) ERROR();
-	planeDma(sub,*datxIntz(0,dat));
-	planeConfig(sub,*datxIntz(0,dat));
-	break; case (Stringy):
-	planeSet(sub,datxChrz(0,dat));
-	break; case (Floaty):
-	if (sub < 0 || sub >= configure[FloatSize]) ERROR();
-	floats[sub] = *datxOldz(0,dat);
-	break; default: ERROR();}
+	planeDma(sub,*datxIntz(0,dat)); planeConfig(sub,*datxIntz(0,dat));
 }
-void planeGetter(void **dat, int mem, int sub)
+void planeGetter(void **dat, int sub)
 {
-	switch ((enum Etter)mem) {
-	case (Configurey):
 	if (sub < 0 || sub >= Configures) ERROR();
 	datxInt(dat,configure[sub]);
-	break; case (Stringy):
-	datxStr(dat,planeGet(sub));
-	break; case (Floaty):
-	if (sub < 0 || sub >= configure[FloatSize]) ERROR();
-	datxOld(dat,floats[sub]);
-	break; default: ERROR();}
 }
 void planeFind(char **val, const char *key)
 {
@@ -734,6 +713,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	datxSetter(planeSetter); datxGetter(planeGetter);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
+	luaxAdd("planeGetter",protoTypeDh(planeGetter)); luaxAdd("planeSetter",protoTypeDg(planeSetter));
 	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert));
 	datxEmbed(luaxSide);
 	callDma = dma;
