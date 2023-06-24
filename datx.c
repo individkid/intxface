@@ -565,7 +565,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxSingle();
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
 		if (typ == -1) typ = identUnion(exp->val);
-		if (typ != identUnion(exp->val)) {fprintf(stderr,"wrong type of argument %d\n",typ); ERROR();}
+		if (typ != identUnion(exp->val)) {fprintf(stderr,"wrong type of argument %d %d\n",typ,identUnion(exp->val)); ERROR();}
 		datxNone(datxDat0);
 		writeUnion(exp->val,datxIdx0);
 		assignDat(dat,*datxDat0);} break;

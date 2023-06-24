@@ -508,20 +508,14 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
-	case (Jump): next = planeEscape(planeIval(&mptr->loc[0]),next-1); break;
-	case (Goto): next = planeIval(&mptr->loc[0]) + next-1; break;
+	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next-1); break;
+	case (Goto): next = planeIval(&mptr->exp[0]) + next-1; break;
 	case (Nest): break;
-	case (Aval): {void *dat = 0;
-	datxStr(&dat,mptr->avl); datxNone(dat0); writeCenter(&center,idx0);
+	case (Eval): {void *dat = 0; datxEval(&dat,&mptr->exp[0],-1);} break;
+	case (Fval): datxEval(dat0,&mptr->exp[0],identType("Center")); readCenter(&center,idx0); break;
+	case (Gval): {void *dat = 0; datxEval(&dat,&mptr->exp[0],-1);
+	datxNone(dat0); writeCenter(&center,idx0);
 	datxInsert(dat,*dat0,identType("Center"));} break;
-	case (Bval): for (int i = 0; i < mptr->siz; i++)
-	planeCopy(&mptr->bvl[i]); break;
-	case (Cval): for (int i = 0; i < mptr->siz; i++) {
-	struct Center tmp = {0}; datxEval(dat0,&mptr->cvl[i],identType("Center"));
-	readCenter(&tmp,idx0); planeCopy(&tmp);} break;
-	case (Dval): datxNone(dat0); writeCenter(mptr->dvl,idx0); readCenter(&center,idx0); break;
-	case (Eval): datxEval(dat0,mptr->evl,identType("Center")); readCenter(&center,idx0); break;
-	case (Fval): {void *dat = 0; datxEval(&dat,mptr->fvl,-1);}
 	default: break;}
 	return next;
 }

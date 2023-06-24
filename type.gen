@@ -150,12 +150,9 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
-	"Aval", -- pass global Center to datxInsert
-	"Bval", -- passes constant Center to planeBuffer
-	"Cval", -- calls datxEval for Center to pass to planeBuffer
-	"Dval", -- copies constant to global Center
-	"Eval", -- calls datxEval for Center to copy to global
-	"Fval", -- discard datxEval result
+	"Eval", -- discard datxEval result
+	"Fval", -- calls datxEval for Center to copy to global
+	"Gval", -- pass global Center to datxInsert
 }
 Trans = {
 	"Slide",
@@ -300,10 +297,10 @@ Bootstrap = {
 		"val[4]:Int(3)"..
 		"val[5]:Int(15)"..
 		"val[6]:Int(31))"},
-	{"Int","1","Str","Machine(xfr:Transfer(Bval)siz:Int(1)bvl[0]:Center("..
+	{"Int","1","Str","Machine(xfr:Transfer(Fval)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
 		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(15)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(4))"..
-		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
+		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(RegisterHint))"..
 			"exp[1]:Express(opr:Operate(ValOp)siz:Int(2)"..
 				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(StrTag)vStr:Str(Changed)))"..
@@ -342,16 +339,16 @@ Bootstrap = {
 		"))"..
 		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
 		"mch[3]:Machine(xfr:Transfer(Draw)siz:Int(0))"..
-		"mch[4]:Machine(xfr:Transfer(Fval)siz:Int(0)fvl[0]:Express(opr:Operate(SavOp)siz:Int(3)"..
+		"mch[4]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(SavOp)siz:Int(3)"..
 			"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(StrTag)vStr:Str(Changed)))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
 			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
 		"))"..
-		"mch[5]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
+		"mch[5]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
 		"mch[6]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
 		"mch[7]:Machine(xfr:Transfer(Read)siz:Int(0))"..
 		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(1)sav[0]:Configure(CenterRequest))"..
-		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
+		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(CmpOp)siz:Int(3)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterRequest))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
 			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1)))"..
@@ -368,14 +365,15 @@ Bootstrap = {
 		"))"..
 		"mch[10]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
 		"mch[11]:Machine(xfr:Transfer(Copy)siz:Int(0))"..
-		"mch[12]:Machine(xfr:Transfer(Fval)siz:Int(0)fvl[0]:Express(opr:Operate(SavOp)siz:Int(3)"..
+		"mch[12]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(SavOp)siz:Int(3)"..
 			"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(StrTag)vStr:Str(Changed)))"..
 			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
 			"exp[2]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
 		"))"..
-		"mch[13]:Machine(xfr:Transfer(Jump)siz:Int(0)loc[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
+		"mch[13]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
 		"mch[14]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
-	"))"},
+	"))))"},
+	{"Int","2","Str","Machine(xfr:Transfer(Copy)siz:Int(0))"},
 }
 Execname = {
 	{"Process","Filez","Str","./file"},
@@ -539,14 +537,8 @@ Machine = {
 	{"sav","Configure",{["xfr"]={["Stage"]=true}},"siz"},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
-	{"loc","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
+	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true,["Fval"]=true,["Gval"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
-	{"avl","Str",{["xfr"]={["Aval"]=true}},{}},
-	{"bvl","Center",{["xfr"]={["Bval"]=true}},"siz"},
-	{"cvl","Express",{["xfr"]={["Cval"]=true}},"siz"},
-	{"dvl","Center",{["xfr"]={["Dval"]=true}},1},
-	{"evl","Express",{["xfr"]={["Eval"]=true}},1},
-	{"fvl","Express",{["xfr"]={["Fval"]=true}},1},
 }
 Center = {
 	{"req","Request",{},{}},
