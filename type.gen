@@ -77,7 +77,7 @@ Configure = {
 	"SliceSize", -- written ranges per draw
 	"SliceBase", --
 	"MachineSize", -- written vending machine lines
-	"MachineBase", --
+	"StringSize", -- result of append to strings
 	"UniformAll", -- which subject matrix
 	"UniformOne", -- which element matrix
 	"UniformLeft", -- pierce point horizontal
@@ -92,12 +92,11 @@ Configure = {
 	"RegisterPrompt", -- prompt string index
 	"RegisterResponse", -- response string index
 	"RegisterMemory", -- which memory
-	"RegisterIndex", -- which memory instance
-	"RegisterTransM", -- mouse function
-	"RegisterTransR", -- roller function
-	"RegisterFormM", -- mouse function
-	"RegisterFormR", -- roller function
+	"RegisterIndex", -- which instance
 	"RegisterTool", -- which function
+	"RegisterTrans", -- which changed
+	"RegisterForm", -- which fixed
+	"RegisterFind", -- which pierce
 	"RegisterLine", -- state of machine
 	"RegisterHint", -- argument from graphics
 	"RegisterDone", -- shaders running count
@@ -151,8 +150,7 @@ Transfer = {
 	"Goto", -- jump if true
 	"Nest", -- nest to level
 	"Eval", -- discard datxEval result
-	"Fval", -- calls datxEval for Center to copy to global
-	"Gval", -- pass global Center to datxInsert
+	"Echo", -- calls datxEval for Center to copy to global
 }
 Trans = {
 	"Slide",
@@ -297,7 +295,7 @@ Bootstrap = {
 		"val[4]:Int(3)"..
 		"val[5]:Int(15)"..
 		"val[6]:Int(31))"},
-	{"Int","1","Str","Machine(xfr:Transfer(Fval)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
+	{"Int","1","Str","Machine(xfr:Transfer(Echo)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
 		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(15)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(4))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
@@ -537,7 +535,7 @@ Machine = {
 	{"sav","Configure",{["xfr"]={["Stage"]=true}},"siz"},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"siz"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
-	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true,["Fval"]=true,["Gval"]=true}},1},
+	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true,["Echo"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
 Center = {

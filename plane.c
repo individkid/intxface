@@ -293,35 +293,35 @@ float *planeCompose()
 planeXform planeFunc()
 {
 	switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): switch ((enum Trans)configure[RegisterTransM]) {
-	case (Slide): switch ((enum Form)configure[RegisterFormM]) {
+	case (Mouse): switch ((enum Trans)configure[RegisterTrans]) {
+	case (Slide): switch ((enum Form)configure[RegisterForm]) {
 	case (Ortho): return planeSlideOrthoMouse;
 	case (Focal): return planeSlideFocalMouse;
 	case (Normal): return planeSlideNormalMouse;
 	default: ERROR();}
-	case (Rotate): switch ((enum Form)configure[RegisterFormM]) {
+	case (Rotate): switch ((enum Form)configure[RegisterForm]) {
 	case (Ortho): return planeRotateOrthoMouse;
 	case (Focal): return planeRotateFocalMouse;
 	case (Normal): return planeRotateNormalMouse;
 	default: ERROR();}
-	case (Scale): switch ((enum Form)configure[RegisterFormM]) {
+	case (Scale): switch ((enum Form)configure[RegisterForm]) {
 	case (Ortho): return planeScaleOrthoMouse;
 	case (Focal): return planeScaleFocalMouse;
 	case (Normal): return planeScaleNormalMouse;
 	default: ERROR();}
 	default: ERROR();}
-	case (Roller): switch ((enum Trans)configure[RegisterTransR]) {
-	case (Slide): switch ((enum Form)configure[RegisterFormR]) {
+	case (Roller): switch ((enum Trans)configure[RegisterTrans]) {
+	case (Slide): switch ((enum Form)configure[RegisterForm]) {
 	case (Ortho): return planeSlideOrthoRoller;
 	case (Focal): return planeSlideFocalRoller;
 	case (Normal): return planeSlideNormalRoller;
 	default: ERROR();}
-	case (Rotate): switch ((enum Form)configure[RegisterFormR]) {
+	case (Rotate): switch ((enum Form)configure[RegisterForm]) {
 	case (Ortho): return planeRotateOrthoRoller;
 	case (Focal): return planeRotateFocalRoller;
 	case (Normal): return planeRotateNormalRoller;
 	default: ERROR();}
-	case (Scale): switch ((enum Form)configure[RegisterFormR]) {
+	case (Scale): switch ((enum Form)configure[RegisterForm]) {
 	case (Ortho): return planeScaleOrthoRoller;
 	case (Focal): return planeScaleFocalRoller;
 	case (Normal): return planeScaleNormalRoller;
@@ -371,9 +371,12 @@ float *planeProject(float *mat)
 struct Pierce *planePierce()
 {
 	if (found) return found;
+	if (configure[RegisterFind]) {
 	for (int i = 0; i < configure[PierceSize]; i++) {
-	struct Pierce *temp = pierce + i%configure[PierceSize];
-	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}
+	struct Pierce *temp = pierce + i;
+	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}} else {
+	int index = configure[RegisterIndex] - configure[PierceBase];
+	if (index >= 0 && index < configure[PierceSize]) found = pierce + index;}
 	if (!found) found = &unfound; // TODO set unfound to picture plane
 	return found;
 }
@@ -430,9 +433,9 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 }
 void planeConfig(enum Configure cfg, int val)
 {
-	int tmp = configure[cfg];
-	configure[cfg] = val;
-	switch (cfg) {
+	int tmp = 0; configure[cfg] = val;
+	if (cfg < 0 || cfg >= Configures) ERROR();
+	tmp = configure[cfg]; switch (cfg) {
 	case (PierceSize): pierce = planeResize(pierce,sizeof(struct Pierce),val,tmp); break;
 	case (PierceBase): pierce = planeRebase(pierce,sizeof(struct Pierce),configure[PierceSize],val,tmp); break;
 	case (SubjectSize): subject = planeResize(subject,sizeof(struct Kernel),val,tmp); break;
@@ -442,9 +445,9 @@ void planeConfig(enum Configure cfg, int val)
 	case (ElementSize): element = planeResize(element,sizeof(struct Kernel),val,tmp); break;
 	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
-	case (MachineBase): machine = planeRebase(machine,sizeof(struct Machine),configure[MachineSize],val,tmp); break;
 	case (RegisterResponse): sem_safe(&resource,{rspidx = val;});
 	case (RegisterOpen): planeStarted(val); break;
+	case (RegisterFind): found = 0; break;
 	default: break;}
 }
 void planeDma(enum Configure cfg, int val)
@@ -462,10 +465,20 @@ void planeDma(enum Configure cfg, int val)
 void planeCopy(struct Center *ptr)
 {
 	switch (ptr->mem) {
-	case (Piercez): for (int i = 0; i < ptr->siz; i++) copyPierce(&pierce[(ptr->idx+i)%configure[PierceSize]],&ptr->pie[i]); break;
-	case (Stringz): for (int i = 0; i < ptr->siz; i++) if (ptr->idx < 0) ptr->idx = planeSet(-1,ptr->str[i]); else planeSet(ptr->idx+i,ptr->str[i]); break;
-	case (Machinez): for (int i = 0; i < ptr->siz; i++) copyMachine(&machine[(ptr->idx+i)%configure[MachineSize]],&ptr->mch[i]); break;
-	case (Configurez): for (int i = 0; i < ptr->siz; i++) planeConfig(ptr->cfg[i],ptr->val[i]); callDma(ptr); break;
+	case (Piercez): for (int i = 0; i < ptr->siz; i++) {
+		int index = ptr->idx+i-configure[PierceBase];
+		if (index < 0 || index >= configure[PierceSize]) ERROR();
+		copyPierce(&pierce[index],&ptr->pie[i]);} break;
+	case (Stringz): for (int i = 0; i < ptr->siz; i++)
+		if (ptr->idx < 0) configure[StringSize] = planeSet(-1,ptr->str[i]);
+		else planeSet(ptr->idx+i,ptr->str[i]); break;
+	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
+		int index = ptr->idx+i;
+		if (index < 0 || index >= configure[MachineSize]) ERROR();
+		copyMachine(&machine[index],&ptr->mch[i]);} break;
+	case (Configurez): for (int i = 0; i < ptr->siz; i++)
+		planeConfig(ptr->cfg[i],ptr->val[i]);
+		callDma(ptr); break;
 	default: callDma(ptr); break;}
 }
 int planeEscape(int lvl, int nxt)
@@ -512,10 +525,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Goto): next = planeIval(&mptr->exp[0]) + next-1; break;
 	case (Nest): break;
 	case (Eval): {void *dat = 0; datxEval(&dat,&mptr->exp[0],-1);} break;
-	case (Fval): datxEval(dat0,&mptr->exp[0],identType("Center")); readCenter(&center,idx0); break;
-	case (Gval): {void *dat = 0; datxEval(&dat,&mptr->exp[0],-1);
-	datxNone(dat0); writeCenter(&center,idx0);
-	datxInsert(dat,*dat0,identType("Center"));} break;
+	case (Echo): datxEval(dat0,&mptr->exp[0],identType("Center")); readCenter(&center,idx0); break;
 	default: break;}
 	return next;
 }
