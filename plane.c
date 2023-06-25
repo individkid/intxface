@@ -377,7 +377,7 @@ struct Pierce *planePierce()
 	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}} else {
 	int index = configure[RegisterIndex] - configure[PierceBase];
 	if (index >= 0 && index < configure[PierceSize]) found = pierce + index;}
-	if (!found) found = &unfound; // TODO set unfound to picture plane
+	if (!found) found = &unfound;
 	return found;
 }
 void planeStage(enum Configure cfg)
@@ -390,6 +390,7 @@ void planeStage(enum Configure cfg)
 	case (CenterSize): configure[CenterSize] = center.siz; break;
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
 	case (CenterSelf): configure[CenterSelf] = center.slf; break;
+	case (ClosestValid): configure[ClosestValid] = planePierce()->vld; break;
 	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
 	case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
 	case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;

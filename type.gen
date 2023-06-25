@@ -105,7 +105,8 @@ Configure = {
 	"OriginBase", --
 	"OriginNear", --
 	"OriginAngle", --
-	"ClosestFound", -- search through pierce
+	"ClosestValid", -- search through pierce
+	"ClosestFound", --
 	"ClosestLeft", --
 	"ClosestBase", --
 	"ClosestNear", --

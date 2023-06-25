@@ -569,7 +569,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxNone(datxDat0);
 		writeUnion(exp->val,datxIdx0);
 		assignDat(dat,*datxDat0);} break;
-	case (ValOp): { // 0; restore from named
+	case (ValOp): { // 2; restore from named
 		void *dat0 = 0; int typ0 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
 		datxEval(&dat0,&exp->exp[0],-1); typ0 = datxFind(dat,dat0);
