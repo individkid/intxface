@@ -471,7 +471,7 @@ void planeCopy(struct Center *ptr)
 		if (index < 0 || index >= configure[PierceSize]) ERROR();
 		copyPierce(&pierce[index],&ptr->pie[i]);} break;
 	case (Stringz): for (int i = 0; i < ptr->siz; i++)
-		if (ptr->idx < 0) configure[StringSize] = planeSet(-1,ptr->str[i]);
+		if (ptr->idx < 0) configure[ResultSize] = planeSet(-1,ptr->str[i]);
 		else planeSet(ptr->idx+i,ptr->str[i]); break;
 	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
 		int index = ptr->idx+i;
@@ -497,6 +497,11 @@ int planeIval(struct Express *exp)
 	ptr = datxIntz(0,dat);
 	val = *ptr;
 	return val;
+}
+void planeEcho()
+{
+	if (configure[ResultType] == identType("Center")) readCenter(&center,idx0);
+	else ERROR();
 }
 int planeSwitch(struct Machine *mptr, int next)
 {
@@ -525,20 +530,20 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next-1); break;
 	case (Goto): next = planeIval(&mptr->exp[0]) + next-1; break;
 	case (Nest): break;
-	case (Eval): {void *dat = 0; datxEval(&dat,&mptr->exp[0],-1);} break;
-	case (Echo): datxEval(dat0,&mptr->exp[0],identType("Center")); readCenter(&center,idx0); break;
+	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
+	case (Echo): planeEcho(); break;
 	default: break;}
 	return next;
 }
 void planeWake(enum Configure hint)
 {
-	configure[RegisterHint] = hint;
-	if (configure[RegisterLine] < 0 || configure[RegisterLine] >= configure[MachineSize]) configure[RegisterLine] = 0;
-	while (configure[RegisterLine] >= 0 && configure[RegisterLine] < configure[MachineSize]) {
-	struct Machine *mptr = machine+configure[RegisterLine];
-	int next = planeSwitch(mptr,configure[RegisterLine]+1);
-	if (next == configure[RegisterLine]) break;
-	configure[RegisterLine] = next;}
+	configure[ResultHint] = hint;
+	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
+	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
+	struct Machine *mptr = machine+configure[ResultLine];
+	int next = planeSwitch(mptr,configure[ResultLine]+1);
+	if (next == configure[ResultLine]) break;
+	configure[ResultLine] = next;}
 }
 void planeBoot()
 {
@@ -546,7 +551,7 @@ void planeBoot()
 	struct Machine mptr = {0};
 	int len = 0;
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
-	configure[RegisterLine] = planeSwitch(&mptr,configure[RegisterLine]);
+	configure[ResultLine] = planeSwitch(&mptr,configure[ResultLine]);
 	}
 }
 void planeRead()
@@ -777,9 +782,9 @@ void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint)
 	qhead++; if (qhead == qsize) qhead = 0;
 	qfull--;
 	if (qfull > 0) sem_post(&pending)
-	else if (*hint != RegisterHint) idle = 1;
+	else if (*hint != ResultHint) idle = 1;
 	sem_post(&resource);
-	if (idle) planeSafe(Procs,Waits,RegisterHint);
+	if (idle) planeSafe(Procs,Waits,ResultHint);
 }
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint)
 {
