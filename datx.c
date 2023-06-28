@@ -491,10 +491,10 @@ void datxOld(void **dat, float val)
 	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else\
 	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
 	{fprintf(stderr,"unsupported "STR" type %d\n",typ); ERROR();}}
-#define BINARY_SET(DAT,VAL) val = datxEcmp(VAL,exp->flt[i].neq[j]);
-int datxEcmp(int val, enum Ineq neq)
+#define BINARY_SET(DAT,VAL) val = datxEcmp(VAL,exp->flt[i].cmp[j]);
+int datxEcmp(int val, enum Compare cmp)
 {
-	switch (neq) {
+	switch (cmp) {
 	case (LOCmp): return (val < 0);
 	case (LCCmp): return (val <= 0);
 	case (EOCmp): return (val != 0);
@@ -523,7 +523,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_DONE()} break;
 	case (CmpOp): {const char *str = ""; int typ0 = -1;
 		for (int i = 0; i < exp->siz; i++) {
-		if (exp->flt[i].cmp == Branch) {
+		if (exp->flt[i].loc == Branch) {
 		void *dat0 = 0; int typ0 = 0;
 		typ0 = datxEval(&dat0,&exp->exp[i],-1);
 		for (int j = 0; j < exp->flt[i].siz; j++) {

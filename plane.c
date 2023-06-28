@@ -293,35 +293,35 @@ float *planeCompose()
 planeXform planeFunc()
 {
 	switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): switch ((enum Trans)configure[RegisterTrans]) {
-	case (Slide): switch ((enum Form)configure[RegisterForm]) {
+	case (Mouse): switch ((enum Change)configure[RegisterChange]) {
+	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeSlideOrthoMouse;
 	case (Focal): return planeSlideFocalMouse;
 	case (Normal): return planeSlideNormalMouse;
 	default: ERROR();}
-	case (Rotate): switch ((enum Form)configure[RegisterForm]) {
+	case (Rotate): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeRotateOrthoMouse;
 	case (Focal): return planeRotateFocalMouse;
 	case (Normal): return planeRotateNormalMouse;
 	default: ERROR();}
-	case (Scale): switch ((enum Form)configure[RegisterForm]) {
+	case (Scale): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeScaleOrthoMouse;
 	case (Focal): return planeScaleFocalMouse;
 	case (Normal): return planeScaleNormalMouse;
 	default: ERROR();}
 	default: ERROR();}
-	case (Roller): switch ((enum Trans)configure[RegisterTrans]) {
-	case (Slide): switch ((enum Form)configure[RegisterForm]) {
+	case (Roller): switch ((enum Change)configure[RegisterChange]) {
+	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeSlideOrthoRoller;
 	case (Focal): return planeSlideFocalRoller;
 	case (Normal): return planeSlideNormalRoller;
 	default: ERROR();}
-	case (Rotate): switch ((enum Form)configure[RegisterForm]) {
+	case (Rotate): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeRotateOrthoRoller;
 	case (Focal): return planeRotateFocalRoller;
 	case (Normal): return planeRotateNormalRoller;
 	default: ERROR();}
-	case (Scale): switch ((enum Form)configure[RegisterForm]) {
+	case (Scale): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeScaleOrthoRoller;
 	case (Focal): return planeScaleFocalRoller;
 	case (Normal): return planeScaleNormalRoller;

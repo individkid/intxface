@@ -93,8 +93,8 @@ Configure = {
 	"RegisterMemory", -- which memory
 	"RegisterIndex", -- which instance
 	"RegisterTool", -- which function
-	"RegisterTrans", -- which changed
-	"RegisterForm", -- which fixed
+	"RegisterChange", -- which changed
+	"RegisterFixed", -- which fixed
 	"RegisterFind", -- which pierce
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
@@ -154,12 +154,12 @@ Transfer = {
 	"Eval", -- discard datxEval result
 	"Echo", -- calls datxEval for Center to copy to global
 }
-Trans = {
+Change = {
 	"Slide",
 	"Rotate",
 	"Scale",
 }
-Form = {
+Fixed = {
 	"Ortho",
 	"Focal",
 	"Normal",
@@ -238,8 +238,9 @@ Operate = {
 	"ExtOp", -- 1; field from struct
 	"UnqOp", -- 0; magic number
 	"EmbOp", -- 1; script embed
+	"DatOp", -- 0; stream data
 }
-Ineq = {
+Compare = {
 	-- Less Equal More
 	-- Open Closed
 	"LOCmp",
@@ -249,7 +250,7 @@ Ineq = {
 	"MOCmp",
 	"MCCmp",
 }
-Cmper = {
+Locate = {
 	"Branch",
 	"Leaf",
 }
@@ -310,10 +311,10 @@ Bootstrap = {
 			"exp[3]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))".. -- MatchDrawChanged
 			"exp[4]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))".. -- MatchDrawUnchanged
 			"exp[5]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))".. -- Mismatch
-			"flt[0]:Filter(cmp:Cmper(Branch)siz:Int(3)"..
-				"neq[0]:Ineq(ECCmp)"..
-				"neq[1]:Ineq(ECCmp)"..
-				"neq[2]:Ineq(ECCmp)"..
+			"flt[0]:Filter(loc:Locate(Branch)siz:Int(3)"..
+				"cmp[0]:Compare(ECCmp)"..
+				"cmp[1]:Compare(ECCmp)"..
+				"cmp[2]:Compare(ECCmp)"..
 				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"CenterRequest\")))))"..
 				"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castConfigure(\"ResultHint\")))))"..
 				"exp[2]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ResultHint))"..
@@ -321,9 +322,9 @@ Bootstrap = {
 				"str[1]:Str(MatchDraw)"..
 				"str[2]:Str(Mismatch)"..
 			")"..
-			"flt[1]:Filter(cmp:Cmper(Branch)siz:Int(2)"..
-				"neq[0]:Ineq(ECCmp)"..
-				"neq[1]:Ineq(ECCmp)"..
+			"flt[1]:Filter(loc:Locate(Branch)siz:Int(2)"..
+				"cmp[0]:Compare(ECCmp)"..
+				"cmp[1]:Compare(ECCmp)"..
 				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(1)))"..
 				"exp[1]:Express(opr:Operate(ValOp)siz:Int(2)"..
 					"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(StrTag)vStr:Str(Changed)))"..
@@ -332,10 +333,10 @@ Bootstrap = {
 				"str[0]:Str(MatchDrawChanged)"..
 				"str[1]:Str(MatchDrawUnchanged)"..
 			")"..
-			"flt[2]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(MatchRead))"..
-			"flt[3]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(MatchDrawChanged))"..
-			"flt[4]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(MatchDrawUnchanged))"..
-			"flt[5]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
+			"flt[2]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchRead))"..
+			"flt[3]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchDrawChanged))"..
+			"flt[4]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchDrawUnchanged))"..
+			"flt[5]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
 		"))"..
 		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchDrawChanged
 		-- Draw, and remember that not Changed
@@ -361,10 +362,10 @@ Bootstrap = {
 			"exp[3]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(2)))".. -- MatchGetPierce
 			"exp[4]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1)))".. -- MatchGetNone
 			"exp[5]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1)))".. -- Mismatch
-			"flt[0]:Filter(cmp:Cmper(Branch)siz:Int(3)"..
-				"neq[0]:Ineq(ECCmp)"..
-				"neq[1]:Ineq(ECCmp)"..
-				"neq[2]:Ineq(ECCmp)"..
+			"flt[0]:Filter(loc:Locate(Branch)siz:Int(3)"..
+				"cmp[0]:Compare(ECCmp)"..
+				"cmp[1]:Compare(ECCmp)"..
+				"cmp[2]:Compare(ECCmp)"..
 				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castRequest(\"SetReq\")))))"..
 				"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castRequest(\"GetReq\")))))"..
 				"exp[2]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterRequest))"..
@@ -372,18 +373,18 @@ Bootstrap = {
 				"str[1]:Str(MatchGet)"..
 				"str[2]:Str(Mismatch)"..
 			")"..
-			"flt[1]:Filter(cmp:Cmper(Branch)siz:Int(2)"..
-				"neq[0]:Ineq(ECCmp)"..
-				"neq[1]:Ineq(ECCmp)"..
+			"flt[1]:Filter(loc:Locate(Branch)siz:Int(2)"..
+				"cmp[0]:Compare(ECCmp)"..
+				"cmp[1]:Compare(ECCmp)"..
 				"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(%(return castMemory(\"Piercez\")))))"..
 				"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterMemory))"..
 				"str[0]:Str(MatchGetPierce)"..
 				"str[1]:Str(MatchGetNone)"..
 			")"..
-			"flt[2]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(MatchSet))"..
-			"flt[3]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(MatchGetPierce))"..
-			"flt[4]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(MatchGetNone))"..
-			"flt[5]:Filter(cmp:Cmper(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
+			"flt[2]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchSet))"..
+			"flt[3]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchGetPierce))"..
+			"flt[4]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchGetNone))"..
+			"flt[5]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
 		"))"..
 		"mch[10]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchSet
 		-- Copy center to cpu and gpu, and remember that Changed
@@ -542,10 +543,10 @@ Slice = {
 	{"siz","Int",{},{}},
 }
 Filter = {
-	{"cmp","Cmper",{},{}},
+	{"loc","Locate",{},{}},
 	{"siz","Int",{},{}},
-	{"neq","Ineq",{["cmp"]={["Branch"]=true}},"siz"},
-	{"exp","Express",{["cmp"]={["Branch"]=true}},"siz"},
+	{"cmp","Compare",{["loc"]={["Branch"]=true}},"siz"},
+	{"exp","Express",{["loc"]={["Branch"]=true}},"siz"},
 	{"str","Str",{},"siz"},
 }
 Express = {
