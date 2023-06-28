@@ -189,6 +189,53 @@ void datxInsert(void *key, void *val, int typ)
 		datxInsertF(ptr->key[0],0,0,ptr,box);}
 	if (datxCallFp) {void *save = 0; assignDat(&save,prefix); datxCallFp(key); assignDat(&prefix,save);}
 }
+void datxReplace(char *str, int val)
+{
+	void *key = 0; void *dat = 0;
+	datxStr(&key,str); datxInt(&dat,val);
+	datxInsert(key,dat,identType("Int"));
+	free(key); free(dat);
+}
+int datxLookup(char *str)
+{
+	void *key = 0; void *dat = 0; int typ = 0; int val = 0;
+	datxStr(&key,str); typ = datxFind(&dat,key);
+	if (typ != identType("Int")) {
+	datxReplace(str,0); val = 0;} else
+	val = *datxIntz(0,dat);
+	free(key); free(dat);
+	return val;
+}
+void datxDatae(struct Data *dst, struct Data *src, struct Datae *dat)
+{
+	for (int j = 0; j < src->siz; j++) {
+	int val = datxLookup(src->str[j]);
+	if (val >= 0) datxReplace(src->str[j],val+1);}
+	for (int j = 0; j < datxChrs(src->dat); j++) {
+	int val = datxLookup("");
+	if (val >= 0) datxReplace("",val+1);
+	switch (dat->act) {
+	case (SubAct):
+	for (int i = 0; i < dat->siz; i++)
+	if (datxLookup(dat->key[i]) == dat->val[i])
+	datxDatae(dst,src,&dat->sub[i]);
+	break; case (NegAct):
+	datxReplace(dat->str,-datxLookup(dat->str));
+	break; case (ClrAct):
+	datxReplace(dat->str,0);
+	break; case (StrAct):
+	if (*dat->str == 0) {
+	void *tmp = 0; void *chr = 0;
+	datxChr(&chr,*datxChrz(j,src->dat));
+	datxJoin(&tmp,dst->dat,chr);
+	assignDat(&dst->dat,tmp);
+	free(tmp); free(chr);}
+	else {
+	allocStr(&dst->str,dst->siz+1);
+	assignStr(&dst->str[dst->siz],dat->str);
+	dst->siz += 1;}
+	break; default: ERROR();}}
+}
 int datxPtrs(void *dat)
 {
 	if (!dat) return 0;
@@ -258,6 +305,12 @@ void datxNone(void **dat)
 {
 	*dat = realloc(*dat,sizeof(int));
 	*(int*)*dat = 0;
+}
+void datxChr(void **dat, char val)
+{
+	*dat = realloc(*dat,sizeof(val)+sizeof(int));
+	*(int*)*dat = sizeof(val);
+	*datxChrz(0,*dat) =val;
 }
 void datxStr(void **dat, const char *val)
 {
@@ -446,14 +499,24 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		assignDat(dat,*datxDat1);} break;
 	case (UnqOp): { // 0; magic number
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
+		if (typ == -1) typ = identType("Int");
 		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); ERROR();}
 		datxInt(dat,unique++);} break;
 	case (EmbOp): { // 1: script embed
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
 		if (datxEmbFp == 0) {fprintf(stderr,"no interpreter embedded\n"); ERROR();}
+		if (typ == -1) typ = identType("Int");
 		if (typ != identType("Int")) {fprintf(stderr,"wrong type of result %d\n",typ); ERROR();}
 		datxEval(datxDat0,&exp->exp[0],identType("Str"));
 		datxInt(dat,datxEmbFp(datxChrz(0,datxDat0)));} break;
+	case (DatOp): {struct Data src = {0}; struct Data dst = {0};
+		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
+		if (typ == -1) typ = identType("Data");
+		if (typ != identType("Data")) {fprintf(stderr,"wrong type of result %d\n",typ); ERROR();}
+		datxEval(datxDat0,&exp->exp[0],identType("Data")); readData(&src,datxIdx0);
+		datxDatae(&dst,&src,exp->dat); freeData(&src);
+		datxNone(datxDat0); writeData(&dst,datxIdx0);
+		assignDat(dat,*datxDat0); freeData(&dst);} break;
 	default: ERROR();}
 	return typ;
 }

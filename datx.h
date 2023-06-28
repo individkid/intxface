@@ -8,6 +8,7 @@ void datxJoin(void **dat, const void *pre, const void *suf);
 int datxFind(void **val, void *key);
 void datxInsert(void *key, void *val, int typ);
 void datxNone(void **dat);
+void datxChr(void **dat, char val);
 void datxStr(void **dat, const char *val);
 void datxInt(void **dat, int val);
 void datxInt32(void **dat, int32_t val);
