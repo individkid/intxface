@@ -497,6 +497,15 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(datxDat0,&exp->exp[0],typ);
 		datxNone(datxDat1); writeField(typ0,identField(typ0,exp->fld),exp->idx,datxIdx0,datxIdx1);
 		assignDat(dat,*datxDat1);} break;
+	case (FldOp): { // n: fold expressions
+		int typ0 = 0; void *key = 0;
+		datxStr(&key,exp->str);
+		for (int i = 0; i < exp->siz; i++) {
+		typ0 = datxEval(dat,&exp->exp[i],-1);
+		datxInsert(key,*dat,typ0);}
+		typ0 = datxFind(dat,key);
+		if (typ < 0) typ = typ0;
+		if (typ != typ0) {fprintf(stderr,"wrong type of result %d\n",typ); ERROR();}} break;
 	case (UnqOp): { // 0; magic number
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
 		if (typ == -1) typ = identType("Int");

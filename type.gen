@@ -236,6 +236,7 @@ Operate = {
 	"SetOp", -- 2; callback with value
 	"InsOp", -- 2; field to struct
 	"ExtOp", -- 1; field from struct
+	"FldOp", -- n; fold expressions
 	"UnqOp", -- 0; magic number
 	"EmbOp", -- 1; script embed
 	"DatOp", -- 0; stream data
@@ -257,6 +258,7 @@ Locate = {
 Action = {
 	"NegAct",
 	"ClrAct",
+	"IncAct",
 	"StrAct",
 	"SubAct",
 }
@@ -299,13 +301,13 @@ Bootstrap = {
 		"cfg[6]:Configure(RegisterOpen)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
-		"val[2]:Int(17)"..
+		"val[2]:Int(22)"..
 		"val[3]:Int(1)"..
 		"val[4]:Int(3)"..
 		"val[5]:Int(15)"..
 		"val[6]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
-		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(17)idx:Int(0)slf:Int(0)"..
+		"req:Request(SetReq)mem:Memory(Machinez)siz:Int(22)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(5))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ResultHint))".. -- compare get of ResultHint
@@ -403,8 +405,32 @@ Bootstrap = {
 		"mch[13]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
 		"mch[14]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchGetPierce
 		-- Eval CenterIndex to RegisterIndex, Stage pierce, Eval Piercez to dat0, Echo dat0 to center, and Write center out
-		"mch[15]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
-		"mch[16]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
+		"mch[15]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(SetOp)siz:Int(2)"..
+			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterIndex))"..
+			"exp[1]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(0)))"..
+			"cfg:Configure(RegisterIndex))"..
+		")"..
+		"mch[16]:Machine(xfr:Transfer(Stage)siz:Int(8)"..
+			"sav[0]:Configure(ClosestValid)"..
+			"sav[1]:Configure(ClosestFound)"..
+			"sav[2]:Configure(ClosestLeft)"..
+			"sav[3]:Configure(ClosestBase)"..
+			"sav[4]:Configure(ClosestNear)"..
+			"sav[5]:Configure(NormalLeft)"..
+			"sav[6]:Configure(NormalBase)"..
+			"sav[7]:Configure(NormalNear)"..
+		")"..
+		"mch[17]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(".. -- TODO FldOp TotOp of each field of Pierce
+			"opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
+				"req:Request(GotReq)mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
+					"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
+					"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
+					"vld:Int32(0)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)"..
+		")))))"..
+		"mch[18]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
+		"mch[19]:Machine(xfr:Transfer(Write)siz:Int(0))"..
+		"mch[20]:Machine(xfr:Transfer(Jump)siz:Int(0)exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(IntTag)vInt:Int(-1))))"..
+		"mch[21]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
 	"))))"},
 	{"Int","2","Str","Machine(xfr:Transfer(Echo)siz:Int(0))"},
 	{"Int","3","Str","Machine(xfr:Transfer(Copy)siz:Int(0))"},
@@ -556,10 +582,10 @@ Filter = {
 	{"str","Str",{},"siz"},
 }
 Datae = { -- increment each nonnegative value from lookup of str in Data from eval of exp[0]
-	{"act","Action",{},{}}, -- negate, clear, result, or compare and possibly recurse
+	{"act","Action",{},{}}, -- negate, clear, increment, result, or compare and possibly recurse
 	{"siz","Int",{},{}}, -- zero unless act is SubAct
-	-- negate or clear value of str as key, or add str to result Data:
-	{"str","Str",{["act"]={["NegAct"]=true,["ClrAct"]=true,["StrAct"]=true}},{}},
+	-- negate, clear, or increment value of str as key, or add str to result Data
+	{"str","Str",{["act"]={["NegAct"]=true,["ClrAct"]=true,["IncAct"]=true,["StrAct"]=true}},{}},
 	{"key","Str",{["act"]={["SubAct"]=true}},"siz"}, -- str to lookup for value
 	{"val","Int",{["act"]={["SubAct"]=true}},"siz"}, -- take actions if lookup value equals this
 	{"sub","Datae",{["act"]={["SubAct"]=true}},"siz"}, -- additional values to lookup
@@ -573,6 +599,7 @@ Express = {
 	{"cfg","Configure",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
 	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
+	{"str","Str",{["opr"]={["FldOp"]=true}},{}},
 	{"dat","Datae",{["opr"]={["DatOp"]=true}},1},
 }
 Machine = {
