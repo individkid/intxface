@@ -128,7 +128,7 @@ int datxCompare(void *one, void *oth)
 struct Box datxFindF(void *key)
 {
 	struct Box box = {0}; box.ptr = &tree;
-	if (box.ptr->siz == 0) {box.idx = -1; return box;}
+	if (box.ptr->siz == 0) return box;
 	while (box.ptr->dep > 0 || datxCompare(box.ptr->key[box.idx],key) < 0) {
 	box.idx++;
 	if (box.idx == box.ptr->siz || datxCompare(box.ptr->key[box.idx],key) > 0) {
@@ -143,8 +143,7 @@ int datxFind(void **val, void *key)
 	struct Box box = {0}; void *dat = 0; int typ = -1;
 	if (prefix) datxJoin(dat,prefix,key); else assignDat(&dat,key);
 	box = datxFindF(dat);
-	if (box.idx >= box.ptr->siz) ERROR();
-	if (box.idx >= 0 && datxCompare(box.ptr->key[box.idx],dat) == 0) {
+	if (box.idx < box.ptr->siz && datxCompare(box.ptr->key[box.idx],dat) == 0) {
 		assignDat(val,box.ptr->box[box.idx]); typ = box.ptr->typ[box.idx];
 		free(dat); return typ;}
 	free(dat); free(*val); *val = 0;
@@ -167,7 +166,7 @@ void datxInsert(void *key, void *val, int typ)
 {
 	struct Box box = {0}; void *dat = 0;
 	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key); key = dat;
-	box = datxFindF(key); 
+	box = datxFindF(key);
 	if (box.idx < box.ptr->siz && datxCompare(box.ptr->key[box.idx],key) == 0) {
 		assignDat(&box.ptr->box[box.idx],val); free(key); return;}
 	dat = 0; assignDat(&dat,val); val = dat;
@@ -429,7 +428,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (TotOp): { // 1; cast to type
 		int tmp = 0;
 		if (exp->siz != 1) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
-		tmp = datxEval(dat,&exp->exp[0],-1);
+		tmp = datxEval(dat,&exp->exp[0],identType(exp->typ));
 		if (typ == -1) typ = tmp;
 		else if (typ == identType("Int") && tmp == identType("Int32")) datxInt(dat,*datxInt32z(0,dat));
 		else if (typ == identType("Int") && tmp == identType("Num")) datxInt(dat,*datxNumz(0,dat));
@@ -456,7 +455,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		void *dat0 = 0; int typ0 = 0;
 		if (exp->siz != 2) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
 		datxEval(&dat0,&exp->exp[0],-1); typ0 = datxFind(dat,dat0);
-		if (*dat == 0) typ0 = datxEval(dat,&exp->exp[1],typ);
+		if (typ0 < 0) typ0 = datxEval(dat,&exp->exp[1],typ);
 		if (typ == -1) typ = typ0;
 		if (typ0 != typ) {fprintf(stderr,"wrong type of value %d\n",typ0); ERROR();}
 		free(dat0);} break;
@@ -499,13 +498,25 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		assignDat(dat,*datxDat1);} break;
 	case (FldOp): { // n: fold expressions
 		int typ0 = 0; void *key = 0;
-		datxStr(&key,exp->str);
+		datxStr(&key,exp->key);
 		for (int i = 0; i < exp->siz; i++) {
 		typ0 = datxEval(dat,&exp->exp[i],-1);
 		datxInsert(key,*dat,typ0);}
 		typ0 = datxFind(dat,key);
+		if (typ0 < 0) {fprintf(stderr,"key not found"); ERROR();}
 		if (typ < 0) typ = typ0;
-		if (typ != typ0) {fprintf(stderr,"wrong type of result %d\n",typ); ERROR();}} break;
+		if (typ != typ0) {fprintf(stderr,"wrong type of result %d\n",typ); ERROR();}
+		free(key);} break;
+	case (IntOp): { // 0: ImmOp sugar
+		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
+		if (typ == -1) typ = identType("Int");
+		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); ERROR();}
+		datxInt(dat,exp->ivl);} break;
+	case (StrOp): { // 0: ImmOp sugar
+		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
+		if (typ == -1) typ = identType("Int");
+		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); ERROR();}
+		datxStr(dat,exp->svl);} break;
 	case (UnqOp): { // 0; magic number
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
 		if (typ == -1) typ = identType("Int");

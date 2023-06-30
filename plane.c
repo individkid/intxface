@@ -541,6 +541,7 @@ void planeWake(enum Configure hint)
 	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
 	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[ResultLine];
+	// printf("planeWake %d\n",configure[ResultLine]);
 	int next = planeSwitch(mptr,configure[ResultLine]+1);
 	if (next == configure[ResultLine]) break;
 	configure[ResultLine] = next;}
@@ -550,6 +551,7 @@ void planeBoot()
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	struct Machine mptr = {0};
 	int len = 0;
+	// printf("planeBoot %d %s\n",i,Bootstrap__Int__Str(i));
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
 	configure[ResultLine] = planeSwitch(&mptr,configure[ResultLine]);
 	}
