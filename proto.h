@@ -417,16 +417,14 @@ const struct Closure *protoClosePf(int idx, int nbyte);
 const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte);
 const struct Closure *protoCloseGf(const char *one, const char *oth);
 const struct Closure *protoCloseGg(int rfd, int wfd);
-const struct Closure *protoCloseRf(int arg);
-const struct Closure *protoCloseRg();
+const struct Closure *protoCloseRi();
 void protoResultCf();
 void protoResultEf();
 int protoResultPf(void *buf);
 int protoResultQf();
 int protoResultGf();
 int protoResultGg();
-int protoResultRf();
-int protoResultRg();
+int protoResultRi();
 
 void stackErr();
 void exitErr(const char *file, int line);

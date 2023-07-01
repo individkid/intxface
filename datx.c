@@ -514,8 +514,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxInt(dat,exp->ivl);} break;
 	case (StrOp): { // 0: ImmOp sugar
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}
-		if (typ == -1) typ = identType("Int");
-		if (typ != identType("Int")) {fprintf(stderr,"wrong type of argument %d\n",typ); ERROR();}
+		if (typ == -1) typ = identType("Str");
+		if (typ != identType("Str")) {fprintf(stderr,"wrong type of argument %d\n",typ); ERROR();}
 		datxStr(dat,exp->svl);} break;
 	case (UnqOp): { // 0; magic number
 		if (exp->siz != 0) {fprintf(stderr,"wrong number of arguments %d\n",exp->siz); ERROR();}

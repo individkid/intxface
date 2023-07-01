@@ -200,13 +200,7 @@ const struct Closure *protoCloseGg(int rfd, int wfd)
 	protoMakeIf(&argbuf.aa[1],wfd);
 	return &argbuf;
 }
-const struct Closure *protoCloseRf(int arg)
-{
-	protoClose(1,1);
-	protoMakeIf(&argbuf.aa[0],arg);
-	return &argbuf;
-}
-const struct Closure *protoCloseRg()
+const struct Closure *protoCloseRi()
 {
 	protoClose(0,1);
 	return &argbuf;
@@ -234,11 +228,7 @@ int protoResultGg()
 {
 	return argbuf.ab[0].ia;
 }
-int protoResultRf()
-{
-	return argbuf.ab[0].ia;
-}
-int protoResultRg()
+int protoResultRi()
 {
 	return argbuf.ab[0].ia;
 }

@@ -636,6 +636,12 @@ void planeInsert(const char *key, const char *val)
 	datxInsert(src,dst,identType("Str"));
 	free(src); free(dst);
 }
+int planeSide(const char *exp)
+{
+	const struct Closure *fnc = protoCloseRi();
+	if (luaxExpr(exp,fnc) != 0) ERROR();
+	return protoResultRi();
+}
 void planeTerm(int sig)
 {
 }
@@ -726,8 +732,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
 	luaxAdd("planeGetter",protoTypeDh(planeGetter)); luaxAdd("planeSetter",protoTypeDg(planeSetter));
-	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert));
-	datxEmbed(luaxSide);
+	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert)); datxEmbed(planeSide);
 	callDma = dma;
 	callSafe = safe;
 	callMain = main;
