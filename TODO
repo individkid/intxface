@@ -2,24 +2,15 @@
 Add microcode sufficient for hello triangle.
 Add hello triangle to boot test.
 Add microcode sufficient for transformation.
-Finish transformation functions.
-Demonstrate each transformation.
 Add per polytope and per plane matrices.
-Add several triangles to demonstrate each transformation mode separately.
-Add microcode for pierce point, and print pierce point under cursor.
-At end of boot test, drop into user mode
-with transform, refine, additive, subtractive mode set by function keys.
-Add all, some, one distinction to modes.
-Add 2d additive subtractive texture.
-Move boot test triangles from boot code to files created by share in planer.lua;
-open two processes sharing per polytope files and having their own files for different views,
-uniquefying boundary identifiers by file and location.
-Write spacer.lua that converts plane fields to and from sidedness fields according to request fields.
-Move all but creation of test files from planer.lua and spacer.lua to sculpt.lua.
-Write plane.cppx for Dell.
-Write liner.lua that makes systemic sounds.
-Have spacer.lua test requests for metrics.
+Add microcode for pierce point.
+Add bootcode for facet changes.
+Add numeric symbolic to spacer.lua.
 
+filer.lua: Persist -> ./file -> Persist
+planer.lua: Center -> ./plane -> Center
+spacer.lua: Sculpt -> ./space -> Sculpt
+liner.lua: Event -> ./line -> microphone,speaker -> ./line -> Event
 pager.lua: File -> ./page -> window,keyboard -> ./page -> File
 waver.lua: Scope -> ./wave -> usb-a -> ./wave -> Data
 framer.lua: Data -> ./frame -> window,selection -> ./frame -> Data
@@ -27,18 +18,27 @@ taper.lua: Data -> ./tape -> usb-c -> ./tape -> Data
 phoner.lua: Data -> ./phone -> speaker,microphone -> ./phone -> Data
 piper.lua: Data -> ./pipe -> .mov -> ./pipe -> Data
 
-Write print.lua to find all spaces and tetrahedron overlaps.
-Add synchronization and combination features to share.
-Combine into play.lua, sound metric sidedness plane track.
-Demonstrate play.lua by decorating tetrahedron overlaps with a different system sound each,
-where metrics to the system are how much area of each facet is visible.
-Write ball.lua and world.lua
+sculpt.lua share between file plane space:
+ plane click keyboard transform, to file
+ plane click keyboard manipulate, to space
+ plane click additive subtractive, to space
+ file subject object matrix, to plane
+ file numeric symbolic, to space
+ space numeric symbolic, to file plane
+
+Remove EXT from Makefile. Have different all: per UNAME. Write vulkan.cpp for Dell.
+Use source level ifdef for Mac vs Dell in .cpp files used on both platforms.
+Change .swy to .sw, and use different target name for diffent platforms.
 
 Make face.c (NUMOPEN) datx.c (NUMOPEN) argx.c (NUMARGX) file.c (NUMFILE) arrays into array of malloc struct.
 Optimize depend.lua to build each target in separate clean directory, and copy from that directory in preference to push.
 Enhance show.lua to use map from enum constant and struct name to basename, with not found a match if no basename given,
-so the Share struct goes only in share.h, for example. Replace makefile by lua script,
-and allow generate script to generate functions needed instead of entire files, so programs are smaller.
+so the Share struct goes only in share.h, for example.
+
+Replace makefile by lua script,
+that loads dependency lists per target/rule,
+has list of regex per target/rule,
+and adds to dependency list upon regex match.
 
 Develop Theory for coincidences as sets of hyperplane classifications.
 Replace Theory by an agda proof.

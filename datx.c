@@ -421,6 +421,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		str = exp->flt[i].str[j];}}} else {
 		for (int j = 0; j < exp->flt[i].siz; j++) {
 		if (strcmp(str,exp->flt[i].str[j]) == 0) {
+		// printf("CmpOp %s\n",str);
 		typ = datxType(dat,&exp->exp[i],typ); found = 1;}}}}
 		if (!found) ERROR();} break;
 	case (TotOp): { // 1; cast to type

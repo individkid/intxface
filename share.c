@@ -263,7 +263,6 @@ void shareArgv(int *argc, char **argv)
 	int limit = 0; // total size of buffer
 	int total = 0; // number of strings in buffer
 	char *save = argv[0];
-	luaxSide("require \"type\""); // now nest interpreter has cast and face functions
 	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; chunks += 1;
 	sizes = malloc(chunks*sizeof(int)); memset(sizes,0,chunks*sizeof(int)); chunks = 0;
 	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; else sizes[chunks] += 1; chunks = 0; nestInit(sizes[0]);

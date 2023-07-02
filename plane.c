@@ -525,8 +525,8 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4);
 	identmat(planeWritten(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
-	case (Copy): planeCopy(&center); break;
-	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
+	case (Copy): /*printf("planeCopy %d(Configurez:%d,Machinez:%d)\n",center.mem,Configurez,Machinez);*/ planeCopy(&center); break;
+	case (Draw): /*printf("callDraw\n");*/ callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next-1); break;
 	case (Goto): next = planeIval(&mptr->exp[0]) + next-1; break;
 	case (Nest): break;
@@ -538,6 +538,7 @@ int planeSwitch(struct Machine *mptr, int next)
 void planeWake(enum Configure hint)
 {
 	configure[ResultHint] = hint;
+	// printf("planeWake %d(CenterRequest:%d,ResultHint:%d,RegisterDone:%d)\n",configure[ResultHint],CenterRequest,ResultHint,RegisterDone);
 	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
 	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[ResultLine];
@@ -551,7 +552,7 @@ void planeBoot()
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	struct Machine mptr = {0};
 	int len = 0;
-	// printf("planeBoot %d %s\n",i,Bootstrap__Int__Str(i));
+	// printf("planeBoot %d\n",i);
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
 	configure[ResultLine] = planeSwitch(&mptr,configure[ResultLine]);
 	}
