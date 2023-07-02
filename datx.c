@@ -361,8 +361,7 @@ int datxType(void **dat, struct Express *exp, int typ)
 	void *dat0 = 0; void *dat1 = 0;\
 	if (exp->siz != 2) ERROR();\
 	TYP = datxType(&dat1,&exp->exp[1],datxType(&dat0,&exp->exp[0],TYP));
-#define BINARY_DONE()\
-	{fprintf(stderr,"unsupported rem type %d\n",typ); ERROR();}\
+#define BINARY_DONE() ERROR();\
 	free(dat0); free(dat1);}
 #define BINARY_TYPE(TYPE,TYP,GET,SET,OP)\
 	if (typ == identType(TYP)) {\
@@ -444,38 +443,34 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxSingle(); if (exp->siz != 0) ERROR();
 		if (typ == -1) typ = identUnion(exp->val); if (typ != identUnion(exp->val)) ERROR();
 		datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,*datxDat0);} break;
-	case (ValOp): { // 2; restore from named
-		void *dat0 = 0; int typ0 = 0; if (exp->siz != 2) ERROR();
-		datxEval(&dat0,&exp->exp[0],-1); typ0 = datxFind(dat,dat0);
-		if (typ0 < 0) typ0 = datxEval(dat,&exp->exp[1],typ);
-		if (typ == -1) typ = typ0; if (typ0 != typ) ERROR();
-		free(dat0);} break;
-	case (SavOp): { // 3; save to named
-		void *dat0 = 0; void *dat1 = 0; int typ1 = 0; if (exp->siz != 3) ERROR();
-		datxEval(&dat0,&exp->exp[0],-1); typ1 = datxEval(&dat1,&exp->exp[1],-1); datxInsert(dat0,dat1,typ1);
-		typ = datxType(dat,&exp->exp[2],typ);
-		free(dat0); free(dat1);} break;
 	case (GetOp): { // 0; value from callback
 		void *sav = 0; if (exp->siz != 0 || datxGetFp == 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		assignDat(&sav,prefix); datxGetFp(dat,exp->cfg); assignDat(&prefix,sav);} break;
-	case (SetOp): { // 2; callback with value
-		void *dat0 = 0; int typ0 = 0; void *sav = 0; if (exp->siz != 2 || datxSetFp == 0) ERROR();
-		typ0 = datxEval(&dat0,&exp->exp[0],-1);
-		assignDat(&sav,prefix); datxSetFp(dat0,exp->cfg); assignDat(prefix,sav);
-		typ = datxType(dat,&exp->exp[1],typ);
-		free(dat0);} break;
-	case (InsOp): { // 2; field to struct
-		int typ0 = 0; int fld0 = 0; int typ1 = 0; datxSingle(); if (exp->siz != 2) ERROR();
-		typ0 = datxEval(datxDat0,&exp->exp[0],typ); fld0 = identField(typ0,exp->fld);
-		typ1 = datxEval(datxDat1,&exp->exp[1],fld0);
-		datxNone(datxDat2); readField(typ0,typ1,exp->idx,datxIdx0,datxIdx1,datxIdx2);
-		assignDat(dat,*datxDat2);} break;
-	case (ExtOp): { // 1; field from struct
-		int typ0 = 0; int fld0 = 0; datxSingle(); if (exp->siz != 1) ERROR();
-		typ0 = datxEval(datxDat0,&exp->exp[0],typ); fld0 = identField(typ0,exp->fld);
-		datxNone(datxDat1); writeField(typ0,fld0,exp->idx,datxIdx0,datxIdx1);
-		assignDat(dat,*datxDat1);} break;
+		assignDat(&sav,prefix); datxGetFp(dat,exp->cfg); assignDat(&prefix,sav);
+		free(sav);} break;
+	case (SetOp): { // 1; callback with value
+		void *sav = 0; if (exp->siz != 1 || datxSetFp == 0) ERROR();
+		typ = datxType(dat,&exp->exp[0],typ); if (typ != identType("Int")) ERROR();
+		assignDat(&sav,prefix); datxSetFp(*dat,exp->cfg); assignDat(prefix,sav);
+		free(sav);} break;
+	case (InsOp): { // 1+; fields to struct
+		datxSingle(); if (exp->siz < 1) ERROR();
+		typ = datxType(dat,&exp->exp[0],typ);
+		if (typ != identType(exp->fld[0])) ERROR();
+		for (int i = 1; i < exp->siz; i++) {
+		int typ0 = identField(typ,exp->fld[i]);
+		assignDat(datxDat0,dat); datxEval(datxDat1,&exp->exp[i],typ0);
+		datxNone(datxDat2); readField(typ,typ0,exp->idx[i],datxIdx0,datxIdx1,datxIdx2);
+		assignDat(dat,*datxDat2);}} break;
+	case (ExtOp): { // 1+; field from struct
+		datxSingle(); if (exp->siz < 1) ERROR();
+		typ = datxType(dat,&exp->exp[0],typ);
+		if (typ != identType(exp->fld[0])) ERROR();
+		for (int i = 1; i < exp->siz; i++) {
+		int typ0 = identField(typ,exp->fld[i]);
+		assignDat(datxDat0,dat); datxEval(datxDat1,&exp->exp[i],typ0);
+		datxNone(datxDat2); writeField(typ,typ0,exp->idx[i],datxIdx0,datxIdx1);
+		assignDat(dat,*datxDat1);}} break;
 	case (FldOp): { // n: fold expressions
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key);
@@ -502,7 +497,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxEval(datxDat0,&exp->exp[0],identType("Str"));
 		datxInt(dat,datxEmbFp(datxChrz(0,datxDat0)));} break;
-	case (DatOp): {
+	case (DatOp): { // 0; stream data
 		struct Data src = {0}; struct Data dst = {0};
 		if (exp->siz != 1) ERROR();
 		if (typ == -1) typ = identType("Data"); if (typ != identType("Data")) ERROR();

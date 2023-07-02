@@ -230,12 +230,10 @@ Operate = {
 	"CmpOp", -- n; if else compare
 	"TotOp", -- 1; cast to type
 	"ImmOp", -- 0; built in value
-	"ValOp", -- 2; restore from named
-	"SavOp", -- 3; save to named
 	"GetOp", -- 0; value from callback
-	"SetOp", -- 2; callback with value
-	"InsOp", -- 2; field to struct
-	"ExtOp", -- 1; field from struct
+	"SetOp", -- 1; callback with value
+	"InsOp", -- 1+; fields to struct
+	"ExtOp", -- 1+; field from struct
 	"FldOp", -- n; fold expressions
 	"IntOp", -- 0; ImmOp sugar
 	"StrOp", -- 0; ImmOp sugar
@@ -310,7 +308,7 @@ Bootstrap = {
 		"val[6]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(FldOp)siz:Int(1)key:Str(Changed)"..
-		"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(1))))"},
+		"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))))"},
 	{"Int","2","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)"..
 		"center[0]:Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(22)idx:Int(0)slf:Int(0)"..
@@ -401,9 +399,8 @@ Bootstrap = {
 		"mch[13]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1)))"..
 		"mch[14]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchGetPierce
 		-- Eval CenterIndex to RegisterIndex, Stage pierce, Eval Piercez to dat0, Echo dat0 to center, and Write center out
-		"mch[15]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(SetOp)siz:Int(2)cfg:Configure(RegisterIndex)"..
+		"mch[15]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(SetOp)siz:Int(1)cfg:Configure(RegisterIndex)"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterIndex))"..
-			"exp[1]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))"..
 		"))"..
 		"mch[16]:Machine(xfr:Transfer(Stage)siz:Int(8)"..
 			"sav[0]:Configure(ClosestValid)"..
@@ -415,28 +412,26 @@ Bootstrap = {
 			"sav[6]:Configure(NormalBase)"..
 			"sav[7]:Configure(NormalNear)"..
 		")"..
-		"mch[17]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(FldOp)siz:Int(9)key:Str(Fold)"..
+		"mch[17]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(InsOp)siz:Int(9)"..
+			"fld[0]:Str(Center)fld[1]:Str(fix)fld[2]:Str(fix)fld[3]:Str(fix)"..
+			"fld[4]:Str(nml)fld[5]:Str(nml)fld[6]:Str(nml)"..
+			"fld[7]:Str(vld)fld[8]:Str(idx)"..
+			"idx[0]:Int(0)idx[1]:Int(0)idx[2]:Int(1)idx[3]:Int(2)"..
+			"idx[4]:Int(0)idx[5]:Int(1)idx[6]:Int(2)"..
+			"idx[7]:Int(0)idx[8]:Int(0)"..
 			"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
 				"req:Request(GotReq)mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
 					"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
 					"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
 					"vld:Int32(0)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))))"..
-			"exp[1]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(fix)idx:Int(0)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestLeft))))"..
-			"exp[2]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(fix)idx:Int(1)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestBase))))"..
-			"exp[3]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(fix)idx:Int(2)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestNear))))"..
-			"exp[4]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(nml)idx:Int(0)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(NormalLeft))))"..
-			"exp[5]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(nml)idx:Int(1)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(NormalBase))))"..
-			"exp[6]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(nml)idx:Int(2)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(NormalNear))))"..
-			"exp[7]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(vld)idx:Int(0)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Int32)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestValid))))"..
-			"exp[8]:Express(opr:Operate(InsOp)siz:Int(2)fld:Str(idx)idx:Int(0)exp[0]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Fold))"..
-				"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Int32)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestFound))))"..
+			"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestLeft)))"..
+			"exp[2]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestBase)))"..
+			"exp[3]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestNear)))"..
+			"exp[4]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(NormalLeft)))"..
+			"exp[5]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(NormalBase)))"..
+			"exp[6]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Old)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(NormalNear)))"..
+			"exp[7]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Int32)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestValid)))"..
+			"exp[8]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Int32)exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ClosestFound)))"..
 		"))"..
 		"mch[18]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
 		"mch[19]:Machine(xfr:Transfer(Write)siz:Int(0))"..
@@ -609,8 +604,8 @@ Express = {
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cfg","Configure",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
-	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
-	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},{}},
+	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},"siz"},
+	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},"siz"},
 	{"key","Str",{["opr"]={["FldOp"]=true}},{}},
 	{"dat","Datae",{["opr"]={["DatOp"]=true}},1},
 	{"flt","Filter",{["opr"]={["CmpOp"]=true}},"siz"},
@@ -647,7 +642,7 @@ Center = {
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 }
-Sculpt = {
+Sculp = {
 	{"cfg","Struc",{},{}},
 }
 Data = {

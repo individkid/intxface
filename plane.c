@@ -436,6 +436,7 @@ void planeConfig(enum Configure cfg, int val)
 {
 	int tmp = 0; configure[cfg] = val;
 	if (cfg < 0 || cfg >= Configures) ERROR();
+	// printf("planeConfig %d(ArgumentLimit:%d,RegisterOpen:%d)\n",cfg,ArgumentLimit,RegisterOpen);
 	tmp = configure[cfg]; switch (cfg) {
 	case (PierceSize): pierce = planeResize(pierce,sizeof(struct Pierce),val,tmp); break;
 	case (PierceBase): pierce = planeRebase(pierce,sizeof(struct Pierce),configure[PierceSize],val,tmp); break;
@@ -525,8 +526,10 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4);
 	identmat(planeWritten(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
-	case (Copy): /*printf("planeCopy %d(Configurez:%d,Machinez:%d)\n",center.mem,Configurez,Machinez);*/ planeCopy(&center); break;
-	case (Draw): /*printf("callDraw\n");*/ callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
+	case (Copy): // printf("planeCopy %d(Configurez:%d,Machinez:%d)\n",center.mem,Configurez,Machinez);
+	planeCopy(&center); break;
+	case (Draw): // printf("callDraw\n");
+	callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next-1); break;
 	case (Goto): next = planeIval(&mptr->exp[0]) + next-1; break;
 	case (Nest): break;
@@ -751,13 +754,6 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 int planeInfo(enum Configure cfg)
 {
 	return configure[cfg];
-}
-void planeDebug(const char *str, enum Proc proc, enum Wait wait, enum Configure hint, int run)
-{
-	char *ptr = 0; char *wtr = 0; char *htr = 0;
-	showProc(proc,&ptr); showWait(wait,&wtr); showConfigure(hint,&htr);
-	printf("%s %s %s %s %d\n",str,ptr,wtr,htr,run);
-	free(ptr); free(wtr); free(htr);
 }
 int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint)
 {
