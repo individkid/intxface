@@ -30,13 +30,6 @@ Flow = {
 	"Store",
 	"Load",
 }
-Request = {
-	"SetReq", -- set memory in
-	"GetReq", -- get memory in
-	"GotReq", -- GetReq out with memory
-	"FixReq", -- request out to change plane
-	"RevReq", -- FixReq in to revert plane matrix
-}
 Memory = {
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
@@ -126,8 +119,7 @@ Configure = {
 	"CursorNear", --
 	"CursorAngle", --
 	"CursorClick", --
-	"CenterRequest", -- fields to from client
-	"CenterMemory", --
+	"CenterMemory", -- fields to from client
 	"CenterSize", --
 	"CenterIndex", --
 	"CenterSelf", --
@@ -237,6 +229,8 @@ Operate = {
 	"FldOp", -- n; fold expressions
 	"IntOp", -- 0; ImmOp sugar
 	"StrOp", -- 0; ImmOp sugar
+	"CfgOp", -- 0; ImmOp sugar
+	"MemOp", -- 0; ImmOp sugar
 	"UnqOp", -- 0; magic number
 	"EmbOp", -- 1; script embed
 	"DatOp", -- 0; stream data
@@ -311,15 +305,15 @@ Bootstrap = {
 		"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))))"},
 	{"Int","2","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)"..
-		"center[0]:Center(req:Request(SetReq)mem:Memory(Machinez)siz:Int(22)idx:Int(0)slf:Int(0)"..
+		"center[0]:Center(mem:Memory(Machinez)siz:Int(22)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(5))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
 			"flt[0]:Filter(loc:Locate(Branch)siz:Int(3)"..
 				"cmp[0]:Compare(ECCmp)"..
 				"cmp[1]:Compare(ECCmp)"..
 				"cmp[2]:Compare(ECCmp)"..
-				"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(%(return castConfigure(\"CenterRequest\"))))"..
-				"exp[1]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(%(return castConfigure(\"ResultHint\"))))"..
+				"exp[0]:Express(opr:Operate(CfgOp)siz:Int(0)cvl:Configure(CenterMemory))"..
+				"exp[1]:Express(opr:Operate(CfgOp)siz:Int(0)cvl:Configure(ResultHint))"..
 				"exp[2]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ResultHint))"..
 				"str[0]:Str(MatchRead)"..
 				"str[1]:Str(MatchDraw)"..
@@ -339,10 +333,10 @@ Bootstrap = {
 			"flt[5]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(ResultHint))".. -- compare get of ResultHint
 			"exp[1]:Express(opr:Operate(FldOp)siz:Int(0)key:Str(Changed))".. -- compare remember of Changed
-			"exp[2]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(2))".. -- Matchead
+			"exp[2]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(2))".. -- MatchRead
 			"exp[3]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(1))".. -- MatchDrawChanged
 			"exp[4]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))".. -- MatchDrawUnchaged
-			"exp[5]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))".. -- Mismtch
+			"exp[5]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))".. -- Mismatch
 		"))"..
 		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchDrawChanged
 		-- Draw, and remember that not Changed
@@ -355,26 +349,23 @@ Bootstrap = {
 		-- Read center, Stage center fields, and compare fields staged to Configure
 		"mch[7]:Machine(xfr:Transfer(Read)siz:Int(0))"..
 		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(3)"..
-			"sav[0]:Configure(CenterRequest)"..
-			"sav[1]:Configure(CenterMemory)"..
-			"sav[2]:Configure(CenterIndex)"..
+			"sav[0]:Configure(CenterMemory)"..
+			"sav[1]:Configure(CenterIndex)"..
+			"sav[2]:Configure(CenterSize)"..
 		")"..
 		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
-			"flt[0]:Filter(loc:Locate(Branch)siz:Int(3)"..
+			"flt[0]:Filter(loc:Locate(Branch)siz:Int(2)"..
 				"cmp[0]:Compare(ECCmp)"..
 				"cmp[1]:Compare(ECCmp)"..
-				"cmp[2]:Compare(ECCmp)"..
-				"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(%(return castRequest(\"SetReq\"))))"..
-				"exp[1]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(%(return castRequest(\"GetReq\"))))"..
-				"exp[2]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterRequest))"..
-				"str[0]:Str(MatchSet)"..
-				"str[1]:Str(MatchGet)"..
-				"str[2]:Str(Mismatch)"..
+				"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))"..
+				"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterSize))"..
+				"str[0]:Str(MatchGet)"..
+				"str[1]:Str(MatchSet)"..
 			")"..
 			"flt[1]:Filter(loc:Locate(Branch)siz:Int(2)"..
 				"cmp[0]:Compare(ECCmp)"..
 				"cmp[1]:Compare(ECCmp)"..
-				"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(%(return castMemory(\"Piercez\"))))"..
+				"exp[0]:Express(opr:Operate(MemOp)siz:Int(0)mvl:Memory(Piercez))"..
 				"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterMemory))"..
 				"str[0]:Str(MatchGetPierce)"..
 				"str[1]:Str(MatchGetNone)"..
@@ -383,12 +374,12 @@ Bootstrap = {
 			"flt[3]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchGetPierce))"..
 			"flt[4]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchGetNone))"..
 			"flt[5]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
-			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterRequest))".. -- compare CenterRequest
+			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterSize))".. -- compare CenterSize
 			"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterMemory))".. -- compare CenterMemory
 			"exp[2]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(1))".. -- MatchSet
-			"exp[3]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(2))".. -- MatchGetPirce
-			"exp[4]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1))".. -- MatchGetone
-			"exp[5]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1))".. -- Mismtch
+			"exp[3]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(2))".. -- MatchGetPierce
+			"exp[4]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1))".. -- MatchGetNone
+			"exp[5]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1))".. -- Mismatch
 		"))"..
 		"mch[10]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchSet
 		-- Copy center to cpu and gpu, and remember that Changed
@@ -420,7 +411,7 @@ Bootstrap = {
 			"idx[4]:Int(0)idx[5]:Int(1)idx[6]:Int(2)"..
 			"idx[7]:Int(0)idx[8]:Int(0)"..
 			"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
-				"req:Request(GotReq)mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
+				"mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
 					"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
 					"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
 					"vld:Int32(0)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))))"..
@@ -603,6 +594,8 @@ Express = {
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
+	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
+	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
 	{"cfg","Configure",{["opr"]={["GetOp"]=true,["SetOp"]=true}},{}},
 	{"fld","Str",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},"siz"},
 	{"idx","Int",{["opr"]={["InsOp"]=true,["ExtOp"]=true}},"siz"},
@@ -621,7 +614,6 @@ Machine = {
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
 Center = {
-	{"req","Request",{},{}},
 	{"mem","Memory",{},{}},
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},

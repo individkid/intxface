@@ -385,7 +385,6 @@ void planeStage(enum Configure cfg)
 	switch (cfg) {
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
-	case (CenterRequest): configure[CenterRequest] = center.req; break;
 	case (CenterMemory): configure[CenterMemory] = center.mem; break;
 	case (CenterSize): configure[CenterSize] = center.siz; break;
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
@@ -541,7 +540,7 @@ int planeSwitch(struct Machine *mptr, int next)
 void planeWake(enum Configure hint)
 {
 	configure[ResultHint] = hint;
-	// printf("planeWake %d(CenterRequest:%d,ResultHint:%d,RegisterDone:%d)\n",configure[ResultHint],CenterRequest,ResultHint,RegisterDone);
+	// printf("planeWake %d(CenterMemory:%d,ResultHint:%d,RegisterDone:%d)\n",configure[ResultHint],CenterMemory,ResultHint,RegisterDone);
 	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
 	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[ResultLine];
@@ -663,7 +662,7 @@ void *planeExternal(void *ptr)
 	readCenter(&center,external);
 	writeCenter(&center,internal);
 	sem_safe(&resource,{numpipe++;});
-	planeSafe(Procs,Waits,CenterRequest);}
+	planeSafe(Procs,Waits,CenterMemory);}
 	planeSafe(External,Done,Configures);
 	return 0;
 }

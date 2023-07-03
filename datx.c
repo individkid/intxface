@@ -488,6 +488,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (exp->siz != 0) ERROR();
 		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
 		datxStr(dat,exp->svl);} break;
+	case (CfgOp): { // 0: ImmOp sugar
+		if (exp->siz != 0) ERROR();
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,exp->cvl);} break;
+	case (MemOp): { // 0: ImmOp sugar
+		if (exp->siz != 0) ERROR();
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,exp->mvl);} break;
 	case (UnqOp): { // 0; magic number
 		if (exp->siz != 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
