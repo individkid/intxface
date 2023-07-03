@@ -480,6 +480,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxFind(dat,key); if (typ0 < 0) ERROR();
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		free(key);} break;
+	case (ForOp): { // 1: for loop
+		void *key = 0; int typ0 = 0;
+		if (exp->siz != 1 || exp->lim < 1) ERROR();
+		datxStr(&key,exp->key);
+		for (int i = 0; i < exp->lim; i++) {
+		void *ind = 0; datxInt(&ind,i);
+		datxInsert(key,ind,identType("Int"));
+		typ0 = datxType(dat,&exp->exp[0],-1);
+		free(ind);}
+		typ = typ0;} break;
 	case (IntOp): { // 0: ImmOp sugar
 		if (exp->siz != 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();

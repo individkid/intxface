@@ -503,6 +503,19 @@ void planeEcho()
 	if (configure[ResultType] == identType("Center")) readCenter(&center,idx0);
 	else ERROR();
 }
+void planeFill()
+{
+	int src = 0; int dst = 0; int siz = 0;
+	int idx = configure[RegisterIndex];
+	if (center.mem != configure[RegisterMemory]) ERROR();
+	switch (center.mem) {
+	case (Piercez): src = idx-configure[PierceBase]; siz = configure[PierceSize]; dst = idx-center.idx; break;
+	default: ERROR();}
+	if (src < 0 || src >= siz || dst < 0 || dst >= center.siz) ERROR();
+	switch (center.mem) {
+	case (Piercez): datxNone(dat0); writePierce(&pierce[src],idx0); readPierce(&center.pie[dst],idx0); break;
+	default: ERROR();}
+}
 int planeSwitch(struct Machine *mptr, int next)
 {
 	switch (mptr->xfr) {
@@ -534,6 +547,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Nest): break;
 	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
 	case (Echo): planeEcho(); break;
+	case (Fill): planeFill(); break;
 	default: break;}
 	return next;
 }
@@ -554,7 +568,7 @@ void planeBoot()
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	struct Machine mptr = {0};
 	int len = 0;
-	// printf("planeBoot %d\n",i);
+	printf("planeBoot %d\n",i);
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
 	configure[ResultLine] = planeSwitch(&mptr,configure[ResultLine]);
 	}

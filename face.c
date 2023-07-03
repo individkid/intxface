@@ -1154,9 +1154,9 @@ int hideOpen(const char *val, const char *str, int *siz)
 	int num = -1;
 	if (asprintf(&tmp," %s ( %%n",val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
-	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) {printf("hideOpen\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
 	*siz += num;
+	free(tmp);
 	return 1;
 }
 int hideClose(const char *str, int *siz)
@@ -1165,9 +1165,9 @@ int hideClose(const char *str, int *siz)
 	int num = -1;
 	if (asprintf(&tmp," ) %%n") < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
-	free(tmp);
-	if (num == -1) return 0;
+	if (num == -1) {printf("hideClose\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
 	*siz += num;
+	free(tmp);
 	return 1;
 }
 int hideChr(char *val, const char *str, int *siz)
