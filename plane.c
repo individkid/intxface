@@ -389,6 +389,8 @@ void planeStage(enum Configure cfg)
 	case (CenterSize): configure[CenterSize] = center.siz; break;
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
 	case (CenterSelf): configure[CenterSelf] = center.slf; break;
+	case (RegisterMemory): configure[RegisterMemory] = center.mem; break;
+	case (RegisterIndex): configure[RegisterIndex] = center.idx; break;
 	case (ClosestValid): configure[ClosestValid] = planePierce()->vld; break;
 	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
 	case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
@@ -433,10 +435,10 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 }
 void planeConfig(enum Configure cfg, int val)
 {
-	int tmp = 0; configure[cfg] = val;
+	int tmp = 0;
 	if (cfg < 0 || cfg >= Configures) ERROR();
-	// printf("planeConfig %d(ArgumentLimit:%d,RegisterOpen:%d)\n",cfg,ArgumentLimit,RegisterOpen);
-	tmp = configure[cfg]; switch (cfg) {
+	tmp = configure[cfg]; configure[cfg] = val;
+	switch (cfg) {
 	case (PierceSize): pierce = planeResize(pierce,sizeof(struct Pierce),val,tmp); break;
 	case (PierceBase): pierce = planeRebase(pierce,sizeof(struct Pierce),configure[PierceSize],val,tmp); break;
 	case (SubjectSize): subject = planeResize(subject,sizeof(struct Kernel),val,tmp); break;
@@ -513,7 +515,7 @@ void planeFill()
 	default: ERROR();}
 	if (src < 0 || src >= siz || dst < 0 || dst >= center.siz) ERROR();
 	switch (center.mem) {
-	case (Piercez): datxNone(dat0); writePierce(&pierce[src],idx0); readPierce(&center.pie[dst],idx0); break;
+	case (Piercez): copyPierce(&center.pie[dst],&pierce[src]); break;
 	default: ERROR();}
 }
 int planeSwitch(struct Machine *mptr, int next)
@@ -538,14 +540,12 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4);
 	identmat(planeWritten(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
-	case (Copy): // printf("planeCopy %d(Configurez:%d,Machinez:%d)\n",center.mem,Configurez,Machinez);
-	planeCopy(&center); break;
-	case (Draw): // printf("callDraw\n");
-	callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
+	case (Copy): planeCopy(&center); break;
+	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next-1); break;
 	case (Goto): next = planeIval(&mptr->exp[0]) + next-1; break;
 	case (Nest): break;
-	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
+	case (Eval): datxNone(dat0); configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
 	case (Echo): planeEcho(); break;
 	case (Fill): planeFill(); break;
 	default: break;}
@@ -554,11 +554,9 @@ int planeSwitch(struct Machine *mptr, int next)
 void planeWake(enum Configure hint)
 {
 	configure[ResultHint] = hint;
-	// printf("planeWake %d(CenterMemory:%d,ResultHint:%d,RegisterDone:%d)\n",configure[ResultHint],CenterMemory,ResultHint,RegisterDone);
 	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
 	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[ResultLine];
-	// printf("planeWake %d\n",configure[ResultLine]);
 	int next = planeSwitch(mptr,configure[ResultLine]+1);
 	if (next == configure[ResultLine]) break;
 	configure[ResultLine] = next;}
@@ -568,7 +566,6 @@ void planeBoot()
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
 	struct Machine mptr = {0};
 	int len = 0;
-	printf("planeBoot %d\n",i);
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
 	configure[ResultLine] = planeSwitch(&mptr,configure[ResultLine]);
 	}
@@ -737,6 +734,10 @@ int planeRunning()
 {
 	return running;
 }
+void planeDebug()
+{
+	printf("planeDebug\n");
+}
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
 {
 	struct sigaction act;
@@ -750,6 +751,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
 	luaxAdd("planeGetter",protoTypeDh(planeGetter)); luaxAdd("planeSetter",protoTypeDg(planeSetter));
 	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert)); datxEmbed(planeSide);
+	atexit(planeDebug);
 	callDma = dma;
 	callSafe = safe;
 	callMain = main;

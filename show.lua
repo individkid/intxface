@@ -1344,7 +1344,7 @@ function showRfieldC(list,map)
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (typ) {\n"
-	for k,v in ipairs(list) do
+	for k,v in ipairs(list) do if Structz[v] ~= nil then
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
 		result = result..showIndent(2).."int found = 0; int i = 0; int j = 0;\n"
 		result = result..showIndent(2).."struct "..v.." src = {0};\n"
@@ -1364,7 +1364,7 @@ function showRfieldC(list,map)
 		result = result..showIndent(2).."if (found != 1) ERROR();\n"
 		result = result..showIndent(2).."write"..v.."(&dst,ofd);\n"
 		result = result..showIndent(2).."break;}\n"
-	end
+	end end
 	result = result..showIndent(1).."default: ERROR();}\n"
 	result = result.."}"
 	return result
@@ -1414,13 +1414,13 @@ function showWfieldC(list,map)
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (typ) {\n"
-	for k,v in ipairs(list) do
+	for k,v in ipairs(list) do if Structz[v] ~= nil then
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
 		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
 		result = result..showIndent(2).."read"..v.."(&tmp,ifd);\n"
 		result = result..showIndent(2).."fwrite"..v.."(&tmp,fld,sub,ofd);\n"
 		result = result..showIndent(2).."break;}\n"
-	end
+	end end
 	result = result..showIndent(1).."default: ERROR();}\n"
 	result = result.."}"
 	return result
@@ -1432,13 +1432,13 @@ function showIfieldC(list,map)
 	result = result.."\n{\n"
 	result = result..showIndent(1).."int len = 0;\n"
 	result = result..showIndent(1).."switch (typ) {\n"
-	for k,v in ipairs(list) do
+	for k,v in ipairs(list) do if Structz[v] ~= nil then
 		result = result..showIndent(1).."case ("..(k-1).."): // "..v.."\n"
 		for ky,vl in ipairs(map[v]) do
 			result = result..showIndent(2).."if (hideIdent(\""..vl[1].."\",str,&len)) return "..(ky-1)..";\n"
 		end
 		result = result..showIndent(1).."break;\n"
-	end
+	end end
 	result = result..showIndent(1).."}\n"
 	result = result..showIndent(1).."return -1;\n"
 	result = result.."}"
@@ -1451,7 +1451,7 @@ function showJfieldC(list,map)
 	result = result.."\n{\n"
 	result = result..showIndent(1).."int len = 0;\n"
 	result = result..showIndent(1).."switch (typ) {\n"
-	for k,v in ipairs(list) do
+	for k,v in ipairs(list) do if Structz[v] ~= nil then
 		result = result..showIndent(1).."case ("..(k-1).."): // "..v.."\n"
 		result = result..showIndent(2).."switch (pos) {\n"
 		for ky,vl in ipairs(map[v]) do
@@ -1459,7 +1459,7 @@ function showJfieldC(list,map)
 		end
 		result = result..showIndent(2).."default: return -1;}\n"
 		result = result..showIndent(2).."break;\n"
-	end
+	end end
 	result = result..showIndent(1).."default: return -1;}\n"
 	result = result..showIndent(1).."return -1;\n"
 	result = result.."}"
@@ -2885,11 +2885,11 @@ function showFuncC()
 	result = result..showCall(Structs,Structz,showFreadC).."\n"
 	result = result..showCall(Structs,Structz,showFcopyC).."\n"
 	result = result..showCall(Structs,Structz,showFallocC).."\n"
-	result = result..showRfieldC(Structs,Structz).."\n"
+	result = result..showRfieldC(types,Structz).."\n"
 	result = result..showCall(Structs,Structz,showFwriteC).."\n"
-	result = result..showWfieldC(Structs,Structz).."\n"
-	result = result..showIfieldC(Structs,Structz).."\n"
-	result = result..showJfieldC(Structs,Structz).."\n"
+	result = result..showWfieldC(types,Structz).."\n"
+	result = result..showIfieldC(types,Structz).."\n"
+	result = result..showJfieldC(types,Structz).."\n"
 	result = result..showSgenC(types).."\n"
 	result = result..showHgenC(types).."\n"
 	result = result..showRgenC(types).."\n"

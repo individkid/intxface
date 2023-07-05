@@ -350,10 +350,11 @@ Bootstrap = {
 		"mch[6]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchRead
 		-- Read center, Stage center fields, and compare fields staged to Configure
 		"mch[7]:Machine(xfr:Transfer(Read)siz:Int(0))"..
-		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(3)"..
+		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(4)"..
 			"sav[0]:Configure(CenterMemory)"..
 			"sav[1]:Configure(CenterIndex)"..
 			"sav[2]:Configure(CenterSize)"..
+			"sav[3]:Configure(RegisterMemory)"..
 		")"..
 		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
 			"flt[0]:Filter(loc:Locate(Branch)siz:Int(2)"..

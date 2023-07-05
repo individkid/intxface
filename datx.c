@@ -420,7 +420,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		str = exp->flt[i].str[j];}}} else {
 		for (int j = 0; j < exp->flt[i].siz; j++) {
 		if (strcmp(str,exp->flt[i].str[j]) == 0) {
-		// printf("CmpOp %s\n",str);
 		typ = datxType(dat,&exp->exp[i],typ); found = 1;}}}}
 		if (!found) ERROR();} break;
 	case (TotOp): { // 1; cast to type
@@ -451,7 +450,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (SetOp): { // 1; callback with value
 		void *sav = 0; if (exp->siz != 1 || datxSetFp == 0) ERROR();
 		typ = datxType(dat,&exp->exp[0],typ); if (typ != identType("Int")) ERROR();
-		assignDat(&sav,prefix); datxSetFp(*dat,exp->cfg); assignDat(prefix,sav);
+		assignDat(&sav,prefix); datxSetFp(*dat,exp->cfg); assignDat(&prefix,sav);
 		free(sav);} break;
 	case (InsOp): { // 1+; fields to struct
 		datxSingle(); if (exp->siz < 1) ERROR();
@@ -459,8 +458,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ != identType(exp->fld[0])) ERROR();
 		for (int i = 1; i < exp->siz; i++) {
 		int typ0 = identField(typ,exp->fld[i]);
-		assignDat(datxDat0,dat); datxEval(datxDat1,&exp->exp[i],typ0);
-		datxNone(datxDat2); readField(typ,typ0,exp->idx[i],datxIdx0,datxIdx1,datxIdx2);
+		datxEval(datxDat1,&exp->exp[i],typ0);
+		assignDat(datxDat0,dat); datxNone(datxDat2);
+		readField(typ,typ0,exp->idx[i],datxIdx0,datxIdx1,datxIdx2);
 		assignDat(dat,*datxDat2);}} break;
 	case (ExtOp): { // 1+; field from struct
 		datxSingle(); if (exp->siz < 1) ERROR();
