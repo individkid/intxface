@@ -426,18 +426,18 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int tmp = 0; if (exp->siz != 1) ERROR();
 		tmp = datxEval(dat,&exp->exp[0],-1);
 		if (typ == -1) typ = identType(exp->typ); if (typ != identType(exp->typ)) ERROR();
-		if (typ == identType("Int") && tmp == identType("Int32")) datxInt(dat,*datxInt32z(0,dat));
-		else if (typ == identType("Int") && tmp == identType("Num")) datxInt(dat,*datxNumz(0,dat));
-		else if (typ == identType("Int") && tmp == identType("Old")) datxInt(dat,*datxOldz(0,dat));
-		else if (typ == identType("Int32") && tmp == identType("Int")) datxInt32(dat,*datxIntz(0,dat));
-		else if (typ == identType("Int32") && tmp == identType("Num")) datxInt32(dat,*datxNumz(0,dat));
-		else if (typ == identType("Int32") && tmp == identType("Old")) datxInt32(dat,*datxOldz(0,dat));
-		else if (typ == identType("Num") && tmp == identType("Int")) datxNum(dat,*datxIntz(0,dat));
-		else if (typ == identType("Num") && tmp == identType("Int32")) datxNum(dat,*datxInt32z(0,dat));
-		else if (typ == identType("Num") && tmp == identType("Old")) datxNum(dat,*datxOldz(0,dat));
-		else if (typ == identType("Old") && tmp == identType("Int")) datxOld(dat,*datxIntz(0,dat));
-		else if (typ == identType("Old") && tmp == identType("Int32")) datxOld(dat,*datxInt32z(0,dat));
-		else if (typ == identType("Old") && tmp == identType("Num")) datxOld(dat,*datxNumz(0,dat));} break;
+		if (typ == identType("Int") && tmp == identType("Int32")) datxInt(dat,*datxInt32z(0,*dat));
+		else if (typ == identType("Int") && tmp == identType("Num")) datxInt(dat,*datxNumz(0,*dat));
+		else if (typ == identType("Int") && tmp == identType("Old")) datxInt(dat,*datxOldz(0,*dat));
+		else if (typ == identType("Int32") && tmp == identType("Int")) datxInt32(dat,*datxIntz(0,*dat));
+		else if (typ == identType("Int32") && tmp == identType("Num")) datxInt32(dat,*datxNumz(0,*dat));
+		else if (typ == identType("Int32") && tmp == identType("Old")) datxInt32(dat,*datxOldz(0,*dat));
+		else if (typ == identType("Num") && tmp == identType("Int")) datxNum(dat,*datxIntz(0,*dat));
+		else if (typ == identType("Num") && tmp == identType("Int32")) datxNum(dat,*datxInt32z(0,*dat));
+		else if (typ == identType("Num") && tmp == identType("Old")) datxNum(dat,*datxOldz(0,*dat));
+		else if (typ == identType("Old") && tmp == identType("Int")) datxOld(dat,*datxIntz(0,*dat));
+		else if (typ == identType("Old") && tmp == identType("Int32")) datxOld(dat,*datxInt32z(0,*dat));
+		else if (typ == identType("Old") && tmp == identType("Num")) datxOld(dat,*datxNumz(0,*dat));} break;
 	case (ImmOp): { // 0; built in value
 		datxSingle(); if (exp->siz != 0) ERROR();
 		if (typ == -1) typ = identUnion(exp->val); if (typ != identUnion(exp->val)) ERROR();
@@ -514,7 +514,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (exp->siz != 1 || datxEmbFp == 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxEval(datxDat0,&exp->exp[0],identType("Str"));
-		datxInt(dat,datxEmbFp(datxChrz(0,datxDat0)));} break;
+		datxInt(dat,datxEmbFp(datxChrz(0,*datxDat0)));} break;
 	case (DatOp): { // 0; stream data
 		struct Data src = {0}; struct Data dst = {0};
 		if (exp->siz != 1) ERROR();
