@@ -1152,6 +1152,7 @@ function showCopyC(name,struct)
 	result = result.."void copy"..name.."(struct "..name.." *dst, struct "..name.." *ptr)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
+	result = result..showIndent(1).."if (dst == 0 || ptr == 0) ERROR();\n"
 	result = result..showIndent(1).."free"..name.."(dst);\n"
 	for ky,vl in ipairs(struct) do
 		local condit = showCondC(vl)
@@ -1273,6 +1274,7 @@ function showFcopyC(name,struct)
 	result = result.."void fcopy"..name.."(struct "..name.." *dst, struct "..name.." *ptr, int fld, int sub)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
+	result = result..showIndent(1).."if (dst == 0 || ptr == 0) ERROR();\n"
 	result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
 	result = result..showIndent(1).."switch (fld) {\n"
 	for ky,vl in ipairs(struct) do
@@ -1350,6 +1352,7 @@ function showRfieldC(list,map)
 		result = result..showIndent(2).."struct "..v.." src = {0};\n"
 		result = result..showIndent(2).."struct "..v.." dst = {0};\n"
 		result = result..showIndent(2).."read"..v.."(&src,ifd);\n"
+		result = result..showIndent(2).."copy"..v.."(&dst,&src);\n"
 		result = result..showIndent(2).."while (1) {\n"
 		result = result..showIndent(3).."int vrc = fvalid"..v.."(&src,i,j);\n"
 		result = result..showIndent(3).."int vst = fvalid"..v.."(&dst,i,j);\n"

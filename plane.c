@@ -734,10 +734,6 @@ int planeRunning()
 {
 	return running;
 }
-void planeDebug()
-{
-	printf("planeDebug\n");
-}
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
 {
 	struct sigaction act;
@@ -751,7 +747,6 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
 	luaxAdd("planeGetter",protoTypeDh(planeGetter)); luaxAdd("planeSetter",protoTypeDg(planeSetter));
 	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert)); datxEmbed(planeSide);
-	atexit(planeDebug);
 	callDma = dma;
 	callSafe = safe;
 	callMain = main;

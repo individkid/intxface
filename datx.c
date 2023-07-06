@@ -459,7 +459,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		for (int i = 1; i < exp->siz; i++) {
 		int typ0 = identField(typ,exp->fld[i]);
 		datxEval(datxDat1,&exp->exp[i],typ0);
-		assignDat(datxDat0,dat); datxNone(datxDat2);
+		assignDat(datxDat0,*dat); datxNone(datxDat2);
 		readField(typ,typ0,exp->idx[i],datxIdx0,datxIdx1,datxIdx2);
 		assignDat(dat,*datxDat2);}} break;
 	case (ExtOp): { // 1+; field from struct
@@ -468,7 +468,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ != identType(exp->fld[0])) ERROR();
 		for (int i = 1; i < exp->siz; i++) {
 		int typ0 = identField(typ,exp->fld[i]);
-		assignDat(datxDat0,dat); datxEval(datxDat1,&exp->exp[i],typ0);
+		assignDat(datxDat0,*dat); datxEval(datxDat1,&exp->exp[i],typ0);
 		datxNone(datxDat2); writeField(typ,typ0,exp->idx[i],datxIdx0,datxIdx1);
 		assignDat(dat,*datxDat1);}} break;
 	case (FldOp): { // n: fold expressions
