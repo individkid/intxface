@@ -7,9 +7,9 @@ center = {["mem"]="Piercez",["siz"]=1,["idx"]=0,["slf"]=1,["pie"]={{["fix"]={0.0
 writeCenter(center,ident)
 center = {["mem"]="Piercez",["siz"]=0,["idx"]=0,["slf"]=2}
 writeCenter(center,ident)
--- center = readCenter(ident)
--- io.stdout:write("mem %s\n",center["mem"])
+result = readCenter(ident)
 os.execute("sleep 1")
+print(showCenter(result,""))
 center = {["mem"]="Configurez",["siz"]=1,["idx"]=0,["slf"]=3,["cfg"]={"RegisterOpen"},["val"]={0}}
 writeCenter(center,ident)
 if waitExit() < 0 then io.stderr:write("planerLua: bad exit status: metalSw\n"); os.exit(-1) end

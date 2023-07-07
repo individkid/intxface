@@ -42,6 +42,7 @@ filer.log:
 	./filerLua > filer.log
 planer.log:
 	./planerLua > planer.log
+	cat planer.log
 spacra.log:
 	./spacraHs > spacra.log
 

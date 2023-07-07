@@ -307,7 +307,7 @@ Bootstrap = {
 		"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))))"},
 	{"Int","2","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)"..
-		"center[0]:Center(mem:Memory(Machinez)siz:Int(22)idx:Int(0)slf:Int(0)"..
+		"center[0]:Center(mem:Memory(Machinez)siz:Int(21)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(5))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
 			"flt[0]:Filter(loc:Locate(Branch)siz:Int(3)"..
@@ -350,11 +350,10 @@ Bootstrap = {
 		"mch[6]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchRead
 		-- Read center, Stage center fields, and compare fields staged to Configure
 		"mch[7]:Machine(xfr:Transfer(Read)siz:Int(0))"..
-		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(4)"..
-			"sav[0]:Configure(CenterMemory)"..
-			"sav[1]:Configure(CenterIndex)"..
+		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(3)"..
+			"sav[0]:Configure(RegisterMemory)"..
+			"sav[1]:Configure(RegisterIndex)"..
 			"sav[2]:Configure(CenterSize)"..
-			"sav[3]:Configure(RegisterMemory)"..
 		")"..
 		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
 			"flt[0]:Filter(loc:Locate(Branch)siz:Int(2)"..
@@ -369,7 +368,7 @@ Bootstrap = {
 				"cmp[0]:Compare(ECCmp)"..
 				"cmp[1]:Compare(ECCmp)"..
 				"exp[0]:Express(opr:Operate(MemOp)siz:Int(0)mvl:Memory(Piercez))"..
-				"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterMemory))"..
+				"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(RegisterMemory))"..
 				"str[0]:Str(MatchGetPierce)"..
 				"str[1]:Str(MatchGetNone)"..
 			")"..
@@ -378,7 +377,7 @@ Bootstrap = {
 			"flt[4]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(MatchGetNone))"..
 			"flt[5]:Filter(loc:Locate(Leaf)siz:Int(1)str[0]:Str(Mismatch))"..
 			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterSize))".. -- compare CenterSize
-			"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterMemory))".. -- compare CenterMemory
+			"exp[1]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(RegisterMemory))".. -- compare RegisterMemory
 			"exp[2]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(1))".. -- MatchSet
 			"exp[3]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(2))".. -- MatchGetPierce
 			"exp[4]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1))".. -- MatchGetNone
@@ -392,7 +391,7 @@ Bootstrap = {
 		"))"..
 		"mch[13]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1)))"..
 		"mch[14]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchGetPierce
-		-- Eval and Echo singleton Pierce to center, Eval CenterIndex to RegisterIndex, Fill and Write center
+		-- Eval and Echo singleton Pierce to center, Fill and Write center
 		"mch[15]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(InsOp)siz:Int(2)"..
 			"fld[0]:Str(Center)fld[1]:Str(idx)idx[0]:Int(0)idx[1]:Int(0)"..
 			"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
@@ -401,16 +400,13 @@ Bootstrap = {
 				"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
 				"vld:Int32(0)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))))"..
 			"exp[1]:Express(opr:Operate(TotOp)siz:Int(1)typ:Str(Int32)"..
-				"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterIndex)))"..
+				"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(RegisterIndex)))"..
 		"))"..
 		"mch[16]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
-		"mch[17]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(SetOp)siz:Int(1)cfg:Configure(RegisterIndex)"..
-			"exp[0]:Express(opr:Operate(GetOp)siz:Int(0)cfg:Configure(CenterIndex))"..
-		"))"..
-		"mch[18]:Machine(xfr:Transfer(Fill)siz:Int(0))"..
-		"mch[19]:Machine(xfr:Transfer(Write)siz:Int(0))"..
-		"mch[20]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1)))"..
-		"mch[21]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
+		"mch[17]:Machine(xfr:Transfer(Fill)siz:Int(0))"..
+		"mch[18]:Machine(xfr:Transfer(Write)siz:Int(0))"..
+		"mch[19]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(-1)))"..
+		"mch[20]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
 	"))))"},
 	{"Int","3","Str","Machine(xfr:Transfer(Echo)siz:Int(0))"},
 	{"Int","4","Str","Machine(xfr:Transfer(Copy)siz:Int(0))"},
