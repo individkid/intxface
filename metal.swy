@@ -177,6 +177,7 @@ class Pend<T>
 	{
 		var sub = 0
 		var idx = index
+		if (length <= 0) {print("invalid buffer length");exitErr(#file,#line);return}
 		while (idx < 0) {idx = idx + length}
 		while (idx >= length) {idx = idx - length}
 		while (vals.count-sub > length) {
@@ -460,14 +461,17 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 {
 	let sub = Int(shader.rawValue)
 	guard let code = queue?.makeCommandBuffer() else {return}
-	switch (shader) {
+	if (Int(base) < 0 || Int(base) >= Int(limit) || array.count < Int(limit)) {
+		let dip = Int(Dipoint.rawValue)
+    	guard let draw = getDraw() else {exitErr(#file,#line);return}
+		param[dip]!.colorAttachments[0].texture = draw.texture
+		guard let encode = code.makeRenderCommandEncoder(descriptor:param[dip]!) else {exitErr(#file,#line);return}
+		encode.endEncoding()
+		code.present(draw)
+	} else {switch (shader) {
 	case (Dipoint): fallthrough case (Diplane):
     guard let draw = getDraw() else {exitErr(#file,#line);return}
 	param[sub]!.colorAttachments[0].texture = draw.texture
-	if (Int(base) < 0 || Int(base) >= Int(limit) || array.count < Int(limit)) {
-		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
-		encode.endEncoding()
-	}
 	for range in array[Int(base)..<Int(limit)] {
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.setRenderPipelineState(render[sub]!)
@@ -490,7 +494,7 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 	}
 	code.present(draw)
 	case (Adpoint): fallthrough case (Adplane):
-	for range in array[Int(base)...Int(limit)] {
+	for range in array[Int(base)..<Int(limit)] {
 		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
 		var nums:[Int] = []
 		var pers:[Int] = []
@@ -522,7 +526,7 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 		}
 	}
 	code.addCompletedHandler(getReady())
-	default: exitErr(#file,#line);return}
+	default: exitErr(#file,#line);return}}
 	code.addScheduledHandler(getLock())
 	code.addCompletedHandler(getCount(code))
 	code.commit()

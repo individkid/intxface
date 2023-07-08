@@ -287,21 +287,23 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(7)"..
+	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(8)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
-		"cfg[2]:Configure(MachineSize)"..
-		"cfg[3]:Configure(RegisterOpen)"..
+		"cfg[2]:Configure(ArgumentMicro)"..
+		"cfg[3]:Configure(MachineSize)"..
 		"cfg[4]:Configure(RegisterOpen)"..
 		"cfg[5]:Configure(RegisterOpen)"..
 		"cfg[6]:Configure(RegisterOpen)"..
+		"cfg[7]:Configure(RegisterOpen)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
-		"val[2]:Int(22)"..
-		"val[3]:Int(1)"..
-		"val[4]:Int(3)"..
-		"val[5]:Int(15)"..
-		"val[6]:Int(31))"},
+		"val[2]:Int(%(return castMicro(\"Adpoint\")))"..
+		"val[3]:Int(21)"..
+		"val[4]:Int(1)"..
+		"val[5]:Int(3)"..
+		"val[6]:Int(15)"..
+		"val[7]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(FldOp)siz:Int(1)key:Str(Changed)"..
 		"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))))"},
