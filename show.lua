@@ -2668,13 +2668,14 @@ function showReadLua(name,struct)
 			conds = conds + 1
 			result = result..showIndent(count).."if "..cond.." ".."then".."\n"
 		end
+		local args = 0
 		local list = ""
 		local sub = ""
 		local sup = ""
 		local super = false
 		if (type(field[4]) == "table") then
-			local squares = 1
-			local square = 1
+			local squares = 0
+			local square = 0
 			local limit = count + #field[4]
 			local dimen = 0
 			while (count < limit) do
@@ -2688,10 +2689,11 @@ function showReadLua(name,struct)
 				end
 				result = result.." = {}".."\n"
 				squares = squares + 1
-				result = result..showIndent(count).."local".." i"..count.." = 1\n"
-				result = result..showIndent(count).."while (i"..count.." <= "..field[4][dimen]..") do\n"
-				sub = sub.."[i"..count.."]"
-				list = list..",".."i"..count
+				result = result..showIndent(count).."local".." i"..args.." = 1\n"
+				result = result..showIndent(count).."while (i"..args.." <= "..field[4][dimen]..") do\n"
+				sub = sub.."[i"..args.."]"
+				list = list..",".."i"..args.."-1"
+				args = args + 1
 				if (count < limit) then sup = sup.."[i"..count.."]" end
 				super = true
 			end
@@ -2703,32 +2705,35 @@ function showReadLua(name,struct)
 			end
 			count = count + 1
 			result = result..showIndent(count).."tab[\""..field[1].."\"] = {}".."\n"
-			result = result..showIndent(count).."local".." i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= tab[\""..field[4].."\"]) do\n"
-			sub = sub.."[i"..count.."]"
-			list = list..",".."i"..count
+			result = result..showIndent(count).."local".." i"..args.." = 1\n"
+			result = result..showIndent(count).."while (i"..args.." <= tab[\""..field[4].."\"]) do\n"
+			sub = sub.."[i"..args.."]"
+			list = list..",".."i"..args.."-1"
+			args = args + 1
 			super = true
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
 			result = result..showIndent(count).."tab".."[\""..field[1].."\"] = {}\n"
-			result = result..showIndent(count).."local".." i"..count.." = ".."1\n"
-			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
-			sub = sub.."[i"..count.."]"
-			list = list..",".."i"..count
+			result = result..showIndent(count).."local".." i"..args.." = ".."1\n"
+			result = result..showIndent(count).."while (i"..args.." <= "..field[4]..") do\n"
+			sub = sub.."[i"..args.."]"
+			list = list..",".."i"..args.."-1"
+			args = args + 1
 			super = true
 		end
 		if showhide then
-			result = result..showIndent(count+1).."vld,siz = hideField(\""..field[1].."\",str,siz"..list.."); if (vld == nil) then return nil,siz end; tab".."[\""..field[1].."\"]"..sub..", siz = hide"..field[2].."(str,siz); if (tab".."[\""..field[1].."\"]"..sub.." == nil) then return nil,siz end\n"
+			result = result..showIndent(count+1).."vld,siz = hideField(\""..field[1].."\",str,siz,"..args..list.."); if (vld == nil) then return nil,siz end; tab".."[\""..field[1].."\"]"..sub..", siz = hide"..field[2].."(str,siz); if (tab".."[\""..field[1].."\"]"..sub.." == nil) then return nil,siz end\n"
 		else
 			result = result..showIndent(count+1).."tab".."[\""..field[1].."\"]"..sub.." = ".."read"..field[2].."(idx)\n"
 		end
 		if (cond ~= "True") then nest = 1 end
 		while (count > 0) do
 			if (count > conds) then
-				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
+				result = result..showIndent(count+1).."i"..(args-1).." = i"..(args-1).." + 1\n"
 			end
 			result = result..showIndent(count).."end\n"
+			args = args - 1
 			count = count - 1
 		end
 	end
@@ -2764,12 +2769,14 @@ function showWriteLua(name,struct)
 		local arg = ""
 		local args = 0
 		if (type(field[4]) == "table") then
+			local dimen = 0
 			while (count < #field[4]) do
+				dimen = dimen + 1
 				count = count + 1
-				result = result..showIndent(count).."local".." i"..count.." = ".."1\n"
-				result = result..showIndent(count).."while (i"..count.." <= "..field[4][count]..") do\n"
-				sub = sub.."[i"..count.."]"
-				arg = arg..",i"..count
+				result = result..showIndent(count).."local".." i"..args.." = 1\n"
+				result = result..showIndent(count).."while (i"..args.." <= "..field[4][dimen]..") do\n"
+				sub = sub.."[i"..args.."]"
+				arg = arg..",i"..args.."-1"
 				args = args + 1
 			end
 		end
@@ -2779,18 +2786,18 @@ function showWriteLua(name,struct)
 				if (v[1] == field[4]) then found = "a"..k end
 			end
 			count = count + 1
-			result = result..showIndent(count).."local".." i"..count.." = 1\n"
-			result = result..showIndent(count).."while (i"..count.." <= ".."tab[\""..field[4].."\"]) do\n"
-			sub = sub.."[i"..count.."]"
-			arg = arg..",i"..count
+			result = result..showIndent(count).."local".." i"..args.." = 1\n"
+			result = result..showIndent(count).."while (i"..args.." <= ".."tab[\""..field[4].."\"]) do\n"
+			sub = sub.."[i"..args.."]"
+			arg = arg..",i"..args.."-1"
 			args = args + 1
 		end
 		if (type(field[4]) == "number") then
 			count = count + 1
-			result = result..showIndent(count).."local".." i"..count.." = ".."1".."\n"
-			result = result..showIndent(count).."while (i"..count.." <= "..field[4]..") do\n"
-			sub = sub.."[i"..count.."]"
-			arg = arg..",i"..count
+			result = result..showIndent(count).."local".." i"..args.." = 1\n"
+			result = result..showIndent(count).."while (i"..args.." <= "..field[4]..") do\n"
+			sub = sub.."[i"..args.."]"
+			arg = arg..",i"..args.."-1"
 			args = args + 1
 		end
 		local value = "tab[\""..field[1].."\"]"..sub
@@ -2803,10 +2810,11 @@ function showWriteLua(name,struct)
 		if (cond ~= "True") then nest = 1 end
 		while (count > 0) do
 			if (count > conds) then
-				result = result..showIndent(count+1).."i"..count.." = i"..count.." + 1\n"
+				result = result..showIndent(count+1).."i"..(args-1).." = i"..(args-1).." + 1\n"
 			end
 			result = result..showIndent(count).."end\n"
 			count = count - 1
+			args = args - 1
 		end
 	end
 	if showhide then

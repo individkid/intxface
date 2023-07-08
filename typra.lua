@@ -662,40 +662,40 @@ Expected = {
 	"function readStruct1(idx)\n"..
 	"    local tab = {}\n"..
 	"    tab[\"next\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 0) do\n"..
-	"        tab[\"next\"][i1] = readStruct1(idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 0) do\n"..
+	"        tab[\"next\"][i0] = readStruct1(idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    tab[\"field1\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        tab[\"field1\"][i1] = readOld(idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        tab[\"field1\"][i0] = readOld(idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    tab[\"field2\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 3) do\n"..
-	"        tab[\"field2\"][i1] = readNum(idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 3) do\n"..
+	"        tab[\"field2\"][i0] = readNum(idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    tab[\"field3\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        tab[\"field3\"][i1] = {}\n"..
-	"        local i2 = 1\n"..
-	"        while (i2 <= 3) do\n"..
-	"            tab[\"field3\"][i1][i2] = readInt(idx)\n"..
-	"            i2 = i2 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        tab[\"field3\"][i0] = {}\n"..
+	"        local i1 = 1\n"..
+	"        while (i1 <= 3) do\n"..
+	"            tab[\"field3\"][i0][i1] = readInt(idx)\n"..
+	"            i1 = i1 + 1\n"..
 	"        end\n"..
-	"        i1 = i1 + 1\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    tab[\"field4\"] = readStr(idx)\n"..
 	"    tab[\"field5\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 3) do\n"..
-	"        tab[\"field5\"][i1] = readInt(idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 3) do\n"..
+	"        tab[\"field5\"][i0] = readInt(idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    tab[\"field6\"] = readEnum1(idx)\n"..
 	"    tab[\"field7\"] = readEnum2(idx)\n"..
@@ -719,56 +719,56 @@ Expected = {
 	"    end\n"..
 	"    tab[\"field14\"] = readInt(idx)\n"..
 	"    tab[\"field15\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= tab[\"field14\"]) do\n"..
-	"        tab[\"field15\"][i1] = readInt(idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= tab[\"field14\"]) do\n"..
+	"        tab[\"field15\"][i0] = readInt(idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    tab[\"field16\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        tab[\"field16\"][i1] = readStruct2(idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        tab[\"field16\"][i0] = readStruct2(idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    tab[\"field17\"] = {}\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        tab[\"field17\"][i1] = readStruct2(idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        tab[\"field17\"][i0] = readStruct2(idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    return tab\n"..
 	"end\n"..
 	"--",
 	"function writeStruct1(tab,idx)\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 0) do\n"..
-	"        writeStruct1(tab[\"next\"][i1],idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 0) do\n"..
+	"        writeStruct1(tab[\"next\"][i0],idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        writeOld(tab[\"field1\"][i1],idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        writeOld(tab[\"field1\"][i0],idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 3) do\n"..
-	"        writeNum(tab[\"field2\"][i1],idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 3) do\n"..
+	"        writeNum(tab[\"field2\"][i0],idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        local i2 = 1\n"..
-	"        while (i2 <= 3) do\n"..
-	"            writeInt(tab[\"field3\"][i1][i2],idx)\n"..
-	"            i2 = i2 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        local i1 = 1\n"..
+	"        while (i1 <= 3) do\n"..
+	"            writeInt(tab[\"field3\"][i0][i1],idx)\n"..
+	"            i1 = i1 + 1\n"..
 	"        end\n"..
-	"        i1 = i1 + 1\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    writeStr(tab[\"field4\"],idx)\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 3) do\n"..
-	"        writeInt(tab[\"field5\"][i1],idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 3) do\n"..
+	"        writeInt(tab[\"field5\"][i0],idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"    writeEnum1(tab[\"field6\"],idx)\n"..
 	"    writeEnum2(tab[\"field7\"],idx)\n"..
@@ -791,20 +791,20 @@ Expected = {
 	"        writeInt(tab[\"field13\"],idx)\n"..
 	"    end\n"..
 	"    writeInt(tab[\"field14\"],idx)\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= tab[\"field14\"]) do\n"..
-	"        writeInt(tab[\"field15\"][i1],idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= tab[\"field14\"]) do\n"..
+	"        writeInt(tab[\"field15\"][i0],idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        writeStruct2(tab[\"field16\"][i1],idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        writeStruct2(tab[\"field16\"][i0],idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
-	"    local i1 = 1\n"..
-	"    while (i1 <= 2) do\n"..
-	"        writeStruct2(tab[\"field17\"][i1],idx)\n"..
-	"        i1 = i1 + 1\n"..
+	"    local i0 = 1\n"..
+	"    while (i0 <= 2) do\n"..
+	"        writeStruct2(tab[\"field17\"][i0],idx)\n"..
+	"        i0 = i0 + 1\n"..
 	"    end\n"..
 	"end\n"..
 	"--"
@@ -871,7 +871,7 @@ io.input(file)
 for k,v in ipairs(Expected) do
 	for key,val in ipairs(linesOf(Stimulus[k][1].." "..v)) do
 		line = io.read();
-		print(line)
+		-- print(line)
 		if line ~= val then print("error1: "..line..":::"..val); assert(false) end
 	end
 end

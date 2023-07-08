@@ -1502,7 +1502,7 @@ int hideFieldLua(lua_State *lua)
 	int siz = lua_tonumber(lua,3);
 	int arg = lua_tonumber(lua,4);
 	int *sub = malloc(arg*sizeof(int));
-	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,5+i);
 	if (hideFieldV(lua_tostring(lua,1),lua_tostring(lua,2),&siz,arg,sub))
 	lua_pushnumber(lua,1); else lua_pushnil(lua);
 	lua_pushnumber(lua,siz);
