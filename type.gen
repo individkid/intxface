@@ -303,13 +303,15 @@ Bootstrap = {
 		"val[4]:Int(1)"..
 		"val[5]:Int(3)"..
 		"val[6]:Int(15)"..
-		"val[7]:Int(31))"},
+		"val[7]:Int(31)"..
+	")"},
 	{"Int","1","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
-		"exp[0]:Express(opr:Operate(FldOp)siz:Int(1)key:Str(Changed)"..
-		"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))))"},
+	"exp[0]:Express(opr:Operate(FldOp)siz:Int(1)key:Str(Changed)"..
+		"exp[0]:Express(opr:Operate(IntOp)siz:Int(0)ivl:Int(0))"..
+	"))"},
 	{"Int","2","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
-		"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)"..
-		"center[0]:Center(mem:Memory(Machinez)siz:Int(21)idx:Int(0)slf:Int(0)"..
+	"exp[0]:Express(opr:Operate(ImmOp)siz:Int(0)val[0]:Generic(tag:Tag(CenterTag)"..
+	"center[0]:Center(mem:Memory(Machinez)siz:Int(21)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(5))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CmpOp)siz:Int(6)"..
 			"flt[0]:Filter(loc:Locate(Branch)siz:Int(3)"..

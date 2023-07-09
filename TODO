@@ -19,6 +19,7 @@ phoner.lua: Data -> ./phone -> speaker,microphone -> ./phone -> Data
 piper.lua: Data -> ./pipe -> .mov -> ./pipe -> Data
 
 sculpt.lua share between file plane space:
+ Additive,Subtractive,Transform,Ortho,Focal,Normal,slIde,Rotate,sCale,Mouse,roLler
  plane click keyboard transform, to file
  plane click keyboard manipulate, to space
  plane click additive subtractive, to space
