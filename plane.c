@@ -501,11 +501,6 @@ int planeIval(struct Express *exp)
 	val = *ptr;
 	return val;
 }
-void planeEcho()
-{
-	if (configure[ResultType] == identType("Center")) readCenter(&center,idx0);
-	else ERROR();
-}
 void planeFill()
 {
 	int src = 0; int dst = 0; int siz = 0;
@@ -526,7 +521,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Write): writeCenter(&center,external); break;
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
 	case (Force): for (int i = 0; i < mptr->siz; i++) {
-	planeDma(mptr->cfg[i],mptr->val[i]); planeConfig(mptr->cfg[i],mptr->val[i]);} break;
+	planeConfig(mptr->cfg[i],mptr->val[i]); planeDma(mptr->cfg[i],mptr->val[i]);} break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
@@ -540,14 +535,14 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
-	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next-1); break;
-	case (Goto): next = planeIval(&mptr->exp[0]) + next-1; break;
+	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
+	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
 	case (Eval): datxNone(dat0); configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
-	case (Echo): planeEcho(); break;
+	case (Echo): if (configure[ResultType] == identType("Center")) readCenter(&center,idx0); else ERROR(); break;
 	case (Fill): planeFill(); break;
 	default: break;}
-	return next;
+	return next+1;
 }
 void planeWake(enum Configure hint)
 {
@@ -555,7 +550,7 @@ void planeWake(enum Configure hint)
 	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
 	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[ResultLine];
-	int next = planeSwitch(mptr,configure[ResultLine]+1);
+	int next = planeSwitch(mptr,configure[ResultLine]);
 	if (next == configure[ResultLine]) break;
 	configure[ResultLine] = next;}
 }
@@ -624,7 +619,8 @@ int planeCat(int idx, const char *str)
 void planeSetter(void *dat, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
-	planeDma(sub,*datxIntz(0,dat)); planeConfig(sub,*datxIntz(0,dat));
+	planeConfig(sub,*datxIntz(0,dat));
+	planeDma(sub,*datxIntz(0,dat));
 }
 void planeGetter(void **dat, int sub)
 {
