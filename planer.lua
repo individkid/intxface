@@ -17,15 +17,19 @@ writeCenter(triangle,ident)
 vertex = hideCenter("Center(mem:Memory(Vertexz)siz:Int(3)idx:Int(0)slf:Int(0)"..
 	"vtx[0]:Vertex(vec[0]:Old(-1.0)vec[1]:Old(0.0)vec[2]:Old(0.0)vec[3]:Old(1.0)"..
 		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)pad:Int32(0))"..
-	"vtx[1]:Vertex(vec[0]:Old(0.0)vec[1]:Old(2.0)vec[2]:Old(0.0)vec[3]:Old(1.0)"..
+	"vtx[1]:Vertex(vec[0]:Old(0.0)vec[1]:Old(1.0)vec[2]:Old(0.0)vec[3]:Old(1.0)"..
 		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)pad:Int32(0))"..
-	"vtx[2]:Vertex(vec[0]:Old(1.0)vec[1]:Old(0.0)vec[2]:Old(0.0)vec[3]:Old(1.0)"..
+	"vtx[2]:Vertex(vec[0]:Old(1.0)vec[1]:Old(-1.0)vec[2]:Old(0.0)vec[3]:Old(1.0)"..
 		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)pad:Int32(0)))")
 writeCenter(vertex,ident)
 slice = hideCenter("Center(mem:Memory(Slicez)siz:Int(1)idx:Int(0)slf:Int(0)rng[0]:Slice(idx:Int(0)siz:Int(1)))")
 writeCenter(slice,ident)
--- TODO change ArgumentLimit to 1, and fix expected
-expected = initialize
+limit = {["mem"]="Configurez",["siz"]=1,["idx"]=0,["slf"]=0,["cfg"]={"ArgumentLimit"},["val"]={1}}
+writeCenter(limit,ident)
+expected = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
+	"fix[0]:Old(0.000000)fix[1]:Old(0.000000)fix[2]:Old(0.000000)fix[3]:Old(0.000000)"..
+	"nml[0]:Old(0.000000)nml[1]:Old(0.000000)nml[2]:Old(-1.000000)nml[3]:Old(0.000000)"..
+	"vld:Int32(1)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
 os.execute("sleep 1")
 center = {["mem"]="Piercez",["siz"]=0,["idx"]=0,["slf"]=0}
 writeCenter(center,ident)

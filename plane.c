@@ -471,7 +471,8 @@ void planeCopy(struct Center *ptr)
 	case (Piercez): for (int i = 0; i < ptr->siz; i++) {
 		int index = ptr->idx+i-configure[PierceBase];
 		if (index < 0 || index >= configure[PierceSize]) ERROR();
-		copyPierce(&pierce[index],&ptr->pie[i]);} break;
+		copyPierce(&pierce[index],&ptr->pie[i]);}
+		callDma(ptr); break;
 	case (Stringz): for (int i = 0; i < ptr->siz; i++)
 		if (ptr->idx < 0) configure[ResultSize] = planeSet(-1,ptr->str[i]);
 		else planeSet(ptr->idx+i,ptr->str[i]); break;

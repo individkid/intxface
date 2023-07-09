@@ -134,8 +134,9 @@ class Pend<T>
 		pool = p
 		keep = [MTLBuffer]()
 	}
-	func make(_ length:Int) -> Int
+	func make(_ length:Int) -> Int?
 	{
+		if (length == 0) {return nil}
 		if (pool.pool.count == 0) {
 			pool.pool.append(keep.count)
 			keep.append(device.makeBuffer(length:length)!)
@@ -197,7 +198,7 @@ class Pend<T>
 		toMutable([val]) {(len,ptr) in
 		set(ptr,fld..<fld+siz)}
 	}
-	func get() -> MTLBuffer
+	func get() -> MTLBuffer?
 	{
 		if (last == nil && pend != nil) {
 			last = pend
@@ -206,7 +207,11 @@ class Pend<T>
 		if (last != nil) {
 			lock.lock.append(refer[last])
 		}
-		return keep[last]
+		if (last == nil) {
+			return nil
+		} else {
+			return keep[last]
+		}
 	}
 }
 func getTexture(_ rect:NSRect) -> MTLTexture?
@@ -233,8 +238,11 @@ func getReady() -> MTLCommandBufferHandler
 {
 	let size = planeInfo(TriangleSize)
 	if (size == 0) {return {(MTLCommandBuffer) in planeReady(nil)}}
-	let last = pierce.get()
-	return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents()))); setLock()}
+	if let last = pierce.get() {
+		return {(MTLCommandBuffer) in planeReady(UnsafeMutablePointer<Pierce>(OpaquePointer(last.contents()))); setLock()}
+	} else {
+		return {(MTLCommandBuffer) in setLock()}
+	}
 }
 func getCount(_ code:MTLCommandBuffer) -> MTLCommandBufferHandler
 {
@@ -476,14 +484,14 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 		guard let encode = code.makeRenderCommandEncoder(descriptor:param[sub]!) else {exitErr(#file,#line);return}
 		encode.setRenderPipelineState(render[sub]!)
 		encode.setDepthStencilState(depth[sub]!)
-		encode.setVertexBuffer(triangle.get(),offset:0,index:0)
-		encode.setVertexBuffer(numeric.get(),offset:0,index:1)
-		encode.setVertexBuffer(vertex.get(),offset:0,index:2)
-		encode.setVertexBuffer(subject.get(),offset:0,index:3)
-		encode.setVertexBuffer(object.get(),offset:0,index:4)
-		encode.setVertexBuffer(element.get(),offset:0,index:5)
-		encode.setVertexBuffer(basis.get(),offset:0,index:6)
-		encode.setVertexBuffer(uniform.get(),offset:0,index:7)
+		if let tmp = triangle.get() {encode.setVertexBuffer(tmp,offset:0,index:0)}
+		if let tmp = numeric.get() {encode.setVertexBuffer(tmp,offset:0,index:1)}
+		if let tmp = vertex.get() {encode.setVertexBuffer(tmp,offset:0,index:2)}
+		if let tmp = subject.get() {encode.setVertexBuffer(tmp,offset:0,index:3)}
+		if let tmp = object.get() {encode.setVertexBuffer(tmp,offset:0,index:4)}
+		if let tmp = element.get() {encode.setVertexBuffer(tmp,offset:0,index:5)}
+		if let tmp = basis.get() {encode.setVertexBuffer(tmp,offset:0,index:6)}
+		if let tmp = uniform.get() {encode.setVertexBuffer(tmp,offset:0,index:7)}
 		encode.drawPrimitives(
 			type:.triangle,
 			vertexStart:Int(range.idx),
@@ -509,15 +517,15 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 		for (n,p) in zip(nums,pers) {
 			guard let encode = code.makeComputeCommandEncoder() else {exitErr(#file,#line);return}
 			encode.setComputePipelineState(compute[sub]!)
-			encode.setBuffer(triangle.get(),offset:offset,index:0)
-			encode.setBuffer(numeric.get(),offset:0,index:1)
-			encode.setBuffer(vertex.get(),offset:0,index:2)
-			encode.setBuffer(subject.get(),offset:0,index:3)
-			encode.setBuffer(object.get(),offset:0,index:4)
-			encode.setBuffer(element.get(),offset:0,index:5)
-			encode.setBuffer(basis.get(),offset:0,index:6)
-			encode.setBuffer(uniform.get(),offset:0,index:7)
-			encode.setBuffer(pierce.get(),offset:0,index:8)
+			if let tmp = triangle.get() {encode.setBuffer(tmp,offset:offset,index:0)}
+			if let tmp = numeric.get() {encode.setBuffer(tmp,offset:0,index:1)}
+			if let tmp = vertex.get() {encode.setBuffer(tmp,offset:0,index:2)}
+			if let tmp = subject.get() {encode.setBuffer(tmp,offset:0,index:3)}
+			if let tmp = object.get() {encode.setBuffer(tmp,offset:0,index:4)}
+			if let tmp = element.get() {encode.setBuffer(tmp,offset:0,index:5)}
+			if let tmp = basis.get() {encode.setBuffer(tmp,offset:0,index:6)}
+			if let tmp = uniform.get() {encode.setBuffer(tmp,offset:0,index:7)}
+			if let tmp = pierce.get() {encode.setBuffer(tmp,offset:0,index:8)}
 			let num = MTLSize(width:n,height:1,depth:1)
 			let per = MTLSize(width:p,height:1,depth:1)
 			encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
