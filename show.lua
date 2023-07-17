@@ -1477,7 +1477,7 @@ function showSgenC(list)
 	for k,v in ipairs(list) do
 		if ((Structz[v] == nil) and (Enumz[v] == nil)) then
 			result = result..showIndent(1).."case("..v.."Tag): show"..v.."(ptr->v"..v..",str); break;\n"
-		elseif ((v ~= "Tag") and (v ~= "Generic")) then
+		elseif ((v ~= "Tag") and (v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen")) then
 			result = result..showIndent(1).."case("..v.."Tag): show"..v.."(ptr->"..string.lower(v)..",str); break;\n"
 		end
 	end
@@ -1490,17 +1490,18 @@ function showHgenC(list)
 	result = result.."void hideUnion(struct Generic *ptr, int typ, const char *str, int *len)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
-	result = result..showIndent(1).."switch (typ) {\n"
+	result = result..showIndent(1).."ptr->tag = typeUnion(typ);\n"
+	result = result..showIndent(1).."switch (ptr->tag) {\n"
 	for k,v in ipairs(list) do
 		if ((Structz[v] == nil) and (Enumz[v] == nil)) then
-			result = result..showIndent(1).."case("..(k-1).."): hide"..v.."(&ptr->v"..v..",str,len); break;\n"
-		elseif ((v ~= "Generic") and (Structz[v] ~= nil)) then
-			result = result..showIndent(1).."case("..(k-1).."): alloc"..v.."(&ptr->"..string.lower(v)..",1); hide"..v.."(ptr->"..string.lower(v)..",str,len); break;\n"
+			result = result..showIndent(1).."case("..v.."Tag): hide"..v.."(&ptr->v"..v..",str,len); break;\n"
+		elseif ((v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen") and (Structz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): alloc"..v.."(&ptr->"..string.lower(v)..",1); hide"..v.."(ptr->"..string.lower(v)..",str,len); break;\n"
 		elseif ((v ~= "Tag") and (Enumz[v] ~= nil)) then
-			result = result..showIndent(1).."case("..(k-1).."): hide"..v.."(&ptr->"..string.lower(v)..",str,len); break;\n"
+			result = result..showIndent(1).."case("..v.."Tag): hide"..v.."(&ptr->"..string.lower(v)..",str,len); break;\n"
 		end
 	end
-	result = result..showIndent(1).."}\n"
+	result = result..showIndent(1).."case (Tags): break;}\n"
 	result = result.."}"
 	return result
 end
@@ -1509,19 +1510,20 @@ function showRgenC(list)
 	result = result.."void readUnion(struct Generic *ptr, int typ, int idx)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
-	result = result..showIndent(1).."switch (typ) {\n"
+	result = result..showIndent(1).."ptr->tag = typeUnion(typ);\n"
+	result = result..showIndent(1).."switch (ptr->tag) {\n"
 	for k,v in ipairs(list) do
 		if ((v == "Str") or (v == "Dat")) then
-			result = result..showIndent(1).."case("..(k-1).."): read"..v.."(&ptr->v"..v..",idx); break;\n"
+			result = result..showIndent(1).."case("..v.."Tag): read"..v.."(&ptr->v"..v..",idx); break;\n"
 		elseif ((Structz[v] == nil) and (Enumz[v] == nil)) then
-			result = result..showIndent(1).."case("..(k-1).."): ptr->v"..v.." = read"..v.."(idx); break;\n"
-		elseif ((v ~= "Generic") and (Structz[v] ~= nil)) then
-			result = result..showIndent(1).."case("..(k-1).."): alloc"..v.."(&ptr->"..string.lower(v)..",1); read"..v.."(ptr->"..string.lower(v)..",idx); break;\n"
+			result = result..showIndent(1).."case("..v.."Tag): ptr->v"..v.." = read"..v.."(idx); break;\n"
+		elseif ((v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen") and (Structz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): alloc"..v.."(&ptr->"..string.lower(v)..",1); read"..v.."(ptr->"..string.lower(v)..",idx); break;\n"
 		elseif ((v ~= "Tag") and (Enumz[v] ~= nil)) then
-			result = result..showIndent(1).."case("..(k-1).."): ptr->"..string.lower(v).." = readInt(idx); break;\n"
+			result = result..showIndent(1).."case("..v.."Tag): ptr->"..string.lower(v).." = readInt(idx); break;\n"
 		end
 	end
-	result = result..showIndent(1).."}\n"
+	result = result..showIndent(1).."case (Tags): break;}\n"
 	result = result.."}"
 	return result
 end
@@ -1534,7 +1536,7 @@ function showWgenC(list)
 	for k,v in ipairs(list) do
 		if ((Structz[v] == nil) and (Enumz[v] == nil)) then
 			result = result..showIndent(1).."case("..v.."Tag): write"..v.."(ptr->v"..v..",idx); break;\n"
-		elseif ((v ~= "Generic") and (Structz[v] ~= nil)) then
+		elseif ((v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen") and (Structz[v] ~= nil)) then
 			result = result..showIndent(1).."case("..v.."Tag): write"..v.."(ptr->"..string.lower(v)..",idx); break;\n"
 		elseif ((v ~= "Tag") and (Enumz[v] ~= nil)) then
 			result = result..showIndent(1).."case("..v.."Tag): writeInt(ptr->"..string.lower(v)..",idx); break;\n"
@@ -1551,12 +1553,116 @@ function showIgenC(list)
 	result = result.."\n{\n"
 	result = result..showIndent(1).."switch (ptr->tag) {\n"
 	for k,v in ipairs(list) do
-		if ((v ~= "Tag") and (v ~= "Generic")) then
+		if ((v ~= "Tag") and (v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen")) then
 			result = result..showIndent(1).."case("..v.."Tag): return "..(k-1)..";\n"
 		end
 	end
 	result = result..showIndent(1).."default: break;}\n"
 	result = result..showIndent(1).."return -1;\n"
+	result = result.."}"
+	return result
+end
+function showTgenC(list)
+	local result = ""
+	result = result.."enum Tag typeUnion(int typ)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."switch (typ) {\n"
+	for k,v in ipairs(list) do
+		if ((v ~= "Tag") and (v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen")) then
+			result = result..showIndent(1).."case("..(k-1).."): return "..v.."Tag;\n"
+		end
+	end
+	result = result..showIndent(1).."default: break;}\n"
+	result = result..showIndent(1).."return -1;\n"
+	result = result.."}"
+	return result
+end
+function showAgenC(list)
+	local result = ""
+	result = result.."void allocUnion(struct Homgen *ptr, int typ, int siz)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."ptr->tag = typeUnion(typ);\n"
+	result = result..showIndent(1).."ptr->siz = siz;\n"
+	result = result..showIndent(1).."switch (ptr->tag) {\n"
+	for k,v in ipairs(list) do
+		if ((v == "Str") or (v == "Dat")) then
+			result = result..showIndent(1).."case("..v.."Tag): alloc"..v.."(&ptr->v"..v..",siz); break;\n"
+		elseif ((Structz[v] == nil) and (Enumz[v] == nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): alloc"..v.."(&ptr->v"..v..",siz); break;\n"
+		elseif ((v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen") and (Structz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): alloc"..v.."(&ptr->"..string.lower(v)..",siz); break;\n"
+		elseif ((v ~= "Tag") and (Enumz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): alloc"..v.."(&ptr->"..string.lower(v)..",siz); break;\n"
+		end
+	end
+	result = result..showIndent(1).."case (Tags): break;}\n"
+	result = result.."}"
+	return result
+end
+function showBgenC(list)
+	local result = ""
+	result = result.."void insertUnion(struct Homgen *dst, struct Generic *ptr, int idx)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."if (dst->tag != ptr->tag) ERROR();\n"
+	result = result..showIndent(1).."switch (ptr->tag) {\n"
+	for k,v in ipairs(list) do
+		if ((v == "Str") or (v == "Dat")) then
+			result = result..showIndent(1).."case("..v.."Tag): assign"..v.."(&dst->v"..v.."[idx],ptr->v"..v.."); break;\n"
+		elseif ((Structz[v] == nil) and (Enumz[v] == nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): dst->v"..v.."[idx] = ptr->v"..v.."; break;\n"
+		elseif ((v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen") and (Structz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): copy"..v.."(&dst->"..string.lower(v).."[idx],&ptr->"..string.lower(v).."[0]); break;\n"
+		elseif ((v ~= "Tag") and (Enumz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): dst->"..string.lower(v).."[idx] = ptr->"..string.lower(v).."; break;\n"
+		end
+	end
+	result = result..showIndent(1).."case (Tags): break;}\n"
+	result = result.."}"
+	return result
+end
+function showCgenC(list)
+	local result = ""
+	result = result.."void copyUnion(struct Homgen *dst, struct Homgen *ptr, int idx)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."switch (ptr->tag) {\n"
+	for k,v in ipairs(list) do
+		if ((v == "Str") or (v == "Dat")) then
+			result = result..showIndent(1).."case("..v.."Tag): assign"..v.."(&dst->v"..v.."[idx],ptr->v"..v.."[idx]); break;\n"
+		elseif ((Structz[v] == nil) and (Enumz[v] == nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): dst->v"..v.."[idx] = ptr->v"..v.."[idx]; break;\n"
+		elseif ((v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen") and (Structz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): copy"..v.."(&dst->"..string.lower(v).."[idx],&ptr->"..string.lower(v).."[idx]); break;\n"
+		elseif ((v ~= "Tag") and (Enumz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): dst->"..string.lower(v).."[idx] = ptr->"..string.lower(v).."[idx]; break;\n"
+		end
+	end
+	result = result..showIndent(1).."case (Tags): break;}\n"
+	result = result.."}"
+	return result
+end
+function showDgenC(list)
+	local result = ""
+	result = result.."void extractUnion(struct Generic *dst, struct Homgen *ptr, int idx)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."freeGeneric(dst); dst->tag = ptr->tag;\n"
+	result = result..showIndent(1).."switch (ptr->tag) {\n"
+	for k,v in ipairs(list) do
+		if ((v == "Str") or (v == "Dat")) then
+			result = result..showIndent(1).."case("..v.."Tag): assign"..v.."(&dst->v"..v..",ptr->v"..v.."[idx]); break;\n"
+		elseif ((Structz[v] == nil) and (Enumz[v] == nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): dst->v"..v.." = ptr->v"..v.."[idx]; break;\n"
+		elseif ((v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen") and (Structz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): alloc"..v.."(&dst->"..string.lower(v)..",1); copy"..v.."(&dst->"..string.lower(v).."[0],&ptr->"..string.lower(v).."[idx]); break;\n"
+		elseif ((v ~= "Tag") and (Enumz[v] ~= nil)) then
+			result = result..showIndent(1).."case("..v.."Tag): dst->"..string.lower(v).." = ptr->"..string.lower(v).."[idx]; break;\n"
+		end
+	end
+	result = result..showIndent(1).."case (Tags): break;}\n"
 	result = result.."}"
 	return result
 end
@@ -2849,7 +2955,7 @@ function listHere(name,file)
 end
 function genericEnum(structz,enumz,name)
 	local enum = {}
-	for k,v in pairs(structz) do enum[#enum+1] = k..name end
+	for k,v in pairs(structz) do if (k ~= "Hetgen") then enum[#enum+1] = k..name end end
 	for k,v in pairs(enumz) do enum[#enum+1] = k..name end
 	for k,v in ipairs({"Chr","Int","Int32","New","Num","Old","Str","Dat"}) do enum[#enum+1] = v..name end
 	return enum
@@ -2857,9 +2963,18 @@ end
 function genericStruct(structz,enumz,name)
 	local struct = {}
 	struct[#struct+1] = {"tag",name,{},{}}
-	for k,v in pairs(structz) do struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},1} end
+	for k,v in pairs(structz) do if (k ~= "Hetgen") then struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},1} end end
 	for k,v in pairs(enumz) do struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},{}} end
 	for k,v in ipairs({"Chr","Int","Int32","New","Num","Old","Str","Dat"}) do struct[#struct+1] = {"v"..v,v,{["tag"]={[v..name]=true}},{}} end
+	return struct
+end
+function homgenStruct(structz,enumz,name)
+	local struct = {}
+	struct[#struct+1] = {"tag",name,{},{}}
+	struct[#struct+1] = {"siz","Int",{},{}}
+	for k,v in pairs(structz) do if (k ~= "Hetgen") then struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},"siz"} end end
+	for k,v in pairs(enumz) do struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},"siz"} end
+	for k,v in ipairs({"Chr","Int","Int32","New","Num","Old","Str","Dat"}) do struct[#struct+1] = {"v"..v,v,{["tag"]={[v..name]=true}},"siz"} end
 	return struct
 end
 function showCall(list,map,func)
@@ -2905,7 +3020,12 @@ function showFuncC()
 	result = result..showHgenC(types).."\n"
 	result = result..showRgenC(types).."\n"
 	result = result..showWgenC(types).."\n"
-	result = result..showIgenC(types)
+	result = result..showIgenC(types).."\n"
+	result = result..showTgenC(types).."\n"
+	result = result..showAgenC(types).."\n"
+	result = result..showBgenC(types).."\n"
+	result = result..showCgenC(types).."\n"
+	result = result..showDgenC(types)
 	return result
 end
 function showCallH()

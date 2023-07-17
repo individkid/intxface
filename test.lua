@@ -50,7 +50,9 @@ Struct1 = {
 Enums,Enumz = listHere("Enums","test.lua")
 Constants,Constantz = listHere("Constants","test.lua")
 Structs,Structz = listHere("Structs","test.lua")
+homgen = homgenStruct(Structz,Enumz,"Tag");
 enum = genericEnum(Structz,Enumz,"Tag");
 struct = genericStruct(Structz,Enumz,"Tag");
 Enums[#Enums+1] = "Tag"; Enumz["Tag"] = enum
 Structs[#Structs+1] = "Generic"; Structz["Generic"] = struct
+Structs[#Structs+1] = "Homgen"; Structz["Homgen"] = homgen
