@@ -467,7 +467,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		free(sav);} break;
 	case (SetOp): {
 		void *sav = 0; int typ0 = 0; if (datxSetFp == 0) ERROR();
-		typ0 = datxEval(dat,exp->set,typ); if (typ != identType("Int")) ERROR();
+		typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+		if (typ0 != identType("Int")) ERROR();
 		assignDat(&sav,prefix); datxSetFp(*dat,exp->cgs); assignDat(&prefix,sav);
 		free(sav);} break;
 	case (ValOp): {
@@ -476,82 +477,69 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (SavOp): {
 		int typ0 = 0; void *dat0 = 0; void *key = 0;
-		typ0 = datxEval(dat,exp->sav,typ);
-		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+		typ0 = datxEval(dat,exp->sav,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		datxStr(&key,exp->kys); datxInsert(key,*dat,typ0); free(key);} break;
 	case (InsOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
-		int typ0 = 0; int typ1 = 0; datxSingle();
-		typ0 = datxEval(dat,&exp->ins[0],typ);
-		if (typ == -1) typ = typ0; if (typ0 != typ) ERROR();
-		typ1 = datxEval(datxDat1,&exp->ins[1],identType("Hetgen"));
-		if (typ1 != identType("Hetgen")) ERROR(); readHetgen(&val,datxIdx1);
-		typ1 = datxEval(datxDat1,&exp->ins[2],identType("Homgen"));
-		if (typ1 != identType("Homgen")) ERROR(); readHomgen(&str,datxIdx1);
-		typ1 = datxEval(datxDat1,&exp->ins[3],identType("Homgen"));
-		if (typ1 != identType("Homgen")) ERROR(); readHomgen(&idx,datxIdx1);
-		if (val.siz != str.siz || val.siz != idx.siz) ERROR();
-		if (str.tag != StrTag || idx.tag != IntTag) ERROR();
+		void *dat0 = 0; void *dat1 = 0; void *dat2 = 0; int typ0 = 0; int typ1 = 0; int typ2 = 0; datxSingle();
+		typ0 = datxEval(dat,&exp->ins[0],typ); if (typ == -1) typ = typ0; if (typ0 != typ) ERROR();
+		typ0 = datxEval(&dat0,&exp->ins[1],identType("Hetgen")); if (typ0 != identType("Hetgen")) ERROR();
+		typ1 = datxEval(&dat1,&exp->ins[2],identType("Homgen")); if (typ1 != identType("Homgen")) ERROR();
+		typ2 = datxEval(&dat2,&exp->ins[3],identType("Homgen")); if (typ2 != identType("Homgen")) ERROR();
+		assignDat(datxDat0,dat0); assignDat(datxDat1,dat1); assignDat(datxDat2,dat2);
+		readHetgen(&val,datxIdx0); readHomgen(&str,datxIdx1); readHomgen(&idx,datxIdx2);
+		if (val.siz != str.siz || val.siz != idx.siz) ERROR(); if (str.tag != StrTag || idx.tag != IntTag) ERROR();
 		for (int i = 0; i < val.siz; i++) {
-			int fld = identField(typ0,str.vStr[i]);
-			assignDat(datxDat0,*dat);
-			datxNone(datxDat1); writeUnion(val.gen,datxIdx1);
-			datxNone(datxDat2); readField(typ0,fld,idx.vInt[i],datxIdx0,datxIdx1,datxIdx2);
+			int fld = identField(typ,str.vStr[i]); if (fld == -1) ERROR();
+			assignDat(datxDat0,*dat); datxNone(datxDat1); datxNone(datxDat2);
+			writeUnion(&val.gen[i],datxIdx1); readField(typ,fld,idx.vInt[i],datxIdx0,datxIdx1,datxIdx2);
 			assignDat(dat,*datxDat2);}
-		freeHetgen(&val); freeHomgen(&str); freeHomgen(&idx);} break;
+		free(dat0); free(dat1); free(dat2); freeHetgen(&val); freeHomgen(&str); freeHomgen(&idx);} break;
 	case (ExtOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
-		int typ0 = 0; int typ1 = 0; datxSingle();
-		typ0 = datxEval(dat,&exp->ext[0],typ);
-		typ1 = datxEval(datxDat1,&exp->ext[1],identType("Homgen"));
-		if (typ1 != identType("Homgen")) ERROR(); readHomgen(&str,datxIdx1);
-		typ1 = datxEval(datxDat1,&exp->ext[2],identType("Homgen"));
-		if (typ1 != identType("Homgen")) ERROR(); readHomgen(&idx,datxIdx1);
-		if (str.siz != idx.siz) ERROR();
-		if (str.tag != StrTag || idx.tag != IntTag) ERROR();
-		val.siz = idx.siz;
-		allocGeneric(&val.gen,val.siz);
+		void *dat0 = 0; void *dat1 = 0; void *dat2 = 0; int typ0 = 0; int typ1 = 0; int typ2 = 0; datxSingle();
+		typ0 = datxEval(&dat0,&exp->ext[0],typ);
+		typ1 = datxEval(&dat1,&exp->ext[1],identType("Homgen")); if (typ1 != identType("Homgen")) ERROR();
+		typ2 = datxEval(&dat2,&exp->ext[2],identType("Homgen")); if (typ2 != identType("Homgen")) ERROR();
+		assignDat(datxDat0,dat0); assignDat(datxDat1,dat1); assignDat(datxDat2,dat2);
+		readHomgen(&str,datxIdx1); readHomgen(&idx,datxIdx2);
+		if (str.siz != idx.siz) ERROR(); if (str.tag != StrTag || idx.tag != IntTag) ERROR();
+		val.siz = idx.siz; allocGeneric(&val.gen,val.siz);
 		for (int i = 0; i < val.siz; i++) {
-			int fld = identField(typ0,str.vStr[i]);
-			writeField(typ0,fld,idx.vInt[i],datxIdx0,datxIdx1);
-			writeUnion(&val.gen[i],datxIdx1);}
+			int pos = identField(typ0,str.vStr[i]); int fld = identSubtype(typ0,pos); datxNone(datxDat1);
+			writeField(typ0,pos,idx.vInt[i],datxIdx0,datxIdx1); readUnion(&val.gen[i],fld,datxIdx1);}
 		datxNone(datxDat2); writeHetgen(&val,datxIdx2);
 		if (typ == -1) typ = identType("Hetgen"); if (typ != identType("Hetgen")) ERROR();
 		assignDat(dat,*datxDat2);
-		freeHetgen(&val); freeHomgen(&str); freeHomgen(&idx);} break;
+		free(dat0); free(dat1); free(dat2); freeHetgen(&val); freeHomgen(&str); freeHomgen(&idx);} break;
 	case (PrmOp): {
-		struct Homgen idx = {0}; int typ0 = 0; int typ1 = 0; datxSingle();
-		typ0 = datxEval(datxDat0,&exp->prm[0],identType("Homgen"));
-		if (typ0 != identType("Homgen")) ERROR();
-		readHomgen(&idx,datxIdx0);
-		if (idx.tag != IntTag) ERROR();
-		typ1 = datxEval(datxDat1,&exp->prm[1],-1);
+		struct Homgen idx = {0}; void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0; datxSingle();
+		typ0 = datxEval(&dat0,&exp->prm[0],identType("Homgen")); if (typ0 != identType("Homgen")) ERROR();
+		assignDat(datxDat0,dat0); readHomgen(&idx,datxIdx0); if (idx.tag != IntTag) ERROR();
+		typ1 = datxEval(&dat1,&exp->prm[1],-1); assignDat(datxDat1,dat1);
 		if (typ1 == identType("Homgen")) {
 		struct Homgen val = {0}; struct Homgen prm = {0};
-		readHomgen(&val,datxIdx1);
-		allocUnion(&prm,val.tag,val.siz);
+		readHomgen(&val,datxIdx1); allocUnion(&prm,val.tag,val.siz);
 		for (int i = 0; i < prm.siz; i++) copyUnion(&prm,&val,i);
 		freeHomgen(&val);}
 		else if (typ1 == identType("Hetgen")) {
 		struct Hetgen val = {0}; struct Hetgen prm = {0};
-		readHetgen(&val,datxIdx1);
-		prm.siz = idx.siz;
-		allocGeneric(&prm.gen,prm.siz);
+		readHetgen(&val,datxIdx1); prm.siz = idx.siz; allocGeneric(&prm.gen,prm.siz);
 		for (int i = 0; i < prm.siz; i++) copyGeneric(&prm.gen[i],&val.gen[i]);
 		datxNone(datxDat2); writeHetgen(&prm,datxIdx2);
 		freeHetgen(&val);}
 		else ERROR();
 		if (typ == -1) typ = typ1; if (typ != typ1) ERROR();
 		assignDat(dat,*datxDat2);
-		freeHomgen(&idx);} break;
+		free(dat0); free(dat1); freeHomgen(&idx);} break;
 	case (CatOp): {
-		int typ0 = 0; int typ1 = 0; datxSingle();
-		typ0 = datxEval(datxDat0,&exp->cat[0],-1);
-		typ1 = datxEval(datxDat1,&exp->cat[1],-1);
-		if (typ0 != typ1) ERROR();
-		if (typ0 == identType("Homgen")) {
+		void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0; datxSingle();
+		typ0 = datxEval(&dat0,&exp->cat[0],-1);
+		typ1 = datxEval(&dat1,&exp->cat[1],-1);
+		if (typ0 != typ1) ERROR(); if (typ0 == identType("Homgen")) {
 		struct Homgen hom0 = {0}; struct Homgen hom1 = {0}; struct Homgen hom2 = {0};
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
+		assignDat(datxDat0,dat0); assignDat(datxDat1,dat1);
 		readHomgen(&hom0,datxIdx0); readHomgen(&hom1,datxIdx1);
 		if (hom0.tag != hom1.tag) ERROR();
 		allocUnion(&hom2,hom0.tag,hom0.siz+hom1.siz);
@@ -562,32 +550,33 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		else if (typ0 == identType("Hetgen")) {
 		struct Hetgen het0 = {0}; struct Hetgen het1 = {0}; struct Hetgen het2 = {0};
 		if (typ == -1) typ = identType("Hetgen"); if (typ != identType("Hetgen")) ERROR();
-		het2.siz = het0.siz + het1.siz;
-		allocGeneric(&het2.gen,het2.siz);
+		het2.siz = het0.siz + het1.siz; allocGeneric(&het2.gen,het2.siz);
 		for (int i = 0; i < het0.siz; i++) copyGeneric(&het2.gen[i],&het0.gen[i]);
 		for (int i = 0; i < het1.siz; i++) copyGeneric(&het2.gen[i+het0.siz],&het1.gen[i]);
 		datxNone(datxDat2); writeHetgen(&het2,datxIdx2);
 		freeHetgen(&het0); freeHetgen(&het1); freeHetgen(&het2);}
 		else ERROR();
-		assignDat(dat,*datxDat2);} break;
+		free(dat0); free(dat1); assignDat(dat,*datxDat2);} break;
 	case (HetOp): {
 		struct Hetgen val = {0}; datxSingle();
 		val.siz = exp->siz;
 		allocGeneric(&val.gen,val.siz);
 		for (int i = 0; i < val.siz; i++) {
-		readUnion(&val.gen[i],datxEval(datxDat0,&exp->exp[i],-1),datxIdx0);}
+		void *dat0 = 0; int typ0 = 0; typ0 = 0;
+		typ0 = datxEval(&dat0,&exp->exp[i],-1); assignDat(datxDat0,dat0); 
+		readUnion(&val.gen[i],typ0,datxIdx0);
+		free(dat0);}
 		if (typ == -1) typ = identType("Hetgen"); if (typ != identType("Hetgen")) ERROR();
 		datxNone(datxDat0); writeHetgen(&val,datxIdx0); assignDat(dat,*datxDat0);
 		freeHetgen(&val);} break;
 	case (HomOp): {
 		struct Homgen val = {0}; datxSingle();
 		for (int i = 0; i < exp->siz; i++) {
-		struct Generic gen = {0};
-		int typ0 = datxEval(datxDat0,&exp->exp[i],-1);
+		struct Generic gen = {0}; void *dat0 = 0; int typ0 = 0;
+		typ0 = datxEval(&dat0,&exp->exp[i],-1); assignDat(datxDat0,dat0);
 		if (i == 0) {allocUnion(&val,typ0,exp->siz);}
-		readUnion(&gen,typ0,datxIdx0);
-		insertUnion(&val,&gen,i);
-		freeGeneric(&gen);}
+		readUnion(&gen,typ0,datxIdx0); insertUnion(&val,&gen,i);
+		free(dat0); freeGeneric(&gen);}
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
 		datxNone(datxDat0); writeHomgen(&val,datxIdx0); assignDat(dat,*datxDat0);
 		freeHomgen(&val);} break;
@@ -610,12 +599,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,unique++);} break;
 	case (DatOp): {
-		struct Data src = {0}; struct Data dst = {0};
+		struct Data src = {0}; struct Data dst = {0}; void *dat0 = 0; int typ0 = 0;
 		if (typ == -1) typ = identType("Data"); if (typ != identType("Data")) ERROR();
-		datxEval(datxDat0,exp->dat,identType("Data")); readData(&src,datxIdx0);
-		datxData(&dst,&src,exp->dtp); freeData(&src);
-		datxNone(datxDat0); writeData(&dst,datxIdx0);
-		assignDat(dat,*datxDat0); freeData(&dst);} break;
+		typ0 = datxEval(&dat0,exp->dat,identType("Data")); if (typ0 != identType("Data")) ERROR();
+		assignDat(datxDat0,dat0); readData(&src,datxIdx0); datxData(&dst,&src,exp->dtp);
+		datxNone(datxDat0); writeData(&dst,datxIdx0); assignDat(dat,*datxDat0);
+		free(dat0); freeData(&src); freeData(&dst);} break;
 	default: ERROR();}
 	return typ;
 }
