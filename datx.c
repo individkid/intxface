@@ -60,7 +60,7 @@ int datxReadFp(int fildes, void *buf, int nbyte)
 	void *suf = 0;
 	datxSplit(&pre,&suf,*dat,nbyte);
 	if (*(int*)pre != nbyte) return 0;
-	memcpy(buf,datxData(pre),nbyte);
+	memcpy(buf,datxVoid(pre),nbyte);
 	assignDat(dat,suf);
 	free(pre);
 	free(suf);
@@ -72,7 +72,7 @@ int datxWriteFp(int fildes, const void *buf, int nbyte)
 	void *suf = malloc(sizeof(int)+nbyte);
 	void *pre = 0;
 	*(int*)suf = nbyte;
-	memcpy(datxData(suf),buf,nbyte);
+	memcpy(datxVoid(suf),buf,nbyte);
 	assignDat(&pre,*dat);
 	datxJoin(dat,pre,suf);
 	free(pre);
@@ -205,7 +205,7 @@ int datxLookup(char *str)
 	free(key); free(dat);
 	return val;
 }
-void datxDataExp(struct Data *dst, struct Data *src, struct DataExp *dat)
+void datxData(struct Data *dst, struct Data *src, struct DataExp *dat)
 {
 	for (int j = 0; j < src->siz; j++) {
 	int val = datxLookup(src->str[j]);
@@ -217,7 +217,7 @@ void datxDataExp(struct Data *dst, struct Data *src, struct DataExp *dat)
 	case (SubAct):
 	for (int i = 0; i < dat->siz; i++)
 	if (datxLookup(dat->key[i]) == dat->val[i])
-	datxDataExp(dst,src,&dat->sub[i]);
+	datxData(dst,src,&dat->sub[i]);
 	break; case (NegAct):
 	datxReplace(dat->str,-datxLookup(dat->str));
 	break; case (ClrAct):
@@ -265,7 +265,7 @@ int datxOlds(void *dat)
 	if (!dat) return 0;
 	return *(int*)dat/sizeof(float);
 }
-void *datxData(void *dat)
+void *datxVoid(void *dat)
 {
 	if (!dat) ERROR();
 	return (void*)(((int*)dat)+1);
@@ -273,7 +273,7 @@ void *datxData(void *dat)
 void *datxPtrz(int num, void *dat)
 {
 	if (num >= datxPtrs(dat)) ERROR();
-	return (void*)(((char*)datxData(dat))+num);
+	return (void*)(((char*)datxVoid(dat))+num);
 }
 char *datxChrz(int num, void *dat)
 {
@@ -350,11 +350,11 @@ void datxOld(void **dat, float val)
 #define BINARY_REM(LFT,RGT) (LFT%RGT)
 #define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
 #define BINARY_FLM(LFT,RGT) fmodf(LFT,RGT)
-#define BINARY_BEGIN(TYP) {\
+#define BINARY_BEGIN() {\
 	void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0;\
-	typ0 = datxEval(&dat1,&exp->opb[1],TYP);\
-	typ1 = datxEval(&dat0,&exp->opb[0],TYP);\
-	if (TYP == -1) TYP = typ0; if (typ0 != typ1 || TYP != typ0) ERROR();
+	typ0 = datxEval(&dat1,&exp->opb[1],typ);\
+	typ1 = datxEval(&dat0,&exp->opb[0],typ);\
+	if (typ == -1) typ = typ0; if (typ0 != typ1 || typ != typ0) ERROR();
 #define BINARY_DONE() ERROR();\
 	free(dat0); free(dat1);}
 #define BINARY_TYPE(TYPE,TYP,GET,SET,OP)\
@@ -363,7 +363,7 @@ void datxOld(void **dat, float val)
 	TYPE rgt = GET(0,dat1);\
 	SET(dat,OP(lft,rgt));}
 #define BINARY_BLOCK(OP,STR)\
-	BINARY_BEGIN(typ)\
+	BINARY_BEGIN()\
 	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
 	BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,OP) else\
 	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else\
@@ -390,7 +390,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul") break;
 	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div") break;
 	case (RemOp):
-		BINARY_BEGIN(typ)
+		BINARY_BEGIN()
 		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_REM) else
 		BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,BINARY_REM) else
 		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
@@ -613,7 +613,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		struct Data src = {0}; struct Data dst = {0};
 		if (typ == -1) typ = identType("Data"); if (typ != identType("Data")) ERROR();
 		datxEval(datxDat0,exp->dat,identType("Data")); readData(&src,datxIdx0);
-		datxDataExp(&dst,&src,exp->dtp); freeData(&src);
+		datxData(&dst,&src,exp->dtp); freeData(&src);
 		datxNone(datxDat0); writeData(&dst,datxIdx0);
 		assignDat(dat,*datxDat0); freeData(&dst);} break;
 	default: ERROR();}

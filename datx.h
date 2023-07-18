@@ -20,7 +20,7 @@ int datxInts(void *dat);
 int datxInt32s(void *dat);
 int datxNums(void *dat);
 int datxOlds(void *dat);
-void *datxData(void *dat);
+void *datxVoid(void *dat);
 void *datxPtrz(int num, void *dat);
 char *datxChrz(int num, void *dat);
 int *datxIntz(int num, void *dat);

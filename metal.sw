@@ -348,9 +348,9 @@ func swiftLoad()
 		CGFloat(planeInfo(WindowLeft)), CGFloat(planeInfo(WindowBase)),
 		CGFloat(planeInfo(WindowWide)), CGFloat(planeInfo(WindowHigh)))
 	queue = device.makeCommandQueue()
-	let url = URL(fileURLWithPath: "plane.metallib")
+	let url = URL(fileURLWithPath: "metal.metallib")
 	guard let library:MTLLibrary = try? device.makeLibrary(URL:url) else {
-		fputs("plane: cannot load library: plane.metallib\n",stderr);exitErr(#file,#line);return}
+		fputs("plane: cannot load library: metal.metallib\n",stderr);exitErr(#file,#line);return}
 	for sub in 0...Int(Micros.rawValue-1) {let shader = Micro(UInt32(sub)); switch (shader) {
 	case (Dipoint): // fallthrough case (Diplane):
 	guard let vertex_render = library.makeFunction(name:String(cString: Initial__Micro__Code_Str(Dipoint)(Corner)!)) else {

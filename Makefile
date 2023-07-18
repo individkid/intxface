@@ -15,7 +15,6 @@ ifeq ($(UNAME),Linux)
 	GHC = ghc
 	SWC = oops
 	GC = oops
-	EXT = x
 endif
 ifeq ($(UNAME),Darwin)
 	CXX = clang++
@@ -23,11 +22,10 @@ ifeq ($(UNAME),Darwin)
 	GHC = ghc
 	SWC = swiftc
 	GC = xcrun
-	EXT = y
 endif
 
 # lua depend.lua
-include depend.mk$(EXT)
+include depend.mk
 
 facer.log:
 	./facerC > facer.log
@@ -67,10 +65,6 @@ spacra.log:
 %Sw: %Sw.o
 	$(SWC) -o $@ $< $(filter %C.o %.so,$^) ${LIBRARIES} ${LIBRARYPATH}
 
-ifeq ($(UNAME),Darwin)
-%.metallib: %G.o
-	$(GC) -sdk macosx metallib -o $@ $<
-endif
 %Cpp.so: %Cpp.o
 	$(CXX) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
 %.so: %C.o
@@ -82,15 +76,13 @@ endif
 	$(CXX) -o $@ -c $< ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
+
+ifeq ($(UNAME),Darwin)
+%.metallib: %G.o
+	$(GC) -sdk macosx metallib -o $@ $<
 %G.o: %.metal
 	$(GC) -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
-
-%.cpp: %.cpp$(EXT)
-	cp $< $@
-%.sw: %.sw$(EXT)
-	cp $< $@
-ifeq ($(UNAME),Darwin)
-%.metal: %.g$(EXT)
+%.metal: %.g
 	cp $< $@
 endif
 
@@ -111,8 +103,6 @@ endif
 clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
-	rm -f metal.sw plane.cpp plane.g
-	rm -f pipe.sw page.sw
 	rm -f typra facer typer filer planra spacra
 	rm -f hole file line metal space share
 	rm -f pipe page
