@@ -516,6 +516,7 @@ void planeFill()
 }
 int planeSwitch(struct Machine *mptr, int next)
 {
+	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr); if (mptr->xfr == Eval) {char *opr = 0; showOperate(mptr->exp[0].opr,&opr); printf("planeSwitch %d %s %s\n",next,xfr,opr); free(opr);} else printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;

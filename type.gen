@@ -408,6 +408,7 @@ Bootstrap = {
 		"mch[20]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))))))"},
 	{"Int","3","Str","Machine(xfr:Transfer(Echo)siz:Int(0))"},
 	{"Int","4","Str","Machine(xfr:Transfer(Copy)siz:Int(0))"},
+	{"Int","5","Str","Machine(xfr:Transfer(Goto)siz:Int(0)exp[0]:Express(opr:Operate(IntOp)ivl:Int(-5)))"},
 }
 Execname = {
 	{"Process","Filez","Str","./file"},
