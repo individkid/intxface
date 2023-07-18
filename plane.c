@@ -516,7 +516,8 @@ void planeFill()
 }
 int planeSwitch(struct Machine *mptr, int next)
 {
-	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr); if (mptr->xfr == Eval) {char *opr = 0; showOperate(mptr->exp[0].opr,&opr); printf("planeSwitch %d %s %s\n",next,xfr,opr); free(opr);} else printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
+	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
+	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
@@ -558,11 +559,9 @@ void planeWake(enum Configure hint)
 void planeBoot()
 {
 	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	struct Machine mptr = {0};
-	int len = 0;
+	struct Machine mptr = {0}; int len = 0;
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
-	configure[ResultLine] = planeSwitch(&mptr,configure[ResultLine]);
-	}
+	planeSwitch(&mptr,0);}
 }
 void planeRead()
 {

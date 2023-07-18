@@ -9,14 +9,14 @@ Add numeric symbolic to spacer.lua.
 
 filer.lua: Persist -> ./file -> Persist
 planer.lua: Center -> ./plane -> Center
-spacer.lua: Sculpt -> ./space -> Sculpt
-liner.lua: Event -> ./line -> microphone,speaker -> ./line -> Event
 pager.lua: File -> ./page -> window,keyboard -> ./page -> File
-waver.lua: Scope -> ./wave -> usb-a -> ./wave -> Data
-framer.lua: Data -> ./frame -> window,selection -> ./frame -> Data
-taper.lua: Data -> ./tape -> usb-c -> ./tape -> Data
-phoner.lua: Data -> ./phone -> speaker,microphone -> ./phone -> Data
 piper.lua: Data -> ./pipe -> .mov -> ./pipe -> Data
+framer.lua: Data -> ./frame -> window,selection -> ./frame -> Data
+waver.lua: Scope -> ./wave -> usb-a -> ./wave -> Data
+taper.lua: Data -> ./tape -> usb-c -> ./tape -> Data
+phoner.lua: Data -> ./phone -> microphone,speaker -> ./phone -> Data
+liner.lua: Event -> ./line -> microphone,speaker -> ./line -> Event
+spacer.lua: Sculpt -> ./space -> Sculpt
 
 sculpt.lua share between file plane space:
  Additive,Subtractive,Transform,Ortho,Focal,Normal,slIde,Rotate,sCale,Mouse,roLler
@@ -27,11 +27,7 @@ sculpt.lua share between file plane space:
  file numeric symbolic, to space
  space numeric symbolic, to file plane
 
-Remove EXT from Makefile. Have different all: per UNAME. Write vulkan.cpp for Dell.
-Use source level ifdef for Mac vs Dell in .cpp files used on both platforms.
-Change .swy to .sw, and use different target name for diffent platforms.
-
-Make face.c (NUMOPEN) datx.c (NUMOPEN) argx.c (NUMARGX) file.c (NUMFILE) arrays into array of malloc struct.
+Make face.c (NUMOPEN) datx.c (NUMOPEN) file.c (NUMFILE) arrays into array of malloc struct.
 Optimize depend.lua to build each target in separate clean directory, and copy from that directory in preference to push.
 Enhance show.lua to use map from enum constant and struct name to basename, with not found a match if no basename given,
 so the Share struct goes only in share.h, for example.

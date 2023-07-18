@@ -382,8 +382,11 @@ int datxEcmp(int val, enum Compare cmp)
 	default: ERROR();}
 	return 0;
 }
+// int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
 {
+	// {char *opr = 0; showOperate(exp->opr,&opr);
+	// printf("datxEval %d %s\n",debug++,opr); free(opr);}
 	switch (exp->opr) {
 	case (AddOp): BINARY_BLOCK(BINARY_ADD,"add") break;
 	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub") break;
@@ -606,6 +609,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxNone(datxDat0); writeData(&dst,datxIdx0); assignDat(dat,*datxDat0);
 		free(dat0); freeData(&src); freeData(&dst);} break;
 	default: ERROR();}
+	// debug--;
 	return typ;
 }
 void datxPrefix(const char *str)
