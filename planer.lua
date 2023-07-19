@@ -4,7 +4,7 @@ initialize = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0
 	"nml[0]:Old(1.000000)nml[1]:Old(1.100000)nml[2]:Old(1.200000)nml[3]:Old(1.300000)"..
 	"vld:Int32(1)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
 expected = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
-	"fix[0]:Old(0.000000)fix[1]:Old(0.000000)fix[2]:Old(0.000000)fix[3]:Old(0.000000)"..
+	"fix[0]:Old(1.000000)fix[1]:Old(1.000000)fix[2]:Old(0.000000)fix[3]:Old(0.000000)"..
 	"nml[0]:Old(0.000000)nml[1]:Old(0.000000)nml[2]:Old(-1.000000)nml[3]:Old(0.000000)"..
 	"vld:Int32(1)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
 center = {["mem"]="Piercez",["siz"]=0,["idx"]=0,["slf"]=0}
@@ -27,7 +27,9 @@ writeCenter(hideCenter("Center(mem:Memory(Vertexz)siz:Int(3)idx:Int(0)slf:Int(0)
 writeCenter(hideCenter("Center(mem:Memory(Slicez)siz:Int(1)idx:Int(0)slf:Int(0)rng[0]:Slice(idx:Int(0)siz:Int(1)))"),ident)
 writeCenter(center,ident)
 if showCenter(initialize,"") ~= showCenter(readCenter(ident),"") then io.stderr:write("planerLua: mismatch\n"); os.exit(-1) end
-writeCenter({["mem"]="Configurez",["siz"]=1,["idx"]=0,["slf"]=0,["cfg"]={"ArgumentLimit"},["val"]={1}},ident)
+writeCenter(hideCenter("Center(mem:Memory(Configurez)siz:Int(3)idx:Int(0)slf:Int(0)"..
+	"cfg[0]:Configure(UniformLeft)cfg[1]:Configure(UniformBase)cfg[2]:Configure(ArgumentLimit)"..
+	"val[0]:Int(1)val[1]:Int(1)val[2]:Int(1))"),ident)
 os.execute("sleep 1")
 writeCenter(center,ident)
 if showCenter(expected,"") ~= showCenter(readCenter(ident),"") then io.stderr:write("planerLua: mismatch\n"); os.exit(-1) end

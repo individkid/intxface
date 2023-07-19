@@ -494,11 +494,10 @@ int planeEscape(int lvl, int nxt)
 }
 int planeIval(struct Express *exp)
 {
-	void *dat = 0; int val = 0; int *ptr = 0;
-	int typ = datxEval(&dat,exp,identType("Int"));
+	void *dat = 0; int val = 0; int typ = 0;
+	typ = datxEval(&dat,exp,identType("Int"));
 	if (typ != identType("Int")) ERROR();
-	ptr = datxIntz(0,dat);
-	val = *ptr;
+	val = *datxIntz(0,dat); free(dat);
 	return val;
 }
 void planeFill()

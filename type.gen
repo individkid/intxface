@@ -74,7 +74,7 @@ Configure = {
 	"UniformOne", -- which element matrix
 	"UniformLeft", -- pierce point horizontal
 	"UniformBase", -- pierce pont vertical
-	"UniformLong", -- focal length
+	"UniformProj", -- which subject for projection
 	"UniformIndex", -- manipulate plane select
 	"UniformBasis", -- which cospace basis
 	"UniformSize", -- early warning points
@@ -288,21 +288,15 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(7)"..
+	{"Int","0","Str","Machine(xfr:Transfer(Force)siz:Int(4)"..
 		"cfg[0]:Configure(WindowWide)"..
 		"cfg[1]:Configure(WindowHigh)"..
 		"cfg[2]:Configure(MachineSize)"..
 		"cfg[3]:Configure(RegisterOpen)"..
-		"cfg[4]:Configure(RegisterOpen)"..
-		"cfg[5]:Configure(RegisterOpen)"..
-		"cfg[6]:Configure(RegisterOpen)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
 		"val[2]:Int(21)"..
-		"val[3]:Int(1)"..
-		"val[4]:Int(3)"..
-		"val[5]:Int(15)"..
-		"val[6]:Int(31))"},
+		"val[3]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(SavOp)kys:Str(Changed)"..
 		"sav[0]:Express(opr:Operate(IntOp)ivl:Int(0))))"},
@@ -505,7 +499,7 @@ Uniform = {
 	{"one","Int",{},{}}, -- which element to use
 	{"lon","Int",{},{}}, -- horizontal axis of cursor
 	{"lat","Int",{},{}}, -- vertical axis of cursor
-	{"len","Int",{},{}}, -- which subject for projection
+	{"pro","Int",{},{}}, -- which subject for projection
 	{"idx","Int",{},{}}, -- which plane to apply one matrix to
 	{"use","Int",{},{}}, -- which basis to use
 	{"siz","Int",{},{}}, -- size of swarm buffer

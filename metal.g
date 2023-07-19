@@ -38,7 +38,7 @@ struct Uniform {
    uint one; // which element to use
    uint lon; // horizontal axis of cursor
    uint lat; // vertical axis of cursor
-   uint len; // which subject for projection
+   uint pro; // which subject for projection
    uint idx; // which plane to apply one matrix to
    uint use; // which basis to use
    uint siz; // how many swarm points there are
@@ -250,7 +250,7 @@ kernel void kernel_pierce(
 {
    Expand expand;
    for (uint i = 0; i < 3; i++) expand.point[i] = point[corner[id].vtx[i]].vec.xyz;
-   pierce[id].fix = float4(average3(expand),0.0);
+   pierce[id].fix = float4(project(expand,2,float3(state->lon,state->lat,0.0)),0.0);
    pierce[id].nml = float4(normal(expand),0.0);
    pierce[id].vld = 1;
    pierce[id].idx = id;
