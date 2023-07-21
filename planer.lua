@@ -4,9 +4,9 @@ initialize = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0
 	"nml[0]:Old(1.000000)nml[1]:Old(1.100000)nml[2]:Old(1.200000)nml[3]:Old(1.300000)"..
 	"vld:Int32(1)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
 expected = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
-	"fix[0]:Old(0.000000)fix[1]:Old(1.000000)fix[2]:Old(1.000000)fix[3]:Old(0.000000)"..
+	"fix[0]:Old(0.000000)fix[1]:Old(2.000000)fix[2]:Old(2.000000)fix[3]:Old(0.000000)"..
 	"nml[0]:Old(0.000000)nml[1]:Old(0.707107)nml[2]:Old(-0.707107)nml[3]:Old(0.000000)"..
-	"vld:Int32(1)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
+	"vld:Int32(0)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
 request = {["mem"]="Piercez",["siz"]=0,["idx"]=0,["slf"]=0}
 ident = wrapType("Planez","planerLua","metalSw")
 os.execute("sleep 1")
@@ -29,7 +29,7 @@ writeCenter(request,ident)
 if showCenter(initialize,"") ~= showCenter(readCenter(ident),"") then io.stderr:write("planerLua: mismatch\n"); os.exit(-1) end
 writeCenter(hideCenter("Center(mem:Memory(Configurez)siz:Int(3)idx:Int(0)slf:Int(0)"..
 	"cfg[0]:Configure(UniformLeft)cfg[1]:Configure(UniformBase)cfg[2]:Configure(ArgumentLimit)"..
-	"val[0]:Int(0)val[1]:Int(1)val[2]:Int(1))"),ident)
+	"val[0]:Int(0)val[1]:Int(2)val[2]:Int(1))"),ident)
 os.execute("sleep 1")
 writeCenter(request,ident)
 actual = readCenter(ident)

@@ -86,11 +86,21 @@ float3 barrycentric(Expand plane, uint versor, float3 point)
    lambda.z = 1.0-lambda.x-lambda.y;
    return lambda;
 }
+float apply(Expand plane, uint versor, float3 lambda)
+{
+   float z = 0.0;
+   for (uint i = 0; i < 3; i++) z += lambda[i]*plane.point[i][versor];
+   return z;
+}
+bool check(float3 lambda)
+{
+   for (uint i = 0; i < 3; i++) if (lambda[i] > 1.0) return false;
+   return true;
+}
 float3 project(Expand plane, uint versor, float3 point)
 {
    float3 lambda = barrycentric(plane,versor,point);
-   point[versor] = 0.0;
-   for (uint i = 0; i < 3; i++) point[versor] += lambda[i]*plane.point[i][versor];
+   point[versor] = apply(plane,versor,lambda);
    return point;
 }
 float extreme(Expand plane, uint versor)
@@ -248,11 +258,13 @@ kernel void kernel_pierce(
    uint id [[thread_position_in_grid]],
    device Pierce *pierce [[buffer(8)]])
 {
-   Expand expand;
+   Expand expand; float3 lambda; float2 cursor;
    for (uint i = 0; i < 3; i++) expand.point[i] = point[corner[id].vtx[i]].vec.xyz;
-   pierce[id].fix = float4(project(expand,2,float3(state->lon,state->lat,0.0)),0.0);
+   cursor = float2(state->lon,state->lat);
+   lambda = barrycentric(expand,2,float3(cursor,0.0));
+   pierce[id].fix = float4(cursor,apply(expand,2,lambda),0.0);
    pierce[id].nml = float4(normal(expand),0.0);
-   pierce[id].vld = 1;
+   pierce[id].vld = check(lambda);
    pierce[id].idx = id;
    // TODO
 }
