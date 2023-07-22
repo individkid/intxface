@@ -30,6 +30,7 @@ var object = Pend<Matrix>(lock1,pool1)
 var element = Pend<Matrix>(lock1,pool1)
 var swarm = Pend<Vector>(lock1,pool1)
 var texture = Pend<Vector>(lock1,pool1)
+var textural = Pend<Int32>(lock1,pool1)
 var basis = Pend<Basis>(lock1,pool1)
 var uniform = Pend<Uniform>(lock1,pool1)
 var pierce = Pend<Pierce>(lock2,pool2)
@@ -405,6 +406,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 	case (Onematz): element.set(Swift.Array(0..<siz).map() {(sub) in center.one![sub]},idx-Int(planeInfo(ElementBase)),Int(planeInfo(ElementSize)))
 	case (Swarmz): swarm.set(Swift.Array(0..<siz).map() {(sub) in center.swa![sub]},idx-Int(planeInfo(SwarmBase)),Int(planeInfo(SwarmSize)))
 	case (Texturez): texture.set(Swift.Array(0..<siz).map() {(sub) in center.tex![sub]},idx-Int(planeInfo(TextureBase)),Int(planeInfo(TextureSize)))
+	case (Texturalz): textural.set(Swift.Array(0..<siz).map() {(sub) in center.tur![sub]},idx-Int(planeInfo(TexturalBase)),Int(planeInfo(TexturalSize)))
 	case (Basisz): basis.set(Swift.Array(0..<siz).map() {(sub) in center.bas![sub]},idx-Int(planeInfo(BasisBase)),Int(planeInfo(BasisSize)))
 	case (Piercez): pierce.set(Swift.Array(0..<siz).map() {(sub) in center.pie![sub]},idx-Int(planeInfo(PierceBase)),Int(planeInfo(PierceSize)))
 	case (Slicez): array = toArray(array,Swift.Array(0..<siz).map() {(sub) in center.rng![sub]},idx-Int(planeInfo(SliceBase)),Int(planeInfo(SliceSize)))
@@ -492,10 +494,12 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 		if let tmp = element.get() {encode.setVertexBuffer(tmp,offset:0,index:5)}
 		if let tmp = basis.get() {encode.setVertexBuffer(tmp,offset:0,index:6)}
 		if let tmp = uniform.get() {encode.setVertexBuffer(tmp,offset:0,index:7)}
+		if let tmp = texture.get() {encode.setVertexBuffer(tmp,offset:0,index:8)}
+		if let tmp = textural.get() {encode.setVertexBuffer(tmp,offset:0,index:9)}
 		encode.drawPrimitives(
 			type:.triangle,
-			vertexStart:Int(range.idx),
-			vertexCount:Int(range.siz))
+			vertexStart:Int(range.idx*3),
+			vertexCount:Int(range.siz*3))
 		encode.endEncoding()
 		param[sub]!.colorAttachments[0].loadAction = .load
 		param[sub]!.depthAttachment.loadAction = .load

@@ -16,14 +16,14 @@ writeCenter({["mem"]="Configurez",["siz"]=4,["idx"]=0,["slf"]=0,
 writeCenter(initialize,ident)
 writeCenter(hideCenter("Center(mem:Memory(Trianglez)siz:Int(1)idx:Int(0)slf:Int(0)tri[0]:Triangle("..
 	"vtx[0]:Int32(0)vtx[1]:Int32(1)vtx[2]:Int32(2)vtx[3]:Int32(3)"..
-	"num:Int32(0)tex:Int32(0)pol:Int32(0)pad:Int32(0)))"),ident)
+	"num:Int32(0)pol:Int32(0)tex:Int32(0)rot:Int32(0)))"),ident)
 writeCenter(hideCenter("Center(mem:Memory(Vertexz)siz:Int(3)idx:Int(0)slf:Int(0)"..
 	"vtx[0]:Vertex(vec[0]:Old(-1.0)vec[1]:Old(-1.0)vec[2]:Old(-1.0)vec[3]:Old(1.0)"..
-		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)pad:Int32(0))"..
+		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))"..
 	"vtx[1]:Vertex(vec[0]:Old(0.0)vec[1]:Old(1.0)vec[2]:Old(1.0)vec[3]:Old(1.0)"..
-		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)pad:Int32(0))"..
+		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))"..
 	"vtx[2]:Vertex(vec[0]:Old(1.0)vec[1]:Old(-1.0)vec[2]:Old(-1.0)vec[3]:Old(1.0)"..
-		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)pad:Int32(0)))"),ident)
+		"ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0)))"),ident)
 writeCenter(hideCenter("Center(mem:Memory(Slicez)siz:Int(1)idx:Int(0)slf:Int(0)rng[0]:Slice(idx:Int(0)siz:Int(1)))"),ident)
 writeCenter(request,ident)
 if showCenter(initialize,"") ~= showCenter(readCenter(ident),"") then io.stderr:write("planerLua: mismatch\n"); os.exit(-1) end

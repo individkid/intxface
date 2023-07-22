@@ -36,6 +36,7 @@ Memory = {
 	"Vertexz", -- intersection of backlinked planes
 	"Swarmz", -- array of points around focal point
 	"Texturez", -- memory for textures
+	"Texturalz", -- memory for text
 	"Basisz", -- base for each dimension
 	"Allmatz", --c; whole view transformation
 	"Fewmatz", --c; matrix per set of planes
@@ -63,6 +64,8 @@ Configure = {
 	"SwarmBase", --
 	"TextureSize", -- written how to decorate
 	"TextureBase", --
+	"TexturalSize", -- written how to decorate
+	"TexturalBase", --
 	"BasisSize", -- written cospace converters
 	"BasisBase", --
 	"PierceSize", -- written pierce points
@@ -507,9 +510,9 @@ Uniform = {
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle
 	{"num","Int32",{},{}}, -- plane of points
-	{"tex","Int32",{},{}}, -- texture of triangle
 	{"pol","Int32",{},{}}, -- polytope triangle is in
-	{"pad","Int32",{},{}},
+	{"tex","Int32",{},{}}, -- texture selector
+	{"rot","Int32",{},{}}, -- texture rotation
 }
 Numeric = {
 	{"vec","Old",{},{4}}, -- distances above basis
@@ -518,8 +521,7 @@ Numeric = {
 }
 Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
-	{"ref","Int32",{},{3}}, -- backreference to planes
-	{"pad","Int32",{},{}},
+	{"ref","Int32",{},{4}}, -- backreference to planes
 }
 Pierce = {
 	{"fix","Old",{},{4}},
@@ -616,6 +618,7 @@ Center = {
 	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
 	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
 	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
+	{"tur","Int32",{["mem"]={["Texturalz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},

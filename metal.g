@@ -3,9 +3,9 @@
 struct Triangle {
    uint4 vtx; // points of triangle
    uint num; // plane of points
-   uint tex; // texture of triangle
    uint pol; // polytope triangle is in
-   uint pad;
+   uint tex; // texture of triangle
+   uint rot; // rotation of texture
 };
 struct Numeric {
    float4 vec; // distances above basis
@@ -14,8 +14,7 @@ struct Numeric {
 };
 struct Vertex {
    float4 vec; // intersection of planes
-   uint ref; // backreference to planes
-   uint pad0, pad1, pad2;
+   uint4 ref; // backreference to planes
 };
 struct Pierce {
    float4 fix;
@@ -222,10 +221,10 @@ Expand transform(Expand plane, metal::float4x4 matrix)
    return result;
 }
 struct VertexOutput {
-   float4 position [[position]];
-   float3 normal;
-   float4 color;
-   float2 coord;
+   float4 position [[position]]; // for positioning the pixel
+   float3 normal; // for reflection
+   float2 coord; // for positioning the texture
+   uint texid [[flat]]; // index into texture array
 };
 vertex VertexOutput vertex_render(
    const device Triangle *corner [[buffer(0)]],
@@ -239,12 +238,19 @@ vertex VertexOutput vertex_render(
    uint id [[vertex_id]])
 {
    VertexOutput out;
-   return out; // TODO
+   out.position = point[corner[id/3].vtx[id%3]].vec;
+   // calculate out.normal from point[corner[id/3].vtx[0..<3]].vec
+   // calculate out.coord from average of point[corner[id/3].vtx[0..<3]].vec, and corner[id/3].rot
+   out.texid = corner[id/3].tex;
+   return out;
 }
 fragment half4 fragment_render(
+   const device Vector *texture [[buffer(8)]],
+   const device uint *textural [[buffer(9)]],
    VertexOutput in [[stage_in]])
 {
-   return half4(in.color);
+   // TODO use texid to switch between algorithms for mapping in.coord to texture subscript.
+   return half4(texture[in.texid].vec);
 }
 kernel void kernel_pierce(
    const device Triangle *corner [[buffer(0)]],
