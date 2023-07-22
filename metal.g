@@ -246,7 +246,7 @@ vertex VertexOutput vertex_render(
 }
 fragment half4 fragment_render(
    const device Vector *texture [[buffer(8)]],
-   const device uint *textural [[buffer(9)]],
+   const device uint *textual [[buffer(9)]],
    VertexOutput in [[stage_in]])
 {
    // TODO use texid to switch between algorithms for mapping in.coord to texture subscript.

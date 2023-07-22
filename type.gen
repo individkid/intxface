@@ -36,7 +36,7 @@ Memory = {
 	"Vertexz", -- intersection of backlinked planes
 	"Swarmz", -- array of points around focal point
 	"Texturez", -- memory for textures
-	"Texturalz", -- memory for text
+	"Textualz", -- memory for text
 	"Basisz", -- base for each dimension
 	"Allmatz", --c; whole view transformation
 	"Fewmatz", --c; matrix per set of planes
@@ -64,8 +64,8 @@ Configure = {
 	"SwarmBase", --
 	"TextureSize", -- written how to decorate
 	"TextureBase", --
-	"TexturalSize", -- written how to decorate
-	"TexturalBase", --
+	"TextualSize", -- written how to decorate
+	"TextualBase", --
 	"BasisSize", -- written cospace converters
 	"BasisBase", --
 	"PierceSize", -- written pierce points
@@ -618,7 +618,7 @@ Center = {
 	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
 	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
 	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
-	{"tur","Int32",{["mem"]={["Texturalz"]=true}},"siz"},
+	{"tur","Int32",{["mem"]={["Textualz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
