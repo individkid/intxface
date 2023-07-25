@@ -1548,10 +1548,10 @@ function showWgenC(list)
 end
 function showIgenC(list)
 	local result = ""
-	result = result.."int identUnion(struct Generic *ptr)"
+	result = result.."int identUnion(enum Tag tag)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
-	result = result..showIndent(1).."switch (ptr->tag) {\n"
+	result = result..showIndent(1).."switch (tag) {\n"
 	for k,v in ipairs(list) do
 		if ((v ~= "Tag") and (v ~= "Generic") and (v ~= "Homgen") and (v ~= "Hetgen")) then
 			result = result..showIndent(1).."case("..v.."Tag): return "..(k-1)..";\n"

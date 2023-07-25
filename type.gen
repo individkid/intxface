@@ -223,8 +223,8 @@ Operate = {
 	"MulOp",
 	"DivOp",
 	"RemOp",
-	"PthOp", -- if else compare
-	"EndOp", -- map str to exp
+	"CndOp", -- switch on het
+	"CmpOp", -- compare to bool
 	"TotOp", -- cast to type
 	"GetOp", -- value from callback
 	"SetOp", -- callback with value
@@ -310,36 +310,31 @@ Bootstrap = {
 		"exp[0]:Express(opr:Operate(ImmOp)val[0]:Generic(tag:Tag(CenterTag)"..
 		"center[0]:Center(mem:Memory(Machinez)siz:Int(21)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(5))"..
-		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(EndOp)end[0]:LeafExp("..
-			"siz:Int(4)pat[0]:Express(opr:Operate(PthOp)pth[0]:BranchExp(siz:Int(5)"..
-				"lft[0]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
-				"lft[1]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
-				"lft[2]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
-				"lft[3]:Express(opr:Operate(ValOp)key:Str(Changed))"..
-				"lft[4]:Express(opr:Operate(ValOp)key:Str(Changed))"..
-				"rgt[0]:Express(opr:Operate(CfgOp)cvl:Configure(CenterMemory))"..
-				"rgt[1]:Express(opr:Operate(CfgOp)cvl:Configure(ResultHint))"..
-				"rgt[2]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
-				"rgt[3]:Express(opr:Operate(IntOp)ivl:Int(1))"..
-				"rgt[4]:Express(opr:Operate(ValOp)key:Str(Changed))"..
-				"cmp[0]:Compare(ECCmp)"..
-				"cmp[1]:Compare(ECCmp)"..
-				"cmp[2]:Compare(ECCmp)"..
-				"cmp[3]:Compare(ECCmp)"..
-				"cmp[4]:Compare(ECCmp)"..
-				"str[0]:Str(MatchRead)"..
-				"str[1]:Str(MatchDraw)"..
-				"str[2]:Str(Mismatch)"..
-				"str[3]:Str(MatchDrawChanged)"..
-				"str[4]:Str(MatchDrawUnchanged)))"..
-			"exp[0]:Express(opr:Operate(IntOp)ivl:Int(2))"..
-			"exp[1]:Express(opr:Operate(IntOp)ivl:Int(1))"..
-			"exp[2]:Express(opr:Operate(IntOp)ivl:Int(0))"..
-			"exp[3]:Express(opr:Operate(IntOp)ivl:Int(0))"..
-			"str[0]:Str(MatchRead)"..
-			"str[1]:Str(MatchDrawChanged)"..
-			"str[2]:Str(MatchDrawUnchanged)"..
-			"str[3]:Str(Mismatch))))"..
+		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CndOp)cnd[0]:CondExp(siz:Int(7)"..
+			"lft[0]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
+				"exp[1]:Express(opr:Operate(ValOp)key:Str(Changed)))"..
+			"rgt[0]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(CfgOp)cvl:Configure(CenterMemory)))"..
+			"rgt[1]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(CfgOp)cvl:Configure(ResultHint))"..
+				"exp[1]:Express(opr:Operate(IntOp)ivl:Int(1)))"..
+			"rgt[2]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(CfgOp)cvl:Configure(ResultHint)))"..
+			"rgt[3]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(CfgOp)cvl:Configure(CursorLeft)))"..
+			"rgt[4]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(CfgOp)cvl:Configure(CursorAngle)))"..
+			"rgt[5]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(CfgOp)cvl:Configure(CursorClick)))"..
+			"rgt[6]:Expgen(siz:Int(0))"..
+			"exp[0]:Express(opr:Operate(IntOp)ivl:Int(2))".. -- Read
+			"exp[1]:Express(opr:Operate(IntOp)ivl:Int(1))".. -- Draw Changed
+			"exp[2]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Draw not Changed
+			"exp[3]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Move
+			"exp[4]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Roll
+			"exp[5]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Click
+			"exp[6]:Express(opr:Operate(IntOp)ivl:Int(0)))))"..
 		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchDrawChanged
 		-- Draw, and remember that not Changed
 		"mch[3]:Machine(xfr:Transfer(Draw)siz:Int(0))"..
@@ -354,30 +349,21 @@ Bootstrap = {
 			"sav[0]:Configure(RegisterMemory)"..
 			"sav[1]:Configure(RegisterIndex)"..
 			"sav[2]:Configure(CenterSize))"..
-		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(EndOp)end[0]:LeafExp("..
-			"siz:Int(3)pat[0]:Express(opr:Operate(PthOp)pth[0]:BranchExp(siz:Int(4)"..
-				"lft[0]:Express(opr:Operate(GetOp)cfg:Configure(CenterSize))"..
-				"lft[1]:Express(opr:Operate(GetOp)cfg:Configure(CenterSize))"..
-				"lft[2]:Express(opr:Operate(GetOp)cfg:Configure(RegisterMemory))"..
-				"lft[3]:Express(opr:Operate(GetOp)cfg:Configure(RegisterMemory))"..
-				"rgt[0]:Express(opr:Operate(IntOp)ivl:Int(0))"..
-				"rgt[1]:Express(opr:Operate(GetOp)cfg:Configure(CenterSize))"..
-				"rgt[2]:Express(opr:Operate(MemOp)mvl:Memory(Piercez))"..
-				"rgt[3]:Express(opr:Operate(GetOp)cfg:Configure(RegisterMemory))"..
-				"cmp[0]:Compare(ECCmp)"..
-				"cmp[1]:Compare(ECCmp)"..
-				"cmp[2]:Compare(ECCmp)"..
-				"cmp[3]:Compare(ECCmp)"..
-				"str[0]:Str(MatchGet)"..
-				"str[1]:Str(MatchSet)"..
-				"str[2]:Str(MatchGetPierce)"..
-				"str[3]:Str(MatchGetNone)))"..
-			"exp[0]:Express(opr:Operate(IntOp)ivl:Int(1))"..
-			"exp[1]:Express(opr:Operate(IntOp)ivl:Int(2))"..
-			"exp[2]:Express(opr:Operate(IntOp)ivl:Int(-1))"..
-			"str[0]:Str(MatchSet)"..
-			"str[1]:Str(MatchGetPierce)"..
-			"str[2]:Str(MatchGetNone))))"..
+		"mch[9]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CndOp)cnd[0]:CondExp(siz:Int(3)"..
+			"lft[0]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(GetOp)cfg:Configure(CenterSize))"..
+				"exp[1]:Express(opr:Operate(GetOp)cfg:Configure(RegisterMemory)))"..
+			"rgt[0]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(IntOp)ivl:Int(0))"..
+				"exp[1]:Express(opr:Operate(MemOp)mvl:Memory(Piercez)))"..
+			"rgt[1]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(IntOp)ivl:Int(0))"..
+				"exp[1]:Express(opr:Operate(GetOp)cfg:Configure(RegisterMemory)))"..
+			"rgt[2]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
+				"exp[0]:Express(opr:Operate(GetOp)cfg:Configure(CenterSize)))"..
+			"exp[0]:Express(opr:Operate(IntOp)ivl:Int(2))"..
+			"exp[1]:Express(opr:Operate(IntOp)ivl:Int(-1))"..
+			"exp[2]:Express(opr:Operate(IntOp)ivl:Int(1)))))"..
 		"mch[10]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchSet
 		-- Copy center to cpu and gpu, and remember that Changed
 		"mch[11]:Machine(xfr:Transfer(Copy)siz:Int(0))"..
@@ -543,18 +529,16 @@ Slice = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 }
-BranchExp = {
+CondExp = {
 	{"siz","Int",{},{}},
-	{"lft","Express",{},"siz"},
-	{"rgt","Express",{},"siz"},
-	{"cmp","Compare",{},"siz"},
-	{"str","Str",{},"siz"},
-}
-LeafExp = {
-	{"siz","Int",{},{}},
-	{"pat","Express",{},1},
+	{"lft","Expgen",{},1},
+	{"rgt","Expgen",{},"siz"},
 	{"exp","Express",{},"siz"},
-	{"str","Str",{},"siz"},
+}
+CompExp = {
+	{"cmp","Compare",{},{}},
+	{"lft","Express",{},1},
+	{"rgt","Express",{},1},
 }
 DataExp = { -- increment each nonnegative value from lookup of str in Data from eval of exp[0]
 	{"act","Action",{},{}}, -- negate, clear, increment, result, or compare and possibly recurse
@@ -569,11 +553,16 @@ Hetgen = {
 	{"siz","Int",{},{}},
 	{"gen","Generic",{},"siz"},
 }
+Expgen = {
+	{"siz","Int",{},{}},
+	{"typ","Tag",{},"siz"},
+	{"exp","Express",{},"siz"},
+}
 Express = {
 	{"opr","Operate",{},{}},
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
-	{"pth","BranchExp",{["opr"]={["PthOp"]=true}},1},
-	{"end","LeafExp",{["opr"]={["EndOp"]=true}},1},
+	{"cnd","CondExp",{["opr"]={["CndOp"]=true}},1},
+	{"cmp","CompExp",{["opr"]={["CmpOp"]=true}},1},
 	{"typ","Str",{["opr"]={["TotOp"]=true}},{}},
 	{"tot","Express",{["opr"]={["TotOp"]=true}},1},
 	{"cfg","Configure",{["opr"]={["GetOp"]=true}},{}},

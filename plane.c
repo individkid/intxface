@@ -25,6 +25,7 @@
 #include <signal.h>
 
 struct Kernel {
+	int optimize;
 	struct Matrix compose;
 	struct Matrix maintain;
 	struct Matrix written;
@@ -275,20 +276,27 @@ float *planeInverse()
 }
 float *planeMaintain()
 {
-	return planeKernel()->maintain.mat;
+	struct Kernel *ptr = planeKernel();
+	ptr->optimize = 0;
+	return ptr->maintain.mat;
 }
 float *planeWritten()
 {
-	return planeKernel()->written.mat;
+	struct Kernel *ptr = planeKernel();
+	ptr->optimize = 0;
+	return ptr->written.mat;
 }
 float *planeTowrite()
 {
-	return planeKernel()->towrite.mat;
+	struct Kernel *ptr = planeKernel();
+	ptr->optimize = 0;
+	return ptr->towrite.mat;
 }
 float *planeCompose()
 {
-	// TODO check if can use planeKernel()->compose as is
-	return jumpmat(jumpmat(copymat(planeKernel()->compose.mat,planeMaintain(),4),planeWritten(),4),planeTowrite(),4);
+	struct Kernel *ptr = planeKernel();
+	if (ptr->optimize) return ptr->compose.mat; else ptr->optimize = 1;
+	return jumpmat(jumpmat(copymat(ptr->compose.mat,planeMaintain(),4),planeWritten(),4),planeTowrite(),4);
 }
 planeXform planeFunc()
 {
@@ -500,6 +508,14 @@ int planeIval(struct Express *exp)
 	val = *datxIntz(0,dat); free(dat);
 	return val;
 }
+int planeExpress(const char *str)
+{
+	struct Express exp = {0}; int len = 0; int val = 0;
+	if (!hideExpress(&exp,str,&len)) ERROR();
+	val = planeIval(&exp);
+	freeExpress(&exp);
+	return val;
+}
 void planeFill()
 {
 	int src = 0; int dst = 0; int siz = 0;
@@ -539,7 +555,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
-	case (Eval): datxNone(dat0); configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
+	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
 	case (Echo): if (configure[ResultType] == identType("Center")) readCenter(&center,idx0); else ERROR(); break;
 	case (Fill): planeFill(); break;
 	default: break;}

@@ -215,7 +215,7 @@ void shareLoop(int src, int dst, int stp, int dtp)
 	if (stp == identType("Str")) {char *str = 0; int len = 0; readStr(&str,src); hideType(str,&len,dtp,dst); free(str); return;}
 	if (stp == identType("Generic") && dtp == identType("Dat")) {struct Generic gen = {0}; readGeneric(&gen,src); datxNone(dat0); writeUnion(&gen,idx0); writeDat(*dat0,dst); freeGeneric(&gen); return;}
 	if (stp == identType("Generic") && dtp == identType("Str")) {struct Generic gen = {0}; char *str = 0; readGeneric(&gen,src); showUnion(&gen,&str); writeStr(str,dst); freeGeneric(&gen); free(str); return;}
-	if (stp == identType("Generic")) {struct Generic gen = {0}; readGeneric(&gen,src); if (identUnion(&gen) != dtp) ERROR(); writeUnion(&gen,dst); freeGeneric(&gen); return;}
+	if (stp == identType("Generic")) {struct Generic gen = {0}; readGeneric(&gen,src); if (identUnion(gen.tag) != dtp) ERROR(); writeUnion(&gen,dst); freeGeneric(&gen); return;}
 	if (dtp == identType("Dat")) {datxNone(dat0); loopType(stp,src,idx0); writeDat(*dat0,dst); return;}
 	if (dtp == identType("Str")) {char *str = 0; showType(&str,stp,src); writeStr(str,dst); free(str); return;}
 	if (dtp == identType("Generic")) {struct Generic gen = {0}; readUnion(&gen,stp,src); writeGeneric(&gen,dst); freeGeneric(&gen); return;}
