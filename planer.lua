@@ -2,11 +2,11 @@ dofile("type.lua")
 initialize = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
 	"fix[0]:Old(0.000000)fix[1]:Old(0.100000)fix[2]:Old(0.200000)fix[3]:Old(0.300000)"..
 	"nml[0]:Old(1.000000)nml[1]:Old(1.100000)nml[2]:Old(1.200000)nml[3]:Old(1.300000)"..
-	"vld:Int32(1)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
+	"vld:Int32(1)idx:Int32(0)pol:Int32(0)pad:Int32(0)))")
 expected = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
 	"fix[0]:Old(0.000000)fix[1]:Old(2.000000)fix[2]:Old(2.000000)fix[3]:Old(0.000000)"..
 	"nml[0]:Old(0.000000)nml[1]:Old(0.707107)nml[2]:Old(-0.707107)nml[3]:Old(0.000000)"..
-	"vld:Int32(0)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))")
+	"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))")
 request = {["mem"]="Piercez",["siz"]=0,["idx"]=0,["slf"]=0}
 ident = wrapType("Planez","planerLua","metalSw")
 os.execute("sleep 1")

@@ -21,7 +21,8 @@ struct Pierce {
    float4 nml;
    uint vld;
    uint idx;
-   uint pad0, pad1;
+   uint pol;
+   uint pad;
 };
 struct Vector {
    float4 vec;
@@ -264,13 +265,13 @@ kernel void kernel_pierce(
    uint id [[thread_position_in_grid]],
    device Pierce *pierce [[buffer(8)]])
 {
-   Expand expand; float3 lambda; float2 cursor;
-   for (uint i = 0; i < 3; i++) expand.point[i] = point[corner[id].vtx[i]].vec.xyz;
+   Expand expand; float3 lambda; float2 cursor; uint idx;
+   idx = pierce[id].idx;
+   for (uint i = 0; i < 3; i++) expand.point[i] = point[corner[idx].vtx[i]].vec.xyz;
    cursor = float2(state->lon,state->lat);
    lambda = barrycentric(expand,2,float3(cursor,0.0));
    pierce[id].fix = float4(cursor,apply(expand,2,lambda),0.0);
    pierce[id].nml = float4(normal(expand),0.0);
+   pierce[id].pol = corner[idx].pol;
    pierce[id].vld = check(lambda);
-   pierce[id].idx = id;
-   // TODO
 }

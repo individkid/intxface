@@ -378,7 +378,7 @@ Bootstrap = {
 				"mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
 				"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
 				"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
-				"vld:Int32(0)idx:Int32(0)pad[0]:Int32(0)pad[1]:Int32(0)))))".. -- Express struct
+				"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))))".. -- Express struct
 			"ins[1]:Express(opr:Operate(HetOp)siz:Int(1)exp[0]:Express(opr:Operate(TotOp)typ:Str(Int32)"..
 				"tot[0]:Express(opr:Operate(GetOp)cfg:Configure(RegisterIndex))))".. -- Hetgen field values
 			"ins[2]:Express(opr:Operate(HomOp)siz:Int(1)exp[0]:Express(opr:Operate(StrOp)svl:Str(idx)))".. -- Homgen Str field names
@@ -514,7 +514,8 @@ Pierce = {
 	{"nml","Old",{},{4}},
 	{"vld","Int32",{},{}},
 	{"idx","Int32",{},{}},
-	{"pad","Int32",{},{2}},
+	{"pol","Int32",{},{}},
+	{"pad","Int32",{},{}},
 }
 Vector = {
 	{"vec","Old",{},{4}},
