@@ -44,6 +44,7 @@ Memory = {
 	"Piercez", --c; pierce point normal and valid
 	"Slicez", -- plane or point index ranges
 	"Stringz", -- keyboard comparison strings
+	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
 	"Configurez", --c,a; configure to value
 }
@@ -143,6 +144,7 @@ Transfer = {
 	"Proj", -- perspective matrix
 	"Copy", -- dma to cpu or gpu
 	"Draw", -- start shader
+	"Name", -- function for call
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
@@ -243,6 +245,7 @@ Operate = {
 	"MemOp", -- ImmOp sugar
 	"UnqOp", -- magic number
 	"EmbOp", -- script embed
+	"NamOp", -- call function
 	"DatOp", -- stream data
 }
 Compare = {
@@ -335,14 +338,14 @@ Bootstrap = {
 			"exp[4]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Roll
 			"exp[5]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Click
 			"exp[6]:Express(opr:Operate(IntOp)ivl:Int(0)))))"..
-		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchDrawChanged
+		"mch[2]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- Draw Changed
 		-- Draw, and remember that not Changed
 		"mch[3]:Machine(xfr:Transfer(Draw)siz:Int(0))"..
 		"mch[4]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express("..
 			"opr:Operate(SavOp)kys:Str(Changed)"..
 			"sav[0]:Express(opr:Operate(IntOp)ivl:Int(0))))"..
 		"mch[5]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)ivl:Int(-1)))"..
-		"mch[6]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchRead
+		"mch[6]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- Read
 		-- Read center, Stage center fields, and compare fields staged to Configure
 		"mch[7]:Machine(xfr:Transfer(Read)siz:Int(0))"..
 		"mch[8]:Machine(xfr:Transfer(Stage)siz:Int(3)"..
@@ -583,6 +586,7 @@ Express = {
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
+	{"str","Str",{["opr"]={["EmbOp"]=true,["NamOp"]=true}},{}},
 	{"dtp","DataExp",{["opr"]={["DatOp"]=true}},1},
 	{"dat","Express",{["opr"]={["DatOp"]=true}},1},
 }
@@ -594,6 +598,7 @@ Machine = {
 	{"val","Int",{["xfr"]={["Force"]=true}},"siz"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
+	{"str","Str",{["xfr"]={["Name"]=true}},{}},
 }
 Center = {
 	{"mem","Memory",{},{}},
@@ -612,7 +617,7 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
-	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
+	{"str","Str",{["mem"]={["Stringz"]=true,["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},

@@ -41,6 +41,9 @@ struct Pierce *pierce = 0;
 struct Pierce *found = 0;
 struct Pierce unfound = {0};
 struct Machine *machine = 0;
+int *intstk = 0;
+int numstk = 0;
+int idxstk = 0;
 int configure[Configures] = {0};
 struct Center center = {0};
 int sub0 = 0;
@@ -473,6 +476,7 @@ void planeDma(enum Configure cfg, int val)
 	callDma(&tmp);
 	freeCenter(&tmp);
 }
+int planeCall(const char *str);
 void planeCopy(struct Center *ptr)
 {
 	switch (ptr->mem) {
@@ -484,9 +488,12 @@ void planeCopy(struct Center *ptr)
 	case (Stringz): for (int i = 0; i < ptr->siz; i++)
 		if (ptr->idx < 0) configure[ResultSize] = planeSet(-1,ptr->str[i]);
 		else planeSet(ptr->idx+i,ptr->str[i]); break;
+	case (Stackz): for (int i = 0; i < ptr->siz; i++) planeCall(ptr->str[i]); break;
 	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
 		int index = ptr->idx+i;
 		if (index < 0 || index >= configure[MachineSize]) ERROR();
+		if (ptr->mch[i].xfr == Name) {void *dat = 0; datxInt(&dat,index+1);
+		datxInserts("_",ptr->mch[i].str,dat,identType("Int")); free(dat);}
 		copyMachine(&machine[index],&ptr->mch[i]);} break;
 	case (Configurez): for (int i = 0; i < ptr->siz; i++)
 		planeConfig(ptr->cfg[i],ptr->val[i]);
@@ -555,21 +562,41 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
+	case (Name): next = next - 1; break;
 	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
 	case (Echo): if (configure[ResultType] == identType("Center")) readCenter(&center,idx0); else ERROR(); break;
 	case (Fill): planeFill(); break;
 	default: break;}
 	return next+1;
 }
-void planeWake(enum Configure hint)
+void planeLoop()
 {
-	configure[ResultHint] = hint;
-	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
 	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[ResultLine];
 	int next = planeSwitch(mptr,configure[ResultLine]);
 	if (next == configure[ResultLine]) break;
 	configure[ResultLine] = next;}
+}
+int planeCall(const char *str)
+{
+	void *dat = 0; int typ = 0;
+	typ = datxFinds(&dat,"_",str);
+	if (typ != identType("Int")) ERROR();
+	if (idxstk >= numstk) {
+	intstk = realloc(intstk,(idxstk+1)*sizeof(int));
+	while (idxstk >= numstk) strings[numstk++] = 0;}
+	intstk[idxstk++] = configure[ResultLine];
+	configure[ResultLine] = *datxIntz(0,dat);
+	planeLoop();
+	configure[ResultLine] = intstk[--idxstk];	
+	if (configure[ResultType] != identType("Int")) ERROR();
+	return *datxIntz(0,*dat0);
+}
+void planeWake(enum Configure hint)
+{
+	configure[ResultHint] = hint;
+	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
+	planeLoop();
 }
 void planeBoot()
 {
@@ -755,7 +782,8 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
 	luaxAdd("planeGetter",protoTypeDh(planeGetter)); luaxAdd("planeSetter",protoTypeDg(planeSetter));
-	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert)); datxEmbed(planeSide);
+	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert));
+	datxEmbed(planeSide); datxCaller(planeCall);
 	callDma = dma;
 	callSafe = safe;
 	callMain = main;

@@ -223,7 +223,7 @@ Expand transform(Expand plane, metal::float4x4 matrix)
 }
 struct VertexOutput {
    float4 position [[position]]; // for positioning the pixel
-   float3 normal; // for reflection
+   float3 normal; // for reflection or smoothing
    float2 coord; // for positioning the texture
    uint texid [[flat]]; // index into texture array
 };
@@ -240,7 +240,7 @@ vertex VertexOutput vertex_render(
 {
    VertexOutput out;
    out.position = point[corner[id/3].vtx[id%3]].vec;
-   // calculate out.normal from point[corner[id/3].vtx[0..<3]].vec
+   // calculate out.normal from corner[id/3] or from average of corner[point[corner[id/3].vtx[id%3]].ref[0..<3]]
    // calculate out.coord from average of point[corner[id/3].vtx[0..<3]].vec, and corner[id/3].rot
    out.texid = corner[id/3].tex;
    return out;

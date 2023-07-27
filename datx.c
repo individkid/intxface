@@ -8,7 +8,8 @@
 
 int unique = 0;
 void *prefix = 0;
-dftype datxCallFp = 0;
+dftype datxNoteFp = 0;
+fftype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
 fftype datxEmbFp = 0;
@@ -149,6 +150,13 @@ int datxFind(void **val, void *key)
 	free(dat); free(*val); *val = 0;
 	return typ;
 }
+int datxFinds(void **val, const char *pre, const char *str)
+{
+	void *key = 0; void *sav = 0; int typ = 0; assignDat(&sav,prefix);
+	datxStr(&prefix,pre); datxStr(&key,str); typ = datxFind(val,key);
+	assignDat(&prefix,sav); free(sav);
+	return typ;
+}
 void datxInsertF(void *key, void *val, int typ, void *ptr, struct Box box)
 {
 	for (int i = box.ptr->siz; i > box.idx; i--) {
@@ -186,7 +194,13 @@ void datxInsert(void *key, void *val, int typ)
 		ptr->dep = box.ptr->dep;
 		box = box.ptr->ref;
 		datxInsertF(ptr->key[0],0,0,ptr,box);}
-	if (datxCallFp) {void *save = 0; assignDat(&save,prefix); datxCallFp(key); assignDat(&prefix,save);}
+	if (datxNoteFp) datxNoteFp(key);
+}
+void datxInserts(const char *pre, const char *str, void *val, int typ)
+{
+	void *key = 0; void *sav = 0; assignDat(&sav,prefix);
+	datxStr(&prefix,pre); datxStr(&key,str); datxInsert(key,val,typ);
+	assignDat(&prefix,sav); free(sav);
 }
 void datxReplace(char *str, int val)
 {
@@ -476,16 +490,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		else if (typ == identType("Old") && typ0 == identType("Int32")) datxOld(dat,*datxInt32z(0,*dat));
 		else if (typ == identType("Old") && typ0 == identType("Num")) datxOld(dat,*datxNumz(0,*dat));} break;
 	case (GetOp): {
-		void *sav = 0; if (datxGetFp == 0) ERROR();
+		if (datxGetFp == 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		assignDat(&sav,prefix); datxGetFp(dat,exp->cfg); assignDat(&prefix,sav);
-		free(sav);} break;
+		datxGetFp(dat,exp->cfg);} break;
 	case (SetOp): {
-		void *sav = 0; int typ0 = 0; if (datxSetFp == 0) ERROR();
+		int typ0 = 0; if (datxSetFp == 0) ERROR();
 		typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ0 != identType("Int")) ERROR();
-		assignDat(&sav,prefix); datxSetFp(*dat,exp->cgs); assignDat(&prefix,sav);
-		free(sav);} break;
+		datxSetFp(*dat,exp->cgs);} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
@@ -613,6 +625,13 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (UnqOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,unique++);} break;
+	case (EmbOp): {
+		void *save = 0; if (datxEmbFp == 0) ERROR();
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,datxEmbFp(exp->str));} break;
+	case (NamOp): {
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,datxCallFp(exp->str));} break;
 	case (DatOp): {
 		struct Data src = {0}; struct Data dst = {0}; void *dat0 = 0; int typ0 = 0;
 		if (typ == -1) typ = identType("Data"); if (typ != identType("Data")) ERROR();
@@ -628,7 +647,11 @@ void datxPrefix(const char *str)
 {
 	datxStr(&prefix,str);
 }
-void datxCallback(dftype fnc)
+void datxChanged(dftype fnc)
+{
+	datxNoteFp = fnc;
+}
+void datxCaller(fftype fnc)
 {
 	datxCallFp = fnc;
 }

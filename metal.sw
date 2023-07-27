@@ -507,7 +507,7 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 	code.present(draw)
 	case (Adpoint): fallthrough case (Adplane):
 	for range in array[Int(base)..<Int(limit)] {
-		var offset = Int(range.idx)*MemoryLayout<Triangle>.size
+		var offset = Int(range.idx)*MemoryLayout<Pierce>.size
 		var nums:[Int] = []
 		var pers:[Int] = []
 		let quotient = Int(range.siz)/threads[sub]!.width
@@ -521,7 +521,7 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 		for (n,p) in zip(nums,pers) {
 			guard let encode = code.makeComputeCommandEncoder() else {exitErr(#file,#line);return}
 			encode.setComputePipelineState(compute[sub]!)
-			if let tmp = triangle.get() {encode.setBuffer(tmp,offset:offset,index:0)}
+			if let tmp = triangle.get() {encode.setBuffer(tmp,offset:0,index:0)}
 			if let tmp = numeric.get() {encode.setBuffer(tmp,offset:0,index:1)}
 			if let tmp = vertex.get() {encode.setBuffer(tmp,offset:0,index:2)}
 			if let tmp = subject.get() {encode.setBuffer(tmp,offset:0,index:3)}
@@ -529,12 +529,12 @@ func swiftDraw(_ shader: Micro, _ base: Int32, _ limit: Int32)
 			if let tmp = element.get() {encode.setBuffer(tmp,offset:0,index:5)}
 			if let tmp = basis.get() {encode.setBuffer(tmp,offset:0,index:6)}
 			if let tmp = uniform.get() {encode.setBuffer(tmp,offset:0,index:7)}
-			if let tmp = pierce.get() {encode.setBuffer(tmp,offset:0,index:8)}
+			if let tmp = pierce.get() {encode.setBuffer(tmp,offset:offset,index:8)}
 			let num = MTLSize(width:n,height:1,depth:1)
 			let per = MTLSize(width:p,height:1,depth:1)
 			encode.dispatchThreadgroups(num,threadsPerThreadgroup:per)
 			encode.endEncoding()
-			offset += n*p*MemoryLayout<Triangle>.size
+			offset += n*p*MemoryLayout<Pierce>.size
 		}
 	}
 	code.addCompletedHandler(getReady())
