@@ -33,7 +33,7 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(dftype fnc);
-void datxCaller(fftype fnc);
+void datxCaller(ghtype fnc);
 void datxSetter(dgtype fnc);
 void datxGetter(dhtype fnc);
 void datxEmbed(fftype fnc);

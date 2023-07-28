@@ -476,7 +476,7 @@ void planeDma(enum Configure cfg, int val)
 	callDma(&tmp);
 	freeCenter(&tmp);
 }
-int planeCall(const char *str);
+int planeCall(void **dat, const char *str);
 void planeCopy(struct Center *ptr)
 {
 	switch (ptr->mem) {
@@ -488,7 +488,7 @@ void planeCopy(struct Center *ptr)
 	case (Stringz): for (int i = 0; i < ptr->siz; i++)
 		if (ptr->idx < 0) configure[ResultSize] = planeSet(-1,ptr->str[i]);
 		else planeSet(ptr->idx+i,ptr->str[i]); break;
-	case (Stackz): for (int i = 0; i < ptr->siz; i++) planeCall(ptr->str[i]); break;
+	case (Stackz): for (int i = 0; i < ptr->siz; i++) configure[ResultType] = planeCall(dat0,ptr->str[i]); break;
 	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
 		int index = ptr->idx+i;
 		if (index < 0 || index >= configure[MachineSize]) ERROR();
@@ -538,8 +538,8 @@ void planeFill()
 }
 int planeSwitch(struct Machine *mptr, int next)
 {
-	{char *xfr = 0; showTransfer(mptr->xfr,&xfr);
-	printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
+	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
+	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
@@ -577,20 +577,22 @@ void planeLoop()
 	if (next == configure[ResultLine]) break;
 	configure[ResultLine] = next;}
 }
-int planeCall(const char *str)
+int planeCall(void **dat, const char *str)
 {
-	void *dat = 0; int typ = 0;
-	typ = datxFinds(&dat,"_",str);
+	void *nam = 0; int typ = 0;
+	if (str == 0) {assignDat(dat,*dat0); return configure[ResultType];}
+	typ = datxFinds(&nam,"_",str);
 	if (typ != identType("Int")) ERROR();
 	if (idxstk >= numstk) {
 	intstk = realloc(intstk,(idxstk+1)*sizeof(int));
 	while (idxstk >= numstk) strings[numstk++] = 0;}
 	intstk[idxstk++] = configure[ResultLine];
-	configure[ResultLine] = *datxIntz(0,dat);
+	configure[ResultLine] = *datxIntz(0,nam);
 	planeLoop();
-	configure[ResultLine] = intstk[--idxstk];	
-	if (configure[ResultType] != identType("Int")) ERROR();
-	return *datxIntz(0,*dat0);
+	configure[ResultLine] = intstk[--idxstk];
+	assignDat(dat,*dat0);
+	free(nam);
+	return configure[ResultType];
 }
 void planeWake(enum Configure hint)
 {

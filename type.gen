@@ -246,6 +246,7 @@ Operate = {
 	"UnqOp", -- magic number
 	"EmbOp", -- script embed
 	"NamOp", -- call function
+	"AccOp", -- machine result
 	"DatOp", -- stream data
 }
 Compare = {

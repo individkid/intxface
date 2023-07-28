@@ -9,7 +9,7 @@
 int unique = 0;
 void *prefix = 0;
 dftype datxNoteFp = 0;
-fftype datxCallFp = 0;
+ghtype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
 fftype datxEmbFp = 0;
@@ -455,14 +455,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxSetFp(*dat,exp->cgs);} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
-		printf("ValOp %s\n",exp->key);
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
-		printf("ValOp %d\n",typ0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (SavOp): {
 		int typ0 = 0; void *dat0 = 0; void *key = 0;
 		typ0 = datxEval(dat,exp->sav,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
-		printf("SavOp %s\n",exp->kys);
 		datxStr(&key,exp->kys); datxInsert(key,*dat,typ0); free(key);} break;
 	case (InsOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
@@ -588,8 +585,13 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,datxEmbFp(exp->str));} break;
 	case (NamOp): {
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxCallFp(exp->str));} break;
+		int typ0 = 0; if (datxCallFp == 0) ERROR();
+		typ0 = datxCallFp(dat,exp->str);
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	case (AccOp): {
+		int typ0 = 0; if (datxCallFp == 0) ERROR();
+		typ0 = datxCallFp(dat,0);
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (DatOp): {
 		struct Data src = {0}; struct Data dst = {0}; void *dat0 = 0; int typ0 = 0;
 		if (typ == -1) typ = identType("Data"); if (typ != identType("Data")) ERROR();
@@ -609,7 +611,7 @@ void datxChanged(dftype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxCaller(fftype fnc)
+void datxCaller(ghtype fnc)
 {
 	datxCallFp = fnc;
 }

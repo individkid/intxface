@@ -672,7 +672,7 @@ void allocDat(void* **ptr, int siz)
 void assignDat(void **ptr, const void *dat)
 {
 	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
-	if (dat == 0) return;
+	if (dat == 0 || dat == *ptr) return;
 	*ptr = realloc(*ptr,(*(int*)dat)+sizeof(int));
 	if (*ptr == 0) ERRFNC(-1);
 	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));

@@ -53,6 +53,7 @@ typedef int (*fgtype)(const char *str, int len, int idx);
 typedef int (*fhtype)(int idx, const char *str);
 typedef int (*gftype)(const char *one, const char *oth);
 typedef int (*ggtype)(int rfd, int wfd);
+typedef int (*ghtype)(void **dat, const char *str);
 typedef int (*oftype)(void *arg);
 
 typedef int (*tftype)(double dly, int msk);
