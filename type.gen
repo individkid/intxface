@@ -301,7 +301,7 @@ Bootstrap = {
 		"cfg[3]:Configure(RegisterOpen)"..
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
-		"val[2]:Int(21)"..
+		"val[2]:Int(22)"..
 		"val[3]:Int(31))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(SavOp)kys:Str(Changed)"..
@@ -311,8 +311,8 @@ Bootstrap = {
 		"set[0]:Express(opr:Operate(IntOp)ivl:Int(%(return castMicro(\"Adpoint\"))))))"},
 	{"Int","3","Str","Machine(xfr:Transfer(Eval)siz:Int(0)"..
 		"exp[0]:Express(opr:Operate(ImmOp)val[0]:Generic(tag:Tag(CenterTag)"..
-		"center[0]:Center(mem:Memory(Machinez)siz:Int(21)idx:Int(0)slf:Int(0)"..
-		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(5))"..
+		"center[0]:Center(mem:Memory(Machinez)siz:Int(22)idx:Int(0)slf:Int(0)"..
+		"mch[0]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(4))"..
 		"mch[1]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(CndOp)cnd[0]:CondExp(siz:Int(7)"..
 			"lft[0]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..
 				"exp[0]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
@@ -364,7 +364,7 @@ Bootstrap = {
 				"exp[1]:Express(opr:Operate(GetOp)cfg:Configure(RegisterMemory)))"..
 			"rgt[2]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
 				"exp[0]:Express(opr:Operate(GetOp)cfg:Configure(CenterSize)))"..
-			"exp[0]:Express(opr:Operate(IntOp)ivl:Int(2))"..
+			"exp[0]:Express(opr:Operate(NamOp)str:Str(GetPierce))"..
 			"exp[1]:Express(opr:Operate(IntOp)ivl:Int(-1))"..
 			"exp[2]:Express(opr:Operate(IntOp)ivl:Int(1)))))"..
 		"mch[10]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchSet
@@ -374,9 +374,10 @@ Bootstrap = {
 			"opr:Operate(SavOp)kys:Str(Changed)"..
 			"sav[0]:Express(opr:Operate(IntOp)ivl:Int(1))))"..
 		"mch[13]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)ivl:Int(-1)))"..
-		"mch[14]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))".. -- MatchGetPierce
+		"mch[14]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))"..
+		"mch[15]:Machine(xfr:Transfer(Name)siz:Int(0)str:Str(GetPierce))".. -- MatchGetPierce
 		-- Eval and Echo singleton Pierce to center, Fill and Write center
-		"mch[15]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(InsOp)"..
+		"mch[16]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(InsOp)"..
 			"ins[0]:Express(opr:Operate(ImmOp)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
 				"mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
 				"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
@@ -386,11 +387,11 @@ Bootstrap = {
 				"tot[0]:Express(opr:Operate(GetOp)cfg:Configure(RegisterIndex))))".. -- Hetgen field values
 			"ins[2]:Express(opr:Operate(HomOp)siz:Int(1)exp[0]:Express(opr:Operate(StrOp)svl:Str(idx)))".. -- Homgen Str field names
 			"ins[3]:Express(opr:Operate(HomOp)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)ivl:Int(0)))))".. -- Homgen Int field indices
-		"mch[16]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
-		"mch[17]:Machine(xfr:Transfer(Fill)siz:Int(0))"..
-		"mch[18]:Machine(xfr:Transfer(Write)siz:Int(0))"..
-		"mch[19]:Machine(xfr:Transfer(Jump)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)ivl:Int(-1)))"..
-		"mch[20]:Machine(xfr:Transfer(Nest)siz:Int(0)lvl:Int(-1))))))"},
+		"mch[17]:Machine(xfr:Transfer(Echo)siz:Int(0))"..
+		"mch[18]:Machine(xfr:Transfer(Fill)siz:Int(0))"..
+		"mch[19]:Machine(xfr:Transfer(Write)siz:Int(0))"..
+		"mch[20]:Machine(xfr:Transfer(Eval)siz:Int(0)exp[0]:Express(opr:Operate(IntOp)ivl:Int(-1)))"..
+		"mch[21]:Machine(xfr:Transfer(Name)siz:Int(0)str:Str(Mismatch))))))"},
 	{"Int","4","Str","Machine(xfr:Transfer(Echo)siz:Int(0))"},
 	{"Int","5","Str","Machine(xfr:Transfer(Copy)siz:Int(0))"},
 }

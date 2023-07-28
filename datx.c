@@ -25,21 +25,10 @@ int datxIdx2 = 0;
 void **datxDat0 = 0;
 void **datxDat1 = 0;
 void **datxDat2 = 0;
-
-struct Node;
-struct Box {
-	struct Node *ptr;
-	int idx;
-};
-struct Node {
-	int siz;
-	int typ[4];
-	void *box[4];
-	void *key[4];
-	struct Node *ptr[4];
-	struct Box ref;
-	int dep;
-} tree = {0};
+int sizs = 0;
+int *typs = 0;
+void **boxs = 0;
+void **keys = 0;
 
 int datxSub()
 {
@@ -126,29 +115,34 @@ int datxCompare(void *one, void *oth)
 		if (*((char*)one+i) > *((char*)oth+i)) return 1;}
 	return 0;
 }
-struct Box datxFindF(void *key)
-{
-	struct Box box = {0}; box.ptr = &tree;
-	if (box.ptr->siz == 0) return box;
-	while (box.ptr->dep > 0 || datxCompare(box.ptr->key[box.idx],key) < 0) {
-	box.idx++;
-	if (box.idx == box.ptr->siz || datxCompare(box.ptr->key[box.idx],key) > 0) {
-	box.idx--;
-	if (box.ptr->dep == 0) break;
-	box.ptr = box.ptr->ptr[box.idx];
-	box.idx = 0;}}
-	return box;
-}
 int datxFind(void **val, void *key)
 {
-	struct Box box = {0}; void *dat = 0; int typ = -1;
-	if (prefix) datxJoin(dat,prefix,key); else assignDat(&dat,key);
-	box = datxFindF(dat);
-	if (box.idx < box.ptr->siz && datxCompare(box.ptr->key[box.idx],dat) == 0) {
-		assignDat(val,box.ptr->box[box.idx]); typ = box.ptr->typ[box.idx];
-		free(dat); return typ;}
-	free(dat); free(*val); *val = 0;
-	return typ;
+	int idx = sizs/2; int siz = sizs/2; int odd = sizs%2; void *dat = 0;
+	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key);
+	while (siz+odd > 0) {int sav = idx; int chk = siz+odd; int cmp = 0;
+	if (idx < 0 || idx >= sizs) ERROR();
+	cmp = datxCompare(dat,keys[idx]);
+	if (cmp == 0) {assignDat(val,boxs[idx]); free(dat); return typs[idx];}
+	if (cmp < 0) {idx = idx - siz + siz/2; siz = siz/2; odd = siz%2;}
+	if (cmp > 0) {idx = idx + 1 + (siz-1+odd)/2; siz = (siz-1+odd)/2; odd = (siz-1+odd)%2;}
+	if (idx < 0 || idx > sizs || idx == sav || siz < 0 || odd < 0 || odd > 1 || siz+odd >= chk) ERROR();}
+	if (datxCompare(dat,keys[idx]) != 0) {free(dat); return -1;}
+	assignDat(val,boxs[idx]); free(dat); return typs[idx];
+}
+void datxInsert(void *key, void *val, int typ)
+{
+	int idx = sizs/2; int siz = sizs/2; int odd = sizs%2; void *dat = 0;
+	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key);
+	while (siz+odd > 0) {int sav = idx; int chk = siz+odd; int cmp = 0;
+	if (idx < 0 || idx >= sizs) ERROR();
+	cmp = datxCompare(dat,keys[idx]);
+	if (cmp == 0) {assignDat(&boxs[idx],val); typs[idx] = typ; free(dat); return;}
+	if (cmp < 0) {idx = idx - siz + siz/2; siz = siz/2; odd = siz%2;}
+	if (cmp > 0) {idx = idx + 1 + (siz-1+odd)/2; siz = (siz-1+odd)/2; odd = (siz-1+odd)%2;}
+	if (idx < 0 || idx > sizs || idx == sav || siz < 0 || odd < 0 || odd > 1 || siz+odd >= chk) ERROR();}
+	sizs++; keys = realloc(keys,sizs*sizeof(void*)); boxs = realloc(boxs,sizs*sizeof(void*)); typs = realloc(typs,sizs*sizeof(int));
+	for (int i = sizs-1; i > idx; i--) {assignDat(&keys[i],keys[i-1]); assignDat(&boxs[i],boxs[i-1]); typs[i] = typs[i-1];}
+	assignDat(&keys[idx],dat); assignDat(&boxs[idx],val); typs[idx] = typ; free(dat);
 }
 int datxFinds(void **val, const char *pre, const char *str)
 {
@@ -156,45 +150,6 @@ int datxFinds(void **val, const char *pre, const char *str)
 	datxStr(&prefix,pre); datxStr(&key,str); typ = datxFind(val,key);
 	assignDat(&prefix,sav); free(sav);
 	return typ;
-}
-void datxInsertF(void *key, void *val, int typ, void *ptr, struct Box box)
-{
-	for (int i = box.ptr->siz; i > box.idx; i--) {
-		box.ptr->typ[i] = box.ptr->typ[i-1];
-		box.ptr->key[i] = box.ptr->key[i-1];
-		box.ptr->ptr[i] = box.ptr->ptr[i-1];
-		box.ptr->box[i] = box.ptr->box[i-1];}
-	box.ptr->siz++;
-	box.ptr->typ[box.idx] = typ;
-	box.ptr->key[box.idx] = key;
-	box.ptr->ptr[box.idx] = ptr;
-	box.ptr->box[box.idx] = val;
-}
-void datxInsert(void *key, void *val, int typ)
-{
-	struct Box box = {0}; void *dat = 0;
-	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key); key = dat;
-	box = datxFindF(key);
-	if (box.idx < box.ptr->siz && datxCompare(box.ptr->key[box.idx],key) == 0) {
-		assignDat(&box.ptr->box[box.idx],val); free(key); return;}
-	dat = 0; assignDat(&dat,val); val = dat;
-	datxInsertF(key,val,typ,0,box);
-	while (box.ptr->siz > 3) {
-		struct Node tmp = {0};
-		struct Node *ptr = malloc(sizeof(struct Node));
-		*ptr = tmp;
-		ptr->siz = box.ptr->siz/2;
-		box.ptr->siz = box.ptr->siz-ptr->siz;
-		for (int i = 0; i < ptr->siz; i++) {
-		ptr->typ[i] = box.ptr->typ[i+box.ptr->siz]; box.ptr->typ[i+box.ptr->siz] = 0;
-		ptr->key[i] = box.ptr->key[i+box.ptr->siz]; box.ptr->key[i+box.ptr->siz] = 0;
-		ptr->ptr[i] = box.ptr->ptr[i+box.ptr->siz]; box.ptr->ptr[i+box.ptr->siz] = 0;}
-		ptr->ref.ptr = box.ptr->ref.ptr;
-		ptr->ref.idx = box.ptr->ref.idx+1;
-		ptr->dep = box.ptr->dep;
-		box = box.ptr->ref;
-		datxInsertF(ptr->key[0],0,0,ptr,box);}
-	if (datxNoteFp) datxNoteFp(key);
 }
 void datxInserts(const char *pre, const char *str, void *val, int typ)
 {
@@ -500,11 +455,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxSetFp(*dat,exp->cgs);} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
+		printf("ValOp %s\n",exp->key);
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
+		printf("ValOp %d\n",typ0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (SavOp): {
 		int typ0 = 0; void *dat0 = 0; void *key = 0;
 		typ0 = datxEval(dat,exp->sav,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+		printf("SavOp %s\n",exp->kys);
 		datxStr(&key,exp->kys); datxInsert(key,*dat,typ0); free(key);} break;
 	case (InsOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};

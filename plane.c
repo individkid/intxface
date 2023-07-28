@@ -538,8 +538,8 @@ void planeFill()
 }
 int planeSwitch(struct Machine *mptr, int next)
 {
-	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
-	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
+	{char *xfr = 0; showTransfer(mptr->xfr,&xfr);
+	printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
@@ -562,7 +562,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
-	case (Name): next = next - 1; break;
+	case (Name): if (idxstk > 0) next = next - 1; else ERROR(); break;
 	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
 	case (Echo): if (configure[ResultType] == identType("Center")) readCenter(&center,idx0); else ERROR(); break;
 	case (Fill): planeFill(); break;
