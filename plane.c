@@ -544,7 +544,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Read): planeRead(); break;
 	case (Write): writeCenter(&center,external); break;
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
-	case (Force): for (int i = 0; i < mptr->siz; i++) {
+	case (Force): for (int i = 0; i < mptr->num; i++) {
 	planeConfig(mptr->cfg[i],mptr->val[i]); planeDma(mptr->cfg[i],mptr->val[i]);} break;
 	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
