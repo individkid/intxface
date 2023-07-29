@@ -488,7 +488,7 @@ void planeCopy(struct Center *ptr)
 	case (Stringz): for (int i = 0; i < ptr->siz; i++)
 		if (ptr->idx < 0) configure[ResultSize] = planeSet(-1,ptr->str[i]);
 		else planeSet(ptr->idx+i,ptr->str[i]); break;
-	case (Stackz): for (int i = 0; i < ptr->siz; i++) configure[ResultType] = planeCall(dat0,ptr->str[i]); break;
+	case (Stackz): for (int i = 0; i < ptr->siz; i++) planeCall(dat0,ptr->str[i]); break;
 	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
 		int index = ptr->idx+i;
 		if (index < 0 || index >= configure[MachineSize]) ERROR();
@@ -780,25 +780,17 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
-	datxSetter(planeSetter); datxGetter(planeGetter);
+	if ((internal = openPipe()) < 0) ERROR();
+	datxSetter(planeSetter); datxGetter(planeGetter); datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
 	luaxAdd("planeGetter",protoTypeDh(planeGetter)); luaxAdd("planeSetter",protoTypeDg(planeSetter));
 	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert));
-	datxEmbed(planeSide); datxCaller(planeCall);
-	callDma = dma;
-	callSafe = safe;
-	callMain = main;
-	callInfo = info;
-	callDraw = draw;
-	if ((internal = openPipe()) < 0) ERROR();
-	init(); planeBoot();
-	while (1) {
-	enum Wait wait = 0;
-	enum Configure hint = 0;
+	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
+	init(); planeBoot(); while (1) {
+	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !started) break;});
-	planeMain();}
-	closeIdent(internal);
+	planeMain();} closeIdent(internal);
 }
 int planeInfo(enum Configure cfg)
 {
