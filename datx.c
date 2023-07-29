@@ -117,29 +117,27 @@ int datxCompare(void *one, void *oth)
 }
 int datxFind(void **val, void *key)
 {
-	int idx = sizs/2; int siz = sizs/2; int odd = sizs%2; void *dat = 0;
+	int idx = 0; int siz = sizs; void *dat = 0;
 	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key);
-	while (siz+odd > 0) {int sav = idx; int chk = siz+odd; int cmp = 0;
+	while (siz > 0) {int cmp = 0;
 	if (idx < 0 || idx >= sizs) ERROR();
-	cmp = datxCompare(dat,keys[idx]);
-	if (cmp == 0) {assignDat(val,boxs[idx]); free(dat); return typs[idx];}
-	if (cmp < 0) {idx = idx - siz + siz/2; siz = siz/2; odd = siz%2;}
-	if (cmp > 0) {idx = idx + 1 + (siz-1+odd)/2; siz = (siz-1+odd)/2; odd = (siz-1+odd)%2;}
-	if (idx < 0 || idx > sizs || idx == sav || siz < 0 || odd < 0 || odd > 1 || siz+odd >= chk) ERROR();}
+	cmp = datxCompare(dat,keys[idx+siz/2]);
+	if (cmp == 0) {assignDat(val,boxs[idx+siz/2]); free(dat); return typs[idx+siz/2];}
+	if (cmp < 0) {siz = siz/2;}
+	if (cmp > 0) {idx = idx + siz/2 + 1; siz = siz - siz/2 - 1;}}
 	if (datxCompare(dat,keys[idx]) != 0) {free(dat); return -1;}
 	assignDat(val,boxs[idx]); free(dat); return typs[idx];
 }
 void datxInsert(void *key, void *val, int typ)
 {
-	int idx = sizs/2; int siz = sizs/2; int odd = sizs%2; void *dat = 0;
+	int idx = 0; int siz = sizs; void *dat = 0;
 	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key);
-	while (siz+odd > 0) {int sav = idx; int chk = siz+odd; int cmp = 0;
+	while (siz > 0) {int cmp = 0;
 	if (idx < 0 || idx >= sizs) ERROR();
-	cmp = datxCompare(dat,keys[idx]);
-	if (cmp == 0) {assignDat(&boxs[idx],val); typs[idx] = typ; free(dat); return;}
-	if (cmp < 0) {idx = idx - siz + siz/2; siz = siz/2; odd = siz%2;}
-	if (cmp > 0) {idx = idx + 1 + (siz-1+odd)/2; siz = (siz-1+odd)/2; odd = (siz-1+odd)%2;}
-	if (idx < 0 || idx > sizs || idx == sav || siz < 0 || odd < 0 || odd > 1 || siz+odd >= chk) ERROR();}
+	cmp = datxCompare(dat,keys[idx+siz/2]);
+	if (cmp == 0) {assignDat(&boxs[idx+siz/2],val); typs[idx+siz/2] = typ; free(dat); return;}
+	if (cmp < 0) {siz = siz/2;}
+	if (cmp > 0) {idx = idx + siz/2 + 1; siz = siz - siz/2 - 1;}}
 	sizs++; keys = realloc(keys,sizs*sizeof(void*)); boxs = realloc(boxs,sizs*sizeof(void*)); typs = realloc(typs,sizs*sizeof(int));
 	for (int i = sizs-1; i > idx; i--) {assignDat(&keys[i],keys[i-1]); assignDat(&boxs[i],boxs[i-1]); typs[i] = typs[i-1];}
 	assignDat(&keys[idx],dat); assignDat(&boxs[idx],val); typs[idx] = typ; free(dat);
