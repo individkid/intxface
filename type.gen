@@ -141,6 +141,8 @@ Transfer = {
 	"Local", -- apply cursor/fixed/mode
 	"Apply", -- apply towrite to written
 	"Accum", -- apply written to maintain
+	"Drop", -- move maintain to center
+	"Conj", -- conjugate compose to center
 	"Proj", -- perspective matrix
 	"Copy", -- dma to cpu or gpu
 	"Draw", -- start shader

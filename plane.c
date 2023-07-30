@@ -556,6 +556,9 @@ int planeSwitch(struct Machine *mptr, int next)
 	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
 	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
+	case (Drop): copymat(planeCenter(),planeMaintain(),4); identmat(planeMaintain(),4); break;
+	case (Conj): invmat(copymat(planeInverse(),planeCompose(),4),4);
+	timesmat(jumpmat(planeCenter(),planeCompose(),4),planeInverse(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
