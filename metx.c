@@ -54,6 +54,7 @@ float *unitvec(float *u, int n, int m)
     return u;
 }
 
+// elements of a collumn iterated through before iterating through the next collumn
 float *timesmat(float *u, float *v, int n)
 {
     int m = n*n; float w[m];

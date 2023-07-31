@@ -53,6 +53,7 @@ int started = 0;
 int running = 0;
 void planeStarted(int val);
 int planeRunning();
+int planeCall(void **dat, const char *str);
 // constant after other threads start:
 int internal = 0;
 int external = 0;
@@ -88,101 +89,77 @@ int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
 
+float *planeXform4(float *mat, float *org0, float *org1, float *org2, float *org3, float *mov0, float *mov1, float *mov2, float *mov3)
+{
+	// X such that X*org=mov
+	float org[16]; float mov[16];
+	if (org0[3] != 1.0 || org1[3] != 1.0 || org2[3] != 1.0 || org3[3] != 1.0) ERROR();
+	if (mov0[3] != 1.0 || mov1[3] != 1.0 || mov2[3] != 1.0 || mov3[3] != 1.0) ERROR();
+	for (int i = 0; i < 4; i++) org[i+0] = org0[i];
+	for (int i = 0; i < 4; i++) org[i+4] = org1[i];
+	for (int i = 0; i < 4; i++) org[i+8] = org2[i];
+	for (int i = 0; i < 4; i++) org[i+12] = org3[i];
+	for (int i = 0; i < 4; i++) mov[i+0] = mov0[i];
+	for (int i = 0; i < 4; i++) mov[i+4] = mov1[i];
+	for (int i = 0; i < 4; i++) mov[i+8] = mov2[i];
+	for (int i = 0; i < 4; i++) mov[i+12] = mov3[i];
+	return timesmat(copymat(mat,mov,4),invmat(org,4),4);
+}
+float *planeXform3(float *mat, float *fix0, float *org0, float *org1, float *org2, float *mov0, float *mov1, float *mov2)
+{
+	return planeXform4(mat,fix0,org0,org1,org2,fix0,mov0,mov1,mov2);
+}
+float *planeXform2(float *mat, float *fix0, float *fix1, float *org0, float *org1, float *mov0, float *mov1)
+{
+	return planeXform3(mat,fix0,fix1,org0,org1,fix1,mov0,mov1);
+}
+float *planeXform1(float *mat, float *fix0, float *fix1, float *fix2, float *org0, float *mov0)
+{
+	return planeXform2(mat,fix0,fix1,fix2,org0,fix2,mov0);
+}
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
-// mat:current-matrix pic:focal-point fix:pierce-point org:pierce-cursor-roller cur:current-cursor-roller
 float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
 	// distance to perpendicular to ortho fixed; cursor mapped
-	identmat(mat,4);
-	for (int i = 0; i < 3; i++) mat[12+i] = cur[i]-org[i];
-	return mat;
+	float bas[4][4]; float mov[4][4]; float dif[4]; float neg[4];
+	for (int i = 0; i < 4; i++) unitvec(unitvec(bas[i],4,3),3,i);
+	plusvec(copyvec(zerovec(dif,4),cur,3),scalevec(copyvec(neg,org,3),-1.0,3),3);
+	for (int i = 0; i < 4; i++) plusvec(copyvec(mov[i],bas[i],4),dif,4);
+	return planeXform4(mat,bas[0],bas[1],bas[2],bas[3],mov[0],mov[1],mov[2],mov[3]);
 }
 float *planeSlideFocalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
 	// distance to perpendicular to cursor fixed; cursor mapped
-	// <P-F,N> is distance from P to plane
-	// P-<P-F,N>N is projection P' onto plane
-	// offset is sQ such that <sQ-F,N> = 0
-	// s = <F,N>/<Q,N>
-	float neg[3]; scalevec(copyvec(neg,fix,3),-1.0,3);
-	float nrg[3]; normvec(plusvec(copyvec(nrg,org,3),neg,3),3);
-	float nur[3]; normvec(plusvec(copyvec(nur,cur,3),neg,3),3);
-	float num = dotvec(fix,nrg,3);
-	float den = dotvec(nur,nrg,3);
-	float ofs[3]; scalevec(copyvec(ofs,nur,3),num/den,3);
-	identmat(mat,4);
-	for (int i = 0; i < 3; i++) mat[12+i] = ofs[i];
 	return mat;
 }
 float *planeSlideNormalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
 	// distance to perpendicular to normal fixed; cursor mapped
-	float neg[3]; scalevec(copyvec(neg,fix,3),-1.0,3);
-	float nnm[3]; normvec(copyvec(nnm,nrm,3),3);
-	float nur[3]; normvec(plusvec(copyvec(nur,cur,3),neg,3),3);
-	float num = dotvec(fix,nnm,3);
-	float den = dotvec(nur,nnm,3);
-	float ofs[3]; scalevec(copyvec(ofs,nur,3),num/den,3);
-	identmat(mat,4);
-	for (int i = 0; i < 3; i++) mat[12+i] = ofs[i];
-	return mat;
-}
-float *planeRotate(float *mat, float *axs, int ang)
-{
-	float cmp = cosf(ang);
-	float smp = sinf(ang);
-	float tmp = 1-cmp;
-	mat[0] = cmp+axs[0]*axs[0]*tmp;
-	mat[1] = axs[1]*axs[0]*tmp+axs[2]*smp;
-	mat[2] = axs[2]*axs[0]*tmp-axs[1]*smp;
-	mat[3] = 0.0;
-	mat[4] = axs[0]*axs[1]*tmp-axs[2]*smp;
-	mat[5] = cmp+axs[1]*axs[1]*tmp;
-	mat[6] = axs[2]*axs[1]*tmp+axs[0]*smp;
-	mat[7] = 0.0;
-	mat[8] = axs[0]*axs[2]*tmp+axs[1]*smp;
-	mat[9] = axs[1]*axs[2]*tmp-axs[0]*smp;
-	mat[10] = cmp+axs[2]*axs[2]*tmp;
-	mat[11] = 0.0;
-	mat[12] = 0.0; mat[13] = 0.0; mat[14] = 0.0; mat[15] = 1.0;
 	return mat;
 }
 float *planeRotateOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
 	// perpendicular to ortho, parallel to picture, fixed; cursor mapped
-	float neg[3]; scalevec(copyvec(neg,fix,3),-1.0,3);
-	float ncl[3]; normvec(copyvec(ncl,neg,3),3);
-	float nrg[3]; normvec(plusvec(copyvec(nrg,org,3),neg,3),3);
-	float nur[3]; normvec(plusvec(copyvec(nur,cur,3),neg,3),3);
-	float xrg[3]; crossvec(ncl,nrg);
-	float xur[3]; crossvec(ncl,nur);
-	float ang = asinf(sqrtf(dotvec(xur,xur,3)))-asinf(sqrtf(dotvec(xrg,xrg,3)));
-	float axs[3]; normvec(xur,3);
-	return planeRotate(mat,axs,ang);
+	return mat;
 }
 float *planeRotateFocalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
 	// perpendicular to cursor, parallel to picture, fixed; cursor mapped
-	float neg[3]; scalevec(copyvec(neg,fix,3),-1.0,3);
-	float nrg[3]; normvec(plusvec(copyvec(nrg,org,3),neg,3),3);
-	float nur[3]; normvec(plusvec(copyvec(nur,cur,3),neg,3),3);
-	float xss[3]; crossvec(nrg,nur);
-	float ang = asinf(sqrtf(dotvec(xss,xss,3)));
-	float axs[3]; normvec(xss,3);
-	return planeRotate(mat,axs,ang);
+	float pie[4]; float axs[4]; float con[4]; float cpy[4]; float mov[4];
+	float lft[4]; float rgt[4]; float dif[4]; float neg[4];
+	scalevec(copyvec(zerovec(neg,4),fix,3),-1.0,4);
+	plusvec(copyvec(zerovec(lft,4),org,3),neg,4);
+	plusvec(copyvec(zerovec(rgt,4),cur,3),neg,4);
+	copyvec(pie,fix,3); pie[3] = 1.0; unitvec(con,4,3);
+	if (normvec(crossvec(copyvec(zerovec(axs,4),lft,3),rgt),4) == 0) unitvec(axs,4,0);
+	plusvec(copyvec(unitvec(cpy,4,3),org,3),neg,4);
+	plusvec(copyvec(unitvec(mov,4,3),cur,3),neg,4);
+	return planeXform1(mat,pie,axs,con,cpy,mov);
 }
 float *planeRotateNormalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
 	// perpendicular to normal, parallel to picture, fixed; cursor mapped
-	float neg[3]; scalevec(copyvec(neg,fix,3),-1.0,3);
-	float nnm[3]; normvec(copyvec(nnm,nrm,3),3);
-	float nrg[3]; normvec(plusvec(copyvec(nrg,org,3),neg,3),3);
-	float nur[3]; normvec(plusvec(copyvec(nur,cur,3),neg,3),3);
-	float xrg[3]; crossvec(nnm,nrg);
-	float xur[3]; crossvec(nnm,nur);
-	float ang = asinf(sqrtf(dotvec(xur,xur,3)))-asinf(sqrtf(dotvec(xrg,xrg,3)));
-	float axs[3]; normvec(xur,3);
-	return planeRotate(mat,axs,ang);
+	return mat;
 }
 float *planeScaleOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
@@ -404,6 +381,7 @@ void planeStage(enum Configure cfg)
 	case (RegisterIndex): configure[RegisterIndex] = center.idx; break;
 	case (ClosestValid): configure[ClosestValid] = planePierce()->vld; break;
 	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
+	case (ClosestFile): configure[ClosestFile] = planePierce()->pol; break;
 	case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
 	case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
 	case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
@@ -476,7 +454,6 @@ void planeDma(enum Configure cfg, int val)
 	callDma(&tmp);
 	freeCenter(&tmp);
 }
-int planeCall(void **dat, const char *str);
 void planeCopy(struct Center *ptr)
 {
 	switch (ptr->mem) {
