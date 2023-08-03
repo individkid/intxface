@@ -137,86 +137,104 @@ float *planeSlideNormalMouse(float *mat, float *fix, float *nrm, float *org, flo
 	// distance to perpendicular to normal fixed; cursor mapped
 	return mat;
 }
-float *planeRotateOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeRotate2(float *mat, float *fix, float *dif0, float *dif1, float *org, float *cur)
+{
+	float fix0[4]; float fix1[4]; float fix2[4];
+	float nrm0[4]; float nrm1[4]; float neg[3];
+	scalevec(copyvec(neg,copyvec(fix0,fix,3),3),-1.0,3);
+	plusvec(crossvec(copyvec(fix1,dif0,3),dif1),fix,3);
+	plusvec(normvec(plusvec(copyvec(nrm0,org,3),neg,3),3),fix,3);
+	plusvec(normvec(plusvec(copyvec(nrm1,cur,3),neg,3),3),fix,3);
+	fix0[3] = fix1[3] = nrm0[3] = nrm1[3] = 1.0;
+	scalevec(unitvec(fix2,4,3),2.0,4);
+	return planeXform1(mat,fix0,fix1,fix2,nrm0,nrm1);
+}
+float *planeRotate1(float *mat, float *fix, float *pnt0, float *dif1, float *org, float *cur)
+{
+	float neg[3]; float dif0[3];
+	scalevec(copyvec(neg,fix,3),-1.0,3);
+	plusvec(copyvec(dif0,pnt0,3),neg,3);
+	return planeRotate2(mat,fix,dif0,dif1,org,cur);
+}
+float *planeRotate0(float *mat, float *fix, float *pnt0, float *pnt1, float *org, float *cur)
+{
+	float neg[3]; float dif0[3]; float dif1[3];
+	scalevec(copyvec(neg,fix,3),-1.0,3);
+	plusvec(copyvec(dif0,pnt0,3),neg,3);
+	plusvec(copyvec(dif1,pnt1,3),neg,3);
+	return planeRotate2(mat,fix,dif0,dif1,org,cur);
+}
+float *planeRotateOrthoMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// perpendicular to ortho, parallel to picture, fixed; cursor mapped
 	return mat;
 }
-float *planeRotateFocalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// perpendicular to cursor, parallel to picture, fixed; cursor mapped
-	float pie[4]; float axs[4]; float con[4]; float cpy[4]; float mov[4];
-	float lft[4]; float rgt[4]; float dif[4]; float neg[4];
-	scalevec(copyvec(zerovec(neg,4),fix,3),-1.0,4);
-	plusvec(copyvec(zerovec(lft,4),org,3),neg,4);
-	plusvec(copyvec(zerovec(rgt,4),cur,3),neg,4);
-	copyvec(pie,fix,3); pie[3] = 1.0; unitvec(con,4,3);
-	if (normvec(crossvec(copyvec(zerovec(axs,4),lft,3),rgt),4) == 0) unitvec(axs,4,0);
-	plusvec(copyvec(unitvec(cpy,4,3),org,3),neg,4);
-	plusvec(copyvec(unitvec(mov,4,3),cur,3),neg,4);
-	return planeXform1(mat,pie,axs,con,cpy,mov);
+	// perpendicular to cursor and original fixed; cursor mapped
+	return planeRotate0(mat,fix,org,cur,org,cur);
 }
-float *planeRotateNormalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeRotateNormalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// perpendicular to normal, parallel to picture, fixed; cursor mapped
 	return mat;
 }
-float *planeScaleOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeScaleOrthoMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to ortho fixed; cursor mapped
 	return mat;
 }
-float *planeScaleFocalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeScaleFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to cursor fixed; cursor mapped
 	return mat;
 }
-float *planeScaleNormalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeScaleNormalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to normal fixed; cursor mapped
 	return mat;
 }
-float *planeSlideOrthoRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeSlideOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to ortho offset
 	return mat;
 }
-float *planeSlideFocalRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeSlideFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to cursor offset
 	return mat;
 }
-float *planeSlideNormalRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeSlideNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to normal offset
 	return mat;
 }
-float *planeRotateOrthoRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to ortho fixed
 	return mat;
 }
-float *planeRotateFocalRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeRotateFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to cursor fixed
 	return mat;
 }
-float *planeRotateNormalRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeRotateNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to normal fixed
 	return mat;
 }
-float *planeScaleOrthoRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeScaleOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to normal scaled
 	return mat;
 }
-float *planeScaleFocalRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeScaleFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to cursor scaled
 	return mat;
 }
-float *planeScaleNormalRoller(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeScaleNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to perpendicular to normal scaled
 	return mat;
