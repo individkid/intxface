@@ -137,13 +137,14 @@ Transfer = {
 	"Comp", -- composition to center
 	"Pose", -- towrite to center
 	"Other", -- maintain to center
+	"Prep", -- move local to center
+	"Conj", -- conjoin to center
 	"Glitch", -- center to maintain
 	"Check", -- apply center to maintain
-	"Local", -- apply cursor/fixed/mode
+	"Compl", -- apply center to towrite
 	"Apply", -- apply towrite to written
 	"Accum", -- apply written to maintain
 	"Drop", -- move maintain to center
-	"Conj", -- conjugate compose to center
 	"Proj", -- perspective matrix
 	"Copy", -- dma to cpu or gpu
 	"Draw", -- start shader

@@ -166,8 +166,8 @@ float *planeRotate0(float *mat, float *fix, float *pnt0, float *pnt1, float *org
 }
 float *planeRotateOrthoMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// perpendicular to ortho, parallel to picture, fixed; cursor mapped
-	return mat;
+	// perpendicular to ortho and original fixed; cursor mapped
+	float uni[3]; return planeRotate1(mat,fix,org,unitvec(uni,3,2),org,cur);
 }
 float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
@@ -176,8 +176,8 @@ float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, flo
 }
 float *planeRotateNormalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// perpendicular to normal, parallel to picture, fixed; cursor mapped
-	return mat;
+	// perpendicular to normal and original fixed; cursor mapped
+	return planeRotate1(mat,fix,org,nml,org,cur);
 }
 float *planeScaleOrthoMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
@@ -209,6 +209,15 @@ float *planeSlideNormalRoller(float *mat, float *fix, float *nml, float *org, fl
 	// TODO distance to perpendicular to normal offset
 	return mat;
 }
+float *planeAngle(float *mat, float *pnt0, float *pnt1, float ang)
+{
+	float fix0[4]; float fix1[4]; float fix2[4];
+	float nrm0[4]; float nrm1[4]; float neg[3];
+	copyvec(fix0,pnt0,3); copyvec(fix1,pnt1,3);
+	fix0[3] = fix1[3] = nrm0[3] = nrm1[3] = 1.0;
+	scalevec(unitvec(fix2,4,3),2.0,4);
+	return planeXform1(mat,fix0,fix1,fix2,nrm0,nrm1);
+}
 float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to ortho fixed
@@ -217,7 +226,7 @@ float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, fl
 float *planeRotateFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
 	// TODO distance to cursor fixed
-	return mat;
+	return planeAngle(mat,fix,cur,cur[3]-org[3]);
 }
 float *planeRotateNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
@@ -357,6 +366,10 @@ float *planeLocal()
 	cur[2] = configure[CursorNear];
 	cur[3] = configure[CursorAngle];
 	return planeFunc()(planeKernel()->local.mat,fix,nrm,org,cur);
+}
+void *planeConjoin(float *mat, float *jct)
+{
+	float inv[4]; return timesmat(jumpmat(mat,jct,4),invmat(copymat(inv,jct,4),4),4);
 }
 float *planeProject(float *mat)
 {
@@ -541,19 +554,18 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
 	case (Force): for (int i = 0; i < mptr->num; i++) {
 	planeConfig(mptr->cfg[i],mptr->val[i]); planeDma(mptr->cfg[i],mptr->val[i]);} break;
-	case (Comp): jumpmat(copymat(planeCenter(),planeCompose(),4),planeLocal(),4); break;
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
+	case (Prep): copymat(planeCenter(),planeLocal(),4);
+	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
+	case (Conj): planeConjoin(planeCenter(),planeCompose()); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
 	timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-	case (Local): jumpmat(planeTowrite(),planeLocal(),4);
-	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
+	case (Compl): jumpmat(planeTowrite(),planeCenter(),4); identmat(planeCenter(),4); break;
 	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
 	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
 	case (Drop): copymat(planeCenter(),planeMaintain(),4); identmat(planeMaintain(),4); break;
-	case (Conj): invmat(copymat(planeInverse(),planeCompose(),4),4);
-	timesmat(jumpmat(planeCenter(),planeCompose(),4),planeInverse(),4); break;
 	case (Proj): planeProject(planeCenter()); break;
 	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
