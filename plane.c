@@ -212,10 +212,23 @@ float *planeSlideNormalRoller(float *mat, float *fix, float *nml, float *org, fl
 float *planeAngle(float *mat, float *pnt0, float *pnt1, float ang)
 {
 	float fix0[4]; float fix1[4]; float fix2[4];
+	float dif0[3]; float dif1[3]; float dif2[3];
 	float nrm0[4]; float nrm1[4]; float neg[3];
-	copyvec(fix0,pnt0,3); copyvec(fix1,pnt1,3);
-	fix0[3] = fix1[3] = nrm0[3] = nrm1[3] = 1.0;
-	scalevec(unitvec(fix2,4,3),2.0,4);
+	float inv[9]; float rad = sin(ang); // TODO convert roller to radians
+	// cross of nrm0-fix0 and nrm1-fix0 is parallel to fix1-fix0, with magnitude sin(ang)
+	// assume first two dimensions (a0,a1) of nrm0-fix0 = first two (b0,b1) of fix1-fix0
+	// note b0b0+b1b1+a2b2=0; find a2=-(b0b0+b1b1)/b2
+	// normalize (a0,a1,a2); change magnitude of (b0,b1,b2) to sin(ang)
+	// find (x0,x1,x2); Ax=b, where A is crossmat of (a0,a1,a2)
+	// thus, nrm1-fix0 is inverse of crossmat of (a0,a1,a2), times (b0,b1,b2)
+	copyvec(fix0,pnt0,3); copyvec(fix1,pnt1,3); copyvec(fix2,fix0,3);
+	scalevec(copyvec(neg,fix0,3),-1.0,3);
+	plusvec(copyvec(dif0,fix1,3),neg,3);
+	dif1[0] = dif0[0]; dif1[1] = dif0[1]; dif1[2] = -(dif0[0]*dif0[0]+dif0[1]*dif0[1])/dif0[2];
+	normvec(dif1,3); scalevec(normvec(dif0,3),rad,3);
+	normvec(jumpvec(copyvec(dif2,dif0,3),invmat(crossmat(copyvec(inv,dif1,3)),3),3),3);
+	plusvec(copyvec(nrm0,dif1,3),fix0,3); plusvec(copyvec(nrm1,dif2,3),fix0,3);
+	fix0[3] = fix1[3] = nrm0[3] = nrm1[3] = 1.0; fix2[3] = -1.0;
 	return planeXform1(mat,fix0,fix1,fix2,nrm0,nrm1);
 }
 float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
@@ -225,7 +238,7 @@ float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, fl
 }
 float *planeRotateFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to cursor fixed
+	// distance to cursor fixed
 	return planeAngle(mat,fix,cur,cur[3]-org[3]);
 }
 float *planeRotateNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
@@ -544,6 +557,12 @@ void planeFill()
 	case (Piercez): copyPierce(&center.pie[dst],&pierce[src]); break;
 	default: ERROR();}
 }
+void planeCast()
+{
+	// usage: Prep [Cast Conj [Cast Conj] Cast] Write Compl
+	// TODO change center.idx and center.mem to configure,
+	// TODO such that same indexed matrix is used with new configure.
+}
 int planeSwitch(struct Machine *mptr, int next)
 {
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
@@ -558,6 +577,8 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Prep): copymat(planeCenter(),planeLocal(),4);
 	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
+	case (Cast): planeConfig(RegisterMemory,mptr->mem); planeConfig(RegisterIndex,mptr->idx);
+	planeCast(); break;
 	case (Conj): planeConjoin(planeCenter(),planeCompose()); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
