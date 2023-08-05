@@ -211,25 +211,33 @@ float *planeSlideNormalRoller(float *mat, float *fix, float *nml, float *org, fl
 }
 float *planeAngle(float *mat, float *pnt0, float *pnt1, float ang)
 {
-	float fix0[4]; float fix1[4]; float fix2[4];
-	float dif0[3]; float dif1[3]; float dif2[3];
-	float nrm0[4]; float nrm1[4];
-	float neg[3]; float inv[9]; // TODO convert roller to radians
-	float axs[3]; float leg0[3]; float leg1[3];
-	copyvec(fix0,pnt0,3); copyvec(fix1,pnt1,3); copyvec(fix2,fix0,3);
-	scalevec(copyvec(neg,fix0,3),-1.0,3);
-	plusvec(copyvec(dif0,fix1,3),neg,3);
-	dif1[0] = dif0[0]; dif1[1] = dif0[1];
-	dif1[2] = -(dif0[0]*dif0[0]+dif0[1]*dif0[1])/dif0[2];
-	normvec(dif1,3); normvec(dif0,3);
-	normvec(crossvec(copyvec(axs,dif0,3),dif1),3);
-	scalevec(copyvec(leg0,dif1,3),cos(ang),3);
-	scalevec(copyvec(leg1,axs,3),sin(ang),3);
-	plusvec(copyvec(dif2,leg0,3),leg1,3);
-	plusvec(copyvec(nrm0,dif1,3),fix0,3);
-	plusvec(copyvec(nrm1,dif2,3),fix0,3);
-	fix0[3] = fix1[3] = nrm0[3] = nrm1[3] = 1.0; fix2[3] = -1.0;
-	return planeXform1(mat,fix0,fix1,fix2,nrm0,nrm1);
+	float fix0[4]; float fix1[4]; float hyp0[4];
+	float dif1[3]; float dif2[3]; float dif3[3];
+	float nrm2[4]; float nrm3[4]; float neg0[3];
+	float leg2[3]; float leg3[3];
+	// TODO convert roller to radians
+	copyvec(fix0,pnt0,3); fix0[3] = 1.0;
+	copyvec(fix1,pnt1,3); fix1[3] = 1.0;
+	copyvec(hyp0,fix0,3); hyp0[3] = -1.0;
+	// fix0 fix1 and hyp0 are independent
+	scalevec(copyvec(neg0,fix0,3),-1.0,3);
+	plusvec(copyvec(dif1,fix1,3),neg0,3);
+	// dif1 is from fix0 to fix1
+	dif2[0] = dif1[0]; dif2[1] = dif1[1];
+	dif2[2] = -(dif1[0]*dif1[0]+dif1[1]*dif1[1])/dif1[2];
+	// dif2 is any perpendicular to dif1
+	crossvec(copyvec(dif3,dif1,3),dif2);
+	// dif3 is any perpendicular to dif1 and dif2
+	scalevec(copyvec(leg2,normvec(dif2,3),3),cos(ang),3);
+	scalevec(copyvec(leg3,normvec(dif3,3),3),sin(ang),3);
+	// dif2 and dif3 are now unit length
+	plusvec(copyvec(dif3,leg2,3),leg3,3);
+	// dif3 is now angle between dif2 and prior dif3
+	plusvec(copyvec(nrm2,dif2,3),fix0,3); nrm2[3] = 1.0;
+	// nrm2 is independent from fix0 fix0 and hyp0
+	plusvec(copyvec(nrm3,dif3,3),fix0,3); nrm3[3] = 1.0;
+	// nrm3 is rotation from nrm2
+	return planeXform1(mat,fix0,fix1,hyp0,nrm2,nrm3);
 }
 float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
