@@ -68,7 +68,7 @@ pthread_key_t retstr;
 int numpipe = 0;
 char **strings = 0;
 int numstr = 0;
-int rspidx = 0;
+int prompt = 0;
 int calling = 0;
 int qsize = 0;
 int qfull = 0;
@@ -85,9 +85,11 @@ void planeRead();
 const char *planeGet(int idx);
 int planeSet(int idx, const char *str);
 int planeCat(int idx, const char *str);
+int planeOpt(const char *str);
 int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
+void planeHint(int hint);
 
 float *planeXform4(float *mat, float *org0, float *org1, float *org2, float *org3, float *mov0, float *mov1, float *mov2, float *mov3)
 {
@@ -241,8 +243,9 @@ float *planeAngle(float *mat, float *pnt0, float *pnt1, float ang)
 }
 float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to ortho fixed
-	return mat;
+	// distance to ortho fixed
+	float tmp[3]; copyvec(tmp,fix,3); tmp[2] -= 1.0;
+	return planeAngle(mat,fix,tmp,cur[3]-org[3]);
 }
 float *planeRotateFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
@@ -251,8 +254,9 @@ float *planeRotateFocalRoller(float *mat, float *fix, float *nml, float *org, fl
 }
 float *planeRotateNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to normal fixed
-	return mat;
+	// distance to normal fixed
+	float tmp[3]; plusvec(copyvec(tmp,fix,3),nml,3);
+	return planeAngle(mat,fix,tmp,cur[3]-org[3]);
 }
 float *planeScaleOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
@@ -268,6 +272,24 @@ float *planeScaleNormalRoller(float *mat, float *fix, float *nml, float *org, fl
 {
 	// TODO distance to perpendicular to normal scaled
 	return mat;
+}
+void planeCast(struct Center *ptr, enum Memory mem, int idx)
+{
+	// usage: Prep [Cast Conj [Cast Conj] Cast] Write Compl
+	struct Matrix *tmp = 0;
+	int index = configure[RegisterIndex]-ptr->idx;
+	ptr->idx = idx-index; configure[RegisterIndex] = idx;
+	switch (ptr->mem) {
+	case (Allmatz): tmp = ptr->all; ptr->all = 0; break;
+	case (Fewmatz): tmp = ptr->few; ptr->few = 0; break;
+	case (Onematz): tmp = ptr->one; ptr->one = 0; break;
+	default: ERROR();}
+	ptr->mem = mem; configure[RegisterMemory] = mem;
+	switch (ptr->mem) {
+	case (Allmatz): ptr->all = tmp; break;
+	case (Fewmatz): ptr->few = tmp; break;
+	case (Onematz): ptr->one = tmp; break;
+	default: ERROR();}
 }
 float *planeCenter()
 {
@@ -489,7 +511,7 @@ void planeConfig(enum Configure cfg, int val)
 	case (ElementSize): element = planeResize(element,sizeof(struct Kernel),val,tmp); break;
 	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
-	case (RegisterResponse): sem_safe(&resource,{rspidx = val;});
+	case (RegisterPrompt): sem_safe(&resource,{prompt = val;});
 	case (RegisterOpen): planeStarted(val); break;
 	case (RegisterFind): found = 0; break;
 	default: break;}
@@ -565,12 +587,6 @@ void planeFill()
 	case (Piercez): copyPierce(&center.pie[dst],&pierce[src]); break;
 	default: ERROR();}
 }
-void planeCast()
-{
-	// usage: Prep [Cast Conj [Cast Conj] Cast] Write Compl
-	// TODO change center.idx and center.mem to configure,
-	// TODO such that same indexed matrix is used with new configure.
-}
 int planeSwitch(struct Machine *mptr, int next)
 {
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
@@ -585,8 +601,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Prep): copymat(planeCenter(),planeLocal(),4);
 	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
-	case (Cast): planeConfig(RegisterMemory,mptr->mem); planeConfig(RegisterIndex,mptr->idx);
-	planeCast(); break;
+	case (Cast): planeCast(&center,mptr->mem,mptr->idx); break;
 	case (Conj): planeConjoin(planeCenter(),planeCompose()); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
@@ -683,7 +698,7 @@ int planeSet(int idx, const char *str)
 	idx = numstr-1;
 	strings[numstr-1] = strdup("");}
 	free(strings[idx]); strings[idx] = strdup(str);
-	if (idx == rspidx && strings[idx][strlen(strings[idx])-1] == '\n') {
+	if (idx == prompt && strings[idx][strlen(strings[idx])-1] == '\n') {
 	char *ptr = strings[idx];
 	while(strchr(ptr,'\n') != strings[idx]+strlen(strings[idx])-1) ptr = strchr(ptr,'\n')+1;
 	write(STDOUT_FILENO,ptr,strlen(ptr));}
@@ -697,6 +712,19 @@ int planeCat(int idx, const char *str)
 	char *dst = malloc(strlen(src)+strlen(str)+1);
 	int ret = planeSet(idx,strcat(strcpy(dst,src),str));
 	free(dst);
+	return ret;
+}
+int planeOpt(const char *str)
+{
+	int ret = 0; char *ptr = 0; int idx = 0;
+	sem_wait(&resource);
+	idx = configure[RegisterResponse];
+	if (idx >= numstr) ret = -1;
+	if (idx < numstr) ptr = strchr(strings[idx],'\n');
+	if (ptr && ptr-strings[idx] >= strlen(str) && strncmp(str,strings[idx],ptr-strings[idx]) == 0) ret = 1;
+	if (ptr && ptr-strings[idx] < strlen(str) && strncmp(str,strings[idx],ptr-strings[idx]) == 0) ret = -1;
+	if (ret == 1) {ptr = strdup(strings[idx]+strlen(str)); free(strings[idx]); strings[idx] = ptr;}
+	sem_post(&resource);
 	return ret;
 }
 void planeSetter(void *dat, int sub)
@@ -726,6 +754,10 @@ void planeInsert(const char *key, const char *val)
 	datxStr(&dst,val);
 	datxInsert(src,dst,identType("Str"));
 	free(src); free(dst);
+}
+void planeHint(int hint)
+{
+	planeSafe(Procs,Waits,hint);
 }
 int planeSide(const char *exp)
 {
@@ -773,9 +805,9 @@ void *planeConsole(void *ptr)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	sem_safe(&resource,{val = configure[RegisterPrompt];});
+	sem_safe(&resource,{val = configure[RegisterResponse];});
 	planeCat(val,chr);
-	planeSafe(Procs,Waits,RegisterPrompt);}
+	planeSafe(Procs,Waits,RegisterResponse);}
 	planeSafe(Console,Done,Configures);
 	return 0;
 }
@@ -820,11 +852,12 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	datxSetter(planeSetter); datxGetter(planeGetter); datxEmbed(planeSide); datxCaller(planeCall);
+	datxSetter(planeSetter); datxGetter(planeGetter); datxOption(planeOpt);
+	datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet)); luaxAdd("planeCat",protoTypeFh(planeCat));
-	luaxAdd("planeGetter",protoTypeDh(planeGetter)); luaxAdd("planeSetter",protoTypeDg(planeSetter));
-	luaxAdd("planeFind",protoTypeRm(planeFind)); luaxAdd("planeInsert",protoTypeRn(planeInsert));
+	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet));
+	luaxAdd("planeCat",protoTypeFh(planeCat)); luaxAdd("planeOpt",protoTypeFf(planeOpt));
+	luaxAdd("planeHint",protoTypeRf(planeHint));
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
 	init(); planeBoot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;

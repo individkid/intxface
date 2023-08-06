@@ -108,6 +108,7 @@ PROTOTYPE(Rk,rk)
 PROTOTYPE(Rl,rl)
 PROTOTYPE(Rm,rm)
 PROTOTYPE(Rn,rn)
+PROTOTYPE(Ro,ro)
 
 void protoMake(struct Parameter *arg)
 {
@@ -205,6 +206,11 @@ const struct Closure *protoCloseRi()
 	protoClose(0,1);
 	return &argbuf;
 }
+const struct Closure *protoCloseRo()
+{
+	protoClose(0,1);
+	return &argbuf;
+}
 void protoResultCf()
 {
 }
@@ -231,6 +237,10 @@ int protoResultGg()
 int protoResultRi()
 {
 	return argbuf.ab[0].ia;
+}
+const char *protoResultRo()
+{
+	return argbuf.ab[0].sa;
 }
 
 void stackErr()

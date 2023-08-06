@@ -13,6 +13,7 @@ ghtype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
 fftype datxEmbFp = 0;
+fftype datxOptFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -367,6 +368,13 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		BINARY_DONE() break;
+	case (OptOp): {
+		int val = 0; int i = 0; int typ0 = 0; if (datxOptFp == 0) ERROR();
+		for (;i < exp->opt->siz && val == 0; i++) val = datxOptFp(exp->opt->str[i]);
+		if (val < 0) typ0 = datxEval(dat,exp->opt->fer,typ);
+		if (val == 0) typ0 = datxEval(dat,exp->opt->flt,typ);
+		if (val > 0) typ0 = datxEval(dat,&exp->opt->exp[i],typ);
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (CndOp): {
 		void *dats[exp->cnd->lft->siz]; int typs[exp->cnd->lft->siz]; int ret = 0; int idx = 0; int typ0 = 0;
 		for (int i = 0; i < exp->cnd->lft->siz; i++) {
@@ -500,12 +508,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ1 == identType("Homgen")) {
 		struct Homgen val = {0}; struct Homgen prm = {0};
 		readHomgen(&val,datxIdx1); allocUnion(&prm,val.tag,val.siz);
-		for (int i = 0; i < prm.siz; i++) copyUnion(&prm,&val,i);
+		for (int i = 0; i < prm.siz; i++) copyUnion(&prm,&val,idx.vInt[i]);
 		freeHomgen(&val);}
 		else if (typ1 == identType("Hetgen")) {
 		struct Hetgen val = {0}; struct Hetgen prm = {0};
 		readHetgen(&val,datxIdx1); prm.siz = idx.siz; allocGeneric(&prm.gen,prm.siz);
-		for (int i = 0; i < prm.siz; i++) copyGeneric(&prm.gen[i],&val.gen[i]);
+		for (int i = 0; i < prm.siz; i++) copyGeneric(&prm.gen[i],&val.gen[idx.vInt[i]]);
 		datxNone(datxDat2); writeHetgen(&prm,datxIdx2);
 		freeHetgen(&val);}
 		else ERROR();
@@ -624,4 +632,8 @@ void datxGetter(dhtype fnc)
 void datxEmbed(fftype fnc)
 {
 	datxEmbFp = fnc;
+}
+void datxOption(fftype fnc)
+{
+	datxOptFp = fnc;
 }

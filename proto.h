@@ -119,6 +119,7 @@ typedef int (*rktype)(char **val, const char *key);
 typedef void (*rltype)(const char *key, const char *val, int typ);
 typedef void (*rmtype)(char **val, const char *key);
 typedef void (*rntype)(const char *key, const char *val);
+typedef const char *(*rotype)();
 
 struct Function {
 	enum {
@@ -211,6 +212,7 @@ struct Function {
 		Rltype,
 		Rmtype,
 		Rntype,
+		Rotype,
 	} ft;
 	union {
 		/*
@@ -295,6 +297,7 @@ struct Function {
 		rltype rl;
 		rmtype rm;
 		rntype rn;
+		rotype ro;
 		void *vp;
 	};
 };
@@ -386,6 +389,7 @@ struct Function protoTypeRk(rktype fnc);
 struct Function protoTypeRl(rltype fnc);
 struct Function protoTypeRm(rmtype fnc);
 struct Function protoTypeRn(rntype fnc);
+struct Function protoTypeRo(rotype fnc);
 
 struct Parameter {
 	enum {
@@ -419,6 +423,7 @@ const struct Closure *protoCloseQf(int idx, const void *buf, int nbyte);
 const struct Closure *protoCloseGf(const char *one, const char *oth);
 const struct Closure *protoCloseGg(int rfd, int wfd);
 const struct Closure *protoCloseRi();
+const struct Closure *protoCloseRo();
 void protoResultCf();
 void protoResultEf();
 int protoResultPf(void *buf);
@@ -426,6 +431,7 @@ int protoResultQf();
 int protoResultGf();
 int protoResultGg();
 int protoResultRi();
+const char *protoResultRo();
 
 void stackErr();
 void exitErr(const char *file, int line);
