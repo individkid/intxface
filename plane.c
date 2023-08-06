@@ -720,10 +720,11 @@ int planeOpt(const char *str)
 	sem_wait(&resource);
 	idx = configure[RegisterResponse];
 	if (idx >= numstr) ret = -1;
-	if (idx < numstr) ptr = strchr(strings[idx],'\n');
+	if (str && idx < numstr) ptr = strchr(strings[idx],'\n');
 	if (ptr && ptr-strings[idx] >= strlen(str) && strncmp(str,strings[idx],ptr-strings[idx]) == 0) ret = 1;
 	if (ptr && ptr-strings[idx] < strlen(str) && strncmp(str,strings[idx],ptr-strings[idx]) == 0) ret = -1;
 	if (ret == 1) {ptr = strdup(strings[idx]+strlen(str)); free(strings[idx]); strings[idx] = ptr;}
+	if (!str) {ptr = strdup(strings[idx]+1); free(strings[idx]); strings[idx] = ptr; ret = 1;}
 	sem_post(&resource);
 	return ret;
 }

@@ -372,7 +372,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int val = 0; int i = 0; int typ0 = 0; if (datxOptFp == 0) ERROR();
 		for (;i < exp->opt->siz && val == 0; i++) val = datxOptFp(exp->opt->str[i]);
 		if (val < 0) typ0 = datxEval(dat,exp->opt->fer,typ);
-		if (val == 0) typ0 = datxEval(dat,exp->opt->flt,typ);
+		if (val == 0) {datxOptFp(0); typ0 = datxEval(dat,exp->opt->flt,typ);}
 		if (val > 0) typ0 = datxEval(dat,&exp->opt->exp[i],typ);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (CndOp): {
