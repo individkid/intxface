@@ -714,20 +714,6 @@ int planeCat(int idx, const char *str)
 	free(dst);
 	return ret;
 }
-int planeOpt(const char *str)
-{
-	int ret = 0; char *ptr = 0; int idx = 0;
-	sem_wait(&resource);
-	idx = configure[RegisterResponse];
-	if (idx >= numstr) ret = -1;
-	if (str && idx < numstr) ptr = strchr(strings[idx],'\n');
-	if (ptr && ptr-strings[idx] >= strlen(str) && strncmp(str,strings[idx],ptr-strings[idx]) == 0) ret = 1;
-	if (ptr && ptr-strings[idx] < strlen(str) && strncmp(str,strings[idx],ptr-strings[idx]) == 0) ret = -1;
-	if (ret == 1) {ptr = strdup(strings[idx]+strlen(str)); free(strings[idx]); strings[idx] = ptr;}
-	if (!str) {ptr = strdup(strings[idx]+1); free(strings[idx]); strings[idx] = ptr; ret = 1;}
-	sem_post(&resource);
-	return ret;
-}
 void planeSetter(void *dat, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
@@ -853,12 +839,11 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	datxSetter(planeSetter); datxGetter(planeGetter); datxOption(planeOpt);
+	datxSetter(planeSetter); datxGetter(planeGetter);
 	datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet));
-	luaxAdd("planeCat",protoTypeFh(planeCat)); luaxAdd("planeOpt",protoTypeFf(planeOpt));
-	luaxAdd("planeHint",protoTypeRf(planeHint));
+	luaxAdd("planeCat",protoTypeFh(planeCat)); luaxAdd("planeHint",protoTypeRf(planeHint));
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
 	init(); planeBoot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;

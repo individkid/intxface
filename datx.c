@@ -13,7 +13,6 @@ ghtype datxCallFp = 0;
 dgtype datxSetFp = 0;
 dhtype datxGetFp = 0;
 fftype datxEmbFp = 0;
-fftype datxOptFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -351,6 +350,10 @@ int datxEcmp(int val, enum Compare cmp)
 	default: ERROR();}
 	return 0;
 }
+int datxRegex(char *lft, struct Regex *rgt)
+{
+	return 0; // TODO 0 upon match; 1 for lft too short; -1 for mismatch
+}
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
 {
@@ -368,13 +371,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		BINARY_DONE() break;
-	case (OptOp): {
-		int val = 0; int i = 0; int typ0 = 0; if (datxOptFp == 0) ERROR();
-		for (;i < exp->opt->siz && val == 0; i++) val = datxOptFp(exp->opt->str[i]);
-		if (val < 0) typ0 = datxEval(dat,exp->opt->fer,typ);
-		if (val == 0) {datxOptFp(0); typ0 = datxEval(dat,exp->opt->flt,typ);}
-		if (val > 0) typ0 = datxEval(dat,&exp->opt->exp[i],typ);
-		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (CndOp): {
 		void *dats[exp->cnd->lft->siz]; int typs[exp->cnd->lft->siz]; int ret = 0; int idx = 0; int typ0 = 0;
 		for (int i = 0; i < exp->cnd->lft->siz; i++) {
@@ -393,7 +389,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 			BINARY_TYPE(int32_t,"Int32",*datxInt32z,BINARY_SET,BINARY_TRI) else
 			BINARY_TYPE(double,"Num",*datxNumz,BINARY_SET,BINARY_TRI) else
 			BINARY_TYPE(float,"Old",*datxOldz,BINARY_SET,BINARY_TRI) else
-			BINARY_TYPE(char*,"Str",datxChrz,BINARY_SET,BINARY_STR) else ERROR();
+			BINARY_TYPE(char*,"Str",datxChrz,BINARY_SET,BINARY_STR) else
+			if (typ0 == identType("Str") && typ1 == identType("Regex")) {
+				char *lft = datxChrz(0,dat0);
+				struct Regex *rgt = 0; // TODO get Regex from dat1
+				val = datxRegex(lft,rgt);} else ERROR();
 			if (val != 0) ret = 0;
 			free(dat1); if (ret == 0) break;} if (ret == 1) {idx = i; break;}}
 		for (int i = 0; i < exp->cnd->lft->siz; i++) free(dats[i]);
@@ -409,7 +409,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(int32_t,"Int32",*datxInt32z,BINARY_CMP,BINARY_TRI) else
 		BINARY_TYPE(double,"Num",*datxNumz,BINARY_CMP,BINARY_TRI) else
 		BINARY_TYPE(float,"Old",*datxOldz,BINARY_CMP,BINARY_TRI) else
-		BINARY_TYPE(char*,"Str",datxChrz,BINARY_CMP,BINARY_STR) else ERROR();
+		BINARY_TYPE(char*,"Str",datxChrz,BINARY_CMP,BINARY_STR) else
+		if (typ0 == identType("Str") && typ1 == identType("Regex")) {
+			char *lft = datxChrz(0,dat0);
+			struct Regex *rgt = 0; // TODO get Regex from dat1
+			val = datxEcmp(datxRegex(lft,rgt),exp->cmp->cmp);} else ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,val); free(dat0); free(dat1);} break;
 	case (TotOp): {
@@ -632,8 +636,4 @@ void datxGetter(dhtype fnc)
 void datxEmbed(fftype fnc)
 {
 	datxEmbFp = fnc;
-}
-void datxOption(fftype fnc)
-{
-	datxOptFp = fnc;
 }

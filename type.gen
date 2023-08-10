@@ -230,7 +230,6 @@ Operate = {
 	"MulOp",
 	"DivOp",
 	"RemOp",
-	"OptOp", -- switch on opt
 	"CndOp", -- switch on het
 	"CmpOp", -- compare to bool
 	"TotOp", -- cast to type
@@ -567,12 +566,10 @@ Expgen = {
 	{"typ","Tag",{},"siz"},
 	{"exp","Express",{},"siz"},
 }
-Optgen = {
-	{"siz","Int",{},{}},
-	{"flt","Express",{},1},
-	{"fer","Express",{},1},
-	{"str","Str",{},"siz"},
-	{"exp","Express",{},"siz"},
+Regex = {
+	{"vld","Int",{},{}}, -- whether compiled
+	{"str","Str",{},{}}, -- string to compile
+	{"dat","Dat",{},{}}, -- compiled regex
 }
 Express = {
 	{"opr","Operate",{},{}},
@@ -593,7 +590,6 @@ Express = {
 	{"cat","Express",{["opr"]={["CatOp"]=true}},2},
 	{"siz","Int",{["opr"]={["HetOp"]=true,["HomOp"]=true}},{}},
 	{"exp","Express",{["opr"]={["HetOp"]=true,["HomOp"]=true}},"siz"},
-	{"opt","Optgen",{["opr"]={["OptOp"]=true}},1},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
