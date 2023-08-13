@@ -562,17 +562,6 @@ Regex = {
 	{"str","Str",{},{}}, -- string to compile
 	{"dat","Dat",{},{}}, -- compiled regex
 }
-Callback = {
-	{"acc","Access",{},{}},
--- int planeSide(const char *exp) -- call lua expression
--- int planeCall(void **dat, const char *str) -- call machine task
--- void planeSetter(void *dat, int sub) -- set configuration
--- void planeGetter(void **dat, int sub) -- get configuration
--- const char *planePeek(int sub) -- peek line
--- void planeLine(int sub) -- delete line
--- void shareCallback(void *key) -- notify insert
-
-}
 Express = {
 	{"opr","Operate",{},{}},
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},

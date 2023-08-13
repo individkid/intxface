@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <regex.h>
 
 int unique = 0;
 void *prefix = 0;
@@ -43,6 +44,21 @@ void **datxDat(int sub)
 {
 	return datx[sub];
 }
+void datxVoid(void **dat, int siz)
+{
+	*dat = realloc(*dat,siz+sizeof(int));
+	*(int*)*dat = siz;
+}
+int datxVoids(void *dat)
+{
+	if (!dat) return 0;
+	return *(int*)dat;
+}
+void *datxVoidz(int num, void *dat)
+{
+	if (!dat) ERROR();
+	return (void*)((char*)(((int*)dat)+1)+num);
+}
 int datxReadFp(int fildes, void *buf, int nbyte)
 {
 	void **dat = datxDat(fildes);
@@ -50,7 +66,7 @@ int datxReadFp(int fildes, void *buf, int nbyte)
 	void *suf = 0;
 	datxSplit(&pre,&suf,*dat,nbyte);
 	if (*(int*)pre != nbyte) return 0;
-	memcpy(buf,datxVoid(pre),nbyte);
+	memcpy(buf,datxVoidz(0,pre),nbyte);
 	assignDat(dat,suf);
 	free(pre);
 	free(suf);
@@ -62,7 +78,7 @@ int datxWriteFp(int fildes, const void *buf, int nbyte)
 	void *suf = malloc(sizeof(int)+nbyte);
 	void *pre = 0;
 	*(int*)suf = nbyte;
-	memcpy(datxVoid(suf),buf,nbyte);
+	memcpy(datxVoidz(0,suf),buf,nbyte);
 	assignDat(&pre,*dat);
 	datxJoin(dat,pre,suf);
 	free(pre);
@@ -203,11 +219,6 @@ void datxData(struct Data *dst, struct Data *src, struct DataExp *dat)
 	dst->siz += 1;}
 	break; default: ERROR();}}
 }
-int datxPtrs(void *dat)
-{
-	if (!dat) return 0;
-	return *(int*)dat;
-}
 int datxChrs(void *dat)
 {
 	if (!dat) return 0;
@@ -233,40 +244,30 @@ int datxOlds(void *dat)
 	if (!dat) return 0;
 	return *(int*)dat/sizeof(float);
 }
-void *datxVoid(void *dat)
-{
-	if (!dat) ERROR();
-	return (void*)(((int*)dat)+1);
-}
-void *datxPtrz(int num, void *dat)
-{
-	if (num >= datxPtrs(dat)) ERROR();
-	return (void*)(((char*)datxVoid(dat))+num);
-}
 char *datxChrz(int num, void *dat)
 {
 	if (num >= datxChrs(dat)) ERROR();
-	return (char*)datxPtrz(num*sizeof(char),dat);
+	return (char*)datxVoidz(num*sizeof(char),dat);
 }
 int *datxIntz(int num, void *dat)
 {
 	if (num >= datxInts(dat)) ERROR();
-	return (int*)datxPtrz(num*sizeof(int),dat);
+	return (int*)datxVoidz(num*sizeof(int),dat);
 }
 int32_t *datxInt32z(int num, void *dat)
 {
 	if (num >= datxInt32s(dat)) ERROR();
-	return (int32_t*)datxPtrz(num*sizeof(int32_t),dat);
+	return (int32_t*)datxVoidz(num*sizeof(int32_t),dat);
 }
 double *datxNumz(int num, void *dat)
 {
 	if (num >= datxNums(dat)) ERROR();
-	return (double*)datxPtrz(num*sizeof(double),dat);
+	return (double*)datxVoidz(num*sizeof(double),dat);
 }
 float *datxOldz(int num, void *dat)
 {
 	if (num >= datxNums(dat)) ERROR();
-	return (float*)datxPtrz(num*sizeof(double),dat);
+	return (float*)datxVoidz(num*sizeof(double),dat);
 }
 void datxNone(void **dat)
 {
@@ -353,7 +354,14 @@ int datxEcmp(int val, enum Compare cmp)
 }
 int datxRegex(char *lft, struct Regex *rgt)
 {
-	return 0; // TODO 0 upon match; 1 for lft too short; -1 for mismatch
+	regex_t *ptr = 0; int val = 0;
+	if (!rgt->vld) datxVoid(&rgt->dat,sizeof(regex_t));
+	ptr = datxVoidz(0,rgt->dat);
+	if (!rgt->vld) {rgt->vld = 1; val = regcomp(ptr,rgt->str,REG_EXTENDED);
+	if (val != 0) {char buf[128]; regerror(val,ptr,buf,128);
+	fprintf(stderr,"%s\n",buf); exit(-1);}}
+	val = regexec(ptr,lft,0,0,0);
+	return (val == 0 ? 0 : -1);
 }
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
@@ -392,9 +400,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 			BINARY_TYPE(float,"Old",*datxOldz,BINARY_SET,BINARY_TRI) else
 			BINARY_TYPE(char*,"Str",datxChrz,BINARY_SET,BINARY_STR) else
 			if (typ0 == identType("Str") && typ1 == identType("Regex")) {
-				char *lft = datxChrz(0,dat0);
-				struct Regex *rgt = 0; // TODO get Regex from dat1
-				val = datxRegex(lft,rgt);} else ERROR();
+				char *lft = datxChrz(0,dat0); struct Regex rgt = {0};
+				assignDat(datxDat0,dat1); readRegex(&rgt,datxIdx0);
+				val = datxRegex(lft,&rgt);} else ERROR();
 			if (val != 0) ret = 0;
 			free(dat1); if (ret == 0) break;} if (ret == 1) {idx = i; break;}}
 		for (int i = 0; i < exp->cnd->lft->siz; i++) free(dats[i]);
@@ -412,9 +420,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(float,"Old",*datxOldz,BINARY_CMP,BINARY_TRI) else
 		BINARY_TYPE(char*,"Str",datxChrz,BINARY_CMP,BINARY_STR) else
 		if (typ0 == identType("Str") && typ1 == identType("Regex")) {
-			char *lft = datxChrz(0,dat0);
-			struct Regex *rgt = 0; // TODO get Regex from dat1
-			val = datxEcmp(datxRegex(lft,rgt),exp->cmp->cmp);} else ERROR();
+			char *lft = datxChrz(0,dat0); struct Regex rgt = {0};
+			assignDat(datxDat0,dat1); readRegex(&rgt,datxIdx0);
+			val = datxEcmp(datxRegex(lft,&rgt),exp->cmp->cmp);} else ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,val); free(dat0); free(dat1);} break;
 	case (TotOp): {
