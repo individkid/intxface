@@ -119,6 +119,42 @@ int luaxCall(const char *str, const struct Closure *fnc)
 	lua_getglobal(luastate,str);
 	return luaxClose(fnc);
 }
+#define LUAXARGS lua_tostring
+#define LUAXARGI lua_tointeger
+#define LUAXARGN lua_tonumber
+#define LUAXARGU lua_touserdata
+#define LUAXRETS lua_pushstring
+#define LUAXRETI lua_pushinteger
+#define LUAXRETN lua_pushnumber
+#define LUAXRETU lua_pushlightuserdata
+#define LUAXDUPS(U,V) U = strdup(V)
+#define LUAXDUPI(U,V) U = V
+#define LUAXDUPN(U,V) U = V
+#define LUAXDUPU(U,V) ERROR()
+#define LUAXTMPS(U) free(U)
+#define LUAXTMPI(U)
+#define LUAXTMPN(U)
+#define LUAXTMPU(U)
+#define LUAXCASE10(UC,LC,T0) case (UC##type): LUAXRET##T0(L,fnc.LC()); ret = 1; break;
+#define LUAXCASE11(UC,LC,T0,T1) case (UC##type): LUAXRET##T0(L,fnc.LC(LUAXARG##T1(L,1))); ret = 1; break;
+#define LUAXCASE12(UC,LC,T0,T1,T2) case (UC##type): LUAXRET##T0(L,fnc.LC(LUAXARG##T1(L,1),LUAXARG##T2(L,2))); ret = 1; break;
+#define LUAXCASE13(UC,LC,T0,T1,T2,T3) case (UC##type): LUAXRET##T0(L,fnc.LC(LUAXARG##T1(L,1),LUAXARG##T2(L,2),LUAXARG##T3(L,3))); ret = 1; break;
+#define LUAXCASE00(UC,LC) case (UC##type): fnc.LC(); break;
+#define LUAXCASE01(UC,LC,T1) case (UC##type): fnc.LC(LUAXARG##T1(L,1)); break;
+#define LUAXCASE02(UC,LC,T1,T2) case (UC##type): fnc.LC(LUAXARG##T1(L,1),LUAXARG##T2(L,2)); break;
+#define LUAXCASE03(UC,LC,T1,T2,T3) case (UC##type): fnc.LC(LUAXARG##T1(L,1),LUAXARG##T2(L,2),LUAXARG##T3(L,3)); break;
+#define LUAXCASEX0(UC,LC,X,TX) case (UC##type): fnc.LC(&X); LUAXRET##TX(L,X); LUAXTMP##TX(X); ret = 1; break;
+#define LUAXCASEX1(UC,LC,X,TX,T1) case (UC##type): fnc.LC(&X,LUAXARG##T1(L,1)); LUAXRET##TX(L,X); LUAXTMP##TX(X); ret = 1; break;
+// case (Sftype): fnc.sf(&str,lua_tointeger(L,1)); lua_pushstring(L,str); ret = 1; break;
+#define LUAXCASEX2(UC,LC,X,TX,T1,T2) case (UC##type): fnc.LC(&X,LUAXARG##T1(L,1),LUAXARG##T2(L,2)); LUAXRET##TX(L,X); LUAXTMP##TX(X); ret = 1; break;
+#define LUAXCASEY0(UC,LC,Y,TY) case (UC##type): LUAXDUP##TY(Y,LUAXARG##TY(L,1)); fnc.LC(&Y); LUAXRET##TY(L,Y); LUAXTMP##TY(Y); ret = 1; break;
+#define LUAXCASEY1(UC,LC,Y,TY,T1) case (UC##type): LUAXDUP##TY(Y,LUAXARG##TY(L,2)); fnc.LC(LUAXARG##T1(L,1),&Y); LUAXRET##TY(L,Y); LUAXTMP##TY(Y); ret = 1; break;
+// case (Mftype): str = strdup(lua_tostring(L,2)); fnc.mf(lua_tostring(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
+#define LUAXCASEY2(UC,LC,Y,TY,T1,T2) case (UC##type): LUAXDUP##TY(Y,LUAXARG##TY(L,3)); fnc.LC(LUAXARG##T1(L,1),LUAXARG##T2(L,2),&Y); LUAXRET##TY(L,Y); LUAXTMP##TY(Y); ret = 1; break;
+#define LUAXCASEZ0(UC,LC,Z,TZ,W,TW) case (UC##type): LUAXDUP##TW(W,LUAXARG##TW(L,1)); if (fnc.LC(&Z,&W)) LUAXRET##TZ(L,Z); else lua_pushnil(L); LUAXRET##TW(L,W); LUAXTMP##TZ(Z); LUAXTMP##TW(W); ret = 2; break;
+#define LUAXCASEZ1(UC,LC,Z,TZ,W,TW,T1) case (UC##type): LUAXDUP##TW(W,LUAXARG##TW(L,2)); if (fnc.LC(&Z,LUAXARG##T1(L,1),&W)) LUAXRET##TZ(L,Z); else lua_pushnil(L); LUAXRET##TW(L,W); LUAXTMP##TZ(Z); LUAXTMP##TW(W); ret = 2; break;
+// case (Nftype): len = lua_tointeger(L,2); if (fnc.nf(&str,lua_tostring(L,1),&len)) lua_pushstring(L,str); else lua_pushnil(L); lua_pushnumber(L,len); free(str); ret = 2; break;
+#define LUAXCASEZ2(UC,LC,Z,TZ,W,TW,T1,T2) case (UC##type): LUAXDUP##TW(W,LUAXARG##TW(L,3)); if (fnc.LC(&Z,LUAXARG##T1(L,1),LUAXARG##T2(L,2),&W)) LUAXRET##TZ(L,Z); else lua_pushnil(L); LUAXRET##TW(L,W); LUAXTMP##TZ(Z); LUAXTMP##TW(W); ret = 2; break;
 int luaxClosure(lua_State *L)
 { // calls function given by c closure
 	struct Function fnc = {0}; int len = 0; int ret = 0;
@@ -127,166 +163,88 @@ int luaxClosure(lua_State *L)
 	fnc.ft = lua_tointeger(L, lua_upvalueindex(1));
 	fnc.vp = lua_touserdata(L, lua_upvalueindex(2));
 	switch (fnc.ft) {
-		// typedef void (*cftype)(int idx); // thread callback
-		case (Cftype): fnc.cf(lua_tointeger(L,1)); break;
-		// typedef void (*cgtype)(int idx0, int idx1);
-		case (Cgtype): fnc.cg(lua_tointeger(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*chtype)();
-		case (Chtype): fnc.ch(); break;
-		// typedef void (*dftype)(void *dat);
-		case (Dftype): fnc.df(lua_touserdata(L,1)); break;
-		// typedef void (*dgtype)(void *dat, int mem, int sub);
-		case (Dgtype): fnc.dg(lua_touserdata(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*dhtype)(void **dat, int mem, int sub);
-		case (Dhtype): fnc.dh(&ptr,lua_tointeger(L,1)); lua_pushlightuserdata(L,ptr); break;
-		// typedef void (*eftype)(const char *str, int num, int idx); // error throws
-		case (Eftype): fnc.ef(lua_tostring(L,1),lua_tointeger(L,2),lua_tointeger(L,3)); break;
-		// typedef void (*egtype)(int idx, const char *str); // add string
-		case (Egtype): fnc.eg(lua_tointeger(L,1),lua_tostring(L,2)); break;
-		// typedef void (*ehtype)(const char *str); // lua wrapper
-		case (Ehtype): fnc.eh(lua_tostring(L,1)); break;
-		// typedef void (*hftype)(const char *val); // haskell wrapper
-		// typedef void (*hgtype)(int val); // haskell wrapper
-		// typedef void (*hhtype)(double val); // haskell wrapper
-		// typedef void (*hitype)(long long val); // haskell wrapper
-		// typedef void (*hjtype)(float val); // haskell wrapper
-		// typedef void (*hktype)(int len, const char *val); // haskell wrapper
-		// typedef void (*hltype)(int32_t val); // haskell wrapper
-		// typedef void (*hmtype)(char val); // haskell wrapper
-		// typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
-		// typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
-		// typedef int (*fftype)(const char *str);
-		case (Fftype): lua_pushinteger(L,fnc.ff(lua_tostring(L,1))); ret = 1; break;
-		// typedef int (*fgtype)(const char *str, int len, int idx);
-		case (Fgtype): lua_pushinteger(L,fnc.fg(lua_tostring(L,1),lua_tointeger(L,2),lua_tointeger(L,3))); ret = 1; break;
-		// typedef int (*fhtype)(int idx, const char *str);
-		case (Fhtype): lua_pushinteger(L,fnc.fh(lua_tointeger(L,1),lua_tostring(L,2))); ret = 1; break;
-		// typedef int (*gftype)(const char *one, const char *oth);
-		case (Gftype): lua_pushinteger(L,fnc.gf(lua_tostring(L,1),lua_tostring(L,2))); ret = 1; break;
-		// typedef int (*ggtype)(int rfd, int wfd);
-		case (Ggtype): lua_pushinteger(L,fnc.gg(lua_tointeger(L,1),lua_tointeger(L,2))); ret = 1; break;
-		// typedef int (*oftype)(void *arg);
-		case (Oftype): lua_pushinteger(L,fnc.of(lua_touserdata(L,1))); ret = 1; break;
 
-		// typedef int (*tftype)(double dly, int msk);
-		case (Tftype): lua_pushinteger(L,fnc.tf(lua_tonumber(L,1),lua_tointeger(L,2))); ret = 1; break;
-		// typedef void (*tgtype)(long long arg, int idx);
-		case (Tgtype): fnc.tg(lua_tointeger(L,1),lua_tointeger(L,2)); break;
-		// typedef int (*thtype)(long long loc, long long siz, int idx);
-		case (Thtype): lua_pushinteger(L,fnc.th(lua_tointeger(L,1),lua_tointeger(L,2),lua_tointeger(L,3))); ret = 1; break;
-		// typedef long long (*titype)(int idx);
-		case (Titype): lua_pushinteger(L,fnc.ti(lua_tointeger(L,1))); ret = 1; break;
-		// typedef void (*tjtype)(long long loc, long long siz, int idx);
-		case (Tjtype): fnc.tj(lua_tointeger(L,1),lua_tointeger(L,2),lua_tointeger(L,3)); break;
-		// typedef void (*tktype)(double sec);
-		case (Tktype): fnc.tk(lua_tonumber(L,1)); break;
-		// typedef int (*tltype)(int arg);
-		case (Tltype): lua_pushinteger(L,fnc.tl(lua_tointeger(L,1))); ret = 1; break;
-		// typedef int (*tmtype)();
-		case (Tmtype): lua_pushinteger(L,fnc.tm()); ret = 1; break;
+		LUAXCASE13(Pf,pf,I,I,U,I) // typedef int (*pftype)(int fildes, void *buf, int nbyte);
+		LUAXCASE13(Qf,qf,I,I,U,I) // typedef int (*qftype)(int fildes, const void *buf, int nbyte);
+		LUAXCASE03(Ef,ef,S,I,I) // typedef void (*eftype)(const char *str, int num, int idx);
+		LUAXCASE13(Fg,fg,I,S,I,I) // typedef int (*fgtype)(const char *str, int len, int idx);
+		LUAXCASE02(Cg,cg,I,I) // typedef void (*cgtype)(int idx0, int idx1);
+		LUAXCASE02(Hk,hk,I,S) // typedef void (*hktype)(int len, const char *val);
+		LUAXCASE12(Gf,gf,I,S,S) // typedef int (*gftype)(const char *one, const char *oth);
 
-		// typedef void (*sftype)(char **str, int idx);
-		case (Sftype): fnc.sf(&str,lua_tointeger(L,1)); lua_pushstring(L,str); ret = 1; break;
-		// typedef void (*sgtype)(char **str, long long loc, int idx);
-		case (Sgtype): fnc.sg(&str,lua_tointeger(L,1),lua_tointeger(L,2)); lua_pushstring(L,str); ret = 1; break;
-		// typedef void (*shtype)(void **dat, int idx);
-		case (Shtype): fnc.sh(&ptr,lua_tointeger(L,1)); lua_pushlightuserdata(L,ptr); ret = 1; break;
-		// typedef char (*sitype)(int idx);
-		case (Sitype): lua_pushinteger(L,fnc.si(lua_tointeger(L,1))); ret = 1; break;
-		// typedef int (*sjtype)(int idx);
-		case (Sjtype): lua_pushinteger(L,fnc.sj(lua_tointeger(L,1))); ret = 1; break;
-		// typedef int32_t (*sktype)(int idx);
-		case (Sktype): lua_pushinteger(L,fnc.sk(lua_tointeger(L,1))); ret = 1; break;
-		// typedef double (*sltype)(int idx);
-		case (Sltype): lua_pushnumber(L,fnc.sl(lua_tointeger(L,1))); ret = 1; break;
-		// typedef long long (*smtype)(int idx);
-		case (Smtype): lua_pushinteger(L,fnc.sm(lua_tointeger(L,1))); ret = 1; break;
-		// typedef float (*sntype)(int idx);
-		case (Sntype): lua_pushnumber(L,fnc.sn(lua_tointeger(L,1))); ret = 1; break;
+		LUAXCASE00(Ch,ch) // typedef void (*chtype)();
+		LUAXCASE01(Hm,hm,I) // typedef void (*hmtype)(char val);
+		LUAXCASE01(Hg,hg,I) // typedef void (*hgtype)(int val);
+		LUAXCASE01(Hl,hl,I) // typedef void (*hltype)(int32_t val);
+		LUAXCASE01(Hi,hi,I) // typedef void (*hitype)(long long val);
+		LUAXCASE01(Hj,hj,N) // typedef void (*hjtype)(float val);
+		LUAXCASE01(Hh,hh,N) // typedef void (*hhtype)(double val);
+		LUAXCASE01(Hf,hf,S) // typedef void (*hftype)(const char *val);
 
-		// typedef void (*lftype)(const char *arg, int idx);
-		case (Lftype): fnc.lf(lua_tostring(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*lgtype)(const char *arg, long long loc, int idx);
-		case (Lgtype): fnc.lg(lua_tostring(L,1),lua_tointeger(L,2),lua_tointeger(L,3)); break;
-		// typedef void (*lhtype)(const void *arg, int idx);
-		case (Lhtype): fnc.lh(lua_touserdata(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*litype)(char arg, int idx);
-		case (Litype): fnc.li(lua_tointeger(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*ljtype)(int arg, int idx);
-		case (Ljtype): fnc.lj(lua_tointeger(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*lktype)(int32_t arg, int idx);
-		case (Lktype): fnc.lk(lua_tointeger(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*lltype)(double arg, int idx);
-		case (Lltype): fnc.ll(lua_tonumber(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*lmtype)(long long arg, int idx);
-		case (Lmtype): fnc.lm(lua_tointeger(L,1),lua_tointeger(L,2)); break;
-		// typedef void (*lntype)(float arg, int idx);
-		case (Lntype): fnc.ln(lua_tonumber(L,1),lua_tointeger(L,2)); break;
+		LUAXCASE10(Tm,tm,I) // typedef int (*tmtype)();
+		LUAXCASE11(Tl,tl,I,I) // typedef int (*tltype)(int arg);
+		LUAXCASE11(Ff,ff,I,S) // typedef int (*fftype)(const char *str);
 
-		// typedef void (*mftype)(const char* val, char **str);
-		case (Mftype): str = strdup(lua_tostring(L,2)); fnc.mf(lua_tostring(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mhtype)(const void* val, char **str);
-		case (Mhtype): str = strdup(lua_tostring(L,2)); fnc.mh(lua_touserdata(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mitype)(char val, char **str);
-		case (Mitype): str = strdup(lua_tostring(L,2)); fnc.mi(lua_tointeger(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mjtype)(int val, char **str);
-		case (Mjtype): str = strdup(lua_tostring(L,2)); fnc.mj(lua_tointeger(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mktype)(int32_t val, char **str);
-		case (Mktype): str = strdup(lua_tostring(L,2)); fnc.mk(lua_tointeger(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mltype)(double val, char **str);
-		case (Mltype): str = strdup(lua_tostring(L,2)); fnc.ml(lua_tonumber(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mmtype)(long long val, char **str);
-		case (Mmtype): str = strdup(lua_tostring(L,2)); fnc.mm(lua_tointeger(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mntype)(float val, char **str);
-		case (Mntype): str = strdup(lua_tostring(L,2)); fnc.mn(lua_tonumber(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*motype)(const char *typ, const char* val, char **str);
-		case (Motype): str = strdup(lua_tostring(L,3)); fnc.mo(lua_tostring(L,1),lua_tostring(L,2),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mptype)(const char* val, char **str);
-		case (Mptype): str = strdup(lua_tostring(L,2)); fnc.mp(lua_tostring(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
-		// typedef void (*mqtype)(char **str);
-		case (Mqtype): str = strdup(lua_tostring(L,1)); fnc.mq(&str); lua_pushstring(L,str); free(str); ret = 1; break;
+		LUAXCASE12(Gg,gg,I,I,I) // typedef int (*ggtype)(int rfd, int wfd);
+		LUAXCASE12(Tf,tf,I,N,I) // typedef int (*tftype)(double dly, int msk);
+		LUAXCASE13(Th,th,I,I,I,I) // typedef int (*thtype)(long long loc, long long siz, int idx);
+		LUAXCASE03(Tj,tj,I,I,I) // typedef void (*tjtype)(long long loc, long long siz, int idx);
 
-		// typedef int (*nftype)(char **val, const char *str, int *siz);
-		case (Nftype): len = lua_tointeger(L,3); if (fnc.nf(&str,lua_tostring(L,1),&len)) lua_pushstring(L,str); else lua_pushnil(L); lua_pushnumber(L,len); free(str); ret = 2; break;
-		// typedef int (*nhtype)(void **val, const char *str, int *siz);
-		case (Nhtype): len = lua_tointeger(L,2); if (fnc.nh(&ptr,lua_tostring(L,1),&len)) lua_pushlightuserdata(L,ptr); else lua_pushnil(L); lua_pushnumber(L,len); free(ptr); ret = 2; break;
-		// typedef int (*nitype)(char *val, const char *str, int *siz);
-		case (Nitype): len = lua_tointeger(L,2); if (fnc.ni(&chr,lua_tostring(L,1),&len)) lua_pushinteger(L,chr); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*njtype)(int *val, const char *str, int *siz);
-		case (Njtype): len = lua_tointeger(L,2); if (fnc.nj(&vnt,lua_tostring(L,1),&len)) lua_pushinteger(L,vnt); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*nktype)(int32_t *val, const char *str, int *siz);
-		case (Nktype): len = lua_tointeger(L,2); if (fnc.nk(&v32,lua_tostring(L,1),&len)) lua_pushinteger(L,v32); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*nltype)(double *val, const char *str, int *siz);
-		case (Nltype): len = lua_tointeger(L,2); if (fnc.nl(&num,lua_tostring(L,1),&len)) lua_pushnumber(L,num); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*nmtype)(long long *val, const char *str, int *siz);
-		case (Nmtype): len = lua_tointeger(L,2); if (fnc.nm(&val,lua_tostring(L,1),&len)) lua_pushinteger(L,val); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*nntype)(float *val, const char *str, int *siz);
-		case (Nntype): len = lua_tointeger(L,2); if (fnc.nn(&old,lua_tostring(L,1),&len)) lua_pushnumber(L,old); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*notype)(const char* typ, const char *val, const char *str, int *siz);
-		case (Notype): len = lua_tointeger(L,4); if (fnc.no(lua_tostring(L,1),lua_tostring(L,2),lua_tostring(L,3),&len)) lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*nptype)(const char *val, const char *str, int *siz);
-		case (Nptype): len = lua_tointeger(L,3); if (fnc.np(lua_tostring(L,1),lua_tostring(L,2),&len)) lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
-		// typedef int (*nqtype)(const char *str, int *siz);
-		case (Nqtype): len = lua_tointeger(L,2); if (fnc.nq(lua_tostring(L,1),&len)) lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2; break;
+		LUAXCASEX1(Sf,sf,str,S,I) // typedef void (*sftype)(char **str, int idx);
+		LUAXCASEX2(Sg,sg,str,S,I,I) // typedef void (*sgtype)(char **str, long long loc, int idx);
+		LUAXCASEX1(Sh,sh,ptr,U,I) // typedef void (*shtype)(void **dat, int idx);
 
-		// typedef void (*rftype)(int siz);
-		case (Rftype): fnc.rf(lua_tointeger(L,1)); break;
-		// typedef void (*rgtype)(int i, const char *str);
-		case (Rgtype): fnc.rg(lua_tointeger(L,1),lua_tostring(L,2)); break;
-		// typedef void (*rhtype)();
-		case (Rhtype): fnc.rh(); break;
-		// typedef int (*ritype)();
-		case (Ritype): lua_pushinteger(L,fnc.ri()); ret = 1; break;
-		// typedef const char *(*rjtype)(int i);
-		case (Rjtype): lua_pushstring(L,fnc.rj(lua_tointeger(L,1))); ret = 1; break;
-		// typedef int (*rktype)(char **val, const char *key);
-		case (Rktype): lua_pushinteger(L,fnc.rk(&str,lua_tostring(L,1))); lua_pushstring(L,str); free(str); ret = 2; break;
-		case (Rltype): fnc.rl(lua_tostring(L,1),lua_tostring(L,2),lua_tointeger(L,3)); break;
-		case (Rmtype): fnc.rm(&str,lua_tostring(L,1)); lua_pushstring(L,str); free(str); ret = 1; break;
-		case (Rntype): fnc.rn(lua_tostring(L,1),lua_tostring(L,2)); break;
-		case (Rotype): lua_pushstring(L,fnc.ro()); ret = 1; break;
+		LUAXCASE11(Si,si,I,I) // typedef char (*sitype)(int idx);
+		LUAXCASE11(Sj,sj,I,I) // typedef int (*sjtype)(int idx);
+		LUAXCASE11(Sk,sk,I,I) // typedef int32_t (*sktype)(int idx);
+		LUAXCASE11(Sl,sl,N,I) // typedef double (*sltype)(int idx);
+		LUAXCASE11(Sm,sm,I,I) // typedef long long (*smtype)(int idx);
+		LUAXCASE11(Sn,sn,N,I) // typedef float (*sntype)(int idx);
 
-		default: ERROR();}
+		LUAXCASE02(Lf,lf,S,I) // typedef void (*lftype)(const char *arg, int idx);
+		LUAXCASE03(Lg,lg,S,I,I) // typedef void (*lgtype)(const char *arg, long long loc, int idx);
+		LUAXCASE02(Lh,lh,S,I) // typedef void (*lhtype)(const void *arg, int idx);
+		LUAXCASE02(Li,li,I,I) // typedef void (*litype)(char arg, int idx);
+		LUAXCASE02(Lj,lj,I,I) // typedef void (*ljtype)(int arg, int idx);
+		LUAXCASE02(Lk,lk,I,I) // typedef void (*lktype)(int32_t arg, int idx);
+		LUAXCASE02(Ll,ll,N,I) // typedef void (*lltype)(double arg, int idx);
+		LUAXCASE02(Lm,lm,I,I) // typedef void (*lmtype)(long long arg, int idx);
+		LUAXCASE02(Ln,ln,N,I) // typedef void (*lntype)(float arg, int idx);
+
+		LUAXCASEY1(Mf,mf,str,S,S) // typedef void (*mftype)(const char* val, char **str);
+		LUAXCASEY1(Mh,mh,str,S,U) // typedef void (*mhtype)(const void* val, char **str);
+		LUAXCASEY1(Mi,mi,str,S,I) // typedef void (*mitype)(char val, char **str);
+		LUAXCASEY1(Mj,mj,str,S,I) // typedef void (*mjtype)(int val, char **str);
+		LUAXCASEY1(Mk,mk,str,S,I) // typedef void (*mktype)(int32_t val, char **str);
+		LUAXCASEY1(Ml,ml,str,S,N) // typedef void (*mltype)(double val, char **str);
+		LUAXCASEY1(Mm,mm,str,S,I) // typedef void (*mmtype)(long long val, char **str);
+		LUAXCASEY1(Mn,mn,str,S,N) // typedef void (*mntype)(float val, char **str);
+		LUAXCASEY2(Mo,mo,str,S,S,S) // typedef void (*motype)(const char *typ, const char* val, char **str);
+		LUAXCASEY1(Mp,mp,str,S,S) // typedef void (*mptype)(const char* val, char **str);
+		LUAXCASEY0(Mq,mq,str,S) // typedef void (*mqtype)(char **str);
+
+		LUAXCASEZ1(Nf,nf,str,S,len,I,S) // typedef int (*nftype)(char **val, const char *str, int *len);
+		LUAXCASEZ1(Nh,nh,ptr,U,len,I,S) // typedef int (*nhtype)(void **val, const char *str, int *siz);
+		LUAXCASEZ1(Ni,ni,chr,I,len,I,S) // typedef int (*nitype)(char *val, const char *str, int *siz);
+		LUAXCASEZ1(Nj,nj,vnt,I,len,I,S) // typedef int (*njtype)(int *val, const char *str, int *siz);
+		LUAXCASEZ1(Nk,nk,v32,I,len,I,S) // typedef int (*nktype)(int32_t *val, const char *str, int *siz);
+		LUAXCASEZ1(Nl,nl,num,N,len,I,S) // typedef int (*nltype)(double *val, const char *str, int *siz);
+		LUAXCASEZ1(Nm,nm,val,I,len,I,S) // typedef int (*nmtype)(long long *val, const char *str, int *siz);
+		LUAXCASEZ1(Nn,nn,old,N,len,I,S) // typedef int (*nntype)(float *val, const char *str, int *siz);
+		case (Notype): len = lua_tointeger(L,4); if (fnc.no(lua_tostring(L,1),lua_tostring(L,2),lua_tostring(L,3),&len))
+		lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2;
+		break; // typedef int (*notype)(const char* typ, const char *val, const char *str, int *siz);
+		case (Nptype): len = lua_tointeger(L,3); if (fnc.np(lua_tostring(L,1),lua_tostring(L,2),&len))
+		lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2;
+		break;// typedef int (*nptype)(const char *val, const char *str, int *siz);
+		case (Nqtype): len = lua_tointeger(L,2); if (fnc.nq(lua_tostring(L,1),&len))
+		lua_pushnumber(L,1); else lua_pushnil(L); lua_pushnumber(L,len); ret = 2;
+		break; // typedef int (*nqtype)(const char *str, int *siz);
+
+		case (Rjtype): lua_pushstring(L,fnc.rj(lua_tointeger(L,1))); ret = 1; break; // typedef const char *(*rjtype)(int i);
+		LUAXCASE01(Rk,rk,U) // typedef void (*hntype)(void *dat);
+
+		default: printf("fnc.ft:%d\n",fnc.ft); ERROR();}
 	return ret;
 }
 void luaxExtend(lua_State *L, const char *str, struct Function fnc)
@@ -409,10 +367,10 @@ int luaopen_luax(lua_State *L)
 {
 	luastate = L;
 	luaxExtend(L,"luaxSide",protoTypeFf(luaxSide));
-	luaxExtend(L,"nestInit",protoTypeRf(nestInit));
-	luaxExtend(L,"nestElem",protoTypeRg(nestElem));
-	luaxExtend(L,"nestScan",protoTypeRh(nestScan));
-	luaxExtend(L,"nestPass",protoTypeRi(nestPass));
+	luaxExtend(L,"nestInit",protoTypeHg(nestInit));
+	luaxExtend(L,"nestElem",protoTypeHk(nestElem));
+	luaxExtend(L,"nestScan",protoTypeCh(nestScan));
+	luaxExtend(L,"nestPass",protoTypeTm(nestPass));
 	luaxExtend(L,"nestRepl",protoTypeRj(nestRepl));
 	return 0;
 }

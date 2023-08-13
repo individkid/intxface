@@ -184,7 +184,7 @@ int sharePeek(const char *str, int *len)
 		if (note == 0) return typ;}
 	return -1;
 }
-void shareParse(int argc, char **argv, egtype err, egtype arg, egtype stg)
+void shareParse(int argc, char **argv, hktype err, hktype arg, hktype stg)
 {
 	for (int i = 1, sub = 0; i < argc; i++) {
 		int len = 0; int typ = 0;

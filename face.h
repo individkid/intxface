@@ -2,7 +2,7 @@
 struct timespec;
 void termFunc(fgtype fnc);
 void intrFunc(chtype fnc);
-void noteFunc(cftype fnc);
+void noteFunc(hgtype fnc);
 void errFunc(eftype fnc);
 void callIntr();
 void callNote(int idx);
@@ -32,7 +32,7 @@ int puntInit(int rdx, int wdx, pftype rpf, qftype wpf);
 int buntInit(int rfd, int wfd, pftype rpf, qftype wpf);
 int waitRead(double dly, int msk);
 int waitExit(); // TODO add dly and msk
-void callInit(cftype fnc, int idx);
+void callInit(hgtype fnc, int idx);
 int pollPipe(int idx);
 int pollFile(int idx);
 void seekFile(long long arg, int idx);

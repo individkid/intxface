@@ -209,21 +209,6 @@ Stream = {
 	"Buffer", -- name a buffer; one input, no output
 	"Execute", -- name a filter; typ is input type, for pipe named by str in successor, with output typ in successor
 }
-Logic = {
-	"WrpJmp",
-	"WrpYld",
-	"RunJmp",
-	"RunYld",
-	"ClrVal",
-	"ClrJmp",
-	"ClrYld",
-	"SkpVal",
-	"SkpJmp",
-	"SkpYld",
-	"ImmJmp",
-	"ImmYld",
-	"SetJmp",
-}
 Operate = {
 	"AddOp",
 	"SubOp",
@@ -263,6 +248,12 @@ Compare = {
 	"ECCmp",
 	"MOCmp",
 	"MCCmp",
+}
+Access = {
+	"GetAcc",
+	"SetAcc",
+	"GlnAcc",
+	"SlnAcc",
 }
 Action = {
 	"NegAct",
@@ -570,6 +561,17 @@ Regex = {
 	{"vld","Int",{},{}}, -- whether compiled
 	{"str","Str",{},{}}, -- string to compile
 	{"dat","Dat",{},{}}, -- compiled regex
+}
+Callback = {
+	{"acc","Access",{},{}},
+-- int planeSide(const char *exp) -- call lua expression
+-- int planeCall(void **dat, const char *str) -- call machine task
+-- void planeSetter(void *dat, int sub) -- set configuration
+-- void planeGetter(void **dat, int sub) -- get configuration
+-- const char *planePeek(int sub) -- peek line
+-- void planeLine(int sub) -- delete line
+-- void shareCallback(void *key) -- notify insert
+
 }
 Express = {
 	{"opr","Operate",{},{}},

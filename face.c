@@ -53,7 +53,7 @@ int idnt[NUMOPEN] = {0};
 
 // thread to call function when pipe is readable
 pthread_t cbpth[NUMOPEN] = {0};
-cftype cbfnc[NUMOPEN] = {0};
+hgtype cbfnc[NUMOPEN] = {0};
 
 // read string tokenization
 fgtype termfn = 0;
@@ -61,7 +61,7 @@ void *usr[NUMOPEN] = {0};
 
 // error handling
 chtype intrfn = 0;
-cftype notice = 0;
+hgtype notice = 0;
 eftype errfnc = 0;
 char *luanote = 0;
 char *luafunc = 0;
@@ -79,7 +79,7 @@ void intrFunc(chtype fnc)
 {
 	intrfn = fnc;
 }
-void noteFunc(cftype fnc)
+void noteFunc(hgtype fnc)
 {
 	notice = fnc;
 }
@@ -325,7 +325,9 @@ int openWrfd(int idx)
 }
 int openExec(const char *exe, const char *arg)
 {
+	printf("openExec\n");
 	execl(exe,exe,arg,0);
+	printf("openExec returned\n");
 	return -1;
 }
 int rdwrInit(int rfd, int wfd)
@@ -471,7 +473,7 @@ void *callCall(void *arg)
 		if (sub == idx) cbfnc[idx](idx);
 	}
 }
-void callInit(cftype fnc, int idx)
+void callInit(hgtype fnc, int idx)
 {
 	if (idx < 0 || idx >= lim || (fdt[idx] != Wait && fdt[idx] != Sock)) ERRFNC(idx);
 	cbfnc[idx] = fnc;
@@ -1527,9 +1529,9 @@ int luaopen_face (lua_State *L)
 {
 	luaopen_luax(L);
 
-	luaxExtend(L,"noteFunc",protoTypeEh(noteFuncLua));
-	luaxExtend(L,"errFunc",protoTypeEh(errFuncLua));
-	luaxExtend(L,"closeIdent",protoTypeCf(closeIdent));
+	luaxExtend(L,"noteFunc",protoTypeHf(noteFuncLua));
+	luaxExtend(L,"errFunc",protoTypeHf(errFuncLua));
+	luaxExtend(L,"closeIdent",protoTypeHg(closeIdent));
 	luaxExtend(L,"moveIdent",protoTypeCg(moveIdent));
 	luaxExtend(L,"findIdent",protoTypeFf(findIdent));
 	luaxExtend(L,"inetIdent",protoTypeGf(inetIdent));
@@ -1549,10 +1551,10 @@ int luaopen_face (lua_State *L)
 	luaxExtend(L,"waitExit",protoTypeTm(waitExit));
 	luaxExtend(L,"pollPipe",protoTypeTl(pollPipe));
 	luaxExtend(L,"pollFile",protoTypeTl(pollFile));
-	luaxExtend(L,"seekFile",protoTypeTg(seekFile));
-	luaxExtend(L,"truncFile",protoTypeCf(truncFile));
+	luaxExtend(L,"seekFile",protoTypeLm(seekFile));
+	luaxExtend(L,"truncFile",protoTypeHg(truncFile));
 
-	luaxExtend(L,"checkFile",protoTypeTi(checkFile));
+	luaxExtend(L,"checkFile",protoTypeSm(checkFile));
 	luaxExtend(L,"rdlkFile",protoTypeTh(rdlkFile));
 	luaxExtend(L,"wrlkFile",protoTypeTh(wrlkFile));
 	luaxExtend(L,"unlkFile",protoTypeTj(unlkFile));
@@ -1560,8 +1562,8 @@ int luaopen_face (lua_State *L)
 	luaxExtend(L,"wrlkwFile",protoTypeTj(wrlkwFile));
 	luaxExtend(L,"checkRead",protoTypeTl(checkRead));
 	luaxExtend(L,"checkWrite",protoTypeTl(checkWrite));
-	luaxExtend(L,"sleepSec",protoTypeTk(sleepSec));
-	luaxExtend(L,"readEof",protoTypeTn(readEof));
+	luaxExtend(L,"sleepSec",protoTypeHh(sleepSec));
+	luaxExtend(L,"readEof",protoTypeHg(readEof));
 
 	luaxExtend(L,"readStr",protoTypeSf(readStr));
 	luaxExtend(L,"preadStr",protoTypeSg(preadStr));

@@ -29,46 +29,36 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
-typedef void (*cftype)(int idx);
-typedef void (*cgtype)(int idx0, int idx1);
-typedef void (*chtype)();
-typedef void (*dftype)(void *dat);
-typedef void (*dgtype)(void *dat, int sub);
-typedef void (*dhtype)(void **dat, int sub);
-typedef void (*eftype)(const char *str, int num, int idx); // error throws
-typedef void (*egtype)(int idx, const char *str); // add string
-typedef void (*ehtype)(const char *str); // lua wrapper
-typedef void (*hftype)(const char *val); // haskell wrapper
-typedef void (*hgtype)(int val); // haskell wrapper
-typedef void (*hhtype)(double val); // haskell wrapper
-typedef void (*hitype)(long long val); // haskell wrapper
-typedef void (*hjtype)(float val); // haskell wrapper
-typedef void (*hktype)(int len, const char *val); // haskell wrapper
-typedef void (*hltype)(int32_t val); // haskell wrapper
-typedef void (*hmtype)(char val); // haskell wrapper
-typedef int (*pftype)(int fildes, void *buf, int nbyte); // stream to punt to
-typedef int (*qftype)(int fildes, const void *buf, int nbyte); // stream to punt to
-typedef int (*fftype)(const char *str);
+typedef int (*pftype)(int fildes, void *buf, int nbyte);
+typedef int (*qftype)(int fildes, const void *buf, int nbyte);
+typedef void (*eftype)(const char *str, int num, int idx);
 typedef int (*fgtype)(const char *str, int len, int idx);
-typedef int (*fhtype)(int idx, const char *str);
+typedef void (*cgtype)(int idx0, int idx1);
+typedef void (*hktype)(int len, const char *val);
 typedef int (*gftype)(const char *one, const char *oth);
-typedef int (*ggtype)(int rfd, int wfd);
-typedef int (*ghtype)(void **dat, const char *str);
-typedef int (*oftype)(void *arg);
 
-typedef int (*tftype)(double dly, int msk);
-typedef void (*tgtype)(long long arg, int idx);
-typedef int (*thtype)(long long loc, long long siz, int idx);
-typedef long long (*titype)(int idx);
-typedef void (*tjtype)(long long loc, long long siz, int idx);
-typedef void (*tktype)(double sec);
-typedef int (*tltype)(int arg);
+typedef void (*chtype)();
+typedef void (*hmtype)(char val);
+typedef void (*hgtype)(int val);
+typedef void (*hltype)(int32_t val);
+typedef void (*hitype)(long long val);
+typedef void (*hjtype)(float val);
+typedef void (*hhtype)(double val);
+typedef void (*hftype)(const char *val);
+
 typedef int (*tmtype)();
-typedef void (*tntype)(int idx);
+typedef int (*tltype)(int arg);
+typedef int (*fftype)(const char *str);
+
+typedef int (*ggtype)(int rfd, int wfd);
+typedef int (*tftype)(double dly, int msk);
+typedef int (*thtype)(long long loc, long long siz, int idx);
+typedef void (*tjtype)(long long loc, long long siz, int idx);
 
 typedef void (*sftype)(char **str, int idx);
 typedef void (*sgtype)(char **str, long long loc, int idx);
 typedef void (*shtype)(void **dat, int idx);
+
 typedef char (*sitype)(int idx);
 typedef int (*sjtype)(int idx);
 typedef int32_t (*sktype)(int idx);
@@ -110,144 +100,120 @@ typedef int (*notype)(const char* typ, const char *val, const char *str, int *si
 typedef int (*nptype)(const char *val, const char *str, int *siz);
 typedef int (*nqtype)(const char *str, int *siz);
 
-typedef void (*rftype)(int siz);
-typedef void (*rgtype)(int i, const char *str);
-typedef void (*rhtype)();
-typedef int (*ritype)();
 typedef const char *(*rjtype)(int i);
-typedef int (*rktype)(char **val, const char *key);
-typedef void (*rltype)(const char *key, const char *val, int typ);
-typedef void (*rmtype)(char **val, const char *key);
-typedef void (*rntype)(const char *key, const char *val);
-typedef const char *(*rotype)();
+typedef void (*rktype)(void *dat);
+typedef int (*rltype)(void **dat, const char *str);
+typedef void (*rmtype)(void *arg, int idx);
+typedef int (*rntype)(int idx, const char *str);
 
 struct Function {
 	enum {
-		/*
-		Aftype,
-		Bftype,
-		Iftype,
-		Jftype,
-		Kftype,
-		*/
-		Cftype,
-		Cgtype,
-		Chtype,
-		Dftype,
-		Dgtype,
-		Dhtype,
-		Eftype,
-		Egtype,
-		Ehtype,
-		Pftype,
 
+		Pftype, // 0
 		Qftype,
-		Fftype,
+		Eftype,
 		Fgtype,
-		Fhtype,
-		Gftype,
-		Ggtype,
-		Oftype,
-		Tftype,
-		Tgtype,
-		Thtype,
+		Cgtype,
+		Hktype,
+		Gftype, // 6
 
-		Titype,
-		Tjtype,
-		Tktype,
+		Chtype, // 7
+		Hmtype,
+		Hgtype,
+		Hltype,
+		Hitype,
+		Hjtype,
+		Hhtype,
+		Hftype, // 14
+
+		Tmtype, // 15
 		Tltype,
-		Tmtype,
-		Tntype,
-		Sftype,
+		Fftype, // 17
+
+		Ggtype, // 18
+		Tftype,
+		Thtype,
+		Tjtype, // 21
+
+		Sftype, // 22
 		Sgtype,
 		Shtype,
 		Sitype,
-
 		Sjtype,
 		Sktype,
 		Sltype,
 		Smtype,
-		Sntype,
-		Lftype,
+		Sntype, // 30
+
+		Lftype, // 31
 		Lgtype,
 		Lhtype,
 		Litype,
 		Ljtype,
-
 		Lktype,
 		Lltype,
 		Lmtype,
-		Lntype,
-		Mftype,
+		Lntype, // 39
+
+		Mftype, // 40
 		Mhtype,
 		Mitype,
 		Mjtype,
 		Mktype,
 		Mltype,
-
 		Mmtype,
 		Mntype,
 		Motype,
 		Mptype,
-		Mqtype,
-		Nftype,
+		Mqtype, // 50
+
+		Nftype, // 51
 		Nhtype,
 		Nitype,
 		Njtype,
 		Nktype,
-
 		Nltype,
 		Nmtype,
 		Nntype,
 		Notype,
 		Nptype,
-		Nqtype,
-		Rftype,
-		Rgtype,
-		Rhtype,
-		Ritype,
+		Nqtype, // 61
 
-		Rjtype,
+		Rjtype, // 62
 		Rktype,
 		Rltype,
 		Rmtype,
 		Rntype,
-		Rotype,
+
 	} ft;
 	union {
-		/*
-		aftype af;
-		bftype bf;
-		iftype it;
-		jftype jf;
-		kftype kf;
-		*/
-		cftype cf;
-		cgtype cg;
-		chtype ch;
-		dftype df;
-		dgtype dg;
-		dhtype dh;
-		eftype ef;
-		egtype eg;
-		ehtype eh;
+
 		pftype pf;
 		qftype qf;
-		fftype ff;
+		eftype ef;
 		fgtype fg;
-		fhtype fh;
+		cgtype cg;
+		hktype hk;
 		gftype gf;
-		ggtype gg;
-		oftype of;
-		tftype tf;
-		tgtype tg;
-		thtype th;
-		titype ti;
-		tjtype tj;
-		tktype tk;
-		tltype tl;
+
+		chtype ch;
+		hmtype hm;
+		hgtype hg;
+		hltype hl;
+		hitype hi;
+		hjtype hj;
+		hhtype hh;
+		hftype hf;
+
 		tmtype tm;
-		tntype tn;
+		tltype tl;
+		fftype ff;
+
+		ggtype gg;
+		tftype tf;
+		thtype th;
+		tjtype tj;
+
 		sftype sf;
 		sgtype sg;
 		shtype sh;
@@ -257,6 +223,7 @@ struct Function {
 		sltype sl;
 		smtype sm;
 		sntype sn;
+
 		lftype lf;
 		lgtype lg;
 		lhtype lh;
@@ -266,6 +233,7 @@ struct Function {
 		lltype ll;
 		lmtype lm;
 		lntype ln;
+
 		mftype mf;
 		mhtype mh;
 		mitype mi;
@@ -277,6 +245,7 @@ struct Function {
 		motype mo;
 		mptype mp;
 		mqtype mq;
+
 		nftype nf;
 		nhtype nh;
 		nitype ni;
@@ -288,53 +257,42 @@ struct Function {
 		notype no;
 		nptype np;
 		nqtype nq;
-		rftype rf;
-		rgtype rg;
-		rhtype rh;
-		ritype ri;
+
 		rjtype rj;
 		rktype rk;
 		rltype rl;
 		rmtype rm;
 		rntype rn;
-		rotype ro;
+
 		void *vp;
 	};
 };
 
-/*
-struct Function protoTypeAf(aftype fnc);
-struct Function protoTypeBf(bftype fnc);
-struct Function protoTypeIf(iftype fnc);
-struct Function protoTypeJf(jftype fnc);
-struct Function protoTypeKf(kftype fnc);
-*/
-
-struct Function protoTypeCf(cftype fnc);
-struct Function protoTypeCg(cgtype fnc);
-struct Function protoTypeCh(chtype fnc);
-struct Function protoTypeDf(dftype fnc);
-struct Function protoTypeDg(dgtype fnc);
-struct Function protoTypeDh(dhtype fnc);
+struct Function protoTypePf(pftype fnc);
+struct Function protoTypeQf(qftype fnc);
 struct Function protoTypeEf(eftype fnc);
-struct Function protoTypeEg(egtype fnc);
-struct Function protoTypeEh(ehtype fnc);
-struct Function protoTypeFf(fftype fnc);
 struct Function protoTypeFg(fgtype fnc);
-struct Function protoTypeFh(fhtype fnc);
+struct Function protoTypeCg(cgtype fnc);
+struct Function protoTypeHk(hktype fnc);
 struct Function protoTypeGf(gftype fnc);
-struct Function protoTypeGg(ggtype fnc);
-struct Function protoTypeOf(oftype fnc);
 
-struct Function protoTypeTf(tftype fnc);
-struct Function protoTypeTg(tgtype fnc);
-struct Function protoTypeTh(thtype fnc);
-struct Function protoTypeTi(titype fnc);
-struct Function protoTypeTj(tjtype fnc);
-struct Function protoTypeTk(tktype fnc);
-struct Function protoTypeTl(tltype fnc);
+struct Function protoTypeCh(chtype fnc);
+struct Function protoTypeHm(hmtype fnc);
+struct Function protoTypeHg(hgtype fnc);
+struct Function protoTypeHl(hltype fnc);
+struct Function protoTypeHi(hitype fnc);
+struct Function protoTypeHj(hjtype fnc);
+struct Function protoTypeHh(hhtype fnc);
+struct Function protoTypeHf(hftype fnc);
+
 struct Function protoTypeTm(tmtype fnc);
-struct Function protoTypeTn(tntype fnc);
+struct Function protoTypeTl(tltype fnc);
+struct Function protoTypeFf(fftype fnc);
+
+struct Function protoTypeGg(ggtype fnc);
+struct Function protoTypeTf(tftype fnc);
+struct Function protoTypeTh(thtype fnc);
+struct Function protoTypeTj(tjtype fnc);
 
 struct Function protoTypeSf(sftype fnc);
 struct Function protoTypeSg(sgtype fnc);
@@ -380,16 +338,11 @@ struct Function protoTypeNo(notype fnc);
 struct Function protoTypeNp(nptype fnc);
 struct Function protoTypeNq(nqtype fnc);
 
-struct Function protoTypeRf(rftype fnc);
-struct Function protoTypeRg(rgtype fnc);
-struct Function protoTypeRh(rhtype fnc);
-struct Function protoTypeRi(ritype fnc);
 struct Function protoTypeRj(rjtype fnc);
 struct Function protoTypeRk(rktype fnc);
 struct Function protoTypeRl(rltype fnc);
 struct Function protoTypeRm(rmtype fnc);
 struct Function protoTypeRn(rntype fnc);
-struct Function protoTypeRo(rotype fnc);
 
 struct Parameter {
 	enum {

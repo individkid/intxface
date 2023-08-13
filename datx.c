@@ -8,10 +8,10 @@
 
 int unique = 0;
 void *prefix = 0;
-dftype datxNoteFp = 0;
-ghtype datxCallFp = 0;
-dgtype datxSetFp = 0;
-dhtype datxGetFp = 0;
+rktype datxNoteFp = 0;
+rltype datxCallFp = 0;
+rmtype datxSetFp = 0;
+shtype datxGetFp = 0;
 fftype datxEmbFp = 0;
 void ***datx = 0;
 int ndatx = 0;
@@ -140,6 +140,7 @@ void datxInsert(void *key, void *val, int typ)
 	if (cmp > 0) {idx = idx + siz/2 + 1; siz = siz - siz/2 - 1;}}
 	sizs++; keys = realloc(keys,sizs*sizeof(void*)); boxs = realloc(boxs,sizs*sizeof(void*)); typs = realloc(typs,sizs*sizeof(int));
 	for (int i = sizs-1; i > idx; i--) {assignDat(&keys[i],keys[i-1]); assignDat(&boxs[i],boxs[i-1]); typs[i] = typs[i-1];}
+	if (datxNoteFp) datxNoteFp(dat);
 	assignDat(&keys[idx],dat); assignDat(&boxs[idx],val); typs[idx] = typ; free(dat);
 }
 int datxFinds(void **val, const char *pre, const char *str)
@@ -617,19 +618,19 @@ void datxPrefix(const char *str)
 {
 	datxStr(&prefix,str);
 }
-void datxChanged(dftype fnc)
+void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxCaller(ghtype fnc)
+void datxCaller(rltype fnc)
 {
 	datxCallFp = fnc;
 }
-void datxSetter(dgtype fnc)
+void datxSetter(rmtype fnc)
 {
 	datxSetFp = fnc;
 }
-void datxGetter(dhtype fnc)
+void datxGetter(shtype fnc)
 {
 	datxGetFp = fnc;
 }

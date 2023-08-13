@@ -842,8 +842,8 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	datxSetter(planeSetter); datxGetter(planeGetter);
 	datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeFh(planeSet));
-	luaxAdd("planeCat",protoTypeFh(planeCat)); luaxAdd("planeHint",protoTypeRf(planeHint));
+	luaxAdd("planeGet",protoTypeRj(planeGet)); luaxAdd("planeSet",protoTypeRn(planeSet));
+	luaxAdd("planeCat",protoTypeRn(planeCat)); luaxAdd("planeHint",protoTypeHg(planeHint));
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
 	init(); planeBoot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
