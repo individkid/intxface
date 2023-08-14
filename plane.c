@@ -82,14 +82,13 @@ sem_t resource;
 sem_t pending;
 sem_t ready[Procs];
 void planeRead();
-void planeGet(hftype fnc);
+void planeDup(char **ptr);
 void planeClr(char chr);
 void planeAdd(const char *str);
-void planeSet(char chr);
+void planeCat(const char *str);
 int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
-void planeHint(int hint);
 
 float *planeXform4(float *mat, float *org0, float *org1, float *org2, float *org3, float *mov0, float *mov1, float *mov2, float *mov3)
 {
@@ -562,14 +561,6 @@ int planeIval(struct Express *exp)
 	val = *datxIntz(0,dat); free(dat);
 	return val;
 }
-int planeExpress(const char *str)
-{
-	struct Express exp = {0}; int len = 0; int val = 0;
-	if (!hideExpress(&exp,str,&len)) ERROR();
-	val = planeIval(&exp);
-	freeExpress(&exp);
-	return val;
-}
 void planeFill()
 {
 	int src = 0; int dst = 0; int siz = 0;
@@ -663,11 +654,9 @@ void planeRead()
 	if (num) readCenter(&center,internal);
 	else {struct Center tmp = {0}; center = tmp;}
 }
-void planeGet(hftype fnc)
+void planeDup(char **ptr)
 {
-	char *ptr = 0;
-	sem_safe(&resource,{ptr = strdup(string);});
-	fnc(ptr); free(ptr);
+	sem_safe(&resource,{*ptr = strdup(string);});
 }
 void planeClr(char chr)
 {
@@ -680,32 +669,31 @@ void planeClr(char chr)
 	sem_post(&resource);
 }
 void planeAdd(const char *str)
-{
+{ // keep terminator
 	char *ptr = 0; int len = strlen(str)+1;
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
 	if (strlim+len > strsiz) {strsiz = strlim+len; string = realloc(string,strsiz);}
-	strcpy(string+strlim,str); // keep terminator
-	strlim += len;
+	strcpy(string+strlim,str); strlim += len;
 	sem_post(&resource);
 }
-void planeSet(char chr)
-{
-	char *ptr = 0; int len = 1;
+void planeCat(const char *str)
+{ // overwrite terminator
+	char *ptr = 0; int len = strlen(str);
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
 	if (strlim+len > strsiz) {strsiz = strlim+len; string = realloc(string,strsiz);}
-	string[strlim-1] = chr; string[strlim] = 0; // overwrite terminator
-	strlim += len;
+	strcpy(string+strlim-1,str); strlim += len;
 	sem_post(&resource);
+	planeSafe(Procs,Waits,ResultSize);
 }
-void planeSetter(void *dat, int sub)
+void planeSet(void *dat, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
 	planeConfig(sub,*datxIntz(0,dat));
 	planeDma(sub,*datxIntz(0,dat));
 }
-void planeGetter(void **dat, int sub)
+void planeGet(void **dat, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
 	datxInt(dat,configure[sub]);
@@ -727,10 +715,6 @@ void planeInsert(const char *key, const char *val)
 	datxInsert(src,dst,identType("Str"));
 	free(src); free(dst);
 }
-void planeHint(int hint)
-{
-	planeSafe(Procs,Waits,hint);
-}
 int planeSide(const char *exp)
 {
 	const struct Closure *fnc = protoCloseRi();
@@ -740,14 +724,11 @@ int planeSide(const char *exp)
 void planeTerm(int sig)
 {
 }
-void planeOption(const char *str)
-{
-	if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__);	
-}
 void *planeExternal(void *ptr)
 {
-	struct Argument arg = {0};
-	planeClr(0); planeGet(planeOption); planeClr(0);
+	struct Argument arg = {0}; char *str = 0;
+	planeClr(0); planeDup(&str); planeClr(0);
+	if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[External]);
 	while (1) {
 	struct Center center = {0};
@@ -781,8 +762,7 @@ void *planeConsole(void *ptr)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	planeSet(chr[0]);
-	planeSafe(Procs,Waits,ResultSize);}
+	planeCat(chr);}
 	planeSafe(Console,Done,Configures);
 	return 0;
 }
@@ -827,7 +807,9 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	datxSetter(planeSetter); datxGetter(planeGetter); datxEmbed(planeSide); datxCaller(planeCall);
+	luaxAdd("planeDup",protoTypeMq(planeDup)); luaxAdd("planeClr",protoTypeHm(planeClr));
+	luaxAdd("planeAdd",protoTypeHf(planeAdd)); luaxAdd("planeCat",protoTypeHf(planeCat));
+	datxSetter(planeSet); datxGetter(planeGet); datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
 	init(); planeBoot(); while (1) {

@@ -402,7 +402,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 			if (typ0 == identType("Str") && typ1 == identType("Regex")) {
 				char *lft = datxChrz(0,dat0); struct Regex rgt = {0};
 				assignDat(datxDat0,dat1); readRegex(&rgt,datxIdx0);
-				val = datxRegex(lft,&rgt);} else ERROR();
+				val = datxRegex(lft,&rgt);} else
+			if (typ0 == identType("Str") && typ1 == identType("Int")) {
+				char *lft = datxChrz(0,dat0); int rgt = *datxIntz(0,dat1); int emb = 0;
+				if (datxEmbFp == 0) ERROR();
+				emb = datxEmbFp(lft); val = (emb>rgt?1:(emb<rgt?-1:0));} else ERROR();
 			if (val != 0) ret = 0;
 			free(dat1); if (ret == 0) break;} if (ret == 1) {idx = i; break;}}
 		for (int i = 0; i < exp->cnd->lft->siz; i++) free(dats[i]);
@@ -422,7 +426,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ0 == identType("Str") && typ1 == identType("Regex")) {
 			char *lft = datxChrz(0,dat0); struct Regex rgt = {0};
 			assignDat(datxDat0,dat1); readRegex(&rgt,datxIdx0);
-			val = datxEcmp(datxRegex(lft,&rgt),exp->cmp->cmp);} else ERROR();
+			val = datxEcmp(datxRegex(lft,&rgt),exp->cmp->cmp);} else
+		if (typ0 == identType("Str") && typ1 == identType("Int")) {
+			char *lft = datxChrz(0,dat0); int rgt = *datxIntz(0,dat1); int emb = 0;
+			if (datxEmbFp == 0) ERROR();
+			emb = datxEmbFp(lft); val = datxEcmp((emb>rgt?1:(emb<rgt?-1:0)),exp->cmp->cmp);} else ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,val); free(dat0); free(dat1);} break;
 	case (TotOp): {
