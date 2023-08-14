@@ -43,7 +43,6 @@ Memory = {
 	"Onematz", --c; single face transformation
 	"Piercez", --c; pierce point normal and valid
 	"Slicez", -- plane or point index ranges
-	"Stringz", -- keyboard comparison strings
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
 	"Configurez", --c,a; configure to value
@@ -85,8 +84,6 @@ Configure = {
 	"ArgumentMicro", -- pass to draw
 	"ArgumentBase", --
 	"ArgumentLimit", --
-	"RegisterPrompt", -- prompt string index
-	"RegisterResponse", -- response string index
 	"RegisterMemory", -- which memory
 	"RegisterIndex", -- which instance
 	"RegisterTool", -- which function
@@ -620,7 +617,7 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
-	{"str","Str",{["mem"]={["Stringz"]=true,["Stackz"]=true}},"siz"},
+	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},

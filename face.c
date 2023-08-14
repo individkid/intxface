@@ -325,9 +325,7 @@ int openWrfd(int idx)
 }
 int openExec(const char *exe, const char *arg)
 {
-	printf("openExec\n");
 	execl(exe,exe,arg,0);
-	printf("openExec returned\n");
 	return -1;
 }
 int rdwrInit(int rfd, int wfd)
