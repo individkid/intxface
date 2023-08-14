@@ -685,7 +685,7 @@ void planeAdd(const char *str)
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
 	if (strlim+len > strsiz) {strsiz = strlim+len; string = realloc(string,strsiz);}
-	strcpy(string+strlim,str);
+	strcpy(string+strlim,str); // keep terminator
 	strlim += len;
 	sem_post(&resource);
 }
@@ -695,7 +695,8 @@ void planeSet(char chr)
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
 	if (strlim+len > strsiz) {strsiz = strlim+len; string = realloc(string,strsiz);}
-	string[strlim] = chr; strlim += len;
+	string[strlim-1] = chr; string[strlim] = 0; // overwrite terminator
+	strlim += len;
 	sem_post(&resource);
 }
 void planeSetter(void *dat, int sub)
