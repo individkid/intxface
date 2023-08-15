@@ -219,6 +219,7 @@ Operate = {
 	"SetOp", -- callback with value
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
+	"DupOp", -- peek next string
 	"InsOp", -- fields to struct
 	"ExtOp", -- fields from struct
 	"PrmOp", -- permute list
@@ -308,7 +309,9 @@ Bootstrap = {
 		"mch[0]:Machine(xfr:Transfer(Goto)exp[0]:Express(opr:Operate(CndOp)cnd[0]:CondExp(siz:Int(7)"..
 			"lft[0]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..
 				"exp[0]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
-				"exp[1]:Express(opr:Operate(ValOp)key:Str(Changed)))"..
+				"exp[1]:Express(opr:Operate(ValOp)key:Str(Changed))"..
+				-- "exp[2]:Express(opr:Operate(StrOp)str:Str())"..
+				")"..
 			"rgt[0]:Expgen(siz:Int(1)typ[0]:Tag(IntTag)"..
 				"exp[0]:Express(opr:Operate(CfgOp)cvl:Configure(CenterMemory)))"..
 			"rgt[1]:Expgen(siz:Int(2)typ[0]:Tag(IntTag)typ[1]:Tag(IntTag)"..

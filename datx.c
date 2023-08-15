@@ -14,6 +14,7 @@ rltype datxCallFp = 0;
 rmtype datxSetFp = 0;
 shtype datxGetFp = 0;
 fftype datxEmbFp = 0;
+mqtype datxDupFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -488,6 +489,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; void *dat0 = 0; void *key = 0;
 		typ0 = datxEval(dat,exp->sav,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		datxStr(&key,exp->kys); datxInsert(key,*dat,typ0); free(key);} break;
+	case (DupOp): {
+		char *str = 0;
+		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
+		if (datxDupFp == 0) ERROR(); datxDupFp(&str); datxStr(dat,str);} break;
 	case (InsOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
 		void *dat0 = 0; void *dat1 = 0; void *dat2 = 0; int typ0 = 0; int typ1 = 0; int typ2 = 0; datxSingle();
@@ -653,4 +658,8 @@ void datxGetter(shtype fnc)
 void datxEmbed(fftype fnc)
 {
 	datxEmbFp = fnc;
+}
+void datxDupstr(mqtype fnc)
+{
+	datxDupFp = fnc;
 }

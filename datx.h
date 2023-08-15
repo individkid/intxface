@@ -34,3 +34,4 @@ void datxCaller(rltype fnc);
 void datxSetter(rmtype fnc);
 void datxGetter(shtype fnc);
 void datxEmbed(fftype fnc);
+void datxDupstr(mqtype fnc);
