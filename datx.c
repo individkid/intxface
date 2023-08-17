@@ -417,7 +417,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
 					if (typ0 != identType("Str") || typ1 != identType("Str")) ERROR();
 					lft = datxChrz(0,dat0); rgt = datxChrz(0,dat1);
-					val = (strncmp(lft,rgt,strlen(rgt)) == 0);
+					val = (strncmp(lft,rgt,strlen(lft)) == 0);
 					free(dat1);} break;
 				default: {
 					void *dat1 = 0; int typ1 = 0;
