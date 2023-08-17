@@ -492,16 +492,21 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		char *str = 0;
 		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
 		if (datxDupFp == 0) ERROR(); datxDupFp(&str); datxStr(dat,str);} break;
-	case (SizOp): { // TODO
-		} break;
-	case (KlrOp): { // TODO
-		} break;
-	case (ClrOp): { // TODO
-		} break;
-	case (KatOp): { // TODO
-		} break;
-	case (CatOp): { // TODO
-		} break;
+	case (SizOp): {
+		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
+		if (datxSizFp == 0) ERROR(); datxSizFp(exp->len);} break;
+	case (KlrOp): {
+		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
+		if (datxKlrFp == 0) ERROR(); datxKlrFp(exp->clr);} break;
+	case (ClrOp): {
+		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
+		if (datxClrFp == 0) ERROR(); datxClrFp(exp->clr);} break;
+	case (KatOp): {
+		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
+		if (datxKatFp == 0) ERROR(); datxKatFp(exp->cat);} break;
+	case (CatOp): {
+		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
+		if (datxCatFp == 0) ERROR(); datxCatFp(exp->cat);} break;
 	case (InsOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
 		void *dat0 = 0; void *dat1 = 0; void *dat2 = 0; int typ0 = 0; int typ1 = 0; int typ2 = 0; datxSingle();

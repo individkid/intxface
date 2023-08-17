@@ -84,6 +84,7 @@ sem_t ready[Procs];
 void planeRead();
 void planeDupstr(char **ptr);
 void planeSizstr(int siz);
+void planeKlrstr(char chr);
 void planeClrstr(char chr);
 void planeKatstr(const char *str);
 void planeCatstr(const char *str);
@@ -661,7 +662,7 @@ void planeDupstr(char **ptr)
 	sem_safe(&resource,{*ptr = strdup(string);});
 }
 void planeSizstr(int siz)
-{
+{ // change strlim to siz
 	char *ptr = 0; int len = 0;
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
@@ -674,7 +675,7 @@ void planeSizstr(int siz)
 	planeSafe(Procs,Waits,ResultSize);
 }
 void planeKlrstr(char chr)
-{ // keep terminator
+{ // pack out prefix not including chr
 	char *ptr = 0; int len = 0;
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
@@ -685,7 +686,7 @@ void planeKlrstr(char chr)
 	planeSafe(Procs,Waits,ResultSize);
 }
 void planeClrstr(char chr)
-{ // overwrite terminator
+{ // pack out prefix including chr
 	char *ptr = 0; int len = 0;
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
@@ -696,7 +697,7 @@ void planeClrstr(char chr)
 	planeSafe(Procs,Waits,ResultSize);
 }
 void planeKatstr(const char *str)
-{ // keep terminator
+{ // append with terminator after strlim
 	char *ptr = 0; int len = strlen(str)+1;
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
@@ -706,7 +707,7 @@ void planeKatstr(const char *str)
 	planeSafe(Procs,Waits,ResultSize);
 }
 void planeCatstr(const char *str)
-{ // overwrite terminator
+{ // insert before first terminator
 	char *ptr = 0; int len = strlen(str);
 	sem_wait(&resource);
 	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
@@ -838,12 +839,12 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	luaxAdd("planeKlrstr",protoTypeHm(planeKlrstr)); luaxAdd("planeClrstr",protoTypeHm(planeClrstr));
 	luaxAdd("planeKatstr",protoTypeHf(planeKatstr)); luaxAdd("planeCatstr",protoTypeHf(planeCatstr));
 	luaxAdd("planeSetcfg",protoTypeCg(planeSetcfg)); luaxAdd("planeGetcfg",protoTypeTl(planeGetcfg));
-	// luaAdd("planeOutstr",protoTypeHf(planeOutstr));
-	datxDupstr(planeDupstr); // datxSizstr(planeSizstr);
-	// datxKlrstr(planeKlrstr); datxClrstr(planeClrstr);
-	// datxKatstr(planeKatstr); datxCatstr(planeCatstr);
+	// TODO luaAdd("planeOutstr",protoTypeHf(planeOutstr));
+	datxDupstr(planeDupstr); datxSizstr(planeSizstr);
+	datxKlrstr(planeKlrstr); datxClrstr(planeClrstr);
+	datxKatstr(planeKatstr); datxCatstr(planeCatstr);
 	datxSetcfg(planeSetcfg); datxGetcfg(planeGetcfg);
-	// datxOutstr(planeOutstr);
+	// TODO datxOutstr(planeOutstr);
 	datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;

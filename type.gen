@@ -600,6 +600,9 @@ Express = {
 	{"str","Str",{["opr"]={["RexOp"]=true,["EmbOp"]=true,["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
+	{"len","Int",{["opr"]={["SizOp"]=true}},{}},
+	{"clr","Chr",{["opr"]={["ClrOp"]=true,["KlrOp"]=true}},{}},
+	{"cat","Str",{["opr"]={["CatOp"]=true,["KatOp"]=true}},{}},
 	{"dtp","DataExp",{["opr"]={["DatOp"]=true}},1},
 	{"dat","Express",{["opr"]={["DatOp"]=true}},1},
 }
