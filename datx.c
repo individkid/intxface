@@ -11,10 +11,15 @@ int unique = 0;
 void *prefix = 0;
 rktype datxNoteFp = 0;
 rltype datxCallFp = 0;
-rmtype datxSetFp = 0;
-shtype datxGetFp = 0;
+cgtype datxSetFp = 0;
+tltype datxGetFp = 0;
 fftype datxEmbFp = 0;
 mqtype datxDupFp = 0;
+hgtype datxSizFp = 0;
+hmtype datxKlrFp = 0;
+hmtype datxClrFp = 0;
+hftype datxKatFp = 0;
+hftype datxCatFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -340,7 +345,7 @@ void datxOld(void **dat, float val)
 	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
 	BINARY_DONE()
 #define BINARY_SET(DAT,VAL) val = VAL;
-#define BINARY_CMP(DAT,VAL) val = datxEcmp(VAL,exp->cmp->cmp);
+#define BINARY_CMP(DAT,VAL) val = datxEcmp(VAL,exp->cnd->cmp[j]);
 int datxEcmp(int val, enum Compare cmp)
 {
 	switch (cmp) {
@@ -382,58 +387,53 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		BINARY_DONE() break;
 	case (CndOp): {
-		void *dats[exp->cnd->lft->siz]; int typs[exp->cnd->lft->siz]; int ret = 0; int idx = 0; int typ0 = 0;
-		for (int i = 0; i < exp->cnd->lft->siz; i++) {
-			int tmp = identUnion(exp->cnd->lft->typ[i]);
-			dats[i] = 0; typs[i] = datxEval(&dats[i],&exp->cnd->lft->exp[i],tmp);
-			if (typs[i] == -1 || tmp != -1 && typs[i] != tmp) ERROR();}
-		for (int i = 0; i < exp->cnd->siz; i++) if (exp->cnd->lft->siz < exp->cnd->rgt[i].siz) ERROR();
-		for (int i = 0; i < exp->cnd->siz; i++) {ret = 1; for (int j = 0; j < exp->cnd->rgt[i].siz; j++) {
-			void *dat0 = 0; int typ0 = 0; void *dat1 = 0; int typ1 = 0; int val = 0;
-			int tmp = identUnion(exp->cnd->rgt[i].typ[j]);
-			dat0 = dats[j]; typ0 = typs[j];
-			typ1 = datxEval(&dat1,&exp->cnd->rgt[i].exp[j],tmp);
-			if (typ1 == -1 || tmp != -1 && typ1 != tmp) ERROR();
-			if (typ0 != typ1) ERROR();
-			BINARY_TYPE(int,"Int",*datxIntz,BINARY_SET,BINARY_TRI) else
-			BINARY_TYPE(int32_t,"Int32",*datxInt32z,BINARY_SET,BINARY_TRI) else
-			BINARY_TYPE(double,"Num",*datxNumz,BINARY_SET,BINARY_TRI) else
-			BINARY_TYPE(float,"Old",*datxOldz,BINARY_SET,BINARY_TRI) else
-			BINARY_TYPE(char*,"Str",datxChrz,BINARY_SET,BINARY_STR) else
-			if (typ0 == identType("Str") && typ1 == identType("Regex")) {
-				char *lft = datxChrz(0,dat0); struct Regex rgt = {0};
-				assignDat(datxDat0,dat1); readRegex(&rgt,datxIdx0);
-				val = datxRegex(lft,&rgt);} else
-			if (typ0 == identType("Str") && typ1 == identType("Int")) {
-				char *lft = datxChrz(0,dat0); int rgt = *datxIntz(0,dat1); int emb = 0;
-				if (datxEmbFp == 0) ERROR();
-				emb = datxEmbFp(lft); val = (emb>rgt?1:(emb<rgt?-1:0));} else ERROR();
-			if (val != 0) ret = 0;
-			free(dat1); if (ret == 0) break;} if (ret == 1) {idx = i; break;}}
-		for (int i = 0; i < exp->cnd->lft->siz; i++) free(dats[i]);
-		if (ret == 0) ERROR();
-		typ0 = datxEval(dat,&exp->cnd->exp[idx],typ);
-		if (typ == -1) typ = typ0; if (typ != typ0) ERROR(); } break;
-	case (CmpOp): {
-		void *dat0 = 0; int typ0 = 0; void *dat1 = 0; int typ1 = 0; int val = 0;
-		typ0 = datxEval(&dat0,exp->cmp->lft,-1);
-		typ1 = datxEval(&dat1,exp->cmp->rgt,-1);
-		if (typ0 != typ1) ERROR();
-		BINARY_TYPE(int,"Int",*datxIntz,BINARY_CMP,BINARY_TRI) else
-		BINARY_TYPE(int32_t,"Int32",*datxInt32z,BINARY_CMP,BINARY_TRI) else
-		BINARY_TYPE(double,"Num",*datxNumz,BINARY_CMP,BINARY_TRI) else
-		BINARY_TYPE(float,"Old",*datxOldz,BINARY_CMP,BINARY_TRI) else
-		BINARY_TYPE(char*,"Str",datxChrz,BINARY_CMP,BINARY_STR) else
-		if (typ0 == identType("Str") && typ1 == identType("Regex")) {
-			char *lft = datxChrz(0,dat0); struct Regex rgt = {0};
-			assignDat(datxDat0,dat1); readRegex(&rgt,datxIdx0);
-			val = datxEcmp(datxRegex(lft,&rgt),exp->cmp->cmp);} else
-		if (typ0 == identType("Str") && typ1 == identType("Int")) {
-			char *lft = datxChrz(0,dat0); int rgt = *datxIntz(0,dat1); int emb = 0;
-			if (datxEmbFp == 0) ERROR();
-			emb = datxEmbFp(lft); val = datxEcmp((emb>rgt?1:(emb<rgt?-1:0)),exp->cmp->cmp);} else ERROR();
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,val); free(dat0); free(dat1);} break;
+		void *dats[exp->cnd->len]; int typs[exp->cnd->len]; int typ0 = 0; int val = 0; int idx = 0;
+		for (int i = 0; i < exp->cnd->len; i++) {
+			int typ0 = identType(exp->cnd->typ[i]);
+			dats[i] = 0; typs[i] = datxEval(&dats[i],&exp->cnd->var[i],typ0);
+			if (typs[i] == -1 || typ0 != -1 && typs[i] != typ0) ERROR();}
+		for (int i = 0; i < exp->cnd->siz; i++) {
+			if (exp->cnd->dom[i].len > exp->cnd->len) ERROR();
+			val = 1; for (int j = 0; j < exp->cnd->dom[i].len && val; j++) {
+				void *dat0 = dats[j]; int typ0 = typs[j];
+				switch (exp->cnd->cmp[j]) {
+				case (ReCmp): {
+					void *dat1 = 0; int typ1 = 0; struct Regex rex = {0};
+					if (typ0 != identType("Str")) ERROR();
+					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Regex"));
+					if (typ1 != identType("Regex")) ERROR();
+					assignDat(datxDat0,dat1); readRegex(&rex,datxIdx0);
+					val = datxRegex(datxChrz(0,dat0),&rex);
+					free(dat1); freeRegex(&rex);} break;
+				case (EbCmp): {
+					void *dat1 = 0; int typ1 = 0; char *lft = 0; char *rgt = 0;
+					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
+					if (typ0 != identType("Str") || typ1 != identType("Str")) ERROR();
+					lft = datxChrz(0,dat0); rgt = datxChrz(0,dat1);
+					val = (strncmp(lft,rgt,strlen(rgt)) == 0);
+					// TODO if (datxEmbFp == 0) ERROR(); val = datxEmbFp(rgt,lft);
+					free(dat1);} break;
+				case (PfCmp): {
+					void *dat1 = 0; int typ1 = 0; char *lft = 0; char *rgt = 0;
+					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
+					if (typ0 != identType("Str") || typ1 != identType("Str")) ERROR();
+					lft = datxChrz(0,dat0); rgt = datxChrz(0,dat1);
+					val = (strncmp(lft,rgt,strlen(rgt)) == 0);
+					free(dat1);} break;
+				default: {
+					void *dat1 = 0; int typ1 = 0;
+					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],typ0);
+					if (typ0 != typ1) ERROR();
+					BINARY_TYPE(int,"Int",*datxIntz,BINARY_CMP,BINARY_TRI) else
+					BINARY_TYPE(int32_t,"Int32",*datxInt32z,BINARY_CMP,BINARY_TRI) else
+					BINARY_TYPE(double,"Num",*datxNumz,BINARY_CMP,BINARY_TRI) else
+					BINARY_TYPE(float,"Old",*datxOldz,BINARY_CMP,BINARY_TRI) else
+					BINARY_TYPE(char *,"Str",datxChrz,BINARY_CMP,BINARY_STR) else
+					ERROR(); free(dat1);} break;}}
+			if (val) {idx = i; break;}} if (!val) ERROR();
+		for (int i = 0; i < exp->cnd->len; i++) free(dats[i]);
+		typ0 = datxEval(dat,&exp->cnd->rng[idx],typ);
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (TotOp): {
 		int typ0 = 0; datxSingle();
 		typ0 = datxEval(dat,exp->tot,-1);
@@ -475,12 +475,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (GetOp): {
 		if (datxGetFp == 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxGetFp(dat,exp->cfg);} break;
+		datxInt(dat,datxGetFp(exp->cfg));} break;
 	case (SetOp): {
 		int typ0 = 0; if (datxSetFp == 0) ERROR();
 		typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ0 != identType("Int")) ERROR();
-		datxSetFp(*dat,exp->cgs);} break;
+		datxSetFp(*datxIntz(0,*dat),exp->cgs);} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
@@ -493,6 +493,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		char *str = 0;
 		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
 		if (datxDupFp == 0) ERROR(); datxDupFp(&str); datxStr(dat,str);} break;
+	case (SizOp): { // TODO
+		} break;
+	case (KlrOp): { // TODO
+		} break;
+	case (ClrOp): { // TODO
+		} break;
+	case (KatOp): { // TODO
+		} break;
+	case (CatOp): { // TODO
+		} break;
 	case (InsOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
 		void *dat0 = 0; void *dat1 = 0; void *dat2 = 0; int typ0 = 0; int typ1 = 0; int typ2 = 0; datxSingle();
@@ -546,10 +556,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = typ1; if (typ != typ1) ERROR();
 		assignDat(dat,*datxDat2);
 		free(dat0); free(dat1); freeHomgen(&idx);} break;
-	case (CatOp): {
+	case (LstOp): {
 		void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0; datxSingle();
-		typ0 = datxEval(&dat0,&exp->cat[0],-1);
-		typ1 = datxEval(&dat1,&exp->cat[1],-1);
+		typ0 = datxEval(&dat0,&exp->lst[0],-1);
+		typ1 = datxEval(&dat1,&exp->lst[1],-1);
 		if (typ0 != typ1) ERROR(); if (typ0 == identType("Homgen")) {
 		struct Homgen hom0 = {0}; struct Homgen hom1 = {0}; struct Homgen hom2 = {0};
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
@@ -594,6 +604,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
 		datxNone(datxDat0); writeHomgen(&val,datxIdx0); assignDat(dat,*datxDat0);
 		freeHomgen(&val);} break;
+	case (EmmOp): {
+		if (typ == -1) typ = identType("Hetgen"); if (typ != identType("Hetgen")) ERROR();
+		datxNone(datxDat0); writeHetgen(exp->het,datxIdx0); assignDat(dat,*datxDat0);} break;
+	case (OmmOp): {
+		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
+		datxNone(datxDat0); writeHomgen(exp->hom,datxIdx0); assignDat(dat,*datxDat0);} break;
+	case (RexOp): {
+		struct Regex rex = {0}; datxNone(&rex.dat); assignStr(&rex.str,exp->str);
+		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
+		freeRegex(&rex);} break;
 	case (ImmOp): {
 		if (typ == -1) typ = identUnion(exp->val->tag); if (typ != identUnion(exp->val->tag)) ERROR();
 		datxSingle(); datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,*datxDat0);} break;
@@ -613,7 +633,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,unique++);} break;
 	case (EmbOp): {
-		void *save = 0; if (datxEmbFp == 0) ERROR();
+		if (datxEmbFp == 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,datxEmbFp(exp->str));} break;
 	case (NamOp): {
@@ -647,11 +667,11 @@ void datxCaller(rltype fnc)
 {
 	datxCallFp = fnc;
 }
-void datxSetter(rmtype fnc)
+void datxSetcfg(cgtype fnc)
 {
 	datxSetFp = fnc;
 }
-void datxGetter(shtype fnc)
+void datxGetcfg(tltype fnc)
 {
 	datxGetFp = fnc;
 }
@@ -662,4 +682,24 @@ void datxEmbed(fftype fnc)
 void datxDupstr(mqtype fnc)
 {
 	datxDupFp = fnc;
+}
+void datxSizstr(hgtype fnc)
+{
+	datxSizFp = fnc;
+}
+void datxKlrstr(hmtype fnc)
+{
+	datxKlrFp = fnc;
+}
+void datxClrstr(hmtype fnc)
+{
+	datxClrFp = fnc;
+}
+void datxKatstr(hftype fnc)
+{
+	datxKatFp = fnc;
+}
+void datxCatstr(hftype fnc)
+{
+	datxCatFp = fnc;
 }
