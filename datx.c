@@ -615,6 +615,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxNone(datxDat0); writeHomgen(exp->hom,datxIdx0); assignDat(dat,*datxDat0);} break;
 	case (RexOp): {
 		struct Regex rex = {0}; datxNone(&rex.dat); assignStr(&rex.str,exp->str);
+		if (typ == -1) typ = identType("Regex"); if (typ != identType("Regex")) ERROR();
 		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
 		freeRegex(&rex);} break;
 	case (ImmOp): {
