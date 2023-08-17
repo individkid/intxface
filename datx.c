@@ -485,13 +485,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (SavOp): {
-		int typ0 = 0; void *dat0 = 0; void *key = 0;
+		int typ0 = 0; void *key = 0;
 		typ0 = datxEval(dat,exp->sav,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		datxStr(&key,exp->kys); datxInsert(key,*dat,typ0); free(key);} break;
 	case (DupOp): {
-		char *str = 0;
-		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
-		if (datxDupFp == 0) ERROR(); datxDupFp(&str); datxStr(dat,str);} break;
+		char *str = 0; if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
+		if (datxDupFp == 0) ERROR(); datxDupFp(&str); datxStr(dat,str); free(str);} break;
 	case (SizOp): {
 		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
 		if (datxSizFp == 0) ERROR(); datxSizFp(exp->len);} break;

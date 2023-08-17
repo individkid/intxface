@@ -322,7 +322,7 @@ Bootstrap = {
 			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)"..
 			"var[0]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
 			"var[1]:Express(opr:Operate(ValOp)key:Str(Changed))"..
-			-- "var[2]:Express(opr:Operate(StrOp)str:Str())"..
+			-- "var[2]:Express(opr:Operate(DupOp))"..
 			"dom[0]:Domain(len:Int(1)"..
 				"val[0]:Express(opr:Operate(CfgOp)cvl:Configure(CenterMemory)))"..
 			"dom[1]:Domain(len:Int(2)"..
@@ -597,7 +597,7 @@ Express = {
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
-	{"str","Str",{["opr"]={["RexOp"]=true,["EmbOp"]=true,["NamOp"]=true}},{}},
+	{"str","Str",{["opr"]={["RexOp"]=true,["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"len","Int",{["opr"]={["SizOp"]=true}},{}},
