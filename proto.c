@@ -180,6 +180,12 @@ const struct Closure *protoCloseGf(const char *one, const char *oth)
 	protoMakeSf(&argbuf.aa[1],oth);
 	return &argbuf;
 }
+const struct Closure *protoCloseFf(const char *str)
+{
+	protoClose(1,1);
+	protoMakeSf(&argbuf.aa[0],str);
+	return &argbuf;
+}
 const struct Closure *protoCloseGg(int rfd, int wfd)
 {
 	protoClose(2,1);
@@ -213,6 +219,10 @@ int protoResultQf()
 	return argbuf.ab[0].ia;
 }
 int protoResultGf()
+{
+	return argbuf.ab[0].ia;
+}
+int protoResultFf()
 {
 	return argbuf.ab[0].ia;
 }

@@ -33,7 +33,7 @@ void datxChanged(rktype fnc);
 void datxCaller(rltype fnc);
 void datxSetcfg(cgtype fnc);
 void datxGetcfg(tltype fnc);
-void datxEmbed(fftype fnc);
+void datxEmbed(gftype fnc);
 void datxDupstr(mqtype fnc);
 void datxSizstr(hgtype fnc);
 void datxKlrstr(hmtype fnc);

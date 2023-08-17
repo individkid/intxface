@@ -598,6 +598,8 @@ Express = {
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
 	{"str","Str",{["opr"]={["RexOp"]=true,["EmbOp"]=true,["NamOp"]=true}},{}},
+	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
+	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"dtp","DataExp",{["opr"]={["DatOp"]=true}},1},
 	{"dat","Express",{["opr"]={["DatOp"]=true}},1},
 }

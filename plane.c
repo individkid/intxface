@@ -742,11 +742,11 @@ void planeInsert(const char *key, const char *val)
 	datxInsert(src,dst,identType("Str"));
 	free(src); free(dst);
 }
-int planeSide(const char *exp)
+int planeSide(const char *exp, const char *arg)
 {
-	const struct Closure *fnc = protoCloseRi();
+	const struct Closure *fnc = protoCloseFf(arg);
 	if (luaxExpr(exp,fnc) != 0) ERROR();
-	return protoResultRi();
+	return protoResultFf();
 }
 void planeTerm(int sig)
 {

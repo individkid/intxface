@@ -13,7 +13,7 @@ rktype datxNoteFp = 0;
 rltype datxCallFp = 0;
 cgtype datxSetFp = 0;
 tltype datxGetFp = 0;
-fftype datxEmbFp = 0;
+gftype datxEmbFp = 0;
 mqtype datxDupFp = 0;
 hgtype datxSizFp = 0;
 hmtype datxKlrFp = 0;
@@ -406,12 +406,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 					val = datxRegex(datxChrz(0,dat0),&rex);
 					free(dat1); freeRegex(&rex);} break;
 				case (EbCmp): {
-					void *dat1 = 0; int typ1 = 0; char *lft = 0; char *rgt = 0;
+					void *dat1 = 0; int typ1 = 0; char *arg = 0; char *scr = 0;
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
 					if (typ0 != identType("Str") || typ1 != identType("Str")) ERROR();
-					lft = datxChrz(0,dat0); rgt = datxChrz(0,dat1);
-					val = (strncmp(lft,rgt,strlen(rgt)) == 0);
-					// TODO if (datxEmbFp == 0) ERROR(); val = datxEmbFp(rgt,lft);
+					arg = datxChrz(0,dat0); scr = datxChrz(0,dat1);
+					if (datxEmbFp == 0) ERROR(); val = datxEmbFp(scr,arg);
 					free(dat1);} break;
 				case (PfCmp): {
 					void *dat1 = 0; int typ1 = 0; char *lft = 0; char *rgt = 0;
@@ -635,7 +634,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (EmbOp): {
 		if (datxEmbFp == 0) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxEmbFp(exp->str));} break;
+		datxInt(dat,datxEmbFp(exp->scr,exp->arg));} break;
 	case (NamOp): {
 		int typ0 = 0; if (datxCallFp == 0) ERROR();
 		typ0 = datxCallFp(dat,exp->str);
@@ -675,7 +674,7 @@ void datxGetcfg(tltype fnc)
 {
 	datxGetFp = fnc;
 }
-void datxEmbed(fftype fnc)
+void datxEmbed(gftype fnc)
 {
 	datxEmbFp = fnc;
 }
