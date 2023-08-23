@@ -124,18 +124,14 @@ that increases at constant rate until reset to zero upon Output above zero.
 
 Pulse has Output that is unsigned-pulse started when Input is above High input,
 primed when Input is below Low input.
-Internal square wave goes high when it is high and input is above Low,
-or input is above High.
-Delayed internal square wave goes high when
-integral of internal square wave is above Control maximum.
-Output pulse is internal square wave minus delayed internal square wave,
-latched to above zero.
+Internal square wave goes high when it is high and input is above Low, or input is above High.
+Delayed internal square wave goes high when integral of internal square wave is above Control maximum.
+Output pulse is internal square wave minus delayed internal square wave, latched to above zero.
 Pulse assumes input has amplitude such that it goeas above High once per cycle.
 
 Saturate amplifies Input until just before Output reaches a maximum amplitude.
 This is a Vca controlled by a Level controlled by a Switch that is just above zero
-if Input is less than switch Control,
-and way negative if Input is greater than switch Control.
+if Input is less than switch Control, and way negative if Input is greater than switch Control.
 
 Switch gets Output from Left if Input is greater than Control, otherwise from Right.
 
