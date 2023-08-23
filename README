@@ -102,70 +102,59 @@ page test file struct to from field structured NSTextView.
 share test queues between stages that permute and modify pipe streams.
 
 Analog input to phone includes bugle and found object percussion,
-distorted by interpolation of signal at different frequencies.
-Mostly constant are phase and rate, phase having an extra sign bit.
-Mostly zero is impulse. Mostly negative is gate.
-Periodic are gate, impulse, wave, triangle, square.
-Alterbox: gate,wave,wave->wave
- (1/2+gate/2)*((wave2<0)^(wave1>0))*wave1+(1/2-gate/2)*wave2
-Gatebox: impulse,wave->wave monotonic between negate, zero, and passthrough
-Lockbox: square,square->triangle pll
- square,square->Makebox->Nudgebox->Voltbox
-Voltbox: rate->triangle vco
- (triangle->Knockbox->Fishbox),rate->Slopebox
-Slopebox: square,rate->triangle increase or decrease at given rate
-Equalbox: square->triangle same frequency
- square,(impulse->Nudgebox)->Slopebox->triangle->Clipbox->impulse
-Bitbox: wave->square double integrator
-Fishbox: impulse->square flip flop to stay opposite from last impulse
- (square>0 && impulse>-1/2) || (square<0 && impulse>1/2)
-Unitbox: potentiometer,square->square clock divider
-Zerobox: impulse->gate negative if zero, or positive
- impulse>small || impulse<-small ? 1 : -1
-Phasebox: triangle,phase->logic at the phase on the triangle
- phase->level0,sign0 phase->Delaybox->level1,sign1
- (triangle>level0 ^ !sign0) && (triangle<level1 ^ !sign1)
-Clipbox: wave->impulse saturated to negative, zero to positive, or to zero
- (wave>1-small || wave<small-1 ? -1 : (wave>-small && wave<small ? 1 : 0))
-Knockbox: wave->impulse saturated to sign, or to zero
- (wave>1-small ? 1 : (wave<small-1 ? -1 : 0))
-Openbox: square->impulse differentiator
-Makebox: square,square->impulse comparator
- square0->Openbox->edge0 square1->Openbox->edge1
- (edge0>0 ? edge0 : -edge0)-(edge1>0 ? edge1 : -edge1)
-Nudgebox: impulse->rate average wave with impulse upon nonzero
- impulse,(impulse->Zerobox)->Ratebox
-Ratebox: wave,gate->rate average wave with constant upon logic
-Justbox: potentiometer->phase adjuster
- For potentiometer x from -1 to 1, we want y(-1) = y(0) = y(1) = 0.
- For x between -1/2 and 1/2, y(x) = 2*(0-x).
- For x < -1/2, y(x) = 2*(x+1). For x > 1/2, y(x) = 2*(x-1).
-Delaybox: potentiometer,phase->phase trim phase
-Frombox: inputWave->inputLevel
- input-phase input-width Ratebox-responsiveness Slopebox-responsiveness
- inputSquare: inputWave->Bitbox
- inputTriangle: inputSquare->Equalbox
- inputPhase: inputTriangle,Justbox->Phasebox
- inputLevel: inputWave,inputPhase->Ratebox
-Harmonicbox: inputWave->harmonicTriangle
- harmonic-divider Nudgebox-responsiveness Slopebox-responsiveness
- inputSquare: inputWave->Bitbox
- harmonicTriangle: inputSquare->Harmonicbox
- harmonicSquare: harmonicTriangle->Bitbox
- feedbackSquare: harmonicSquare->Unitbox
- harmonicTriangle: givenSquare,feedbackSquare->Lockbox
-Tobox: inputWave,harmonicTriangle,inputLevel->outputWave
- harmonic-phase harmonic-width harmonic-slope Slopebox-responsiveness
- harmonicPhase: harmonicTriangle,Justbox->Phasebox
- harmonitWave: harmonicPhase,potentiometer->Slopebox
- outputWave: harmonicWave,inputLevel,inputWave->Alterbox
-Varybox: inputWave->outputWave
- inputLevel: inputWave->Frombox
- harmonicTriangle: inputWave->Harmonmicbox
- outputWave: inputWave,harmonicTriangle,inputLevel->Tobox
-Alterbox,Bitbox,Clipbox,Delaybox,Equalbox,Frombox,Gatebox,Harmonicbox,I,
-Justbox,Knockbox,Levelbox,Makebox,Nudgebox,Openbox,Phasebox,Q,
-Ratebox,Slopebox,Tobox,U,Varybox,W,X,Y,Z.
+distorted by sine wave phase locked loops.
+
+Pll Output is sine wave fundamental of Input.
+
+Vca has signal Input, signal Output, and Control. It is an op amp amplifier with gain controlled by feedback through Control controlled JFET.
+
+Level has relatively constant Output changed by Input signed-pulse.
+
+Minus uses Output from Adder of Left input to Negate of Right input.
+
+Adder adds Left to Right for Output.
+
+Negate negates Input to Output.
+
+Skip has Output that is zero or Input if not skipped. Input is skipped if given Control is above internal level that increases at constant rate until reset to zero upon Output above zero.
+
+Pulse has Output that is unsigned-pulse started when Input is above High input, primed when Input is below Low input. Internal square wave goes high when it is high and input is above Low, or input is above High. Delayed internal square wave goes high when integral of internal square wave is above Control maximum. Output pulse is internal square wave minus delayed internal square wave, latched to above zero. Pulse assumes input has amplitude such that it goeas above High once per cycle.
+
+Saturate amplifies Input until just before Output reaches a maximum amplitude. This is a Vca controlled by a Level controlled by a Switch that is just above zero if Input is less than switch Control, and way negative if Input is greater than switch Control.
+
+Switch gets Output from Left if Input is greater than Control, otherwise from Right.
+
+Double differentiator has Input and Output that should be nearly equal if a sine wave.
+
+Pll-O -> Vca-I
+Vca-O -> Double-I
+Level-O -> Vca-C
+Minus-O -> Level-I
+SkipL-O -> Minus-L
+SkipR-O -> Minus-R
+PulseL-O -> SkipL-I
+PulseR-O -> SkipR-I
+VcaSaturateL-O -> PulseL-I
+VcaSaturateR-O -> PulseR-I
+Pll-I -> VcaSaturateL-I
+Double-O -> VcaSaturateR-I
+Double-O -> Pll-O
+VcaSaturateL-O -> SwitchSL-I
+SwitchSL-O -> LevelSL-I
+LevelSL-O -> VcaSaturateL-C
+VcaSaturateR-O -> SwitchSR-I
+SwitchSR-O -> LevelSR-I
+LevelSR-O -> VcaSaturateR-C
+
+almost-posmax -> SwitchS-C
+way-negative -> SwitchS-L
+somewhat-positive -> SwitchS-R
+almost-posmax -> Pulse-H
+almost-poszero-> Pulse-L
+left-trim -> PulseL-C
+right-trim -> PulseR-C
+denominator-pot-> SkipL-C
+numerator-pot -> SkipR-C
 
 sculpt.lua starts file plane space to manipulate double dash polytopes.
 This converts double dash commands in files
