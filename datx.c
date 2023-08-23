@@ -14,12 +14,10 @@ rltype datxCallFp = 0;
 cgtype datxSetFp = 0;
 tltype datxGetFp = 0;
 gftype datxEmbFp = 0;
-mqtype datxDupFp = 0;
-hgtype datxSizFp = 0;
-hmtype datxKlrFp = 0;
-hmtype datxClrFp = 0;
-hftype datxKatFp = 0;
-hftype datxCatFp = 0;
+sftype datxDupFp = 0;
+rptype datxInsFp = 0;
+rqtype datxDelFp = 0;
+hftype datxOutFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -488,31 +486,13 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; void *key = 0;
 		typ0 = datxEval(dat,exp->sav,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		datxStr(&key,exp->kys); datxInsert(key,*dat,typ0); free(key);} break;
-	case (DupOp): {
-		char *str = 0; if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
-		if (datxDupFp == 0) ERROR(); datxDupFp(&str); datxStr(dat,str); free(str);} break;
-	case (SizOp): {
-		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		if (datxSizFp == 0) ERROR(); datxSizFp(exp->len);} break;
-	case (KlrOp): {
-		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		if (datxKlrFp == 0) ERROR(); datxKlrFp(exp->clr);} break;
-	case (ClrOp): {
-		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		if (datxClrFp == 0) ERROR(); datxClrFp(exp->clr);} break;
-	case (KatOp): {
-		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		if (datxKatFp == 0) ERROR(); datxKatFp(exp->cat);} break;
-	case (CatOp): {
-		datxNone(dat); if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		if (datxCatFp == 0) ERROR(); datxCatFp(exp->cat);} break;
-	case (InsOp): {
+	case (FldOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
 		void *dat0 = 0; void *dat1 = 0; void *dat2 = 0; int typ0 = 0; int typ1 = 0; int typ2 = 0; datxSingle();
-		typ0 = datxEval(dat,&exp->ins[0],typ); if (typ == -1) typ = typ0; if (typ0 != typ) ERROR();
-		typ0 = datxEval(&dat0,&exp->ins[1],identType("Hetgen")); if (typ0 != identType("Hetgen")) ERROR();
-		typ1 = datxEval(&dat1,&exp->ins[2],identType("Homgen")); if (typ1 != identType("Homgen")) ERROR();
-		typ2 = datxEval(&dat2,&exp->ins[3],identType("Homgen")); if (typ2 != identType("Homgen")) ERROR();
+		typ0 = datxEval(dat,&exp->fld[0],typ); if (typ == -1) typ = typ0; if (typ0 != typ) ERROR();
+		typ0 = datxEval(&dat0,&exp->fld[1],identType("Hetgen")); if (typ0 != identType("Hetgen")) ERROR();
+		typ1 = datxEval(&dat1,&exp->fld[2],identType("Homgen")); if (typ1 != identType("Homgen")) ERROR();
+		typ2 = datxEval(&dat2,&exp->fld[3],identType("Homgen")); if (typ2 != identType("Homgen")) ERROR();
 		assignDat(datxDat0,dat0); assignDat(datxDat1,dat1); assignDat(datxDat2,dat2);
 		readHetgen(&val,datxIdx0); readHomgen(&str,datxIdx1); readHomgen(&idx,datxIdx2);
 		if (val.siz != str.siz || val.siz != idx.siz) ERROR(); if (str.tag != StrTag || idx.tag != IntTag) ERROR();
@@ -683,27 +663,19 @@ void datxEmbed(gftype fnc)
 {
 	datxEmbFp = fnc;
 }
-void datxDupstr(mqtype fnc)
+void datxDupstr(sftype fnc)
 {
 	datxDupFp = fnc;
 }
-void datxSizstr(hgtype fnc)
+void datxInsstr(rptype fnc)
 {
-	datxSizFp = fnc;
+	datxInsFp = fnc;
 }
-void datxKlrstr(hmtype fnc)
+void datxDelstr(rqtype fnc)
 {
-	datxKlrFp = fnc;
+	datxDelFp = fnc;
 }
-void datxClrstr(hmtype fnc)
+void datxOutstr(hftype fnc)
 {
-	datxClrFp = fnc;
-}
-void datxKatstr(hftype fnc)
-{
-	datxKatFp = fnc;
-}
-void datxCatstr(hftype fnc)
-{
-	datxCatFp = fnc;
+	datxOutFp = fnc;
 }

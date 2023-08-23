@@ -65,9 +65,8 @@ wftype callDraw = 0;
 pthread_t thread[Procs];
 pthread_key_t retstr;
 // resource protected:
-char *string = 0;
+char **string = 0;
 int strsiz = 0;
-int strlim = 0;
 int numpipe = 0;
 int calling = 0;
 int qsize = 0;
@@ -82,12 +81,6 @@ sem_t resource;
 sem_t pending;
 sem_t ready[Procs];
 void planeRead();
-void planeDupstr(char **ptr);
-void planeSizstr(int siz);
-void planeKlrstr(char chr);
-void planeClrstr(char chr);
-void planeKatstr(const char *str);
-void planeCatstr(const char *str);
 int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
@@ -512,7 +505,6 @@ void planeConfig(enum Configure cfg, int val)
 	case (ElementSize): element = planeResize(element,sizeof(struct Kernel),val,tmp); break;
 	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
-	case (ResultSize): planeSizstr(val); break;
 	case (RegisterOpen): planeStarted(val); break;
 	case (RegisterFind): found = 0; break;
 	default: break;}
@@ -657,63 +649,47 @@ void planeRead()
 	if (num) readCenter(&center,internal);
 	else {struct Center tmp = {0}; center = tmp;}
 }
-void planeDupstr(char **ptr)
+void planeDupstr(char **ptr, int idx)
 {
-	sem_safe(&resource,{*ptr = strdup(string);});
-}
-void planeSizstr(int siz)
-{ // change strlim to siz
-	char *ptr = 0; int len = 0;
 	sem_wait(&resource);
-	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
-	if (strsiz < siz) {strsiz = siz; string = realloc(string,strsiz);}
-	while (strlim < siz) string[strlim++] = 0;
-	ptr = string + (strlim-siz); if (ptr == 0) ptr = strchr(string,0); ptr += 1;
-	len = ptr-string; strlim -= len; configure[ResultSize] = strlim;
-	memmove(string,ptr,strsiz-len); for (int i = strlim; i < strsiz; i++) string[i] = 0;
+	if (strsiz == 0) planeCatstr("");
+	*ptr = strdup(string[idx]);
 	sem_post(&resource);
-	planeSafe(Procs,Waits,ResultSize);
 }
-void planeKlrstr(char chr)
-{ // pack out prefix not including chr
-	char *ptr = 0; int len = 0;
+void planeInsstr(const char *src, int len, int idx, int loc)
+{
 	sem_wait(&resource);
-	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
-	ptr = strchr(string,chr); if (ptr == 0) ptr = strchr(string,0);
-	len = ptr-string; strlim -= len; configure[ResultSize] = strlim;
-	memmove(string,ptr,strsiz-len); for (int i = strlim; i < strsiz; i++) string[i] = 0;
 	sem_post(&resource);
-	planeSafe(Procs,Waits,ResultSize);
 }
-void planeClrstr(char chr)
-{ // pack out prefix including chr
-	char *ptr = 0; int len = 0;
+void planeDelstr(int len, int idx, int loc)
+{
 	sem_wait(&resource);
-	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
-	ptr = strchr(string,chr); if (ptr == 0) ptr = strchr(string,0); ptr += 1;
-	len = ptr-string; strlim -= len; configure[ResultSize] = strlim;
-	memmove(string,ptr,strsiz-len); for (int i = strlim; i < strsiz; i++) string[i] = 0;
 	sem_post(&resource);
-	planeSafe(Procs,Waits,ResultSize);
 }
-void planeKatstr(const char *str)
-{ // append with terminator after strlim
-	char *ptr = 0; int len = strlen(str)+1;
+void planeOutstr(const char *str)
+{
+	write(STDIN_FILENO,str,strlen(str));
+}
+void planeClrstr(char **ptr)
+{
 	sem_wait(&resource);
-	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
-	if (strlim+len > strsiz) {strsiz = strlim+len; string = realloc(string,strsiz);}
-	strcpy(string+strlim,str); strlim += len; configure[ResultSize] = strlim;
+	if (strsiz == 0) ERROR();
+	printf("planeClrstr %s\n",string[0]);
+	*ptr = strdup(string[0]);
+	free(string[0]);
+	for (int i = 1; i < strsiz; i++) string[i-1] = string[i];
+	strsiz--;
+	string = realloc(string,strsiz*sizeof(char*));
+	printf("planeClrstr\n");
 	sem_post(&resource);
-	planeSafe(Procs,Waits,ResultSize);
 }
 void planeCatstr(const char *str)
-{ // insert before first terminator
-	char *ptr = 0; int len = strlen(str);
+{
 	sem_wait(&resource);
-	if (!string) {string = malloc(1); string[0] = 0; strsiz = 1;}
-	// TODO insert at first string terminator
+	strsiz++;
+	string = realloc(string,strsiz*sizeof(char*));
+	string[strsiz-1] = strdup(str);
 	sem_post(&resource);
-	planeSafe(Procs,Waits,ResultSize);
 }
 void planeSetcfg(int val, int sub)
 {
@@ -755,7 +731,7 @@ void planeTerm(int sig)
 void *planeExternal(void *ptr)
 {
 	struct Argument arg = {0}; char *str = 0;
-	planeClrstr(0); planeDupstr(&str); planeClrstr(0);
+	planeClrstr(&str); free(str); planeClrstr(&str);
 	if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[External]);
 	while (1) {
@@ -835,16 +811,12 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	luaxAdd("planeDupstr",protoTypeMq(planeDupstr)); luaxAdd("planeSizstr",protoTypeHg(planeSizstr));
-	luaxAdd("planeKlrstr",protoTypeHm(planeKlrstr)); luaxAdd("planeClrstr",protoTypeHm(planeClrstr));
-	luaxAdd("planeKatstr",protoTypeHf(planeKatstr)); luaxAdd("planeCatstr",protoTypeHf(planeCatstr));
+	luaxAdd("planeDupstr",protoTypeSf(planeDupstr)); luaxAdd("planeOutstr",protoTypeHf(planeOutstr));
+	luaxAdd("planeInsstr",protoTypeRp(planeInsstr)); luaxAdd("planeDelstr",protoTypeRq(planeDelstr));
 	luaxAdd("planeSetcfg",protoTypeCg(planeSetcfg)); luaxAdd("planeGetcfg",protoTypeTl(planeGetcfg));
-	// TODO luaAdd("planeOutstr",protoTypeHf(planeOutstr));
-	datxDupstr(planeDupstr); datxSizstr(planeSizstr);
-	datxKlrstr(planeKlrstr); datxClrstr(planeClrstr);
-	datxKatstr(planeKatstr); datxCatstr(planeCatstr);
+	datxDupstr(planeDupstr); datxOutstr(planeOutstr);
+	datxInsstr(planeInsstr); datxDelstr(planeDelstr);
 	datxSetcfg(planeSetcfg); datxGetcfg(planeGetcfg);
-	// TODO datxOutstr(planeOutstr);
 	datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;

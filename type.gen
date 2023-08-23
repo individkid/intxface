@@ -48,31 +48,31 @@ Memory = {
 	"Configurez", --c,a; configure to value
 }
 Configure = {
-	"TriangleSize", -- written refers to corners
+	"TriangleSize", -- refers to corners
 	"TriangleBase", --
-	"NumericSize", -- written planes for corners
+	"NumericSize", -- planes for corners
 	"NumericBase", --
-	"VertexSize", -- written corners of frame
+	"VertexSize", -- corners of frame
 	"VertexBase", --
-	"SubjectSize", -- written per view matrix
+	"SubjectSize", -- per view matrix
 	"SubjectBase", --
-	"ObjectSize", -- written per polytope matrix
+	"ObjectSize", -- per polytope matrix
 	"ObjectBase", --
-	"ElementSize", -- written per plane matrix
+	"ElementSize", -- per plane matrix
 	"ElementBase", --
-	"SwarmSize", -- written early warning system
+	"SwarmSize", -- early warning system
 	"SwarmBase", --
-	"TextureSize", -- written how to decorate
+	"TextureSize", -- how to decorate
 	"TextureBase", --
-	"TextualSize", -- written how to decorate
+	"TextualSize", -- how to decorate
 	"TextualBase", --
-	"BasisSize", -- written cospace converters
+	"BasisSize", -- cospace converters
 	"BasisBase", --
-	"PierceSize", -- written pierce points
+	"PierceSize", -- pierce points
 	"PierceBase", --
-	"SliceSize", -- written ranges per draw
+	"SliceSize", -- ranges per draw
 	"SliceBase", --
-	"MachineSize", -- written vending machine lines
+	"MachineSize", -- vending machine lines
 	"UniformAll", -- which subject matrix
 	"UniformOne", -- which element matrix
 	"UniformLeft", -- pierce point horizontal
@@ -95,7 +95,7 @@ Configure = {
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
-	"ResultSize", -- result of append to strings
+	"ResultString", -- which string changed
 	"OriginLeft", -- starting cursor
 	"OriginBase", --
 	"OriginNear", --
@@ -218,13 +218,7 @@ Operate = {
 	"SetOp", -- callback with value
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
-	"DupOp", -- peek next string
-	"SizOp", -- change next string
-	"KlrOp", -- change next string
-	"ClrOp", -- change next string
-	"KatOp", -- change next string
-	"CatOp", -- change next string
-	"InsOp", -- fields to struct
+	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
 	"PrmOp", -- permute list
 	"LstOp", -- join lists
@@ -384,16 +378,16 @@ Bootstrap = {
 		"mch[12]:Machine(xfr:Transfer(Eval)exp[0]:Express(opr:Operate(IntOp)ivl:Int(0)))"..
 		"mch[13]:Machine(xfr:Transfer(Name)str:Str(GetPierce))"..
 		-- Eval and Echo singleton Pierce to center, Fill and Write center
-		"mch[14]:Machine(xfr:Transfer(Eval)exp[0]:Express(opr:Operate(InsOp)".. -- copy to accumulator
-			"ins[0]:Express(opr:Operate(ImmOp)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
+		"mch[14]:Machine(xfr:Transfer(Eval)exp[0]:Express(opr:Operate(FldOp)".. -- copy to accumulator
+			"fld[0]:Express(opr:Operate(ImmOp)val[0]:Generic(tag:Tag(CenterTag)center[0]:Center("..
 				"mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
 				"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
 				"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
 				"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))))".. -- Express struct
-			"ins[1]:Express(opr:Operate(HetOp)siz:Int(1)exp[0]:Express(opr:Operate(TotOp)typ:Str(Int32)"..
+			"fld[1]:Express(opr:Operate(HetOp)siz:Int(1)exp[0]:Express(opr:Operate(TotOp)typ:Str(Int32)"..
 				"tot[0]:Express(opr:Operate(GetOp)cfg:Configure(RegisterIndex))))".. -- Hetgen field values
-			"ins[2]:Express(opr:Operate(HomOp)siz:Int(1)exp[0]:Express(opr:Operate(StrOp)svl:Str(idx)))".. -- Homgen Str field names
-			"ins[3]:Express(opr:Operate(HomOp)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)ivl:Int(0)))))".. -- Homgen Int field indices
+			"fld[2]:Express(opr:Operate(HomOp)siz:Int(1)exp[0]:Express(opr:Operate(StrOp)svl:Str(idx)))".. -- Homgen Str field names
+			"fld[3]:Express(opr:Operate(HomOp)siz:Int(1)exp[0]:Express(opr:Operate(IntOp)ivl:Int(0)))))".. -- Homgen Int field indices
 		"mch[15]:Machine(xfr:Transfer(Echo))".. -- copy from accumulator to center
 		"mch[16]:Machine(xfr:Transfer(Fill))".. -- copy from memory into center
 		"mch[17]:Machine(xfr:Transfer(Write))".. -- write center
@@ -584,7 +578,7 @@ Express = {
 	{"key","Str",{["opr"]={["ValOp"]=true}},{}},
 	{"kys","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"sav","Express",{["opr"]={["SavOp"]=true}},1},
-	{"ins","Express",{["opr"]={["InsOp"]=true}},4},
+	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
 	{"lst","Express",{["opr"]={["LstOp"]=true}},2},
@@ -600,9 +594,6 @@ Express = {
 	{"str","Str",{["opr"]={["RexOp"]=true,["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
-	{"len","Int",{["opr"]={["SizOp"]=true}},{}},
-	{"clr","Chr",{["opr"]={["ClrOp"]=true,["KlrOp"]=true}},{}},
-	{"cat","Str",{["opr"]={["CatOp"]=true,["KatOp"]=true}},{}},
 	{"dtp","DataExp",{["opr"]={["DatOp"]=true}},1},
 	{"dat","Express",{["opr"]={["DatOp"]=true}},1},
 }

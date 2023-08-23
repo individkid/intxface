@@ -311,7 +311,7 @@ class getView : NSView
 }
 func swiftInit()
 {
-	for arg in CommandLine.arguments {planeKatstr(arg)}
+	for arg in CommandLine.arguments {planeCatstr(arg)}
 	let application = getApplication()
 	NSApplication.shared.delegate = application
 	device = MTLCreateSystemDefaultDevice()

@@ -136,9 +136,11 @@ if Input is less than switch Control, and way negative if Input is greater than 
 Switch gets Output from Left if Input is greater than Control, otherwise from Right.
 
 Double differentiator has Input and Output that should be nearly equal if a sine wave.
+Double also has a Beat input that absolute Output is held greater than.
 
 Pll-O -> Vca-I
 Vca-O -> Double-I
+PulseL-O -> Double-B
 Level-O -> Vca-C
 Minus-O -> Level-I
 SkipL-O -> Minus-L
