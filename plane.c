@@ -81,6 +81,12 @@ sem_t resource;
 sem_t pending;
 sem_t ready[Procs];
 void planeRead();
+void planeDupstr(char **ptr, int idx);
+void planeInsstr(const char *src, int len, int idx, int loc);
+void planeDelstr(int len, int idx, int loc);
+void planeOutstr(const char *str);
+void planeClrstr(char **ptr);
+void planeCatstr(const char *str);
 int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
@@ -652,13 +658,36 @@ void planeRead()
 void planeDupstr(char **ptr, int idx)
 {
 	sem_wait(&resource);
-	if (strsiz == 0) planeCatstr("");
+	while (idx >= strsiz) planeCatstr("");
 	*ptr = strdup(string[idx]);
 	sem_post(&resource);
 }
+void planeSizstr(char **dst, const char *src, int loc, int len)
+{
+	// TODO insert len blanks or remove -len characters
+}
+void planeNumstr(int idx, int num)
+{
+	// TODO insert num "" or remove -num strings
+}
 void planeInsstr(const char *src, int len, int idx, int loc)
 {
+	int num = 0; char *str = 0; char *dst = 0;
 	sem_wait(&resource);
+	for (int i = 0; i < len; i++) if (!str[i]) num++;
+	planeNumstr(idx,num);
+	if (num > 0) {
+		// TODO move the portion after loc to idx+num
+	}
+	while (num > 0) {
+		// TODO insert strlen of src at loc in idx
+		len -= strlen(str)+1; str += strlen(str)+1; idx++; loc = 0;}
+	if (len > 0) {
+		planeDupstr(&str,idx);
+		planeSizstr(&dst,str,loc,len);
+		memcpy(dst+loc,src,len);
+		free(string[idx]);
+		string[idx] = dst;}
 	sem_post(&resource);
 }
 void planeDelstr(int len, int idx, int loc)
