@@ -694,7 +694,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Regex"); if (typ != identType("Regex")) ERROR();
 		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
 		freeRegex(&rex);} break;
-	case (PreOp): {
+	case (IrrOp): {
 		struct Irrex pre = {0}; assignStr(&pre.str,exp->pre);
 		if (typ == -1) typ = identType("Irrex"); if (typ != identType("Irrex")) ERROR();
 		datxNone(datxDat0); writeIrrex(&pre,datxIdx0); assignDat(dat,*datxDat0);

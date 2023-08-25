@@ -231,7 +231,7 @@ Operate = {
 	"EmmOp", -- hetgen sugar
 	"OmmOp", -- homgen sugar
 	"RexOp", -- regex sugar
-	"PreOp", -- prefix sugar
+	"IrrOp", -- irrex sugar
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
@@ -615,7 +615,7 @@ Express = {
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
 	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
-	{"pre","Str",{["opr"]={["PreOp"]=true}},{}},
+	{"pre","Str",{["opr"]={["IrrOp"]=true}},{}},
 	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
