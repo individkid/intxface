@@ -663,32 +663,31 @@ void planeDupstr(char **ptr, int idx)
 	while (idx >= siz) planeAddarg("");
 	sem_safe(&resource,{*ptr = strdup(string[idx]);});
 }
-void planeSizstr(char **dst, const char *src, int loc, int len)
-{
-	// TODO insert len blanks or remove -len characters
-}
-void planeNumstr(int idx, int num)
-{
-	int siz = 0; sem_safe(&resource,{siz = strsiz;});
-	while (idx >= siz) planeAddarg("");
-	// TODO insert num "" or remove -num strings
-}
 void planeInsstr(const char *src, int len, int idx, int loc)
 {
-	int num = 0; char *str = 0; char *dst = 0;
-	for (int i = 0; i < len; i++) if (!str[i]) num++;
-	planeNumstr(idx,num);
+	int num = 0; for (int i = 0; i < len; i++) if (!src[i]) num++;
 	sem_wait(&resource);
+	while (strsiz <= idx) {strsiz++; string = realloc(string,strsiz*sizeof(char*)); string[strsiz-1] = strdup("");}
+	strsiz += num; string = realloc(string,strsiz*sizeof(char*));
+	for (int i = strsiz-1; i > idx+num; i--) string[i] = string[i-num];
+	for (int i = idx+1; i < idx+1+num; i++) string[i] = strdup("");
 	if (num > 0) {
-		// TODO move the portion after loc to idx+num
-	}
+		char *str = 0;
+		free(string[idx+num]); string[idx+num] = strdup(string[idx]+loc);
+		string[idx][loc] = 0; str = strdup(string[idx]);
+		free(string[idx]); string[idx] = str;}
 	while (num > 0) {
-		// TODO insert strlen of src at loc in idx
-		strmsk |= 1<<idx; len -= strlen(str)+1; str += strlen(str)+1; idx++; loc = 0; num--;}
+		char *str = 0; char *tmp = 0;
+		str = malloc(loc+strlen(src)+strlen(string[idx]+loc)+1); tmp = strdup(string[idx]+loc);
+		strncpy(str,string[idx],loc); strcat(str,src); strcat(str,tmp);
+		free(tmp); free(string[idx]); string[idx] = str;
+		strmsk |= 1<<idx; src += strlen(src)+1; len -= strlen(src)+1; idx++; loc = 0; num--;}
 	if (len > 0) {
-		planeDupstr(&str,idx); planeSizstr(&dst,str,loc,len);
-		memcpy(dst+loc,src,len); free(string[idx]); string[idx] = dst;
-		strmsk |= 1<<idx;}
+		char *str = 0; char *tmp = 0;
+		str = malloc(loc+strlen(src)+len+strlen(string[idx]+loc)+1); tmp = strdup(string[idx]+loc);
+		strncpy(str,string[idx],loc); strncat(str,src,len); strcat(str,tmp);
+		free(tmp); free(string[idx]); string[idx] = str;
+		strmsk |= 1<<idx; src = 0; len = 0; idx++; loc = 0;}
 	sem_post(&resource);
 	planeSafe(Procs,Waits,RegisterString);
 }
