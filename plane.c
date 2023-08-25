@@ -132,12 +132,12 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
 }
 float *planeSlideFocalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
-	// distance to perpendicular to cursor fixed; cursor mapped
+	ERROR(); // TODO distance to perpendicular to cursor fixed; cursor mapped
 	return mat;
 }
 float *planeSlideNormalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
-	// distance to perpendicular to normal fixed; cursor mapped
+	ERROR(); // TODO distance to perpendicular to normal fixed; cursor mapped
 	return mat;
 }
 float *planeRotate2(float *mat, float *fix, float *dif0, float *dif1, float *org, float *cur)
@@ -184,32 +184,32 @@ float *planeRotateNormalMouse(float *mat, float *fix, float *nml, float *org, fl
 }
 float *planeScaleOrthoMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to ortho fixed; cursor mapped
+	ERROR(); // TODO distance to perpendicular to ortho fixed; cursor mapped
 	return mat;
 }
 float *planeScaleFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to cursor fixed; cursor mapped
+	ERROR(); // TODO distance to perpendicular to cursor fixed; cursor mapped
 	return mat;
 }
 float *planeScaleNormalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to normal fixed; cursor mapped
+	ERROR(); // TODO distance to perpendicular to normal fixed; cursor mapped
 	return mat;
 }
 float *planeSlideOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to ortho offset
+	ERROR(); // TODO distance to perpendicular to ortho offset
 	return mat;
 }
 float *planeSlideFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to cursor offset
+	ERROR(); // TODO distance to perpendicular to cursor offset
 	return mat;
 }
 float *planeSlideNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to normal offset
+	ERROR(); // TODO distance to perpendicular to normal offset
 	return mat;
 }
 float *planeAngle(float *mat, float *pnt0, float *pnt1, float ang)
@@ -218,7 +218,7 @@ float *planeAngle(float *mat, float *pnt0, float *pnt1, float ang)
 	float dif1[3]; float dif2[3]; float dif3[3];
 	float nrm2[4]; float nrm3[4]; float neg0[3];
 	float leg2[3]; float leg3[3];
-	// TODO convert roller to radians
+	ERROR(); // TODO convert roller to radians
 	copyvec(fix0,pnt0,3); fix0[3] = 1.0;
 	copyvec(fix1,pnt1,3); fix1[3] = 1.0;
 	copyvec(hyp0,fix0,3); hyp0[3] = -1.0;
@@ -261,17 +261,17 @@ float *planeRotateNormalRoller(float *mat, float *fix, float *nml, float *org, f
 }
 float *planeScaleOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to normal scaled
+	ERROR(); // TODO distance to perpendicular to normal scaled
 	return mat;
 }
 float *planeScaleFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to cursor scaled
+	ERROR(); // TODO distance to perpendicular to cursor scaled
 	return mat;
 }
 float *planeScaleNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// TODO distance to perpendicular to normal scaled
+	ERROR(); // TODO distance to perpendicular to normal scaled
 	return mat;
 }
 void planeCast(struct Center *ptr, enum Memory mem, int idx)
