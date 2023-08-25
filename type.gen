@@ -253,12 +253,16 @@ Compare = {
 	"MOCmp",
 	"MCCmp",
 	"ReCmp", -- regular expression
-	"PfCmp", -- match any prefix
+	"IrCmp", -- irregular expression
 	"EbCmp", -- call to embeded
 }
 Order = {
-	"Multi",
-	"Single",
+	"NextOrd",
+	"JoinOrd",
+	"ForkOrd",
+	"PreOrd",
+	"PostOrd",
+	"PermOrd",
 }
 Access = {
 	"GetAcc",
@@ -575,10 +579,10 @@ Regex = {
 	{"str","Str",{},{}}, -- string to compile
 	{"dat","Dat",{},{}}, -- compiled regex
 }
-Prefix = {
+Irrex = {
 	{"siz","Int",{},{}}, -- how many compiled
 	{"str","Str",{},{}}, -- string to compile
-	{"pat","Str",{},"siz"}, -- pattern to compare
+	{"chr","Chr",{},"siz"}, -- pattern to compare
 	{"ord","Order",{},"siz"}, -- how to join
 }
 Express = {

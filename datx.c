@@ -365,13 +365,77 @@ int datxRegex(char *lft, struct Regex *rgt)
 	if (val != 0) {char buf[128]; regerror(val,ptr,buf,128);
 	fprintf(stderr,"%s\n",buf); exit(-1);}}
 	val = regexec(ptr,lft,0,0,0);
-	return (val == 0 ? 0 : -1);
+	return (val == 0 ? 1 : 0);
 }
-int datxPreex(char *lft, struct Prefix *rgt)
+#define PREPARSE(CHR,OR,AND,GT,LT,IN) for (int i = 0; rgt->str[i]; i++)\
+	if (esc) {CHR; len++; esc = 0;}\
+	else if (rgt->str[i] == '\\') esc = 1;\
+	else if (rgt->str[i] == '|') {OR;}\
+	else if (rgt->str[i] == '&') {AND;}\
+	else if (rgt->str[i] == '>') {GT;}\
+	else if (rgt->str[i] == '<') {LT;}\
+	else if (rgt->str[i] == '*') {IN;}\
+	else {CHR; len++;}
+#define PRECHR {rgt->chr[len] = datxEscape(rgt->str[i]); rgt->ord[len] = nxt; nxt = NextOrd;}
+#define PREOR {nxt = ForkOrd;}
+#define PREAND {nxt = JoinOrd;}
+#define PREGT {nxt = PreOrd;}
+#define PRELT {nxt = PostOrd;}
+#define PREIN {nxt = PermOrd;}
+char datxEscape(char chr)
 {
-	// TODO compiles from | & joined character sequences modified by
-	// TODO prefix-of, suffix-of, permutation-of operators that expand to sequences joined by |.
-	return 0;
+	switch (chr) {
+	case ('n'): return '\n';
+	default: break;}
+	return chr;
+}
+int datxIrrex(char *lft, struct Irrex *rgt)
+{
+	int len = 0; int num = 0; enum Order nxt = NextOrd; int skp = 0; int mrk = 0;
+	// compiles from | & joined character sequences modified by
+	// prefix-of, suffix-of, permutation-of operators that expand to sequences joined by |.
+	if (rgt->siz == 0) {
+		int esc = 0; int len = 0; enum Order nxt = NextOrd;
+		PREPARSE(,,,,,);
+		rgt->siz = len; allocChr(&rgt->chr,len); allocOrder(&rgt->ord,len); len = 0;
+		PREPARSE(PRECHR,PREOR,PREAND,PREGT,PRELT,PREIN);}
+	for (int i = 0; lft[i]; i++) {
+		if (len >= rgt->siz) return 0;
+		if (rgt->ord[len] != NextOrd && nxt == ForkOrd) {
+			len++; while (len < rgt->siz && (rgt->ord[len] == NextOrd || rgt->ord[len] == ForkOrd)) len++;
+		}
+		if (rgt->ord[len] == PostOrd) {
+			skp = len; mrk = i;
+		}
+		if (rgt->ord[len] == PermOrd) {
+			ERROR(); // TODO initialize permutation
+		}
+		if (rgt->ord[len] != NextOrd) nxt = rgt->ord[len];
+		if (lft[i] == rgt->chr[len]) {if (nxt == PermOrd) {
+			ERROR(); // TODO goto next in permutation
+		} else len++;} else switch (nxt) {
+		case (NextOrd): {
+			return 0;
+		} break;
+		case (ForkOrd): {
+			while (rgt->ord[len] != ForkOrd) {if (i<=0 || len<= 0 || rgt->ord[len] != NextOrd) ERROR(); i--; len--;}
+			len++; while (len < rgt->siz && rgt->ord[len] == NextOrd) len++;
+			if (len >= rgt->siz || rgt->ord[len] != ForkOrd) return 0;
+		} break;
+		case (JoinOrd): {
+			return 0;
+		} break;
+		case (PreOrd): {
+			len++; while (len < rgt->siz && rgt->ord[len] == NextOrd) len++;
+		} break;
+		case (PostOrd): {
+			skp++; i = mrk-1; len = skp;
+		} break;
+		case (PermOrd): {
+			ERROR(); // TODO change permutation
+		} break;
+		default: ERROR();}}
+	return (len == rgt->siz);
 }
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
@@ -409,14 +473,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 					assignDat(datxDat0,dat1); readRegex(&rex,datxIdx0);
 					val = datxRegex(datxChrz(0,dat0),&rex);
 					free(dat1); freeRegex(&rex);} break;
-				case (PfCmp): {
-					void *dat1 = 0; int typ1 = 0; struct Prefix pre = {0};
+				case (IrCmp): {
+					void *dat1 = 0; int typ1 = 0; struct Irrex pre = {0};
 					if (typ0 != identType("Str")) ERROR();
-					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Prefix"));
-					if (typ1 != identType("Prefix")) ERROR();
-					assignDat(datxDat0,dat1); readPrefix(&pre,datxIdx0);
-					val = datxPreex(datxChrz(0,dat0),&pre);
-					free(dat1); freePrefix(&pre);} break;
+					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Irrex"));
+					if (typ1 != identType("Irrex")) ERROR();
+					assignDat(datxDat0,dat1); readIrrex(&pre,datxIdx0);
+					val = datxIrrex(datxChrz(0,dat0),&pre);
+					free(dat1); freeIrrex(&pre);} break;
 				case (EbCmp): {
 					void *dat1 = 0; int typ1 = 0; char *arg = 0; char *scr = 0;
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
@@ -631,10 +695,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
 		freeRegex(&rex);} break;
 	case (PreOp): {
-		struct Prefix pre = {0}; assignStr(&pre.str,exp->pre);
-		if (typ == -1) typ = identType("Prefix"); if (typ != identType("Prefix")) ERROR();
-		datxNone(datxDat0); writePrefix(&pre,datxIdx0); assignDat(dat,*datxDat0);
-		freePrefix(&pre);} break;
+		struct Irrex pre = {0}; assignStr(&pre.str,exp->pre);
+		if (typ == -1) typ = identType("Irrex"); if (typ != identType("Irrex")) ERROR();
+		datxNone(datxDat0); writeIrrex(&pre,datxIdx0); assignDat(dat,*datxDat0);
+		freeIrrex(&pre);} break;
 	case (ImmOp): {
 		if (typ == -1) typ = identUnion(exp->val->tag); if (typ != identUnion(exp->val->tag)) ERROR();
 		datxSingle(); datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,*datxDat0);} break;
