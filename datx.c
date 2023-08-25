@@ -367,6 +367,12 @@ int datxRegex(char *lft, struct Regex *rgt)
 	val = regexec(ptr,lft,0,0,0);
 	return (val == 0 ? 0 : -1);
 }
+int datxPreex(char *lft, struct Prefix *rgt)
+{
+	// TODO compiles from | & joined character sequences modified by
+	// TODO prefix-of, suffix-of, permutation-of operators that expand to sequences joined by |.
+	return 0;
+}
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
 {
@@ -403,19 +409,20 @@ int datxEval(void **dat, struct Express *exp, int typ)
 					assignDat(datxDat0,dat1); readRegex(&rex,datxIdx0);
 					val = datxRegex(datxChrz(0,dat0),&rex);
 					free(dat1); freeRegex(&rex);} break;
+				case (PfCmp): {
+					void *dat1 = 0; int typ1 = 0; struct Prefix pre = {0};
+					if (typ0 != identType("Str")) ERROR();
+					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Prefix"));
+					if (typ1 != identType("Prefix")) ERROR();
+					assignDat(datxDat0,dat1); readPrefix(&pre,datxIdx0);
+					val = datxPreex(datxChrz(0,dat0),&pre);
+					free(dat1); freePrefix(&pre);} break;
 				case (EbCmp): {
 					void *dat1 = 0; int typ1 = 0; char *arg = 0; char *scr = 0;
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
 					if (typ0 != identType("Str") || typ1 != identType("Str")) ERROR();
 					arg = datxChrz(0,dat0); scr = datxChrz(0,dat1);
 					if (datxEmbFp == 0) ERROR(); val = datxEmbFp(scr,arg);
-					free(dat1);} break;
-				case (PfCmp): {
-					void *dat1 = 0; int typ1 = 0; char *lft = 0; char *rgt = 0;
-					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
-					if (typ0 != identType("Str") || typ1 != identType("Str")) ERROR();
-					lft = datxChrz(0,dat0); rgt = datxChrz(0,dat1);
-					val = (strncmp(lft,rgt,strlen(lft)) == 0);
 					free(dat1);} break;
 				default: {
 					void *dat1 = 0; int typ1 = 0;
@@ -483,9 +490,34 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (SavOp): {
-		int typ0 = 0; void *key = 0;
-		typ0 = datxEval(dat,exp->sav,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
-		datxStr(&key,exp->kys); datxInsert(key,*dat,typ0); free(key);} break;
+		int typ0 = 0; void *dat0 = 0; void *key = 0;
+		typ0 = datxEval(&dat0,exp->sav,-1); datxStr(&key,exp->kys); datxInsert(key,dat0,typ0); free(key); free(dat0);
+		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	case (DupOp): {
+		int typ0 = 0; void *dat0 = 0; char *str = 0; int idx = 0;
+		typ0 = datxEval(&dat0,exp->dup,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
+		if (!datxDupFp) ERROR(); datxDupFp(&str,idx); typ0 = identType("Str"); datxStr(dat,str); free(str);
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	case (InsOp): {
+		int typ0 = 0; void *dat0 = 0; char *str = 0; int len = 0; int idx = 0; int loc = 0;
+		typ0 = datxEval(&dat0,exp->ins,identType("Str")); if (typ0 != identType("Str")) ERROR(); assignStr(&str,datxChrz(0,dat0));
+		typ0 = datxEval(&dat0,exp->ins+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->ins+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->ins+3,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
+		if (!datxInsFp) ERROR(); datxInsFp(str,len,idx,loc); free(str);
+		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	case (DelOp): {
+		int typ0 = 0; void *dat0 = 0; int len = 0; int idx = 0; int loc = 0;
+		typ0 = datxEval(&dat0,exp->del,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->del+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->del+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
+		if (!datxDelFp) ERROR(); datxDelFp(len,idx,loc);
+		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	case (OutOp): {
+		int typ0 = 0; void *dat0 = 0; char *str = 0;
+		typ0 = datxEval(&dat0,exp->out,identType("Str")); if (typ0 != identType("Str")) ERROR(); assignStr(&str,datxChrz(0,dat0));
+		if (!datxOutFp) ERROR(); datxOutFp(str); free(str);
+		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (FldOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
 		void *dat0 = 0; void *dat1 = 0; void *dat2 = 0; int typ0 = 0; int typ1 = 0; int typ2 = 0; datxSingle();
@@ -594,10 +626,15 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
 		datxNone(datxDat0); writeHomgen(exp->hom,datxIdx0); assignDat(dat,*datxDat0);} break;
 	case (RexOp): {
-		struct Regex rex = {0}; datxNone(&rex.dat); assignStr(&rex.str,exp->str);
+		struct Regex rex = {0}; datxNone(&rex.dat); assignStr(&rex.str,exp->rex);
 		if (typ == -1) typ = identType("Regex"); if (typ != identType("Regex")) ERROR();
 		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
 		freeRegex(&rex);} break;
+	case (PreOp): {
+		struct Prefix pre = {0}; assignStr(&pre.str,exp->pre);
+		if (typ == -1) typ = identType("Prefix"); if (typ != identType("Prefix")) ERROR();
+		datxNone(datxDat0); writePrefix(&pre,datxIdx0); assignDat(dat,*datxDat0);
+		freePrefix(&pre);} break;
 	case (ImmOp): {
 		if (typ == -1) typ = identUnion(exp->val->tag); if (typ != identUnion(exp->val->tag)) ERROR();
 		datxSingle(); datxNone(datxDat0); writeUnion(exp->val,datxIdx0); assignDat(dat,*datxDat0);} break;
@@ -622,7 +659,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxInt(dat,datxEmbFp(exp->scr,exp->arg));} break;
 	case (NamOp): {
 		int typ0 = 0; if (datxCallFp == 0) ERROR();
-		typ0 = datxCallFp(dat,exp->str);
+		typ0 = datxCallFp(dat,exp->nam);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (AccOp): {
 		int typ0 = 0; if (datxCallFp == 0) ERROR();

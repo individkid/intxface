@@ -218,6 +218,10 @@ Operate = {
 	"SetOp", -- callback with value
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
+	"DupOp",
+	"InsOp",
+	"DelOp",
+	"OutOp",
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
 	"PrmOp", -- permute list
@@ -227,6 +231,7 @@ Operate = {
 	"EmmOp", -- hetgen sugar
 	"OmmOp", -- homgen sugar
 	"RexOp", -- regex sugar
+	"PreOp", -- prefix sugar
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
@@ -248,8 +253,12 @@ Compare = {
 	"MOCmp",
 	"MCCmp",
 	"ReCmp", -- regular expression
-	"EbCmp", -- call to embeded
 	"PfCmp", -- match any prefix
+	"EbCmp", -- call to embeded
+}
+Order = {
+	"Multi",
+	"Single",
 }
 Access = {
 	"GetAcc",
@@ -331,8 +340,8 @@ Bootstrap = {
 			"dom[5]:Domain(len:Int(1)"..
 				"val[0]:Express(opr:Operate(CfgOp)cvl:Configure(CursorClick)))"..
 			"dom[6]:Domain(len:Int(0))"..
-			"rng[0]:Express(opr:Operate(NamOp)str:Str(ReadCenter))"..
-			"rng[1]:Express(opr:Operate(NamOp)str:Str(DrawChanged))"..
+			"rng[0]:Express(opr:Operate(NamOp)nam:Str(ReadCenter))"..
+			"rng[1]:Express(opr:Operate(NamOp)nam:Str(DrawChanged))"..
 			"rng[2]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Draw not Changed
 			"rng[3]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Move
 			"rng[4]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Roll
@@ -366,9 +375,9 @@ Bootstrap = {
 				"val[1]:Express(opr:Operate(GetOp)cfg:Configure(RegisterMemory)))"..
 			"dom[2]:Domain(len:Int(1)"..
 				"val[0]:Express(opr:Operate(GetOp)cfg:Configure(CenterSize)))"..
-			"rng[0]:Express(opr:Operate(NamOp)str:Str(GetPierce))"..
+			"rng[0]:Express(opr:Operate(NamOp)nam:Str(GetPierce))"..
 			"rng[1]:Express(opr:Operate(IntOp)ivl:Int(0))"..
-			"rng[2]:Express(opr:Operate(NamOp)str:Str(SetMemory)))))"..
+			"rng[2]:Express(opr:Operate(NamOp)nam:Str(SetMemory)))))"..
 		"mch[9]:Machine(xfr:Transfer(Name)str:Str(SetMemory))"..
 		-- Copy center to cpu and gpu, and remember that Changed
 		"mch[10]:Machine(xfr:Transfer(Copy))".. -- copy from center to memory
@@ -566,6 +575,12 @@ Regex = {
 	{"str","Str",{},{}}, -- string to compile
 	{"dat","Dat",{},{}}, -- compiled regex
 }
+Prefix = {
+	{"siz","Int",{},{}}, -- how many compiled
+	{"str","Str",{},{}}, -- string to compile
+	{"pat","Str",{},"siz"}, -- pattern to compare
+	{"ord","Order",{},"siz"}, -- how to join
+}
 Express = {
 	{"opr","Operate",{},{}},
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
@@ -578,6 +593,10 @@ Express = {
 	{"key","Str",{["opr"]={["ValOp"]=true}},{}},
 	{"kys","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"sav","Express",{["opr"]={["SavOp"]=true}},1},
+	{"dup","Express",{["opr"]={["DupOp"]=true}},1},
+	{"ins","Express",{["opr"]={["InsOp"]=true}},4},
+	{"del","Express",{["opr"]={["DelOp"]=true}},3},
+	{"out","Express",{["opr"]={["OutOp"]=true}},1},
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
@@ -591,7 +610,9 @@ Express = {
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
-	{"str","Str",{["opr"]={["RexOp"]=true,["NamOp"]=true}},{}},
+	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
+	{"pre","Str",{["opr"]={["PreOp"]=true}},{}},
+	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"dtp","DataExp",{["opr"]={["DatOp"]=true}},1},
