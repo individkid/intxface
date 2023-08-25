@@ -86,7 +86,7 @@ void planeInsstr(const char *src, int len, int idx, int loc);
 void planeDelstr(int len, int idx, int loc);
 void planeOutstr(const char *str);
 void planeClrstr(char **ptr);
-void planeCatstr(const char *str);
+void planeAddarg(const char *str);
 int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
@@ -657,10 +657,9 @@ void planeRead()
 }
 void planeDupstr(char **ptr, int idx)
 {
-	sem_wait(&resource);
-	while (idx >= strsiz) planeCatstr("");
-	*ptr = strdup(string[idx]);
-	sem_post(&resource);
+	int siz = 0; sem_safe(&resource,{siz = strsiz;});
+	while (idx >= siz) planeAddarg("");
+	sem_safe(&resource,{*ptr = strdup(string[idx]);});
 }
 void planeSizstr(char **dst, const char *src, int loc, int len)
 {
@@ -668,20 +667,22 @@ void planeSizstr(char **dst, const char *src, int loc, int len)
 }
 void planeNumstr(int idx, int num)
 {
+	int siz = 0; sem_safe(&resource,{siz = strsiz;});
+	while (idx >= siz) planeAddarg("");
 	// TODO insert num "" or remove -num strings
 }
 void planeInsstr(const char *src, int len, int idx, int loc)
 {
 	int num = 0; char *str = 0; char *dst = 0;
-	sem_wait(&resource);
 	for (int i = 0; i < len; i++) if (!str[i]) num++;
 	planeNumstr(idx,num);
+	sem_wait(&resource);
 	if (num > 0) {
 		// TODO move the portion after loc to idx+num
 	}
 	while (num > 0) {
 		// TODO insert strlen of src at loc in idx
-		len -= strlen(str)+1; str += strlen(str)+1; idx++; loc = 0;}
+		len -= strlen(str)+1; str += strlen(str)+1; idx++; loc = 0; num--;}
 	if (len > 0) {
 		planeDupstr(&str,idx);
 		planeSizstr(&dst,str,loc,len);
@@ -692,27 +693,13 @@ void planeInsstr(const char *src, int len, int idx, int loc)
 }
 void planeDelstr(int len, int idx, int loc)
 {
-	sem_wait(&resource);
-	sem_post(&resource);
+	ERROR(); // TODO
 }
 void planeOutstr(const char *str)
 {
 	write(STDIN_FILENO,str,strlen(str));
 }
-void planeClrstr(char **ptr)
-{
-	sem_wait(&resource);
-	if (strsiz == 0) ERROR();
-	printf("planeClrstr %s\n",string[0]);
-	*ptr = strdup(string[0]);
-	free(string[0]);
-	for (int i = 1; i < strsiz; i++) string[i-1] = string[i];
-	strsiz--;
-	string = realloc(string,strsiz*sizeof(char*));
-	printf("planeClrstr\n");
-	sem_post(&resource);
-}
-void planeCatstr(const char *str)
+void planeAddarg(const char *str)
 {
 	sem_wait(&resource);
 	strsiz++;
@@ -760,8 +747,7 @@ void planeTerm(int sig)
 void *planeExternal(void *ptr)
 {
 	struct Argument arg = {0}; char *str = 0;
-	planeClrstr(&str); free(str); planeClrstr(&str);
-	if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
+	planeDupstr(&str,1); if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[External]);
 	while (1) {
 	struct Center center = {0};
@@ -781,6 +767,7 @@ void *planeConsole(void *ptr)
 	char chr[2] = {0};
 	int val = 0;
 	int nfd = 0;
+	char *str = 0;
 	fd_set fds, ers;
 	sem_post(&ready[Console]);
 	while (1) {
@@ -795,7 +782,7 @@ void *planeConsole(void *ptr)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	planeCatstr(chr);}
+	planeDupstr(&str,2); planeInsstr(chr,1,2,strlen(str)); free(str);}
 	planeSafe(Console,Done,Configures);
 	return 0;
 }

@@ -1,41 +1,8 @@
 
-Add microcode sufficient for hello triangle.
-Add hello triangle to boot test.
-Add microcode sufficient for transformation.
-Add per polytope and per plane matrices.
-Add microcode for pierce point.
-Add bootcode for facet changes.
-Add numeric symbolic to spacer.lua.
+Add fifo named from Argument for programmatical cursor roller button keyboard. Add initial window location and size to Argument. Test transformation of hello triangle. The same triangle and cursor screen locations should work the same with any random window location and size. For hello triangles, transform several triangles separately as well as all at once, and test manipulation of one triangle. Check that matrix changes are sent out as expected to maintain a file and topology. Add test of additive subtractive refine modes. Add test of metalSw together with fileC and spaceHs.
 
-filer.lua: Persist -> ./file -> Persist
-planer.lua: Center -> ./plane -> Center
-pager.lua: File -> ./page -> window,keyboard -> ./page -> File
-piper.lua: Data -> ./pipe -> .mov -> ./pipe -> Data
-framer.lua: Data -> ./frame -> window,selection -> ./frame -> Data
-waver.lua: Scope -> ./wave -> usb-a -> ./wave -> Data
-taper.lua: Data -> ./tape -> usb-c -> ./tape -> Data
-phoner.lua: Data -> ./phone -> microphone,speaker -> ./phone -> Data
-liner.lua: Event -> ./line -> microphone,speaker -> ./line -> Event
-spacer.lua: Sculpt -> ./space -> Sculpt
+For Vulcan, use Update After Bind flag, and call VkUpdateDescriptorSets in the draw function. Use storage buffers instead of uniform buffers. The vertex shader main would be gl_Position = vec4(calculatePosition(gl_VertexIndex), 1.0f). To optimize, the vertex indices from Triangle would have to be packed into a VkBuffer for vkCmdBindIndexBuffers, Vertex coordinates and plane/polytope indices would have to be packed into a VkBuffer for vkCmdBindVertexBuffer, and Uniform Subject Object Element could be uniform buffers.
 
-sculpt.lua share between file plane space:
- Additive,Subtractive,Refine,Transform,Mode(
-  Mouse(Axis(Ortho,Focal,Normal),Matrix(Move,Rotate,Scale)),
-  Roller(Axis(Ortho,Focal,Normal),Matrix(Move,Rotate,Scale)))
- plane click keyboard transform, to file
- plane click keyboard manipulate, to space
- plane click additive subtractive, to space
- file subject object matrix, to plane
- file numeric symbolic, to space
- space numeric symbolic, to file plane
+Convert makefile to lua script; then intermediate dependencies, like function names, could be explicit in the dependency include file; functions could be generated as needed, instead of all or nothing; platform specific files could be ignored on other platforms;  and multiple resolutions could be explicitly prioritized.
 
-Make face.c (NUMOPEN) datx.c (NUMOPEN) file.c (NUMFILE) arrays into array of malloc struct.
-Optimize depend.lua to build each target in separate clean directory, and copy from that directory in preference to push.
-
-Develop Theory for coincidences as sets of hyperplane classifications.
-Replace Theory by an agda proof.
-
-Make stomp boxes that add wave with frequency multiplied or divided.
-Plug in Mac Dell Digiscope Stompbox BMD Audient Roland.
-Open windows for play.lua, digiscope, stopmbox, audient, roland.
-Compose windows digitally and with analog slider.
+Order of completion would be: hello triangle, power supply, hello triangles, square wave circuit, oscilloscope window, sine wave circuit, space tests, saturate circuits, sculpt script, pll circuit, hdmi window, boxed circuits, play script, sound system, tetrahedron overlaps, published video, agda proof, ball script, coincidence proofs, world script, fantasy polytopes.
