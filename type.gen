@@ -92,10 +92,10 @@ Configure = {
 	"RegisterFind", -- which pierce
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
+	"RegisterString", -- which strings changed
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
-	"ResultString", -- which string changed
 	"OriginLeft", -- starting cursor
 	"OriginBase", --
 	"OriginNear", --

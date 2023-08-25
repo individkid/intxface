@@ -67,6 +67,7 @@ pthread_key_t retstr;
 // resource protected:
 char **string = 0;
 int strsiz = 0;
+int strmsk = 0;
 int numpipe = 0;
 int calling = 0;
 int qsize = 0;
@@ -445,6 +446,7 @@ struct Pierce *planePierce()
 void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
+	case (RegisterString): sem_safe(&resource,{configure[RegisterString] &= strmsk; strmsk ^= configure[RegisterString];}); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
 	case (CenterMemory): configure[CenterMemory] = center.mem; break;
@@ -682,14 +684,13 @@ void planeInsstr(const char *src, int len, int idx, int loc)
 	}
 	while (num > 0) {
 		// TODO insert strlen of src at loc in idx
-		len -= strlen(str)+1; str += strlen(str)+1; idx++; loc = 0; num--;}
+		strmsk |= 1<<idx; len -= strlen(str)+1; str += strlen(str)+1; idx++; loc = 0; num--;}
 	if (len > 0) {
-		planeDupstr(&str,idx);
-		planeSizstr(&dst,str,loc,len);
-		memcpy(dst+loc,src,len);
-		free(string[idx]);
-		string[idx] = dst;}
+		planeDupstr(&str,idx); planeSizstr(&dst,str,loc,len);
+		memcpy(dst+loc,src,len); free(string[idx]); string[idx] = dst;
+		strmsk |= 1<<idx;}
 	sem_post(&resource);
+	planeSafe(Procs,Waits,RegisterString);
 }
 void planeDelstr(int len, int idx, int loc)
 {
@@ -705,7 +706,9 @@ void planeAddarg(const char *str)
 	strsiz++;
 	string = realloc(string,strsiz*sizeof(char*));
 	string[strsiz-1] = strdup(str);
+	strmsk |= 1<<(strsiz-1);
 	sem_post(&resource);
+	planeSafe(Procs,Waits,RegisterString);
 }
 void planeSetcfg(int val, int sub)
 {
