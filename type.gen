@@ -218,6 +218,7 @@ Operate = {
 	"SetOp", -- callback with value
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
+	"InpOp",
 	"DupOp",
 	"InsOp",
 	"DelOp",
@@ -324,12 +325,12 @@ Bootstrap = {
 		"exp[0]:Express(opr:Operate(ImmOp)val[0]:Generic(tag:Tag(CenterTag)"..
 		"center[0]:Center(mem:Memory(Machinez)siz:Int(20)idx:Int(0)slf:Int(0)"..
 		"mch[0]:Machine(xfr:Transfer(Goto)exp[0]:Express(opr:Operate(CndOp)cnd[0]:CondExp("..
-			"len:Int(2)siz:Int(7)"..
-			"typ[0]:Str(Int)typ[1]:Str(Int)"..
-			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)"..
+			"len:Int(3)siz:Int(8)"..
+			"typ[0]:Str(Int)typ[1]:Str(Int)typ[2]:Str(Str)"..
+			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)cmp[2]:Compare(IrCmp)"..
 			"var[0]:Express(opr:Operate(GetOp)cfg:Configure(ResultHint))"..
 			"var[1]:Express(opr:Operate(ValOp)key:Str(Changed))"..
-			-- "var[2]:Express(opr:Operate(DupOp))"..
+			"var[2]:Express(opr:Operate(InpOp))"..
 			"dom[0]:Domain(len:Int(1)"..
 				"val[0]:Express(opr:Operate(CfgOp)cvl:Configure(CenterMemory)))"..
 			"dom[1]:Domain(len:Int(2)"..
@@ -343,14 +344,18 @@ Bootstrap = {
 				"val[0]:Express(opr:Operate(CfgOp)cvl:Configure(CursorAngle)))"..
 			"dom[5]:Domain(len:Int(1)"..
 				"val[0]:Express(opr:Operate(CfgOp)cvl:Configure(CursorClick)))"..
-			"dom[6]:Domain(len:Int(0))"..
+			"dom[6]:Domain(len:Int(2)"..
+				"val[0]:Express(opr:Operate(CfgOp)cvl:Configure(RegisterString))"..
+				"val[1]:Express(opr:Operate(ValOp)key:Str(Changed)))"..
+			"dom[7]:Domain(len:Int(0))"..
 			"rng[0]:Express(opr:Operate(NamOp)nam:Str(ReadCenter))"..
 			"rng[1]:Express(opr:Operate(NamOp)nam:Str(DrawChanged))"..
 			"rng[2]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Draw not Changed
 			"rng[3]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Move
 			"rng[4]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Roll
 			"rng[5]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Click
-			"rng[6]:Express(opr:Operate(IntOp)ivl:Int(0)))))"..
+			"rng[6]:Express(opr:Operate(IntOp)ivl:Int(0))".. -- Keyboard
+			"rng[7]:Express(opr:Operate(IntOp)ivl:Int(0)))))"..
 		"mch[1]:Machine(xfr:Transfer(Name)str:Str(DrawChanged))"..
 		-- Draw, and remember that not Changed
 		"mch[2]:Machine(xfr:Transfer(Draw))".. -- pass Argument configurations

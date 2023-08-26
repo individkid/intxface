@@ -145,8 +145,9 @@ int luaxCall(const char *str, const struct Closure *fnc)
 #define LUAXCASE03(UC,LC,T1,T2,T3) case (UC##type): fnc.LC(LUAXARG##T1(L,1),LUAXARG##T2(L,2),LUAXARG##T3(L,3)); break;
 #define LUAXCASEX0(UC,LC,X,TX) case (UC##type): fnc.LC(&X); LUAXRET##TX(L,X); LUAXTMP##TX(X); ret = 1; break;
 #define LUAXCASEX1(UC,LC,X,TX,T1) case (UC##type): fnc.LC(&X,LUAXARG##T1(L,1)); LUAXRET##TX(L,X); LUAXTMP##TX(X); ret = 1; break;
-// case (Sftype): fnc.sf(&str,lua_tointeger(L,1)); lua_pushstring(L,str); ret = 1; break;
 #define LUAXCASEX2(UC,LC,X,TX,T1,T2) case (UC##type): fnc.LC(&X,LUAXARG##T1(L,1),LUAXARG##T2(L,2)); LUAXRET##TX(L,X); LUAXTMP##TX(X); ret = 1; break;
+// case (Sftype): fnc.sf(&str,lua_tointeger(L,1),lua_tointeger(L,2),lua_tointeger(L,3)); lua_pushstring(L,str); ret = 1; break;
+#define LUAXCASEX3(UC,LC,X,TX,T1,T2,T3) case (UC##type): fnc.LC(&X,LUAXARG##T1(L,1),LUAXARG##T2(L,2),LUAXARG##T3(L,3)); LUAXRET##TX(L,X); LUAXTMP##TX(X); ret = 1; break;
 #define LUAXCASEY0(UC,LC,Y,TY) case (UC##type): LUAXDUP##TY(Y,LUAXARG##TY(L,1)); fnc.LC(&Y); LUAXRET##TY(L,Y); LUAXTMP##TY(Y); ret = 1; break;
 #define LUAXCASEY1(UC,LC,Y,TY,T1) case (UC##type): LUAXDUP##TY(Y,LUAXARG##TY(L,2)); fnc.LC(LUAXARG##T1(L,1),&Y); LUAXRET##TY(L,Y); LUAXTMP##TY(Y); ret = 1; break;
 // case (Mftype): str = strdup(lua_tostring(L,2)); fnc.mf(lua_tostring(L,1),&str); lua_pushstring(L,str); free(str); ret = 1; break;
@@ -190,7 +191,7 @@ int luaxClosure(lua_State *L)
 		LUAXCASE13(Th,th,I,I,I,I) // typedef int (*thtype)(long long loc, long long siz, int idx);
 		LUAXCASE03(Tj,tj,I,I,I) // typedef void (*tjtype)(long long loc, long long siz, int idx);
 
-		LUAXCASEX1(Sf,sf,str,S,I) // typedef void (*sftype)(char **str, int idx);
+		LUAXCASEX3(Sf,sf,str,S,I,I,I) // typedef void (*sftype)(char **str, int len, int idx, int loc);
 		LUAXCASEX2(Sg,sg,str,S,I,I) // typedef void (*sgtype)(char **str, long long loc, int idx);
 		LUAXCASEX1(Sh,sh,ptr,U,I) // typedef void (*shtype)(void **dat, int idx);
 

@@ -55,7 +55,7 @@ typedef int (*tftype)(double dly, int msk);
 typedef int (*thtype)(long long loc, long long siz, int idx);
 typedef void (*tjtype)(long long loc, long long siz, int idx);
 
-typedef void (*sftype)(char **str, int idx);
+typedef void (*sftype)(char **str, int len, int idx, int loc);
 typedef void (*sgtype)(char **str, long long loc, int idx);
 typedef void (*shtype)(void **dat, int idx);
 

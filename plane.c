@@ -82,11 +82,10 @@ sem_t resource;
 sem_t pending;
 sem_t ready[Procs];
 void planeRead();
-void planeDupstr(char **ptr, int idx);
+void planeDupstr(char **ptr, int len, int idx, int loc);
 void planeInsstr(const char *src, int len, int idx, int loc);
 void planeDelstr(int len, int idx, int loc);
 void planeOutstr(const char *str);
-void planeClrstr(char **ptr);
 void planeAddarg(const char *str);
 int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
@@ -657,17 +656,20 @@ void planeRead()
 	if (num) readCenter(&center,internal);
 	else {struct Center tmp = {0}; center = tmp;}
 }
-void planeDupstr(char **ptr, int idx)
+void planeDupstr(char **ptr, int len, int idx, int loc)
 {
-	int siz = 0; sem_safe(&resource,{siz = strsiz;});
-	while (idx >= siz) planeAddarg("");
-	sem_safe(&resource,{*ptr = strdup(string[idx]);});
+	sem_wait(&resource);
+	while (strsiz <= idx) {strsiz++; string = realloc(string,strsiz*sizeof(char*)); string[strsiz-1] = strdup("");}
+	if (len < 0) len = strlen(string[idx])+1; if (idx < 0) idx = strsiz-1; if (loc < 0) loc = strlen(string[idx]);
+	*ptr = strndup(string[idx],len);
+	sem_post(&resource);
 }
 void planeInsstr(const char *src, int len, int idx, int loc)
 {
 	int num = 0; for (int i = 0; i < len; i++) if (!src[i]) num++;
 	sem_wait(&resource);
 	while (strsiz <= idx) {strsiz++; string = realloc(string,strsiz*sizeof(char*)); string[strsiz-1] = strdup("");}
+	if (len < 0) len = strlen(src)+1; if (idx < 0) idx = strsiz-1; if (loc < 0) loc = strlen(string[idx]);
 	strsiz += num; string = realloc(string,strsiz*sizeof(char*));
 	for (int i = strsiz-1; i > idx+num; i--) string[i] = string[i-num];
 	for (int i = idx+1; i < idx+1+num; i++) string[i] = strdup("");
@@ -705,9 +707,7 @@ void planeAddarg(const char *str)
 	strsiz++;
 	string = realloc(string,strsiz*sizeof(char*));
 	string[strsiz-1] = strdup(str);
-	strmsk |= 1<<(strsiz-1);
 	sem_post(&resource);
-	planeSafe(Procs,Waits,RegisterString);
 }
 void planeSetcfg(int val, int sub)
 {
@@ -749,7 +749,7 @@ void planeTerm(int sig)
 void *planeExternal(void *ptr)
 {
 	struct Argument arg = {0}; char *str = 0;
-	planeDupstr(&str,1); if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
+	planeDupstr(&str,-1,1,0); if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[External]);
 	while (1) {
 	struct Center center = {0};
@@ -784,7 +784,7 @@ void *planeConsole(void *ptr)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	planeDupstr(&str,2); planeInsstr(chr,1,2,strlen(str)); free(str);}
+	planeDupstr(&str,-1,2,0); planeInsstr(chr,1,2,strlen(str)); free(str);}
 	planeSafe(Console,Done,Configures);
 	return 0;
 }

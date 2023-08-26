@@ -557,10 +557,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; void *dat0 = 0; void *key = 0;
 		typ0 = datxEval(&dat0,exp->sav,-1); datxStr(&key,exp->kys); datxInsert(key,dat0,typ0); free(key); free(dat0);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	case (InpOp): {
+		int typ0 = 0; char *str = 0;
+		if (!datxDupFp) ERROR(); datxDupFp(&str,-1,2,0); typ0 = identType("Str"); datxStr(dat,str); free(str);
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (DupOp): {
-		int typ0 = 0; void *dat0 = 0; char *str = 0; int idx = 0;
-		typ0 = datxEval(&dat0,exp->dup,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
-		if (!datxDupFp) ERROR(); datxDupFp(&str,idx); typ0 = identType("Str"); datxStr(dat,str); free(str);
+		int typ0 = 0; void *dat0 = 0; char *str = 0; int len = 0; int idx = 0; int loc = 0;
+		typ0 = datxEval(&dat0,exp->dup,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->dup+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->dup+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
+		if (!datxDupFp) ERROR(); datxDupFp(&str,len,idx,loc); typ0 = identType("Str"); datxStr(dat,str); free(str);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (InsOp): {
 		int typ0 = 0; void *dat0 = 0; char *str = 0; int len = 0; int idx = 0; int loc = 0;
