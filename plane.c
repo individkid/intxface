@@ -660,7 +660,8 @@ void planeDupstr(char **ptr, int len, int idx, int loc)
 {
 	sem_wait(&resource);
 	while (strsiz <= idx) {strsiz++; string = realloc(string,strsiz*sizeof(char*)); string[strsiz-1] = strdup("");}
-	if (len < 0) len = strlen(string[idx])+1; if (idx < 0) idx = strsiz-1; if (loc < 0) loc = strlen(string[idx]);
+	if (len < 0) len = strlen(string[idx])+1+len; if (idx < 0) idx = strsiz+idx; if (loc < 0) loc = strlen(string[idx])+1+loc;
+	// TODO check for errors in len idx loc
 	*ptr = strndup(string[idx],len);
 	sem_post(&resource);
 }
@@ -669,7 +670,8 @@ void planeInsstr(const char *src, int len, int idx, int loc)
 	int num = 0; for (int i = 0; i < len; i++) if (!src[i]) num++;
 	sem_wait(&resource);
 	while (strsiz <= idx) {strsiz++; string = realloc(string,strsiz*sizeof(char*)); string[strsiz-1] = strdup("");}
-	if (len < 0) len = strlen(src)+1; if (idx < 0) idx = strsiz-1; if (loc < 0) loc = strlen(string[idx]);
+	if (len < 0) len = strlen(src)+1+len; if (idx < 0) idx = strsiz+idx; if (loc < 0) loc = strlen(string[idx])+1+loc;
+	// TODO check for errors in len idx loc
 	strsiz += num; string = realloc(string,strsiz*sizeof(char*));
 	for (int i = strsiz-1; i > idx+num; i--) string[i] = string[i-num];
 	for (int i = idx+1; i < idx+1+num; i++) string[i] = strdup("");

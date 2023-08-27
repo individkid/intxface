@@ -55,6 +55,7 @@ typedef int (*tftype)(double dly, int msk);
 typedef int (*thtype)(long long loc, long long siz, int idx);
 typedef void (*tjtype)(long long loc, long long siz, int idx);
 
+typedef void (*setype)(char **str, int idx);
 typedef void (*sftype)(char **str, int len, int idx, int loc);
 typedef void (*sgtype)(char **str, long long loc, int idx);
 typedef void (*shtype)(void **dat, int idx);
@@ -137,7 +138,8 @@ struct Function {
 		Thtype,
 		Tjtype, // 21
 
-		Sftype, // 22
+		Setype, // 22
+		Sftype,
 		Sgtype,
 		Shtype,
 		Sitype,
@@ -145,9 +147,9 @@ struct Function {
 		Sktype,
 		Sltype,
 		Smtype,
-		Sntype, // 30
+		Sntype, // 31
 
-		Lftype, // 31
+		Lftype, // 32
 		Lgtype,
 		Lhtype,
 		Litype,
@@ -155,9 +157,9 @@ struct Function {
 		Lktype,
 		Lltype,
 		Lmtype,
-		Lntype, // 39
+		Lntype, // 40
 
-		Mftype, // 40
+		Mftype, // 41
 		Mhtype,
 		Mitype,
 		Mjtype,
@@ -167,9 +169,9 @@ struct Function {
 		Mntype,
 		Motype,
 		Mptype,
-		Mqtype, // 50
+		Mqtype, // 51
 
-		Nftype, // 51
+		Nftype, // 52
 		Nhtype,
 		Nitype,
 		Njtype,
@@ -179,9 +181,9 @@ struct Function {
 		Nntype,
 		Notype,
 		Nptype,
-		Nqtype, // 61
+		Nqtype, // 62
 
-		Rjtype, // 62
+		Rjtype, // 63
 		Rktype,
 		Rltype,
 		Rmtype,
@@ -218,6 +220,7 @@ struct Function {
 		thtype th;
 		tjtype tj;
 
+		setype se;
 		sftype sf;
 		sgtype sg;
 		shtype sh;
@@ -300,6 +303,7 @@ struct Function protoTypeTf(tftype fnc);
 struct Function protoTypeTh(thtype fnc);
 struct Function protoTypeTj(tjtype fnc);
 
+struct Function protoTypeSe(setype fnc);
 struct Function protoTypeSf(sftype fnc);
 struct Function protoTypeSg(sgtype fnc);
 struct Function protoTypeSh(shtype fnc);

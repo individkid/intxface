@@ -191,6 +191,7 @@ int luaxClosure(lua_State *L)
 		LUAXCASE13(Th,th,I,I,I,I) // typedef int (*thtype)(long long loc, long long siz, int idx);
 		LUAXCASE03(Tj,tj,I,I,I) // typedef void (*tjtype)(long long loc, long long siz, int idx);
 
+		LUAXCASEX1(Se,se,str,S,I) // typedef void (*sftype)(char **str, int idx);
 		LUAXCASEX3(Sf,sf,str,S,I,I,I) // typedef void (*sftype)(char **str, int len, int idx, int loc);
 		LUAXCASEX2(Sg,sg,str,S,I,I) // typedef void (*sgtype)(char **str, long long loc, int idx);
 		LUAXCASEX1(Sh,sh,ptr,U,I) // typedef void (*shtype)(void **dat, int idx);
