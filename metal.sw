@@ -35,6 +35,8 @@ var basis = Pend<Basis>(lock1,pool1)
 var uniform = Pend<Uniform>(lock1,pool1)
 var pierce = Pend<Pierce>(lock2,pool2)
 var array = [Slice]()
+let semaphor = DispatchSemaphore(value:0)
+var goon = true
 
 func getRect() -> NSRect
 {
@@ -384,9 +386,13 @@ func swiftLoad()
     threads[sub] = device.maxThreadsPerThreadgroup
     default: break}}
 }
+func swiftThread()
+{
+	while (goon) {semaphor.wait(); planeMain()}
+}
 func swiftStart()
 {
-	NSEvent.addLocalMonitorForEvents(matching:NSEvent.EventTypeMask.applicationDefined, handler: {(event: NSEvent) in planeMain(); return nil})
+	DispatchQueue.main.async(execute:DispatchWorkItem(block:swiftThread))
 	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
 	NSApp.activate(ignoringOtherApps:true)
 	NSApp.run()
@@ -431,7 +437,7 @@ func swiftMain(_ proc: Proc, _ wait: Wait)
 		case (Window): swiftOpen()
 		default: exitErr(#file,#line)}
 	case (Stop): switch (proc) {
-		case (Process): NSApp.stop(nil)
+		case (Process): goon = false; NSApp.stop(nil)
 		case (Graphics): queue = nil
 		case (Window): window.close()
 		default: exitErr(#file,#line)}
@@ -439,18 +445,7 @@ func swiftMain(_ proc: Proc, _ wait: Wait)
 }
 func swiftSafe()
 {
-	NSApp.postEvent(
-		NSEvent.otherEvent(
-		with:.applicationDefined,
-		location:NSZeroPoint,
-		modifierFlags:.command,
-		timestamp:0.0,
-		windowNumber:0,
-		context:nil,
-		subtype:0,
-		data1:Int(0),
-		data2:Int(0))!,
-		atStart:false)
+	semaphor.signal()
 }
 func swiftInfo(_ query: Configure) -> Int32
 {

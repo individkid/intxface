@@ -195,6 +195,7 @@ Proc = {
 	"Window",
 	"Graphics",
 	"Process",
+	"Test",
 }
 Struc = {
 	"Table",
@@ -316,7 +317,7 @@ Bootstrap = {
 		"val[0]:Int(1024)"..
 		"val[1]:Int(512)"..
 		"val[2]:Int(20)"..
-		"val[3]:Int(31)"..
+		"val[3]:Int(63)"..
 		"val[4]:Int(%(return castMicro(\"Adpoint\"))))"},
 	{"Int","1","Str","Machine(xfr:Transfer(Eval)".. -- assign to variable
 		"exp[0]:Express(opr:Operate(SavOp)kys:Str(Changed)"..
