@@ -78,6 +78,7 @@ enum Configure *hints = 0;
 enum Wait *waits = 0;
 enum Proc *procs = 0;
 int test = 0;
+int check = 0;
 // thread safe:
 sem_t resource;
 sem_t pending;
@@ -796,7 +797,7 @@ void *planeTest(void *ptr)
 {
 	int val = 0;
 	sem_wait(&initial); sem_post(&initial);
-	sem_safe(&resource,{val = test = 100000;});
+	sem_safe(&resource,{val = test = check = 100000;});
 	sem_post(&ready[Test]);
 	while (val) {
 	sem_safe(&resource,{val = --test;});
@@ -859,7 +860,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	init(); planeBoot(); sem_post(&initial); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !started) break;});
-	planeMain();} closeIdent(internal);
+	planeMain();} closeIdent(internal); if (check) ERROR();
 }
 int planeInfo(enum Configure cfg)
 {
@@ -908,7 +909,7 @@ void planeMain()
 {
 	enum Proc proc = 0; enum Wait wait = 0; enum Configure hint = 0;
 	planeDeque(&proc,&wait,&hint);
-	if (wait == Waits && hint == Configures && proc == Procs) return;
+	if (wait == Waits && hint == Configures && proc == Procs) {sem_safe(&resource,{check--;}); return;}
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
