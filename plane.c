@@ -64,6 +64,9 @@ xftype callInfo = 0;
 wftype callDraw = 0;
 pthread_t thread[Procs];
 pthread_key_t retstr;
+// owned by a single thread until joined:
+int test = 0;
+int check = 0;
 // resource protected:
 char **string = 0;
 int strsiz = 0;
@@ -77,12 +80,9 @@ int qtail = 0;
 enum Configure *hints = 0;
 enum Wait *waits = 0;
 enum Proc *procs = 0;
-int test = 0;
-int check = 0;
 // thread safe:
 sem_t resource;
 sem_t pending;
-sem_t initial;
 sem_t ready[Procs];
 void planeRead();
 void planeDupstr(char **ptr, int len, int idx, int loc);
@@ -795,12 +795,9 @@ void *planeConsole(void *ptr)
 }
 void *planeTest(void *ptr)
 {
-	int val = 0;
-	sem_wait(&initial); sem_post(&initial);
-	sem_safe(&resource,{val = test = check = 100000;});
+	test = check = 100000;
 	sem_post(&ready[Test]);
-	while (val) {
-	sem_safe(&resource,{val = --test;});
+	while (test--) {
 	planeSafe(Procs,Waits,Configures);}
 	planeSafe(Test,Done,Configures);
 	return 0;
@@ -824,7 +821,7 @@ void planeFinish(enum Proc bit)
 	case (Window): sem_wait(&ready[bit]); planeSafe(Window,Stop,Configures); break;
 	case (Graphics): sem_wait(&ready[bit]); planeSafe(Graphics,Stop,Configures); break;
 	case (Process): sem_wait(&ready[bit]); planeSafe(Process,Stop,Configures); break;
-	case (Test): sem_wait(&ready[bit]); sem_safe(&resource,{test = 0;}); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
+	case (Test): sem_wait(&ready[bit]); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	default: ERROR();}
 }
 void planeStarted(int val)
@@ -845,7 +842,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	act.__sigaction_u.__sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	sem_init(&resource,0,1); sem_init(&pending,0,0); sem_init(&initial,0,0);
+	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
 	luaxAdd("planeDupstr",protoTypeSf(planeDupstr)); luaxAdd("planeOutstr",protoTypeHf(planeOutstr));
@@ -857,7 +854,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	datxEmbed(planeSide); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
-	init(); planeBoot(); sem_post(&initial); while (1) {
+	init(); planeBoot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !started) break;});
 	planeMain();} closeIdent(internal); if (check) ERROR();
@@ -909,7 +906,7 @@ void planeMain()
 {
 	enum Proc proc = 0; enum Wait wait = 0; enum Configure hint = 0;
 	planeDeque(&proc,&wait,&hint);
-	if (wait == Waits && hint == Configures && proc == Procs) {sem_safe(&resource,{check--;}); return;}
+	if (wait == Waits && hint == Configures && proc == Procs) {check--; return;}
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
