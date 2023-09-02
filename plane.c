@@ -913,7 +913,7 @@ void planeMain()
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
-	if (wait != Waits && wait != Done && hint == Configures) callMain(proc,wait);
+	if ((wait == Start || wait == Stop) && hint == Configures) callMain(proc,wait);
 	if (wait == Done && hint == Configures) {running &= ~(1<<proc);
 	if ((started & ~running) != 0) planeSafe(Procs,Waits,RegisterOpen);}
 }
