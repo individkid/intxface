@@ -179,7 +179,7 @@ function showStructCI(field)
 	result = showCtypeC(field)
 	if (type(field[4]) == "number") then
 		result = result.."*"
-	elseif (type(field[4]) == "string") then
+	elseif (type(field[4]) == "string" and field[4] ~= "") then
 		result = result.."*"
 	end
 	return result
@@ -272,7 +272,7 @@ function showLimitC(field)
 		end
 	elseif (type(field[4]) == "number") then
 		count = field[4]
-	elseif (type(field[4]) == "string") then
+	elseif (type(field[4]) == "string" and field[4] ~= "") then
 		count = "ptr->"..field[4]
 	end
 	return count
@@ -285,7 +285,7 @@ function showLimitsC(field)
 		end
 	elseif (type(field[4]) == "number") then
 		count[#count+1] = field[4]
-	elseif (type(field[4]) == "string") then
+	elseif (type(field[4]) == "string" and field[4] ~= "") then
 		count[#count+1] = "ptr->"..field[4]
 	end
 	return count
@@ -336,7 +336,7 @@ function showReadC(name,struct)
 			result = result..showIndent(depth).."if ("..condit..") {\n"
 			depth = depth + 1
 		end
-		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
 			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
 		end
 		for key,val in ipairs(limits) do
@@ -383,7 +383,7 @@ function showWriteCI(pre,field,post)
 	if (type(field[4]) == "table") then
 		count = sizeIter(field[4])
 	end
-	if (type(field[4]) == "table") and (count == 0) then
+	if ((type(field[4]) == "table") and (count == 0)) or ((type(field[4]) == "string") and (field[4] == "")) then
 		showWriteCJ(pre,field,"","0",post)
 	elseif (type(field[4]) == "table") then
 		local indent = ""
@@ -399,7 +399,7 @@ function showWriteCI(pre,field,post)
 	elseif (type(field[4]) == "number") then
 		coroutine.yield(pre.."for (int i = 0; i < "..field[4].."; i++)")
 		showWriteCJ(pre.."    ",field,"[i]","1,i",post)
-	elseif (type(field[4]) == "string") then
+	elseif (type(field[4]) == "string" and field[4] ~= "") then
 		coroutine.yield(pre.."for (int i = 0; i < ptr->"..field[4].."; i++)")
 		showWriteCJ(pre.."    ",field,"[i]","1,i",post)
 	end
@@ -469,7 +469,7 @@ function showFreeCI(pre,field,post)
 	if (type(field[4]) == "table") then
 		count = sizeIter(field[4])
 	end
-	if (type(field[4]) == "table") then
+	if ((type(field[4]) == "table") or ((type(field[4] == "string")) and (field[4] == ""))) then
 		local indent = ""
 		local sub = ""
 		local arg = ""..#field[4]
@@ -489,7 +489,7 @@ function showFreeCI(pre,field,post)
 			showFreeCJ(pre.."        ",field,"[i]","1,i","")
 		end
 		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",0);"..post)
-	elseif (type(field[4]) == "string") then
+	elseif (type(field[4]) == "string" and field[4] ~= "") then
 		if recurse then
 			coroutine.yield(pre.."if (ptr->"..field[1]..")")
 			coroutine.yield(pre.."    for (int i = 0; i < ptr->"..field[4].."; i++)")
@@ -500,7 +500,7 @@ function showFreeCI(pre,field,post)
 end
 function showFreeCH(field)
 	local recurse = (Structz[field[2]]~=nil) or (field[2] == "Str") or (field[2] == "Dat")
-	local alloc = (type(field[4]) == "number") or (type(field[4]) == "string")
+	local alloc = (type(field[4]) == "number") or (type(field[4]) == "string" and field[4] ~= "")
 	local condit = ""
 	local seper = ""
 	local count = sizeIter(field[3])
@@ -553,7 +553,7 @@ function showFreeC(name,struct)
 			result = result..showIndent(depth).."if ("..condit..") {\n"
 			depth = depth + 1
 		end
-		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
 			result = result..showIndent(depth).."if (ptr->"..vl[1]..") {\n"
 			depth = depth + 1
 		end
@@ -572,7 +572,7 @@ function showFreeC(name,struct)
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
 		end
-		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
 			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..",0);\n"
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
@@ -637,7 +637,7 @@ function showRandC(name,struct)
 			result = result..showIndent(depth).."if ("..condit..") {\n"
 			depth = depth + 1
 		end
-		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
 			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
 		end
 		for key,val in ipairs(limits) do
@@ -849,11 +849,21 @@ end
 function showHideSC(name,struct)
 	local result = ""
 	local depth = 1
+	local tag = 0
 	result = result.."int hide"..name.."(struct "..name.." *ptr, const char *str, int *len)"
 	if prototype then return result..";" end
 	result = result.."\n{\n"
 	result = result..showIndent(depth).."free"..name.."(ptr);\n"
-	result = result..showIndent(depth).."if (!hideOpen(\""..name.."\",str,len)) {free"..name.."(ptr); return 0;}\n"
+	for ky,vl in ipairs(struct) do if (type(vl[4]) == "string" and vl[4] == "") then tag = ky end end
+	if (tag == 0) then
+		result = result..showIndent(depth).."if (!hideOpen(\""..name.."\",str,len)) {free"..name.."(ptr); return 0;}\n"
+	else
+		result = result..showIndent(depth).."int found = 0;\n"
+		for k,v in ipairs(Enumz[struct[tag][2]]) do
+			result = result..showIndent(depth).."if (!found && hideOpen(\""..v.."\",str,len)) {found = 1; ptr->"..struct[tag][1].." = "..v..";}\n"
+		end
+		result = result..showIndent(depth).."if (!found && !hideOpen(\""..name.."\",str,len)) {free"..name.."(ptr); return 0;}\n"
+	end
 	for ky,vl in ipairs(struct) do
 		local condit = showCondC(vl)
 		local limit = showLimitC(vl)
@@ -868,14 +878,18 @@ function showHideSC(name,struct)
 			result = result..showIndent(depth).."if ("..condit..") {\n"
 			depth = depth + 1
 		end
-		if (type(vl[4]) == "number" or type(vl[4]) == "string") then
+		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
 			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
 		end
 		for key,val in ipairs(limits) do
 			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
 			depth = depth + 1
 		end
-		result = result..showIndent(depth).."if (!hideField(\""..vl[1].."\",str,len,"..arg..") || !hide"..vl[2].."(&"..lval..",str,len)) {free"..name.."(ptr); return 0;}\n"
+		if (ky == tag) then
+			result = result..showIndent(depth).."if (!found && (!hideField(\""..vl[1].."\",str,len,"..arg..") || !hide"..vl[2].."(&"..lval..",str,len))) {free"..name.."(ptr); return 0;}\n"
+		else
+			result = result..showIndent(depth).."if (!hideField(\""..vl[1].."\",str,len,"..arg..") || !hide"..vl[2].."(&"..lval..",str,len)) {free"..name.."(ptr); return 0;}\n"
+		end
 		for key,val in ipairs(limits) do
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
@@ -1170,7 +1184,7 @@ function showCopyC(name,struct)
 		end
 		if (type(vl[4]) == "number") then
 			result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..","..vl[4]..");\n"
-		elseif (type(vl[4]) == "string") then
+		elseif (type(vl[4]) == "string" and vl[4] ~= "") then
 			result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..",ptr->"..vl[4]..");\n"
 		end
 		for key,val in ipairs(limits) do
@@ -1240,7 +1254,7 @@ function showFreadC(name,struct)
 		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
 			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
 		end
-		if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+		if ((not (type(vl[4]) == "table") or (#vl[4] > 0)) and (not (type(vl[4]) == "string") or (vl[4] ~= ""))) then
 			lval = lval.."[sub]"
 		end
 		result = result..showIndent(1).."case("..(ky-1).."): {\n"
@@ -1286,7 +1300,7 @@ function showFcopyC(name,struct)
 			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
 			rval = "(("..showCtypeC(vl).."*)("..rval.."))"
 		end
-		if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+		if ((not (type(vl[4]) == "table") or (#vl[4] > 0)) and (not (type(vl[4]) == "string") or (vl[4] ~= ""))) then
 			lval = lval.."[sub]"
 			rval = rval.."[sub]"
 		end
@@ -1331,7 +1345,7 @@ function showFallocC(name,struct)
 		end
 		if (type(vl[4]) == "number") then
 			result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..","..vl[4]..");\n"
-		elseif (type(vl[4]) == "string") then
+		elseif (type(vl[4]) == "string" and vl[4] ~= "") then
 			result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..",ptr->"..vl[4]..");\n"
 		end
 		result = result..showIndent(2).."break;}\n"
@@ -1385,7 +1399,7 @@ function showFwriteC(name,struct)
 		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
 			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
 		end
-		if (not (type(vl[4]) == "table") or (#vl[4] > 0)) then
+		if ((not (type(vl[4]) == "table") or (#vl[4] > 0)) and (not (type(vl[4]) == "string") or (vl[4] ~= ""))) then
 			lval = lval.."[sub]"
 		end
 		result = result..showIndent(1).."case("..(ky-1).."): {\n"
@@ -1757,7 +1771,7 @@ function showStructHsI(val)
 			count = count + 1
 		end
 	end
-	if (type(val[4]) == "number") or (type(val[4]) == "string") then
+	if (type(val[4]) == "number") or ((type(val[4]) == "string" and val[4] ~= "")) then
 		pre = "["
 		post = "]"
 	end
@@ -2218,7 +2232,7 @@ function showReadHsH(pre,index,struct,field)
 			list[#list+1] = "(Just "..field[4][count]..")"
 		end
 	end
-	if (type(field[4]) == "string") then
+	if (type(field[4]) == "string" and field[4] ~= "") then
 		local found = "0"
 		for k,v in ipairs(struct) do
 			if (v[1] == field[4]) then found = "a"..k end
@@ -2483,7 +2497,7 @@ function showWriteHsH(index,struct,field)
 		end
 		post = post.." "..pvar
 	end
-	if (type(field[4]) == "string") then
+	if (type(field[4]) == "string" and field[4] ~= "") then
 		local found = "0"
 		for k,v in ipairs(struct) do
 			if (v[1] == field[4]) then found = "a"..k end
@@ -2804,7 +2818,7 @@ function showReadLua(name,struct)
 				super = true
 			end
 		end
-		if (type(field[4]) == "string") then
+		if (type(field[4]) == "string" and field[4] ~= "") then
 			local found = "0"
 			for k,v in ipairs(struct) do
 				if (v[1] == field[4]) then found = "a"..k end
@@ -2886,7 +2900,7 @@ function showWriteLua(name,struct)
 				args = args + 1
 			end
 		end
-		if (type(field[4]) == "string") then
+		if (type(field[4]) == "string" and field[4] ~= "") then
 			local found = "0"
 			for k,v in ipairs(struct) do
 				if (v[1] == field[4]) then found = "a"..k end
@@ -2962,7 +2976,7 @@ function genericEnum(structz,enumz,name)
 end
 function genericStruct(structz,enumz,name)
 	local struct = {}
-	struct[#struct+1] = {"tag",name,{},{}}
+	struct[#struct+1] = {"tag",name,{},""}
 	for k,v in pairs(structz) do if (k ~= "Hetgen") then struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},1} end end
 	for k,v in pairs(enumz) do struct[#struct+1] = {string.lower(k),k,{["tag"]={[k..name]=true}},{}} end
 	for k,v in ipairs({"Chr","Int","Int32","New","Num","Old","Str","Dat"}) do struct[#struct+1] = {"v"..v,v,{["tag"]={[v..name]=true}},{}} end
