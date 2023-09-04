@@ -1115,9 +1115,12 @@ int hideEnum(const char* typ, const char *val, const char *str, int *siz)
 	if (asprintf(&tmp," %s ( %s ) %%n",typ,val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	free(tmp);
-	if (num == -1) return 0;
-	*siz += num;
-	return 1;
+	if (num >= 0) {*siz += num; return 1;}
+	if (asprintf(&tmp," %s %%n",val) < 0) ERRFNC(-1);
+	sscanf(str+*siz,tmp,&num);
+	free(tmp);
+	if (num >= 0) {*siz += num; return 1;}
+	return 0;
 }
 int hideFieldV(const char *val, const char *str, int *siz, int arg, int *sub)
 {
@@ -1174,50 +1177,56 @@ int hideChr(char *val, const char *str, int *siz)
 {
 	int num = -1;
 	sscanf(str+*siz," Chr ( %c )%n",val,&num);
-	if (num == -1) return 0;
-	*siz += num;
-	return 1;
+	if (num >= 0) {*siz += num; return 1;}
+	sscanf(str+*siz," %c%n",val,&num);
+	if (num >= 0) {*siz += num; return 1;}	
+	return 0;
 }
 int hideInt(int *val, const char *str, int *siz)
 {
 	int num = -1;
 	sscanf(str+*siz," Int ( %d )%n",val,&num);
-	if (num == -1) return 0;
-	*siz += num;
-	return 1;
+	if (num >= 0) {*siz += num; return 1;}
+	sscanf(str+*siz," %d%n",val,&num);
+	if (num >= 0) {*siz += num; return 1;}
+	return 0;
 }
 int hideInt32(int32_t *val, const char *str, int *siz)
 {
 	int num = -1;
 	long tmp = 0;
 	sscanf(str+*siz," Int32 ( %ld )%n",&tmp,&num);
-	if (num == -1) return 0;
-	*val = tmp; *siz += num;
-	return 1;
+	if (num >= 0) {*val = tmp; *siz += num; return 1;}
+	sscanf(str+*siz," %ld%n",&tmp,&num);
+	if (num >= 0) {*val = tmp; *siz += num; return 1;}
+	return 0;
 }
 int hideNew(long long *val, const char *str, int *siz)
 {
 	int num = -1;
 	sscanf(str+*siz," New ( %lld )%n",val,&num);
-	if (num == -1) return 0;
-	*siz += num;
-	return 1;
+	if (num >= 0) {*siz += num; return 1;}
+	sscanf(str+*siz," %lld%n",val,&num);
+	if (num >= 0) {*siz += num; return 1;}
+	return 0;
 }
 int hideNum(double *val, const char *str, int *siz)
 {
 	int num = -1;
 	sscanf(str+*siz," Num ( %lf )%n",val,&num);
-	if (num == -1) return 0;
-	*siz += num;
-	return 1;
+	if (num >= 0) {*siz += num; return 1;}
+	sscanf(str+*siz," %lf%n",val,&num);
+	if (num >= 0) {*siz += num; return 1;}
+	return 0;
 }
 int hideOld(float *val, const char *str, int *siz)
 {
 	int num = -1;
 	sscanf(str+*siz," Old ( %f )%n",val,&num);
-	if (num == -1) return 0;
-	*siz += num;
-	return 1;
+	if (num >= 0) {*siz += num; return 1;}
+	sscanf(str+*siz," %f%n",val,&num);
+	if (num >= 0) {*siz += num; return 1;}
+	return 0;
 }
 int hideStr(char **val, const char *str, int *siz)
 {

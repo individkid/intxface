@@ -859,8 +859,12 @@ function showHideSC(name,struct)
 		result = result..showIndent(depth).."if (!hideOpen(\""..name.."\",str,len)) {free"..name.."(ptr); return 0;}\n"
 	else
 		result = result..showIndent(depth).."int found = 0;\n"
+		result = result..showIndent(depth).."int single = 0;\n"
 		for k,v in ipairs(Enumz[struct[tag][2]]) do
-			result = result..showIndent(depth).."if (!found && hideOpen(\""..v.."\",str,len)) {found = 1; ptr->"..struct[tag][1].." = "..v..";}\n"
+			local fld = struct[tag][1]
+			local single = 0
+			for ky,vl in ipairs(struct) do if ((vl[3][fld] ~= nil) and (vl[3][fld][v] == true)) then single = single + 1 end end
+			result = result..showIndent(depth).."if (!found && hideOpen(\""..v.."\",str,len)) {found = 1; single = "..single.."; ptr->"..fld.." = "..v..";}\n"
 		end
 		result = result..showIndent(depth).."if (!found && !hideOpen(\""..name.."\",str,len)) {free"..name.."(ptr); return 0;}\n"
 	end
@@ -887,6 +891,8 @@ function showHideSC(name,struct)
 		end
 		if (ky == tag) then
 			result = result..showIndent(depth).."if (!found && (!hideField(\""..vl[1].."\",str,len,"..arg..") || !hide"..vl[2].."(&"..lval..",str,len))) {free"..name.."(ptr); return 0;}\n"
+		elseif (tag ~= 0) then
+			result = result..showIndent(depth).."if (!(hideField(\""..vl[1].."\",str,len,"..arg..") || single == 1) || !hide"..vl[2].."(&"..lval..",str,len)) {free"..name.."(ptr); return 0;}\n"
 		else
 			result = result..showIndent(depth).."if (!hideField(\""..vl[1].."\",str,len,"..arg..") || !hide"..vl[2].."(&"..lval..",str,len)) {free"..name.."(ptr); return 0;}\n"
 		end

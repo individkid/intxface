@@ -308,89 +308,88 @@ Initial = {
 	{"Micro","Deplane","Str","deplane_compute"},
 }
 Bootstrap = {
-	{"Int","0","Str","Force(num:Int(5)".. -- assign to configuration
-		"cfg[0]:Configure(WindowWide)"..
-		"cfg[1]:Configure(WindowHigh)"..
-		"cfg[2]:Configure(MachineSize)"..
-		"cfg[3]:Configure(RegisterOpen)"..
-		"cfg[4]:Configure(ArgumentMicro)"..
-		"val[0]:Int(1024)"..
-		"val[1]:Int(512)"..
-		"val[2]:Int(20)"..
-		"val[3]:Int(63)"..
+	{"Int","0","Str","Force(num:5".. -- assign to configuration
+		"cfg[0]:WindowWide"..
+		"cfg[1]:WindowHigh"..
+		"cfg[2]:MachineSize"..
+		"cfg[3]:RegisterOpen"..
+		"cfg[4]:ArgumentMicro"..
+		"val[0]:1024"..
+		"val[1]:512"..
+		"val[2]:20"..
+		"val[3]:63"..
 		"val[4]:Int(%(return castMicro(\"Adpoint\"))))"},
-	{"Int","1","Str","Eval(exp[0]:SavOp(kys:Str(Changed)sav[0]:IntOp(ivl:Int(0))))"}, -- assign to variable
+	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
-		"exp[0]:ImmOp(val[0]:CenterTag(center[0]:Machinez(siz:Int(20)idx:Int(0)slf:Int(0)"..
-		"mch[0]:Goto(exp[0]:CndOp(cnd[0]:CondExp(len:Int(3)siz:Int(9)"..
+		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..
+		"mch[0]:Goto(CndOp(CondExp(len:3siz:9"..
 			"typ[0]:Str(Int)typ[1]:Str(Int)typ[2]:Str(Str)"..
 			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)cmp[2]:Compare(ReCmp)"..
-			"var[0]:GetOp(cfg:Configure(ResultHint))"..
-			"var[1]:ValOp(key:Str(Changed))"..
-			"var[2]:DupOp(dup[0]:IntOp(ivl:Int(-1))dup[1]:IntOp(ivl:Int(2))dup[2]:IntOp(ivl:Int(-2)))"..
-			"dom[0]:Domain(len:Int(1)val[0]:CfgOp(cvl:Configure(CenterMemory)))"..
-			"dom[1]:Domain(len:Int(2)val[0]:CfgOp(cvl:Configure(ResultHint))val[1]:IntOp(ivl:Int(1)))"..
-			"dom[2]:Domain(len:Int(1)val[0]:CfgOp(cvl:Configure(ResultHint)))"..
-			"dom[3]:Domain(len:Int(1)val[0]:CfgOp(cvl:Configure(CursorLeft)))"..
-			"dom[4]:Domain(len:Int(1)val[0]:CfgOp(cvl:Configure(CursorAngle)))"..
-			"dom[5]:Domain(len:Int(1)val[0]:CfgOp(cvl:Configure(CursorClick)))"..
-			"dom[6]:Domain(len:Int(3)val[0]:CfgOp(cvl:Configure(RegisterString))val[1]:ValOp(key:Str(Changed))val[2]:RexOp(rex:Str([Mn])))"..
-			"dom[7]:Domain(len:Int(3)val[0]:CfgOp(cvl:Configure(RegisterString))val[1]:ValOp(key:Str(Changed))val[2]:RexOp(rex:Str(.)))"..
-			"dom[8]:Domain(len:Int(0))"..
+			"var[0]:GetOp(ResultHint)"..
+			"var[1]:ValOp(Str(Changed))"..
+			"var[2]:DupOp(dup[0]:IntOp(-1)dup[1]:IntOp(2)dup[2]:IntOp(-2))"..
+			"dom[0]:Domain(len:1val[0]:CfgOp(CenterMemory))"..
+			"dom[1]:Domain(len:2val[0]:CfgOp(ResultHint)val[1]:IntOp(1))"..
+			"dom[2]:Domain(len:1val[0]:CfgOp(ResultHint))"..
+			"dom[3]:Domain(len:1val[0]:CfgOp(CursorLeft))"..
+			"dom[4]:Domain(len:1val[0]:CfgOp(CursorAngle))"..
+			"dom[5]:Domain(len:1val[0]:CfgOp(CursorClick))"..
+			"dom[6]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:RexOp(Str([Mn])))"..
+			"dom[7]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:RexOp(Str(.)))"..
+			"dom[8]:Domain(len:0)"..
 			"rng[0]:NamOp(nam:Str(ReadCenter))"..
 			"rng[1]:NamOp(nam:Str(DrawChanged))"..
-			"rng[2]:IntOp(ivl:Int(0))".. -- Draw not Changed
-			"rng[3]:IntOp(ivl:Int(0))".. -- Move
-			"rng[4]:IntOp(ivl:Int(0))".. -- Roll
-			"rng[5]:IntOp(ivl:Int(0))".. -- Click
-			"rng[6]:IntOp(ivl:Int(0))".. -- Keyboard
-			"rng[7]:IntOp(ivl:Int(0))".. -- Keyboard default
-			"rng[8]:IntOp(ivl:Int(0)))))"..
-		"mch[1]:Name(str:Str(DrawChanged))"..
+			"rng[2]:IntOp(0)".. -- Draw not Changed
+			"rng[3]:IntOp(0)".. -- Move
+			"rng[4]:IntOp(0)".. -- Roll
+			"rng[5]:IntOp(0)".. -- Click
+			"rng[6]:IntOp(0)".. -- Keyboard
+			"rng[7]:IntOp(0)".. -- Keyboard default
+			"rng[8]:IntOp(0))))"..
+		"mch[1]:Name(Str(DrawChanged))"..
 		-- Draw, and remember that not Changed
 		"mch[2]:Draw()".. -- pass Argument configurations
-		"mch[3]:Eval(exp[0]:SavOp(kys:Str(Changed)sav[0]:IntOp(ivl:Int(0))))"..
-		"mch[4]:Eval(exp[0]:IntOp(ivl:Int(0)))"..
-		"mch[5]:Name(str:Str(ReadCenter))"..
+		"mch[3]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"..
+		"mch[4]:Eval(IntOp(0))"..
+		"mch[5]:Name(Str(ReadCenter))"..
 		-- Read center, Stage center fields, and compare fields staged to Configure
 		"mch[6]:Read()".. -- read to center
-		"mch[7]:Stage(siz:Int(3)".. -- copy to configuration
-			"sav[0]:Configure(RegisterMemory)"..
-			"sav[1]:Configure(RegisterIndex)"..
-			"sav[2]:Configure(CenterSize))"..
-		"mch[8]:Eval(exp[0]:CndOp(cnd[0]:CondExp("..
-			"len:Int(2)siz:Int(3)"..
+		"mch[7]:Stage(siz:3".. -- copy to configuration
+			"sav[0]:RegisterMemory"..
+			"sav[1]:RegisterIndex"..
+			"sav[2]:CenterSize)"..
+		"mch[8]:Eval(CndOp(CondExp(len:2siz:3"..
 			"typ[0]:Str(Int)typ[1]:Str(Int)"..
 			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)"..
-			"var[0]:GetOp(cfg:Configure(CenterSize))"..
-			"var[1]:GetOp(cfg:Configure(RegisterMemory))"..
-			"dom[0]:Domain(len:Int(2)val[0]:IntOp(ivl:Int(0))val[1]:MemOp(mvl:Memory(Piercez)))"..
-			"dom[1]:Domain(len:Int(2)val[0]:IntOp(ivl:Int(0))val[1]:GetOp(cfg:Configure(RegisterMemory)))"..
-			"dom[2]:Domain(len:Int(1)val[0]:GetOp(cfg:Configure(CenterSize)))"..
+			"var[0]:GetOp(CenterSize)"..
+			"var[1]:GetOp(RegisterMemory)"..
+			"dom[0]:Domain(len:2val[0]:IntOp(0)val[1]:MemOp(Piercez))"..
+			"dom[1]:Domain(len:2val[0]:IntOp(0)val[1]:GetOp(RegisterMemory))"..
+			"dom[2]:Domain(len:1val[0]:GetOp(CenterSize))"..
 			"rng[0]:NamOp(nam:Str(GetPierce))"..
-			"rng[1]:IntOp(ivl:Int(0))"..
+			"rng[1]:IntOp(0)"..
 			"rng[2]:NamOp(nam:Str(SetMemory)))))"..
-		"mch[9]:Name(str:Str(SetMemory))"..
+		"mch[9]:Name(Str(SetMemory))"..
 		-- Copy center to cpu and gpu, and remember that Changed
 		"mch[10]:Copy()".. -- copy from center to memory
-		"mch[11]:Eval(exp[0]:SavOp(kys:Str(Changed)sav[0]:IntOp(ivl:Int(1))))"..
-		"mch[12]:Eval(exp[0]:IntOp(ivl:Int(0)))"..
-		"mch[13]:Name(str:Str(GetPierce))"..
+		"mch[11]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(1)))"..
+		"mch[12]:Eval(IntOp(0))"..
+		"mch[13]:Name(Str(GetPierce))"..
 		-- Eval and Echo singleton Pierce to center, Fill and Write center
-		"mch[14]:Eval(exp[0]:FldOp(".. -- copy to accumulator
-			"fld[0]:ImmOp(val[0]:CenterTag(center[0]:Piercez(siz:Int(1)idx:Int(0)slf:Int(0)pie[0]:Pierce("..
+		"mch[14]:Eval(FldOp(".. -- copy to accumulator
+			"fld[0]:ImmOp(CenterTag(center[0]:Piercez(siz:1idx:0slf:0pie[0]:Pierce("..
 				"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
 				"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
 				"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))))".. -- Express struct
-			"fld[1]:HetOp(siz:Int(1)exp[0]:TotOp(typ:Str(Int32)"..
-				"tot[0]:GetOp(cfg:Configure(RegisterIndex))))".. -- Hetgen field values
-			"fld[2]:HomOp(siz:Int(1)exp[0]:StrOp(svl:Str(idx)))".. -- Homgen Str field names
-			"fld[3]:HomOp(siz:Int(1)exp[0]:IntOp(ivl:Int(0)))))".. -- Homgen Int field indices
+			"fld[1]:HetOp(siz:1exp[0]:TotOp(typ:Str(Int32)"..
+				"tot[0]:GetOp(RegisterIndex)))".. -- Hetgen field values
+			"fld[2]:HomOp(siz:1exp[0]:StrOp(svl:Str(idx)))".. -- Homgen Str field names
+			"fld[3]:HomOp(siz:1exp[0]:IntOp(0))))".. -- Homgen Int field indices
 		"mch[15]:Echo()".. -- copy from accumulator to center
 		"mch[16]:Fill()".. -- copy from memory into center
 		"mch[17]:Write()".. -- write center
-		"mch[18]:Eval(exp[0]:IntOp(ivl:Int(0)))"..
-		"mch[19]:Name(str:Str(Return))))))"},
+		"mch[18]:Eval(IntOp(0))"..
+		"mch[19]:Name(Str(Return))))))"},
 	{"Int","3","Str","Echo()"}, -- copy from accumulator to center
 	{"Int","4","Str","Copy()"}, -- copy from center to machine
 }
