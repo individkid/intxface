@@ -393,10 +393,9 @@ int datxIrrexe(int *len, const char *lft, const struct Irrex *rgt)
 }
 int datxIrrex(const char *lft, struct Irrex *rgt)
 {
-	if (rgt->vld == 0) {
-		// TODO datxIrrcmp
-	}
-	return 0; // TODO datxIrrexe
+	int len = 0;
+	if (rgt->vld == 0) datxIrrcmp(lft,rgt);
+	return (datxIrrexe(&len,lft,rgt) && len == strlen(lft));
 }
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
