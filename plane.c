@@ -725,7 +725,7 @@ int planeGetcfg(int sub)
 	if (sub < 0 || sub >= Configures) ERROR();
 	return configure[sub];
 }
-void planeFind(char **val, const char *key)
+void planeValstr(char **val, const char *key)
 {
 	void *src = 0; void *dst = 0; int typ = 0;
 	datxStr(&src,key);
@@ -734,7 +734,7 @@ void planeFind(char **val, const char *key)
 	assignStr(val,datxChrz(0,dst));
 	free(src); free(dst);
 }
-void planeInsert(const char *key, const char *val)
+void planeSavstr(const char *key, const char *val)
 {
 	void *src = 0; void *dst = 0;
 	datxStr(&src,key);
@@ -848,6 +848,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	luaxAdd("planeDupstr",protoTypeSf(planeDupstr)); luaxAdd("planeOutstr",protoTypeHf(planeOutstr));
 	luaxAdd("planeInsstr",protoTypeRp(planeInsstr)); luaxAdd("planeDelstr",protoTypeRq(planeDelstr));
 	luaxAdd("planeSetcfg",protoTypeCg(planeSetcfg)); luaxAdd("planeGetcfg",protoTypeTl(planeGetcfg));
+	luaxAdd("planeValstr",protoTypeRr(planeValstr)); luaxAdd("planeSavstr",protoTypeRs(planeSavstr));
 	datxDupstr(planeDupstr); datxOutstr(planeOutstr);
 	datxInsstr(planeInsstr); datxDelstr(planeDelstr);
 	datxSetcfg(planeSetcfg); datxGetcfg(planeGetcfg);

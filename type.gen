@@ -259,12 +259,12 @@ Compare = {
 	"EbCmp", -- call to embeded
 }
 Order = {
-	"NextOrd",
-	"JoinOrd",
-	"ForkOrd",
+	"StrOrd",
 	"PreOrd",
 	"PostOrd",
 	"PermOrd",
+	"ForkOrd",
+	"BeginOrd",
 }
 Access = {
 	"GetAcc",
@@ -564,10 +564,12 @@ Regex = {
 	{"dat","Dat",{},{}}, -- compiled regex
 }
 Irrex = {
-	{"siz","Int",{},{}}, -- how many compiled
-	{"str","Str",{},{}}, -- string to compile
-	{"chr","Chr",{},"siz"}, -- pattern to compare
-	{"ord","Order",{},"siz"}, -- how to join
+	{"vld","Int",{},{}}, -- whether compiled
+	{"exp","Str",{},{}}, -- uncompiled string
+	{"ord","Order",{},{}}, -- type of comparison
+	{"str","Str",{["ord"]={["StrOrd"]=true,["PreOrd"]=true,["PostOrd"]=true,["PermOrd"]=true}},{}}, -- string to compile
+	{"siz","Int",{["ord"]={["ForkOrd"]=true,["BeginOrd"]=true}},{}}, -- number of subexpressions
+	{"sub","Irrex",{["ord"]={["ForkOrd"]=true,["BeginOrd"]=true}},"siz"}, -- subexpression
 }
 Express = {
 	{"opr","Operate",{},""},
