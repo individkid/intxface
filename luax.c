@@ -246,7 +246,7 @@ int luaxClosure(lua_State *L)
 		case (Rjtype): lua_pushstring(L,fnc.rj(lua_tointeger(L,1))); ret = 1; break; // typedef const char *(*rjtype)(int i);
 		LUAXCASE01(Rk,rk,U) // typedef void (*hntype)(void *dat);
 		LUAXCASEX1(Rr,rr,str,S,S) // typedef void (*rrtype)(char **val, const char *key);
-		LUAXCASE02(Rs,rs,S,S) // typedef void (*rstype)(const char *key, const char *val);
+		LUAXCASE02(Rs,rs,S,S) // typedef void (*rstype)(const char *val, const char *key);
 
 		default: printf("fnc.ft:%d\n",fnc.ft); ERROR();}
 	return ret;

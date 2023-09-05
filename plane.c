@@ -734,7 +734,7 @@ void planeValstr(char **val, const char *key)
 	assignStr(val,datxChrz(0,dst));
 	free(src); free(dst);
 }
-void planeSavstr(const char *key, const char *val)
+void planeSavstr(const char *val, const char *key)
 {
 	void *src = 0; void *dst = 0;
 	datxStr(&src,key);

@@ -376,7 +376,7 @@ char datxEscape(char chr)
 }
 void datxIrrcmp(const char *lft, struct Irrex *rgt)
 {
-	// TODO compile from {} [] joined character sequences modified by = < > *.
+	// TODO compile from {} [] character sequences modified by = < > *.
 }
 int datxIrrexe(int *len, const char *lft, const struct Irrex *rgt)
 {

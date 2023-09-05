@@ -109,7 +109,7 @@ typedef int (*rntype)(int idx, const char *str);
 typedef void (*rptype)(const char *src, int len, int idx, int loc);
 typedef void (*rqtype)(int len, int idx, int loc);
 typedef void (*rrtype)(char **val, const char *key);
-typedef void (*rstype)(const char *key, const char *val);
+typedef void (*rstype)(const char *val, const char *key);
 
 struct Function {
 	enum {
