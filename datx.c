@@ -374,21 +374,63 @@ char datxEscape(char chr)
 	default: break;}
 	return chr;
 }
+int datxOpen(char chr)
+{
+	switch (chr) {case ('='): case ('<'): case ('>'): case ('*'): case ('|'): return 1; default: break;} return 0;
+}
+int datxClose(char chr)
+{
+	switch (chr) {case ('^'): return 1; default: break;} return 0;
+}
+int datxMatch(char chr)
+{
+	switch (chr) {case ('='): case ('<'): case ('>'): case ('*'): case ('|'): case ('^'): return 0; default: break;} return 1;
+}
+enum Order datxOrder(char chr)
+{
+	switch (chr) {default: break;
+	case ('='): return BeginOrd;
+	case ('<'): return PostOrd;
+	case ('>'): return PreOrd;
+	case ('*'): return PermOrd;
+	case ('|'): return ForkOrd;}
+	return Orders;
+}
 void datxIrrcmp(const char *lft, struct Irrex *rgt)
 {
-	// TODO compile from {} [] character sequences modified by = < > *.
+	int lvl = 0; int siz = 0; char *str = 0;
+	if (rgt->vld == 0) {
+	int len = 0; int esc = 0;
+	for (int i = 0; lft[i]; i++) if (esc) {len++; esc = 0;} else if (lft[i] == '\\') esc = 1; else len++;
+	str = malloc(len+1); len = 0; esc = 0;
+	for (int i = 0; lft[i]; i++)
+	if (esc) {str[len++] = datxEscape(lft[i]); esc = 0;} else if (lft[i] == '\\') esc = 1; else str[len++] = lft[i];
+	rgt->vld = 1; rgt->ord = BeginOrd;}
+	else str = strdup(lft);
+	for (int i = 0; str[i] && lvl >= 0; i++) {
+	if (lvl == 0 && !datxClose(str[i])) siz++;
+	if (datxOpen(str[i])) lvl++; if (datxClose(str[i])) lvl--;}
+	rgt->siz = siz; allocIrrex(&rgt->sub,siz); lvl = 0; siz = 0;
+	for (int i = 0; str[i] && lvl >= 0; i++) {
+	if (lvl == 0 && datxOpen(str[i])) {rgt->sub[siz].ord = datxOrder(str[i]); datxIrrcmp(str+i+1,rgt->sub+siz);}
+	if (lvl == 0 && datxMatch(str[i])) {rgt->sub[siz].ord = ChrOrd; rgt->sub[siz].chr = str[i];}
+	if (lvl == 0 && !datxClose(str[i])) {rgt->sub[siz].vld = 1; siz++;}
+	if (datxOpen(str[i])) lvl++; if (datxClose(str[i])) lvl--;}
+	free(str);
 }
 int datxIrrexe(int *len, const char *lft, const struct Irrex *rgt)
 {
 	switch (rgt->ord) {
-	case (StrOrd): if (strncmp(lft+*len,rgt->str,strlen(rgt->str)) == 0) {*len += strlen(rgt->str); return 1;} else return 0;
-	case (PreOrd): for (int i = 0; rgt->str[i]; i++) if (!rgt->str[i] || strncmp(lft+*len,rgt->str,i) != 0) {*len += i-1; return 1;} return 0;
-	case (PostOrd): for (int i = 0; rgt->str[i]; i++) if (strncmp(lft+*len,rgt->str+i,strlen(rgt->str+i)) == 0) {*len += strlen(rgt->str+i); return 1;} return 0;
-	case (PermOrd): break; // TODO
+	case (ChrOrd): if (lft[*len] == rgt->chr) {*len += 1; return 1;} else return 0;
+	case (PreOrd): for (int i = 0; i < rgt->siz; i++) if (!datxIrrexe(len,lft,rgt->sub+i)) break; return 1;
+	case (PostOrd): for (int i = 0; i < rgt->siz; i++) {
+		int j = 0; int sav = *len; for (j = i; j < rgt->siz; j++) if (!datxIrrexe(len,lft,rgt->sub+i)) break;
+		if (j < rgt->siz) *len = sav; else break;} return 1;
+	case (PermOrd): return 0; // TODO
 	case (ForkOrd): for (int i = 0; i < rgt->siz; i++) if (datxIrrexe(len,lft,rgt->sub+i)) return 1; return 0;
-	case (BeginOrd): for (int i = 0; i < rgt->siz; i++) if (!datxIrrexe(len,lft,rgt->sub+i)) return 0; return 1;
-	default: ERROR();
-	}
+	case (BeginOrd): {int sav = *len;
+		for (int i = 0; i < rgt->siz; i++) if (!datxIrrexe(len,lft,rgt->sub+i)) {*len = sav; return 0;} return 1;}
+	default: ERROR();}
 	return 0;
 }
 int datxIrrex(const char *lft, struct Irrex *rgt)
@@ -661,7 +703,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
 		freeRegex(&rex);} break;
 	case (IrxOp): {
-		struct Irrex pre = {0}; assignStr(&pre.str,exp->irx);
+		struct Irrex pre = {0}; assignStr(&pre.exp,exp->irx);
 		if (typ == -1) typ = identType("Irrex"); if (typ != identType("Irrex")) ERROR();
 		datxNone(datxDat0); writeIrrex(&pre,datxIdx0); assignDat(dat,*datxDat0);
 		freeIrrex(&pre);} break;

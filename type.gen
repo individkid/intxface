@@ -259,7 +259,7 @@ Compare = {
 	"EbCmp", -- call to embeded
 }
 Order = {
-	"StrOrd",
+	"ChrOrd",
 	"PreOrd",
 	"PostOrd",
 	"PermOrd",
@@ -322,7 +322,7 @@ Bootstrap = {
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
 		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..
-		"mch[0]:Goto(CndOp(CondExp(len:3siz:9"..
+		"mch[0]:Goto(CndOp(CondExp(len:3siz:10"..
 			"typ[0]:Str(Int)typ[1]:Str(Int)typ[2]:Str(Str)"..
 			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)cmp[2]:Compare(ReCmp)"..
 			"var[0]:GetOp(ResultHint)"..
@@ -334,25 +334,28 @@ Bootstrap = {
 			"dom[3]:Domain(len:1val[0]:CfgOp(CursorLeft))"..
 			"dom[4]:Domain(len:1val[0]:CfgOp(CursorAngle))"..
 			"dom[5]:Domain(len:1val[0]:CfgOp(CursorClick))"..
-			"dom[6]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:RexOp(Str([Mn])))"..
-			"dom[7]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:RexOp(Str(.)))"..
-			"dom[8]:Domain(len:0)"..
-			"rng[0]:NamOp(nam:Str(ReadCenter))"..
-			"rng[1]:NamOp(nam:Str(DrawChanged))"..
+			-- Additive/Subtractive/Refine/Transform/Mode(
+			-- Mouse(Rotate(Ortho/Focal/Normal)/Translate(Ortho/Focal/Normal)/Scale(Ortho/Focal/Normal))/
+			-- Roller(Rotate(Ortho/Focal/Normal)/Translate(Ortho/Focal/Normal)/Scale(Ortho/Focal/Normal)))
+			"dom[6]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:IrxOp(Str(=|Mm^|Mm^|Rr^|Oo^)))"..
+			"dom[7]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:IrxOp(Str(>|Mm^|Mm^|Rr^|Oo^)))"..
+			"dom[8]:Domain(len:1val[0]:CfgOp(RegisterString))"..
+			"dom[9]:Domain(len:0)"..
+			"rng[0]:NamOp(Str(ReadCenter))"..
+			"rng[1]:NamOp(Str(DrawChanged))"..
 			"rng[2]:IntOp(0)".. -- Draw not Changed
 			"rng[3]:IntOp(0)".. -- Move
 			"rng[4]:IntOp(0)".. -- Roll
 			"rng[5]:IntOp(0)".. -- Click
 			"rng[6]:IntOp(0)".. -- Keyboard
-			"rng[7]:IntOp(0)".. -- Keyboard default
-			"rng[8]:IntOp(0))))"..
-		"mch[1]:Name(Str(DrawChanged))"..
-		-- Draw, and remember that not Changed
+			"rng[7]:IntOp(0)".. -- Keyboard prefix
+			"rng[8]:IntOp(0)".. -- Keyboard error
+			"rng[9]:IntOp(0))))"..
+		"mch[1]:Name(Str(DrawChanged))".. -- Draw, and remember that not Changed
 		"mch[2]:Draw()".. -- pass Argument configurations
 		"mch[3]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"..
 		"mch[4]:Eval(IntOp(0))"..
-		"mch[5]:Name(Str(ReadCenter))"..
-		-- Read center, Stage center fields, and compare fields staged to Configure
+		"mch[5]:Name(Str(ReadCenter))".. -- Read center, Stage center, compare center
 		"mch[6]:Read()".. -- read to center
 		"mch[7]:Stage(siz:3".. -- copy to configuration
 			"sav[0]:RegisterMemory"..
@@ -366,23 +369,20 @@ Bootstrap = {
 			"dom[0]:Domain(len:2val[0]:IntOp(0)val[1]:MemOp(Piercez))"..
 			"dom[1]:Domain(len:2val[0]:IntOp(0)val[1]:GetOp(RegisterMemory))"..
 			"dom[2]:Domain(len:1val[0]:GetOp(CenterSize))"..
-			"rng[0]:NamOp(nam:Str(GetPierce))"..
+			"rng[0]:NamOp(Str(GetPierce))"..
 			"rng[1]:IntOp(0)"..
-			"rng[2]:NamOp(nam:Str(SetMemory)))))"..
-		"mch[9]:Name(Str(SetMemory))"..
-		-- Copy center to cpu and gpu, and remember that Changed
+			"rng[2]:NamOp(Str(SetMemory)))))"..
+		"mch[9]:Name(Str(SetMemory))".. -- Copy center to cpu and gpu, and remember that Changed
 		"mch[10]:Copy()".. -- copy from center to memory
 		"mch[11]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(1)))"..
 		"mch[12]:Eval(IntOp(0))"..
-		"mch[13]:Name(Str(GetPierce))"..
-		-- Eval and Echo singleton Pierce to center, Fill and Write center
+		"mch[13]:Name(Str(GetPierce))".. -- Eval and Echo singleton Pierce to center, Fill and Write center
 		"mch[14]:Eval(FldOp(".. -- copy to accumulator
 			"fld[0]:ImmOp(CenterTag(center[0]:Piercez(siz:1idx:0slf:0pie[0]:Pierce("..
 				"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
 				"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
 				"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))))".. -- Express struct
-			"fld[1]:HetOp(siz:1exp[0]:TotOp(typ:Str(Int32)"..
-				"tot[0]:GetOp(RegisterIndex)))".. -- Hetgen field values
+			"fld[1]:HetOp(siz:1exp[0]:TotOp(typ:Str(Int32)tot[0]:GetOp(RegisterIndex)))".. -- Hetgen field values
 			"fld[2]:HomOp(siz:1exp[0]:StrOp(svl:Str(idx)))".. -- Homgen Str field names
 			"fld[3]:HomOp(siz:1exp[0]:IntOp(0))))".. -- Homgen Int field indices
 		"mch[15]:Echo()".. -- copy from accumulator to center
@@ -567,9 +567,9 @@ Irrex = {
 	{"vld","Int",{},{}}, -- whether compiled
 	{"exp","Str",{},{}}, -- uncompiled string
 	{"ord","Order",{},{}}, -- type of comparison
-	{"str","Str",{["ord"]={["StrOrd"]=true,["PreOrd"]=true,["PostOrd"]=true,["PermOrd"]=true}},{}}, -- string to compile
-	{"siz","Int",{["ord"]={["ForkOrd"]=true,["BeginOrd"]=true}},{}}, -- number of subexpressions
-	{"sub","Irrex",{["ord"]={["ForkOrd"]=true,["BeginOrd"]=true}},"siz"}, -- subexpression
+	{"chr","Chr",{},{}}, -- only for ChrOrd
+	{"siz","Int",{},{}}, -- zero for ChrOrd
+	{"sub","Irrex",{},"siz"},
 }
 Express = {
 	{"opr","Operate",{},""},
