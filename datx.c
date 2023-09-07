@@ -367,12 +367,18 @@ int datxRegex(char *lft, struct Regex *rgt)
 	val = regexec(ptr,lft,0,0,0);
 	return (val == 0 ? 1 : 0);
 }
-char datxEscape(char chr)
+int datxLoop(char chr)
 {
-	switch (chr) {
-	case ('n'): return '\n';
-	default: break;}
-	return chr;
+	if (chr == '\\') return 1;
+	return 0;
+}
+const char *datxEscape(char *tmp, const char *str)
+{
+	if (datxLoop(str[0]))
+	switch (str[1]) {
+	case ('n'): *tmp = '\n'; return tmp;
+	default: *tmp = str[1]; return tmp;}
+	return str;
 }
 int datxOpen(char chr)
 {
@@ -396,27 +402,17 @@ enum Order datxOrder(char chr)
 	case ('|'): return ForkOrd;}
 	return Orders;
 }
-void datxIrrcmp(const char *lft, struct Irrex *rgt)
+void datxIrrcmp(const char *str, struct Irrex *rgt, enum Order ord)
 {
-	int lvl = 0; int siz = 0; char *str = 0;
-	if (rgt->vld == 0) {
-	int len = 0; int esc = 0;
-	for (int i = 0; lft[i]; i++) if (esc) {len++; esc = 0;} else if (lft[i] == '\\') esc = 1; else len++;
-	str = malloc(len+1); len = 0; esc = 0;
-	for (int i = 0; lft[i]; i++)
-	if (esc) {str[len++] = datxEscape(lft[i]); esc = 0;} else if (lft[i] == '\\') esc = 1; else str[len++] = lft[i];
-	rgt->vld = 1; rgt->ord = BeginOrd;}
-	else str = strdup(lft);
-	for (int i = 0; str[i] && lvl >= 0; i++) {
-	if (lvl == 0 && !datxClose(str[i])) siz++;
-	if (datxOpen(str[i])) lvl++; if (datxClose(str[i])) lvl--;}
-	rgt->siz = siz; allocIrrex(&rgt->sub,siz); lvl = 0; siz = 0;
-	for (int i = 0; str[i] && lvl >= 0; i++) {
-	if (lvl == 0 && datxOpen(str[i])) {rgt->sub[siz].ord = datxOrder(str[i]); datxIrrcmp(str+i+1,rgt->sub+siz);}
-	if (lvl == 0 && datxMatch(str[i])) {rgt->sub[siz].ord = ChrOrd; rgt->sub[siz].chr = str[i];}
-	if (lvl == 0 && !datxClose(str[i])) {rgt->sub[siz].vld = 1; siz++;}
-	if (datxOpen(str[i])) lvl++; if (datxClose(str[i])) lvl--;}
-	free(str);
+	int lvl = 0; int siz = 0; char tmp[2] = {0};
+	if (ord == ChrOrd) {rgt->vld = 1; rgt->ord = ord; rgt->chr = *str; return;}
+	for (const char *chr = str; *chr && lvl >= 0; chr += datxLoop(*chr)+1) {
+	if (datxOpen(*chr) && lvl++ == 0) siz++; if (datxClose(*chr)) lvl--;}
+	rgt->vld = 1; rgt->ord = ord; rgt->siz = siz; allocIrrex(&rgt->sub,siz); lvl = 0; siz = 0;
+	for (const char *chr = str; *chr && lvl >= 0; chr += datxLoop(*chr)+1) {
+	if (lvl == 0 && datxOpen(*chr)) {datxIrrcmp(chr+1,rgt->sub+siz,datxOrder(*chr));}
+	if (lvl == 0 && datxMatch(*chr)) {datxIrrcmp(datxEscape(tmp,chr),rgt->sub+siz,ChrOrd);}
+	if (datxOpen(*chr) && lvl++ == 0) siz++; if (datxClose(*chr)) lvl--;}
 }
 int datxIrrexe(int *len, const char *lft, const struct Irrex *rgt)
 {
@@ -436,7 +432,7 @@ int datxIrrexe(int *len, const char *lft, const struct Irrex *rgt)
 int datxIrrex(const char *lft, struct Irrex *rgt)
 {
 	int len = 0;
-	if (rgt->vld == 0) datxIrrcmp(lft,rgt);
+	if (rgt->vld == 0) datxIrrcmp(rgt->exp,rgt,BeginOrd);
 	return (datxIrrexe(&len,lft,rgt) && len == strlen(lft));
 }
 // int debug = 0;
