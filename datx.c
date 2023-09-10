@@ -414,26 +414,66 @@ void datxIrrcmp(const char *str, struct Irrex *rgt, enum Order ord)
 	if (lvl == 0 && datxMatch(*chr)) {datxIrrcmp(datxEscape(tmp,chr),rgt->sub+siz,ChrOrd);}
 	if (datxOpen(*chr) && lvl++ == 0) siz++; if (datxClose(*chr)) lvl--;}
 }
-int datxIrrexe(int *len, const char *lft, const struct Irrex *rgt)
+void datxIrrclr(struct Irrex *rgt)
 {
-	switch (rgt->ord) {
-	case (ChrOrd): if (lft[*len] == rgt->chr) {*len += 1; return 1;} else return 0;
-	case (PreOrd): for (int i = 0; i < rgt->siz; i++) if (!datxIrrexe(len,lft,rgt->sub+i)) break; return 1;
-	case (PostOrd): for (int i = 0; i < rgt->siz; i++) {
-		int j = 0; int sav = *len; for (j = i; j < rgt->siz; j++) if (!datxIrrexe(len,lft,rgt->sub+i)) break;
-		if (j < rgt->siz) *len = sav; else break;} return 1;
-	case (PermOrd): return 0; // TODO
-	case (ForkOrd): for (int i = 0; i < rgt->siz; i++) if (datxIrrexe(len,lft,rgt->sub+i)) return 1; return 0;
-	case (BeginOrd): {int sav = *len;
-		for (int i = 0; i < rgt->siz; i++) if (!datxIrrexe(len,lft,rgt->sub+i)) {*len = sav; return 0;} return 1;}
+	rgt->prm = 0;
+	for (int i = 0; i < rgt->siz; i++) datxIrrclr(rgt->sub+i);
+}
+int datxIrrexe(char *prm, int *len, int lim, struct Irrex *exp);
+int datxIrrbeg(char *prm, int *len, int lim, struct Irrex *exp)
+{
+	for (int idx = 0; idx < exp->siz; idx++) {
+	int val = datxIrrexe(prm,len,lim,exp->sub+idx);
+	while (!val && exp->sub[idx].prm == 0 && idx > 0) {idx--; *len = exp->sub[idx].len;}
+	if (!val && exp->sub[idx].prm == 0 && idx == 0) {exp->prm = 0; return 0;}
+	if (!val) idx--;} return 1;
+}
+int datxIrrfct(int len)
+{
+	if (len == 0) return 1;
+	return len*datxIrrfct(len-1);
+}
+void datxIrrprm(char *str, int len, int prm)
+{
+	ERROR(); // TODO
+}
+int datxIrrexe(char *prm, int *len, int lim, struct Irrex *exp)
+{
+	exp->len = *len;
+	switch (exp->ord) {
+	case (ChrOrd): {
+		if (exp->prm == 1) {exp->prm = 0; return -1;}
+		if (*len == lim) ERROR();
+		prm[*len] = exp->chr; *len += 1;} break;
+	case (PreOrd): {
+		if (exp->prm == 0 && !datxIrrbeg(prm,len,lim,exp->sub)) {exp->prm = 0; return -1;}
+		if (exp->prm > exp->sub->len) {*len = exp->len; exp->prm = 0;
+		if (!datxIrrbeg(prm,len,lim,exp->sub)) {exp->prm = 0; return -1;}}
+		*len = exp->sub->len - exp->prm; exp->prm += 1;} break;
+	case (PostOrd): ERROR(); // TODO shift instead of truncate
+	case (PermOrd): {
+		if (exp->prm == 0 && !datxIrrbeg(prm,len,lim,exp->sub)) {exp->prm = 0; return -1;}
+		if (exp->prm == datxIrrfct(exp->sub->len)) {*len = exp->len; exp->prm = 0;
+		if (!datxIrrbeg(prm,len,lim,exp->sub)) {exp->prm = 0; return -1;}}
+		datxIrrprm(prm+exp->len,*len-exp->len,exp->prm); exp->prm += 1;} break;
+	case (ForkOrd): while (1) {
+		if (exp->prm == exp->siz) {exp->prm = 0; return -1;}
+		if (datxIrrexe(prm,len,lim,exp->sub+exp->prm)) break;
+		exp->prm += 1;} exp->prm += 1; break;
+	case (BeginOrd): {
+		if (exp->prm == 1) {exp->prm = 0; return 0;}
+		if (!datxIrrbeg(prm,len,lim,exp)) {exp->prm = 0; return 0;}
+		exp->prm = 1;} break;
 	default: ERROR();}
-	return 0;
+	return 1;
 }
 int datxIrrex(const char *lft, struct Irrex *rgt)
 {
-	int len = 0;
+	int val = 0; int len = 0; char *str = strdup(rgt->exp);
 	if (rgt->vld == 0) datxIrrcmp(rgt->exp,rgt,BeginOrd);
-	return (datxIrrexe(&len,lft,rgt) && len == strlen(lft));
+	datxIrrclr(rgt);
+	val = datxIrrexe(str,&len,strlen(str),rgt);
+	return (val && len == strlen(lft));
 }
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
