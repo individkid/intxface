@@ -568,6 +568,7 @@ Irrex = {
 	{"exp","Str",{},{}}, -- uncompiled string
 	{"len","Int",{},{}}, -- stateful evaluation
 	{"prm","Int",{},{}}, -- stateful evaluation
+	{"msk","Int",{},{}}, -- stateful evaluation
 	{"ord","Order",{},{}}, -- type of comparison
 	{"chr","Chr",{},{}}, -- only for ChrOrd
 	{"siz","Int",{},{}}, -- zero for ChrOrd
