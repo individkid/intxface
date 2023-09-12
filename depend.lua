@@ -91,9 +91,9 @@ end
 execMap = {{"C","C.o"},{"Cpp","Cpp.o"},{"Hs",".hs"},{"A",".agda"},{"Lua",".lua"},{"M","M.o"},{"Sw","Sw.o"}}
 sharedMap = {{"G%.so","G.o"},{"Cpp%.so","Cpp.o"},{"%.so","C.o"}}
 objectMap = {{"C%.o",".c"},{"Cpp%.o",".cpp"},{"Sw%.o",".sw"},{"G%.o",".metal"}}
-unameMap = {{"%.cpp",".cppx"},{"%.sw",".swy"},{"%.metal",".gy"},{"%.metallib",".gy"},{"%.agda",".a"}}
+unameMap = {{"%.metal",".g"},{"%.metallib",".g"},{"%.agda",".a"}}
 generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua"}
-mainMap = {{".c","^int main\\(","C"},{".cpp","^int main\\(","Cpp"},{".hs","^main :: IO \\(","Hs"},{".agda","^int main\\(","A"},{".lua","^-- MAIN","Lua"},{".sw","^// MAIN","Sw"},{".cppx","^int main\\(","Cpp"},{".swy","^// MAIN","Sw"}}
+mainMap = {{".c","^int main\\(","C"},{".cpp","^int main\\(","Cpp"},{".hs","^main :: IO \\(","Hs"},{".agda","^int main\\(","A"},{".lua","^-- MAIN","Lua"},{".sw","^// MAIN","Sw"},{".cpp","^int main\\(","Cpp"},{".sw","^// MAIN","Sw"}}
 function ruleDepend(rule)
 	local left, right, base = {},{},nil
 	for k,v in ipairs({execMap,sharedMap,objectMap}) do for ky,vl in ipairs(v) do left[#left+1] = vl[1]; right[#right+1] = vl[2] end end
@@ -233,13 +233,13 @@ end
 function checkSetup()
 	local dep = {}
 	local ext = ""
-	os.execute("uname > depend.out 2>&1")
-	local greplist = io.open("depend.out")
-	for line in greplist:lines() do
-		if line == "Linux" then ext = "x" end
-		if line == "Darwin" then ext = "y" end
-	end
-	greplist:close()
+	-- os.execute("uname > depend.out 2>&1")
+	-- local greplist = io.open("depend.out")
+	-- for line in greplist:lines() do
+		-- if line == "Linux" then ext = "x" end
+		-- if line == "Darwin" then ext = "y" end
+	-- end
+	-- greplist:close()
 	os.execute("rm -f depend.mk"..ext)
 	os.execute("touch depend.mk"..ext)
 	for k,v in pairs(done) do
