@@ -444,9 +444,14 @@ struct Pierce *planePierce()
 	if (!found) found = &unfound;
 	return found;
 }
+void planeString()
+{
+	sem_safe(&resource,{configure[RegisterString] &= strmsk; strmsk ^= configure[RegisterString];});
+}
 void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
+	case (RegisterString): planeString(); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (CenterMemory): configure[CenterMemory] = center.mem; break;
 	case (CenterSize): configure[CenterSize] = center.siz; break;
@@ -504,10 +509,6 @@ void planeStarted(int tmp)
 	for (enum Proc bit = 0; bit < Procs; bit++) if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
 	for (enum Proc bit = 0; bit < Procs; bit++) if (todo & (1<<bit)) planeSafe(bit,Start,Configures);
 }
-void planeString()
-{
-	sem_safe(&resource,{configure[RegisterString] &= strmsk; strmsk ^= configure[RegisterString];});
-}
 void planeConfig(enum Configure cfg, int val)
 {
 	int tmp = 0;
@@ -523,7 +524,6 @@ void planeConfig(enum Configure cfg, int val)
 	case (ElementSize): element = planeResize(element,sizeof(struct Kernel),val,tmp); break;
 	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
-	case (RegisterString): planeString(); break;
 	case (RegisterOpen): planeStarted(tmp); break;
 	case (RegisterFind): found = 0; break;
 	default: break;}
