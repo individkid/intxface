@@ -49,7 +49,6 @@ struct Center center = {0};
 int sub0 = 0;
 int idx0 = 0;
 void **dat0 = 0;
-int started = 0;
 int running = 0;
 void planeStarted(int val);
 int planeRunning();
@@ -448,9 +447,7 @@ struct Pierce *planePierce()
 void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
-	case (RegisterString): sem_safe(&resource,{configure[RegisterString] &= strmsk; strmsk ^= configure[RegisterString];}); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-	case (RegisterOpen): configure[RegisterOpen] = planeRunning(); break;
 	case (CenterMemory): configure[CenterMemory] = center.mem; break;
 	case (CenterSize): configure[CenterSize] = center.siz; break;
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
@@ -500,6 +497,17 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 	free(ptr);
 	return result;
 }
+void planeStarted(int tmp)
+{
+	int done = 0; int todo = 0; int started = 0;
+	started = configure[RegisterOpen]; todo = started & ~tmp; done = tmp & ~started;
+	for (enum Proc bit = 0; bit < Procs; bit++) if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
+	for (enum Proc bit = 0; bit < Procs; bit++) if (todo & (1<<bit)) planeSafe(bit,Start,Configures);
+}
+void planeString()
+{
+	sem_safe(&resource,{configure[RegisterString] &= strmsk; strmsk ^= configure[RegisterString];});
+}
 void planeConfig(enum Configure cfg, int val)
 {
 	int tmp = 0;
@@ -515,7 +523,8 @@ void planeConfig(enum Configure cfg, int val)
 	case (ElementSize): element = planeResize(element,sizeof(struct Kernel),val,tmp); break;
 	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
-	case (RegisterOpen): planeStarted(val); break;
+	case (RegisterString): planeString(); break;
+	case (RegisterOpen): planeStarted(tmp); break;
 	case (RegisterFind): found = 0; break;
 	default: break;}
 }
@@ -766,7 +775,7 @@ void *planeExternal(void *ptr)
 	writeCenter(&center,internal);
 	sem_safe(&resource,{numpipe++;});
 	planeSafe(Procs,Waits,CenterMemory);}
-	planeSafe(External,Done,Configures);
+	planeSafe(External,Stop,Configures);
 	return 0;
 }
 void *planeConsole(void *ptr)
@@ -790,7 +799,7 @@ void *planeConsole(void *ptr)
 	if (val == 0) break;
 	if (val < 0) ERROR();
 	planeDupstr(&str,-1,2,0); planeInsstr(chr,1,2,strlen(str)); free(str);}
-	planeSafe(Console,Done,Configures);
+	planeSafe(Console,Stop,Configures);
 	return 0;
 }
 void *planeTest(void *ptr)
@@ -799,42 +808,30 @@ void *planeTest(void *ptr)
 	sem_post(&ready[Test]);
 	while (test--) {
 	planeSafe(Procs,Waits,Configures);}
-	planeSafe(Test,Done,Configures);
+	planeSafe(Test,Stop,Configures);
 	return 0;
 }
 void planeThread(enum Proc bit)
 {
+	if ((running & (1<<bit)) != 0) return; running |= (1<<bit);
 	switch (bit) {
 	case (External): if (pthread_create(&thread[bit],0,planeExternal,0) != 0) ERROR(); break;
 	case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR(); break;
-	case (Window): planeSafe(Window,Start,Configures); sem_post(&ready[bit]); break;
-	case (Graphics): planeSafe(Graphics,Start,Configures); sem_post(&ready[bit]); break;
-	case (Process): planeSafe(Process,Start,Configures); sem_post(&ready[bit]); break;
+	case (Window): case (Graphics): case (Process): sem_post(&ready[bit]); break;
 	case (Test): if (pthread_create(&thread[bit],0,planeTest,0) != 0) ERROR(); break;
 	default: ERROR();}
+	if ((configure[RegisterOpen] & (1<<bit)) == 0) {configure[RegisterOpen] |= (1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
 void planeFinish(enum Proc bit)
 {
-	switch (bit) {
-	case (External): sem_wait(&ready[bit]); closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
-	case (Console): sem_wait(&ready[bit]); close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
-	case (Window): sem_wait(&ready[bit]); planeSafe(Window,Stop,Configures); break;
-	case (Graphics): sem_wait(&ready[bit]); planeSafe(Graphics,Stop,Configures); break;
-	case (Process): sem_wait(&ready[bit]); planeSafe(Process,Stop,Configures); break;
-	case (Test): sem_wait(&ready[bit]); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
+	if ((running & (1<<bit)) == 0) return; running &= ~(1<<bit);
+	sem_wait(&ready[bit]); switch (bit) {
+	case (External): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
+	case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
+	case (Window): case (Graphics): case (Process): break;
+	case (Test): if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	default: ERROR();}
-}
-void planeStarted(int val)
-{
-	int done = 0; int todo = 0;
-	done = started & ~val; todo = val & ~started;
-	for (enum Proc bit = 0; bit < Procs; bit++) if (done & (1<<bit)) planeFinish(bit);
-	for (enum Proc bit = 0; bit < Procs; bit++) if (todo & (1<<bit)) planeThread(bit);
-	started = val;
-}
-int planeRunning()
-{
-	return running;
+	if ((configure[RegisterOpen] & (1<<bit)) != 0) {configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
 {
@@ -857,7 +854,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
 	init(); planeBoot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
-	sem_safe(&resource,{if (!qfull && !started) break;});
+	sem_safe(&resource,{if (!qfull && !running) break;});
 	planeMain();} closeIdent(internal); if (check) ERROR();
 }
 int planeInfo(enum Configure cfg)
@@ -911,9 +908,8 @@ void planeMain()
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures) ERROR();
 	if (wait == Waits && hint != Configures) planeWake(hint);
-	if ((wait == Start || wait == Stop) && hint == Configures) callMain(proc,wait);
-	if (wait == Done && hint == Configures) {running &= ~(1<<proc);
-	if ((started & ~running) != 0) planeSafe(Procs,Waits,RegisterOpen);}
+	if (wait == Start && hint == Configures) {planeThread(proc); callMain(proc,wait);}
+	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}
 }
 void planeReady(struct Pierce *given)
 {

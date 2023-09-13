@@ -271,7 +271,7 @@ class getDelegate : NSObject, NSWindowDelegate
 	}
 	func windowWillClose(_ notification: Notification)
 	{
-		planeSafe(Window,Done,Configures)
+		planeSafe(Window,Stop,Configures)
 	}
 	func windowDidResize(_ notification: Notification)
 	{
@@ -396,7 +396,7 @@ func swiftStart()
 	NSApp.setActivationPolicy(NSApplication.ActivationPolicy.accessory)
 	NSApp.activate(ignoringOtherApps:true)
 	NSApp.run()
-	planeSafe(Process,Done,Configures)
+	planeSafe(Process,Stop,Configures)
 }
 func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 {
@@ -435,12 +435,12 @@ func swiftMain(_ proc: Proc, _ wait: Wait)
 		case (Process): swiftStart()
 		case (Graphics): swiftLoad()
 		case (Window): swiftOpen()
-		default: exitErr(#file,#line)}
+		default: break}
 	case (Stop): switch (proc) {
 		case (Process): goon = false; NSApp.stop(nil)
 		case (Graphics): queue = nil
 		case (Window): window.close()
-		default: exitErr(#file,#line)}
+		default: break}
 	default: exitErr(#file,#line)}	
 }
 func swiftSafe()

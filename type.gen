@@ -187,7 +187,6 @@ Code = {
 Wait = {
 	"Start",
 	"Stop",
-	"Done",
 }
 Proc = {
 	"External",
