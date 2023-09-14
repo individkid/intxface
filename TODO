@@ -1,8 +1,36 @@
 
-Add fifo named from Argument for programmatical cursor roller button keyboard. Add initial window location and size to Argument. Test transformation of hello triangle. The same triangle and cursor screen locations should work the same with any random window location and size. For hello triangles, transform several triangles separately as well as all at once, and test manipulation of one triangle. Check that matrix changes are sent out as expected to maintain a file and topology. Add test of additive subtractive refine modes. Add test of metalSw together with fileC and spaceHs.
+plane, sculpt, line, play, instrument, print, heuristic,
+texture, share, overlap, ball, stomp, multimedia, font, world:
 
-For Vulcan, use Update After Bind flag, and call VkUpdateDescriptorSets in the draw function. Use storage buffers instead of uniform buffers. The vertex shader main would be gl_Position = vec4(calculatePosition(gl_VertexIndex), 1.0f). To optimize, the vertex indices from Triangle would have to be packed into a VkBuffer for vkCmdBindIndexBuffers, Vertex coordinates and plane/polytope indices would have to be packed into a VkBuffer for vkCmdBindVertexBuffer, and Uniform Subject Object Element could be uniform buffers.
+Add tests of datxIrrex datxRegex datxData datxEval(each op)
+luaxCall luaxExpr luaxSide nestRepl
+planeCast planeConjoin planeProject planeInsstr planeDupstr planeMain to planra.c.
+Add sharer.lua for bringup test of share and friends.
 
-Convert makefile to lua script; then intermediate dependencies, like function names, could be explicit in the dependency include file; functions could be generated as needed, instead of all or nothing; platform specific files could be ignored on other platforms;  and multiple resolutions could be explicitly prioritized.
+Add backdoor fifo to Argument and from planer.lua, start metalSw as filter to pipes.
+Add triangle, transform, triangle(s) tests to planer.lua.
+Add vulkanCpp to planer.lua. Finish pierce, transform, refine, additive, subtractive,
+configure mouse/roller scale/translate/rotate ortho/focal/normal,
+decorate play/cross/attract/repulse/draw/write, hot-keys, needed for sculpt.lua.
+Add to spacra.hs and spacer.lua for features needed for sculpt.lua.
+Add to filer.lua to regress fixes needed for sculpt.lua.
 
-Order of completion would be: hello triangle, power supply, hello triangles, square wave circuit, oscilloscope window, sine wave circuit, space tests, saturate circuits, sculpt script, pll circuit, hdmi window, boxed circuits, play script, sound system, tetrahedron overlaps, published video, agda proof, ball script, coincidence proofs, world script, fantasy polytopes.
+Augment struct Event with struct Sound,
+envelopes of fundamentals harmonics amplitudes.
+Augment struct Event with struct Metric,
+barrycentric coordinates, press duration, facet metric, hot key.
+A fundamental envelope is a 12 tone chord with some tones louder than others.
+A harmonic envelope tails off to zero for the highest harmonics.
+An amplitude harmonic controls attack duration decay and loudness.
+Typically barrycentric coordinates adjust the fundamentals envelope,
+press duration adjusts the amplitudes envelope duration,
+facet metric adjusts the amplitudes envelope average,
+hot key adjusts the harmonics envelope octave.
+Write linra.cpp and liner.lua.
+
+Write play.lua. Produce instrument video.
+Add to spacra.hs to regress fixes needed for print.lua. Produce heuristic video.
+Add textures to metal.g and vulcan.g. Finish share and friends.
+Test with Argument fifo from sharer.lua. Produce overlap video.
+Write ball.lua. Finish stomp box. Produce multimedia video.
+Add fonts to textures. Write world.lua.
