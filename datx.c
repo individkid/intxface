@@ -407,12 +407,12 @@ void datxIrrcmp(const char *str, struct Irrex *rgt, enum Order ord)
 	int lvl = 0; int siz = 0; char tmp[2] = {0};
 	if (ord == ChrOrd) {rgt->vld = 1; rgt->ord = ord; rgt->chr = *str; return;}
 	for (const char *chr = str; *chr && lvl >= 0; chr += datxLoop(*chr)+1) {
-	if (datxOpen(*chr) && lvl++ == 0) siz++; if (datxClose(*chr)) lvl--;}
+	if (lvl == 0) siz++; if (datxOpen(*chr)) lvl++; if (datxClose(*chr)) lvl--;}
 	rgt->vld = 1; rgt->ord = ord; rgt->siz = siz; allocIrrex(&rgt->sub,siz); lvl = 0; siz = 0;
 	for (const char *chr = str; *chr && lvl >= 0; chr += datxLoop(*chr)+1) {
 	if (lvl == 0 && datxOpen(*chr)) {datxIrrcmp(chr+1,rgt->sub+siz,datxOrder(*chr));}
 	if (lvl == 0 && datxMatch(*chr)) {datxIrrcmp(datxEscape(tmp,chr),rgt->sub+siz,ChrOrd);}
-	if (datxOpen(*chr) && lvl++ == 0) siz++; if (datxClose(*chr)) lvl--;}
+	if (lvl == 0) siz++; if (datxOpen(*chr)) lvl++; if (datxClose(*chr)) lvl--;}
 }
 void datxIrrclr(struct Irrex *rgt)
 {

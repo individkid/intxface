@@ -21,7 +21,7 @@ planeC.o: datx.h face.h luax.h metx.h plane.h proto.h type.h
 planer.log: metal.metallib metalSw planerLua type.lua
 planra.log: planraC
 planraC: datxC.o faceC.o luaxC.o protoC.o typeC.o
-planraC.o: datx.h proto.h
+planraC.o: datx.h face.h luax.h metx.h plane.h proto.h type.h
 protoC.o: proto.h
 shareC: datxC.o faceC.o luaxC.o protoC.o typeC.o
 shareC.o: datx.h face.h proto.h type.h
