@@ -562,14 +562,16 @@ Regex = {
 	{"str","Str",{},{}}, -- string to compile
 	{"dat","Dat",{},{}}, -- compiled regex
 }
-Irrex = {
+Irrex = { -- permutation of permutations
+	-- prm of zero is always valid
+	-- advance top level prm first, otherwise
+	-- reset top level and advence next level down
 	{"vld","Int",{},{}}, -- whether compiled
 	{"exp","Str",{},{}}, -- uncompiled string
-	{"len","Int",{},{}}, -- stateful evaluation
+	{"str","Str",{},{}}, -- stateful evaluation
 	{"prm","Int",{},{}}, -- stateful evaluation
 	{"msk","Int",{},{}}, -- stateful evaluation
 	{"ord","Order",{},{}}, -- type of comparison
-	{"chr","Chr",{},{}}, -- only for ChrOrd
 	{"siz","Int",{},{}}, -- zero for ChrOrd
 	{"sub","Irrex",{},"siz"},
 }

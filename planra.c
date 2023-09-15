@@ -16,6 +16,6 @@ int main()
 	if (datxInts(ptr) != 1) ERROR();
 	if (*datxIntz(0,ptr) != 5) ERROR();
 	assignStr(&rex.exp,">abcdefg");
-	// if (datxIrrex("abc",&rex) != 1) ERROR();
+	if (datxIrrex("abc",&rex) != 1) ERROR();
 	return 0;
 }
