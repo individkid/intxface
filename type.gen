@@ -559,21 +559,21 @@ Hetgen = {
 }
 Regex = {
 	{"vld","Int",{},{}}, -- whether compiled
-	{"str","Str",{},{}}, -- string to compile
-	{"dat","Dat",{},{}}, -- compiled regex
+	{"str","Str",{["vld"]={["0"]=true}},{}}, -- string to compile
+	{"rex","Int",{["vld"]={["1"]=true}},{}}, -- compiled regex
 }
 Irrex = { -- permutation of permutations
 	-- prm of zero is always valid
 	-- advance top level prm first, otherwise
 	-- reset top level and advence next level down
 	{"vld","Int",{},{}}, -- whether compiled
-	{"exp","Str",{},{}}, -- uncompiled string
-	{"str","Str",{},{}}, -- stateful evaluation
-	{"prm","Int",{},{}}, -- stateful evaluation
-	{"msk","Int",{},{}}, -- stateful evaluation
-	{"ord","Order",{},{}}, -- type of comparison
-	{"siz","Int",{},{}}, -- zero for ChrOrd
-	{"sub","Irrex",{},"siz"},
+	{"exp","Str",{["vld"]={["0"]=true}},{}}, -- uncompiled string
+	{"str","Str",{["vld"]={["1"]=true}},{}}, -- stateful evaluation
+	{"prm","Int",{["vld"]={["1"]=true}},{}}, -- stateful evaluation
+	{"msk","Int",{["vld"]={["1"]=true}},{}}, -- stateful evaluation
+	{"ord","Order",{["vld"]={["1"]=true}},{}}, -- type of comparison
+	{"siz","Int",{["vld"]={["1"]=true}},{}}, -- zero for ChrOrd
+	{"sub","Irrex",{["vld"]={["1"]=true}},"siz"},
 }
 Express = {
 	{"opr","Operate",{},""},

@@ -356,15 +356,20 @@ int datxEcmp(int val, enum Compare cmp)
 	default: ERROR();}
 	return 0;
 }
-int datxRegex(char *lft, struct Regex *rgt)
+regex_t *regexp = 0;
+int numexp = 0;
+int datxRegex(const char *lft, struct Regex *rgt)
 {
-	regex_t *ptr = 0; int val = 0;
-	if (!rgt->vld) datxVoid(&rgt->dat,sizeof(regex_t));
-	ptr = datxVoidz(0,rgt->dat);
-	if (!rgt->vld) {rgt->vld = 1; val = regcomp(ptr,rgt->str,REG_EXTENDED);
-	if (val != 0) {char buf[128]; regerror(val,ptr,buf,128);
-	fprintf(stderr,"%s\n",buf); exit(-1);}}
-	val = regexec(ptr,lft,0,0,0);
+	int val = 0; regex_t *ptr = 0;;
+	if (!rgt->vld) {struct Regex tmp = {0};
+	regexp = realloc(regexp,(numexp+1)*sizeof(regex_t));
+	tmp.vld = 1; tmp.rex = numexp; numexp += 1;
+	val = regcomp(&regexp[tmp.rex],rgt->str,REG_EXTENDED);
+	if (val != 0) {char buf[128];
+	regerror(val,&regexp[tmp.rex],buf,128); fprintf(stderr,"%s\n",buf); exit(-1);}
+	copyRegex(rgt,&tmp); freeRegex(&tmp);}
+	ptr = &regexp[rgt->rex]; val = regexec(ptr,lft,0,0,0);
+	printf("datxRegex %d %d %d\n",val,REG_NOMATCH,REG_BADPAT);
 	return (val == 0 ? 1 : 0);
 }
 int datxLoop(char chr)
@@ -476,9 +481,9 @@ int datxIrrnxt(struct Irrex *exp)
 		if (exp->prm > 0) ERROR();
 		return 0;} break;
 	case (PreOrd): {int val = 0;
+		for (int i = 0; i < exp->siz; i++) if (!exp->sub[i].str) ERROR();
 		for (int i = 0; i < exp->siz; i++) val += strlen(exp->sub[i].str);
-		exp->prm += 1;
-		free(exp->str); exp->str = 0;
+		exp->prm += 1; free(exp->str); exp->str = 0;
 		if (exp->prm > val) ERROR();
 		if (exp->prm == val) {exp->prm = 0; return datxIrrbin(exp);}} break;
 	case (PostOrd): ERROR(); // TODO shift instead of truncate
@@ -495,7 +500,9 @@ int datxIrrnxt(struct Irrex *exp)
 }
 int datxIrrex(const char *lft, struct Irrex *rgt)
 {
-	if (rgt->vld == 0) datxIrrcmp(rgt->exp,rgt,BeginOrd);
+	if (rgt->vld == 0) {struct Irrex tmp = {0};
+	datxIrrcmp(rgt->exp,&tmp,BeginOrd);
+	copyIrrex(rgt,&tmp); freeIrrex(&tmp);}
 	datxIrrclr(rgt);
 	while (1) {int val = 0;
 	val = datxIrrcat(rgt);
@@ -762,7 +769,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
 		datxNone(datxDat0); writeHomgen(exp->hom,datxIdx0); assignDat(dat,*datxDat0);} break;
 	case (RexOp): {
-		struct Regex rex = {0}; datxNone(&rex.dat); assignStr(&rex.str,exp->rex);
+		struct Regex rex = {0}; assignStr(&rex.str,exp->rex);
 		if (typ == -1) typ = identType("Regex"); if (typ != identType("Regex")) ERROR();
 		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
 		freeRegex(&rex);} break;
