@@ -272,11 +272,13 @@ Access = {
 	"SlnAcc",
 }
 Action = {
-	"NegAct",
-	"ClrAct",
-	"IncAct",
-	"StrAct",
-	"SubAct",
+	"PreAct",
+	"PstAct",
+	"RepAct",
+	"DelAct",
+	"InsAct",
+	"CpyAct",
+	"CutAct",
 }
 Process = {
 	"Filez",
@@ -544,14 +546,12 @@ CondExp = {
 	{"dom","Domain",{},"siz"},
 	{"rng","Express",{},"siz"},
 }
-DataExp = { -- increment each nonnegative value from lookup of str in Data from eval of exp[0]
-	{"act","Action",{},{}}, -- negate, clear, increment, result, or compare and possibly recurse
-	{"siz","Int",{},{}}, -- zero unless act is SubAct
-	-- negate, clear, or increment value of str as key, or add str to result Data
-	{"str","Str",{["act"]={["NegAct"]=true,["ClrAct"]=true,["IncAct"]=true,["StrAct"]=true}},{}},
-	{"key","Str",{["act"]={["SubAct"]=true}},"siz"}, -- str to lookup for value
-	{"val","Int",{["act"]={["SubAct"]=true}},"siz"}, -- take actions if lookup value equals this
-	{"sub","DataExp",{["act"]={["SubAct"]=true}},"siz"}, -- additional values to lookup
+DataExp = {
+	{"siz","Int",{},{}},
+	{"len","Int",{},"siz"},
+	{"act","Action",{},"siz"},
+	{"key","Str",{},"siz"},
+	{"dat","Dat",{},{}},
 }
 Hetgen = {
 	{"siz","Int",{},{}},

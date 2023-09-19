@@ -195,33 +195,15 @@ int datxLookup(char *str)
 }
 void datxData(struct Data *dst, struct Data *src, struct DataExp *dat)
 {
-	for (int j = 0; j < src->siz; j++) {
-	int val = datxLookup(src->str[j]);
-	if (val >= 0) datxReplace(src->str[j],val+1);}
-	for (int j = 0; j < datxChrs(src->dat); j++) {
-	int val = datxLookup("");
-	if (val >= 0) datxReplace("",val+1);
-	switch (dat->act) {
-	case (SubAct):
-	for (int i = 0; i < dat->siz; i++)
-	if (datxLookup(dat->key[i]) == dat->val[i])
-	datxData(dst,src,&dat->sub[i]);
-	break; case (NegAct):
-	datxReplace(dat->str,-datxLookup(dat->str));
-	break; case (ClrAct):
-	datxReplace(dat->str,0);
-	break; case (StrAct):
-	if (*dat->str == 0) {
-	void *tmp = 0; void *chr = 0;
-	datxChr(&chr,*datxChrz(j,src->dat));
-	datxJoin(&tmp,dst->dat,chr);
-	assignDat(&dst->dat,tmp);
-	free(tmp); free(chr);}
-	else {
-	allocStr(&dst->str,dst->siz+1);
-	assignStr(&dst->str[dst->siz],dat->str);
-	dst->siz += 1;}
-	break; default: ERROR();}}
+	for (int i = 0; i < dat->siz; i++) switch (dat->act[i]) {
+	case (PreAct): break;
+	case (PstAct): break;
+	case (RepAct): break;
+	case (DelAct): break;
+	case (InsAct): break;
+	case (CpyAct): break;
+	case (CutAct): break;
+	default: break;}
 }
 int datxChrs(void *dat)
 {
