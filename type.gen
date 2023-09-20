@@ -242,7 +242,6 @@ Operate = {
 	"EmbOp", -- script embed
 	"NamOp", -- call function
 	"AccOp", -- machine result
-	"DatOp", -- stream data
 }
 Compare = {
 	-- Less Equal More
@@ -270,15 +269,6 @@ Access = {
 	"SetAcc",
 	"GlnAcc",
 	"SlnAcc",
-}
-Action = {
-	"PreAct",
-	"PstAct",
-	"RepAct",
-	"DelAct",
-	"InsAct",
-	"CpyAct",
-	"CutAct",
 }
 Process = {
 	"Filez",
@@ -546,13 +536,6 @@ CondExp = {
 	{"dom","Domain",{},"siz"},
 	{"rng","Express",{},"siz"},
 }
-DataExp = {
-	{"siz","Int",{},{}},
-	{"len","Int",{},"siz"},
-	{"act","Action",{},"siz"},
-	{"key","Str",{},"siz"},
-	{"dat","Dat",{},{}},
-}
 Hetgen = {
 	{"siz","Int",{},{}},
 	{"gen","Generic",{},"siz"},
@@ -609,8 +592,17 @@ Express = {
 	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
-	{"dtp","DataExp",{["opr"]={["DatOp"]=true}},1},
-	{"dat","Express",{["opr"]={["DatOp"]=true}},1},
+}
+Data = {
+	{"dat","Dat",{},{}},
+	{"vld","Int",{},{}},
+	{"exp","Express",{["vld"]={["0"]=true}},{}}, -- given phase, return vector
+	{"dim","Int",{["vld"]={["1"]=true}},{}}, -- scalars per vector
+	{"len","Int",{["vld"]={["1"]=true}},"dim"}, -- modulus per dimension
+	{"ids","Int",{["vld"]={["1"]=true}},{}}, -- product of len
+	{"idx","Int",{["vld"]={["1"]=true}},"ids"}, -- map vector to phase
+	{"siz","Int",{["vld"]={["1"]=true}},{}}, -- dim times period
+	{"vec","Int",{["vld"]={["1"]=true}},"siz"}, -- map phase to vector
 }
 Machine = {
 	{"xfr","Transfer",{},""},
@@ -649,11 +641,6 @@ Center = {
 }
 Sculp = {
 	{"cfg","Struc",{},{}},
-}
-Data = {
-	{"siz","Int",{},{}},
-	{"str","Str",{},"siz"},
-	{"dat","Dat",{},{}},
 }
 Argument = {
 	{"typ","Process",{},{}},

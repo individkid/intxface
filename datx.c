@@ -193,18 +193,6 @@ int datxLookup(char *str)
 	free(key); free(dat);
 	return val;
 }
-void datxData(struct Data *dst, struct Data *src, struct DataExp *dat)
-{
-	for (int i = 0; i < dat->siz; i++) switch (dat->act[i]) {
-	case (PreAct): break;
-	case (PstAct): break;
-	case (RepAct): break;
-	case (DelAct): break;
-	case (InsAct): break;
-	case (CpyAct): break;
-	case (CutAct): break;
-	default: break;}
-}
 int datxChrs(void *dat)
 {
 	if (!dat) return 0;
@@ -793,13 +781,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; if (datxCallFp == 0) ERROR();
 		typ0 = datxCallFp(dat,0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (DatOp): {
-		struct Data src = {0}; struct Data dst = {0}; void *dat0 = 0; int typ0 = 0;
-		if (typ == -1) typ = identType("Data"); if (typ != identType("Data")) ERROR();
-		typ0 = datxEval(&dat0,exp->dat,identType("Data")); if (typ0 != identType("Data")) ERROR();
-		assignDat(datxDat0,dat0); readData(&src,datxIdx0); datxData(&dst,&src,exp->dtp);
-		datxNone(datxDat0); writeData(&dst,datxIdx0); assignDat(dat,*datxDat0);
-		free(dat0); freeData(&src); freeData(&dst);} break;
 	default: ERROR();}
 	// debug--;
 	return typ;
