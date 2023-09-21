@@ -781,6 +781,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; if (datxCallFp == 0) ERROR();
 		typ0 = datxCallFp(dat,0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	// OptOp: return DatExp from exp and siz
+	// DatOp: fill Dat with given size and value
+	// MapOp: map dst Dat index to vector through dst DatExp; map vector to src Dat index through src DatExp
 	default: ERROR();}
 	// debug--;
 	return typ;

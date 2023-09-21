@@ -227,6 +227,9 @@ Operate = {
 	"ExtOp", -- fields from struct
 	"PrmOp", -- permute list
 	"LstOp", -- join lists
+	"OptOp", -- compile for map
+	"DatOp", -- memset Dat
+	"MapOp", -- map Dat to Dat
 	"HetOp", -- expression list
 	"HomOp", -- expression list
 	"EmmOp", -- hetgen sugar
@@ -558,6 +561,16 @@ Irrex = { -- permutation of permutations
 	{"siz","Int",{["vld"]={["1"]=true}},{}}, -- zero for ChrOrd
 	{"sub","Irrex",{["vld"]={["1"]=true}},"siz"},
 }
+DatExp = { -- given index, return vector
+	{"siz","Int",{},{}},
+	{"dim","Int",{},{}},
+	{"min","Int",{},"dim"},
+	{"max","Int",{},"dim"},
+	{"fsz","Int",{},{}},
+	{"rsz","Int",{},{}},
+	{"fwd","Int",{},"fsz"},
+	{"rev","Int",{},"rsz"},
+}
 Express = {
 	{"opr","Operate",{},""},
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
@@ -578,8 +591,12 @@ Express = {
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
 	{"lst","Express",{["opr"]={["LstOp"]=true}},2},
-	{"siz","Int",{["opr"]={["HetOp"]=true,["HomOp"]=true}},{}},
-	{"exp","Express",{["opr"]={["HetOp"]=true,["HomOp"]=true}},"siz"},
+	{"siz","Int",{["opr"]={["HetOp"]=true,["HomOp"]=true,["OptOp"]=true}},{}},
+	{"exp","Express",{["opr"]={["HetOp"]=true,["HomOp"]=true,["OptOp"]=true}},"siz"},
+	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
+	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
+	{"map","Express",{["opr"]={["MapOp"]=true}},2},
+	{"dat","Express",{["opr"]={["MapOp"]=true}},2},
 	{"het","Hetgen",{["opr"]={["EmmOp"]=true}},1},
 	{"hom","Homgen",{["opr"]={["OmmOp"]=true}},1},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
@@ -592,17 +609,6 @@ Express = {
 	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
-}
-Data = {
-	{"dat","Dat",{},{}},
-	{"vld","Int",{},{}},
-	{"exp","Express",{["vld"]={["0"]=true}},{}}, -- given phase, return vector
-	{"dim","Int",{["vld"]={["1"]=true}},{}}, -- scalars per vector
-	{"len","Int",{["vld"]={["1"]=true}},"dim"}, -- modulus per dimension
-	{"ids","Int",{["vld"]={["1"]=true}},{}}, -- product of len
-	{"idx","Int",{["vld"]={["1"]=true}},"ids"}, -- map vector to phase
-	{"siz","Int",{["vld"]={["1"]=true}},{}}, -- dim times period
-	{"vec","Int",{["vld"]={["1"]=true}},"siz"}, -- map phase to vector
 }
 Machine = {
 	{"xfr","Transfer",{},""},
