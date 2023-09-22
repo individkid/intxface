@@ -201,10 +201,10 @@ Struc = {
 	"Sides",
 }
 Stream = {
-	"Fanout", -- write to named pipes; one input, multiple outputs
-	"Combine", -- buffer(s) to pipe; no input, multiple outputs
-	"Buffer", -- name a buffer; one input, no output
-	"Execute", -- name a filter; typ is input type, for pipe named by str in successor, with output typ in successor
+	"Fanout", -- write from readable pipe round robin to one of several pipes
+	"Combine", -- write to pipe from expression if any of several expression values change
+	"Buffer", -- set expression value from pipe
+	"Execute", -- start a filter between the last and next pipe
 }
 Operate = {
 	"AddOp",
@@ -543,25 +543,18 @@ Hetgen = {
 	{"siz","Int",{},{}},
 	{"gen","Generic",{},"siz"},
 }
-Regex = {
-	{"vld","Int",{},{}}, -- whether compiled
-	{"str","Str",{["vld"]={["0"]=true}},{}}, -- string to compile
-	{"rex","Int",{["vld"]={["1"]=true}},{}}, -- compiled regex
-}
 Irrex = { -- permutation of permutations
 	-- prm of zero is always valid
 	-- advance top level prm first, otherwise
 	-- reset top level and advence next level down
-	{"vld","Int",{},{}}, -- whether compiled
-	{"exp","Str",{["vld"]={["0"]=true}},{}}, -- uncompiled string
-	{"str","Str",{["vld"]={["1"]=true}},{}}, -- stateful evaluation
-	{"prm","Int",{["vld"]={["1"]=true}},{}}, -- stateful evaluation
-	{"msk","Int",{["vld"]={["1"]=true}},{}}, -- stateful evaluation
-	{"ord","Order",{["vld"]={["1"]=true}},{}}, -- type of comparison
-	{"siz","Int",{["vld"]={["1"]=true}},{}}, -- zero for ChrOrd
-	{"sub","Irrex",{["vld"]={["1"]=true}},"siz"},
+	{"str","Str",{},{}}, -- stateful evaluation
+	{"prm","Int",{},{}}, -- stateful evaluation
+	{"msk","Int",{},{}}, -- stateful evaluation
+	{"ord","Order",{},{}}, -- type of comparison
+	{"siz","Int",{},{}}, -- zero for ChrOrd
+	{"sub","Irrex",{},"siz"},
 }
-DatExp = { -- given index, return vector
+Datex = { -- given index, return vector
 	{"siz","Int",{},{}},
 	{"dim","Int",{},{}},
 	{"min","Int",{},"dim"},
@@ -591,8 +584,8 @@ Express = {
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
 	{"lst","Express",{["opr"]={["LstOp"]=true}},2},
-	{"siz","Int",{["opr"]={["HetOp"]=true,["HomOp"]=true,["OptOp"]=true}},{}},
-	{"exp","Express",{["opr"]={["HetOp"]=true,["HomOp"]=true,["OptOp"]=true}},"siz"},
+	{"siz","Int",{["opr"]={["HetOp"]=true,["HomOp"]=true}},{}},
+	{"exp","Express",{["opr"]={["HetOp"]=true,["HomOp"]=true}},"siz"},
 	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"map","Express",{["opr"]={["MapOp"]=true}},2},
@@ -606,6 +599,8 @@ Express = {
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
 	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
 	{"irx","Str",{["opr"]={["IrxOp"]=true}},{}},
+	{"len","Int",{["opr"]={["OptOp"]=true}},{}},
+	{"opt","Express",{["opr"]={["OptOp"]=true}},1},
 	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},

@@ -34,6 +34,10 @@ int sizs = 0;
 int *typs = 0;
 void **boxs = 0;
 void **keys = 0;
+regex_t *regexp = 0;
+int regsiz = 0;
+struct Irrex *irrexp = 0;
+int irrsiz = 0;
 
 int datxSub()
 {
@@ -326,21 +330,20 @@ int datxEcmp(int val, enum Compare cmp)
 	default: ERROR();}
 	return 0;
 }
-regex_t *regexp = 0;
-int numexp = 0;
-int datxRegex(const char *lft, struct Regex *rgt)
+int datxRegcmp(const char *str)
 {
-	int val = 0; regex_t *ptr = 0;;
-	if (!rgt->vld) {struct Regex tmp = {0};
-	regexp = realloc(regexp,(numexp+1)*sizeof(regex_t));
-	tmp.vld = 1; tmp.rex = numexp; numexp += 1;
-	val = regcomp(&regexp[tmp.rex],rgt->str,REG_EXTENDED);
+	int val = 0; int idx = regsiz++;
+	regexp = realloc(regexp,regsiz*sizeof(regex_t));
+	val = regcomp(&regexp[idx],str,REG_EXTENDED);
 	if (val != 0) {char buf[128];
-	regerror(val,&regexp[tmp.rex],buf,128); fprintf(stderr,"%s\n",buf); exit(-1);}
-	copyRegex(rgt,&tmp); freeRegex(&tmp);}
-	ptr = &regexp[rgt->rex]; val = regexec(ptr,lft,0,0,0);
-	printf("datxRegex %d %d %d\n",val,REG_NOMATCH,REG_BADPAT);
-	return (val == 0 ? 1 : 0);
+	regerror(val,&regexp[idx],buf,128);
+	fprintf(stderr,"%s\n",buf); exit(-1);}
+	return idx;
+}
+int datxRegexe(const char *str, int idx)
+{
+	if (idx < 0 || idx >= regsiz) ERROR();
+	return (regexec(&regexp[idx],str,0,0,0) == 0 ? 1 : 0);
 }
 int datxLoop(char chr)
 {
@@ -377,16 +380,16 @@ enum Order datxOrder(char chr)
 	case ('|'): return ForkOrd;}
 	return Orders;
 }
-void datxIrrcmp(const char *str, struct Irrex *rgt, enum Order ord)
+void datxIrrrcs(const char *str, struct Irrex *rgt, enum Order ord)
 {
 	int lvl = 0; int siz = 0; char tmp[2] = {0};
-	if (ord == ChrOrd) {rgt->vld = 1; rgt->ord = ord; rgt->str = strndup(str,1); return;}
+	if (ord == ChrOrd) {rgt->ord = ord; rgt->str = strndup(str,1); return;}
 	for (const char *chr = str; *chr && lvl >= 0; chr += datxLoop(*chr)+1) {
 	if (lvl == 0 && !datxClose(*chr)) siz++; if (datxOpen(*chr)) lvl++; if (datxClose(*chr)) lvl--;}
-	rgt->vld = 1; rgt->ord = ord; rgt->siz = siz; allocIrrex(&rgt->sub,siz); lvl = 0; siz = 0;
+	rgt->ord = ord; rgt->siz = siz; allocIrrex(&rgt->sub,siz); lvl = 0; siz = 0;
 	for (const char *chr = str; *chr && lvl >= 0; chr += datxLoop(*chr)+1) {
-	if (lvl == 0 && datxOpen(*chr)) {datxIrrcmp(chr+1,rgt->sub+siz,datxOrder(*chr));}
-	if (lvl == 0 && datxMatch(*chr)) {datxIrrcmp(datxEscape(tmp,chr),rgt->sub+siz,ChrOrd);}
+	if (lvl == 0 && datxOpen(*chr)) {datxIrrrcs(chr+1,rgt->sub+siz,datxOrder(*chr));}
+	if (lvl == 0 && datxMatch(*chr)) {datxIrrrcs(datxEscape(tmp,chr),rgt->sub+siz,ChrOrd);}
 	if (lvl == 0 && !datxClose(*chr)) siz++; if (datxOpen(*chr)) lvl++; if (datxClose(*chr)) lvl--;}
 }
 void datxIrrclr(struct Irrex *rgt)
@@ -468,16 +471,23 @@ int datxIrrnxt(struct Irrex *exp)
 	default: ERROR();}
 	return 1;
 }
-int datxIrrex(const char *lft, struct Irrex *rgt)
+int datxIrrcmp(const char *str)
 {
-	if (rgt->vld == 0) {struct Irrex tmp = {0};
-	datxIrrcmp(rgt->exp,&tmp,BeginOrd);
-	copyIrrex(rgt,&tmp); freeIrrex(&tmp);}
-	datxIrrclr(rgt);
+	int idx = irrsiz++;
+	irrexp = realloc(irrexp,irrsiz*sizeof(struct Irrex));
+	datxIrrrcs(str,&irrexp[idx],BeginOrd);
+	return idx;
+}
+int datxIrrexe(const char *str, int idx)
+{
+	struct Irrex *ptr = 0;
+	if (idx < 0 || idx >= irrsiz) ERROR();
+	ptr = &irrexp[idx];
+	datxIrrclr(ptr);
 	while (1) {int val = 0;
-	val = datxIrrcat(rgt);
-	if (val == strlen(lft) && strcmp(lft,rgt->str) == 0) return 1;
-	if (!datxIrrnxt(rgt)) break;}
+	val = datxIrrcat(ptr);
+	if (val == strlen(str) && strcmp(str,ptr->str) == 0) return 1;
+	if (!datxIrrnxt(ptr)) break;}
 	return 0;
 }
 // int debug = 0;
@@ -509,21 +519,19 @@ int datxEval(void **dat, struct Express *exp, int typ)
 				void *dat0 = dats[j]; int typ0 = typs[j];
 				switch (exp->cnd->cmp[j]) {
 				case (ReCmp): {
-					void *dat1 = 0; int typ1 = 0; struct Regex rex = {0};
+					void *dat1 = 0; int typ1 = 0;
 					if (typ0 != identType("Str")) ERROR();
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Regex"));
 					if (typ1 != identType("Regex")) ERROR();
-					assignDat(datxDat0,dat1); readRegex(&rex,datxIdx0);
-					val = datxRegex(datxChrz(0,dat0),&rex);
-					free(dat1); freeRegex(&rex);} break;
+					val = datxRegexe(datxChrz(0,dat0),*datxIntz(0,dat1));
+					free(dat1);} break;
 				case (IrCmp): {
-					void *dat1 = 0; int typ1 = 0; struct Irrex pre = {0};
+					void *dat1 = 0; int typ1 = 0;
 					if (typ0 != identType("Str")) ERROR();
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Irrex"));
-					if (typ1 != identType("Irrex")) ERROR();
-					assignDat(datxDat0,dat1); readIrrex(&pre,datxIdx0);
-					val = datxIrrex(datxChrz(0,dat0),&pre);
-					free(dat1); freeIrrex(&pre);} break;
+					if (typ1 != identType("Int")) ERROR();
+					val = datxIrrexe(datxChrz(0,dat0),*datxIntz(0,dat1));
+					free(dat1);} break;
 				case (EbCmp): {
 					void *dat1 = 0; int typ1 = 0; char *arg = 0; char *scr = 0;
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
@@ -739,15 +747,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
 		datxNone(datxDat0); writeHomgen(exp->hom,datxIdx0); assignDat(dat,*datxDat0);} break;
 	case (RexOp): {
-		struct Regex rex = {0}; assignStr(&rex.str,exp->rex);
-		if (typ == -1) typ = identType("Regex"); if (typ != identType("Regex")) ERROR();
-		datxNone(datxDat0); writeRegex(&rex,datxIdx0); assignDat(dat,*datxDat0);
-		freeRegex(&rex);} break;
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,datxRegcmp(exp->rex));} break;
 	case (IrxOp): {
-		struct Irrex pre = {0}; assignStr(&pre.exp,exp->irx);
-		if (typ == -1) typ = identType("Irrex"); if (typ != identType("Irrex")) ERROR();
-		datxNone(datxDat0); writeIrrex(&pre,datxIdx0); assignDat(dat,*datxDat0);
-		freeIrrex(&pre);} break;
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,datxIrrcmp(exp->irx));} break;
 	// TODO Add way to put parenthesis in Str.
 	// TODO Add RelOp IrlOp that split Str by Regex Irrex, respectively, into Homgen of Str.
 	// TODO Add LenOp that returns length Int of Str.
@@ -781,9 +785,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; if (datxCallFp == 0) ERROR();
 		typ0 = datxCallFp(dat,0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	// OptOp: return DatExp from exp and siz
+	// OptOp: return Datex from exp and siz
 	// DatOp: fill Dat with given size and value
-	// MapOp: map dst Dat index to vector through dst DatExp; map vector to src Dat index through src DatExp
+	// MapOp: map dst Dat index to vector through dst Datex; map vector to src Dat index through src Datex
 	default: ERROR();}
 	// debug--;
 	return typ;

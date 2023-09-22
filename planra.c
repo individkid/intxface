@@ -7,32 +7,42 @@
 #include <stdio.h>
 #include <string.h>
 
-int datxIrrex(const char *lft, struct Irrex *rgt);
-int datxRegex(const char *lft, struct Regex *rgt);
+int datxIrrcmp(const char *str);
+int datxIrrexe(const char *str, int idx);
+int datxIrrex(const char *lft, const char *rgt)
+{
+	return datxIrrexe(lft,datxIrrcmp(rgt));
+}
+int datxRegcmp(const char *str);
+int datxRegexe(const char *str, int idx);
+int datxRegex(const char *lft, const char *rgt)
+{
+	return datxRegexe(lft,datxRegcmp(rgt));
+}
 
 int main()
 {
-	void *ptr = 0; struct Irrex irx = {0}; struct Regex rex = {0};
+	void *ptr = 0;
 	datxInt(&ptr,5); if (datxInts(ptr) != 1) ERROR(); if (*datxIntz(0,ptr) != 5) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,">abcdefg"); if (datxIrrex("abc",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,">abcdefg"); if (datxIrrex("bcd",&irx) != 0) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"abc=def"); if (datxIrrex("abcdef",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"abc=def"); if (datxIrrex("abcde",&irx) != 0) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def^^"); if (datxIrrex("def",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def^^"); if (datxIrrex("abc",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def^^"); if (datxIrrex("bcd",&irx) != 0) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def"); if (datxIrrex("def",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def"); if (datxIrrex("abc",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def"); if (datxIrrex("bcd",&irx) != 0) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"abc"); if (datxIrrex("abc",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def^^ghi"); if (datxIrrex("abcghi",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def^^ghi"); if (datxIrrex("defghi",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"|=abc^=def^^ghi"); if (datxIrrex("defgh",&irx) != 0) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"876|=543^=210^^|=abc^=def^^ghi"); if (datxIrrex("876210abcghi",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"876|=543^=210^^|=abc^=def^^ghi"); if (datxIrrex("876543abcghi",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"876|=543^=210^^|=abc^=def^^ghi"); if (datxIrrex("876210defghi",&irx) != 1) ERROR();
-	memset(&irx,0,sizeof(struct Irrex)); assignStr(&irx.exp,"876|=543^=210^^|=abc^=def^^ghi"); if (datxIrrex("876543defghi",&irx) != 1) ERROR();
-	memset(&rex,0,sizeof(struct Regex)); assignStr(&rex.str,"ab[cd]ef"); if (datxRegex("abdef",&rex) != 1) ERROR();
-	memset(&rex,0,sizeof(struct Regex)); assignStr(&rex.str,"ab[cd]ef"); if (datxRegex("abcef",&rex) != 1) ERROR();
+	if (datxIrrex("abc",">abcdefg") != 1) ERROR();
+	if (datxIrrex("bcd",">abcdefg") != 0) ERROR();
+	if (datxIrrex("abcdef","abc=def") != 1) ERROR();
+	if (datxIrrex("abcde","abc=def") != 0) ERROR();
+	if (datxIrrex("def","|=abc^=def^^") != 1) ERROR();
+	if (datxIrrex("abc","|=abc^=def^^") != 1) ERROR();
+	if (datxIrrex("bcd","|=abc^=def^^") != 0) ERROR();
+	if (datxIrrex("def","|=abc^=def") != 1) ERROR();
+	if (datxIrrex("abc","|=abc^=def") != 1) ERROR();
+	if (datxIrrex("bcd","|=abc^=def") != 0) ERROR();
+	if (datxIrrex("abc","abc") != 1) ERROR();
+	if (datxIrrex("abcghi","|=abc^=def^^ghi") != 1) ERROR();
+	if (datxIrrex("defghi","|=abc^=def^^ghi") != 1) ERROR();
+	if (datxIrrex("defgh","|=abc^=def^^ghi") != 0) ERROR();
+	if (datxIrrex("876210abcghi","876|=543^=210^^|=abc^=def^^ghi") != 1) ERROR();
+	if (datxIrrex("876543abcghi","876|=543^=210^^|=abc^=def^^ghi") != 1) ERROR();
+	if (datxIrrex("876210defghi","876|=543^=210^^|=abc^=def^^ghi") != 1) ERROR();
+	if (datxIrrex("876543defghi","876|=543^=210^^|=abc^=def^^ghi") != 1) ERROR();
+	if (datxRegex("abdef","ab[cd]ef") != 1) ERROR();
+	if (datxRegex("abcef","ab[cd]ef") != 1) ERROR();
 	return 0;
 }
