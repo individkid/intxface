@@ -608,6 +608,21 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; void *dat0 = 0; void *key = 0;
 		typ0 = datxEval(&dat0,exp->sav,-1); datxStr(&key,exp->kys); datxInsert(key,dat0,typ0); free(key); free(dat0);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+	case (OptOp): {struct OptExp *opt = exp->opt; // assume given Express does not go away
+		if (!opt->vld) {int typ0 = 0; void *dat0 = 0;
+		typ0 = datxEval(&opt->dat,opt->exp,typ); freeExpress(exp->opt);
+		opt->vld = 1; opt->typ = typ0; opt->dat = dat0;}
+		if (typ == -1) typ = opt->typ; if (typ != opt->typ) ERROR();
+		assignDat(dat,opt->dat);} break;
+	case (RexOp): {
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,datxRegcmp(exp->rex));} break;
+	case (IrxOp): {
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,datxIrrcmp(exp->irx));} break;
+	// CmpOp: compile Datex from cmp and dsz
+	// DatOp: fill Dat with given size and value
+	// MapOp: map dst Dat index to vector through dst Datex; map vector to src Dat index through src Datex
 	case (InpOp): {
 		int typ0 = 0; char *str = 0;
 		if (!datxDupFp) ERROR(); datxDupFp(&str,-1,2,0); typ0 = identType("Str"); datxStr(dat,str); free(str);
@@ -746,12 +761,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (OmmOp): {
 		if (typ == -1) typ = identType("Homgen"); if (typ != identType("Homgen")) ERROR();
 		datxNone(datxDat0); writeHomgen(exp->hom,datxIdx0); assignDat(dat,*datxDat0);} break;
-	case (RexOp): {
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxRegcmp(exp->rex));} break;
-	case (IrxOp): {
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxIrrcmp(exp->irx));} break;
 	// TODO Add way to put parenthesis in Str.
 	// TODO Add RelOp IrlOp that split Str by Regex Irrex, respectively, into Homgen of Str.
 	// TODO Add LenOp that returns length Int of Str.
@@ -785,9 +794,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = 0; if (datxCallFp == 0) ERROR();
 		typ0 = datxCallFp(dat,0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	// OptOp: return Datex from exp and siz
-	// DatOp: fill Dat with given size and value
-	// MapOp: map dst Dat index to vector through dst Datex; map vector to src Dat index through src Datex
 	default: ERROR();}
 	// debug--;
 	return typ;

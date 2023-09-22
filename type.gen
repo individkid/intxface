@@ -218,6 +218,12 @@ Operate = {
 	"SetOp", -- callback with value
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
+	"OptOp", -- cache result
+	"RexOp", -- regex sugar
+	"IrxOp", -- irrex sugar
+	"CmpOp", -- compile for map
+	"DatOp", -- memset Dat
+	"MapOp", -- map Dat to Dat
 	"InpOp",
 	"DupOp",
 	"InsOp",
@@ -227,15 +233,10 @@ Operate = {
 	"ExtOp", -- fields from struct
 	"PrmOp", -- permute list
 	"LstOp", -- join lists
-	"OptOp", -- compile for map
-	"DatOp", -- memset Dat
-	"MapOp", -- map Dat to Dat
 	"HetOp", -- expression list
 	"HomOp", -- expression list
 	"EmmOp", -- hetgen sugar
 	"OmmOp", -- homgen sugar
-	"RexOp", -- regex sugar
-	"IrxOp", -- irrex sugar
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
@@ -539,6 +540,12 @@ CondExp = {
 	{"dom","Domain",{},"siz"},
 	{"rng","Express",{},"siz"},
 }
+OptExp = {
+	{"vld","Int",{},{}},
+	{"exp","Express",{["vld"]={["0"]=true}},1},
+	{"typ","Int",{["vld"]={["1"]=true}},{}},
+	{"dat","Dat",{["vld"]={["1"]=true}},{}},
+}
 Hetgen = {
 	{"siz","Int",{},{}},
 	{"gen","Generic",{},"siz"},
@@ -576,6 +583,15 @@ Express = {
 	{"key","Str",{["opr"]={["ValOp"]=true}},{}},
 	{"kys","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"sav","Express",{["opr"]={["SavOp"]=true}},1},
+	{"opt","OptExp",{["opr"]={["OptOp"]=true}},1},
+	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
+	{"irx","Str",{["opr"]={["IrxOp"]=true}},{}},
+	{"csz","Int",{["opr"]={["CmpOp"]=true}},{}},
+	{"cmp","Express",{["opr"]={["CmpOp"]=true}},1},
+	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
+	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
+	{"map","Express",{["opr"]={["MapOp"]=true}},2},
+	{"dat","Express",{["opr"]={["MapOp"]=true}},2},
 	{"dup","Express",{["opr"]={["DupOp"]=true}},3},
 	{"ins","Express",{["opr"]={["InsOp"]=true}},4},
 	{"del","Express",{["opr"]={["DelOp"]=true}},3},
@@ -586,10 +602,6 @@ Express = {
 	{"lst","Express",{["opr"]={["LstOp"]=true}},2},
 	{"siz","Int",{["opr"]={["HetOp"]=true,["HomOp"]=true}},{}},
 	{"exp","Express",{["opr"]={["HetOp"]=true,["HomOp"]=true}},"siz"},
-	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
-	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
-	{"map","Express",{["opr"]={["MapOp"]=true}},2},
-	{"dat","Express",{["opr"]={["MapOp"]=true}},2},
 	{"het","Hetgen",{["opr"]={["EmmOp"]=true}},1},
 	{"hom","Homgen",{["opr"]={["OmmOp"]=true}},1},
 	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
@@ -597,10 +609,6 @@ Express = {
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
-	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
-	{"irx","Str",{["opr"]={["IrxOp"]=true}},{}},
-	{"len","Int",{["opr"]={["OptOp"]=true}},{}},
-	{"opt","Express",{["opr"]={["OptOp"]=true}},1},
 	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
 	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
 	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
