@@ -490,6 +490,14 @@ int datxIrrexe(const char *str, int idx)
 	if (!datxIrrnxt(ptr)) break;}
 	return 0;
 }
+int datxDatcmp(int siz, void *exp)
+{
+	return 0; // TODO
+}
+void datxDatexe(int idx, int jdx, void *src, void *dst, int rev, int fwd)
+{
+	// TODO
+}
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
 {
@@ -610,7 +618,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (OptOp): {struct OptExp *opt = exp->opt; // assume given Express does not go away
 		if (!opt->vld) {int typ0 = 0; void *dat0 = 0;
-		typ0 = datxEval(&opt->dat,opt->exp,typ); freeExpress(exp->opt);
+		typ0 = datxEval(&opt->dat,opt->exp,typ); freeExpress(exp->opt->exp);
 		opt->vld = 1; opt->typ = typ0; opt->dat = dat0;}
 		if (typ == -1) typ = opt->typ; if (typ != opt->typ) ERROR();
 		assignDat(dat,opt->dat);} break;
@@ -620,9 +628,22 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (IrxOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,datxIrrcmp(exp->irx));} break;
-	// CmpOp: compile Datex from cmp and dsz
-	// DatOp: fill Dat with given size and value
-	// MapOp: map dst Dat index to vector through dst Datex; map vector to src Dat index through src Datex
+	case (CmpOp): {
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,datxDatcmp(exp->csz,exp->cmp));} break;
+	case (DatOp): {
+		if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
+		datxVoid(dat,exp->dsz); for (int i = 0; i < exp->dsz; i++) *datxChrz(i,dat) = exp->dvl;} break;
+	case (MapOp): {
+		if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
+		int typ0 = 0; void *dat0 = 0; int idx = 0; int jdx = 0; void *src = 0; void *dst = 0; int rev = 0; int fwd = 0;
+		typ0 = datxEval(&dat0,exp->map+0,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->dup+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); jdx = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->dup+2,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(&src,dat0);
+		typ0 = datxEval(&dat0,exp->dup+3,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(dat,dat0);
+		typ0 = datxEval(&dat0,exp->map+4,identType("Int")); if (typ0 != identType("Int")) ERROR(); rev = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->dup+5,identType("Int")); if (typ0 != identType("Int")) ERROR(); fwd = *datxIntz(0,dat0);
+		datxDatexe(idx,jdx,src,*dat,rev,fwd);} break;
 	case (InpOp): {
 		int typ0 = 0; char *str = 0;
 		if (!datxDupFp) ERROR(); datxDupFp(&str,-1,2,0); typ0 = identType("Str"); datxStr(dat,str); free(str);

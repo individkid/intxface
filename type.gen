@@ -562,6 +562,7 @@ Irrex = { -- permutation of permutations
 	{"sub","Irrex",{},"siz"},
 }
 Datex = { -- given index, return vector
+	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 	{"dim","Int",{},{}},
 	{"min","Int",{},"dim"},
@@ -590,13 +591,13 @@ Express = {
 	{"cmp","Express",{["opr"]={["CmpOp"]=true}},1},
 	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
-	{"map","Express",{["opr"]={["MapOp"]=true}},2},
-	{"dat","Express",{["opr"]={["MapOp"]=true}},2},
-	{"dup","Express",{["opr"]={["DupOp"]=true}},3},
-	{"ins","Express",{["opr"]={["InsOp"]=true}},4},
-	{"del","Express",{["opr"]={["DelOp"]=true}},3},
-	{"out","Express",{["opr"]={["OutOp"]=true}},1},
-	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
+	{"map","Express",{["opr"]={["MapOp"]=true}},6}, -- idx:Int jdx:Int src:Dat dst:Dat rev:Int fwd:Int :Dat
+	{"dat","Express",{["opr"]={["MapOp"]=true}},2}, -- siz:Int val:Str :Int
+	{"dup","Express",{["opr"]={["DupOp"]=true}},3}, -- len:Int idx:Int loc:Int :Str
+	{"ins","Express",{["opr"]={["InsOp"]=true}},4}, -- str:Str len:Int idx:Int loc:Int :Dat
+	{"del","Express",{["opr"]={["DelOp"]=true}},3}, -- len:Int idx:Int loc:Int :Dat
+	{"out","Express",{["opr"]={["OutOp"]=true}},1}, -- str:Str :Dat
+	{"fld","Express",{["opr"]={["FldOp"]=true}},4}, -- giv:Gen val:Het str:Hom idx:Hom :Gen
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
 	{"lst","Express",{["opr"]={["LstOp"]=true}},2},
