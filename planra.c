@@ -44,5 +44,6 @@ int main()
 	if (datxIrrex("876543defghi","876|=543^=210^^|=abc^=def^^ghi") != 1) ERROR();
 	if (datxRegex("abdef","ab[cd]ef") != 1) ERROR();
 	if (datxRegex("abcef","ab[cd]ef") != 1) ERROR();
+	if (datxRegex("abef","ab[cd]ef") != 0) ERROR();
 	return 0;
 }

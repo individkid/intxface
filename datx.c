@@ -38,6 +38,8 @@ regex_t *regexp = 0;
 int regsiz = 0;
 struct Irrex *irrexp = 0;
 int irrsiz = 0;
+struct Datex *datexp = 0;
+int datsiz = 0;
 
 int datxSub()
 {
@@ -317,8 +319,8 @@ void datxOld(void **dat, float val)
 	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
 	BINARY_DONE()
 #define BINARY_SET(DAT,VAL) val = VAL;
-#define BINARY_CMP(DAT,VAL) val = datxEcmp(VAL,exp->cnd->cmp[j]);
-int datxEcmp(int val, enum Compare cmp)
+#define BINARY_CMP(DAT,VAL) val = datxComp(VAL,exp->cnd->cmp[j]);
+int datxComp(int val, enum Compare cmp)
 {
 	switch (cmp) {
 	case (LOCmp): return (val < 0);
@@ -380,7 +382,7 @@ enum Order datxOrder(char chr)
 	case ('|'): return ForkOrd;}
 	return Orders;
 }
-void datxIrrrcs(const char *str, struct Irrex *rgt, enum Order ord)
+void datxIrreg(const char *str, struct Irrex *rgt, enum Order ord)
 {
 	int lvl = 0; int siz = 0; char tmp[2] = {0};
 	if (ord == ChrOrd) {rgt->ord = ord; rgt->str = strndup(str,1); return;}
@@ -388,8 +390,8 @@ void datxIrrrcs(const char *str, struct Irrex *rgt, enum Order ord)
 	if (lvl == 0 && !datxClose(*chr)) siz++; if (datxOpen(*chr)) lvl++; if (datxClose(*chr)) lvl--;}
 	rgt->ord = ord; rgt->siz = siz; allocIrrex(&rgt->sub,siz); lvl = 0; siz = 0;
 	for (const char *chr = str; *chr && lvl >= 0; chr += datxLoop(*chr)+1) {
-	if (lvl == 0 && datxOpen(*chr)) {datxIrrrcs(chr+1,rgt->sub+siz,datxOrder(*chr));}
-	if (lvl == 0 && datxMatch(*chr)) {datxIrrrcs(datxEscape(tmp,chr),rgt->sub+siz,ChrOrd);}
+	if (lvl == 0 && datxOpen(*chr)) {datxIrreg(chr+1,rgt->sub+siz,datxOrder(*chr));}
+	if (lvl == 0 && datxMatch(*chr)) {datxIrreg(datxEscape(tmp,chr),rgt->sub+siz,ChrOrd);}
 	if (lvl == 0 && !datxClose(*chr)) siz++; if (datxOpen(*chr)) lvl++; if (datxClose(*chr)) lvl--;}
 }
 void datxIrrclr(struct Irrex *rgt)
@@ -427,7 +429,7 @@ int datxIrrcat(struct Irrex *exp)
 		tmp = strndup(exp->str,val);
 		free(exp->str); exp->str = tmp;} break;
 	case (PostOrd): ERROR(); // TODO shift instead of truncate
-	case (PermOrd): ERROR(); // TODO
+	case (PermOrd): ERROR(); // TODO permute
 	case (ForkOrd): {
 		if (exp->prm < 0 || exp->prm >= exp->siz) ERROR();
 		val = datxIrrcat(exp->sub+exp->prm);
@@ -460,7 +462,7 @@ int datxIrrnxt(struct Irrex *exp)
 		if (exp->prm > val) ERROR();
 		if (exp->prm == val) {exp->prm = 0; return datxIrrbin(exp);}} break;
 	case (PostOrd): ERROR(); // TODO shift instead of truncate
-	case (PermOrd): ERROR(); // TODO
+	case (PermOrd): ERROR(); // TODO permute
 	case (ForkOrd): {
 		exp->prm += 1; free(exp->str); exp->str = 0;
 		if (exp->prm > exp->siz) ERROR();
@@ -475,7 +477,7 @@ int datxIrrcmp(const char *str)
 {
 	int idx = irrsiz++;
 	irrexp = realloc(irrexp,irrsiz*sizeof(struct Irrex));
-	datxIrrrcs(str,&irrexp[idx],BeginOrd);
+	datxIrreg(str,&irrexp[idx],BeginOrd);
 	return idx;
 }
 int datxIrrexe(const char *str, int idx)
@@ -492,11 +494,29 @@ int datxIrrexe(const char *str, int idx)
 }
 int datxDatcmp(int siz, void *exp)
 {
-	return 0; // TODO
-}
-void datxDatexe(int idx, int jdx, void *src, void *dst, int rev, int fwd)
-{
+	int idx = datsiz++;
+	datexp = realloc(datexp,datsiz*sizeof(struct Datex));
 	// TODO
+	return idx;
+}
+void datxDatexe(void *src, void *dst, int rev, int fwd)
+{
+	struct Datex *ptr = 0; struct Datex *qtr = 0; int *vec = 0;
+	if (rev < 0 || rev >= datsiz || fwd < 0 || fwd >= datsiz) ERROR();
+	ptr = &datexp[rev]; qtr = &datexp[fwd];
+	if (datxVoids(src) != ptr->siz || datxVoids(dst) != qtr->siz) ERROR();
+	for (int i = 0; i < qtr->siz; i++) {
+		int fnd = 1; int inc = 1; int idx = 0;
+		int *vec = qtr->fwd+i*qtr->dim;
+		for (int j = 0; j < qtr->dim; j++)
+		if (vec[j] < qtr->min[j] || vec[j] > qtr->max[j]) fnd = 0;
+		if (!fnd) continue; fnd = 1;
+		for (int j = 0; j < ptr->dim && j < qtr->dim; j++)
+		if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j]) fnd = 0;
+		if (!fnd) continue;
+		for (int j = 0; j < ptr->dim && j < ptr->dim; j++) {
+		idx += (vec[j]-ptr->min[j])*inc; inc += ptr->dim;}
+		*datxChrz(i,dst) = *datxChrz(ptr->rev[idx],src);}
 }
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
@@ -636,14 +656,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxVoid(dat,exp->dsz); for (int i = 0; i < exp->dsz; i++) *datxChrz(i,dat) = exp->dvl;} break;
 	case (MapOp): {
 		if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		int typ0 = 0; void *dat0 = 0; int idx = 0; int jdx = 0; void *src = 0; void *dst = 0; int rev = 0; int fwd = 0;
-		typ0 = datxEval(&dat0,exp->map+0,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->dup+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); jdx = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->dup+2,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(&src,dat0);
-		typ0 = datxEval(&dat0,exp->dup+3,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(dat,dat0);
-		typ0 = datxEval(&dat0,exp->map+4,identType("Int")); if (typ0 != identType("Int")) ERROR(); rev = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->dup+5,identType("Int")); if (typ0 != identType("Int")) ERROR(); fwd = *datxIntz(0,dat0);
-		datxDatexe(idx,jdx,src,*dat,rev,fwd);} break;
+		int typ0 = 0; void *dat0 = 0; void *src = 0; void *dst = 0; int rev = 0; int fwd = 0;
+		typ0 = datxEval(&dat0,exp->dup+0,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(&src,dat0);
+		typ0 = datxEval(&dat0,exp->dup+1,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(dat,dat0);
+		typ0 = datxEval(&dat0,exp->map+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); rev = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->dup+3,identType("Int")); if (typ0 != identType("Int")) ERROR(); fwd = *datxIntz(0,dat0);
+		datxDatexe(src,*dat,rev,fwd);} break;
 	case (InpOp): {
 		int typ0 = 0; char *str = 0;
 		if (!datxDupFp) ERROR(); datxDupFp(&str,-1,2,0); typ0 = identType("Str"); datxStr(dat,str); free(str);
