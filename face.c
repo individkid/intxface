@@ -1134,7 +1134,7 @@ int hideFieldV(const char *val, const char *str, int *siz, int arg, int *sub)
 	if (asprintf(&temp,"%s : %%n",tmp) < 0) ERRFNC(-1);
 	free(tmp); tmp = temp;
 	sscanf(str+*siz,tmp,&num);
-	if (num == -1) {printf("hideField\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
+	if (num == -1) {/*printf("hideField\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp);*/ free(tmp); return 0;}
 	*siz += num;
 	free(tmp);
 	return 1;
@@ -1157,7 +1157,7 @@ int hideOpen(const char *val, const char *str, int *siz)
 	int num = -1;
 	if (asprintf(&tmp," %s ( %%n",val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
-	if (num == -1) {printf("hideOpen\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
+	if (num == -1) {/*printf("hideOpen\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp);*/ free(tmp); return 0;}
 	*siz += num;
 	free(tmp);
 	return 1;

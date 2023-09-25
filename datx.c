@@ -508,14 +508,12 @@ void datxDatexe(void *src, void *dst, int rev, int fwd)
 	for (int i = 0; i < qtr->siz; i++) {
 		int fnd = 1; int inc = 1; int idx = 0;
 		int *vec = qtr->fwd+i*qtr->dim;
-		for (int j = 0; j < qtr->dim; j++)
-		if (vec[j] < qtr->min[j] || vec[j] > qtr->max[j]) fnd = 0;
-		if (!fnd) continue; fnd = 1;
 		for (int j = 0; j < ptr->dim && j < qtr->dim; j++)
 		if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j]) fnd = 0;
 		if (!fnd) continue;
 		for (int j = 0; j < ptr->dim && j < ptr->dim; j++) {
-		idx += (vec[j]-ptr->min[j])*inc; inc += ptr->dim;}
+		idx += (vec[j]-ptr->min[j])*inc; inc *= ptr->dim;}
+		if (idx < 0 || idx >= ptr->siz) ERROR();
 		*datxChrz(i,dst) = *datxChrz(ptr->rev[idx],src);}
 }
 // int debug = 0;
