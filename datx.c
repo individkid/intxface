@@ -492,12 +492,66 @@ int datxIrrexe(const char *str, int idx)
 	if (!datxIrrnxt(ptr)) break;}
 	return 0;
 }
+int datxDatdim(int idx, void *exp)
+{
+	struct Homgen hom = {0}; int typ = 0; int val = 0;
+	typ = datxEval(datxDat0,exp,identType("Homgen"));
+	if (typ != identType("Homgen")) ERROR();
+	readHomgen(&hom,datxIdx0);
+	if (hom.tag != IntTag) ERROR();
+	val = hom.siz;
+	freeHomgen(&hom);
+	return val;
+}
+void datxDatvec(int *vec, int idx, void *exp)
+{
+	struct Homgen hom = {0}; int typ = 0;
+	typ = datxEval(datxDat0,exp,identType("Homgen"));
+	if (typ != identType("Homgen")) ERROR();
+	readHomgen(&hom,datxIdx0);
+	if (hom.tag != IntTag) ERROR();
+	for (int i = 0; i < hom.siz; i++)
+	vec[i] = hom.vInt[i];
+	freeHomgen(&hom);
+}
 int datxDatcmp(int siz, void *exp)
 {
-	int idx = datsiz++;
+	struct Datex *ptr = 0; int *vec = 0; int idx = datsiz++;
 	datexp = realloc(datexp,datsiz*sizeof(struct Datex));
-	// TODO
-	return idx;
+	ptr = datexp+idx; ptr->idx = ptr->dim = 0; ptr->rsz = 1; ptr->siz = siz;
+	for (int i = 0; i < siz; i++)
+	if (datxDatdim(i,exp) > ptr->dim)
+	ptr->dim = datxDatdim(i,exp);
+	vec = malloc(ptr->dim*sizeof(int));
+	ptr->fsz = siz*ptr->dim;
+	allocInt(&ptr->fwd,ptr->fsz*sizeof(int));
+	for (int i = 0; i < siz; i++) {
+	datxDatvec(vec,i,exp);
+	for (int j = 0; j < ptr->dim; j++)
+	ptr->fwd[i*ptr->dim+j] = vec[j];}
+	allocInt(&ptr->max,ptr->dim);
+	for (int i = 0; i < ptr->dim; i++) ptr->max[i] = 0;
+	for (int i = 0; i < siz; i++) {
+	datxDatvec(vec,i,exp);
+	for (int j = 0; j < ptr->dim; j++)
+	if (vec[j] > ptr->max[j]) ptr->max[j] = vec[j];}
+	allocInt(&ptr->min,ptr->dim);
+	for (int i = 0; i < ptr->dim; i++) ptr->min[i] = ptr->max[i];
+	for (int i = 0; i < siz; i++) {
+	datxDatvec(vec,i,exp);
+	for (int j = 0; j < ptr->dim; j++)
+	if (vec[j] < ptr->min[j]) ptr->min[j] = vec[j];}
+	for (int i = 0; i < ptr->dim; i++)
+	ptr->rsz *= ptr->max[i]-ptr->min[i]+1;
+	allocInt(&ptr->rev,ptr->rsz*sizeof(int));
+	for (int i = 0; i < siz; i++) {
+	int inc = 1; int sum = 0;
+	datxDatvec(vec,i,exp);
+	for (int j = 0; j < ptr->dim; j++) {
+	sum += (vec[j]-ptr->min[j])*inc;
+	inc *= ptr->max[j]-ptr->min[j]+1;}
+	ptr->rev[sum] = i;}
+	free(vec); return idx;
 }
 void datxDatexe(void *src, void *dst, int rev, int fwd)
 {
@@ -512,7 +566,7 @@ void datxDatexe(void *src, void *dst, int rev, int fwd)
 	if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j])
 	fnd = 0; if (!fnd) continue;
 	for (int j = 0; j < ptr->dim; j++) {
-	sum += (vec[j]-ptr->min[j])*inc; inc *= ptr->dim;}
+	sum += (vec[j]-ptr->min[j])*inc; inc *= ptr->max[j]-ptr->min[j]+1;}
 	if (sum < 0 || sum >= ptr->rsz) ERROR();
 	id = ptr->idx+ptr->rev[sum]; id %= ptr->siz;
 	if (id >= datxChrs(src)) continue;
