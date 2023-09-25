@@ -562,6 +562,7 @@ Irrex = { -- permutation of permutations
 	{"sub","Irrex",{},"siz"},
 }
 Datex = { -- given index, return vector
+	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 	{"dim","Int",{},{}},
 	{"min","Int",{},"dim"},
@@ -590,7 +591,7 @@ Express = {
 	{"cmp","Express",{["opr"]={["CmpOp"]=true}},1},
 	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
-	{"map","Express",{["opr"]={["MapOp"]=true}},6}, -- src:Dat dst:Dat rev:Int fwd:Int idx:Int jdx:Int :Dat
+	{"map","Express",{["opr"]={["MapOp"]=true}},4}, -- src:Dat dst:Dat rev:Int fwd:Int :Dat
 	{"dat","Express",{["opr"]={["MapOp"]=true}},2}, -- siz:Int val:Str :Int
 	{"dup","Express",{["opr"]={["DupOp"]=true}},3}, -- len:Int idx:Int loc:Int :Str
 	{"ins","Express",{["opr"]={["InsOp"]=true}},4}, -- str:Str len:Int idx:Int loc:Int :Dat
