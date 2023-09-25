@@ -499,22 +499,24 @@ int datxDatcmp(int siz, void *exp)
 	// TODO
 	return idx;
 }
-void datxDatexe(void *src, void *dst, int rev, int fwd)
+void datxDatexe(void *src, void *dst, int rev, int fwd, int idx, int jdx)
 {
-	struct Datex *ptr = 0; struct Datex *qtr = 0; int *vec = 0;
+	struct Datex *ptr = 0; struct Datex *qtr = 0;
 	if (rev < 0 || rev >= datsiz || fwd < 0 || fwd >= datsiz) ERROR();
-	ptr = &datexp[rev]; qtr = &datexp[fwd];
-	if (datxVoids(src) != ptr->siz || datxVoids(dst) != qtr->siz) ERROR();
-	for (int i = 0; i < qtr->siz; i++) {
-		int fnd = 1; int inc = 1; int idx = 0;
-		int *vec = qtr->fwd+i*qtr->dim;
-		for (int j = 0; j < ptr->dim && j < qtr->dim; j++)
-		if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j]) fnd = 0;
-		if (!fnd) continue;
-		for (int j = 0; j < ptr->dim && j < ptr->dim; j++) {
-		idx += (vec[j]-ptr->min[j])*inc; inc *= ptr->dim;}
-		if (idx < 0 || idx >= ptr->siz) ERROR();
-		*datxChrz(i,dst) = *datxChrz(ptr->rev[idx],src);}
+	ptr = &datexp[rev]; qtr = &datexp[fwd]; if (idx < 0 || jdx < 0) ERROR();
+	for (int i = 0; i < datxVoids(dst); i++) {
+	int fnd = 1; int inc = 1; int sum = 0; int *vec = 0; int id = 0; int jd = 0;
+	jd = jdx+i; jd %= qtr->siz; jd *= qtr->dim;
+	if (jd < 0 || jd >= qtr->fsz) ERROR(); vec = qtr->fwd+jd;
+	for (int j = 0; j < ptr->dim; j++)
+	if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j])
+	fnd = 0; if (!fnd) continue;
+	for (int j = 0; j < ptr->dim; j++) {
+	sum += (vec[j]-ptr->min[j])*inc; inc *= ptr->dim;}
+	if (sum < 0 || sum >= ptr->rsz) ERROR();
+	id = idx+ptr->rev[sum]; id %= ptr->siz; 
+	if (id >= datxChrs(src)) continue;
+	*datxChrz(i,dst) = *datxChrz(id,src);}
 }
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
@@ -654,12 +656,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxVoid(dat,exp->dsz); for (int i = 0; i < exp->dsz; i++) *datxChrz(i,dat) = exp->dvl;} break;
 	case (MapOp): {
 		if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		int typ0 = 0; void *dat0 = 0; void *src = 0; void *dst = 0; int rev = 0; int fwd = 0;
+		int typ0 = 0; void *dat0 = 0; void *src = 0; void *dst = 0; int rev = 0; int fwd = 0; int idx = 0; int jdx = 0;
 		typ0 = datxEval(&dat0,exp->dup+0,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(&src,dat0);
 		typ0 = datxEval(&dat0,exp->dup+1,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(dat,dat0);
 		typ0 = datxEval(&dat0,exp->map+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); rev = *datxIntz(0,dat0);
 		typ0 = datxEval(&dat0,exp->dup+3,identType("Int")); if (typ0 != identType("Int")) ERROR(); fwd = *datxIntz(0,dat0);
-		datxDatexe(src,*dat,rev,fwd);} break;
+		typ0 = datxEval(&dat0,exp->map+4,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
+		typ0 = datxEval(&dat0,exp->dup+5,identType("Int")); if (typ0 != identType("Int")) ERROR(); jdx = *datxIntz(0,dat0);
+		datxDatexe(src,*dat,rev,fwd,idx,jdx);} break;
 	case (InpOp): {
 		int typ0 = 0; char *str = 0;
 		if (!datxDupFp) ERROR(); datxDupFp(&str,-1,2,0); typ0 = identType("Str"); datxStr(dat,str); free(str);
