@@ -513,9 +513,9 @@ void datxDatvec(int *vec, int dim, int idx, void *exp)
 	readHomgen(&hom,datxIdx0);
 	if (hom.tag != IntTag) ERROR();
 	for (int i = 0; i < hom.siz; i++)
-	vec[i] = hom.vInt[i];
+		vec[i] = hom.vInt[i];
 	for (int i = hom.siz; i < dim; i++)
-	vec[i] = -1;
+		vec[i] = -1;
 	freeHomgen(&hom);
 }
 int datxDatcmp(int siz, void *exp)
@@ -576,19 +576,23 @@ void datxDatexe(void *src, void *dst, int rev, int fwd, int idx, int jdx)
 	ptr = &datexp[rev]; qtr = &datexp[fwd];
 	if (ptr->idx < 0 || qtr->idx < 0) ERROR();
 	for (int i = 0; i < datxChrs(dst); i++) {
-	int fnd = 1; int inc = 1; int sum = 0; int *vec = 0; int id = 0; int jd = 0;
-	jd = qtr->idx+i; jd %= qtr->siz; jd *= qtr->dim;
-	if (jd < 0 || jd >= qtr->fsz) ERROR();
-	vec = qtr->fwd+jd; for (int j = 0; j < ptr->dim; j++)
-	if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j])
-	fnd = 0; if (!fnd) continue;
-	for (int j = 0; j < ptr->dim; j++) {
-	sum += (vec[j]-ptr->min[j])*inc; inc *= ptr->max[j]-ptr->min[j]+1;}
-	if (sum < 0 || sum >= ptr->rsz) ERROR();
-	if (sum < 0 || sum >= ptr->rsz) continue;
-	id = ptr->idx+ptr->rev[sum]; id %= ptr->siz;
-	if (id >= datxChrs(src)) continue;
-	*datxChrz(i,dst) = *datxChrz(id,src);}
+		int fnd = 1; int inc = 1; int sum = 0; int *vec = 0; int id = 0; int jd = 0;
+		jd = qtr->idx+i; jd %= qtr->siz; jd *= qtr->dim;
+		if (jd < 0 || jd >= qtr->fsz) ERROR();
+		vec = qtr->fwd+jd;
+		for (int j = 0; j < ptr->dim && j < qtr->dim; j++)
+			if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j])
+				fnd = 0;
+		if (!fnd) continue;
+		for (int j = 0; j < ptr->dim && j < qtr->dim; j++) {
+			sum += (vec[j]-ptr->min[j])*inc;
+			inc *= ptr->max[j]-ptr->min[j]+1;}
+		if (sum < 0 || sum >= ptr->rsz) ERROR();
+		if (ptr->rev[sum] < 0) continue;
+		id = ptr->idx+ptr->rev[sum]; id %= ptr->siz;
+		if (id < 0) ERROR();
+		if (id >= datxChrs(src)) continue;
+		*datxChrz(i,dst) = *datxChrz(id,src);}
 	ptr->idx += idx; qtr->idx += jdx;
 }
 // int debug = 0;
