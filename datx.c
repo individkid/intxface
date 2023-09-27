@@ -544,7 +544,7 @@ int datxDatcmp(int siz, void *exp)
 			if (vec[j] >= 0 && vec[j] < ptr->min[j])
 				ptr->min[j] = vec[j];}
 	ptr->fsz = siz*ptr->dim;
-	allocInt(&ptr->fwd,ptr->fsz*sizeof(int));
+	allocInt(&ptr->fwd,ptr->fsz);
 	for (int i = 0; i < siz; i++) {
 		datxDatvec(vec,ptr->dim,i,exp);
 		for (int j = 0; j < ptr->dim; j++)
@@ -554,7 +554,7 @@ int datxDatcmp(int siz, void *exp)
 			ptr->fwd[i*ptr->dim+j] = vec[j];}
 	for (int i = 0; i < ptr->dim; i++)
 		ptr->rsz *= ptr->max[i]-ptr->min[i]+1;
-	allocInt(&ptr->rev,ptr->rsz*sizeof(int));
+	allocInt(&ptr->rev,ptr->rsz);
 	for (int i = 0; i < ptr->rsz; i++)
 		ptr->rev[i] = -1;
 	for (int i = 0; i < siz; i++) {
@@ -588,10 +588,8 @@ void datxDatexe(void *src, void *dst, int rev, int fwd, int idx, int jdx)
 			sum += (vec[j]-ptr->min[j])*inc;
 			inc *= ptr->max[j]-ptr->min[j]+1;}
 		if (sum < 0 || sum >= ptr->rsz) ERROR();
-		if (ptr->rev[sum] < 0) continue;
-		id = ptr->idx+ptr->rev[sum]; id %= ptr->siz;
-		if (id < 0) ERROR();
-		if (id >= datxChrs(src)) continue;
+		id = ptr->rev[sum] - ptr->idx%ptr->siz;
+		if (id < 0 || id >= datxChrs(src)) continue;
 		*datxChrz(i,dst) = *datxChrz(id,src);}
 	ptr->idx += idx; qtr->idx += jdx;
 }
