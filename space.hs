@@ -16,10 +16,10 @@ mainF [a] = do
  mainH sculpt
 mainF _ = undefined
 
-mainG :: Maybe Int -> IO (Maybe Sculp)
+mainG :: Maybe Int -> IO (Maybe Sidedness)
 mainG Nothing = return Nothing
-mainG (Just idx) = readSculp idx >>= return . Just
+mainG (Just idx) = readSidedness idx >>= return . Just
 
-mainH :: Maybe Sculp -> IO ()
+mainH :: Maybe Sidedness -> IO ()
 mainH = undefined
 

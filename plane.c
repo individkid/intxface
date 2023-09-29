@@ -760,11 +760,11 @@ int planeSide(const char *exp, const char *arg)
 void planeTerm(int sig)
 {
 }
-void *planeExternal(void *ptr)
+void *planeSelect(void *ptr)
 {
 	struct Argument arg = {0}; char *str = 0;
 	planeDupstr(&str,-1,1,0); if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
-	sem_post(&ready[External]);
+	sem_post(&ready[Select]);
 	while (1) {
 	struct Center center = {0};
 	int sub = waitRead(0,1<<external);
@@ -775,7 +775,7 @@ void *planeExternal(void *ptr)
 	writeCenter(&center,internal);
 	sem_safe(&resource,{numpipe++;});
 	planeSafe(Procs,Waits,CenterMemory);}
-	planeSafe(External,Stop,Configures);
+	planeSafe(Select,Stop,Configures);
 	return 0;
 }
 void *planeConsole(void *ptr)
@@ -815,7 +815,7 @@ void planeThread(enum Proc bit)
 {
 	if ((running & (1<<bit)) != 0) return; running |= (1<<bit);
 	switch (bit) {
-	case (External): if (pthread_create(&thread[bit],0,planeExternal,0) != 0) ERROR(); break;
+	case (Select): if (pthread_create(&thread[bit],0,planeSelect,0) != 0) ERROR(); break;
 	case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR(); break;
 	case (Window): case (Graphics): case (Process): sem_post(&ready[bit]); break;
 	case (Test): if (pthread_create(&thread[bit],0,planeTest,0) != 0) ERROR(); break;
@@ -826,7 +826,7 @@ void planeFinish(enum Proc bit)
 {
 	if ((running & (1<<bit)) == 0) return; running &= ~(1<<bit);
 	sem_wait(&ready[bit]); switch (bit) {
-	case (External): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
+	case (Select): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	case (Window): case (Graphics): case (Process): break;
 	case (Test): if (pthread_join(thread[bit],0) != 0) ERROR(); break;

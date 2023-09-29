@@ -189,16 +189,32 @@ Wait = {
 	"Stop",
 }
 Proc = {
-	"External",
+	"Select",
 	"Console",
 	"Window",
 	"Graphics",
 	"Process",
 	"Test",
 }
-Struc = {
-	"Table",
-	"Sides",
+Node = {
+	"Internal",
+	"External",
+}
+Property = {
+	"Boundaries", -- boundary identifiers -> lists of region identifiers
+	"Numerics", -- boundary identifiers -> triplets of scalars
+	"Regions", -- region identifiers -> lists of boundary identifiers
+	"Polytopes", -- region identifiers ->
+	"Vertexes", -- vertex identifiers -> triplets of scalars
+	"Vertices", -- vertex identifiers -> triplets of boundary identifiers
+	"Triangles", -- triangle identifiers -> triplets of vertex identifiers
+	"Additives", -- triangle identifiers -> 
+	"Subractives", -- triangle identifiers ->
+}
+Valid = {
+	"Invalid",
+	"Toread",
+	"Towrite",
 }
 Stream = {
 	"Fanout", -- write from readable pipe round robin to one of several pipes
@@ -649,8 +665,26 @@ Center = {
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 }
-Sculp = {
-	{"cfg","Struc",{},{}},
+Nested = {
+	{"tag","Node",{},{}},
+	{"siz","Int",{},{}},
+	{"ial","Nested",{["tag"]={["Internal"]=true}},"siz"},
+	{"eal","Int",{["tag"]={["External"]=true}},"siz"},
+}
+Triplet = {
+	{"idx","Int",{},3},
+}
+Scalar = {
+	{"num","Old",{},3},
+}
+Sidedness = {
+	{"cfg","Property",{},{}},
+	{"siz","Int",{},{}}, -- zero for all
+	{"idx","Int",{},"siz"}, -- mapped to internal
+	{"vld","Valid",{},"siz"},
+	{"lst","Nested",{["cfg"]={["Boundaries"]=true,["Regions"]=true}},"siz"},
+	{"tri","Triplet",{["cfg"]={["Vertices"]=true,["Triangles"]=true}},"siz"},
+	{"vec","Scalar",{["cfg"]={["Numerics"]=true,["Vertexes"]=true}},"siz"},
 }
 Argument = {
 	{"typ","Process",{},{}},
