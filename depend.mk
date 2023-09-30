@@ -26,8 +26,9 @@ protoC.o: proto.h
 shareC: datxC.o faceC.o luaxC.o protoC.o typeC.o
 shareC.o: datx.h face.h proto.h type.h
 spaceHs: face.hs faceC.o naive.hs protoC.o type.hs
+spacer.log: spaceHs spacerLua type.lua
 spacra.log: spacraHs
-spacraHs: naive.hs
+spacraHs: face.hs faceC.o naive.hs protoC.o type.hs
 type.dep: face.so luax.so show.lua
 typeC.o: type.h
 typer.dep: face.so luax.so show.lua test.lua

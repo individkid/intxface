@@ -21,5 +21,6 @@ mainG Nothing = return Nothing
 mainG (Just idx) = readSidedness idx >>= return . Just
 
 mainH :: Maybe Sidedness -> IO ()
-mainH = undefined
+mainH Nothing = undefined
+mainH _ = return ()
 

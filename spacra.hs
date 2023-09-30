@@ -1,6 +1,8 @@
 module Main where
 
 import Naive
+import Face
+import Type
 import Test.QuickCheck
 import Test.QuickCheck.Test
 import System.Exit
