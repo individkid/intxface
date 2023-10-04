@@ -1128,17 +1128,14 @@ int hideFieldV(const char *val, const char *str, int *siz, int arg, int *sub)
 	char *tmp = 0;
 	char *temp = 0;
 	int num = -1;
-printf("hideFieldV %s %s %d %d %s\n",val,str,arg,*siz,str+*siz);
 	if (asprintf(&tmp," %s",val) < 0) ERRFNC(-1);
 	for (int i = 0; i < arg; i++) {
 	if (asprintf(&temp,"%s [ %d ]",tmp,sub[i]) < 0) ERRFNC(-1);
 	free(tmp); tmp = temp;}
 	if (asprintf(&temp,"%s : %%n",tmp) < 0) ERRFNC(-1);
 	free(tmp); tmp = temp;
-printf("hideFieldV %s %s\n",str+*siz,tmp);
 	sscanf(str+*siz,tmp,&num);
-printf("hideFieldV %d\n",num);
-	if (num == -1) {printf("hideField\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
+	if (num == -1) {/*printf("hideField\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp);*/ free(tmp); return 0;}
 	*siz += num;
 	free(tmp);
 	return 1;
@@ -1148,7 +1145,6 @@ int hideField(const char *val, const char *str, int *siz, int arg, ...)
 	int *sub = malloc(arg*sizeof(int));
 	int ret = 0;
 	va_list args = {0};
-printf("hideField %s %s\n",val,str);
 	va_start(args,arg);
 	for (int i = 0; i < arg; i++) sub[i] = va_arg(args,int);
 	va_end(args);
@@ -1160,10 +1156,9 @@ int hideOpen(const char *val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
-printf("hideOpen %s %s\n",val,str);
 	if (asprintf(&tmp," %s ( %%n",val) < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
-	if (num == -1) {printf("hideOpen\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}
+	if (num == -1) {/*printf("hideOpen\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp);*/ free(tmp); return 0;}
 	*siz += num;
 	free(tmp);
 	return 1;
@@ -1172,7 +1167,6 @@ int hideClose(const char *str, int *siz)
 {
 	char *tmp = 0;
 	int num = -1;
-printf("hideClose %s\n",str);
 	if (asprintf(&tmp," ) %%n") < 0) ERRFNC(-1);
 	sscanf(str+*siz,tmp,&num);
 	if (num == -1) {printf("hideClose\n\t%s\n\t%s\n\t%s\n",str,str+*siz,tmp); free(tmp); return 0;}

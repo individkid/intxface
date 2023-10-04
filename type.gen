@@ -795,7 +795,7 @@ function showTypeHs()
 	result = result..showIndent(1).."idx <- rdwrInit (getArgumentCinp arg) (getArgumentCout arg)\n"
 	result = result..showIndent(1).."return (Just (setArgumentCidx arg idx))\n"
 	result = result.."wrapInit :: String -> IO (Maybe Argument)\n"
-	result = result.."wrapInit str = newRefStr str >>= hideArgument >>= wrapInitF\n"
+	result = result.."wrapInit str = newIORef str >>= hideArgument >>= wrapInitF\n"
 	result = result.."wrapIdentF :: Process -> Maybe Argument -> IO (Maybe Int)\n"
 	result = result.."wrapIdentF _ Nothing = return Nothing\n"
 	result = result.."wrapIdentF typ (Just arg) = if typ /= (getArgumentCtyp arg) then\n"

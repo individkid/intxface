@@ -243,27 +243,17 @@ instance StrIO Float where
  hide = hideOldC
  showt = showOldC
 
-type RefStr = IORef (String,Bool)
-newRefStr :: String -> IO RefStr
-newRefStr a = newIORef (a,False)
-readRefStr :: RefStr -> IO String
-readRefStr a = readIORef a >>= (\(x,_) -> return x)
-writeRefStr :: RefStr -> String -> IO ()
-writeRefStr a b = readIORef a >>= (\(x,y) -> if y then return () else writeIORef a (b,False))
-lockRefStr :: RefStr -> IO ()
-lockRefStr a = readIORef a >>= (\(x,_) -> writeIORef a (x,True))
-
-hideType :: StrIO a => RefStr -> IO (Maybe a)
+hideType :: StrIO a => IORef String -> IO (Maybe a)
 hideType c = do
- cx <- readRefStr c >>= newCString
+ cx <- readIORef c >>= newCString
  d <- newIORef ""
  dx <- wrapStr (\x -> (peekCString x) >>= (writeIORef d))
  e <- choose >>= newIORef
  ex <- wrap (\b -> writeIORef e b)
  x <- hide ex cx dx
- readIORef d >>= writeRefStr c
+ readIORef d >>= writeIORef c
  case x of
-  0 -> lockRefStr c >> return Nothing
+  0 -> return Nothing
   1 -> fmap Just (readIORef e)
 
 showType :: StrIO a => a -> IORef String -> IO ()
@@ -284,72 +274,73 @@ hideIntF = return . fmap fromIntegral
 hideNewF :: Maybe CLLong -> IO (Maybe Integer)
 hideNewF = return . fmap fromIntegral
 
-hideDat :: RefStr -> IO (Maybe [CChar])
+hideDat :: IORef String -> IO (Maybe [CChar])
 hideDat = undefined
-hideStr :: RefStr -> IO (Maybe String)
+hideStr :: IORef String -> IO (Maybe String)
 hideStr a = hideType a >>= hideStrF
-hideChr :: RefStr -> IO (Maybe Char)
+hideChr :: IORef String -> IO (Maybe Char)
 hideChr a = hideType a >>= hideChrF
-hideInt :: RefStr -> IO (Maybe Int)
+hideInt :: IORef String -> IO (Maybe Int)
 hideInt a = hideType a >>= hideIntF
-hideInt32 :: RefStr -> IO (Maybe Int32)
+hideInt32 :: IORef String -> IO (Maybe Int32)
 hideInt32 a = hideType a
-hideNum :: RefStr -> IO (Maybe Double)
+hideNum :: IORef String -> IO (Maybe Double)
 hideNum a = hideType a
-hideNew :: RefStr -> IO (Maybe Integer)
+hideNew :: IORef String -> IO (Maybe Integer)
 hideNew a = hideType a >>= hideNewF
-hideOld :: RefStr -> IO (Maybe Float)
+hideOld :: IORef String -> IO (Maybe Float)
 hideOld a = hideType a
 
-hideEnum :: String -> String -> RefStr -> IO (Maybe Bool)
+hideEnum :: String -> String -> IORef String -> IO (Maybe ())
 hideEnum a b c = do
  ax <- newCString a
  bx <- newCString b
- cx <- readRefStr c >>= newCString
+ cy <- readIORef c
+ putStrLn ("hideEnum " ++ a ++ " " ++ b ++ " " ++ cy)
+ cx <- readIORef c >>= newCString
  d <- newIORef ""
  dx <- wrapStr (\x -> (peekCString x) >>= (writeIORef d))
  x <- hideEnumC ax bx cx dx
- readIORef d >>= writeRefStr c
  case (fromIntegral x) of
-  0 -> lockRefStr c >> return Nothing
-  _ -> return (Just True)
-hideOpen :: String -> RefStr -> IO (Maybe Bool)
+  0 -> return Nothing
+  _ -> readIORef d >>= writeIORef c >> return (Just ())
+hideOpen :: String -> IORef String -> IO (Maybe ())
 hideOpen a c = do
  ax <- newCString a
- cx <- readRefStr c >>= newCString
+ cx <- readIORef c >>= newCString
  d <- newIORef ""
  dx <- wrapStr (\x -> (peekCString x) >>= (writeIORef d))
  x <- hideOpenC ax cx dx
- readIORef d >>= writeRefStr c
+ readIORef d >>= writeIORef c
  case (fromIntegral x) of
-  0 -> lockRefStr c >> return Nothing
-  _ -> return (Just True)
-hideClose :: RefStr -> IO (Maybe Bool)
+  0 -> return Nothing
+  _ -> return (Just ())
+hideClose :: IORef String -> IO (Maybe ())
 hideClose c = do
- cx <- readRefStr c >>= newCString
+ cx <- readIORef c >>= newCString
  d <- newIORef ""
  dx <- wrapStr (\x -> (peekCString x) >>= (writeIORef d))
  x <- hideCloseC cx dx
- readIORef d >>= writeRefStr c
+ readIORef d >>= writeIORef c
  case (fromIntegral x) of
-  0 -> lockRefStr c >> return Nothing
-  _ -> return (Just True)
-hideFieldF :: String -> [Int] -> RefStr -> IO (Maybe Bool)
+  0 -> return Nothing
+  _ -> return (Just ())
+hideFieldF :: String -> [Int] -> IORef String -> IO (Maybe ())
 hideFieldF a b c = do
  ax <- newCString a
  bx <- newArray (map fromIntegral b)
- cx <- readRefStr c >>= newCString
+ cx <- readIORef c >>= newCString
  d <- newIORef ""
  dx <- wrapStr (\x -> (peekCString x) >>= (writeIORef d))
  x <- hideFieldC ax (fromIntegral (length b)) bx cx dx
- readIORef d >>= writeRefStr c
+ readIORef d >>= writeIORef c
  case (fromIntegral x) of
-  0 -> lockRefStr c >> return Nothing
-  _ -> return (Just True)
-hideFieldG :: String -> Maybe [Int] -> RefStr -> IO (Maybe Bool)
+  0 -> return Nothing
+  _ -> return (Just ())
+hideFieldG :: String -> Maybe [Int] -> IORef String -> IO (Maybe ())
 hideFieldG _ Nothing _ = return Nothing
 hideFieldG a (Just b) c = hideFieldF a b c
-hideField :: String -> [Maybe Int] -> RefStr -> IO (Maybe Bool)
+hideField :: String -> [Maybe Int] -> IORef String -> IO (Maybe ())
 hideField a b c = hideFieldG a (sequence b) c
 
 showStrF :: String -> IO CString

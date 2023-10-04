@@ -8,6 +8,8 @@ import Test.QuickCheck.Test
 import System.Exit
 import Data.Bits
 import Data.List
+import Data.Maybe
+import Data.IORef
 import System.Random
 
 instance Arbitrary Side where
@@ -201,12 +203,26 @@ putstr_space = let
  putStrLn (show (boundariesOfPlace u))
  putStrLn (show (anySpace n m))
 
+putstr_read :: IO ()
+putstr_read = let
+ idx = openPipe
+ in do
+ ref <- newIORef "Emergent(Numerics)123"
+ may <- hideEmergent ref
+ str <- readIORef ref
+ ior <- newIORef ""
+ showEmergent (fromJust may) ior
+ val <- readIORef ior
+ putStrLn ("val " Data.List.++ val)
+ putStrLn ("str " Data.List.++ str)
+
 mainF :: Result -> IO ()
 mainF a
  | isSuccess a = return ()
  | otherwise = exitFailure
 main :: IO ()
 main = do
+ putstr_read
  quickCheckResult prop_boolToSide >>= mainF
  quickCheckResult prop_sideToBool >>= mainF
  quickCheckResult prop_subsets >>= mainF

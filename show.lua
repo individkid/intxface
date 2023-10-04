@@ -1697,13 +1697,12 @@ end
 function showCodeHs(name,enum)
 	local result = ""
 	if showhide then
-		result = result.."hide"..name.." :: RefStr -> IO (Maybe "..name..")\n"
-		result = result.."hide"..name.." idx = do\n"
-		result = result..showIndent(1).."a0 <- return Nothing\n"
+		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
+		result = result.."hide"..name.." idx = return Nothing >>=\n"
 		for key,val in ipairs(enum) do
-			result = result..showIndent(1).."a"..key.." <- enumHelp (hideEnum \""..name.."\" \""..val.."\" idx) "..val.." (return a"..(key-1)..")\n"
+			result = result..showIndent(1).."enumHelp (hideEnum \""..name.."\" \""..val.."\") idx "..val.." >>=\n"
 		end
-		result = result..showIndent(1).."return a"..#enum.."\n"
+		result = result..showIndent(1).."return\n"
 		result = result.."show"..name.." :: "..name.." -> IORef String -> IO ()\n"
 		for key,val in ipairs(enum) do
 			result = result.."show"..name.." "..val.." = showEnum \""..name.."\" \""..val.."\"\n"
@@ -2103,14 +2102,13 @@ function showHelpHs()
 		result = result..showIndent(1).."d <- b\n"
 		result = result..showIndent(1).."e <- hideHelp (Just (a-1)) b\n"
 		result = result..showIndent(1).."return (Just (:) <*> d <*> e)\n"
-		result = result.."enumHelp :: IO (Maybe Bool) -> a -> IO (Maybe a) -> IO (Maybe a)\n"
-		result = result.."enumHelp a b c = do\n"
-		result = result..showIndent(1).."x <- a\n"
-		result = result..showIndent(1).."y <- c\n"
-		result = result..showIndent(1).."case (x,y) of\n"
-		result = result..showIndent(2).."(Nothing,_) -> c\n"
-		result = result..showIndent(2).."(_,Nothing) -> return (Just b)\n"
-		result = result..showIndent(2).."(_,Just _) -> c\n"
+		result = result.."enumHelp :: (IORef String -> IO (Maybe ())) -> IORef String -> a -> Maybe a -> IO (Maybe a)\n"
+		result = result.."enumHelp _ _ _ (Just a) = return (Just a)\n"
+		result = result.."enumHelp a b c Nothing = do\n"
+		result = result..showIndent(1).."x <- a b\n"
+		result = result..showIndent(1).."case x of\n"
+		result = result..showIndent(2).."Nothing -> return Nothing\n"
+		result = result..showIndent(2).."Just () -> return (Just c)\n"
 		result = result.."showHelp :: Int -> Int -> ([Int] -> a -> IO ()) -> [Int] -> [a] -> IO ()\n"
 		result = result.."showHelp a b _ _ []\n"
 		result = result..showIndent(1).."| a == b = return ()\n"
@@ -2381,7 +2379,7 @@ function showReadHs(name,struct)
 	local result = ""
 	local extra = {}
 	if showhide then
-		result = result.."hide"..name.." :: RefStr -> IO (Maybe "..name..")\n"
+		result = result.."hide"..name.." :: IORef String -> IO (Maybe "..name..")\n"
 		result = result.."hide"..name.." idx = do\n"
 		result = result.."    x <- hideOpen \""..name.."\" idx\n"
 	else
