@@ -44,6 +44,8 @@ planer.log:
 	./planerLua > planer.log
 spacra.log:
 	./spacraHs > spacra.log
+spacer.log:
+	./spacerLua > spacer.log
 
 %: %C
 	ln -f $< $@

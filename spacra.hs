@@ -11,6 +11,7 @@ import Data.List
 import Data.Maybe
 import Data.IORef
 import System.Random
+import Control.Exception
 
 instance Arbitrary Side where
  arbitrary = frequency [(4, elements [Side 0]), (1, elements [Side 1])]
@@ -203,8 +204,8 @@ putstr_space = let
  putStrLn (show (boundariesOfPlace u))
  putStrLn (show (anySpace n m))
 
-putstr_read :: IO ()
-putstr_read = let
+cmpstr_hide :: IO ()
+cmpstr_hide = let
  idx = openPipe
  in do
  ref <- newIORef "Emergent(Numerics)123"
@@ -213,8 +214,8 @@ putstr_read = let
  ior <- newIORef ""
  showEmergent (fromJust may) ior
  val <- readIORef ior
- putStrLn ("val " Data.List.++ val)
- putStrLn ("str " Data.List.++ str)
+ assert (val == "Emergent(Numerics)") (return ())
+ assert (str == "123") (return ())
 
 mainF :: Result -> IO ()
 mainF a
@@ -222,7 +223,7 @@ mainF a
  | otherwise = exitFailure
 main :: IO ()
 main = do
- putstr_read
+ cmpstr_hide
  quickCheckResult prop_boolToSide >>= mainF
  quickCheckResult prop_sideToBool >>= mainF
  quickCheckResult prop_subsets >>= mainF
