@@ -84,7 +84,7 @@ function moduleDepend(name)
 	return retval
 end
 function classDepend(name)
-	local retval = findDepend(name,".hs","^data [a-zA-Z]* = ([a-zA-Z]*)$",".hs")
+	local retval = findDepend(name,".hs","^data ([a-zA-Z]*) =",".hs")
 	if retval == "" then io.stdout:write("\n"); io.stderr:write("classDepend "..name.."\n"); os.exit() end
 	return retval
 end
@@ -307,7 +307,7 @@ function checkMake()
 		check = string.match(line,"^lua: cannot open ([.%w]*):"); if check then checkError(check,checkRule(),"c"); found = true; break end
 		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$"); if rule and check then checkError(check,checkRule(),"d"); found = true; break end
 		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: error: '([.%w]*)' file not found$"); if rule and check then checkError(check,rule,"d"); found = true; break end
-		check = string.match(line,"^ *._([.%w]*)., referenced from:$"); if check then checkError(objectDepend(check,string.match(checkRule(),"^(.*)Sw$")),checkRule(),"e"); found = true; break end
+		check = string.match(line,"^ *._([.%w]*), referenced from:$"); if check then checkError(objectDepend(check,string.match(checkRule(),"^(.*)Sw$")),checkRule(),"e"); found = true; break end
 		rule,check = string.match(line,"^([%w]*): cannot execute file: ([%w]*)$"); if rule and check then checkError(check,rule,"f"); found = true; break end
 		check = string.match(line,"error: header '([.%w]*)' not found$"); if check then checkError(check,checkRule(),"g"); found = true; break end
 		check,rule = string.match(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$"); if rule and check then checkError(check,rule,"h"); found = true; break end

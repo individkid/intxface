@@ -296,7 +296,6 @@ hideEnum a b c = do
  ax <- newCString a
  bx <- newCString b
  cy <- readIORef c
- putStrLn ("hideEnum " ++ a ++ " " ++ b ++ " " ++ cy)
  cx <- readIORef c >>= newCString
  d <- newIORef ""
  dx <- wrapStr (\x -> (peekCString x) >>= (writeIORef d))

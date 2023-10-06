@@ -325,7 +325,6 @@ int openWrfd(int idx)
 }
 int openExec(const char *exe, const char *arg)
 {
-printf("openExec %s %s\n",exe,arg);
 	execl(exe,exe,arg,0);
 	return -1;
 }

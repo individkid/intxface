@@ -353,7 +353,7 @@ float *planeCompose()
 planeXform planeFunc()
 {
 	switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): switch ((enum Change)configure[RegisterChange]) {
+	case (Mouse): switch ((enum Effect)configure[RegisterEffect]) {
 	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeSlideOrthoMouse;
 	case (Focal): return planeSlideFocalMouse;
@@ -370,7 +370,7 @@ planeXform planeFunc()
 	case (Normal): return planeScaleNormalMouse;
 	default: ERROR();}
 	default: ERROR();}
-	case (Roller): switch ((enum Change)configure[RegisterChange]) {
+	case (Roller): switch ((enum Effect)configure[RegisterEffect]) {
 	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
 	case (Ortho): return planeSlideOrthoRoller;
 	case (Focal): return planeSlideFocalRoller;

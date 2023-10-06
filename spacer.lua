@@ -1,5 +1,5 @@
 dofile("type.lua")
-initialize = hideSidedness("Sidedness(cfg:Emergent(Boundaries)siz:Int(0))")
+initialize = hideChange("Change(cfg:Emerg(Boundaries)idx:Int(0)siz:Int(0))")
 ident = wrapType("Spacez","spacerLua","spaceHs")
-writeSidedness(initialize,ident)
+writeChange(initialize,ident)
 if waitExit() < 0 then io.stderr:write("spacerLua: bad exit status: spaceHs\n"); os.exit(-1) end

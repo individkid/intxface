@@ -313,7 +313,7 @@ void stock()
 		paFramesPerBufferUnspecified,callback,channel) != paNoError) ERROR();
 		if (Pa_StartStream(channel->str) != paNoError) ERROR();}
 		break;}
-	case (States): {
+	case (Levels): {
 		goon = 0;
 		break;}
 	default: ERROR();}

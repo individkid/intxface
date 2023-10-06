@@ -204,17 +204,19 @@ putstr_space = let
  putStrLn (show (boundariesOfPlace u))
  putStrLn (show (anySpace n m))
 
+cmpstr_hideF :: IORef String -> IO (Maybe Emerg) -- TODO only needed for depend.lua until targets depend on function names
+cmpstr_hideF = hideEmerg
 cmpstr_hide :: IO ()
 cmpstr_hide = let
  idx = openPipe
  in do
- ref <- newIORef "Emergent(Numerics)123"
- may <- hideEmergent ref
+ ref <- newIORef "Emerg(Numerics)123"
+ may <- cmpstr_hideF ref
  str <- readIORef ref
  ior <- newIORef ""
- showEmergent (fromJust may) ior
+ showEmerg (fromJust may) ior
  val <- readIORef ior
- assert (val == "Emergent(Numerics)") (return ())
+ assert (val == "Emerg(Numerics)") (return ())
  assert (str == "123") (return ())
 
 mainF :: Result -> IO ()
