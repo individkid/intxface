@@ -101,13 +101,13 @@ phone test av struct to from portaudio.
 page test file struct to from field structured NSTextView.
 share test queues between stages that permute and modify pipe streams.
 
-Analog input to phone includes bugle and found object percussion, distorted by sine wave phase locked loops.
-The phase locked loop is pco of relator of input and output pulser skipper.
+Analog input to phone includes bugle and found object percussion, distorted by pll.
+The phase locked loop, pll is pco of relator of input and output pulser skipper.
 The pulse relator, relator is level of difference of ramps reset by pulsers of givens.
 The pulse skipper, skipper is passthrough zeroed by comparator of ramp reset by comparator of result.
+The amplitude fixer, fixer is a vca of level of comparator...
 The wave to pulse, pulser is two comparators triggering and priming a one shot.
 The pulse controlled oscillator, pco is alternating integrators and fixers with feedback through chooser.
-The amplitude fixer, fixer is a comparator driving a level driving a vca.
 The pulse changed level, level is feedback from a capacitor changed by linear transistor.
 The voltage controlled amplifier, vca is amplifier with linear transistor feedback.
 The maximum amplitude chooser, chooser is comparators driving switching transistors.

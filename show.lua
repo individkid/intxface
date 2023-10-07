@@ -1702,6 +1702,7 @@ function showCodeHs(name,enum)
 		for key,val in ipairs(enum) do
 			result = result..showIndent(1).."enumHelp (hideEnum \""..name.."\" \""..val.."\") idx "..val.." >>=\n"
 		end
+		result = result..showIndent(1).."enumHelp (hideEnum \""..name.."\" \""..name.."s\") idx "..name.."s >>=\n"
 		result = result..showIndent(1).."return\n"
 		result = result.."show"..name.." :: "..name.." -> IORef String -> IO ()\n"
 		for key,val in ipairs(enum) do
@@ -2299,7 +2300,7 @@ function showReadHsF(name,struct,extra)
 			addTo(second,fld)
 		elseif #first == 0 then
 			-- coroutine.yield("-- 3")
-			extra[#extra+1] = "b"..index.."x"
+			extra[#extra+1] = "a"..index.."x"
 			outer = index
 			coroutine.yield("    b"..index.."x <- condHelp "..showCondHs(struct,struct[index][3]).." "..showCondHsF(name.."A"..outer.."Bs").." (do")
 			list[#list+1] = "b"..index.."x"
@@ -2705,12 +2706,14 @@ function showCodeLua(name,enum)
 		for key,val in ipairs(enum) do
 			result = result..showIndent(1).."val,tmp = hideEnum(\""..name.."\",\""..val.."\",str,siz); if not (val == nil) then return \""..val.."\",tmp end\n"
 		end
+		result = result..showIndent(1).."val,tmp = hideEnum(\""..name.."\",\""..name.."s\",str,siz); if not (val == nil) then return \""..name.."s\",tmp end\n"
 		result = result..showIndent(1).."return nil,siz\n"
 		result = result.."end\n"
 		result = result.."function show"..name.."(val,str)\n"
 		for key,val in ipairs(enum) do
 			result = result..showIndent(1).."if (val == \""..val.."\") then str = showEnum(\""..name.."\",\""..val.."\",str) end\n"
 		end
+		result = result..showIndent(1).."if (val == \""..name.."s\") then str = showEnum(\""..name.."\",\""..name.."s\",str) end\n"
 		result = result..showIndent(1).."return str\n"
 		result = result.."end\n"
 		result = result.."--"
@@ -2725,6 +2728,7 @@ function showCodeLua(name,enum)
 			result = result..showIndent(1).."elseif (val == "..(key-1)..") then return \""..val.."\"\n"
 		end
 	end
+	result = result..showIndent(1).."elseif (val == "..(#enum)..") then return \""..name.."s\"\n"
 	result = result..showIndent(1).."else return nil end\n"
 	result = result.."end\n"
 	result = result.."function write"..name.."(val,idx)\n"

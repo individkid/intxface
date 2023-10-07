@@ -15,23 +15,33 @@ main = getArgs >>= mainF
 mainF :: [String] -> IO ()
 mainF [a] = do
  idx <- wrapIdent Type.Spacez a
- mainI (fromJust idx) (State [])
+ mainG (fromJust idx) (State [])
  return ()
 mainF _ = undefined
 
-mainG :: Int -> IO Change
-mainG idx = readChange idx >>= return
+mainG :: Int -> State -> IO State
+mainG idx state = do
+ change <- mainH idx
+ if (getChangeCcfg change == Type.Emergs) then
+  (return state)
+ else
+  (mainI state change >>= mainG idx)
 
-mainH :: State -> Change -> IO State
-mainH state change = do
+mainHX :: Change -> IO ()
+mainHX (Change (ChangeA1 a1 a2 a3 a4) a5) = do
+    (if (a1 == Numerics) then putStrLn "mainHx ok" else putStrLn "mainHx oops")
+    (if (a5 == ChangeA5Bs) then putStrLn "mainHx oops" else putStrLn "mainHx ok")
+
+mainH :: Int -> IO Change
+mainH idx = do
+ change <- readChange idx
+ mainHX change
+ return change
+
+mainI :: State -> Change -> IO State
+mainI state change = do
  str <- newIORef ""
  showChange change str
  val <- readIORef str
  putStrLn val
  return state
-
-mainI :: Int -> State -> IO State
-mainI idx state = do
- change <- mainG idx
- -- if change is to terminate then (return state) else (mainH state change >>= mainI idx)
- mainH state change

@@ -607,7 +607,7 @@ Expected = {
 	"    a17 <- listHelp 2 (readStruct2 idx)\n"..
 	"    a18 <- listHelp 2 (readStruct2 idx)\n"..
 	"    a15x <- return (Struct1A15 a15 a16 a17 a18)\n"..
-	"    return (Struct1 a1x b9x b12x a15x)\n",
+	"    return (Struct1 a1x a9x a12x a15x)\n",
 	"readEnum1F :: Int -> IO Enum1\n"..
 	"readEnum1F 0 = return Value11\n"..
 	"readEnum1F 1 = return Value12\n"..
@@ -650,6 +650,7 @@ Expected = {
 	"    if (val == 0) then return \"Value11\"\n"..
 	"    elseif (val == 1) then return \"Value12\"\n"..
 	"    elseif (val == 2) then return \"Value13\"\n"..
+	"    elseif (val == 3) then return \"Enum1s\"\n"..
 	"    else return nil end\n"..
 	"end\n"..
 	"function writeEnum1(val,idx)\n"..
