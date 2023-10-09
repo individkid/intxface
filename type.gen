@@ -670,6 +670,7 @@ Nested = {
 	{"siz","Int",{},{}},
 	{"ial","Nested",{["tag"]={["Internal"]=true}},"siz"},
 	{"eal","Int",{["tag"]={["External"]=true}},"siz"},
+	{"idx","Int",{},"siz"},
 }
 Triplet = {
 	{"idx","Int",{},3},
@@ -679,9 +680,9 @@ Scalar = {
 }
 Change = {
 	{"cfg","Emerg",{},{}},
+	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}}, -- mapped to internal
 	{"siz","Int",{},{}}, -- zero for all
-	{"vld","Valid",{},"siz"},
 	{"lst","Nested",{["cfg"]={["Boundaries"]=true,["Regions"]=true}},"siz"},
 	{"tri","Triplet",{["cfg"]={["Vertices"]=true,["Triangles"]=true}},"siz"},
 	{"vec","Scalar",{["cfg"]={["Numerics"]=true,["Vertexes"]=true}},"siz"},
