@@ -201,15 +201,14 @@ Node = {
 	"External",
 }
 Emerg = {
-	"Boundaries", -- boundary identifiers -> lists of region identifiers
-	"Numerics", -- boundary identifiers -> triplets of scalars
-	"Regions", -- region identifiers -> lists of boundary identifiers
-	"Polytopes", -- region identifiers ->
-	"Vertexes", -- vertex identifiers -> triplets of scalars
-	"Vertices", -- vertex identifiers -> triplets of boundary identifiers
-	"Triangles", -- triangle identifiers -> triplets of vertex identifiers
-	"Additives", -- triangle identifiers -> 
-	"Subractives", -- triangle identifiers ->
+	"Numerics", -- boundary -> plane
+	"Symbolics", -- boundary -> onsides
+	"Triangles", -- boundary -> corners
+	"Tangents", -- boundary -> tangents
+	"Vertexes", -- vertex -> point
+	"Vertices", -- vertex -> tangents
+	"Polytopes", -- polytope -> insides
+	"Regions", -- regions
 }
 Valid = {
 	"Invalid", -- fill in the response
@@ -666,10 +665,7 @@ Center = {
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 }
 Nested = {
-	{"tag","Node",{},{}},
 	{"siz","Int",{},{}},
-	{"ial","Nested",{["tag"]={["Internal"]=true}},"siz"},
-	{"eal","Int",{["tag"]={["External"]=true}},"siz"},
 	{"idx","Int",{},"siz"},
 }
 Triplet = {
@@ -681,9 +677,9 @@ Scalar = {
 Change = {
 	{"cfg","Emerg",{},{}},
 	{"vld","Valid",{},{}},
-	{"idx","Int",{},{}}, -- mapped to internal
-	{"siz","Int",{},{}}, -- zero for all
-	{"lst","Nested",{["cfg"]={["Boundaries"]=true,["Regions"]=true}},"siz"},
+	{"idx","Int",{},{}},
+	{"siz","Int",{},{}},
+	{"lst","Nested",{["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Polytopes"]=true}},"siz"},
 	{"tri","Triplet",{["cfg"]={["Vertices"]=true,["Triangles"]=true}},"siz"},
 	{"vec","Scalar",{["cfg"]={["Numerics"]=true,["Vertexes"]=true}},"siz"},
 }
