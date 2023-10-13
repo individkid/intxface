@@ -13,7 +13,6 @@ Stimulus = {
 	{"\"Struct1\",Struct1"},
 	{"\"Enum1\",Enum1"},
 	{"\"Struct1\",Struct1"},
-	{"\"Struct1\",Struct1"},
 	{""},
 	{"Struct1,{[\"field6\"]={[\"Value12\"]=true},[\"field7\"]={[\"Value21\"]=true,[\"Value22\"]=true}}"},
 	{"Struct1,{[\"field7\"]={[\"Value21\"]=true,[\"Value22\"]=true}}"},
@@ -39,7 +38,6 @@ Monitor = {
 	"showHideSC",
 	"showEnumHs",
 	"showStructHs",
-	"showAccessHs",
 	"showHelpHs",
 	"showCondHs",
 	"showCondHs",
@@ -473,79 +471,6 @@ Expected = {
 	"    Struct1A12\n"..
 	"    Struct1A15\n"..
 	"    deriving (Eq)\n"..
-	"--",
-	"getStruct1Cnext :: Struct1 -> [Struct1]\n"..
-	"getStruct1Cnext (Struct1 (Struct1A1 a a2 a3 a4 a5 a6 a7 a8) a9 a12 a15) = a\n"..
-	"getStruct1Cfield1 :: Struct1 -> [Float]\n"..
-	"getStruct1Cfield1 (Struct1 (Struct1A1 a1 a a3 a4 a5 a6 a7 a8) a9 a12 a15) = a\n"..
-	"getStruct1Cfield2 :: Struct1 -> [Double]\n"..
-	"getStruct1Cfield2 (Struct1 (Struct1A1 a1 a2 a a4 a5 a6 a7 a8) a9 a12 a15) = a\n"..
-	"getStruct1Cfield3 :: Struct1 -> [[Int]]\n"..
-	"getStruct1Cfield3 (Struct1 (Struct1A1 a1 a2 a3 a a5 a6 a7 a8) a9 a12 a15) = a\n"..
-	"getStruct1Cfield4 :: Struct1 -> String\n"..
-	"getStruct1Cfield4 (Struct1 (Struct1A1 a1 a2 a3 a4 a a6 a7 a8) a9 a12 a15) = a\n"..
-	"getStruct1Cfield5 :: Struct1 -> [Int]\n"..
-	"getStruct1Cfield5 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a a7 a8) a9 a12 a15) = a\n"..
-	"getStruct1Cfield6 :: Struct1 -> Enum1\n"..
-	"getStruct1Cfield6 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a a8) a9 a12 a15) = a\n"..
-	"getStruct1Cfield7 :: Struct1 -> Enum2\n"..
-	"getStruct1Cfield7 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a) a9 a12 a15) = a\n"..
-	"getStruct1Cfield8 :: Struct1 -> Int\n"..
-	"getStruct1Cfield8 (Struct1 a1 (Struct1A9B9 a a10) a12 a15) = a\n"..
-	"getStruct1Cfield9 :: Struct1 -> Int\n"..
-	"getStruct1Cfield9 (Struct1 a1 (Struct1A9B9 a9 a) a12 a15) = a\n"..
-	"getStruct1Cfield10 :: Struct1 -> Int\n"..
-	"getStruct1Cfield10 (Struct1 a1 (Struct1A9B11 a) a12 a15) = a\n"..
-	"getStruct1Cfield11 :: Struct1 -> Int\n"..
-	"getStruct1Cfield11 (Struct1 a1 a9 (Struct1A12B12 a) a15) = a\n"..
-	"getStruct1Cfield12 :: Struct1 -> Int\n"..
-	"getStruct1Cfield12 (Struct1 a1 a9 (Struct1A12B13 a) a15) = a\n"..
-	"getStruct1Cfield13 :: Struct1 -> Int\n"..
-	"getStruct1Cfield13 (Struct1 a1 a9 (Struct1A12B14 a) a15) = a\n"..
-	"getStruct1Cfield14 :: Struct1 -> Int\n"..
-	"getStruct1Cfield14 (Struct1 a1 a9 a12 (Struct1A15 a a16 a17 a18)) = a\n"..
-	"getStruct1Cfield15 :: Struct1 -> [Int]\n"..
-	"getStruct1Cfield15 (Struct1 a1 a9 a12 (Struct1A15 a15 a a17 a18)) = a\n"..
-	"getStruct1Cfield16 :: Struct1 -> [Struct2]\n"..
-	"getStruct1Cfield16 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a a18)) = a\n"..
-	"getStruct1Cfield17 :: Struct1 -> [Struct2]\n"..
-	"getStruct1Cfield17 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a17 a)) = a\n"..
-	"setStruct1Cnext :: Struct1 -> [Struct1] -> Struct1\n"..
-	"setStruct1Cnext (Struct1 (Struct1A1 _ a2 a3 a4 a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a a2 a3 a4 a5 a6 a7 a8) a9 a12 a15)\n"..
-	"setStruct1Cfield1 :: Struct1 -> [Float] -> Struct1\n"..
-	"setStruct1Cfield1 (Struct1 (Struct1A1 a1 _ a3 a4 a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a a3 a4 a5 a6 a7 a8) a9 a12 a15)\n"..
-	"setStruct1Cfield2 :: Struct1 -> [Double] -> Struct1\n"..
-	"setStruct1Cfield2 (Struct1 (Struct1A1 a1 a2 _ a4 a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a a4 a5 a6 a7 a8) a9 a12 a15)\n"..
-	"setStruct1Cfield3 :: Struct1 -> [[Int]] -> Struct1\n"..
-	"setStruct1Cfield3 (Struct1 (Struct1A1 a1 a2 a3 _ a5 a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a a5 a6 a7 a8) a9 a12 a15)\n"..
-	"setStruct1Cfield4 :: Struct1 -> String -> Struct1\n"..
-	"setStruct1Cfield4 (Struct1 (Struct1A1 a1 a2 a3 a4 _ a6 a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a a6 a7 a8) a9 a12 a15)\n"..
-	"setStruct1Cfield5 :: Struct1 -> [Int] -> Struct1\n"..
-	"setStruct1Cfield5 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 _ a7 a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a a7 a8) a9 a12 a15)\n"..
-	"setStruct1Cfield6 :: Struct1 -> Enum1 -> Struct1\n"..
-	"setStruct1Cfield6 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 _ a8) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a a8) a9 a12 a15)\n"..
-	"setStruct1Cfield7 :: Struct1 -> Enum2 -> Struct1\n"..
-	"setStruct1Cfield7 (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 _) a9 a12 a15) a = (Struct1 (Struct1A1 a1 a2 a3 a4 a5 a6 a7 a) a9 a12 a15)\n"..
-	"setStruct1Cfield8 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield8 (Struct1 a1 (Struct1A9B9 _ a10) a12 a15) a = (Struct1 a1 (Struct1A9B9 a a10) a12 a15)\n"..
-	"setStruct1Cfield9 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield9 (Struct1 a1 (Struct1A9B9 a9 _) a12 a15) a = (Struct1 a1 (Struct1A9B9 a9 a) a12 a15)\n"..
-	"setStruct1Cfield10 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield10 (Struct1 a1 (Struct1A9B11 _) a12 a15) a = (Struct1 a1 (Struct1A9B11 a) a12 a15)\n"..
-	"setStruct1Cfield11 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield11 (Struct1 a1 a9 (Struct1A12B12 _) a15) a = (Struct1 a1 a9 (Struct1A12B12 a) a15)\n"..
-	"setStruct1Cfield12 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield12 (Struct1 a1 a9 (Struct1A12B13 _) a15) a = (Struct1 a1 a9 (Struct1A12B13 a) a15)\n"..
-	"setStruct1Cfield13 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield13 (Struct1 a1 a9 (Struct1A12B14 _) a15) a = (Struct1 a1 a9 (Struct1A12B14 a) a15)\n"..
-	"setStruct1Cfield14 :: Struct1 -> Int -> Struct1\n"..
-	"setStruct1Cfield14 (Struct1 a1 a9 a12 (Struct1A15 _ a16 a17 a18)) a = (Struct1 a1 a9 a12 (Struct1A15 a a16 a17 a18))\n"..
-	"setStruct1Cfield15 :: Struct1 -> [Int] -> Struct1\n"..
-	"setStruct1Cfield15 (Struct1 a1 a9 a12 (Struct1A15 a15 _ a17 a18)) a = (Struct1 a1 a9 a12 (Struct1A15 a15 a a17 a18))\n"..
-	"setStruct1Cfield16 :: Struct1 -> [Struct2] -> Struct1\n"..
-	"setStruct1Cfield16 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 _ a18)) a = (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a a18))\n"..
-	"setStruct1Cfield17 :: Struct1 -> [Struct2] -> Struct1\n"..
-	"setStruct1Cfield17 (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a17 _)) a = (Struct1 a1 a9 a12 (Struct1A15 a15 a16 a17 a))\n"..
 	"--",
 	"listHelp :: Int -> IO a -> IO [a]\n"..
 	"listHelp 0 b = return []\n"..

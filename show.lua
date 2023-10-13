@@ -2006,88 +2006,6 @@ function howDisjointHs(struct)
 	end
 	return result
 end
-function showAccessHsF(index,idx,max,list)
-	local ed = (list[idx] ~= nil)
-	local er = (list[idx] ~= nil) and (list[idx] == idx)
-	local ee = (list[idx] ~= nil) and ((idx == max) or (list[idx] ~= nil and list[idx] ~= list[idx+1]))
-	local ea = (list[idx] ~= nil) and (list[index] == list[idx])
-	return ed,er,ee,ea
-end
-function sb(val)
-	if val then return "1" else return "0" end
-end
-function showAccessHsG(name,struct,var,index,equal,disjoint)
-	local result = ""
-	local comment = ""
-	for idx,fld in ipairs(struct) do
-		local eed,eer,eee,eea = showAccessHsF(index,idx,#struct,equal)
-		local ded,der,dee,dea = showAccessHsF(index,idx,#struct,disjoint)
-		if (eer and not ded and eea) then
-			-- comment = comment.." "..idx.."->1"
-			result = result.." ".."("..name.."A"..idx
-		end
-		if (eer and ded and eea) then
-			-- comment = comment.." "..idx.."->2"
-			result = result.." ".."("..name.."A"..disjoint[idx].."B"..idx
-		end
-		if (eea and (index ~= idx)) then
-			-- comment = comment.." "..idx.."->3"
-			result = result.." ".."a"..idx
-		end
-		if (index == idx) then
-			-- comment = comment.." "..idx.."->4"
-			result = result.." "..var
-		end
-		if (eer and not ded and not eea) then
-			-- comment = comment.." "..idx.."->5"
-			result = result.." ".."a"..idx
-		end
-		if (der and not dea) then
-			-- comment = comment.." "..idx.."->6"
-			result = result.." ".."a"..idx
-		end
-		if (eee and eea) then
-			-- comment = comment.." "..idx.."->7"
-			result = result..")"
-		end
-	end
-	return result,comment
-end
-function showAccessHs(name,struct)
-	local equal = howEqualHs(struct)
-	local disjoint = howDisjointHs(struct)
-	local result = ""
-	local comment = ""
-	for k,v in ipairs(struct) do
-		result = result.."get"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..showStructHsI(v).."\n"
-		result = result.."get"..name.."C"..v[1].." ("..name
-		tempr,tempc = showAccessHsG(name,struct,"a",k,equal,disjoint)
-		result = result..tempr
-		comment = comment..tempc
-		if comment ~= "" then comment = " --1"..comment end
-		result = result..") = a"..comment.."\n"
-		comment = ""
-	end
-	for k,v in ipairs(struct) do
-		result = result.."set"..name.."C"..v[1].." :: "
-		result = result..name.." -> "..showStructHsI(v).." -> "..name.."\n"
-		result = result.."set"..name.."C"..v[1].." ("..name
-		tempr,tempc = showAccessHsG(name,struct,"_",k,equal,disjoint)
-		result = result..tempr
-		comment = comment..tempc
-		if comment ~= "" then comment = " --2"..comment end
-		result = result..") a = ("..name
-		tempr,tempc = showAccessHsG(name,struct,"a",k,equal,disjoint)
-		result = result..tempr
-		comment = comment..tempc
-		if comment ~= "" then comment = " --3"..comment end
-		result = result..")"..comment.."\n"
-		comment = ""
-	end
-	result = result.."--"
-	return result
-end
 function showHelpHs()
 	local result = ""
 	if showhide then
@@ -3072,7 +2990,6 @@ function showCallHs()
 	showhide = true
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	result = result..showCall(Structs,Structz,showStructHs).."\n"
-	result = result..showCall(Structs,Structz,showAccessHs).."\n"
 	showhide = false
 	result = result..showHelpHs().."\n"
 	showhide = true
