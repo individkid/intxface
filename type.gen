@@ -211,7 +211,8 @@ Emerg = {
 	"Regions", -- regions
 }
 Valid = {
-	"Invalid", -- fill in the response
+	"Toread", -- request for response
+	"Toresp", -- response to request
 	"Tocheck", -- throw error if different
 	"Towrite", -- overwrite given element
 }
@@ -679,9 +680,9 @@ Change = {
 	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"lst","Nested",{["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Polytopes"]=true}},"siz"},
-	{"tri","Triplet",{["cfg"]={["Vertices"]=true,["Triangles"]=true}},"siz"},
-	{"vec","Scalar",{["cfg"]={["Numerics"]=true,["Vertexes"]=true}},"siz"},
+	{"lst","Nested",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Polytopes"]=true}},"siz"},
+	{"tri","Triplet",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Vertices"]=true,["Triangles"]=true}},"siz"},
+	{"vec","Scalar",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Numerics"]=true,["Vertexes"]=true}},"siz"},
 }
 Argument = {
 	{"typ","Process",{},{}},
