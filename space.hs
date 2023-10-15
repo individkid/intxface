@@ -16,11 +16,6 @@ data State = State
  (IntMap Scalar) -- vertex -> point -- Vertexes
  (IntMap Triplet) -- vertex -> tangents -- Vertices
  (IntMap Listed) -- polytope -> insides -- Polytopes
--- data ChangeA5 =
---     ChangeA5B5 [Listed] | -- lst -- cfg:Polytopes,Symbolics,Tangents
---     ChangeA5B6 [Triplet] | -- tri -- cfg:Triangles,Vertices
---     ChangeA5B7 [Scalar] | -- vec -- cfg:Numerics,Vertexes
---     ChangeA5Bs deriving (Eq)
 
 main :: IO ()
 main = getArgs >>= mainF
@@ -105,9 +100,7 @@ mainI idx (State a b c d e f g) = let
  polytopes = mainII g onside
  in State numerics symbolics triangles tangents vertexes vertices polytopes
 mainJ :: Int -> State -> State
-mainJ idx (State a b c d e f g) = let
- -- TODO filter vertex from each of its tangents
- in State a b c d (Map.delete idx e) (Map.delete idx f) g
+mainJ idx (State a b c d e f g) = State a b c (mainJF idx d) (Map.delete idx e) (Map.delete idx f) g
 mainK :: Int -> State -> State
 mainK idx (State a b c d e f g) = let
  in State a b c d e f (Map.delete idx g)
@@ -144,3 +137,6 @@ mainIK :: [Region] -> Listed -> Listed
 mainIK onside (Listed (ListedA1 _ listed)) = let
  lst = Prelude.filter (\x -> elem (Region x) onside) listed
  in Listed (ListedA1 (length lst) lst)
+
+mainJF :: Int -> (IntMap Listed) -> (IntMap Listed)
+mainJF idx listed = Map.map (\(Listed (ListedA1 siz lst)) -> Listed (ListedA1 siz (Prelude.filter (\x -> x /= idx) lst))) listed
