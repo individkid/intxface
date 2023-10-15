@@ -665,9 +665,13 @@ Center = {
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 }
-Nested = {
+Listed = {
 	{"siz","Int",{},{}},
 	{"idx","Int",{},"siz"},
+}
+Nested = {
+	{"siz","Int",{},{}},
+	{"lst","Listed",{},"siz"},
 }
 Triplet = {
 	{"idx","Int",{},3},
@@ -680,7 +684,8 @@ Change = {
 	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"lst","Nested",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Polytopes"]=true}},"siz"},
+	{"nst","Nested",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,}},"siz"},
+	{"lst","Listed",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Tangents"]=true,["Polytopes"]=true}},"siz"},
 	{"tri","Triplet",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Vertices"]=true,["Triangles"]=true}},"siz"},
 	{"vec","Scalar",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Numerics"]=true,["Vertexes"]=true}},"siz"},
 }

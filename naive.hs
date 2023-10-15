@@ -81,6 +81,14 @@ replace a b c = (take a c) `append` (b : (drop (succ a) c))
 emplace :: Int -> a -> [a] -> [a]
 emplace a b c = (take a c) `append` (b : (drop a c))
 
+locate :: Eq a => a -> [a] -> Int
+locate a b = locateF a b 0
+
+locateF :: Eq a => a -> [a] -> Int -> Int
+locateF _ [] c = c
+locateF a (b:_) c | a == b = c
+locateF a (_:b) c = locateF a b (c + 1)
+
 append :: [a] -> [a] -> [a]
 append a b = fold' (:) (reverse a) b
 
