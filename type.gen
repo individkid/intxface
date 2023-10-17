@@ -682,8 +682,8 @@ Change = {
 	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"nst","Nested",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Polytopes"]=true,["Triangles"]=true}},"siz"},
-	{"lst","Listed",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Vertexes"]=true}},"siz"},
+	{"nst","Nested",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Triangles"]=true}},"siz"},
+	{"lst","Listed",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Vertexes"]=true,["Polytopes"]=true}},"siz"},
 	{"vec","Scalar",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Numerics"]=true,["Vertices"]=true}},"siz"},
 }
 Argument = {

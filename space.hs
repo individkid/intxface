@@ -8,17 +8,48 @@ import Data.IORef
 import Data.Maybe
 import Data.IntMap as Map
 
+type Numerics = [Plane] -- per boundary
+type Symbolics = Place
+type Vertexes = [[[Boundary]]] -- per boundary list of boundary triplets
+type Vertices = [Point] -- per vertex
+type Tangents = [[Boundary]] -- per vertex boundary triplet
+type Polytopes = [[Region]] -- per polytope
+type Triangles = [[[Boundary]]] -- per polytope list of triplets of boundary triplet
 data State = State
- (IntMap Scalar) -- boundary -> scalar triplet -- Numerics -- calculated from Symbolics
- (IntMap Nested) -- boundary -> region list pair -- Symbolics -- calculated from Numerics
- (IntMap Listed) -- boundary -> vertex list -- Vertexes -- calculated from Symbolics
- (IntMap Scalar) -- vertex -> scalar triplet -- Vertices -- calculated from Symbolics
- (IntMap Listed) -- vertex -> boundary triplet -- Tangents -- calculated from Symbolics
- (IntMap Nested) -- polytope -> region list pair -- Polytopes -- calculated from Symbolics
- (IntMap Nested) -- polytope -> vertex triplet list -- Triangles -- calculated from Symbolics
--- ChangeA5B5 [Nested] | -- nst -- cfg:Polytopes,Symbolics,Tangents,Triangles;vld:Toresp,Towrite
--- ChangeA5B6 [Listed] | -- lst -- cfg:Vertexes;vld:Toresp,Towrite
--- ChangeA5B7 [Scalar] | -- vec -- cfg:Numerics,Vertices;vld:Toresp,Towrite
+ Numerics
+ Symbolics
+ Vertexes
+ Vertices
+ Tangents
+ Polytopes
+ Triangles
+
+nestedToSymbolics :: Nested -> Symbolics
+nestedToSymbolics = undefined
+nestedToTangents :: Nested -> Tangents
+nestedToTangents = undefined
+nestedToTriangles :: Nested -> Triangles
+nestedToTriangles = undefined
+listedToPolytopes :: Listed -> Polytopes
+listedToPolytopes = undefined
+listedToVertexes :: Listed -> Vertexes
+listedToVertexes = undefined
+scalarToNumerics :: Scalar -> Numerics
+scalarToNumerics = undefined
+scalarToVertices :: Scalar -> Vertices
+scalarToVertices = undefined
+numericsToSymbolics :: Numerics -> Symbolics
+numericsToSymbolics = undefined
+symbolicsToNumerics :: Symbolics -> Numerics
+symbolicsToNumerics = undefined
+verticesToNumerics :: Vertices -> Numerics
+verticesToNumerics = undefined
+symbolicsPolytopesToTangents :: Symbolics -> Polytopes -> Tangents
+symbolicsPolytopesToTangents = undefined
+symbolicsPolytopesToTriangles :: Symbolics -> Polytopes -> Triangles
+symbolicsPolytopesToTriangles = undefined
+numericsTangentsToVertices :: Numerics -> Tangents -> Vertices
+numericsTangentsToVertices = undefined
 
 main :: IO ()
 main = getArgs >>= mainF
@@ -26,7 +57,7 @@ main = getArgs >>= mainF
 mainF :: [String] -> IO ()
 mainF [a] = do
  idx <- wrapIdent Type.Spacez a
- mainG (fromJust idx) (State Map.empty Map.empty Map.empty Map.empty Map.empty Map.empty Map.empty)
+ mainG (fromJust idx) (State [] [] [] [] [] [] [])
  return ()
 
 mainG :: Int -> State -> IO ()
@@ -40,6 +71,8 @@ mainG ifd state = do
 
 mainH :: Int -> State -> Change -> IO ()
 mainH _ _ (Change (ChangeA1 Type.Emergs _ _ _) _) = return ()
+mainH ifd state _ = mainG ifd state
+{-
 mainH ifd state (Change (ChangeA1 _ Type.Towrite _ 0) _) = mainG ifd state
 
 mainH ifd state (Change (ChangeA1 tag@Type.Numerics act@Type.Towrite idx siz) (ChangeA5B7 (val:lst))) = let
@@ -72,8 +105,8 @@ mainH ifd state (Change (ChangeA1 tag@Type.Tangents act@Type.Towrite idx siz) (C
  (State a b c d e f g) = clr
  set = State a b c d (Map.insert idx val e) f g
  in mainH ifd set nxt
-mainH ifd state (Change (ChangeA1 tag@Type.Polytopes act@Type.Towrite idx siz) (ChangeA5B5 (val:lst))) = let
- nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B5 lst)
+mainH ifd state (Change (ChangeA1 tag@Type.Polytopes act@Type.Towrite idx siz) (ChangeA5B6 (val:lst))) = let
+ nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B6 lst)
  clr = writeK idx state
  (State a b c d e f g) = clr
  set = State a b c d e (Map.insert idx val f) g
@@ -119,7 +152,7 @@ mainH ifd state (Change (ChangeA1 tag@Type.Polytopes Type.Toread idx siz) _) = l
  set = readN idx siz state
  (State a b c d e f g) = set
  slice = take siz (drop (idx - 1) (Map.elems f))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B5 slice)
+ resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B6 slice)
  in writeChange resp ifd >> mainG ifd set
 mainH ifd state (Change (ChangeA1 tag@Type.Triangles Type.Toread idx siz) _) = let
  set = readO idx siz state
@@ -200,3 +233,4 @@ writeJ = undefined
 
 writeK :: Int -> State -> State
 writeK = undefined
+-}
