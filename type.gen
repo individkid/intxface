@@ -201,19 +201,17 @@ Node = {
 	"External",
 }
 Emerg = {
-	"Numerics", -- boundary -> plane
-	"Symbolics", -- boundary -> onsides
-	"Triangles", -- boundary -> corners
-	"Tangents", -- boundary -> tangents
-	"Vertexes", -- vertex -> point
-	"Vertices", -- vertex -> tangents
-	"Polytopes", -- polytope -> insides
-	"Regions", -- regions
+	"Numerics", -- boundary -> scalar triplet -- calculated from Symbolics
+	"Symbolics", -- boundary -> region list pair -- calculated from Numerics
+	"Vertexes", -- boundary -> vertex list -- calculated from Symbolics
+	"Vertices", -- vertex -> scalar triplet -- calculated from Symbolics
+	"Tangents", -- vertex -> boundary triplet list -- calculated from Symbolics
+	"Polytopes", -- polytope -> region list pair -- calculated from Symbolics
+	"Triangles", -- polytope -> vertex triplet list -- calculated from Symbolics
 }
 Valid = {
 	"Toread", -- request for response
 	"Toresp", -- response to request
-	"Tocheck", -- throw error if different
 	"Towrite", -- overwrite given element
 }
 Stream = {
@@ -684,10 +682,9 @@ Change = {
 	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"nst","Nested",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,}},"siz"},
-	{"lst","Listed",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Tangents"]=true,["Polytopes"]=true}},"siz"},
-	{"tri","Triplet",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Vertices"]=true,["Triangles"]=true}},"siz"},
-	{"vec","Scalar",{["vld"]={["Toresp"]=true,["Tocheck"]=true,["Towrite"]=true},["cfg"]={["Numerics"]=true,["Vertexes"]=true}},"siz"},
+	{"nst","Nested",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Polytopes"]=true,["Triangles"]=true}},"siz"},
+	{"lst","Listed",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Vertexes"]=true}},"siz"},
+	{"vec","Scalar",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Numerics"]=true,["Vertices"]=true}},"siz"},
 }
 Argument = {
 	{"typ","Process",{},{}},

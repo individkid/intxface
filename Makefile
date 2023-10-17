@@ -25,6 +25,7 @@ ifeq ($(UNAME),Darwin)
 endif
 
 # lua depend.lua
+# TODO add intermediate depends on externs; generate only used externs
 include depend.mk
 
 facer.log:
