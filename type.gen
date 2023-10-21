@@ -201,13 +201,12 @@ Node = {
 	"External",
 }
 Emerg = {
-	"Numerics", -- boundary -> scalar triplet -- calculated from Symbolics
-	"Symbolics", -- boundary -> region list pair -- calculated from Numerics
-	"Vertexes", -- boundary -> vertex list -- calculated from Symbolics
-	"Vertices", -- vertex -> scalar triplet -- calculated from Symbolics
-	"Tangents", -- vertex -> boundary triplet list -- calculated from Symbolics
-	"Polytopes", -- polytope -> region list pair -- calculated from Symbolics
-	"Triangles", -- polytope -> vertex triplet list -- calculated from Symbolics
+	"Planes", -- Scalar -- [Plane] -- per boundary
+	"Halfs", -- Nested -- Space -- per boundary
+	"Coins", -- Listed -- [[Boundary]] -- per vertex
+	"Points", -- Scalar -- [Point] -- per vertex
+	"Facets", -- Listed -- [[Vertex]] -- per facet vertex triplets
+	"Subsets", -- Int -- [Region] -- in context of space
 }
 Valid = {
 	"Toread", -- request for response
@@ -671,9 +670,6 @@ Nested = {
 	{"siz","Int",{},{}},
 	{"lst","Listed",{},"siz"},
 }
-Triplet = {
-	{"idx","Int",{},3},
-}
 Scalar = {
 	{"num","Old",{},3},
 }
@@ -682,9 +678,12 @@ Change = {
 	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"nst","Nested",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Symbolics"]=true,["Tangents"]=true,["Triangles"]=true}},"siz"},
-	{"lst","Listed",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Vertexes"]=true,["Polytopes"]=true}},"siz"},
-	{"vec","Scalar",{["vld"]={["Toresp"]=true,["Towrite"]=true},["cfg"]={["Numerics"]=true,["Vertices"]=true}},"siz"},
+	{"vec","Scalar",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Planes"]=true}},"siz"},
+	{"nst","Nested",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Halfs"]=true,}},"siz"},
+	{"lst","Listed",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Coins"]=true}},"siz"},
+	{"pnt","Scalar",{["vld"]={["Toread"]=true},["cfg"]={["Points"]=true}},"siz"},
+	{"fct","Listed",{["vld"]={["Toread"]=true},["cfg"]={["Facets"]=true}},"siz"},
+	{"num","Int",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Subsets"]=true}},"siz"},
 }
 Argument = {
 	{"typ","Process",{},{}},

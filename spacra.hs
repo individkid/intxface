@@ -210,13 +210,13 @@ cmpstr_hide :: IO ()
 cmpstr_hide = let
  idx = openPipe
  in do
- ref <- newIORef "Emerg(Numerics)123"
+ ref <- newIORef "Emerg(Planes)123"
  may <- cmpstr_hideF ref
  str <- readIORef ref
  ior <- newIORef ""
  showEmerg (fromJust may) ior
  val <- readIORef ior
- assert (val == "Emerg(Numerics)") (return ())
+ assert (val == "Emerg(Planes)") (return ())
  assert (str == "123") (return ())
 
 mainF :: Result -> IO ()

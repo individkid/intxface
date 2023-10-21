@@ -6,50 +6,44 @@ import Type
 import System.Environment
 import Data.IORef
 import Data.Maybe
-import Data.IntMap as Map
+import Data.Map
 
-type Numerics = [Plane] -- per boundary
-type Symbolics = Place
-type Vertexes = [[[Boundary]]] -- per boundary list of boundary triplets
-type Vertices = [Point] -- per vertex
-type Tangents = [[Boundary]] -- per vertex boundary triplet
-type Polytopes = [[Region]] -- per polytope
-type Triangles = [[[Boundary]]] -- per polytope list of triplets of boundary triplet
+-- "Planes", -- Scalar -- [Plane] -- per boundary
+-- "Halfs", -- Nested -- Space -- per boundary
+-- "Coins" -- Listed -- [[Boundary]] -- per vertex
+-- "Points", -- Scalar -- [Point] -- per vertex
+-- "Facets", -- Listed -- [[Incide]] -- per facet vertex triplets
+-- "Subsets", -- Int -- [Region] -- in context of space
+
+-- Towrite Planes replaces Planes, classifies Halfs, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
+-- Towrite Halfs replaces Halfs, samples Planes, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
+-- Towrite Coins replaces Coins filtered by Halfs, appends to Coins/Backs as needed
+-- Towrite Subsets replaces Subsets filtered by Halfs, appends to Coins/Backs as needed
+-- Toread Planes reads Planes
+-- Toread Halfs reads Halfs
+-- Toread Coins reads Coins
+-- Toread Points calculates Points from Planes Coins
+-- Toread Facets calculates Facets from Halfs Subsets Coins
+-- Toread Subsets reads Subsets
+
+newtype Incide = Incide Int deriving (Eq, Ord, Show) -- arbitrary identifier
+newtype Facet = Facet Int deriving (Eq, Ord, Show) -- arbitrary identifier
+
+type Planes = [Plane] -- per boundary
+type Halfs = Space -- per boundary
+type Subsets = [Region] -- in context of space
+type Coins = [[Boundary]] -- per vertex
+type Backs = Map [Boundary] Incide
+
 data State = State
- Numerics
- Symbolics
- Vertexes
- Vertices
- Tangents
- Polytopes
- Triangles
-
-nestedToSymbolics :: Nested -> Symbolics
-nestedToSymbolics = undefined
-nestedToTangents :: Nested -> Tangents
-nestedToTangents = undefined
-nestedToTriangles :: Nested -> Triangles
-nestedToTriangles = undefined
-listedToPolytopes :: Listed -> Polytopes
-listedToPolytopes = undefined
-listedToVertexes :: Listed -> Vertexes
-listedToVertexes = undefined
-scalarToNumerics :: Scalar -> Numerics
-scalarToNumerics = undefined
-scalarToVertices :: Scalar -> Vertices
-scalarToVertices = undefined
-numericsToSymbolics :: Numerics -> Symbolics
-numericsToSymbolics = undefined
-symbolicsToNumerics :: Symbolics -> Numerics
-symbolicsToNumerics = undefined
-verticesToNumerics :: Vertices -> Numerics
-verticesToNumerics = undefined
-symbolicsPolytopesToTangents :: Symbolics -> Polytopes -> Tangents
-symbolicsPolytopesToTangents = undefined
-symbolicsPolytopesToTriangles :: Symbolics -> Polytopes -> Triangles
-symbolicsPolytopesToTriangles = undefined
-numericsTangentsToVertices :: Numerics -> Tangents -> Vertices
-numericsTangentsToVertices = undefined
+ Boundary
+ Incide
+ Facet
+ Planes
+ Halfs
+ Subsets
+ Coins
+ Backs
 
 main :: IO ()
 main = getArgs >>= mainF
@@ -57,7 +51,7 @@ main = getArgs >>= mainF
 mainF :: [String] -> IO ()
 mainF [a] = do
  idx <- wrapIdent Type.Spacez a
- mainG (fromJust idx) (State [] [] [] [] [] [] [])
+ mainG (fromJust idx) (State (Boundary 0) (Incide 0) (Facet 0) [] [] [] [] empty)
  return ()
 
 mainG :: Int -> State -> IO ()
@@ -71,166 +65,44 @@ mainG ifd state = do
 
 mainH :: Int -> State -> Change -> IO ()
 mainH _ _ (Change (ChangeA1 Type.Emergs _ _ _) _) = return ()
-mainH ifd state _ = mainG ifd state
-{-
-mainH ifd state (Change (ChangeA1 _ Type.Towrite _ 0) _) = mainG ifd state
-
-mainH ifd state (Change (ChangeA1 tag@Type.Numerics act@Type.Towrite idx siz) (ChangeA5B7 (val:lst))) = let
- nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B7 lst)
- clr = writeI idx state
- (State a b c d e f g) = clr
- set = State (Map.insert idx val a) b c d e f g
- in mainH ifd set nxt
-mainH ifd state (Change (ChangeA1 tag@Type.Symbolics act@Type.Towrite idx siz) (ChangeA5B5 (val:lst))) = let
+mainH ifd state (Change (ChangeA1 _ _ _ 0) _) = mainG ifd state
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Towrite idx siz) (ChangeA5B5 (fst:lst))) = let
  nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B5 lst)
- clr = writeI idx state
- (State a b c d e f g) = clr
- set = State a (Map.insert idx val b) c d e f g
+ set = state -- Towrite Planes replaces Planes, classifies Halfs, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
  in mainH ifd set nxt
-mainH ifd state (Change (ChangeA1 tag@Type.Vertexes act@Type.Towrite idx siz) (ChangeA5B6 (val:lst))) = let
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Towrite idx siz) (ChangeA5B6 (fst:lst))) = let
  nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B6 lst)
- clr = writeJ idx state
- (State a b c d e f g) = clr
- set = State a b (Map.insert idx val c) d e f g
+ set = state -- Towrite Halfs replaces Halfs, samples Planes, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
  in mainH ifd set nxt
-mainH ifd state (Change (ChangeA1 tag@Type.Vertices act@Type.Towrite idx siz) (ChangeA5B7 (val:lst))) = let
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Towrite idx siz) (ChangeA5B7 (fst:lst))) = let
  nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B7 lst)
- clr = writeJ idx state
- (State a b c d e f g) = clr
- set = State a b c (Map.insert idx val d) e f g
+ set = state -- Towrite Coins replaces Coins filtered by Halfs, appends to Coins/Backs as needed
  in mainH ifd set nxt
-mainH ifd state (Change (ChangeA1 tag@Type.Tangents act@Type.Towrite idx siz) (ChangeA5B6 (val:lst))) = let
- nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B6 lst)
- clr = writeI idx state
- (State a b c d e f g) = clr
- set = State a b c d (Map.insert idx val e) f g
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Towrite idx siz) (ChangeA5B10 (fst:lst))) = let
+ nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B10 lst)
+ set = state -- Towrite Subsets replaces Subsets filtered by Halfs, appends to Coins/Backs as needed
  in mainH ifd set nxt
-mainH ifd state (Change (ChangeA1 tag@Type.Polytopes act@Type.Towrite idx siz) (ChangeA5B6 (val:lst))) = let
- nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B6 lst)
- clr = writeK idx state
- (State a b c d e f g) = clr
- set = State a b c d e (Map.insert idx val f) g
- in mainH ifd set nxt
-mainH ifd state (Change (ChangeA1 tag@Type.Triangles act@Type.Towrite idx siz) (ChangeA5B5 (val:lst))) = let
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Toread idx siz) (ChangeA5B5 (fst:lst))) = let
  nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B5 lst)
- clr = writeI idx state
- (State a b c d e f g) = clr
- set = State a b c d e f (Map.insert idx val g)
+ set = state -- Toread Planes reads Planes
  in mainH ifd set nxt
-
-mainH ifd state (Change (ChangeA1 tag@Type.Numerics Type.Toread idx siz) _) = let
- set = readI idx siz state
- (State a b c d e f g) = set
- slice = take siz (drop (idx - 1) (Map.elems a))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B7 slice)
- in writeChange resp ifd >> mainG ifd set
-mainH ifd state (Change (ChangeA1 tag@Type.Symbolics Type.Toread idx siz) _) = let
- set = readJ idx siz state
- (State a b c d e f g) = set
- slice = take siz (drop (idx - 1) (Map.elems b))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B5 slice)
- in writeChange resp ifd >> mainG ifd set
-mainH ifd state (Change (ChangeA1 tag@Type.Vertexes Type.Toread idx siz) _) = let
- set = readK idx siz state
- (State a b c d e f g) = set
- slice = take siz (drop (idx - 1) (Map.elems c))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B6 slice)
- in writeChange resp ifd >> mainG ifd set
-mainH ifd state (Change (ChangeA1 tag@Type.Vertices Type.Toread idx siz) _) = let
- set = readL idx siz state
- (State a b c d e f g) = set
- slice = take siz (drop (idx - 1) (Map.elems d))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B7 slice)
- in writeChange resp ifd >> mainG ifd set
-mainH ifd state (Change (ChangeA1 tag@Type.Tangents Type.Toread idx siz) _) = let
- set = readM idx siz state
- (State a b c d e f g) = set
- slice = take siz (drop (idx - 1) (Map.elems e))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B6 slice)
- in writeChange resp ifd >> mainG ifd set
-mainH ifd state (Change (ChangeA1 tag@Type.Polytopes Type.Toread idx siz) _) = let
- set = readN idx siz state
- (State a b c d e f g) = set
- slice = take siz (drop (idx - 1) (Map.elems f))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B6 slice)
- in writeChange resp ifd >> mainG ifd set
-mainH ifd state (Change (ChangeA1 tag@Type.Triangles Type.Toread idx siz) _) = let
- set = readO idx siz state
- (State a b c d e f g) = set
- slice = take siz (drop (idx - 1) (Map.elems g))
- resp = Change (ChangeA1 tag Type.Toresp idx siz) (ChangeA5B5 slice)
- in writeChange resp ifd >> mainG ifd set
-
-readI :: Int -> Int -> State -> State
-readI = undefined
-readJ :: Int -> Int -> State -> State
-readJ = undefined
-readK :: Int -> Int -> State -> State
-readK = undefined
-readL :: Int -> Int -> State -> State
-readL = undefined
-readM :: Int -> Int -> State -> State
-readM = undefined
-readN :: Int -> Int -> State -> State
-readN = undefined
-readO :: Int -> Int -> State -> State
-readO = undefined
-
--- (IntMap Scalar) -- boundary -> scalar triplet -- Numerics -- calculated from Symbolics
--- (IntMap Nested) -- boundary -> region list pair -- Symbolics -- calculated from Numerics
--- (IntMap Listed) -- boundary -> vertex list -- Vertexes -- calculated from Symbolics
--- (IntMap Scalar) -- vertex -> scalar triplet -- Vertices -- calculated from Symbolics
--- (IntMap Listed) -- vertex -> boundary triplet -- Tangents -- calculated from Symbolics
--- (IntMap Nested) -- polytope -> region list pair -- Polytopes -- calculated from Symbolics
--- (IntMap Nested) -- polytope -> vertex triplet list -- Triangles -- calculated from Symbolics
-writeI :: Int -> State -> State
-writeI idx (State a b c d e f g) = let
- boundary = Boundary idx
- place = writeIG b
- regions = writeIF boundary place
- corners = writeII boundary e
- numerics = Map.delete idx a
- symbolics = writeIH (Map.delete idx b) regions
- vertexes = Map.delete idx c
- -- assume vertices and tangents have same domain
- vertices = writeIJ corners d
- tangents = writeIJ corners e
- -- assume polytope regions are in symbolic
- polytopes = writeIH (Map.delete idx f) regions 
- -- assume range vertices are in tangents domain
- triangles = writeIK corners g
- in State numerics symbolics vertexes vertices tangents polytopes triangles
-writeIF :: Boundary -> Place -> [Region]
-writeIF boundary place | elem boundary boundaries = let
- space = placeToSpace place
- location = Boundary (locate boundary boundaries)
- section = sectionSpace boundary place
- attached = takeRegions section place
- in Prelude.filter (\x -> sideToBool (regionWrtBoundary location x space)) attached where
- boundaries = boundariesOfPlace place
-writeIF _ _ = []
-writeIG :: (IntMap Nested) -> Place
-writeIG nested = Prelude.map (\(idx,(Nested (NestedA1 _ listed))) -> (Boundary idx, Prelude.map writeIGF listed)) (Map.toList nested)
-writeIGF :: Listed -> [Region]
-writeIGF (Listed (ListedA1 _ lst)) = Prelude.map Region lst
-writeIH :: (IntMap Nested) -> [Region] -> (IntMap Nested)
-writeIH nested regions = Map.map (\(Nested (NestedA1 siz listed)) -> Nested (NestedA1 siz (Prelude.map (writeIHF regions) listed))) nested
-writeIHF :: [Region] -> Listed -> Listed
-writeIHF regions (Listed (ListedA1 siz lst)) = let
- intlst = Prelude.map (\x -> Region x) lst
- sublst = Prelude.filter (\x -> not (elem x regions)) intlst
- reglst = Prelude.map (\(Region x) -> x) sublst
- in Listed (ListedA1 (length reglst) reglst)
-writeII :: Boundary -> (IntMap Listed) -> [Int]
-writeII boundary tangents = let (Boundary y) = boundary in Map.keys (Map.filter (\(Listed (ListedA1 _ x)) -> elem y x) tangents)
-writeIJ :: [Int] -> (IntMap a) -> (IntMap a)
-writeIJ corners intmap = fromList (Prelude.filter (\(x,_) -> not (elem x corners)) (toList intmap))
-writeIK :: [Int] -> (IntMap Nested) -> (IntMap Nested)
-writeIK = undefined
-
-writeJ :: Int -> State -> State
-writeJ = undefined
-
-writeK :: Int -> State -> State
-writeK = undefined
--}
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Toread idx siz) (ChangeA5B6 (fst:lst))) = let
+ nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B6 lst)
+ set = state -- Toread Halfs reads Halfs
+ in mainH ifd set nxt
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Toread idx siz) (ChangeA5B7 (fst:lst))) = let
+ nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B7 lst)
+ set = state -- Toread Coins reads Coins
+ in mainH ifd set nxt
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Toread idx siz) (ChangeA5B8 (fst:lst))) = let
+ nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B8 lst)
+ set = state -- Toread Points calculates Points from Planes Coins
+ in mainH ifd set nxt
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Toread idx siz) (ChangeA5B9 (fst:lst))) = let
+ nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B9 lst)
+ set = state -- Toread Facets calculates Facets from Halfs Subsets Coins
+ in mainH ifd set nxt
+mainH ifd state (Change (ChangeA1 tag@Type.Planes act@Type.Toread idx siz) (ChangeA5B10 (fst:lst))) = let
+ nxt = Change (ChangeA1 tag act (idx + 1) (siz - 1)) (ChangeA5B10 lst)
+ set = state -- Toread Subsets reads Subsets
+ in mainH ifd set nxt
