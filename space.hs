@@ -7,12 +7,13 @@ import System.Environment
 import Data.IORef
 import Data.Maybe
 import Data.Map
+import Numeric.LinearAlgebra.Data
 
 -- "Planes", -- Scalar -- [Plane] -- per boundary
 -- "Halfs", -- Nested -- Space -- per boundary
 -- "Coins" -- Listed -- [[Boundary]] -- per vertex
 -- "Points", -- Scalar -- [Point] -- per vertex
--- "Facets", -- Listed -- [[Incide]] -- per facet vertex triplets
+-- "Facets", -- Listed -- [[Int]] -- per facet vertex triplets
 -- "Subsets", -- Int -- [Region] -- in context of space
 
 -- Towrite Planes replaces Planes, classifies Halfs, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
@@ -26,18 +27,12 @@ import Data.Map
 -- Toread Facets calculates Facets from Halfs Subsets Coins
 -- Toread Subsets reads Subsets
 
-type Planes = [Plane] -- per boundary
-type Halfs = Space -- per boundary
-type Subsets = [Region] -- in context of space
-type Coins = [[Boundary]] -- per vertex
-type Backs = Map [Boundary] Int
-
 data State = State
- Planes
- Halfs
- Subsets
- Coins
- Backs
+ [Plane]
+ Space
+ [Region]
+ [[Boundary]]
+ (Map [Boundary] Int)
 
 main :: IO ()
 main = getArgs >>= mainF
@@ -49,64 +44,123 @@ mainF [a] = do
  return ()
 
 mainG :: Int -> State -> IO ()
-mainG ifd state = do
- change <- readChange ifd
+mainG fdx state = do
+ change <- readChange fdx
  str <- newIORef ""
  showChange change str
  val <- readIORef str
  putStrLn val
- mainH ifd state change
+ mainH fdx state change
 
 mainH :: Int -> State -> Change -> IO ()
 mainH _ _ (Change (ChangeA1 Type.Emergs _ _ _) _) = return ()
-mainH ifd state (Change (ChangeA1 _ _ _ 0) _) = mainG ifd state
-mainH ifd (State a b c d e) (Change (ChangeA1 Type.Planes Type.Towrite idx siz) (ChangeA5B5 val)) = let
- numeric = mainHE idx a val
+mainH fdx (State a b c d e) (Change (ChangeA1 Type.Planes Type.Towrite idx siz) (ChangeA5B5 val)) = let
+ numeric = scalarToPlane idx a val
  symbolic = spaceFromPlanes 3 numeric
- in mainG ifd (mainHK symbolic numeric b c d e)
-mainH ifd (State a b c d e) (Change (ChangeA1 Type.Halfs Type.Towrite idx siz) (ChangeA5B6 val)) = let
- symbolic = mainHF idx b val
+ subsets = mainK symbolic b c
+ coins = mainI symbolic subsets d
+ backs = mainJ coins e
+ in mainG fdx (State numeric symbolic subsets coins backs)
+mainH fdx (State a b c d e) (Change (ChangeA1 Type.Halfs Type.Towrite idx siz) (ChangeA5B6 val)) = let
+ symbolic = nestedToHalf idx b val
  numeric = planesFromSpace 3 symbolic
- in mainG ifd (mainHK symbolic numeric b c d e)
-mainH ifd (State a b c d e) (Change (ChangeA1 Type.Subsets Type.Towrite idx siz) (ChangeA5B10 val)) = let
- subsets = mainHG idx c val
- coins = mainHI b subsets d
- backs = mainHJ coins e
- in mainG ifd (mainHK b a b subsets coins backs)
-mainH ifd (State a b c d e) (Change (ChangeA1 Type.Coins Type.Towrite idx siz) (ChangeA5B7 val)) = let
- coins = mainHH idx d val
- backs = mainHJ coins e
- in mainG ifd (mainHK b a b c coins backs)
-mainH ifd state@(State a b c d e) (Change (ChangeA1 Type.Planes Type.Toread idx siz) (ChangeA5B5 val)) = do
- mainG ifd state
-mainH ifd state@(State a b c d e) (Change (ChangeA1 Type.Halfs Type.Toread idx siz) (ChangeA5B6 val)) = do
- mainG ifd state
-mainH ifd state@(State a b c d e) (Change (ChangeA1 Type.Subsets Type.Toread idx siz) (ChangeA5B10 val)) = do
- mainG ifd state
-mainH ifd state@(State a b c d e) (Change (ChangeA1 Type.Coins Type.Toread idx siz) (ChangeA5B7 val)) = do
- mainG ifd state
-mainH ifd state@(State a b c d e) (Change (ChangeA1 Type.Points Type.Toread idx siz) (ChangeA5B8 val)) = do
- mainG ifd state
-mainH ifd state@(State a b c d e) (Change (ChangeA1 Type.Facets Type.Toread idx siz) (ChangeA5B9 val)) = do
- mainG ifd state
-mainHE :: Int -> Planes -> [Scalar] -> Planes
-mainHE = undefined -- replace indicated planes, filling in with default as needed
-mainHF :: Int -> Halfs -> [Nested] -> Halfs
-mainHF = undefined -- replace indicated boundaries, filling in with superspace as needed
-mainHG :: Int -> Subsets -> [Int] -> Subsets
-mainHG = undefined -- replace indicated regions, filling in with duplicates as needed
-mainHH :: Int -> Coins -> [Listed] -> Coins
-mainHH = undefined -- replace indicated boundary triplets, filling in with empties as needed
-mainHI :: Halfs -> Subsets -> Coins -> Coins
-mainHI = undefined -- append any boundary triplets of vertices on surface of subsets in halfs
-mainHJ :: Coins -> Backs -> Backs
-mainHJ = undefined -- insert any missing backreferences
-mainHK :: Halfs -> Planes -> Halfs -> Subsets -> Coins -> Backs -> State
-mainHK symbolic a b c d e = let
+ subsets = mainK symbolic b c
+ coins = mainI symbolic subsets d
+ backs = mainJ coins e
+ in mainG fdx (State numeric symbolic subsets coins backs)
+mainH fdx (State a b c d e) (Change (ChangeA1 Type.Subsets Type.Towrite idx siz) (ChangeA5B10 val)) = let
+ subsets = intToSubset idx c val
+ coins = mainI b subsets d
+ backs = mainJ coins e
+ in mainG fdx (State a b subsets coins backs)
+mainH fdx (State a b c d e) (Change (ChangeA1 Type.Coins Type.Towrite idx siz) (ChangeA5B7 val)) = let
+ coins = listedToCoin idx d val
+ backs = mainJ coins e
+ in mainG fdx (State a b c coins backs)
+mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Planes Type.Toread idx siz) ChangeA5Bs) = do
+ writeChange (Change (ChangeA1 Type.Planes Type.Toresp idx siz) (ChangeA5B5 val)) fdx
+ mainG fdx state where
+ val = planeToScalar idx siz a
+mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Halfs Type.Toread idx siz) ChangeA5Bs) = do
+ writeChange (Change (ChangeA1 Type.Halfs Type.Toresp idx siz) (ChangeA5B6 val)) fdx
+ mainG fdx state where
+ val = halfToNested idx siz b
+mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Subsets Type.Toread idx siz) ChangeA5Bs) = do
+ writeChange (Change (ChangeA1 Type.Subsets Type.Toresp idx siz) (ChangeA5B10 val)) fdx
+ mainG fdx state where
+ val = subsetToInt idx siz c
+mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Coins Type.Toread idx siz) ChangeA5Bs) = do
+ writeChange (Change (ChangeA1 Type.Coins Type.Toresp idx siz) (ChangeA5B7 val)) fdx
+ mainG fdx state where
+ val = coinToListed idx siz d
+mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Points Type.Toread idx siz) ChangeA5Bs) = do
+ writeChange (Change (ChangeA1 Type.Points Type.Toresp idx siz) (ChangeA5B8 val)) fdx
+ mainG fdx state where
+ val = mainM idx siz a d
+mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Facets Type.Toread 0 0) ChangeA5Bs) = do
+ writeChange (Change (ChangeA1 Type.Facets Type.Toresp 0 0) (ChangeA5B9 val)) fdx
+ mainG fdx state where
+ val = mainN b c e
+
+mainI :: Space -> [Region] -> [[Boundary]] -> [[Boundary]]
+-- append any boundary triplets of vertices on surface of subsets in halfs
+mainI space regions coins = let
+ tofold = Prelude.map (mainIF space regions) regions
+ in Prelude.foldr (Prelude.++) coins tofold
+mainIF :: Space -> [Region] -> Region -> [[Boundary]]
+mainIF space regions region = let
+ attached = attachedBoundaries region space
+ triplets = subsets 3 attached
+ in Prelude.filter (mainIG space regions) triplets
+mainIG :: Space -> [Region] -> [Boundary] -> Bool
+mainIG space regions boundaries = let
+ attached = attachedRegions boundaries space
+ shared = Prelude.filter (\x -> Prelude.elem x regions) attached
+ count = Prelude.length shared
+ in (count /= 0) && (count /= (Prelude.length regions))
+
+mainJ :: [[Boundary]] -> (Map [Boundary] Int) -> (Map [Boundary] Int)
+-- insert any missing backreferences
+mainJ coins backs = Prelude.foldr (\(x,y) z -> insert y x z) backs (Prelude.zip [0..] coins)
+
+mainK :: Space -> Space -> [Region] -> [Region]
+mainK symbolic b c = let
  place = spaceToPlace symbolic
  embed = embedSpace c (spaceToPlace b)
- regions = takeRegions embed place
- coins = mainHI symbolic regions d
- backs = mainHJ coins e
- in State a b regions coins backs
+ in takeRegions embed place
+
+mainM :: Int -> Int -> [Plane] -> [[Boundary]] -> [Scalar]
+-- find subcoins, find boundary triples, intersect to points, map to scalars
+mainM idx siz planes coins = let
+ nopoint = vectorToPoint (vector [0.0,0.0,0.0])
+ subcoins = Prelude.take siz (Prelude.drop idx coins)
+ triples = Prelude.map (\x -> Prelude.map (\(Boundary y) -> planes !! y) x) subcoins
+ points = Prelude.map (\x -> fromMaybe nopoint (intersectPlanes 3 x)) triples
+ in Prelude.map pointToScalar points
+
+mainN :: Space -> [Region] -> (Map [Boundary] Int) -> [Listed]
+-- find triples of boundary triples, mapped to triples of coin indices
+mainN halfs subsets backs = let
+ in undefined
+
+scalarToPlane :: Int -> [Plane] -> [Scalar] -> [Plane]
+scalarToPlane = undefined -- replace indicated planes, filling in with default as needed
+nestedToHalf :: Int -> Space -> [Nested] -> Space
+nestedToHalf = undefined -- replace indicated boundaries, filling in with superspace as needed
+intToSubset :: Int -> [Region] -> [Int] -> [Region]
+intToSubset = undefined -- replace indicated regions, filling in with duplicates as needed
+listedToCoin :: Int -> [[Boundary]] -> [Listed] -> [[Boundary]]
+listedToCoin = undefined -- replace indicated boundary triplets, filling in with empties as needed
+planeToScalar :: Int -> Int -> [Plane] -> [Scalar]
+planeToScalar = undefined -- take and drop
+halfToNested :: Int -> Int -> Space -> [Nested]
+halfToNested = undefined
+subsetToInt :: Int -> Int -> [Region] -> [Int]
+subsetToInt = undefined
+coinToListed :: Int -> Int -> [[Boundary]] -> [Listed]
+coinToListed = undefined
+pointToScalar :: Point -> Scalar
+pointToScalar = undefined
+facetToListed :: [Int] -> Listed
+facetToListed = undefined
 
