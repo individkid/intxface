@@ -19,6 +19,9 @@ import Numeric.LinearAlgebra.Data
 -- Towrite Planes replaces Planes, classifies Halfs, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
 -- Towrite Halfs replaces Halfs, samples Planes, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
 -- Towrite Coins replaces Coins, appends to Coins/Backs as needed
+-- TODO Towrite Points replaces Points, reconstructs Planes, classifies Halfs, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
+-- TODO Toadd Facets additives Subsets, appends to Coins/Backs as needed
+-- TODO Tosub Facets subtractives Subsets, appends to Coins/Backs as needed
 -- Towrite Subsets replaces Subsets, appends to Coins/Backs as needed
 -- Toread Planes reads Planes
 -- Toread Halfs reads Halfs
@@ -28,11 +31,13 @@ import Numeric.LinearAlgebra.Data
 -- Toread Subsets reads Subsets
 
 data State = State
- [Plane]
- Space
- [Region]
- [[Boundary]]
+ [Plane] -- scalarToPlane planeToScalar
+ Space -- nestedToHalf halfToNested
+ [Region] -- intToSubset subsetToInt
+ [[Boundary]] -- listedToCoin coinToListed
  (Map [Boundary] Int)
+ -- [Point] -- pointToScalar
+ -- [[Int]] -- facetToListed
 
 main :: IO ()
 main = getArgs >>= mainF
@@ -140,8 +145,23 @@ mainM idx siz planes coins = let
 
 mainN :: Space -> [Region] -> (Map [Boundary] Int) -> [Listed]
 -- find triples of boundary triples, mapped to triples of coin indices
-mainN halfs subsets backs = let
- in undefined
+mainN space regions backs = let
+ boundaries = boundariesOfSpace space
+ pairs = concat (Prelude.map (\x -> Prelude.map (\y -> (x,y)) (attachedBoundaries x space)) regions)
+ polygons = Prelude.filter (\(x,y) -> not (Prelude.elem (oppositeOfRegion [y] x space) regions)) pairs
+ triangles = concat (Prelude.map (mainNG space) (Prelude.map (mainNF space regions) polygons))
+ in Prelude.map (\x -> Listed (ListedA1 (length x) x)) (map2 (\x -> fromMaybe 0 (Data.Map.lookup x backs)) triangles)
+mainNF :: Space -> [Region] -> (Region,Boundary) -> [[Boundary]]
+-- find corners of polygon
+mainNF space regions (region,boundary) = let
+ attached = attachedBoundaries region space
+ triples = Prelude.filter (\x -> Prelude.elem boundary x) (subsets 2 attached)
+ in Prelude.filter (\x -> oppositeOfRegionExists x region space) triples
+mainNG :: Space -> [[Boundary]] -> [[[Boundary]]]
+-- find triangles of corners
+mainNG space corners = let
+ (one:other:rest) = corners
+ in Prelude.map (\x -> [one,other,x]) rest -- note how easy this is
 
 scalarToPlane :: Int -> [Plane] -> [Scalar] -> [Plane]
 scalarToPlane = undefined -- replace indicated planes, filling in with default as needed
