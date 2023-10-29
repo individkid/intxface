@@ -156,12 +156,23 @@ mainNF :: Space -> [Region] -> (Region,Boundary) -> [[Boundary]]
 mainNF space regions (region,boundary) = let
  attached = attachedBoundaries region space
  triples = Prelude.filter (\x -> Prelude.elem boundary x) (subsets 2 attached)
- in Prelude.filter (\x -> oppositeOfRegionExists x region space) triples
+ corners = Prelude.filter (\x -> oppositeOfRegionExists x region space) triples
+ in Prelude.map (Prelude.filter (\x -> x /= boundary)) corners
 mainNG :: Space -> [[Boundary]] -> [[[Boundary]]]
 -- find triangles of corners
+mainNG _ [first,second,third] = [[first,second,third]]
 mainNG space corners = let
- (one:other:rest) = corners
- in Prelude.map (\x -> [one,other,x]) rest -- note how easy this is
+ (first:second:rest) = corners
+ ordered = Prelude.zip [0..] (mainNH space corners)
+ one = Prelude.foldr (\(x,y) z -> if (y == first) then x else z) 0 ordered
+ other = Prelude.foldr (\(x,y) z -> if (y == second) then x else z) 0 ordered
+ before = Prelude.map snd (Prelude.filter (\(x,_) -> x == other || x <= one) ordered)
+ after = Prelude.map snd (Prelude.filter (\(x,_) -> x == other || x >= one) ordered)
+ in (mainNG space before) Prelude.++ (mainNG space after)
+mainNH :: Space -> [[Boundary]] -> [[Boundary]]
+-- successor shares boundaries with predecessor
+mainNH space corners = let
+ in undefined
 
 scalarToPlane :: Int -> [Plane] -> [Scalar] -> [Plane]
 scalarToPlane = undefined -- replace indicated planes, filling in with default as needed
