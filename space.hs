@@ -163,16 +163,33 @@ mainNG :: Space -> [[Boundary]] -> [[[Boundary]]]
 mainNG _ [first,second,third] = [[first,second,third]]
 mainNG space corners = let
  (first:second:rest) = corners
- ordered = Prelude.zip [0..] (mainNH space corners)
+ ordered = Prelude.zip [0..] (mainNH corners)
  one = Prelude.foldr (\(x,y) z -> if (y == first) then x else z) 0 ordered
  other = Prelude.foldr (\(x,y) z -> if (y == second) then x else z) 0 ordered
  before = Prelude.map snd (Prelude.filter (\(x,_) -> x == other || x <= one) ordered)
  after = Prelude.map snd (Prelude.filter (\(x,_) -> x == other || x >= one) ordered)
  in (mainNG space before) Prelude.++ (mainNG space after)
-mainNH :: Space -> [[Boundary]] -> [[Boundary]]
+mainNH :: [[Boundary]] -> [[Boundary]]
 -- successor shares boundaries with predecessor
-mainNH space corners = let
- in undefined
+mainNH vertices = let
+ boundaries = Prelude.foldr (Naive.++) [] vertices
+ (boundary:_) = Prelude.foldr (Naive.+\) boundaries vertices
+ ((one:others):rest) = Prelude.map (\x -> x Naive.\\ [boundary]) vertices
+ corners = mainHK (mainHI ((one:others):rest)) (one,(one:others)) (one,(one:others)) []
+ in Prelude.map (\x -> boundary:x) corners
+mainHI :: [[Boundary]] -> (Map Boundary [[Boundary]])
+-- map boundaries of corners to corner pairs
+mainHI corners = Prelude.foldr (\x a -> Prelude.foldr (\y b -> mainHJ y x (Data.Map.lookup y b) b) a x) empty corners
+mainHJ :: Boundary -> [Boundary] -> (Maybe [[Boundary]]) -> (Map Boundary [[Boundary]]) -> (Map Boundary [[Boundary]])
+mainHJ boundary corner (Just sofar) backref = Data.Map.insert boundary (corner:sofar) backref
+mainHJ boundary corner Nothing backref = Data.Map.insert boundary [corner] backref
+mainHK :: (Map Boundary [[Boundary]]) -> (Boundary,[Boundary]) -> (Boundary,[Boundary]) -> [[Boundary]] -> [[Boundary]]
+-- recurse to find next tuple to append to list
+mainHK backref first next@(boundary,corner) done
+ | next == first = done
+ | otherwise = mainHK backref first (other,found) (found:done) where
+ found = Prelude.head (Prelude.filter (\x -> x /= corner) (fromMaybe [] (Data.Map.lookup boundary backref)))
+ other = Prelude.head (Prelude.filter (\x -> x /= boundary) found)
 
 scalarToPlane :: Int -> [Plane] -> [Scalar] -> [Plane]
 scalarToPlane = undefined -- replace indicated planes, filling in with default as needed
