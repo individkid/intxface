@@ -14,7 +14,7 @@ import System.Random
 import Control.Exception
 
 instance Arbitrary Side where
- arbitrary = frequency [(4, elements [Side 0]), (1, elements [Side 1])]
+ arbitrary = frequency [(1, elements [Side 0]), (1, elements [Side 1])]
 
 prop_boolToSide :: Bool -> Bool
 prop_boolToSide a = sideToBool (boolToSide a) == a

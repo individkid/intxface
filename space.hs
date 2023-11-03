@@ -19,7 +19,7 @@ import Numeric.LinearAlgebra.Data
 -- Towrite Planes replaces Planes, classifies Halfs, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
 -- Towrite Halfs replaces Halfs, samples Planes, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
 -- Towrite Coins replaces Coins, appends to Coins/Backs as needed
--- TODO Towrite Points replaces Points, reconstructs Planes, classifies Halfs, takes Subsets from old with new and old Halfs, appends to Coins/Backs as needed
+-- TODO Towrite Points calculates and replaces Points, does Towrite Planes as needed
 -- TODO Toadd Facets additives Subsets, appends to Coins/Backs as needed
 -- TODO Tosub Facets subtractives Subsets, appends to Coins/Backs as needed
 -- Towrite Subsets replaces Subsets, appends to Coins/Backs as needed
@@ -73,7 +73,7 @@ mainH fdx (State a b c d e) (Change (ChangeA1 Type.Halfs Type.Towrite idx siz) (
  coins = mainI symbolic subsets d
  backs = mainJ coins e
  in mainG fdx (State numeric symbolic subsets coins backs)
-mainH fdx (State a b c d e) (Change (ChangeA1 Type.Subsets Type.Towrite idx siz) (ChangeA5B10 val)) = let
+mainH fdx (State a b c d e) (Change (ChangeA1 Type.Subsets Type.Towrite idx siz) (ChangeA5B8 val)) = let
  subsets = intToSubset idx c val
  coins = mainI b subsets d
  backs = mainJ coins e
@@ -91,7 +91,7 @@ mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Halfs Type.Toread idx s
  mainG fdx state where
  val = halfToNested idx siz b
 mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Subsets Type.Toread idx siz) ChangeA5Bs) = do
- writeChange (Change (ChangeA1 Type.Subsets Type.Toresp idx siz) (ChangeA5B10 val)) fdx
+ writeChange (Change (ChangeA1 Type.Subsets Type.Toresp idx siz) (ChangeA5B8 val)) fdx
  mainG fdx state where
  val = subsetToInt idx siz c
 mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Coins Type.Toread idx siz) ChangeA5Bs) = do
@@ -99,13 +99,25 @@ mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Coins Type.Toread idx s
  mainG fdx state where
  val = coinToListed idx siz d
 mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Points Type.Toread idx siz) ChangeA5Bs) = do
- writeChange (Change (ChangeA1 Type.Points Type.Toresp idx siz) (ChangeA5B8 val)) fdx
+ writeChange (Change (ChangeA1 Type.Points Type.Toresp idx siz) (ChangeA5B9 val)) fdx
  mainG fdx state where
  val = mainM idx siz a d
 mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Facets Type.Toread 0 0) ChangeA5Bs) = do
- writeChange (Change (ChangeA1 Type.Facets Type.Toresp 0 0) (ChangeA5B9 val)) fdx
+ writeChange (Change (ChangeA1 Type.Facets Type.Toresp 0 0) (ChangeA5B10 val)) fdx
  mainG fdx state where
  val = mainN b c e
+mainH fdx (State a b c d e) (Change (ChangeA1 Type.Facets Type.Toadd idx siz) (ChangeA5B10 val)) = let
+ attaches = Prelude.map (mainL b c d) val
+ regions = Prelude.foldr (mainLG b) c attaches
+ coins = mainI b regions d
+ backs = mainJ coins e
+ in mainG fdx (State a b regions coins backs)
+mainH fdx (State a b c d e) (Change (ChangeA1 Type.Facets Type.Tosub idx siz) (ChangeA5B10 val)) = let
+ attaches = Prelude.map (mainL b c d) val
+ regions = Prelude.foldr mainLH c attaches
+ coins = mainI b regions d
+ backs = mainJ coins e
+ in mainG fdx (State a b regions coins backs)
 
 mainI :: Space -> [Region] -> [[Boundary]] -> [[Boundary]]
 -- append any boundary triplets of vertices on surface of subsets in halfs
@@ -134,6 +146,20 @@ mainK symbolic b c = let
  embed = embedSpace c (spaceToPlace b)
  in takeRegions embed place
 
+mainL :: Space -> [Region] -> [[Boundary]] -> Listed -> (Boundary,Region)
+mainL space regions coins val = let
+ triplets = Prelude.map (\x -> coins !! x) (listedToFacet val)
+ boundaries = Prelude.foldr (Naive.++) [] triplets
+ shared = Prelude.foldr (Naive.+\) boundaries triplets
+ attached = attachedRegions shared space
+ in (head shared, head (Prelude.filter (mainLF (length boundaries) boundaries space) attached))
+mainLF :: Int -> [Boundary] -> Space -> Region -> Bool
+mainLF total boundaries space region = (length ((attachedBoundaries region space) Naive.+\ boundaries)) == total
+mainLG :: Space -> (Boundary,Region) -> [Region] -> [Region]
+mainLG space (boundary,region) regions = ((oppositeOfRegion [boundary] region space):regions)
+mainLH :: (Boundary,Region) -> [Region] -> [Region]
+mainLH (_,region) regions = Prelude.filter (\x -> x /= region) regions
+
 mainM :: Int -> Int -> [Plane] -> [[Boundary]] -> [Scalar]
 -- find subcoins, find boundary triples, intersect to points, map to scalars
 mainM idx siz planes coins = let
@@ -150,7 +176,7 @@ mainN space regions backs = let
  pairs = concat (Prelude.map (\x -> Prelude.map (\y -> (x,y)) (attachedBoundaries x space)) regions)
  polygons = Prelude.filter (\(x,y) -> not (Prelude.elem (oppositeOfRegion [y] x space) regions)) pairs
  triangles = concat (Prelude.map (mainNG space) (Prelude.map (mainNF space regions) polygons))
- in Prelude.map (\x -> Listed (ListedA1 (length x) x)) (map2 (\x -> fromMaybe 0 (Data.Map.lookup x backs)) triangles)
+ in Prelude.map facetToListed (map2 (\x -> fromMaybe 0 (Data.Map.lookup x backs)) triangles)
 mainNF :: Space -> [Region] -> (Region,Boundary) -> [[Boundary]]
 -- find corners of polygon
 mainNF space regions (region,boundary) = let
@@ -175,19 +201,19 @@ mainNH vertices = let
  boundaries = Prelude.foldr (Naive.++) [] vertices
  (boundary:_) = Prelude.foldr (Naive.+\) boundaries vertices
  ((one:others):rest) = Prelude.map (\x -> x Naive.\\ [boundary]) vertices
- corners = mainHK (mainHI ((one:others):rest)) (one,(one:others)) (one,(one:others)) []
+ corners = mainNK (mainNI ((one:others):rest)) (one,(one:others)) (one,(one:others)) []
  in Prelude.map (\x -> boundary:x) corners
-mainHI :: [[Boundary]] -> (Map Boundary [[Boundary]])
+mainNI :: [[Boundary]] -> (Map Boundary [[Boundary]])
 -- map boundaries of corners to corner pairs
-mainHI corners = Prelude.foldr (\x a -> Prelude.foldr (\y b -> mainHJ y x (Data.Map.lookup y b) b) a x) empty corners
-mainHJ :: Boundary -> [Boundary] -> (Maybe [[Boundary]]) -> (Map Boundary [[Boundary]]) -> (Map Boundary [[Boundary]])
-mainHJ boundary corner (Just sofar) backref = Data.Map.insert boundary (corner:sofar) backref
-mainHJ boundary corner Nothing backref = Data.Map.insert boundary [corner] backref
-mainHK :: (Map Boundary [[Boundary]]) -> (Boundary,[Boundary]) -> (Boundary,[Boundary]) -> [[Boundary]] -> [[Boundary]]
+mainNI corners = Prelude.foldr (\x a -> Prelude.foldr (\y b -> mainNJ y x (Data.Map.lookup y b) b) a x) empty corners
+mainNJ :: Boundary -> [Boundary] -> (Maybe [[Boundary]]) -> (Map Boundary [[Boundary]]) -> (Map Boundary [[Boundary]])
+mainNJ boundary corner (Just sofar) backref = Data.Map.insert boundary (corner:sofar) backref
+mainNJ boundary corner Nothing backref = Data.Map.insert boundary [corner] backref
+mainNK :: (Map Boundary [[Boundary]]) -> (Boundary,[Boundary]) -> (Boundary,[Boundary]) -> [[Boundary]] -> [[Boundary]]
 -- recurse to find next tuple to append to list
-mainHK backref first next@(boundary,corner) done
+mainNK backref first next@(boundary,corner) done
  | next == first = done
- | otherwise = mainHK backref first (other,found) (found:done) where
+ | otherwise = mainNK backref first (other,found) (found:done) where
  found = Prelude.head (Prelude.filter (\x -> x /= corner) (fromMaybe [] (Data.Map.lookup boundary backref)))
  other = Prelude.head (Prelude.filter (\x -> x /= boundary) found)
 
@@ -210,5 +236,7 @@ coinToListed = undefined
 pointToScalar :: Point -> Scalar
 pointToScalar = undefined
 facetToListed :: [Int] -> Listed
-facetToListed = undefined
+facetToListed x = Listed (ListedA1 (length x) x)
+listedToFacet :: Listed -> [Int]
+listedToFacet = undefined
 
