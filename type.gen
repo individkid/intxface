@@ -685,7 +685,7 @@ Change = {
 	{"lst","Listed",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Coins"]=true}},"siz"},
 	{"num","Int",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Subsets"]=true}},"siz"},
 	{"pnt","Scalar",{["vld"]={["Toread"]=true},["cfg"]={["Points"]=true}},"siz"},
-	{"fct","Listed",{["vld"]={["Toread"]=true,["Toadd"]=true,["Tosub"]=true},["cfg"]={["Facets"]=true}},"siz"},
+	{"fct","Listed",{["vld"]={["Toread"]=true},["cfg"]={["Facets"]=true}},"siz"},
 }
 Argument = {
 	{"typ","Process",{},{}},
