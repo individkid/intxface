@@ -8,6 +8,7 @@ import Data.IORef
 import Data.Maybe
 import qualified Data.Map as Map
 import qualified Numeric.LinearAlgebra.Data as Matrix
+import qualified GHC.Float as GHC
 
 data State = State
  [Plane]
@@ -199,25 +200,56 @@ mainNK backref first next@(boundary,corner) done
  other = head (filter (\x -> x /= boundary) found)
 
 scalarToPlane :: Int -> [Plane] -> [Scalar] -> [Plane]
-scalarToPlane = undefined -- replace indicated planes, filling in with default as needed
+scalarToPlane idx planes scalars
+ | lim <= num = take idx planes Prelude.++ rep Prelude.++ drop lim planes
+ | idx <= num = take idx planes Prelude.++ rep
+ | otherwise = undefined where
+ num = length planes; lim = idx + (length scalars)
+ rep = map (\(Scalar (ScalarA1 floats)) -> Matrix.fromList (map GHC.float2Double floats)) scalars
 nestedToHalf :: Int -> Space -> [Nested] -> Space
-nestedToHalf = undefined -- replace indicated boundaries, filling in with superspace as needed
+nestedToHalf idx space nesteds
+ | lim <= num = take idx space Prelude.++ rep Prelude.++ drop lim space
+ | idx <= num = take idx space Prelude.++ rep
+ | otherwise = undefined where
+ num = length space; lim = idx + (length nesteds)
+ rep = map (\(Nested (NestedA1 _ listeds)) -> map (\(Listed (ListedA1 _ vals)) -> map Region vals) listeds) nesteds
 intToSubset :: Int -> [Region] -> [Int] -> [Region]
-intToSubset = undefined -- replace indicated regions, filling in with duplicates as needed
+intToSubset idx subset vals
+ | lim <= num = take idx subset Prelude.++ rep Prelude.++ drop lim subset
+ | idx <= num = take idx subset Prelude.++ rep
+ | otherwise = undefined where
+ num = length subset; lim = idx + (length vals)
+ rep = map Region vals
 listedToCoin :: Int -> [[Boundary]] -> [Listed] -> [[Boundary]]
-listedToCoin = undefined -- replace indicated boundary triplets, filling in with empties as needed
+listedToCoin idx coins listeds
+ | lim <= num = take idx coins Prelude.++ rep Prelude.++ drop lim coins
+ | idx <= num = take idx coins Prelude.++ rep
+ | otherwise = undefined where
+ num = length coins; lim = idx + (length listeds)
+ rep = map (\(Listed (ListedA1 _ vals)) -> map Boundary vals) listeds
 planeToScalar :: Int -> Int -> [Plane] -> [Scalar]
-planeToScalar = undefined -- take and drop
+planeToScalar idx siz planes = let
+ num = length planes; lim = idx + siz
+ sub = map (\x -> map GHC.double2Float (Matrix.toList x)) (drop num (take lim planes))
+ in map (\x -> Scalar (ScalarA1 x)) sub
 halfToNested :: Int -> Int -> Space -> [Nested]
-halfToNested = undefined
+halfToNested idx siz space = let
+ num = length space; lim = idx + siz
+ sub = map (\z -> map (\y -> map (\(Region x) -> x) y) z) (drop num (take lim space))
+ in map (\x -> Nested (NestedA1 (length x) (map (\y -> Listed (ListedA1 (length y) y)) x))) sub
 subsetToInt :: Int -> Int -> [Region] -> [Int]
-subsetToInt = undefined
+subsetToInt idx siz subset = let
+ num = length subset; lim = idx + siz
+ in map (\(Region x) -> x) (drop num (take lim subset))
 coinToListed :: Int -> Int -> [[Boundary]] -> [Listed]
-coinToListed = undefined
+coinToListed idx siz coin = let
+ num = length coin; lim = idx + siz
+ sub = map (\y -> map (\(Boundary x) -> x) y) (drop num (take lim coin))
+ in map (\x -> Listed (ListedA1 (length x) x)) sub
 pointToScalar :: Point -> Scalar
-pointToScalar = undefined
+pointToScalar point = Scalar (ScalarA1 (map GHC.double2Float (Matrix.toList point)))
 facetToListed :: [Int] -> Listed
 facetToListed x = Listed (ListedA1 (length x) x)
 listedToFacet :: Listed -> [Int]
-listedToFacet = undefined
+listedToFacet (Listed (ListedA1 _ vals)) = vals
 
