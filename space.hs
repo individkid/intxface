@@ -84,7 +84,7 @@ mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Points Type.Toread idx 
 mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Facets Type.Toread 0 0) ChangeA5Bs) = do
  writeChange (Change (ChangeA1 Type.Facets Type.Toresp 0 0) (ChangeA5B10 val)) fdx
  mainG fdx state where
- val = map facetToListed (mainN b c e)
+ val = map (\x -> Listed (ListedA1 (length x) x)) (mainN b c e)
 mainH fdx (State a b c d e) (Change (ChangeA1 Type.Emergs Type.Toadd idx 0) ChangeA5Bs) = let
  corners = mainN b c e
  (boundary,region) = mainL b c d (corners !! idx)
@@ -99,10 +99,9 @@ mainH fdx (State a b c d e) (Change (ChangeA1 Type.Emergs Type.Tosub idx 0) Chan
  coins = mainI b regions d
  backs = mainJ coins e
  in mainG fdx (State a b regions coins backs)
-mainH _ _ (Change (ChangeA1 Type.Emergs _ _ _) _) = return ()
+mainH _ _ _ = return ()
 
 mainI :: Space -> [Region] -> [[Boundary]] -> [[Boundary]]
--- append any boundary triplets of vertices on surface of subsets in halfs
 mainI space regions coins = let
  tofold = map (mainIF space regions) regions
  in foldr (Prelude.++) coins tofold
@@ -119,7 +118,6 @@ mainIG space regions boundaries = let
  in (count /= 0) && (count /= (length regions))
 
 mainJ :: [[Boundary]] -> (Map.Map [Boundary] Int) -> (Map.Map [Boundary] Int)
--- insert any missing backreferences
 mainJ coins backs = foldr (\(x,y) z -> Map.insert y x z) backs (zip [0..] coins)
 
 mainK :: Space -> Space -> [Region] -> [Region]
@@ -143,16 +141,14 @@ mainLH :: Region -> [Region] -> [Region]
 mainLH region regions = filter (\x -> x /= region) regions
 
 mainM :: Int -> Int -> [Plane] -> [[Boundary]] -> [Scalar]
--- find subcoins, find boundary triples, intersect to points, map to scalars
 mainM idx siz planes coins = let
  nopoint = vectorToPoint (Matrix.vector [0.0,0.0,0.0])
  subcoins = take siz (drop idx coins)
  triples = map (\x -> map (\(Boundary y) -> planes !! y) x) subcoins
  points = map (\x -> fromMaybe nopoint (intersectPlanes 3 x)) triples
- in map pointToScalar points
+ in map (\x -> Scalar (ScalarA1 (map GHC.double2Float (Matrix.toList x)))) points
 
 mainN :: Space -> [Region] -> (Map.Map [Boundary] Int) -> [[Int]]
--- find triples of boundary triples, mapped to triples of coin indices
 mainN space regions backs = let
  boundaries = boundariesOfSpace space
  pairs = concat (map (\x -> map (\y -> (x,y)) (attachedBoundaries x space)) regions)
@@ -246,10 +242,4 @@ coinToListed idx siz coin = let
  num = length coin; lim = idx + siz
  sub = map (\y -> map (\(Boundary x) -> x) y) (drop num (take lim coin))
  in map (\x -> Listed (ListedA1 (length x) x)) sub
-pointToScalar :: Point -> Scalar
-pointToScalar point = Scalar (ScalarA1 (map GHC.double2Float (Matrix.toList point)))
-facetToListed :: [Int] -> Listed
-facetToListed x = Listed (ListedA1 (length x) x)
-listedToFacet :: Listed -> [Int]
-listedToFacet (Listed (ListedA1 _ vals)) = vals
 

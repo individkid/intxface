@@ -1,333 +1,132 @@
-todo = {}
-copy = {}
-done = {}
+
+indent = 0
+prefix = ""
 verbose = false
-fileExp = "(.*)(%..*)"
-findExp = ".*/(.*)(%..*)"
-function debugTodo()
-	local outer = true
-	io.stdout:write("todo(")
-	for k,v in ipairs(todo) do
-		local first
-		if not outer then io.stdout:write(" ") else outer = false end
-		io.stdout:write("'"..v.."'")
-		io.stdout:write(" copy(")
-		first = true
-		for ky,vl in pairs(copy[v]) do
-			if not first then io.stdout:write(" ") else first = false end
-			io.stdout:write(ky)
-		end
-		io.stdout:write(") done(")
-		first = true
-		for ky,vl in pairs(done[v]) do
-			if not first then io.stdout:write(" ") else first = false end
-			io.stdout:write(ky)
-		end
-		io.stdout:write(")")
+function indentwrite(line)
+	local count = 0
+	if prefix == "" or verbose then
+		while indent > count do io.stderr:write(" "); count = count + 1 end
+		io.stderr:write(prefix..line)
 	end
-	io.stdout:write(")\n")
+	prefix = ""
 end
-function doneExists(dep,dee)
-	if done[dep] and done[dep][dee] then return true end
-	return false
-end
-function fileExists(file)
-	if not file or (file == "") then return false end
-	os.execute("ls "..file.." depend > depend.ls 2>&1")
-	local greplist = io.open("depend.ls")
-	if file == "" then return false end
-	for line in greplist:lines() do
-		local found = string.match(line,"No such file or directory")
-		if found then return false end
+
+function writeout(filename,depends)
+	local keys = {}
+	local file = io.open(filename,"w")
+	for k,_ in pairs(depends) do keys[#keys+1] = k end
+	table.sort(keys)
+	for _,k in ipairs(keys) do
+		local vals = {}
+		for v,_ in pairs(depends[k]) do vals[#vals+1] = v end
+		table.sort(vals)
+		file:write(k..":")
+		for _,v in ipairs(vals) do file:write(" "..v) end
+		file:write("\n")
 	end
-	return true
+	file:close()
 end
-function mainExists(file,exp)
-	os.execute("grep -l -E '"..exp.."' "..file.." > depend.ls 2>&1")
-	local greplist = io.open("depend.ls")
-	for line in greplist:lines() do
-		if line == file then return true end
-	end
-	return false
+
+function callmatch(values,line,pat)
+	indent = indent + 1; indentwrite("callmatch: "..line.."\n",indent)
+	values[2] = string.match(line,pat)
+	indent = indent - 1; return (values[2] ~= nil)
 end
-function findDepend(pat,ext,exp,suf)
-	local retval = ""
-	os.execute("cp *.c *.h *.lua *.gen depend") -- TODO this assumes that .dep is done in depend.mk
-	os.execute("(cd depend; ls *.gen) | cut -f 1 -d '.' > depend.rm 2>/dev/null")
-	os.execute("for file in `cat depend.rm`; do make -C depend $file"..ext.." > depend.out 2>&1; done")
-	os.execute("find . -name '*"..ext.."' > depend.ls 2>&1")
-	local filelist = io.open("depend.ls")
-	for file in filelist:lines() do
-		local basee,extee = string.match(file,findExp)
-		local linelist = io.open(file)
-		for line in linelist:lines() do
-			local found = string.match(line,exp)
-			if found == pat then retval = basee..suf; break end
-		end
-		linelist:close()
-		for k,v in ipairs(mainMap) do if extee == v[1] and mainExists(file,v[2]) then retval = "" end end
-		if not (retval == "") then break end
-	end
-	filelist:close()
-	return retval
-end
-function objectDepend(name,swift)
-	local retval = findDepend(name,".c","^[^%s#].*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","C.o")
-	if retval == "" and swift then retval = findDepend(name,".cpp","^extern[%s]*\"C\".*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","Cpp.so") end
-	if retval == "" and not swift then retval = findDepend(name,".cpp","^extern[%s]*\"C\".*[^a-zA-Z0-9_]([a-z][a-zA-Z0-9_]*)%(","Cpp.o") end
-	if retval == "" then io.stdout:write("\n"); io.stderr:write("objectDepend "..name.."\n"); os.exit() end
-	return retval
-end
-function moduleDepend(name)
-	local retval = findDepend(name,".hs","^module ([a-zA-Z]*) where",".hs")
-	if retval == "" then io.stdout:write("\n"); io.stderr:write("moduleDepend "..name.."\n"); os.exit() end
-	return retval
-end
-function classDepend(name)
-	local retval = findDepend(name,".hs","^data ([a-zA-Z]*) =",".hs")
-	if retval == "" then io.stdout:write("\n"); io.stderr:write("classDepend "..name.."\n"); os.exit() end
-	return retval
-end
-execMap = {{"C","C.o"},{"Cpp","Cpp.o"},{"Hs",".hs"},{"A",".agda"},{"Lua",".lua"},{"M","M.o"},{"Sw","Sw.o"}}
-sharedMap = {{"G%.so","G.o"},{"Cpp%.so","Cpp.o"},{"%.so","C.o"}}
-objectMap = {{"C%.o",".c"},{"Cpp%.o",".cpp"},{"Sw%.o",".sw"},{"G%.o",".metal"}}
-unameMap = {{"%.metal",".g"},{"%.metallib",".g"},{"%.agda",".a"}}
-generateMap = {"%.h","%.c","%.cpp","%.hs","%.lua"}
-mainMap = {{".c","^int main\\(","C"},{".cpp","^int main\\(","Cpp"},{".hs","^main :: IO \\(","Hs"},{".agda","^int main\\(","A"},{".lua","^-- MAIN","Lua"},{".sw","^// MAIN","Sw"},{".cpp","^int main\\(","Cpp"},{".sw","^// MAIN","Sw"}}
-function ruleDepend(rule)
-	local left, right, base = {},{},nil
-	for k,v in ipairs({execMap,sharedMap,objectMap}) do for ky,vl in ipairs(v) do left[#left+1] = vl[1]; right[#right+1] = vl[2] end end
-	for k in ipairs(left) do local base = string.match(rule,"^(.*)"..left[k].."$"); if base then return base..right[k] end end
-	for k,v in ipairs(unameMap) do local base = string.match(rule,"^(.*)"..v[1].."$"); if base and fileExists(base..v[2]) then return base..v[2] end end
-	base = string.match(rule,"^(.*)".."%.dep".."$") if base then return base..".gen" end
-	for k,v in ipairs(generateMap) do local base = string.match(rule,"^(.*)"..v.."$"); if base then return base..".dep" end end
-	for k,v in ipairs(mainMap) do if mainExists(rule..v[1],v[2]) then return rule..v[3] end end
-	return ""
-end
-function firstDepend(list)
-	for k,v in ipairs(list) do
-		local found = false
-		for ky,vl in ipairs(generateMap) do if string.match(v,"^.*"..vl.."$") then found = true end end
-		if not found then return v end
-	end
-	return nil
-end
-function listDepend(top,rule)
-	if top == rule then return {rule} end
-	local list = {}
-	local next = ruleDepend(top)
-	if not (next == "") then list[#list+1] = next end
-	if done[top] then for k,v in pairs(done[top]) do list[#list+1] = k end end
-	for k,v in ipairs(list) do
-		local temp = listDepend(v,rule)
-		if #temp > 0 then
-			local retval = {v}
-			for ky,vl in ipairs(temp) do retval[#retval+1] = vl end
-			return retval
+
+function copymake(values,target)
+	local match = values[2]
+	local depends = values[1]
+	local file = io.open("subdir."..match.."/"..match,"r")
+	indent = indent + 1; indentwrite("copymake: "..match.." "..target.."\n",indent)
+	if file == nil and trymake(match) == nil then indent = indent - 1; return false end
+	if file ~= nil then io.close(file) end
+	for line in io.lines("subdir."..match.."/depend.mk") do
+		local depender,tail = string.match(line,"^ *([%w]*) *: *(.*)$")
+		while tail ~= nil do
+			local head,next = string.match(tail,"^([%w]*) *(.*)$")
+			tail = next
+			if head == nil or head == "" then break end
+			if depends[depender] == nil then depends[depender] = {} end
+			depends[depender][head] = true
 		end
 	end
-	return {}
+	if depends[target] == nil then depends[target] = {} end
+	depends[target][match] = true
+	os.execute("cp subdir."..match.."/"..match.." subdir."..target.."/")
+	indent = indent - 1; return true
 end
-function pushError(push)
-	if verbose then
-		io.stdout:write(" pushError "..push)
-		if push == "" then io.stdout:write("blank\n"); os.exit() end
-	end
-	todo[#todo+1] = push
-	if not copy[push] then copy[push] = {} end
-	if not done[push] then done[push] = {} end
+
+function copysource(values,target,ext)
+	local match = values[2]
+	local depends = values[1]
+	local file = io.open(match.."."..ext,"r")
+	indent = indent + 1; indentwrite("copysource: "..match.." "..target.." "..ext.."\n",indent)
+	if file == nil then indent = indent - 1; return false end
+	if file ~= nil then io.close(file) end
+	if depends[target] == nil then depends[target] = {} end
+	depends[target][match.."."..ext] = true
+	os.execute("cp "..match.."."..ext.." subdir."..target.."/")
+	indent = indent - 1; return true
 end
-function doneError(file)
-	local top = todo[#todo]
-	local set = done[top]
-	if verbose then io.stdout:write(" doneError "..top..": "..file) end
-	set[file] = true
-	pushError(file)
-end
-function bothError(file)
-	local top = todo[#todo]
-	local set = done[top]
-	local map = copy[top]
-	if verbose then io.stdout:write(" bothError "..top..": "..file) end
-	set[file] = true
-	map[file] = true
-end
-function copyError(file)
-	local top = todo[#todo]
-	local map = copy[top]
-	if verbose then io.stdout:write(" copyError "..file) end
-	map[file] = true
-end
-function popError()
-	local top = todo[#todo]
-	local save = copy[top]
-	todo[#todo] = nil
-	if #todo > 0 then
-		local next = todo[#todo]
-		if verbose then
-			io.stdout:write("popError "..next..":")
-			for each in pairs(copy[next]) do
-				io.stdout:write(" "..each)
-			end
-			io.stdout:write(";")
-			for each in pairs(copy[top]) do
-				io.stdout:write(" "..each)
-			end
-			io.stdout:write("\n")
-		end
-		for each in pairs(copy[top]) do
-			copy[next][each] = true
-		end
-	end
-end
-function checkError(check,rule,id)
-	local top = todo[#todo]
-	if (top == "all") and not (rule == "all") then check = rule end
-	local next = ruleDepend(check)
-	local list = listDepend(top,rule)
-	local first = firstDepend(list)
+
+function findsource(values,ext,suf)
+	local match = values[2]
 	local found = nil
-	if verbose then
-		os.execute("cat depend.err")
-		-- debugTodo()
-		io.stdout:write("checkError"..id.."("..top..","..rule..","..check..","..next..") ")
-		for k,v in ipairs(todo) do io.stdout:write("'"..v) end
-		io.stdout:write(":")
-		for k,v in ipairs(list) do io.stdout:write(v.."'") end
-		io.stdout:write(" ")
+	local file = io.popen("grep -l -E '^[^[:space:]][^[:space:]]* *"..match.."\\(' *."..ext,"r")
+	indent = indent + 1; indentwrite("findsource: "..match.." "..ext.." "..suf.."\n",indent)
+	while true do
+		local line = file:read()
+		if line == nil then break end
+		if found ~= nil then indent = indent - 1; return false end
+		found = string.match(line,"^([%w]*)."..ext.."$")
 	end
-	if not found and (top == "all") then found = "1"; if verbose then io.stdout:write(found) end; pushError(check) end
+	io.close(file)
+	if found == nil then indent = indent - 1; return false end
+	values[2] = found..suf
+	indent = indent - 1; return true
+end
 
-	if not found and (top == check) and fileExists(next) then found = "2a"; if verbose then io.stdout:write(found) end; copyError(next) end
-	if not found and (top == check) and not fileExists(next) then found = "2b"; if verbose then io.stdout:write(found) end; pushError(next) end
-	if not found and not (top == rule) and string.match("h",id) then found = "2c"; if verbose then io.stdout:write(found) end; pushError(first) end
+function trymatch(values,target)
+	indent = indent + 1; indentwrite("trymatch: "..target.."\n",indent)
+	for line in io.lines("stderr."..target) do
+		--  matches can append to depends, copy from other subdirs, copy from source, recurse to another target
+		prefix = "1 "; if callmatch(values,line,"^/bin/sh: ./([%w]*C): No such file or directory$") and copymake(values,target) then indent = indent - 1; return true end
+		prefix = "2 "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)C'.  Stop.$") and copysource(values,target,"c") then indent = indent - 1; return true end
+		prefix = "3 "; if callmatch(values,line,"^[%w]*.c:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and copysource(values,target,"h") then indent = indent - 1; return true end
+		prefix = "4 "; if callmatch(values,line,"^./[%w]*.h:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and copysource(values,target,"h") then indent = indent - 1; return true end
+		prefix = "5 "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"c","C.o") and copymake(values,target) then indent = indent - 1; return true end
+		prefix = "6 "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)C.o'.  Stop.$") and copysource(values,target,"c") then indent = indent - 1; return true end
+		prefix = "7 "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"cpp","Cpp.o") and copymake(values,target) then indent = indent - 1; return true end
+		prefix = "8 "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Cpp.o'.  Stop.$") and copysource(values,target,"cpp") then indent = indent - 1; return true end
+		prefix = "9 "; if callmatch(values,line,"^[%w]*.cpp:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and copysource(values,target,"h") then indent = indent - 1; return true end
+	end
+	os.execute("rm -rf subdir.*")
+	indentwrite("trymatch: no match: stderr."..target..":\n",indent)
+	for line in io.lines("stderr."..target) do io.stderr:write(line.."\n") end
+	os.exit(-1)
+end
 
-	if not found and not doneExists(top,check) and fileExists(check) then found = "3a"; if verbose then io.stdout:write(found) end; bothError(check) end
-	if not found and doneExists(top,check) and fileExists(check) then found = "3b"; if verbose then io.stdout:write(found) end; copyError(check) end
-	if not found and not doneExists(top,check) and not fileExists(check) then found = "3c"; if verbose then io.stdout:write(found) end; doneError(check) end
-	if not found and doneExists(top,check) and not fileExists(check) then found = "3d"; if verbose then io.stdout:write(found) end; pushError(check) end
+function trymake(target)
+	indent = indent + 1; indentwrite("trymake: "..target.."\n",indent)
+	os.execute("rm -rf subdir."..target.." stderr."..target.." stdout."..target)
+	os.execute("mkdir subdir."..target)
+	os.execute("cp Makefile subdir."..target)
+	local depends = {} -- map from depender to set of dependee
+	local values = {depends,nil,nil,nil} -- depend.mk, first match, second match, saved match
+	while true do
+		writeout("subdir."..target.."/depend.mk",depends)
+		os.execute("make -C subdir."..target.." "..target.." 2> stderr."..target.." > stdout."..target)
+		os.execute("if [ ! -e subdir."..target.."/"..target.." ] ; then echo \"trymake: failed to make "..target.."\" >> stderr."..target.." ; fi")
+		local done = true
+		for line in io.lines("stderr."..target) do done = false end
+		if done then
+			os.execute("rm -rf stderr."..target.." stdout."..target)
+			indent = indent - 1; return depends
+		end
+		if not trymatch(values,target) then break end
+	end
+	indent = indent - 1; return nil
+end
 
-	if verbose then
-		io.stdout:write("\n")
-	end
-	if not found then os.exit() end
-end
-function checkRule()
-	local base = nil
-	local retval = ""
-	local greplist = io.open("depend.err")
-	local found = false
-	local lines = {}
-	for line in greplist:lines() do
-		lines[#lines+1] = line
-		base = string.match(line,"^make: %*%*%* %[([.%w]*)%] Error"); if not found and base then retval = base; found = true end
-		base = string.match(line,"^error: failed to make ([.%w]*)$"); if not found and base then retval = base; found = true end
-		base = string.match(line,"^[%s]*([.%w]*):[0-9]*: in main chunk$"); if base then retval = base; found = true end
-		base = string.match(line,"^[%s]*%./([.%w]*):[0-9]*: in main chunk$"); if base then retval = base; found = true end
-	end
-	greplist:close()
-	if found and string.match(retval,"^[%w]*%.gen$") then retval = string.match(retval,"^([%w]*)%.gen$")..".dep" end
-	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("checkRule: "..v.."\n") end os.exit() end
-	return retval
-end
-function checkSetup()
-	local dep = {}
-	local ext = ""
-	-- os.execute("uname > depend.out 2>&1")
-	-- local greplist = io.open("depend.out")
-	-- for line in greplist:lines() do
-		-- if line == "Linux" then ext = "x" end
-		-- if line == "Darwin" then ext = "y" end
-	-- end
-	-- greplist:close()
-	os.execute("rm -f depend.mk"..ext)
-	os.execute("touch depend.mk"..ext)
-	for k,v in pairs(done) do
-		dep[#dep+1] = k
-	end
-	table.sort(dep)
-	for k,v in ipairs(dep) do
-		local cmd = "echo "..v..":"
-		local dee = {}
-		for ky,vl in pairs(done[v]) do
-			dee[#dee+1] = ky
-		end
-		table.sort(dee)
-		for ky,vl in ipairs(dee) do
-			cmd = cmd.." "..vl
-		end
-		cmd = cmd.." >> depend.mk"..ext
-		if not (#dee == 0) then os.execute(cmd) end
-	end
-	os.execute("rm -rf depend depend.cp depend.ls depend.rm depend.err depend.out")
-	os.execute("mkdir depend")
-	os.execute("touch depend.cp depend.ls depend.rm depend.err")
-	os.execute("cp Makefile depend.mk"..ext.." module.modulemap depend")
-end
-function checkCopy()
-	local set = copy[todo[#todo]]
-	local retval = true
-	for k,v in pairs(set) do
-		os.execute("cp "..k.." depend > depend.cp 2>&1")
-		local greplist = io.open("depend.cp")
-		local found = false
-		local lines = {}
-		for line in greplist:lines() do
-			lines[#lines+1] = line
-		end
-		greplist:close()
-		if not (#lines == 0) and found then retval = false; break end
-		if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("\ncheckCopy: "..v.."\n") end os.exit() end
-	end
-	return retval
-end
-finite = 0
-maximum = 400 -- when to exit
-finish = 400 -- when to set verbose
-function checkMake()
-	local top = todo[#todo]
-	local cmd = "make -C depend "..top.." 2> depend.err > depend.out"
-	io.stdout:write(cmd.." "..finite.."\n")
-	if finite >= finish then verbose = true end
-	if finite > maximum then os.exit() end
-	finite = finite + 1
-	os.execute(cmd)
-	local greplist = io.open("depend.err")
-	local found = false
-	local lines = {}
-	if #todo > 1 then
-		cmd = "if [ ! -e depend/"..top.." ] ; then echo \"error: failed to make "..top.."\" >> depend.err ; fi"
-		os.execute(cmd.."\n")
-	end
-	for line in greplist:lines() do
-		local check,rule = nil,nil
-		lines[#lines+1] = line
-		check = string.match(line,"^/bin/sh: ./([%w]*): No such file or directory$"); if check then checkError(check,checkRule(),"a"); found = true; break end
-		check = string.match(line,"No rule to make target `([.%w]*)'.  Stop.$"); if check then checkError(check,check,"b"); found = true; break end
-		check = string.match(line,"^lua: cannot open ([.%w]*):"); if check then checkError(check,checkRule(),"c"); found = true; break end
-		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: fatal error: '([.%w]*)' file not found$"); if rule and check then checkError(check,checkRule(),"d"); found = true; break end
-		rule,check = string.match(line,"([.%w]*):[0-9]*:[0-9]*: error: '([.%w]*)' file not found$"); if rule and check then checkError(check,rule,"d"); found = true; break end
-		check = string.match(line,"^ *._([.%w]*), referenced from:$"); if check then checkError(objectDepend(check,string.match(checkRule(),"^(.*)Sw$")),checkRule(),"e"); found = true; break end
-		rule,check = string.match(line,"^([%w]*): cannot execute file: ([%w]*)$"); if rule and check then checkError(check,rule,"f"); found = true; break end
-		check = string.match(line,"error: header '([.%w]*)' not found$"); if check then checkError(check,checkRule(),"g"); found = true; break end
-		check,rule = string.match(line,"No rule to make target `([.%w]*)', needed by `([.%w]*)'.  Stop.$"); if rule and check then checkError(check,rule,"h"); found = true; break end
-		check = string.match(line,"^error: failed to make ([.%w]*)$"); if (#lines == 1) and check then checkError(check,checkRule(),"i"); found = true; break end
-		check = string.match(line,"^[0-9]* *%| import ([%w]*)$"); if check then checkError(moduleDepend(check),checkRule(),"j"); found = true; break end
-		check = string.match(line,"[.%w]*:[0-9]*: module '([%w]*)' not found"); if check then checkError(check..".so",checkRule(),"k"); found = true; break end
-		check = string.match(line,"error: no such file or directory: '([.%w]*)'$"); if check then checkError(check,checkRule(),"l"); found = true; break end
-		check = string.match(line,"Not in scope: type constructor or class ‘([%w]*)’$"); if check then checkError(classDepend(check),checkRule(),"m"); found = true; break end
-		rule,check = string.match(line,"^([%w]*): cannot load library: ([.%w]*)$"); if rule and check then checkError(check,rule,"n"); found = true; break end
-	end
-	greplist:close()
-	if not (#lines == 0) and found then return false end
-	if not (#lines == 0) and not found then for k,v in ipairs(lines) do io.stderr:write("checkMake: "..v.."\n") end os.exit() end
-	return true
-end
-io.stdout:write("main")
-pushError("all")
-io.stdout:write("\n")
-while #todo > 0 do
-	checkSetup()
-	if checkCopy() and checkMake() then popError() end
-end
-io.stdout:write("all done\n")
+depends = trymake("all")
+if depends then writeout("depend.mk",depends) end

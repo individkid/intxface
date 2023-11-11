@@ -204,14 +204,12 @@ putstr_space = let
  putStrLn (show (boundariesOfPlace u))
  putStrLn (show (anySpace n m))
 
-cmpstr_hideF :: IORef String -> IO (Maybe Emerg) -- TODO only needed for depend.lua until targets depend on function names
-cmpstr_hideF = hideEmerg
 cmpstr_hide :: IO ()
 cmpstr_hide = let
  idx = openPipe
  in do
  ref <- newIORef "Emerg(Planes)123"
- may <- cmpstr_hideF ref
+ may <- hideEmerg ref
  str <- readIORef ref
  ior <- newIORef ""
  showEmerg (fromJust may) ior

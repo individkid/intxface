@@ -68,17 +68,17 @@ spacer.log:
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
-	$(SWC) -o $@ $< $(filter %C.o %.so,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(SWC) -o $@ $< $(filter %C.o %.so %Cpp.o,$^) -lc++ ${LIBRARIES} ${LIBRARYPATH}
 
 %Cpp.so: %Cpp.o
 	$(CXX) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
 %.so: %C.o
-	$(CC) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
 
 %C.o: %.c
 	$(CC) -o $@ -c $< ${INCLUDEPATH}
 %Cpp.o: %.cpp
-	$(CXX) -o $@ -c $< ${INCLUDEPATH}
+	$(CXX) -o $@ -c $< -std=c++11 ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 
@@ -115,5 +115,5 @@ clean:
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	rm -f *.o *.so *.hi *_stub.h *.metal *.metallib *.dep
-	rm -rf depend
+	rm -r stderr.* stdout.*
 

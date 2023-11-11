@@ -1,6 +1,8 @@
 #include "proto.h"
+#include "wrap.h"
 int luaxFile(const char *exp); // call dofile with path from getExestr
 int luaxLib(const char *exp); // call require with path from getExestr
+int luaxWrap(const char *str, const struct Close *arg); // extend interpreter
 int luaxSide(const char *exp); // call the lua script
 int luaxExpr(const char *exp, const struct Closure *fnc);
 int luaxCall(const char *str, const struct Closure *fnc);

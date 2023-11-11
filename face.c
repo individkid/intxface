@@ -1537,29 +1537,7 @@ int luaopen_face (lua_State *L)
 {
 	luaopen_luax(L);
 
-	luaxExtend(L,"noteFunc",protoTypeHf(noteFuncLua));
-	luaxExtend(L,"errFunc",protoTypeHf(errFuncLua));
-	luaxExtend(L,"closeIdent",protoTypeHg(closeIdent));
-	luaxExtend(L,"moveIdent",protoTypeCg(moveIdent));
-	luaxExtend(L,"findIdent",protoTypeFf(findIdent));
-	luaxExtend(L,"inetIdent",protoTypeGf(inetIdent));
-	luaxExtend(L,"openPipe",protoTypeTm(openPipe));
-	luaxExtend(L,"openFile",protoTypeFf(openFile));
-	luaxExtend(L,"openInet",protoTypeGf(openInet));
-	luaxExtend(L,"forkExec",protoTypeFf(forkExec));
-	luaxExtend(L,"pipeInit",protoTypeGf(pipeInit));
-	luaxExtend(L,"openFork",protoTypeTm(openFork));
-	luaxExtend(L,"openCheck",protoTypeTl(openCheck));
-	luaxExtend(L,"openRdfd",protoTypeTl(openRdfd));
-	luaxExtend(L,"openWrfd",protoTypeTl(openWrfd));
-	luaxExtend(L,"openExec",protoTypeGf(openExec));
-	luaxExtend(L,"rdwrInit",protoTypeGg(rdwrInit));
-	luaxExtend(L,"waitRead",protoTypeTf(waitRead));
-	luaxExtend(L,"waitExit",protoTypeTm(waitExit));
-	luaxExtend(L,"pollPipe",protoTypeTl(pollPipe));
-	luaxExtend(L,"pollFile",protoTypeTl(pollFile));
-	luaxExtend(L,"seekFile",protoTypeLm(seekFile));
-	luaxExtend(L,"truncFile",protoTypeHg(truncFile));
+	wrapFaceLuax();
 
 	luaxExtend(L,"checkFile",protoTypeSm(checkFile));
 	luaxExtend(L,"rdlkFile",protoTypeTh(rdlkFile));

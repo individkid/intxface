@@ -4,6 +4,8 @@ void termFunc(fgtype fnc);
 void intrFunc(chtype fnc);
 void noteFunc(hgtype fnc);
 void errFunc(eftype fnc);
+void noteFuncLua(const char *str);
+void errFuncLua(const char *str);
 void callIntr();
 void callNote(int idx);
 void callErr(int idx);
