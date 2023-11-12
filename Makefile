@@ -109,11 +109,10 @@ clean:
 	rm -f type.h type.c type.hs type.lua type.sw
 	rm -f typer.h typer.c typer.hs typer.lua typer.sw
 	rm -f typra facer typer filer planra spacra
-	rm -f hole file line metal space share
-	rm -f pipe page
+	rm -f hole file line metal space share pipe page
+	rm -rf subdir.* stderr.* stdout.*
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	rm -f *.o *.so *.hi *_stub.h *.metal *.metallib *.dep
-	rm -r stderr.* stdout.*
 
