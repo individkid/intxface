@@ -2,7 +2,7 @@
 .SUFFIXES:
 .DELETE_ON_ERROR:
 
-all: facer.log typra.log typer.log filer.log planra.log planer.log spacra.log spacer.log hole line metal space pipe page share
+all: facer.log typra.log typer.log filer.log planra.log planer.log spacra.log spacer.log holeC lineCpp metalSw spaceHs pipeSw pageSw shareC
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
@@ -29,80 +29,112 @@ endif
 include depend.mk
 
 facer.log:
-	./facerC > facer.log
-	./facerHs >> facer.log
-	./facerLua >> facer.log
+	@echo make: $@
+	@./facerC > facer.log
+	@./facerHs >> facer.log
+	@./facerLua >> facer.log
 typra.log:
-	./typraLua > typra.log
+	@echo make: $@
+	@./typraLua > typra.log
 typer.log:
-	./typerC > typer.log
+	@echo make: $@
+	@./typerC > typer.log
 filer.log:
-	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
-	./filerLua > filer.log
+	@echo make: $@
+	@rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
+	@./filerLua > filer.log
 planra.log:
-	./planraC > planra.log
+	@echo make: $@
+	@./planraC > planra.log
 planer.log:
-	./planerLua > planer.log
+	@echo make: $@
+	@./planerLua > planer.log
 spacra.log:
-	./spacraHs > spacra.log
+	@echo make: $@
+	@./spacraHs > spacra.log
 spacer.log:
-	./spacerLua > spacer.log
+	@echo make: $@
+	@./spacerLua > spacer.log
 
 %: %C
-	ln -f $< $@
+	@echo make: $@
+	@ln -f $< $@
 %: %Cpp
-	ln -f $< $@
+	@echo make: $@
+	@ln -f $< $@
 %: %Hs
-	ln -f $< $@
+	@echo make: $@
+	@ln -f $< $@
 %: %Lua
-	ln -f $< $@
+	@echo make: $@
+	@ln -f $< $@
 %: %Sw
-	ln -f $< $@
+	@echo make: $@
+	@ln -f $< $@
 
 %C: %C.o
-	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	@echo make: $@
+	@$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Cpp: %Cpp.o
-	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	@echo make: $@
+	@$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
-	$(GHC) -o $@ $< $(filter %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
+	@echo make: $@
+	@$(GHC) -o $@ $< $(filter %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
-	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
+	@echo make: $@
+	@echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
-	$(SWC) -o $@ $< $(filter %C.o %.so %Cpp.o,$^) -lc++ ${LIBRARIES} ${LIBRARYPATH}
+	@echo make: $@
+	@$(SWC) -o $@ $< $(filter %C.o %.so %Cpp.o,$^) -lc++ ${LIBRARIES} ${LIBRARYPATH}
 
 %Cpp.so: %Cpp.o
-	$(CXX) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
+	@echo make: $@
+	@$(CXX) -o $@ -fPIC -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %.so: %C.o
-	$(CXX) -o $@ -fPIC -shared $^ ${LIBRARIES} ${LIBRARYPATH}
+	@echo make: $@
+	@$(CXX) -o $@ -fPIC -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 
 %C.o: %.c
-	$(CC) -o $@ -c $< ${INCLUDEPATH}
+	@echo make: $@
+	@$(CC) -o $@ -c $< ${INCLUDEPATH}
 %Cpp.o: %.cpp
-	$(CXX) -o $@ -c $< -std=c++11 ${INCLUDEPATH}
+	@echo make: $@
+	@$(CXX) -o $@ -c $< -std=c++11 ${INCLUDEPATH}
 %Sw.o: %.sw
-	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
+	@echo make: $@
+	@cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 
 ifeq ($(UNAME),Darwin)
 %.metallib: %G.o
-	$(GC) -sdk macosx metallib -o $@ $<
+	@echo make: $@
+	@$(GC) -sdk macosx metallib -o $@ $<
 %G.o: %.metal
-	$(GC) -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
+	@echo make: $@
+	@$(GC) -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
 %.metal: %.g
-	cp $< $@
+	@echo make: $@
+	@cp $< $@
 endif
 
 %.dep: %.gen
-	lua $< $@
+	@echo make: $@
+	@lua $< $@
 %.h: %.dep
-	lua $*.gen $@
+	@echo make: $@
+	@lua $*.gen $@
 %.c: %.dep
-	lua $*.gen $@
+	@echo make: $@
+	@lua $*.gen $@
 %.cpp: %.dep
-	lua $*.gen $@
+	@echo make: $@
+	@lua $*.gen $@
 %.hs: %.dep
-	lua $*.gen $@
+	@echo make: $@
+	@lua $*.gen $@
 %.lua: %.dep
-	lua $*.gen $@
+	@echo make: $@
+	@lua $*.gen $@
 
 .PHONY:
 clean:
