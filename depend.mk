@@ -10,8 +10,10 @@ fileC: faceC.o file.c luaxC.o protoC.o typeC.o wrapCpp.o
 fileC.o: face.h proto.h type.h
 filer.log: fileC filer.lua filerLua type.lua
 filerLua: filer.lua
-holeC: faceC.o holeC.o luaxC.o protoC.o typeC.o wrapCpp.o
-holeC.o: face.h hole.c proto.h type.h
+hole: holeC
+holeC: faceC.o hole.c luaxC.o protoC.o typeC.o wrapCpp.o
+holeC.o: face.h proto.h type.h
+line: lineCpp
 lineCpp: faceC.o lineCpp.o luaxC.o protoC.o typeC.o wrapCpp.o
 lineCpp.o: face.h line.cpp proto.h type.h
 luax.so: faceC.o luaxC.o protoC.o wrapCpp.o
@@ -20,10 +22,10 @@ metal.metallib: metal.g
 metalSw: datxC.o faceC.o luaxC.o metal.sw metxC.o planeC.o protoC.o typeC.o wrapCpp.o
 metalSw.o: face.h plane.h proto.h type.h
 metxC.o: metx.c metx.h
-pageSw: pageSw.o
-pageSw.o: page.sw
-pipeSw: pipeSw.o
-pipeSw.o: pipe.sw
+page: pageSw
+pageSw: page.sw
+pipe: pipeSw
+pipeSw: pipe.sw
 planeC.o: datx.h face.h luax.h metx.h plane.c plane.h proto.h type.h wrap.h
 planer.log: metal.metallib metalSw planer.lua planerLua
 planerLua: planer.lua
@@ -31,8 +33,9 @@ planra.log: planraC
 planraC: datxC.o faceC.o luaxC.o planra.c protoC.o typeC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h proto.h type.h wrap.h
 protoC.o: proto.c proto.h
-shareC: datxC.o faceC.o luaxC.o protoC.o shareC.o typeC.o wrapCpp.o
-shareC.o: datx.h face.h luax.h proto.h share.c type.h wrap.h
+share: shareC
+shareC: datxC.o faceC.o luaxC.o protoC.o share.c typeC.o wrapCpp.o
+shareC.o: datx.h face.h luax.h proto.h type.h wrap.h
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs type.hs
 spacer.log: spaceHs spacer.lua spacerLua
 spacerLua: spacer.lua
@@ -43,7 +46,7 @@ type.dep: face.so luax.so show.lua
 type.h: type.gen
 type.hs: type.gen
 type.lua: type.gen
-typeC.o: face.h type.c type.h
+typeC.o: face.h proto.h type.c type.h
 typer.c: typer.gen
 typer.dep: face.so luax.so show.lua test.lua
 typer.h: typer.gen

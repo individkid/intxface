@@ -111,6 +111,14 @@ function findsource(values,pre,post,ext,suf)
 	indent = indent - 1; return true
 end
 
+function checksource(values,ext)
+	local match = values[2]
+	local file = io.open(match.."."..ext,"r")
+	if file == nil then return false end
+	io.close(file)
+	return true
+end
+
 function trymatch(values,target)
 	indent = indent + 1; indentwrite("trymatch: "..target.."\n",indent)
 	for line in io.lines("stderr."..target) do
@@ -135,6 +143,7 @@ function trymatch(values,target)
 		prefix = "2p "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).metallib'.  Stop.$") and copysource(values,target,"g") then indent = indent - 1; return true end
 		prefix = "2q "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Sw.o'.  Stop.$") and makecopy(values,target,".sw") then indent = indent - 1; return true end
 		prefix = "2r "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).sw'.  Stop.$") and copysource(values,target,"sw") then indent = indent - 1; return true end
+		prefix = "2s "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Cpp'.  Stop.$") and makecopy(values,target,"Cpp.o") then indent = indent - 1; return true end
 		prefix = "3a "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Cpp', needed by `[%w.]*'.  Stop.$") and makecopy(values,target,"Cpp.o") then indent = indent - 1; return true end
 		prefix = "3b "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).gen', needed by `[%w]*.dep'.  Stop.$") and copysource(values,target,"gen") then indent = indent - 1; return true end
 		prefix = "3c "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).c', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"c") then indent = indent - 1; return true end
@@ -147,6 +156,11 @@ function trymatch(values,target)
 		prefix = "3j "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)C', needed by `[%w.]*'.  Stop.$") and makecopy(values,target,"C.o") then indent = indent - 1; return true end
 		prefix = "3k "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).sw', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"sw") then indent = indent - 1; return true end
 		prefix = "3l "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Sw', needed by `[%w.]*'.  Stop.$") and makecopy(values,target,"Sw.o") then indent = indent - 1; return true end
+		prefix = "3m "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Hs', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"hs") then indent = indent - 1; return true end
+		prefix = "3n "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)', needed by `[%w.]*'.  Stop.$") and checksource(values,"c") and makecopy(values,target,"C") then indent = indent - 1; return true end
+		prefix = "3o "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)', needed by `[%w.]*'.  Stop.$") and checksource(values,"cpp") and makecopy(values,target,"Cpp") then indent = indent - 1; return true end
+		prefix = "3o "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)', needed by `[%w.]*'.  Stop.$") and checksource(values,"sw") and makecopy(values,target,"Sw") then indent = indent - 1; return true end
+		prefix = "3p "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)', needed by `[%w.]*'.  Stop.$") and checksource(values,"hs") and makecopy(values,target,"Hs") then indent = indent - 1; return true end
 		prefix = "4a "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and copysource(values,target,"h") then indent = indent - 1; return true end
 		prefix = "4b "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and makecopy(values,target,".h") then indent = indent - 1; return true end
 		prefix = "5a "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(","c","C.o") and makecopy(values,target,"") then indent = indent - 1; return true end
