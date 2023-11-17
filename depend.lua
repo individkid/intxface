@@ -133,9 +133,9 @@ function trymatch(values,target)
 		prefix = "2n "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)C.o'.  Stop.$") and makecopy(values,target,".c") then indent = indent - 1; return true end
 		prefix = "2o "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Sw'.  Stop.$") and copysource(values,target,"sw") then indent = indent - 1; return true end
 		prefix = "2p "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).metallib'.  Stop.$") and copysource(values,target,"g") then indent = indent - 1; return true end
-		-- prefix = "2q "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Sw.o'.  Stop.$") and makecopy(values,target,".sw") then indent = indent - 1; return true end
-		-- prefix = "2r "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).sw'.  Stop.$") and copysource(values,target,"sw") then indent = indent - 1; return true end
-		prefix = "3a "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Cpp', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"cpp") then indent = indent - 1; return true end
+		prefix = "2q "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Sw.o'.  Stop.$") and makecopy(values,target,".sw") then indent = indent - 1; return true end
+		prefix = "2r "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).sw'.  Stop.$") and copysource(values,target,"sw") then indent = indent - 1; return true end
+		prefix = "3a "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Cpp', needed by `[%w.]*'.  Stop.$") and makecopy(values,target,"Cpp.o") then indent = indent - 1; return true end
 		prefix = "3b "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).gen', needed by `[%w]*.dep'.  Stop.$") and copysource(values,target,"gen") then indent = indent - 1; return true end
 		prefix = "3c "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).c', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"c") then indent = indent - 1; return true end
 		-- prefix = "3d "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).cpp', needed by `[%w]*C.o'.  Stop.$") and copysource(values,target,"cpp") then indent = indent - 1; return true end
@@ -144,9 +144,9 @@ function trymatch(values,target)
 		-- prefix = "3g "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).h', needed by `[%w]*Cpp.o'.  Stop.$") and copysource(values,target,"h") then indent = indent - 1; return true end
 		prefix = "3h "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).lua', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"lua") then indent = indent - 1; return true end
 		prefix = "3i "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).hs', needed by `[%w]*Hs'.  Stop.$") and copysource(values,target,"hs") then indent = indent - 1; return true end
-		prefix = "3j "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)C', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"c") then indent = indent - 1; return true end
+		prefix = "3j "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)C', needed by `[%w.]*'.  Stop.$") and makecopy(values,target,"C.o") then indent = indent - 1; return true end
 		prefix = "3k "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).sw', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"sw") then indent = indent - 1; return true end
-		prefix = "3l "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Sw', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"sw") then indent = indent - 1; return true end
+		prefix = "3l "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)Sw', needed by `[%w.]*'.  Stop.$") and makecopy(values,target,"Sw.o") then indent = indent - 1; return true end
 		prefix = "4a "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and copysource(values,target,"h") then indent = indent - 1; return true end
 		prefix = "4b "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and makecopy(values,target,".h") then indent = indent - 1; return true end
 		prefix = "5a "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(","c","C.o") and makecopy(values,target,"") then indent = indent - 1; return true end
@@ -168,7 +168,7 @@ function trymatch(values,target)
 		-- prefix = "14b "; if callmatch(values,line,"^clang: error: no such file or directory: '([%w]*)Cpp.o'$") and makecopy(values,target,"Cpp.o") then indent = indent - 1; return true end
 		-- prefix = "14c "; if callmatch(values,line,"^clang: error: no such file or directory: '([%w]*)Sw.o'$") and makecopy(values,target,"Sw.o") then indent = indent - 1; return true end
 	end
-	os.execute("rm -rf subdir.*")
+	-- os.execute("rm -rf subdir.*")
 	indentwrite("trymatch depender: "..getdepender(target).." target: "..target.." unmatched:\n",indent)
 	for line in io.lines("stderr."..target) do io.stderr:write(line.."\n") end
 	os.exit(-1)
@@ -202,5 +202,5 @@ for der,dee in pairs(trymake("all")) do
 	for k,_ in pairs(dee) do depends[der][k] = true end
 end
 writeout("depend.mk",depends)
-os.execute("rm -rf subdir.* stderr.* stdout.*")
+-- os.execute("rm -rf subdir.* stderr.* stdout.*")
 io.stdout:write("all done\n")
