@@ -139,9 +139,9 @@ function trymatch(values,target)
 		prefix = "3b "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).gen', needed by `[%w]*.dep'.  Stop.$") and copysource(values,target,"gen") then indent = indent - 1; return true end
 		prefix = "3c "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).c', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"c") then indent = indent - 1; return true end
 		-- prefix = "3d "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).cpp', needed by `[%w]*C.o'.  Stop.$") and copysource(values,target,"cpp") then indent = indent - 1; return true end
-		prefix = "3e "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).h', needed by `[%w]*C.o'.  Stop.$") and copysource(values,target,"h") then indent = indent - 1; return true end
+		prefix = "3e "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).h', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"h") then indent = indent - 1; return true end
 		prefix = "3f "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).cpp', needed by `[%w]*Cpp.o'.  Stop.$") and copysource(values,target,"cpp") then indent = indent - 1; return true end
-		prefix = "3g "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).h', needed by `[%w]*Cpp.o'.  Stop.$") and copysource(values,target,"h") then indent = indent - 1; return true end
+		-- prefix = "3g "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).h', needed by `[%w]*Cpp.o'.  Stop.$") and copysource(values,target,"h") then indent = indent - 1; return true end
 		prefix = "3h "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).lua', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"lua") then indent = indent - 1; return true end
 		prefix = "3i "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).hs', needed by `[%w]*Hs'.  Stop.$") and copysource(values,target,"hs") then indent = indent - 1; return true end
 		prefix = "3j "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)C', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"c") then indent = indent - 1; return true end
