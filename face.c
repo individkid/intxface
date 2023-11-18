@@ -1536,19 +1536,7 @@ void luaxExtend(lua_State *L, const char *str, struct Function fnc);
 int luaopen_face (lua_State *L)
 {
 	luaopen_luax(L);
-
 	wrapFaceLuax();
-
-	luaxExtend(L,"checkFile",protoTypeSm(checkFile));
-	luaxExtend(L,"rdlkFile",protoTypeTh(rdlkFile));
-	luaxExtend(L,"wrlkFile",protoTypeTh(wrlkFile));
-	luaxExtend(L,"unlkFile",protoTypeTj(unlkFile));
-	luaxExtend(L,"rdlkwFile",protoTypeTj(rdlkwFile));
-	luaxExtend(L,"wrlkwFile",protoTypeTj(wrlkwFile));
-	luaxExtend(L,"checkRead",protoTypeTl(checkRead));
-	luaxExtend(L,"checkWrite",protoTypeTl(checkWrite));
-	luaxExtend(L,"sleepSec",protoTypeHh(sleepSec));
-	luaxExtend(L,"readEof",protoTypeHg(readEof));
 
 	luaxExtend(L,"readStr",protoTypeSe(readStr));
 	luaxExtend(L,"preadStr",protoTypeSg(preadStr));

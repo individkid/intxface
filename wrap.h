@@ -22,7 +22,6 @@ struct Para {
 struct Close {
 	int n,m;
 	struct Para *a,*b;
-	char *str;
 };
 void wrapCallback(const struct Close *arg);
 void wrapFaceLuax();

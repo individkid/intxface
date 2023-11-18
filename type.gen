@@ -38,14 +38,14 @@ Memory = {
 	"Texturez", -- memory for textures
 	"Textualz", -- memory for text
 	"Basisz", -- base for each dimension
-	"Allmatz", --c; whole view transformation
-	"Fewmatz", --c; matrix per set of planes
-	"Onematz", --c; single face transformation
-	"Piercez", --c; pierce point normal and valid
+	"Allmatz", -- whole view transformation
+	"Fewmatz", -- matrix per set of planes
+	"Onematz", -- single face transformation
+	"Piercez", -- pierce point normal and valid
 	"Slicez", -- plane or point index ranges
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
-	"Configurez", --c,a; configure to value
+	"Configurez", -- configure to value
 }
 Configure = {
 	"TriangleSize", -- refers to corners
