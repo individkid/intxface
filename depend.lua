@@ -165,6 +165,7 @@ function trymatch(values,target)
 		-- prefix = "3o "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)', needed by `[%w.]*'.  Stop.$") and checksource(values,"cpp") and makecopy(values,target,"Cpp") then indent = indent - 1; return true end
 		-- prefix = "3o "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)', needed by `[%w.]*'.  Stop.$") and checksource(values,"sw") and makecopy(values,target,"Sw") then indent = indent - 1; return true end
 		-- prefix = "3p "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*)', needed by `[%w.]*'.  Stop.$") and checksource(values,"hs") and makecopy(values,target,"Hs") then indent = indent - 1; return true end
+		prefix = "3q "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).gen', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"gen") then indent = indent - 1; return true end
 		prefix = "4a "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and copysource(values,target,"h") then indent = indent - 1; return true end
 		prefix = "4b "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and makecopy(values,target,".h") then indent = indent - 1; return true end
 		prefix = "5a "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(","c","C.o") and makecopy(values,target,"") then indent = indent - 1; return true end

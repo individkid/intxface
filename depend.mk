@@ -43,18 +43,16 @@ spacer.log: face.so spaceHs spacer.lua spacerLua type.lua
 spacerLua: spacer.lua
 spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs type.hs
-type.c: type.gen
-type.dep: face.so luax.so show.lua
-type.h: type.gen
-type.hs: type.gen
-type.lua: type.gen
-typeC.o: face.h type.c type.h
-typer.c: typer.gen
-typer.dep: face.so luax.so show.lua test.lua
-typer.h: typer.gen
-typer.hs: typer.gen
+type.c: face.so luax.so show.lua type.gen
+type.h: face.so luax.so show.lua type.gen
+type.hs: face.so luax.so show.lua type.gen
+type.lua: face.so luax.so show.lua type.gen
+typeC.o: face.h proto.h type.c type.h
+typer.c: face.so luax.so show.lua test.lua typer.gen
+typer.h: face.so luax.so show.lua test.lua typer.gen
+typer.hs: face.so luax.so show.lua test.lua typer.gen
 typer.log: face.so typer.lua typerC typerHs typerLua
-typer.lua: typer.gen
+typer.lua: face.so luax.so show.lua test.lua typer.gen
 typerC: faceC.o luaxC.o protoC.o typer.c wrapCpp.o
 typerC.o: face.h proto.h typer.h
 typerHs: face.hs faceC.o protoC.o typer.hs

@@ -91,17 +91,15 @@ ifeq ($(UNAME),Darwin)
 	@cp $< $@
 endif
 
-%.dep: %.gen
-	@lua $< $@
-%.h: %.dep
+%.h: %.gen
 	@lua $*.gen $@
-%.c: %.dep
+%.c: %.gen
 	@lua $*.gen $@
-%.cpp: %.dep
+%.cpp: %.gen
 	@lua $*.gen $@
-%.hs: %.dep
+%.hs: %.gen
 	@lua $*.gen $@
-%.lua: %.dep
+%.lua: %.gen
 	@lua $*.gen $@
 
 .PHONY:
