@@ -31,7 +31,6 @@ char *srslt = 0;
 lua_State *luastate = 0;
 char *luanote = 0;
 char *luafunc = 0;
-lua_State *luaerr = 0;
 
 void luaxErr()
 {
@@ -230,19 +229,19 @@ const char *nestRepl(int i)
 
 void noteLua(int idx)
 {
-	if (!luaerr) luaerr = luaxInit();
-	lua_getglobal(luaerr, luanote);
-	lua_pushinteger(luaerr, idx);
-	lua_pcall(luaerr, 1, 0, 0);
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	lua_getglobal(luastate, luanote);
+	lua_pushinteger(luastate, idx);
+	lua_pcall(luastate, 1, 0, 0);
 }
 void errLua(const char *str, int num, int idx)
 {
-	if (!luaerr) luaerr = luaxInit();
-	lua_getglobal(luaerr, luafunc);
-	lua_pushstring(luaerr, str);
-	lua_pushinteger(luaerr, num);
-	lua_pushinteger(luaerr, idx);
-	lua_pcall(luaerr, 3, 0, 0);
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	lua_getglobal(luastate, luafunc);
+	lua_pushstring(luastate, str);
+	lua_pushinteger(luastate, num);
+	lua_pushinteger(luastate, idx);
+	lua_pcall(luastate, 3, 0, 0);
 }
 void noteFuncLua(const char *str)
 {
@@ -258,8 +257,6 @@ void errFuncLua(const char *str)
 }
 int hideFieldLua(lua_State *lua)
 {
-	if (!luaerr) luaerr = lua;
-	if (luaerr != lua) ERROR();
 	int siz = lua_tonumber(lua,3);
 	int arg = lua_tonumber(lua,4);
 	int *sub = malloc(arg*sizeof(int));
@@ -276,8 +273,6 @@ int showFieldLua(lua_State *lua)
 	int arg = lua_tonumber(lua,3);
 	int *sub = malloc(arg*sizeof(int));
 	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
-	if (!luaerr) luaerr = lua;
-	if (luaerr != lua) ERROR();
 	showFieldV(lua_tostring(lua,1),&str,arg,sub);
 	lua_pushstring(lua,str); free(str);
 	free(sub);
@@ -287,8 +282,8 @@ void wrapFace(lua_State *L);
 void wrapLuax(lua_State *L);
 int luaopen_luax(lua_State *L)
 {
+	luastate = L;
 	wrapLuax(L);
-	luaerr = L;
 	wrapFace(L);
 	lua_pushcfunction(L, showFieldLua); lua_setglobal(L, "showField");
 	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
