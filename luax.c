@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <sys/errno.h>
 #include <string.h>
-#include <lua.h>
 #include <lualib.h>
 
 struct Fiber {
@@ -78,6 +77,7 @@ int luaxLib(const char *exp)
 {
 	return luaxPath(exp,"require");
 }
+void wrapCallback(const struct Close *arg);
 int luaxUnwrap(lua_State *L)
 {
 	const struct Close *arg = lua_touserdata(L, lua_upvalueindex(1));
@@ -91,23 +91,21 @@ int luaxUnwrap(lua_State *L)
 		default: ERROR();}
 	wrapCallback(arg);
 	lua_pop(L,arg->n);
-	for (int i = 0; i < arg->m; i++) switch (arg->b[i].t) {
+	for (int i = 0; i < arg->m; i++) if (arg->c[i] == 0) switch (arg->b[i].t) {
 		case (Itype): lua_pushinteger(L,arg->b[i].i); break;
 		case (Jtype): lua_pushinteger(L,arg->b[i].j); break;
 		case (Ktype): lua_pushinteger(L,arg->b[i].k); break;
 		case (Mtype): lua_pushnumber(L,arg->b[i].m); break;
 		case (Ntype): lua_pushnumber(L,arg->b[i].n); break;
-		case (Utype): lua_pushstring(L,arg->b[i].u); break;
-		default: ERROR();}
+		case (Vtype): lua_pushstring(L,arg->b[i].v); break;
+		default: ERROR();} else {lua_pushnil(L); arg->c[i] = 0;}
 	return arg->m;
 }
-int luaxWrap(const char *str, const struct Close *arg)
+void luaxWrap(lua_State *L, const char *str, const struct Close *arg)
 {
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
-	lua_pushlightuserdata(luastate, (void*)arg);
-	lua_pushcclosure(luastate, luaxUnwrap, 1);
-	lua_setglobal(luastate, str);
-	return 0;
+	lua_pushlightuserdata(L, (void*)arg);
+	lua_pushcclosure(L, luaxUnwrap, 1);
+	lua_setglobal(L, str);
 }
 int luaxClose(const struct Closure *fnc)
 { // evaluates the chunk on the stack
@@ -133,6 +131,11 @@ int luaxClose(const struct Closure *fnc)
 		default: ERROR();}}
 	lua_pop(luastate,fnc->nb);
 	return 0;	
+}
+lua_State *luaxInit()
+{
+	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	return luastate;
 }
 int luaxSide(const char *exp)
 { // evaluates expression without arguments
@@ -398,11 +401,12 @@ const char *nestRepl(int i)
 	return rslt[i];
 }
 
+void wrapLuax(lua_State *L);
 int luaopen_luax(lua_State *L)
 {
-	luastate = L;
-	luaxExtend(L,"luaxSide",protoTypeFf(luaxSide));
-	luaxExtend(L,"nestInit",protoTypeHg(nestInit));
+	wrapLuax(L);
+	// luaxExtend(L,"luaxSide",protoTypeFf(luaxSide));
+	// luaxExtend(L,"nestInit",protoTypeHg(nestInit));
 	luaxExtend(L,"nestElem",protoTypeHk(nestElem));
 	luaxExtend(L,"nestScan",protoTypeCh(nestScan));
 	luaxExtend(L,"nestPass",protoTypeTm(nestPass));

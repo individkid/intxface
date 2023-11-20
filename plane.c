@@ -833,6 +833,7 @@ void planeFinish(enum Proc bit)
 	default: ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
+void wrapPlane(lua_State *L);
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
 {
 	struct sigaction act;
@@ -842,10 +843,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	luaxAdd("planeDupstr",protoTypeSf(planeDupstr)); luaxAdd("planeOutstr",protoTypeHf(planeOutstr));
-	luaxAdd("planeInsstr",protoTypeRp(planeInsstr)); luaxAdd("planeDelstr",protoTypeRq(planeDelstr));
-	luaxAdd("planeSetcfg",protoTypeCg(planeSetcfg)); luaxAdd("planeGetcfg",protoTypeTl(planeGetcfg));
-	luaxAdd("planeValstr",protoTypeRr(planeValstr)); luaxAdd("planeSavstr",protoTypeRs(planeSavstr));
+	wrapPlane(luaxInit());
 	datxDupstr(planeDupstr); datxOutstr(planeOutstr);
 	datxInsstr(planeInsstr); datxDelstr(planeDelstr);
 	datxSetcfg(planeSetcfg); datxGetcfg(planeGetcfg);

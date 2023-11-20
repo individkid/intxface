@@ -2,8 +2,7 @@
 plane, sculpt, line, play, instrument, print, heuristic,
 texture, share, overlap, ball, stomp, multimedia, font, world:
 
-Add tests of datxIrrex datxRegex datxData datxEval(each op)
-luaxCall luaxExpr luaxSide nestRepl
+Add tests of datxIrrex datxRegex datxData datxEval(each op) nestRepl
 planeCast planeConjoin planeProject planeInsstr planeDupstr planeMain to planra.c.
 Add sharer.lua for bringup test of share and friends.
 

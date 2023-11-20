@@ -17,7 +17,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <lua.h>
 
 // per identifier state
 int inp[NUMOPEN] = {0};
@@ -1486,13 +1485,19 @@ void showOldHs(float val, const char *str, hftype fnc)
 
 void noteLua(int idx)
 {
-	int val = luaxCall(luanote,protoCloseCf(idx));
-	if (val < 0) ERROR();
+	if (!luaerr) luaerr = luaxInit();
+	lua_getglobal(luaerr, luanote);
+	lua_pushinteger(luaerr, idx);
+	lua_pcall(luaerr, 1, 0, 0);
 }
 void errLua(const char *str, int num, int idx)
 {
-	int val = luaxCall(luafunc,protoCloseEf(str,num,idx));
-	if (val < 0) ERROR();
+	if (!luaerr) luaerr = luaxInit();
+	lua_getglobal(luaerr, luafunc);
+	lua_pushstring(luaerr, str);
+	lua_pushinteger(luaerr, num);
+	lua_pushinteger(luaerr, idx);
+	lua_pcall(luaerr, 3, 0, 0);
 }
 void noteFuncLua(const char *str)
 {
@@ -1503,12 +1508,13 @@ void noteFuncLua(const char *str)
 void errFuncLua(const char *str)
 {
 	errFunc(errLua);
-	if (luaerr) free(luaerr);
+	if (luafunc) free(luafunc);
 	luafunc = strdup(str);
 }
 int hideFieldLua(lua_State *lua)
 {
-	luaerr = lua;
+	if (!luaerr) luaerr = lua;
+	if (luaerr != lua) ERROR();
 	int siz = lua_tonumber(lua,3);
 	int arg = lua_tonumber(lua,4);
 	int *sub = malloc(arg*sizeof(int));
@@ -1525,64 +1531,19 @@ int showFieldLua(lua_State *lua)
 	int arg = lua_tonumber(lua,3);
 	int *sub = malloc(arg*sizeof(int));
 	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
-	luaerr = lua;
+	if (!luaerr) luaerr = lua;
+	if (luaerr != lua) ERROR();
 	showFieldV(lua_tostring(lua,1),&str,arg,sub);
 	lua_pushstring(lua,str); free(str);
 	free(sub);
 	return 1;
 }
-int luaopen_luax(lua_State *L);
-void luaxExtend(lua_State *L, const char *str, struct Function fnc);
+void wrapFace(lua_State *L);
 int luaopen_face (lua_State *L)
 {
-	luaopen_luax(L);
-	wrapFaceLuax();
-
-	luaxExtend(L,"readStr",protoTypeSe(readStr));
-	luaxExtend(L,"preadStr",protoTypeSg(preadStr));
-	luaxExtend(L,"readDat",protoTypeSh(readDat));
-	luaxExtend(L,"readChr",protoTypeSi(readChr));
-	luaxExtend(L,"readInt",protoTypeSj(readInt));
-	luaxExtend(L,"readInt32",protoTypeSk(readInt32));
-	luaxExtend(L,"readNum",protoTypeSl(readNum));
-	luaxExtend(L,"readNew",protoTypeSm(readNew));
-	luaxExtend(L,"readOld",protoTypeSn(readOld));
-
-	luaxExtend(L,"writeStr",protoTypeLf(writeStr));
-	luaxExtend(L,"pwriteStr",protoTypeLg(pwriteStr));
-	luaxExtend(L,"writeDat",protoTypeLh(writeDat));
-	luaxExtend(L,"writeChr",protoTypeLi(writeChr));
-	luaxExtend(L,"writeInt",protoTypeLj(writeInt));
-	luaxExtend(L,"writeInt32",protoTypeLk(writeInt32));
-	luaxExtend(L,"writeNum",protoTypeLl(writeNum));
-	luaxExtend(L,"writeNew",protoTypeLm(writeNew));
-	luaxExtend(L,"writeOld",protoTypeLn(writeOld));
-
-	luaxExtend(L,"showStr",protoTypeMf(showStr));
-	luaxExtend(L,"showDat",protoTypeMh(showDat));
-	luaxExtend(L,"showChr",protoTypeMi(showChr));
-	luaxExtend(L,"showInt",protoTypeMj(showInt));
-	luaxExtend(L,"showInt32",protoTypeMk(showInt32));
-	luaxExtend(L,"showNum",protoTypeMl(showNum));
-	luaxExtend(L,"showNew",protoTypeMm(showNew));
-	luaxExtend(L,"showOld",protoTypeMn(showOld));
-	luaxExtend(L,"showEnum",protoTypeMo(showEnum));
-	luaxExtend(L,"showOpen",protoTypeMp(showOpen));
-	luaxExtend(L,"showClose",protoTypeMq(showClose));
+	luaerr = L;
+	wrapFace(L);
 	lua_pushcfunction(L, showFieldLua); lua_setglobal(L, "showField");
-
-	luaxExtend(L,"hideStr",protoTypeNf(hideStr));
-	luaxExtend(L,"hideDat",protoTypeNh(hideDat));
-	luaxExtend(L,"hideChr",protoTypeNi(hideChr));
-	luaxExtend(L,"hideInt",protoTypeNj(hideInt));
-	luaxExtend(L,"hideInt32",protoTypeNk(hideInt32));
-	luaxExtend(L,"hideNum",protoTypeNl(hideNum));
-	luaxExtend(L,"hideNew",protoTypeNm(hideNew));
-	luaxExtend(L,"hideOld",protoTypeNn(hideOld));
-	luaxExtend(L,"hideEnum",protoTypeNo(hideEnum));
-	luaxExtend(L,"hideOpen",protoTypeNp(hideOpen));
-	luaxExtend(L,"hideClose",protoTypeNq(hideClose));
 	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
-
 	return 0;
 }

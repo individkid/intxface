@@ -29,6 +29,40 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
+struct Para {
+	enum {
+		Ttype,
+		Itype,
+		Jtype,
+		Ktype,
+		Mtype,
+		Ntype,
+		Utype,
+		Vtype,
+		Wtype,
+		Ptype,
+		Qtype,
+	} t;
+	union {
+		int i;
+		int32_t j;
+		long long k;
+		double m;
+		float n;
+		const char *u;
+		char *v;
+		char w;
+		const void *p;
+		void *q;
+	};
+};
+struct Close {
+	int n,m;
+	struct Para *a,*b;
+	int *c;
+};
+
+// TODO remove below after converting to Close
 typedef int (*pftype)(int fildes, void *buf, int nbyte);
 typedef int (*qftype)(int fildes, const void *buf, int nbyte);
 typedef void (*eftype)(const char *str, int num, int idx);

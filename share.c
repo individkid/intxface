@@ -2,7 +2,6 @@
 #include "type.h"
 #include "datx.h"
 #include "luax.h"
-
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

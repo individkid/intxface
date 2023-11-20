@@ -29,78 +29,76 @@ endif
 include depend.mk
 
 facer.log:
-	@./facerC > facer.log
-	@./facerHs >> facer.log
-	@./facerLua >> facer.log
+	./facerC > facer.log
+	./facerHs >> facer.log
+	./facerLua >> facer.log
 typra.log:
-	@./typraLua > typra.log
+	./typraLua > typra.log
 typer.log:
-	@./typerC > typer.log
+	./typerC > typer.log
 filer.log:
-	@rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
-	@./filerLua > filer.log
+	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
+	./filerLua > filer.log
 planra.log:
-	@./planraC > planra.log
+	./planraC > planra.log
 planer.log:
-	@./planerLua > planer.log
+	./planerLua > planer.log
 spacra.log:
-	@./spacraHs > spacra.log
+	./spacraHs > spacra.log
 spacer.log:
-	@./spacerLua > spacer.log
+	./spacerLua > spacer.log
 
 %: %C
-	@ln -f $< $@
+	ln -f $< $@
 %: %Cpp
-	@ln -f $< $@
+	ln -f $< $@
 %: %Hs
-	@ln -f $< $@
+	ln -f $< $@
 %: %Lua
-	@ln -f $< $@
+	ln -f $< $@
 %: %Sw
-	@ln -f $< $@
+	ln -f $< $@
 
 %C: %C.o
-	@$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Cpp: %Cpp.o
-	@$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
-	@$(GHC) -o $@ $< $(filter %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
+	$(GHC) -o $@ $< $(filter %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
-	@echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
+	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
-	@$(SWC) -o $@ $< $(filter %C.o %.so %Cpp.o,$^) -lc++ ${LIBRARIES} ${LIBRARYPATH}
+	$(SWC) -o $@ $< $(filter %C.o %.so %Cpp.o,$^) -lc++ ${LIBRARIES} ${LIBRARYPATH}
 
-%Cpp.so: %Cpp.o
-	@$(CXX) -o $@ -fPIC -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %.so: %C.o
-	@$(CXX) -o $@ -fPIC -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ -fPIC -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 
 %C.o: %.c
-	@$(CC) -o $@ -c $< ${INCLUDEPATH}
+	$(CC) -o $@ -c $< ${INCLUDEPATH}
 %Cpp.o: %.cpp
-	@$(CXX) -o $@ -c $< -std=c++11 ${INCLUDEPATH}
+	$(CXX) -o $@ -c $< -std=c++11 ${INCLUDEPATH}
 %Sw.o: %.sw
-	@cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
+	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 
 ifeq ($(UNAME),Darwin)
 %.metallib: %G.o
-	@$(GC) -sdk macosx metallib -o $@ $<
+	$(GC) -sdk macosx metallib -o $@ $<
 %G.o: %.metal
-	@$(GC) -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
+	$(GC) -sdk macosx metal -O2 -std=macos-metal2.2 -o $@ -c $<
 %.metal: %.g
-	@cp $< $@
+	cp $< $@
 endif
 
 %.h: %.gen
-	@lua $*.gen $@
+	lua $*.gen $@
 %.c: %.gen
-	@lua $*.gen $@
+	lua $*.gen $@
 %.cpp: %.gen
-	@lua $*.gen $@
+	lua $*.gen $@
 %.hs: %.gen
-	@lua $*.gen $@
+	lua $*.gen $@
 %.lua: %.gen
-	@lua $*.gen $@
+	lua $*.gen $@
 
 .PHONY:
 clean:

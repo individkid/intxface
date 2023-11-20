@@ -168,8 +168,8 @@ function trymatch(values,target)
 		prefix = "3q "; if callmatch(values,line,"^make: *** No rule to make target `([%w]*).gen', needed by `[%w.]*'.  Stop.$") and copysource(values,target,"gen") then indent = indent - 1; return true end
 		prefix = "4a "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and copysource(values,target,"h") then indent = indent - 1; return true end
 		prefix = "4b "; if callmatch(values,line,"^[%w./]*:[%d]*:[%d]*: fatal error: '([%w]*).h' file not found$") and makecopy(values,target,".h") then indent = indent - 1; return true end
-		prefix = "5a "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(","c","C.o") and makecopy(values,target,"") then indent = indent - 1; return true end
-		prefix = "5b "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"^[^[:space:]][^[:space:]]* *","\\(","cpp","Cpp.o") and makecopy(values,target,"") then indent = indent - 1; return true end
+		prefix = "5a "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$","c","C.o") and makecopy(values,target,"") then indent = indent - 1; return true end
+		prefix = "5b "; if callmatch(values,line,"^  _([%w]*), referenced from:$") and findsource(values,"^[^[:space:]][^[:space:]]* *","\\(.*\\)$","cpp","Cpp.o") and makecopy(values,target,"") then indent = indent - 1; return true end
 		prefix = "5c "; if callmatch(values,line,"^  _[a-z]*([A-Z][%w]*), referenced from:$") and findsource(values,"^"," = {","gen","C.o") and makecopy(values,target,"") then indent = indent - 1; return true end
 		prefix = "6 "; if callmatch(values,line,"^    Could not find module ‘([%w]*)’$") and findsource(values,"^module "," where$","hs","") and copysource(values,target,"hs") then indent = indent - 1; return true end
 		prefix = "7 "; if callmatch(values,line,"^[%w]*: cannot execute file: ([%w]*)$") and makecopy(values,target,"") then indent = indent - 1; return true end
