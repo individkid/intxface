@@ -1,5 +1,19 @@
 #include "proto.h"
 struct timespec;
+typedef int (*fgtype)(const char *str, int len, int idx);
+typedef void (*chtype)();
+typedef void (*hgtype)(int val);
+typedef void (*eftype)(const char *str, int num, int idx);
+typedef int (*pftype)(int fildes, void *buf, int nbyte);
+typedef int (*qftype)(int fildes, const void *buf, int nbyte);
+typedef void (*chtype)();
+typedef void (*hktype)(int len, const char *val);
+typedef void (*hftype)(const char *val);
+typedef void (*hmtype)(char val);
+typedef void (*hltype)(int32_t val);
+typedef void (*hitype)(long long val);
+typedef void (*hjtype)(float val);
+typedef void (*hhtype)(double val);
 void termFunc(fgtype fnc);
 void intrFunc(chtype fnc);
 void noteFunc(hgtype fnc);

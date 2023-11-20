@@ -53,6 +53,7 @@ struct WrapClose : Close {
 	long long &k_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Ktype) ERROR(); return b[sub].k;}
 	double &m_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Mtype) ERROR(); return b[sub].m;}
 	float &n_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Ntype) ERROR(); return b[sub].n;}
+	const char *&u_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Utype) ERROR(); return b[sub].u;}
 	char *&v_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Vtype) ERROR(); return b[sub].v;}
 	char &w_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Wtype) ERROR(); return b[sub].w;}
 	void *&q_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Qtype) ERROR(); return b[sub].q;}

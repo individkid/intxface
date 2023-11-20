@@ -1,4 +1,13 @@
 #include <stdint.h>
+typedef void (*rktype)(void *dat);
+typedef int (*rltype)(void **dat, const char *str);
+typedef void (*cgtype)(int idx0, int idx1);
+typedef int (*tltype)(int arg);
+typedef int (*gftype)(const char *one, const char *oth);
+typedef void (*sftype)(char **str, int len, int idx, int loc);
+typedef void (*rptype)(const char *src, int len, int idx, int loc);
+typedef void (*rqtype)(int len, int idx, int loc);
+typedef void (*hftype)(const char *val);
 int datxSub();
 void **datxDat(int sub);
 int datxReadFp(int fildes, void *buf, int nbyte);

@@ -751,12 +751,15 @@ void planeSavstr(const char *val, const char *key)
 	datxInsert(src,dst,identType("Str"));
 	free(src); free(dst);
 }
+// TODO for datx
+/*
 int planeSide(const char *exp, const char *arg)
 {
 	const struct Closure *fnc = protoCloseFf(arg);
 	if (luaxExpr(exp,fnc) != 0) ERROR();
 	return protoResultFf();
 }
+*/
 void planeTerm(int sig)
 {
 }
@@ -847,7 +850,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	datxDupstr(planeDupstr); datxOutstr(planeOutstr);
 	datxInsstr(planeInsstr); datxDelstr(planeDelstr);
 	datxSetcfg(planeSetcfg); datxGetcfg(planeGetcfg);
-	datxEmbed(planeSide); datxCaller(planeCall);
+	/*datxEmbed(planeSide);*/ datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
 	init(); planeBoot(); while (1) {
