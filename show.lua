@@ -1,4 +1,3 @@
-require "face"
 require "luax"
 require "coroutine"
 

@@ -1,4 +1,4 @@
-require "face"
+require "luax"
 
 function errClose(file,line,idx)
 	closeIdent(idx)

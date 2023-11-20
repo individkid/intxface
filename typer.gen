@@ -71,7 +71,7 @@ function showTyperHs()
 end
 function showTyperLua()
 	local result = ""
-	result = result.."require \"face\"\n"
+	result = result.."require \"luax\"\n"
 	result = result.."--\n"
 	result = result..showCallLua().."\n"
 	result = result.."-- MAIN\n"

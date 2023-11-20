@@ -809,7 +809,7 @@ function showTypeHs()
 end
 function showTypeLua()
 	local result = ""
-	result = result.."require \"face\"\n"
+	result = result.."require \"luax\"\n"
 	result = result.."--\n"
 	result = result..showCallLua().."\n"
 	result = result.."function wrapExec(arg,fork,exec)\n"

@@ -1,4 +1,5 @@
 #include "luax.h"
+#include "face.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -28,6 +29,9 @@ int irslt = 0;
 void *prslt = 0;
 char *srslt = 0;
 lua_State *luastate = 0;
+char *luanote = 0;
+char *luafunc = 0;
+lua_State *luaerr = 0;
 
 void luaxErr()
 {
@@ -224,9 +228,69 @@ const char *nestRepl(int i)
 	return rslt[i];
 }
 
+void noteLua(int idx)
+{
+	if (!luaerr) luaerr = luaxInit();
+	lua_getglobal(luaerr, luanote);
+	lua_pushinteger(luaerr, idx);
+	lua_pcall(luaerr, 1, 0, 0);
+}
+void errLua(const char *str, int num, int idx)
+{
+	if (!luaerr) luaerr = luaxInit();
+	lua_getglobal(luaerr, luafunc);
+	lua_pushstring(luaerr, str);
+	lua_pushinteger(luaerr, num);
+	lua_pushinteger(luaerr, idx);
+	lua_pcall(luaerr, 3, 0, 0);
+}
+void noteFuncLua(const char *str)
+{
+	noteFunc(noteLua);
+	if (luanote) free(luanote);
+	luanote = strdup(str);
+}
+void errFuncLua(const char *str)
+{
+	errFunc(errLua);
+	if (luafunc) free(luafunc);
+	luafunc = strdup(str);
+}
+int hideFieldLua(lua_State *lua)
+{
+	if (!luaerr) luaerr = lua;
+	if (luaerr != lua) ERROR();
+	int siz = lua_tonumber(lua,3);
+	int arg = lua_tonumber(lua,4);
+	int *sub = malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,5+i);
+	if (hideFieldV(lua_tostring(lua,1),lua_tostring(lua,2),&siz,arg,sub))
+	lua_pushnumber(lua,1); else lua_pushnil(lua);
+	lua_pushnumber(lua,siz);
+	free(sub);
+	return 2;
+}
+int showFieldLua(lua_State *lua)
+{
+	char *str = strdup(lua_tostring(lua,2));
+	int arg = lua_tonumber(lua,3);
+	int *sub = malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
+	if (!luaerr) luaerr = lua;
+	if (luaerr != lua) ERROR();
+	showFieldV(lua_tostring(lua,1),&str,arg,sub);
+	lua_pushstring(lua,str); free(str);
+	free(sub);
+	return 1;
+}
+void wrapFace(lua_State *L);
 void wrapLuax(lua_State *L);
 int luaopen_luax(lua_State *L)
 {
 	wrapLuax(L);
+	luaerr = L;
+	wrapFace(L);
+	lua_pushcfunction(L, showFieldLua); lua_setglobal(L, "showField");
+	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
 	return 0;
 }
