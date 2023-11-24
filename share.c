@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#include <signal.h>
 
 int note = 0;
 struct Wrap {
@@ -15,7 +16,7 @@ struct Wrap {
 	int sub; // dst subscript
 	int siz; // dst size
 	struct Wrap **dst; // where to write for tag==Fanout,Combine
-	int vld; // tag==Fanout,Buffer whether idx valid
+	int vld; // tag==Fanout,Buffer idx(2) inp(1) out(4) valid
 	int idx; // tag==Fanout,Buffer reads from here
 	int inp; // type to read from here
 	int out; // type to write to here
@@ -34,7 +35,15 @@ int idx0 = 0;
 int idx1 = 0;
 void **dat0 = 0;
 void **dat1 = 0;
+const char *err1 = "ERROR: argument after Combine should be Fanout or Buffer\n";
+const char *err2 = "ERROR: argument after Execute should be Fanout or Buffer\n";
+const char *err3 = "ERROR: argument after Constant should be Fanout or Buffer\n";
 
+void shareExit(int sig)
+{
+	int stat = 0; pid_t pid = wait(&stat);
+	if (pid != -1 && WIFEXITED(stat) && WEXITSTATUS(stat) != 0) exit(-1);
+}
 void shareNote(int idx)
 {
 	note = 1;
@@ -58,38 +67,34 @@ void shareArgs(int sub, const char *str)
 void shareVals(int sub, const char *str)
 {
 	struct Wrap *ptr = &wrap[sub];
+	struct Wrap *nxt = (sub+1 < args ? &wrap[sub+1] : 0);
 	struct Valve arg = {0}; int len = 0; hideValve(&arg,str,&len);
 	switch (arg.tag) {
-	case (Fanout): {
-		datxInt(dat1,sub);
-		datxInserts("P",arg.str,*dat1,identType("Int"));
+	case (Fanout): { // allocate links; map name; set type; take name
+		ptr->siz = arg.siz; ptr->dst = malloc(arg.siz*sizeof(struct Wrap *));
+		datxInt(dat1,sub); datxInserts("P",arg.str,*dat1,identType("Int"));
 		ptr->vld |= 1; ptr->inp = identType(arg.typ);
-		ptr->siz = ptr->siz; ptr->dst = malloc(arg.siz*sizeof(struct Wrap *));
-		assignStr(&ptr->str,arg.str);
+		ptr->str = arg.str; arg.str = 0;
 		break;}
-	case (Combine): if (sub+1 == args) {
-		fprintf(stderr,"ERROR: argument after Combine should be Fanout or Buffer\n");
-		exit(-1);} else {
-		for (int i = 0; i < arg.num; i++) {int typ = 0;
-		typ = datxFinds(dat1,"R",arg.dep[i]);
-		if (*dat1 == 0) {datxInt(dat1,vals++); datxInserts("R",arg.dep[i],*dat1,typ);}}
+	case (Combine): // index variables; allocate link; take expression
+		if (!nxt) {fprintf(stderr,"%s",err1); exit(-1);} else {
+		for (int i = 0; i < arg.num; i++) {
+		int typ = datxFinds(dat1,"R",arg.dep[i]); if (*dat1 == 0) {
+		datxInt(dat1,vals++); datxInserts("R",arg.dep[i],*dat1,identType("Int"));}
+		else if (typ != identType("Int")) ERROR();}
 		ptr->siz = 1; ptr->dst = malloc(sizeof(struct Wrap *));
+		ptr->exp = arg.exp; arg.exp = 0;
 		break;}
-	case (Buffer): {
-		datxInt(dat1,sub);
-		datxInserts("P",arg.str,*dat1,identType("Int"));
+	case (Buffer): { // map name; set type; take name
+		datxInt(dat1,sub); datxInserts("P",arg.str,*dat1,identType("Int"));
 		ptr->vld |= 1; ptr->inp = identType(arg.typ);
-		assignStr(&ptr->str,arg.str);
+		ptr->str = arg.str; arg.str = 0;
 		break;}
-	case (Execute): if (sub+1 == args) {
-		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
-		exit(-1);} else {
-		struct Wrap *nxt = &wrap[sub+1];
+	case (Execute): // filter to next
+		if (!nxt) {fprintf(stderr,"%s",err2); exit(-1);} else {
 		nxt->idx = shareExec(arg.url,arg.arg);
 		*userIdent(nxt->idx) = (void*)(intptr_t)(sub+1);
 		nxt->vld |= 6; nxt->out = identType(arg.typ);
-		ptr->exp = arg.exp; arg.exp = 0;
-
 		break;}
 	default: ERROR();}
 	freeValve(&arg);
@@ -97,37 +102,35 @@ void shareVals(int sub, const char *str)
 void shareRefs(int sub, const char *str)
 {
 	struct Wrap *ptr = &wrap[sub];
+	struct Wrap *nxt = (sub+1 < args ? &wrap[sub+1] : 0);
 	struct Valve arg = {0}; int len = 0; hideValve(&arg,str,&len);
 	switch (arg.tag) {
-	case (Fanout): {if (ptr->vld != 1 && ptr->vld != 7) {
-		ERROR();} else if (ptr->vld == 1) {
-		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);
-		*userIdent(ptr->idx) = (void*)(intptr_t)sub;}
-		for (int i = 0; i < ptr->siz; i++) {int typ = 0;
-		typ = datxFinds(dat1,"P",arg.dst[i]);
+	case (Fanout): { // open pipe; register wake; lookup links
+		if (ptr->vld != 1 && ptr->vld != 7) {ERROR();} else if (ptr->vld == 1) {
+		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
+		*userIdent(ptr->idx) = (void*)(intptr_t)sub;
+		for (int i = 0; i < ptr->siz; i++) {
+		int typ = datxFinds(dat1,"P",arg.dst[i]);
 		if (typ != identType("Int")) ERROR();
 		ptr->dst[i] = &wrap[*datxIntz(0,*dat1)];}
 		break;}
-	case (Combine): if (ptr->vld != 0) {
-		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
-		exit(-1);} else {
-		ptr->dst[0] = &wrap[sub+1];
-		if (ptr->dst[0]->vld == 0) {
-		fprintf(stderr,"ERROR: argument after Combine should be Fanout or Buffer\n");
-		exit(-1);} else {
-		for (int i = 0; i < arg.num; i++) {int typ = 0;
-		typ = datxFinds(dat1,"R",arg.dep[i]);
+	case (Combine): // link next; count references
+		if (ptr->vld != 0) {fprintf(stderr,"%s",err2); exit(-1);}
+		else if (!nxt) {fprintf(stderr,"%s",err1); exit(-1);}
+		else if (nxt->vld == 0) {fprintf(stderr,"%s",err1); exit(-1);} else {
+		ptr->dst[0] = nxt;
+		for (int i = 0; i < arg.num; i++) {
+		int typ = datxFinds(dat1,"R",arg.dep[i]);
 		if (typ != identType("Int")) ERROR();
 		refs[*datxIntz(0,*dat1)] += 1;}
-		break;}}
-	case (Buffer): {if (ptr->vld != 1 && ptr->vld != 7) {
-		ERROR();} else if (ptr->vld == 1) {
+		break;}
+	case (Buffer): { // open pipe; register wake
+		if (ptr->vld != 1 && ptr->vld != 7) {ERROR();} else if (ptr->vld == 1) {
 		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);
 		*userIdent(ptr->idx) = (void*)(intptr_t)sub;}
 		break;}
-	case (Execute): if (ptr->vld != 0) {
-		fprintf(stderr,"ERROR: argument after Execute should be Fanout or Buffer\n");
-		exit(-1);} else {
+	case (Execute):
+		if (ptr->vld != 0) {fprintf(stderr,"%s",err2); exit(-1);} else {
 		break;}
 	default: ERROR();}
 	freeValve(&arg); vlds++;
@@ -138,9 +141,9 @@ void shareBack(int sub, const char *str)
 	struct Valve arg = {0}; int len = 0; hideValve(&arg,str,&len);
 	switch (arg.tag) {
 	case (Fanout): break;
-	case (Combine): {
-		for (int i = 0; i < arg.num; i++) {int typ = 0;
-		typ = datxFinds(dat1,"R",arg.dep[i]);
+	case (Combine): { // add backrefs
+		for (int i = 0; i < arg.num; i++) {
+		int typ = datxFinds(dat1,"R",arg.dep[i]);
 		if (typ != identType("Int")) ERROR();
 		back[*datxIntz(0,*dat1)][refs[*datxIntz(0,*dat1)]] = sub;
 		refs[*datxIntz(0,*dat1)] += 1;}
@@ -152,11 +155,12 @@ void shareBack(int sub, const char *str)
 }
 void shareNone(int typ, const char *str)
 {
+	printf("shareNone %d %s\n",typ,str);
 }
 void shareConst(int typ, const char *str)
 { // note argument constants cannot be Valve
 	if (vlds+1 == args || !wrap[vlds+1].vld) {
-	fprintf(stderr,"ERROR: argument after Constant should be Fanout or Buffer\n");
+	fprintf(stderr,"%s",err3);
 	exit(-1);} else {
 	int len = 0; hideType(str,&len,typ,wrap[vlds+1].idx);}
 }
@@ -174,11 +178,10 @@ void shareError(int len, const char *str)
 }
 int sharePeek(const char *str, int *len)
 {
-	for (int typ = 0; identSubtype(typ,0)!=-1; typ++) {
-		int tmp = 0;
-		note = 0;
-		hideType(str,&tmp,typ,idx0);
-		flushBuf(idx0);
+	for (enum Tag tag = 0; tag < Tags; tag++) {
+		int typ = identUnion(tag); int tmp = 0; note = 0;
+		datxNone(dat0); hideType(str,&tmp,typ,idx0);
+		if (strchr(str+tmp,'(') != 0) continue;
 		if (tmp > *len) *len = tmp;
 		if (note == 0) return typ;}
 	return -1;
@@ -186,8 +189,8 @@ int sharePeek(const char *str, int *len)
 void shareParse(int argc, char **argv, hktype err, hktype arg, hktype stg)
 {
 	for (int i = 1, sub = 0; i < argc; i++) {
-		int len = 0; int typ = 0;
-		if ((typ = sharePeek(argv[i],&len)) < 0) err(len,argv[i]);
+		int len = 0; int typ = sharePeek(argv[i],&len);
+		if (typ < 0) err(len,argv[i]);
 		else if (typ != identType("Valve")) arg(typ,argv[i]);
 		else stg(sub,argv[i]); sub += 1;}
 }
@@ -223,16 +226,16 @@ void shareLoop(int src, int dst, int stp, int dtp)
 void shareWrap(struct Wrap *ptr)
 {
 	switch (ptr->tag) {
-	case (Fanout): {
+	case (Fanout): { // read from pipe and write to others
 		note = 0; shareLoop(ptr->idx,ptr->dst[ptr->sub]->idx,ptr->inp,ptr->dst[ptr->sub]->out);
 		if (note == 0) {if (++ptr->sub == ptr->siz) ptr->sub = 0;} else {
 		datxStr(dat1,""); datxStr(dat0,ptr->str); datxInsert(*dat1,*dat0,identType("Str"));}
 		break;}
-	case (Combine): {
+	case (Combine): { // evaluate expression and write to other
 		datxEval(dat0,ptr->exp,ptr->dst[0]->out);
 		shareLoop(idx0,ptr->dst[0]->idx,identType("Dat"),ptr->dst[0]->out);
 		break;}
-	case (Buffer): {
+	case (Buffer): { // read from pipe and set variable
 		datxNone(dat0); note = 0; loopType(ptr->inp,ptr->idx,idx0);
 		if (note == 0) {datxStr(dat1,ptr->str); datxInsert(*dat1,*dat0,ptr->inp);} else {
 		datxStr(dat1,""); datxStr(dat0,ptr->str); datxInsert(*dat1,*dat0,identType("Str"));}
@@ -264,10 +267,12 @@ void shareArgv(int *argc, char **argv)
 	char *save = argv[0];
 	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; chunks += 1;
 	sizes = malloc(chunks*sizeof(int)); memset(sizes,0,chunks*sizeof(int)); chunks = 0;
-	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; else sizes[chunks] += 1; chunks = 0; nestInit(sizes[0]);
+	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) chunks += 1; else sizes[chunks] += 1;
+	chunks = 0; nestInit(sizes[chunks]); sizes[chunks] = 0;
 	for (int i = 1; i < *argc; i++) if (strcmp(argv[i],"--") == 0) {
 	shareAppend(&buffer,&space,&limit,&total,sizes[chunks]); chunks += 1; nestInit(sizes[chunks]); sizes[chunks] = 0;} else {
 	nestElem(sizes[chunks],argv[i]); sizes[chunks] += 1;}
+	shareAppend(&buffer,&space,&limit,&total,sizes[chunks]); chunks += 1;
 	buffer = realloc(buffer,space-buffer); *argc = total + 1;
 	*argv = malloc(*argc*sizeof(char*)); argv[0] = save; space = buffer;
 	for (int i = 1; i < *argc; i++) {argv[i] = space; space += strlen(space)+1;}
@@ -275,13 +280,16 @@ void shareArgv(int *argc, char **argv)
 
 int main(int argc, char **argv)
 {
+	struct sigaction act;
+	act.__sigaction_u.__sa_handler = shareExit;
+	if (sigaction(SIGCHLD,&act,0) < 0) ERROR();
 	sub0 = datxSub();
 	sub1 = datxSub();
 	idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp);
 	idx1 = puntInit(sub1,sub1,datxReadFp,datxWriteFp);
 	dat0 = datxDat(sub0);
 	dat1 = datxDat(sub1);
-	shareArgv(&argc,argv);
+	noteFunc(shareNote); shareArgv(&argc,argv);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs); // initialize args
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
 	wrap[args].idx = openPipe(); wrap[args].out = identType("Str");
@@ -294,10 +302,13 @@ int main(int argc, char **argv)
 	for (int i = 0; i < vals; i++) {back[i] = malloc(refs[i]*sizeof(int)); refs[i] = 0;}
 	shareParse(argc,argv,shareError,shareNone,shareBack); // fill in back lists
 	datxPrefix("V"); datxChanged(shareCallback);
-	noteFunc(shareNote); wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
+	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
 	while (1) {int sub = 0; int idx = 0;
 	if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;} else {
-	idx = waitRead(0,-1); if (idx == wrap[args].idx) {
+	printf("calling waitRead\n");
+	idx = waitRead(0,-1);
+	printf("called waitRead %d %d\n",idx,wrap[args].idx);
+	if (idx == wrap[args].idx) {
 	char *str = 0; readStr(&str,wrap[args].idx); printf("%s",str); break;}
 	sub = (int)(intptr_t)*userIdent(idx);}
 	shareWrap(&wrap[sub]);}

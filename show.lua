@@ -1103,19 +1103,19 @@ function showWtypeC(list)
 		if (not (Structz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
 			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
-			result = result..showIndent(2).."write"..v.."(&tmp,idx);\n"
+			result = result..showIndent(2).."else write"..v.."(&tmp,idx);\n"
 		elseif (not (Enumz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
 			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
-			result = result..showIndent(2).."writeInt(tmp,idx);\n"
+			result = result..showIndent(2).."else writeInt(tmp,idx);\n"
 		elseif (v == "Dat") or (v == "Str") then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
 			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
-			result = result..showIndent(2).."write"..v.."(tmp,idx);\n"
+			result = result..showIndent(2).."else write"..v.."(tmp,idx);\n"
 		else
 			result = result..showIndent(2)..showTypeCF(v).." tmp = 0;\n"
 			result = result..showIndent(2).."if (!hide"..v.."(&tmp,str,len)) callNote(idx);\n"
-			result = result..showIndent(2).."write"..v.."(tmp,idx);\n"
+			result = result..showIndent(2).."else write"..v.."(tmp,idx);\n"
 		end
 		result = result..showIndent(2).."break;}\n"
 	end

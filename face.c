@@ -1230,7 +1230,7 @@ int hideStr(char **val, const char *str, int *siz)
 	int num = -1;
 	int limit = -1;
 	sscanf(str+*siz," Str ( %n",&base);
-	limit = base; while (base != -1 && str[limit] && num == -1) sscanf(str+*siz+(++limit)," )%n",&num);
+	limit = base-1; while (base != -1 && str[limit] && num == -1) sscanf(str+*siz+(++limit)," )%n",&num);
 	// TODO add ascii escape
 	if (num == -1) return 0;
 	tmp = malloc(limit-base+1);

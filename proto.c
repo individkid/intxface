@@ -1,5 +1,3 @@
-// TODO git rm after converting from Closure to Close
-
 #include "proto.h"
 #include <stdio.h>
 #include <stdlib.h>
