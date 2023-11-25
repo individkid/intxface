@@ -1,18 +1,8 @@
 
-plane, sculpt, line, play, instrument, print, heuristic,
-texture, share, overlap, ball, stomp, multimedia, font, world:
-
-Add tests of datxIrrex datxRegex datxData datxEval(each op) nestRepl
-planeCast planeConjoin planeProject planeInsstr planeDupstr planeMain to planra.c.
-Add sharer.lua for bringup test of share and friends.
-
-Add backdoor fifo to Argument and from planer.lua, start metalSw as filter to pipes.
-Add triangle, transform, triangle(s) tests to planer.lua.
-Add vulkanCpp to planer.lua. Finish pierce, transform, refine, additive, subtractive,
-configure mouse/roller scale/translate/rotate ortho/focal/normal,
-decorate play/cross/attract/repulse/draw/write, hot-keys, needed for sculpt.lua.
-Add to spacra.hs and spacer.lua for features needed for sculpt.lua.
-Add to filer.lua to regress fixes needed for sculpt.lua.
+Add scripted keyboard/mouse backdoor to Argument for planer.lua.
+Add vulkanCpp to planer.lua.
+Add pierce, transform, refine, additive, subtractive to planer.lua.
+Add mouse/roller scale/translate/rotate ortho/focal/normal to planer.lua.
 
 Augment struct Event with struct Sound,
 envelopes of fundamentals harmonics amplitudes.
@@ -25,11 +15,11 @@ Typically barrycentric coordinates adjust the fundamentals envelope,
 press duration adjusts the amplitudes envelope duration,
 facet metric adjusts the amplitudes envelope average,
 hot key adjusts the harmonics envelope octave.
-Write linra.cpp and liner.lua.
 
+Write sculpt.lua. Produce polytope video.
+Write print.lua. Produce heuristic video.
 Write play.lua. Produce instrument video.
-Add to spacra.hs to regress fixes needed for print.lua. Produce heuristic video.
-Add textures to metal.g and vulcan.g. Finish share and friends.
-Test with Argument fifo from sharer.lua. Produce overlap video.
-Write ball.lua. Finish stomp box. Produce multimedia video.
-Add fonts to textures. Write world.lua.
+Write agda proof. Produce sidedness video.
+Write stomp box. Produce multimedia video.
+Write shader ball.lua. Produce show video.
+Write group world.lua. Produce demo video.
