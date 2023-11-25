@@ -1,8 +1,8 @@
 
 Add scripted keyboard/mouse backdoor to Argument for planer.lua.
-Add vulkanCpp to planer.lua.
 Add pierce, transform, refine, additive, subtractive to planer.lua.
 Add mouse/roller scale/translate/rotate ortho/focal/normal to planer.lua.
+Add vulkanCpp to planer.lua.
 
 Augment struct Event with struct Sound,
 envelopes of fundamentals harmonics amplitudes.
