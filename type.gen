@@ -688,7 +688,7 @@ Change = {
 	{"fct","Listed",{["vld"]={["Toread"]=true},["cfg"]={["Facets"]=true}},"siz"},
 }
 Argument = {
-	{"typ","Process",{},{}},
+	{"typ","Process",{},""},
 	{"inp","Int",{},{}},
 	{"out","Int",{},{}},
 	{"idx","Int",{},{}},

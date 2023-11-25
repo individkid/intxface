@@ -181,8 +181,8 @@ int sharePeek(const char *str, int *len)
 	for (enum Tag tag = 0; tag < Tags; tag++) {
 		int typ = identUnion(tag); int tmp = 0; note = 0;
 		datxNone(dat0); hideType(str,&tmp,typ,idx0);
-		if (strchr(str+tmp,'(') != 0) continue;
 		if (tmp > *len) *len = tmp;
+		if (strchr(str+tmp,'(') != 0) continue;
 		if (note == 0) return typ;}
 	return -1;
 }

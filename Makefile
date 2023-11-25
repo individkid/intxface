@@ -47,6 +47,8 @@ spacra.log:
 	./spacraHs > spacra.log
 spacer.log:
 	./spacerLua > spacer.log
+sharer.log:
+	./sharerLua > sharer.log
 
 %: %C
 	ln -f $< $@
