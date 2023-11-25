@@ -216,7 +216,17 @@ function trymake(target)
 end
 
 depends = {}
-targets = {"facer.log","typra.log","typer.log","filer.log","planra.log","planer.log","spacra.log","spacer.log","hole","line","metal","space","pipe","page","share"}
+targets = {}
+for line in io.lines("Makefile") do
+	local all = string.match(line,"^[%w][%w.]* *: *(.*)$")
+	if all ~= nil then
+		for word in all:gmatch("%S+") do
+			targets[#targets+1] = word
+		end
+		break
+	end
+
+end
 for key,val in ipairs(targets) do
 	for der,dee in pairs(trymake(val)) do
 		if depends[der] == nil then depends[der] = {} end

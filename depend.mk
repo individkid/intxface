@@ -39,6 +39,8 @@ protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o share.c typeC.o wrapCpp.o
 shareC.o: datx.h face.h luax.h proto.h type.h
+sharer.log: luax.so shareC sharer.lua sharerLua type.lua
+sharerLua: sharer.lua
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs type.hs
 spacer.log: luax.so spaceHs spacer.lua spacerLua type.lua
