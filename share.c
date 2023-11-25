@@ -305,11 +305,9 @@ int main(int argc, char **argv)
 	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
 	while (1) {int sub = 0; int idx = 0;
 	if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;} else {
-	printf("calling waitRead\n");
 	idx = waitRead(0,-1);
-	printf("called waitRead %d %d\n",idx,wrap[args].idx);
 	if (idx == wrap[args].idx) {
-	char *str = 0; readStr(&str,wrap[args].idx); printf("%s",str); break;}
+	char *str = 0; readStr(&str,wrap[args].idx); printf("%s\n",str); break;}
 	sub = (int)(intptr_t)*userIdent(idx);}
 	shareWrap(&wrap[sub]);}
 	return 0;
