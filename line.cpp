@@ -10,6 +10,9 @@ extern "C" {
 #include <math.h>
 #include <map>
 #include <vector>
+#ifdef __linux__
+#include <cstdio>
+#endif
 
 struct Channel {
 	Channel(double w, int g, int c, int l) : nxt(0), str(0),

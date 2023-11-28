@@ -2,12 +2,18 @@
 .SUFFIXES:
 .DELETE_ON_ERROR:
 
-all: facer.log typra.log typer.log filer.log planra.log planer.log spacra.log spacer.log sharer.log hole line metal space pipe page share
+UNAME = $(shell uname)
+
+ifeq ($(UNAME),Linux)
+Linux: facer.log typra.log typer.log filer.log spacra.log spacer.log sharer.log hole line space share
+endif
+ifeq ($(UNAME),Darwin)
+Darwin: facer.log typra.log typer.log filer.log planra.log planer.log spacra.log spacer.log sharer.log hole line metal space pipe page share
+endif
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
 LIBRARIES = -llua -lportaudio
-UNAME = $(shell uname)
 
 ifeq ($(UNAME),Linux)
 	CXX = g++
@@ -66,19 +72,19 @@ sharer.log:
 %Cpp: %Cpp.o
 	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
-	$(GHC) -o $@ $< $(filter %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
+	$(GHC) -o $@ $(filter %.hs %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
 	$(SWC) -o $@ $< $(filter %C.o %.so %Cpp.o,$^) -lc++ ${LIBRARIES} ${LIBRARYPATH}
 
 %.so: %C.o
-	$(CXX) -o $@ -fPIC -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ -shared $(filter %C.o %Cpp.o,$^)
 
 %C.o: %.c
-	$(CC) -o $@ -c $< ${INCLUDEPATH}
+	$(CC) -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
 %Cpp.o: %.cpp
-	$(CXX) -o $@ -c $< -std=c++11 ${INCLUDEPATH}
+	$(CXX) -o $@ -c -fPIC $< ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 

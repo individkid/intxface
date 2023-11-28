@@ -8,6 +8,9 @@
 #include <sys/stat.h>
 #include <stdint.h>
 #include <signal.h>
+#ifdef __linux__
+#include "sys/wait.h"
+#endif
 
 int note = 0;
 struct Wrap {
@@ -281,7 +284,11 @@ void shareArgv(int *argc, char **argv)
 int main(int argc, char **argv)
 {
 	struct sigaction act;
+#ifdef __linux__
+	act.sa_handler = shareExit;
+#else
 	act.__sigaction_u.__sa_handler = shareExit;
+#endif
 	if (sigaction(SIGCHLD,&act,0) < 0) ERROR();
 	sub0 = datxSub();
 	sub1 = datxSub();

@@ -284,7 +284,11 @@ void *func(void *arg)
 int main(int argc, char **argv)
 {
 	struct sigaction act;
+#ifdef __linux__
+	act.sa_handler = hubSig;
+#else
 	act.__sigaction_u.__sa_handler = hubSig;
+#endif
 	if (sigaction(SIGINT,&act,0) < 0) ERROR();
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = wrapIdent(Filez,argv[1])) < 0) exitErr(__FILE__,__LINE__);

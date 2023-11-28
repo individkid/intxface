@@ -16,6 +16,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#ifdef __linux__
+#include "sys/wait.h"
+#endif
 
 // per identifier state
 int inp[NUMOPEN] = {0};

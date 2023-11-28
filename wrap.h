@@ -5,6 +5,9 @@ void luaxWrap(lua_State *L, const char *str, const struct Close *arg);
 void wrapCallback(const struct Close *arg);
 }
 #include <functional>
+#ifdef __linux__
+#include <cstring>
+#endif
 
 struct WrapClose; typedef void wrapFunc(const struct WrapClose *arg);
 struct WrapClose : Close {
