@@ -7,6 +7,7 @@ typedef void (*sftype)(char **str, int len, int idx, int loc);
 typedef void (*rptype)(const char *src, int len, int idx, int loc);
 typedef void (*rqtype)(int len, int idx, int loc);
 typedef void (*hftype)(const char *val);
+enum Callback {ChangedCb,CallerCb,SetcfgCb,GetcfgCb,DupstrCb,InsstrCb,DelstrCb,OutstrCb,Callbacks};
 int datxSub();
 void **datxDat(int sub);
 int datxReadFp(int fildes, void *buf, int nbyte);

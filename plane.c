@@ -2,7 +2,6 @@
 #include "face.h"
 #include "metx.h"
 #include "datx.h"
-#include "luax.h"
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -734,39 +733,12 @@ int planeGetcfg(int sub)
 	if (sub < 0 || sub >= Configures) ERROR();
 	return configure[sub];
 }
-void planeValstr(char **val, const char *key)
-{
-	void *src = 0; void *dst = 0; int typ = 0;
-	datxStr(&src,key);
-	typ = datxFind(&dst,src);
-	if (typ != identType("Str")) ERROR();
-	assignStr(val,datxChrz(0,dst));
-	free(src); free(dst);
-}
-void planeSavstr(const char *val, const char *key)
-{
-	void *src = 0; void *dst = 0;
-	datxStr(&src,key);
-	datxStr(&dst,val);
-	datxInsert(src,dst,identType("Str"));
-	free(src); free(dst);
-}
-// TODO for datx
-/*
-int planeSide(const char *exp, const char *arg)
-{
-	const struct Closure *fnc = protoCloseFf(arg);
-	if (luaxExpr(exp,fnc) != 0) ERROR();
-	return protoResultFf();
-}
-*/
 void planeTerm(int sig)
 {
 }
 void *planeSelect(void *ptr)
 {
-	struct Argument arg = {0}; char *str = 0;
-	planeDupstr(&str,-1,1,0); if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
+	char *str = 0; planeDupstr(&str,-1,1,0); if ((external = wrapIdent(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[Select]);
 	while (1) {
 	struct Center center = {0};
@@ -836,7 +808,7 @@ void planeFinish(enum Proc bit)
 	default: ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
-void wrapPlane(lua_State *L);
+void wrapPlane();
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
 {
 	struct sigaction act;
@@ -846,11 +818,11 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	wrapPlane(luaxInit());
+	// wrapPlane(); // TODO delete following 4 lines when datxUnwrap is used instead of function pointers in datx.c
 	datxDupstr(planeDupstr); datxOutstr(planeOutstr);
 	datxInsstr(planeInsstr); datxDelstr(planeDelstr);
 	datxSetcfg(planeSetcfg); datxGetcfg(planeGetcfg);
-	/*datxEmbed(planeSide);*/ datxCaller(planeCall);
+	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
 	init(); planeBoot(); while (1) {
