@@ -213,6 +213,11 @@ int datxInt32s(void *dat)
 	if (!dat) return 0;
 	return *(int*)dat/sizeof(int32_t);
 }
+int datxNews(void *dat)
+{
+	if (!dat) return 0;
+	return *(int*)dat/sizeof(long long);
+}
 int datxNums(void *dat)
 {
 	if (!dat) return 0;
@@ -237,6 +242,11 @@ int32_t *datxInt32z(int num, void *dat)
 {
 	if (num >= datxInt32s(dat)) ERROR();
 	return (int32_t*)datxVoidz(num*sizeof(int32_t),dat);
+}
+long long *datxNewz(int num, void *dat)
+{
+	if (num >= datxInt32s(dat)) ERROR();
+	return (long long*)datxVoidz(num*sizeof(long long),dat);
 }
 double *datxNumz(int num, void *dat)
 {
@@ -276,6 +286,12 @@ void datxInt32(void **dat, int32_t val)
 	*dat = realloc(*dat,sizeof(val)+sizeof(int));
 	*(int*)*dat = sizeof(val);
 	*datxInt32z(0,*dat) = val;
+}
+void datxNew(void **dat, long long val)
+{
+	*dat = realloc(*dat,sizeof(val)+sizeof(int));
+	*(int*)*dat = sizeof(val);
+	*datxNewz(0,*dat) = val;
 }
 void datxNum(void **dat, double val)
 {
