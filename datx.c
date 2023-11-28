@@ -13,7 +13,6 @@ rktype datxNoteFp = 0;
 rltype datxCallFp = 0;
 cgtype datxSetFp = 0;
 tltype datxGetFp = 0;
-gftype datxEmbFp = 0;
 sftype datxDupFp = 0;
 rptype datxInsFp = 0;
 rqtype datxDelFp = 0;
@@ -635,13 +634,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 					if (typ1 != identType("Int")) ERROR();
 					val = datxIrrexe(datxChrz(0,dat0),*datxIntz(0,dat1));
 					free(dat1);} break;
-				case (EbCmp): {
-					void *dat1 = 0; int typ1 = 0; char *arg = 0; char *scr = 0;
-					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],identType("Str"));
-					if (typ0 != identType("Str") || typ1 != identType("Str")) ERROR();
-					arg = datxChrz(0,dat0); scr = datxChrz(0,dat1);
-					if (datxEmbFp == 0) ERROR(); val = datxEmbFp(scr,arg);
-					free(dat1);} break;
 				default: {
 					void *dat1 = 0; int typ1 = 0;
 					typ1 = datxEval(&dat1,&exp->cnd->dom[i].val[j],typ0);
@@ -898,10 +890,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (UnqOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,unique++);} break;
-	case (EmbOp): {
-		if (datxEmbFp == 0) ERROR();
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxEmbFp(exp->scr,exp->arg));} break;
 	case (NamOp): {
 		int typ0 = 0; if (datxCallFp == 0) ERROR();
 		typ0 = datxCallFp(dat,exp->nam);
@@ -933,10 +921,6 @@ void datxSetcfg(cgtype fnc)
 void datxGetcfg(tltype fnc)
 {
 	datxGetFp = fnc;
-}
-void datxEmbed(gftype fnc)
-{
-	datxEmbFp = fnc;
 }
 void datxDupstr(sftype fnc)
 {

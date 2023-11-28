@@ -258,7 +258,6 @@ Operate = {
 	"CfgOp", -- ImmOp sugar
 	"MemOp", -- ImmOp sugar
 	"UnqOp", -- magic number
-	"EmbOp", -- script embed
 	"NamOp", -- call function
 	"AccOp", -- machine result
 }
@@ -273,7 +272,6 @@ Compare = {
 	"MCCmp",
 	"ReCmp", -- regular expression
 	"IrCmp", -- irregular expression
-	"EbCmp", -- call to embeded
 }
 Order = {
 	"ChrOrd",
@@ -626,8 +624,6 @@ Express = {
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
 	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
-	{"scr","Str",{["opr"]={["EmbOp"]=true}},{}},
-	{"arg","Str",{["opr"]={["EmbOp"]=true}},{}},
 }
 Machine = {
 	{"xfr","Transfer",{},""},

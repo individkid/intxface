@@ -1,7 +1,5 @@
 extern "C" {
 #include "proto.h"
-#include <lua.h>
-void luaxWrap(lua_State *L, const char *str, const struct Close *arg);
 void wrapCallback(const struct Close *arg);
 }
 #include <functional>
@@ -14,14 +12,12 @@ struct WrapClose : Close {
 	std::function<wrapFunc> fnc;
 	static char *str;
 	static int val;
-	WrapClose(lua_State *L, const char *name, std::function<wrapFunc> _fnc, int n, int m) {
+	WrapClose(std::function<wrapFunc> _fnc, int n, int m) {
 		Close::n = n; a = (struct Para *)calloc(n,sizeof(struct Para));
 		Close::m = m; b = (struct Para *)calloc(m,sizeof(struct Para));
 		c = (int*)calloc(m,sizeof(int)); memset(c,0,m*sizeof(int));
 		fnc = _fnc; str = 0; val = 0;
-		luaxWrap(L, name, this);
 	}
-	// TODO remove sizes from constructor, remove argument and add realloc to following
 	WrapClose *ia(int sub) {if (sub < 0 || sub >= Close::n) ERROR(); a[sub].t = Para::Itype; return this;}
 	WrapClose *ja(int sub) {if (sub < 0 || sub >= Close::n) ERROR(); a[sub].t = Para::Jtype; return this;}
 	WrapClose *ka(int sub) {if (sub < 0 || sub >= Close::n) ERROR(); a[sub].t = Para::Ktype; return this;}
@@ -50,7 +46,6 @@ struct WrapClose : Close {
 	const char *u(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Utype) ERROR(); return a[sub].u;}
 	char w(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Wtype) ERROR(); return a[sub].w;}
 	const void *p(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Ptype) ERROR(); return a[sub].p;}
-	// TODO add setters and make Close private
 	int &i_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Itype) ERROR(); return b[sub].i;}
 	int32_t &j_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Jtype) ERROR(); return b[sub].j;}
 	long long &k_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Ktype) ERROR(); return b[sub].k;}
