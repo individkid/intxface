@@ -1,28 +1,45 @@
-datxC.o: datx.c datx.h proto.h type.h
+datxC.o: datx.c datx.h face.h proto.h type.h
 faceC.o: face.c face.h proto.h
 faceCpp.o: face.cpp face.h proto.h wrap.h
 facer.log: facer.lua facerC facerHs facerLua luax.so
-facerC: faceC.o facer.c protoC.o
-facerC.o: face.h proto.h
+facerC: faceC.o facerC.o protoC.o
+facerC.o: face.h facer.c proto.h
 facerHs: face.hs faceC.o facer.hs protoC.o
 facerLua: facer.lua
-fileC: faceC.o file.c protoC.o typeC.o
-fileC.o: face.h proto.h type.h
+fileC: faceC.o fileC.o protoC.o typeC.o
+fileC.o: face.h file.c proto.h type.h
 filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
 hole: holeC
-holeC: faceC.o hole.c protoC.o typeC.o
-holeC.o: face.h proto.h type.h
+holeC: faceC.o holeC.o protoC.o typeC.o
+holeC.o: face.h hole.c proto.h type.h
 line: lineCpp
 lineCpp: faceC.o lineCpp.o protoC.o typeC.o
 lineCpp.o: face.h line.cpp proto.h type.h
 luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
+metal: metalSw
+metal.metallib: metal.g
+metalSw: datxC.o faceC.o metalSw.o metxC.o planeC.o protoC.o typeC.o wrapCpp.o
+metalSw.o: face.h metal.sw plane.h proto.h type.h
+metxC.o: metx.c metx.h
+page: pageSw
+pageSw: pageSw.o
+pageSw.o: page.sw
+pipe: pipeSw
+pipeSw: pipeSw.o
+pipeSw.o: pipe.sw
+planeC.o: datx.h face.h metx.h plane.c plane.h proto.h type.h
+planer.log: luax.so metal.metallib metalSw planer.lua planerLua type.lua
+planerLua: planer.lua
+planra.log: planraC
+planraC: datxC.o faceC.o planraC.o protoC.o typeC.o wrapCpp.o
+planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 protoC.o: proto.c proto.h
 share: shareC
-shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o share.c typeC.o wrapCpp.o
-shareC.o: datx.h face.h luax.h proto.h type.h
+shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o typeC.o wrapCpp.o
+shareC.o: datx.h face.h luax.h proto.h share.c type.h
 sharer.log: luax.so shareC sharer.lua sharerLua type.lua
 sharerLua: sharer.lua
 space: spaceHs
@@ -35,14 +52,14 @@ type.c: luax.so show.lua type.gen
 type.h: luax.so show.lua type.gen
 type.hs: luax.so show.lua type.gen
 type.lua: luax.so show.lua type.gen
-typeC.o: face.h type.c type.h
+typeC.o: face.h proto.h type.c type.h
 typer.c: luax.so show.lua test.lua typer.gen
 typer.h: luax.so show.lua test.lua typer.gen
 typer.hs: luax.so show.lua test.lua typer.gen
 typer.log: luax.so typer.lua typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
-typerC.o: face.h typer.c typer.h
+typerC.o: face.h proto.h typer.c typer.h
 typerHs: face.hs faceC.o protoC.o typer.hs
 typerLua: typer.lua
 typra.log: luax.so show.lua test.lua typra.lua typraLua

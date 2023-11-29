@@ -78,13 +78,25 @@ sharer.log:
 %Sw: %Sw.o
 	$(SWC) -o $@ $< $(filter %C.o %.so %Cpp.o,$^) -lc++ ${LIBRARIES} ${LIBRARYPATH}
 
+ifeq ($(UNAME),Linux)
 %.so: %C.o
 	$(CXX) -o $@ -shared $(filter %C.o %Cpp.o,$^)
+endif
+ifeq ($(UNAME),Darwin)
+%.so: %C.o
+	$(CXX) -o $@ -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+endif
 
 %C.o: %.c
 	$(CC) -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
+ifeq ($(UNAME),Linux)
 %Cpp.o: %.cpp
 	$(CXX) -o $@ -c -fPIC $< ${INCLUDEPATH}
+endif
+ifeq ($(UNAME),Darwin)
+%Cpp.o: %.cpp
+	$(CXX) -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
+endif
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 
