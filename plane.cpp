@@ -1,5 +1,4 @@
 extern "C" {
-#include <lua.h>
 #include "datx.h"
 void planeDupstr(char **ptr, int len, int idx, int loc);
 void planeInsstr(const char *src, int len, int idx, int loc);
