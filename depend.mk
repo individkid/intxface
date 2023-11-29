@@ -21,7 +21,7 @@ luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metal: metalSw
 metal.metallib: metal.g
-metalSw: datxC.o faceC.o metalSw.o metxC.o planeC.o protoC.o typeC.o wrapCpp.o
+metalSw: datxC.o faceC.o metalSw.o metxC.o planeC.o planeCpp.o protoC.o typeC.o wrapCpp.o
 metalSw.o: face.h metal.sw plane.h proto.h type.h
 metxC.o: metx.c metx.h
 page: pageSw
@@ -31,6 +31,7 @@ pipe: pipeSw
 pipeSw: pipeSw.o
 pipeSw.o: pipe.sw
 planeC.o: datx.h face.h metx.h plane.c plane.h proto.h type.h
+planeCpp.o: datx.h plane.cpp proto.h wrap.h
 planer.log: luax.so metal.metallib metalSw planer.lua planerLua type.lua
 planerLua: planer.lua
 planra.log: planraC
@@ -52,7 +53,7 @@ type.c: luax.so show.lua type.gen
 type.h: luax.so show.lua type.gen
 type.hs: luax.so show.lua type.gen
 type.lua: luax.so show.lua type.gen
-typeC.o: face.h proto.h type.c type.h
+typeC.o: face.h type.c type.h
 typer.c: luax.so show.lua test.lua typer.gen
 typer.h: luax.so show.lua test.lua typer.gen
 typer.hs: luax.so show.lua test.lua typer.gen

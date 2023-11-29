@@ -1,12 +1,6 @@
 #include <stdint.h>
 typedef void (*rktype)(void *dat);
 typedef int (*rltype)(void **dat, const char *str);
-typedef void (*cgtype)(int idx0, int idx1);
-typedef int (*tltype)(int arg);
-typedef void (*sftype)(char **str, int len, int idx, int loc);
-typedef void (*rptype)(const char *src, int len, int idx, int loc);
-typedef void (*rqtype)(int len, int idx, int loc);
-typedef void (*hftype)(const char *val);
 enum Callback {ChangedCb,CallerCb,SetcfgCb,GetcfgCb,DupstrCb,InsstrCb,DelstrCb,OutstrCb,Callbacks};
 int datxSub();
 void **datxDat(int sub);
@@ -43,9 +37,3 @@ int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
 void datxCaller(rltype fnc);
-void datxSetcfg(cgtype fnc);
-void datxGetcfg(tltype fnc);
-void datxDupstr(sftype fnc);
-void datxInsstr(rptype fnc);
-void datxDelstr(rqtype fnc);
-void datxOutstr(hftype fnc);

@@ -818,10 +818,9 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	// wrapPlane(); // TODO delete following 4 lines when datxUnwrap is used instead of function pointers in datx.c
-	datxDupstr(planeDupstr); datxOutstr(planeOutstr);
-	datxInsstr(planeInsstr); datxDelstr(planeDelstr);
-	datxSetcfg(planeSetcfg); datxGetcfg(planeGetcfg);
+	wrapPlane();
+	// TODO delete following lines when datxUnwrap is used instead of function pointers in datx.c
+	// datxDupstr(planeDupstr); datxOutstr(planeOutstr); datxInsstr(planeInsstr); datxDelstr(planeDelstr); datxGetcfg(planeGetcfg); datxSetcfg(planeSetcfg);
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;

@@ -4,11 +4,8 @@ void planeDupstr(char **ptr, int len, int idx, int loc);
 void planeInsstr(const char *src, int len, int idx, int loc);
 void planeDelstr(int len, int idx, int loc);
 void planeOutstr(const char *str);
-void planeAddarg(const char *str);
 void planeSetcfg(int val, int sub);
 int planeGetcfg(int sub);
-void planeValstr(char **val, const char *key);
-void planeSavstr(const char *val, const char *key);
 void datxWrap(enum Callback cb, const struct Close *arg);
 void wrapPlane();
 }

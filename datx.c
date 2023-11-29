@@ -11,24 +11,21 @@ int unique = 0;
 void *prefix = 0;
 rktype datxNoteFp = 0;
 rltype datxCallFp = 0;
-cgtype datxSetFp = 0;
-tltype datxGetFp = 0;
-sftype datxDupFp = 0;
-rptype datxInsFp = 0;
-rqtype datxDelFp = 0;
-hftype datxOutFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
 int datxSub0 = 0;
 int datxSub1 = 0;
 int datxSub2 = 0;
+int datxSub3 = 0;
 int datxIdx0 = 0;
 int datxIdx1 = 0;
 int datxIdx2 = 0;
+int datxIdx3 = 0;
 void **datxDat0 = 0;
 void **datxDat1 = 0;
 void **datxDat2 = 0;
+void **datxDat3 = 0;
 int sizs = 0;
 int *typs = 0;
 void **boxs = 0;
@@ -47,6 +44,7 @@ void **datxSwitch(int i)
 	case (0): return datxDat0;
 	case (1): return datxDat1;
 	case (2): return datxDat2;
+	case (3): return datxDat3;
 	default: ERROR();}
 	return 0;
 }
@@ -54,14 +52,13 @@ void wrapCallback(const struct Close *arg);
 int datxUnwrap(enum Callback cb)
 {
 	const struct Close *arg = ptrx[cb];
-	printf("datxUnwrap %d %d %d\n",cb,arg->n,arg->m);
 	for (int i = 0; i < arg->n; i++) switch (arg->a[i].t) {
-		case (Itype): arg->a[i].i = *datxIntz(0,datxSwitch(i)); break;
-		case (Jtype): arg->a[i].j = *datxInt32z(0,datxSwitch(i)); break;
-		case (Ktype): arg->a[i].k = *datxNewz(0,datxSwitch(i)); break;
-		case (Mtype): arg->a[i].m = *datxNumz(0,datxSwitch(i)); break;
-		case (Ntype): arg->a[i].n = *datxOldz(0,datxSwitch(i)); break;
-		case (Utype): arg->a[i].u = datxChrz(0,datxSwitch(i)); break;
+		case (Itype): arg->a[i].i = *datxIntz(0,*datxSwitch(i)); break;
+		case (Jtype): arg->a[i].j = *datxInt32z(0,*datxSwitch(i)); break;
+		case (Ktype): arg->a[i].k = *datxNewz(0,*datxSwitch(i)); break;
+		case (Mtype): arg->a[i].m = *datxNumz(0,*datxSwitch(i)); break;
+		case (Ntype): arg->a[i].n = *datxOldz(0,*datxSwitch(i)); break;
+		case (Utype): arg->a[i].u = datxChrz(0,*datxSwitch(i)); break;
 		default: ERROR();}
 	wrapCallback(arg);
 	for (int i = 0; i < arg->m; i++) if (arg->c[i] == 0) switch (arg->b[i].t) {
@@ -77,7 +74,6 @@ int datxUnwrap(enum Callback cb)
 }
 void datxWrap(enum Callback cb, const struct Close *arg)
 {
-	printf("datxWrap %d %p\n",cb,arg);
 	ptrx[cb] = arg;
 }
 int datxSub()
@@ -137,16 +133,19 @@ int datxWriteFp(int fildes, const void *buf, int nbyte)
 void datxSingle()
 {
 	if (datxSubs) return;
-	datxSubs = 3;
+	datxSubs = 4;
 	datxSub0 = datxSub();
 	datxSub1 = datxSub();
 	datxSub2 = datxSub();
+	datxSub3 = datxSub();
 	datxIdx0 = puntInit(datxSub0,datxSub0,datxReadFp,datxWriteFp);
 	datxIdx1 = puntInit(datxSub1,datxSub1,datxReadFp,datxWriteFp);
 	datxIdx2 = puntInit(datxSub2,datxSub2,datxReadFp,datxWriteFp);
+	datxIdx3 = puntInit(datxSub3,datxSub3,datxReadFp,datxWriteFp);
 	datxDat0 = datxDat(datxSub0);
 	datxDat1 = datxDat(datxSub1);
 	datxDat2 = datxDat(datxSub2);
+	datxDat3 = datxDat(datxSub3);
 }
 void datxSplit(void **pre, void **suf, const void *dat, int len)
 {
@@ -743,14 +742,15 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		else if (typ == identType("Old") && typ0 == identType("Int32")) datxOld(dat,*datxInt32z(0,*dat));
 		else if (typ == identType("Old") && typ0 == identType("Num")) datxOld(dat,*datxNumz(0,*dat));} break;
 	case (GetOp): {
-		if (datxGetFp == 0) ERROR();
+		datxInt(datxDat0,exp->cfg); if (!ptrx[GetcfgCb]) ERROR(); datxUnwrap(GetcfgCb);
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxGetFp(exp->cfg));} break;
+		assignDat(dat,*datxDat0);} break;
 	case (SetOp): {
-		int typ0 = 0; if (datxSetFp == 0) ERROR();
+		int typ0 = 0;
 		typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ0 != identType("Int")) ERROR();
-		datxSetFp(*datxIntz(0,*dat),exp->cgs);} break;
+		assignDat(datxDat0,*dat); datxInt(datxDat1,exp->cgs);
+		if (!ptrx[SetcfgCb]) ERROR(); datxUnwrap(SetcfgCb);} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
@@ -788,15 +788,19 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(&dat0,exp->dup+5,identType("Int")); if (typ0 != identType("Int")) ERROR(); jdx = *datxIntz(0,dat0);
 		datxDatexe(src,*dat,rev,fwd,idx,jdx);} break;
 	case (InpOp): {
-		int typ0 = 0; char *str = 0;
-		if (!datxDupFp) ERROR(); datxDupFp(&str,-1,2,0); typ0 = identType("Str"); datxStr(dat,str); free(str);
+		int typ0 = 0;
+		datxInt(datxDat0,-1); datxInt(datxDat1,2); datxInt(datxDat2,0);
+		if (!ptrx[DupstrCb]) ERROR(); datxUnwrap(DupstrCb);
+		typ0 = identType("Str"); assignDat(dat,*datxDat0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (DupOp): {
 		int typ0 = 0; void *dat0 = 0; char *str = 0; int len = 0; int idx = 0; int loc = 0;
 		typ0 = datxEval(&dat0,exp->dup,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
 		typ0 = datxEval(&dat0,exp->dup+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
 		typ0 = datxEval(&dat0,exp->dup+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
-		if (!datxDupFp) ERROR(); datxDupFp(&str,len,idx,loc); typ0 = identType("Str"); datxStr(dat,str); free(str);
+		datxInt(datxDat0,len); datxInt(datxDat1,idx); datxInt(datxDat2,loc);
+		if (!ptrx[DupstrCb]) ERROR(); datxUnwrap(DupstrCb);
+		typ0 = identType("Str"); assignDat(dat,*datxDat0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (InsOp): {
 		int typ0 = 0; void *dat0 = 0; char *str = 0; int len = 0; int idx = 0; int loc = 0;
@@ -804,19 +808,21 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(&dat0,exp->ins+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
 		typ0 = datxEval(&dat0,exp->ins+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
 		typ0 = datxEval(&dat0,exp->ins+3,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
-		if (!datxInsFp) ERROR(); datxInsFp(str,len,idx,loc); free(str);
+		datxStr(datxDat0,str); free(str); datxInt(datxDat1,len); datxInt(datxDat2,idx); datxInt(datxDat3,loc);
+		if (!ptrx[InsstrCb]) ERROR(); datxUnwrap(InsstrCb);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (DelOp): {
 		int typ0 = 0; void *dat0 = 0; int len = 0; int idx = 0; int loc = 0;
 		typ0 = datxEval(&dat0,exp->del,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
 		typ0 = datxEval(&dat0,exp->del+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
 		typ0 = datxEval(&dat0,exp->del+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
-		if (!datxDelFp) ERROR(); datxDelFp(len,idx,loc);
+		datxInt(datxDat0,len); datxInt(datxDat1,idx); datxInt(datxDat2,loc);
+		if (!ptrx[DelstrCb]) ERROR(); datxUnwrap(DelstrCb);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (OutOp): {
-		int typ0 = 0; void *dat0 = 0; char *str = 0;
-		typ0 = datxEval(&dat0,exp->out,identType("Str")); if (typ0 != identType("Str")) ERROR(); assignStr(&str,datxChrz(0,dat0));
-		if (!datxOutFp) ERROR(); datxOutFp(str); free(str);
+		int typ0 = 0;
+		typ0 = datxEval(datxDat0,exp->out,identType("Str")); if (typ0 != identType("Str")) ERROR();
+		if (!ptrx[OutstrCb]) ERROR(); datxUnwrap(OutstrCb);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (FldOp): {
 		struct Hetgen val = {0}; struct Homgen str = {0}; struct Homgen idx = {0};
@@ -969,28 +975,4 @@ void datxChanged(rktype fnc)
 void datxCaller(rltype fnc)
 {
 	datxCallFp = fnc;
-}
-void datxSetcfg(cgtype fnc)
-{
-	datxSetFp = fnc;
-}
-void datxGetcfg(tltype fnc)
-{
-	datxGetFp = fnc;
-}
-void datxDupstr(sftype fnc)
-{
-	datxDupFp = fnc;
-}
-void datxInsstr(rptype fnc)
-{
-	datxInsFp = fnc;
-}
-void datxDelstr(rqtype fnc)
-{
-	datxDelFp = fnc;
-}
-void datxOutstr(hftype fnc)
-{
-	datxOutFp = fnc;
 }
