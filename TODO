@@ -4,6 +4,13 @@ Add pierce, transform, refine, additive, subtractive to planer.lua.
 Add mouse/roller scale/translate/rotate ortho/focal/normal to planer.lua.
 Add vulkanCpp to planer.lua.
 
+Sculpt mouse left button start stop or perform actions.
+Right mouse buttons undo the last left mouse button.
+Mouse motion or roller continues the started action.
+Mouse motion or roller adjust the next perfomed action.
+For example, roller increases or decreases the distance of a random cursor warp
+performed after a random plane through the pierce point is added.
+
 Augment struct Event with struct Sound,
 envelopes of fundamentals harmonics amplitudes.
 Augment struct Event with struct Metric,

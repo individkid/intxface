@@ -4,12 +4,7 @@
 
 UNAME = $(shell uname)
 
-ifeq ($(UNAME),Linux)
-Linux: facer.log typra.log typer.log filer.log spacra.log spacer.log sharer.log hole line space share
-endif
-ifeq ($(UNAME),Darwin)
-Darwin: facer.log typra.log typer.log filer.log planra.log planer.log spacra.log spacer.log sharer.log hole line metal space pipe page share
-endif
+all: facer.log typra.log typer.log filer.log spacra.log spacer.log sharer.log hole line space share
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
