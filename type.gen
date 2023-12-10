@@ -494,14 +494,14 @@ Event = { -- for line process
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
 Uniform = {
-	{"all","Int",{},{}}, -- which subject to use
-	{"one","Int",{},{}}, -- which element to use
-	{"lon","Int",{},{}}, -- horizontal axis of cursor
-	{"lat","Int",{},{}}, -- vertical axis of cursor
-	{"pro","Int",{},{}}, -- which subject for projection
-	{"idx","Int",{},{}}, -- which plane to apply one matrix to
-	{"use","Int",{},{}}, -- which basis to use
-	{"siz","Int",{},{}}, -- size of swarm buffer
+	{"all","Int32",{},{}}, -- which subject to use
+	{"one","Int32",{},{}}, -- which element to use
+	{"lon","Int32",{},{}}, -- horizontal axis of cursor
+	{"lat","Int32",{},{}}, -- vertical axis of cursor
+	{"pro","Int32",{},{}}, -- which subject for projection
+	{"idx","Int32",{},{}}, -- which plane to apply one matrix to
+	{"use","Int32",{},{}}, -- which basis to use
+	{"siz","Int32",{},{}}, -- size of swarm buffer
 }
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle
@@ -526,6 +526,13 @@ Pierce = {
 	{"idx","Int32",{},{}},
 	{"pol","Int32",{},{}},
 	{"pad","Int32",{},{}},
+}
+Duplicate = { -- of point per triangle it is in
+	{"vec","Old",{},{4}}, -- intersection of planes
+	{"idx","Int32",{},{}}, -- triangle for subsequent
+	{"pol","Int32",{},{}}, -- polytope triangle is in
+	{"tex","Int32",{},{}}, -- texture selector
+	{"rot","Int32",{},{}}, -- texture rotation
 }
 Vector = {
 	{"vec","Old",{},{4}},
