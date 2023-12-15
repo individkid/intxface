@@ -18,6 +18,10 @@
 #include <array>
 #include <optional>
 #include <set>
+#include <queue>
+
+#include <pthread.h>
+#include <semaphore.h>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -40,9 +44,55 @@ const bool enableValidationLayers = true;
 #endif
 
 bool framebufferResized = false;
+bool escapePressed = false;
+bool enterPressed = false;
+bool otherPressed = false;
+bool windowMoving = false;
+double mouseLastx, mouseLasty;
+int windowLastx, windowLasty;
 
-static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
     framebufferResized = true;
+}
+void keypressCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (action != GLFW_PRESS || mods != 0) {
+        return;
+    }
+    if (key == GLFW_KEY_ENTER) {
+        enterPressed = true;
+    } else {
+        enterPressed = false;
+    }
+    if (key == GLFW_KEY_ESCAPE) {
+        escapePressed = true;
+        otherPressed = false;
+    } else if (otherPressed) {
+        escapePressed = false;
+        otherPressed = false;
+    } else {
+        otherPressed = true;
+    }
+}
+void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
+    if (action != GLFW_PRESS) {
+        return;
+    }
+    windowMoving = !windowMoving;
+    if (windowMoving) {
+        glfwGetCursorPos(window,&mouseLastx,&mouseLasty);
+        glfwGetWindowPos(window,&windowLastx,&windowLasty);
+    }
+}
+void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
+    double mouseNextx, mouseNexty;
+    int windowNextx, windowNexty;
+    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
+    if (windowMoving) {
+        windowNextx = windowLastx + (mouseNextx - mouseLastx);
+        windowNexty = windowLasty + (mouseNexty - mouseLasty);
+        glfwSetWindowPos(window,windowNextx,windowNexty);
+        windowLastx = windowNextx; windowLasty = windowNexty;
+    }
 }
 
 GLFWwindow *initWindow() {
@@ -53,7 +103,11 @@ GLFWwindow *initWindow() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwSetKeyCallback(window, keypressCallback);
+    glfwSetMouseButtonCallback(window,mouseClicked);
+    glfwSetCursorPosCallback(window,mouseMoved);
 
     return window;
 }
@@ -804,6 +858,138 @@ VkDeviceMemory createMemory(VkPhysicalDevice physicalDevice, VkDevice device, Vk
     return memory;
 }
 
+VkDescriptorPool createDescriptorPool(VkDevice device) {
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    VkDescriptorPool descriptorPool;
+    if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+    return descriptorPool;
+}
+
+std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, std::vector<VkBuffer> uniformBuffer, VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    std::vector<VkDescriptorSet> descriptorSets;
+    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffer[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+    }
+    return descriptorSets;
+}
+
+std::vector<VkCommandBuffer> createCommandBuffers(VkDevice device, VkCommandPool commandPool) {
+    std::vector<VkCommandBuffer> commandBuffers;
+    commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
+
+    if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate command buffers!");
+    }
+    return commandBuffers;
+}
+
+std::vector<VkSemaphore> createSemaphores(VkDevice device) {
+    std::vector<VkSemaphore> semaphores;
+    semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphores[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create semaphore!");
+        }
+    }
+    return semaphores;
+}
+
+std::vector<VkFence> createFences(VkDevice device, int count) {
+    std::vector<VkFence> fences;
+    fences.resize(count);
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (size_t i = 0; i < count; i++) {
+        if (vkCreateFence(device, &fenceInfo, nullptr, &fences[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create fence!");
+        }
+    }
+    return fences;
+}
+
+struct WaitForFences {
+    std::vector<VkFence> fences;
+    VkDevice device;
+    sem_t semaphore;
+    pthread_t thread;
+};
+void *waitForFence(void *arg) {
+    WaitForFences *fences = (WaitForFences*)arg;
+    while (1) {
+        if (sem_wait(&fences->semaphore) != 0) {
+            throw std::runtime_error("cannot wait for semaphore!");
+        }
+        if (fences->fences.empty()) {
+            break; // TODO sem_wait instead of vkWaitForFences
+        }
+        VkFence copy = fences->fences.front();
+        if (sem_post(&fences->semaphore) != 0) {
+            throw std::runtime_error("cannot post to semaphore!");
+        }
+        VkResult result = vkWaitForFences(fences->device,1,&copy,0,1000000000ull);
+        if (result == VK_ERROR_DEVICE_LOST) {
+            throw std::runtime_error("device lost on wait for fence!");
+        }
+        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
+            throw std::runtime_error("failed to wait for fences!");
+        }
+        if (result == VK_SUCCESS) {
+            glfwPostEmptyEvent();
+        }
+    }
+    return 0;
+}
+
 class HelloTriangleApplication {
 public:
     void run(bool enableValidationLayers) {
@@ -861,6 +1047,7 @@ public:
         vkBindBufferMemory(device, vertexBuffer, vertexMemory, 0);
         stagingMapped = createMapped(device,stagingMemory,vertexBufferSize);
         memcpy(stagingMapped, vertices.data(), (size_t) vertexBufferSize);
+        // TODO wait for vertex array from pipe
         copyBuffer(device, commandPool, graphicsQueue, stagingBuffer, vertexBuffer, vertexBufferSize);
 
         uniformBufferSize = sizeof(UniformBufferObject);
@@ -876,49 +1063,72 @@ public:
             uniformMapped[i] = createMapped(device,uniformMemory[i],uniformBufferSize);
         }
 
-        createDescriptorPool();
-        createDescriptorSets();
-        createCommandBuffers();
-        createSyncObjects();
+        descriptorPool = createDescriptorPool(device);
+        descriptorSets = createDescriptorSets(device,uniformBuffer,descriptorSetLayout,descriptorPool);
+        commandBuffers = createCommandBuffers(device,commandPool);
+        imageAvailableSemaphores = createSemaphores(device);
+        renderFinishedSemaphores = createSemaphores(device);
+        inFlightFences = createFences(device,MAX_FRAMES_IN_FLIGHT);
 
-        mainLoop();
-        cleanup();
+        fenceArgument.device = device;
+        if (sem_init(&fenceArgument.semaphore, 0, 1) != 0 ||
+            pthread_create(&fenceArgument.thread,0,waitForFence,&fenceArgument) != 0) {
+            throw std::runtime_error("failed to create thread!");
+        }
+        while (!escapePressed || !enterPressed) {
+            // TODO wait instead of poll
+            glfwPollEvents();
+            drawFrame();
+        }
+        if (pthread_join(fenceArgument.thread,0) != 0 ||
+            sem_destroy(&fenceArgument.semaphore) != 0) {
+            throw std::runtime_error("failed to join thread!");
+        }
+
+        vkDeviceWaitIdle(device);
+        cleanupSwapChain();
+
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        vkDestroyRenderPass(device, renderPass, nullptr);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroyBuffer(device, uniformBuffer[i], nullptr);
+            vkFreeMemory(device, uniformMemory[i], nullptr);
+        }
+
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
+        vkDestroyBuffer(device, vertexBuffer, nullptr);
+        vkFreeMemory(device, vertexMemory, nullptr);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingMemory, nullptr);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+            vkDestroyFence(device, inFlightFences[i], nullptr);
+        }
+
+        vkDestroyCommandPool(device, commandPool, nullptr);
+
+        vkDestroyDevice(device, nullptr);
+
+        if (enableValidationLayers) {
+            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+        }
+
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+        vkDestroyInstance(instance, nullptr);
+
+        glfwDestroyWindow(window);
+
+        glfwTerminate();
     }
 
 private:
-    void copyBuffer(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
-
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-    }
-
     GLFWwindow* window;
 
     VkInstance instance;
@@ -973,14 +1183,7 @@ private:
     std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
 
-    void mainLoop() {
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
-            drawFrame();
-        }
-
-        vkDeviceWaitIdle(device);
-    }
+    WaitForFences fenceArgument;
 
     void cleanupSwapChain() {
         for (auto framebuffer : swapChainFramebuffers) {
@@ -992,49 +1195,6 @@ private:
         }
 
         vkDestroySwapchainKHR(device, swapChain, nullptr);
-    }
-
-    void cleanup() {
-        cleanupSwapChain();
-
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        vkDestroyRenderPass(device, renderPass, nullptr);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroyBuffer(device, uniformBuffer[i], nullptr);
-            vkFreeMemory(device, uniformMemory[i], nullptr);
-        }
-
-        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-
-        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
-        vkDestroyBuffer(device, vertexBuffer, nullptr);
-        vkFreeMemory(device, vertexMemory, nullptr);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingMemory, nullptr);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-            vkDestroyFence(device, inFlightFences[i], nullptr);
-        }
-
-        vkDestroyCommandPool(device, commandPool, nullptr);
-
-        vkDestroyDevice(device, nullptr);
-
-        if (enableValidationLayers) {
-            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-        }
-
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        vkDestroyInstance(instance, nullptr);
-
-        glfwDestroyWindow(window);
-
-        glfwTerminate();
     }
 
     void recreateSwapChain() {
@@ -1058,68 +1218,6 @@ private:
         swapChainImageFormat = surfaceFormat.format;
         swapChainImageViews = createImageViews(device,swapChainImageFormat,swapChainImages);
         swapChainFramebuffers = createFramebuffers(device,swapChainExtent,swapChainImageViews,renderPass);
-    }
-
-    void createDescriptorPool() {
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
-        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor pool!");
-        }
-    }
-
-    void createDescriptorSets() {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        allocInfo.pSetLayouts = layouts.data();
-
-        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-        if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffer[i];
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-
-            VkWriteDescriptorSet descriptorWrite{};
-            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite.dstSet = descriptorSets[i];
-            descriptorWrite.dstBinding = 0;
-            descriptorWrite.dstArrayElement = 0;
-            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrite.descriptorCount = 1;
-            descriptorWrite.pBufferInfo = &bufferInfo;
-
-            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-        }
-    }
-
-    void createCommandBuffers() {
-        commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
-
-        if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
     }
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -1175,25 +1273,40 @@ private:
 
     }
 
-    void createSyncObjects() {
-        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+    void copyBuffer(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
 
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        VkCommandBuffer commandBuffer;
+        // TODO use persistent command buffer
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
 
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-                vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-                vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create synchronization objects for a frame!");
-            }
-        }
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        VkBufferCopy copyRegion{};
+        copyRegion.size = size;
+        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        // TODO enque fence for thread to wait on
+        vkQueueWaitIdle(graphicsQueue);
+
+        // TODO use persistent command buffer
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
 
     void updateUniformBuffer(uint32_t currentImage) {
@@ -1212,6 +1325,8 @@ private:
     }
 
     void drawFrame() {
+        // TODO test, deque, stage, and repeat, for copied buffers
+        // TODO return instead of wait if thread didn't wake since last time
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
         uint32_t imageIndex;
@@ -1224,11 +1339,13 @@ private:
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
+        // TODO change to use copyBuffer
         updateUniformBuffer(currentFrame);
 
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+        // TODO use staged uniform and vertex buffers for bindings
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
         VkSubmitInfo submitInfo{};
