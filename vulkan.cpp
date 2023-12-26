@@ -112,6 +112,120 @@ GLFWwindow *initWindow() {
     return window;
 }
 
+GLFWcursor *initMoveCursor(bool e, bool t, bool r, bool b, bool l) {
+    int dim = 11;
+    int hot = dim/2;
+    unsigned char pixels[dim * dim * 4];
+    memset(pixels, 0x00, sizeof(pixels));
+
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        if (k == 0 || k == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == 0 || j == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (k == hot-2 && j >= hot-1 && j <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot-2 && k >= hot-1 && k <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (k == hot+2 && j >= hot-1 && j <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot+2 && k >= hot-1 && k <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (e && k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (t && k > hot+2 && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (r && j > hot+2 && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (b && k < hot-2 && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (l && j < hot-2 && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
+    }
+ 
+    GLFWimage image;
+    image.width = dim;
+    image.height = dim;
+    image.pixels = pixels;
+ 
+    return glfwCreateCursor(&image, hot, hot);
+}
+GLFWcursor *initRotateCursor(bool e) {
+    int dim = 11;
+    int hot = dim/2;
+    unsigned char pixels[dim * dim * 4];
+    memset(pixels, 0x00, sizeof(pixels));
+
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        int diffx = j-hot;
+        int diffy = k-hot;
+        int exact = hot*hot;
+        int square = diffx*diffx + diffy*diffy;
+        bool center = k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1;
+        if (square < exact+5 && !center) pixels[k*dim*4+j*4+i] = 0xff;
+        if (e && center) pixels[k*dim*4+j*4+i] = 0xff;
+    }
+ 
+    GLFWimage image;
+    image.width = dim;
+    image.height = dim;
+    image.pixels = pixels;
+ 
+    return glfwCreateCursor(&image, hot, hot);
+}
+GLFWcursor *initTranslateCursor(bool e) {
+    int dim = 11;
+    int hot = dim/2;
+    unsigned char pixels[dim * dim * 4];
+    memset(pixels, 0x00, sizeof(pixels));
+
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        int diffx = (j>hot?j-hot:hot-j);
+        int diffy = (k>hot?k-hot:hot-k);
+        int sum = diffx + diffy;
+        bool center = k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1;
+        if (!center && sum < hot+1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (e && center) pixels[k*dim*4+j*4+i] = 0xff;
+    }
+ 
+    GLFWimage image;
+    image.width = dim;
+    image.height = dim;
+    image.pixels = pixels;
+ 
+    return glfwCreateCursor(&image, hot, hot);
+}
+GLFWcursor *initRefineCursor() {
+    int dim = 11;
+    int hot = dim/2;
+    unsigned char pixels[dim * dim * 4];
+    memset(pixels, 0x00, sizeof(pixels));
+
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        int diffx = j-hot;
+        int diffy = k-hot;
+        if (diffx == diffy) pixels[k*dim*4+j*4+i] = 0xff;
+        if (diffx == -diffy) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (k == hot) pixels[k*dim*4+j*4+i] = 0xff;
+    }
+ 
+    GLFWimage image;
+    image.width = dim;
+    image.height = dim;
+    image.pixels = pixels;
+ 
+    return glfwCreateCursor(&image, hot, hot);
+}
+GLFWcursor *initSculptCursor(bool e) {
+    int dim = 11;
+    int hot = dim/2;
+    unsigned char pixels[dim * dim * 4];
+    memset(pixels, 0x00, sizeof(pixels));
+
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        bool center = k >= hot-2 && k <= hot+2 && j >= hot-2 && j <= hot+2;
+        if ((e || !center) && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if ((e || !center) && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
+    }
+ 
+    GLFWimage image;
+    image.width = dim;
+    image.height = dim;
+    image.pixels = pixels;
+ 
+    return glfwCreateCursor(&image, hot, hot);
+}
+
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
     auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
     if (func != nullptr) {
@@ -957,33 +1071,72 @@ std::vector<VkFence> createFences(VkDevice device, int count) {
     return fences;
 }
 
+std::vector<bool> createQueued(int count) {
+    std::vector<bool> queued;
+    queued.resize(count);
+    for (size_t i = 0; i < count; i++) {
+        queued[i] = false;
+    }
+    return queued;
+}
+
 struct WaitForFences {
-    std::vector<VkFence> fences;
+    std::queue<VkFence> fences;
     VkDevice device;
+    sem_t protect;
     sem_t semaphore;
     pthread_t thread;
+    bool finish;
 };
 void *waitForFence(void *arg) {
     WaitForFences *fences = (WaitForFences*)arg;
     while (1) {
-        if (sem_wait(&fences->semaphore) != 0) {
-            throw std::runtime_error("cannot wait for semaphore!");
+        VkFence copy;
+        bool copied;
+        bool finish;
+        if (sem_wait(&fences->protect) != 0) {
+            throw std::runtime_error("cannot wait for protect!");
         }
+        finish = fences->finish;
         if (fences->fences.empty()) {
-            break; // TODO sem_wait instead of vkWaitForFences
+            copied = false;
+        } else {
+            copy = fences->fences.front();
+            copied = true;
         }
-        VkFence copy = fences->fences.front();
-        if (sem_post(&fences->semaphore) != 0) {
-            throw std::runtime_error("cannot post to semaphore!");
+        if (sem_post(&fences->protect) != 0) {
+            throw std::runtime_error("cannot post to protect!");
         }
-        VkResult result = vkWaitForFences(fences->device,1,&copy,0,1000000000ull);
-        if (result == VK_ERROR_DEVICE_LOST) {
-            throw std::runtime_error("device lost on wait for fence!");
+        if (finish) {
+std::cout << "finish set" << std::endl;
+            break;
         }
-        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
-            throw std::runtime_error("failed to wait for fences!");
-        }
-        if (result == VK_SUCCESS) {
+        if (copied) {
+std::cout << "wait fence" << std::endl;
+            VkResult result = vkWaitForFences(fences->device,1,&copy,VK_TRUE,1000000000ull/10ull);
+std::cout << "waited fence" << std::endl;
+            if (result == VK_ERROR_DEVICE_LOST) {
+                throw std::runtime_error("device lost on wait for fence!");
+            }
+            if (result != VK_SUCCESS && result != VK_TIMEOUT) {
+                throw std::runtime_error("failed to wait for fences!");
+            }
+            if (result == VK_SUCCESS) {
+std::cout << "pop fence" << std::endl;
+                if (sem_wait(&fences->protect) != 0) {
+                    throw std::runtime_error("cannot wait for protect!");
+                }
+                fences->fences.pop();
+                if (sem_post(&fences->protect) != 0) {
+                    throw std::runtime_error("cannot post to protect!");
+                }
+                glfwPostEmptyEvent();
+            }
+        } else {
+std::cout << "wait semaphore" << std::endl;
+            if (sem_wait(&fences->semaphore) != 0) {
+                throw std::runtime_error("cannot wait for semaphore!");
+            }
             glfwPostEmptyEvent();
         }
     }
@@ -994,6 +1147,14 @@ class HelloTriangleApplication {
 public:
     void run(bool enableValidationLayers) {
         window = initWindow();
+        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
+        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
+        for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = initMoveCursor(e,t,r,b,l);
+        for (int e = 0; e < 2; e++) rotateCursor[e] = initRotateCursor(e);
+        for (int e = 0; e < 2; e++) translateCursor[e] = initTranslateCursor(e);
+        refineCursor = initRefineCursor();
+        for (int e = 0; e < 2; e++) sculptCursor[e] = initSculptCursor(e);
+        glfwSetCursor(window,moveCursor[false][true][true][true][true]);
         VkDebugUtilsMessengerCreateInfoEXT debugInfo = populateDebugMessengerCreateInfo();
         instance = createInstance(enableValidationLayers,debugInfo);
         if (enableValidationLayers) debugMessenger = setupDebugMessenger(instance,debugInfo);
@@ -1069,19 +1230,30 @@ public:
         imageAvailableSemaphores = createSemaphores(device);
         renderFinishedSemaphores = createSemaphores(device);
         inFlightFences = createFences(device,MAX_FRAMES_IN_FLIGHT);
+        inFlightQueued = createQueued(MAX_FRAMES_IN_FLIGHT);
 
         fenceArgument.device = device;
-        if (sem_init(&fenceArgument.semaphore, 0, 1) != 0 ||
+        fenceArgument.finish = false;
+        if (sem_init(&fenceArgument.protect, 0, 1) != 0 ||
+            sem_init(&fenceArgument.semaphore, 0, 0) != 0 ||
             pthread_create(&fenceArgument.thread,0,waitForFence,&fenceArgument) != 0) {
             throw std::runtime_error("failed to create thread!");
         }
         while (!escapePressed || !enterPressed) {
-            // TODO wait instead of poll
-            glfwPollEvents();
             drawFrame();
+            glfwWaitEvents();
         }
-        if (pthread_join(fenceArgument.thread,0) != 0 ||
-            sem_destroy(&fenceArgument.semaphore) != 0) {
+        if (sem_wait(&fenceArgument.protect) != 0) {
+            throw std::runtime_error("cannot wait for protect!");
+        }
+        fenceArgument.finish = true;
+        if (sem_post(&fenceArgument.protect) != 0) {
+            throw std::runtime_error("cannot post to protect!");
+        }
+        if (sem_post(&fenceArgument.semaphore) != 0 ||
+            pthread_join(fenceArgument.thread,0) != 0 ||
+            sem_destroy(&fenceArgument.semaphore) != 0 ||
+            sem_destroy(&fenceArgument.protect) != 0) {
             throw std::runtime_error("failed to join thread!");
         }
 
@@ -1123,13 +1295,24 @@ public:
         vkDestroySurfaceKHR(instance, surface, nullptr);
         vkDestroyInstance(instance, nullptr);
 
+        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
+        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(moveCursor[e][t][r][b][l]);
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(rotateCursor[e]);
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(translateCursor[e]);
+        glfwDestroyCursor(refineCursor);
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
         glfwDestroyWindow(window);
-
         glfwTerminate();
     }
 
 private:
     GLFWwindow* window;
+    GLFWcursor* moveCursor[2][2][2][2][2];
+    GLFWcursor* rotateCursor[2];
+    GLFWcursor* translateCursor[2];
+    GLFWcursor* refineCursor;
+    GLFWcursor* sculptCursor[2];
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -1181,6 +1364,7 @@ private:
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
+    std::vector<bool> inFlightQueued;
     uint32_t currentFrame = 0;
 
     WaitForFences fenceArgument;
@@ -1326,11 +1510,32 @@ private:
 
     void drawFrame() {
         // TODO test, deque, stage, and repeat, for copied buffers
-        // TODO return instead of wait if thread didn't wake since last time
-        vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+        VkResult result;
+        result = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, 0);
+        if (result == VK_ERROR_DEVICE_LOST) {
+            throw std::runtime_error("device lost on wait for fence!");
+        }
+        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
+            throw std::runtime_error("failed to wait for fences!");
+        }
+        if (result == VK_TIMEOUT && !inFlightQueued[currentFrame]) {
+            if (sem_wait(&fenceArgument.protect) != 0) {
+                throw std::runtime_error("cannot wait for protect!");
+            }
+            fenceArgument.fences.push(inFlightFences[currentFrame]);
+            inFlightQueued[currentFrame] = true;
+            if (sem_post(&fenceArgument.protect) != 0) {
+                throw std::runtime_error("cannot post to protect!");
+            }
+        }
+        if (result == VK_TIMEOUT) {
+std::cout << "now queued" << std::endl;
+            return;
+        }
+        inFlightQueued[currentFrame] = false;
 
         uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+        result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             recreateSwapChain();
