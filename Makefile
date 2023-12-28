@@ -8,7 +8,8 @@ all: facer.log typra.log typer.log filer.log spacra.log spacer.log sharer.log ho
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
-LIBRARIES = -llua -lportaudio
+LIBRARIES = -llua -lportaudio -lglfw -lvulkan
+# -ldl -lpthread -lX11 -lXrandr
 
 ifeq ($(UNAME),Linux)
 	CXX = g++
@@ -65,7 +66,7 @@ sharer.log:
 %C: %C.o
 	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Cpp: %Cpp.o
-	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
 	$(GHC) -o $@ $(filter %.hs %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
@@ -103,6 +104,12 @@ ifeq ($(UNAME),Darwin)
 %.metal: %.g
 	cp $< $@
 endif
+ifeq ($(UNAME),Linux)
+%.vsv: %.vg
+	glslc -fshader-stage=vert $< -o $@
+%.fsv: %.fg
+	glslc -fshader-stage=frag $< -o $@
+endif
 
 %.h: %.gen
 	lua $*.gen $@
@@ -125,5 +132,6 @@ clean:
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
-	rm -f *.o *.so *.hi *_stub.h *.metal *.metallib *.dep
+	rm -f *.o *.so *.hi *_stub.h
+	rm -f *.metal *.metallib *.vsv *.fsv
 

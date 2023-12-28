@@ -739,8 +739,8 @@ std::vector<char> readFile(const std::string& filename) {
 }
 
 VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout) {
-    auto vertShaderCode = readFile("shaders/vert.spv");
-    auto fragShaderCode = readFile("shaders/frag.spv");
+    auto vertShaderCode = readFile("vulkan.vsv");
+    auto fragShaderCode = readFile("vulkan.fsv");
 
     VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
@@ -1241,7 +1241,7 @@ public:
         }
         while (!escapePressed || !enterPressed) {
             drawFrame();
-            glfwWaitEvents();
+            glfwWaitEventsTimeout(0.01);
         }
         if (sem_wait(&fenceArgument.protect) != 0) {
             throw std::runtime_error("cannot wait for protect!");
