@@ -19,7 +19,7 @@
 #include <optional>
 #include <set>
 #include <queue>
-
+#include <functional>
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -48,6 +48,7 @@ bool escapePressed = false;
 bool enterPressed = false;
 bool otherPressed = false;
 bool windowMoving = false;
+bool drawCalled = true;
 double mouseLastx, mouseLasty;
 int windowLastx, windowLasty;
 
@@ -131,12 +132,12 @@ GLFWcursor *initMoveCursor(bool e, bool t, bool r, bool b, bool l) {
         if (b && k < hot-2 && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
         if (l && j < hot-2 && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
     }
- 
+
     GLFWimage image;
     image.width = dim;
     image.height = dim;
     image.pixels = pixels;
- 
+
     return glfwCreateCursor(&image, hot, hot);
 }
 GLFWcursor *initRotateCursor(bool e) {
@@ -154,12 +155,12 @@ GLFWcursor *initRotateCursor(bool e) {
         if (square < exact+5 && !center) pixels[k*dim*4+j*4+i] = 0xff;
         if (e && center) pixels[k*dim*4+j*4+i] = 0xff;
     }
- 
+
     GLFWimage image;
     image.width = dim;
     image.height = dim;
     image.pixels = pixels;
- 
+
     return glfwCreateCursor(&image, hot, hot);
 }
 GLFWcursor *initTranslateCursor(bool e) {
@@ -176,12 +177,12 @@ GLFWcursor *initTranslateCursor(bool e) {
         if (!center && sum < hot+1) pixels[k*dim*4+j*4+i] = 0xff;
         if (e && center) pixels[k*dim*4+j*4+i] = 0xff;
     }
- 
+
     GLFWimage image;
     image.width = dim;
     image.height = dim;
     image.pixels = pixels;
- 
+
     return glfwCreateCursor(&image, hot, hot);
 }
 GLFWcursor *initRefineCursor() {
@@ -198,12 +199,12 @@ GLFWcursor *initRefineCursor() {
         if (j == hot) pixels[k*dim*4+j*4+i] = 0xff;
         if (k == hot) pixels[k*dim*4+j*4+i] = 0xff;
     }
- 
+
     GLFWimage image;
     image.width = dim;
     image.height = dim;
     image.pixels = pixels;
- 
+
     return glfwCreateCursor(&image, hot, hot);
 }
 GLFWcursor *initSculptCursor(bool e) {
@@ -217,12 +218,12 @@ GLFWcursor *initSculptCursor(bool e) {
         if ((e || !center) && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
         if ((e || !center) && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
     }
- 
+
     GLFWimage image;
     image.width = dim;
     image.height = dim;
     image.pixels = pixels;
- 
+
     return glfwCreateCursor(&image, hot, hot);
 }
 
@@ -241,21 +242,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
         func(instance, debugMessenger, pAllocator);
     }
 }
-
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphicsFamily;
-    std::optional<uint32_t> presentFamily;
-
-    bool isComplete() {
-        return graphicsFamily.has_value() && presentFamily.has_value();
-    }
-};
-
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
-};
 
 struct Vertex {
     glm::vec2 pos;
@@ -298,10 +284,6 @@ const std::vector<Vertex> vertices = {
     {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-};
-
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0
 };
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -413,9 +395,9 @@ VkSurfaceKHR createSurface(GLFWwindow* window, VkInstance instance) {
     return surface;
 }
 
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    QueueFamilyIndices indices;
-
+std::optional<uint32_t> findGraphicsFamily(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> presentFamily;
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
@@ -425,24 +407,53 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfa
     int i = 0;
     for (const auto& queueFamily : queueFamilies) {
         if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            indices.graphicsFamily = i;
+            graphicsFamily = i;
         }
 
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 
         if (presentSupport) {
-            indices.presentFamily = i;
+            presentFamily = i;
         }
 
-        if (indices.isComplete()) {
+        if (graphicsFamily.has_value() && presentFamily.has_value()) {
             break;
         }
 
         i++;
     }
+    return graphicsFamily;
+}
+std::optional<uint32_t> findPresentFamily(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> presentFamily;
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
-    return indices;
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    int i = 0;
+    for (const auto& queueFamily : queueFamilies) {
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            graphicsFamily = i;
+        }
+
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+        if (presentSupport) {
+            presentFamily = i;
+        }
+
+        if (graphicsFamily.has_value() && presentFamily.has_value()) {
+            break;
+        }
+
+        i++;
+   }
+    return presentFamily;
 }
 
 bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
@@ -461,42 +472,49 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
     return requiredExtensions.empty();
 }
 
-SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    SwapChainSupportDetails details;
-
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-
+VkSurfaceCapabilitiesKHR querySurfaceCapabilities(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &surfaceCapabilities);
+    return surfaceCapabilities;
+}
+std::vector<VkSurfaceFormatKHR> querySurfaceFormats(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    std::vector<VkSurfaceFormatKHR> surfaceFormats;
     uint32_t formatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-
     if (formatCount != 0) {
-        details.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+        surfaceFormats.resize(formatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, surfaceFormats.data());
     }
-
+    return surfaceFormats;
+}
+std::vector<VkPresentModeKHR> queryPresentModes(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    std::vector<VkPresentModeKHR> presentModes;
     uint32_t presentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-
     if (presentModeCount != 0) {
-        details.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+        presentModes.resize(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
     }
-
-    return details;
+    return presentModes;
 }
 
 bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    QueueFamilyIndices indices = findQueueFamilies(device,surface);
-
-    bool extensionsSupported = checkDeviceExtensionSupport(device);
-
-    bool swapChainAdequate = false;
-    if (extensionsSupported) {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device,surface);
-        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    if (!checkDeviceExtensionSupport(device)) {
+        return false;
     }
-
-    return indices.isComplete() && extensionsSupported && swapChainAdequate;
+    if (querySurfaceFormats(device,surface).empty()) {
+        return false;
+    }
+    if (queryPresentModes(device,surface).empty()) {
+        return false;
+    }
+    if (!findGraphicsFamily(device,surface).has_value()) {
+        return false;
+    }
+    if (!findPresentFamily(device,surface).has_value()) {
+        return false;
+    }
+    return true;
 }
 
 VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface) {
@@ -524,16 +542,24 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface) {
     return physicalDevice;
 }
 
-VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, std::set<uint32_t> uniqueQueueFamilies) {
+VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily) {
     VkDevice device;
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
     float queuePriority = 1.0f;
-    for (uint32_t queueFamily : uniqueQueueFamilies) {
+    {
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = queueFamily;
+        queueCreateInfo.queueFamilyIndex = graphicsFamily;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
+    if (presentFamily != graphicsFamily) {
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = presentFamily;
         queueCreateInfo.queueCount = 1;
         queueCreateInfo.pQueuePriorities = &queuePriority;
         queueCreateInfos.push_back(queueCreateInfo);
@@ -566,7 +592,7 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, std::set<uint32_t>
     return device;
 }
 
-VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, SwapChainSupportDetails swapChainSupport, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapChainExtent, uint32_t minImageCount, uint32_t queueFamilyIndices[]) {
+VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapChainExtent, uint32_t minImageCount, uint32_t queueFamilyIndices[]) {
 
     VkSwapchainKHR swapChain;
 
@@ -590,7 +616,7 @@ VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device,
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
-    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+    createInfo.preTransform = querySurfaceCapabilities(physicalDevice,surface).currentTransform;
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = presentMode;
     createInfo.clipped = VK_TRUE;
@@ -871,11 +897,11 @@ std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkExtent2D swapCh
     return swapChainFramebuffers;
 }
 
-VkCommandPool createCommandPool(VkDevice device, QueueFamilyIndices familyIndices) {
+VkCommandPool createCommandPool(VkDevice device, uint32_t graphicsFamily) {
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = familyIndices.graphicsFamily.value();
+    poolInfo.queueFamilyIndex = graphicsFamily;
 
     VkCommandPool commandPool;
     if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
@@ -1080,31 +1106,34 @@ std::vector<bool> createQueued(int count) {
     return queued;
 }
 
-struct WaitForFences {
-    std::queue<VkFence> fences;
+typedef void voidFunc();
+struct fenceThreadArgument {
+    std::queue<VkFence> fence;
+    std::queue<std::function<voidFunc> > func;
+    std::queue<std::function<voidFunc> > resp;
     VkDevice device;
     sem_t protect;
     sem_t semaphore;
     pthread_t thread;
     bool finish;
 };
-void *waitForFence(void *arg) {
-    WaitForFences *fences = (WaitForFences*)arg;
+void *fenceThread(void *ptr) {
+    fenceThreadArgument *arg = (fenceThreadArgument*)ptr;
     while (1) {
-        VkFence copy;
+        VkFence fence;
         bool copied;
         bool finish;
-        if (sem_wait(&fences->protect) != 0) {
+        if (sem_wait(&arg->protect) != 0) {
             throw std::runtime_error("cannot wait for protect!");
         }
-        finish = fences->finish;
-        if (fences->fences.empty()) {
+        finish = arg->finish;
+        if (arg->fence.empty()) {
             copied = false;
         } else {
-            copy = fences->fences.front();
+            fence = arg->fence.front();
             copied = true;
         }
-        if (sem_post(&fences->protect) != 0) {
+        if (sem_post(&arg->protect) != 0) {
             throw std::runtime_error("cannot post to protect!");
         }
         if (finish) {
@@ -1113,28 +1142,30 @@ std::cout << "finish set" << std::endl;
         }
         if (copied) {
 std::cout << "wait fence" << std::endl;
-            VkResult result = vkWaitForFences(fences->device,1,&copy,VK_TRUE,1000000000ull/10ull);
+            VkResult result = vkWaitForFences(arg->device,1,&fence,VK_TRUE,1000000000ull/10ull);
 std::cout << "waited fence" << std::endl;
             if (result == VK_ERROR_DEVICE_LOST) {
                 throw std::runtime_error("device lost on wait for fence!");
             }
             if (result != VK_SUCCESS && result != VK_TIMEOUT) {
-                throw std::runtime_error("failed to wait for fences!");
+                throw std::runtime_error("failed to wait for fence!");
             }
             if (result == VK_SUCCESS) {
 std::cout << "pop fence" << std::endl;
-                if (sem_wait(&fences->protect) != 0) {
+                if (sem_wait(&arg->protect) != 0) {
                     throw std::runtime_error("cannot wait for protect!");
                 }
-                fences->fences.pop();
-                if (sem_post(&fences->protect) != 0) {
+                // arg->resp.push(arg->func.front());
+                // arg->func.pop();
+                arg->fence.pop();
+                if (sem_post(&arg->protect) != 0) {
                     throw std::runtime_error("cannot post to protect!");
                 }
                 glfwPostEmptyEvent();
             }
         } else {
 std::cout << "wait semaphore" << std::endl;
-            if (sem_wait(&fences->semaphore) != 0) {
+            if (sem_wait(&arg->semaphore) != 0) {
                 throw std::runtime_error("cannot wait for semaphore!");
             }
             glfwPostEmptyEvent();
@@ -1143,9 +1174,25 @@ std::cout << "wait semaphore" << std::endl;
     return 0;
 }
 
+enum BufferTag {Shared,Lookup,Stream};
+struct Buffer {
+    enum BufferTag tag;
+    int count;
+    int size;
+    void *hostptr;
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    void *mapped;
+    VkBuffer stagebuf;
+    VkDeviceMemory stagemem;
+    void *stagemap;
+    VkDescriptorSet descset;
+};
 class HelloTriangleApplication {
 public:
     void run(bool enableValidationLayers) {
+        // glfw
+std::cout << "glfw" << std::endl;
         window = initWindow();
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
@@ -1154,47 +1201,44 @@ public:
         for (int e = 0; e < 2; e++) translateCursor[e] = initTranslateCursor(e);
         refineCursor = initRefineCursor();
         for (int e = 0; e < 2; e++) sculptCursor[e] = initSculptCursor(e);
-        glfwSetCursor(window,moveCursor[false][true][true][true][true]);
+        standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+        glfwSetCursor(window,moveCursor[true][true][true][true][true]);
+
+        // debug
+std::cout << "debug" << std::endl;
         VkDebugUtilsMessengerCreateInfoEXT debugInfo = populateDebugMessengerCreateInfo();
         instance = createInstance(enableValidationLayers,debugInfo);
         if (enableValidationLayers) debugMessenger = setupDebugMessenger(instance,debugInfo);
+
+        // screen
+std::cout << "screen" << std::endl;
         surface = createSurface(window,instance);
         physicalDevice = pickPhysicalDevice(instance,surface);
-        QueueFamilyIndices familyIndices = findQueueFamilies(physicalDevice,surface);
-        std::set<uint32_t> uniqueQueueFamilies = {
-            familyIndices.graphicsFamily.value(),
-            familyIndices.presentFamily.value()};
-        device = createLogicalDevice(physicalDevice,uniqueQueueFamilies);
-        vkGetDeviceQueue(device, familyIndices.graphicsFamily.value(), 0, &graphicsQueue);
-        vkGetDeviceQueue(device, familyIndices.presentFamily.value(), 0, &presentQueue);
-        queueFamilyIndices[0] = familyIndices.graphicsFamily.value();
-        queueFamilyIndices[1] = familyIndices.presentFamily.value();
-
-        swapChainSupport = querySwapChainSupport(physicalDevice,surface);
-        minImageCount = swapChainSupport.capabilities.minImageCount + 1;
-        if (swapChainSupport.capabilities.maxImageCount > 0 &&
-            minImageCount > swapChainSupport.capabilities.maxImageCount)
-            minImageCount = swapChainSupport.capabilities.maxImageCount;
-        surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-        presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-        swapChainExtent = chooseSwapExtent(window,swapChainSupport.capabilities);
-        swapChain = createSwapChain(physicalDevice,device,surface,
-            swapChainSupport,surfaceFormat,presentMode,swapChainExtent,
-            minImageCount,queueFamilyIndices);
-        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-        swapChainImages.resize(imageCount);
-        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+        queueFamilyIndices[0] = findGraphicsFamily(physicalDevice,surface).value();
+        queueFamilyIndices[1] = findPresentFamily(physicalDevice,surface).value();
+        minImageCount = querySurfaceCapabilities(physicalDevice,surface).minImageCount + 1;
+        if (querySurfaceCapabilities(physicalDevice,surface).maxImageCount > 0 &&
+            minImageCount > querySurfaceCapabilities(physicalDevice,surface).maxImageCount)
+            minImageCount = querySurfaceCapabilities(physicalDevice,surface).maxImageCount;
+        surfaceFormat = chooseSwapSurfaceFormat(querySurfaceFormats(physicalDevice,surface));
+        presentMode = chooseSwapPresentMode(queryPresentModes(physicalDevice,surface));
         swapChainImageFormat = surfaceFormat.format;
-        swapChainImageViews = createImageViews(device,swapChainImageFormat,swapChainImages);
 
+        // gpu
+std::cout << "gpu" << std::endl;
+        device = createLogicalDevice(physicalDevice,queueFamilyIndices[0],queueFamilyIndices[1]);
+        vkGetDeviceQueue(device, queueFamilyIndices[0], 0, &graphicsQueue);
+        vkGetDeviceQueue(device, queueFamilyIndices[1], 0, &presentQueue);
         renderPass = createRenderPass(device,swapChainImageFormat);
-        swapChainFramebuffers = createFramebuffers(device,
-            swapChainExtent,swapChainImageViews,renderPass);
         descriptorSetLayout = createDescriptorSetLayout(device);
         pipelineLayout = createPipelineLayout(device,descriptorSetLayout);
         graphicsPipeline = createGraphicsPipeline(device,renderPass,pipelineLayout);
-        commandPool = createCommandPool(device,familyIndices);
+        commandPool = createCommandPool(device, findGraphicsFamily(physicalDevice,surface).value());
+        commandBuffers = createCommandBuffers(device,commandPool);
+        descriptorPool = createDescriptorPool(device);
 
+        // fetch
+std::cout << "fetch" << std::endl;
         vertexBufferSize = sizeof(vertices[0]) * vertices.size();
         stagingBuffer = createBuffer(device,vertexBufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
@@ -1208,9 +1252,43 @@ public:
         vkBindBufferMemory(device, vertexBuffer, vertexMemory, 0);
         stagingMapped = createMapped(device,stagingMemory,vertexBufferSize);
         memcpy(stagingMapped, vertices.data(), (size_t) vertexBufferSize);
-        // TODO wait for vertex array from pipe
-        copyBuffer(device, commandPool, graphicsQueue, stagingBuffer, vertexBuffer, vertexBufferSize);
 
+        { // setup
+std::cout << "setup" << std::endl;
+            VkCommandBufferAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandPool = commandPool;
+            allocInfo.commandBufferCount = 1;
+
+            VkCommandBuffer commandBuffer;
+            vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+            vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+            VkBufferCopy copyRegion{};
+            copyRegion.size = vertexBufferSize;
+            vkCmdCopyBuffer(commandBuffer, stagingBuffer, vertexBuffer, 1, &copyRegion);
+
+            vkEndCommandBuffer(commandBuffer);
+
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &commandBuffer;
+
+            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+            vkQueueWaitIdle(graphicsQueue);
+
+            vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        }
+
+        // parameter
+std::cout << "parameter" << std::endl;
         uniformBufferSize = sizeof(UniformBufferObject);
         uniformMemory.resize(MAX_FRAMES_IN_FLIGHT);
         uniformMapped.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1223,10 +1301,9 @@ public:
             vkBindBufferMemory(device, uniformBuffer[i], uniformMemory[i], 0);
             uniformMapped[i] = createMapped(device,uniformMemory[i],uniformBufferSize);
         }
-
-        descriptorPool = createDescriptorPool(device);
         descriptorSets = createDescriptorSets(device,uniformBuffer,descriptorSetLayout,descriptorPool);
-        commandBuffers = createCommandBuffers(device,commandPool);
+
+std::cout << "threads" << std::endl;
         imageAvailableSemaphores = createSemaphores(device);
         renderFinishedSemaphores = createSemaphores(device);
         inFlightFences = createFences(device,MAX_FRAMES_IN_FLIGHT);
@@ -1236,12 +1313,192 @@ public:
         fenceArgument.finish = false;
         if (sem_init(&fenceArgument.protect, 0, 1) != 0 ||
             sem_init(&fenceArgument.semaphore, 0, 0) != 0 ||
-            pthread_create(&fenceArgument.thread,0,waitForFence,&fenceArgument) != 0) {
+            pthread_create(&fenceArgument.thread,0,fenceThread,&fenceArgument) != 0) {
             throw std::runtime_error("failed to create thread!");
         }
+
+        bool doRecreate = true;
         while (!escapePressed || !enterPressed) {
-            drawFrame();
+            if (doRecreate) {
+                doRecreate = false;
+                int width = 0, height = 0;
+                glfwGetFramebufferSize(window, &width, &height);
+                while (width == 0 || height == 0) {
+                    glfwWaitEvents();
+                    glfwGetFramebufferSize(window, &width, &height);
+                }
+
+                swapChainExtent = chooseSwapExtent(window,querySurfaceCapabilities(physicalDevice,surface));
+                swapChain = createSwapChain(physicalDevice,device,surface,surfaceFormat,presentMode,swapChainExtent,minImageCount,queueFamilyIndices);
+                vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+                swapChainImages.resize(imageCount);
+                vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+                swapChainImageViews = createImageViews(device,swapChainImageFormat,swapChainImages);
+                swapChainFramebuffers = createFramebuffers(device,swapChainExtent,swapChainImageViews,renderPass);
+            }
             glfwWaitEventsTimeout(0.01);
+            // TODO sem protect deque and call
+            if (!drawCalled) {
+                continue;
+            }
+            VkResult result;
+            result = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, 0);
+            if (result == VK_ERROR_DEVICE_LOST) {
+                throw std::runtime_error("device lost on wait for fence!");
+            }
+            if (result != VK_SUCCESS && result != VK_TIMEOUT) {
+                throw std::runtime_error("failed to wait for fences!");
+            }
+            if (result == VK_TIMEOUT && !inFlightQueued[currentFrame]) {
+                if (sem_wait(&fenceArgument.protect) != 0) {
+                    throw std::runtime_error("cannot wait for protect!");
+                }
+                fenceArgument.fence.push(inFlightFences[currentFrame]);
+                inFlightQueued[currentFrame] = true;
+                if (sem_post(&fenceArgument.protect) != 0) {
+                    throw std::runtime_error("cannot post to protect!");
+                }
+            }
+            if (result == VK_TIMEOUT) {
+    std::cout << "now queued" << std::endl;
+                continue;
+            }
+            inFlightQueued[currentFrame] = false;
+
+            uint32_t imageIndex;
+            result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+            if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+                doRecreate = true;
+                vkDeviceWaitIdle(device);
+                for (auto framebuffer : swapChainFramebuffers) {
+                    vkDestroyFramebuffer(device, framebuffer, nullptr);
+                }
+                for (auto imageView : swapChainImageViews) {
+                    vkDestroyImageView(device, imageView, nullptr);
+                }
+                vkDestroySwapchainKHR(device, swapChain, nullptr);
+                continue;
+            } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+                throw std::runtime_error("failed to acquire swap chain image!");
+            }
+
+            static auto startTime = std::chrono::high_resolution_clock::now();
+
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+            UniformBufferObject ubo{};
+            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+            ubo.proj[1][1] *= -1;
+
+            memcpy(uniformMapped[currentFrame], &ubo, sizeof(ubo));
+
+            vkResetFences(device, 1, &inFlightFences[currentFrame]);
+
+            vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+            if (vkBeginCommandBuffer(commandBuffers[currentFrame], &beginInfo) != VK_SUCCESS) {
+                throw std::runtime_error("failed to begin recording command buffer!");
+            }
+
+            VkRenderPassBeginInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = renderPass;
+            renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+            renderPassInfo.renderArea.offset = {0, 0};
+            renderPassInfo.renderArea.extent = swapChainExtent;
+
+            VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+            renderPassInfo.clearValueCount = 1;
+            renderPassInfo.pClearValues = &clearColor;
+
+            vkCmdBeginRenderPass(commandBuffers[currentFrame], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = (float) swapChainExtent.width;
+            viewport.height = (float) swapChainExtent.height;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(commandBuffers[currentFrame], 0, 1, &viewport);
+
+            VkRect2D scissor{};
+            scissor.offset = {0, 0};
+            scissor.extent = swapChainExtent;
+            vkCmdSetScissor(commandBuffers[currentFrame], 0, 1, &scissor);
+
+            VkBuffer vertexBuffers[] = {vertexBuffer};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(commandBuffers[currentFrame], 0, 1, vertexBuffers, offsets);
+            vkCmdBindDescriptorSets(commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+
+            vkCmdDraw(commandBuffers[currentFrame], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+
+            vkCmdEndRenderPass(commandBuffers[currentFrame]);
+
+            if (vkEndCommandBuffer(commandBuffers[currentFrame]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to record command buffer!");
+            }
+
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+            VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
+            VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+            submitInfo.waitSemaphoreCount = 1;
+            submitInfo.pWaitSemaphores = waitSemaphores;
+            submitInfo.pWaitDstStageMask = waitStages;
+
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+
+            VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+            submitInfo.signalSemaphoreCount = 1;
+            submitInfo.pSignalSemaphores = signalSemaphores;
+
+            if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to submit draw command buffer!");
+            }
+
+            VkPresentInfoKHR presentInfo{};
+            presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+            presentInfo.waitSemaphoreCount = 1;
+            presentInfo.pWaitSemaphores = signalSemaphores;
+
+            VkSwapchainKHR swapChains[] = {swapChain};
+            presentInfo.swapchainCount = 1;
+            presentInfo.pSwapchains = swapChains;
+
+            presentInfo.pImageIndices = &imageIndex;
+
+            result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+                framebufferResized = false;
+                doRecreate = true;
+                vkDeviceWaitIdle(device);
+                for (auto framebuffer : swapChainFramebuffers) {
+                    vkDestroyFramebuffer(device, framebuffer, nullptr);
+                }
+                for (auto imageView : swapChainImageViews) {
+                    vkDestroyImageView(device, imageView, nullptr);
+                }
+                vkDestroySwapchainKHR(device, swapChain, nullptr);
+            } else if (result != VK_SUCCESS) {
+                throw std::runtime_error("failed to present swap chain image!");
+            }
+
+            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
         if (sem_wait(&fenceArgument.protect) != 0) {
             throw std::runtime_error("cannot wait for protect!");
@@ -1258,7 +1515,13 @@ public:
         }
 
         vkDeviceWaitIdle(device);
-        cleanupSwapChain();
+        for (auto framebuffer : swapChainFramebuffers) {
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
+        for (auto imageView : swapChainImageViews) {
+            vkDestroyImageView(device, imageView, nullptr);
+        }
+        vkDestroySwapchainKHR(device, swapChain, nullptr);
 
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -1283,7 +1546,6 @@ public:
             vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(device, inFlightFences[i], nullptr);
         }
-
         vkDestroyCommandPool(device, commandPool, nullptr);
 
         vkDestroyDevice(device, nullptr);
@@ -1302,6 +1564,7 @@ public:
         for (int e = 0; e < 2; e++) glfwDestroyCursor(translateCursor[e]);
         glfwDestroyCursor(refineCursor);
         for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
+        glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
         glfwTerminate();
     }
@@ -1313,6 +1576,7 @@ private:
     GLFWcursor* translateCursor[2];
     GLFWcursor* refineCursor;
     GLFWcursor* sculptCursor[2];
+    GLFWcursor* standardCursor;
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -1325,9 +1589,9 @@ private:
     VkQueue presentQueue;
 
     uint32_t queueFamilyIndices[NUM_QUEUE_FAMILIES];
-    SwapChainSupportDetails swapChainSupport;
     VkSurfaceFormatKHR surfaceFormat;
     VkPresentModeKHR presentMode;
+
     uint32_t minImageCount;
     uint32_t imageCount;
     VkSwapchainKHR swapChain;
@@ -1341,7 +1605,6 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
-
     VkCommandPool commandPool;
 
     VkBuffer stagingBuffer;
@@ -1367,246 +1630,16 @@ private:
     std::vector<bool> inFlightQueued;
     uint32_t currentFrame = 0;
 
-    WaitForFences fenceArgument;
-
-    void cleanupSwapChain() {
-        for (auto framebuffer : swapChainFramebuffers) {
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-
-        for (auto imageView : swapChainImageViews) {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
-
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
-    }
-
-    void recreateSwapChain() {
-        int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();
-        }
-
-        vkDeviceWaitIdle(device);
-
-        cleanupSwapChain();
-
-        swapChainSupport = querySwapChainSupport(physicalDevice,surface);
-        swapChainExtent = chooseSwapExtent(window,swapChainSupport.capabilities);
-        swapChain = createSwapChain(physicalDevice,device,surface,swapChainSupport,surfaceFormat,presentMode,swapChainExtent,minImageCount,queueFamilyIndices);
-        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-        swapChainImages.resize(imageCount);
-        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
-        swapChainImageFormat = surfaceFormat.format;
-        swapChainImageViews = createImageViews(device,swapChainImageFormat,swapChainImages);
-        swapChainFramebuffers = createFramebuffers(device,swapChainExtent,swapChainImageViews,renderPass);
-    }
-
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-            throw std::runtime_error("failed to begin recording command buffer!");
-        }
-
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass;
-        renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = swapChainExtent;
-
-        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
-
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = (float) swapChainExtent.width;
-            viewport.height = (float) swapChainExtent.height;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = {0, 0};
-            scissor.extent = swapChainExtent;
-            vkCmdSetScissor(commandBuffer, 0, 1, &scissor);            
-
-            VkBuffer vertexBuffers[] = {vertexBuffer};
-            VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
-            vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-
-        vkCmdEndRenderPass(commandBuffer);
-
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to record command buffer!");
-        }
-
-    }
-
-    void copyBuffer(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        // TODO use persistent command buffer
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        // TODO enque fence for thread to wait on
-        vkQueueWaitIdle(graphicsQueue);
-
-        // TODO use persistent command buffer
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-    }
-
-    void updateUniformBuffer(uint32_t currentImage) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-        UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-
-        memcpy(uniformMapped[currentImage], &ubo, sizeof(ubo));
-    }
-
-    void drawFrame() {
-        // TODO test, deque, stage, and repeat, for copied buffers
-        VkResult result;
-        result = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, 0);
-        if (result == VK_ERROR_DEVICE_LOST) {
-            throw std::runtime_error("device lost on wait for fence!");
-        }
-        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
-            throw std::runtime_error("failed to wait for fences!");
-        }
-        if (result == VK_TIMEOUT && !inFlightQueued[currentFrame]) {
-            if (sem_wait(&fenceArgument.protect) != 0) {
-                throw std::runtime_error("cannot wait for protect!");
-            }
-            fenceArgument.fences.push(inFlightFences[currentFrame]);
-            inFlightQueued[currentFrame] = true;
-            if (sem_post(&fenceArgument.protect) != 0) {
-                throw std::runtime_error("cannot post to protect!");
-            }
-        }
-        if (result == VK_TIMEOUT) {
-std::cout << "now queued" << std::endl;
-            return;
-        }
-        inFlightQueued[currentFrame] = false;
-
-        uint32_t imageIndex;
-        result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            recreateSwapChain();
-            return;
-        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-            throw std::runtime_error("failed to acquire swap chain image!");
-        }
-
-        // TODO change to use copyBuffer
-        updateUniformBuffer(currentFrame);
-
-        vkResetFences(device, 1, &inFlightFences[currentFrame]);
-
-        vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-        // TODO use staged uniform and vertex buffers for bindings
-        recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-        VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
-
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
-
-        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
-
-        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to submit draw command buffer!");
-        }
-
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = {swapChain};
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-
-        presentInfo.pImageIndices = &imageIndex;
-
-        result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-            framebufferResized = false;
-            recreateSwapChain();
-        } else if (result != VK_SUCCESS) {
-            throw std::runtime_error("failed to present swap chain image!");
-        }
-
-        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-    }
+    fenceThreadArgument fenceArgument;
 };
 
+HelloTriangleApplication app;
 int main() {
-    HelloTriangleApplication app;
-
     try {
         app.run(enableValidationLayers);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
-
     return EXIT_SUCCESS;
 }
