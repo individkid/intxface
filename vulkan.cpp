@@ -23,80 +23,65 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
-
-const int MAX_FRAMES_IN_FLIGHT = 2;
-const int NUM_QUEUE_FAMILIES = 2;
-
-const std::vector<const char*> validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
+struct WindowState {
+    bool drawCalled = true;
+    bool framebufferResized = false;
+    bool escapePressed = false;
+    bool enterPressed = false;
+    bool otherPressed = false;
+    bool windowMoving = false;
+    double mouseLastx, mouseLasty;
+    int windowLastx, windowLasty;
 };
-
-const std::vector<const char*> deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
-
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
-
-bool framebufferResized = false;
-bool escapePressed = false;
-bool enterPressed = false;
-bool otherPressed = false;
-bool windowMoving = false;
-bool drawCalled = true;
-double mouseLastx, mouseLasty;
-int windowLastx, windowLasty;
-
 void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-    framebufferResized = true;
+    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
+    windowState->framebufferResized = true;
 }
 void keypressCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
     if (action != GLFW_PRESS || mods != 0) {
         return;
     }
     if (key == GLFW_KEY_ENTER) {
-        enterPressed = true;
+        windowState->enterPressed = true;
     } else {
-        enterPressed = false;
+        windowState->enterPressed = false;
     }
     if (key == GLFW_KEY_ESCAPE) {
-        escapePressed = true;
-        otherPressed = false;
-    } else if (otherPressed) {
-        escapePressed = false;
-        otherPressed = false;
+        windowState->escapePressed = true;
+        windowState->otherPressed = false;
+    } else if (windowState->otherPressed) {
+        windowState->escapePressed = false;
+        windowState->otherPressed = false;
     } else {
-        otherPressed = true;
+        windowState->otherPressed = true;
     }
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
+    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
     if (action != GLFW_PRESS) {
         return;
     }
-    windowMoving = !windowMoving;
-    if (windowMoving) {
-        glfwGetCursorPos(window,&mouseLastx,&mouseLasty);
-        glfwGetWindowPos(window,&windowLastx,&windowLasty);
+    windowState->windowMoving = !windowState->windowMoving;
+    if (windowState->windowMoving) {
+        glfwGetCursorPos(window,&windowState->mouseLastx,&windowState->mouseLasty);
+        glfwGetWindowPos(window,&windowState->windowLastx,&windowState->windowLasty);
     }
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
+    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
     double mouseNextx, mouseNexty;
     int windowNextx, windowNexty;
     glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
-    if (windowMoving) {
-        windowNextx = windowLastx + (mouseNextx - mouseLastx);
-        windowNexty = windowLasty + (mouseNexty - mouseLasty);
+    if (windowState->windowMoving) {
+        windowNextx = windowState->windowLastx + (mouseNextx - windowState->mouseLastx);
+        windowNexty = windowState->windowLasty + (mouseNexty - windowState->mouseLasty);
         glfwSetWindowPos(window,windowNextx,windowNexty);
-        windowLastx = windowNextx; windowLasty = windowNexty;
+        windowState->windowLastx = windowNextx; windowState->windowLasty = windowNexty;
     }
 }
 
-GLFWwindow *initWindow() {
+GLFWwindow *initWindow(const uint32_t WIDTH, const uint32_t HEIGHT) {
     GLFWwindow* window;
 
     glfwInit();
@@ -104,11 +89,6 @@ GLFWwindow *initWindow() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-    glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
-    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    glfwSetKeyCallback(window, keypressCallback);
-    glfwSetMouseButtonCallback(window,mouseClicked);
-    glfwSetCursorPosCallback(window,mouseMoved);
 
     return window;
 }
@@ -300,7 +280,7 @@ VkDebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfo() {
     return createInfo;
 }
 
-bool checkValidationLayerSupport() {
+bool checkValidationLayerSupport(const std::vector<const char*> validationLayers) {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -325,7 +305,7 @@ bool checkValidationLayerSupport() {
     return true;
 }
 
-std::vector<const char*> getRequiredExtensions() {
+std::vector<const char*> getRequiredExtensions(bool enableValidationLayers) {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -339,9 +319,9 @@ std::vector<const char*> getRequiredExtensions() {
     return extensions;
 }
 
-VkInstance createInstance(bool enableValidationLayers, VkDebugUtilsMessengerCreateInfoEXT debugInfo) {
+VkInstance createInstance(bool enableValidationLayers, VkDebugUtilsMessengerCreateInfoEXT debugInfo, const std::vector<const char*> validationLayers) {
     VkInstance instance;
-    if (enableValidationLayers && !checkValidationLayerSupport()) {
+    if (enableValidationLayers && !checkValidationLayerSupport(validationLayers)) {
         throw std::runtime_error("validation layers requested, but not available!");
     }
 
@@ -357,7 +337,7 @@ VkInstance createInstance(bool enableValidationLayers, VkDebugUtilsMessengerCrea
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
-    auto extensions = getRequiredExtensions();
+    auto extensions = getRequiredExtensions(enableValidationLayers);
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -456,7 +436,7 @@ std::optional<uint32_t> findPresentFamily(VkPhysicalDevice device, VkSurfaceKHR 
     return presentFamily;
 }
 
-bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
+bool checkDeviceExtensionSupport(VkPhysicalDevice device, const std::vector<const char*> deviceExtensions) {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
@@ -498,8 +478,8 @@ std::vector<VkPresentModeKHR> queryPresentModes(VkPhysicalDevice device, VkSurfa
     return presentModes;
 }
 
-bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    if (!checkDeviceExtensionSupport(device)) {
+bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, const std::vector<const char*> deviceExtensions) {
+    if (!checkDeviceExtensionSupport(device,deviceExtensions)) {
         return false;
     }
     if (querySurfaceFormats(device,surface).empty()) {
@@ -517,7 +497,7 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
     return true;
 }
 
-VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface) {
+VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*> deviceExtensions) {
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -530,7 +510,7 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface) {
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
     for (const auto& device : devices) {
-        if (isDeviceSuitable(device,surface)) {
+        if (isDeviceSuitable(device,surface,deviceExtensions)) {
             physicalDevice = device;
             break;
         }
@@ -542,7 +522,7 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface) {
     return physicalDevice;
 }
 
-VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily) {
+VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, const std::vector<const char*> validationLayers, const std::vector<const char*> deviceExtensions, bool enableValidationLayers) {
     VkDevice device;
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -764,9 +744,9 @@ std::vector<char> readFile(const std::string& filename) {
     return buffer;
 }
 
-VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout) {
-    auto vertShaderCode = readFile("vulkan.vsv");
-    auto fragShaderCode = readFile("vulkan.fsv");
+VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, const char *vertexShader, const char *fragmentShader) {
+    auto vertShaderCode = readFile(vertexShader);
+    auto fragShaderCode = readFile(fragmentShader);
 
     VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
@@ -998,16 +978,16 @@ VkDeviceMemory createMemory(VkPhysicalDevice physicalDevice, VkDevice device, Vk
     return memory;
 }
 
-VkDescriptorPool createDescriptorPool(VkDevice device) {
+VkDescriptorPool createDescriptorPool(VkDevice device, int count) {
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolSize.descriptorCount = static_cast<uint32_t>(count);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = 1;
     poolInfo.pPoolSizes = &poolSize;
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolInfo.maxSets = static_cast<uint32_t>(count);
 
     VkDescriptorPool descriptorPool;
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
@@ -1016,21 +996,21 @@ VkDescriptorPool createDescriptorPool(VkDevice device) {
     return descriptorPool;
 }
 
-std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, std::vector<VkBuffer> uniformBuffer, VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, std::vector<VkBuffer> uniformBuffer, VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool, int count) {
+    std::vector<VkDescriptorSetLayout> layouts(count, descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(count);
     allocInfo.pSetLayouts = layouts.data();
 
     std::vector<VkDescriptorSet> descriptorSets;
-    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    descriptorSets.resize(count);
     if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < count; i++) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = uniformBuffer[i];
         bufferInfo.offset = 0;
@@ -1050,9 +1030,9 @@ std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, std::vector<V
     return descriptorSets;
 }
 
-std::vector<VkCommandBuffer> createCommandBuffers(VkDevice device, VkCommandPool commandPool) {
+std::vector<VkCommandBuffer> createCommandBuffers(VkDevice device, VkCommandPool commandPool, int count) {
     std::vector<VkCommandBuffer> commandBuffers;
-    commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    commandBuffers.resize(count);
 
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1066,14 +1046,14 @@ std::vector<VkCommandBuffer> createCommandBuffers(VkDevice device, VkCommandPool
     return commandBuffers;
 }
 
-std::vector<VkSemaphore> createSemaphores(VkDevice device) {
+std::vector<VkSemaphore> createSemaphores(VkDevice device, int count) {
     std::vector<VkSemaphore> semaphores;
-    semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    semaphores.resize(count);
 
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < count; i++) {
         if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphores[i]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create semaphore!");
         }
@@ -1106,11 +1086,11 @@ std::vector<bool> createQueued(int count) {
     return queued;
 }
 
-typedef void voidFunc();
-struct fenceThreadArgument {
+typedef void VoidFunc();
+struct ThreadState {
     std::queue<VkFence> fence;
-    std::queue<std::function<voidFunc> > func;
-    std::queue<std::function<voidFunc> > resp;
+    std::queue<std::function<VoidFunc> > func;
+    std::queue<std::function<VoidFunc> > resp;
     VkDevice device;
     sem_t protect;
     sem_t semaphore;
@@ -1118,7 +1098,7 @@ struct fenceThreadArgument {
     bool finish;
 };
 void *fenceThread(void *ptr) {
-    fenceThreadArgument *arg = (fenceThreadArgument*)ptr;
+    struct ThreadState *arg = (ThreadState*)ptr;
     while (1) {
         VkFence fence;
         bool copied;
@@ -1137,13 +1117,10 @@ void *fenceThread(void *ptr) {
             throw std::runtime_error("cannot post to protect!");
         }
         if (finish) {
-std::cout << "finish set" << std::endl;
             break;
         }
         if (copied) {
-std::cout << "wait fence" << std::endl;
             VkResult result = vkWaitForFences(arg->device,1,&fence,VK_TRUE,1000000000ull/10ull);
-std::cout << "waited fence" << std::endl;
             if (result == VK_ERROR_DEVICE_LOST) {
                 throw std::runtime_error("device lost on wait for fence!");
             }
@@ -1151,7 +1128,6 @@ std::cout << "waited fence" << std::endl;
                 throw std::runtime_error("failed to wait for fence!");
             }
             if (result == VK_SUCCESS) {
-std::cout << "pop fence" << std::endl;
                 if (sem_wait(&arg->protect) != 0) {
                     throw std::runtime_error("cannot wait for protect!");
                 }
@@ -1164,7 +1140,6 @@ std::cout << "pop fence" << std::endl;
                 glfwPostEmptyEvent();
             }
         } else {
-std::cout << "wait semaphore" << std::endl;
             if (sem_wait(&arg->semaphore) != 0) {
                 throw std::runtime_error("cannot wait for semaphore!");
             }
@@ -1174,26 +1149,17 @@ std::cout << "wait semaphore" << std::endl;
     return 0;
 }
 
-enum BufferTag {Shared,Lookup,Stream};
-struct Buffer {
-    enum BufferTag tag;
-    int count;
-    int size;
-    void *hostptr;
-    VkBuffer buffer;
-    VkDeviceMemory memory;
-    void *mapped;
-    VkBuffer stagebuf;
-    VkDeviceMemory stagemem;
-    void *stagemap;
-    VkDescriptorSet descset;
-};
 class HelloTriangleApplication {
 public:
-    void run(bool enableValidationLayers) {
+    void run() {
         // glfw
-std::cout << "glfw" << std::endl;
-        window = initWindow();
+        window = initWindow(WIDTH,HEIGHT);
+        glfwSetWindowUserPointer(window, &windowState);
+        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+        glfwSetKeyCallback(window, keypressCallback);
+        glfwSetMouseButtonCallback(window, mouseClicked);
+        glfwSetCursorPosCallback(window, mouseMoved);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = initMoveCursor(e,t,r,b,l);
@@ -1205,15 +1171,13 @@ std::cout << "glfw" << std::endl;
         glfwSetCursor(window,moveCursor[true][true][true][true][true]);
 
         // debug
-std::cout << "debug" << std::endl;
         VkDebugUtilsMessengerCreateInfoEXT debugInfo = populateDebugMessengerCreateInfo();
-        instance = createInstance(enableValidationLayers,debugInfo);
+        instance = createInstance(enableValidationLayers,debugInfo,validationLayers);
         if (enableValidationLayers) debugMessenger = setupDebugMessenger(instance,debugInfo);
 
         // screen
-std::cout << "screen" << std::endl;
         surface = createSurface(window,instance);
-        physicalDevice = pickPhysicalDevice(instance,surface);
+        physicalDevice = pickPhysicalDevice(instance,surface,deviceExtensions);
         queueFamilyIndices[0] = findGraphicsFamily(physicalDevice,surface).value();
         queueFamilyIndices[1] = findPresentFamily(physicalDevice,surface).value();
         minImageCount = querySurfaceCapabilities(physicalDevice,surface).minImageCount + 1;
@@ -1225,20 +1189,18 @@ std::cout << "screen" << std::endl;
         swapChainImageFormat = surfaceFormat.format;
 
         // gpu
-std::cout << "gpu" << std::endl;
-        device = createLogicalDevice(physicalDevice,queueFamilyIndices[0],queueFamilyIndices[1]);
+        device = createLogicalDevice(physicalDevice,queueFamilyIndices[0],queueFamilyIndices[1],validationLayers,deviceExtensions,enableValidationLayers);
         vkGetDeviceQueue(device, queueFamilyIndices[0], 0, &graphicsQueue);
         vkGetDeviceQueue(device, queueFamilyIndices[1], 0, &presentQueue);
         renderPass = createRenderPass(device,swapChainImageFormat);
         descriptorSetLayout = createDescriptorSetLayout(device);
         pipelineLayout = createPipelineLayout(device,descriptorSetLayout);
-        graphicsPipeline = createGraphicsPipeline(device,renderPass,pipelineLayout);
+        graphicsPipeline = createGraphicsPipeline(device,renderPass,pipelineLayout,"vulkan.vsv","vulkan.fsv");
         commandPool = createCommandPool(device, findGraphicsFamily(physicalDevice,surface).value());
-        commandBuffers = createCommandBuffers(device,commandPool);
-        descriptorPool = createDescriptorPool(device);
+        commandBuffers = createCommandBuffers(device,commandPool, MAX_FRAMES_IN_FLIGHT);
+        descriptorPool = createDescriptorPool(device, MAX_FRAMES_IN_FLIGHT);
 
         // fetch
-std::cout << "fetch" << std::endl;
         vertexBufferSize = sizeof(vertices[0]) * vertices.size();
         stagingBuffer = createBuffer(device,vertexBufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
@@ -1254,7 +1216,6 @@ std::cout << "fetch" << std::endl;
         memcpy(stagingMapped, vertices.data(), (size_t) vertexBufferSize);
 
         { // setup
-std::cout << "setup" << std::endl;
             VkCommandBufferAllocateInfo allocInfo{};
             allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1288,7 +1249,6 @@ std::cout << "setup" << std::endl;
         }
 
         // parameter
-std::cout << "parameter" << std::endl;
         uniformBufferSize = sizeof(UniformBufferObject);
         uniformMemory.resize(MAX_FRAMES_IN_FLIGHT);
         uniformMapped.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1301,24 +1261,23 @@ std::cout << "parameter" << std::endl;
             vkBindBufferMemory(device, uniformBuffer[i], uniformMemory[i], 0);
             uniformMapped[i] = createMapped(device,uniformMemory[i],uniformBufferSize);
         }
-        descriptorSets = createDescriptorSets(device,uniformBuffer,descriptorSetLayout,descriptorPool);
+        descriptorSets = createDescriptorSets(device,uniformBuffer,descriptorSetLayout,descriptorPool,MAX_FRAMES_IN_FLIGHT);
 
-std::cout << "threads" << std::endl;
-        imageAvailableSemaphores = createSemaphores(device);
-        renderFinishedSemaphores = createSemaphores(device);
+        imageAvailableSemaphores = createSemaphores(device,MAX_FRAMES_IN_FLIGHT);
+        renderFinishedSemaphores = createSemaphores(device,MAX_FRAMES_IN_FLIGHT);
         inFlightFences = createFences(device,MAX_FRAMES_IN_FLIGHT);
         inFlightQueued = createQueued(MAX_FRAMES_IN_FLIGHT);
 
-        fenceArgument.device = device;
-        fenceArgument.finish = false;
-        if (sem_init(&fenceArgument.protect, 0, 1) != 0 ||
-            sem_init(&fenceArgument.semaphore, 0, 0) != 0 ||
-            pthread_create(&fenceArgument.thread,0,fenceThread,&fenceArgument) != 0) {
+        threadState.device = device;
+        threadState.finish = false;
+        if (sem_init(&threadState.protect, 0, 1) != 0 ||
+            sem_init(&threadState.semaphore, 0, 0) != 0 ||
+            pthread_create(&threadState.thread,0,fenceThread,&threadState) != 0) {
             throw std::runtime_error("failed to create thread!");
         }
 
         bool doRecreate = true;
-        while (!escapePressed || !enterPressed) {
+        while (!windowState.escapePressed || !windowState.enterPressed) {
             if (doRecreate) {
                 doRecreate = false;
                 int width = 0, height = 0;
@@ -1338,7 +1297,7 @@ std::cout << "threads" << std::endl;
             }
             glfwWaitEventsTimeout(0.01);
             // TODO sem protect deque and call
-            if (!drawCalled) {
+            if (!windowState.drawCalled) {
                 continue;
             }
             VkResult result;
@@ -1350,17 +1309,16 @@ std::cout << "threads" << std::endl;
                 throw std::runtime_error("failed to wait for fences!");
             }
             if (result == VK_TIMEOUT && !inFlightQueued[currentFrame]) {
-                if (sem_wait(&fenceArgument.protect) != 0) {
+                if (sem_wait(&threadState.protect) != 0) {
                     throw std::runtime_error("cannot wait for protect!");
                 }
-                fenceArgument.fence.push(inFlightFences[currentFrame]);
+                threadState.fence.push(inFlightFences[currentFrame]);
                 inFlightQueued[currentFrame] = true;
-                if (sem_post(&fenceArgument.protect) != 0) {
+                if (sem_post(&threadState.protect) != 0) {
                     throw std::runtime_error("cannot post to protect!");
                 }
             }
             if (result == VK_TIMEOUT) {
-    std::cout << "now queued" << std::endl;
                 continue;
             }
             inFlightQueued[currentFrame] = false;
@@ -1483,8 +1441,8 @@ std::cout << "threads" << std::endl;
 
             result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-                framebufferResized = false;
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || windowState.framebufferResized) {
+                windowState.framebufferResized = false;
                 doRecreate = true;
                 vkDeviceWaitIdle(device);
                 for (auto framebuffer : swapChainFramebuffers) {
@@ -1500,17 +1458,17 @@ std::cout << "threads" << std::endl;
 
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
-        if (sem_wait(&fenceArgument.protect) != 0) {
+        if (sem_wait(&threadState.protect) != 0) {
             throw std::runtime_error("cannot wait for protect!");
         }
-        fenceArgument.finish = true;
-        if (sem_post(&fenceArgument.protect) != 0) {
+        threadState.finish = true;
+        if (sem_post(&threadState.protect) != 0) {
             throw std::runtime_error("cannot post to protect!");
         }
-        if (sem_post(&fenceArgument.semaphore) != 0 ||
-            pthread_join(fenceArgument.thread,0) != 0 ||
-            sem_destroy(&fenceArgument.semaphore) != 0 ||
-            sem_destroy(&fenceArgument.protect) != 0) {
+        if (sem_post(&threadState.semaphore) != 0 ||
+            pthread_join(threadState.thread,0) != 0 ||
+            sem_destroy(&threadState.semaphore) != 0 ||
+            sem_destroy(&threadState.protect) != 0) {
             throw std::runtime_error("failed to join thread!");
         }
 
@@ -1570,6 +1528,35 @@ std::cout << "threads" << std::endl;
     }
 
 private:
+    const uint32_t WIDTH = 800;
+    const uint32_t HEIGHT = 600;
+
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+    static const int NUM_QUEUE_FAMILIES = 2;
+
+    const std::vector<const char*> validationLayers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+
+    const std::vector<const char*> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+
+    #ifdef NDEBUG
+    const bool enableValidationLayers = false;
+    #else
+    const bool enableValidationLayers = true;
+    #endif
+
+    struct WindowState windowState = {
+        .drawCalled = true,
+        .framebufferResized = false,
+        .escapePressed = false,
+        .enterPressed = false,
+        .otherPressed = false,
+        .windowMoving = false,
+    };
+
     GLFWwindow* window;
     GLFWcursor* moveCursor[2][2][2][2][2];
     GLFWcursor* rotateCursor[2];
@@ -1630,13 +1617,13 @@ private:
     std::vector<bool> inFlightQueued;
     uint32_t currentFrame = 0;
 
-    fenceThreadArgument fenceArgument;
+    struct ThreadState threadState;
 };
 
 HelloTriangleApplication app;
 int main() {
     try {
-        app.run(enableValidationLayers);
+        app.run();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
