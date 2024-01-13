@@ -1149,17 +1149,51 @@ void *fenceThread(void *ptr) {
     return 0;
 }
 
-class HelloTriangleApplication {
-public:
-    void run() {
+int main() {
+    try {
+        const uint32_t WIDTH = 800;
+        const uint32_t HEIGHT = 600;
+
+        const int MAX_FRAMES_IN_FLIGHT = 2;
+        static const int NUM_QUEUE_FAMILIES = 2;
+
+        const std::vector<const char*> validationLayers = {
+            "VK_LAYER_KHRONOS_validation"
+        };
+
+        const std::vector<const char*> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+
+        #ifdef NDEBUG
+        const bool enableValidationLayers = false;
+        #else
+        const bool enableValidationLayers = true;
+        #endif
+
         // glfw
+        GLFWwindow* window;
         window = initWindow(WIDTH,HEIGHT);
+        struct WindowState windowState = {
+            .drawCalled = true,
+            .framebufferResized = false,
+            .escapePressed = false,
+            .enterPressed = false,
+            .otherPressed = false,
+            .windowMoving = false,
+        };
         glfwSetWindowUserPointer(window, &windowState);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
         glfwSetKeyCallback(window, keypressCallback);
         glfwSetMouseButtonCallback(window, mouseClicked);
         glfwSetCursorPosCallback(window, mouseMoved);
+        GLFWcursor* moveCursor[2][2][2][2][2];
+        GLFWcursor* rotateCursor[2];
+        GLFWcursor* translateCursor[2];
+        GLFWcursor* refineCursor;
+        GLFWcursor* sculptCursor[2];
+        GLFWcursor* standardCursor;
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = initMoveCursor(e,t,r,b,l);
@@ -1172,46 +1206,67 @@ public:
 
         // debug
         VkDebugUtilsMessengerCreateInfoEXT debugInfo = populateDebugMessengerCreateInfo();
+        VkInstance instance;
         instance = createInstance(enableValidationLayers,debugInfo,validationLayers);
+        VkDebugUtilsMessengerEXT debugMessenger;
         if (enableValidationLayers) debugMessenger = setupDebugMessenger(instance,debugInfo);
 
         // screen
+        VkSurfaceKHR surface;
         surface = createSurface(window,instance);
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         physicalDevice = pickPhysicalDevice(instance,surface,deviceExtensions);
+        uint32_t queueFamilyIndices[NUM_QUEUE_FAMILIES];
         queueFamilyIndices[0] = findGraphicsFamily(physicalDevice,surface).value();
         queueFamilyIndices[1] = findPresentFamily(physicalDevice,surface).value();
+        uint32_t minImageCount;
         minImageCount = querySurfaceCapabilities(physicalDevice,surface).minImageCount + 1;
         if (querySurfaceCapabilities(physicalDevice,surface).maxImageCount > 0 &&
             minImageCount > querySurfaceCapabilities(physicalDevice,surface).maxImageCount)
             minImageCount = querySurfaceCapabilities(physicalDevice,surface).maxImageCount;
+        VkSurfaceFormatKHR surfaceFormat;
         surfaceFormat = chooseSwapSurfaceFormat(querySurfaceFormats(physicalDevice,surface));
+        VkPresentModeKHR presentMode;
         presentMode = chooseSwapPresentMode(queryPresentModes(physicalDevice,surface));
+        VkFormat swapChainImageFormat;
         swapChainImageFormat = surfaceFormat.format;
 
         // gpu
+        VkDevice device;
         device = createLogicalDevice(physicalDevice,queueFamilyIndices[0],queueFamilyIndices[1],validationLayers,deviceExtensions,enableValidationLayers);
+        VkQueue graphicsQueue;
         vkGetDeviceQueue(device, queueFamilyIndices[0], 0, &graphicsQueue);
+        VkQueue presentQueue;
         vkGetDeviceQueue(device, queueFamilyIndices[1], 0, &presentQueue);
+        VkRenderPass renderPass;
         renderPass = createRenderPass(device,swapChainImageFormat);
+        VkDescriptorSetLayout descriptorSetLayout;
         descriptorSetLayout = createDescriptorSetLayout(device);
+        VkPipelineLayout pipelineLayout;
         pipelineLayout = createPipelineLayout(device,descriptorSetLayout);
+        VkPipeline graphicsPipeline;
         graphicsPipeline = createGraphicsPipeline(device,renderPass,pipelineLayout,"vulkan.vsv","vulkan.fsv");
+        VkCommandPool commandPool;
         commandPool = createCommandPool(device, findGraphicsFamily(physicalDevice,surface).value());
+        std::vector<VkCommandBuffer> commandBuffers;
         commandBuffers = createCommandBuffers(device,commandPool, MAX_FRAMES_IN_FLIGHT);
+        VkDescriptorPool descriptorPool;
         descriptorPool = createDescriptorPool(device, MAX_FRAMES_IN_FLIGHT);
 
         // fetch
+        VkDeviceSize vertexBufferSize;
         vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-        stagingBuffer = createBuffer(device,vertexBufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        stagingMemory = createMemory(physicalDevice,device,stagingBuffer,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        VkBuffer stagingBuffer;
+        stagingBuffer = createBuffer(device,vertexBufferSize,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        VkDeviceMemory stagingMemory;
+        stagingMemory = createMemory(physicalDevice,device,stagingBuffer,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         vkBindBufferMemory(device, stagingBuffer, stagingMemory, 0);
-        vertexBuffer = createBuffer(device,vertexBufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-        vertexMemory = createMemory(physicalDevice,device,vertexBuffer,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        VkBuffer vertexBuffer;
+        vertexBuffer = createBuffer(device,vertexBufferSize,VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        VkDeviceMemory vertexMemory;
+        vertexMemory = createMemory(physicalDevice,device,vertexBuffer,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         vkBindBufferMemory(device, vertexBuffer, vertexMemory, 0);
+        void *stagingMapped;
         stagingMapped = createMapped(device,stagingMemory,vertexBufferSize);
         memcpy(stagingMapped, vertices.data(), (size_t) vertexBufferSize);
 
@@ -1249,9 +1304,13 @@ public:
         }
 
         // parameter
+        VkDeviceSize uniformBufferSize;
         uniformBufferSize = sizeof(UniformBufferObject);
+        std::vector<VkDeviceMemory> uniformMemory;
         uniformMemory.resize(MAX_FRAMES_IN_FLIGHT);
+        std::vector<void*> uniformMapped;
         uniformMapped.resize(MAX_FRAMES_IN_FLIGHT);
+        std::vector<VkBuffer> uniformBuffer;
         uniformBuffer.resize(MAX_FRAMES_IN_FLIGHT);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             uniformBuffer[i] = createBuffer(device,uniformBufferSize,
@@ -1261,13 +1320,19 @@ public:
             vkBindBufferMemory(device, uniformBuffer[i], uniformMemory[i], 0);
             uniformMapped[i] = createMapped(device,uniformMemory[i],uniformBufferSize);
         }
+        std::vector<VkDescriptorSet> descriptorSets;
         descriptorSets = createDescriptorSets(device,uniformBuffer,descriptorSetLayout,descriptorPool,MAX_FRAMES_IN_FLIGHT);
 
+        std::vector<VkSemaphore> imageAvailableSemaphores;
         imageAvailableSemaphores = createSemaphores(device,MAX_FRAMES_IN_FLIGHT);
+        std::vector<VkSemaphore> renderFinishedSemaphores;
         renderFinishedSemaphores = createSemaphores(device,MAX_FRAMES_IN_FLIGHT);
+        std::vector<VkFence> inFlightFences;
         inFlightFences = createFences(device,MAX_FRAMES_IN_FLIGHT);
+        std::vector<bool> inFlightQueued;
         inFlightQueued = createQueued(MAX_FRAMES_IN_FLIGHT);
 
+        struct ThreadState threadState;
         threadState.device = device;
         threadState.finish = false;
         if (sem_init(&threadState.protect, 0, 1) != 0 ||
@@ -1277,6 +1342,11 @@ public:
         }
 
         bool doRecreate = true;
+        uint32_t currentFrame = 0;
+        VkExtent2D swapChainExtent; // changes when window size changes
+        VkSwapchainKHR swapChain;
+        std::vector<VkImageView> swapChainImageViews;
+        std::vector<VkFramebuffer> swapChainFramebuffers;
         while (!windowState.escapePressed || !windowState.enterPressed) {
             if (doRecreate) {
                 doRecreate = false;
@@ -1286,10 +1356,11 @@ public:
                     glfwWaitEvents();
                     glfwGetFramebufferSize(window, &width, &height);
                 }
-
                 swapChainExtent = chooseSwapExtent(window,querySurfaceCapabilities(physicalDevice,surface));
                 swapChain = createSwapChain(physicalDevice,device,surface,surfaceFormat,presentMode,swapChainExtent,minImageCount,queueFamilyIndices);
+                uint32_t imageCount;
                 vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+                std::vector<VkImage> swapChainImages;
                 swapChainImages.resize(imageCount);
                 vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
                 swapChainImageViews = createImageViews(device,swapChainImageFormat,swapChainImages);
@@ -1525,105 +1596,6 @@ public:
         glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
         glfwTerminate();
-    }
-
-private:
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
-
-    const int MAX_FRAMES_IN_FLIGHT = 2;
-    static const int NUM_QUEUE_FAMILIES = 2;
-
-    const std::vector<const char*> validationLayers = {
-        "VK_LAYER_KHRONOS_validation"
-    };
-
-    const std::vector<const char*> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-
-    #ifdef NDEBUG
-    const bool enableValidationLayers = false;
-    #else
-    const bool enableValidationLayers = true;
-    #endif
-
-    struct WindowState windowState = {
-        .drawCalled = true,
-        .framebufferResized = false,
-        .escapePressed = false,
-        .enterPressed = false,
-        .otherPressed = false,
-        .windowMoving = false,
-    };
-
-    GLFWwindow* window;
-    GLFWcursor* moveCursor[2][2][2][2][2];
-    GLFWcursor* rotateCursor[2];
-    GLFWcursor* translateCursor[2];
-    GLFWcursor* refineCursor;
-    GLFWcursor* sculptCursor[2];
-    GLFWcursor* standardCursor;
-
-    VkInstance instance;
-    VkDebugUtilsMessengerEXT debugMessenger;
-    VkSurfaceKHR surface;
-
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice device;
-
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
-
-    uint32_t queueFamilyIndices[NUM_QUEUE_FAMILIES];
-    VkSurfaceFormatKHR surfaceFormat;
-    VkPresentModeKHR presentMode;
-
-    uint32_t minImageCount;
-    uint32_t imageCount;
-    VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
-    VkFormat swapChainImageFormat;
-    VkExtent2D swapChainExtent; // changes when window size changes
-    std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
-
-    VkRenderPass renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline graphicsPipeline;
-    VkCommandPool commandPool;
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingMemory;
-    void *stagingMapped;
-    VkDeviceSize vertexBufferSize;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexMemory;
-
-    VkDeviceSize uniformBufferSize;
-    std::vector<VkBuffer> uniformBuffer;
-    std::vector<VkDeviceMemory> uniformMemory;
-    std::vector<void*> uniformMapped;
-
-    VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
-
-    std::vector<VkCommandBuffer> commandBuffers;
-
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-    std::vector<VkFence> inFlightFences;
-    std::vector<bool> inFlightQueued;
-    uint32_t currentFrame = 0;
-
-    struct ThreadState threadState;
-};
-
-HelloTriangleApplication app;
-int main() {
-    try {
-        app.run();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
