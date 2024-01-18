@@ -23,73 +23,145 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-struct WindowState {
-    bool drawCalled = true;
-    bool framebufferResized = false;
-    bool escapePressed = false;
-    bool enterPressed = false;
-    bool otherPressed = false;
-    bool windowMoving = false;
-    double mouseLastx, mouseLasty;
-    int windowLastx, windowLasty;
+extern "C" {
+    #include "type.h"
+    #include "plane.h"
+    // TODO link with plane.c
+    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw) {}
+    void planeAddarg(const char *str) {}
+    int planeInfo(enum Configure cfg) {return 0;}
+    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
+    void planeMain() {}
+    void planeReady(struct Pierce *pierce) {}
+    // following are called from plane.c
+    void vulkanInit(); // init
+    void vulkanDma(struct Center *center); // dma
+    void vulkanSafe(); // safe
+    void vulkanMain(enum Proc proc, enum Wait wait); // main
+    int vulkanInfo(enum Configure query); // info
+    void vulkanDraw(enum Micro shader, int base, int limit); // draw
+}
+
+struct Input {
+    glm::vec2 pos;
+    glm::vec3 color;
+
+    static VkVertexInputBindingDescription getBindingDescription() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(Input);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        return bindingDescription;
+    }
+
+    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(Input, pos);
+
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Input, color);
+
+        return attributeDescriptions;
+    }
+};
+struct UniformBufferObject {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+};
+
+typedef void VoidFunc();
+struct MainState {
+    std::queue<std::function<VoidFunc> > func;
+    bool dmaCalled;
+    bool drawCalled;
+    bool framebufferResized;
+    bool escapePressed;
+    bool enterPressed;
+    bool otherPressed;
+    bool windowMoving;
+    double mouseLastx;
+    double mouseLasty;
+    int windowLastx;
+    int windowLasty;
+    int argc;
+    char **argv;
+    struct Center *center;
+} mainState = {
+    .dmaCalled = false,
+    .drawCalled = true,
+    .framebufferResized = false,
+    .escapePressed = false,
+    .enterPressed = false,
+    .otherPressed = false,
+    .windowMoving = false,
+    .mouseLastx = 0.0,
+    .mouseLasty = 0.0,
+    .windowLastx = 0,
+    .windowLasty = 0,
+    .argc = 0,
+    .argv = 0,
+    .center = 0,
 };
 void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
-    windowState->framebufferResized = true;
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    mainState->framebufferResized = true;
 }
 void keypressCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     if (action != GLFW_PRESS || mods != 0) {
         return;
     }
     if (key == GLFW_KEY_ENTER) {
-        windowState->enterPressed = true;
+        mainState->enterPressed = true;
     } else {
-        windowState->enterPressed = false;
+        mainState->enterPressed = false;
     }
     if (key == GLFW_KEY_ESCAPE) {
-        windowState->escapePressed = true;
-        windowState->otherPressed = false;
-    } else if (windowState->otherPressed) {
-        windowState->escapePressed = false;
-        windowState->otherPressed = false;
+        mainState->escapePressed = true;
+        mainState->otherPressed = false;
+    } else if (mainState->otherPressed) {
+        mainState->escapePressed = false;
+        mainState->otherPressed = false;
     } else {
-        windowState->otherPressed = true;
+        mainState->otherPressed = true;
     }
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
-    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     if (action != GLFW_PRESS) {
         return;
     }
-    windowState->windowMoving = !windowState->windowMoving;
-    if (windowState->windowMoving) {
-        glfwGetCursorPos(window,&windowState->mouseLastx,&windowState->mouseLasty);
-        glfwGetWindowPos(window,&windowState->windowLastx,&windowState->windowLasty);
+    mainState->windowMoving = !mainState->windowMoving;
+    if (mainState->windowMoving) {
+        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
+        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
     }
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
-    struct WindowState *windowState = (struct WindowState *)glfwGetWindowUserPointer(window);
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     double mouseNextx, mouseNexty;
     int windowNextx, windowNexty;
     glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
-    if (windowState->windowMoving) {
-        windowNextx = windowState->windowLastx + (mouseNextx - windowState->mouseLastx);
-        windowNexty = windowState->windowLasty + (mouseNexty - windowState->mouseLasty);
+    if (mainState->windowMoving) {
+        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
+        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
         glfwSetWindowPos(window,windowNextx,windowNexty);
-        windowState->windowLastx = windowNextx; windowState->windowLasty = windowNexty;
+        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
     }
 }
 
 GLFWwindow *initWindow(const uint32_t WIDTH, const uint32_t HEIGHT) {
     GLFWwindow* window;
-
-    glfwInit();
-
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-
     return window;
 }
 
@@ -222,49 +294,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
         func(instance, debugMessenger, pAllocator);
     }
 }
-
-struct Vertex {
-    glm::vec2 pos;
-    glm::vec3 color;
-
-    static VkVertexInputBindingDescription getBindingDescription() {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Vertex);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        return bindingDescription;
-    }
-
-    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-        return attributeDescriptions;
-    }
-};
-
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
-};
-
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-};
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
@@ -768,8 +797,8 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPi
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto bindingDescription = Input::getBindingDescription();
+    auto attributeDescriptions = Input::getAttributeDescriptions();
 
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -888,6 +917,18 @@ VkCommandPool createCommandPool(VkDevice device, uint32_t graphicsFamily) {
         throw std::runtime_error("failed to create graphics command pool!");
     }
     return commandPool;
+}
+
+VkCommandBuffer allocateCommandBuffer(VkDevice device, VkCommandPool commandPool) {
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+    return commandBuffer;
 }
 
 void *createMapped(VkDevice device, VkDeviceMemory memory, VkDeviceSize size) {
@@ -1061,6 +1102,17 @@ std::vector<VkSemaphore> createSemaphores(VkDevice device, int count) {
     return semaphores;
 }
 
+VkFence createFence(VkDevice device) {
+    VkFence fence;
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create fence!");
+    }
+    return fence;
+}
+
 std::vector<VkFence> createFences(VkDevice device, int count) {
     std::vector<VkFence> fences;
     fences.resize(count);
@@ -1086,11 +1138,9 @@ std::vector<bool> createQueued(int count) {
     return queued;
 }
 
-typedef void VoidFunc();
 struct ThreadState {
     std::queue<VkFence> fence;
     std::queue<std::function<VoidFunc> > func;
-    std::queue<std::function<VoidFunc> > resp;
     VkDevice device;
     sem_t protect;
     sem_t semaphore;
@@ -1131,7 +1181,7 @@ void *fenceThread(void *ptr) {
                 if (sem_wait(&arg->protect) != 0) {
                     throw std::runtime_error("cannot wait for protect!");
                 }
-                // arg->resp.push(arg->func.front());
+                // TODO func.push(arg->func.front());
                 // arg->func.pop();
                 arg->fence.pop();
                 if (sem_post(&arg->protect) != 0) {
@@ -1149,40 +1199,42 @@ void *fenceThread(void *ptr) {
     return 0;
 }
 
-int main() {
-    try {
-        const uint32_t WIDTH = 800;
-        const uint32_t HEIGHT = 600;
+void vulkanInit() {
+    for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
+}
+void vulkanDma(struct Center *center) {
+    // TODO mainState.func.push(std::function(
+}
+void vulkanSafe() {
+    glfwPostEmptyEvent();
+}
+void vulkanMain(enum Proc proc, enum Wait wait) {
+    // TODO trust plane.c to call this
+}
+int vulkanInfo(enum Configure query) {
+    return 0; // TODO
+}
+void vulkanDraw(enum Micro shader, int base, int limit) {
+    // TODO mainState.func.push(std::function(
+}
 
-        const int MAX_FRAMES_IN_FLIGHT = 2;
-        static const int NUM_QUEUE_FAMILIES = 2;
-
-        const std::vector<const char*> validationLayers = {
-            "VK_LAYER_KHRONOS_validation"
-        };
-
-        const std::vector<const char*> deviceExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
-        };
-
-        #ifdef NDEBUG
-        const bool enableValidationLayers = false;
-        #else
-        const bool enableValidationLayers = true;
-        #endif
-
-        // glfw
+struct OpenState {
+    GLFWwindow* window;
+    GLFWcursor* moveCursor[2][2][2][2][2];
+    GLFWcursor* rotateCursor[2];
+    GLFWcursor* translateCursor[2];
+    GLFWcursor* refineCursor;
+    GLFWcursor* sculptCursor[2];
+    GLFWcursor* standardCursor;
+    VkInstance instance;
+    VkDebugUtilsMessengerEXT debugMessenger;
+    VkSurfaceKHR surface;
+    bool enableValidationLayers;
+    OpenState(uint32_t WIDTH, uint32_t HEIGHT, const std::vector<const char*> validationLayers, bool enableValidationLayers) {
+        glfwInit();
         GLFWwindow* window;
         window = initWindow(WIDTH,HEIGHT);
-        struct WindowState windowState = {
-            .drawCalled = true,
-            .framebufferResized = false,
-            .escapePressed = false,
-            .enterPressed = false,
-            .otherPressed = false,
-            .windowMoving = false,
-        };
-        glfwSetWindowUserPointer(window, &windowState);
+        glfwSetWindowUserPointer(window, &mainState);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
         glfwSetKeyCallback(window, keypressCallback);
@@ -1203,104 +1255,228 @@ int main() {
         for (int e = 0; e < 2; e++) sculptCursor[e] = initSculptCursor(e);
         standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
         glfwSetCursor(window,moveCursor[true][true][true][true][true]);
-
-        // debug
         VkDebugUtilsMessengerCreateInfoEXT debugInfo = populateDebugMessengerCreateInfo();
         VkInstance instance;
         instance = createInstance(enableValidationLayers,debugInfo,validationLayers);
         VkDebugUtilsMessengerEXT debugMessenger;
         if (enableValidationLayers) debugMessenger = setupDebugMessenger(instance,debugInfo);
-
-        // screen
         VkSurfaceKHR surface;
-        surface = createSurface(window,instance);
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        surface = createSurface(window,instance); // have to create window before instance?
+        this->window = window;
+        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
+        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
+        for (int e = 0; e < 2; e++) this->moveCursor[e][t][r][b][l] = moveCursor[e][t][r][b][l];
+        for (int e = 0; e < 2; e++) this->rotateCursor[e] = rotateCursor[e];
+        for (int e = 0; e < 2; e++) this->translateCursor[e] = translateCursor[e];
+        this->refineCursor = refineCursor;
+        for (int e = 0; e < 2; e++) this->sculptCursor[e] = sculptCursor[e];
+        this->standardCursor = standardCursor;
+        this->instance = instance;
+        this->debugMessenger = debugMessenger;
+        this->surface = surface;
+        this->enableValidationLayers = enableValidationLayers;
+    }
+    ~OpenState() {
+         vkDestroySurfaceKHR(instance, surface, nullptr);
+        if (enableValidationLayers) DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+        vkDestroyInstance(instance, nullptr);
+        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
+        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(moveCursor[e][t][r][b][l]);
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(rotateCursor[e]);
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(translateCursor[e]);
+        glfwDestroyCursor(refineCursor);
+        for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
+        glfwDestroyCursor(standardCursor);
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
+};
+
+struct LoadState {
+    static const int NUM_QUEUE_FAMILIES = 2;
+    VkPhysicalDevice physicalDevice;
+    uint32_t* queueFamilyIndices;
+    uint32_t minImageCount;
+    VkSurfaceFormatKHR surfaceFormat;
+    VkPresentModeKHR presentMode;
+    VkFormat swapChainImageFormat;
+    VkDevice device;
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
+    VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
+    VkCommandPool commandPool;
+    std::vector<VkCommandBuffer> commandBuffers;
+    VkDescriptorPool descriptorPool;
+    LoadState(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*> validationLayers ,const std::vector<const char*> deviceExtensions, bool enableValidationLayers, const int MAX_FRAMES_IN_FLIGHT) {
         physicalDevice = pickPhysicalDevice(instance,surface,deviceExtensions);
-        uint32_t queueFamilyIndices[NUM_QUEUE_FAMILIES];
+        queueFamilyIndices = new uint32_t[NUM_QUEUE_FAMILIES];
         queueFamilyIndices[0] = findGraphicsFamily(physicalDevice,surface).value();
         queueFamilyIndices[1] = findPresentFamily(physicalDevice,surface).value();
-        uint32_t minImageCount;
         minImageCount = querySurfaceCapabilities(physicalDevice,surface).minImageCount + 1;
         if (querySurfaceCapabilities(physicalDevice,surface).maxImageCount > 0 &&
             minImageCount > querySurfaceCapabilities(physicalDevice,surface).maxImageCount)
             minImageCount = querySurfaceCapabilities(physicalDevice,surface).maxImageCount;
-        VkSurfaceFormatKHR surfaceFormat;
         surfaceFormat = chooseSwapSurfaceFormat(querySurfaceFormats(physicalDevice,surface));
-        VkPresentModeKHR presentMode;
         presentMode = chooseSwapPresentMode(queryPresentModes(physicalDevice,surface));
-        VkFormat swapChainImageFormat;
         swapChainImageFormat = surfaceFormat.format;
-
-        // gpu
-        VkDevice device;
         device = createLogicalDevice(physicalDevice,queueFamilyIndices[0],queueFamilyIndices[1],validationLayers,deviceExtensions,enableValidationLayers);
-        VkQueue graphicsQueue;
         vkGetDeviceQueue(device, queueFamilyIndices[0], 0, &graphicsQueue);
-        VkQueue presentQueue;
         vkGetDeviceQueue(device, queueFamilyIndices[1], 0, &presentQueue);
-        VkRenderPass renderPass;
         renderPass = createRenderPass(device,swapChainImageFormat);
-        VkDescriptorSetLayout descriptorSetLayout;
         descriptorSetLayout = createDescriptorSetLayout(device);
-        VkPipelineLayout pipelineLayout;
         pipelineLayout = createPipelineLayout(device,descriptorSetLayout);
-        VkPipeline graphicsPipeline;
         graphicsPipeline = createGraphicsPipeline(device,renderPass,pipelineLayout,"vulkan.vsv","vulkan.fsv");
-        VkCommandPool commandPool;
         commandPool = createCommandPool(device, findGraphicsFamily(physicalDevice,surface).value());
-        std::vector<VkCommandBuffer> commandBuffers;
         commandBuffers = createCommandBuffers(device,commandPool, MAX_FRAMES_IN_FLIGHT);
-        VkDescriptorPool descriptorPool;
         descriptorPool = createDescriptorPool(device, MAX_FRAMES_IN_FLIGHT);
+    }
+    ~LoadState() {
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+        vkDestroyCommandPool(device, commandPool, nullptr);
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+        vkDestroyRenderPass(device, renderPass, nullptr);
+        vkDestroyDevice(device, nullptr);
+    }
+};
 
-        // fetch
-        VkDeviceSize vertexBufferSize;
+struct FetchBuffer {
+    VkDevice device;
+    VkQueue graphicsQueue;
+    VkCommandPool commandPool;
+    VkDeviceSize vertexBufferSize;
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingMemory;
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexMemory;
+    void *stagingMapped;
+    VkFence inFlightFence;
+    VkCommandBuffer commandBuffer;
+    FetchBuffer(VkPhysicalDevice physicalDevice, VkDevice device, VkQueue graphicsQueue, VkCommandPool commandPool, const std::vector<Input> vertices) {
+        this->device = device;
+        this->graphicsQueue = graphicsQueue;
+        this->commandPool = commandPool;
         vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-        VkBuffer stagingBuffer;
         stagingBuffer = createBuffer(device,vertexBufferSize,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        VkDeviceMemory stagingMemory;
         stagingMemory = createMemory(physicalDevice,device,stagingBuffer,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         vkBindBufferMemory(device, stagingBuffer, stagingMemory, 0);
-        VkBuffer vertexBuffer;
         vertexBuffer = createBuffer(device,vertexBufferSize,VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-        VkDeviceMemory vertexMemory;
         vertexMemory = createMemory(physicalDevice,device,vertexBuffer,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         vkBindBufferMemory(device, vertexBuffer, vertexMemory, 0);
-        void *stagingMapped;
         stagingMapped = createMapped(device,stagingMemory,vertexBufferSize);
         memcpy(stagingMapped, vertices.data(), (size_t) vertexBufferSize);
+        inFlightFence = createFence(device);
+        commandBuffer = allocateCommandBuffer(device,commandPool);
+    }
+    void setup() {
+        vkResetFences(device, 1, &inFlightFence);
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
 
-        { // setup
-            VkCommandBufferAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocInfo.commandPool = commandPool;
-            allocInfo.commandBufferCount = 1;
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-            VkCommandBuffer commandBuffer;
-            vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        VkBufferCopy copyRegion{};
+        copyRegion.size = vertexBufferSize;
+        vkCmdCopyBuffer(commandBuffer, stagingBuffer, vertexBuffer, 1, &copyRegion);
 
-            vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        vkEndCommandBuffer(commandBuffer);
 
-            VkBufferCopy copyRegion{};
-            copyRegion.size = vertexBufferSize;
-            vkCmdCopyBuffer(commandBuffer, stagingBuffer, vertexBuffer, 1, &copyRegion);
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
 
-            vkEndCommandBuffer(commandBuffer);
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence);
+    }
+    ~FetchBuffer() {
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkDestroyFence(device, inFlightFence, nullptr);
+        vkDestroyBuffer(device, vertexBuffer, nullptr);
+        vkFreeMemory(device, vertexMemory, nullptr);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingMemory, nullptr);
+    }
+};
 
-            VkSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers = &commandBuffer;
+struct ChangeBuffer {
+    ChangeBuffer() {
+    }
+    ~ChangeBuffer() {
+    }
+};
 
-            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-            vkQueueWaitIdle(graphicsQueue);
+struct StorageBuffer {
+    StorageBuffer() {
+    }
+    ~StorageBuffer() {
+    }
+};
 
-            vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+int main(int argc, char **argv) {
+    mainState.argc = argc;
+    mainState.argv = argv;
+    try {
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw);
+        // TODO move following to vulkanMain that calls vulkanOpen vulkanLoad vulkanBuffer vulkanDispatch
+        const uint32_t WIDTH = 800;
+        const uint32_t HEIGHT = 600;
+        const int MAX_FRAMES_IN_FLIGHT = 2;
+        const std::vector<const char*> validationLayers = {
+            "VK_LAYER_KHRONOS_validation"
+        };
+        const std::vector<const char*> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+        #ifdef NDEBUG
+        const bool enableValidationLayers = false;
+        #else
+        const bool enableValidationLayers = true;
+        #endif
+        const std::vector<Input> vertices = {
+            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+        };
+
+        OpenState* openState = new OpenState(WIDTH,HEIGHT,validationLayers,enableValidationLayers);
+        GLFWwindow* window = openState->window;
+        VkInstance instance = openState->instance;
+        VkSurfaceKHR surface = openState->surface;
+
+        LoadState* loadState = new LoadState(instance,surface,validationLayers,deviceExtensions,enableValidationLayers,MAX_FRAMES_IN_FLIGHT);
+        VkPhysicalDevice physicalDevice = loadState->physicalDevice;
+        uint32_t* queueFamilyIndices = loadState->queueFamilyIndices;
+        uint32_t minImageCount = loadState->minImageCount;
+        VkSurfaceFormatKHR surfaceFormat = loadState->surfaceFormat;
+        VkPresentModeKHR presentMode = loadState->presentMode;
+        VkFormat swapChainImageFormat = loadState->swapChainImageFormat;
+        VkDevice device = loadState->device;
+        VkQueue graphicsQueue = loadState->graphicsQueue;
+        VkQueue presentQueue = loadState->presentQueue;
+        VkRenderPass renderPass = loadState->renderPass;
+        VkDescriptorSetLayout descriptorSetLayout = loadState->descriptorSetLayout;
+        VkPipelineLayout pipelineLayout = loadState->pipelineLayout;
+        VkPipeline graphicsPipeline = loadState->graphicsPipeline;
+        VkCommandPool commandPool = loadState->commandPool;
+        std::vector<VkCommandBuffer> commandBuffers = loadState->commandBuffers;
+        VkDescriptorPool descriptorPool = loadState->descriptorPool;
+
+        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicsQueue, commandPool, vertices);
+        VkBuffer vertexBuffer = fetchBuffer->vertexBuffer;
+        VkFence inFlightFence = fetchBuffer->inFlightFence;
+        fetchBuffer->setup();
+        VkResult result = vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, 0);
+        if (result == VK_ERROR_DEVICE_LOST) {
+            throw std::runtime_error("device lost on wait for fence!");
         }
 
         // parameter
@@ -1347,7 +1523,7 @@ int main() {
         VkSwapchainKHR swapChain;
         std::vector<VkImageView> swapChainImageViews;
         std::vector<VkFramebuffer> swapChainFramebuffers;
-        while (!windowState.escapePressed || !windowState.enterPressed) {
+        while (!mainState.escapePressed || !mainState.enterPressed) {
             if (doRecreate) {
                 doRecreate = false;
                 int width = 0, height = 0;
@@ -1367,8 +1543,11 @@ int main() {
                 swapChainFramebuffers = createFramebuffers(device,swapChainExtent,swapChainImageViews,renderPass);
             }
             glfwWaitEventsTimeout(0.01);
-            // TODO sem protect deque and call
-            if (!windowState.drawCalled) {
+            // TODO sem protect mainState.func.front()() and mainState.func.pop()
+            if (mainState.dmaCalled) {
+                // TODO change one of the buffers
+            }
+            if (!mainState.drawCalled) {
                 continue;
             }
             VkResult result;
@@ -1512,8 +1691,8 @@ int main() {
 
             result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || windowState.framebufferResized) {
-                windowState.framebufferResized = false;
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || mainState.framebufferResized) {
+                mainState.framebufferResized = false;
                 doRecreate = true;
                 vkDeviceWaitIdle(device);
                 for (auto framebuffer : swapChainFramebuffers) {
@@ -1544,6 +1723,7 @@ int main() {
         }
 
         vkDeviceWaitIdle(device);
+
         for (auto framebuffer : swapChainFramebuffers) {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
@@ -1552,50 +1732,20 @@ int main() {
         }
         vkDestroySwapchainKHR(device, swapChain, nullptr);
 
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        vkDestroyRenderPass(device, renderPass, nullptr);
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+            vkDestroyFence(device, inFlightFences[i], nullptr);
+        }
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroyBuffer(device, uniformBuffer[i], nullptr);
             vkFreeMemory(device, uniformMemory[i], nullptr);
         }
 
-        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-
-        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
-        vkDestroyBuffer(device, vertexBuffer, nullptr);
-        vkFreeMemory(device, vertexMemory, nullptr);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingMemory, nullptr);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-            vkDestroyFence(device, inFlightFences[i], nullptr);
-        }
-        vkDestroyCommandPool(device, commandPool, nullptr);
-
-        vkDestroyDevice(device, nullptr);
-
-        if (enableValidationLayers) {
-            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-        }
-
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        vkDestroyInstance(instance, nullptr);
-
-        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
-        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(moveCursor[e][t][r][b][l]);
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(rotateCursor[e]);
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(translateCursor[e]);
-        glfwDestroyCursor(refineCursor);
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
-        glfwDestroyCursor(standardCursor);
-        glfwDestroyWindow(window);
-        glfwTerminate();
+        delete fetchBuffer;
+        delete loadState;
+        delete openState;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
