@@ -1037,38 +1037,34 @@ VkDescriptorPool createDescriptorPool(VkDevice device, int count) {
     return descriptorPool;
 }
 
-std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, std::vector<VkBuffer> uniformBuffer, VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool, int count) {
-    std::vector<VkDescriptorSetLayout> layouts(count, descriptorSetLayout);
+VkDescriptorSet createDescriptorSet(VkDevice device, VkBuffer uniformBuffer, VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(count);
-    allocInfo.pSetLayouts = layouts.data();
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
+    allocInfo.pSetLayouts = &descriptorSetLayout;
 
-    std::vector<VkDescriptorSet> descriptorSets;
-    descriptorSets.resize(count);
-    if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
+    VkDescriptorSet descriptorSet;
+    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
-    for (size_t i = 0; i < count; i++) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = uniformBuffer[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = uniformBuffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(UniformBufferObject);
 
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descriptorSets[i];
-        descriptorWrite.dstBinding = 0;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &bufferInfo;
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = descriptorSet;
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
 
-        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-    }
-    return descriptorSets;
+    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+    return descriptorSet;
 }
 
 std::vector<VkCommandBuffer> createCommandBuffers(VkDevice device, VkCommandPool commandPool, int count) {
@@ -1407,9 +1403,25 @@ struct FetchBuffer {
 };
 
 struct ChangeBuffer {
-    ChangeBuffer() {
+    VkDevice device;
+    VkBuffer uniformBuffer;
+    VkDeviceMemory uniformMemory;
+    void* uniformMapped;
+    VkDescriptorSet descriptorSet;
+    ChangeBuffer(VkPhysicalDevice physicalDevice, VkDevice device, VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
+        this->device = device;
+        VkDeviceSize uniformBufferSize = sizeof(UniformBufferObject);
+        uniformBuffer = createBuffer(device,uniformBufferSize,
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+        uniformMemory = createMemory(physicalDevice,device,uniformBuffer,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        vkBindBufferMemory(device, uniformBuffer, uniformMemory, 0);
+        uniformMapped = createMapped(device,uniformMemory,uniformBufferSize);
+        descriptorSet = createDescriptorSet(device,uniformBuffer,descriptorSetLayout,descriptorPool);
     }
     ~ChangeBuffer() {
+        vkFreeMemory(device, uniformMemory, nullptr);
+        vkDestroyBuffer(device, uniformBuffer, nullptr);
     }
 };
 
@@ -1479,25 +1491,13 @@ int main(int argc, char **argv) {
             throw std::runtime_error("device lost on wait for fence!");
         }
 
-        // parameter
-        VkDeviceSize uniformBufferSize;
-        uniformBufferSize = sizeof(UniformBufferObject);
-        std::vector<VkDeviceMemory> uniformMemory;
-        uniformMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        std::vector<void*> uniformMapped;
-        uniformMapped.resize(MAX_FRAMES_IN_FLIGHT);
-        std::vector<VkBuffer> uniformBuffer;
-        uniformBuffer.resize(MAX_FRAMES_IN_FLIGHT);
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            uniformBuffer[i] = createBuffer(device,uniformBufferSize,
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-            uniformMemory[i] = createMemory(physicalDevice,device,uniformBuffer[i],
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-            vkBindBufferMemory(device, uniformBuffer[i], uniformMemory[i], 0);
-            uniformMapped[i] = createMapped(device,uniformMemory[i],uniformBufferSize);
-        }
-        std::vector<VkDescriptorSet> descriptorSets;
-        descriptorSets = createDescriptorSets(device,uniformBuffer,descriptorSetLayout,descriptorPool,MAX_FRAMES_IN_FLIGHT);
+        std::vector<ChangeBuffer*> changeBuffers(MAX_FRAMES_IN_FLIGHT);
+        for (int i = 0; i < changeBuffers.size(); i++)
+            changeBuffers[i] = new ChangeBuffer(physicalDevice,device,descriptorSetLayout,descriptorPool);
+        std::vector<VkDescriptorSet> descriptorSets(MAX_FRAMES_IN_FLIGHT);
+        for (int i = 0; i < descriptorSets.size(); i++) descriptorSets[i] = changeBuffers[i]->descriptorSet;
+        std::vector<void*> uniformMapped(MAX_FRAMES_IN_FLIGHT);
+        for (int i = 0; i < uniformMapped.size(); i++) uniformMapped[i] = changeBuffers[i]->uniformMapped;
 
         std::vector<VkSemaphore> imageAvailableSemaphores;
         imageAvailableSemaphores = createSemaphores(device,MAX_FRAMES_IN_FLIGHT);
@@ -1738,11 +1738,7 @@ int main(int argc, char **argv) {
             vkDestroyFence(device, inFlightFences[i], nullptr);
         }
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroyBuffer(device, uniformBuffer[i], nullptr);
-            vkFreeMemory(device, uniformMemory[i], nullptr);
-        }
-
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) delete changeBuffers[i];
         delete fetchBuffer;
         delete loadState;
         delete openState;
