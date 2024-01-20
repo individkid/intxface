@@ -1441,6 +1441,7 @@ int main(int argc, char **argv) {
         const uint32_t WIDTH = 800;
         const uint32_t HEIGHT = 600;
         const int MAX_FRAMES_IN_FLIGHT = 2;
+        const int MAX_BUFFERS_AVAILABLE = 5;
         const std::vector<const char*> validationLayers = {
             "VK_LAYER_KHRONOS_validation"
         };
@@ -1491,12 +1492,12 @@ int main(int argc, char **argv) {
             throw std::runtime_error("device lost on wait for fence!");
         }
 
-        std::vector<ChangeBuffer*> changeBuffers(MAX_FRAMES_IN_FLIGHT);
+        std::vector<ChangeBuffer*> changeBuffers(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < changeBuffers.size(); i++)
             changeBuffers[i] = new ChangeBuffer(physicalDevice,device,descriptorSetLayout,descriptorPool);
-        std::vector<VkDescriptorSet> descriptorSets(MAX_FRAMES_IN_FLIGHT);
+        std::vector<VkDescriptorSet> descriptorSets(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < descriptorSets.size(); i++) descriptorSets[i] = changeBuffers[i]->descriptorSet;
-        std::vector<void*> uniformMapped(MAX_FRAMES_IN_FLIGHT);
+        std::vector<void*> uniformMapped(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < uniformMapped.size(); i++) uniformMapped[i] = changeBuffers[i]->uniformMapped;
 
         std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -1602,7 +1603,7 @@ int main(int argc, char **argv) {
             ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
             ubo.proj[1][1] *= -1;
 
-            memcpy(uniformMapped[currentFrame], &ubo, sizeof(ubo));
+            memcpy(uniformMapped[currentBuffer], &ubo, sizeof(ubo));
 
             vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
@@ -1647,7 +1648,7 @@ int main(int argc, char **argv) {
             VkBuffer vertexBuffers[] = {vertexBuffer};
             VkDeviceSize offsets[] = {0};
             vkCmdBindVertexBuffers(commandBuffers[currentFrame], 0, 1, vertexBuffers, offsets);
-            vkCmdBindDescriptorSets(commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+            vkCmdBindDescriptorSets(commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentBuffer], 0, nullptr);
 
             vkCmdDraw(commandBuffers[currentFrame], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
@@ -1707,6 +1708,7 @@ int main(int argc, char **argv) {
             }
 
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+            currentBuffer = (currentBuffer + 1) % MAX_BUFFERS_AVAILABLE;
         }
         if (sem_wait(&threadState.protect) != 0) {
             throw std::runtime_error("cannot wait for protect!");
