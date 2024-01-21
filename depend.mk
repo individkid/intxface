@@ -47,4 +47,6 @@ typerHs: face.hs faceC.o protoC.o typer.hs
 typerLua: typer.lua
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
+vulkanCpp.o: type.h
+vulkanCpp: vulkan.vsv vulkan.fsv
 wrapCpp.o: proto.h wrap.cpp wrap.h

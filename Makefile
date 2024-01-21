@@ -8,10 +8,8 @@ all: facer.log typra.log typer.log filer.log spacra.log spacer.log sharer.log ho
 
 INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
-LIBRARIES = -llua -lportaudio -lglfw -lvulkan
-# -ldl -lpthread -lX11 -lXrandr
-
 ifeq ($(UNAME),Linux)
+	LIBRARIES = -llua -lportaudio -lglfw -lvulkan
 	CXX = g++
 	CC = gcc
 	GHC = ghc
@@ -19,6 +17,8 @@ ifeq ($(UNAME),Linux)
 	GC = oops
 endif
 ifeq ($(UNAME),Darwin)
+	LIBRARIES = -llua -lportaudio
+	# -ldl -lpthread -lX11 -lXrandr
 	CXX = clang++
 	CC = clang
 	GHC = ghc
