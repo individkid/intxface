@@ -1424,13 +1424,23 @@ struct ThreadState {
 
 struct DrawState {
     VkDevice device;
+    VkRenderPass renderPass;
+    VkPipeline graphicsPipeline;
+    VkPipelineLayout pipelineLayout;
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
     VkFence inFlightFence;
     bool inFlightQueued;
     VkCommandBuffer commandBuffer;
-    DrawState(VkDevice device, VkCommandPool commandPool) {
+    DrawState(VkDevice device, VkCommandPool commandPool, VkRenderPass renderPass, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkQueue graphicsQueue, VkQueue presentQueue) {
         this->device = device;
+        this->renderPass = renderPass;
+        this->graphicsPipeline = graphicsPipeline;
+        this->pipelineLayout = pipelineLayout;
+        this->graphicsQueue = graphicsQueue;
+        this->presentQueue = presentQueue;
         imageAvailableSemaphore = createSemaphore(device);
         renderFinishedSemaphore = createSemaphore(device);
         inFlightFence = createFence(device);
@@ -1442,8 +1452,132 @@ struct DrawState {
         vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
         vkDestroyFence(device, inFlightFence, nullptr);
     }
-    bool draw(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, std::vector<VkFramebuffer> &swapChainFramebuffers) {
-        return true;
+    VkResult draw(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, std::vector<VkFramebuffer> &swapChainFramebuffers, void *uniformMapped, VkDescriptorSet descriptorSet, VkBuffer vertexBuffer, uint32_t size) {
+        VkResult result;
+
+        result = vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, 0);
+        if (result == VK_ERROR_DEVICE_LOST) {
+            throw std::runtime_error("device lost on wait for fence!");
+        }
+        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
+            throw std::runtime_error("failed to wait for fences!");
+        }
+        if (result == VK_TIMEOUT && !inFlightQueued) {
+            inFlightQueued = true;
+        }
+        if (result == VK_TIMEOUT) {
+            return result;
+        }
+        inFlightQueued = false;
+
+        uint32_t imageIndex;
+        result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            return result;
+        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+            throw std::runtime_error("failed to acquire swap chain image!");
+        }
+
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        UniformBufferObject ubo{};
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+        ubo.proj[1][1] *= -1;
+
+        memcpy(uniformMapped, &ubo, sizeof(ubo));
+
+        vkResetFences(device, 1, &inFlightFence);
+
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+            throw std::runtime_error("failed to begin recording command buffer!");
+        }
+
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = swapChainExtent;
+
+        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float) swapChainExtent.width;
+        viewport.height = (float) swapChainExtent.height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapChainExtent;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        VkBuffer vertexBuffers[] = {vertexBuffer};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+
+        vkCmdDraw(commandBuffer, size, 1, 0, 0);
+
+        vkCmdEndRenderPass(commandBuffer);
+
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS) {
+            throw std::runtime_error("failed to submit draw command buffer!");
+        }
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+
+        VkSwapchainKHR swapChains[] = {swapChain};
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapChains;
+
+        presentInfo.pImageIndices = &imageIndex;
+
+        result = vkQueuePresentKHR(presentQueue, &presentInfo);
+        return result;
     }
 };
 
@@ -1562,7 +1696,7 @@ int main(int argc, char **argv) {
         struct ThreadState *threadState = new ThreadState(device);
 
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < drawState.size(); i++) drawState[i] = new DrawState(device,commandPool);
+        for (int i = 0; i < drawState.size(); i++) drawState[i] = new DrawState(device,commandPool,renderPass,graphicsPipeline,pipelineLayout,graphicsQueue,presentQueue);
         std::vector<VkSemaphore> imageAvailableSemaphores(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < imageAvailableSemaphores.size(); i++) imageAvailableSemaphores[i] = drawState[i]->imageAvailableSemaphore;
         std::vector<VkSemaphore> renderFinishedSemaphores(MAX_FRAMES_IN_FLIGHT);
@@ -1578,7 +1712,6 @@ int main(int argc, char **argv) {
         VkExtent2D swapChainExtent;
         VkSwapchainKHR swapChain;
         std::vector<FrameState*> frameState;
-        std::vector<VkImageView> swapChainImageViews;
         std::vector<VkFramebuffer> swapChainFramebuffers;
         uint32_t currentFrame = 0;
         uint32_t currentBuffer = 0;
@@ -1590,8 +1723,6 @@ int main(int argc, char **argv) {
                 std::vector<VkImage> swapChainImages = swapState->swapChainImages;
                 frameState.resize(swapChainImages.size());
                 for (int i = 0; i < frameState.size(); i++) frameState[i] = new FrameState(device,swapChainImageFormat,swapChainImages[i],swapChainExtent,renderPass);
-                swapChainImageViews.resize(frameState.size());
-                for (int i = 0; i < frameState.size(); i++) swapChainImageViews[i] = frameState[i]->swapChainImageView;
                 swapChainFramebuffers.resize(frameState.size());
                 for (int i = 0; i < frameState.size(); i++) swapChainFramebuffers[i] = frameState[i]->swapChainFramebuffer;
             }
@@ -1603,147 +1734,19 @@ int main(int argc, char **argv) {
             if (!mainState.drawCalled) {
                 continue;
             }
-            if (!drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers)) continue;
             VkResult result;
-            result = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, 0);
-            if (result == VK_ERROR_DEVICE_LOST) {
-                throw std::runtime_error("device lost on wait for fence!");
-            }
-            if (result != VK_SUCCESS && result != VK_TIMEOUT) {
-                throw std::runtime_error("failed to wait for fences!");
-            }
-            if (result == VK_TIMEOUT && !drawState[currentFrame]->inFlightQueued) {
-                threadState->push(inFlightFences[currentFrame]);
-                drawState[currentFrame]->inFlightQueued = true;
-            }
-            if (result == VK_TIMEOUT) {
-                continue;
-            }
-            drawState[currentFrame]->inFlightQueued = false;
-
-            uint32_t imageIndex;
-            result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-            if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-                vkDeviceWaitIdle(device);
-                for (int i = 0; i < frameState.size(); i++) delete frameState[i];
-                delete swapState;
-                swapState = 0;
-                continue;
-            } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-                throw std::runtime_error("failed to acquire swap chain image!");
-            }
-
-            static auto startTime = std::chrono::high_resolution_clock::now();
-
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-            UniformBufferObject ubo{};
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-            ubo.proj[1][1] *= -1;
-
-            memcpy(uniformMapped[currentBuffer], &ubo, sizeof(ubo));
-
-            vkResetFences(device, 1, &inFlightFences[currentFrame]);
-
-            vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-            if (vkBeginCommandBuffer(commandBuffers[currentFrame], &beginInfo) != VK_SUCCESS) {
-                throw std::runtime_error("failed to begin recording command buffer!");
-            }
-
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = renderPass;
-            renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-            renderPassInfo.renderArea.offset = {0, 0};
-            renderPassInfo.renderArea.extent = swapChainExtent;
-
-            VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-            renderPassInfo.clearValueCount = 1;
-            renderPassInfo.pClearValues = &clearColor;
-
-            vkCmdBeginRenderPass(commandBuffers[currentFrame], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-            vkCmdBindPipeline(commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = (float) swapChainExtent.width;
-            viewport.height = (float) swapChainExtent.height;
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(commandBuffers[currentFrame], 0, 1, &viewport);
-
-            VkRect2D scissor{};
-            scissor.offset = {0, 0};
-            scissor.extent = swapChainExtent;
-            vkCmdSetScissor(commandBuffers[currentFrame], 0, 1, &scissor);
-
-            VkBuffer vertexBuffers[] = {vertexBuffer};
-            VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(commandBuffers[currentFrame], 0, 1, vertexBuffers, offsets);
-            vkCmdBindDescriptorSets(commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentBuffer], 0, nullptr);
-
-            vkCmdDraw(commandBuffers[currentFrame], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-
-            vkCmdEndRenderPass(commandBuffers[currentFrame]);
-
-            if (vkEndCommandBuffer(commandBuffers[currentFrame]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to record command buffer!");
-            }
-
-            VkSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-            VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-            VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-            submitInfo.waitSemaphoreCount = 1;
-            submitInfo.pWaitSemaphores = waitSemaphores;
-            submitInfo.pWaitDstStageMask = waitStages;
-
-            submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
-
-            VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
-            submitInfo.signalSemaphoreCount = 1;
-            submitInfo.pSignalSemaphores = signalSemaphores;
-
-            if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to submit draw command buffer!");
-            }
-
-            VkPresentInfoKHR presentInfo{};
-            presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-            presentInfo.waitSemaphoreCount = 1;
-            presentInfo.pWaitSemaphores = signalSemaphores;
-
-            VkSwapchainKHR swapChains[] = {swapChain};
-            presentInfo.swapchainCount = 1;
-            presentInfo.pSwapchains = swapChains;
-
-            presentInfo.pImageIndices = &imageIndex;
-
-            result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
+            result = drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()));
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || mainState.framebufferResized) {
                 mainState.framebufferResized = false;
                 vkDeviceWaitIdle(device);
                 for (int i = 0; i < frameState.size(); i++) delete frameState[i];
                 delete swapState;
                 swapState = 0;
-            } else if (result != VK_SUCCESS) {
+            } else if (result == VK_TIMEOUT) {
+                continue;
+            } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
                 throw std::runtime_error("failed to present swap chain image!");
             }
-
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
             currentBuffer = (currentBuffer + 1) % MAX_BUFFERS_AVAILABLE;
         }
