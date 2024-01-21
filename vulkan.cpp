@@ -1318,10 +1318,10 @@ struct ChangeBuffer {
     }
 };
 
-struct StorageBuffer {
-    StorageBuffer() {
+struct StoreBuffer {
+    StoreBuffer() {
     }
-    ~StorageBuffer() {
+    ~StoreBuffer() {
     }
 };
 
@@ -1442,6 +1442,9 @@ struct DrawState {
         vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
         vkDestroyFence(device, inFlightFence, nullptr);
     }
+    bool draw(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, std::vector<VkFramebuffer> &swapChainFramebuffers) {
+        return true;
+    }
 };
 
 struct SwapState {
@@ -1552,6 +1555,10 @@ int main(int argc, char **argv) {
         std::vector<void*> uniformMapped(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < uniformMapped.size(); i++) uniformMapped[i] = changeBuffers[i]->uniformMapped;
 
+        std::vector<StoreBuffer*> storeBuffers(MAX_BUFFERS_AVAILABLE);
+        for (int i = 0; i < storeBuffers.size(); i++)
+            storeBuffers[i] = new StoreBuffer();
+
         struct ThreadState *threadState = new ThreadState(device);
 
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
@@ -1596,6 +1603,7 @@ int main(int argc, char **argv) {
             if (!mainState.drawCalled) {
                 continue;
             }
+            if (!drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers)) continue;
             VkResult result;
             result = vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, 0);
             if (result == VK_ERROR_DEVICE_LOST) {
@@ -1744,6 +1752,7 @@ int main(int argc, char **argv) {
         delete swapState;
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) delete drawState[i];
         delete threadState;
+        for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete storeBuffers[i];
         for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete changeBuffers[i];
         delete fetchBuffer;
         delete loadState;
