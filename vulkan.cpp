@@ -1556,22 +1556,16 @@ int main(int argc, char **argv) {
         }
 
         struct SwapState *swapState = 0;
-        VkExtent2D swapChainExtent;
-        VkSwapchainKHR swapChain;
-        std::vector<VkImageView> swapChainImageViews;
-        std::vector<VkFramebuffer> swapChainFramebuffers;
         uint32_t currentFrame = 0;
         uint32_t currentBuffer = 0;
         while (!mainState.escapePressed || !mainState.enterPressed) {
-            VkExtent2D swapChainExtent;
-            VkSwapchainKHR swapChain;
             if (!swapState) {
                 swapState = new SwapState(window,physicalDevice,device,surface,surfaceFormat,presentMode,minImageCount,queueFamilyIndices,swapChainImageFormat,renderPass);
-                swapChainExtent = swapState->swapChainExtent;
-                swapChain = swapState->swapChain;
-                swapChainImageViews = swapState->swapChainImageViews;
-                swapChainFramebuffers = swapState->swapChainFramebuffers;
             }
+            VkExtent2D swapChainExtent = swapState->swapChainExtent;
+            VkSwapchainKHR swapChain = swapState->swapChain;
+            std::vector<VkImageView> swapChainImageViews = swapState->swapChainImageViews;
+            std::vector<VkFramebuffer> swapChainFramebuffers = swapState->swapChainFramebuffers;
             glfwWaitEventsTimeout(0.01);
             // TODO sem protect mainState.func.front()() and mainState.func.pop()
             if (mainState.dmaCalled) {
