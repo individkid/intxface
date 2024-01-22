@@ -1432,7 +1432,6 @@ struct DrawState {
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
     VkFence inFlightFence;
-    bool inFlightQueued;
     VkCommandBuffer commandBuffer;
     DrawState(VkDevice device, VkCommandPool commandPool, VkRenderPass renderPass, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkQueue graphicsQueue, VkQueue presentQueue) {
         this->device = device;
@@ -1444,7 +1443,6 @@ struct DrawState {
         imageAvailableSemaphore = createSemaphore(device);
         renderFinishedSemaphore = createSemaphore(device);
         inFlightFence = createFence(device);
-        inFlightQueued = false;
         commandBuffer = createCommandBuffer(device,commandPool);
     }
     ~DrawState() {
@@ -1462,13 +1460,9 @@ struct DrawState {
         if (result != VK_SUCCESS && result != VK_TIMEOUT) {
             throw std::runtime_error("failed to wait for fences!");
         }
-        if (result == VK_TIMEOUT && !inFlightQueued) {
-            inFlightQueued = true;
-        }
         if (result == VK_TIMEOUT) {
             return result;
         }
-        inFlightQueued = false;
 
         uint32_t imageIndex;
         result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
@@ -1479,40 +1473,32 @@ struct DrawState {
         }
 
         static auto startTime = std::chrono::high_resolution_clock::now();
-
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
         UniformBufferObject ubo{};
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
-
         memcpy(uniformMapped, &ubo, sizeof(ubo));
 
         vkResetFences(device, 1, &inFlightFence);
-
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
             throw std::runtime_error("failed to begin recording command buffer!");
         }
-
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = renderPass;
         renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = swapChainExtent;
-
         VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
-
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -1537,45 +1523,35 @@ struct DrawState {
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
         vkCmdDraw(commandBuffer, size, 1, 0, 0);
-
         vkCmdEndRenderPass(commandBuffer);
-
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
         }
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
         VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
         VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
-
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
-
         VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
-
         if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS) {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
-
         VkSwapchainKHR swapChains[] = {swapChain};
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
-
         presentInfo.pImageIndices = &imageIndex;
-
         result = vkQueuePresentKHR(presentQueue, &presentInfo);
         return result;
     }
@@ -1703,8 +1679,6 @@ int main(int argc, char **argv) {
         for (int i = 0; i < renderFinishedSemaphores.size(); i++) renderFinishedSemaphores[i] = drawState[i]->renderFinishedSemaphore;
         std::vector<VkFence> inFlightFences(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < inFlightFences.size(); i++) inFlightFences[i] = drawState[i]->inFlightFence;
-        std::vector<bool*> inFlightQueued(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < inFlightQueued.size(); i++) inFlightQueued[i] = &drawState[i]->inFlightQueued;
         std::vector<VkCommandBuffer> commandBuffers(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < commandBuffers.size(); i++) commandBuffers[i] = drawState[i]->commandBuffer;
 
@@ -1736,7 +1710,7 @@ int main(int argc, char **argv) {
             }
             VkResult result;
             result = drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()));
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || mainState.framebufferResized) {
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || mainState.framebufferResized) {
                 mainState.framebufferResized = false;
                 vkDeviceWaitIdle(device);
                 for (int i = 0; i < frameState.size(); i++) delete frameState[i];
@@ -1744,7 +1718,7 @@ int main(int argc, char **argv) {
                 swapState = 0;
             } else if (result == VK_TIMEOUT) {
                 continue;
-            } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+            } else if (result != VK_SUCCESS) {
                 throw std::runtime_error("failed to present swap chain image!");
             }
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
