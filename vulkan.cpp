@@ -78,104 +78,7 @@ struct UniformBufferObject {
     alignas(16) glm::mat4 proj;
 };
 
-struct InitState;
-struct MainState {
-    bool dmaCalled;
-    bool drawCalled;
-    bool framebufferResized;
-    bool escapePressed;
-    bool enterPressed;
-    bool otherPressed;
-    bool windowMoving;
-    double mouseLastx;
-    double mouseLasty;
-    int windowLastx;
-    int windowLasty;
-    int argc;
-    char **argv;
-    struct Center *center;
-    struct InitState *initState;
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
-    const int MAX_FRAMES_IN_FLIGHT = 2;
-    const int MAX_BUFFERS_AVAILABLE = 7; // TODO collective limit for BufferQueue
-    const std::vector<const char*> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-    const std::vector<const char*> validationLayers = {
-        "VK_LAYER_KHRONOS_validation"
-    };
-    #ifdef NDEBUG
-    const bool enableValidationLayers = false;
-    #else
-    const bool enableValidationLayers = true;
-    #endif
-} mainState = {
-    .dmaCalled = false,
-    .drawCalled = true,
-    .framebufferResized = false,
-    .escapePressed = false,
-    .enterPressed = false,
-    .otherPressed = false,
-    .windowMoving = false,
-    .mouseLastx = 0.0,
-    .mouseLasty = 0.0,
-    .windowLastx = 0,
-    .windowLasty = 0,
-    .argc = 0,
-    .argv = 0,
-    .center = 0,
-    .initState = 0,
-};
-void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->framebufferResized = true;
-}
-void keypressCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    if (action != GLFW_PRESS || mods != 0) {
-        return;
-    }
-    if (key == GLFW_KEY_ENTER) {
-        mainState->enterPressed = true;
-    } else {
-        mainState->enterPressed = false;
-    }
-    if (key == GLFW_KEY_ESCAPE) {
-        mainState->escapePressed = true;
-        mainState->otherPressed = false;
-    } else if (mainState->otherPressed) {
-        mainState->escapePressed = false;
-        mainState->otherPressed = false;
-    } else {
-        mainState->otherPressed = true;
-    }
-}
-void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    if (action != GLFW_PRESS) {
-        return;
-    }
-    mainState->windowMoving = !mainState->windowMoving;
-    if (mainState->windowMoving) {
-        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
-        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
-    }
-}
-void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    double mouseNextx, mouseNexty;
-    int windowNextx, windowNexty;
-    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
-    if (mainState->windowMoving) {
-        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
-        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
-        glfwSetWindowPos(window,windowNextx,windowNexty);
-        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
-    }
-}
-
-GLFWcursor *initMoveCursor(bool e, bool t, bool r, bool b, bool l) {
+GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
     int dim = 11;
     int hot = dim/2;
     unsigned char pixels[dim * dim * 4];
@@ -202,7 +105,7 @@ GLFWcursor *initMoveCursor(bool e, bool t, bool r, bool b, bool l) {
 
     return glfwCreateCursor(&image, hot, hot);
 }
-GLFWcursor *initRotateCursor(bool e) {
+GLFWcursor *rotateCursor(bool e) {
     int dim = 11;
     int hot = dim/2;
     unsigned char pixels[dim * dim * 4];
@@ -225,7 +128,7 @@ GLFWcursor *initRotateCursor(bool e) {
 
     return glfwCreateCursor(&image, hot, hot);
 }
-GLFWcursor *initTranslateCursor(bool e) {
+GLFWcursor *translateCursor(bool e) {
     int dim = 11;
     int hot = dim/2;
     unsigned char pixels[dim * dim * 4];
@@ -247,7 +150,7 @@ GLFWcursor *initTranslateCursor(bool e) {
 
     return glfwCreateCursor(&image, hot, hot);
 }
-GLFWcursor *initRefineCursor() {
+GLFWcursor *refineCursor() {
     int dim = 11;
     int hot = dim/2;
     unsigned char pixels[dim * dim * 4];
@@ -269,7 +172,7 @@ GLFWcursor *initRefineCursor() {
 
     return glfwCreateCursor(&image, hot, hot);
 }
-GLFWcursor *initSculptCursor(bool e) {
+GLFWcursor *sculptCursor(bool e) {
     int dim = 11;
     int hot = dim/2;
     unsigned char pixels[dim * dim * 4];
@@ -427,11 +330,6 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device, const std::vector<cons
     return requiredExtensions.empty();
 }
 
-VkSurfaceCapabilitiesKHR querySurfaceCapabilities(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    VkSurfaceCapabilitiesKHR surfaceCapabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &surfaceCapabilities);
-    return surfaceCapabilities;
-}
 std::vector<VkSurfaceFormatKHR> querySurfaceFormats(VkPhysicalDevice device, VkSurfaceKHR surface) {
     std::vector<VkSurfaceFormatKHR> surfaceFormats;
     uint32_t formatCount;
@@ -453,7 +351,7 @@ std::vector<VkPresentModeKHR> queryPresentModes(VkPhysicalDevice device, VkSurfa
     return presentModes;
 }
 
-bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, const std::vector<const char*> deviceExtensions) {
+bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, const std::vector<const char*> deviceExtensions, std::optional<uint32_t> graphicsIndex, std::optional<uint32_t> presentIndex) {
     if (!checkDeviceExtensionSupport(device,deviceExtensions)) {
         return false;
     }
@@ -463,38 +361,13 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, const std::
     if (queryPresentModes(device,surface).empty()) {
         return false;
     }
-    if (!findGraphicsFamily(device,surface).has_value()) {
+    if (!graphicsIndex.has_value()) {
         return false;
     }
-    if (!findPresentFamily(device,surface).has_value()) {
+    if (!presentIndex.has_value()) {
         return false;
     }
     return true;
-}
-
-VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*> deviceExtensions) {
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-
-    if (deviceCount == 0) {
-        throw std::runtime_error("failed to find GPUs with Vulkan support!");
-    }
-
-    std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-    for (const auto& device : devices) {
-        if (isDeviceSuitable(device,surface,deviceExtensions)) {
-            physicalDevice = device;
-            break;
-        }
-    }
-
-    if (physicalDevice == VK_NULL_HANDLE) {
-        throw std::runtime_error("failed to find a suitable GPU!");
-    }
-    return physicalDevice;
 }
 
 VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, const std::vector<const char*> validationLayers, const std::vector<const char*> deviceExtensions, bool enableValidationLayers) {
@@ -547,7 +420,9 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsF
     return device;
 }
 
-VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapChainExtent, uint32_t minImageCount, uint32_t queueFamilyIndices[]) {
+VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
+    VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapChainExtent,
+    VkSurfaceCapabilitiesKHR surfaceCapabilities, uint32_t minImageCount, uint32_t graphicsIndex, uint32_t presentIndex) {
 
     VkSwapchainKHR swapChain;
 
@@ -563,15 +438,19 @@ VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device,
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 
-    if (queueFamilyIndices[0] != queueFamilyIndices[1]) {
+    if (graphicsIndex != presentIndex) {
+        uint32_t indices[2] = {
+            graphicsIndex,
+            presentIndex,
+        };
         createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         createInfo.queueFamilyIndexCount = 2;
-        createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        createInfo.pQueueFamilyIndices = indices;
     } else {
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
-    createInfo.preTransform = querySurfaceCapabilities(physicalDevice,surface).currentTransform;
+    createInfo.preTransform = surfaceCapabilities.currentTransform;
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = presentMode;
     createInfo.clipped = VK_TRUE;
@@ -1093,6 +972,11 @@ struct InitState {
     }
 };
 
+struct MainState;
+void framebufferResized(GLFWwindow* window, int width, int height);
+void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouseClicked(GLFWwindow* window, int button, int action, int mods);
+void mouseMoved(GLFWwindow* window, double xpos, double ypos);
 struct OpenState {
     GLFWwindow* window;
     GLFWcursor* moveCursor[2][2][2][2][2];
@@ -1103,25 +987,25 @@ struct OpenState {
     GLFWcursor* standardCursor;
     VkSurfaceKHR surface;
     VkInstance instance;
-    OpenState(VkInstance instance, uint32_t WIDTH, uint32_t HEIGHT) {
+    OpenState(VkInstance instance, uint32_t WIDTH, uint32_t HEIGHT, MainState *mainState) {
         window = [](const uint32_t WIDTH, const uint32_t HEIGHT) {
             GLFWwindow* window;
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             return glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         } (WIDTH,HEIGHT);
-        glfwSetWindowUserPointer(window, &mainState);
+        glfwSetWindowUserPointer(window, mainState);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-        glfwSetKeyCallback(window, keypressCallback);
+        glfwSetFramebufferSizeCallback(window, framebufferResized);
+        glfwSetKeyCallback(window, keyPressed);
         glfwSetMouseButtonCallback(window, mouseClicked);
         glfwSetCursorPosCallback(window, mouseMoved);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
-        for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = initMoveCursor(e,t,r,b,l);
-        for (int e = 0; e < 2; e++) rotateCursor[e] = initRotateCursor(e);
-        for (int e = 0; e < 2; e++) translateCursor[e] = initTranslateCursor(e);
-        refineCursor = initRefineCursor();
-        for (int e = 0; e < 2; e++) sculptCursor[e] = initSculptCursor(e);
+        for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = ::moveCursor(e,t,r,b,l);
+        for (int e = 0; e < 2; e++) rotateCursor[e] = ::rotateCursor(e);
+        for (int e = 0; e < 2; e++) translateCursor[e] = ::translateCursor(e);
+        refineCursor = ::refineCursor();
+        for (int e = 0; e < 2; e++) sculptCursor[e] = ::sculptCursor(e);
         standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
         glfwSetCursor(window,moveCursor[true][true][true][true][true]);
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
@@ -1143,9 +1027,9 @@ struct OpenState {
 };
 
 struct LoadState {
-    static const int NUM_QUEUE_FAMILIES = 2;
     VkPhysicalDevice physicalDevice;
-    uint32_t* queueFamilyIndices;
+    uint32_t graphicsIndex;
+    uint32_t presentIndex;
     uint32_t minImageCount;
     VkSurfaceFormatKHR surfaceFormat;
     VkPresentModeKHR presentMode;
@@ -1159,26 +1043,48 @@ struct LoadState {
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;
     VkDescriptorPool descriptorPool;
-    LoadState(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*> validationLayers ,const std::vector<const char*> deviceExtensions, bool enableValidationLayers, const int MAX_BUFFERS_AVAILABLE) {
-        physicalDevice = pickPhysicalDevice(instance,surface,deviceExtensions);
-        queueFamilyIndices = new uint32_t[NUM_QUEUE_FAMILIES];
-        queueFamilyIndices[0] = findGraphicsFamily(physicalDevice,surface).value();
-        queueFamilyIndices[1] = findPresentFamily(physicalDevice,surface).value();
-        minImageCount = querySurfaceCapabilities(physicalDevice,surface).minImageCount + 1;
-        if (querySurfaceCapabilities(physicalDevice,surface).maxImageCount > 0 &&
-            minImageCount > querySurfaceCapabilities(physicalDevice,surface).maxImageCount)
-            minImageCount = querySurfaceCapabilities(physicalDevice,surface).maxImageCount;
+    LoadState(VkInstance instance, VkSurfaceKHR surface,
+        std::vector<const char*> validationLayers, std::vector<const char*> deviceExtensions,
+        bool enableValidationLayers, int MAX_BUFFERS_AVAILABLE) {
+        std::optional<uint32_t> graphicsOptional;
+        std::optional<uint32_t> presentOptional;
+        physicalDevice = [&graphicsOptional,&presentOptional](VkInstance instance, VkSurfaceKHR surface,
+            std::vector<const char*> deviceExtensions) {
+            VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+            uint32_t deviceCount = 0;
+            vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+            if (deviceCount == 0)
+                throw std::runtime_error("failed to find GPUs with Vulkan support!");
+            std::vector<VkPhysicalDevice> devices(deviceCount);
+            vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+            for (const auto& device : devices) {
+                graphicsOptional = findGraphicsFamily(device,surface);
+                presentOptional = findPresentFamily(device,surface);
+                if (isDeviceSuitable(device,surface,deviceExtensions,graphicsOptional,presentOptional)) {
+                    physicalDevice = device;
+                    break;}}
+            if (physicalDevice == VK_NULL_HANDLE)
+                throw std::runtime_error("failed to find a suitable GPU!");
+            return physicalDevice;
+        } (instance,surface,deviceExtensions);
+        graphicsIndex = graphicsOptional.value();
+        presentIndex = presentOptional.value();
+        VkSurfaceCapabilitiesKHR surfaceCapabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+        minImageCount = surfaceCapabilities.minImageCount + 1;
+        if (surfaceCapabilities.maxImageCount > 0 && minImageCount > surfaceCapabilities.maxImageCount)
+            minImageCount = surfaceCapabilities.maxImageCount;
         surfaceFormat = chooseSwapSurfaceFormat(querySurfaceFormats(physicalDevice,surface));
         presentMode = chooseSwapPresentMode(queryPresentModes(physicalDevice,surface));
         swapChainImageFormat = surfaceFormat.format;
-        device = createLogicalDevice(physicalDevice,queueFamilyIndices[0],queueFamilyIndices[1],validationLayers,deviceExtensions,enableValidationLayers);
-        vkGetDeviceQueue(device, queueFamilyIndices[0], 0, &graphicsQueue);
-        vkGetDeviceQueue(device, queueFamilyIndices[1], 0, &presentQueue);
+        device = createLogicalDevice(physicalDevice,graphicsIndex,presentIndex,validationLayers,deviceExtensions,enableValidationLayers);
+        vkGetDeviceQueue(device, graphicsIndex, 0, &graphicsQueue);
+        vkGetDeviceQueue(device, presentIndex, 0, &presentQueue);
         renderPass = createRenderPass(device,swapChainImageFormat);
         descriptorSetLayout = createDescriptorSetLayout(device);
         pipelineLayout = createPipelineLayout(device,descriptorSetLayout);
         graphicsPipeline = createGraphicsPipeline(device,renderPass,pipelineLayout,"vulkan.vsv","vulkan.fsv");
-        commandPool = createCommandPool(device, findGraphicsFamily(physicalDevice,surface).value());
+        commandPool = createCommandPool(device, graphicsIndex);
         descriptorPool = createDescriptorPool(device, MAX_BUFFERS_AVAILABLE);
     }
     ~LoadState() {
@@ -1473,7 +1379,9 @@ struct SwapState {
     VkSwapchainKHR swapChain;
     uint32_t imageCount;
     std::vector<VkImage> swapChainImages;
-    SwapState(GLFWwindow* window, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, uint32_t minImageCount, uint32_t* queueFamilyIndices) {
+    SwapState(GLFWwindow* window, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
+        VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
+        uint32_t minImageCount, uint32_t graphicsIndex, uint32_t presentIndex) {
         this->device = device;
         int width = 0, height = 0;
         glfwGetFramebufferSize(window, &width, &height);
@@ -1481,8 +1389,10 @@ struct SwapState {
             glfwWaitEvents();
             glfwGetFramebufferSize(window, &width, &height);
         }
-        swapChainExtent = chooseSwapExtent(window,querySurfaceCapabilities(physicalDevice,surface));
-        swapChain = createSwapChain(physicalDevice,device,surface,surfaceFormat,presentMode,swapChainExtent,minImageCount,queueFamilyIndices);
+        VkSurfaceCapabilitiesKHR surfaceCapabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+        swapChainExtent = chooseSwapExtent(window,surfaceCapabilities);
+        swapChain = createSwapChain(physicalDevice,device,surface,surfaceFormat,presentMode,swapChainExtent,surfaceCapabilities,minImageCount,graphicsIndex,presentIndex);
         uint32_t imageCount;
         vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
         swapChainImages.resize(imageCount);
@@ -1560,6 +1470,107 @@ struct ThreadState {
     }
 };
 
+struct MainState {
+    bool callDma;
+    bool callDraw;
+    bool framebufferResized;
+    bool escapePressed;
+    bool enterPressed;
+    bool otherPressed;
+    bool windowMoving;
+    double mouseLastx;
+    double mouseLasty;
+    int windowLastx;
+    int windowLasty;
+    int argc;
+    char **argv;
+    struct Center *center;
+    struct InitState *initState;
+    struct OpenState* openState;
+    struct LoadState* loadState;
+    const uint32_t WIDTH = 800;
+    const uint32_t HEIGHT = 600;
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+    const int MAX_BUFFERS_AVAILABLE = 7; // TODO collective limit for BufferQueue
+    const std::vector<const char*> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+    const std::vector<const char*> validationLayers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+    #ifdef NDEBUG
+    const bool enableValidationLayers = false;
+    #else
+    const bool enableValidationLayers = true;
+    #endif
+} mainState = {
+    .callDma = false,
+    .callDraw = true,
+    .framebufferResized = false,
+    .escapePressed = false,
+    .enterPressed = false,
+    .otherPressed = false,
+    .windowMoving = false,
+    .mouseLastx = 0.0,
+    .mouseLasty = 0.0,
+    .windowLastx = 0,
+    .windowLasty = 0,
+    .argc = 0,
+    .argv = 0,
+    .center = 0,
+    .initState = 0,
+    .openState = 0,
+    .loadState = 0,
+};
+
+void framebufferResized(GLFWwindow* window, int width, int height) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    mainState->framebufferResized = true;
+}
+void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    if (action != GLFW_PRESS || mods != 0) {
+        return;
+    }
+    if (key == GLFW_KEY_ENTER) {
+        mainState->enterPressed = true;
+    } else {
+        mainState->enterPressed = false;
+    }
+    if (key == GLFW_KEY_ESCAPE) {
+        mainState->escapePressed = true;
+        mainState->otherPressed = false;
+    } else if (mainState->otherPressed) {
+        mainState->escapePressed = false;
+        mainState->otherPressed = false;
+    } else {
+        mainState->otherPressed = true;
+    }
+}
+void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    if (action != GLFW_PRESS) {
+        return;
+    }
+    mainState->windowMoving = !mainState->windowMoving;
+    if (mainState->windowMoving) {
+        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
+        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
+    }
+}
+void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    double mouseNextx, mouseNexty;
+    int windowNextx, windowNexty;
+    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
+    if (mainState->windowMoving) {
+        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
+        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
+        glfwSetWindowPos(window,windowNextx,windowNexty);
+        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
+    }
+}
+
 void vulkanInit() {
     for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
     mainState.initState = new InitState(mainState.enableValidationLayers,mainState.validationLayers);
@@ -1577,7 +1588,7 @@ int vulkanInfo(enum Configure query) {
     return 0; // TODO
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
-    // TODO mainState.func.push(std::function(
+    // TODO mainState.callDraw
 }
 
 int main(int argc, char **argv) {
@@ -1595,25 +1606,26 @@ int main(int argc, char **argv) {
         bool enableValidationLayers = mainState.enableValidationLayers;
 
         // TODO move following to vulkanMain
-        OpenState* openState = new OpenState(instance,WIDTH,HEIGHT);
-        GLFWwindow* window = openState->window;
-        VkSurfaceKHR surface = openState->surface;
-        LoadState* loadState = new LoadState(instance,surface,validationLayers,deviceExtensions,enableValidationLayers,MAX_BUFFERS_AVAILABLE);
-        VkPhysicalDevice physicalDevice = loadState->physicalDevice;
-        uint32_t* queueFamilyIndices = loadState->queueFamilyIndices;
-        uint32_t minImageCount = loadState->minImageCount;
-        VkSurfaceFormatKHR surfaceFormat = loadState->surfaceFormat;
-        VkPresentModeKHR presentMode = loadState->presentMode;
-        VkFormat swapChainImageFormat = loadState->swapChainImageFormat;
-        VkDevice device = loadState->device;
-        VkQueue graphicsQueue = loadState->graphicsQueue;
-        VkQueue presentQueue = loadState->presentQueue;
-        VkRenderPass renderPass = loadState->renderPass;
-        VkDescriptorSetLayout descriptorSetLayout = loadState->descriptorSetLayout;
-        VkPipelineLayout pipelineLayout = loadState->pipelineLayout;
-        VkPipeline graphicsPipeline = loadState->graphicsPipeline;
-        VkCommandPool commandPool = loadState->commandPool;
-        VkDescriptorPool descriptorPool = loadState->descriptorPool;
+        mainState.openState = new OpenState(instance,WIDTH,HEIGHT,&mainState);
+        GLFWwindow* window = mainState.openState->window;
+        VkSurfaceKHR surface = mainState.openState->surface;
+        mainState.loadState = new LoadState(instance,surface,validationLayers,deviceExtensions,enableValidationLayers,MAX_BUFFERS_AVAILABLE);
+        VkPhysicalDevice physicalDevice = mainState.loadState->physicalDevice;
+        uint32_t graphicsIndex = mainState.loadState->graphicsIndex;
+        uint32_t presentIndex = mainState.loadState->presentIndex;
+        uint32_t minImageCount = mainState.loadState->minImageCount;
+        VkSurfaceFormatKHR surfaceFormat = mainState.loadState->surfaceFormat;
+        VkPresentModeKHR presentMode = mainState.loadState->presentMode;
+        VkFormat swapChainImageFormat = mainState.loadState->swapChainImageFormat;
+        VkDevice device = mainState.loadState->device;
+        VkQueue graphicsQueue = mainState.loadState->graphicsQueue;
+        VkQueue presentQueue = mainState.loadState->presentQueue;
+        VkRenderPass renderPass = mainState.loadState->renderPass;
+        VkDescriptorSetLayout descriptorSetLayout = mainState.loadState->descriptorSetLayout;
+        VkPipelineLayout pipelineLayout = mainState.loadState->pipelineLayout;
+        VkPipeline graphicsPipeline = mainState.loadState->graphicsPipeline;
+        VkCommandPool commandPool = mainState.loadState->commandPool;
+        VkDescriptorPool descriptorPool = mainState.loadState->descriptorPool;
 
         // TODO move following to planer.lua
         const std::vector<Input> vertices = {
@@ -1622,6 +1634,8 @@ int main(int argc, char **argv) {
             {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
             {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
         };
+
+        // TODO move following to map from Memory to BufferQueue set by vulkanDma
         FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicsQueue, commandPool, vertices.data(), sizeof(vertices[0]) * vertices.size());
         VkBuffer vertexBuffer = fetchBuffer->vertexBuffer;
         VkFence inFlightFence = fetchBuffer->inFlightFence;
@@ -1663,7 +1677,7 @@ int main(int argc, char **argv) {
         uint32_t currentBuffer = 0; // TODO move to vulkanDraw
         while (!mainState.escapePressed || !mainState.enterPressed) {
             if (!swapState) {
-                swapState = new SwapState(window,physicalDevice,device,surface,surfaceFormat,presentMode,minImageCount,queueFamilyIndices);
+                swapState = new SwapState(window,physicalDevice,device,surface,surfaceFormat,presentMode,minImageCount,graphicsIndex,presentIndex);
                 swapChainExtent = swapState->swapChainExtent;
                 swapChain = swapState->swapChain;
                 std::vector<VkImage> swapChainImages = swapState->swapChainImages;
@@ -1673,10 +1687,10 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < frameState.size(); i++) swapChainFramebuffers[i] = frameState[i]->swapChainFramebuffer;
             }
             glfwWaitEventsTimeout(0.01);
-            if (mainState.dmaCalled) {
+            if (mainState.callDma) {
                 // TODO change one of the buffers
             }
-            if (mainState.drawCalled) {
+            if (mainState.callDraw) {
                 // TODO move to vulkanDraw
                 VkResult result;
                 result = drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()));
@@ -1704,8 +1718,8 @@ int main(int argc, char **argv) {
         for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete storeBuffers[i];
         for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete changeBuffers[i];
         delete fetchBuffer;
-        delete loadState;
-        delete openState;
+        delete mainState.loadState;
+        delete mainState.openState;
         delete mainState.initState;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
