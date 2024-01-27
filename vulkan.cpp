@@ -158,13 +158,6 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     }
 }
 
-GLFWwindow *initWindow(const uint32_t WIDTH, const uint32_t HEIGHT) {
-    GLFWwindow* window;
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-    return window;
-}
-
 GLFWcursor *initMoveCursor(bool e, bool t, bool r, bool b, bool l) {
     int dim = 11;
     int hot = dim/2;
@@ -300,14 +293,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 
     return VK_FALSE;
 }
-VkDebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfo() {
-    VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
-    return createInfo;
-}
 
 bool checkValidationLayerSupport(const std::vector<const char*> validationLayers) {
     uint32_t layerCount;
@@ -346,62 +331,6 @@ std::vector<const char*> getRequiredExtensions(bool enableValidationLayers) {
     }
 
     return extensions;
-}
-
-VkInstance createInstance(bool enableValidationLayers, VkDebugUtilsMessengerCreateInfoEXT debugInfo, const std::vector<const char*> validationLayers) {
-    VkInstance instance;
-    if (enableValidationLayers && !checkValidationLayerSupport(validationLayers)) {
-        throw std::runtime_error("validation layers requested, but not available!");
-    }
-
-    VkApplicationInfo appInfo{};
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Hello Triangle";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
-
-    VkInstanceCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
-
-    auto extensions = getRequiredExtensions(enableValidationLayers);
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-    createInfo.ppEnabledExtensionNames = extensions.data();
-
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-    if (enableValidationLayers) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-        createInfo.ppEnabledLayerNames = validationLayers.data();
-
-        createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugInfo;
-    } else {
-        createInfo.enabledLayerCount = 0;
-
-        createInfo.pNext = nullptr;
-    }
-
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create instance!");
-    }
-    return instance;
-}
-
-VkDebugUtilsMessengerEXT setupDebugMessenger(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT debugInfo) {
-    VkDebugUtilsMessengerEXT debugMessenger;
-    if (CreateDebugUtilsMessengerEXT(instance, &debugInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-        throw std::runtime_error("failed to set up debug messenger!");
-    }
-    return debugMessenger;
-}
-
-VkSurfaceKHR createSurface(GLFWwindow* window, VkInstance instance) {
-    VkSurfaceKHR surface;
-    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create window surface!");
-    }
-    return surface;
 }
 
 std::optional<uint32_t> findGraphicsFamily(VkPhysicalDevice device, VkSurfaceKHR surface) {
@@ -1123,20 +1052,54 @@ struct OpenState {
     bool enableValidationLayers;
     OpenState(uint32_t WIDTH, uint32_t HEIGHT, const std::vector<const char*> validationLayers, bool enableValidationLayers) {
         glfwInit();
-        GLFWwindow* window;
-        window = initWindow(WIDTH,HEIGHT);
+        VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
+        [](VkDebugUtilsMessengerCreateInfoEXT& debugInfo) {
+            debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            debugInfo.pfnUserCallback = debugCallback;
+        } (debugInfo);
+        [](VkInstance& instance, bool enableValidationLayers, VkDebugUtilsMessengerCreateInfoEXT debugInfo, const std::vector<const char*> validationLayers) {
+            if (enableValidationLayers && !checkValidationLayerSupport(validationLayers))
+                throw std::runtime_error("validation layers requested, but not available!");
+            VkApplicationInfo appInfo{};
+            appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            appInfo.pApplicationName = "Hello Triangle";
+            appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+            appInfo.pEngineName = "No Engine";
+            appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+            appInfo.apiVersion = VK_API_VERSION_1_0; 
+            VkInstanceCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            createInfo.pApplicationInfo = &appInfo;
+            auto extensions = getRequiredExtensions(enableValidationLayers);
+            createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+            createInfo.ppEnabledExtensionNames = extensions.data();
+            VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+            if (enableValidationLayers) {
+                createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+                createInfo.ppEnabledLayerNames = validationLayers.data();
+                createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugInfo;}
+            else {
+                createInfo.enabledLayerCount = 0;
+                createInfo.pNext = nullptr;}
+            if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
+                throw std::runtime_error("failed to create instance!");
+        } (instance,enableValidationLayers,debugInfo,validationLayers);
+        if (enableValidationLayers) [](VkDebugUtilsMessengerEXT& debugMessenger, VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT debugInfo) {
+            if (CreateDebugUtilsMessengerEXT(instance, &debugInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+                throw std::runtime_error("failed to set up debug messenger!");
+        } (debugMessenger,instance,debugInfo);
+        [](GLFWwindow*& window, const uint32_t WIDTH, const uint32_t HEIGHT) {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        } (window,WIDTH,HEIGHT);
         glfwSetWindowUserPointer(window, &mainState);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
         glfwSetKeyCallback(window, keypressCallback);
         glfwSetMouseButtonCallback(window, mouseClicked);
         glfwSetCursorPosCallback(window, mouseMoved);
-        GLFWcursor* moveCursor[2][2][2][2][2];
-        GLFWcursor* rotateCursor[2];
-        GLFWcursor* translateCursor[2];
-        GLFWcursor* refineCursor;
-        GLFWcursor* sculptCursor[2];
-        GLFWcursor* standardCursor;
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = initMoveCursor(e,t,r,b,l);
@@ -1146,31 +1109,13 @@ struct OpenState {
         for (int e = 0; e < 2; e++) sculptCursor[e] = initSculptCursor(e);
         standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
         glfwSetCursor(window,moveCursor[true][true][true][true][true]);
-        VkDebugUtilsMessengerCreateInfoEXT debugInfo = populateDebugMessengerCreateInfo();
-        VkInstance instance;
-        instance = createInstance(enableValidationLayers,debugInfo,validationLayers);
-        VkDebugUtilsMessengerEXT debugMessenger;
-        if (enableValidationLayers) debugMessenger = setupDebugMessenger(instance,debugInfo);
-        VkSurfaceKHR surface;
-        surface = createSurface(window,instance); // have to create window before instance?
-        this->window = window;
-        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
-        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
-        for (int e = 0; e < 2; e++) this->moveCursor[e][t][r][b][l] = moveCursor[e][t][r][b][l];
-        for (int e = 0; e < 2; e++) this->rotateCursor[e] = rotateCursor[e];
-        for (int e = 0; e < 2; e++) this->translateCursor[e] = translateCursor[e];
-        this->refineCursor = refineCursor;
-        for (int e = 0; e < 2; e++) this->sculptCursor[e] = sculptCursor[e];
-        this->standardCursor = standardCursor;
-        this->instance = instance;
-        this->debugMessenger = debugMessenger;
-        this->surface = surface;
+        if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+            throw std::runtime_error("failed to create window surface!");
         this->enableValidationLayers = enableValidationLayers;
     }
     ~OpenState() {
-         vkDestroySurfaceKHR(instance, surface, nullptr);
+        vkDestroySurfaceKHR(instance, surface, nullptr);
         if (enableValidationLayers) DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-        vkDestroyInstance(instance, nullptr);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) glfwDestroyCursor(moveCursor[e][t][r][b][l]);
@@ -1180,6 +1125,7 @@ struct OpenState {
         for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
         glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
+        vkDestroyInstance(instance, nullptr);
         glfwTerminate();
     }
 };
@@ -1234,6 +1180,40 @@ struct LoadState {
     }
 };
 
+template<class Buffer> struct BufferQueue {
+    std::queue<Buffer*> queue;
+    std::queue<int> ident;
+    std::queue<Buffer*> pool;
+    std::function<Buffer*(int)> make;
+    Buffer *ready;
+    int size;
+    BufferQueue(std::function<Buffer*(int)> make) {
+        this->make = make;
+        ready = 0;
+        size = 0;
+    }
+    ~BufferQueue() {
+        while (!queue.empty()) {delete queue.front(); queue.pop();}
+        while (!pool.empty()) {delete pool.front(); pool.pop();}
+        if (ready) delete ready;
+    }
+    Buffer &get() {
+        while (!queue.empty() && queue.front()->done()) {
+            pool.push(ready); ready = queue.front(); queue.pop();}
+        if (!ready) {throw std::runtime_error("no buffer to get!");}
+        return *ready;
+    }
+    void set(int loc, int siz, void *ptr) {
+        if (loc+siz > size) {
+            while (!pool.empty()) {delete pool.front(); pool.pop();}
+            size = loc+siz;}
+        if (pool.empty()) pool.push(make(size));
+        pool.front()->start(loc,siz,ptr);
+        queue.push(pool.front());
+        pool.pop();
+    }
+};
+
 struct FetchBuffer {
     VkDevice device;
     VkQueue graphicsQueue;
@@ -1246,11 +1226,11 @@ struct FetchBuffer {
     void *stagingMapped;
     VkFence inFlightFence;
     VkCommandBuffer commandBuffer;
-    FetchBuffer(VkPhysicalDevice physicalDevice, VkDevice device, VkQueue graphicsQueue, VkCommandPool commandPool, const std::vector<Input> vertices) {
+    FetchBuffer(VkPhysicalDevice physicalDevice, VkDevice device, VkQueue graphicsQueue, VkCommandPool commandPool, const void *ptr, int siz) {
         this->device = device;
         this->graphicsQueue = graphicsQueue;
         this->commandPool = commandPool;
-        vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+        vertexBufferSize = siz;
         stagingBuffer = createBuffer(device,vertexBufferSize,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         stagingMemory = createMemory(physicalDevice,device,stagingBuffer,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         vkBindBufferMemory(device, stagingBuffer, stagingMemory, 0);
@@ -1258,7 +1238,7 @@ struct FetchBuffer {
         vertexMemory = createMemory(physicalDevice,device,vertexBuffer,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         vkBindBufferMemory(device, vertexBuffer, vertexMemory, 0);
         stagingMapped = createMapped(device,stagingMemory,vertexBufferSize);
-        memcpy(stagingMapped, vertices.data(), (size_t) vertexBufferSize);
+        memcpy(stagingMapped, ptr, (size_t) vertexBufferSize);
         inFlightFence = createFence(device);
         commandBuffer = allocateCommandBuffer(device,commandPool);
     }
@@ -1293,6 +1273,21 @@ struct FetchBuffer {
 
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence);
     }
+    bool ready() {
+        VkResult result;
+
+        result = vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, 0);
+        if (result == VK_ERROR_DEVICE_LOST) {
+            throw std::runtime_error("device lost on wait for fetch fence!");
+        }
+        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
+            throw std::runtime_error("failed to wait for fetch fences!");
+        }
+        if (result == VK_TIMEOUT) {
+            return false;
+        }
+        return true;
+    }
 };
 
 struct ChangeBuffer {
@@ -1326,15 +1321,11 @@ struct StoreBuffer {
 };
 
 struct ThreadState {
-    std::queue<VkFence> fence;
-    std::queue<std::function<VoidFunc> > func;
-    VkDevice device;
     sem_t protect;
     sem_t semaphore;
     pthread_t thread;
     bool finish;
-    ThreadState(VkDevice device) {
-        this->device = device;
+    ThreadState() {
         finish = false;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 0) != 0 ||
@@ -1363,62 +1354,21 @@ struct ThreadState {
     static void *fenceThread(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
         while (1) {
-            VkFence fence;
-            bool copied;
-            bool finish;
-            if (sem_wait(&arg->protect) != 0) {
+           if (sem_wait(&arg->protect) != 0) {
                 throw std::runtime_error("cannot wait for protect!");
             }
-            finish = arg->finish;
-            if (arg->fence.empty()) {
-                copied = false;
-            } else {
-                fence = arg->fence.front();
-                copied = true;
-            }
+            bool finish = arg->finish;
             if (sem_post(&arg->protect) != 0) {
                 throw std::runtime_error("cannot post to protect!");
             }
             if (finish) {
                 break;
             }
-            if (copied) {
-                VkResult result = vkWaitForFences(arg->device,1,&fence,VK_TRUE,1000000000ull/10ull);
-                if (result == VK_ERROR_DEVICE_LOST) {
-                    throw std::runtime_error("device lost on wait for fence!");
-                }
-                if (result != VK_SUCCESS && result != VK_TIMEOUT) {
-                    throw std::runtime_error("failed to wait for fence!");
-                }
-                if (result == VK_SUCCESS) {
-                    if (sem_wait(&arg->protect) != 0) {
-                        throw std::runtime_error("cannot wait for protect!");
-                    }
-                    // TODO func.push(arg->func.front());
-                    // arg->func.pop();
-                    arg->fence.pop();
-                    if (sem_post(&arg->protect) != 0) {
-                        throw std::runtime_error("cannot post to protect!");
-                    }
-                    glfwPostEmptyEvent();
-                }
-            } else {
-                if (sem_wait(&arg->semaphore) != 0) {
-                    throw std::runtime_error("cannot wait for semaphore!");
-                }
-                glfwPostEmptyEvent();
+            if (sem_wait(&arg->semaphore) != 0) {
+                throw std::runtime_error("cannot wait for semaphore!");
             }
         }
         return 0;
-    }
-    void push(VkFence given) {
-        if (sem_wait(&protect) != 0) {
-            throw std::runtime_error("cannot wait for protect!");
-        }
-        fence.push(given);
-        if (sem_post(&protect) != 0) {
-            throw std::runtime_error("cannot post to protect!");
-        }
     }
 };
 
@@ -1648,7 +1598,7 @@ int main(int argc, char **argv) {
         VkCommandPool commandPool = loadState->commandPool;
         VkDescriptorPool descriptorPool = loadState->descriptorPool;
 
-        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicsQueue, commandPool, vertices);
+        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicsQueue, commandPool, vertices.data(), sizeof(vertices[0]) * vertices.size());
         VkBuffer vertexBuffer = fetchBuffer->vertexBuffer;
         VkFence inFlightFence = fetchBuffer->inFlightFence;
         fetchBuffer->setup();
@@ -1669,7 +1619,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < storeBuffers.size(); i++)
             storeBuffers[i] = new StoreBuffer();
 
-        struct ThreadState *threadState = new ThreadState(device);
+        struct ThreadState *threadState = new ThreadState();
 
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < drawState.size(); i++) drawState[i] = new DrawState(device,commandPool,renderPass,graphicsPipeline,pipelineLayout,graphicsQueue,presentQueue);
