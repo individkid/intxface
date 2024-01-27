@@ -27,7 +27,7 @@ extern "C" {
     #include "type.h"
     #include "plane.h"
     // TODO link with plane.c
-    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw) {}
+    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw) {init();}
     void planeAddarg(const char *str) {}
     int planeInfo(enum Configure cfg) {return 0;}
     void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
@@ -42,6 +42,7 @@ extern "C" {
     void vulkanDraw(enum Micro shader, int base, int limit); // draw
 }
 
+// TODO replace by type.h
 struct Input {
     glm::vec2 pos;
     glm::vec3 color;
@@ -77,9 +78,8 @@ struct UniformBufferObject {
     alignas(16) glm::mat4 proj;
 };
 
-typedef void VoidFunc();
+struct InitState;
 struct MainState {
-    std::queue<std::function<VoidFunc> > func;
     bool dmaCalled;
     bool drawCalled;
     bool framebufferResized;
@@ -94,6 +94,22 @@ struct MainState {
     int argc;
     char **argv;
     struct Center *center;
+    struct InitState *initState;
+    const uint32_t WIDTH = 800;
+    const uint32_t HEIGHT = 600;
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+    const int MAX_BUFFERS_AVAILABLE = 7; // TODO collective limit for BufferQueue
+    const std::vector<const char*> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+    const std::vector<const char*> validationLayers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+    #ifdef NDEBUG
+    const bool enableValidationLayers = false;
+    #else
+    const bool enableValidationLayers = true;
+    #endif
 } mainState = {
     .dmaCalled = false,
     .drawCalled = true,
@@ -109,6 +125,7 @@ struct MainState {
     .argc = 0,
     .argv = 0,
     .center = 0,
+    .initState = 0,
 };
 void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1019,47 +1036,21 @@ VkFence createFence(VkDevice device) {
     return fence;
 }
 
-void vulkanInit() {
-    for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
-}
-void vulkanDma(struct Center *center) {
-    // TODO mainState.func.push(std::function(
-}
-void vulkanSafe() {
-    glfwPostEmptyEvent();
-}
-void vulkanMain(enum Proc proc, enum Wait wait) {
-    // TODO trust plane.c to call this
-}
-int vulkanInfo(enum Configure query) {
-    return 0; // TODO
-}
-void vulkanDraw(enum Micro shader, int base, int limit) {
-    // TODO mainState.func.push(std::function(
-}
-
-struct OpenState {
-    GLFWwindow* window;
-    GLFWcursor* moveCursor[2][2][2][2][2];
-    GLFWcursor* rotateCursor[2];
-    GLFWcursor* translateCursor[2];
-    GLFWcursor* refineCursor;
-    GLFWcursor* sculptCursor[2];
-    GLFWcursor* standardCursor;
+struct InitState {
     VkInstance instance;
+    bool debugMessengerValid;
     VkDebugUtilsMessengerEXT debugMessenger;
-    VkSurfaceKHR surface;
-    bool enableValidationLayers;
-    OpenState(uint32_t WIDTH, uint32_t HEIGHT, const std::vector<const char*> validationLayers, bool enableValidationLayers) {
+    InitState(bool enableValidationLayers, const std::vector<const char*> validationLayers) {
         glfwInit();
         VkDebugUtilsMessengerCreateInfoEXT debugInfo = {};
-        [](VkDebugUtilsMessengerCreateInfoEXT& debugInfo) {
+        [&debugInfo]() {
             debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
             debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
             debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
             debugInfo.pfnUserCallback = debugCallback;
-        } (debugInfo);
-        [](VkInstance& instance, bool enableValidationLayers, VkDebugUtilsMessengerCreateInfoEXT debugInfo, const std::vector<const char*> validationLayers) {
+        } ();
+        instance = [](bool enableValidationLayers, VkDebugUtilsMessengerCreateInfoEXT debugInfo, const std::vector<const char*> validationLayers) {
+            VkInstance instance;
             if (enableValidationLayers && !checkValidationLayerSupport(validationLayers))
                 throw std::runtime_error("validation layers requested, but not available!");
             VkApplicationInfo appInfo{};
@@ -1085,15 +1076,39 @@ struct OpenState {
                 createInfo.pNext = nullptr;}
             if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
                 throw std::runtime_error("failed to create instance!");
-        } (instance,enableValidationLayers,debugInfo,validationLayers);
-        if (enableValidationLayers) [](VkDebugUtilsMessengerEXT& debugMessenger, VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT debugInfo) {
+            return instance;
+        } (enableValidationLayers,debugInfo,validationLayers);
+        if (debugMessengerValid = enableValidationLayers) debugMessenger = [](VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT debugInfo) {
+            VkDebugUtilsMessengerEXT debugMessenger;
             if (CreateDebugUtilsMessengerEXT(instance, &debugInfo, nullptr, &debugMessenger) != VK_SUCCESS)
                 throw std::runtime_error("failed to set up debug messenger!");
-        } (debugMessenger,instance,debugInfo);
-        [](GLFWwindow*& window, const uint32_t WIDTH, const uint32_t HEIGHT) {
+            return debugMessenger;
+        } (instance,debugInfo);
+    }
+    ~InitState() {
+        if (debugMessengerValid) DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+        debugMessengerValid = false;
+        vkDestroyInstance(instance, nullptr);
+        glfwTerminate();
+    }
+};
+
+struct OpenState {
+    GLFWwindow* window;
+    GLFWcursor* moveCursor[2][2][2][2][2];
+    GLFWcursor* rotateCursor[2];
+    GLFWcursor* translateCursor[2];
+    GLFWcursor* refineCursor;
+    GLFWcursor* sculptCursor[2];
+    GLFWcursor* standardCursor;
+    VkSurfaceKHR surface;
+    VkInstance instance;
+    OpenState(VkInstance instance, uint32_t WIDTH, uint32_t HEIGHT) {
+        window = [](const uint32_t WIDTH, const uint32_t HEIGHT) {
+            GLFWwindow* window;
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-            window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-        } (window,WIDTH,HEIGHT);
+            return glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        } (WIDTH,HEIGHT);
         glfwSetWindowUserPointer(window, &mainState);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
@@ -1111,11 +1126,10 @@ struct OpenState {
         glfwSetCursor(window,moveCursor[true][true][true][true][true]);
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
             throw std::runtime_error("failed to create window surface!");
-        this->enableValidationLayers = enableValidationLayers;
+        this->instance = instance;
     }
     ~OpenState() {
         vkDestroySurfaceKHR(instance, surface, nullptr);
-        if (enableValidationLayers) DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) glfwDestroyCursor(moveCursor[e][t][r][b][l]);
@@ -1125,8 +1139,6 @@ struct OpenState {
         for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
         glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
-        vkDestroyInstance(instance, nullptr);
-        glfwTerminate();
     }
 };
 
@@ -1320,58 +1332,6 @@ struct StoreBuffer {
     }
 };
 
-struct ThreadState {
-    sem_t protect;
-    sem_t semaphore;
-    pthread_t thread;
-    bool finish;
-    ThreadState() {
-        finish = false;
-        if (sem_init(&protect, 0, 1) != 0 ||
-            sem_init(&semaphore, 0, 0) != 0 ||
-            pthread_create(&thread,0,fenceThread,this) != 0) {
-            std::cerr << "failed to create thread!" << std::endl;
-        }
-    }
-    ~ThreadState() {
-        if (sem_wait(&protect) != 0) {
-            std::cerr << "cannot wait for protect!" << std::endl;
-            std::terminate();
-        }
-        finish = true;
-        if (sem_post(&protect) != 0) {
-            std::cerr << "cannot post to protect!" << std::endl;
-            std::terminate();
-        }
-        if (sem_post(&semaphore) != 0 ||
-            pthread_join(thread,0) != 0 ||
-            sem_destroy(&semaphore) != 0 ||
-            sem_destroy(&protect) != 0) {
-            std::cerr << "failed to join thread!" << std::endl;
-            std::terminate();
-        }
-    }
-    static void *fenceThread(void *ptr) {
-        struct ThreadState *arg = (ThreadState*)ptr;
-        while (1) {
-           if (sem_wait(&arg->protect) != 0) {
-                throw std::runtime_error("cannot wait for protect!");
-            }
-            bool finish = arg->finish;
-            if (sem_post(&arg->protect) != 0) {
-                throw std::runtime_error("cannot post to protect!");
-            }
-            if (finish) {
-                break;
-            }
-            if (sem_wait(&arg->semaphore) != 0) {
-                throw std::runtime_error("cannot wait for semaphore!");
-            }
-        }
-        return 0;
-    }
-};
-
 struct DrawState {
     VkDevice device;
     VkRenderPass renderPass;
@@ -1548,39 +1508,96 @@ struct FrameState {
     }
 };
 
+struct ThreadState {
+    sem_t protect;
+    sem_t semaphore;
+    pthread_t thread;
+    bool finish;
+    ThreadState() {
+        finish = false;
+        if (sem_init(&protect, 0, 1) != 0 ||
+            sem_init(&semaphore, 0, 0) != 0 ||
+            pthread_create(&thread,0,fenceThread,this) != 0) {
+            std::cerr << "failed to create thread!" << std::endl;
+        }
+    }
+    ~ThreadState() {
+        if (sem_wait(&protect) != 0) {
+            std::cerr << "cannot wait for protect!" << std::endl;
+            std::terminate();
+        }
+        finish = true;
+        if (sem_post(&protect) != 0) {
+            std::cerr << "cannot post to protect!" << std::endl;
+            std::terminate();
+        }
+        if (sem_post(&semaphore) != 0 ||
+            pthread_join(thread,0) != 0 ||
+            sem_destroy(&semaphore) != 0 ||
+            sem_destroy(&protect) != 0) {
+            std::cerr << "failed to join thread!" << std::endl;
+            std::terminate();
+        }
+    }
+    static void *fenceThread(void *ptr) {
+        struct ThreadState *arg = (ThreadState*)ptr;
+        while (1) {
+           if (sem_wait(&arg->protect) != 0) {
+                throw std::runtime_error("cannot wait for protect!");
+            }
+            bool finish = arg->finish;
+            if (sem_post(&arg->protect) != 0) {
+                throw std::runtime_error("cannot post to protect!");
+            }
+            if (finish) {
+                break;
+            }
+            if (sem_wait(&arg->semaphore) != 0) {
+                throw std::runtime_error("cannot wait for semaphore!");
+            }
+        }
+        return 0;
+    }
+};
+
+void vulkanInit() {
+    for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
+    mainState.initState = new InitState(mainState.enableValidationLayers,mainState.validationLayers);
+}
+void vulkanDma(struct Center *center) {
+    // TODO mainState.func.push(std::function(
+}
+void vulkanSafe() {
+    glfwPostEmptyEvent();
+}
+void vulkanMain(enum Proc proc, enum Wait wait) {
+    // TODO trust plane.c to call this
+}
+int vulkanInfo(enum Configure query) {
+    return 0; // TODO
+}
+void vulkanDraw(enum Micro shader, int base, int limit) {
+    // TODO mainState.func.push(std::function(
+}
+
 int main(int argc, char **argv) {
     mainState.argc = argc;
     mainState.argv = argv;
     try {
         planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw);
-        // TODO move following to vulkanMain that calls vulkanOpen vulkanLoad vulkanBuffer vulkanDispatch
-        const uint32_t WIDTH = 800;
-        const uint32_t HEIGHT = 600;
-        const int MAX_FRAMES_IN_FLIGHT = 2;
-        const int MAX_BUFFERS_AVAILABLE = 7;
-        const std::vector<const char*> validationLayers = {
-            "VK_LAYER_KHRONOS_validation"
-        };
-        const std::vector<const char*> deviceExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
-        };
-        #ifdef NDEBUG
-        const bool enableValidationLayers = false;
-        #else
-        const bool enableValidationLayers = true;
-        #endif
-        const std::vector<Input> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-        };
+        VkInstance instance = mainState.initState->instance;
+        uint32_t WIDTH = mainState.WIDTH;
+        uint32_t HEIGHT = mainState.HEIGHT;
+        int MAX_FRAMES_IN_FLIGHT = mainState.MAX_FRAMES_IN_FLIGHT;
+        int MAX_BUFFERS_AVAILABLE = mainState.MAX_BUFFERS_AVAILABLE;
+        const std::vector<const char*> deviceExtensions = mainState.deviceExtensions;
+        std::vector<const char*> validationLayers = mainState.validationLayers;
+        bool enableValidationLayers = mainState.enableValidationLayers;
 
-        OpenState* openState = new OpenState(WIDTH,HEIGHT,validationLayers,enableValidationLayers);
+        // TODO move following to vulkanMain
+        OpenState* openState = new OpenState(instance,WIDTH,HEIGHT);
         GLFWwindow* window = openState->window;
-        VkInstance instance = openState->instance;
         VkSurfaceKHR surface = openState->surface;
-
         LoadState* loadState = new LoadState(instance,surface,validationLayers,deviceExtensions,enableValidationLayers,MAX_BUFFERS_AVAILABLE);
         VkPhysicalDevice physicalDevice = loadState->physicalDevice;
         uint32_t* queueFamilyIndices = loadState->queueFamilyIndices;
@@ -1598,29 +1615,34 @@ int main(int argc, char **argv) {
         VkCommandPool commandPool = loadState->commandPool;
         VkDescriptorPool descriptorPool = loadState->descriptorPool;
 
+        // TODO move following to planer.lua
+        const std::vector<Input> vertices = {
+            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+        };
         FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicsQueue, commandPool, vertices.data(), sizeof(vertices[0]) * vertices.size());
         VkBuffer vertexBuffer = fetchBuffer->vertexBuffer;
         VkFence inFlightFence = fetchBuffer->inFlightFence;
         fetchBuffer->setup();
         VkResult result = vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, 0);
-        if (result == VK_ERROR_DEVICE_LOST) {
+        if (result == VK_ERROR_DEVICE_LOST)
             throw std::runtime_error("device lost on wait for fence!");
-        }
-
+        // TODO replace following with BufferQueue set
         std::vector<ChangeBuffer*> changeBuffers(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < changeBuffers.size(); i++)
             changeBuffers[i] = new ChangeBuffer(physicalDevice,device,descriptorSetLayout,descriptorPool);
         std::vector<VkDescriptorSet> descriptorSets(MAX_BUFFERS_AVAILABLE);
-        for (int i = 0; i < descriptorSets.size(); i++) descriptorSets[i] = changeBuffers[i]->descriptorSet;
+        for (int i = 0; i < descriptorSets.size(); i++)
+            descriptorSets[i] = changeBuffers[i]->descriptorSet;
         std::vector<void*> uniformMapped(MAX_BUFFERS_AVAILABLE);
-        for (int i = 0; i < uniformMapped.size(); i++) uniformMapped[i] = changeBuffers[i]->uniformMapped;
-
+        for (int i = 0; i < uniformMapped.size(); i++)
+            uniformMapped[i] = changeBuffers[i]->uniformMapped;
         std::vector<StoreBuffer*> storeBuffers(MAX_BUFFERS_AVAILABLE);
-        for (int i = 0; i < storeBuffers.size(); i++)
-            storeBuffers[i] = new StoreBuffer();
+        for (int i = 0; i < storeBuffers.size(); i++) storeBuffers[i] = new StoreBuffer();
 
         struct ThreadState *threadState = new ThreadState();
-
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < drawState.size(); i++) drawState[i] = new DrawState(device,commandPool,renderPass,graphicsPipeline,pipelineLayout,graphicsQueue,presentQueue);
         std::vector<VkSemaphore> imageAvailableSemaphores(MAX_FRAMES_IN_FLIGHT);
@@ -1637,8 +1659,8 @@ int main(int argc, char **argv) {
         VkSwapchainKHR swapChain;
         std::vector<FrameState*> frameState;
         std::vector<VkFramebuffer> swapChainFramebuffers;
-        uint32_t currentFrame = 0;
-        uint32_t currentBuffer = 0;
+        uint32_t currentFrame = 0; // TODO move to vulkanDraw
+        uint32_t currentBuffer = 0; // TODO move to vulkanDraw
         while (!mainState.escapePressed || !mainState.enterPressed) {
             if (!swapState) {
                 swapState = new SwapState(window,physicalDevice,device,surface,surfaceFormat,presentMode,minImageCount,queueFamilyIndices);
@@ -1651,29 +1673,29 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < frameState.size(); i++) swapChainFramebuffers[i] = frameState[i]->swapChainFramebuffer;
             }
             glfwWaitEventsTimeout(0.01);
-            // TODO sem protect mainState.func.front()() and mainState.func.pop()
             if (mainState.dmaCalled) {
                 // TODO change one of the buffers
             }
-            if (!mainState.drawCalled) {
-                continue;
+            if (mainState.drawCalled) {
+                // TODO move to vulkanDraw
+                VkResult result;
+                result = drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()));
+                if (result == VK_ERROR_OUT_OF_DATE_KHR || mainState.framebufferResized) {
+                    mainState.framebufferResized = false;
+                    vkDeviceWaitIdle(device);
+                    for (int i = 0; i < frameState.size(); i++) delete frameState[i];
+                    delete swapState;
+                    swapState = 0;
+                } else if (result == VK_TIMEOUT) {
+                    continue;
+                } else if (result != VK_SUCCESS) {
+                    throw std::runtime_error("failed to present swap chain image!");
+                }
+                currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+                currentBuffer = (currentBuffer + 1) % MAX_BUFFERS_AVAILABLE;
             }
-            VkResult result;
-            result = drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()));
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || mainState.framebufferResized) {
-                mainState.framebufferResized = false;
-                vkDeviceWaitIdle(device);
-                for (int i = 0; i < frameState.size(); i++) delete frameState[i];
-                delete swapState;
-                swapState = 0;
-            } else if (result == VK_TIMEOUT) {
-                continue;
-            } else if (result != VK_SUCCESS) {
-                throw std::runtime_error("failed to present swap chain image!");
-            }
-            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-            currentBuffer = (currentBuffer + 1) % MAX_BUFFERS_AVAILABLE;
         }
+
         vkDeviceWaitIdle(device);
         for (int i = 0; i < frameState.size(); i++) delete frameState[i];
         delete swapState;
@@ -1684,6 +1706,7 @@ int main(int argc, char **argv) {
         delete fetchBuffer;
         delete loadState;
         delete openState;
+        delete mainState.initState;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
