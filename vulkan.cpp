@@ -200,7 +200,6 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
         return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
 }
-
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr) {
@@ -210,69 +209,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
     return VK_FALSE;
-}
-
-std::optional<uint32_t> findGraphicsFamily(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    std::optional<uint32_t> graphicsFamily;
-    std::optional<uint32_t> presentFamily;
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) {
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            graphicsFamily = i;
-        }
-
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-        if (presentSupport) {
-            presentFamily = i;
-        }
-
-        if (graphicsFamily.has_value() && presentFamily.has_value()) {
-            break;
-        }
-
-        i++;
-    }
-    return graphicsFamily;
-}
-std::optional<uint32_t> findPresentFamily(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    std::optional<uint32_t> graphicsFamily;
-    std::optional<uint32_t> presentFamily;
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) {
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            graphicsFamily = i;
-        }
-
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-        if (presentSupport) {
-            presentFamily = i;
-        }
-
-        if (graphicsFamily.has_value() && presentFamily.has_value()) {
-            break;
-        }
-
-        i++;
-    }
-    return presentFamily;
 }
 
 VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
@@ -667,10 +604,23 @@ struct PhysicalState {
             std::vector<VkPhysicalDevice> devices(deviceCount);
             vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
             for (const auto& device : devices) {
-                std::optional<uint32_t> graphics = findGraphicsFamily(device,surface);
-                std::optional<uint32_t> present = findPresentFamily(device,surface);
+                std::optional<uint32_t> graphics;
+                std::optional<uint32_t> present;
+                [&graphics,&present](VkPhysicalDevice device, VkSurfaceKHR surface) {
+                    uint32_t queueFamilyCount = 0;
+                    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+                    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+                    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+                    int i = 0;
+                    for (const auto& queueFamily : queueFamilies) {
+                        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) graphics = i;
+                        VkBool32 presentSupport = false;
+                        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+                        if (presentSupport) present = i;
+                        if (graphics.has_value() && present.has_value()) break;
+                        i++;}
+                } (device,surface);
                 std::vector<VkSurfaceFormatKHR> formats;
-                std::vector<VkPresentModeKHR> modes;
                 [&formats](VkPhysicalDevice device, VkSurfaceKHR surface) {
                     uint32_t formatCount;
                     vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
@@ -678,6 +628,7 @@ struct PhysicalState {
                         formats.resize(formatCount);
                         vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());}
                 } (device,surface);
+                std::vector<VkPresentModeKHR> modes;
                 [&modes](VkPhysicalDevice device, VkSurfaceKHR surface) {
                     uint32_t presentModeCount;
                     vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
