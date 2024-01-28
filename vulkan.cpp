@@ -357,8 +357,8 @@ VkDescriptorSet createDescriptorSet(VkDevice device, VkBuffer uniformBuffer,
     allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
     allocInfo.pSetLayouts = &descriptorSetLayout;
 
-    VkDescriptorSet descriptorSet;
-    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
+    VkDescriptorSet descriptor;
+    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
@@ -369,7 +369,7 @@ VkDescriptorSet createDescriptorSet(VkDevice device, VkBuffer uniformBuffer,
 
     VkWriteDescriptorSet descriptorWrite{};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = descriptorSet;
+    descriptorWrite.dstSet = descriptor;
     descriptorWrite.dstBinding = 0;
     descriptorWrite.dstArrayElement = 0;
     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -377,7 +377,7 @@ VkDescriptorSet createDescriptorSet(VkDevice device, VkBuffer uniformBuffer,
     descriptorWrite.pBufferInfo = &bufferInfo;
 
     vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-    return descriptorSet;
+    return descriptor;
 }
 
 VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool commandPool) {
@@ -1107,7 +1107,7 @@ struct ChangeBuffer {
     VkBuffer buffer;
     VkDeviceMemory memory;
     void* mapped;
-    VkDescriptorSet descriptorSet;
+    VkDescriptorSet descriptor;
     int index;
     ChangeBuffer(VkPhysicalDevice physicalDevice, VkDevice device,
         VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool,
@@ -1141,7 +1141,7 @@ struct ChangeBuffer {
         } (physicalDevice,device,buffer,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         vkBindBufferMemory(device, buffer, memory, 0);
         vkMapMemory(device, memory, 0, size, 0, &mapped);
-        descriptorSet = createDescriptorSet(device,buffer,descriptorSetLayout,descriptorPool);
+        descriptor = createDescriptorSet(device,buffer,descriptorSetLayout,descriptorPool);
         fence = createFence(device);
     }
     ~ChangeBuffer() {
@@ -1214,7 +1214,7 @@ struct DrawState {
         vkDestroyFence(device, fence, nullptr);
     }
     VkResult draw(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, std::vector<VkFramebuffer> &swapChainFramebuffers,
-        void *uniformMapped, VkDescriptorSet descriptorSet, VkBuffer vertexBuffer, uint32_t size) {
+        void *uniformMapped, VkDescriptorSet descriptor, VkBuffer vertexBuffer, uint32_t size) {
         VkResult result;
 
         result = vkWaitForFences(device, 1, &fence, VK_TRUE, 0);
@@ -1287,7 +1287,7 @@ struct DrawState {
         VkBuffer vertexBuffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptorSet, 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
 
         vkCmdDraw(commandBuffer, size, 1, 0, 0);
         vkCmdEndRenderPass(commandBuffer);
@@ -1556,7 +1556,7 @@ int main(int argc, char **argv) {
             [threadState](int index, VkFence fence)->bool{return threadState->doneFence(index,fence);});
         std::vector<VkDescriptorSet> descriptorSets(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < descriptorSets.size(); i++)
-            descriptorSets[i] = changeBuffers[i]->descriptorSet;
+            descriptorSets[i] = changeBuffers[i]->descriptor;
         std::vector<void*> uniformMapped(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < uniformMapped.size(); i++)
             uniformMapped[i] = changeBuffers[i]->mapped;
@@ -1566,15 +1566,20 @@ int main(int argc, char **argv) {
             [threadState](VkFence fence)->int{return threadState->markFence(fence);},
             [threadState](int index, VkFence fence)->bool{return threadState->doneFence(index,fence);});
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < drawState.size(); i++) drawState[i] = new DrawState(device,commandPool,renderPass,graphicPipeline,pipelineLayout,graphicQueue,presentQueue);
+        for (int i = 0; i < drawState.size(); i++)
+            drawState[i] = new DrawState(device,commandPool,renderPass,graphicPipeline,pipelineLayout,graphicQueue,presentQueue);
         std::vector<VkSemaphore> imageAvailableSemaphores(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < imageAvailableSemaphores.size(); i++) imageAvailableSemaphores[i] = drawState[i]->imageAvailableSemaphore;
+        for (int i = 0; i < imageAvailableSemaphores.size(); i++)
+            imageAvailableSemaphores[i] = drawState[i]->imageAvailableSemaphore;
         std::vector<VkSemaphore> renderFinishedSemaphores(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < renderFinishedSemaphores.size(); i++) renderFinishedSemaphores[i] = drawState[i]->renderFinishedSemaphore;
+        for (int i = 0; i < renderFinishedSemaphores.size(); i++)
+            renderFinishedSemaphores[i] = drawState[i]->renderFinishedSemaphore;
         std::vector<VkFence> fences(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < fences.size(); i++) fences[i] = drawState[i]->fence;
+        for (int i = 0; i < fences.size(); i++)
+            fences[i] = drawState[i]->fence;
         std::vector<VkCommandBuffer> commandBuffers(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < commandBuffers.size(); i++) commandBuffers[i] = drawState[i]->commandBuffer;
+        for (int i = 0; i < commandBuffers.size(); i++)
+            commandBuffers[i] = drawState[i]->commandBuffer;
 
         struct SwapState *swapState = 0;
         VkExtent2D swapChainExtent;
