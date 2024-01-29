@@ -23,6 +23,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#define NANOSECONDS (10^9)
+
 extern "C" {
     #include "type.h"
     #include "plane.h"
@@ -884,11 +886,17 @@ struct DeviceState {
 };
 
 struct ThreadState {
+    VkDevice device;
     sem_t protect;
     sem_t semaphore;
     pthread_t thread;
     bool finish;
-    ThreadState() {
+    std::queue<int> ident;
+    std::queue<int> pool;
+    std::vector<int> valid;
+    std::vector<VkFence> fence;
+    ThreadState(VkDevice device) {
+        this->device = device;
         finish = false;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 0) != 0 ||
@@ -909,27 +917,45 @@ struct ThreadState {
             sem_destroy(&semaphore) != 0 ||
             sem_destroy(&protect) != 0) {
             std::cerr << "failed to join thread!" << std::endl;
-            std::terminate();
-        }
+            std::terminate();}
     }
     static void *fenceThread(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
         while (1) {
-           if (sem_wait(&arg->protect) != 0)
-                throw std::runtime_error("cannot wait for protect!");
+            if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
             bool finish = arg->finish;
-            if (sem_post(&arg->protect) != 0)
-                throw std::runtime_error("cannot post to protect!");
+            bool empty = arg->ident.empty();
+            int val; VkFence tmp;
+            if (!empty) tmp = arg->fence[val = arg->ident.front()];
+            if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
             if (finish) break;
-            if (sem_wait(&arg->semaphore) != 0)
-                throw std::runtime_error("cannot wait for semaphore!");}
+            if (empty) {
+                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");}
+            else {
+                VkResult result = vkWaitForFences(arg->device,1,&tmp,VK_FALSE,NANOSECONDS);
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+                if (result == VK_SUCCESS) {arg->valid[val] = 0; arg->pool.push(val); arg->ident.pop();}
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");}}
         return 0;
     }
-    int markFence(VkFence fence) {
-        return 0; // TODO return index of circular buffer queue
+    int markFence(VkFence arg) {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        if (pool.empty()) {
+            int size = fence.size();
+            int nsiz = (size == 0 ? 1 : size*2);
+            valid.resize(nsiz); fence.resize(nsiz);
+            while (size < fence.size()) pool.push(size++);}
+        int val = pool.front(); pool.pop();
+        if (ident.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+        ident.push(val); fence[val] = arg; valid[val] = 1;
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        return val;
     }
-    bool doneFence(int index, VkFence fence) {
-        return true; // TODO return if fence is unmarked
+    bool doneFence(int idx, VkFence arg) {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        bool val = (valid[idx] == 0 || fence[idx] != arg);
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        return val;
     }
 };
 
@@ -951,7 +977,7 @@ template<class Buffer> struct BufferQueue {
         if (ready) delete ready;
     }
     Buffer &get() {
-        while (!queue.empty() && queue.front()->done()) { // TODO done checks if its fence is still in thread
+        while (!queue.empty() && queue.front()->done()) {
             pool.push(ready); ready = queue.front(); queue.pop();}
         if (!ready) {throw std::runtime_error("no buffer to get!");}
         return *ready;
@@ -961,7 +987,7 @@ template<class Buffer> struct BufferQueue {
             while (!pool.empty()) {delete pool.front(); pool.pop();}
             size = loc+siz;}
         if (pool.empty()) pool.push(make(size));
-        pool.front()->start(loc,siz,ptr); // TODO start enques its fence to thread
+        pool.front()->start(loc,siz,ptr);
         queue.push(pool.front());
         pool.pop();
     }
@@ -971,9 +997,9 @@ struct FetchBuffer {
     VkDevice device;
     VkQueue graphic;
     VkCommandPool pool;
+    VkDeviceSize size;
     std::function<bool(int,VkFence)> func;
     std::function<int(VkFence)> mark;
-    VkDeviceSize size;
     VkBuffer staging;
     VkDeviceMemory wasted;
     VkBuffer buffer;
@@ -982,15 +1008,14 @@ struct FetchBuffer {
     VkFence fence;
     VkCommandBuffer command;
     int index;
-    FetchBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
-        const void *ptr, int siz, // TODO do memcpy in start
+    FetchBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool, int size,
         std::function<int(VkFence)> mark, std::function<bool(int,VkFence)> func) {
         this->device = device;
         this->graphic = graphic;
         this->pool = pool;
+        this->size = size;
         this->func = func;
         this->mark = mark;
-        size = siz;
         staging = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
             VkBufferCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1040,7 +1065,6 @@ struct FetchBuffer {
         } (physical,device,buffer,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         vkBindBufferMemory(device, buffer, memory, 0);
         vkMapMemory(device, wasted, 0, size, 0, &mapped);
-        memcpy(mapped, ptr, (size_t) size); // TODO defer this to start
         fence = createFence(device);
         command = createCommandBuffer(device,pool);
     }
@@ -1090,8 +1114,8 @@ struct FetchBuffer {
         }
         return true;
     }
-    void start(int loc, int siz, void *ptr) {
-        // TODO copy to mapped and call setup
+    void start(int loc, int siz, const void *ptr) {
+        memcpy(mapped, ptr, (size_t) size); setup();
         index = mark(fence);
     }
     bool done() {
@@ -1536,15 +1560,14 @@ int main(int argc, char **argv) {
             {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
             {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
         };
-        struct ThreadState *threadState = new ThreadState();
+        struct ThreadState *threadState = new ThreadState(device);
         // TODO move following to vulkanDma
-        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicQueue, commandPool,
-            vertices.data(), sizeof(vertices[0]) * vertices.size(),
+        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicQueue, commandPool, sizeof(vertices[0]) * vertices.size(),
             [threadState](VkFence fence)->int{return threadState->markFence(fence);},
             [threadState](int index, VkFence fence)->bool{return threadState->doneFence(index,fence);});
         VkBuffer vertexBuffer = fetchBuffer->buffer;
         VkFence fence = fetchBuffer->fence;
-        fetchBuffer->setup();
+        fetchBuffer->start(0,sizeof(vertices[0]) * vertices.size(),vertices.data());
         VkResult result = vkWaitForFences(device, 1, &fence, VK_TRUE, 0);
         if (result == VK_ERROR_DEVICE_LOST)
             throw std::runtime_error("device lost on wait for fence!");
