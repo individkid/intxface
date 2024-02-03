@@ -861,20 +861,25 @@ struct DeviceState {
                 throw std::runtime_error("failed to create graphic command pool!");
             return command;
         } (device, graphicid);
-        pool = [](VkDevice device, int count) {
-            VkDescriptorPoolSize size{};
-            size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            size.descriptorCount = static_cast<uint32_t>(count);
+        pool = [](VkDevice device, int uniforms, int stores) {
+            VkDescriptorPoolSize uniform{};
+            uniform.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uniform.descriptorCount = static_cast<uint32_t>(uniforms);
+            VkDescriptorPoolSize store{};
+            store.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            store.descriptorCount = static_cast<uint32_t>(stores);
+            VkDescriptorPoolSize size[] = {uniform,store};
             VkDescriptorPoolCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            info.poolSizeCount = 1;
-            info.pPoolSizes = &size;
-            info.maxSets = static_cast<uint32_t>(count);
+            info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+            info.poolSizeCount = 2;
+            info.pPoolSizes = size;
+            info.maxSets = static_cast<uint32_t>(uniforms+stores);
             VkDescriptorPool pool;
             if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS)
                 throw std::runtime_error("failed to create descriptor pool!");
             return pool;
-        } (device, MAX_BUFFERS_AVAILABLE);
+        } (device, MAX_BUFFERS_AVAILABLE, MAX_BUFFERS_AVAILABLE);
     }
     ~DeviceState() {
         vkDestroyDescriptorPool(device, pool, nullptr);
@@ -974,7 +979,7 @@ template<class Buffer> struct BufferQueue {
     std::queue<int> ident;
     std::queue<Buffer*> pool;
     std::queue<VkFence> reuse;
-     std::function<int(VkFence)> mark;
+    std::function<int(VkFence)> mark;
     std::function<void(int,VkFence)> done;
     Buffer *ready;
     BufferQueue(VkDevice device, std::function<int(VkFence)> mark, std::function<void(int,VkFence)> done) {
@@ -1013,9 +1018,10 @@ template<class Buffer> struct BufferQueue {
 };
 
 // if (loc+siz > fetchSize) fetchQueue->clr();
-// fetchQueue->set([...](){return new FetchBuffer(...);},[loc,siz,ptr](FetchBuffer*fetch, VkFence fence){fetch->setup(loc,siz,ptr,fence);});
+// fetchQueue->set([...](){return new BufferState(...);},[loc,siz,ptr](BufferState*fetch, VkFence fence){fetch->setup(loc,siz,ptr,fence);});
 // fetchQueue->get().buffer;
-struct FetchBuffer {
+enum BufferTag {FetchBuf,ChangeBuf,StoreBuf};
+struct BufferState {
     VkDevice device;
     VkQueue graphic;
     VkCommandPool pool;
@@ -1026,11 +1032,17 @@ struct FetchBuffer {
     VkDeviceMemory memory;
     void *mapped;
     VkCommandBuffer command;
-    FetchBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool, int size) {
+    VkDescriptorSet descriptor;
+    BufferTag tag;
+    BufferState(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
+        int size, BufferTag tag,
+        VkDescriptorSetLayout layout = VK_NULL_HANDLE, VkDescriptorPool dpool = VK_NULL_HANDLE) {
         this->device = device;
         this->graphic = graphic;
         this->pool = pool;
         this->size = size;
+        this->tag = tag;
+        if (tag == FetchBuf || tag == StoreBuf) {
         staging = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
             VkBufferCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1054,7 +1066,7 @@ struct FetchBuffer {
                 throw std::runtime_error("failed to allocate buffer memory!");
             return memory;
         } (physical,device,staging,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        vkBindBufferMemory(device, staging, wasted, 0);
+        vkBindBufferMemory(device, staging, wasted, 0);}
         buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
             VkBufferCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1065,7 +1077,9 @@ struct FetchBuffer {
             if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
                 throw std::runtime_error("failed to create buffer!");
             return buffer;
-        } (device,size,VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        } (device,size,tag==ChangeBuf?
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
         memory = [](VkPhysicalDevice physical, VkDevice device, VkBuffer buffer, VkMemoryPropertyFlags properties) {
             VkMemoryRequirements requirements;
             vkGetBufferMemoryRequirements(device, buffer, &requirements);
@@ -1077,17 +1091,22 @@ struct FetchBuffer {
             if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate buffer memory!");
             return memory;
-        } (physical,device,buffer,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        } (physical,device,buffer,tag==ChangeBuf?
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         vkBindBufferMemory(device, buffer, memory, 0);
-        vkMapMemory(device, wasted, 0, size, 0, &mapped);
+        vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);
         command = createCommandBuffer(device,pool);
+        if (tag == ChangeBuf || tag == StoreBuf) {
+        descriptor = createDescriptorSet(device,buffer,layout,dpool);}
     }
-    ~FetchBuffer() {
+    ~BufferState() {
         vkFreeCommandBuffers(device, pool, 1, &command);
         vkDestroyBuffer(device, buffer, nullptr);
         vkFreeMemory(device, memory, nullptr);
+        if (tag == FetchBuf || tag == StoreBuf) {
         vkDestroyBuffer(device, staging, nullptr);
-        vkFreeMemory(device, wasted, nullptr);
+        vkFreeMemory(device, wasted, nullptr);}
     }
     void setup(int loc, int siz, const void *ptr, VkFence fence) {
         memcpy((char*)mapped+loc,ptr,siz);
@@ -1114,6 +1133,7 @@ struct ChangeBuffer {
     VkDevice device;
     VkQueue graphic;
     VkCommandPool pool;
+    VkDescriptorPool dpool;
     VkBuffer buffer;
     VkDeviceMemory memory;
     void* mapped;
@@ -1124,6 +1144,7 @@ struct ChangeBuffer {
         this->device = device;
         this->graphic = graphic;
         this->pool = pool;
+        this->dpool = dpool;
         buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
             VkBufferCreateInfo bufferInfo{};
             bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1153,6 +1174,7 @@ struct ChangeBuffer {
         descriptor = createDescriptorSet(device,buffer,layout,dpool);
     }
     ~ChangeBuffer() {
+        vkFreeDescriptorSets(device, dpool, 1, &descriptor);
         vkFreeCommandBuffers(device, pool, 1, &command);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
@@ -1540,8 +1562,8 @@ int main(int argc, char **argv) {
         struct ThreadState *fenceState = new ThreadState(device);
 
         // TODO move following to vulkanDma
-        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicQueue, commandPool,
-            sizeof(vertices[0]) * vertices.size());
+        BufferState *fetchBuffer = new BufferState(physicalDevice, device, graphicQueue, commandPool,
+            sizeof(vertices[0]) * vertices.size(), FetchBuf);
         VkBuffer vertexBuffer = fetchBuffer->buffer;
         VkFence fence = createFence(device);
         vkResetFences(device, 1, &fence);
@@ -1553,20 +1575,22 @@ int main(int argc, char **argv) {
         // TODO replace following with map from Memory to BufferQueue
         if (result == VK_SUCCESS) break;
         }
-        std::vector<ChangeBuffer*> changeBuffers(MAX_BUFFERS_AVAILABLE);
+        std::vector<BufferState*> changeBuffers(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < changeBuffers.size(); i++)
-            changeBuffers[i] = new ChangeBuffer(physicalDevice,device,graphicQueue,commandPool,
-            sizeof(UniformBufferObject),descriptorSetLayout,descriptorPool);
+            changeBuffers[i] = new BufferState(physicalDevice,device,graphicQueue,commandPool,
+            sizeof(UniformBufferObject),ChangeBuf,descriptorSetLayout,descriptorPool);
         std::vector<VkDescriptorSet> descriptorSets(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < descriptorSets.size(); i++)
             descriptorSets[i] = changeBuffers[i]->descriptor;
         std::vector<void*> uniformMapped(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < uniformMapped.size(); i++)
             uniformMapped[i] = changeBuffers[i]->mapped;
-        std::vector<StoreBuffer*> storeBuffers(MAX_BUFFERS_AVAILABLE);
+        /*
+        std::vector<BufferState*> storeBuffers(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < storeBuffers.size(); i++)
-            storeBuffers[i] = new StoreBuffer(physicalDevice,device,graphicQueue,commandPool,
-            0,descriptorSetLayout,descriptorPool);
+            storeBuffers[i] = new BufferState(physicalDevice,device,graphicQueue,commandPool,
+            0,StoreBuf,descriptorSetLayout,descriptorPool);
+        */
 
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < drawState.size(); i++)
@@ -1644,7 +1668,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < fences.size(); i++) vkDestroyFence(device,fences[i],0);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) delete drawState[i];
         delete threadState;
-        for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete storeBuffers[i];
+        // for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete storeBuffers[i];
         for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete changeBuffers[i];
         vkDestroyFence(device,fence,0);
         delete fetchBuffer;
