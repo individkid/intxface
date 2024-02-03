@@ -967,78 +967,55 @@ struct ThreadState {
     }
 };
 
-template<class Fence> struct FenceQueue {
-    std::queue<Fence*> queue;
+template<class Buffer> struct BufferQueue {
+    VkDevice device;
+    std::queue<Buffer*> queue;
+    std::queue<VkFence> fence;
     std::queue<int> ident;
-    std::queue<Fence*> pool;
-    std::function<Fence*()> make;
-    Fence *ready;
-    FenceQueue(std::function<Fence*()> make) {
-        this->make = make;
+    std::queue<Buffer*> pool;
+    std::queue<VkFence> reuse;
+     std::function<int(VkFence)> mark;
+    std::function<void(int,VkFence)> done;
+    Buffer *ready;
+    BufferQueue(VkDevice device, std::function<int(VkFence)> mark, std::function<void(int,VkFence)> done) {
+        this->mark = mark;
+        this->done = done;
         ready = 0;
     }
-    ~FenceQueue() {
+    ~BufferQueue() {
         while (!queue.empty()) {delete queue.front(); queue.pop();}
+        while (!fence.empty()) {vkDestroyFence(device,fence.front(),nullptr); fence.pop();}
         while (!pool.empty()) {delete pool.front(); pool.pop();}
+        while (!reuse.empty()) {vkDestroyFence(device,reuse.front(),nullptr); reuse.pop();}
         if (ready) delete ready;
     }
-    Fence &get() {
-        while (!queue.empty() && queue.front()->done()) {
-            pool.push(ready); ready = queue.front(); queue.pop();}
+    Buffer &get() {
+        while (!queue.empty() && done(ident.front(),queue.front())) {
+            pool.push(ready); ready = queue.front(); reuse.push(fence.front());
+            queue.pop(); fence.pop(); ident.pop();}
         if (!ready) {throw std::runtime_error("no draw to get!");}
         return *ready;
     }
     void clr() {
         while (!pool.empty()) {delete pool.front(); pool.pop();}
     }
-    Fence &set() {
+    void set(std::function<Buffer*()> make, std::function<void(Buffer*,VkFence)> start) {
         if (pool.empty()) pool.push(make());
-        Fence *val = pool.front();
-        queue.push(val);
+        if (reuse.empty()) reuse.push(createFence(device));
+        vkResetFences(device, 1, &reuse.front());
+        queue.push(pool.front());
+        fence.push(reuse.front());
+        ident.push(mark(reuse.front()));
+        start(pool.front(),reuse.front());
         pool.pop();
-        return *val;
+        reuse.pop();
     }
 };
 
-template<class Buffer> struct BufferQueue: FenceQueue<Buffer> {
-    int size;
-    BufferQueue(std::function<Buffer*(int)> make): FenceQueue<Buffer>([this,make](){return make(this->size);}) {
-        size = 0;
-    }
-    ~BufferQueue() {
-    }
-    void set(int loc, int siz, void *ptr) {
-        if (loc+siz > size) {
-            FenceQueue<Buffer>::clr();
-            size = loc+siz;}
-        FenceQueue<Buffer>::set().start(loc,siz,ptr);
-    }
-};
-
-struct FenceState {
-    VkDevice device;
-    VkFence fence;
-    int index;
-    std::function<bool(int,VkFence)> func;
-    std::function<int(VkFence)> mark;
-    FenceState(VkDevice device, std::function<int(VkFence)> mark, std::function<bool(int,VkFence)> func) {
-        this->device = device;
-        this->func = func;
-        this->mark = mark;
-        fence = createFence(device);
-    }
-    ~FenceState() {
-        vkDestroyFence(device, fence, nullptr);
-    }
-    void start() {
-        index = mark(fence);
-    }
-    bool done() {
-        return func(index,fence);
-    }
-};
-
-struct FetchBuffer: FenceState {
+// if (loc+siz > fetchSize) fetchQueue->clr();
+// fetchQueue->set([...](){return new FetchBuffer(...);},[loc,siz,ptr](FetchBuffer*fetch, VkFence fence){fetch->setup(loc,siz,ptr,fence);});
+// fetchQueue->get().buffer;
+struct FetchBuffer {
     VkDevice device;
     VkQueue graphic;
     VkCommandPool pool;
@@ -1049,8 +1026,7 @@ struct FetchBuffer: FenceState {
     VkDeviceMemory memory;
     void *mapped;
     VkCommandBuffer command;
-    FetchBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool, int size,
-        std::function<int(VkFence)> mark, std::function<bool(int,VkFence)> func): FenceState(device,mark,func) {
+    FetchBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool, int size) {
         this->device = device;
         this->graphic = graphic;
         this->pool = pool;
@@ -1113,67 +1089,41 @@ struct FetchBuffer: FenceState {
         vkDestroyBuffer(device, staging, nullptr);
         vkFreeMemory(device, wasted, nullptr);
     }
-    void setup() {
-        vkResetFences(device, 1, &fence);
+    void setup(int loc, int siz, const void *ptr, VkFence fence) {
+        memcpy((char*)mapped+loc,ptr,siz);
         vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(command, &beginInfo);
-
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(command, staging, buffer, 1, &copyRegion);
-
+        VkCommandBufferBeginInfo begin{};
+        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(command, &begin);
+        VkBufferCopy copy{};
+        copy.size = size;
+        vkCmdCopyBuffer(command, staging, buffer, 1, &copy);
         vkEndCommandBuffer(command);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &command;
-
-        vkQueueSubmit(graphic, 1, &submitInfo, fence);
-    }
-    bool ready() {
-        VkResult result;
-
-        result = vkWaitForFences(device, 1, &fence, VK_TRUE, 0);
-        if (result == VK_ERROR_DEVICE_LOST) {
-            throw std::runtime_error("device lost on wait for fetch fence!");
-        }
-        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
-            throw std::runtime_error("failed to wait for fetch fences!");
-        }
-        if (result == VK_TIMEOUT) {
-            return false;
-        }
-        return true;
-    }
-    void start(int loc, int siz, const void *ptr) {
-        memcpy(mapped, ptr, (size_t) size); setup();
-        FenceState::start();
+        VkSubmitInfo submit{};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers = &command;
+        vkQueueSubmit(graphic, 1, &submit, fence);
     }
 };
 
+// if (loc+siz > changeSize) changeQueue->clr();
+// changeQueue->set([...](){return new FetchBuffer(...);},[loc,siz,ptr](ChangeBuffer*change, VkFence fence){change->setup(loc,siz,ptr,fence);});
 struct ChangeBuffer {
     VkDevice device;
-    std::function<bool(int,VkFence)> func;
-    std::function<int(VkFence)> mark;
-    VkFence fence;
+    VkQueue graphic;
+    VkCommandPool pool;
     VkBuffer buffer;
     VkDeviceMemory memory;
     void* mapped;
+    VkCommandBuffer command;
     VkDescriptorSet descriptor;
-    int index;
-    ChangeBuffer(VkPhysicalDevice physicalDevice, VkDevice device,
-        VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool,
-        std::function<int(VkFence)> mark, std::function<bool(int,VkFence)> func) {
+    ChangeBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
+        int size, VkDescriptorSetLayout layout, VkDescriptorPool dpool) {
         this->device = device;
-        this->func = func;
-        this->mark = mark;
-        VkDeviceSize size = sizeof(UniformBufferObject);
+        this->graphic = graphic;
+        this->pool = pool;
         buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
             VkBufferCreateInfo bufferInfo{};
             bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1185,60 +1135,75 @@ struct ChangeBuffer {
                 throw std::runtime_error("failed to create buffer!");
             return buffer;
         } (device,size,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-        memory = [](VkPhysicalDevice physicalDevice, VkDevice device, VkBuffer buffer, VkMemoryPropertyFlags properties) {
+        memory = [](VkPhysicalDevice physical, VkDevice device, VkBuffer buffer, VkMemoryPropertyFlags properties) {
             VkMemoryRequirements memRequirements;
             vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
             VkMemoryAllocateInfo allocInfo{};
             allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             allocInfo.allocationSize = memRequirements.size;
-            allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
+            allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, properties);
             VkDeviceMemory memory;
             if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate buffer memory!");
             return memory;
-        } (physicalDevice,device,buffer,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        } (physical,device,buffer,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         vkBindBufferMemory(device, buffer, memory, 0);
         vkMapMemory(device, memory, 0, size, 0, &mapped);
-        descriptor = createDescriptorSet(device,buffer,descriptorSetLayout,descriptorPool);
-        fence = createFence(device);
+        command = createCommandBuffer(device,pool);
+        descriptor = createDescriptorSet(device,buffer,layout,dpool);
     }
     ~ChangeBuffer() {
-        vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, pool, 1, &command);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
-    void start(int loc, int siz, void *ptr) {
-        // TODO copy to mapped
-        index = mark(fence);
-    }
-    bool done() {
-        return func(index,fence);
+    void setup(int loc, int siz, const void *ptr, VkFence fence) {
+        memcpy((char*)mapped+loc, ptr, siz);
+        vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
+        VkCommandBufferBeginInfo begin{};
+        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(command, &begin);
+        vkEndCommandBuffer(command);
+        VkSubmitInfo submit{};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers = &command;
+        vkQueueSubmit(graphic, 1, &submit, fence);
     }
 };
 
+// if (loc+siz > storeSize) storeQueue->clr();
+// storeQueue->set([...](){return new FetchBuffer(...);},[loc,siz,ptr](StoreBuffer*store){store->setup(loc,siz,ptr);});
 struct StoreBuffer {
     VkDevice device;
-    std::function<bool(int,VkFence)> func;
-    std::function<int(VkFence)> mark;
-    VkFence fence;
-    int index;
-    StoreBuffer(VkPhysicalDevice physicalDevice, VkDevice device,
-        VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool,
-        std::function<int(VkFence)> mark, std::function<bool(int,VkFence)> func) {
+    VkQueue graphic;
+    VkCommandPool pool;
+    VkCommandBuffer command;
+    StoreBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
+        int size, VkDescriptorSetLayout layout, VkDescriptorPool descriptor) {
         this->device = device;
-        this->func = func;
-        this->mark = mark;
-        fence = createFence(device);
+        this->graphic = graphic;
+        this->pool = pool;
+        command = createCommandBuffer(device,pool);
     }
     ~StoreBuffer() {
-        vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, pool, 1, &command);
     }
-    void start(int loc, int siz, void *ptr) {
-        // TODO copy and setup
-        index = mark(fence);
-    }
-    bool done() {
-        return this->func(index,fence);
+    void setup(int loc, int siz, const void *ptr, VkFence fence) {
+        // TODO memcpy
+        vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
+        VkCommandBufferBeginInfo begin{};
+        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(command, &begin);
+        // TODO start transfer
+        vkEndCommandBuffer(command);
+        VkSubmitInfo submit{};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers = &command;
+        vkQueueSubmit(graphic, 1, &submit, fence);
     }
 };
 
@@ -1251,7 +1216,6 @@ struct DrawState {
     VkQueue present;
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
-    VkFence fence;
     VkCommandBuffer commandBuffer;
     DrawState(VkDevice device, VkCommandPool commandPool, VkRenderPass render,
         VkPipeline pipeline, VkPipelineLayout layout, VkQueue graphic, VkQueue present) {
@@ -1263,29 +1227,15 @@ struct DrawState {
         this->present = present;
         imageAvailableSemaphore = createSemaphore(device);
         renderFinishedSemaphore = createSemaphore(device);
-        fence = createFence(device);
         commandBuffer = createCommandBuffer(device,commandPool);
     }
     ~DrawState() {
         vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
-        vkDestroyFence(device, fence, nullptr);
     }
-    VkResult draw(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, std::vector<VkFramebuffer> &swapChainFramebuffers,
-        void *uniformMapped, VkDescriptorSet descriptor, VkBuffer vertexBuffer, uint32_t size) {
+    VkResult setup(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, std::vector<VkFramebuffer> &swapChainFramebuffers,
+        void *uniformMapped, VkDescriptorSet descriptor, VkBuffer vertexBuffer, uint32_t size, VkFence fence) {
         VkResult result;
-
-        result = vkWaitForFences(device, 1, &fence, VK_TRUE, 0);
-        if (result == VK_ERROR_DEVICE_LOST) {
-            throw std::runtime_error("device lost on wait for fence!");
-        }
-        if (result != VK_SUCCESS && result != VK_TIMEOUT) {
-            throw std::runtime_error("failed to wait for fences!");
-        }
-        if (result == VK_TIMEOUT) {
-            return result;
-        }
-
         uint32_t imageIndex;
         result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -1304,7 +1254,6 @@ struct DrawState {
         ubo.proj[1][1] *= -1;
         memcpy(uniformMapped, &ubo, sizeof(ubo));
 
-        vkResetFences(device, 1, &fence);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
 
         VkCommandBufferBeginInfo beginInfo{};
@@ -1591,21 +1540,23 @@ int main(int argc, char **argv) {
         struct ThreadState *fenceState = new ThreadState(device);
 
         // TODO move following to vulkanDma
-        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicQueue, commandPool, sizeof(vertices[0]) * vertices.size(),
-            [threadState](VkFence fence)->int{return threadState->markFence(fence);},
-            [threadState](int index, VkFence fence)->bool{return threadState->doneFence(index,fence);});
+        FetchBuffer *fetchBuffer = new FetchBuffer(physicalDevice, device, graphicQueue, commandPool,
+            sizeof(vertices[0]) * vertices.size());
         VkBuffer vertexBuffer = fetchBuffer->buffer;
-        VkFence fence = fetchBuffer->fence;
-        fetchBuffer->start(0,sizeof(vertices[0]) * vertices.size(),vertices.data());
-        VkResult result = vkWaitForFences(device, 1, &fence, VK_TRUE, 0);
+        VkFence fence = createFence(device);
+        vkResetFences(device, 1, &fence);
+        fetchBuffer->setup(0,sizeof(vertices[0]) * vertices.size(),vertices.data(), fence);
+        while (1) {
+        VkResult result = vkWaitForFences(device, 1, &fence, VK_TRUE, NANOSECONDS);
         if (result == VK_ERROR_DEVICE_LOST)
             throw std::runtime_error("device lost on wait for fence!");
         // TODO replace following with map from Memory to BufferQueue
+        if (result == VK_SUCCESS) break;
+        }
         std::vector<ChangeBuffer*> changeBuffers(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < changeBuffers.size(); i++)
-            changeBuffers[i] = new ChangeBuffer(physicalDevice,device,descriptorSetLayout,descriptorPool,
-            [threadState](VkFence fence)->int{return threadState->markFence(fence);},
-            [threadState](int index, VkFence fence)->bool{return threadState->doneFence(index,fence);});
+            changeBuffers[i] = new ChangeBuffer(physicalDevice,device,graphicQueue,commandPool,
+            sizeof(UniformBufferObject),descriptorSetLayout,descriptorPool);
         std::vector<VkDescriptorSet> descriptorSets(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < descriptorSets.size(); i++)
             descriptorSets[i] = changeBuffers[i]->descriptor;
@@ -1614,14 +1565,12 @@ int main(int argc, char **argv) {
             uniformMapped[i] = changeBuffers[i]->mapped;
         std::vector<StoreBuffer*> storeBuffers(MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < storeBuffers.size(); i++)
-            storeBuffers[i] = new StoreBuffer(physicalDevice,device,descriptorSetLayout,descriptorPool,
-            [threadState](VkFence fence)->int{return threadState->markFence(fence);},
-            [threadState](int index, VkFence fence)->bool{return threadState->doneFence(index,fence);});
+            storeBuffers[i] = new StoreBuffer(physicalDevice,device,graphicQueue,commandPool,
+            0,descriptorSetLayout,descriptorPool);
 
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < drawState.size(); i++)
             drawState[i] = new DrawState(device,commandPool,renderPass,graphicPipeline,pipelineLayout,graphicQueue,presentQueue);
-        // TODO move following into drawState using fenceState for mark and done closures
         std::vector<VkSemaphore> imageAvailableSemaphores(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < imageAvailableSemaphores.size(); i++)
             imageAvailableSemaphores[i] = drawState[i]->imageAvailableSemaphore;
@@ -1629,8 +1578,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < renderFinishedSemaphores.size(); i++)
             renderFinishedSemaphores[i] = drawState[i]->renderFinishedSemaphore;
         std::vector<VkFence> fences(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < fences.size(); i++)
-            fences[i] = drawState[i]->fence;
+        for (int i = 0; i < fences.size(); i++) fences[i] = createFence(device);
         std::vector<VkCommandBuffer> commandBuffers(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < commandBuffers.size(); i++)
             commandBuffers[i] = drawState[i]->commandBuffer;
@@ -1659,18 +1607,31 @@ int main(int argc, char **argv) {
             }
             if (mainState.callDraw) {
                 // TODO move to vulkanDraw
+                while (1) {
+                    VkFence fence = fences[currentFrame];
+                    VkResult result = vkWaitForFences(device, 1, &fence, VK_TRUE, NANOSECONDS);
+                    if (result == VK_ERROR_DEVICE_LOST) {
+                        throw std::runtime_error("device lost on wait for fence!");
+                    }
+                    if (result != VK_SUCCESS && result != VK_TIMEOUT) {
+                        throw std::runtime_error("failed to wait for fences!");
+                    }
+                    if (result == VK_SUCCESS) {
+                        break;
+                    }
+                }
+                vkResetFences(device, 1, &fences[currentFrame]);
                 VkResult result;
-                result = drawState[currentFrame]->draw(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()));
+                result = drawState[currentFrame]->setup(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],
+                    descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()),fences[currentFrame]);
                 if (result == VK_ERROR_OUT_OF_DATE_KHR || mainState.framebufferResized) {
                     mainState.framebufferResized = false;
                     vkDeviceWaitIdle(device);
                     for (int i = 0; i < frameState.size(); i++) delete frameState[i];
                     delete swapState;
                     swapState = 0;
-                } else if (result == VK_TIMEOUT) {
-                    continue;
-                } else if (result != VK_SUCCESS) {
-                    throw std::runtime_error("failed to present swap chain image!");
+                } else if (result == VK_ERROR_DEVICE_LOST) {
+                    throw std::runtime_error("device lost on wait for fence!");
                 }
                 currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
                 currentBuffer = (currentBuffer + 1) % MAX_BUFFERS_AVAILABLE;
@@ -1680,10 +1641,12 @@ int main(int argc, char **argv) {
         vkDeviceWaitIdle(device);
         for (int i = 0; i < frameState.size(); i++) delete frameState[i];
         delete swapState;
+        for (int i = 0; i < fences.size(); i++) vkDestroyFence(device,fences[i],0);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) delete drawState[i];
         delete threadState;
         for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete storeBuffers[i];
         for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete changeBuffers[i];
+        vkDestroyFence(device,fence,0);
         delete fetchBuffer;
         delete mainState.logicalState;
         delete mainState.physicalState;
