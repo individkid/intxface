@@ -898,18 +898,19 @@ struct ThreadState {
     sem_t semaphore;
     pthread_t thread;
     bool finish;
+    int recurse;
     std::queue<int> ident;
     std::queue<int> pool;
     std::vector<int> valid;
     std::vector<VkFence> fence;
+    std::queue<std::function<void()>> todo;
     ThreadState(VkDevice device) {
         this->device = device;
         finish = false;
+        recurse = 0;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 0) != 0 ||
-            pthread_create(&thread,0,fenceThread,this) != 0) {
-            std::cerr << "failed to create thread!" << std::endl;
-            std::terminate();}
+            pthread_create(&thread,0,fenceThread,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
         if (sem_wait(&protect) != 0) {
@@ -928,40 +929,44 @@ struct ThreadState {
     }
     static void *fenceThread(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
+        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!"); arg->recurse++;
         while (1) {
-            if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
-            bool finish = arg->finish;
-            bool empty = arg->ident.empty();
-            int val; VkFence tmp;
-            if (!empty) tmp = arg->fence[val = arg->ident.front()];
-            if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-            if (finish) break;
-            if (empty) {
-                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");}
-            else {
+            if (arg->finish) {
+                arg->recurse--; if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                break;}
+            else if (!arg->todo.empty()) {
+                arg->todo.front()();
+                arg->todo.pop();}
+            else if (!arg->ident.empty()) {
+                int val = arg->ident.front();
+                VkFence tmp = arg->fence[val];
+                arg->recurse--; if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 VkResult result = vkWaitForFences(arg->device,1,&tmp,VK_FALSE,NANOSECONDS);
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
-                if (result == VK_SUCCESS) {arg->valid[val] = 0; arg->pool.push(val); arg->ident.pop();}
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");}}
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!"); arg->recurse++;
+                if (result == VK_SUCCESS) {arg->valid[val] = 0; arg->pool.push(val); arg->ident.pop();}}
+            else {
+                arg->recurse--; if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!"); arg->recurse++;}}
         return 0;
     }
     int markFence(VkFence arg) {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        if (!recurse && sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (pool.empty()) {
             int size = fence.size();
             int nsiz = (size == 0 ? 1 : size*2);
             valid.resize(nsiz); fence.resize(nsiz);
             while (size < fence.size()) pool.push(size++);}
         int val = pool.front(); pool.pop();
-        if (ident.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+        if (!recurse && ident.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         ident.push(val); fence[val] = arg; valid[val] = 1;
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        if (!recurse && sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return val;
     }
     bool doneFence(int idx, VkFence arg) {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        if (!recurse && sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         bool val = (valid[idx] == 0 || fence[idx] != arg);
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        if (!recurse && sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return val;
     }
     int infoFence() {
@@ -969,6 +974,12 @@ struct ThreadState {
         int val = ident.size();
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return val;
+    }
+    void todoFence(std::function<void()> func) {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        todo.push(func);
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        if (sem_post(&semaphore) != 0) std::runtime_error("failed to join thread!");        
     }
 };
 
@@ -982,10 +993,13 @@ template<class Buffer> struct BufferQueue {
     std::function<int(VkFence)> mark;
     std::function<void(int,VkFence)> done;
     Buffer *ready;
-    BufferQueue(VkDevice device, std::function<int(VkFence)> mark, std::function<void(int,VkFence)> done) {
+    sem_t protect;
+    BufferQueue(VkDevice device, std::function<int(VkFence)> mark, std::function<bool(int,VkFence)> done) {
+        this->device = device;
         this->mark = mark;
         this->done = done;
         ready = 0;
+        if (sem_init(&protect, 0, 1) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~BufferQueue() {
         while (!queue.empty()) {delete queue.front(); queue.pop();}
@@ -993,6 +1007,9 @@ template<class Buffer> struct BufferQueue {
         while (!pool.empty()) {delete pool.front(); pool.pop();}
         while (!reuse.empty()) {vkDestroyFence(device,reuse.front(),nullptr); reuse.pop();}
         if (ready) delete ready;
+        if (sem_destroy(&protect) != 0) {
+            std::cerr << "failed to destroy protect!" << std::endl;
+            std::terminate();}
     }
     Buffer &get() {
         while (!queue.empty() && done(ident.front(),queue.front())) {
@@ -1005,6 +1022,7 @@ template<class Buffer> struct BufferQueue {
         while (!pool.empty()) {delete pool.front(); pool.pop();}
     }
     void set(std::function<Buffer*()> make, std::function<void(Buffer*,VkFence)> start) {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (pool.empty()) pool.push(make());
         if (reuse.empty()) reuse.push(createFence(device));
         vkResetFences(device, 1, &reuse.front());
@@ -1014,6 +1032,7 @@ template<class Buffer> struct BufferQueue {
         start(pool.front(),reuse.front());
         pool.pop();
         reuse.pop();
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
     }
 };
 
@@ -1115,111 +1134,10 @@ struct BufferState {
         begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         vkBeginCommandBuffer(command, &begin);
+        if (tag == FetchBuf || tag == StoreBuf) {
         VkBufferCopy copy{};
         copy.size = size;
-        vkCmdCopyBuffer(command, staging, buffer, 1, &copy);
-        vkEndCommandBuffer(command);
-        VkSubmitInfo submit{};
-        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &command;
-        vkQueueSubmit(graphic, 1, &submit, fence);
-    }
-};
-
-// if (loc+siz > changeSize) changeQueue->clr();
-// changeQueue->set([...](){return new FetchBuffer(...);},[loc,siz,ptr](ChangeBuffer*change, VkFence fence){change->setup(loc,siz,ptr,fence);});
-struct ChangeBuffer {
-    VkDevice device;
-    VkQueue graphic;
-    VkCommandPool pool;
-    VkDescriptorPool dpool;
-    VkBuffer buffer;
-    VkDeviceMemory memory;
-    void* mapped;
-    VkCommandBuffer command;
-    VkDescriptorSet descriptor;
-    ChangeBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
-        int size, VkDescriptorSetLayout layout, VkDescriptorPool dpool) {
-        this->device = device;
-        this->graphic = graphic;
-        this->pool = pool;
-        this->dpool = dpool;
-        buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
-            VkBufferCreateInfo bufferInfo{};
-            bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            bufferInfo.size = size;
-            bufferInfo.usage = usage;
-            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VkBuffer buffer;
-            if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-                throw std::runtime_error("failed to create buffer!");
-            return buffer;
-        } (device,size,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-        memory = [](VkPhysicalDevice physical, VkDevice device, VkBuffer buffer, VkMemoryPropertyFlags properties) {
-            VkMemoryRequirements memRequirements;
-            vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-            VkMemoryAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            allocInfo.allocationSize = memRequirements.size;
-            allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, properties);
-            VkDeviceMemory memory;
-            if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
-                throw std::runtime_error("failed to allocate buffer memory!");
-            return memory;
-        } (physical,device,buffer,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        vkBindBufferMemory(device, buffer, memory, 0);
-        vkMapMemory(device, memory, 0, size, 0, &mapped);
-        command = createCommandBuffer(device,pool);
-        descriptor = createDescriptorSet(device,buffer,layout,dpool);
-    }
-    ~ChangeBuffer() {
-        vkFreeDescriptorSets(device, dpool, 1, &descriptor);
-        vkFreeCommandBuffers(device, pool, 1, &command);
-        vkFreeMemory(device, memory, nullptr);
-        vkDestroyBuffer(device, buffer, nullptr);
-    }
-    void setup(int loc, int siz, const void *ptr, VkFence fence) {
-        memcpy((char*)mapped+loc, ptr, siz);
-        vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-        VkCommandBufferBeginInfo begin{};
-        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(command, &begin);
-        vkEndCommandBuffer(command);
-        VkSubmitInfo submit{};
-        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &command;
-        vkQueueSubmit(graphic, 1, &submit, fence);
-    }
-};
-
-// if (loc+siz > storeSize) storeQueue->clr();
-// storeQueue->set([...](){return new FetchBuffer(...);},[loc,siz,ptr](StoreBuffer*store){store->setup(loc,siz,ptr);});
-struct StoreBuffer {
-    VkDevice device;
-    VkQueue graphic;
-    VkCommandPool pool;
-    VkCommandBuffer command;
-    StoreBuffer(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
-        int size, VkDescriptorSetLayout layout, VkDescriptorPool descriptor) {
-        this->device = device;
-        this->graphic = graphic;
-        this->pool = pool;
-        command = createCommandBuffer(device,pool);
-    }
-    ~StoreBuffer() {
-        vkFreeCommandBuffers(device, pool, 1, &command);
-    }
-    void setup(int loc, int siz, const void *ptr, VkFence fence) {
-        // TODO memcpy
-        vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-        VkCommandBufferBeginInfo begin{};
-        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(command, &begin);
-        // TODO start transfer
+        vkCmdCopyBuffer(command, staging, buffer, 1, &copy);}
         vkEndCommandBuffer(command);
         VkSubmitInfo submit{};
         submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
