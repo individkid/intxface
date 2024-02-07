@@ -979,60 +979,50 @@ struct ThreadState {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         todo.push(func);
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        if (sem_post(&semaphore) != 0) std::runtime_error("failed to join thread!");        
+        if (sem_post(&semaphore) != 0) std::runtime_error("failed to join thread!");
     }
 };
 
 template<class Buffer> struct BufferQueue {
-    VkDevice device;
-    std::queue<Buffer*> queue;
-    std::queue<VkFence> fence;
-    std::queue<int> ident;
     std::queue<Buffer*> pool;
-    std::queue<VkFence> reuse;
-    std::function<int(VkFence)> mark;
-    std::function<void(int,VkFence)> done;
-    Buffer *ready;
-    sem_t protect;
-    BufferQueue(VkDevice device, std::function<int(VkFence)> mark, std::function<bool(int,VkFence)> done) {
-        this->device = device;
-        this->mark = mark;
-        this->done = done;
+    std::queue<Buffer*> running; std::queue<std::function<bool()>> toready;
+    Buffer* ready; std::queue<std::function<bool()>> toinuse;
+    std::queue<Buffer*> inuse; std::queue<std::function<bool()>> topool;
+    BufferQueue() {
         ready = 0;
-        if (sem_init(&protect, 0, 1) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~BufferQueue() {
-        while (!queue.empty()) {delete queue.front(); queue.pop();}
-        while (!fence.empty()) {vkDestroyFence(device,fence.front(),nullptr); fence.pop();}
         while (!pool.empty()) {delete pool.front(); pool.pop();}
-        while (!reuse.empty()) {vkDestroyFence(device,reuse.front(),nullptr); reuse.pop();}
+        while (!running.empty()) {delete running.front(); running.pop();}
         if (ready) delete ready;
-        if (sem_destroy(&protect) != 0) {
-            std::cerr << "failed to destroy protect!" << std::endl;
-            std::terminate();}
+        while (!inuse.empty()) {delete inuse.front(); inuse.pop();}
     }
-    Buffer &get() {
-        while (!queue.empty() && done(ident.front(),queue.front())) {
-            pool.push(ready); ready = queue.front(); reuse.push(fence.front());
-            queue.pop(); fence.pop(); ident.pop();}
-        if (!ready) {throw std::runtime_error("no draw to get!");}
+    bool tst() {
+        if (ready) return true;
+        if (running.empty()) return false;
+        return toready.front()();
+    }
+    Buffer &get(std::function<bool()> done) {
+        if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
+            while (toinuse.size() > 1) {inuse.push(0); topool.push(toinuse.front()); toinuse.pop();}
+            inuse.push(ready); topool.push(toinuse.front()); toinuse.pop(); ready = 0;}
+        while (!toready.empty() && toready.front()()) {
+            if (ready) pool.push(ready);
+            ready = running.front(); running.pop(); toready.pop();}
+        toinuse.push(done);
         return *ready;
     }
     void clr() {
         while (!pool.empty()) {delete pool.front(); pool.pop();}
     }
-    void set(std::function<Buffer*()> make, std::function<void(Buffer*,VkFence)> start) {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+    Buffer &set(std::function<Buffer*()> make, std::function<bool()> done) {
+        while (!topool.empty() && topool.front()()) {
+            if (inuse.front()) pool.push(inuse.front());
+            inuse.pop(); topool.pop();}
         if (pool.empty()) pool.push(make());
-        if (reuse.empty()) reuse.push(createFence(device));
-        vkResetFences(device, 1, &reuse.front());
-        queue.push(pool.front());
-        fence.push(reuse.front());
-        ident.push(mark(reuse.front()));
-        start(pool.front(),reuse.front());
-        pool.pop();
-        reuse.pop();
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        Buffer *ptr = pool.front(); pool.pop();
+        running.push(ptr); toready.push(done);
+        return *ptr;
     }
 };
 
