@@ -898,19 +898,18 @@ struct ThreadState {
     sem_t semaphore;
     pthread_t thread;
     bool finish;
-    int recurse;
-    std::queue<int> ident;
-    std::queue<int> pool;
-    std::vector<int> valid;
-    std::vector<VkFence> fence;
-    std::queue<std::function<void()>> todo;
+    std::queue<std::function<VkFence()>> setup;
+    std::queue<VkFence> fence;
+    std::queue<int> order;
+    std::set<int> lookup;
+    int seqnum;
     ThreadState(VkDevice device) {
         this->device = device;
         finish = false;
-        recurse = 0;
-        if (sem_init(&protect, 0, 1) != 0 ||
+        seqnum = 0;
+       if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 0) != 0 ||
-            pthread_create(&thread,0,fenceThread,this) != 0) throw std::runtime_error("failed to create thread!");
+            pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
         if (sem_wait(&protect) != 0) {
@@ -927,59 +926,55 @@ struct ThreadState {
             std::cerr << "failed to join thread!" << std::endl;
             std::terminate();}
     }
-    static void *fenceThread(void *ptr) {
+    static void *separate(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
-        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!"); arg->recurse++;
+        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
         while (1) {
             if (arg->finish) {
-                arg->recurse--; if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 break;}
-            else if (!arg->todo.empty()) {
-                arg->todo.front()();
-                arg->todo.pop();}
-            else if (!arg->ident.empty()) {
-                int val = arg->ident.front();
-                VkFence tmp = arg->fence[val];
-                arg->recurse--; if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                VkResult result = vkWaitForFences(arg->device,1,&tmp,VK_FALSE,NANOSECONDS);
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!"); arg->recurse++;
-                if (result == VK_SUCCESS) {arg->valid[val] = 0; arg->pool.push(val); arg->ident.pop();}}
-            else {
-                arg->recurse--; if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+            while (!arg->setup.empty()) {
+                arg->fence.push(arg->setup.front()());
+                arg->setup.pop();}
+            if (arg->fence.empty()) {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!"); arg->recurse++;}}
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
+            else {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");}}
         return 0;
     }
-    int markFence(VkFence arg) {
-        if (!recurse && sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        if (pool.empty()) {
-            int size = fence.size();
-            int nsiz = (size == 0 ? 1 : size*2);
-            valid.resize(nsiz); fence.resize(nsiz);
-            while (size < fence.size()) pool.push(size++);}
-        int val = pool.front(); pool.pop();
-        if (!recurse && ident.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        ident.push(val); fence[val] = arg; valid[val] = 1;
-        if (!recurse && sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return val;
-    }
-    bool doneFence(int idx, VkFence arg) {
-        if (!recurse && sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        bool val = (valid[idx] == 0 || fence[idx] != arg);
-        if (!recurse && sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return val;
-    }
-    int infoFence() {
+    bool clear(int given) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        int val = ident.size();
+        while (1) {
+            if (fence.empty()) break;
+            VkResult result = vkWaitForFences(device,1,&fence.front(),VK_FALSE,0);
+            if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
+            if (result == VK_TIMEOUT) break;
+            lookup.erase(order.front());
+            order.pop(); fence.pop();}
+        bool done = (lookup.find(given) != lookup.end());
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return val;
+        return done;
     }
-    void todoFence(std::function<void()> func) {
+    std::function<bool()> push(std::function<void()> given) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        todo.push(func);
+        given();
+        int local = seqnum++;
+        order.push(local);
+        lookup.insert(local);
+        std::function<bool()> done = [this,local](){return this->clear(local);};
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        if (sem_post(&semaphore) != 0) std::runtime_error("failed to join thread!");
+        return done;        
+    }
+    std::function<bool()> push(VkFence given) {
+        return push([this,given](){this->fence.push(given);});
+    }
+    std::function<bool()> push(std::function<VkFence()> given) {
+        return push([this,given](){this->setup.push(given);});
     }
 };
 
