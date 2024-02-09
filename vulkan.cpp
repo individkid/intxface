@@ -966,6 +966,8 @@ struct ThreadState {
         int local = seqnum++;
         order.push(local);
         lookup.insert(local);
+        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         std::function<bool()> done = [this,local](){return this->clear(local);};
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;        
@@ -1024,7 +1026,7 @@ template<class Buffer> struct BufferQueue {
 // if (loc+siz > fetchSize) fetchQueue->clr();
 // fetchQueue->set([...](){return new BufferState(...);},[loc,siz,ptr](BufferState*fetch, VkFence fence){fetch->setup(loc,siz,ptr,fence);});
 // fetchQueue->get().buffer;
-enum BufferTag {FetchBuf,ChangeBuf,StoreBuf};
+enum BufferTag {FetchBuf,ChangeBuf,StoreBuf,TestBuf};
 struct BufferState {
     VkDevice device;
     VkQueue graphic;
@@ -1037,6 +1039,7 @@ struct BufferState {
     void *mapped;
     VkCommandBuffer command;
     VkDescriptorSet descriptor;
+    VkFence fence;
     BufferTag tag;
     BufferState(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
         int size, BufferTag tag,
@@ -1071,6 +1074,7 @@ struct BufferState {
             return memory;
         } (physical,device,staging,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         vkBindBufferMemory(device, staging, wasted, 0);}
+        if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
         buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
             VkBufferCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1099,12 +1103,14 @@ struct BufferState {
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         vkBindBufferMemory(device, buffer, memory, 0);
-        vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);
+        vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
         command = createCommandBuffer(device,pool);
         if (tag == ChangeBuf || tag == StoreBuf) {
         descriptor = createDescriptorSet(device,buffer,layout,dpool);}
+        fence = createFence(device);
     }
     ~BufferState() {
+        vkDestroyFence(device,fence,0);
         vkFreeCommandBuffers(device, pool, 1, &command);
         vkDestroyBuffer(device, buffer, nullptr);
         vkFreeMemory(device, memory, nullptr);
@@ -1112,9 +1118,11 @@ struct BufferState {
         vkDestroyBuffer(device, staging, nullptr);
         vkFreeMemory(device, wasted, nullptr);}
     }
-    void setup(int loc, int siz, const void *ptr, VkFence fence) {
-        memcpy((char*)mapped+loc,ptr,siz);
+    void setup(int loc, int siz, const void *ptr) {
+        if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
+        memcpy((char*)mapped+loc,ptr,siz);}
         vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetFences(device, 1, &fence);
         VkCommandBufferBeginInfo begin{};
         begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1142,6 +1150,7 @@ struct DrawState {
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
     VkCommandBuffer commandBuffer;
+    VkFence fence;
     DrawState(VkDevice device, VkCommandPool commandPool, VkRenderPass render,
         VkPipeline pipeline, VkPipelineLayout layout, VkQueue graphic, VkQueue present) {
         this->device = device;
@@ -1153,13 +1162,15 @@ struct DrawState {
         imageAvailableSemaphore = createSemaphore(device);
         renderFinishedSemaphore = createSemaphore(device);
         commandBuffer = createCommandBuffer(device,commandPool);
+        fence = createFence(device);
     }
     ~DrawState() {
+        vkDestroyFence(device,fence,0);
         vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
     }
     VkResult setup(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, std::vector<VkFramebuffer> &swapChainFramebuffers,
-        void *uniformMapped, VkDescriptorSet descriptor, VkBuffer vertexBuffer, uint32_t size, VkFence fence) {
+        void *uniformMapped, VkDescriptorSet descriptor, VkBuffer vertexBuffer, uint32_t size) {
         VkResult result;
         uint32_t imageIndex;
         result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
@@ -1468,11 +1479,10 @@ int main(int argc, char **argv) {
         BufferState *fetchBuffer = new BufferState(physicalDevice, device, graphicQueue, commandPool,
             sizeof(vertices[0]) * vertices.size(), FetchBuf);
         VkBuffer vertexBuffer = fetchBuffer->buffer;
-        VkFence fence = createFence(device);
-        vkResetFences(device, 1, &fence);
-        fetchBuffer->setup(0,sizeof(vertices[0]) * vertices.size(),vertices.data(), fence);
+        VkFence vertexFence = fetchBuffer->fence;
+        fetchBuffer->setup(0,sizeof(vertices[0]) * vertices.size(),vertices.data());
         while (1) {
-        VkResult result = vkWaitForFences(device, 1, &fence, VK_TRUE, NANOSECONDS);
+        VkResult result = vkWaitForFences(device, 1, &vertexFence, VK_TRUE, NANOSECONDS);
         if (result == VK_ERROR_DEVICE_LOST)
             throw std::runtime_error("device lost on wait for fence!");
         // TODO replace following with map from Memory to BufferQueue
@@ -1505,7 +1515,8 @@ int main(int argc, char **argv) {
         for (int i = 0; i < renderFinishedSemaphores.size(); i++)
             renderFinishedSemaphores[i] = drawState[i]->renderFinishedSemaphore;
         std::vector<VkFence> fences(MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < fences.size(); i++) fences[i] = createFence(device);
+        for (int i = 0; i < fences.size(); i++)
+            fences[i] = drawState[i]->fence;
         std::vector<VkCommandBuffer> commandBuffers(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < commandBuffers.size(); i++)
             commandBuffers[i] = drawState[i]->commandBuffer;
@@ -1550,7 +1561,7 @@ int main(int argc, char **argv) {
                 vkResetFences(device, 1, &fences[currentFrame]);
                 VkResult result;
                 result = drawState[currentFrame]->setup(swapChainExtent,swapChain,swapChainFramebuffers,uniformMapped[currentBuffer],
-                    descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()),fences[currentFrame]);
+                    descriptorSets[currentBuffer],vertexBuffer,static_cast<uint32_t>(vertices.size()));
                 if (result == VK_ERROR_OUT_OF_DATE_KHR || mainState.framebufferResized) {
                     mainState.framebufferResized = false;
                     vkDeviceWaitIdle(device);
@@ -1568,12 +1579,10 @@ int main(int argc, char **argv) {
         vkDeviceWaitIdle(device);
         for (int i = 0; i < frameState.size(); i++) delete frameState[i];
         delete swapState;
-        for (int i = 0; i < fences.size(); i++) vkDestroyFence(device,fences[i],0);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) delete drawState[i];
         delete threadState;
         // for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete storeBuffers[i];
         for (size_t i = 0; i < MAX_BUFFERS_AVAILABLE; i++) delete changeBuffers[i];
-        vkDestroyFence(device,fence,0);
         delete fetchBuffer;
         delete mainState.logicalState;
         delete mainState.physicalState;
