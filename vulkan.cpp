@@ -943,6 +943,7 @@ struct ThreadState {
             else {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
+                glfwPostEmptyEvent();
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop(); arg->fence.pop();}}}
@@ -980,8 +981,11 @@ template<class Buffer> struct BufferQueue {
     std::queue<Buffer*> running; std::queue<std::function<bool()>> toready;
     Buffer* ready; std::queue<std::function<bool()>> toinuse;
     std::queue<Buffer*> inuse; std::queue<std::function<bool()>> topool;
-    BufferQueue() {
+    int count; int limit;
+    BufferQueue(int limit) {
         ready = 0;
+        count = 0;
+        this->limit = limit;
     }
     ~BufferQueue() {
         while (!pool.empty()) {delete pool.front(); pool.pop();}
@@ -992,19 +996,27 @@ template<class Buffer> struct BufferQueue {
     void clr() {
         while (!pool.empty()) {delete pool.front(); pool.pop();}
     }
+    bool tst() {
+        while (!topool.empty() && topool.front()() && !inuse.front()) {
+            inuse.pop(); topool.pop();}
+        if (!topool.empty() && topool.front()()) return true;
+        if (count < limit) return true;
+        return false;
+    }
     Buffer *set(std::function<Buffer*()> make, std::function<void(Buffer*)> setup, std::function<std::function<bool()>(Buffer*)> done) {
         while (!topool.empty() && topool.front()()) {
             if (inuse.front()) pool.push(inuse.front());
             inuse.pop(); topool.pop();}
-        if (pool.empty()) pool.push(make());
+        if (pool.empty()) {pool.push(make()); count++;}
         Buffer *ptr = pool.front(); pool.pop();
         setup(ptr); running.push(ptr); toready.push(done(ptr));
         return ptr;
     }
-    bool tst() {
+    bool vld() {
         if (ready) return true;
         if (running.empty()) return false;
-        return toready.front()();
+        if (toready.front()()) return true;
+        return false;
     }
     Buffer *get(std::function<bool()> done) {
         if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
@@ -1189,6 +1201,7 @@ struct DrawState {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
+        vkResetFences(device, 1, &fence);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
 
         VkCommandBufferBeginInfo beginInfo{};
@@ -1196,19 +1209,19 @@ struct DrawState {
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
             throw std::runtime_error("failed to begin recording command buffer!");
         }
-        [](VkRenderPass render, std::vector<VkFramebuffer> &swapChainFramebuffers,
-            int imageIndex, VkExtent2D swapChainExtent, VkCommandBuffer commandBuffer) {
+        [](VkRenderPass render, VkFramebuffer framebuffer,
+            VkExtent2D swapChainExtent, VkCommandBuffer commandBuffer) {
             VkRenderPassBeginInfo info{};
             info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             info.renderPass = render;
-            info.framebuffer = swapChainFramebuffers[imageIndex];
+            info.framebuffer = framebuffer;
             info.renderArea.offset = {0, 0};
             info.renderArea.extent = swapChainExtent;
             VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
             info.clearValueCount = 1;
             info.pClearValues = &clearColor;
             vkCmdBeginRenderPass(commandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
-        } (render,swapChainFramebuffers,imageIndex,swapChainExtent,commandBuffer);
+        } (render,swapChainFramebuffers[imageIndex],swapChainExtent,commandBuffer);
 
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -1270,11 +1283,14 @@ struct DrawState {
 
 struct SwapState {
     VkDevice device;
-    VkExtent2D swapChainExtent;
+    VkExtent2D extent;
     VkSwapchainKHR swapChain;
+    uint32_t count;
     std::vector<VkImage> swapChainImages;
-    SwapState(GLFWwindow* window, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
-        VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
+    std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
+    SwapState(GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
+        VkFormat image, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkRenderPass pass,
         uint32_t minimum, uint32_t graphicid, uint32_t presentid) {
         this->device = device;
         int width = 0, height = 0;
@@ -1283,34 +1299,23 @@ struct SwapState {
             glfwWaitEvents();
             glfwGetFramebufferSize(window, &width, &height);
         }
-        VkSurfaceCapabilitiesKHR surfaceCapabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
-        swapChainExtent = chooseSwapExtent(window,surfaceCapabilities);
-        swapChain = createSwapChain(physicalDevice,device,surface,surfaceFormat,presentMode,
-            swapChainExtent,surfaceCapabilities,minimum,graphicid,presentid);
-        uint32_t count;
+        VkSurfaceCapabilitiesKHR capabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
+        extent = chooseSwapExtent(window,capabilities);
+        swapChain = createSwapChain(physical,device,surface,format,mode, extent,capabilities,minimum,graphicid,presentid);
         vkGetSwapchainImagesKHR(device, swapChain, &count, nullptr);
         swapChainImages.resize(count);
+        swapChainImageViews.resize(count);
+        swapChainFramebuffers.resize(count);
         vkGetSwapchainImagesKHR(device, swapChain, &count, swapChainImages.data());
+        for (int i = 0; i < count; i++) swapChainImageViews[i] = createImageView(device,image,swapChainImages[i]);
+        for (int i = 0; i < count; i++) swapChainFramebuffers[i] = createFramebuffer(device,extent,swapChainImageViews[i],pass);
     }
     ~SwapState() {
+        vkDeviceWaitIdle(device);
+        for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+        for (int i = 0; i < count; i++) vkDestroyImageView(device, swapChainImageViews[i], nullptr);
         vkDestroySwapchainKHR(device, swapChain, nullptr);
-    }
-};
-
-struct FrameState {
-    VkDevice device;
-    VkImageView swapChainImageView;
-    VkFramebuffer swapChainFramebuffer;
-    FrameState(VkDevice device, VkFormat image, VkImage swapChainImage,
-        VkExtent2D swapChainExtent, VkRenderPass renderPass) {
-        this->device = device;
-        swapChainImageView = createImageView(device,image,swapChainImage);
-        swapChainFramebuffer = createFramebuffer(device,swapChainExtent,swapChainImageView,renderPass);
-    }
-    ~FrameState() {
-        vkDestroyFramebuffer(device, swapChainFramebuffer, nullptr);
-        vkDestroyImageView(device, swapChainImageView, nullptr);
     }
 };
 
@@ -1451,10 +1456,12 @@ int main(int argc, char **argv) {
         const std::vector<const char*> deviceExtensions = mainState.deviceExtensions;
         std::vector<const char*> validationLayers = mainState.validationLayers;
         bool enableValidationLayers = mainState.enableValidationLayers;
+
         // TODO move following to vulkanMain
         mainState.openState = new OpenState(instance,WIDTH,HEIGHT,&mainState);
         GLFWwindow* window = mainState.openState->window;
         VkSurfaceKHR surface = mainState.openState->surface;
+
         mainState.physicalState = new PhysicalState(instance,surface,deviceExtensions);
         VkPhysicalDevice physicalDevice = mainState.physicalState->physical;
         uint32_t graphicIndex = mainState.physicalState->graphicid;
@@ -1463,6 +1470,7 @@ int main(int argc, char **argv) {
         VkSurfaceFormatKHR surfaceFormat = mainState.physicalState->format;
         VkPresentModeKHR presentMode = mainState.physicalState->mode;
         VkFormat swapChainImageFormat = mainState.physicalState->image;
+
         mainState.logicalState = new DeviceState(physicalDevice,graphicIndex,presentIndex,swapChainImageFormat,
             validationLayers,deviceExtensions,enableValidationLayers,MAX_BUFFERS_AVAILABLE*Memorys);
         VkDevice device = mainState.logicalState->device;
@@ -1478,8 +1486,9 @@ int main(int argc, char **argv) {
         struct ThreadState *threadState = new ThreadState(device);
         struct ThreadState *fenceState = new ThreadState(device);
 
-        BufferQueue<BufferState> *fetchQueue = new BufferQueue<BufferState>();
-        BufferQueue<BufferState> *changeQueue = new BufferQueue<BufferState>();
+        BufferQueue<BufferState> *fetchQueue = new BufferQueue<BufferState>(MAX_BUFFERS_AVAILABLE);
+        BufferQueue<BufferState> *changeQueue = new BufferQueue<BufferState>(MAX_BUFFERS_AVAILABLE);
+        BufferQueue<DrawState> *drawQueue = new BufferQueue<DrawState>(MAX_FRAMES_IN_FLIGHT);
 
         std::vector<DrawState*> drawState(MAX_FRAMES_IN_FLIGHT);
         for (int i = 0; i < drawState.size(); i++)
@@ -1500,54 +1509,52 @@ int main(int argc, char **argv) {
         struct SwapState *swapState = 0;
         VkExtent2D swapChainExtent;
         VkSwapchainKHR swapChain;
-        std::vector<FrameState*> frameState;
         std::vector<VkFramebuffer> swapChainFramebuffers;
         uint32_t currentFrame = 0; // TODO change to drawQueue
-        uint32_t currentBuffer = 0; // TODO change to changeQueue
         while (!mainState.escapePressed || !mainState.enterPressed) {
+            glfwWaitEventsTimeout(0.01);
             if (mainState.framebufferResized) {
                 mainState.framebufferResized = false;
-                vkDeviceWaitIdle(device);
-                for (int i = 0; i < frameState.size(); i++) delete frameState[i];
                 if (swapState) delete swapState;
                 swapState = 0;}
             if (!swapState) {
-                swapState = new SwapState(window,physicalDevice,device,surface,surfaceFormat,presentMode,minImageCount,graphicIndex,presentIndex);
-                swapChainExtent = swapState->swapChainExtent;
+                swapState = new SwapState(window,physicalDevice,device,surface,
+                    swapChainImageFormat,surfaceFormat,presentMode,renderPass,
+                    minImageCount,graphicIndex,presentIndex);
+                swapChainExtent = swapState->extent;
                 swapChain = swapState->swapChain;
-                std::vector<VkImage> swapChainImages = swapState->swapChainImages;
-                frameState.resize(swapChainImages.size());
-                for (int i = 0; i < frameState.size(); i++) frameState[i] = new FrameState(device,swapChainImageFormat,swapChainImages[i],swapChainExtent,renderPass);
-                swapChainFramebuffers.resize(frameState.size());
-                for (int i = 0; i < frameState.size(); i++) swapChainFramebuffers[i] = frameState[i]->swapChainFramebuffer;
+                swapChainFramebuffers.resize(swapState->count);
+                for (int i = 0; i < swapState->count; i++) swapChainFramebuffers[i] = swapState->swapChainFramebuffers[i];
             }
-            glfwWaitEventsTimeout(0.01);
             if (mainState.callOnce) {
+                if (!fetchQueue->tst()) continue;
                 mainState.callOnce = false;
                 fetchQueue->set([physicalDevice, device, graphicQueue, commandPool](){
                     return new BufferState(physicalDevice, device, graphicQueue, commandPool,
                     sizeof(vertices[0]) * vertices.size(), FetchBuf);},
-                    [](BufferState*buffer){buffer->setup(0,sizeof(vertices[0]) * vertices.size(),vertices.data());},
+                    [](BufferState*buffer){buffer->setup(0,sizeof(vertices[0])*vertices.size(),vertices.data());},
                     [threadState](BufferState*buffer){return threadState->push(buffer->fence);});
             }
             if (mainState.callDma) {
+                if (!changeQueue->tst()) continue;
                 mainState.callDma = false;
-                changeQueue->set([physicalDevice,device,graphicQueue,commandPool,descriptorSetLayout,descriptorPool,swapChainExtent](){
+                changeQueue->set([physicalDevice,device,graphicQueue,commandPool,
+                    descriptorSetLayout,descriptorPool,swapChainExtent](){
                     return new BufferState(physicalDevice,device,graphicQueue,commandPool,
                     sizeof(UniformBufferObject),ChangeBuf,descriptorSetLayout,descriptorPool);},
                     [swapChainExtent](BufferState*buffer){buffer->test(swapChainExtent);},
                     [threadState](BufferState*buffer){return threadState->push(buffer->fence);});
             }
             if (mainState.callDraw) {
+                if (!fetchQueue->vld()) continue;
+                if (!changeQueue->vld()) continue;
                 VkFence fence = fences[currentFrame];
-                if (!fetchQueue->tst()) continue;
-                if (!changeQueue->tst()) continue;
                 std::function<bool()> done = [device,fence](){
                     VkResult result = vkWaitForFences(device, 1, &fence, VK_TRUE, NANOSECONDS);
-                    if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("failed to wait for fences!");
+                    if (result != VK_SUCCESS && result != VK_TIMEOUT)
+                        throw std::runtime_error("failed to wait for fences!");
                     return (result == VK_SUCCESS);};
                 if (!done()) continue;
-                vkResetFences(device, 1, &fence);
                 if (drawState[currentFrame]->setup(swapChainExtent,swapChain,swapChainFramebuffers,
                     changeQueue->get(done)->descriptor,fetchQueue->get([](){return false;})->buffer,
                     static_cast<uint32_t>(vertices.size())) == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -1558,11 +1565,10 @@ int main(int argc, char **argv) {
         }
 
         vkDeviceWaitIdle(device);
-        for (int i = 0; i < frameState.size(); i++) delete frameState[i];
         delete swapState;
         for (size_t i = 0; i < drawState.size(); i++) delete drawState[i];
+        delete fenceState;
         delete threadState;
-        // delete storeQueue;
         delete changeQueue;
         delete fetchQueue;
         delete mainState.logicalState;
