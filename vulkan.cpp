@@ -1038,13 +1038,14 @@ struct ThreadState {
     }
 };
 
-template<class Buffer> struct BufferQueue {
+template<class Buffer, class Shared, class Pattern> struct BufferQueue {
     std::queue<Buffer*> pool;
     std::queue<Buffer*> running; std::queue<std::function<bool()>> toready;
     Buffer* ready; std::queue<std::function<bool()>> toinuse;
     std::queue<Buffer*> inuse; std::queue<std::function<bool()>> topool;
     int count; int limit;
-    BufferQueue(int limit) {
+    Shared shared;
+    BufferQueue(Pattern *pattern, int limit): shared(pattern) {
         ready = 0;
         count = 0;
         this->limit = limit;
@@ -1065,12 +1066,12 @@ template<class Buffer> struct BufferQueue {
         if (count < limit) return true;
         return false;
     }
-    Buffer *set(std::function<Buffer*()> make, std::function<void(Buffer*)> setup,
+    Buffer *set(std::function<Buffer*(Shared*)> make, std::function<void(Buffer*)> setup,
         std::function<std::function<bool()>(Buffer*)> done) {
         while (!topool.empty() && topool.front()()) {
             if (inuse.front()) pool.push(inuse.front());
             inuse.pop(); topool.pop();}
-        if (pool.empty()) {pool.push(make()); count++;}
+        if (pool.empty()) {pool.push(make(&shared)); count++;}
         Buffer *ptr = pool.front(); pool.pop();
         setup(ptr); running.push(ptr); toready.push(done(ptr));
         return ptr;
@@ -1098,6 +1099,10 @@ template<class Buffer> struct BufferQueue {
 // fetchQueue->set([...](){return new BufferState(...);},[loc,siz,ptr](BufferState*fetch, VkFence fence){fetch->setup(loc,siz,ptr,fence);});
 // fetchQueue->get().buffer;
 enum BufferTag {FetchBuf,ChangeBuf,StoreBuf,TestBuf};
+struct PatternState {};
+struct SharedState {
+    SharedState(PatternState*) {}
+};
 struct BufferState {
     VkDevice device;
     VkQueue graphic;
@@ -1113,7 +1118,7 @@ struct BufferState {
     VkFence fence;
     BufferTag tag;
     std::function<bool()> done;
-    BufferState(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
+    BufferState(SharedState *shared, VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool,
         int size, BufferTag tag,
         VkDescriptorSetLayout layout = VK_NULL_HANDLE, VkDescriptorPool dpool = VK_NULL_HANDLE) {
         this->device = device;
@@ -1226,6 +1231,10 @@ struct BufferState {
     }
 };
 
+struct InfoState {};
+struct PoolState {
+    PoolState(InfoState*) {}
+};
 struct DrawState {
     VkDevice device;
     VkRenderPass render;
@@ -1238,7 +1247,8 @@ struct DrawState {
     VkCommandBuffer commandBuffer;
     VkFence fence;
     std::function<bool()> done;
-    DrawState(VkDevice device, VkCommandPool commandPool, VkRenderPass render,
+    // TODO move VkCommandPool to PoolState
+    DrawState(PoolState *pool,VkDevice device, VkCommandPool commandPool, VkRenderPass render,
         VkPipeline pipeline, VkPipelineLayout layout, VkQueue graphic, VkQueue present) {
         this->device = device;
         this->render = render;
@@ -1496,9 +1506,15 @@ int main(int argc, char **argv) {
         struct ThreadState *threadState = new ThreadState(device);
         struct ThreadState *fenceState = new ThreadState(device);
 
-        BufferQueue<BufferState> *fetchQueue = new BufferQueue<BufferState>(MAX_BUFFERS_AVAILABLE);
-        BufferQueue<BufferState> *changeQueue = new BufferQueue<BufferState>(MAX_BUFFERS_AVAILABLE);
-        BufferQueue<DrawState> *drawQueue = new BufferQueue<DrawState>(MAX_FRAMES_IN_FLIGHT);
+        BufferQueue<BufferState,SharedState,PatternState> *fetchQueue = [MAX_BUFFERS_AVAILABLE]() {
+            PatternState fetchPattern = PatternState();
+            return new BufferQueue<BufferState,SharedState,PatternState>(&fetchPattern,MAX_BUFFERS_AVAILABLE);}();
+        BufferQueue<BufferState,SharedState,PatternState> *changeQueue = [MAX_BUFFERS_AVAILABLE]() {
+            PatternState changePattern = PatternState();
+            return new BufferQueue<BufferState,SharedState,PatternState>(&changePattern,MAX_BUFFERS_AVAILABLE);}();
+        BufferQueue<DrawState,PoolState,InfoState> *drawQueue = [MAX_FRAMES_IN_FLIGHT]() {
+            InfoState drawInfo = InfoState();
+            return new BufferQueue<DrawState,PoolState,InfoState>(&drawInfo,MAX_FRAMES_IN_FLIGHT);}();
         BufferState *fetchBuffer = 0;
 
         struct SwapState *swapState = 0;
@@ -1524,8 +1540,8 @@ int main(int argc, char **argv) {
             if (mainState.callOnce) {
                 if (!fetchQueue->tst()) continue;
                 mainState.callOnce = false;
-                fetchQueue->set([physicalDevice, device, graphicQueue, commandPool](){
-                    return new BufferState(physicalDevice, device, graphicQueue, commandPool,
+                fetchQueue->set([physicalDevice, device, graphicQueue, commandPool](SharedState*shared){
+                    return new BufferState(shared,physicalDevice, device, graphicQueue, commandPool,
                     sizeof(vertices[0]) * vertices.size(), FetchBuf);},
                     [](BufferState*buffer){buffer->setup(0,sizeof(vertices[0])*vertices.size(),vertices.data());},
                     [threadState](BufferState*buffer){return threadState->push(buffer->fence);});
@@ -1534,8 +1550,8 @@ int main(int argc, char **argv) {
                 if (!changeQueue->tst()) continue;
                 mainState.callDma = false;
                 changeQueue->set([physicalDevice,device,graphicQueue,commandPool,
-                    descriptorSetLayout,descriptorPool,swapChainExtent](){
-                    return new BufferState(physicalDevice,device,graphicQueue,commandPool,
+                    descriptorSetLayout,descriptorPool,swapChainExtent](SharedState*shared){
+                    return new BufferState(shared,physicalDevice,device,graphicQueue,commandPool,
                     sizeof(UniformBufferObject),ChangeBuf,descriptorSetLayout,descriptorPool);},
                     [swapChainExtent](BufferState*buffer){buffer->test(swapChainExtent);},
                     [threadState](BufferState*buffer){return threadState->push(buffer->fence);});
@@ -1547,8 +1563,8 @@ int main(int argc, char **argv) {
                 if (!drawQueue->tst()) continue;
                 if (fetchBuffer == 0) fetchBuffer = fetchQueue->get([](){return false;});
                 drawQueue->set(
-                    [device,commandPool,renderPass,graphicPipeline,pipelineLayout,graphicQueue,presentQueue](){
-                    return new DrawState(device,commandPool,renderPass,graphicPipeline,pipelineLayout,graphicQueue,presentQueue);},
+                    [device,commandPool,renderPass,graphicPipeline,pipelineLayout,graphicQueue,presentQueue](PoolState*pool){
+                    return new DrawState(pool,device,commandPool,renderPass,graphicPipeline,pipelineLayout,graphicQueue,presentQueue);},
                     [changeQueue,fetchQueue,fenceState,swapChainExtent,swapChain,&swapChainFramebuffers,fetchBuffer](DrawState*draw){
                     draw->done = fenceState->push([draw,swapChainExtent,swapChain,&swapChainFramebuffers,changeQueue,fetchBuffer](){
                         draw->setup(swapChainExtent,swapChain,swapChainFramebuffers,
