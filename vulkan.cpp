@@ -1006,6 +1006,7 @@ struct ThreadState {
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop(); arg->fence.pop();}
                 /*planeSafe(...);*/}}
+        vkDeviceWaitIdle(arg->device);
         return 0;
     }
     bool clear(int given) {
@@ -1573,9 +1574,6 @@ int main(int argc, char **argv) {
             return new BufferQueue<DrawState,PipeState>(pipeState,threadState,MAX_FRAMES_IN_FLIGHT,DrawBuf);}();
         BufferState *fetchBuffer = 0;
 
-        int debug = 0;
-        std::function<bool()> debugDone;
-        bool debugDoneValid = false;
         struct SwapState *swapState = 0;
         while (!mainState.escapePressed || !mainState.enterPressed) {
             glfwWaitEventsTimeout(0.01);
@@ -1612,12 +1610,10 @@ int main(int argc, char **argv) {
                     return draw->setup(swapState->extent,swapState->swapChain,swapState->swapChainFramebuffers,
                     changeBuffer->descriptor,fetchBuffer->buffer,static_cast<uint32_t>(vertices.size()));});
                 drawQueue->tmp(changeDone,done);
-                debugDone = done; debugDoneValid = true;
                 mainState.callDma = true;
             }
         }
 
-        vkDeviceWaitIdle(device);
         delete swapState;
         delete drawQueue;
         delete changeQueue;
