@@ -1038,7 +1038,7 @@ template<class Buffer, class Pool> struct BufferQueue {
     int count; int size; int seqnum; int limit; BufferTag tag;
     Pool *info;
     ThreadState *thread;
-    BufferQueue(Pool *info, ThreadState *thread, int limit, BufferTag tag) {
+    BufferQueue(Pool *info, int limit, BufferTag tag) {
         ready = 0;
         count = 0;
         size = 0;
@@ -1046,13 +1046,16 @@ template<class Buffer, class Pool> struct BufferQueue {
         this->limit = limit;
         this->tag = tag;
         this->info = info;
-        this->thread = thread;
+        thread = 0;
     }
     ~BufferQueue() {
         while (!pool.empty()) {delete pool.front(); pool.pop();}
         while (!running.empty()) {delete running.front(); running.pop();}
         if (ready) delete ready;
         while (!inuse.empty()) {delete inuse.front(); inuse.pop();}
+    }
+    void clr(ThreadState *thread) {
+        this->thread = thread;
     }
     void clr() {
         if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
@@ -1066,12 +1069,6 @@ template<class Buffer, class Pool> struct BufferQueue {
             if (inuse.front()) pool.push(inuse.front());
             inuse.pop(); topool.pop();}
     }
-    bool tst() {
-        clr();
-        if (!pool.empty()) return true;
-        if (count < limit) return true;
-        return false;
-    }
     int tmp() {
         temp[seqnum] = [](){return false;};
         return seqnum++;
@@ -1084,6 +1081,12 @@ template<class Buffer, class Pool> struct BufferQueue {
     }
     void tmp(int tmp, std::function<bool()> done) {
         temp[tmp] = done;
+    }
+    bool set() {
+        clr();
+        if (!pool.empty()) return true;
+        if (count < limit) return true;
+        return false;
     }
     std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
         bool first = false;
@@ -1099,7 +1102,7 @@ template<class Buffer, class Pool> struct BufferQueue {
         running.push(ptr); toready.push(done);
         return done;
     }
-    bool vld() {
+    bool get() {
         if (ready) return true;
         if (running.empty()) return false;
         if (toready.front()()) return true;
@@ -1560,48 +1563,52 @@ int main(int argc, char **argv) {
         VkCommandPool commandPool = mainState.logicalState->pool;
         VkDescriptorPool descriptorPool = mainState.logicalState->dpool;
 
-
-        ThreadState *threadState = new ThreadState(device);
         PoolState *poolState = new PoolState(physicalDevice, device, graphicQueue,
             descriptorSetLayout, commandPool, descriptorPool);
         PipeState *pipeState = new PipeState(device, graphicQueue, presentQueue, renderPass,
             graphicPipeline, pipelineLayout, commandPool);
-        BufferQueue<BufferState,PoolState> *fetchQueue = [MAX_BUFFERS_AVAILABLE,poolState,threadState]() {
-            return new BufferQueue<BufferState,PoolState>(poolState,threadState,MAX_BUFFERS_AVAILABLE,FetchBuf);}();
-        BufferQueue<BufferState,PoolState> *changeQueue = [MAX_BUFFERS_AVAILABLE,poolState,threadState]() {
-            return new BufferQueue<BufferState,PoolState>(poolState,threadState,MAX_BUFFERS_AVAILABLE,ChangeBuf);}();
-        BufferQueue<DrawState,PipeState> *drawQueue = [MAX_FRAMES_IN_FLIGHT,pipeState,threadState]() {
-            return new BufferQueue<DrawState,PipeState>(pipeState,threadState,MAX_FRAMES_IN_FLIGHT,DrawBuf);}();
-        BufferState *fetchBuffer = 0;
+        BufferQueue<BufferState,PoolState> *fetchQueue = [MAX_BUFFERS_AVAILABLE,poolState]() {
+            return new BufferQueue<BufferState,PoolState>(poolState,MAX_BUFFERS_AVAILABLE,FetchBuf);}();
+        BufferQueue<BufferState,PoolState> *changeQueue = [MAX_BUFFERS_AVAILABLE,poolState]() {
+            return new BufferQueue<BufferState,PoolState>(poolState,MAX_BUFFERS_AVAILABLE,ChangeBuf);}();
+        BufferQueue<DrawState,PipeState> *drawQueue = [MAX_FRAMES_IN_FLIGHT,pipeState]() {
+            return new BufferQueue<DrawState,PipeState>(pipeState,MAX_FRAMES_IN_FLIGHT,DrawBuf);}();
 
-        struct SwapState *swapState = 0;
+        SwapState *swapState = 0;
+        ThreadState *threadState = 0;
+        BufferState *fetchBuffer = 0;
         while (!mainState.escapePressed || !mainState.enterPressed) {
             glfwWaitEventsTimeout(0.01);
             if (mainState.framebufferResized) {
                 mainState.framebufferResized = false;
+                if (threadState) delete threadState;
                 if (swapState) delete swapState;
-                swapState = 0;}
+                swapState = 0; threadState = 0;}
             if (!swapState) {
                 swapState = new SwapState(window,physicalDevice,device,surface,
                     swapChainImageFormat,surfaceFormat,presentMode,renderPass,
-                    minImageCount,graphicIndex,presentIndex);
-            }
+                    minImageCount,graphicIndex,presentIndex);}
+            if (!threadState) {
+                threadState = new ThreadState(device);
+                fetchQueue->clr(threadState);
+                changeQueue->clr(threadState);
+                drawQueue->clr(threadState);}
             if (mainState.callOnce) {
-                if (!fetchQueue->tst()) continue;
+                if (!fetchQueue->set()) continue;
                 fetchQueue->set(sizeof(vertices[0])*vertices.size(),[](BufferState*buffer){
                     return buffer->setup(0,sizeof(vertices[0])*vertices.size(),vertices.data());});
                 mainState.callOnce = false;
             }
             if (mainState.callDma) {
-                if (!changeQueue->tst()) continue;
+                if (!changeQueue->set()) continue;
                 changeQueue->set(sizeof(UniformBufferObject),[swapState](BufferState*buffer){
                     return buffer->test(swapState->extent);});
                 mainState.callDma = false;
             }
             if (mainState.callDraw) {
-                if (!fetchQueue->vld()) continue;
-                if (!changeQueue->vld()) continue;
-                if (!drawQueue->tst()) continue;
+                if (!fetchQueue->get()) continue;
+                if (!changeQueue->get()) continue;
+                if (!drawQueue->set()) continue;
                 if (fetchBuffer == 0) fetchBuffer = fetchQueue->get([](){return false;});
                 int changeDone = drawQueue->tmp();
                 BufferState *changeBuffer = changeQueue->get(drawQueue->tmp(changeDone));
@@ -1614,13 +1621,13 @@ int main(int argc, char **argv) {
             }
         }
 
+        delete threadState;
         delete swapState;
         delete drawQueue;
         delete changeQueue;
         delete fetchQueue;
         delete pipeState;
         delete poolState;
-        delete threadState;
         delete mainState.logicalState;
         delete mainState.physicalState;
         delete mainState.openState;
