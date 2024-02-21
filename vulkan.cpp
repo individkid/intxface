@@ -203,295 +203,10 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
-
-// TODO move the following to anonymous in SwapState and FrameState
-VkSwapchainKHR createSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
-    VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapChainExtent,
-    VkSurfaceCapabilitiesKHR surfaceCapabilities, uint32_t minImageCount, uint32_t graphicid, uint32_t presentid) {
-
-    VkSwapchainKHR swapChain;
-
-    VkSwapchainCreateInfoKHR createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = surface;
-
-    createInfo.minImageCount = minImageCount;
-    createInfo.imageFormat = surfaceFormat.format;
-    createInfo.imageColorSpace = surfaceFormat.colorSpace;
-    createInfo.imageExtent = swapChainExtent;
-    createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-
-    if (graphicid != presentid) {
-        uint32_t indices[2] = {
-            graphicid,
-            presentid,
-        };
-        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        createInfo.queueFamilyIndexCount = 2;
-        createInfo.pQueueFamilyIndices = indices;
-    } else {
-        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-
-    createInfo.preTransform = surfaceCapabilities.currentTransform;
-    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode = presentMode;
-    createInfo.clipped = VK_TRUE;
-
-    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create swap chain!");
-    }
-
-    return swapChain;
-}
-VkImageView createImageView(VkDevice device, VkFormat swapChainImageFormat, VkImage swapChainImage) {
-    VkImageView swapChainImageView;
-    VkImageViewCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    createInfo.image = swapChainImage;
-    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    createInfo.format = swapChainImageFormat;
-    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    createInfo.subresourceRange.baseMipLevel = 0;
-    createInfo.subresourceRange.levelCount = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount = 1;
-    if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageView) != VK_SUCCESS)
-        throw std::runtime_error("failed to create image views!");
-    return swapChainImageView;
-}
-VkFramebuffer createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkImageView swapChainImageView, VkRenderPass renderPass) {
-    VkFramebuffer swapChainFramebuffer;
-    VkImageView attachments[] = {
-        swapChainImageView
-    };
-    VkFramebufferCreateInfo framebufferInfo{};
-    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferInfo.renderPass = renderPass;
-    framebufferInfo.attachmentCount = 1;
-    framebufferInfo.pAttachments = attachments;
-    framebufferInfo.width = swapChainExtent.width;
-    framebufferInfo.height = swapChainExtent.height;
-    framebufferInfo.layers = 1;
-    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create framebuffer!");
-    }
-    return swapChainFramebuffer;
-}
-VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
-    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-        return capabilities.currentExtent;
-    } else {
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-
-        VkExtent2D actualExtent = {
-            static_cast<uint32_t>(width),
-            static_cast<uint32_t>(height)
-        };
-
-        actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
-        return actualExtent;
-    }
-}
-
-// TODO move following to anonymous in DrawState
-VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code) {
-    VkShaderModuleCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = code.size();
-    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-    VkShaderModule shaderModule;
-    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-        throw std::runtime_error("failed to create shader module!");
-    return shaderModule;
-}
-std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open())
-        throw std::runtime_error("failed to open file!");
-    size_t fileSize = (size_t) file.tellg();
-    std::vector<char> buffer(fileSize);
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-    return buffer;
-}
-
-// TODO move to anonymous in FetchState etc
-uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("failed to find suitable memory type!");
-}
-VkDescriptorSet createDescriptorSet(VkDevice device, VkBuffer uniformBuffer,
-    VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
-    allocInfo.pSetLayouts = &descriptorSetLayout;
-
-    VkDescriptorSet descriptor;
-    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
-    }
-
-    VkDescriptorBufferInfo bufferInfo{};
-    bufferInfo.buffer = uniformBuffer;
-    bufferInfo.offset = 0;
-    bufferInfo.range = sizeof(UniformBufferObject);
-
-    VkWriteDescriptorSet descriptorWrite{};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = descriptor;
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-
-    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-    return descriptor;
-}
-VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool commandPool) {
-    VkCommandBuffer commandBuffer;
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = (uint32_t)1;
-    if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
-        throw std::runtime_error("failed to allocate command buffers!");
-    return commandBuffer;
-}
-VkSemaphore createSemaphore(VkDevice device) {
-    VkSemaphore semaphore;
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create semaphore!");
-    }
-    return semaphore;
-}
-VkFence createFence(VkDevice device) {
-    VkFence fence;
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create fence!");
-    }
-    return fence;
-}
-
-struct InitState {
-    VkInstance instance;
-    bool valid;
-    VkDebugUtilsMessengerEXT debug;
-    InitState(bool enable, const std::vector<const char*> layers) {
-        glfwInit();
-        VkDebugUtilsMessengerCreateInfoEXT info = {};
-        info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        info.pfnUserCallback = debugCallback;
-        instance = [](bool enable, VkDebugUtilsMessengerCreateInfoEXT create, const std::vector<const char*> layers) {
-            if (enable && ![](const std::vector<const char*> layers) {
-                uint32_t count;
-                vkEnumerateInstanceLayerProperties(&count, nullptr);
-                std::vector<VkLayerProperties> available(count);
-                vkEnumerateInstanceLayerProperties(&count, available.data());
-                for (const char* name : layers) {
-                    bool found = false;
-                    for (const auto& properties : available) {
-                        if (strcmp(name, properties.layerName) == 0) {
-                            found = true;
-                            break;}}
-                    if (!found) return false;}
-                return true;
-            } (layers))
-                throw std::runtime_error("validation layers requested, but not available!");
-            VkApplicationInfo application{};
-            application.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            application.pApplicationName = "Hello Triangle";
-            application.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-            application.pEngineName = "No Engine";
-            application.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-            application.apiVersion = VK_API_VERSION_1_0; 
-            VkInstanceCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-            info.pApplicationInfo = &application;
-            std::vector<const char*> extensions = [](bool enable) {
-                uint32_t count = 0;
-                const char** required = glfwGetRequiredInstanceExtensions(&count);
-                std::vector<const char*> extensions(required, required + count);
-                if (enable) extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-                return extensions;
-            } (enable);
-            info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-            info.ppEnabledExtensionNames = extensions.data();
-            if (enable) {
-                info.enabledLayerCount = static_cast<uint32_t>(layers.size());
-                info.ppEnabledLayerNames = layers.data();
-                info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &create;}
-            else {
-                info.enabledLayerCount = 0;
-                info.pNext = nullptr;}
-            VkInstance instance;
-            if (vkCreateInstance(&info, nullptr, &instance) != VK_SUCCESS)
-                throw std::runtime_error("failed to create instance!");
-            return instance;
-        } (enable,info,layers);
-        if (valid = enable) debug = [](VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT info) {
-            VkDebugUtilsMessengerEXT debug;
-            if (CreateDebugUtilsMessengerEXT(instance, &info, nullptr, &debug) != VK_SUCCESS)
-                throw std::runtime_error("failed to set up debug messenger!");
-            return debug;
-        } (instance,info);
-    }
-    ~InitState() {
-        if (valid) DestroyDebugUtilsMessengerEXT(instance, debug, nullptr);
-        valid = false;
-        vkDestroyInstance(instance, nullptr);
-        glfwTerminate();
-    }
-};
 
 struct MainState {
     bool callOnce;
@@ -549,10 +264,214 @@ struct MainState {
     .physicalState = 0,
 };
 
-void framebufferResized(GLFWwindow* window, int width, int height);
-void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods);
-void mouseClicked(GLFWwindow* window, int button, int action, int mods);
-void mouseMoved(GLFWwindow* window, double xpos, double ypos);
+void framebufferResized(GLFWwindow* window, int width, int height) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    mainState->framebufferResized = true;
+}
+void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    if (action != GLFW_PRESS || mods != 0) {
+        return;
+    }
+    if (key == GLFW_KEY_ENTER) {
+        mainState->enterPressed = true;
+    } else {
+        mainState->enterPressed = false;
+    }
+    if (key == GLFW_KEY_ESCAPE) {
+        mainState->escapePressed = true;
+        mainState->otherPressed = false;
+    } else if (mainState->otherPressed) {
+        mainState->escapePressed = false;
+        mainState->otherPressed = false;
+    } else {
+        mainState->otherPressed = true;
+    }
+}
+void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    if (action != GLFW_PRESS) {
+        return;
+    }
+    mainState->windowMoving = !mainState->windowMoving;
+    if (mainState->windowMoving) {
+        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
+        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
+    }
+}
+void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    double mouseNextx, mouseNexty;
+    int windowNextx, windowNexty;
+    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
+    if (mainState->windowMoving) {
+        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
+        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
+        glfwSetWindowPos(window,windowNextx,windowNexty);
+        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
+    }
+}
+
+// TODO move following to anonymous in DrawState
+VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code) {
+    VkShaderModuleCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = code.size();
+    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+        throw std::runtime_error("failed to create shader module!");
+    return shaderModule;
+}
+std::vector<char> readFile(const std::string& filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    if (!file.is_open())
+        throw std::runtime_error("failed to open file!");
+    size_t fileSize = (size_t) file.tellg();
+    std::vector<char> buffer(fileSize);
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+    file.close();
+    return buffer;
+}
+
+// TODO move to anonymous in FetchState etc
+VkDescriptorSet createDescriptorSet(VkDevice device, VkBuffer uniformBuffer,
+    VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
+    allocInfo.pSetLayouts = &descriptorSetLayout;
+
+    VkDescriptorSet descriptor;
+    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = uniformBuffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(UniformBufferObject);
+
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = descriptor;
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+    return descriptor;
+}
+VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool commandPool) {
+    VkCommandBuffer commandBuffer;
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = (uint32_t)1;
+    if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+        throw std::runtime_error("failed to allocate command buffers!");
+    return commandBuffer;
+}
+VkSemaphore createSemaphore(VkDevice device) {
+    VkSemaphore semaphore;
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+        throw std::runtime_error("failed to create semaphore!");
+    return semaphore;
+}
+VkFence createFence(VkDevice device) {
+    VkFence fence;
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+        throw std::runtime_error("failed to create fence!");
+    return fence;
+}
+
+struct InitState {
+    VkInstance instance;
+    bool valid;
+    VkDebugUtilsMessengerEXT debug;
+    InitState(bool enable, const std::vector<const char*> layers) {
+        valid = enable;
+        glfwInit();
+        VkDebugUtilsMessengerCreateInfoEXT info = {};
+        info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        info.pfnUserCallback = debugCallback;
+        instance = [](bool enable, VkDebugUtilsMessengerCreateInfoEXT create, const std::vector<const char*> layers) {
+            if (enable && ![](const std::vector<const char*> layers) {
+                uint32_t count;
+                vkEnumerateInstanceLayerProperties(&count, nullptr);
+                std::vector<VkLayerProperties> available(count);
+                vkEnumerateInstanceLayerProperties(&count, available.data());
+                for (const char* name : layers) {
+                bool found = false;
+                for (const auto& properties : available) {
+                if (strcmp(name, properties.layerName) == 0) {found = true; break;}}
+                if (!found) return false;}
+                return true;
+            } (layers)) throw std::runtime_error("validation layers requested, but not available!");
+            VkApplicationInfo application{};
+            application.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            application.pApplicationName = "Hello Triangle";
+            application.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+            application.pEngineName = "No Engine";
+            application.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+            application.apiVersion = VK_API_VERSION_1_0; 
+            VkInstanceCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+            info.pApplicationInfo = &application;
+            std::vector<const char*> extensions = [](bool enable) {
+                uint32_t count = 0;
+                const char** required = glfwGetRequiredInstanceExtensions(&count);
+                std::vector<const char*> extensions(required, required + count);
+                if (enable) extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                return extensions;
+            } (enable);
+            info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+            info.ppEnabledExtensionNames = extensions.data();
+            if (enable) {
+                info.enabledLayerCount = static_cast<uint32_t>(layers.size());
+                info.ppEnabledLayerNames = layers.data();
+                info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &create;}
+            else {
+                info.enabledLayerCount = 0;
+                info.pNext = nullptr;}
+            VkInstance instance;
+            if (vkCreateInstance(&info, nullptr, &instance) != VK_SUCCESS) throw std::runtime_error("failed to create instance!");
+            return instance;
+        } (enable,info,layers);
+        if (enable) debug = [](VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT info) {
+            VkDebugUtilsMessengerEXT debug;
+            if ([](VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+                const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+                auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+                if (func != nullptr) return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+                else return VK_ERROR_EXTENSION_NOT_PRESENT;}(instance, &info, nullptr, &debug) != VK_SUCCESS)
+                throw std::runtime_error("failed to set up debug messenger!");
+            return debug;
+        } (instance,info);
+    }
+    ~InitState() {
+        if (valid) [](VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+            auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+            if (func != nullptr) func(instance, debugMessenger, pAllocator);}(instance, debug, nullptr);
+        vkDestroyInstance(instance, nullptr);
+        glfwTerminate();
+    }
+};
+
 struct OpenState {
     VkInstance instance;
     GLFWwindow* window;
@@ -1167,6 +1086,9 @@ struct BufferState {
         this->tag = tag;
     }
     void init() {
+        VkMemoryRequirements requirements;
+        VkPhysicalDeviceMemoryProperties properties;
+        vkGetPhysicalDeviceMemoryProperties(physical, &properties);
         if (tag == FetchBuf || tag == StoreBuf) {
         staging = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
             VkBufferCreateInfo info{};
@@ -1179,18 +1101,22 @@ struct BufferState {
                 throw std::runtime_error("failed to create buffer!");
             return buffer;
         } (device,size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        wasted = [](VkPhysicalDevice physical, VkDevice device, VkBuffer buffer, VkMemoryPropertyFlags properties) {
-            VkMemoryRequirements requirements;
-            vkGetBufferMemoryRequirements(device, buffer, &requirements);
+        vkGetBufferMemoryRequirements(device, staging, &requirements);
+        wasted = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
             VkMemoryAllocateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             info.allocationSize = requirements.size;
-            info.memoryTypeIndex = findMemoryType(physical, requirements.memoryTypeBits, properties);
+            info.memoryTypeIndex = type;
             VkDeviceMemory memory;
             if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate buffer memory!");
             return memory;
-        } (physical,device,staging,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties, VkMemoryPropertyFlags flags) {
+            for (uint32_t i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
+                (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
+            throw std::runtime_error("failed to find suitable wasted type!");
+            return properties.memoryTypeCount;
+        } (requirements.memoryTypeBits,properties,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
         vkBindBufferMemory(device, staging, wasted, 0);}
         if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
         buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
@@ -1206,20 +1132,24 @@ struct BufferState {
         } (device,size,tag==ChangeBuf?
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:
             VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-        memory = [](VkPhysicalDevice physical, VkDevice device, VkBuffer buffer, VkMemoryPropertyFlags properties) {
-            VkMemoryRequirements requirements;
-            vkGetBufferMemoryRequirements(device, buffer, &requirements);
+        vkGetBufferMemoryRequirements(device, buffer, &requirements);
+        memory = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
             VkMemoryAllocateInfo allocInfo{};
             allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             allocInfo.allocationSize = requirements.size;
-            allocInfo.memoryTypeIndex = findMemoryType(physical, requirements.memoryTypeBits, properties);
+            allocInfo.memoryTypeIndex = type;
             VkDeviceMemory memory;
             if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate buffer memory!");
             return memory;
-        } (physical,device,buffer,tag==ChangeBuf?
+        } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties, VkMemoryPropertyFlags flags) {
+            for (uint32_t i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
+                (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
+            throw std::runtime_error("failed to find suitable memory type!");
+            return properties.memoryTypeCount;
+        } (requirements.memoryTypeBits,properties,tag==ChangeBuf?
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
         vkBindBufferMemory(device, buffer, memory, 0);
         vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
         command = createCommandBuffer(device,pool);
@@ -1438,15 +1368,81 @@ struct SwapState {
         }
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
-        extent = chooseSwapExtent(window,capabilities);
-        swapChain = createSwapChain(physical,device,surface,format,mode, extent,capabilities,minimum,graphicid,presentid);
+        extent = [](GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
+            int width, height;
+            if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) return capabilities.currentExtent;
+            glfwGetFramebufferSize(window, &width, &height);
+            VkExtent2D actualExtent = {static_cast<uint32_t>(width),static_cast<uint32_t>(height)};
+            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+            return actualExtent;}(window,capabilities);
+        swapChain = [](VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
+            VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapChainExtent,
+            VkSurfaceCapabilitiesKHR surfaceCapabilities, uint32_t minImageCount, uint32_t graphicid, uint32_t presentid) {
+            VkSwapchainKHR swapChain;
+            VkSwapchainCreateInfoKHR createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            createInfo.surface = surface;
+            createInfo.minImageCount = minImageCount;
+            createInfo.imageFormat = surfaceFormat.format;
+            createInfo.imageColorSpace = surfaceFormat.colorSpace;
+            createInfo.imageExtent = swapChainExtent;
+            createInfo.imageArrayLayers = 1;
+            createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            if (graphicid != presentid) {
+                uint32_t indices[2] = {graphicid,presentid};
+                createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                createInfo.queueFamilyIndexCount = 2;
+                createInfo.pQueueFamilyIndices = indices;
+            } else
+                createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            createInfo.preTransform = surfaceCapabilities.currentTransform;
+            createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            createInfo.presentMode = presentMode;
+            createInfo.clipped = VK_TRUE;
+            if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+                throw std::runtime_error("failed to create swap chain!");
+            return swapChain;}(physical,device,surface,format,mode, extent,capabilities,minimum,graphicid,presentid);
         vkGetSwapchainImagesKHR(device, swapChain, &count, nullptr);
         swapChainImages.resize(count);
         swapChainImageViews.resize(count);
         swapChainFramebuffers.resize(count);
         vkGetSwapchainImagesKHR(device, swapChain, &count, swapChainImages.data());
-        for (int i = 0; i < count; i++) swapChainImageViews[i] = createImageView(device,image,swapChainImages[i]);
-        for (int i = 0; i < count; i++) swapChainFramebuffers[i] = createFramebuffer(device,extent,swapChainImageViews[i],pass);
+        for (int i = 0; i < count; i++) swapChainImageViews[i] =
+            [](VkDevice device, VkFormat swapChainImageFormat, VkImage swapChainImage) {
+            VkImageView swapChainImageView;
+            VkImageViewCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            createInfo.image = swapChainImage;
+            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            createInfo.format = swapChainImageFormat;
+            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            createInfo.subresourceRange.baseMipLevel = 0;
+            createInfo.subresourceRange.levelCount = 1;
+            createInfo.subresourceRange.baseArrayLayer = 0;
+            createInfo.subresourceRange.layerCount = 1;
+            if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageView) != VK_SUCCESS)
+                throw std::runtime_error("failed to create image views!");
+            return swapChainImageView;}(device,image,swapChainImages[i]);
+        for (int i = 0; i < count; i++) swapChainFramebuffers[i] =
+            [](VkDevice device, VkExtent2D swapChainExtent, VkImageView swapChainImageView, VkRenderPass renderPass) {
+            VkFramebuffer swapChainFramebuffer;
+            VkImageView attachments[] = {swapChainImageView};
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = renderPass;
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.width = swapChainExtent.width;
+            framebufferInfo.height = swapChainExtent.height;
+            framebufferInfo.layers = 1;
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffer) != VK_SUCCESS)
+                throw std::runtime_error("failed to create framebuffer!");
+            return swapChainFramebuffer;}(device,extent,swapChainImageViews[i],pass);
     }
     ~SwapState() {
         for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
@@ -1454,54 +1450,6 @@ struct SwapState {
         vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
 };
-
-void framebufferResized(GLFWwindow* window, int width, int height) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->framebufferResized = true;
-}
-void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    if (action != GLFW_PRESS || mods != 0) {
-        return;
-    }
-    if (key == GLFW_KEY_ENTER) {
-        mainState->enterPressed = true;
-    } else {
-        mainState->enterPressed = false;
-    }
-    if (key == GLFW_KEY_ESCAPE) {
-        mainState->escapePressed = true;
-        mainState->otherPressed = false;
-    } else if (mainState->otherPressed) {
-        mainState->escapePressed = false;
-        mainState->otherPressed = false;
-    } else {
-        mainState->otherPressed = true;
-    }
-}
-void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    if (action != GLFW_PRESS) {
-        return;
-    }
-    mainState->windowMoving = !mainState->windowMoving;
-    if (mainState->windowMoving) {
-        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
-        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
-    }
-}
-void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    double mouseNextx, mouseNexty;
-    int windowNextx, windowNexty;
-    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
-    if (mainState->windowMoving) {
-        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
-        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
-        glfwSetWindowPos(window,windowNextx,windowNexty);
-        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
-    }
-}
 
 void vulkanInit() {
     for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
