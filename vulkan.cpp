@@ -203,11 +203,6 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-    return VK_FALSE;
-}
-
 struct MainState {
     bool callOnce;
     bool callDma;
@@ -312,89 +307,10 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     }
 }
 
-// TODO move following to anonymous in DrawState
-VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code) {
-    VkShaderModuleCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = code.size();
-    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-    VkShaderModule shaderModule;
-    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-        throw std::runtime_error("failed to create shader module!");
-    return shaderModule;
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    return VK_FALSE;
 }
-std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open())
-        throw std::runtime_error("failed to open file!");
-    size_t fileSize = (size_t) file.tellg();
-    std::vector<char> buffer(fileSize);
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-    return buffer;
-}
-
-// TODO move to anonymous in FetchState etc
-VkDescriptorSet createDescriptorSet(VkDevice device, VkBuffer uniformBuffer,
-    VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
-    allocInfo.pSetLayouts = &descriptorSetLayout;
-
-    VkDescriptorSet descriptor;
-    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
-    }
-
-    VkDescriptorBufferInfo bufferInfo{};
-    bufferInfo.buffer = uniformBuffer;
-    bufferInfo.offset = 0;
-    bufferInfo.range = sizeof(UniformBufferObject);
-
-    VkWriteDescriptorSet descriptorWrite{};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = descriptor;
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-
-    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-    return descriptor;
-}
-VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool commandPool) {
-    VkCommandBuffer commandBuffer;
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = (uint32_t)1;
-    if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
-        throw std::runtime_error("failed to allocate command buffers!");
-    return commandBuffer;
-}
-VkSemaphore createSemaphore(VkDevice device) {
-    VkSemaphore semaphore;
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
-        throw std::runtime_error("failed to create semaphore!");
-    return semaphore;
-}
-VkFence createFence(VkDevice device) {
-    VkFence fence;
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
-        throw std::runtime_error("failed to create fence!");
-    return fence;
-}
-
 struct InitState {
     VkInstance instance;
     bool valid;
@@ -740,10 +656,36 @@ struct DeviceState {
             return layout;
         } (device,descriptor);
         pipeline = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout, const char *vertex, const char *fragment) {
-            auto vcode = readFile(vertex);
-            auto fcode = readFile(fragment);
-            VkShaderModule vmodule = createShaderModule(device,vcode);
-            VkShaderModule fmodule = createShaderModule(device,fcode);
+            VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
+                VkShaderModuleCreateInfo createInfo{};
+                createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+                createInfo.codeSize = code.size();
+                createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+                VkShaderModule shaderModule;
+                if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+                    throw std::runtime_error("failed to create shader module!");
+                return shaderModule;} (device,[](const std::string& filename) {
+                std::ifstream file(filename, std::ios::ate | std::ios::binary);
+                if (!file.is_open()) throw std::runtime_error("failed to open file!");
+                size_t fileSize = (size_t) file.tellg();
+                std::vector<char> buffer(fileSize);
+                file.seekg(0); file.read(buffer.data(), fileSize); file.close();
+                return buffer;}(vertex));
+            VkShaderModule fmodule = [](VkDevice device, const std::vector<char>& code) {
+                VkShaderModuleCreateInfo createInfo{};
+                createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+                createInfo.codeSize = code.size();
+                createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+                VkShaderModule shaderModule;
+                if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+                    throw std::runtime_error("failed to create shader module!");
+                return shaderModule;} (device,[](const std::string& filename) {
+                std::ifstream file(filename, std::ios::ate | std::ios::binary);
+                if (!file.is_open()) throw std::runtime_error("failed to open file!");
+                size_t fileSize = (size_t) file.tellg();
+                std::vector<char> buffer(fileSize);
+                file.seekg(0); file.read(buffer.data(), fileSize); file.close();
+                return buffer;}(fragment));
             VkPipelineShaderStageCreateInfo vinfo{};
             vinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             vinfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -798,10 +740,7 @@ struct DeviceState {
             blend.blendConstants[1] = 0.0f;
             blend.blendConstants[2] = 0.0f;
             blend.blendConstants[3] = 0.0f;
-            std::vector<VkDynamicState> states = {
-                VK_DYNAMIC_STATE_VIEWPORT,
-                VK_DYNAMIC_STATE_SCISSOR
-            };
+            std::vector<VkDynamicState> states = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
             VkPipelineDynamicStateCreateInfo state{};
             state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
             state.dynamicStateCount = static_cast<uint32_t>(states.size());
@@ -1152,10 +1091,49 @@ struct BufferState {
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
         vkBindBufferMemory(device, buffer, memory, 0);
         vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
-        command = createCommandBuffer(device,pool);
+        command = [](VkDevice device, VkCommandPool commandPool) {
+            VkCommandBuffer commandBuffer;
+            VkCommandBufferAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.commandPool = commandPool;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandBufferCount = (uint32_t)1;
+            if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+                throw std::runtime_error("failed to allocate command buffers!");
+            return commandBuffer;}(device,pool);
         if (tag == ChangeBuf || tag == StoreBuf) {
-        descriptor = createDescriptorSet(device,buffer,layout,dpool);}
-        fence = createFence(device);
+        descriptor = [](VkDevice device, VkBuffer uniformBuffer,
+            VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
+            VkDescriptorSetAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            allocInfo.descriptorPool = descriptorPool;
+            allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
+            allocInfo.pSetLayouts = &descriptorSetLayout;
+            VkDescriptorSet descriptor;
+            if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor) != VK_SUCCESS)
+                throw std::runtime_error("failed to allocate descriptor sets!");
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = uniformBuffer;
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(UniformBufferObject);
+            VkWriteDescriptorSet descriptorWrite{};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = descriptor;
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.dstArrayElement = 0;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrite.pBufferInfo = &bufferInfo;
+            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+            return descriptor;}(device,buffer,layout,dpool);}
+        fence = [](VkDevice device) {
+            VkFence fence;
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+                throw std::runtime_error("failed to create fence!");
+            return fence;}(device);
     }
     ~BufferState() {
         vkDestroyFence(device,fence,0);
@@ -1244,10 +1222,38 @@ struct DrawState {
         this->pool = pipe->pool;
     }
     void init() {
-        imageAvailableSemaphore = createSemaphore(device);
-        renderFinishedSemaphore = createSemaphore(device);
-        commandBuffer = createCommandBuffer(device,pool);
-        fence = createFence(device);
+        imageAvailableSemaphore = [](VkDevice device) {
+            VkSemaphore semaphore;
+            VkSemaphoreCreateInfo semaphoreInfo{};
+            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+                throw std::runtime_error("failed to create semaphore!");
+            return semaphore;}(device);
+        renderFinishedSemaphore = [](VkDevice device) {
+            VkSemaphore semaphore;
+            VkSemaphoreCreateInfo semaphoreInfo{};
+            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+                throw std::runtime_error("failed to create semaphore!");
+            return semaphore;}(device);
+        commandBuffer = [](VkDevice device, VkCommandPool commandPool) {
+            VkCommandBuffer commandBuffer;
+            VkCommandBufferAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.commandPool = commandPool;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandBufferCount = (uint32_t)1;
+            if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+                throw std::runtime_error("failed to allocate command buffers!");
+            return commandBuffer;}(device,pool);
+        fence = [](VkDevice device) {
+            VkFence fence;
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+                throw std::runtime_error("failed to create fence!");
+            return fence;}(device);
     }
     ~DrawState() {
         vkDestroyFence(device,fence,0);
@@ -1261,18 +1267,14 @@ struct DrawState {
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             mainState.framebufferResized = true; return fence;
-        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("failed to acquire swap chain image!");
-        }
-
         vkResetFences(device, 1, &fence);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
             throw std::runtime_error("failed to begin recording command buffer!");
-        }
         [](VkRenderPass render, VkFramebuffer framebuffer,
             VkExtent2D swapChainExtent, VkCommandBuffer commandBuffer) {
             VkRenderPassBeginInfo info{};
@@ -1286,9 +1288,7 @@ struct DrawState {
             info.pClearValues = &clearColor;
             vkCmdBeginRenderPass(commandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
         } (render,swapChainFramebuffers[imageIndex],swapChainExtent,commandBuffer);
-
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -1297,23 +1297,18 @@ struct DrawState {
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
         VkBuffer vertexBuffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
-
         vkCmdDraw(commandBuffer, size, 1, 0, 0);
         vkCmdEndRenderPass(commandBuffer);
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
             throw std::runtime_error("failed to record command buffer!");
-        }
-
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
@@ -1326,10 +1321,8 @@ struct DrawState {
         VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
-        if (vkQueueSubmit(graphic, 1, &submitInfo, fence) != VK_SUCCESS) {
+        if (vkQueueSubmit(graphic, 1, &submitInfo, fence) != VK_SUCCESS)
             throw std::runtime_error("failed to submit draw command buffer!");
-        }
-
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
@@ -1341,9 +1334,8 @@ struct DrawState {
         result = vkQueuePresentKHR(present, &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             mainState.framebufferResized = true; return fence;
-        } else if (result != VK_SUCCESS) {
+        } else if (result != VK_SUCCESS)
             throw std::runtime_error("device lost on wait for fence!");
-        }
         return fence;
     }
 };
