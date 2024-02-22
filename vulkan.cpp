@@ -51,28 +51,28 @@ struct Input {
     glm::vec3 color;
 
     static VkVertexInputBindingDescription getBindingDescription() {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Input);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkVertexInputBindingDescription description{};
+        description.binding = 0;
+        description.stride = sizeof(Input);
+        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-        return bindingDescription;
+        return description;
     }
 
     static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription, 2> attribute{};
 
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Input, pos);
+        attribute[0].binding = 0;
+        attribute[0].location = 0;
+        attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attribute[0].offset = offsetof(Input, pos);
 
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Input, color);
+        attribute[1].binding = 0;
+        attribute[1].location = 1;
+        attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attribute[1].offset = offsetof(Input, color);
 
-        return attributeDescriptions;
+        return attribute;
     }
 };
 struct UniformBufferObject {
@@ -257,6 +257,7 @@ struct MainState {
     .initState = 0,
     .openState = 0,
     .physicalState = 0,
+    .logicalState = 0,
 };
 
 void framebufferResized(GLFWwindow* window, int width, int height) {
@@ -438,8 +439,6 @@ struct OpenState {
 
 struct PhysicalState {
     VkPhysicalDevice physical;
-    uint32_t fetchid;
-    uint32_t changeid;
     uint32_t graphicid;
     uint32_t presentid;
     uint32_t minimum;
@@ -517,11 +516,11 @@ struct PhysicalState {
         } (instance,surface,extensions);
         graphicid = graphic.value();
         presentid = present.value();
-        VkSurfaceCapabilitiesKHR surfaceCapabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &surfaceCapabilities);
-        minimum = surfaceCapabilities.minImageCount + 1;
-        if (surfaceCapabilities.maxImageCount > 0 && minimum > surfaceCapabilities.maxImageCount)
-            minimum = surfaceCapabilities.maxImageCount;
+        VkSurfaceCapabilitiesKHR capabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
+        minimum = capabilities.minImageCount + 1;
+        if (capabilities.maxImageCount > 0 && minimum > capabilities.maxImageCount)
+            minimum = capabilities.maxImageCount;
         format = [](std::vector<VkSurfaceFormatKHR> formats) {
             for (const auto& format : formats) {
                 if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -699,12 +698,12 @@ struct DeviceState {
             VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
             VkPipelineVertexInputStateCreateInfo input{};
             input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            auto bindingDescription = Input::getBindingDescription();
-            auto attributeDescriptions = Input::getAttributeDescriptions();
+            auto description = Input::getBindingDescription();
+            auto attribute = Input::getAttributeDescriptions();
             input.vertexBindingDescriptionCount = 1;
-            input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-            input.pVertexBindingDescriptions = &bindingDescription;
-            input.pVertexAttributeDescriptions = attributeDescriptions.data();
+            input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute.size());
+            input.pVertexBindingDescriptions = &description;
+            input.pVertexAttributeDescriptions = attribute.data();
             VkPipelineInputAssemblyStateCreateInfo assembly{};
             assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
             assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -1073,12 +1072,12 @@ struct BufferState {
             VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
         vkGetBufferMemoryRequirements(device, buffer, &requirements);
         memory = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
-            VkMemoryAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            allocInfo.allocationSize = requirements.size;
-            allocInfo.memoryTypeIndex = type;
+            VkMemoryAllocateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            info.allocationSize = requirements.size;
+            info.memoryTypeIndex = type;
             VkDeviceMemory memory;
-            if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+            if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate buffer memory!");
             return memory;
         } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties, VkMemoryPropertyFlags flags) {
@@ -1091,47 +1090,47 @@ struct BufferState {
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
         vkBindBufferMemory(device, buffer, memory, 0);
         vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
-        command = [](VkDevice device, VkCommandPool commandPool) {
+        command = [](VkDevice device, VkCommandPool command) {
             VkCommandBuffer commandBuffer;
-            VkCommandBufferAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.commandPool = commandPool;
-            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocInfo.commandBufferCount = (uint32_t)1;
-            if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+            VkCommandBufferAllocateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            info.commandPool = command;
+            info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            info.commandBufferCount = (uint32_t)1;
+            if (vkAllocateCommandBuffers(device, &info, &commandBuffer) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate command buffers!");
             return commandBuffer;}(device,pool);
         if (tag == ChangeBuf || tag == StoreBuf) {
-        descriptor = [](VkDevice device, VkBuffer uniformBuffer,
-            VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool) {
-            VkDescriptorSetAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            allocInfo.descriptorPool = descriptorPool;
-            allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
-            allocInfo.pSetLayouts = &descriptorSetLayout;
+        descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
+            VkDescriptorSetAllocateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            info.descriptorPool = pool;
+            info.descriptorSetCount = static_cast<uint32_t>(1);
+            info.pSetLayouts = &layout;
             VkDescriptorSet descriptor;
-            if (vkAllocateDescriptorSets(device, &allocInfo, &descriptor) != VK_SUCCESS)
+            if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate descriptor sets!");
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffer;
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-            VkWriteDescriptorSet descriptorWrite{};
-            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite.dstSet = descriptor;
-            descriptorWrite.dstBinding = 0;
-            descriptorWrite.dstArrayElement = 0;
-            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrite.descriptorCount = 1;
-            descriptorWrite.pBufferInfo = &bufferInfo;
-            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-            return descriptor;}(device,buffer,layout,dpool);}
+            return descriptor;}(device,layout,dpool);
+        [](VkDevice device, VkBuffer uniform, VkDescriptorSet descriptor) {
+            VkDescriptorBufferInfo info{};
+            info.buffer = uniform;
+            info.offset = 0;
+            info.range = sizeof(UniformBufferObject);
+            VkWriteDescriptorSet update{};
+            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            update.dstSet = descriptor;
+            update.dstBinding = 0;
+            update.dstArrayElement = 0;
+            update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            update.descriptorCount = 1;
+            update.pBufferInfo = &info;
+            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);}(device,buffer,descriptor);}
         fence = [](VkDevice device) {
             VkFence fence;
-            VkFenceCreateInfo fenceInfo{};
-            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+            VkFenceCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            if (vkCreateFence(device, &info, nullptr, &fence) != VK_SUCCESS)
                 throw std::runtime_error("failed to create fence!");
             return fence;}(device);
     }
@@ -1208,9 +1207,9 @@ struct DrawState {
     VkPipeline pipeline;
     VkPipelineLayout layout;
     VkCommandPool pool;
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkCommandBuffer commandBuffer;
+    VkSemaphore available;
+    VkSemaphore finished;
+    VkCommandBuffer command;
     VkFence fence;
     DrawState(PipeState *pipe, int size, BufferTag tag) {
         this->device = pipe->device;
@@ -1222,30 +1221,30 @@ struct DrawState {
         this->pool = pipe->pool;
     }
     void init() {
-        imageAvailableSemaphore = [](VkDevice device) {
+        available = [](VkDevice device) {
             VkSemaphore semaphore;
-            VkSemaphoreCreateInfo semaphoreInfo{};
-            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+            VkSemaphoreCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
                 throw std::runtime_error("failed to create semaphore!");
             return semaphore;}(device);
-        renderFinishedSemaphore = [](VkDevice device) {
+        finished = [](VkDevice device) {
             VkSemaphore semaphore;
-            VkSemaphoreCreateInfo semaphoreInfo{};
-            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+            VkSemaphoreCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
                 throw std::runtime_error("failed to create semaphore!");
             return semaphore;}(device);
-        commandBuffer = [](VkDevice device, VkCommandPool commandPool) {
-            VkCommandBuffer commandBuffer;
+        command = [](VkDevice device, VkCommandPool pool) {
+            VkCommandBuffer command;
             VkCommandBufferAllocateInfo allocInfo{};
             allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.commandPool = commandPool;
+            allocInfo.commandPool = pool;
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocInfo.commandBufferCount = (uint32_t)1;
-            if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+            if (vkAllocateCommandBuffers(device, &allocInfo, &command) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate command buffers!");
-            return commandBuffer;}(device,pool);
+            return command;}(device,pool);
         fence = [](VkDevice device) {
             VkFence fence;
             VkFenceCreateInfo fenceInfo{};
@@ -1257,85 +1256,91 @@ struct DrawState {
     }
     ~DrawState() {
         vkDestroyFence(device,fence,0);
-        vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
-        vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
-        vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+        vkFreeCommandBuffers(device, pool, 1, &command);
+        vkDestroySemaphore(device, finished, nullptr);
+        vkDestroySemaphore(device, available, nullptr);
     }
-    VkFence setup(VkExtent2D swapChainExtent, VkSwapchainKHR swapChain, const std::vector<VkFramebuffer> &swapChainFramebuffers,
-        VkDescriptorSet descriptor, VkBuffer vertexBuffer, uint32_t size) {
-        uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            mainState.framebufferResized = true; return fence;
-        } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+    VkFence setup(VkExtent2D extent, VkSwapchainKHR swap, const std::vector<VkFramebuffer> &framebuffers,
+        VkDescriptorSet descriptor, VkBuffer buffer, uint32_t size) {
+        uint32_t index;
+        VkResult result = vkAcquireNextImageKHR(device, swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) mainState.framebufferResized = true;
+        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("failed to acquire swap chain image!");
         vkResetFences(device, 1, &fence);
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-            throw std::runtime_error("failed to begin recording command buffer!");
+        vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
+        [](VkCommandBuffer command){
+            VkCommandBufferBeginInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            if (vkBeginCommandBuffer(command, &info) != VK_SUCCESS)
+                throw std::runtime_error("failed to begin recording command buffer!");
+        }(command);
         [](VkRenderPass render, VkFramebuffer framebuffer,
-            VkExtent2D swapChainExtent, VkCommandBuffer commandBuffer) {
+            VkExtent2D extent, VkCommandBuffer command) {
             VkRenderPassBeginInfo info{};
             info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
             info.renderPass = render;
             info.framebuffer = framebuffer;
             info.renderArea.offset = {0, 0};
-            info.renderArea.extent = swapChainExtent;
+            info.renderArea.extent = extent;
             VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
             info.clearValueCount = 1;
             info.pClearValues = &clearColor;
-            vkCmdBeginRenderPass(commandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
-        } (render,swapChainFramebuffers[imageIndex],swapChainExtent,commandBuffer);
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float) swapChainExtent.width;
-        viewport.height = (float) swapChainExtent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = swapChainExtent;
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-        VkBuffer vertexBuffers[] = {vertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
-        vkCmdDraw(commandBuffer, size, 1, 0, 0);
-        vkCmdEndRenderPass(commandBuffer);
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+            vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
+        } (render,framebuffers[index],extent,command);
+        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        [](VkExtent2D extent, VkCommandBuffer command){
+            VkViewport info{};
+            info.x = 0.0f; info.y = 0.0f;
+            info.width = (float) extent.width;
+            info.height = (float) extent.height;
+            info.minDepth = 0.0f; info.maxDepth = 1.0f;
+            vkCmdSetViewport(command, 0, 1, &info);}(extent,command);
+        [](VkExtent2D extent, VkCommandBuffer command){
+            VkRect2D scissor{};
+            scissor.offset = {0, 0};
+            scissor.extent = extent;
+            vkCmdSetScissor(command, 0, 1, &scissor);}(extent,command);
+        [](VkBuffer buffer, VkCommandBuffer command){
+            VkBuffer buffers[] = {buffer};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(command, 0, 1, buffers, offsets);}(buffer,command);
+        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
+        vkCmdDraw(command, size, 1, 0, 0);
+        vkCmdEndRenderPass(command);
+        if (vkEndCommandBuffer(command) != VK_SUCCESS)
             throw std::runtime_error("failed to record command buffer!");
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-        VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
-        if (vkQueueSubmit(graphic, 1, &submitInfo, fence) != VK_SUCCESS)
-            throw std::runtime_error("failed to submit draw command buffer!");
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-        VkSwapchainKHR swapChains[] = {swapChain};
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-        presentInfo.pImageIndices = &imageIndex;
-        result = vkQueuePresentKHR(present, &presentInfo);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            mainState.framebufferResized = true; return fence;
-        } else if (result != VK_SUCCESS)
-            throw std::runtime_error("device lost on wait for fence!");
+        [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available, VkSemaphore finished){
+            VkSubmitInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            VkSemaphore availables[] = {available};
+            VkPipelineStageFlags stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+            info.waitSemaphoreCount = 1;
+            info.pWaitSemaphores = availables;
+            info.pWaitDstStageMask = stages;
+            info.commandBufferCount = 1;
+            info.pCommandBuffers = &command;
+            VkSemaphore finisheds[] = {finished};
+            info.signalSemaphoreCount = 1;
+            info.pSignalSemaphores = finisheds;
+            if (vkQueueSubmit(graphic, 1, &info, fence) != VK_SUCCESS)
+                throw std::runtime_error("failed to submit draw command buffer!");
+        }(graphic,command,fence,available,finished);
+        [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore finished){
+            VkPresentInfoKHR info{};
+            info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+            info.waitSemaphoreCount = 1;
+            VkSemaphore finisheds[] = {finished};
+            info.pWaitSemaphores = finisheds;
+            VkSwapchainKHR swaps[] = {swap};
+            info.swapchainCount = 1;
+            info.pSwapchains = swaps;
+            info.pImageIndices = &index;
+            VkResult result = vkQueuePresentKHR(present, &info);
+            if (result == VK_ERROR_OUT_OF_DATE_KHR) mainState.framebufferResized = true;
+            else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+                throw std::runtime_error("device lost on wait for fence!");
+        }(swap,present,index,finished);
         return fence;
     }
 };
@@ -1343,11 +1348,11 @@ struct DrawState {
 struct SwapState {
     VkDevice device;
     VkExtent2D extent;
-    VkSwapchainKHR swapChain;
+    VkSwapchainKHR swap;
     uint32_t count;
-    std::vector<VkImage> swapChainImages;
-    std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
+    std::vector<VkImage> images;
+    std::vector<VkImageView> views;
+    std::vector<VkFramebuffer> framebuffers;
     SwapState(GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
         VkFormat image, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkRenderPass pass,
         uint32_t minimum, uint32_t graphicid, uint32_t presentid) {
@@ -1368,17 +1373,17 @@ struct SwapState {
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
             actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
             return actualExtent;}(window,capabilities);
-        swapChain = [](VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
-            VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapChainExtent,
+        swap = [](VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
+            VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkExtent2D swapExtent,
             VkSurfaceCapabilitiesKHR surfaceCapabilities, uint32_t minImageCount, uint32_t graphicid, uint32_t presentid) {
-            VkSwapchainKHR swapChain;
+            VkSwapchainKHR swap;
             VkSwapchainCreateInfoKHR createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
             createInfo.surface = surface;
             createInfo.minImageCount = minImageCount;
             createInfo.imageFormat = surfaceFormat.format;
             createInfo.imageColorSpace = surfaceFormat.colorSpace;
-            createInfo.imageExtent = swapChainExtent;
+            createInfo.imageExtent = swapExtent;
             createInfo.imageArrayLayers = 1;
             createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
             if (graphicid != presentid) {
@@ -1392,22 +1397,22 @@ struct SwapState {
             createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
             createInfo.presentMode = presentMode;
             createInfo.clipped = VK_TRUE;
-            if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+            if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swap) != VK_SUCCESS)
                 throw std::runtime_error("failed to create swap chain!");
-            return swapChain;}(physical,device,surface,format,mode, extent,capabilities,minimum,graphicid,presentid);
-        vkGetSwapchainImagesKHR(device, swapChain, &count, nullptr);
-        swapChainImages.resize(count);
-        swapChainImageViews.resize(count);
-        swapChainFramebuffers.resize(count);
-        vkGetSwapchainImagesKHR(device, swapChain, &count, swapChainImages.data());
-        for (int i = 0; i < count; i++) swapChainImageViews[i] =
-            [](VkDevice device, VkFormat swapChainImageFormat, VkImage swapChainImage) {
-            VkImageView swapChainImageView;
+            return swap;}(physical,device,surface,format,mode, extent,capabilities,minimum,graphicid,presentid);
+        vkGetSwapchainImagesKHR(device, swap, &count, nullptr);
+        images.resize(count);
+        views.resize(count);
+        framebuffers.resize(count);
+        vkGetSwapchainImagesKHR(device, swap, &count, images.data());
+        for (int i = 0; i < count; i++) views[i] =
+            [](VkDevice device, VkFormat swapImageFormat, VkImage swapImage) {
+            VkImageView swapImageView;
             VkImageViewCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            createInfo.image = swapChainImage;
+            createInfo.image = swapImage;
             createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            createInfo.format = swapChainImageFormat;
+            createInfo.format = swapImageFormat;
             createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
             createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
             createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -1417,29 +1422,29 @@ struct SwapState {
             createInfo.subresourceRange.levelCount = 1;
             createInfo.subresourceRange.baseArrayLayer = 0;
             createInfo.subresourceRange.layerCount = 1;
-            if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageView) != VK_SUCCESS)
+            if (vkCreateImageView(device, &createInfo, nullptr, &swapImageView) != VK_SUCCESS)
                 throw std::runtime_error("failed to create image views!");
-            return swapChainImageView;}(device,image,swapChainImages[i]);
-        for (int i = 0; i < count; i++) swapChainFramebuffers[i] =
-            [](VkDevice device, VkExtent2D swapChainExtent, VkImageView swapChainImageView, VkRenderPass renderPass) {
-            VkFramebuffer swapChainFramebuffer;
-            VkImageView attachments[] = {swapChainImageView};
+            return swapImageView;}(device,image,images[i]);
+        for (int i = 0; i < count; i++) framebuffers[i] =
+            [](VkDevice device, VkExtent2D swapExtent, VkImageView swapImageView, VkRenderPass renderPass) {
+            VkFramebuffer swapFramebuffer;
+            VkImageView attachments[] = {swapImageView};
             VkFramebufferCreateInfo framebufferInfo{};
             framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebufferInfo.renderPass = renderPass;
             framebufferInfo.attachmentCount = 1;
             framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = swapChainExtent.width;
-            framebufferInfo.height = swapChainExtent.height;
+            framebufferInfo.width = swapExtent.width;
+            framebufferInfo.height = swapExtent.height;
             framebufferInfo.layers = 1;
-            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffer) != VK_SUCCESS)
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapFramebuffer) != VK_SUCCESS)
                 throw std::runtime_error("failed to create framebuffer!");
-            return swapChainFramebuffer;}(device,extent,swapChainImageViews[i],pass);
+            return swapFramebuffer;}(device,extent,views[i],pass);
     }
     ~SwapState() {
-        for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
-        for (int i = 0; i < count; i++) vkDestroyImageView(device, swapChainImageViews[i], nullptr);
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
+        for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, framebuffers[i], nullptr);
+        for (int i = 0; i < count; i++) vkDestroyImageView(device, views[i], nullptr);
+        vkDestroySwapchainKHR(device, swap, nullptr);
     }
 };
 
@@ -1554,7 +1559,7 @@ int main(int argc, char **argv) {
                 BufferState *changeBuffer = changeQueue->get(drawQueue->tmp(changeDone));
                 std::function<bool()> done = drawQueue->set(static_cast<uint32_t>(vertices.size()),
                     [changeBuffer,fetchBuffer,swapState](DrawState*draw){
-                    return draw->setup(swapState->extent,swapState->swapChain,swapState->swapChainFramebuffers,
+                    return draw->setup(swapState->extent,swapState->swap,swapState->framebuffers,
                     changeBuffer->descriptor,fetchBuffer->buffer,static_cast<uint32_t>(vertices.size()));});
                 drawQueue->tmp(changeDone,done);
                 mainState.callDma = true;
