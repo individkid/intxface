@@ -30,19 +30,37 @@ extern "C" {
     #include "type.h"
     #include "plane.h"
     // TODO link with plane.c
-    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw) {init();}
+    vftype callSafe;
+    uftype callDma;
+    wftype callDraw;
+    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw) {
+        callSafe = safe;
+        callDma = dma;
+        callDraw = draw;
+        init();
+        main(Window,Start);
+        main(Graphics,Start);
+        main(Process,Start);
+        main(Process,Stop);
+        main(Graphics,Stop);
+        main(Window,Stop);
+    }
     void planeAddarg(const char *str) {}
     int planeInfo(enum Configure cfg) {return 0;}
-    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
-    void planeMain() {}
+    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {
+        callSafe();
+    }
+    void planeMain() {
+        callDma(0);
+        callDraw(Micros,0,0);
+    }
     void planeReady(struct Pierce *pierce) {}
-    // following are called from plane.c
-    void vulkanInit(); // init
-    void vulkanDma(struct Center *center); // dma
-    void vulkanSafe(); // safe
-    void vulkanMain(enum Proc proc, enum Wait wait); // main
-    int vulkanInfo(enum Configure query); // info
-    void vulkanDraw(enum Micro shader, int base, int limit); // draw
+    void vulkanInit();
+    void vulkanDma(struct Center *center);
+    void vulkanSafe();
+    void vulkanMain(enum Proc proc, enum Wait wait);
+    int vulkanInfo(enum Configure query);
+    void vulkanDraw(enum Micro shader, int base, int limit);
 }
 
 // TODO replace by type.h
@@ -1035,7 +1053,6 @@ struct BufferState {
     }
     ~BufferState() {
         vkDestroyFence(device,fence,0);
-        // TODO free queue semaphore
         vkFreeCommandBuffers(device, pool, 1, &command);
         if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
         vkDestroyBuffer(device, buffer, nullptr);
@@ -1473,23 +1490,127 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     }
 }
 
-void vulkanInit() {
-    for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
-    mainState.initState = new InitState(mainState.enable,mainState.layers);
-}
-void vulkanDma(struct Center *center) {
-    // TODO call set in BufferQueue from lookup of Memory
+int vulkanInfo(enum Configure query) {
+    return 0; // TODO
 }
 void vulkanSafe() {
     glfwPostEmptyEvent();
 }
-void vulkanMain(enum Proc proc, enum Wait wait) {
+void vulkanInit() {
+    for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
+    mainState.initState = new InitState(mainState.enable,mainState.layers);
 }
-int vulkanInfo(enum Configure query) {
-    return 0; // TODO
+void vulkanMain(enum Proc proc, enum Wait wait) {
+    switch(wait) {
+    case (Start):
+    switch (proc) {
+    case (Window):
+    mainState.openState = new OpenState(
+        mainState.initState->instance,mainState.WIDTH,mainState.HEIGHT,(void*)&mainState);
+    mainState.physicalState = new PhysicalState(
+        mainState.initState->instance,mainState.openState->surface,mainState.extensions);
+    break;
+    case (Graphics):
+    mainState.logicalState = [](PhysicalState *physical){
+        return new DeviceState(physical->physical,physical->graphicid,physical->presentid,physical->image,
+        mainState.layers,mainState.extensions,mainState.enable,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
+    }(mainState.physicalState);
+    mainState.poolState = [](PhysicalState *physical, DeviceState *device){
+        return new PoolState(physical->physical,device->device,device->graphic,
+        device->descriptor,device->pool,device->dpool);
+    }(mainState.physicalState,mainState.logicalState);
+    mainState.pipeState = [](DeviceState *device){
+        return new PipeState(device->device,device->graphic,device->present,
+        device->render,device->pipeline,device->layout,device->pool);
+    }(mainState.logicalState);
+    mainState.fetchQueue = [](PoolState *poolState, int size) {
+        return new BufferQueue<BufferState,PoolState>(poolState,size,FetchBuf);
+    }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
+    mainState.changeQueue = [](PoolState *poolState, int size) {
+        return new BufferQueue<BufferState,PoolState>(poolState,size,ChangeBuf);
+    }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
+    mainState.drawQueue = [](PipeState *pipeState, int size) {
+        return new BufferQueue<DrawState,PipeState>(pipeState,size,DrawBuf);
+    }(mainState.pipeState,mainState.MAX_FRAMES_IN_FLIGHT);
+    break;
+    case (Process):
+    while (!mainState.escapePressed || !mainState.enterPressed) {
+        glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call planeSafe from test thread
+        if (mainState.framebufferResized) {
+            mainState.framebufferResized = false;
+            if (mainState.threadState) delete mainState.threadState;
+            if (mainState.swapState) delete mainState.swapState;
+            mainState.swapState = 0; mainState.threadState = 0;}
+        if (!mainState.swapState) {
+            mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
+                return new SwapState(open->window,physical->physical,device->device,
+                open->surface,physical->image,physical->format,physical->mode,
+                device->render,physical->minimum,physical->graphicid,physical->presentid);
+            }(mainState.openState,mainState.physicalState,mainState.logicalState);
+            mainState.pipeState->init(mainState.swapState->extent,mainState.swapState->swap,mainState.swapState->framebuffers);}
+        if (!mainState.threadState) {
+            mainState.threadState = new ThreadState(mainState.logicalState->device);
+            mainState.fetchQueue->clr(mainState.threadState);
+            mainState.changeQueue->clr(mainState.threadState);
+            mainState.drawQueue->clr(mainState.threadState);}
+        planeMain();}
+    break;
+    default:
+    break;}
+    break;
+    case (Stop):
+    switch (proc) {
+    case (Process):
+    delete mainState.threadState;
+    delete mainState.swapState;
+    break;
+    case (Graphics):
+    delete mainState.drawQueue;
+    delete mainState.changeQueue;
+    delete mainState.fetchQueue;
+    delete mainState.pipeState;
+    delete mainState.poolState;
+    delete mainState.logicalState;
+    delete mainState.physicalState;
+    break;
+    case (Window):
+    delete mainState.openState;
+    break;
+    default:
+    break;}
+    break;
+    default:
+    throw std::runtime_error("no case in switch!");}  
+}
+void vulkanDma(struct Center *center) {
+    if (mainState.callOnce) {
+        if (!mainState.fetchQueue->set()) return;
+        mainState.fetchQueue->set(sizeof(vertices[0])*vertices.size(),[](BufferState*buffer){
+            return buffer->setup(0,sizeof(vertices[0])*vertices.size(),vertices.data());});
+        mainState.callOnce = false;
+    }
+    if (mainState.callDma) {
+        if (!mainState.changeQueue->set()) return;
+        VkExtent2D extent = mainState.swapState->extent;
+        mainState.changeQueue->set(sizeof(UniformBufferObject),[extent](BufferState*buffer){
+            return buffer->test(extent);});
+        mainState.callDma = false;
+    }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
-    // TODO mainState.callDraw
+    if (mainState.callDraw) {
+        if (!mainState.fetchQueue->get()) return;
+        if (!mainState.changeQueue->get()) return;
+        if (!mainState.drawQueue->set()) return;
+        int temp = mainState.drawQueue->tmp();
+        VkDescriptorSet descriptor = mainState.changeQueue->get(mainState.drawQueue->tmp(temp))->descriptor;
+        VkBuffer buffer = mainState.fetchQueue->get(mainState.drawQueue->tmp(temp))->buffer;
+        uint32_t size = static_cast<uint32_t>(vertices.size());
+        std::function<bool()> done = mainState.drawQueue->set(size,[descriptor,buffer,size](DrawState*draw){
+            return draw->setup(descriptor,buffer,size,&mainState.framebufferResized);});
+        mainState.drawQueue->tmp(temp,done);
+        mainState.callDma = true;
+    }
 }
 
 int main(int argc, char **argv) {
@@ -1497,98 +1618,6 @@ int main(int argc, char **argv) {
     mainState.argv = argv;
     try {
         planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw);
-
-        // TODO move following to vulkanMain, Proc Window
-        mainState.openState = new OpenState(
-            mainState.initState->instance,mainState.WIDTH,mainState.HEIGHT,(void*)&mainState);
-        mainState.physicalState = new PhysicalState(
-            mainState.initState->instance,mainState.openState->surface,mainState.extensions);
-
-        // TODO move following to vulkanMain, Proc Load
-        mainState.logicalState = [](PhysicalState *physical){
-            return new DeviceState(physical->physical,physical->graphicid,physical->presentid,physical->image,
-            mainState.layers,mainState.extensions,mainState.enable,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
-        }(mainState.physicalState);
-        mainState.poolState = [](PhysicalState *physical, DeviceState *device){
-            return new PoolState(physical->physical,device->device,device->graphic,
-            device->descriptor,device->pool,device->dpool);
-        }(mainState.physicalState,mainState.logicalState);
-        mainState.pipeState = [](DeviceState *device){
-            return new PipeState(device->device,device->graphic,device->present,
-            device->render,device->pipeline,device->layout,device->pool);
-        }(mainState.logicalState);
-        mainState.fetchQueue = [](PoolState *poolState, int size) {
-            return new BufferQueue<BufferState,PoolState>(poolState,size,FetchBuf);
-        }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
-        mainState.changeQueue = [](PoolState *poolState, int size) {
-            return new BufferQueue<BufferState,PoolState>(poolState,size,ChangeBuf);
-        }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
-        mainState.drawQueue = [](PipeState *pipeState, int size) {
-            return new BufferQueue<DrawState,PipeState>(pipeState,size,DrawBuf);
-        }(mainState.pipeState,mainState.MAX_FRAMES_IN_FLIGHT);
-
-        // TODO move following to vulkanMain, Proc Start
-        while (!mainState.escapePressed || !mainState.enterPressed) {
-            glfwWaitEventsTimeout(0.01);
-            if (mainState.framebufferResized) {
-                mainState.framebufferResized = false;
-                if (mainState.threadState) delete mainState.threadState;
-                if (mainState.swapState) delete mainState.swapState;
-                mainState.swapState = 0; mainState.threadState = 0;}
-            if (!mainState.swapState) {
-                mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
-                    return new SwapState(open->window,physical->physical,device->device,
-                    open->surface,physical->image,physical->format,physical->mode,
-                    device->render,physical->minimum,physical->graphicid,physical->presentid);
-                }(mainState.openState,mainState.physicalState,mainState.logicalState);
-                mainState.pipeState->init(mainState.swapState->extent,mainState.swapState->swap,mainState.swapState->framebuffers);}
-            if (!mainState.threadState) {
-                mainState.threadState = new ThreadState(mainState.logicalState->device);
-                mainState.fetchQueue->clr(mainState.threadState);
-                mainState.changeQueue->clr(mainState.threadState);
-                mainState.drawQueue->clr(mainState.threadState);}
-            if (mainState.callOnce) {
-                if (!mainState.fetchQueue->set()) continue;
-                mainState.fetchQueue->set(sizeof(vertices[0])*vertices.size(),[](BufferState*buffer){
-                    return buffer->setup(0,sizeof(vertices[0])*vertices.size(),vertices.data());});
-                mainState.callOnce = false;
-            }
-            if (mainState.callDma) {
-                if (!mainState.changeQueue->set()) continue;
-                VkExtent2D extent = mainState.swapState->extent;
-                mainState.changeQueue->set(sizeof(UniformBufferObject),[extent](BufferState*buffer){
-                    return buffer->test(extent);});
-                mainState.callDma = false;
-            }
-            if (mainState.callDraw) {
-                if (!mainState.fetchQueue->get()) continue;
-                if (!mainState.changeQueue->get()) continue;
-                if (!mainState.drawQueue->set()) continue;
-                int temp = mainState.drawQueue->tmp();
-                VkDescriptorSet descriptor = mainState.changeQueue->get(mainState.drawQueue->tmp(temp))->descriptor;
-                VkBuffer buffer = mainState.fetchQueue->get(mainState.drawQueue->tmp(temp))->buffer;
-                uint32_t size = static_cast<uint32_t>(vertices.size());
-                std::function<bool()> done = mainState.drawQueue->set(size,[descriptor,buffer,size](DrawState*draw){
-                    return draw->setup(descriptor,buffer,size,&mainState.framebufferResized);});
-                mainState.drawQueue->tmp(temp,done);
-                mainState.callDma = true;
-            }
-        }
-
-        // TODO move following to vulkanMain, Proc Start
-        delete mainState.threadState;
-        delete mainState.swapState;
-        // TODO move following to vulkanMain, Proc Load
-        delete mainState.drawQueue;
-        delete mainState.changeQueue;
-        delete mainState.fetchQueue;
-        delete mainState.pipeState;
-        delete mainState.poolState;
-        delete mainState.logicalState;
-        delete mainState.physicalState;
-        // TODO move following to vulkanMain, Proc Open
-        delete mainState.openState;
-
         delete mainState.initState;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
