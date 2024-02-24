@@ -876,6 +876,13 @@ template<class Buffer, class Pool> struct BufferQueue {
         running.push(ptr); toready.push(done);
         return done;
     }
+    void set(std::queue<void*> &queue,std::queue<std::function<bool()>> &inuse, int loc, int siz, const void *ptr) {
+        if (!set()) return;
+        int temp = tmp(); std::function<bool()> done = tmp(temp);
+        void *copy = malloc(siz); memcpy(copy,ptr,siz);
+        queue.push(copy); inuse.push(done);
+        tmp(temp,set(siz,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);}));
+    }
     bool get() {
         if (ready) return true;
         if (running.empty()) return false;
@@ -1082,17 +1089,6 @@ struct BufferState {
         submit.pCommandBuffers = &command;
         result = vkQueueSubmit(graphic, 1, &submit, fence);
         return fence;
-    }
-    VkFence test(VkExtent2D swapChainExtent) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-        return setup(0,sizeof(ubo),&ubo);
     }
 };
 
@@ -1386,7 +1382,8 @@ struct MainState {
     int windowLasty;
     int argc;
     char **argv;
-    Center *center;
+    std::queue<void*> data;
+    std::queue<std::function<bool()>> done;
     InitState *initState;
     OpenState* openState;
     PhysicalState* physicalState;
@@ -1428,7 +1425,6 @@ struct MainState {
     .windowLasty = 0,
     .argc = 0,
     .argv = 0,
-    .center = 0,
     .initState = 0,
     .openState = 0,
     .physicalState = 0,
@@ -1536,6 +1532,8 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
         glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call planeSafe from test thread
+        while (!mainState.data.empty() && mainState.done.front()()) {
+            free(mainState.data.front()); mainState.data.pop(); mainState.done.pop();}
         if (mainState.framebufferResized) {
             mainState.framebufferResized = false;
             if (mainState.threadState) delete mainState.threadState;
@@ -1582,18 +1580,22 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     default:
     throw std::runtime_error("no case in switch!");}  
 }
+auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
     if (mainState.callOnce) {
-        if (!mainState.fetchQueue->set()) return;
-        mainState.fetchQueue->set(sizeof(vertices[0])*vertices.size(),[](BufferState*buffer){
-            return buffer->setup(0,sizeof(vertices[0])*vertices.size(),vertices.data());});
+        mainState.fetchQueue->set(mainState.data,mainState.done,0,sizeof(vertices[0])*vertices.size(),vertices.data());
         mainState.callOnce = false;
     }
     if (mainState.callDma) {
-        if (!mainState.changeQueue->set()) return;
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         VkExtent2D extent = mainState.swapState->extent;
-        mainState.changeQueue->set(sizeof(UniformBufferObject),[extent](BufferState*buffer){
-            return buffer->test(extent);});
+        UniformBufferObject ubo{};
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f);
+        ubo.proj[1][1] *= -1;
+        mainState.changeQueue->set(mainState.data,mainState.done,0,sizeof(UniformBufferObject),&ubo);
         mainState.callDma = false;
     }
 }
