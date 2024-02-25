@@ -221,7 +221,8 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
@@ -809,6 +810,7 @@ template<class Buffer, class Pool> struct BufferQueue {
     Buffer* ready; std::queue<std::function<bool()>> toinuse;
     std::queue<Buffer*> inuse; std::queue<std::function<bool()>> topool;
     std::map<int,std::function<bool()>> temp;
+    std::queue<void*> data; std::queue<std::function<bool()>> done;
     int count; int size; int seqnum; int limit; BufferTag tag;
     Pool *info;
     struct ThreadState *thread;
@@ -842,6 +844,8 @@ template<class Buffer, class Pool> struct BufferQueue {
         while (!topool.empty() && topool.front()()) {
             if (inuse.front()) pool.push(inuse.front());
             inuse.pop(); topool.pop();}
+        while (!data.empty() && done.front()()) {
+            free(data.front()); data.pop(); done.pop();}
     }
     int tmp() {
         temp[seqnum] = [](){return false;};
@@ -878,10 +882,13 @@ template<class Buffer, class Pool> struct BufferQueue {
     }
     void set(std::queue<void*> &queue,std::queue<std::function<bool()>> &inuse, int loc, int siz, const void *ptr) {
         if (!set()) return;
-        int temp = tmp(); std::function<bool()> done = tmp(temp);
         void *copy = malloc(siz); memcpy(copy,ptr,siz);
-        queue.push(copy); inuse.push(done);
+        int temp = tmp();
+        queue.push(copy); inuse.push(tmp(temp));
         tmp(temp,set(siz,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);}));
+    }
+    void set(int loc, int siz, const void *ptr) {
+        set(data,done,loc,siz,ptr);
     }
     bool get() {
         if (ready) return true;
@@ -1382,8 +1389,6 @@ struct MainState {
     int windowLasty;
     int argc;
     char **argv;
-    std::queue<void*> data;
-    std::queue<std::function<bool()>> done;
     InitState *initState;
     OpenState* openState;
     PhysicalState* physicalState;
@@ -1583,7 +1588,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
 auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
     if (mainState.callOnce) {
-        mainState.fetchQueue->set(mainState.data,mainState.done,0,sizeof(vertices[0])*vertices.size(),vertices.data());
+        mainState.fetchQueue->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
         mainState.callOnce = false;
     }
     if (mainState.callDma) {
@@ -1595,7 +1600,7 @@ void vulkanDma(struct Center *center) {
         ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
-        mainState.changeQueue->set(mainState.data,mainState.done,0,sizeof(UniformBufferObject),&ubo);
+        mainState.changeQueue->set(0,sizeof(UniformBufferObject),&ubo);
         mainState.callDma = false;
     }
 }
