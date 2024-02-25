@@ -891,6 +891,7 @@ template<class Buffer, class Pool> struct BufferQueue {
         set(data,done,loc,siz,ptr);
     }
     bool get() {
+        clr();
         if (ready) return true;
         if (running.empty()) return false;
         if (toready.front()()) return true;
@@ -1537,8 +1538,6 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
         glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call planeSafe from test thread
-        while (!mainState.data.empty() && mainState.done.front()()) {
-            free(mainState.data.front()); mainState.data.pop(); mainState.done.pop();}
         if (mainState.framebufferResized) {
             mainState.framebufferResized = false;
             if (mainState.threadState) delete mainState.threadState;
