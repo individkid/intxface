@@ -866,12 +866,15 @@ template<class Buffer, class Pool> struct BufferQueue {
         if (count < limit) return true;
         return false;
     }
-    std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
-        bool first = false;
+    void set(int size) {
         if (size != this->size) {
             while (!pool.empty()) {delete pool.front(); pool.pop();}
             this->size = size;}
         clr();
+    }
+    std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
+        bool first = false;
+        set(size);
         if (pool.empty()) {pool.push(new Buffer(info,size,tag)); first = true; count++;}
         Buffer *ptr = pool.front(); pool.pop();
         std::function<bool()> done;
@@ -882,10 +885,11 @@ template<class Buffer, class Pool> struct BufferQueue {
     }
     void set(std::queue<void*> &queue,std::queue<std::function<bool()>> &inuse, int loc, int siz, const void *ptr) {
         if (!set()) return;
+        int size = (loc+siz > this->size ? loc+siz : this->size);
         void *copy = malloc(siz); memcpy(copy,ptr,siz);
         int temp = tmp();
         queue.push(copy); inuse.push(tmp(temp));
-        tmp(temp,set(siz,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);}));
+        tmp(temp,set(size,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);}));
     }
     void set(int loc, int siz, const void *ptr) {
         set(data,done,loc,siz,ptr);
@@ -902,7 +906,7 @@ template<class Buffer, class Pool> struct BufferQueue {
         toinuse.push(done);
         return ready;
     }
-    void debug() {
+    void dbg() {
         clr();
         if (!toinuse.empty() && toinuse.front()) std::cout << "debug toinuse:" << toinuse.front()() << std::endl;
         else if (!toinuse.empty()) std::cout << "debug ptr:" << &toinuse.front() << std::endl;
