@@ -747,6 +747,7 @@ struct ThreadState {
             pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
+    // this destructed to wait for device idle
         if (sem_wait(&protect) != 0) {
             std::cerr << "cannot wait for protect!" << std::endl;
             std::terminate();}
@@ -791,6 +792,7 @@ struct ThreadState {
         return done;
     }
     std::function<bool()> push(std::function<VkFence()> given) {
+    // return function that returns whether fence returned by given function in separate thread is done
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         setup.push(given);
@@ -831,9 +833,11 @@ template<class Buffer, class Pool> struct BufferQueue {
         while (!inuse.empty()) {delete inuse.front(); inuse.pop();}
     }
     void clr(ThreadState *thread) {
+    // change thread if it was deleted to idle the device
         this->thread = thread;
     }
     void clr() {
+    // advance queues with done fronts
         if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
             while (toinuse.size() > 1) {
                 inuse.push(0); topool.push(toinuse.front()); toinuse.pop();}
@@ -848,33 +852,39 @@ template<class Buffer, class Pool> struct BufferQueue {
             free(data.front()); data.pop(); done.pop();}
     }
     int tmp() {
+    // return identifier for done function
         temp[seqnum] = [](){return false;};
         return seqnum++;
     }
     std::function<bool()> tmp(int tmp) {
+    // return done function from identifier
         return [this,tmp](){
             if (this->temp.find(tmp) == this->temp.end()) return true;
             if (!this->temp[tmp]()) return false;
             this->temp.erase(tmp); return true;};
     }
     void tmp(int tmp, std::function<bool()> done) {
+    // bind done function to identified done function
         temp[tmp] = done;
     }
     bool set() {
+    // return whether queues are not full
         clr();
         if (!pool.empty()) return true;
         if (count < limit) return true;
         return false;
     }
     void set(int size) {
+    // change queue item size
         if (size != this->size) {
             while (!pool.empty()) {delete pool.front(); pool.pop();}
             this->size = size;}
-        clr();
     }
     std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
+    // change size and enque function to return fence in separate thread
         bool first = false;
         set(size);
+        if (!set()) return [](){return true;};
         if (pool.empty()) {pool.push(new Buffer(info,size,tag)); first = true; count++;}
         Buffer *ptr = pool.front(); pool.pop();
         std::function<bool()> done;
@@ -883,25 +893,28 @@ template<class Buffer, class Pool> struct BufferQueue {
         running.push(ptr); toready.push(done);
         return done;
     }
-    void set(std::queue<void*> &queue,std::queue<std::function<bool()>> &inuse, int loc, int siz, const void *ptr) {
-        if (!set()) return;
+    std::function<bool()> set(std::queue<void*> &queue,std::queue<std::function<bool()>> &inuse,
+        int loc, int siz, const void *ptr) {
+    // enque data using given queues
         int size = (loc+siz > this->size ? loc+siz : this->size);
         void *copy = malloc(siz); memcpy(copy,ptr,siz);
-        int temp = tmp();
-        queue.push(copy); inuse.push(tmp(temp));
-        tmp(temp,set(size,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);}));
+        int temp = tmp(); queue.push(copy); inuse.push(tmp(temp));
+        std::function<bool()> done = set(size,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);});
+        tmp(temp,done);
+        return done;
     }
-    void set(int loc, int siz, const void *ptr) {
-        set(data,done,loc,siz,ptr);
+    std::function<bool()> set(int loc, int siz, const void *ptr) {
+    // enque data
+        return set(data,done,loc,siz,ptr);
     }
     bool get() {
+    // return whether first enque after resize is ready
         clr();
         if (ready) return true;
-        if (running.empty()) return false;
-        if (toready.front()()) return true;
         return false;
     }
     Buffer *get(std::function<bool()> done) {
+    // get buffer and reserve it until given returns true
         clr();
         toinuse.push(done);
         return ready;
@@ -960,6 +973,7 @@ struct BufferState {
         this->tag = tag;
     }
     void init() {
+    // this called in separate thread on newly constructed
         VkMemoryRequirements requirements;
         VkPhysicalDeviceMemoryProperties properties;
         vkGetPhysicalDeviceMemoryProperties(physical, &properties);
@@ -1081,6 +1095,7 @@ struct BufferState {
         vkFreeMemory(device, wasted, nullptr);}
     }
     VkFence setup(int loc, int siz, const void *ptr) {
+    // this called in separate thread to get fence
         VkResult result;
         if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
         memcpy((char*)mapped+loc,ptr,siz);}
@@ -1155,6 +1170,7 @@ struct DrawState {
         this->pipe = pipe;
     }
     void init() {
+    // this called in separate thread on newly constructed
         available = [](VkDevice device) {
             VkSemaphore semaphore;
             VkSemaphoreCreateInfo info{};
@@ -1195,6 +1211,7 @@ struct DrawState {
         vkDestroySemaphore(device, available, nullptr);
     }
     VkFence setup(VkDescriptorSet descriptor, VkBuffer buffer, uint32_t size, bool *framebufferResized) {
+    // this called in separate thread to get fence
         uint32_t index;
         VkResult result = vkAcquireNextImageKHR(device, pipe->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
@@ -1288,6 +1305,7 @@ struct SwapState {
     SwapState(GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
         VkFormat image, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkRenderPass pass,
         uint32_t minimum, uint32_t graphicid, uint32_t presentid) {
+    // this reconstructed after device idle upon resize window
         this->device = device;
         int width = 0, height = 0;
         glfwGetFramebufferSize(window, &width, &height);
