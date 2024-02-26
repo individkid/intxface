@@ -359,10 +359,14 @@ struct PhysicalState {
     VkPhysicalDevice physical;
     uint32_t graphicid;
     uint32_t presentid;
+    uint32_t computeid;
     uint32_t minimum;
     VkSurfaceFormatKHR format;
     VkPresentModeKHR mode;
     VkFormat image;
+    PhysicalState(VkInstance instance, std::vector<const char*> extensions) {
+        // TODO find computeid
+    }
     PhysicalState(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions) {
         std::optional<uint32_t> graphic;
         std::optional<uint32_t> present;
@@ -1430,6 +1434,9 @@ struct MainState {
     const std::vector<const char*> extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
+    const std::vector<const char*> computions = {
+        // TODO compute extensions
+    };
     const std::vector<const char*> layers = {
         "VK_LAYER_KHRONOS_validation"
     };
@@ -1535,6 +1542,8 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         mainState.initState->instance,mainState.openState->surface,mainState.extensions);
     break;
     case (Graphics):
+    if (!mainState.physicalState) mainState.physicalState = new PhysicalState(
+        mainState.initState->instance,mainState.computions);
     mainState.logicalState = [](PhysicalState *physical){
         return new DeviceState(physical->physical,physical->graphicid,physical->presentid,physical->image,
         mainState.layers,mainState.extensions,mainState.enable,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
@@ -1565,14 +1574,14 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
             if (mainState.threadState) delete mainState.threadState;
             if (mainState.swapState) delete mainState.swapState;
             mainState.swapState = 0; mainState.threadState = 0;}
-        if (!mainState.swapState) {
+        if (!mainState.swapState && mainState.openState && mainState.physicalState && mainState.logicalState) {
             mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
                 return new SwapState(open->window,physical->physical,device->device,
                 open->surface,physical->image,physical->format,physical->mode,
                 device->render,physical->minimum,physical->graphicid,physical->presentid);
             }(mainState.openState,mainState.physicalState,mainState.logicalState);
             mainState.pipeState->init(mainState.swapState->extent,mainState.swapState->swap,mainState.swapState->framebuffers);}
-        if (!mainState.threadState) {
+        if (!mainState.threadState && mainState.logicalState) {
             mainState.threadState = new ThreadState(mainState.logicalState->device);
             mainState.fetchQueue->clr(mainState.threadState);
             mainState.changeQueue->clr(mainState.threadState);
@@ -1626,6 +1635,7 @@ void vulkanDma(struct Center *center) {
     }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
+    // TODO if (!mainState.openState) call computeState instead
     if (mainState.callDraw) {
         if (!mainState.fetchQueue->get()) return;
         if (!mainState.changeQueue->get()) return;
