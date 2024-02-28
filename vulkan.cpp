@@ -370,6 +370,7 @@ struct PhysicalState {
     PhysicalState(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions) {
         std::optional<uint32_t> graphic;
         std::optional<uint32_t> present;
+        std::optional<uint32_t> compute;
         std::vector<VkSurfaceFormatKHR> formats;
         std::vector<VkPresentModeKHR> modes;
         physical = [&graphic,&present,&formats,&modes](
@@ -438,6 +439,8 @@ struct PhysicalState {
         } (instance,surface,extensions);
         graphicid = graphic.value();
         presentid = present.value();
+        if (compute.has_value()) computeid = compute.value();
+        else computeid = graphic.value();
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
         minimum = capabilities.minImageCount + 1;
@@ -473,16 +476,16 @@ struct DeviceState {
     VkQueue present;
     VkCommandPool pool;
     VkDescriptorPool dpool;
-    DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, VkFormat image,
+    DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, uint32_t computeid, VkFormat image,
         std::vector<const char*> layers, std::vector<const char*> extensions, bool enable, int MAX_BUFFERS_AVAILABLE) {
-        device = [](VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid,
+        device = [](VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, uint32_t computeid,
             const std::vector<const char*> layers, const std::vector<const char*> extensions, bool enable) {
             VkDevice device;
             std::vector<VkDeviceQueueCreateInfo> infos;
             std::vector<float> prioritys;
             prioritys.resize(1);
             for (int i = 0; i < 1; i++) prioritys[i] = 1.0f;
-            {
+            if (1) {
                 VkDeviceQueueCreateInfo info{};
                 info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
                 info.queueFamilyIndex = graphicid;
@@ -493,6 +496,13 @@ struct DeviceState {
                 VkDeviceQueueCreateInfo info{};
                 info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
                 info.queueFamilyIndex = presentid;
+                info.queueCount = 1;
+                info.pQueuePriorities = prioritys.data();
+                infos.push_back(info);}
+            if (computeid != graphicid && computeid != presentid) {
+                VkDeviceQueueCreateInfo info{};
+                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                info.queueFamilyIndex = computeid;
                 info.queueCount = 1;
                 info.pQueuePriorities = prioritys.data();
                 infos.push_back(info);}
@@ -507,12 +517,12 @@ struct DeviceState {
             if (enable) {
                 info.enabledLayerCount = static_cast<uint32_t>(layers.size());
                 info.ppEnabledLayerNames = layers.data();}
-            else
-                info.enabledLayerCount = 0;
+            else {
+                info.enabledLayerCount = 0;}
             if (vkCreateDevice(physical, &info, nullptr, &device) != VK_SUCCESS)
                 throw std::runtime_error("failed to create logical device!");
             return device;
-        } (physical,graphicid,presentid,layers,extensions,enable);
+        } (physical,graphicid,presentid,computeid,layers,extensions,enable);
         render = [](VkDevice device, VkFormat image) {
             VkAttachmentDescription attachment{};
             attachment.format = image;
@@ -1545,8 +1555,10 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     if (!mainState.physicalState) mainState.physicalState = new PhysicalState(
         mainState.initState->instance,mainState.computions);
     mainState.logicalState = [](PhysicalState *physical){
-        return new DeviceState(physical->physical,physical->graphicid,physical->presentid,physical->image,
-        mainState.layers,mainState.extensions,mainState.enable,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
+        return new DeviceState(physical->physical,
+        physical->graphicid,physical->presentid,physical->computeid,
+        physical->image,mainState.layers,mainState.extensions,mainState.enable,
+        mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
     mainState.poolState = [](PhysicalState *physical, DeviceState *device){
         return new PoolState(physical->physical,device->device,device->graphic,
@@ -1565,6 +1577,9 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     mainState.drawQueue = [](PipeState *pipeState, int size) {
         return new BufferQueue<DrawState,PipeState>(pipeState,size,DrawBuf);
     }(mainState.pipeState,mainState.MAX_FRAMES_IN_FLIGHT);
+    // TODO mainState.computeQueue = [](PipeState *pipeState, int size) {
+        // return new BufferQueue<DrawState,PipeState>(pipeState,size,ComputeBuf);
+    // }(mainState.pipeState,mainState.MAX_FRAMES_IN_FLIGHT);
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
@@ -1635,7 +1650,7 @@ void vulkanDma(struct Center *center) {
     }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
-    // TODO if (!mainState.openState) call computeState instead
+    // TODO depending on shader call computeState instead
     if (mainState.callDraw) {
         if (!mainState.fetchQueue->get()) return;
         if (!mainState.changeQueue->get()) return;

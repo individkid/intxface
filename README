@@ -15,7 +15,7 @@ Get llvm with "brew install llvm", and add /opt/homebrew/opt/llvm/bin to your ex
 Get ghcup from https://www.haskell.org/ghcup/ like this, allowing it to change your executable path.
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 Run ghcup list to find if ghcup upgrade install or set is needed.
-Run cabal install --lib for hmatrix random and QuickCheck.
+Run cabal install --lib for hmatrix random containers QuickCheck.
 Get git with "brew install git", and get this source like this.
 git clone https://git.code.sf.net/p/intxface/code intxface-code
 Run the tests with "cd intxface-code", and "make".
