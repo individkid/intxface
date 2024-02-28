@@ -1552,7 +1552,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         mainState.initState->instance,mainState.openState->surface,mainState.extensions);
     break;
     case (Graphics):
-    if (!mainState.physicalState) mainState.physicalState = new PhysicalState(
+    if (!mainState.openState) mainState.physicalState = new PhysicalState(
         mainState.initState->instance,mainState.computions);
     mainState.logicalState = [](PhysicalState *physical){
         return new DeviceState(physical->physical,
@@ -1609,20 +1609,21 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     case (Stop):
     switch (proc) {
     case (Process):
-    delete mainState.threadState;
-    delete mainState.swapState;
+    delete mainState.threadState; mainState.threadState = 0;
+    delete mainState.swapState; mainState.swapState = 0;
     break;
     case (Graphics):
-    delete mainState.drawQueue;
-    delete mainState.changeQueue;
-    delete mainState.fetchQueue;
-    delete mainState.pipeState;
-    delete mainState.poolState;
-    delete mainState.logicalState;
-    delete mainState.physicalState;
+    delete mainState.drawQueue; mainState.drawQueue = 0;
+    delete mainState.changeQueue; mainState.changeQueue = 0;
+    delete mainState.fetchQueue; mainState.fetchQueue = 0;
+    delete mainState.pipeState; mainState.pipeState = 0;
+    delete mainState.poolState; mainState.poolState = 0;
+    delete mainState.logicalState; mainState.logicalState = 0;
+    if (!mainState.openState) {delete mainState.physicalState; mainState.physicalState = 0;}
     break;
     case (Window):
-    delete mainState.openState;
+    delete mainState.physicalState; mainState.physicalState = 0;
+    delete mainState.openState; mainState.openState = 0;
     break;
     default:
     break;}
