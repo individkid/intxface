@@ -21,7 +21,7 @@ luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 planra.log: planraC planraCpp
 planraC: datxC.o faceC.o planraC.o protoC.o typeC.o wrapCpp.o
-planraC.o: planra.c type.h
+planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraCpp: vulkan.vsv vulkan.fsv typeC.o faceC.o planraCpp.o protoC.o
 planraCpp.o: type.h
 protoC.o: proto.c proto.h

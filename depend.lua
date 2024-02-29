@@ -302,7 +302,7 @@ end
 depends = {}
 targets = {}
 for line in io.lines("Makefile") do
-	local all = string.match(line,"^"..uname.." *: *(.*)$")
+	local all = string.match(line,"^all *: *(.*)$")
 	if all ~= nil then
 		for word in all:gmatch("%S+") do
 			targets[#targets+1] = word
