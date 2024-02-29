@@ -3,28 +3,28 @@
 .DELETE_ON_ERROR:
 
 UNAME = $(shell uname)
+all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line space share
+# all: facer.log typra.log typer.log filer.log planra.log planer.log spacra.log spacer.log sharer.log hole line space share
 
-all: facer.log typra.log typer.log filer.log spacra.log spacer.log sharer.log hole line space share
-
-INCLUDEPATH = -I/usr/local/include
-LIBRARYPATH = -L/usr/local/lib
 ifeq ($(UNAME),Linux)
-	LIBRARIES = -llua -lportaudio -lglfw -lvulkan
-	CXX = g++
-	CC = gcc
-	GHC = ghc
-	SWC = oops
-	GC = oops
+LIBRARIES = -llua -lportaudio -lglfw -lvulkan
+CXX = g++
+CC = gcc
+GHC = ghc
+SWC = oops
+GC = oops
 endif
 ifeq ($(UNAME),Darwin)
-	LIBRARIES = -llua -lportaudio
-	# -ldl -lpthread -lX11 -lXrandr
-	CXX = clang++
-	CC = clang
-	GHC = ghc
-	SWC = swiftc
-	GC = xcrun
+LIBRARIES = -llua -lportaudio
+# -ldl -lpthread -lX11 -lXrandr
+CXX = clang++
+CC = clang
+GHC = ghc
+SWC = swiftc
+GC = xcrun
 endif
+INCLUDEPATH = -I/usr/local/include
+LIBRARYPATH = -L/usr/local/lib
 
 # lua depend.lua
 # TODO add intermediate depends on externs; generate only used externs
@@ -88,6 +88,8 @@ endif
 ifeq ($(UNAME),Linux)
 %Cpp.o: %.cpp
 	$(CXX) -o $@ -c -fPIC $< ${INCLUDEPATH}
+%Cpp.o: %Cpp.arg
+	$(CXX) -o $@ -c -fPIC `cat $<` ${INCLUDEPATH}
 endif
 ifeq ($(UNAME),Darwin)
 %Cpp.o: %.cpp

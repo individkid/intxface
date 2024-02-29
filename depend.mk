@@ -19,6 +19,11 @@ lineCpp.o: face.h line.cpp proto.h type.h
 luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
+planra.log: planraC planraCpp
+planraC: datxC.o faceC.o planraC.o protoC.o typeC.o wrapCpp.o
+planraC.o: planra.c type.h
+planraCpp: vulkan.vsv vulkan.fsv typeC.o faceC.o planraCpp.o protoC.o
+planraCpp.o: type.h
 protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o typeC.o wrapCpp.o
@@ -47,6 +52,4 @@ typerHs: face.hs faceC.o protoC.o typer.hs
 typerLua: typer.lua
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
-vulkanCpp.o: type.h
-vulkanCpp: vulkan.vsv vulkan.fsv typeC.o faceC.o protoC.o
 wrapCpp.o: proto.h wrap.cpp wrap.h

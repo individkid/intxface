@@ -26,6 +26,7 @@
 
 #define NANOSECONDS (10^9)
 
+#ifdef PLANRA
 extern "C" {
     #include "type.h"
     #include "plane.h"
@@ -105,6 +106,7 @@ const std::vector<Input> vertices = {
     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
+#endif
 
 // TODO add type.h enum for these builtin cursors
 GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
@@ -1633,6 +1635,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
 }
 auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
+    // TODO switch on center tag to choose buffer queue
     if (mainState.callOnce) {
         mainState.fetchQueue->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
         mainState.callOnce = false;
