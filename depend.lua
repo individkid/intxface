@@ -22,7 +22,7 @@ end
 function writeout(filename,depends)
 	local keys = {}
 	local file = io.open(filename,"w")
-	for k,_ in pairs(depends) do keys[#keys+1] = k end
+	if (depends ~= nil) then for k,_ in pairs(depends) do keys[#keys+1] = k end end
 	table.sort(keys)
 	for _,k in ipairs(keys) do
 		local vals = {}
@@ -62,8 +62,8 @@ end
 
 function callmatch(values,line,pat)
 	indent = indent + 1; indentwrite("callmatch: "..line.."\n",indent)
-	values[2] = string.match(line,pat)
-	indent = indent - 1; return (values[2] ~= nil)
+	values[3] = string.match(line,pat)
+	indent = indent - 1; return (values[3] ~= nil)
 end
 
 function copydepender(match,depends)
@@ -90,12 +90,12 @@ function adddepender(match,depends,depender)
 end
 
 function makecopy(values,target,suf)
-	local match = values[2]..suf -- face.c
+	local match = values[3]..suf -- face.c
 	local depends = values[1]
 	local file = io.open("subdir."..match.."/"..match,"r")
 	local depender = getdepender(target) -- faceC.o
 	indent = indent + 1; indentwrite("makecopy: subdir."..match.."/"..match.." to subdir."..target.."\n",indent)
-	if file == nil and trymake(match,{}) == nil then indent = indent - 1; return false end
+	if file == nil and not trymake({{},{}},match) == nil then indent = indent - 1; return false end
 	if file ~= nil then io.close(file) end
 	copydepender(match,depends)
 	adddepender(match,depends,depender)
@@ -104,21 +104,29 @@ function makecopy(values,target,suf)
 end
 
 function remakecopy(values,target,suf)
-	local match = values[2]..suf -- wrapCpp.o
+	local match = values[3]..suf -- wrapCpp.o
 	local depends = values[1]
 	local depender = getdependee(target) -- luax.so
 	local deps = {}
 	indent = indent + 1; indentwrite("remakecopy: "..match.." "..target.." "..depender.."\n",indent)
 	copydepender(depender,deps)
 	adddepender(match,deps,depender)
-	if trymake(depender,deps) == nil then indent = indent - 1; return false end
+	if trymake({deps,{}},depender) == nil then indent = indent - 1; return false end
 	copydepender(depender,depends)
 	os.execute("cp subdir."..depender.."/"..depender.." subdir."..target.."/")
 	indent = indent - 1; return true
 end
 
+function copymake(values,target,ext)
+	local match = values[3]
+	local extras = values[2]
+	indent = indent + 1; indentwrite("copymake: "..target.."\n",indent)
+	writeout("subdir."..target.."/"..match..".mk",extras[match])
+	indent = indent - 1; return true
+end
+
 function copysource(values,target,ext)
-	local match = values[2]
+	local match = values[3]
 	local depends = values[1]
 	local file = io.open(match.."."..ext,"r")
 	local depender = getdepender(target)
@@ -135,7 +143,7 @@ function copysource(values,target,ext)
 end
 
 function findsource(values,pre,post,ext,suf)
-	local match = values[2]
+	local match = values[3]
 	local found = nil
 	local file = io.popen("grep -s -l -E '"..pre..match..post.."' *."..ext,"r")
 	indent = indent + 1; indentwrite("findsource: grep -s -l -E '"..pre..match..post.."' *."..ext.." "..suf.."\n",indent)
@@ -147,12 +155,12 @@ function findsource(values,pre,post,ext,suf)
 	end
 	io.close(file)
 	if found == nil then indent = indent - 1; return false end
-	values[2] = found..suf
+	values[3] = found..suf
 	indent = indent - 1; return true
 end
 
 function checksource(values,ext)
-	local match = values[2]
+	local match = values[3]
 	local file = io.open(match.."."..ext,"r")
 	if file == nil then return false end
 	io.close(file)
@@ -278,12 +286,12 @@ function trymatch(values,target)
 	os.exit(-1)
 end
 
-function trymake(target,depends)
+function trymake(values,target)
+	local depends = values[1]
 	indent = indent + 1; indentwrite("trymake: "..target.."\n",indent)
 	os.execute("rm -rf subdir."..target.." stderr."..target.." stdout."..target)
 	os.execute("mkdir subdir."..target)
 	os.execute("cp Makefile module.modulemap subdir."..target)
-	local values = {depends,nil} -- depend.mk, match
 	while true do
 		writeout("subdir."..target.."/depend.mk",depends)
 		indentwrite("trymake: make: "..target.."\n",indent)
@@ -292,15 +300,16 @@ function trymake(target,depends)
 		for line in io.lines("stderr."..target) do done = false end
 		if done then
 			os.execute("rm -rf stderr."..target.." stdout."..target)
-			indent = indent - 1; return depends
+			indent = indent - 1; return true
 		end
 		if not trymatch(values,target) then break end
 	end
-	indent = indent - 1; return nil
+	indent = indent - 1; return false
 end
 
-depends = {}
-targets = {}
+targets = {} -- list of top level targets
+depends = {} -- map from depender to set of dependees
+extras = {} -- map from .gen name to map from generated file to set of functions
 for line in io.lines("Makefile") do
 	local all = string.match(line,"^all *: *(.*)$")
 	if all ~= nil then
@@ -312,11 +321,21 @@ for line in io.lines("Makefile") do
 
 end
 for key,val in ipairs(targets) do
-	for der,dee in pairs(trymake(val,{})) do
-		if depends[der] == nil then depends[der] = {} end
-		for k,_ in pairs(dee) do depends[der][k] = true end
+	local values = {{},{}}
+	if not trymake(values,val) then io.stderr("trymake failed"); os.exit(-1) end
+	for k,v in pairs(values[1]) do
+		if (depends[k] == nil) then depends[k] = {} end
+		for ky,vl in pairs(v) do depends[k][ky] = true end
+	end
+	for k,v in pairs(values[2]) do
+		if (extras[k] == nil) then extras[k] = {} end
+		for ky,vl in pairs(v) do
+			if (extras[k][ky] == nil) then extras[k][ky] = {} end
+			for ke,va in pairs(vl) do extras[k][ky][ke] = true end
+		end
 	end
 end
 writeout("depend.mk",depends)
+for key,val in pairs(extras) do writeout(key..".mk",val) end
 -- os.execute("rm -rf subdir.* stderr.* stdout.*")
 io.stdout:write("all done\n")
