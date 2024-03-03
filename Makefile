@@ -3,8 +3,7 @@
 .DELETE_ON_ERROR:
 
 UNAME = $(shell uname)
-all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line space share
-# all: facer.log typra.log typer.log filer.log planra.log planer.log spacra.log spacer.log sharer.log hole line space share
+all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log planraCpp hole line space share
 
 ifeq ($(UNAME),Linux)
 LIBRARIES = -llua -lportaudio -lglfw -lvulkan
@@ -27,7 +26,6 @@ INCLUDEPATH = -I/usr/local/include
 LIBRARYPATH = -L/usr/local/lib
 
 # lua depend.lua
-# TODO add intermediate depends on externs; generate only used externs
 include depend.mk
 
 facer.log:
@@ -113,15 +111,15 @@ ifeq ($(UNAME),Linux)
 	glslc -fshader-stage=frag $< -o $@
 endif
 
-%.h: %.gen
+%.h: %.gen %.mk
 	lua $*.gen $@
-%.c: %.gen
+%.c: %.gen %.mk
 	lua $*.gen $@
-%.cpp: %.gen
+%.cpp: %.gen %.mk
 	lua $*.gen $@
-%.hs: %.gen
+%.hs: %.gen %.mk
 	lua $*.gen $@
-%.lua: %.gen
+%.lua: %.gen %.mk
 	lua $*.gen $@
 
 .PHONY:
