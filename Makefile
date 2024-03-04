@@ -86,7 +86,7 @@ endif
 ifeq ($(UNAME),Linux)
 %Cpp.o: %.cpp
 	$(CXX) -o $@ -c -fPIC $< ${INCLUDEPATH}
-%Cpp.o: %Cpp.arg
+%Cpp.o: %Cpp.mk
 	$(CXX) -o $@ -c -fPIC `cat $<` ${INCLUDEPATH}
 endif
 ifeq ($(UNAME),Darwin)

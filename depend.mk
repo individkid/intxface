@@ -23,7 +23,7 @@ planra.log: planraC
 planraC: datxC.o faceC.o planraC.o protoC.o typeC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraCpp: planraCpp.o
-planraCpp.o: plane.h planraCpp.arg proto.h type.h vulkan.cpp
+planraCpp.o: plane.h planraCpp.mk proto.h type.h vulkan.cpp
 protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o typeC.o wrapCpp.o

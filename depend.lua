@@ -156,6 +156,7 @@ function copyextra(values,target,suf,dep)
 	indent = indent + 1; indentwrite("copyextra: "..saved[indent-1].."\n",indent)
 	if extras[base] == nil then extras[base] = {} end
 	if extras[base][match] == nil then extras[base][match] = {} end
+	-- TODO read stderr.target for all the undefined symbols at once
 	extras[base][match][func] = true
 	indentwrite("copyextra: rm -rf subdir."..target.."/"..depender.."\n")
 	os.execute("rm -rf subdir."..target.."/"..depender)
@@ -216,7 +217,7 @@ function trymatch(values,target)
 		saved[indent] = "2k "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*).lua'.  Stop.$") and copymake(values,target) then return trydone() end
 		saved[indent] = "2l "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Hs'.  Stop.$") and makecopy(values,target,".hs") then return trydone() end
 		saved[indent] = "2m "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*).hs'.  Stop.$") and copymake(values,target) then return trydone() end
-		saved[indent] = "2t "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Cpp.o'.  Stop.$") and copysource(values,target,"Cpp.arg") then return trydone() end
+		saved[indent] = "2t "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Cpp.o'.  Stop.$") and copysource(values,target,"Cpp.mk") then return trydone() end
 		saved[indent] = "2n "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Cpp.o'.  Stop.$") and makecopy(values,target,".cpp") then return trydone() end
 		saved[indent] = "2o "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*).cpp'.  Stop.$") and copysource(values,target,".cpp") then return trydone() end
 		saved[indent] = "2p "; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Cpp'.  Stop.$") and makecopy(values,target,"Cpp.o") then return trydone() end

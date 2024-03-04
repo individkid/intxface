@@ -728,7 +728,7 @@ function showTypeC(args)
 	result = result.."#include <stdio.h>\n"
 	result = result.."#include <unistd.h>\n"
 	result = result.."#include <sys/errno.h>\n"
-	result = result..showCallC().."\n"
+	result = result..showCallC(args).."\n"
 	if (not args or args["wrapExec"]) then
 	result = result.."int wrapExec(struct Argument *arg, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."int idx = openFork();\n"

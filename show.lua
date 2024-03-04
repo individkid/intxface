@@ -2916,15 +2916,15 @@ function homgenStruct(structz,enumz,name)
 	for k,v in ipairs({"Chr","Int","Int32","New","Num","Old","Str","Dat"}) do struct[#struct+1] = {"v"..v,v,{["tag"]={[v..name]=true}},"siz"} end
 	return struct
 end
-function showCall(list,map,func)
+function showCall(list,map,func,args,name)
 	local result = ""
-	for k,v in ipairs(list) do
+	for k,v in ipairs(list) do if not args or args[name..v] then
 		if result ~= "" then result = result.."\n" end
 		result = result..func(v,map[v])
-	end
+	end end
 	return result
 end
-function showFuncC()
+function showFuncC(args)
 	local result = ""
 	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
 	result = result..showCall(Enums,Enumz,showAllocEC).."\n"
@@ -2975,10 +2975,10 @@ function showCallH()
 	result = result..showFuncC()
 	return result
 end
-function showCallC()
+function showCallC(args)
 	local result = ""
 	prototype = false
-	result = result..showFuncC()
+	result = result..showFuncC(args)
 	return result
 end
 function showCallHs()
