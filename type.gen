@@ -849,10 +849,16 @@ function showTypeLua()
 end
 args = nil
 if (arg[2] ~= nil) then
+	args = {}
 	for line in io.lines(arg[2]) do
-		for word in string.gmatch(line,"^ *"..arg[1].." *: *%W+ *$"):lines() do
-			if args == nil then args = {} end
-			args[word] = true
+		deps = string.match(line,"^ *"..arg[1].." *: *(.*)$")
+		if deps then
+			while (1) do
+				local word,rest = string.match(deps," *([%w]+)(.*)")
+				if word == nil then break end
+				args[word] = true
+				deps = rest
+			end
 		end
 	end
 end
@@ -863,7 +869,7 @@ if (arg[1] == "type.h") then
 end
 if (arg[1] == "type.c") then
 	file = io.open("type.c", "w")
-	file:write(showTypeC().."\n")
+	file:write(showTypeC(args).."\n")
 	file:close()
 end
 if (arg[1] == "type.hs") then

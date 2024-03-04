@@ -114,7 +114,7 @@ endif
 %.h: %.gen %.mk
 	lua $*.gen $@
 %.c: %.gen %.mk
-	lua $*.gen $@
+	lua $*.gen $@ $*.mk
 %.cpp: %.gen %.mk
 	lua $*.gen $@
 %.hs: %.gen %.mk

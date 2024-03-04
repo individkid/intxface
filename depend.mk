@@ -27,7 +27,7 @@ planraCpp.o: plane.h planraCpp.arg proto.h type.h vulkan.cpp
 protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o typeC.o wrapCpp.o
-shareC.o: datx.h face.h proto.h share.c type.h
+shareC.o: datx.h face.h luax.h proto.h share.c type.h
 sharer.log: luax.so shareC sharer.lua sharerLua type.lua
 sharerLua: sharer.lua
 space: spaceHs
@@ -52,4 +52,6 @@ typerHs: face.hs faceC.o protoC.o typer.hs
 typerLua: typer.lua
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
+vulkan.fsv: vulkan.fg
+vulkan.vsv: vulkan.vg
 wrapCpp.o: proto.h wrap.cpp wrap.h
