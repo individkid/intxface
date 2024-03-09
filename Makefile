@@ -112,15 +112,15 @@ ifeq ($(UNAME),Linux)
 endif
 
 %.h: %.mk
-	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
 %.c: %.mk
-	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
 %.cpp: %.mk
-	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
 %.hs: %.mk
-	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
 %.lua: %.mk
-	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
 
 .PHONY:
 clean:

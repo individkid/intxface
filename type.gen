@@ -870,7 +870,7 @@ if (arg[2] ~= nil) then
 		end
 	end
 end
-base,ext = string.match(arg[1],"([%w]*)(%.[%w]*)")
+base,ext = string.match(arg[1],"([%w.]*)(%.[%w]*)")
 file = io.open(base..ext, "w")
 if (base and ext and ext == ".h") then
 	file:write(showTypeH().."\n")
