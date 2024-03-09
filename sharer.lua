@@ -3,7 +3,7 @@ file = io.popen("uname", 'r')
 uname = file:read()
 file:close()
 if #arg > 0 then
-	argument = wrapInit(arg[1]); idx = argument["idx"]
+	argument = initWrap(arg[1]); idx = argument["idx"]
 	term = hidePersist("Persist(act:Goal(Goals))")
 	stim = hidePersist("Persist(act:Goal(NewHub)idx:Int(-1)str:Str(hello))"); expected = showPersist(stim,"");
 	writePersist(stim,idx); actual = showPersist(readPersist(idx),"")

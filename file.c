@@ -291,7 +291,7 @@ int main(int argc, char **argv)
 #endif
 	if (sigaction(SIGINT,&act,0) < 0) ERROR();
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
-	if ((face = wrapIdent(Filez,argv[1])) < 0) exitErr(__FILE__,__LINE__);
+	if ((face = identWrap(Filez,argv[1])) < 0) exitErr(__FILE__,__LINE__);
 	termFunc(fileTerm); noteFunc(errNote); errFunc(errErr);
 	struct Persist *ptr = 0; allocPersist(&ptr,1);
 	ptr->act = ThdThd; fieldsiz = sizePersist(ptr);

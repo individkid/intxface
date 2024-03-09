@@ -41,9 +41,9 @@ int main(int argc, char **argv)
 	char *adr = 0;
 	char *num = 0;
 	struct Persist file = {0};
-	if (wrapInit(&arg,argv[1]) < 0 || arg.typ != Holez) ERROR();
+	if (initWrap(&arg,argv[1]) < 0 || arg.typ != Holez) ERROR();
 	if ((hub = arg.idx) < 0) ERROR();
-	if (wrapType(Filez,argv[0],"fileC") < 0) {fprintf(stderr,"holeC: cannot fork process\n"); return -1;}
+	if (typeWrap(Filez,argv[0],"fileC") < 0) {fprintf(stderr,"holeC: cannot fork process\n"); return -1;}
 	if ((fub = arg.idx) < 0) ERROR();
 	if ((rub = openInet(0,arg.str)) < 0) ERROR();
 	layer[hub] = Cluster; layer[fub] = System;

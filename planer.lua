@@ -8,7 +8,7 @@ expected = hideCenter("Center(mem:Memory(Piercez)siz:Int(1)idx:Int(0)slf:Int(0)p
 	"nml[0]:Old(0.000000)nml[1]:Old(0.707107)nml[2]:Old(-0.707107)nml[3]:Old(0.000000)"..
 	"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))")
 request = {["mem"]="Piercez",["siz"]=0,["idx"]=0,["slf"]=0}
-ident = wrapType("Planez","planerLua","metalSw")
+ident = typeWrap("Planez","planerLua","metalSw")
 os.execute("sleep 1")
 writeCenter({["mem"]="Configurez",["siz"]=4,["idx"]=0,["slf"]=0,
 	["cfg"]={"PierceSize","TriangleSize","VertexSize","SliceSize"},

@@ -22,7 +22,7 @@ main = getArgs >>= mainF
 
 mainF :: [String] -> IO ()
 mainF [a] = do
- idx <- wrapIdent Type.Spacez a
+ idx <- identWrap Type.Spacez a
  mainG (fromJust idx) (State [] [] [] [] Map.empty)
  return ()
 

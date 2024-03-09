@@ -111,24 +111,24 @@ ifeq ($(UNAME),Linux)
 	glslc -fshader-stage=frag $< -o $@
 endif
 
-%.h: %.gen %.mk
-	lua $*.gen $@
-%.c: %.gen %.mk
-	lua $*.gen $@ $*.mk
-%.cpp: %.gen %.mk
-	lua $*.gen $@
-%.hs: %.gen %.mk
-	lua $*.gen $@
-%.lua: %.gen %.mk
-	lua $*.gen $@
+%.h: %.mk
+	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+%.c: %.mk
+	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+%.cpp: %.mk
+	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+%.hs: %.mk
+	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
+%.lua: %.mk
+	lua `echo $* | sed -e 's/.*[A-Z]\(.*\)/\1/'`.gen $@ $<
 
 .PHONY:
 clean:
-	rm -f type.h type.c type.hs type.lua type.sw
-	rm -f typer.h typer.c typer.hs typer.lua typer.sw
+	rm -rf subdir.* stderr.* stdout.*
+	rm -f *type.h *type.c *type.hs *type.lua *type.sw
+	rm -f *typer.h *typer.c *typer.hs *typer.lua *typer.sw
 	rm -f typra facer typer filer planra spacra
 	rm -f hole file line metal space share pipe page
-	rm -rf subdir.* stderr.* stdout.*
 	rm -f *C *M *Cpp *Hs *Lua *Sw
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--

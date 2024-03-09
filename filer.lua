@@ -7,8 +7,8 @@ field3 = "Str(again)"
 name = "filer.--"
 
 -- MAIN
-ident1 = wrapType("Filez","fielerLua","fileC")
-print("wrapType")
+ident1 = typeWrap("Filez","fielerLua","fileC")
+print("typeWrap")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
@@ -44,7 +44,7 @@ assert(file["loc"] == string.len(field1)+string.len(field2a))
 assert(file["slf"] == 1)
 assert(file["str"] == field3)
 
-ident2 = wrapType("Filez","fielerLua","fileC")
+ident2 = typeWrap("Filez","fielerLua","fileC")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
@@ -87,7 +87,7 @@ assert(file["loc"] == string.len(field1))
 assert(file["slf"] == 0)
 assert(file["str"] == field2b)
 
-ident3 = wrapType("Filez","fielerLua","fileC")
+ident3 = typeWrap("Filez","fielerLua","fileC")
 file = {}
 file["act"] = "NewHub"
 file["idx"] = 0

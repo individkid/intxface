@@ -710,6 +710,16 @@ Valve = {
 	{"dep","Str",{["tag"]={["Combine"]=true}},"num"},
 }
 --HERE
+Wrap = {
+}
+Union = {
+}
+Subtype = {
+}
+Field = {
+}
+Type = {
+}
 Enums,Enumz = listHere("Enums","type.gen")
 Constants,Constantz = listHere("Constants","type.gen")
 Structs,Structz = listHere("Structs","type.gen")
@@ -729,8 +739,8 @@ function showTypeC(args)
 	result = result.."#include <unistd.h>\n"
 	result = result.."#include <sys/errno.h>\n"
 	result = result..showCallC(args).."\n"
-	if (not args or args["wrapExec"]) then
-	result = result.."int wrapExec(struct Argument *arg, const char *fork, const char *exec) {\n"
+	if (not args or args["execWrap"]) then
+	result = result.."int execWrap(struct Argument *arg, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."int idx = openFork();\n"
 	result = result..showIndent(1).."if (idx < 0) return -1;\n"
 	result = result..showIndent(1).."if (openCheck(idx) >= 0) {\n"
@@ -739,21 +749,21 @@ function showTypeC(args)
 	result = result..showIndent(2).."showArgument(arg,&str);\n"
 	result = result..showIndent(2).."openExec(exec,str); fprintf(stderr,\"%s: cannot execute file: %s\\n\",fork,exec); ERROR();}\n"
 	result = result..showIndent(1).."return idx;}\n" end
-	if (not args or args["wrapType"]) then
-	result = result.."int wrapType(enum Process typ, const char *fork, const char *exec) {\n"
+	if (not args or args["typeWrap"]) then
+	result = result.."int typeWrap(enum Process typ, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."struct Argument arg = {0};\n"
 	result = result..showIndent(1).."arg.typ = typ;\n"
-	result = result..showIndent(1).."return wrapExec(&arg,fork,exec);}\n" end
-	if (not args or args["wrapInit"]) then
-	result = result.."int wrapInit(struct Argument *arg, const char *str) {\n"
+	result = result..showIndent(1).."return execWrap(&arg,fork,exec);}\n" end
+	if (not args or args["initWrap"]) then
+	result = result.."int initWrap(struct Argument *arg, const char *str) {\n"
 	result = result..showIndent(1).."int len = 0;\n"
 	result = result..showIndent(1).."if (!hideArgument(arg,str,&len)) return -1;\n"
 	result = result..showIndent(1).."arg->idx = rdwrInit(arg->inp,arg->out);\n"
 	result = result..showIndent(1).."return 0;}\n" end
-	if (not args or args["wrapIdent"]) then
-	result = result.."int wrapIdent(enum Process typ, const char *str) {\n"
+	if (not args or args["identWrap"]) then
+	result = result.."int identWrap(enum Process typ, const char *str) {\n"
 	result = result..showIndent(1).."struct Argument arg = {0};\n"
-	result = result..showIndent(1).."if (wrapInit(&arg,str) < 0 || arg.typ != typ) return -1;\n"
+	result = result..showIndent(1).."if (initWrap(&arg,str) < 0 || arg.typ != typ) return -1;\n"
 	result = result..showIndent(1).."return arg.idx;}" end
 	return result
 end
@@ -761,10 +771,10 @@ function showTypeH()
 	local result = ""
 	result = result.."#include \"proto.h\"\n"
 	result = result..showCallH().."\n"
-	result = result.."int wrapExec(struct Argument *arg, const char *fork, const char *exec);\n"
-	result = result.."int wrapType(enum Process typ, const char *fork, const char *exec);\n"
-	result = result.."int wrapInit(struct Argument *arg, const char *str);"
-	result = result.."int wrapIdent(enum Process typ, const char *str);\n"
+	result = result.."int execWrap(struct Argument *arg, const char *fork, const char *exec);\n"
+	result = result.."int typeWrap(enum Process typ, const char *fork, const char *exec);\n"
+	result = result.."int initWrap(struct Argument *arg, const char *str);"
+	result = result.."int identWrap(enum Process typ, const char *str);\n"
 	return result
 end
 function showTypeHs()
@@ -780,8 +790,8 @@ function showTypeHs()
 	result = result.."--\n"
 	result = result.."type Dat = [CChar]\n"
 	result = result..showCallHs().."\n"
-	result = result.."wrapExec :: Argument -> String -> String -> IO (Maybe Int)\n"
-	result = result.."wrapExec (Argument (ArgumentA1 typ _ _ idx) arg) fork exec = do\n"
+	result = result.."execWrap :: Argument -> String -> String -> IO (Maybe Int)\n"
+	result = result.."execWrap (Argument (ArgumentA1 typ _ _ idx) arg) fork exec = do\n"
 	result = result..showIndent(1).."idx <- openFork\n"
 	result = result..showIndent(1).."if idx < 0 then return Nothing else do\n"
 	result = result..showIndent(2).."vld <- openCheck idx\n"
@@ -795,23 +805,23 @@ function showTypeHs()
 	result = result..showIndent(3).."hPutStrLn stderr (fork ++ \": cannot execute file: \" ++ exec)\n"
 	result = result..showIndent(3).."callExit (negate 1)\n"
 	result = result..showIndent(3).."return Nothing\n"
-	result = result.."wrapType :: Process -> String -> String -> IO (Maybe Int)\n"
-	result = result.."wrapType typ fork exec = wrapExec (Argument (ArgumentA1 typ 0 0 0) ArgumentA5Bs) fork exec\n"
-	result = result.."wrapInitF :: Maybe Argument -> IO (Maybe Argument)\n"
-	result = result.."wrapInitF Nothing = return Nothing\n"
-	result = result.."wrapInitF (Just (Argument (ArgumentA1 typ inp out _) arg)) = do\n"
+	result = result.."typeWrap :: Process -> String -> String -> IO (Maybe Int)\n"
+	result = result.."typeWrap typ fork exec = execWrap (Argument (ArgumentA1 typ 0 0 0) ArgumentA5Bs) fork exec\n"
+	result = result.."initWrapF :: Maybe Argument -> IO (Maybe Argument)\n"
+	result = result.."initWrapF Nothing = return Nothing\n"
+	result = result.."initWrapF (Just (Argument (ArgumentA1 typ inp out _) arg)) = do\n"
 	result = result..showIndent(1).."idx <- rdwrInit inp out\n"
 	result = result..showIndent(1).."return (Just (Argument (ArgumentA1 typ inp out idx) arg))\n"
-	result = result.."wrapInit :: String -> IO (Maybe Argument)\n"
-	result = result.."wrapInit str = newIORef str >>= hideArgument >>= wrapInitF\n"
-	result = result.."wrapIdentF :: Process -> Maybe Argument -> IO (Maybe Int)\n"
-	result = result.."wrapIdentF _ Nothing = return Nothing\n"
-	result = result.."wrapIdentF cmp (Just (Argument (ArgumentA1 typ _ _ idx) _)) =\n"
+	result = result.."initWrap :: String -> IO (Maybe Argument)\n"
+	result = result.."initWrap str = newIORef str >>= hideArgument >>= initWrapF\n"
+	result = result.."identWrapF :: Process -> Maybe Argument -> IO (Maybe Int)\n"
+	result = result.."identWrapF _ Nothing = return Nothing\n"
+	result = result.."identWrapF cmp (Just (Argument (ArgumentA1 typ _ _ idx) _)) =\n"
 	result = result..showIndent(1).."if cmp /= typ then\n"
 	result = result..showIndent(1).."return Nothing else\n"
 	result = result..showIndent(1).."return (Just idx)\n"
-	result = result.."wrapIdent :: Process -> String -> IO (Maybe Int)\n"
-	result = result.."wrapIdent typ str = wrapInit str >>= wrapIdentF typ\n"
+	result = result.."identWrap :: Process -> String -> IO (Maybe Int)\n"
+	result = result.."identWrap typ str = initWrap str >>= identWrapF typ\n"
 	return result
 end
 function showTypeLua()
@@ -819,7 +829,7 @@ function showTypeLua()
 	result = result.."require \"luax\"\n"
 	result = result.."--\n"
 	result = result..showCallLua().."\n"
-	result = result.."function wrapExec(arg,fork,exec)\n"
+	result = result.."function execWrap(arg,fork,exec)\n"
 	result = result..showIndent(1).."idx = openFork()\n"
 	result = result..showIndent(1).."if (idx < 0) then return -1 end\n"
 	result = result..showIndent(1).."if (openCheck(idx) >= 0) then\n"
@@ -830,18 +840,18 @@ function showTypeLua()
 	result = result..showIndent(1).."end\n"
 	result = result..showIndent(1).."return idx\n"
 	result = result.."end\n"
-	result = result.."function wrapType(typ,fork,exec)\n"
+	result = result.."function typeWrap(typ,fork,exec)\n"
 	result = result..showIndent(1).."arg[\"typ\"] = typ\n"
-	result = result..showIndent(1).."return wrapExec(arg,fork,exec)\n"
+	result = result..showIndent(1).."return execWrap(arg,fork,exec)\n"
 	result = result.."end\n"
-	result = result.."function wrapInit(str)\n"
+	result = result.."function initWrap(str)\n"
 	result = result..showIndent(1).."arg,len = hideArgument(str,0)\n"
 	result = result..showIndent(1).."if (arg == nil) then return nil end\n"
 	result = result..showIndent(1).."arg[\"idx\"] = rdwrInit(arg[\"inp\"],arg[\"out\"])\n"
 	result = result..showIndent(1).."return arg\n"
 	result = result.."end\n"
-	result = result.."function wrapIdent(typ,str)\n"
-	result = result..showIndent(1).."arg = wrapInit(str)\n"
+	result = result.."function identWrap(typ,str)\n"
+	result = result..showIndent(1).."arg = initWrap(str)\n"
 	result = result..showIndent(1).."if (arg == nil) or not (arg[\"typ\"] == typ) then return -1 end\n"
 	result = result..showIndent(1).."return arg[\"idx\"]\n"
 	result = result.."end"
@@ -851,34 +861,27 @@ args = nil
 if (arg[2] ~= nil) then
 	args = {}
 	for line in io.lines(arg[2]) do
-		deps = string.match(line,"^ *"..arg[1].." *: *(.*)$")
-		if deps then
-			while (1) do
-				local word,rest = string.match(deps," *([%w]+)(.*)")
-				if word == nil then break end
-				args[word] = true
-				deps = rest
-			end
+		local deps = line
+		while (1) do
+			local word,rest = string.match(deps," *([%w]+)(.*)")
+			if word == nil then break end
+			args[word] = true
+			deps = rest
 		end
 	end
 end
-if (arg[1] == "type.h") then
-	file = io.open("type.h", "w")
+base,ext = string.match(arg[1],"([%w]*)(%.[%w]*)")
+file = io.open(base..ext, "w")
+if (base and ext and ext == ".h") then
 	file:write(showTypeH().."\n")
-	file:close()
 end
-if (arg[1] == "type.c") then
-	file = io.open("type.c", "w")
+if (base and ext and ext == ".c") then
 	file:write(showTypeC(args).."\n")
-	file:close()
 end
-if (arg[1] == "type.hs") then
-	file = io.open("type.hs", "w")
+if (base and ext and ext == ".hs") then
 	file:write(showTypeHs().."\n")
-	file:close()
 end
-if (arg[1] == "type.lua") then
-	file = io.open("type.lua", "w")
+if (base and ext and ext == ".lua") then
 	file:write(showTypeLua().."\n")
-	file:close()
 end
+file:close()
