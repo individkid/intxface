@@ -31,23 +31,24 @@ planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
 planraCpp: planraCpp.o
-planraCpp.o: plane.h planraCpp.mk proto.h type.h vulkan.cpp
+planraCpp.o: plane.h planraCpp.mk type.h vulkan.cpp
 protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o wrapCpp.o
 shareC.o: datx.h face.h proto.h share.c type.h
 shareC.type.c: luax.so show.lua type.gen
 shareC.typeC.o: face.h type.h
-sharer.log: luax.so shareC sharer.lua sharerLua type.lua
+sharer.log: shareC sharer.lua sharerLua type.lua
 sharerLua: sharer.lua
 space: spaceHs
-spaceHs: face.hs faceC.o naive.hs protoC.o space.hs type.hs
+spaceHs: face.hs faceC.o naive.hs protoC.o space.hs spaceHs.type.hs
+spaceHs.type.hs: luax.so show.lua type.gen
 spacer.log: luax.so spaceHs spacer.lua spacerLua type.lua
 spacerLua: spacer.lua
 spacra.log: spacraHs
-spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs type.hs
+spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs spacraHs.type.hs
+spacraHs.type.hs: luax.so show.lua type.gen
 type.h: luax.so show.lua type.gen
-type.hs: luax.so show.lua type.gen
 type.lua: luax.so show.lua type.gen
 typer.c: luax.so show.lua test.lua typer.gen
 typer.h: luax.so show.lua test.lua typer.gen
@@ -55,7 +56,7 @@ typer.hs: luax.so show.lua test.lua typer.gen
 typer.log: typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
-typerC.o: face.h typer.c typer.h
+typerC.o: typer.c typer.h
 typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua

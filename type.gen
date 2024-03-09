@@ -718,6 +718,7 @@ Subtype = {
 }
 Field = {
 }
+-- TODO this confuses .hs that has module Type, but in a good way?
 Type = {
 }
 Enums,Enumz = listHere("Enums","type.gen")
@@ -738,7 +739,8 @@ function showTypeC(args)
 	result = result.."#include <stdio.h>\n"
 	result = result.."#include <unistd.h>\n"
 	result = result.."#include <sys/errno.h>\n"
-	result = result..showCallC(args).."\n"
+	-- TODO pass args to filter out functions in showCallC
+	result = result..showCallC().."\n"
 	if (not args or args["execWrap"]) then
 	result = result.."int execWrap(struct Argument *arg, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."int idx = openFork();\n"
@@ -777,7 +779,7 @@ function showTypeH()
 	result = result.."int identWrap(enum Process typ, const char *str);\n"
 	return result
 end
-function showTypeHs()
+function showTypeHs(args)
 	local result = ""
 	result = result.."module Type where\n"
 	result = result.."--\n"
@@ -789,7 +791,9 @@ function showTypeHs()
 	result = result.."import Foreign.C.Types\n"
 	result = result.."--\n"
 	result = result.."type Dat = [CChar]\n"
+	-- TODO pass args to filter out types in showCallHs
 	result = result..showCallHs().."\n"
+	if (not args or args["Wrap"]) then
 	result = result.."execWrap :: Argument -> String -> String -> IO (Maybe Int)\n"
 	result = result.."execWrap (Argument (ArgumentA1 typ _ _ idx) arg) fork exec = do\n"
 	result = result..showIndent(1).."idx <- openFork\n"
@@ -821,7 +825,7 @@ function showTypeHs()
 	result = result..showIndent(1).."return Nothing else\n"
 	result = result..showIndent(1).."return (Just idx)\n"
 	result = result.."identWrap :: Process -> String -> IO (Maybe Int)\n"
-	result = result.."identWrap typ str = initWrap str >>= identWrapF typ\n"
+	result = result.."identWrap typ str = initWrap str >>= identWrapF typ\n" end
 	return result
 end
 function showTypeLua()
@@ -879,7 +883,7 @@ if (base and ext and ext == ".c") then
 	file:write(showTypeC(args).."\n")
 end
 if (base and ext and ext == ".hs") then
-	file:write(showTypeHs().."\n")
+	file:write(showTypeHs(args).."\n")
 end
 if (base and ext and ext == ".lua") then
 	file:write(showTypeLua().."\n")

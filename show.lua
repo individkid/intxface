@@ -2924,7 +2924,7 @@ function showCall(list,map,func,args,name)
 	end end
 	return result
 end
-function showFuncC(args)
+function showFuncC()
 	local result = ""
 	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
 	result = result..showCall(Enums,Enumz,showAllocEC).."\n"
@@ -2975,10 +2975,10 @@ function showCallH()
 	result = result..showFuncC()
 	return result
 end
-function showCallC(args)
+function showCallC()
 	local result = ""
 	prototype = false
-	result = result..showFuncC(args)
+	result = result..showFuncC()
 	return result
 end
 function showCallHs()
