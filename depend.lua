@@ -137,10 +137,7 @@ function remakecopy(values,target,suf)
 	local extras = values[2]
 	local depender = values[4] -- luax.so
 	local deps = {}
-	local exts = {}
 	local saved = dbgline[dbgent]
-	local maybe = "nil"
-	if depender then maybe = depender end
 	copydepend(depender,deps)
 	adddepend(match,deps,depender)
 	dbgline[dbgent] = dbgline[dbgent].." remakecopy:"..target..":"..depender..":"..match
@@ -150,15 +147,29 @@ function remakecopy(values,target,suf)
 	return true
 end
 
-function unmakecopy(values,target,suf,opt)
+function unmakecopy(values,target,suf)
 	local match = values[3]..suf -- spaceHs.type.hs -- fileC.type.c
 	local depends = values[1]
 	local extras = values[2]
 	local depender = getdepend(target) -- spaceHs -- fileC
 	local saved = dbgline[dbgent]
 	dbgline[dbgent] = dbgline[dbgent].." unmakecopy:"..target..":"..depender..":"..match
-	if opt then os.execute("rm -f subdir."..match.."/"..values[3]..opt)
-	dbgline[dbgent] = dbgline[dbgent]..":"..values[3]..opt end
+	if not trymake({{},extras},match) then dbgline[dbgent] = saved; return false end
+	copydepend(match,depends)
+	adddepend(match,depends,depender)
+	if (match == target) then dbgline[dbgent] = saved; return false end
+	os.execute("cp subdir."..match.."/"..match.." subdir."..target.."/")
+	return true
+end
+
+function admakecopy(values,target,suf,opt)
+	local match = values[3]..suf -- spaceHs.type.hs -- fileC.type.c
+	local depends = values[1]
+	local extras = values[2]
+	local depender = getdepend(target) -- spaceHs -- fileC
+	local saved = dbgline[dbgent]
+	dbgline[dbgent] = dbgline[dbgent].." admakecopy:"..target..":"..depender..":"..match..":"..values[3]..opt
+	os.execute("rm -f subdir."..match.."/"..values[3]..opt)
 	if not trymake({{},extras},match) then dbgline[dbgent] = saved; return false end
 	copydepend(match,depends)
 	adddepend(match,depends,depender)
@@ -242,7 +253,7 @@ function trymatch(values,target)
 		dbgline[dbgent] = "6i"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).hs', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7a"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".c") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7d"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".cpp") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
-		dbgline[dbgent] = "7b"; if callmatch(values,line,"^.*: undefined reference to `([a-z]*)([A-Z]%w*)'$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,"C.o",".c") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "7b"; if callmatch(values,line,"^.*: undefined reference to `([a-z]*)([A-Z]%w*)'$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and admakecopy(values,target,"C.o",".c") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7c"; if callmatch(values,line,"^.*: undefined reference to '(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".c") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "8a"; if callmatch(values,line,"^.*: %W*(%w*)C: not found$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "8b"; if callmatch(values,line,"^.*: %W*(%w*)Lua: not found$") and makecopy(values,target,"Lua") then dbgent = dbgent - 1; return true end
