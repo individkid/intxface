@@ -1,4 +1,4 @@
-datxC.o: datx.c datx.h type.h
+datxC.o: datx.c datx.h proto.h type.h
 faceC.o: face.c face.h proto.h
 faceCpp.o: face.cpp face.h proto.h wrap.h
 facer.log: facer.lua facerC facerHs facerLua luax.so

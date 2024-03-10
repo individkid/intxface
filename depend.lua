@@ -53,8 +53,17 @@ function getdepend(target)
 	return depender
 end
 
+function filexists(name)
+	local file = io.open(name,"r")
+	if file == nil then return false end
+	io.close(file)
+	return true
+end
+
 function copydepend(match,depends)
-	for line in io.lines("subdir."..match.."/depend.mk") do
+	local name = "subdir."..match.."/depend.mk"
+	if not filexists(name) then return end
+	for line in io.lines(name) do
 		local depender,tail = string.match(line,"^ *([%w.]*) *: *(.*)$")
 		if depends[depender] == nil then depends[depender] = {} end
 		while tail ~= nil do
@@ -90,9 +99,8 @@ end
 
 function checksource(values,ext)
 	local match = values[3]
-	local file = io.open(match..ext,"r")
-	if file == nil then return false end
-	io.close(file)
+	local exists = filexists(match..ext)
+	if not exists then return false end
 	-- dbgline[dbgent] = dbgline[dbgent].." checksource:"..match
 	return true
 end
@@ -118,9 +126,8 @@ function copyxtra(values,target,ext)
 	local match = values[3]..ext -- type.gen
 	local base = values[3]
 	local extras = values[2]
-	local file = io.open(match,"r")
-	if file == nil then return false end
-	io.close(file)
+	local exists = filexists(match)
+	if not exists then return false end
 	addextra(base,extras,nil)
 	-- dbgline[dbgent] = dbgline[dbgent].." copyxtra:"..match
 	return true
@@ -141,10 +148,9 @@ end
 function copysource(values,target,ext)
 	local match = values[3]..ext
 	local depends = values[1]
-	local file = io.open(match,"r")
+	local exists = filexists(match)
 	local depender = getdepend(target)
-	if file == nil then return false end
-	io.close(file)
+	if not exists then return false end
 	adddepend(match,depends,depender)
 	os.execute("cp "..match.." subdir."..target.."/")
 	dbgline[dbgent] = dbgline[dbgent].." copysource:"..target..":"..depender..":"..match
@@ -155,12 +161,11 @@ function makecopy(values,target,suf)
 	local match = values[3]..suf -- file.c
 	local depends = values[1]
 	local extras = values[2]
-	local file = io.open("subdir."..match.."/"..match,"r")
+	local exists = filexists("subdir."..match.."/"..match)
 	local depender = getdepend(target) -- fileC.o
 	local saved = dbgline[dbgent]
 	dbgline[dbgent] = dbgline[dbgent].." makecopy:"..target..":"..depender..":"..match
-	if file == nil and not trymake({{},extras},match) then dbgline[dbgent] = saved; return false end
-	if file ~= nil then io.close(file) end
+	if not exists and not trymake({{},extras},match) then dbgline[dbgent] = saved; return false end
 	copydepend(match,depends)
 	adddepend(match,depends,depender)
 	if (match == target) then dbgline[dbgent] = saved; return false end
@@ -177,7 +182,7 @@ function remakecopy(values,target,suf)
 	local saved = dbgline[dbgent]
 	copydepend(depender,deps)
 	adddepend(match,deps,depender)
-	-- dbgline[dbgent] = dbgline[dbgent].." remakecopy:"..target..":"..depender..":"..match
+	dbgline[dbgent] = dbgline[dbgent].." remakecopy:"..target..":"..depender..":"..match
 	if not trymake({deps,extras},depender) then dbgline[dbgent] = saved; return false end
 	copydepend(depender,depends)
 	os.execute("cp subdir."..depender.."/"..depender.." subdir."..target.."/")
@@ -189,9 +194,11 @@ function unmakecopy(values,target,suf)
 	local depends = values[1]
 	local extras = values[2]
 	local depender = getdepend(target) -- spaceHs -- fileC
+	local deps = {}
 	local saved = dbgline[dbgent]
+	copydepend(match,deps)
 	dbgline[dbgent] = dbgline[dbgent].." unmakecopy:"..target..":"..depender..":"..match
-	if not trymake({{},extras},match) then dbgline[dbgent] = saved; return false end
+	if not trymake({deps,extras},match) then dbgline[dbgent] = saved; return false end
 	copydepend(match,depends)
 	adddepend(match,depends,depender)
 	if (match == target) then dbgline[dbgent] = saved; return false end
@@ -204,10 +211,12 @@ function admakecopy(values,target,suf,opt)
 	local depends = values[1]
 	local extras = values[2]
 	local depender = getdepend(target) -- spaceHs -- fileC
+	local deps = {}
 	local saved = dbgline[dbgent]
+	copydepend(match,deps)
 	dbgline[dbgent] = dbgline[dbgent].." admakecopy:"..target..":"..depender..":"..match..":"..values[3]..opt
 	os.execute("rm -f subdir."..match.."/"..values[3]..opt)
-	if not trymake({{},extras},match) then dbgline[dbgent] = saved; return false end
+	if not trymake({deps,extras},match) then dbgline[dbgent] = saved; return false end
 	copydepend(match,depends)
 	adddepend(match,depends,depender)
 	if (match == target) then dbgline[dbgent] = saved; return false end
@@ -282,9 +291,8 @@ function trymake(values,target)
 		writextra("subdir."..target,extras)
 		-- io.stdout:write("make -d -C subdir."..target.." "..target.." 2> stderr."..target.." >> stdout."..target)
 		os.execute("make -d -C subdir."..target.." "..target.." 2> stderr."..target.." >> stdout."..target)
-		local file = io.open("subdir."..target.."/"..target,"r");
-		if (file == nil) then os.execute("echo error:"..target..": make passed but build failed >> stderr."..target)
-		else io.close(file) end
+		local exists = filexists("subdir."..target.."/"..target);
+		if (not exists) then os.execute("echo error:"..target..": make passed but build failed >> stderr."..target) end
 		local done = true
 		for line in io.lines("stderr."..target) do done = false end
 		if done then
