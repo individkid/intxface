@@ -38,7 +38,7 @@ shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typ
 shareC.o: datx.h face.h proto.h share.c type.h
 shareC.type.c: luax.so show.lua type.gen
 shareC.typeC.o: face.h type.h
-sharer.log: shareC sharer.lua sharerLua type.lua
+sharer.log: luax.so shareC sharer.lua sharerLua type.lua
 sharerLua: sharer.lua
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs spaceHs.type.hs
@@ -56,7 +56,7 @@ typer.hs: luax.so show.lua test.lua typer.gen
 typer.log: typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
-typerC.o: typer.c typer.h
+typerC.o: face.h typer.c typer.h
 typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
