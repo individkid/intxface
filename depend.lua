@@ -88,6 +88,7 @@ function addextra(base,extras,func)
 end
 
 function callmatch(values,line,pat)
+	-- find match or matches of pattern in line
 	local first,second = string.match(line,pat)
 	if second then values[3] = second; values[4] = first; values[5] = second
 	else values[3] = first; values[4] = first; values[5] = first end
@@ -98,6 +99,7 @@ function callmatch(values,line,pat)
 end
 
 function checksource(values,ext)
+	-- check if match exists as file with extension
 	local match = values[3]
 	local exists = filexists(match..ext)
 	if not exists then return false end
@@ -106,6 +108,7 @@ function checksource(values,ext)
 end
 
 function findsource(values,pre,post,ext)
+	-- replace match by one and only file with extension where match is defined
 	local match = values[3]
 	local found = nil
 	local file = io.popen("grep -s -l -E '"..pre..match..post.."' *"..ext,"r")
@@ -123,6 +126,7 @@ function findsource(values,pre,post,ext)
 end
 
 function copyxtra(values,target,ext)
+	-- add generated if match is not a file with extension
 	local match = values[3]..ext -- type.gen
 	local base = values[3]
 	local extras = values[2]
@@ -134,6 +138,7 @@ function copyxtra(values,target,ext)
 end
 
 function recopyxtra(values,target,ext)
+	-- add function or class to generated for target
 	local match = values[3]..ext -- type.gen
 	local base = target.."."..values[3]
 	local extras = values[2]
@@ -146,6 +151,7 @@ function recopyxtra(values,target,ext)
 end
 
 function copysource(values,target,ext)
+	-- copy file with extension as dependency
 	local match = values[3]..ext
 	local depends = values[1]
 	local exists = filexists(match)
@@ -158,6 +164,7 @@ function copysource(values,target,ext)
 end
 
 function makecopy(values,target,suf)
+	-- build and/or copy file with extension as dependency
 	local match = values[3]..suf -- file.c
 	local depends = values[1]
 	local extras = values[2]
@@ -174,6 +181,7 @@ function makecopy(values,target,suf)
 end
 
 function remakecopy(values,target,suf)
+	-- change build and copy file with extension into existing depender
 	local match = values[3]..suf -- wrapCpp.o
 	local depends = values[1]
 	local extras = values[2]
@@ -190,6 +198,7 @@ function remakecopy(values,target,suf)
 end
 
 function unmakecopy(values,target,suf)
+	-- change build and copy file with extension as dependency
 	local match = values[3]..suf -- spaceHs.type.hs -- fileC.type.c
 	local depends = values[1]
 	local extras = values[2]
@@ -198,24 +207,6 @@ function unmakecopy(values,target,suf)
 	local saved = dbgline[dbgent]
 	copydepend(match,deps)
 	dbgline[dbgent] = dbgline[dbgent].." unmakecopy:"..target..":"..depender..":"..match
-	if not trymake({deps,extras},match) then dbgline[dbgent] = saved; return false end
-	copydepend(match,depends)
-	adddepend(match,depends,depender)
-	if (match == target) then dbgline[dbgent] = saved; return false end
-	os.execute("cp subdir."..match.."/"..match.." subdir."..target.."/")
-	return true
-end
-
-function admakecopy(values,target,suf,opt)
-	local match = values[3]..suf -- spaceHs.type.hs -- fileC.type.c
-	local depends = values[1]
-	local extras = values[2]
-	local depender = getdepend(target) -- spaceHs -- fileC
-	local deps = {}
-	local saved = dbgline[dbgent]
-	copydepend(match,deps)
-	dbgline[dbgent] = dbgline[dbgent].." admakecopy:"..target..":"..depender..":"..match..":"..values[3]..opt
-	os.execute("rm -f subdir."..match.."/"..values[3]..opt)
 	if not trymake({deps,extras},match) then dbgline[dbgent] = saved; return false end
 	copydepend(match,depends)
 	adddepend(match,depends,depender)
@@ -262,7 +253,7 @@ function trymatch(values,target)
 		dbgline[dbgent] = "6i"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).hs', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7a"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".c") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7d"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".cpp") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
-		dbgline[dbgent] = "7b"; if callmatch(values,line,"^.*: undefined reference to `([a-z]*)([A-Z]%w*)'$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and admakecopy(values,target,"C.o",".c") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "7b"; if callmatch(values,line,"^.*: undefined reference to `([a-z]*)([A-Z]%w*)'$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,"C.o",".c") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7c"; if callmatch(values,line,"^.*: undefined reference to '(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".c") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "8a"; if callmatch(values,line,"^.*: %W*(%w*)C: not found$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "8b"; if callmatch(values,line,"^.*: %W*(%w*)Lua: not found$") and makecopy(values,target,"Lua") then dbgent = dbgent - 1; return true end
