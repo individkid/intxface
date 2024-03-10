@@ -83,7 +83,7 @@ function callmatch(values,line,pat)
 	if second then values[3] = second; values[4] = first; values[5] = second
 	else values[3] = first; values[4] = first; values[5] = first end
 	if (values[3] == nil) then return false end
-	dbgline[dbgent] = dbgline[dbgent].." callmatch:"..values[4]..":"..values[5]
+	-- dbgline[dbgent] = dbgline[dbgent].." callmatch:"..values[4]..":"..values[5]
 	-- io.stdout:write(line)
 	return true
 end
@@ -93,7 +93,7 @@ function checksource(values,ext)
 	local file = io.open(match..ext,"r")
 	if file == nil then return false end
 	io.close(file)
-	dbgline[dbgent] = dbgline[dbgent].." checksource:"..match
+	-- dbgline[dbgent] = dbgline[dbgent].." checksource:"..match
 	return true
 end
 
@@ -110,7 +110,44 @@ function findsource(values,pre,post,ext)
 	io.close(file)
 	if found == nil then return false end
 	values[3] = found
-	dbgline[dbgent] = dbgline[dbgent].." findsource:"..found
+	-- dbgline[dbgent] = dbgline[dbgent].." findsource:"..found
+	return true
+end
+
+function copyxtra(values,target,ext)
+	local match = values[3]..ext -- type.gen
+	local base = values[3]
+	local extras = values[2]
+	local file = io.open(match,"r")
+	if file == nil then return false end
+	io.close(file)
+	addextra(base,extras,nil)
+	-- dbgline[dbgent] = dbgline[dbgent].." copyxtra:"..match
+	return true
+end
+
+function recopyxtra(values,target,ext)
+	local match = values[3]..ext -- type.gen
+	local base = target.."."..values[3]
+	local extras = values[2]
+	local func = values[4]..values[5]
+	if (values[4] == values[5]) then func = values[4] end
+	addextra(base,extras,func)
+	values[3] = base
+	-- dbgline[dbgent] = dbgline[dbgent].." recopyxtra:"..base..":"..func
+	return true
+end
+
+function copysource(values,target,ext)
+	local match = values[3]..ext
+	local depends = values[1]
+	local file = io.open(match,"r")
+	local depender = getdepend(target)
+	if file == nil then return false end
+	io.close(file)
+	adddepend(match,depends,depender)
+	os.execute("cp "..match.." subdir."..target.."/")
+	dbgline[dbgent] = dbgline[dbgent].." copysource:"..target..":"..depender..":"..match
 	return true
 end
 
@@ -140,7 +177,7 @@ function remakecopy(values,target,suf)
 	local saved = dbgline[dbgent]
 	copydepend(depender,deps)
 	adddepend(match,deps,depender)
-	dbgline[dbgent] = dbgline[dbgent].." remakecopy:"..target..":"..depender..":"..match
+	-- dbgline[dbgent] = dbgline[dbgent].." remakecopy:"..target..":"..depender..":"..match
 	if not trymake({deps,extras},depender) then dbgline[dbgent] = saved; return false end
 	copydepend(depender,depends)
 	os.execute("cp subdir."..depender.."/"..depender.." subdir."..target.."/")
@@ -175,43 +212,6 @@ function admakecopy(values,target,suf,opt)
 	adddepend(match,depends,depender)
 	if (match == target) then dbgline[dbgent] = saved; return false end
 	os.execute("cp subdir."..match.."/"..match.." subdir."..target.."/")
-	return true
-end
-
-function copysource(values,target,ext)
-	local match = values[3]..ext
-	local depends = values[1]
-	local file = io.open(match,"r")
-	local depender = getdepend(target)
-	if file == nil then return false end
-	io.close(file)
-	adddepend(match,depends,depender)
-	os.execute("cp "..match.." subdir."..target.."/")
-	dbgline[dbgent] = dbgline[dbgent].." copysource:"..target..":"..depender..":"..match
-	return true
-end
-
-function copyxtra(values,target,ext)
-	local match = values[3]..ext -- type.gen
-	local base = values[3]
-	local extras = values[2]
-	local file = io.open(match,"r")
-	if file == nil then return false end
-	io.close(file)
-	addextra(base,extras,nil)
-	dbgline[dbgent] = dbgline[dbgent].." copyxtra:"..match
-	return true
-end
-
-function recopyxtra(values,target,ext)
-	local match = values[3]..ext -- type.gen
-	local base = target.."."..values[3]
-	local extras = values[2]
-	local func = values[4]..values[5]
-	if (values[4] == values[5]) then func = values[4] end
-	addextra(base,extras,func)
-	values[3] = base
-	dbgline[dbgent] = dbgline[dbgent].." recopyxtra:"..base..":"..func
 	return true
 end
 
