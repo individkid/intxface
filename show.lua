@@ -2920,11 +2920,10 @@ function showCall(list,map,func,args,name)
 	local result = ""
 	for k,v in ipairs(list) do if not args or args[name..v] then
 		if result ~= "" then result = result.."\n" end
-		result = result..func(v,map[v])
-	end end
+		result = result..func(v,map[v]) end end
 	return result
 end
-function showFuncC()
+function showFuncC(args)
 	local result = ""
 	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
 	result = result..showCall(Enums,Enumz,showAllocEC).."\n"
@@ -2932,26 +2931,28 @@ function showFuncC()
 	result = result..showCall(Enums,Enumz,showHideEC).."\n"
 	for k,v in ipairs(Enums) do luaxSide(showCastLua(v,Enumz[v])) end
 	result = result..showCall(Constants,Constantz,showConstantC).."\n"
-	result = result..showCall(Structs,Structz,showFreeC).."\n"
-	result = result..showCall(Structs,Structz,showAllocSC).."\n"
-	result = result..showCall(Structs,Structz,showReadC).."\n"
-	result = result..showCall(Structs,Structz,showWriteC).."\n"
-	result = result..showCall(Structs,Structz,showRandC).."\n"
-	result = result..showCall(Structs,Structz,showCompC).."\n"
-	result = result..showCall(Structs,Structz,showSizeC).."\n"
-	result = result..showCall(Structs,Structz,showShowSC).."\n"
-	result = result..showCall(Structs,Structz,showHideSC).."\n"
+	result = result..showCall(Structs,Structz,showFreeC,args,"free").."\n"
+	result = result..showCall(Structs,Structz,showAllocSC,args,"alloc").."\n"
+	result = result..showCall(Structs,Structz,showReadC,args,"read").."\n"
+	result = result..showCall(Structs,Structz,showWriteC,args,"write").."\n"
+	result = result..showCall(Structs,Structz,showRandC,args,"rand").."\n"
+	result = result..showCall(Structs,Structz,showCompC,args,"comp").."\n"
+	result = result..showCall(Structs,Structz,showSizeC,args,"size").."\n"
+	result = result..showCall(Structs,Structz,showShowSC,args,"show").."\n"
+	result = result..showCall(Structs,Structz,showHideSC,args,"hide").."\n"
+	if (not args) then
 	result = result..showRtypeC(types).."\n"
 	result = result..showWtypeC(types).."\n"
 	result = result..showLtypeC(types).."\n"
-	result = result..showIdentC(types).."\n"
-	result = result..showCall(Structs,Structz,showCopyC).."\n"
-	result = result..showCall(Structs,Structz,showFvalidC).."\n"
-	result = result..showCall(Structs,Structz,showFreadC).."\n"
-	result = result..showCall(Structs,Structz,showFcopyC).."\n"
-	result = result..showCall(Structs,Structz,showFallocC).."\n"
+	result = result..showIdentC(types).."\n" end
+	result = result..showCall(Structs,Structz,showCopyC,args,"copy").."\n"
+	result = result..showCall(Structs,Structz,showFvalidC,args,"fvalid").."\n"
+	result = result..showCall(Structs,Structz,showFreadC,args,"fread").."\n"
+	result = result..showCall(Structs,Structz,showFcopyC,args,"fcopy").."\n"
+	result = result..showCall(Structs,Structz,showFallocC,args,"falloc").."\n"
+	result = result..showCall(Structs,Structz,showFwriteC,args,"fwrite").."\n"
+	if (not args) then
 	result = result..showRfieldC(types,Structz).."\n"
-	result = result..showCall(Structs,Structz,showFwriteC).."\n"
 	result = result..showWfieldC(types,Structz).."\n"
 	result = result..showIfieldC(types,Structz).."\n"
 	result = result..showJfieldC(types,Structz).."\n"
@@ -2964,7 +2965,7 @@ function showFuncC()
 	result = result..showAgenC(types).."\n"
 	result = result..showBgenC(types).."\n"
 	result = result..showCgenC(types).."\n"
-	result = result..showDgenC(types)
+	result = result..showDgenC(types).."\n" end
 	return result
 end
 function showCallH()
@@ -2975,10 +2976,10 @@ function showCallH()
 	result = result..showFuncC()
 	return result
 end
-function showCallC()
+function showCallC(args)
 	local result = ""
 	prototype = false
-	result = result..showFuncC()
+	result = result..showFuncC(args)
 	return result
 end
 function showCallHs()

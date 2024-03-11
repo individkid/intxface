@@ -710,6 +710,7 @@ Valve = {
 	{"dep","Str",{["tag"]={["Combine"]=true}},"num"},
 }
 --HERE
+-- below for depend.lua
 Wrap = {
 }
 Union = {
@@ -718,9 +719,9 @@ Subtype = {
 }
 Field = {
 }
--- TODO this confuses .hs that has module Type, but in a good way?
 Type = {
 }
+-- above for depend.lua
 Enums,Enumz = listHere("Enums","type.gen")
 Constants,Constantz = listHere("Constants","type.gen")
 Structs,Structz = listHere("Structs","type.gen")
@@ -739,8 +740,7 @@ function showTypeC(args)
 	result = result.."#include <stdio.h>\n"
 	result = result.."#include <unistd.h>\n"
 	result = result.."#include <sys/errno.h>\n"
-	-- TODO pass args to filter out functions in showCallC
-	result = result..showCallC().."\n"
+	result = result..showCallC(args).."\n"
 	if (not args or args["execWrap"]) then
 	result = result.."int execWrap(struct Argument *arg, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."int idx = openFork();\n"
@@ -869,6 +869,10 @@ if (arg[2] ~= nil) then
 		while (1) do
 			local word,rest = string.match(deps," *([%w]+)(.*)")
 			if word == nil then break end
+			if string.match(word,"..*Type") then args = nil; break end
+			if string.match(word,"..*Field") then args = nil; break end
+			if string.match(word,"..*Subtype") then args = nil; break end
+			if string.match(word,"..*Union") then args = nil; break end
 			args[word] = true
 			deps = rest
 		end

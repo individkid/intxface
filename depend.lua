@@ -146,7 +146,18 @@ function recopyxtra(values,target,ext)
 	if (values[4] == values[5]) then func = values[4] end
 	addextra(base,extras,func)
 	values[3] = base
-	-- dbgline[dbgent] = dbgline[dbgent].." recopyxtra:"..base..":"..func
+	dbgline[dbgent] = dbgline[dbgent].." recopyxtra:"..base..":"..func
+	return true
+end
+
+function uncopyxtra(values,target,ext)
+	-- add to generated for target
+	local match = values[3]..ext -- type.gen
+	local base = target.."."..values[3]
+	local extras = values[2]
+	addextra(base,extras,nil)
+	values[3] = base
+	dbgline[dbgent] = dbgline[dbgent].." uncopyxtra:"..base
 	return true
 end
 
@@ -253,6 +264,7 @@ function trymatch(values,target)
 		dbgline[dbgent] = "6i"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).hs', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7a"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".c") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7d"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".cpp") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
+		-- TODO optimize by processing multiple undefined reference without recompiling after each
 		dbgline[dbgent] = "7b"; if callmatch(values,line,"^.*: undefined reference to `([a-z]*)([A-Z]%w*)'$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,"C.o",".c") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "7c"; if callmatch(values,line,"^.*: undefined reference to '(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".c") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "8a"; if callmatch(values,line,"^.*: %W*(%w*)C: not found$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
@@ -262,7 +274,7 @@ function trymatch(values,target)
 		dbgline[dbgent] = "9b"; if callmatch(values,line,"^.*: cannot execute file: (%w*)Hs$") and makecopy(values,target,"Hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "9c"; if callmatch(values,line,"^.*: cannot execute file: (%w*)C$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "10a"; if callmatch(values,line,"^    Could not find module ‘([%w]*)’$") and findsource(values,"^module "," where$",".hs") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
-		dbgline[dbgent] = "10b"; if callmatch(values,line,"^    Could not find module ‘([%w]*)’$") and findsource(values,"module "," where",".gen") and recopyxtra(values,target,".gen") and makecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "10b"; if callmatch(values,line,"^    Could not find module ‘([%w]*)’$") and findsource(values,"module "," where",".gen") and uncopyxtra(values,target,".gen") and makecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "11a"; if callmatch(values,line,"^      [a-z]*([A-Z]%w*) :: .*$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
 	elseif uname == "Darwin" then
 	end end

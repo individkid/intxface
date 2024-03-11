@@ -1,1 +1,1 @@
- execWrap initWrap typeWrap
+ execWrap freeArgument freePersist hideArgument initWrap readPersist showArgument typeWrap writePersist

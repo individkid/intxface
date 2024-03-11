@@ -1,1 +1,1 @@
- identWrap initWrap writePersist
+ allocPersist freeArgument freePersist hideArgument identWrap initWrap readPersist sizePersist writePersist

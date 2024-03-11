@@ -1,1 +1,1 @@
- writeArgument
+ identType writeArgument
