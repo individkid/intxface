@@ -10,7 +10,7 @@ fileC: faceC.o fileC.o fileC.typeC.o protoC.o
 fileC.o: face.h file.c proto.h type.h
 fileC.type.c: luax.so show.lua type.gen
 fileC.typeC.o: face.h type.h
-filer.log: fileC filer.lua filerLua type.lua
+filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
@@ -43,7 +43,7 @@ sharerLua: sharer.lua
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs spaceHs.type.hs
 spaceHs.type.hs: luax.so show.lua type.gen
-spacer.log: spaceHs spacer.lua spacerLua type.lua
+spacer.log: luax.so spaceHs spacer.lua spacerLua type.lua
 spacerLua: spacer.lua
 spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs spacraHs.type.hs

@@ -2989,18 +2989,18 @@ function showCallHs()
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
 	showhide = true
 	result = result..showCall(Enums,Enumz,showCodeHs).."\n"
-	result = result..showCall(Structs,Structz,showStructHs).."\n"
+	result = result..showCall(Structs,Structz,showStructHs,args,"").."\n"
 	showhide = false
 	result = result..showHelpHs().."\n"
 	showhide = true
 	result = result..showHelpHs().."\n"
 	showhide = false
-	result = result..showCall(Structs,Structz,showReadHs).."\n"
-	result = result..showCall(Structs,Structz,showWriteHs).."\n"
+	result = result..showCall(Structs,Structz,showReadHs,args,"").."\n"
+	result = result..showCall(Structs,Structz,showWriteHs,args,"").."\n"
 	showhide = "hide"
-	result = result..showCall(Structs,Structz,showReadHs).."\n"
+	result = result..showCall(Structs,Structz,showReadHs,args,"").."\n"
 	showhide = "show"
-	result = result..showCall(Structs,Structz,showWriteHs).."\n"
+	result = result..showCall(Structs,Structz,showWriteHs,args,"").."\n"
 	return result
 end
 function showCallLua()

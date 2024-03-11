@@ -791,8 +791,7 @@ function showTypeHs(args)
 	result = result.."import Foreign.C.Types\n"
 	result = result.."--\n"
 	result = result.."type Dat = [CChar]\n"
-	-- TODO pass args to filter out types in showCallHs
-	result = result..showCallHs().."\n"
+	result = result..showCallHs(arg).."\n"
 	if (not args or args["Wrap"]) then
 	result = result.."execWrap :: Argument -> String -> String -> IO (Maybe Int)\n"
 	result = result.."execWrap (Argument (ArgumentA1 typ _ _ idx) arg) fork exec = do\n"
