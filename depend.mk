@@ -31,7 +31,7 @@ planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
 planraCpp: planraCpp.o
-planraCpp.o: plane.h planraCpp.mk proto.h type.h vulkan.cpp
+planraCpp.o: plane.h planraCpp.mk type.h vulkan.cpp
 protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o wrapCpp.o
