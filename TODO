@@ -30,3 +30,7 @@ Write agda proof. Produce sidedness video.
 Write stomp box. Produce multimedia video.
 Write shader ball.lua. Produce show video.
 Write group world.lua. Produce demo video.
+
+Have world.lua be a window manager that has non-square projections.
+A projection is a region on the two dimensional screen.
+The region has any number of edges, instead of just four.
