@@ -527,12 +527,9 @@ Pierce = {
 	{"pol","Int32",{},{}},
 	{"pad","Int32",{},{}},
 }
-Duplicate = { -- of point per triangle it is in
-	{"vec","Old",{},{4}}, -- intersection of planes
-	{"idx","Int32",{},{}}, -- triangle for subsequent
-	{"pol","Int32",{},{}}, -- polytope triangle is in
-	{"tex","Int32",{},{}}, -- texture selector
-	{"rot","Int32",{},{}}, -- texture rotation
+Fetch = {
+	{"pos","Old",{},{4}},
+	{"color","Old",{},{4}},
 }
 Vector = {
 	{"vec","Old",{},{4}},

@@ -66,8 +66,15 @@ extern "C" {
 
 // TODO replace by type.h
 struct Input {
-    glm::vec2 pos;
-    glm::vec3 color;
+    struct Fetch fetch;
+
+    Input(float *pos, float *color) {
+        for (int i = 0; i < 2; i++) fetch.pos[i] = pos[i];
+        for (int i = 0; i < 3; i++) fetch.color[i] = color[i];
+        char *str = 0; showFetch(&fetch,&str);
+        std::cout << str << std::endl;
+        free(str);
+    }
 
     static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription description{};
@@ -84,12 +91,12 @@ struct Input {
         attribute[0].binding = 0;
         attribute[0].location = 0;
         attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attribute[0].offset = offsetof(Input, pos);
+        attribute[0].offset = offsetof(Input, fetch.pos);
 
         attribute[1].binding = 0;
         attribute[1].location = 1;
         attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attribute[1].offset = offsetof(Input, color);
+        attribute[1].offset = offsetof(Input, fetch.color);
 
         return attribute;
     }
@@ -100,12 +107,7 @@ struct UniformBufferObject {
     alignas(16) glm::mat4 proj;
 };
 // TODO move following to planer.lua
-const std::vector<Input> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-};
+std::vector<Input> vertices;
 #endif
 
 // TODO add type.h enum for these builtin cursors
@@ -1671,6 +1673,12 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
 }
 
 int main(int argc, char **argv) {
+#ifdef PLANRA
+    {float pos[] = {-0.5f, -0.5f}; float color[] = {1.0f, 0.0f, 0.0f}; vertices.push_back(Input(pos,color));}
+    {float pos[] = {0.5f, -0.5f}; float color[] = {0.0f, 1.0f, 0.0f}; vertices.push_back(Input(pos,color));}
+    {float pos[] = {0.5f, 0.5f}; float color[] = {0.0f, 0.0f, 1.0f}; vertices.push_back(Input(pos,color));}
+    {float pos[] = {-0.5f, 0.5f}; float color[] = {1.0f, 1.0f, 1.0f}; vertices.push_back(Input(pos,color));}
+#endif
     mainState.argc = argc;
     mainState.argv = argv;
     try {
