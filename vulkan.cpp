@@ -24,12 +24,58 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#define NANOSECONDS (10^9)
-
-#ifdef PLANRA
 extern "C" {
     #include "type.h"
     #include "plane.h"
+}
+
+#define NANOSECONDS (10^9)
+
+struct Input {
+    struct Fetch fetch;
+    int mode;
+
+    Input(float *pos, float *color) {
+        for (int i = 0; i < 2; i++) fetch.pos[i] = pos[i];
+        for (int i = 0; i < 3; i++) fetch.color[i] = color[i];
+        char *str = 0; showFetch(&fetch,&str);
+        std::cout << str << std::endl;
+        free(str);
+    }
+
+    static VkVertexInputBindingDescription getBindingDescription() {
+        VkVertexInputBindingDescription description{};
+        description.binding = 0;
+        description.stride = sizeof(Input);
+        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        return description;
+    }
+
+    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 3> attribute{};
+
+        attribute[0].binding = 0;
+        attribute[0].location = 0;
+        attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attribute[0].offset = offsetof(Input, fetch.pos);
+
+        attribute[1].binding = 0;
+        attribute[1].location = 1;
+        attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attribute[1].offset = offsetof(Input, fetch.color);
+
+        attribute[2].binding = 0;
+        attribute[2].location = 2;
+        attribute[2].format = VK_FORMAT_R16_UINT;
+        attribute[2].offset = offsetof(Input, mode);
+
+        return attribute;
+    }
+};
+
+#ifdef PLANRA
+extern "C" {
     // TODO link with plane.c
     vftype callSafe;
     uftype callDma;
@@ -64,48 +110,6 @@ extern "C" {
     void vulkanDraw(enum Micro shader, int base, int limit);
 }
 
-// TODO replace by type.h
-struct Input {
-    struct Fetch fetch;
-
-    Input(float *pos, float *color) {
-        for (int i = 0; i < 2; i++) fetch.pos[i] = pos[i];
-        for (int i = 0; i < 3; i++) fetch.color[i] = color[i];
-        char *str = 0; showFetch(&fetch,&str);
-        std::cout << str << std::endl;
-        free(str);
-    }
-
-    static VkVertexInputBindingDescription getBindingDescription() {
-        VkVertexInputBindingDescription description{};
-        description.binding = 0;
-        description.stride = sizeof(Input);
-        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        return description;
-    }
-
-    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 2> attribute{};
-
-        attribute[0].binding = 0;
-        attribute[0].location = 0;
-        attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attribute[0].offset = offsetof(Input, fetch.pos);
-
-        attribute[1].binding = 0;
-        attribute[1].location = 1;
-        attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attribute[1].offset = offsetof(Input, fetch.color);
-
-        return attribute;
-    }
-};
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
-};
 // TODO move following to planer.lua
 std::vector<Input> vertices;
 #endif
@@ -1083,7 +1087,7 @@ struct BufferState {
             VkDescriptorBufferInfo info{};
             info.buffer = uniform;
             info.offset = 0;
-            info.range = sizeof(UniformBufferObject);
+            info.range = sizeof(struct Replica);
             VkWriteDescriptorSet update{};
             update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             update.dstSet = descriptor;
@@ -1646,12 +1650,12 @@ void vulkanDma(struct Center *center) {
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         VkExtent2D extent = mainState.swapState->extent;
-        UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-        mainState.changeQueue->set(0,sizeof(UniformBufferObject),&ubo);
+        struct Replica ubo{};
+	glm::mat4 tmp;
+	tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.model,&tmp,sizeof(ubo.model));
+	tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.view,&tmp,sizeof(ubo.view));
+	tmp = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[1][1] *= -1; memcpy(&ubo.proj,&tmp,sizeof(ubo.proj));
+        mainState.changeQueue->set(0,sizeof(struct Replica),&ubo);
         mainState.callDma = false;
     }
 }

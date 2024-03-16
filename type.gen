@@ -38,9 +38,7 @@ Memory = {
 	"Texturez", -- memory for textures
 	"Textualz", -- memory for text
 	"Basisz", -- base for each dimension
-	"Allmatz", -- whole view transformation
-	"Fewmatz", -- matrix per set of planes
-	"Onematz", -- single face transformation
+	"Matrixz", -- transformations
 	"Piercez", -- pierce point normal and valid
 	"Slicez", -- plane or point index ranges
 	"Stackz", -- named machine locations
@@ -169,16 +167,9 @@ Tool = {
 	"Roller",
 }
 Micro = {
-	"Dipoint", -- display from triangles of points
-	"Diplane", -- display from triangles of points from planes
-	"Adpoint", -- find pierce points from triangles of points
-	"Adplane", -- find pierce points from triangles of points from planes
-	"Copoint", -- find planes from triangles of points
-	"Coplane", -- find points from planes
-	"Onpoint", -- fill triangle with plane shared by corners
-	"Onplane", -- fill pierce with points on given plane
-	"Depoint", -- copy points to pierces
-	"Deplane", -- copy planes to pierces
+	"Concept",
+	"Tryout",
+	"Practice",
 }
 Code = {
 	"Corner",
@@ -302,18 +293,10 @@ Process = {
 }
 --HERE Constants
 Initial = {
-	{"Micro","Dipoint","Code","Corner","Str","vertex_render"},
-	{"Micro","Dipoint","Code","Fragment","Str","fragment_render"},
-	{"Micro","Diplane","Code","Corner","Str","diplane_vertex"},
-	{"Micro","Diplane","Code","Fragment","Str","diplane_fragment"},
-	{"Micro","Adpoint","Str","kernel_pierce"},
-	{"Micro","Adplane","Str","adplane_compute"},
-	{"Micro","Copoint","Str","copoint_compute"},
-	{"Micro","Coplane","Str","coplane_compute"},
-	{"Micro","Onpoint","Str","onpoint_compute"},
-	{"Micro","Onplane","Str","onplane_compute"},
-	{"Micro","Depoint","Str","depoint_compute"},
-	{"Micro","Deplane","Str","deplane_compute"},
+	{"Micro","Practice","Code","Corner","Str","vertex_render"},
+	{"Micro","Practice","Code","Fragment","Str","fragment_render"},
+	{"Micro","Practice","Code","Corner","Str","diplane_vertex"},
+	{"Micro","Practice","Code","Fragment","Str","diplane_fragment"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:5".. -- assign to configuration
@@ -326,7 +309,7 @@ Bootstrap = {
 		"val[1]:512"..
 		"val[2]:20"..
 		"val[3]:63"..
-		"val[4]:Int(%(return castMicro(\"Adpoint\"))))"},
+		"val[4]:Int(%(return castMicro(\"Practice\"))))"},
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
 		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..
@@ -476,9 +459,9 @@ Event = { -- for line process
 	{"oth","Int",{},{}},
 	{"key","Num",{},{}},
 	{"val","Num",{},{}},
-    {"upd","Ratio",{["tag"]={["Stock"]=true}},{}},
-    {"dly","Ratio",{["tag"]={["Stock"]=true}},{}},
-    {"sch","Ratio",{["tag"]={["Stock"]=true}},{}},
+	{"upd","Ratio",{["tag"]={["Stock"]=true}},{}},
+	{"dly","Ratio",{["tag"]={["Stock"]=true}},{}},
+	{"sch","Ratio",{["tag"]={["Stock"]=true}},{}},
 	{"flw","Flow",{["tag"]={["Bind"]=true}},{}},
 	{"siz","Int",{["tag"]={["Wave"]=true}},{}},
 	{"buf","Num",{["tag"]={["Wave"]=true}},"siz"},
@@ -493,12 +476,22 @@ Event = { -- for line process
 	{"len","Int",{["tag"]={["Audio"]=true}},{}},
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
+Replica = {
+	{"model","Old",{},{16}},
+	{"view","Old",{},{16}},
+	{"proj","Old",{},{16}},
+}
+Refer = {
+	{"ref","Int32",{},{4}},
+	{"reg","Old",{},{16}},
+	{"reh","Old",{},{16}},
+}
 Uniform = {
 	{"all","Int32",{},{}}, -- which subject to use
 	{"one","Int32",{},{}}, -- which element to use
 	{"lon","Int32",{},{}}, -- horizontal axis of cursor
 	{"lat","Int32",{},{}}, -- vertical axis of cursor
-	{"pro","Int32",{},{}}, -- which subject for projection
+	{"pro","Int32",{},{}}, -- which projection to use
 	{"idx","Int32",{},{}}, -- which plane to apply one matrix to
 	{"use","Int32",{},{}}, -- which basis to use
 	{"siz","Int32",{},{}}, -- size of swarm buffer
@@ -650,9 +643,7 @@ Center = {
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
-	{"all","Matrix",{["mem"]={["Allmatz"]=true}},"siz"},
-	{"few","Matrix",{["mem"]={["Fewmatz"]=true}},"siz"},
-	{"one","Matrix",{["mem"]={["Onematz"]=true}},"siz"},
+	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
 	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
 	{"tur","Int32",{["mem"]={["Textualz"]=true}},"siz"},
