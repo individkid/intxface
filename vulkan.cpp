@@ -569,16 +569,23 @@ struct DeviceState {
             return render;
         } (device,image);
         descriptor = [](VkDevice device) {
-            VkDescriptorSetLayoutBinding binding{};
-            binding.binding = 0;
-            binding.descriptorCount = 1;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            binding.pImmutableSamplers = nullptr;
-            binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            VkDescriptorSetLayoutBinding uniform{};
+            uniform.binding = 0;
+            uniform.descriptorCount = 1;
+            uniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uniform.pImmutableSamplers = nullptr;
+            uniform.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            VkDescriptorSetLayoutBinding matrix{};
+            matrix.binding = 1;
+            matrix.descriptorCount = 1;
+            matrix.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            matrix.pImmutableSamplers = nullptr;
+            matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	    VkDescriptorSetLayoutBinding bindings[] = {uniform,matrix};
             VkDescriptorSetLayoutCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            info.bindingCount = 1;
-            info.pBindings = &binding;
+            info.bindingCount = 2;
+            info.pBindings = bindings;
             VkDescriptorSetLayout descriptor;
             if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
                 throw std::runtime_error("failed to create descriptor set layout!");
@@ -1040,8 +1047,9 @@ struct BufferState {
                 throw std::runtime_error("failed to create buffer!");
             return buffer;
         } (device,size,tag==ChangeBuf?
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:(tag==StoreBuf?
+	    VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
         vkGetBufferMemoryRequirements(device, buffer, &requirements);
         memory = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
             VkMemoryAllocateInfo info{};
@@ -1082,18 +1090,34 @@ struct BufferState {
             VkDescriptorSet descriptor;
             if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate descriptor sets!");
-            return descriptor;}(device,layout,dpool);
+            return descriptor;}(device,layout,dpool);}
+        if (tag == ChangeBuf) {
         [](VkDevice device, VkBuffer uniform, VkDescriptorSet descriptor) {
             VkDescriptorBufferInfo info{};
             info.buffer = uniform;
             info.offset = 0;
-            info.range = sizeof(struct Replica);
+            info.range = sizeof(struct Replica); // TODO make this a parameter
             VkWriteDescriptorSet update{};
             update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             update.dstSet = descriptor;
-            update.dstBinding = 0;
+            update.dstBinding = 0; // TODO make this a parameter
             update.dstArrayElement = 0;
             update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            update.descriptorCount = 1;
+            update.pBufferInfo = &info;
+            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);}(device,buffer,descriptor);}
+        if (tag == StoreBuf) {
+        [](VkDevice device, VkBuffer uniform, VkDescriptorSet descriptor) {
+            VkDescriptorBufferInfo info{};
+            info.buffer = uniform;
+            info.offset = 0;
+            info.range = sizeof(glm::mat4); // TODO make this a parameter
+            VkWriteDescriptorSet update{};
+            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            update.dstSet = descriptor;
+            update.dstBinding = 1; // TODO make this a parameter
+            update.dstArrayElement = 0;
+            update.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             update.descriptorCount = 1;
             update.pBufferInfo = &info;
             vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);}(device,buffer,descriptor);}
@@ -1442,6 +1466,7 @@ struct MainState {
     PipeState *pipeState;
     BufferQueue<BufferState,PoolState> *fetchQueue;
     BufferQueue<BufferState,PoolState> *changeQueue;
+    BufferQueue<BufferState,PoolState> *storeQueue;
     BufferQueue<DrawState,PipeState> *drawQueue;
     SwapState *swapState;
     ThreadState *threadState;
@@ -1486,6 +1511,7 @@ struct MainState {
     .pipeState = 0,
     .fetchQueue = 0,
     .changeQueue = 0,
+    .storeQueue = 0,
     .drawQueue = 0,
     .swapState = 0,
     .threadState = 0,
@@ -1582,12 +1608,12 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     mainState.changeQueue = [](PoolState *poolState, int size) {
         return new BufferQueue<BufferState,PoolState>(poolState,size,ChangeBuf);
     }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
+    mainState.storeQueue = [](PoolState *poolState, int size) {
+        return new BufferQueue<BufferState,PoolState>(poolState,size,StoreBuf);
+    }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
     mainState.drawQueue = [](PipeState *pipeState, int size) {
         return new BufferQueue<DrawState,PipeState>(pipeState,size,DrawBuf);
     }(mainState.pipeState,mainState.MAX_FRAMES_IN_FLIGHT);
-    // TODO mainState.computeQueue = [](PipeState *pipeState, int size) {
-        // return new BufferQueue<DrawState,PipeState>(pipeState,size,ComputeBuf);
-    // }(mainState.pipeState,mainState.MAX_FRAMES_IN_FLIGHT);
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
@@ -1608,6 +1634,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
             mainState.threadState = new ThreadState(mainState.logicalState->device);
             mainState.fetchQueue->clr(mainState.threadState);
             mainState.changeQueue->clr(mainState.threadState);
+            mainState.storeQueue->clr(mainState.threadState);
             mainState.drawQueue->clr(mainState.threadState);}
         planeMain();}
     break;
@@ -1622,6 +1649,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     break;
     case (Graphics):
     delete mainState.drawQueue; mainState.drawQueue = 0;
+    delete mainState.storeQueue; mainState.storeQueue = 0;
     delete mainState.changeQueue; mainState.changeQueue = 0;
     delete mainState.fetchQueue; mainState.fetchQueue = 0;
     delete mainState.pipeState; mainState.pipeState = 0;
@@ -1656,11 +1684,12 @@ void vulkanDma(struct Center *center) {
 	tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.view,&tmp,sizeof(ubo.view));
 	tmp = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[1][1] *= -1; memcpy(&ubo.proj,&tmp,sizeof(ubo.proj));
         mainState.changeQueue->set(0,sizeof(struct Replica),&ubo);
+	tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); mainState.storeQueue->set(0,sizeof(tmp),&tmp);
         mainState.callDma = false;
     }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
-    // TODO depending on shader call computeState instead
+    // TODO depending on shader call different pipeline
     if (mainState.callDraw) {
         if (!mainState.fetchQueue->get()) return;
         if (!mainState.changeQueue->get()) return;
