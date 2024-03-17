@@ -33,11 +33,10 @@ extern "C" {
 
 struct Input {
     struct Fetch fetch;
-    int mode;
 
-    Input(float *pos, float *color) {
+    Input(float *pos, float *hue) {
         for (int i = 0; i < 2; i++) fetch.pos[i] = pos[i];
-        for (int i = 0; i < 3; i++) fetch.color[i] = color[i];
+        for (int i = 0; i < 3; i++) fetch.hue[i] = hue[i];
         char *str = 0; showFetch(&fetch,&str);
         std::cout << str << std::endl;
         free(str);
@@ -63,12 +62,12 @@ struct Input {
         attribute[1].binding = 0;
         attribute[1].location = 1;
         attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attribute[1].offset = offsetof(Input, fetch.color);
+        attribute[1].offset = offsetof(Input, fetch.hue);
 
         attribute[2].binding = 0;
         attribute[2].location = 2;
-        attribute[2].format = VK_FORMAT_R16_UINT;
-        attribute[2].offset = offsetof(Input, mode);
+        attribute[2].format = VK_FORMAT_R32_UINT;
+        attribute[2].offset = offsetof(Input, fetch.idx);
 
         return attribute;
     }

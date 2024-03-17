@@ -12,7 +12,7 @@ layout(binding = 1) buffer readonly Matrix {mat4 mat[];} mat;
 // Use storage buffer and gl_VertexIndex instead of vertex binding.
 layout(location = 0) in vec2 inPosition;
 layout(location = 1) in vec3 inColor;
-layout(location = 2) in uint inMode;
+layout(location = 2) in uint inIndex;
 
 layout(location = 0) out vec3 fragColor;
 
@@ -20,5 +20,4 @@ void main() {
     // TODO change to mat.mat[uni.pro] * mat.mat[uni.all] * mat.mat[tri.tri[gl_VertexID/3].pol] * vec4(vtx[tri.tri[gl_VertexID/3].vtx[gl_VertexID%3]].vtx,1.0)
     gl_Position = uni.proj * uni.view * uni.model * vec4(inPosition, 0.0, 1.0);
     fragColor = inColor;
-    if (fragColor[0] < 0.0) fragColor[0] = inMode;
 }

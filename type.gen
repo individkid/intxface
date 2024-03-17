@@ -522,7 +522,8 @@ Pierce = {
 }
 Fetch = {
 	{"pos","Old",{},{4}},
-	{"color","Old",{},{4}},
+	{"hue","Old",{},{4}},
+	{"idx","Int32",{},{4}},
 }
 Vector = {
 	{"vec","Old",{},{4}},
