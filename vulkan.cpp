@@ -475,13 +475,14 @@ struct PhysicalState {
 
 struct DeviceState {
     VkDevice device;
-    VkDescriptorSetLayout descriptor;
+    VkDescriptorSet descriptor;
     VkPipelineLayout layout;
     VkPipeline pipeline;
     VkRenderPass render;
     VkQueue graphic;
     VkQueue present;
     VkCommandPool pool;
+    VkDescriptorSetLayout dlayout;
     VkDescriptorPool dpool;
     DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, uint32_t computeid, VkFormat image,
         std::vector<const char*> layers, std::vector<const char*> extensions, bool enable, int MAX_BUFFERS_AVAILABLE) {
@@ -567,7 +568,7 @@ struct DeviceState {
                 throw std::runtime_error("failed to create render pass!");
             return render;
         } (device,image);
-        descriptor = [](VkDevice device) {
+        dlayout = [](VkDevice device) {
             VkDescriptorSetLayoutBinding uniform{};
             uniform.binding = 0;
             uniform.descriptorCount = 1;
@@ -580,7 +581,7 @@ struct DeviceState {
             matrix.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             matrix.pImmutableSamplers = nullptr;
             matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	    VkDescriptorSetLayoutBinding bindings[] = {uniform,matrix};
+            VkDescriptorSetLayoutBinding bindings[] = {uniform,matrix};
             VkDescriptorSetLayoutCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             info.bindingCount = 2;
@@ -590,6 +591,35 @@ struct DeviceState {
                 throw std::runtime_error("failed to create descriptor set layout!");
             return descriptor;
         } (device);
+        dpool = [](VkDevice device, int uniforms, int stores) {
+            VkDescriptorPoolSize uniform{};
+            uniform.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uniform.descriptorCount = static_cast<uint32_t>(uniforms);
+            VkDescriptorPoolSize store{};
+            store.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            store.descriptorCount = static_cast<uint32_t>(stores);
+            VkDescriptorPoolSize size[] = {uniform,store};
+            VkDescriptorPoolCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+            info.poolSizeCount = 2;
+            info.pPoolSizes = size;
+            info.maxSets = static_cast<uint32_t>(uniforms+stores);
+            VkDescriptorPool pool;
+            if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS)
+                throw std::runtime_error("failed to create descriptor pool!");
+            return pool;
+        } (device, MAX_BUFFERS_AVAILABLE, MAX_BUFFERS_AVAILABLE);
+        descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
+            VkDescriptorSetAllocateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            info.descriptorPool = pool;
+            info.descriptorSetCount = static_cast<uint32_t>(1);
+            info.pSetLayouts = &layout;
+            VkDescriptorSet descriptor;
+            if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
+                throw std::runtime_error("failed to allocate descriptor sets!");
+            return descriptor;}(device,dlayout,dpool);
         layout = [](VkDevice device, VkDescriptorSetLayout descriptor) {
             VkPipelineLayoutCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -599,7 +629,7 @@ struct DeviceState {
             if (vkCreatePipelineLayout(device, &info, nullptr, &layout) != VK_SUCCESS)
                 throw std::runtime_error("failed to create pipeline layout!");
             return layout;
-        } (device,descriptor);
+        } (device,dlayout);
         pipeline = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout, const char *vertex, const char *fragment) {
             VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
                 VkShaderModuleCreateInfo createInfo{};
@@ -724,32 +754,13 @@ struct DeviceState {
                 throw std::runtime_error("failed to create graphic command pool!");
             return pool;
         } (device,graphicid);
-        dpool = [](VkDevice device, int uniforms, int stores) {
-            VkDescriptorPoolSize uniform{};
-            uniform.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            uniform.descriptorCount = static_cast<uint32_t>(uniforms);
-            VkDescriptorPoolSize store{};
-            store.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            store.descriptorCount = static_cast<uint32_t>(stores);
-            VkDescriptorPoolSize size[] = {uniform,store};
-            VkDescriptorPoolCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-            info.poolSizeCount = 2;
-            info.pPoolSizes = size;
-            info.maxSets = static_cast<uint32_t>(uniforms+stores);
-            VkDescriptorPool pool;
-            if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS)
-                throw std::runtime_error("failed to create descriptor pool!");
-            return pool;
-        } (device, MAX_BUFFERS_AVAILABLE, MAX_BUFFERS_AVAILABLE);
     }
     ~DeviceState() {
         vkDestroyDescriptorPool(device, dpool, nullptr);
         vkDestroyCommandPool(device, pool, nullptr);
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineLayout(device, layout, nullptr);
-        vkDestroyDescriptorSetLayout(device, descriptor, nullptr);
+        vkDestroyDescriptorSetLayout(device, dlayout, nullptr);
         vkDestroyRenderPass(device, render, nullptr);
         vkDestroyDevice(device, nullptr);
     }
@@ -960,26 +971,19 @@ struct PoolState {
     VkPhysicalDevice physical;
     VkDevice device;
     VkQueue graphic;
-    VkDescriptorSetLayout layout;
     VkCommandPool pool;
-    VkDescriptorPool dpool;
-    PoolState(VkPhysicalDevice physical, VkDevice device, VkQueue graphic,
-        VkDescriptorSetLayout layout, VkCommandPool pool, VkDescriptorPool dpool) {
+    PoolState(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool) {
         this->physical = physical;
         this->device = device;
         this->graphic = graphic;
-        this->layout = layout;
         this->pool = pool;
-        this->dpool = dpool;
     }
 };
 struct BufferState {
     VkPhysicalDevice physical;
     VkDevice device;
     VkQueue graphic;
-    VkDescriptorSetLayout layout;
     VkCommandPool pool;
-    VkDescriptorPool dpool;
     VkDeviceSize size;
     BufferTag tag;
     VkBuffer staging;
@@ -988,15 +992,12 @@ struct BufferState {
     VkDeviceMemory memory;
     void *mapped;
     VkCommandBuffer command;
-    VkDescriptorSet descriptor;
     VkFence fence;
     BufferState(PoolState *info, int size, BufferTag tag) {
         this->physical = info->physical;
         this->device = info->device;
         this->graphic = info->graphic;
-        this->layout = info->layout;
         this->pool = info->pool;
-        this->dpool = info->dpool;
         this->size = size;
         this->tag = tag;
     }
@@ -1079,47 +1080,6 @@ struct BufferState {
             if (vkAllocateCommandBuffers(device, &info, &commandBuffer) != VK_SUCCESS)
                 throw std::runtime_error("failed to allocate command buffers!");
             return commandBuffer;}(device,pool);
-        if (tag == ChangeBuf || tag == StoreBuf) {
-        descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
-            VkDescriptorSetAllocateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            info.descriptorPool = pool;
-            info.descriptorSetCount = static_cast<uint32_t>(1);
-            info.pSetLayouts = &layout;
-            VkDescriptorSet descriptor;
-            if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
-                throw std::runtime_error("failed to allocate descriptor sets!");
-            return descriptor;}(device,layout,dpool);}
-        if (tag == ChangeBuf) {
-        [](VkDevice device, VkBuffer uniform, VkDescriptorSet descriptor) {
-            VkDescriptorBufferInfo info{};
-            info.buffer = uniform;
-            info.offset = 0;
-            info.range = sizeof(struct Replica); // TODO make this a parameter
-            VkWriteDescriptorSet update{};
-            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            update.dstSet = descriptor;
-            update.dstBinding = 0; // TODO make this a parameter
-            update.dstArrayElement = 0;
-            update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            update.descriptorCount = 1;
-            update.pBufferInfo = &info;
-            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);}(device,buffer,descriptor);}
-        if (tag == StoreBuf) {
-        [](VkDevice device, VkBuffer uniform, VkDescriptorSet descriptor) {
-            VkDescriptorBufferInfo info{};
-            info.buffer = uniform;
-            info.offset = 0;
-            info.range = sizeof(glm::mat4); // TODO make this a parameter
-            VkWriteDescriptorSet update{};
-            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            update.dstSet = descriptor;
-            update.dstBinding = 1; // TODO make this a parameter
-            update.dstArrayElement = 0;
-            update.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            update.descriptorCount = 1;
-            update.pBufferInfo = &info;
-            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);}(device,buffer,descriptor);}
         fence = [](VkDevice device) {
             VkFence fence;
             VkFenceCreateInfo info{};
@@ -1143,7 +1103,7 @@ struct BufferState {
     // this called in separate thread to get fence
         VkResult result;
         if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
-        memcpy((char*)mapped+loc,ptr,siz);}
+            memcpy((char*)mapped+loc,ptr,siz);}
         vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
         VkCommandBufferBeginInfo begin{};
@@ -1171,18 +1131,22 @@ struct PipeState {
     VkRenderPass render;
     VkPipeline pipeline;
     VkPipelineLayout layout;
+    VkDescriptorSetLayout dlayout;
+    VkDescriptorSet descriptor;
     VkCommandPool pool;
     VkExtent2D extent;
     VkSwapchainKHR swap;
     std::vector<VkFramebuffer> framebuffers;
-    PipeState(VkDevice device, VkQueue graphic, VkQueue present, VkRenderPass render,
-        VkPipeline pipeline, VkPipelineLayout layout, VkCommandPool pool) {
+    PipeState(VkDevice device, VkQueue graphic, VkQueue present, VkRenderPass render, VkPipeline pipeline,
+        VkPipelineLayout layout, VkDescriptorSetLayout dlayout, VkDescriptorSet descriptor, VkCommandPool pool) {
         this->device = device;
         this->graphic = graphic;
         this->present = present;
         this->render = render;
         this->pipeline = pipeline;
         this->layout = layout;
+        this->dlayout = dlayout;
+        this->descriptor = descriptor;
         this->pool = pool;
     }
     void init(VkExtent2D extent, VkSwapchainKHR swap, const std::vector<VkFramebuffer> &framebuffers) {
@@ -1198,6 +1162,8 @@ struct DrawState {
     VkRenderPass render;
     VkPipeline pipeline;
     VkPipelineLayout layout;
+    VkDescriptorSetLayout dlayout;
+    VkDescriptorSet descriptor;
     VkCommandPool pool;
     VkSemaphore available;
     VkSemaphore finished;
@@ -1211,6 +1177,8 @@ struct DrawState {
         this->render = pipe->render;
         this->pipeline = pipe->pipeline;
         this->layout = pipe->layout;
+        this->dlayout = pipe->dlayout;
+        this->descriptor = pipe->descriptor;
         this->pool = pipe->pool;
         this->pipe = pipe;
     }
@@ -1255,7 +1223,7 @@ struct DrawState {
         vkDestroySemaphore(device, finished, nullptr);
         vkDestroySemaphore(device, available, nullptr);
     }
-    VkFence setup(VkDescriptorSet descriptor, VkBuffer buffer, uint32_t size, bool *framebufferResized) {
+    VkFence setup(VkBuffer fetch, VkBuffer uniform, VkBuffer matrix, uint32_t size, bool *framebufferResized) {
     // this called in separate thread to get fence
         uint32_t index;
         VkResult result = vkAcquireNextImageKHR(device, pipe->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
@@ -1298,8 +1266,39 @@ struct DrawState {
         [](VkBuffer buffer, VkCommandBuffer command){
             VkBuffer buffers[] = {buffer};
             VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(command, 0, 1, buffers, offsets);}(buffer,command);
-        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
+            vkCmdBindVertexBuffers(command, 0, 1, buffers, offsets);}(fetch,command);
+        [](VkDevice device, VkBuffer uniform, VkDescriptorSet descriptor) {
+        // TODO move to lambda that calls bind in BufferState
+            VkDescriptorBufferInfo info{};
+            info.buffer = uniform;
+            info.offset = 0;
+            info.range = sizeof(struct Replica); // TODO make this a parameter
+            VkWriteDescriptorSet update{};
+            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            update.dstSet = descriptor;
+            update.dstBinding = 0; // TODO make this a parameter
+            update.dstArrayElement = 0;
+            update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            update.descriptorCount = 1;
+            update.pBufferInfo = &info;
+            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
+        }(device,uniform,descriptor);
+        [](VkDevice device, VkBuffer uniform, VkDescriptorSet descriptor) {
+            VkDescriptorBufferInfo info{};
+            info.buffer = uniform;
+            info.offset = 0;
+            info.range = sizeof(glm::mat4); // TODO make this a parameter
+            VkWriteDescriptorSet update{};
+            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            update.dstSet = descriptor;
+            update.dstBinding = 1; // TODO make this a parameter
+            update.dstArrayElement = 0;
+            update.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            update.descriptorCount = 1;
+            update.pBufferInfo = &info;
+            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
+        }(device,matrix,descriptor);
+        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr); // TODO move from setup to init?
         vkCmdDraw(command, size, 1, 0, 0);
         vkCmdEndRenderPass(command);
         if (vkEndCommandBuffer(command) != VK_SUCCESS)
@@ -1464,8 +1463,8 @@ struct MainState {
     PoolState *poolState;
     PipeState *pipeState;
     BufferQueue<BufferState,PoolState> *fetchQueue;
-    BufferQueue<BufferState,PoolState> *changeQueue;
-    BufferQueue<BufferState,PoolState> *storeQueue;
+    BufferQueue<BufferState,PoolState> *uniformQueue;
+    BufferQueue<BufferState,PoolState> *matrixQueue;
     BufferQueue<DrawState,PipeState> *drawQueue;
     SwapState *swapState;
     ThreadState *threadState;
@@ -1509,8 +1508,8 @@ struct MainState {
     .poolState = 0,
     .pipeState = 0,
     .fetchQueue = 0,
-    .changeQueue = 0,
-    .storeQueue = 0,
+    .uniformQueue = 0,
+    .matrixQueue = 0,
     .drawQueue = 0,
     .swapState = 0,
     .threadState = 0,
@@ -1594,20 +1593,19 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
     mainState.poolState = [](PhysicalState *physical, DeviceState *device){
-        return new PoolState(physical->physical,device->device,device->graphic,
-        device->descriptor,device->pool,device->dpool);
+        return new PoolState(physical->physical,device->device,device->graphic,device->pool);
     }(mainState.physicalState,mainState.logicalState);
     mainState.pipeState = [](DeviceState *device){
         return new PipeState(device->device,device->graphic,device->present,
-        device->render,device->pipeline,device->layout,device->pool);
+        device->render,device->pipeline,device->layout,device->dlayout,device->descriptor,device->pool);
     }(mainState.logicalState);
     mainState.fetchQueue = [](PoolState *poolState, int size) {
         return new BufferQueue<BufferState,PoolState>(poolState,size,FetchBuf);
     }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
-    mainState.changeQueue = [](PoolState *poolState, int size) {
+    mainState.uniformQueue = [](PoolState *poolState, int size) {
         return new BufferQueue<BufferState,PoolState>(poolState,size,ChangeBuf);
     }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
-    mainState.storeQueue = [](PoolState *poolState, int size) {
+    mainState.matrixQueue = [](PoolState *poolState, int size) {
         return new BufferQueue<BufferState,PoolState>(poolState,size,StoreBuf);
     }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
     mainState.drawQueue = [](PipeState *pipeState, int size) {
@@ -1632,8 +1630,8 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         if (!mainState.threadState && mainState.logicalState) {
             mainState.threadState = new ThreadState(mainState.logicalState->device);
             mainState.fetchQueue->clr(mainState.threadState);
-            mainState.changeQueue->clr(mainState.threadState);
-            mainState.storeQueue->clr(mainState.threadState);
+            mainState.uniformQueue->clr(mainState.threadState);
+            mainState.matrixQueue->clr(mainState.threadState);
             mainState.drawQueue->clr(mainState.threadState);}
         planeMain();}
     break;
@@ -1648,8 +1646,8 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     break;
     case (Graphics):
     delete mainState.drawQueue; mainState.drawQueue = 0;
-    delete mainState.storeQueue; mainState.storeQueue = 0;
-    delete mainState.changeQueue; mainState.changeQueue = 0;
+    delete mainState.matrixQueue; mainState.matrixQueue = 0;
+    delete mainState.uniformQueue; mainState.uniformQueue = 0;
     delete mainState.fetchQueue; mainState.fetchQueue = 0;
     delete mainState.pipeState; mainState.pipeState = 0;
     delete mainState.poolState; mainState.poolState = 0;
@@ -1682,8 +1680,8 @@ void vulkanDma(struct Center *center) {
 	tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.model,&tmp,sizeof(ubo.model));
 	tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.view,&tmp,sizeof(ubo.view));
 	tmp = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[1][1] *= -1; memcpy(&ubo.proj,&tmp,sizeof(ubo.proj));
-        mainState.changeQueue->set(0,sizeof(struct Replica),&ubo);
-	tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); mainState.storeQueue->set(0,sizeof(tmp),&tmp);
+        mainState.uniformQueue->set(0,sizeof(struct Replica),&ubo);
+	tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); mainState.matrixQueue->set(0,sizeof(tmp),&tmp);
         mainState.callDma = false;
     }
 }
@@ -1691,14 +1689,16 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
     // TODO depending on shader call different pipeline
     if (mainState.callDraw) {
         if (!mainState.fetchQueue->get()) return;
-        if (!mainState.changeQueue->get()) return;
+        if (!mainState.uniformQueue->get()) return;
+        if (!mainState.matrixQueue->get()) return;
         if (!mainState.drawQueue->set()) return;
         int temp = mainState.drawQueue->tmp();
-        VkDescriptorSet descriptor = mainState.changeQueue->get(mainState.drawQueue->tmp(temp))->descriptor;
-        VkBuffer buffer = mainState.fetchQueue->get(mainState.drawQueue->tmp(temp))->buffer;
+        VkBuffer uniform = mainState.uniformQueue->get(mainState.drawQueue->tmp(temp))->buffer;
+        VkBuffer matrix = mainState.matrixQueue->get(mainState.drawQueue->tmp(temp))->buffer;
+        VkBuffer fetch = mainState.fetchQueue->get(mainState.drawQueue->tmp(temp))->buffer;
         uint32_t size = static_cast<uint32_t>(vertices.size());
-        std::function<bool()> done = mainState.drawQueue->set(size,[descriptor,buffer,size](DrawState*draw){
-            return draw->setup(descriptor,buffer,size,&mainState.framebufferResized);});
+        std::function<bool()> done = mainState.drawQueue->set(size,[fetch,uniform,matrix,size](DrawState*draw){
+            return draw->setup(fetch,uniform,matrix,size,&mainState.framebufferResized);});
         mainState.drawQueue->tmp(temp,done);
         mainState.callDma = true;
     }
