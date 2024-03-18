@@ -228,6 +228,84 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
+struct ThreadState {
+    VkDevice device;
+    sem_t protect;
+    sem_t semaphore;
+    pthread_t thread;
+    bool finish;
+    std::queue<std::function<VkFence()>> setup;
+    std::queue<VkFence> fence;
+    std::queue<int> order;
+    std::set<int> lookup;
+    int seqnum;
+    ThreadState(VkDevice device) {
+        this->device = device;
+        finish = false;
+        seqnum = 0;
+        if (sem_init(&protect, 0, 1) != 0 ||
+            sem_init(&semaphore, 0, 0) != 0 ||
+            pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
+    }
+    ~ThreadState() {
+    // this destructed to wait for device idle
+        if (sem_wait(&protect) != 0) {
+            std::cerr << "cannot wait for protect!" << std::endl;
+            std::terminate();}
+        finish = true;
+        if (sem_post(&protect) != 0) {
+            std::cerr << "cannot post to protect!" << std::endl;
+            std::terminate();}
+        if (sem_post(&semaphore) != 0 ||
+            pthread_join(thread,0) != 0 ||
+            sem_destroy(&semaphore) != 0 ||
+            sem_destroy(&protect) != 0) {
+            std::cerr << "failed to join thread!" << std::endl;
+            std::terminate();}
+    }
+    static void *separate(void *ptr) {
+        struct ThreadState *arg = (ThreadState*)ptr;
+        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        while (1) {
+            if (arg->finish) {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                break;}
+            while (!arg->setup.empty()) {
+                arg->fence.push(arg->setup.front()()); arg->setup.pop();}
+            if (arg->fence.empty()) {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
+            else {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
+                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop(); arg->fence.pop();}
+                /*planeSafe(...);*/}}
+        vkDeviceWaitIdle(arg->device);
+        return 0;
+    }
+    bool clear(int given) {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        bool done = (lookup.find(given) == lookup.end());
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        return done;
+    }
+    std::function<bool()> push(std::function<VkFence()> given) {
+    // return function that returns whether fence returned by given function in separate thread is done
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+        setup.push(given);
+        int local = seqnum++; order.push(local); lookup.insert(local);
+        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
+        std::function<bool()> done = [this,local](){return this->clear(local);};
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        return done;
+    }
+};
+
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
@@ -366,14 +444,10 @@ struct PhysicalState {
     VkPhysicalDevice physical;
     uint32_t graphicid;
     uint32_t presentid;
-    uint32_t computeid;
     uint32_t minimum;
     VkSurfaceFormatKHR format;
     VkPresentModeKHR mode;
     VkFormat image;
-    PhysicalState(VkInstance instance, std::vector<const char*> extensions) {
-        // TODO find computeid
-    }
     PhysicalState(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions) {
         std::optional<uint32_t> graphic;
         std::optional<uint32_t> present;
@@ -446,8 +520,6 @@ struct PhysicalState {
         } (instance,surface,extensions);
         graphicid = graphic.value();
         presentid = present.value();
-        if (compute.has_value()) computeid = compute.value();
-        else computeid = graphic.value();
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
         minimum = capabilities.minImageCount + 1;
@@ -475,7 +547,6 @@ struct PhysicalState {
 
 struct DeviceState {
     VkDevice device;
-    VkDescriptorSet descriptor;
     VkPipelineLayout layout;
     VkPipeline pipeline;
     VkRenderPass render;
@@ -484,9 +555,9 @@ struct DeviceState {
     VkCommandPool pool;
     VkDescriptorSetLayout dlayout;
     VkDescriptorPool dpool;
-    DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, uint32_t computeid, VkFormat image,
+    DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, VkFormat image,
         std::vector<const char*> layers, std::vector<const char*> extensions, bool enable, int MAX_BUFFERS_AVAILABLE) {
-        device = [](VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, uint32_t computeid,
+        device = [](VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid,
             const std::vector<const char*> layers, const std::vector<const char*> extensions, bool enable) {
             VkDevice device;
             std::vector<VkDeviceQueueCreateInfo> infos;
@@ -507,13 +578,6 @@ struct DeviceState {
                 info.queueCount = 1;
                 info.pQueuePriorities = prioritys.data();
                 infos.push_back(info);}
-            if (computeid != graphicid && computeid != presentid) {
-                VkDeviceQueueCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                info.queueFamilyIndex = computeid;
-                info.queueCount = 1;
-                info.pQueuePriorities = prioritys.data();
-                infos.push_back(info);}
             VkPhysicalDeviceFeatures features{};
             VkDeviceCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -530,7 +594,7 @@ struct DeviceState {
             if (vkCreateDevice(physical, &info, nullptr, &device) != VK_SUCCESS)
                 throw std::runtime_error("failed to create logical device!");
             return device;
-        } (physical,graphicid,presentid,computeid,layers,extensions,enable);
+        } (physical,graphicid,presentid,layers,extensions,enable);
         render = [](VkDevice device, VkFormat image) {
             VkAttachmentDescription attachment{};
             attachment.format = image;
@@ -756,86 +820,112 @@ struct DeviceState {
     }
 };
 
-struct ThreadState {
+struct SwapState {
     VkDevice device;
-    sem_t protect;
-    sem_t semaphore;
-    pthread_t thread;
-    bool finish;
-    std::queue<std::function<VkFence()>> setup;
-    std::queue<VkFence> fence;
-    std::queue<int> order;
-    std::set<int> lookup;
-    int seqnum;
-    ThreadState(VkDevice device) {
+    VkExtent2D extent;
+    VkSwapchainKHR swap;
+    uint32_t count;
+    std::vector<VkImage> images;
+    std::vector<VkImageView> views;
+    std::vector<VkFramebuffer> framebuffers;
+    SwapState(GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
+        VkFormat image, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkRenderPass pass,
+        uint32_t minimum, uint32_t graphicid, uint32_t presentid) {
+    // this reconstructed after device idle upon resize window
         this->device = device;
-        finish = false;
-        seqnum = 0;
-        if (sem_init(&protect, 0, 1) != 0 ||
-            sem_init(&semaphore, 0, 0) != 0 ||
-            pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
+        int width = 0, height = 0;
+        glfwGetFramebufferSize(window, &width, &height);
+        while (width == 0 || height == 0) {
+            glfwWaitEvents();
+            glfwGetFramebufferSize(window, &width, &height);
+        }
+        VkSurfaceCapabilitiesKHR capabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
+        extent = [](GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
+            int width, height;
+            if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) return capabilities.currentExtent;
+            glfwGetFramebufferSize(window, &width, &height);
+            VkExtent2D actualExtent = {static_cast<uint32_t>(width),static_cast<uint32_t>(height)};
+            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+            return actualExtent;}(window,capabilities);
+        swap = [](VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkExtent2D extent,
+            VkSurfaceCapabilitiesKHR capabilities, uint32_t minimum, uint32_t graphicid, uint32_t presentid) {
+            VkSwapchainKHR swap;
+            VkSwapchainCreateInfoKHR info{};
+            info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            info.surface = surface;
+            info.minImageCount = minimum;
+            info.imageFormat = format.format;
+            info.imageColorSpace = format.colorSpace;
+            info.imageExtent = extent;
+            info.imageArrayLayers = 1;
+            info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            if (graphicid != presentid) {
+                uint32_t indices[2] = {graphicid,presentid};
+                info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                info.queueFamilyIndexCount = 2;
+                info.pQueueFamilyIndices = indices;
+            } else
+                info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            info.preTransform = capabilities.currentTransform;
+            info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            info.presentMode = mode;
+            info.clipped = VK_TRUE;
+            if (vkCreateSwapchainKHR(device, &info, nullptr, &swap) != VK_SUCCESS)
+                throw std::runtime_error("failed to create swap chain!");
+            return swap;}(device,surface,format,mode, extent,capabilities,minimum,graphicid,presentid);
+        vkGetSwapchainImagesKHR(device, swap, &count, nullptr);
+        images.resize(count);
+        views.resize(count);
+        framebuffers.resize(count);
+        vkGetSwapchainImagesKHR(device, swap, &count, images.data());
+        for (int i = 0; i < count; i++) views[i] =
+            [](VkDevice device, VkFormat format, VkImage image) {
+            VkImageView view;
+            VkImageViewCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            info.image = image;
+            info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            info.format = format;
+            info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            info.subresourceRange.baseMipLevel = 0;
+            info.subresourceRange.levelCount = 1;
+            info.subresourceRange.baseArrayLayer = 0;
+            info.subresourceRange.layerCount = 1;
+            if (vkCreateImageView(device, &info, nullptr, &view) != VK_SUCCESS)
+                throw std::runtime_error("failed to create image views!");
+            return view;}(device,image,images[i]);
+        for (int i = 0; i < count; i++) framebuffers[i] =
+            [](VkDevice device, VkExtent2D extent, VkImageView view, VkRenderPass pass) {
+            VkFramebuffer swapFramebuffer;
+            VkImageView attachments[] = {view};
+            VkFramebufferCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            info.renderPass = pass;
+            info.attachmentCount = 1;
+            info.pAttachments = attachments;
+            info.width = extent.width;
+            info.height = extent.height;
+            info.layers = 1;
+            if (vkCreateFramebuffer(device, &info, nullptr, &swapFramebuffer) != VK_SUCCESS)
+                throw std::runtime_error("failed to create framebuffer!");
+            return swapFramebuffer;}(device,extent,views[i],pass);
     }
-    ~ThreadState() {
-    // this destructed to wait for device idle
-        if (sem_wait(&protect) != 0) {
-            std::cerr << "cannot wait for protect!" << std::endl;
-            std::terminate();}
-        finish = true;
-        if (sem_post(&protect) != 0) {
-            std::cerr << "cannot post to protect!" << std::endl;
-            std::terminate();}
-        if (sem_post(&semaphore) != 0 ||
-            pthread_join(thread,0) != 0 ||
-            sem_destroy(&semaphore) != 0 ||
-            sem_destroy(&protect) != 0) {
-            std::cerr << "failed to join thread!" << std::endl;
-            std::terminate();}
-    }
-    static void *separate(void *ptr) {
-        struct ThreadState *arg = (ThreadState*)ptr;
-        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        while (1) {
-            if (arg->finish) {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                break;}
-            while (!arg->setup.empty()) {
-                arg->fence.push(arg->setup.front()()); arg->setup.pop();}
-            if (arg->fence.empty()) {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
-            else {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
-                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop(); arg->fence.pop();}
-                /*planeSafe(...);*/}}
-        vkDeviceWaitIdle(arg->device);
-        return 0;
-    }
-    bool clear(int given) {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        bool done = (lookup.find(given) == lookup.end());
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return done;
-    }
-    std::function<bool()> push(std::function<VkFence()> given) {
-    // return function that returns whether fence returned by given function in separate thread is done
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        setup.push(given);
-        int local = seqnum++; order.push(local); lookup.insert(local);
-        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
-        if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
-        std::function<bool()> done = [this,local](){return this->clear(local);};
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return done;
+    ~SwapState() {
+        for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, framebuffers[i], nullptr);
+        for (int i = 0; i < count; i++) vkDestroyImageView(device, views[i], nullptr);
+        vkDestroySwapchainKHR(device, swap, nullptr);
     }
 };
 
+struct MainState;
 enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,DrawBuf};
-template<class Buffer, class Pool> struct BufferQueue {
+template<class Buffer> struct BufferQueue {
     std::queue<Buffer*> pool;
     std::queue<Buffer*> running; std::queue<std::function<bool()>> toready;
     Buffer* ready; std::queue<std::function<bool()>> toinuse;
@@ -843,9 +933,9 @@ template<class Buffer, class Pool> struct BufferQueue {
     std::map<int,std::function<bool()>> temp;
     std::queue<void*> data; std::queue<std::function<bool()>> done;
     int count; int size; int seqnum; int limit; BufferTag tag;
-    Pool *info;
+    MainState *info;
     struct ThreadState *thread;
-    BufferQueue(Pool *info, int limit, BufferTag tag) {
+    BufferQueue(MainState *info, int limit, BufferTag tag) {
         ready = 0;
         count = 0;
         size = 0;
@@ -957,18 +1047,6 @@ template<class Buffer, class Pool> struct BufferQueue {
     }
 };
 
-struct PoolState {
-    VkPhysicalDevice physical;
-    VkDevice device;
-    VkQueue graphic;
-    VkCommandPool pool;
-    PoolState(VkPhysicalDevice physical, VkDevice device, VkQueue graphic, VkCommandPool pool) {
-        this->physical = physical;
-        this->device = device;
-        this->graphic = graphic;
-        this->pool = pool;
-    }
-};
 struct BufferState {
     VkPhysicalDevice physical;
     VkDevice device;
@@ -983,207 +1061,11 @@ struct BufferState {
     void *mapped;
     VkCommandBuffer command;
     VkFence fence;
-    BufferState(PoolState *info, int size, BufferTag tag) {
-        this->physical = info->physical;
-        this->device = info->device;
-        this->graphic = info->graphic;
-        this->pool = info->pool;
-        this->size = size;
-        this->tag = tag;
-    }
-    void init() {
-    // this called in separate thread on newly constructed
-        VkMemoryRequirements requirements;
-        VkPhysicalDeviceMemoryProperties properties;
-        vkGetPhysicalDeviceMemoryProperties(physical, &properties);
-        if (tag == FetchBuf || tag == StoreBuf) {
-        staging = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
-            VkBufferCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            info.size = size;
-            info.usage = usage;
-            info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VkBuffer buffer;
-            if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
-                throw std::runtime_error("failed to create buffer!");
-            return buffer;
-        } (device,size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        vkGetBufferMemoryRequirements(device, staging, &requirements);
-        wasted = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
-            VkMemoryAllocateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            info.allocationSize = requirements.size;
-            info.memoryTypeIndex = type;
-            VkDeviceMemory memory;
-            if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
-                throw std::runtime_error("failed to allocate buffer memory!");
-            return memory;
-        } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties, VkMemoryPropertyFlags flags) {
-            for (uint32_t i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
-                (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
-            throw std::runtime_error("failed to find suitable wasted type!");
-            return properties.memoryTypeCount;
-        } (requirements.memoryTypeBits,properties,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-        vkBindBufferMemory(device, staging, wasted, 0);}
-        if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
-        buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
-            VkBufferCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            info.size = size;
-            info.usage = usage;
-            info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VkBuffer buffer;
-            if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
-                throw std::runtime_error("failed to create buffer!");
-            return buffer;
-        } (device,size,tag==ChangeBuf?
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:(tag==StoreBuf?
-	    VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
-        vkGetBufferMemoryRequirements(device, buffer, &requirements);
-        memory = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
-            VkMemoryAllocateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            info.allocationSize = requirements.size;
-            info.memoryTypeIndex = type;
-            VkDeviceMemory memory;
-            if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
-                throw std::runtime_error("failed to allocate buffer memory!");
-            return memory;
-        } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties, VkMemoryPropertyFlags flags) {
-            for (uint32_t i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
-                (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
-            throw std::runtime_error("failed to find suitable memory type!");
-            return properties.memoryTypeCount;
-        } (requirements.memoryTypeBits,properties,tag==ChangeBuf?
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-        vkBindBufferMemory(device, buffer, memory, 0);
-        vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
-        command = [](VkDevice device, VkCommandPool command) {
-            VkCommandBuffer commandBuffer;
-            VkCommandBufferAllocateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            info.commandPool = command;
-            info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            info.commandBufferCount = (uint32_t)1;
-            if (vkAllocateCommandBuffers(device, &info, &commandBuffer) != VK_SUCCESS)
-                throw std::runtime_error("failed to allocate command buffers!");
-            return commandBuffer;}(device,pool);
-        fence = [](VkDevice device) {
-            VkFence fence;
-            VkFenceCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            if (vkCreateFence(device, &info, nullptr, &fence) != VK_SUCCESS)
-                throw std::runtime_error("failed to create fence!");
-            return fence;}(device);
-    }
-    ~BufferState() {
-        vkDestroyFence(device,fence,0);
-        vkFreeCommandBuffers(device, pool, 1, &command);
-        if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
-        vkDestroyBuffer(device, buffer, nullptr);
-        vkFreeMemory(device, memory, nullptr);}
-        if (tag == FetchBuf || tag == StoreBuf) {
-        vkDestroyBuffer(device, staging, nullptr);
-        vkFreeMemory(device, wasted, nullptr);}
-    }
-    VkFence setup(int loc, int siz, const void *ptr) {
-    // this called in separate thread to get fence
-        VkResult result;
-        if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
-            memcpy((char*)mapped+loc,ptr,siz);}
-        vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-        vkResetFences(device, 1, &fence);
-        VkCommandBufferBeginInfo begin{};
-        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(command, &begin);
-        if (tag == FetchBuf || tag == StoreBuf) {
-        VkBufferCopy copy{};
-        copy.size = size;
-        vkCmdCopyBuffer(command, staging, buffer, 1, &copy);}
-        vkEndCommandBuffer(command);
-        VkSubmitInfo submit{};
-        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &command;
-        result = vkQueueSubmit(graphic, 1, &submit, fence);
-        return fence;
-    }
-    void bind(VkCommandBuffer command, VkDescriptorSet descriptor) {
-        if (tag == FetchBuf) {
-        [](VkBuffer buffer, VkCommandBuffer command){
-            VkBuffer buffers[] = {buffer};
-            VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(command, 0, 1, buffers, offsets);
-        }(buffer,command);}
-        if (tag == ChangeBuf) {
-        [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor) {
-            VkDescriptorBufferInfo info{};
-            info.buffer = buffer;
-            info.offset = 0;
-            info.range = sizeof(struct Replica); // TODO make this a parameter
-            VkWriteDescriptorSet update{};
-            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            update.dstSet = descriptor;
-            update.dstBinding = 0; // TODO make this a parameter
-            update.dstArrayElement = 0;
-            update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            update.descriptorCount = 1;
-            update.pBufferInfo = &info;
-            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-        }(device,buffer,descriptor);}
-        if (tag == StoreBuf) {
-        [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor) {
-            VkDescriptorBufferInfo info{};
-            info.buffer = buffer;
-            info.offset = 0;
-            info.range = sizeof(glm::mat4); // TODO make this a parameter
-            VkWriteDescriptorSet update{};
-            update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            update.dstSet = descriptor;
-            update.dstBinding = 1; // TODO make this a parameter
-            update.dstArrayElement = 0;
-            update.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            update.descriptorCount = 1;
-            update.pBufferInfo = &info;
-            vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-        }(device,buffer,descriptor);}
-    }
-};
-
-struct PipeState {
-    VkDevice device;
-    VkQueue graphic;
-    VkQueue present;
-    VkRenderPass render;
-    VkPipeline pipeline;
-    VkPipelineLayout layout;
-    VkDescriptorSetLayout dlayout;
-    VkDescriptorPool dpool;
-    VkCommandPool pool;
-    VkExtent2D extent;
-    VkSwapchainKHR swap;
-    std::vector<VkFramebuffer> framebuffers;
-    PipeState(VkDevice device, VkQueue graphic, VkQueue present, VkRenderPass render, VkPipeline pipeline,
-        VkPipelineLayout layout, VkDescriptorSetLayout dlayout, VkDescriptorPool dpool, VkCommandPool pool) {
-        this->device = device;
-        this->graphic = graphic;
-        this->present = present;
-        this->render = render;
-        this->pipeline = pipeline;
-        this->layout = layout;
-        this->dlayout = dlayout;
-        this->dpool = dpool;
-        this->pool = pool;
-    }
-    void init(VkExtent2D extent, VkSwapchainKHR swap, const std::vector<VkFramebuffer> &framebuffers) {
-        this->extent = extent;
-        this->swap = swap;
-        this->framebuffers = framebuffers;
-    }
+    BufferState(MainState *state, int size, BufferTag tag);
+    void init();
+    ~BufferState();
+    VkFence setup(int loc, int siz, const void *ptr);
+    void bind(VkCommandBuffer command, VkDescriptorSet descriptor);
 };
 struct DrawState {
     VkDevice device;
@@ -1195,259 +1077,17 @@ struct DrawState {
     VkDescriptorSetLayout dlayout;
     VkDescriptorPool dpool;
     VkCommandPool pool;
+    SwapState *swap;
     VkSemaphore available;
     VkSemaphore finished;
     VkCommandBuffer command;
     VkDescriptorSet descriptor;
     VkFence fence;
-    PipeState *pipe;
-    DrawState(PipeState *pipe, int size, BufferTag tag) {
-        this->device = pipe->device;
-        this->graphic = pipe->graphic;
-        this->present = pipe->present;
-        this->render = pipe->render;
-        this->pipeline = pipe->pipeline;
-        this->layout = pipe->layout;
-        this->dlayout = pipe->dlayout;
-        this->dpool = pipe->dpool;
-        this->pool = pipe->pool;
-        this->pipe = pipe;
-    }
-    void init() {
-    // this called in separate thread on newly constructed
-        available = [](VkDevice device) {
-            VkSemaphore semaphore;
-            VkSemaphoreCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
-                throw std::runtime_error("failed to create semaphore!");
-            return semaphore;}(device);
-        finished = [](VkDevice device) {
-            VkSemaphore semaphore;
-            VkSemaphoreCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
-                throw std::runtime_error("failed to create semaphore!");
-            return semaphore;}(device);
-        command = [](VkDevice device, VkCommandPool pool) {
-            VkCommandBuffer command;
-            VkCommandBufferAllocateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            info.commandPool = pool;
-            info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            info.commandBufferCount = (uint32_t)1;
-            if (vkAllocateCommandBuffers(device, &info, &command) != VK_SUCCESS)
-                throw std::runtime_error("failed to allocate command buffers!");
-            return command;}(device,pool);
-        descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
-            VkDescriptorSetAllocateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            info.descriptorPool = pool;
-            info.descriptorSetCount = static_cast<uint32_t>(1);
-            info.pSetLayouts = &layout;
-            VkDescriptorSet descriptor;
-            if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
-                throw std::runtime_error("failed to allocate descriptor sets!");
-            return descriptor;}(device,dlayout,dpool);
-        fence = [](VkDevice device) {
-            VkFence fence;
-            VkFenceCreateInfo fenceInfo{};
-            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
-                throw std::runtime_error("failed to create fence!");
-            return fence;}(device);
-    }
-    ~DrawState() {
-        vkDestroyFence(device,fence,0);
-        vkFreeCommandBuffers(device, pool, 1, &command);
-        vkDestroySemaphore(device, finished, nullptr);
-        vkDestroySemaphore(device, available, nullptr);
-    }
-    VkFence setup(int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized) {
-    // this called in separate thread to get fence
-        uint32_t index;
-        VkResult result = vkAcquireNextImageKHR(device, pipe->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
-        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-            throw std::runtime_error("failed to acquire swap chain image!");
-        vkResetFences(device, 1, &fence);
-        vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-        [](VkCommandBuffer command){
-            VkCommandBufferBeginInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            if (vkBeginCommandBuffer(command, &info) != VK_SUCCESS)
-                throw std::runtime_error("failed to begin recording command buffer!");
-        }(command);
-        [](VkRenderPass render, VkFramebuffer framebuffer, VkExtent2D extent, VkCommandBuffer command) {
-            VkRenderPassBeginInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            info.renderPass = render;
-            info.framebuffer = framebuffer;
-            info.renderArea.offset = {0, 0};
-            info.renderArea.extent = extent;
-            VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-            info.clearValueCount = 1;
-            info.pClearValues = &clearColor;
-            vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
-        } (render,pipe->framebuffers[index],pipe->extent,command);
-        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        [](VkExtent2D extent, VkCommandBuffer command){
-            VkViewport info{};
-            info.x = 0.0f; info.y = 0.0f;
-            info.width = (float) extent.width;
-            info.height = (float) extent.height;
-            info.minDepth = 0.0f; info.maxDepth = 1.0f;
-            vkCmdSetViewport(command, 0, 1, &info);}(pipe->extent,command);
-        [](VkExtent2D extent, VkCommandBuffer command){
-            VkRect2D scissor{};
-            scissor.offset = {0, 0};
-            scissor.extent = extent;
-            vkCmdSetScissor(command, 0, 1, &scissor);}(pipe->extent,command);
-        for (int i = 0; i < count; i++) buffer[i]->bind(command,descriptor);
-        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
-        vkCmdDraw(command, size, 1, 0, 0);
-        vkCmdEndRenderPass(command);
-        if (vkEndCommandBuffer(command) != VK_SUCCESS)
-            throw std::runtime_error("failed to record command buffer!");
-        [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available, VkSemaphore finished){
-            VkSubmitInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            VkSemaphore availables[] = {available};
-            VkPipelineStageFlags stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-            info.waitSemaphoreCount = 1;
-            info.pWaitSemaphores = availables;
-            info.pWaitDstStageMask = stages;
-            info.commandBufferCount = 1;
-            info.pCommandBuffers = &command;
-            VkSemaphore finisheds[] = {finished};
-            info.signalSemaphoreCount = 1;
-            info.pSignalSemaphores = finisheds;
-            if (vkQueueSubmit(graphic, 1, &info, fence) != VK_SUCCESS)
-                throw std::runtime_error("failed to submit draw command buffer!");
-        }(graphic,command,fence,available,finished);
-        [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore finished, bool *resized){
-            VkPresentInfoKHR info{};
-            info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-            info.waitSemaphoreCount = 1;
-            VkSemaphore finisheds[] = {finished};
-            info.pWaitSemaphores = finisheds;
-            VkSwapchainKHR swaps[] = {swap};
-            info.swapchainCount = 1;
-            info.pSwapchains = swaps;
-            info.pImageIndices = &index;
-            VkResult result = vkQueuePresentKHR(present, &info);
-            if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
-            else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-                throw std::runtime_error("device lost on wait for fence!");
-        }(pipe->swap,present,index,finished,framebufferResized);
-        return fence;
-    }
+    DrawState(MainState *state, int size, BufferTag tag);
+    void init();
+    ~DrawState();
+    VkFence setup(int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized);
 };
-
-struct SwapState {
-    VkDevice device;
-    VkExtent2D extent;
-    VkSwapchainKHR swap;
-    uint32_t count;
-    std::vector<VkImage> images;
-    std::vector<VkImageView> views;
-    std::vector<VkFramebuffer> framebuffers;
-    SwapState(GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
-        VkFormat image, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkRenderPass pass,
-        uint32_t minimum, uint32_t graphicid, uint32_t presentid) {
-    // this reconstructed after device idle upon resize window
-        this->device = device;
-        int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
-        while (width == 0 || height == 0) {
-            glfwWaitEvents();
-            glfwGetFramebufferSize(window, &width, &height);
-        }
-        VkSurfaceCapabilitiesKHR capabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
-        extent = [](GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
-            int width, height;
-            if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) return capabilities.currentExtent;
-            glfwGetFramebufferSize(window, &width, &height);
-            VkExtent2D actualExtent = {static_cast<uint32_t>(width),static_cast<uint32_t>(height)};
-            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-            return actualExtent;}(window,capabilities);
-        swap = [](VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkExtent2D extent,
-            VkSurfaceCapabilitiesKHR capabilities, uint32_t minimum, uint32_t graphicid, uint32_t presentid) {
-            VkSwapchainKHR swap;
-            VkSwapchainCreateInfoKHR info{};
-            info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            info.surface = surface;
-            info.minImageCount = minimum;
-            info.imageFormat = format.format;
-            info.imageColorSpace = format.colorSpace;
-            info.imageExtent = extent;
-            info.imageArrayLayers = 1;
-            info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-            if (graphicid != presentid) {
-                uint32_t indices[2] = {graphicid,presentid};
-                info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-                info.queueFamilyIndexCount = 2;
-                info.pQueueFamilyIndices = indices;
-            } else
-                info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            info.preTransform = capabilities.currentTransform;
-            info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-            info.presentMode = mode;
-            info.clipped = VK_TRUE;
-            if (vkCreateSwapchainKHR(device, &info, nullptr, &swap) != VK_SUCCESS)
-                throw std::runtime_error("failed to create swap chain!");
-            return swap;}(device,surface,format,mode, extent,capabilities,minimum,graphicid,presentid);
-        vkGetSwapchainImagesKHR(device, swap, &count, nullptr);
-        images.resize(count);
-        views.resize(count);
-        framebuffers.resize(count);
-        vkGetSwapchainImagesKHR(device, swap, &count, images.data());
-        for (int i = 0; i < count; i++) views[i] =
-            [](VkDevice device, VkFormat format, VkImage image) {
-            VkImageView view;
-            VkImageViewCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            info.image = image;
-            info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            info.format = format;
-            info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-            info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-            info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-            info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-            info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            info.subresourceRange.baseMipLevel = 0;
-            info.subresourceRange.levelCount = 1;
-            info.subresourceRange.baseArrayLayer = 0;
-            info.subresourceRange.layerCount = 1;
-            if (vkCreateImageView(device, &info, nullptr, &view) != VK_SUCCESS)
-                throw std::runtime_error("failed to create image views!");
-            return view;}(device,image,images[i]);
-        for (int i = 0; i < count; i++) framebuffers[i] =
-            [](VkDevice device, VkExtent2D extent, VkImageView view, VkRenderPass pass) {
-            VkFramebuffer swapFramebuffer;
-            VkImageView attachments[] = {view};
-            VkFramebufferCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            info.renderPass = pass;
-            info.attachmentCount = 1;
-            info.pAttachments = attachments;
-            info.width = extent.width;
-            info.height = extent.height;
-            info.layers = 1;
-            if (vkCreateFramebuffer(device, &info, nullptr, &swapFramebuffer) != VK_SUCCESS)
-                throw std::runtime_error("failed to create framebuffer!");
-            return swapFramebuffer;}(device,extent,views[i],pass);
-    }
-    ~SwapState() {
-        for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-        for (int i = 0; i < count; i++) vkDestroyImageView(device, views[i], nullptr);
-        vkDestroySwapchainKHR(device, swap, nullptr);
-    }
-};
-
 struct MainState {
     bool callOnce;
     bool callDma;
@@ -1467,12 +1107,10 @@ struct MainState {
     OpenState* openState;
     PhysicalState* physicalState;
     DeviceState* logicalState;
-    PoolState *poolState;
-    PipeState *pipeState;
-    BufferQueue<BufferState,PoolState> *fetchQueue;
-    BufferQueue<BufferState,PoolState> *uniformQueue;
-    BufferQueue<BufferState,PoolState> *matrixQueue;
-    BufferQueue<DrawState,PipeState> *drawQueue;
+    BufferQueue<BufferState> *fetchQueue;
+    BufferQueue<BufferState> *uniformQueue;
+    BufferQueue<BufferState> *matrixQueue;
+    BufferQueue<DrawState> *drawQueue;
     SwapState *swapState;
     ThreadState *threadState;
     const uint32_t WIDTH = 800;
@@ -1512,8 +1150,6 @@ struct MainState {
     .openState = 0,
     .physicalState = 0,
     .logicalState = 0,
-    .poolState = 0,
-    .pipeState = 0,
     .fetchQueue = 0,
     .uniformQueue = 0,
     .matrixQueue = 0,
@@ -1521,6 +1157,322 @@ struct MainState {
     .swapState = 0,
     .threadState = 0,
 };
+
+BufferState::BufferState(MainState *state, int size, BufferTag tag) {
+    PhysicalState* physical = state->physicalState;
+    DeviceState* logical = state->logicalState;
+    this->physical = physical->physical;
+    this->device = logical->device;
+    this->graphic = logical->graphic;
+    this->pool = logical->pool;
+    this->size = size;
+    this->tag = tag;
+}
+void BufferState::init() {
+// this called in separate thread on newly constructed
+    VkMemoryRequirements requirements;
+    VkPhysicalDeviceMemoryProperties properties;
+    vkGetPhysicalDeviceMemoryProperties(physical, &properties);
+    if (tag == FetchBuf || tag == StoreBuf) {
+    staging = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
+        VkBufferCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        info.size = size;
+        info.usage = usage;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VkBuffer buffer;
+        if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
+            throw std::runtime_error("failed to create buffer!");
+        return buffer;
+    } (device,size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    vkGetBufferMemoryRequirements(device, staging, &requirements);
+    wasted = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
+        VkMemoryAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        info.allocationSize = requirements.size;
+        info.memoryTypeIndex = type;
+        VkDeviceMemory memory;
+        if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate buffer memory!");
+        return memory;
+    } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties, VkMemoryPropertyFlags flags) {
+        for (uint32_t i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
+            (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
+        throw std::runtime_error("failed to find suitable wasted type!");
+        return properties.memoryTypeCount;
+    } (requirements.memoryTypeBits,properties,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+    vkBindBufferMemory(device, staging, wasted, 0);}
+    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
+    buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
+        VkBufferCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        info.size = size;
+        info.usage = usage;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VkBuffer buffer;
+        if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
+            throw std::runtime_error("failed to create buffer!");
+        return buffer;
+    } (device,size,tag==ChangeBuf?
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:(tag==StoreBuf?
+    VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
+    vkGetBufferMemoryRequirements(device, buffer, &requirements);
+    memory = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
+        VkMemoryAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        info.allocationSize = requirements.size;
+        info.memoryTypeIndex = type;
+        VkDeviceMemory memory;
+        if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate buffer memory!");
+        return memory;
+    } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties, VkMemoryPropertyFlags flags) {
+        for (uint32_t i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
+            (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
+        throw std::runtime_error("failed to find suitable memory type!");
+        return properties.memoryTypeCount;
+    } (requirements.memoryTypeBits,properties,tag==ChangeBuf?
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+    vkBindBufferMemory(device, buffer, memory, 0);
+    vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
+    command = [](VkDevice device, VkCommandPool command) {
+        VkCommandBuffer commandBuffer;
+        VkCommandBufferAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandPool = command;
+        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        info.commandBufferCount = (uint32_t)1;
+        if (vkAllocateCommandBuffers(device, &info, &commandBuffer) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate command buffers!");
+        return commandBuffer;}(device,pool);
+    fence = [](VkDevice device) {
+        VkFence fence;
+        VkFenceCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        if (vkCreateFence(device, &info, nullptr, &fence) != VK_SUCCESS)
+            throw std::runtime_error("failed to create fence!");
+        return fence;}(device);
+}
+BufferState::~BufferState() {
+    vkDestroyFence(device,fence,0);
+    vkFreeCommandBuffers(device, pool, 1, &command);
+    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
+    vkDestroyBuffer(device, buffer, nullptr);
+    vkFreeMemory(device, memory, nullptr);}
+    if (tag == FetchBuf || tag == StoreBuf) {
+    vkDestroyBuffer(device, staging, nullptr);
+    vkFreeMemory(device, wasted, nullptr);}
+}
+VkFence BufferState::setup(int loc, int siz, const void *ptr) {
+// this called in separate thread to get fence
+    VkResult result;
+    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
+        memcpy((char*)mapped+loc,ptr,siz);}
+    vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
+    vkResetFences(device, 1, &fence);
+    VkCommandBufferBeginInfo begin{};
+    begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(command, &begin);
+    if (tag == FetchBuf || tag == StoreBuf) {
+    VkBufferCopy copy{};
+    copy.size = size;
+    vkCmdCopyBuffer(command, staging, buffer, 1, &copy);}
+    vkEndCommandBuffer(command);
+    VkSubmitInfo submit{};
+    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit.commandBufferCount = 1;
+    submit.pCommandBuffers = &command;
+    result = vkQueueSubmit(graphic, 1, &submit, fence);
+    return fence;
+}
+void BufferState::bind(VkCommandBuffer command, VkDescriptorSet descriptor) {
+    if (tag == FetchBuf) {
+    [](VkBuffer buffer, VkCommandBuffer command){
+        VkBuffer buffers[] = {buffer};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(command, 0, 1, buffers, offsets);
+    }(buffer,command);}
+    if (tag == ChangeBuf) {
+    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor) {
+        VkDescriptorBufferInfo info{};
+        info.buffer = buffer;
+        info.offset = 0;
+        info.range = sizeof(struct Replica); // TODO make this a parameter
+        VkWriteDescriptorSet update{};
+        update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        update.dstSet = descriptor;
+        update.dstBinding = 0; // TODO make this a parameter
+        update.dstArrayElement = 0;
+        update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        update.descriptorCount = 1;
+        update.pBufferInfo = &info;
+        vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
+    }(device,buffer,descriptor);}
+    if (tag == StoreBuf) {
+    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor) {
+        VkDescriptorBufferInfo info{};
+        info.buffer = buffer;
+        info.offset = 0;
+        info.range = sizeof(glm::mat4); // TODO make this a parameter
+        VkWriteDescriptorSet update{};
+        update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        update.dstSet = descriptor;
+        update.dstBinding = 1; // TODO make this a parameter
+        update.dstArrayElement = 0;
+        update.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        update.descriptorCount = 1;
+        update.pBufferInfo = &info;
+        vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
+    }(device,buffer,descriptor);}
+}
+
+DrawState::DrawState(MainState *state, int size, BufferTag tag) {
+    DeviceState* logical = state->logicalState;
+    this->device = logical->device;
+    this->graphic = logical->graphic;
+    this->present = logical->present;
+    this->render = logical->render;
+    this->pipeline = logical->pipeline;
+    this->layout = logical->layout;
+    this->dlayout = logical->dlayout;
+    this->dpool = logical->dpool;
+    this->pool = logical->pool;
+    this->swap = state->swapState;
+}
+void DrawState::init() {
+// this called in separate thread on newly constructed
+    available = [](VkDevice device) {
+        VkSemaphore semaphore;
+        VkSemaphoreCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
+            throw std::runtime_error("failed to create semaphore!");
+        return semaphore;}(device);
+    finished = [](VkDevice device) {
+        VkSemaphore semaphore;
+        VkSemaphoreCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
+            throw std::runtime_error("failed to create semaphore!");
+        return semaphore;}(device);
+    command = [](VkDevice device, VkCommandPool pool) {
+        VkCommandBuffer command;
+        VkCommandBufferAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandPool = pool;
+        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        info.commandBufferCount = (uint32_t)1;
+        if (vkAllocateCommandBuffers(device, &info, &command) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate command buffers!");
+        return command;}(device,pool);
+    descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
+        VkDescriptorSetAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        info.descriptorPool = pool;
+        info.descriptorSetCount = static_cast<uint32_t>(1);
+        info.pSetLayouts = &layout;
+        VkDescriptorSet descriptor;
+        if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        return descriptor;}(device,dlayout,dpool);
+    fence = [](VkDevice device) {
+        VkFence fence;
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+            throw std::runtime_error("failed to create fence!");
+        return fence;}(device);
+}
+DrawState::~DrawState() {
+    vkDestroyFence(device,fence,0);
+    vkFreeCommandBuffers(device, pool, 1, &command);
+    vkDestroySemaphore(device, finished, nullptr);
+    vkDestroySemaphore(device, available, nullptr);
+}
+VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized) {
+// this called in separate thread to get fence
+    uint32_t index;
+    VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+        throw std::runtime_error("failed to acquire swap chain image!");
+    vkResetFences(device, 1, &fence);
+    vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
+    [](VkCommandBuffer command){
+        VkCommandBufferBeginInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        if (vkBeginCommandBuffer(command, &info) != VK_SUCCESS)
+            throw std::runtime_error("failed to begin recording command buffer!");
+    }(command);
+    [](VkRenderPass render, VkFramebuffer framebuffer, VkExtent2D extent, VkCommandBuffer command) {
+        VkRenderPassBeginInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        info.renderPass = render;
+        info.framebuffer = framebuffer;
+        info.renderArea.offset = {0, 0};
+        info.renderArea.extent = extent;
+        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        info.clearValueCount = 1;
+        info.pClearValues = &clearColor;
+        vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
+    } (render,swap->framebuffers[index],swap->extent,command);
+    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    [](VkExtent2D extent, VkCommandBuffer command){
+        VkViewport info{};
+        info.x = 0.0f; info.y = 0.0f;
+        info.width = (float) extent.width;
+        info.height = (float) extent.height;
+        info.minDepth = 0.0f; info.maxDepth = 1.0f;
+        vkCmdSetViewport(command, 0, 1, &info);}(swap->extent,command);
+    [](VkExtent2D extent, VkCommandBuffer command){
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = extent;
+        vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
+    for (int i = 0; i < count; i++) buffer[i]->bind(command,descriptor);
+    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
+    vkCmdDraw(command, size, 1, 0, 0);
+    vkCmdEndRenderPass(command);
+    if (vkEndCommandBuffer(command) != VK_SUCCESS)
+        throw std::runtime_error("failed to record command buffer!");
+    [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available, VkSemaphore finished){
+        VkSubmitInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkSemaphore availables[] = {available};
+        VkPipelineStageFlags stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        info.waitSemaphoreCount = 1;
+        info.pWaitSemaphores = availables;
+        info.pWaitDstStageMask = stages;
+        info.commandBufferCount = 1;
+        info.pCommandBuffers = &command;
+        VkSemaphore finisheds[] = {finished};
+        info.signalSemaphoreCount = 1;
+        info.pSignalSemaphores = finisheds;
+        if (vkQueueSubmit(graphic, 1, &info, fence) != VK_SUCCESS)
+            throw std::runtime_error("failed to submit draw command buffer!");
+    }(graphic,command,fence,available,finished);
+    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore finished, bool *resized){
+        VkPresentInfoKHR info{};
+        info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        info.waitSemaphoreCount = 1;
+        VkSemaphore finisheds[] = {finished};
+        info.pWaitSemaphores = finisheds;
+        VkSwapchainKHR swaps[] = {swap};
+        info.swapchainCount = 1;
+        info.pSwapchains = swaps;
+        info.pImageIndices = &index;
+        VkResult result = vkQueuePresentKHR(present, &info);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
+        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+            throw std::runtime_error("device lost on wait for fence!");
+    }(swap->swap,present,index,finished,framebufferResized);
+    return fence;
+}
 
 void framebufferResized(GLFWwindow* window, int width, int height) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1591,33 +1543,15 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         mainState.initState->instance,mainState.openState->surface,mainState.extensions);
     break;
     case (Graphics):
-    if (!mainState.openState) mainState.physicalState = new PhysicalState(
-        mainState.initState->instance,mainState.computions);
     mainState.logicalState = [](PhysicalState *physical){
-        return new DeviceState(physical->physical,
-        physical->graphicid,physical->presentid,physical->computeid,
+        return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
         physical->image,mainState.layers,mainState.extensions,mainState.enable,
         mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
-    mainState.poolState = [](PhysicalState *physical, DeviceState *device){
-        return new PoolState(physical->physical,device->device,device->graphic,device->pool);
-    }(mainState.physicalState,mainState.logicalState);
-    mainState.pipeState = [](DeviceState *device){
-        return new PipeState(device->device,device->graphic,device->present,device->render,
-        device->pipeline,device->layout,device->dlayout,device->dpool,device->pool);
-    }(mainState.logicalState);
-    mainState.fetchQueue = [](PoolState *poolState, int size) {
-        return new BufferQueue<BufferState,PoolState>(poolState,size,FetchBuf);
-    }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
-    mainState.uniformQueue = [](PoolState *poolState, int size) {
-        return new BufferQueue<BufferState,PoolState>(poolState,size,ChangeBuf);
-    }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
-    mainState.matrixQueue = [](PoolState *poolState, int size) {
-        return new BufferQueue<BufferState,PoolState>(poolState,size,StoreBuf);
-    }(mainState.poolState,mainState.MAX_BUFFERS_AVAILABLE);
-    mainState.drawQueue = [](PipeState *pipeState, int size) {
-        return new BufferQueue<DrawState,PipeState>(pipeState,size,DrawBuf);
-    }(mainState.pipeState,mainState.MAX_FRAMES_IN_FLIGHT);
+    mainState.fetchQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    mainState.uniformQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    mainState.matrixQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
+    mainState.drawQueue = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
@@ -1632,8 +1566,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
                 return new SwapState(open->window,physical->physical,device->device,
                 open->surface,physical->image,physical->format,physical->mode,
                 device->render,physical->minimum,physical->graphicid,physical->presentid);
-            }(mainState.openState,mainState.physicalState,mainState.logicalState);
-            mainState.pipeState->init(mainState.swapState->extent,mainState.swapState->swap,mainState.swapState->framebuffers);}
+            }(mainState.openState,mainState.physicalState,mainState.logicalState);}
         if (!mainState.threadState && mainState.logicalState) {
             mainState.threadState = new ThreadState(mainState.logicalState->device);
             mainState.fetchQueue->clr(mainState.threadState);
@@ -1656,8 +1589,6 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     delete mainState.matrixQueue; mainState.matrixQueue = 0;
     delete mainState.uniformQueue; mainState.uniformQueue = 0;
     delete mainState.fetchQueue; mainState.fetchQueue = 0;
-    delete mainState.pipeState; mainState.pipeState = 0;
-    delete mainState.poolState; mainState.poolState = 0;
     delete mainState.logicalState; mainState.logicalState = 0;
     if (!mainState.openState) {delete mainState.physicalState; mainState.physicalState = 0;}
     break;
