@@ -1066,6 +1066,7 @@ struct DrawState {
     VkQueue present;
     VkRenderPass render;
     VkPipeline pipeline[Micros];
+    bool pvalid[Micros];
     VkPipelineLayout layout;
     VkDescriptorSetLayout dlayout;
     VkDescriptorPool dpool;
@@ -1329,8 +1330,9 @@ DrawState::DrawState(MainState *state, int size, BufferTag tag) {
     this->graphic = logical->graphic;
     this->present = logical->present;
     this->render = logical->render;
-    for (int i = 0; i < Micros; i++)
+    for (int i = 0; i < Micros; i++) {
     this->pipeline[i] = logical->pipeline[i];
+    this->pvalid[i] = logical->pvalid[i];}
     this->layout = logical->layout;
     this->dlayout = logical->dlayout;
     this->dpool = logical->dpool;
@@ -1389,7 +1391,7 @@ DrawState::~DrawState() {
     vkDestroySemaphore(device, available, nullptr);
 }
 VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized) {
-// this called in separate thread to get fence
+    if (!pvalid[micro]) throw std::runtime_error("failed to initialize pipeline!");
     uint32_t index;
     VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
