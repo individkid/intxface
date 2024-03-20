@@ -15,7 +15,6 @@
 #include <cstdlib>
 #include <cstdint>
 #include <limits>
-#include <array>
 #include <optional>
 #include <set>
 #include <queue>
@@ -30,48 +29,6 @@ extern "C" {
 }
 
 #define NANOSECONDS (10^9)
-
-struct Input {
-    struct Fetch fetch;
-
-    Input(float *pos, float *hue) {
-        for (int i = 0; i < 2; i++) fetch.pos[i] = pos[i];
-        for (int i = 0; i < 3; i++) fetch.hue[i] = hue[i];
-        char *str = 0; showFetch(&fetch,&str);
-        std::cout << str << std::endl;
-        free(str);
-    }
-
-    static VkVertexInputBindingDescription getBindingDescription() {
-        VkVertexInputBindingDescription description{};
-        description.binding = 0;
-        description.stride = sizeof(Input);
-        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        return description;
-    }
-
-    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 3> attribute{};
-
-        attribute[0].binding = 0;
-        attribute[0].location = 0;
-        attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attribute[0].offset = offsetof(Input, fetch.pos);
-
-        attribute[1].binding = 0;
-        attribute[1].location = 1;
-        attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attribute[1].offset = offsetof(Input, fetch.hue);
-
-        attribute[2].binding = 0;
-        attribute[2].location = 2;
-        attribute[2].format = VK_FORMAT_R32_UINT;
-        attribute[2].offset = offsetof(Input, fetch.idx);
-
-        return attribute;
-    }
-};
 
 #ifdef PLANRA
 extern "C" {
@@ -110,6 +67,15 @@ extern "C" {
 }
 
 // TODO move following to planer.lua
+struct Input: public Fetch {
+    Input(float *pos, float *hue) {
+        for (int i = 0; i < 2; i++) this->pos[i] = pos[i];
+        for (int i = 0; i < 3; i++) this->hue[i] = hue[i];
+        char *str = 0; showFetch(this,&str);
+        std::cout << str << std::endl;
+        free(str);
+    }
+};
 std::vector<Input> vertices;
 #endif
 
@@ -548,15 +514,20 @@ struct PhysicalState {
 struct DeviceState {
     VkDevice device;
     VkPipelineLayout layout;
-    VkPipeline pipeline;
+    VkPipeline pipeline[Micros];
+    bool pvalid[Micros];
     VkRenderPass render;
     VkQueue graphic;
     VkQueue present;
     VkCommandPool pool;
     VkDescriptorSetLayout dlayout;
     VkDescriptorPool dpool;
+    uint32_t graphicid;
+    uint32_t presentid;
     DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, VkFormat image,
         std::vector<const char*> layers, std::vector<const char*> extensions, bool enable, int MAX_BUFFERS_AVAILABLE) {
+        this->graphicid = graphicid;
+        this->presentid = presentid;
         device = [](VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid,
             const std::vector<const char*> layers, const std::vector<const char*> extensions, bool enable) {
             VkDevice device;
@@ -684,7 +655,13 @@ struct DeviceState {
                 throw std::runtime_error("failed to create pipeline layout!");
             return layout;
         } (device,dlayout);
-        pipeline = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout, const char *vertex, const char *fragment) {
+        for (int i = 0; i < Micros; i++) pvalid[i] = false;
+    }
+    void add(Micro micro) {
+        // TODO allow different kinds of pipeline
+        if (pvalid[micro]) throw std::runtime_error("failed to add pipeline"); pvalid[micro] = true;
+        pipeline[micro] = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout,
+            const char *vertex, const char *fragment) {
             VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
                 VkShaderModuleCreateInfo createInfo{};
                 createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -728,8 +705,23 @@ struct DeviceState {
             VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
             VkPipelineVertexInputStateCreateInfo input{};
             input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-            auto description = Input::getBindingDescription();
-            auto attribute = Input::getAttributeDescriptions();
+            VkVertexInputBindingDescription description{};
+            description.binding = 0;
+            description.stride = sizeof(Fetch); // TODO parameterize this
+            description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            std::vector<VkVertexInputAttributeDescription> attribute(3);
+            attribute[0].binding = 0;
+            attribute[0].location = 0;
+            attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
+            attribute[0].offset = offsetof(Fetch, pos);
+            attribute[1].binding = 0;
+            attribute[1].location = 1;
+            attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attribute[1].offset = offsetof(Fetch, hue);
+            attribute[2].binding = 0;
+            attribute[2].location = 2;
+            attribute[2].format = VK_FORMAT_R32_UINT;
+            attribute[2].offset = offsetof(Fetch, idx);
             input.vertexBindingDescriptionCount = 1;
             input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute.size());
             input.pVertexBindingDescriptions = &description;
@@ -812,7 +804,8 @@ struct DeviceState {
     ~DeviceState() {
         vkDestroyDescriptorPool(device, dpool, nullptr);
         vkDestroyCommandPool(device, pool, nullptr);
-        vkDestroyPipeline(device, pipeline, nullptr);
+        for (int i = 0; i < Micros; i++) if (pvalid[i])
+        vkDestroyPipeline(device, pipeline[i], nullptr);
         vkDestroyPipelineLayout(device, layout, nullptr);
         vkDestroyDescriptorSetLayout(device, dlayout, nullptr);
         vkDestroyRenderPass(device, render, nullptr);
@@ -1072,7 +1065,7 @@ struct DrawState {
     VkQueue graphic;
     VkQueue present;
     VkRenderPass render;
-    VkPipeline pipeline;
+    VkPipeline pipeline[Micros];
     VkPipelineLayout layout;
     VkDescriptorSetLayout dlayout;
     VkDescriptorPool dpool;
@@ -1086,7 +1079,7 @@ struct DrawState {
     DrawState(MainState *state, int size, BufferTag tag);
     void init();
     ~DrawState();
-    VkFence setup(int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized);
+    VkFence setup(Micro micro, int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized);
 };
 struct MainState {
     bool callOnce;
@@ -1336,7 +1329,8 @@ DrawState::DrawState(MainState *state, int size, BufferTag tag) {
     this->graphic = logical->graphic;
     this->present = logical->present;
     this->render = logical->render;
-    this->pipeline = logical->pipeline;
+    for (int i = 0; i < Micros; i++)
+    this->pipeline[i] = logical->pipeline[i];
     this->layout = logical->layout;
     this->dlayout = logical->dlayout;
     this->dpool = logical->dpool;
@@ -1394,7 +1388,7 @@ DrawState::~DrawState() {
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
 }
-VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized) {
+VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized) {
 // this called in separate thread to get fence
     uint32_t index;
     VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
@@ -1421,7 +1415,7 @@ VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t size, bo
         info.pClearValues = &clearColor;
         vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
     } (render,swap->framebuffers[index],swap->extent,command);
-    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline[micro]);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkViewport info{};
         info.x = 0.0f; info.y = 0.0f;
@@ -1548,6 +1542,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         physical->image,mainState.layers,mainState.extensions,mainState.enable,
         mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
+    mainState.logicalState->add(Practice);
     mainState.fetchQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     mainState.uniformQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     mainState.matrixQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
@@ -1638,7 +1633,7 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
         };
         uint32_t size = static_cast<uint32_t>(vertices.size());
         std::function<bool()> done = mainState.drawQueue->set(size,[buffer,size](DrawState*draw){
-            return draw->setup(3,buffer,size,&mainState.framebufferResized);});
+            return draw->setup(Practice,3,buffer,size,&mainState.framebufferResized);});
         mainState.drawQueue->tmp(temp,done);
         mainState.callDma = true;
     }
