@@ -31,6 +31,17 @@ extern "C" {
 #define NANOSECONDS (10^9)
 
 #ifdef PLANRA
+// TODO move following to planer.lua
+struct Input: public Fetch {
+    Input(float *pos, float *hue) {
+        for (int i = 0; i < 2; i++) this->pos[i] = pos[i];
+        for (int i = 0; i < 3; i++) this->hue[i] = hue[i];
+        char *str = 0; showFetch(this,&str);
+        std::cout << str << std::endl;
+        free(str);
+    }
+};
+std::vector<Input> vertices;
 extern "C" {
     // TODO link with plane.c
     vftype callSafe;
@@ -55,7 +66,7 @@ extern "C" {
     }
     void planeMain() {
         callDma(0);
-        callDraw(Micros,0,0);
+        callDraw(Practice,0,vertices.size());
     }
     void planeReady(struct Pierce *pierce) {}
     void vulkanInit();
@@ -65,18 +76,6 @@ extern "C" {
     int vulkanInfo(enum Configure query);
     void vulkanDraw(enum Micro shader, int base, int limit);
 }
-
-// TODO move following to planer.lua
-struct Input: public Fetch {
-    Input(float *pos, float *hue) {
-        for (int i = 0; i < 2; i++) this->pos[i] = pos[i];
-        for (int i = 0; i < 3; i++) this->hue[i] = hue[i];
-        char *str = 0; showFetch(this,&str);
-        std::cout << str << std::endl;
-        free(str);
-    }
-};
-std::vector<Input> vertices;
 #endif
 
 // TODO add type.h enum for these builtin cursors
@@ -1080,7 +1079,7 @@ struct DrawState {
     DrawState(MainState *state, int size, BufferTag tag);
     void init();
     ~DrawState();
-    VkFence setup(Micro micro, int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized);
+    VkFence setup(Micro micro, int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
 };
 struct MainState {
     bool callOnce;
@@ -1390,7 +1389,7 @@ DrawState::~DrawState() {
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
 }
-VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint32_t size, bool *framebufferResized) {
+VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
     if (!pvalid[micro]) throw std::runtime_error("failed to initialize pipeline!");
     uint32_t index;
     VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
@@ -1432,7 +1431,7 @@ VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint
         vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
     for (int i = 0; i < count; i++) buffer[i]->bind(command,descriptor);
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
-    vkCmdDraw(command, size, 1, 0, 0);
+    vkCmdDraw(command, limit-base, (limit-base)/3, base, base/3);
     vkCmdEndRenderPass(command);
     if (vkEndCommandBuffer(command) != VK_SUCCESS)
         throw std::runtime_error("failed to record command buffer!");
@@ -1621,21 +1620,22 @@ void vulkanDma(struct Center *center) {
     }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
-    // TODO depending on shader call different pipeline
     if (mainState.callDraw) {
         if (!mainState.fetchQueue->get()) return;
         if (!mainState.uniformQueue->get()) return;
         if (!mainState.matrixQueue->get()) return;
         if (!mainState.drawQueue->set()) return;
         int temp = mainState.drawQueue->tmp();
-        BufferState *buffer[] = {
-            mainState.fetchQueue->get(mainState.drawQueue->tmp(temp)),
-            mainState.uniformQueue->get(mainState.drawQueue->tmp(temp)),
-            mainState.matrixQueue->get(mainState.drawQueue->tmp(temp)),
-        };
-        uint32_t size = static_cast<uint32_t>(vertices.size());
-        std::function<bool()> done = mainState.drawQueue->set(size,[buffer,size](DrawState*draw){
-            return draw->setup(Practice,3,buffer,size,&mainState.framebufferResized);});
+        std::vector<BufferState*> buffer;
+        switch (shader) {
+        case (Practice):
+        buffer.push_back(mainState.fetchQueue->get(mainState.drawQueue->tmp(temp)));
+        buffer.push_back(mainState.uniformQueue->get(mainState.drawQueue->tmp(temp)));
+        buffer.push_back(mainState.matrixQueue->get(mainState.drawQueue->tmp(temp)));
+        break;
+        default: throw std::runtime_error("cannot setup buffers!");}
+        std::function<bool()> done = mainState.drawQueue->set(0,[buffer,base,limit](DrawState*draw){
+        return draw->setup(Practice,buffer.size(),buffer.data(),base,limit,&mainState.framebufferResized);});
         mainState.drawQueue->tmp(temp,done);
         mainState.callDma = true;
     }
