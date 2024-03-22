@@ -516,32 +516,35 @@ struct PipelineStruct {
     VkPipeline pipeline;
     VkDescriptorSetLayout dlayout;
     VkDescriptorSet descriptor;
-    PipelineStruct(Micro micro, VkDevice device, VkRenderPass render,
-        VkDescriptorPool dpool, const char *vertex, const char *fragment) {
+    PipelineStruct(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
+        Micro micro, int count, const char *vertex, const char *fragment) {
         this->device = device;
-        dlayout = [](VkDevice device) {
+        dlayout = [](VkDevice device, int count) {
+            std::vector<VkDescriptorSetLayoutBinding> bindings;
             VkDescriptorSetLayoutBinding uniform{};
             uniform.binding = 0;
             uniform.descriptorCount = 1;
             uniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             uniform.pImmutableSamplers = nullptr;
             uniform.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            bindings.push_back(uniform);
+            for (int i = 1; i < count; i++) {
             VkDescriptorSetLayoutBinding matrix{};
-            matrix.binding = 1;
+            matrix.binding = i;
             matrix.descriptorCount = 1;
             matrix.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             matrix.pImmutableSamplers = nullptr;
             matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            VkDescriptorSetLayoutBinding bindings[] = {uniform,matrix};
+            bindings.push_back(matrix);}
             VkDescriptorSetLayoutCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            info.bindingCount = 2;
-            info.pBindings = bindings;
+            info.bindingCount = bindings.size();
+            info.pBindings = bindings.data();
             VkDescriptorSetLayout descriptor;
             if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
                 throw std::runtime_error("failed to create descriptor set layout!");
             return descriptor;
-        } (device);
+        } (device,count);
         descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
             VkDescriptorSetAllocateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -819,7 +822,8 @@ struct DeviceState {
             return pool;
         } (device, MAX_BUFFERS_AVAILABLE, MAX_BUFFERS_AVAILABLE);
         for (int i = 0; i < Micros; i++)
-            pipeline.push_back(new PipelineStruct((Micro)i,device,render,dpool,"vertexPracticeG","fragmentPracticeG"));
+            pipeline.push_back(new PipelineStruct(device,render,dpool,
+            (Micro)i,3,"vertexPracticeG","fragmentPracticeG"));
     }
     ~DeviceState() {
         for (int i = 0; i < Micros; i++) delete pipeline[i];
@@ -1566,6 +1570,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
             mainState.uniformQueue->clr(mainState.threadState);
             mainState.matrixQueue->clr(mainState.threadState);
             mainState.drawQueue->clr(mainState.threadState);}
+        // TODO iterate through pipelineState too, instead of having volatile pointer
         planeMain();}
     break;
     default:
