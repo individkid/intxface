@@ -277,6 +277,7 @@ function trymatch(values,target)
 		dbgline[dbgent] = "10b"; if callmatch(values,line,"^    Could not find module ‘([%w]*)’$") and findsource(values,"module "," where",".gen") and uncopyxtra(values,target,".gen") and makecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "11a"; if callmatch(values,line,"^      [a-z]*([A-Z]%w*) :: .*$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "12a"; if callmatch(values,line,"^    Not in scope: type constructor or class ‘([%w]*)’$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "13a"; if callmatch(values,line,"^make: *** [Makefile:[0-9]*: (%w*)G] Error 1$") and findsource(values,"void *","()",".g") and copysource(values,target,".g") then dgbent = dbgent - 1; return true end
 	elseif uname == "Darwin" then
 	end end
 	for line in io.lines("stderr."..target) do io.stderr:write(line.."\n") end
@@ -326,6 +327,8 @@ end
 for key,val in ipairs(targets) do
 	local values = {{},{}}
 	dbgline[dbgent] = "top"
+	dbgline[dbgent+1] = "above"
+	dbgline[dbgent+2] = "wayabove"
 	if not trymake(values,val) then io.stderr("trymake failed\n"); os.exit(-1) end
 	for k,v in pairs(values[1]) do
 		if (depends[k] == nil) then depends[k] = {} end

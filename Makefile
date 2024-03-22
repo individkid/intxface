@@ -3,7 +3,7 @@
 .DELETE_ON_ERROR:
 
 UNAME = $(shell uname)
-all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line planraCpp vulkan.vsv vulkan.fsv space share
+all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line planraCpp vertexPracticeG fragmentPracticeG space share
 
 ifeq ($(UNAME),Linux)
 LIBRARIES = -llua -lportaudio -lglfw -lvulkan
@@ -105,10 +105,10 @@ ifeq ($(UNAME),Darwin)
 	cp $< $@
 endif
 ifeq ($(UNAME),Linux)
-%.vsv: %.vg
-	glslc -fshader-stage=vert $< -o $@
-%.fsv: %.fg
-	glslc -fshader-stage=frag $< -o $@
+vertex%G:
+	glslc -fshader-stage=vert -Dvertex$*=main $< -o $@
+fragment%G:
+	glslc -fshader-stage=frag -Dfragment$*=main $< -o $@
 endif
 
 %.h: %.mk
@@ -129,7 +129,7 @@ clean:
 	rm -f *typer.h *typer.c *typer.hs *typer.lua *typer.sw
 	rm -f typra facer typer filer planra spacra
 	rm -f hole file line metal space share pipe page
-	rm -f *C *M *Cpp *Hs *Lua *Sw
+	rm -f *C *M *Cpp *Hs *Lua *Sw *G
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	rm -f *.o *.so *.hi *_stub.h

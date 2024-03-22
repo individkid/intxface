@@ -10,8 +10,9 @@ fileC: faceC.o fileC.o fileC.typeC.o protoC.o
 fileC.o: face.h file.c proto.h type.h
 fileC.type.c: luax.so show.lua type.gen
 fileC.typeC.o: face.h type.h
-filer.log: fileC filer.lua filerLua luax.so type.lua
+filer.log: fileC filer.lua filerLua type.lua
 filerLua: filer.lua
+fragmentPracticeG: vulkan.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
 holeC.o: face.h hole.c proto.h type.h
@@ -31,7 +32,7 @@ planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
 planraCpp: faceC.o planraCpp.o planraCpp.typeC.o protoC.o
-planraCpp.o: plane.h planraCpp.mk type.h vulkan.cpp
+planraCpp.o: plane.h planraCpp.mk proto.h type.h vulkan.cpp
 planraCpp.type.c: luax.so show.lua type.gen
 planraCpp.typeC.o: face.h type.h
 protoC.o: proto.c proto.h
@@ -58,10 +59,9 @@ typer.hs: luax.so show.lua test.lua typer.gen
 typer.log: typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
-typerC.o: face.h typer.c typer.h
+typerC.o: typer.c typer.h
 typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
-vulkan.fsv: vulkan.fg
-vulkan.vsv: vulkan.vg
+vertexPracticeG: vulkan.g
 wrapCpp.o: proto.h wrap.cpp wrap.h

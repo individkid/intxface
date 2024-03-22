@@ -510,98 +510,15 @@ struct PhysicalState {
     }
 };
 
-struct DeviceState {
+struct PipelineStruct {
     VkDevice device;
     VkPipelineLayout layout;
-    VkPipeline pipeline[Micros];
-    bool pvalid[Micros];
-    VkRenderPass render;
-    VkQueue graphic;
-    VkQueue present;
-    VkCommandPool pool;
+    VkPipeline pipeline;
     VkDescriptorSetLayout dlayout;
-    VkDescriptorPool dpool;
-    uint32_t graphicid;
-    uint32_t presentid;
-    DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, VkFormat image,
-        std::vector<const char*> layers, std::vector<const char*> extensions, bool enable, int MAX_BUFFERS_AVAILABLE) {
-        this->graphicid = graphicid;
-        this->presentid = presentid;
-        device = [](VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid,
-            const std::vector<const char*> layers, const std::vector<const char*> extensions, bool enable) {
-            VkDevice device;
-            std::vector<VkDeviceQueueCreateInfo> infos;
-            std::vector<float> prioritys;
-            prioritys.resize(1);
-            for (int i = 0; i < 1; i++) prioritys[i] = 1.0f;
-            if (1) {
-                VkDeviceQueueCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                info.queueFamilyIndex = graphicid;
-                info.queueCount = 1;
-                info.pQueuePriorities = prioritys.data();
-                infos.push_back(info);}
-            if (presentid != graphicid) {
-                VkDeviceQueueCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                info.queueFamilyIndex = presentid;
-                info.queueCount = 1;
-                info.pQueuePriorities = prioritys.data();
-                infos.push_back(info);}
-            VkPhysicalDeviceFeatures features{};
-            VkDeviceCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-            info.queueCreateInfoCount = static_cast<uint32_t>(infos.size());
-            info.pQueueCreateInfos = infos.data();
-            info.pEnabledFeatures = &features;
-            info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-            info.ppEnabledExtensionNames = extensions.data();
-            if (enable) {
-                info.enabledLayerCount = static_cast<uint32_t>(layers.size());
-                info.ppEnabledLayerNames = layers.data();}
-            else {
-                info.enabledLayerCount = 0;}
-            if (vkCreateDevice(physical, &info, nullptr, &device) != VK_SUCCESS)
-                throw std::runtime_error("failed to create logical device!");
-            return device;
-        } (physical,graphicid,presentid,layers,extensions,enable);
-        render = [](VkDevice device, VkFormat image) {
-            VkAttachmentDescription attachment{};
-            attachment.format = image;
-            attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            VkAttachmentReference reference{};
-            reference.attachment = 0;
-            reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            VkSubpassDescription subpass{};
-            subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            subpass.colorAttachmentCount = 1;
-            subpass.pColorAttachments = &reference;
-            VkSubpassDependency dependency{};
-            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-            dependency.dstSubpass = 0;
-            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            dependency.srcAccessMask = 0;
-            dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            VkRenderPassCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-            info.attachmentCount = 1;
-            info.pAttachments = &attachment;
-            info.subpassCount = 1;
-            info.pSubpasses = &subpass;
-            info.dependencyCount = 1;
-            info.pDependencies = &dependency;
-            VkRenderPass render;
-            if (vkCreateRenderPass(device, &info, nullptr, &render) != VK_SUCCESS)
-                throw std::runtime_error("failed to create render pass!");
-            return render;
-        } (device,image);
+    VkDescriptorSet descriptor;
+    PipelineStruct(Micro micro, VkDevice device, VkRenderPass render,
+        VkDescriptorPool dpool, const char *vertex, const char *fragment) {
+        this->device = device;
         dlayout = [](VkDevice device) {
             VkDescriptorSetLayoutBinding uniform{};
             uniform.binding = 0;
@@ -625,25 +542,16 @@ struct DeviceState {
                 throw std::runtime_error("failed to create descriptor set layout!");
             return descriptor;
         } (device);
-        dpool = [](VkDevice device, int uniforms, int stores) {
-            VkDescriptorPoolSize uniform{};
-            uniform.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            uniform.descriptorCount = static_cast<uint32_t>(uniforms);
-            VkDescriptorPoolSize store{};
-            store.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            store.descriptorCount = static_cast<uint32_t>(stores);
-            VkDescriptorPoolSize size[] = {uniform,store};
-            VkDescriptorPoolCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-            info.poolSizeCount = 2;
-            info.pPoolSizes = size;
-            info.maxSets = static_cast<uint32_t>(uniforms+stores);
-            VkDescriptorPool pool;
-            if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS)
-                throw std::runtime_error("failed to create descriptor pool!");
-            return pool;
-        } (device, MAX_BUFFERS_AVAILABLE, MAX_BUFFERS_AVAILABLE);
+        descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
+            VkDescriptorSetAllocateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            info.descriptorPool = pool;
+            info.descriptorSetCount = static_cast<uint32_t>(1);
+            info.pSetLayouts = &layout;
+            VkDescriptorSet descriptor;
+            if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
+                throw std::runtime_error("failed to allocate descriptor sets!");
+            return descriptor;}(device,dlayout,dpool);
         layout = [](VkDevice device, VkDescriptorSetLayout descriptor) {
             VkPipelineLayoutCreateInfo info{};
             info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -654,13 +562,8 @@ struct DeviceState {
                 throw std::runtime_error("failed to create pipeline layout!");
             return layout;
         } (device,dlayout);
-        for (int i = 0; i < Micros; i++) pvalid[i] = false;
-    }
-    void add(Micro micro) {
-        // TODO allow different kinds of pipeline
-        if (pvalid[micro]) throw std::runtime_error("failed to add pipeline"); pvalid[micro] = true;
-        pipeline[micro] = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout,
-            const char *vertex, const char *fragment) {
+        pipeline = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout,
+            Micro micro, const char *vertex, const char *fragment) {
             VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
                 VkShaderModuleCreateInfo createInfo{};
                 createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -786,7 +689,104 @@ struct DeviceState {
             vkDestroyShaderModule(device, fmodule, nullptr);
             vkDestroyShaderModule(device, vmodule, nullptr);
             return pipeline;
-        } (device,render,layout,"vulkan.vsv","vulkan.fsv");
+        } (device,render,layout,micro,vertex,fragment);
+    }
+    ~PipelineStruct() {
+        vkDestroyPipeline(device, pipeline, nullptr);
+        vkDestroyPipelineLayout(device, layout, nullptr);
+        vkDestroyDescriptorSetLayout(device, dlayout, nullptr);
+    }
+};
+
+struct DeviceState {
+    VkDevice device;
+    VkRenderPass render;
+    VkQueue graphic;
+    VkQueue present;
+    VkCommandPool pool;
+    VkDescriptorPool dpool;
+    std::vector<PipelineStruct*> pipeline;
+    uint32_t graphicid;
+    uint32_t presentid;
+    DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, VkFormat image,
+        std::vector<const char*> layers, std::vector<const char*> extensions, bool enable, int MAX_BUFFERS_AVAILABLE) {
+        this->graphicid = graphicid;
+        this->presentid = presentid;
+        device = [](VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid,
+            const std::vector<const char*> layers, const std::vector<const char*> extensions, bool enable) {
+            VkDevice device;
+            std::vector<VkDeviceQueueCreateInfo> infos;
+            std::vector<float> prioritys;
+            prioritys.resize(1);
+            for (int i = 0; i < 1; i++) prioritys[i] = 1.0f;
+            if (1) {
+                VkDeviceQueueCreateInfo info{};
+                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                info.queueFamilyIndex = graphicid;
+                info.queueCount = 1;
+                info.pQueuePriorities = prioritys.data();
+                infos.push_back(info);}
+            if (presentid != graphicid) {
+                VkDeviceQueueCreateInfo info{};
+                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                info.queueFamilyIndex = presentid;
+                info.queueCount = 1;
+                info.pQueuePriorities = prioritys.data();
+                infos.push_back(info);}
+            VkPhysicalDeviceFeatures features{};
+            VkDeviceCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            info.queueCreateInfoCount = static_cast<uint32_t>(infos.size());
+            info.pQueueCreateInfos = infos.data();
+            info.pEnabledFeatures = &features;
+            info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+            info.ppEnabledExtensionNames = extensions.data();
+            if (enable) {
+                info.enabledLayerCount = static_cast<uint32_t>(layers.size());
+                info.ppEnabledLayerNames = layers.data();}
+            else {
+                info.enabledLayerCount = 0;}
+            if (vkCreateDevice(physical, &info, nullptr, &device) != VK_SUCCESS)
+                throw std::runtime_error("failed to create logical device!");
+            return device;
+        } (physical,graphicid,presentid,layers,extensions,enable);
+        render = [](VkDevice device, VkFormat image) {
+            VkAttachmentDescription attachment{};
+            attachment.format = image;
+            attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+            attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            VkAttachmentReference reference{};
+            reference.attachment = 0;
+            reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            VkSubpassDescription subpass{};
+            subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.colorAttachmentCount = 1;
+            subpass.pColorAttachments = &reference;
+            VkSubpassDependency dependency{};
+            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+            dependency.dstSubpass = 0;
+            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.srcAccessMask = 0;
+            dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            VkRenderPassCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            info.attachmentCount = 1;
+            info.pAttachments = &attachment;
+            info.subpassCount = 1;
+            info.pSubpasses = &subpass;
+            info.dependencyCount = 1;
+            info.pDependencies = &dependency;
+            VkRenderPass render;
+            if (vkCreateRenderPass(device, &info, nullptr, &render) != VK_SUCCESS)
+                throw std::runtime_error("failed to create render pass!");
+            return render;
+        } (device,image);
         vkGetDeviceQueue(device, graphicid, 0, &graphic);
         vkGetDeviceQueue(device, presentid, 0, &present);
         pool = [](VkDevice device, uint32_t graphicid) {
@@ -799,14 +799,32 @@ struct DeviceState {
                 throw std::runtime_error("failed to create graphic command pool!");
             return pool;
         } (device,graphicid);
+        dpool = [](VkDevice device, int uniforms, int stores) {
+            VkDescriptorPoolSize uniform{};
+            uniform.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uniform.descriptorCount = static_cast<uint32_t>(uniforms);
+            VkDescriptorPoolSize store{};
+            store.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            store.descriptorCount = static_cast<uint32_t>(stores);
+            VkDescriptorPoolSize size[] = {uniform,store};
+            VkDescriptorPoolCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+            info.poolSizeCount = 2;
+            info.pPoolSizes = size;
+            info.maxSets = static_cast<uint32_t>(uniforms+stores);
+            VkDescriptorPool pool;
+            if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS)
+                throw std::runtime_error("failed to create descriptor pool!");
+            return pool;
+        } (device, MAX_BUFFERS_AVAILABLE, MAX_BUFFERS_AVAILABLE);
+        for (int i = 0; i < Micros; i++)
+            pipeline.push_back(new PipelineStruct((Micro)i,device,render,dpool,"vertexPracticeG","fragmentPracticeG"));
     }
     ~DeviceState() {
+        for (int i = 0; i < Micros; i++) delete pipeline[i];
         vkDestroyDescriptorPool(device, dpool, nullptr);
         vkDestroyCommandPool(device, pool, nullptr);
-        for (int i = 0; i < Micros; i++) if (pvalid[i])
-        vkDestroyPipeline(device, pipeline[i], nullptr);
-        vkDestroyPipelineLayout(device, layout, nullptr);
-        vkDestroyDescriptorSetLayout(device, dlayout, nullptr);
         vkDestroyRenderPass(device, render, nullptr);
         vkDestroyDevice(device, nullptr);
     }
@@ -1064,17 +1082,12 @@ struct DrawState {
     VkQueue graphic;
     VkQueue present;
     VkRenderPass render;
-    VkPipeline pipeline[Micros];
-    bool pvalid[Micros];
-    VkPipelineLayout layout;
-    VkDescriptorSetLayout dlayout;
-    VkDescriptorPool dpool;
+    std::vector<PipelineStruct*> pipeline;
     VkCommandPool pool;
-    SwapState *swap;
+    SwapState **swap;
     VkSemaphore available;
     VkSemaphore finished;
     VkCommandBuffer command;
-    VkDescriptorSet descriptor;
     VkFence fence;
     DrawState(MainState *state, int size, BufferTag tag);
     void init();
@@ -1329,14 +1342,9 @@ DrawState::DrawState(MainState *state, int size, BufferTag tag) {
     this->graphic = logical->graphic;
     this->present = logical->present;
     this->render = logical->render;
-    for (int i = 0; i < Micros; i++) {
-    this->pipeline[i] = logical->pipeline[i];
-    this->pvalid[i] = logical->pvalid[i];}
-    this->layout = logical->layout;
-    this->dlayout = logical->dlayout;
-    this->dpool = logical->dpool;
+    this->pipeline = logical->pipeline;
     this->pool = logical->pool;
-    this->swap = state->swapState;
+    this->swap = &(state->swapState);
 }
 void DrawState::init() {
 // this called in separate thread on newly constructed
@@ -1364,16 +1372,6 @@ void DrawState::init() {
         if (vkAllocateCommandBuffers(device, &info, &command) != VK_SUCCESS)
             throw std::runtime_error("failed to allocate command buffers!");
         return command;}(device,pool);
-    descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
-        VkDescriptorSetAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        info.descriptorPool = pool;
-        info.descriptorSetCount = static_cast<uint32_t>(1);
-        info.pSetLayouts = &layout;
-        VkDescriptorSet descriptor;
-        if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        return descriptor;}(device,dlayout,dpool);
     fence = [](VkDevice device) {
         VkFence fence;
         VkFenceCreateInfo fenceInfo{};
@@ -1390,9 +1388,8 @@ DrawState::~DrawState() {
     vkDestroySemaphore(device, available, nullptr);
 }
 VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
-    if (!pvalid[micro]) throw std::runtime_error("failed to initialize pipeline!");
     uint32_t index;
-    VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
+    VkResult result = vkAcquireNextImageKHR(device, (*swap)->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -1415,22 +1412,23 @@ VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint
         info.clearValueCount = 1;
         info.pClearValues = &clearColor;
         vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
-    } (render,swap->framebuffers[index],swap->extent,command);
-    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline[micro]);
+    } (render,(*swap)->framebuffers[index],(*swap)->extent,command);
+    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline[micro]->pipeline);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkViewport info{};
         info.x = 0.0f; info.y = 0.0f;
         info.width = (float) extent.width;
         info.height = (float) extent.height;
         info.minDepth = 0.0f; info.maxDepth = 1.0f;
-        vkCmdSetViewport(command, 0, 1, &info);}(swap->extent,command);
+        vkCmdSetViewport(command, 0, 1, &info);}((*swap)->extent,command);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = extent;
-        vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
-    for (int i = 0; i < count; i++) buffer[i]->bind(command,descriptor);
-    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &descriptor, 0, nullptr);
+        vkCmdSetScissor(command, 0, 1, &scissor);}((*swap)->extent,command);
+    for (int i = 0; i < count; i++) buffer[i]->bind(command,pipeline[micro]->descriptor);
+    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline[micro]->layout, 0, 1,
+        &pipeline[micro]->descriptor, 0, nullptr);
     vkCmdDraw(command, limit-base, (limit-base)/3, base, base/3);
     vkCmdEndRenderPass(command);
     if (vkEndCommandBuffer(command) != VK_SUCCESS)
@@ -1465,7 +1463,7 @@ VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint
         if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }(swap->swap,present,index,finished,framebufferResized);
+    }((*swap)->swap,present,index,finished,framebufferResized);
     return fence;
 }
 
@@ -1543,7 +1541,6 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         physical->image,mainState.layers,mainState.extensions,mainState.enable,
         mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
-    mainState.logicalState->add(Practice);
     mainState.fetchQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     mainState.uniformQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     mainState.matrixQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
