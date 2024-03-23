@@ -31,6 +31,7 @@ Flow = {
 	"Load",
 }
 Memory = {
+	"Fetchz", -- fastest flow to vertex shader
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
@@ -39,6 +40,7 @@ Memory = {
 	"Textualz", -- memory for text
 	"Basisz", -- base for each dimension
 	"Matrixz", -- transformations
+	"Uniformz", -- references into arrays
 	"Piercez", -- pierce point normal and valid
 	"Slicez", -- plane or point index ranges
 	"Stackz", -- named machine locations
@@ -495,6 +497,11 @@ Uniform = {
 	{"use","Int32",{},{}}, -- which basis to use
 	{"siz","Int32",{},{}}, -- size of swarm buffer
 }
+Fetch = {
+	{"pos","Old",{},{4}},
+	{"hue","Old",{},{4}},
+	{"idx","Int32",{},{4}},
+}
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle
 	{"num","Int32",{},{}}, -- plane of points
@@ -518,11 +525,6 @@ Pierce = {
 	{"idx","Int32",{},{}},
 	{"pol","Int32",{},{}},
 	{"pad","Int32",{},{}},
-}
-Fetch = {
-	{"pos","Old",{},{4}},
-	{"hue","Old",{},{4}},
-	{"idx","Int32",{},{4}},
 }
 Vector = {
 	{"vec","Old",{},{4}},

@@ -937,8 +937,8 @@ struct SwapState {
     }
 };
 
-struct MainState;
 enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,DrawBuf};
+struct MainState;
 template<class Buffer> struct BufferQueue {
     std::queue<Buffer*> pool;
     std::queue<Buffer*> running; std::queue<std::function<bool()>> toready;
@@ -1060,7 +1060,6 @@ template<class Buffer> struct BufferQueue {
         else std::cout << "debug count:" << count << std::endl;
     }
 };
-
 struct BufferState {
     VkPhysicalDevice physical;
     VkDevice device;
@@ -1098,6 +1097,15 @@ struct DrawState {
     ~DrawState();
     VkFence setup(Micro micro, int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
 };
+
+struct QueueState {
+    std::vector<BufferQueue<BufferState>*> queueSet[Micros];
+    std::map<Memory,BufferQueue<BufferState>*> queueMap;
+    BufferQueue<DrawState> *drawQueue;
+    QueueState();
+    ~QueueState();
+};
+
 struct MainState {
     bool callOnce;
     bool callDma;
@@ -1113,16 +1121,13 @@ struct MainState {
     int windowLasty;
     int argc;
     char **argv;
+    ThreadState *threadState;
     InitState *initState;
     OpenState* openState;
     PhysicalState* physicalState;
     DeviceState* logicalState;
-    BufferQueue<BufferState> *fetchQueue;
-    BufferQueue<BufferState> *uniformQueue;
-    BufferQueue<BufferState> *matrixQueue;
-    BufferQueue<DrawState> *drawQueue;
     SwapState *swapState;
-    ThreadState *threadState;
+    QueueState* queueState;
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
     const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -1156,17 +1161,28 @@ struct MainState {
     .windowLasty = 0,
     .argc = 0,
     .argv = 0,
+    .threadState = 0,
     .initState = 0,
     .openState = 0,
     .physicalState = 0,
     .logicalState = 0,
-    .fetchQueue = 0,
-    .uniformQueue = 0,
-    .matrixQueue = 0,
-    .drawQueue = 0,
     .swapState = 0,
-    .threadState = 0,
+    .queueState = 0,
 };
+
+QueueState::QueueState() {
+    queueMap[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    queueMap[Uniformz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    queueMap[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
+    drawQueue = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    queueSet[Practice].push_back(queueMap[Fetchz]);
+    queueSet[Practice].push_back(queueMap[Uniformz]);
+    queueSet[Practice].push_back(queueMap[Matrixz]);
+}
+QueueState::~QueueState() {
+    delete drawQueue;
+    for (auto i = queueMap.begin(); i != queueMap.end(); i++) delete (*i).second;
+}
 
 BufferState::BufferState(MainState *state, int size, BufferTag tag) {
     PhysicalState* physical = state->physicalState;
@@ -1545,10 +1561,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         physical->image,mainState.layers,mainState.extensions,mainState.enable,
         mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
-    mainState.fetchQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    mainState.uniformQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
-    mainState.matrixQueue = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
-    mainState.drawQueue = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    mainState.queueState = new QueueState();
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
@@ -1566,11 +1579,10 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
             }(mainState.openState,mainState.physicalState,mainState.logicalState);}
         if (!mainState.threadState && mainState.logicalState) {
             mainState.threadState = new ThreadState(mainState.logicalState->device);
-            mainState.fetchQueue->clr(mainState.threadState);
-            mainState.uniformQueue->clr(mainState.threadState);
-            mainState.matrixQueue->clr(mainState.threadState);
-            mainState.drawQueue->clr(mainState.threadState);}
-        // TODO iterate through pipelineState too, instead of having volatile pointer
+            std::map<Memory,BufferQueue<BufferState>*> *queue = &mainState.queueState->queueMap;
+            for (auto i = queue->begin(); i != queue->end(); i++) (*i).second->clr(mainState.threadState);
+            mainState.queueState->drawQueue->clr(mainState.threadState);
+            /*TODO iterate through pipelineState too, instead of having volatile pointer*/}
         planeMain();}
     break;
     default:
@@ -1583,10 +1595,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     delete mainState.swapState; mainState.swapState = 0;
     break;
     case (Graphics):
-    delete mainState.drawQueue; mainState.drawQueue = 0;
-    delete mainState.matrixQueue; mainState.matrixQueue = 0;
-    delete mainState.uniformQueue; mainState.uniformQueue = 0;
-    delete mainState.fetchQueue; mainState.fetchQueue = 0;
+    delete mainState.queueState; mainState.queueState = 0;
     delete mainState.logicalState; mainState.logicalState = 0;
     if (!mainState.openState) {delete mainState.physicalState; mainState.physicalState = 0;}
     break;
@@ -1604,7 +1613,7 @@ auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
     // TODO switch on center tag to choose buffer queue
     if (mainState.callOnce) {
-        mainState.fetchQueue->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
+        mainState.queueState->queueMap[Fetchz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
         mainState.callOnce = false;
     }
     if (mainState.callDma) {
@@ -1614,31 +1623,25 @@ void vulkanDma(struct Center *center) {
         struct Replica ubo{};
 	glm::mat4 tmp;
 	tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.model,&tmp,sizeof(ubo.model));
-        mainState.matrixQueue->set(0,sizeof(tmp),&tmp);
+        mainState.queueState->queueMap[Matrixz]->set(0,sizeof(tmp),&tmp);
 	tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.view,&tmp,sizeof(ubo.view));
 	tmp = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[1][1] *= -1; memcpy(&ubo.proj,&tmp,sizeof(ubo.proj));
-        mainState.uniformQueue->set(0,sizeof(struct Replica),&ubo);
+        mainState.queueState->queueMap[Uniformz]->set(0,sizeof(struct Replica),&ubo);
         mainState.callDma = false;
     }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
     if (mainState.callDraw) {
-        if (!mainState.fetchQueue->get()) return;
-        if (!mainState.uniformQueue->get()) return;
-        if (!mainState.matrixQueue->get()) return;
-        if (!mainState.drawQueue->set()) return;
-        int temp = mainState.drawQueue->tmp();
         std::vector<BufferState*> buffer;
-        switch (shader) {
-        case (Practice):
-        buffer.push_back(mainState.fetchQueue->get(mainState.drawQueue->tmp(temp)));
-        buffer.push_back(mainState.uniformQueue->get(mainState.drawQueue->tmp(temp)));
-        buffer.push_back(mainState.matrixQueue->get(mainState.drawQueue->tmp(temp)));
-        break;
-        default: throw std::runtime_error("cannot setup buffers!");}
-        std::function<bool()> done = mainState.drawQueue->set(0,[buffer,base,limit](DrawState*draw){
+        BufferQueue<DrawState> *draw = mainState.queueState->drawQueue;
+        std::vector<BufferQueue<BufferState>*> *queue = &mainState.queueState->queueSet[shader];
+        for (auto i = queue->begin(); i != queue->end(); i++) if (!(*i)->get()) return;
+        if (!draw->set()) return;
+        int temp = draw->tmp();
+        for (auto i = queue->begin(); i != queue->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
+        std::function<bool()> done = draw->set(0,[buffer,base,limit](DrawState*draw){
         return draw->setup(Practice,buffer.size(),buffer.data(),base,limit,&mainState.framebufferResized);});
-        mainState.drawQueue->tmp(temp,done);
+        draw->tmp(temp,done);
         mainState.callDma = true;
     }
 }
