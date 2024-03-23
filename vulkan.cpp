@@ -510,14 +510,14 @@ struct PhysicalState {
     }
 };
 
-struct PipelineStruct {
+struct PipelineState {
     VkDevice device;
     VkPipelineLayout layout;
     VkPipeline pipeline;
     VkDescriptorSetLayout dlayout;
     VkDescriptorSet descriptor;
-    PipelineStruct(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
-        Micro micro, int count, const char *vertex, const char *fragment) {
+    PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
+        int count, const char *vertex, const char *fragment) {
         this->device = device;
         dlayout = [](VkDevice device, int count) {
             std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -566,7 +566,7 @@ struct PipelineStruct {
             return layout;
         } (device,dlayout);
         pipeline = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout,
-            Micro micro, const char *vertex, const char *fragment) {
+            const char *vertex, const char *fragment) {
             VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
                 VkShaderModuleCreateInfo createInfo{};
                 createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -692,9 +692,9 @@ struct PipelineStruct {
             vkDestroyShaderModule(device, fmodule, nullptr);
             vkDestroyShaderModule(device, vmodule, nullptr);
             return pipeline;
-        } (device,render,layout,micro,vertex,fragment);
+        } (device,render,layout,vertex,fragment);
     }
-    ~PipelineStruct() {
+    ~PipelineState() {
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineLayout(device, layout, nullptr);
         vkDestroyDescriptorSetLayout(device, dlayout, nullptr);
@@ -708,7 +708,6 @@ struct DeviceState {
     VkQueue present;
     VkCommandPool pool;
     VkDescriptorPool dpool;
-    std::vector<PipelineStruct*> pipeline;
     uint32_t graphicid;
     uint32_t presentid;
     DeviceState(VkPhysicalDevice physical, uint32_t graphicid, uint32_t presentid, VkFormat image,
@@ -821,12 +820,8 @@ struct DeviceState {
                 throw std::runtime_error("failed to create descriptor pool!");
             return pool;
         } (device, MAX_BUFFERS_AVAILABLE, MAX_BUFFERS_AVAILABLE);
-        for (int i = 0; i < Micros; i++)
-            pipeline.push_back(new PipelineStruct(device,render,dpool,
-            (Micro)i,3,"vertexPracticeG","fragmentPracticeG"));
     }
     ~DeviceState() {
-        for (int i = 0; i < Micros; i++) delete pipeline[i];
         vkDestroyDescriptorPool(device, dpool, nullptr);
         vkDestroyCommandPool(device, pool, nullptr);
         vkDestroyRenderPass(device, render, nullptr);
@@ -1085,23 +1080,24 @@ struct DrawState {
     VkQueue graphic;
     VkQueue present;
     VkRenderPass render;
-    std::vector<PipelineStruct*> pipeline;
     VkCommandPool pool;
     SwapState **swap;
     VkSemaphore available;
     VkSemaphore finished;
     VkCommandBuffer command;
     VkFence fence;
+    PipelineState* pipeline;
+    // interpret size as number of bindings in pipeline
     DrawState(MainState *state, int size, BufferTag tag);
     void init();
     ~DrawState();
-    VkFence setup(Micro micro, int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
+    VkFence setup(int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
 };
 
 struct QueueState {
-    std::vector<BufferQueue<BufferState>*> queueSet[Micros];
-    std::map<Memory,BufferQueue<BufferState>*> queueMap;
-    BufferQueue<DrawState> *drawQueue;
+    std::vector<BufferQueue<BufferState>*> drawBuffer[Micros];
+    BufferQueue<BufferState>* bufferQueue[Memorys];
+    BufferQueue<DrawState>* drawQueue[Micros];
     QueueState();
     ~QueueState();
 };
@@ -1171,17 +1167,19 @@ struct MainState {
 };
 
 QueueState::QueueState() {
-    queueMap[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    queueMap[Uniformz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
-    queueMap[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
-    drawQueue = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
-    queueSet[Practice].push_back(queueMap[Fetchz]);
-    queueSet[Practice].push_back(queueMap[Uniformz]);
-    queueSet[Practice].push_back(queueMap[Matrixz]);
+    for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
+    for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
+    bufferQueue[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    bufferQueue[Uniformz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
+    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    drawBuffer[Practice].push_back(bufferQueue[Fetchz]);
+    drawBuffer[Practice].push_back(bufferQueue[Uniformz]);
+    drawBuffer[Practice].push_back(bufferQueue[Matrixz]);
 }
 QueueState::~QueueState() {
-    delete drawQueue;
-    for (auto i = queueMap.begin(); i != queueMap.end(); i++) delete (*i).second;
+    for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
+    for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];
 }
 
 BufferState::BufferState(MainState *state, int size, BufferTag tag) {
@@ -1362,9 +1360,9 @@ DrawState::DrawState(MainState *state, int size, BufferTag tag) {
     this->graphic = logical->graphic;
     this->present = logical->present;
     this->render = logical->render;
-    this->pipeline = logical->pipeline;
     this->pool = logical->pool;
     this->swap = &(state->swapState);
+    this->pipeline = new PipelineState(device,render,logical->dpool,size,"vertexPracticeG","fragmentPracticeG");
 }
 void DrawState::init() {
 // this called in separate thread on newly constructed
@@ -1406,8 +1404,9 @@ DrawState::~DrawState() {
     vkFreeCommandBuffers(device, pool, 1, &command);
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
+    delete pipeline;
 }
-VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
+VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
     uint32_t index;
     VkResult result = vkAcquireNextImageKHR(device, (*swap)->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
@@ -1433,7 +1432,7 @@ VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint
         info.pClearValues = &clearColor;
         vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
     } (render,(*swap)->framebuffers[index],(*swap)->extent,command);
-    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline[micro]->pipeline);
+    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkViewport info{};
         info.x = 0.0f; info.y = 0.0f;
@@ -1446,9 +1445,9 @@ VkFence DrawState::setup(Micro micro, int count, BufferState *const*buffer, uint
         scissor.offset = {0, 0};
         scissor.extent = extent;
         vkCmdSetScissor(command, 0, 1, &scissor);}((*swap)->extent,command);
-    for (int i = 0; i < count; i++) buffer[i]->bind(command,pipeline[micro]->descriptor);
-    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline[micro]->layout, 0, 1,
-        &pipeline[micro]->descriptor, 0, nullptr);
+    for (int i = 0; i < count; i++) buffer[i]->bind(command,pipeline->descriptor);
+    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, 0, 1,
+        &pipeline->descriptor, 0, nullptr);
     vkCmdDraw(command, limit-base, (limit-base)/3, base, base/3);
     vkCmdEndRenderPass(command);
     if (vkEndCommandBuffer(command) != VK_SUCCESS)
@@ -1551,39 +1550,40 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     switch (proc) {
     case (Window):
     mainState.openState = new OpenState(
-        mainState.initState->instance,mainState.WIDTH,mainState.HEIGHT,(void*)&mainState);
+    mainState.initState->instance,mainState.WIDTH,mainState.HEIGHT,(void*)&mainState);
     mainState.physicalState = new PhysicalState(
-        mainState.initState->instance,mainState.openState->surface,mainState.extensions);
+    mainState.initState->instance,mainState.openState->surface,mainState.extensions);
     break;
     case (Graphics):
     mainState.logicalState = [](PhysicalState *physical){
-        return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
-        physical->image,mainState.layers,mainState.extensions,mainState.enable,
-        mainState.MAX_BUFFERS_AVAILABLE*Memorys);
+    return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
+    physical->image,mainState.layers,mainState.extensions,mainState.enable,
+    mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
     mainState.queueState = new QueueState();
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
-        glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call planeSafe from test thread
-        if (mainState.framebufferResized) {
-            mainState.framebufferResized = false;
-            if (mainState.threadState) delete mainState.threadState;
-            if (mainState.swapState) delete mainState.swapState;
-            mainState.swapState = 0; mainState.threadState = 0;}
-        if (!mainState.swapState && mainState.openState && mainState.physicalState && mainState.logicalState) {
-            mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
-                return new SwapState(open->window,physical->physical,device->device,
-                open->surface,physical->image,physical->format,physical->mode,
-                device->render,physical->minimum,physical->graphicid,physical->presentid);
-            }(mainState.openState,mainState.physicalState,mainState.logicalState);}
-        if (!mainState.threadState && mainState.logicalState) {
-            mainState.threadState = new ThreadState(mainState.logicalState->device);
-            std::map<Memory,BufferQueue<BufferState>*> *queue = &mainState.queueState->queueMap;
-            for (auto i = queue->begin(); i != queue->end(); i++) (*i).second->clr(mainState.threadState);
-            mainState.queueState->drawQueue->clr(mainState.threadState);
-            /*TODO iterate through pipelineState too, instead of having volatile pointer*/}
-        planeMain();}
+    glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call planeSafe from test thread
+    if (mainState.framebufferResized) {
+        mainState.framebufferResized = false;
+        if (mainState.threadState) delete mainState.threadState;
+        if (mainState.swapState) delete mainState.swapState;
+        mainState.swapState = 0; mainState.threadState = 0;}
+    if (!mainState.swapState && mainState.openState && mainState.physicalState && mainState.logicalState) {
+        mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
+        return new SwapState(open->window,physical->physical,device->device,
+        open->surface,physical->image,physical->format,physical->mode,
+        device->render,physical->minimum,physical->graphicid,physical->presentid);
+        }(mainState.openState,mainState.physicalState,mainState.logicalState);}
+    if (!mainState.threadState && mainState.logicalState) {
+        mainState.threadState = new ThreadState(mainState.logicalState->device);
+        BufferQueue<BufferState>** queue = mainState.queueState->bufferQueue;
+        BufferQueue<DrawState>** draw = mainState.queueState->drawQueue;
+        for (int i = 0; i < Memorys; i++) if (queue[i]) queue[i]->clr(mainState.threadState);
+        for (int i = 0; i < Micros; i++) if (draw[i]) draw[i]->clr(mainState.threadState);
+        /*TODO iterate through pipelineState too, instead of having volatile pointer*/}
+    planeMain();}
     break;
     default:
     break;}
@@ -1613,7 +1613,7 @@ auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
     // TODO switch on center tag to choose buffer queue
     if (mainState.callOnce) {
-        mainState.queueState->queueMap[Fetchz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
+        mainState.queueState->bufferQueue[Fetchz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
         mainState.callOnce = false;
     }
     if (mainState.callDma) {
@@ -1621,26 +1621,26 @@ void vulkanDma(struct Center *center) {
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         VkExtent2D extent = mainState.swapState->extent;
         struct Replica ubo{};
-	glm::mat4 tmp;
-	tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.model,&tmp,sizeof(ubo.model));
-        mainState.queueState->queueMap[Matrixz]->set(0,sizeof(tmp),&tmp);
-	tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.view,&tmp,sizeof(ubo.view));
-	tmp = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[1][1] *= -1; memcpy(&ubo.proj,&tmp,sizeof(ubo.proj));
-        mainState.queueState->queueMap[Uniformz]->set(0,sizeof(struct Replica),&ubo);
+    glm::mat4 tmp;
+    tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.model,&tmp,sizeof(ubo.model));
+        mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(tmp),&tmp);
+    tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.view,&tmp,sizeof(ubo.view));
+    tmp = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[1][1] *= -1; memcpy(&ubo.proj,&tmp,sizeof(ubo.proj));
+        mainState.queueState->bufferQueue[Uniformz]->set(0,sizeof(struct Replica),&ubo);
         mainState.callDma = false;
     }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
     if (mainState.callDraw) {
         std::vector<BufferState*> buffer;
-        BufferQueue<DrawState> *draw = mainState.queueState->drawQueue;
-        std::vector<BufferQueue<BufferState>*> *queue = &mainState.queueState->queueSet[shader];
+        BufferQueue<DrawState> *draw = mainState.queueState->drawQueue[shader];
+        std::vector<BufferQueue<BufferState>*> *queue = &mainState.queueState->drawBuffer[shader];
         for (auto i = queue->begin(); i != queue->end(); i++) if (!(*i)->get()) return;
         if (!draw->set()) return;
         int temp = draw->tmp();
         for (auto i = queue->begin(); i != queue->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
-        std::function<bool()> done = draw->set(0,[buffer,base,limit](DrawState*draw){
-        return draw->setup(Practice,buffer.size(),buffer.data(),base,limit,&mainState.framebufferResized);});
+        std::function<bool()> done = draw->set(3/*map from shader to size*/,[buffer,base,limit](DrawState*draw){
+        return draw->setup(buffer.size(),buffer.data(),base,limit,&mainState.framebufferResized);});
         draw->tmp(temp,done);
         mainState.callDma = true;
     }
