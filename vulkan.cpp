@@ -16,9 +16,9 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
-#include <set>
-#include <queue>
+#include <deque>
 #include <map>
+#include <set>
 #include <functional>
 #include <pthread.h>
 #include <semaphore.h>
@@ -199,9 +199,9 @@ struct ThreadState {
     sem_t semaphore;
     pthread_t thread;
     bool finish;
-    std::queue<std::function<VkFence()>> setup;
-    std::queue<VkFence> fence;
-    std::queue<int> order;
+    std::deque<std::function<VkFence()>> setup;
+    std::deque<VkFence> fence;
+    std::deque<int> order;
     std::set<int> lookup;
     int seqnum;
     ThreadState(VkDevice device) {
@@ -236,7 +236,7 @@ struct ThreadState {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 break;}
             while (!arg->setup.empty()) {
-                arg->fence.push(arg->setup.front()()); arg->setup.pop();}
+                arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front();}
             if (arg->fence.empty()) {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
@@ -246,7 +246,7 @@ struct ThreadState {
                 VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop(); arg->fence.pop();}
+                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop_front(); arg->fence.pop_front();}
                 /*planeSafe(...);*/}}
         vkDeviceWaitIdle(arg->device);
         return 0;
@@ -261,8 +261,8 @@ struct ThreadState {
     // return function that returns whether fence returned by given function in separate thread is done
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        setup.push(given);
-        int local = seqnum++; order.push(local); lookup.insert(local);
+        setup.push_back(given);
+        int local = seqnum++; order.push_back(local); lookup.insert(local);
         if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         std::function<bool()> done = [this,local](){return this->clear(local);};
@@ -935,12 +935,12 @@ struct SwapState {
 enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,DrawBuf};
 struct MainState;
 template<class Buffer> struct BufferQueue {
-    std::queue<Buffer*> pool;
-    std::queue<Buffer*> running; std::queue<std::function<bool()>> toready;
-    Buffer* ready; std::queue<std::function<bool()>> toinuse;
-    std::queue<Buffer*> inuse; std::queue<std::function<bool()>> topool;
+    std::deque<Buffer*> pool;
+    std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
+    Buffer* ready; std::deque<std::function<bool()>> toinuse;
+    std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
     std::map<int,std::function<bool()>> temp;
-    std::queue<void*> data; std::queue<std::function<bool()>> done;
+    std::deque<void*> data; std::deque<std::function<bool()>> done;
     int count; int size; int seqnum; int limit; BufferTag tag;
     MainState *info;
     struct ThreadState *thread;
@@ -955,10 +955,26 @@ template<class Buffer> struct BufferQueue {
         thread = 0;
     }
     ~BufferQueue() {
-        while (!pool.empty()) {delete pool.front(); pool.pop();}
-        while (!running.empty()) {delete running.front(); running.pop();}
+        while (!pool.empty()) {delete pool.front(); pool.pop_front();}
+        while (!running.empty()) {delete running.front(); running.pop_front();}
         if (ready) delete ready;
-        while (!inuse.empty()) {delete inuse.front(); inuse.pop();}
+        while (!inuse.empty()) {delete inuse.front(); inuse.pop_front();}
+    }
+    std::pair<typename std::deque<Buffer*>::iterator,bool> first() {
+        if (!ready && inuse.empty()) return std::make_pair(inuse.end(),false);
+        if (!ready) return std::make_pair(inuse.begin(),true);
+        return std::make_pair(inuse.end(),true);
+    }
+    Buffer *more(std::pair<typename std::deque<Buffer*>::iterator,bool> last) {
+        if (!last.second) return 0;
+        return (last.first == inuse.end() ? ready : *last.first);
+    }
+    std::pair<typename std::deque<Buffer*>::iterator,bool> next(
+        std::pair<typename std::deque<Buffer*>::iterator,bool> last) {
+        if (!last.second) return last;
+        last.first = (last.first == inuse.end() ? inuse.begin() : last.first + 1);
+        last.second = (last.first != inuse.end());
+        return last;
     }
     void clr(ThreadState *thread) {
     // change thread if it was deleted to idle the device
@@ -968,16 +984,16 @@ template<class Buffer> struct BufferQueue {
     // advance queues with done fronts
         if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
             while (toinuse.size() > 1) {
-                inuse.push(0); topool.push(toinuse.front()); toinuse.pop();}
-            inuse.push(ready); topool.push(toinuse.front()); toinuse.pop(); ready = 0;}
+                inuse.push_back(0); topool.push_back(toinuse.front()); toinuse.pop_front();}
+            inuse.push_back(ready); topool.push_back(toinuse.front()); toinuse.pop_front(); ready = 0;}
         while (!toready.empty() && toready.front()()) {
-            if (ready) pool.push(ready);
-            ready = running.front(); running.pop(); toready.pop();}
+            if (ready) pool.push_back(ready);
+            ready = running.front(); running.pop_front(); toready.pop_front();}
         while (!topool.empty() && topool.front()()) {
-            if (inuse.front()) pool.push(inuse.front());
-            inuse.pop(); topool.pop();}
+            if (inuse.front()) pool.push_back(inuse.front());
+            inuse.pop_front(); topool.pop_front();}
         while (!data.empty() && done.front()()) {
-            free(data.front()); data.pop(); done.pop();}
+            free(data.front()); data.pop_front(); done.pop_front();}
     }
     int tmp() {
     // return identifier for done function
@@ -1005,7 +1021,7 @@ template<class Buffer> struct BufferQueue {
     void set(int size) {
     // change queue item size
         if (size != this->size) {
-            while (!pool.empty()) {delete pool.front(); pool.pop();}
+            while (!pool.empty()) {delete pool.front(); pool.pop_front();}
             this->size = size;}
     }
     std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
@@ -1013,20 +1029,20 @@ template<class Buffer> struct BufferQueue {
         bool first = false;
         set(size);
         if (!set()) return [](){return true;};
-        if (pool.empty()) {pool.push(new Buffer(info,size,tag)); first = true; count++;}
-        Buffer *ptr = pool.front(); pool.pop();
+        if (pool.empty()) {pool.push_back(new Buffer(info,size,tag)); first = true; count++;}
+        Buffer *ptr = pool.front(); pool.pop_front();
         std::function<bool()> done;
         if (first) done = thread->push([setup,ptr](){ptr->init(); return setup(ptr);});
         else done = thread->push([setup,ptr](){return setup(ptr);});
-        running.push(ptr); toready.push(done);
+        running.push_back(ptr); toready.push_back(done);
         return done;
     }
-    std::function<bool()> set(std::queue<void*> &queue,std::queue<std::function<bool()>> &inuse,
+    std::function<bool()> set(std::deque<void*> &queue,std::deque<std::function<bool()>> &inuse,
         int loc, int siz, const void *ptr) {
     // enque data using given queues
         int size = (loc+siz > this->size ? loc+siz : this->size);
         void *copy = malloc(siz); memcpy(copy,ptr,siz);
-        int temp = tmp(); queue.push(copy); inuse.push(tmp(temp));
+        int temp = tmp(); queue.push_back(copy); inuse.push_back(tmp(temp));
         std::function<bool()> done = set(size,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);});
         tmp(temp,done);
         return done;
@@ -1044,7 +1060,7 @@ template<class Buffer> struct BufferQueue {
     Buffer *get(std::function<bool()> done) {
     // get buffer and reserve it until given returns true
         clr();
-        toinuse.push(done);
+        toinuse.push_back(done);
         return ready;
     }
     void dbg() {
@@ -1081,17 +1097,18 @@ struct DrawState {
     VkQueue present;
     VkRenderPass render;
     VkCommandPool pool;
-    SwapState **swap;
     VkSemaphore available;
     VkSemaphore finished;
     VkCommandBuffer command;
     VkFence fence;
+    SwapState *swap;
     PipelineState* pipeline;
     // interpret size as number of bindings in pipeline
     DrawState(MainState *state, int size, BufferTag tag);
+    void init(SwapState *swap);
     void init();
     ~DrawState();
-    VkFence setup(int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
+    VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
 };
 
 struct QueueState {
@@ -1361,8 +1378,11 @@ DrawState::DrawState(MainState *state, int size, BufferTag tag) {
     this->present = logical->present;
     this->render = logical->render;
     this->pool = logical->pool;
-    this->swap = &(state->swapState);
+    this->swap = state->swapState;
     this->pipeline = new PipelineState(device,render,logical->dpool,size,"vertexPracticeG","fragmentPracticeG");
+}
+void DrawState::init(SwapState *swap) {
+    this->swap = swap;
 }
 void DrawState::init() {
 // this called in separate thread on newly constructed
@@ -1406,9 +1426,9 @@ DrawState::~DrawState() {
     vkDestroySemaphore(device, available, nullptr);
     delete pipeline;
 }
-VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
+VkFence DrawState::setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
     uint32_t index;
-    VkResult result = vkAcquireNextImageKHR(device, (*swap)->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
+    VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -1431,7 +1451,7 @@ VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t base, ui
         info.clearValueCount = 1;
         info.pClearValues = &clearColor;
         vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
-    } (render,(*swap)->framebuffers[index],(*swap)->extent,command);
+    } (render,swap->framebuffers[index],swap->extent,command);
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkViewport info{};
@@ -1439,13 +1459,13 @@ VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t base, ui
         info.width = (float) extent.width;
         info.height = (float) extent.height;
         info.minDepth = 0.0f; info.maxDepth = 1.0f;
-        vkCmdSetViewport(command, 0, 1, &info);}((*swap)->extent,command);
+        vkCmdSetViewport(command, 0, 1, &info);}(swap->extent,command);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = extent;
-        vkCmdSetScissor(command, 0, 1, &scissor);}((*swap)->extent,command);
-    for (int i = 0; i < count; i++) buffer[i]->bind(command,pipeline->descriptor);
+        vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
+    for (int i = 0; i < buffer.size(); i++) buffer[i]->bind(command,pipeline->descriptor);
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, 0, 1,
         &pipeline->descriptor, 0, nullptr);
     vkCmdDraw(command, limit-base, (limit-base)/3, base, base/3);
@@ -1482,7 +1502,7 @@ VkFence DrawState::setup(int count, BufferState *const*buffer, uint32_t base, ui
         if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }((*swap)->swap,present,index,finished,framebufferResized);
+    }(swap->swap,present,index,finished,framebufferResized);
     return fence;
 }
 
@@ -1575,14 +1595,17 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         return new SwapState(open->window,physical->physical,device->device,
         open->surface,physical->image,physical->format,physical->mode,
         device->render,physical->minimum,physical->graphicid,physical->presentid);
-        }(mainState.openState,mainState.physicalState,mainState.logicalState);}
-    if (!mainState.threadState && mainState.logicalState) {
+        }(mainState.openState,mainState.physicalState,mainState.logicalState);
+        BufferQueue<DrawState>** draw = mainState.queueState->drawQueue;
+        for (int i = 0; i < Micros; i++) if (draw[i])
+        for (auto j = draw[i]->first(); draw[i]->more(j); j = draw[i]->next(j))
+        draw[i]->more(j)->init(mainState.swapState);}
+    if (!mainState.threadState && mainState.swapState && mainState.logicalState) {
         mainState.threadState = new ThreadState(mainState.logicalState->device);
         BufferQueue<BufferState>** queue = mainState.queueState->bufferQueue;
         BufferQueue<DrawState>** draw = mainState.queueState->drawQueue;
         for (int i = 0; i < Memorys; i++) if (queue[i]) queue[i]->clr(mainState.threadState);
-        for (int i = 0; i < Micros; i++) if (draw[i]) draw[i]->clr(mainState.threadState);
-        /*TODO iterate through pipelineState too, instead of having volatile pointer*/}
+        for (int i = 0; i < Micros; i++) if (draw[i]) draw[i]->clr(mainState.threadState);}
     planeMain();}
     break;
     default:
@@ -1640,7 +1663,7 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
         int temp = draw->tmp();
         for (auto i = queue->begin(); i != queue->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
         std::function<bool()> done = draw->set(3/*map from shader to size*/,[buffer,base,limit](DrawState*draw){
-        return draw->setup(buffer.size(),buffer.data(),base,limit,&mainState.framebufferResized);});
+        return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
         draw->tmp(temp,done);
         mainState.callDma = true;
     }
