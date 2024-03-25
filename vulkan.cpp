@@ -31,7 +31,7 @@ extern "C" {
 #define NANOSECONDS (10^9)
 
 #ifdef PLANRA
-// TODO move following to planer.lua
+// TODO move to planer.lua
 struct Input: public Fetch {
     Input(float *pos, float *hue) {
         for (int i = 0; i < 2; i++) this->pos[i] = pos[i];
@@ -880,7 +880,7 @@ template<class Buffer> struct BufferQueue {
         else std::cout << "debug count:" << count << std::endl;
     }
 };
-// TODO pass physical logical and swap instead of main, to prevent forward declaration
+struct QueueState;
 struct PipelineState {
     VkDevice device;
     VkPipelineLayout layout;
@@ -888,7 +888,7 @@ struct PipelineState {
     VkDescriptorSetLayout dlayout;
     VkDescriptorSet descriptor;
     PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
-        int count, const char *vertex, const char *fragment);
+        Micro micro, QueueState *queue, const char *vertex, const char *fragment);
     ~PipelineState();
 };
 struct BufferState {
@@ -909,7 +909,7 @@ struct BufferState {
     void init();
     ~BufferState();
     VkFence setup(int loc, int siz, const void *ptr);
-    void bind(VkCommandBuffer command, VkDescriptorSet descriptor);
+    void bind(int micro, VkCommandBuffer command, VkDescriptorSet descriptor);
 };
 struct DrawState {
     VkDevice device;
@@ -923,7 +923,7 @@ struct DrawState {
     VkFence fence;
     SwapState *swap;
     PipelineState* pipeline;
-    // interpret size as number of bindings in pipeline
+    // interpret size as type of pipeline
     DrawState(MainState *state, int size, BufferTag tag);
     void init(SwapState *swap);
     void init();
@@ -937,7 +937,6 @@ struct QueueState {
     int strideBuffer;
     std::vector<int> offsetBuffer;
     std::vector<BufferQueue<BufferState>*> bindBuffer[Micros];
-    std::vector<int> sizeBuffer[Micros];
     std::vector<VkDescriptorType> typeBuffer[Micros];
     QueueState();
     ~QueueState();
@@ -1008,7 +1007,7 @@ struct MainState {
 };
 
 PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
-    int count, const char *vertex, const char *fragment) {
+    Micro micro, QueueState *queue, const char *vertex, const char *fragment) {
     this->device = device;
     dlayout = [](VkDevice device, int count) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -1019,7 +1018,7 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         uniform.pImmutableSamplers = nullptr;
         uniform.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         bindings.push_back(uniform);
-        // TODO parameterize which binding is uniform, which is storage, and which is unbound
+        // TODO use queue->typeBuffer
         for (int i = 1; i < count; i++) {
         VkDescriptorSetLayoutBinding matrix{};
         matrix.binding = i;
@@ -1036,7 +1035,7 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
             throw std::runtime_error("failed to create descriptor set layout!");
         return descriptor;
-    } (device,count);
+    } (device,queue->typeBuffer[micro].size());
     descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
         VkDescriptorSetAllocateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1104,13 +1103,13 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         VkVertexInputBindingDescription description{};
         description.binding = 0;
-        description.stride = sizeof(Fetch); // TODO parameterize this
+        description.stride = sizeof(Fetch); // TODO use queue->strideBuffer
         description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         std::vector<VkVertexInputAttributeDescription> attribute(3);
         attribute[0].binding = 0;
         attribute[0].location = 0;
         attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attribute[0].offset = offsetof(Fetch, pos);
+        attribute[0].offset = offsetof(Fetch, pos); // TODO use queue->offsetBuffer
         attribute[1].binding = 0;
         attribute[1].location = 1;
         attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -1206,8 +1205,7 @@ QueueState::QueueState() {
     offsetBuffer.push_back(offsetof(Fetch,idx));
     bindBuffer[Practice].push_back(bufferQueue[Uniformz]);
     bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
-    sizeBuffer[Practice].push_back(sizeof(Uniform));
-    sizeBuffer[Practice].push_back(sizeof(Matrix));
+    // this must match corresponding ChageBuf or StoreBuf
     typeBuffer[Practice].push_back(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     typeBuffer[Practice].push_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 }
@@ -1347,7 +1345,7 @@ VkFence BufferState::setup(int loc, int siz, const void *ptr) {
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;
 }
-void BufferState::bind(VkCommandBuffer command, VkDescriptorSet descriptor) {
+void BufferState::bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
     [](VkBuffer buffer, VkCommandBuffer command){
         VkBuffer buffers[] = {buffer};
@@ -1355,37 +1353,37 @@ void BufferState::bind(VkCommandBuffer command, VkDescriptorSet descriptor) {
         vkCmdBindVertexBuffers(command, 0, 1, buffers, offsets);
     }(buffer,command);}
     if (tag == ChangeBuf) {
-    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor) {
+    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor, int layout, int size) {
         VkDescriptorBufferInfo info{};
         info.buffer = buffer;
         info.offset = 0;
-        info.range = sizeof(struct Replica); // TODO make this a parameter
+        info.range = size;
         VkWriteDescriptorSet update{};
         update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         update.dstSet = descriptor;
-        update.dstBinding = 0; // TODO make this a parameter
+        update.dstBinding = layout;
         update.dstArrayElement = 0;
         update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         update.descriptorCount = 1;
         update.pBufferInfo = &info;
         vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-    }(device,buffer,descriptor);}
+    }(device,buffer,descriptor,layout,size);}
     if (tag == StoreBuf) {
-    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor) {
+    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor, int layout, int size) {
         VkDescriptorBufferInfo info{};
         info.buffer = buffer;
         info.offset = 0;
-        info.range = sizeof(glm::mat4); // TODO make this a parameter
+        info.range = size;
         VkWriteDescriptorSet update{};
-        update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; // TODO make this a parameter
+        update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         update.dstSet = descriptor;
-        update.dstBinding = 1; // TODO make this a parameter
+        update.dstBinding = layout;
         update.dstArrayElement = 0;
         update.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         update.descriptorCount = 1;
         update.pBufferInfo = &info;
         vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-    }(device,buffer,descriptor);}
+    }(device,buffer,descriptor,layout,size);}
 }
 
 DrawState::DrawState(MainState *state, int size, BufferTag tag) {
@@ -1396,7 +1394,7 @@ DrawState::DrawState(MainState *state, int size, BufferTag tag) {
     this->render = logical->render;
     this->pool = logical->pool;
     this->swap = state->swapState;
-    this->pipeline = new PipelineState(device,render,logical->dpool,size,"vertexPracticeG","fragmentPracticeG");
+    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState,"vertexPracticeG","fragmentPracticeG");
 }
 void DrawState::init(SwapState *swap) {
     this->swap = swap;
@@ -1482,7 +1480,8 @@ VkFence DrawState::setup(const std::vector<BufferState*> &buffer, uint32_t base,
         scissor.offset = {0, 0};
         scissor.extent = extent;
         vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
-    for (int i = 0; i < buffer.size(); i++) buffer[i]->bind(command,pipeline->descriptor);
+    // TODO decrement by whether prior was FetchBuf instead of by 1
+    for (int i = 0; i < buffer.size(); i++) buffer[i]->bind(i-1,command,pipeline->descriptor);
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, 0, 1,
         &pipeline->descriptor, 0, nullptr);
     vkCmdDraw(command, limit-base, (limit-base)/3, base, base/3);
@@ -1672,23 +1671,20 @@ void vulkanDma(struct Center *center) {
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
     if (mainState.callDraw) {
-        std::vector<BufferState*> binding;
         std::vector<BufferState*> buffer;
         BufferQueue<BufferState> *fetchBuffer = mainState.queueState->fetchBuffer;
         int strideBuffer = mainState.queueState->strideBuffer;
         std::vector<int> *offsetBuffer = &mainState.queueState->offsetBuffer;
         std::vector<BufferQueue<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
-        std::vector<int> *sizeBuffer = mainState.queueState->sizeBuffer+shader;
         std::vector<VkDescriptorType> *typeBuffer = mainState.queueState->typeBuffer+shader;
         BufferQueue<DrawState> *draw = mainState.queueState->drawQueue[shader];
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
         if (!draw->set()) return;
         int temp = draw->tmp();
-        binding.push_back(fetchBuffer->get(draw->tmp(temp)));
-        for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) binding.push_back((*i)->get(draw->tmp(temp)));
+        buffer.push_back(fetchBuffer->get(draw->tmp(temp)));
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
-        std::function<bool()> done = draw->set(binding.size(),[binding,base,limit](DrawState*draw){
-        return draw->setup(binding,base,limit,&mainState.framebufferResized);});
+        std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
+        return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
         draw->tmp(temp,done);
         mainState.callDma = true;
     }
