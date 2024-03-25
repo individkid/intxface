@@ -264,11 +264,59 @@ struct MainState {
     .queueState = 0,
 };
 
+void framebufferResized(GLFWwindow* window, int width, int height) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    mainState->framebufferResized = true;
+}
+void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    if (action != GLFW_PRESS || mods != 0) {
+        return;
+    }
+    if (key == GLFW_KEY_ENTER) {
+        mainState->enterPressed = true;
+    } else {
+        mainState->enterPressed = false;
+    }
+    if (key == GLFW_KEY_ESCAPE) {
+        mainState->escapePressed = true;
+        mainState->otherPressed = false;
+    } else if (mainState->otherPressed) {
+        mainState->escapePressed = false;
+        mainState->otherPressed = false;
+    } else {
+        mainState->otherPressed = true;
+    }
+}
+void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    if (action != GLFW_PRESS) {
+        return;
+    }
+    mainState->windowMoving = !mainState->windowMoving;
+    if (mainState->windowMoving) {
+        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
+        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
+    }
+}
+void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    double mouseNextx, mouseNexty;
+    int windowNextx, windowNexty;
+    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
+    if (mainState->windowMoving) {
+        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
+        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
+        glfwSetWindowPos(window,windowNextx,windowNexty);
+        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
+    }
+}
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
+
 struct InitState {
     VkInstance instance;
     bool valid;
@@ -346,10 +394,6 @@ struct InitState {
     }
 };
 
-void framebufferResized(GLFWwindow* window, int width, int height);
-void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods);
-void mouseClicked(GLFWwindow* window, int button, int action, int mods);
-void mouseMoved(GLFWwindow* window, double xpos, double ypos);
 struct OpenState {
     VkInstance instance;
     GLFWwindow* window;
@@ -1505,54 +1549,6 @@ struct DrawState {
     }(swap->swap,present,index,finished,framebufferResized);
     return fence;}
 };
-
-void framebufferResized(GLFWwindow* window, int width, int height) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->framebufferResized = true;
-}
-void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    if (action != GLFW_PRESS || mods != 0) {
-        return;
-    }
-    if (key == GLFW_KEY_ENTER) {
-        mainState->enterPressed = true;
-    } else {
-        mainState->enterPressed = false;
-    }
-    if (key == GLFW_KEY_ESCAPE) {
-        mainState->escapePressed = true;
-        mainState->otherPressed = false;
-    } else if (mainState->otherPressed) {
-        mainState->escapePressed = false;
-        mainState->otherPressed = false;
-    } else {
-        mainState->otherPressed = true;
-    }
-}
-void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    if (action != GLFW_PRESS) {
-        return;
-    }
-    mainState->windowMoving = !mainState->windowMoving;
-    if (mainState->windowMoving) {
-        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
-        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
-    }
-}
-void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    double mouseNextx, mouseNexty;
-    int windowNextx, windowNexty;
-    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
-    if (mainState->windowMoving) {
-        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
-        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
-        glfwSetWindowPos(window,windowNextx,windowNexty);
-        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
-    }
-}
 
 int vulkanInfo(enum Configure query) {
     return 0; // TODO
