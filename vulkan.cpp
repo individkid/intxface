@@ -193,82 +193,75 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-struct ThreadState {
-    VkDevice device;
-    sem_t protect;
-    sem_t semaphore;
-    pthread_t thread;
-    bool finish;
-    std::deque<std::function<VkFence()>> setup;
-    std::deque<VkFence> fence;
-    std::deque<int> order;
-    std::set<int> lookup;
-    int seqnum;
-    ThreadState(VkDevice device) {
-        this->device = device;
-        finish = false;
-        seqnum = 0;
-        if (sem_init(&protect, 0, 1) != 0 ||
-            sem_init(&semaphore, 0, 0) != 0 ||
-            pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
-    }
-    ~ThreadState() {
-    // this destructed to wait for device idle
-        if (sem_wait(&protect) != 0) {
-            std::cerr << "cannot wait for protect!" << std::endl;
-            std::terminate();}
-        finish = true;
-        if (sem_post(&protect) != 0) {
-            std::cerr << "cannot post to protect!" << std::endl;
-            std::terminate();}
-        if (sem_post(&semaphore) != 0 ||
-            pthread_join(thread,0) != 0 ||
-            sem_destroy(&semaphore) != 0 ||
-            sem_destroy(&protect) != 0) {
-            std::cerr << "failed to join thread!" << std::endl;
-            std::terminate();}
-    }
-    static void *separate(void *ptr) {
-        struct ThreadState *arg = (ThreadState*)ptr;
-        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        while (1) {
-            if (arg->finish) {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                break;}
-            while (!arg->setup.empty()) {
-                arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front();}
-            if (arg->fence.empty()) {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
-            else {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
-                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop_front(); arg->fence.pop_front();}
-                /*planeSafe(...);*/}}
-        vkDeviceWaitIdle(arg->device);
-        return 0;
-    }
-    bool clear(int given) {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        bool done = (lookup.find(given) == lookup.end());
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return done;
-    }
-    std::function<bool()> push(std::function<VkFence()> given) {
-    // return function that returns whether fence returned by given function in separate thread is done
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        setup.push_back(given);
-        int local = seqnum++; order.push_back(local); lookup.insert(local);
-        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
-        if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
-        std::function<bool()> done = [this,local](){return this->clear(local);};
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return done;
-    }
+struct InitState;
+struct OpenState;
+struct PhysicalState;
+struct DeviceState;
+struct SwapState;
+struct ThreadState;
+struct QueueState;
+struct MainState {
+    bool callOnce;
+    bool callDma;
+    bool callDraw;
+    bool framebufferResized;
+    bool escapePressed;
+    bool enterPressed;
+    bool otherPressed;
+    bool windowMoving;
+    double mouseLastx;
+    double mouseLasty;
+    int windowLastx;
+    int windowLasty;
+    int argc;
+    char **argv;
+    InitState *initState;
+    OpenState* openState;
+    PhysicalState* physicalState;
+    DeviceState* logicalState;
+    SwapState *swapState;
+    ThreadState *threadState;
+    QueueState* queueState;
+    const uint32_t WIDTH = 800;
+    const uint32_t HEIGHT = 600;
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+    const int MAX_BUFFERS_AVAILABLE = 7; // TODO collective limit for BufferQueue
+    const std::vector<const char*> extensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+    const std::vector<const char*> computions = {
+        // TODO compute extensions
+    };
+    const std::vector<const char*> layers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+    #ifdef NDEBUG
+    const bool enable = false;
+    #else
+    const bool enable = true;
+    #endif
+} mainState = {
+    .callOnce = true,
+    .callDma = true,
+    .callDraw = true,
+    .framebufferResized = false,
+    .escapePressed = false,
+    .enterPressed = false,
+    .otherPressed = false,
+    .windowMoving = false,
+    .mouseLastx = 0.0,
+    .mouseLasty = 0.0,
+    .windowLastx = 0,
+    .windowLasty = 0,
+    .argc = 0,
+    .argv = 0,
+    .initState = 0,
+    .openState = 0,
+    .physicalState = 0,
+    .logicalState = 0,
+    .swapState = 0,
+    .threadState = 0,
+    .queueState = 0,
 };
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -741,6 +734,84 @@ struct SwapState {
     }
 };
 
+struct ThreadState {
+    VkDevice device;
+    sem_t protect;
+    sem_t semaphore;
+    pthread_t thread;
+    bool finish;
+    std::deque<std::function<VkFence()>> setup;
+    std::deque<VkFence> fence;
+    std::deque<int> order;
+    std::set<int> lookup;
+    int seqnum;
+    ThreadState(VkDevice device) {
+        this->device = device;
+        finish = false;
+        seqnum = 0;
+        if (sem_init(&protect, 0, 1) != 0 ||
+            sem_init(&semaphore, 0, 0) != 0 ||
+            pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
+    }
+    ~ThreadState() {
+    // this destructed to wait for device idle
+        if (sem_wait(&protect) != 0) {
+            std::cerr << "cannot wait for protect!" << std::endl;
+            std::terminate();}
+        finish = true;
+        if (sem_post(&protect) != 0) {
+            std::cerr << "cannot post to protect!" << std::endl;
+            std::terminate();}
+        if (sem_post(&semaphore) != 0 ||
+            pthread_join(thread,0) != 0 ||
+            sem_destroy(&semaphore) != 0 ||
+            sem_destroy(&protect) != 0) {
+            std::cerr << "failed to join thread!" << std::endl;
+            std::terminate();}
+    }
+    static void *separate(void *ptr) {
+        struct ThreadState *arg = (ThreadState*)ptr;
+        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        while (1) {
+            if (arg->finish) {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                break;}
+            while (!arg->setup.empty()) {
+                arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front();}
+            if (arg->fence.empty()) {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
+            else {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
+                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
+                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop_front(); arg->fence.pop_front();}
+                /*planeSafe(...);*/}}
+        vkDeviceWaitIdle(arg->device);
+        return 0;
+    }
+    bool clear(int given) {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        bool done = (lookup.find(given) == lookup.end());
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        return done;
+    }
+    std::function<bool()> push(std::function<VkFence()> given) {
+    // return function that returns whether fence returned by given function in separate thread is done
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+        setup.push_back(given);
+        int local = seqnum++; order.push_back(local); lookup.insert(local);
+        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
+        std::function<bool()> done = [this,local](){return this->clear(local);};
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        return done;
+    }
+};
+
 enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,DrawBuf};
 struct MainState;
 template<class Buffer> struct BufferQueue {
@@ -880,56 +951,9 @@ template<class Buffer> struct BufferQueue {
         else std::cout << "debug count:" << count << std::endl;
     }
 };
-struct QueueState;
-struct PipelineState {
-    VkDevice device;
-    VkPipelineLayout layout;
-    VkPipeline pipeline;
-    VkDescriptorSetLayout dlayout;
-    VkDescriptorSet descriptor;
-    PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
-        Micro micro, QueueState *queue, const char *vertex, const char *fragment);
-    ~PipelineState();
-};
-struct BufferState {
-    VkPhysicalDevice physical;
-    VkDevice device;
-    VkQueue graphic;
-    VkCommandPool pool;
-    VkDeviceSize size;
-    BufferTag tag;
-    VkBuffer staging;
-    VkDeviceMemory wasted;
-    VkBuffer buffer;
-    VkDeviceMemory memory;
-    void *mapped;
-    VkCommandBuffer command;
-    VkFence fence;
-    BufferState(MainState *state, int size, BufferTag tag);
-    void init();
-    ~BufferState();
-    VkFence setup(int loc, int siz, const void *ptr);
-    void bind(int micro, VkCommandBuffer command, VkDescriptorSet descriptor);
-};
-struct DrawState {
-    VkDevice device;
-    VkQueue graphic;
-    VkQueue present;
-    VkRenderPass render;
-    VkCommandPool pool;
-    VkSemaphore available;
-    VkSemaphore finished;
-    VkCommandBuffer command;
-    VkFence fence;
-    SwapState *swap;
-    PipelineState* pipeline;
-    // interpret size as type of pipeline
-    DrawState(MainState *state, int size, BufferTag tag);
-    void init(SwapState *swap);
-    void init();
-    ~DrawState();
-    VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
-};
+
+struct BufferState;
+struct DrawState;
 struct FieldState {
     int stride;
     std::vector<VkFormat> format;
@@ -941,75 +965,44 @@ struct QueueState {
     std::vector<BufferQueue<BufferState>*> bindBuffer[Micros];
     std::vector<BufferTag> typeBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
-    QueueState();
-    ~QueueState();
+    QueueState() {
+    for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
+    for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
+    bufferQueue[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    bufferQueue[Uniformz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
+    bindBuffer[Practice].push_back(bufferQueue[Fetchz]);
+    bindBuffer[Practice].push_back(bufferQueue[Uniformz]);
+    bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
+    typeBuffer[Practice].push_back(FetchBuf);
+    typeBuffer[Practice].push_back(ChangeBuf);
+    typeBuffer[Practice].push_back(StoreBuf);
+    FieldState *field = new FieldState();
+    field->stride = sizeof(Fetch);
+    field->format.push_back(VK_FORMAT_R32G32_SFLOAT);
+    field->format.push_back(VK_FORMAT_R32G32B32_SFLOAT);
+    field->format.push_back(VK_FORMAT_R32_UINT);
+    field->offset.push_back(offsetof(Fetch,pos));
+    field->offset.push_back(offsetof(Fetch,hue));
+    field->offset.push_back(offsetof(Fetch,idx));
+    fieldBuffer[Practice].push_back(field);
+    fieldBuffer[Practice].push_back(0);
+    fieldBuffer[Practice].push_back(0);
+    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);}
+    ~QueueState() {
+    for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
+    for (int i = 0; i < Micros; i++)
+    for (auto j = fieldBuffer[i].begin(); j != fieldBuffer[i].end(); j++) if (*j) delete *j;
+    for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];}
 };
 
-struct MainState {
-    bool callOnce;
-    bool callDma;
-    bool callDraw;
-    bool framebufferResized;
-    bool escapePressed;
-    bool enterPressed;
-    bool otherPressed;
-    bool windowMoving;
-    double mouseLastx;
-    double mouseLasty;
-    int windowLastx;
-    int windowLasty;
-    int argc;
-    char **argv;
-    ThreadState *threadState;
-    InitState *initState;
-    OpenState* openState;
-    PhysicalState* physicalState;
-    DeviceState* logicalState;
-    SwapState *swapState;
-    QueueState* queueState;
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
-    const int MAX_FRAMES_IN_FLIGHT = 2;
-    const int MAX_BUFFERS_AVAILABLE = 7; // TODO collective limit for BufferQueue
-    const std::vector<const char*> extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-    const std::vector<const char*> computions = {
-        // TODO compute extensions
-    };
-    const std::vector<const char*> layers = {
-        "VK_LAYER_KHRONOS_validation"
-    };
-    #ifdef NDEBUG
-    const bool enable = false;
-    #else
-    const bool enable = true;
-    #endif
-} mainState = {
-    .callOnce = true,
-    .callDma = true,
-    .callDraw = true,
-    .framebufferResized = false,
-    .escapePressed = false,
-    .enterPressed = false,
-    .otherPressed = false,
-    .windowMoving = false,
-    .mouseLastx = 0.0,
-    .mouseLasty = 0.0,
-    .windowLastx = 0,
-    .windowLasty = 0,
-    .argc = 0,
-    .argv = 0,
-    .threadState = 0,
-    .initState = 0,
-    .openState = 0,
-    .physicalState = 0,
-    .logicalState = 0,
-    .swapState = 0,
-    .queueState = 0,
-};
-
-PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
+struct PipelineState {
+    VkDevice device;
+    VkPipelineLayout layout;
+    VkPipeline pipeline;
+    VkDescriptorSetLayout dlayout;
+    VkDescriptorSet descriptor;
+    PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
     Micro micro, QueueState *queue, const char *vertex, const char *fragment) {
     this->device = device;
     dlayout = [](VkDevice device, std::vector<BufferTag> &type) {
@@ -1179,47 +1172,28 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         vkDestroyShaderModule(device, fmodule, nullptr);
         vkDestroyShaderModule(device, vmodule, nullptr);
         return pipeline;
-    } (device,render,layout,queue->fieldBuffer[micro],vertex,fragment);
-}
-PipelineState::~PipelineState() {
+    } (device,render,layout,queue->fieldBuffer[micro],vertex,fragment);}
+    ~PipelineState() {
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, layout, nullptr);
-    vkDestroyDescriptorSetLayout(device, dlayout, nullptr);
-}
+    vkDestroyDescriptorSetLayout(device, dlayout, nullptr);}
+};
 
-QueueState::QueueState() {
-    for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
-    for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
-    bufferQueue[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    bufferQueue[Uniformz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
-    bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
-    bindBuffer[Practice].push_back(bufferQueue[Fetchz]);
-    bindBuffer[Practice].push_back(bufferQueue[Uniformz]);
-    bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
-    typeBuffer[Practice].push_back(FetchBuf);
-    typeBuffer[Practice].push_back(ChangeBuf);
-    typeBuffer[Practice].push_back(StoreBuf);
-    FieldState *field = new FieldState();
-    field->stride = sizeof(Fetch);
-    field->format.push_back(VK_FORMAT_R32G32_SFLOAT);
-    field->format.push_back(VK_FORMAT_R32G32B32_SFLOAT);
-    field->format.push_back(VK_FORMAT_R32_UINT);
-    field->offset.push_back(offsetof(Fetch,pos));
-    field->offset.push_back(offsetof(Fetch,hue));
-    field->offset.push_back(offsetof(Fetch,idx));
-    fieldBuffer[Practice].push_back(field);
-    fieldBuffer[Practice].push_back(0);
-    fieldBuffer[Practice].push_back(0);
-    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
-}
-QueueState::~QueueState() {
-    for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
-    for (int i = 0; i < Micros; i++)
-    for (auto j = fieldBuffer[i].begin(); j != fieldBuffer[i].end(); j++) if (*j) delete *j;
-    for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];
-}
-
-BufferState::BufferState(MainState *state, int size, BufferTag tag) {
+struct BufferState {
+    VkPhysicalDevice physical;
+    VkDevice device;
+    VkQueue graphic;
+    VkCommandPool pool;
+    VkDeviceSize size;
+    BufferTag tag;
+    VkBuffer staging;
+    VkDeviceMemory wasted;
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    void *mapped;
+    VkCommandBuffer command;
+    VkFence fence;
+    BufferState(MainState *state, int size, BufferTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
     this->physical = physical->physical;
@@ -1227,10 +1201,9 @@ BufferState::BufferState(MainState *state, int size, BufferTag tag) {
     this->graphic = logical->graphic;
     this->pool = logical->pool;
     this->size = size;
-    this->tag = tag;
-}
-void BufferState::init() {
-// this called in separate thread on newly constructed
+    this->tag = tag;}
+    void init() {
+    // this called in separate thread on newly constructed
     VkMemoryRequirements requirements;
     VkPhysicalDeviceMemoryProperties properties;
     vkGetPhysicalDeviceMemoryProperties(physical, &properties);
@@ -1315,9 +1288,8 @@ void BufferState::init() {
         info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         if (vkCreateFence(device, &info, nullptr, &fence) != VK_SUCCESS)
             throw std::runtime_error("failed to create fence!");
-        return fence;}(device);
-}
-BufferState::~BufferState() {
+        return fence;}(device);}
+    ~BufferState() {
     vkDestroyFence(device,fence,0);
     vkFreeCommandBuffers(device, pool, 1, &command);
     if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
@@ -1325,10 +1297,9 @@ BufferState::~BufferState() {
     vkFreeMemory(device, memory, nullptr);}
     if (tag == FetchBuf || tag == StoreBuf) {
     vkDestroyBuffer(device, staging, nullptr);
-    vkFreeMemory(device, wasted, nullptr);}
-}
-VkFence BufferState::setup(int loc, int siz, const void *ptr) {
-// this called in separate thread to get fence
+    vkFreeMemory(device, wasted, nullptr);}}
+    VkFence setup(int loc, int siz, const void *ptr) {
+    // this called in separate thread to get fence
     VkResult result;
     if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
         memcpy((char*)mapped+loc,ptr,siz);}
@@ -1348,9 +1319,8 @@ VkFence BufferState::setup(int loc, int siz, const void *ptr) {
     submit.commandBufferCount = 1;
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
-    return fence;
-}
-void BufferState::bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
+    return fence;}
+    void bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
     [](VkBuffer buffer, VkCommandBuffer command){
         VkBuffer buffers[] = {buffer};
@@ -1388,10 +1358,23 @@ void BufferState::bind(int layout, VkCommandBuffer command, VkDescriptorSet desc
         update.descriptorCount = 1;
         update.pBufferInfo = &info;
         vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-    }(device,buffer,descriptor,layout,size);}
-}
+    }(device,buffer,descriptor,layout,size);}}
+};
 
-DrawState::DrawState(MainState *state, int size, BufferTag tag) {
+struct DrawState {
+    VkDevice device;
+    VkQueue graphic;
+    VkQueue present;
+    VkRenderPass render;
+    VkCommandPool pool;
+    VkSemaphore available;
+    VkSemaphore finished;
+    VkCommandBuffer command;
+    VkFence fence;
+    SwapState *swap;
+    PipelineState* pipeline;
+    // interpret size as type of pipeline
+    DrawState(MainState *state, int size, BufferTag tag) {
     DeviceState* logical = state->logicalState;
     this->device = logical->device;
     this->graphic = logical->graphic;
@@ -1399,13 +1382,11 @@ DrawState::DrawState(MainState *state, int size, BufferTag tag) {
     this->render = logical->render;
     this->pool = logical->pool;
     this->swap = state->swapState;
-    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState,"vertexPracticeG","fragmentPracticeG");
-}
-void DrawState::init(SwapState *swap) {
-    this->swap = swap;
-}
-void DrawState::init() {
-// this called in separate thread on newly constructed
+    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState,"vertexPracticeG","fragmentPracticeG");}
+    void init(SwapState *swap) {
+    this->swap = swap;}
+    void init() {
+    // this called in separate thread on newly constructed
     available = [](VkDevice device) {
         VkSemaphore semaphore;
         VkSemaphoreCreateInfo info{};
@@ -1437,16 +1418,14 @@ void DrawState::init() {
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
             throw std::runtime_error("failed to create fence!");
-        return fence;}(device);
-}
-DrawState::~DrawState() {
+        return fence;}(device);}
+    ~DrawState() {
     vkDestroyFence(device,fence,0);
     vkFreeCommandBuffers(device, pool, 1, &command);
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
-    delete pipeline;
-}
-VkFence DrawState::setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
+    delete pipeline;}
+    VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
     uint32_t index;
     VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
@@ -1524,8 +1503,8 @@ VkFence DrawState::setup(const std::vector<BufferState*> &buffer, uint32_t base,
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
     }(swap->swap,present,index,finished,framebufferResized);
-    return fence;
-}
+    return fence;}
+};
 
 void framebufferResized(GLFWwindow* window, int width, int height) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
