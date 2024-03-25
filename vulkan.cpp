@@ -930,14 +930,17 @@ struct DrawState {
     ~DrawState();
     VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized);
 };
+struct FieldState {
+    int stride;
+    std::vector<VkFormat> format;
+    std::vector<uint32_t> offset;
+};
 struct QueueState {
     BufferQueue<BufferState>* bufferQueue[Memorys];
     BufferQueue<DrawState>* drawQueue[Micros];
-    BufferQueue<BufferState>* fetchBuffer;
-    int strideBuffer;
-    std::vector<int> offsetBuffer;
     std::vector<BufferQueue<BufferState>*> bindBuffer[Micros];
-    std::vector<VkDescriptorType> typeBuffer[Micros];
+    std::vector<BufferTag> typeBuffer[Micros];
+    std::vector<FieldState*> fieldBuffer[Micros];
     QueueState();
     ~QueueState();
 };
@@ -1009,24 +1012,16 @@ struct MainState {
 PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
     Micro micro, QueueState *queue, const char *vertex, const char *fragment) {
     this->device = device;
-    dlayout = [](VkDevice device, int count) {
+    dlayout = [](VkDevice device, std::vector<BufferTag> &type) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
-        VkDescriptorSetLayoutBinding uniform{};
-        uniform.binding = 0;
-        uniform.descriptorCount = 1;
-        uniform.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uniform.pImmutableSamplers = nullptr;
-        uniform.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        bindings.push_back(uniform);
-        // TODO use queue->typeBuffer
-        for (int i = 1; i < count; i++) {
-        VkDescriptorSetLayoutBinding matrix{};
-        matrix.binding = i;
-        matrix.descriptorCount = 1;
-        matrix.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        matrix.pImmutableSamplers = nullptr;
-        matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        bindings.push_back(matrix);}
+        int count = 0; for (auto i = type.begin(); i != type.end(); i++) if ((*i) == ChangeBuf || (*i) == StoreBuf) {
+        VkDescriptorSetLayoutBinding binding{};
+        binding.binding = count++;
+        binding.descriptorCount = 1;
+        binding.descriptorType = ((*i) == ChangeBuf ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        binding.pImmutableSamplers = nullptr;
+        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        bindings.push_back(binding);}
         VkDescriptorSetLayoutCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         info.bindingCount = bindings.size();
@@ -1035,7 +1030,7 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
             throw std::runtime_error("failed to create descriptor set layout!");
         return descriptor;
-    } (device,queue->typeBuffer[micro].size());
+    } (device,queue->typeBuffer[micro]);
     descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
         VkDescriptorSetAllocateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1057,7 +1052,7 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         return layout;
     } (device,dlayout);
     pipeline = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout,
-        const char *vertex, const char *fragment) {
+        std::vector<FieldState*> &field, const char *vertex, const char *fragment) {
         VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
             VkShaderModuleCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1101,27 +1096,28 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
         VkPipelineVertexInputStateCreateInfo input{};
         input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        VkVertexInputBindingDescription description{};
-        description.binding = 0;
-        description.stride = sizeof(Fetch); // TODO use queue->strideBuffer
-        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        std::vector<VkVertexInputAttributeDescription> attribute(3);
-        attribute[0].binding = 0;
-        attribute[0].location = 0;
-        attribute[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attribute[0].offset = offsetof(Fetch, pos); // TODO use queue->offsetBuffer
-        attribute[1].binding = 0;
-        attribute[1].location = 1;
-        attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attribute[1].offset = offsetof(Fetch, hue);
-        attribute[2].binding = 0;
-        attribute[2].location = 2;
-        attribute[2].format = VK_FORMAT_R32_UINT;
-        attribute[2].offset = offsetof(Fetch, idx);
-        input.vertexBindingDescriptionCount = 1;
-        input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute.size());
-        input.pVertexBindingDescriptions = &description;
-        input.pVertexAttributeDescriptions = attribute.data();
+        std::vector<VkVertexInputBindingDescription> descriptions;
+        std::vector<VkVertexInputAttributeDescription> attributes;
+        [&descriptions,&attributes](std::vector<FieldState*> &field) {
+            int count = 0; int location = 0;
+            for (auto i = field.begin(); i != field.end(); i++) if (*i) {
+            int binding = count++;
+            VkVertexInputBindingDescription description;
+            description.binding = binding;
+            description.stride = (*i)->stride;
+            description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            for (int j = 0; j < (*i)->offset.size(); j++) {
+            VkVertexInputAttributeDescription attribute;
+            attribute.binding = binding;
+            attribute.location = location++;
+            attribute.format = (*i)->format[j];
+            attribute.offset = (*i)->offset[j];
+            attributes.push_back(attribute);}
+            descriptions.push_back(description);}}(field);
+        input.vertexBindingDescriptionCount = static_cast<uint32_t>(descriptions.size());
+        input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        input.pVertexBindingDescriptions = descriptions.data();
+        input.pVertexAttributeDescriptions = attributes.data();
         VkPipelineInputAssemblyStateCreateInfo assembly{};
         assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -1183,7 +1179,7 @@ PipelineState::PipelineState(VkDevice device, VkRenderPass render, VkDescriptorP
         vkDestroyShaderModule(device, fmodule, nullptr);
         vkDestroyShaderModule(device, vmodule, nullptr);
         return pipeline;
-    } (device,render,layout,vertex,fragment);
+    } (device,render,layout,queue->fieldBuffer[micro],vertex,fragment);
 }
 PipelineState::~PipelineState() {
     vkDestroyPipeline(device, pipeline, nullptr);
@@ -1197,20 +1193,29 @@ QueueState::QueueState() {
     bufferQueue[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     bufferQueue[Uniformz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
-    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
-    fetchBuffer = bufferQueue[Fetchz];
-    strideBuffer = sizeof(Fetch);
-    offsetBuffer.push_back(offsetof(Fetch,pos));
-    offsetBuffer.push_back(offsetof(Fetch,hue));
-    offsetBuffer.push_back(offsetof(Fetch,idx));
+    bindBuffer[Practice].push_back(bufferQueue[Fetchz]);
     bindBuffer[Practice].push_back(bufferQueue[Uniformz]);
     bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
-    // this must match corresponding ChageBuf or StoreBuf
-    typeBuffer[Practice].push_back(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    typeBuffer[Practice].push_back(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    typeBuffer[Practice].push_back(FetchBuf);
+    typeBuffer[Practice].push_back(ChangeBuf);
+    typeBuffer[Practice].push_back(StoreBuf);
+    FieldState *field = new FieldState();
+    field->stride = sizeof(Fetch);
+    field->format.push_back(VK_FORMAT_R32G32_SFLOAT);
+    field->format.push_back(VK_FORMAT_R32G32B32_SFLOAT);
+    field->format.push_back(VK_FORMAT_R32_UINT);
+    field->offset.push_back(offsetof(Fetch,pos));
+    field->offset.push_back(offsetof(Fetch,hue));
+    field->offset.push_back(offsetof(Fetch,idx));
+    fieldBuffer[Practice].push_back(field);
+    fieldBuffer[Practice].push_back(0);
+    fieldBuffer[Practice].push_back(0);
+    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
 }
 QueueState::~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
+    for (int i = 0; i < Micros; i++)
+    for (auto j = fieldBuffer[i].begin(); j != fieldBuffer[i].end(); j++) if (*j) delete *j;
     for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];
 }
 
@@ -1606,7 +1611,8 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         if (mainState.threadState) delete mainState.threadState;
         if (mainState.swapState) delete mainState.swapState;
         mainState.swapState = 0; mainState.threadState = 0;}
-    if (!mainState.swapState && mainState.openState && mainState.physicalState && mainState.logicalState) {
+    if (!mainState.swapState && mainState.openState && mainState.physicalState &&
+        mainState.logicalState && mainState.queueState) {
         mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
         return new SwapState(open->window,physical->physical,device->device,
         open->surface,physical->image,physical->format,physical->mode,
@@ -1616,7 +1622,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         for (int i = 0; i < Micros; i++) if (draw[i])
         for (auto j = draw[i]->first(); draw[i]->more(j); j = draw[i]->next(j))
         draw[i]->more(j)->init(mainState.swapState);}
-    if (!mainState.threadState && mainState.swapState && mainState.logicalState) {
+    if (!mainState.threadState && mainState.logicalState && mainState.queueState) {
         mainState.threadState = new ThreadState(mainState.logicalState->device);
         BufferQueue<BufferState>** queue = mainState.queueState->bufferQueue;
         BufferQueue<DrawState>** draw = mainState.queueState->drawQueue;
@@ -1672,16 +1678,11 @@ void vulkanDma(struct Center *center) {
 void vulkanDraw(enum Micro shader, int base, int limit) {
     if (mainState.callDraw) {
         std::vector<BufferState*> buffer;
-        BufferQueue<BufferState> *fetchBuffer = mainState.queueState->fetchBuffer;
-        int strideBuffer = mainState.queueState->strideBuffer;
-        std::vector<int> *offsetBuffer = &mainState.queueState->offsetBuffer;
         std::vector<BufferQueue<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
-        std::vector<VkDescriptorType> *typeBuffer = mainState.queueState->typeBuffer+shader;
         BufferQueue<DrawState> *draw = mainState.queueState->drawQueue[shader];
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
         if (!draw->set()) return;
         int temp = draw->tmp();
-        buffer.push_back(fetchBuffer->get(draw->tmp(temp)));
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
         std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
         return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
