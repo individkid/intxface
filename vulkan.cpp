@@ -857,7 +857,6 @@ struct ThreadState {
 };
 
 enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,DrawBuf};
-struct MainState;
 template<class Buffer> struct BufferQueue {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
@@ -1066,81 +1065,90 @@ struct PipelineState {
             throw std::runtime_error("failed to create pipeline layout!");
         return layout;
     } (device,dlayout);
-    pipeline = [](VkDevice device, VkRenderPass render, VkPipelineLayout layout,
-        std::vector<FieldState*> &field, const char *vertex, const char *fragment) {
-        VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
-            VkShaderModuleCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            createInfo.codeSize = code.size();
-            createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-            VkShaderModule shaderModule;
-            if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-                throw std::runtime_error("failed to create shader module!");
-            return shaderModule;} (device,[](const std::string& filename) {
-            std::ifstream file(filename, std::ios::ate | std::ios::binary);
-            if (!file.is_open()) throw std::runtime_error("failed to open file!");
-            size_t fileSize = (size_t) file.tellg();
-            std::vector<char> buffer(fileSize);
-            file.seekg(0); file.read(buffer.data(), fileSize); file.close();
-            return buffer;}(vertex));
-        VkShaderModule fmodule = [](VkDevice device, const std::vector<char>& code) {
-            VkShaderModuleCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            createInfo.codeSize = code.size();
-            createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-            VkShaderModule shaderModule;
-            if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-                throw std::runtime_error("failed to create shader module!");
-            return shaderModule;} (device,[](const std::string& filename) {
-            std::ifstream file(filename, std::ios::ate | std::ios::binary);
-            if (!file.is_open()) throw std::runtime_error("failed to open file!");
-            size_t fileSize = (size_t) file.tellg();
-            std::vector<char> buffer(fileSize);
-            file.seekg(0); file.read(buffer.data(), fileSize); file.close();
-            return buffer;}(fragment));
+    VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+            throw std::runtime_error("failed to create shader module!");
+        return shaderModule;} (device,[](const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        if (!file.is_open()) throw std::runtime_error("failed to open file!");
+        size_t fileSize = (size_t) file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
+        return buffer;}(vertex));
+    VkShaderModule fmodule = [](VkDevice device, const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+            throw std::runtime_error("failed to create shader module!");
+        return shaderModule;} (device,[](const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        if (!file.is_open()) throw std::runtime_error("failed to open file!");
+        size_t fileSize = (size_t) file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
+        return buffer;}(fragment));
+    VkPipelineShaderStageCreateInfo vinfo = [](VkShaderModule vmodule) {
         VkPipelineShaderStageCreateInfo vinfo{};
         vinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         vinfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
         vinfo.module = vmodule;
         vinfo.pName = "main";
+        return vinfo;}(vmodule);
+    VkPipelineShaderStageCreateInfo finfo = [](VkShaderModule fmodule) {
         VkPipelineShaderStageCreateInfo finfo{};
         finfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         finfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         finfo.module = fmodule;
         finfo.pName = "main";
-        VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
+        return finfo;}(fmodule);
+    VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
+    std::vector<VkVertexInputBindingDescription> descriptions;
+    std::vector<VkVertexInputAttributeDescription> attributes;
+    [&descriptions,&attributes](std::vector<FieldState*> &field) {
+        int count = 0; int location = 0;
+        for (auto i = field.begin(); i != field.end(); i++) if (*i) {
+        int binding = count++;
+        VkVertexInputBindingDescription description;
+        description.binding = binding;
+        description.stride = (*i)->stride;
+        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        for (int j = 0; j < (*i)->offset.size(); j++) {
+        VkVertexInputAttributeDescription attribute;
+        attribute.binding = binding;
+        attribute.location = location++;
+        attribute.format = (*i)->format[j];
+        attribute.offset = (*i)->offset[j];
+        attributes.push_back(attribute);}
+        descriptions.push_back(description);}}(queue->fieldBuffer[micro]);
+    VkPipelineVertexInputStateCreateInfo input = [&descriptions,&attributes] () {
         VkPipelineVertexInputStateCreateInfo input{};
         input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        std::vector<VkVertexInputBindingDescription> descriptions;
-        std::vector<VkVertexInputAttributeDescription> attributes;
-        [&descriptions,&attributes](std::vector<FieldState*> &field) {
-            int count = 0; int location = 0;
-            for (auto i = field.begin(); i != field.end(); i++) if (*i) {
-            int binding = count++;
-            VkVertexInputBindingDescription description;
-            description.binding = binding;
-            description.stride = (*i)->stride;
-            description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-            for (int j = 0; j < (*i)->offset.size(); j++) {
-            VkVertexInputAttributeDescription attribute;
-            attribute.binding = binding;
-            attribute.location = location++;
-            attribute.format = (*i)->format[j];
-            attribute.offset = (*i)->offset[j];
-            attributes.push_back(attribute);}
-            descriptions.push_back(description);}}(field);
         input.vertexBindingDescriptionCount = static_cast<uint32_t>(descriptions.size());
         input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
         input.pVertexBindingDescriptions = descriptions.data();
         input.pVertexAttributeDescriptions = attributes.data();
+        return input;}();
+    VkPipelineInputAssemblyStateCreateInfo assembly = [] () {
         VkPipelineInputAssemblyStateCreateInfo assembly{};
         assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         assembly.primitiveRestartEnable = VK_FALSE;
+        return assembly;}();
+    VkPipelineViewportStateCreateInfo viewport = [] () {
         VkPipelineViewportStateCreateInfo viewport{};
         viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewport.viewportCount = 1;
         viewport.scissorCount = 1;
+        return viewport;}();
+    VkPipelineRasterizationStateCreateInfo rasterize = [] () {
         VkPipelineRasterizationStateCreateInfo rasterize{};
         rasterize.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterize.depthClampEnable = VK_FALSE;
@@ -1150,14 +1158,20 @@ struct PipelineState {
         rasterize.cullMode = VK_CULL_MODE_BACK_BIT;
         rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterize.depthBiasEnable = VK_FALSE;
+        return rasterize;}();
+    VkPipelineMultisampleStateCreateInfo multisample = [] () {
         VkPipelineMultisampleStateCreateInfo multisample{};
         multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisample.sampleShadingEnable = VK_FALSE;
         multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        return multisample;}();
+    VkPipelineColorBlendAttachmentState attachment = [] () {
         VkPipelineColorBlendAttachmentState attachment{};
         attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         attachment.blendEnable = VK_FALSE;
+        return attachment;}();
+    VkPipelineColorBlendStateCreateInfo blend = [&attachment] () {
         VkPipelineColorBlendStateCreateInfo blend{};
         blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         blend.logicOpEnable = VK_FALSE;
@@ -1168,33 +1182,33 @@ struct PipelineState {
         blend.blendConstants[1] = 0.0f;
         blend.blendConstants[2] = 0.0f;
         blend.blendConstants[3] = 0.0f;
-        std::vector<VkDynamicState> states = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
+        return blend;}();
+    std::vector<VkDynamicState> states = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo state = [&states] () {
         VkPipelineDynamicStateCreateInfo state{};
         state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         state.dynamicStateCount = static_cast<uint32_t>(states.size());
         state.pDynamicStates = states.data();
-        VkGraphicsPipelineCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        info.stageCount = 2;
-        info.pStages = stages;
-        info.pVertexInputState = &input;
-        info.pInputAssemblyState = &assembly;
-        info.pViewportState = &viewport;
-        info.pRasterizationState = &rasterize;
-        info.pMultisampleState = &multisample;
-        info.pColorBlendState = &blend;
-        info.pDynamicState = &state;
-        info.layout = layout;
-        info.renderPass = render;
-        info.subpass = 0;
-        info.basePipelineHandle = VK_NULL_HANDLE;
-        VkPipeline pipeline;
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
-            throw std::runtime_error("failed to create graphic pipeline!");
-        vkDestroyShaderModule(device, fmodule, nullptr);
-        vkDestroyShaderModule(device, vmodule, nullptr);
-        return pipeline;
-    } (device,render,layout,queue->fieldBuffer[micro],vertex,fragment);}
+        return state;}();
+    VkGraphicsPipelineCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    info.stageCount = 2;
+    info.pStages = stages;
+    info.pVertexInputState = &input;
+    info.pInputAssemblyState = &assembly;
+    info.pViewportState = &viewport;
+    info.pRasterizationState = &rasterize;
+    info.pMultisampleState = &multisample;
+    info.pColorBlendState = &blend;
+    info.pDynamicState = &state;
+    info.layout = layout;
+    info.renderPass = render;
+    info.subpass = 0;
+    info.basePipelineHandle = VK_NULL_HANDLE;
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
+        throw std::runtime_error("failed to create graphic pipeline!");
+    vkDestroyShaderModule(device, fmodule, nullptr);
+    vkDestroyShaderModule(device, vmodule, nullptr);}
     ~PipelineState() {
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, layout, nullptr);
