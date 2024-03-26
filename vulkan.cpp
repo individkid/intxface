@@ -319,10 +319,10 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 
 struct InitState {
     VkInstance instance;
-    bool valid;
+    bool enable;
     VkDebugUtilsMessengerEXT debug;
     InitState(bool enable, const std::vector<const char*> layers) {
-        valid = enable;
+        this->enable = enable;
         glfwInit();
         VkDebugUtilsMessengerCreateInfoEXT info = {};
         info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -386,7 +386,7 @@ struct InitState {
         } (instance,info);
     }
     ~InitState() {
-        if (valid) [](VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+        if (enable) [](VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
             auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
             if (func != nullptr) func(instance, debugMessenger, pAllocator);}(instance, debug, nullptr);
         vkDestroyInstance(instance, nullptr);
@@ -867,7 +867,6 @@ template<class Buffer> struct BufferQueue {
     std::deque<void*> data; std::deque<std::function<bool()>> done;
     int count; int size; int seqnum; int limit; BufferTag tag;
     MainState *info;
-    struct ThreadState *thread;
     BufferQueue(MainState *info, int limit, BufferTag tag) {
         ready = 0;
         count = 0;
@@ -876,33 +875,12 @@ template<class Buffer> struct BufferQueue {
         this->limit = limit;
         this->tag = tag;
         this->info = info;
-        thread = 0;
     }
     ~BufferQueue() {
         while (!pool.empty()) {delete pool.front(); pool.pop_front();}
         while (!running.empty()) {delete running.front(); running.pop_front();}
         if (ready) delete ready;
         while (!inuse.empty()) {delete inuse.front(); inuse.pop_front();}
-    }
-    std::pair<typename std::deque<Buffer*>::iterator,bool> first() {
-        if (!ready && inuse.empty()) return std::make_pair(inuse.end(),false);
-        if (!ready) return std::make_pair(inuse.begin(),true);
-        return std::make_pair(inuse.end(),true);
-    }
-    Buffer *more(std::pair<typename std::deque<Buffer*>::iterator,bool> last) {
-        if (!last.second) return 0;
-        return (last.first == inuse.end() ? ready : *last.first);
-    }
-    std::pair<typename std::deque<Buffer*>::iterator,bool> next(
-        std::pair<typename std::deque<Buffer*>::iterator,bool> last) {
-        if (!last.second) return last;
-        last.first = (last.first == inuse.end() ? inuse.begin() : last.first + 1);
-        last.second = (last.first != inuse.end());
-        return last;
-    }
-    void clr(ThreadState *thread) {
-    // change thread if it was deleted to idle the device
-        this->thread = thread;
     }
     void clr() {
     // advance queues with done fronts
@@ -956,8 +934,8 @@ template<class Buffer> struct BufferQueue {
         if (pool.empty()) {pool.push_back(new Buffer(info,size,tag)); first = true; count++;}
         Buffer *ptr = pool.front(); pool.pop_front();
         std::function<bool()> done;
-        if (first) done = thread->push([setup,ptr](){ptr->init(); return setup(ptr);});
-        else done = thread->push([setup,ptr](){return setup(ptr);});
+        if (first) done = info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);});
+        else done = info->threadState->push([setup,ptr](){return setup(ptr);});
         running.push_back(ptr); toready.push_back(done);
         return done;
     }
@@ -1364,7 +1342,7 @@ struct BufferState {
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
-    void bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
+    bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
     [](VkBuffer buffer, VkCommandBuffer command){
         VkBuffer buffers[] = {buffer};
@@ -1402,7 +1380,8 @@ struct BufferState {
         update.descriptorCount = 1;
         update.pBufferInfo = &info;
         vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-    }(device,buffer,descriptor,layout,size);}}
+    }(device,buffer,descriptor,layout,size);}
+    return (tag == ChangeBuf || tag == StoreBuf);}
 };
 
 struct DrawState {
@@ -1415,7 +1394,7 @@ struct DrawState {
     VkSemaphore finished;
     VkCommandBuffer command;
     VkFence fence;
-    SwapState *swap;
+    MainState *state;
     PipelineState* pipeline;
     // interpret size as type of pipeline
     DrawState(MainState *state, int size, BufferTag tag) {
@@ -1425,10 +1404,8 @@ struct DrawState {
     this->present = logical->present;
     this->render = logical->render;
     this->pool = logical->pool;
-    this->swap = state->swapState;
+    this->state = state;
     this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState,"vertexPracticeG","fragmentPracticeG");}
-    void init(SwapState *swap) {
-    this->swap = swap;}
     void init() {
     // this called in separate thread on newly constructed
     available = [](VkDevice device) {
@@ -1471,7 +1448,7 @@ struct DrawState {
     delete pipeline;}
     VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
     uint32_t index;
-    VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
+    VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -1494,7 +1471,7 @@ struct DrawState {
         info.clearValueCount = 1;
         info.pClearValues = &clearColor;
         vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
-    } (render,swap->framebuffers[index],swap->extent,command);
+    } (render,state->swapState->framebuffers[index],state->swapState->extent,command);
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkViewport info{};
@@ -1502,14 +1479,14 @@ struct DrawState {
         info.width = (float) extent.width;
         info.height = (float) extent.height;
         info.minDepth = 0.0f; info.maxDepth = 1.0f;
-        vkCmdSetViewport(command, 0, 1, &info);}(swap->extent,command);
+        vkCmdSetViewport(command, 0, 1, &info);}(state->swapState->extent,command);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = extent;
-        vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
-    // TODO decrement by whether prior was FetchBuf instead of by 1
-    for (int i = 0; i < buffer.size(); i++) buffer[i]->bind(i-1,command,pipeline->descriptor);
+        vkCmdSetScissor(command, 0, 1, &scissor);}(state->swapState->extent,command);
+    int count = 0; for (int i = 0; i < buffer.size(); i++)
+        if (buffer[i]->bind(count,command,pipeline->descriptor)) count++;
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, 0, 1,
         &pipeline->descriptor, 0, nullptr);
     vkCmdDraw(command, limit-base, (limit-base)/3, base, base/3);
@@ -1546,7 +1523,7 @@ struct DrawState {
         if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }(swap->swap,present,index,finished,framebufferResized);
+    }(state->swapState->swap,present,index,finished,framebufferResized);
     return fence;}
 };
 
@@ -1586,24 +1563,16 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         if (mainState.threadState) delete mainState.threadState;
         if (mainState.swapState) delete mainState.swapState;
         mainState.swapState = 0; mainState.threadState = 0;}
-    if (!mainState.swapState && mainState.openState && mainState.physicalState &&
-        mainState.logicalState && mainState.queueState) {
+    if (!mainState.swapState && mainState.openState && mainState.physicalState && mainState.logicalState) {
         mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
         return new SwapState(open->window,physical->physical,device->device,
         open->surface,physical->image,physical->format,physical->mode,
         device->render,physical->minimum,physical->graphicid,physical->presentid);
-        }(mainState.openState,mainState.physicalState,mainState.logicalState);
-        BufferQueue<DrawState>** draw = mainState.queueState->drawQueue;
-        for (int i = 0; i < Micros; i++) if (draw[i])
-        for (auto j = draw[i]->first(); draw[i]->more(j); j = draw[i]->next(j))
-        draw[i]->more(j)->init(mainState.swapState);}
-    if (!mainState.threadState && mainState.logicalState && mainState.queueState) {
-        mainState.threadState = new ThreadState(mainState.logicalState->device);
-        BufferQueue<BufferState>** queue = mainState.queueState->bufferQueue;
-        BufferQueue<DrawState>** draw = mainState.queueState->drawQueue;
-        for (int i = 0; i < Memorys; i++) if (queue[i]) queue[i]->clr(mainState.threadState);
-        for (int i = 0; i < Micros; i++) if (draw[i]) draw[i]->clr(mainState.threadState);}
-    planeMain();}
+        }(mainState.openState,mainState.physicalState,mainState.logicalState);}
+    if (!mainState.threadState && mainState.logicalState) {
+        mainState.threadState = new ThreadState(mainState.logicalState->device);}
+    if (mainState.threadState) {
+        planeMain();}}
     break;
     default:
     break;}
