@@ -11,7 +11,7 @@ CXX = g++
 CC = gcc
 GHC = ghc
 SWC = oops
-GC = oops
+GC = glslc
 endif
 ifeq ($(UNAME),Darwin)
 LIBRARIES = -llua -lportaudio
@@ -92,9 +92,9 @@ endif
 ifeq ($(UNAME),Darwin)
 %Cpp.o: %.cpp
 	$(CXX) -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
-endif
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
+endif
 
 ifeq ($(UNAME),Darwin)
 %.metallib: %G.o
@@ -106,9 +106,9 @@ ifeq ($(UNAME),Darwin)
 endif
 ifeq ($(UNAME),Linux)
 vertex%G:
-	glslc -fshader-stage=vert -Dvertex$*=main $< -o $@
+	$(GC) -fshader-stage=vert -Dvertex$*=main $< -o $@
 fragment%G:
-	glslc -fshader-stage=frag -Dfragment$*=main $< -o $@
+	$(GC) -fshader-stage=frag -Dfragment$*=main $< -o $@
 endif
 
 %.h: %.mk

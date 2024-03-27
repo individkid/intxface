@@ -1,25 +1,21 @@
 #version 450
 
 #ifdef vertexPractice
-layout(binding = 0) uniform Replica {
-    mat4 model;
-    mat4 view;
-    mat4 proj;
-} uni;
-
-layout(binding = 1) buffer readonly Matrix {mat4 mat[];} mat;
+layout(binding = 0) buffer readonly Matrix {mat4 mat[];} mat;
 
 // Use storage buffer and gl_VertexIndex instead of vertex binding.
-layout(location = 0) in vec2 inPosition;
-layout(location = 1) in vec3 inColor;
-layout(location = 2) in uint inIndex;
+layout(location = 0) in vec2 inVec;
+layout(location = 1) in uint inRef;
 
 layout(location = 0) out vec3 fragColor;
 
 void vertexPractice() {
     // TODO change to mat.mat[uni.pro] * mat.mat[uni.all] * mat.mat[tri.tri[gl_VertexID/3].pol] * vec4(vtx[tri.tri[gl_VertexID/3].vtx[gl_VertexID%3]].vtx,1.0)
-    gl_Position = uni.proj * uni.view * mat.mat[0] * vec4(inPosition, 0.0, 1.0);
-    fragColor = inColor;
+    gl_Position = mat.mat[2] * mat.mat[1] * mat.mat[0] * vec4(inVec, 0.0, 1.0);
+    switch (gl_VertexIndex%3) {
+    case (0): fragColor = vec3(1.0,0.0,0.0); break;
+    case (1): fragColor = vec3(0.0,1.0,0.0); break;
+    case (2): fragColor = vec3(0.0,0.0,1.0); break;}
 }
 #endif
 

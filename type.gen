@@ -477,16 +477,6 @@ Event = { -- for line process
 	{"len","Int",{["tag"]={["Audio"]=true}},{}},
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
-Replica = {
-	{"model","Old",{},{16}},
-	{"view","Old",{},{16}},
-	{"proj","Old",{},{16}},
-}
-Refer = {
-	{"ref","Int32",{},{4}},
-	{"reg","Old",{},{16}},
-	{"reh","Old",{},{16}},
-}
 Uniform = {
 	{"all","Int32",{},{}}, -- which subject to use
 	{"one","Int32",{},{}}, -- which element to use
@@ -496,11 +486,6 @@ Uniform = {
 	{"idx","Int32",{},{}}, -- which plane to apply one matrix to
 	{"use","Int32",{},{}}, -- which basis to use
 	{"siz","Int32",{},{}}, -- size of swarm buffer
-}
-Fetch = {
-	{"pos","Old",{},{4}},
-	{"hue","Old",{},{4}},
-	{"idx","Int32",{},{4}},
 }
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle

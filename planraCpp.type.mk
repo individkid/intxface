@@ -1,1 +1,1 @@
- showFetch
+ showVertex

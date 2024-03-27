@@ -32,11 +32,12 @@ extern "C" {
 
 #ifdef PLANRA
 // TODO move to planer.lua
-struct Input: public Fetch {
-    Input(float *pos, float *hue) {
-        for (int i = 0; i < 2; i++) this->pos[i] = pos[i];
-        for (int i = 0; i < 3; i++) this->hue[i] = hue[i];
-        char *str = 0; showFetch(this,&str);
+struct Input: public Vertex {
+    Input(float *pos) {
+        for (int i = 0; i < 2; i++) this->vec[i] = pos[i];
+        for (int i = 2; i < 4; i++) this->vec[i] = 0.0;
+        for (int i = 0; i < 4; i++) this->ref[i] = 0;
+        char *str = 0; showVertex(this,&str);
         std::cout << str << std::endl;
         free(str);
     }
@@ -990,24 +991,18 @@ struct QueueState {
     for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
     for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
     bufferQueue[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    bufferQueue[Uniformz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
     bindBuffer[Practice].push_back(bufferQueue[Fetchz]);
-    bindBuffer[Practice].push_back(bufferQueue[Uniformz]);
     bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
     typeBuffer[Practice].push_back(FetchBuf);
-    typeBuffer[Practice].push_back(ChangeBuf);
     typeBuffer[Practice].push_back(StoreBuf);
     FieldState *field = new FieldState();
-    field->stride = sizeof(Fetch);
+    field->stride = sizeof(Vertex);
     field->format.push_back(VK_FORMAT_R32G32_SFLOAT);
-    field->format.push_back(VK_FORMAT_R32G32B32_SFLOAT);
     field->format.push_back(VK_FORMAT_R32_UINT);
-    field->offset.push_back(offsetof(Fetch,pos));
-    field->offset.push_back(offsetof(Fetch,hue));
-    field->offset.push_back(offsetof(Fetch,idx));
+    field->offset.push_back(offsetof(Vertex,vec));
+    field->offset.push_back(offsetof(Vertex,ref));
     fieldBuffer[Practice].push_back(field);
-    fieldBuffer[Practice].push_back(0);
     fieldBuffer[Practice].push_back(0);
     drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);}
     ~QueueState() {
@@ -1623,13 +1618,11 @@ void vulkanDma(struct Center *center) {
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         VkExtent2D extent = mainState.swapState->extent;
-        struct Replica ubo{};
-    glm::mat4 tmp;
-    tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.model,&tmp,sizeof(ubo.model));
-        mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(tmp),&tmp);
-    tmp = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); memcpy(&ubo.view,&tmp,sizeof(ubo.view));
-    tmp = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[1][1] *= -1; memcpy(&ubo.proj,&tmp,sizeof(ubo.proj));
-        mainState.queueState->bufferQueue[Uniformz]->set(0,sizeof(struct Replica),&ubo);
+    glm::mat4 tmp[3]; // model view proj
+    tmp[0] = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    tmp[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    tmp[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[2][1][1] *= -1;
+        mainState.queueState->bufferQueue[Matrixz]->set(0,3*sizeof(tmp[0]),tmp);
         mainState.callDma = false;
     }
 }
@@ -1651,10 +1644,10 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
 
 int main(int argc, char **argv) {
 #ifdef PLANRA
-    {float pos[] = {-0.5f, -0.5f}; float color[] = {1.0f, 0.0f, 0.0f}; vertices.push_back(Input(pos,color));}
-    {float pos[] = {0.5f, -0.5f}; float color[] = {0.0f, 1.0f, 0.0f}; vertices.push_back(Input(pos,color));}
-    {float pos[] = {0.5f, 0.5f}; float color[] = {0.0f, 0.0f, 1.0f}; vertices.push_back(Input(pos,color));}
-    {float pos[] = {-0.5f, 0.5f}; float color[] = {1.0f, 1.0f, 1.0f}; vertices.push_back(Input(pos,color));}
+    {float pos[] = {-0.5f, -0.5f}; vertices.push_back(Input(pos));}
+    {float pos[] = {0.5f, -0.5f}; vertices.push_back(Input(pos));}
+    {float pos[] = {0.5f, 0.5f}; vertices.push_back(Input(pos));}
+    {float pos[] = {-0.5f, 0.5f}; vertices.push_back(Input(pos));}
 #endif
     mainState.argc = argc;
     mainState.argv = argv;
