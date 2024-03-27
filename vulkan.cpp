@@ -990,12 +990,12 @@ struct QueueState {
     QueueState() {
     for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
     for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
-    bufferQueue[Fetchz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,StoreBuf);
-    bindBuffer[Practice].push_back(bufferQueue[Fetchz]);
+    bufferQueue[Vertexz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    bindBuffer[Practice].push_back(bufferQueue[Vertexz]);
     bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
     typeBuffer[Practice].push_back(FetchBuf);
-    typeBuffer[Practice].push_back(StoreBuf);
+    typeBuffer[Practice].push_back(ChangeBuf);
     FieldState *field = new FieldState();
     field->stride = sizeof(Vertex);
     field->format.push_back(VK_FORMAT_R32G32_SFLOAT);
@@ -1611,7 +1611,7 @@ auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
     // TODO switch on center tag to choose buffer queue
     if (mainState.callOnce) {
-        mainState.queueState->bufferQueue[Fetchz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
+        mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
         mainState.callOnce = false;
     }
     if (mainState.callDma) {

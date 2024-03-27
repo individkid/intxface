@@ -1,7 +1,7 @@
 #version 450
 
 #ifdef vertexPractice
-layout(binding = 0) buffer readonly Matrix {mat4 mat[];} mat;
+layout(binding = 0) uniform Matrix {mat4 mat[];} mat;
 
 // Use storage buffer and gl_VertexIndex instead of vertex binding.
 layout(location = 0) in vec2 inVec;

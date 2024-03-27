@@ -31,7 +31,6 @@ Flow = {
 	"Load",
 }
 Memory = {
-	"Fetchz", -- fastest flow to vertex shader
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
