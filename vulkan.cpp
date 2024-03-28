@@ -950,7 +950,8 @@ template<class Buffer> struct BufferQueue {
     // enque data using given queues
         int size = (loc+siz > this->size ? loc+siz : this->size);
         bool first = set(size);
-        if (first) {memcpy((void*)((char*)copy+loc),ptr,siz); loc = 0; siz = size; ptr = copy;}
+        memcpy((void*)((char*)copy+loc),ptr,siz);
+        if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz);
         int temp = tmp(); queue.push_back(mem); inuse.push_back(tmp(temp));
         std::function<bool()> done = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
