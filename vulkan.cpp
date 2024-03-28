@@ -865,13 +865,14 @@ template<class Buffer> struct BufferQueue {
     std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
     std::map<int,std::function<bool()>> temp;
     std::deque<void*> data; std::deque<std::function<bool()>> done;
-    int count; int size; int seqnum; int limit; BufferTag tag;
+    int size; void *copy; int seqnum; int count; int limit; BufferTag tag;
     MainState *info;
     BufferQueue(MainState *info, int limit, BufferTag tag) {
         ready = 0;
-        count = 0;
         size = 0;
+        copy = 0;
         seqnum = 0;
+        count = 0;
         this->limit = limit;
         this->tag = tag;
         this->info = info;
@@ -920,18 +921,19 @@ template<class Buffer> struct BufferQueue {
         if (count < limit) return true;
         return false;
     }
-    void set(int size) {
-    // change queue item size
-        if (size != this->size) {
+    bool set(int siz) {
+    // change queue item size; return whether pool is new
+        if (siz != size) {
             while (!pool.empty()) {delete pool.front(); pool.pop_front();}
-            this->size = size;}
+            copy = realloc(copy,size = siz);}
+        if (!set()) return false;
+        bool first = false; if (pool.empty()) {
+            Buffer *ptr = new Buffer(info,size,tag); pool.push_back(ptr); first = true; count++;}
+        return first;
     }
-    std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
-    // change size and enque function to return fence in separate thread
-        bool first = false;
-        set(size);
-        if (!set()) return [](){return true;};
-        if (pool.empty()) {pool.push_back(new Buffer(info,size,tag)); first = true; count++;}
+    std::function<bool()> set(bool first, std::function<VkFence(Buffer*)> setup) {
+    // enque function to return fence in separate thread
+        if (pool.empty()) return [](){return true;};
         Buffer *ptr = pool.front(); pool.pop_front();
         std::function<bool()> done;
         if (first) done = info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);});
@@ -939,13 +941,19 @@ template<class Buffer> struct BufferQueue {
         running.push_back(ptr); toready.push_back(done);
         return done;
     }
+    std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
+    // change size and enque function to return fence in separate thread
+        return set(set(size),setup);
+    }
     std::function<bool()> set(std::deque<void*> &queue,std::deque<std::function<bool()>> &inuse,
         int loc, int siz, const void *ptr) {
     // enque data using given queues
         int size = (loc+siz > this->size ? loc+siz : this->size);
-        void *copy = malloc(siz); memcpy(copy,ptr,siz);
-        int temp = tmp(); queue.push_back(copy); inuse.push_back(tmp(temp));
-        std::function<bool()> done = set(size,[loc,siz,copy](Buffer*buf){return buf->setup(loc,siz,copy);});
+        bool first = set(size);
+        if (first) {memcpy((void*)((char*)copy+loc),ptr,siz); loc = 0; siz = size; ptr = copy;}
+        void *mem = malloc(siz); memcpy(mem,ptr,siz);
+        int temp = tmp(); queue.push_back(mem); inuse.push_back(tmp(temp));
+        std::function<bool()> done = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
         tmp(temp,done);
         return done;
     }
@@ -1224,7 +1232,7 @@ struct BufferState {
     void *mapped;
     VkCommandBuffer command;
     VkFence fence;
-    BufferState(MainState *state, int size, BufferTag tag) {
+BufferState(MainState *state, int size, BufferTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
     this->physical = physical->physical;
@@ -1233,7 +1241,7 @@ struct BufferState {
     this->pool = logical->pool;
     this->size = size;
     this->tag = tag;}
-    void init() {
+void init() {
     // this called in separate thread on newly constructed
     VkMemoryRequirements requirements;
     VkPhysicalDeviceMemoryProperties properties;
@@ -1320,7 +1328,7 @@ struct BufferState {
         if (vkCreateFence(device, &info, nullptr, &fence) != VK_SUCCESS)
             throw std::runtime_error("failed to create fence!");
         return fence;}(device);}
-    ~BufferState() {
+~BufferState() {
     vkDestroyFence(device,fence,0);
     vkFreeCommandBuffers(device, pool, 1, &command);
     if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
@@ -1329,7 +1337,7 @@ struct BufferState {
     if (tag == FetchBuf || tag == StoreBuf) {
     vkDestroyBuffer(device, staging, nullptr);
     vkFreeMemory(device, wasted, nullptr);}}
-    VkFence setup(int loc, int siz, const void *ptr) {
+VkFence setup(int loc, int siz, const void *ptr) {
     // this called in separate thread to get fence
     VkResult result;
     if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
@@ -1351,7 +1359,7 @@ struct BufferState {
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
-    bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
+bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
     [](VkBuffer buffer, VkCommandBuffer command){
         VkBuffer buffers[] = {buffer};
@@ -1406,7 +1414,7 @@ struct DrawState {
     MainState *state;
     PipelineState* pipeline;
     // interpret size as type of pipeline
-    DrawState(MainState *state, int size, BufferTag tag) {
+DrawState(MainState *state, int size, BufferTag tag) {
     DeviceState* logical = state->logicalState;
     this->device = logical->device;
     this->graphic = logical->graphic;
@@ -1415,7 +1423,7 @@ struct DrawState {
     this->pool = logical->pool;
     this->state = state;
     this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState,"vertexPracticeG","fragmentPracticeG");}
-    void init() {
+void init() {
     // this called in separate thread on newly constructed
     available = [](VkDevice device) {
         VkSemaphore semaphore;
@@ -1449,13 +1457,13 @@ struct DrawState {
         if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
             throw std::runtime_error("failed to create fence!");
         return fence;}(device);}
-    ~DrawState() {
+~DrawState() {
     vkDestroyFence(device,fence,0);
     vkFreeCommandBuffers(device, pool, 1, &command);
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
     delete pipeline;}
-    VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
+VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
     uint32_t index;
     VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
@@ -1610,19 +1618,22 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
 auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
     // TODO switch on center tag to choose buffer queue
-    if (mainState.callOnce) {
-        mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
-        mainState.callOnce = false;
-    }
-    if (mainState.callDma) {
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         VkExtent2D extent = mainState.swapState->extent;
+    if (mainState.callOnce) {
+        mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
     glm::mat4 tmp[3]; // model view proj
     tmp[0] = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     tmp[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     tmp[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[2][1][1] *= -1;
         mainState.queueState->bufferQueue[Matrixz]->set(0,3*sizeof(tmp[0]),tmp);
+        mainState.callOnce = false;
+    }
+    if (mainState.callDma) {
+    glm::mat4 tmp; // model
+    tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(tmp),&tmp);
         mainState.callDma = false;
     }
 }
