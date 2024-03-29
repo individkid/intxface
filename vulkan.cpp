@@ -786,6 +786,7 @@ struct ThreadState {
     pthread_t thread;
     bool finish;
     std::deque<std::function<VkFence()>> setup;
+    std::deque<std::function<void()>> stage;
     std::deque<VkFence> fence;
     std::deque<int> order;
     std::set<int> lookup;
@@ -832,7 +833,8 @@ struct ThreadState {
                 VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front()); arg->order.pop_front(); arg->fence.pop_front();}
+                if (result == VK_SUCCESS) {arg->stage.front()(); arg->lookup.erase(arg->order.front());
+                arg->order.pop_front(); arg->fence.pop_front(); arg->stage.pop_front();}
                 /*planeSafe(...);*/}}
         vkDeviceWaitIdle(arg->device);
         return 0;
@@ -843,11 +845,11 @@ struct ThreadState {
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
-    std::function<bool()> push(std::function<VkFence()> given) {
+    std::function<bool()> push(std::function<VkFence()> given, std::function<void()> argen) {
     // return function that returns whether fence returned by given function in separate thread is done
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        setup.push_back(given);
+        setup.push_back(given); stage.push_back(argen);
         int local = seqnum++; order.push_back(local); lookup.insert(local);
         if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
@@ -936,8 +938,8 @@ template<class Buffer> struct BufferQueue {
         if (pool.empty()) return [](){return true;};
         Buffer *ptr = pool.front(); pool.pop_front();
         std::function<bool()> done;
-        if (first) done = info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);});
-        else done = info->threadState->push([setup,ptr](){return setup(ptr);});
+        if (first) done = info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},[](){});
+        else done = info->threadState->push([setup,ptr](){return setup(ptr);},[](){});
         running.push_back(ptr); toready.push_back(done);
         return done;
     }
