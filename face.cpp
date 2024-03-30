@@ -1,13 +1,70 @@
 extern "C" {
 #include <lua.h>
 #include "face.h"
+#include <stdlib.h>
+#include <string.h>
 void luaxWrap(lua_State *L, const char *str, const struct Close *arg);
 void wrapFace(lua_State *L);
+lua_State *facelua = 0;
+char *luanote = 0;
+char *luafunc = 0;
+void noteLua(int idx)
+{
+	lua_getglobal(facelua, luanote);
+	lua_pushinteger(facelua, idx);
+	lua_pcall(facelua, 1, 0, 0);
+}
+void errLua(const char *str, int num, int idx)
+{
+	lua_getglobal(facelua, luafunc);
+	lua_pushstring(facelua, str);
+	lua_pushinteger(facelua, num);
+	lua_pushinteger(facelua, idx);
+	lua_pcall(facelua, 3, 0, 0);
+}
+void noteFuncLua(const char *str)
+{
+	noteFunc(noteLua);
+	if (luanote) free(luanote);
+	luanote = strdup(str);
+}
+void errFuncLua(const char *str)
+{
+	errFunc(errLua);
+	if (luafunc) free(luafunc);
+	luafunc = strdup(str);
+}
+int hideFieldLua(lua_State *lua)
+{
+	int siz = lua_tonumber(lua,3);
+	int arg = lua_tonumber(lua,4);
+	int *sub = (int*)malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,5+i);
+	if (hideFieldV(lua_tostring(lua,1),lua_tostring(lua,2),&siz,arg,sub))
+	lua_pushnumber(lua,1); else lua_pushnil(lua);
+	lua_pushnumber(lua,siz);
+	free(sub);
+	return 2;
+}
+int showFieldLua(lua_State *lua)
+{
+	char *str = strdup(lua_tostring(lua,2));
+	int arg = lua_tonumber(lua,3);
+	int *sub = (int*)malloc(arg*sizeof(int));
+	for (int i = 0; i < arg; i++) sub[i] = lua_tonumber(lua,4+i);
+	showFieldV(lua_tostring(lua,1),&str,arg,sub);
+	lua_pushstring(lua,str); free(str);
+	free(sub);
+	return 1;
+}
 }
 #include "wrap.h"
 
 void wrapFace(lua_State *L)
 {
+	facelua = L;
+	lua_pushcfunction(L, showFieldLua); lua_setglobal(L, "showField");
+	lua_pushcfunction(L, hideFieldLua); lua_setglobal(L, "hideField");
 	luaxWrap(L,"noteFunc",(new WrapClose([](const struct WrapClose *arg) -> void {noteFuncLua(arg->u(0));},1,0))->ua(0));
 	luaxWrap(L,"errFunc",(new WrapClose([](const struct WrapClose *arg) -> void {errFuncLua(arg->u(0));},1,0))->ua(0));
 	luaxWrap(L,"closeIdent",(new WrapClose([](const struct WrapClose *arg) -> void {closeIdent(arg->i(0));},1,0))->ia(0));

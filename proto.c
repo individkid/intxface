@@ -12,6 +12,10 @@ char *exestr = 0;
 char *exetmp = 0;
 char *msgstr = 0;
 char *msgtmp = 0;
+chtype intrfn = 0;
+hgtype notice = 0;
+eftype errfnc = 0;
+
 void stackErr()
 {
 	void *array[10];
@@ -26,6 +30,30 @@ void exitErr(const char *file, int line)
 	stackErr();
 	fprintf(stderr,"exitErr %s(%d): %d %lld\n",file,line,errno,(long long)getpid());
 	exit(-1);
+}
+void intrFunc(chtype fnc)
+{
+	intrfn = fnc;
+}
+void noteFunc(hgtype fnc)
+{
+	notice = fnc;
+}
+void errFunc(eftype fnc)
+{
+	errfnc = fnc;
+}
+void callIntr()
+{
+	if (intrfn) intrfn();
+}
+void callNote(const char *file, int line, int idx)
+{
+	if (notice) notice(idx); else callErr(file,line,idx);
+}
+void callErr(const char *file, int line, int idx)
+{
+	if (errfnc) errfnc(file,line,idx); else ERROR();
 }
 void protoSet(const char *str)
 {

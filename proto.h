@@ -29,6 +29,10 @@
 // NUMINET open address port pair limit
 // NUMPEND connection request queue length
 
+#define ERRFNC(IDX) callErr(__FILE__,__LINE__,IDX);
+#define NOTICE(IDX) callNote(__FILE__,__LINE__,IDX);
+#define INTRFN() callIntr();
+
 struct Para {
 	enum {
 		Ttype,
@@ -62,8 +66,18 @@ struct Close {
 	int *c;
 };
 
+typedef void (*chtype)();
+typedef void (*hgtype)(int val);
+typedef void (*eftype)(const char *str, int num, int idx);
+
 void stackErr();
 void exitErr(const char *file, int line);
+void intrFunc(chtype fnc);
+void noteFunc(hgtype fnc);
+void errFunc(eftype fnc);
+void callIntr();
+void callNote(const char *str, int num, int idx);
+void callErr(const char *str, int num, int idx);
 void protoSet(const char *str);
 const char *protoGet(int i);
 void protoErr(const char *fmt, ...);

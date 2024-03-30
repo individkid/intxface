@@ -60,42 +60,10 @@ hgtype cbfnc[NUMOPEN] = {0};
 fgtype termfn = 0;
 void *usr[NUMOPEN] = {0};
 
-// error handling
-chtype intrfn = 0;
-hgtype notice = 0;
-eftype errfnc = 0;
-#define ERRFNC(IDX) {if (errfnc) errfnc(__FILE__,__LINE__,IDX); else ERROR();}
-#define NOTICE(IDX) {if (notice) notice(IDX); else ERRFNC(IDX);}
-#define INTRFN() {if (intrfn) intrfn();}
-
 void termFunc(fgtype fnc)
 {
 	termfn = fnc;
 	// >0 valid, 0 not enough, -1 too much, -2 invalid
-}
-void intrFunc(chtype fnc)
-{
-	intrfn = fnc;
-}
-void noteFunc(hgtype fnc)
-{
-	notice = fnc;
-}
-void errFunc(eftype fnc)
-{
-	errfnc = fnc;
-}
-void callIntr()
-{
-	INTRFN();
-}
-void callNote(int idx)
-{
-	NOTICE(idx);
-}
-void callErr(int idx)
-{
-	ERRFNC(idx);
 }
 void closeIdent(int idx)
 {
@@ -1481,3 +1449,4 @@ void showOldHs(float val, const char *str, hftype fnc)
 	fnc(tmp);
 	free(tmp);
 }
+

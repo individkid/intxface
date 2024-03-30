@@ -56,10 +56,10 @@ type.lua: luax.so show.lua type.gen
 typer.c: luax.so show.lua test.lua typer.gen
 typer.h: luax.so show.lua test.lua typer.gen
 typer.hs: luax.so show.lua test.lua typer.gen
-typer.log: typerC typerHs typerLua
+typer.log: typer.lua typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
-typerC.o: typer.c typer.h
+typerC.o: face.h typer.c typer.h
 typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
