@@ -885,5 +885,6 @@ void planeMain()
 }
 void planeReady(struct Pierce *given)
 {
+	// TODO remove this, and add callReady to get latest pierce
 	for (int i = 0; i < configure[PierceSize]; i++) pierce[i] = given[i]; found = 0;
 }

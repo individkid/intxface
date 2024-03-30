@@ -226,7 +226,8 @@ struct MainState {
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
     const int MAX_FRAMES_IN_FLIGHT = 2;
-    const int MAX_BUFFERS_AVAILABLE = 7; // TODO collective limit for BufferQueue
+    const int MAX_BUFFERS_AVAILABLE = 3;
+    const int MAX_RESPONSES_ALLOWED = 2; // TODO bypasses stages if exceeded
     const std::vector<const char*> extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
@@ -786,7 +787,6 @@ struct ThreadState {
     pthread_t thread;
     bool finish;
     std::deque<std::function<VkFence()>> setup;
-    std::deque<std::function<void()>> stage;
     std::deque<VkFence> fence;
     std::deque<int> order;
     std::set<int> lookup;
@@ -833,8 +833,8 @@ struct ThreadState {
                 VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {arg->stage.front()(); arg->lookup.erase(arg->order.front());
-                arg->order.pop_front(); arg->fence.pop_front(); arg->stage.pop_front();}
+                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front());
+                arg->order.pop_front(); arg->fence.pop_front();}
                 /*planeSafe(...);*/}}
         vkDeviceWaitIdle(arg->device);
         return 0;
@@ -845,11 +845,11 @@ struct ThreadState {
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
-    std::function<bool()> push(std::function<VkFence()> given, std::function<void()> argen) {
+    std::function<bool()> push(std::function<VkFence()> given) {
     // return function that returns whether fence returned by given function in separate thread is done
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        setup.push_back(given); stage.push_back(argen);
+        setup.push_back(given);
         int local = seqnum++; order.push_back(local); lookup.insert(local);
         if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
@@ -938,8 +938,8 @@ template<class Buffer> struct BufferQueue {
         if (pool.empty()) return [](){return true;};
         Buffer *ptr = pool.front(); pool.pop_front();
         std::function<bool()> done;
-        if (first) done = info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},[](){});
-        else done = info->threadState->push([setup,ptr](){return setup(ptr);},[](){});
+        if (first) done = info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);});
+        else done = info->threadState->push([setup,ptr](){return setup(ptr);});
         running.push_back(ptr); toready.push_back(done);
         return done;
     }
@@ -975,6 +975,11 @@ template<class Buffer> struct BufferQueue {
         clr();
         toinuse.push_back(done);
         return ready;
+    }
+    Buffer *get(std::function<bool()> done, int stages, std::function<VkFence(Buffer*)> *stage) {
+        // TODO if (info->count < info->limit) {info->count++; return get(
+        // lambda around done replaced by thread->push of each stage and info->count-- after all);}
+        return get(done);
     }
     void dbg() {
         clr();
@@ -1362,6 +1367,12 @@ VkFence setup(int loc, int siz, const void *ptr) {
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
+VkFence getup() {
+    // TODO submit command to copy from gpu to mapped
+    return fence;}
+VkFence putup() {
+    // TODO semaphore protect one of two to copy from mapped and submit empty command to trigger fence
+    return fence;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
     [](VkBuffer buffer, VkCommandBuffer command){
@@ -1649,6 +1660,7 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
         if (!draw->set()) return;
         int temp = draw->tmp();
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
+        // TODO for rmw buffers use get(draw->tmp(temp),copyout,present) to copyout from gpu and present to cpu before release
         std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
         return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
         draw->tmp(temp,done);
