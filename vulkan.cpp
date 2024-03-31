@@ -222,6 +222,7 @@ struct MainState {
     DeviceState* logicalState;
     SwapState *swapState;
     ThreadState *threadState;
+    ThreadState *extraState;
     QueueState* queueState;
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
@@ -1003,6 +1004,8 @@ struct QueueState {
     std::vector<BufferQueue<BufferState>*> bindBuffer[Micros];
     std::vector<BufferTag> typeBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
+    const char *vertexName[Micros];
+    const char *fragmentName[Micros];
     QueueState() {
     for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
     for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
@@ -1020,12 +1023,47 @@ struct QueueState {
     field->offset.push_back(offsetof(Vertex,ref));
     fieldBuffer[Practice].push_back(field);
     fieldBuffer[Practice].push_back(0);
-    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);}
+    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    vertexName[Practice] = "vertexPracticeG";
+    fragmentName[Practice] = "fragmentPracticeG";}
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
     for (int i = 0; i < Micros; i++)
     for (auto j = fieldBuffer[i].begin(); j != fieldBuffer[i].end(); j++) if (*j) delete *j;
     for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];}
+};
+
+struct CopyState {
+    // one writer and one reader
+    int size[2];
+    void *data[2];
+    sem_t lock[2];
+    CopyState() {
+        for (int i = 0; i < 2; i++) {
+        size[i] = 0; data[i] = 0;
+        if (sem_init(&lock[i], 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");}}
+    ~CopyState() {
+        for (int i = 0; i < 2; i++) {
+        if (data[i]) free(data[i]);
+        if (sem_destroy(&lock[i]) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}}}
+    int find() {
+        for (int i = 0; i < 2; i++) {
+        int rslt = sem_trywait(&lock[i]);
+        if (rslt == 0) return i;
+        if (errno != EAGAIN) throw std::runtime_error("failed to trylock semaphore!");}
+        throw std::runtime_error("failed to find semaphore!");
+        return 0;}
+    void set(int siz, void *ptr) {
+        int i = find();
+        if (size[i] != siz) {data[i] = realloc(data[i],siz); size[i] = siz;}
+        memcpy(data[i],ptr,siz);
+        if (sem_post(&lock[i]) != 0) throw std::runtime_error("failed to unlock semaphore!");}
+    int get(int siz, void *ptr) {
+        int i = find();
+        if (siz > size[i]) siz = size[i];
+        memcpy(ptr,data[i],siz);
+        if (sem_post(&lock[i]) != 0) throw std::runtime_error("failed to unlock semaphore!");
+        return siz;}
 };
 
 struct PipelineState {
@@ -1034,9 +1072,10 @@ struct PipelineState {
     VkPipeline pipeline;
     VkDescriptorSetLayout dlayout;
     VkDescriptorSet descriptor;
-    PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool,
-    Micro micro, QueueState *queue, const char *vertex, const char *fragment) {
+    PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micro micro, QueueState *queue) {
     this->device = device;
+    const char *vertex = queue->vertexName[micro];
+    const char *fragment = queue->fragmentName[micro];
     dlayout = [](VkDevice device, std::vector<BufferTag> &type) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
         int count = 0; for (auto i = type.begin(); i != type.end(); i++) if ((*i) == ChangeBuf || (*i) == StoreBuf) {
@@ -1436,7 +1475,7 @@ DrawState(MainState *state, int size, BufferTag tag) {
     this->render = logical->render;
     this->pool = logical->pool;
     this->state = state;
-    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState,"vertexPracticeG","fragmentPracticeG");}
+    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState);}
 void init() {
     // this called in separate thread on newly constructed
     available = [](VkDevice device) {
