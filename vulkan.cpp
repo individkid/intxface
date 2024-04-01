@@ -201,6 +201,7 @@ struct DeviceState;
 struct SwapState;
 struct ThreadState;
 struct QueueState;
+struct CopyState;
 struct MainState {
     bool callOnce;
     bool callDma;
@@ -224,6 +225,7 @@ struct MainState {
     ThreadState *threadState;
     ThreadState *extraState;
     QueueState* queueState;
+    CopyState* copyState;
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
     const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -265,6 +267,7 @@ struct MainState {
     .swapState = 0,
     .threadState = 0,
     .queueState = 0,
+    .copyState = 0,
 };
 
 void framebufferResized(GLFWwindow* window, int width, int height) {
@@ -997,10 +1000,11 @@ template<class Buffer> struct BufferQueue {
         toinuse.push_back(done);
         return ready;
     }
-    Buffer *get(std::function<bool()> done, int stages, std::function<VkFence(Buffer*)> *stage) {
-        // TODO if (info->count < info->limit) {info->count++; return get(
-        // lambda around done replaced by thread->push of each stage and info->count-- after all);}
-        return get(done);
+    Buffer *get(std::function<VkFence(Buffer*)> given, int meta) {
+        Buffer *ptr = ready;
+        std::function setup = [given,ptr](){return given(ptr);};
+        toinuse.push_back(info->threadState->push(setup,meta));
+        return ready;
     }
     void dbg() {
         clr();
@@ -1022,6 +1026,7 @@ struct QueueState {
     BufferQueue<BufferState>* bufferQueue[Memorys];
     BufferQueue<DrawState>* drawQueue[Micros];
     std::vector<BufferQueue<BufferState>*> bindBuffer[Micros];
+    std::vector<BufferQueue<BufferState>*> wmrBuffer[Micros];
     std::vector<BufferTag> typeBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
     const char *vertexName[Micros];
@@ -1033,6 +1038,7 @@ struct QueueState {
     bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     bindBuffer[Practice].push_back(bufferQueue[Vertexz]);
     bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
+    // wmrBuffer[Practice].push_back(bufferQueue[Piercez]);
     typeBuffer[Practice].push_back(FetchBuf);
     typeBuffer[Practice].push_back(ChangeBuf);
     FieldState *field = new FieldState();
@@ -1308,8 +1314,8 @@ BufferState(MainState *state, int size, BufferTag tag) {
     this->graphic = logical->graphic;
     this->pool = logical->pool;
     this->size = size;
-    this->tag = tag;}
-    // this->copy = state->copyState;}
+    this->tag = tag;
+    this->copy = state->copyState;}
 void init() {
     // this called in separate thread on newly constructed
     VkMemoryRequirements requirements;
@@ -1430,8 +1436,7 @@ VkFence setup(int loc, int siz, const void *ptr) {
     return fence;}
 VkFence getup() {
     // TODO submit command to copy from gpu to mapped
-    // TOOD use diferent fence
-    return VK_NULL_HANDLE;}
+    return fence;}
 VkFence putup() {
     // TODO pass mapped to set in copy
     return VK_NULL_HANDLE;}
@@ -1647,6 +1652,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
     mainState.queueState = new QueueState();
+    mainState.copyState = new CopyState();
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
@@ -1717,6 +1723,7 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
     if (mainState.callDraw) {
         std::vector<BufferState*> buffer;
         std::vector<BufferQueue<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
+        std::vector<BufferQueue<BufferState>*> *wmrBuffer = mainState.queueState->wmrBuffer+shader;
         BufferQueue<DrawState> *draw = mainState.queueState->drawQueue[shader];
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
         if (!draw->set()) return;
@@ -1724,8 +1731,10 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
         std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
         return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
-        // TODO for rmw buffers call mainState.threadState->push of buffer's getup and putup but only after draw done, and reserving rmw buffer
         draw->tmp(temp,done);
+        for (auto i = wmrBuffer->begin(); i != wmrBuffer->end(); i++) {
+        (*i)->get([](BufferState*buf){return buf->getup();},1);
+        (*i)->get([](BufferState*buf){return buf->putup();},2);}
         mainState.callDma = true;
     }
 }
