@@ -793,6 +793,7 @@ struct ThreadState {
     std::set<int> lookup;
     std::deque<std::function<VkFence()>> extra;
     std::deque<int> when;
+    std::deque<int> meta;
     int seqnum;
     ThreadState(VkDevice device) {
         this->device = device;
@@ -834,14 +835,18 @@ struct ThreadState {
             else {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE)
-		result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
+                result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int local = arg->order.front();
                 arg->lookup.erase(local); arg->order.pop_front(); arg->fence.pop_front();
-                while (!arg->when.empty() && arg->when.front() == local) {int local = arg->seqnum++;
-                arg->order.push_back(local); arg->lookup.insert(local); arg->setup.push_back(arg->extra.front());
-                arg->when.pop_front(); arg->extra.pop_front();}}
+                while (!arg->when.empty() && arg->when.front() == local) if (arg->meta.front() <= 0) {
+                int local = arg->seqnum++; std::function<VkFence()> func = arg->extra.front();
+                arg->order.push_back(local); arg->lookup.insert(local); arg->setup.push_back(func);
+                arg->when.pop_front(); arg->extra.pop_front(); arg->meta.pop_front();} else {
+                arg->when.push_back(arg->seqnum); arg->extra.push_back(arg->extra.front());
+                arg->meta.push_back(arg->meta.front()-1);
+                arg->when.pop_front(); arg->extra.pop_front(); arg->meta.pop_front();}}
                 /*TODO planeSafe(...);*/}}
         vkDeviceWaitIdle(arg->device);
         return 0;
@@ -864,10 +869,9 @@ struct ThreadState {
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
-    void pend(std::function<VkFence()> given) {
+    void pend(std::function<VkFence()> given, int how) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        extra.push_back(given);
-        when.push_back(seqnum - 1);
+        extra.push_back(given); when.push_back(seqnum - 1); meta.push_back(how);
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
     }
 };
