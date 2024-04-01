@@ -791,6 +791,8 @@ struct ThreadState {
     std::deque<VkFence> fence;
     std::deque<int> order;
     std::set<int> lookup;
+    std::deque<std::function<VkFence()>> extra;
+    std::deque<int> when;
     int seqnum;
     ThreadState(VkDevice device) {
         this->device = device;
@@ -831,12 +833,16 @@ struct ThreadState {
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
             else {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                VkResult result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
+                VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE)
+		result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {arg->lookup.erase(arg->order.front());
-                arg->order.pop_front(); arg->fence.pop_front();}
-                /*planeSafe(...);*/}}
+                if (result == VK_SUCCESS) {int local = arg->order.front();
+                arg->lookup.erase(local); arg->order.pop_front(); arg->fence.pop_front();
+                while (!arg->when.empty() && arg->when.front() == local) {int local = arg->seqnum++;
+                arg->order.push_back(local); arg->lookup.insert(local); arg->setup.push_back(arg->extra.front());
+                arg->when.pop_front(); arg->extra.pop_front();}}
+                /*TODO planeSafe(...);*/}}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -857,6 +863,12 @@ struct ThreadState {
         std::function<bool()> done = [this,local](){return this->clear(local);};
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
+    }
+    void pend(std::function<VkFence()> given) {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        extra.push_back(given);
+        when.push_back(seqnum - 1);
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
     }
 };
 
@@ -1279,6 +1291,7 @@ struct BufferState {
     void *mapped;
     VkCommandBuffer command;
     VkFence fence;
+    CopyState *copy;
 BufferState(MainState *state, int size, BufferTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
@@ -1288,6 +1301,7 @@ BufferState(MainState *state, int size, BufferTag tag) {
     this->pool = logical->pool;
     this->size = size;
     this->tag = tag;}
+    // this->copy = state->copyState;}
 void init() {
     // this called in separate thread on newly constructed
     VkMemoryRequirements requirements;
@@ -1389,16 +1403,16 @@ VkFence setup(int loc, int siz, const void *ptr) {
     VkResult result;
     if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
         memcpy((char*)mapped+loc,ptr,siz);}
+    if (tag != FetchBuf && tag != StoreBuf) return VK_NULL_HANDLE;
     vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
     vkResetFences(device, 1, &fence);
     VkCommandBufferBeginInfo begin{};
     begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(command, &begin);
-    if (tag == FetchBuf || tag == StoreBuf) {
     VkBufferCopy copy{};
     copy.size = size;
-    vkCmdCopyBuffer(command, staging, buffer, 1, &copy);}
+    vkCmdCopyBuffer(command, staging, buffer, 1, &copy);
     vkEndCommandBuffer(command);
     VkSubmitInfo submit{};
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1408,10 +1422,11 @@ VkFence setup(int loc, int siz, const void *ptr) {
     return fence;}
 VkFence getup() {
     // TODO submit command to copy from gpu to mapped
-    return fence;}
+    // TOOD use diferent fence
+    return VK_NULL_HANDLE;}
 VkFence putup() {
-    // TODO semaphore protect one of two to copy from mapped and submit empty command to trigger fence
-    return fence;}
+    // TODO pass mapped to set in copy
+    return VK_NULL_HANDLE;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
     [](VkBuffer buffer, VkCommandBuffer command){
@@ -1699,9 +1714,9 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
         if (!draw->set()) return;
         int temp = draw->tmp();
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
-        // TODO for rmw buffers use get(draw->tmp(temp),copyout,present) to copyout from gpu and present to cpu before release
         std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
         return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
+        // TODO for rmw buffers call mainState.threadState->push of buffer's getup and putup but only after draw done, and reserving rmw buffer
         draw->tmp(temp,done);
         mainState.callDma = true;
     }
