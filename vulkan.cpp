@@ -842,7 +842,7 @@ struct ThreadState {
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
                 while (!arg->when.empty()) {
                 int what = arg->what.front(); int when = arg->when.front(); int meta = arg->meta.front();
-		std::function<VkFence()> func = arg->extra.front();
+                std::function<VkFence()> func = arg->extra.front();
                 arg->what.pop_front(); arg->when.pop_front(); arg->meta.pop_front(); arg->extra.pop_front();
                 if (when == next) if (meta <= 0) {
                 arg->last = what; arg->order.push_back(what); arg->setup.push_back(func);} else {
@@ -862,17 +862,17 @@ struct ThreadState {
     // return function that returns whether fence returned by given function in separate thread is done
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        setup.push_back(given);
         int temp = last = seqnum++; order.push_back(temp); lookup.insert(temp);
-        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
-        if (order.size() != what.size()+lookup.size()) throw std::runtime_error("cannot insert seqnum!");
+        setup.push_back(given);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
+        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (order.size()+what.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
     std::function<bool()> push(std::function<VkFence()> given, int how) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        int temp = seqnum++; order.push_back(temp);
+        int temp = seqnum++; lookup.insert(temp);
         what.push_back(temp); when.push_back(last); meta.push_back(how); extra.push_back(given);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
