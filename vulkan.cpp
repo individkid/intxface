@@ -792,13 +792,14 @@ struct ThreadState {
     std::deque<int> order;
     std::set<int> lookup;
     std::deque<std::function<VkFence()>> extra;
+    std::deque<int> what;
     std::deque<int> when;
     std::deque<int> meta;
-    int seqnum;
+    int seqnum, last;
     ThreadState(VkDevice device) {
         this->device = device;
         finish = false;
-        seqnum = 0;
+        seqnum = last = 0;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 0) != 0 ||
             pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
@@ -823,8 +824,7 @@ struct ThreadState {
         struct ThreadState *arg = (ThreadState*)ptr;
         if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
         while (1) {
-            if (arg->finish) {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+            if (arg->finish) { if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 break;}
             while (!arg->setup.empty()) {
                 arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front();}
@@ -838,16 +838,17 @@ struct ThreadState {
                 result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {int local = arg->order.front();
-                arg->lookup.erase(local); arg->order.pop_front(); arg->fence.pop_front();
-                while (!arg->when.empty() && arg->when.front() == local) if (arg->meta.front() <= 0) {
-                int local = arg->seqnum++; std::function<VkFence()> func = arg->extra.front();
-                arg->order.push_back(local); arg->lookup.insert(local); arg->setup.push_back(func);
-                arg->when.pop_front(); arg->extra.pop_front(); arg->meta.pop_front();} else {
-                arg->when.push_back(arg->seqnum); arg->extra.push_back(arg->extra.front());
-                arg->meta.push_back(arg->meta.front()-1);
-                arg->when.pop_front(); arg->extra.pop_front(); arg->meta.pop_front();}}
-                /*TODO planeSafe(...);*/}}
+                if (result == VK_SUCCESS) {int next = arg->order.front();
+                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
+                while (!arg->when.empty()) {
+                int what = arg->what.front(); int when = arg->when.front(); int meta = arg->meta.front();
+		std::function<VkFence()> func = arg->extra.front();
+                arg->what.pop_front(); arg->when.pop_front(); arg->meta.pop_front(); arg->extra.pop_front();
+                if (when == next) if (meta <= 0) {
+                arg->last = what; arg->order.push_back(what); arg->setup.push_back(func);} else {
+                arg->what.push_front(what); arg->when.push_back(arg->last); arg->meta.push_back(meta-1);
+                arg->extra.push_back(func);}}
+                /*TODO planeSafe(...);*/}}}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -862,17 +863,20 @@ struct ThreadState {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         setup.push_back(given);
-        int local = seqnum++; order.push_back(local); lookup.insert(local);
+        int temp = last = seqnum++; order.push_back(temp); lookup.insert(temp);
         if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
-        if (order.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
-        std::function<bool()> done = [this,local](){return this->clear(local);};
+        if (order.size() != what.size()+lookup.size()) throw std::runtime_error("cannot insert seqnum!");
+        std::function<bool()> done = [this,temp](){return this->clear(temp);};
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
-    void pend(std::function<VkFence()> given, int how) {
+    std::function<bool()> push(std::function<VkFence()> given, int how) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        extra.push_back(given); when.push_back(seqnum - 1); meta.push_back(how);
+        int temp = seqnum++; order.push_back(temp);
+        what.push_back(temp); when.push_back(last); meta.push_back(how); extra.push_back(given);
+        std::function<bool()> done = [this,temp](){return this->clear(temp);};
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+	return done;
     }
 };
 
