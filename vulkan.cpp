@@ -230,7 +230,6 @@ struct MainState {
     const uint32_t HEIGHT = 600;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     const int MAX_BUFFERS_AVAILABLE = 3;
-    const int MAX_RESPONSES_ALLOWED = 2; // TODO bypasses stages if exceeded
     const std::vector<const char*> extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
@@ -874,6 +873,7 @@ struct ThreadState {
         return done;
     }
     std::function<bool()> push(std::function<VkFence()> given, int how) {
+    // return query of wheter fence is done for given function started in indicated sequence
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         int temp = seqnum++; lookup.insert(temp);
         what.push_back(temp); when.push_back(last); meta.push_back(how); extra.push_back(given);
@@ -883,7 +883,7 @@ struct ThreadState {
     }
 };
 
-enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,DrawBuf};
+enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf};
 template<class Buffer> struct BufferQueue {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
@@ -1001,6 +1001,7 @@ template<class Buffer> struct BufferQueue {
         return ready;
     }
     Buffer *get(std::function<VkFence(Buffer*)> given, int meta) {
+    // submit additional processing started after last submitted is done
         Buffer *ptr = ready;
         std::function setup = [given,ptr](){return given(ptr);};
         toinuse.push_back(info->threadState->push(setup,meta));
@@ -1321,7 +1322,7 @@ void init() {
     VkMemoryRequirements requirements;
     VkPhysicalDeviceMemoryProperties properties;
     vkGetPhysicalDeviceMemoryProperties(physical, &properties);
-    if (tag == FetchBuf || tag == StoreBuf) {
+    if (tag == FetchBuf || tag == StoreBuf || tag == QueryBuf) {
     staging = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
         VkBufferCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1332,7 +1333,9 @@ void init() {
         if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
             throw std::runtime_error("failed to create buffer!");
         return buffer;
-    } (device,size,VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    } (device,size,(tag == QueryBuf ?
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT:
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT));
     vkGetBufferMemoryRequirements(device, staging, &requirements);
     wasted = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
         VkMemoryAllocateInfo info{};
@@ -1350,7 +1353,7 @@ void init() {
         return properties.memoryTypeCount;
     } (requirements.memoryTypeBits,properties,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
     vkBindBufferMemory(device, staging, wasted, 0);}
-    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
+    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
     buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
         VkBufferCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1363,8 +1366,9 @@ void init() {
         return buffer;
     } (device,size,tag==ChangeBuf?
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:(tag==StoreBuf?
-    VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:(tag==QueryBuf?
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)));
     vkGetBufferMemoryRequirements(device, buffer, &requirements);
     memory = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
         VkMemoryAllocateInfo info{};
@@ -1406,18 +1410,18 @@ void init() {
 ~BufferState() {
     vkDestroyFence(device,fence,0);
     vkFreeCommandBuffers(device, pool, 1, &command);
-    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
+    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
     vkDestroyBuffer(device, buffer, nullptr);
     vkFreeMemory(device, memory, nullptr);}
-    if (tag == FetchBuf || tag == StoreBuf) {
+    if (tag == FetchBuf || tag == StoreBuf || tag == QueryBuf) {
     vkDestroyBuffer(device, staging, nullptr);
     vkFreeMemory(device, wasted, nullptr);}}
 VkFence setup(int loc, int siz, const void *ptr) {
     // this called in separate thread to get fence
     VkResult result;
-    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf) {
+    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
         memcpy((char*)mapped+loc,ptr,siz);}
-    if (tag != FetchBuf && tag != StoreBuf) return VK_NULL_HANDLE;
+    if (tag != FetchBuf && tag != StoreBuf && tag != QueryBuf) return VK_NULL_HANDLE;
     vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
     vkResetFences(device, 1, &fence);
     VkCommandBufferBeginInfo begin{};
@@ -1435,10 +1439,28 @@ VkFence setup(int loc, int siz, const void *ptr) {
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
 VkFence getup() {
-    // TODO submit command to copy from gpu to mapped
+    // after draw fence completes, call this to get computations from gpu
+    VkResult result;
+    if (tag != QueryBuf) return VK_NULL_HANDLE;
+    vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
+    vkResetFences(device, 1, &fence);
+    VkCommandBufferBeginInfo begin{};
+    begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(command, &begin);
+    VkBufferCopy copy{};
+    copy.size = size;
+    vkCmdCopyBuffer(command, buffer, staging, 1, &copy);
+    vkEndCommandBuffer(command);
+    VkSubmitInfo submit{};
+    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit.commandBufferCount = 1;
+    submit.pCommandBuffers = &command;
+    result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
 VkFence putup() {
-    // TODO pass mapped to set in copy
+    // after getting computations, call this to save computations for use
+    if (tag == QueryBuf) copy->set(size,mapped);
     return VK_NULL_HANDLE;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
@@ -1463,7 +1485,7 @@ bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
         update.pBufferInfo = &info;
         vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
     }(device,buffer,descriptor,layout,size);}
-    if (tag == StoreBuf) {
+    if (tag == StoreBuf || tag == QueryBuf) {
     [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor, int layout, int size) {
         VkDescriptorBufferInfo info{};
         info.buffer = buffer;
@@ -1479,7 +1501,7 @@ bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
         update.pBufferInfo = &info;
         vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
     }(device,buffer,descriptor,layout,size);}
-    return (tag == ChangeBuf || tag == StoreBuf);}
+    return (tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf);}
 };
 
 struct DrawState {
