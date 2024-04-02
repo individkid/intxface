@@ -170,6 +170,7 @@ Tool = {
 Micro = {
 	"Concept",
 	"Practice",
+	"Compute",
 }
 Code = {
 	"Corner",

@@ -883,7 +883,7 @@ struct ThreadState {
     }
 };
 
-enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf};
+enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf,CompBuf};
 template<class Buffer> struct BufferQueue {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
@@ -1026,8 +1026,9 @@ struct FieldState {
 struct QueueState {
     BufferQueue<BufferState>* bufferQueue[Memorys];
     BufferQueue<DrawState>* drawQueue[Micros];
+    FieldState *fieldState;
     std::vector<BufferQueue<BufferState>*> bindBuffer[Micros];
-    std::vector<BufferQueue<BufferState>*> wmrBuffer[Micros];
+    std::vector<BufferQueue<BufferState>*> queryBuffer[Micros];
     std::vector<BufferTag> typeBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
     const char *vertexName[Micros];
@@ -1035,28 +1036,41 @@ struct QueueState {
     QueueState() {
     for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
     for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
+    fieldState = 0;
     bufferQueue[Vertexz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    bufferQueue[Piercez] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
     bindBuffer[Practice].push_back(bufferQueue[Vertexz]);
     bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
-    // wmrBuffer[Practice].push_back(bufferQueue[Piercez]);
+    bindBuffer[Compute].push_back(bufferQueue[Vertexz]);
+    bindBuffer[Compute].push_back(bufferQueue[Matrixz]);
+    bindBuffer[Compute].push_back(bufferQueue[Piercez]);
+    queryBuffer[Compute].push_back(bufferQueue[Piercez]);
     typeBuffer[Practice].push_back(FetchBuf);
     typeBuffer[Practice].push_back(ChangeBuf);
-    FieldState *field = new FieldState();
-    field->stride = sizeof(Vertex);
-    field->format.push_back(VK_FORMAT_R32G32_SFLOAT);
-    field->format.push_back(VK_FORMAT_R32_UINT);
-    field->offset.push_back(offsetof(Vertex,vec));
-    field->offset.push_back(offsetof(Vertex,ref));
-    fieldBuffer[Practice].push_back(field);
+    typeBuffer[Compute].push_back(FetchBuf);
+    typeBuffer[Compute].push_back(ChangeBuf);
+    typeBuffer[Compute].push_back(QueryBuf);
+    fieldState = new FieldState();
+    fieldState->stride = sizeof(Vertex);
+    fieldState->format.push_back(VK_FORMAT_R32G32_SFLOAT);
+    fieldState->format.push_back(VK_FORMAT_R32_UINT);
+    fieldState->offset.push_back(offsetof(Vertex,vec));
+    fieldState->offset.push_back(offsetof(Vertex,ref));
+    fieldBuffer[Practice].push_back(fieldState);
     fieldBuffer[Practice].push_back(0);
+    fieldBuffer[Compute].push_back(fieldState);
+    fieldBuffer[Compute].push_back(0);
+    fieldBuffer[Compute].push_back(0);
     drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     vertexName[Practice] = "vertexPracticeG";
-    fragmentName[Practice] = "fragmentPracticeG";}
+    fragmentName[Practice] = "fragmentPracticeG";
+    drawQueue[Compute] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,CompBuf);
+    vertexName[Compute] = "vertexComputeG";
+    fragmentName[Compute] = "fragmentComputeG";}
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
-    for (int i = 0; i < Micros; i++)
-    for (auto j = fieldBuffer[i].begin(); j != fieldBuffer[i].end(); j++) if (*j) delete *j;
+    if (fieldState) delete fieldState;
     for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];}
 };
 
@@ -1525,6 +1539,7 @@ DrawState(MainState *state, int size, BufferTag tag) {
     this->render = logical->render;
     this->pool = logical->pool;
     this->state = state;
+    // for now let CompTag use fragment stage same as DrawBuf, except with queueState that includes QueryTag
     this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState);}
 void init() {
     // this called in separate thread on newly constructed
@@ -1745,7 +1760,7 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
     if (mainState.callDraw) {
         std::vector<BufferState*> buffer;
         std::vector<BufferQueue<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
-        std::vector<BufferQueue<BufferState>*> *wmrBuffer = mainState.queueState->wmrBuffer+shader;
+        std::vector<BufferQueue<BufferState>*> *queryBuffer = mainState.queueState->queryBuffer+shader;
         BufferQueue<DrawState> *draw = mainState.queueState->drawQueue[shader];
         for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
         if (!draw->set()) return;
@@ -1754,7 +1769,7 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
         std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
         return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
         draw->tmp(temp,done);
-        for (auto i = wmrBuffer->begin(); i != wmrBuffer->end(); i++) {
+        for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
         (*i)->get([](BufferState*buf){return buf->getup();},1);
         (*i)->get([](BufferState*buf){return buf->putup();},2);}
         mainState.callDma = true;
