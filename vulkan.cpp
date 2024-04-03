@@ -204,8 +204,6 @@ struct QueueState;
 struct CopyState;
 struct MainState {
     bool callOnce;
-    bool callDma;
-    bool callDraw;
     bool framebufferResized;
     bool escapePressed;
     bool enterPressed;
@@ -246,8 +244,6 @@ struct MainState {
     #endif
 } mainState = {
     .callOnce = true,
-    .callDma = true,
-    .callDraw = true,
     .framebufferResized = false,
     .escapePressed = false,
     .enterPressed = false,
@@ -796,12 +792,11 @@ struct ThreadState {
     std::deque<std::function<VkFence()>> extra;
     std::deque<int> what;
     std::deque<int> when;
-    std::deque<int> meta;
-    int seqnum, last;
+    int seqnum;
     ThreadState(VkDevice device) {
         this->device = device;
         finish = false;
-        seqnum = last = 0;
+        seqnum = 0;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 0) != 0 ||
             pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
@@ -826,8 +821,13 @@ struct ThreadState {
         struct ThreadState *arg = (ThreadState*)ptr;
         if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
         while (1) {
-            if (arg->finish) { if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+            if (arg->finish) {
+                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 break;}
+            while (!arg->when.empty() && arg->lookup.find(arg->when.front()) == arg->lookup.end()) {
+                int temp = arg->what.front(); std::function<VkFence()> func = arg->extra.front();
+                arg->order.push_back(temp); arg->lookup.insert(temp); arg->setup.push_back(func);
+                arg->when.pop_front(); arg->what.pop_front(); arg->extra.pop_front();}
             while (!arg->setup.empty()) {
                 arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front();}
             if (arg->fence.empty()) {
@@ -841,16 +841,8 @@ struct ThreadState {
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
-                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
-                while (!arg->when.empty()) {
-                int what = arg->what.front(); int when = arg->when.front(); int meta = arg->meta.front();
-                std::function<VkFence()> func = arg->extra.front();
-                arg->what.pop_front(); arg->when.pop_front(); arg->meta.pop_front(); arg->extra.pop_front();
-                if (when == next) if (meta <= 0) {
-                arg->last = what; arg->order.push_back(what); arg->setup.push_back(func);} else {
-                arg->what.push_front(what); arg->when.push_back(arg->last); arg->meta.push_back(meta-1);
-                arg->extra.push_back(func);}}
-                /*TODO planeSafe(...);*/}}}
+                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();}
+                if (arg->fence.empty()) /*TODO planeSafe(...)*/;}}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -860,11 +852,16 @@ struct ThreadState {
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
+    int push() {
+        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        int temp = seqnum;
+        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        return temp;}
     std::function<bool()> push(std::function<VkFence()> given) {
     // return function that returns whether fence returned by given function in separate thread is done
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        int temp = last = seqnum++; order.push_back(temp); lookup.insert(temp);
+        int temp = seqnum++; order.push_back(temp); lookup.insert(temp);
         setup.push_back(given);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
         if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
@@ -872,28 +869,27 @@ struct ThreadState {
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
-    std::function<bool()> push(std::function<VkFence()> given, int how) {
+    std::function<bool()> push(std::function<VkFence()> given, int last) {
     // return query of wheter fence is done for given function started in indicated sequence
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         int temp = seqnum++; lookup.insert(temp);
-        what.push_back(temp); when.push_back(last); meta.push_back(how); extra.push_back(given);
+        what.push_back(temp); when.push_back(last); extra.push_back(given);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-	return done;
-    }
+        return done;}
 };
 
-enum BufferTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf,CompBuf};
-template<class Buffer> struct BufferQueue {
+enum WrapTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf,CompBuf};
+template<class Buffer> struct WrapState {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
     Buffer* ready; std::deque<std::function<bool()>> toinuse;
     std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
     std::map<int,std::function<bool()>> temp;
     std::deque<void*> data; std::deque<std::function<bool()>> done;
-    int size; void *copy; int seqnum; int count; int limit; BufferTag tag;
+    int size; void *copy; int seqnum; int count; int limit; WrapTag tag;
     MainState *info;
-    BufferQueue(MainState *info, int limit, BufferTag tag) {
+    WrapState(MainState *info, int limit, WrapTag tag) {
         ready = 0;
         size = 0;
         copy = 0;
@@ -903,7 +899,7 @@ template<class Buffer> struct BufferQueue {
         this->tag = tag;
         this->info = info;
     }
-    ~BufferQueue() {
+    ~WrapState() {
         while (!pool.empty()) {delete pool.front(); pool.pop_front();}
         while (!running.empty()) {delete running.front(); running.pop_front();}
         if (ready) delete ready;
@@ -1000,11 +996,11 @@ template<class Buffer> struct BufferQueue {
         toinuse.push_back(done);
         return ready;
     }
-    Buffer *get(std::function<VkFence(Buffer*)> given, int meta) {
+    Buffer *get(std::function<VkFence(Buffer*)> given) {
     // submit additional processing started after last submitted is done
-        Buffer *ptr = ready;
+        Buffer *ptr = ready; int last = info->threadState->push()-1;
         std::function setup = [given,ptr](){return given(ptr);};
-        toinuse.push_back(info->threadState->push(setup,meta));
+        toinuse.push_back(info->threadState->push(setup,last));
         return ready;
     }
     void dbg() {
@@ -1024,12 +1020,12 @@ struct FieldState {
     std::vector<uint32_t> offset;
 };
 struct QueueState {
-    BufferQueue<BufferState>* bufferQueue[Memorys];
-    BufferQueue<DrawState>* drawQueue[Micros];
+    WrapState<BufferState>* bufferQueue[Memorys];
+    WrapState<DrawState>* drawQueue[Micros];
     FieldState *fieldState;
-    std::vector<BufferQueue<BufferState>*> bindBuffer[Micros];
-    std::vector<BufferQueue<BufferState>*> queryBuffer[Micros];
-    std::vector<BufferTag> typeBuffer[Micros];
+    std::vector<WrapState<BufferState>*> bindBuffer[Micros];
+    std::vector<WrapState<BufferState>*> queryBuffer[Micros];
+    std::vector<WrapTag> typeBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
     const char *vertexName[Micros];
     const char *fragmentName[Micros];
@@ -1037,9 +1033,9 @@ struct QueueState {
     for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
     for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
     fieldState = 0;
-    bufferQueue[Vertexz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    bufferQueue[Matrixz] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
-    bufferQueue[Piercez] = new BufferQueue<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
+    bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    bufferQueue[Piercez] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
     bindBuffer[Practice].push_back(bufferQueue[Vertexz]);
     bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
     bindBuffer[Compute].push_back(bufferQueue[Vertexz]);
@@ -1062,10 +1058,10 @@ struct QueueState {
     fieldBuffer[Compute].push_back(fieldState);
     fieldBuffer[Compute].push_back(0);
     fieldBuffer[Compute].push_back(0);
-    drawQueue[Practice] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    drawQueue[Practice] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     vertexName[Practice] = "vertexPracticeG";
     fragmentName[Practice] = "fragmentPracticeG";
-    drawQueue[Compute] = new BufferQueue<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,CompBuf);
+    drawQueue[Compute] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,CompBuf);
     vertexName[Compute] = "vertexComputeG";
     fragmentName[Compute] = "fragmentComputeG";}
     ~QueueState() {
@@ -1106,213 +1102,13 @@ struct CopyState {
         if (sem_post(&lock[i]) != 0) throw std::runtime_error("failed to unlock semaphore!");
         return siz;}
 };
-
-struct PipelineState {
-    VkDevice device;
-    VkPipelineLayout layout;
-    VkPipeline pipeline;
-    VkDescriptorSetLayout dlayout;
-    VkDescriptorSet descriptor;
-    PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micro micro, QueueState *queue) {
-    this->device = device;
-    const char *vertex = queue->vertexName[micro];
-    const char *fragment = queue->fragmentName[micro];
-    dlayout = [](VkDevice device, std::vector<BufferTag> &type) {
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
-        int count = 0; for (auto i = type.begin(); i != type.end(); i++) if ((*i) == ChangeBuf || (*i) == StoreBuf) {
-        VkDescriptorSetLayoutBinding binding{};
-        binding.binding = count++;
-        binding.descriptorCount = 1;
-        binding.descriptorType = ((*i) == ChangeBuf ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        binding.pImmutableSamplers = nullptr;
-        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        bindings.push_back(binding);}
-        VkDescriptorSetLayoutCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        info.bindingCount = bindings.size();
-        info.pBindings = bindings.data();
-        VkDescriptorSetLayout descriptor;
-        if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
-            throw std::runtime_error("failed to create descriptor set layout!");
-        return descriptor;
-    } (device,queue->typeBuffer[micro]);
-    descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
-        VkDescriptorSetAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        info.descriptorPool = pool;
-        info.descriptorSetCount = static_cast<uint32_t>(1);
-        info.pSetLayouts = &layout;
-        VkDescriptorSet descriptor;
-        if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        return descriptor;}(device,dlayout,dpool);
-    layout = [](VkDevice device, VkDescriptorSetLayout descriptor) {
-        VkPipelineLayoutCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        info.setLayoutCount = 1;
-        info.pSetLayouts = &descriptor;
-        VkPipelineLayout layout;
-        if (vkCreatePipelineLayout(device, &info, nullptr, &layout) != VK_SUCCESS)
-            throw std::runtime_error("failed to create pipeline layout!");
-        return layout;
-    } (device,dlayout);
-    VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-            throw std::runtime_error("failed to create shader module!");
-        return shaderModule;} (device,[](const std::string& filename) {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) throw std::runtime_error("failed to open file!");
-        size_t fileSize = (size_t) file.tellg();
-        std::vector<char> buffer(fileSize);
-        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
-        return buffer;}(vertex));
-    VkShaderModule fmodule = [](VkDevice device, const std::vector<char>& code) {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-            throw std::runtime_error("failed to create shader module!");
-        return shaderModule;} (device,[](const std::string& filename) {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) throw std::runtime_error("failed to open file!");
-        size_t fileSize = (size_t) file.tellg();
-        std::vector<char> buffer(fileSize);
-        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
-        return buffer;}(fragment));
-    VkPipelineShaderStageCreateInfo vinfo = [](VkShaderModule vmodule) {
-        VkPipelineShaderStageCreateInfo vinfo{};
-        vinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vinfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vinfo.module = vmodule;
-        vinfo.pName = "main";
-        return vinfo;}(vmodule);
-    VkPipelineShaderStageCreateInfo finfo = [](VkShaderModule fmodule) {
-        VkPipelineShaderStageCreateInfo finfo{};
-        finfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        finfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        finfo.module = fmodule;
-        finfo.pName = "main";
-        return finfo;}(fmodule);
-    VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
-    std::vector<VkVertexInputBindingDescription> descriptions;
-    std::vector<VkVertexInputAttributeDescription> attributes;
-    [&descriptions,&attributes](std::vector<FieldState*> &field) {
-        int count = 0; int location = 0;
-        for (auto i = field.begin(); i != field.end(); i++) if (*i) {
-        int binding = count++;
-        VkVertexInputBindingDescription description;
-        description.binding = binding;
-        description.stride = (*i)->stride;
-        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        for (int j = 0; j < (*i)->offset.size(); j++) {
-        VkVertexInputAttributeDescription attribute;
-        attribute.binding = binding;
-        attribute.location = location++;
-        attribute.format = (*i)->format[j];
-        attribute.offset = (*i)->offset[j];
-        attributes.push_back(attribute);}
-        descriptions.push_back(description);}}(queue->fieldBuffer[micro]);
-    VkPipelineVertexInputStateCreateInfo input = [&descriptions,&attributes] () {
-        VkPipelineVertexInputStateCreateInfo input{};
-        input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        input.vertexBindingDescriptionCount = static_cast<uint32_t>(descriptions.size());
-        input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
-        input.pVertexBindingDescriptions = descriptions.data();
-        input.pVertexAttributeDescriptions = attributes.data();
-        return input;}();
-    VkPipelineInputAssemblyStateCreateInfo assembly = [] () {
-        VkPipelineInputAssemblyStateCreateInfo assembly{};
-        assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        assembly.primitiveRestartEnable = VK_FALSE;
-        return assembly;}();
-    VkPipelineViewportStateCreateInfo viewport = [] () {
-        VkPipelineViewportStateCreateInfo viewport{};
-        viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewport.viewportCount = 1;
-        viewport.scissorCount = 1;
-        return viewport;}();
-    VkPipelineRasterizationStateCreateInfo rasterize = [] () {
-        VkPipelineRasterizationStateCreateInfo rasterize{};
-        rasterize.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterize.depthClampEnable = VK_FALSE;
-        rasterize.rasterizerDiscardEnable = VK_FALSE;
-        rasterize.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterize.lineWidth = 1.0f;
-        rasterize.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterize.depthBiasEnable = VK_FALSE;
-        return rasterize;}();
-    VkPipelineMultisampleStateCreateInfo multisample = [] () {
-        VkPipelineMultisampleStateCreateInfo multisample{};
-        multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisample.sampleShadingEnable = VK_FALSE;
-        multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        return multisample;}();
-    VkPipelineColorBlendAttachmentState attachment = [] () {
-        VkPipelineColorBlendAttachmentState attachment{};
-        attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        attachment.blendEnable = VK_FALSE;
-        return attachment;}();
-    VkPipelineColorBlendStateCreateInfo blend = [&attachment] () {
-        VkPipelineColorBlendStateCreateInfo blend{};
-        blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        blend.logicOpEnable = VK_FALSE;
-        blend.logicOp = VK_LOGIC_OP_COPY;
-        blend.attachmentCount = 1;
-        blend.pAttachments = &attachment;
-        blend.blendConstants[0] = 0.0f;
-        blend.blendConstants[1] = 0.0f;
-        blend.blendConstants[2] = 0.0f;
-        blend.blendConstants[3] = 0.0f;
-        return blend;}();
-    std::vector<VkDynamicState> states = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
-    VkPipelineDynamicStateCreateInfo state = [&states] () {
-        VkPipelineDynamicStateCreateInfo state{};
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        state.dynamicStateCount = static_cast<uint32_t>(states.size());
-        state.pDynamicStates = states.data();
-        return state;}();
-    VkGraphicsPipelineCreateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.stageCount = 2;
-    info.pStages = stages;
-    info.pVertexInputState = &input;
-    info.pInputAssemblyState = &assembly;
-    info.pViewportState = &viewport;
-    info.pRasterizationState = &rasterize;
-    info.pMultisampleState = &multisample;
-    info.pColorBlendState = &blend;
-    info.pDynamicState = &state;
-    info.layout = layout;
-    info.renderPass = render;
-    info.subpass = 0;
-    info.basePipelineHandle = VK_NULL_HANDLE;
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
-        throw std::runtime_error("failed to create graphic pipeline!");
-    vkDestroyShaderModule(device, fmodule, nullptr);
-    vkDestroyShaderModule(device, vmodule, nullptr);}
-    ~PipelineState() {
-    vkDestroyPipeline(device, pipeline, nullptr);
-    vkDestroyPipelineLayout(device, layout, nullptr);
-    vkDestroyDescriptorSetLayout(device, dlayout, nullptr);}
-};
-
 struct BufferState {
     VkPhysicalDevice physical;
     VkDevice device;
     VkQueue graphic;
     VkCommandPool pool;
     VkDeviceSize size;
-    BufferTag tag;
+    WrapTag tag;
     VkBuffer staging;
     VkDeviceMemory wasted;
     VkBuffer buffer;
@@ -1321,7 +1117,7 @@ struct BufferState {
     VkCommandBuffer command;
     VkFence fence;
     CopyState *copy;
-BufferState(MainState *state, int size, BufferTag tag) {
+BufferState(MainState *state, int size, WrapTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
     this->physical = physical->physical;
@@ -1518,6 +1314,204 @@ bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     return (tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf);}
 };
 
+struct PipelineState {
+    VkDevice device;
+    VkPipelineLayout layout;
+    VkPipeline pipeline;
+    VkDescriptorSetLayout dlayout;
+    VkDescriptorSet descriptor;
+PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micro micro, QueueState *queue) {
+    this->device = device;
+    const char *vertex = queue->vertexName[micro];
+    const char *fragment = queue->fragmentName[micro];
+    dlayout = [](VkDevice device, std::vector<WrapTag> &type) {
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        int count = 0; for (auto i = type.begin(); i != type.end(); i++) if ((*i) == ChangeBuf || (*i) == StoreBuf) {
+        VkDescriptorSetLayoutBinding binding{};
+        binding.binding = count++;
+        binding.descriptorCount = 1;
+        binding.descriptorType = ((*i) == ChangeBuf ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        binding.pImmutableSamplers = nullptr;
+        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        bindings.push_back(binding);}
+        VkDescriptorSetLayoutCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        info.bindingCount = bindings.size();
+        info.pBindings = bindings.data();
+        VkDescriptorSetLayout descriptor;
+        if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
+            throw std::runtime_error("failed to create descriptor set layout!");
+        return descriptor;
+    } (device,queue->typeBuffer[micro]);
+    descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
+        VkDescriptorSetAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        info.descriptorPool = pool;
+        info.descriptorSetCount = static_cast<uint32_t>(1);
+        info.pSetLayouts = &layout;
+        VkDescriptorSet descriptor;
+        if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        return descriptor;}(device,dlayout,dpool);
+    layout = [](VkDevice device, VkDescriptorSetLayout descriptor) {
+        VkPipelineLayoutCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        info.setLayoutCount = 1;
+        info.pSetLayouts = &descriptor;
+        VkPipelineLayout layout;
+        if (vkCreatePipelineLayout(device, &info, nullptr, &layout) != VK_SUCCESS)
+            throw std::runtime_error("failed to create pipeline layout!");
+        return layout;
+    } (device,dlayout);
+    VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+            throw std::runtime_error("failed to create shader module!");
+        return shaderModule;} (device,[](const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        if (!file.is_open()) throw std::runtime_error("failed to open file!");
+        size_t fileSize = (size_t) file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
+        return buffer;}(vertex));
+    VkShaderModule fmodule = [](VkDevice device, const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+            throw std::runtime_error("failed to create shader module!");
+        return shaderModule;} (device,[](const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        if (!file.is_open()) throw std::runtime_error("failed to open file!");
+        size_t fileSize = (size_t) file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
+        return buffer;}(fragment));
+    VkPipelineShaderStageCreateInfo vinfo = [](VkShaderModule vmodule) {
+        VkPipelineShaderStageCreateInfo vinfo{};
+        vinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vinfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vinfo.module = vmodule;
+        vinfo.pName = "main";
+        return vinfo;}(vmodule);
+    VkPipelineShaderStageCreateInfo finfo = [](VkShaderModule fmodule) {
+        VkPipelineShaderStageCreateInfo finfo{};
+        finfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        finfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        finfo.module = fmodule;
+        finfo.pName = "main";
+        return finfo;}(fmodule);
+    VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
+    std::vector<VkVertexInputBindingDescription> descriptions;
+    std::vector<VkVertexInputAttributeDescription> attributes;
+    [&descriptions,&attributes](std::vector<FieldState*> &field) {
+        int count = 0; int location = 0;
+        for (auto i = field.begin(); i != field.end(); i++) if (*i) {
+        int binding = count++;
+        VkVertexInputBindingDescription description;
+        description.binding = binding;
+        description.stride = (*i)->stride;
+        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        for (int j = 0; j < (*i)->offset.size(); j++) {
+        VkVertexInputAttributeDescription attribute;
+        attribute.binding = binding;
+        attribute.location = location++;
+        attribute.format = (*i)->format[j];
+        attribute.offset = (*i)->offset[j];
+        attributes.push_back(attribute);}
+        descriptions.push_back(description);}}(queue->fieldBuffer[micro]);
+    VkPipelineVertexInputStateCreateInfo input = [&descriptions,&attributes] () {
+        VkPipelineVertexInputStateCreateInfo input{};
+        input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        input.vertexBindingDescriptionCount = static_cast<uint32_t>(descriptions.size());
+        input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        input.pVertexBindingDescriptions = descriptions.data();
+        input.pVertexAttributeDescriptions = attributes.data();
+        return input;}();
+    VkPipelineInputAssemblyStateCreateInfo assembly = [] () {
+        VkPipelineInputAssemblyStateCreateInfo assembly{};
+        assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        assembly.primitiveRestartEnable = VK_FALSE;
+        return assembly;}();
+    VkPipelineViewportStateCreateInfo viewport = [] () {
+        VkPipelineViewportStateCreateInfo viewport{};
+        viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewport.viewportCount = 1;
+        viewport.scissorCount = 1;
+        return viewport;}();
+    VkPipelineRasterizationStateCreateInfo rasterize = [] () {
+        VkPipelineRasterizationStateCreateInfo rasterize{};
+        rasterize.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterize.depthClampEnable = VK_FALSE;
+        rasterize.rasterizerDiscardEnable = VK_FALSE;
+        rasterize.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterize.lineWidth = 1.0f;
+        rasterize.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterize.depthBiasEnable = VK_FALSE;
+        return rasterize;}();
+    VkPipelineMultisampleStateCreateInfo multisample = [] () {
+        VkPipelineMultisampleStateCreateInfo multisample{};
+        multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisample.sampleShadingEnable = VK_FALSE;
+        multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        return multisample;}();
+    VkPipelineColorBlendAttachmentState attachment = [] () {
+        VkPipelineColorBlendAttachmentState attachment{};
+        attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        attachment.blendEnable = VK_FALSE;
+        return attachment;}();
+    VkPipelineColorBlendStateCreateInfo blend = [&attachment] () {
+        VkPipelineColorBlendStateCreateInfo blend{};
+        blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        blend.logicOpEnable = VK_FALSE;
+        blend.logicOp = VK_LOGIC_OP_COPY;
+        blend.attachmentCount = 1;
+        blend.pAttachments = &attachment;
+        blend.blendConstants[0] = 0.0f;
+        blend.blendConstants[1] = 0.0f;
+        blend.blendConstants[2] = 0.0f;
+        blend.blendConstants[3] = 0.0f;
+        return blend;}();
+    std::vector<VkDynamicState> states = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo state = [&states] () {
+        VkPipelineDynamicStateCreateInfo state{};
+        state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        state.dynamicStateCount = static_cast<uint32_t>(states.size());
+        state.pDynamicStates = states.data();
+        return state;}();
+    VkGraphicsPipelineCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    info.stageCount = 2;
+    info.pStages = stages;
+    info.pVertexInputState = &input;
+    info.pInputAssemblyState = &assembly;
+    info.pViewportState = &viewport;
+    info.pRasterizationState = &rasterize;
+    info.pMultisampleState = &multisample;
+    info.pColorBlendState = &blend;
+    info.pDynamicState = &state;
+    info.layout = layout;
+    info.renderPass = render;
+    info.subpass = 0;
+    info.basePipelineHandle = VK_NULL_HANDLE;
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
+        throw std::runtime_error("failed to create graphic pipeline!");
+    vkDestroyShaderModule(device, fmodule, nullptr);
+    vkDestroyShaderModule(device, vmodule, nullptr);}
+~PipelineState() {
+    vkDestroyPipeline(device, pipeline, nullptr);
+    vkDestroyPipelineLayout(device, layout, nullptr);
+    vkDestroyDescriptorSetLayout(device, dlayout, nullptr);}
+};
 struct DrawState {
     VkDevice device;
     VkQueue graphic;
@@ -1531,7 +1525,7 @@ struct DrawState {
     MainState *state;
     PipelineState* pipeline;
     // interpret size as type of pipeline
-DrawState(MainState *state, int size, BufferTag tag) {
+DrawState(MainState *state, int size, WrapTag tag) {
     DeviceState* logical = state->logicalState;
     this->device = logical->device;
     this->graphic = logical->graphic;
@@ -1749,31 +1743,25 @@ void vulkanDma(struct Center *center) {
         mainState.queueState->bufferQueue[Matrixz]->set(0,3*sizeof(tmp[0]),tmp);
         mainState.callOnce = false;
     }
-    if (mainState.callDma) {
     glm::mat4 tmp; // model
     tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(tmp),&tmp);
-        mainState.callDma = false;
-    }
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
-    if (mainState.callDraw) {
-        std::vector<BufferState*> buffer;
-        std::vector<BufferQueue<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
-        std::vector<BufferQueue<BufferState>*> *queryBuffer = mainState.queueState->queryBuffer+shader;
-        BufferQueue<DrawState> *draw = mainState.queueState->drawQueue[shader];
-        for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
-        if (!draw->set()) return;
-        int temp = draw->tmp();
-        for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
-        std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
-        return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
-        draw->tmp(temp,done);
-        for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
-        (*i)->get([](BufferState*buf){return buf->getup();},1);
-        (*i)->get([](BufferState*buf){return buf->putup();},2);}
-        mainState.callDma = true;
-    }
+    std::vector<BufferState*> buffer;
+    std::vector<WrapState<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
+    std::vector<WrapState<BufferState>*> *queryBuffer = mainState.queueState->queryBuffer+shader;
+    WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
+    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
+    if (!draw->set()) return;
+    int temp = draw->tmp();
+    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
+    std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
+    return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
+    draw->tmp(temp,done);
+    for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
+    (*i)->get([](BufferState*buf){return buf->getup();});
+    (*i)->get([](BufferState*buf){return buf->putup();});}
 }
 
 int main(int argc, char **argv) {

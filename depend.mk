@@ -13,6 +13,7 @@ fileC.typeC.o: face.h type.h
 filer.log: fileC filer.lua filerLua type.lua
 filerLua: filer.lua
 fragmentPracticeG: vulkan.g
+fragmentComputeG: vulkan.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
 holeC.o: face.h hole.c proto.h type.h
@@ -64,4 +65,5 @@ typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
 vertexPracticeG: vulkan.g
+vertexComputeG: vulkan.g
 wrapCpp.o: proto.h wrap.cpp wrap.h
