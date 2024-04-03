@@ -48,7 +48,11 @@ extern "C" {
     vftype callSafe;
     uftype callDma;
     wftype callDraw;
-    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw) {
+    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
+    {float pos[] = {-0.5f, -0.5f}; vertices.push_back(Input(pos));}
+    {float pos[] = {0.5f, -0.5f}; vertices.push_back(Input(pos));}
+    {float pos[] = {0.5f, 0.5f}; vertices.push_back(Input(pos));}
+    {float pos[] = {-0.5f, 0.5f}; vertices.push_back(Input(pos));}
         callSafe = safe;
         callDma = dma;
         callDraw = draw;
@@ -69,13 +73,6 @@ extern "C" {
         callDma(0);
         callDraw(Practice,0,vertices.size());
     }
-    void planeReady(struct Pierce *pierce) {}
-    void vulkanInit();
-    void vulkanDma(struct Center *center);
-    void vulkanSafe();
-    void vulkanMain(enum Proc proc, enum Wait wait);
-    int vulkanInfo(enum Configure query);
-    void vulkanDraw(enum Micro shader, int base, int limit);
 }
 #endif
 
@@ -1656,6 +1653,15 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
+extern "C" {
+    void vulkanInit();
+    void vulkanDma(struct Center *center);
+    void vulkanSafe();
+    void vulkanMain(enum Proc proc, enum Wait wait);
+    int vulkanInfo(enum Configure query);
+    void vulkanDraw(enum Micro shader, int base, int limit);
+    int vulkanReady(int size, struct Pierce *pierce);
+}
 int vulkanInfo(enum Configure query) {
     return 0; // TODO
 }
@@ -1673,10 +1679,10 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     case (Window):
     mainState.openState = new OpenState(
     mainState.initState->instance,mainState.WIDTH,mainState.HEIGHT,(void*)&mainState);
-    mainState.physicalState = new PhysicalState(
-    mainState.initState->instance,mainState.openState->surface,mainState.extensions);
     break;
     case (Graphics):
+    mainState.physicalState = new PhysicalState(
+    mainState.initState->instance,mainState.openState->surface,mainState.extensions);
     mainState.logicalState = [](PhysicalState *physical){
     return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
     physical->image,mainState.layers,mainState.extensions,mainState.enable,
@@ -1701,8 +1707,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
         }(mainState.openState,mainState.physicalState,mainState.logicalState);}
     if (!mainState.threadState && mainState.logicalState) {
         mainState.threadState = new ThreadState(mainState.logicalState->device);}
-    if (mainState.threadState) {
-        planeMain();}}
+    planeMain();}
     break;
     default:
     break;}
@@ -1763,18 +1768,15 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
     (*i)->get([](BufferState*buf){return buf->getup();});
     (*i)->get([](BufferState*buf){return buf->putup();});}
 }
+int vulkanReady(int size, struct Pierce *pierce) {
+    return mainState.copyState->get(size,pierce);
+}
 
 int main(int argc, char **argv) {
-#ifdef PLANRA
-    {float pos[] = {-0.5f, -0.5f}; vertices.push_back(Input(pos));}
-    {float pos[] = {0.5f, -0.5f}; vertices.push_back(Input(pos));}
-    {float pos[] = {0.5f, 0.5f}; vertices.push_back(Input(pos));}
-    {float pos[] = {-0.5f, 0.5f}; vertices.push_back(Input(pos));}
-#endif
     mainState.argc = argc;
     mainState.argv = argv;
     try {
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw);
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady);
         delete mainState.initState;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

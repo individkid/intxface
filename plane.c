@@ -809,7 +809,7 @@ void planeFinish(enum Proc bit)
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw)
+void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready)
 {
 	struct sigaction act;
 	act.__sigaction_u.__sa_handler = planeTerm;
