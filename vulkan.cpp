@@ -65,13 +65,14 @@ extern "C" {
         main(Process,Stop);
         main(Graphics,Stop);
         main(Window,Stop);
+		// 	TODO start test thread that waits 0.01 second and calls callSafe
     }
     void planeAddarg(const char *str) {}
     int planeInfo(enum Configure cfg) {return 0;}
-    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {
-        callSafe();
-    }
+    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
     void planeMain() {
+		// TODO if callOnce, callDma with Center for Vertexz and all 3 Matrixz
+		// TODO use Center for one of Matrixz
         callDma(0);
         callDraw(Practice,0,vertices.size());
     }
@@ -1684,7 +1685,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
-    glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call planeSafe from test thread
+    glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call callSafe from test thread
     if (mainState.framebufferResized) {
         mainState.framebufferResized = false;
         if (mainState.threadState) delete mainState.threadState;
