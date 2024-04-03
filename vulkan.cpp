@@ -48,6 +48,7 @@ extern "C" {
     vftype callSafe;
     uftype callDma;
     wftype callDraw;
+    bool callOnce;
     void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
     {float pos[] = {-0.5f, -0.5f}; vertices.push_back(Input(pos));}
     {float pos[] = {0.5f, -0.5f}; vertices.push_back(Input(pos));}
@@ -56,6 +57,7 @@ extern "C" {
         callSafe = safe;
         callDma = dma;
         callDraw = draw;
+        callOnce = true;
         init();
         main(Window,Start);
         main(Graphics,Start);
@@ -200,7 +202,6 @@ struct ThreadState;
 struct QueueState;
 struct CopyState;
 struct MainState {
-    bool callOnce;
     bool framebufferResized;
     bool escapePressed;
     bool enterPressed;
@@ -240,7 +241,6 @@ struct MainState {
     const bool enable = true;
     #endif
 } mainState = {
-    .callOnce = true,
     .framebufferResized = false,
     .escapePressed = false,
     .enterPressed = false,
@@ -1653,15 +1653,6 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
-extern "C" {
-    void vulkanInit();
-    void vulkanDma(struct Center *center);
-    void vulkanSafe();
-    void vulkanMain(enum Proc proc, enum Wait wait);
-    int vulkanInfo(enum Configure query);
-    void vulkanDraw(enum Micro shader, int base, int limit);
-    int vulkanReady(int size, struct Pierce *pierce);
-}
 int vulkanInfo(enum Configure query) {
     return 0; // TODO
 }
@@ -1739,14 +1730,14 @@ void vulkanDma(struct Center *center) {
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         VkExtent2D extent = mainState.swapState->extent;
-    if (mainState.callOnce) {
+    if (callOnce) {
         mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
     glm::mat4 tmp[3]; // model view proj
     tmp[0] = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     tmp[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     tmp[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[2][1][1] *= -1;
         mainState.queueState->bufferQueue[Matrixz]->set(0,3*sizeof(tmp[0]),tmp);
-        mainState.callOnce = false;
+        callOnce = false;
     }
     glm::mat4 tmp; // model
     tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
