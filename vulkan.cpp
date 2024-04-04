@@ -42,7 +42,9 @@ struct Input: public Vertex {
         free(str);
     }
 };
-std::vector<Input> vertices;
+std::vector<Input> vertices; // TODO move to vulkanTest
+struct Center *testCenter = 0;
+int vulkanTest(struct Center **ptr);
 extern "C" {
     // TODO link with plane.c
     vftype callSafe;
@@ -71,9 +73,8 @@ extern "C" {
     int planeInfo(enum Configure cfg) {return 0;}
     void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
     void planeMain() {
-		// TODO if callOnce, callDma with Center for Vertexz and all 3 Matrixz
-		// TODO use Center for one of Matrixz
-        callDma(0);
+        int num = vulkanTest(&testCenter);
+        callDma(0); // TODO for (int i = 0; i < num; i++) callDma(testCenter+i);
         callDraw(Practice,0,vertices.size());
     }
 }
@@ -1654,6 +1655,27 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
+#ifdef PLANRA
+auto startTime = std::chrono::high_resolution_clock::now();
+glm::mat4 testMatrix[3]; // model view proj
+int vulkanTest(struct Center **ptr) {
+    int num = 0;
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+        VkExtent2D extent = mainState.swapState->extent;
+    testMatrix[0] = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
+        /* TODO if (callOnce) {
+            int len = 0; stringstream str;
+            allocCenter(ptr,2);
+            hideCenter(ptr[num++],"Vertexz()",&len);
+            callOnce = false;} else {
+            allocCenter(ptr,1);}
+        int len = 0; hideCenter(ptr[num++],"Matrixz()",&len);*/
+    return num;
+}
+#endif
 int vulkanInfo(enum Configure query) {
     return 0; // TODO
 }
@@ -1725,24 +1747,14 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     default:
     throw std::runtime_error("no case in switch!");}  
 }
-auto startTime = std::chrono::high_resolution_clock::now();
 void vulkanDma(struct Center *center) {
     // TODO switch on center tag to choose buffer queue
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        VkExtent2D extent = mainState.swapState->extent;
     if (callOnce) {
         mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
-    glm::mat4 tmp[3]; // model view proj
-    tmp[0] = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    tmp[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    tmp[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); tmp[2][1][1] *= -1;
-        mainState.queueState->bufferQueue[Matrixz]->set(0,3*sizeof(tmp[0]),tmp);
+        mainState.queueState->bufferQueue[Matrixz]->set(0,3*sizeof(testMatrix[0]),testMatrix);
         callOnce = false;
     }
-    glm::mat4 tmp; // model
-    tmp = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(tmp),&tmp);
+    mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(testMatrix[0]),testMatrix);
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
     std::vector<BufferState*> buffer;
