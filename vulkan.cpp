@@ -33,7 +33,8 @@ extern "C" {
 
 #ifdef PLANRA
 // TODO move to planer.lua
-int vulkanTest(int num, struct Center ptr[2]);
+int vulkanCenter(int num, struct Center ptr[2]);
+void *vulkanTest(void *arg);
 extern "C" {
     // TODO link with plane.c
     vftype callSafe;
@@ -41,6 +42,7 @@ extern "C" {
     wftype callDraw;
     bool callOnce;
     void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
+        pthread_t thread;
         callSafe = safe;
         callDma = dma;
         callDraw = draw;
@@ -48,11 +50,12 @@ extern "C" {
         init();
         main(Window,Start);
         main(Graphics,Start);
+        if (pthread_create(&thread,0,vulkanTest,0) != 0) throw std::runtime_error("failed to create test thread!");
         main(Process,Start);
         main(Process,Stop);
+        if (pthread_join(thread,0) != 0) std::runtime_error("failed to join test thread!");
         main(Graphics,Stop);
         main(Window,Stop);
-		// 	TODO start test thread that waits 0.01 second and calls callSafe
     }
     void planeAddarg(const char *str) {}
     int planeInfo(enum Configure cfg) {return 0;}
@@ -60,7 +63,7 @@ extern "C" {
     void planeMain() {
         struct Center testCenter[2];
         for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
-        int num = vulkanTest(2,testCenter);
+        int num = vulkanCenter(2,testCenter);
         for (int i = 0; i < num; i++) callDma(testCenter+i);
         callDraw(Practice,0,4);
     }
@@ -219,7 +222,6 @@ struct MainState {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
     const std::vector<const char*> computions = {
-        // TODO compute extensions
     };
     const std::vector<const char*> layers = {
         "VK_LAYER_KHRONOS_validation"
@@ -828,7 +830,7 @@ struct ThreadState {
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();}
-                if (arg->fence.empty()) /*TODO planeSafe(...)*/;}}
+                if (arg->fence.empty()) planeSafe(Procs,Waits,RegisterDone);}}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -1645,7 +1647,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
 #ifdef PLANRA
 auto startTime = std::chrono::high_resolution_clock::now();
 glm::mat4 testMatrix[3]; // model view proj
-int vulkanTest(int num, struct Center ptr[2]) {
+int vulkanCenter(int num, struct Center ptr[2]) {
     if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
     if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) throw std::runtime_error("Center vtx not zero!");
     num = 0;
@@ -1689,6 +1691,12 @@ int vulkanTest(int num, struct Center ptr[2]) {
         callOnce = false;
     return num;
 }
+void *vulkanTest(void *arg) {
+    while (!mainState.escapePressed || !mainState.enterPressed) {
+        glfwWaitEventsTimeout(0.01);
+        callSafe();}
+    return 0;
+}
 #endif
 int vulkanInfo(enum Configure query) {
     return 0; // TODO
@@ -1721,7 +1729,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     break;
     case (Process):
     while (!mainState.escapePressed || !mainState.enterPressed) {
-    glfwWaitEventsTimeout(0.01); // TODO increase to 1 second and call callSafe from test thread
+    glfwWaitEventsTimeout(1.0);
     if (mainState.framebufferResized) {
         mainState.framebufferResized = false;
         if (mainState.threadState) delete mainState.threadState;
