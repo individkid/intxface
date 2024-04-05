@@ -1699,7 +1699,16 @@ void *vulkanTest(void *arg) {
 }
 #endif
 int vulkanInfo(enum Configure query) {
-    return 0; // TODO
+    switch (query) {case (RegisterDone): {int count = 0;
+    for (int i = 0; i < Micros; i++) count += mainState.queueState->drawQueue[(Micro)i]->count*Memorys;
+    for (int i = 0; i < Memorys; i++) count += mainState.queueState->bufferQueue[(Memory)i]->count;
+    return count;}
+    break; case(WindowLeft): return mainState.windowLastx;
+    break; case(WindowBase): return mainState.windowLasty;
+    break; case(WindowWide): return mainState.swapState->extent.width;
+    break; case(WindowHigh): return mainState.swapState->extent.height;
+    break; default: throw std::runtime_error("cannot get info!");}
+    return 0;
 }
 void vulkanSafe() {
     glfwPostEmptyEvent();
