@@ -33,17 +33,6 @@ extern "C" {
 
 #ifdef PLANRA
 // TODO move to planer.lua
-struct Input: public Vertex {
-    Input(float *pos) {
-        for (int i = 0; i < 2; i++) this->vec[i] = pos[i];
-        for (int i = 2; i < 4; i++) this->vec[i] = 0.0;
-        for (int i = 0; i < 4; i++) this->ref[i] = 0;
-        char *str = 0; showVertex(this,&str);
-        std::cout << str << std::endl;
-        free(str);
-    }
-};
-std::vector<Input> vertices; // TODO move to vulkanTest
 int vulkanTest(int num, struct Center ptr[2]);
 extern "C" {
     // TODO link with plane.c
@@ -52,10 +41,6 @@ extern "C" {
     wftype callDraw;
     bool callOnce;
     void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
-    {float pos[] = {-0.5f, -0.5f}; vertices.push_back(Input(pos));}
-    {float pos[] = {0.5f, -0.5f}; vertices.push_back(Input(pos));}
-    {float pos[] = {0.5f, 0.5f}; vertices.push_back(Input(pos));}
-    {float pos[] = {-0.5f, 0.5f}; vertices.push_back(Input(pos));}
         callSafe = safe;
         callDma = dma;
         callDraw = draw;
@@ -73,10 +58,11 @@ extern "C" {
     int planeInfo(enum Configure cfg) {return 0;}
     void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
     void planeMain() {
-        struct Center testCenter[2]; for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
+        struct Center testCenter[2];
+        for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
         int num = vulkanTest(2,testCenter);
-        callDma(0); // TODO for (int i = 0; i < num; i++) callDma(testCenter+i);
-        callDraw(Practice,0,vertices.size());
+        for (int i = 0; i < num; i++) callDma(testCenter+i);
+        callDraw(Practice,0,4);
     }
 }
 #endif
@@ -1672,21 +1658,21 @@ int vulkanTest(int num, struct Center ptr[2]) {
             testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
             testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
             int len = 0; std::stringstream str;
-            ptr[num].mem = Vertexz; ptr[num].siz = 3; ptr[num].idx = 0; ptr[num].slf = 0;
+            ptr[num].mem = Vertexz; ptr[num].siz = 4; ptr[num].idx = 0; ptr[num].slf = 0;
             allocVertex(&ptr[num].vtx,4);
-                str.str("Vertex(");
+                str.str(""); str << "Vertex(";
                     str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[0],str.str().c_str(),&len);
-                str.str("Vertex(");
+                str.str(""); str << "Vertex(";
                     str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[1],str.str().c_str(),&len);
-                str.str("Vertex(");
+                str.str(""); str << "Vertex(";
                     str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[2],str.str().c_str(),&len);
-                str.str("Vertex(");
+                str.str(""); str << "Vertex(";
                     str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[3],str.str().c_str(),&len);
@@ -1694,11 +1680,13 @@ int vulkanTest(int num, struct Center ptr[2]) {
         ptr[num].mem = Matrixz; ptr[num].siz = siz; ptr[num].idx = 0; ptr[num].slf = 0;
 	allocMatrix(&ptr[num].mat,siz);
         for (int i = 0; i < siz; i++) {
-            str.str("Matrix(");
+            str.str(""); str << "Matrix(";
             for (int j = 0; j < 16; j++) str << "mat[" << j << "]:Old(" << testMatrix[i][j/4][j%4] << ")";
             str << ")";
-	    len = 0; hideMatrix(&ptr[num].mat[i],str.str().c_str(),&len);}
-        // TODO callOnce = false;
+	    len = 0; hideMatrix(&ptr[num].mat[i],str.str().c_str(),&len);
+    }
+    num++;
+        callOnce = false;
     return num;
 }
 #endif
@@ -1774,13 +1762,11 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     throw std::runtime_error("no case in switch!");}  
 }
 void vulkanDma(struct Center *center) {
-    // TODO switch on center tag to choose buffer queue
-    if (callOnce) {
-        mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(vertices[0])*vertices.size(),vertices.data());
-        mainState.queueState->bufferQueue[Matrixz]->set(0,3*sizeof(testMatrix[0]),testMatrix);
-        callOnce = false;
-    }
-    mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(testMatrix[0]),testMatrix);
+    switch (center->mem) {case (Vertexz):
+    mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
+    break; case (Matrixz):
+    mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
+    break; default: throw std::runtime_error("unsupported mem!");}
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
     std::vector<BufferState*> buffer;
