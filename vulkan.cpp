@@ -22,6 +22,7 @@
 #include <functional>
 #include <pthread.h>
 #include <semaphore.h>
+#include <sstream>
 
 extern "C" {
     #include "type.h"
@@ -1662,17 +1663,40 @@ int vulkanTest(struct Center **ptr) {
     int num = 0;
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        VkExtent2D extent = mainState.swapState->extent;
-    testMatrix[0] = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
-        /* TODO if (callOnce) {
-            int len = 0; stringstream str;
+        testMatrix[0] = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        if (callOnce) {
+            VkExtent2D extent = mainState.swapState->extent;
+            testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
+            /* TODO
+            int len = 0; std::stringstream str;
             allocCenter(ptr,2);
-            hideCenter(ptr[num++],"Vertexz()",&len);
-            callOnce = false;} else {
-            allocCenter(ptr,1);}
-        int len = 0; hideCenter(ptr[num++],"Matrixz()",&len);*/
+            str << "Vertexz(siz:Int(1)idx:Int(0)slf:Int(0)";
+                str << "vtx[0]:Vertex(";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                str << "vtx[1]:Vertex(";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                str << "vtx[2]:Vertex(";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                str << "vtx[3]:Vertex(";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+            str << ")";
+            hideCenter(ptr[num++],str.str().c_str(),&len);} else {
+            allocCenter(ptr,1);*/}
+        /* TODO
+        int len = 0; std::stringstream str; int siz = (callOnce ? 3 : 1);
+        str << "Matrixz(siz:Int(" << siz << ")idx:Int(0)slf:Int(0)";
+        for (int i = 0; i < siz; i++) {
+            str << "mat["<<i<<"]:Matrix(";
+            for (int j = 0; j < 16; j++) str << "mat[" << j << "]:Old(" << testMatrix[i][j/4][j%4] << ")";
+            str << ")";}
+        str << ")";
+        hideCenter(ptr[num++],str.str().c_str(),&len);
+        callOnce = false;*/
     return num;
 }
 #endif
