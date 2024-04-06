@@ -32,8 +32,8 @@ planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
-planraCpp: faceC.o planraCpp.o planraCpp.typeC.o protoC.o
-planraCpp.o: plane.h planraCpp.mk proto.h type.h vulkan.cpp
+planraCpp: faceC.o planraCpp.o planraCpp.typeC.o protoC.o metxC.o
+planraCpp.o: metx.h plane.h planraCpp.mk proto.h type.h vulkan.cpp
 planraCpp.type.c: luax.so show.lua type.gen
 planraCpp.typeC.o: face.h type.h
 protoC.o: proto.c proto.h

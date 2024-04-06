@@ -27,6 +27,7 @@
 extern "C" {
     #include "type.h"
     #include "plane.h"
+    #include "metx.h"
 }
 
 #define NANOSECONDS (10^9)
@@ -1645,6 +1646,39 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
 };
 
 #ifdef PLANRA
+float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1, float *src2, float *dst2) {
+    /*
+    [a00,a01,..;a10,a11,..;..]*[b00;b10;..] = [c00;c10;..]
+    [a00,a01,..;a10,a11,..;..]*[b01;b11;..] = [c01;c11;..]
+    ..
+    B = [b00,b01,..;b10,b11,..]
+    C = [c00,c01,..;c10,c11,..]
+    A*B = C
+    A = C/B
+    */
+    float b[16]; float c[16]; float inv[16];
+    for (int i = 0; i < 3; i++) b[/*column*/0+/*row*/i*4] = src0[i]; b[/*column*/0+/*row*/3*4] = 0.0;
+    for (int i = 0; i < 3; i++) b[/*column*/1+/*row*/i*4] = src1[i]; b[/*column*/1+/*row*/3*4] = 0.0;
+    for (int i = 0; i < 3; i++) b[/*column*/2+/*row*/i*4] = src2[i]; b[/*column*/2+/*row*/3*4] = 0.0;
+    for (int i = 0; i < 3; i++) b[/*column*/3+/*row*/i*4] = 0.0; b[/*column*/3*/*row*/3*4] = 1.0;
+    for (int i = 0; i < 3; i++) c[/*column*/0+/*row*/i*4] = dst0[i]; c[/*column*/0+/*row*/3*4] = 0.0;
+    for (int i = 0; i < 3; i++) c[/*column*/1+/*row*/i*4] = dst1[i]; c[/*column*/1+/*row*/3*4] = 0.0;
+    for (int i = 0; i < 3; i++) c[/*column*/2+/*row*/i*4] = dst2[i]; c[/*column*/2+/*row*/3*4] = 0.0;
+    for (int i = 0; i < 3; i++) c[/*column*/3+/*row*/i*4] = 0.0; c[/*column*/3*/*row*/3*4] = 1.0;
+    return timesmat(timesmat(mat,c,4),invmat(b,4),4);
+}
+float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur) {
+    // v is in great circle through u and w
+    // x is such that dot(u,w) = dot(v,x) or {x0,x1,..} such that {u0*w0,u1*w1,..} = {v0*x0,v1*x1,..}
+    float nix[3]; scalevec(copyvec(nix,fix,3),-1.0,3);
+    float nrg[3]; scalevec(copyvec(nrg,org,3),-1.0,3);
+    float v[3]; normvec(plusvec(copyvec(v,cur,3),nrg,3),3); // v = norm(cur-org)
+    float u[3]; normvec(plusvec(copyvec(u,org,3),nix,3),3); // u = norm(org-fix);
+    float w[3]; normvec(plusvec(copyvec(w,cur,3),nix,3),3); // w = norm(cur-fix):
+    float x[3]; normvec(overvec(timesvec(copyvec(x,u,3),w,3),v,3),3); // x = norm(u0*w0/v0,u1*w1/v1,..)
+    // fix, fix; fix+u, fix+w; fix+v, fix+x
+    return planeTransform(mat,fix,fix,plusvec(u,fix,3),plusvec(w,fix,3),plusvec(v,fix,3),plusvec(x,fix,3));
+}
 auto startTime = std::chrono::high_resolution_clock::now();
 glm::mat4 testMatrix[3]; // model view proj
 int vulkanCenter(int num, struct Center ptr[2]) {
@@ -1737,6 +1771,7 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     mainState.copyState = new CopyState();
     break;
     case (Process):
+    glfwPostEmptyEvent();
     while (!mainState.escapePressed || !mainState.enterPressed) {
     glfwWaitEventsTimeout(1.0);
     if (mainState.framebufferResized) {

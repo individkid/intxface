@@ -5,6 +5,8 @@ float *jumpvec(float *u, float *v, int n);
 float *zerovec(float *u, int n);
 float *normvec(float *u, int n);
 float *unitvec(float *u, int n, int m);
+float *timesvec(float *u, float *v, int n);
+float *overvec(float *u, float *v, int n);
 float *timesmat(float *u, float *v, int n);
 float *jumpmat(float *u, float *v, int n);
 float *argmat(float *u, int n, int m, ...);
