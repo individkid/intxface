@@ -35,6 +35,7 @@ extern "C" {
 #ifdef PLANRA
 // TODO merge to plane.c
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1, float *src2, float *dst2) {
+    // transform linearly, mapping each src to dst, keeping fourth dimension fixed.
     /*
     [a00,a01,..;a10,a11,..;..]*[b00;b10;..] = [c00;c10;..]
     [a00,a01,..;a10,a11,..;..]*[b01;b11;..] = [c01;c11;..]
@@ -54,9 +55,10 @@ float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *
     for (int i = 0; i < 3; i++) c[/*column*/2+/*row*/i*4] = dst2[i]; c[/*column*/2+/*row*/3*4] = 0.0;
     for (int i = 0; i < 3; i++) c[/*column*/3+/*row*/i*4] = dst0[i]; c[/*column*/3+/*row*/3*4] = 1.0;
     if (invmat(copymat(inv,b,4),4) == 0) return mat;
-    return timesmat(timesmat(mat,c,4),inv,4);
+    return jumpmat(jumpmat(mat,inv,4),c,4);
 }
 float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur) {
+    // tip by angle org fix cur; line through fix, perpendicular to plan containing fix org cur, is fixed.
     // v is in great circle through u and w
     // x is such that dot(u,w) = dot(v,x) or [x0,x1,..] such that [u0*w0,u1*w1,..] = [v0*x0,v1*x1,..]
     float vrg[3]; vrg[0] = org[0]; vrg[1] = org[1]; vrg[2] = -1.0;
@@ -72,6 +74,7 @@ float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, flo
     return planeTransform(mat,fix,fix,plusvec(u,fix,3),plusvec(w,fix,3),plusvec(v,fix,3),plusvec(x,fix,3));
 }
 float *planeRotateFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur) {
+    // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
     // -pi <= ang < pi, ang = (cur[2]-org[2]) % pi, u = {cur[0],cur[1],-1.0}, v = {org[0],org[1],-1.0};
     // s = sin(ang), t = cos(ang), i = norm(v-fix), j = norm((u-v)-i*dot(i,norm(u-v))), k = cross(i,j);
     float ang = cur[2]-org[2];
