@@ -1,28 +1,30 @@
 
-Add scripted keyboard/mouse backdoor to Argument for planer.lua.
-Add pierce, transform, refine, additive, subtractive to planer.lua.
-Add mouse/roller scale/translate/rotate ortho/focal/normal to planer.lua.
-Add vulkanCpp to planer.lua.
+Change the transform functions to find 4 independent vectors to invert, and 4 to multiply. Rotate finds 2 fixed and 2 rotated, puts all but 1 rotated in the 1.0 space, and puts 1 rotated in the 0.0 space by subtracting one of the fixed. Translate just finds unit axes, and translates them. Write anyvec in metx that adds 1.0 to the narrowest dimension, and does dot add to find orthogonal.
 
-Sculpt mouse left button start stop or perform actions.
-Right mouse buttons undo the last left mouse button.
-Mouse motion or roller continues the started action.
-Mouse motion or roller adjust the next perfomed action.
-For example, roller increases or decreases the distance of a random cursor warp
-performed after a random plane through the pierce point is added.
+Try mouse kind of rotation, continuously moving cursor in a circle tangent to pierce point cursor. Combine mouse and roller. Alternate mouse and roller, continuously increasing and decreasing alternation duration.
 
-Augment struct Event with struct Sound,
-envelopes of fundamentals harmonics amplitudes.
-Augment struct Event with struct Metric,
-barrycentric coordinates, press duration, facet metric, hot key.
-A fundamental envelope is a 12 tone chord with some tones louder than others.
-A harmonic envelope tails off to zero for the highest harmonics.
-An amplitude harmonic controls attack duration decay and loudness.
-Typically barrycentric coordinates adjust the fundamentals envelope,
-press duration adjusts the amplitudes envelope duration,
-facet metric adjusts the amplitudes envelope average,
-hot key adjusts the harmonics envelope octave.
+Add pierce point calculation to shader. Move click point along a circle on some of the  alternations.
 
-Have world.lua be a window manager that has non-square projections.
-A projection is a region on the two dimensional screen.
-The region has any number of edges, instead of just four.
+Add plane.c, add argument backdoor, and move random test to planer.lua.
+
+Change to pair of tetrahedrons. Add depth buffering, object subject plane matrices, and translation mode. Randomly switch between matrices and modes.
+
+Add space.hs classify and qualify.
+
+Add file process and planer.— to classify and qualify randomly discovered tetrahedron overlaps.
+
+Note multiple instances of planer.lua may be run in parallel on the same planer.— to discover and improve faster. Add recurse argument to planer.lua to start that many copies of itself. Add verbose argument that switches between display of all, per interval, improved, or original.
+
+Bring build up on single-board starting with x11 and finishing with startx ~/plane — planer.lua that continuously tweaks a tetrahedron overlap, reads planer.— for known classification counts and metrics, writes to planer.—, classification counts incremented by interval of equivalents, and sample numerics if interval of equivalents has metric improvement. Add instructions and video to the readme.
+
+Try front door through plane.lua.
+
+Add plane.—, space.hs sample additive subtractive refine modes.
+
+Write space.lua that finds and prettifies spaces and tetrahedron overlaps.
+
+Write line.lua to play sounds that interact with polytopes.
+
+Write point.lua that opens pipe tcl/tk, file tcl/tk, audio visual format tcl/tk.
+
+Add facet decoration and path permission. Let tetrahedron overlaps be entry points.
