@@ -56,14 +56,13 @@ float *unitvec(float *u, int n, int m)
 
 float *timesvec(float *u, float *v, int n)
 {
-    for (int i = 0; i < n; i++) u[i] *= v[i];
-    return u;
-}
-
-float *overvec(float *u, float *v, int n)
-{
-    for (int i = 0; i < n; i++) u[i] /= v[i];
-    return u;
+    float w[4];
+    for (int i = 0; i < n; i++) {
+        float t = 0.0;
+        for (int j = 0; j < n; j++) {
+            t += u[j] * v[j*n+i];}
+        w[i] = t;}
+    return copyvec(u,w,n);
 }
 
 // elements of a collumn iterated through before iterating through the next collumn
@@ -259,4 +258,23 @@ float *tweakvec(float *u, float a, float b, int n)
 {
     for (int i = 0; i < n; i++) u[i] = a+((b-a)*rand()/(float)RAND_MAX);
     return u;
+}
+
+float *anyvec(float *u, int n)
+{
+    int found = 0; float v[n]; float w[n];
+    copyvec(v,u,n); copyvec(w,u,n);
+    for (int i = 1; i < n; i++) {
+    if (u[i] < v[i]) v[i] = u[i];
+    if (u[i] > w[i]) w[i] = u[i];}
+    for (int i = 1; i < n; i++)
+    if (fabs(w[i]-v[i]) < fabs(w[found]-v[found])) found = i;
+    u[found] += 1.0;
+    return u;
+}
+
+float *orthovec(float *u, float *v, int n)
+{
+    float w[n]; copyvec(w,u,n);
+    return plusvec(scalevec(copyvec(u,v,3),-dotvec(v,w,3),3),w,3);
 }

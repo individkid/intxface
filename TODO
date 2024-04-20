@@ -1,6 +1,4 @@
 
-Change the transform functions to find 4 independent vectors to invert, and 4 to multiply. Rotate finds 2 fixed and 2 rotated, puts all but 1 rotated in the 1.0 space, and puts 1 rotated in the 0.0 space by subtracting one of the fixed. Translate just finds unit axes, and translates them. Write anyvec in metx that adds 1.0 to the narrowest dimension, and does dot add to find orthogonal.
-
 Try mouse kind of rotation, continuously moving cursor in a circle tangent to pierce point cursor. Combine mouse and roller. Alternate mouse and roller, continuously increasing and decreasing alternation duration.
 
 Add pierce point calculation to shader. Move click point along a circle on some of the  alternations.
@@ -25,6 +23,6 @@ Write space.lua that finds and prettifies spaces and tetrahedron overlaps.
 
 Write line.lua to play sounds that interact with polytopes.
 
-Write point.lua that opens pipe tcl/tk, file tcl/tk, audio visual format tcl/tk.
+Write point.lua that opens tcl/tk gui's for pipes between processes, configuration file changes, audio visual formats.
 
 Add facet decoration and path permission. Let tetrahedron overlaps be entry points.

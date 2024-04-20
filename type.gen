@@ -159,8 +159,9 @@ Effect = {
 	"Scale",
 }
 Fixed = {
-	"Ortho",
+	"Cursor",
 	"Focal",
+	"Ortho",
 	"Normal",
 }
 Tool = {
