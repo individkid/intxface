@@ -16,10 +16,14 @@ void vertexCompute() {
 #endif
     // TODO change to inMat.buf[uni.pro] * inMat.buf[uni.all] * inMat.buf[tri.tri[gl_VertexID/3].pol] * vec4(vtx[tri.tri[gl_VertexID/3].vtx[gl_VertexID%3]].vtx,1.0)
     gl_Position = inMat.buf[2] * inMat.buf[1] * inMat.buf[0] * vec4(inVec, 0.0, 1.0);
-    switch (gl_VertexIndex%3) {
+    switch (gl_VertexIndex%6) {
     case (0): fragColor = vec3(1.0,0.0,0.0); break;
-    case (1): fragColor = vec3(0.0,1.0,0.0); break;
-    case (2): fragColor = vec3(0.0,0.0,1.0); break;}
+    case (1): fragColor = vec3(0.0,0.0,1.0); break;
+    case (2): fragColor = vec3(0.0,0.0,1.0); break;
+    case (3): fragColor = vec3(1.0,0.0,0.0); break;
+    case (4): fragColor = vec3(0.0,0.0,1.0); break;
+    case (5): fragColor = vec3(0.0,0.0,1.0); break;
+    }
 }
 #endif
 

@@ -31,117 +31,73 @@ extern "C" {
 }
 
 #define NANOSECONDS (10^9)
-
-#ifdef PLANRA
-// TODO merge to plane.c;
-// Transform functions find 4 independent vectors to invert, and 4 to multiply;
-// not all combinations of Effect Fixed Tool are supported.
-float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
-    float *src2, float *dst2, float *src3, float *dst3) {
-    float src[16]; float dst[16]; float inv[16];
-    copyvec(src,src0,4); copyvec(src+4,src1,4); copyvec(src+8,src2,4); copyvec(src+12,src3,4);
-    copyvec(dst,dst0,4); copyvec(dst+4,dst1,4); copyvec(dst+8,dst2,4); copyvec(dst+12,dst3,4);
-    invmat(copymat(inv,src,4),4);
-    return jumpmat(mat,timesmat(dst,inv,4),4);
-}
-// Rotate functions find 2 fixed and 2 rotated, put all but 1 rotated in the 1.0 space,
-// and put 1 rotated in the 0.0 space by subtracting one of the fixed.
-float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur) {
-    // tip by angle org fix cur; line through fix, perpendicular to plane containing org fix cur, is fixed.
-    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
-    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
-    float u[3]; copyvec(u,org,2); u[2] = -1.0; normvec(plusvec(copyvec(u,u,3),neg0,3),3);
-    float v[3]; copyvec(v,cur,2); v[2] = -1.0; normvec(plusvec(copyvec(v,v,3),neg0,3),3);
-    float w[3]; crossvec(copyvec(w,u,3),v);
-    float fix1[4]; plusvec(copyvec(fix1,w,3),fix0,3); fix1[3] = 1.0;
-    float src0[4]; plusvec(copyvec(src0,u,3),fix0,3); src0[3] = 1.0;
-    float dst0[4]; plusvec(copyvec(dst0,v,3),fix0,3); dst0[3] = 1.0;
-    float src1[4]; plusvec(crossvec(copyvec(src1,w,3),u),fix0,3); src1[3] = 1.0;
-    float dst1[4]; plusvec(crossvec(copyvec(dst1,w,3),v),fix0,3); dst1[3] = 1.0;
-    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,dst0,plusvec(src1,neg0,4),plusvec(dst1,neg0,4));
-}
-float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur) {
-    // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
-    float ang = cur[2]-org[2];
-    float s0 = sin(ang), t0 = cos(ang);
-    float s1 = -s0, t1 = t0; // exchange and negate to rotate 90 degrees
-    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
-    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
-    float fix1[4]; copyvec(fix1,cur,2); fix1[2] = -1.0; fix1[3] = 1.0;
-    float i[3]; normvec(plusvec(copyvec(i,neg0,3),fix1,3),3);
-    float j[3]; normvec(orthovec(anyvec(copyvec(j,i,3),3),i,3),3);
-    float k[3]; crossvec(copyvec(k,i,3),j);
-    float j0[3], k0[3]; scalevec(copyvec(j0,j,3),t0,3); scalevec(copyvec(k0,k,3),s0,3);
-    float j1[3], k1[3]; scalevec(copyvec(j1,j,3),s1,3); scalevec(copyvec(k1,k,3),t1,3);
-    float rot0[4]; plusvec(copyvec(rot0,j0,3),k0,3); rot0[3] = 1.0;
-    float rot1[4]; plusvec(copyvec(rot1,j1,3),k1,3); rot1[3] = 1.0;
-    float src0[4]; copyvec(src0,j,3); src0[3] = 1.0;
-    float src1[4]; copyvec(src1,k,3); src1[3] = 1.0;
-    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,rot0,plusvec(src1,neg0,4),plusvec(rot1,neg0,4));
-}
-float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
-{
-    float u[2]; scalevec(copyvec(u,org,2),-1.0,2);
-    float v[2]; plusvec(copyvec(v,cur,2),u,2);
-    float h0[4], h1[4]; unitvec(h0,3,0); h0[3] = 0.0; plusvec(copyvec(h1,h0,4),v,2);
-    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,2);
-    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,2);
-    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
-    return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
-}
-auto startTime = std::chrono::high_resolution_clock::now();
-float *planeTest(float *mat) {
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
-    float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
-    float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
-    float cur[3]; cur[0] = 0.2*sinf(time*glm::radians(120.0f));
-    cur[1] = 0.2*cosf(time*glm::radians(120.0f));
-    cur[2] = time*glm::radians(90.0f);
-    identmat(mat,4);
-    planeSlideOrthoMouse(mat,fix,nml,org,cur);
-    planeRotateFocalMouse(mat,fix,nml,org,cur);
-    planeRotateCursorRoller(mat,fix,nml,org,cur);
-    return mat;
-}
-// TODO move to planer.lua
-int vulkanCenter(int num, struct Center ptr[2]);
-void *vulkanTest(void *arg);
-extern "C" {
-    // TODO link with plane.c
-    vftype callSafe;
-    uftype callDma;
-    wftype callDraw;
-    bool callOnce;
-    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
-        pthread_t thread;
-        callSafe = safe;
-        callDma = dma;
-        callDraw = draw;
-        callOnce = true;
-        init();
-        main(Window,Start);
-        main(Graphics,Start);
-        if (pthread_create(&thread,0,vulkanTest,0) != 0) throw std::runtime_error("failed to create test thread!");
-        main(Process,Start);
-        main(Process,Stop);
-        if (pthread_join(thread,0) != 0) std::runtime_error("failed to join test thread!");
-        main(Graphics,Stop);
-        main(Window,Stop);
-    }
-    void planeAddarg(const char *str) {}
-    int planeInfo(enum Configure cfg) {return 0;}
-    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
-    void planeMain() {
-        struct Center testCenter[2];
-        for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
-        int num = vulkanCenter(2,testCenter);
-        for (int i = 0; i < num; i++) callDma(testCenter+i);
-        callDraw(Practice,0,6);
-    }
-}
-#endif
+struct InitState;
+struct OpenState;
+struct PhysicalState;
+struct DeviceState;
+struct SwapState;
+struct ThreadState;
+struct QueueState;
+struct CopyState;
+struct MainState {
+    bool framebufferResized;
+    bool escapePressed;
+    bool enterPressed;
+    bool otherPressed;
+    bool windowMoving;
+    double mouseLastx;
+    double mouseLasty;
+    int windowLastx;
+    int windowLasty;
+    int argc;
+    char **argv;
+    InitState *initState;
+    OpenState* openState;
+    PhysicalState* physicalState;
+    DeviceState* logicalState;
+    SwapState *swapState;
+    ThreadState *threadState;
+    ThreadState *extraState;
+    QueueState* queueState;
+    CopyState* copyState;
+    const uint32_t WIDTH = 800;
+    const uint32_t HEIGHT = 600;
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+    const int MAX_BUFFERS_AVAILABLE = 3;
+    const std::vector<const char*> extensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+    const std::vector<const char*> computions = {
+    };
+    const std::vector<const char*> layers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+    #ifdef NDEBUG
+    const bool enable = false;
+    #else
+    const bool enable = true;
+    #endif
+} mainState = {
+    .framebufferResized = false,
+    .escapePressed = false,
+    .enterPressed = false,
+    .otherPressed = false,
+    .windowMoving = false,
+    .mouseLastx = 0.0,
+    .mouseLasty = 0.0,
+    .windowLastx = 0,
+    .windowLasty = 0,
+    .argc = 0,
+    .argv = 0,
+    .initState = 0,
+    .openState = 0,
+    .physicalState = 0,
+    .logicalState = 0,
+    .swapState = 0,
+    .threadState = 0,
+    .queueState = 0,
+    .copyState = 0,
+};
 
 // TODO add type.h enum for these builtin cursors
 GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
@@ -257,74 +213,6 @@ GLFWcursor *sculptCursor(bool e) {
 
     return glfwCreateCursor(&image, hot, hot);
 }
-
-struct InitState;
-struct OpenState;
-struct PhysicalState;
-struct DeviceState;
-struct SwapState;
-struct ThreadState;
-struct QueueState;
-struct CopyState;
-struct MainState {
-    bool framebufferResized;
-    bool escapePressed;
-    bool enterPressed;
-    bool otherPressed;
-    bool windowMoving;
-    double mouseLastx;
-    double mouseLasty;
-    int windowLastx;
-    int windowLasty;
-    int argc;
-    char **argv;
-    InitState *initState;
-    OpenState* openState;
-    PhysicalState* physicalState;
-    DeviceState* logicalState;
-    SwapState *swapState;
-    ThreadState *threadState;
-    ThreadState *extraState;
-    QueueState* queueState;
-    CopyState* copyState;
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
-    const int MAX_FRAMES_IN_FLIGHT = 2;
-    const int MAX_BUFFERS_AVAILABLE = 3;
-    const std::vector<const char*> extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-    const std::vector<const char*> computions = {
-    };
-    const std::vector<const char*> layers = {
-        "VK_LAYER_KHRONOS_validation"
-    };
-    #ifdef NDEBUG
-    const bool enable = false;
-    #else
-    const bool enable = true;
-    #endif
-} mainState = {
-    .framebufferResized = false,
-    .escapePressed = false,
-    .enterPressed = false,
-    .otherPressed = false,
-    .windowMoving = false,
-    .mouseLastx = 0.0,
-    .mouseLasty = 0.0,
-    .windowLastx = 0,
-    .windowLasty = 0,
-    .argc = 0,
-    .argv = 0,
-    .initState = 0,
-    .openState = 0,
-    .physicalState = 0,
-    .logicalState = 0,
-    .swapState = 0,
-    .threadState = 0,
-    .queueState = 0,
-    .copyState = 0,
-};
 
 void framebufferResized(GLFWwindow* window, int width, int height) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1717,65 +1605,6 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
-#ifdef PLANRA
-glm::mat4 testMatrix[3]; // model view proj
-int vulkanCenter(int num, struct Center ptr[2]) {
-    if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
-    if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) throw std::runtime_error("Center vtx not zero!");
-    num = 0;
-        int len = 0; std::stringstream str; int siz = (callOnce ? 3 : 1);
-        float mat[16]; planeTest(mat); for (int i = 0; i < 16; i++) testMatrix[0][i/4][i%4] = mat[i];
-        if (callOnce) {
-            VkExtent2D extent = mainState.swapState->extent;
-            testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
-            int len = 0; std::stringstream str;
-            ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
-            allocVertex(&ptr[num].vtx,6);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[0],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[1],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[2],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[3],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[4],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[5],str.str().c_str(),&len);
-		num++;}
-        ptr[num].mem = Matrixz; ptr[num].siz = siz; ptr[num].idx = 0; ptr[num].slf = 0;
-	allocMatrix(&ptr[num].mat,siz);
-        for (int i = 0; i < siz; i++) {
-            str.str(""); str << "Matrix(";
-            for (int j = 0; j < 16; j++) str << "mat[" << j << "]:Old(" << testMatrix[i][j/4][j%4] << ")";
-            str << ")";
-	    len = 0; hideMatrix(&ptr[num].mat[i],str.str().c_str(),&len);
-    }
-    num++;
-        callOnce = false;
-    return num;
-}
-void *vulkanTest(void *arg) {
-    while (!mainState.escapePressed || !mainState.enterPressed) {
-        glfwWaitEventsTimeout(0.01);
-        callSafe();}
-    return 0;
-}
-#endif
 int vulkanInfo(enum Configure query) {
     switch (query) {case (RegisterDone): {int count = 0;
     for (int i = 0; i < Micros; i++) count += mainState.queueState->drawQueue[(Micro)i]->count*Memorys;
@@ -1896,3 +1725,171 @@ int main(int argc, char **argv) {
     }
     return EXIT_SUCCESS;
 }
+
+#ifdef PLANRA
+// TODO merge to plane.c;
+// Transform functions find 4 independent vectors to invert, and 4 to multiply;
+// not all combinations of Effect Fixed Tool are supported.
+float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
+    float *src2, float *dst2, float *src3, float *dst3) {
+    float src[16]; float dst[16]; float inv[16];
+    copyvec(src,src0,4); copyvec(src+4,src1,4); copyvec(src+8,src2,4); copyvec(src+12,src3,4);
+    copyvec(dst,dst0,4); copyvec(dst+4,dst1,4); copyvec(dst+8,dst2,4); copyvec(dst+12,dst3,4);
+    invmat(copymat(inv,src,4),4);
+    return jumpmat(mat,timesmat(dst,inv,4),4);
+}
+// Rotate functions find 2 fixed and 2 rotated, put all but 1 rotated in the 1.0 space,
+// and put 1 rotated in the 0.0 space by subtracting one of the fixed.
+float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur) {
+    // tip by angle org fix cur; line through fix, perpendicular to plane containing org fix cur, is fixed.
+    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
+    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
+    float u[3]; copyvec(u,org,2); u[2] = -1.0; normvec(plusvec(copyvec(u,u,3),neg0,3),3);
+    float v[3]; copyvec(v,cur,2); v[2] = -1.0; normvec(plusvec(copyvec(v,v,3),neg0,3),3);
+    float w[3]; crossvec(copyvec(w,u,3),v);
+    float fix1[4]; plusvec(copyvec(fix1,w,3),fix0,3); fix1[3] = 1.0;
+    float src0[4]; plusvec(copyvec(src0,u,3),fix0,3); src0[3] = 1.0;
+    float dst0[4]; plusvec(copyvec(dst0,v,3),fix0,3); dst0[3] = 1.0;
+    float src1[4]; plusvec(crossvec(copyvec(src1,w,3),u),fix0,3); src1[3] = 1.0;
+    float dst1[4]; plusvec(crossvec(copyvec(dst1,w,3),v),fix0,3); dst1[3] = 1.0;
+    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,dst0,plusvec(src1,neg0,4),plusvec(dst1,neg0,4));
+}
+float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur) {
+    // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
+    float ang = cur[2]-org[2];
+    float s0 = sin(ang), t0 = cos(ang);
+    float s1 = -s0, t1 = t0; // exchange and negate to rotate 90 degrees
+    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
+    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
+    float fix1[4]; copyvec(fix1,cur,2); fix1[2] = -1.0; fix1[3] = 1.0;
+    float i[3]; normvec(plusvec(copyvec(i,neg0,3),fix1,3),3);
+    float j[3]; normvec(orthovec(anyvec(copyvec(j,i,3),3),i,3),3);
+    float k[3]; crossvec(copyvec(k,i,3),j);
+    float j0[3], k0[3]; scalevec(copyvec(j0,j,3),t0,3); scalevec(copyvec(k0,k,3),s0,3);
+    float j1[3], k1[3]; scalevec(copyvec(j1,j,3),s1,3); scalevec(copyvec(k1,k,3),t1,3);
+    float rot0[4]; plusvec(copyvec(rot0,j0,3),k0,3); rot0[3] = 1.0;
+    float rot1[4]; plusvec(copyvec(rot1,j1,3),k1,3); rot1[3] = 1.0;
+    float src0[4]; copyvec(src0,j,3); src0[3] = 1.0;
+    float src1[4]; copyvec(src1,k,3); src1[3] = 1.0;
+    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,rot0,plusvec(src1,neg0,4),plusvec(rot1,neg0,4));
+}
+float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+{
+    float u[2]; scalevec(copyvec(u,org,2),-1.0,2);
+    float v[2]; plusvec(copyvec(v,cur,2),u,2);
+    float h0[4], h1[4]; unitvec(h0,3,0); h0[3] = 0.0; plusvec(copyvec(h1,h0,4),v,2);
+    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,2);
+    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,2);
+    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
+    return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
+}
+// TODO move to planer.lua
+auto startTime = std::chrono::high_resolution_clock::now();
+float *planeTest(float *mat) {
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
+    float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
+    float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
+    float cur[3]; cur[0] = 0.2*sinf(time*glm::radians(120.0f));
+    cur[1] = 0.2*cosf(time*glm::radians(120.0f));
+    cur[2] = time*glm::radians(90.0f);
+    identmat(mat,4);
+    planeSlideOrthoMouse(mat,fix,nml,org,cur);
+    planeRotateFocalMouse(mat,fix,nml,org,cur);
+    planeRotateCursorRoller(mat,fix,nml,org,cur);
+    return mat;
+}
+int vulkanCenter(int num, struct Center ptr[2]);
+void *vulkanTest(void *arg);
+extern "C" {
+    // TODO link with plane.c
+    vftype callSafe;
+    uftype callDma;
+    wftype callDraw;
+    bool callOnce;
+    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
+        pthread_t thread;
+        callSafe = safe;
+        callDma = dma;
+        callDraw = draw;
+        callOnce = true;
+        init();
+        main(Window,Start);
+        main(Graphics,Start);
+        if (pthread_create(&thread,0,vulkanTest,0) != 0) throw std::runtime_error("failed to create test thread!");
+        main(Process,Start);
+        main(Process,Stop);
+        if (pthread_join(thread,0) != 0) std::runtime_error("failed to join test thread!");
+        main(Graphics,Stop);
+        main(Window,Stop);
+    }
+    void planeAddarg(const char *str) {}
+    int planeInfo(enum Configure cfg) {return 0;}
+    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
+    void planeMain() {
+        struct Center testCenter[2];
+        for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
+        int num = vulkanCenter(2,testCenter);
+        for (int i = 0; i < num; i++) callDma(testCenter+i);
+        callDraw(Practice,0,6);
+    }
+}
+glm::mat4 testMatrix[3]; // model view proj
+int vulkanCenter(int num, struct Center ptr[2]) {
+    if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
+    if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) throw std::runtime_error("Center vtx not zero!");
+    num = 0;
+        int len = 0; std::stringstream str; int siz = (callOnce ? 3 : 1);
+        float mat[16]; planeTest(mat); for (int i = 0; i < 16; i++) testMatrix[0][i/4][i%4] = mat[i];
+        if (callOnce) {
+            VkExtent2D extent = mainState.swapState->extent;
+            testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
+            int len = 0; std::stringstream str;
+            ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
+            allocVertex(&ptr[num].vtx,6);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[0],str.str().c_str(),&len);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[1],str.str().c_str(),&len);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[2],str.str().c_str(),&len);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[3],str.str().c_str(),&len);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[4],str.str().c_str(),&len);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[5],str.str().c_str(),&len);
+        num++;}
+        ptr[num].mem = Matrixz; ptr[num].siz = siz; ptr[num].idx = 0; ptr[num].slf = 0;
+    allocMatrix(&ptr[num].mat,siz);
+        for (int i = 0; i < siz; i++) {
+            str.str(""); str << "Matrix(";
+            for (int j = 0; j < 16; j++) str << "mat[" << j << "]:Old(" << testMatrix[i][j/4][j%4] << ")";
+            str << ")";
+        len = 0; hideMatrix(&ptr[num].mat[i],str.str().c_str(),&len);
+    }
+    num++;
+        callOnce = false;
+    return num;
+}
+void *vulkanTest(void *arg) {
+    while (!mainState.escapePressed || !mainState.enterPressed) {
+        glfwWaitEventsTimeout(0.01);
+        callSafe();}
+    return 0;
+}
+#endif
