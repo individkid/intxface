@@ -48,7 +48,17 @@ float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *
 // and put 1 rotated in the 0.0 space by subtracting one of the fixed.
 float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur) {
     // tip by angle org fix cur; line through fix, perpendicular to plane containing org fix cur, is fixed.
-    return mat;
+    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
+    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
+    float u[3]; copyvec(u,org,2); u[2] = -1.0; normvec(plusvec(copyvec(u,u,3),neg0,3),3);
+    float v[3]; copyvec(v,cur,2); v[2] = -1.0; normvec(plusvec(copyvec(v,v,3),neg0,3),3);
+    float w[3]; crossvec(copyvec(w,u,3),v);
+    float fix1[4]; plusvec(copyvec(fix1,w,3),fix0,3); fix1[3] = 1.0;
+    float src0[4]; plusvec(copyvec(src0,u,3),fix0,3); src0[3] = 1.0;
+    float dst0[4]; plusvec(copyvec(dst0,v,3),fix0,3); dst0[3] = 1.0;
+    float src1[4]; plusvec(crossvec(copyvec(src1,w,3),u),fix0,3); src1[3] = 1.0;
+    float dst1[4]; plusvec(crossvec(copyvec(dst1,w,3),v),fix0,3); dst1[3] = 1.0;
+    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,dst0,plusvec(src1,neg0,4),plusvec(dst1,neg0,4));
 }
 float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur) {
     // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
@@ -69,6 +79,16 @@ float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, f
     float src1[4]; copyvec(src1,k,3); src1[3] = 1.0;
     return planeTransform(mat,fix0,fix0,fix1,fix1,src0,rot0,plusvec(src1,neg0,4),plusvec(rot1,neg0,4));
 }
+float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+{
+    float u[2]; scalevec(copyvec(u,org,2),-1.0,2);
+    float v[2]; plusvec(copyvec(v,cur,2),u,2);
+    float h0[4], h1[4]; unitvec(h0,3,0); h0[3] = 0.0; plusvec(copyvec(h1,h0,4),v,2);
+    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,2);
+    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,2);
+    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
+    return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
+}
 auto startTime = std::chrono::high_resolution_clock::now();
 float *planeTest(float *mat) {
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -76,8 +96,14 @@ float *planeTest(float *mat) {
     float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
     float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
     float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
-    float cur[3]; cur[0] = 0.0; cur[1] = 0.0; cur[2] = time * glm::radians(90.0f);
-    return planeRotateCursorRoller(identmat(mat,4),fix,nml,org,cur);
+    float cur[3]; cur[0] = 0.2*sinf(time*glm::radians(120.0f));
+    cur[1] = 0.2*cosf(time*glm::radians(120.0f));
+    cur[2] = time*glm::radians(90.0f);
+    identmat(mat,4);
+    planeSlideOrthoMouse(mat,fix,nml,org,cur);
+    planeRotateFocalMouse(mat,fix,nml,org,cur);
+    planeRotateCursorRoller(mat,fix,nml,org,cur);
+    return mat;
 }
 // TODO move to planer.lua
 int vulkanCenter(int num, struct Center ptr[2]);
@@ -112,7 +138,7 @@ extern "C" {
         for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
         int num = vulkanCenter(2,testCenter);
         for (int i = 0; i < num; i++) callDma(testCenter+i);
-        callDraw(Practice,0,4);
+        callDraw(Practice,0,6);
     }
 }
 #endif
@@ -1704,24 +1730,32 @@ int vulkanCenter(int num, struct Center ptr[2]) {
             testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
             testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
             int len = 0; std::stringstream str;
-            ptr[num].mem = Vertexz; ptr[num].siz = 4; ptr[num].idx = 0; ptr[num].slf = 0;
-            allocVertex(&ptr[num].vtx,4);
+            ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
+            allocVertex(&ptr[num].vtx,6);
                 str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[0],str.str().c_str(),&len);
                 str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[1],str.str().c_str(),&len);
                 str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[2],str.str().c_str(),&len);
                 str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.0)vec[3]:Old(0.0)";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
                     str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
                 len = 0; hideVertex(&ptr[num].vtx[3],str.str().c_str(),&len);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[4],str.str().c_str(),&len);
+                str.str(""); str << "Vertex(";
+                    str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+                len = 0; hideVertex(&ptr[num].vtx[5],str.str().c_str(),&len);
 		num++;}
         ptr[num].mem = Matrixz; ptr[num].siz = siz; ptr[num].idx = 0; ptr[num].slf = 0;
 	allocMatrix(&ptr[num].mat,siz);

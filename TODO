@@ -1,8 +1,4 @@
 
-Try mouse kind of rotation, continuously moving cursor in a circle tangent to pierce point cursor. Combine mouse and roller. Alternate mouse and roller, continuously increasing and decreasing alternation duration.
-
-Add pierce point calculation to shader. Move click point along a circle on some of the  alternations.
-
 Add plane.c, add argument backdoor, and move random test to planer.lua.
 
 Change to pair of tetrahedrons. Add depth buffering, object subject plane matrices, and translation mode. Randomly switch between matrices and modes.
