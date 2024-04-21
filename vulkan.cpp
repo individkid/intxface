@@ -53,16 +53,16 @@ float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, flo
 float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur) {
     // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
     float ang = cur[2]-org[2];
-    float s0 = sin(ang); float s1 = -s0; // TODO what dertermines direction of rotation
-    float t0 = cos(ang); float t1 = t0;
+    float s0 = sin(ang), t0 = cos(ang);
+    float s1 = -s0, t1 = t0; // exchange and negate to rotate 90 degrees
     float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
     float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
     float fix1[4]; copyvec(fix1,cur,2); fix1[2] = -1.0; fix1[3] = 1.0;
     float i[3]; normvec(plusvec(copyvec(i,neg0,3),fix1,3),3);
     float j[3]; normvec(orthovec(anyvec(copyvec(j,i,3),3),i,3),3);
     float k[3]; crossvec(copyvec(k,i,3),j);
-    float j0[3], j1[3]; scalevec(copyvec(j0,j,3),t0,3); scalevec(copyvec(j1,j,3),s0,3);
-    float k0[3], k1[3]; scalevec(copyvec(k0,k,3),s1,3); scalevec(copyvec(k1,k,3),t1,3);
+    float j0[3], k0[3]; scalevec(copyvec(j0,j,3),t0,3); scalevec(copyvec(k0,k,3),s0,3);
+    float j1[3], k1[3]; scalevec(copyvec(j1,j,3),s1,3); scalevec(copyvec(k1,k,3),t1,3);
     float rot0[4]; plusvec(copyvec(rot0,j0,3),k0,3); rot0[3] = 1.0;
     float rot1[4]; plusvec(copyvec(rot1,j1,3),k1,3); rot1[3] = 1.0;
     float src0[4]; copyvec(src0,j,3); src0[3] = 1.0;
