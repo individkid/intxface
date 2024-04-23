@@ -1,10 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -23,6 +19,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <sstream>
+#include <math.h>
 
 extern "C" {
     #include "type.h"
@@ -61,7 +58,7 @@ struct MainState {
     QueueState* queueState;
     CopyState* copyState;
     const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
+    const uint32_t HEIGHT = 700;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     const int MAX_BUFFERS_AVAILABLE = 3;
     const std::vector<const char*> extensions = {
@@ -1402,7 +1399,7 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
         rasterize.rasterizerDiscardEnable = VK_FALSE;
         rasterize.polygonMode = VK_POLYGON_MODE_FILL;
         rasterize.lineWidth = 1.0f;
-        rasterize.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterize.cullMode = VK_CULL_MODE_NONE;
         rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterize.depthBiasEnable = VK_FALSE;
         return rasterize;}();
@@ -1791,9 +1788,10 @@ float *planeTest(float *mat) {
     float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
     float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
     float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
-    float cur[3]; cur[0] = 0.2*sinf(time*glm::radians(120.0f));
-    cur[1] = 0.2*cosf(time*glm::radians(120.0f));
-    cur[2] = time*glm::radians(90.0f);
+    float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
+    cur[1] = 0.2*cosf(time*2.0944);
+    // cur[0] = cur[1] = 0.0;
+    cur[2] = time*1.5708;
     identmat(mat,4);
     planeSlideOrthoMouse(mat,fix,nml,org,cur);
     planeRotateFocalMouse(mat,fix,nml,org,cur);
@@ -1835,55 +1833,50 @@ extern "C" {
         callDraw(Practice,0,6);
     }
 }
-glm::mat4 testMatrix[3]; // model view proj
 int vulkanCenter(int num, struct Center ptr[2]) {
     if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
     if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) throw std::runtime_error("Center vtx not zero!");
     num = 0;
-        int len = 0; std::stringstream str; int siz = (callOnce ? 3 : 1);
-        float mat[16]; planeTest(mat); for (int i = 0; i < 16; i++) testMatrix[0][i/4][i%4] = mat[i];
-        if (callOnce) {
-            VkExtent2D extent = mainState.swapState->extent;
-            testMatrix[1] = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-            testMatrix[2] = glm::perspective(glm::radians(45.0f), extent.width / (float) extent.height, 0.1f, 10.0f); testMatrix[2][1][1] *= -1;
-            int len = 0; std::stringstream str;
-            ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
-            allocVertex(&ptr[num].vtx,6);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[0],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[1],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[2],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[3],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[4],str.str().c_str(),&len);
-                str.str(""); str << "Vertex(";
-                    str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-                    str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-                len = 0; hideVertex(&ptr[num].vtx[5],str.str().c_str(),&len);
+    int len = 0; std::stringstream str;
+    float mat[16]; planeTest(mat);
+    if (callOnce) {
+        VkExtent2D extent = mainState.swapState->extent;
+        int len = 0; std::stringstream str;
+        ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
+        allocVertex(&ptr[num].vtx,6);
+        str.str(""); str << "Vertex(";
+            str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+        len = 0; hideVertex(&ptr[num].vtx[0],str.str().c_str(),&len);
+        str.str(""); str << "Vertex(";
+            str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+        len = 0; hideVertex(&ptr[num].vtx[1],str.str().c_str(),&len);
+        str.str(""); str << "Vertex(";
+            str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+        len = 0; hideVertex(&ptr[num].vtx[2],str.str().c_str(),&len);
+        str.str(""); str << "Vertex(";
+            str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+        len = 0; hideVertex(&ptr[num].vtx[3],str.str().c_str(),&len);
+        str.str(""); str << "Vertex(";
+            str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+        len = 0; hideVertex(&ptr[num].vtx[4],str.str().c_str(),&len);
+        str.str(""); str << "Vertex(";
+            str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
+            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
+        len = 0; hideVertex(&ptr[num].vtx[5],str.str().c_str(),&len);
         num++;}
-        ptr[num].mem = Matrixz; ptr[num].siz = siz; ptr[num].idx = 0; ptr[num].slf = 0;
-    allocMatrix(&ptr[num].mat,siz);
-        for (int i = 0; i < siz; i++) {
-            str.str(""); str << "Matrix(";
-            for (int j = 0; j < 16; j++) str << "mat[" << j << "]:Old(" << testMatrix[i][j/4][j%4] << ")";
-            str << ")";
-        len = 0; hideMatrix(&ptr[num].mat[i],str.str().c_str(),&len);
-    }
+    ptr[num].mem = Matrixz; ptr[num].siz = 1; ptr[num].idx = 0; ptr[num].slf = 0;
+    allocMatrix(&ptr[num].mat,1);
+    str.str(""); str << "Matrix(";
+    for (int j = 0; j < 16; j++) str << "mat[" << j << "]:Old(" << mat[j] << ")";
+    str << ")";
+    len = 0; hideMatrix(&ptr[num].mat[0],str.str().c_str(),&len);
     num++;
-        callOnce = false;
+    callOnce = false;
     return num;
 }
 void *vulkanTest(void *arg) {
