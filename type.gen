@@ -168,14 +168,28 @@ Tool = {
 	"Mouse",
 	"Roller",
 }
-Micro = {
-	"Concept",
+MicroIn = {
 	"Practice",
-	"Compute",
+	"Concept",
 }
-Code = {
-	"Corner",
-	"Fragment",
+MicroMid = {
+	"Raster",
+	"CoPoint",
+	"Coplane",
+}
+MicroOut = {
+	"DisPlay",
+	"Compute",
+	"ComBine",
+	"Discard",
+}
+Micro = {
+	"MicroPRP",
+	"MicroPRC",
+	"MicroPRB",
+	"MicroCRB",
+	"MicroCPD",
+	"MicroCCD",
 }
 Wait = {
 	"Start",
@@ -294,11 +308,25 @@ Process = {
 	"Phonez",
 }
 --HERE Constants
-Initial = {
-	{"Micro","Practice","Code","Corner","Str","vertex_render"},
-	{"Micro","Practice","Code","Fragment","Str","fragment_render"},
-	{"Micro","Practice","Code","Corner","Str","diplane_vertex"},
-	{"Micro","Practice","Code","Fragment","Str","diplane_fragment"},
+Component = {
+	{"Micro","MicroPRP","MicroIn","Practice"},
+	{"Micro","MicroPRC","MicroIn","Practice"},
+	{"Micro","MicroPRB","MicroIn","Practice"},
+	{"Micro","MicroCRB","MicroIn","Concept"},
+	{"Micro","MicroCPD","MicroIn","Concept"},
+	{"Micro","MicroCCD","MicroIn","Concept"},
+	{"Micro","MicroPRP","MicroMid","Raster"},
+	{"Micro","MicroPRC","MicroMid","Raster"},
+	{"Micro","MicroPRB","MicroMid","Raster"},
+	{"Micro","MicroCRB","MicroMid","Raster"},
+	{"Micro","MicroCPD","MicroMid","CoPoint"},
+	{"Micro","MicroCCD","MicroMid","Coplane"},
+	{"Micro","MicroPRP","MicroOut","DisPlay"},
+	{"Micro","MicroPRC","MicroOut","Compute"},
+	{"Micro","MicroPRB","MicroOut","ComBine"},
+	{"Micro","MicroCRB","MicroOut","ComBine"},
+	{"Micro","MicroCPD","MicroOut","Discard"},
+	{"Micro","MicroCCD","MicroOut","Discard"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:5".. -- assign to configuration
@@ -311,7 +339,7 @@ Bootstrap = {
 		"val[1]:512"..
 		"val[2]:20"..
 		"val[3]:63"..
-		"val[4]:Int(%(return castMicro(\"Practice\"))))"},
+		"val[4]:Int(%(return castMicro(\"MicroCRB\"))))"},
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
 		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..

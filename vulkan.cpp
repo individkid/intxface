@@ -18,13 +18,19 @@
 #include <functional>
 #include <pthread.h>
 #include <semaphore.h>
+#ifdef PLANRA
+// TODO move to planer.lua
 #include <sstream>
 #include <math.h>
+#endif
 
 extern "C" {
     #include "type.h"
     #include "plane.h"
-    #include "metx.h" // TODO move to plane.c
+#ifdef PLANRA
+    // TODO move to planer.lua
+    #include "metx.h"
+#endif
 }
 
 #define NANOSECONDS (10^9)
@@ -982,14 +988,14 @@ struct QueueState {
     bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     bufferQueue[Piercez] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
-    bindBuffer[Practice].push_back(bufferQueue[Vertexz]);
-    bindBuffer[Practice].push_back(bufferQueue[Matrixz]);
+    bindBuffer[MicroPRB].push_back(bufferQueue[Vertexz]);
+    bindBuffer[MicroPRB].push_back(bufferQueue[Matrixz]);
     bindBuffer[Compute].push_back(bufferQueue[Vertexz]);
     bindBuffer[Compute].push_back(bufferQueue[Matrixz]);
     bindBuffer[Compute].push_back(bufferQueue[Piercez]);
     queryBuffer[Compute].push_back(bufferQueue[Piercez]);
-    typeBuffer[Practice].push_back(FetchBuf);
-    typeBuffer[Practice].push_back(ChangeBuf);
+    typeBuffer[MicroPRB].push_back(FetchBuf);
+    typeBuffer[MicroPRB].push_back(ChangeBuf);
     typeBuffer[Compute].push_back(FetchBuf);
     typeBuffer[Compute].push_back(ChangeBuf);
     typeBuffer[Compute].push_back(QueryBuf);
@@ -999,14 +1005,14 @@ struct QueueState {
     fieldState->format.push_back(VK_FORMAT_R32_UINT);
     fieldState->offset.push_back(offsetof(Vertex,vec));
     fieldState->offset.push_back(offsetof(Vertex,ref));
-    fieldBuffer[Practice].push_back(fieldState);
-    fieldBuffer[Practice].push_back(0);
+    fieldBuffer[MicroPRB].push_back(fieldState);
+    fieldBuffer[MicroPRB].push_back(0);
     fieldBuffer[Compute].push_back(fieldState);
     fieldBuffer[Compute].push_back(0);
     fieldBuffer[Compute].push_back(0);
-    drawQueue[Practice] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
-    vertexName[Practice] = "vertexPracticeG";
-    fragmentName[Practice] = "fragmentPracticeG";
+    drawQueue[MicroPRB] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    vertexName[MicroPRB] = "vertexPracticeG";
+    fragmentName[MicroPRB] = "fragmentPracticeG";
     drawQueue[Compute] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,CompBuf);
     vertexName[Compute] = "vertexComputeG";
     fragmentName[Compute] = "fragmentComputeG";}
@@ -1392,11 +1398,11 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
         viewport.viewportCount = 1;
         viewport.scissorCount = 1;
         return viewport;}();
-    VkPipelineRasterizationStateCreateInfo rasterize = [] () {
+    VkPipelineRasterizationStateCreateInfo rasterize = [micro] () {
         VkPipelineRasterizationStateCreateInfo rasterize{};
         rasterize.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterize.depthClampEnable = VK_FALSE;
-        rasterize.rasterizerDiscardEnable = VK_FALSE;
+        rasterize.rasterizerDiscardEnable = (Component__Micro__MicroOut(micro) == Discard ? VK_TRUE : VK_FALSE);
         rasterize.polygonMode = VK_POLYGON_MODE_FILL;
         rasterize.lineWidth = 1.0f;
         rasterize.cullMode = VK_CULL_MODE_NONE;
@@ -1830,7 +1836,7 @@ extern "C" {
         for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
         int num = vulkanCenter(2,testCenter);
         for (int i = 0; i < num; i++) callDma(testCenter+i);
-        callDraw(Practice,0,6);
+        callDraw(MicroPRB,0,6);
     }
 }
 int vulkanCenter(int num, struct Center ptr[2]) {
