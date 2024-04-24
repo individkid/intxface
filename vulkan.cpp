@@ -990,15 +990,8 @@ struct QueueState {
     bufferQueue[Piercez] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
     bindBuffer[MicroPRB].push_back(bufferQueue[Vertexz]);
     bindBuffer[MicroPRB].push_back(bufferQueue[Matrixz]);
-    bindBuffer[Compute].push_back(bufferQueue[Vertexz]);
-    bindBuffer[Compute].push_back(bufferQueue[Matrixz]);
-    bindBuffer[Compute].push_back(bufferQueue[Piercez]);
-    queryBuffer[Compute].push_back(bufferQueue[Piercez]);
     typeBuffer[MicroPRB].push_back(FetchBuf);
     typeBuffer[MicroPRB].push_back(ChangeBuf);
-    typeBuffer[Compute].push_back(FetchBuf);
-    typeBuffer[Compute].push_back(ChangeBuf);
-    typeBuffer[Compute].push_back(QueryBuf);
     fieldState = new FieldState();
     fieldState->stride = sizeof(Vertex);
     fieldState->format.push_back(VK_FORMAT_R32G32_SFLOAT);
@@ -1007,15 +1000,9 @@ struct QueueState {
     fieldState->offset.push_back(offsetof(Vertex,ref));
     fieldBuffer[MicroPRB].push_back(fieldState);
     fieldBuffer[MicroPRB].push_back(0);
-    fieldBuffer[Compute].push_back(fieldState);
-    fieldBuffer[Compute].push_back(0);
-    fieldBuffer[Compute].push_back(0);
     drawQueue[MicroPRB] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     vertexName[MicroPRB] = "vertexPracticeG";
-    fragmentName[MicroPRB] = "fragmentPracticeG";
-    drawQueue[Compute] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,CompBuf);
-    vertexName[Compute] = "vertexComputeG";
-    fragmentName[Compute] = "fragmentComputeG";}
+    fragmentName[MicroPRB] = "fragmentCombineG";}
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
     if (fieldState) delete fieldState;
