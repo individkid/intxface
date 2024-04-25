@@ -1001,8 +1001,20 @@ struct QueueState {
     fieldBuffer[MicroPRB].push_back(fieldState);
     fieldBuffer[MicroPRB].push_back(0);
     drawQueue[MicroPRB] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
-    vertexName[MicroPRB] = "vertexPracticeG";
-    fragmentName[MicroPRB] = "fragmentCombineG";}
+    for (int i = 0; i < Micros; i++) {
+    vertexName[i] = "vertexMicrosG";
+    switch (Component__Micro__MicroIn((Micro)i)) {
+    case (Practice): vertexName[i] = "vertexPracticeG"; break;
+    case (Concept): switch (Component__Micro__MicroMid((Micro)i)) {
+    case (Raster): vertexName[i] = "vertexRasterG"; break;
+    case (CoPoint): vertexName[i] = "vertexCopointG"; break;
+    case (Coplane): vertexName[i] = "vertexCoplaneG"; break;}}}
+    for (int i = 0; i < Micros; i++) {
+    fragmentName[i] = "fragmentMicrosG";
+    switch (Component__Micro__MicroOut((Micro)i)) {
+    case (DisPlay): fragmentName[i] = "fragmentDisplayG"; break;
+    case (Compute): fragmentName[i] = "fragmentComputeG"; break;
+    case (ComBine): fragmentName[i] = "fragmentCombineG"; break;}}}
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
     if (fieldState) delete fieldState;
