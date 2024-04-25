@@ -1314,6 +1314,8 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
             throw std::runtime_error("failed to create pipeline layout!");
         return layout;
     } (device,dlayout);
+    std::vector<VkPipelineShaderStageCreateInfo> stages(Component__Micro__MicroOut(micro) == Discard ? 1 : 2);
+    std::vector<VkShaderModule> modules(Component__Micro__MicroOut(micro) == Discard ? 1 : 2);
     VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1329,6 +1331,16 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
         std::vector<char> buffer(fileSize);
         file.seekg(0); file.read(buffer.data(), fileSize); file.close();
         return buffer;}(vertex));
+    modules[0] = vmodule;
+    VkPipelineShaderStageCreateInfo vinfo = [](VkShaderModule vmodule) {
+        VkPipelineShaderStageCreateInfo vinfo{};
+        vinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vinfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vinfo.module = vmodule;
+        vinfo.pName = "main";
+        return vinfo;}(vmodule);
+    stages[0] = vinfo;
+    if (Component__Micro__MicroOut(micro) != Discard) {
     VkShaderModule fmodule = [](VkDevice device, const std::vector<char>& code) {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1344,13 +1356,7 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
         std::vector<char> buffer(fileSize);
         file.seekg(0); file.read(buffer.data(), fileSize); file.close();
         return buffer;}(fragment));
-    VkPipelineShaderStageCreateInfo vinfo = [](VkShaderModule vmodule) {
-        VkPipelineShaderStageCreateInfo vinfo{};
-        vinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vinfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vinfo.module = vmodule;
-        vinfo.pName = "main";
-        return vinfo;}(vmodule);
+    modules[1] = fmodule;
     VkPipelineShaderStageCreateInfo finfo = [](VkShaderModule fmodule) {
         VkPipelineShaderStageCreateInfo finfo{};
         finfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1358,7 +1364,7 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
         finfo.module = fmodule;
         finfo.pName = "main";
         return finfo;}(fmodule);
-    VkPipelineShaderStageCreateInfo stages[] = {vinfo, finfo};
+    stages[1] = finfo;}
     std::vector<VkVertexInputBindingDescription> descriptions;
     std::vector<VkVertexInputAttributeDescription> attributes;
     [&descriptions,&attributes](std::vector<FieldState*> &field) {
@@ -1441,8 +1447,8 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
         return state;}();
     VkGraphicsPipelineCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.stageCount = 2;
-    info.pStages = stages;
+    info.stageCount = stages.size();
+    info.pStages = stages.data();
     info.pVertexInputState = &input;
     info.pInputAssemblyState = &assembly;
     info.pViewportState = &viewport;
@@ -1456,8 +1462,8 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
     info.basePipelineHandle = VK_NULL_HANDLE;
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
         throw std::runtime_error("failed to create graphic pipeline!");
-    vkDestroyShaderModule(device, fmodule, nullptr);
-    vkDestroyShaderModule(device, vmodule, nullptr);}
+    for (auto i = modules.begin(); i != modules.end(); i++)
+    vkDestroyShaderModule(device, *i, nullptr);}
 ~PipelineState() {
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, layout, nullptr);
