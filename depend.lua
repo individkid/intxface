@@ -278,6 +278,8 @@ function trymatch(values,target)
 		dbgline[dbgent] = "11a"; if callmatch(values,line,"^      [a-z]*([A-Z]%w*) :: .*$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "12a"; if callmatch(values,line,"^    Not in scope: type constructor or class ‘([%w]*)’$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "13a"; if callmatch(values,line,"^make: *** [Makefile:[0-9]*: (%w*)G] Error 1$") and findsource(values,"void *","()",".g") and copysource(values,target,".g") then dgbent = dbgent - 1; return true end
+		dbgline[dbgent] = "14a"; if callmatch(values,line,"^/bin/sh: [%d]*: ./(%w*)Cpp: not found$") and makecopy(values,target,"Cpp") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "15a"; if callmatch(values,line,"^.*: cannot load library: (%w*)G$") and makecopy(values,target,"G") then dbgent = dbgent - 1; return true end
 	elseif uname == "Darwin" then
 	end end
 	for line in io.lines("stderr."..target) do io.stderr:write(line.."\n") end
@@ -306,7 +308,7 @@ function trymake(values,target)
 			return true
 		end
 		if not trymatch(values,target) then break end
-		indentwrite(target..":"..dbgline[dbgent+1].."\n",dbgent); dbgline[dbgent+1] = nil
+		indentwrite(target..":"..dbgline[dbgent+1].."\n",dbgent);
 	end
 	return false
 end

@@ -1008,7 +1008,7 @@ struct QueueState {
     case (Concept): switch (Component__Micro__MicroMid((Micro)i)) {
     case (Raster): vertexName[i] = "vertexRasterG"; break;
     case (CoPoint): vertexName[i] = "vertexCopointG"; break;
-    case (Coplane): vertexName[i] = "vertexCoplaneG"; break;}}}
+    case (Coplane): vertexName[i] = "vertexCoplaneG"; break;} break;}}
     for (int i = 0; i < Micros; i++) {
     fragmentName[i] = "fragmentMicrosG";
     switch (Component__Micro__MicroOut((Micro)i)) {
@@ -1326,7 +1326,9 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
             throw std::runtime_error("failed to create shader module!");
         return shaderModule;} (device,[](const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) throw std::runtime_error("failed to open file!");
+        if (!file.is_open()) {
+        std::cerr << "vulkan: cannot load library: " << filename << std::endl;
+        throw std::runtime_error("failed to open file!");}
         size_t fileSize = (size_t) file.tellg();
         std::vector<char> buffer(fileSize);
         file.seekg(0); file.read(buffer.data(), fileSize); file.close();
@@ -1351,7 +1353,9 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
             throw std::runtime_error("failed to create shader module!");
         return shaderModule;} (device,[](const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) throw std::runtime_error("failed to open file!");
+        if (!file.is_open()) {
+        std::cerr << "vulkan: cannot load library: " << filename << std::endl;
+        throw std::runtime_error("failed to open file!");}
         size_t fileSize = (size_t) file.tellg();
         std::vector<char> buffer(fileSize);
         file.seekg(0); file.read(buffer.data(), fileSize); file.close();

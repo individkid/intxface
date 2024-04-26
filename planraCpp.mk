@@ -1,1 +1,1 @@
-vulkan.cpp -DPLANRA
+vulkan.cpp -DPLANRA -DNDEBUG

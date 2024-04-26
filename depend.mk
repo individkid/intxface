@@ -10,7 +10,7 @@ fileC: faceC.o fileC.o fileC.typeC.o protoC.o
 fileC.o: face.h file.c proto.h type.h
 fileC.type.c: luax.so show.lua type.gen
 fileC.typeC.o: face.h type.h
-filer.log: fileC filer.lua filerLua type.lua
+filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
 fragmentCombineG: vulkan.g
 hole: holeC
@@ -26,15 +26,20 @@ lineCpp.typeC.o: face.h type.h
 luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
-planra.log: planraC
+metxC.o: metx.c metx.h
+planra.log: fragmentCombineG planraC planraCpp vertexPracticeG
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
-planraCpp: faceC.o planraCpp.o planraCpp.typeC.o protoC.o metxC.o
+planraCpp: faceC.o metxC.o planraCpp.o planraCpp.typeC.o protoC.o
 planraCpp.o: metx.h plane.h planraCpp.mk proto.h type.h vulkan.cpp
 planraCpp.type.c: luax.so show.lua type.gen
 planraCpp.typeC.o: face.h type.h
+planraDCpp: faceC.o metxC.o planraDCpp.o planraDCpp.typeC.o protoC.o
+planraDCpp.o: metx.h plane.h planraDCpp.mk proto.h type.h vulkan.cpp
+planraDCpp.type.c: luax.so show.lua type.gen
+planraDCpp.typeC.o: face.h type.h
 protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o wrapCpp.o
@@ -56,7 +61,7 @@ type.lua: luax.so show.lua type.gen
 typer.c: luax.so show.lua test.lua typer.gen
 typer.h: luax.so show.lua test.lua typer.gen
 typer.hs: luax.so show.lua test.lua typer.gen
-typer.log: typer.lua typerC typerHs typerLua
+typer.log: typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
 typerC.o: face.h typer.c typer.h
