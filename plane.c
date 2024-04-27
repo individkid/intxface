@@ -10,6 +10,7 @@
 #include <sys/errno.h>
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
 #define sem_t dispatch_semaphore_t
@@ -735,3 +736,122 @@ void planeReady(struct Pierce *given)
 	// TODO remove this, and add callReady to get latest pierce
 	for (int i = 0; i < configure[PierceSize]; i++) pierce[i] = given[i]; found = 0;
 }
+
+vftype callraSafe;
+uftype callraDma;
+xftype callraInfo;
+wftype callraDraw;
+int callOnce;
+struct timeval start;
+float *planraMatrix(float *mat)
+{
+	struct timeval stop; gettimeofday(&stop, NULL);
+	float time = (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec) / (double)MICROSECONDS;
+	float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
+	float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
+	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
+	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
+	if (time > 1.0) {struct Center center;
+	enum Configure cfg = KeyboardPress; int val = 1;
+	center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
+	center.cfg = &cfg; center.val = &val; callraDma(&center);}
+	cur[1] = 0.2*cosf(time*2.0944);
+	// cur[0] = cur[1] = 0.0;
+	cur[2] = time*1.5708;
+	identmat(mat,4);
+	planeSlideOrthoMouse(mat,fix,nml,org,cur);
+	planeRotateFocalMouse(mat,fix,nml,org,cur);
+	planeRotateCursorRoller(mat,fix,nml,org,cur);
+	return mat;
+}
+int planraCenter(int num, struct Center ptr[2])
+{
+	if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) ERROR();
+	if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) ERROR();
+	num = 0;
+	int len = 0; char *str; char *tmp;
+	float mat[16]; planraMatrix(mat);
+	if (callOnce) {
+		int len = 0; char *str; char *tmp;
+		ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
+		allocVertex(&ptr[num].vtx,6);
+		asprintf(&str,"Vertex(");
+		asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+		len = 0; hideVertex(&ptr[num].vtx[0],str,&len); free(str);
+		asprintf(&str,"Vertex(");
+		asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+		len = 0; hideVertex(&ptr[num].vtx[1],str,&len); free(str);
+		asprintf(&str,"Vertex(");
+		asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+		len = 0; hideVertex(&ptr[num].vtx[2],str,&len); free(str);
+		asprintf(&str,"Vertex(");
+		asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+		len = 0; hideVertex(&ptr[num].vtx[3],str,&len); free(str);
+		asprintf(&str,"Vertex(");
+		asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+		len = 0; hideVertex(&ptr[num].vtx[4],str,&len); free(str);
+		asprintf(&str,"Vertex(");
+		asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+		len = 0; hideVertex(&ptr[num].vtx[5],str,&len); free(str);
+		num++;}
+	ptr[num].mem = Matrixz; ptr[num].siz = 1; ptr[num].idx = 0; ptr[num].slf = 0;
+	allocMatrix(&ptr[num].mat,1);
+	asprintf(&str,"Matrix(");
+	for (int j = 0; j < 16; j++) asprintf(&str,"%smat[%d]:Old(%f)",tmp = str,j,mat[j]); free(tmp);
+	asprintf(&str,"%s)",tmp = str); free(tmp);
+	len = 0; hideMatrix(&ptr[num].mat[0],str,&len); free(str);
+	num++;
+	callOnce = 0;
+	return num;
+}
+pthread_t planraThread;
+void *planraTest(void *arg)
+{
+    while (callraInfo(KeyboardPress)) {
+        usleep(10000);
+        callraSafe();}
+    return 0;
+}
+void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready)
+{
+	gettimeofday(&start, NULL);
+	callraSafe = safe;
+	callraDma = dma;
+	callraInfo = info;
+	callraDraw = draw;
+	callOnce = 1;
+	init();
+	main(Window,Start);
+	main(Graphics,Start);
+    if (pthread_create(&planraThread,0,planraTest,0) != 0) ERROR();
+	main(Process,Start);
+	main(Process,Stop);
+    if (pthread_join(planraThread,0) != 0) ERROR();
+	main(Graphics,Stop);
+	main(Window,Stop);
+}
+void planraAddarg(const char *str)
+{
+}
+int planraInfo(enum Configure cfg)
+{
+	return 0;
+}
+void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint)
+{
+}
+void planraMain()
+{
+	struct Center testCenter[2];
+	for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
+	int num = planraCenter(2,testCenter); // TODO allocat and free
+	for (int i = 0; i < num; i++) callraDma(testCenter+i);
+	callraDraw(MicroPRB,0,6);
+}
+

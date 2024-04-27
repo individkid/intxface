@@ -16,3 +16,8 @@ void planeAddarg(const char *str);
 int planeInfo(enum Configure cfg);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeMain();
+void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready);
+void planraAddarg(const char *str);
+int planraInfo(enum Configure cfg);
+void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint);
+void planraMain();

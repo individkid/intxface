@@ -17,11 +17,6 @@
 #include <functional>
 #include <pthread.h>
 #include <semaphore.h>
-#ifdef PLANRA
-// TODO move to planer.lua
-#include <math.h>
-#include <time.h>
-#endif
 
 extern "C" {
     #include "type.h"
@@ -32,22 +27,7 @@ extern "C" {
     #define planeAddarg planraAddarg
     #define planeSafe planraSafe
     #define planeMain planraMain
-    // TODO link with plane.c
-    extern "C" {
-        #include <sys/time.h>
-        #include "metx.h"
-        void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready);
-        void planraAddarg(const char *str);
-        void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint);
-        void planraMain();
-    }
 #endif
-
-#define THOUSANDS_1(NUM,PWR) NUM ## PWR
-#define THOUSANDS_2(NUM,PWR) THOUSANDS_1(NUM ## PWR,000)
-#define THOUSANDS_3(NUM,PWR) THOUSANDS_2(NUM ## PWR,000)
-#define NANOSECONDS THOUSANDS_3(1,000)
-#define MICROSECONDS THOUSANDS_2(1,000)
 
 struct InitState;
 struct OpenState;
@@ -1641,6 +1621,9 @@ int vulkanInfo(enum Configure query) {
     break; case(WindowBase): return mainState.windowLasty;
     break; case(WindowWide): return mainState.swapState->extent.width;
     break; case(WindowHigh): return mainState.swapState->extent.height;
+#ifdef PLANRA
+    break; case(KeyboardPress): return (!mainState.escapePressed || !mainState.enterPressed);
+#endif
     break; default: throw std::runtime_error("cannot get info!");}
     return 0;
 }
@@ -1718,6 +1701,12 @@ void vulkanDma(struct Center *center) {
     mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
     break; case (Matrixz):
     mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
+    break; case (Configurez):
+    for (int i = 0; i < center->siz; i++) switch (center->cfg[i]) {case (KeyboardPress):
+#ifdef PLANRA
+    if (!mainState.enable) mainState.escapePressed = mainState.enterPressed = true;
+#endif
+    break; default: throw std::runtime_error("unsupported cfg!");}
     break; default: throw std::runtime_error("unsupported mem!");}
 }
 void vulkanDraw(enum Micro shader, int base, int limit) {
@@ -1739,116 +1728,6 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
 int vulkanReady(int size, struct Pierce *pierce) {
     return mainState.copyState->get(size,pierce);
 }
-
-// TODO link with plane.c
-#ifdef PLANRA
-extern "C" {
-    float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur);
-    float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur);
-    float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur);
-    struct timeval start;
-    float *planraTest(float *mat) {
-        struct timeval stop; gettimeofday(&stop, NULL);
-        float time = (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec) / (double)MICROSECONDS;
-        float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
-        float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
-        float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
-        float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-        if (!mainState.enable && time > 1.0) {mainState.escapePressed = mainState.enterPressed = true;}
-        cur[1] = 0.2*cosf(time*2.0944);
-        // cur[0] = cur[1] = 0.0;
-        cur[2] = time*1.5708;
-        identmat(mat,4);
-        planeSlideOrthoMouse(mat,fix,nml,org,cur);
-        planeRotateFocalMouse(mat,fix,nml,org,cur);
-        planeRotateCursorRoller(mat,fix,nml,org,cur);
-        return mat;
-    }
-    vftype callraSafe;
-    uftype callraDma;
-    wftype callraDraw;
-    bool callOnce;
-    int planraCenter(int num, struct Center ptr[2]) {
-        if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
-        if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) throw std::runtime_error("Center vtx not zero!");
-        num = 0;
-        int len = 0; char *str; char *tmp;
-        float mat[16]; planraTest(mat);
-        if (callOnce) {
-            VkExtent2D extent = mainState.swapState->extent;
-            int len = 0; char *str; char *tmp;
-            ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
-            allocVertex(&ptr[num].vtx,6);
-            asprintf(&str,"Vertex(");
-            asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-            len = 0; hideVertex(&ptr[num].vtx[0],str,&len); free(str);
-            asprintf(&str,"Vertex(");
-            asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-            len = 0; hideVertex(&ptr[num].vtx[1],str,&len); free(str);
-            asprintf(&str,"Vertex(");
-            asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-            len = 0; hideVertex(&ptr[num].vtx[2],str,&len); free(str);
-            asprintf(&str,"Vertex(");
-            asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-            len = 0; hideVertex(&ptr[num].vtx[3],str,&len); free(str);
-            asprintf(&str,"Vertex(");
-            asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-            len = 0; hideVertex(&ptr[num].vtx[4],str,&len); free(str);
-            asprintf(&str,"Vertex(");
-            asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-            len = 0; hideVertex(&ptr[num].vtx[5],str,&len); free(str);
-            num++;}
-        ptr[num].mem = Matrixz; ptr[num].siz = 1; ptr[num].idx = 0; ptr[num].slf = 0;
-        allocMatrix(&ptr[num].mat,1);
-        asprintf(&str,"Matrix(");
-        for (int j = 0; j < 16; j++) asprintf(&str,"%smat[%d]:Old(%f)",tmp = str,j,mat[j]); free(tmp);
-        asprintf(&str,"%s)",tmp = str); free(tmp);
-        len = 0; hideMatrix(&ptr[num].mat[0],str,&len); free(str);
-        num++;
-        callOnce = false;
-        return num;
-    }
-    void *planraThread(void *arg) {
-        while (!mainState.escapePressed || !mainState.enterPressed) {
-            glfwWaitEventsTimeout(0.01);
-            callraSafe();}
-        return 0;
-    }
-    void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
-        pthread_t thread;
-        gettimeofday(&start, NULL);
-        callraSafe = safe;
-        callraDma = dma;
-        callraDraw = draw;
-        callOnce = true;
-        init();
-        main(Window,Start);
-        main(Graphics,Start);
-        if (pthread_create(&thread,0,planraThread,0) != 0) throw std::runtime_error("failed to create test thread!");
-        main(Process,Start);
-        main(Process,Stop);
-        if (pthread_join(thread,0) != 0) std::runtime_error("failed to join test thread!");
-        main(Graphics,Stop);
-        main(Window,Stop);
-    }
-    void planraAddarg(const char *str) {}
-    int planraInfo(enum Configure cfg) {return 0;}
-    void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
-    void planraMain() {
-        struct Center testCenter[2];
-        for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
-        int num = planraCenter(2,testCenter);
-        for (int i = 0; i < num; i++) callraDma(testCenter+i);
-        callraDraw(MicroPRB,0,6);
-    }
-}
-#endif
 
 int main(int argc, char **argv) {
     mainState.argc = argc;

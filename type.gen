@@ -116,6 +116,7 @@ Configure = {
 	"CursorNear", --
 	"CursorAngle", --
 	"CursorClick", --
+	"KeyboardPress", -- user input keyboard
 	"CenterMemory", -- fields to from client
 	"CenterSize", --
 	"CenterIndex", --
