@@ -33,9 +33,7 @@ struct Kernel {
 	struct Matrix inverse;
 };
 // owned by main thread:
-struct Kernel *subject = 0;
-struct Kernel *object = 0;
-struct Kernel *element = 0;
+struct Kernel *matrix = 0;
 struct Pierce *pierce = 0;
 struct Pierce *found = 0;
 struct Pierce unfound = {0};
@@ -92,234 +90,82 @@ int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
 
-float *planeXform4(float *mat, float *org0, float *org1, float *org2, float *org3, float *mov0, float *mov1, float *mov2, float *mov3)
+// Transform functions find 4 independent vectors to invert, and 4 to multiply;
+// not all combinations of Effect Fixed Tool are supported.
+float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
+    float *src2, float *dst2, float *src3, float *dst3)
 {
-	// X such that X*org=mov
-	float org[16]; float mov[16];
-	if (org0[3] != 1.0 || org1[3] != 1.0 || org2[3] != 1.0 || org3[3] != 1.0) ERROR();
-	if (mov0[3] != 1.0 || mov1[3] != 1.0 || mov2[3] != 1.0 || mov3[3] != 1.0) ERROR();
-	for (int i = 0; i < 4; i++) org[i+0] = org0[i];
-	for (int i = 0; i < 4; i++) org[i+4] = org1[i];
-	for (int i = 0; i < 4; i++) org[i+8] = org2[i];
-	for (int i = 0; i < 4; i++) org[i+12] = org3[i];
-	for (int i = 0; i < 4; i++) mov[i+0] = mov0[i];
-	for (int i = 0; i < 4; i++) mov[i+4] = mov1[i];
-	for (int i = 0; i < 4; i++) mov[i+8] = mov2[i];
-	for (int i = 0; i < 4; i++) mov[i+12] = mov3[i];
-	return timesmat(copymat(mat,mov,4),invmat(org,4),4);
+    float src[16]; float dst[16]; float inv[16];
+    copyvec(src,src0,4); copyvec(src+4,src1,4); copyvec(src+8,src2,4); copyvec(src+12,src3,4);
+    copyvec(dst,dst0,4); copyvec(dst+4,dst1,4); copyvec(dst+8,dst2,4); copyvec(dst+12,dst3,4);
+    invmat(copymat(inv,src,4),4);
+    return jumpmat(mat,timesmat(dst,inv,4),4);
 }
-float *planeXform3(float *mat, float *fix0, float *org0, float *org1, float *org2, float *mov0, float *mov1, float *mov2)
-{
-	return planeXform4(mat,fix0,org0,org1,org2,fix0,mov0,mov1,mov2);
-}
-float *planeXform2(float *mat, float *fix0, float *fix1, float *org0, float *org1, float *mov0, float *mov1)
-{
-	return planeXform3(mat,fix0,fix1,org0,org1,fix1,mov0,mov1);
-}
-float *planeXform1(float *mat, float *fix0, float *fix1, float *fix2, float *org0, float *mov0)
-{
-	return planeXform2(mat,fix0,fix1,fix2,org0,fix2,mov0);
-}
-typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
-float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
-{
-	// distance to perpendicular to ortho fixed; cursor mapped
-	float bas[4][4]; float mov[4][4]; float dif[4]; float neg[4];
-	for (int i = 0; i < 4; i++) unitvec(unitvec(bas[i],4,3),3,i);
-	plusvec(copyvec(zerovec(dif,4),cur,3),scalevec(copyvec(neg,org,3),-1.0,3),3);
-	for (int i = 0; i < 4; i++) plusvec(copyvec(mov[i],bas[i],4),dif,4);
-	return planeXform4(mat,bas[0],bas[1],bas[2],bas[3],mov[0],mov[1],mov[2],mov[3]);
-}
-float *planeSlideFocalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to cursor fixed; cursor mapped
-	return mat;
-}
-float *planeSlideNormalMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to normal fixed; cursor mapped
-	return mat;
-}
-float *planeRotate2(float *mat, float *fix, float *dif0, float *dif1, float *org, float *cur)
-{
-	float fix0[4]; float fix1[4]; float fix2[4];
-	float nrm0[4]; float nrm1[4]; float neg[3];
-	scalevec(copyvec(neg,copyvec(fix0,fix,3),3),-1.0,3);
-	plusvec(crossvec(copyvec(fix1,dif0,3),dif1),fix,3);
-	plusvec(normvec(plusvec(copyvec(nrm0,org,3),neg,3),3),fix,3);
-	plusvec(normvec(plusvec(copyvec(nrm1,cur,3),neg,3),3),fix,3);
-	fix0[3] = fix1[3] = nrm0[3] = nrm1[3] = 1.0;
-	scalevec(unitvec(fix2,4,3),2.0,4);
-	return planeXform1(mat,fix0,fix1,fix2,nrm0,nrm1);
-}
-float *planeRotate1(float *mat, float *fix, float *pnt0, float *dif1, float *org, float *cur)
-{
-	float neg[3]; float dif0[3];
-	scalevec(copyvec(neg,fix,3),-1.0,3);
-	plusvec(copyvec(dif0,pnt0,3),neg,3);
-	return planeRotate2(mat,fix,dif0,dif1,org,cur);
-}
-float *planeRotate0(float *mat, float *fix, float *pnt0, float *pnt1, float *org, float *cur)
-{
-	float neg[3]; float dif0[3]; float dif1[3];
-	scalevec(copyvec(neg,fix,3),-1.0,3);
-	plusvec(copyvec(dif0,pnt0,3),neg,3);
-	plusvec(copyvec(dif1,pnt1,3),neg,3);
-	return planeRotate2(mat,fix,dif0,dif1,org,cur);
-}
-float *planeRotateOrthoMouse(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	// perpendicular to ortho and original fixed; cursor mapped
-	float uni[3]; return planeRotate1(mat,fix,org,unitvec(uni,3,2),org,cur);
-}
+// Rotate functions find 2 fixed and 2 rotated, put all but 1 rotated in the 1.0 space,
+// and put 1 rotated in the 0.0 space by subtracting one of the fixed.
 float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// perpendicular to cursor and original fixed; cursor mapped
-	return planeRotate0(mat,fix,org,cur,org,cur);
+    // tip by angle org fix cur; line through fix, perpendicular to plane containing org fix cur, is fixed.
+    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
+    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
+    float u[3]; copyvec(u,org,2); u[2] = -1.0; normvec(plusvec(copyvec(u,u,3),neg0,3),3);
+    float v[3]; copyvec(v,cur,2); v[2] = -1.0; normvec(plusvec(copyvec(v,v,3),neg0,3),3);
+    float w[3]; crossvec(copyvec(w,u,3),v);
+    float fix1[4]; plusvec(copyvec(fix1,w,3),fix0,3); fix1[3] = 1.0;
+    float src0[4]; plusvec(copyvec(src0,u,3),fix0,3); src0[3] = 1.0;
+    float dst0[4]; plusvec(copyvec(dst0,v,3),fix0,3); dst0[3] = 1.0;
+    float src1[4]; plusvec(crossvec(copyvec(src1,w,3),u),fix0,3); src1[3] = 1.0;
+    float dst1[4]; plusvec(crossvec(copyvec(dst1,w,3),v),fix0,3); dst1[3] = 1.0;
+    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,dst0,plusvec(src1,neg0,4),plusvec(dst1,neg0,4));
 }
-float *planeRotateNormalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
+float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-	// perpendicular to normal and original fixed; cursor mapped
-	return planeRotate1(mat,fix,org,nml,org,cur);
+    // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
+    float ang = cur[2]-org[2];
+    float s0 = sin(ang), t0 = cos(ang);
+    float s1 = -s0, t1 = t0; // exchange and negate to rotate 90 degrees
+    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
+    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
+    float fix1[4]; copyvec(fix1,cur,2); fix1[2] = -1.0; fix1[3] = 1.0;
+    float i[3]; normvec(plusvec(copyvec(i,neg0,3),fix1,3),3);
+    float j[3]; normvec(orthovec(anyvec(copyvec(j,i,3),3),i,3),3);
+    float k[3]; crossvec(copyvec(k,i,3),j);
+    float j0[3], k0[3]; scalevec(copyvec(j0,j,3),t0,3); scalevec(copyvec(k0,k,3),s0,3);
+    float j1[3], k1[3]; scalevec(copyvec(j1,j,3),s1,3); scalevec(copyvec(k1,k,3),t1,3);
+    float rot0[4]; plusvec(copyvec(rot0,j0,3),k0,3); rot0[3] = 1.0;
+    float rot1[4]; plusvec(copyvec(rot1,j1,3),k1,3); rot1[3] = 1.0;
+    float src0[4]; copyvec(src0,j,3); src0[3] = 1.0;
+    float src1[4]; copyvec(src1,k,3); src1[3] = 1.0;
+    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,rot0,plusvec(src1,neg0,4),plusvec(rot1,neg0,4));
 }
-float *planeScaleOrthoMouse(float *mat, float *fix, float *nml, float *org, float *cur)
+float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
-	ERROR(); // TODO distance to perpendicular to ortho fixed; cursor mapped
-	return mat;
+    float u[2]; scalevec(copyvec(u,org,2),-1.0,2);
+    float v[2]; plusvec(copyvec(v,cur,2),u,2);
+    float h0[4], h1[4]; unitvec(h0,3,0); h0[3] = 0.0; plusvec(copyvec(h1,h0,4),v,2);
+    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,2);
+    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,2);
+    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
+    return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
 }
-float *planeScaleFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to cursor fixed; cursor mapped
-	return mat;
-}
-float *planeScaleNormalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to normal fixed; cursor mapped
-	return mat;
-}
-float *planeSlideOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to ortho offset
-	return mat;
-}
-float *planeSlideFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to cursor offset
-	return mat;
-}
-float *planeSlideNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to normal offset
-	return mat;
-}
-float *planeAngle(float *mat, float *pnt0, float *pnt1, float ang)
-{
-	float fix0[4]; float fix1[4]; float hyp0[4];
-	float dif1[3]; float dif2[3]; float dif3[3];
-	float nrm2[4]; float nrm3[4]; float neg0[3];
-	float leg2[3]; float leg3[3];
-	ERROR(); // TODO convert roller to radians
-	copyvec(fix0,pnt0,3); fix0[3] = 1.0;
-	copyvec(fix1,pnt1,3); fix1[3] = 1.0;
-	copyvec(hyp0,fix0,3); hyp0[3] = -1.0;
-	// fix0 fix1 and hyp0 are independent
-	scalevec(copyvec(neg0,fix0,3),-1.0,3);
-	plusvec(copyvec(dif1,fix1,3),neg0,3);
-	// dif1 is from fix0 to fix1
-	dif2[0] = dif1[0]; dif2[1] = dif1[1];
-	dif2[2] = -(dif1[0]*dif1[0]+dif1[1]*dif1[1])/dif1[2];
-	// dif2 is any perpendicular to dif1
-	crossvec(copyvec(dif3,dif1,3),dif2);
-	// dif3 is any perpendicular to dif1 and dif2
-	scalevec(copyvec(leg2,normvec(dif2,3),3),cos(ang),3);
-	scalevec(copyvec(leg3,normvec(dif3,3),3),sin(ang),3);
-	// dif2 and dif3 are now unit length
-	plusvec(copyvec(dif3,leg2,3),leg3,3);
-	// dif3 is now angle between dif2 and prior dif3
-	plusvec(copyvec(nrm2,dif2,3),fix0,3); nrm2[3] = 1.0;
-	// nrm2 is independent from fix0 fix0 and hyp0
-	plusvec(copyvec(nrm3,dif3,3),fix0,3); nrm3[3] = 1.0;
-	// nrm3 is rotation from nrm2
-	return planeXform1(mat,fix0,fix1,hyp0,nrm2,nrm3);
-}
-float *planeRotateOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	// distance to ortho fixed
-	float tmp[3]; copyvec(tmp,fix,3); tmp[2] -= 1.0;
-	return planeAngle(mat,fix,tmp,cur[3]-org[3]);
-}
-float *planeRotateFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	// distance to cursor fixed
-	return planeAngle(mat,fix,cur,cur[3]-org[3]);
-}
-float *planeRotateNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	// distance to normal fixed
-	float tmp[3]; plusvec(copyvec(tmp,fix,3),nml,3);
-	return planeAngle(mat,fix,tmp,cur[3]-org[3]);
-}
-float *planeScaleOrthoRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to normal scaled
-	return mat;
-}
-float *planeScaleFocalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to cursor scaled
-	return mat;
-}
-float *planeScaleNormalRoller(float *mat, float *fix, float *nml, float *org, float *cur)
-{
-	ERROR(); // TODO distance to perpendicular to normal scaled
-	return mat;
-}
-void planeCast(struct Center *ptr, enum Memory mem, int idx)
-{
-	// usage: Prep [Cast Conj [Cast Conj] Cast] Write Compl
-	struct Matrix *tmp = 0;
-	int index = configure[RegisterIndex]-ptr->idx;
-	ptr->idx = idx-index; configure[RegisterIndex] = idx;
-	switch (ptr->mem) {
-	case (Allmatz): tmp = ptr->all; ptr->all = 0; break;
-	case (Fewmatz): tmp = ptr->few; ptr->few = 0; break;
-	case (Onematz): tmp = ptr->one; ptr->one = 0; break;
-	default: ERROR();}
-	ptr->mem = mem; configure[RegisterMemory] = mem;
-	switch (ptr->mem) {
-	case (Allmatz): ptr->all = tmp; break;
-	case (Fewmatz): ptr->few = tmp; break;
-	case (Onematz): ptr->one = tmp; break;
-	default: ERROR();}
-}
+typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
+
 float *planeCenter()
 {
 	int index = configure[RegisterIndex]-center.idx;
 	if (index < 0 || index >= center.siz) ERROR();
 	if (center.mem != configure[RegisterMemory]) ERROR();
-	switch (center.mem) {
-	case (Allmatz): return center.all[index].mat;
-	case (Fewmatz): return center.few[index].mat;
-	case (Onematz): return center.one[index].mat;
-	default: ERROR();}
-	return 0;
+	if (center.mem != Matrixz) ERROR();
+	return center.mat[index].mat;
 }
 struct Kernel *planeKernel()
 {
 	int index = 0; int base = 0; int size = 0;
-	switch ((enum Memory)configure[RegisterMemory]) {
-	case (Allmatz): base = configure[SubjectBase]; size = configure[SubjectSize]; break;
-	case (Fewmatz): base = configure[ObjectBase]; size = configure[ObjectSize]; break;
-	case (Onematz): base = configure[ElementBase]; size = configure[ElementSize]; break;
-	default: ERROR();}
+	if ((enum Memory)configure[RegisterMemory] != Matrixz) ERROR();
+	base = configure[MatrixBase]; size = configure[MatrixSize];
 	index = configure[RegisterIndex] - base;
 	if (index < 0 || index >= size) ERROR();
-	switch ((enum Memory)configure[RegisterMemory]) {
-	case (Allmatz): return subject + index;
-	case (Fewmatz): return object + index;
-	case (Onematz): return element + index;
-	default: ERROR();}
-	return 0;
+	return matrix + index;
 }
 float *planeInverse()
 {
@@ -354,36 +200,42 @@ planeXform planeFunc()
 	switch ((enum Tool)configure[RegisterTool]) {
 	case (Mouse): switch ((enum Effect)configure[RegisterEffect]) {
 	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
+	case (Cursor): ERROR();
+	case (Focal): ERROR();
 	case (Ortho): return planeSlideOrthoMouse;
-	case (Focal): return planeSlideFocalMouse;
-	case (Normal): return planeSlideNormalMouse;
+	case (Normal): ERROR();
 	default: ERROR();}
 	case (Rotate): switch ((enum Fixed)configure[RegisterFixed]) {
-	case (Ortho): return planeRotateOrthoMouse;
+	case (Cursor): ERROR();
 	case (Focal): return planeRotateFocalMouse;
-	case (Normal): return planeRotateNormalMouse;
+	case (Ortho): ERROR();
+	case (Normal): ERROR();
 	default: ERROR();}
 	case (Scale): switch ((enum Fixed)configure[RegisterFixed]) {
-	case (Ortho): return planeScaleOrthoMouse;
-	case (Focal): return planeScaleFocalMouse;
-	case (Normal): return planeScaleNormalMouse;
+	case (Cursor): ERROR();
+	case (Focal): ERROR();
+	case (Ortho): ERROR();
+	case (Normal): ERROR();
 	default: ERROR();}
 	default: ERROR();}
 	case (Roller): switch ((enum Effect)configure[RegisterEffect]) {
 	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
-	case (Ortho): return planeSlideOrthoRoller;
-	case (Focal): return planeSlideFocalRoller;
-	case (Normal): return planeSlideNormalRoller;
+	case (Cursor): ERROR();
+	case (Focal): ERROR();
+	case (Ortho): ERROR();
+	case (Normal): ERROR();
 	default: ERROR();}
 	case (Rotate): switch ((enum Fixed)configure[RegisterFixed]) {
-	case (Ortho): return planeRotateOrthoRoller;
-	case (Focal): return planeRotateFocalRoller;
-	case (Normal): return planeRotateNormalRoller;
+	case (Cursor): return planeRotateCursorRoller;
+	case (Focal): ERROR();
+	case (Ortho): ERROR();
+	case (Normal): ERROR();
 	default: ERROR();}
 	case (Scale): switch ((enum Fixed)configure[RegisterFixed]) {
-	case (Ortho): return planeScaleOrthoRoller;
-	case (Focal): return planeScaleFocalRoller;
-	case (Normal): return planeScaleNormalRoller;
+	case (Cursor): ERROR();
+	case (Focal): ERROR();
+	case (Ortho): ERROR();
+	case (Normal): ERROR();
 	default: ERROR();}
 	default: ERROR();}
 	default: ERROR();}
@@ -516,12 +368,8 @@ void planeConfig(enum Configure cfg, int val)
 	switch (cfg) {
 	case (PierceSize): pierce = planeResize(pierce,sizeof(struct Pierce),val,tmp); break;
 	case (PierceBase): pierce = planeRebase(pierce,sizeof(struct Pierce),configure[PierceSize],val,tmp); break;
-	case (SubjectSize): subject = planeResize(subject,sizeof(struct Kernel),val,tmp); break;
-	case (SubjectBase): subject = planeRebase(subject,sizeof(struct Kernel),configure[SubjectSize],val,tmp); break;
-	case (ObjectSize): object = planeResize(object,sizeof(struct Kernel),val,tmp); break;
-	case (ObjectBase): object = planeRebase(object,sizeof(struct Kernel),configure[ObjectSize],val,tmp); break;
-	case (ElementSize): element = planeResize(element,sizeof(struct Kernel),val,tmp); break;
-	case (ElementBase): element = planeRebase(element,sizeof(struct Kernel),configure[ElementSize],val,tmp); break;
+	case (MatrixSize): matrix = planeResize(matrix,sizeof(struct Kernel),val,tmp); break;
+	case (MatrixBase): matrix = planeRebase(matrix,sizeof(struct Kernel),configure[MatrixSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
 	case (RegisterOpen): planeStarted(tmp); break;
 	case (RegisterFind): found = 0; break;
@@ -601,7 +449,6 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Prep): copymat(planeCenter(),planeLocal(),4);
 	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
-	case (Cast): planeCast(&center,mptr->mem,mptr->idx); break;
 	case (Conj): planeConjoin(planeCenter(),planeCompose()); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
@@ -809,10 +656,10 @@ void planeFinish(enum Proc bit)
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready)
+void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce)
 {
 	struct sigaction act;
-	act.__sigaction_u.__sa_handler = planeTerm;
+	act.sa_handler = planeTerm;
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
@@ -863,7 +710,7 @@ void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint)
 	*proc = procs[qhead]; *wait = waits[qhead]; *hint = hints[qhead];
 	qhead++; if (qhead == qsize) qhead = 0;
 	qfull--;
-	if (qfull > 0) sem_post(&pending)
+	if (qfull > 0) sem_post(&pending);
 	else if (*hint != ResultHint) idle = 1;
 	sem_post(&resource);
 	if (idle) planeSafe(Procs,Waits,ResultHint);

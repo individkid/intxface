@@ -53,12 +53,8 @@ Configure = {
 	"NumericBase", --
 	"VertexSize", -- corners of frame
 	"VertexBase", --
-	"SubjectSize", -- per view matrix
-	"SubjectBase", --
-	"ObjectSize", -- per polytope matrix
-	"ObjectBase", --
-	"ElementSize", -- per plane matrix
-	"ElementBase", --
+	"MatrixSize", -- multipurpose matrix
+	"MatrixBase", --
 	"SwarmSize", -- early warning system
 	"SwarmBase", --
 	"TextureSize", -- how to decorate
@@ -134,7 +130,6 @@ Transfer = {
 	"Pose", -- towrite to center
 	"Other", -- maintain to center
 	"Prep", -- move local to center
-	"Cast", -- change center index
 	"Conj", -- conjoin to center
 	"Glitch", -- center to maintain
 	"Check", -- apply center to maintain
@@ -645,8 +640,6 @@ Machine = {
 	{"num","Int",{["xfr"]={["Force"]=true}},{}},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"num"},
-	{"mem","Memory",{["xfr"]={["Cast"]=true}},{}},
-	{"idx","Int",{["xfr"]={["Cast"]=true}},{}},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 	{"str","Str",{["xfr"]={["Name"]=true}},{}},

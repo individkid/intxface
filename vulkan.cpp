@@ -1740,68 +1740,12 @@ int vulkanReady(int size, struct Pierce *pierce) {
     return mainState.copyState->get(size,pierce);
 }
 
-// TODO merge to plane.c
-// Transform functions find 4 independent vectors to invert, and 4 to multiply;
-// not all combinations of Effect Fixed Tool are supported.
-extern "C" {
-float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
-    float *src2, float *dst2, float *src3, float *dst3) {
-    float src[16]; float dst[16]; float inv[16];
-    copyvec(src,src0,4); copyvec(src+4,src1,4); copyvec(src+8,src2,4); copyvec(src+12,src3,4);
-    copyvec(dst,dst0,4); copyvec(dst+4,dst1,4); copyvec(dst+8,dst2,4); copyvec(dst+12,dst3,4);
-    invmat(copymat(inv,src,4),4);
-    return jumpmat(mat,timesmat(dst,inv,4),4);
-}
-// Rotate functions find 2 fixed and 2 rotated, put all but 1 rotated in the 1.0 space,
-// and put 1 rotated in the 0.0 space by subtracting one of the fixed.
-float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur) {
-    // tip by angle org fix cur; line through fix, perpendicular to plane containing org fix cur, is fixed.
-    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
-    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
-    float u[3]; copyvec(u,org,2); u[2] = -1.0; normvec(plusvec(copyvec(u,u,3),neg0,3),3);
-    float v[3]; copyvec(v,cur,2); v[2] = -1.0; normvec(plusvec(copyvec(v,v,3),neg0,3),3);
-    float w[3]; crossvec(copyvec(w,u,3),v);
-    float fix1[4]; plusvec(copyvec(fix1,w,3),fix0,3); fix1[3] = 1.0;
-    float src0[4]; plusvec(copyvec(src0,u,3),fix0,3); src0[3] = 1.0;
-    float dst0[4]; plusvec(copyvec(dst0,v,3),fix0,3); dst0[3] = 1.0;
-    float src1[4]; plusvec(crossvec(copyvec(src1,w,3),u),fix0,3); src1[3] = 1.0;
-    float dst1[4]; plusvec(crossvec(copyvec(dst1,w,3),v),fix0,3); dst1[3] = 1.0;
-    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,dst0,plusvec(src1,neg0,4),plusvec(dst1,neg0,4));
-}
-float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur) {
-    // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
-    float ang = cur[2]-org[2];
-    float s0 = sin(ang), t0 = cos(ang);
-    float s1 = -s0, t1 = t0; // exchange and negate to rotate 90 degrees
-    float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
-    float neg0[4]; scalevec(copyvec(neg0,fix0,4),-1.0,4);
-    float fix1[4]; copyvec(fix1,cur,2); fix1[2] = -1.0; fix1[3] = 1.0;
-    float i[3]; normvec(plusvec(copyvec(i,neg0,3),fix1,3),3);
-    float j[3]; normvec(orthovec(anyvec(copyvec(j,i,3),3),i,3),3);
-    float k[3]; crossvec(copyvec(k,i,3),j);
-    float j0[3], k0[3]; scalevec(copyvec(j0,j,3),t0,3); scalevec(copyvec(k0,k,3),s0,3);
-    float j1[3], k1[3]; scalevec(copyvec(j1,j,3),s1,3); scalevec(copyvec(k1,k,3),t1,3);
-    float rot0[4]; plusvec(copyvec(rot0,j0,3),k0,3); rot0[3] = 1.0;
-    float rot1[4]; plusvec(copyvec(rot1,j1,3),k1,3); rot1[3] = 1.0;
-    float src0[4]; copyvec(src0,j,3); src0[3] = 1.0;
-    float src1[4]; copyvec(src1,k,3); src1[3] = 1.0;
-    return planeTransform(mat,fix0,fix0,fix1,fix1,src0,rot0,plusvec(src1,neg0,4),plusvec(rot1,neg0,4));
-}
-float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
-{
-    float u[2]; scalevec(copyvec(u,org,2),-1.0,2);
-    float v[2]; plusvec(copyvec(v,cur,2),u,2);
-    float h0[4], h1[4]; unitvec(h0,3,0); h0[3] = 0.0; plusvec(copyvec(h1,h0,4),v,2);
-    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,2);
-    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,2);
-    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
-    return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
-}
-}
-
 // TODO link with plane.c
 #ifdef PLANRA
 extern "C" {
+    float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur);
+    float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur);
+    float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur);
     struct timeval start;
     float *planraTest(float *mat) {
         struct timeval stop; gettimeofday(&stop, NULL);
@@ -1820,9 +1764,9 @@ extern "C" {
         planeRotateCursorRoller(mat,fix,nml,org,cur);
         return mat;
     }
-    vftype callSafe;
-    uftype callDma;
-    wftype callDraw;
+    vftype callraSafe;
+    uftype callraDma;
+    wftype callraDraw;
     bool callOnce;
     int planraCenter(int num, struct Center ptr[2]) {
         if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
@@ -1873,15 +1817,15 @@ extern "C" {
     void *planraThread(void *arg) {
         while (!mainState.escapePressed || !mainState.enterPressed) {
             glfwWaitEventsTimeout(0.01);
-            callSafe();}
+            callraSafe();}
         return 0;
     }
     void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
         pthread_t thread;
         gettimeofday(&start, NULL);
-        callSafe = safe;
-        callDma = dma;
-        callDraw = draw;
+        callraSafe = safe;
+        callraDma = dma;
+        callraDraw = draw;
         callOnce = true;
         init();
         main(Window,Start);
@@ -1900,8 +1844,8 @@ extern "C" {
         struct Center testCenter[2];
         for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
         int num = planraCenter(2,testCenter);
-        for (int i = 0; i < num; i++) callDma(testCenter+i);
-        callDraw(MicroPRB,0,6);
+        for (int i = 0; i < num; i++) callraDma(testCenter+i);
+        callraDraw(MicroPRB,0,6);
     }
 }
 #endif
