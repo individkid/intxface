@@ -5,7 +5,6 @@
 #include <fstream>
 #include <stdexcept>
 #include <algorithm>
-#include <chrono>
 #include <vector>
 #include <cstring>
 #include <cstdlib>
@@ -20,20 +19,36 @@
 #include <semaphore.h>
 #ifdef PLANRA
 // TODO move to planer.lua
-#include <sstream>
 #include <math.h>
+#include <time.h>
 #endif
 
 extern "C" {
     #include "type.h"
     #include "plane.h"
-#ifdef PLANRA
-    // TODO move to planer.lua
-    #include "metx.h"
-#endif
 }
+#ifdef PLANRA
+    #define planeInit planraInit
+    #define planeAddarg planraAddarg
+    #define planeSafe planraSafe
+    #define planeMain planraMain
+    // TODO link with plane.c
+    extern "C" {
+        #include <sys/time.h>
+        #include "metx.h"
+        void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready);
+        void planraAddarg(const char *str);
+        void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint);
+        void planraMain();
+    }
+#endif
 
-#define NANOSECONDS (10^9)
+#define THOUSANDS_1(NUM,PWR) NUM ## PWR
+#define THOUSANDS_2(NUM,PWR) THOUSANDS_1(NUM ## PWR,000)
+#define THOUSANDS_3(NUM,PWR) THOUSANDS_2(NUM ## PWR,000)
+#define NANOSECONDS THOUSANDS_3(1,000)
+#define MICROSECONDS THOUSANDS_2(1,000)
+
 struct InitState;
 struct OpenState;
 struct PhysicalState;
@@ -1725,23 +1740,10 @@ int vulkanReady(int size, struct Pierce *pierce) {
     return mainState.copyState->get(size,pierce);
 }
 
-int main(int argc, char **argv) {
-    mainState.argc = argc;
-    mainState.argv = argv;
-    try {
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady);
-        delete mainState.initState;
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}
-
-#ifdef PLANRA
-// TODO merge to plane.c;
+// TODO merge to plane.c
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 // not all combinations of Effect Fixed Tool are supported.
+extern "C" {
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
     float *src2, float *dst2, float *src3, float *dst3) {
     float src[16]; float dst[16]; float inv[16];
@@ -1795,34 +1797,88 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
     float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
     return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
 }
-// TODO move to planer.lua
-auto startTime = std::chrono::high_resolution_clock::now();
-float *planeTest(float *mat) {
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
-    float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
-    float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
-    float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-    cur[1] = 0.2*cosf(time*2.0944);
-    // cur[0] = cur[1] = 0.0;
-    cur[2] = time*1.5708;
-    identmat(mat,4);
-    planeSlideOrthoMouse(mat,fix,nml,org,cur);
-    planeRotateFocalMouse(mat,fix,nml,org,cur);
-    planeRotateCursorRoller(mat,fix,nml,org,cur);
-    return mat;
 }
-int vulkanCenter(int num, struct Center ptr[2]);
-void *vulkanTest(void *arg);
+
+// TODO link with plane.c
+#ifdef PLANRA
 extern "C" {
-    // TODO link with plane.c
+    struct timeval start;
+    float *planraTest(float *mat) {
+        struct timeval stop; gettimeofday(&stop, NULL);
+        float time = (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec) / (double)MICROSECONDS;
+        float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
+        float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
+        float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
+        float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
+        if (!mainState.enable && time > 1.0) {mainState.escapePressed = mainState.enterPressed = true;}
+        cur[1] = 0.2*cosf(time*2.0944);
+        // cur[0] = cur[1] = 0.0;
+        cur[2] = time*1.5708;
+        identmat(mat,4);
+        planeSlideOrthoMouse(mat,fix,nml,org,cur);
+        planeRotateFocalMouse(mat,fix,nml,org,cur);
+        planeRotateCursorRoller(mat,fix,nml,org,cur);
+        return mat;
+    }
     vftype callSafe;
     uftype callDma;
     wftype callDraw;
     bool callOnce;
-    void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
+    int planraCenter(int num, struct Center ptr[2]) {
+        if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
+        if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) throw std::runtime_error("Center vtx not zero!");
+        num = 0;
+        int len = 0; char *str; char *tmp;
+        float mat[16]; planraTest(mat);
+        if (callOnce) {
+            VkExtent2D extent = mainState.swapState->extent;
+            int len = 0; char *str; char *tmp;
+            ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
+            allocVertex(&ptr[num].vtx,6);
+            asprintf(&str,"Vertex(");
+            asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+            len = 0; hideVertex(&ptr[num].vtx[0],str,&len); free(str);
+            asprintf(&str,"Vertex(");
+            asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+            len = 0; hideVertex(&ptr[num].vtx[1],str,&len); free(str);
+            asprintf(&str,"Vertex(");
+            asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+            len = 0; hideVertex(&ptr[num].vtx[2],str,&len); free(str);
+            asprintf(&str,"Vertex(");
+            asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+            len = 0; hideVertex(&ptr[num].vtx[3],str,&len); free(str);
+            asprintf(&str,"Vertex(");
+            asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+            len = 0; hideVertex(&ptr[num].vtx[4],str,&len); free(str);
+            asprintf(&str,"Vertex(");
+            asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+            asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+            len = 0; hideVertex(&ptr[num].vtx[5],str,&len); free(str);
+            num++;}
+        ptr[num].mem = Matrixz; ptr[num].siz = 1; ptr[num].idx = 0; ptr[num].slf = 0;
+        allocMatrix(&ptr[num].mat,1);
+        asprintf(&str,"Matrix(");
+        for (int j = 0; j < 16; j++) asprintf(&str,"%smat[%d]:Old(%f)",tmp = str,j,mat[j]); free(tmp);
+        asprintf(&str,"%s)",tmp = str); free(tmp);
+        len = 0; hideMatrix(&ptr[num].mat[0],str,&len); free(str);
+        num++;
+        callOnce = false;
+        return num;
+    }
+    void *planraThread(void *arg) {
+        while (!mainState.escapePressed || !mainState.enterPressed) {
+            glfwWaitEventsTimeout(0.01);
+            callSafe();}
+        return 0;
+    }
+    void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready) {
         pthread_t thread;
+        gettimeofday(&start, NULL);
         callSafe = safe;
         callDma = dma;
         callDraw = draw;
@@ -1830,74 +1886,35 @@ extern "C" {
         init();
         main(Window,Start);
         main(Graphics,Start);
-        if (pthread_create(&thread,0,vulkanTest,0) != 0) throw std::runtime_error("failed to create test thread!");
+        if (pthread_create(&thread,0,planraThread,0) != 0) throw std::runtime_error("failed to create test thread!");
         main(Process,Start);
         main(Process,Stop);
         if (pthread_join(thread,0) != 0) std::runtime_error("failed to join test thread!");
         main(Graphics,Stop);
         main(Window,Stop);
     }
-    void planeAddarg(const char *str) {}
-    int planeInfo(enum Configure cfg) {return 0;}
-    void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
-    void planeMain() {
+    void planraAddarg(const char *str) {}
+    int planraInfo(enum Configure cfg) {return 0;}
+    void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint) {}
+    void planraMain() {
         struct Center testCenter[2];
         for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
-        int num = vulkanCenter(2,testCenter);
+        int num = planraCenter(2,testCenter);
         for (int i = 0; i < num; i++) callDma(testCenter+i);
         callDraw(MicroPRB,0,6);
     }
 }
-int vulkanCenter(int num, struct Center ptr[2]) {
-    if (num < 1 || ptr[0].siz != 0 || ptr[0].vtx != 0) throw std::runtime_error("Center vtx not zero!");
-    if (num < 2 || ptr[1].siz != 0 || ptr[1].vtx != 0) throw std::runtime_error("Center vtx not zero!");
-    num = 0;
-    int len = 0; std::stringstream str;
-    float mat[16]; planeTest(mat);
-    if (callOnce) {
-        VkExtent2D extent = mainState.swapState->extent;
-        int len = 0; std::stringstream str;
-        ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
-        allocVertex(&ptr[num].vtx,6);
-        str.str(""); str << "Vertex(";
-            str << "vec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-        len = 0; hideVertex(&ptr[num].vtx[0],str.str().c_str(),&len);
-        str.str(""); str << "Vertex(";
-            str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-        len = 0; hideVertex(&ptr[num].vtx[1],str.str().c_str(),&len);
-        str.str(""); str << "Vertex(";
-            str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-        len = 0; hideVertex(&ptr[num].vtx[2],str.str().c_str(),&len);
-        str.str(""); str << "Vertex(";
-            str << "vec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-        len = 0; hideVertex(&ptr[num].vtx[3],str.str().c_str(),&len);
-        str.str(""); str << "Vertex(";
-            str << "vec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-        len = 0; hideVertex(&ptr[num].vtx[4],str.str().c_str(),&len);
-        str.str(""); str << "Vertex(";
-            str << "vec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)";
-            str << "ref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))";
-        len = 0; hideVertex(&ptr[num].vtx[5],str.str().c_str(),&len);
-        num++;}
-    ptr[num].mem = Matrixz; ptr[num].siz = 1; ptr[num].idx = 0; ptr[num].slf = 0;
-    allocMatrix(&ptr[num].mat,1);
-    str.str(""); str << "Matrix(";
-    for (int j = 0; j < 16; j++) str << "mat[" << j << "]:Old(" << mat[j] << ")";
-    str << ")";
-    len = 0; hideMatrix(&ptr[num].mat[0],str.str().c_str(),&len);
-    num++;
-    callOnce = false;
-    return num;
-}
-void *vulkanTest(void *arg) {
-    while (!mainState.escapePressed || !mainState.enterPressed) {
-        glfwWaitEventsTimeout(0.01);
-        callSafe();}
-    return 0;
-}
 #endif
+
+int main(int argc, char **argv) {
+    mainState.argc = argc;
+    mainState.argv = argv;
+    try {
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady);
+        delete mainState.initState;
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}

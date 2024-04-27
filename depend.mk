@@ -51,7 +51,7 @@ sharerLua: sharer.lua
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs spaceHs.type.hs
 spaceHs.type.hs: luax.so show.lua type.gen
-spacer.log: luax.so spaceHs spacer.lua spacerLua type.lua
+spacer.log: spaceHs spacer.lua spacerLua type.lua
 spacerLua: spacer.lua
 spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs spacraHs.type.hs
