@@ -42,6 +42,7 @@ struct MainState {
     bool escapePressed;
     bool enterPressed;
     bool otherPressed;
+    std::deque<int> keyPressed;
     bool windowMoving;
     double mouseLastx;
     double mouseLasty;
@@ -221,6 +222,7 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
     if (action != GLFW_PRESS || mods != 0) {
         return;
     }
+    mainState->keyPressed.push_back(key);
     if (key == GLFW_KEY_ENTER) {
         mainState->enterPressed = true;
     } else {
@@ -1612,29 +1614,49 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
-int vulkanInfo(enum Configure query) {
-    switch (query) {case (RegisterDone): {int count = 0;
+void vulkanExtent()
+{
+    if (mainState.framebufferResized) {
+        mainState.framebufferResized = false;
+        if (mainState.threadState) delete mainState.threadState;
+        if (mainState.swapState) delete mainState.swapState;
+        mainState.swapState = 0; mainState.threadState = 0;}
+    if (!mainState.swapState && mainState.openState && mainState.physicalState && mainState.logicalState) {
+        mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
+        return new SwapState(open->window,physical->physical,device->device,
+        open->surface,physical->image,physical->format,physical->mode,
+        device->render,physical->minimum,physical->graphicid,physical->presentid);
+        }(mainState.openState,mainState.physicalState,mainState.logicalState);}
+    if (!mainState.threadState && mainState.logicalState) {
+        mainState.threadState = new ThreadState(mainState.logicalState->device);}
+}
+int vulkanInfo(enum Configure query)
+{
+    switch (query) {default: throw std::runtime_error("cannot get info!");
+    break; case (RegisterDone): {int count = 0;
     for (int i = 0; i < Micros; i++) count += mainState.queueState->drawQueue[(Micro)i]->count*Memorys;
     for (int i = 0; i < Memorys; i++) count += mainState.queueState->bufferQueue[(Memory)i]->count;
     return count;}
     break; case(WindowLeft): return mainState.windowLastx;
     break; case(WindowBase): return mainState.windowLasty;
-    break; case(WindowWide): return mainState.swapState->extent.width;
-    break; case(WindowHigh): return mainState.swapState->extent.height;
-#ifdef PLANRA
-    break; case(KeyboardPress): return (!mainState.escapePressed || !mainState.enterPressed);
-#endif
-    break; default: throw std::runtime_error("cannot get info!");}
+    break; case(WindowWide): vulkanExtent(); return mainState.swapState->extent.width;
+    break; case(WindowHigh): vulkanExtent(); return mainState.swapState->extent.height;
+    break; case(RegisterOpen): return (!mainState.escapePressed || !mainState.enterPressed);
+    break; case(KeyboardPress): {if (mainState.keyPressed.empty()) return 0;
+    int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}}
     return 0;
 }
-void vulkanSafe() {
+void vulkanSafe()
+{
     glfwPostEmptyEvent();
 }
-void vulkanInit() {
+void vulkanInit()
+{
     for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
     mainState.initState = new InitState(mainState.enable,mainState.layers);
 }
-void vulkanMain(enum Proc proc, enum Wait wait) {
+void vulkanMain(enum Proc proc, enum Wait wait)
+{
     switch(wait) {
     case (Start):
     switch (proc) {
@@ -1654,23 +1676,9 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     mainState.copyState = new CopyState();
     break;
     case (Process):
-    glfwPostEmptyEvent();
     while (!mainState.escapePressed || !mainState.enterPressed) {
-    glfwWaitEventsTimeout(1.0);
-    if (mainState.framebufferResized) {
-        mainState.framebufferResized = false;
-        if (mainState.threadState) delete mainState.threadState;
-        if (mainState.swapState) delete mainState.swapState;
-        mainState.swapState = 0; mainState.threadState = 0;}
-    if (!mainState.swapState && mainState.openState && mainState.physicalState && mainState.logicalState) {
-        mainState.swapState = [](OpenState *open, PhysicalState *physical, DeviceState *device){
-        return new SwapState(open->window,physical->physical,device->device,
-        open->surface,physical->image,physical->format,physical->mode,
-        device->render,physical->minimum,physical->graphicid,physical->presentid);
-        }(mainState.openState,mainState.physicalState,mainState.logicalState);}
-    if (!mainState.threadState && mainState.logicalState) {
-        mainState.threadState = new ThreadState(mainState.logicalState->device);}
-    planeMain();}
+    planeMain();
+    glfwWaitEventsTimeout(1.0);}
     break;
     default:
     break;}
@@ -1696,24 +1704,25 @@ void vulkanMain(enum Proc proc, enum Wait wait) {
     default:
     throw std::runtime_error("no case in switch!");}  
 }
-void vulkanDma(struct Center *center) {
-    switch (center->mem) {case (Vertexz):
-    mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
-    break; case (Matrixz):
-    mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
-    break; case (Configurez):
-    for (int i = 0; i < center->siz; i++) switch (center->cfg[i]) {case (KeyboardPress):
-#ifdef PLANRA
-    if (!mainState.enable) mainState.escapePressed = mainState.enterPressed = true;
-#endif
-    break; default: throw std::runtime_error("unsupported cfg!");}
-    break; default: throw std::runtime_error("unsupported mem!");}
+void vulkanDma(struct Center *center)
+{
+    vulkanExtent();
+    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
+    break; case (Vertexz): mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
+    break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
+    break; case (Configurez): for (int i = 0; i < center->siz; i++)
+    switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
+    break; case (RegisterOpen): if (!mainState.enable) mainState.escapePressed = mainState.enterPressed = true;
+    break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
+    else {mainState.keyPressed.push_front(center->val[i]); planeSafe(Procs,Waits,KeyboardPress);}}}
 }
-void vulkanDraw(enum Micro shader, int base, int limit) {
+void vulkanDraw(enum Micro shader, int base, int limit)
+{
     std::vector<BufferState*> buffer;
     std::vector<WrapState<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
     std::vector<WrapState<BufferState>*> *queryBuffer = mainState.queueState->queryBuffer+shader;
     WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
+    vulkanExtent();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
     if (!draw->set()) return;
     int temp = draw->tmp();
@@ -1725,11 +1734,13 @@ void vulkanDraw(enum Micro shader, int base, int limit) {
     (*i)->get([](BufferState*buf){return buf->getup();});
     (*i)->get([](BufferState*buf){return buf->putup();});}
 }
-int vulkanReady(int size, struct Pierce *pierce) {
+int vulkanReady(int size, struct Pierce *pierce)
+{
     return mainState.copyState->get(size,pierce);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     mainState.argc = argc;
     mainState.argv = argv;
     try {

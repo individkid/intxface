@@ -752,7 +752,7 @@ float *planraMatrix(float *mat)
 	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
 	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
 	if (time > 1.0) {struct Center center;
-	enum Configure cfg = KeyboardPress; int val = 1;
+	enum Configure cfg = RegisterOpen; int val = 0;
 	center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
 	center.cfg = &cfg; center.val = &val; callraDma(&center);}
 	cur[1] = 0.2*cosf(time*2.0944);
@@ -813,7 +813,7 @@ int planraCenter(int num, struct Center ptr[2])
 pthread_t planraThread;
 void *planraTest(void *arg)
 {
-    while (callraInfo(KeyboardPress)) {
+    while (callraInfo(RegisterOpen)) {
         usleep(10000);
         callraSafe();}
     return 0;
