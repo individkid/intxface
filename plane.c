@@ -813,6 +813,7 @@ int planraCenter(int num, struct Center ptr[2])
 pthread_t planraThread;
 void *planraTest(void *arg)
 {
+    // TODO cannot use callInfo from thread; use planeEnque to cause Dma and Draw
     while (callraInfo(RegisterOpen)) {
         usleep(10000);
         callraSafe();}
@@ -845,9 +846,11 @@ int planraInfo(enum Configure cfg)
 }
 void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint)
 {
+    // TODO have to use planeEnque even for callInfo
 }
 void planraMain()
 {
+	// TODO use planeDeque to choose between Dma and Draw
 	struct Center testCenter[2];
 	for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
 	int num = planraCenter(2,testCenter); // TODO allocat and free
