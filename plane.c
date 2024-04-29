@@ -831,7 +831,8 @@ void planraWake(enum Configure hint)
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);
 		planeSafe(Window,Stop,Configures);
-		return;}
+		return;
+	}
 	if (hint == KeyboardPress) {
 		int key1 = callInfo(KeyboardPress);
 		int key2 = callInfo(KeyboardPress);

@@ -1690,7 +1690,7 @@ void vulkanDma(struct Center *center)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
-    else {mainState.keyPressed.push_front(center->val[i]); planeSafe(Procs,Waits,KeyboardPress);}}}
+    else {mainState.keyPressed.push_front(center->val[i]);}}}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
