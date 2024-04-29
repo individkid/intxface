@@ -22,12 +22,6 @@ extern "C" {
     #include "type.h"
     #include "plane.h"
 }
-#ifdef PLANRA
-    #define planeInit planraInit
-    #define planeAddarg planraAddarg
-    #define planeSafe planraSafe
-    #define planeMain planraMain
-#endif
 
 struct InitState;
 struct OpenState;
@@ -1744,7 +1738,11 @@ int main(int argc, char **argv)
     mainState.argc = argc;
     mainState.argv = argv;
     try {
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady);
+#ifdef PLANRA
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planraWake,planraBoot);
+#else
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planeWake,planeBoot);
+#endif
         delete mainState.initState;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

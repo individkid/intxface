@@ -59,6 +59,7 @@ vftype callSafe = 0;
 yftype callMain = 0;
 xftype callInfo = 0;
 wftype callDraw = 0;
+sftype callWake = 0;
 pthread_t thread[Procs];
 pthread_key_t retstr;
 // owned by a single thread until joined:
@@ -657,7 +658,7 @@ void planeFinish(enum Proc bit)
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce)
+void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce, sftype wake, vftype boot)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -671,8 +672,8 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	// datxDupstr(planeDupstr); datxOutstr(planeOutstr); datxInsstr(planeInsstr); datxDelstr(planeDelstr); datxGetcfg(planeGetcfg); datxSetcfg(planeSetcfg);
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw;
-	init(); planeBoot(); while (1) {
+	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw; callWake = wake;
+	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});
 	planeMain();} closeIdent(internal); if (check) ERROR();
@@ -727,7 +728,7 @@ void planeMain()
 	if (wait == Waits && hint == Configures && proc == Procs) {check--; return;}
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures) ERROR();
-	if (wait == Waits && hint != Configures) planeWake(hint);
+	if (wait == Waits && hint != Configures) callWake(hint);
 	if (wait == Start && hint == Configures) {planeThread(proc); callMain(proc,wait);}
 	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}
 }
@@ -737,16 +738,14 @@ void planeReady(struct Pierce *given)
 	for (int i = 0; i < configure[PierceSize]; i++) pierce[i] = given[i]; found = 0;
 }
 
-vftype callraSafe;
-uftype callraDma;
-xftype callraInfo;
-wftype callraDraw;
-int callOnce;
-struct timeval start;
+int planraOnce;
+int planraDone;
+pthread_t planraThread;
+struct timeval planraTime;
 float *planraMatrix(float *mat)
 {
 	struct timeval stop; gettimeofday(&stop, NULL);
-	float time = (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec) / (double)MICROSECONDS;
+	float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
 	float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
 	float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
 	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
@@ -754,7 +753,7 @@ float *planraMatrix(float *mat)
 	if (time > 1.0) {struct Center center;
 	enum Configure cfg = RegisterOpen; int val = 0;
 	center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
-	center.cfg = &cfg; center.val = &val; callraDma(&center);}
+	center.cfg = &cfg; center.val = &val; callDma(&center);}
 	cur[1] = 0.2*cosf(time*2.0944);
 	// cur[0] = cur[1] = 0.0;
 	cur[2] = time*1.5708;
@@ -771,7 +770,7 @@ int planraCenter(int num, struct Center ptr[2])
 	num = 0;
 	int len = 0; char *str; char *tmp;
 	float mat[16]; planraMatrix(mat);
-	if (callOnce) {
+	if (planraOnce) {
 		int len = 0; char *str; char *tmp;
 		ptr[num].mem = Vertexz; ptr[num].siz = 6; ptr[num].idx = 0; ptr[num].slf = 0;
 		allocVertex(&ptr[num].vtx,6);
@@ -807,54 +806,46 @@ int planraCenter(int num, struct Center ptr[2])
 	asprintf(&str,"%s)",tmp = str); free(tmp);
 	len = 0; hideMatrix(&ptr[num].mat[0],str,&len); free(str);
 	num++;
-	callOnce = 0;
+	planraOnce = 0;
 	return num;
 }
-pthread_t planraThread;
 void *planraTest(void *arg)
 {
     // TODO cannot use callInfo from thread; use planeEnque to cause Dma and Draw
-    while (callraInfo(RegisterOpen)) {
+    int done = 0;
+    while (!done) {
         usleep(10000);
-        callraSafe();}
+        callSafe();
+    	sem_safe(&resource,{done = planraDone;});}
     return 0;
 }
-void planraInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready)
-{
-	gettimeofday(&start, NULL);
-	callraSafe = safe;
-	callraDma = dma;
-	callraInfo = info;
-	callraDraw = draw;
-	callOnce = 1;
-	init();
-	main(Window,Start);
-	main(Graphics,Start);
-    if (pthread_create(&planraThread,0,planraTest,0) != 0) ERROR();
-	main(Process,Start);
-	main(Process,Stop);
-    if (pthread_join(planraThread,0) != 0) ERROR();
-	main(Graphics,Stop);
-	main(Window,Stop);
-}
-void planraAddarg(const char *str)
-{
-}
-int planraInfo(enum Configure cfg)
-{
-	return 0;
-}
-void planraSafe(enum Proc proc, enum Wait wait, enum Configure hint)
-{
-    // TODO have to use planeEnque even for callInfo
-}
-void planraMain()
+void planraWake(enum Configure hint)
 {
 	// TODO use planeDeque to choose between Dma and Draw
+	if (planraDone) return;
+	if (callInfo(RegisterOpen) == 0) {
+		sem_safe(&resource,{planraDone = 1;});
+    		int num = pthread_join(planraThread,0);
+		// if (num != 0) {printf("errno %d %d %d\n",num,EINVAL,ESRCH); ERROR();}
+		planeSafe(Process,Stop,Configures);
+		planeSafe(Graphics,Stop,Configures);
+		planeSafe(Window,Stop,Configures);
+		return;
+	}
 	struct Center testCenter[2];
 	for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
 	int num = planraCenter(2,testCenter); // TODO allocat and free
-	for (int i = 0; i < num; i++) callraDma(testCenter+i);
-	callraDraw(MicroPRB,0,6);
+	for (int i = 0; i < num; i++) callDma(testCenter+i);
+	callDraw(MicroPRB,0,6);
+}
+void planraBoot()
+{
+	gettimeofday(&planraTime, NULL);
+	planeSafe(Window,Start,Configures);
+	planeSafe(Graphics,Start,Configures);
+	planeSafe(Process,Start,Configures);
+	planraDone = 0;
+	planraOnce = 1;
+    if (pthread_create(&planraThread,0,planraTest,0) != 0) ERROR();
 }
 
