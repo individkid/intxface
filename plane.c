@@ -742,6 +742,13 @@ int planraOnce;
 int planraDone;
 pthread_t planraThread;
 struct timeval planraTime;
+void planraExit(int enb)
+{
+	struct Center center;
+	enum Configure cfg = RegisterOpen; int val = enb;
+	center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
+	center.cfg = &cfg; center.val = &val; callDma(&center);
+}
 float *planraMatrix(float *mat)
 {
 	struct timeval stop; gettimeofday(&stop, NULL);
@@ -750,10 +757,7 @@ float *planraMatrix(float *mat)
 	float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
 	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
 	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-	if (time > 1.0) {struct Center center;
-	enum Configure cfg = RegisterOpen; int val = 0;
-	center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
-	center.cfg = &cfg; center.val = &val; callDma(&center);}
+	if (time > 1.0) planraExit(0);
 	cur[1] = 0.2*cosf(time*2.0944);
 	// cur[0] = cur[1] = 0.0;
 	cur[2] = time*1.5708;
@@ -827,10 +831,15 @@ void planraWake(enum Configure hint)
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);
 		planeSafe(Window,Stop,Configures);
-		return;
-	}
+		return;}
 	if (hint == KeyboardPress) {
-		int key; while (key = callInfo(KeyboardPress)) printf("key:%d\n",key);
+		int key1 = callInfo(KeyboardPress);
+		int key2 = callInfo(KeyboardPress);
+		if (key1 == 256 && key2 == 257) planraExit(1);
+		if (key1 == 256 && key2 == 0) {struct Center center;
+		enum Configure cfg = KeyboardPress; int val = 256;
+		center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
+		center.cfg = &cfg; center.val = &val; callDma(&center);}
 	}
 	if (hint == ResultHint) {
 		struct Center testCenter[2];
@@ -846,8 +855,7 @@ void planraBoot()
 	planeSafe(Window,Start,Configures);
 	planeSafe(Graphics,Start,Configures);
 	planeSafe(Process,Start,Configures);
-	planraDone = 0;
-	planraOnce = 1;
+	planraDone = 0; planraOnce = 1;
     if (pthread_create(&planraThread,0,planraTest,0) != 0) ERROR();
 }
 

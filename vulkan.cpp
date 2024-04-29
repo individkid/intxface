@@ -33,9 +33,7 @@ struct QueueState;
 struct CopyState;
 struct MainState {
     bool framebufferResized;
-    bool escapePressed;
-    bool enterPressed;
-    bool otherPressed;
+    bool escapeEnter;
     std::deque<int> keyPressed;
     bool windowMoving;
     double mouseLastx;
@@ -72,9 +70,7 @@ struct MainState {
     #endif
 } mainState = {
     .framebufferResized = false,
-    .escapePressed = false,
-    .enterPressed = false,
-    .otherPressed = false,
+    .escapeEnter = false,
     .windowMoving = false,
     .mouseLastx = 0.0,
     .mouseLasty = 0.0,
@@ -217,20 +213,6 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
         return;
     }
     mainState->keyPressed.push_back(key); planeSafe(Procs,Waits,KeyboardPress);
-    if (key == GLFW_KEY_ENTER) {
-        mainState->enterPressed = true;
-    } else {
-        mainState->enterPressed = false;
-    }
-    if (key == GLFW_KEY_ESCAPE) {
-        mainState->escapePressed = true;
-        mainState->otherPressed = false;
-    } else if (mainState->otherPressed) {
-        mainState->escapePressed = false;
-        mainState->otherPressed = false;
-    } else {
-        mainState->otherPressed = true;
-    }
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1635,7 +1617,7 @@ int vulkanInfo(enum Configure query)
     break; case(WindowBase): return mainState.windowLasty;
     break; case(WindowWide): vulkanExtent(); return mainState.swapState->extent.width;
     break; case(WindowHigh): vulkanExtent(); return mainState.swapState->extent.height;
-    break; case(RegisterOpen): return (!mainState.escapePressed || !mainState.enterPressed);
+    break; case(RegisterOpen): return (!mainState.escapeEnter);
     break; case(KeyboardPress): {if (mainState.keyPressed.empty()) return 0;
     int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}}
     return 0;
@@ -1670,7 +1652,7 @@ void vulkanMain(enum Proc proc, enum Wait wait)
     mainState.copyState = new CopyState();
     break;
     case (Process):
-    while (!mainState.escapePressed || !mainState.enterPressed) {
+    while (!mainState.escapeEnter) {
     planeMain();
     glfwWaitEventsTimeout(1.0);}
     break;
@@ -1706,7 +1688,7 @@ void vulkanDma(struct Center *center)
     break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
-    break; case (RegisterOpen): if (!mainState.enable) mainState.escapePressed = mainState.enterPressed = true;
+    break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else {mainState.keyPressed.push_front(center->val[i]); planeSafe(Procs,Waits,KeyboardPress);}}}
 }
