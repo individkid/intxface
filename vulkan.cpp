@@ -216,7 +216,7 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
     if (action != GLFW_PRESS || mods != 0) {
         return;
     }
-    mainState->keyPressed.push_back(key);
+    mainState->keyPressed.push_back(key); planeSafe(Procs,Waits,KeyboardPress);
     if (key == GLFW_KEY_ENTER) {
         mainState->enterPressed = true;
     } else {

@@ -829,11 +829,16 @@ void planraWake(enum Configure hint)
 		planeSafe(Window,Stop,Configures);
 		return;
 	}
-	struct Center testCenter[2];
-	for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
-	int num = planraCenter(2,testCenter); // TODO allocat and free
-	for (int i = 0; i < num; i++) callDma(testCenter+i);
-	callDraw(MicroPRB,0,6);
+	if (hint == KeyboardPress) {
+		int key; while (key = callInfo(KeyboardPress)) printf("key:%d\n",key);
+	}
+	if (hint == ResultHint) {
+		struct Center testCenter[2];
+		for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
+		int num = planraCenter(2,testCenter); // TODO allocat and free
+		for (int i = 0; i < num; i++) callDma(testCenter+i);
+		callDraw(MicroPRB,0,6);
+	}
 }
 void planraBoot()
 {
