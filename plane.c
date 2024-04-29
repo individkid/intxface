@@ -811,7 +811,6 @@ int planraCenter(int num, struct Center ptr[2])
 }
 void *planraTest(void *arg)
 {
-    // TODO cannot use callInfo from thread; use planeEnque to cause Dma and Draw
     int done = 0;
     while (!done) {
         usleep(10000);
@@ -821,12 +820,10 @@ void *planraTest(void *arg)
 }
 void planraWake(enum Configure hint)
 {
-	// TODO use planeDeque to choose between Dma and Draw
 	if (planraDone) return;
 	if (callInfo(RegisterOpen) == 0) {
 		sem_safe(&resource,{planraDone = 1;});
-    		int num = pthread_join(planraThread,0);
-		// if (num != 0) {printf("errno %d %d %d\n",num,EINVAL,ESRCH); ERROR();}
+    	if (pthread_join(planraThread,0) != 0) ERROR();
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);
 		planeSafe(Window,Stop,Configures);
