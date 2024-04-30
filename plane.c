@@ -757,7 +757,7 @@ float *planraMatrix(float *mat)
 	float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
 	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
 	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-	if (time > 1.0) planraExit(0);
+	if (time > 10.0) planraExit(0);
 	cur[1] = 0.2*cosf(time*2.0944);
 	// cur[0] = cur[1] = 0.0;
 	cur[2] = time*1.5708;

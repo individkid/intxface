@@ -39,10 +39,10 @@ struct MainState {
     bool windowResizing;
     double mouseLeft;
     double mouseBase;
-    int windowLeft;
-    int windowBase;
-    int windowWidth;
-    int windowHeight;
+    double windowLeft;
+    double windowBase;
+    double windowWidth;
+    double windowHeight;
     int argc;
     char **argv;
     InitState *initState;
@@ -75,10 +75,10 @@ struct MainState {
     .windowResizing = false,
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
-    .windowLeft = 0,
-    .windowBase = 0,
-    .windowWidth = 800,
-    .windowHeight = 700,
+    .windowLeft = 0.0,
+    .windowBase = 0.0,
+    .windowWidth = 800.0,
+    .windowHeight = 700.0,
     .argc = 0,
     .argv = 0,
     .initState = 0,
@@ -207,9 +207,10 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-void framebufferResized(GLFWwindow* window, int width, int height) {
+void windowMoved(GLFWwindow* window, int xpos, int ypos)
+{
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->resizeNeeded = true;
+    mainState->windowLeft = xpos; mainState->windowBase = ypos;
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -220,12 +221,13 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    int32_t tempx, tempy;
     if (action != GLFW_PRESS) {
         return;
     }
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
-    glfwGetWindowPos(window,&mainState->windowLeft,&mainState->windowBase);
-    glfwGetWindowSize(window,&mainState->windowWidth,&mainState->windowHeight);
+    glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
+    glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     if (!mainState->windowMoving && !mainState->windowResizing) {
         mainState->windowMoving = true; mainState->windowResizing = false;
     } else if (mainState->windowMoving && !mainState->windowResizing) {
@@ -237,18 +239,24 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     double mouseNextx, mouseNexty;
-    int windowNextx, windowNexty;
+    double windowNextx, windowNexty;
+    int32_t tempx, tempy;
     glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
-    if (mainState->windowMoving) {
+    glfwGetWindowPos(window,&tempx,&tempy);
+    if (mainState->windowMoving && mainState->windowLeft == tempx && mainState->windowBase == tempy) {
         windowNextx = mainState->windowLeft + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowBase + (mouseNexty - mainState->mouseBase);
-        glfwSetWindowPos(window,windowNextx,windowNexty);
-        mainState->windowLeft = windowNextx; mainState->windowBase = windowNexty;
+	// mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
+        // mainState->windowLeft = windowNextx; mainState->windowBase = windowNexty;
+        tempx = windowNextx; tempy = windowNexty; glfwSetWindowPos(window,tempx,tempy);
     }
     if (mainState->windowResizing) {
         windowNextx = mainState->windowWidth + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowHeight + (mouseNexty - mainState->mouseBase);
-        glfwSetWindowSize(window,windowNextx,windowNexty);
+	mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
+        mainState->windowWidth = windowNextx; mainState->windowHeight = windowNexty;
+        tempx = windowNextx; tempy = windowNexty; glfwSetWindowSize(window,tempx,tempy);
+	mainState->resizeNeeded = true;
     }
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -344,19 +352,20 @@ struct OpenState {
     GLFWcursor* sculptCursor[2];
     GLFWcursor* standardCursor;
     VkSurfaceKHR surface;
-    OpenState(VkInstance instance, int width, int height, int left, int base, void *mainState) {
+    OpenState(VkInstance instance, int width, int height, int left, int base, void *ptr) {
         this->instance = instance;
         window = [](int width, int height) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             return glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
         } (width,height);
+        mainState.windowLeft = left; mainState.windowBase = base;
         glfwSetWindowPos(window,left,base);
-        glfwSetWindowUserPointer(window, mainState);
+        glfwSetWindowUserPointer(window, ptr);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
-        glfwSetFramebufferSizeCallback(window, framebufferResized);
         glfwSetKeyCallback(window, keyPressed);
         glfwSetMouseButtonCallback(window, mouseClicked);
         glfwSetCursorPosCallback(window, mouseMoved);
+        glfwSetWindowPosCallback(window, windowMoved);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = ::moveCursor(e,t,r,b,l);
