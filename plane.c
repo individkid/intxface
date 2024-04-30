@@ -822,12 +822,21 @@ void *planraTest(void *arg)
     	sem_safe(&resource,{done = planraDone;});}
     return 0;
 }
+struct timeval planraTime;
+float planraDebug()
+{
+	struct timeval tempTime;
+	gettimeofday(&tempTime, NULL);
+	float time = (tempTime.tv_sec - planraTime.tv_sec) + (tempTime.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
+	planraTime = tempTime;
+	return time;
+}
 void planraWake(enum Configure hint)
 {
 	if (planraDone) return;
 	if (callInfo(RegisterOpen) == 0) {
 		sem_safe(&resource,{planraDone = 1;});
-    	if (pthread_join(planraThread,0) != 0) ERROR();
+    		if (pthread_join(planraThread,0) != 0) ERROR();
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);
 		planeSafe(Window,Stop,Configures);
