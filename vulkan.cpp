@@ -32,14 +32,17 @@ struct ThreadState;
 struct QueueState;
 struct CopyState;
 struct MainState {
-    bool framebufferResized;
+    bool resizeNeeded;
     bool escapeEnter;
     std::deque<int> keyPressed;
     bool windowMoving;
-    double mouseLastx;
-    double mouseLasty;
-    int windowLastx;
-    int windowLasty;
+    bool windowResizing;
+    double mouseLeft;
+    double mouseBase;
+    int windowLeft;
+    int windowBase;
+    int windowWidth;
+    int windowHeight;
     int argc;
     char **argv;
     InitState *initState;
@@ -51,14 +54,11 @@ struct MainState {
     ThreadState *extraState;
     QueueState* queueState;
     CopyState* copyState;
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 700;
+    int registerDone;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     const int MAX_BUFFERS_AVAILABLE = 3;
     const std::vector<const char*> extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-    const std::vector<const char*> computions = {
     };
     const std::vector<const char*> layers = {
         "VK_LAYER_KHRONOS_validation"
@@ -69,13 +69,16 @@ struct MainState {
     const bool enable = true;
     #endif
 } mainState = {
-    .framebufferResized = false,
+    .resizeNeeded = false,
     .escapeEnter = false,
     .windowMoving = false,
-    .mouseLastx = 0.0,
-    .mouseLasty = 0.0,
-    .windowLastx = 0,
-    .windowLasty = 0,
+    .windowResizing = false,
+    .mouseLeft = 0.0,
+    .mouseBase = 0.0,
+    .windowLeft = 0,
+    .windowBase = 0,
+    .windowWidth = 800,
+    .windowHeight = 700,
     .argc = 0,
     .argv = 0,
     .initState = 0,
@@ -86,6 +89,7 @@ struct MainState {
     .threadState = 0,
     .queueState = 0,
     .copyState = 0,
+    .registerDone = 0,
 };
 
 // TODO add type.h enum for these builtin cursors
@@ -205,7 +209,7 @@ GLFWcursor *sculptCursor(bool e) {
 
 void framebufferResized(GLFWwindow* window, int width, int height) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->framebufferResized = true;
+    mainState->resizeNeeded = true;
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -219,11 +223,16 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     if (action != GLFW_PRESS) {
         return;
     }
-    mainState->windowMoving = !mainState->windowMoving;
-    if (mainState->windowMoving) {
-        glfwGetCursorPos(window,&mainState->mouseLastx,&mainState->mouseLasty);
-        glfwGetWindowPos(window,&mainState->windowLastx,&mainState->windowLasty);
-    }
+    glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
+    glfwGetWindowPos(window,&mainState->windowLeft,&mainState->windowBase);
+    glfwGetWindowSize(window,&mainState->windowWidth,&mainState->windowHeight);
+    if (!mainState->windowMoving && !mainState->windowResizing) {
+        mainState->windowMoving = true; mainState->windowResizing = false;
+    } else if (mainState->windowMoving && !mainState->windowResizing) {
+        mainState->windowMoving = false; mainState->windowResizing = true;
+    } else if (!mainState->windowMoving && mainState->windowResizing) {
+        mainState->windowMoving = false; mainState->windowResizing = false;
+    } else throw std::runtime_error("unsupported resize move mode!");
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -231,10 +240,15 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     int windowNextx, windowNexty;
     glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
     if (mainState->windowMoving) {
-        windowNextx = mainState->windowLastx + (mouseNextx - mainState->mouseLastx);
-        windowNexty = mainState->windowLasty + (mouseNexty - mainState->mouseLasty);
+        windowNextx = mainState->windowLeft + (mouseNextx - mainState->mouseLeft);
+        windowNexty = mainState->windowBase + (mouseNexty - mainState->mouseBase);
         glfwSetWindowPos(window,windowNextx,windowNexty);
-        mainState->windowLastx = windowNextx; mainState->windowLasty = windowNexty;
+        mainState->windowLeft = windowNextx; mainState->windowBase = windowNexty;
+    }
+    if (mainState->windowResizing) {
+        windowNextx = mainState->windowWidth + (mouseNextx - mainState->mouseLeft);
+        windowNexty = mainState->windowHeight + (mouseNexty - mainState->mouseBase);
+        glfwSetWindowSize(window,windowNextx,windowNexty);
     }
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -330,12 +344,13 @@ struct OpenState {
     GLFWcursor* sculptCursor[2];
     GLFWcursor* standardCursor;
     VkSurfaceKHR surface;
-    OpenState(VkInstance instance, uint32_t WIDTH, uint32_t HEIGHT, void *mainState) {
+    OpenState(VkInstance instance, int width, int height, int left, int base, void *mainState) {
         this->instance = instance;
-        window = [](const uint32_t WIDTH, const uint32_t HEIGHT) {
+        window = [](int width, int height) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-            return glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-        } (WIDTH,HEIGHT);
+            return glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+        } (width,height);
+        glfwSetWindowPos(window,left,base);
         glfwSetWindowUserPointer(window, mainState);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetFramebufferSizeCallback(window, framebufferResized);
@@ -1509,10 +1524,10 @@ void init() {
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
     delete pipeline;}
-VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *framebufferResized) {
+VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded) {
     uint32_t index;
     VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) *framebufferResized = true;
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) *resizeNeeded = true;
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
     vkResetFences(device, 1, &fence);
@@ -1586,14 +1601,14 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
         if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }(state->swapState->swap,present,index,finished,framebufferResized);
+    }(state->swapState->swap,present,index,finished,resizeNeeded);
     return fence;}
 };
 
 void vulkanExtent()
 {
-    if (mainState.framebufferResized) {
-        mainState.framebufferResized = false;
+    if (mainState.resizeNeeded) {
+        mainState.resizeNeeded = false;
         if (mainState.threadState) delete mainState.threadState;
         if (mainState.swapState) delete mainState.swapState;
         mainState.swapState = 0; mainState.threadState = 0;}
@@ -1609,12 +1624,9 @@ void vulkanExtent()
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
-    break; case (RegisterDone): {int count = 0;
-    for (int i = 0; i < Micros; i++) count += mainState.queueState->drawQueue[(Micro)i]->count*Memorys;
-    for (int i = 0; i < Memorys; i++) count += mainState.queueState->bufferQueue[(Memory)i]->count;
-    return count;}
-    break; case(WindowLeft): return mainState.windowLastx;
-    break; case(WindowBase): return mainState.windowLasty;
+    break; case (RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
+    break; case(WindowLeft): return mainState.windowLeft;
+    break; case(WindowBase): return mainState.windowBase;
     break; case(WindowWide): vulkanExtent(); return mainState.swapState->extent.width;
     break; case(WindowHigh): vulkanExtent(); return mainState.swapState->extent.height;
     break; case(RegisterOpen): return (!mainState.escapeEnter);
@@ -1637,8 +1649,8 @@ void vulkanMain(enum Proc proc, enum Wait wait)
     case (Start):
     switch (proc) {
     case (Window):
-    mainState.openState = new OpenState(
-    mainState.initState->instance,mainState.WIDTH,mainState.HEIGHT,(void*)&mainState);
+    mainState.openState = new OpenState(mainState.initState->instance,mainState.windowWidth,mainState.windowHeight,
+    mainState.windowLeft,mainState.windowBase,(void*)&mainState);
     break;
     case (Graphics):
     mainState.physicalState = new PhysicalState(
@@ -1688,6 +1700,7 @@ void vulkanDma(struct Center *center)
     break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
+    break; case (RegisterDone): mainState.registerDone = center->val[i];
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else {mainState.keyPressed.push_front(center->val[i]);}}}
@@ -1701,10 +1714,11 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     vulkanExtent();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
     if (!draw->set()) return;
+    mainState.registerDone++;
     int temp = draw->tmp();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
     std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
-    return draw->setup(buffer,base,limit,&mainState.framebufferResized);});
+    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
     draw->tmp(temp,done);
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
     (*i)->get([](BufferState*buf){return buf->getup();});
