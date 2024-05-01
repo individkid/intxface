@@ -250,7 +250,7 @@ func getReady() -> MTLCommandBufferHandler
 func getCount(_ code:MTLCommandBuffer) -> MTLCommandBufferHandler
 {
 	count += 1
-	return {(MTLCommandBuffer) in count -= 1; planeSafe(Procs,Waits,RegisterDone)}
+	return {(MTLCommandBuffer) in count -= 1; planeSafe(Threads,Waits,RegisterDone)}
 }
 func getDraw() -> CAMetalDrawable?
 {
@@ -279,7 +279,7 @@ class getDelegate : NSObject, NSWindowDelegate
 		CATransaction.setDisableActions(true)
 		setFrame()
 		CATransaction.commit()
-		planeSafe(Procs,Waits,WindowLeft)
+		planeSafe(Threads,Waits,WindowLeft)
 	}
 	func windowWillMove(_ notification: Notification)
 	{
@@ -293,18 +293,18 @@ class getView : NSView
 {
 	override func mouseDown(with event: NSEvent)
 	{
-		planeSafe(Procs,Waits,CursorClick)
+		planeSafe(Threads,Waits,CursorClick)
 	}
 	override func mouseMoved(with event: NSEvent)
 	{
 		uniform.set(Int(getPoint().x),\Uniform.lon)
 		uniform.set(Int(getPoint().y),\Uniform.lat)
-		planeSafe(Procs,Waits,CursorLeft)
+		planeSafe(Threads,Waits,CursorLeft)
 	}
 	override func scrollWheel(with event: NSEvent)
 	{
 		delta += event.deltaY
-		planeSafe(Procs,Waits,CursorAngle)
+		planeSafe(Threads,Waits,CursorAngle)
 	}
 	override func keyDown(with event: NSEvent)
 	{
@@ -428,7 +428,7 @@ func swiftMemory(_ ptr: UnsafeMutablePointer<Center>?)
 		default: break}}
 	default: exitErr(#file,#line);return}
 }
-func swiftMain(_ proc: Proc, _ wait: Wait)
+func swiftMain(_ proc: Thread, _ wait: Wait)
 {
 	switch(wait) {
 	case (Start): switch (proc) {

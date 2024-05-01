@@ -60,7 +60,7 @@ yftype callMain = 0;
 xftype callInfo = 0;
 wftype callDraw = 0;
 sftype callWake = 0;
-pthread_t thread[Procs];
+pthread_t thread[Threads];
 pthread_key_t retstr;
 // owned by a single thread until joined:
 int test = 0;
@@ -77,20 +77,20 @@ int qhead = 0;
 int qtail = 0;
 enum Configure *hints = 0;
 enum Wait *waits = 0;
-enum Proc *procs = 0;
+enum Thread *procs = 0;
 // thread safe:
 sem_t resource;
 sem_t pending;
-sem_t ready[Procs];
+sem_t ready[Threads];
 void planeRead();
 void planeDupstr(char **ptr, int len, int idx, int loc);
 void planeInsstr(const char *src, int len, int idx, int loc);
 void planeDelstr(int len, int idx, int loc);
 void planeOutstr(const char *str);
 void planeAddarg(const char *str);
-int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint);
-void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint);
-void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint);
+int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
+void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
+void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 // not all combinations of Effect Fixed Tool are supported.
@@ -359,8 +359,8 @@ void planeStarted(int tmp)
 {
 	int done = 0; int todo = 0; int started = 0;
 	started = configure[RegisterOpen]; todo = started & ~tmp; done = tmp & ~started;
-	for (enum Proc bit = 0; bit < Procs; bit++) if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
-	for (enum Proc bit = 0; bit < Procs; bit++) if (todo & (1<<bit)) planeSafe(bit,Start,Configures);
+	for (enum Thread bit = 0; bit < Threads; bit++) if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
+	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) planeSafe(bit,Start,Configures);
 }
 void planeConfig(enum Configure cfg, int val)
 {
@@ -553,7 +553,7 @@ void planeInsstr(const char *src, int len, int idx, int loc)
 		free(tmp); free(string[idx]); string[idx] = str;
 		strmsk |= 1<<idx; src = 0; len = 0; idx++; loc = 0;}
 	sem_post(&resource);
-	planeSafe(Procs,Waits,RegisterString);
+	planeSafe(Threads,Waits,RegisterString);
 }
 void planeDelstr(int len, int idx, int loc)
 {
@@ -598,7 +598,7 @@ void *planeSelect(void *ptr)
 	readCenter(&center,external);
 	writeCenter(&center,internal);
 	sem_safe(&resource,{numpipe++;});
-	planeSafe(Procs,Waits,CenterMemory);}
+	planeSafe(Threads,Waits,CenterMemory);}
 	planeSafe(Select,Stop,Configures);
 	return 0;
 }
@@ -631,11 +631,11 @@ void *planeTest(void *ptr)
 	test = check = 100000;
 	sem_post(&ready[Test]);
 	while (test--) {
-	planeSafe(Procs,Waits,Configures);}
+	planeSafe(Threads,Waits,Configures);}
 	planeSafe(Test,Stop,Configures);
 	return 0;
 }
-void planeThread(enum Proc bit)
+void planeThread(enum Thread bit)
 {
 	if ((running & (1<<bit)) != 0) return; running |= (1<<bit);
 	switch (bit) {
@@ -645,9 +645,9 @@ void planeThread(enum Proc bit)
 	case (Test): if (pthread_create(&thread[bit],0,planeTest,0) != 0) ERROR(); break;
 	default: ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) == 0) {
-		configure[RegisterOpen] |= (1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
+		configure[RegisterOpen] |= (1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
-void planeFinish(enum Proc bit)
+void planeFinish(enum Thread bit)
 {
 	if ((running & (1<<bit)) == 0) return; running &= ~(1<<bit);
 	sem_wait(&ready[bit]); switch (bit) {
@@ -657,7 +657,7 @@ void planeFinish(enum Proc bit)
 	case (Test): if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	default: ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {
-		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
+		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void wrapPlane();
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce, sftype wake, vftype boot)
@@ -667,7 +667,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
-	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
+	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
 	wrapPlane();
 	datxCaller(planeCall);
@@ -682,7 +682,7 @@ int planeInfo(enum Configure cfg)
 {
 	return configure[cfg];
 }
-int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint)
+int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
 {
 	int run = 0;
 	sem_wait(&resource);
@@ -690,7 +690,7 @@ int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint)
 	if (proc == Process && wait == Start) calling++;
 	if (proc == Process && wait == Stop) calling--;
 	if (qfull == qsize) {qsize++;
-	procs = realloc(procs,qsize*sizeof(enum Proc));
+	procs = realloc(procs,qsize*sizeof(enum Thread));
 	waits = realloc(waits,qsize*sizeof(enum Wait));
 	hints = realloc(hints,qsize*sizeof(enum Configure));
 	for (int i = qsize-1; i > qhead; i--) {
@@ -703,7 +703,7 @@ int planeEnque(enum Proc proc, enum Wait wait, enum Configure hint)
 	sem_post(&resource);
 	return run;
 }
-void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint)
+void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
 {
 	int idle = 0;
 	sem_wait(&pending);
@@ -715,17 +715,17 @@ void planeDeque(enum Proc *proc, enum Wait *wait, enum Configure *hint)
 	if (qfull > 0) sem_post(&pending);
 	else if (*hint != ResultHint) idle = 1;
 	sem_post(&resource);
-	if (idle) planeSafe(Procs,Waits,ResultHint);
+	if (idle) planeSafe(Threads,Waits,ResultHint);
 }
-void planeSafe(enum Proc proc, enum Wait wait, enum Configure hint)
+void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint)
 {
 	if (planeEnque(proc,wait,hint)) callSafe();
 }
 void planeMain()
 {
-	enum Proc proc = 0; enum Wait wait = 0; enum Configure hint = 0;
+	enum Thread proc = 0; enum Wait wait = 0; enum Configure hint = 0;
 	planeDeque(&proc,&wait,&hint);
-	if (wait == Waits && hint == Configures && proc == Procs) {check--; return;}
+	if (wait == Waits && hint == Configures && proc == Threads) {check--; return;}
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures) ERROR();
 	if (wait == Waits && hint != Configures) callWake(hint);
@@ -757,7 +757,7 @@ float *planraMatrix(float *mat)
 	float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
 	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
 	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-	if (time > 10.0) planraExit(0);
+	if (time > 0.5) planraExit(0);
 	cur[1] = 0.2*cosf(time*2.0944);
 	// cur[0] = cur[1] = 0.0;
 	cur[2] = time*1.5708;

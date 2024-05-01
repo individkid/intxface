@@ -191,7 +191,7 @@ Wait = {
 	"Start",
 	"Stop",
 }
-Proc = {
+Thread = {
 	"Select",
 	"Console",
 	"Window",
@@ -290,7 +290,7 @@ Access = {
 	"GlnAcc",
 	"SlnAcc",
 }
-Process = {
+Program = {
 	"Filez",
 	"Holez",
 	"Linez",
@@ -411,17 +411,17 @@ Bootstrap = {
 	{"Int","4","Str","Copy()"}, -- copy from center to machine
 }
 Execname = {
-	{"Process","Filez","Str","./file"},
-	{"Process","Holez","Str","./hole"},
-	{"Process","Linez","Str","./line"},
-	{"Process","Planez","Str","./plane"},
-	{"Process","Spacez","Str","./space"},
-	{"Process","Pagez","Str","./page"},
-	{"Process","Pipez","Str","./pipe"},
-	{"Process","Framez","Str","./frame"},
-	{"Process","Wavez","Str","./wave"},
-	{"Process","Tapez","Str","./tape"},
-	{"Process","Phonez","Str","./phone"},
+	{"Program","Filez","Str","./file"},
+	{"Program","Holez","Str","./hole"},
+	{"Program","Linez","Str","./line"},
+	{"Program","Planez","Str","./plane"},
+	{"Program","Spacez","Str","./space"},
+	{"Program","Pagez","Str","./page"},
+	{"Program","Pipez","Str","./pipe"},
+	{"Program","Framez","Str","./frame"},
+	{"Program","Wavez","Str","./wave"},
+	{"Program","Tapez","Str","./tape"},
+	{"Program","Phonez","Str","./phone"},
 }
 --HERE Structs
 Persist = {
@@ -689,7 +689,7 @@ Change = {
 	{"fct","Listed",{["vld"]={["Toread"]=true},["cfg"]={["Facets"]=true}},"siz"},
 }
 Argument = {
-	{"typ","Process",{},""},
+	{"typ","Program",{},""},
 	{"inp","Int",{},{}},
 	{"out","Int",{},{}},
 	{"idx","Int",{},{}},
@@ -750,7 +750,7 @@ function showTypeC(args)
 	result = result..showIndent(2).."openExec(exec,str); fprintf(stderr,\"%s: cannot execute file: %s\\n\",fork,exec); ERROR();}\n"
 	result = result..showIndent(1).."return idx;}\n" end
 	if (not args or args["typeWrap"]) then
-	result = result.."int typeWrap(enum Process typ, const char *fork, const char *exec) {\n"
+	result = result.."int typeWrap(enum Program typ, const char *fork, const char *exec) {\n"
 	result = result..showIndent(1).."struct Argument arg = {0};\n"
 	result = result..showIndent(1).."arg.typ = typ;\n"
 	result = result..showIndent(1).."return execWrap(&arg,fork,exec);}\n" end
@@ -761,7 +761,7 @@ function showTypeC(args)
 	result = result..showIndent(1).."arg->idx = rdwrInit(arg->inp,arg->out);\n"
 	result = result..showIndent(1).."return 0;}\n" end
 	if (not args or args["identWrap"]) then
-	result = result.."int identWrap(enum Process typ, const char *str) {\n"
+	result = result.."int identWrap(enum Program typ, const char *str) {\n"
 	result = result..showIndent(1).."struct Argument arg = {0};\n"
 	result = result..showIndent(1).."if (initWrap(&arg,str) < 0 || arg.typ != typ) return -1;\n"
 	result = result..showIndent(1).."return arg.idx;}" end
@@ -772,9 +772,9 @@ function showTypeH()
 	result = result.."#include \"proto.h\"\n"
 	result = result..showCallH().."\n"
 	result = result.."int execWrap(struct Argument *arg, const char *fork, const char *exec);\n"
-	result = result.."int typeWrap(enum Process typ, const char *fork, const char *exec);\n"
+	result = result.."int typeWrap(enum Program typ, const char *fork, const char *exec);\n"
 	result = result.."int initWrap(struct Argument *arg, const char *str);"
-	result = result.."int identWrap(enum Process typ, const char *str);\n"
+	result = result.."int identWrap(enum Program typ, const char *str);\n"
 	return result
 end
 function showTypeHs(args)
@@ -806,7 +806,7 @@ function showTypeHs(args)
 	result = result..showIndent(3).."hPutStrLn stderr (fork ++ \": cannot execute file: \" ++ exec)\n"
 	result = result..showIndent(3).."callExit (negate 1)\n"
 	result = result..showIndent(3).."return Nothing\n"
-	result = result.."typeWrap :: Process -> String -> String -> IO (Maybe Int)\n"
+	result = result.."typeWrap :: Program -> String -> String -> IO (Maybe Int)\n"
 	result = result.."typeWrap typ fork exec = execWrap (Argument (ArgumentA1 typ 0 0 0) ArgumentA5Bs) fork exec\n"
 	result = result.."initWrapF :: Maybe Argument -> IO (Maybe Argument)\n"
 	result = result.."initWrapF Nothing = return Nothing\n"
@@ -815,13 +815,13 @@ function showTypeHs(args)
 	result = result..showIndent(1).."return (Just (Argument (ArgumentA1 typ inp out idx) arg))\n"
 	result = result.."initWrap :: String -> IO (Maybe Argument)\n"
 	result = result.."initWrap str = newIORef str >>= hideArgument >>= initWrapF\n"
-	result = result.."identWrapF :: Process -> Maybe Argument -> IO (Maybe Int)\n"
+	result = result.."identWrapF :: Program -> Maybe Argument -> IO (Maybe Int)\n"
 	result = result.."identWrapF _ Nothing = return Nothing\n"
 	result = result.."identWrapF cmp (Just (Argument (ArgumentA1 typ _ _ idx) _)) =\n"
 	result = result..showIndent(1).."if cmp /= typ then\n"
 	result = result..showIndent(1).."return Nothing else\n"
 	result = result..showIndent(1).."return (Just idx)\n"
-	result = result.."identWrap :: Process -> String -> IO (Maybe Int)\n"
+	result = result.."identWrap :: Program -> String -> IO (Maybe Int)\n"
 	result = result.."identWrap typ str = initWrap str >>= identWrapF typ\n" end
 	return result
 end
@@ -835,7 +835,7 @@ function showTypeLua()
 	result = result..showIndent(1).."if (idx < 0) then return -1 end\n"
 	result = result..showIndent(1).."if (openCheck(idx) >= 0) then\n"
 	result = result..showIndent(1).."arg[\"inp\"]=openRdfd(idx); arg[\"out\"]=openWrfd(idx); arg[\"idx\"]=-1\n"
-	result = result..showIndent(1).."if (arg[\"typ\"] == nil) then arg[\"typ\"] = \"Processs\"end\n"
+	result = result..showIndent(1).."if (arg[\"typ\"] == nil) then arg[\"typ\"] = \"Programs\"end\n"
 	result = result..showIndent(2).."str = showArgument(arg,\"\")\n"
 	result = result..showIndent(2).."openExec(exec,str); io.stderr:write(fork..\": cannot execute file: \"..exec..\"\\n\"); os.exit(-1)\n"
 	result = result..showIndent(1).."end\n"
