@@ -644,7 +644,8 @@ void planeThread(enum Proc bit)
 	case (Window): case (Graphics): case (Process): sem_post(&ready[bit]); break;
 	case (Test): if (pthread_create(&thread[bit],0,planeTest,0) != 0) ERROR(); break;
 	default: ERROR();}
-	if ((configure[RegisterOpen] & (1<<bit)) == 0) {configure[RegisterOpen] |= (1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
+	if ((configure[RegisterOpen] & (1<<bit)) == 0) {
+		configure[RegisterOpen] |= (1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
 void planeFinish(enum Proc bit)
 {
@@ -655,7 +656,8 @@ void planeFinish(enum Proc bit)
 	case (Window): case (Graphics): case (Process): break;
 	case (Test): if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	default: ERROR();}
-	if ((configure[RegisterOpen] & (1<<bit)) != 0) {configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
+	if ((configure[RegisterOpen] & (1<<bit)) != 0) {
+		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Procs,Waits,RegisterOpen);}
 }
 void wrapPlane();
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce, sftype wake, vftype boot)
@@ -668,8 +670,6 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	for (enum Proc bit = 0; bit < Procs; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
 	wrapPlane();
-	// TODO delete following lines when datxUnwrap is used instead of function pointers in datx.c
-	// datxDupstr(planeDupstr); datxOutstr(planeOutstr); datxInsstr(planeInsstr); datxDelstr(planeDelstr); datxGetcfg(planeGetcfg); datxSetcfg(planeSetcfg);
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw; callWake = wake;
@@ -836,7 +836,7 @@ void planraWake(enum Configure hint)
 	if (planraDone) return;
 	if (callInfo(RegisterOpen) == 0) {
 		sem_safe(&resource,{planraDone = 1;});
-    		if (pthread_join(planraThread,0) != 0) ERROR();
+    	if (pthread_join(planraThread,0) != 0) ERROR();
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);
 		planeSafe(Window,Stop,Configures);

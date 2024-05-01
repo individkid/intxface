@@ -69,7 +69,7 @@ struct MainState {
     const bool enable = true;
     #endif
 } mainState = {
-    .resizeNeeded = false,
+    .resizeNeeded = true,
     .escapeEnter = false,
     .windowMoving = false,
     .windowResizing = false,
@@ -212,6 +212,10 @@ void windowMoved(GLFWwindow* window, int xpos, int ypos)
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->windowLeft = xpos; mainState->windowBase = ypos;
 }
+void windowSized(GLFWwindow* window, int width, int height)
+{
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+}
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     if (action != GLFW_PRESS || mods != 0) {
@@ -246,17 +250,16 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     if (mainState->windowMoving && mainState->windowLeft == tempx && mainState->windowBase == tempy) {
         windowNextx = mainState->windowLeft + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowBase + (mouseNexty - mainState->mouseBase);
-	// mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
+        // mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
         // mainState->windowLeft = windowNextx; mainState->windowBase = windowNexty;
         tempx = windowNextx; tempy = windowNexty; glfwSetWindowPos(window,tempx,tempy);
     }
     if (mainState->windowResizing) {
         windowNextx = mainState->windowWidth + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowHeight + (mouseNexty - mainState->mouseBase);
-	mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
+        mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
         mainState->windowWidth = windowNextx; mainState->windowHeight = windowNexty;
-        tempx = windowNextx; tempy = windowNexty; glfwSetWindowSize(window,tempx,tempy);
-	mainState->resizeNeeded = true;
+        mainState->resizeNeeded = true;
     }
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -366,6 +369,7 @@ struct OpenState {
         glfwSetMouseButtonCallback(window, mouseClicked);
         glfwSetCursorPosCallback(window, mouseMoved);
         glfwSetWindowPosCallback(window, windowMoved);
+        glfwSetWindowSizeCallback(window, windowSized);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = ::moveCursor(e,t,r,b,l);
@@ -1617,6 +1621,10 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
 void vulkanExtent()
 {
     if (mainState.resizeNeeded) {
+        int32_t tempx, tempy; tempx = mainState.windowWidth; tempy = mainState.windowHeight;
+        glfwSetWindowSize(mainState.openState->window,tempx,tempy);
+    }
+    if (mainState.resizeNeeded) {
         mainState.resizeNeeded = false;
         if (mainState.threadState) delete mainState.threadState;
         if (mainState.swapState) delete mainState.swapState;
@@ -1719,8 +1727,8 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     std::vector<BufferState*> buffer;
     std::vector<WrapState<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
     std::vector<WrapState<BufferState>*> *queryBuffer = mainState.queueState->queryBuffer+shader;
-    WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
     vulkanExtent();
+    WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
     if (!draw->set()) return;
     mainState.registerDone++;
