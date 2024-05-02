@@ -350,6 +350,7 @@ struct InitState {
 struct OpenState {
     VkInstance instance;
     GLFWwindow* window;
+    GLFWmonitor* monitor;
     GLFWcursor* moveCursor[2][2][2][2][2];
     GLFWcursor* rotateCursor[2];
     GLFWcursor* translateCursor[2];
@@ -357,15 +358,19 @@ struct OpenState {
     GLFWcursor* sculptCursor[2];
     GLFWcursor* standardCursor;
     VkSurfaceKHR surface;
-    OpenState(VkInstance instance, int width, int height, int left, int base, void *ptr) {
+    OpenState(VkInstance instance, int width, int height, void *ptr) {
         struct MainState *mainState = (struct MainState *)ptr;
+        int32_t left, base, workx, worky;
         this->instance = instance;
         window = [](int width, int height) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             return glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
         } (width,height);
+        monitor = glfwGetPrimaryMonitor();
+        glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
+        left += (workx-width)/2; base += (worky-height)/2;
         glfwSetWindowPos(window,left,base);
-        glfwGetWindowPos(window,&left,&base); mainState->windowLeft = left; mainState->windowBase = base;
+        mainState->windowLeft = left; mainState->windowBase = base;
         glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
         glfwSetWindowUserPointer(window, ptr);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
@@ -1670,8 +1675,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Start):
     switch (proc) {
     case (Window):
-    mainState.openState = new OpenState(mainState.initState->instance,mainState.windowWidth,mainState.windowHeight,
-    mainState.windowLeft,mainState.windowBase,(void*)&mainState);
+    mainState.openState = new OpenState(mainState.initState->instance,
+    mainState.windowWidth,mainState.windowHeight,(void*)&mainState);
     break;
     case (Graphics):
     mainState.physicalState = new PhysicalState(
