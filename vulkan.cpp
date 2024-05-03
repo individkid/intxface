@@ -235,7 +235,7 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     // glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     // glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     // TODO use Configure Manipulate* for the following instead
-    if (mainState->mouseAction == Move && mainState->mouseActive == Setup) {
+    /*if (mainState->mouseAction == Move && mainState->mouseActive == Setup) {
         mainState->mouseActive = Upset;
         mainState->mouseSticky[North] = mainState->mouseSticky[East] = true;
         mainState->mouseSticky[South] = mainState->mouseSticky[West] = true;
@@ -244,7 +244,8 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
         mainState->mouseSticky[North] = mainState->mouseSticky[West] = false;
     } else {
         mainState->mouseActive = Setup;
-    }
+    }*/
+    planeSafe(Threads,Waits,CursorClick);
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1668,7 +1669,9 @@ int vulkanInfo(enum Configure query)
     break; case(WindowHigh): vulkanExtent(); return mainState.swapState->extent.height;
     break; case(RegisterOpen): return (!mainState.escapeEnter);
     break; case(KeyboardPress): {if (mainState.keyPressed.empty()) return 0;
-    int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}}
+    int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
+    break; case(ManipulateActive): return mainState.mouseActive;
+    }
     return 0;
 }
 void vulkanSafe()
@@ -1740,7 +1743,10 @@ void vulkanDma(struct Center *center)
     break; case (RegisterDone): mainState.registerDone = center->val[i];
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
-    else {mainState.keyPressed.push_front(center->val[i]);}}}
+    else mainState.keyPressed.push_front(center->val[i]);
+    break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i];
+    break; case (ManipulateMask): for (int i = 0; i < Stickys; i++) mainState.mouseSticky[(Sticky)i] = ((center->val[i]&(1<<i)) != 0);
+    }}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
