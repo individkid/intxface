@@ -234,6 +234,7 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
     // glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     // glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
+    // TODO use Configure Manipulate* for the following instead
     if (!mainState->windowMoving && !mainState->windowResizing) {
         mainState->windowMoving = true; mainState->windowResizing = false;
     } else if (mainState->windowMoving && !mainState->windowResizing) {
@@ -249,6 +250,8 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     int32_t tempx, tempy;
     glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
     glfwGetWindowPos(window,&tempx,&tempy);
+    // TODO adjust the matrix at ManipulateMatrix to keep points fixed when window moves or resizes
+    // TODO allow edge sets other than East/South and North/East/South/West to move
     if (mainState->windowMoving && mainState->windowLeft == tempx && mainState->windowBase == tempy) {
         windowNextx = mainState->windowLeft + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowBase + (mouseNexty - mainState->mouseBase);

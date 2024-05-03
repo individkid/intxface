@@ -154,18 +154,16 @@ typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, flo
 
 float *planeCenter()
 {
-	int index = configure[RegisterIndex]-center.idx;
+	int index = configure[MatrixIndex]-center.idx;
 	if (index < 0 || index >= center.siz) ERROR();
-	if (center.mem != configure[RegisterMemory]) ERROR();
 	if (center.mem != Matrixz) ERROR();
 	return center.mat[index].mat;
 }
 struct Kernel *planeKernel()
 {
 	int index = 0; int base = 0; int size = 0;
-	if ((enum Memory)configure[RegisterMemory] != Matrixz) ERROR();
 	base = configure[MatrixBase]; size = configure[MatrixSize];
-	index = configure[RegisterIndex] - base;
+	index = configure[MatrixIndex] - base;
 	if (index < 0 || index >= size) ERROR();
 	return matrix + index;
 }
@@ -199,41 +197,41 @@ float *planeCompose()
 }
 planeXform planeFunc()
 {
-	switch ((enum Tool)configure[RegisterTool]) {
-	case (Mouse): switch ((enum Effect)configure[RegisterEffect]) {
-	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
+	switch ((enum Tool)configure[ManipulateTool]) {
+	case (Mouse): switch ((enum Effect)configure[ManipulateEffect]) {
+	case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
 	case (Cursor): ERROR();
 	case (Focal): ERROR();
 	case (Ortho): return planeSlideOrthoMouse;
 	case (Normal): ERROR();
 	default: ERROR();}
-	case (Rotate): switch ((enum Fixed)configure[RegisterFixed]) {
+	case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
 	case (Cursor): ERROR();
 	case (Focal): return planeRotateFocalMouse;
 	case (Ortho): ERROR();
 	case (Normal): ERROR();
 	default: ERROR();}
-	case (Scale): switch ((enum Fixed)configure[RegisterFixed]) {
+	case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
 	case (Cursor): ERROR();
 	case (Focal): ERROR();
 	case (Ortho): ERROR();
 	case (Normal): ERROR();
 	default: ERROR();}
 	default: ERROR();}
-	case (Roller): switch ((enum Effect)configure[RegisterEffect]) {
-	case (Slide): switch ((enum Fixed)configure[RegisterFixed]) {
+	case (Roller): switch ((enum Effect)configure[ManipulateEffect]) {
+	case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
 	case (Cursor): ERROR();
 	case (Focal): ERROR();
 	case (Ortho): ERROR();
 	case (Normal): ERROR();
 	default: ERROR();}
-	case (Rotate): switch ((enum Fixed)configure[RegisterFixed]) {
+	case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
 	case (Cursor): return planeRotateCursorRoller;
 	case (Focal): ERROR();
 	case (Ortho): ERROR();
 	case (Normal): ERROR();
 	default: ERROR();}
-	case (Scale): switch ((enum Fixed)configure[RegisterFixed]) {
+	case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
 	case (Cursor): ERROR();
 	case (Focal): ERROR();
 	case (Ortho): ERROR();
@@ -288,30 +286,28 @@ float *planeProject(float *mat)
 struct Pierce *planePierce()
 {
 	if (found) return found;
-	if (configure[RegisterFind]) {
+	if (configure[ClosestFind]) {
 	for (int i = 0; i < configure[PierceSize]; i++) {
 	struct Pierce *temp = pierce + i;
 	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}} else {
-	int index = configure[RegisterIndex] - configure[PierceBase];
+	int index = configure[PierceIndex] - configure[PierceBase];
 	if (index >= 0 && index < configure[PierceSize]) found = pierce + index;}
 	if (!found) found = &unfound;
 	return found;
 }
 void planeString()
 {
-	sem_safe(&resource,{configure[RegisterString] &= strmsk; strmsk ^= configure[RegisterString];});
+	sem_safe(&resource,{configure[StringMask] &= strmsk; strmsk ^= configure[StringMask];});
 }
 void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
-	case (RegisterString): planeString(); break;
+	case (StringMask): planeString(); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (CenterMemory): configure[CenterMemory] = center.mem; break;
 	case (CenterSize): configure[CenterSize] = center.siz; break;
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
 	case (CenterSelf): configure[CenterSelf] = center.slf; break;
-	case (RegisterMemory): configure[RegisterMemory] = center.mem; break;
-	case (RegisterIndex): configure[RegisterIndex] = center.idx; break;
 	case (ClosestValid): configure[ClosestValid] = planePierce()->vld; break;
 	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
 	case (ClosestFile): configure[ClosestFile] = planePierce()->pol; break;
@@ -374,7 +370,7 @@ void planeConfig(enum Configure cfg, int val)
 	case (MatrixBase): matrix = planeRebase(matrix,sizeof(struct Kernel),configure[MatrixSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
 	case (RegisterOpen): planeStarted(tmp); break;
-	case (RegisterFind): found = 0; break;
+	case (ClosestFind): found = 0; break;
 	default: break;}
 }
 void planeDma(enum Configure cfg, int val)
@@ -427,15 +423,11 @@ int planeIval(struct Express *exp)
 void planeFill()
 {
 	int src = 0; int dst = 0; int siz = 0;
-	int idx = configure[RegisterIndex];
-	if (center.mem != configure[RegisterMemory]) ERROR();
-	switch (center.mem) {
-	case (Piercez): src = idx-configure[PierceBase]; siz = configure[PierceSize]; dst = idx-center.idx; break;
-	default: ERROR();}
+	int idx = configure[PierceIndex];
+	if (center.mem != Piercez) ERROR();
+	src = idx-configure[PierceBase]; siz = configure[PierceSize]; dst = idx-center.idx;
 	if (src < 0 || src >= siz || dst < 0 || dst >= center.siz) ERROR();
-	switch (center.mem) {
-	case (Piercez): copyPierce(&center.pie[dst],&pierce[src]); break;
-	default: ERROR();}
+	copyPierce(&center.pie[dst],&pierce[src]);
 }
 int planeSwitch(struct Machine *mptr, int next)
 {
@@ -553,7 +545,7 @@ void planeInsstr(const char *src, int len, int idx, int loc)
 		free(tmp); free(string[idx]); string[idx] = str;
 		strmsk |= 1<<idx; src = 0; len = 0; idx++; loc = 0;}
 	sem_post(&resource);
-	planeSafe(Threads,Waits,RegisterString);
+	planeSafe(Threads,Waits,StringMask);
 }
 void planeDelstr(int len, int idx, int loc)
 {

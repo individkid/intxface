@@ -46,6 +46,7 @@ Memory = {
 	"Machinez", -- state machine lines
 	"Configurez", -- configure to value
 }
+-- organize into index, size,  base, uniform breakout, argument to draw, manipulation mode, 
 Configure = {
 	"TriangleSize", -- refers to corners
 	"TriangleBase", --
@@ -55,6 +56,7 @@ Configure = {
 	"VertexBase", --
 	"MatrixSize", -- multipurpose matrix
 	"MatrixBase", --
+	"MatrixIndex", --
 	"SwarmSize", -- early warning system
 	"SwarmBase", --
 	"TextureSize", -- how to decorate
@@ -65,8 +67,10 @@ Configure = {
 	"BasisBase", --
 	"PierceSize", -- pierce points
 	"PierceBase", --
+	"PierceIndex", --
 	"SliceSize", -- ranges per draw
 	"SliceBase", --
+	"StringMask", -- human readable state
 	"MachineSize", -- vending machine lines
 	"UniformAll", -- which subject matrix
 	"UniformOne", -- which element matrix
@@ -79,15 +83,16 @@ Configure = {
 	"ArgumentMicro", -- pass to draw
 	"ArgumentBase", --
 	"ArgumentLimit", --
-	"RegisterMemory", -- which memory
-	"RegisterIndex", -- which instance
-	"RegisterTool", -- which function
-	"RegisterEffect", -- which changed
-	"RegisterFixed", -- which fixed
-	"RegisterFind", -- which pierce
+	"ManipulateTool", -- which function
+	"ManipulateEffect", -- which changed
+	"ManipulateFixed", -- which fixed
+	"ManipulateMatrix", -- index for window
+	"ManipulateActive", -- whether changing
+	"ManipulateMask", -- which edges moved
+	"ManipulateAction", -- what mouse does
+	"ManipulateModify", -- how to sculpt
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
-	"RegisterString", -- which strings changed
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
@@ -95,6 +100,7 @@ Configure = {
 	"OriginBase", --
 	"OriginNear", --
 	"OriginAngle", --
+	"ClosestFind", -- whether to search or index
 	"ClosestValid", -- search through pierce
 	"ClosestFound", --
 	"ClosestFile", --
@@ -148,6 +154,26 @@ Transfer = {
 	"Eval", -- call datxEval
 	"Echo", -- copy result to center
 	"Fill", -- copy instance to center
+}
+Active = {
+	"Setup",
+	"Upset",
+}
+Sticky = {
+	"North",
+	"East",
+	"South",
+	"West",
+}
+Action = {
+	"Move",
+	"Transform",
+	"Refine",
+	"Sculpt",
+}
+Modify = {
+	"Additive",
+	"Subtractive",
 }
 Effect = {
 	"Slide",
