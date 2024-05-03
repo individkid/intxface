@@ -35,9 +35,9 @@ struct MainState {
     bool resizeNeeded;
     bool escapeEnter;
     std::deque<int> keyPressed;
-    // Cursor cursorMode;
-    bool windowMoving;
-    bool windowResizing;
+    enum Action mouseAction;
+    enum Active mouseActive;
+    bool mouseSticky[Stickys];
     double mouseLeft;
     double mouseBase;
     double windowLeft;
@@ -72,8 +72,8 @@ struct MainState {
 } mainState = {
     .resizeNeeded = true,
     .escapeEnter = false,
-    .windowMoving = false,
-    .windowResizing = false,
+    .mouseAction = Move,
+    .mouseActive = Setup,
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .windowLeft = 0.0,
@@ -235,13 +235,16 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     // glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     // glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     // TODO use Configure Manipulate* for the following instead
-    if (!mainState->windowMoving && !mainState->windowResizing) {
-        mainState->windowMoving = true; mainState->windowResizing = false;
-    } else if (mainState->windowMoving && !mainState->windowResizing) {
-        mainState->windowMoving = false; mainState->windowResizing = true;
-    } else if (!mainState->windowMoving && mainState->windowResizing) {
-        mainState->windowMoving = false; mainState->windowResizing = false;
-    } else throw std::runtime_error("unsupported resize move mode!");
+    if (mainState->mouseAction == Move && mainState->mouseActive == Setup) {
+        mainState->mouseActive = Upset;
+        mainState->mouseSticky[North] = mainState->mouseSticky[East] = true;
+        mainState->mouseSticky[South] = mainState->mouseSticky[West] = true;
+    } else if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
+        mainState->mouseSticky[North]) {
+        mainState->mouseSticky[North] = mainState->mouseSticky[West] = false;
+    } else {
+        mainState->mouseActive = Setup;
+    }
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -252,14 +255,19 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     glfwGetWindowPos(window,&tempx,&tempy);
     // TODO adjust the matrix at ManipulateMatrix to keep points fixed when window moves or resizes
     // TODO allow edge sets other than East/South and North/East/South/West to move
-    if (mainState->windowMoving && mainState->windowLeft == tempx && mainState->windowBase == tempy) {
+    if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
+        mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
+        mainState->mouseSticky[South] && mainState->mouseSticky[West] &&
+        mainState->windowLeft == tempx && mainState->windowBase == tempy) {
         windowNextx = mainState->windowLeft + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowBase + (mouseNexty - mainState->mouseBase);
         // mainState->windowLeft = windowNextx; mainState->windowBase = windowNexty;
         // mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
         tempx = windowNextx; tempy = windowNexty; glfwSetWindowPos(window,tempx,tempy);
     }
-    if (mainState->windowResizing) {
+    if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
+        !mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
+        mainState->mouseSticky[South] && !mainState->mouseSticky[West]) {
         windowNextx = mainState->windowWidth + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowHeight + (mouseNexty - mainState->mouseBase);
         mainState->windowWidth = windowNextx; mainState->windowHeight = windowNexty;

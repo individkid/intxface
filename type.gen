@@ -100,6 +100,19 @@ Configure = {
 	"OriginBase", --
 	"OriginNear", --
 	"OriginAngle", --
+	"CursorLeft", -- user input mouse
+	"CursorBase", --
+	"CursorNear", --
+	"CursorAngle", --
+	"CursorClick", --
+	"WindowLeft", -- window initialization
+	"WindowBase", --
+	"WindowWide", --
+	"WindowHigh", --
+	"WindowNear", --
+	"WindowFar", --
+	"WindowLength", --
+	"KeyboardPress", -- user input keyboard
 	"ClosestFind", -- whether to search or index
 	"ClosestValid", -- search through pierce
 	"ClosestFound", --
@@ -110,19 +123,6 @@ Configure = {
 	"NormalLeft", --
 	"NormalBase", --
 	"NormalNear", --
-	"WindowLeft", -- window initialization
-	"WindowBase", --
-	"WindowWide", --
-	"WindowHigh", --
-	"WindowNear", --
-	"WindowFar", --
-	"WindowLength", --
-	"CursorLeft", -- user input mouse
-	"CursorBase", --
-	"CursorNear", --
-	"CursorAngle", --
-	"CursorClick", --
-	"KeyboardPress", -- user input keyboard
 	"CenterMemory", -- fields to from client
 	"CenterSize", --
 	"CenterIndex", --
@@ -166,10 +166,10 @@ Sticky = {
 	"West",
 }
 Action = {
-	"Move",
-	"Transform",
+	"Move", -- modified by Active and Sticky
+	"Transform", -- modified by Acvive Tool Fixed Effect
 	"Refine",
-	"Sculpt",
+	"Sculpt", -- modified by Modify
 }
 Modify = {
 	"Additive",
