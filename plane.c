@@ -850,20 +850,22 @@ void planraWake(enum Configure hint)
 		for (int i = 0; i < num; i++) callDma(testCenter+i);
 		callDraw(MicroPRB,0,6);
 	}
-    /*if (mainState->mouseAction == Move && mainState->mouseActive == Setup) {
-        mainState->mouseActive = Upset;
-        mainState->mouseSticky[North] = mainState->mouseSticky[East] = true;
-        mainState->mouseSticky[South] = mainState->mouseSticky[West] = true;
-    } else if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
-        mainState->mouseSticky[North]) {
-        mainState->mouseSticky[North] = mainState->mouseSticky[West] = false;
-    } else {
-        mainState->mouseActive = Setup;
-    }*/
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
 		enum Configure cfg[2] = {ManipulateActive,ManipulateMask}; int val[2] = {Upset,15};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 2; center.slf = 1;
+		center.cfg = cfg; center.val = val; callDma(&center);
+	}
+	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 15) {
+		enum Configure cfg[1] = {ManipulateMask}; int val[1] = {6};
+		struct Center center; center.mem = Configurez;
+		center.idx = 0; center.siz = 1; center.slf = 1;
+		center.cfg = cfg; center.val = val; callDma(&center);
+	}
+	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 6) {
+		enum Configure cfg[1] = {ManipulateActive}; int val[1] = {Setup};
+		struct Center center; center.mem = Configurez;
+		center.idx = 0; center.siz = 1; center.slf = 1;
 		center.cfg = cfg; center.val = val; callDma(&center);
 	}
 }

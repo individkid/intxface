@@ -234,17 +234,6 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
     // glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     // glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
-    // TODO use Configure Manipulate* for the following instead
-    /*if (mainState->mouseAction == Move && mainState->mouseActive == Setup) {
-        mainState->mouseActive = Upset;
-        mainState->mouseSticky[North] = mainState->mouseSticky[East] = true;
-        mainState->mouseSticky[South] = mainState->mouseSticky[West] = true;
-    } else if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
-        mainState->mouseSticky[North]) {
-        mainState->mouseSticky[North] = mainState->mouseSticky[West] = false;
-    } else {
-        mainState->mouseActive = Setup;
-    }*/
     planeSafe(Threads,Waits,CursorClick);
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
@@ -1671,6 +1660,9 @@ int vulkanInfo(enum Configure query)
     break; case(KeyboardPress): {if (mainState.keyPressed.empty()) return 0;
     int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
     break; case(ManipulateActive): return mainState.mouseActive;
+    break; case (ManipulateMask): {int mask = 0;
+    for (int i = 0; i < Stickys; i++) if (mainState.mouseSticky[(Sticky)i]) mask |= (1<<i);
+    return mask;}
     }
     return 0;
 }
@@ -1745,7 +1737,7 @@ void vulkanDma(struct Center *center)
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else mainState.keyPressed.push_front(center->val[i]);
     break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i];
-    break; case (ManipulateMask): for (int i = 0; i < Stickys; i++) mainState.mouseSticky[(Sticky)i] = ((center->val[i]&(1<<i)) != 0);
+    break; case (ManipulateMask): for (int j = 0; j < Stickys; j++) mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0);
     }}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
