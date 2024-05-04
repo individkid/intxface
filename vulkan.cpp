@@ -74,6 +74,7 @@ struct MainState {
     .escapeEnter = false,
     .mouseAction = Move,
     .mouseActive = Setup,
+    .mouseSticky = {false,false,false,false},
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .windowLeft = 0.0,
@@ -95,23 +96,29 @@ struct MainState {
 
 // TODO add type.h enum for these builtin cursors
 GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
-    int dim = 11;
+    int dim = 17; //21; //11;
     int hot = dim/2;
+    int box = 3;
     unsigned char pixels[dim * dim * 4];
     memset(pixels, 0x00, sizeof(pixels));
 
     for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        // top and bottom
         if (k == 0 || k == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
+        // left and right
         if (j == 0 || j == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
-        if (k == hot-2 && j >= hot-1 && j <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
-        if (j == hot-2 && k >= hot-1 && k <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
-        if (k == hot+2 && j >= hot-1 && j <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
-        if (j == hot+2 && k >= hot-1 && k <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
-        if (e && k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1) pixels[k*dim*4+j*4+i] = 0xff;
-        if (t && k > hot+2 && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if (r && j > hot+2 && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if (b && k < hot-2 && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if (l && j < hot-2 && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        // close box
+        if (k == hot-(box+1) && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot-(box+1) && k >= hot-box && k <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        if (k == hot+(box+1) && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot+(box+1) && k >= hot-box && k <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        // open box
+        if (e && k >= hot-box && k <= hot+box && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        // cross marks
+        if (t && k < hot-box && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (r && j > hot+box && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (b && k > hot+box && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (l && j < hot-box && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
     }
 
     GLFWimage image;
@@ -388,7 +395,7 @@ struct OpenState {
         refineCursor = ::refineCursor();
         for (int e = 0; e < 2; e++) sculptCursor[e] = ::sculptCursor(e);
         standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        glfwSetCursor(window,moveCursor[true][true][true][true][true]);
+        setCursor(mainState->mouseAction,mainState->mouseActive,mainState->mouseSticky);
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
             throw std::runtime_error("failed to create window surface!");
     }
@@ -403,6 +410,12 @@ struct OpenState {
         for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
         glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
+    }
+    void setCursor(enum Action mouseAction, enum Active mouseActive, bool mouseSticky[Stickys]) {
+        switch (mouseAction) {default: ERROR();
+        break; case(Move): glfwSetCursor(window,moveCursor[mouseActive==Upset?1:0]
+            [mouseSticky[North]][mouseSticky[East]][mouseSticky[South]][mouseSticky[West]]);
+        }
     }
 };
 
@@ -1737,7 +1750,9 @@ void vulkanDma(struct Center *center)
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else mainState.keyPressed.push_front(center->val[i]);
     break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i];
+    mainState.openState->setCursor(mainState.mouseAction,mainState.mouseActive,mainState.mouseSticky);
     break; case (ManipulateMask): for (int j = 0; j < Stickys; j++) mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0);
+    mainState.openState->setCursor(mainState.mouseAction,mainState.mouseActive,mainState.mouseSticky);
     }}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
