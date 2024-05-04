@@ -267,11 +267,8 @@ Operate = {
 	"IrxOp", -- irrex sugar
 	"CmpOp", -- compile for map
 	"DatOp", -- memset Dat
-	"MapOp", -- map Dat to Dat
-	"InpOp",
-	"DupOp",
-	"InsOp",
-	"DelOp",
+	"PopOp",
+	"PutOp",
 	"OutOp",
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
@@ -639,11 +636,7 @@ Express = {
 	{"cmp","Express",{["opr"]={["CmpOp"]=true}},1},
 	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
-	{"map","Express",{["opr"]={["MapOp"]=true}},6}, -- src:Dat dst:Dat rev:Int fwd:Int idx:Int jdx:Idx :Dat
-	{"dat","Express",{["opr"]={["MapOp"]=true}},2}, -- siz:Int val:Str :Int
-	{"dup","Express",{["opr"]={["DupOp"]=true}},3}, -- len:Int idx:Int loc:Int :Str
-	{"ins","Express",{["opr"]={["InsOp"]=true}},4}, -- str:Str len:Int idx:Int loc:Int :Dat
-	{"del","Express",{["opr"]={["DelOp"]=true}},3}, -- len:Int idx:Int loc:Int :Dat
+	{"put","Express",{["opr"]={["OutOp"]=true}},1}, -- str:Str :Dat
 	{"out","Express",{["opr"]={["OutOp"]=true}},1}, -- str:Str :Dat
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4}, -- giv:Gen val:Het str:Hom idx:Hom :Gen
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},

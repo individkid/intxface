@@ -12,6 +12,7 @@ struct WrapClose : Close {
 	std::function<wrapFunc> fnc;
 	static char *str;
 	static int val;
+	static int ret;
 	WrapClose(std::function<wrapFunc> _fnc, int n, int m) {
 		Close::n = n; a = (struct Para *)calloc(n,sizeof(struct Para));
 		Close::m = m; b = (struct Para *)calloc(m,sizeof(struct Para));

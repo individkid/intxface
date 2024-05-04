@@ -623,30 +623,6 @@ int datxDatcmp(int siz, void *exp)
 		ptr->rev[sum] = i;}
 	free(vec); return idx;
 }
-void datxDatexe(void *src, void *dst, int rev, int fwd, int idx, int jdx)
-{
-	struct Datex *ptr = 0; struct Datex *qtr = 0;
-	if (rev < 0 || rev >= datsiz || fwd < 0 || fwd >= datsiz) ERROR();
-	ptr = &datexp[rev]; qtr = &datexp[fwd];
-	if (ptr->idx < 0 || qtr->idx < 0) ERROR();
-	for (int i = 0; i < datxChrs(dst); i++) {
-		int fnd = 1; int inc = 1; int sum = 0; int *vec = 0; int id = 0; int jd = 0;
-		jd = qtr->idx+i; jd %= qtr->siz; jd *= qtr->dim;
-		if (jd < 0 || jd >= qtr->fsz) ERROR();
-		vec = qtr->fwd+jd;
-		for (int j = 0; j < ptr->dim && j < qtr->dim; j++)
-			if (vec[j] < ptr->min[j] || vec[j] > ptr->max[j])
-				fnd = 0;
-		if (!fnd) continue;
-		for (int j = 0; j < ptr->dim && j < qtr->dim; j++) {
-			sum += (vec[j]-ptr->min[j])*inc;
-			inc *= ptr->max[j]-ptr->min[j]+1;}
-		if (sum < 0 || sum >= ptr->rsz) ERROR();
-		id = ptr->rev[sum] - ptr->idx%ptr->siz;
-		if (id < 0 || id >= datxChrs(src)) continue;
-		*datxChrz(i,dst) = *datxChrz(id,src);}
-	ptr->idx += idx; qtr->idx += jdx;
-}
 // int debug = 0;
 int datxEval(void **dat, struct Express *exp, int typ)
 {
@@ -777,47 +753,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (DatOp): {
 		if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
 		datxVoid(dat,exp->dsz); for (int i = 0; i < exp->dsz; i++) *datxChrz(i,dat) = exp->dvl;} break;
-	case (MapOp): {
-		if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
-		int typ0 = 0; void *dat0 = 0; void *src = 0; void *dst = 0; int rev = 0; int fwd = 0; int idx = 0; int jdx = 0;
-		typ0 = datxEval(&dat0,exp->dup+0,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(&src,dat0);
-		typ0 = datxEval(&dat0,exp->dup+1,identType("Dat")); if (typ0 != identType("Dat")) ERROR(); assignDat(dat,dat0);
-		typ0 = datxEval(&dat0,exp->map+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); rev = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->dup+3,identType("Int")); if (typ0 != identType("Int")) ERROR(); fwd = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->map+4,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->dup+5,identType("Int")); if (typ0 != identType("Int")) ERROR(); jdx = *datxIntz(0,dat0);
-		datxDatexe(src,*dat,rev,fwd,idx,jdx);} break;
-	case (InpOp): {
+	case (PopOp): {
 		int typ0 = 0;
 		datxInt(datxDat0,-1); datxInt(datxDat1,2); datxInt(datxDat2,0);
-		if (!ptrx[DupstrCb]) ERROR(); datxUnwrap(DupstrCb);
+		if (!ptrx[PopstrCb]) ERROR(); datxUnwrap(PopstrCb);
 		typ0 = identType("Str"); assignDat(dat,*datxDat0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (DupOp): {
-		int typ0 = 0; void *dat0 = 0; char *str = 0; int len = 0; int idx = 0; int loc = 0;
-		typ0 = datxEval(&dat0,exp->dup,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->dup+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->dup+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
-		datxInt(datxDat0,len); datxInt(datxDat1,idx); datxInt(datxDat2,loc);
-		if (!ptrx[DupstrCb]) ERROR(); datxUnwrap(DupstrCb);
-		typ0 = identType("Str"); assignDat(dat,*datxDat0);
-		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (InsOp): {
-		int typ0 = 0; void *dat0 = 0; char *str = 0; int len = 0; int idx = 0; int loc = 0;
-		typ0 = datxEval(&dat0,exp->ins,identType("Str")); if (typ0 != identType("Str")) ERROR(); assignStr(&str,datxChrz(0,dat0));
-		typ0 = datxEval(&dat0,exp->ins+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->ins+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->ins+3,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
-		datxStr(datxDat0,str); free(str); datxInt(datxDat1,len); datxInt(datxDat2,idx); datxInt(datxDat3,loc);
-		if (!ptrx[InsstrCb]) ERROR(); datxUnwrap(InsstrCb);
-		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (DelOp): {
-		int typ0 = 0; void *dat0 = 0; int len = 0; int idx = 0; int loc = 0;
-		typ0 = datxEval(&dat0,exp->del,identType("Int")); if (typ0 != identType("Int")) ERROR(); len = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->del+1,identType("Int")); if (typ0 != identType("Int")) ERROR(); idx = *datxIntz(0,dat0);
-		typ0 = datxEval(&dat0,exp->del+2,identType("Int")); if (typ0 != identType("Int")) ERROR(); loc = *datxIntz(0,dat0);
-		datxInt(datxDat0,len); datxInt(datxDat1,idx); datxInt(datxDat2,loc);
-		if (!ptrx[DelstrCb]) ERROR(); datxUnwrap(DelstrCb);
+	case (PutOp): {
+		int typ0 = 0;
+		typ0 = datxEval(datxDat0,exp->out,identType("Str")); if (typ0 != identType("Str")) ERROR();
+		if (!ptrx[PutstrCb]) ERROR(); datxUnwrap(PutstrCb);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (OutOp): {
 		int typ0 = 0;

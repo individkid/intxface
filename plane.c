@@ -83,11 +83,9 @@ sem_t resource;
 sem_t pending;
 sem_t ready[Threads];
 void planeRead();
-void planeDupstr(char **ptr, int len, int idx, int loc);
-void planeInsstr(const char *src, int len, int idx, int loc);
-void planeDelstr(int len, int idx, int loc);
+char *planePop();
+void planePut(const char *str);
 void planeOutstr(const char *str);
-void planeAddarg(const char *str);
 int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
@@ -508,60 +506,28 @@ void planeRead()
 	if (num) readCenter(&center,internal);
 	else {struct Center tmp = {0}; center = tmp;}
 }
-void planeDupstr(char **ptr, int len, int idx, int loc)
+char *planePopstr() // non-const return means caller owns it
 {
+	char *ret;
 	sem_wait(&resource);
-	while (strsiz <= idx) {strsiz++; string = realloc(string,strsiz*sizeof(char*)); string[strsiz-1] = strdup("");}
-	if (len < 0) len = strlen(string[idx])+1+len; if (idx < 0) idx = strsiz+idx; if (loc < 0) loc = strlen(string[idx])+1+loc;
-	// TODO check for errors in len idx loc
-	*ptr = strndup(string[idx],len);
+	ret = strdup(string[0]);
+	strsiz--;
+	for (int i = 0; i < strsiz; i++) string[i] = string[i+1];
+	string = realloc(string,strsiz*sizeof(char*));
 	sem_post(&resource);
+	return ret;
 }
-void planeInsstr(const char *src, int len, int idx, int loc)
-{
-	int num = 0; for (int i = 0; i < len; i++) if (!src[i]) num++;
-	sem_wait(&resource);
-	while (strsiz <= idx) {strsiz++; string = realloc(string,strsiz*sizeof(char*)); string[strsiz-1] = strdup("");}
-	if (len < 0) len = strlen(src)+1+len; if (idx < 0) idx = strsiz+idx; if (loc < 0) loc = strlen(string[idx])+1+loc;
-	// TODO check for errors in len idx loc
-	strsiz += num; string = realloc(string,strsiz*sizeof(char*));
-	for (int i = strsiz-1; i > idx+num; i--) string[i] = string[i-num];
-	for (int i = idx+1; i < idx+1+num; i++) string[i] = strdup("");
-	if (num > 0) {
-		char *str = 0;
-		free(string[idx+num]); string[idx+num] = strdup(string[idx]+loc);
-		string[idx][loc] = 0; str = strdup(string[idx]);
-		free(string[idx]); string[idx] = str;}
-	while (num > 0) {
-		char *str = 0; char *tmp = 0;
-		str = malloc(loc+strlen(src)+strlen(string[idx]+loc)+1); tmp = strdup(string[idx]+loc);
-		strncpy(str,string[idx],loc); strcat(str,src); strcat(str,tmp);
-		free(tmp); free(string[idx]); string[idx] = str;
-		strmsk |= 1<<idx; src += strlen(src)+1; len -= strlen(src)+1; idx++; loc = 0; num--;}
-	if (len > 0) {
-		char *str = 0; char *tmp = 0;
-		str = malloc(loc+strlen(src)+len+strlen(string[idx]+loc)+1); tmp = strdup(string[idx]+loc);
-		strncpy(str,string[idx],loc); strncat(str,src,len); strcat(str,tmp);
-		free(tmp); free(string[idx]); string[idx] = str;
-		strmsk |= 1<<idx; src = 0; len = 0; idx++; loc = 0;}
-	sem_post(&resource);
-	planeSafe(Threads,Waits,StringMask);
-}
-void planeDelstr(int len, int idx, int loc)
-{
-	ERROR(); // TODO
-}
-void planeOutstr(const char *str)
-{
-	write(STDIN_FILENO,str,strlen(str));
-}
-void planeAddarg(const char *str)
+void planePutstr(const char *str) // const given means caller owns it
 {
 	sem_wait(&resource);
 	strsiz++;
 	string = realloc(string,strsiz*sizeof(char*));
 	string[strsiz-1] = strdup(str);
 	sem_post(&resource);
+}
+void planeOutstr(const char *str)
+{
+	write(STDIN_FILENO,str,strlen(str));
 }
 void planeSetcfg(int val, int sub)
 {
@@ -579,7 +545,7 @@ void planeTerm(int sig)
 }
 void *planeSelect(void *ptr)
 {
-	char *str = 0; planeDupstr(&str,-1,1,0);
+	char *str = 0; // FIXME planeDupstr(&str,-1,1,0);
 	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[Select]);
 	while (1) {
@@ -615,7 +581,8 @@ void *planeConsole(void *ptr)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	planeDupstr(&str,-1,2,0); planeInsstr(chr,1,2,strlen(str)); free(str);}
+	// planeDupstr(&str,-1,2,0); planeInsstr(chr,1,2,strlen(str)); free(str); // FIXME
+	}
 	planeSafe(Console,Stop,Configures);
 	return 0;
 }

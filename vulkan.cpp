@@ -39,7 +39,6 @@ struct MainState {
     enum Active mouseActive;
     bool mouseSticky[Stickys];
     enum Modify mouseModify;
-    enum Effect mouseEffect;
     double mouseLeft;
     double mouseBase;
     double windowLeft;
@@ -78,7 +77,6 @@ struct MainState {
     .mouseActive = Setup,
     .mouseSticky = {false,false,false,false},
     .mouseModify = Additive,
-    .mouseEffect = Slide,
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .windowLeft = 0.0,
@@ -364,7 +362,6 @@ struct OpenState {
     GLFWmonitor* monitor;
     GLFWcursor* moveCursor[2][2][2][2][2];
     GLFWcursor* rotateCursor[2];
-    GLFWcursor* translateCursor[2];
     GLFWcursor* refineCursor;
     GLFWcursor* sculptCursor[2];
     GLFWcursor* standardCursor;
@@ -394,11 +391,10 @@ struct OpenState {
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = ::moveCursor(e,t,r,b,l);
         for (int e = 0; e < 2; e++) rotateCursor[e] = ::rotateCursor(e);
-        for (int e = 0; e < 2; e++) translateCursor[e] = ::translateCursor(e);
         refineCursor = ::refineCursor();
         for (int e = 0; e < 2; e++) sculptCursor[e] = ::sculptCursor(e);
         standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        setCursor(mainState);
+        setCursor();
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
             throw std::runtime_error("failed to create window surface!");
     }
@@ -408,25 +404,22 @@ struct OpenState {
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) glfwDestroyCursor(moveCursor[e][t][r][b][l]);
         for (int e = 0; e < 2; e++) glfwDestroyCursor(rotateCursor[e]);
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(translateCursor[e]);
         glfwDestroyCursor(refineCursor);
         for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
         glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
     }
-    void setCursor(MainState *ptr) {
-        int e = (ptr->mouseActive==Upset?1:0);
-        int t = (ptr->mouseSticky[North]?1:0);
-        int r = (ptr->mouseSticky[East]?1:0);
-        int b = (ptr->mouseSticky[South]?1:0);
-        int l = (ptr->mouseSticky[West]?1:0);
-        int m = (ptr->mouseModify?1:0);
-        switch (ptr->mouseAction) {default: ERROR();
+    void setCursor() {
+        struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+        int e = (mainState->mouseActive==Upset?1:0);
+        int t = (mainState->mouseSticky[North]?1:0);
+        int r = (mainState->mouseSticky[East]?1:0);
+        int b = (mainState->mouseSticky[South]?1:0);
+        int l = (mainState->mouseSticky[West]?1:0);
+        int m = (mainState->mouseModify?1:0);
+        switch (mainState->mouseAction) {default: ERROR();
         break; case(Move): glfwSetCursor(window,moveCursor[e][t][r][b][l]);
-        break; case(Transform): switch (ptr->mouseEffect) {default: ERROR();
-        break; case(Slide): glfwSetCursor(window,translateCursor[e]);
-        break; case(Rotate): glfwSetCursor(window,rotateCursor[e]);
-        break; case(Scale): glfwSetCursor(window,translateCursor[e]);} // TODO make scale cursor
+        break; case(Transform): glfwSetCursor(window,rotateCursor[e]);
         break; case(Refine): glfwSetCursor(window,refineCursor);
         break; case(Sculpt): glfwSetCursor(window,sculptCursor[m]);}
     }
@@ -1698,7 +1691,7 @@ void vulkanSafe()
 }
 void vulkanInit()
 {
-    for (int arg = 0; arg < mainState.argc; arg++) planeAddarg(mainState.argv[arg]);
+    for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
     mainState.initState = new InitState(mainState.enable,mainState.layers);
 }
 void vulkanMain(enum Thread proc, enum Wait wait)
@@ -1763,16 +1756,14 @@ void vulkanDma(struct Center *center)
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else mainState.keyPressed.push_front(center->val[i]);
     break; case(ManipulateAction): mainState.mouseAction = (Action)center->val[i];
-    mainState.openState->setCursor(&mainState);
+    mainState.openState->setCursor();
     break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i];
-    mainState.openState->setCursor(&mainState);
+    mainState.openState->setCursor();
     break; case (ManipulateMask): for (int j = 0; j < Stickys; j++)
     mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0);
-    mainState.openState->setCursor(&mainState);
+    mainState.openState->setCursor();
     break; case(ManipulateModify): mainState.mouseModify = (Modify)center->val[i];
-    mainState.openState->setCursor(&mainState);
-    break; case(ManipulateEffect): mainState.mouseEffect = (Effect)center->val[i];
-    mainState.openState->setCursor(&mainState);
+    mainState.openState->setCursor();
     }}
 }
     enum Action mouseAction;

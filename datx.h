@@ -1,7 +1,7 @@
 #include <stdint.h>
 typedef void (*rktype)(void *dat);
 typedef int (*rltype)(void **dat, const char *str);
-enum Callback {SetcfgCb,GetcfgCb,DupstrCb,InsstrCb,DelstrCb,OutstrCb,Callbacks};
+enum Callback {SetcfgCb,GetcfgCb,PutstrCb,PopstrCb,OutstrCb,Callbacks};
 int datxSub();
 void **datxDat(int sub);
 int datxReadFp(int fildes, void *buf, int nbyte);
