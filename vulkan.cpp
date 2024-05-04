@@ -38,6 +38,8 @@ struct MainState {
     enum Action mouseAction;
     enum Active mouseActive;
     bool mouseSticky[Stickys];
+    enum Modify mouseModify;
+    enum Effect mouseEffect;
     double mouseLeft;
     double mouseBase;
     double windowLeft;
@@ -75,6 +77,8 @@ struct MainState {
     .mouseAction = Move,
     .mouseActive = Setup,
     .mouseSticky = {false,false,false,false},
+    .mouseModify = Additive,
+    .mouseEffect = Slide,
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .windowLeft = 0.0,
@@ -94,7 +98,6 @@ struct MainState {
     .registerDone = 0,
 };
 
-// TODO add type.h enum for these builtin cursors
 GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
     int dim = 13;
     int hot = dim/2;
@@ -395,7 +398,7 @@ struct OpenState {
         refineCursor = ::refineCursor();
         for (int e = 0; e < 2; e++) sculptCursor[e] = ::sculptCursor(e);
         standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        setCursor(mainState->mouseAction,mainState->mouseActive,mainState->mouseSticky);
+        setCursor(mainState);
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
             throw std::runtime_error("failed to create window surface!");
     }
@@ -411,11 +414,21 @@ struct OpenState {
         glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
     }
-    void setCursor(enum Action mouseAction, enum Active mouseActive, bool mouseSticky[Stickys]) {
-        switch (mouseAction) {default: ERROR();
-        break; case(Move): glfwSetCursor(window,moveCursor[mouseActive==Upset?1:0]
-            [mouseSticky[North]][mouseSticky[East]][mouseSticky[South]][mouseSticky[West]]);
-        }
+    void setCursor(MainState *ptr) {
+        int e = (ptr->mouseActive==Upset?1:0);
+        int t = (ptr->mouseSticky[North]?1:0);
+        int r = (ptr->mouseSticky[East]?1:0);
+        int b = (ptr->mouseSticky[South]?1:0);
+        int l = (ptr->mouseSticky[West]?1:0);
+        int m = (ptr->mouseModify?1:0);
+        switch (ptr->mouseAction) {default: ERROR();
+        break; case(Move): glfwSetCursor(window,moveCursor[e][t][r][b][l]);
+        break; case(Transform): switch (ptr->mouseEffect) {default: ERROR();
+        break; case(Slide): glfwSetCursor(window,translateCursor[e]);
+        break; case(Rotate): glfwSetCursor(window,rotateCursor[e]);
+        break; case(Scale): glfwSetCursor(window,translateCursor[e]);} // TODO make scale cursor
+        break; case(Refine): glfwSetCursor(window,refineCursor);
+        break; case(Sculpt): glfwSetCursor(window,sculptCursor[m]);}
     }
 };
 
@@ -1749,12 +1762,24 @@ void vulkanDma(struct Center *center)
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else mainState.keyPressed.push_front(center->val[i]);
+    break; case(ManipulateAction): mainState.mouseAction = (Action)center->val[i];
+    mainState.openState->setCursor(&mainState);
     break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i];
-    mainState.openState->setCursor(mainState.mouseAction,mainState.mouseActive,mainState.mouseSticky);
-    break; case (ManipulateMask): for (int j = 0; j < Stickys; j++) mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0);
-    mainState.openState->setCursor(mainState.mouseAction,mainState.mouseActive,mainState.mouseSticky);
+    mainState.openState->setCursor(&mainState);
+    break; case (ManipulateMask): for (int j = 0; j < Stickys; j++)
+    mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0);
+    mainState.openState->setCursor(&mainState);
+    break; case(ManipulateModify): mainState.mouseModify = (Modify)center->val[i];
+    mainState.openState->setCursor(&mainState);
+    break; case(ManipulateEffect): mainState.mouseEffect = (Effect)center->val[i];
+    mainState.openState->setCursor(&mainState);
     }}
 }
+    enum Action mouseAction;
+    enum Active mouseActive;
+    bool mouseSticky[Stickys];
+    enum Modify mouseModify;
+    enum Effect mouseEffect;
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
     std::vector<BufferState*> buffer;

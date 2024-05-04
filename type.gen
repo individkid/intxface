@@ -83,14 +83,14 @@ Configure = {
 	"ArgumentMicro", -- pass to draw
 	"ArgumentBase", --
 	"ArgumentLimit", --
-	"ManipulateTool", -- which function
-	"ManipulateEffect", -- which changed
-	"ManipulateFixed", -- which fixed
 	"ManipulateMatrix", -- index for window
+	"ManipulateAction", -- what mouse does
 	"ManipulateActive", -- whether changing
 	"ManipulateMask", -- which edges moved
-	"ManipulateAction", -- what mouse does
 	"ManipulateModify", -- how to sculpt
+	"ManipulateEffect", -- how to transform
+	"ManipulateTool", -- which function
+	"ManipulateFixed", -- which fixed
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
 	"ResultLine", -- state of machine
@@ -167,7 +167,7 @@ Sticky = {
 }
 Action = {
 	"Move", -- modified by Active and Sticky
-	"Transform", -- modified by Acvive Tool Fixed Effect
+	"Transform", -- modified by Acvive Fixed Effect
 	"Refine",
 	"Sculpt", -- modified by Modify
 }
