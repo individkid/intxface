@@ -579,7 +579,8 @@ void planeTerm(int sig)
 }
 void *planeSelect(void *ptr)
 {
-	char *str = 0; planeDupstr(&str,-1,1,0); if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
+	char *str = 0; planeDupstr(&str,-1,1,0);
+	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[Select]);
 	while (1) {
 	struct Center center = {0};

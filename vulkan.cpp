@@ -96,9 +96,9 @@ struct MainState {
 
 // TODO add type.h enum for these builtin cursors
 GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
-    int dim = 17; //21; //11;
+    int dim = 13;
     int hot = dim/2;
-    int box = 3;
+    int box = 1;
     unsigned char pixels[dim * dim * 4];
     memset(pixels, 0x00, sizeof(pixels));
 
