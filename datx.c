@@ -61,7 +61,9 @@ int datxUnwrap(enum Callback cb)
 		case (Utype): arg->a[i].u = datxChrz(0,*datxSwitch(i)); break;
 		default: ERROR();}
 	wrapCallback(arg);
-	for (int i = 0; i < arg->m; i++) if (arg->c[i] == 0) switch (arg->b[i].t) {
+	int vld = (arg->i < 0 || arg->i >= arg->m || arg->b[arg->i].i == 0 ? 1 : 0);
+	if (!vld) ERROR();
+	for (int i = 0; i < arg->m; i++) switch (arg->b[i].t) {
 		case (Itype): datxInt(datxSwitch(i),arg->b[i].i); break;
 		case (Jtype): datxInt32(datxSwitch(i),arg->b[i].j); break;
 		case (Ktype): datxNew(datxSwitch(i),arg->b[i].k); break;
@@ -69,7 +71,7 @@ int datxUnwrap(enum Callback cb)
 		case (Ntype): datxOld(datxSwitch(i),arg->b[i].n); break;
 		case (Utype): datxStr(datxSwitch(i),arg->b[i].u); break;
 		case (Vtype): datxStr(datxSwitch(i),arg->b[i].v); break;
-		default: ERROR();} else ERROR();
+		default: ERROR();}
 	return arg->m;
 }
 void datxWrap(enum Callback cb, const struct Close *arg)

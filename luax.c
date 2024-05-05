@@ -92,7 +92,9 @@ int luaxUnwrap(lua_State *L)
 		default: ERROR();}
 	wrapCallback(arg);
 	lua_pop(L,arg->n);
-	for (int i = 0; i < arg->m; i++) if (arg->c[i] == 0) switch (arg->b[i].t) {
+	int vld = (arg->i < 0 || arg->i >= arg->m || arg->b[arg->i].i == 0 ? 1 : 0);
+	if (!vld) lua_pushnil(L);
+	for (int i = !vld; i < arg->m; i++) switch (arg->b[i].t) {
 		case (Itype): lua_pushinteger(L,arg->b[i].i); break;
 		case (Jtype): lua_pushinteger(L,arg->b[i].j); break;
 		case (Ktype): lua_pushinteger(L,arg->b[i].k); break;
@@ -100,7 +102,7 @@ int luaxUnwrap(lua_State *L)
 		case (Ntype): lua_pushnumber(L,arg->b[i].n); break;
 		case (Utype): lua_pushstring(L,arg->b[i].u); break;
 		case (Vtype): lua_pushstring(L,arg->b[i].v); break;
-		default: ERROR();} else {lua_pushnil(L); arg->c[i] = 0;}
+		default: ERROR();}
 	return arg->m;
 }
 void luaxWrap(lua_State *L, const char *str, const struct Close *arg)

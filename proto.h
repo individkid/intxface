@@ -66,9 +66,8 @@ struct Para {
 	};
 };
 struct Close {
-	int n,m;
+	int n,m,i;
 	struct Para *a,*b;
-	int *c;
 };
 
 typedef void (*chtype)();

@@ -11,11 +11,19 @@ struct WrapClose; typedef void wrapFunc(const struct WrapClose *arg);
 struct WrapClose : Close {
 	std::function<wrapFunc> fnc;
 	static char *str;
+	WrapClose(std::function<wrapFunc> _fnc, int n, int m, int i) {
+		init(_fnc,n,m,i);
+	}
 	WrapClose(std::function<wrapFunc> _fnc, int n, int m) {
+		init(_fnc,n,m,m);
+	}
+	void init(std::function<wrapFunc> _fnc, int n, int m, int i) {
 		Close::n = n; a = (struct Para *)calloc(n,sizeof(struct Para));
 		Close::m = m; b = (struct Para *)calloc(m,sizeof(struct Para));
-		c = (int*)calloc(m,sizeof(int)); memset(c,0,m*sizeof(int));
-		fnc = _fnc; str = 0;
+		Close::i = i; fnc = _fnc; str = 0;
+	}
+	~WrapClose() {
+		free(a); free(b);
 	}
 	WrapClose *ia(int sub) {if (sub < 0 || sub >= Close::n) ERROR(); a[sub].t = Para::Itype; return this;}
 	WrapClose *ja(int sub) {if (sub < 0 || sub >= Close::n) ERROR(); a[sub].t = Para::Jtype; return this;}
@@ -60,7 +68,6 @@ struct WrapClose : Close {
 		if (src < 0 || src >= Close::n || a[src].t != Para::Itype) ERROR();
 		if (dst < 0 || dst >= Close::m || b[dst].t != Para::Itype) ERROR();
 		b[dst].i = a[src].i; return b[dst].i;}
-	int &r(int sub) const {if (sub < 0 || sub >= Close::m) ERROR(); return c[sub];}
 };
 
 

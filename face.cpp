@@ -127,15 +127,15 @@ void wrapFace(lua_State *L)
 	luaxWrap(L,"showEnum",(new WrapClose([](const struct WrapClose *arg) -> void {showEnum(arg->u(0),arg->u(1),&arg->s_(2));arg->s(0);},3,1))->ua(0)->ua(1)->ua(2)->vb(0));
 	luaxWrap(L,"showOpen",(new WrapClose([](const struct WrapClose *arg) -> void {showOpen(arg->u(0),&arg->s_(1));arg->s(0);},2,1))->ua(0)->ua(1)->vb(0));
 	luaxWrap(L,"showClose",(new WrapClose([](const struct WrapClose *arg) -> void {showClose(&arg->s_(0));arg->s(0);},1,1))->ua(0)->vb(0));
-	luaxWrap(L,"hideStr",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideStr(&arg->v_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->vb(0)->ib(1));
-	luaxWrap(L,"hideDat",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideDat(&arg->q_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->qb(0)->ib(1));
-	luaxWrap(L,"hideChr",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideChr(&arg->w_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->wb(0)->ib(1));
-	luaxWrap(L,"hideInt",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideInt(&arg->i_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->ib(0)->ib(1));
-	luaxWrap(L,"hideInt32",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideInt32(&arg->j_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->jb(0)->ib(1));
-	luaxWrap(L,"hideNew",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideNew(&arg->k_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->kb(0)->ib(1));
-	luaxWrap(L,"hideNum",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideNum(&arg->m_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->mb(0)->ib(1));
-	luaxWrap(L,"hideOld",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideOld(&arg->n_(0),arg->u(0),&arg->t_(1,1));},2,2))->ua(0)->ia(1)->nb(0)->ib(1));
-	luaxWrap(L,"hideEnum",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideEnum(arg->u(0),arg->u(1),arg->u(2),&arg->t_(3,1));arg->i_(0)=1;},4,2))->ua(0)->ua(1)->ua(2)->ia(3)->ib(0)->ib(1));
-	luaxWrap(L,"hideOpen",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideOpen(arg->u(0),arg->u(1),&arg->t_(2,1));arg->i_(0)=1;},3,2))->ua(0)->ua(1)->ia(2)->ib(0)->ib(1));
-	luaxWrap(L,"hideClose",(new WrapClose([](const struct WrapClose *arg) -> void {arg->r(0)=!hideClose(arg->u(0),&arg->t_(1,1));arg->i_(0)=1;},2,2))->ua(0)->ia(1)->ib(0)->ib(1));
+	luaxWrap(L,"hideStr",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideStr(&arg->v_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->vb(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideDat",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideDat(&arg->q_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->qb(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideChr",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideChr(&arg->w_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->wb(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideInt",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideInt(&arg->i_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->ib(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideInt32",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideInt32(&arg->j_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->jb(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideNew",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideNew(&arg->k_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->kb(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideNum",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideNum(&arg->m_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->mb(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideOld",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideOld(&arg->n_(0),arg->u(0),&arg->t_(1,1));},2,3,2))->ua(0)->ia(1)->nb(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideEnum",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideEnum(arg->u(0),arg->u(1),arg->u(2),&arg->t_(3,1));arg->i_(0)=1;},4,3,2))->ua(0)->ua(1)->ua(2)->ia(3)->ib(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideOpen",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideOpen(arg->u(0),arg->u(1),&arg->t_(2,1));arg->i_(0)=1;},3,3,2))->ua(0)->ua(1)->ia(2)->ib(0)->ib(1)->ib(2));
+	luaxWrap(L,"hideClose",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(2)=!hideClose(arg->u(0),&arg->t_(1,1));arg->i_(0)=1;},2,3,2))->ua(0)->ia(1)->ib(0)->ib(1)->ib(2));
 }
