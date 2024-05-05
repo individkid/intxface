@@ -40,7 +40,6 @@
 
 struct Para {
 	enum {
-		Ttype,
 		Itype,
 		Jtype,
 		Ktype,
