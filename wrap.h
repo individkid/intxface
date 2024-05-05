@@ -11,13 +11,11 @@ struct WrapClose; typedef void wrapFunc(const struct WrapClose *arg);
 struct WrapClose : Close {
 	std::function<wrapFunc> fnc;
 	static char *str;
-	static int val;
-	static int ret;
 	WrapClose(std::function<wrapFunc> _fnc, int n, int m) {
 		Close::n = n; a = (struct Para *)calloc(n,sizeof(struct Para));
 		Close::m = m; b = (struct Para *)calloc(m,sizeof(struct Para));
 		c = (int*)calloc(m,sizeof(int)); memset(c,0,m*sizeof(int));
-		fnc = _fnc; str = 0; val = 0;
+		fnc = _fnc; str = 0;
 	}
 	WrapClose *ia(int sub) {if (sub < 0 || sub >= Close::n) ERROR(); a[sub].t = Para::Itype; return this;}
 	WrapClose *ja(int sub) {if (sub < 0 || sub >= Close::n) ERROR(); a[sub].t = Para::Jtype; return this;}
@@ -58,8 +56,10 @@ struct WrapClose : Close {
 	void *&q_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Qtype) ERROR(); return b[sub].q;}
 	char *&s_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Utype) ERROR(); free(str); str = strdup(a[sub].u); return str;}
 	void s(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Vtype) ERROR(); b[sub].v = str;}
-	int &t_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Itype) ERROR(); val = a[sub].i; return val;}
-	void t(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Itype) ERROR(); b[sub].i = val;}
+	int &t_(int src, int dst) const {
+		if (src < 0 || src >= Close::n || a[src].t != Para::Itype) ERROR();
+		if (dst < 0 || dst >= Close::m || b[dst].t != Para::Itype) ERROR();
+		b[dst].i = a[src].i; return b[dst].i;}
 	int &r(int sub) const {if (sub < 0 || sub >= Close::m) ERROR(); return c[sub];}
 };
 
