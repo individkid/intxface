@@ -1782,11 +1782,6 @@ void vulkanDma(struct Center *center)
     mainState.openState->setCursor();
     }}
 }
-    enum Action mouseAction;
-    enum Active mouseActive;
-    bool mouseSticky[Stickys];
-    enum Modify mouseModify;
-    enum Effect mouseEffect;
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
     std::vector<BufferState*> buffer;
