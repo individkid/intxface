@@ -41,6 +41,7 @@ struct MainState {
     enum Modify mouseModify;
     double mouseLeft;
     double mouseBase;
+    double mouseAngle;
     double windowLeft;
     double windowBase;
     double windowWidth;
@@ -79,6 +80,7 @@ struct MainState {
     .mouseModify = Additive,
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
+    .mouseAngle = 0.0,
     .windowLeft = 0.0,
     .windowBase = 0.0,
     .windowWidth = 800.0,
@@ -231,7 +233,7 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
     if (action != GLFW_PRESS || mods != 0) {
         return;
     }
-    mainState->keyPressed.push_back(key); planeSafe(Threads,Waits,KeyboardPress);
+    mainState->keyPressed.push_back(key); planeSafe(Threads,Waits,CursorPress);
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -239,7 +241,7 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     if (action != GLFW_PRESS) {
         return;
     }
-    glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
+    glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase); mainState->mouseAngle = 0.0;
     // glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     // glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     planeSafe(Threads,Waits,CursorClick);
@@ -272,6 +274,13 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
         mainState->resizeNeeded = true;
     }
+    if (mainState->mouseAction != Move) {
+	planeSafe(Threads,Waits,CursorLeft);
+    }
+}
+void mouseAngle(GLFWwindow *window, double amount/*TODO*/) {
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    mainState->mouseAngle += amount;
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -1670,20 +1679,27 @@ void vulkanExtent()
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
-    break; case (RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
-    break; case(WindowLeft): return mainState.windowLeft;
-    break; case(WindowBase): return mainState.windowBase;
-    break; case(WindowWide): vulkanExtent(); return mainState.swapState->extent.width;
-    break; case(WindowHigh): vulkanExtent(); return mainState.swapState->extent.height;
-    break; case(RegisterOpen): return (!mainState.escapeEnter);
-    break; case(KeyboardPress): {if (mainState.keyPressed.empty()) return 0;
+    break; case(OriginLeft): return mainState.mouseLeft;
+    break; case(OriginBase): return mainState.mouseBase;
+    break; case(CursorLeft): {double x,y; glfwGetCursorPos(mainState.openState->window,&x,&y); return x;}
+    break; case(CursorBase): {double x,y; glfwGetCursorPos(mainState.openState->window,&x,&y); return y;}
+    break; case(CursorAngle): return mainState.mouseAngle;
+    break; case(CursorPress): {if (mainState.keyPressed.empty()) return 0;
     int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
+    break; case(RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
+    break; case(RegisterOpen): return (!mainState.escapeEnter);
+    break; case(ManipulateAction): return mainState.mouseAction;
     break; case(ManipulateActive): return mainState.mouseActive;
     break; case (ManipulateMask): {int mask = 0;
     for (int i = 0; i < Stickys; i++) if (mainState.mouseSticky[(Sticky)i]) mask |= (1<<i);
     return mask;}
+    break; case(ManipulateModify): return mainState.mouseModify;
     }
     return 0;
+}
+float *vulkanWind(float *mat)
+{
+    return mat; // TODO calculate window matrix
 }
 void vulkanSafe()
 {
@@ -1753,7 +1769,7 @@ void vulkanDma(struct Center *center)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
-    break; case (KeyboardPress): if (center->val[i] == 0) mainState.keyPressed.clear();
+    break; case (CursorPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else mainState.keyPressed.push_front(center->val[i]);
     break; case(ManipulateAction): mainState.mouseAction = (Action)center->val[i];
     mainState.openState->setCursor();
@@ -1801,9 +1817,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planraWake,planraBoot);
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanWind,vulkanDraw,vulkanReady,planraWake,planraBoot);
 #else
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planeWake,planeBoot);
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanWind,vulkanDraw,vulkanReady,planeWake,planeBoot);
 #endif
         delete mainState.initState;
     } catch (const std::exception& e) {

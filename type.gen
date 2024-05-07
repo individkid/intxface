@@ -34,19 +34,14 @@ Memory = {
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
-	"Swarmz", -- array of points around focal point
-	"Texturez", -- memory for textures
-	"Textualz", -- memory for text
 	"Basisz", -- base for each dimension
 	"Matrixz", -- transformations
 	"Uniformz", -- references into arrays
 	"Piercez", -- pierce point normal and valid
-	"Slicez", -- plane or point index ranges
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
 	"Configurez", -- configure to value
 }
--- organize into index, size,  base, uniform breakout, argument to draw, manipulation mode, 
 Configure = {
 	"TriangleSize", -- refers to corners
 	"TriangleBase", --
@@ -57,40 +52,31 @@ Configure = {
 	"MatrixSize", -- multipurpose matrix
 	"MatrixBase", --
 	"MatrixIndex", --
-	"SwarmSize", -- early warning system
-	"SwarmBase", --
-	"TextureSize", -- how to decorate
-	"TextureBase", --
-	"TextualSize", -- how to decorate
-	"TextualBase", --
 	"BasisSize", -- cospace converters
 	"BasisBase", --
 	"PierceSize", -- pierce points
 	"PierceBase", --
 	"PierceIndex", --
-	"SliceSize", -- ranges per draw
-	"SliceBase", --
-	"StringMask", -- human readable state
+	"StringSize", -- queue of strings
 	"MachineSize", -- vending machine lines
 	"UniformAll", -- which subject matrix
 	"UniformOne", -- which element matrix
+	"UniformProj", -- which matrix for projection
+	"UniformWin", -- which matrix for window
 	"UniformLeft", -- pierce point horizontal
 	"UniformBase", -- pierce pont vertical
-	"UniformProj", -- which subject for projection
 	"UniformIndex", -- manipulate plane select
 	"UniformBasis", -- which cospace basis
-	"UniformSize", -- early warning points
 	"ArgumentMicro", -- pass to draw
 	"ArgumentBase", --
 	"ArgumentLimit", --
-	"ManipulateMatrix", -- index for window
 	"ManipulateAction", -- what mouse does
 	"ManipulateActive", -- whether changing
 	"ManipulateMask", -- which edges moved
 	"ManipulateModify", -- how to sculpt
+	"ManipulateTool", -- which to transform
 	"ManipulateEffect", -- how to transform
-	"ManipulateTool", -- which function
-	"ManipulateFixed", -- which fixed
+	"ManipulateFixed",
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
 	"ResultLine", -- state of machine
@@ -98,21 +84,11 @@ Configure = {
 	"ResultType", -- type of eval result
 	"OriginLeft", -- starting cursor
 	"OriginBase", --
-	"OriginNear", --
-	"OriginAngle", --
 	"CursorLeft", -- user input mouse
 	"CursorBase", --
-	"CursorNear", --
 	"CursorAngle", --
 	"CursorClick", --
-	"WindowLeft", -- window initialization
-	"WindowBase", --
-	"WindowWide", --
-	"WindowHigh", --
-	"WindowNear", --
-	"WindowFar", --
-	"WindowLength", --
-	"KeyboardPress", -- user input keyboard
+	"CursorPress", -- user input keyboard
 	"ClosestFind", -- whether to search or index
 	"ClosestValid", -- search through pierce
 	"ClosestFound", --
@@ -175,6 +151,10 @@ Modify = {
 	"Additive",
 	"Subtractive",
 }
+Tool = {
+	"Mouse",
+	"Roller",
+}
 Effect = {
 	"Slide",
 	"Rotate",
@@ -185,10 +165,6 @@ Fixed = {
 	"Focal",
 	"Ortho",
 	"Normal",
-}
-Tool = {
-	"Mouse",
-	"Roller",
 }
 MicroIn = {
 	"Practice",
@@ -528,12 +504,18 @@ Event = { -- for line process
 Uniform = {
 	{"all","Int32",{},{}}, -- which subject to use
 	{"one","Int32",{},{}}, -- which element to use
+	{"pro","Int32",{},{}}, -- which projection to use
+	{"win","Int32",{},{}}, -- which window to use
+
 	{"lon","Int32",{},{}}, -- horizontal axis of cursor
 	{"lat","Int32",{},{}}, -- vertical axis of cursor
-	{"pro","Int32",{},{}}, -- which projection to use
-	{"idx","Int32",{},{}}, -- which plane to apply one matrix to
+	{"idx","Int32",{},{}}, -- which plane to manipulate
 	{"use","Int32",{},{}}, -- which basis to use
-	{"siz","Int32",{},{}}, -- size of swarm buffer
+
+	{"tri","Int32",{},{}}, -- base of triangles
+	{"num","Int32",{},{}}, -- base of numerics
+	{"vtx","Int32",{},{}}, -- base of vertices
+	{"mat","Int32",{},{}}, -- base of matrices
 }
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle
@@ -567,10 +549,6 @@ Matrix = {
 }
 Basis = {
 	{"mat","Old",{},{36}},
-}
-Slice = {
-	{"idx","Int",{},{}},
-	{"siz","Int",{},{}},
 }
 Domain = {
 	{"len","Int",{},{}},
@@ -673,12 +651,8 @@ Center = {
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
-	{"swa","Vector",{["mem"]={["Swarmz"]=true}},"siz"},
-	{"tex","Vector",{["mem"]={["Texturez"]=true}},"siz"},
-	{"tur","Int32",{["mem"]={["Textualz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
-	{"rng","Slice",{["mem"]={["Slicez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},

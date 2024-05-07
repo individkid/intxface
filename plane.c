@@ -58,6 +58,7 @@ uftype callDma = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 xftype callInfo = 0;
+xgtype callWind = 0;
 wftype callDraw = 0;
 sftype callWake = 0;
 pthread_t thread[Threads];
@@ -68,7 +69,6 @@ int check = 0;
 // resource protected:
 char **string = 0;
 int strsiz = 0;
-int strmsk = 0;
 int numpipe = 0;
 int calling = 0;
 int qsize = 0;
@@ -253,11 +253,11 @@ float *planeLocal()
 	nrm[2] = configure[NormalNear];
 	org[0] = configure[OriginLeft];
 	org[1] = configure[OriginBase];
-	org[2] = configure[OriginNear];
-	org[3] = configure[OriginAngle];
+	org[2] = -1.0; // configure[OriginNear];
+	org[3] = 0.0; // configure[OriginAngle];
 	cur[0] = configure[CursorLeft];
 	cur[1] = configure[CursorBase];
-	cur[2] = configure[CursorNear];
+	cur[2] = -1.0; // configure[CursorNear];
 	cur[3] = configure[CursorAngle];
 	return planeFunc()(planeKernel()->local.mat,fix,nrm,org,cur);
 }
@@ -267,6 +267,7 @@ void *planeConjoin(float *mat, float *jct)
 }
 float *planeProject(float *mat)
 {
+	/* TODO
 	float at0 = -configure[WindowLength];
 	float at1 = (configure[WindowFar]+configure[WindowNear])/2.0;
 	float den = at1-at0;
@@ -279,6 +280,7 @@ float *planeProject(float *mat)
 	mat[15] = 1.0; invmat(mat,4);
 	mat[3] = 0.0; mat[7] = 0.0;
 	mat[11] = 1.0/den; mat[15] = -at0/den;
+	*/
 	return mat;
 }
 struct Pierce *planePierce()
@@ -295,12 +297,12 @@ struct Pierce *planePierce()
 }
 void planeString()
 {
-	sem_safe(&resource,{configure[StringMask] &= strmsk; strmsk ^= configure[StringMask];});
+	sem_safe(&resource,{configure[StringSize] = strsiz;});
 }
 void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
-	case (StringMask): planeString(); break;
+	case (StringSize): planeString(); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (CenterMemory): configure[CenterMemory] = center.mem; break;
 	case (CenterSize): configure[CenterSize] = center.siz; break;
@@ -315,19 +317,12 @@ void planeStage(enum Configure cfg)
 	case (NormalLeft): configure[NormalLeft] = planePierce()->nml[0]; break;
 	case (NormalBase): configure[NormalBase] = planePierce()->nml[1]; break;
 	case (NormalNear): configure[NormalNear] = planePierce()->nml[2]; break;
-	case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
-	case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
-	case (WindowWide): configure[WindowWide] = callInfo(WindowWide); break;
-	case (WindowHigh): configure[WindowHigh] = callInfo(WindowHigh); break;
 	case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
 	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
-	case (CursorNear): configure[CursorNear] = callInfo(CursorNear); break;
-	case (CursorAngle): configure[CursorAngle] +=/*accumulate*/ callInfo(CursorAngle); break;
+	case (CursorAngle): configure[CursorAngle] = callInfo(CursorAngle); break;
 	case (CursorClick): configure[CursorClick] = callInfo(CursorClick); break;
-	case (OriginLeft): configure[OriginLeft] = configure[CursorLeft]; break;
-	case (OriginBase): configure[OriginBase] = configure[CursorBase]; break;
-	case (OriginNear): configure[OriginNear] = configure[CursorNear]; break;
-	case (OriginAngle): configure[OriginAngle] = configure[CursorAngle]; configure[CursorAngle] = 0; break;
+	case (OriginLeft): configure[OriginLeft] = callInfo(OriginLeft); break;
+	case (OriginBase): configure[OriginBase] = callInfo(OriginBase); break;
 	default: break;}
 }
 void *planeResize(void *ptr, int mod, int siz, int tmp)
@@ -440,7 +435,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
 	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
 	case (Prep): copymat(planeCenter(),planeLocal(),4);
-	planeStage(OriginLeft); planeStage(OriginBase); planeStage(OriginAngle); break;
+	planeStage(OriginLeft); planeStage(OriginBase); break;
 	case (Conj): planeConjoin(planeCenter(),planeCompose()); break;
 	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
 	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
@@ -620,7 +615,7 @@ void planeFinish(enum Thread bit)
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce, sftype wake, vftype boot)
+void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, xgtype wind, wftype draw, rftype pierce, sftype wake, vftype boot)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -632,7 +627,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw; callWake = wake;
+	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callWind = wind; callDraw = draw; callWake = wake;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});
@@ -802,12 +797,12 @@ void planraWake(enum Configure hint)
 		planeSafe(Window,Stop,Configures);
 		return;
 	}
-	if (hint == KeyboardPress) {
-		int key1 = callInfo(KeyboardPress);
-		int key2 = callInfo(KeyboardPress);
+	if (hint == CursorPress) {
+		int key1 = callInfo(CursorPress);
+		int key2 = callInfo(CursorPress);
 		if (key1 == 256 && key2 == 257) planraExit(1);
 		if (key1 == 256 && key2 == 0) {struct Center center;
-		enum Configure cfg = KeyboardPress; int val = 256;
+		enum Configure cfg = CursorPress; int val = 256;
 		center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
 		center.cfg = &cfg; center.val = &val; callDma(&center);}
 	}
