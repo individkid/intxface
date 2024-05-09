@@ -1,24 +1,46 @@
+Order of matrix application is window * project * subject * object * element * vector.
+To change X such that YX changes to ZYX, change X to Y’ZXY.
+Each matrix is product of local, to-send, sent, received.
+Add map from polytope to matrix, captured from dma to Triangle buffer.
+Top level machine matrix operations are cont, prep, send, recv, disp.
+Cont applies inverse of new transformation to local, so the switch to the new transformation is continuous.
+Prep applies local to to-send, and schedules send.
+Send applies to-send to sent and writes composition of all but local.
+Recv either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
+Disp conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object.
 
-Add plane.c, add argument backdoor, and move random test to planer.lua.
+Figure out why shareC that uses readGeneric is linking without all functions in shareC.type.mk.
+Perhaps add pragma to list structs supported by Generic and Union.
 
-Change to pair of tetrahedrons. Add depth buffering, object subject plane matrices, and translation mode. Randomly switch between matrices and modes.
+Implement window matrix maintained by vulkan.cpp. Add depth buffering.
+Interpolate depth to black red orange yellow green blue purple gray.
 
-Add space.hs classify and qualify.
+Add multiple facets. Add PRepare to MultiOut, that records to Identz Memory.
+Then Display and ComBine use Indexz to brighten close calls between facets.
 
-Add file process and planer.— to classify and qualify randomly discovered tetrahedron overlaps.
+Maintain pierce point by calling set for draw, calling get for read out,
+handing off to thread for after read out. Add pierce point to planra test.
 
-Note multiple instances of planer.lua may be run in parallel on the same planer.— to discover and improve faster. Add recurse argument to planer.lua to start that many copies of itself. Add verbose argument that switches between display of all, per interval, improved, or original.
+Put in remaining buffers. Switch to Concept shaders.
+Change to two tetrahedrons manipulated separately, together, or unrigidly.
 
-Bring build up on single-board starting with x11 and finishing with startx ~/plane — planer.lua that continuously tweaks a tetrahedron overlap, reads planer.— for known classification counts and metrics, writes to planer.—, classification counts incremented by interval of equivalents, and sample numerics if interval of equivalents has metric improvement. Add instructions and video to the readme.
+Add min and lim to BufferState to interpret idx from Center.
+Add RegisterOpen bit for thread to read/write Persist to/from string which can hide show with center.
 
-Try front door through plane.lua.
+Widgets can have fixed or bound edges; only fixed edges are dragged.
+Edges can have any number of inside and outside limits.
+Reaching a limit provisionally adds to the edges dragged in that direction.
+Dragging in the opposite direction removes provisionals.
+Add share/side/frame processes that use widgets to represent filters/fields/formats.
 
-Add plane.—, space.hs sample additive subtractive refine modes.
+Make planer.lua to demonstrate classification and heuristic,
+plane.lua to demonstrate manipulation,
+space.lua to demonstrate sampling and equivalence,
+line.lua to demonstrate multimedia,
+point.lua to demonstrate communication.
 
-Write space.lua that finds and prettifies spaces and tetrahedron overlaps.
+Add decoration to facets. Add projection of selected decoration onto otherwise transparent picture plane.
+Add interpretation of visible facet metrics as sound attractors.
+Add requirement of observation of other decorations in certain orders before observation of a protected decoration.
+Add change of subspace in response to passing through a facet.
 
-Write line.lua to play sounds that interact with polytopes.
-
-Write point.lua that opens tcl/tk gui's for pipes between processes, configuration file changes, audio visual formats.
-
-Add facet decoration and path permission. Let tetrahedron overlaps be entry points.

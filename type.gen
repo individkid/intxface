@@ -70,13 +70,14 @@ Configure = {
 	"ArgumentMicro", -- pass to draw
 	"ArgumentBase", --
 	"ArgumentLimit", --
-	"ManipulateAction", -- what mouse does
+	"ManipulateAction", -- what to do
 	"ManipulateActive", -- whether changing
 	"ManipulateMask", -- which edges moved
 	"ManipulateModify", -- how to sculpt
-	"ManipulateTool", -- which to transform
+	"ManipulateTool", -- how to transform
 	"ManipulateEffect", -- how to transform
-	"ManipulateFixed",
+	"ManipulateFixed", -- how to transform
+	"ManipulateScope", -- what to transform
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
 	"ResultLine", -- state of machine
@@ -86,13 +87,13 @@ Configure = {
 	"OriginBase", --
 	"CursorLeft", -- user input mouse
 	"CursorBase", --
-	"CursorAngle", --
-	"CursorClick", --
+	"CursorAngle", -- user input roller
+	"CursorClick", -- user input button
 	"CursorPress", -- user input keyboard
 	"ClosestFind", -- whether to search or index
 	"ClosestValid", -- search through pierce
-	"ClosestFound", --
-	"ClosestFile", --
+	"ClosestIndex", --
+	"ClosestPoly", --
 	"ClosestLeft", --
 	"ClosestBase", --
 	"ClosestNear", --
@@ -109,18 +110,11 @@ Transfer = {
 	"Write", -- write external pipe
 	"Stage", -- center fields, pierce, or info to configure
 	"Force", -- machine to configure
-	"Comp", -- composition to center
-	"Pose", -- towrite to center
-	"Other", -- maintain to center
-	"Prep", -- move local to center
-	"Conj", -- conjoin to center
-	"Glitch", -- center to maintain
-	"Check", -- apply center to maintain
-	"Compl", -- apply center to towrite
-	"Apply", -- apply towrite to written
-	"Accum", -- apply written to maintain
-	"Drop", -- move maintain to center
-	"Proj", -- perspective matrix
+	"Cont", -- applies inverse of new transformation to local, so the switch to the new transformation is continuous.
+	"Prep", -- applies local to to-send, and schedules send.
+	"Send", -- applies to-send to sent and writes composition of all but local.
+	"Recv", -- either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
+	"Disp", -- conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 	"Copy", -- dma to cpu or gpu
 	"Draw", -- start shader
 	"Name", -- function for call
@@ -129,7 +123,8 @@ Transfer = {
 	"Nest", -- nest to level
 	"Eval", -- call datxEval
 	"Echo", -- copy result to center
-	"Fill", -- copy instance to center
+	"Fill", -- copy pierce to center
+	"Hide", -- pop hide and use
 }
 Active = {
 	"Setup",

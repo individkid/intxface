@@ -149,50 +149,6 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
     return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
 }
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
-
-float *planeCenter()
-{
-	int index = configure[MatrixIndex]-center.idx;
-	if (index < 0 || index >= center.siz) ERROR();
-	if (center.mem != Matrixz) ERROR();
-	return center.mat[index].mat;
-}
-struct Kernel *planeKernel()
-{
-	int index = 0; int base = 0; int size = 0;
-	base = configure[MatrixBase]; size = configure[MatrixSize];
-	index = configure[MatrixIndex] - base;
-	if (index < 0 || index >= size) ERROR();
-	return matrix + index;
-}
-float *planeInverse()
-{
-	return planeKernel()->inverse.mat;
-}
-float *planeMaintain()
-{
-	struct Kernel *ptr = planeKernel();
-	ptr->optimize = 0;
-	return ptr->maintain.mat;
-}
-float *planeWritten()
-{
-	struct Kernel *ptr = planeKernel();
-	ptr->optimize = 0;
-	return ptr->written.mat;
-}
-float *planeTowrite()
-{
-	struct Kernel *ptr = planeKernel();
-	ptr->optimize = 0;
-	return ptr->towrite.mat;
-}
-float *planeCompose()
-{
-	struct Kernel *ptr = planeKernel();
-	if (ptr->optimize) return ptr->compose.mat; else ptr->optimize = 1;
-	return jumpmat(jumpmat(copymat(ptr->compose.mat,planeMaintain(),4),planeWritten(),4),planeTowrite(),4);
-}
 planeXform planeFunc()
 {
 	switch ((enum Tool)configure[ManipulateTool]) {
@@ -239,50 +195,6 @@ planeXform planeFunc()
 	default: ERROR();}
 	return 0;
 }
-float *planeLocal()
-{
-	float fix[3]; float nrm[3]; float org[4]; float cur[4];
-	// assume focal point is zero,zero,zero
-	// Closest and Origin are on line with focal point
-	// WindowNear OriginNear CursorNear are focal length
-	fix[0] = configure[ClosestLeft];
-	fix[1] = configure[ClosestBase];
-	fix[2] = configure[ClosestNear];
-	nrm[0] = configure[NormalLeft];
-	nrm[1] = configure[NormalBase];
-	nrm[2] = configure[NormalNear];
-	org[0] = configure[OriginLeft];
-	org[1] = configure[OriginBase];
-	org[2] = -1.0; // configure[OriginNear];
-	org[3] = 0.0; // configure[OriginAngle];
-	cur[0] = configure[CursorLeft];
-	cur[1] = configure[CursorBase];
-	cur[2] = -1.0; // configure[CursorNear];
-	cur[3] = configure[CursorAngle];
-	return planeFunc()(planeKernel()->local.mat,fix,nrm,org,cur);
-}
-void *planeConjoin(float *mat, float *jct)
-{
-	float inv[4]; return timesmat(jumpmat(mat,jct,4),invmat(copymat(inv,jct,4),4),4);
-}
-float *planeProject(float *mat)
-{
-	/* TODO
-	float at0 = -configure[WindowLength];
-	float at1 = (configure[WindowFar]+configure[WindowNear])/2.0;
-	float den = at1-at0;
-	mat[0] = configure[WindowWide]/2.0;
-	mat[5] = configure[WindowHigh]/2.0;
-	mat[10] = (configure[WindowFar]-configure[WindowNear])/2.0;
-	mat[12] = configure[WindowLeft]+mat[0];
-	mat[13] = configure[WindowBase]+mat[5];
-	mat[14] = configure[WindowNear]+mat[10];
-	mat[15] = 1.0; invmat(mat,4);
-	mat[3] = 0.0; mat[7] = 0.0;
-	mat[11] = 1.0/den; mat[15] = -at0/den;
-	*/
-	return mat;
-}
 struct Pierce *planePierce()
 {
 	if (found) return found;
@@ -309,8 +221,8 @@ void planeStage(enum Configure cfg)
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
 	case (CenterSelf): configure[CenterSelf] = center.slf; break;
 	case (ClosestValid): configure[ClosestValid] = planePierce()->vld; break;
-	case (ClosestFound): configure[ClosestFound] = planePierce()->idx; break;
-	case (ClosestFile): configure[ClosestFile] = planePierce()->pol; break;
+	case (ClosestIndex): configure[ClosestIndex] = planePierce()->idx; break;
+	case (ClosestPoly): configure[ClosestPoly] = planePierce()->pol; break;
 	case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
 	case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
 	case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
@@ -366,7 +278,7 @@ void planeConfig(enum Configure cfg, int val)
 	case (ClosestFind): found = 0; break;
 	default: break;}
 }
-void planeDma(enum Configure cfg, int val)
+void planeSync(enum Configure cfg, int val)
 {
 	struct Center tmp = {0};
 	tmp.mem = Configurez;
@@ -377,6 +289,26 @@ void planeDma(enum Configure cfg, int val)
 	tmp.val[0] = val;
 	callDma(&tmp);
 	freeCenter(&tmp);
+}
+void planeCont()
+{
+	// TODO applies inverse of new transformation to local, so the switch to the new transformation is continuous.
+}
+void planePrep()
+{
+	// TODO applies local to to-send, and schedules send.
+}
+void planeSend()
+{
+	// TODO applies to-send to sent and writes composition of all but local.
+}
+void planeRecv()
+{
+	// TODO either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
+}
+void planeDisp()
+{
+	// TODO conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 }
 void planeCopy(struct Center *ptr)
 {
@@ -422,6 +354,15 @@ void planeFill()
 	if (src < 0 || src >= siz || dst < 0 || dst >= center.siz) ERROR();
 	copyPierce(&center.pie[dst],&pierce[src]);
 }
+void planeHide()
+{
+	// TODO planePopstr
+	// TODO try hideArgument and 
+	// TODO try hideCenter
+	// TODO try hideExpress and datxEval
+	// TODO try hideMachine and planeSwitch
+	// TODO otherwise planePutstr
+}
 int planeSwitch(struct Machine *mptr, int next)
 {
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
@@ -431,20 +372,12 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Write): writeCenter(&center,external); break;
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
 	case (Force): for (int i = 0; i < mptr->num; i++) {
-	planeConfig(mptr->cfg[i],mptr->val[i]); planeDma(mptr->cfg[i],mptr->val[i]);} break;
-	case (Pose): copymat(planeCenter(),planeTowrite(),4); break;
-	case (Other): copymat(planeCenter(),planeMaintain(),4); break;
-	case (Prep): copymat(planeCenter(),planeLocal(),4);
-	planeStage(OriginLeft); planeStage(OriginBase); break;
-	case (Conj): planeConjoin(planeCenter(),planeCompose()); break;
-	case (Glitch): copymat(planeMaintain(),planeCenter(),4); break;
-	case (Check): jumpmat(planeMaintain(),planeCenter(),4);
-	timesmat(planeWritten(),invmat(copymat(planeInverse(),planeCenter(),4),4),4); break;
-	case (Compl): jumpmat(planeTowrite(),planeCenter(),4); identmat(planeCenter(),4); break;
-	case (Apply): jumpmat(planeWritten(),planeTowrite(),4); identmat(planeTowrite(),4); break;
-	case (Accum): jumpmat(planeMaintain(),planeWritten(),4); identmat(planeWritten(),4); break;
-	case (Drop): copymat(planeCenter(),planeMaintain(),4); identmat(planeMaintain(),4); break;
-	case (Proj): planeProject(planeCenter()); break;
+	planeConfig(mptr->cfg[i],mptr->val[i]); planeSync(mptr->cfg[i],mptr->val[i]);} break;
+	case (Cont): planeCont(); break;
+	case (Prep): planePrep(); break;
+	case (Send): planeSend(); break;
+	case (Recv): planeRecv(); break;
+	case (Disp): planeDisp(); break;
 	case (Copy): planeCopy(&center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
@@ -454,6 +387,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
 	case (Echo): if (configure[ResultType] == identType("Center")) readCenter(&center,idx0); else ERROR(); break;
 	case (Fill): planeFill(); break;
+	case (Hide): planeHide(); break;
 	default: break;}
 	return next+1;
 }
@@ -528,7 +462,7 @@ void planeSetcfg(int val, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
 	planeConfig(sub,val);
-	planeDma(sub,val);
+	planeSync(sub,val);
 }
 int planeGetcfg(int sub)
 {
@@ -540,7 +474,7 @@ void planeTerm(int sig)
 }
 void *planeSelect(void *ptr)
 {
-	char *str = 0; // FIXME planeDupstr(&str,-1,1,0);
+	char *str = 0; // FIXME let planeSelf do this when planePopstr is Argument
 	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[Select]);
 	while (1) {
