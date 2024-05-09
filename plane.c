@@ -361,7 +361,7 @@ void planeFill()
 void planeHide()
 {
 	// TODO planePopstr
-	// TODO try hideArgument and 
+	// TODO try hideArgument and open external
 	// TODO try hideCenter
 	// TODO try hideExpress and datxEval
 	// TODO try hideMachine and planeSwitch
