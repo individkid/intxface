@@ -1,16 +1,3 @@
-Order of matrix application is window * project * subject * object * element * vector.
-To change X such that YX changes to ZYX, change X to Y’ZXY.
-Each matrix is product of local, to-send, sent, received.
-Add map from polytope to matrix, captured from dma to Triangle buffer.
-Top level machine matrix operations are cont, prep, send, recv, disp.
-Cont applies inverse of new transformation to local, so the switch to the new transformation is continuous.
-Prep applies local to to-send, and schedules send.
-Send applies to-send to sent and writes composition of all but local.
-Recv either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
-Disp conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object.
-
-Figure out why shareC that uses readGeneric is linking without all functions in shareC.type.mk.
-Perhaps add pragma to list structs supported by Generic and Union.
 
 Implement window matrix maintained by vulkan.cpp. Add depth buffering.
 Interpolate depth to black red orange yellow green blue purple gray.

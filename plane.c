@@ -24,6 +24,9 @@
 #include <setjmp.h>
 #include <signal.h>
 
+// Order of matrix application is window * project * subject * object * element * vector.
+// To change X such that YX changes to ZYX, change X to Y’ZXY.
+// Each matrix is product of local, towrite, written, maintain.
 struct Kernel {
 	int optimize;
 	struct Matrix compose;
@@ -34,6 +37,7 @@ struct Kernel {
 	struct Matrix inverse;
 };
 // owned by main thread:
+// TODO Add map from polytope to matrix, captured from dma to Triangle buffer.
 struct Kernel *matrix = 0;
 struct Pierce *pierce = 0;
 struct Pierce *found = 0;
