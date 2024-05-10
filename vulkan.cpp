@@ -21,6 +21,7 @@
 extern "C" {
     #include "type.h"
     #include "plane.h"
+    #include "metx.h"
 }
 
 struct InitState;
@@ -33,6 +34,7 @@ struct QueueState;
 struct CopyState;
 struct MainState {
     bool resizeNeeded;
+    bool moveNeeded;
     bool escapeEnter;
     std::deque<int> keyPressed;
     enum Action mouseAction;
@@ -46,6 +48,7 @@ struct MainState {
     double windowBase;
     double windowWidth;
     double windowHeight;
+    int windowIndex;
     int argc;
     char **argv;
     InitState *initState;
@@ -73,6 +76,7 @@ struct MainState {
     #endif
 } mainState = {
     .resizeNeeded = true,
+    .moveNeeded = true,
     .escapeEnter = false,
     .mouseAction = Move,
     .mouseActive = Setup,
@@ -85,6 +89,7 @@ struct MainState {
     .windowBase = 0.0,
     .windowWidth = 800.0,
     .windowHeight = 700.0,
+    .windowIndex = -1,
     .argc = 0,
     .argv = 0,
     .initState = 0,
@@ -218,15 +223,22 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
+void windowMatrix(MainState *mainState)
+{
+    float xpos = mainState->windowLeft;
+    float ypos = mainState->windowLeft;
+}
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    // mainState->mouseLeft -= xpos - mainState->windowLeft; mainState->mouseBase -= ypos - mainState->windowBase;
     mainState->windowLeft = xpos; mainState->windowBase = ypos;
+    mainState->moveNeeded = true;
 }
 void windowSized(GLFWwindow* window, int width, int height)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    mainState->windowWidth = width; mainState->windowHeight = height;
+    mainState->resizeNeeded = true;
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -237,13 +249,8 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    int32_t tempx, tempy;
-    if (action != GLFW_PRESS) {
-        return;
-    }
+    if (action != GLFW_PRESS) return;
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase); mainState->mouseAngle = 0.0;
-    // glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
-    // glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     planeSafe(Threads,Waits,CursorClick);
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
@@ -252,9 +259,8 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     double windowNextx, windowNexty;
     int32_t tempx, tempy;
     glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
-    glfwGetWindowPos(window,&tempx,&tempy);
-    // TODO adjust the matrix at ManipulateMatrix to keep points fixed when window moves or resizes
     // TODO allow edge sets other than East/South and North/East/South/West to move
+    glfwGetWindowPos(window,&tempx,&tempy);
     if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
         mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
         mainState->mouseSticky[South] && mainState->mouseSticky[West] &&
@@ -265,14 +271,16 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         // mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
         tempx = windowNextx; tempy = windowNexty; glfwSetWindowPos(window,tempx,tempy);
     }
+    glfwGetWindowSize(window,&tempx,&tempy);
     if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
         !mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
-        mainState->mouseSticky[South] && !mainState->mouseSticky[West]) {
+        mainState->mouseSticky[South] && !mainState->mouseSticky[West] &&
+        mainState->windowWidth == tempx && mainState->windowHeight == tempy) {
         windowNextx = mainState->windowWidth + (mouseNextx - mainState->mouseLeft);
         windowNexty = mainState->windowHeight + (mouseNexty - mainState->mouseBase);
-        mainState->windowWidth = windowNextx; mainState->windowHeight = windowNexty;
+        // mainState->windowWidth = windowNextx; mainState->windowHeight = windowNexty;
         mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
-        mainState->resizeNeeded = true;
+        tempx = windowNextx; tempy = windowNexty; glfwSetWindowSize(window,tempx,tempy);
     }
     if (mainState->mouseAction != Move) {
 	planeSafe(Threads,Waits,CursorLeft);
@@ -1656,12 +1664,50 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
+void physicalToScreen(float *width, float *height)
+{
+    int xphys, yphys;
+    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
+    glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *width *= mode->width/xphys; *height *= mode->height/yphys;
+}
+void physicalFromScreen(float *width, float *height)
+{
+    int xphys, yphys;
+    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
+    glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *width *= xphys/mode->width; *height *= yphys/mode->height;
+}
+void screenToWindow(float *width, float *height)
+{
+    *width /= mainState.windowWidth; *height /= mainState.windowHeight;
+}
+void screenFromWindo(float *width, float *height)
+{
+    *width *= mainState.windowWidth; *height *= mainState.windowHeight;
+}
+float *vulkanWind(float *mat)
+{
+    // find the matrix to keep points fixed when window moves or resizes
+    float xpos = mainState.windowLeft; float ypos = mainState.windowBase;
+    float xsiz = 100.0; float ysiz = 100.0;
+    physicalToScreen(&xsiz,&ysiz); screenToWindow(&xsiz,&ysiz); screenToWindow(&xpos,&ypos);
+    for (int i = 0; i < 16; i++) mat[i] = 0.0;
+    *matrc(mat,0,0,4) = xsiz; *matrc(mat,1,1,4) = ysiz; *matrc(mat,2,2,4) = 1.0;
+    // TODO subtract windowLeft/Base from origin
+    *matrc(mat,0,3,4) = xpos; *matrc(mat,1,3,4) = ypos; *matrc(mat,3,3,4) = 1.0;
+    return mat;
+}
 void vulkanExtent()
 {
-    if (mainState.resizeNeeded) {
-        int32_t tempx, tempy; tempx = mainState.windowWidth; tempy = mainState.windowHeight;
-        glfwSetWindowSize(mainState.openState->window,tempx,tempy);
-    }
+    if (mainState.resizeNeeded || mainState.moveNeeded) {
+        int index = mainState.windowIndex;
+        float ptr[16];
+        int siz = sizeof(ptr);
+        int loc = index*siz;
+        WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
+        mainState.moveNeeded = false;
+        if (index >= 0 && index < bufferQueue->size) bufferQueue->set(loc,siz,vulkanWind(ptr));}
     if (mainState.resizeNeeded) {
         mainState.resizeNeeded = false;
         if (mainState.threadState) delete mainState.threadState;
@@ -1696,10 +1742,6 @@ int vulkanInfo(enum Configure query)
     break; case(ManipulateModify): return mainState.mouseModify;
     }
     return 0;
-}
-float *vulkanWind(float *mat)
-{
-    return mat; // TODO calculate window matrix
 }
 void vulkanSafe()
 {

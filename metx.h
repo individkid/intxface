@@ -1,3 +1,4 @@
+float *matrc(float *u, int r, int c, int n);
 float dotvec(float *u, float *v, int n);
 float *plusvec(float *u, float *v, int n);
 float *scalevec(float *u, float s, int n);

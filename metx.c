@@ -5,6 +5,11 @@
 
 #define INVALID 1.0e30
 
+float *matrc(float *u, int r, int c, int n)
+{
+    return &u[c*n+r];
+}
+
 float dotvec(float *u, float *v, int n)
 {
     float w = 0;
