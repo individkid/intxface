@@ -1664,38 +1664,45 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
-void physicalToScreen(float *width, float *height)
+void physicalToScreen(float *xptr, float *yptr)
 {
-    int xphys, yphys;
     const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *width *= mode->width/xphys; *height *= mode->height/yphys;
+    float width = mode->width; float height = mode->height;
+    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *xptr *= width/xphys; *yptr *= height/yphys;
 }
-void physicalFromScreen(float *width, float *height)
+void physicalFromScreen(float *xptr, float *yptr)
 {
-    int xphys, yphys;
     const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *width *= xphys/mode->width; *height *= yphys/mode->height;
+    float width = mode->width; float height = mode->height;
+    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *xptr *= xphys/width; *yptr *= yphys/height;
 }
-void screenToWindow(float *width, float *height)
+void screenToWindow(float *xptr, float *yptr)
 {
-    *width /= mainState.windowWidth; *height /= mainState.windowHeight;
+    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
+    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
+    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
 }
-void screenFromWindo(float *width, float *height)
+void screenFromWindow(float *xptr, float *yptr)
 {
-    *width *= mainState.windowWidth; *height *= mainState.windowHeight;
+    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
+    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
+    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
 float *vulkanWind(float *mat)
 {
     // find the matrix to keep points fixed when window moves or resizes
-    float xpos = mainState.windowLeft; float ypos = mainState.windowBase;
-    float xsiz = 100.0; float ysiz = 100.0;
-    physicalToScreen(&xsiz,&ysiz); screenToWindow(&xsiz,&ysiz); screenToWindow(&xpos,&ypos);
+    float xmax = 50.0; float ymax = 50.0;
+    float xmin = -50.0; float ymin = -50.0;
+    float xmid = mainState.windowLeft + mainState.windowWidth/2.0;
+    float ymid = mainState.windowBase + mainState.windowHeight/2.0;
+    physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
+    physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
+    screenToWindow(&xmid,&ymid); xmax += xmid; xmin += xmid; ymax += ymid; ymin += ymid;
     for (int i = 0; i < 16; i++) mat[i] = 0.0;
-    *matrc(mat,0,0,4) = xsiz; *matrc(mat,1,1,4) = ysiz; *matrc(mat,2,2,4) = 1.0;
-    // TODO subtract windowLeft/Base from origin
-    *matrc(mat,0,3,4) = xpos; *matrc(mat,1,3,4) = ypos; *matrc(mat,3,3,4) = 1.0;
+    *matrc(mat,0,0,4) = xmax-xmid; *matrc(mat,1,1,4) = ymax-ymid; *matrc(mat,2,2,4) = 1.0;
+    *matrc(mat,0,3,4) = xmid; *matrc(mat,1,3,4) = ymid; *matrc(mat,3,3,4) = 1.0;
     return mat;
 }
 void vulkanExtent()
