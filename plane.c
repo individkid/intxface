@@ -91,7 +91,7 @@ char *planePop();
 void planePut(const char *str);
 void planeOutstr(const char *str);
 int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
-void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
+int planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
@@ -596,12 +596,12 @@ int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
 	sem_post(&resource);
 	return run;
 }
-void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
+int planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
 {
 	int idle = 0;
-	sem_wait(&pending);
+	if (callInfo(ResultHint)) usleep(10000); else sem_wait(&pending);
 	sem_wait(&resource);
-	if (qfull == 0) ERROR();
+	if (qfull == 0) {sem_post(&resource); return 0;}
 	*proc = procs[qhead]; *wait = waits[qhead]; *hint = hints[qhead];
 	qhead++; if (qhead == qsize) qhead = 0;
 	qfull--;
@@ -609,6 +609,7 @@ void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
 	else if (*hint != ResultHint) idle = 1;
 	sem_post(&resource);
 	if (idle) planeSafe(Threads,Waits,ResultHint);
+	return 1;
 }
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint)
 {
@@ -617,13 +618,13 @@ void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint)
 void planeMain()
 {
 	enum Thread proc = 0; enum Wait wait = 0; enum Configure hint = 0;
-	planeDeque(&proc,&wait,&hint);
+	if (planeDeque(&proc,&wait,&hint)) {
 	if (wait == Waits && hint == Configures && proc == Threads) {check--; return;}
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures) ERROR();
 	if (wait == Waits && hint != Configures) callWake(hint);
 	if (wait == Start && hint == Configures) {planeThread(proc); callMain(proc,wait);}
-	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}
+	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}}
 }
 void planeReady(struct Pierce *given)
 {
@@ -729,7 +730,7 @@ void planraWake(enum Configure hint)
 	if (planraDone) return;
 	if (callInfo(RegisterOpen) == 0) {
 		sem_safe(&resource,{planraDone = 1;});
-    	if (pthread_join(planraThread,0) != 0) ERROR();
+    	// if (pthread_join(planraThread,0) != 0) ERROR();
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);
 		planeSafe(Window,Stop,Configures);
@@ -777,6 +778,6 @@ void planraBoot()
 	planeSafe(Graphics,Start,Configures);
 	planeSafe(Process,Start,Configures);
 	planraDone = 0; planraOnce = 1;
-    if (pthread_create(&planraThread,0,planraTest,0) != 0) ERROR();
+    // if (pthread_create(&planraThread,0,planraTest,0) != 0) ERROR();
 }
 

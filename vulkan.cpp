@@ -35,6 +35,7 @@ struct CopyState;
 struct MainState {
     bool resizeNeeded;
     bool moveNeeded;
+    bool pollMode;
     bool escapeEnter;
     std::deque<int> keyPressed;
     enum Action mouseAction;
@@ -77,6 +78,7 @@ struct MainState {
 } mainState = {
     .resizeNeeded = true,
     .moveNeeded = true,
+    .pollMode = true,
     .escapeEnter = false,
     .mouseAction = Move,
     .mouseActive = Setup,
@@ -1732,6 +1734,7 @@ void vulkanExtent()
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
+    break; case(ResultHint): return mainState.pollMode;
     break; case(OriginLeft): return mainState.mouseLeft;
     break; case(OriginBase): return mainState.mouseBase;
     break; case(CursorLeft): {double x,y; glfwGetCursorPos(mainState.openState->window,&x,&y); return x;}
@@ -1781,8 +1784,9 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     break;
     case (Process):
     while (!mainState.escapeEnter) {
+    mainState.pollMode = (mainState.mouseAction == Move && mainState.mouseActive == Upset);
     planeMain();
-    glfwWaitEventsTimeout(1.0);}
+    if (mainState.pollMode) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
     break;
     default:
     break;}
