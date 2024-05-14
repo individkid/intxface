@@ -91,7 +91,7 @@ char *planePop();
 void planePut(const char *str);
 void planeOutstr(const char *str);
 int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
-int planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
+void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
@@ -596,20 +596,16 @@ int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
 	sem_post(&resource);
 	return run;
 }
-int planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
+void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
 {
-	int idle = 0;
-	if (callInfo(ResultHint)) usleep(10000); else sem_wait(&pending);
+	sem_wait(&pending);
 	sem_wait(&resource);
-	if (qfull == 0) {sem_post(&resource); return 0;}
+	if (qfull == 0) ERROR();
 	*proc = procs[qhead]; *wait = waits[qhead]; *hint = hints[qhead];
 	qhead++; if (qhead == qsize) qhead = 0;
 	qfull--;
 	if (qfull > 0) sem_post(&pending);
-	else if (*hint != ResultHint) idle = 1;
 	sem_post(&resource);
-	if (idle) planeSafe(Threads,Waits,ResultHint);
-	return 1;
 }
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint)
 {
@@ -618,13 +614,16 @@ void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint)
 void planeMain()
 {
 	enum Thread proc = 0; enum Wait wait = 0; enum Configure hint = 0;
-	if (planeDeque(&proc,&wait,&hint)) {
-	if (wait == Waits && hint == Configures && proc == Threads) {check--; return;}
+	planeSafe(Threads,Waits,ResultHint);
+	while (1) {planeDeque(&proc,&wait,&hint);
+	if (wait == Waits && hint == Configures && proc == Threads) check--;
 	if (wait != Waits && hint != Configures) ERROR();
-	if (wait == Waits && hint == Configures) ERROR();
+	if (wait == Waits && hint == Configures && proc != Threads) ERROR();
 	if (wait == Waits && hint != Configures) callWake(hint);
 	if (wait == Start && hint == Configures) {planeThread(proc); callMain(proc,wait);}
-	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}}
+	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}
+	if (wait == Waits && hint == ResultHint && proc == Threads) break;}
+	if (callInfo(ResultHint)) usleep(10000);
 }
 void planeReady(struct Pierce *given)
 {
@@ -711,8 +710,8 @@ void *planraTest(void *arg)
 {
     int done = 0;
     while (!done) {
-        usleep(10000);
-        callSafe();
+	usleep(10000);
+	callSafe();
     	sem_safe(&resource,{done = planraDone;});}
     return 0;
 }
