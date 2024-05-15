@@ -62,7 +62,6 @@ uftype callDma = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 xftype callInfo = 0;
-xgtype callWind = 0;
 wftype callDraw = 0;
 sftype callWake = 0;
 pthread_t thread[Threads];
@@ -553,7 +552,7 @@ void planeFinish(enum Thread bit)
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, xgtype wind, wftype draw, rftype pierce, sftype wake, vftype boot)
+void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce, sftype wake, vftype boot)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -565,7 +564,7 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, x
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callWind = wind; callDraw = draw; callWake = wake;
+	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw; callWake = wake;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});
@@ -744,7 +743,7 @@ void planraWake(enum Configure hint)
 		center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
 		center.cfg = &cfg; center.val = &val; callDma(&center);}
 	}
-	if (hint == ResultHint) {
+	if (hint == CursorLeft) {
 		struct Center testCenter[2];
 		for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
 		int num = planraCenter(2,testCenter); // TODO allocat and free

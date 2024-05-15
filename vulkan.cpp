@@ -34,7 +34,6 @@ struct QueueState;
 struct CopyState;
 struct MainState {
     bool resizeNeeded;
-    bool moveNeeded;
     bool pollMode;
     bool escapeEnter;
     std::deque<int> keyPressed;
@@ -49,7 +48,10 @@ struct MainState {
     double windowBase;
     double windowWidth;
     double windowHeight;
-    int windowIndex;
+    int argumentIndex;
+    enum Micro argumentMicro;
+    int argumentBase;
+    int argumentLimit;
     int argc;
     char **argv;
     InitState *initState;
@@ -77,7 +79,6 @@ struct MainState {
     #endif
 } mainState = {
     .resizeNeeded = true,
-    .moveNeeded = true,
     .pollMode = true,
     .escapeEnter = false,
     .mouseAction = Move,
@@ -91,7 +92,10 @@ struct MainState {
     .windowBase = 0.0,
     .windowWidth = 800.0,
     .windowHeight = 700.0,
-    .windowIndex = -1,
+    .argumentIndex = -1,
+    .argumentMicro = Micros,
+    .argumentBase = 0,
+    .argumentLimit = 0,
     .argc = 0,
     .argv = 0,
     .initState = 0,
@@ -225,22 +229,21 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-void windowMatrix(MainState *mainState)
-{
-    float xpos = mainState->windowLeft;
-    float ypos = mainState->windowLeft;
-}
+void vulkanWindow(int index);
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    int index = mainState->argumentIndex;
     mainState->windowLeft = xpos; mainState->windowBase = ypos;
-    mainState->moveNeeded = true;
+    if (index >= 0) vulkanWindow(index);
 }
 void windowSized(GLFWwindow* window, int width, int height)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    int index = mainState->argumentIndex;
     mainState->windowWidth = width; mainState->windowHeight = height;
     mainState->resizeNeeded = true;
+    if (index >= 0) vulkanWindow(index);
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -255,11 +258,15 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase); mainState->mouseAngle = 0.0;
     planeSafe(Threads,Waits,CursorClick);
 }
+void vulkanDraw(enum Micro shader, int base, int limit);
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     double mouseNextx, mouseNexty;
     double windowNextx, windowNexty;
     int32_t tempx, tempy;
+    enum Micro micro = mainState->argumentMicro;
+    int base = mainState->argumentBase;
+    int limit = mainState->argumentLimit;
     glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
     // TODO allow edge sets other than East/South and North/East/South/West to move
     glfwGetWindowPos(window,&tempx,&tempy);
@@ -272,6 +279,7 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         // mainState->windowLeft = windowNextx; mainState->windowBase = windowNexty;
         // mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
         tempx = windowNextx; tempy = windowNexty; glfwSetWindowPos(window,tempx,tempy);
+        if (micro < Micros) vulkanDraw(micro,base,limit);
     }
     glfwGetWindowSize(window,&tempx,&tempy);
     if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
@@ -283,10 +291,9 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         // mainState->windowWidth = windowNextx; mainState->windowHeight = windowNexty;
         mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
         tempx = windowNextx; tempy = windowNexty; glfwSetWindowSize(window,tempx,tempy);
+        if (micro < Micros) vulkanDraw(micro,base,limit);
     }
-    if (mainState->mouseAction != Move) {
 	planeSafe(Threads,Waits,CursorLeft);
-    }
 }
 void mouseAngle(GLFWwindow *window, double amount/*TODO*/) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1692,9 +1699,13 @@ void screenFromWindow(float *xptr, float *yptr)
     float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
-float *vulkanWind(float *mat)
+void vulkanWindow(int index)
 {
     // find the matrix to keep points fixed when window moves or resizes
+    float mat[16];
+    int siz = sizeof(mat);
+    int loc = index*siz;
+    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
     float xmax = 50.0; float ymax = 50.0;
     float xmin = -50.0; float ymin = -50.0;
     float xmid = mainState.windowLeft + mainState.windowWidth/2.0;
@@ -1705,18 +1716,10 @@ float *vulkanWind(float *mat)
     for (int i = 0; i < 16; i++) mat[i] = 0.0;
     *matrc(mat,0,0,4) = xmax-xmid; *matrc(mat,1,1,4) = ymax-ymid; *matrc(mat,2,2,4) = 1.0;
     *matrc(mat,0,3,4) = xmid; *matrc(mat,1,3,4) = ymid; *matrc(mat,3,3,4) = 1.0;
-    return mat;
+    bufferQueue->set(loc,siz,mat);
 }
 void vulkanExtent()
 {
-    if (mainState.resizeNeeded || mainState.moveNeeded) {
-        int index = mainState.windowIndex;
-        float ptr[16];
-        int siz = sizeof(ptr);
-        int loc = index*siz;
-        WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
-        mainState.moveNeeded = false;
-        if (index >= 0 && index < bufferQueue->size) bufferQueue->set(loc,siz,vulkanWind(ptr));}
     if (mainState.resizeNeeded) {
         mainState.resizeNeeded = false;
         if (mainState.threadState) delete mainState.threadState;
@@ -1744,6 +1747,10 @@ int vulkanInfo(enum Configure query)
     int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
     break; case(RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
     break; case(RegisterOpen): return (!mainState.escapeEnter);
+    break; case(ArgumentIndex): return mainState.argumentIndex;
+    break; case(ArgumentMicro): return mainState.argumentMicro;
+    break; case(ArgumentBase): return mainState.argumentBase;
+    break; case(ArgumentLimit): return mainState.argumentLimit;
     break; case(ManipulateAction): return mainState.mouseAction;
     break; case(ManipulateActive): return mainState.mouseActive;
     break; case (ManipulateMask): {int mask = 0;
@@ -1833,6 +1840,10 @@ void vulkanDma(struct Center *center)
     mainState.openState->setCursor();
     break; case(ManipulateModify): mainState.mouseModify = (Modify)center->val[i];
     mainState.openState->setCursor();
+    break; case (ArgumentIndex): mainState.argumentIndex = center->val[i];
+    break; case (ArgumentMicro): mainState.argumentMicro = (Micro)center->val[i];
+    break; case (ArgumentBase): mainState.argumentBase = center->val[i];
+    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
     }}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
@@ -1865,9 +1876,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanWind,vulkanDraw,vulkanReady,planraWake,planraBoot);
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planraWake,planraBoot);
 #else
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanWind,vulkanDraw,vulkanReady,planeWake,planeBoot);
+        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planeWake,planeBoot);
 #endif
         delete mainState.initState;
     } catch (const std::exception& e) {

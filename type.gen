@@ -51,7 +51,6 @@ Configure = {
 	"VertexBase", --
 	"MatrixSize", -- multipurpose matrix
 	"MatrixBase", --
-	"MatrixIndex", --
 	"BasisSize", -- cospace converters
 	"BasisBase", --
 	"PierceSize", -- pierce points
@@ -70,6 +69,7 @@ Configure = {
 	"ArgumentMicro", -- pass to draw
 	"ArgumentBase", --
 	"ArgumentLimit", --
+	"ArgumentIndex", -- pass to dma
 	"ManipulateAction", -- what to do
 	"ManipulateActive", -- whether changing
 	"ManipulateMask", -- which edges moved
