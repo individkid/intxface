@@ -80,6 +80,7 @@ Configure = {
 	"ManipulateScope", -- what to transform
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
+	"RegisterPoll", -- which main blocks
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result

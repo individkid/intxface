@@ -79,7 +79,7 @@ struct MainState {
     #endif
 } mainState = {
     .resizeNeeded = true,
-    .pollMode = true,
+    .pollMode = false,
     .escapeEnter = false,
     .mouseAction = Move,
     .mouseActive = Setup,
@@ -1733,7 +1733,6 @@ void vulkanExtent()
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
-    break; case(ResultHint): return mainState.pollMode;
     break; case(OriginLeft): return mainState.mouseLeft;
     break; case(OriginBase): return mainState.mouseBase;
     break; case(CursorLeft): {double x,y; glfwGetCursorPos(mainState.openState->window,&x,&y); return x;}
@@ -1743,6 +1742,7 @@ int vulkanInfo(enum Configure query)
     int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
     break; case(RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
     break; case(RegisterOpen): return (!mainState.escapeEnter);
+    break; case(RegisterPoll): return mainState.pollMode;
     break; case(ArgumentIndex): return mainState.argumentIndex;
     break; case(ArgumentMicro): return mainState.argumentMicro;
     break; case(ArgumentBase): return mainState.argumentBase;
@@ -1787,7 +1787,6 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     break;
     case (Process):
     while (!mainState.escapeEnter) {
-    mainState.pollMode = (mainState.mouseAction == Move && mainState.mouseActive == Upset);
     planeMain();
     if (mainState.pollMode) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
     break;
@@ -1825,6 +1824,7 @@ void vulkanDma(struct Center *center)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
+    break; case (RegisterPoll): mainState.pollMode = center->val[i];
     break; case (CursorPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else mainState.keyPressed.push_front(center->val[i]);
     break; case(ManipulateAction): mainState.mouseAction = (Action)center->val[i];
