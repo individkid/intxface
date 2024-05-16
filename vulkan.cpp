@@ -44,7 +44,7 @@ struct MainState {
     double mouseLeft;
     double mouseBase;
     double mouseAngle;
-    double windowLeft;
+    double windowLeft; // TODO change window to int
     double windowBase;
     double windowWidth;
     double windowHeight;
@@ -230,20 +230,27 @@ GLFWcursor *sculptCursor(bool e) {
 }
 
 void vulkanWindow(int index);
+void vulkanDraw(enum Micro shader, int base, int limit);
+void windowChanged(struct MainState *mainState)
+{
+    int index = mainState->argumentIndex;
+    enum Micro micro = mainState->argumentMicro;
+    int base = mainState->argumentBase;
+    int limit = mainState->argumentLimit;
+    if (index >= 0) vulkanWindow(index);
+    if (micro < Micros) vulkanDraw(micro,base,limit);
+}
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    int index = mainState->argumentIndex;
     mainState->windowLeft = xpos; mainState->windowBase = ypos;
-    if (index >= 0) vulkanWindow(index);
+    windowChanged(mainState);
 }
 void windowSized(GLFWwindow* window, int width, int height)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    int index = mainState->argumentIndex;
-    mainState->windowWidth = width; mainState->windowHeight = height;
     mainState->resizeNeeded = true;
-    if (index >= 0) vulkanWindow(index);
+    windowChanged(mainState);
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -254,46 +261,34 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    int32_t tempx, tempy;
     if (action != GLFW_PRESS) return;
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase); mainState->mouseAngle = 0.0;
+    glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     planeSafe(Threads,Waits,CursorClick);
 }
-void vulkanDraw(enum Micro shader, int base, int limit);
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    double mouseNextx, mouseNexty;
-    double windowNextx, windowNexty;
+    double nextx, nexty;
     int32_t tempx, tempy;
-    enum Micro micro = mainState->argumentMicro;
-    int base = mainState->argumentBase;
-    int limit = mainState->argumentLimit;
-    glfwGetCursorPos(window,&mouseNextx,&mouseNexty);
     // TODO allow edge sets other than East/South and North/East/South/West to move
     glfwGetWindowPos(window,&tempx,&tempy);
     if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
         mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
         mainState->mouseSticky[South] && mainState->mouseSticky[West] &&
-        mainState->windowLeft == tempx && mainState->windowBase == tempy) {
-        windowNextx = mainState->windowLeft + (mouseNextx - mainState->mouseLeft);
-        windowNexty = mainState->windowBase + (mouseNexty - mainState->mouseBase);
-        // mainState->windowLeft = windowNextx; mainState->windowBase = windowNexty;
-        // mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
-        tempx = windowNextx; tempy = windowNexty; glfwSetWindowPos(window,tempx,tempy);
-        if (micro < Micros) vulkanDraw(micro,base,limit);
+	mainState->windowLeft == tempx && mainState->windowBase == tempy) {
+        nextx = mainState->windowLeft + (xpos - mainState->mouseLeft);
+        nexty = mainState->windowBase + (ypos - mainState->mouseBase);
+        tempx = nextx; tempy = nexty; glfwSetWindowPos(window,tempx,tempy);
     }
-    glfwGetWindowSize(window,&tempx,&tempy);
     if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
         !mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
-        mainState->mouseSticky[South] && !mainState->mouseSticky[West] &&
-        mainState->windowWidth == tempx && mainState->windowHeight == tempy) {
-        windowNextx = mainState->windowWidth + (mouseNextx - mainState->mouseLeft);
-        windowNexty = mainState->windowHeight + (mouseNexty - mainState->mouseBase);
-        // mainState->windowWidth = windowNextx; mainState->windowHeight = windowNexty;
-        mainState->mouseLeft = mouseNextx; mainState->mouseBase = mouseNexty;
-        tempx = windowNextx; tempy = windowNexty; glfwSetWindowSize(window,tempx,tempy);
-        if (micro < Micros) vulkanDraw(micro,base,limit);
+        mainState->mouseSticky[South] && !mainState->mouseSticky[West]) {
+        nextx = mainState->windowWidth + (xpos - mainState->mouseLeft);
+        nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
+        tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
     }
-	planeSafe(Threads,Waits,CursorLeft);
+    planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngle(GLFWwindow *window, double amount/*TODO*/) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1687,6 +1682,7 @@ void physicalFromScreen(float *xptr, float *yptr)
     int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
     *xptr *= xphys/width; *yptr *= yphys/height;
 }
+// TODO use glfwGetWindowSize and glfwGetWindowPos instead of mainState
 void screenToWindow(float *xptr, float *yptr)
 {
     float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
