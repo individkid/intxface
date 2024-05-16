@@ -44,11 +44,15 @@ struct MainState {
     double mouseLeft;
     double mouseBase;
     double mouseAngle;
-    double windowLeft; // TODO change window to int
-    double windowBase;
-    double windowWidth;
-    double windowHeight;
-    int argumentIndex;
+    int windowLeft;
+    int windowBase;
+    int windowWidth;
+    int windowHeight;
+    int currentLeft;
+    int currentBase;
+    int currentWidth;
+    int currentHeight;
+    int argumentIndex; // TODO replace these by Updatez
     enum Micro argumentMicro;
     int argumentBase;
     int argumentLimit;
@@ -88,10 +92,14 @@ struct MainState {
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .mouseAngle = 0.0,
-    .windowLeft = 0.0,
-    .windowBase = 0.0,
-    .windowWidth = 800.0,
-    .windowHeight = 700.0,
+    .windowLeft = 0,
+    .windowBase = 0,
+    .windowWidth = 800,
+    .windowHeight = 700,
+    .currentLeft = 0,
+    .currentBase = 0,
+    .currentWidth = 800,
+    .currentHeight = 700,
     .argumentIndex = -1,
     .argumentMicro = Micros,
     .argumentBase = 0,
@@ -243,12 +251,15 @@ void windowChanged(struct MainState *mainState)
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->windowLeft = xpos; mainState->windowBase = ypos;
+    mainState->mouseLeft -= xpos - mainState->currentLeft;
+    mainState->mouseBase -= ypos - mainState->currentBase;
+    mainState->currentLeft = xpos; mainState->currentBase = ypos;
     windowChanged(mainState);
 }
 void windowSized(GLFWwindow* window, int width, int height)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    mainState->currentWidth = width; mainState->currentHeight = height;
     mainState->resizeNeeded = true;
     windowChanged(mainState);
 }
@@ -276,14 +287,16 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
         mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
         mainState->mouseSticky[South] && mainState->mouseSticky[West] &&
-	mainState->windowLeft == tempx && mainState->windowBase == tempy) {
+        mainState->currentLeft == tempx && mainState->currentBase == tempy) {
         nextx = mainState->windowLeft + (xpos - mainState->mouseLeft);
         nexty = mainState->windowBase + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowPos(window,tempx,tempy);
     }
+    glfwGetWindowSize(window,&tempx,&tempy);
     if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
         !mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
-        mainState->mouseSticky[South] && !mainState->mouseSticky[West]) {
+        mainState->mouseSticky[South] && !mainState->mouseSticky[West] &&
+        mainState->currentWidth == tempx && mainState->currentHeight == tempy) {
         nextx = mainState->windowWidth + (xpos - mainState->mouseLeft);
         nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
