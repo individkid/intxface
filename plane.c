@@ -632,7 +632,7 @@ void planeReady(struct Pierce *given)
 
 int planraOnce;
 int planraDone;
-pthread_t planraThread;
+int planraSent;
 struct timeval planraTime;
 void planraExit(int enb)
 {
@@ -649,7 +649,6 @@ float *planraMatrix(float *mat)
 	float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
 	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
 	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-	if (time > 0.5) planraExit(0);
 	cur[1] = 0.2*cosf(time*2.0944);
 	// cur[0] = cur[1] = 0.0;
 	cur[2] = time*1.5708;
@@ -705,30 +704,14 @@ int planraCenter(int num, struct Center ptr[2])
 	planraOnce = 0;
 	return num;
 }
-void *planraTest(void *arg)
-{
-    int done = 0;
-    while (!done) {
-	usleep(10000);
-	callSafe();
-    	sem_safe(&resource,{done = planraDone;});}
-    return 0;
-}
-struct timeval planraTime;
-float planraDebug()
-{
-	struct timeval tempTime;
-	gettimeofday(&tempTime, NULL);
-	float time = (tempTime.tv_sec - planraTime.tv_sec) + (tempTime.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-	planraTime = tempTime;
-	return time;
-}
 void planraWake(enum Configure hint)
 {
+	struct timeval stop; gettimeofday(&stop, NULL);
+	float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
+	if (time > 1.0 && !planraSent) {planraSent = 1; planraExit(0);}
 	if (planraDone) return;
 	if (callInfo(RegisterOpen) == 0) {
 		sem_safe(&resource,{planraDone = 1;});
-    	// if (pthread_join(planraThread,0) != 0) ERROR();
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);
 		planeSafe(Window,Stop,Configures);
@@ -776,7 +759,7 @@ void planraBoot()
 	planeSafe(Window,Start,Configures);
 	planeSafe(Graphics,Start,Configures);
 	planeSafe(Process,Start,Configures);
-	planraDone = 0; planraOnce = 1;
-    // if (pthread_create(&planraThread,0,planraTest,0) != 0) ERROR();
+	planraSent = 0; planraDone = 0; planraOnce = 1;
+	planeSafe(Threads,Waits,CursorLeft);
 }
 

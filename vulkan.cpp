@@ -275,6 +275,7 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     int32_t tempx, tempy;
     if (action != GLFW_PRESS) return;
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase); mainState->mouseAngle = 0.0;
+    glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     planeSafe(Threads,Waits,CursorClick);
 }
