@@ -52,8 +52,9 @@ struct MainState {
     int currentBase;
     int currentWidth;
     int currentHeight;
-    int argumentIndex; // TODO replace these by Updatez
+    int argumentIndex;
     enum Micro argumentMicro;
+    enum Micro argumentExtra;
     int argumentBase;
     int argumentLimit;
     int argc;
@@ -102,6 +103,7 @@ struct MainState {
     .currentHeight = 700,
     .argumentIndex = -1,
     .argumentMicro = Micros,
+    .argumentExtra = Micros,
     .argumentBase = 0,
     .argumentLimit = 0,
     .argc = 0,
@@ -237,16 +239,41 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-void vulkanWindow(int index);
+// TODO use glfwGetWindowSize and glfwGetWindowPos instead of mainState
+void physicalToScreen(float *xptr, float *yptr);
+void physicalFromScreen(float *xptr, float *yptr);
+void screenToWindow(float *xptr, float *yptr);
+void screenFromWindow(float *xptr, float *yptr);
+// TODO use function from plane.h instead
+float *vulkanWindow(float *mat)
+{
+    // find the matrix to keep points fixed when window moves or resizes
+    float xmax = 50.0; float ymax = 50.0;
+    float xmin = -50.0; float ymin = -50.0;
+    float xmid = mainState.windowLeft + mainState.windowWidth/2.0;
+    float ymid = mainState.windowBase + mainState.windowHeight/2.0;
+    physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
+    physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
+    screenToWindow(&xmid,&ymid); xmax += xmid; xmin += xmid; ymax += ymid; ymin += ymid;
+    for (int i = 0; i < 16; i++) mat[i] = 0.0;
+    *matrc(mat,0,0,4) = xmax-xmid; *matrc(mat,1,1,4) = ymax-ymid; *matrc(mat,2,2,4) = 1.0;
+    *matrc(mat,0,3,4) = xmid; *matrc(mat,1,3,4) = ymid; *matrc(mat,3,3,4) = 1.0;
+    return mat;
+}
+
+void vulkanMatrix(int loc, int siz, float *mat);
 void vulkanDraw(enum Micro shader, int base, int limit);
 void windowChanged(struct MainState *mainState)
 {
     int index = mainState->argumentIndex;
     enum Micro micro = mainState->argumentMicro;
+    enum Micro extra = mainState->argumentExtra;
     int base = mainState->argumentBase;
     int limit = mainState->argumentLimit;
-    if (index >= 0) vulkanWindow(index);
+    float mat[16];
+    if (index >= 0) vulkanMatrix(index*sizeof(mat),sizeof(mat),vulkanWindow(mat));
     if (micro < Micros) vulkanDraw(micro,base,limit);
+    if (extra < Micros) vulkanDraw(extra,base,limit);
 }
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
@@ -302,11 +329,14 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
     }
+    windowChanged(mainState);
     planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngle(GLFWwindow *window, double amount/*TODO*/) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->mouseAngle += amount;
+    windowChanged(mainState);
+    planeSafe(Threads,Waits,CursorAngle);
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -1682,52 +1712,6 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
-void physicalToScreen(float *xptr, float *yptr)
-{
-    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    float width = mode->width; float height = mode->height;
-    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *xptr *= width/xphys; *yptr *= height/yphys;
-}
-void physicalFromScreen(float *xptr, float *yptr)
-{
-    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    float width = mode->width; float height = mode->height;
-    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *xptr *= xphys/width; *yptr *= yphys/height;
-}
-// TODO use glfwGetWindowSize and glfwGetWindowPos instead of mainState
-void screenToWindow(float *xptr, float *yptr)
-{
-    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
-    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
-    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
-}
-void screenFromWindow(float *xptr, float *yptr)
-{
-    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
-    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
-    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
-}
-void vulkanWindow(int index)
-{
-    // find the matrix to keep points fixed when window moves or resizes
-    float mat[16];
-    int siz = sizeof(mat);
-    int loc = index*siz;
-    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
-    float xmax = 50.0; float ymax = 50.0;
-    float xmin = -50.0; float ymin = -50.0;
-    float xmid = mainState.windowLeft + mainState.windowWidth/2.0;
-    float ymid = mainState.windowBase + mainState.windowHeight/2.0;
-    physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
-    physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
-    screenToWindow(&xmid,&ymid); xmax += xmid; xmin += xmid; ymax += ymid; ymin += ymid;
-    for (int i = 0; i < 16; i++) mat[i] = 0.0;
-    *matrc(mat,0,0,4) = xmax-xmid; *matrc(mat,1,1,4) = ymax-ymid; *matrc(mat,2,2,4) = 1.0;
-    *matrc(mat,0,3,4) = xmid; *matrc(mat,1,3,4) = ymid; *matrc(mat,3,3,4) = 1.0;
-    bufferQueue->set(loc,siz,mat);
-}
 void vulkanExtent()
 {
     if (mainState.resizeNeeded) {
@@ -1759,6 +1743,7 @@ int vulkanInfo(enum Configure query)
     break; case(RegisterPoll): return mainState.pollMode;
     break; case(ArgumentIndex): return mainState.argumentIndex;
     break; case(ArgumentMicro): return mainState.argumentMicro;
+    break; case(ArgumentExtra): return mainState.argumentExtra;
     break; case(ArgumentBase): return mainState.argumentBase;
     break; case(ArgumentLimit): return mainState.argumentLimit;
     break; case(ManipulateAction): return mainState.mouseAction;
@@ -1828,6 +1813,37 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     default:
     throw std::runtime_error("no case in switch!");}  
 }
+void physicalToScreen(float *xptr, float *yptr)
+{
+    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
+    float width = mode->width; float height = mode->height;
+    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *xptr *= width/xphys; *yptr *= height/yphys;
+}
+void physicalFromScreen(float *xptr, float *yptr)
+{
+    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
+    float width = mode->width; float height = mode->height;
+    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *xptr *= xphys/width; *yptr *= yphys/height;
+}
+void screenToWindow(float *xptr, float *yptr)
+{
+    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
+    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
+    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
+}
+void screenFromWindow(float *xptr, float *yptr)
+{
+    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
+    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
+    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
+}
+void vulkanMatrix(int loc, int siz, float *mat)
+{
+    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
+    bufferQueue->set(loc,siz,mat);
+}
 void vulkanDma(struct Center *center)
 {
     vulkanExtent();
@@ -1852,6 +1868,7 @@ void vulkanDma(struct Center *center)
     mainState.openState->setCursor();
     break; case (ArgumentIndex): mainState.argumentIndex = center->val[i];
     break; case (ArgumentMicro): mainState.argumentMicro = (Micro)center->val[i];
+    break; case (ArgumentExtra): mainState.argumentExtra = (Micro)center->val[i];
     break; case (ArgumentBase): mainState.argumentBase = center->val[i];
     break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
     }}

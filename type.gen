@@ -68,6 +68,7 @@ Configure = {
 	"UniformIndex", -- manipulate plane select
 	"UniformBasis", -- which cospace basis
 	"ArgumentMicro", -- pass to draw
+	"ArgumentExtra", --
 	"ArgumentBase", --
 	"ArgumentLimit", --
 	"ArgumentIndex", -- pass to dma
