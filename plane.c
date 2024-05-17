@@ -731,7 +731,7 @@ void planraWake(enum Configure hint)
 		for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
 		int num = planraCenter(2,testCenter); // TODO allocat and free
 		for (int i = 0; i < num; i++) callDma(testCenter+i);
-		callDraw(MicroPRB,0,6);
+		callDraw(MicroPRP,0,6);
 	}
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
 		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,RegisterPoll};

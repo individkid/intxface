@@ -37,6 +37,7 @@ Memory = {
 	"Basisz", -- base for each dimension
 	"Matrixz", -- transformations
 	"Uniformz", -- references into arrays
+	"Indexz", -- per fragment triangle identifier
 	"Piercez", -- pierce point normal and valid
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
@@ -174,14 +175,16 @@ MicroMid = {
 MicroOut = {
 	"DisPlay",
 	"Compute",
-	"ComBine",
+	"PRepare",
 	"Discard",
 }
 Micro = {
 	"MicroPRP",
 	"MicroPRC",
-	"MicroPRB",
-	"MicroCRB",
+	"MicroPRR",
+	"MicroCRP",
+	"MicroCRC",
+	"MicroCRR",
 	"MicroCPD",
 	"MicroCCD",
 }
@@ -196,10 +199,6 @@ Thread = {
 	"Graphics",
 	"Process",
 	"Test",
-}
-Node = {
-	"Internal",
-	"External",
 }
 Emerg = {
 	"Planes", -- Scalar -- [Plane] -- per boundary
@@ -302,20 +301,26 @@ Program = {
 Component = {
 	{"Micro","MicroPRP","MicroIn","Practice"},
 	{"Micro","MicroPRC","MicroIn","Practice"},
-	{"Micro","MicroPRB","MicroIn","Practice"},
-	{"Micro","MicroCRB","MicroIn","Concept"},
+	{"Micro","MicroPRR","MicroIn","Practice"},
+	{"Micro","MicroCRP","MicroIn","Concept"},
+	{"Micro","MicroCRC","MicroIn","Concept"},
+	{"Micro","MicroCRR","MicroIn","Concept"},
 	{"Micro","MicroCPD","MicroIn","Concept"},
 	{"Micro","MicroCCD","MicroIn","Concept"},
 	{"Micro","MicroPRP","MicroMid","Raster"},
 	{"Micro","MicroPRC","MicroMid","Raster"},
-	{"Micro","MicroPRB","MicroMid","Raster"},
-	{"Micro","MicroCRB","MicroMid","Raster"},
+	{"Micro","MicroPRR","MicroMid","Raster"},
+	{"Micro","MicroCRP","MicroMid","Raster"},
+	{"Micro","MicroCRC","MicroMid","Raster"},
+	{"Micro","MicroCRR","MicroMid","Raster"},
 	{"Micro","MicroCPD","MicroMid","CoPoint"},
 	{"Micro","MicroCCD","MicroMid","Coplane"},
 	{"Micro","MicroPRP","MicroOut","DisPlay"},
 	{"Micro","MicroPRC","MicroOut","Compute"},
-	{"Micro","MicroPRB","MicroOut","ComBine"},
-	{"Micro","MicroCRB","MicroOut","ComBine"},
+	{"Micro","MicroPRR","MicroOut","PRepare"},
+	{"Micro","MicroCRP","MicroOut","DisPlay"},
+	{"Micro","MicroCRC","MicroOut","Compute"},
+	{"Micro","MicroCRR","MicroOut","PRepare"},
 	{"Micro","MicroCPD","MicroOut","Discard"},
 	{"Micro","MicroCCD","MicroOut","Discard"},
 }
@@ -330,7 +335,7 @@ Bootstrap = {
 		"val[1]:512"..
 		"val[2]:20"..
 		"val[3]:63"..
-		"val[4]:Int(%(return castMicro(\"MicroCRB\"))))"},
+		"val[4]:Int(%(return castMicro(\"MicroCRP\"))))"},
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
 		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..

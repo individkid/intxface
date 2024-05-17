@@ -12,7 +12,7 @@ fileC.type.c: luax.so show.lua type.gen
 fileC.typeC.o: face.h type.h
 filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
-fragmentCombineG: vulkan.g
+fragmentDisplayG: vulkan.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
 holeC.o: face.h hole.c proto.h type.h
@@ -29,7 +29,7 @@ luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
 planeC.o: datx.h face.h metx.h plane.c plane.h proto.h type.h
 planeCpp.o: datx.h plane.cpp proto.h wrap.h
-planra.log: fragmentCombineG planraC planraCpp vertexPracticeG
+planra.log: fragmentDisplayG planraC planraCpp vertexPracticeG
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen

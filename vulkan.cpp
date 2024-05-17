@@ -1053,19 +1053,19 @@ struct QueueState {
     bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     bufferQueue[Piercez] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
-    bindBuffer[MicroPRB].push_back(bufferQueue[Vertexz]);
-    bindBuffer[MicroPRB].push_back(bufferQueue[Matrixz]);
-    typeBuffer[MicroPRB].push_back(FetchBuf);
-    typeBuffer[MicroPRB].push_back(ChangeBuf);
+    bindBuffer[MicroPRP].push_back(bufferQueue[Vertexz]);
+    bindBuffer[MicroPRP].push_back(bufferQueue[Matrixz]);
+    typeBuffer[MicroPRP].push_back(FetchBuf);
+    typeBuffer[MicroPRP].push_back(ChangeBuf);
     fieldState = new FieldState();
     fieldState->stride = sizeof(Vertex);
     fieldState->format.push_back(VK_FORMAT_R32G32_SFLOAT);
     fieldState->format.push_back(VK_FORMAT_R32_UINT);
     fieldState->offset.push_back(offsetof(Vertex,vec));
     fieldState->offset.push_back(offsetof(Vertex,ref));
-    fieldBuffer[MicroPRB].push_back(fieldState);
-    fieldBuffer[MicroPRB].push_back(0);
-    drawQueue[MicroPRB] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    fieldBuffer[MicroPRP].push_back(fieldState);
+    fieldBuffer[MicroPRP].push_back(0);
+    drawQueue[MicroPRP] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     for (int i = 0; i < Micros; i++) {
     vertexName[i] = "vertexMicrosG";
     switch (Component__Micro__MicroIn((Micro)i)) {
@@ -1079,7 +1079,7 @@ struct QueueState {
     switch (Component__Micro__MicroOut((Micro)i)) {
     case (DisPlay): fragmentName[i] = "fragmentDisplayG"; break;
     case (Compute): fragmentName[i] = "fragmentComputeG"; break;
-    case (ComBine): fragmentName[i] = "fragmentCombineG"; break;}}}
+    case (PRepare): fragmentName[i] = "fragmentPrepareG"; break;}}}
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
     if (fieldState) delete fieldState;
