@@ -198,6 +198,10 @@ planeXform planeFunc()
 	default: ERROR();}
 	return 0;
 }
+float *planeMatrix(float *mat)
+{
+	return mat; // TODO
+}
 struct Pierce *planePierce()
 {
 	if (found) return found;

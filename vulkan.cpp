@@ -52,9 +52,11 @@ struct MainState {
     int currentBase;
     int currentWidth;
     int currentHeight;
-    int argumentIndex;
-    enum Micro argumentMicro;
-    enum Micro argumentExtra;
+    int argumentFollow;
+    int argumentModify;
+    enum Micro argumentDisplay;
+    enum Micro argumentBrighten;
+    enum Micro argumentDetect;
     int argumentBase;
     int argumentLimit;
     int argc;
@@ -101,9 +103,11 @@ struct MainState {
     .currentBase = 0,
     .currentWidth = 800,
     .currentHeight = 700,
-    .argumentIndex = -1,
-    .argumentMicro = Micros,
-    .argumentExtra = Micros,
+    .argumentFollow = 0,
+    .argumentModify = 0,
+    .argumentDisplay = Micros,
+    .argumentBrighten = Micros,
+    .argumentDetect = Micros,
     .argumentBase = 0,
     .argumentLimit = 0,
     .argc = 0,
@@ -239,40 +243,24 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-void physicalToScreen(float *xptr, float *yptr);
-void physicalFromScreen(float *xptr, float *yptr);
-void screenToWindow(float *xptr, float *yptr);
-void screenFromWindow(float *xptr, float *yptr);
-// TODO use function from plane.h instead
-float *vulkanWindow(float *mat)
-{
-    // find the matrix to keep points fixed when window moves or resizes
-    float xmax = 50.0; float ymax = 50.0;
-    float xmin = -50.0; float ymin = -50.0;
-    float xmid = mainState.windowLeft + mainState.windowWidth/2.0;
-    float ymid = mainState.windowBase + mainState.windowHeight/2.0;
-    physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
-    physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
-    screenToWindow(&xmid,&ymid); xmax += xmid; xmin += xmid; ymax += ymid; ymin += ymid;
-    for (int i = 0; i < 16; i++) mat[i] = 0.0;
-    *matrc(mat,0,0,4) = xmax-xmid; *matrc(mat,1,1,4) = ymax-ymid; *matrc(mat,2,2,4) = 1.0;
-    *matrc(mat,0,3,4) = xmid; *matrc(mat,1,3,4) = ymid; *matrc(mat,3,3,4) = 1.0;
-    return mat;
-}
-
-void vulkanMatrix(int loc, int siz, float *mat);
+float *vulkanMatrix(float *mat);
+void vulkanSend(int loc, int siz, float *mat);
 void vulkanDraw(enum Micro shader, int base, int limit);
 void windowChanged(struct MainState *mainState)
 {
-    int index = mainState->argumentIndex;
-    enum Micro micro = mainState->argumentMicro;
-    enum Micro extra = mainState->argumentExtra;
+    int follow = mainState->argumentFollow;
+    int modify = mainState->argumentModify;
+    enum Micro micro = mainState->argumentDisplay;
+    enum Micro brighten = mainState->argumentBrighten;
+    enum Micro detect = mainState->argumentDetect;
     int base = mainState->argumentBase;
     int limit = mainState->argumentLimit;
     float mat[16];
-    if (mainState->mouseReact[Follow]) vulkanMatrix(index*sizeof(mat),sizeof(mat),vulkanWindow(mat));
+    if (mainState->mouseReact[Follow]) vulkanSend(follow*sizeof(mat),sizeof(mat),vulkanMatrix(mat));
+    if (mainState->mouseReact[Modify]) vulkanSend(modify*sizeof(mat),sizeof(mat),planeMatrix(mat));
     if (mainState->mouseReact[Display]) vulkanDraw(micro,base,limit);
-    if (mainState->mouseReact[Brighten]) vulkanDraw(extra,base,limit);
+    if (mainState->mouseReact[Brighten]) vulkanDraw(brighten,base,limit);
+    if (mainState->mouseReact[Detect]) vulkanDraw(detect,base,limit);
 }
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
@@ -1738,6 +1726,21 @@ void screenFromWindow(float *xptr, float *yptr)
     float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
+float *vulkanMatrix(float *mat)
+{
+    // find the matrix to keep points fixed when window moves or resizes
+    float xmax = 50.0; float ymax = 50.0;
+    float xmin = -50.0; float ymin = -50.0;
+    float xmid = mainState.windowLeft + mainState.windowWidth/2.0;
+    float ymid = mainState.windowBase + mainState.windowHeight/2.0;
+    physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
+    physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
+    screenToWindow(&xmid,&ymid); xmax += xmid; xmin += xmid; ymax += ymid; ymin += ymid;
+    for (int i = 0; i < 16; i++) mat[i] = 0.0;
+    *matrc(mat,0,0,4) = xmax-xmid; *matrc(mat,1,1,4) = ymax-ymid; *matrc(mat,2,2,4) = 1.0;
+    *matrc(mat,0,3,4) = xmid; *matrc(mat,1,3,4) = ymid; *matrc(mat,3,3,4) = 1.0;
+    return mat;
+}
 void vulkanExtent()
 {
     if (mainState.resizeNeeded) {
@@ -1766,9 +1769,11 @@ int vulkanInfo(enum Configure query)
     int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
     break; case(RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
     break; case(RegisterOpen): return (!mainState.escapeEnter);
-    break; case(ArgumentIndex): return mainState.argumentIndex;
-    break; case(ArgumentMicro): return mainState.argumentMicro;
-    break; case(ArgumentExtra): return mainState.argumentExtra;
+    break; case(ArgumentFollow): return mainState.argumentFollow;
+    break; case(ArgumentModify): return mainState.argumentModify;
+    break; case(ArgumentDisplay): return mainState.argumentDisplay;
+    break; case(ArgumentBrighten): return mainState.argumentBrighten;
+    break; case(ArgumentDetect): return mainState.argumentDetect;
     break; case(ArgumentBase): return mainState.argumentBase;
     break; case(ArgumentLimit): return mainState.argumentLimit;
     break; case(ManipulateReact): {int mask = 0;
@@ -1841,7 +1846,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     default:
     throw std::runtime_error("no case in switch!");}  
 }
-void vulkanMatrix(int loc, int siz, float *mat)
+void vulkanSend(int loc, int siz, float *mat)
 {
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
     bufferQueue->set(loc,siz,mat);
@@ -1867,13 +1872,15 @@ void vulkanDma(struct Center *center)
     break; case (ManipulateMask): for (int j = 0; j < Stickys; j++)
     mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0);
     mainState.openState->setCursor();
-    break; case(ManipulateModify): mainState.mouseModify = (Modify)center->val[i];
+    break; case(ManipulateModify): mainState.mouseModify = (enum Modify)center->val[i];
     mainState.openState->setCursor();
-    break; case (ArgumentIndex): mainState.argumentIndex = center->val[i];
-    break; case (ArgumentMicro): mainState.argumentMicro = (Micro)center->val[i];
-    break; case (ArgumentExtra): mainState.argumentExtra = (Micro)center->val[i];
-    break; case (ArgumentBase): mainState.argumentBase = center->val[i];
-    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
+    break; case(ArgumentFollow): mainState.argumentFollow = center->val[i];
+    break; case(ArgumentModify): mainState.argumentModify = center->val[i];
+    break; case(ArgumentDisplay): mainState.argumentDisplay = (Micro)center->val[i];
+    break; case(ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
+    break; case(ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
+    break; case(ArgumentBase): mainState.argumentBase = center->val[i];
+    break; case(ArgumentLimit): mainState.argumentLimit = center->val[i];
     }}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)

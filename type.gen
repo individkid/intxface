@@ -67,11 +67,14 @@ Configure = {
 	"UniformBase", -- pierce pont vertical
 	"UniformIndex", -- manipulate plane select
 	"UniformBasis", -- which cospace basis
+	"ArgumentFollow", -- pass to dma
+	"ArgumentModify", --
 	"ArgumentMicro", -- pass to draw
-	"ArgumentExtra", --
+	"ArgumentDisplay", --
+	"ArgumentBrighten", --
+	"ArgumentDetect", --
 	"ArgumentBase", --
 	"ArgumentLimit", --
-	"ArgumentIndex", -- pass to dma
 	"ManipulateReact", -- block or behave
 	"ManipulateAction", -- what to do
 	"ManipulateActive", -- whether changing
@@ -132,8 +135,10 @@ Transfer = {
 React = {
 	"Poll",
 	"Follow",
+	"Modify",
 	"Display",
 	"Brighten",
+	"Detect",
 }
 Active = {
 	"Setup",

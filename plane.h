@@ -12,6 +12,7 @@ typedef int (*xftype)(enum Configure query); // info
 typedef void (*wftype)(enum Micro shader, int base, int limit); // draw
 typedef int (*rftype)(int size, struct Pierce *data); // ready
 typedef void (*sftype)(enum Configure hint); // wake
+float *planeMatrix(float *mat);
 void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype ready, sftype wake, zftype boot);
 void planePutstr(const char *str);
 int planeInfo(enum Configure cfg);
