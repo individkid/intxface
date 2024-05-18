@@ -73,12 +73,8 @@ struct MainState {
     int registerDone;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     const int MAX_BUFFERS_AVAILABLE = 3;
-    const std::vector<const char*> extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-    const std::vector<const char*> layers = {
-        "VK_LAYER_KHRONOS_validation"
-    };
+    const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    const std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
     #ifdef NDEBUG
     const bool enable = false;
     #else
@@ -248,25 +244,18 @@ void vulkanSend(int loc, int siz, float *mat);
 void vulkanDraw(enum Micro shader, int base, int limit);
 void windowChanged(struct MainState *mainState)
 {
-    int follow = mainState->argumentFollow;
-    int modify = mainState->argumentModify;
-    enum Micro micro = mainState->argumentDisplay;
-    enum Micro brighten = mainState->argumentBrighten;
-    enum Micro detect = mainState->argumentDetect;
-    int base = mainState->argumentBase;
-    int limit = mainState->argumentLimit;
     float mat[16];
-    if (mainState->mouseReact[Follow]) vulkanSend(follow*sizeof(mat),sizeof(mat),vulkanMatrix(mat));
-    if (mainState->mouseReact[Modify]) vulkanSend(modify*sizeof(mat),sizeof(mat),planeMatrix(mat));
-    if (mainState->mouseReact[Display]) vulkanDraw(micro,base,limit);
-    if (mainState->mouseReact[Brighten]) vulkanDraw(brighten,base,limit);
-    if (mainState->mouseReact[Detect]) vulkanDraw(detect,base,limit);
+    if (mainState->mouseReact[Follow]) vulkanSend(mainState->argumentFollow*sizeof(mat),sizeof(mat),vulkanMatrix(mat));
+    if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
+    if (mainState->mouseReact[Display]) vulkanDraw(mainState->argumentDisplay,mainState->argumentBase,mainState->argumentLimit);
+    if (mainState->mouseReact[Brighten]) vulkanDraw(mainState->argumentBrighten,mainState->argumentBase,mainState->argumentLimit);
+    if (mainState->mouseReact[Detect]) vulkanDraw(mainState->argumentDetect,mainState->argumentBase,mainState->argumentLimit);
 }
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->mouseLeft -= xpos - mainState->currentLeft;
-    mainState->mouseBase -= ypos - mainState->currentBase;
+    mainState->mouseLeft = mainState->mouseLeft - (xpos - mainState->currentLeft);
+    mainState->mouseBase = mainState->mouseBase - (ypos - mainState->currentBase);
     mainState->currentLeft = xpos; mainState->currentBase = ypos;
     windowChanged(mainState);
 }
@@ -470,10 +459,10 @@ struct OpenState {
         int l = (mainState->mouseSticky[West]?1:0);
         int m = (mainState->mouseModify?1:0);
         switch (mainState->mouseAction) {default: ERROR();
-        break; case(Move): glfwSetCursor(window,moveCursor[e][t][r][b][l]);
-        break; case(Transform): glfwSetCursor(window,rotateCursor[e]);
-        break; case(Refine): glfwSetCursor(window,refineCursor);
-        break; case(Sculpt): glfwSetCursor(window,sculptCursor[m]);}
+        break; case (Move): glfwSetCursor(window,moveCursor[e][t][r][b][l]);
+        break; case (Transform): glfwSetCursor(window,rotateCursor[e]);
+        break; case (Refine): glfwSetCursor(window,refineCursor);
+        break; case (Sculpt): glfwSetCursor(window,sculptCursor[m]);}
     }
 };
 
@@ -1083,16 +1072,14 @@ struct QueueState {
     fieldBuffer[MicroPRP].push_back(fieldState);
     fieldBuffer[MicroPRP].push_back(0);
     drawQueue[MicroPRP] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
-    for (int i = 0; i < Micros; i++) {
-    vertexName[i] = "vertexMicrosG";
+    for (int i = 0; i < Micros; i++) {vertexName[i] = "vertexMicrosG";
     switch (Component__Micro__MicroIn((Micro)i)) {
     case (Practice): vertexName[i] = "vertexPracticeG"; break;
     case (Concept): switch (Component__Micro__MicroMid((Micro)i)) {
     case (Raster): vertexName[i] = "vertexRasterG"; break;
     case (CoPoint): vertexName[i] = "vertexCopointG"; break;
     case (Coplane): vertexName[i] = "vertexCoplaneG"; break;} break;}}
-    for (int i = 0; i < Micros; i++) {
-    fragmentName[i] = "fragmentMicrosG";
+    for (int i = 0; i < Micros; i++) {fragmentName[i] = "fragmentMicrosG";
     switch (Component__Micro__MicroOut((Micro)i)) {
     case (DisPlay): fragmentName[i] = "fragmentDisplayG"; break;
     case (Compute): fragmentName[i] = "fragmentComputeG"; break;
@@ -1760,31 +1747,35 @@ void vulkanExtent()
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
-    break; case(OriginLeft): return mainState.mouseLeft;
-    break; case(OriginBase): return mainState.mouseBase;
-    break; case(CursorLeft): {double x,y; glfwGetCursorPos(mainState.openState->window,&x,&y); return x;}
-    break; case(CursorBase): {double x,y; glfwGetCursorPos(mainState.openState->window,&x,&y); return y;}
-    break; case(CursorAngle): return mainState.mouseAngle;
-    break; case(CursorPress): {if (mainState.keyPressed.empty()) return 0;
-    int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
-    break; case(RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
-    break; case(RegisterOpen): return (!mainState.escapeEnter);
-    break; case(ArgumentFollow): return mainState.argumentFollow;
-    break; case(ArgumentModify): return mainState.argumentModify;
-    break; case(ArgumentDisplay): return mainState.argumentDisplay;
-    break; case(ArgumentBrighten): return mainState.argumentBrighten;
-    break; case(ArgumentDetect): return mainState.argumentDetect;
-    break; case(ArgumentBase): return mainState.argumentBase;
-    break; case(ArgumentLimit): return mainState.argumentLimit;
-    break; case(ManipulateReact): {int mask = 0;
-    for (int i = 0; i < Reacts; i++) if (mainState.mouseReact[(React)i]) mask |= (1<<i);
-    return mask;}
-    break; case(ManipulateAction): return mainState.mouseAction;
-    break; case(ManipulateActive): return mainState.mouseActive;
-    break; case (ManipulateMask): {int mask = 0;
-    for (int i = 0; i < Stickys; i++) if (mainState.mouseSticky[(Sticky)i]) mask |= (1<<i);
-    return mask;}
-    break; case(ManipulateModify): return mainState.mouseModify;
+    break; case (OriginLeft): return mainState.mouseLeft;
+    break; case (OriginBase): return mainState.mouseBase;
+    break; case (CursorLeft): {double xpos,ypos; int32_t tempx, tempy;
+        glfwGetCursorPos(mainState.openState->window,&xpos,&ypos);
+        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
+        return xpos + tempx;}
+    break; case (CursorBase): {double xpos,ypos; int32_t tempx, tempy;
+        glfwGetCursorPos(mainState.openState->window,&xpos,&ypos);
+        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
+        return ypos + tempy;}
+    break; case (CursorAngle): return mainState.mouseAngle;
+    break; case (CursorPress): {if (mainState.keyPressed.empty()) return 0;
+        int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
+    break; case (RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
+    break; case (RegisterOpen): return (!mainState.escapeEnter);
+    break; case (ArgumentFollow): return mainState.argumentFollow;
+    break; case (ArgumentModify): return mainState.argumentModify;
+    break; case (ArgumentDisplay): return mainState.argumentDisplay;
+    break; case (ArgumentBrighten): return mainState.argumentBrighten;
+    break; case (ArgumentDetect): return mainState.argumentDetect;
+    break; case (ArgumentBase): return mainState.argumentBase;
+    break; case (ArgumentLimit): return mainState.argumentLimit;
+    break; case (ManipulateReact): {int mask = 0; for (int i = 0; i < Reacts; i++)
+        if (mainState.mouseReact[(React)i]) mask |= (1<<i); return mask;}
+    break; case (ManipulateAction): return mainState.mouseAction;
+    break; case (ManipulateActive): return mainState.mouseActive;
+    break; case (ManipulateMask): {int mask = 0; for (int i = 0; i < Stickys; i++)
+        if (mainState.mouseSticky[(Sticky)i]) mask |= (1<<i); return mask;}
+    break; case (ManipulateModify): return mainState.mouseModify;
     }
     return 0;
 }
@@ -1861,26 +1852,22 @@ void vulkanDma(struct Center *center)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
-    break; case (CursorPress): if (center->val[i] == 0) mainState.keyPressed.clear();
-    else mainState.keyPressed.push_front(center->val[i]);
+    break; case (CursorPress): if (center->val[i] == 0)
+        mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
     break; case (ManipulateReact): for (int j = 0; j < Reacts; j++)
-    mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case(ManipulateAction): mainState.mouseAction = (Action)center->val[i];
-    mainState.openState->setCursor();
-    break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i];
-    mainState.openState->setCursor();
+        mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipulateAction): mainState.mouseAction = (Action)center->val[i]; mainState.openState->setCursor();
+    break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i]; mainState.openState->setCursor();
     break; case (ManipulateMask): for (int j = 0; j < Stickys; j++)
-    mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0);
-    mainState.openState->setCursor();
-    break; case(ManipulateModify): mainState.mouseModify = (enum Modify)center->val[i];
-    mainState.openState->setCursor();
-    break; case(ArgumentFollow): mainState.argumentFollow = center->val[i];
-    break; case(ArgumentModify): mainState.argumentModify = center->val[i];
-    break; case(ArgumentDisplay): mainState.argumentDisplay = (Micro)center->val[i];
-    break; case(ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
-    break; case(ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
-    break; case(ArgumentBase): mainState.argumentBase = center->val[i];
-    break; case(ArgumentLimit): mainState.argumentLimit = center->val[i];
+        mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
+    break; case (ManipulateModify): mainState.mouseModify = (enum Modify)center->val[i]; mainState.openState->setCursor();
+    break; case (ArgumentFollow): mainState.argumentFollow = center->val[i];
+    break; case (ArgumentModify): mainState.argumentModify = center->val[i];
+    break; case (ArgumentDisplay): mainState.argumentDisplay = (Micro)center->val[i];
+    break; case (ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
+    break; case (ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
+    break; case (ArgumentBase): mainState.argumentBase = center->val[i];
+    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
     }}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
