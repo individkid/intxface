@@ -34,9 +34,9 @@ struct QueueState;
 struct CopyState;
 struct MainState {
     bool resizeNeeded;
-    bool pollMode;
     bool escapeEnter;
     std::deque<int> keyPressed;
+    bool mouseReact[Reacts];
     enum Action mouseAction;
     enum Active mouseActive;
     bool mouseSticky[Stickys];
@@ -84,8 +84,8 @@ struct MainState {
     #endif
 } mainState = {
     .resizeNeeded = true,
-    .pollMode = false,
     .escapeEnter = false,
+    .mouseReact = {false,false,false,false},
     .mouseAction = Move,
     .mouseActive = Setup,
     .mouseSticky = {false,false,false,false},
@@ -270,9 +270,9 @@ void windowChanged(struct MainState *mainState)
     int base = mainState->argumentBase;
     int limit = mainState->argumentLimit;
     float mat[16];
-    if (index >= 0) vulkanMatrix(index*sizeof(mat),sizeof(mat),vulkanWindow(mat));
-    if (micro < Micros) vulkanDraw(micro,base,limit);
-    if (extra < Micros) vulkanDraw(extra,base,limit);
+    if (mainState->mouseReact[Follow]) vulkanMatrix(index*sizeof(mat),sizeof(mat),vulkanWindow(mat));
+    if (mainState->mouseReact[Display]) vulkanDraw(micro,base,limit);
+    if (mainState->mouseReact[Brighten]) vulkanDraw(extra,base,limit);
 }
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
@@ -1766,12 +1766,14 @@ int vulkanInfo(enum Configure query)
     int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
     break; case(RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
     break; case(RegisterOpen): return (!mainState.escapeEnter);
-    break; case(RegisterPoll): return mainState.pollMode;
     break; case(ArgumentIndex): return mainState.argumentIndex;
     break; case(ArgumentMicro): return mainState.argumentMicro;
     break; case(ArgumentExtra): return mainState.argumentExtra;
     break; case(ArgumentBase): return mainState.argumentBase;
     break; case(ArgumentLimit): return mainState.argumentLimit;
+    break; case(ManipulateReact): {int mask = 0;
+    for (int i = 0; i < Reacts; i++) if (mainState.mouseReact[(React)i]) mask |= (1<<i);
+    return mask;}
     break; case(ManipulateAction): return mainState.mouseAction;
     break; case(ManipulateActive): return mainState.mouseActive;
     break; case (ManipulateMask): {int mask = 0;
@@ -1813,7 +1815,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Process):
     while (!mainState.escapeEnter) {
     planeMain();
-    if (mainState.pollMode) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
+    if (mainState.mouseReact[Poll]) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
     break;
     default:
     break;}
@@ -1854,9 +1856,10 @@ void vulkanDma(struct Center *center)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
-    break; case (RegisterPoll): mainState.pollMode = center->val[i];
     break; case (CursorPress): if (center->val[i] == 0) mainState.keyPressed.clear();
     else mainState.keyPressed.push_front(center->val[i]);
+    break; case (ManipulateReact): for (int j = 0; j < Reacts; j++)
+    mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case(ManipulateAction): mainState.mouseAction = (Action)center->val[i];
     mainState.openState->setCursor();
     break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i];

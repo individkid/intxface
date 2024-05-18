@@ -622,7 +622,7 @@ void planeMain()
 	if (wait == Start && hint == Configures) {planeThread(proc); callMain(proc,wait);}
 	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}
 	if (wait == Waits && hint == ResultHint && proc == Threads) break;}
-	if (callInfo(RegisterPoll)) usleep(10000);
+	if (callInfo(ManipulateReact) & (1<<Poll)) usleep(POLLDELAY);
 }
 void planeReady(struct Pierce *given)
 {
@@ -734,7 +734,7 @@ void planraWake(enum Configure hint)
 		callDraw(MicroPRP,0,6);
 	}
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
-		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,RegisterPoll};
+		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,ManipulateReact};
 		int val[3] = {Upset,15,1};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 3; center.slf = 1;
@@ -747,7 +747,7 @@ void planraWake(enum Configure hint)
 		center.cfg = cfg; center.val = val; callDma(&center);
 	}
 	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 6) {
-		enum Configure cfg[2] = {ManipulateActive,RegisterPoll}; int val[2] = {Setup,0};
+		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,0};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 2; center.slf = 1;
 		center.cfg = cfg; center.val = val; callDma(&center);

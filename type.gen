@@ -72,6 +72,7 @@ Configure = {
 	"ArgumentBase", --
 	"ArgumentLimit", --
 	"ArgumentIndex", -- pass to dma
+	"ManipulateReact", -- block or behave
 	"ManipulateAction", -- what to do
 	"ManipulateActive", -- whether changing
 	"ManipulateMask", -- which edges moved
@@ -82,7 +83,6 @@ Configure = {
 	"ManipulateScope", -- what to transform
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
-	"RegisterPoll", -- which main blocks
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
@@ -128,6 +128,12 @@ Transfer = {
 	"Echo", -- copy result to center
 	"Fill", -- copy pierce to center
 	"Hide", -- pop hide and use
+}
+React = {
+	"Poll",
+	"Follow",
+	"Display",
+	"Brighten",
 }
 Active = {
 	"Setup",
