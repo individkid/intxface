@@ -726,7 +726,7 @@ void planraWake(enum Configure hint)
 		center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
 		center.cfg = &cfg; center.val = &val; callDma(&center);}
 	}
-	if (hint == CursorLeft) {
+	if (hint == CursorLeft && callInfo(ManipulateActive) == Setup) {
 		struct Center testCenter[2];
 		for (int i = 0; i < 2; i++) memset(testCenter+i,0,sizeof(struct Center));
 		int num = planraCenter(2,testCenter); // TODO allocat and free

@@ -239,7 +239,6 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-// TODO use glfwGetWindowSize and glfwGetWindowPos instead of mainState
 void physicalToScreen(float *xptr, float *yptr);
 void physicalFromScreen(float *xptr, float *yptr);
 void screenToWindow(float *xptr, float *yptr);
@@ -1712,6 +1711,33 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     return fence;}
 };
 
+// TODO use glfwGetWindowSize and glfwGetWindowPos instead of mainState
+void physicalToScreen(float *xptr, float *yptr)
+{
+    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
+    float width = mode->width; float height = mode->height;
+    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *xptr *= width/xphys; *yptr *= height/yphys;
+}
+void physicalFromScreen(float *xptr, float *yptr)
+{
+    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
+    float width = mode->width; float height = mode->height;
+    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+    *xptr *= xphys/width; *yptr *= yphys/height;
+}
+void screenToWindow(float *xptr, float *yptr)
+{
+    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
+    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
+    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
+}
+void screenFromWindow(float *xptr, float *yptr)
+{
+    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
+    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
+    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
+}
 void vulkanExtent()
 {
     if (mainState.resizeNeeded) {
@@ -1812,32 +1838,6 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     break;
     default:
     throw std::runtime_error("no case in switch!");}  
-}
-void physicalToScreen(float *xptr, float *yptr)
-{
-    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    float width = mode->width; float height = mode->height;
-    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *xptr *= width/xphys; *yptr *= height/yphys;
-}
-void physicalFromScreen(float *xptr, float *yptr)
-{
-    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    float width = mode->width; float height = mode->height;
-    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *xptr *= xphys/width; *yptr *= yphys/height;
-}
-void screenToWindow(float *xptr, float *yptr)
-{
-    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
-    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
-    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
-}
-void screenFromWindow(float *xptr, float *yptr)
-{
-    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
-    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
-    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
 void vulkanMatrix(int loc, int siz, float *mat)
 {
