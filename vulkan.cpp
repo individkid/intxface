@@ -1718,14 +1718,14 @@ float *vulkanMatrix(float *mat)
     // find the matrix to keep points fixed when window moves or resizes
     float xmax = 50.0; float ymax = 50.0;
     float xmin = -50.0; float ymin = -50.0;
-    float xmid = mainState.windowLeft + mainState.windowWidth/2.0;
-    float ymid = mainState.windowBase + mainState.windowHeight/2.0;
+    float xmid = (xmax+xmin)/2.0; float ymid = (ymax+ymin)/2.0;
     physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
     physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
-    screenToWindow(&xmid,&ymid); xmax += xmid; xmin += xmid; ymax += ymid; ymin += ymid;
+    physicalToScreen(&xmid,&ymid); screenToWindow(&xmid,&ymid);
     for (int i = 0; i < 16; i++) mat[i] = 0.0;
-    *matrc(mat,0,0,4) = xmax-xmid; *matrc(mat,1,1,4) = ymax-ymid; *matrc(mat,2,2,4) = 1.0;
-    *matrc(mat,0,3,4) = xmid; *matrc(mat,1,3,4) = ymid; *matrc(mat,3,3,4) = 1.0;
+    *matrc(mat,0,0,4) = 1.0/(xmax-xmid); *matrc(mat,1,1,4) = 1.0/(ymax-ymid);
+    *matrc(mat,0,3,4) = -xmid; *matrc(mat,1,3,4) = -ymid;
+    *matrc(mat,2,2,4) = 1.0; *matrc(mat,3,3,4) = 1.0;
     return mat;
 }
 void vulkanExtent()
