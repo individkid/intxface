@@ -669,9 +669,10 @@ void planraCenter()
 	float mat[16]; planraMatrix(mat);
 	if (planraOnce) {planraOnce = 0;
 		int len = 0; char *str; char *tmp;
-		center.mem = Configurez; center.siz = 1; center.idx = 0; center.slf = 0;
-		allocConfigure(&center.cfg,1); allocInt(&center.val,1);
-		center.cfg[0] = ArgumentLimit; center.val[0] = 6;
+		center.mem = Configurez; center.siz = 2; center.idx = 0; center.slf = 0;
+		allocConfigure(&center.cfg,2); allocInt(&center.val,2);
+		center.cfg[0] = ArgumentLimit; center.cfg[1] = ManipulateReact;
+		center.val[0] = 6; center.val[1] = 1<<Display;
 		callDma(&center); allocConfigure(&center.cfg,0); allocInt(&center.val,0);
 		center.mem = Vertexz; center.siz = 6; center.idx = 0; center.slf = 0;
 		allocVertex(&center.vtx,6);
@@ -731,7 +732,7 @@ void planraWake(enum Configure hint)
 		center.cfg = &cfg; center.val = &val; callDma(&center);}
 	}
 	if (hint == CursorLeft && callInfo(ManipulateActive) == Setup) {
-		planraCenter(); callDraw(MicroPRP,0,6);
+		planraCenter();
 	}
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
 		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,ManipulateReact};
@@ -747,7 +748,7 @@ void planraWake(enum Configure hint)
 		center.cfg = cfg; center.val = val; callDma(&center);
 	}
 	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 6) {
-		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,0};
+		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,1<<Display};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 2; center.slf = 1;
 		center.cfg = cfg; center.val = val; callDma(&center);
