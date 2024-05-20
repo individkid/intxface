@@ -246,7 +246,11 @@ void windowChanged(struct MainState *mainState)
 {
     float mat[16];
     if (mainState->mouseReact[Follow]) vulkanSend(mainState->argumentFollow*sizeof(mat),sizeof(mat),vulkanMatrix(mat));
+    #ifdef PLANRA
+    if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
+    #else
     if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
+    #endif
     if (mainState->mouseReact[Display]) vulkanDraw(mainState->argumentDisplay,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Brighten]) vulkanDraw(mainState->argumentBrighten,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Detect]) vulkanDraw(mainState->argumentDetect,mainState->argumentBase,mainState->argumentLimit);

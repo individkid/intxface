@@ -654,7 +654,6 @@ float *planraMatrix(float *mat)
 	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
 	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
 	cur[1] = 0.2*cosf(time*2.0944);
-	// cur[0] = cur[1] = 0.0;
 	cur[2] = time*1.5708;
 	identmat(mat,4);
 	planeSlideOrthoMouse(mat,fix,nml,org,cur);
@@ -664,50 +663,39 @@ float *planraMatrix(float *mat)
 }
 void planraCenter()
 {
-	struct Center center;
 	int len = 0; char *str; char *tmp;
-	float mat[16]; planraMatrix(mat);
-	if (planraOnce) {planraOnce = 0;
-		int len = 0; char *str; char *tmp;
-		center.mem = Configurez; center.siz = 2; center.idx = 0; center.slf = 0;
-		allocConfigure(&center.cfg,2); allocInt(&center.val,2);
-		center.cfg[0] = ArgumentLimit; center.cfg[1] = ManipulateReact;
-		center.val[0] = 6; center.val[1] = 1<<Display;
-		callDma(&center); allocConfigure(&center.cfg,0); allocInt(&center.val,0);
-		center.mem = Vertexz; center.siz = 6; center.idx = 0; center.slf = 0;
-		allocVertex(&center.vtx,6);
-		asprintf(&str,"Vertex(");
-		asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-		len = 0; hideVertex(&center.vtx[0],str,&len); free(str);
-		asprintf(&str,"Vertex(");
-		asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-		len = 0; hideVertex(&center.vtx[1],str,&len); free(str);
-		asprintf(&str,"Vertex(");
-		asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-		len = 0; hideVertex(&center.vtx[2],str,&len); free(str);
-		asprintf(&str,"Vertex(");
-		asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-		len = 0; hideVertex(&center.vtx[3],str,&len); free(str);
-		asprintf(&str,"Vertex(");
-		asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-		len = 0; hideVertex(&center.vtx[4],str,&len); free(str);
-		asprintf(&str,"Vertex(");
-		asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-		asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-		len = 0; hideVertex(&center.vtx[5],str,&len); free(str);
-		callDma(&center); allocVertex(&center.vtx,0);}
-	center.mem = Matrixz; center.siz = 1; center.idx = 0; center.slf = 0;
-	allocMatrix(&center.mat,1);
-	asprintf(&str,"Matrix(");
-	for (int j = 0; j < 16; j++) asprintf(&str,"%smat[%d]:Old(%f)",tmp = str,j,mat[j]); free(tmp);
-	asprintf(&str,"%s)",tmp = str); free(tmp);
-	len = 0; hideMatrix(&center.mat[0],str,&len); free(str);
-	callDma(&center); allocMatrix(&center.mat,0);
+	center.mem = Configurez; center.siz = 2; center.idx = 0; center.slf = 0;
+	allocConfigure(&center.cfg,2); allocInt(&center.val,2);
+	center.cfg[0] = ArgumentLimit; center.cfg[1] = ManipulateReact;
+	center.val[0] = 6; center.val[1] = (1<<Display)|(1<<Modify);
+	callDma(&center); allocConfigure(&center.cfg,0); allocInt(&center.val,0);
+	center.mem = Vertexz; center.siz = 6; center.idx = 0; center.slf = 0;
+	allocVertex(&center.vtx,6);
+	asprintf(&str,"Vertex(");
+	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+	len = 0; hideVertex(&center.vtx[0],str,&len); free(str);
+	asprintf(&str,"Vertex(");
+	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+	len = 0; hideVertex(&center.vtx[1],str,&len); free(str);
+	asprintf(&str,"Vertex(");
+	asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+	len = 0; hideVertex(&center.vtx[2],str,&len); free(str);
+	asprintf(&str,"Vertex(");
+	asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+	len = 0; hideVertex(&center.vtx[3],str,&len); free(str);
+	asprintf(&str,"Vertex(");
+	asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+	len = 0; hideVertex(&center.vtx[4],str,&len); free(str);
+	asprintf(&str,"Vertex(");
+	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
+	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
+	len = 0; hideVertex(&center.vtx[5],str,&len); free(str);
+	callDma(&center); allocVertex(&center.vtx,0);
 }
 void planraWake(enum Configure hint)
 {
@@ -722,6 +710,10 @@ void planraWake(enum Configure hint)
 		planeSafe(Window,Stop,Configures);
 		return;
 	}
+	if (planraOnce) {
+		planraOnce = 0;
+		planraCenter();
+	}
 	if (hint == CursorPress) {
 		int key1 = callInfo(CursorPress);
 		int key2 = callInfo(CursorPress);
@@ -730,9 +722,6 @@ void planraWake(enum Configure hint)
 		enum Configure cfg = CursorPress; int val = 256;
 		center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
 		center.cfg = &cfg; center.val = &val; callDma(&center);}
-	}
-	if (hint == CursorLeft && callInfo(ManipulateActive) == Setup) {
-		planraCenter();
 	}
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
 		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,ManipulateReact};
@@ -748,7 +737,7 @@ void planraWake(enum Configure hint)
 		center.cfg = cfg; center.val = val; callDma(&center);
 	}
 	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 6) {
-		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,1<<Display};
+		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,(1<<Display)|(1<<Modify)};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 2; center.slf = 1;
 		center.cfg = cfg; center.val = val; callDma(&center);
