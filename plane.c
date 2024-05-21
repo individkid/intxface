@@ -725,7 +725,7 @@ void planraWake(enum Configure hint)
 	}
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
 		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,ManipulateReact};
-		int val[3] = {Upset,15,1};
+		int val[3] = {Upset,15,1|(1<<Display)};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 3; center.slf = 1;
 		center.cfg = cfg; center.val = val; callDma(&center);

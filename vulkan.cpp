@@ -83,7 +83,7 @@ struct MainState {
 } mainState = {
     .resizeNeeded = true,
     .escapeEnter = false,
-    .mouseReact = {false,false,false,false},
+    .mouseReact = {false,false,false,false,false,false},
     .mouseAction = Move,
     .mouseActive = Setup,
     .mouseSticky = {false,false,false,false},
@@ -286,6 +286,8 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     planeSafe(Threads,Waits,CursorClick);
 }
+int debug_count = 0;
+int debug_max = 0;
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     double nextx, nexty;
@@ -309,6 +311,7 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
     }
+    if (mainState->mouseActive == Upset && ++debug_count > debug_max) {debug_max = debug_count; std::cerr << "moved " << debug_count << std::endl;}
     windowChanged(mainState);
     planeSafe(Threads,Waits,CursorLeft);
 }
@@ -825,7 +828,7 @@ struct ThreadState {
         finish = false;
         seqnum = 0;
         if (sem_init(&protect, 0, 1) != 0 ||
-            sem_init(&semaphore, 0, 0) != 0 ||
+            sem_init(&semaphore, 0, 1) != 0 ||
             pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
@@ -887,7 +890,8 @@ struct ThreadState {
     std::function<bool()> push(std::function<VkFence()> given) {
     // return function that returns whether fence returned by given function in separate thread is done
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        if (fence.empty() && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+        int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
+        if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         int temp = seqnum++; order.push_back(temp); lookup.insert(temp);
         setup.push_back(given);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
@@ -899,6 +903,8 @@ struct ThreadState {
     std::function<bool()> push(std::function<VkFence()> given, int last) {
     // return query of wheter fence is done for given function started in indicated sequence
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+	int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
+        if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         int temp = seqnum++; lookup.insert(temp);
         what.push_back(temp); when.push_back(last); extra.push_back(given);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
@@ -1815,6 +1821,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Process):
     while (!mainState.escapeEnter) {
     planeMain();
+    debug_count = 0;
     if (mainState.mouseReact[Poll]) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
     break;
     default:
