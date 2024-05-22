@@ -17,6 +17,7 @@
 #include <functional>
 #include <pthread.h>
 #include <semaphore.h>
+#include <sys/time.h>
 
 extern "C" {
     #include "type.h"
@@ -242,9 +243,11 @@ GLFWcursor *sculptCursor(bool e) {
 float *vulkanMatrix(float *mat);
 void vulkanSend(int loc, int siz, float *mat);
 void vulkanDraw(enum Micro shader, int base, int limit);
+float debug_diff = 0.0;
 void windowChanged(struct MainState *mainState)
 {
     float mat[16];
+    struct timeval start; gettimeofday(&start, NULL);
     if (mainState->mouseReact[Follow]) vulkanSend(mainState->argumentFollow*sizeof(mat),sizeof(mat),vulkanMatrix(mat));
     #ifdef PLANRA
     if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
@@ -254,6 +257,9 @@ void windowChanged(struct MainState *mainState)
     if (mainState->mouseReact[Display]) vulkanDraw(mainState->argumentDisplay,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Brighten]) vulkanDraw(mainState->argumentBrighten,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Detect]) vulkanDraw(mainState->argumentDetect,mainState->argumentBase,mainState->argumentLimit);
+    struct timeval stop; gettimeofday(&stop, NULL);
+    float diff = (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec) / (double)MICROSECONDS;
+    if (diff > debug_diff) {debug_diff = diff; std::cerr << "send " << diff << std::endl;}
 }
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
@@ -286,8 +292,6 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     planeSafe(Threads,Waits,CursorClick);
 }
-int debug_count = 0;
-int debug_max = 0;
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     double nextx, nexty;
@@ -311,7 +315,6 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
     }
-    if (mainState->mouseActive == Upset && ++debug_count > debug_max) {debug_max = debug_count; std::cerr << "moved " << debug_count << std::endl;}
     windowChanged(mainState);
     planeSafe(Threads,Waits,CursorLeft);
 }
@@ -809,6 +812,8 @@ struct SwapState {
     }
 };
 
+int debug_count = 0;
+int debug_max = 0;
 struct ThreadState {
     VkDevice device;
     sem_t protect;
@@ -872,7 +877,8 @@ struct ThreadState {
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();}
-                if (arg->fence.empty()) planeSafe(Threads,Waits,RegisterDone);}}
+                if (arg->fence.empty()) planeSafe(Threads,Waits,RegisterDone);}
+	}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -895,6 +901,7 @@ struct ThreadState {
         int temp = seqnum++; order.push_back(temp); lookup.insert(temp);
         setup.push_back(given);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
+    // if (order.size() > debug_max) {debug_max = order.size(); std::cerr << "order " << order.size() << std::endl;}
         if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size()+what.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
