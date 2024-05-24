@@ -243,11 +243,9 @@ GLFWcursor *sculptCursor(bool e) {
 float *vulkanMatrix(float *mat);
 void vulkanSend(int loc, int siz, float *mat);
 void vulkanDraw(enum Micro shader, int base, int limit);
-float debug_diff = 0.0;
 void windowChanged(struct MainState *mainState)
 {
     float mat[16];
-    struct timeval start; gettimeofday(&start, NULL);
     if (mainState->mouseReact[Follow]) vulkanSend(mainState->argumentFollow*sizeof(mat),sizeof(mat),vulkanMatrix(mat));
     #ifdef PLANRA
     if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
@@ -257,9 +255,6 @@ void windowChanged(struct MainState *mainState)
     if (mainState->mouseReact[Display]) vulkanDraw(mainState->argumentDisplay,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Brighten]) vulkanDraw(mainState->argumentBrighten,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Detect]) vulkanDraw(mainState->argumentDetect,mainState->argumentBase,mainState->argumentLimit);
-    struct timeval stop; gettimeofday(&stop, NULL);
-    float diff = (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec) / (double)MICROSECONDS;
-    if (diff > debug_diff) {debug_diff = diff; std::cerr << "send " << diff << std::endl;}
 }
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
@@ -267,14 +262,12 @@ void windowMoved(GLFWwindow* window, int xpos, int ypos)
     mainState->mouseLeft = mainState->mouseLeft - (xpos - mainState->currentLeft);
     mainState->mouseBase = mainState->mouseBase - (ypos - mainState->currentBase);
     mainState->currentLeft = xpos; mainState->currentBase = ypos;
-    windowChanged(mainState);
 }
 void windowSized(GLFWwindow* window, int width, int height)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->currentWidth = width; mainState->currentHeight = height;
     mainState->resizeNeeded = true;
-    windowChanged(mainState);
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -315,13 +308,11 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
     }
-    windowChanged(mainState);
     planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngle(GLFWwindow *window, double amount/*TODO*/) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->mouseAngle += amount;
-    windowChanged(mainState);
     planeSafe(Threads,Waits,CursorAngle);
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -484,7 +475,7 @@ struct PhysicalState {
     VkSurfaceFormatKHR format;
     VkPresentModeKHR mode;
     VkFormat image;
-    PhysicalState(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions) {
+    PhysicalState(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions, uint32_t inflight) {
         std::optional<uint32_t> graphic;
         std::optional<uint32_t> present;
         std::optional<uint32_t> compute;
@@ -558,7 +549,7 @@ struct PhysicalState {
         presentid = present.value();
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
-        minimum = capabilities.minImageCount + 1;
+        minimum = capabilities.minImageCount+inflight;
         if (capabilities.maxImageCount > 0 && minimum > capabilities.maxImageCount)
             minimum = capabilities.maxImageCount;
         format = [](std::vector<VkSurfaceFormatKHR> formats) {
@@ -812,7 +803,14 @@ struct SwapState {
     }
 };
 
-int debug_count = 0;
+float debug_diff = 0.0;
+struct timeval debug_start;
+void debugStart() {gettimeofday(&debug_start, NULL);}
+void debugStop(const char *str) {
+    struct timeval stop; gettimeofday(&stop, NULL);
+    float diff = (stop.tv_sec - debug_start.tv_sec) + (stop.tv_usec - debug_start.tv_usec) / (double)MICROSECONDS;
+    if (diff > debug_diff) {debug_diff = diff; std::cerr << str << " " << diff << std::endl;}
+}
 int debug_max = 0;
 struct ThreadState {
     VkDevice device;
@@ -900,8 +898,8 @@ struct ThreadState {
         if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         int temp = seqnum++; order.push_back(temp); lookup.insert(temp);
         setup.push_back(given);
+if (lookup.size() > debug_max) {debug_max = lookup.size(); std::cerr << "count " << lookup.size() << std::endl;}
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
-    // if (order.size() > debug_max) {debug_max = order.size(); std::cerr << "order " << order.size() << std::endl;}
         if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size()+what.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
@@ -1624,8 +1622,11 @@ void init() {
     delete pipeline;}
 VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded) {
     uint32_t index;
+debugStart();
     VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) *resizeNeeded = true;
+debugStop("setup");
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {*resizeNeeded = true;
+	std::cerr << "out of date" << std::endl;}
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
     vkResetFences(device, 1, &fence);
@@ -1798,7 +1799,7 @@ int vulkanInfo(enum Configure query)
 }
 void vulkanSafe()
 {
-    glfwPostEmptyEvent();
+    // glfwPostEmptyEvent();
 }
 void vulkanInit()
 {
@@ -1816,7 +1817,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     break;
     case (Graphics):
     mainState.physicalState = new PhysicalState(
-    mainState.initState->instance,mainState.openState->surface,mainState.extensions);
+    mainState.initState->instance,mainState.openState->surface,mainState.extensions,
+    mainState.MAX_FRAMES_IN_FLIGHT);
     mainState.logicalState = [](PhysicalState *physical){
     return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
     physical->image,mainState.layers,mainState.extensions,mainState.enable,
@@ -1827,8 +1829,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     break;
     case (Process):
     while (!mainState.escapeEnter) {
+    windowChanged(&mainState);
     planeMain();
-    debug_count = 0;
     if (mainState.mouseReact[Poll]) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
     break;
     default:
@@ -1858,6 +1860,9 @@ void vulkanMain(enum Thread proc, enum Wait wait)
 void vulkanSend(int loc, int siz, float *mat)
 {
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
+    bool full = false;
+    full = !bufferQueue->set();
+    if (full) return;
     bufferQueue->set(loc,siz,mat);
 }
 void vulkanDma(struct Center *center)
