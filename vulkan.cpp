@@ -1859,6 +1859,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
 }
 void vulkanSend(int loc, int siz, float *mat)
 {
+    vulkanExtent();
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
     bool full = false;
     full = !bufferQueue->set();

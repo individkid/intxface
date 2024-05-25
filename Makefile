@@ -63,9 +63,9 @@ sharer.log:
 	ln -f $< $@
 
 %C: %C.o
-	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -g -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Cpp: %Cpp.o
-	$(CXX) -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -g -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
 	$(GHC) -o $@ $(filter %.hs %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
@@ -75,24 +75,24 @@ sharer.log:
 
 ifeq ($(UNAME),Linux)
 %.so: %C.o
-	$(CXX) -o $@ -shared $(filter %C.o %Cpp.o,$^)
+	$(CXX) -g -o $@ -shared $(filter %C.o %Cpp.o,$^)
 endif
 ifeq ($(UNAME),Darwin)
 %.so: %C.o
-	$(CXX) -o $@ -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -g -o $@ -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 endif
 
 %C.o: %.c
-	$(CC) -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
+	$(CC) -g -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
 ifeq ($(UNAME),Linux)
 %Cpp.o: %.cpp
-	$(CXX) -o $@ -c -fPIC $< ${INCLUDEPATH}
+	$(CXX) -g -o $@ -c -fPIC $< ${INCLUDEPATH}
 %Cpp.o: %Cpp.mk
-	$(CXX) -o $@ -c -fPIC `cat $<` ${INCLUDEPATH}
+	$(CXX) -g -o $@ -c -fPIC `cat $<` ${INCLUDEPATH}
 endif
 ifeq ($(UNAME),Darwin)
 %Cpp.o: %.cpp
-	$(CXX) -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
+	$(CXX) -g -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 endif
