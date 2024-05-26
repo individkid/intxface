@@ -58,12 +58,14 @@ int planeCall(void **dat, const char *str);
 // constant after other threads start:
 int internal = 0;
 int external = 0;
-uftype callDma = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
-xftype callInfo = 0;
+uftype callDma = 0;
 wftype callDraw = 0;
+rftype callReady = 0;
+xftype callDone = 0;
 sftype callWake = 0;
+tftype callInfo = 0;
 pthread_t thread[Threads];
 pthread_key_t retstr;
 // owned by a single thread until joined:
@@ -598,7 +600,7 @@ void planeFinish(enum Thread bit)
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, wftype draw, rftype pierce, sftype wake, vftype boot)
+void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, rftype pierce, xftype done, sftype wake, tftype info, zftype boot)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -610,15 +612,15 @@ void planeInit(zftype init, uftype dma, vftype safe, yftype main, xftype info, w
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callDma = dma; callSafe = safe; callMain = main; callInfo = info; callDraw = draw; callWake = wake;
+	callSafe = safe; callMain = main; callDma = dma; callDraw = draw; callReady = pierce; callDone = done; callWake = wake; callInfo = info;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});
 	planeMain();} closeIdent(internal); if (check) ERROR();
 }
-int planeInfo(enum Configure cfg)
+void planeDone(int tag)
 {
-	return configure[cfg];
+	// TODO free up center pointer that was passed to callDma
 }
 void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
 {
@@ -649,7 +651,6 @@ void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
 }
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint)
 {
-	// if (planeEnque(proc,wait,hint)) callSafe(); // TODO callSafe only from threads
 	planeEnque(proc,wait,hint);
 }
 void planeMain()
@@ -665,11 +666,6 @@ void planeMain()
 	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}
 	if (wait == Waits && hint == ResultHint && proc == Threads) break;}
 	if (callInfo(ManipulateReact) & (1<<Poll)) usleep(POLLDELAY);
-}
-void planeReady(struct Pierce *given)
-{
-	// TODO remove this, and add callReady to get latest pierce
-	for (int i = 0; i < configure[PierceSize]; i++) pierce[i] = given[i]; found = 0;
 }
 
 int planraOnce;

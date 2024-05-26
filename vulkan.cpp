@@ -1272,7 +1272,7 @@ VkFence setup(int loc, int siz, const void *ptr) {
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
 VkFence getup() {
-    // after draw fence completes, call this to get computations from gpu
+    // call this to get computations from gpu
     VkResult result;
     if (tag != QueryBuf) return VK_NULL_HANDLE;
     vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
@@ -1291,10 +1291,6 @@ VkFence getup() {
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
-VkFence putup() {
-    // after getting computations, call this to save computations for use
-    if (tag == QueryBuf) copy->set(size,mapped);
-    return VK_NULL_HANDLE;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
     if (tag == FetchBuf) {
     [](VkBuffer buffer, VkCommandBuffer command){
@@ -1884,13 +1880,13 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     if (!draw->set()) return;
     mainState.registerDone++;
     int temp = draw->tmp();
-    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) buffer.push_back((*i)->get(draw->tmp(temp)));
+    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
+    buffer.push_back((*i)->get(draw->tmp(temp)));
     std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
     draw->tmp(temp,done);
-    for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
+    for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++)
     (*i)->get([](BufferState*buf){return buf->getup();});
-    (*i)->get([](BufferState*buf){return buf->putup();});}
 }
 void vulkanBack()
 {
@@ -1912,9 +1908,13 @@ void windowChanged()
     if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
     if (mainState.mouseReact[Report]) vulkanBack();
 }
-int vulkanReady(int size, struct Pierce *pierce)
+void vulkanReady(struct Pierce **ptr, int *siz, int *tag)
 {
-    return 0; // TODO memcpy from pierce
+    // TODO reserve buffer to return mapped in zero time 
+}
+void vulkanDone(int tag)
+{
+    // TODO release reserved buffer
 }
 
 int main(int argc, char **argv)
@@ -1923,9 +1923,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planraWake,planraBoot);
+        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,planraWake,vulkanInfo,planraBoot);
 #else
-        planeInit(vulkanInit,vulkanDma,vulkanSafe,vulkanMain,vulkanInfo,vulkanDraw,vulkanReady,planeWake,planeBoot);
+        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,planrWake,vulkanInfo,planrBoot);
 #endif
         delete mainState.initState;
     } catch (const std::exception& e) {
