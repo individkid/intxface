@@ -59,14 +59,6 @@ Configure = {
 	"PierceIndex", --
 	"StringSize", -- queue of strings
 	"MachineSize", -- vending machine lines
-	"UniformAll", -- which subject matrix
-	"UniformOne", -- which element matrix
-	"UniformProj", -- which matrix for projection
-	"UniformWin", -- which matrix for window
-	"UniformLeft", -- pierce point horizontal
-	"UniformBase", -- pierce pont vertical
-	"UniformIndex", -- manipulate plane select
-	"UniformBasis", -- which cospace basis
 	"ArgumentFollow", -- pass to dma
 	"ArgumentModify", --
 	"ArgumentMicro", -- pass to draw
@@ -93,6 +85,7 @@ Configure = {
 	"OriginBase", --
 	"CursorLeft", -- user input mouse
 	"CursorBase", --
+	"CursorIndex", -- manipulate plane select
 	"CursorAngle", -- user input roller
 	"CursorClick", -- user input button
 	"CursorPress", -- user input keyboard
@@ -134,11 +127,15 @@ Transfer = {
 }
 React = {
 	"Poll",
+	"Respond",
+	"Repeat",
 	"Follow",
 	"Modify",
+	"Direct",
 	"Display",
 	"Brighten",
 	"Detect",
+	"Report",
 }
 Active = {
 	"Setup",

@@ -22,7 +22,6 @@
 extern "C" {
     #include "type.h"
     #include "plane.h"
-    #include "metx.h"
 }
 
 struct InitState;
@@ -84,7 +83,7 @@ struct MainState {
 } mainState = {
     .resizeNeeded = true,
     .escapeEnter = false,
-    .mouseReact = {false,false,false,false,false,false},
+    .mouseReact = {false},
     .mouseAction = Move,
     .mouseActive = Setup,
     .mouseSticky = {false,false,false,false},
@@ -240,21 +239,24 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-float *vulkanMatrix(float *mat);
 void vulkanSend(int loc, int siz, float *mat);
+void vulkanField();
 void vulkanDraw(enum Micro shader, int base, int limit);
+void vulkanBack();
 void windowChanged(struct MainState *mainState)
 {
     float mat[16];
-    if (mainState->mouseReact[Follow]) vulkanSend(mainState->argumentFollow*sizeof(mat),sizeof(mat),vulkanMatrix(mat));
+    if (mainState->mouseReact[Follow]) vulkanSend(mainState->argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
     #ifdef PLANRA
     if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
     #else
     if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
     #endif
+    if (mainState->mouseReact[Direct]) vulkanField();
     if (mainState->mouseReact[Display]) vulkanDraw(mainState->argumentDisplay,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Brighten]) vulkanDraw(mainState->argumentBrighten,mainState->argumentBase,mainState->argumentLimit);
     if (mainState->mouseReact[Detect]) vulkanDraw(mainState->argumentDetect,mainState->argumentBase,mainState->argumentLimit);
+    if (mainState->mouseReact[Report]) vulkanBack();
 }
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
@@ -308,12 +310,12 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
     }
-    planeSafe(Threads,Waits,CursorLeft);
+    if (mainState->mouseReact[Respond]) planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngle(GLFWwindow *window, double amount/*TODO*/) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->mouseAngle += amount;
-    planeSafe(Threads,Waits,CursorAngle);
+    if (mainState->mouseReact[Respond]) planeSafe(Threads,Waits,CursorAngle);
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -812,12 +814,14 @@ void debugStop(const char *str) {
     if (diff > debug_diff) {debug_diff = diff; std::cerr << str << " " << diff << std::endl;}
 }
 int debug_max = 0;
+void vulkanSafe();
 struct ThreadState {
     VkDevice device;
     sem_t protect;
     sem_t semaphore;
     pthread_t thread;
     bool finish;
+    bool repeat;
     std::deque<std::function<VkFence()>> setup;
     std::deque<VkFence> fence;
     std::deque<int> order;
@@ -826,9 +830,10 @@ struct ThreadState {
     std::deque<int> what;
     std::deque<int> when;
     int seqnum;
-    ThreadState(VkDevice device) {
+    ThreadState(VkDevice device, bool repeat) {
         this->device = device;
         finish = false;
+	this->repeat = repeat;
         seqnum = 0;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 1) != 0 ||
@@ -874,8 +879,8 @@ struct ThreadState {
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
-                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();}
-                if (arg->fence.empty()) planeSafe(Threads,Waits,RegisterDone);}
+                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
+                if (arg->repeat) {planeSafe(Threads,Waits,RegisterDone); vulkanSafe();}}}
 	}
         vkDeviceWaitIdle(arg->device);
         return 0;
@@ -1731,21 +1736,6 @@ void screenFromWindow(float *xptr, float *yptr)
     float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
-float *vulkanMatrix(float *mat)
-{
-    // find the matrix to keep points fixed when window moves or resizes
-    float xmax = 50.0; float ymax = 50.0;
-    float xmin = -50.0; float ymin = -50.0;
-    float xmid = (xmax+xmin)/2.0; float ymid = (ymax+ymin)/2.0;
-    physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
-    physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
-    physicalToScreen(&xmid,&ymid); screenToWindow(&xmid,&ymid);
-    for (int i = 0; i < 16; i++) mat[i] = 0.0;
-    *matrc(mat,0,0,4) = 1.0/(xmax-xmid); *matrc(mat,1,1,4) = 1.0/(ymax-ymid);
-    *matrc(mat,0,3,4) = -xmid; *matrc(mat,1,3,4) = -ymid;
-    *matrc(mat,2,2,4) = 1.0; *matrc(mat,3,3,4) = 1.0;
-    return mat;
-}
 void vulkanExtent()
 {
     if (mainState.resizeNeeded) {
@@ -1760,7 +1750,7 @@ void vulkanExtent()
         device->render,physical->minimum,physical->graphicid,physical->presentid);
         }(mainState.openState,mainState.physicalState,mainState.logicalState);}
     if (!mainState.threadState && mainState.logicalState) {
-        mainState.threadState = new ThreadState(mainState.logicalState->device);}
+        mainState.threadState = new ThreadState(mainState.logicalState->device,mainState.mouseReact[Repeat]);}
 }
 int vulkanInfo(enum Configure query)
 {
@@ -1799,7 +1789,7 @@ int vulkanInfo(enum Configure query)
 }
 void vulkanSafe()
 {
-    // glfwPostEmptyEvent();
+    glfwPostEmptyEvent();
 }
 void vulkanInit()
 {
@@ -1866,6 +1856,10 @@ void vulkanSend(int loc, int siz, float *mat)
     if (full) return;
     bufferQueue->set(loc,siz,mat);
 }
+void vulkanField()
+{
+    // TODO write CursorLeft CursorBase CursorIndex to Uniform
+}
 void vulkanDma(struct Center *center)
 {
     vulkanExtent();
@@ -1913,9 +1907,13 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     (*i)->get([](BufferState*buf){return buf->getup();});
     (*i)->get([](BufferState*buf){return buf->putup();});}
 }
+void vulkanBack()
+{
+    // TODO update pierce to latest
+}
 int vulkanReady(int size, struct Pierce *pierce)
 {
-    return mainState.copyState->get(size,pierce);
+    return 0; // TODO memcpy from pierce
 }
 
 int main(int argc, char **argv)
