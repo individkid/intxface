@@ -73,7 +73,6 @@ int check = 0;
 char **string = 0;
 int strsiz = 0;
 int numpipe = 0;
-int calling = 0;
 int qsize = 0;
 int qfull = 0;
 int qhead = 0;
@@ -89,7 +88,7 @@ void planeRead();
 char *planePop();
 void planePut(const char *str);
 void planeOutstr(const char *str);
-int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
+void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
 
@@ -510,8 +509,8 @@ void *planeSelect(void *ptr)
 	readCenter(&center,external);
 	writeCenter(&center,internal);
 	sem_safe(&resource,{numpipe++;});
-	planeSafe(Threads,Waits,CenterMemory);}
-	planeSafe(Select,Stop,Configures);
+	planeSafe(Threads,Waits,CenterMemory); callSafe();}
+	planeSafe(Select,Stop,Configures); callSafe();
 	return 0;
 }
 void *planeConsole(void *ptr)
@@ -536,7 +535,7 @@ void *planeConsole(void *ptr)
 	if (val < 0) ERROR();
 	// planeDupstr(&str,-1,2,0); planeInsstr(chr,1,2,strlen(str)); free(str); // FIXME
 	}
-	planeSafe(Console,Stop,Configures);
+	planeSafe(Console,Stop,Configures); callSafe();
 	return 0;
 }
 void *planeTest(void *ptr)
@@ -544,8 +543,8 @@ void *planeTest(void *ptr)
 	test = check = 100000;
 	sem_post(&ready[Test]);
 	while (test--) {
-	planeSafe(Threads,Waits,Configures);}
-	planeSafe(Test,Stop,Configures);
+	planeSafe(Threads,Waits,Configures); callSafe();}
+	planeSafe(Test,Stop,Configures); callSafe();
 	return 0;
 }
 void planeThread(enum Thread bit)
@@ -595,13 +594,9 @@ int planeInfo(enum Configure cfg)
 {
 	return configure[cfg];
 }
-int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
+void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
 {
-	int run = 0;
 	sem_wait(&resource);
-	run = calling;
-	if (proc == Process && wait == Start) calling++;
-	if (proc == Process && wait == Stop) calling--;
 	if (qfull == qsize) {qsize++;
 	procs = realloc(procs,qsize*sizeof(enum Thread));
 	waits = realloc(waits,qsize*sizeof(enum Wait));
@@ -614,7 +609,6 @@ int planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
 	qfull++;
 	if (qfull == 1) sem_post(&pending);
 	sem_post(&resource);
-	return run;
 }
 void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
 {

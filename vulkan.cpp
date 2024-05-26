@@ -44,6 +44,7 @@ struct MainState {
     double mouseLeft;
     double mouseBase;
     double mouseAngle;
+    int mouseIndex;
     int windowLeft;
     int windowBase;
     int windowWidth;
@@ -91,6 +92,7 @@ struct MainState {
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .mouseAngle = 0.0,
+    .mouseIndex = 0,
     .windowLeft = 0,
     .windowBase = 0,
     .windowWidth = 800,
@@ -239,25 +241,6 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
-void vulkanSend(int loc, int siz, float *mat);
-void vulkanField();
-void vulkanDraw(enum Micro shader, int base, int limit);
-void vulkanBack();
-void windowChanged(struct MainState *mainState)
-{
-    float mat[16];
-    if (mainState->mouseReact[Follow]) vulkanSend(mainState->argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
-    #ifdef PLANRA
-    if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
-    #else
-    if (mainState->mouseReact[Modify]) vulkanSend(mainState->argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
-    #endif
-    if (mainState->mouseReact[Direct]) vulkanField();
-    if (mainState->mouseReact[Display]) vulkanDraw(mainState->argumentDisplay,mainState->argumentBase,mainState->argumentLimit);
-    if (mainState->mouseReact[Brighten]) vulkanDraw(mainState->argumentBrighten,mainState->argumentBase,mainState->argumentLimit);
-    if (mainState->mouseReact[Detect]) vulkanDraw(mainState->argumentDetect,mainState->argumentBase,mainState->argumentLimit);
-    if (mainState->mouseReact[Report]) vulkanBack();
-}
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1796,6 +1779,7 @@ void vulkanInit()
     for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
     mainState.initState = new InitState(mainState.enable,mainState.layers);
 }
+void windowChanged();
 void vulkanMain(enum Thread proc, enum Wait wait)
 {
     switch(wait) {
@@ -1819,7 +1803,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     break;
     case (Process):
     while (!mainState.escapeEnter) {
-    windowChanged(&mainState);
+    windowChanged();
     planeMain();
     if (mainState.mouseReact[Poll]) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
     break;
@@ -1856,7 +1840,7 @@ void vulkanSend(int loc, int siz, float *mat)
     if (full) return;
     bufferQueue->set(loc,siz,mat);
 }
-void vulkanField()
+void vulkanField(float left, float base, float angle, int index)
 {
     // TODO write CursorLeft CursorBase CursorIndex to Uniform
 }
@@ -1872,7 +1856,8 @@ void vulkanDma(struct Center *center)
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (CursorPress): if (center->val[i] == 0)
         mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
-    break; case (ManipulateReact): for (int j = 0; j < Reacts; j++)
+    break; case (ManipulateReact): if (mainState.mouseReact[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
+        mainState.resizeNeeded = true; for (int j = 0; j < Reacts; j++)
         mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipulateAction): mainState.mouseAction = (Action)center->val[i]; mainState.openState->setCursor();
     break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i]; mainState.openState->setCursor();
@@ -1910,6 +1895,22 @@ void vulkanDraw(enum Micro shader, int base, int limit)
 void vulkanBack()
 {
     // TODO update pierce to latest
+}
+void windowChanged()
+{
+    float mat[16];
+    if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
+    #ifdef PLANRA
+    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
+    #else
+    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
+    #endif
+    if (mainState.mouseReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
+        vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
+    if (mainState.mouseReact[Display]) vulkanDraw(mainState.argumentDisplay,mainState.argumentBase,mainState.argumentLimit);
+    if (mainState.mouseReact[Brighten]) vulkanDraw(mainState.argumentBrighten,mainState.argumentBase,mainState.argumentLimit);
+    if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
+    if (mainState.mouseReact[Report]) vulkanBack();
 }
 int vulkanReady(int size, struct Pierce *pierce)
 {
