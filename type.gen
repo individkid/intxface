@@ -130,7 +130,6 @@ Transfer = {
 	"Nest", -- nest to level
 	"Eval", -- call datxEval
 	"Echo", -- copy result to center
-	"Fill", -- copy pierce to center
 	"Hide", -- pop hide and use
 }
 React = {

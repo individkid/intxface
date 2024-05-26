@@ -39,8 +39,8 @@ struct Kernel {
 // owned by main thread:
 // TODO Add map from polytope to matrix, captured from dma to Triangle buffer.
 struct Kernel *matrix = 0;
-struct Pierce *pierce = 0;
 struct Pierce *found = 0;
+struct Pierce pierce = {0};
 struct Pierce unfound = {0};
 struct Machine *machine = 0;
 int *intstk = 0;
@@ -249,13 +249,16 @@ float *planeWindow(float *mat)
 struct Pierce *planePierce()
 {
 	if (found) return found;
+	struct Pierce *ptr; int siz; int tag;
+	callReady(&ptr,&siz,&tag);
 	if (configure[ClosestFind]) {
-	for (int i = 0; i < configure[PierceSize]; i++) {
-	struct Pierce *temp = pierce + i;
+	for (int i = 0; i < siz; i++) {
+	struct Pierce *temp = ptr + i;
 	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}} else {
 	int index = configure[PierceIndex] - configure[PierceBase];
-	if (index >= 0 && index < configure[PierceSize]) found = pierce + index;}
-	if (!found) found = &unfound;
+	if (index >= 0 && index < siz) found = ptr + index;}
+	if (!found) found = &unfound; else {pierce = *found; found = &pierce;}
+	callDone(tag);
 	return found;
 }
 void planeString()
@@ -320,8 +323,6 @@ void planeConfig(enum Configure cfg, int val)
 	if (cfg < 0 || cfg >= Configures) ERROR();
 	tmp = configure[cfg]; configure[cfg] = val;
 	switch (cfg) {
-	case (PierceSize): pierce = planeResize(pierce,sizeof(struct Pierce),val,tmp); break;
-	case (PierceBase): pierce = planeRebase(pierce,sizeof(struct Pierce),configure[PierceSize],val,tmp); break;
 	case (MatrixSize): matrix = planeResize(matrix,sizeof(struct Kernel),val,tmp); break;
 	case (MatrixBase): matrix = planeRebase(matrix,sizeof(struct Kernel),configure[MatrixSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
@@ -364,11 +365,6 @@ void planeDisp()
 void planeCopy(struct Center *ptr)
 {
 	switch (ptr->mem) {
-	case (Piercez): for (int i = 0; i < ptr->siz; i++) {
-		int index = ptr->idx+i-configure[PierceBase];
-		if (index < 0 || index >= configure[PierceSize]) ERROR();
-		copyPierce(&pierce[index],&ptr->pie[i]);}
-		callDma(ptr); break;
 	case (Stackz): for (int i = 0; i < ptr->siz; i++) planeCall(dat0,ptr->str[i]); break;
 	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
 		int index = ptr->idx+i;
@@ -395,15 +391,6 @@ int planeIval(struct Express *exp)
 	if (typ != identType("Int")) ERROR();
 	val = *datxIntz(0,dat); free(dat);
 	return val;
-}
-void planeFill()
-{
-	int src = 0; int dst = 0; int siz = 0;
-	int idx = configure[PierceIndex];
-	if (center.mem != Piercez) ERROR();
-	src = idx-configure[PierceBase]; siz = configure[PierceSize]; dst = idx-center.idx;
-	if (src < 0 || src >= siz || dst < 0 || dst >= center.siz) ERROR();
-	copyPierce(&center.pie[dst],&pierce[src]);
 }
 void planeHide()
 {
@@ -437,7 +424,6 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Name): if (idxstk > 0) next = next - 1; else ERROR(); break;
 	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
 	case (Echo): if (configure[ResultType] == identType("Center")) readCenter(&center,idx0); else ERROR(); break;
-	case (Fill): planeFill(); break;
 	case (Hide): planeHide(); break;
 	default: break;}
 	return next+1;
@@ -618,7 +604,7 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, r
 	sem_safe(&resource,{if (!qfull && !running) break;});
 	planeMain();} closeIdent(internal); if (check) ERROR();
 }
-void planeDone(int tag)
+void planeDone(struct Center *ptr)
 {
 	// TODO free up center pointer that was passed to callDma
 }

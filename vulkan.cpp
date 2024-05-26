@@ -1866,8 +1866,8 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
     break; case (ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
     break; case (ArgumentBase): mainState.argumentBase = center->val[i];
-    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
-    }}
+    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];}
+    planeDone(center);}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
