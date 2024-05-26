@@ -1692,33 +1692,6 @@ debugStop("setup");
     return fence;}
 };
 
-// TODO use glfwGetWindowSize and glfwGetWindowPos instead of mainState
-void physicalToScreen(float *xptr, float *yptr)
-{
-    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    float width = mode->width; float height = mode->height;
-    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *xptr *= width/xphys; *yptr *= height/yphys;
-}
-void physicalFromScreen(float *xptr, float *yptr)
-{
-    const GLFWvidmode *mode = glfwGetVideoMode(mainState.openState->monitor);
-    float width = mode->width; float height = mode->height;
-    int xphys, yphys; glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
-    *xptr *= xphys/width; *yptr *= yphys/height;
-}
-void screenToWindow(float *xptr, float *yptr)
-{
-    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
-    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
-    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
-}
-void screenFromWindow(float *xptr, float *yptr)
-{
-    float width = mainState.windowWidth/2.0; float height = mainState.windowHeight/2.0;
-    float left = mainState.windowLeft + width; float base = mainState.windowBase + height;
-    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
-}
 void vulkanExtent()
 {
     if (mainState.resizeNeeded) {
@@ -1751,6 +1724,32 @@ int vulkanInfo(enum Configure query)
     break; case (CursorAngle): return mainState.mouseAngle;
     break; case (CursorPress): {if (mainState.keyPressed.empty()) return 0;
         int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
+    break; case (WindowLeft): {int32_t width, height; int32_t tempx, tempy;
+        glfwGetWindowSize(mainState.openState->window,&width,&height);
+        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
+        return tempx+width/2;}
+    break; case (WindowBase): {int32_t width, height; int32_t tempx, tempy;
+        glfwGetWindowSize(mainState.openState->window,&width,&height);
+        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
+        return tempy+height/2;}
+    break; case (WindowWidth): {int32_t width, height;
+        glfwGetWindowSize(mainState.openState->window,&width,&height);
+        return width/2;}
+    break; case (WindowHeight): {int32_t width, height;
+        glfwGetWindowSize(mainState.openState->window,&width,&height);
+        return height/2;}
+    break; case (MonitorWidth): {const GLFWvidmode *mode =
+        glfwGetVideoMode(mainState.openState->monitor);
+        return mode->width;}
+    break; case (MonitorHeight): {const GLFWvidmode *mode =
+        glfwGetVideoMode(mainState.openState->monitor);
+        return mode->height;}
+    break; case (PhysicalWidth): {int xphys, yphys;
+        glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+        return xphys;}
+    break; case (PhysicalHeight): {int xphys, yphys;
+        glfwGetMonitorPhysicalSize(mainState.openState->monitor,&xphys,&yphys);
+        return yphys;}
     break; case (RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
     break; case (RegisterOpen): return (!mainState.escapeEnter);
     break; case (ArgumentFollow): return mainState.argumentFollow;
@@ -1856,6 +1855,7 @@ void vulkanDma(struct Center *center)
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (CursorPress): if (center->val[i] == 0)
         mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
+    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
     break; case (ManipulateReact): if (mainState.mouseReact[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
         mainState.resizeNeeded = true; for (int j = 0; j < Reacts; j++)
         mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);

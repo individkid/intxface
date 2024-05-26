@@ -201,10 +201,37 @@ float *planeMatrix(float *mat)
 {
 	return mat; // TODO
 }
+void physicalToScreen(float *xptr, float *yptr)
+{
+	int width, height, xphys, yphys;
+    width = callInfo(MonitorWidth); height = callInfo(MonitorHeight);
+    xphys = callInfo(PhysicalWidth); yphys = callInfo(PhysicalHeight);
+    *xptr *= width/xphys; *yptr *= height/yphys;
+}
+void physicalFromScreen(float *xptr, float *yptr)
+{
+	int width, height, xphys, yphys;
+    width = callInfo(MonitorWidth); height = callInfo(MonitorHeight);
+    xphys = callInfo(PhysicalWidth); yphys = callInfo(PhysicalHeight);
+    *xptr *= xphys/width; *yptr *= yphys/height;
+}
+void screenToWindow(float *xptr, float *yptr)
+{
+	int width, height, left, base;
+    width = callInfo(WindowWidth); height = callInfo(WindowHeight);
+    left = callInfo(WindowLeft); base = callInfo(WindowBase);
+    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
+}
+void screenFromWindow(float *xptr, float *yptr)
+{
+	int width, height, left, base;
+    width = callInfo(WindowWidth); height = callInfo(WindowHeight);
+    left = callInfo(WindowLeft); base = callInfo(WindowBase);
+    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
+}
 float *planeWindow(float *mat)
 {
     // find the matrix to keep points fixed when window moves or resizes
-    /* TODO
     float xmax = 50.0; float ymax = 50.0;
     float xmin = -50.0; float ymin = -50.0;
     float xmid = (xmax+xmin)/2.0; float ymid = (ymax+ymin)/2.0;
@@ -215,7 +242,6 @@ float *planeWindow(float *mat)
     *matrc(mat,0,0,4) = 1.0/(xmax-xmid); *matrc(mat,1,1,4) = 1.0/(ymax-ymid);
     *matrc(mat,0,3,4) = -xmid; *matrc(mat,1,3,4) = -ymid;
     *matrc(mat,2,2,4) = 1.0; *matrc(mat,3,3,4) = 1.0;
-    */
     return mat;
 }
 struct Pierce *planePierce()

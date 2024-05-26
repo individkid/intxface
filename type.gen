@@ -89,6 +89,14 @@ Configure = {
 	"CursorAngle", -- user input roller
 	"CursorClick", -- user input button
 	"CursorPress", -- user input keyboard
+	"WindowLeft", -- window position
+	"WindowBase", --
+	"WindowWidth", -- window size
+	"WindowHeight", --
+	"MonitorWidth", -- monitor size
+	"MonitorHeight", --
+	"PhysicalWidth", -- monitor size
+	"PhysicalHeight", --
 	"ClosestFind", -- whether to search or index
 	"ClosestValid", -- search through pierce
 	"ClosestIndex", --
@@ -126,20 +134,20 @@ Transfer = {
 	"Hide", -- pop hide and use
 }
 React = {
-	"Poll",
-	"Respond",
-	"Repeat",
-	"Follow",
-	"Modify",
-	"Direct",
-	"Display",
-	"Brighten",
-	"Detect",
-	"Report",
+	"Poll", -- whether to sleep for glfw events
+	"Respond", -- whether to enque mouse move
+	"Repeat", -- whether to enque fence done
+	"Follow", -- put window matrix on wake
+	"Modify", -- put transform matrix on wake
+	"Direct", -- put uniform fields on wake
+	"Display", -- enque display shader on wake
+	"Brighten", -- enque facet index shader on wake
+	"Detect", -- enque pierce point shader on wake
+	"Report", -- get facet index on wake
 }
 Active = {
-	"Setup",
-	"Upset",
+	"Setup", -- mouse does not do transform
+	"Upset", -- mouse does transform
 }
 Sticky = {
 	"North",
@@ -148,14 +156,14 @@ Sticky = {
 	"West",
 }
 Action = {
-	"Move", -- modified by Active and Sticky
+	"Move", -- modified by Active Sticky
 	"Transform", -- modified by Acvive Fixed Effect
 	"Refine",
 	"Sculpt", -- modified by Modify
 }
 Modify = {
-	"Additive",
-	"Subtractive",
+	"Additive", -- add regions
+	"Subtractive", -- remove regions
 }
 Tool = {
 	"Mouse",
@@ -173,19 +181,19 @@ Fixed = {
 	"Normal",
 }
 MicroIn = {
-	"Practice",
-	"Concept",
+	"Practice", -- use location for Vertex
+	"Concept", -- use binding for Vertex
 }
 MicroMid = {
-	"Raster",
-	"CoPoint",
-	"Coplane",
+	"Raster", -- transform point
+	"CoPoint", -- compute plane
+	"Coplane", -- compute point 
 }
 MicroOut = {
-	"DisPlay",
-	"Compute",
-	"PRepare",
-	"Discard",
+	"DisPlay", -- produce color
+	"Compute", -- produce pierce point
+	"PRepare", -- produce facet identifier
+	"Discard", -- no fragment shader
 }
 Micro = {
 	"MicroPRP",
