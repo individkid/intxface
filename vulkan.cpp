@@ -31,7 +31,6 @@ struct DeviceState;
 struct SwapState;
 struct ThreadState;
 struct QueueState;
-struct CopyState;
 struct MainState {
     bool resizeNeeded;
     bool escapeEnter;
@@ -60,6 +59,7 @@ struct MainState {
     enum Micro argumentDetect;
     int argumentBase;
     int argumentLimit;
+    enum Memory argumentMemory;
     int argc;
     char **argv;
     InitState *initState;
@@ -70,7 +70,6 @@ struct MainState {
     ThreadState *threadState;
     ThreadState *extraState;
     QueueState* queueState;
-    CopyState* copyState;
     int registerDone;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     const int MAX_BUFFERS_AVAILABLE = 3;
@@ -108,6 +107,7 @@ struct MainState {
     .argumentDetect = MicroPRC,
     .argumentBase = 0,
     .argumentLimit = 0,
+    .argumentMemory = Indexz,
     .argc = 0,
     .argv = 0,
     .initState = 0,
@@ -117,7 +117,6 @@ struct MainState {
     .swapState = 0,
     .threadState = 0,
     .queueState = 0,
-    .copyState = 0,
     .registerDone = 0,
 };
 
@@ -913,7 +912,8 @@ template<class Buffer> struct WrapState {
     std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
     std::map<int,std::function<bool()>> temp;
     std::deque<void*> data; std::deque<std::function<bool()>> done;
-    int size; void *copy; int seqnum; int count; int limit; WrapTag tag;
+    std::set<int> lookup; int seqnum;
+    int size; void *copy; int count; int limit; WrapTag tag;
     MainState *info;
     WrapState(MainState *info, int limit, WrapTag tag) {
         ready = 0;
@@ -930,6 +930,9 @@ template<class Buffer> struct WrapState {
         while (!running.empty()) {delete running.front(); running.pop_front();}
         if (ready) delete ready;
         while (!inuse.empty()) {delete inuse.front(); inuse.pop_front();}
+    }
+    WrapTag typ() {
+        return tag;
     }
     void clr() {
     // advance queues with done fronts
@@ -993,22 +996,17 @@ template<class Buffer> struct WrapState {
     // change size and enque function to return fence in separate thread
         return set(set(size),setup);
     }
-    std::function<bool()> set(std::deque<void*> &queue,std::deque<std::function<bool()>> &inuse,
-        int loc, int siz, const void *ptr) {
+    std::function<bool()> set(int loc, int siz, const void *ptr) {
     // enque data using given queues
         int size = (loc+siz > this->size ? loc+siz : this->size);
         bool first = set(size);
         memcpy((void*)((char*)copy+loc),ptr,siz);
         if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz);
-        int temp = tmp(); queue.push_back(mem); inuse.push_back(tmp(temp));
-        std::function<bool()> done = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
-        tmp(temp,done);
-        return done;
-    }
-    std::function<bool()> set(int loc, int siz, const void *ptr) {
-    // enque data
-        return set(data,done,loc,siz,ptr);
+        int temp = tmp(); data.push_back(mem); done.push_back(tmp(temp));
+        std::function<bool()> ret = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        tmp(temp,ret);
+        return ret;
     }
     bool get() {
     // return whether first enque after resize is ready
@@ -1029,12 +1027,15 @@ template<class Buffer> struct WrapState {
         toinuse.push_back(info->threadState->push(setup,last));
         return ready;
     }
-    void dbg() {
+    void ret(void **ptr, int *siz, int *tag) {
         clr();
-        if (!toinuse.empty() && toinuse.front()) std::cout << "debug toinuse:" << toinuse.front()() << std::endl;
-        else if (!toinuse.empty()) std::cout << "debug ptr:" << &toinuse.front() << std::endl;
-        else if (!topool.empty()) std::cout << "debug topool:" << topool.front()() << std::endl;
-        else std::cout << "debug count:" << count << std::endl;
+        if (ready == 0) {*ptr = 0; *siz = 0;}
+        int tmp = *tag = seqnum++; *siz = size; *ptr = ready->mapped; lookup.insert(*tag);
+        toinuse.push_back([this,tmp](){return (lookup.find(tmp) != lookup.end());});
+    }
+    void ret(int tag) {
+        lookup.erase(tag);
+        clr();
     }
 };
 
@@ -1050,31 +1051,10 @@ struct QueueState {
     WrapState<DrawState>* drawQueue[Micros];
     FieldState *fieldState;
     std::vector<WrapState<BufferState>*> bindBuffer[Micros];
-    std::vector<WrapState<BufferState>*> queryBuffer[Micros];
-    std::vector<WrapTag> typeBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
     const char *vertexName[Micros];
     const char *fragmentName[Micros];
     QueueState() {
-    for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
-    for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
-    fieldState = 0;
-    bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
-    bufferQueue[Piercez] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
-    bindBuffer[MicroPRP].push_back(bufferQueue[Vertexz]);
-    bindBuffer[MicroPRP].push_back(bufferQueue[Matrixz]);
-    typeBuffer[MicroPRP].push_back(FetchBuf);
-    typeBuffer[MicroPRP].push_back(ChangeBuf);
-    fieldState = new FieldState();
-    fieldState->stride = sizeof(Vertex);
-    fieldState->format.push_back(VK_FORMAT_R32G32_SFLOAT);
-    fieldState->format.push_back(VK_FORMAT_R32_UINT);
-    fieldState->offset.push_back(offsetof(Vertex,vec));
-    fieldState->offset.push_back(offsetof(Vertex,ref));
-    fieldBuffer[MicroPRP].push_back(fieldState);
-    fieldBuffer[MicroPRP].push_back(0);
-    drawQueue[MicroPRP] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     for (int i = 0; i < Micros; i++) {vertexName[i] = "vertexMicrosG";
     switch (Component__Micro__MicroIn((Micro)i)) {
     case (Practice): vertexName[i] = "vertexPracticeG"; break;
@@ -1086,45 +1066,36 @@ struct QueueState {
     switch (Component__Micro__MicroOut((Micro)i)) {
     case (DisPlay): fragmentName[i] = "fragmentDisplayG"; break;
     case (Compute): fragmentName[i] = "fragmentComputeG"; break;
-    case (PRepare): fragmentName[i] = "fragmentPrepareG"; break;}}}
+    case (PRepare): fragmentName[i] = "fragmentPrepareG"; break;}}
+    for (int i = 0; i < Memorys; i++) bufferQueue[i] = 0;
+    for (int i = 0; i < Micros; i++) drawQueue[i] = 0;
+    fieldState = new FieldState();
+    fieldState->stride = sizeof(Vertex);
+    fieldState->format.push_back(VK_FORMAT_R32G32_SFLOAT);
+    fieldState->format.push_back(VK_FORMAT_R32_UINT);
+    fieldState->offset.push_back(offsetof(Vertex,vec));
+    fieldState->offset.push_back(offsetof(Vertex,ref));
+    bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    bufferQueue[Indexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
+    bindBuffer[MicroPRP].push_back(bufferQueue[Vertexz]);
+    bindBuffer[MicroPRP].push_back(bufferQueue[Matrixz]);
+    fieldBuffer[MicroPRP].push_back(fieldState);
+    fieldBuffer[MicroPRP].push_back(0);
+    drawQueue[MicroPRP] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    bindBuffer[MicroPRR].push_back(bufferQueue[Vertexz]);
+    bindBuffer[MicroPRR].push_back(bufferQueue[Matrixz]);
+    bindBuffer[MicroPRR].push_back(bufferQueue[Indexz]);
+    fieldBuffer[MicroPRR].push_back(fieldState);
+    fieldBuffer[MicroPRR].push_back(0);
+    drawQueue[MicroPRR] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    }
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
     if (fieldState) delete fieldState;
     for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];}
 };
 
-struct CopyState {
-    // one writer and one reader
-    int size[2];
-    void *data[2];
-    sem_t lock[2];
-    CopyState() {
-        for (int i = 0; i < 2; i++) {
-        size[i] = 0; data[i] = 0;
-        if (sem_init(&lock[i], 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");}}
-    ~CopyState() {
-        for (int i = 0; i < 2; i++) {
-        if (data[i]) free(data[i]);
-        if (sem_destroy(&lock[i]) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}}}
-    int find() {
-        for (int i = 0; i < 2; i++) {
-        int rslt = sem_trywait(&lock[i]);
-        if (rslt == 0) return i;
-        if (errno != EAGAIN) throw std::runtime_error("failed to trylock semaphore!");}
-        throw std::runtime_error("failed to find semaphore!");
-        return 0;}
-    void set(int siz, void *ptr) {
-        int i = find();
-        if (size[i] != siz) {data[i] = realloc(data[i],siz); size[i] = siz;}
-        memcpy(data[i],ptr,siz);
-        if (sem_post(&lock[i]) != 0) throw std::runtime_error("failed to unlock semaphore!");}
-    int get(int siz, void *ptr) {
-        int i = find();
-        if (siz > size[i]) siz = size[i];
-        memcpy(ptr,data[i],siz);
-        if (sem_post(&lock[i]) != 0) throw std::runtime_error("failed to unlock semaphore!");
-        return siz;}
-};
 struct BufferState {
     VkPhysicalDevice physical;
     VkDevice device;
@@ -1139,7 +1110,6 @@ struct BufferState {
     void *mapped;
     VkCommandBuffer command;
     VkFence fence;
-    CopyState *copy;
 BufferState(MainState *state, int size, WrapTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
@@ -1148,8 +1118,7 @@ BufferState(MainState *state, int size, WrapTag tag) {
     this->graphic = logical->graphic;
     this->pool = logical->pool;
     this->size = size;
-    this->tag = tag;
-    this->copy = state->copyState;}
+    this->tag = tag;}
 void init() {
     // this called in separate thread on newly constructed
     VkMemoryRequirements requirements;
@@ -1249,6 +1218,8 @@ void init() {
     if (tag == FetchBuf || tag == StoreBuf || tag == QueryBuf) {
     vkDestroyBuffer(device, staging, nullptr);
     vkFreeMemory(device, wasted, nullptr);}}
+void *done() {
+    return mapped;}
 VkFence setup(int loc, int siz, const void *ptr) {
     // this called in separate thread to get fence
     VkResult result;
@@ -1343,13 +1314,15 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
     this->device = device;
     const char *vertex = queue->vertexName[micro];
     const char *fragment = queue->fragmentName[micro];
-    dlayout = [](VkDevice device, std::vector<WrapTag> &type) {
+    dlayout = [](VkDevice device, std::vector<WrapState<BufferState>*> &type) {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
-        int count = 0; for (auto i = type.begin(); i != type.end(); i++) if ((*i) == ChangeBuf || (*i) == StoreBuf) {
+        int count = 0; for (auto i = type.begin(); i != type.end(); i++)
+        if ((*i)->typ() == ChangeBuf || (*i)->typ() == StoreBuf || (*i)->typ() == QueryBuf) {
         VkDescriptorSetLayoutBinding binding{};
         binding.binding = count++;
         binding.descriptorCount = 1;
-        binding.descriptorType = ((*i) == ChangeBuf ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+        binding.descriptorType = ((*i)->typ() == ChangeBuf ?
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
         binding.pImmutableSamplers = nullptr;
         binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         bindings.push_back(binding);}
@@ -1361,7 +1334,7 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
         if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
             throw std::runtime_error("failed to create descriptor set layout!");
         return descriptor;
-    } (device,queue->typeBuffer[micro]);
+    } (device,queue->bindBuffer[micro]);
     descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
         VkDescriptorSetAllocateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1604,13 +1577,15 @@ void init() {
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
     delete pipeline;}
+void *done() {
+    return 0;}
 VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded) {
     uint32_t index;
 debugStart();
     VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
 debugStop("setup");
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {*resizeNeeded = true;
-	std::cerr << "out of date" << std::endl;}
+        std::cerr << "out of date" << std::endl;}
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
     vkResetFences(device, 1, &fence);
@@ -1794,7 +1769,6 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     mainState.MAX_BUFFERS_AVAILABLE*Memorys);
     }(mainState.physicalState);
     mainState.queueState = new QueueState();
-    mainState.copyState = new CopyState();
     break;
     case (Process):
     while (!mainState.escapeEnter) {
@@ -1839,6 +1813,15 @@ void vulkanField(float left, float base, float angle, int index)
 {
     // TODO write CursorLeft CursorBase CursorIndex to Uniform
 }
+void vulkanBack(enum Memory buffer)
+{
+    // update mapped in buffer from computed
+    vulkanExtent();
+    int size = mainState.swapState->extent.width * mainState.swapState->extent.height;
+    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[buffer];
+    if (!bufferQueue->set()) return;
+    /*std::function<bool()> done = */bufferQueue->set(size,[](BufferState*buffer){return buffer->getup();});
+}
 void vulkanDma(struct Center *center)
 {
     vulkanExtent();
@@ -1866,14 +1849,15 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
     break; case (ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
     break; case (ArgumentBase): mainState.argumentBase = center->val[i];
-    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];}
+    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
+    break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
+    }
     planeDone(center);}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
     std::vector<BufferState*> buffer;
     std::vector<WrapState<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
-    std::vector<WrapState<BufferState>*> *queryBuffer = mainState.queueState->queryBuffer+shader;
     vulkanExtent();
     WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
@@ -1885,12 +1869,6 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
     draw->tmp(temp,done);
-    for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++)
-    (*i)->get([](BufferState*buf){return buf->getup();});
-}
-void vulkanBack()
-{
-    // TODO update pierce to latest
 }
 void windowChanged()
 {
@@ -1906,15 +1884,17 @@ void windowChanged()
     if (mainState.mouseReact[Display]) vulkanDraw(mainState.argumentDisplay,mainState.argumentBase,mainState.argumentLimit);
     if (mainState.mouseReact[Brighten]) vulkanDraw(mainState.argumentBrighten,mainState.argumentBase,mainState.argumentLimit);
     if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
-    if (mainState.mouseReact[Report]) vulkanBack();
+    if (mainState.mouseReact[Report]) vulkanBack(mainState.argumentMemory);
 }
-void vulkanReady(struct Pierce **ptr, int *siz, int *tag)
+void vulkanReady(void **ptr, int *siz, int *tag)
 {
-    // TODO reserve buffer to return mapped in zero time 
+    // reserve buffer to return mapped in zero time
+    mainState.queueState->bufferQueue[Uniformz]->ret(ptr,siz,tag);
 }
 void vulkanDone(int tag)
 {
-    // TODO release reserved buffer
+    // release reserved buffer
+    mainState.queueState->bufferQueue[Uniformz]->ret(tag);
 }
 
 int main(int argc, char **argv)

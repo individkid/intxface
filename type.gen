@@ -67,6 +67,7 @@ Configure = {
 	"ArgumentDetect", --
 	"ArgumentBase", --
 	"ArgumentLimit", --
+	"ArgumentMemory", -- which to report
 	"ManipulateReact", -- block or behave
 	"ManipulateAction", -- what to do
 	"ManipulateActive", -- whether changing

@@ -250,7 +250,7 @@ struct Pierce *planePierce()
 {
 	if (found) return found;
 	struct Pierce *ptr; int siz; int tag;
-	callReady(&ptr,&siz,&tag);
+	callReady((void**)&ptr,&siz,&tag);
 	if (configure[ClosestFind]) {
 	for (int i = 0; i < siz; i++) {
 	struct Pierce *temp = ptr + i;
@@ -270,6 +270,7 @@ void planeStage(enum Configure cfg)
 	switch (cfg) {
 	case (StringSize): planeString(); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
+	case (ManipulateMask): configure[ManipulateMask] = callInfo(ManipulateMask); break;
 	case (CenterMemory): configure[CenterMemory] = center.mem; break;
 	case (CenterSize): configure[CenterSize] = center.siz; break;
 	case (CenterIndex): configure[CenterIndex] = center.idx; break;
@@ -283,12 +284,20 @@ void planeStage(enum Configure cfg)
 	case (NormalLeft): configure[NormalLeft] = planePierce()->nml[0]; break;
 	case (NormalBase): configure[NormalBase] = planePierce()->nml[1]; break;
 	case (NormalNear): configure[NormalNear] = planePierce()->nml[2]; break;
+	case (OriginLeft): configure[OriginLeft] = callInfo(OriginLeft); break;
+	case (OriginBase): configure[OriginBase] = callInfo(OriginBase); break;
 	case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
 	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
 	case (CursorAngle): configure[CursorAngle] = callInfo(CursorAngle); break;
-	case (CursorClick): configure[CursorClick] = callInfo(CursorClick); break;
-	case (OriginLeft): configure[OriginLeft] = callInfo(OriginLeft); break;
-	case (OriginBase): configure[OriginBase] = callInfo(OriginBase); break;
+	case (CursorPress): configure[CursorPress] = callInfo(CursorPress); break;
+	case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
+	case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
+	case (WindowWidth): configure[WindowWidth] = callInfo(WindowWidth); break;
+	case (WindowHeight): configure[WindowHeight] = callInfo(WindowHeight); break;
+	case (MonitorWidth): configure[MonitorWidth] = callInfo(MonitorWidth); break;
+	case (MonitorHeight): configure[MonitorHeight] = callInfo(MonitorHeight); break;
+	case (PhysicalWidth): configure[PhysicalWidth] = callInfo(PhysicalWidth); break;
+	case (PhysicalHeight): configure[PhysicalHeight] = callInfo(PhysicalHeight); break;
 	default: break;}
 }
 void *planeResize(void *ptr, int mod, int siz, int tmp)
@@ -498,8 +507,7 @@ void planeOutstr(const char *str)
 void planeSetcfg(int val, int sub)
 {
 	if (sub < 0 || sub >= Configures) ERROR();
-	planeConfig(sub,val);
-	planeSync(sub,val);
+	planeConfig(sub,val); planeSync(sub,val);
 }
 int planeGetcfg(int sub)
 {
