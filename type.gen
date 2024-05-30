@@ -143,7 +143,6 @@ React = {
 	"Display", -- enque display shader on wake
 	"Brighten", -- enque facet index shader on wake
 	"Detect", -- enque pierce point shader on wake
-	"Report", -- get facet index on wake
 }
 Active = {
 	"Setup", -- mouse does not do transform
@@ -195,15 +194,19 @@ MicroOut = {
 	"PRepare", -- produce facet identifier
 	"Discard", -- no fragment shader
 }
+MicroOn = {
+	"Caryon", -- dispatch and forget
+	"CoPyon", -- copy after done
+}
 Micro = {
-	"MicroPRP",
-	"MicroPRC",
-	"MicroPRR",
-	"MicroCRP",
-	"MicroCRC",
-	"MicroCRR",
-	"MicroCPD",
-	"MicroCCD",
+	"MicroPRPC", -- fetch transform display
+	"MicroPRCP", -- fetch transform pierce
+	"MicroPRRC", -- fetch transform alias
+	"MicroCRPC", -- index transform display
+	"MicroCRCP", -- index transform pierce
+	"MicroCRRC", -- index transform alias
+	"MicroCPDP", -- index construct planes
+	"MicroCCDP", -- index intersect points
 }
 Wait = {
 	"Start",
@@ -316,30 +319,38 @@ Program = {
 }
 --HERE Constants
 Component = {
-	{"Micro","MicroPRP","MicroIn","Practice"},
-	{"Micro","MicroPRC","MicroIn","Practice"},
-	{"Micro","MicroPRR","MicroIn","Practice"},
-	{"Micro","MicroCRP","MicroIn","Concept"},
-	{"Micro","MicroCRC","MicroIn","Concept"},
-	{"Micro","MicroCRR","MicroIn","Concept"},
-	{"Micro","MicroCPD","MicroIn","Concept"},
-	{"Micro","MicroCCD","MicroIn","Concept"},
-	{"Micro","MicroPRP","MicroMid","Raster"},
-	{"Micro","MicroPRC","MicroMid","Raster"},
-	{"Micro","MicroPRR","MicroMid","Raster"},
-	{"Micro","MicroCRP","MicroMid","Raster"},
-	{"Micro","MicroCRC","MicroMid","Raster"},
-	{"Micro","MicroCRR","MicroMid","Raster"},
-	{"Micro","MicroCPD","MicroMid","CoPoint"},
-	{"Micro","MicroCCD","MicroMid","Coplane"},
-	{"Micro","MicroPRP","MicroOut","DisPlay"},
-	{"Micro","MicroPRC","MicroOut","Compute"},
-	{"Micro","MicroPRR","MicroOut","PRepare"},
-	{"Micro","MicroCRP","MicroOut","DisPlay"},
-	{"Micro","MicroCRC","MicroOut","Compute"},
-	{"Micro","MicroCRR","MicroOut","PRepare"},
-	{"Micro","MicroCPD","MicroOut","Discard"},
-	{"Micro","MicroCCD","MicroOut","Discard"},
+	{"Micro","MicroPRPC","MicroIn","Practice"},
+	{"Micro","MicroPRCP","MicroIn","Practice"},
+	{"Micro","MicroPRRC","MicroIn","Practice"},
+	{"Micro","MicroCRPC","MicroIn","Concept"},
+	{"Micro","MicroCRCP","MicroIn","Concept"},
+	{"Micro","MicroCRRC","MicroIn","Concept"},
+	{"Micro","MicroCPDP","MicroIn","Concept"},
+	{"Micro","MicroCCDP","MicroIn","Concept"},
+	{"Micro","MicroPRPC","MicroMid","Raster"},
+	{"Micro","MicroPRCP","MicroMid","Raster"},
+	{"Micro","MicroPRRC","MicroMid","Raster"},
+	{"Micro","MicroCRPC","MicroMid","Raster"},
+	{"Micro","MicroCRCP","MicroMid","Raster"},
+	{"Micro","MicroCRRC","MicroMid","Raster"},
+	{"Micro","MicroCPDP","MicroMid","CoPoint"},
+	{"Micro","MicroCCDP","MicroMid","Coplane"},
+	{"Micro","MicroPRPC","MicroOut","DisPlay"},
+	{"Micro","MicroPRCP","MicroOut","Compute"},
+	{"Micro","MicroPRRC","MicroOut","PRepare"},
+	{"Micro","MicroCRPC","MicroOut","DisPlay"},
+	{"Micro","MicroCRCP","MicroOut","Compute"},
+	{"Micro","MicroCRRC","MicroOut","PRepare"},
+	{"Micro","MicroCPDP","MicroOut","Discard"},
+	{"Micro","MicroCCDP","MicroOut","Discard"},
+	{"Micro","MicroPRPC","MicroOn","Caryon"},
+	{"Micro","MicroPRCP","MicroOn","CoPyon"},
+	{"Micro","MicroPRRC","MicroOn","Caryon"},
+	{"Micro","MicroCRPC","MicroOn","Caryon"},
+	{"Micro","MicroCRCP","MicroOn","CoPyon"},
+	{"Micro","MicroCRRC","MicroOn","Caryon"},
+	{"Micro","MicroCPDP","MicroOn","CoPyon"},
+	{"Micro","MicroCCDP","MicroOn","CoPyon"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:5".. -- assign to configuration
@@ -352,7 +363,7 @@ Bootstrap = {
 		"val[1]:512"..
 		"val[2]:20"..
 		"val[3]:63"..
-		"val[4]:Int(%(return castMicro(\"MicroCRP\"))))"},
+		"val[4]:Int(%(return castMicro(\"MicroCRPC\"))))"},
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
 		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..

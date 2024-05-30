@@ -100,11 +100,11 @@ struct MainState {
     .currentBase = 0,
     .currentWidth = 800,
     .currentHeight = 700,
-    .argumentFollow = 1,
+    .argumentFollow = 0,
     .argumentModify = 0,
-    .argumentDisplay = MicroPRP,
-    .argumentBrighten = MicroPRR,
-    .argumentDetect = MicroPRC,
+    .argumentDisplay = MicroPRPC,
+    .argumentBrighten = MicroPRRC, // TODO need new MicroOn for seq without CoPyon
+    .argumentDetect = MicroPRCP, // TODO need plane function for Piercez initialization
     .argumentBase = 0,
     .argumentLimit = 0,
     .argumentMemory = Indexz,
@@ -1003,7 +1003,7 @@ template<class Buffer> struct WrapState {
         memcpy((void*)((char*)copy+loc),ptr,siz);
         if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz);
-        int temp = tmp(); data.push_back(mem); done.push_back(tmp(temp));
+        int temp = tmp(); data.push_back(mem); done.push_back(tmp(temp)); // TODO tmp not needed here?
         std::function<bool()> ret = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
         tmp(temp,ret);
         return ret;
@@ -1027,13 +1027,14 @@ template<class Buffer> struct WrapState {
         toinuse.push_back(info->threadState->push(setup,last));
         return ready;
     }
-    void ret(void **ptr, int *siz, int *tag) {
+    Buffer *get(int *siz, int *tag) {
         clr();
-        if (ready == 0) {*ptr = 0; *siz = 0;}
-        int tmp = *tag = seqnum++; *siz = size; *ptr = ready->mapped; lookup.insert(*tag);
+        if (ready == 0) return 0;
+        int tmp = seqnum++; *tag = tmp; *siz = size; lookup.insert(tmp);
         toinuse.push_back([this,tmp](){return (lookup.find(tmp) != lookup.end());});
+        return ready;
     }
-    void ret(int tag) {
+    void get(int tag) {
         lookup.erase(tag);
         clr();
     }
@@ -1078,17 +1079,17 @@ struct QueueState {
     bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     bufferQueue[Indexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
-    bindBuffer[MicroPRP].push_back(bufferQueue[Vertexz]);
-    bindBuffer[MicroPRP].push_back(bufferQueue[Matrixz]);
-    fieldBuffer[MicroPRP].push_back(fieldState);
-    fieldBuffer[MicroPRP].push_back(0);
-    drawQueue[MicroPRP] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
-    bindBuffer[MicroPRR].push_back(bufferQueue[Vertexz]);
-    bindBuffer[MicroPRR].push_back(bufferQueue[Matrixz]);
-    bindBuffer[MicroPRR].push_back(bufferQueue[Indexz]);
-    fieldBuffer[MicroPRR].push_back(fieldState);
-    fieldBuffer[MicroPRR].push_back(0);
-    drawQueue[MicroPRR] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    bindBuffer[MicroPRPC].push_back(bufferQueue[Vertexz]);
+    bindBuffer[MicroPRPC].push_back(bufferQueue[Matrixz]);
+    fieldBuffer[MicroPRPC].push_back(fieldState);
+    fieldBuffer[MicroPRPC].push_back(0);
+    drawQueue[MicroPRPC] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    bindBuffer[MicroPRRC].push_back(bufferQueue[Vertexz]);
+    bindBuffer[MicroPRRC].push_back(bufferQueue[Matrixz]);
+    bindBuffer[MicroPRRC].push_back(bufferQueue[Indexz]);
+    fieldBuffer[MicroPRRC].push_back(fieldState);
+    fieldBuffer[MicroPRRC].push_back(0);
+    drawQueue[MicroPRRC] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     }
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
@@ -1218,8 +1219,6 @@ void init() {
     if (tag == FetchBuf || tag == StoreBuf || tag == QueryBuf) {
     vkDestroyBuffer(device, staging, nullptr);
     vkFreeMemory(device, wasted, nullptr);}}
-void *done() {
-    return mapped;}
 VkFence setup(int loc, int siz, const void *ptr) {
     // this called in separate thread to get fence
     VkResult result;
@@ -1577,8 +1576,6 @@ void init() {
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
     delete pipeline;}
-void *done() {
-    return 0;}
 VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded) {
     uint32_t index;
 debugStart();
@@ -1740,6 +1737,92 @@ int vulkanInfo(enum Configure query)
     }
     return 0;
 }
+void vulkanDma(struct Center *center)
+{
+    vulkanExtent();
+    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
+    break; case (Vertexz): mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
+    break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
+    break; case (Configurez): for (int i = 0; i < center->siz; i++)
+    switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
+    break; case (RegisterDone): mainState.registerDone = center->val[i];
+    break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
+    break; case (CursorPress): if (center->val[i] == 0)
+        mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
+    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
+    break; case (ManipulateReact): if (mainState.mouseReact[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
+        mainState.resizeNeeded = true; for (int j = 0; j < Reacts; j++)
+        mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipulateAction): mainState.mouseAction = (Action)center->val[i]; mainState.openState->setCursor();
+    break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i]; mainState.openState->setCursor();
+    break; case (ManipulateMask): for (int j = 0; j < Stickys; j++)
+        mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
+    break; case (ManipulateModify): mainState.mouseModify = (enum Modify)center->val[i]; mainState.openState->setCursor();
+    break; case (ArgumentFollow): mainState.argumentFollow = center->val[i];
+    break; case (ArgumentModify): mainState.argumentModify = center->val[i];
+    break; case (ArgumentDisplay): mainState.argumentDisplay = (Micro)center->val[i];
+    break; case (ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
+    break; case (ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
+    break; case (ArgumentBase): mainState.argumentBase = center->val[i];
+    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
+    break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
+    }
+    planeDone(center);}
+}
+void vulkanDraw(enum Micro shader, int base, int limit)
+{
+    std::vector<BufferState*> buffer;
+    std::vector<WrapState<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
+    vulkanExtent();
+    WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
+    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
+    if (!draw->set()) return;
+    mainState.registerDone++;
+    int temp = draw->tmp();
+    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
+    buffer.push_back((*i)->get(draw->tmp(temp)));
+    std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
+    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
+    draw->tmp(temp,done);
+}
+void vulkanSend(int loc, int siz, float *mat)
+{
+    vulkanExtent();
+    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
+    bool full = false;
+    full = !bufferQueue->set();
+    if (full) return;
+    bufferQueue->set(loc,siz,mat);
+}
+void vulkanField(float left, float base, float angle, int index)
+{
+    // TODO write CursorLeft CursorBase CursorIndex to Uniform
+}
+void windowChanged()
+{
+    float mat[16];
+    if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
+    #ifdef PLANRA
+    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
+    #else
+    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
+    #endif
+    if (mainState.mouseReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
+        vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
+    if (mainState.mouseReact[Display]) vulkanDraw(mainState.argumentDisplay,mainState.argumentBase,mainState.argumentLimit);
+    if (mainState.mouseReact[Brighten]) vulkanDraw(mainState.argumentBrighten,mainState.argumentBase,mainState.argumentLimit);
+    if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
+}
+void *vulkanReady(int *siz, int *tag)
+{
+    // reserve buffer to return mapped in zero time
+    return mainState.queueState->bufferQueue[Piercez]->get(siz,tag)->mapped;
+}
+void vulkanDone(int tag)
+{
+    // release reserved buffer
+    mainState.queueState->bufferQueue[Piercez]->get(tag);
+}
 void vulkanSafe()
 {
     glfwPostEmptyEvent();
@@ -1749,7 +1832,6 @@ void vulkanInit()
     for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
     mainState.initState = new InitState(mainState.enable,mainState.layers);
 }
-void windowChanged();
 void vulkanMain(enum Thread proc, enum Wait wait)
 {
     switch(wait) {
@@ -1799,102 +1881,6 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     break;
     default:
     throw std::runtime_error("no case in switch!");}  
-}
-void vulkanSend(int loc, int siz, float *mat)
-{
-    vulkanExtent();
-    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
-    bool full = false;
-    full = !bufferQueue->set();
-    if (full) return;
-    bufferQueue->set(loc,siz,mat);
-}
-void vulkanField(float left, float base, float angle, int index)
-{
-    // TODO write CursorLeft CursorBase CursorIndex to Uniform
-}
-void vulkanBack(enum Memory buffer)
-{
-    // update mapped in buffer from computed
-    vulkanExtent();
-    int size = mainState.swapState->extent.width * mainState.swapState->extent.height;
-    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[buffer];
-    if (!bufferQueue->set()) return;
-    /*std::function<bool()> done = */bufferQueue->set(size,[](BufferState*buffer){return buffer->getup();});
-}
-void vulkanDma(struct Center *center)
-{
-    vulkanExtent();
-    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
-    break; case (Vertexz): mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
-    break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
-    break; case (Configurez): for (int i = 0; i < center->siz; i++)
-    switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
-    break; case (RegisterDone): mainState.registerDone = center->val[i];
-    break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
-    break; case (CursorPress): if (center->val[i] == 0)
-        mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
-    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
-    break; case (ManipulateReact): if (mainState.mouseReact[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
-        mainState.resizeNeeded = true; for (int j = 0; j < Reacts; j++)
-        mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case (ManipulateAction): mainState.mouseAction = (Action)center->val[i]; mainState.openState->setCursor();
-    break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i]; mainState.openState->setCursor();
-    break; case (ManipulateMask): for (int j = 0; j < Stickys; j++)
-        mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
-    break; case (ManipulateModify): mainState.mouseModify = (enum Modify)center->val[i]; mainState.openState->setCursor();
-    break; case (ArgumentFollow): mainState.argumentFollow = center->val[i];
-    break; case (ArgumentModify): mainState.argumentModify = center->val[i];
-    break; case (ArgumentDisplay): mainState.argumentDisplay = (Micro)center->val[i];
-    break; case (ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
-    break; case (ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
-    break; case (ArgumentBase): mainState.argumentBase = center->val[i];
-    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
-    break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
-    }
-    planeDone(center);}
-}
-void vulkanDraw(enum Micro shader, int base, int limit)
-{
-    std::vector<BufferState*> buffer;
-    std::vector<WrapState<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
-    vulkanExtent();
-    WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
-    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
-    if (!draw->set()) return;
-    mainState.registerDone++;
-    int temp = draw->tmp();
-    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
-    buffer.push_back((*i)->get(draw->tmp(temp)));
-    std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
-    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
-    draw->tmp(temp,done);
-}
-void windowChanged()
-{
-    float mat[16];
-    if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
-    #ifdef PLANRA
-    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
-    #else
-    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
-    #endif
-    if (mainState.mouseReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
-        vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
-    if (mainState.mouseReact[Display]) vulkanDraw(mainState.argumentDisplay,mainState.argumentBase,mainState.argumentLimit);
-    if (mainState.mouseReact[Brighten]) vulkanDraw(mainState.argumentBrighten,mainState.argumentBase,mainState.argumentLimit);
-    if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
-    if (mainState.mouseReact[Report]) vulkanBack(mainState.argumentMemory);
-}
-void vulkanReady(void **ptr, int *siz, int *tag)
-{
-    // reserve buffer to return mapped in zero time
-    mainState.queueState->bufferQueue[Uniformz]->ret(ptr,siz,tag);
-}
-void vulkanDone(int tag)
-{
-    // release reserved buffer
-    mainState.queueState->bufferQueue[Uniformz]->ret(tag);
 }
 
 int main(int argc, char **argv)

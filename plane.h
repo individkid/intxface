@@ -9,7 +9,7 @@ typedef void (*vftype)(); // safe
 typedef void (*yftype)(enum Thread proc, enum Wait wait); // main
 typedef void (*uftype)(struct Center *center); // dma
 typedef void (*wftype)(enum Micro shader, int base, int limit); // draw
-typedef void (*rftype)(void **ptr, int *siz, int *tag); // ready
+typedef void *(*rftype)(int *siz, int *tag); // ready
 typedef void (*xftype)(int tag); // done
 typedef void (*sftype)(enum Configure hint); // wake
 typedef int (*tftype)(enum Configure cfg); // info

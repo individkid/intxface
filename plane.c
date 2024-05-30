@@ -155,78 +155,78 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 planeXform planeFunc()
 {
-	switch ((enum Tool)configure[ManipulateTool]) {
-	case (Mouse): switch ((enum Effect)configure[ManipulateEffect]) {
-	case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
-	case (Cursor): ERROR();
-	case (Focal): ERROR();
-	case (Ortho): return planeSlideOrthoMouse;
-	case (Normal): ERROR();
-	default: ERROR();}
-	case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
-	case (Cursor): ERROR();
-	case (Focal): return planeRotateFocalMouse;
-	case (Ortho): ERROR();
-	case (Normal): ERROR();
-	default: ERROR();}
-	case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
-	case (Cursor): ERROR();
-	case (Focal): ERROR();
-	case (Ortho): ERROR();
-	case (Normal): ERROR();
-	default: ERROR();}
-	default: ERROR();}
-	case (Roller): switch ((enum Effect)configure[ManipulateEffect]) {
-	case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
-	case (Cursor): ERROR();
-	case (Focal): ERROR();
-	case (Ortho): ERROR();
-	case (Normal): ERROR();
-	default: ERROR();}
-	case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
-	case (Cursor): return planeRotateCursorRoller;
-	case (Focal): ERROR();
-	case (Ortho): ERROR();
-	case (Normal): ERROR();
-	default: ERROR();}
-	case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
-	case (Cursor): ERROR();
-	case (Focal): ERROR();
-	case (Ortho): ERROR();
-	case (Normal): ERROR();
-	default: ERROR();}
-	default: ERROR();}
-	default: ERROR();}
-	return 0;
+    switch ((enum Tool)configure[ManipulateTool]) {
+    case (Mouse): switch ((enum Effect)configure[ManipulateEffect]) {
+    case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
+    case (Cursor): ERROR();
+    case (Focal): ERROR();
+    case (Ortho): return planeSlideOrthoMouse;
+    case (Normal): ERROR();
+    default: ERROR();}
+    case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
+    case (Cursor): ERROR();
+    case (Focal): return planeRotateFocalMouse;
+    case (Ortho): ERROR();
+    case (Normal): ERROR();
+    default: ERROR();}
+    case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
+    case (Cursor): ERROR();
+    case (Focal): ERROR();
+    case (Ortho): ERROR();
+    case (Normal): ERROR();
+    default: ERROR();}
+    default: ERROR();}
+    case (Roller): switch ((enum Effect)configure[ManipulateEffect]) {
+    case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
+    case (Cursor): ERROR();
+    case (Focal): ERROR();
+    case (Ortho): ERROR();
+    case (Normal): ERROR();
+    default: ERROR();}
+    case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
+    case (Cursor): return planeRotateCursorRoller;
+    case (Focal): ERROR();
+    case (Ortho): ERROR();
+    case (Normal): ERROR();
+    default: ERROR();}
+    case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
+    case (Cursor): ERROR();
+    case (Focal): ERROR();
+    case (Ortho): ERROR();
+    case (Normal): ERROR();
+    default: ERROR();}
+    default: ERROR();}
+    default: ERROR();}
+    return 0;
 }
 float *planeMatrix(float *mat)
 {
-	return mat; // TODO
+    return mat; // TODO
 }
 void physicalToScreen(float *xptr, float *yptr)
 {
-	int width, height, xphys, yphys;
+    int width, height, xphys, yphys;
     width = callInfo(MonitorWidth); height = callInfo(MonitorHeight);
     xphys = callInfo(PhysicalWidth); yphys = callInfo(PhysicalHeight);
     *xptr *= width/xphys; *yptr *= height/yphys;
 }
 void physicalFromScreen(float *xptr, float *yptr)
 {
-	int width, height, xphys, yphys;
+    int width, height, xphys, yphys;
     width = callInfo(MonitorWidth); height = callInfo(MonitorHeight);
     xphys = callInfo(PhysicalWidth); yphys = callInfo(PhysicalHeight);
     *xptr *= xphys/width; *yptr *= yphys/height;
 }
 void screenToWindow(float *xptr, float *yptr)
 {
-	int width, height, left, base;
+    int width, height, left, base;
     width = callInfo(WindowWidth); height = callInfo(WindowHeight);
     left = callInfo(WindowLeft); base = callInfo(WindowBase);
     *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
 }
 void screenFromWindow(float *xptr, float *yptr)
 {
-	int width, height, left, base;
+    int width, height, left, base;
     width = callInfo(WindowWidth); height = callInfo(WindowHeight);
     left = callInfo(WindowLeft); base = callInfo(WindowBase);
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
@@ -244,13 +244,18 @@ float *planeWindow(float *mat)
     *matrc(mat,0,0,4) = 1.0/(xmax-xmid); *matrc(mat,1,1,4) = 1.0/(ymax-ymid);
     *matrc(mat,0,3,4) = -xmid; *matrc(mat,1,3,4) = -ymid;
     *matrc(mat,2,2,4) = 1.0; *matrc(mat,3,3,4) = 1.0;
-    return mat;
+    for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++)
+    printf(" %6f",*matrc(mat,i,j,4));
+    printf("\n");}
+    printf("\n");
+    return identmat(mat,4);
 }
 struct Pierce *planePierce()
 {
 	if (found) return found;
 	struct Pierce *ptr; int siz; int tag;
-	callReady((void**)&ptr,&siz,&tag);
+	ptr = callReady(&siz,&tag);
 	if (configure[ClosestFind]) {
 	for (int i = 0; i < siz; i++) {
 	struct Pierce *temp = ptr + i;
@@ -687,7 +692,7 @@ float *planraMatrix(float *mat)
 	planeSlideOrthoMouse(mat,fix,nml,org,cur);
 	planeRotateFocalMouse(mat,fix,nml,org,cur);
 	planeRotateCursorRoller(mat,fix,nml,org,cur);
-	return mat;
+	return identmat(mat,4);
 }
 void planraCenter()
 {
@@ -695,7 +700,7 @@ void planraCenter()
 	center.mem = Configurez; center.siz = 2; center.idx = 0; center.slf = 0;
 	allocConfigure(&center.cfg,2); allocInt(&center.val,2);
 	center.cfg[0] = ArgumentLimit; center.cfg[1] = ManipulateReact;
-	center.val[0] = 6; center.val[1] = (1<<Display)|(1<<Modify);
+	center.val[0] = 6; center.val[1] = (1<<Display)|(1<<Follow);
 	callDma(&center); allocConfigure(&center.cfg,0); allocInt(&center.val,0);
 	center.mem = Vertexz; center.siz = 6; center.idx = 0; center.slf = 0;
 	allocVertex(&center.vtx,6);
@@ -753,7 +758,7 @@ void planraWake(enum Configure hint)
 	}
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
 		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,ManipulateReact};
-		int val[3] = {Upset,15,1|(1<<Display)|(1<<Modify)};
+		int val[3] = {Upset,15,1|(1<<Display)|(1<<Follow)};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 3; center.slf = 1;
 		center.cfg = cfg; center.val = val; callDma(&center);
@@ -765,7 +770,7 @@ void planraWake(enum Configure hint)
 		center.cfg = cfg; center.val = val; callDma(&center);
 	}
 	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 6) {
-		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,(1<<Display)|(1<<Modify)};
+		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,(1<<Display)|(1<<Follow)};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 2; center.slf = 1;
 		center.cfg = cfg; center.val = val; callDma(&center);
