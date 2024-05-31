@@ -61,7 +61,6 @@ int external = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 uftype callDma = 0;
-bftype callBind = 0;
 wftype callDraw = 0;
 rftype callReady = 0;
 xftype callDone = 0;
@@ -232,6 +231,7 @@ void screenFromWindow(float *xptr, float *yptr)
     left = callInfo(WindowLeft); base = callInfo(WindowBase);
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
+int debug = 0;
 float *planeWindow(float *mat)
 {
     // find the matrix to keep points fixed when window moves or resizes
@@ -245,6 +245,7 @@ float *planeWindow(float *mat)
     *matrc(mat,0,0,4) = 1.0/(xmax-xmid); *matrc(mat,1,1,4) = 1.0/(ymax-ymid);
     *matrc(mat,0,3,4) = -xmid; *matrc(mat,1,3,4) = -ymid;
     *matrc(mat,2,2,4) = 1.0; *matrc(mat,3,3,4) = 1.0;
+    printf("%d\n",debug++);
     for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++)
     printf(" %6f",*matrc(mat,i,j,4));
@@ -600,7 +601,7 @@ void planeFinish(enum Thread bit)
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, bftype bind, rftype pierce, xftype done, sftype wake, tftype info, zftype boot)
+void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, rftype pierce, xftype done, sftype wake, tftype info, zftype boot)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -612,7 +613,7 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, b
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callSafe = safe; callMain = main; callDma = dma; callDraw = draw; callBind = bind;
+	callSafe = safe; callMain = main; callDma = dma; callDraw = draw;
 	callReady = pierce; callDone = done; callWake = wake; callInfo = info;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;

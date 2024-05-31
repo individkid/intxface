@@ -1751,6 +1751,10 @@ void vulkanDma(struct Center *center)
 {
     vulkanExtent();
     switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
+    // TODO set needs to cause planeDone to be called; pass a lambda for that
+    // TODO here, have set of QueryBuf only update copy
+    // TODO in vulkanDraw, have set of QueryBuf submit to ThreadState
+    break; case (Piercez): mainState.queueState->bufferQueue[Piercez]->set(0,sizeof(center->pie[0])*center->siz,center->pie);
     break; case (Vertexz): mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
     break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
@@ -1776,12 +1780,7 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentBase): mainState.argumentBase = center->val[i];
     break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
     break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
-    }
-    planeDone(center);}
-}
-void vulkanBind(int loc, int siz, void *ptr)
-{
-    // TODO prepare for QueryBuf to be initialized in vulkanDraw
+    } planeDone(center);}
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
@@ -1903,9 +1902,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanBind,vulkanReady,vulkanDone,planraWake,vulkanInfo,planraBoot);
+        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,planraWake,vulkanInfo,planraBoot);
 #else
-        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanBind,vulkanReady,vulkanDone,planrWake,vulkanInfo,planrBoot);
+        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,planrWake,vulkanInfo,planrBoot);
 #endif
         delete mainState.initState;
     } catch (const std::exception& e) {
