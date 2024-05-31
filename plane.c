@@ -61,6 +61,7 @@ int external = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 uftype callDma = 0;
+bftype callBind = 0;
 wftype callDraw = 0;
 rftype callReady = 0;
 xftype callDone = 0;
@@ -599,7 +600,7 @@ void planeFinish(enum Thread bit)
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, rftype pierce, xftype done, sftype wake, tftype info, zftype boot)
+void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, bftype bind, rftype pierce, xftype done, sftype wake, tftype info, zftype boot)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -611,7 +612,8 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, r
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callSafe = safe; callMain = main; callDma = dma; callDraw = draw; callReady = pierce; callDone = done; callWake = wake; callInfo = info;
+	callSafe = safe; callMain = main; callDma = dma; callDraw = draw; callBind = bind;
+	callReady = pierce; callDone = done; callWake = wake; callInfo = info;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});

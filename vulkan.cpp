@@ -102,9 +102,9 @@ struct MainState {
     .currentHeight = 700,
     .argumentFollow = 0,
     .argumentModify = 0,
-    .argumentDisplay = MicroPRPC,
-    .argumentBrighten = MicroPRRC, // TODO need new MicroOn for seq without CoPyon
-    .argumentDetect = MicroPRCP, // TODO need plane function for Piercez initialization
+    .argumentDisplay = MicroPRPC, // just display
+    .argumentBrighten = MicroPRRC, // fill Indexz
+    .argumentDetect = MicroPRCP, // retreive Piercez
     .argumentBase = 0,
     .argumentLimit = 0,
     .argumentMemory = Indexz,
@@ -913,9 +913,8 @@ template<class Buffer> struct WrapState {
     std::deque<void*> data; std::deque<std::function<bool()>> done;
     std::set<int> lookup; int seqnum;
     int size; void *copy; int count; int limit;
-    bool seqvld; int seqtag; Buffer *seqbuf;
-    WrapTag tag;
-    MainState *info;
+    bool seqvld; int seqtag; int seqtmp;
+    Buffer *setbuf; WrapTag tag; MainState *info;
     WrapState(MainState *info, int limit, WrapTag tag) {
         ready = 0;
         seqnum = 0;
@@ -924,7 +923,7 @@ template<class Buffer> struct WrapState {
         count = 0;
         this->limit = limit;
         seqvld = false;
-        seqbuf = 0;
+        setbuf = 0;
         this->tag = tag;
         this->info = info;
     }
@@ -968,10 +967,12 @@ template<class Buffer> struct WrapState {
     // bind done function to identified done function
         temp[tmp] = done;
     }
-    void seq() {
+    int seq() {
     // remember for next call to set
         seqvld = true;
         seqtag = info->threadState->push();
+        seqtmp = tmp();
+        return seqtmp;
     }
     bool set() {
     // return whether queues are not full
@@ -993,13 +994,13 @@ template<class Buffer> struct WrapState {
     std::function<bool()> set(bool first, std::function<VkFence(Buffer*)> setup) {
     // enque function to return fence in separate thread
         if (pool.empty()) return [](){return true;};
-        Buffer *ptr = seqbuf = pool.front(); pool.pop_front();
+        Buffer *ptr = setbuf = pool.front(); pool.pop_front();
         std::function<bool()> done = (first?(seqvld?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);})):(seqvld?
         info->threadState->push([setup,ptr](){return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){return setup(ptr);})));
-        seqvld = false; running.push_back(ptr); toready.push_back(done);
+        running.push_back(ptr); toready.push_back(seqvld?tmp(seqtmp):done); seqvld = false;
         return done;
     }
     std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
@@ -1009,7 +1010,7 @@ template<class Buffer> struct WrapState {
     Buffer *set(int temp, int size, std::function<VkFence(Buffer*)> setup) {
     // change size and retroactively depend on fence returned by arbitrary setup in separate thread
         tmp(temp,set(size,setup));
-        return seqbuf;
+        return setbuf;
     }
     Buffer *set(int loc, int siz, const void *ptr) {
     // enque setup from data in separate thread and present for get when fence is done
@@ -1019,7 +1020,7 @@ template<class Buffer> struct WrapState {
         if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); // TODO assume ptr is reserved and use followon to release it
         done.push_back(set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);}));
-        return seqbuf;
+        return setbuf;
     }
     bool get() {
     // return whether first enque after resize is ready
@@ -1060,6 +1061,7 @@ struct QueueState {
     WrapState<DrawState>* drawQueue[Micros];
     FieldState *fieldState;
     std::vector<WrapState<BufferState>*> bindBuffer[Micros];
+    std::vector<WrapState<BufferState>*> sequBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
     const char *vertexName[Micros];
     const char *fragmentName[Micros];
@@ -1777,6 +1779,10 @@ void vulkanDma(struct Center *center)
     }
     planeDone(center);}
 }
+void vulkanBind(int loc, int siz, void *ptr)
+{
+    // TODO prepare for QueryBuf to be initialized in vulkanDraw
+}
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
     std::vector<BufferState*> buffer;
@@ -1788,6 +1794,7 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     mainState.registerDone++;
     int temp = draw->tmp();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
+    // TODO use seq and set if this is a QueryBuf
     buffer.push_back((*i)->get(draw->tmp(temp)));
     draw->set(temp,shader,[buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
@@ -1896,9 +1903,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,planraWake,vulkanInfo,planraBoot);
+        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanBind,vulkanReady,vulkanDone,planraWake,vulkanInfo,planraBoot);
 #else
-        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,planrWake,vulkanInfo,planrBoot);
+        planeInit(vulkanInit,vulkanSafe,vulkanMain,vulkanDma,vulkanDraw,vulkanBind,vulkanReady,vulkanDone,planrWake,vulkanInfo,planrBoot);
 #endif
         delete mainState.initState;
     } catch (const std::exception& e) {
