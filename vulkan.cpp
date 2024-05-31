@@ -965,6 +965,9 @@ template<class Buffer> struct WrapState {
     // bind done function to identified done function
         temp[tmp] = done;
     }
+    void seq() {
+        // TODO get seqnum from thread to pass to push in the next set
+    }
     bool set() {
     // return whether queues are not full
         clr();
@@ -996,17 +999,20 @@ template<class Buffer> struct WrapState {
     // change size and enque function to return fence in separate thread
         return set(set(size),setup);
     }
-    std::function<bool()> set(int loc, int siz, const void *ptr) {
-    // enque data using given queues
+    void set(int temp, int size, std::function<VkFence(Buffer*)> setup) {
+    // change size and retroactively depend on fence returned by arbitrary setup in separate thread
+        tmp(temp,set(size,setup));
+	// TODO return the running buffer
+    }
+    void set(int loc, int siz, const void *ptr) {
+    // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size);
         bool first = set(size);
         memcpy((void*)((char*)copy+loc),ptr,siz);
         if (first) {loc = 0; siz = size; ptr = copy;}
-        void *mem = malloc(siz); memcpy(mem,ptr,siz);
-        int temp = tmp(); data.push_back(mem); done.push_back(tmp(temp)); // TODO tmp not needed here?
-        std::function<bool()> ret = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
-        tmp(temp,ret);
-        return ret;
+        void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); // TODO assume ptr is reserved and use followon to release it
+        done.push_back(set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);}));
+	// TODO return the running buffer
     }
     bool get() {
     // return whether first enque after resize is ready
@@ -1781,9 +1787,8 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     int temp = draw->tmp();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
     buffer.push_back((*i)->get(draw->tmp(temp)));
-    std::function<bool()> done = draw->set(shader,[buffer,base,limit](DrawState*draw){
+    draw->set(temp,shader,[buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
-    draw->tmp(temp,done);
 }
 void vulkanSend(int loc, int siz, float *mat)
 {
