@@ -815,7 +815,7 @@ struct ThreadState {
     ThreadState(VkDevice device, bool repeat) {
         this->device = device;
         finish = false;
-	this->repeat = repeat;
+        this->repeat = repeat;
         seqnum = 0;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 1) != 0 ||
@@ -862,8 +862,7 @@ struct ThreadState {
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
-                if (arg->repeat) {planeSafe(Threads,Waits,RegisterDone); vulkanSafe();}}}
-	}
+                if (arg->repeat) {planeSafe(Threads,Waits,RegisterDone); vulkanSafe();}}}}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -875,7 +874,7 @@ struct ThreadState {
     }
     int push() {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        int temp = seqnum;
+        int temp = seqnum-1;
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return temp;}
     std::function<bool()> push(std::function<VkFence()> given) {
@@ -895,7 +894,7 @@ if (lookup.size() > debug_max) {debug_max = lookup.size(); std::cerr << "count "
     std::function<bool()> push(std::function<VkFence()> given, int last) {
     // return query of wheter fence is done for given function started in indicated sequence
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-	int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
+        int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
         if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         int temp = seqnum++; lookup.insert(temp);
         what.push_back(temp); when.push_back(last); extra.push_back(given);
@@ -904,7 +903,7 @@ if (lookup.size() > debug_max) {debug_max = lookup.size(); std::cerr << "count "
         return done;}
 };
 
-enum WrapTag {TestBuf,FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf,CompBuf};
+enum WrapTag {FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf};
 template<class Buffer> struct WrapState {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
@@ -913,15 +912,19 @@ template<class Buffer> struct WrapState {
     std::map<int,std::function<bool()>> temp;
     std::deque<void*> data; std::deque<std::function<bool()>> done;
     std::set<int> lookup; int seqnum;
-    int size; void *copy; int count; int limit; WrapTag tag;
+    int size; void *copy; int count; int limit;
+    bool seqvld; int seqtag; Buffer *seqbuf;
+    WrapTag tag;
     MainState *info;
     WrapState(MainState *info, int limit, WrapTag tag) {
         ready = 0;
+        seqnum = 0;
         size = 0;
         copy = 0;
-        seqnum = 0;
         count = 0;
         this->limit = limit;
+        seqvld = false;
+        seqbuf = 0;
         this->tag = tag;
         this->info = info;
     }
@@ -966,7 +969,9 @@ template<class Buffer> struct WrapState {
         temp[tmp] = done;
     }
     void seq() {
-        // TODO get seqnum from thread to pass to push in the next set
+    // remember for next call to set
+        seqvld = true;
+        seqtag = info->threadState->push();
     }
     bool set() {
     // return whether queues are not full
@@ -988,23 +993,25 @@ template<class Buffer> struct WrapState {
     std::function<bool()> set(bool first, std::function<VkFence(Buffer*)> setup) {
     // enque function to return fence in separate thread
         if (pool.empty()) return [](){return true;};
-        Buffer *ptr = pool.front(); pool.pop_front();
-        std::function<bool()> done;
-        if (first) done = info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);});
-        else done = info->threadState->push([setup,ptr](){return setup(ptr);});
-        running.push_back(ptr); toready.push_back(done);
+        Buffer *ptr = seqbuf = pool.front(); pool.pop_front();
+        std::function<bool()> done = (first?(seqvld?
+        info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seqtag):
+        info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);})):(seqvld?
+        info->threadState->push([setup,ptr](){return setup(ptr);},seqtag):
+        info->threadState->push([setup,ptr](){return setup(ptr);})));
+        seqvld = false; running.push_back(ptr); toready.push_back(done);
         return done;
     }
     std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
     // change size and enque function to return fence in separate thread
         return set(set(size),setup);
     }
-    void set(int temp, int size, std::function<VkFence(Buffer*)> setup) {
+    Buffer *set(int temp, int size, std::function<VkFence(Buffer*)> setup) {
     // change size and retroactively depend on fence returned by arbitrary setup in separate thread
         tmp(temp,set(size,setup));
-	// TODO return the running buffer
+        return seqbuf;
     }
-    void set(int loc, int siz, const void *ptr) {
+    Buffer *set(int loc, int siz, const void *ptr) {
     // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size);
         bool first = set(size);
@@ -1012,7 +1019,7 @@ template<class Buffer> struct WrapState {
         if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); // TODO assume ptr is reserved and use followon to release it
         done.push_back(set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);}));
-	// TODO return the running buffer
+        return seqbuf;
     }
     bool get() {
     // return whether first enque after resize is ready
@@ -1026,14 +1033,8 @@ template<class Buffer> struct WrapState {
         toinuse.push_back(done);
         return ready;
     }
-    Buffer *get(std::function<VkFence(Buffer*)> given) {
-    // submit additional processing started after last submitted is done
-        Buffer *ptr = ready; int last = info->threadState->push()-1;
-        std::function setup = [given,ptr](){return given(ptr);};
-        toinuse.push_back(info->threadState->push(setup,last));
-        return ready;
-    }
     Buffer *get(int *siz, int *tag) {
+    // get buffer reserved until returned tag is given back
         clr();
         if (ready == 0) return 0;
         int tmp = seqnum++; *tag = tmp; *siz = size; lookup.insert(tmp);
@@ -1041,6 +1042,7 @@ template<class Buffer> struct WrapState {
         return ready;
     }
     void get(int tag) {
+    // give back tag to unreserve buffer
         lookup.erase(tag);
         clr();
     }
