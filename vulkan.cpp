@@ -68,7 +68,6 @@ struct MainState {
     DeviceState* logicalState;
     SwapState *swapState;
     ThreadState *threadState;
-    ThreadState *extraState;
     QueueState* queueState;
     int registerDone;
     const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -795,7 +794,6 @@ void debugStop(const char *str) {
     float diff = (stop.tv_sec - debug_start.tv_sec) + (stop.tv_usec - debug_start.tv_usec) / (double)MICROSECONDS;
     if (diff > debug_diff) {debug_diff = diff; std::cerr << str << " " << diff << std::endl;}
 }
-int debug_max = 0;
 void vulkanSafe();
 struct ThreadState {
     VkDevice device;
@@ -804,6 +802,7 @@ struct ThreadState {
     pthread_t thread;
     bool finish;
     bool repeat;
+    std::deque<std::function<void()>> init;
     std::deque<std::function<VkFence()>> setup;
     std::deque<VkFence> fence;
     std::deque<int> order;
@@ -850,6 +849,8 @@ struct ThreadState {
                 arg->when.pop_front(); arg->what.pop_front(); arg->extra.pop_front();}
             while (!arg->setup.empty()) {
                 arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front();}
+            while (!arg->init.empty()) {
+                arg->init.front()(); arg->lookup.erase(arg->order.front()); arg->order.pop_front();}
             if (arg->fence.empty()) {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
@@ -877,30 +878,25 @@ struct ThreadState {
         int temp = seqnum-1;
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return temp;}
-    std::function<bool()> push(std::function<VkFence()> given) {
-    // return function that returns whether fence returned by given function in separate thread is done
+    std::function<bool()> push(std::function<void(int)> given) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
         if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        int temp = seqnum++; order.push_back(temp); lookup.insert(temp);
-        setup.push_back(given);
-if (lookup.size() > debug_max) {debug_max = lookup.size(); std::cerr << "count " << lookup.size() << std::endl;}
+        int temp = seqnum++; lookup.insert(temp); given(temp);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
-        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (fence.size()+setup.size()+init.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size()+what.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return done;
-    }
+        return done;}
+    std::function<bool()> qush(std::function<void()> given) {
+    // eturn function that returns whether given function called in separate thread
+        return push([this,given](int temp){order.push_back(temp); init.push_back(given);});}
+    std::function<bool()> push(std::function<VkFence()> given) {
+    // return function that returns whether fence returned by given function in separate thread is done
+        return push([this,given](int temp){order.push_back(temp); setup.push_back(given);});}
     std::function<bool()> push(std::function<VkFence()> given, int last) {
     // return query of wheter fence is done for given function started in indicated sequence
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
-        if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-        int temp = seqnum++; lookup.insert(temp);
-        what.push_back(temp); when.push_back(last); extra.push_back(given);
-        std::function<bool()> done = [this,temp](){return this->clear(temp);};
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return done;}
+        return push([this,given,last](int temp){what.push_back(temp); when.push_back(last); extra.push_back(given);});}
 };
 
 enum WrapTag {FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf};
@@ -1012,13 +1008,14 @@ template<class Buffer> struct WrapState {
         tmp(temp,set(size,setup));
         return setbuf;
     }
-    Buffer *set(int loc, int siz, const void *ptr) {
+    Buffer *set(int loc, int siz, const void *ptr, std::function<void()> dat) {
     // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size);
         bool first = set(size);
         memcpy((void*)((char*)copy+loc),ptr,siz);
         if (first) {loc = 0; siz = size; ptr = copy;}
-        void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); // TODO assume ptr is reserved and use followon to release it
+        void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
+        // TODO push memcpy as no-fence setup; have clr call dat instead of free mem; push following as followon
         done.push_back(set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);}));
         return setbuf;
     }
@@ -1588,9 +1585,7 @@ void init() {
     delete pipeline;}
 VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded) {
     uint32_t index;
-debugStart();
     VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-debugStop("setup");
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {*resizeNeeded = true;
         std::cerr << "out of date" << std::endl;}
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -1754,9 +1749,9 @@ void vulkanDma(struct Center *center)
     // TODO set needs to cause planeDone to be called; pass a lambda for that
     // TODO here, have set of QueryBuf only update copy
     // TODO in vulkanDraw, have set of QueryBuf submit to ThreadState
-    break; case (Piercez): mainState.queueState->bufferQueue[Piercez]->set(0,sizeof(center->pie[0])*center->siz,center->pie);
-    break; case (Vertexz): mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx);
-    break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat);
+    break; case (Piercez): mainState.queueState->bufferQueue[Piercez]->set(0,sizeof(center->pie[0])*center->siz,center->pie,[center](){planeDone(center);});
+    break; case (Vertexz): mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx,[center](){planeDone(center);});
+    break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat,[center](){planeDone(center);});
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
@@ -1805,7 +1800,7 @@ void vulkanSend(int loc, int siz, float *mat)
     bool full = false;
     full = !bufferQueue->set();
     if (full) return;
-    bufferQueue->set(loc,siz,mat);
+    bufferQueue->set(loc,siz,mat,[](){});
 }
 void vulkanField(float left, float base, float angle, int index)
 {
@@ -1813,7 +1808,7 @@ void vulkanField(float left, float base, float angle, int index)
 }
 void windowChanged()
 {
-    float mat[16];
+    float mat[16]; // TODO allocate from heap or pool when WrapState data queue is converted to void lambda queue
     if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
     #ifdef PLANRA
     if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
