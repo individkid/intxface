@@ -303,6 +303,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
+float debug_diff = 0.0;
+struct timeval debug_start;
+void debugStart() {gettimeofday(&debug_start, NULL);}
+void debugStop(const char *str) {
+    struct timeval stop; gettimeofday(&stop, NULL);
+    float diff = (stop.tv_sec - debug_start.tv_sec) + (stop.tv_usec - debug_start.tv_usec) / (double)MICROSECONDS;
+    if (diff > debug_diff) {debug_diff = diff; std::cerr << str << " " << diff << std::endl;}
+}
 
 struct InitState {
     VkInstance instance;
@@ -786,14 +794,6 @@ struct SwapState {
     }
 };
 
-float debug_diff = 0.0;
-struct timeval debug_start;
-void debugStart() {gettimeofday(&debug_start, NULL);}
-void debugStop(const char *str) {
-    struct timeval stop; gettimeofday(&stop, NULL);
-    float diff = (stop.tv_sec - debug_start.tv_sec) + (stop.tv_usec - debug_start.tv_usec) / (double)MICROSECONDS;
-    if (diff > debug_diff) {debug_diff = diff; std::cerr << str << " " << diff << std::endl;}
-}
 void vulkanSafe();
 struct ThreadState {
     VkDevice device;
@@ -899,19 +899,42 @@ struct ThreadState {
         return push([this,given,last](int temp){what.push_back(temp); when.push_back(last); extra.push_back(given);});}
 };
 
+struct TempState {
+    int seqnum;
+    std::map<int,std::deque<std::function<bool()>>> done;
+    TempState() {
+        seqnum = 0;
+    }
+    int temp() {
+    // return identifier for done function
+        done[seqnum] = std::deque<std::function<bool()>>();
+        return seqnum++;
+    }
+    std::function<bool()> temp(int tmp) {
+    // return done function from identifier
+        return [this,tmp](){
+            if (done.find(tmp) == done.end()) return true;
+            for (auto i = done[tmp].begin(); i != done[tmp].end(); i++) if (!(*i)()) return false;
+            done.erase(tmp); return true;};
+    }
+    void temp(int tmp, std::function<bool()> fnc) {
+    // bind done function to identified done function
+        done[tmp].push_back(fnc);
+    }
+};
+
 enum WrapTag {FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf};
 template<class Buffer> struct WrapState {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
     Buffer* ready; std::deque<std::function<bool()>> toinuse;
     std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
-    std::map<int,std::function<bool()>> temp;
     std::deque<void*> data; std::deque<std::function<bool()>> done;
     std::set<int> lookup; int seqnum;
     int size; void *copy; int count; int limit;
     bool seqvld; int seqtag; int seqtmp;
-    Buffer *setbuf; WrapTag tag; MainState *info;
-    WrapState(MainState *info, int limit, WrapTag tag) {
+    Buffer *setbuf; WrapTag tag; MainState *info; TempState *temp;
+    WrapState(MainState *info, TempState *temp, int limit, WrapTag tag) {
         ready = 0;
         seqnum = 0;
         size = 0;
@@ -922,6 +945,7 @@ template<class Buffer> struct WrapState {
         setbuf = 0;
         this->tag = tag;
         this->info = info;
+        this->temp = temp;
     }
     ~WrapState() {
         while (!pool.empty()) {delete pool.front(); pool.pop_front();}
@@ -947,27 +971,11 @@ template<class Buffer> struct WrapState {
         while (!data.empty() && done.front()()) {
             free(data.front()); data.pop_front(); done.pop_front();}
     }
-    int tmp() {
-    // return identifier for done function
-        temp[seqnum] = [](){return false;};
-        return seqnum++;
-    }
-    std::function<bool()> tmp(int tmp) {
-    // return done function from identifier
-        return [this,tmp](){
-            if (this->temp.find(tmp) == this->temp.end()) return true;
-            if (!this->temp[tmp]()) return false;
-            this->temp.erase(tmp); return true;};
-    }
-    void tmp(int tmp, std::function<bool()> done) {
-    // bind done function to identified done function
-        temp[tmp] = done;
-    }
     int seq() {
-    // remember for next call to set
+    // remember for next call to set; return lambda done at least after fence of next set
         seqvld = true;
         seqtag = info->threadState->push();
-        seqtmp = tmp();
+        seqtmp = temp->temp();
         return seqtmp;
     }
     bool set() {
@@ -996,16 +1004,18 @@ template<class Buffer> struct WrapState {
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);})):(seqvld?
         info->threadState->push([setup,ptr](){return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){return setup(ptr);})));
-        running.push_back(ptr); toready.push_back(seqvld?tmp(seqtmp):done); seqvld = false;
+        running.push_back(ptr); toready.push_back(seqvld?temp->temp(seqtmp):done);
+        if (seqvld) temp->temp(seqtmp,done);
+        seqvld = false;
         return done;
     }
     std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
     // change size and enque function to return fence in separate thread
         return set(set(size),setup);
     }
-    Buffer *set(int temp, int size, std::function<VkFence(Buffer*)> setup) {
-    // change size and retroactively depend on fence returned by arbitrary setup in separate thread
-        tmp(temp,set(size,setup));
+    Buffer *set(int tmp, int size, std::function<VkFence(Buffer*)> setup) {
+    // change size and make indicated lambda depend on fence
+        temp->temp(tmp,set(size,setup));
         return setbuf;
     }
     Buffer *set(int loc, int siz, const void *ptr, std::function<void()> dat) {
@@ -1015,7 +1025,7 @@ template<class Buffer> struct WrapState {
         memcpy((void*)((char*)copy+loc),ptr,siz);
         if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
-        // TODO push memcpy as no-fence setup; have clr call dat instead of free mem; push following as followon
+        // TODO call dat in lambda after setup uses ptr
         done.push_back(set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);}));
         return setbuf;
     }
@@ -1062,6 +1072,7 @@ struct QueueState {
     std::vector<FieldState*> fieldBuffer[Micros];
     const char *vertexName[Micros];
     const char *fragmentName[Micros];
+    TempState tempState;
     QueueState() {
     for (int i = 0; i < Micros; i++) {vertexName[i] = "vertexMicrosG";
     switch (Component__Micro__MicroIn((Micro)i)) {
@@ -1083,20 +1094,20 @@ struct QueueState {
     fieldState->format.push_back(VK_FORMAT_R32_UINT);
     fieldState->offset.push_back(offsetof(Vertex,vec));
     fieldState->offset.push_back(offsetof(Vertex,ref));
-    bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
-    bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
-    bufferQueue[Indexz] = new WrapState<BufferState>(&mainState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
+    bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,&tempState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
+    bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,&tempState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
+    bufferQueue[Indexz] = new WrapState<BufferState>(&mainState,&tempState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
     bindBuffer[MicroPRPC].push_back(bufferQueue[Vertexz]);
     bindBuffer[MicroPRPC].push_back(bufferQueue[Matrixz]);
     fieldBuffer[MicroPRPC].push_back(fieldState);
     fieldBuffer[MicroPRPC].push_back(0);
-    drawQueue[MicroPRPC] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    drawQueue[MicroPRPC] = new WrapState<DrawState>(&mainState,&tempState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     bindBuffer[MicroPRRC].push_back(bufferQueue[Vertexz]);
     bindBuffer[MicroPRRC].push_back(bufferQueue[Matrixz]);
     bindBuffer[MicroPRRC].push_back(bufferQueue[Indexz]);
     fieldBuffer[MicroPRRC].push_back(fieldState);
     fieldBuffer[MicroPRRC].push_back(0);
-    drawQueue[MicroPRRC] = new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
+    drawQueue[MicroPRRC] = new WrapState<DrawState>(&mainState,&tempState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     }
     ~QueueState() {
     for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
@@ -1744,14 +1755,13 @@ int vulkanInfo(enum Configure query)
 }
 void vulkanDma(struct Center *center)
 {
-    vulkanExtent();
+    int siz; void *ptr;
     switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
-    // TODO set needs to cause planeDone to be called; pass a lambda for that
     // TODO here, have set of QueryBuf only update copy
     // TODO in vulkanDraw, have set of QueryBuf submit to ThreadState
-    break; case (Piercez): mainState.queueState->bufferQueue[Piercez]->set(0,sizeof(center->pie[0])*center->siz,center->pie,[center](){planeDone(center);});
-    break; case (Vertexz): mainState.queueState->bufferQueue[Vertexz]->set(0,sizeof(center->vtx[0])*center->siz,center->vtx,[center](){planeDone(center);});
-    break; case (Matrixz): mainState.queueState->bufferQueue[Matrixz]->set(0,sizeof(center->mat[0])*center->siz,center->mat,[center](){planeDone(center);});
+    break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
+    break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
+    break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
@@ -1775,7 +1785,9 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentBase): mainState.argumentBase = center->val[i];
     break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
     break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
-    } planeDone(center);}
+    } planeDone(center); return;}
+    vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
+    set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
@@ -1786,10 +1798,10 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
     if (!draw->set()) return;
     mainState.registerDone++;
-    int temp = draw->tmp();
+    int temp = mainState.queueState->tempState.temp();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
     // TODO use seq and set if this is a QueryBuf
-    buffer.push_back((*i)->get(draw->tmp(temp)));
+    buffer.push_back((*i)->get(mainState.queueState->tempState.temp(temp)));
     draw->set(temp,shader,[buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
 }
