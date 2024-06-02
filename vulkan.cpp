@@ -978,7 +978,18 @@ template<class Buffer> struct WrapState {
         seqvld = true;
         seqtag = info->threadState->push();
     }
-    bool set() {
+    int ret() {
+        setvld = true;
+        settmp = temp->temp();
+        return settmp;
+    }
+    Buffer *buf() {
+    // get next buffer to modify
+        if (setbuf) return setbuf;
+        setbuf = pool.front(); pool.pop_front();
+        return setbuf;
+    }
+    bool tst() {
     // return whether queues are not full
         clr();
         if (!pool.empty()) return true;
@@ -990,25 +1001,15 @@ template<class Buffer> struct WrapState {
         if (siz != size) {
             while (!pool.empty()) {delete pool.front(); pool.pop_front();}
             copy = realloc(copy,size = siz);}
-        if (!set()) return false;
+        if (!tst()) return false;
         bool first = false; if (pool.empty()) {
             Buffer *ptr = new Buffer(info,size,tag); pool.push_back(ptr); first = true; count++;}
         return first;
     }
-    Buffer *set(bool first) {
-        if (setbuf) return setbuf;
-        setbuf = pool.front(); pool.pop_front();
-	return setbuf;
-    }
-    int ret() {
-        setvld = true;
-        settmp = temp->temp();
-        return settmp;
-    }
     int set(bool first, std::function<VkFence(Buffer*)> setup) {
     // enque function to return fence in separate thread
         if (pool.empty()) ERROR();
-        Buffer *ptr = set(first);;
+        Buffer *ptr = buf();;
         if (!setvld) settmp = temp->temp();
         std::function<bool()> done = (first?(seqvld?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seqtag):
@@ -1802,7 +1803,7 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     vulkanExtent();
     WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
-    if (!draw->set()) return;
+    if (!draw->tst()) return;
     mainState.registerDone++;
     int temp = mainState.queueState->tempState.temp();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
@@ -1817,7 +1818,7 @@ void vulkanSend(int loc, int siz, float *mat)
     vulkanExtent();
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
     bool full = false;
-    full = !bufferQueue->set();
+    full = !bufferQueue->tst();
     if (full) return;
     bufferQueue->set(loc,siz,mat,[](){});
 }
