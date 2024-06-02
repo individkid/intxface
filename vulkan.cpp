@@ -933,7 +933,8 @@ template<class Buffer> struct WrapState {
     std::set<int> lookup; int seqnum;
     int size; void *copy; int count; int limit;
     bool seqvld; int seqtag;
-    bool setvld; int settmp; Buffer *setbuf;
+    bool setvld; int settag;
+    Buffer *setbuf; int setfst;
     WrapTag tag; MainState *info; TempState *temp;
     WrapState(MainState *info, TempState *temp, int limit, WrapTag tag) {
         ready = 0;
@@ -945,6 +946,7 @@ template<class Buffer> struct WrapState {
         seqvld = false;
         setvld = false;
         setbuf = 0;
+        setfst = 0;
         this->tag = tag;
         this->info = info;
         this->temp = temp;
@@ -973,21 +975,30 @@ template<class Buffer> struct WrapState {
         while (!data.empty() && done.front()()) {
             free(data.front()); data.pop_front(); done.pop_front();}
     }
-    void seq() {
-    // remember for next call to set; return lambda done at least after fence of next set
+    int seq() {
+    // produce separate thread marker to wait for in separate thread
+        if (seqvld) return seqtag;
         seqvld = true;
         seqtag = info->threadState->push();
+        return seqtag;
     }
     int ret() {
+    // produce lambda for when fence is done
+        if (setvld) return settag;
         setvld = true;
-        settmp = temp->temp();
-        return settmp;
+        settag = temp->temp();
+        return settag;
     }
     Buffer *buf() {
-    // get next buffer to modify
+    // produce next buffer to modify
         if (setbuf) return setbuf;
         setbuf = pool.front(); pool.pop_front();
         return setbuf;
+    }
+    bool fst() {
+    // consume whether buffer is first
+        if (!setfst) return false;
+        setfst--; return true;
     }
     bool tst() {
     // return whether queues are not full
@@ -996,43 +1007,39 @@ template<class Buffer> struct WrapState {
         if (count < limit) return true;
         return false;
     }
-    bool set(int siz) {
-    // change queue item size; return whether pool is new
+    void set(int siz) {
+    // change queue item size
         if (siz != size) {
             while (!pool.empty()) {delete pool.front(); pool.pop_front();}
             copy = realloc(copy,size = siz);}
-        if (!tst()) return false;
-        bool first = false; if (pool.empty()) {
-            Buffer *ptr = new Buffer(info,size,tag); pool.push_back(ptr); first = true; count++;}
-        return first;
+        if (!tst()) ERROR();
+        if (pool.empty()) {pool.push_back(new Buffer(info,size,tag)); setfst++; count++;}
     }
-    int set(bool first, std::function<VkFence(Buffer*)> setup) {
-    // enque function to return fence in separate thread
-        if (pool.empty()) ERROR();
-        Buffer *ptr = buf();;
-        if (!setvld) settmp = temp->temp();
-        std::function<bool()> done = (first?(seqvld?
+    int set(bool first, Buffer *ptr, std::function<VkFence(Buffer*)> setup) {
+    // consume buffer and lambda to setup in separate thread
+        int tag = ret(); std::function<bool()> done = (first?(seqvld?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);})):(seqvld?
         info->threadState->push([setup,ptr](){return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){return setup(ptr);})));
-        temp->temp(settmp,done); running.push_back(ptr); toready.push_back(temp->temp(settmp));
+        temp->temp(tag,done); running.push_back(ptr); toready.push_back(temp->temp(tag));
         seqvld = false; setvld = false; setbuf = 0;
-        return settmp;
+        return tag;
     }
     int set(int size, std::function<VkFence(Buffer*)> setup) {
     // change size and enque function to return fence in separate thread
-        return set(set(size),setup);
+        set(size); Buffer *ptr = buf(); bool first = fst();
+        return set(first,ptr,setup);
     }
     int set(int loc, int siz, const void *ptr, std::function<void()> dat) {
     // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size);
-        bool first = set(size);
+        set(size); Buffer *buffer = buf(); bool first = fst();
         memcpy((void*)((char*)copy+loc),ptr,siz);
         if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
         // TODO call dat in lambda after setup uses ptr
-	int tmp = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        int tmp = set(first,buffer,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
         done.push_back(temp->temp(tmp));
         return tmp;
     }
