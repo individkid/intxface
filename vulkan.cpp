@@ -960,7 +960,7 @@ template<class Buffer> struct WrapState {
         return tag;
     }
     int seq() {
-    // produce separate thread marker to wait for in separate thread
+    // produce marker to wait for in separate thread
         if (seqvld) return seqtag;
         seqvld = true;
         seqtag = info->threadState->push();
