@@ -934,7 +934,7 @@ template<class Buffer> struct WrapState {
     int size; void *copy; int count; int limit;
     bool seqvld; int seqtag;
     bool setvld; int settag;
-    Buffer *setbuf; int setfst;
+    std::pair<Buffer*,bool> setbuf;
     WrapTag tag; MainState *info; TempState *temp;
     WrapState(MainState *info, TempState *temp, int limit, WrapTag tag) {
         ready = 0;
@@ -945,8 +945,7 @@ template<class Buffer> struct WrapState {
         this->limit = limit;
         seqvld = false;
         setvld = false;
-        setbuf = 0;
-        setfst = 0;
+        setbuf = std::make_pair((Buffer*)0,false);
         this->tag = tag;
         this->info = info;
         this->temp = temp;
@@ -982,64 +981,54 @@ template<class Buffer> struct WrapState {
         seqtag = info->threadState->push();
         return seqtag;
     }
-    int ret() {
+    int tmp() {
     // produce lambda for when fence is done
         if (setvld) return settag;
         setvld = true;
         settag = temp->temp();
         return settag;
     }
-    Buffer *buf() {
+    std::pair<Buffer *, bool> buf() {
     // produce next buffer to modify
-        if (setbuf) return setbuf;
-        setbuf = pool.front(); pool.pop_front();
+        if (setbuf.first) return setbuf; else clr();
+        if (pool.empty()) {if (count == limit) ERROR();
+        pool.push_back(new Buffer(info,size,tag)); setbuf.second = true; count++;}
+        else setbuf.second = false;
+        setbuf.first = pool.front(); pool.pop_front();
         return setbuf;
     }
-    bool fst() {
-    // consume whether buffer is first
-        if (!setfst) return false;
-        setfst--; return true;
-    }
-    bool tst() {
+    bool set() {
     // return whether queues are not full
-        clr();
-        if (!pool.empty()) return true;
+        clr(); if (!pool.empty()) return true;
         if (count < limit) return true;
         return false;
     }
     void set(int siz) {
     // change queue item size
-        if (siz != size) {
-            while (!pool.empty()) {delete pool.front(); pool.pop_front();}
-            copy = realloc(copy,size = siz);}
-        if (!tst()) ERROR();
-        if (pool.empty()) {pool.push_back(new Buffer(info,size,tag)); setfst++; count++;}
+        clr(); if (siz != size) {
+        while (!pool.empty()) {delete pool.front(); pool.pop_front();}
+        copy = realloc(copy,size = siz);}
     }
-    int set(bool first, Buffer *ptr, std::function<VkFence(Buffer*)> setup) {
+    int set(std::function<VkFence(Buffer*)> setup) {
     // consume buffer and lambda to setup in separate thread
-        int tag = ret(); std::function<bool()> done = (first?(seqvld?
+        Buffer *ptr = buf().first; int tag = tmp();
+        std::function<bool()> done = (buf().second?(seqvld?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);})):(seqvld?
         info->threadState->push([setup,ptr](){return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){return setup(ptr);})));
         temp->temp(tag,done); running.push_back(ptr); toready.push_back(temp->temp(tag));
-        seqvld = false; setvld = false; setbuf = 0;
+        seqvld = false; setvld = false; setbuf.first = 0;
         return tag;
-    }
-    int set(int size, std::function<VkFence(Buffer*)> setup) {
-    // change size and enque function to return fence in separate thread
-        set(size); Buffer *ptr = buf(); bool first = fst();
-        return set(first,ptr,setup);
     }
     int set(int loc, int siz, const void *ptr, std::function<void()> dat) {
     // enque setup from data in separate thread and present for get when fence is done
-        int size = (loc+siz > this->size ? loc+siz : this->size);
-        set(size); Buffer *buffer = buf(); bool first = fst();
+        int size = (loc+siz > this->size ? loc+siz : this->size); set(size);
         memcpy((void*)((char*)copy+loc),ptr,siz);
-        if (first) {loc = 0; siz = size; ptr = copy;}
+        if (buf().second) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
         // TODO call dat in lambda after setup uses ptr
-        int tmp = set(first,buffer,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        int tmp = set([loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
         done.push_back(temp->temp(tmp));
         return tmp;
     }
@@ -1810,13 +1799,14 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     vulkanExtent();
     WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
-    if (!draw->tst()) return;
+    if (!draw->set()) return;
     mainState.registerDone++;
     int temp = mainState.queueState->tempState.temp();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
     // TODO use seq and set if this is a QueryBuf
     buffer.push_back((*i)->get(mainState.queueState->tempState.temp(temp)));
-    int tmp = draw->set(shader,[buffer,base,limit](DrawState*draw){
+    draw->set(shader);
+    int tmp = draw->set([buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
     mainState.queueState->tempState.temp(temp,mainState.queueState->tempState.temp(tmp));
 }
@@ -1825,7 +1815,7 @@ void vulkanSend(int loc, int siz, float *mat)
     vulkanExtent();
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
     bool full = false;
-    full = !bufferQueue->tst();
+    full = !bufferQueue->set();
     if (full) return;
     bufferQueue->set(loc,siz,mat,[](){});
 }
