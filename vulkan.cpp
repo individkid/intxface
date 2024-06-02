@@ -959,6 +959,20 @@ template<class Buffer> struct WrapState {
     WrapTag typ() {
         return tag;
     }
+    int seq() {
+    // produce separate thread marker to wait for in separate thread
+        if (seqvld) return seqtag;
+        seqvld = true;
+        seqtag = info->threadState->push();
+        return seqtag;
+    }
+    int tmp() {
+    // produce lambda for when fence is done
+        if (setvld) return settag;
+        setvld = true;
+        settag = temp->temp();
+        return settag;
+    }
     void clr() {
     // advance queues with done fronts
         if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
@@ -973,20 +987,6 @@ template<class Buffer> struct WrapState {
             inuse.pop_front(); topool.pop_front();}
         while (!data.empty() && done.front()()) {
             free(data.front()); data.pop_front(); done.pop_front();}
-    }
-    int seq() {
-    // produce separate thread marker to wait for in separate thread
-        if (seqvld) return seqtag;
-        seqvld = true;
-        seqtag = info->threadState->push();
-        return seqtag;
-    }
-    int tmp() {
-    // produce lambda for when fence is done
-        if (setvld) return settag;
-        setvld = true;
-        settag = temp->temp();
-        return settag;
     }
     std::pair<Buffer *, bool> buf() {
     // produce next buffer to modify
