@@ -932,8 +932,9 @@ template<class Buffer> struct WrapState {
     std::deque<void*> data; std::deque<std::function<bool()>> done;
     std::set<int> lookup; int seqnum;
     int size; void *copy; int count; int limit;
-    bool seqvld; int seqtag; int seqtmp;
-    Buffer *setbuf; WrapTag tag; MainState *info; TempState *temp;
+    bool seqvld; int seqtag;
+    bool setvld; int settmp; Buffer *setbuf;
+    WrapTag tag; MainState *info; TempState *temp;
     WrapState(MainState *info, TempState *temp, int limit, WrapTag tag) {
         ready = 0;
         seqnum = 0;
@@ -942,6 +943,7 @@ template<class Buffer> struct WrapState {
         count = 0;
         this->limit = limit;
         seqvld = false;
+        setvld = false;
         setbuf = 0;
         this->tag = tag;
         this->info = info;
@@ -971,12 +973,10 @@ template<class Buffer> struct WrapState {
         while (!data.empty() && done.front()()) {
             free(data.front()); data.pop_front(); done.pop_front();}
     }
-    int seq() {
+    void seq() {
     // remember for next call to set; return lambda done at least after fence of next set
         seqvld = true;
         seqtag = info->threadState->push();
-        seqtmp = temp->temp();
-        return seqtmp;
     }
     bool set() {
     // return whether queues are not full
@@ -995,30 +995,35 @@ template<class Buffer> struct WrapState {
             Buffer *ptr = new Buffer(info,size,tag); pool.push_back(ptr); first = true; count++;}
         return first;
     }
-    std::function<bool()> set(bool first, std::function<VkFence(Buffer*)> setup) {
+    Buffer *set(bool first) {
+        if (setbuf) return setbuf;
+        setbuf = pool.front(); pool.pop_front();
+	return setbuf;
+    }
+    int ret() {
+        setvld = true;
+        settmp = temp->temp();
+        return settmp;
+    }
+    int set(bool first, std::function<VkFence(Buffer*)> setup) {
     // enque function to return fence in separate thread
-        if (pool.empty()) return [](){return true;};
-        Buffer *ptr = setbuf = pool.front(); pool.pop_front();
+        if (pool.empty()) ERROR();
+        Buffer *ptr = set(first);;
+        if (!setvld) settmp = temp->temp();
         std::function<bool()> done = (first?(seqvld?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);})):(seqvld?
         info->threadState->push([setup,ptr](){return setup(ptr);},seqtag):
         info->threadState->push([setup,ptr](){return setup(ptr);})));
-        running.push_back(ptr); toready.push_back(seqvld?temp->temp(seqtmp):done);
-        if (seqvld) temp->temp(seqtmp,done);
-        seqvld = false;
-        return done;
+        temp->temp(settmp,done); running.push_back(ptr); toready.push_back(temp->temp(settmp));
+        seqvld = false; setvld = false; setbuf = 0;
+        return settmp;
     }
-    std::function<bool()> set(int size, std::function<VkFence(Buffer*)> setup) {
+    int set(int size, std::function<VkFence(Buffer*)> setup) {
     // change size and enque function to return fence in separate thread
         return set(set(size),setup);
     }
-    Buffer *set(int tmp, int size, std::function<VkFence(Buffer*)> setup) {
-    // change size and make indicated lambda depend on fence
-        temp->temp(tmp,set(size,setup));
-        return setbuf;
-    }
-    Buffer *set(int loc, int siz, const void *ptr, std::function<void()> dat) {
+    int set(int loc, int siz, const void *ptr, std::function<void()> dat) {
     // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size);
         bool first = set(size);
@@ -1026,8 +1031,9 @@ template<class Buffer> struct WrapState {
         if (first) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
         // TODO call dat in lambda after setup uses ptr
-        done.push_back(set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);}));
-        return setbuf;
+	int tmp = set(first,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        done.push_back(temp->temp(tmp));
+        return tmp;
     }
     bool get() {
     // return whether first enque after resize is ready
@@ -1802,8 +1808,9 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
     // TODO use seq and set if this is a QueryBuf
     buffer.push_back((*i)->get(mainState.queueState->tempState.temp(temp)));
-    draw->set(temp,shader,[buffer,base,limit](DrawState*draw){
+    int tmp = draw->set(shader,[buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
+    mainState.queueState->tempState.temp(temp,mainState.queueState->tempState.temp(tmp));
 }
 void vulkanSend(int loc, int siz, float *mat)
 {
