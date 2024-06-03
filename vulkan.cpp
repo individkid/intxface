@@ -921,6 +921,10 @@ struct TempState {
     // bind done function to identified done function
         done[tmp].push_back(fnc);
     }
+    void temp(int tmp, int fnc) {
+    // make first depend on second indicated
+        done[tmp].push_back(temp(fnc));
+    }
 };
 
 enum WrapTag {FetchBuf,ChangeBuf,StoreBuf,QueryBuf,DrawBuf};
@@ -1100,6 +1104,7 @@ struct QueueState {
     bufferQueue[Vertexz] = new WrapState<BufferState>(&mainState,&tempState,mainState.MAX_BUFFERS_AVAILABLE,FetchBuf);
     bufferQueue[Matrixz] = new WrapState<BufferState>(&mainState,&tempState,mainState.MAX_BUFFERS_AVAILABLE,ChangeBuf);
     bufferQueue[Indexz] = new WrapState<BufferState>(&mainState,&tempState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
+    bufferQueue[Piercez] = new WrapState<BufferState>(&mainState,&tempState,mainState.MAX_BUFFERS_AVAILABLE,QueryBuf);
     bindBuffer[MicroPRPC].push_back(bufferQueue[Vertexz]);
     bindBuffer[MicroPRPC].push_back(bufferQueue[Matrixz]);
     fieldBuffer[MicroPRPC].push_back(fieldState);
@@ -1158,7 +1163,7 @@ void init() {
             throw std::runtime_error("failed to create buffer!");
         return buffer;
     } (device,size,(tag == QueryBuf ?
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT:
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT :
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT));
     vkGetBufferMemoryRequirements(device, staging, &requirements);
     wasted = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
@@ -1177,7 +1182,6 @@ void init() {
         return properties.memoryTypeCount;
     } (requirements.memoryTypeBits,properties,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
     vkBindBufferMemory(device, staging, wasted, 0);}
-    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
     buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
         VkBufferCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1212,6 +1216,7 @@ void init() {
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
     vkBindBufferMemory(device, buffer, memory, 0);
+    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
     vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
     command = [](VkDevice device, VkCommandPool command) {
         VkCommandBuffer commandBuffer;
@@ -1234,18 +1239,17 @@ void init() {
 ~BufferState() {
     vkDestroyFence(device,fence,0);
     vkFreeCommandBuffers(device, pool, 1, &command);
-    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
     vkDestroyBuffer(device, buffer, nullptr);
-    vkFreeMemory(device, memory, nullptr);}
+    vkFreeMemory(device, memory, nullptr);
     if (tag == FetchBuf || tag == StoreBuf || tag == QueryBuf) {
     vkDestroyBuffer(device, staging, nullptr);
     vkFreeMemory(device, wasted, nullptr);}}
 VkFence setup(int loc, int siz, const void *ptr) {
     // this called in separate thread to get fence
     VkResult result;
-    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
-        memcpy((char*)mapped+loc,ptr,siz);}
-    if (tag != FetchBuf && tag != StoreBuf && tag != QueryBuf) return VK_NULL_HANDLE;
+    if (tag != FetchBuf && tag != ChangeBuf && tag != StoreBuf && tag != QueryBuf) return VK_NULL_HANDLE;
+    memcpy((char*)mapped+loc,ptr,siz);
+    if (tag == ChangeBuf) return VK_NULL_HANDLE;
     vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
     vkResetFences(device, 1, &fence);
     VkCommandBufferBeginInfo begin{};
@@ -1760,8 +1764,6 @@ void vulkanDma(struct Center *center)
 {
     int siz; void *ptr;
     switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
-    // TODO here, have set of QueryBuf only update copy
-    // TODO in vulkanDraw, have set of QueryBuf submit to ThreadState
     break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
     break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;
@@ -1790,25 +1792,29 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
     } planeDone(center); return;}
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
+    // TODO have set of QueryBuf only update copy for use in set without data
     set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
+    QueueState *queue = mainState.queueState;
+    TempState *temp = &queue->tempState;
     std::vector<BufferState*> buffer;
-    std::vector<WrapState<BufferState>*> *bindBuffer = mainState.queueState->bindBuffer+shader;
+    std::vector<WrapState<BufferState>*> *bindBuffer = queue->bindBuffer+shader;
+    WrapState<DrawState> *draw = queue->drawQueue[shader];
     vulkanExtent();
-    WrapState<DrawState> *draw = mainState.queueState->drawQueue[shader];
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
     if (!draw->set()) return;
-    mainState.registerDone++;
-    int temp = mainState.queueState->tempState.temp();
+    int ref = draw->tmp(); draw->set(shader); mainState.registerDone++;
+    /*for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
+    (*i)->tmp(draw->tmp()); // buffer reserved so long as draw is
+    draw->seq((*i)->sep()); // draw starts after buffer finishes
+    buffer.push_back((*i)->buf().first); // draw will bind to buffer
+    (*i)->set([](BufferState*buf){return buf->setup();});}*/
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
-    // TODO use seq and set if this is a QueryBuf
-    buffer.push_back((*i)->get(mainState.queueState->tempState.temp(temp)));
-    draw->set(shader);
-    int tmp = draw->set([buffer,base,limit](DrawState*draw){
-    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
-    mainState.queueState->tempState.temp(temp,mainState.queueState->tempState.temp(tmp));
+    buffer.push_back((*i)->get(temp->temp(ref)));
+    if (ref != draw->set([buffer,base,limit](DrawState*draw){
+    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);})) ERROR();
 }
 void vulkanSend(int loc, int siz, float *mat)
 {
