@@ -809,7 +809,7 @@ struct ThreadState {
     std::set<int> lookup;
     std::deque<std::function<VkFence()>> extra;
     std::deque<int> what;
-    std::deque<int> when;
+    std::deque<std::function<bool()>> when;
     int seqnum;
     ThreadState(VkDevice device, bool repeat) {
         this->device = device;
@@ -843,7 +843,7 @@ struct ThreadState {
             if (arg->finish) {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 break;}
-            while (!arg->when.empty() && arg->lookup.find(arg->when.front()) == arg->lookup.end()) {
+            while (!arg->when.empty() && arg->when.front()()) {
                 int temp = arg->what.front(); std::function<VkFence()> func = arg->extra.front();
                 arg->order.push_back(temp); arg->lookup.insert(temp); arg->setup.push_back(func);
                 arg->when.pop_front(); arg->what.pop_front(); arg->extra.pop_front();}
@@ -894,8 +894,9 @@ struct ThreadState {
     std::function<bool()> push(std::function<VkFence()> given) {
     // return function that returns whether fence returned by given function in separate thread is done
         return push([this,given](int temp){order.push_back(temp); setup.push_back(given);});}
-    std::function<bool()> push(std::function<VkFence()> given, int last) {
+    std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
     // return query of wheter fence is done for given function started in indicated sequence
+        if (last()) return push(given);
         return push([this,given,last](int temp){what.push_back(temp); when.push_back(last); extra.push_back(given);});}
 };
 
@@ -920,10 +921,6 @@ struct TempState {
     void temp(int tmp, std::function<bool()> fnc) {
     // bind done function to identified done function
         done[tmp].push_back(fnc);
-    }
-    void temp(int tmp, int fnc) {
-    // make first depend on second indicated
-        done[tmp].push_back(temp(fnc));
     }
 };
 
@@ -963,21 +960,35 @@ template<class Buffer> struct WrapState {
     WrapTag typ() {
         return tag;
     }
-    int seq() {
+    std::function<bool()> seq() {
     // produce marker to wait for in separate thread
-        if (seqvld) return seqtag;
+        if (seqvld) return temp->temp(seqtag);
         seqvld = true;
-        seqtag = info->threadState->push();
-        return seqtag;
+        seqtag = temp->temp();
+        return temp->temp(seqtag);
     }
-    int tmp() {
-    // produce lambda for when fence is done
-        if (setvld) return settag;
+    void seq(std::function<bool()> given) {
+    // add function to wait for in separate thread
+        if (!seqvld) {
+        seqvld = true;
+        seqtag = temp->temp();}
+        temp->temp(seqtag,given);
+    }
+    std::function<bool()> tmp() {
+    // produce lambda for when unreserved
+        if (setvld) return temp->temp(settag);
         setvld = true;
         settag = temp->temp();
-        return settag;
+        return temp->temp(settag);
     }
-    void clr() {
+    void tmp(std::function<bool()> given) {
+    // add function to postpone unreserve
+        if (!setvld) {
+        setvld = true;
+        settag = temp->temp();}
+        temp->temp(settag,given);
+    }
+    bool clr() {
     // advance queues with done fronts
         if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
             while (toinuse.size() > 1) {
@@ -991,6 +1002,10 @@ template<class Buffer> struct WrapState {
             inuse.pop_front(); topool.pop_front();}
         while (!data.empty() && done.front()()) {
             free(data.front()); data.pop_front(); done.pop_front();}
+    // return whether queues are not full
+        if (!pool.empty()) return true;
+        if (count < limit) return true;
+        return false;
     }
     std::pair<Buffer *, bool> buf() {
     // produce next buffer to modify
@@ -1001,40 +1016,44 @@ template<class Buffer> struct WrapState {
         setbuf.first = pool.front(); pool.pop_front();
         return setbuf;
     }
-    bool set() {
-    // return whether queues are not full
-        clr(); if (!pool.empty()) return true;
-        if (count < limit) return true;
-        return false;
-    }
     void set(int siz) {
     // change queue item size
         clr(); if (siz != size) {
         while (!pool.empty()) {delete pool.front(); pool.pop_front();}
         copy = realloc(copy,size = siz);}
     }
-    int set(std::function<VkFence(Buffer*)> setup) {
+    std::function<bool()> set(bool keep, std::function<VkFence(Buffer*)> setup) {
     // consume buffer and lambda to setup in separate thread
-        Buffer *ptr = buf().first; int tag = tmp();
-        std::function<bool()> done = (buf().second?(seqvld?
-        info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seqtag):
-        info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);})):(seqvld?
-        info->threadState->push([setup,ptr](){return setup(ptr);},seqtag):
-        info->threadState->push([setup,ptr](){return setup(ptr);})));
-        temp->temp(tag,done); running.push_back(ptr); toready.push_back(temp->temp(tag));
-        seqvld = false; setvld = false; setbuf.first = 0;
-        return tag;
+        Buffer *ptr = buf().first;
+        std::function<bool()> done = (buf().second?
+        info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seq()):
+        info->threadState->push([setup,ptr](){return setup(ptr);},seq()));
+        tmp(done); running.push_back(ptr); toready.push_back(tmp());
+        // TODO option to keep reserved
+        seqvld = false; setvld = keep; setbuf.first = 0;
+        return done;
     }
-    int set(int loc, int siz, const void *ptr, std::function<void()> dat) {
+    std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
+        return set(false,setup);
+    }
+    std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
     // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size); set(size);
         memcpy((void*)((char*)copy+loc),ptr,siz);
         if (buf().second) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
         // TODO call dat in lambda after setup uses ptr
-        int tmp = set([loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
-        done.push_back(temp->temp(tmp));
-        return tmp;
+        std::function<bool()> ret = set(false,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        done.push_back(ret);
+        return ret;
+    }
+    std::function<bool()> set() {
+        int loc = 0; int siz = size; const void *ptr = copy;
+        void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem);
+        // TODO how to get away without malloc
+        std::function<bool()> ret = set(true,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        done.push_back(ret);
+        return ret;
     }
     bool get() {
     // return whether first enque after resize is ready
@@ -1075,7 +1094,7 @@ struct QueueState {
     WrapState<DrawState>* drawQueue[Micros];
     FieldState *fieldState;
     std::vector<WrapState<BufferState>*> bindBuffer[Micros];
-    std::vector<WrapState<BufferState>*> sequBuffer[Micros];
+    std::vector<WrapState<BufferState>*> queryBuffer[Micros];
     std::vector<FieldState*> fieldBuffer[Micros];
     const char *vertexName[Micros];
     const char *fragmentName[Micros];
@@ -1112,7 +1131,7 @@ struct QueueState {
     drawQueue[MicroPRPC] = new WrapState<DrawState>(&mainState,&tempState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
     bindBuffer[MicroPRRC].push_back(bufferQueue[Vertexz]);
     bindBuffer[MicroPRRC].push_back(bufferQueue[Matrixz]);
-    bindBuffer[MicroPRRC].push_back(bufferQueue[Indexz]);
+    queryBuffer[MicroPRRC].push_back(bufferQueue[Indexz]);
     fieldBuffer[MicroPRRC].push_back(fieldState);
     fieldBuffer[MicroPRRC].push_back(0);
     drawQueue[MicroPRRC] = new WrapState<DrawState>(&mainState,&tempState,mainState.MAX_FRAMES_IN_FLIGHT,DrawBuf);
@@ -1801,27 +1820,36 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     TempState *temp = &queue->tempState;
     std::vector<BufferState*> buffer;
     std::vector<WrapState<BufferState>*> *bindBuffer = queue->bindBuffer+shader;
+    std::vector<WrapState<BufferState>*> *queryBuffer = queue->queryBuffer+shader;
     WrapState<DrawState> *draw = queue->drawQueue[shader];
     vulkanExtent();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
-    if (!draw->set()) return;
-    int ref = draw->tmp(); draw->set(shader); mainState.registerDone++;
-    /*for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
-    (*i)->tmp(draw->tmp()); // buffer reserved so long as draw is
-    draw->seq((*i)->sep()); // draw starts after buffer finishes
+    if (!draw->clr()) return;
+    // std::function<bool()>seq() returns fence
+    // seq(std::function<bool()>) delays setup
+    // std::function<bool()>tmp() returns reserved
+    // tmp(std::function<bool()>) prolongs reserved
+    // get(std::function<bool()>) prolongs reference
+    // set(std::function<VkFence()>) submits consumed
+    for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
+    draw->seq((*i)->seq()); // draw starts after buffer finishes
     buffer.push_back((*i)->buf().first); // draw will bind to buffer
-    (*i)->set([](BufferState*buf){return buf->setup();});}*/
-    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++)
-    buffer.push_back((*i)->get(temp->temp(ref)));
-    if (ref != draw->set([buffer,base,limit](DrawState*draw){
-    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);})) ERROR();
+    (*i)->set(); // retain reserve
+    (*i)->seq(draw->seq());} // read starts after draw finishes
+    for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) {
+    buffer.push_back((*i)->get(draw->tmp()));}
+    draw->set(shader); mainState.registerDone++;
+    draw->set([buffer,base,limit](DrawState*draw){
+    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
+    for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
+    (*i)->set([](BufferState*buf){return buf->getup();});} // read buffer
 }
 void vulkanSend(int loc, int siz, float *mat)
 {
     vulkanExtent();
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
     bool full = false;
-    full = !bufferQueue->set();
+    full = !bufferQueue->clr();
     if (full) return;
     bufferQueue->set(loc,siz,mat,[](){});
 }
