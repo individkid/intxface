@@ -1022,19 +1022,19 @@ template<class Buffer> struct WrapState {
         while (!pool.empty()) {delete pool.front(); pool.pop_front();}
         copy = realloc(copy,size = siz);}
     }
-    std::function<bool()> set(bool keep, std::function<VkFence(Buffer*)> setup) {
+    std::function<bool()> nxt(std::function<VkFence(Buffer*)> setup) {
     // consume buffer and lambda to setup in separate thread
         Buffer *ptr = buf().first;
         std::function<bool()> done = (buf().second?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seq()):
         info->threadState->push([setup,ptr](){return setup(ptr);},seq()));
         tmp(done); running.push_back(ptr); toready.push_back(tmp());
-        // TODO option to keep reserved
-        seqvld = false; setvld = keep; setbuf.first = 0;
         return done;
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
-        return set(false,setup);
+        std::function<bool()> ret = nxt(setup);
+        seqvld = false; setvld = false; setbuf.first = 0;
+        return ret;
     }
     std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
     // enque setup from data in separate thread and present for get when fence is done
@@ -1043,15 +1043,15 @@ template<class Buffer> struct WrapState {
         if (buf().second) {loc = 0; siz = size; ptr = copy;}
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
         // TODO call dat in lambda after setup uses ptr
-        std::function<bool()> ret = set(false,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        std::function<bool()> ret = set([loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
         done.push_back(ret);
         return ret;
     }
-    std::function<bool()> set() {
+    std::function<bool()> nxt() {
         int loc = 0; int siz = size; const void *ptr = copy;
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem);
         // TODO how to get away without malloc
-        std::function<bool()> ret = set(true,[loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
+        std::function<bool()> ret = nxt([loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
         done.push_back(ret);
         return ret;
     }
@@ -1830,11 +1830,12 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     // std::function<bool()>tmp() returns reserved
     // tmp(std::function<bool()>) prolongs reserved
     // get(std::function<bool()>) prolongs reference
+    // nxt(std::function<VkFenct()>) submits reserved
     // set(std::function<VkFence()>) submits consumed
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
     draw->seq((*i)->seq()); // draw starts after buffer finishes
     buffer.push_back((*i)->buf().first); // draw will bind to buffer
-    (*i)->set(); // retain reserve
+    (*i)->nxt(); // retain reserved
     (*i)->seq(draw->seq());} // read starts after draw finishes
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) {
     buffer.push_back((*i)->get(draw->tmp()));}
