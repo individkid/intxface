@@ -934,6 +934,7 @@ template<class Buffer> struct WrapState {
     std::set<int> lookup; int seqnum;
     int size; void *copy; int count; int limit;
     bool seqvld; int seqtag;
+    bool sepvld; int septag;
     bool setvld; int settag;
     std::pair<Buffer*,bool> setbuf;
     WrapTag tag; MainState *info; TempState *temp;
@@ -969,6 +970,20 @@ template<class Buffer> struct WrapState {
     }
     void seq(std::function<bool()> given) {
     // add function to wait for in separate thread
+        if (!seqvld) {
+        seqvld = true;
+        seqtag = temp->temp();}
+        temp->temp(seqtag,given);
+    }
+    std::function<bool()> sep() {
+    // produce lambda that will depend on fence
+        if (seqvld) return temp->temp(seqtag);
+        seqvld = true;
+        seqtag = temp->temp();
+        return temp->temp(seqtag);
+    }
+    void sep(std::function<bool()> given) {
+    // make lambda depend on fence
         if (!seqvld) {
         seqvld = true;
         seqtag = temp->temp();}
@@ -1028,7 +1043,7 @@ template<class Buffer> struct WrapState {
         std::function<bool()> done = (buf().second?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seq()):
         info->threadState->push([setup,ptr](){return setup(ptr);},seq()));
-        tmp(done); running.push_back(ptr); toready.push_back(tmp());
+        sep(done); tmp(done); running.push_back(ptr); toready.push_back(tmp());
         return done;
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
@@ -1050,9 +1065,14 @@ template<class Buffer> struct WrapState {
     std::function<bool()> nxt() {
         int loc = 0; int siz = size; const void *ptr = copy;
         void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem);
-        // TODO how to get away without malloc
+        // TODO reserve copy so set has to malloc copy and clr calls planeDone on detached copy
         std::function<bool()> ret = nxt([loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
         done.push_back(ret);
+        return ret;
+    }
+    std::function<bool()> set() {
+        std::function<bool()> ret = nxt();
+        seqvld = false; setvld = false; setbuf.first = 0;
         return ret;
     }
     bool get() {
@@ -1783,6 +1803,7 @@ void vulkanDma(struct Center *center)
 {
     int siz; void *ptr;
     switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
+    break; case (Indexz): siz = sizeof(center->buf[0]); ptr = center->buf;
     break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
     break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;
@@ -1811,7 +1832,9 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
     } planeDone(center); return;}
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
-    // TODO have set of QueryBuf only update copy for use in set without data
+    // TODO when optimal, update of copy just uses given pointer
+    // TODO without calling planeDone until a new copy replaces it.
+    // TODO QueryTag only updates copy, does not submit memory update.
     set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
@@ -1825,25 +1848,19 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     vulkanExtent();
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) if (!(*i)->get()) return;
     if (!draw->clr()) return;
-    // std::function<bool()>seq() returns fence
-    // seq(std::function<bool()>) delays setup
-    // std::function<bool()>tmp() returns reserved
-    // tmp(std::function<bool()>) prolongs reserved
-    // get(std::function<bool()>) prolongs reference
-    // nxt(std::function<VkFenct()>) submits reserved
-    // set(std::function<VkFence()>) submits consumed
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
-    draw->seq((*i)->seq()); // draw starts after buffer finishes
-    buffer.push_back((*i)->buf().first); // draw will bind to buffer
-    (*i)->nxt(); // retain reserved
-    (*i)->seq(draw->seq());} // read starts after draw finishes
+    draw->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
+    if (Component__Micro__MicroOn(shader) == CoPyon) {
+    (*i)->nxt(); (*i)->seq(draw->sep());} else {
+    (*i)->tmp(draw->tmp()); (*i)->set();}}
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) {
     buffer.push_back((*i)->get(draw->tmp()));}
     draw->set(shader); mainState.registerDone++;
     draw->set([buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
-    (*i)->set([](BufferState*buf){return buf->getup();});} // read buffer
+    if (Component__Micro__MicroOn(shader) == CoPyon) {
+    (*i)->set([](BufferState*buf){return buf->getup();});}}
 }
 void vulkanSend(int loc, int siz, float *mat)
 {
