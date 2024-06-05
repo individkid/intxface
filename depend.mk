@@ -27,18 +27,18 @@ luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
-planeC.o: datx.h face.h metx.h plane.c plane.h proto.h type.h
+planeC.o: datx.h face.h metx.h plane.c plane.h proto.h stlx.h type.h
 planeCpp.o: datx.h plane.cpp proto.h wrap.h
 planra.log: fragmentDisplayG planraC planraCpp vertexPracticeG
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
-planraCpp: datxC.o faceC.o metxC.o planeC.o planeCpp.o planraCpp.o planraCpp.typeC.o protoC.o wrapCpp.o
+planraCpp: datxC.o faceC.o metxC.o planeC.o planeCpp.o planraCpp.o planraCpp.typeC.o protoC.o stlxCpp.o wrapCpp.o
 planraCpp.o: metx.h plane.h planraCpp.mk proto.h type.h vulkan.cpp
 planraCpp.type.c: luax.so show.lua type.gen
 planraCpp.typeC.o: face.h type.h
-planraDCpp: datxC.o faceC.o metxC.o planeC.o planeCpp.o planraDCpp.o planraDCpp.typeC.o protoC.o wrapCpp.o
+planraDCpp: datxC.o faceC.o metxC.o planeC.o planeCpp.o planraDCpp.o planraDCpp.typeC.o protoC.o stlxCpp.o wrapCpp.o
 planraDCpp.o: metx.h plane.h planraDCpp.mk proto.h type.h vulkan.cpp
 planraDCpp.type.c: luax.so show.lua type.gen
 planraDCpp.typeC.o: face.h type.h

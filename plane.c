@@ -2,6 +2,7 @@
 #include "face.h"
 #include "metx.h"
 #include "datx.h"
+#include "stlx.h"
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -48,6 +49,8 @@ int numstk = 0;
 int idxstk = 0;
 int configure[Configures] = {0};
 struct Center center = {0};
+void *refcount = 0;
+int refcheck = 0;
 int sub0 = 0;
 int idx0 = 0;
 void **dat0 = 0;
@@ -56,8 +59,8 @@ void planeStarted(int val);
 int planeRunning();
 int planeCall(void **dat, const char *str);
 // constant after other threads start:
-int internal = 0;
 int external = 0;
+int internal = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 uftype callDma = 0;
@@ -93,6 +96,8 @@ void planeOutstr(const char *str);
 void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
+
+DECLARE_DEQUE(int,Intq)
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 // not all combinations of Effect Fixed Tool are supported.
@@ -346,17 +351,23 @@ void planeConfig(enum Configure cfg, int val)
 	case (ClosestFind): found = 0; break;
 	default: break;}
 }
+void planeDma(struct Center *ptr)
+{
+	refcheck = 1;
+	callDma(ptr,0);
+	if (refcheck) ERROR();
+}
 void planeSync(enum Configure cfg, int val)
 {
-	struct Center tmp = {0};
-	tmp.mem = Configurez;
-	tmp.siz = 1;
-	allocConfigure(&tmp.cfg,1);
-	allocInt(&tmp.val,1);
-	tmp.cfg[0] = cfg;
-	tmp.val[0] = val;
-	callDma(&tmp);
-	freeCenter(&tmp);
+	struct Center center = {0};
+	center.mem = Configurez;
+	center.siz = 1;
+	allocConfigure(&center.cfg,1);
+	allocInt(&center.val,1);
+	center.cfg[0] = cfg;
+	center.val[0] = val;
+	planeDma(&center);
+	freeCenter(&center);
 }
 void planeCont()
 {
@@ -390,8 +401,8 @@ void planeCopy(struct Center *ptr)
 		copyMachine(&machine[index],&ptr->mch[i]);} break;
 	case (Configurez): for (int i = 0; i < ptr->siz; i++)
 		planeConfig(ptr->cfg[i],ptr->val[i]);
-		callDma(ptr); break;
-	default: callDma(ptr); break;}
+		planeDma(ptr); break;
+	default: planeDma(ptr); break;}
 }
 int planeEscape(int lvl, int nxt)
 {
@@ -610,6 +621,8 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, r
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
+	refcount = allocIntq();
+	pushIntq(5,refcount); printf("refcount:%d size:%d",frontIntq(refcount),sizeIntq(refcount)); dropIntq(refcount); printf(":%d\n",sizeIntq(refcount));
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
@@ -620,8 +633,9 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, r
 	sem_safe(&resource,{if (!qfull && !running) break;});
 	planeMain();} closeIdent(internal); if (check) ERROR();
 }
-void planeDone(struct Center *ptr)
+void planeDone(struct Center *ptr, int *cnt)
 {
+	refcheck = 0;
 	// TODO free up center pointer that was passed to callDma
 }
 void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
@@ -679,7 +693,7 @@ void planraExit(int enb)
 	struct Center center;
 	enum Configure cfg = RegisterOpen; int val = enb;
 	center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
-	center.cfg = &cfg; center.val = &val; callDma(&center);
+	center.cfg = &cfg; center.val = &val; planeDma(&center);
 }
 float *planraMatrix(float *mat)
 {
@@ -699,12 +713,12 @@ float *planraMatrix(float *mat)
 }
 void planraCenter()
 {
-	int len = 0; char *str; char *tmp;
+	int len = 0; char *str; char *tmp; struct Center center;
 	center.mem = Configurez; center.siz = 2; center.idx = 0; center.slf = 0;
 	allocConfigure(&center.cfg,2); allocInt(&center.val,2);
 	center.cfg[0] = ArgumentLimit; center.cfg[1] = ManipulateReact;
 	center.val[0] = 6; center.val[1] = (1<<Display)|(1<<Follow);
-	callDma(&center); allocConfigure(&center.cfg,0); allocInt(&center.val,0);
+	planeDma(&center); allocConfigure(&center.cfg,0); allocInt(&center.val,0);
 	center.mem = Vertexz; center.siz = 6; center.idx = 0; center.slf = 0;
 	allocVertex(&center.vtx,6);
 	asprintf(&str,"Vertex(");
@@ -731,7 +745,7 @@ void planraCenter()
 	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
 	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
 	len = 0; hideVertex(&center.vtx[5],str,&len); free(str);
-	callDma(&center); allocVertex(&center.vtx,0);
+	planeDma(&center); allocVertex(&center.vtx,0);
 }
 void planraWake(enum Configure hint)
 {
@@ -757,26 +771,26 @@ void planraWake(enum Configure hint)
 		if (key1 == 256 && key2 == 0) {struct Center center;
 		enum Configure cfg = CursorPress; int val = 256;
 		center.mem = Configurez; center.idx = 0; center.siz = 1; center.slf = 1;
-		center.cfg = &cfg; center.val = &val; callDma(&center);}
+		center.cfg = &cfg; center.val = &val; planeDma(&center);}
 	}
 	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
 		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,ManipulateReact};
 		int val[3] = {Upset,15,1|(1<<Display)|(1<<Follow)};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 3; center.slf = 1;
-		center.cfg = cfg; center.val = val; callDma(&center);
+		center.cfg = cfg; center.val = val; planeDma(&center);
 	}
 	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 15) {
 		enum Configure cfg[1] = {ManipulateMask}; int val[1] = {6};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 1; center.slf = 1;
-		center.cfg = cfg; center.val = val; callDma(&center);
+		center.cfg = cfg; center.val = val; planeDma(&center);
 	}
 	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 6) {
 		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,(1<<Display)|(1<<Follow)};
 		struct Center center; center.mem = Configurez;
 		center.idx = 0; center.siz = 2; center.slf = 1;
-		center.cfg = cfg; center.val = val; callDma(&center);
+		center.cfg = cfg; center.val = val; planeDma(&center);
 	}
 }
 void planraBoot()

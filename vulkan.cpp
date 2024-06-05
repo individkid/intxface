@@ -958,6 +958,25 @@ template<class Buffer> struct WrapState {
         if (ready) delete ready;
         while (!inuse.empty()) {delete inuse.front(); inuse.pop_front();}
     }
+    bool clr() {
+    // advance queues with done fronts
+        if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
+            while (toinuse.size() > 1) {
+                inuse.push_back(0); topool.push_back(toinuse.front()); toinuse.pop_front();}
+            inuse.push_back(ready); topool.push_back(toinuse.front()); toinuse.pop_front(); ready = 0;}
+        while (!toready.empty() && toready.front()()) {
+            if (ready) pool.push_back(ready);
+            ready = running.front(); running.pop_front(); toready.pop_front();}
+        while (!topool.empty() && topool.front()()) {
+            if (inuse.front()) pool.push_back(inuse.front());
+            inuse.pop_front(); topool.pop_front();}
+        while (!data.empty() && done.front()()) {
+            free(data.front()); data.pop_front(); done.pop_front();}
+    // return whether queues are not full
+        if (!pool.empty()) return true;
+        if (count < limit) return true;
+        return false;
+    }
     WrapTag typ() {
         return tag;
     }
@@ -1002,25 +1021,6 @@ template<class Buffer> struct WrapState {
         setvld = true;
         settag = temp->temp();}
         temp->temp(settag,given);
-    }
-    bool clr() {
-    // advance queues with done fronts
-        if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
-            while (toinuse.size() > 1) {
-                inuse.push_back(0); topool.push_back(toinuse.front()); toinuse.pop_front();}
-            inuse.push_back(ready); topool.push_back(toinuse.front()); toinuse.pop_front(); ready = 0;}
-        while (!toready.empty() && toready.front()()) {
-            if (ready) pool.push_back(ready);
-            ready = running.front(); running.pop_front(); toready.pop_front();}
-        while (!topool.empty() && topool.front()()) {
-            if (inuse.front()) pool.push_back(inuse.front());
-            inuse.pop_front(); topool.pop_front();}
-        while (!data.empty() && done.front()()) {
-            free(data.front()); data.pop_front(); done.pop_front();}
-    // return whether queues are not full
-        if (!pool.empty()) return true;
-        if (count < limit) return true;
-        return false;
     }
     std::pair<Buffer *, bool> buf() {
     // produce next buffer to modify
@@ -1098,7 +1098,6 @@ template<class Buffer> struct WrapState {
     void get(int tag) {
     // give back tag to unreserve buffer
         lookup.erase(tag);
-        clr();
     }
 };
 
@@ -1799,7 +1798,7 @@ int vulkanInfo(enum Configure query)
     }
     return 0;
 }
-void vulkanDma(struct Center *center)
+void vulkanDma(struct Center *center, int *count)
 {
     int siz; void *ptr;
     switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
@@ -1830,12 +1829,12 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentBase): mainState.argumentBase = center->val[i];
     break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
     break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
-    } planeDone(center); return;}
+    } planeDone(center,count); return;}
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
     // TODO when optimal, update of copy just uses given pointer
     // TODO without calling planeDone until a new copy replaces it.
     // TODO QueryTag only updates copy, does not submit memory update.
-    set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
+    set(center->idx*siz,center->siz*siz,ptr,[center,count](){planeDone(center,count);});
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
