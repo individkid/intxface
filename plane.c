@@ -48,8 +48,8 @@ int *intstk = 0;
 int numstk = 0;
 int idxstk = 0;
 int configure[Configures] = {0};
-struct Center center = {0};
-void *refcount = 0;
+struct Center *center = 0;
+struct Center fixed = {0};
 int refcheck = 0;
 int sub0 = 0;
 int idx0 = 0;
@@ -60,8 +60,8 @@ int planeRunning();
 int planeCall(void **dat, const char *str);
 // constant after other threads start:
 int external = 0;
-int internal = 0;
-int response = 0;
+void *internal = 0;
+void *response = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 uftype callDma = 0;
@@ -72,13 +72,9 @@ sftype callWake = 0;
 tftype callInfo = 0;
 pthread_t thread[Threads];
 pthread_key_t retstr;
-// owned by a single thread until joined:
-int test = 0;
-int check = 0;
 // resource protected:
 char **string = 0;
 int strsiz = 0;
-int numpipe = 0;
 int qsize = 0;
 int qfull = 0;
 int qhead = 0;
@@ -90,13 +86,11 @@ enum Thread *procs = 0;
 sem_t resource;
 sem_t pending;
 sem_t ready[Threads];
-void planeRead();
-char *planePop();
-void planePut(const char *str);
-void planeOutstr(const char *str);
 void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
+
+DECLARE_DEQUE(struct Center *,Centerq)
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 // not all combinations of Effect Fixed Tool are supported.
@@ -281,10 +275,10 @@ void planeStage(enum Configure cfg)
 	case (StringSize): planeString(); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (ManipulateMask): configure[ManipulateMask] = callInfo(ManipulateMask); break;
-	case (CenterMemory): configure[CenterMemory] = center.mem; break;
-	case (CenterSize): configure[CenterSize] = center.siz; break;
-	case (CenterIndex): configure[CenterIndex] = center.idx; break;
-	case (CenterSelf): configure[CenterSelf] = center.slf; break;
+	case (CenterMemory): configure[CenterMemory] = center->mem; break;
+	case (CenterSize): configure[CenterSize] = center->siz; break;
+	case (CenterIndex): configure[CenterIndex] = center->idx; break;
+	case (CenterSelf): configure[CenterSelf] = center->slf; break;
 	case (ClosestValid): configure[ClosestValid] = planePierce()->vld; break;
 	case (ClosestIndex): configure[ClosestIndex] = planePierce()->idx; break;
 	case (ClosestPoly): configure[ClosestPoly] = planePierce()->pol; break;
@@ -417,6 +411,22 @@ int planeIval(struct Express *exp)
 	val = *datxIntz(0,dat); free(dat);
 	return val;
 }
+void planeCenter(zftype func)
+{
+	struct Center *ptr = 0;
+	if (center && center->ref > 1) {center->ref--; center = 0;}
+	if (center && center->ref == 1) allocCenter(&center,0);
+	sem_safe(&resource,{func();});
+	if (center == 0) {center = &fixed;}
+}
+void planeRead()
+{
+	if (sizeCenterq(internal)) center = frontCenterq(internal); dropCenterq(internal);
+}
+void planeEcho()
+{
+	if (configure[ResultType] == identType("Center")) readCenter(center,idx0); else ERROR();
+}
 void planeHide()
 {
 	// TODO planePopstr
@@ -431,8 +441,8 @@ int planeSwitch(struct Machine *mptr, int next)
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
-	case (Read): planeRead(); break;
-	case (Write): writeCenter(&center,external); break;
+	case (Read): planeCenter(planeRead); break;
+	case (Write): writeCenter(center,external); break; // TODO use response deque
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
 	case (Force): for (int i = 0; i < mptr->num; i++) {
 	planeConfig(mptr->cfg[i],mptr->val[i]); planeSync(mptr->cfg[i],mptr->val[i]);} break;
@@ -441,14 +451,14 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Send): planeSend(); break;
 	case (Recv): planeRecv(); break;
 	case (Disp): planeDisp(); break;
-	case (Copy): planeCopy(&center); break;
+	case (Copy): planeCopy(center); break;
 	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
 	case (Name): if (idxstk > 0) next = next - 1; else ERROR(); break;
 	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
-	case (Echo): if (configure[ResultType] == identType("Center")) readCenter(&center,idx0); else ERROR(); break;
+	case (Echo): planeCenter(planeEcho); break;
 	case (Hide): planeHide(); break;
 	default: break;}
 	return next+1;
@@ -490,13 +500,6 @@ void planeBoot()
 	struct Machine mptr = {0}; int len = 0;
 	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
 	planeSwitch(&mptr,0);}
-}
-void planeRead()
-{
-	struct Center center; int num = 0;
-	sem_safe(&resource,{if ((num = numpipe)) numpipe--;});
-	if (num) {readCenter(&center,internal);}
-	else {struct Center tmp = {0}; center = tmp;}
 }
 char *planePopstr() // non-const return means caller owns it
 {
@@ -540,14 +543,13 @@ void *planeSelect(void *ptr)
 	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[Select]);
 	while (1) {
-	struct Center center = {0};
+	struct Center *center = 0;
 	int sub = waitRead(0,1<<external);
 	if (sub != external) break;
 	if (!checkRead(external)) break;
-	if (!checkWrite(internal)) break;
-	readCenter(&center,external);
-	writeCenter(&center,internal);
-	sem_safe(&resource,{numpipe++;});
+	allocCenter(&center,1);
+	readCenter(center,external);
+	sem_safe(&resource,{pushCenterq(center,internal);});
 	planeSafe(Threads,Waits,CenterMemory); callSafe();}
 	planeSafe(Select,Stop,Configures); callSafe();
 	return 0;
@@ -577,15 +579,6 @@ void *planeConsole(void *ptr)
 	planeSafe(Console,Stop,Configures); callSafe();
 	return 0;
 }
-void *planeTest(void *ptr)
-{
-	test = check = 100000;
-	sem_post(&ready[Test]);
-	while (test--) {
-	planeSafe(Threads,Waits,Configures); callSafe();}
-	planeSafe(Test,Stop,Configures); callSafe();
-	return 0;
-}
 void planeThread(enum Thread bit)
 {
 	if ((running & (1<<bit)) != 0) return; running |= (1<<bit);
@@ -593,7 +586,6 @@ void planeThread(enum Thread bit)
 	case (Select): if (pthread_create(&thread[bit],0,planeSelect,0) != 0) ERROR(); break;
 	case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR(); break;
 	case (Window): case (Graphics): case (Process): sem_post(&ready[bit]); break;
-	case (Test): if (pthread_create(&thread[bit],0,planeTest,0) != 0) ERROR(); break;
 	default: ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) == 0) {
 		configure[RegisterOpen] |= (1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
@@ -605,7 +597,6 @@ void planeFinish(enum Thread bit)
 	case (Select): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	case (Window): case (Graphics): case (Process): break;
-	case (Test): if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	default: ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
@@ -619,7 +610,8 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, r
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
-	if ((internal = openPipe()) < 0) ERROR();
+	center = &fixed;
+	internal = allocCenterq();
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
@@ -628,7 +620,9 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, r
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});
-	planeMain();} closeIdent(internal); if (check) ERROR();
+	planeMain();}
+	while (sizeCenterq(internal) || center->ref) planeRead();
+	freeCenterq(internal);
 }
 void planeDone(struct Center *ptr, int *cnt)
 {
@@ -671,7 +665,6 @@ void planeMain()
 	enum Thread proc = 0; enum Wait wait = 0; enum Configure hint = 0;
 	planeSafe(Threads,Waits,ResultHint);
 	while (1) {planeDeque(&proc,&wait,&hint);
-	if (wait == Waits && hint == Configures && proc == Threads) check--;
 	if (wait != Waits && hint != Configures) ERROR();
 	if (wait == Waits && hint == Configures && proc != Threads) ERROR();
 	if (wait == Waits && hint != Configures) callWake(hint);

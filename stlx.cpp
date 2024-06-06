@@ -37,3 +37,9 @@ int sizeDeque(void *ptr)
 	auto que = (std::deque<std::vector<uint8_t>>*)ptr;
 	return que->size();
 }
+
+void freeDeque(void *ptr)
+{
+	auto que = (std::deque<std::vector<uint8_t>>*)ptr;
+	delete que;	
+}

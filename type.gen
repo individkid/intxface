@@ -218,7 +218,6 @@ Thread = {
 	"Window",
 	"Graphics",
 	"Process",
-	"Test",
 }
 Emerg = {
 	"Planes", -- Scalar -- [Plane] -- per boundary
