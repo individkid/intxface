@@ -366,7 +366,7 @@ Bootstrap = {
 		"val[4]:Int(%(return castMicro(\"MicroCRPC\"))))"},
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
-		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..
+		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0ref:0"..
 		"mch[0]:Goto(CndOp(CondExp(len:3siz:10"..
 			"typ[0]:Str(Int)typ[1]:Str(Int)typ[2]:Str(Str)"..
 			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)cmp[2]:Compare(ReCmp)"..
@@ -423,7 +423,7 @@ Bootstrap = {
 		"mch[12]:Eval(IntOp(0))"..
 		"mch[13]:Name(Str(GetPierce))".. -- Eval and Echo singleton Pierce to center, Fill and Write center
 		"mch[14]:Eval(FldOp(".. -- copy to accumulator
-			"fld[0]:ImmOp(CenterTag(center[0]:Piercez(siz:1idx:0slf:0pie[0]:Pierce("..
+			"fld[0]:ImmOp(CenterTag(center[0]:Piercez(siz:1idx:0slf:0ref:0pie[0]:Pierce("..
 				"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
 				"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
 				"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))))".. -- Express struct
@@ -676,6 +676,7 @@ Center = {
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"slf","Int",{},{}},
+	{"ref","Int",{},{}},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},

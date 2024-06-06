@@ -2,15 +2,15 @@ enum Micro;
 enum Configure;
 enum Wait;
 enum Thread;
-struct Pierce;
+enum Memory;
 struct Center;
 typedef void (*zftype)(); // init
 typedef void (*vftype)(); // safe
 typedef void (*yftype)(enum Thread proc, enum Wait wait); // main
 typedef void (*uftype)(struct Center *center, int *count); // dma
 typedef void (*wftype)(enum Micro shader, int base, int limit); // draw
-typedef void *(*rftype)(int *siz, int *tag); // ready
-typedef void (*xftype)(int tag); // done
+typedef struct Center *(*rftype)(enum Memory mem); // ready
+typedef void (*xftype)(struct Center *ptr); // done
 typedef void (*sftype)(enum Configure hint); // wake
 typedef int (*tftype)(enum Configure cfg); // info
 float *planeWindow(float *mat);

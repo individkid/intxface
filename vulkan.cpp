@@ -1877,6 +1877,8 @@ void vulkanField(float left, float base, float angle, int index)
 void windowChanged()
 {
     float mat[16]; // TODO allocate from heap or pool when WrapState data queue is converted to void lambda queue
+    // TODO have only one React each for vulkanSend vulkanField vulkanDraw
+    // TODO have plane.c change the matrix index; have planeMatrix choose between manipulate and window
     if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
     #ifdef PLANRA
     if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
@@ -1885,19 +1887,25 @@ void windowChanged()
     #endif
     if (mainState.mouseReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
         vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
+    // TODO have plane.c change the Micro
     if (mainState.mouseReact[Display]) vulkanDraw(mainState.argumentDisplay,mainState.argumentBase,mainState.argumentLimit);
     if (mainState.mouseReact[Brighten]) vulkanDraw(mainState.argumentBrighten,mainState.argumentBase,mainState.argumentLimit);
     if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
 }
-void *vulkanReady(int *siz, int *tag)
+struct Center *vulkanReady(enum Memory mem)
 {
     // reserve buffer to return mapped in zero time
-    return mainState.queueState->bufferQueue[Piercez]->get(siz,tag)->mapped;
+    struct Center *center = 0; allocCenter(&center,1); center->mem = mem;
+    void *ptr = mainState.queueState->bufferQueue[mem]->get(&center->siz,&center->ref)->mapped;
+    switch (mem) {default: throw std::runtime_error("unsupported ready memory!");
+    break; case (Piercez): center->pie = (struct Pierce *)ptr; center->siz /= sizeof(struct Pierce);}
+    return center;
 }
-void vulkanDone(int tag)
+void vulkanDone(struct Center *ptr)
 {
     // release reserved buffer
-    mainState.queueState->bufferQueue[Piercez]->get(tag);
+    mainState.queueState->bufferQueue[Piercez]->get(ptr->ref);
+    ptr->siz = 0; allocCenter(&ptr,0);
 }
 void vulkanSafe()
 {

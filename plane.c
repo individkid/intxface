@@ -61,6 +61,7 @@ int planeCall(void **dat, const char *str);
 // constant after other threads start:
 int external = 0;
 int internal = 0;
+int response = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 uftype callDma = 0;
@@ -96,8 +97,6 @@ void planeOutstr(const char *str);
 void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
 void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
-
-DECLARE_DEQUE(int,Intq)
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 // not all combinations of Effect Fixed Tool are supported.
@@ -261,16 +260,15 @@ float *planeWindow(float *mat)
 struct Pierce *planePierce()
 {
 	if (found) return found;
-	struct Pierce *ptr; int siz; int tag;
-	ptr = callReady(&siz,&tag);
+	struct Center *ptr = callReady(Piercez);
 	if (configure[ClosestFind]) {
-	for (int i = 0; i < siz; i++) {
-	struct Pierce *temp = ptr + i;
+	for (int i = 0; i < ptr->siz; i++) {
+	struct Pierce *temp = ptr->pie + i;
 	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}} else {
 	int index = configure[PierceIndex] - configure[PierceBase];
-	if (index >= 0 && index < siz) found = ptr + index;}
+	if (index >= 0 && index < ptr->siz) found = ptr->pie + index;}
 	if (!found) found = &unfound; else {pierce = *found; found = &pierce;}
-	callDone(tag);
+	callDone(ptr);
 	return found;
 }
 void planeString()
@@ -495,8 +493,9 @@ void planeBoot()
 }
 void planeRead()
 {
-	int num = 0; sem_safe(&resource,{if ((num = numpipe)) numpipe--;});
-	if (num) readCenter(&center,internal);
+	struct Center center; int num = 0;
+	sem_safe(&resource,{if ((num = numpipe)) numpipe--;});
+	if (num) {readCenter(&center,internal);}
 	else {struct Center tmp = {0}; center = tmp;}
 }
 char *planePopstr() // non-const return means caller owns it
@@ -621,8 +620,6 @@ void planeInit(zftype init, vftype safe, yftype main, uftype dma, wftype draw, r
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
 	if ((internal = openPipe()) < 0) ERROR();
-	refcount = allocIntq();
-	pushIntq(5,refcount); printf("refcount:%d size:%d",frontIntq(refcount),sizeIntq(refcount)); dropIntq(refcount); printf(":%d\n",sizeIntq(refcount));
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
