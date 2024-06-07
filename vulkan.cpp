@@ -804,6 +804,7 @@ struct ThreadState {
     bool repeat;
     std::deque<std::function<void()>> init;
     std::deque<std::function<VkFence()>> setup;
+    std::deque<int> which;
     std::deque<VkFence> fence;
     std::deque<int> order;
     std::set<int> lookup;
@@ -845,12 +846,14 @@ struct ThreadState {
                 break;}
             while (!arg->when.empty() && arg->when.front()()) {
                 int temp = arg->what.front(); std::function<VkFence()> func = arg->extra.front();
-                arg->order.push_back(temp); arg->lookup.insert(temp); arg->setup.push_back(func);
+                arg->order.push_back(temp); arg->lookup.insert(temp); arg->which.push_back(0); arg->setup.push_back(func);
                 arg->when.pop_front(); arg->what.pop_front(); arg->extra.pop_front();}
-            while (!arg->setup.empty()) {
-                arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front();}
-            while (!arg->init.empty()) {
-                arg->init.front()(); arg->lookup.erase(arg->order.front()); arg->order.pop_front();}
+            while (!arg->which.empty()) {switch (arg->which.front()) {
+                case (0): arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front(); break;
+                case (1): arg->init.front()(); arg->init.pop_front();
+                arg->lookup.erase(arg->order.front()); arg->order.pop_front(); break;
+                default: throw std::runtime_error("unsupported separate lambda!"); break;}
+                arg->which.pop_front();}
             if (arg->fence.empty()) {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
@@ -873,11 +876,6 @@ struct ThreadState {
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
     }
-    int push() {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        int temp = seqnum-1;
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
-        return temp;}
     std::function<bool()> push(std::function<void(int)> given) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
         int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
@@ -888,14 +886,14 @@ struct ThreadState {
         if (order.size()+what.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;}
-    std::function<bool()> qush(std::function<void()> given) {
-    // eturn function that returns whether given function called in separate thread
-        return push([this,given](int temp){order.push_back(temp); init.push_back(given);});}
+    std::function<bool()> push(std::function<void()> given) {
+    // return function that returns whether given function called in separate thread
+        return push([this,given](int temp){order.push_back(temp); init.push_back(given); which.push_back(1);});}
     std::function<bool()> push(std::function<VkFence()> given) {
     // return function that returns whether fence returned by given function in separate thread is done
-        return push([this,given](int temp){order.push_back(temp); setup.push_back(given);});}
+        return push([this,given](int temp){order.push_back(temp); setup.push_back(given); which.push_back(0);});}
     std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
-    // return query of wheter fence is done for given function started in indicated sequence
+    // return query of whether fence is done for given function started in indicated sequence
         if (last()) return push(given);
         return push([this,given,last](int temp){what.push_back(temp); when.push_back(last); extra.push_back(given);});}
 };
@@ -930,7 +928,6 @@ template<class Buffer> struct WrapState {
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
     Buffer* ready; std::deque<std::function<bool()>> toinuse;
     std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
-    std::deque<void*> data; std::deque<std::function<bool()>> done;
     std::set<void*> lookup;
     int size; void *copy;
     int count; int limit;
@@ -970,8 +967,6 @@ template<class Buffer> struct WrapState {
         while (!topool.empty() && topool.front()()) {
             if (inuse.front()) pool.push_back(inuse.front());
             inuse.pop_front(); topool.pop_front();}
-        while (!data.empty() && done.front()()) {
-            free(data.front()); data.pop_front(); done.pop_front();}
     // return whether queues are not full
         if (!pool.empty()) return true;
         if (count < limit) return true;
@@ -1038,7 +1033,7 @@ template<class Buffer> struct WrapState {
         copy = realloc(copy,size = siz);}
     }
     std::function<bool()> nxt(std::function<VkFence(Buffer*)> setup) {
-    // consume buffer and lambda to setup in separate thread
+    // setup in separate thread
         Buffer *ptr = buf().first;
         std::function<bool()> done = (buf().second?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seq()):
@@ -1047,6 +1042,7 @@ template<class Buffer> struct WrapState {
         return done;
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
+    // consume buffer and lambda to setup in separate thread
         std::function<bool()> ret = nxt(setup);
         seqvld = false; setvld = false; setbuf.first = 0;
         return ret;
@@ -1054,21 +1050,15 @@ template<class Buffer> struct WrapState {
     std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
     // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size); set(size);
-        memcpy((void*)((char*)copy+loc),ptr,siz);
+        info->threadState->push([this,loc,ptr,siz](){memcpy((void*)((char*)copy+loc),ptr,siz);});
         if (buf().second) {loc = 0; siz = size; ptr = copy;}
-        void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem); dat();
-        // TODO call dat in lambda after setup uses ptr
-        std::function<bool()> ret = set([loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
-        done.push_back(ret);
-        return ret;
+        return set([loc,siz,ptr,dat](Buffer*buf){
+        VkFence ret = buf->setup(loc,siz,ptr); dat(); return ret;});
     }
     std::function<bool()> nxt() {
         int loc = 0; int siz = size; const void *ptr = copy;
-        void *mem = malloc(siz); memcpy(mem,ptr,siz); data.push_back(mem);
-        // TODO reserve copy so set has to malloc copy and clr calls planeDone on detached copy
-        std::function<bool()> ret = nxt([loc,siz,mem](Buffer*buf){return buf->setup(loc,siz,mem);});
-        done.push_back(ret);
-        return ret;
+        return nxt([loc,siz,ptr](Buffer*buf){
+        return buf->setup(loc,siz,ptr);});
     }
     std::function<bool()> set() {
         std::function<bool()> ret = nxt();
@@ -1831,8 +1821,6 @@ void vulkanDma(struct Center *center)
     break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
     } planeDone(center); return;}
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
-    // TODO when optimal, update of copy just uses given pointer
-    // TODO without calling planeDone until a new copy replaces it.
     // TODO QueryTag only updates copy, does not submit memory update.
     set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
 }
@@ -1886,7 +1874,6 @@ void windowChanged()
     #endif
     if (mainState.mouseReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
         vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
-    // TODO have plane.c change the Micro
     if (mainState.mouseReact[Display]) vulkanDraw(mainState.argumentDisplay,mainState.argumentBase,mainState.argumentLimit);
     if (mainState.mouseReact[Brighten]) vulkanDraw(mainState.argumentBrighten,mainState.argumentBase,mainState.argumentLimit);
     if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
