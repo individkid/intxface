@@ -931,8 +931,9 @@ template<class Buffer> struct WrapState {
     Buffer* ready; std::deque<std::function<bool()>> toinuse;
     std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
     std::deque<void*> data; std::deque<std::function<bool()>> done;
-    std::set<int> lookup; int seqnum;
-    int size; void *copy; int count; int limit;
+    std::set<void*> lookup;
+    int size; void *copy;
+    int count; int limit;
     bool seqvld; int seqtag;
     bool sepvld; int septag;
     bool setvld; int settag;
@@ -940,7 +941,6 @@ template<class Buffer> struct WrapState {
     WrapTag tag; MainState *info; TempState *temp;
     WrapState(MainState *info, TempState *temp, int limit, WrapTag tag) {
         ready = 0;
-        seqnum = 0;
         size = 0;
         copy = 0;
         count = 0;
@@ -1087,15 +1087,15 @@ template<class Buffer> struct WrapState {
         toinuse.push_back(done);
         return ready;
     }
-    Buffer *get(int *siz, int *tag) {
+    Buffer *get(int *siz, void *tag) {
     // get buffer reserved until returned tag is given back
         clr();
         if (ready == 0) return 0;
-        int tmp = seqnum++; *tag = tmp; *siz = size; lookup.insert(tmp);
-        toinuse.push_back([this,tmp](){return (lookup.find(tmp) != lookup.end());});
+        *siz = size; lookup.insert(tag);
+        toinuse.push_back([this,tag](){return (lookup.find(tag) != lookup.end());});
         return ready;
     }
-    void get(int tag) {
+    void get(void *tag) {
     // give back tag to unreserve buffer
         lookup.erase(tag);
     }
@@ -1798,7 +1798,7 @@ int vulkanInfo(enum Configure query)
     }
     return 0;
 }
-void vulkanDma(struct Center *center, int *count)
+void vulkanDma(struct Center *center)
 {
     int siz; void *ptr;
     switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
@@ -1829,12 +1829,12 @@ void vulkanDma(struct Center *center, int *count)
     break; case (ArgumentBase): mainState.argumentBase = center->val[i];
     break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
     break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
-    } planeDone(center,count); return;}
+    } planeDone(center); return;}
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
     // TODO when optimal, update of copy just uses given pointer
     // TODO without calling planeDone until a new copy replaces it.
     // TODO QueryTag only updates copy, does not submit memory update.
-    set(center->idx*siz,center->siz*siz,ptr,[center,count](){planeDone(center,count);});
+    set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
@@ -1861,14 +1861,14 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     if (Component__Micro__MicroOn(shader) == CoPyon) {
     (*i)->set([](BufferState*buf){return buf->getup();});}}
 }
-void vulkanSend(int loc, int siz, float *mat)
+void vulkanSend(int loc, int siz, float *mat, std::function<void()> dat)
 {
     vulkanExtent();
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[Matrixz];
     bool full = false;
     full = !bufferQueue->clr();
     if (full) return;
-    bufferQueue->set(loc,siz,mat,[](){});
+    bufferQueue->set(loc,siz,mat,dat);
 }
 void vulkanField(float left, float base, float angle, int index)
 {
@@ -1876,14 +1876,13 @@ void vulkanField(float left, float base, float angle, int index)
 }
 void windowChanged()
 {
-    float mat[16]; // TODO allocate from heap or pool when WrapState data queue is converted to void lambda queue
-    // TODO have only one React each for vulkanSend vulkanField vulkanDraw
-    // TODO have plane.c change the matrix index; have planeMatrix choose between manipulate and window
-    if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*sizeof(mat),sizeof(mat),planeWindow(mat));
+    int siz = 16*sizeof(float);
+    float *mat = (float*)malloc(siz);
+    if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
     #ifdef PLANRA
-    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planraMatrix(mat));
+    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*siz,siz,planraMatrix(mat),[mat](){free(mat);});
     #else
-    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*sizeof(mat),sizeof(mat),planeMatrix(mat));
+    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*siz,siz,planeMatrix(mat),[mat](){free(mat);});
     #endif
     if (mainState.mouseReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
         vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
@@ -1896,7 +1895,7 @@ struct Center *vulkanReady(enum Memory mem)
 {
     // reserve buffer to return mapped in zero time
     struct Center *center = 0; allocCenter(&center,1); center->mem = mem;
-    void *ptr = mainState.queueState->bufferQueue[mem]->get(&center->siz,&center->ref)->mapped;
+    void *ptr = mainState.queueState->bufferQueue[mem]->get(&center->siz,center)->mapped;
     switch (mem) {default: throw std::runtime_error("unsupported ready memory!");
     break; case (Piercez): center->pie = (struct Pierce *)ptr; center->siz /= sizeof(struct Pierce);}
     return center;
@@ -1904,7 +1903,7 @@ struct Center *vulkanReady(enum Memory mem)
 void vulkanDone(struct Center *ptr)
 {
     // release reserved buffer
-    mainState.queueState->bufferQueue[Piercez]->get(ptr->ref);
+    mainState.queueState->bufferQueue[Piercez]->get(ptr);
     ptr->siz = 0; allocCenter(&ptr,0);
 }
 void vulkanSafe()
