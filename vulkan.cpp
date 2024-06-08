@@ -238,6 +238,7 @@ GLFWcursor *sculptCursor(bool e) {
     return glfwCreateCursor(&image, hot, hot);
 }
 
+void windowChanged();
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -250,6 +251,12 @@ void windowSized(GLFWwindow* window, int width, int height)
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->currentWidth = width; mainState->currentHeight = height;
     mainState->resizeNeeded = true;
+    windowChanged();
+}
+void windowRefreshed(GLFWwindow* window)
+{
+    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
+    windowChanged();
 }
 void manipReact(struct MainState *mainState, int pat) {
     for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
@@ -282,14 +289,9 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     double nextx, nexty, nexsx, nexsy;
     double diffx, diffy, minx, miny, maxx, maxy;
     int32_t tempx, tempy, temqx, temqy;
-    // TODO allow edge sets other than East/South and North/East/South/West
-    if (mainState->manipReact[Apply]) {
-    glfwGetWindowPos(window,&tempx,&tempy);
-    glfwGetWindowSize(window,&temqx,&temqy);
-    if ((mainState->manipAction[North] || mainState->manipAction[East] ||
-        mainState->manipAction[South] || mainState->manipAction[West]) &&
-        mainState->currentLeft == tempx && mainState->currentBase == tempy &&
-        mainState->currentWidth == temqx && mainState->currentHeight == temqy) {
+    if (mainState->manipReact[Apply] &&
+        (mainState->manipAction[North] || mainState->manipAction[East] ||
+        mainState->manipAction[South] || mainState->manipAction[West])) {
         diffx = xpos - mainState->mouseLeft; diffy = ypos - mainState->mouseBase;
         minx = mainState->windowLeft; maxx = minx + mainState->windowWidth;
         miny = mainState->windowBase; maxy = miny + mainState->windowHeight;
@@ -297,9 +299,13 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         if (mainState->manipAction[East]) maxx += diffx;
         if (mainState->manipAction[North]) miny += diffy;
         if (mainState->manipAction[West]) minx += diffx;
-        tempx = minx; tempy = miny; glfwSetWindowPos(window,tempx,tempy);
-        temqx = maxx-minx; temqy = maxy-miny; glfwSetWindowSize(window,temqx,temqy);
-    }}
+        glfwGetWindowPos(window,&tempx,&tempy);
+        if (mainState->currentLeft == tempx && mainState->currentBase == tempy) {
+        tempx = minx; tempy = miny; glfwSetWindowPos(window,tempx,tempy);}
+        glfwGetWindowSize(window,&temqx,&temqy);
+        if (mainState->currentWidth == temqx && mainState->currentHeight == temqy) {
+        temqx = maxx-minx; temqy = maxy-miny; glfwSetWindowSize(window,temqx,temqy);}
+    }
     if (mainState->manipReact[Moved]) planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngled(GLFWwindow *window, double amount) {
@@ -429,6 +435,7 @@ struct OpenState {
         glfwSetCursorPosCallback(window, mouseMoved);
         glfwSetWindowPosCallback(window, windowMoved);
         glfwSetWindowSizeCallback(window, windowSized);
+        glfwSetWindowRefreshCallback(window, windowRefreshed);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = ::moveCursor(e,t,r,b,l);
