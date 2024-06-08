@@ -68,7 +68,8 @@ Configure = {
 	"ParamDetect", --
 	"ParamBase", --
 	"ParamLimit", --
-	"ParamIndex", -- where in machine
+	"LittleSize", -- machine size
+	"LittleIndex", -- where in machine
 	"ManipReact", -- block or behave
 	"ManipAction", -- what to do
 	"ManipFixed", -- how to do
@@ -660,6 +661,7 @@ Machine = {
 Little = {
 	{"pat","Int",{},{}},
 	{"val","Int",{},{}},
+	{"num","Int",{},{}},
 	{"nxt","Int",{},{}},
 }
 Center = {

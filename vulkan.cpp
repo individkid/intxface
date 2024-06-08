@@ -37,7 +37,6 @@ struct MainState {
     std::deque<int> keyPressed;
     bool manipReact[Reacts];
     bool manipAction[Actions];
-    bool manipFixed[Fixeds];
     double mouseLeft;
     double mouseBase;
     double mouseAngle;
@@ -72,6 +71,7 @@ struct MainState {
     int registerDone;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     const int MAX_BUFFERS_AVAILABLE = 3;
+    const int MAX_FENCES_IN_FLIGHT = 3;
     const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     const std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
     #ifdef NDEBUG
@@ -84,7 +84,6 @@ struct MainState {
     .escapeEnter = false,
     .manipReact = {0},
     .manipAction = {0},
-    .manipFixed = {0},
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .mouseAngle = 0.0,
@@ -252,15 +251,21 @@ void windowSized(GLFWwindow* window, int width, int height)
     mainState->currentWidth = width; mainState->currentHeight = height;
     mainState->resizeNeeded = true;
 }
+void manipReact(struct MainState *mainState, int pat) {
+    for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
+    if (mainState->changedState[i].pat == pat || mainState->changedState[i].pat == 0) {
+    for (int j = 0; j < Reacts; j++) mainState->manipReact[(React)j] =
+    ((mainState->changedState[i].val&(1<<j)) != 0);
+    for (int j = 0; j < Actions; j++) mainState->manipAction[(Action)j] =
+    ((mainState->changedState[i].num&(1<<j)) != 0);
+    mainState->changedIndex = mainState->changedState[i].nxt; break;}
+}
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     if (action != GLFW_PRESS || mods != 0) return;
     if (mainState->manipReact[Pressed]) {
     mainState->keyPressed.push_back(key); planeSafe(Threads,Waits,CursorPress);}
-    if (mainState->manipReact[Changed]) for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
-    if (mainState->changedState[i].pat == key || mainState->changedState[i].pat == 0) {for (int j = 0; j < Reacts; j++)
-    mainState->manipReact[(React)j] = ((mainState->changedState[i].val&(1<<j)) != 0);
-    mainState->changedIndex = mainState->changedState[i].nxt; break;}
+    if (mainState->manipReact[Changed]) manipReact(mainState,key);
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -270,36 +275,34 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
     if (mainState->manipReact[Clicked]) planeSafe(Threads,Waits,CursorClick);
-    if (mainState->manipReact[Changed]) for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
-    if (mainState->changedState[i].pat == -1 || mainState->changedState[i].pat == 0) {for (int j = 0; j < Reacts; j++)
-    mainState->manipReact[(React)j] = ((mainState->changedState[i].val&(1<<j)) != 0);
-    mainState->changedIndex = mainState->changedState[i].nxt; break;}
+    if (mainState->manipReact[Changed]) manipReact(mainState,-1);
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    double nextx, nexty;
-    int32_t tempx, tempy;
-    // TODO allow edge sets other than East/South and North/East/South/West to move
+    double nextx, nexty, nexsx, nexsy;
+    double diffx, diffy, minx, miny, maxx, maxy;
+    int32_t tempx, tempy, temqx, temqy;
+    // TODO allow edge sets other than East/South and North/East/South/West
     if (mainState->manipReact[Apply]) {
     glfwGetWindowPos(window,&tempx,&tempy);
-    if (mainState->manipAction[North] && mainState->manipAction[East] &&
-        mainState->manipAction[South] && mainState->manipAction[West] &&
-        mainState->currentLeft == tempx && mainState->currentBase == tempy) {
-        nextx = mainState->windowLeft + (xpos - mainState->mouseLeft);
-        nexty = mainState->windowBase + (ypos - mainState->mouseBase);
-        tempx = nextx; tempy = nexty; glfwSetWindowPos(window,tempx,tempy);
-    }
-    glfwGetWindowSize(window,&tempx,&tempy);
-    if (!mainState->manipAction[North] && mainState->manipAction[East] &&
-        mainState->manipAction[South] && !mainState->manipAction[West] &&
-        mainState->currentWidth == tempx && mainState->currentHeight == tempy) {
-        nextx = mainState->windowWidth + (xpos - mainState->mouseLeft);
-        nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
-        tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
+    glfwGetWindowSize(window,&temqx,&temqy);
+    if ((mainState->manipAction[North] || mainState->manipAction[East] ||
+        mainState->manipAction[South] || mainState->manipAction[West]) &&
+        mainState->currentLeft == tempx && mainState->currentBase == tempy &&
+        mainState->currentWidth == temqx && mainState->currentHeight == temqy) {
+        diffx = xpos - mainState->mouseLeft; diffy = ypos - mainState->mouseBase;
+        minx = mainState->windowLeft; maxx = minx + mainState->windowWidth;
+        miny = mainState->windowBase; maxy = miny + mainState->windowHeight;
+        if (mainState->manipAction[South]) maxy += diffy;
+        if (mainState->manipAction[East]) maxx += diffx;
+        if (mainState->manipAction[North]) miny += diffy;
+        if (mainState->manipAction[West]) minx += diffx;
+        tempx = minx; tempy = miny; glfwSetWindowPos(window,tempx,tempy);
+        temqx = maxx-minx; temqy = maxy-miny; glfwSetWindowSize(window,temqx,temqy);
     }}
     if (mainState->manipReact[Moved]) planeSafe(Threads,Waits,CursorLeft);
 }
-void mouseAngled(GLFWwindow *window, double amount/*TODO*/) {
+void mouseAngled(GLFWwindow *window, double amount) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->mouseAngle += amount;
     if (mainState->manipReact[Angled]) planeSafe(Threads,Waits,CursorAngle);
@@ -457,9 +460,10 @@ struct OpenState {
         int l = (mainState->manipAction[West]?1:0);
         int m = (mainState->manipAction[Additive]?1:0);
         if (t||r||b||l) glfwSetCursor(window,moveCursor[e][t][r][b][l]);
-        if (mainState->manipAction[Manipulate]) glfwSetCursor(window,rotateCursor[e]);
-        if (mainState->manipAction[Refine]) glfwSetCursor(window,refineCursor);
-        if (mainState->manipAction[Subtractive]||m) glfwSetCursor(window,sculptCursor[m]);
+        else if (mainState->manipAction[Manipulate]) glfwSetCursor(window,rotateCursor[e]);
+        else if (mainState->manipAction[Refine]) glfwSetCursor(window,refineCursor);
+        else if (mainState->manipAction[Subtractive]||m) glfwSetCursor(window,sculptCursor[m]);
+        else glfwSetCursor(window,standardCursor);
     }
 };
 
@@ -816,11 +820,12 @@ struct ThreadState {
     std::deque<std::function<VkFence()>> extra;
     std::deque<int> what;
     std::deque<std::function<bool()>> when;
-    int seqnum;
-    ThreadState(VkDevice device, bool repeat) {
+    int limit; int seqnum;
+    ThreadState(VkDevice device, bool repeat, int limit) {
         this->device = device;
         finish = false;
         this->repeat = repeat;
+        this->limit = limit;
         seqnum = 0;
         if (sem_init(&protect, 0, 1) != 0 ||
             sem_init(&semaphore, 0, 1) != 0 ||
@@ -880,6 +885,9 @@ struct ThreadState {
         bool done = (lookup.find(given) == lookup.end());
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;
+    }
+    bool push() {
+        return (order.size() < limit);
     }
     std::function<bool()> push(std::function<void(int)> given) {
         if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
@@ -973,6 +981,7 @@ template<class Buffer> struct WrapState {
             if (inuse.front()) pool.push_back(inuse.front());
             inuse.pop_front(); topool.pop_front();}
     // return whether queues are not full
+        if (!info->threadState->push()) return false;
         if (!pool.empty()) return true;
         if (count < limit) return true;
         return false;
@@ -1056,6 +1065,7 @@ template<class Buffer> struct WrapState {
     // enque setup from data in separate thread and present for get when fence is done
         int size = (loc+siz > this->size ? loc+siz : this->size); set(size);
         info->threadState->push([this,loc,ptr,siz](){memcpy((void*)((char*)copy+loc),ptr,siz);});
+        if (tag == QueryBuf) return [](){return true;};
         if (buf().second) {loc = 0; siz = size; ptr = copy;}
         return set([loc,siz,ptr,dat](Buffer*buf){
         VkFence ret = buf->setup(loc,siz,ptr); dat(); return ret;});
@@ -1730,7 +1740,8 @@ void vulkanExtent()
         device->render,physical->minimum,physical->graphicid,physical->presentid);
         }(mainState.openState,mainState.physicalState,mainState.logicalState);}
     if (!mainState.threadState && mainState.logicalState) {
-        mainState.threadState = new ThreadState(mainState.logicalState->device,mainState.manipReact[Repeat]);}
+        mainState.threadState = new ThreadState(mainState.logicalState->device,
+        mainState.manipReact[Repeat],mainState.MAX_FENCES_IN_FLIGHT);}
 }
 int vulkanInfo(enum Configure query)
 {
@@ -1798,9 +1809,10 @@ void vulkanDma(struct Center *center)
     break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
     break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;
-    break; case (Littlez): mainState.changedSize = center->siz;
-    mainState.changedState = (struct Little *)realloc(mainState.changedState,center->siz*sizeof(center->pvn[0]));
-    memcpy(mainState.changedState,center->pvn,center->siz*sizeof(center->pvn[0])); return;
+    break; case (Littlez): if (center->idx+center->siz > mainState.changedSize)
+        mainState.changedSize = center->idx+center->siz; mainState.changedState =
+        (struct Little *)realloc(mainState.changedState,mainState.changedSize*sizeof(center->pvn[0]));
+        memcpy(mainState.changedState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0])); return;
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
@@ -1814,9 +1826,6 @@ void vulkanDma(struct Center *center)
     break; case (ManipAction): if (mainState.manipAction[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
         mainState.resizeNeeded = true; for (int j = 0; j < Actions; j++)
         mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
-    break; case (ManipFixed): if (mainState.manipFixed[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
-        mainState.resizeNeeded = true; for (int j = 0; j < Fixeds; j++)
-        mainState.manipFixed[(Fixed)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ParamFollow): mainState.paramFollow = center->val[i];
     break; case (ParamModify): mainState.paramModify = center->val[i];
     break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
@@ -1824,10 +1833,11 @@ void vulkanDma(struct Center *center)
     break; case (ParamDetect): mainState.paramDetect = (Micro)center->val[i];
     break; case (ParamBase): mainState.paramBase = center->val[i];
     break; case (ParamLimit): mainState.paramLimit = center->val[i];
-    break; case (ParamIndex): mainState.changedIndex = center->val[i];
+    break; case (LittleIndex): mainState.changedIndex = center->val[i];
+    break; case (LittleSize): mainState.changedSize = center->val[i]; mainState.changedState =
+        (struct Little *)realloc(mainState.changedState,mainState.changedSize*sizeof(center->pvn[0]));
     } planeDone(center); return;}
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
-    // TODO QueryTag only updates copy, does not submit memory update.
     set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
 }
 void vulkanDraw(enum Micro shader, int base, int limit)
