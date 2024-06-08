@@ -152,48 +152,10 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 planeXform planeFunc()
 {
-    switch ((enum Tool)configure[ManipulateTool]) {
-    case (Mouse): switch ((enum Effect)configure[ManipulateEffect]) {
-    case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
-    case (Cursor): ERROR();
-    case (Focal): ERROR();
-    case (Ortho): return planeSlideOrthoMouse;
-    case (Normal): ERROR();
-    default: ERROR();}
-    case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
-    case (Cursor): ERROR();
-    case (Focal): return planeRotateFocalMouse;
-    case (Ortho): ERROR();
-    case (Normal): ERROR();
-    default: ERROR();}
-    case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
-    case (Cursor): ERROR();
-    case (Focal): ERROR();
-    case (Ortho): ERROR();
-    case (Normal): ERROR();
-    default: ERROR();}
-    default: ERROR();}
-    case (Roller): switch ((enum Effect)configure[ManipulateEffect]) {
-    case (Slide): switch ((enum Fixed)configure[ManipulateFixed]) {
-    case (Cursor): ERROR();
-    case (Focal): ERROR();
-    case (Ortho): ERROR();
-    case (Normal): ERROR();
-    default: ERROR();}
-    case (Rotate): switch ((enum Fixed)configure[ManipulateFixed]) {
-    case (Cursor): return planeRotateCursorRoller;
-    case (Focal): ERROR();
-    case (Ortho): ERROR();
-    case (Normal): ERROR();
-    default: ERROR();}
-    case (Scale): switch ((enum Fixed)configure[ManipulateFixed]) {
-    case (Cursor): ERROR();
-    case (Focal): ERROR();
-    case (Ortho): ERROR();
-    case (Normal): ERROR();
-    default: ERROR();}
-    default: ERROR();}
-    default: ERROR();}
+	int tmp; int cfg = configure[ManipFixed];
+    tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeSlideOrthoMouse;
+    tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeRotateFocalMouse;
+    tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) return planeRotateCursorRoller;
     return 0;
 }
 float *planeMatrix(float *mat)
@@ -273,7 +235,6 @@ void planeStage(enum Configure cfg)
 	switch (cfg) {
 	case (StringSize): planeString(); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-	case (ManipulateMask): configure[ManipulateMask] = callInfo(ManipulateMask); break;
 	case (CenterMemory): configure[CenterMemory] = center->mem; break;
 	case (CenterSize): configure[CenterSize] = center->siz; break;
 	case (CenterIndex): configure[CenterIndex] = center->idx; break;
@@ -456,7 +417,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Recv): planeRecv(); break;
 	case (Disp): planeDisp(); break;
 	case (Copy): planeCopy(center); break;
-	case (Draw): callDraw(configure[ArgumentMicro],configure[ArgumentBase],configure[ArgumentLimit]); break;
+	case (Draw): callDraw(configure[ParamMicro],configure[ParamBase],configure[ParamLimit]); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
@@ -685,7 +646,7 @@ void planeMain()
 	if (wait == Start && hint == Configures) {planeThread(proc); callMain(proc,wait);}
 	if (wait == Stop && hint == Configures) {planeFinish(proc); callMain(proc,wait);}
 	if (wait == Waits && hint == ResultHint && proc == Threads) break;}
-	if (callInfo(ManipulateReact) & (1<<Poll)) usleep(POLLDELAY);
+	if (callInfo(ManipReact) & (1<<Poll)) usleep(POLLDELAY);
 }
 
 int planraOnce;
@@ -721,8 +682,8 @@ void planraCenter()
 	int len = 0; char *str; char *tmp; struct Center *center = 0; allocCenter(&center,1);
 	center->mem = Configurez; center->siz = 2; center->idx = 0; center->slf = 0;
 	allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-	center->cfg[0] = ArgumentLimit; center->cfg[1] = ManipulateReact;
-	center->val[0] = 6; center->val[1] = (1<<Display)|(1<<Follow);
+	center->cfg[0] = ParamLimit; center->cfg[1] = ManipReact;
+	center->val[0] = 6; center->val[1] = (1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow);
 	callDma(center); center = 0; allocCenter(&center,1);
 	center->mem = Vertexz; center->siz = 6; center->idx = 0; center->slf = 0;
 	allocVertex(&center->vtx,6);
@@ -780,27 +741,36 @@ void planraWake(enum Configure hint)
 		center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
 		callDma(center);}
 	}
-	if (hint == CursorClick && callInfo(ManipulateActive) == Setup) {
-		enum Configure cfg[3] = {ManipulateActive,ManipulateMask,ManipulateReact};
-		int val[3] = {Upset,15,1|(1<<Display)|(1<<Follow)};
-		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-		allocConfigure(&center->cfg,3); allocInt(&center->val,3);
-		for (int i = 0; i < 3; i++) {center->cfg[i] = cfg[i]; center->val[i] = val[i];}
-		center->idx = 0; center->siz = 3; center->slf = 1;
-		callDma(center);
-	}
-	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 15) {
-		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-		allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-		center->cfg[0] = ManipulateMask; center->val[0] = 6;
-		center->idx = 0; center->siz = 1; center->slf = 1;
-		callDma(center);
-	}
-	else if (hint == CursorClick && callInfo(ManipulateActive) == Upset && callInfo(ManipulateMask) == 6) {
-		enum Configure cfg[2] = {ManipulateActive,ManipulateReact}; int val[2] = {Setup,(1<<Display)|(1<<Follow)};
+	if (hint == CursorClick && callInfo(ManipReact) ==
+		((1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)) &&
+		callInfo(ManipAction) == 0) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-		for (int i = 0; i < 2; i++) {center->cfg[i] = cfg[i]; center->val[i] = val[i];}
+		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
+		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow);
+		center->val[1] = (1<<North)|(1<<East)|(1<<South)|(1<<West);
+		center->idx = 0; center->siz = 2; center->slf = 1;
+		callDma(center);
+	}
+	else if (hint == CursorClick && callInfo(ManipReact) ==
+		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)) &&
+		callInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<South)|(1<<West))) {
+		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
+		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
+		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
+		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow);
+		center->val[1] = (1<<East)|(1<<South);
+		center->idx = 0; center->siz = 2; center->slf = 1;
+		callDma(center);
+	}
+	else if (hint == CursorClick && callInfo(ManipReact) ==
+		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)) &&
+		callInfo(ManipAction) == ((1<<East)|(1<<South))) {
+		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
+		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
+		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
+		center->val[0] = (1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow);
+		center->val[1] = 0;
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}

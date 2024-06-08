@@ -35,11 +35,9 @@ struct MainState {
     bool resizeNeeded;
     bool escapeEnter;
     std::deque<int> keyPressed;
-    bool mouseReact[Reacts];
-    enum Action mouseAction;
-    enum Active mouseActive;
-    bool mouseSticky[Stickys];
-    enum Modify mouseModify;
+    bool manipReact[Reacts];
+    bool manipAction[Actions];
+    bool manipFixed[Fixeds];
     double mouseLeft;
     double mouseBase;
     double mouseAngle;
@@ -52,14 +50,16 @@ struct MainState {
     int currentBase;
     int currentWidth;
     int currentHeight;
-    int argumentFollow;
-    int argumentModify;
-    enum Micro argumentDisplay;
-    enum Micro argumentBrighten;
-    enum Micro argumentDetect;
-    int argumentBase;
-    int argumentLimit;
-    enum Memory argumentMemory;
+    int paramFollow;
+    int paramModify;
+    enum Micro paramDisplay;
+    enum Micro paramBrighten;
+    enum Micro paramDetect;
+    int paramBase;
+    int paramLimit;
+    int changedIndex;
+    int changedSize;
+    struct Little *changedState;
     int argc;
     char **argv;
     InitState *initState;
@@ -82,11 +82,9 @@ struct MainState {
 } mainState = {
     .resizeNeeded = true,
     .escapeEnter = false,
-    .mouseReact = {false},
-    .mouseAction = Move,
-    .mouseActive = Setup,
-    .mouseSticky = {false,false,false,false},
-    .mouseModify = Additive,
+    .manipReact = {0},
+    .manipAction = {0},
+    .manipFixed = {0},
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .mouseAngle = 0.0,
@@ -99,14 +97,16 @@ struct MainState {
     .currentBase = 0,
     .currentWidth = 800,
     .currentHeight = 700,
-    .argumentFollow = 0,
-    .argumentModify = 0,
-    .argumentDisplay = MicroPRPC, // just display
-    .argumentBrighten = MicroPRRC, // fill Indexz
-    .argumentDetect = MicroPRCP, // retreive Piercez
-    .argumentBase = 0,
-    .argumentLimit = 0,
-    .argumentMemory = Indexz,
+    .paramFollow = 0,
+    .paramModify = 0,
+    .paramDisplay = MicroPRPC, // just display
+    .paramBrighten = MicroPRRC, // fill Indexz
+    .paramDetect = MicroPRCP, // retreive Piercez
+    .paramBase = 0,
+    .paramLimit = 0,
+    .changedIndex = 0,
+    .changedSize = 0,
+    .changedState = 0,
     .argc = 0,
     .argv = 0,
     .initState = 0,
@@ -254,10 +254,13 @@ void windowSized(GLFWwindow* window, int width, int height)
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    if (action != GLFW_PRESS || mods != 0) {
-        return;
-    }
-    mainState->keyPressed.push_back(key); planeSafe(Threads,Waits,CursorPress);
+    if (action != GLFW_PRESS || mods != 0) return;
+    if (mainState->manipReact[Pressed]) {
+    mainState->keyPressed.push_back(key); planeSafe(Threads,Waits,CursorPress);}
+    if (mainState->manipReact[Changed]) for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
+    if (mainState->changedState[i].pat == key || mainState->changedState[i].pat == 0) {for (int j = 0; j < Reacts; j++)
+    mainState->manipReact[(React)j] = ((mainState->changedState[i].val&(1<<j)) != 0);
+    mainState->changedIndex = mainState->changedState[i].nxt; break;}
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -266,37 +269,40 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase); mainState->mouseAngle = 0.0;
     glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
     glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
-    planeSafe(Threads,Waits,CursorClick);
+    if (mainState->manipReact[Clicked]) planeSafe(Threads,Waits,CursorClick);
+    if (mainState->manipReact[Changed]) for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
+    if (mainState->changedState[i].pat == -1 || mainState->changedState[i].pat == 0) {for (int j = 0; j < Reacts; j++)
+    mainState->manipReact[(React)j] = ((mainState->changedState[i].val&(1<<j)) != 0);
+    mainState->changedIndex = mainState->changedState[i].nxt; break;}
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     double nextx, nexty;
     int32_t tempx, tempy;
     // TODO allow edge sets other than East/South and North/East/South/West to move
+    if (mainState->manipReact[Apply]) {
     glfwGetWindowPos(window,&tempx,&tempy);
-    if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
-        mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
-        mainState->mouseSticky[South] && mainState->mouseSticky[West] &&
+    if (mainState->manipAction[North] && mainState->manipAction[East] &&
+        mainState->manipAction[South] && mainState->manipAction[West] &&
         mainState->currentLeft == tempx && mainState->currentBase == tempy) {
         nextx = mainState->windowLeft + (xpos - mainState->mouseLeft);
         nexty = mainState->windowBase + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowPos(window,tempx,tempy);
     }
     glfwGetWindowSize(window,&tempx,&tempy);
-    if (mainState->mouseAction == Move && mainState->mouseActive == Upset &&
-        !mainState->mouseSticky[North] && mainState->mouseSticky[East] &&
-        mainState->mouseSticky[South] && !mainState->mouseSticky[West] &&
+    if (!mainState->manipAction[North] && mainState->manipAction[East] &&
+        mainState->manipAction[South] && !mainState->manipAction[West] &&
         mainState->currentWidth == tempx && mainState->currentHeight == tempy) {
         nextx = mainState->windowWidth + (xpos - mainState->mouseLeft);
         nexty = mainState->windowHeight + (ypos - mainState->mouseBase);
         tempx = nextx; tempy = nexty; glfwSetWindowSize(window,tempx,tempy);
-    }
-    if (mainState->mouseReact[Respond]) planeSafe(Threads,Waits,CursorLeft);
+    }}
+    if (mainState->manipReact[Moved]) planeSafe(Threads,Waits,CursorLeft);
 }
-void mouseAngle(GLFWwindow *window, double amount/*TODO*/) {
+void mouseAngled(GLFWwindow *window, double amount/*TODO*/) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->mouseAngle += amount;
-    if (mainState->mouseReact[Respond]) planeSafe(Threads,Waits,CursorAngle);
+    if (mainState->manipReact[Angled]) planeSafe(Threads,Waits,CursorAngle);
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -444,17 +450,16 @@ struct OpenState {
     }
     void setCursor() {
         struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-        int e = (mainState->mouseActive==Upset?1:0);
-        int t = (mainState->mouseSticky[North]?1:0);
-        int r = (mainState->mouseSticky[East]?1:0);
-        int b = (mainState->mouseSticky[South]?1:0);
-        int l = (mainState->mouseSticky[West]?1:0);
-        int m = (mainState->mouseModify?1:0);
-        switch (mainState->mouseAction) {default: ERROR();
-        break; case (Move): glfwSetCursor(window,moveCursor[e][t][r][b][l]);
-        break; case (Transform): glfwSetCursor(window,rotateCursor[e]);
-        break; case (Refine): glfwSetCursor(window,refineCursor);
-        break; case (Sculpt): glfwSetCursor(window,sculptCursor[m]);}
+        int e = (mainState->manipReact[Apply]?1:0);
+        int t = (mainState->manipAction[North]?1:0);
+        int r = (mainState->manipAction[East]?1:0);
+        int b = (mainState->manipAction[South]?1:0);
+        int l = (mainState->manipAction[West]?1:0);
+        int m = (mainState->manipAction[Additive]?1:0);
+        if (t||r||b||l) glfwSetCursor(window,moveCursor[e][t][r][b][l]);
+        if (mainState->manipAction[Manipulate]) glfwSetCursor(window,rotateCursor[e]);
+        if (mainState->manipAction[Refine]) glfwSetCursor(window,refineCursor);
+        if (mainState->manipAction[Subtractive]||m) glfwSetCursor(window,sculptCursor[m]);
     }
 };
 
@@ -1725,7 +1730,7 @@ void vulkanExtent()
         device->render,physical->minimum,physical->graphicid,physical->presentid);
         }(mainState.openState,mainState.physicalState,mainState.logicalState);}
     if (!mainState.threadState && mainState.logicalState) {
-        mainState.threadState = new ThreadState(mainState.logicalState->device,mainState.mouseReact[Repeat]);}
+        mainState.threadState = new ThreadState(mainState.logicalState->device,mainState.manipReact[Repeat]);}
 }
 int vulkanInfo(enum Configure query)
 {
@@ -1771,20 +1776,17 @@ int vulkanInfo(enum Configure query)
         return yphys;}
     break; case (RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
     break; case (RegisterOpen): return (!mainState.escapeEnter);
-    break; case (ArgumentFollow): return mainState.argumentFollow;
-    break; case (ArgumentModify): return mainState.argumentModify;
-    break; case (ArgumentDisplay): return mainState.argumentDisplay;
-    break; case (ArgumentBrighten): return mainState.argumentBrighten;
-    break; case (ArgumentDetect): return mainState.argumentDetect;
-    break; case (ArgumentBase): return mainState.argumentBase;
-    break; case (ArgumentLimit): return mainState.argumentLimit;
-    break; case (ManipulateReact): {int mask = 0; for (int i = 0; i < Reacts; i++)
-        if (mainState.mouseReact[(React)i]) mask |= (1<<i); return mask;}
-    break; case (ManipulateAction): return mainState.mouseAction;
-    break; case (ManipulateActive): return mainState.mouseActive;
-    break; case (ManipulateMask): {int mask = 0; for (int i = 0; i < Stickys; i++)
-        if (mainState.mouseSticky[(Sticky)i]) mask |= (1<<i); return mask;}
-    break; case (ManipulateModify): return mainState.mouseModify;
+    break; case (ParamFollow): return mainState.paramFollow;
+    break; case (ParamModify): return mainState.paramModify;
+    break; case (ParamDisplay): return mainState.paramDisplay;
+    break; case (ParamBrighten): return mainState.paramBrighten;
+    break; case (ParamDetect): return mainState.paramDetect;
+    break; case (ParamBase): return mainState.paramBase;
+    break; case (ParamLimit): return mainState.paramLimit;
+    break; case (ManipReact): {int mask = 0; for (int i = 0; i < Reacts; i++)
+        if (mainState.manipReact[(React)i]) mask |= (1<<i); return mask;}
+    break; case (ManipAction): {int mask = 0; for (int i = 0; i < Actions; i++)
+        if (mainState.manipAction[(Action)i]) mask |= (1<<i); return mask;}
     }
     return 0;
 }
@@ -1796,6 +1798,9 @@ void vulkanDma(struct Center *center)
     break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
     break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;
+    break; case (Littlez): mainState.changedSize = center->siz;
+    mainState.changedState = (struct Little *)realloc(mainState.changedState,center->siz*sizeof(center->pvn[0]));
+    memcpy(mainState.changedState,center->pvn,center->siz*sizeof(center->pvn[0])); return;
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
@@ -1803,22 +1808,23 @@ void vulkanDma(struct Center *center)
     break; case (CursorPress): if (center->val[i] == 0)
         mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
-    break; case (ManipulateReact): if (mainState.mouseReact[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
+    break; case (ManipReact): if (mainState.manipReact[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
         mainState.resizeNeeded = true; for (int j = 0; j < Reacts; j++)
-        mainState.mouseReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case (ManipulateAction): mainState.mouseAction = (Action)center->val[i]; mainState.openState->setCursor();
-    break; case (ManipulateActive): mainState.mouseActive = (Active)center->val[i]; mainState.openState->setCursor();
-    break; case (ManipulateMask): for (int j = 0; j < Stickys; j++)
-        mainState.mouseSticky[(Sticky)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
-    break; case (ManipulateModify): mainState.mouseModify = (enum Modify)center->val[i]; mainState.openState->setCursor();
-    break; case (ArgumentFollow): mainState.argumentFollow = center->val[i];
-    break; case (ArgumentModify): mainState.argumentModify = center->val[i];
-    break; case (ArgumentDisplay): mainState.argumentDisplay = (Micro)center->val[i];
-    break; case (ArgumentBrighten): mainState.argumentBrighten = (Micro)center->val[i];
-    break; case (ArgumentDetect): mainState.argumentDetect = (Micro)center->val[i];
-    break; case (ArgumentBase): mainState.argumentBase = center->val[i];
-    break; case (ArgumentLimit): mainState.argumentLimit = center->val[i];
-    break; case (ArgumentMemory): mainState.argumentMemory = (Memory)center->val[i];
+        mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
+    break; case (ManipAction): if (mainState.manipAction[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
+        mainState.resizeNeeded = true; for (int j = 0; j < Actions; j++)
+        mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
+    break; case (ManipFixed): if (mainState.manipFixed[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
+        mainState.resizeNeeded = true; for (int j = 0; j < Fixeds; j++)
+        mainState.manipFixed[(Fixed)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ParamFollow): mainState.paramFollow = center->val[i];
+    break; case (ParamModify): mainState.paramModify = center->val[i];
+    break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
+    break; case (ParamBrighten): mainState.paramBrighten = (Micro)center->val[i];
+    break; case (ParamDetect): mainState.paramDetect = (Micro)center->val[i];
+    break; case (ParamBase): mainState.paramBase = center->val[i];
+    break; case (ParamLimit): mainState.paramLimit = center->val[i];
+    break; case (ParamIndex): mainState.changedIndex = center->val[i];
     } planeDone(center); return;}
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
     // TODO QueryTag only updates copy, does not submit memory update.
@@ -1866,17 +1872,17 @@ void windowChanged()
 {
     int siz = 16*sizeof(float);
     float *mat = (float*)malloc(siz);
-    if (mainState.mouseReact[Follow]) vulkanSend(mainState.argumentFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
+    if (mainState.manipReact[Follow]) vulkanSend(mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
     #ifdef PLANRA
-    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*siz,siz,planraMatrix(mat),[mat](){free(mat);});
+    if (mainState.manipReact[Modify]) vulkanSend(mainState.paramModify*siz,siz,planraMatrix(mat),[mat](){free(mat);});
     #else
-    if (mainState.mouseReact[Modify]) vulkanSend(mainState.argumentModify*siz,siz,planeMatrix(mat),[mat](){free(mat);});
+    if (mainState.manipReact[Modify]) vulkanSend(mainState.paramModify*siz,siz,planeMatrix(mat),[mat](){free(mat);});
     #endif
-    if (mainState.mouseReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
+    if (mainState.manipReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
         vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
-    if (mainState.mouseReact[Display]) vulkanDraw(mainState.argumentDisplay,mainState.argumentBase,mainState.argumentLimit);
-    if (mainState.mouseReact[Brighten]) vulkanDraw(mainState.argumentBrighten,mainState.argumentBase,mainState.argumentLimit);
-    if (mainState.mouseReact[Detect]) vulkanDraw(mainState.argumentDetect,mainState.argumentBase,mainState.argumentLimit);
+    if (mainState.manipReact[Display]) vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
+    if (mainState.manipReact[Brighten]) vulkanDraw(mainState.paramBrighten,mainState.paramBase,mainState.paramLimit);
+    if (mainState.manipReact[Detect]) vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
 }
 struct Center *vulkanReady(enum Memory mem)
 {
@@ -1926,7 +1932,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     while (!mainState.escapeEnter) {
     windowChanged();
     planeMain();
-    if (mainState.mouseReact[Poll]) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
+    if (mainState.manipReact[Poll]) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
     break;
     default:
     break;}

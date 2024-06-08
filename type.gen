@@ -41,6 +41,7 @@ Memory = {
 	"Piercez", -- pierce point normal and valid
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
+	"Littlez", -- little machine lines
 	"Configurez", -- configure to value
 }
 Configure = {
@@ -59,24 +60,19 @@ Configure = {
 	"PierceIndex", --
 	"StringSize", -- queue of strings
 	"MachineSize", -- vending machine lines
-	"ArgumentFollow", -- pass to dma
-	"ArgumentModify", --
-	"ArgumentMicro", -- pass to draw
-	"ArgumentDisplay", --
-	"ArgumentBrighten", --
-	"ArgumentDetect", --
-	"ArgumentBase", --
-	"ArgumentLimit", --
-	"ArgumentMemory", -- which to report
-	"ManipulateReact", -- block or behave
-	"ManipulateAction", -- what to do
-	"ManipulateActive", -- whether changing
-	"ManipulateMask", -- which edges moved
-	"ManipulateModify", -- how to sculpt
-	"ManipulateTool", -- how to transform
-	"ManipulateEffect", -- how to transform
-	"ManipulateFixed", -- how to transform
-	"ManipulateScope", -- what to transform
+	"ParamFollow", -- pass to dma
+	"ParamModify", --
+	"ParamMicro", -- pass to draw
+	"ParamDisplay", --
+	"ParamBrighten", --
+	"ParamDetect", --
+	"ParamBase", --
+	"ParamLimit", --
+	"ParamIndex", -- where in machine
+	"ManipReact", -- block or behave
+	"ManipAction", -- what to do
+	"ManipFixed", -- how to do
+	"ManipScope", -- what to transform
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
 	"ResultLine", -- state of machine
@@ -133,9 +129,14 @@ Transfer = {
 	"Echo", -- copy result to center
 	"Hide", -- pop hide and use
 }
-React = {
+React = { -- when updates happen
 	"Poll", -- whether to sleep for glfw events
-	"Respond", -- whether to enque mouse move
+	"Apply", -- whether to apply moves
+	"Changed", -- whether to little language
+	"Moved", -- whether to enque mouse move
+	"Angled", -- whether to enque roller moved
+	"Clicked", -- whether to enque mouse clicked
+	"Pressed", -- whether to enque key pressed
 	"Repeat", -- whether to enque fence done
 	"Follow", -- put window matrix on wake
 	"Modify", -- put transform matrix on wake
@@ -144,37 +145,23 @@ React = {
 	"Brighten", -- enque facet index shader on wake
 	"Detect", -- enque pierce point shader on wake
 }
-Active = {
-	"Setup", -- mouse does not do transform
-	"Upset", -- mouse does transform
-}
-Sticky = {
-	"North",
+Action = { -- what input does
+	"North", -- window edge fixed
 	"East",
 	"South",
 	"West",
-}
-Action = {
-	"Move", -- modified by Active Sticky
-	"Transform", -- modified by Acvive Fixed Effect
-	"Refine",
-	"Sculpt", -- modified by Modify
-}
-Modify = {
+	"Manipulate", -- apply transformation
+	"Refine", -- add boundaries
 	"Additive", -- add regions
 	"Subtractive", -- remove regions
 }
-Tool = {
-	"Mouse",
+Fixed = { -- how motion interpreted
+	"Mouse", -- how many fixed
 	"Roller",
-}
-Effect = {
-	"Slide",
+	"Slide", -- how changed
 	"Rotate",
 	"Scale",
-}
-Fixed = {
-	"Cursor",
+	"Cursor", -- what fixed
 	"Focal",
 	"Ortho",
 	"Normal",
@@ -357,7 +344,7 @@ Bootstrap = {
 		"cfg[1]:WindowHigh"..
 		"cfg[2]:MachineSize"..
 		"cfg[3]:RegisterOpen"..
-		"cfg[4]:ArgumentMicro"..
+		"cfg[4]:ParamMicro"..
 		"val[0]:1024"..
 		"val[1]:512"..
 		"val[2]:20"..
@@ -396,7 +383,7 @@ Bootstrap = {
 			"rng[8]:IntOp(0)".. -- Keyboard error
 			"rng[9]:IntOp(0))))"..
 		"mch[1]:Name(Str(DrawChanged))".. -- Draw, and remember that not Changed
-		"mch[2]:Draw()".. -- pass Argument configurations
+		"mch[2]:Draw()".. -- pass Param configurations
 		"mch[3]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"..
 		"mch[4]:Eval(IntOp(0))"..
 		"mch[5]:Name(Str(ReadCenter))".. -- Read center, Stage center, compare center
@@ -670,6 +657,11 @@ Machine = {
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 	{"str","Str",{["xfr"]={["Name"]=true}},{}},
 }
+Little = {
+	{"pat","Int",{},{}},
+	{"val","Int",{},{}},
+	{"nxt","Int",{},{}},
+}
 Center = {
 	{"mem","Memory",{},""},
 	{"siz","Int",{},{}},
@@ -684,6 +676,7 @@ Center = {
 	{"buf","Int",{["mem"]={["Indexz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
+	{"pvn","Little",{["mem"]={["Littlez"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 }
