@@ -34,7 +34,6 @@ struct QueueState;
 struct MainState {
     bool resizeNeeded;
     bool escapeEnter;
-    bool supressWindow;
     std::deque<int> keyPressed;
     bool manipReact[Reacts];
     bool manipAction[Actions];
@@ -83,7 +82,6 @@ struct MainState {
 } mainState = {
     .resizeNeeded = true,
     .escapeEnter = false,
-    .supressWindow = false,
     .manipReact = {0},
     .manipAction = {0},
     .mouseLeft = 0.0,
@@ -262,12 +260,10 @@ void windowSized(GLFWwindow* window, int width, int height)
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->currentWidth = width; mainState->currentHeight = height;
     mainState->resizeNeeded = true;
-    // windowChanged();
 }
 void windowRefreshed(GLFWwindow* window)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    // windowChanged();
 }
 void manipReact(struct MainState *mainState, int pat) {
     for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
@@ -310,9 +306,8 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
         if (mainState->manipAction[East]) maxx += diffx;
         if (mainState->manipAction[North]) miny += diffy;
         if (mainState->manipAction[West]) minx += diffx;
-        if (!mainState->supressWindow) {mainState->supressWindow = true;
         tempx = minx; tempy = miny; glfwSetWindowPos(window,tempx,tempy);
-        temqx = maxx-minx; temqy = maxy-miny; glfwSetWindowSize(window,temqx,temqy);}
+        temqx = maxx-minx; temqy = maxy-miny; glfwSetWindowSize(window,temqx,temqy);
     }
     if (mainState->manipReact[Moved]) planeSafe(Threads,Waits,CursorLeft);
 }
@@ -1909,7 +1904,6 @@ void windowChanged()
     if (mainState.manipReact[Display]) vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
     if (mainState.manipReact[Brighten]) vulkanDraw(mainState.paramBrighten,mainState.paramBase,mainState.paramLimit);
     if (mainState.manipReact[Detect]) vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
-    mainState.supressWindow = false;
     debugStop("windowChanged");
 }
 struct Center *vulkanReady(enum Memory mem)
