@@ -813,14 +813,16 @@ struct ThreadState {
     pthread_t thread;
     bool finish;
     bool repeat;
-    std::deque<std::function<void()>> init;
+    std::deque<std::function<void()>> comp;
     std::deque<std::function<VkFence()>> setup;
     std::deque<int> which;
     std::deque<VkFence> fence;
     std::deque<int> order;
     std::set<int> lookup;
-    std::deque<std::function<VkFence()>> extra;
+    std::deque<std::function<void()>> precom;
+    std::deque<std::function<VkFence()>> preset;
     std::deque<int> what;
+    std::deque<int> where;
     std::deque<std::function<bool()>> when;
     int limit; int seqnum;
     ThreadState(VkDevice device, bool repeat, int limit) {
@@ -857,12 +859,16 @@ struct ThreadState {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
                 break;}
             while (!arg->when.empty() && arg->when.front()()) {
-                int temp = arg->what.front(); std::function<VkFence()> func = arg->extra.front();
-                arg->order.push_back(temp); arg->lookup.insert(temp); arg->which.push_back(0); arg->setup.push_back(func);
-                arg->when.pop_front(); arg->what.pop_front(); arg->extra.pop_front();}
+                std::cerr << "when" << std::endl;
+                int temp = arg->what.front(); arg->order.push_back(temp); arg->lookup.insert(temp);
+                int tmp = arg->where.front(); arg->which.push_back(tmp); switch (tmp) {
+                case (0): arg->setup.push_back(arg->preset.front()); arg->preset.pop_front(); break;
+                case (1): arg->comp.push_back(arg->precom.front()); arg->precom.pop_front(); break;
+                default: throw std::runtime_error("unsupported separate lambda!"); break;}
+                arg->when.pop_front(); arg->what.pop_front();}
             while (!arg->which.empty()) {switch (arg->which.front()) {
                 case (0): arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front(); break;
-                case (1): arg->init.front()(); arg->init.pop_front();
+                case (1): arg->comp.front()(); arg->comp.pop_front();
                 arg->lookup.erase(arg->order.front()); arg->order.pop_front(); break;
                 default: throw std::runtime_error("unsupported separate lambda!"); break;}
                 arg->which.pop_front();}
@@ -872,8 +878,10 @@ struct ThreadState {
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
             else {
                 if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE)
+                VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
+                std::cerr << "wait" << std::endl;
                 result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
+                std::cerr << "wake" << std::endl;}
                 if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
@@ -901,20 +909,26 @@ struct ThreadState {
         if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
         int temp = seqnum++; lookup.insert(temp); given(temp);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
-        if (fence.size()+setup.size()+init.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (fence.size()+setup.size()+comp.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size()+what.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
         return done;}
-    std::function<bool()> push(std::function<void()> given) {
+    std::function<bool()> qush(std::function<void()> given) {
     // return function that returns whether given function called in separate thread
-        return push([this,given](int temp){order.push_back(temp); init.push_back(given); which.push_back(1);});}
+        return push([this,given](int temp){order.push_back(temp); comp.push_back(given); which.push_back(1);});}
+    std::function<bool()> qush(std::function<void()> given, std::function<bool()> last) {
+    // return query of whether given function called in indicated sequence
+        if (last()) return qush(given);
+        return push([this,given,last](int temp){what.push_back(temp); when.push_back(last);
+        where.push_back(1); precom.push_back(given);});}
     std::function<bool()> push(std::function<VkFence()> given) {
     // return function that returns whether fence returned by given function in separate thread is done
         return push([this,given](int temp){order.push_back(temp); setup.push_back(given); which.push_back(0);});}
     std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
     // return query of whether fence is done for given function started in indicated sequence
         if (last()) return push(given);
-        return push([this,given,last](int temp){what.push_back(temp); when.push_back(last); extra.push_back(given);});}
+        return push([this,given,last](int temp){what.push_back(temp); when.push_back(last);
+        where.push_back(0); preset.push_back(given);});}
 };
 
 struct TempState {
@@ -938,6 +952,18 @@ struct TempState {
     void temp(int tmp, std::function<bool()> fnc) {
     // bind done function to identified done function
         done[tmp].push_back(fnc);
+    }
+    std::function<bool()> temp(bool &vld, int &tag) {
+        if (vld) return temp(tag);
+        vld = true;
+        tag = temp();
+        return temp(tag);
+    }
+    void temp(bool &vld, int &tag, std::function<bool()> given) {
+        if (!vld) {
+        vld = true;
+        tag = temp();}
+        temp(tag,given);
     }
 };
 
@@ -997,45 +1023,27 @@ template<class Buffer> struct WrapState {
     }
     std::function<bool()> seq() {
     // produce marker to wait for in separate thread
-        if (seqvld) return temp->temp(seqtag);
-        seqvld = true;
-        seqtag = temp->temp();
-        return temp->temp(seqtag);
+        return temp->temp(seqvld,seqtag);
     }
     void seq(std::function<bool()> given) {
     // add function to wait for in separate thread
-        if (!seqvld) {
-        seqvld = true;
-        seqtag = temp->temp();}
-        temp->temp(seqtag,given);
+        temp->temp(seqvld,seqtag,given);
     }
     std::function<bool()> sep() {
     // produce lambda that will depend on fence
-        if (seqvld) return temp->temp(seqtag);
-        seqvld = true;
-        seqtag = temp->temp();
-        return temp->temp(seqtag);
+        return temp->temp(sepvld,septag);
     }
     void sep(std::function<bool()> given) {
     // make lambda depend on fence
-        if (!seqvld) {
-        seqvld = true;
-        seqtag = temp->temp();}
-        temp->temp(seqtag,given);
+        temp->temp(sepvld,septag,given);
     }
     std::function<bool()> tmp() {
     // produce lambda for when unreserved
-        if (setvld) return temp->temp(settag);
-        setvld = true;
-        settag = temp->temp();
-        return temp->temp(settag);
+        return temp->temp(setvld,settag);
     }
     void tmp(std::function<bool()> given) {
     // add function to postpone unreserve
-        if (!setvld) {
-        setvld = true;
-        settag = temp->temp();}
-        temp->temp(settag,given);
+        temp->temp(setvld,settag,given);
     }
     std::pair<Buffer *, bool> buf() {
     // produce next buffer to modify
@@ -1052,10 +1060,25 @@ template<class Buffer> struct WrapState {
         while (!pool.empty()) {delete pool.front(); pool.pop_front();}
         copy = realloc(copy,size = siz);}
     }
-    std::function<bool()> nxt(std::function<VkFence(Buffer*)> setup) {
+    std::function<bool()> cmp(std::function<void(Buffer*)> setup) {
+    // complete in separate thread
+        Buffer *ptr = buf().first; bool first = buf().second;
+        setbuf.second = false; std::function<bool()> done = (first?
+        info->threadState->qush([setup,ptr](){ptr->init(); setup(ptr);},seq()):
+        info->threadState->qush([setup,ptr](){setup(ptr);},seq()));
+        sep(done); tmp(done); running.push_back(ptr); toready.push_back(tmp());
+        return done;
+    }
+    std::function<bool()> com(std::function<void(Buffer*)> setup) {
+    // consume buffer and lambda to complete in separate thread
+        std::function<bool()> ret = cmp(setup);
+        seqvld = false; setvld = false; setbuf.first = 0;
+        return ret;
+    }
+    std::function<bool()> stp(std::function<VkFence(Buffer*)> setup) {
     // setup in separate thread
-        Buffer *ptr = buf().first;
-        std::function<bool()> done = (buf().second?
+        Buffer *ptr = buf().first; bool first = buf().second;
+        setbuf.second = false; std::function<bool()> done = (first?
         info->threadState->push([setup,ptr](){ptr->init(); return setup(ptr);},seq()):
         info->threadState->push([setup,ptr](){return setup(ptr);},seq()));
         sep(done); tmp(done); running.push_back(ptr); toready.push_back(tmp());
@@ -1063,26 +1086,32 @@ template<class Buffer> struct WrapState {
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
     // consume buffer and lambda to setup in separate thread
-        std::function<bool()> ret = nxt(setup);
+        std::function<bool()> ret = stp(setup);
         seqvld = false; setvld = false; setbuf.first = 0;
         return ret;
     }
-    std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
-    // enque setup from data in separate thread and present for get when fence is done
+    std::function<bool()> stp(int loc, int siz, const void *ptr, std::function<void()> dat) {
+    // setup data in separate thread
         int size = (loc+siz > this->size ? loc+siz : this->size); set(size);
-        info->threadState->push([this,loc,ptr,siz](){memcpy((void*)((char*)copy+loc),ptr,siz);});
+        info->threadState->qush([this,loc,ptr,siz](){memcpy((void*)((char*)copy+loc),ptr,siz);});
         if (tag == QueryBuf) return [](){return true;};
         if (buf().second) {loc = 0; siz = size; ptr = copy;}
-        return set([loc,siz,ptr,dat](Buffer*buf){
+        return stp([loc,siz,ptr,dat](Buffer*buf){
         VkFence ret = buf->setup(loc,siz,ptr); dat(); return ret;});
     }
-    std::function<bool()> nxt() {
+    std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
+    // consume buffer and lambda to setup data in separate thread
+        std::function<bool()> ret = stp(loc,siz,ptr,dat);
+        seqvld = false; setvld = false; setbuf.first = 0;
+        return ret;
+    }
+    std::function<bool()> stp() {
         int loc = 0; int siz = size; const void *ptr = copy;
-        return nxt([loc,siz,ptr](Buffer*buf){
+        return stp([loc,siz,ptr](Buffer*buf){
         return buf->setup(loc,siz,ptr);});
     }
     std::function<bool()> set() {
-        std::function<bool()> ret = nxt();
+        std::function<bool()> ret = stp();
         seqvld = false; setvld = false; setbuf.first = 0;
         return ret;
     }
@@ -1597,6 +1626,7 @@ struct DrawState {
     VkSemaphore finished;
     VkCommandBuffer command;
     VkFence fence;
+    uint32_t index;
     MainState *state;
     PipelineState* pipeline;
     // interpret size as type of pipeline
@@ -1650,8 +1680,7 @@ void init() {
     vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
     delete pipeline;}
-VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded) {
-    uint32_t index;
+VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded, int debug) {
     VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {*resizeNeeded = true;
         std::cerr << "out of date" << std::endl;}
@@ -1698,7 +1727,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     vkCmdEndRenderPass(command);
     if (vkEndCommandBuffer(command) != VK_SUCCESS)
         throw std::runtime_error("failed to record command buffer!");
-    [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available, VkSemaphore finished){
+    [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available, VkSemaphore finished, bool debug){
         VkSubmitInfo info{};
         info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         VkSemaphore availables[] = {available};
@@ -1709,15 +1738,20 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
         info.commandBufferCount = 1;
         info.pCommandBuffers = &command;
         VkSemaphore finisheds[] = {finished};
-        info.signalSemaphoreCount = 1;
+        info.signalSemaphoreCount = (debug ? 0 : 1);
         info.pSignalSemaphores = finisheds;
         if (vkQueueSubmit(graphic, 1, &info, fence) != VK_SUCCESS)
             throw std::runtime_error("failed to submit draw command buffer!");
-    }(graphic,command,fence,available,finished);
-    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore finished, bool *resized){
+    }(graphic,command,fence,available,finished,debug);
+    if (!debug) setup(resizeNeeded,debug);
+    std::cerr << "setup fence " << debug << std::endl;
+    return fence;}
+void setup(bool *resizeNeeded, int debug) {
+    std::cerr << "setup " << debug << std::endl;
+    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore finished, bool *resized, int debug){
         VkPresentInfoKHR info{};
         info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        info.waitSemaphoreCount = 1;
+        info.waitSemaphoreCount = (debug ? 0 : 1);
         VkSemaphore finisheds[] = {finished};
         info.pWaitSemaphores = finisheds;
         VkSwapchainKHR swaps[] = {swap};
@@ -1728,8 +1762,9 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
         if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }(state->swapState->swap,present,index,finished,resizeNeeded);
-    return fence;}
+    }(state->swapState->swap,present,index,finished,resizeNeeded,debug);\
+    std::cerr << "setup done " << debug << std::endl;
+}
 };
 
 void vulkanExtent()
@@ -1846,6 +1881,7 @@ void vulkanDma(struct Center *center)
     vulkanExtent(); mainState.queueState->bufferQueue[center->mem]->
     set(center->idx*siz,center->siz*siz,ptr,[center](){planeDone(center);});
 }
+int debug_count = 0;
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
     QueueState *queue = mainState.queueState;
@@ -1860,13 +1896,16 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
     draw->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
     if (Component__Micro__MicroOn(shader) == CoPyon) {
-    (*i)->nxt(); (*i)->seq(draw->sep());} else {
+    (*i)->stp(); (*i)->seq(draw->sep());} else {
     (*i)->tmp(draw->tmp()); (*i)->set();}}
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) {
     buffer.push_back((*i)->get(draw->tmp()));}
     draw->set(shader); mainState.registerDone++;
     draw->set([buffer,base,limit](DrawState*draw){
-    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);});
+    return draw->setup(buffer,base,limit,&mainState.resizeNeeded,0);});
+    /*draw->stp([buffer,base,limit](DrawState*draw){
+    return draw->setup(buffer,base,limit,&mainState.resizeNeeded,++debug_count);});
+    draw->com([](DrawState*draw){draw->setup(&mainState.resizeNeeded,debug_count);});*/
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
     if (Component__Micro__MicroOn(shader) == CoPyon) {
     (*i)->set([](BufferState*buf){return buf->getup();});}}
@@ -1897,7 +1936,9 @@ void windowChanged()
     if (mainState.manipReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
         vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
     debugStart();
-    for (int i = 0; i < 1; i++) { // TODO why does this hack force resize to complete
+    for (int i = 0; i < 1; i++) {
+        // TODO is this helpful because of Xlib blocking for response?
+        // TODO instead, try pipelining set-window-pos-size right before or after each submit to present queue
     int32_t tempx, tempy, temqx, temqy;
     glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
     glfwGetWindowSize(mainState.openState->window,&temqx,&temqy);}
