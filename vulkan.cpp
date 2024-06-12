@@ -806,10 +806,38 @@ struct SwapState {
 };
 
 void vulkanSafe();
+struct SemState {
+    sem_t semaphore;
+    SemState() {
+        if (sem_init(&semaphore, 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");
+    }
+    ~SemState() {
+        if (sem_destroy(&semaphore) != 0) {
+        std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
+    }
+    void wait() {
+        if (sem_wait(&semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
+    }
+    void post() {
+        if (sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+    }
+    bool trywait() {
+        int tryval = sem_trywait(&semaphore);
+        if (tryval != 0 && errno != EAGAIN) throw std::runtime_error("cannot trywait for semaphore!");
+        return (tryval == 0);
+    }
+    int get() {
+        int sval;
+        if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
+        return sval;
+    }
+};
 struct ThreadState {
     VkDevice device;
-    sem_t protect;
-    sem_t semaphore;
+    SemState protect;
+    SemState semaphore;
+    SemState glfwcall;
+    SemState glfwblock;
     pthread_t thread;
     bool finish;
     bool repeat;
@@ -831,32 +859,28 @@ struct ThreadState {
         this->repeat = repeat;
         this->limit = limit;
         seqnum = 0;
-        if (sem_init(&protect, 0, 1) != 0 ||
-            sem_init(&semaphore, 0, 1) != 0 ||
-            pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
+        if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
     // this destructed to wait for device idle
-        if (sem_wait(&protect) != 0) {
+        if (sem_wait(&protect.semaphore) != 0) {
             std::cerr << "cannot wait for protect!" << std::endl;
             std::terminate();}
         finish = true;
-        if (sem_post(&protect) != 0) {
+        if (sem_post(&protect.semaphore) != 0) {
             std::cerr << "cannot post to protect!" << std::endl;
             std::terminate();}
-        if (sem_post(&semaphore) != 0 ||
-            pthread_join(thread,0) != 0 ||
-            sem_destroy(&semaphore) != 0 ||
-            sem_destroy(&protect) != 0) {
+        if (sem_post(&semaphore.semaphore) != 0 ||
+            pthread_join(thread,0) != 0) {
             std::cerr << "failed to join thread!" << std::endl;
             std::terminate();}
     }
     static void *separate(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
-        if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        arg->protect.wait();
         while (1) {
             if (arg->finish) {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                arg->protect.post();
                 break;}
             while (!arg->when.empty() && arg->when.front()()) {
                 std::cerr << "when" << std::endl;
@@ -873,16 +897,16 @@ struct ThreadState {
                 default: throw std::runtime_error("unsupported separate lambda!"); break;}
                 arg->which.pop_front();}
             if (arg->fence.empty()) {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
-                if (sem_wait(&arg->semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");}
+                arg->protect.post();
+                arg->semaphore.wait();
+                arg->protect.wait();}
             else {
-                if (sem_post(&arg->protect) != 0) throw std::runtime_error("cannot post to protect!");
+                arg->protect.post();
                 VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
                 std::cerr << "wait" << std::endl;
                 result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);
                 std::cerr << "wake" << std::endl;}
-                if (sem_wait(&arg->protect) != 0) throw std::runtime_error("cannot wait for protect!");
+                arg->protect.wait();
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
@@ -890,28 +914,38 @@ struct ThreadState {
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
+    void wait(std::function<void()> given) {
+        glfwcall.wait(); glfwblock.wait(); glfwcall.post(); given(); glfwblock.post();
+    }
+    void call(std::function<void()> given, std::function<void()> wake) {
+        glfwcall.wait(); if (!glfwblock.trywait()) {wake(); glfwblock.wait();}
+        given(); glfwcall.post(); glfwblock.post();
+    }
+    void call(std::function<void()> given) {
+        glfwcall.wait(); given(); glfwcall.post();
+    }
     bool clear(int given) {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        protect.wait();
         bool done = (lookup.find(given) == lookup.end());
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        protect.post();
         return done;
     }
     bool push() {
         bool ret;
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
+        protect.wait();
         ret = (order.size() < limit);
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        protect.post();
         return ret;
     }
     std::function<bool()> push(std::function<void(int)> given) {
-        if (sem_wait(&protect) != 0) throw std::runtime_error("cannot wait for protect!");
-        int sval; if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
-        if (sval == 0 && sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+        protect.wait();
+        int sval = semaphore.get();
+        if (sval == 0) semaphore.post();
         int temp = seqnum++; lookup.insert(temp); given(temp);
         std::function<bool()> done = [this,temp](){return this->clear(temp);};
         if (fence.size()+setup.size()+comp.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size()+what.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
-        if (sem_post(&protect) != 0) throw std::runtime_error("cannot post to protect!");
+        protect.post();
         return done;}
     std::function<bool()> qush(std::function<void()> given) {
     // return function that returns whether given function called in separate thread
@@ -1992,10 +2026,12 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     mainState.queueState = new QueueState();
     break;
     case (Process):
+    vulkanExtent();
     while (!mainState.escapeEnter) {
     windowChanged();
     planeMain();
-    if (mainState.manipReact[Poll]) glfwPollEvents(); else glfwWaitEventsTimeout(1.0);}
+    if (mainState.manipReact[Poll]) glfwPollEvents();
+    else mainState.threadState->wait([](){glfwWaitEventsTimeout(1.0);});}
     break;
     default:
     break;}
