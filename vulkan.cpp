@@ -922,10 +922,8 @@ struct ThreadState {
         glfwcall.wait(); given(); glfwcall.post();
     }
     bool clear(int given) {
-        protect.wait();
-        bool done = (lookup.find(given) == lookup.end());
-        protect.post();
-        return done;
+        if (protect.trywait()) throw std::runtime_error("protect not held!");
+        return (lookup.find(given) == lookup.end());
     }
     bool push() {
         bool ret;
@@ -1074,7 +1072,12 @@ template<class Buffer> struct WrapState {
     }
     void tmp(std::function<bool()> given) {
     // add function to postpone unreserve
-        temp->temp(setvld,settag,given);
+        std::function<bool()> wrap = [given,this](){
+        info->threadState->protect.wait();
+        bool ret = given();
+        info->threadState->protect.post();
+        return ret;};
+        temp->temp(setvld,settag,wrap);
     }
     std::pair<Buffer *, bool> buf() {
     // produce next buffer to modify
@@ -1630,7 +1633,6 @@ struct DrawState {
     VkRenderPass render;
     VkCommandPool pool;
     VkSemaphore available;
-    VkSemaphore finished;
     VkCommandBuffer command;
     VkFence fence;
     uint32_t index;
@@ -1650,13 +1652,6 @@ DrawState(MainState *state, int size, WrapTag tag) {
 void init() {
     // this called in separate thread on newly constructed
     available = [](VkDevice device) {
-        VkSemaphore semaphore;
-        VkSemaphoreCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
-            throw std::runtime_error("failed to create semaphore!");
-        return semaphore;}(device);
-    finished = [](VkDevice device) {
         VkSemaphore semaphore;
         VkSemaphoreCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -1684,10 +1679,9 @@ void init() {
 ~DrawState() {
     vkDestroyFence(device,fence,0);
     vkFreeCommandBuffers(device, pool, 1, &command);
-    vkDestroySemaphore(device, finished, nullptr);
     vkDestroySemaphore(device, available, nullptr);
     delete pipeline;}
-VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded, int debug) {
+VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit, bool *resizeNeeded) {
     VkResult result = vkAcquireNextImageKHR(device, state->swapState->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {*resizeNeeded = true;
         std::cerr << "out of date" << std::endl;}
@@ -1734,7 +1728,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     vkCmdEndRenderPass(command);
     if (vkEndCommandBuffer(command) != VK_SUCCESS)
         throw std::runtime_error("failed to record command buffer!");
-    [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available, VkSemaphore finished, bool debug){
+    [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available){
         VkSubmitInfo info{};
         info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         VkSemaphore availables[] = {available};
@@ -1744,21 +1738,16 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
         info.pWaitDstStageMask = stages;
         info.commandBufferCount = 1;
         info.pCommandBuffers = &command;
-        VkSemaphore finisheds[] = {finished};
-        info.signalSemaphoreCount = (debug ? 0 : 1);
-        info.pSignalSemaphores = finisheds;
+        info.signalSemaphoreCount = 0;
         if (vkQueueSubmit(graphic, 1, &info, fence) != VK_SUCCESS)
             throw std::runtime_error("failed to submit draw command buffer!");
-    }(graphic,command,fence,available,finished,debug);
-    if (!debug) setup(resizeNeeded,debug);
+    }(graphic,command,fence,available);
     return fence;}
-void setup(bool *resizeNeeded, int debug) {
-    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore finished, bool *resized, int debug){
+void setup(bool *resizeNeeded) {
+    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, bool *resized){
         VkPresentInfoKHR info{};
         info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        info.waitSemaphoreCount = (debug ? 0 : 1);
-        VkSemaphore finisheds[] = {finished};
-        info.pWaitSemaphores = finisheds;
+        info.waitSemaphoreCount = 0;
         VkSwapchainKHR swaps[] = {swap};
         info.swapchainCount = 1;
         info.pSwapchains = swaps;
@@ -1767,7 +1756,7 @@ void setup(bool *resizeNeeded, int debug) {
         if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }(state->swapState->swap,present,index,finished,resizeNeeded,debug);
+    }(state->swapState->swap,present,index,resizeNeeded);
 }
 };
 
@@ -1889,7 +1878,6 @@ void vulkanDma(struct Center *center)
     } planeDone(center); return;}
     vulkanSet(mainState.queueState->bufferQueue[center->mem],center,siz,ptr);
 }
-int debug_count = 0;
 void vulkanDraw(enum Micro shader, int base, int limit)
 {
     QueueState *queue = mainState.queueState;
@@ -1909,11 +1897,9 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) {
     buffer.push_back((*i)->get(draw->tmp()));}
     draw->set(shader); mainState.registerDone++;
-    draw->set((std::function<VkFence(DrawState*draw)>)[buffer,base,limit](DrawState*draw){
-    return draw->setup(buffer,base,limit,&mainState.resizeNeeded,0);}); draw->put();
-    /*std::function<bool()> done = draw->set((std::function<VkFence(DrawState*)>)[buffer,base,limit](DrawState*draw){
-    return draw->setup(buffer,base,limit,&mainState.resizeNeeded,++debug_count);}); draw->seq(done);
-    draw->set((std::function<void(DrawState*)>)[](DrawState*draw){draw->setup(&mainState.resizeNeeded,debug_count);}); draw->put();*/
+    std::function<bool()> done = draw->set((std::function<VkFence(DrawState*)>)[buffer,base,limit](DrawState*draw){
+    return draw->setup(buffer,base,limit,&mainState.resizeNeeded);}); draw->seq(done);
+    draw->set((std::function<void(DrawState*)>)[](DrawState*draw){draw->setup(&mainState.resizeNeeded);}); draw->put();
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
     if (Component__Micro__MicroOn(shader) == CoPyon) {
     (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}}
