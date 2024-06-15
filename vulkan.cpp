@@ -1755,6 +1755,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     }(graphic,command,fence,available);
     return fence;}
 void setup(bool *resizeNeeded) {
+    // TODO get window pos and size from what used for bound buffer
     if (state->manipReact[Apply] &&
         (state->manipAction[North] || state->manipAction[East] ||
         state->manipAction[South] || state->manipAction[West])) {
@@ -1940,12 +1941,6 @@ void windowChanged()
     #endif
     if (mainState.manipReact[Direct]) vulkanField(mainState.cursorLeft,mainState.cursorBase,mainState.mouseAngle,mainState.paramIndex);
     debugStart();
-    for (int i = 0; i < 0; i++) {
-        // TODO is this helpful because of Xlib blocking for response?
-        // TODO instead, try pipelining set-window-pos-size right before or after each submit to present queue
-    int32_t tempx, tempy, temqx, temqy;
-    glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
-    glfwGetWindowSize(mainState.openState->window,&temqx,&temqy);}
     if (mainState.manipReact[Display]) vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
     if (mainState.manipReact[Brighten]) vulkanDraw(mainState.paramBrighten,mainState.paramBase,mainState.paramLimit);
     if (mainState.manipReact[Detect]) vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
