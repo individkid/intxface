@@ -40,7 +40,9 @@ struct MainState {
     double mouseLeft;
     double mouseBase;
     double mouseAngle;
-    int mouseIndex;
+    double cursorLeft;
+    double cursorBase;
+    double cursorAngle;
     int windowLeft;
     int windowBase;
     int windowWidth;
@@ -51,6 +53,7 @@ struct MainState {
     int currentHeight;
     int paramFollow;
     int paramModify;
+    int paramIndex;
     enum Micro paramDisplay;
     enum Micro paramBrighten;
     enum Micro paramDetect;
@@ -87,7 +90,9 @@ struct MainState {
     .mouseLeft = 0.0,
     .mouseBase = 0.0,
     .mouseAngle = 0.0,
-    .mouseIndex = 0,
+    .cursorLeft = 0.0,
+    .cursorBase = 0.0,
+    .cursorAngle = 0.0,
     .windowLeft = 0,
     .windowBase = 0,
     .windowWidth = 800,
@@ -98,6 +103,7 @@ struct MainState {
     .currentHeight = 700,
     .paramFollow = 0,
     .paramModify = 0,
+    .paramIndex = 0,
     .paramDisplay = MicroPRPC, // just display
     .paramBrighten = MicroPRRC, // fill Indexz
     .paramDetect = MicroPRCP, // retreive Piercez
@@ -247,19 +253,13 @@ void debugStop(const char *str) {
     if (diff > debug_diff) {debug_diff = diff; std::cerr << str << " " << diff << std::endl;}
 }
 
-void windowChanged();
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->mouseLeft = mainState->mouseLeft - (xpos - mainState->currentLeft);
-    mainState->mouseBase = mainState->mouseBase - (ypos - mainState->currentBase);
-    mainState->currentLeft = xpos; mainState->currentBase = ypos;
 }
 void windowSized(GLFWwindow* window, int width, int height)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->currentWidth = width; mainState->currentHeight = height;
-    mainState->resizeNeeded = true;
 }
 void windowRefreshed(GLFWwindow* window)
 {
@@ -281,39 +281,23 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
     mainState->keyPressed.push_back(key); planeSafe(Threads,Waits,CursorPress);}
     if (mainState->manipReact[Changed]) manipReact(mainState,key);
 }
+void vulkanGlfw(struct MainState *state);
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     int32_t tempx, tempy;
     if (action != GLFW_PRESS) return;
-    glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase); mainState->mouseAngle = 0.0;
-    glfwGetWindowPos(window,&tempx,&tempy); mainState->windowLeft = tempx; mainState->windowBase = tempy;
-    glfwGetWindowSize(window,&tempx,&tempy); mainState->windowWidth = tempx; mainState->windowHeight = tempy;
+    vulkanGlfw(mainState);
     if (mainState->manipReact[Clicked]) planeSafe(Threads,Waits,CursorClick);
     if (mainState->manipReact[Changed]) manipReact(mainState,-1);
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    double nextx, nexty, nexsx, nexsy;
-    double diffx, diffy, minx, miny, maxx, maxy;
-    int32_t tempx, tempy, temqx, temqy;
-    if (mainState->manipReact[Apply] &&
-        (mainState->manipAction[North] || mainState->manipAction[East] ||
-        mainState->manipAction[South] || mainState->manipAction[West])) {
-        diffx = xpos - mainState->mouseLeft; diffy = ypos - mainState->mouseBase;
-        minx = mainState->windowLeft; maxx = minx + mainState->windowWidth;
-        miny = mainState->windowBase; maxy = miny + mainState->windowHeight;
-        if (mainState->manipAction[South]) maxy += diffy;
-        if (mainState->manipAction[East]) maxx += diffx;
-        if (mainState->manipAction[North]) miny += diffy;
-        if (mainState->manipAction[West]) minx += diffx;
-        tempx = minx; tempy = miny; glfwSetWindowPos(window,tempx,tempy);
-        temqx = maxx-minx; temqy = maxy-miny; glfwSetWindowSize(window,temqx,temqy);
-    }
+    // mainState->cursorLeft = xpos; mainState->cursorBase = ypos;
     if (mainState->manipReact[Moved]) planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngled(GLFWwindow *window, double amount) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->mouseAngle += amount;
+    mainState->mouseAngle += amount; // TODO use cursorAngle
     if (mainState->manipReact[Angled]) planeSafe(Threads,Waits,CursorAngle);
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -413,6 +397,7 @@ struct OpenState {
         struct MainState *mainState = (struct MainState *)ptr;
         int32_t left, base, workx, worky;
         this->instance = instance;
+        mainState->currentWidth = width; mainState->currentHeight = height;
         window = [](int width, int height) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             return glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
@@ -421,16 +406,18 @@ struct OpenState {
         glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
         left += (workx-width)/2; base += (worky-height)/2;
         glfwSetWindowPos(window,left,base);
+        mainState->currentLeft = left; mainState->currentBase = base;
         mainState->windowLeft = left; mainState->windowBase = base;
         glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
+        mainState->cursorLeft = mainState->mouseLeft; mainState->cursorBase = mainState->mouseBase;
         glfwSetWindowUserPointer(window, ptr);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetKeyCallback(window, keyPressed);
         glfwSetMouseButtonCallback(window, mouseClicked);
         glfwSetCursorPosCallback(window, mouseMoved);
-        glfwSetWindowPosCallback(window, windowMoved);
-        glfwSetWindowSizeCallback(window, windowSized);
-        glfwSetWindowRefreshCallback(window, windowRefreshed);
+        // glfwSetWindowPosCallback(window, windowMoved);
+        // glfwSetWindowSizeCallback(window, windowSized);
+        // glfwSetWindowRefreshCallback(window, windowRefreshed);
         for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
         for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
         for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = ::moveCursor(e,t,r,b,l);
@@ -925,6 +912,11 @@ struct ThreadState {
         if (protect.trywait()) throw std::runtime_error("protect not held!");
         return (lookup.find(given) == lookup.end());
     }
+    bool clear(std::function<bool()> given) {
+        protect.wait();
+        if (given()) {protect.post(); return true;}
+        protect.post(); return false;
+    }
     bool push() {
         bool ret;
         protect.wait();
@@ -947,7 +939,7 @@ struct ThreadState {
         return push([this,given](int temp){order.push_back(temp); comp.push_back(given); which.push_back(1);});}
     std::function<bool()> push(std::function<void()> given, std::function<bool()> last) {
     // return query of whether given function called in indicated sequence
-        if (last()) return push(given);
+        if (clear(last)) return push(given);
         return push([this,given,last](int temp){what.push_back(temp); when.push_back(last);
         where.push_back(1); precom.push_back(given);});}
     std::function<bool()> push(std::function<VkFence()> given) {
@@ -955,10 +947,22 @@ struct ThreadState {
         return push([this,given](int temp){order.push_back(temp); setup.push_back(given); which.push_back(0);});}
     std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
     // return query of whether fence is done for given function started in indicated sequence
-        if (last()) return push(given);
+        if (clear(last)) return push(given);
         return push([this,given,last](int temp){what.push_back(temp); when.push_back(last);
         where.push_back(0); preset.push_back(given);});}
 };
+void vulkanGlfw(struct MainState *state)
+{
+    state->threadState->call([state](){
+    glfwGetCursorPos(state->openState->window,&state->cursorLeft,&state->cursorBase);
+    state->mouseLeft = state->cursorLeft; state->mouseBase = state->cursorBase; state->mouseAngle = 0.0;
+    glfwGetWindowPos(state->openState->window,&state->currentLeft,&state->currentBase);
+    state->windowLeft = state->currentLeft; state->windowBase = state->currentBase;
+    glfwGetWindowSize(state->openState->window,&state->currentWidth,&state->currentHeight);
+    state->windowWidth = state->currentWidth; state->windowHeight = state->currentHeight;});
+    std::cerr << "mouse " << state->mouseLeft << " " << state->mouseBase << std::endl;
+    std::cerr << "window " << state->windowLeft << " " << state->windowBase << " " << state->windowWidth << " " << state->windowHeight << std::endl;
+}
 
 struct TempState {
     int seqnum;
@@ -1744,6 +1748,21 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
     }(graphic,command,fence,available);
     return fence;}
 void setup(bool *resizeNeeded) {
+    if (state->manipReact[Apply] &&
+        (state->manipAction[North] || state->manipAction[East] ||
+        state->manipAction[South] || state->manipAction[West])) {
+        // current cursor | window mouse
+        state->threadState->call([this,resizeNeeded](){
+            int winx, winy; glfwGetWindowPos(state->openState->window,&winx,&winy);
+            double curx, cury; glfwGetCursorPos(state->openState->window,&curx,&cury);
+            std::cerr << "(" << winx << "==" << state->currentLeft << "&&" << winy << "==" << state->currentBase << ")" << std::endl;
+            if ((winx == state->currentLeft && winy == state->currentBase)) {
+            state->currentLeft -= state->mouseLeft-curx;
+            state->currentBase -= state->mouseBase-cury;
+            *resizeNeeded = true; // TODO only if current size changes
+            glfwSetWindowPos(state->openState->window,state->currentLeft,state->currentBase); // TODO only if current pos changed
+            glfwSetWindowSize(state->openState->window,state->currentWidth,state->currentHeight); // TODO only if current size changed
+            }},[](){vulkanSafe();});}
     [](VkSwapchainKHR swap, VkQueue present, uint32_t index, bool *resized){
         VkPresentInfoKHR info{};
         info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1782,32 +1801,16 @@ int vulkanInfo(enum Configure query)
     switch (query) {default: throw std::runtime_error("cannot get info!");
     break; case (OriginLeft): return mainState.mouseLeft;
     break; case (OriginBase): return mainState.mouseBase;
-    break; case (CursorLeft): {double xpos,ypos; int32_t tempx, tempy;
-        glfwGetCursorPos(mainState.openState->window,&xpos,&ypos);
-        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
-        return xpos + tempx;}
-    break; case (CursorBase): {double xpos,ypos; int32_t tempx, tempy;
-        glfwGetCursorPos(mainState.openState->window,&xpos,&ypos);
-        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
-        return ypos + tempy;}
+    break; case (CursorLeft): return mainState.cursorLeft + mainState.currentLeft;
+    break; case (CursorBase): return mainState.cursorBase + mainState.currentBase;
     break; case (CursorAngle): return mainState.mouseAngle;
     break; case (CursorPress): {if (mainState.keyPressed.empty()) return 0;
         int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
-    break; case (WindowLeft): {int32_t width, height; int32_t tempx, tempy;
-        glfwGetWindowSize(mainState.openState->window,&width,&height);
-        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
-        return tempx+width/2;}
-    break; case (WindowBase): {int32_t width, height; int32_t tempx, tempy;
-        glfwGetWindowSize(mainState.openState->window,&width,&height);
-        glfwGetWindowPos(mainState.openState->window,&tempx,&tempy);
-        return tempy+height/2;}
-    break; case (WindowWidth): {int32_t width, height;
-        glfwGetWindowSize(mainState.openState->window,&width,&height);
-        return width/2;}
-    break; case (WindowHeight): {int32_t width, height;
-        glfwGetWindowSize(mainState.openState->window,&width,&height);
-        return height/2;}
-    break; case (MonitorWidth): {const GLFWvidmode *mode =
+    break; case (WindowLeft): return mainState.currentLeft + mainState.currentWidth/2;
+    break; case (WindowBase): return mainState.currentBase + mainState.currentHeight/2;
+    break; case (WindowWidth): mainState.currentWidth/2;
+    break; case (WindowHeight): mainState.currentHeight/2;
+    break; case (MonitorWidth): {const GLFWvidmode *mode = // TODO add to mainState
         glfwGetVideoMode(mainState.openState->monitor);
         return mode->width;}
     break; case (MonitorHeight): {const GLFWvidmode *mode =
@@ -1858,7 +1861,7 @@ void vulkanDma(struct Center *center)
     break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
     break; case (CursorPress): if (center->val[i] == 0)
         mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
-    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
+    break; case (CursorIndex): mainState.paramIndex = center->val[i];
     break; case (ManipReact): if (mainState.manipReact[Repeat] != ((center->val[i]&(1<<Repeat)) != 0))
         mainState.resizeNeeded = true; for (int j = 0; j < Reacts; j++)
         mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
@@ -1927,10 +1930,9 @@ void windowChanged()
     #else
     if (mainState.manipReact[Modify]) vulkanSend(mainState.paramModify*siz,siz,planeMatrix(mat),[mat](){free(mat);});
     #endif
-    if (mainState.manipReact[Direct]) {double left, base; glfwGetCursorPos(mainState.openState->window,&left,&base);
-        vulkanField(left,base,mainState.mouseAngle,mainState.mouseIndex);}
+    if (mainState.manipReact[Direct]) vulkanField(mainState.cursorLeft,mainState.cursorBase,mainState.mouseAngle,mainState.paramIndex);
     debugStart();
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 0; i++) {
         // TODO is this helpful because of Xlib blocking for response?
         // TODO instead, try pipelining set-window-pos-size right before or after each submit to present queue
     int32_t tempx, tempy, temqx, temqy;
@@ -1990,7 +1992,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     while (!mainState.escapeEnter) {
     windowChanged();
     planeMain();
-    if (mainState.manipReact[Poll]) glfwPollEvents();
+    if (mainState.manipReact[Poll]) mainState.threadState->wait([](){glfwPollEvents();});
     else mainState.threadState->wait([](){glfwWaitEventsTimeout(1.0);});}
     break;
     default:
