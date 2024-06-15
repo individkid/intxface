@@ -96,11 +96,11 @@ struct MainState {
     .windowLeft = 0,
     .windowBase = 0,
     .windowWidth = 800,
-    .windowHeight = 700,
+    .windowHeight = 800,
     .currentLeft = 0,
     .currentBase = 0,
     .currentWidth = 800,
-    .currentHeight = 700,
+    .currentHeight = 800,
     .paramFollow = 0,
     .paramModify = 0,
     .paramIndex = 0,
@@ -281,18 +281,20 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
     mainState->keyPressed.push_back(key); planeSafe(Threads,Waits,CursorPress);}
     if (mainState->manipReact[Changed]) manipReact(mainState,key);
 }
-void vulkanGlfw(struct MainState *state);
+void vulkanGlfw(GLFWwindow* window, struct MainState *state);
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     int32_t tempx, tempy;
     if (action != GLFW_PRESS) return;
-    vulkanGlfw(mainState);
+    vulkanGlfw(window,mainState);
     if (mainState->manipReact[Clicked]) planeSafe(Threads,Waits,CursorClick);
     if (mainState->manipReact[Changed]) manipReact(mainState,-1);
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     // mainState->cursorLeft = xpos; mainState->cursorBase = ypos;
+    // double tempx, tempy; glfwGetCursorPos(window,&tempx,&tempy);
+    // std::cerr << "moved " << xpos << "," << ypos << " " << tempx << "," << tempy << std::endl;
     if (mainState->manipReact[Moved]) planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngled(GLFWwindow *window, double amount) {
@@ -397,10 +399,9 @@ struct OpenState {
         struct MainState *mainState = (struct MainState *)ptr;
         int32_t left, base, workx, worky;
         this->instance = instance;
-        mainState->currentWidth = width; mainState->currentHeight = height;
         window = [](int width, int height) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-            return glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+            return glfwCreateWindow(width, height-32, "Vulkan", nullptr, nullptr);
         } (width,height);
         monitor = glfwGetPrimaryMonitor();
         glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
@@ -408,8 +409,15 @@ struct OpenState {
         glfwSetWindowPos(window,left,base);
         mainState->currentLeft = left; mainState->currentBase = base;
         mainState->windowLeft = left; mainState->windowBase = base;
+        // glfwSetWindowSize(window,width,height);
+        mainState->currentWidth = width; mainState->currentHeight = height;
+        mainState->windowWidth = width; mainState->windowHeight = height;
         glfwGetCursorPos(window,&mainState->mouseLeft,&mainState->mouseBase);
         mainState->cursorLeft = mainState->mouseLeft; mainState->cursorBase = mainState->mouseBase;
+    double curx, cury; glfwGetCursorPos(window,&curx,&cury);
+    int posx, posy; glfwGetWindowPos(window,&posx,&posy);
+    int sizx, sizy; glfwGetWindowSize(window,&sizx,&sizy);
+    std::cerr << "open " << sizx << " " << sizy << std::endl;
         glfwSetWindowUserPointer(window, ptr);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetKeyCallback(window, keyPressed);
@@ -951,17 +959,16 @@ struct ThreadState {
         return push([this,given,last](int temp){what.push_back(temp); when.push_back(last);
         where.push_back(0); preset.push_back(given);});}
 };
-void vulkanGlfw(struct MainState *state)
+void vulkanGlfw(GLFWwindow* window, struct MainState *state)
 {
-    state->threadState->call([state](){
-    glfwGetCursorPos(state->openState->window,&state->cursorLeft,&state->cursorBase);
+    state->threadState->call([window,state](){
+    glfwGetCursorPos(window,&state->cursorLeft,&state->cursorBase);
     state->mouseLeft = state->cursorLeft; state->mouseBase = state->cursorBase; state->mouseAngle = 0.0;
-    glfwGetWindowPos(state->openState->window,&state->currentLeft,&state->currentBase);
+    glfwGetWindowPos(window,&state->currentLeft,&state->currentBase);
     state->windowLeft = state->currentLeft; state->windowBase = state->currentBase;
-    glfwGetWindowSize(state->openState->window,&state->currentWidth,&state->currentHeight);
+    glfwGetWindowSize(window,&state->currentWidth,&state->currentHeight);
     state->windowWidth = state->currentWidth; state->windowHeight = state->currentHeight;});
-    std::cerr << "mouse " << state->mouseLeft << " " << state->mouseBase << std::endl;
-    std::cerr << "window " << state->windowLeft << " " << state->windowBase << " " << state->windowWidth << " " << state->windowHeight << std::endl;
+    std::cerr << "glfw " << state->windowWidth << " " << state->windowHeight << std::endl;
 }
 
 struct TempState {
@@ -1755,14 +1762,15 @@ void setup(bool *resizeNeeded) {
         state->threadState->call([this,resizeNeeded](){
             int winx, winy; glfwGetWindowPos(state->openState->window,&winx,&winy);
             double curx, cury; glfwGetCursorPos(state->openState->window,&curx,&cury);
-            std::cerr << "(" << winx << "==" << state->currentLeft << "&&" << winy << "==" << state->currentBase << ")" << std::endl;
-            if ((winx == state->currentLeft && winy == state->currentBase)) {
+            // if ((winx == state->currentLeft && winy == state->currentBase)) {
             state->currentLeft -= state->mouseLeft-curx;
             state->currentBase -= state->mouseBase-cury;
             *resizeNeeded = true; // TODO only if current size changes
             glfwSetWindowPos(state->openState->window,state->currentLeft,state->currentBase); // TODO only if current pos changed
             glfwSetWindowSize(state->openState->window,state->currentWidth,state->currentHeight); // TODO only if current size changed
-            }},[](){vulkanSafe();});}
+            // } else {
+            // std::cerr << "(" << winx << "==" << state->currentLeft << "&&" << winy << "==" << state->currentBase << ")" << std::endl;}
+            },[](){vulkanSafe();});}
     [](VkSwapchainKHR swap, VkQueue present, uint32_t index, bool *resized){
         VkPresentInfoKHR info{};
         info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
