@@ -29,6 +29,7 @@ struct OpenState;
 struct PhysicalState;
 struct DeviceState;
 struct SwapState;
+struct ShareState;
 struct ThreadState;
 struct QueueState;
 struct MainState {
@@ -37,20 +38,6 @@ struct MainState {
     std::deque<int> keyPressed;
     bool manipReact[Reacts];
     bool manipAction[Actions];
-    double mouseLeft;
-    double mouseBase;
-    double mouseAngle;
-    double cursorLeft;
-    double cursorBase;
-    double cursorAngle;
-    int windowLeft;
-    int windowBase;
-    int windowWidth;
-    int windowHeight;
-    int currentLeft;
-    int currentBase;
-    int currentWidth;
-    int currentHeight;
     int paramFollow;
     int paramModify;
     int paramIndex;
@@ -69,6 +56,7 @@ struct MainState {
     PhysicalState* physicalState;
     DeviceState* logicalState;
     SwapState *swapState;
+    ShareState *shareState;
     ThreadState *threadState;
     QueueState* queueState;
     int registerDone;
@@ -800,13 +788,12 @@ struct SwapState {
     }
 };
 
-void vulkanSafe();
-struct SemState {
+struct SafeState {
     sem_t semaphore;
-    SemState() {
+    SafeState() {
         if (sem_init(&semaphore, 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");
     }
-    ~SemState() {
+    ~SafeState() {
         if (sem_destroy(&semaphore) != 0) {
         std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
     }
@@ -827,12 +814,57 @@ struct SemState {
         return sval;
     }
 };
+
+struct MouseState {
+    bool moved;
+    double left;
+    double base;
+    double angle;
+};
+
+struct WindowState {
+    bool moved;
+    int left;
+    int base;
+    int width;
+    int height;
+};
+
+struct ShareState {
+    SafeState call;
+    SafeState block;
+    MouseState mouse;
+    WindowState window;
+    void wait(std::function<void()> given) {
+        call.wait(); block.wait(); call.post(); given(); block.post();
+    }
+    void call(std::function<void()> given, std::function<void()> wake) {
+        call.wait(); if (!block.trywait()) {wake(); block.wait();}
+        given(); call.post(); block.post();
+    }
+    void call(std::function<void()> given) {
+        call.wait(); given(); call.post();
+    }
+    void get(std::function<void(MouseState mouse)> given) {
+        call([mouse](){given(mouse);});
+    }
+    void set(MouseState given) {
+        call([this](){mouse = given;});
+    }
+    void get(std::function<void(WindowState window)> given) {
+        call([window](){given(window);});
+    }
+    void set(WindowState given) {
+        call([this](){window = given;});
+    }
+};
+
+void vulkanSafe();
 struct ThreadState {
     VkDevice device;
-    SemState protect;
-    SemState semaphore;
-    SemState glfwcall;
-    SemState glfwblock;
+    SafeState protect;
+    SafeState semaphore;
+    ShareState *glfw;
     pthread_t thread;
     bool finish;
     bool repeat;
@@ -906,16 +938,6 @@ struct ThreadState {
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
-    void wait(std::function<void()> given) {
-        glfwcall.wait(); glfwblock.wait(); glfwcall.post(); given(); glfwblock.post();
-    }
-    void call(std::function<void()> given, std::function<void()> wake) {
-        glfwcall.wait(); if (!glfwblock.trywait()) {wake(); glfwblock.wait();}
-        given(); glfwcall.post(); glfwblock.post();
-    }
-    void call(std::function<void()> given) {
-        glfwcall.wait(); given(); glfwcall.post();
-    }
     bool clear(int given) {
         if (protect.trywait()) throw std::runtime_error("protect not held!");
         return (lookup.find(given) == lookup.end());
@@ -959,17 +981,6 @@ struct ThreadState {
         return push([this,given,last](int temp){what.push_back(temp); when.push_back(last);
         where.push_back(0); preset.push_back(given);});}
 };
-void vulkanGlfw(GLFWwindow* window, struct MainState *state)
-{
-    state->threadState->call([window,state](){
-    glfwGetCursorPos(window,&state->cursorLeft,&state->cursorBase);
-    state->mouseLeft = state->cursorLeft; state->mouseBase = state->cursorBase; state->mouseAngle = 0.0;
-    glfwGetWindowPos(window,&state->currentLeft,&state->currentBase);
-    state->windowLeft = state->currentLeft; state->windowBase = state->currentBase;
-    glfwGetWindowSize(window,&state->currentWidth,&state->currentHeight);
-    state->windowWidth = state->currentWidth; state->windowHeight = state->currentHeight;});
-    std::cerr << "glfw " << state->windowWidth << " " << state->windowHeight << std::endl;
-}
 
 struct TempState {
     int seqnum;
@@ -1236,6 +1247,8 @@ struct BufferState {
     void *mapped;
     VkCommandBuffer command;
     VkFence fence;
+    WindowStruct window;
+    bool moved;
 BufferState(MainState *state, int size, WrapTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
@@ -1637,6 +1650,7 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
     vkDestroyPipelineLayout(device, layout, nullptr);
     vkDestroyDescriptorSetLayout(device, dlayout, nullptr);}
 };
+
 struct DrawState {
     VkDevice device;
     VkQueue graphic;
@@ -1647,6 +1661,7 @@ struct DrawState {
     VkCommandBuffer command;
     VkFence fence;
     uint32_t index;
+    WindowState window;
     MainState *state;
     PipelineState* pipeline;
     // interpret size as type of pipeline
@@ -1788,6 +1803,17 @@ void setup(bool *resizeNeeded) {
 }
 };
 
+void vulkanGlfw(GLFWwindow* window, struct MainState *state)
+{
+    state->threadState->call([window,state](){
+    glfwGetCursorPos(window,&state->cursorLeft,&state->cursorBase);
+    state->mouseLeft = state->cursorLeft; state->mouseBase = state->cursorBase; state->mouseAngle = 0.0;
+    glfwGetWindowPos(window,&state->currentLeft,&state->currentBase);
+    state->windowLeft = state->currentLeft; state->windowBase = state->currentBase;
+    glfwGetWindowSize(window,&state->currentWidth,&state->currentHeight);
+    state->windowWidth = state->currentWidth; state->windowHeight = state->currentHeight;});
+    std::cerr << "glfw " << state->windowWidth << " " << state->windowHeight << std::endl;
+}
 void vulkanExtent()
 {
     if (mainState.resizeNeeded) {
