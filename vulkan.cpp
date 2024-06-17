@@ -33,11 +33,6 @@ struct ShareState;
 struct ThreadState;
 struct QueueState;
 struct MainState {
-    bool resizeNeeded;
-    bool escapeEnter;
-    std::deque<int> keyPressed;
-    bool manipReact[Reacts];
-    bool manipAction[Actions];
     int paramFollow;
     int paramModify;
     int paramIndex;
@@ -71,24 +66,6 @@ struct MainState {
     const bool enable = true;
     #endif
 } mainState = {
-    .resizeNeeded = true,
-    .escapeEnter = false,
-    .manipReact = {0},
-    .manipAction = {0},
-    .mouseLeft = 0.0,
-    .mouseBase = 0.0,
-    .mouseAngle = 0.0,
-    .cursorLeft = 0.0,
-    .cursorBase = 0.0,
-    .cursorAngle = 0.0,
-    .windowLeft = 0,
-    .windowBase = 0,
-    .windowWidth = 800,
-    .windowHeight = 800,
-    .currentLeft = 0,
-    .currentBase = 0,
-    .currentWidth = 800,
-    .currentHeight = 800,
     .paramFollow = 0,
     .paramModify = 0,
     .paramIndex = 0,
@@ -110,6 +87,123 @@ struct MainState {
     .threadState = 0,
     .queueState = 0,
     .registerDone = 0,
+};
+
+struct SafeState {
+    sem_t semaphore;
+    SafeState() {
+        if (sem_init(&semaphore, 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");
+    }
+    ~SafeState() {
+        if (sem_destroy(&semaphore) != 0) {
+        std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
+    }
+    void wait() {
+        if (sem_wait(&semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
+    }
+    void post() {
+        if (sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+    }
+    bool trywait() {
+        int tryval = sem_trywait(&semaphore);
+        if (tryval != 0 && errno != EAGAIN) throw std::runtime_error("cannot trywait for semaphore!");
+        return (tryval == 0);
+    }
+    int get() {
+        int sval;
+        if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
+        return sval;
+    }
+};
+
+struct MouseState {
+    bool moved;
+    double left;
+    double base;
+    double angle;
+    MouseState() {
+        moved = false;
+        Left = 0.0;
+        Base = 0.0;
+        Angle = 0.0;
+    }
+};
+
+struct WindowState {
+    bool moved;
+    bool sized;
+    int left;
+    int base;
+    int width;
+    int height;
+    WindowState() {
+        moved = false;
+        sized = false;
+        Left = 0;
+        Base = 0;
+        Width = 800;
+        Height = 800;
+    }
+};
+
+void vulkanSafe();
+struct ShareState {
+    SafeState call;
+    SafeState block;
+    MouseState mouse;
+    WindowState window;
+    std::deque<int> keyPressed;
+    bool escapeEnter;
+    bool resizeNeeded;
+    bool manipReact[Reacts];
+    bool manipAction[Actions];
+    ShareState() {
+        escapeEnter = false;
+        resizeNeeded = true;
+        manipReact = {0};
+        manipAction = {0};
+    }
+    void wait(std::function<void()> given) {
+        call.wait(); block.wait(); call.post(); given(); block.post();
+    }
+    void call(std::function<void()> given, std::function<void()> wake) {
+        call.wait(); if (!block.trywait()) {wake(); block.wait();}
+        given(); call.post(); block.post();
+    }
+    void call(std::function<void()> given) {
+        call.wait(); given(); call.post();
+    }
+    void get(std::function<void(MouseState mouse)> given) {
+        call([mouse](){given(mouse);});
+    }
+    void set(MouseState given) {
+        call([this](){mouse = given;});
+    }
+    void get(std::function<void(WindowState window)> given) {
+        call([window](){given(window);});
+    }
+    void set(WindowState given) {
+        call([this](){window = given;});
+    }
+    void set(double xpos, double ypos) {
+    // if (state->manipReact[Apply] &&
+        // (state->manipAction[North] || state->manipAction[East] ||
+        // state->manipAction[South] || state->manipAction[West])) {
+        // current cursor | window mouse
+            // TODO in BufferState setup, use share instead of glfwGet
+            // int winx, winy; glfwGetWindowPos(state->openState->window,&winx,&winy);
+            // double curx, cury; glfwGetCursorPos(state->openState->window,&curx,&cury);
+            // state->currentLeft += curx-state->mouseLeft;
+            // state->currentBase += cury-state->mouseBase;
+            // }
+    }
+    void safe(GLFWwindow *window, WindowState *current) {
+        call([this,window,current](){
+        if (current->moved) glfwSetWindowPos(window,current->left,current->base);
+        if (current->sized) glfwSetWindowSize(window,current->width,current->height);
+        if (current->sized) resizeNeeded = true;
+        },[](){vulkanSafe();});
+    }
 };
 
 GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
@@ -788,83 +882,10 @@ struct SwapState {
     }
 };
 
-struct SafeState {
-    sem_t semaphore;
-    SafeState() {
-        if (sem_init(&semaphore, 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");
-    }
-    ~SafeState() {
-        if (sem_destroy(&semaphore) != 0) {
-        std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
-    }
-    void wait() {
-        if (sem_wait(&semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
-    }
-    void post() {
-        if (sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-    }
-    bool trywait() {
-        int tryval = sem_trywait(&semaphore);
-        if (tryval != 0 && errno != EAGAIN) throw std::runtime_error("cannot trywait for semaphore!");
-        return (tryval == 0);
-    }
-    int get() {
-        int sval;
-        if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
-        return sval;
-    }
-};
-
-struct MouseState {
-    bool moved;
-    double left;
-    double base;
-    double angle;
-};
-
-struct WindowState {
-    bool moved;
-    int left;
-    int base;
-    int width;
-    int height;
-};
-
-struct ShareState {
-    SafeState call;
-    SafeState block;
-    MouseState mouse;
-    WindowState window;
-    void wait(std::function<void()> given) {
-        call.wait(); block.wait(); call.post(); given(); block.post();
-    }
-    void call(std::function<void()> given, std::function<void()> wake) {
-        call.wait(); if (!block.trywait()) {wake(); block.wait();}
-        given(); call.post(); block.post();
-    }
-    void call(std::function<void()> given) {
-        call.wait(); given(); call.post();
-    }
-    void get(std::function<void(MouseState mouse)> given) {
-        call([mouse](){given(mouse);});
-    }
-    void set(MouseState given) {
-        call([this](){mouse = given;});
-    }
-    void get(std::function<void(WindowState window)> given) {
-        call([window](){given(window);});
-    }
-    void set(WindowState given) {
-        call([this](){window = given;});
-    }
-};
-
-void vulkanSafe();
 struct ThreadState {
     VkDevice device;
     SafeState protect;
     SafeState semaphore;
-    ShareState *glfw;
     pthread_t thread;
     bool finish;
     bool repeat;
@@ -1661,7 +1682,7 @@ struct DrawState {
     VkCommandBuffer command;
     VkFence fence;
     uint32_t index;
-    WindowState window;
+    WindowState *window;
     MainState *state;
     PipelineState* pipeline;
     // interpret size as type of pipeline
@@ -1672,6 +1693,7 @@ DrawState(MainState *state, int size, WrapTag tag) {
     this->present = logical->present;
     this->render = logical->render;
     this->pool = logical->pool;
+    this->window = 0;
     this->state = state;
     // for now let CompTag use fragment stage same as DrawBuf, except with queueState that includes QueryTag
     this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState);}
@@ -1769,25 +1791,9 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
             throw std::runtime_error("failed to submit draw command buffer!");
     }(graphic,command,fence,available);
     return fence;}
-void setup(bool *resizeNeeded) {
-    // TODO get window pos and size from what used for bound buffer
-    if (state->manipReact[Apply] &&
-        (state->manipAction[North] || state->manipAction[East] ||
-        state->manipAction[South] || state->manipAction[West])) {
-        // current cursor | window mouse
-        state->threadState->call([this,resizeNeeded](){
-            int winx, winy; glfwGetWindowPos(state->openState->window,&winx,&winy);
-            double curx, cury; glfwGetCursorPos(state->openState->window,&curx,&cury);
-            // if ((winx == state->currentLeft && winy == state->currentBase)) {
-            state->currentLeft -= state->mouseLeft-curx;
-            state->currentBase -= state->mouseBase-cury;
-            *resizeNeeded = true; // TODO only if current size changes
-            glfwSetWindowPos(state->openState->window,state->currentLeft,state->currentBase); // TODO only if current pos changed
-            glfwSetWindowSize(state->openState->window,state->currentWidth,state->currentHeight); // TODO only if current size changed
-            // } else {
-            // std::cerr << "(" << winx << "==" << state->currentLeft << "&&" << winy << "==" << state->currentBase << ")" << std::endl;}
-            },[](){vulkanSafe();});}
-    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, bool *resized){
+void setup() {
+    if (window) {share->safe(state->openState->window,window); window = 0;}
+    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, ShareState *share){
         VkPresentInfoKHR info{};
         info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         info.waitSemaphoreCount = 0;
@@ -1796,11 +1802,12 @@ void setup(bool *resizeNeeded) {
         info.pSwapchains = swaps;
         info.pImageIndices = &index;
         VkResult result = vkQueuePresentKHR(present, &info);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) *resized = true;
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) share->set();
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }(state->swapState->swap,present,index,resizeNeeded);
-}
+    }(state->swapState->swap,present,index,share);}
+void bind(struct WindowState *window) {
+    this->window = window;}
 };
 
 void vulkanGlfw(GLFWwindow* window, struct MainState *state)
@@ -1920,7 +1927,7 @@ void vulkanDraw(enum Micro shader, int base, int limit)
 {
     QueueState *queue = mainState.queueState;
     TempState *temp = &queue->tempState;
-    std::vector<BufferState*> buffer;
+    std::vector<BufferState*> buffer; WindowState *window = 0;
     std::vector<WrapState<BufferState>*> *bindBuffer = queue->bindBuffer+shader;
     std::vector<WrapState<BufferState>*> *queryBuffer = queue->queryBuffer+shader;
     WrapState<DrawState> *draw = queue->drawQueue[shader];
@@ -1933,10 +1940,13 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     (*i)->set(); (*i)->put(); (*i)->seq(draw->sep());} else {
     (*i)->tmp(draw->tmp()); (*i)->set();}}
     for (auto i = bindBuffer->begin(); i != bindBuffer->end(); i++) {
-    buffer.push_back((*i)->get(draw->tmp()));}
+    BufferState *ptr = (*i)->get(draw->tmp());
+    if (ptr->window) window = &ptr->window;
+    buffer.push_back(ptr);}
     draw->set(shader); mainState.registerDone++;
     std::function<bool()> done = draw->set((std::function<VkFence(DrawState*)>)[buffer,base,limit](DrawState*draw){
     return draw->setup(buffer,base,limit,&mainState.resizeNeeded);}); draw->seq(done);
+    if (window) draw->bind(window);
     draw->set((std::function<void(DrawState*)>)[](DrawState*draw){draw->setup(&mainState.resizeNeeded);}); draw->put();
     for (auto i = queryBuffer->begin(); i != queryBuffer->end(); i++) {
     if (Component__Micro__MicroOn(shader) == CoPyon) {
