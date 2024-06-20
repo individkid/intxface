@@ -243,8 +243,6 @@ void debugStop(const char *str) {
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->mouseMove.left -= xpos-mainState->windowMove.left;
-    mainState->mouseMove.base -= xpos-mainState->windowMove.base;
     mainState->windowMove.left = xpos; mainState->windowMove.base = ypos;
 }
 void windowSized(GLFWwindow* window, int width, int height)
@@ -272,8 +270,8 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     if (action != GLFW_PRESS) return;
-    mainState->windowClick = mainState->windowMove;
-    mainState->mouseClick = mainState->mouseMove;
+    mainState->windowCopy = mainState->windowClick = mainState->windowMove;
+    mainState->mouseCopy = mainState->mouseClick = mainState->mouseMove;
     if (mainState->manipReact[Clicked]) planeSafe(Threads,Waits,CursorClick);
     if (mainState->manipReact[Changed]) manipReact(mainState,-1);
 }
@@ -383,7 +381,7 @@ struct OpenState {
     VkSurfaceKHR surface;
     OpenState(VkInstance instance, int width, int height, void *ptr) {
         struct MainState *mainState = (struct MainState *)ptr;
-        int32_t left, base, workx, worky;
+        int32_t left, base, workx, worky, sizx, sizy;
         double posx, posy;
         this->instance = instance;
         window = [](int width, int height) {
@@ -398,7 +396,6 @@ struct OpenState {
         glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
         left += (workx-width)/2; base += (worky-height)/2;
         glfwSetWindowPos(window,left,base);
-        glfwSetWindowSize(window,width,height);
         glfwSetWindowUserPointer(window, ptr);
         glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetKeyCallback(window, keyPressed);
@@ -876,17 +873,11 @@ struct ThreadState {
     }
     ~ThreadState() {
     // this destructed to wait for device idle
-        if (sem_wait(&protect.semaphore) != 0) {
-            std::cerr << "cannot wait for protect!" << std::endl;
-            std::terminate();}
+        if (sem_wait(&protect.semaphore) != 0) {std::cerr << "cannot wait for protect!" << std::endl; std::terminate();}
         finish = true;
-        if (sem_post(&protect.semaphore) != 0) {
-            std::cerr << "cannot post to protect!" << std::endl;
-            std::terminate();}
+        if (sem_post(&protect.semaphore) != 0) {std::cerr << "cannot post to protect!" << std::endl; std::terminate();}
         if (sem_post(&semaphore.semaphore) != 0 ||
-            pthread_join(thread,0) != 0) {
-            std::cerr << "failed to join thread!" << std::endl;
-            std::terminate();}
+            pthread_join(thread,0) != 0) {std::cerr << "failed to join thread!" << std::endl; std::terminate();}
     }
     static void *separate(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
@@ -1387,8 +1378,10 @@ VkFence getup() {
     return fence;}
 void bind(int loc, int siz, const void *ptr, std::function<void()> dat) {
     this->loc = loc; this->siz = siz; this->ptr = ptr; this->dat = dat;}
-void bind(WindowState copied, bool moved, bool sized) {
-    if (moved || sized) this->copied = copied; this->moved = moved; this->sized = sized;}
+void bind(WindowState copied) {
+    this->moved = (this->copied.left != copied.left || this->copied.base != copied.base);
+    this->sized = (this->copied.width != copied.width || this->copied.height != copied.height);
+    this->copied = copied;}
 void bind(std::function<void(WindowState copied, bool moved, bool sized)> bind) {
     if (moved || sized) bind(copied,moved,sized); moved = sized = false;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
@@ -1496,9 +1489,7 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
             throw std::runtime_error("failed to create shader module!");
         return shaderModule;} (device,[](const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) {
-        std::cerr << "vulkan: cannot load library: " << filename << std::endl;
-        throw std::runtime_error("failed to open file!");}
+        if (!file.is_open()) throw std::runtime_error("failed to open file!");
         size_t fileSize = (size_t) file.tellg();
         std::vector<char> buffer(fileSize);
         file.seekg(0); file.read(buffer.data(), fileSize); file.close();
@@ -1523,9 +1514,7 @@ PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micr
             throw std::runtime_error("failed to create shader module!");
         return shaderModule;} (device,[](const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) {
-        std::cerr << "vulkan: cannot load library: " << filename << std::endl;
-        throw std::runtime_error("failed to open file!");}
+        if (!file.is_open()) throw std::runtime_error("failed to open file!");
         size_t fileSize = (size_t) file.tellg();
         std::vector<char> buffer(fileSize);
         file.seekg(0); file.read(buffer.data(), fileSize); file.close();
@@ -1654,7 +1643,7 @@ struct DrawState {
     VkCommandBuffer command;
     VkFence fence;
     uint32_t index;
-    SwapState *swap;
+    std::function<SwapState*()> swap;
     GlfwState *glfw;
     PipelineState* pipeline;
     WindowState copied; bool moved, sized;
@@ -1665,7 +1654,7 @@ DrawState(MainState *state, int size, WrapTag tag) {
     this->present = logical->present;
     this->render = logical->render;
     this->pool = logical->pool;
-    this->swap = state->swapState;
+    this->swap = [state](){return state->swapState;};
     this->glfw = state->glfwState;
     this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size,state->queueState);
     moved = sized = false;}
@@ -1703,7 +1692,7 @@ void init() {
     delete pipeline;}
 // TODO use bind captured members instead of lambda captured parameters
 VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t limit) {
-    VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
+    VkResult result = vkAcquireNextImageKHR(device, swap()->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {glfw->call(); std::cerr << "out of date" << std::endl;}
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -1726,7 +1715,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
         info.clearValueCount = 1;
         info.pClearValues = &clearColor;
         vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
-    } (render,swap->framebuffers[index],swap->extent,command);
+    } (render,swap()->framebuffers[index],swap()->extent,command);
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkViewport info{};
@@ -1734,12 +1723,12 @@ VkFence setup(const std::vector<BufferState*> &buffer, uint32_t base, uint32_t l
         info.width = (float) extent.width;
         info.height = (float) extent.height;
         info.minDepth = 0.0f; info.maxDepth = 1.0f;
-        vkCmdSetViewport(command, 0, 1, &info);}(swap->extent,command);
+        vkCmdSetViewport(command, 0, 1, &info);}(swap()->extent,command);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = extent;
-        vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
+        vkCmdSetScissor(command, 0, 1, &scissor);}(swap()->extent,command);
     int count = 0; for (int i = 0; i < buffer.size(); i++) {
         buffer[i]->bind([this](WindowState copied, bool moved, bool sized){bind(copied,moved,sized);});
         if (buffer[i]->bind(count,command,pipeline->descriptor)) count++;}
@@ -1779,7 +1768,7 @@ void setup() {
         if (result == VK_ERROR_OUT_OF_DATE_KHR) glfw->call();
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
-    }(swap->swap,present,index,glfw);}
+    }(swap()->swap,present,index,glfw);}
 void bind(WindowState copied, bool moved, bool sized) {
     this->copied = copied; this->moved = moved; this->sized = sized;}
 };
@@ -1923,11 +1912,13 @@ void vulkanFollow(int loc, int siz, float *mat, std::function<void()> dat)
     if (mainState.manipReact[Apply] &&
         mainState.manipAction[North] && mainState.manipAction[East] &&
         mainState.manipAction[South] && mainState.manipAction[West]) {
-        int xpos = mainState.mouseMove.left; int ypos = mainState.mouseMove.base;
-        int xofs = xpos-mainState.mouseCopy.left; int yofs = ypos-mainState.mouseCopy.base;
+        int xpos = mainState.mouseMove.left;
+        int ypos = mainState.mouseMove.base;
+        int xofs = xpos-mainState.mouseCopy.left;
+        int yofs = ypos-mainState.mouseCopy.base;
         mainState.windowCopy.left += xofs; mainState.windowCopy.base += yofs;
         mainState.mouseCopy.left = xpos; mainState.mouseCopy.base = ypos;
-        if (xofs || yofs) bufferQueue->buf().first->bind(mainState.windowCopy,true,false);}
+        bufferQueue->buf().first->bind(mainState.windowCopy);}
     vulkanModify(loc,siz,mat,dat);
 }
 void vulkanDirect(float left, float base, float angle, int index)
