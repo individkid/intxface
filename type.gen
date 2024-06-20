@@ -81,6 +81,7 @@ Configure = {
 	"ResultType", -- type of eval result
 	"OriginLeft", -- starting cursor
 	"OriginBase", --
+	"OriginAngle", --
 	"CursorLeft", -- user input mouse
 	"CursorBase", --
 	"CursorIndex", -- manipulate plane select
