@@ -923,25 +923,22 @@ end
 function showConstantCF(name,sub,list)
 	local result = name
 	local last = nil
-	if k == #list then
-		return list[#list]
-	end
 	for k,v in ipairs(list) do
 		if last then
 			if k < sub and sub < #list then
-				result = result.."_"..string.gsub(v,"[ ():]","_")
+				result = result.."__"..string.gsub(v,"[ ():]","_")
 			elseif k == sub and sub == #list and last == "Str" then
 				result = "\""..v.."\""
 			elseif k == sub and sub == #list and last == "Int" then
 				result = "(int)"..v
 			elseif k == sub and sub == #list then
 				result = v
-			elseif k == sub then
-				result = result.."__"..last
-			elseif k == (sub+2) then
-				result = result.."__"..last
+			-- elseif k == sub then
+			-- 	result = result.."__"..last
+			-- elseif k == (sub+2) then
+			-- 	result = result.."__"..last
 			else
-				result = result.."_"..last
+				result = result.."__"..last
 			end
 			last = nil
 		else
@@ -995,7 +992,9 @@ function showConstantC(name,constant)
 				local gunc = showConstantCF(name,k+2,val) -- gunc is return value
 				local args = showConstantCG(k,val) -- args are argument types
 				-- io.stderr:write("func "..func.." v "..v.." gunc "..gunc.." k "..k.."/"..#val.."\n")
-				if not arguments[func] then arguments[func] = args end
+				if not arguments[func] then
+				arguments[func] = args
+				end
 				if not mapping[func] then mapping[func] = {} end
 				mapping[func][v] = gunc
 				last = nil
@@ -1008,10 +1007,8 @@ function showConstantC(name,constant)
 		local declare = key.." ("
 		-- result = result.."func "..key.."(_ arg: "
 		for k,v in ipairs(val) do
-			-- io.stderr:write("k "..k.."/"..#val.." v "..v.."\n")
 			if k == #val then
 				declare = v.." "..declare
-				-- io.stderr:write("declare "..declare.."\n")
 				if prototype then
 					result = result..declare..";\n"
 				else

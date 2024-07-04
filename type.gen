@@ -60,6 +60,8 @@ Configure = {
 	"PierceIndex", --
 	"StringSize", -- queue of strings
 	"MachineSize", -- vending machine lines
+	"LittleSize", -- machine size
+	"LittleIndex", -- where in machine
 	"ParamFollow", -- pass to dma
 	"ParamModify", --
 	"ParamMicro", -- pass to draw
@@ -68,8 +70,6 @@ Configure = {
 	"ParamDetect", --
 	"ParamBase", --
 	"ParamLimit", --
-	"LittleSize", -- machine size
-	"LittleIndex", -- where in machine
 	"ManipReact", -- block or behave
 	"ManipAction", -- what to do
 	"ManipFixed", -- how to do
@@ -82,9 +82,9 @@ Configure = {
 	"OriginLeft", -- starting cursor
 	"OriginBase", --
 	"OriginAngle", --
+	"CursorIndex", -- manipulate plane select
 	"CursorLeft", -- user input mouse
 	"CursorBase", --
-	"CursorIndex", -- manipulate plane select
 	"CursorAngle", -- user input roller
 	"CursorClick", -- user input button
 	"CursorPress", -- user input keyboard
@@ -123,6 +123,7 @@ Transfer = {
 	"Disp", -- conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 	"Copy", -- dma to cpu or gpu
 	"Draw", -- start shader
+	"Atom", -- call react
 	"Name", -- function for call
 	"Jump", -- skip if true
 	"Goto", -- jump if true
@@ -140,12 +141,16 @@ React = { -- when updates happen
 	"Clicked", -- whether to enque mouse clicked
 	"Pressed", -- whether to enque key pressed
 	"Repeat", -- whether to enque fence done
-	"Follow", -- put window matrix on wake
-	"Modify", -- put transform matrix on wake
-	"Direct", -- put uniform fields on wake
-	"Display", -- enque display shader on wake
-	"Brighten", -- enque facet index shader on wake
-	"Detect", -- enque pierce point shader on wake
+	"Needed", -- find bind start needed on wake
+	"Extent", -- bind window and swap on wake
+	"Follow", -- bind window matrix on wake
+	"Modify", -- bind transform matrix on wake
+	"Direct", -- bind uniform fields on wake
+	"Display", -- start display shader on wake
+	"Brighten", -- start facet index shader on wake
+	"Detect", -- start pierce point shader on wake
+	"Query", -- search through pierce on wake
+	"Ready", -- present search result on wake
 }
 Action = { -- what input does
 	"North", -- window edge fixed
@@ -196,6 +201,14 @@ Micro = {
 	"MicroCRRC", -- index transform alias
 	"MicroCPDP", -- index construct planes
 	"MicroCCDP", -- index intersect points
+}
+WrapTag = {
+	"FetchBuf",
+	"ChangeBuf",
+	"StoreBuf",
+	"QueryBuf",
+	"DrawBuf",
+	"SwapBuf",
 }
 Wait = {
 	"Start",
@@ -339,6 +352,66 @@ Component = {
 	{"Micro","MicroCRRC","MicroOn","Caryon"},
 	{"Micro","MicroCPDP","MicroOn","CoPyon"},
 	{"Micro","MicroCCDP","MicroOn","CoPyon"},
+}
+VertexG = {
+	{"Micro","MicroPRPC","Str","vertexPracticeG"},
+	{"Micro","MicroPRCP","Str","vertexPracticeG"},
+	{"Micro","MicroPRRC","Str","vertexPracticeG"},
+	{"Micro","MicroCRPC","Str","vertexRasterG"},
+	{"Micro","MicroCRCP","Str","vertexRasterG"},
+	{"Micro","MicroCRRC","Str","vertexRasterG"},
+	{"Micro","MicroCPDP","Str","vertexCopointG"},
+	{"Micro","MicroCCDP","Str","vertexCoplaneG"},
+}
+FragmentG = {
+	{"Micro","MicroPRPC","Str","fragmentComputeG"},
+	{"Micro","MicroPRCP","Str","fragmentDisplayG"},
+	{"Micro","MicroPRRC","Str","fragmentComputeG"},
+	{"Micro","MicroCRPC","Str","fragmentComputeG"},
+	{"Micro","MicroCRCP","Str","fragmentDisplayG"},
+	{"Micro","MicroCRRC","Str","fragmentComputeG"},
+	{"Micro","MicroCPDP","Str","fragmentDisplayG"},
+	{"Micro","MicroCCDP","Str","fragmentDisplayG"},
+}
+TypeQ = {
+	{"Memory","Trianglez","WrapTag","StoreBuf"},
+	{"Memory","Numericz","WrapTag","StoreBuf"},
+    {"Memory","Vertexz","WrapTag","FetchBuf"},
+	{"Memory","Basisz","WrapTag","StoreBuf"},
+    {"Memory","Matrixz","WrapTag","ChangeBuf"},
+	{"Memory","Uniformz","WrapTag","ChangeBuf"},
+    {"Memory","Indexz","WrapTag","QueryBuf"},
+    {"Memory","Piercez","WrapTag","QueryBuf"},
+	{"Memory","Stackz","WrapTag","WrapTags"},
+	{"Memory","Machinez","WrapTag","WrapTags"},
+	{"Memory","Littlez","WrapTag","WrapTags"},
+	{"Memory","Configurez","WrapTag","WrapTags"},
+}
+BindQ = {
+	{"Micro","MicroPRPC","Int","0","Memory","Vertexz"},
+	{"Micro","MicroPRPC","Int","1","Memory","Matrixz"},
+	{"Micro","MicroPRPC","Int","2","Memory","Memorys"},
+	{"Micro","MicroPRCP","Int","0","Memory","Memorys"},
+	{"Micro","MicroPRRC","Int","0","Memory","Vertexz"},
+	{"Micro","MicroPRRC","Int","1","Memory","Matrixz"},
+	{"Micro","MicroPRRC","Int","2","Memory","Indexz"},
+	{"Micro","MicroPRRC","Int","3","Memory","Memorys"},
+	{"Micro","MicroCRPC","Int","0","Memory","Memorys"},
+	{"Micro","MicroCRCP","Int","0","Memory","Memorys"},
+	{"Micro","MicroCRRC","Int","0","Memory","Memorys"},
+	{"Micro","MicroCPDP","Int","0","Memory","Memorys"},
+	{"Micro","MicroCCDP","Int","0","Memory","Memorys"},
+}
+QueryQ = {
+	{"Micro","MicroPRPC","Int","0","Memory","Memorys"},
+	{"Micro","MicroPRCP","Int","0","Memory","Memorys"},
+	{"Micro","MicroPRRC","Int","0","Memory","Indexz"},
+	{"Micro","MicroPRRC","Int","1","Memory","Memorys"},
+	{"Micro","MicroCRPC","Int","0","Memory","Memorys"},
+	{"Micro","MicroCRCP","Int","0","Memory","Memorys"},
+	{"Micro","MicroCRRC","Int","0","Memory","Memorys"},
+	{"Micro","MicroCPDP","Int","0","Memory","Memorys"},
+	{"Micro","MicroCCDP","Int","0","Memory","Memorys"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:5".. -- assign to configuration
@@ -656,6 +729,7 @@ Machine = {
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"num"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
+	{"arg","Configure",{["xfr"]={["Atom"]=true}},{}},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 	{"str","Str",{["xfr"]={["Name"]=true}},{}},
 }
