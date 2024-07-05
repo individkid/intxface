@@ -251,8 +251,6 @@ void planeStage(enum Configure cfg)
 	case (NormalLeft): configure[NormalLeft] = planePierce()->nml[0]; break;
 	case (NormalBase): configure[NormalBase] = planePierce()->nml[1]; break;
 	case (NormalNear): configure[NormalNear] = planePierce()->nml[2]; break;
-	case (OriginLeft): configure[OriginLeft] = callInfo(OriginLeft); break;
-	case (OriginBase): configure[OriginBase] = callInfo(OriginBase); break;
 	case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
 	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
 	case (CursorAngle): configure[CursorAngle] = callInfo(CursorAngle); break;

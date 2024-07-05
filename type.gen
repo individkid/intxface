@@ -79,15 +79,16 @@ Configure = {
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
-	"OriginLeft", -- starting cursor
-	"OriginBase", --
-	"OriginAngle", --
+	"CursorRead", -- which cursor read
+	"CursorWrite", -- which cursor written
 	"CursorIndex", -- manipulate plane select
 	"CursorLeft", -- user input mouse
 	"CursorBase", --
 	"CursorAngle", -- user input roller
 	"CursorClick", -- user input button
 	"CursorPress", -- user input keyboard
+	"WindowRead", -- which window read
+	"WindowWrite", -- which window written
 	"WindowLeft", -- window position
 	"WindowBase", --
 	"WindowWidth", -- window size
@@ -131,6 +132,11 @@ Transfer = {
 	"Eval", -- call datxEval
 	"Echo", -- copy result to center
 	"Hide", -- pop hide and use
+}
+Enact = { -- configure enum interpretation
+	"Infect", -- changed by callback
+	"Affect", -- changed infrequently
+	"Effect", -- used for display
 }
 React = { -- when updates happen
 	"Poll", -- whether to sleep for glfw events
