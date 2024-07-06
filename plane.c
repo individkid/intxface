@@ -92,6 +92,90 @@ void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
 
 DECLARE_DEQUE(struct Center *,Centerq)
 
+unsigned char *moveCursor(int dim, int e, int t, int r, int b, int l) {
+    int hot = dim/2;
+    int box = 1;
+    int siz = dim * dim * 4;
+    unsigned char *pixels = malloc(siz);
+    memset(pixels, 0x00, siz);
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        // top and bottom
+        if (k == 0 || k == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
+        // left and right
+        if (j == 0 || j == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
+        // close box
+        if (k == hot-(box+1) && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot-(box+1) && k >= hot-box && k <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        if (k == hot+(box+1) && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot+(box+1) && k >= hot-box && k <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        // open box
+        if (e && k >= hot-box && k <= hot+box && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
+        // cross marks
+        if (t && k < hot-box && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (r && j > hot+box && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (b && k > hot+box && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (l && j < hot-box && k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
+    return pixels;
+}
+unsigned char *rotateCursor(int e) {
+    int dim = 11;
+    int hot = dim/2;
+    int siz = dim * dim * 4;
+    unsigned char *pixels = malloc(siz);
+    memset(pixels, 0x00, siz);
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        int diffx = j-hot;
+        int diffy = k-hot;
+        int exact = hot*hot;
+        int square = diffx*diffx + diffy*diffy;
+        int center = k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1;
+        if (square < exact+5 && !center) pixels[k*dim*4+j*4+i] = 0xff;
+        if (e && center) pixels[k*dim*4+j*4+i] = 0xff;}
+    return pixels;
+}
+unsigned char *translateCursor(int e) {
+    int dim = 11;
+    int hot = dim/2;
+    int siz = dim * dim * 4;
+    unsigned char *pixels = malloc(siz);
+    memset(pixels, 0x00, siz);
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        int diffx = (j>hot?j-hot:hot-j);
+        int diffy = (k>hot?k-hot:hot-k);
+        int sum = diffx + diffy;
+        int center = k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1;
+        if (!center && sum < hot+1) pixels[k*dim*4+j*4+i] = 0xff;
+        if (e && center) pixels[k*dim*4+j*4+i] = 0xff;}
+    return pixels;
+}
+unsigned char *refineCursor() {
+    int dim = 11;
+    int hot = dim/2;
+    int siz = dim * dim * 4;
+    unsigned char *pixels = malloc(siz);
+    memset(pixels, 0x00, siz);
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        int diffx = j-hot;
+        int diffy = k-hot;
+        if (diffx == diffy) pixels[k*dim*4+j*4+i] = 0xff;
+        if (diffx == -diffy) pixels[k*dim*4+j*4+i] = 0xff;
+        if (j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if (k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
+    return pixels;
+}
+unsigned char *sculptCursor(int e) {
+    int dim = 11;
+    int hot = dim/2;
+    int siz = dim * dim * 4;
+    unsigned char *pixels = malloc(siz);
+    memset(pixels, 0x00, siz);
+    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
+        int center = k >= hot-2 && k <= hot+2 && j >= hot-2 && j <= hot+2;
+        if ((e || !center) && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
+        if ((e || !center) && k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
+    return pixels;
+}
+
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 // not all combinations of Effect Fixed Tool are supported.
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,

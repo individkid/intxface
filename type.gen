@@ -75,6 +75,7 @@ Configure = {
 	"ManipActed", -- what has changed
 	"ManipFixed", -- how to do
 	"ManipScope", -- what to transform
+	"ManipReset", -- how to configure
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
 	"ResultLine", -- state of machine
@@ -188,6 +189,13 @@ Fixed = { -- how motion interpreted
 	"Focal",
 	"Ortho",
 	"Normal",
+}
+Reset = {
+	"Passive",
+	"Active",
+	"Minimum",
+	"Medium",
+	"Maximum",
 }
 MicroIn = {
 	"Practice", -- use location for Vertex

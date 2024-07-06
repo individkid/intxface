@@ -24,6 +24,110 @@ extern "C" {
     #include "plane.h"
 }
 
+struct InitState;
+struct OpenState;
+struct PhysicalState;
+struct DeviceState;
+struct ThreadState;
+struct QueueState;
+struct TempState;
+struct GlfwState;
+struct MouseState {
+    double left, base, angle;
+};
+struct WindowState {
+    int left, base, width, height;
+};
+struct MainState {
+    bool escapeEnter;
+    int registerDone;
+    std::deque<int> keyPressed;
+    bool manipReact[Reacts];
+    bool manipAction[Actions];
+    bool manipActed[Acteds];
+    enum Reset manipReset;
+    enum Enact mouseRead, mouseWrite;
+    enum Enact windowRead, windowWrite;
+    MouseState mouseClick, mouseMove, mouseCopy;
+    WindowState windowClick, windowMove, windowCopy;
+    WindowState windowRatio;
+    std::deque<MouseState> queryClick; MouseState queryCopy;
+    std::deque<Pierce> readyClick; Pierce readyCopy;
+    int mouseIndex;
+    int paramFollow;
+    int paramModify;
+    enum Micro paramDisplay;
+    enum Micro paramBrighten;
+    enum Micro paramDetect;
+    int paramBase;
+    int paramLimit;
+    int changedIndex;
+    int changedSize;
+    Little *changedState;
+    int argc;
+    char **argv;
+    InitState *initState;
+    OpenState* openState;
+    PhysicalState* physicalState;
+    DeviceState* logicalState;
+    ThreadState *threadState;
+    TempState *tempState;
+    GlfwState *glfwState;
+    QueueState* queueState;
+    const int MAX_FRAMES_INFLIGHT = 2;
+    const int MAX_BUFFERS_AVAILABLE = 3;
+    const int MAX_FENCES_INFLIGHT = 3;
+    const int MAX_FRAMEBUFFER_SWAPS = 2;
+    const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    const std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
+#ifdef NDEBUG
+    const bool enable = false;
+#else
+    const bool enable = true;
+#endif
+} mainState = {
+    .escapeEnter = false,
+    .registerDone = 0,
+    .manipReact = {0},
+    .manipAction = {0},
+    .manipActed = {0},
+#ifdef PLANRA
+#ifdef REGRESS
+    .manipReset = Passive,
+#else
+    .manipReset = Active,
+#endif
+#endif
+    .mouseClick = {0.0,0.0,0.0},
+    .mouseMove = {0.0,0.0,0.0},
+    .mouseCopy = {0.0,0.0,0.0},
+    .windowClick = {0,0,800,800},
+    .windowMove = {0,0,800,800},
+    .windowCopy = {0,0,800,800},
+    .windowRatio = {1,1,1,1}, // TODO experiment with how to calculate this
+    .mouseIndex = 0,
+    .paramFollow = 0,
+    .paramModify = 0,
+    .paramDisplay = MicroPRPC, // just display
+    .paramBrighten = MicroPRRC, // fill Indexz
+    .paramDetect = MicroPRCP, // retreive Piercez
+    .paramBase = 0,
+    .paramLimit = 0,
+    .changedIndex = 0,
+    .changedSize = 0,
+    .changedState = 0,
+    .argc = 0,
+    .argv = 0,
+    .initState = 0,
+    .openState = 0,
+    .physicalState = 0,
+    .logicalState = 0,
+    .threadState = 0,
+    .tempState = 0,
+    .glfwState = 0,
+    .queueState = 0,
+};
+
 struct SafeState {
     sem_t semaphore;
     SafeState() {
@@ -51,12 +155,6 @@ struct SafeState {
     }
 };
 
-struct MouseState {
-    double left, base, angle;
-};
-struct WindowState {
-    int left, base, width, height;
-};
 void vulkanSafe();
 struct GlfwState {
     SafeState safe;
@@ -119,194 +217,6 @@ struct TempState {
         temp(tag,given);
     }
 };
-
-struct InitState;
-struct OpenState;
-struct PhysicalState;
-struct DeviceState;
-struct ThreadState;
-struct QueueState;
-struct MainState {
-    bool escapeEnter;
-    int registerDone;
-    std::deque<int> keyPressed;
-    bool manipReact[Reacts];
-    bool manipAction[Actions];
-    bool manipActed[Acteds];
-    enum Enact mouseRead, mouseWrite;
-    enum Enact windowRead, windowWrite;
-    MouseState mouseClick, mouseMove, mouseCopy;
-    WindowState windowClick, windowMove, windowCopy;
-    WindowState windowRatio;
-    std::deque<MouseState> queryClick; MouseState queryCopy;
-    std::deque<Pierce> readyClick; Pierce readyCopy;
-    int mouseIndex;
-    int paramFollow;
-    int paramModify;
-    enum Micro paramDisplay;
-    enum Micro paramBrighten;
-    enum Micro paramDetect;
-    int paramBase;
-    int paramLimit;
-    int changedIndex;
-    int changedSize;
-    Little *changedState;
-    int argc;
-    char **argv;
-    InitState *initState;
-    OpenState* openState;
-    PhysicalState* physicalState;
-    DeviceState* logicalState;
-    ThreadState *threadState;
-    TempState *tempState;
-    GlfwState *glfwState;
-    QueueState* queueState;
-    const int MAX_FRAMES_INFLIGHT = 2;
-    const int MAX_BUFFERS_AVAILABLE = 3;
-    const int MAX_FENCES_INFLIGHT = 3;
-    const int MAX_FRAMEBUFFER_SWAPS = 2;
-    const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    const std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
-    #ifdef NDEBUG
-    const bool enable = false;
-    #else
-    const bool enable = true;
-    #endif
-} mainState = {
-    .escapeEnter = false,
-    .registerDone = 0,
-    .manipReact = {0},
-    .manipAction = {0},
-    .manipActed = {0},
-    .mouseClick = {0.0,0.0,0.0},
-    .mouseMove = {0.0,0.0,0.0},
-    .mouseCopy = {0.0,0.0,0.0},
-    .windowClick = {0,0,800,800},
-    .windowMove = {0,0,800,800},
-    .windowCopy = {0,0,800,800},
-    .windowRatio = {1,1,1,1}, // TODO experiment with how to calculate this
-    .mouseIndex = 0,
-    .paramFollow = 0,
-    .paramModify = 0,
-    .paramDisplay = MicroPRPC, // just display
-    .paramBrighten = MicroPRRC, // fill Indexz
-    .paramDetect = MicroPRCP, // retreive Piercez
-    .paramBase = 0,
-    .paramLimit = 0,
-    .changedIndex = 0,
-    .changedSize = 0,
-    .changedState = 0,
-    .argc = 0,
-    .argv = 0,
-    .initState = 0,
-    .openState = 0,
-    .physicalState = 0,
-    .logicalState = 0,
-    .threadState = 0,
-    .tempState = 0,
-    .glfwState = 0,
-    .queueState = 0,
-};
-
-GLFWcursor *moveCursor(bool e, bool t, bool r, bool b, bool l) {
-    int dim = 13;
-    int hot = dim/2;
-    int box = 1;
-    unsigned char pixels[dim * dim * 4];
-    memset(pixels, 0x00, sizeof(pixels));
-    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
-        // top and bottom
-        if (k == 0 || k == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
-        // left and right
-        if (j == 0 || j == dim-1) pixels[k*dim*4+j*4+i] = 0xff;
-        // close box
-        if (k == hot-(box+1) && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
-        if (j == hot-(box+1) && k >= hot-box && k <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
-        if (k == hot+(box+1) && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
-        if (j == hot+(box+1) && k >= hot-box && k <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
-        // open box
-        if (e && k >= hot-box && k <= hot+box && j >= hot-box && j <= hot+box) pixels[k*dim*4+j*4+i] = 0xff;
-        // cross marks
-        if (t && k < hot-box && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if (r && j > hot+box && k == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if (b && k > hot+box && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if (l && j < hot-box && k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
-    GLFWimage image;
-    image.width = dim;
-    image.height = dim;
-    image.pixels = pixels;
-    return glfwCreateCursor(&image, hot, hot);
-}
-GLFWcursor *rotateCursor(bool e) {
-    int dim = 11;
-    int hot = dim/2;
-    unsigned char pixels[dim * dim * 4];
-    memset(pixels, 0x00, sizeof(pixels));
-    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
-        int diffx = j-hot;
-        int diffy = k-hot;
-        int exact = hot*hot;
-        int square = diffx*diffx + diffy*diffy;
-        bool center = k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1;
-        if (square < exact+5 && !center) pixels[k*dim*4+j*4+i] = 0xff;
-        if (e && center) pixels[k*dim*4+j*4+i] = 0xff;}
-    GLFWimage image;
-    image.width = dim;
-    image.height = dim;
-    image.pixels = pixels;
-    return glfwCreateCursor(&image, hot, hot);
-}
-GLFWcursor *translateCursor(bool e) {
-    int dim = 11;
-    int hot = dim/2;
-    unsigned char pixels[dim * dim * 4];
-    memset(pixels, 0x00, sizeof(pixels));
-    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
-        int diffx = (j>hot?j-hot:hot-j);
-        int diffy = (k>hot?k-hot:hot-k);
-        int sum = diffx + diffy;
-        bool center = k >= hot-1 && k <= hot+1 && j >= hot-1 && j <= hot+1;
-        if (!center && sum < hot+1) pixels[k*dim*4+j*4+i] = 0xff;
-        if (e && center) pixels[k*dim*4+j*4+i] = 0xff;}
-    GLFWimage image;
-    image.width = dim;
-    image.height = dim;
-    image.pixels = pixels;
-    return glfwCreateCursor(&image, hot, hot);
-}
-GLFWcursor *refineCursor() {
-    int dim = 11;
-    int hot = dim/2;
-    unsigned char pixels[dim * dim * 4];
-    memset(pixels, 0x00, sizeof(pixels));
-    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
-        int diffx = j-hot;
-        int diffy = k-hot;
-        if (diffx == diffy) pixels[k*dim*4+j*4+i] = 0xff;
-        if (diffx == -diffy) pixels[k*dim*4+j*4+i] = 0xff;
-        if (j == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if (k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
-    GLFWimage image;
-    image.width = dim;
-    image.height = dim;
-    image.pixels = pixels;
-    return glfwCreateCursor(&image, hot, hot);
-}
-GLFWcursor *sculptCursor(bool e) {
-    int dim = 11;
-    int hot = dim/2;
-    unsigned char pixels[dim * dim * 4];
-    memset(pixels, 0x00, sizeof(pixels));
-    for (int k = 0; k < dim; k++) for (int j = 0; j < dim; j++) for (int i = 0; i < 4; i++) {
-        bool center = k >= hot-2 && k <= hot+2 && j >= hot-2 && j <= hot+2;
-        if ((e || !center) && j == hot) pixels[k*dim*4+j*4+i] = 0xff;
-        if ((e || !center) && k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
-    GLFWimage image;
-    image.width = dim;
-    image.height = dim;
-    image.pixels = pixels;
-    return glfwCreateCursor(&image, hot, hot);
-}
 
 float debug_diff = 0.0;
 struct timeval debug_start;
@@ -456,11 +366,6 @@ struct OpenState {
     VkInstance instance;
     GLFWwindow* window;
     GLFWmonitor* monitor;
-    GLFWcursor* moveCursor[2][2][2][2][2];
-    GLFWcursor* rotateCursor[2];
-    GLFWcursor* refineCursor;
-    GLFWcursor* sculptCursor[2];
-    GLFWcursor* standardCursor;
     VkSurfaceKHR surface;
     OpenState(VkInstance instance, int width, int height, void *ptr) {
         struct MainState *mainState = (struct MainState *)ptr;
@@ -487,41 +392,12 @@ struct OpenState {
         glfwSetWindowPosCallback(window, windowMoved);
         glfwSetWindowSizeCallback(window, windowSized);
         glfwSetWindowRefreshCallback(window, windowRefreshed);
-        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
-        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
-        for (int e = 0; e < 2; e++) moveCursor[e][t][r][b][l] = ::moveCursor(e,t,r,b,l);
-        for (int e = 0; e < 2; e++) rotateCursor[e] = ::rotateCursor(e);
-        refineCursor = ::refineCursor();
-        for (int e = 0; e < 2; e++) sculptCursor[e] = ::sculptCursor(e);
-        standardCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        setCursor();
         if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
             throw std::runtime_error("failed to create window surface!");
     }
     ~OpenState() {
         vkDestroySurfaceKHR(instance, surface, nullptr);
-        for (int t = 0; t < 2; t++) for (int b = 0; b < 2; b++)
-        for (int l = 0; l < 2; l++) for (int r = 0; r < 2; r++)
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(moveCursor[e][t][r][b][l]);
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(rotateCursor[e]);
-        glfwDestroyCursor(refineCursor);
-        for (int e = 0; e < 2; e++) glfwDestroyCursor(sculptCursor[e]);
-        glfwDestroyCursor(standardCursor);
         glfwDestroyWindow(window);
-    }
-    void setCursor() {
-        struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-        int e = (mainState->manipReact[Apply]?1:0);
-        int t = (mainState->manipAction[North]?1:0);
-        int r = (mainState->manipAction[East]?1:0);
-        int b = (mainState->manipAction[South]?1:0);
-        int l = (mainState->manipAction[West]?1:0);
-        int m = (mainState->manipAction[Additive]?1:0);
-        if (t||r||b||l) glfwSetCursor(window,moveCursor[e][t][r][b][l]);
-        else if (mainState->manipAction[Manipulate]) glfwSetCursor(window,rotateCursor[e]);
-        else if (mainState->manipAction[Refine]) glfwSetCursor(window,refineCursor);
-        else if (mainState->manipAction[Subtractive]||m) glfwSetCursor(window,sculptCursor[m]);
-        else glfwSetCursor(window,standardCursor);
     }
 };
 
@@ -1852,7 +1728,7 @@ void vulkanDma(struct Center *center)
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
-    break; case (RegisterOpen): if (center->val[i] || !mainState.enable) mainState.escapeEnter = true;
+    break; case (RegisterOpen): if (center->val[i] || mainState.manipReset == Passive) mainState.escapeEnter = true;
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
     break; case (CursorRead): mainState.mouseRead = (Enact)center->val[i];
     break; case (CursorWrite): mainState.mouseWrite = (Enact)center->val[i];
@@ -1889,9 +1765,12 @@ void vulkanDma(struct Center *center)
         case (Infect): mainState.windowMove.height = center->val[i]; break;
         case (Effect): mainState.windowCopy.height = center->val[i]; break;}
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
-        mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
+        mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipAction): for (int j = 0; j < Actions; j++)
-        mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0); mainState.openState->setCursor();
+        mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipActed): for (int j = 0; j < Acteds; j++)
+        mainState.manipActed[(Acted)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipReset): mainState.manipReset = (Reset)center->val[i];
     break; case (ParamFollow): mainState.paramFollow = center->val[i];
     break; case (ParamModify): mainState.paramModify = center->val[i];
     break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
@@ -2001,6 +1880,10 @@ void vulkanPut()
 {
     // TODO call planeReady on latest async search of paramDetect mapped
 }
+void vulkanReset()
+{
+    // TODO configure mainState and planeConfig depending on mainState.manipReset
+}
 void vulkanFunc(enum Configure hint)
 {
     switch (hint) {
@@ -2010,7 +1893,8 @@ void vulkanFunc(enum Configure hint)
     break; case (WindowHeight): vulkanAtom();
     break; case (CursorAngle): vulkanDirect();
     break; case (CursorLeft): vulkanGet();
-    break; case (CursorBase): vulkanPut();}
+    break; case (CursorBase): vulkanPut();
+    break; case (ManipReset): vulkanReset();}
 }
 void vulkanChanged()
 {
@@ -2022,15 +1906,12 @@ void vulkanChanged()
     if (mainState.manipReact[Follow] && (mainState.manipActed[Moved] || mainState.manipActed[Sized])) {
         int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
         vulkanSet(Matrixz,mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});}
-    #ifdef PLANRA
-    if (mainState.manipReact[Modify] && mainState.manipActed[Moused]) {
+    if (mainState.manipReact[Modify] && mainState.manipActed[Moused] && mainState.manipReset == Passive) {
         int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
         vulkanSet(Matrixz,mainState.paramModify*siz,siz,planraMatrix(mat),[mat](){free(mat);});}
-    #else
-    if (mainState.manipReact[Modify] && mainState.manipActed[Moused]) {
+    if (mainState.manipReact[Modify] && mainState.manipActed[Moused] && mainState.manipReset != Passive) {
         int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
         vulkanSet(Matrixz,mainState.paramModify*siz,siz,planeMatrix(mat),[mat](){free(mat);});}
-    #endif
     if (mainState.manipReact[Direct] && mainState.manipActed[Moused])
         vulkanDirect();
     if (mainState.manipReact[Extent] && (mainState.manipActed[Moved] || mainState.manipActed[Sized]))
@@ -2139,11 +2020,10 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
         mainState.initState = new InitState(mainState.enable,mainState.layers);
-#ifdef PLANRA
-        planeInit(vulkanInit,vulkanSafe,planraBoot,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,vulkanFunc,planraWake,vulkanInfo);
-#else
-        planeInit(vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,vulkanFunc,planrWake,vulkanInfo);
-#endif
+        if (mainState.manipReset == Passive || mainState.manipReset == Active) planeInit(
+            vulkanInit,vulkanSafe,planraBoot,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,vulkanFunc,planraWake,vulkanInfo);
+        else planeInit(
+            vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanDma,vulkanDraw,vulkanReady,vulkanDone,vulkanFunc,planeWake,vulkanInfo);
         delete mainState.initState; mainState.initState = 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

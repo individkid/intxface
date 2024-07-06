@@ -25,3 +25,4 @@ void planeBoot();
 void planraWake(enum Configure hint);
 void planraBoot();
 float *planraMatrix(float *mat);
+void planeConfig(enum Configure cfg, int val);

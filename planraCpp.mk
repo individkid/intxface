@@ -1,1 +1,1 @@
-vulkan.cpp -DPLANRA -DNDEBUG
+vulkan.cpp -DPLANRA -DREGRESS
