@@ -72,6 +72,7 @@ Configure = {
 	"ParamLimit", --
 	"ManipReact", -- block or behave
 	"ManipAction", -- what to do
+	"ManipActed", -- what has changed
 	"ManipFixed", -- how to do
 	"ManipScope", -- what to transform
 	"RegisterDone", -- shaders running count
@@ -142,7 +143,7 @@ React = { -- when updates happen
 	"Poll", -- whether to sleep for glfw events
 	"Apply", -- whether to apply moves
 	"Changed", -- whether to little language
-	"Moved", -- whether to enque mouse move
+	"Enqued", -- whether to enque mouse move
 	"Angled", -- whether to enque roller moved
 	"Clicked", -- whether to enque mouse clicked
 	"Pressed", -- whether to enque key pressed
@@ -167,6 +168,15 @@ Action = { -- what input does
 	"Refine", -- add boundaries
 	"Additive", -- add regions
 	"Subtractive", -- remove regions
+}
+Acted = {
+    "Moved",
+    "Sized",
+    "Moused",
+    "Drawed",
+    "Queryd",
+    "Readyd",
+    "Mored",
 }
 Fixed = { -- how motion interpreted
 	"Mouse", -- how many fixed

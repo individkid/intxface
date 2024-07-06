@@ -132,13 +132,12 @@ struct MainState {
     std::deque<int> keyPressed;
     bool manipReact[Reacts];
     bool manipAction[Actions];
+    bool manipActed[Acteds];
     enum Enact mouseRead, mouseWrite;
-    MouseState mouseClick, mouseMove, mouseCopy;
     enum Enact windowRead, windowWrite;
+    MouseState mouseClick, mouseMove, mouseCopy;
     WindowState windowClick, windowMove, windowCopy;
     WindowState windowRatio;
-    bool windowMoved, windowSized, mouseMoved;
-    bool drawMoved, queryMoved, readyMoved, moreClick;
     std::deque<MouseState> queryClick; MouseState queryCopy;
     std::deque<Pierce> readyClick; Pierce readyCopy;
     int mouseIndex;
@@ -149,7 +148,6 @@ struct MainState {
     enum Micro paramDetect;
     int paramBase;
     int paramLimit;
-    bool paramAtom;
     int changedIndex;
     int changedSize;
     Little *changedState;
@@ -179,6 +177,7 @@ struct MainState {
     .registerDone = 0,
     .manipReact = {0},
     .manipAction = {0},
+    .manipActed = {0},
     .mouseClick = {0.0,0.0,0.0},
     .mouseMove = {0.0,0.0,0.0},
     .mouseCopy = {0.0,0.0,0.0},
@@ -186,13 +185,6 @@ struct MainState {
     .windowMove = {0,0,800,800},
     .windowCopy = {0,0,800,800},
     .windowRatio = {1,1,1,1}, // TODO experiment with how to calculate this
-    .windowMoved = false,
-    .windowSized = false,
-    .mouseMoved = false,
-    .drawMoved = false,
-    .queryMoved = false,
-    .readyMoved = false,
-    .moreClick = false,
     .mouseIndex = 0,
     .paramFollow = 0,
     .paramModify = 0,
@@ -367,10 +359,10 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    std::cerr << "windowMoved " << xpos << " " << ypos << std::endl;
+    std::cerr << "mouseMoved " << xpos << "/" << ypos << std::endl;
     mainState->mouseMove.left = mainState->windowMove.left+xpos;
     mainState->mouseMove.base = mainState->windowMove.base+ypos;
-    if (mainState->manipReact[Moved]) planeSafe(Threads,Waits,CursorLeft);
+    if (mainState->manipReact[Enqued]) planeSafe(Threads,Waits,CursorLeft);
 }
 void mouseAngled(GLFWwindow *window, double amount) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -764,134 +756,6 @@ struct DeviceState {
         vkDestroyRenderPass(device, render, nullptr);
         vkDestroyDevice(device, nullptr);
     }
-};
-
-struct ThreadState {
-    VkDevice device;
-    SafeState protect;
-    SafeState semaphore;
-    TempState temp;
-    pthread_t thread;
-    bool finish;
-    bool repeat; // whether to wake upon fence
-    std::deque<std::function<void()>> comp;
-    std::deque<std::function<VkFence()>> setup;
-    std::deque<int> which; // whether void or fence pushed
-    std::deque<VkFence> fence; // fence to wait for
-    std::deque<int> order; // pushed or pending sequence number
-    std::set<int> lookup; // whether sequence number unfinished
-    std::deque<std::function<void()>> precomp;
-    std::deque<std::function<VkFence()>> presetup;
-    std::deque<int> preord; // sequence number for push from separate thread
-    std::deque<int> prewhich; // whether to push void or fence
-    std::deque<std::function<bool()>> when; // whether to push from separate thread
-    bool toggle; int ident; int limit; int seqnum; bool chknum;
-    ThreadState(VkDevice device, bool repeat, int limit) {
-        this->device = device; finish = false;
-        this->repeat = repeat; toggle = false;
-        this->limit = limit; seqnum = 0; chknum = true;
-        if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
-    }
-    ~ThreadState() {
-    // this destructed to wait for device idle
-        protect.wait(); finish = true; protect.post(); semaphore.post();
-        if (pthread_join(thread,0) != 0) {std::cerr << "failed to join thread!" << std::endl; std::terminate();}
-    }
-    static void *separate(void *ptr) {
-        struct ThreadState *arg = (ThreadState*)ptr;
-        arg->protect.wait();
-        while (1) {
-            if (arg->finish) {
-                arg->protect.post();
-                break;}
-            while (!arg->when.empty() && arg->clear(arg->when.front())) {
-                int ord = arg->preord.front(); arg->order.push_back(ord);
-                int tmp = arg->prewhich.front(); arg->which.push_back(tmp);
-                switch (tmp) {
-                case (0): arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front(); break;
-                case (1): arg->comp.push_back(arg->precomp.front()); arg->precomp.pop_front(); break;
-                default: throw std::runtime_error("unsupported separate lambda!"); break;}
-                arg->when.pop_front(); arg->preord.pop_front(); arg->prewhich.pop_front();}
-            while (!arg->which.empty()) {
-                switch (arg->which.front()) {
-                case (0): arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front(); break;
-                case (1): arg->comp.front()(); arg->comp.pop_front();
-                arg->lookup.erase(arg->order.front()); arg->order.pop_front(); arg->chknum = true; break;
-                default: throw std::runtime_error("unsupported separate lambda!"); break;}
-                arg->which.pop_front();}
-            if (arg->fence.empty()) {
-                arg->protect.post();
-                arg->semaphore.wait();
-                arg->protect.wait();}
-            else {
-                arg->protect.post();
-                VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
-                result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);}
-                arg->protect.wait();
-                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {int next = arg->order.front();
-                arg->lookup.erase(next); arg->order.pop_front(); arg->chknum = true; arg->fence.pop_front();
-                if (arg->repeat) {planeSafe(Threads,Waits,RegisterDone); vulkanSafe();}}}}
-        vkDeviceWaitIdle(arg->device);
-        return 0;
-    }
-    bool check() {
-        bool ret;
-        protect.wait();
-        ret = chknum; chknum = false;
-        protect.post();
-        return ret;
-    }
-    bool clear(int given) {
-    // return whether given sequence number is completed
-        protect.wait();
-        if (lookup.find(given) == lookup.end()) {protect.post(); return true;}
-        protect.post(); return false;
-    }
-    bool clear(std::function<bool()> given) {
-    // check given status from separate thread
-        if (protect.get() != 0) throw std::runtime_error("cannot clear function!");
-        protect.post();
-        if (given()) {protect.wait(); return true;}
-        protect.wait(); return false;
-    }
-    void clear() {
-    //  start or stop collecting fences
-        if (toggle) toggle = false;
-        else {toggle = true; ident = temp.temp();}
-    }
-    bool push() {
-        bool ret;
-        protect.wait();
-        ret = (order.size() < limit);
-        protect.post();
-        return ret;
-    }
-    std::function<bool()> push(std::function<void(int)> given) {
-        protect.wait();
-        int sval = semaphore.get();
-        if (sval == 0) semaphore.post();
-        int ord = seqnum++; lookup.insert(ord); given(ord);
-        std::function<bool()> done = [this,ord](){return this->clear(ord);};
-        if (toggle) {temp.temp(ident,done); done = temp.temp(ident);}
-        if (fence.size()+setup.size()+comp.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
-        if (order.size()+preord.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
-        protect.post();
-        return done;}
-    std::function<bool()> push(std::function<void()> given) {
-    // return function that returns whether given function called in separate thread
-        return push([this,given](int ord){order.push_back(ord); comp.push_back(given); which.push_back(1);});}
-    std::function<bool()> push(std::function<void()> given, std::function<bool()> last) {
-    // return query of whether given function called in indicated sequence
-        return push([this,given,last](int ord){preord.push_back(ord); when.push_back(last);
-        prewhich.push_back(1); precomp.push_back(given);});}
-    std::function<bool()> push(std::function<VkFence()> given) {
-    // return function that returns whether fence returned by given function in separate thread is done
-        return push([this,given](int ord){order.push_back(ord); setup.push_back(given); which.push_back(0);});}
-    std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
-    // return query of whether fence is done for given function started in indicated sequence
-        return push([this,given,last](int ord){preord.push_back(ord); when.push_back(last);
-        prewhich.push_back(0); presetup.push_back(given);});}
 };
 
 struct BufferState {
@@ -1598,6 +1462,134 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base
     return fence;}
 };
 
+struct ThreadState {
+    VkDevice device;
+    SafeState protect;
+    SafeState semaphore;
+    TempState temp;
+    pthread_t thread;
+    bool finish;
+    bool repeat; // whether to wake upon fence
+    std::deque<std::function<void()>> comp;
+    std::deque<std::function<VkFence()>> setup;
+    std::deque<int> which; // whether void or fence pushed
+    std::deque<VkFence> fence; // fence to wait for
+    std::deque<int> order; // pushed or pending sequence number
+    std::set<int> lookup; // whether sequence number unfinished
+    std::deque<std::function<void()>> precomp;
+    std::deque<std::function<VkFence()>> presetup;
+    std::deque<int> preord; // sequence number for push from separate thread
+    std::deque<int> prewhich; // whether to push void or fence
+    std::deque<std::function<bool()>> when; // whether to push from separate thread
+    bool toggle; int ident; int limit; int seqnum; bool chknum;
+    ThreadState(VkDevice device, bool repeat, int limit) {
+        this->device = device; finish = false;
+        this->repeat = repeat; toggle = false;
+        this->limit = limit; seqnum = 0; chknum = true;
+        if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
+    }
+    ~ThreadState() {
+    // this destructed to wait for device idle
+        protect.wait(); finish = true; protect.post(); semaphore.post();
+        if (pthread_join(thread,0) != 0) {std::cerr << "failed to join thread!" << std::endl; std::terminate();}
+    }
+    static void *separate(void *ptr) {
+        struct ThreadState *arg = (ThreadState*)ptr;
+        arg->protect.wait();
+        while (1) {
+            if (arg->finish) {
+                arg->protect.post();
+                break;}
+            while (!arg->when.empty() && arg->clear(arg->when.front())) {
+                int ord = arg->preord.front(); arg->order.push_back(ord);
+                int tmp = arg->prewhich.front(); arg->which.push_back(tmp);
+                switch (tmp) {
+                case (0): arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front(); break;
+                case (1): arg->comp.push_back(arg->precomp.front()); arg->precomp.pop_front(); break;
+                default: throw std::runtime_error("unsupported separate lambda!"); break;}
+                arg->when.pop_front(); arg->preord.pop_front(); arg->prewhich.pop_front();}
+            while (!arg->which.empty()) {
+                switch (arg->which.front()) {
+                case (0): arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front(); break;
+                case (1): arg->comp.front()(); arg->comp.pop_front();
+                arg->lookup.erase(arg->order.front()); arg->order.pop_front(); arg->chknum = true; break;
+                default: throw std::runtime_error("unsupported separate lambda!"); break;}
+                arg->which.pop_front();}
+            if (arg->fence.empty()) {
+                arg->protect.post();
+                arg->semaphore.wait();
+                arg->protect.wait();}
+            else {
+                arg->protect.post();
+                VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
+                result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);}
+                arg->protect.wait();
+                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
+                if (result == VK_SUCCESS) {int next = arg->order.front();
+                arg->lookup.erase(next); arg->order.pop_front(); arg->chknum = true; arg->fence.pop_front();
+                if (arg->repeat) {planeSafe(Threads,Waits,RegisterDone); vulkanSafe();}}}}
+        vkDeviceWaitIdle(arg->device);
+        return 0;
+    }
+    bool draw() {
+        bool ret;
+        protect.wait();
+        ret = chknum; chknum = false;
+        protect.post();
+        return ret;
+    }
+    bool clear(int given) {
+    // return whether given sequence number is completed
+        protect.wait();
+        if (lookup.find(given) == lookup.end()) {protect.post(); return true;}
+        protect.post(); return false;
+    }
+    bool clear(std::function<bool()> given) {
+    // check given status from separate thread
+        if (protect.get() != 0) throw std::runtime_error("cannot clear function!");
+        protect.post();
+        if (given()) {protect.wait(); return true;}
+        protect.wait(); return false;
+    }
+    void clear() {
+    //  start or stop collecting fences
+        if (toggle) toggle = false;
+        else {toggle = true; ident = temp.temp();}
+    }
+    bool push() {
+        bool ret;
+        protect.wait();
+        ret = (order.size() < limit);
+        protect.post();
+        return ret;
+    }
+    std::function<bool()> push(std::function<void(int)> given) {
+        protect.wait();
+        int sval = semaphore.get();
+        if (sval == 0) semaphore.post();
+        int ord = seqnum++; lookup.insert(ord); given(ord);
+        std::function<bool()> done = [this,ord](){return this->clear(ord);};
+        if (toggle) {temp.temp(ident,done); done = temp.temp(ident);}
+        if (fence.size()+setup.size()+comp.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (order.size()+preord.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
+        protect.post();
+        return done;}
+    std::function<bool()> push(std::function<void()> given) {
+    // return function that returns whether given function called in separate thread
+        return push([this,given](int ord){order.push_back(ord); comp.push_back(given); which.push_back(1);});}
+    std::function<bool()> push(std::function<void()> given, std::function<bool()> last) {
+    // return query of whether given function called in indicated sequence
+        return push([this,given,last](int ord){preord.push_back(ord); when.push_back(last);
+        prewhich.push_back(1); precomp.push_back(given);});}
+    std::function<bool()> push(std::function<VkFence()> given) {
+    // return function that returns whether fence returned by given function in separate thread is done
+        return push([this,given](int ord){order.push_back(ord); setup.push_back(given); which.push_back(0);});}
+    std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
+    // return query of whether fence is done for given function started in indicated sequence
+        return push([this,given,last](int ord){preord.push_back(ord); when.push_back(last);
+        prewhich.push_back(0); presetup.push_back(given);});}
+};
+
 template<class Buffer> struct WrapState {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
@@ -1833,7 +1825,9 @@ int vulkanInfo(enum Configure query)
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
-        if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}}
+        if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}
+    break; case (ManipActed): {int val = 0; for (int j = 0; j < Actions; j++)
+        if (mainState.manipActed[(Acted)j]) val |= (1<<j); return val;}}
     return 0;
 }
 void vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
@@ -1917,8 +1911,9 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     std::vector<WrapState<BufferState>*> bindBuffer = queue->bindBuffer(shader);
     std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
     WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
-    std::cerr << "vulkanDraw " << bindBuffer.size() << "/" << queryBuffer.size() << std::endl;
+    std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << std::endl;
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return;
+    std::cerr << "vulkanDraw queue" << std::endl;
     if (!queue->swapQueue->get()) return; if (!drawQueue->clr(shader)) return; mainState.registerDone++;
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
@@ -1928,6 +1923,7 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
     buffer.push_back((*i)->get(drawQueue->tmp()));}
     swap = queue->swapQueue->get(drawQueue->tmp());
+    std::cerr << "vulkanDraw done" << std::endl;
     std::function<bool()> done = drawQueue->set((std::function<VkFence(DrawState*)>)[buffer,swap,base,limit](DrawState*draw){
     return draw->setup(buffer,swap,base,limit);}); drawQueue->seq(done); drawQueue->put();
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
@@ -1951,38 +1947,41 @@ void vulkanStage()
         mainState.windowCopy.width -= xofs;
     if (mainState.manipReact[Apply] && mainState.manipAction[South] && !mainState.manipAction[North])
         mainState.windowCopy.height -= yofs;
-    mainState.windowMoved = mainState.windowCopy.left != mainState.windowMove.left ||
+    mainState.manipActed[Moved] = mainState.manipActed[Moved] ||
+        mainState.windowCopy.left != mainState.windowMove.left ||
         mainState.windowCopy.base != mainState.windowMove.base;
-    mainState.windowSized = mainState.windowCopy.width != mainState.windowMove.width ||
+    mainState.manipActed[Sized] = mainState.manipActed[Sized] ||
+        mainState.windowCopy.width != mainState.windowMove.width ||
         mainState.windowCopy.height != mainState.windowMove.height;}
-    mainState.mouseMoved = mainState.mouseMoved ||
+    mainState.manipActed[Moused] = mainState.manipActed[Moused] ||
         (mainState.manipReact[Apply] && mainState.manipAction[Manipulate] &&
         (mainState.mouseCopy.left != mainState.mouseMove.left ||
         mainState.mouseCopy.base != mainState.mouseMove.base));
     mainState.mouseCopy = mainState.mouseMove;
-    mainState.drawMoved = mainState.drawMoved || mainState.threadState->check();
-    mainState.queryMoved = mainState.queryMoved || !mainState.queryClick.empty();
+    mainState.manipActed[Drawed] = mainState.manipActed[Drawed] || mainState.threadState->draw();
+    mainState.manipActed[Queryd] = mainState.manipActed[Queryd] || !mainState.queryClick.empty();
     if (!mainState.queryClick.empty()) {
         mainState.queryCopy = mainState.queryClick.front();
         mainState.queryClick.pop_front();}
-    mainState.moreClick = mainState.moreClick || !mainState.queryClick.empty();
+    mainState.manipActed[Mored] = mainState.manipActed[Mored] || !mainState.queryClick.empty();
     mainState.glfwState->call([](){
-    mainState.readyMoved = mainState.readyMoved || !mainState.queryClick.empty();
+    mainState.manipActed[Readyd] = mainState.manipActed[Readyd] || !mainState.queryClick.empty();
     if (!mainState.queryClick.empty()) {
         mainState.readyCopy = mainState.readyClick.front();
         mainState.readyClick.pop_front();}
-    mainState.moreClick = mainState.moreClick || !mainState.readyClick.empty();});
-    std::cerr << "vulkanStage " << debugStage++ << "/" << mainState.moreClick << "/" <<
-	mainState.windowMoved << "/" << mainState.windowSized << "/" <<
-        mainState.mouseMoved << "/" << mainState.drawMoved << "/" <<
-        mainState.queryMoved << "/" << mainState.readyMoved << std::endl;
+    mainState.manipActed[Mored] = mainState.manipActed[Mored] || !mainState.readyClick.empty();});
+    std::cerr << "vulkanStage debug:" << debugStage++ << "/more:" << mainState.manipActed[Mored] <<
+        "/moved:" << mainState.manipActed[Moved] << "/sized:" << mainState.manipActed[Sized] <<
+        "/mouse:" << mainState.manipActed[Moused] << "/draw:" << mainState.manipActed[Drawed] <<
+        "/query:" << mainState.manipActed[Queryd] << "/ready:" << mainState.manipActed[Readyd] << 
+        "/more:" << mainState.manipActed[Mored] << std::endl;
 }
 void vulkanSwap()
 {
     WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
     if (!swapQueue->clr()) return; // TODO set bit in register for error info
     swapQueue->clr((mainState.windowCopy.width<<16)|(mainState.windowCopy.height));
-    swapQueue->set(mainState.windowCopy,mainState.windowMoved,mainState.windowSized);
+    swapQueue->set(mainState.windowCopy,mainState.manipActed[Moved],mainState.manipActed[Sized]);
     swapQueue->put();
 }
 void vulkanAtom()
@@ -2017,39 +2016,40 @@ void vulkanChanged()
 {
     if (mainState.manipReact[Needed])
         vulkanStage();
-    std::cerr << "vulkanChanged " << mainState.windowMoved << "/" << mainState.windowSized << "/" << mainState.drawMoved << std::endl;
-    if (mainState.manipReact[Extent] && (mainState.windowMoved || mainState.windowSized)) {
+    std::cerr << "vulkanChanged moved:" << mainState.manipActed[Moved] << "/sized:" << mainState.manipActed[Sized] << "/draw:" << mainState.manipActed[Drawed] << std::endl;
+    if (mainState.manipReact[Extent] && (mainState.manipActed[Moved] || mainState.manipActed[Sized])) {
         vulkanAtom(); vulkanSwap();}
-    if (mainState.manipReact[Follow] && (mainState.windowMoved || mainState.windowSized)) {
+    if (mainState.manipReact[Follow] && (mainState.manipActed[Moved] || mainState.manipActed[Sized])) {
         int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
         vulkanSet(Matrixz,mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});}
     #ifdef PLANRA
-    if (mainState.manipReact[Modify] && mainState.mouseMoved) {
+    if (mainState.manipReact[Modify] && mainState.manipActed[Moused]) {
         int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
         vulkanSet(Matrixz,mainState.paramModify*siz,siz,planraMatrix(mat),[mat](){free(mat);});}
     #else
-    if (mainState.manipReact[Modify] && mainState.mouseMoved) {
+    if (mainState.manipReact[Modify] && mainState.manipActed[Moused]) {
         int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
         vulkanSet(Matrixz,mainState.paramModify*siz,siz,planeMatrix(mat),[mat](){free(mat);});}
     #endif
-    if (mainState.manipReact[Direct] && mainState.mouseMoved)
+    if (mainState.manipReact[Direct] && mainState.manipActed[Moused])
         vulkanDirect();
-    if (mainState.manipReact[Extent] && (mainState.windowMoved || mainState.windowSized))
+    if (mainState.manipReact[Extent] && (mainState.manipActed[Moved] || mainState.manipActed[Sized]))
         vulkanAtom();
-    debugStart();
-    if (mainState.manipReact[Display] && mainState.drawMoved)
+    // debugStart();
+    if (mainState.manipReact[Display] && mainState.manipActed[Drawed])
         vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
-    if (mainState.manipReact[Brighten] && mainState.drawMoved)
+    if (mainState.manipReact[Brighten] && mainState.manipActed[Drawed])
         vulkanDraw(mainState.paramBrighten,mainState.paramBase,mainState.paramLimit);
-    if (mainState.manipReact[Detect] && mainState.drawMoved)
+    if (mainState.manipReact[Detect] && mainState.manipActed[Drawed])
         vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
-    if (mainState.manipReact[Query] && mainState.queryMoved)
+    if (mainState.manipReact[Query] && mainState.manipActed[Queryd])
         vulkanGet();
-    if (mainState.manipReact[Ready] && mainState.readyMoved)
+    if (mainState.manipReact[Ready] && mainState.manipActed[Readyd])
         vulkanPut();
-    mainState.windowMoved = mainState.windowSized = mainState.mouseMoved = false;
-    mainState.drawMoved = mainState.queryMoved = mainState.readyMoved = false;
-    debugStop("vulkanChanged");
+    mainState.manipActed[Moved] = mainState.manipActed[Sized] = false;
+    mainState.manipActed[Moused] = mainState.manipActed[Drawed] = false;
+    mainState.manipActed[Queryd] = mainState.manipActed[Readyd] = false;
+    // debugStop("vulkanChanged");
 }
 struct Center *vulkanReady(enum Memory mem)
 {
@@ -2101,8 +2101,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Process):
     while (!mainState.escapeEnter) {vulkanChanged(); planeMain();
     if (mainState.manipReact[Poll]) mainState.glfwState->wait([](){glfwPollEvents();});
-    else if (!mainState.moreClick) mainState.glfwState->wait([](){glfwWaitEventsTimeout(1.0);});
-    else mainState.moreClick = false;}
+    else if (!mainState.manipActed[Mored]) mainState.glfwState->wait([](){glfwWaitEventsTimeout(1.0);});
+    else mainState.manipActed[Mored] = false;}
     break;
     default:
     throw std::runtime_error("no case in switch!");}
