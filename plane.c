@@ -747,7 +747,7 @@ void planraExit(int enb)
 {
 	struct Center *center = 0; allocCenter(&center,1);
 	allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-	center->cfg[0] = RegisterOpen; center->val[0] = enb;
+	center->cfg[0] = RegisterOpen; center->val[0] = enb<<Process;
 	center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
 	callDma(center);
 }
@@ -809,7 +809,7 @@ void planraWake(enum Configure hint)
 	float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
 	if (time > 1.0 && !planraSent) {planraSent = 1; planraExit(0);}
 	if (planraDone) return;
-	if (callInfo(RegisterOpen) == 0) {
+	if ((callInfo(RegisterOpen) & (1<<Process)) == 0) {
 		sem_safe(&resource,{planraDone = 1;});
 		planeSafe(Process,Stop,Configures);
 		planeSafe(Graphics,Stop,Configures);

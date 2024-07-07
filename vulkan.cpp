@@ -39,7 +39,7 @@ struct WindowState {
     int left, base, width, height;
 };
 struct MainState {
-    bool escapeEnter;
+    int registerOpen;
     int registerDone;
     std::deque<int> keyPressed;
     bool manipReact[Reacts];
@@ -61,9 +61,9 @@ struct MainState {
     enum Micro paramDetect;
     int paramBase;
     int paramLimit;
-    int changedIndex;
-    int changedSize;
-    Little *changedState;
+    int littleIndex;
+    int littleSize;
+    Little *littleState;
     int argc;
     char **argv;
     InitState *initState;
@@ -86,7 +86,7 @@ struct MainState {
     const bool enable = true;
 #endif
 } mainState = {
-    .escapeEnter = false,
+    .registerOpen = 0,
     .registerDone = 0,
     .manipReact = {0},
     .manipAction = {0},
@@ -113,9 +113,9 @@ struct MainState {
     .paramDetect = MicroPRCP, // retreive Piercez
     .paramBase = 0,
     .paramLimit = 0,
-    .changedIndex = 0,
-    .changedSize = 0,
-    .changedState = 0,
+    .littleIndex = 0,
+    .littleSize = 0,
+    .littleState = 0,
     .argc = 0,
     .argv = 0,
     .initState = 0,
@@ -245,11 +245,11 @@ void windowRefreshed(GLFWwindow* window)
     std::cerr << "windowRefresh" << std::endl;
 }
 void manipReact(struct MainState *mainState, int pat) {
-    for (int i = mainState->changedIndex; i < mainState->changedSize; i++)
-    if (mainState->changedState[i].pat == pat || mainState->changedState[i].pat == 0) {
-    for (int j = 0; j < Reacts; j++) mainState->manipReact[(React)j] = ((mainState->changedState[i].val&(1<<j)) != 0);
-    for (int j = 0; j < Actions; j++) mainState->manipAction[(Action)j] = ((mainState->changedState[i].num&(1<<j)) != 0);
-    mainState->changedIndex = mainState->changedState[i].nxt; break;}
+    for (int i = mainState->littleIndex; i < mainState->littleSize; i++)
+    if (mainState->littleState[i].pat == pat || mainState->littleState[i].pat == 0) {
+    for (int j = 0; j < Reacts; j++) mainState->manipReact[(React)j] = ((mainState->littleState[i].val&(1<<j)) != 0);
+    for (int j = 0; j < Actions; j++) mainState->manipAction[(Action)j] = ((mainState->littleState[i].num&(1<<j)) != 0);
+    mainState->littleIndex = mainState->littleState[i].nxt; break;}
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1692,12 +1692,12 @@ int vulkanInfo(enum Configure query)
         case (Affect): return mainState.windowClick.height;
         case (Infect): return mainState.windowMove.height;
         case (Effect): return mainState.windowCopy.height;}
-    break; case (MonitorWidth): return 1; // TODO
-    break; case (MonitorHeight): return 1; // TODO
-    break; case (PhysicalWidth): return 1; // TODO
-    break; case (PhysicalHeight): return 1; // TODO
+    break; case (MonitorWidth): return mainState.windowRatio.width;
+    break; case (MonitorHeight): return mainState.windowRatio.height;
+    break; case (PhysicalWidth): return mainState.windowRatio.left;
+    break; case (PhysicalHeight): return mainState.windowRatio.base;
     break; case (RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
-    break; case (RegisterOpen): return (!mainState.escapeEnter);
+    break; case (RegisterOpen): return mainState.registerOpen;
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
@@ -1720,15 +1720,17 @@ void vulkanDma(struct Center *center)
     break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
     break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;
-    break; case (Littlez): if (center->idx+center->siz > mainState.changedSize) {
-        mainState.changedSize = center->idx+center->siz; mainState.changedState =
-        (struct Little *)realloc(mainState.changedState,mainState.changedSize*sizeof(center->pvn[0]));}
-        memcpy(mainState.changedState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
+    break; case (Littlez): if (center->idx+center->siz > mainState.littleSize) {
+        mainState.littleSize = center->idx+center->siz; mainState.littleState =
+        (struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
+        memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
         planeDone(center); return;
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (RegisterDone): mainState.registerDone = center->val[i];
-    break; case (RegisterOpen): if (center->val[i] || mainState.manipReset == Passive) mainState.escapeEnter = true;
+    break; case (RegisterOpen): if (mainState.manipReset != Passive) mainState.registerOpen = center->val[i];
+        else mainState.registerOpen &= ~(1<<Process) | center->val[i];
+        std::cerr << "registerOpen:" << mainState.registerOpen << "/" << center->val[i] << std::endl;
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
     break; case (CursorRead): mainState.mouseRead = (Enact)center->val[i];
     break; case (CursorWrite): mainState.mouseWrite = (Enact)center->val[i];
@@ -1778,7 +1780,7 @@ void vulkanDma(struct Center *center)
     break; case (ParamDetect): mainState.paramDetect = (Micro)center->val[i];
     break; case (ParamBase): mainState.paramBase = center->val[i];
     break; case (ParamLimit): mainState.paramLimit = center->val[i];
-    break; case (LittleIndex): mainState.changedIndex = center->val[i];}
+    break; case (LittleIndex): mainState.littleIndex = center->val[i];}
     planeDone(center); return;}
     vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
 }
@@ -1980,7 +1982,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     mainState.queueState = new QueueState();
     break;
     case (Process):
-    while (!mainState.escapeEnter) {vulkanChanged(); planeMain();
+    mainState.registerOpen |= 1<<Process;
+    while (mainState.registerOpen & (1<<Process)) {vulkanChanged(); planeMain();
     if (mainState.manipReact[Poll]) mainState.glfwState->wait([](){glfwPollEvents();});
     else if (!mainState.manipActed[Mored]) mainState.glfwState->wait([](){glfwWaitEventsTimeout(1.0);});
     else mainState.manipActed[Mored] = false;}

@@ -191,11 +191,15 @@ Fixed = { -- how motion interpreted
 	"Normal",
 }
 Reset = {
-	"Passive",
-	"Active",
-	"Minimum",
-	"Medium",
-	"Maximum",
+	"Passive", -- make planra.log test
+	"Active", -- planraWake user test
+	"Minimum", -- little language modes
+	"Medium", -- planer.lua micro code
+	"Maximum", -- share file plane space
+}
+Error = {
+	"DrawErr",
+	"BuffErr",
 }
 MicroIn = {
 	"Practice", -- use location for Vertex
