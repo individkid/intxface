@@ -198,8 +198,11 @@ Reset = {
 	"Maximum", -- share file plane space
 }
 Error = {
-	"DrawErr",
-	"BuffErr",
+	"DrawSetErr",
+	"BuffGetErr",
+	"BuffSetErr",
+	"SwapGetErr",
+	"SwapSetErr",
 }
 MicroIn = {
 	"Practice", -- use location for Vertex

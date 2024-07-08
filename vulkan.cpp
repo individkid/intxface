@@ -39,7 +39,6 @@ struct WindowState {
     int left, base, width, height;
 };
 struct MainState {
-    int registerOpen;
     int registerDone;
     std::deque<int> keyPressed;
     bool manipReact[Reacts];
@@ -86,7 +85,6 @@ struct MainState {
     const bool enable = true;
 #endif
 } mainState = {
-    .registerOpen = 0,
     .registerDone = 0,
     .manipReact = {0},
     .manipAction = {0},
@@ -95,7 +93,17 @@ struct MainState {
 #ifdef REGRESS
     .manipReset = Passive,
 #else
+#ifdef BRINGUP
     .manipReset = Active,
+#else
+    .manipReset = Minimum,
+#endif
+#endif
+#else
+#ifdef PLANER
+    .manipReset = Medium,
+#else
+    .manipReset = Maximum,
 #endif
 #endif
     .mouseClick = {0.0,0.0,0.0},
@@ -1696,8 +1704,9 @@ int vulkanInfo(enum Configure query)
     break; case (MonitorHeight): return mainState.windowRatio.height;
     break; case (PhysicalWidth): return mainState.windowRatio.left;
     break; case (PhysicalHeight): return mainState.windowRatio.base;
-    break; case (RegisterDone): return (mainState.registerDone ? mainState.registerDone-- : 0);
-    break; case (RegisterOpen): return mainState.registerOpen;
+    break; case (RegisterDone): {int val = mainState.registerDone;
+        mainState.registerDone = 0; return val;}
+    break; case (ManipReset): return mainState.manipReset;
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
@@ -1709,7 +1718,7 @@ int vulkanInfo(enum Configure query)
 void vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
 {
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[mem];
-    if (!bufferQueue->clr()) return; // TODO set bit in register for error info
+    if (!bufferQueue->clr()) {mainState.registerDone |= (1<<BuffSetErr); return;}
     bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
 }
 void vulkanDma(struct Center *center)
@@ -1727,10 +1736,6 @@ void vulkanDma(struct Center *center)
         planeDone(center); return;
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
-    break; case (RegisterDone): mainState.registerDone = center->val[i];
-    break; case (RegisterOpen): if (mainState.manipReset != Passive) mainState.registerOpen = center->val[i];
-        else mainState.registerOpen &= ~(1<<Process) | center->val[i];
-        std::cerr << "registerOpen:" << mainState.registerOpen << "/" << center->val[i] << std::endl;
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
     break; case (CursorRead): mainState.mouseRead = (Enact)center->val[i];
     break; case (CursorWrite): mainState.mouseWrite = (Enact)center->val[i];
@@ -1772,7 +1777,6 @@ void vulkanDma(struct Center *center)
         mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipActed): for (int j = 0; j < Acteds; j++)
         mainState.manipActed[(Acted)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case (ManipReset): mainState.manipReset = (Reset)center->val[i];
     break; case (ParamFollow): mainState.paramFollow = center->val[i];
     break; case (ParamModify): mainState.paramModify = center->val[i];
     break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
@@ -1793,9 +1797,11 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
     WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
     std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << std::endl;
-    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return;
+    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) {
+    mainState.registerDone |= (1<<BuffGetErr); return;}
     std::cerr << "vulkanDraw queue" << std::endl;
-    if (!queue->swapQueue->get()) return; if (!drawQueue->clr(shader)) return; mainState.registerDone++;
+    if (!queue->swapQueue->get()) {mainState.registerDone |= (1<<SwapGetErr); return;}
+    if (!drawQueue->clr(shader)) {mainState.registerDone |= (1<<DrawSetErr); return;}
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
     if (Component__Micro__MicroOn(shader) == CoPyon) {
@@ -1860,7 +1866,7 @@ void vulkanStage()
 void vulkanSwap()
 {
     WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
-    if (!swapQueue->clr()) return; // TODO set bit in register for error info
+    if (!swapQueue->clr()) {mainState.registerDone |= (1<< SwapSetErr); return;}
     swapQueue->clr((mainState.windowCopy.width<<16)|(mainState.windowCopy.height));
     swapQueue->set(mainState.windowCopy,mainState.manipActed[Moved],mainState.manipActed[Sized]);
     swapQueue->put();
@@ -1896,7 +1902,7 @@ void vulkanFunc(enum Configure hint)
     break; case (CursorAngle): vulkanDirect();
     break; case (CursorLeft): vulkanGet();
     break; case (CursorBase): vulkanPut();
-    break; case (ManipReset): vulkanReset();}
+    break; case (RegisterOpen): vulkanReset();}
 }
 void vulkanChanged()
 {
@@ -1982,11 +1988,12 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     mainState.queueState = new QueueState();
     break;
     case (Process):
-    mainState.registerOpen |= 1<<Process;
-    while (mainState.registerOpen & (1<<Process)) {vulkanChanged(); planeMain();
+    while (mainState.manipReset != Resets) {
     if (mainState.manipReact[Poll]) mainState.glfwState->wait([](){glfwPollEvents();});
     else if (!mainState.manipActed[Mored]) mainState.glfwState->wait([](){glfwWaitEventsTimeout(1.0);});
-    else mainState.manipActed[Mored] = false;}
+    else mainState.manipActed[Mored] = false;
+    vulkanChanged(); planeMain();}
+    std::cerr << "Process after" << std::endl;
     break;
     default:
     throw std::runtime_error("no case in switch!");}
@@ -1994,6 +2001,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Stop):
     switch (proc) {
     case (Process):
+    std::cerr << "Process before" << std::endl;
+    mainState.manipReset = Resets;
     break;
     case (Graphics):
     std::cerr << "Graphics before" << std::endl;

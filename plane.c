@@ -741,16 +741,8 @@ void planeMain()
 
 int planraOnce;
 int planraDone;
-int planraSent;
+enum Reset planraReset;
 struct timeval planraTime;
-void planraExit(int enb)
-{
-	struct Center *center = 0; allocCenter(&center,1);
-	allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-	center->cfg[0] = RegisterOpen; center->val[0] = enb<<Process;
-	center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
-	callDma(center);
-}
 float *planraMatrix(float *mat)
 {
 	struct timeval stop; gettimeofday(&stop, NULL);
@@ -807,29 +799,29 @@ void planraWake(enum Configure hint)
 {
 	struct timeval stop; gettimeofday(&stop, NULL);
 	float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-	if (time > 1.0 && !planraSent) {planraSent = 1; planraExit(0);}
-	if (planraDone) return;
-	if ((callInfo(RegisterOpen) & (1<<Process)) == 0) {
-		sem_safe(&resource,{planraDone = 1;});
-		planeSafe(Process,Stop,Configures);
-		planeSafe(Graphics,Stop,Configures);
-		planeSafe(Window,Stop,Configures);
-		return;
-	}
 	if (planraOnce) {
 		planraOnce = 0;
+		planraReset = callInfo(ManipReset);
 		planraCenter();
 	}
+	if (planraDone) return;
+	if (time > 1.0 && planraReset == Passive) planraDone = 1;
 	if (hint == CursorPress) {
 		int key1 = callInfo(CursorPress);
 		int key2 = callInfo(CursorPress);
-		if (key1 == 256 && key2 == 257) planraExit(1);
+		if (key1 == 256 && key2 == 257) planraDone = 1;
 		if (key1 == 256 && key2 == 0) {
 		struct Center *center = 0; allocCenter(&center,1);
 		allocConfigure(&center->cfg,1); allocInt(&center->val,1);
 		center->cfg[0] = CursorPress; center->val[0] = 256;
 		center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
 		callDma(center);}
+	}
+	if (planraDone) {
+		planeSafe(Process,Stop,Configures);
+		planeSafe(Graphics,Stop,Configures);
+		planeSafe(Window,Stop,Configures);
+		return;
 	}
 	if (hint == CursorClick && callInfo(ManipReact) ==
 		((1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
@@ -966,11 +958,11 @@ void planraWake(enum Configure hint)
 }
 void planraBoot()
 {
+	planraDone = 0; planraOnce = 1;
 	gettimeofday(&planraTime, NULL);
 	planeSafe(Window,Start,Configures);
 	planeSafe(Graphics,Start,Configures);
 	planeSafe(Process,Start,Configures);
-	planraSent = 0; planraDone = 0; planraOnce = 1;
 	planeSafe(Threads,Waits,CursorLeft);
 }
 
