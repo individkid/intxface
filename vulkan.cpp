@@ -1894,6 +1894,7 @@ bool vulkanChange()
         (mainState.manipReact[Follow] && sized) ||
         (mainState.manipReact[Modify] && moused) ||
         (mainState.manipReact[Direct] && moused));
+    std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
     if (queryd) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
