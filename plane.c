@@ -64,7 +64,6 @@ void *response = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
 uftype callDma = 0;
-wftype callDraw = 0;
 rftype callReady = 0;
 xftype callDone = 0;
 sftype callAtom = 0;
@@ -502,7 +501,6 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Recv): planeRecv(); break;
 	case (Disp): planeDisp(); break;
 	case (Copy): planeCopy(center); break;
-	case (Draw): callDraw(configure[ParamMicro],configure[ParamBase],configure[ParamLimit]); break;
 	case (Atom): callAtom(mptr->arg); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
@@ -662,7 +660,7 @@ void planeFinish(enum Thread bit)
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void wrapPlane();
-void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, wftype draw, rftype pierce, xftype done, sftype atom, sftype wake, tftype info)
+void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, rftype pierce, xftype done, sftype atom, sftype wake, tftype info)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -676,8 +674,9 @@ void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, w
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callSafe = safe; callMain = main; callDma = dma; callDraw = draw;
-	callReady = pierce; callDone = done; callAtom = atom; callWake = wake; callInfo = info;
+	callSafe = safe; callMain = main; callDma = dma;
+	callReady = pierce; callDone = done;
+	callAtom = atom; callWake = wake; callInfo = info;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});
@@ -765,7 +764,7 @@ void planraCenter()
 	center->mem = Configurez; center->siz = 2; center->idx = 0; center->slf = 0;
 	allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 	center->cfg[0] = ParamLimit; center->cfg[1] = ManipReact;
-	center->val[0] = 6; center->val[1] = (1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+	center->val[0] = 6; center->val[1] = (1<<Display)|(1<<Follow)|(1<<Extent);
 	callDma(center); center = 0; allocCenter(&center,1);
 	center->mem = Vertexz; center->siz = 6; center->idx = 0; center->slf = 0;
 	allocVertex(&center->vtx,6);
@@ -824,133 +823,133 @@ void planraWake(enum Configure hint)
 		return;
 	}
 	if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == 0) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<North)|(1<<East)|(1<<South)|(1<<West);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<South)|(1<<West))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<North);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<North))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<East);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<East))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<South);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<South))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<West);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<West))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<East)|(1<<South);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<East)|(1<<South))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<North)|(1<<West);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<North)|(1<<West))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<East)|(1<<South)|(1<<West);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<East)|(1<<South)|(1<<West))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<North)|(1<<East)|(1<<South);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<South))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<North)|(1<<South)|(1<<West);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<North)|(1<<South)|(1<<West))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = (1<<North)|(1<<East)|(1<<West);
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);
 	}
 	else if (hint == CursorClick && callInfo(ManipReact) ==
-		((1<<Poll)|(1<<Apply)|(1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed)) &&
+		((1<<Poll)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
 		callInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<West))) {
 		struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
 		allocConfigure(&center->cfg,2); allocInt(&center->val,2);
 		center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-		center->val[0] = (1<<Pressed)|(1<<Clicked)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Needed);
+		center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent);
 		center->val[1] = 0;
 		center->idx = 0; center->siz = 2; center->slf = 1;
 		callDma(center);

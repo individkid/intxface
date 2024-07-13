@@ -66,13 +66,12 @@ Configure = {
 	"ParamModify", --
 	"ParamMicro", -- pass to draw
 	"ParamDisplay", --
-	"ParamBrighten", --
+	"ParamBright", --
 	"ParamDetect", --
 	"ParamBase", --
 	"ParamLimit", --
 	"ManipReact", -- block or behave
 	"ManipAction", -- what to do
-	"ManipActed", -- what has changed
 	"ManipFixed", -- how to do
 	"ManipScope", -- what to transform
 	"ManipReset", -- how to configure
@@ -125,7 +124,6 @@ Transfer = {
 	"Recv", -- either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
 	"Disp", -- conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 	"Copy", -- dma to cpu or gpu
-	"Draw", -- start shader
 	"Atom", -- call react
 	"Name", -- function for call
 	"Jump", -- skip if true
@@ -142,42 +140,33 @@ Enact = { -- configure enum interpretation
 }
 React = { -- when updates happen
 	"Poll", -- whether to sleep for glfw events
-	"Apply", -- whether to apply moves
-	"Changed", -- whether to little language
-	"Enqued", -- whether to enque mouse move
-	"Angled", -- whether to enque roller moved
-	"Clicked", -- whether to enque mouse clicked
-	"Pressed", -- whether to enque key pressed
-	"Repeat", -- whether to enque fence done
-	"Needed", -- find bind start needed on wake
+	"Enstate", -- whether to little language
+	"Enque", -- whether to micro code
+	"Enline", -- whether to enque key
+	"Enchar", -- whether to save key
+	"Arrow", -- whether to adjust window
+	"North", -- window edge changed
+	"East",
+	"South",
+	"West",
+	"Relate", -- whether mouse absolute
+	"Repeat", -- whether to wake on fence done
 	"Extent", -- bind window and swap on wake
 	"Follow", -- bind window matrix on wake
 	"Modify", -- bind transform matrix on wake
 	"Direct", -- bind uniform fields on wake
 	"Display", -- start display shader on wake
-	"Brighten", -- start facet index shader on wake
+	"Bright", -- start facet index shader on wake
 	"Detect", -- start pierce point shader on wake
 	"Query", -- search through pierce on wake
 	"Ready", -- present search result on wake
 }
 Action = { -- what input does
-	"North", -- window edge fixed
-	"East",
-	"South",
-	"West",
+	"Indicate", -- move to new piere point
 	"Manipulate", -- apply transformation
 	"Refine", -- add boundaries
 	"Additive", -- add regions
 	"Subtractive", -- remove regions
-}
-Acted = {
-    "Moved",
-    "Sized",
-    "Moused",
-    "Drawed",
-    "Queryd",
-    "Readyd",
-    "Mored",
 }
 Fixed = { -- how motion interpreted
 	"Mouse", -- how many fixed
