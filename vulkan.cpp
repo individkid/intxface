@@ -48,7 +48,6 @@ struct MainState {
     MouseState mouseClick, mouseMove, mouseCopy;
     WindowState windowClick, windowMove, windowCopy;
     WindowState windowRatio;
-    int windowDelta;
     std::deque<MouseState> queryMove; MouseState queryCopy;
     std::deque<Pierce> readyMove; Pierce readyCopy;
     std::deque<int> linePress;
@@ -65,8 +64,7 @@ struct MainState {
     int littleIndex;
     int littleSize;
     Little *littleState;
-    int argc;
-    char **argv;
+    int argc; char **argv; bool reset;
     InitState *initState;
     OpenState* openState;
     PhysicalState* physicalState;
@@ -74,6 +72,7 @@ struct MainState {
     ThreadState *threadState;
     TempState *tempState;
     QueueState* queueState;
+    const int windowDelta = 10;
     const int MAX_FRAMES_INFLIGHT = 2;
     const int MAX_BUFFERS_AVAILABLE = 3;
     const int MAX_FENCES_INFLIGHT = 3;
@@ -85,57 +84,7 @@ struct MainState {
 #else
     const bool enable = true;
 #endif
-} mainState = {
-    .registerDone = 0,
-    .manipReact = {0},
-    .manipAction = {0},
-#ifdef PLANRA
-#ifdef REGRESS
-    .manipReset = Passive,
-#else
-#ifdef BRINGUP
-    .manipReset = Active,
-#else
-    .manipReset = Minimum,
-#endif
-#endif
-#else
-#ifdef PLANER
-    .manipReset = Medium,
-#else
-    .manipReset = Maximum,
-#endif
-#endif
-    .mouseClick = {0.0,0.0,0.0},
-    .mouseMove = {0.0,0.0,0.0},
-    .mouseCopy = {0.0,0.0,0.0},
-    .windowClick = {0,0,800,800},
-    .windowMove = {0,0,800,800},
-    .windowCopy = {0,0,800,800},
-    .windowRatio = {1,1,1,1}, // TODO experiment with how to calculate this
-    .windowDelta = 10,
-    .charPress = 0,
-    .mouseIndex = 0,
-    .paramFollow = 0,
-    .paramModify = 0,
-    .paramDisplay = MicroPRPC, // just display
-    .paramBright = MicroPRRC, // fill Indexz
-    .paramDetect = MicroPRCP, // retreive Piercez
-    .paramBase = 0,
-    .paramLimit = 0,
-    .littleIndex = 0,
-    .littleSize = 0,
-    .littleState = 0,
-    .argc = 0,
-    .argv = 0,
-    .initState = 0,
-    .openState = 0,
-    .physicalState = 0,
-    .logicalState = 0,
-    .threadState = 0,
-    .tempState = 0,
-    .queueState = 0,
-};
+} mainState = {0};
 
 struct SafeState {
     sem_t semaphore;
@@ -1862,7 +1811,11 @@ void vulkanPut()
 }
 void vulkanReset()
 {
-    // TODO configure mainState and planeConfig depending on mainState.manipReset
+    // this mean to be called at any time with different manipReset
+    // but calling this after start of main can break consistency
+    // by changing configuration that determines new state
+    // TODO depend on mainState.manipReset
+    mainState.windowMove.width = 800; mainState.windowMove.height = 800;
 }
 void vulkanFunc(enum Configure hint)
 {
@@ -1941,6 +1894,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Start):
     switch (proc) {
     case (Window):
+    if (!mainState.reset) {vulkanReset(); mainState.reset = true;}
+    mainState.initState = new InitState(mainState.enable,mainState.layers);
     mainState.openState = new OpenState(mainState.initState->instance,
         mainState.windowMove.width,mainState.windowMove.height,(void*)&mainState);
     break;
@@ -1985,6 +1940,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Window):
     std::cerr << "Window before" << std::endl;
     delete mainState.openState; mainState.openState = 0;
+    delete mainState.initState; mainState.initState = 0;
     std::cerr << "Window after" << std::endl;
     break;
     default:
@@ -2000,13 +1956,29 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     gettimeofday(&debug_start, NULL);
     try {
-        mainState.initState = new InitState(mainState.enable,mainState.layers);
+#ifdef PLANRA
+#ifdef REGRESS
+        mainState.manipReset = Passive,
+#else
+#ifdef BRINGUP
+        mainState.manipReset = Active,
+#else
+        mainState.manipReset = Minimum,
+#endif
+#endif
+#else
+#ifdef PLANER
+        mainState.manipReset = Medium,
+#else
+        mainState.manipReset = Maximum,
+#endif
+#endif
+        vulkanReset();
         if (mainState.manipReset == Passive || mainState.manipReset == Active) planeInit(
             vulkanInit,vulkanSafe,planraBoot,vulkanMain,vulkanDma,
             vulkanReady,vulkanDone,vulkanFunc,planraWake,vulkanInfo);
         else planeInit(vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanDma,
             vulkanReady,vulkanDone,vulkanFunc,planeWake,vulkanInfo);
-        delete mainState.initState; mainState.initState = 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return -1;
