@@ -39,7 +39,6 @@ struct WindowState {
 };
 struct MainState {
     int registerDone;
-    std::deque<int> keyPressed;
     bool manipReact[Reacts];
     bool manipAction[Actions];
     enum Reset manipReset;
@@ -1619,8 +1618,8 @@ int vulkanInfo(enum Configure query)
         case (Affect): return mainState.mouseClick.angle;
         case (Infect): return mainState.mouseMove.angle;
         case (Effect): return mainState.mouseCopy.angle;}
-    break; case (CursorPress): {if (mainState.keyPressed.empty()) return 0;
-        int key = mainState.keyPressed.front(); mainState.keyPressed.pop_front(); return key;}
+    break; case (CursorPress): {if (mainState.linePress.empty()) return 0;
+        int key = mainState.linePress.front(); mainState.linePress.pop_front(); return key;}
     break; case (WindowLeft): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
         case (Affect): return mainState.windowClick.left;
         case (Infect): return mainState.windowMove.left;
@@ -1687,7 +1686,7 @@ void vulkanDma(struct Center *center)
         case (Infect): mainState.mouseMove.angle = center->val[i]; break;
         case (Effect): mainState.mouseCopy.angle = center->val[i]; break;}
     break; case (CursorPress): if (center->val[i] == 0)
-        mainState.keyPressed.clear(); else mainState.keyPressed.push_front(center->val[i]);
+        mainState.linePress.clear(); else mainState.linePress.push_front(center->val[i]);
     break; case (WindowRead): mainState.windowRead = (Enact)center->val[i];
     break; case (WindowWrite): mainState.windowWrite = (Enact)center->val[i];
     break; case (WindowLeft): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
@@ -1810,9 +1809,9 @@ void vulkanReset()
     int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
     GLFWwindow *window = mainState.openState->window;
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    width = mainState.windowMove.width; height = mainState.windowMove.height;
     glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
     glfwGetFramebufferSize(window,&sizx,&sizy);
+    glfwGetWindowSize(window,&width,&height);
     glfwGetCursorPos(window,&posx,&posy);
     std::cerr << "vulkanReset before " << left << "/" << base << " " << posx << "/" << posy  << std::endl;
     left += (workx-width)/2; base += (worky-height)/2;
@@ -1824,8 +1823,11 @@ void vulkanReset()
     mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ base+posy;} else {
     mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ posx;
     mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ posy;}
+    mainState.windowClick.width = mainState.windowMove.width = /*mainState.windowCopy.width =*/ width;
+    mainState.windowClick.height = mainState.windowMove.height = /*mainState.windowCopy.height =*/ height;
     mainState.windowClick.left = mainState.windowMove.left = /*mainState.windowCopy.left =*/ left;
     mainState.windowClick.base = mainState.windowMove.base = /*mainState.windowCopy.base =*/ base;
+    std::cerr << "vulkanReset " << sizx << "/" << width << " " << sizy << "/" << height << std::endl;
     mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
     mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
 }
