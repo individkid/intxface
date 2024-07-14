@@ -315,26 +315,13 @@ struct InitState {
 struct OpenState {
     VkInstance instance;
     GLFWwindow* window;
-    GLFWmonitor* monitor;
     VkSurfaceKHR surface;
     OpenState(VkInstance instance, int width, int height, void *ptr) {
-        struct MainState *mainState = (struct MainState *)ptr;
-        int32_t left, base, workx, worky, sizx, sizy;
-        double posx, posy;
         this->instance = instance;
-        window = [](int width, int height) {
+        window = [](int32_t width, int32_t height) {
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-            return glfwCreateWindow(width, height-32, "Vulkan", nullptr, nullptr);
+            return glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
         } (width,height);
-        monitor = glfwGetPrimaryMonitor();
-	glfwGetCursorPos(window,&posx,&posy);
-	glfwGetWindowPos(window,&left,&base);
-	mainState->mouseClick.left = mainState->mouseMove.left = mainState->mouseCopy.left = left+posx;
-	mainState->mouseClick.base = mainState->mouseMove.base = mainState->mouseCopy.base = base+posy;
-        glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
-        left += (workx-width)/2; base += (worky-height)/2;
-        mainState->windowMove.left = left; mainState->windowMove.base = base;
-        glfwSetWindowPos(window,left,base);
         glfwSetWindowUserPointer(window, ptr);
         // glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
         glfwSetKeyCallback(window, keyPressed);
@@ -816,7 +803,9 @@ struct SwapState {
     int count;
 SwapState(MainState *state, int size, WrapTag tag) {
     width = (size >> 16)*state->windowRatio.left/state->windowRatio.width;
+    if (state->windowRatio.left%state->windowRatio.width) width += 1;
     height = ((size >> 16) << 16)*state->windowRatio.base/state->windowRatio.height;
+    if (state->windowRatio.base/state->windowRatio.height) height += 1;
     [this](OpenState *open, PhysicalState *physical, DeviceState *logical){
     this->device = logical->device;
     [this](GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
@@ -1815,7 +1804,30 @@ void vulkanReset()
     // but calling this after start of main can break consistency
     // by changing configuration that determines new state
     // TODO depend on mainState.manipReset
-    mainState.windowMove.width = 800; mainState.windowMove.height = 800;
+    mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
+    mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
+    if (mainState.openState) {
+    int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
+    GLFWwindow *window = mainState.openState->window;
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    width = mainState.windowMove.width; height = mainState.windowMove.height;
+    glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
+    glfwGetFramebufferSize(window,&sizx,&sizy);
+    glfwGetCursorPos(window,&posx,&posy);
+    std::cerr << "vulkanReset before " << left << "/" << base << " " << posx << "/" << posy  << std::endl;
+    left += (workx-width)/2; base += (worky-height)/2;
+    posx -= (workx-width)/2; posy -= (worky-height)/2;
+    std::cerr << "vulkanReset after " << left << "/" << base << " " << posx << "/" << posy  << std::endl;
+    glfwSetWindowPos(window,left,base);
+    if (mainState.manipReact[Relate]) {
+    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ left+posx;
+    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ base+posy;} else {
+    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ posx;
+    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ posy;}
+    mainState.windowClick.left = mainState.windowMove.left = /*mainState.windowCopy.left =*/ left;
+    mainState.windowClick.base = mainState.windowMove.base = /*mainState.windowCopy.base =*/ base;
+    mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
+    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
 }
 void vulkanFunc(enum Configure hint)
 {
@@ -1848,6 +1860,9 @@ bool vulkanChange()
         (mainState.manipReact[Modify] && moused) ||
         (mainState.manipReact[Direct] && moused));
     std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
+    if (moved) std::cerr << "vulkanChange moved " << mainState.windowMove.left << "/" << mainState.windowCopy.left << " " << mainState.windowMove.base << "/" << mainState.windowCopy.base << std::endl;
+    if (sized) std::cerr << "vulkanChange sized " << mainState.windowMove.width << "/" << mainState.windowCopy.width << " " << mainState.windowMove.height << "/" << mainState.windowCopy.height << std::endl;
+    if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
     if (queryd) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
@@ -1894,10 +1909,9 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Start):
     switch (proc) {
     case (Window):
-    if (!mainState.reset) {vulkanReset(); mainState.reset = true;}
-    mainState.initState = new InitState(mainState.enable,mainState.layers);
+    mainState.initState = new InitState(mainState.enable,mainState.layers); vulkanReset();
     mainState.openState = new OpenState(mainState.initState->instance,
-        mainState.windowMove.width,mainState.windowMove.height,(void*)&mainState);
+        mainState.windowMove.width, mainState.windowMove.height,(void*)&mainState); vulkanReset();
     break;
     case (Graphics):
     mainState.physicalState = new PhysicalState(
@@ -1917,7 +1931,6 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     if (mainState.manipReact[Poll]) glfwPollEvents();
     else if (!mored) glfwWaitEventsTimeout(1.0);
     mored = vulkanChange(); planeMain();}
-    std::cerr << "Process after" << std::endl;
     break;
     default:
     throw std::runtime_error("no case in switch!");}
@@ -1925,23 +1938,18 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     case (Stop):
     switch (proc) {
     case (Process):
-    std::cerr << "Process before" << std::endl;
     mainState.manipReset = Resets;
     break;
     case (Graphics):
-    std::cerr << "Graphics before" << std::endl;
     delete mainState.queueState; mainState.queueState = 0;
     delete mainState.tempState; mainState.tempState = 0;
     delete mainState.threadState; mainState.threadState = 0;
     delete mainState.logicalState; mainState.logicalState = 0;
     delete mainState.physicalState; mainState.physicalState = 0;
-    std::cerr << "Graphics after" << std::endl;
     break;
     case (Window):
-    std::cerr << "Window before" << std::endl;
     delete mainState.openState; mainState.openState = 0;
     delete mainState.initState; mainState.initState = 0;
-    std::cerr << "Window after" << std::endl;
     break;
     default:
     throw std::runtime_error("no case in switch!");}
@@ -1958,22 +1966,21 @@ int main(int argc, char **argv)
     try {
 #ifdef PLANRA
 #ifdef REGRESS
-        mainState.manipReset = Passive,
+        mainState.manipReset = Passive;
 #else
 #ifdef BRINGUP
-        mainState.manipReset = Active,
+        mainState.manipReset = Active;
 #else
-        mainState.manipReset = Minimum,
+        mainState.manipReset = Minimum;
 #endif
 #endif
 #else
 #ifdef PLANER
-        mainState.manipReset = Medium,
+        mainState.manipReset = Medium;
 #else
-        mainState.manipReset = Maximum,
+        mainState.manipReset = Maximum;
 #endif
 #endif
-        vulkanReset();
         if (mainState.manipReset == Passive || mainState.manipReset == Active) planeInit(
             vulkanInit,vulkanSafe,planraBoot,vulkanMain,vulkanDma,
             vulkanReady,vulkanDone,vulkanFunc,planraWake,vulkanInfo);
