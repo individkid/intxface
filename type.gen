@@ -74,7 +74,6 @@ Configure = {
 	"ManipAction", -- what to do
 	"ManipFixed", -- how to do
 	"ManipScope", -- what to transform
-	"ManipReset", -- how to configure
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
 	"ResultLine", -- state of machine
@@ -179,20 +178,6 @@ Fixed = { -- how motion interpreted
 	"Ortho",
 	"Normal",
 }
-Reset = {
-	"Passive", -- make planra.log test
-	"Active", -- planraWake user test
-	"Minimum", -- little language modes
-	"Medium", -- planer.lua micro code
-	"Maximum", -- share file plane space
-}
-Error = {
-	"DrawSetErr",
-	"BuffGetErr",
-	"BuffSetErr",
-	"SwapGetErr",
-	"SwapSetErr",
-}
 MicroIn = {
 	"Practice", -- use location for Vertex
 	"Concept", -- use binding for Vertex
@@ -233,10 +218,16 @@ WrapTag = {
 Wait = {
 	"Start",
 	"Stop",
+	"Regress",
+	"Bringup",
+	"Builtin",
+	"Freerun",
+	"Product",
 }
 Thread = {
 	"Select",
 	"Console",
+	"Initial",
 	"Window",
 	"Graphics",
 	"Process",
