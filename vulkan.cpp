@@ -1275,23 +1275,17 @@ struct ThreadState {
     TempState temp;
     pthread_t thread;
     bool finish;
-    bool repeat; // whether to wake upon fence
-    std::deque<std::function<void()>> comp;
     std::deque<std::function<VkFence()>> setup;
-    std::deque<int> which; // whether void or fence pushed
     std::deque<VkFence> fence; // fence to wait for
     std::deque<int> order; // pushed or pending sequence number
     std::set<int> lookup; // whether sequence number unfinished
-    std::deque<std::function<void()>> precomp;
     std::deque<std::function<VkFence()>> presetup;
     std::deque<int> preord; // sequence number for push from separate thread
-    std::deque<int> prewhich; // whether to push void or fence
     std::deque<std::function<bool()>> when; // whether to push from separate thread
-    bool toggle; int ident; int limit; int seqnum; bool chknum;
-    ThreadState(VkDevice device, bool repeat, int limit) {
+    int limit; int seqnum;
+    ThreadState(VkDevice device, int limit) {
         this->device = device; finish = false;
-        this->repeat = repeat; toggle = false;
-        this->limit = limit; seqnum = 0; chknum = true;
+        this->limit = limit; seqnum = 0;
         if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
@@ -1308,19 +1302,16 @@ struct ThreadState {
                 break;}
             while (!arg->when.empty() && arg->clear(arg->when.front())) {
                 int ord = arg->preord.front(); arg->order.push_back(ord);
-                int tmp = arg->prewhich.front(); arg->which.push_back(tmp);
-                switch (tmp) {
-                case (0): arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front(); break;
-                case (1): arg->comp.push_back(arg->precomp.front()); arg->precomp.pop_front(); break;
-                default: throw std::runtime_error("unsupported separate lambda!"); break;}
-                arg->when.pop_front(); arg->preord.pop_front(); arg->prewhich.pop_front();}
-            while (!arg->which.empty()) {
-                switch (arg->which.front()) {
-                case (0): arg->fence.push_back(arg->setup.front()()); arg->setup.pop_front(); break;
-                case (1): arg->comp.front()(); arg->comp.pop_front();
-                arg->lookup.erase(arg->order.front()); arg->order.pop_front(); arg->chknum = true; break;
-                default: throw std::runtime_error("unsupported separate lambda!"); break;}
-                arg->which.pop_front();}
+		arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front();
+                arg->when.pop_front(); arg->preord.pop_front();}
+            while (!arg->setup.empty()) {
+		std::function<VkFence()> setup = arg->setup.front();
+                VkFence fence;
+                arg->protect.post();
+                fence = setup();
+                arg->protect.wait();
+                arg->fence.push_back(fence);
+                arg->setup.pop_front();}
             if (arg->fence.empty()) {
                 arg->protect.post();
                 arg->semaphore.wait();
@@ -1332,16 +1323,9 @@ struct ThreadState {
                 arg->protect.wait();
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
-                arg->lookup.erase(next); arg->order.pop_front(); arg->chknum = true; arg->fence.pop_front();}}}
+                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();}}}
         vkDeviceWaitIdle(arg->device);
         return 0;
-    }
-    bool draw() {
-        bool ret;
-        protect.wait();
-        ret = chknum; chknum = false;
-        protect.post();
-        return ret;
     }
     bool clear(int given) {
     // return whether given sequence number is completed
@@ -1356,11 +1340,6 @@ struct ThreadState {
         if (given()) {protect.wait(); return true;}
         protect.wait(); return false;
     }
-    void clear() {
-    //  start or stop collecting fences
-        if (toggle) toggle = false;
-        else {toggle = true; ident = temp.temp();}
-    }
     bool push() {
         bool ret;
         protect.wait();
@@ -1368,31 +1347,22 @@ struct ThreadState {
         protect.post();
         return ret;
     }
-    std::function<bool()> push(std::function<void(int)> given) {
+    std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
+    // return query of whether fence is done for given function started in indicated sequence
         protect.wait();
         int sval = semaphore.get();
         if (sval == 0) semaphore.post();
-        int ord = seqnum++; lookup.insert(ord); given(ord);
+        int ord = seqnum++; lookup.insert(ord);
+        preord.push_back(ord); when.push_back(last); presetup.push_back(given);
         std::function<bool()> done = [this,ord](){return this->clear(ord);};
-        if (toggle) {temp.temp(ident,done); done = temp.temp(ident);}
-        if (fence.size()+setup.size()+comp.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
+        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
         if (order.size()+preord.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
         protect.post();
-        return done;}
-    std::function<bool()> push(std::function<void()> given) {
-    // return function that returns whether given function called in separate thread
-        return push([this,given](int ord){order.push_back(ord); comp.push_back(given); which.push_back(1);});}
+        return done;
+    }
     std::function<bool()> push(std::function<void()> given, std::function<bool()> last) {
-    // return query of whether given function called in indicated sequence
-        return push([this,given,last](int ord){preord.push_back(ord); when.push_back(last);
-        prewhich.push_back(1); precomp.push_back(given);});}
-    std::function<bool()> push(std::function<VkFence()> given) {
-    // return function that returns whether fence returned by given function in separate thread is done
-        return push([this,given](int ord){order.push_back(ord); setup.push_back(given); which.push_back(0);});}
-    std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
-    // return query of whether fence is done for given function started in indicated sequence
-        return push([this,given,last](int ord){preord.push_back(ord); when.push_back(last);
-        prewhich.push_back(0); presetup.push_back(given);});}
+        return push((std::function<VkFence()>)[given](){given(); return VK_NULL_HANDLE;},last);
+    }
 };
 
 template<class Buffer> struct WrapState {
@@ -1518,7 +1488,8 @@ template<class Buffer> struct WrapState {
     }
     std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
         int size = (loc+siz > this->size ? loc+siz : this->size); clr(size);
-        thread->push((std::function<void()>)[this,loc,ptr,siz](){memcpy((void*)((char*)copy+loc),ptr,siz);});
+        set((std::function<void(Buffer*)>)[this,loc,ptr,siz](Buffer*buf){
+        memcpy((void*)((char*)copy+loc),ptr,siz);}); put();
         if (tag == QueryBuf) return [](){return true;};
         if (buf().second) return set();
         buf().first->bind(loc,siz,ptr,dat);
@@ -1926,7 +1897,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
         physical->image,mainState.layers,mainState.extensions,mainState.enable,
         mainState.MAX_BUFFERS_AVAILABLE*Memorys);}(mainState.physicalState);
     mainState.threadState = new ThreadState(mainState.logicalState->device,
-        mainState.manipReact[Repeat],mainState.MAX_FENCES_INFLIGHT);
+        mainState.MAX_FENCES_INFLIGHT);
     mainState.tempState = new TempState();
     mainState.queueState = new QueueState();
     break; case PAIR(Graphics,Stop):

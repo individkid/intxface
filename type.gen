@@ -149,7 +149,6 @@ React = { -- when updates happen
 	"South",
 	"West",
 	"Relate", -- whether mouse absolute
-	"Repeat", -- whether to wake on fence done
 	"Extent", -- bind window and swap on wake
 	"Follow", -- bind window matrix on wake
 	"Modify", -- bind transform matrix on wake
