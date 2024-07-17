@@ -1268,6 +1268,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base
 };
 
 void vulkanSafe();
+enum Noting {Passing,Failing,Starting,Waiting};
 struct ThreadState {
     VkDevice device;
     SafeState protect;
@@ -1282,10 +1283,10 @@ struct ThreadState {
     std::deque<std::function<VkFence()>> presetup;
     std::deque<int> preord; // sequence number for push from separate thread
     std::deque<std::function<bool()>> when; // whether to push from separate thread
-    int limit; int seqnum;
+    int limit; int seqnum; enum Noting note;
     ThreadState(VkDevice device, int limit) {
         this->device = device; finish = false;
-        this->limit = limit; seqnum = 0;
+        this->limit = limit; seqnum = 0; note = Passing;
         if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
@@ -1323,9 +1324,19 @@ struct ThreadState {
                 arg->protect.wait();
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
-                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();}}}
+                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
+                if (arg->note == Failing) {vulkanSafe(); arg->note = Passing;}
+                else if (arg->note == Starting) arg->note = Waiting;}}}
         vkDeviceWaitIdle(arg->device);
         return 0;
+    }
+    void clear(enum Noting note) {
+    // Passing: clear and ignore
+    // Failing: send or wait
+    // Starting: clear and capture
+    // Waiting: progress since start
+        if (this->note == Waiting && note == Failing) {vulkanSafe(); this->note = Passing;}
+        else this->note = note;
     }
     bool clear(int given) {
     // return whether given sequence number is completed
