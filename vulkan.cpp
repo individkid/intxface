@@ -41,7 +41,7 @@ struct MainState {
     bool manipReact[Reacts];
     bool manipEnact[Enacts];
     bool manipAction[Actions];
-    bool registerDone[Enacts];
+    bool manipDone[Enacts];
     enum Interp mouseRead, mouseWrite;
     enum Interp windowRead, windowWrite;
     MouseState mouseClick, mouseMove, mouseCopy;
@@ -49,6 +49,7 @@ struct MainState {
     WindowState windowRatio;
     std::deque<MouseState> queryMove; MouseState queryCopy;
     std::deque<Pierce> readyMove; Pierce readyCopy;
+    std::deque<Center*> deferMove; Center* deferCopy;
     std::deque<int> linePress;
     int charPress;
     int mouseIndex;
@@ -1332,6 +1333,7 @@ struct ThreadState {
     bool clear() {
         protect.wait();
         if (note == Pend) {note = Pass;
+        if (mainState.manipReact[Enque])
         planeSafe(Threads,Waits,RegisterDone);
         protect.post(); return true;}
         protect.post(); return false;
@@ -1643,7 +1645,7 @@ int vulkanInfo(enum Configure query)
     break; case (RegisterOpen): return 0;
 #endif
     break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
-        if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
+        if (mainState.manipDone[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     break; case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
@@ -1661,12 +1663,7 @@ bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> da
 }
 void vulkanDma(struct Center *center)
 {
-    int siz; void *ptr; struct WrapState<BufferState> *buf;
-    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
-    break; case (Indexz): siz = sizeof(center->buf[0]); ptr = center->buf;
-    break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
-    break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
-    break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;
+    switch (center->mem) {default: mainState.deferMove.push_back(center);
     break; case (Littlez): if (center->idx+center->siz > mainState.littleSize) {
         mainState.littleSize = center->idx+center->siz; mainState.littleState =
         (struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
@@ -1710,7 +1707,7 @@ void vulkanDma(struct Center *center)
         case (Infect): mainState.windowMove.height = center->val[i]; break;
         case (Effect): mainState.windowCopy.height = center->val[i]; break;}
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
-        mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
+        mainState.manipDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
         mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
@@ -1725,9 +1722,7 @@ void vulkanDma(struct Center *center)
     break; case (ParamBase): mainState.paramBase = center->val[i];
     break; case (ParamLimit): mainState.paramLimit = center->val[i];
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
-    planeDone(center); return;}
-    vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
-    // TODO perhaps setup for vulkanChange with a corresponding registerDone
+    planeDone(center);}
 }
 bool vulkanDraw(enum Micro shader, int base, int limit)
 {
@@ -1808,10 +1803,21 @@ bool vulkanReady()
     // TODO call planeReady on latest async search of paramDetect mapped
     return false;
 }
+bool vulkanDefer()
+{
+    struct Center *center = mainState.deferCopy;
+    int siz; void *ptr; struct WrapState<BufferState> *buf;
+    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
+    break; case (Indexz): siz = sizeof(center->buf[0]); ptr = center->buf;
+    break; case (Piercez): siz = sizeof(center->pie[0]); ptr = center->pie;
+    break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
+    break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
+    return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
+}
 void vulkanEnact(enum Enact hint)
 {
     bool fail;
-    if (!mainState.registerDone[hint]) return;
+    if (!mainState.manipDone[hint]) return;
     mainState.threadState->start();
     switch (hint) {default: throw std::runtime_error("failed to call function!");
     break; case (Extent): fail = vulkanSwap();
@@ -1822,8 +1828,9 @@ void vulkanEnact(enum Enact hint)
     break; case (Bright): fail = vulkanBright();
     break; case (Detect): fail = vulkanDetect();
     break; case (Query): fail = vulkanQuery();
-    break; case (Ready): fail = vulkanReady();}
-    mainState.registerDone[hint] = fail;
+    break; case (Ready): fail = vulkanReady();
+    break; case (Defer): fail = vulkanDefer();}
+    mainState.manipDone[hint] = fail;
     if (fail) mainState.threadState->fail();
     else mainState.threadState->pass();
 }
@@ -1837,6 +1844,7 @@ bool vulkanChange()
         mainState.mouseMove.base != mainState.mouseCopy.base);
     bool queryd = !mainState.queryMove.empty();
     bool readyd = !mainState.readyMove.empty();
+    bool deferd = !mainState.deferMove.empty();
     bool drawed = ((mainState.manipEnact[Follow] && moved) ||
         (mainState.manipEnact[Follow] && sized) ||
         (mainState.manipEnact[Modify] && moused) ||
@@ -1847,22 +1855,26 @@ bool vulkanChange()
     if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
-    if (queryd && !mainState.registerDone[Query]) {
+    if (queryd && !mainState.manipDone[Query]) {
         mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-    if (readyd && !mainState.registerDone[Ready]) {
+    if (readyd && !mainState.manipDone[Ready]) {
         mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
-    if (mainState.manipEnact[Extent] && sized) mainState.registerDone[Extent] = true; vulkanEnact(Extent);
-    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.registerDone[Follow] = true; vulkanEnact(Follow);
-    if (mainState.manipEnact[Modify] && moused) mainState.registerDone[Modify] = true; vulkanEnact(Modify);
-    if (mainState.manipEnact[Direct] && moused) mainState.registerDone[Direct] = true; vulkanEnact(Direct);
-    if (mainState.manipEnact[Display] && drawed) mainState.registerDone[Display] = true; vulkanEnact(Display);
-    if (mainState.manipEnact[Bright] && drawed) mainState.registerDone[Bright] = true; vulkanEnact(Bright);
-    if (mainState.manipEnact[Detect] && drawed) mainState.registerDone[Detect] = true; vulkanEnact(Detect);
-    if (mainState.manipEnact[Query] && queryd) mainState.registerDone[Query] = true; vulkanEnact(Query);
-    if (mainState.manipEnact[Ready] && readyd) mainState.registerDone[Ready] = true; vulkanEnact(Ready);
+    if (deferd && !mainState.manipDone[Defer]) {
+        mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
+    if (mainState.manipEnact[Extent] && sized) mainState.manipDone[Extent] = true; vulkanEnact(Extent);
+    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.manipDone[Follow] = true; vulkanEnact(Follow);
+    if (mainState.manipEnact[Modify] && moused) mainState.manipDone[Modify] = true; vulkanEnact(Modify);
+    if (mainState.manipEnact[Direct] && moused) mainState.manipDone[Direct] = true; vulkanEnact(Direct);
+    if (mainState.manipEnact[Display] && drawed) mainState.manipDone[Display] = true; vulkanEnact(Display);
+    if (mainState.manipEnact[Bright] && drawed) mainState.manipDone[Bright] = true; vulkanEnact(Bright);
+    if (mainState.manipEnact[Detect] && drawed) mainState.manipDone[Detect] = true; vulkanEnact(Detect);
+    if (mainState.manipEnact[Query] && queryd) mainState.manipDone[Query] = true; vulkanEnact(Query);
+    if (mainState.manipEnact[Ready] && readyd) mainState.manipDone[Ready] = true; vulkanEnact(Ready);
+    if (mainState.manipEnact[Defer] && deferd) mainState.manipDone[Defer] = true; vulkanEnact(Defer);
     return (mainState.threadState->clear() ||
-        (!mainState.queryMove.empty() && !mainState.registerDone[Query]) ||
-        (!mainState.readyMove.empty() && !mainState.registerDone[Ready]));
+        (!mainState.queryMove.empty() && !mainState.manipDone[Query]) ||
+        (!mainState.readyMove.empty() && !mainState.manipDone[Ready]) ||
+        (!mainState.readyMove.empty() && !mainState.manipDone[Defer]));
 }
 struct Center *vulkanReady(enum Memory mem)
 {

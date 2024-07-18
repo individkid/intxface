@@ -137,7 +137,7 @@ Interp = { -- configure enum interpretation
 	"Affect", -- changed infrequently
 	"Effect", -- used for display
 }
-React = { -- when updates happen
+React = { -- when updates recorded
 	"Poll", -- whether to sleep for glfw events
 	"Enstate", -- whether to little language
 	"Enque", -- whether to micro code
@@ -149,13 +149,13 @@ React = { -- when updates happen
 	"South",
 	"West",
 	"Relate", -- whether mouse absolute
-	"Repeat", -- planeSafe on vulkanSafe
 }
-Enact = {
-	"Extent", -- bind window and swap on wake
-	"Follow", -- bind window matrix on wake
-	"Modify", -- bind transform matrix on wake
-	"Direct", -- bind uniform fields on wake
+Enact = { -- when updates applied
+	"Extent", -- set window and swap on wake
+	"Follow", -- set window matrix on wake
+	"Modify", -- set transform matrix on wake
+	"Direct", -- set uniform fields on wake
+	"Defer", -- set memory from dma center
 	"Display", -- start display shader on wake
 	"Bright", -- start facet index shader on wake
 	"Detect", -- start pierce point shader on wake
@@ -164,6 +164,7 @@ Enact = {
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
+	"Collect", -- identify subpolytope
 	"Manipulate", -- apply transformation
 	"Refine", -- add boundaries
 	"Additive", -- add regions
