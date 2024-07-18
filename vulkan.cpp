@@ -1282,7 +1282,7 @@ struct ThreadState {
     std::deque<std::function<VkFence()>> presetup;
     std::deque<int> preord; // sequence number for push from separate thread
     std::deque<std::function<bool()>> when; // whether to push from separate thread
-    int limit; int seqnum; enum State {Pass,Fail,Start,Wait} note;
+    int limit; int seqnum; enum State {Pass,Fail,Start,Wait,Pend} note;
     ThreadState(VkDevice device, int limit) {
         this->device = device; finish = false;
         this->limit = limit; seqnum = 0; note = Pass;
@@ -1324,18 +1324,27 @@ struct ThreadState {
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
-                if (arg->note == Fail) {vulkanSafe(); arg->note = Pass;}
+                if (arg->note == Fail) {vulkanSafe(); arg->note = Pend;}
                 else if (arg->note == Start) arg->note = Wait;}}}
         vkDeviceWaitIdle(arg->device);
         return 0;
+    }
+    bool clear() {
+        protect.wait();
+        if (note == Pend) {note = Pass;
+        planeSafe(Threads,Waits,RegisterDone);
+        protect.post(); return true;}
+        protect.post(); return false;
     }
     void clear(enum State note) {
     // Pass: clear and ignore
     // Fail: send or wait
     // Start: clear and capture
     // Wait: progress since start
-        if (this->note == Wait && note == Fail) {vulkanSafe(); this->note = Pass;}
+        protect.wait();
+        if (this->note == Wait && note == Fail) this->note = Pend;
         else this->note = note;
+        protect.post();
     }
     void pass() {
         clear(Pass);
@@ -1349,7 +1358,8 @@ struct ThreadState {
     bool clear(int given) {
     // return whether given sequence number is completed
         protect.wait();
-        if (lookup.find(given) == lookup.end()) {protect.post(); return true;}
+        if (lookup.find(given) == lookup.end()) {
+        protect.post(); return true;}
         protect.post(); return false;
     }
     bool clear(std::function<bool()> given) {
@@ -1790,12 +1800,12 @@ bool vulkanReady()
     // TODO call planeReady on latest async search of paramDetect mapped
     return false;
 }
-void vulkanFunc(enum Enact hint)
+void vulkanEnact(enum Enact hint)
 {
     bool fail;
+    if (!mainState.registerDone[hint]) return;
     mainState.threadState->start();
-    switch (hint) {
-    default: throw std::runtime_error("failed to call function!");
+    switch (hint) {default: throw std::runtime_error("failed to call function!");
     break; case (Extent): fail = vulkanSwap();
     break; case (Follow): fail = vulkanFollow();
     break; case (Modify): fail = vulkanModify();
@@ -1833,16 +1843,16 @@ bool vulkanChange()
         mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
     if (readyd && !mainState.registerDone[Ready]) {
         mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
-    if (mainState.registerDone[Extent] || (mainState.manipEnact[Extent] && sized)) vulkanFunc(Extent);
-    if (mainState.registerDone[Follow] || (mainState.manipEnact[Follow] && (moved || sized))) vulkanFunc(Follow);
-    if (mainState.registerDone[Modify] || (mainState.manipEnact[Modify] && moused)) vulkanFunc(Modify);
-    if (mainState.registerDone[Direct] || (mainState.manipEnact[Direct] && moused)) vulkanFunc(Direct);
-    if (mainState.registerDone[Display] || (mainState.manipEnact[Display] && drawed)) vulkanFunc(Display);
-    if (mainState.registerDone[Bright] || (mainState.manipEnact[Bright] && drawed)) vulkanFunc(Bright);
-    if (mainState.registerDone[Detect] || (mainState.manipEnact[Detect] && drawed)) vulkanFunc(Detect);
-    if (mainState.registerDone[Query] || (mainState.manipEnact[Query] && drawed)) vulkanFunc(Query);
-    if (mainState.registerDone[Ready] || (mainState.manipEnact[Ready] && drawed)) vulkanFunc(Ready);
-    return (!mainState.queryMove.empty() || !mainState.readyMove.empty());
+    if (mainState.manipEnact[Extent] && sized) mainState.registerDone[Extent] = true; vulkanEnact(Extent);
+    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.registerDone[Follow] = true; vulkanEnact(Follow);
+    if (mainState.manipEnact[Modify] && moused) mainState.registerDone[Modify] = true; vulkanEnact(Modify);
+    if (mainState.manipEnact[Direct] && moused) mainState.registerDone[Direct] = true; vulkanEnact(Direct);
+    if (mainState.manipEnact[Display] && drawed) mainState.registerDone[Display] = true; vulkanEnact(Display);
+    if (mainState.manipEnact[Bright] && drawed) mainState.registerDone[Bright] = true; vulkanEnact(Bright);
+    if (mainState.manipEnact[Detect] && drawed) mainState.registerDone[Detect] = true; vulkanEnact(Detect);
+    if (mainState.manipEnact[Query] && queryd) mainState.registerDone[Query] = true; vulkanEnact(Query);
+    if (mainState.manipEnact[Ready] && readyd) mainState.registerDone[Ready] = true; vulkanEnact(Ready);
+    return (!mainState.queryMove.empty() || !mainState.readyMove.empty() || mainState.threadState->clear());
 }
 struct Center *vulkanReady(enum Memory mem)
 {
@@ -1872,7 +1882,6 @@ void vulkanInit()
 int vulkanGoon = 0;
 void vulkanMain(enum Thread proc, enum Wait wait)
 {
-    bool mored = false;
     switch PAIR(proc,wait) {default: break;
     break; case PAIR(Initial,Start<<16):
     std::cerr << "Initial,Start" << std::endl;
@@ -1938,9 +1947,9 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     vulkanGoon += 1;
     std::cerr << "Process,Start " << vulkanGoon << std::endl;
     while (vulkanGoon) {
-    if (mainState.manipReact[Poll]) glfwPollEvents();
-    else if (!mored) glfwWaitEventsTimeout(1.0);
-    mored = vulkanChange(); planeMain();}
+    if (vulkanChange() || mainState.manipReact[Poll]) glfwPollEvents();
+    else glfwWaitEventsTimeout(1.0);
+    planeMain();}
     break; case PAIR(Process,Stop):
     std::cerr << "Process,Stop " << vulkanGoon << std::endl;
     vulkanGoon -= 1;}
