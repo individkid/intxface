@@ -1642,6 +1642,8 @@ int vulkanInfo(enum Configure query)
 #else
     break; case (RegisterOpen): return 0;
 #endif
+    break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
+        if (mainState.manipEnact[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
@@ -1705,6 +1707,8 @@ void vulkanDma(struct Center *center)
         case (Affect): mainState.windowClick.height = center->val[i]; break;
         case (Infect): mainState.windowMove.height = center->val[i]; break;
         case (Effect): mainState.windowCopy.height = center->val[i]; break;}
+    break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
+        mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
         mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipAction): for (int j = 0; j < Actions; j++)
@@ -1852,7 +1856,9 @@ bool vulkanChange()
     if (mainState.manipEnact[Detect] && drawed) mainState.registerDone[Detect] = true; vulkanEnact(Detect);
     if (mainState.manipEnact[Query] && queryd) mainState.registerDone[Query] = true; vulkanEnact(Query);
     if (mainState.manipEnact[Ready] && readyd) mainState.registerDone[Ready] = true; vulkanEnact(Ready);
-    return (!mainState.queryMove.empty() || !mainState.readyMove.empty() || mainState.threadState->clear());
+    return (mainState.threadState->clear() ||
+        (!mainState.queryMove.empty() && !mainState.registerDone[Query]) ||
+        (!mainState.readyMove.empty() && !mainState.registerDone[Ready]));
 }
 struct Center *vulkanReady(enum Memory mem)
 {
