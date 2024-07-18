@@ -39,9 +39,11 @@ struct WindowState {
 };
 struct MainState {
     bool manipReact[Reacts];
+    bool manipEnact[Enacts];
     bool manipAction[Actions];
-    enum Enact mouseRead, mouseWrite;
-    enum Enact windowRead, windowWrite;
+    bool registerDone[Enacts];
+    enum Interp mouseRead, mouseWrite;
+    enum Interp windowRead, windowWrite;
     MouseState mouseClick, mouseMove, mouseCopy;
     WindowState windowClick, windowMove, windowCopy;
     WindowState windowRatio;
@@ -52,7 +54,6 @@ struct MainState {
     int mouseIndex;
     int paramFollow;
     int paramModify;
-    enum Micro paramMicro;
     enum Micro paramDisplay;
     enum Micro paramBright;
     enum Micro paramDetect;
@@ -75,11 +76,10 @@ struct MainState {
     const int MAX_FENCES_INFLIGHT = 3;
     const int MAX_FRAMEBUFFER_SWAPS = 2;
     const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    const std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
 #ifdef NDEBUG
-    const bool enable = false;
+    const std::vector<const char*> layers;
 #else
-    const bool enable = true;
+    const std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
 #endif
 } mainState = {0};
 
@@ -236,8 +236,8 @@ struct InitState {
     VkInstance instance;
     bool enable;
     VkDebugUtilsMessengerEXT debug;
-    InitState(bool enable, const std::vector<const char*> layers) {
-        this->enable = enable;
+    InitState(const std::vector<const char*> layers) {
+        this->enable = layers.size();
         glfwInit();
         VkDebugUtilsMessengerCreateInfoEXT info = {};
         info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -247,7 +247,7 @@ struct InitState {
             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
         info.pfnUserCallback = debugCallback;
         instance = [](bool enable, VkDebugUtilsMessengerCreateInfoEXT create, const std::vector<const char*> layers) {
-            if (enable && ![](const std::vector<const char*> layers) {
+            if (layers.size() && ![](const std::vector<const char*> layers) {
                 uint32_t count;
                 vkEnumerateInstanceLayerProperties(&count, nullptr);
                 std::vector<VkLayerProperties> available(count);
@@ -451,7 +451,7 @@ struct DeviceState {
     int graphicid;
     int presentid;
     DeviceState(VkPhysicalDevice physical, int graphicid, int presentid, VkFormat image,
-        std::vector<const char*> layers, std::vector<const char*> extensions, bool enable, int total) {
+        std::vector<const char*> layers, std::vector<const char*> extensions, int total) {
         this->graphicid = graphicid;
         this->presentid = presentid;
         device = [](VkPhysicalDevice physical, int graphicid, int presentid,
@@ -491,7 +491,7 @@ struct DeviceState {
             if (vkCreateDevice(physical, &info, nullptr, &device) != VK_SUCCESS)
                 throw std::runtime_error("failed to create logical device!");
             return device;
-        } (physical,graphicid,presentid,layers,extensions,enable);
+        } (physical,graphicid,presentid,layers,extensions,layers.size());
         render = [](VkDevice device, VkFormat image) {
             VkAttachmentDescription attachment{};
             attachment.format = image;
@@ -1268,7 +1268,6 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base
 };
 
 void vulkanSafe();
-enum Noting {Passing,Failing,Starting,Waiting};
 struct ThreadState {
     VkDevice device;
     SafeState protect;
@@ -1283,10 +1282,10 @@ struct ThreadState {
     std::deque<std::function<VkFence()>> presetup;
     std::deque<int> preord; // sequence number for push from separate thread
     std::deque<std::function<bool()>> when; // whether to push from separate thread
-    int limit; int seqnum; enum Noting note;
+    int limit; int seqnum; enum State {Pass,Fail,Start,Wait} note;
     ThreadState(VkDevice device, int limit) {
         this->device = device; finish = false;
-        this->limit = limit; seqnum = 0; note = Passing;
+        this->limit = limit; seqnum = 0; note = Pass;
         if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
@@ -1325,18 +1324,27 @@ struct ThreadState {
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
-                if (arg->note == Failing) {vulkanSafe(); arg->note = Passing;}
-                else if (arg->note == Starting) arg->note = Waiting;}}}
+                if (arg->note == Fail) {vulkanSafe(); arg->note = Pass;}
+                else if (arg->note == Start) arg->note = Wait;}}}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
-    void clear(enum Noting note) {
-    // Passing: clear and ignore
-    // Failing: send or wait
-    // Starting: clear and capture
-    // Waiting: progress since start
-        if (this->note == Waiting && note == Failing) {vulkanSafe(); this->note = Passing;}
+    void clear(enum State note) {
+    // Pass: clear and ignore
+    // Fail: send or wait
+    // Start: clear and capture
+    // Wait: progress since start
+        if (this->note == Wait && note == Fail) {vulkanSafe(); this->note = Pass;}
         else this->note = note;
+    }
+    void pass() {
+        clear(Pass);
+    }
+    void fail() {
+        clear(Fail);
+    }
+    void start() {
+        clear(Start);
     }
     bool clear(int given) {
     // return whether given sequence number is completed
@@ -1630,11 +1638,12 @@ int vulkanInfo(enum Configure query)
         if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}}
     return 0;
 }
-void vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
+bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
 {
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[mem];
-    if (!bufferQueue->clr()) return;
+    if (!bufferQueue->clr()) return true;
     bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
+    return false;
 }
 void vulkanDma(struct Center *center)
 {
@@ -1652,8 +1661,8 @@ void vulkanDma(struct Center *center)
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
-    break; case (CursorRead): mainState.mouseRead = (Enact)center->val[i];
-    break; case (CursorWrite): mainState.mouseWrite = (Enact)center->val[i];
+    break; case (CursorRead): mainState.mouseRead = (Interp)center->val[i];
+    break; case (CursorWrite): mainState.mouseWrite = (Interp)center->val[i];
     break; case (CursorLeft): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
         case (Affect): mainState.mouseClick.left = center->val[i]; break;
         case (Infect): mainState.mouseMove.left = center->val[i]; break;
@@ -1668,8 +1677,8 @@ void vulkanDma(struct Center *center)
         case (Effect): mainState.mouseCopy.angle = center->val[i]; break;}
     break; case (CursorPress): if (center->val[i] == 0)
         mainState.linePress.clear(); else mainState.linePress.push_front(center->val[i]);
-    break; case (WindowRead): mainState.windowRead = (Enact)center->val[i];
-    break; case (WindowWrite): mainState.windowWrite = (Enact)center->val[i];
+    break; case (WindowRead): mainState.windowRead = (Interp)center->val[i];
+    break; case (WindowWrite): mainState.windowWrite = (Interp)center->val[i];
     break; case (WindowLeft): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
         case (Affect): mainState.windowClick.left = center->val[i]; break;
         case (Infect): mainState.windowMove.left = center->val[i]; break;
@@ -1692,7 +1701,6 @@ void vulkanDma(struct Center *center)
         mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ParamFollow): mainState.paramFollow = center->val[i];
     break; case (ParamModify): mainState.paramModify = center->val[i];
-    break; case (ParamMicro): mainState.paramMicro = (Micro)center->val[i];
     break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
     break; case (ParamBright): mainState.paramBright = (Micro)center->val[i];
     break; case (ParamDetect): mainState.paramDetect = (Micro)center->val[i];
@@ -1701,8 +1709,9 @@ void vulkanDma(struct Center *center)
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
     planeDone(center); return;}
     vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
+    // TODO perhaps setup for vulkanChange with a corresponding registerDone
 }
-void vulkanDraw(enum Micro shader, int base, int limit)
+bool vulkanDraw(enum Micro shader, int base, int limit)
 {
     QueueState *queue = mainState.queueState;
     std::vector<BufferState*> buffer; SwapState *swap; DrawState *draw;
@@ -1711,9 +1720,9 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
     WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
     std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << std::endl;
-    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return;
-    if (!queue->swapQueue->get()) return;
-    if (!drawQueue->clr(shader)) return;
+    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
+    if (!queue->swapQueue->get()) return true;
+    if (!drawQueue->clr(shader)) return true;
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
     if (Component__Micro__MicroOn(shader) == CoPyon) {
@@ -1728,20 +1737,22 @@ void vulkanDraw(enum Micro shader, int base, int limit)
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     if (Component__Micro__MicroOn(shader) == CoPyon) {
     (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}}
+    return false;
 }
-void vulkanSwap()
+bool vulkanSwap()
 {
     WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
     swapQueue->clr((mainState.windowCopy.width<<16)|(mainState.windowCopy.height)); // TODO power of 2
-    if (!swapQueue->clr()) return;
+    if (!swapQueue->clr()) return true;
     swapQueue->set((std::function<void(SwapState*)>)[](SwapState*buf){}); swapQueue->put();
+    return false;
 }
-void vulkanFollow()
+bool vulkanFollow()
 {
     int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); 
-    vulkanSet(Matrixz,mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
+    return vulkanSet(Matrixz,mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
 }
-void vulkanModify()
+bool vulkanModify()
 {
     int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
 #ifdef REGRESS
@@ -1749,51 +1760,54 @@ void vulkanModify()
 #else
     planeMatrix(mat);
 #endif
-    vulkanSet(Matrixz,mainState.paramModify*siz,siz,mat,[mat](){free(mat);});
+    return vulkanSet(Matrixz,mainState.paramModify*siz,siz,mat,[mat](){free(mat);});
 }
-void vulkanDirect()
+bool vulkanDirect()
 {
     // TODO write mainState.mouseCopy.left,mainState.mouseCopy.base,
     // TODO mainState.mouseCopy.angle,mainState.mouseIndex to Uniform
+    return false;
 }
-void vulkanMicro()
+bool vulkanDisplay()
 {
-    vulkanDraw(mainState.paramMicro,mainState.paramBase,mainState.paramLimit);
+    return vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
 }
-void vulkanDisplay()
+bool vulkanBright()
 {
-    vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
+    return vulkanDraw(mainState.paramBright,mainState.paramBase,mainState.paramLimit);
 }
-void vulkanBright()
+bool vulkanDetect()
 {
-    vulkanDraw(mainState.paramBright,mainState.paramBase,mainState.paramLimit);
+    return vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
 }
-void vulkanDetect()
-{
-    vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
-}
-void vulkanGet()
+bool vulkanQuery()
 {
     // TODO start async search of latest paramDetect mapped
+    return false;
 }
-void vulkanPut()
+bool vulkanReady()
 {
     // TODO call planeReady on latest async search of paramDetect mapped
+    return false;
 }
-void vulkanFunc(enum Configure hint)
+void vulkanFunc(enum Enact hint)
 {
+    bool fail;
+    mainState.threadState->start();
     switch (hint) {
     default: throw std::runtime_error("failed to call function!");
-    break; case (WindowWidth): vulkanSwap();
-    break; case (ParamFollow): vulkanFollow();
-    break; case (ParamModify): vulkanModify();
-    break; case (CursorAngle): vulkanDirect();
-    break; case (ParamMicro): vulkanMicro();
-    break; case (ParamDisplay): vulkanDisplay();
-    break; case (ParamBright): vulkanBright();
-    break; case (ParamDetect): vulkanDetect();
-    break; case (CursorLeft): vulkanGet();
-    break; case (CursorBase): vulkanPut();}
+    break; case (Extent): fail = vulkanSwap();
+    break; case (Follow): fail = vulkanFollow();
+    break; case (Modify): fail = vulkanModify();
+    break; case (Direct): fail = vulkanDirect();
+    break; case (Display): fail = vulkanDisplay();
+    break; case (Bright): fail = vulkanBright();
+    break; case (Detect): fail = vulkanDetect();
+    break; case (Query): fail = vulkanQuery();
+    break; case (Ready): fail = vulkanReady();}
+    mainState.registerDone[hint] = fail;
+    if (fail) mainState.threadState->fail();
+    else mainState.threadState->pass();
 }
 bool vulkanChange()
 {
@@ -1805,27 +1819,29 @@ bool vulkanChange()
         mainState.mouseMove.base != mainState.mouseCopy.base);
     bool queryd = !mainState.queryMove.empty();
     bool readyd = !mainState.readyMove.empty();
-    bool drawed = ((mainState.manipReact[Follow] && moved) ||
-        (mainState.manipReact[Follow] && sized) ||
-        (mainState.manipReact[Modify] && moused) ||
-        (mainState.manipReact[Direct] && moused)); // TODO drawed should depend on changed bind buffers
+    bool drawed = ((mainState.manipEnact[Follow] && moved) ||
+        (mainState.manipEnact[Follow] && sized) ||
+        (mainState.manipEnact[Modify] && moused) ||
+        (mainState.manipEnact[Direct] && moused));
     std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
     if (moved) std::cerr << "vulkanChange moved " << mainState.windowMove.left << "/" << mainState.windowCopy.left << " " << mainState.windowMove.base << "/" << mainState.windowCopy.base << std::endl;
     if (sized) std::cerr << "vulkanChange sized " << mainState.windowMove.width << "/" << mainState.windowCopy.width << " " << mainState.windowMove.height << "/" << mainState.windowCopy.height << std::endl;
     if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
-    if (queryd) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-    if (readyd) {mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
-    if (mainState.manipReact[Extent] && sized) vulkanSwap();
-    if (mainState.manipReact[Follow] && (moved || sized)) vulkanFollow();
-    if (mainState.manipReact[Modify] && moused) vulkanModify();
-    if (mainState.manipReact[Direct] && moused) vulkanDirect();
-    if (mainState.manipReact[Display] && drawed) vulkanDisplay();
-    if (mainState.manipReact[Bright] && drawed) vulkanBright();
-    if (mainState.manipReact[Detect] && drawed) vulkanDetect();
-    if (mainState.manipReact[Query] && queryd) vulkanGet();
-    if (mainState.manipReact[Ready] && readyd) vulkanPut();
+    if (queryd && !mainState.registerDone[Query]) {
+        mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
+    if (readyd && !mainState.registerDone[Ready]) {
+        mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
+    if (mainState.registerDone[Extent] || (mainState.manipEnact[Extent] && sized)) vulkanFunc(Extent);
+    if (mainState.registerDone[Follow] || (mainState.manipEnact[Follow] && (moved || sized))) vulkanFunc(Follow);
+    if (mainState.registerDone[Modify] || (mainState.manipEnact[Modify] && moused)) vulkanFunc(Modify);
+    if (mainState.registerDone[Direct] || (mainState.manipEnact[Direct] && moused)) vulkanFunc(Direct);
+    if (mainState.registerDone[Display] || (mainState.manipEnact[Display] && drawed)) vulkanFunc(Display);
+    if (mainState.registerDone[Bright] || (mainState.manipEnact[Bright] && drawed)) vulkanFunc(Bright);
+    if (mainState.registerDone[Detect] || (mainState.manipEnact[Detect] && drawed)) vulkanFunc(Detect);
+    if (mainState.registerDone[Query] || (mainState.manipEnact[Query] && drawed)) vulkanFunc(Query);
+    if (mainState.registerDone[Ready] || (mainState.manipEnact[Ready] && drawed)) vulkanFunc(Ready);
     return (!mainState.queryMove.empty() || !mainState.readyMove.empty());
 }
 struct Center *vulkanReady(enum Memory mem)
@@ -1860,7 +1876,7 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     switch PAIR(proc,wait) {default: break;
     break; case PAIR(Initial,Start<<16):
     std::cerr << "Initial,Start" << std::endl;
-    mainState.initState = new InitState(mainState.enable,mainState.layers);
+    mainState.initState = new InitState(mainState.layers);
     break; case PAIR(Initial,Regress):
     std::cerr << "Initial,Regress" << std::endl;
     mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
@@ -1905,8 +1921,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
         mainState.MAX_FRAMES_INFLIGHT);
     mainState.logicalState = [](PhysicalState *physical){
         return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
-        physical->image,mainState.layers,mainState.extensions,mainState.enable,
-        mainState.MAX_BUFFERS_AVAILABLE*Memorys);}(mainState.physicalState);
+        physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
+    }(mainState.physicalState);
     mainState.threadState = new ThreadState(mainState.logicalState->device,
         mainState.MAX_FENCES_INFLIGHT);
     mainState.tempState = new TempState();
@@ -1947,11 +1963,9 @@ int main(int argc, char **argv)
     gettimeofday(&debug_start, NULL);
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanSafe,vulkanBoot,vulkanMain,vulkanDma,
-            vulkanReady,vulkanDone,vulkanFunc,planraWake,vulkanInfo);
+        planeInit(vulkanInit,vulkanSafe,vulkanBoot,vulkanMain,vulkanDma,vulkanReady,vulkanDone,planraWake,vulkanInfo);
 #else
-        planeInit(vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanDma,
-            vulkanReady,vulkanDone,vulkanFunc,planeWake,vulkanInfo);
+        planeInit(vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanDma,vulkanReady,vulkanDone,planeWake,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

@@ -66,7 +66,6 @@ yftype callMain = 0;
 uftype callDma = 0;
 rftype callReady = 0;
 xftype callDone = 0;
-sftype callAtom = 0;
 sftype callWake = 0;
 tftype callInfo = 0;
 pthread_t thread[Threads];
@@ -501,7 +500,6 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Recv): planeRecv(); break;
 	case (Disp): planeDisp(); break;
 	case (Copy): planeCopy(center); break;
-	case (Atom): callAtom(mptr->arg); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
@@ -664,7 +662,7 @@ void planeWait(enum Thread bit, enum Wait wait)
 	callMain(bit,wait);
 }
 void wrapPlane();
-void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, rftype pierce, xftype done, sftype atom, sftype wake, tftype info)
+void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, rftype pierce, xftype done, sftype wake, tftype info)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -679,8 +677,7 @@ void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, r
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
 	callSafe = safe; callMain = main; callDma = dma;
-	callReady = pierce; callDone = done;
-	callAtom = atom; callWake = wake; callInfo = info;
+	callReady = pierce; callDone = done; callWake = wake; callInfo = info;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
 	sem_safe(&resource,{if (!qfull && !running) break;});

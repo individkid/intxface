@@ -9,11 +9,11 @@ typedef void (*yftype)(enum Thread proc, enum Wait wait); // main
 typedef void (*uftype)(struct Center *center); // dma
 typedef struct Center *(*rftype)(enum Memory mem); // ready
 typedef void (*xftype)(struct Center *ptr); // done
-typedef void (*sftype)(enum Configure hint); // atom wake
+typedef void (*sftype)(enum Configure hint); // wake
 typedef int (*tftype)(enum Configure cfg); // info
 float *planeWindow(float *mat);
 float *planeMatrix(float *mat);
-void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, rftype ready, xftype done, sftype atom, sftype wake, tftype info);
+void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, rftype ready, xftype done, sftype wake, tftype info);
 void planePutstr(const char *str);
 void planeReady(struct Center *ptr);
 void planeDone(struct Center *ptr);

@@ -64,13 +64,13 @@ Configure = {
 	"LittleIndex", -- where in machine
 	"ParamFollow", -- pass to dma
 	"ParamModify", --
-	"ParamMicro", -- pass to draw
-	"ParamDisplay", --
+	"ParamDisplay", -- pass to draw
 	"ParamBright", --
 	"ParamDetect", --
 	"ParamBase", --
 	"ParamLimit", --
 	"ManipReact", -- block or behave
+	"ManipEnact", -- call and return
 	"ManipAction", -- what to do
 	"ManipFixed", -- how to do
 	"ManipScope", -- what to transform
@@ -132,7 +132,7 @@ Transfer = {
 	"Echo", -- copy result to center
 	"Hide", -- pop hide and use
 }
-Enact = { -- configure enum interpretation
+Interp = { -- configure enum interpretation
 	"Infect", -- changed by callback
 	"Affect", -- changed infrequently
 	"Effect", -- used for display
@@ -149,6 +149,8 @@ React = { -- when updates happen
 	"South",
 	"West",
 	"Relate", -- whether mouse absolute
+}
+Enact = {
 	"Extent", -- bind window and swap on wake
 	"Follow", -- bind window matrix on wake
 	"Modify", -- bind transform matrix on wake
