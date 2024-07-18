@@ -1643,9 +1643,11 @@ int vulkanInfo(enum Configure query)
     break; case (RegisterOpen): return 0;
 #endif
     break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
-        if (mainState.manipEnact[(Enact)j]) val |= (1<<j); return val;}
+        if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
+    break; case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
+        if (mainState.manipEnact[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
         if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}}
     return 0;
@@ -1711,6 +1713,8 @@ void vulkanDma(struct Center *center)
         mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
         mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
+        mainState.manipEnact[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipAction): for (int j = 0; j < Actions; j++)
         mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ParamFollow): mainState.paramFollow = center->val[i];
