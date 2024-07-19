@@ -222,10 +222,9 @@ Wait = {
 	"Start",
 	"Stop",
 	"Regress",
-	"Bringup",
-	"Builtin",
-	"Freerun",
-	"Product",
+	"Upbring",
+	"Inbuilt",
+	"Bootup",
 }
 Thread = {
 	"Select",

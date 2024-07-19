@@ -38,7 +38,7 @@ struct Kernel {
 	struct Matrix inverse;
 };
 // owned by main thread:
-// TODO Add map from polytope to matrix, captured from dma to Triangle buffer.
+// TODO Add map from polytope to matrix, captured from copy to Triangle buffer.
 struct Kernel *matrix = 0;
 struct Pierce *found = 0;
 struct Pierce pierce = {0};
@@ -63,7 +63,7 @@ void *internal = 0;
 void *response = 0;
 vftype callSafe = 0;
 yftype callMain = 0;
-uftype callDma = 0;
+uftype callCopy = 0;
 rftype callReady = 0;
 xftype callDone = 0;
 sftype callWake = 0;
@@ -396,7 +396,7 @@ void planeSync(enum Configure cfg, int val)
 	allocInt(&center->val,1);
 	center->cfg[0] = cfg;
 	center->val[0] = val;
-	callDma(center);
+	callCopy(center);
 }
 void planeCont()
 {
@@ -430,8 +430,8 @@ void planeCopy(struct Center *ptr)
 		copyMachine(&machine[index],&ptr->mch[i]);} break;
 	case (Configurez): for (int i = 0; i < ptr->siz; i++)
 		planeConfig(ptr->cfg[i],ptr->val[i]);
-		callDma(ptr); break;
-	default: callDma(ptr); break;}
+		callCopy(ptr); break;
+	default: callCopy(ptr); break;}
 }
 int planeEscape(int lvl, int nxt)
 {
@@ -662,7 +662,7 @@ void planeWait(enum Thread bit, enum Wait wait)
 	callMain(bit,wait);
 }
 void wrapPlane();
-void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, rftype pierce, xftype done, sftype wake, tftype info)
+void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype copy, rftype pierce, xftype done, sftype wake, tftype info)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -676,7 +676,7 @@ void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype dma, r
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callSafe = safe; callMain = main; callDma = dma;
+	callSafe = safe; callMain = main; callCopy = copy;
 	callReady = pierce; callDone = done; callWake = wake; callInfo = info;
 	init(); boot(); while (1) {
 	enum Wait wait = 0; enum Configure hint = 0;
@@ -745,7 +745,7 @@ void planraCenter()
 	center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
 	allocConfigure(&center->cfg,1); allocInt(&center->val,1);
 	center->cfg[0] = ParamLimit; center->val[0] = 6;
-	callDma(center); center = 0; allocCenter(&center,1);
+	callCopy(center); center = 0; allocCenter(&center,1);
 	center->mem = Vertexz; center->siz = 6; center->idx = 0; center->slf = 0;
 	allocVertex(&center->vtx,6);
 	asprintf(&str,"Vertex(");
@@ -772,25 +772,18 @@ void planraCenter()
 	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
 	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
 	len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
-	callDma(center);
+	callCopy(center);
 }
-int planraOnce = 1;
 int planraDone = 0;
+int planraOnce = 1;
 struct timeval planraTime;
 void planraWake(enum Configure hint)
 {
-    if (planraOnce) {
-        struct Center *center = 0; allocCenter(&center,1);
-        center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-        callDma(center);
+	if (planraOnce) {
+		planraOnce = 0;
         planraCenter();
-    	gettimeofday(&planraTime, NULL);
-        configure[RegisterPoll] = 1;
-        planraOnce = 0;
-    }
+        gettimeofday(&planraTime, NULL);
+	}
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
@@ -804,7 +797,7 @@ void planraWake(enum Configure hint)
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
         center->cfg[0] = CursorPress; center->val[0] = 256;
         center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);}
+        callCopy(center);}
     }
     if (planraDone) {
         planeSafe(Process,Stop,Configures);
@@ -820,7 +813,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West))) {
@@ -829,7 +822,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North))) {
@@ -838,7 +831,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East))) {
@@ -847,7 +840,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South))) {
@@ -856,7 +849,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West))) {
@@ -865,7 +858,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South))) {
@@ -874,7 +867,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West))) {
@@ -883,7 +876,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West))) {
@@ -892,7 +885,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -903,7 +896,7 @@ void planraWake(enum Configure hint)
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = (1<<North)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -914,7 +907,7 @@ void planraWake(enum Configure hint)
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = (1<<North)|(1<<East)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -925,7 +918,7 @@ void planraWake(enum Configure hint)
         center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = 0;
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callDma(center);
+        callCopy(center);
     }
 }
 float *planraMatrix(float *mat)

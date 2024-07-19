@@ -20,6 +20,7 @@
 #include <sys/time.h>
 
 extern "C" {
+    #include "face.h"
     #include "type.h"
     #include "plane.h"
 }
@@ -41,7 +42,7 @@ struct MainState {
     bool manipReact[Reacts];
     bool manipEnact[Enacts];
     bool manipAction[Actions];
-    bool manipDone[Enacts];
+    bool manipStop[Enacts];
     enum Interp mouseRead, mouseWrite;
     enum Interp windowRead, windowWrite;
     MouseState mouseClick, mouseMove, mouseCopy;
@@ -1633,7 +1634,7 @@ int vulkanInfo(enum Configure query)
     break; case (RegisterOpen): return 0;
 #endif
     break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
-        if (mainState.manipDone[(Enact)j]) val |= (1<<j); return val;}
+        if (mainState.manipStop[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     break; case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
@@ -1695,7 +1696,7 @@ void vulkanDma(struct Center *center)
         case (Infect): mainState.windowMove.height = center->val[i]; break;
         case (Effect): mainState.windowCopy.height = center->val[i]; break;}
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
-        mainState.manipDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
+        mainState.manipStop[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
         mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
@@ -1805,7 +1806,7 @@ bool vulkanDefer()
 bool vulkanEnact(enum Enact hint)
 {
     bool fail; int mark;
-    if (!mainState.manipDone[hint]) return false;
+    if (!mainState.manipStop[hint]) return false;
     mark = mainState.threadState->mark();
     switch (hint) {default: throw std::runtime_error("failed to call function!");
     break; case (Extent): fail = vulkanSwap();
@@ -1818,7 +1819,7 @@ bool vulkanEnact(enum Enact hint)
     break; case (Query): fail = vulkanQuery();
     break; case (Ready): fail = vulkanReady();
     break; case (Defer): fail = vulkanDefer();}
-    mainState.manipDone[hint] = fail;
+    mainState.manipStop[hint] = fail;
     if (fail) return mainState.threadState->mark(mark); // tight loop or wake later
     return false; // whether to tight loop
 }
@@ -1844,25 +1845,25 @@ bool vulkanChange()
     if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
-    if (queryd && !mainState.manipDone[Query]) {
+    if (queryd && !mainState.manipStop[Query]) {
         mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-    if (readyd && !mainState.manipDone[Ready]) {
+    if (readyd && !mainState.manipStop[Ready]) {
         mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
-    if (deferd && !mainState.manipDone[Defer]) {
+    if (deferd && !mainState.manipStop[Defer]) {
         mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
-    if (mainState.manipEnact[Extent] && sized) mainState.manipDone[Extent] = true; tight |= vulkanEnact(Extent);
-    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.manipDone[Follow] = true; tight |= vulkanEnact(Follow);
-    if (mainState.manipEnact[Modify] && moused) mainState.manipDone[Modify] = true; tight |= vulkanEnact(Modify);
-    if (mainState.manipEnact[Direct] && moused) mainState.manipDone[Direct] = true; tight |= vulkanEnact(Direct);
-    if (mainState.manipEnact[Display] && drawed) mainState.manipDone[Display] = true; tight |= vulkanEnact(Display);
-    if (mainState.manipEnact[Bright] && drawed) mainState.manipDone[Bright] = true; tight |= vulkanEnact(Bright);
-    if (mainState.manipEnact[Detect] && drawed) mainState.manipDone[Detect] = true; tight |= vulkanEnact(Detect);
-    if (mainState.manipEnact[Query] && queryd) mainState.manipDone[Query] = true; tight |= vulkanEnact(Query);
-    if (mainState.manipEnact[Ready] && readyd) mainState.manipDone[Ready] = true; tight |= vulkanEnact(Ready);
-    if (mainState.manipEnact[Defer] && deferd) mainState.manipDone[Defer] = true; tight |= vulkanEnact(Defer);
-    tight |= (!mainState.queryMove.empty() && !mainState.manipDone[Query]);
-    tight |= (!mainState.readyMove.empty() && !mainState.manipDone[Ready]);
-    tight |= (!mainState.readyMove.empty() && !mainState.manipDone[Defer]);
+    if (mainState.manipEnact[Extent] && sized) mainState.manipStop[Extent] = true; tight |= vulkanEnact(Extent);
+    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.manipStop[Follow] = true; tight |= vulkanEnact(Follow);
+    if (mainState.manipEnact[Modify] && moused) mainState.manipStop[Modify] = true; tight |= vulkanEnact(Modify);
+    if (mainState.manipEnact[Direct] && moused) mainState.manipStop[Direct] = true; tight |= vulkanEnact(Direct);
+    if (mainState.manipEnact[Display] && drawed) mainState.manipStop[Display] = true; tight |= vulkanEnact(Display);
+    if (mainState.manipEnact[Bright] && drawed) mainState.manipStop[Bright] = true; tight |= vulkanEnact(Bright);
+    if (mainState.manipEnact[Detect] && drawed) mainState.manipStop[Detect] = true; tight |= vulkanEnact(Detect);
+    if (mainState.manipEnact[Query] && queryd) mainState.manipStop[Query] = true; tight |= vulkanEnact(Query);
+    if (mainState.manipEnact[Ready] && readyd) mainState.manipStop[Ready] = true; tight |= vulkanEnact(Ready);
+    if (mainState.manipEnact[Defer] && deferd) mainState.manipStop[Defer] = true; tight |= vulkanEnact(Defer);
+    tight |= (!mainState.queryMove.empty() && !mainState.manipStop[Query]);
+    tight |= (!mainState.readyMove.empty() && !mainState.manipStop[Ready]);
+    tight |= (!mainState.readyMove.empty() && !mainState.manipStop[Defer]);
     return tight;
 }
 struct Center *vulkanReady(enum Memory mem)
@@ -1889,26 +1890,49 @@ void vulkanInit()
 {
     for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
 }
-#define PAIR(LEFT,RIGHT) ((LEFT<<0)|(RIGHT<<16))
-int vulkanGoon = 0;
-void vulkanMain(enum Thread proc, enum Wait wait)
+void initialStart()
 {
-    switch PAIR(proc,wait) {default: break;
-    break; case PAIR(Initial,Start<<16):
     std::cerr << "Initial,Start" << std::endl;
     mainState.initState = new InitState(mainState.layers);
-    break; case PAIR(Initial,Regress):
-    std::cerr << "Initial,Regress" << std::endl;
-    mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
-    mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
-    break; case PAIR(Initial,Stop):
-    std::cerr << "Initial,Stop" << std::endl;
-    delete mainState.initState; mainState.initState = 0;
-    break; case PAIR(Window,Start):
+}
+void windowStart()
+{
     std::cerr << "Window,Start" << std::endl;
     mainState.openState = new OpenState(mainState.initState->instance,
         mainState.windowMove.width, mainState.windowMove.height,(void*)&mainState);
-    break; case PAIR(Window,Regress): {
+}
+void graphicsStart()
+{
+    std::cerr << "Graphics,Start " << std::endl;
+    mainState.physicalState = new PhysicalState(
+        mainState.initState->instance,mainState.openState->surface,mainState.extensions,
+        mainState.MAX_FRAMES_INFLIGHT);
+    mainState.logicalState = [](PhysicalState *physical){
+        return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
+        physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
+    }(mainState.physicalState);
+    mainState.threadState = new ThreadState(mainState.logicalState->device,
+        mainState.MAX_FENCES_INFLIGHT);
+    mainState.tempState = new TempState();
+    mainState.queueState = new QueueState();
+}
+int processGoon = 0;
+void processStart()
+{
+    processGoon += 1;
+    std::cerr << "Process,Start " << processGoon << std::endl;
+    while (processGoon) {
+    if (vulkanChange() || planeMain()) glfwPollEvents();
+    else glfwWaitEventsTimeout(1.0);}
+}
+void initialRegress()
+{
+    std::cerr << "Initial,Regress" << std::endl;
+    mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
+    mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
+}
+void windowRegress()
+{
     int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
     GLFWwindow *window = mainState.openState->window;
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -1930,39 +1954,57 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     mainState.windowClick.left = mainState.windowMove.left = /*mainState.windowCopy.left =*/ left;
     mainState.windowClick.base = mainState.windowMove.base = /*mainState.windowCopy.base =*/ base;
     mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
-    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
-    break; case PAIR(Window,Stop):
+    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;
+}
+void graphicsRegress()
+{
+    struct Center *center = 0; allocCenter(&center,1);
+    center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,2); allocInt(&center->val,2);
+    center->cfg[0] = ManipReact; center->cfg[1] = RegisterPoll;
+    center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
+    center->val[1] = 1;
+    planeCopy(center);
+}
+void initialStop()
+{
+    std::cerr << "Initial,Stop" << std::endl;
+    delete mainState.initState; mainState.initState = 0;
+}
+void windowStop()
+{
     std::cerr << "Window,Stop " << std::endl;
     delete mainState.openState; mainState.openState = 0;
-    break; case PAIR(Graphics,Start):
-    std::cerr << "Graphics,Start " << std::endl;
-    mainState.physicalState = new PhysicalState(
-        mainState.initState->instance,mainState.openState->surface,mainState.extensions,
-        mainState.MAX_FRAMES_INFLIGHT);
-    mainState.logicalState = [](PhysicalState *physical){
-        return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
-        physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
-    }(mainState.physicalState);
-    mainState.threadState = new ThreadState(mainState.logicalState->device,
-        mainState.MAX_FENCES_INFLIGHT);
-    mainState.tempState = new TempState();
-    mainState.queueState = new QueueState();
-    break; case PAIR(Graphics,Stop):
+}
+void graphicsStop()
+{
     std::cerr << "Graphics,Stop " << std::endl;
     delete mainState.queueState; mainState.queueState = 0;
     delete mainState.tempState; mainState.tempState = 0;
     delete mainState.threadState; mainState.threadState = 0;
     delete mainState.logicalState; mainState.logicalState = 0;
     delete mainState.physicalState; mainState.physicalState = 0;
-    break; case PAIR(Process,Start):
-    vulkanGoon += 1;
-    std::cerr << "Process,Start " << vulkanGoon << std::endl;
-    while (vulkanGoon) {
-    if (vulkanChange() || planeMain()) glfwPollEvents();
-    else glfwWaitEventsTimeout(1.0);}
-    break; case PAIR(Process,Stop):
-    std::cerr << "Process,Stop " << vulkanGoon << std::endl;
-    vulkanGoon -= 1;}
+}
+void processStop()
+{
+    std::cerr << "Process,Stop " << processGoon << std::endl;
+    processGoon -= 1;
+}
+#define PAIR(LEFT,RIGHT) ((LEFT<<0)|(RIGHT<<16))
+void vulkanMain(enum Thread proc, enum Wait wait)
+{
+    switch PAIR(proc,wait) {default: break;
+    break; case PAIR(Initial,Start): initialStart();
+    break; case PAIR(Initial,Regress): initialRegress();
+    break; case PAIR(Initial,Stop): initialStop();
+    break; case PAIR(Window,Start): windowStart();
+    break; case PAIR(Window,Regress): windowRegress();
+    break; case PAIR(Window,Stop): windowStop();
+    break; case PAIR(Graphics,Start): graphicsStart();
+    break; case PAIR(Graphics,Regress): graphicsRegress();
+    break; case PAIR(Graphics,Stop): graphicsStop();
+    break; case PAIR(Process,Start): processStart();
+    break; case PAIR(Process,Stop): processStop();}
 }
 void vulkanBoot()
 {
@@ -1971,6 +2013,7 @@ void vulkanBoot()
     planeSafe(Window,Start,Configures);
     planeSafe(Window,Regress,Configures);
     planeSafe(Graphics,Start,Configures);
+    planeSafe(Graphics,Regress,Configures);
     planeSafe(Process,Start,Configures);
     planeSafe(Threads,Waits,CursorLeft);
 }
