@@ -405,7 +405,8 @@ void planeSync(enum Configure cfg, int val)
 	allocInt(&center->val,1);
 	center->cfg[0] = cfg;
 	center->val[0] = val;
-	callCopy(center);
+	callCopy(&center);
+	allocCenter(&center,0);
 }
 void planeCont()
 {
@@ -427,20 +428,21 @@ void planeDisp()
 {
 	// TODO conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 }
-void planeCopy(struct Center *ptr)
+void planeCopy(struct Center **given)
 {
-	switch (ptr->mem) {
-	case (Stackz): for (int i = 0; i < ptr->siz; i++) planeCall(dat0,ptr->str[i]); break;
-	case (Machinez): for (int i = 0; i < ptr->siz; i++) {
-		int index = ptr->idx+i;
+	struct Center *center = *given;
+	switch (center->mem) {
+	case (Stackz): for (int i = 0; i < center->siz; i++) planeCall(dat0,center->str[i]); break;
+	case (Machinez): for (int i = 0; i < center->siz; i++) {
+		int index = center->idx+i;
 		if (index < 0 || index >= configure[MachineSize]) ERROR();
-		if (ptr->mch[i].xfr == Name) {void *dat = 0; datxInt(&dat,index+1);
-		datxInserts("_",ptr->mch[i].str,dat,identType("Int")); free(dat);}
-		copyMachine(&machine[index],&ptr->mch[i]);} break;
-	case (Configurez): for (int i = 0; i < ptr->siz; i++)
-		planeConfig(ptr->cfg[i],ptr->val[i]);
-		callCopy(ptr); break;
-	default: callCopy(ptr); break;}
+		if (center->mch[i].xfr == Name) {void *dat = 0; datxInt(&dat,index+1);
+		datxInserts("_",center->mch[i].str,dat,identType("Int")); free(dat);}
+		copyMachine(&machine[index],&center->mch[i]);} break;
+	case (Configurez): for (int i = 0; i < center->siz; i++)
+		planeConfig(center->cfg[i],center->val[i]);
+		callCopy(given); break;
+	default: callCopy(given); break;}
 }
 int planeEscape(int lvl, int nxt)
 {
@@ -508,7 +510,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Send): planeSend(); break;
 	case (Recv): planeRecv(); break;
 	case (Disp): planeDisp(); break;
-	case (Copy): planeCopy(center); break;
+	case (Copy): planeCopy(&center); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
@@ -702,6 +704,7 @@ void planeReady(struct Center *ptr)
 }
 void planeDone(struct Center *ptr)
 {
+	// TODO reference count instead of &ptr
 	freeCenter(ptr); allocCenter(&ptr,0);
 }
 void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
@@ -751,11 +754,13 @@ int planeMain()
 
 void planraCenter()
 {
-	int len = 0; char *str; char *tmp; struct Center *center = 0; allocCenter(&center,1);
+	int len = 0; char *str; char *tmp;
+	{struct Center *center = 0; allocCenter(&center,1);
 	center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
 	allocConfigure(&center->cfg,1); allocInt(&center->val,1);
 	center->cfg[0] = ParamLimit; center->val[0] = 6;
-	callCopy(center); center = 0; allocCenter(&center,1);
+	callCopy(&center); allocCenter(&center,0);}
+	{struct Center *center = 0; allocCenter(&center,1);
 	center->mem = Vertexz; center->siz = 6; center->idx = 0; center->slf = 0;
 	allocVertex(&center->vtx,6);
 	asprintf(&str,"Vertex(");
@@ -782,7 +787,7 @@ void planraCenter()
 	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
 	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
 	len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
-	callCopy(center);
+	callCopy(&center); allocCenter(&center,0);}
 }
 int planraDone = 0;
 int planraOnce = 1;
@@ -791,7 +796,6 @@ void planraWake(enum Configure hint)
 {
 	if (planraOnce) {
 		planraOnce = 0;
-        planraCenter();
         gettimeofday(&planraTime, NULL);
 	}
     if (planraDone) return;
@@ -807,7 +811,7 @@ void planraWake(enum Configure hint)
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
         center->cfg[0] = CursorPress; center->val[0] = 256;
         center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);}
+        callCopy(&center); allocCenter(&center,0);}
     }
     if (planraDone) {
         planeSafe(Process,Stop,Configures);
@@ -823,7 +827,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West))) {
@@ -832,7 +836,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North))) {
@@ -841,7 +845,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East))) {
@@ -850,7 +854,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South))) {
@@ -859,7 +863,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West))) {
@@ -868,7 +872,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South))) {
@@ -877,7 +881,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West))) {
@@ -886,7 +890,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West))) {
@@ -895,7 +899,7 @@ void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -906,7 +910,7 @@ void planraWake(enum Configure hint)
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = (1<<North)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -917,7 +921,7 @@ void planraWake(enum Configure hint)
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = (1<<North)|(1<<East)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && callInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -928,7 +932,7 @@ void planraWake(enum Configure hint)
         center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = 0;
         center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(center);
+        callCopy(&center); allocCenter(&center,0);
     }
 }
 float *planraMatrix(float *mat)

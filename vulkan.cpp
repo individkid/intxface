@@ -42,7 +42,8 @@ struct MainState {
     bool manipReact[Reacts];
     bool manipEnact[Enacts];
     bool manipAction[Actions];
-    bool manipStop[Enacts];
+    bool registerDone[Enacts];
+    enum Plan registerPlan;
     enum Interp mouseRead, mouseWrite;
     enum Interp windowRead, windowWrite;
     MouseState mouseClick, mouseMove, mouseCopy;
@@ -1633,8 +1634,9 @@ int vulkanInfo(enum Configure query)
 #else
     break; case (RegisterOpen): return 0;
 #endif
+    break; case (RegisterPlan): return mainState.registerPlan;
     break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
-        if (mainState.manipStop[(Enact)j]) val |= (1<<j); return val;}
+        if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
         if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     break; case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
@@ -1650,14 +1652,15 @@ bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> da
     bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
     return false;
 }
-void vulkanDma(struct Center *center)
+void vulkanCopy(struct Center **given)
 {
-    switch (center->mem) {default: mainState.deferMove.push_back(center);
+    struct Center *center = *given;
+    switch (center->mem) {default: mainState.deferMove.push_back(center); *given = 0;
     break; case (Littlez): if (center->idx+center->siz > mainState.littleSize) {
         mainState.littleSize = center->idx+center->siz; mainState.littleState =
         (struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
         memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
-        planeDone(center); return;
+        planeDone(center); *given = 0; return;
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
@@ -1695,8 +1698,9 @@ void vulkanDma(struct Center *center)
         case (Affect): mainState.windowClick.height = center->val[i]; break;
         case (Infect): mainState.windowMove.height = center->val[i]; break;
         case (Effect): mainState.windowCopy.height = center->val[i]; break;}
+    break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
-        mainState.manipStop[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
+        mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
         mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
@@ -1711,7 +1715,7 @@ void vulkanDma(struct Center *center)
     break; case (ParamBase): mainState.paramBase = center->val[i];
     break; case (ParamLimit): mainState.paramLimit = center->val[i];
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
-    planeDone(center);}
+    planeDone(center); *given = 0;}
 }
 bool vulkanDraw(enum Micro shader, int base, int limit)
 {
@@ -1806,7 +1810,7 @@ bool vulkanDefer()
 bool vulkanEnact(enum Enact hint)
 {
     bool fail; int mark;
-    if (!mainState.manipStop[hint]) return false;
+    if (!mainState.registerDone[hint]) return false;
     mark = mainState.threadState->mark();
     switch (hint) {default: throw std::runtime_error("failed to call function!");
     break; case (Extent): fail = vulkanSwap();
@@ -1819,7 +1823,7 @@ bool vulkanEnact(enum Enact hint)
     break; case (Query): fail = vulkanQuery();
     break; case (Ready): fail = vulkanReady();
     break; case (Defer): fail = vulkanDefer();}
-    mainState.manipStop[hint] = fail;
+    mainState.registerDone[hint] = fail;
     if (fail) return mainState.threadState->mark(mark); // tight loop or wake later
     return false; // whether to tight loop
 }
@@ -1845,25 +1849,25 @@ bool vulkanChange()
     if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
-    if (queryd && !mainState.manipStop[Query]) {
+    if (queryd && !mainState.registerDone[Query]) {
         mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-    if (readyd && !mainState.manipStop[Ready]) {
+    if (readyd && !mainState.registerDone[Ready]) {
         mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
-    if (deferd && !mainState.manipStop[Defer]) {
+    if (deferd && !mainState.registerDone[Defer]) {
         mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
-    if (mainState.manipEnact[Extent] && sized) mainState.manipStop[Extent] = true; tight |= vulkanEnact(Extent);
-    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.manipStop[Follow] = true; tight |= vulkanEnact(Follow);
-    if (mainState.manipEnact[Modify] && moused) mainState.manipStop[Modify] = true; tight |= vulkanEnact(Modify);
-    if (mainState.manipEnact[Direct] && moused) mainState.manipStop[Direct] = true; tight |= vulkanEnact(Direct);
-    if (mainState.manipEnact[Display] && drawed) mainState.manipStop[Display] = true; tight |= vulkanEnact(Display);
-    if (mainState.manipEnact[Bright] && drawed) mainState.manipStop[Bright] = true; tight |= vulkanEnact(Bright);
-    if (mainState.manipEnact[Detect] && drawed) mainState.manipStop[Detect] = true; tight |= vulkanEnact(Detect);
-    if (mainState.manipEnact[Query] && queryd) mainState.manipStop[Query] = true; tight |= vulkanEnact(Query);
-    if (mainState.manipEnact[Ready] && readyd) mainState.manipStop[Ready] = true; tight |= vulkanEnact(Ready);
-    if (mainState.manipEnact[Defer] && deferd) mainState.manipStop[Defer] = true; tight |= vulkanEnact(Defer);
-    tight |= (!mainState.queryMove.empty() && !mainState.manipStop[Query]);
-    tight |= (!mainState.readyMove.empty() && !mainState.manipStop[Ready]);
-    tight |= (!mainState.readyMove.empty() && !mainState.manipStop[Defer]);
+    if (mainState.manipEnact[Extent] && sized) mainState.registerDone[Extent] = true; tight |= vulkanEnact(Extent);
+    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.registerDone[Follow] = true; tight |= vulkanEnact(Follow);
+    if (mainState.manipEnact[Modify] && moused) mainState.registerDone[Modify] = true; tight |= vulkanEnact(Modify);
+    if (mainState.manipEnact[Direct] && moused) mainState.registerDone[Direct] = true; tight |= vulkanEnact(Direct);
+    if (mainState.manipEnact[Display] && drawed) mainState.registerDone[Display] = true; tight |= vulkanEnact(Display);
+    if (mainState.manipEnact[Bright] && drawed) mainState.registerDone[Bright] = true; tight |= vulkanEnact(Bright);
+    if (mainState.manipEnact[Detect] && drawed) mainState.registerDone[Detect] = true; tight |= vulkanEnact(Detect);
+    if (mainState.manipEnact[Query] && queryd) mainState.registerDone[Query] = true; tight |= vulkanEnact(Query);
+    if (mainState.manipEnact[Ready] && readyd) mainState.registerDone[Ready] = true; tight |= vulkanEnact(Ready);
+    if (mainState.manipEnact[Defer] && deferd) mainState.registerDone[Defer] = true; tight |= vulkanEnact(Defer);
+    tight |= (!mainState.queryMove.empty() && !mainState.registerDone[Query]);
+    tight |= (!mainState.readyMove.empty() && !mainState.registerDone[Ready]);
+    tight |= (!mainState.readyMove.empty() && !mainState.registerDone[Defer]);
     return tight;
 }
 struct Center *vulkanReady(enum Memory mem)
@@ -1964,7 +1968,8 @@ void graphicsRegress()
     center->cfg[0] = ManipReact; center->cfg[1] = RegisterPoll;
     center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
     center->val[1] = 1;
-    planeCopy(center);
+    planeCopy(&center); allocCenter(&center,0);
+    planraCenter();
 }
 void initialStop()
 {
@@ -2022,12 +2027,13 @@ int main(int argc, char **argv)
 {
     mainState.argc = argc;
     mainState.argv = argv;
+    mainState.registerPlan = Regress;
     gettimeofday(&debug_start, NULL);
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanSafe,vulkanBoot,vulkanMain,vulkanDma,vulkanReady,vulkanDone,planraWake,vulkanInfo);
+        planeInit(vulkanInit,vulkanSafe,vulkanBoot,vulkanMain,vulkanCopy,vulkanReady,vulkanDone,planraWake,vulkanInfo);
 #else
-        planeInit(vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanDma,vulkanReady,vulkanDone,planeWake,vulkanInfo);
+        planeInit(vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanCopy,vulkanReady,vulkanDone,planeWake,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
