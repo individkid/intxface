@@ -18,7 +18,7 @@ void planePutstr(const char *str);
 void planeReady(struct Center *ptr);
 void planeDone(struct Center *ptr);
 void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
-void planeMain();
+int planeMain();
 void planeWake(enum Configure hint);
 void planeBoot();
 void planraWake(enum Configure hint);

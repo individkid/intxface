@@ -76,6 +76,7 @@ Configure = {
 	"ManipScope", -- what to transform
 	"RegisterDone", -- shaders running count
 	"RegisterOpen", -- thread running mask
+	"RegisterPoll", -- whether tight loop
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
@@ -138,7 +139,6 @@ Interp = { -- configure enum interpretation
 	"Effect", -- used for display
 }
 React = { -- when updates recorded
-	"Poll", -- whether to sleep for glfw events
 	"Enstate", -- whether to little language
 	"Enque", -- whether to micro code
 	"Enline", -- whether to enque key

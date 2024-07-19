@@ -1283,10 +1283,10 @@ struct ThreadState {
     std::deque<std::function<VkFence()>> presetup;
     std::deque<int> preord; // sequence number for push from separate thread
     std::deque<std::function<bool()>> when; // whether to push from separate thread
-    int limit; int seqnum; enum State {Pass,Fail,Start,Wait,Pend} note;
+    int limit; int seqnum; int prog; bool pend;
     ThreadState(VkDevice device, int limit) {
         this->device = device; finish = false;
-        this->limit = limit; seqnum = 0; note = Pass;
+        this->limit = limit; seqnum = 0; prog = 0; pend = false;
         if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
     }
     ~ThreadState() {
@@ -1325,37 +1325,25 @@ struct ThreadState {
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
-                if (arg->note == Fail) {vulkanSafe(); arg->note = Pend;}
-                else if (arg->note == Start) arg->note = Wait;}}}
+                if (arg->pend) {vulkanSafe(); arg->pend = false;}
+                arg->prog += 1;}}}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
-    bool clear() {
+    int mark() {
+        int ret;
         protect.wait();
-        if (note == Pend) {note = Pass;
-        if (mainState.manipReact[Enque])
-        planeSafe(Threads,Waits,RegisterDone);
-        protect.post(); return true;}
-        protect.post(); return false;
-    }
-    void clear(enum State note) {
-    // Pass: clear and ignore
-    // Fail: send or wait
-    // Start: clear and capture
-    // Wait: progress since start
-        protect.wait();
-        if (this->note == Wait && note == Fail) this->note = Pend;
-        else this->note = note;
+        ret = prog;
         protect.post();
+        return ret;
     }
-    void pass() {
-        clear(Pass);
-    }
-    void fail() {
-        clear(Fail);
-    }
-    void start() {
-        clear(Start);
+    bool mark(int given) {
+        bool ret;
+        protect.wait();
+        pend = (prog == given); // whether to wake later
+        ret = !pend; // whether to tight loop
+        protect.post();
+        return ret;
     }
     bool clear(int given) {
     // return whether given sequence number is completed
@@ -1814,11 +1802,11 @@ bool vulkanDefer()
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
     return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
 }
-void vulkanEnact(enum Enact hint)
+bool vulkanEnact(enum Enact hint)
 {
-    bool fail;
-    if (!mainState.manipDone[hint]) return;
-    mainState.threadState->start();
+    bool fail; int mark;
+    if (!mainState.manipDone[hint]) return false;
+    mark = mainState.threadState->mark();
     switch (hint) {default: throw std::runtime_error("failed to call function!");
     break; case (Extent): fail = vulkanSwap();
     break; case (Follow): fail = vulkanFollow();
@@ -1831,8 +1819,8 @@ void vulkanEnact(enum Enact hint)
     break; case (Ready): fail = vulkanReady();
     break; case (Defer): fail = vulkanDefer();}
     mainState.manipDone[hint] = fail;
-    if (fail) mainState.threadState->fail();
-    else mainState.threadState->pass();
+    if (fail) return mainState.threadState->mark(mark); // tight loop or wake later
+    return false; // whether to tight loop
 }
 bool vulkanChange()
 {
@@ -1849,6 +1837,7 @@ bool vulkanChange()
         (mainState.manipEnact[Follow] && sized) ||
         (mainState.manipEnact[Modify] && moused) ||
         (mainState.manipEnact[Direct] && moused));
+    bool tight = false;
     std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
     if (moved) std::cerr << "vulkanChange moved " << mainState.windowMove.left << "/" << mainState.windowCopy.left << " " << mainState.windowMove.base << "/" << mainState.windowCopy.base << std::endl;
     if (sized) std::cerr << "vulkanChange sized " << mainState.windowMove.width << "/" << mainState.windowCopy.width << " " << mainState.windowMove.height << "/" << mainState.windowCopy.height << std::endl;
@@ -1861,20 +1850,20 @@ bool vulkanChange()
         mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
     if (deferd && !mainState.manipDone[Defer]) {
         mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
-    if (mainState.manipEnact[Extent] && sized) mainState.manipDone[Extent] = true; vulkanEnact(Extent);
-    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.manipDone[Follow] = true; vulkanEnact(Follow);
-    if (mainState.manipEnact[Modify] && moused) mainState.manipDone[Modify] = true; vulkanEnact(Modify);
-    if (mainState.manipEnact[Direct] && moused) mainState.manipDone[Direct] = true; vulkanEnact(Direct);
-    if (mainState.manipEnact[Display] && drawed) mainState.manipDone[Display] = true; vulkanEnact(Display);
-    if (mainState.manipEnact[Bright] && drawed) mainState.manipDone[Bright] = true; vulkanEnact(Bright);
-    if (mainState.manipEnact[Detect] && drawed) mainState.manipDone[Detect] = true; vulkanEnact(Detect);
-    if (mainState.manipEnact[Query] && queryd) mainState.manipDone[Query] = true; vulkanEnact(Query);
-    if (mainState.manipEnact[Ready] && readyd) mainState.manipDone[Ready] = true; vulkanEnact(Ready);
-    if (mainState.manipEnact[Defer] && deferd) mainState.manipDone[Defer] = true; vulkanEnact(Defer);
-    return (mainState.threadState->clear() ||
-        (!mainState.queryMove.empty() && !mainState.manipDone[Query]) ||
-        (!mainState.readyMove.empty() && !mainState.manipDone[Ready]) ||
-        (!mainState.readyMove.empty() && !mainState.manipDone[Defer]));
+    if (mainState.manipEnact[Extent] && sized) mainState.manipDone[Extent] = true; tight |= vulkanEnact(Extent);
+    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.manipDone[Follow] = true; tight |= vulkanEnact(Follow);
+    if (mainState.manipEnact[Modify] && moused) mainState.manipDone[Modify] = true; tight |= vulkanEnact(Modify);
+    if (mainState.manipEnact[Direct] && moused) mainState.manipDone[Direct] = true; tight |= vulkanEnact(Direct);
+    if (mainState.manipEnact[Display] && drawed) mainState.manipDone[Display] = true; tight |= vulkanEnact(Display);
+    if (mainState.manipEnact[Bright] && drawed) mainState.manipDone[Bright] = true; tight |= vulkanEnact(Bright);
+    if (mainState.manipEnact[Detect] && drawed) mainState.manipDone[Detect] = true; tight |= vulkanEnact(Detect);
+    if (mainState.manipEnact[Query] && queryd) mainState.manipDone[Query] = true; tight |= vulkanEnact(Query);
+    if (mainState.manipEnact[Ready] && readyd) mainState.manipDone[Ready] = true; tight |= vulkanEnact(Ready);
+    if (mainState.manipEnact[Defer] && deferd) mainState.manipDone[Defer] = true; tight |= vulkanEnact(Defer);
+    tight |= (!mainState.queryMove.empty() && !mainState.manipDone[Query]);
+    tight |= (!mainState.readyMove.empty() && !mainState.manipDone[Ready]);
+    tight |= (!mainState.readyMove.empty() && !mainState.manipDone[Defer]);
+    return tight;
 }
 struct Center *vulkanReady(enum Memory mem)
 {
@@ -1969,9 +1958,8 @@ void vulkanMain(enum Thread proc, enum Wait wait)
     vulkanGoon += 1;
     std::cerr << "Process,Start " << vulkanGoon << std::endl;
     while (vulkanGoon) {
-    if (vulkanChange() || mainState.manipReact[Poll]) glfwPollEvents();
-    else glfwWaitEventsTimeout(1.0);
-    planeMain();}
+    if (vulkanChange() || planeMain()) glfwPollEvents();
+    else glfwWaitEventsTimeout(1.0);}
     break; case PAIR(Process,Stop):
     std::cerr << "Process,Stop " << vulkanGoon << std::endl;
     vulkanGoon -= 1;}
