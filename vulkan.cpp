@@ -1993,15 +1993,15 @@ void processStop()
 #define PAIR(LEFT,RIGHT) ((LEFT<<0)|(RIGHT<<16))
 void vulkanMain(enum Thread proc, enum Wait wait)
 {
-    switch PAIR(proc,wait) {default: break;
+    switch PAIR(proc,wait) {default: throw std::runtime_error("unsupported thread!");
     break; case PAIR(Initial,Start): initialStart();
-    break; case PAIR(Initial,Regress): initialRegress();
+    break; case PAIR(Initial,Test): initialRegress();
     break; case PAIR(Initial,Stop): initialStop();
     break; case PAIR(Window,Start): windowStart();
-    break; case PAIR(Window,Regress): windowRegress();
+    break; case PAIR(Window,Test): windowRegress();
     break; case PAIR(Window,Stop): windowStop();
     break; case PAIR(Graphics,Start): graphicsStart();
-    break; case PAIR(Graphics,Regress): graphicsRegress();
+    break; case PAIR(Graphics,Test): graphicsRegress();
     break; case PAIR(Graphics,Stop): graphicsStop();
     break; case PAIR(Process,Start): processStart();
     break; case PAIR(Process,Stop): processStop();}
@@ -2009,11 +2009,11 @@ void vulkanMain(enum Thread proc, enum Wait wait)
 void vulkanBoot()
 {
     planeSafe(Initial,Start,Configures);
-    planeSafe(Initial,Regress,Configures);
+    planeSafe(Initial,Test,Configures);
     planeSafe(Window,Start,Configures);
-    planeSafe(Window,Regress,Configures);
+    planeSafe(Window,Test,Configures);
     planeSafe(Graphics,Start,Configures);
-    planeSafe(Graphics,Regress,Configures);
+    planeSafe(Graphics,Test,Configures);
     planeSafe(Process,Start,Configures);
     planeSafe(Threads,Waits,CursorLeft);
 }

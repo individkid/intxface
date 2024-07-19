@@ -74,8 +74,10 @@ Configure = {
 	"ManipAction", -- what to do
 	"ManipFixed", -- how to do
 	"ManipScope", -- what to transform
-	"RegisterDone", -- shaders running count
+	"RegisterDone", -- resource missing mask
 	"RegisterOpen", -- thread running mask
+	"RegisterTest", -- thread testing mask
+	"RegisterPlan", -- testing plan progress
 	"RegisterPoll", -- whether tight loop
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
@@ -220,11 +222,8 @@ WrapTag = {
 }
 Wait = {
 	"Start",
+	"Test",
 	"Stop",
-	"Regress",
-	"Upbring",
-	"Inbuilt",
-	"Bootup",
 }
 Thread = {
 	"Select",
@@ -233,6 +232,12 @@ Thread = {
 	"Window",
 	"Graphics",
 	"Process",
+}
+Plan = {
+	"Regress",
+	"Upbring",
+	"Inbuilt",
+	"Bootup",
 }
 Emerg = {
 	"Planes", -- Scalar -- [Plane] -- per boundary

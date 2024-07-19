@@ -369,9 +369,17 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 void planeStarted(int tmp)
 {
 	int done = 0; int todo = 0; int started = 0;
-	started = configure[RegisterOpen]; todo = started & ~tmp; done = tmp & ~started;
+	started = configure[RegisterOpen];
+	todo = ~started & tmp; done = ~tmp & started;
 	for (enum Thread bit = 0; bit < Threads; bit++) if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
 	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) planeSafe(bit,Start,Configures);
+}
+void planeTested(int tmp)
+{
+	int todo = 0; int started = 0;
+	started = configure[RegisterTest];
+	todo = ~started & tmp;
+	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) planeSafe(bit,Test,Configures);
 }
 void planeConfig(enum Configure cfg, int val)
 {
@@ -383,6 +391,7 @@ void planeConfig(enum Configure cfg, int val)
 	case (MatrixBase): matrix = planeRebase(matrix,sizeof(struct Kernel),configure[MatrixSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
 	case (RegisterOpen): planeStarted(tmp); break;
+	case (RegisterTest): planeTested(tmp); break;
 	case (ClosestFind): found = 0; break;
 	default: break;}
 }
@@ -641,7 +650,7 @@ void planeThread(enum Thread bit)
 	switch (bit) {
 	case (Select): if (pthread_create(&thread[bit],0,planeSelect,0) != 0) ERROR(); break;
 	case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR(); break;
-	default: sem_post(&ready[bit]); break;}
+	default: sem_post(&ready[bit]); callMain(bit,Start); break;}
 	if ((configure[RegisterOpen] & (1<<bit)) == 0) {
 		configure[RegisterOpen] |= (1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
@@ -651,15 +660,16 @@ void planeFinish(enum Thread bit)
 	sem_wait(&ready[bit]); switch (bit) {
 	case (Select): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
-	default: break;}
+	default: callMain(bit,Stop); break;}
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
 }
 void planeWait(enum Thread bit, enum Wait wait)
 {
-	if (wait == Start) planeThread(bit);
-	if (wait == Stop) planeFinish(bit);
-	callMain(bit,wait);
+	switch(wait) {default: ERROR();
+	break; case (Start): planeThread(bit);
+	break; case (Stop): planeFinish(bit);
+	break; case (Test): callMain(bit,Test);}
 }
 void wrapPlane();
 void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype copy, rftype pierce, xftype done, sftype wake, tftype info)
