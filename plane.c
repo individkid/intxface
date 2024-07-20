@@ -368,18 +368,15 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 }
 void planeStarted(int tmp)
 {
-	int done = 0; int todo = 0; int started = 0;
-	started = configure[RegisterOpen];
-	todo = ~started & tmp; done = ~tmp & started;
-	for (enum Thread bit = 0; bit < Threads; bit++) if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
-	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) planeSafe(bit,Start,Configures);
-}
-void planeTested(int tmp)
-{
-	int todo = 0; int started = 0;
-	started = configure[RegisterTest];
-	todo = ~started & tmp;
-	for (enum Thread bit = 0; bit < Threads; bit++) if (todo & (1<<bit)) planeSafe(bit,Test,Configures);
+	int done = 0; int todo = 0;
+	int started = configure[RegisterOpen];
+	int test = configure[RegisterTest];
+	todo = started & ~tmp; done = tmp & ~started;
+	for (enum Thread bit = 0; bit < Threads; bit++)
+	if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
+	for (enum Thread bit = 0; bit < Threads; bit++) {
+	if (test & (1<<bit)) planeSafe(bit,Test,Configures);
+	if (todo & (1<<bit)) planeSafe(bit,Start,Configures);}
 }
 void planeConfig(enum Configure cfg, int val)
 {
@@ -391,7 +388,6 @@ void planeConfig(enum Configure cfg, int val)
 	case (MatrixBase): matrix = planeRebase(matrix,sizeof(struct Kernel),configure[MatrixSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
 	case (RegisterOpen): planeStarted(tmp); break;
-	case (RegisterTest): planeTested(tmp); break;
 	case (ClosestFind): found = 0; break;
 	default: break;}
 }
