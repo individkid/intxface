@@ -43,6 +43,7 @@ struct MainState {
     bool manipEnact[Enacts];
     bool manipAction[Actions];
     bool registerDone[Enacts];
+    bool registerOpen;
     enum Plan registerPlan;
     enum Interp mouseRead, mouseWrite;
     enum Interp windowRead, windowWrite;
@@ -1662,7 +1663,7 @@ void vulkanCopy(struct Center **given)
         memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
         planeDone(center); *given = 0; return;
     break; case (Configurez): for (int i = 0; i < center->siz; i++)
-    switch (center->cfg[i]) {default: throw std::runtime_error("unsupported cfg!");
+    switch (center->cfg[i]) {default:
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
     break; case (CursorRead): mainState.mouseRead = (Interp)center->val[i];
     break; case (CursorWrite): mainState.mouseWrite = (Interp)center->val[i];
@@ -1894,53 +1895,40 @@ void vulkanInit()
 {
     for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
 }
-void initialStart()
+void vulkanInitial(enum Wait wait)
 {
+    switch (wait) {default: throw std::runtime_error("unsupported wait!");
+    break; case (Test):
+    break; case (Start):
     std::cerr << "Initial,Start" << std::endl;
     mainState.initState = new InitState(mainState.layers);
+    break; case (Stop):
+    std::cerr << "Initial,Stop" << std::endl;
+    delete mainState.initState; mainState.initState = 0;}
 }
-void windowStart()
+void vulkanWindow(enum Wait wait)
 {
-    std::cerr << "Window,Start" << std::endl;
-    mainState.openState = new OpenState(mainState.initState->instance,
-        mainState.windowMove.width, mainState.windowMove.height,(void*)&mainState);
-}
-void graphicsStart()
-{
-    std::cerr << "Graphics,Start " << std::endl;
-    mainState.physicalState = new PhysicalState(
-        mainState.initState->instance,mainState.openState->surface,mainState.extensions,
-        mainState.MAX_FRAMES_INFLIGHT);
-    mainState.logicalState = [](PhysicalState *physical){
-        return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
-        physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
-    }(mainState.physicalState);
-    mainState.threadState = new ThreadState(mainState.logicalState->device,
-        mainState.MAX_FENCES_INFLIGHT);
-    mainState.tempState = new TempState();
-    mainState.queueState = new QueueState();
-}
-int processGoon = 0;
-void processStart()
-{
-    processGoon += 1;
-    std::cerr << "Process,Start " << processGoon << std::endl;
-    while (processGoon) {
-    if (vulkanChange() || planeMain()) glfwPollEvents();
-    else glfwWaitEventsTimeout(1.0);}
-}
-void initialRegress()
-{
-    std::cerr << "Initial,Regress" << std::endl;
+    switch (wait) {default: throw std::runtime_error("unsupported wait!");
+    break; case (Test):
+    std::cerr << "Window,Test" << std::endl;
     mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
     mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
+    break; case (Start):
+    std::cerr << "Window,Start" << std::endl;
+    mainState.openState = new OpenState(mainState.initState->instance,
+    mainState.windowMove.width, mainState.windowMove.height,(void*)&mainState);
+    break; case (Stop):
+    std::cerr << "Window,Stop " << std::endl;
+    delete mainState.openState; mainState.openState = 0;}
 }
-void windowRegress()
+void vulkanGraphics(enum Wait wait)
 {
-    int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
+    switch (wait) {default: throw std::runtime_error("unsupported wait!");
+    break; case (Test):
+    std::cerr << "Graphics,Test" << std::endl;
+    {int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
     GLFWwindow *window = mainState.openState->window;
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    std::cerr << "Window,Regress" << std::endl;
     glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
     glfwGetFramebufferSize(window,&sizx,&sizy);
     glfwGetWindowSize(window,&width,&height);
@@ -1958,67 +1946,70 @@ void windowRegress()
     mainState.windowClick.left = mainState.windowMove.left = /*mainState.windowCopy.left =*/ left;
     mainState.windowClick.base = mainState.windowMove.base = /*mainState.windowCopy.base =*/ base;
     mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
-    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;
-}
-void graphicsRegress()
-{
-    struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-    center->cfg[0] = ManipReact; center->cfg[1] = RegisterPoll;
-    center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-    center->val[1] = 1;
-    planeCopy(&center); allocCenter(&center,0);
-    planraCenter();
-}
-void initialStop()
-{
-    std::cerr << "Initial,Stop" << std::endl;
-    delete mainState.initState; mainState.initState = 0;
-}
-void windowStop()
-{
-    std::cerr << "Window,Stop " << std::endl;
-    delete mainState.openState; mainState.openState = 0;
-}
-void graphicsStop()
-{
+    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
+    break; case (Start):
+    std::cerr << "Graphics,Start " << std::endl;
+    mainState.physicalState = new PhysicalState(
+    mainState.initState->instance,mainState.openState->surface,mainState.extensions,
+    mainState.MAX_FRAMES_INFLIGHT);
+    mainState.logicalState = [](PhysicalState *physical){
+    return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
+    physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
+    }(mainState.physicalState);
+    mainState.threadState = new ThreadState(mainState.logicalState->device,
+    mainState.MAX_FENCES_INFLIGHT);
+    mainState.tempState = new TempState();
+    mainState.queueState = new QueueState();
+    break; case (Stop):
     std::cerr << "Graphics,Stop " << std::endl;
     delete mainState.queueState; mainState.queueState = 0;
     delete mainState.tempState; mainState.tempState = 0;
     delete mainState.threadState; mainState.threadState = 0;
     delete mainState.logicalState; mainState.logicalState = 0;
-    delete mainState.physicalState; mainState.physicalState = 0;
+    delete mainState.physicalState; mainState.physicalState = 0;}
 }
-void processStop()
+void vulkanProcess(enum Wait wait)
 {
-    std::cerr << "Process,Stop " << processGoon << std::endl;
-    processGoon -= 1;
+    switch (wait) {default: throw std::runtime_error("unsupported wait!");
+    break; case (Test):
+    std::cerr << "Process,Test" << std::endl;
+    {struct Center *center = 0; allocCenter(&center,1);
+    center->mem = Configurez; center->siz = 2; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,2); allocInt(&center->val,2);
+    center->cfg[0] = ManipReact; center->cfg[1] = RegisterPoll;
+    center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
+    center->val[1] = 1;
+    planeCopy(&center); allocCenter(&center,0);}
+    planraCenter(); mainState.registerOpen = true;
+    break; case (Start):
+    std::cerr << "Process,Start" << std::endl;
+    while (mainState.registerOpen) { // TODO remove
+    std::cerr << "Process,Start " << mainState.registerOpen << std::endl;
+    if (vulkanChange() || planeMain()) glfwPollEvents();
+    else glfwWaitEventsTimeout(1.0);}
+    // if (mainState.registerOpen) planeSafe(Process,Start,Configures);
+    break; case (Stop):
+    std::cerr << "Process,Stop " << mainState.registerOpen << std::endl;
+    mainState.registerOpen = false;}
 }
-#define PAIR(LEFT,RIGHT) ((LEFT<<0)|(RIGHT<<16))
 void vulkanMain(enum Thread proc, enum Wait wait)
 {
-    switch PAIR(proc,wait) {default: throw std::runtime_error("unsupported thread!");
-    break; case PAIR(Initial,Start): initialStart();
-    break; case PAIR(Initial,Test): initialRegress();
-    break; case PAIR(Initial,Stop): initialStop();
-    break; case PAIR(Window,Start): windowStart();
-    break; case PAIR(Window,Test): windowRegress();
-    break; case PAIR(Window,Stop): windowStop();
-    break; case PAIR(Graphics,Start): graphicsStart();
-    break; case PAIR(Graphics,Test): graphicsRegress();
-    break; case PAIR(Graphics,Stop): graphicsStop();
-    break; case PAIR(Process,Start): processStart();
-    break; case PAIR(Process,Stop): processStop();}
+    switch (proc) {default: throw std::runtime_error("unsupported thread!");
+    break; case (Initial): vulkanInitial(wait);
+    break; case (Window): vulkanWindow(wait);
+    break; case (Graphics): vulkanGraphics(wait);
+    break; case (Process): vulkanProcess(wait);}
 }
 void vulkanBoot()
 {
-    planeSafe(Initial,Start,Configures);
+    // TODO do this by writing to RegisterTest and RegisterOpen
     planeSafe(Initial,Test,Configures);
-    planeSafe(Window,Start,Configures);
+    planeSafe(Initial,Start,Configures);
     planeSafe(Window,Test,Configures);
-    planeSafe(Graphics,Start,Configures);
+    planeSafe(Window,Start,Configures);
     planeSafe(Graphics,Test,Configures);
+    planeSafe(Graphics,Start,Configures);
+    planeSafe(Process,Test,Configures);
     planeSafe(Process,Start,Configures);
     planeSafe(Threads,Waits,CursorLeft);
 }

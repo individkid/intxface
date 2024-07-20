@@ -370,18 +370,19 @@ void planeStarted(int tmp)
 {
 	int done = 0; int todo = 0;
 	int started = configure[RegisterOpen];
-	int test = configure[RegisterTest];
+	// int test = configure[RegisterTest]; // TODO after change to vulkanBoot
 	todo = started & ~tmp; done = tmp & ~started;
 	for (enum Thread bit = 0; bit < Threads; bit++)
 	if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
 	for (enum Thread bit = 0; bit < Threads; bit++) {
-	if (test & (1<<bit)) planeSafe(bit,Test,Configures);
+	// if (test & (1<<bit)) planeSafe(bit,Test,Configures); // TODO after change to vulkanBoot
 	if (todo & (1<<bit)) planeSafe(bit,Start,Configures);}
 }
 void planeConfig(enum Configure cfg, int val)
 {
 	int tmp = 0;
 	if (cfg < 0 || cfg >= Configures) ERROR();
+	fprintf(stderr,"planeConfig %d %d %d\n",cfg,RegisterPoll,val);
 	tmp = configure[cfg]; configure[cfg] = val;
 	switch (cfg) {
 	case (MatrixSize): matrix = planeResize(matrix,sizeof(struct Kernel),val,tmp); break;
@@ -745,6 +746,7 @@ int planeMain()
 	if (wait != Waits && hint == Configures) planeWait(proc,wait);
 	if (wait == Waits && hint == ResultHint && proc == Threads) break;}
 	if (configure[RegisterPoll]) usleep(POLLDELAY);
+	else fprintf(stderr,"no poll\n");
 	return configure[RegisterPoll];
 }
 
