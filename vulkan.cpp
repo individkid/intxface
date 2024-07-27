@@ -154,7 +154,7 @@ struct TempState {
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    std::cerr << "windowMoved " << xpos << "/" << ypos << std::endl;
+    // std::cerr << "windowMoved " << xpos << "/" << ypos << std::endl;
     if (mainState->manipReact[Relate]) {
         mainState->mouseMove.left -= xpos-mainState->windowMove.left;
         mainState->mouseMove.base -= ypos-mainState->windowMove.base;
@@ -162,33 +162,33 @@ void windowMoved(GLFWwindow* window, int xpos, int ypos)
         mainState->mouseMove.left-mainState->windowMove.left,
         mainState->mouseMove.base-mainState->windowMove.base);}
     mainState->windowMove.left = xpos; mainState->windowMove.base = ypos;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Waits,WindowLeft);
+    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,WindowLeft);
 }
 void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    std::cerr << "mouseMoved " << xpos << "/" << ypos << std::endl;
+    // std::cerr << "mouseMoved " << xpos << "/" << ypos << std::endl;
     mainState->mouseMove.left = xpos; mainState->mouseMove.base = ypos;
     if (mainState->manipReact[Relate]) {
         mainState->mouseMove.left += mainState->windowMove.left;
         mainState->mouseMove.base += mainState->windowMove.base;}
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Waits,CursorLeft);
+    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorLeft);
 }
 void windowSized(GLFWwindow* window, int width, int height)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    std::cerr << "windowSized " << width << "/" << height << std::endl;
+    // std::cerr << "windowSized " << width << "/" << height << std::endl;
     mainState->windowMove.width = width; mainState->windowMove.height = height;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Waits,WindowWidth);
+    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,WindowWidth);
 }
 void mouseAngled(GLFWwindow *window, double amount) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     mainState->mouseMove.angle += amount;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Waits,CursorAngle);
+    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorAngle);
 }
 void windowRefreshed(GLFWwindow* window)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    std::cerr << "windowRefresh" << std::endl;
+    // std::cerr << "windowRefresh" << std::endl;
 }
 void manipReact(struct MainState *mainState, int pat) {
     for (int i = mainState->littleIndex; i < mainState->littleSize; i++)
@@ -217,7 +217,7 @@ void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods)
         mainState->windowMove.width += east-west, mainState->windowMove.height += north-south);
     if (mainState->manipReact[Enline]) mainState->linePress.push_back(key);
     if (mainState->manipReact[Enchar]) mainState->charPress = key;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Waits,CursorPress);
+    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorPress);
     if (mainState->manipReact[Enstate]) manipReact(mainState,key);
 }
 void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
@@ -227,12 +227,12 @@ void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
     mainState->windowClick = mainState->windowMove;
     mainState->mouseClick = mainState->mouseMove;
     mainState->queryMove.push_back(mainState->mouseMove);
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Waits,CursorClick);
+    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorClick);
     if (mainState->manipReact[Enstate]) manipReact(mainState,-1);
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    // std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
 
@@ -1808,9 +1808,10 @@ bool vulkanDefer()
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
     return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
 }
-bool vulkanEnact(enum Enact hint)
+bool vulkanEnact(enum Enact hint, bool cond, bool tight)
 {
     bool fail; int mark;
+    if (mainState.manipEnact[hint] && cond) mainState.registerDone[hint] = true;
     if (!mainState.registerDone[hint]) return false;
     mark = mainState.threadState->mark();
     switch (hint) {default: throw std::runtime_error("failed to call function!");
@@ -1825,50 +1826,40 @@ bool vulkanEnact(enum Enact hint)
     break; case (Ready): fail = vulkanReady();
     break; case (Defer): fail = vulkanDefer();}
     mainState.registerDone[hint] = fail;
-    if (fail) return mainState.threadState->mark(mark); // tight loop or wake later
-    return false; // whether to tight loop
+    if (fail && mainState.threadState->mark(mark)) return true; // tight loop or wake later
+    return tight; // whether to tight loop
 }
 bool vulkanChange()
 {
-    bool moved = (mainState.windowMove.left != mainState.windowCopy.left ||
-        mainState.windowMove.base != mainState.windowCopy.base);
-    bool sized = (mainState.windowMove.width != mainState.windowCopy.width ||
-        mainState.windowMove.height != mainState.windowCopy.height);
-    bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left ||
-        mainState.mouseMove.base != mainState.mouseCopy.base);
+    bool moved = (mainState.windowMove.left != mainState.windowCopy.left || mainState.windowMove.base != mainState.windowCopy.base);
+    bool sized = (mainState.windowMove.width != mainState.windowCopy.width || mainState.windowMove.height != mainState.windowCopy.height);
+    bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left || mainState.mouseMove.base != mainState.mouseCopy.base);
     bool queryd = !mainState.queryMove.empty();
     bool readyd = !mainState.readyMove.empty();
     bool deferd = !mainState.deferMove.empty();
-    bool drawed = ((mainState.manipEnact[Follow] && moved) ||
-        (mainState.manipEnact[Follow] && sized) ||
-        (mainState.manipEnact[Modify] && moused) ||
-        (mainState.manipEnact[Direct] && moused));
+    bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
+        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
     bool tight = false;
-    std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
+    // std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
     if (moved) std::cerr << "vulkanChange moved " << mainState.windowMove.left << "/" << mainState.windowCopy.left << " " << mainState.windowMove.base << "/" << mainState.windowCopy.base << std::endl;
     if (sized) std::cerr << "vulkanChange sized " << mainState.windowMove.width << "/" << mainState.windowCopy.width << " " << mainState.windowMove.height << "/" << mainState.windowCopy.height << std::endl;
     if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
-    if (queryd && !mainState.registerDone[Query]) {
-        mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-    if (readyd && !mainState.registerDone[Ready]) {
-        mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
-    if (deferd && !mainState.registerDone[Defer]) {
-        mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
-    if (mainState.manipEnact[Extent] && sized) mainState.registerDone[Extent] = true; tight |= vulkanEnact(Extent);
-    if (mainState.manipEnact[Follow] && (moved || sized)) mainState.registerDone[Follow] = true; tight |= vulkanEnact(Follow);
-    if (mainState.manipEnact[Modify] && moused) mainState.registerDone[Modify] = true; tight |= vulkanEnact(Modify);
-    if (mainState.manipEnact[Direct] && moused) mainState.registerDone[Direct] = true; tight |= vulkanEnact(Direct);
-    if (mainState.manipEnact[Display] && drawed) mainState.registerDone[Display] = true; tight |= vulkanEnact(Display);
-    if (mainState.manipEnact[Bright] && drawed) mainState.registerDone[Bright] = true; tight |= vulkanEnact(Bright);
-    if (mainState.manipEnact[Detect] && drawed) mainState.registerDone[Detect] = true; tight |= vulkanEnact(Detect);
-    if (mainState.manipEnact[Query] && queryd) mainState.registerDone[Query] = true; tight |= vulkanEnact(Query);
-    if (mainState.manipEnact[Ready] && readyd) mainState.registerDone[Ready] = true; tight |= vulkanEnact(Ready);
-    if (mainState.manipEnact[Defer] && deferd) mainState.registerDone[Defer] = true; tight |= vulkanEnact(Defer);
-    tight |= (!mainState.queryMove.empty() && !mainState.registerDone[Query]);
-    tight |= (!mainState.readyMove.empty() && !mainState.registerDone[Ready]);
-    tight |= (!mainState.readyMove.empty() && !mainState.registerDone[Defer]);
+    if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
+    if (readyd && !mainState.registerDone[Ready]) {mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
+    if (deferd && !mainState.registerDone[Defer]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
+    tight = vulkanEnact(Extent,sized,tight);
+    tight = vulkanEnact(Follow,(moved||sized),tight);
+    tight = vulkanEnact(Modify,moused,tight);
+    tight = vulkanEnact(Direct,moused,tight);
+    tight = vulkanEnact(Display,drawed,tight);
+    tight = vulkanEnact(Bright,drawed,tight);
+    tight = vulkanEnact(Detect,drawed,tight);
+    tight = vulkanEnact(Query,queryd,tight);
+    tight = vulkanEnact(Ready,readyd,tight);
+    tight = vulkanEnact(Defer,deferd,tight);
+    tight = tight || !mainState.queryMove.empty() || !mainState.readyMove.empty() || !mainState.readyMove.empty();
     return tight;
 }
 struct Center *vulkanReady(enum Memory mem)
@@ -1895,10 +1886,11 @@ void vulkanInit()
 {
     for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
 }
-void vulkanInitial(enum Wait wait)
+void vulkanInitial(enum Phase phase)
 {
-    switch (wait) {default: throw std::runtime_error("unsupported wait!");
-    break; case (Test):
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Initial,Init" << std::endl;
     break; case (Start):
     std::cerr << "Initial,Start" << std::endl;
     mainState.initState = new InitState(mainState.layers);
@@ -1906,11 +1898,11 @@ void vulkanInitial(enum Wait wait)
     std::cerr << "Initial,Stop" << std::endl;
     delete mainState.initState; mainState.initState = 0;}
 }
-void vulkanWindow(enum Wait wait)
+void vulkanWindow(enum Phase phase)
 {
-    switch (wait) {default: throw std::runtime_error("unsupported wait!");
-    break; case (Test):
-    std::cerr << "Window,Test" << std::endl;
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Window,Init" << std::endl;
     mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
     mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
     break; case (Start):
@@ -1921,11 +1913,11 @@ void vulkanWindow(enum Wait wait)
     std::cerr << "Window,Stop " << std::endl;
     delete mainState.openState; mainState.openState = 0;}
 }
-void vulkanGraphics(enum Wait wait)
+void vulkanGraphics(enum Phase phase)
 {
-    switch (wait) {default: throw std::runtime_error("unsupported wait!");
-    break; case (Test):
-    std::cerr << "Graphics,Test" << std::endl;
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Graphics,Init" << std::endl;
     {int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
     GLFWwindow *window = mainState.openState->window;
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -1968,50 +1960,56 @@ void vulkanGraphics(enum Wait wait)
     delete mainState.logicalState; mainState.logicalState = 0;
     delete mainState.physicalState; mainState.physicalState = 0;}
 }
-void vulkanProcess(enum Wait wait)
+void vulkanProcess(enum Phase phase)
 {
-    switch (wait) {default: throw std::runtime_error("unsupported wait!");
-    break; case (Test):
-    std::cerr << "Process,Test" << std::endl;
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Process,Init" << std::endl;
     {struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 2; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-    center->cfg[0] = ManipReact; center->cfg[1] = RegisterPoll;
+    center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,1); allocInt(&center->val,1);
+    center->cfg[0] = ManipReact;
     center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-    center->val[1] = 1;
     planeCopy(&center); allocCenter(&center,0);}
     planraCenter(); mainState.registerOpen = true;
     break; case (Start):
     std::cerr << "Process,Start" << std::endl;
-    while (mainState.registerOpen) { // TODO remove
-    std::cerr << "Process,Start " << mainState.registerOpen << std::endl;
-    if (vulkanChange() || planeMain()) glfwPollEvents();
-    else glfwWaitEventsTimeout(1.0);}
-    // if (mainState.registerOpen) planeSafe(Process,Start,Configures);
+    mainState.registerOpen = true;
     break; case (Stop):
-    std::cerr << "Process,Stop " << mainState.registerOpen << std::endl;
+    std::cerr << "Process,Stop" << std::endl;
     mainState.registerOpen = false;}
 }
-void vulkanMain(enum Thread proc, enum Wait wait)
+void vulkanPhase(enum Thread thread, enum Phase phase)
 {
-    switch (proc) {default: throw std::runtime_error("unsupported thread!");
-    break; case (Initial): vulkanInitial(wait);
-    break; case (Window): vulkanWindow(wait);
-    break; case (Graphics): vulkanGraphics(wait);
-    break; case (Process): vulkanProcess(wait);}
+    switch (thread) {default: throw std::runtime_error("unsupported thread!");
+    break; case (Initial): vulkanInitial(phase);
+    break; case (Window): vulkanWindow(phase);
+    break; case (Graphics): vulkanGraphics(phase);
+    break; case (Process): vulkanProcess(phase);}
+}
+int vulkanLoop()
+{
+    glfwPollEvents();
+    return (mainState.registerOpen && vulkanChange());
+}
+int vulkanBlock()
+{
+    if (!mainState.registerOpen) return 0;
+    glfwWaitEventsTimeout(1.0);
+    return 1;
 }
 void vulkanBoot()
 {
     // TODO do this by writing to RegisterTest and RegisterOpen
-    planeSafe(Initial,Test,Configures);
+    planeSafe(Initial,Init,Configures);
     planeSafe(Initial,Start,Configures);
-    planeSafe(Window,Test,Configures);
+    planeSafe(Window,Init,Configures);
     planeSafe(Window,Start,Configures);
-    planeSafe(Graphics,Test,Configures);
+    planeSafe(Graphics,Init,Configures);
     planeSafe(Graphics,Start,Configures);
-    planeSafe(Process,Test,Configures);
+    planeSafe(Process,Init,Configures);
     planeSafe(Process,Start,Configures);
-    planeSafe(Threads,Waits,CursorLeft);
+    planeSafe(Threads,Phases,CursorLeft);
 }
 
 int main(int argc, char **argv)
@@ -2022,9 +2020,11 @@ int main(int argc, char **argv)
     gettimeofday(&debug_start, NULL);
     try {
 #ifdef PLANRA
-        planeInit(vulkanInit,vulkanSafe,vulkanBoot,vulkanMain,vulkanCopy,vulkanReady,vulkanDone,planraWake,vulkanInfo);
+	planeInit(vulkanInit,vulkanSafe,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,
+	vulkanPhase,vulkanCopy,vulkanReady,vulkanDone,planraWake,vulkanInfo);
 #else
-        planeInit(vulkanInit,vulkanSafe,planeBoot,vulkanMain,vulkanCopy,vulkanReady,vulkanDone,planeWake,vulkanInfo);
+	planeInit(vulkanInit,vulkanSafe,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,
+	vulkanPhase,vulkanCopy,vulkanReady,vulkanDone,planeWake,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

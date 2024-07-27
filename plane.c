@@ -21,7 +21,6 @@
 #else
 #include <semaphore.h>
 #endif
-#define sem_safe(S,F) {sem_wait(S);F;sem_post(S);}
 #include <setjmp.h>
 #include <signal.h>
 
@@ -62,7 +61,9 @@ int wakeup = 0;
 void *internal = 0;
 void *response = 0;
 vftype callSafe = 0;
-yftype callMain = 0;
+zftype callLoop = 0;
+zftype callBlock = 0;
+yftype callPhase = 0;
 uftype callCopy = 0;
 rftype callReady = 0;
 xftype callDone = 0;
@@ -75,18 +76,16 @@ char **string = 0;
 int strsiz = 0;
 int qsize = 0;
 int qfull = 0;
+int qwait = 0;
 int qhead = 0;
 int qtail = 0;
 enum Configure *hints = 0;
-enum Wait *waits = 0;
+enum Phase *waits = 0;
 enum Thread *procs = 0;
 // thread safe:
 sem_t resource;
 sem_t pending;
 sem_t ready[Threads];
-void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint);
-void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint);
-void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint);
 
 DECLARE_DEQUE(struct Center *,Centerq)
 
@@ -235,7 +234,7 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 planeXform planeFunc()
 {
-	int tmp; int cfg = configure[ManipFixed];
+    int tmp; int cfg = configure[ManipFixed];
     tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeSlideOrthoMouse;
     tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeRotateFocalMouse;
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) return planeRotateCursorRoller;
@@ -313,7 +312,9 @@ struct Pierce *planePierce()
 }
 void planeString()
 {
-	sem_safe(&resource,{configure[StringSize] = strsiz;});
+	sem_wait(&resource);
+	configure[StringSize] = strsiz;
+	sem_post(&resource);
 }
 void planeStage(enum Configure cfg)
 {
@@ -370,19 +371,18 @@ void planeStarted(int tmp)
 {
 	int done = 0; int todo = 0;
 	int started = configure[RegisterOpen];
-	// int test = configure[RegisterTest]; // TODO after change to vulkanBoot
+	// int test = configure[RegisterInit]; // TODO after change to vulkanBoot
 	todo = started & ~tmp; done = tmp & ~started;
 	for (enum Thread bit = 0; bit < Threads; bit++)
 	if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
 	for (enum Thread bit = 0; bit < Threads; bit++) {
-	// if (test & (1<<bit)) planeSafe(bit,Test,Configures); // TODO after change to vulkanBoot
+	// if (test & (1<<bit)) planeSafe(bit,Init,Configures); // TODO after change to vulkanBoot
 	if (todo & (1<<bit)) planeSafe(bit,Start,Configures);}
 }
 void planeConfig(enum Configure cfg, int val)
 {
 	int tmp = 0;
 	if (cfg < 0 || cfg >= Configures) ERROR();
-	fprintf(stderr,"planeConfig %d %d %d\n",cfg,RegisterPoll,val);
 	tmp = configure[cfg]; configure[cfg] = val;
 	switch (cfg) {
 	case (MatrixSize): matrix = planeResize(matrix,sizeof(struct Kernel),val,tmp); break;
@@ -471,12 +471,16 @@ void planeConsume(vftype func)
 }
 void planeRead()
 {
-	sem_safe(&resource,{center = maybeCenterq(0,internal);});
+	sem_wait(&resource);
+	center = maybeCenterq(0,internal);
+	sem_post(&resource);
 }
 void planeWrite()
 {
-	sem_safe(&resource,{pushCenterq(center,response);});
+	sem_wait(&resource);
+	pushCenterq(center,response);
 	writeInt(0,wakeup);
+	sem_post(&resource);
 }
 void planeEcho()
 {
@@ -518,7 +522,7 @@ int planeSwitch(struct Machine *mptr, int next)
 	default: break;}
 	return next+1;
 }
-void planeLoop()
+void planeMicro()
 {
 	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
 	struct Machine *mptr = machine+configure[ResultLine];
@@ -537,7 +541,7 @@ int planeCall(void **dat, const char *str)
 	while (idxstk >= numstk) intstk[numstk++] = 0;}
 	intstk[idxstk++] = configure[ResultLine];
 	configure[ResultLine] = *datxIntz(0,nam);
-	planeLoop();
+	planeMicro();
 	configure[ResultLine] = intstk[--idxstk];
 	assignDat(dat,*dat0);
 	free(nam);
@@ -547,7 +551,7 @@ void planeWake(enum Configure hint)
 {
 	configure[ResultHint] = hint;
 	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
-	planeLoop();
+	planeMicro();
 }
 void planeBoot()
 {
@@ -603,7 +607,9 @@ void *planeSelect(void *ptr)
 	struct Center *center = 0;
 	if (!checkRead(wakeup)) break;
 	readInt(wakeup);
-	sem_safe(&resource,{center = maybeCenterq(0,response);});
+	sem_wait(&resource);
+	center = maybeCenterq(0,response);
+	sem_post(&resource);
 	writeCenter(center,external);
 	freeCenter(center);
 	allocCenter(&center,0);}
@@ -612,8 +618,10 @@ void *planeSelect(void *ptr)
 	if (!checkRead(external)) break;
 	allocCenter(&center,1);
 	readCenter(center,external);
-	sem_safe(&resource,{pushCenterq(center,internal);});
-	planeSafe(Threads,Waits,CenterMemory); callSafe();}
+	sem_wait(&resource);
+	pushCenterq(center,internal);
+	sem_post(&resource);
+	planeSafe(Threads,Phases,CenterMemory); callSafe();}
 	else break;}
 	planeSafe(Select,Stop,Configures); callSafe();
 	return 0;
@@ -649,9 +657,9 @@ void planeThread(enum Thread bit)
 	switch (bit) {
 	case (Select): if (pthread_create(&thread[bit],0,planeSelect,0) != 0) ERROR(); break;
 	case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR(); break;
-	default: sem_post(&ready[bit]); callMain(bit,Start); break;}
+	default: sem_post(&ready[bit]); callPhase(bit,Start); break;}
 	if ((configure[RegisterOpen] & (1<<bit)) == 0) {
-		configure[RegisterOpen] |= (1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
+		configure[RegisterOpen] |= (1<<bit); planeSafe(Threads,Phases,RegisterOpen);}
 }
 void planeFinish(enum Thread bit)
 {
@@ -659,19 +667,20 @@ void planeFinish(enum Thread bit)
 	sem_wait(&ready[bit]); switch (bit) {
 	case (Select): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
 	case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
-	default: callMain(bit,Stop); break;}
+	default: callPhase(bit,Stop); break;}
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {
-		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Waits,RegisterOpen);}
+		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Phases,RegisterOpen);}
 }
-void planeWait(enum Thread bit, enum Wait wait)
+void planePhase(enum Thread bit, enum Phase phase)
 {
-	switch(wait) {default: ERROR();
+	switch(phase) {default: ERROR();
+	break; case (Init): callPhase(bit,Init);
 	break; case (Start): planeThread(bit);
-	break; case (Stop): planeFinish(bit);
-	break; case (Test): callMain(bit,Test);}
+	break; case (Stop): planeFinish(bit);}
 }
 void wrapPlane();
-void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype copy, rftype pierce, xftype done, sftype wake, tftype info)
+void planeInit(vftype init, vftype safe, vftype boot, vftype main, zftype loop, zftype block,//)
+	yftype phase, uftype copy, rftype _ready, xftype done, sftype wake, tftype info)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -685,12 +694,11 @@ void planeInit(vftype init, vftype safe, vftype boot, yftype main, uftype copy, 
 	wrapPlane();
 	datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callSafe = safe; callMain = main; callCopy = copy;
-	callReady = pierce; callDone = done; callWake = wake; callInfo = info;
-	init(); boot(); while (1) {
-	enum Wait wait = 0; enum Configure hint = 0;
-	sem_safe(&resource,{if (!qfull && !running) break;});
-	planeMain();}
+	callSafe = safe; callLoop = loop; callBlock = block; callPhase = phase; callCopy = copy;
+	callReady = _ready; callDone = done; callWake = wake; callInfo = info;
+	init(); // planePutstr on argv
+	boot(); // initial planeEnque
+	main(); // planeDeque vulkanChange
 	while (sizeCenterq(internal)) planeRead();
 	while (sizeCenterq(response)) {struct Center *ptr = maybeCenterq(0,response); freeCenter(ptr); allocCenter(&ptr,0);}
 	freeCenterq(internal);
@@ -704,50 +712,70 @@ void planeDone(struct Center *ptr)
 	// TODO reference count instead of &ptr
 	freeCenter(ptr); allocCenter(&ptr,0);
 }
-void planeEnque(enum Thread proc, enum Wait wait, enum Configure hint)
+void planeEnque(enum Thread thread, enum Phase phase, enum Configure hint)
 {
 	sem_wait(&resource);
 	if (qfull == qsize) {qsize++;
 	procs = realloc(procs,qsize*sizeof(enum Thread));
-	waits = realloc(waits,qsize*sizeof(enum Wait));
+	waits = realloc(waits,qsize*sizeof(enum Phase));
 	hints = realloc(hints,qsize*sizeof(enum Configure));
 	for (int i = qsize-1; i > qhead; i--) {
 	procs[i] = procs[i-1]; waits[i] = waits[i-1]; hints[i] = hints[i-1];}
 	qhead++; if (qhead == qsize) qhead = 0;}
-	procs[qtail] = proc; waits[qtail] = wait; hints[qtail] = hint;
+	procs[qtail] = thread; waits[qtail] = phase; hints[qtail] = hint;
 	qtail++; if (qtail == qsize) qtail = 0;
 	qfull++;
-	if (qfull == 1) sem_post(&pending);
+	if (qwait) {qwait = 0; sem_post(&pending);}
 	sem_post(&resource);
 }
-void planeDeque(enum Thread *proc, enum Wait *wait, enum Configure *hint)
+void planeDeque(enum Thread *thread, enum Phase *phase, enum Configure *hint)
 {
-	sem_wait(&pending);
 	sem_wait(&resource);
 	if (qfull == 0) ERROR();
-	*proc = procs[qhead]; *wait = waits[qhead]; *hint = hints[qhead];
+	*thread = procs[qhead]; *phase = waits[qhead]; *hint = hints[qhead];
 	qhead++; if (qhead == qsize) qhead = 0;
 	qfull--;
-	if (qfull > 0) sem_post(&pending);
 	sem_post(&resource);
 }
-void planeSafe(enum Thread proc, enum Wait wait, enum Configure hint)
+int planeCheck()
 {
-	planeEnque(proc,wait,hint);
+	sem_wait(&resource);
+	if (qfull == 0) {sem_post(&resource); return 0;}
+	sem_post(&resource); return 1;
 }
-int planeMain()
+void planeBlock()
 {
-	enum Thread proc = 0; enum Wait wait = 0; enum Configure hint = 0;
-	planeSafe(Threads,Waits,ResultHint);
-	while (1) {planeDeque(&proc,&wait,&hint);
-	if (wait != Waits && hint != Configures) ERROR();
-	if (wait == Waits && hint == Configures && proc != Threads) ERROR();
-	if (wait == Waits && hint != Configures) callWake(hint);
-	if (wait != Waits && hint == Configures) planeWait(proc,wait);
-	if (wait == Waits && hint == ResultHint && proc == Threads) break;}
-	if (configure[RegisterPoll]) usleep(POLLDELAY);
-	else fprintf(stderr,"no poll\n");
-	return configure[RegisterPoll];
+	sem_wait(&resource);
+	if (qfull > 0) {sem_post(&resource); return;}
+	qwait = 1; sem_post(&resource);
+	sem_wait(&pending);
+}
+void planeSafe(enum Thread thread, enum Phase phase, enum Configure hint)
+{
+	planeEnque(thread,phase,hint);
+}
+int planeLoop()
+{
+	enum Thread thread = 0; enum Phase phase = 0; enum Configure hint = 0;
+	if (!planeCheck()) return 0;
+	planeDeque(&thread,&phase,&hint);
+	if (phase != Phases && hint != Configures) ERROR();
+	if (phase == Phases && hint == Configures && thread != Threads) ERROR();
+	if (phase == Phases && hint != Configures) callWake(hint);
+	if (phase != Phases && hint == Configures) planePhase(thread,phase);
+	return planeCheck();
+}
+void planeMain()
+{
+	while (1) {
+	int plane = planeLoop();
+	int call = callLoop();
+	if (!plane && !call) {callWake(ResultHint);
+	sem_wait(&resource);
+	if (!qfull && !running) {sem_post(&resource); break;}
+	if (qfull) {sem_post(&resource); callWake(ResultHint); continue;}
+	sem_post(&resource);
+	if (!callBlock()) planeBlock();}}
 }
 
 void planraCenter()
@@ -788,18 +816,20 @@ void planraCenter()
 	callCopy(&center); allocCenter(&center,0);}
 }
 int planraDone = 0;
-int planraOnce = 1;
+int planraOnce = 0;
 struct timeval planraTime;
+int planraDebug = 0;
 void planraWake(enum Configure hint)
 {
-	if (planraOnce) {
-		planraOnce = 0;
+    // fprintf(stderr,"planraWake %d %d %d %d\n",planraOnce,planraDone,hint,planraDebug++);
+    if (!planraOnce) {
+        planraOnce = 1;
         gettimeofday(&planraTime, NULL);
-	}
+    }
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 1.0 && callInfo(RegisterOpen)) planraDone = 1;
+    if (time > 3.0 && callInfo(RegisterOpen)) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = callInfo(CursorPress);
         int key2 = callInfo(CursorPress);

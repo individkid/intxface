@@ -76,9 +76,8 @@ Configure = {
 	"ManipScope", -- what to transform
 	"RegisterDone", -- resource missing mask
 	"RegisterOpen", -- thread running mask
-	"RegisterTest", -- thread testing mask
+	"RegisterInit", -- thread testing mask
 	"RegisterPlan", -- testing plan progress
-	"RegisterPoll", -- whether tight loop
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
@@ -220,9 +219,9 @@ WrapTag = {
 	"DrawBuf",
 	"SwapBuf",
 }
-Wait = {
+Phase = {
+	"Init",
 	"Start",
-	"Test",
 	"Stop",
 }
 Thread = {
