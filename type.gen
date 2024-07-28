@@ -77,7 +77,6 @@ Configure = {
 	"RegisterDone", -- resource missing mask
 	"RegisterOpen", -- thread running mask
 	"RegisterInit", -- thread testing mask
-	"RegisterPlan", -- testing plan progress
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
@@ -231,12 +230,6 @@ Thread = {
 	"Window",
 	"Graphics",
 	"Process",
-}
-Plan = {
-	"Regress",
-	"Upbring",
-	"Inbuilt",
-	"Bootup",
 }
 Emerg = {
 	"Planes", -- Scalar -- [Plane] -- per boundary

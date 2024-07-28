@@ -244,6 +244,23 @@ float *planeMatrix(float *mat)
 {
     return mat; // TODO
 }
+extern struct timeval planraTime;
+float *planraMatrix(float *mat)
+{
+    struct timeval stop; gettimeofday(&stop, NULL);
+    float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
+    float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
+    float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
+    float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
+    float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
+    cur[1] = 0.2*cosf(time*2.0944);
+    cur[2] = time*1.5708;
+    identmat(mat,4);
+    planeSlideOrthoMouse(mat,fix,nml,org,cur);
+    planeRotateFocalMouse(mat,fix,nml,org,cur);
+    planeRotateCursorRoller(mat,fix,nml,org,cur);
+    return identmat(mat,4);
+}
 void physicalToScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
@@ -775,206 +792,4 @@ void planeMain()
 	if (qfull) {sem_post(&resource); callWake(ResultHint); continue;}
 	sem_post(&resource);
 	if (!callBlock()) planeBlock();}}
-}
-
-void planraCenter()
-{
-	int len = 0; char *str; char *tmp;
-	{struct Center *center = 0; allocCenter(&center,1);
-	center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
-	allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-	center->cfg[0] = ParamLimit; center->val[0] = 6;
-	callCopy(&center); allocCenter(&center,0);}
-	{struct Center *center = 0; allocCenter(&center,1);
-	center->mem = Vertexz; center->siz = 6; center->idx = 0; center->slf = 0;
-	allocVertex(&center->vtx,6);
-	asprintf(&str,"Vertex(");
-	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-	len = 0; hideVertex(&center->vtx[0],str,&len); free(str);
-	asprintf(&str,"Vertex(");
-	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-	len = 0; hideVertex(&center->vtx[1],str,&len); free(str);
-	asprintf(&str,"Vertex(");
-	asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-	len = 0; hideVertex(&center->vtx[2],str,&len); free(str);
-	asprintf(&str,"Vertex(");
-	asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-	len = 0; hideVertex(&center->vtx[3],str,&len); free(str);
-	asprintf(&str,"Vertex(");
-	asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-	len = 0; hideVertex(&center->vtx[4],str,&len); free(str);
-	asprintf(&str,"Vertex(");
-	asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-	asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-	len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
-	callCopy(&center); allocCenter(&center,0);}
-}
-int planraDone = 0;
-int planraOnce = 0;
-struct timeval planraTime;
-int planraDebug = 0;
-void planraWake(enum Configure hint)
-{
-    // fprintf(stderr,"planraWake %d %d %d %d\n",planraOnce,planraDone,hint,planraDebug++);
-    if (!planraOnce) {
-        planraOnce = 1;
-        gettimeofday(&planraTime, NULL);
-    }
-    if (planraDone) return;
-    struct timeval stop; gettimeofday(&stop, NULL);
-    float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 3.0 && callInfo(RegisterOpen)) planraDone = 1;
-    if (hint == CursorPress) {
-        int key1 = callInfo(CursorPress);
-        int key2 = callInfo(CursorPress);
-        if (key1 == 256 && key2 == 257) planraDone = 1;
-        if (key1 == 256 && key2 == 0) {
-        struct Center *center = 0; allocCenter(&center,1);
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = CursorPress; center->val[0] = 256;
-        center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);}
-    }
-    if (planraDone) {
-        planeSafe(Process,Stop,Configures);
-        planeSafe(Graphics,Stop,Configures);
-        planeSafe(Window,Stop,Configures);
-        planeSafe(Initial,Stop,Configures);
-        return;
-    }
-    if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West);
-        center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South);
-        center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
-        callInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<South))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-        center->val[1] = (1<<North)|(1<<South)|(1<<West);
-        center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
-        callInfo(ManipAction) == ((1<<North)|(1<<South)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-        center->val[1] = (1<<North)|(1<<East)|(1<<West);
-        center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && callInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
-        callInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent);
-        center->val[1] = 0;
-        center->idx = 0; center->siz = 2; center->slf = 1;
-        callCopy(&center); allocCenter(&center,0);
-    }
-}
-float *planraMatrix(float *mat)
-{
-	struct timeval stop; gettimeofday(&stop, NULL);
-	float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-	float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
-	float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
-	float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
-	float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-	cur[1] = 0.2*cosf(time*2.0944);
-	cur[2] = time*1.5708;
-	identmat(mat,4);
-	planeSlideOrthoMouse(mat,fix,nml,org,cur);
-	planeRotateFocalMouse(mat,fix,nml,org,cur);
-	planeRotateCursorRoller(mat,fix,nml,org,cur);
-	return identmat(mat,4);
 }
