@@ -1968,12 +1968,12 @@ void vulkanProcess(enum Phase phase)
     allocConfigure(&center->cfg,1); allocInt(&center->val,1);
     center->cfg[0] = ManipReact;
     center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-    planeCopy(&center); allocCenter(&center,0);}
+    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
     {struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
     allocConfigure(&center->cfg,1); allocInt(&center->val,1);
     center->cfg[0] = ParamLimit; center->val[0] = 6;
-    planeCopy(&center); allocCenter(&center,0);}
+    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
     {int len = 0; char *str; char *tmp;
     struct Center *center = 0; allocCenter(&center,1);
     center->mem = Vertexz; center->siz = 6; center->idx = 0; center->slf = 0;
@@ -2002,7 +2002,7 @@ void vulkanProcess(enum Phase phase)
     asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
     asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
     len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
-    planeCopy(&center); allocCenter(&center,0);}
+    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
 #endif
     break; case (Start):
     std::cerr << "Process,Start" << std::endl;
@@ -2038,7 +2038,7 @@ void vulkanBoot()
     allocConfigure(&center->cfg,2); allocInt(&center->val,2);
     center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen;
     center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
-    planeCopy(&center); allocCenter(&center,0);
+    planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 
 #ifdef PLANRA
@@ -2068,7 +2068,7 @@ extern "C" void planraWake(enum Configure hint)
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
         center->cfg[0] = CursorPress; center->val[0] = 256;
         center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);}
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
     }
     if (planraDone) {
         planeSafe(Process,Stop,Configures);
@@ -2084,7 +2084,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West))) {
@@ -2093,7 +2093,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North))) {
@@ -2102,7 +2102,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East))) {
@@ -2111,7 +2111,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South))) {
@@ -2120,7 +2120,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West))) {
@@ -2129,7 +2129,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South))) {
@@ -2138,7 +2138,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West))) {
@@ -2147,7 +2147,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West))) {
@@ -2156,7 +2156,7 @@ extern "C" void planraWake(enum Configure hint)
         center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -2167,7 +2167,7 @@ extern "C" void planraWake(enum Configure hint)
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = (1<<North)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -2178,7 +2178,7 @@ extern "C" void planraWake(enum Configure hint)
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = (1<<North)|(1<<East)|(1<<West);
         center->idx = 0; center->siz = 2; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
         ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
@@ -2189,7 +2189,7 @@ extern "C" void planraWake(enum Configure hint)
         center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent);
         center->val[1] = 0;
         center->idx = 0; center->siz = 2; center->slf = 1;
-        planeCopy(&center); allocCenter(&center,0);
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
 }
 #endif

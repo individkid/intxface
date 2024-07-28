@@ -616,7 +616,7 @@ void planeTerm(int sig)
 }
 void *planeSelect(void *ptr)
 {
-	char *str = 0; // FIXME let planeSelf do this when planePopstr is Argument
+	char *str = 0; // FIXME let planeHide do this when planePopstr is Argument
 	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
 	sem_post(&ready[Select]);
 	while (1) {
@@ -732,7 +732,6 @@ void planeReady(struct Center *ptr)
 }
 void planeDone(struct Center *ptr)
 {
-	// TODO reference count instead of &ptr
 	freeCenter(ptr); allocCenter(&ptr,0);
 }
 void planeEnque(enum Thread thread, enum Phase phase, enum Configure hint)
