@@ -567,7 +567,8 @@ int planeCall(void **dat, const char *str)
 void planeWake(enum Configure hint)
 {
 	configure[ResultHint] = hint;
-	if (configure[ResultLine] < 0 || configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
+	if (configure[ResultLine] < 0) configure[ResultLine] = 0;
+	if (configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
 	planeMicro();
 }
 void planeBoot()
@@ -668,6 +669,12 @@ void *planeConsole(void *ptr)
 	planeSafe(Console,Stop,Configures); callSafe();
 	return 0;
 }
+void planePredo(enum Thread bit)
+{
+	switch (bit) {default: callPhase(bit,Init);
+	break; case(Select): ERROR();
+	break; case(Console): ERROR();}
+}
 void planeThread(enum Thread bit)
 {
 	if ((running & (1<<bit)) != 0) return; running |= (1<<bit);
@@ -689,7 +696,7 @@ void planeFinish(enum Thread bit)
 void planePhase(enum Thread bit, enum Phase phase)
 {
 	switch(phase) {default: ERROR();
-	break; case (Init): callPhase(bit,Init);
+	break; case (Init): planePredo(bit);
 	break; case (Start): planeThread(bit);
 	break; case (Stop): planeFinish(bit);}
 }
@@ -786,7 +793,8 @@ void planeMain()
 	while (1) {
 	int plane = planeLoop();
 	int call = callLoop();
-	if (!plane && !call) {callWake(ResultHint);
+	if (!plane && !call) {
+	callWake(ResultHint);
 	sem_wait(&resource);
 	if (!qfull && !running) {sem_post(&resource); break;}
 	if (qfull) {sem_post(&resource); callWake(ResultHint); continue;}

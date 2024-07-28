@@ -1806,11 +1806,11 @@ bool vulkanDefer()
     return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
 }
 bool vulkanEnact(enum Enact hint, bool cond, bool tight)
-{
+{ // do work, and return if there is more work to do
     bool fail; int mark;
     if (mainState.manipEnact[hint] && cond) mainState.registerDone[hint] = true;
     if (!mainState.registerDone[hint]) return false;
-    mark = mainState.threadState->mark();
+    mark = mainState.threadState->mark(); // remember wakes after this
     switch (hint) {default: throw std::runtime_error("failed to call function!");
     break; case (Extent): fail = vulkanSwap();
     break; case (Follow): fail = vulkanFollow();
@@ -1822,12 +1822,12 @@ bool vulkanEnact(enum Enact hint, bool cond, bool tight)
     break; case (Query): fail = vulkanQuery();
     break; case (Ready): fail = vulkanReady();
     break; case (Defer): fail = vulkanDefer();}
-    mainState.registerDone[hint] = fail;
-    if (fail && mainState.threadState->mark(mark)) return true; // tight loop or wake later
-    return tight; // whether to tight loop
+    mainState.registerDone[hint] = fail; // will wake or already woke
+    if (fail && mainState.threadState->mark(mark)) return true; // already woke
+    return tight; // wait for wake unless there is already work to do
 }
 bool vulkanChange()
-{
+{ // do work, and return if there is more work to do
     bool moved = (mainState.windowMove.left != mainState.windowCopy.left || mainState.windowMove.base != mainState.windowCopy.base);
     bool sized = (mainState.windowMove.width != mainState.windowCopy.width || mainState.windowMove.height != mainState.windowCopy.height);
     bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left || mainState.mouseMove.base != mainState.mouseCopy.base);
@@ -1857,7 +1857,7 @@ bool vulkanChange()
     tight = vulkanEnact(Ready,readyd,tight);
     tight = vulkanEnact(Defer,deferd,tight);
     tight = tight || !mainState.queryMove.empty() || !mainState.readyMove.empty() || !mainState.readyMove.empty();
-    return tight;
+    return tight; // tight loop if any work remains
 }
 struct Center *vulkanReady(enum Memory mem)
 {
@@ -2004,7 +2004,6 @@ void vulkanProcess(enum Phase phase)
     len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
     planeCopy(&center); allocCenter(&center,0);}
 #endif
-    mainState.registerOpen = true;
     break; case (Start):
     std::cerr << "Process,Start" << std::endl;
     mainState.registerOpen = true;
@@ -2021,12 +2020,13 @@ void vulkanPhase(enum Thread thread, enum Phase phase)
     break; case (Process): vulkanProcess(phase);}
 }
 int vulkanLoop()
-{
-    glfwPollEvents();
-    return (mainState.registerOpen && vulkanChange());
+{ // do work if any, and return if there is more work to do
+    if (!mainState.registerOpen) return 0;
+    glfwPollEvents(); // in case vulkanBlock not called
+    return vulkanChange();
 }
 int vulkanBlock()
-{
+{ // wait for work, and return if there might be work to do
     if (!mainState.registerOpen) return 0;
     glfwWaitEventsTimeout(1.0);
     return 1;
@@ -2041,12 +2041,14 @@ void vulkanBoot()
     planeCopy(&center); allocCenter(&center,0);
 }
 
+#ifdef PLANRA
 extern "C" {
 int planraDone = 0;
 int planraOnce = 0;
 struct timeval planraTime;
 int planraDebug = 0;
-void planraWake(enum Configure hint)
+}
+extern "C" void planraWake(enum Configure hint)
 {
     // fprintf(stderr,"planraWake %d %d %d %d\n",planraOnce,planraDone,hint,planraDebug++);
     if (!planraOnce) {
@@ -2190,7 +2192,8 @@ void planraWake(enum Configure hint)
         planeCopy(&center); allocCenter(&center,0);
     }
 }
-int main(int argc, char **argv)
+#endif
+extern "C" int main(int argc, char **argv)
 {
     mainState.argc = argc;
     mainState.argv = argv;
@@ -2208,5 +2211,4 @@ int main(int argc, char **argv)
         return -1;
     }
     return 0;
-}
 }
