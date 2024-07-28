@@ -2190,7 +2190,6 @@ void planraWake(enum Configure hint)
         planeCopy(&center); allocCenter(&center,0);
     }
 }
-}
 int main(int argc, char **argv)
 {
     mainState.argc = argc;
@@ -2209,4 +2208,5 @@ int main(int argc, char **argv)
         return -1;
     }
     return 0;
+}
 }
