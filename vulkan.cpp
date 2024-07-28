@@ -2000,16 +2000,12 @@ int vulkanBlock()
 }
 void vulkanBoot()
 {
-    // TODO do this by writing to RegisterTest and RegisterOpen
-    planeSafe(Initial,Init,Configures);
-    planeSafe(Initial,Start,Configures);
-    planeSafe(Window,Init,Configures);
-    planeSafe(Window,Start,Configures);
-    planeSafe(Graphics,Init,Configures);
-    planeSafe(Graphics,Start,Configures);
-    planeSafe(Process,Init,Configures);
-    planeSafe(Process,Start,Configures);
-    planeSafe(Threads,Phases,CursorLeft);
+    struct Center *center = 0; allocCenter(&center,1);
+    center->mem = Configurez; center->siz = 2; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,2); allocInt(&center->val,2);
+    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen;
+    center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
+    planeCopy(&center); allocCenter(&center,0);
 }
 
 int main(int argc, char **argv)
@@ -2020,11 +2016,11 @@ int main(int argc, char **argv)
     gettimeofday(&debug_start, NULL);
     try {
 #ifdef PLANRA
-	planeInit(vulkanInit,vulkanSafe,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,
-	vulkanPhase,vulkanCopy,vulkanReady,vulkanDone,planraWake,vulkanInfo);
+	planeInit(vulkanInit,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,vulkanPhase,
+    vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,planraWake,vulkanInfo);
 #else
-	planeInit(vulkanInit,vulkanSafe,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,
-	vulkanPhase,vulkanCopy,vulkanReady,vulkanDone,planeWake,vulkanInfo);
+	planeInit(vulkanInit,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,vulkanPhase,
+    vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,planeWake,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

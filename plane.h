@@ -14,8 +14,8 @@ typedef void (*sftype)(enum Configure hint); // wake
 typedef int (*tftype)(enum Configure cfg); // info
 float *planeWindow(float *mat);
 float *planeMatrix(float *mat);
-void planeInit(vftype init, vftype safe, vftype boot, vftype main, zftype loop, zftype block,//)
-	yftype wait, uftype copy, rftype ready, xftype done, sftype wake, tftype info);
+void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, yftype wait,//)
+	vftype safe, uftype copy, rftype ready, xftype done, sftype wake, tftype info);
 void planeBoot();
 void planeMain();
 int planeLoop();

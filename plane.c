@@ -371,12 +371,12 @@ void planeStarted(int tmp)
 {
 	int done = 0; int todo = 0;
 	int started = configure[RegisterOpen];
-	// int test = configure[RegisterInit]; // TODO after change to vulkanBoot
+	int init = configure[RegisterInit];
 	todo = started & ~tmp; done = tmp & ~started;
 	for (enum Thread bit = 0; bit < Threads; bit++)
 	if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
 	for (enum Thread bit = 0; bit < Threads; bit++) {
-	// if (test & (1<<bit)) planeSafe(bit,Init,Configures); // TODO after change to vulkanBoot
+	if (init & (1<<bit)) planeSafe(bit,Init,Configures);
 	if (todo & (1<<bit)) planeSafe(bit,Start,Configures);}
 }
 void planeConfig(enum Configure cfg, int val)
@@ -654,20 +654,18 @@ void *planeConsole(void *ptr)
 void planeThread(enum Thread bit)
 {
 	if ((running & (1<<bit)) != 0) return; running |= (1<<bit);
-	switch (bit) {
-	case (Select): if (pthread_create(&thread[bit],0,planeSelect,0) != 0) ERROR(); break;
-	case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR(); break;
-	default: sem_post(&ready[bit]); callPhase(bit,Start); break;}
+	switch (bit) {default: sem_post(&ready[bit]); callPhase(bit,Start);
+	break; case (Select): if (pthread_create(&thread[bit],0,planeSelect,0) != 0) ERROR();
+	break; case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) == 0) {
 		configure[RegisterOpen] |= (1<<bit); planeSafe(Threads,Phases,RegisterOpen);}
 }
 void planeFinish(enum Thread bit)
 {
 	if ((running & (1<<bit)) == 0) return; running &= ~(1<<bit);
-	sem_wait(&ready[bit]); switch (bit) {
-	case (Select): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
-	case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR(); break;
-	default: callPhase(bit,Stop); break;}
+	sem_wait(&ready[bit]); switch (bit) {default: callPhase(bit,Stop);
+	break; case (Select): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR();
+	break; case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR();}
 	if ((configure[RegisterOpen] & (1<<bit)) != 0) {
 		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Phases,RegisterOpen);}
 }
@@ -679,8 +677,8 @@ void planePhase(enum Thread bit, enum Phase phase)
 	break; case (Stop): planeFinish(bit);}
 }
 void wrapPlane();
-void planeInit(vftype init, vftype safe, vftype boot, vftype main, zftype loop, zftype block,//)
-	yftype phase, uftype copy, rftype _ready, xftype done, sftype wake, tftype info)
+void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, yftype phase,//)
+	vftype safe, uftype copy, rftype _ready, xftype done, sftype wake, tftype info)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -689,18 +687,19 @@ void planeInit(vftype init, vftype safe, vftype boot, vftype main, zftype loop, 
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
 	{struct Center tmp = {0}; allocCenter(&center,1); *center = tmp;}
-	internal = allocCenterq();
-	response = allocCenterq();
-	wrapPlane();
-	datxCaller(planeCall);
+	internal = allocCenterq(); response = allocCenterq();
+	wrapPlane(); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callSafe = safe; callLoop = loop; callBlock = block; callPhase = phase; callCopy = copy;
-	callReady = _ready; callDone = done; callWake = wake; callInfo = info;
+	callLoop = loop; callBlock = block; callPhase = phase;
+	callSafe = safe; callCopy = copy; callReady = _ready;
+	callDone = done; callWake = wake; callInfo = info;
 	init(); // planePutstr on argv
 	boot(); // initial planeEnque
 	main(); // planeDeque vulkanChange
 	while (sizeCenterq(internal)) planeRead();
-	while (sizeCenterq(response)) {struct Center *ptr = maybeCenterq(0,response); freeCenter(ptr); allocCenter(&ptr,0);}
+	while (sizeCenterq(response)) {
+	struct Center *ptr = maybeCenterq(0,response);
+	freeCenter(ptr); allocCenter(&ptr,0);}
 	freeCenterq(internal);
 }
 void planeReady(struct Center *ptr)
