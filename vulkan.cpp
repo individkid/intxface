@@ -1660,7 +1660,8 @@ void vulkanCopy(struct Center **given)
         (struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
         memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
         planeDone(center); *given = 0; return;
-    break; case (Configurez): for (int i = 0; i < center->siz; i++)
+    break; case (Configurez):
+    for (int i = 0; i < center->siz; i++)
     switch (center->cfg[i]) {default:
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
     break; case (CursorRead): mainState.mouseRead = (Interp)center->val[i];
@@ -1837,6 +1838,9 @@ bool vulkanChange()
     bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
         (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
     bool tight = false;
+    std::cerr << "vulkanChange " << mainState.manipEnact[Follow] << "/" << moved << "/" <<
+        mainState.manipEnact[Follow] << "/" << sized << "/" << mainState.manipEnact[Modify] << "/" << moused << "/" <<
+        mainState.manipEnact[Direct] << "/" << moused << "/" << mainState.manipEnact[Display] << "/" << drawed << std::endl;
     // std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
     if (moved) std::cerr << "vulkanChange moved " << mainState.windowMove.left << "/" << mainState.windowCopy.left << " " << mainState.windowMove.base << "/" << mainState.windowCopy.base << std::endl;
     if (sized) std::cerr << "vulkanChange sized " << mainState.windowMove.width << "/" << mainState.windowCopy.width << " " << mainState.windowMove.height << "/" << mainState.windowCopy.height << std::endl;
@@ -2034,10 +2038,11 @@ int vulkanBlock()
 void vulkanBoot()
 {
     struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 2; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen;
+    center->mem = Configurez; center->siz = 3; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,3); allocInt(&center->val,3);
+    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen; center->cfg[2] = ManipEnact;
     center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
+    center->val[2] = 0; // TODO (1<<Display)|(1<<Follow)|(1<<Extent);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 
@@ -2050,7 +2055,7 @@ int planraDebug = 0;
 }
 extern "C" void planraWake(enum Configure hint)
 {
-    // fprintf(stderr,"planraWake %d %d %d %d\n",planraOnce,planraDone,hint,planraDebug++);
+    fprintf(stderr,"planraWake %d %d %d %d\n",planraOnce,planraDone,hint,planraDebug++);
     if (!planraOnce) {
         planraOnce = 1;
         gettimeofday(&planraTime, NULL);
@@ -2077,118 +2082,112 @@ extern "C" void planraWake(enum Configure hint)
         planeSafe(Initial,Stop,Configures);
         return;
     }
-    if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent))) {
+    if (hint == CursorClick &&
+        vulkanInfo(ManipReact) == ((1<<Enque)|(1<<Enline))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
+        center->cfg[0] = ManipReact; center->cfg[0] = ManipEnact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South)|(1<<West))) {
+        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South)|(1<<West))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North))) {
+        ((1<<Enque)|(1<<Enline)|(1<<North))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<East);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East))) {
+        ((1<<Enque)|(1<<Enline)|(1<<East))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<South))) {
+        ((1<<Enque)|(1<<Enline)|(1<<South))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<West))) {
+        ((1<<Enque)|(1<<Enline)|(1<<West))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<East)|(1<<South);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West);
-        center->idx = 0; center->siz = 2; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<West))) {
+        ((1<<Enque)|(1<<Enline)|(1<<East)|(1<<South))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<East)|(1<<South)|(1<<West))) {
+        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<West))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<North)|(1<<East)|(1<<South);
-        center->idx = 0; center->siz = 2; center->slf = 1;
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<East)|(1<<South)|(1<<West);
+        center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
-        vulkanInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<South))) {
+        ((1<<Enque)|(1<<Enline)|(1<<East)|(1<<South)|(1<<West))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-        center->val[1] = (1<<North)|(1<<South)|(1<<West);
-        center->idx = 0; center->siz = 2; center->slf = 1;
+        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South);
+        center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
-        vulkanInfo(ManipAction) == ((1<<North)|(1<<South)|(1<<West))) {
+        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
-        center->val[1] = (1<<North)|(1<<East)|(1<<West);
-        center->idx = 0; center->siz = 2; center->slf = 1;
+        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<South)|(1<<West);
+        center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)) &&
-        vulkanInfo(ManipAction) == ((1<<North)|(1<<East)|(1<<West))) {
+        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<South)|(1<<West))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,2); allocInt(&center->val,2);
-        center->cfg[0] = ManipReact; center->cfg[1] = ManipAction;
+        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
+        center->cfg[0] = ManipReact;
+        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<West);
+        center->idx = 0; center->siz = 1; center->slf = 1;
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
+    }
+    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
+        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<West))) {
+        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
+        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
+        center->cfg[0] = ManipReact;
         center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent);
-        center->val[1] = 0;
-        center->idx = 0; center->siz = 2; center->slf = 1;
+        center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
 }
