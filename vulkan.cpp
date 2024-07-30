@@ -800,7 +800,7 @@ struct SwapState {
     std::vector<VkImage> images;
     std::vector<VkImageView> views;
     std::vector<VkFramebuffer> framebuffers;
-    int count;
+    uint32_t count;
 SwapState(MainState *state, int size, WrapTag tag) {
     width = (size >> 16)*state->windowRatio.left/state->windowRatio.width;
     if (state->windowRatio.left%state->windowRatio.width) width += 1;
@@ -826,7 +826,6 @@ SwapState(MainState *state, int size, WrapTag tag) {
     logical->render,physical->minimum,physical->graphicid,physical->presentid);
     }(state->openState,state->physicalState,state->logicalState);}
 void init() {
-    std::cerr << "SwapState init " << std::endl;
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
     extent = [](GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities, int width, int height) {
@@ -861,7 +860,7 @@ void init() {
         if (vkCreateSwapchainKHR(device, &info, nullptr, &swap) != VK_SUCCESS)
             throw std::runtime_error("failed to create swap chain!");
         return swap;}(device,surface,format,mode,extent,capabilities,minimum,graphicid,presentid);
-    [this](uint32_t count) {vkGetSwapchainImagesKHR(device, swap, &count, nullptr);}(count);
+    [this](uint32_t &count) {vkGetSwapchainImagesKHR(device, swap, &count, nullptr);}(count);
     images.resize(count);
     views.resize(count);
     framebuffers.resize(count);
@@ -1726,8 +1725,11 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
     std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << std::endl;
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
+    std::cerr << "vulkanDraw done1" << std::endl;
     if (!queue->swapQueue->get()) return true;
+    std::cerr << "vulkanDraw done2" << std::endl;
     if (!drawQueue->clr(shader)) return true;
+    std::cerr << "vulkanDraw done3" << std::endl;
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
     if (Component__Micro__MicroOn(shader) == CoPyon) {
@@ -1838,13 +1840,15 @@ bool vulkanChange()
     bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
         (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
     bool tight = false;
+    /*
     std::cerr << "vulkanChange " << mainState.manipEnact[Follow] << "/" << moved << "/" <<
         mainState.manipEnact[Follow] << "/" << sized << "/" << mainState.manipEnact[Modify] << "/" << moused << "/" <<
         mainState.manipEnact[Direct] << "/" << moused << "/" << mainState.manipEnact[Display] << "/" << drawed << std::endl;
-    // std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
+    std::cerr << "vulkanChange " << moved << "/" << sized << "/" << moused << "/" << queryd << "/" << readyd << "/" << drawed << std::endl;
     if (moved) std::cerr << "vulkanChange moved " << mainState.windowMove.left << "/" << mainState.windowCopy.left << " " << mainState.windowMove.base << "/" << mainState.windowCopy.base << std::endl;
     if (sized) std::cerr << "vulkanChange sized " << mainState.windowMove.width << "/" << mainState.windowCopy.width << " " << mainState.windowMove.height << "/" << mainState.windowCopy.height << std::endl;
     if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
+    */
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
     if (moused) mainState.mouseCopy = mainState.mouseMove;
     if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
@@ -2042,7 +2046,7 @@ void vulkanBoot()
     allocConfigure(&center->cfg,3); allocInt(&center->val,3);
     center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen; center->cfg[2] = ManipEnact;
     center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
-    center->val[2] = 0; // TODO (1<<Display)|(1<<Follow)|(1<<Extent);
+    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 
@@ -2055,7 +2059,7 @@ int planraDebug = 0;
 }
 extern "C" void planraWake(enum Configure hint)
 {
-    fprintf(stderr,"planraWake %d %d %d %d\n",planraOnce,planraDone,hint,planraDebug++);
+    fprintf(stderr,"planraWake %d %d %d(%d) %d\n",planraOnce,planraDone,hint,ResultHint,planraDebug++);
     if (!planraOnce) {
         planraOnce = 1;
         gettimeofday(&planraTime, NULL);
