@@ -1723,7 +1723,7 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     std::vector<WrapState<BufferState>*> bindBuffer = queue->bindBuffer(shader);
     std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
     WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
-    std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << std::endl;
+    std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << "/shader:" << shader << "(" << MicroPRPC << ")" << std::endl;
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
     std::cerr << "vulkanDraw done1" << std::endl;
     if (!queue->swapQueue->get()) return true;
@@ -1971,11 +1971,12 @@ void vulkanProcess(enum Phase phase)
     break; case (Init):
     std::cerr << "Process,Init" << std::endl;
 #ifdef PLANRA
+    std::cerr << "Process,Init,PLANRA" << std::endl;
     {struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
     allocConfigure(&center->cfg,1); allocInt(&center->val,1);
     center->cfg[0] = ManipReact;
-    center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent);
+    center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
     {struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
@@ -2042,11 +2043,11 @@ int vulkanBlock()
 void vulkanBoot()
 {
     struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 3; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,3); allocInt(&center->val,3);
-    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen; center->cfg[2] = ManipEnact;
+    center->mem = Configurez; center->siz = 4; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,4); allocInt(&center->val,4);
+    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen; center->cfg[2] = ManipEnact; center->cfg[3] = ParamDisplay;
     center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
-    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent);
+    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer); center->val[3] = MicroPRPC;
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 
@@ -2190,7 +2191,7 @@ extern "C" void planraWake(enum Configure hint)
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
         center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent);
+        center->val[0] = (1<<Enque)|(1<<Enline);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }

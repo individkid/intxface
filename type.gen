@@ -374,14 +374,14 @@ VertexG = {
 	{"Micro","MicroCCDP","Str","vertexCoplaneG"},
 }
 FragmentG = {
-	{"Micro","MicroPRPC","Str","fragmentComputeG"},
-	{"Micro","MicroPRCP","Str","fragmentDisplayG"},
-	{"Micro","MicroPRRC","Str","fragmentComputeG"},
-	{"Micro","MicroCRPC","Str","fragmentComputeG"},
-	{"Micro","MicroCRCP","Str","fragmentDisplayG"},
-	{"Micro","MicroCRRC","Str","fragmentComputeG"},
-	{"Micro","MicroCPDP","Str","fragmentDisplayG"},
-	{"Micro","MicroCCDP","Str","fragmentDisplayG"},
+	{"Micro","MicroPRPC","Str","fragmentDisplayG"},
+	{"Micro","MicroPRCP","Str","fragmentComputeG"},
+	{"Micro","MicroPRRC","Str","fragmentPrepareG"},
+	{"Micro","MicroCRPC","Str","fragmentDisplayG"},
+	{"Micro","MicroCRCP","Str","fragmentComputeG"},
+	{"Micro","MicroCRRC","Str","fragmentPrepareG"},
+	{"Micro","MicroCPDP","Str","fragmentDiscardG"},
+	{"Micro","MicroCCDP","Str","fragmentDiscardG"},
 }
 TypeQ = {
 	{"Memory","Trianglez","WrapTag","StoreBuf"},
