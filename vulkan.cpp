@@ -44,6 +44,7 @@ struct MainState {
     bool manipAction[Actions];
     bool registerDone[Enacts];
     bool registerOpen;
+    enum Plan registerPlan;
     enum Interp mouseRead, mouseWrite;
     enum Interp windowRead, windowWrite;
     MouseState mouseClick, mouseMove, mouseCopy;
@@ -717,6 +718,7 @@ VkFence setup() {
     submit.commandBufferCount = 1;
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
+    std::cerr << "BufferState setup " << fence << std::endl;
     return fence;}
 VkFence getup() {
     // call this to get computations from gpu
@@ -899,12 +901,16 @@ void init() {
         info.layers = 1;
         if (vkCreateFramebuffer(device, &info, nullptr, &swapFramebuffer) != VK_SUCCESS)
             throw std::runtime_error("failed to create framebuffer!");
-        return swapFramebuffer;}(device,extent,views[i],pass);}
+        return swapFramebuffer;}(device,extent,views[i],pass);
+	std::cerr << "SwapState init" << std::endl;
+}
 ~SwapState() {
     for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, framebuffers[i], nullptr);
     for (int i = 0; i < count; i++) vkDestroyImageView(device, views[i], nullptr);
     vkDestroySwapchainKHR(device, swap, nullptr);}
-void setup() {}
+void setup() {
+	std::cerr << "SwapState setup" << std::endl;
+}
 };
 
 struct VertexState {
@@ -1190,7 +1196,7 @@ void init() {
     delete pipeline;}
 VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base, int limit) {
     VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-    std::cerr << "DrawState setup " << index << std::endl;
+    std::cerr << "DrawState setup " << index << " " << base << " " << limit << std::endl;
     if (result == VK_ERROR_OUT_OF_DATE_KHR) std::cerr << "out of date" << std::endl;
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -1266,6 +1272,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
     }(swap->swap,present,index,signal);
+    std::cerr << "DrawState setup " << fence << std::endl;
     return fence;}
 };
 
@@ -1323,6 +1330,7 @@ struct ThreadState {
                 VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
                 result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);}
                 arg->protect.wait();
+		std::cerr << "separate " << arg->fence.front() << std::endl;
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
@@ -1564,8 +1572,9 @@ struct QueueState {
     std::vector<WrapState<BufferState>*> bindBuffer(Micro shader) {
         std::vector<WrapState<BufferState>*> bind;
         int i = 0; Memory mem = Memorys;
-        while ((mem = BindQ__Micro__Int__Memory(shader)(i++)) != Memorys)
-        bind.push_back(bufferQueue[mem]);
+        while ((mem = BindQ__Micro__Int__Memory(shader)(i++)) != Memorys){
+        // std::cerr << "bindBuffer " << mem << "(" << Matrixz << "," << Vertexz << ")" << std::endl;
+        bind.push_back(bufferQueue[mem]);}
         return bind;}
     std::vector<WrapState<BufferState>*> queryBuffer(Micro shader) {
         std::vector<WrapState<BufferState>*> query;
@@ -1646,6 +1655,7 @@ int vulkanInfo(enum Configure query)
 bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
 {
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[mem];
+    // std::cerr << "vulkanSet " << mem << "(" << Matrixz << "," << Vertexz << ")" << " " << loc << " " << siz << std::endl;
     if (!bufferQueue->clr()) return true;
     bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
     return false;
@@ -1697,6 +1707,7 @@ void vulkanCopy(struct Center **given)
         case (Affect): mainState.windowClick.height = center->val[i]; break;
         case (Infect): mainState.windowMove.height = center->val[i]; break;
         case (Effect): mainState.windowCopy.height = center->val[i]; break;}
+    break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
         mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
@@ -1723,13 +1734,13 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     std::vector<WrapState<BufferState>*> bindBuffer = queue->bindBuffer(shader);
     std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
     WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
-    std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << "/shader:" << shader << "(" << MicroPRPC << ")" << std::endl;
+    // std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << "/shader:" << shader << "(" << MicroPRPC << ")" << std::endl;
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
-    std::cerr << "vulkanDraw done1" << std::endl;
+    // std::cerr << "vulkanDraw done1" << std::endl;
     if (!queue->swapQueue->get()) return true;
-    std::cerr << "vulkanDraw done2" << std::endl;
+    // std::cerr << "vulkanDraw done2" << std::endl;
     if (!drawQueue->clr(shader)) return true;
-    std::cerr << "vulkanDraw done3" << std::endl;
+    // std::cerr << "vulkanDraw done3" << std::endl;
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
     if (Component__Micro__MicroOn(shader) == CoPyon) {
@@ -1738,7 +1749,7 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
     buffer.push_back((*i)->get(drawQueue->tmp()));}
     swap = queue->swapQueue->get(drawQueue->tmp());
-    std::cerr << "vulkanDraw done" << std::endl;
+    // std::cerr << "vulkanDraw done" << std::endl;
     std::function<bool()> done = drawQueue->set((std::function<VkFence(DrawState*)>)[buffer,swap,base,limit](DrawState*draw){
     return draw->setup(buffer,swap,base,limit);}); drawQueue->seq(done); drawQueue->put();
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
@@ -1829,6 +1840,7 @@ bool vulkanEnact(enum Enact hint, bool cond, bool tight)
     if (fail && mainState.threadState->mark(mark)) return true; // already woke
     return tight; // wait for wake unless there is already work to do
 }
+int hack = 0;
 bool vulkanChange()
 { // do work, and return if there is more work to do
     bool moved = (mainState.windowMove.left != mainState.windowCopy.left || mainState.windowMove.base != mainState.windowCopy.base);
@@ -1838,7 +1850,7 @@ bool vulkanChange()
     bool readyd = !mainState.readyMove.empty();
     bool deferd = !mainState.deferMove.empty();
     bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
-        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
+        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused)); if (hack++ < 10) drawed = true;
     bool tight = false;
     /*
     std::cerr << "vulkanChange " << mainState.manipEnact[Follow] << "/" << moved << "/" <<
@@ -2060,7 +2072,6 @@ int planraDebug = 0;
 }
 extern "C" void planraWake(enum Configure hint)
 {
-    fprintf(stderr,"planraWake %d %d %d(%d) %d\n",planraOnce,planraDone,hint,ResultHint,planraDebug++);
     if (!planraOnce) {
         planraOnce = 1;
         gettimeofday(&planraTime, NULL);

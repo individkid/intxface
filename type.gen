@@ -77,6 +77,7 @@ Configure = {
 	"RegisterDone", -- resource missing mask
 	"RegisterOpen", -- thread running mask
 	"RegisterInit", -- thread testing mask
+	"RegisterPlan", -- thread testing plan
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
@@ -132,6 +133,12 @@ Transfer = {
 	"Eval", -- call datxEval
 	"Echo", -- copy result to center
 	"Hide", -- pop hide and use
+}
+Plan = { -- which test to run
+	"Regress",
+	"Bringup",
+	"Builtin",
+	"Release",
 }
 Interp = { -- configure enum interpretation
 	"Infect", -- changed by callback
@@ -388,7 +395,7 @@ TypeQ = {
 	{"Memory","Numericz","WrapTag","StoreBuf"},
     {"Memory","Vertexz","WrapTag","FetchBuf"},
 	{"Memory","Basisz","WrapTag","StoreBuf"},
-    {"Memory","Matrixz","WrapTag","ChangeBuf"},
+    {"Memory","Matrixz","WrapTag","StoreBuf"},
 	{"Memory","Uniformz","WrapTag","ChangeBuf"},
     {"Memory","Indexz","WrapTag","QueryBuf"},
     {"Memory","Piercez","WrapTag","QueryBuf"},
