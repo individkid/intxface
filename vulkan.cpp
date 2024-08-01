@@ -1637,11 +1637,6 @@ int vulkanInfo(enum Configure query)
     break; case (MonitorHeight): return mainState.windowRatio.height;
     break; case (PhysicalWidth): return mainState.windowRatio.left;
     break; case (PhysicalHeight): return mainState.windowRatio.base;
-#ifdef REGRESS
-    break; case (RegisterOpen): return 1;
-#else
-    break; case (RegisterOpen): return 0;
-#endif
     break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
         if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
@@ -1850,7 +1845,7 @@ bool vulkanChange()
     bool readyd = !mainState.readyMove.empty();
     bool deferd = !mainState.deferMove.empty();
     bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
-        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused)); if (hack++ < 10) drawed = true;
+        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused)); if (hack++ < 9) drawed = true;
     bool tight = false;
     /*
     std::cerr << "vulkanChange " << mainState.manipEnact[Follow] << "/" << moved << "/" <<
@@ -2055,11 +2050,13 @@ int vulkanBlock()
 void vulkanBoot()
 {
     struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 4; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,4); allocInt(&center->val,4);
-    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen; center->cfg[2] = ManipEnact; center->cfg[3] = ParamDisplay;
+    center->mem = Configurez; center->siz = 5; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,5); allocInt(&center->val,5);
+    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen; center->cfg[2] = ManipEnact;
+    center->cfg[3] = ParamDisplay; center->cfg[4] = RegisterPlan;
     center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
-    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer); center->val[3] = MicroPRPC;
+    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
+    center->val[3] = MicroPRPC; center->val[4] = Regress;
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 
@@ -2079,7 +2076,7 @@ extern "C" void planraWake(enum Configure hint)
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 3.0 && vulkanInfo(RegisterOpen)) planraDone = 1;
+    if (time > 3.0 && mainState.registerPlan == Regress) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = vulkanInfo(CursorPress);
         int key2 = vulkanInfo(CursorPress);
