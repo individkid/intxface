@@ -1,1 +1,1 @@
-vulkan.cpp -DPLANRA -DBRINGUP
+vulkan.cpp -DPLANRA -DPLAN=Bringup

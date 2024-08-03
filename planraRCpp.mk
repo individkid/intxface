@@ -1,1 +1,1 @@
-vulkan.cpp -DPLANRA -DREGRESS
+vulkan.cpp -DPLANRA -DPLAN=Regress

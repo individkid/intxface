@@ -1721,6 +1721,7 @@ void vulkanCopy(struct Center **given)
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
     planeDone(center); *given = 0;}
 }
+int hack = 0;
 bool vulkanDraw(enum Micro shader, int base, int limit)
 {
     QueueState *queue = mainState.queueState;
@@ -1736,6 +1737,7 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     // std::cerr << "vulkanDraw done2" << std::endl;
     if (!drawQueue->clr(shader)) return true;
     // std::cerr << "vulkanDraw done3" << std::endl;
+    if (hack++ < 1) return true;
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
     if (Component__Micro__MicroOn(shader) == CoPyon) {
@@ -1835,7 +1837,6 @@ bool vulkanEnact(enum Enact hint, bool cond, bool tight)
     if (fail && mainState.threadState->mark(mark)) return true; // already woke
     return tight; // wait for wake unless there is already work to do
 }
-int hack = 0;
 bool vulkanChange()
 { // do work, and return if there is more work to do
     bool moved = (mainState.windowMove.left != mainState.windowCopy.left || mainState.windowMove.base != mainState.windowCopy.base);
@@ -1845,7 +1846,7 @@ bool vulkanChange()
     bool readyd = !mainState.readyMove.empty();
     bool deferd = !mainState.deferMove.empty();
     bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
-        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused)); if (hack++ < 9) drawed = true;
+        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
     bool tight = false;
     /*
     std::cerr << "vulkanChange " << mainState.manipEnact[Follow] << "/" << moved << "/" <<
@@ -2052,11 +2053,12 @@ void vulkanBoot()
     struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 5; center->idx = 0; center->slf = 0;
     allocConfigure(&center->cfg,5); allocInt(&center->val,5);
-    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen; center->cfg[2] = ManipEnact;
-    center->cfg[3] = ParamDisplay; center->cfg[4] = RegisterPlan;
+    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen;
+    center->cfg[2] = ManipEnact; center->cfg[3] = ParamDisplay;
+    center->cfg[4] = RegisterPlan;
     center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
-    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
-    center->val[3] = MicroPRPC; center->val[4] = Regress;
+    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer); center->val[3] = MicroPRPC;
+    center->val[4] = PLAN;
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 
@@ -2067,7 +2069,7 @@ int planraOnce = 0;
 struct timeval planraTime;
 int planraDebug = 0;
 }
-extern "C" void planraWake(enum Configure hint)
+extern "C" void vulkanWake(enum Configure hint)
 {
     if (!planraOnce) {
         planraOnce = 1;
@@ -2212,11 +2214,11 @@ extern "C" int main(int argc, char **argv)
     gettimeofday(&debug_start, NULL);
     try {
 #ifdef PLANRA
-	planeInit(vulkanInit,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,vulkanPhase,
-    vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,planraWake,vulkanInfo);
+	planeInit(vulkanInit,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,vulkanWake,
+    vulkanPhase,vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,vulkanInfo);
 #else
-	planeInit(vulkanInit,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,vulkanPhase,
-    vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,planeWake,vulkanInfo);
+	planeInit(vulkanInit,planeBoot,planeMain,planeLoop,planeBlock,planeWake,
+    vulkanPhase,vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

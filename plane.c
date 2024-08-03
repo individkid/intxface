@@ -703,8 +703,8 @@ void planePhase(enum Thread bit, enum Phase phase)
 	break; case (Stop): planeFinish(bit);}
 }
 void wrapPlane();
-void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, yftype phase,//)
-	vftype safe, uftype copy, rftype _ready, xftype done, sftype wake, tftype info)
+void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake,
+	yftype phase,vftype safe, uftype copy, rftype _ready, xftype done, tftype info)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -716,9 +716,9 @@ void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block,
 	internal = allocCenterq(); response = allocCenterq();
 	wrapPlane(); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callLoop = loop; callBlock = block; callPhase = phase;
-	callSafe = safe; callCopy = copy; callReady = _ready;
-	callDone = done; callWake = wake; callInfo = info;
+	callLoop = loop; callBlock = block; callWake = wake;
+	callPhase = phase; callSafe = safe; callCopy = copy;
+	callReady = _ready; callDone = done; callInfo = info;
 	init(); // planePutstr on argv
 	boot(); // initial planeEnque
 	main(); // planeDeque vulkanChange
