@@ -445,7 +445,6 @@ void planeDisp()
 void planeCopy(struct Center **given)
 {
 	struct Center *center = *given;
-	fprintf(stderr,"planeCopy %d %d\n",center->mem,center->siz);
 	switch (center->mem) {
 	case (Stackz): for (int i = 0; i < center->siz; i++) planeCall(dat0,center->str[i]); break;
 	case (Machinez): for (int i = 0; i < center->siz; i++) {
@@ -456,7 +455,6 @@ void planeCopy(struct Center **given)
 		copyMachine(&machine[index],&center->mch[i]);} break;
 	case (Configurez): for (int i = 0; i < center->siz; i++)
 		planeConfig(center->cfg[i],center->val[i]);
-		fprintf(stderr,"callCopy\n");
 		callCopy(given); break;
 	default: callCopy(given); break;}
 }

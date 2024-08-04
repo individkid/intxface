@@ -1299,7 +1299,8 @@ struct ThreadState {
     }
     ~ThreadState() {
     // this destructed to wait for device idle
-        protect.wait(); finish = true; protect.post(); semaphore.post();
+        protect.wait(); finish = true;
+        protect.post(); semaphore.post();
         if (pthread_join(thread,0) != 0) {std::cerr << "failed to join thread!" << std::endl; std::terminate();}
     }
     static void *separate(void *ptr) {
@@ -1311,10 +1312,10 @@ struct ThreadState {
                 break;}
             while (!arg->when.empty() && arg->clear(arg->when.front())) {
                 int ord = arg->preord.front(); arg->order.push_back(ord);
-		arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front();
+                arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front();
                 arg->when.pop_front(); arg->preord.pop_front();}
             while (!arg->setup.empty()) {
-		std::function<VkFence()> setup = arg->setup.front();
+		        std::function<VkFence()> setup = arg->setup.front();
                 VkFence fence;
                 arg->protect.post();
                 fence = setup();
@@ -1330,7 +1331,7 @@ struct ThreadState {
                 VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
                 result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);}
                 arg->protect.wait();
-		std::cerr << "separate " << arg->fence.front() << std::endl;
+		        std::cerr << "separate " << arg->fence.front() << std::endl;
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
@@ -1721,7 +1722,6 @@ void vulkanCopy(struct Center **given)
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
     planeDone(center); *given = 0;}
 }
-int hack = 0;
 bool vulkanDraw(enum Micro shader, int base, int limit)
 {
     QueueState *queue = mainState.queueState;
@@ -1737,7 +1737,6 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     // std::cerr << "vulkanDraw done2" << std::endl;
     if (!drawQueue->clr(shader)) return true;
     // std::cerr << "vulkanDraw done3" << std::endl;
-    if (hack++ < 1) return true;
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
     if (Component__Micro__MicroOn(shader) == CoPyon) {
@@ -1892,7 +1891,6 @@ void vulkanDone(struct Center *ptr)
 }
 void vulkanSafe()
 {
-    std::cerr << "vulkanSafe" << std::endl;
     glfwPostEmptyEvent();
 }
 void vulkanInit()
@@ -1967,9 +1965,9 @@ void vulkanGraphics(enum Phase phase)
     mainState.queueState = new QueueState();
     break; case (Stop):
     std::cerr << "Graphics,Stop " << std::endl;
+    delete mainState.threadState; mainState.threadState = 0;
     delete mainState.queueState; mainState.queueState = 0;
     delete mainState.tempState; mainState.tempState = 0;
-    delete mainState.threadState; mainState.threadState = 0;
     delete mainState.logicalState; mainState.logicalState = 0;
     delete mainState.physicalState; mainState.physicalState = 0;}
 }
@@ -1979,7 +1977,6 @@ void vulkanProcess(enum Phase phase)
     break; case (Init):
     std::cerr << "Process,Init" << std::endl;
 #ifdef PLANRA
-    std::cerr << "Process,Init,PLANRA" << std::endl;
     {struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
     allocConfigure(&center->cfg,1); allocInt(&center->val,1);
@@ -2051,14 +2048,14 @@ int vulkanBlock()
 void vulkanBoot()
 {
     struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 5; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,5); allocInt(&center->val,5);
+    center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,6); allocInt(&center->val,6);
     center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen;
     center->cfg[2] = ManipEnact; center->cfg[3] = ParamDisplay;
-    center->cfg[4] = RegisterPlan;
+    center->cfg[4] = RegisterPlan; center->cfg[4] = RegisterDone;
     center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
     center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer); center->val[3] = MicroPRPC;
-    center->val[4] = PLAN;
+    center->val[4] = PLAN; center->val[5] = (1<<Display);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 
@@ -2097,11 +2094,19 @@ extern "C" void vulkanWake(enum Configure hint)
         planeSafe(Initial,Stop,Configures);
         return;
     }
+    {
+        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
+        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
+        center->cfg[0] = RegisterDone;
+        center->val[0] = (1<<Display);
+        center->idx = 0; center->siz = 1; center->slf = 1;
+        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
+    }
     if (hint == CursorClick &&
         vulkanInfo(ManipReact) == ((1<<Enque)|(1<<Enline))) {
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact; center->cfg[0] = ManipEnact;
+        center->cfg[0] = ManipReact;
         center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
