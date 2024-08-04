@@ -1769,7 +1769,7 @@ bool vulkanFollow()
 bool vulkanModify()
 {
     int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
-#ifdef REGRESS
+#ifdef PLANRA
     planraMatrix(mat);
 #else
     planeMatrix(mat);
@@ -1976,8 +1976,8 @@ void vulkanProcess(enum Phase phase)
     switch (phase) {default: throw std::runtime_error("unsupported phase!");
     break; case (Init):
     std::cerr << "Process,Init" << std::endl;
-#ifdef PLANRA
-    {struct Center *center = 0; allocCenter(&center,1);
+    switch (mainState.registerPlan) {default: throw std::runtime_error("unsupported plan!");
+    break; case(Regress): case (Bringup): {struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
     allocConfigure(&center->cfg,1); allocInt(&center->val,1);
     center->cfg[0] = ManipReact;
@@ -2016,8 +2016,7 @@ void vulkanProcess(enum Phase phase)
     asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
     asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
     len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
-    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
-#endif
+    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}}
     break; case (Start):
     std::cerr << "Process,Start" << std::endl;
     mainState.registerOpen = true;
@@ -2033,19 +2032,19 @@ void vulkanPhase(enum Thread thread, enum Phase phase)
     break; case (Graphics): vulkanGraphics(phase);
     break; case (Process): vulkanProcess(phase);}
 }
-int vulkanLoop()
+int planraLoop()
 { // do work if any, and return if there is more work to do
     if (!mainState.registerOpen) return 0;
-    glfwPollEvents(); // in case vulkanBlock not called
+    glfwPollEvents(); // in case planraBlock not called
     return vulkanChange();
 }
-int vulkanBlock()
+int planraBlock()
 { // wait for work, and return if there might be work to do
     if (!mainState.registerOpen) return 0;
     glfwWaitEventsTimeout(1.0);
     return 1;
 }
-void vulkanBoot()
+void planraBoot()
 {
     struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
@@ -2058,15 +2057,11 @@ void vulkanBoot()
     center->val[4] = PLAN; center->val[5] = (1<<Display);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
-
-#ifdef PLANRA
-extern "C" {
 int planraDone = 0;
 int planraOnce = 0;
 struct timeval planraTime;
 int planraDebug = 0;
-}
-extern "C" void vulkanWake(enum Configure hint)
+void planraWake(enum Configure hint)
 {
     if (!planraOnce) {
         planraOnce = 1;
@@ -2211,15 +2206,14 @@ extern "C" void vulkanWake(enum Configure hint)
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
 }
-#endif
-extern "C" int main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     mainState.argc = argc;
     mainState.argv = argv;
     gettimeofday(&debug_start, NULL);
     try {
 #ifdef PLANRA
-	planeInit(vulkanInit,vulkanBoot,planeMain,vulkanLoop,vulkanBlock,vulkanWake,
+	planeInit(vulkanInit,planraBoot,planeMain,planraLoop,planraBlock,planraWake,
     vulkanPhase,vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,vulkanInfo);
 #else
 	planeInit(vulkanInit,planeBoot,planeMain,planeLoop,planeBlock,planeWake,
