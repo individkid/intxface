@@ -919,7 +919,7 @@ struct VertexState {
     std::vector<int> offset;
     VertexState() {
     stride = sizeof(Vertex);
-    format.push_back(VK_FORMAT_R32G32_SFLOAT);
+    format.push_back(VK_FORMAT_R32G32_SFLOAT); // TODO perhaps autogenerate function in type.gen
     format.push_back(VK_FORMAT_R32_UINT);
     offset.push_back(offsetof(Vertex,vec));
     offset.push_back(offsetof(Vertex,ref));}
@@ -1518,7 +1518,7 @@ template<class Buffer> struct WrapState {
     std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
         int size = (loc+siz > this->size ? loc+siz : this->size); clr(size);
         set((std::function<void(Buffer*)>)[this,loc,ptr,siz](Buffer*buf){
-        memcpy((void*)((char*)copy+loc),ptr,siz);}); put();
+        memcpy((void*)((char*)copy+loc),ptr,siz);});
         if (tag == QueryBuf) return [](){return true;};
         if (buf().second) return set();
         buf().first->bind(loc,siz,ptr,dat);
@@ -1585,22 +1585,6 @@ struct QueueState {
         return query;}
 };
 
-struct timeval debug_start;
-void debugStart() {
-    struct timeval stop;
-    gettimeofday(&stop, NULL);
-    float diff = (stop.tv_sec - debug_start.tv_sec) + (stop.tv_usec - debug_start.tv_usec) / (double)MICROSECONDS;
-    if (diff > 1.0) {
-        debug_start = stop;
-        mainState.windowMove.left += 10; mainState.windowMove.base += 10;
-        // mainState.mouseMove.left -= 10; mainState.mouseMove.base -= 10;
-        glfwSetWindowPos(mainState.openState->window,
-            mainState.windowMove.left,mainState.windowMove.base);
-        glfwSetCursorPos(mainState.openState->window,
-            mainState.mouseMove.left-mainState.windowMove.left,
-            mainState.mouseMove.base-mainState.windowMove.base);
-    }
-}
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
@@ -1756,7 +1740,8 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
 bool vulkanSwap()
 {
     WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
-    swapQueue->clr((mainState.windowCopy.width<<16)|(mainState.windowCopy.height)); // TODO power of 2
+    swapQueue->clr((mainState.windowCopy.width<<16)|(mainState.windowCopy.height));
+    // TODO increase by power of 2 and make ready only when watermark reached
     if (!swapQueue->clr()) return true;
     swapQueue->set((std::function<void(SwapState*)>)[](SwapState*buf){}); swapQueue->put();
     return false;
@@ -2060,16 +2045,19 @@ void planraBoot()
 int planraDone = 0;
 int planraOnce = 0;
 struct timeval planraTime;
-int planraDebug = 0;
+struct timeval planraStart;
+float planraLast = 0.0;
 void planraWake(enum Configure hint)
 {
     if (!planraOnce) {
         planraOnce = 1;
         gettimeofday(&planraTime, NULL);
+        planraStart = planraTime;
     }
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
+    float next = (stop.tv_sec - planraStart.tv_sec) + (stop.tv_usec - planraStart.tv_usec) / (double)MICROSECONDS;
     if (time > 3.0 && mainState.registerPlan == Regress) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = vulkanInfo(CursorPress);
@@ -2089,7 +2077,9 @@ void planraWake(enum Configure hint)
         planeSafe(Initial,Stop,Configures);
         return;
     }
-    {
+    if (next - planraLast > 0.5) {planraLast = next;
+        std::cerr << "planraWake " << planraLast << std::endl;
+	// TODO tweak window pos or size if mainState.registerPlan == Regress
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
         center->cfg[0] = RegisterDone;
@@ -2210,7 +2200,6 @@ int main(int argc, char **argv)
 {
     mainState.argc = argc;
     mainState.argv = argv;
-    gettimeofday(&debug_start, NULL);
     try {
 #ifdef PLANRA
 	planeInit(vulkanInit,planraBoot,planeMain,planraLoop,planraBlock,planraWake,
