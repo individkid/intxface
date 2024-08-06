@@ -1739,6 +1739,7 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}}
     return false;
 }
+
 bool vulkanSwap()
 {
     WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
@@ -1864,6 +1865,7 @@ bool vulkanChange()
     tight = tight || !mainState.queryMove.empty() || !mainState.readyMove.empty() || !mainState.readyMove.empty();
     return tight; // tight loop if any work remains
 }
+
 struct Center *vulkanReady(enum Memory mem)
 {
     // reserve buffer to return mapped in zero time
@@ -1887,6 +1889,7 @@ void vulkanInit()
 {
     for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
 }
+
 void vulkanInitial(enum Phase phase)
 {
     switch (phase) {default: throw std::runtime_error("unsupported phase!");
