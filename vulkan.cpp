@@ -54,6 +54,7 @@ struct MainState {
     std::deque<Pierce> readyMove; Pierce readyCopy;
     std::deque<Center*> deferMove; Center* deferCopy;
     std::deque<int> linePress;
+    int swapMove, swapCopy;
     int charPress;
     int mouseIndex;
     int paramFollow;
@@ -79,6 +80,7 @@ struct MainState {
     const int MAX_BUFFERS_AVAILABLE = 3;
     const int MAX_FENCES_INFLIGHT = 3;
     const int MAX_FRAMEBUFFER_SWAPS = 2;
+    const int MAX_FRAMEBUFFER_RESIZE = 100;
     const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 #ifdef NDEBUG
     const std::vector<const char*> layers;
@@ -1740,8 +1742,7 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
 bool vulkanSwap()
 {
     WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
-    swapQueue->clr((mainState.windowCopy.width<<16)|(mainState.windowCopy.height));
-    // TODO increase by power of 2 and make ready only when watermark reached
+    swapQueue->clr(mainState.swapCopy);
     if (!swapQueue->clr()) return true;
     swapQueue->set((std::function<void(SwapState*)>)[](SwapState*buf){}); swapQueue->put();
     return false;
@@ -1831,6 +1832,7 @@ bool vulkanChange()
     bool deferd = !mainState.deferMove.empty();
     bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
         (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
+    bool swaped = (((mainState.windowCopy.width<<16)|(mainState.windowCopy.height)) > mainState.swapMove);
     bool tight = false;
     /*
     std::cerr << "vulkanChange " << mainState.manipEnact[Follow] << "/" << moved << "/" <<
@@ -1842,11 +1844,14 @@ bool vulkanChange()
     if (moused) std::cerr << "vulkanChange moused " << mainState.mouseMove.left << "/" << mainState.mouseCopy.left << " " << mainState.mouseMove.base << "/" << mainState.mouseCopy.base << std::endl;
     */
     if (moved || sized) mainState.windowCopy = mainState.windowMove;
+    if (swaped) {mainState.swapMove = (mainState.windowCopy.width<<16)|(mainState.windowCopy.height);
+        std::cerr << "vulkanChange swaped " << mainState.swapMove << std::endl;
+        mainState.swapCopy = mainState.swapMove+mainState.MAX_FRAMEBUFFER_RESIZE*mainState.MAX_FRAMEBUFFER_RESIZE;}
     if (moused) mainState.mouseCopy = mainState.mouseMove;
     if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
     if (readyd && !mainState.registerDone[Ready]) {mainState.readyCopy = mainState.readyMove.front(); mainState.readyMove.pop_front();}
     if (deferd && !mainState.registerDone[Defer]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
-    tight = vulkanEnact(Extent,sized,tight);
+    tight = vulkanEnact(Extent,swaped,tight);
     tight = vulkanEnact(Follow,(moved||sized),tight);
     tight = vulkanEnact(Modify,moused,tight);
     tight = vulkanEnact(Direct,moused,tight);
@@ -2017,13 +2022,13 @@ void vulkanPhase(enum Thread thread, enum Phase phase)
     break; case (Graphics): vulkanGraphics(phase);
     break; case (Process): vulkanProcess(phase);}
 }
-int planraLoop()
+int vulkanLoop()
 { // do work if any, and return if there is more work to do
     if (!mainState.registerOpen) return 0;
-    glfwPollEvents(); // in case planraBlock not called
+    glfwPollEvents(); // in case vulkanBlock not called
     return vulkanChange();
 }
-int planraBlock()
+int vulkanBlock()
 { // wait for work, and return if there might be work to do
     if (!mainState.registerOpen) return 0;
     glfwWaitEventsTimeout(1.0);
@@ -2045,19 +2050,16 @@ void planraBoot()
 int planraDone = 0;
 int planraOnce = 0;
 struct timeval planraTime;
-struct timeval planraStart;
 float planraLast = 0.0;
 void planraWake(enum Configure hint)
 {
     if (!planraOnce) {
         planraOnce = 1;
         gettimeofday(&planraTime, NULL);
-        planraStart = planraTime;
     }
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    float next = (stop.tv_sec - planraStart.tv_sec) + (stop.tv_usec - planraStart.tv_usec) / (double)MICROSECONDS;
     if (time > 3.0 && mainState.registerPlan == Regress) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = vulkanInfo(CursorPress);
@@ -2077,7 +2079,7 @@ void planraWake(enum Configure hint)
         planeSafe(Initial,Stop,Configures);
         return;
     }
-    if (next - planraLast > 0.5) {planraLast = next;
+    if (time - planraLast > 0.5) {planraLast = time;
         std::cerr << "planraWake " << planraLast << std::endl;
 	// TODO tweak window pos or size if mainState.registerPlan == Regress
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
@@ -2202,10 +2204,10 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-	planeInit(vulkanInit,planraBoot,planeMain,planraLoop,planraBlock,planraWake,
+	planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,
     vulkanPhase,vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,vulkanInfo);
 #else
-	planeInit(vulkanInit,planeBoot,planeMain,planeLoop,planeBlock,planeWake,
+	planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,
     vulkanPhase,vulkanSafe,vulkanCopy,vulkanReady,vulkanDone,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
