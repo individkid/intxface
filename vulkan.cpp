@@ -1624,6 +1624,7 @@ int vulkanInfo(enum Configure query)
     break; case (MonitorHeight): return mainState.windowRatio.height;
     break; case (PhysicalWidth): return mainState.windowRatio.left;
     break; case (PhysicalHeight): return mainState.windowRatio.base;
+    break; case (RegisterPlan): return mainState.registerPlan;
     break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
         if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
     break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
@@ -1971,15 +1972,13 @@ void vulkanProcess(enum Phase phase)
     std::cerr << "Process,Init" << std::endl;
     switch (mainState.registerPlan) {default: throw std::runtime_error("unsupported plan!");
     break; case(Regress): case (Bringup): {struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-    center->cfg[0] = ManipReact;
-    center->val[0] = (1<<Enque)|(1<<Enline)|(1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
-    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
-    {struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 1; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-    center->cfg[0] = ParamLimit; center->val[0] = 6;
+    center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,6); allocInt(&center->val,6); center->cfg[0] = ManipEnact;
+    center->cfg[1] = ParamDisplay; center->cfg[2] = ParamLimit; center->cfg[3] = RegisterDone;
+    center->cfg[4] = WindowRead; center->cfg[5] = WindowWrite;
+    center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
+    center->val[1] = MicroPRPC; center->val[2] = 6; center->val[3] = (1<<Display);
+    center->val[4] = Effect; center->val[5] = Infect;
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
     {int len = 0; char *str; char *tmp;
     struct Center *center = 0; allocCenter(&center,1);
@@ -2040,14 +2039,10 @@ int vulkanBlock()
 void planraBoot()
 {
     struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,6); allocInt(&center->val,6);
-    center->cfg[0] = RegisterInit; center->cfg[1] = RegisterOpen;
-    center->cfg[2] = ManipEnact; center->cfg[3] = ParamDisplay;
-    center->cfg[4] = RegisterPlan; center->cfg[4] = RegisterDone;
-    center->val[0] = center->val[1] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
-    center->val[2] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer); center->val[3] = MicroPRPC;
-    center->val[4] = PLAN; center->val[5] = (1<<Display);
+    center->mem = Configurez; center->siz = 3; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,3); allocInt(&center->val,3);
+    center->cfg[0] = RegisterPlan; center->cfg[1] = RegisterInit; center->cfg[2] = RegisterOpen;
+    center->val[0] = PLAN; center->val[1] = center->val[2] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 int planraDone = 0;
@@ -2063,7 +2058,7 @@ void planraWake(enum Configure hint)
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 3.0 && mainState.registerPlan == Regress) planraDone = 1;
+    if (time > 3.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = vulkanInfo(CursorPress);
         int key2 = vulkanInfo(CursorPress);
@@ -2084,11 +2079,13 @@ void planraWake(enum Configure hint)
     }
     if (time - planraLast > 0.5) {planraLast = time;
         std::cerr << "planraWake " << planraLast << std::endl;
-	// TODO tweak window pos or size if mainState.registerPlan == Regress
+	// TODO tweak window pos or size if vulkanInfo(RegisterPlan) == Regress
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = RegisterDone;
-        center->val[0] = (1<<Display);
+        center->cfg[0] = RegisterDone; /*
+	center->cfg[0] = WindowLeft; center->cfg[1] = WindowBase;*/
+        center->val[0] = (1<<Display); /*
+	center->val[0] = vulkanInfo(WindowLeft) + time*10;*/
         center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
