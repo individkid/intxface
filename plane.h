@@ -7,12 +7,9 @@ typedef void (*vftype)(); // init boot main block safe
 typedef int (*zftype)(); // loop
 typedef void (*yftype)(enum Thread proc, enum Phase wait); // wait
 typedef void (*uftype)(struct Center **center); // copy
-typedef struct Center *(*rftype)(enum Memory mem); // ready
-typedef void (*xftype)(struct Center *ptr); // done
 typedef void (*sftype)(enum Configure hint); // wake
 typedef int (*tftype)(enum Configure cfg); // info
-void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake,
-	yftype wait, vftype safe, uftype copy, rftype ready, xftype done, tftype info);
+void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype wait, vftype safe, uftype copy, tftype info);
 void planeBoot();
 void planeMain();
 int planeLoop();
@@ -20,7 +17,6 @@ void planeBlock();
 void planeWake(enum Configure hint);
 void planeSafe(enum Thread proc, enum Phase wait, enum Configure hint);
 void planeCopy(struct Center **ptr);
-void planeReady(struct Center *ptr);
 void planeDone(struct Center *ptr);
 void planePutstr(const char *str);
 float *planeWindow(float *mat);

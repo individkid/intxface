@@ -38,7 +38,6 @@ Memory = {
 	"Matrixz", -- transformations
 	"Uniformz", -- references into arrays
 	"Indexz", -- per fragment triangle identifier
-	"Piercez", -- pierce point normal and valid
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
 	"Littlez", -- little machine lines
@@ -55,9 +54,6 @@ Configure = {
 	"MatrixBase", --
 	"BasisSize", -- cospace converters
 	"BasisBase", --
-	"PierceSize", -- pierce points
-	"PierceBase", --
-	"PierceIndex", --
 	"StringSize", -- queue of strings
 	"MachineSize", -- vending machine lines
 	"LittleSize", -- machine size
@@ -393,12 +389,11 @@ FragmentG = {
 TypeQ = {
 	{"Memory","Trianglez","WrapTag","StoreBuf"},
 	{"Memory","Numericz","WrapTag","StoreBuf"},
-    {"Memory","Vertexz","WrapTag","FetchBuf"},
+	{"Memory","Vertexz","WrapTag","FetchBuf"},
 	{"Memory","Basisz","WrapTag","StoreBuf"},
-    {"Memory","Matrixz","WrapTag","StoreBuf"},
+	{"Memory","Matrixz","WrapTag","StoreBuf"},
 	{"Memory","Uniformz","WrapTag","ChangeBuf"},
-    {"Memory","Indexz","WrapTag","QueryBuf"},
-    {"Memory","Piercez","WrapTag","QueryBuf"},
+	{"Memory","Indexz","WrapTag","QueryBuf"},
 	{"Memory","Stackz","WrapTag","WrapTags"},
 	{"Memory","Machinez","WrapTag","WrapTags"},
 	{"Memory","Littlez","WrapTag","WrapTags"},
@@ -444,7 +439,7 @@ Bootstrap = {
 		"val[4]:Int(%(return castMicro(\"MicroCRPC\"))))"},
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
-		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:20idx:0slf:0"..
+		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:14idx:0slf:0"..
 		"mch[0]:Goto(CndOp(CondExp(len:3siz:10"..
 			"typ[0]:Str(Int)typ[1]:Str(Int)typ[2]:Str(Str)"..
 			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)cmp[2]:Compare(ReCmp)"..
@@ -484,35 +479,20 @@ Bootstrap = {
 			"sav[0]:RegisterMemory"..
 			"sav[1]:RegisterIndex"..
 			"sav[2]:CenterSize)"..
-		"mch[8]:Eval(CndOp(CondExp(len:2siz:3"..
+		"mch[8]:Eval(CndOp(CondExp(len:2siz:2"..
 			"typ[0]:Str(Int)typ[1]:Str(Int)"..
 			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)"..
 			"var[0]:GetOp(CenterSize)"..
 			"var[1]:GetOp(RegisterMemory)"..
-			"dom[0]:Domain(len:2val[0]:IntOp(0)val[1]:MemOp(Piercez))"..
-			"dom[1]:Domain(len:2val[0]:IntOp(0)val[1]:GetOp(RegisterMemory))"..
-			"dom[2]:Domain(len:1val[0]:GetOp(CenterSize))"..
-			"rng[0]:NamOp(Str(GetPierce))"..
-			"rng[1]:IntOp(0)"..
-			"rng[2]:NamOp(Str(SetMemory)))))"..
+			"dom[0]:Domain(len:2val[0]:IntOp(0)val[1]:GetOp(RegisterMemory))"..
+			"dom[1]:Domain(len:1val[0]:GetOp(CenterSize))"..
+			"rng[0]:IntOp(0)"..
+			"rng[1]:NamOp(Str(SetMemory)))))"..
 		"mch[9]:Name(Str(SetMemory))".. -- Copy center to cpu and gpu, and remember that Changed
 		"mch[10]:Copy()".. -- copy from center to memory
 		"mch[11]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(1)))"..
 		"mch[12]:Eval(IntOp(0))"..
-		"mch[13]:Name(Str(GetPierce))".. -- Eval and Echo singleton Pierce to center, Fill and Write center
-		"mch[14]:Eval(FldOp(".. -- copy to accumulator
-			"fld[0]:ImmOp(CenterTag(center[0]:Piercez(siz:1idx:0slf:0pie[0]:Pierce("..
-				"fix[0]:Old(0)fix[1]:Old(0)fix[2]:Old(0)fix[3]:Old(0)"..
-				"nml[0]:Old(0)nml[1]:Old(0)nml[2]:Old(0)nml[3]:Old(0)"..
-				"vld:Int32(0)idx:Int32(0)pol:Int32(0)pad:Int32(0)))))".. -- Express struct
-			"fld[1]:HetOp(siz:1exp[0]:TotOp(typ:Str(Int32)tot[0]:GetOp(RegisterIndex)))".. -- Hetgen field values
-			"fld[2]:HomOp(siz:1exp[0]:StrOp(svl:Str(idx)))".. -- Homgen Str field names
-			"fld[3]:HomOp(siz:1exp[0]:IntOp(0))))".. -- Homgen Int field indices
-		"mch[15]:Echo()".. -- copy from accumulator to center
-		"mch[16]:Fill()".. -- copy from memory into center
-		"mch[17]:Write()".. -- write center
-		"mch[18]:Eval(IntOp(0))"..
-		"mch[19]:Name(Str(Return))))))"},
+		"mch[13]:Name(Str(Return))))))"},
 	{"Int","3","Str","Echo()"}, -- copy from accumulator to center
 	{"Int","4","Str","Copy()"}, -- copy from center to machine
 }
@@ -640,14 +620,6 @@ Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
 	{"ref","Int32",{},{4}}, -- backreference to planes
 }
-Pierce = {
-	{"fix","Old",{},{4}},
-	{"nml","Old",{},{4}},
-	{"vld","Int32",{},{}},
-	{"idx","Int32",{},{}},
-	{"pol","Int32",{},{}},
-	{"pad","Int32",{},{}},
-}
 Vector = {
 	{"vec","Old",{},{4}},
 }
@@ -766,7 +738,6 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"buf","Int",{["mem"]={["Indexz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},

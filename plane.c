@@ -39,9 +39,6 @@ struct Kernel {
 // owned by main thread:
 // TODO Add map from polytope to matrix, captured from copy to Triangle buffer.
 struct Kernel *matrix = 0;
-struct Pierce *found = 0;
-struct Pierce pierce = {0};
-struct Pierce unfound = {0};
 struct Machine *machine = 0;
 int *intstk = 0;
 int numstk = 0;
@@ -65,8 +62,6 @@ zftype callLoop = 0;
 zftype callBlock = 0;
 yftype callPhase = 0;
 uftype callCopy = 0;
-rftype callReady = 0;
-xftype callDone = 0;
 sftype callWake = 0;
 tftype callInfo = 0;
 pthread_t thread[Threads];
@@ -313,20 +308,6 @@ float *planeWindow(float *mat)
     */
     return identmat(mat,4);
 }
-struct Pierce *planePierce()
-{
-	if (found) return found;
-	struct Center *ptr = callReady(Piercez);
-	if (configure[ClosestFind]) {
-	for (int i = 0; i < ptr->siz; i++) {
-	struct Pierce *temp = ptr->pie + i;
-	if (!found || !found->vld || (temp->vld && temp->fix[2] < found->fix[2])) found = temp;}} else {
-	int index = configure[PierceIndex] - configure[PierceBase];
-	if (index >= 0 && index < ptr->siz) found = ptr->pie + index;}
-	if (!found) found = &unfound; else {pierce = *found; found = &pierce;}
-	callDone(ptr);
-	return found;
-}
 void planeString()
 {
 	sem_wait(&resource);
@@ -342,15 +323,7 @@ void planeStage(enum Configure cfg)
 	case (CenterSize): configure[CenterSize] = center->siz; break;
 	case (CenterIndex): configure[CenterIndex] = center->idx; break;
 	case (CenterSelf): configure[CenterSelf] = center->slf; break;
-	case (ClosestValid): configure[ClosestValid] = planePierce()->vld; break;
-	case (ClosestIndex): configure[ClosestIndex] = planePierce()->idx; break;
-	case (ClosestPoly): configure[ClosestPoly] = planePierce()->pol; break;
-	case (ClosestLeft): configure[ClosestLeft] = planePierce()->fix[0]; break;
-	case (ClosestBase): configure[ClosestBase] = planePierce()->fix[1]; break;
-	case (ClosestNear): configure[ClosestNear] = planePierce()->fix[2]; break;
-	case (NormalLeft): configure[NormalLeft] = planePierce()->nml[0]; break;
-	case (NormalBase): configure[NormalBase] = planePierce()->nml[1]; break;
-	case (NormalNear): configure[NormalNear] = planePierce()->nml[2]; break;
+	// TODO stage Closest and Normal from callInfo
 	case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
 	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
 	case (CursorAngle): configure[CursorAngle] = callInfo(CursorAngle); break;
@@ -406,7 +379,6 @@ void planeConfig(enum Configure cfg, int val)
 	case (MatrixBase): matrix = planeRebase(matrix,sizeof(struct Kernel),configure[MatrixSize],val,tmp); break;
 	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
 	case (RegisterOpen): planeStarted(tmp); break;
-	case (ClosestFind): found = 0; break;
 	default: break;}
 }
 void planeSync(enum Configure cfg, int val)
@@ -701,8 +673,7 @@ void planePhase(enum Thread bit, enum Phase phase)
 	break; case (Stop): planeFinish(bit);}
 }
 void wrapPlane();
-void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake,
-	yftype phase,vftype safe, uftype copy, rftype _ready, xftype done, tftype info)
+void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype phase,vftype safe, uftype copy, tftype info)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -714,9 +685,7 @@ void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block,
 	internal = allocCenterq(); response = allocCenterq();
 	wrapPlane(); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callLoop = loop; callBlock = block; callWake = wake;
-	callPhase = phase; callSafe = safe; callCopy = copy;
-	callReady = _ready; callDone = done; callInfo = info;
+	callLoop = loop; callBlock = block; callWake = wake; callPhase = phase; callSafe = safe; callCopy = copy; callInfo = info;
 	init(); // planePutstr on argv
 	boot(); // initial planeEnque
 	main(); // planeDeque vulkanChange
@@ -725,10 +694,6 @@ void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block,
 	struct Center *ptr = maybeCenterq(0,response);
 	freeCenter(ptr); allocCenter(&ptr,0);}
 	freeCenterq(internal);
-}
-void planeReady(struct Center *ptr)
-{
-	// TODO handle pierce point in automatic mode
 }
 void planeDone(struct Center *ptr)
 {
