@@ -1652,7 +1652,7 @@ int vulkanInfo(enum Configure query)
 		(struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
 		memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
 		planeDone(center); *given = 0; return;
-	    break; case (Configurez):
+	    break; case (Configurez): {bool moved = false; bool sized = false;
 	    for (int i = 0; i < center->siz; i++)
 	    switch (center->cfg[i]) {default:
 	    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
@@ -1676,19 +1676,19 @@ int vulkanInfo(enum Configure query)
 	    break; case (WindowWrite): mainState.windowWrite = (Interp)center->val[i];
 	    break; case (WindowLeft): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
 		case (Affect): mainState.windowClick.left = center->val[i]; break;
-		case (Infect): mainState.windowMove.left = center->val[i]; break;
+		case (Infect): moved = true; mainState.windowMove.left = center->val[i]; break;
 		case (Effect): mainState.windowCopy.left = center->val[i]; break;}
 	    break; case (WindowBase): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
 		case (Affect): mainState.windowClick.base = center->val[i]; break;
-		case (Infect): mainState.windowMove.base = center->val[i]; break;
+		case (Infect): moved = true; mainState.windowMove.base = center->val[i]; break;
 		case (Effect): mainState.windowCopy.base = center->val[i]; break;}
 	    break; case (WindowWidth): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
 		case (Affect): mainState.windowClick.width = center->val[i]; break;
-		case (Infect): mainState.windowMove.width = center->val[i]; break;
+		case (Infect): sized = true; mainState.windowMove.width = center->val[i]; break;
 		case (Effect): mainState.windowCopy.width = center->val[i]; break;}
 	    break; case (WindowHeight): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
 		case (Affect): mainState.windowClick.height = center->val[i]; break;
-		case (Infect): mainState.windowMove.height = center->val[i]; break;
+		case (Infect): sized = true; mainState.windowMove.height = center->val[i]; break;
 		case (Effect): mainState.windowCopy.height = center->val[i]; break;}
 	    break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
 	    break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
@@ -1707,7 +1707,9 @@ int vulkanInfo(enum Configure query)
 	    break; case (ParamBase): mainState.paramBase = center->val[i];
 	    break; case (ParamLimit): mainState.paramLimit = center->val[i];
 	    break; case (LittleIndex): mainState.littleIndex = center->val[i];}
-	    planeDone(center); *given = 0;}
+        // if (moved) glfwSetWindowPos();
+        // if (sized) glfwSetWindowSize();
+	    planeDone(center); *given = 0;}}
 	}
 	bool vulkanDraw(enum Micro shader, int base, int limit)
 	{
@@ -2034,7 +2036,7 @@ void planraWake(enum Configure hint)
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 3.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
+    if (time > 5.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = vulkanInfo(CursorPress);
         int key2 = vulkanInfo(CursorPress);
@@ -2055,14 +2057,14 @@ void planraWake(enum Configure hint)
     }
     if (time - planraLast > 0.5) {planraLast = time;
         std::cerr << "planraWake " << planraLast << std::endl;
-	// TODO tweak window pos or size if vulkanInfo(RegisterPlan) == Regress
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
+        allocConfigure(&center->cfg,3); allocInt(&center->val,3);
         center->cfg[0] = RegisterDone; // TODO remove unnecessary
-	/*center->cfg[1] = WindowLeft; center->cfg[2] = WindowBase;*/
+        center->cfg[1] = WindowLeft; center->cfg[2] = WindowBase;
         center->val[0] = (1<<Display);
-	/*center->val[1] = vulkanInfo(WindowLeft) + time*10;*/
-        center->idx = 0; center->siz = 1; center->slf = 1;
+        center->val[1] = vulkanInfo(WindowLeft) + time*10;
+        center->val[2] = vulkanInfo(WindowBase) + time*10;
+        center->idx = 0; center->siz = 3; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     if (hint == CursorClick &&
