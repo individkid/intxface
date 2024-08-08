@@ -319,10 +319,10 @@ void planeStage(enum Configure cfg)
 	switch (cfg) {
 	case (StringSize): planeString(); break;
 	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
-	case (CenterMemory): configure[CenterMemory] = center->mem; break;
-	case (CenterSize): configure[CenterSize] = center->siz; break;
-	case (CenterIndex): configure[CenterIndex] = center->idx; break;
-	case (CenterSelf): configure[CenterSelf] = center->slf; break;
+	case (CenterMemory): configure[CenterMemory] = (center ? center->mem : Memorys); break;
+	case (CenterSize): configure[CenterSize] = (center ? center->siz : 0); break;
+	case (CenterIndex): configure[CenterIndex] = (center ? center->idx : 0); break;
+	case (CenterSelf): configure[CenterSelf] = (center ? center->slf : 0); break;
 	// TODO stage Closest and Normal from callInfo
 	case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
 	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
@@ -392,7 +392,18 @@ void planeSync(enum Configure cfg, int val)
 	center->cfg[0] = cfg;
 	center->val[0] = val;
 	callCopy(&center);
-	allocCenter(&center,0);
+	freeCenter(center); allocCenter(&center,0);
+}
+void planeGlob(enum Configure *cfg, int *val, int siz)
+{
+	freeCenter(center); allocCenter(&center,1);
+	center->mem = Configurez;
+	center->siz = siz;
+	allocConfigure(&center->cfg,siz);
+	allocInt(&center->val,siz);
+	for (int i = 0; i < siz; i++) {
+	center->cfg[i] = cfg[i];
+	center->val[i] = val[i];}
 }
 void planeCont()
 {
@@ -681,7 +692,7 @@ void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block,
 	if (pthread_key_create(&retstr,free) != 0) ERROR();
 	sem_init(&resource,0,1); sem_init(&pending,0,0);
 	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
-	{struct Center tmp = {0}; allocCenter(&center,1); *center = tmp;}
+	// {struct Center tmp = {0}; allocCenter(&center,1); *center = tmp;}
 	internal = allocCenterq(); response = allocCenterq();
 	wrapPlane(); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);

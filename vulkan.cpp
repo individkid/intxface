@@ -169,6 +169,7 @@ void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
     // std::cerr << "mouseMoved " << xpos << "/" << ypos << std::endl;
     mainState->mouseMove.left = xpos; mainState->mouseMove.base = ypos;
+    // TODO if Drag, call glfwSetWindowPos glfwSetWikndowSize and change windowMove
     if (mainState->manipReact[Relate]) {
         mainState->mouseMove.left += mainState->windowMove.left;
         mainState->mouseMove.base += mainState->windowMove.base;}
@@ -1783,13 +1784,9 @@ int vulkanInfo(enum Configure query)
 	}
 	bool vulkanQuery()
 	{
-	    // TODO start async search of latest paramDetect mapped
-	    return false;
-	}
-	bool vulkanReady()
-	{
-	    // TODO call planeReady on latest async search of paramDetect mapped
-	    return false;
+	    return false; // TODO kick off pierce point shader,
+			  // that updates pierce point read through vulkanInfo,
+			  // and call planeSafe when it is done
 	}
 	bool vulkanDefer()
 	{
@@ -1816,7 +1813,6 @@ int vulkanInfo(enum Configure query)
 	    break; case (Bright): fail = vulkanBright();
 	    break; case (Detect): fail = vulkanDetect();
 	    break; case (Query): fail = vulkanQuery();
-	    break; case (Ready): fail = vulkanReady();
 	    break; case (Defer): fail = vulkanDefer();}
 	    mainState.registerDone[hint] = fail; // will wake or already woke
 	    if (fail && mainState.threadState->mark(mark)) return true; // already woke

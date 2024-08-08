@@ -146,7 +146,8 @@ React = { -- when updates recorded
 	"Enque", -- whether to micro code
 	"Enline", -- whether to enque key
 	"Enchar", -- whether to save key
-	"Arrow", -- whether to adjust window
+	"Arrow", -- whether arrow adjusts window
+	"Drag", -- whether mouse adjusts window
 	"North", -- window edge changed
 	"East",
 	"South",
@@ -162,8 +163,7 @@ Enact = { -- when updates applied
 	"Display", -- start display shader on wake
 	"Bright", -- start facet index shader on wake
 	"Detect", -- start pierce point shader on wake
-	"Query", -- search through pierce on wake
-	"Ready", -- present search result on wake
+	"Query", -- capture pierce point on wake
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
