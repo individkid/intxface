@@ -1831,7 +1831,7 @@ int vulkanInfo(enum Configure query)
 	    if (moved && mainState.windowMove.moved) glfwSetWindowPos(mainState.openState->window,mainState.windowMove.left,mainState.windowMove.base);
 	    if (sized && mainState.windowMove.sized) glfwSetWindowSize(mainState.openState->window,mainState.windowMove.width,mainState.windowMove.height);
 	    if (moused && mainState.mouseMove.moved) glfwSetCursorPos(mainState.openState->window,mainState.mouseMove.left,mainState.mouseMove.base);
-	    if (moved || sized) { mainState.windowMove.moved = mainState.windowMove.sized = false; mainState.windowCopy = mainState.windowMove;}
+	    if (moved || sized) {mainState.windowMove.moved = mainState.windowMove.sized = false; mainState.windowCopy = mainState.windowMove;}
 	    if (swaped) {mainState.swapMove = (mainState.windowCopy.width<<16)|(mainState.windowCopy.height);
 		std::cerr << "vulkanChange swaped " << mainState.swapMove << std::endl;
 		mainState.swapCopy = mainState.swapMove+mainState.MAX_FRAMEBUFFER_RESIZE*mainState.MAX_FRAMEBUFFER_RESIZE;}
@@ -2053,8 +2053,8 @@ void planraWake(enum Configure hint)
         center->cfg[0] = RegisterDone; // TODO remove unnecessary
         center->cfg[1] = WindowLeft; center->cfg[2] = WindowBase;
         center->val[0] = (1<<Display);
-        center->val[1] = vulkanInfo(WindowLeft) + time*10;
-        center->val[2] = vulkanInfo(WindowBase) + time*10;
+        center->val[1] = vulkanInfo(WindowLeft) + 10;
+        center->val[2] = vulkanInfo(WindowBase) + 10;
         center->idx = 0; center->siz = 3; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }

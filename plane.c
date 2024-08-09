@@ -765,14 +765,11 @@ int planeLoop()
 }
 void planeMain()
 {
-	while (1) {
-	int plane = planeLoop();
-	int call = callLoop();
-	if (!plane && !call) {
-	callWake(ResultHint);
-	sem_wait(&resource);
-	if (!qfull && !running) {sem_post(&resource); break;}
-	if (qfull) {sem_post(&resource); callWake(ResultHint); continue;}
-	sem_post(&resource);
-	if (!callBlock()) planeBlock();}}
+	int plane,call,wake,full,todo; plane=call=wake=full=todo=0;
+	while (1) {plane = planeLoop(); call = callLoop();
+	sem_wait(&resource); full = (qfull!=0); sem_post(&resource);
+	if (!plane&&!call&&!full&&!wake) {callWake(ResultHint); wake = 1;} else wake = 0;
+	sem_wait(&resource); full = (qfull!=0); todo = (running!=0); sem_post(&resource);
+	if (!plane&&!call&&!wake&&!full&&!todo) break;
+	if (!plane&&!call&&!wake&&!full&&!callBlock()) planeBlock();}
 }
