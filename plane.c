@@ -394,17 +394,6 @@ void planeSync(enum Configure cfg, int val)
 	callCopy(&center);
 	freeCenter(center); allocCenter(&center,0);
 }
-void planeGlob(enum Configure *cfg, int *val, int siz)
-{
-	freeCenter(center); allocCenter(&center,1);
-	center->mem = Configurez;
-	center->siz = siz;
-	allocConfigure(&center->cfg,siz);
-	allocInt(&center->val,siz);
-	for (int i = 0; i < siz; i++) {
-	center->cfg[i] = cfg[i];
-	center->val[i] = val[i];}
-}
 void planeCont()
 {
 	// TODO applies inverse of new transformation to local, so the switch to the new transformation is continuous.
