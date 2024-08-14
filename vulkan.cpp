@@ -40,6 +40,12 @@ struct WindowState {
     int left, base, width, height;
     bool moved, sized;
 };
+struct SizeState {
+    int width, height;
+};
+struct RatioState {
+    int left, base, width, height;
+};
 struct MainState {
     bool manipReact[Reacts];
     bool manipEnact[Enacts];
@@ -51,11 +57,11 @@ struct MainState {
     enum Interp windowRead, windowWrite;
     MouseState mouseClick, mouseMove, mouseCopy;
     WindowState windowClick, windowMove, windowCopy;
-    WindowState windowRatio;
+    SizeState swapMove, swapCopy;
+    RatioState windowRatio;
     std::deque<MouseState> queryMove; MouseState queryCopy;
     std::deque<Center*> deferMove; Center* deferCopy;
     std::deque<int> linePress;
-    int swapMove, swapCopy;
     int charPress;
     int mouseIndex;
     int paramFollow;
@@ -120,25 +126,36 @@ struct SafeState {
 struct TempState {
     int seqnum;
     std::map<int,std::deque<std::function<bool()>>> done;
+    SafeState safe;
     TempState() {
         seqnum = 0;
     }
     int temp() {
     // return identifier for done function
+        int num;
+        safe.wait();
+        num = seqnum++;
         done[seqnum] = std::deque<std::function<bool()>>();
-        return seqnum++;
+        safe.post();
+        return num;
     }
     std::function<bool()> temp(int tmp) {
     // return done function from identifier
         return [this,tmp](){
-            if (done.find(tmp) == done.end()) return true;
-            int debug = 0;
-            for (auto i = done[tmp].begin(); i != done[tmp].end(); i++) if (!(*i)()) return false;
-            done.erase(tmp); return true;};
+            std::deque<std::function<bool()>> found;
+            safe.wait();
+            if (done.find(tmp) == done.end()) {safe.post(); return true;}
+            // TODO return false by default; and add return of true in put
+            found = done[tmp];
+            safe.post();
+            for (auto i = found.begin(); i != found.end(); i++) if (!(*i)()) return false;
+            safe.wait(); done.erase(tmp); safe.post(); return true;};
     }
     void temp(int tmp, std::function<bool()> fnc) {
     // bind done function to identified done function
+        safe.wait();
         done[tmp].push_back(fnc);
+        safe.post();
     }
     std::function<bool()> temp(bool &vld, int &tag) {
         if (vld) return temp(tag);
@@ -807,8 +824,9 @@ struct SwapState {
 SwapState(MainState *state, int size, WrapTag tag) {
     width = (size >> 16)*state->windowRatio.left/state->windowRatio.width;
     if (state->windowRatio.left%state->windowRatio.width) width += 1;
-    height = ((size >> 16) << 16)*state->windowRatio.base/state->windowRatio.height;
+    height = (size & 0xffff)*state->windowRatio.base/state->windowRatio.height;
     if (state->windowRatio.base/state->windowRatio.height) height += 1;
+    std::cerr << "SwapState " << width << "/" << height << std::endl;
     [this](OpenState *open, PhysicalState *physical, DeviceState *logical){
     this->device = logical->device;
     [this](GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
@@ -831,12 +849,8 @@ SwapState(MainState *state, int size, WrapTag tag) {
 void init() {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
-    extent = [](GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities, int width, int height) {
-        if (capabilities.currentExtent.width != std::numeric_limits<int>::max()) return capabilities.currentExtent;
-        VkExtent2D actualExtent = {static_cast<uint32_t>(width),static_cast<uint32_t>(height)};
-        actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-        return actualExtent;}(window,capabilities,width,height);
+    std::cerr << "SwapState init " << extent.width << "/" << extent.height << std::endl;
+    extent.width = 1500; extent.height = 1500;
     swap = [](VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkExtent2D extent,
         VkSurfaceCapabilitiesKHR capabilities, int minimum, uint32_t graphicid, uint32_t presentid) {
         VkSwapchainKHR swap;
@@ -1195,9 +1209,9 @@ void init() {
     vkDestroySemaphore(device, available, nullptr);
     vkDestroySemaphore(device, signal, nullptr);
     delete pipeline;}
-VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base, int limit) {
+VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, VkExtent2D extent, int base, int limit) {
     VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-    std::cerr << "DrawState setup " << index << " " << base << " " << limit << std::endl;
+    std::cerr << "DrawState setup " << index << " width:" << swap->extent.width << " height:" << swap->extent.height << " base:" << base << " limit:" << limit << std::endl;
     if (result == VK_ERROR_OUT_OF_DATE_KHR) std::cerr << "out of date" << std::endl;
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -1220,7 +1234,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base
         info.clearValueCount = 1;
         info.pClearValues = &clearColor;
         vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
-    } (render,swap->framebuffers[index],swap->extent,command);
+    } (render,swap->framebuffers[index],extent,command);
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkViewport info{};
@@ -1228,12 +1242,12 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, int base
         info.width = (float) extent.width;
         info.height = (float) extent.height;
         info.minDepth = 0.0f; info.maxDepth = 1.0f;
-        vkCmdSetViewport(command, 0, 1, &info);}(swap->extent,command);
+        vkCmdSetViewport(command, 0, 1, &info);}(extent,command);
     [](VkExtent2D extent, VkCommandBuffer command){
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = extent;
-        vkCmdSetScissor(command, 0, 1, &scissor);}(swap->extent,command);
+        vkCmdSetScissor(command, 0, 1, &scissor);}(extent,command);
     int count = 0; for (int i = 0; i < buffer.size(); i++) {
         if (buffer[i]->bind(count,command,pipeline->descriptor)) count++;}
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, 0, 1,
@@ -1282,7 +1296,6 @@ struct ThreadState {
     VkDevice device;
     SafeState protect;
     SafeState semaphore;
-    TempState temp;
     pthread_t thread;
     bool finish;
     std::deque<std::function<VkFence()>> setup;
@@ -1590,364 +1603,367 @@ int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
     break; case (CursorLeft): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
-        case (Affect): return mainState.mouseClick.left;
-		case (Infect): return mainState.mouseMove.left;
-		case (Effect): return mainState.mouseCopy.left;}
-	    break; case (CursorBase): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): return mainState.mouseClick.base;
-		case (Infect): return mainState.mouseMove.base;
-		case (Effect): return mainState.mouseCopy.base;}
-	    break; case (CursorAngle): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): return mainState.mouseClick.angle;
-		case (Infect): return mainState.mouseMove.angle;
-		case (Effect): return mainState.mouseCopy.angle;}
-	    break; case (CursorPress): {if (mainState.linePress.empty()) return 0;
-		int key = mainState.linePress.front(); mainState.linePress.pop_front(); return key;}
-	    break; case (WindowLeft): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): return mainState.windowClick.left;
-		case (Infect): return mainState.windowMove.left;
-		case (Effect): return mainState.windowCopy.left;}
-	    break; case (WindowBase): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): return mainState.windowClick.base;
-		case (Infect): return mainState.windowMove.base;
-		case (Effect): return mainState.windowCopy.base;}
-	    break; case (WindowWidth): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): return mainState.windowClick.width;
-		case (Infect): return mainState.windowMove.width;
-		case (Effect): return mainState.windowCopy.width;}
-	    break; case (WindowHeight): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): return mainState.windowClick.height;
-		case (Infect): return mainState.windowMove.height;
-		case (Effect): return mainState.windowCopy.height;}
-	    break; case (MonitorWidth): return mainState.windowRatio.width;
-	    break; case (MonitorHeight): return mainState.windowRatio.height;
-	    break; case (PhysicalWidth): return mainState.windowRatio.left;
-	    break; case (PhysicalHeight): return mainState.windowRatio.base;
-	    break; case (RegisterPlan): return mainState.registerPlan;
-	    break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
-		if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
-	    break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
-		if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
-	    break; case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
-		if (mainState.manipEnact[(Enact)j]) val |= (1<<j); return val;}
-	    break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
-		if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}}
-	    return 0;
-	}
-	bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
-	{
-	    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[mem];
-	    // std::cerr << "vulkanSet " << mem << "(" << Matrixz << "," << Vertexz << ")" << " " << loc << " " << siz << std::endl;
-	    if (!bufferQueue->clr()) return true;
-	    bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
-	    return false;
-	}
-	void vulkanCopy(struct Center **given)
-	{
-	    struct Center *center = *given;
-	    switch (center->mem) {default: mainState.deferMove.push_back(center); *given = 0;
-	    break; case (Littlez): if (center->idx+center->siz > mainState.littleSize) {
-		mainState.littleSize = center->idx+center->siz; mainState.littleState =
-		(struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
-		memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
-		planeDone(center); *given = 0; return;
-	    break; case (Configurez):
-	    for (int i = 0; i < center->siz; i++)
-	    switch (center->cfg[i]) {default:
-	    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
-	    break; case (CursorRead): mainState.mouseRead = (Interp)center->val[i];
-	    break; case (CursorWrite): mainState.mouseWrite = (Interp)center->val[i];
-	    break; case (CursorLeft): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): mainState.mouseClick.left = center->val[i]; break;
-		case (Infect): mainState.mouseMove.left = center->val[i]; mainState.mouseMove.moved = true; break;
-		case (Effect): mainState.mouseCopy.left = center->val[i]; break;}
-	    break; case (CursorBase): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): mainState.mouseClick.base = center->val[i]; break;
-		case (Infect): mainState.mouseMove.base = center->val[i]; mainState.mouseMove.moved = true; break;
-		case (Effect): mainState.mouseCopy.base = center->val[i]; break;}
-	    break; case (CursorAngle): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): mainState.mouseClick.angle = center->val[i]; break;
-		case (Infect): mainState.mouseMove.angle = center->val[i]; mainState.mouseMove.sized = true; break;
-		case (Effect): mainState.mouseCopy.angle = center->val[i]; break;}
-	    break; case (CursorPress): if (center->val[i] == 0)
-		mainState.linePress.clear(); else mainState.linePress.push_front(center->val[i]);
-	    break; case (WindowRead): mainState.windowRead = (Interp)center->val[i];
-	    break; case (WindowWrite): mainState.windowWrite = (Interp)center->val[i];
-	    break; case (WindowLeft): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): mainState.windowClick.left = center->val[i]; break;
-		case (Infect): mainState.windowMove.left = center->val[i]; mainState.windowMove.moved = true; break;
-		case (Effect): mainState.windowCopy.left = center->val[i]; break;}
-	    break; case (WindowBase): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): mainState.windowClick.base = center->val[i]; break;
-		case (Infect): mainState.windowMove.base = center->val[i]; mainState.windowMove.moved = true; break;
-		case (Effect): mainState.windowCopy.base = center->val[i]; break;}
-	    break; case (WindowWidth): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): mainState.windowClick.width = center->val[i]; break;
-		case (Infect): mainState.windowMove.width = center->val[i]; mainState.windowMove.sized = true; break;
-		case (Effect): mainState.windowCopy.width = center->val[i]; break;}
-	    break; case (WindowHeight): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-		case (Affect): mainState.windowClick.height = center->val[i]; break;
-		case (Infect): mainState.windowMove.height = center->val[i]; mainState.windowMove.sized = true; break;
-		case (Effect): mainState.windowCopy.height = center->val[i]; break;}
-	    break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
-	    break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
-		mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
-	    break; case (ManipReact): for (int j = 0; j < Reacts; j++)
-		mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
-	    break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
-		mainState.manipEnact[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
-	    break; case (ManipAction): for (int j = 0; j < Actions; j++)
-		mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
-	    break; case (ParamFollow): mainState.paramFollow = center->val[i];
-	    break; case (ParamModify): mainState.paramModify = center->val[i];
-	    break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
-	    break; case (ParamBright): mainState.paramBright = (Micro)center->val[i];
-	    break; case (ParamDetect): mainState.paramDetect = (Micro)center->val[i];
-	    break; case (ParamBase): mainState.paramBase = center->val[i];
-	    break; case (ParamLimit): mainState.paramLimit = center->val[i];
-	    break; case (LittleIndex): mainState.littleIndex = center->val[i];}
-	    planeDone(center); *given = 0;}
-	}
-	bool vulkanDraw(enum Micro shader, int base, int limit)
-	{
-	    QueueState *queue = mainState.queueState;
-	    std::vector<BufferState*> buffer; SwapState *swap; DrawState *draw;
-	    WrapState<SwapState> *swapQueue = queue->swapQueue;
-	    std::vector<WrapState<BufferState>*> bindBuffer = queue->bindBuffer(shader);
-	    std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
-	    WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
-	    // std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << "/shader:" << shader << "(" << MicroPRPC << ")" << std::endl;
-	    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
-	    // std::cerr << "vulkanDraw done1" << std::endl;
-	    if (!queue->swapQueue->get()) return true;
-	    // std::cerr << "vulkanDraw done2" << std::endl;
-	    if (!drawQueue->clr(shader)) return true;
-	    // std::cerr << "vulkanDraw done3" << std::endl;
-	    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
-	    drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
-	    if (Component__Micro__MicroOn(shader) == CoPyon) {
-	    (*i)->set(); (*i)->put(); (*i)->seq(drawQueue->sep());} else {
-	    (*i)->tmp(drawQueue->tmp()); (*i)->set();}}
-	    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
-	    buffer.push_back((*i)->get(drawQueue->tmp()));}
-	    swap = queue->swapQueue->get(drawQueue->tmp());
-	    // std::cerr << "vulkanDraw done" << std::endl;
-	    std::function<bool()> done = drawQueue->set((std::function<VkFence(DrawState*)>)[buffer,swap,base,limit](DrawState*draw){
-	    return draw->setup(buffer,swap,base,limit);}); drawQueue->seq(done); drawQueue->put();
-	    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
-	    if (Component__Micro__MicroOn(shader) == CoPyon) {
-	    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}}
-	    return false;
-	}
-
-	bool vulkanSwap()
-	{
-	    WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
-	    swapQueue->clr(mainState.swapCopy);
-	    if (!swapQueue->clr()) return true;
-	    swapQueue->set((std::function<void(SwapState*)>)[](SwapState*buf){}); swapQueue->put();
-	    return false;
-	}
-	bool vulkanFollow()
-	{
-	    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); 
-	    return vulkanSet(Matrixz,mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
-	}
-	bool vulkanModify()
-	{
-	    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
+       case (Affect): return mainState.mouseClick.left;
+	case (Infect): return mainState.mouseMove.left;
+	case (Effect): return mainState.mouseCopy.left;}
+    break; case (CursorBase): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): return mainState.mouseClick.base;
+	case (Infect): return mainState.mouseMove.base;
+	case (Effect): return mainState.mouseCopy.base;}
+    break; case (CursorAngle): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): return mainState.mouseClick.angle;
+	case (Infect): return mainState.mouseMove.angle;
+	case (Effect): return mainState.mouseCopy.angle;}
+    break; case (CursorPress): {if (mainState.linePress.empty()) return 0;
+	int key = mainState.linePress.front(); mainState.linePress.pop_front(); return key;}
+    break; case (WindowLeft): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): return mainState.windowClick.left;
+	case (Infect): return mainState.windowMove.left;
+	case (Effect): return mainState.windowCopy.left;}
+    break; case (WindowBase): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): return mainState.windowClick.base;
+	case (Infect): return mainState.windowMove.base;
+	case (Effect): return mainState.windowCopy.base;}
+    break; case (WindowWidth): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): return mainState.windowClick.width;
+	case (Infect): return mainState.windowMove.width;
+	case (Effect): return mainState.windowCopy.width;}
+    break; case (WindowHeight): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): return mainState.windowClick.height;
+	case (Infect): return mainState.windowMove.height;
+	case (Effect): return mainState.windowCopy.height;}
+    break; case (MonitorWidth): return mainState.windowRatio.width;
+    break; case (MonitorHeight): return mainState.windowRatio.height;
+    break; case (PhysicalWidth): return mainState.windowRatio.left;
+    break; case (PhysicalHeight): return mainState.windowRatio.base;
+    break; case (RegisterPlan): return mainState.registerPlan;
+    break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
+	if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
+    break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
+	if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
+    break; case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
+	if (mainState.manipEnact[(Enact)j]) val |= (1<<j); return val;}
+    break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
+	if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}}
+    return 0;
+}
+bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
+{
+    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[mem];
+    // std::cerr << "vulkanSet " << mem << "(" << Matrixz << "," << Vertexz << ")" << " " << loc << " " << siz << std::endl;
+    if (!bufferQueue->clr()) return true;
+    bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
+    return false;
+}
+void vulkanCopy(struct Center **given)
+{
+    struct Center *center = *given;
+    switch (center->mem) {default: mainState.deferMove.push_back(center); *given = 0;
+    break; case (Littlez): if (center->idx+center->siz > mainState.littleSize) {
+	mainState.littleSize = center->idx+center->siz; mainState.littleState =
+	(struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
+	memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
+	planeDone(center); *given = 0; return;
+    break; case (Configurez):
+    for (int i = 0; i < center->siz; i++)
+    switch (center->cfg[i]) {default:
+    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
+    break; case (CursorRead): mainState.mouseRead = (Interp)center->val[i];
+    break; case (CursorWrite): mainState.mouseWrite = (Interp)center->val[i];
+    break; case (CursorLeft): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): mainState.mouseClick.left = center->val[i]; break;
+	case (Infect): mainState.mouseMove.left = center->val[i]; mainState.mouseMove.moved = true; break;
+	case (Effect): mainState.mouseCopy.left = center->val[i]; break;}
+    break; case (CursorBase): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): mainState.mouseClick.base = center->val[i]; break;
+	case (Infect): mainState.mouseMove.base = center->val[i]; mainState.mouseMove.moved = true; break;
+	case (Effect): mainState.mouseCopy.base = center->val[i]; break;}
+    break; case (CursorAngle): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): mainState.mouseClick.angle = center->val[i]; break;
+	case (Infect): mainState.mouseMove.angle = center->val[i]; mainState.mouseMove.sized = true; break;
+	case (Effect): mainState.mouseCopy.angle = center->val[i]; break;}
+    break; case (CursorPress): if (center->val[i] == 0)
+	mainState.linePress.clear(); else mainState.linePress.push_front(center->val[i]);
+    break; case (WindowRead): mainState.windowRead = (Interp)center->val[i];
+    break; case (WindowWrite): mainState.windowWrite = (Interp)center->val[i];
+    break; case (WindowLeft): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): mainState.windowClick.left = center->val[i]; break;
+	case (Infect): mainState.windowMove.left = center->val[i]; mainState.windowMove.moved = true; break;
+	case (Effect): mainState.windowCopy.left = center->val[i]; break;}
+    break; case (WindowBase): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): mainState.windowClick.base = center->val[i]; break;
+	case (Infect): mainState.windowMove.base = center->val[i]; mainState.windowMove.moved = true; break;
+	case (Effect): mainState.windowCopy.base = center->val[i]; break;}
+    break; case (WindowWidth): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): mainState.windowClick.width = center->val[i]; break;
+	case (Infect): mainState.windowMove.width = center->val[i]; mainState.windowMove.sized = true; break;
+	case (Effect): mainState.windowCopy.width = center->val[i]; break;}
+    break; case (WindowHeight): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
+	case (Affect): mainState.windowClick.height = center->val[i]; break;
+	case (Infect): mainState.windowMove.height = center->val[i]; mainState.windowMove.sized = true; break;
+	case (Effect): mainState.windowCopy.height = center->val[i]; break;}
+    break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
+    break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
+	mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipReact): for (int j = 0; j < Reacts; j++)
+	mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
+	mainState.manipEnact[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ManipAction): for (int j = 0; j < Actions; j++)
+	mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
+    break; case (ParamFollow): mainState.paramFollow = center->val[i];
+    break; case (ParamModify): mainState.paramModify = center->val[i];
+    break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
+    break; case (ParamBright): mainState.paramBright = (Micro)center->val[i];
+    break; case (ParamDetect): mainState.paramDetect = (Micro)center->val[i];
+    break; case (ParamBase): mainState.paramBase = center->val[i];
+    break; case (ParamLimit): mainState.paramLimit = center->val[i];
+    break; case (LittleIndex): mainState.littleIndex = center->val[i];}
+    planeDone(center); *given = 0;}
+}
+bool vulkanDraw(enum Micro shader, int base, int limit)
+{
+    QueueState *queue = mainState.queueState;
+    std::vector<BufferState*> buffer; SwapState *swap; DrawState *draw;
+    WrapState<SwapState> *swapQueue = queue->swapQueue;
+    std::vector<WrapState<BufferState>*> bindBuffer = queue->bindBuffer(shader);
+    std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
+    WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
+    VkExtent2D extent; extent.width = mainState.windowCopy.width; extent.height = mainState.windowCopy.height;
+    // std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << "/shader:" << shader << "(" << MicroPRPC << ")" << std::endl;
+    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
+    // std::cerr << "vulkanDraw done1" << std::endl;
+    if (!queue->swapQueue->get()) return true;
+    // std::cerr << "vulkanDraw done2" << std::endl;
+    if (!drawQueue->clr(shader)) return true;
+    // std::cerr << "vulkanDraw done3" << std::endl;
+    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
+    drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
+    if (Component__Micro__MicroOn(shader) == CoPyon) {
+    (*i)->set(); (*i)->put(); (*i)->seq(drawQueue->sep());} else {
+    (*i)->tmp(drawQueue->tmp()); (*i)->set();}}
+    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
+    buffer.push_back((*i)->get(drawQueue->tmp()));}
+    swap = queue->swapQueue->get(drawQueue->tmp());
+    // std::cerr << "vulkanDraw done" << std::endl;
+    std::function<bool()> done = drawQueue->set((std::function<VkFence(DrawState*)>)
+    [buffer,swap,extent,base,limit](DrawState*draw){
+    return draw->setup(buffer,swap,extent,base,limit);});
+    drawQueue->seq(done); drawQueue->put();
+    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
+    if (Component__Micro__MicroOn(shader) == CoPyon) {
+    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}}
+    return false;
+}
+bool vulkanSwap()
+{
+    WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
+    swapQueue->clr((mainState.swapCopy.width<<16)|(mainState.swapCopy.height));
+    if (!swapQueue->clr()) return true;
+    swapQueue->set((std::function<void(SwapState*)>)[](SwapState*buf){}); swapQueue->put();
+    return false;
+}
+bool vulkanFollow()
+{
+    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); 
+    return vulkanSet(Matrixz,mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
+}
+bool vulkanModify()
+{
+    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
 #ifdef PLANRA
-	    planraMatrix(mat);
+    planraMatrix(mat);
 #else
-	    planeMatrix(mat);
+    planeMatrix(mat);
 #endif
-	    return vulkanSet(Matrixz,mainState.paramModify*siz,siz,mat,[mat](){free(mat);});
-	}
-	bool vulkanDirect()
-	{
-	    // TODO write mainState.mouseCopy.left,mainState.mouseCopy.base,
-	    // TODO mainState.mouseCopy.angle,mainState.mouseIndex to Uniform
-	    return false;
-	}
-	bool vulkanDisplay()
-	{
-	    return vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
-	}
-	bool vulkanBright()
-	{
-	    return vulkanDraw(mainState.paramBright,mainState.paramBase,mainState.paramLimit);
-	}
-	bool vulkanDetect()
-	{
-	    return vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
-	}
-	bool vulkanQuery()
-	{
-	    return false; // TODO kick off pierce point shader,
-			  // that updates pierce point read through vulkanInfo,
-			  // and call planeSafe when it is done
-	}
-	bool vulkanDefer()
-	{
-	    struct Center *center = mainState.deferCopy;
-	    int siz; void *ptr; struct WrapState<BufferState> *buf;
-	    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
-	    break; case (Indexz): siz = sizeof(center->buf[0]); ptr = center->buf;
-	    break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
-	    break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
-	    return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
-	}
-	bool vulkanEnact(enum Enact hint, bool cond, bool tight)
-	{ // do work, and return if there is more work to do
-	    bool fail; int mark;
-	    if (mainState.manipEnact[hint] && cond) mainState.registerDone[hint] = true;
-	    if (!mainState.registerDone[hint]) return false;
-	    mark = mainState.threadState->mark(); // remember wakes after this
-	    switch (hint) {default: throw std::runtime_error("failed to call function!");
-	    break; case (Extent): fail = vulkanSwap();
-	    break; case (Follow): fail = vulkanFollow();
-	    break; case (Modify): fail = vulkanModify();
-	    break; case (Direct): fail = vulkanDirect();
-	    break; case (Display): fail = vulkanDisplay();
-	    break; case (Bright): fail = vulkanBright();
-	    break; case (Detect): fail = vulkanDetect();
-	    break; case (Query): fail = vulkanQuery();
-	    break; case (Defer): fail = vulkanDefer();}
-	    mainState.registerDone[hint] = fail; // will wake or already woke
-	    if (fail && mainState.threadState->mark(mark)) return true; // already woke
-	    return tight; // wait for wake unless there is already work to do
-	}
-	bool vulkanChange()
-	{ // do work, and return if there is more work to do
-	    bool moved = (mainState.windowMove.left != mainState.windowCopy.left || mainState.windowMove.base != mainState.windowCopy.base);
-	    bool sized = (mainState.windowMove.width != mainState.windowCopy.width || mainState.windowMove.height != mainState.windowCopy.height);
-	    bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left || mainState.mouseMove.base != mainState.mouseCopy.base);
-	    bool queryd = !mainState.queryMove.empty();
-	    bool deferd = !mainState.deferMove.empty();
-	    bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
-		(mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
-	    bool swaped = (((mainState.windowCopy.width<<16)|(mainState.windowCopy.height)) > mainState.swapMove);
-	    bool tight = false;
-	    if (moved && mainState.windowMove.moved) glfwSetWindowPos(mainState.openState->window,mainState.windowMove.left,mainState.windowMove.base);
-	    if (sized && mainState.windowMove.sized) glfwSetWindowSize(mainState.openState->window,mainState.windowMove.width,mainState.windowMove.height);
-	    if (moused && mainState.mouseMove.moved) glfwSetCursorPos(mainState.openState->window,mainState.mouseMove.left,mainState.mouseMove.base);
-	    if (moved || sized) {mainState.windowMove.moved = mainState.windowMove.sized = false; mainState.windowCopy = mainState.windowMove;}
-	    if (swaped) {mainState.swapMove = (mainState.windowCopy.width<<16)|(mainState.windowCopy.height);
-		std::cerr << "vulkanChange swaped " << mainState.swapMove << std::endl;
-		mainState.swapCopy = mainState.swapMove+mainState.MAX_FRAMEBUFFER_RESIZE*mainState.MAX_FRAMEBUFFER_RESIZE;}
-	    if (moused) {mainState.mouseCopy.moved = mainState.mouseCopy.sized = false; mainState.mouseCopy = mainState.mouseMove;}
-	    if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-	    if (deferd && !mainState.registerDone[Defer]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
-	    tight = vulkanEnact(Extent,swaped,tight);
-	    tight = vulkanEnact(Follow,(moved||sized),tight);
-	    tight = vulkanEnact(Modify,moused,tight);
-	    tight = vulkanEnact(Direct,moused,tight);
-	    tight = vulkanEnact(Display,drawed,tight);
-	    tight = vulkanEnact(Bright,drawed,tight);
-	    tight = vulkanEnact(Detect,drawed,tight);
-	    tight = vulkanEnact(Query,queryd,tight);
-	    tight = vulkanEnact(Defer,deferd,tight);
-	    tight = tight || !mainState.queryMove.empty() || !mainState.deferMove.empty();
-	    return tight; // tight loop if any work remains
-	}
+    return vulkanSet(Matrixz,mainState.paramModify*siz,siz,mat,[mat](){free(mat);});
+}
+bool vulkanDirect()
+{
+    // TODO write mainState.mouseCopy.left,mainState.mouseCopy.base,
+    // TODO mainState.mouseCopy.angle,mainState.mouseIndex to Uniform
+    return false;
+}
+bool vulkanDisplay()
+{
+    return vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
+}
+bool vulkanBright()
+{
+    return vulkanDraw(mainState.paramBright,mainState.paramBase,mainState.paramLimit);
+}
+bool vulkanDetect()
+{
+    return vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
+}
+bool vulkanQuery()
+{
+    return false; // TODO kick off pierce point shader,
+		  // that updates pierce point read through vulkanInfo,
+		  // and call planeSafe when it is done
+}
+bool vulkanDefer()
+{
+    struct Center *center = mainState.deferCopy;
+    int siz; void *ptr; struct WrapState<BufferState> *buf;
+    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
+    break; case (Indexz): siz = sizeof(center->buf[0]); ptr = center->buf;
+    break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
+    break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
+    return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
+}
+bool vulkanEnact(enum Enact hint, bool cond, bool tight)
+{ // do work, and return if there is more work to do
+    bool fail; int mark;
+    if (mainState.manipEnact[hint] && cond) mainState.registerDone[hint] = true;
+    if (!mainState.registerDone[hint]) return false;
+    mark = mainState.threadState->mark(); // remember wakes after this
+    switch (hint) {default: throw std::runtime_error("failed to call function!");
+    break; case (Extent): fail = vulkanSwap();
+    break; case (Follow): fail = vulkanFollow();
+    break; case (Modify): fail = vulkanModify();
+    break; case (Direct): fail = vulkanDirect();
+    break; case (Display): fail = vulkanDisplay();
+    break; case (Bright): fail = vulkanBright();
+    break; case (Detect): fail = vulkanDetect();
+    break; case (Query): fail = vulkanQuery();
+    break; case (Defer): fail = vulkanDefer();}
+    mainState.registerDone[hint] = fail; // will wake or already woke
+    if (fail && mainState.threadState->mark(mark)) return true; // already woke
+    return tight; // wait for wake unless there is already work to do
+}
+bool vulkanChange()
+{ // do work, and return if there is more work to do
+    bool moved = (mainState.windowMove.left != mainState.windowCopy.left || mainState.windowMove.base != mainState.windowCopy.base);
+    bool sized = (mainState.windowMove.width != mainState.windowCopy.width || mainState.windowMove.height != mainState.windowCopy.height);
+    bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left || mainState.mouseMove.base != mainState.mouseCopy.base);
+    bool queryd = !mainState.queryMove.empty();
+    bool deferd = !mainState.deferMove.empty();
+    bool drawed = ((mainState.manipEnact[Follow] && moved) || sized ||
+        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
+    bool swaped = ((mainState.windowMove.width > mainState.swapMove.width) || (mainState.windowMove.height > mainState.swapMove.height));
+    bool tight = false;
+    if (moved && mainState.windowMove.moved) glfwSetWindowPos(mainState.openState->window,mainState.windowMove.left,mainState.windowMove.base);
+    if (sized && mainState.windowMove.sized) glfwSetWindowSize(mainState.openState->window,mainState.windowMove.width,mainState.windowMove.height);
+    if (moused && mainState.mouseMove.moved) glfwSetCursorPos(mainState.openState->window,mainState.mouseMove.left,mainState.mouseMove.base);
+    if (swaped) {std::cerr << "vulkanChange swaped " << mainState.mouseMove.sized << " " << mainState.swapMove.width << "," << mainState.swapMove.height << std::endl;
+        mainState.swapMove.width = mainState.windowMove.width+mainState.MAX_FRAMEBUFFER_RESIZE;
+        mainState.swapMove.height = mainState.windowMove.height+mainState.MAX_FRAMEBUFFER_RESIZE;
+    	mainState.swapCopy.width = mainState.swapMove.width+mainState.MAX_FRAMEBUFFER_RESIZE;
+        mainState.swapCopy.height = mainState.swapMove.height+mainState.MAX_FRAMEBUFFER_RESIZE;}
+    if (moved || sized) {mainState.windowMove.moved = mainState.windowMove.sized = false; mainState.windowCopy = mainState.windowMove;}
+    if (moused) {mainState.mouseCopy.moved = mainState.mouseCopy.sized = false; mainState.mouseCopy = mainState.mouseMove;}
+    if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
+    if (deferd && !mainState.registerDone[Defer]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
+    tight = vulkanEnact(Extent,swaped,tight);
+    tight = vulkanEnact(Follow,(moved||sized),tight);
+    tight = vulkanEnact(Modify,moused,tight);
+    tight = vulkanEnact(Direct,moused,tight);
+    tight = vulkanEnact(Display,drawed,tight);
+    tight = vulkanEnact(Bright,drawed,tight);
+    tight = vulkanEnact(Detect,drawed,tight);
+    tight = vulkanEnact(Query,queryd,tight);
+    tight = vulkanEnact(Defer,deferd,tight);
+    tight = tight || !mainState.queryMove.empty() || !mainState.deferMove.empty();
+    return tight; // tight loop if any work remains
+}
 
-	void vulkanSafe()
-	{
-	    glfwPostEmptyEvent();
-	}
-	void vulkanInit()
-	{
-	    for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
-	}
-
-	void vulkanInitial(enum Phase phase)
-	{
-	    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-	    break; case (Init):
-	    std::cerr << "Initial,Init" << std::endl;
-	    break; case (Start):
-	    std::cerr << "Initial,Start" << std::endl;
-	    mainState.initState = new InitState(mainState.layers);
-	    break; case (Stop):
-	    std::cerr << "Initial,Stop" << std::endl;
-	    delete mainState.initState; mainState.initState = 0;}
-	}
-	void vulkanWindow(enum Phase phase)
-	{
-	    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-	    break; case (Init):
-	    std::cerr << "Window,Init" << std::endl;
-	    mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
-	    mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
-	    break; case (Start):
-	    std::cerr << "Window,Start" << std::endl;
-	    mainState.openState = new OpenState(mainState.initState->instance,
-	    mainState.windowMove.width, mainState.windowMove.height,(void*)&mainState);
-	    break; case (Stop):
-	    std::cerr << "Window,Stop " << std::endl;
-	    delete mainState.openState; mainState.openState = 0;}
-	}
-	void vulkanGraphics(enum Phase phase)
-	{
-	    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-	    break; case (Init):
-	    std::cerr << "Graphics,Init" << std::endl;
-	    {int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
-	    GLFWwindow *window = mainState.openState->window;
-	    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-	    glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
-	    glfwGetFramebufferSize(window,&sizx,&sizy);
-	    glfwGetWindowSize(window,&width,&height);
-	    glfwGetCursorPos(window,&posx,&posy);
-	    left += (workx-width)/2; base += (worky-height)/2;
-	    posx -= (workx-width)/2; posy -= (worky-height)/2;
-	    glfwSetWindowPos(window,left,base); // TODO calculate this before create window
-	    if (mainState.manipReact[Relate]) {
-	    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ left+posx;
-	    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ base+posy;} else {
-	    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ posx;
-	    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ posy;}
-	    mainState.windowClick.width = mainState.windowMove.width = /*mainState.windowCopy.width =*/ width;
-	    mainState.windowClick.height = mainState.windowMove.height = /*mainState.windowCopy.height =*/ height;
-	    mainState.windowClick.left = mainState.windowMove.left = /*mainState.windowCopy.left =*/ left;
-	    mainState.windowClick.base = mainState.windowMove.base = /*mainState.windowCopy.base =*/ base;
-	    mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
-	    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
-	    break; case (Start):
-	    std::cerr << "Graphics,Start " << std::endl;
-	    mainState.physicalState = new PhysicalState(
-	    mainState.initState->instance,mainState.openState->surface,mainState.extensions,
-	    mainState.MAX_FRAMES_INFLIGHT);
-	    mainState.logicalState = [](PhysicalState *physical){
-	    return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
-	    physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
-	    }(mainState.physicalState);
-	    mainState.threadState = new ThreadState(mainState.logicalState->device,
-	    mainState.MAX_FENCES_INFLIGHT);
-	    mainState.tempState = new TempState();
-	    mainState.queueState = new QueueState();
-	    break; case (Stop):
-	    std::cerr << "Graphics,Stop " << std::endl;
-	    delete mainState.threadState; mainState.threadState = 0;
-	    delete mainState.queueState; mainState.queueState = 0;
-	    delete mainState.tempState; mainState.tempState = 0;
-	    delete mainState.logicalState; mainState.logicalState = 0;
-	    delete mainState.physicalState; mainState.physicalState = 0;}
-	}
-	void vulkanProcess(enum Phase phase)
-	{
-	    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-	    break; case (Init):
-	    std::cerr << "Process,Init" << std::endl;
-	    switch (mainState.registerPlan) {default: throw std::runtime_error("unsupported plan!");
-	    break; case(Regress): case (Bringup): {struct Center *center = 0; allocCenter(&center,1);
-	    center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
-	    allocConfigure(&center->cfg,6); allocInt(&center->val,6); center->cfg[0] = ManipEnact;
-	    center->cfg[1] = ParamDisplay; center->cfg[2] = ParamLimit; center->cfg[3] = RegisterDone;
-	    center->cfg[4] = WindowRead; center->cfg[5] = WindowWrite;
-	    center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
-	    center->val[1] = MicroPRPC; center->val[2] = 6; center->val[3] = (1<<Display);
-	    center->val[4] = Effect; center->val[5] = Infect;
+void vulkanSafe()
+{
+    glfwPostEmptyEvent();
+}
+void vulkanInit()
+{
+    for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
+}
+void vulkanInitial(enum Phase phase)
+{
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Initial,Init" << std::endl;
+    break; case (Start):
+    std::cerr << "Initial,Start" << std::endl;
+    mainState.initState = new InitState(mainState.layers);
+    break; case (Stop):
+    std::cerr << "Initial,Stop" << std::endl;
+    delete mainState.initState; mainState.initState = 0;}
+}
+void vulkanWindow(enum Phase phase)
+{
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Window,Init" << std::endl;
+    mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
+    mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
+    break; case (Start):
+    std::cerr << "Window,Start" << std::endl;
+    mainState.openState = new OpenState(mainState.initState->instance,800,800,(void*)&mainState);
+    break; case (Stop):
+    std::cerr << "Window,Stop " << std::endl;
+    delete mainState.openState; mainState.openState = 0;}
+}
+void vulkanGraphics(enum Phase phase)
+{
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Graphics,Init " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
+    {int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
+    GLFWwindow *window = mainState.openState->window;
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
+    glfwGetFramebufferSize(window,&sizx,&sizy);
+    // glfwGetWindowSize(window,&width,&height);
+    width = mainState.windowMove.width; height = mainState.windowMove.height;
+    glfwGetCursorPos(window,&posx,&posy);
+    left += (workx-width)/2; base += (worky-height)/2;
+    posx -= (workx-width)/2; posy -= (worky-height)/2;
+    glfwSetWindowPos(window,left,base); // TODO calculate this before create window
+    if (mainState.manipReact[Relate]) {
+    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ left+posx;
+    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ base+posy;} else {
+    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ posx;
+    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ posy;}
+    mainState.windowClick.width = mainState.windowMove.width = /*mainState.windowCopy.width =*/ width;
+    mainState.windowClick.height = mainState.windowMove.height = /*mainState.windowCopy.height =*/ height;
+    mainState.windowClick.left = mainState.windowMove.left = /*mainState.windowCopy.left =*/ left;
+    mainState.windowClick.base = mainState.windowMove.base = /*mainState.windowCopy.base =*/ base;
+    mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
+    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
+    break; case (Start):
+    std::cerr << "Graphics,Start " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
+    mainState.physicalState = new PhysicalState(
+    mainState.initState->instance,mainState.openState->surface,mainState.extensions,
+    mainState.MAX_FRAMES_INFLIGHT);
+    mainState.logicalState = [](PhysicalState *physical){
+    return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
+    physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
+    }(mainState.physicalState);
+    mainState.threadState = new ThreadState(mainState.logicalState->device,
+    mainState.MAX_FENCES_INFLIGHT);
+    mainState.tempState = new TempState();
+    mainState.queueState = new QueueState();
+    break; case (Stop):
+    std::cerr << "Graphics,Stop " << std::endl;
+    delete mainState.threadState; mainState.threadState = 0;
+    delete mainState.queueState; mainState.queueState = 0;
+    delete mainState.tempState; mainState.tempState = 0;
+    delete mainState.logicalState; mainState.logicalState = 0;
+    delete mainState.physicalState; mainState.physicalState = 0;}
+}
+void vulkanProcess(enum Phase phase)
+{
+    switch (phase) {default: throw std::runtime_error("unsupported phase!");
+    break; case (Init):
+    std::cerr << "Process,Init " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
+    switch (mainState.registerPlan) {default: throw std::runtime_error("unsupported plan!");
+    break; case(Regress): case (Bringup): {struct Center *center = 0; allocCenter(&center,1);
+    center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,6); allocInt(&center->val,6); center->cfg[0] = ManipEnact;
+    center->cfg[1] = ParamDisplay; center->cfg[2] = ParamLimit; center->cfg[3] = RegisterDone;
+    center->cfg[4] = WindowRead; center->cfg[5] = WindowWrite;
+    center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
+    center->val[1] = MicroPRPC; center->val[2] = 6; center->val[3] = (1<<Display);
+    center->val[4] = Effect; center->val[5] = Infect;
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
     {int len = 0; char *str; char *tmp;
     struct Center *center = 0; allocCenter(&center,1);
@@ -1979,7 +1995,7 @@ int vulkanInfo(enum Configure query)
     len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);}}
     break; case (Start):
-    std::cerr << "Process,Start" << std::endl;
+    std::cerr << "Process,Start " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
     mainState.registerOpen = true;
     break; case (Stop):
     std::cerr << "Process,Stop" << std::endl;
@@ -2002,7 +2018,7 @@ int vulkanLoop()
 int vulkanBlock()
 { // wait for work, and return if there might be work to do
     if (!mainState.registerOpen) return 0;
-    glfwWaitEventsTimeout(1.0);
+    glfwWaitEventsTimeout(0.1);
     return 1;
 }
 void planraBoot()
@@ -2027,7 +2043,7 @@ void planraWake(enum Configure hint)
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 5.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
+    if (time > 10.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = vulkanInfo(CursorPress);
         int key2 = vulkanInfo(CursorPress);
@@ -2046,16 +2062,19 @@ void planraWake(enum Configure hint)
         planeSafe(Initial,Stop,Configures);
         return;
     }
-    if (time - planraLast > 0.5) {planraLast = time;
+    if (time - planraLast > 0.01) {planraLast = time;
         std::cerr << "planraWake " << planraLast << std::endl;
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,3); allocInt(&center->val,3);
+        allocConfigure(&center->cfg,5); allocInt(&center->val,5);
         center->cfg[0] = RegisterDone; // TODO remove unnecessary
         center->cfg[1] = WindowLeft; center->cfg[2] = WindowBase;
+        center->cfg[3] = WindowWidth; center->cfg[4] = WindowHeight;
         center->val[0] = (1<<Display);
-        center->val[1] = vulkanInfo(WindowLeft) + 10;
-        center->val[2] = vulkanInfo(WindowBase) + 10;
-        center->idx = 0; center->siz = 3; center->slf = 1;
+        center->val[1] = vulkanInfo(WindowLeft) - 1;
+        center->val[2] = vulkanInfo(WindowBase) - 1;
+        center->val[3] = vulkanInfo(WindowWidth) + 2;
+        center->val[4] = vulkanInfo(WindowHeight) + 2;
+        center->idx = 0; center->siz = 5; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
     if (hint == CursorClick &&
@@ -2173,9 +2192,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-	planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
+	   planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
 #else
-	planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
+	   planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
