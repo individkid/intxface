@@ -126,6 +126,7 @@ struct SafeState {
 struct TempState {
     int seqnum;
     std::map<int,std::deque<std::function<bool()>>> done;
+    std::set<int> pend;
     SafeState safe;
     TempState() {
         seqnum = 0;
@@ -135,7 +136,8 @@ struct TempState {
         int num;
         safe.wait();
         num = seqnum++;
-        done[seqnum] = std::deque<std::function<bool()>>();
+        done[num] = std::deque<std::function<bool()>>();
+        pend.insert(num);
         safe.post();
         return num;
     }
@@ -145,7 +147,7 @@ struct TempState {
             std::deque<std::function<bool()>> found;
             safe.wait();
             if (done.find(tmp) == done.end()) {safe.post(); return true;}
-            // TODO return false by default; and add return of true in put
+	    if (pend.find(tmp) != pend.end()) {safe.post(); return false;}
             found = done[tmp];
             safe.post();
             for (auto i = found.begin(); i != found.end(); i++) if (!(*i)()) return false;
@@ -154,6 +156,8 @@ struct TempState {
     void temp(int tmp, std::function<bool()> fnc) {
     // bind done function to identified done function
         safe.wait();
+	if (pend.find(tmp) == pend.end()) throw std::runtime_error("temq already called!");
+	if (done.find(tmp) == done.end()) throw std::runtime_error("temp not called yet!");
         done[tmp].push_back(fnc);
         safe.post();
     }
@@ -168,6 +172,14 @@ struct TempState {
         vld = true;
         tag = temp();}
         temp(tag,given);
+    }
+    void temq(bool &vld, int tag) {
+        if (!vld) throw std::runtime_error("temq call not valid!");
+        vld = false;
+        safe.wait();
+        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called!");
+        pend.erase(tag);
+        safe.post();
     }
 };
 
@@ -1345,7 +1357,7 @@ struct ThreadState {
                 VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
                 result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);}
                 arg->protect.wait();
-		        std::cerr << "separate " << arg->fence.front() << std::endl;
+                std::cerr << "separate " << arg->fence.front() << std::endl;
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
@@ -1445,11 +1457,10 @@ template<class Buffer> struct WrapState {
     }
     bool clr(int siz) {
     // advance queues with done fronts
-        if (ready && !toinuse.empty() && !toready.empty() && toready.front()()) {
-            while (toinuse.size() > 1) {
-                inuse.push_back(0); topool.push_back(toinuse.front()); toinuse.pop_front();}
-            inuse.push_back(ready); topool.push_back(toinuse.front()); toinuse.pop_front(); ready = 0;}
         while (!toready.empty() && toready.front()()) {
+            if (ready && !toinuse.empty()) {
+                while (toinuse.size() > 1) {inuse.push_back(0); topool.push_back(toinuse.front()); toinuse.pop_front();}
+                inuse.push_back(ready); topool.push_back(toinuse.front()); toinuse.pop_front(); ready = 0;}
             if (!toinuse.empty()) throw std::runtime_error("cannot clr ready!");
             if (ready) pool.push_back(ready);
             ready = running.front(); running.pop_front(); toready.pop_front();}
@@ -1458,9 +1469,9 @@ template<class Buffer> struct WrapState {
             inuse.pop_front(); topool.pop_front();}
     // change queue item size
         if (siz != size) {
-        if (setbuf.first || seqvld || setvld) throw std::runtime_error("cannot clr buffer!");
-        while (!pool.empty()) {delete pool.front(); pool.pop_front();}
-        copy = realloc(copy,size = siz);}
+            if (setbuf.first || seqvld || setvld) throw std::runtime_error("cannot clr buffer!");
+            while (!pool.empty()) {delete pool.front(); pool.pop_front();}
+            copy = realloc(copy,size = siz);}
     // return whether queues are not full
         if (!thread->push()) return false;
         if (!pool.empty()) return true;
@@ -1514,7 +1525,8 @@ template<class Buffer> struct WrapState {
         std::function<bool()> done = (buf().second?
         thread->push((std::function<void()>)[setup,ptr](){ptr->init(); setup(ptr);},seq()):
         thread->push((std::function<void()>)[setup,ptr](){setup(ptr);},seq()));
-        sep(done); tmp(done); sepvld = false; seqvld = false; setbuf.second = false;
+        sep(done); tmp(done);
+	temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
         return done;
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
@@ -1522,7 +1534,8 @@ template<class Buffer> struct WrapState {
         std::function<bool()> done = (buf().second?
         thread->push((std::function<VkFence()>)[setup,ptr](){ptr->init(); return setup(ptr);},seq()):
         thread->push((std::function<VkFence()>)[setup,ptr](){return setup(ptr);},seq()));
-        sep(done); tmp(done); sepvld = false; seqvld = false; setbuf.second = false;
+        sep(done); tmp(done);
+	temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
         return done;
     }
     std::function<bool()> set() {
@@ -1540,7 +1553,7 @@ template<class Buffer> struct WrapState {
     }
     void put() {
         running.push_back(buf().first); toready.push_back(tmp());
-        setvld = false; setbuf.first = 0;
+	temp->temq(setvld,settag); setbuf.first = 0;
     }
     bool get() {
     // return whether first enque after resize is ready
