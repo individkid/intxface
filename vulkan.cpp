@@ -151,8 +151,12 @@ struct TempState {
             if (pend.find(tmp) != pend.end()) {safe.post(); return false;}
             found = done[tmp];
             safe.post();
-            for (auto i = found.begin(); i != found.end(); i++) if (!(*i)()) return false;
-            safe.wait(); done.erase(tmp); safe.post(); return true;};
+	    while (!found.empty() && (*found.begin())()) found.pop_front();
+            safe.wait();
+            if (found.empty()) {done.erase(tmp); safe.post(); return true;}
+            done[tmp] = found;
+            safe.post();
+            return false;};
     }
     void temp(int tmp, std::function<bool()> fnc) {
     // bind done function to identified done function
@@ -1436,10 +1440,10 @@ struct ThreadState {
 };
 
 template<class Buffer> struct WrapState {
-    std::deque<Buffer*> pool;
-    std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
-    Buffer* ready; std::deque<std::function<bool()>> toinuse;
-    std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
+    std::deque<int> psiz; std::deque<Buffer*> pool;
+    std::deque<int> rsiz; std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
+    int siz; Buffer* ready; std::deque<std::function<bool()>> toinuse;
+    std::deque<int> isiz; std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
     std::set<void*> lookup;
     int size; void *copy;
     int count; int limit;
@@ -1471,6 +1475,12 @@ template<class Buffer> struct WrapState {
         while (!inuse.empty()) {delete inuse.front(); inuse.pop_front();}
     }
     bool clr(int siz) {
+    // change queue item size
+        if (siz != size) {
+            if (setbuf.first || seqvld || setvld) throw std::runtime_error("cannot clr buffer!");
+            while (!pool.empty()) {delete pool.front(); pool.pop_front(); count--;}
+            size = siz;
+            if (tag != DrawBuf && tag != SwapBuf) copy = realloc(copy,size);}
     // advance queues with done fronts
         while (!toready.empty() && toready.front()()) {
             if (ready && !toinuse.empty()) {
@@ -1484,12 +1494,6 @@ template<class Buffer> struct WrapState {
         while (!topool.empty() && topool.front()()) {
             if (inuse.front()) pool.push_back(inuse.front());
             inuse.pop_front(); topool.pop_front();}
-    // change queue item size
-        if (siz != size) {
-            if (setbuf.first || seqvld || setvld) throw std::runtime_error("cannot clr buffer!");
-            while (!pool.empty()) {delete pool.front(); pool.pop_front(); count--;}
-            size = siz;
-            if (tag != DrawBuf && tag != SwapBuf) copy = realloc(copy,size);}
     // return whether queues are not full
         if (!thread->push()) return false;
         if (!pool.empty()) return true;
