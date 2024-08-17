@@ -127,6 +127,7 @@ struct TempState {
     int seqnum;
     std::map<int,std::deque<std::function<bool()>>> done;
     std::set<int> pend;
+    std::set<int> flip;
     SafeState safe;
     TempState() {
         seqnum = 0;
@@ -147,7 +148,7 @@ struct TempState {
             std::deque<std::function<bool()>> found;
             safe.wait();
             if (done.find(tmp) == done.end()) {safe.post(); return true;}
-	    if (pend.find(tmp) != pend.end()) {safe.post(); return false;}
+            if (pend.find(tmp) != pend.end()) {safe.post(); return false;}
             found = done[tmp];
             safe.post();
             for (auto i = found.begin(); i != found.end(); i++) if (!(*i)()) return false;
@@ -156,8 +157,8 @@ struct TempState {
     void temp(int tmp, std::function<bool()> fnc) {
     // bind done function to identified done function
         safe.wait();
-	if (pend.find(tmp) == pend.end()) throw std::runtime_error("temq already called!");
-	if (done.find(tmp) == done.end()) throw std::runtime_error("temp not called yet!");
+        if (pend.find(tmp) == pend.end()) throw std::runtime_error("temq already called in temp!");
+        if (done.find(tmp) == done.end()) throw std::runtime_error("temp not called yet in temp!");
         done[tmp].push_back(fnc);
         safe.post();
     }
@@ -177,8 +178,27 @@ struct TempState {
         if (!vld) throw std::runtime_error("temq call not valid!");
         vld = false;
         safe.wait();
-        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called!");
+        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
+        if (done.find(tag) == done.end()) throw std::runtime_error("temp not called yet in temq!");
         pend.erase(tag);
+        safe.post();
+    }
+    int temq() {
+        int tag = temp();
+        safe.wait();
+        flip.insert(tag);
+        safe.post();
+        temp(tag,[this,tag](){
+            bool ret;
+            safe.wait();
+            ret = (flip.find(tag) == flip.end());
+            safe.post();
+            return ret;});
+        return tag;
+    }
+    void temq(int tag) {
+        safe.wait();
+        flip.erase(tag);
         safe.post();
     }
 };
@@ -748,7 +768,6 @@ VkFence setup() {
     submit.commandBufferCount = 1;
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
-    std::cerr << "BufferState setup " << fence << std::endl;
     return fence;}
 VkFence getup() {
     // call this to get computations from gpu
@@ -826,7 +845,6 @@ struct SwapState {
     int minimum;
     int graphicid;
     int presentid;
-    int width, height;
     VkExtent2D extent;
     VkSwapchainKHR swap;
     std::vector<VkImage> images;
@@ -834,11 +852,13 @@ struct SwapState {
     std::vector<VkFramebuffer> framebuffers;
     uint32_t count;
 SwapState(MainState *state, int size, WrapTag tag) {
+    int width, height;
     width = (size >> 16)*state->windowRatio.left/state->windowRatio.width;
     if (state->windowRatio.left%state->windowRatio.width) width += 1;
     height = (size & 0xffff)*state->windowRatio.base/state->windowRatio.height;
     if (state->windowRatio.base/state->windowRatio.height) height += 1;
-    std::cerr << "SwapState " << width << "/" << height << std::endl;
+    extent.width = width; extent.height = height;
+    std::cerr << "SwapState " << width << "," << height << " " << this << std::endl;
     [this](OpenState *open, PhysicalState *physical, DeviceState *logical){
     this->device = logical->device;
     [this](GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
@@ -861,8 +881,6 @@ SwapState(MainState *state, int size, WrapTag tag) {
 void init() {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
-    std::cerr << "SwapState init " << extent.width << "/" << extent.height << std::endl;
-    extent.width = 1500; extent.height = 1500;
     swap = [](VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkExtent2D extent,
         VkSurfaceCapabilitiesKHR capabilities, int minimum, uint32_t graphicid, uint32_t presentid) {
         VkSwapchainKHR swap;
@@ -929,15 +947,11 @@ void init() {
         if (vkCreateFramebuffer(device, &info, nullptr, &swapFramebuffer) != VK_SUCCESS)
             throw std::runtime_error("failed to create framebuffer!");
         return swapFramebuffer;}(device,extent,views[i],pass);
-	std::cerr << "SwapState init" << std::endl;
 }
 ~SwapState() {
     for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, framebuffers[i], nullptr);
     for (int i = 0; i < count; i++) vkDestroyImageView(device, views[i], nullptr);
     vkDestroySwapchainKHR(device, swap, nullptr);}
-void setup() {
-	std::cerr << "SwapState setup" << std::endl;
-}
 };
 
 struct VertexState {
@@ -1182,7 +1196,6 @@ DrawState(MainState *state, int size, WrapTag tag) {
     this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size);}
 void init() {
     // this called in separate thread on newly constructed
-    std::cerr << "DrawState init" << std::endl;
     available = [](VkDevice device) {
         VkSemaphore semaphore;
         VkSemaphoreCreateInfo info{};
@@ -1223,7 +1236,6 @@ void init() {
     delete pipeline;}
 VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, VkExtent2D extent, int base, int limit) {
     VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-    std::cerr << "DrawState setup " << index << " width:" << swap->extent.width << " height:" << swap->extent.height << " base:" << base << " limit:" << limit << std::endl;
     if (result == VK_ERROR_OUT_OF_DATE_KHR) std::cerr << "out of date" << std::endl;
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -1299,10 +1311,11 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, VkExtent
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("device lost on wait for fence!");
     }(swap->swap,present,index,signal);
-    std::cerr << "DrawState setup " << fence << std::endl;
     return fence;}
 };
 
+bool thread_debug = false;
+int debug_ord = 0;
 void vulkanSafe();
 struct ThreadState {
     VkDevice device;
@@ -1357,7 +1370,6 @@ struct ThreadState {
                 VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
                 result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);}
                 arg->protect.wait();
-                std::cerr << "separate " << arg->fence.front() << std::endl;
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
@@ -1385,8 +1397,10 @@ struct ThreadState {
     // return whether given sequence number is completed
         protect.wait();
         if (lookup.find(given) == lookup.end()) {
-        protect.post(); return true;}
-        protect.post(); return false;
+        protect.post();
+        return true;}
+        protect.post();
+        return false;
     }
     bool clear(std::function<bool()> given) {
     // check given status from separate thread
@@ -1416,6 +1430,7 @@ struct ThreadState {
         return done;
     }
     std::function<bool()> push(std::function<void()> given, std::function<bool()> last) {
+        thread_debug = true;
         return push((std::function<VkFence()>)[given](){given(); return VK_NULL_HANDLE;},last);
     }
 };
@@ -1463,15 +1478,18 @@ template<class Buffer> struct WrapState {
                 inuse.push_back(ready); topool.push_back(toinuse.front()); toinuse.pop_front(); ready = 0;}
             if (!toinuse.empty()) throw std::runtime_error("cannot clr ready!");
             if (ready) pool.push_back(ready);
-            ready = running.front(); running.pop_front(); toready.pop_front();}
+            ready = running.front();
+            if (tag == SwapBuf) std::cerr << "ready " << ready << std::endl;
+            running.pop_front(); toready.pop_front();}
         while (!topool.empty() && topool.front()()) {
             if (inuse.front()) pool.push_back(inuse.front());
             inuse.pop_front(); topool.pop_front();}
     // change queue item size
         if (siz != size) {
             if (setbuf.first || seqvld || setvld) throw std::runtime_error("cannot clr buffer!");
-            while (!pool.empty()) {delete pool.front(); pool.pop_front();}
-            copy = realloc(copy,size = siz);}
+            while (!pool.empty()) {delete pool.front(); pool.pop_front(); count--;}
+            size = siz;
+            if (tag != DrawBuf && tag != SwapBuf) copy = realloc(copy,size);}
     // return whether queues are not full
         if (!thread->push()) return false;
         if (!pool.empty()) return true;
@@ -1506,10 +1524,7 @@ template<class Buffer> struct WrapState {
     }
     void tmp(std::function<bool()> given) {
     // add function to postpone unreserve
-        std::function<bool()> wrap = [given,this](){
-        bool ret = given();
-        return ret;};
-        temp->temp(setvld,settag,wrap);
+        temp->temp(setvld,settag,given);
     }
     std::pair<Buffer *, bool> buf() {
     // produce next buffer to modify
@@ -1525,8 +1540,7 @@ template<class Buffer> struct WrapState {
         std::function<bool()> done = (buf().second?
         thread->push((std::function<void()>)[setup,ptr](){ptr->init(); setup(ptr);},seq()):
         thread->push((std::function<void()>)[setup,ptr](){setup(ptr);},seq()));
-        sep(done); tmp(done);
-	temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
+        sep(done); tmp(done); temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
         return done;
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
@@ -1534,8 +1548,7 @@ template<class Buffer> struct WrapState {
         std::function<bool()> done = (buf().second?
         thread->push((std::function<VkFence()>)[setup,ptr](){ptr->init(); return setup(ptr);},seq()):
         thread->push((std::function<VkFence()>)[setup,ptr](){return setup(ptr);},seq()));
-        sep(done); tmp(done);
-	temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
+        sep(done); tmp(done); temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
         return done;
     }
     std::function<bool()> set() {
@@ -1552,8 +1565,9 @@ template<class Buffer> struct WrapState {
         return set((std::function<VkFence(Buffer*)>)[](Buffer*buf){return buf->setup();});
     }
     void put() {
+        if (tag == SwapBuf) std::cerr << "put " << buf().first << std::endl;
         running.push_back(buf().first); toready.push_back(tmp());
-	temp->temq(setvld,settag); setbuf.first = 0;
+        temp->temq(setvld,settag); setbuf.first = 0;
     }
     bool get() {
     // return whether first enque after resize is ready
@@ -1601,7 +1615,6 @@ struct QueueState {
         std::vector<WrapState<BufferState>*> bind;
         int i = 0; Memory mem = Memorys;
         while ((mem = BindQ__Micro__Int__Memory(shader)(i++)) != Memorys){
-        // std::cerr << "bindBuffer " << mem << "(" << Matrixz << "," << Vertexz << ")" << std::endl;
         bind.push_back(bufferQueue[mem]);}
         return bind;}
     std::vector<WrapState<BufferState>*> queryBuffer(Micro shader) {
@@ -1663,7 +1676,6 @@ int vulkanInfo(enum Configure query)
 bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
 {
     WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[mem];
-    // std::cerr << "vulkanSet " << mem << "(" << Matrixz << "," << Vertexz << ")" << " " << loc << " " << siz << std::endl;
     if (!bufferQueue->clr()) return true;
     bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
     return false;
@@ -1717,7 +1729,7 @@ void vulkanCopy(struct Center **given)
 	case (Effect): mainState.windowCopy.height = center->val[i]; break;}
     break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
-	mainState.registerDone[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
+	mainState.registerDone[(Enact)j] = (mainState.registerDone[(Enact)j] || ((center->val[i]&(1<<j)) != 0));
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
 	mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
@@ -1743,36 +1755,34 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
     WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
     VkExtent2D extent; extent.width = mainState.windowCopy.width; extent.height = mainState.windowCopy.height;
-    // std::cerr << "vulkanDraw bind:" << bindBuffer.size() << "/query:" << queryBuffer.size() << "/shader:" << shader << "(" << MicroPRPC << ")" << std::endl;
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
-    // std::cerr << "vulkanDraw done1" << std::endl;
+    // buffers are available to get
     if (!queue->swapQueue->get()) return true;
-    // std::cerr << "vulkanDraw done2" << std::endl;
+    // swap buffer is available to get
     if (!drawQueue->clr(shader)) return true;
-    // std::cerr << "vulkanDraw done3" << std::endl;
-    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
-    drawQueue->seq((*i)->sep()); buffer.push_back((*i)->buf().first);
+    // draw buffer is ready to set
+    /* for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
+    drawQueue->seq((*i)->sep()); // draw waits for write to query buffer
+    buffer.push_back((*i)->buf().first); // draw binds to written query buffer
     if (Component__Micro__MicroOn(shader) == CoPyon) {
     (*i)->set(); (*i)->put(); (*i)->seq(drawQueue->sep());} else {
-    (*i)->tmp(drawQueue->tmp()); (*i)->set();}}
+    (*i)->tmp(drawQueue->tmp()); (*i)->set();}} */
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
     buffer.push_back((*i)->get(drawQueue->tmp()));}
     swap = queue->swapQueue->get(drawQueue->tmp());
-    // std::cerr << "vulkanDraw done" << std::endl;
     std::function<bool()> done = drawQueue->set((std::function<VkFence(DrawState*)>)
     [buffer,swap,extent,base,limit](DrawState*draw){
     return draw->setup(buffer,swap,extent,base,limit);});
-    drawQueue->seq(done); drawQueue->put();
-    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
+    drawQueue->put();
+    /* for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     if (Component__Micro__MicroOn(shader) == CoPyon) {
-    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}}
+    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}} */
     return false;
 }
 bool vulkanSwap()
 {
     WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
-    swapQueue->clr((mainState.swapCopy.width<<16)|(mainState.swapCopy.height));
-    if (!swapQueue->clr()) return true;
+    if (!swapQueue->clr((mainState.swapCopy.width<<16)|(mainState.swapCopy.height))) return true;
     swapQueue->set((std::function<void(SwapState*)>)[](SwapState*buf){}); swapQueue->put();
     return false;
 }
@@ -1859,7 +1869,7 @@ bool vulkanChange()
     if (moved && mainState.windowMove.moved) glfwSetWindowPos(mainState.openState->window,mainState.windowMove.left,mainState.windowMove.base);
     if (sized && mainState.windowMove.sized) glfwSetWindowSize(mainState.openState->window,mainState.windowMove.width,mainState.windowMove.height);
     if (moused && mainState.mouseMove.moved) glfwSetCursorPos(mainState.openState->window,mainState.mouseMove.left,mainState.mouseMove.base);
-    if (swaped) {std::cerr << "vulkanChange swaped " << mainState.mouseMove.sized << " " << mainState.swapMove.width << "," << mainState.swapMove.height << std::endl;
+    if (swaped) {std::cerr << "vulkanChange swaped " << mainState.swapMove.width << "," << mainState.swapMove.height << std::endl;
         mainState.swapMove.width = mainState.windowMove.width+mainState.MAX_FRAMEBUFFER_RESIZE;
         mainState.swapMove.height = mainState.windowMove.height+mainState.MAX_FRAMEBUFFER_RESIZE;
     	mainState.swapCopy.width = mainState.swapMove.width+mainState.MAX_FRAMEBUFFER_RESIZE;
@@ -1919,7 +1929,7 @@ void vulkanGraphics(enum Phase phase)
 {
     switch (phase) {default: throw std::runtime_error("unsupported phase!");
     break; case (Init):
-    std::cerr << "Graphics,Init " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
+    std::cerr << "Graphics,Init" << std::endl;
     {int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
     GLFWwindow *window = mainState.openState->window;
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -1943,7 +1953,7 @@ void vulkanGraphics(enum Phase phase)
     mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
     mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
     break; case (Start):
-    std::cerr << "Graphics,Start " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
+    std::cerr << "Graphics,Start" << std::endl;
     mainState.physicalState = new PhysicalState(
     mainState.initState->instance,mainState.openState->surface,mainState.extensions,
     mainState.MAX_FRAMES_INFLIGHT);
@@ -1967,7 +1977,7 @@ void vulkanProcess(enum Phase phase)
 {
     switch (phase) {default: throw std::runtime_error("unsupported phase!");
     break; case (Init):
-    std::cerr << "Process,Init " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
+    std::cerr << "Process,Init" << std::endl;
     switch (mainState.registerPlan) {default: throw std::runtime_error("unsupported plan!");
     break; case(Regress): case (Bringup): {struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
@@ -2008,7 +2018,7 @@ void vulkanProcess(enum Phase phase)
     len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);}}
     break; case (Start):
-    std::cerr << "Process,Start " << mainState.windowMove.width << "/" << mainState.windowMove.height << std::endl;
+    std::cerr << "Process,Start" << std::endl;
     mainState.registerOpen = true;
     break; case (Stop):
     std::cerr << "Process,Stop" << std::endl;
@@ -2031,7 +2041,7 @@ int vulkanLoop()
 int vulkanBlock()
 { // wait for work, and return if there might be work to do
     if (!mainState.registerOpen) return 0;
-    glfwWaitEventsTimeout(0.1);
+    glfwWaitEventsTimeout(0.01);
     return 1;
 }
 void planraBoot()
@@ -2056,7 +2066,7 @@ void planraWake(enum Configure hint)
     if (planraDone) return;
     struct timeval stop; gettimeofday(&stop, NULL);
     float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 10.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
+    if (time > 4.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
     if (hint == CursorPress) {
         int key1 = vulkanInfo(CursorPress);
         int key2 = vulkanInfo(CursorPress);
@@ -2076,7 +2086,6 @@ void planraWake(enum Configure hint)
         return;
     }
     if (time - planraLast > 0.01) {planraLast = time;
-        std::cerr << "planraWake " << planraLast << std::endl;
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
         allocConfigure(&center->cfg,5); allocInt(&center->val,5);
         center->cfg[0] = RegisterDone; // TODO remove unnecessary
