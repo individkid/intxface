@@ -1352,8 +1352,8 @@ struct ThreadState {
     }
 };
 
-std::function<bool()> operator||(std::function<bool()> const &left, std::function<bool()> const &right) {
-    return [left,right](){return (left() || right());};
+std::function<bool()> operator&&(std::function<bool()> const &left, std::function<bool()> const &right) {
+    return [left,right](){return (left() && right());};
 }
 struct TempState {
     int seqnum;
@@ -1383,19 +1383,14 @@ struct TempState {
         safe.post(); return true;}
         safe.post(); return false;
     }
-    int temp(std::function<bool()> fnc) {
-        // return new identifier for given lambda
+    int temp() {
+        // return new identifier
         int tag;
         safe.wait();
         tag = seqnum++;
-        done[tag] = fnc;
         pend.insert(tag);
         safe.post();
         return tag;
-    }
-    int temp() {
-        // return new identifier for trivial lambda
-        return temp([](){return true;});
     }
     std::function<bool()> temp(int tag) {
         // return lambda for identifier
@@ -1404,9 +1399,9 @@ struct TempState {
     void temp(int tag, std::function<bool()> fnc) {
         // append condition
         safe.wait();
-        if (done.find(tag) == done.end()) throw std::runtime_error("invalid identifier!");
         if (pend.find(tag) == pend.end()) throw std::runtime_error("disabled identifier!");
-        done[tag] = done[tag] || fnc;
+        if (done.find(tag) == done.end()) done[tag] = fnc;
+        else done[tag] = done[tag] && fnc;
         safe.post();
     }
     std::function<bool()> temp(bool &vld, int &tag) {
@@ -1426,7 +1421,6 @@ struct TempState {
         vld = false;
         safe.wait();
         if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
-        if (done.find(tag) == done.end()) throw std::runtime_error("temp not called yet in temq!");
         pend.erase(tag);
         safe.post();
     }
@@ -1535,7 +1529,7 @@ template<class Buffer> struct WrapState {
         std::function<bool()> done = (buf().second?
         thread->push((std::function<void()>)[setup,ptr](){ptr->init(); setup(ptr);},seq()):
         thread->push((std::function<void()>)[setup,ptr](){setup(ptr);},seq()));
-        sep(done); tmp(done); temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
+        sep(done); tmp(done);
         return done;
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
@@ -1543,7 +1537,7 @@ template<class Buffer> struct WrapState {
         std::function<bool()> done = (buf().second?
         thread->push((std::function<VkFence()>)[setup,ptr](){ptr->init(); return setup(ptr);},seq()):
         thread->push((std::function<VkFence()>)[setup,ptr](){return setup(ptr);},seq()));
-        sep(done); tmp(done); temp->temq(sepvld,septag); temp->temq(seqvld,seqtag); setbuf.second = false;
+        sep(done); tmp(done);
         return done;
     }
     std::function<bool()> set() {
@@ -1562,7 +1556,8 @@ template<class Buffer> struct WrapState {
     void put() {
         if (tag == SwapBuf) std::cerr << "put " << buf().first << std::endl;
         running.push_back(buf().first); toready.push_back(tmp());
-        temp->temq(setvld,settag); setbuf.first = 0;
+        temp->temq(setvld,settag); temp->temq(sepvld,septag); temp->temq(seqvld,seqtag);
+        setbuf.second = false; setbuf.first = 0;
     }
     bool get() {
     // return whether first enque after resize is ready
