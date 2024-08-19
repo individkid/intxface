@@ -96,117 +96,6 @@ struct MainState {
 #endif
 } mainState = {0};
 
-struct SafeState {
-    sem_t semaphore;
-    SafeState() {
-        if (sem_init(&semaphore, 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");
-    }
-    ~SafeState() {
-        if (sem_destroy(&semaphore) != 0) {
-        std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
-    }
-    void wait() {
-        if (sem_wait(&semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
-    }
-    void post() {
-        if (sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
-    }
-    bool trywait() {
-        int tryval = sem_trywait(&semaphore);
-        if (tryval != 0 && errno != EAGAIN) throw std::runtime_error("cannot trywait for semaphore!");
-        return (tryval == 0);
-    }
-    int get() {
-        int sval;
-        if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
-        return sval;
-    }
-};
-
-struct TempState {
-    int seqnum;
-    std::map<int,std::deque<std::function<bool()>>> done;
-    std::set<int> pend;
-    std::set<int> flip;
-    SafeState safe;
-    TempState() {
-        seqnum = 0;
-    }
-    int temp() {
-    // return identifier for done function
-        int num;
-        safe.wait();
-        num = seqnum++;
-        done[num] = std::deque<std::function<bool()>>();
-        pend.insert(num);
-        safe.post();
-        return num;
-    }
-    std::function<bool()> temp(int tmp) {
-    // return done function from identifier
-        return [this,tmp](){
-            std::deque<std::function<bool()>> found;
-            safe.wait();
-            if (done.find(tmp) == done.end()) {safe.post(); return true;}
-            if (pend.find(tmp) != pend.end()) {safe.post(); return false;}
-            found = done[tmp];
-            safe.post();
-	    while (!found.empty() && (*found.begin())()) found.pop_front();
-            safe.wait();
-            if (found.empty()) {done.erase(tmp); safe.post(); return true;}
-            done[tmp] = found;
-            safe.post();
-            return false;};
-    }
-    void temp(int tmp, std::function<bool()> fnc) {
-    // bind done function to identified done function
-        safe.wait();
-        if (pend.find(tmp) == pend.end()) throw std::runtime_error("temq already called in temp!");
-        if (done.find(tmp) == done.end()) throw std::runtime_error("temp not called yet in temp!");
-        done[tmp].push_back(fnc);
-        safe.post();
-    }
-    std::function<bool()> temp(bool &vld, int &tag) {
-        if (vld) return temp(tag);
-        vld = true;
-        tag = temp();
-        return temp(tag);
-    }
-    void temp(bool &vld, int &tag, std::function<bool()> given) {
-        if (!vld) {
-        vld = true;
-        tag = temp();}
-        temp(tag,given);
-    }
-    void temq(bool &vld, int tag) {
-        if (!vld) throw std::runtime_error("temq call not valid!");
-        vld = false;
-        safe.wait();
-        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
-        if (done.find(tag) == done.end()) throw std::runtime_error("temp not called yet in temq!");
-        pend.erase(tag);
-        safe.post();
-    }
-    int temq() {
-        int tag = temp();
-        safe.wait();
-        flip.insert(tag);
-        safe.post();
-        temp(tag,[this,tag](){
-            bool ret;
-            safe.wait();
-            ret = (flip.find(tag) == flip.end());
-            safe.post();
-            return ret;});
-        return tag;
-    }
-    void temq(int tag) {
-        safe.wait();
-        flip.erase(tag);
-        safe.post();
-    }
-};
-
 void windowMoved(GLFWwindow* window, int xpos, int ypos)
 {
     struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
@@ -1318,8 +1207,33 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, VkExtent
     return fence;}
 };
 
-bool thread_debug = false;
-int debug_ord = 0;
+struct SafeState {
+    sem_t semaphore;
+    SafeState() {
+        if (sem_init(&semaphore, 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");
+    }
+    ~SafeState() {
+        if (sem_destroy(&semaphore) != 0) {
+        std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
+    }
+    void wait() {
+        if (sem_wait(&semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
+    }
+    void post() {
+        if (sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+    }
+    bool trywait() {
+        int tryval = sem_trywait(&semaphore);
+        if (tryval != 0 && errno != EAGAIN) throw std::runtime_error("cannot trywait for semaphore!");
+        return (tryval == 0);
+    }
+    int get() {
+        int sval;
+        if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
+        return sval;
+    }
+};
+
 void vulkanSafe();
 struct ThreadState {
     VkDevice device;
@@ -1434,11 +1348,89 @@ struct ThreadState {
         return done;
     }
     std::function<bool()> push(std::function<void()> given, std::function<bool()> last) {
-        thread_debug = true;
         return push((std::function<VkFence()>)[given](){given(); return VK_NULL_HANDLE;},last);
     }
 };
 
+std::function<bool()> operator||(std::function<bool()> const &left, std::function<bool()> const &right) {
+    return [left,right](){return (left() || right());};
+}
+struct TempState {
+    int seqnum;
+    std::map<int,std::function<bool()>> done;
+    std::set<int> pend;
+    SafeState safe;
+    TempState() {
+        seqnum = 0;
+    }
+    void temq() {
+        // maintain main state lambdas
+        // separate thread lambdas must protect themselves
+        std::deque<int> todo;
+        safe.wait();
+        for (auto i = done.begin(); i != done.end(); i++)
+        if ((*i).second()) todo.push_back((*i).first);
+        for (auto i = todo.begin(); i != todo.end(); i++)
+        done.erase(*i);
+        safe.post();
+    }
+    bool temq(int tag) {
+        // thread safe check of indicated lambda
+        safe.wait();
+        if (pend.find(tag) != pend.end()) {
+        safe.post(); return false;}
+        if (done.find(tag) == done.end()) {
+        safe.post(); return true;}
+        safe.post(); return false;
+    }
+    int temp(std::function<bool()> fnc) {
+        // return new identifier for given lambda
+        int tag;
+        safe.wait();
+        tag = seqnum++;
+        done[tag] = fnc;
+        pend.insert(tag);
+        safe.post();
+        return tag;
+    }
+    int temp() {
+        // return new identifier for trivial lambda
+        return temp([](){return true;});
+    }
+    std::function<bool()> temp(int tag) {
+        // return lambda for identifier
+        return [this,tag](){return temq(tag);};
+    }
+    void temp(int tag, std::function<bool()> fnc) {
+        // append condition
+        safe.wait();
+        if (done.find(tag) == done.end()) throw std::runtime_error("invalid identifier!");
+        if (pend.find(tag) == pend.end()) throw std::runtime_error("disabled identifier!");
+        done[tag] = done[tag] || fnc;
+        safe.post();
+    }
+    std::function<bool()> temp(bool &vld, int &tag) {
+        if (vld) return temp(tag);
+        vld = true;
+        tag = temp();
+        return temp(tag);
+    }
+    void temp(bool &vld, int &tag, std::function<bool()> given) {
+        if (!vld) {
+        vld = true;
+        tag = temp();}
+        temp(tag,given);
+    }
+    void temq(bool &vld, int tag) {
+        if (!vld) throw std::runtime_error("temq call not valid!");
+        vld = false;
+        safe.wait();
+        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
+        if (done.find(tag) == done.end()) throw std::runtime_error("temp not called yet in temq!");
+        pend.erase(tag);
+        safe.post();
+    }
+};
 template<class Buffer> struct WrapState {
     std::deque<Buffer*> pool;
     std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
@@ -1491,7 +1483,7 @@ template<class Buffer> struct WrapState {
     // change queue item size
         if (siz != size) {size = siz;
             while (!pool.empty()) {delete pool.front(); pool.pop_front(); count--;}
-	    // TODO do this when copy needed in separate thread
+            // TODO do this when copy needed in separate thread
             if (tag != DrawBuf && tag != SwapBuf) copy = realloc(copy,size);}
     // return whether queues are not full
         if (!thread->push()) return false;
@@ -1881,6 +1873,7 @@ bool vulkanChange()
     if (moused) {mainState.mouseCopy.moved = mainState.mouseCopy.sized = false; mainState.mouseCopy = mainState.mouseMove;}
     if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
     if (deferd && !mainState.registerDone[Defer]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
+    mainState.tempState->temq();
     tight = vulkanEnact(Extent,swaped,tight);
     tight = vulkanEnact(Follow,(moved||sized),tight);
     tight = vulkanEnact(Modify,moused,tight);
