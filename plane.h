@@ -5,11 +5,11 @@ enum Memory;
 struct Center;
 typedef void (*vftype)(); // init boot main block safe
 typedef int (*zftype)(); // loop
-typedef void (*yftype)(enum Thread proc, enum Phase wait); // wait
+typedef void (*yftype)(enum Thread proc, enum Phase wait); // phase
 typedef void (*uftype)(struct Center **center); // copy
 typedef void (*sftype)(enum Configure hint); // wake
 typedef int (*tftype)(enum Configure cfg); // info
-void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype wait, vftype safe, uftype copy, tftype info);
+void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype phase, vftype safe, uftype copy, tftype info);
 void planeBoot();
 void planeMain();
 int planeLoop();
