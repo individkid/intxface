@@ -1463,6 +1463,8 @@ template<class Buffer> struct WrapState {
     }
     bool clr(int siz) {
     // advance queues with done fronts
+        while (!toinuse.empty() && toinuse.front()()) {
+            toinuse.pop_front();}
         while (!toready.empty() && toready.front()()) {
             if (ready && !toinuse.empty()) {
                 while (toinuse.size() > 1) {inuse.push_back(0); topool.push_back(toinuse.front()); toinuse.pop_front();}
