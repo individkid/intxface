@@ -1640,22 +1640,24 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     // swap buffer is available to get
     if (!drawQueue->clr(shader)) return true;
     // draw buffer is ready to set
-    /* for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
+    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
     drawQueue->seq((*i)->sep()); // draw waits for write to query buffer
     buffer.push_back((*i)->buf().first); // draw binds to written query buffer
-    if (Component__Micro__MicroOn(shader) == CoPyon) {
-    (*i)->set(); (*i)->put(); (*i)->seq(drawQueue->sep());} else {
-    (*i)->tmp(drawQueue->tmp()); (*i)->set();}} */
+    (*i)->tmp(drawQueue->tmp()); // reserve query buffer until written by draw
+    (*i)->set(); (*i)->put();} // kick off write of copy to query buffer
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
     buffer.push_back((*i)->get(drawQueue->tmp()));}
     swap = queue->swapQueue->get(drawQueue->tmp());
     std::function<bool()> done = drawQueue->set((std::function<VkFence(DrawState*)>)
     [buffer,swap,extent,base,limit](DrawState*draw){
     return draw->setup(buffer,swap,extent,base,limit);});
+    if (Component__Micro__MicroOn(shader) == CoPyon)
+    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
+    // kick off read of query buffer after kicking off draw to it
+    (*i)->seq(drawQueue->sep()); // wait to read query until after draw
+    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});
+    (*i)->put();}
     drawQueue->put();
-    /* for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
-    if (Component__Micro__MicroOn(shader) == CoPyon) {
-    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}} */
     return false;
 }
 bool vulkanSwap()
