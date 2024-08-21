@@ -1363,12 +1363,13 @@ struct TempState {
     void temq() {
         // maintain main state lambdas
         // separate thread lambdas must protect themselves
-        std::deque<int> todo;
+        bool doto = true;
         safe.wait();
+	while (doto) {std::deque<int> todo; doto = false;
         for (auto i = done.begin(); i != done.end(); i++) {
         while (!(*i).second.empty() && (*i).second.front()()) (*i).second.pop_front();
         if ((*i).second.empty()) todo.push_back((*i).first);}
-        for (auto i = todo.begin(); i != todo.end(); i++) done.erase(*i);
+        for (auto i = todo.begin(); i != todo.end(); i++) {doto = true; done.erase(*i);}}
         safe.post();
     }
     bool temq(int tag) {
