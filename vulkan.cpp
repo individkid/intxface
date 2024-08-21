@@ -1352,12 +1352,9 @@ struct ThreadState {
     }
 };
 
-std::function<bool()> operator&&(std::function<bool()> const &left, std::function<bool()> const &right) {
-    return [left,right](){return (left() && right());};
-}
 struct TempState {
     int seqnum;
-    std::map<int,std::function<bool()>> done;
+    std::map<int,std::deque<std::function<bool()>>> done;
     std::set<int> pend;
     SafeState safe;
     TempState() {
@@ -1368,10 +1365,10 @@ struct TempState {
         // separate thread lambdas must protect themselves
         std::deque<int> todo;
         safe.wait();
-        for (auto i = done.begin(); i != done.end(); i++)
-        if ((*i).second()) todo.push_back((*i).first);
-        for (auto i = todo.begin(); i != todo.end(); i++)
-        done.erase(*i);
+        for (auto i = done.begin(); i != done.end(); i++) {
+        while (!(*i).second.empty() && (*i).second.front()()) (*i).second.pop_front();
+        if ((*i).second.empty()) todo.push_back((*i).first);}
+        for (auto i = todo.begin(); i != todo.end(); i++) done.erase(*i);
         safe.post();
     }
     bool temq(int tag) {
@@ -1400,8 +1397,7 @@ struct TempState {
         // append condition
         safe.wait();
         if (pend.find(tag) == pend.end()) throw std::runtime_error("disabled identifier!");
-        if (done.find(tag) == done.end()) done[tag] = fnc;
-        else done[tag] = done[tag] && fnc;
+        done[tag].push_back(fnc);
         safe.post();
     }
     std::function<bool()> temp(bool &vld, int &tag) {
