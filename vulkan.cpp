@@ -1527,21 +1527,25 @@ template<class Buffer> struct WrapState {
         setbuf.first = pool.front(); pool.pop_front();
         return setbuf;
     }
+    std::function<bool()> set(std::function<bool()> done) {
+        sep(done); // postpone those depending on this setup
+        tmp(done); // postpone buffer ready until after setup
+        temp->temq(sepvld,septag); // subsequent seq depend on subsequent set
+        temp->temq(seqvld,seqtag); // subsequent set depend on subsequent seq
+        setbuf.second = false; // subsequent set need not push init
+        return done;
+    }
     std::function<bool()> set(std::function<void(Buffer*buf)> setup) {
         Buffer *ptr = buf().first;
-        std::function<bool()> done = (buf().second?
+        return set((std::function<bool()>)(buf().second?
         thread->push((std::function<void()>)[setup,ptr](){ptr->init(); setup(ptr);},seq()):
-        thread->push((std::function<void()>)[setup,ptr](){setup(ptr);},seq()));
-        sep(done); tmp(done);
-        return done;
+        thread->push((std::function<void()>)[setup,ptr](){setup(ptr);},seq())));
     }
     std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
         Buffer *ptr = buf().first;
-        std::function<bool()> done = (buf().second?
+        return set((std::function<bool()>)(buf().second?
         thread->push((std::function<VkFence()>)[setup,ptr](){ptr->init(); return setup(ptr);},seq()):
-        thread->push((std::function<VkFence()>)[setup,ptr](){return setup(ptr);},seq()));
-        sep(done); tmp(done);
-        return done;
+        thread->push((std::function<VkFence()>)[setup,ptr](){return setup(ptr);},seq())));
     }
     std::function<bool()> set() {
         buf().first->bind(0,size,copy,[](){});
@@ -1559,8 +1563,7 @@ template<class Buffer> struct WrapState {
     void put() {
         if (tag == SwapBuf) std::cerr << "put " << buf().first << std::endl;
         running.push_back(buf().first); toready.push_back(tmp());
-        temp->temq(setvld,settag); temp->temq(sepvld,septag); temp->temq(seqvld,seqtag);
-        setbuf.second = false; setbuf.first = 0;
+        temp->temq(setvld,settag); setbuf.first = 0;
     }
     bool get() {
     // return whether first enque after resize is ready
