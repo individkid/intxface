@@ -74,6 +74,7 @@ Configure = {
 	"RegisterOpen", -- thread running mask
 	"RegisterInit", -- thread testing mask
 	"RegisterPlan", -- thread testing plan
+	"RegisterPoll", -- poll second thousandths
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result

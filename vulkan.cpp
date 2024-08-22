@@ -47,34 +47,35 @@ struct RatioState {
     int left, base, width, height;
 };
 struct MainState {
-    bool manipReact[Reacts];
-    bool manipEnact[Enacts];
-    bool manipAction[Actions];
-    bool registerDone[Enacts];
-    bool registerOpen;
-    enum Plan registerPlan;
-    enum Interp mouseRead, mouseWrite;
-    enum Interp windowRead, windowWrite;
-    MouseState mouseClick, mouseMove, mouseCopy;
-    WindowState windowClick, windowMove, windowCopy;
-    SizeState swapMove, swapCopy;
-    RatioState windowRatio;
-    std::deque<MouseState> queryMove; MouseState queryCopy;
-    std::deque<Center*> deferMove; Center* deferCopy;
-    std::deque<int> linePress;
-    int charPress;
-    int mouseIndex;
-    int paramFollow;
-    int paramModify;
-    enum Micro paramDisplay;
-    enum Micro paramBright;
-    enum Micro paramDetect;
-    int paramBase;
-    int paramLimit;
-    int littleIndex;
-    int littleSize;
-    Little *littleState;
-    int argc; char **argv; bool reset;
+    bool manipReact[Reacts]; // little language changed; user filter
+    bool manipEnact[Enacts]; // set and forget; work on filtered user
+    bool manipAction[Actions]; // micro code response to little language
+    bool registerDone[Enacts]; // record whether work remains
+    bool registerOpen; // whether main loop running
+    enum Plan registerPlan; // which builtin test to run
+    int registerPoll; // how long to what without wake
+    enum Interp mouseRead, mouseWrite; // which copy of mouse
+    enum Interp windowRead, windowWrite; // which copy of window
+    MouseState mouseClick, mouseMove, mouseCopy; // pierce, current, processed
+    WindowState windowClick, windowMove, windowCopy; // pierce, current, processed
+    SizeState swapMove, swapCopy; // current, processed
+    RatioState windowRatio; // physical to virtual
+    std::deque<MouseState> queryMove; MouseState queryCopy; // synchronous changes
+    std::deque<Center*> deferMove; Center* deferCopy; // calls to dma
+    std::deque<int> linePress; // synchronous characters
+    int charPress; // async character
+    int mouseIndex; // which plane to manipulate
+    int paramFollow; // which matrix for window
+    int paramModify; // which matrix for manipulate
+    enum Micro paramDisplay; // which shader for diplay
+    enum Micro paramBright; // which shader for index
+    enum Micro paramDetect; // which shader for pierce
+    int paramBase; // which facet to start on
+    int paramLimit; // which facet to finish before
+    int littleIndex; // which state user is in
+    int littleSize; // how many states user can be in
+    Little *littleState; // user changes to React and Action
+    int argc; char **argv;
     InitState *initState;
     OpenState* openState;
     PhysicalState* physicalState;
@@ -82,12 +83,12 @@ struct MainState {
     ThreadState *threadState;
     TempState *tempState;
     QueueState* queueState;
-    const int windowDelta = 10;
-    const int MAX_FRAMES_INFLIGHT = 2;
-    const int MAX_BUFFERS_AVAILABLE = 3;
-    const int MAX_FENCES_INFLIGHT = 3;
-    const int MAX_FRAMEBUFFER_SWAPS = 2;
-    const int MAX_FRAMEBUFFER_RESIZE = 100;
+    const int windowDelta = 10; // how far arrow keys move window edges
+    const int MAX_FRAMES_INFLIGHT = 2; // how many swap indices
+    const int MAX_BUFFERS_AVAILABLE = 3; // how many buffers per memory
+    const int MAX_FENCES_INFLIGHT = 3; // how many fences to wait for
+    const int MAX_FRAMEBUFFER_SWAPS = 2; // how many swap buffers
+    const int MAX_FRAMEBUFFER_RESIZE = 100; // window change before new swap buffer
     const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 #ifdef NDEBUG
     const std::vector<const char*> layers;
@@ -1272,7 +1273,7 @@ struct ThreadState {
                 arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front();
                 arg->when.pop_front(); arg->preord.pop_front();}
             while (!arg->setup.empty()) {
-		        std::function<VkFence()> setup = arg->setup.front();
+                std::function<VkFence()> setup = arg->setup.front();
                 VkFence fence;
                 arg->protect.post();
                 fence = setup();
@@ -1284,10 +1285,11 @@ struct ThreadState {
                 arg->semaphore.wait();
                 arg->protect.wait();}
             else {
-                arg->protect.post();
                 VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
-                result = vkWaitForFences(arg->device,1,&arg->fence.front(),VK_FALSE,NANOSECONDS);}
-                arg->protect.wait();
+                VkFence fence = arg->fence.front();
+                arg->protect.post();
+                result = vkWaitForFences(arg->device,1,&fence,VK_FALSE,NANOSECONDS);
+                arg->protect.wait();}
                 if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
                 if (result == VK_SUCCESS) {int next = arg->order.front();
                 arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
@@ -1743,7 +1745,7 @@ bool vulkanChange()
     bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left || mainState.mouseMove.base != mainState.mouseCopy.base);
     bool queryd = !mainState.queryMove.empty();
     bool deferd = !mainState.deferMove.empty();
-    bool drawed = ((mainState.manipEnact[Follow] && moved) || sized ||
+    bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
         (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
     bool swaped = ((mainState.windowMove.width > mainState.swapMove.width) || (mainState.windowMove.height > mainState.swapMove.height));
     bool tight = false;
@@ -1906,10 +1908,12 @@ void vulkanInit()
 void planraBoot()
 {
     struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 3; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,3); allocInt(&center->val,3);
-    center->cfg[0] = RegisterPlan; center->cfg[1] = RegisterInit; center->cfg[2] = RegisterOpen;
-    center->val[0] = PLAN; center->val[1] = center->val[2] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
+    center->mem = Configurez; center->siz = 4; center->idx = 0; center->slf = 0;
+    allocConfigure(&center->cfg,4); allocInt(&center->val,4);
+    center->cfg[0] = RegisterPlan; center->cfg[1] = RegisterPoll;
+    center->cfg[2] = RegisterInit; center->cfg[3] = RegisterOpen;
+    center->val[0] = PLAN; center->val[1] = 100;
+    center->val[2] = center->val[3] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);
 }
 int vulkanLoop()
@@ -1921,7 +1925,7 @@ int vulkanLoop()
 int vulkanBlock()
 { // wait for work, and return if there might be work to do
     if (!mainState.registerOpen) return 0;
-    glfwWaitEventsTimeout(0.01);
+    glfwWaitEventsTimeout(0.0001*mainState.registerPoll);
     return 1;
 }
 void vulkanPhase(enum Thread thread, enum Phase phase)
@@ -1984,6 +1988,7 @@ void vulkanCopy(struct Center **given)
     case (Infect): mainState.windowMove.height = center->val[i]; mainState.windowMove.sized = true; break;
     case (Effect): mainState.windowCopy.height = center->val[i]; break;}
     break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
+    break; case (RegisterPoll): mainState.registerPoll = center->val[i];
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
     mainState.registerDone[(Enact)j] = (mainState.registerDone[(Enact)j] || ((center->val[i]&(1<<j)) != 0));
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
@@ -2112,114 +2117,6 @@ void planraWake(enum Configure hint)
         center->val[3] = vulkanInfo(WindowWidth) + 2;
         center->val[4] = vulkanInfo(WindowHeight) + 2;
         center->idx = 0; center->siz = 5; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    if (hint == CursorClick &&
-        vulkanInfo(ManipReact) == ((1<<Enque)|(1<<Enline))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<North))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<East);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<East))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<South);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<South))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<East)|(1<<South);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<East)|(1<<South))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<East)|(1<<South)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<East)|(1<<South)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<South))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<South)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<South)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<West);
-        center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
-    else if (hint == CursorClick && vulkanInfo(ManipReact) ==
-        ((1<<Enque)|(1<<Enline)|(1<<North)|(1<<East)|(1<<West))) {
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = ManipReact;
-        center->val[0] = (1<<Enque)|(1<<Enline);
-        center->idx = 0; center->siz = 1; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
 }
