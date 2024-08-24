@@ -851,6 +851,7 @@ void init() {
     vkDestroySwapchainKHR(device, swap, nullptr);}
 };
 
+// TODO map identField to one of VK_FORMAT_R32G32_SFLOAT or VK_FORMAT_R32_UINT
 struct VertexState {
     int stride;
     std::vector<VkFormat> format;
@@ -1704,9 +1705,10 @@ bool vulkanDetect()
 bool vulkanQuery()
 {
     WrapState<BufferState> *ptr = mainState.queueState->bufferQueue[Piercez];
+    TempState *tmp = mainState.tempState;
     if (!ptr->get()) return true;
-    int tag = mainState.tempState->temp();
-    planeReady(tag,(Pierce*)ptr->get(mainState.tempState->temp(tag))->bind());
+    int tag = tmp->temp();
+    planeReady(tag,(Pierce*)ptr->get(tmp->temp(tag))->bind());
     return false;
 }
 void vulkanDone(int tag)
