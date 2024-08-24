@@ -37,7 +37,7 @@ Memory = {
 	"Basisz", -- base for each dimension
 	"Matrixz", -- transformations
 	"Uniformz", -- references into arrays
-	"Indexz", -- per fragment triangle identifier
+	"Piercez", -- per fragment info
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines
 	"Littlez", -- little machine lines
@@ -197,7 +197,6 @@ MicroMid = {
 MicroOut = {
 	"DisPlay", -- produce color
 	"Compute", -- produce pierce point
-	"PRepare", -- produce facet identifier
 	"Discard", -- no fragment shader
 }
 MicroOn = {
@@ -207,17 +206,15 @@ MicroOn = {
 Micro = {
 	"MicroPRPC", -- fetch transform display
 	"MicroPRCP", -- fetch transform pierce
-	"MicroPRRC", -- fetch transform alias
 	"MicroCRPC", -- index transform display
 	"MicroCRCP", -- index transform pierce
-	"MicroCRRC", -- index transform alias
 	"MicroCPDP", -- index construct planes
 	"MicroCCDP", -- index intersect points
 }
 WrapTag = {
 	"FetchBuf",
 	"ChangeBuf",
-	"StoreBuf",
+	"StoreBuf", 
 	"QueryBuf",
 	"DrawBuf",
 	"SwapBuf",
@@ -336,54 +333,42 @@ Program = {
 Component = {
 	{"Micro","MicroPRPC","MicroIn","Practice"},
 	{"Micro","MicroPRCP","MicroIn","Practice"},
-	{"Micro","MicroPRRC","MicroIn","Practice"},
 	{"Micro","MicroCRPC","MicroIn","Concept"},
 	{"Micro","MicroCRCP","MicroIn","Concept"},
-	{"Micro","MicroCRRC","MicroIn","Concept"},
 	{"Micro","MicroCPDP","MicroIn","Concept"},
 	{"Micro","MicroCCDP","MicroIn","Concept"},
 	{"Micro","MicroPRPC","MicroMid","Raster"},
 	{"Micro","MicroPRCP","MicroMid","Raster"},
-	{"Micro","MicroPRRC","MicroMid","Raster"},
 	{"Micro","MicroCRPC","MicroMid","Raster"},
 	{"Micro","MicroCRCP","MicroMid","Raster"},
-	{"Micro","MicroCRRC","MicroMid","Raster"},
 	{"Micro","MicroCPDP","MicroMid","CoPoint"},
 	{"Micro","MicroCCDP","MicroMid","Coplane"},
 	{"Micro","MicroPRPC","MicroOut","DisPlay"},
 	{"Micro","MicroPRCP","MicroOut","Compute"},
-	{"Micro","MicroPRRC","MicroOut","PRepare"},
 	{"Micro","MicroCRPC","MicroOut","DisPlay"},
 	{"Micro","MicroCRCP","MicroOut","Compute"},
-	{"Micro","MicroCRRC","MicroOut","PRepare"},
 	{"Micro","MicroCPDP","MicroOut","Discard"},
 	{"Micro","MicroCCDP","MicroOut","Discard"},
 	{"Micro","MicroPRPC","MicroOn","Caryon"},
 	{"Micro","MicroPRCP","MicroOn","CoPyon"},
-	{"Micro","MicroPRRC","MicroOn","Caryon"},
 	{"Micro","MicroCRPC","MicroOn","Caryon"},
 	{"Micro","MicroCRCP","MicroOn","CoPyon"},
-	{"Micro","MicroCRRC","MicroOn","Caryon"},
 	{"Micro","MicroCPDP","MicroOn","CoPyon"},
 	{"Micro","MicroCCDP","MicroOn","CoPyon"},
 }
 VertexG = {
 	{"Micro","MicroPRPC","Str","vertexPracticeG"},
 	{"Micro","MicroPRCP","Str","vertexPracticeG"},
-	{"Micro","MicroPRRC","Str","vertexPracticeG"},
 	{"Micro","MicroCRPC","Str","vertexRasterG"},
 	{"Micro","MicroCRCP","Str","vertexRasterG"},
-	{"Micro","MicroCRRC","Str","vertexRasterG"},
 	{"Micro","MicroCPDP","Str","vertexCopointG"},
 	{"Micro","MicroCCDP","Str","vertexCoplaneG"},
 }
 FragmentG = {
 	{"Micro","MicroPRPC","Str","fragmentDisplayG"},
 	{"Micro","MicroPRCP","Str","fragmentComputeG"},
-	{"Micro","MicroPRRC","Str","fragmentPrepareG"},
 	{"Micro","MicroCRPC","Str","fragmentDisplayG"},
 	{"Micro","MicroCRCP","Str","fragmentComputeG"},
-	{"Micro","MicroCRRC","Str","fragmentPrepareG"},
 	{"Micro","MicroCPDP","Str","fragmentDiscardG"},
 	{"Micro","MicroCCDP","Str","fragmentDiscardG"},
 }
@@ -394,7 +379,7 @@ TypeQ = {
 	{"Memory","Basisz","WrapTag","StoreBuf"},
 	{"Memory","Matrixz","WrapTag","StoreBuf"},
 	{"Memory","Uniformz","WrapTag","ChangeBuf"},
-	{"Memory","Indexz","WrapTag","QueryBuf"},
+	{"Memory","Piercez","WrapTag","QueryBuf"},
 	{"Memory","Stackz","WrapTag","WrapTags"},
 	{"Memory","Machinez","WrapTag","WrapTags"},
 	{"Memory","Littlez","WrapTag","WrapTags"},
@@ -405,24 +390,18 @@ BindQ = {
 	{"Micro","MicroPRPC","Int","1","Memory","Matrixz"},
 	{"Micro","MicroPRPC","Int","2","Memory","Memorys"},
 	{"Micro","MicroPRCP","Int","0","Memory","Memorys"},
-	{"Micro","MicroPRRC","Int","0","Memory","Vertexz"},
-	{"Micro","MicroPRRC","Int","1","Memory","Matrixz"},
-	{"Micro","MicroPRRC","Int","2","Memory","Indexz"},
-	{"Micro","MicroPRRC","Int","3","Memory","Memorys"},
 	{"Micro","MicroCRPC","Int","0","Memory","Memorys"},
 	{"Micro","MicroCRCP","Int","0","Memory","Memorys"},
-	{"Micro","MicroCRRC","Int","0","Memory","Memorys"},
 	{"Micro","MicroCPDP","Int","0","Memory","Memorys"},
 	{"Micro","MicroCCDP","Int","0","Memory","Memorys"},
 }
 QueryQ = {
 	{"Micro","MicroPRPC","Int","0","Memory","Memorys"},
-	{"Micro","MicroPRCP","Int","0","Memory","Memorys"},
-	{"Micro","MicroPRRC","Int","0","Memory","Indexz"},
-	{"Micro","MicroPRRC","Int","1","Memory","Memorys"},
+	{"Micro","MicroPRCP","Int","0","Memory","Piercez"},
+	{"Micro","MicroPRCP","Int","1","Memory","Memorys"},
 	{"Micro","MicroCRPC","Int","0","Memory","Memorys"},
-	{"Micro","MicroCRCP","Int","0","Memory","Memorys"},
-	{"Micro","MicroCRRC","Int","0","Memory","Memorys"},
+	{"Micro","MicroCRCP","Int","0","Memory","Piercez"},
+	{"Micro","MicroCRCP","Int","1","Memory","Memorys"},
 	{"Micro","MicroCPDP","Int","0","Memory","Memorys"},
 	{"Micro","MicroCCDP","Int","0","Memory","Memorys"},
 }
@@ -630,6 +609,10 @@ Matrix = {
 Basis = {
 	{"mat","Old",{},{36}},
 }
+Pierce = {
+	{"pnt","Old",{},{3}},
+	{"idx","Int32",{},{}},
+}
 Domain = {
 	{"len","Int",{},{}},
 	{"val","Express",{},"len"},
@@ -739,7 +722,6 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	{"buf","Int",{["mem"]={["Indexz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"pvn","Little",{["mem"]={["Littlez"]=true}},"siz"},

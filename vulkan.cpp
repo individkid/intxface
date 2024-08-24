@@ -675,6 +675,7 @@ VkFence getup() {
     vkBeginCommandBuffer(command, &begin);
     VkBufferCopy copy{};
     copy.size = size;
+    // TODO call vkCmdCopyImageToBuffer if bound to SwapBuf
     vkCmdCopyBuffer(command, buffer, staging, 1, &copy);
     vkEndCommandBuffer(command);
     VkSubmitInfo submit{};
@@ -683,6 +684,8 @@ VkFence getup() {
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
+void *bind() {
+    return mapped;}
 void bind(int loc, int siz, const void *ptr, std::function<void()> dat) {
     this->loc = loc; this->siz = siz; this->ptr = ptr; this->dat = dat;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
@@ -1367,7 +1370,7 @@ struct TempState {
         // separate thread lambdas must protect themselves
         bool doto = true;
         safe.wait();
-	while (doto) {std::deque<int> todo; doto = false;
+        while (doto) {std::deque<int> todo; doto = false;
         for (auto i = done.begin(); i != done.end(); i++) {
         while (!(*i).second.empty() && (*i).second.front()()) (*i).second.pop_front();
         if ((*i).second.empty()) todo.push_back((*i).first);}
@@ -1391,6 +1394,12 @@ struct TempState {
         pend.insert(tag);
         safe.post();
         return tag;
+    }
+    void tmpq(int tag) {
+        safe.wait();
+        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
+        pend.erase(tag);
+        safe.post();
     }
     std::function<bool()> temp(int tag) {
         // return lambda for identifier
@@ -1418,10 +1427,7 @@ struct TempState {
     void temq(bool &vld, int tag) {
         if (!vld) throw std::runtime_error("temq call not valid!");
         vld = false;
-        safe.wait();
-        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
-        pend.erase(tag);
-        safe.post();
+        tmpq(tag);
     }
 };
 
@@ -1642,11 +1648,6 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     // swap buffer is available to get
     if (!drawQueue->clr(shader)) return true;
     // draw buffer is ready to set
-    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
-    drawQueue->seq((*i)->sep()); // draw waits for write to query buffer
-    buffer.push_back((*i)->buf().first); // draw binds to written query buffer
-    (*i)->tmp(drawQueue->tmp()); // reserve query buffer until written by draw
-    (*i)->set();} // kick off write of copy to query buffer
     for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
     buffer.push_back((*i)->get(drawQueue->tmp()));}
     swap = queue->swapQueue->get(drawQueue->tmp());
@@ -1654,11 +1655,10 @@ bool vulkanDraw(enum Micro shader, int base, int limit)
     [buffer,swap,extent,base,limit](DrawState*draw){
     return draw->setup(buffer,swap,extent,base,limit);});
     for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
-    if (Component__Micro__MicroOn(shader) == CoPyon) {
-    (*i)->seq(drawQueue->sep()); // wait to read query until after draw
-    // kick off read of query buffer after kicking off draw to it
-    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});}
-    (*i)->put();} // release queary buffer as bind buffer
+    (*i)->seq(drawQueue->sep()); // wait to read image until after draw
+    // kick off read of image buffer after finishing draw
+    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});
+    (*i)->put();}
     drawQueue->put();
     return false;
 }
@@ -1686,8 +1686,7 @@ bool vulkanModify()
 }
 bool vulkanDirect()
 {
-    // TODO write mainState.mouseCopy.left,mainState.mouseCopy.base,
-    // TODO mainState.mouseCopy.angle,mainState.mouseIndex to Uniform
+    // TODO write to Uniform
     return false;
 }
 bool vulkanDisplay()
@@ -1704,16 +1703,21 @@ bool vulkanDetect()
 }
 bool vulkanQuery()
 {
-    return false; // TODO kick off pierce point shader,
-		  // that updates pierce point read through vulkanInfo,
-		  // and call planeSafe when it is done
+    WrapState<BufferState> *ptr = mainState.queueState->bufferQueue[Piercez];
+    if (!ptr->get()) return true;
+    int tag = mainState.tempState->temp();
+    planeReady(tag,(Pierce*)ptr->get(mainState.tempState->temp(tag))->bind());
+    return false;
+}
+void vulkanDone(int tag)
+{
+    mainState.tempState->tmpq(tag);
 }
 bool vulkanDefer()
 {
     struct Center *center = mainState.deferCopy;
     int siz; void *ptr; struct WrapState<BufferState> *buf;
     switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
-    break; case (Indexz): siz = sizeof(center->buf[0]); ptr = center->buf;
     break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
     return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
@@ -2062,9 +2066,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-       planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
+       planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo,vulkanDone);
 #else
-       planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
+       planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo,vulkanDone);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

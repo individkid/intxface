@@ -64,6 +64,7 @@ yftype callPhase = 0;
 uftype callCopy = 0;
 sftype callWake = 0;
 tftype callInfo = 0;
+wftype callDone = 0;
 pthread_t thread[Threads];
 pthread_key_t retstr;
 // resource protected:
@@ -673,7 +674,7 @@ void planePhase(enum Thread bit, enum Phase phase)
 	break; case (Stop): planeFinish(bit);}
 }
 void wrapPlane();
-void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype phase,vftype safe, uftype copy, tftype info)
+void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype phase,vftype safe, uftype copy, tftype info, wftype done)
 {
 	struct sigaction act;
 	act.sa_handler = planeTerm;
@@ -685,7 +686,7 @@ void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block,
 	internal = allocCenterq(); response = allocCenterq();
 	wrapPlane(); datxCaller(planeCall);
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callLoop = loop; callBlock = block; callWake = wake; callPhase = phase; callSafe = safe; callCopy = copy; callInfo = info;
+	callLoop = loop; callBlock = block; callWake = wake; callPhase = phase; callSafe = safe; callCopy = copy; callInfo = info; callDone = done;
 	init(); // planePutstr on argv
 	boot(); // initial planeEnque
 	main(); // planeDeque vulkanChange
@@ -698,6 +699,10 @@ void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block,
 void planeDone(struct Center *ptr)
 {
 	freeCenter(ptr); allocCenter(&ptr,0);
+}
+void planeReady(int tag, struct Pierce *ptr)
+{
+	// TODO find pierce point from image buffer and callDone(tag)
 }
 void planeEnque(enum Thread thread, enum Phase phase, enum Configure hint)
 {
