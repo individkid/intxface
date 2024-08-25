@@ -86,6 +86,10 @@ Configure = {
 	"CursorAngle", -- user input roller
 	"CursorClick", -- user input button
 	"CursorPress", -- user input keyboard
+	"PierceLeft", -- pierce point found
+	"PierceBase", --
+	"PierceDeep", --
+	"PierceIndex", -- which pierce plane
 	"WindowRead", -- which window read
 	"WindowWrite", -- which window written
 	"WindowLeft", -- window position
@@ -165,6 +169,7 @@ Enact = { -- when updates applied
 	"Bright", -- start facet index shader on wake
 	"Detect", -- start pierce point shader on wake
 	"Query", -- capture pierce point on wake
+	"Resp", -- stage pierce point on wake
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
@@ -610,7 +615,7 @@ Basis = {
 	{"mat","Old",{},{36}},
 }
 Pierce = {
-	{"pnt","Old",{},{3}},
+	{"vec","Old",{},{3}},
 	{"idx","Int32",{},{}},
 }
 Domain = {
@@ -722,6 +727,7 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
+	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"pvn","Little",{["mem"]={["Littlez"]=true}},"siz"},

@@ -56,11 +56,15 @@ struct MainState {
     int registerPoll; // how long to what without wake
     enum Interp mouseRead, mouseWrite; // which copy of mouse
     enum Interp windowRead, windowWrite; // which copy of window
+    enum Interp swapRead, swapWrite; // which copy of query
+    enum Interp queryRead, queryWrite; // which copy of query
+    enum Interp respRead, respWrite; // which copy of resp
+    RatioState windowRatio; // physical to virtual
     MouseState mouseClick, mouseMove, mouseCopy; // pierce, current, processed
     WindowState windowClick, windowMove, windowCopy; // pierce, current, processed
     SizeState swapMove, swapCopy; // current, processed
-    RatioState windowRatio; // physical to virtual
     std::deque<MouseState> queryMove; MouseState queryCopy; // synchronous changes
+    std::deque<Pierce> respMove; Pierce respCopy; // query result
     std::deque<Center*> deferMove; Center* deferCopy; // calls to dma
     std::deque<int> linePress; // synchronous characters
     int charPress; // async character
@@ -532,6 +536,7 @@ struct BufferState {
     VkCommandBuffer command;
     VkFence fence;
     int loc; int siz; const void *ptr; std::function<void()> dat;
+    int base, left; struct Pierce pierce;
 BufferState(MainState *state, int size, WrapTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
@@ -684,8 +689,14 @@ VkFence getup() {
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
-void *bind() {
-    return mapped;}
+void lookup() {
+    // TODO search through mapped for Pierce at base/left
+}
+struct Pierce bind() {
+    return pierce;
+}
+void bind(int base, int left) {
+    this->base = base; this->left = left;}
 void bind(int loc, int siz, const void *ptr, std::function<void()> dat) {
     this->loc = loc; this->siz = siz; this->ptr = ptr; this->dat = dat;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
@@ -1361,6 +1372,7 @@ struct ThreadState {
 struct TempState {
     int seqnum;
     std::map<int,std::deque<std::function<bool()>>> done;
+    std::map<int,std::deque<std::function<void()>>> todo;
     std::set<int> pend;
     SafeState safe;
     TempState() {
@@ -1369,13 +1381,17 @@ struct TempState {
     void temq() {
         // maintain main state lambdas
         // separate thread lambdas must protect themselves
-        bool doto = true;
+        bool goon = true;
         safe.wait();
-        while (doto) {std::deque<int> todo; doto = false;
+        while (goon) {std::deque<int> que; goon = false;
         for (auto i = done.begin(); i != done.end(); i++) {
         while (!(*i).second.empty() && (*i).second.front()()) (*i).second.pop_front();
-        if ((*i).second.empty()) todo.push_back((*i).first);}
-        for (auto i = todo.begin(); i != todo.end(); i++) {doto = true; done.erase(*i);}}
+        if ((*i).second.empty()) que.push_back((*i).first);}
+        for (auto i = que.begin(); i != que.end(); i++) {
+        goon = true; done.erase(*i);
+        if (todo.find(*i) != todo.end()) {
+        for (auto j = todo[*i].begin(); j != todo[*i].end(); j++) (*j)();
+        todo.erase(*i);}}}
         safe.post();
     }
     bool temq(int tag) {
@@ -1401,6 +1417,9 @@ struct TempState {
         if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
         pend.erase(tag);
         safe.post();
+    }
+    void tmpq(int tag, std::function<void()> fnc) {
+        todo[tag].push_back(fnc);
     }
     std::function<bool()> temp(int tag) {
         // return lambda for identifier
@@ -1705,15 +1724,22 @@ bool vulkanDetect()
 bool vulkanQuery()
 {
     WrapState<BufferState> *ptr = mainState.queueState->bufferQueue[Piercez];
-    TempState *tmp = mainState.tempState;
     if (!ptr->get()) return true;
+    ThreadState *thd = mainState.threadState;
+    TempState *tmp = mainState.tempState;
+    std::deque<Pierce> *que = &mainState.respMove;
     int tag = tmp->temp();
-    planeReady(tag,(Pierce*)ptr->get(tmp->temp(tag))->bind());
+    BufferState *buf = ptr->get(tmp->temp(tag));
+    buf->bind(mainState.queryCopy.left,mainState.queryCopy.base);
+    tmp->temp(tag,thd->push((std::function<void()>)[buf](){buf->lookup();},[](){return true;}));
+    tmp->tmpq(tag,[buf,que](){que->push_back(buf->bind());});
+    tmp->tmpq(tag);
     return false;
 }
-void vulkanDone(int tag)
+bool vulkanResp()
 {
-    mainState.tempState->tmpq(tag);
+    if (mainState.manipReact[Enque]) planeSafe(Threads,Phases,PierceLeft);
+    return false;
 }
 bool vulkanDefer()
 {
@@ -1735,11 +1761,12 @@ bool vulkanEnact(enum Enact hint, bool cond, bool tight)
     break; case (Follow): fail = vulkanFollow();
     break; case (Modify): fail = vulkanModify();
     break; case (Direct): fail = vulkanDirect();
+    break; case (Defer): fail = vulkanDefer();
     break; case (Display): fail = vulkanDisplay();
     break; case (Bright): fail = vulkanBright();
     break; case (Detect): fail = vulkanDetect();
     break; case (Query): fail = vulkanQuery();
-    break; case (Defer): fail = vulkanDefer();}
+    break; case (Resp): fail = vulkanResp();}
     mainState.registerDone[hint] = fail; // will wake or already woke
     if (fail && mainState.threadState->mark(mark)) return true; // already woke
     return tight; // wait for wake unless there is already work to do
@@ -1750,6 +1777,7 @@ bool vulkanChange()
     bool sized = (mainState.windowMove.width != mainState.windowCopy.width || mainState.windowMove.height != mainState.windowCopy.height);
     bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left || mainState.mouseMove.base != mainState.mouseCopy.base);
     bool queryd = !mainState.queryMove.empty();
+    bool respd = !mainState.respMove.empty();
     bool deferd = !mainState.deferMove.empty();
     bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
         (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
@@ -1766,17 +1794,19 @@ bool vulkanChange()
     if (moved || sized) {mainState.windowMove.moved = mainState.windowMove.sized = false; mainState.windowCopy = mainState.windowMove;}
     if (moused) {mainState.mouseCopy.moved = mainState.mouseCopy.sized = false; mainState.mouseCopy = mainState.mouseMove;}
     if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
+    if (respd && !mainState.registerDone[Resp]) {mainState.respCopy = mainState.respMove.front(); mainState.respMove.pop_front();}
     if (deferd && !mainState.registerDone[Defer]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
     mainState.tempState->temq();
     tight = vulkanEnact(Extent,swaped,tight);
     tight = vulkanEnact(Follow,(moved||sized),tight);
     tight = vulkanEnact(Modify,moused,tight);
     tight = vulkanEnact(Direct,moused,tight);
+    tight = vulkanEnact(Defer,deferd,tight);
     tight = vulkanEnact(Display,drawed,tight);
     tight = vulkanEnact(Bright,drawed,tight);
     tight = vulkanEnact(Detect,drawed,tight);
     tight = vulkanEnact(Query,queryd,tight);
-    tight = vulkanEnact(Defer,deferd,tight);
+    tight = vulkanEnact(Resp,respd,tight);
     tight = tight || !mainState.queryMove.empty() || !mainState.deferMove.empty();
     return tight; // tight loop if any work remains
 }
@@ -2046,6 +2076,10 @@ int vulkanInfo(enum Configure query)
     case (Affect): return mainState.windowClick.height;
     case (Infect): return mainState.windowMove.height;
     case (Effect): return mainState.windowCopy.height;}
+    case (PierceLeft): return mainState.respCopy.vec[0];
+    case (PierceBase): return mainState.respCopy.vec[1];
+    case (PierceDeep): return mainState.respCopy.vec[2];
+    case (PierceIndex): return mainState.respCopy.idx;
     break; case (MonitorWidth): return mainState.windowRatio.width;
     break; case (MonitorHeight): return mainState.windowRatio.height;
     break; case (PhysicalWidth): return mainState.windowRatio.left;
@@ -2068,9 +2102,9 @@ int main(int argc, char **argv)
     mainState.argv = argv;
     try {
 #ifdef PLANRA
-       planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo,vulkanDone);
+       planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
 #else
-       planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo,vulkanDone);
+       planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
 #endif
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
