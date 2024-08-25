@@ -86,10 +86,22 @@ Configure = {
 	"CursorAngle", -- user input roller
 	"CursorClick", -- user input button
 	"CursorPress", -- user input keyboard
+	"PierceRead", -- which point read
+	"PierceWrite", -- which point written
 	"PierceLeft", -- pierce point found
 	"PierceBase", --
 	"PierceDeep", --
 	"PierceIndex", -- which pierce plane
+	"SpoofRead", -- which point read
+	"SpoofWrite", -- which point written
+	"SpoofLeft", -- pierce point found
+	"SpoofBase", --
+	"SpoofDeep", --
+	"SpoofIndex", -- which pierce plane
+	"SwapRead", -- which size read
+	"SwapWrite", -- which size written
+	"SwapWidth", -- window size
+	"SwapHeight", --
 	"WindowRead", -- which window read
 	"WindowWrite", -- which window written
 	"WindowLeft", -- window position

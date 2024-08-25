@@ -62,9 +62,9 @@ struct MainState {
     RatioState windowRatio; // physical to virtual
     MouseState mouseClick, mouseMove, mouseCopy; // pierce, current, processed
     WindowState windowClick, windowMove, windowCopy; // pierce, current, processed
-    SizeState swapMove, swapCopy; // current, processed
-    std::deque<MouseState> queryMove; MouseState queryCopy; // synchronous changes
-    std::deque<Pierce> respMove; Pierce respCopy; // query result
+    SizeState swapClick, swapMove, swapCopy; // spoof, current, processed
+    std::deque<MouseState> queryMove; MouseState queryClick, queryCopy; // synchronous changes
+    std::deque<Pierce> respMove; Pierce respClick, respCopy; // query result
     std::deque<Center*> deferMove; Center* deferCopy; // calls to dma
     std::deque<int> linePress; // synchronous characters
     int charPress; // async character
@@ -2043,43 +2043,41 @@ void vulkanCopy(struct Center **given)
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
     planeDone(center); *given = 0;}
 }
+template<class Type> int vulkanRead(int read, Type &click, std::deque<Type> &move, Type &copy, std::function<int(Type&)> func)
+{
+    switch (read) {default: throw std::runtime_error("cannot get info!");
+    case (Affect): return func(click);
+    case (Infect): if (!move.empty()) {
+    click = move.front(); move.pop_front();}
+    return func(click);
+    case (Effect): return func(copy);}
+    return 0;
+}
+template<class Type> int vulkanRead(int read, Type &click, Type &move, Type &copy, std::function<int(Type&)> func)
+{
+    switch (read) {default: throw std::runtime_error("cannot get info!");
+    case (Affect): return func(click);
+    case (Infect): return func(move);
+    case (Effect): return func(copy);}
+    return 0;
+}
+#define VREAD(I,T,F) vulkanRead(mainState.I##Read,mainState.I##Click,mainState.I##Move,mainState.I##Copy,(std::function<int(T&)>)[](T&x){return x.F;})
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
-    break; case (CursorLeft): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
-       case (Affect): return mainState.mouseClick.left;
-    case (Infect): return mainState.mouseMove.left;
-    case (Effect): return mainState.mouseCopy.left;}
-    break; case (CursorBase): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return mainState.mouseClick.base;
-    case (Infect): return mainState.mouseMove.base;
-    case (Effect): return mainState.mouseCopy.base;}
-    break; case (CursorAngle): switch (mainState.mouseRead) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return mainState.mouseClick.angle;
-    case (Infect): return mainState.mouseMove.angle;
-    case (Effect): return mainState.mouseCopy.angle;}
+    break; case (CursorLeft): return VREAD(mouse,MouseState,left);
+    break; case (CursorBase): return VREAD(mouse,MouseState,base);
+    break; case (CursorAngle): return VREAD(mouse,MouseState,angle);
     break; case (CursorPress): {if (mainState.linePress.empty()) return 0;
     int key = mainState.linePress.front(); mainState.linePress.pop_front(); return key;}
-    break; case (WindowLeft): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return mainState.windowClick.left;
-    case (Infect): return mainState.windowMove.left;
-    case (Effect): return mainState.windowCopy.left;}
-    break; case (WindowBase): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return mainState.windowClick.base;
-    case (Infect): return mainState.windowMove.base;
-    case (Effect): return mainState.windowCopy.base;}
-    break; case (WindowWidth): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return mainState.windowClick.width;
-    case (Infect): return mainState.windowMove.width;
-    case (Effect): return mainState.windowCopy.width;}
-    break; case (WindowHeight): switch (mainState.windowRead) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return mainState.windowClick.height;
-    case (Infect): return mainState.windowMove.height;
-    case (Effect): return mainState.windowCopy.height;}
-    case (PierceLeft): return mainState.respCopy.vec[0];
-    case (PierceBase): return mainState.respCopy.vec[1];
-    case (PierceDeep): return mainState.respCopy.vec[2];
-    case (PierceIndex): return mainState.respCopy.idx;
+    break; case (WindowLeft): return VREAD(window,WindowState,left);
+    break; case (WindowBase): return VREAD(window,WindowState,base);
+    break; case (WindowWidth): return VREAD(window,WindowState,width);
+    break; case (WindowHeight): return VREAD(window,WindowState,height);
+    case (PierceLeft): return VREAD(resp,Pierce,vec[0]);
+    case (PierceBase): return VREAD(resp,Pierce,vec[1]);
+    case (PierceDeep): return VREAD(resp,Pierce,vec[2]);
+    case (PierceIndex): return VREAD(resp,Pierce,idx);
     break; case (MonitorWidth): return mainState.windowRatio.width;
     break; case (MonitorHeight): return mainState.windowRatio.height;
     break; case (PhysicalWidth): return mainState.windowRatio.left;
