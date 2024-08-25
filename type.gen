@@ -96,8 +96,6 @@ Configure = {
 	"SpoofWrite", -- which point written
 	"SpoofLeft", -- pierce point found
 	"SpoofBase", --
-	"SpoofDeep", --
-	"SpoofIndex", -- which pierce plane
 	"SwapRead", -- which size read
 	"SwapWrite", -- which size written
 	"SwapWidth", -- window size

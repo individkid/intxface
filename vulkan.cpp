@@ -2047,9 +2047,7 @@ template<class Type> int vulkanRead(int read, Type &click, std::deque<Type> &mov
 {
     switch (read) {default: throw std::runtime_error("cannot get info!");
     case (Affect): return func(click);
-    case (Infect): if (!move.empty()) {
-    click = move.front(); move.pop_front();}
-    return func(click);
+    case (Infect): if (!move.empty()) {click = move.front(); move.pop_front();} return func(click);
     case (Effect): return func(copy);}
     return 0;
 }
@@ -2065,31 +2063,35 @@ template<class Type> int vulkanRead(int read, Type &click, Type &move, Type &cop
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
-    break; case (CursorLeft): return VREAD(mouse,MouseState,left);
-    break; case (CursorBase): return VREAD(mouse,MouseState,base);
-    break; case (CursorAngle): return VREAD(mouse,MouseState,angle);
-    break; case (CursorPress): {if (mainState.linePress.empty()) return 0;
+    case (CursorLeft): return VREAD(mouse,MouseState,left);
+    case (CursorBase): return VREAD(mouse,MouseState,base);
+    case (CursorAngle): return VREAD(mouse,MouseState,angle);
+    case (CursorPress): {if (mainState.linePress.empty()) return 0;
     int key = mainState.linePress.front(); mainState.linePress.pop_front(); return key;}
-    break; case (WindowLeft): return VREAD(window,WindowState,left);
-    break; case (WindowBase): return VREAD(window,WindowState,base);
-    break; case (WindowWidth): return VREAD(window,WindowState,width);
-    break; case (WindowHeight): return VREAD(window,WindowState,height);
+    case (WindowLeft): return VREAD(window,WindowState,left);
+    case (WindowBase): return VREAD(window,WindowState,base);
+    case (WindowWidth): return VREAD(window,WindowState,width);
+    case (WindowHeight): return VREAD(window,WindowState,height);
     case (PierceLeft): return VREAD(resp,Pierce,vec[0]);
     case (PierceBase): return VREAD(resp,Pierce,vec[1]);
     case (PierceDeep): return VREAD(resp,Pierce,vec[2]);
     case (PierceIndex): return VREAD(resp,Pierce,idx);
-    break; case (MonitorWidth): return mainState.windowRatio.width;
-    break; case (MonitorHeight): return mainState.windowRatio.height;
-    break; case (PhysicalWidth): return mainState.windowRatio.left;
-    break; case (PhysicalHeight): return mainState.windowRatio.base;
-    break; case (RegisterPlan): return mainState.registerPlan;
-    break; case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
+    case (SpoofLeft): return VREAD(query,MouseState,left);
+    case (SpoofBase): return VREAD(query,MouseState,base);
+    case (SwapWidth): return VREAD(swap,SizeState,width);
+    case (SwapHeight): return VREAD(swap,SizeState,height);
+    case (MonitorWidth): return mainState.windowRatio.width;
+    case (MonitorHeight): return mainState.windowRatio.height;
+    case (PhysicalWidth): return mainState.windowRatio.left;
+    case (PhysicalHeight): return mainState.windowRatio.base;
+    case (RegisterPlan): return mainState.registerPlan;
+    case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
     if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
-    break; case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
+    case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
     if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
-    break; case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
+    case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
     if (mainState.manipEnact[(Enact)j]) val |= (1<<j); return val;}
-    break; case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
+    case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
     if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}}
     return 0;
 }
