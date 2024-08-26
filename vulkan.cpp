@@ -2044,12 +2044,18 @@ void vulkanCopy(struct Center **given)
     break; case (WindowBase): VWRITE(window,WindowState,base,moved);
     break; case (WindowWidth): VWRITE(window,WindowState,width,sized);
     break; case (WindowHeight): VWRITE(window,WindowState,height,sized);
+    break; case (PierceRead): mainState.respRead = (Interp)center->val[i];
+    break; case (PierceWrite): mainState.respWrite = (Interp)center->val[i];
     break; case (PierceLeft): VPUSH(resp,Pierce,vec[0]);
     break; case (PierceBase): WPUSH(resp,Pierce,vec[1]);
     break; case (PierceDeep): WPUSH(resp,Pierce,vec[2]);
     break; case (PierceIndex): WPUSH(resp,Pierce,idx);
+    break; case (SpoofRead): mainState.queryRead = (Interp)center->val[i];
+    break; case (SpoofWrite): mainState.queryWrite = (Interp)center->val[i];
     break; case (SpoofLeft): VPUSH(query,MouseState,left);
     break; case (SpoofBase): WPUSH(query,MouseState,base);
+    break; case (SwapRead): mainState.swapRead = (Interp)center->val[i];
+    break; case (SwapWrite): mainState.swapWrite = (Interp)center->val[i];
     break; case (SwapWidth): VPUSH(swap,SizeState,width);
     break; case (SwapHeight): VPUSH(swap,SizeState,height);
     break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
