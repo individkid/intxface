@@ -2000,13 +2000,24 @@ template<class Type> void vulkanWrite(int value, int write, Type &click, Type &m
     case (Infect): func(move,value); break;
     case (Effect): func(copy,value); break;}
 }
+template<class Type> void vulkanWrite(int value, int write, Type &click, Type &copy,
+    std::function<void(Type&,int)> func)
+{
+    switch (write) {default: throw std::runtime_error("cannot get info!");
+    case (Affect): func(click,value); break;
+    case (Infect): func(copy,value); break;
+    case (Effect): func(copy,value); break;}
+}
 #define VWRITE(I,T,F,G) vulkanWrite(center->val[i],mainState.I##Write,\
     mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
-    (std::function<void(T&,int)>)[](T &x,int y){x.F = y;},\
+    (std::function<void(T&,int)>)[](T &x, int y){x.F = y;},\
     (std::function<void(T&)>)[](T &x){x.G = true;})
 #define VPUSH(I,T,F) vulkanWrite(center->val[i],mainState.I##Write,\
     mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
-    (std::function<void(T&,int)>)[](T &x,int y){x.F = y;})
+    (std::function<void(T&,int)>)[](T &x, int y){x.F = y;})
+#define WPUSH(I,T,F) vulkanWrite(center->val[i],mainState.I##Write,\
+    mainState.I##Click,mainState.I##Copy,\
+    (std::function<void(T&,int)>)[](T &x, int y){x.F = y;})
 void vulkanCopy(struct Center **given)
 {
     struct Center *center = *given;
@@ -2034,11 +2045,11 @@ void vulkanCopy(struct Center **given)
     break; case (WindowWidth): VWRITE(window,WindowState,width,sized);
     break; case (WindowHeight): VWRITE(window,WindowState,height,sized);
     break; case (PierceLeft): VPUSH(resp,Pierce,vec[0]);
-    break; case (PierceBase): VPUSH(resp,Pierce,vec[1]);
-    break; case (PierceDeep): VPUSH(resp,Pierce,vec[2]);
-    break; case (PierceIndex): VPUSH(resp,Pierce,idx);
+    break; case (PierceBase): WPUSH(resp,Pierce,vec[1]);
+    break; case (PierceDeep): WPUSH(resp,Pierce,vec[2]);
+    break; case (PierceIndex): WPUSH(resp,Pierce,idx);
     break; case (SpoofLeft): VPUSH(query,MouseState,left);
-    break; case (SpoofBase): VPUSH(query,MouseState,base);
+    break; case (SpoofBase): WPUSH(query,MouseState,base);
     break; case (SwapWidth): VPUSH(swap,SizeState,width);
     break; case (SwapHeight): VPUSH(swap,SizeState,height);
     break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
@@ -2079,8 +2090,20 @@ template<class Type> int vulkanRead(int read, Type &click, Type &move, Type &cop
     case (Effect): return func(copy);}
     return 0;
 }
+template<class Type> int vulkanRead(int read, Type &click, Type &copy,
+    std::function<int(Type&)> func)
+{
+    switch (read) {default: throw std::runtime_error("cannot get info!");
+    case (Affect): return func(click);
+    case (Infect): return func(copy);
+    case (Effect): return func(copy);}
+    return 0;
+}
 #define VREAD(I,T,F) vulkanRead(mainState.I##Read,\
     mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
+    (std::function<int(T&)>)[](T&x){return x.F;})
+#define WREAD(I,T,F) vulkanRead(mainState.I##Read,\
+    mainState.I##Click,mainState.I##Copy,\
     (std::function<int(T&)>)[](T&x){return x.F;})
 int vulkanInfo(enum Configure query)
 {
@@ -2095,11 +2118,11 @@ int vulkanInfo(enum Configure query)
     case (WindowWidth): return VREAD(window,WindowState,width);
     case (WindowHeight): return VREAD(window,WindowState,height);
     case (PierceLeft): return VREAD(resp,Pierce,vec[0]);
-    case (PierceBase): return VREAD(resp,Pierce,vec[1]);
-    case (PierceDeep): return VREAD(resp,Pierce,vec[2]);
-    case (PierceIndex): return VREAD(resp,Pierce,idx);
+    case (PierceBase): return WREAD(resp,Pierce,vec[1]);
+    case (PierceDeep): return WREAD(resp,Pierce,vec[2]);
+    case (PierceIndex): return WREAD(resp,Pierce,idx);
     case (SpoofLeft): return VREAD(query,MouseState,left);
-    case (SpoofBase): return VREAD(query,MouseState,base);
+    case (SpoofBase): return WREAD(query,MouseState,base);
     case (SwapWidth): return VREAD(swap,SizeState,width);
     case (SwapHeight): return VREAD(swap,SizeState,height);
     case (MonitorWidth): return mainState.windowRatio.width;
