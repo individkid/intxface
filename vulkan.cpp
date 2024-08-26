@@ -1976,6 +1976,37 @@ void vulkanSafe()
 {
     glfwPostEmptyEvent();
 }
+template<class Type> void vulkanWrite(int value, int write, Type &click, std::deque<Type> &move, Type &copy,
+    std::function<void(Type&,int)> func)
+{
+    switch (write) {default: throw std::runtime_error("cannot get info!");
+    case (Affect): func(click,value); break;
+    case (Infect): func(click,value); move.push_back(click); break;
+    case (Effect): func(copy,value); break;}
+}
+template<class Type> void vulkanWrite(int value, int write, Type &click, Type &move, Type &copy,
+    std::function<void(Type&,int)> func, std::function<void(Type&)> only)
+{
+    switch (write) {default: throw std::runtime_error("cannot get info!");
+    case (Affect): func(click,value); break;
+    case (Infect): func(move,value); only(move); break;
+    case (Effect): func(copy,value); break;}
+}
+template<class Type> void vulkanWrite(int value, int write, Type &click, Type &move, Type &copy,
+    std::function<void(Type&,int)> func)
+{
+    switch (write) {default: throw std::runtime_error("cannot get info!");
+    case (Affect): func(click,value); break;
+    case (Infect): func(move,value); break;
+    case (Effect): func(copy,value); break;}
+}
+#define VWRITE(I,T,F,G) vulkanWrite(center->val[i],mainState.I##Write,\
+    mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
+    (std::function<void(T&,int)>)[](T &x,int y){x.F = y;},\
+    (std::function<void(T&)>)[](T &x){x.G = true;})
+#define VPUSH(I,T,F) vulkanWrite(center->val[i],mainState.I##Write,\
+    mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
+    (std::function<void(T&,int)>)[](T &x,int y){x.F = y;})
 void vulkanCopy(struct Center **given)
 {
     struct Center *center = *given;
@@ -1991,38 +2022,25 @@ void vulkanCopy(struct Center **given)
     break; case (CursorIndex): mainState.mouseIndex = center->val[i];
     break; case (CursorRead): mainState.mouseRead = (Interp)center->val[i];
     break; case (CursorWrite): mainState.mouseWrite = (Interp)center->val[i];
-    break; case (CursorLeft): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): mainState.mouseClick.left = center->val[i]; break;
-    case (Infect): mainState.mouseMove.left = center->val[i]; mainState.mouseMove.moved = true; break;
-    case (Effect): mainState.mouseCopy.left = center->val[i]; break;}
-    break; case (CursorBase): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): mainState.mouseClick.base = center->val[i]; break;
-    case (Infect): mainState.mouseMove.base = center->val[i]; mainState.mouseMove.moved = true; break;
-    case (Effect): mainState.mouseCopy.base = center->val[i]; break;}
-    break; case (CursorAngle): switch (mainState.mouseWrite) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): mainState.mouseClick.angle = center->val[i]; break;
-    case (Infect): mainState.mouseMove.angle = center->val[i]; mainState.mouseMove.sized = true; break;
-    case (Effect): mainState.mouseCopy.angle = center->val[i]; break;}
+    break; case (CursorLeft): VWRITE(mouse,MouseState,left,moved);
+    break; case (CursorBase): VWRITE(mouse,MouseState,base,moved);
+    break; case (CursorAngle): VWRITE(mouse,MouseState,angle,sized);
     break; case (CursorPress): if (center->val[i] == 0)
     mainState.linePress.clear(); else mainState.linePress.push_front(center->val[i]);
     break; case (WindowRead): mainState.windowRead = (Interp)center->val[i];
     break; case (WindowWrite): mainState.windowWrite = (Interp)center->val[i];
-    break; case (WindowLeft): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): mainState.windowClick.left = center->val[i]; break;
-    case (Infect): mainState.windowMove.left = center->val[i]; mainState.windowMove.moved = true; break;
-    case (Effect): mainState.windowCopy.left = center->val[i]; break;}
-    break; case (WindowBase): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): mainState.windowClick.base = center->val[i]; break;
-    case (Infect): mainState.windowMove.base = center->val[i]; mainState.windowMove.moved = true; break;
-    case (Effect): mainState.windowCopy.base = center->val[i]; break;}
-    break; case (WindowWidth): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): mainState.windowClick.width = center->val[i]; break;
-    case (Infect): mainState.windowMove.width = center->val[i]; mainState.windowMove.sized = true; break;
-    case (Effect): mainState.windowCopy.width = center->val[i]; break;}
-    break; case (WindowHeight): switch (mainState.windowWrite) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): mainState.windowClick.height = center->val[i]; break;
-    case (Infect): mainState.windowMove.height = center->val[i]; mainState.windowMove.sized = true; break;
-    case (Effect): mainState.windowCopy.height = center->val[i]; break;}
+    break; case (WindowLeft): VWRITE(window,WindowState,left,moved);
+    break; case (WindowBase): VWRITE(window,WindowState,base,moved);
+    break; case (WindowWidth): VWRITE(window,WindowState,width,sized);
+    break; case (WindowHeight): VWRITE(window,WindowState,height,sized);
+    break; case (PierceLeft): VPUSH(resp,Pierce,vec[0]);
+    break; case (PierceBase): VPUSH(resp,Pierce,vec[1]);
+    break; case (PierceDeep): VPUSH(resp,Pierce,vec[2]);
+    break; case (PierceIndex): VPUSH(resp,Pierce,idx);
+    break; case (SpoofLeft): VPUSH(query,MouseState,left);
+    break; case (SpoofBase): VPUSH(query,MouseState,base);
+    break; case (SwapWidth): VPUSH(swap,SizeState,width);
+    break; case (SwapHeight): VPUSH(swap,SizeState,height);
     break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
     break; case (RegisterPoll): mainState.registerPoll = center->val[i];
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
@@ -2043,7 +2061,8 @@ void vulkanCopy(struct Center **given)
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
     planeDone(center); *given = 0;}
 }
-template<class Type> int vulkanRead(int read, Type &click, std::deque<Type> &move, Type &copy, std::function<int(Type&)> func)
+template<class Type> int vulkanRead(int read, Type &click, std::deque<Type> &move, Type &copy,
+    std::function<int(Type&)> func)
 {
     switch (read) {default: throw std::runtime_error("cannot get info!");
     case (Affect): return func(click);
@@ -2051,7 +2070,8 @@ template<class Type> int vulkanRead(int read, Type &click, std::deque<Type> &mov
     case (Effect): return func(copy);}
     return 0;
 }
-template<class Type> int vulkanRead(int read, Type &click, Type &move, Type &copy, std::function<int(Type&)> func)
+template<class Type> int vulkanRead(int read, Type &click, Type &move, Type &copy,
+    std::function<int(Type&)> func)
 {
     switch (read) {default: throw std::runtime_error("cannot get info!");
     case (Affect): return func(click);
@@ -2059,7 +2079,9 @@ template<class Type> int vulkanRead(int read, Type &click, Type &move, Type &cop
     case (Effect): return func(copy);}
     return 0;
 }
-#define VREAD(I,T,F) vulkanRead(mainState.I##Read,mainState.I##Click,mainState.I##Move,mainState.I##Copy,(std::function<int(T&)>)[](T&x){return x.F;})
+#define VREAD(I,T,F) vulkanRead(mainState.I##Read,\
+    mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
+    (std::function<int(T&)>)[](T&x){return x.F;})
 int vulkanInfo(enum Configure query)
 {
     switch (query) {default: throw std::runtime_error("cannot get info!");
