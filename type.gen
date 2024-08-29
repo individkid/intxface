@@ -232,7 +232,9 @@ WrapTag = {
 	"StoreBuf", 
 	"QueryBuf",
 	"DrawBuf",
+	"CompBuf",
 	"SwapBuf",
+	"LineBuf",
 }
 Phase = {
 	"Init",

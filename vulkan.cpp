@@ -225,6 +225,7 @@ struct InitState {
                 uint32_t count = 0;
                 const char** required = glfwGetRequiredInstanceExtensions(&count);
                 std::vector<const char*> extensions(required, required + count);
+		std::cerr << "extension:" << VK_EXT_DEBUG_UTILS_EXTENSION_NAME << std::endl;
                 if (enable) extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
                 return extensions;
             } (enable);
@@ -294,6 +295,7 @@ struct PhysicalState {
     int presentid;
     int minimum;
     VkSurfaceFormatKHR format;
+    VkSurfaceFormatKHR linear;
     VkPresentModeKHR mode;
     VkFormat image;
     PhysicalState(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions, int inflight) {
@@ -376,6 +378,12 @@ struct PhysicalState {
         format = [](std::vector<VkSurfaceFormatKHR> formats) {
             for (const auto& format : formats) {
                 if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                    return format;}}
+            return formats[0];
+        } (formats);
+        linear = [](std::vector<VkSurfaceFormatKHR> formats) {
+            for (const auto& format : formats) {
+                if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                     return format;}}
             return formats[0];
         } (formats);
@@ -536,7 +544,7 @@ struct BufferState {
     VkCommandBuffer command;
     VkFence fence;
     int loc; int siz; const void *ptr; std::function<void()> dat;
-    int base, left; struct Pierce pierce;
+    struct Pierce pierce;
 BufferState(MainState *state, int size, WrapTag tag) {
     PhysicalState* physical = state->physicalState;
     DeviceState* logical = state->logicalState;
@@ -680,7 +688,6 @@ VkFence getup() {
     vkBeginCommandBuffer(command, &begin);
     VkBufferCopy copy{};
     copy.size = size;
-    // TODO call vkCmdCopyImageToBuffer if bound to SwapBuf
     vkCmdCopyBuffer(command, buffer, staging, 1, &copy);
     vkEndCommandBuffer(command);
     VkSubmitInfo submit{};
@@ -689,14 +696,14 @@ VkFence getup() {
     submit.pCommandBuffers = &command;
     result = vkQueueSubmit(graphic, 1, &submit, fence);
     return fence;}
-void lookup() {
-    // TODO search through mapped for Pierce at base/left
+void lookup(/*TODO pointers to this and other buffers*/) {
+    // TODO search through pointer for pierce.idx at pierce.vec[0] pierce.vec[1]
+    // TODO calculate or fill in other fields of pierce
 }
 struct Pierce bind() {
-    return pierce;
-}
+    return pierce;}
 void bind(int base, int left) {
-    this->base = base; this->left = left;}
+    pierce.vec[0] = base; pierce.vec[1] = left;}
 void bind(int loc, int siz, const void *ptr, std::function<void()> dat) {
     this->loc = loc; this->siz = siz; this->ptr = ptr; this->dat = dat;}
 bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
@@ -1205,6 +1212,7 @@ VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, VkExtent
         if (vkQueueSubmit(graphic, 1, &info, fence) != VK_SUCCESS)
             throw std::runtime_error("failed to submit draw command buffer!");
     }(graphic,command,fence,available,signal);
+    // TODO call vkCmdCopyImageToBuffer instead of vkQueuePresentKHR if tag is QueryBuf
     [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore signal){
         VkPresentInfoKHR info{};
         info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1724,6 +1732,7 @@ bool vulkanDetect()
 bool vulkanQuery()
 {
     WrapState<BufferState> *ptr = mainState.queueState->bufferQueue[Piercez];
+    // TODO also get depending on MicroPre from Planez Trianglez Pointz
     if (!ptr->get()) return true;
     ThreadState *thd = mainState.threadState;
     TempState *tmp = mainState.tempState;
@@ -1738,6 +1747,8 @@ bool vulkanQuery()
 }
 bool vulkanResp()
 {
+    struct Pierce &pierce = mainState.respCopy;
+    // TODO depending on MicroPre fill in missing fields in pierce
     if (mainState.manipReact[Enque]) planeSafe(Threads,Phases,PierceLeft);
     return false;
 }
