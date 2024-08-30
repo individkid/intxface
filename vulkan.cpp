@@ -774,25 +774,29 @@ SwapState(MainState *state, int size, WrapTag tag) {
     if (state->windowRatio.base/state->windowRatio.height) height += 1;
     extent.width = width; extent.height = height;
     std::cerr << "SwapState " << width << "," << height << " " << this << std::endl;
-    [this](OpenState *open, PhysicalState *physical, DeviceState *logical){
+    [this](OpenState *open, PhysicalState *physical, DeviceState *logical, WrapTag tag){
     this->device = logical->device;
-    [this](GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, VkSurfaceKHR surface,
-    VkFormat image, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkRenderPass pass,
+    [this](GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, WrapTag tag,
+    VkSurfaceKHR surface, VkFormat image,
+    VkSurfaceFormatKHR format, VkSurfaceFormatKHR linear,
+    VkPresentModeKHR mode, VkRenderPass pass,
     int minimum, int graphicid, int presentid){
     this->window = window;
     this->physical = physical;
     this->surface = surface;
     this->image = image;
-    this->format = format;
+    this->format = (tag==LineBuf?linear:format);
     this->mode = mode;
     this->pass = pass;
     this->minimum = minimum;
     this->graphicid = graphicid;
     this->presentid = presentid;
-    }(open->window,physical->physical,logical->device,
-    open->surface,physical->image,physical->format,physical->mode,
-    logical->render,physical->minimum,physical->graphicid,physical->presentid);
-    }(state->openState,state->physicalState,state->logicalState);}
+    }(open->window,physical->physical,logical->device,tag,
+    open->surface,physical->image,
+    physical->format,physical->linear,
+    physical->mode,logical->render,
+    physical->minimum,physical->graphicid,physical->presentid);
+    }(state->openState,state->physicalState,state->logicalState,tag);}
 void init() {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
@@ -1102,6 +1106,7 @@ struct DrawState {
     VkFence fence;
     uint32_t index;
     PipelineState* pipeline;
+    WrapTag tag;
 DrawState(MainState *state, int size, WrapTag tag) {
     DeviceState* logical = state->logicalState;
     this->device = logical->device;
@@ -1109,7 +1114,8 @@ DrawState(MainState *state, int size, WrapTag tag) {
     this->present = logical->present;
     this->render = logical->render;
     this->pool = logical->pool;
-    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size);}
+    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size);
+    this->tag = tag;}
 void init() {
     // this called in separate thread on newly constructed
     available = [](VkDevice device) {
