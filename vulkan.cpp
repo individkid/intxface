@@ -69,13 +69,14 @@ struct MainState {
     std::deque<int> linePress; // synchronous characters
     int charPress; // async character
     int mouseIndex; // which plane to manipulate
-    int paramFollow; // which matrix for window
-    int paramModify; // which matrix for manipulate
-    enum Micro paramDisplay; // which shader for diplay
-    enum Micro paramBright; // which shader for index
-    enum Micro paramDetect; // which shader for pierce
-    int paramBase; // which facet to start on
-    int paramLimit; // which facet to finish before
+    int paramIndex; // which parameters to use
+    std::map<int,int> paramFollow; // which matrix for window
+    std::map<int,int> paramModify; // which matrix for manipulate
+    std::map<int,enum Micro> paramDisplay; // which shader for diplay
+    std::map<int,enum Micro> paramBright; // which shader for index
+    std::map<int,enum Micro> paramDetect; // which shader for pierce
+    std::map<int,int> paramBase; // which facet to start on
+    std::map<int,int> paramLimit; // which facet to finish before
     int littleIndex; // which state user is in
     int littleSize; // how many states user can be in
     Little *littleState; // user changes to React and Action
@@ -144,6 +145,7 @@ void manipReact(struct MainState *mainState, int pat) {
     if (mainState->littleState[i].pat == pat || mainState->littleState[i].pat == 0) {
     for (int j = 0; j < Reacts; j++) mainState->manipReact[(React)j] = ((mainState->littleState[i].val&(1<<j)) != 0);
     for (int j = 0; j < Actions; j++) mainState->manipAction[(Action)j] = ((mainState->littleState[i].num&(1<<j)) != 0);
+    mainState->paramIndex = mainState->littleState[i].idx;
     mainState->littleIndex = mainState->littleState[i].nxt; break;}
 }
 void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -198,19 +200,19 @@ struct InitState {
         info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
         info.pfnUserCallback = debugCallback;
+        if (layers.size() && ![](const std::vector<const char*> layers) {
+            uint32_t count;
+            vkEnumerateInstanceLayerProperties(&count, nullptr);
+            std::vector<VkLayerProperties> available(count);
+            vkEnumerateInstanceLayerProperties(&count, available.data());
+            for (const char* name : layers) {
+            bool found = false;
+            for (const auto& properties : available) {
+            if (strcmp(name, properties.layerName) == 0) {found = true; break;}}
+            if (!found) return false;}
+            return true;
+        } (layers)) throw std::runtime_error("validation layers requested, but not available!");
         instance = [](bool enable, VkDebugUtilsMessengerCreateInfoEXT create, const std::vector<const char*> layers) {
-            if (layers.size() && ![](const std::vector<const char*> layers) {
-                uint32_t count;
-                vkEnumerateInstanceLayerProperties(&count, nullptr);
-                std::vector<VkLayerProperties> available(count);
-                vkEnumerateInstanceLayerProperties(&count, available.data());
-                for (const char* name : layers) {
-                bool found = false;
-                for (const auto& properties : available) {
-                if (strcmp(name, properties.layerName) == 0) {found = true; break;}}
-                if (!found) return false;}
-                return true;
-            } (layers)) throw std::runtime_error("validation layers requested, but not available!");
             VkApplicationInfo application{};
             application.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
             application.pApplicationName = "Hello Triangle";
@@ -225,7 +227,7 @@ struct InitState {
                 uint32_t count = 0;
                 const char** required = glfwGetRequiredInstanceExtensions(&count);
                 std::vector<const char*> extensions(required, required + count);
-		std::cerr << "extension:" << VK_EXT_DEBUG_UTILS_EXTENSION_NAME << std::endl;
+                std::cerr << "extension:" << VK_EXT_DEBUG_UTILS_EXTENSION_NAME << std::endl;
                 if (enable) extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
                 return extensions;
             } (enable);
@@ -1705,18 +1707,18 @@ bool vulkanSwap()
 }
 bool vulkanFollow()
 {
-    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); 
-    return vulkanSet(Matrixz,mainState.paramFollow*siz,siz,planeWindow(mat),[mat](){free(mat);});
+    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); int idx = mainState.paramIndex;
+    return vulkanSet(Matrixz,mainState.paramFollow[idx]*siz,siz,planeWindow(mat),[mat](){free(mat);});
 }
 bool vulkanModify()
 {
-    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
+    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); int idx = mainState.paramIndex;
 #ifdef PLANRA
     planraMatrix(mat);
 #else
     planeMatrix(mat);
 #endif
-    return vulkanSet(Matrixz,mainState.paramModify*siz,siz,mat,[mat](){free(mat);});
+    return vulkanSet(Matrixz,mainState.paramModify[idx]*siz,siz,mat,[mat](){free(mat);});
 }
 bool vulkanDirect()
 {
@@ -1725,15 +1727,18 @@ bool vulkanDirect()
 }
 bool vulkanDisplay()
 {
-    return vulkanDraw(mainState.paramDisplay,mainState.paramBase,mainState.paramLimit);
+    int idx = mainState.paramIndex;
+    return vulkanDraw(mainState.paramDisplay[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
 }
 bool vulkanBright()
 {
-    return vulkanDraw(mainState.paramBright,mainState.paramBase,mainState.paramLimit);
+    int idx = mainState.paramIndex;
+    return vulkanDraw(mainState.paramBright[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
 }
 bool vulkanDetect()
 {
-    return vulkanDraw(mainState.paramDetect,mainState.paramBase,mainState.paramLimit);
+    int idx = mainState.paramIndex;
+    return vulkanDraw(mainState.paramDetect[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
 }
 bool vulkanQuery()
 {
@@ -2085,13 +2090,14 @@ void vulkanCopy(struct Center **given)
     mainState.manipEnact[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipAction): for (int j = 0; j < Actions; j++)
     mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case (ParamFollow): mainState.paramFollow = center->val[i];
-    break; case (ParamModify): mainState.paramModify = center->val[i];
-    break; case (ParamDisplay): mainState.paramDisplay = (Micro)center->val[i];
-    break; case (ParamBright): mainState.paramBright = (Micro)center->val[i];
-    break; case (ParamDetect): mainState.paramDetect = (Micro)center->val[i];
-    break; case (ParamBase): mainState.paramBase = center->val[i];
-    break; case (ParamLimit): mainState.paramLimit = center->val[i];
+    break; case (ParamIndex): mainState.paramIndex = center->val[i];
+    break; case (ParamFollow): mainState.paramFollow[mainState.paramIndex] = center->val[i];
+    break; case (ParamModify): mainState.paramModify[mainState.paramIndex] = center->val[i];
+    break; case (ParamDisplay): mainState.paramDisplay[mainState.paramIndex] = (Micro)center->val[i];
+    break; case (ParamBright): mainState.paramBright[mainState.paramIndex] = (Micro)center->val[i];
+    break; case (ParamDetect): mainState.paramDetect[mainState.paramIndex] = (Micro)center->val[i];
+    break; case (ParamBase): mainState.paramBase[mainState.paramIndex] = center->val[i];
+    break; case (ParamLimit): mainState.paramLimit[mainState.paramIndex] = center->val[i];
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
     planeDone(center); *given = 0;}
 }

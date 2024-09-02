@@ -58,6 +58,7 @@ Configure = {
 	"MachineSize", -- vending machine lines
 	"LittleSize", -- machine size
 	"LittleIndex", -- where in machine
+	"ParamIndex", -- which to use
 	"ParamFollow", -- pass to dma
 	"ParamModify", --
 	"ParamDisplay", -- pass to draw
@@ -727,6 +728,7 @@ Little = {
 	{"pat","Int",{},{}},
 	{"val","Int",{},{}},
 	{"num","Int",{},{}},
+	{"idx","Int",{},{}},
 	{"nxt","Int",{},{}},
 }
 Center = {
