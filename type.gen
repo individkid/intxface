@@ -59,11 +59,10 @@ Configure = {
 	"LittleSize", -- machine size
 	"LittleIndex", -- where in machine
 	"ParamIndex", -- which to use
+	"ParamRoof", --
 	"ParamFollow", -- pass to dma
 	"ParamModify", --
-	"ParamDisplay", -- pass to draw
-	"ParamBright", --
-	"ParamDetect", --
+	"ParamShader", -- pass to draw
 	"ParamBase", --
 	"ParamLimit", --
 	"ManipReact", -- block or behave
@@ -176,9 +175,7 @@ Enact = { -- when updates applied
 	"Modify", -- set transform matrix on wake
 	"Direct", -- set uniform fields on wake
 	"Defer", -- set memory from dma center
-	"Display", -- start display shader on wake
-	"Bright", -- start facet index shader on wake
-	"Detect", -- start pierce point shader on wake
+	"Shader", -- start display shader on wake
 	"Query", -- capture pierce point on wake
 	"Resp", -- stage pierce point on wake
 }

@@ -50,7 +50,7 @@ struct MainState {
     bool manipReact[Reacts]; // little language changed; user filter
     bool manipEnact[Enacts]; // set and forget; work on filtered user
     bool manipAction[Actions]; // micro code response to little language
-    bool registerDone[Enacts]; // record whether work remains
+    std::map<int,bool> registerDone[Enacts]; // record whether work remains
     bool registerOpen; // whether main loop running
     enum Plan registerPlan; // which builtin test to run
     int registerPoll; // how long to what without wake
@@ -70,11 +70,10 @@ struct MainState {
     int charPress; // async character
     int mouseIndex; // which plane to manipulate
     int paramIndex; // which parameters to use
+    int paramRoof; //
     std::map<int,int> paramFollow; // which matrix for window
     std::map<int,int> paramModify; // which matrix for manipulate
-    std::map<int,enum Micro> paramDisplay; // which shader for diplay
-    std::map<int,enum Micro> paramBright; // which shader for index
-    std::map<int,enum Micro> paramDetect; // which shader for pierce
+    std::map<int,enum Micro> paramShader; // which shader for diplay
     std::map<int,int> paramBase; // which facet to start on
     std::map<int,int> paramLimit; // which facet to finish before
     int littleIndex; // which state user is in
@@ -311,8 +310,7 @@ struct PhysicalState {
             VkPhysicalDevice physical = VK_NULL_HANDLE;
             uint32_t count = 0;
             vkEnumeratePhysicalDevices(instance, &count, nullptr);
-            if (count == 0)
-                throw std::runtime_error("failed to find GPUs with Vulkan support!");
+            if (count == 0) throw std::runtime_error("failed to find GPUs with Vulkan support!");
             std::vector<VkPhysicalDevice> physicals(count);
             vkEnumeratePhysicalDevices(instance, &count, physicals.data());
             for (const auto& physicalz : physicals) {
@@ -1707,38 +1705,27 @@ bool vulkanSwap()
 }
 bool vulkanFollow()
 {
-    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); int idx = mainState.paramIndex;
-    return vulkanSet(Matrixz,mainState.paramFollow[idx]*siz,siz,planeWindow(mat),[mat](){free(mat);});
+    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
+    return vulkanSet(Matrixz,mainState.paramFollow[0]*siz,siz,planeWindow(mat),[mat](){free(mat);});
 }
 bool vulkanModify()
 {
-    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz); int idx = mainState.paramIndex;
+    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
 #ifdef PLANRA
     planraMatrix(mat);
 #else
     planeMatrix(mat);
 #endif
-    return vulkanSet(Matrixz,mainState.paramModify[idx]*siz,siz,mat,[mat](){free(mat);});
+    return vulkanSet(Matrixz,mainState.paramModify[0]*siz,siz,mat,[mat](){free(mat);});
 }
 bool vulkanDirect()
 {
     // TODO write to Uniform
     return false;
 }
-bool vulkanDisplay()
+bool vulkanDisplay(int idx)
 {
-    int idx = mainState.paramIndex;
-    return vulkanDraw(mainState.paramDisplay[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
-}
-bool vulkanBright()
-{
-    int idx = mainState.paramIndex;
-    return vulkanDraw(mainState.paramBright[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
-}
-bool vulkanDetect()
-{
-    int idx = mainState.paramIndex;
-    return vulkanDraw(mainState.paramDetect[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
+    return vulkanDraw(mainState.paramShader[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
 }
 bool vulkanQuery()
 {
@@ -1772,11 +1759,11 @@ bool vulkanDefer()
     break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
     return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
 }
-bool vulkanEnact(enum Enact hint, bool cond, bool tight)
+bool vulkanEnact(int idx, enum Enact hint, bool cond, bool tight)
 { // do work, and return if there is more work to do
     bool fail; int mark;
-    if (mainState.manipEnact[hint] && cond) mainState.registerDone[hint] = true;
-    if (!mainState.registerDone[hint]) return false;
+    if (mainState.manipEnact[hint] && cond) mainState.registerDone[hint][idx] = true;
+    if (!mainState.registerDone[hint][idx]) return false;
     mark = mainState.threadState->mark(); // remember wakes after this
     switch (hint) {default: throw std::runtime_error("failed to call function!");
     break; case (Extent): fail = vulkanSwap();
@@ -1784,14 +1771,16 @@ bool vulkanEnact(enum Enact hint, bool cond, bool tight)
     break; case (Modify): fail = vulkanModify();
     break; case (Direct): fail = vulkanDirect();
     break; case (Defer): fail = vulkanDefer();
-    break; case (Display): fail = vulkanDisplay();
-    break; case (Bright): fail = vulkanBright();
-    break; case (Detect): fail = vulkanDetect();
+    break; case (Shader): fail = vulkanDisplay(idx);
     break; case (Query): fail = vulkanQuery();
     break; case (Resp): fail = vulkanResp();}
-    mainState.registerDone[hint] = fail; // will wake or already woke
+    mainState.registerDone[hint][idx] = fail; // will wake or already woke
     if (fail && mainState.threadState->mark(mark)) return true; // already woke
     return tight; // wait for wake unless there is already work to do
+}
+bool vulkanEnact(enum Enact hint, bool cond, bool tight)
+{
+    return vulkanEnact(0,hint,cond,tight);
 }
 bool vulkanChange()
 { // do work, and return if there is more work to do
@@ -1815,21 +1804,19 @@ bool vulkanChange()
         mainState.swapCopy.height = mainState.swapMove.height+mainState.MAX_FRAMEBUFFER_RESIZE;}
     if (moved || sized) {mainState.windowMove.moved = mainState.windowMove.sized = false; mainState.windowCopy = mainState.windowMove;}
     if (moused) {mainState.mouseCopy.moved = mainState.mouseCopy.sized = false; mainState.mouseCopy = mainState.mouseMove;}
-    if (queryd && !mainState.registerDone[Query]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-    if (respd && !mainState.registerDone[Resp]) {mainState.respCopy = mainState.respMove.front(); mainState.respMove.pop_front();}
-    if (deferd && !mainState.registerDone[Defer]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
+    if (queryd && !mainState.registerDone[Query][0]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
+    if (respd && !mainState.registerDone[Resp][0]) {mainState.respCopy = mainState.respMove.front(); mainState.respMove.pop_front();}
+    if (deferd && !mainState.registerDone[Defer][0]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
     mainState.tempState->temq();
     tight = vulkanEnact(Extent,swaped,tight);
     tight = vulkanEnact(Follow,(moved||sized),tight);
     tight = vulkanEnact(Modify,moused,tight);
     tight = vulkanEnact(Direct,moused,tight);
     tight = vulkanEnact(Defer,deferd,tight);
-    tight = vulkanEnact(Display,drawed,tight);
-    tight = vulkanEnact(Bright,drawed,tight);
-    tight = vulkanEnact(Detect,drawed,tight);
+    for (int idx = mainState.paramIndex; idx != mainState.paramRoof; idx++) tight = vulkanEnact(idx,Shader,drawed,tight);
     tight = vulkanEnact(Query,queryd,tight);
     tight = vulkanEnact(Resp,respd,tight);
-    tight = tight || !mainState.queryMove.empty() || !mainState.deferMove.empty();
+    tight = tight || !mainState.queryMove.empty() || !mainState.respMove.empty() || !mainState.deferMove.empty();
     return tight; // tight loop if any work remains
 }
 
@@ -1916,10 +1903,10 @@ void vulkanProcess(enum Phase phase)
     break; case(Regress): case (Bringup): {struct Center *center = 0; allocCenter(&center,1);
     center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
     allocConfigure(&center->cfg,6); allocInt(&center->val,6); center->cfg[0] = ManipEnact;
-    center->cfg[1] = ParamDisplay; center->cfg[2] = ParamLimit; center->cfg[3] = RegisterDone;
+    center->cfg[1] = ParamShader; center->cfg[2] = ParamLimit; center->cfg[3] = RegisterDone;
     center->cfg[4] = WindowRead; center->cfg[5] = WindowWrite;
-    center->val[0] = (1<<Display)|(1<<Follow)|(1<<Extent)|(1<<Defer);
-    center->val[1] = MicroPRPC; center->val[2] = 6; center->val[3] = (1<<Display);
+    center->val[0] = (1<<Shader)|(1<<Follow)|(1<<Extent)|(1<<Defer);
+    center->val[1] = MicroPRPC; center->val[2] = 6; center->val[3] = (1<<Shader);
     center->val[4] = Effect; center->val[5] = Infect;
     planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
     {int len = 0; char *str; char *tmp;
@@ -2083,7 +2070,8 @@ void vulkanCopy(struct Center **given)
     break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
     break; case (RegisterPoll): mainState.registerPoll = center->val[i];
     break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
-    mainState.registerDone[(Enact)j] = (mainState.registerDone[(Enact)j] || ((center->val[i]&(1<<j)) != 0));
+    mainState.registerDone[(Enact)j][mainState.paramIndex] =
+    (mainState.registerDone[(Enact)j][mainState.paramIndex] || ((center->val[i]&(1<<j)) != 0));
     break; case (ManipReact): for (int j = 0; j < Reacts; j++)
     mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
@@ -2091,11 +2079,10 @@ void vulkanCopy(struct Center **given)
     break; case (ManipAction): for (int j = 0; j < Actions; j++)
     mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
     break; case (ParamIndex): mainState.paramIndex = center->val[i];
-    break; case (ParamFollow): mainState.paramFollow[mainState.paramIndex] = center->val[i];
-    break; case (ParamModify): mainState.paramModify[mainState.paramIndex] = center->val[i];
-    break; case (ParamDisplay): mainState.paramDisplay[mainState.paramIndex] = (Micro)center->val[i];
-    break; case (ParamBright): mainState.paramBright[mainState.paramIndex] = (Micro)center->val[i];
-    break; case (ParamDetect): mainState.paramDetect[mainState.paramIndex] = (Micro)center->val[i];
+    break; case (ParamRoof): mainState.paramRoof = center->val[i];
+    break; case (ParamFollow): mainState.paramFollow[0] = center->val[i];
+    break; case (ParamModify): mainState.paramModify[0] = center->val[i];
+    break; case (ParamShader): mainState.paramShader[mainState.paramIndex] = (Micro)center->val[i];
     break; case (ParamBase): mainState.paramBase[mainState.paramIndex] = center->val[i];
     break; case (ParamLimit): mainState.paramLimit[mainState.paramIndex] = center->val[i];
     break; case (LittleIndex): mainState.littleIndex = center->val[i];}
@@ -2160,7 +2147,7 @@ int vulkanInfo(enum Configure query)
     case (PhysicalHeight): return mainState.windowRatio.base;
     case (RegisterPlan): return mainState.registerPlan;
     case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
-    if (mainState.registerDone[(Enact)j]) val |= (1<<j); return val;}
+    if (mainState.registerDone[(Enact)j][mainState.paramIndex]) val |= (1<<j); return val;}
     case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
     if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
     case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
@@ -2221,16 +2208,18 @@ void planraWake(enum Configure hint)
     }
     if (time - planraLast > 0.01) {planraLast = time;
         struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,5); allocInt(&center->val,5);
+        allocConfigure(&center->cfg,5); allocInt(&center->val,6);
         center->cfg[0] = RegisterDone; // TODO remove unnecessary
         center->cfg[1] = WindowLeft; center->cfg[2] = WindowBase;
         center->cfg[3] = WindowWidth; center->cfg[4] = WindowHeight;
-        center->val[0] = (1<<Display);
+        center->cfg[5] = ParamRoof;
+        center->val[0] = (1<<Shader);
         center->val[1] = vulkanInfo(WindowLeft) - 1;
         center->val[2] = vulkanInfo(WindowBase) - 1;
         center->val[3] = vulkanInfo(WindowWidth) + 2;
         center->val[4] = vulkanInfo(WindowHeight) + 2;
-        center->idx = 0; center->siz = 5; center->slf = 1;
+        center->val[5] = 1;
+        center->idx = 0; center->siz = 6; center->slf = 1;
         planeCopy(&center); freeCenter(center); allocCenter(&center,0);
     }
 }
