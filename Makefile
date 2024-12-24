@@ -3,7 +3,7 @@
 .DELETE_ON_ERROR:
 
 UNAME = $(shell uname)
-all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line space share planraBCpp
+all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line space share planraBCpp flattenCpp
 
 ifeq ($(UNAME),Linux)
 LIBRARIES = -llua -lportaudio -lglfw -lvulkan
@@ -22,7 +22,7 @@ GHC = ghc
 SWC = swiftc
 GC = xcrun
 endif
-INCLUDEPATH = -I/usr/local/include
+INCLUDEPATH = -I/usr/local/include -I/usr/include/stb
 LIBRARYPATH = -L/usr/local/lib
 
 # lua depend.lua
@@ -128,7 +128,7 @@ clean:
 	rm -rf subdir.* stderr.* stdout.*
 	rm -f *type.h *type.c *type.hs *type.lua *type.sw
 	rm -f *typer.h *typer.c *typer.hs *typer.lua *typer.sw
-	rm -f typra facer typer filer planra spacra
+	rm -f typra facer typer filer planra spacra flatten
 	rm -f hole file line metal space share pipe page
 	rm -f *C *M *Cpp *Hs *Lua *Sw *G
 	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
