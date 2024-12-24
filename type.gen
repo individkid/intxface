@@ -37,6 +37,7 @@ Memory = {
 	"Basisz", -- base for each dimension
 	"Matrixz", -- transformations
 	"Uniformz", -- references into arrays
+	"Texturez", -- facet decorations
 	"Piercez", -- per fragment info
 	"Stackz", -- named machine locations
 	"Machinez", -- state machine lines

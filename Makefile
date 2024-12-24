@@ -3,7 +3,7 @@
 .DELETE_ON_ERROR:
 
 UNAME = $(shell uname)
-all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line space share planraBCpp flattenCpp
+all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log sharer.log hole line space share planraBCpp planraRCpp flattenCpp
 
 ifeq ($(UNAME),Linux)
 LIBRARIES = -llua -lportaudio -lglfw -lvulkan
@@ -41,7 +41,6 @@ filer.log:
 	./filerLua > filer.log
 planra.log:
 	./planraC > planra.log
-	./planraRCpp >> planra.log
 planer.log:
 	./planerLua > planer.log
 spacra.log:

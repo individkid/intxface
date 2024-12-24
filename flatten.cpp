@@ -22,8 +22,11 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
+#include "proto.h"
+#include "type.h"
+#include "plane.h"
 
-extern "C" {
+/*extern "C" {
 // TODO replace by proto.h
 #define THOUSANDS_1(NUM,PWR) NUM ## PWR
 #define THOUSANDS_2(NUM,PWR) THOUSANDS_1(NUM ## PWR,PWR)
@@ -38,10 +41,10 @@ struct Center;
 // TODO replace by plane.h
 typedef void (*sftype)(enum Configure hint); // wake
 typedef void (*vftype)(); // init boot main block safe
-};
+};*/
 
 // TODO replace these by copy from Center
-struct Vertex {
+struct TestVertex {
     glm::vec3 pos;
     glm::vec3 color;
     glm::vec2 texCoord;
@@ -49,7 +52,7 @@ struct Vertex {
     static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Vertex);
+        bindingDescription.stride = sizeof(TestVertex);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         return bindingDescription;
     }
@@ -58,15 +61,15 @@ struct Vertex {
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;
         attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+        attributeDescriptions[0].offset = offsetof(TestVertex, pos);
         attributeDescriptions[1].binding = 0;
         attributeDescriptions[1].location = 1;
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
+        attributeDescriptions[1].offset = offsetof(TestVertex, color);
         attributeDescriptions[2].binding = 0;
         attributeDescriptions[2].location = 2;
         attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+        attributeDescriptions[2].offset = offsetof(TestVertex, texCoord);
         return attributeDescriptions;
     }
 };
@@ -75,7 +78,7 @@ struct UniformBufferObject {
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
 };
-const std::vector<Vertex> vertices = {
+const std::vector<TestVertex> vertices = {
     {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
     {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
     {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
@@ -1155,7 +1158,7 @@ struct DrawState : public BaseState {
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
     VkFence setup(void *ptr, int loc, int siz) {
-        if (size == SizeState(TestMicro)) {
+        if (size == SizeState(Micros)) {
             VkExtent2D swapChainExtent = get(SwapBind,Memorys)->getSwapChainExtent();
             uint32_t imageIndex;
             VkResult result = vkAcquireNextImageKHR(device, get(SwapBind,Memorys)->getSwapChain(),
@@ -1261,9 +1264,9 @@ void ChangeState::test() {
     if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
     main->swapState.advance(0); safe.wait();
-    if (!main->threadState.push(main->pipelineState.preview(TestMicro),TestMicro,&safe))
+    if (!main->threadState.push(main->pipelineState.preview(Micros),Micros,&safe))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
-    main->pipelineState.advance(TestMicro); safe.wait();
+    main->pipelineState.advance(Micros); safe.wait();
 
     int vsiz = sizeof(vertices[0]) * vertices.size();
     if (!main->threadState.push(main->vertexState.preview(),(void*)vertices.data(), 0, vsiz, vsiz, &safe))
@@ -1279,7 +1282,7 @@ void ChangeState::test() {
     for (int i = 0; i < main->frames; i++) {
         if (!main->drawState.preview(i)->bind(single, 1))
         {std::cerr << "cannot bind draw!" << std::endl; exit(-1);}
-        if (!main->threadState.push(main->drawState.preview(i), TestMicro, &safe))
+        if (!main->threadState.push(main->drawState.preview(i), Micros, &safe))
         {std::cerr << "cannot push draw!" << std::endl; exit(-1);} safe.wait();}
     int usiz = sizeof(ubo[0]); 
     for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; i++) {
@@ -1716,8 +1719,8 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPi
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto bindingDescription = TestVertex::getBindingDescription();
+    auto attributeDescriptions = TestVertex::getAttributeDescriptions();
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
