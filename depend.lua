@@ -280,6 +280,8 @@ function trymatch(values,target)
 		dbgline[dbgent] = "13a"; if callmatch(values,line,"^make: *** [Makefile:[0-9]*: (%w*)G] Error 1$") and findsource(values,"void *","()",".g") and copysource(values,target,".g") then dgbent = dbgent - 1; return true end
 		dbgline[dbgent] = "14a"; if callmatch(values,line,"^/bin/sh: [%d]*: ./(%w*)Cpp: not found$") and makecopy(values,target,"Cpp") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "15a"; if callmatch(values,line,"^.*: cannot load library: (%w*)G$") and makecopy(values,target,"G") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "15b"; if callmatch(values,line,"^failed to open shader: (%w*)G$") and makecopy(values,target,"G") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "16a"; if callmatch(values,line,"^failed to load texture image: (%w*).jpg$") and copysource(values,target,".jpg") then dbgent = dbgent - 1; return true end
 	elseif uname == "Darwin" then
 	end end
 	for line in io.lines("stderr."..target) do io.stderr:write(line.."\n") end
