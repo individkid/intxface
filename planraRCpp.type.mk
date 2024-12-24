@@ -1,1 +1,1 @@
- allocMatrix allocVertex copyPierce freeCenter hideMatrix hideVertex identType
+ allocCenter allocVertex freeCenter hideVertex identType
