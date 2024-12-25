@@ -28,22 +28,7 @@ lineCpp.typeC.o: face.h type.h
 luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
-metxC.o: metx.c metx.h
-planeC.o: datx.h face.h metx.h plane.c plane.h proto.h stlx.h type.h
-planeCpp.o: datx.h plane.cpp proto.h wrap.h
-planra.log: flattenCpp fragmentFlattenG planraC texture.jpg vertexFlattenG
-planraBCpp: datxC.o faceC.o metxC.o planeC.o planeCpp.o planraBCpp.o planraBCpp.typeC.o protoC.o stlxCpp.o wrapCpp.o
-planraBCpp.o: face.h plane.h planraBCpp.mk proto.h type.h vulkan.cpp
-planraBCpp.type.c: luax.so show.lua type.gen
-planraBCpp.typeC.o: face.h type.h
-planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
-planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
-planraC.type.c: luax.so show.lua type.gen
-planraC.typeC.o: face.h type.h
-planraRCpp: datxC.o faceC.o metxC.o planeC.o planeCpp.o planraRCpp.o planraRCpp.typeC.o protoC.o stlxCpp.o wrapCpp.o
-planraRCpp.o: face.h plane.h planraRCpp.mk proto.h type.h vulkan.cpp
-planraRCpp.type.c: luax.so show.lua type.gen
-planraRCpp.typeC.o: face.h type.h
+planra.log: flattenCpp fragmentFlattenG texture.jpg vertexFlattenG
 protoC.o: proto.c proto.h
 share: shareC
 shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o wrapCpp.o
@@ -60,7 +45,6 @@ spacerLua: spacer.lua
 spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs spacraHs.type.hs
 spacraHs.type.hs: luax.so show.lua type.gen
-stlxCpp.o: stlx.cpp stlx.h
 type.h: luax.so show.lua type.gen
 type.lua: luax.so show.lua type.gen
 typer.c: luax.so show.lua test.lua typer.gen
@@ -69,7 +53,7 @@ typer.hs: luax.so show.lua test.lua typer.gen
 typer.log: typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
-typerC.o: typer.c typer.h
+typerC.o: face.h typer.c typer.h
 typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
