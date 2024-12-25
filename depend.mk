@@ -14,6 +14,7 @@ filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
 flattenCpp: flattenCpp.o
 flattenCpp.o: flatten.cpp plane.h proto.h type.h
+fragmentFlattenG: flatten.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
 holeC.o: face.h hole.c proto.h type.h
@@ -30,7 +31,7 @@ luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
 planeC.o: datx.h face.h metx.h plane.c plane.h proto.h stlx.h type.h
 planeCpp.o: datx.h plane.cpp proto.h wrap.h
-planra.log: planraC
+planra.log: flattenCpp fragmentFlattenG planraC texture.jpg vertexFlattenG
 planraBCpp: datxC.o faceC.o metxC.o planeC.o planeCpp.o planraBCpp.o planraBCpp.typeC.o protoC.o stlxCpp.o wrapCpp.o
 planraBCpp.o: face.h plane.h planraBCpp.mk proto.h type.h vulkan.cpp
 planraBCpp.type.c: luax.so show.lua type.gen
@@ -68,8 +69,9 @@ typer.hs: luax.so show.lua test.lua typer.gen
 typer.log: typerC typerHs typerLua
 typer.lua: luax.so show.lua test.lua typer.gen
 typerC: faceC.o protoC.o typerC.o
-typerC.o: face.h typer.c typer.h
+typerC.o: typer.c typer.h
 typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
+vertexFlattenG: flatten.g
 wrapCpp.o: proto.h wrap.cpp wrap.h

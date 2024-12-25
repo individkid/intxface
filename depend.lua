@@ -54,10 +54,8 @@ function getdepend(target)
 end
 
 function filexists(name)
-	local file = io.open(name,"r")
-	if file == nil then return false end
-	io.close(file)
-	return true
+	if os.execute("test -e "..name) then return true end
+	return false
 end
 
 function copydepend(match,depends)

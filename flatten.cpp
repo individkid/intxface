@@ -175,8 +175,8 @@ bool drawFrame(VkDevice device, VkCommandBuffer &commandBuffer,
 struct MainState;
 struct ChangeState {
     MainState *main;
-    ChangeState(MainState*main) : main(main) {std::cerr << "ChangeState" << std::endl;}
-    ~ChangeState() {std::cerr << "~ChangeState" << std::endl;}
+    ChangeState(MainState*main) : main(main) {std::cout << "ChangeState" << std::endl;}
+    ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
     void async();
     void resize();
     void loop();
@@ -191,9 +191,9 @@ struct WindowState {
     GLFWwindow* const window;
     WindowState(ChangeState *change) :
         window(createWindow(WIDTH,HEIGHT))
-        {std::cerr << "WindowState" << std::endl;}
+        {std::cout << "WindowState" << std::endl;}
     ~WindowState() {
-        std::cerr << "~WindowState" << std::endl;
+        std::cout << "~WindowState" << std::endl;
         glfwDestroyWindow(window);
         glfwTerminate();
     }
@@ -210,9 +210,9 @@ struct VulkanState {
         instance(createInstance(info,validationLayers)),
         debug(createDebug(instance,info,validationLayers)),
         surface(createSurface(instance, window))
-        {std::cerr << "VulkanState" << std::endl;}
+        {std::cout << "VulkanState" << std::endl;}
     ~VulkanState() {
-        std::cerr << "~VulkanState" << std::endl;
+        std::cout << "~VulkanState" << std::endl;
         vkDestroySurfaceKHR(instance, surface, nullptr);
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
         vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -245,8 +245,8 @@ struct PhysicalState {
         surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device))
-        {std::cerr << "PhysicalState" << std::endl;}
-    ~PhysicalState() {std::cerr << "~PhysicalState" << std::endl;}
+        {std::cout << "PhysicalState" << std::endl;}
+    ~PhysicalState() {std::cout << "~PhysicalState" << std::endl;}
 };
 const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
 
@@ -269,9 +269,9 @@ struct LogicalState {
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
             VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
         renderPass(createRenderPass(device,imageFormat,depthFormat))
-        {std::cerr << "LogicalState" << std::endl;}
+        {std::cout << "LogicalState" << std::endl;}
     ~LogicalState() {
-        std::cerr << "~LogicalState" << std::endl;
+        std::cout << "~LogicalState" << std::endl;
         vkDestroyRenderPass(device, renderPass, nullptr);
         vkDestroyCommandPool(device, pool, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -284,7 +284,7 @@ struct SafeState {
         if (sem_init(&semaphore, 0, val) != 0) {std::cerr << "failed to create semaphore!" << std::endl; exit(-1);}
     }
     ~SafeState() {
-        if (sem_destroy(&semaphore) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
+        if (sem_destroy(&semaphore) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; exit(-1);}
     }
     void wait() {
         if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
@@ -515,7 +515,7 @@ template <class State, int Size> struct ArrayState : public BindState {
     State *derived() {safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;}
     State *preview() {safe.wait(); State *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
     State *preview(int i) {
-        if (i < 0 || i >= Size) {std::cerr << "cannot preview!" << std::endl; exit(-1);}
+        if (i < 0 || i >= Size) {std::cerr << "cannot preview! " << i << " " << Size << std::endl; exit(-1);}
         safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;}
     void advance(int i) {
         if (i < 0 || i >= Size) {std::cerr << "cannot advance!" << std::endl; exit(-1);}
@@ -685,9 +685,9 @@ struct ThreadState {
     pthread_t thread;
     ThreadState(VkDevice device, ChangeState *change) : device(device), change(change), safe(1), wait(0), done(false) {
         if (pthread_create(&thread,0,separate,this) != 0) {std::cerr << "failed to create thread!" << std::endl; exit(-1);}
-        {std::cerr << "ThreadState" << std::endl;}
+        {std::cout << "ThreadState" << std::endl;}
     }
-    ~ThreadState() {std::cerr << "~ThreadState" << std::endl;}
+    ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
     Center *clear() {
         safe.wait();
         if (todo.empty()) {safe.post(); return 0;}
@@ -831,8 +831,8 @@ struct SwapState : public BaseState {
         depthFormat(BindState::depthFormat),
         renderPass(BindState::renderPass),
         memProperties(BindState::memProperties)
-        {std::cerr << "SwapState" << std::endl;}
-    ~SwapState() {push(0); baseres(); std::cerr << "~SwapState" << std::endl;}
+        {std::cout << "SwapState" << std::endl;}
+    ~SwapState() {push(0); baseres(); std::cout << "~SwapState" << std::endl;}
     VkSwapchainKHR getSwapChain() {return swapChain;}
     VkFramebuffer getSwapChainFramebuffer(int i) {return swapChainFramebuffers[i];}
     VkExtent2D getSwapChainExtent() {return size.extent;}
@@ -886,9 +886,9 @@ struct PipelineState : public BaseState {
         descriptorSetLayout(createDescriptorSetLayout(BindState::device,micro)),
         pipelineLayout(createPipelineLayout(BindState::device,descriptorSetLayout)),
         graphicsPipeline(createGraphicsPipeline(BindState::device,BindState::renderPass,pipelineLayout))
-        {std::cerr << "PipelineState" << std::endl;}
+        {std::cout << "PipelineState" << std::endl;}
     ~PipelineState() {
-        std::cerr << "~PipelineState" << std::endl;
+        std::cout << "~PipelineState" << std::endl;
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -920,8 +920,8 @@ struct UniformState : public BaseState {
         BaseState("UniformState",BindState::self),
         device(BindState::device), physical(BindState::physical),
         memProperties(BindState::memProperties)
-        {std::cerr << "UniformState" << std::endl;}
-    ~UniformState() {push(0); baseres(); std::cerr << "~UniformState" << std::endl;}
+        {std::cout << "UniformState" << std::endl;}
+    ~UniformState() {push(0); baseres(); std::cout << "~UniformState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
     void resize() {
         VkDeviceSize bufferSize = size.size;
@@ -963,8 +963,8 @@ struct BufferState : public BaseState {
         device(BindState::device), physical(BindState::physical),
         graphics(BindState::graphics), pool(BindState::pool), memProperties(BindState::memProperties),
         flags(BindState::flags)
-        {std::cerr << "BufferState" << std::endl;}
-    ~BufferState() {push(0); baseres(); std::cerr << "~BufferState" << std::endl;}
+        {std::cout << "BufferState" << std::endl;}
+    ~BufferState() {push(0); baseres(); std::cout << "~BufferState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
     void resize() {
         VkDeviceSize bufferSize = size.size;
@@ -1027,8 +1027,8 @@ struct TextureState : public BaseState {
         device(BindState::device), physical(BindState::physical),
         properties(BindState::properties), graphics(BindState::graphics), pool(BindState::pool),
         memProperties(BindState::memProperties), func(BindState::func)
-        {std::cerr << "TextureState" << std::endl;}
-    ~TextureState() {push(0); baseres(); std::cerr << "~TextureState" << std::endl;}
+        {std::cout << "TextureState" << std::endl;}
+    ~TextureState() {push(0); baseres(); std::cout << "~TextureState" << std::endl;}
     VkImageView getTextureImageView() {return textureImageView;}
     VkSampler getTextureSampler() {return textureSampler;}
     void resize() {
@@ -1119,8 +1119,8 @@ struct DrawState : public BaseState {
         change(BindState::change),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0)
-        {std::cerr << "DrawState " << debug << std::endl;}
-    ~DrawState() {push(0); baseres(); std::cerr << "~DrawState " << debug << std::endl;}
+        {std::cout << "DrawState " << debug << std::endl;}
+    ~DrawState() {push(0); baseres(); std::cout << "~DrawState " << debug << std::endl;}
     bool bind(BindState **ary, int siz) {
         // choose latest of each in BindBase state
         if (bufsiz != 0) {std::cerr << "invalid bind state!" << std::endl; exit(-1);}
@@ -1158,7 +1158,7 @@ struct DrawState : public BaseState {
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
     VkFence setup(void *ptr, int loc, int siz) {
-        if (size == SizeState(Micros)) {
+        if (size == SizeState(MicroTest)) {
             VkExtent2D swapChainExtent = get(SwapBind,Memorys)->getSwapChainExtent();
             uint32_t imageIndex;
             VkResult result = vkAcquireNextImageKHR(device, get(SwapBind,Memorys)->getSwapChain(),
@@ -1256,17 +1256,17 @@ const int NUM_FRAMES_IN_FLIGHT = 2;
 UniformBufferObject ubo[NUM_FRAMES_IN_FLIGHT]; // TODO use Center Uniformz instead of builtin data
 void ChangeState::test() {
     int texWidth; int texHeight; int texChannels;
-    stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    if (!pixels) {std::cerr << "failed to load texture image!" << std::endl; exit(-1);}
+    stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    if (!pixels) {std::cerr << "failed to load texture image: " << "texture.jpg" << std::endl; exit(-1);}
     donePixels.push_back(pixels);
 
     SafeState safe(0);
     if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
     main->swapState.advance(0); safe.wait();
-    if (!main->threadState.push(main->pipelineState.preview(Micros),Micros,&safe))
+    if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,&safe))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
-    main->pipelineState.advance(Micros); safe.wait();
+    main->pipelineState.advance(MicroTest); safe.wait();
 
     int vsiz = sizeof(vertices[0]) * vertices.size();
     if (!main->threadState.push(main->vertexState.preview(),(void*)vertices.data(), 0, vsiz, vsiz, &safe))
@@ -1282,7 +1282,7 @@ void ChangeState::test() {
     for (int i = 0; i < main->frames; i++) {
         if (!main->drawState.preview(i)->bind(single, 1))
         {std::cerr << "cannot bind draw!" << std::endl; exit(-1);}
-        if (!main->threadState.push(main->drawState.preview(i), Micros, &safe))
+        if (!main->threadState.push(main->drawState.preview(i), MicroTest, &safe))
         {std::cerr << "cannot push draw!" << std::endl; exit(-1);} safe.wait();}
     int usiz = sizeof(ubo[0]); 
     for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; i++) {
@@ -1290,7 +1290,8 @@ void ChangeState::test() {
         {std::cerr << "cannot push uniform!" << std::endl; exit(-1);} safe.wait();}
 
     uint32_t currentUniform = 0; // TODO call planeDone on the Center instead of using temporary ubo
-    while (!glfwWindowShouldClose(main->windowState.window)) {
+    int count = 0;
+    while (!glfwWindowShouldClose(main->windowState.window) && count++ < 1000) {
     Center *center = main->threadState.clear(); if (center) copy(center);
     ubo[currentUniform] = updateUniformBuffer(main->swapChainExtent);
     if (main->threadState.wrap(main->uniformState.preview(), &ubo[currentUniform], 0, usiz))
@@ -1303,7 +1304,7 @@ void ChangeState::test() {
         &main->pipelineState,
         &main->swapState};
     int count = 0; while (!main->drawState.buffer()->bind()) {
-        if ((++count % 1000) == 0) std::cerr << "count " << count << std::endl;
+        if ((++count % 1000) == 0) std::cout << "count " << count << std::endl;
         glfwWaitEventsTimeout(0.001);}
     if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
         main->threadState.wrap(main->drawState.derived(), 0, 0, 0))
@@ -1316,7 +1317,7 @@ void ChangeState::test() {
 // TODO define glfw callbacks that cast void* to ChangeState*
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    std::cout << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
 
@@ -1476,7 +1477,7 @@ VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& 
         static_cast<uint32_t>(width),
         static_cast<uint32_t>(height)
     };
-    std::cerr << "width " << width << " height " << height << std::endl;
+    std::cout << "width " << width << " height " << height << std::endl;
     actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
     actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
     return actualExtent;}
@@ -1679,10 +1680,7 @@ VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout des
 }
 static std::vector<char> readFile(const std::string& filename) { // TODO move to testbench, whether builtin or remote
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-        std::cerr << "failed to open file: " << filename << std::endl;
-	{std::cerr << "failed to open file!" << std::endl; exit(-1);}
-    }
+    if (!file.is_open()) {std::cerr << "failed to open shader: " << filename << std::endl; exit(-1);}
     size_t fileSize = (size_t) file.tellg();
     std::vector<char> buffer(fileSize);
     file.seekg(0);
@@ -1702,8 +1700,8 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
 }
 VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout) {
     VkPipeline graphicsPipeline;
-    auto vertShaderCode = readFile("shaders/vert.spv");
-    auto fragShaderCode = readFile("shaders/frag.spv");
+    auto vertShaderCode = readFile("vertexFlattenG");
+    auto fragShaderCode = readFile("fragmentFlattenG");
     VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
@@ -1976,7 +1974,7 @@ void updateStorageDescriptor(VkDevice device, VkBuffer buffer,
     bufferInfo.buffer = buffer;
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof(UniformBufferObject);
-    VkWriteDescriptorSet descriptorWrite;
+    VkWriteDescriptorSet descriptorWrite{};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet = descriptorSet;
     descriptorWrite.dstBinding = index;
@@ -1985,7 +1983,7 @@ void updateStorageDescriptor(VkDevice device, VkBuffer buffer,
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.pBufferInfo = &bufferInfo;
     VkWriteDescriptorSet descriptorWrites [] = {descriptorWrite};
-    vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
+    vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);\
 }
 
 void updateUniformDescriptor(VkDevice device, VkBuffer buffer,
@@ -1994,7 +1992,7 @@ void updateUniformDescriptor(VkDevice device, VkBuffer buffer,
     bufferInfo.buffer = buffer;
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof(UniformBufferObject);
-    VkWriteDescriptorSet descriptorWrite;
+    VkWriteDescriptorSet descriptorWrite{};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet = descriptorSet;
     descriptorWrite.dstBinding = index;
@@ -2013,7 +2011,7 @@ void updateTextureDescriptor(VkDevice device,
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = textureImageView;
     imageInfo.sampler = textureSampler;
-    VkWriteDescriptorSet descriptorWrite;
+    VkWriteDescriptorSet descriptorWrite{};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet = descriptorSet;
     descriptorWrite.dstBinding = index;

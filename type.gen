@@ -218,6 +218,7 @@ MicroOn = {
 	"CoPyon", -- copy after done
 }
 Micro = {
+	"MicroTest", -- for flatten.cpp
 	"MicroPRPC", -- fetch transform display
 	"MicroPRCP", -- fetch transform pierce
 	"MicroCRPC", -- index transform display
