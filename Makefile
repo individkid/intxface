@@ -40,6 +40,7 @@ filer.log:
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	./filerLua > filer.log
 planra.log:
+	./planraC > planra.log
 	./vulkanCpp >> planra.log
 planer.log:
 	./planerLua > planer.log
