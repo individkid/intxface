@@ -1,2225 +1,2231 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <iostream>
 #include <fstream>
-#include <stdexcept>
 #include <algorithm>
+#include <chrono>
 #include <vector>
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
 #include <limits>
-#include <optional>
+#include <array>
 #include <deque>
-#include <map>
-#include <set>
-#include <functional>
 #include <pthread.h>
 #include <semaphore.h>
-#include <sys/time.h>
-
-extern "C" {
-#include "face.h"
+#include <stdio.h>
+#include "proto.h"
 #include "type.h"
 #include "plane.h"
-}
 
-struct InitState;
-struct OpenState;
-struct PhysicalState;
-struct DeviceState;
-struct ThreadState;
-struct QueueState;
-struct TempState;
-struct MouseState {
-    double left, base, angle;
-    bool moved, sized;
-};
-struct WindowState {
-    int left, base, width, height;
-    bool moved, sized;
-};
-struct SizeState {
-    int width, height;
-};
-struct RatioState {
-    int left, base, width, height;
-};
-struct MainState {
-    bool manipReact[Reacts]; // little language changed; user filter
-    bool manipEnact[Enacts]; // set and forget; work on filtered user
-    bool manipAction[Actions]; // micro code response to little language
-    std::map<int,bool> registerDone[Enacts]; // record whether work remains
-    bool registerOpen; // whether main loop running
-    enum Plan registerPlan; // which builtin test to run
-    int registerPoll; // how long to what without wake
-    enum Interp mouseRead, mouseWrite; // which copy of mouse
-    enum Interp windowRead, windowWrite; // which copy of window
-    enum Interp swapRead, swapWrite; // which copy of query
-    enum Interp queryRead, queryWrite; // which copy of query
-    enum Interp respRead, respWrite; // which copy of resp
-    RatioState windowRatio; // physical to virtual
-    MouseState mouseClick, mouseMove, mouseCopy; // pierce, current, processed
-    WindowState windowClick, windowMove, windowCopy; // pierce, current, processed
-    SizeState swapClick, swapMove, swapCopy; // spoof, current, processed
-    std::deque<MouseState> queryMove; MouseState queryClick, queryCopy; // synchronous changes
-    std::deque<Pierce> respMove; Pierce respClick, respCopy; // query result
-    std::deque<Center*> deferMove; Center* deferCopy; // calls to dma
-    std::deque<int> linePress; // synchronous characters
-    int charPress; // async character
-    int mouseIndex; // which plane to manipulate
-    int paramIndex; // which parameters to use
-    int paramRoof; //
-    std::map<int,int> paramFollow; // which matrix for window
-    std::map<int,int> paramModify; // which matrix for manipulate
-    std::map<int,enum Micro> paramShader; // which shader for diplay
-    std::map<int,int> paramBase; // which facet to start on
-    std::map<int,int> paramLimit; // which facet to finish before
-    int littleIndex; // which state user is in
-    int littleSize; // how many states user can be in
-    Little *littleState; // user changes to React and Action
-    int argc; char **argv;
-    InitState *initState;
-    OpenState* openState;
-    PhysicalState* physicalState;
-    DeviceState* logicalState;
-    ThreadState *threadState;
-    TempState *tempState;
-    QueueState* queueState;
-    const int windowDelta = 10; // how far arrow keys move window edges
-    const int MAX_FRAMES_INFLIGHT = 2; // how many swap indices
-    const int MAX_BUFFERS_AVAILABLE = 3; // how many buffers per memory
-    const int MAX_FENCES_INFLIGHT = 3; // how many fences to wait for
-    const int MAX_FRAMEBUFFER_SWAPS = 2; // how many swap buffers
-    const int MAX_FRAMEBUFFER_RESIZE = 100; // window change before new swap buffer
-    const std::vector<const char*> extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-#ifdef NDEBUG
-    const std::vector<const char*> layers;
-#else
-    const std::vector<const char*> layers = {"VK_LAYER_KHRONOS_validation"};
-#endif
-} mainState = {0};
+/*extern "C" {
+// TODO replace by proto.h
+#define THOUSANDS_1(NUM,PWR) NUM ## PWR
+#define THOUSANDS_2(NUM,PWR) THOUSANDS_1(NUM ## PWR,PWR)
+#define THOUSANDS_3(NUM,PWR) THOUSANDS_2(NUM ## PWR,PWR)
+#define NANOSECONDS THOUSANDS_3(1,000)
+#define MICROSECONDS THOUSANDS_2(1,000)
+// TODO replace by type.h
+enum Configure {Configures};
+enum Micro {TestMicro,Micros};
+enum Memory {Vertexz,Uniformz,Texturez,Memorys};
+struct Center;
+// TODO replace by plane.h
+typedef void (*sftype)(enum Configure hint); // wake
+typedef void (*vftype)(); // init boot main block safe
+};*/
 
-void windowMoved(GLFWwindow* window, int xpos, int ypos)
-{
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    // std::cerr << "windowMoved " << xpos << "/" << ypos << std::endl;
-    if (mainState->manipReact[Relate]) {
-        mainState->mouseMove.left -= xpos-mainState->windowMove.left;
-        mainState->mouseMove.base -= ypos-mainState->windowMove.base;
-        mainState->mouseMove.moved = true;}
-    mainState->windowMove.left = xpos; mainState->windowMove.base = ypos; mainState->windowMove.moved = false;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,WindowLeft);
-}
-void mouseMoved(GLFWwindow* window, double xpos, double ypos) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    // std::cerr << "mouseMoved " << xpos << "/" << ypos << std::endl;
-    mainState->mouseMove.left = xpos; mainState->mouseMove.base = ypos; mainState->mouseMove.moved = false;
-    // TODO if Drag, set winodowMove moved and/or sized = true;
-    if (mainState->manipReact[Relate]) {
-        mainState->mouseMove.left += mainState->windowMove.left;
-        mainState->mouseMove.base += mainState->windowMove.base;}
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorLeft);
-}
-void windowSized(GLFWwindow* window, int width, int height)
-{
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    // std::cerr << "windowSized " << width << "/" << height << std::endl;
-    mainState->windowMove.width = width; mainState->windowMove.height = height; mainState->windowMove.sized = false;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,WindowWidth);
-}
-void mouseAngled(GLFWwindow *window, double amount) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    mainState->mouseMove.angle += amount; mainState->mouseMove.sized = false;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorAngle);
-}
-void windowRefreshed(GLFWwindow* window)
-{
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    // std::cerr << "windowRefresh" << std::endl;
-}
-void manipReact(struct MainState *mainState, int pat) {
-    for (int i = mainState->littleIndex; i < mainState->littleSize; i++)
-    if (mainState->littleState[i].pat == pat || mainState->littleState[i].pat == 0) {
-    for (int j = 0; j < Reacts; j++) mainState->manipReact[(React)j] = ((mainState->littleState[i].val&(1<<j)) != 0);
-    for (int j = 0; j < Actions; j++) mainState->manipAction[(Action)j] = ((mainState->littleState[i].num&(1<<j)) != 0);
-    mainState->paramIndex = mainState->littleState[i].idx;
-    mainState->littleIndex = mainState->littleState[i].nxt; break;}
-}
-void keyPressed(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    int north, east, south, west, delta;
-    north = east = south = west = 0; delta = mainState->windowDelta;
-    if (action != GLFW_PRESS || mods != 0) return;
-    std::cerr << "keyPressed " << key << std::endl;
-    if (key == GLFW_KEY_DOWN || key == GLFW_KEY_LEFT) delta = -delta;
-    if (mainState->manipReact[Arrow] && mainState->manipReact[North]) north = delta;
-    if (mainState->manipReact[Arrow] && mainState->manipReact[South]) south = delta;
-    if (mainState->manipReact[Arrow] && mainState->manipReact[East]) east = delta;
-    if (mainState->manipReact[Arrow] && mainState->manipReact[West]) west = delta;
-    if (south || west) {
-        mainState->windowMove.left += west; mainState->windowMove.base += south; mainState->windowMove.moved = true;}
-    if (mainState->manipReact[Relate] && (south || west)) {
-        mainState->mouseMove.left -= west; mainState->mouseMove.base -= south; mainState->mouseMove.moved = true;}
-    if (north != south || east != west) {
-        mainState->windowMove.width += east-west; mainState->windowMove.height += north-south; mainState->windowMove.sized = true;}
-    if (mainState->manipReact[Enline]) mainState->linePress.push_back(key);
-    if (mainState->manipReact[Enchar]) mainState->charPress = key;
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorPress);
-    if (mainState->manipReact[Enstate]) manipReact(mainState,key);
-}
-void mouseClicked(GLFWwindow* window, int button, int action, int mods) {
-    struct MainState *mainState = (struct MainState *)glfwGetWindowUserPointer(window);
-    std::cerr << "mouseClicked" << std::endl;
-    if (action != GLFW_PRESS) return;
-    mainState->windowClick = mainState->windowMove;
-    mainState->mouseClick = mainState->mouseMove;
-    mainState->queryMove.push_back(mainState->mouseMove);
-    if (mainState->manipReact[Enque]) planeSafe(Threads,Phases,CursorClick);
-    if (mainState->manipReact[Enstate]) manipReact(mainState,-1);
-}
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    // std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-    return VK_FALSE;
-}
-
-struct InitState {
-    VkInstance instance;
-    bool enable;
-    VkDebugUtilsMessengerEXT debug;
-    InitState(const std::vector<const char*> layers) {
-        this->enable = layers.size();
-        glfwInit();
-        VkDebugUtilsMessengerCreateInfoEXT info = {};
-        info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        info.pfnUserCallback = debugCallback;
-        if (layers.size() && ![](const std::vector<const char*> layers) {
-            uint32_t count;
-            vkEnumerateInstanceLayerProperties(&count, nullptr);
-            std::vector<VkLayerProperties> available(count);
-            vkEnumerateInstanceLayerProperties(&count, available.data());
-            for (const char* name : layers) {
-            bool found = false;
-            for (const auto& properties : available) {
-            if (strcmp(name, properties.layerName) == 0) {found = true; break;}}
-            if (!found) return false;}
-            return true;
-        } (layers)) throw std::runtime_error("validation layers requested, but not available!");
-        instance = [](bool enable, VkDebugUtilsMessengerCreateInfoEXT create, const std::vector<const char*> layers) {
-            VkApplicationInfo application{};
-            application.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            application.pApplicationName = "Hello Triangle";
-            application.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-            application.pEngineName = "No Engine";
-            application.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-            application.apiVersion = VK_API_VERSION_1_0; 
-            VkInstanceCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-            info.pApplicationInfo = &application;
-            std::vector<const char*> extensions = [](bool enable) {
-                uint32_t count = 0;
-                const char** required = glfwGetRequiredInstanceExtensions(&count);
-                std::vector<const char*> extensions(required, required + count);
-                std::cerr << "extension:" << VK_EXT_DEBUG_UTILS_EXTENSION_NAME << std::endl;
-                if (enable) extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-                return extensions;
-            } (enable);
-            info.enabledExtensionCount = static_cast<int>(extensions.size());
-            info.ppEnabledExtensionNames = extensions.data();
-            if (enable) {
-                info.enabledLayerCount = static_cast<int>(layers.size());
-                info.ppEnabledLayerNames = layers.data();
-                info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &create;}
-            else {
-                info.enabledLayerCount = 0;
-                info.pNext = nullptr;}
-            VkInstance instance;
-            if (vkCreateInstance(&info, nullptr, &instance) != VK_SUCCESS) throw std::runtime_error("failed to create instance!");
-            return instance;
-        } (enable,info,layers);
-        if (enable) debug = [](VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT info) {
-            VkDebugUtilsMessengerEXT debug;
-            if ([](VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-                const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-                auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-                if (func != nullptr) return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-                else return VK_ERROR_EXTENSION_NOT_PRESENT;}(instance, &info, nullptr, &debug) != VK_SUCCESS)
-                throw std::runtime_error("failed to set up debug messenger!");
-            return debug;
-        } (instance,info);
+// TODO replace these by copy from Center
+struct TestVertex {
+    glm::vec3 pos;
+    glm::vec3 color;
+    glm::vec2 texCoord;
+    // TODO replace these by wrappers around Constant functions from type.h
+    static VkVertexInputBindingDescription getBindingDescription() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(TestVertex);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return bindingDescription;
     }
-    ~InitState() {
-        if (enable) [](VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-            auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-            if (func != nullptr) func(instance, debugMessenger, pAllocator);}(instance, debug, nullptr);
-        vkDestroyInstance(instance, nullptr);
+    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(TestVertex, pos);
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(TestVertex, color);
+        attributeDescriptions[2].binding = 0;
+        attributeDescriptions[2].location = 2;
+        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(TestVertex, texCoord);
+        return attributeDescriptions;
+    }
+};
+struct UniformBufferObject {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+};
+const std::vector<TestVertex> vertices = {
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+};
+const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4
+};
+
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+GLFWwindow* createWindow(uint32_t WIDTH, uint32_t HEIGHT);
+VkDebugUtilsMessengerCreateInfoEXT createInfo(const char **validationLayers);
+VkInstance createInstance(VkDebugUtilsMessengerCreateInfoEXT info, const char **validationLayers);
+VkDebugUtilsMessengerEXT createDebug(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT info,
+    const char **validationLayers);
+VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
+VkPhysicalDevice createDevice(VkInstance instance, VkSurfaceKHR surface, const char **deviceExtensions);
+uint32_t findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
+uint32_t findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
+VkSurfaceCapabilitiesKHR findCapabilities(VkSurfaceKHR surface, VkPhysicalDevice device);
+VkPhysicalDeviceProperties findProperties(VkPhysicalDevice device);
+VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkSurfaceKHR surface, VkPhysicalDevice device);
+VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device);
+VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
+    const char **validationLayers, const char **deviceExtensions);
+VkQueue createQueue(VkDevice device, uint32_t family);
+VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device);
+VkCommandPool createCommandPool(VkDevice device, uint32_t family);
+VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size,
+    VkImageTiling tiling, VkFormatFeatureFlags features);
+VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat);
+VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
+VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro);
+VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout);
+static std::vector<char> readFile(const std::string& filename);
+VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
+VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
+struct createDescriptorSet {VkDescriptorSet  operator()();
+    VkDevice device; VkDescriptorPool descriptorPool;
+    VkDescriptorSetLayout descriptorSetLayout; int frames;
+    createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
+    VkDescriptorSetLayout descriptorSetLayout, int frames) :
+    device(device), descriptorPool(descriptorPool),
+    descriptorSetLayout(descriptorSetLayout), frames(frames) {}};
+struct createCommandBuffer{VkCommandBuffer operator()();
+    VkDevice device; VkCommandPool pool;
+    createCommandBuffer(VkDevice device, VkCommandPool pool) :
+    device(device), pool(pool) {}};
+VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
+    VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
+    VkSurfaceCapabilitiesKHR capabilities, uint32_t graphicsFamily, uint32_t presentFamily);
+void createSwapChainImages(VkDevice device, VkSwapchainKHR swapChain, std::vector<VkImage> &swapChainImages);
+VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+void createImage(VkDevice device, VkPhysicalDevice physical,
+    uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+    VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
+    VkImage& image, VkDeviceMemory& imageMemory);
+void createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
+    std::vector<VkImageView> swapChainImageViews, VkImageView depthImageView, std::vector<VkFramebuffer> &swapChainFramebuffer);
+void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage,
+    VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+VkFence createFence(VkDevice device);
+VkSemaphore createSemaphore(VkDevice device);
+void copyBuffer(VkDevice device, VkQueue graphics, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
+    VkCommandBuffer command, VkFence fence);
+void copyTextureImage(VkDevice device, VkPhysicalDevice physical, VkQueue graphics, VkCommandPool pool,
+    VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
+    VkSemaphore beforeSemaphore, VkSemaphore afterSempaphore, VkFence fence, VkBuffer stagingBuffer,
+    VkCommandBuffer beforeBuffer, VkCommandBuffer commandBuffer, VkCommandBuffer afterBuffer);
+VkSampler createTextureSampler(VkDevice device, VkPhysicalDevice physical, VkPhysicalDeviceProperties properties);
+void updateStorageDescriptor(VkDevice device, VkBuffer buffer, int index, VkDescriptorSet descriptorSet);
+void updateUniformDescriptor(VkDevice device, VkBuffer buffer, int index, VkDescriptorSet descriptorSet);
+void updateTextureDescriptor(VkDevice device, VkImageView textureImageView,
+    VkSampler textureSampler, int index, VkDescriptorSet descriptorSet);
+void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer,
+    VkExtent2D swapChainExtent, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
+    VkDescriptorSet &descriptorSet, VkBuffer buffer, VkBuffer indexBuffer, Micro micro);
+UniformBufferObject updateUniformBuffer(VkExtent2D swapChainExtent);
+bool drawFrame(VkDevice device, VkCommandBuffer &commandBuffer,
+    VkRenderPass renderPass, VkQueue graphics, VkQueue present,
+    VkSwapchainKHR swapChain, VkFramebuffer swapChainFramebuffer,
+    VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
+    VkBuffer buffer, VkBuffer indexBuffer, uint32_t imageIndex,
+    VkDescriptorSet descriptorSet, void *ptr, int loc, int siz, Micro micro,
+    VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence,
+    VkExtent2D swapChainExtent, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode);
+struct MainState;
+struct ChangeState {
+    MainState *main;
+    ChangeState(MainState*main) : main(main) {std::cout << "ChangeState" << std::endl;}
+    ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
+    void async();
+    void resize();
+    void loop();
+    void copy(Center *);
+    void test();
+};
+// TODO forward declare glfw callbacks that cast void* to ChangeState*
+
+struct WindowState {
+    const uint32_t WIDTH = 800;
+    const uint32_t HEIGHT = 600;
+    GLFWwindow* const window;
+    WindowState(ChangeState *change) :
+        window(createWindow(WIDTH,HEIGHT))
+        {std::cout << "WindowState" << std::endl;}
+    ~WindowState() {
+        std::cout << "~WindowState" << std::endl;
+        glfwDestroyWindow(window);
         glfwTerminate();
     }
 };
 
-struct OpenState {
+struct VulkanState {
+    static const char *validationLayers[];
+    VkDebugUtilsMessengerCreateInfoEXT info;
     VkInstance instance;
-    GLFWwindow* window;
+    VkDebugUtilsMessengerEXT debug;
     VkSurfaceKHR surface;
-    OpenState(VkInstance instance, int width, int height, void *ptr) {
-        this->instance = instance;
-        window = [](int32_t width, int32_t height) {
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-            return glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
-        } (width,height);
-        glfwSetWindowUserPointer(window, ptr);
-        // glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
-        glfwSetKeyCallback(window, keyPressed);
-        glfwSetMouseButtonCallback(window, mouseClicked);
-        glfwSetCursorPosCallback(window, mouseMoved);
-        glfwSetWindowPosCallback(window, windowMoved);
-        glfwSetWindowSizeCallback(window, windowSized);
-        glfwSetWindowRefreshCallback(window, windowRefreshed);
-        if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
-            throw std::runtime_error("failed to create window surface!");
-    }
-    ~OpenState() {
+    VulkanState(GLFWwindow* window) :
+        info(createInfo(validationLayers)),
+        instance(createInstance(info,validationLayers)),
+        debug(createDebug(instance,info,validationLayers)),
+        surface(createSurface(instance, window))
+        {std::cout << "VulkanState" << std::endl;}
+    ~VulkanState() {
+        std::cout << "~VulkanState" << std::endl;
         vkDestroySurfaceKHR(instance, surface, nullptr);
-        glfwDestroyWindow(window);
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
+        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr) func(instance, debug, nullptr);
+        vkDestroyInstance(instance, nullptr);
     }
 };
+#ifdef NDEBUG
+const char *VulkanState::validationLayers[] = {0};
+#else
+const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
+#endif
 
 struct PhysicalState {
-    VkPhysicalDevice physical;
-    int graphicid;
-    int presentid;
-    int minimum;
-    VkSurfaceFormatKHR format;
-    VkSurfaceFormatKHR linear;
-    VkPresentModeKHR mode;
-    VkFormat image;
-    PhysicalState(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions, int inflight) {
-        std::optional<int> graphic;
-        std::optional<int> present;
-        std::optional<int> compute;
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> modes;
-        physical = [&graphic,&present,&formats,&modes](
-            VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions) {
-            VkPhysicalDevice physical = VK_NULL_HANDLE;
-            uint32_t count = 0;
-            vkEnumeratePhysicalDevices(instance, &count, nullptr);
-            if (count == 0) throw std::runtime_error("failed to find GPUs with Vulkan support!");
-            std::vector<VkPhysicalDevice> physicals(count);
-            vkEnumeratePhysicalDevices(instance, &count, physicals.data());
-            for (const auto& physicalz : physicals) {
-                std::optional<int> graphicz;
-                std::optional<int> presentz;
-                [&graphicz,&presentz](VkPhysicalDevice physicalz, VkSurfaceKHR surface) {
-                    uint32_t count = 0;
-                    vkGetPhysicalDeviceQueueFamilyProperties(physicalz, &count, nullptr);
-                    std::vector<VkQueueFamilyProperties> families(count);
-                    vkGetPhysicalDeviceQueueFamilyProperties(physicalz, &count, families.data());
-                    int i = 0;
-                    for (const auto& family : families) {
-                        if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT) graphicz = i;
-                        VkBool32 support = false;
-                        vkGetPhysicalDeviceSurfaceSupportKHR(physicalz, i, surface, &support);
-                        if (support) presentz = i;
-                        if (graphicz.has_value() && presentz.has_value()) break;
-                        i++;}
-                } (physicalz,surface);
-                std::vector<VkSurfaceFormatKHR> formatz;
-                [&formatz](VkPhysicalDevice physicalz, VkSurfaceKHR surface) {
-                    uint32_t count;
-                    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalz, surface, &count, nullptr);
-                    if (count != 0) {
-                        formatz.resize(count);
-                        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalz, surface, &count, formatz.data());}
-                } (physicalz,surface);
-                std::vector<VkPresentModeKHR> modez;
-                [&modez](VkPhysicalDevice physicalz, VkSurfaceKHR surface) {
-                    uint32_t count;
-                    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalz, surface, &count, nullptr);
-                    if (count != 0) {
-                        modez.resize(count);
-                        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalz, surface, &count, modez.data());}
-                } (physicalz,surface);
-                if ([](VkPhysicalDevice physicalz, const std::vector<const char*> extensions) {
-                        uint32_t count;
-                        vkEnumerateDeviceExtensionProperties(physicalz, nullptr, &count, nullptr);
-                        std::vector<VkExtensionProperties> availableExtensions(count);
-                        vkEnumerateDeviceExtensionProperties(physicalz, nullptr, &count, availableExtensions.data());
-                        std::set<std::string> requiredExtensions(extensions.begin(), extensions.end());
-                        for (const auto& extension : availableExtensions) requiredExtensions.erase(extension.extensionName);
-                        return requiredExtensions.empty();
-                    } (physicalz,extensions) &&
-                    !formatz.empty() &&
-                    !modez.empty() &&
-                    graphicz.has_value() &&
-                    presentz.has_value()) {
-                    graphic = graphicz;
-                    present = presentz;
-                    formats = formatz;
-                    physical = physicalz;
-                    break;}}
-            if (physical == VK_NULL_HANDLE)
-                throw std::runtime_error("failed to find a suitable GPU!");
-            return physical;
-        } (instance,surface,extensions);
-        graphicid = graphic.value();
-        presentid = present.value();
-        VkSurfaceCapabilitiesKHR capabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
-        minimum = capabilities.minImageCount+inflight;
-        if (capabilities.maxImageCount > 0 && minimum > capabilities.maxImageCount)
-            minimum = capabilities.maxImageCount;
-        format = [](std::vector<VkSurfaceFormatKHR> formats) {
-            for (const auto& format : formats) {
-                if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                    return format;}}
-            return formats[0];
-        } (formats);
-        linear = [](std::vector<VkSurfaceFormatKHR> formats) {
-            for (const auto& format : formats) {
-                if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                    return format;}}
-            return formats[0];
-        } (formats);
-        mode = [](const std::vector<VkPresentModeKHR>& modes) {
-            for (const auto& mode : modes) {
-                if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                    return mode;
-                }
-            }
-            return VK_PRESENT_MODE_FIFO_KHR;
-        } (modes);
-        image = format.format;
-    }
-    ~PhysicalState() {
-    }
+    static const char *deviceExtensions[];
+    VkPhysicalDevice device;
+    uint32_t graphicsFamily;
+    uint32_t presentFamily;
+    VkSurfaceCapabilitiesKHR capabilities;
+    VkPhysicalDeviceProperties properties;
+    VkSurfaceFormatKHR surfaceFormat;
+    VkPresentModeKHR presentMode;
+    VkPhysicalDeviceMemoryProperties memProperties;
+    PhysicalState(VkInstance instance, VkSurfaceKHR surface) :
+        device(createDevice(instance,surface,deviceExtensions)),
+        graphicsFamily(findGraphicsFamily(surface,device)),
+        presentFamily(findPresentFamily(surface,device)),
+        capabilities(findCapabilities(surface,device)),
+        properties(findProperties(device)),
+        surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
+        presentMode(chooseSwapPresentMode(surface,device)),
+        memProperties(findMemoryProperties(device))
+        {std::cout << "PhysicalState" << std::endl;}
+    ~PhysicalState() {std::cout << "~PhysicalState" << std::endl;}
 };
+const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
 
-struct DeviceState {
+struct LogicalState {
     VkDevice device;
-    VkRenderPass render;
-    VkQueue graphic;
+    VkQueue graphics;
     VkQueue present;
     VkCommandPool pool;
-    VkDescriptorPool dpool;
-    int graphicid;
-    int presentid;
-    DeviceState(VkPhysicalDevice physical, int graphicid, int presentid, VkFormat image,
-        std::vector<const char*> layers, std::vector<const char*> extensions, int total) {
-        this->graphicid = graphicid;
-        this->presentid = presentid;
-        device = [](VkPhysicalDevice physical, int graphicid, int presentid,
-            const std::vector<const char*> layers, const std::vector<const char*> extensions, bool enable) {
-            VkDevice device;
-            std::vector<VkDeviceQueueCreateInfo> infos;
-            std::vector<float> prioritys;
-            prioritys.resize(1);
-            for (int i = 0; i < 1; i++) prioritys[i] = 1.0f;
-            if (1) {
-                VkDeviceQueueCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                info.queueFamilyIndex = graphicid;
-                info.queueCount = 1;
-                info.pQueuePriorities = prioritys.data();
-                infos.push_back(info);}
-            if (presentid != graphicid) {
-                VkDeviceQueueCreateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                info.queueFamilyIndex = presentid;
-                info.queueCount = 1;
-                info.pQueuePriorities = prioritys.data();
-                infos.push_back(info);}
-            VkPhysicalDeviceFeatures features{};
-            VkDeviceCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-            info.queueCreateInfoCount = static_cast<int>(infos.size());
-            info.pQueueCreateInfos = infos.data();
-            info.pEnabledFeatures = &features;
-            info.enabledExtensionCount = static_cast<int>(extensions.size());
-            info.ppEnabledExtensionNames = extensions.data();
-            if (enable) {
-                info.enabledLayerCount = static_cast<int>(layers.size());
-                info.ppEnabledLayerNames = layers.data();}
-            else {
-                info.enabledLayerCount = 0;}
-            if (vkCreateDevice(physical, &info, nullptr, &device) != VK_SUCCESS)
-                throw std::runtime_error("failed to create logical device!");
-            return device;
-        } (physical,graphicid,presentid,layers,extensions,layers.size());
-        render = [](VkDevice device, VkFormat image) {
-            VkAttachmentDescription attachment{};
-            attachment.format = image;
-            attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            VkAttachmentReference reference{};
-            reference.attachment = 0;
-            reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            VkSubpassDescription subpass{};
-            subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            subpass.colorAttachmentCount = 1;
-            subpass.pColorAttachments = &reference;
-            VkSubpassDependency dependency{};
-            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-            dependency.dstSubpass = 0;
-            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            dependency.srcAccessMask = 0;
-            dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            VkRenderPassCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-            info.attachmentCount = 1;
-            info.pAttachments = &attachment;
-            info.subpassCount = 1;
-            info.pSubpasses = &subpass;
-            info.dependencyCount = 1;
-            info.pDependencies = &dependency;
-            VkRenderPass render;
-            if (vkCreateRenderPass(device, &info, nullptr, &render) != VK_SUCCESS)
-                throw std::runtime_error("failed to create render pass!");
-            return render;
-        } (device,image);
-        vkGetDeviceQueue(device, graphicid, 0, &graphic);
-        vkGetDeviceQueue(device, presentid, 0, &present);
-        pool = [](VkDevice device, int graphicid) {
-            VkCommandPoolCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-            info.queueFamilyIndex = graphicid;
-            VkCommandPool pool;
-            if (vkCreateCommandPool(device, &info, nullptr, &pool) != VK_SUCCESS)
-                throw std::runtime_error("failed to create graphic command pool!");
-            return pool;
-        } (device,graphicid);
-        dpool = [](VkDevice device, int uniforms, int stores) {
-            VkDescriptorPoolSize uniform{};
-            uniform.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            uniform.descriptorCount = static_cast<int>(uniforms);
-            VkDescriptorPoolSize store{};
-            store.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            store.descriptorCount = static_cast<int>(stores);
-            VkDescriptorPoolSize size[] = {uniform,store};
-            VkDescriptorPoolCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-            info.poolSizeCount = 2;
-            info.pPoolSizes = size;
-            info.maxSets = static_cast<int>(uniforms+stores);
-            VkDescriptorPool pool;
-            if (vkCreateDescriptorPool(device, &info, nullptr, &pool) != VK_SUCCESS)
-                throw std::runtime_error("failed to create descriptor pool!");
-            return pool;
-        } (device, total, total);
-    }
-    ~DeviceState() {
-        vkDestroyDescriptorPool(device, dpool, nullptr);
+    VkFormat imageFormat;
+    VkFormat depthFormat;
+    VkRenderPass renderPass;
+    static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
+    LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, VkSurfaceFormatKHR surfaceFormat,
+        const char **validationLayers, const char **deviceExtensions) :
+        device(createDevice(physicalDevice,graphicsFamily,presentFamily,validationLayers,deviceExtensions)),
+        graphics(createQueue(device,graphicsFamily)),
+        present(createQueue(device,presentFamily)),
+        pool(createCommandPool(device,graphicsFamily)),
+        imageFormat(surfaceFormat.format),
+        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
+            VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
+        renderPass(createRenderPass(device,imageFormat,depthFormat))
+        {std::cout << "LogicalState" << std::endl;}
+    ~LogicalState() {
+        std::cout << "~LogicalState" << std::endl;
+        vkDestroyRenderPass(device, renderPass, nullptr);
         vkDestroyCommandPool(device, pool, nullptr);
-        vkDestroyRenderPass(device, render, nullptr);
         vkDestroyDevice(device, nullptr);
     }
 };
 
-struct BufferState {
-    VkPhysicalDevice physical;
-    VkDevice device;
-    VkQueue graphic;
-    VkCommandPool pool;
-    VkDeviceSize size;
-    WrapTag tag;
-    VkBuffer staging;
-    VkDeviceMemory wasted;
-    VkBuffer buffer;
-    VkDeviceMemory memory;
-    void *mapped;
-    VkCommandBuffer command;
-    VkFence fence;
-    int loc; int siz; const void *ptr; std::function<void()> dat;
-    struct Pierce pierce;
-BufferState(MainState *state, int size, WrapTag tag) {
-    PhysicalState* physical = state->physicalState;
-    DeviceState* logical = state->logicalState;
-    this->physical = physical->physical;
-    this->device = logical->device;
-    this->graphic = logical->graphic;
-    this->pool = logical->pool;
-    this->size = size;
-    this->tag = tag;}
-void init() {
-    // this called in separate thread on newly constructed
-    VkMemoryRequirements requirements;
-    VkPhysicalDeviceMemoryProperties properties;
-    vkGetPhysicalDeviceMemoryProperties(physical, &properties);
-    if (tag == FetchBuf || tag == StoreBuf || tag == QueryBuf) {
-    staging = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
-        VkBufferCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        info.size = size;
-        info.usage = usage;
-        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        VkBuffer buffer;
-        if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
-            throw std::runtime_error("failed to create buffer!");
-        return buffer;
-    } (device,size,(tag == QueryBuf ?
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT :
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT));
-    vkGetBufferMemoryRequirements(device, staging, &requirements);
-    wasted = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
-        VkMemoryAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        info.allocationSize = requirements.size;
-        info.memoryTypeIndex = type;
-        VkDeviceMemory memory;
-        if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate buffer memory!");
-        return memory;
-    } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties,
-        VkMemoryPropertyFlags flags)->uint32_t {
-        for (int i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
-            (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
-        throw std::runtime_error("failed to find suitable wasted type!");
-        return properties.memoryTypeCount;
-    } (requirements.memoryTypeBits,properties,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
-    vkBindBufferMemory(device, staging, wasted, 0);}
-    buffer = [](VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage) {
-        VkBufferCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        info.size = size;
-        info.usage = usage;
-        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        VkBuffer buffer;
-        if (vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
-            throw std::runtime_error("failed to create buffer!");
-        return buffer;
-    } (device,size,tag==ChangeBuf?
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT:(tag==StoreBuf?
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:(tag==QueryBuf?
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_TRANSFER_SRC_BIT|VK_BUFFER_USAGE_STORAGE_BUFFER_BIT:
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)));
-    vkGetBufferMemoryRequirements(device, buffer, &requirements);
-    memory = [](VkDevice device, VkMemoryRequirements requirements, uint32_t type) {
-        VkMemoryAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        info.allocationSize = requirements.size;
-        info.memoryTypeIndex = type;
-        VkDeviceMemory memory;
-        if (vkAllocateMemory(device, &info, nullptr, &memory) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate buffer memory!");
-        return memory;
-    } (device,requirements,[](uint32_t type, VkPhysicalDeviceMemoryProperties properties,
-        VkMemoryPropertyFlags flags)->uint32_t {
-        for (int i = 0; i < properties.memoryTypeCount; i++) if ((type & (1 << i)) &&
-            (properties.memoryTypes[i].propertyFlags & flags) == flags) return i;
-        throw std::runtime_error("failed to find suitable memory type!");
-        return properties.memoryTypeCount;
-    } (requirements.memoryTypeBits,properties,tag==ChangeBuf?
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT:
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
-    vkBindBufferMemory(device, buffer, memory, 0);
-    if (tag == FetchBuf || tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
-    vkMapMemory(device, tag==ChangeBuf?memory:wasted, 0, size, 0, &mapped);}
-    command = [](VkDevice device, VkCommandPool command) {
-        VkCommandBuffer commandBuffer;
-        VkCommandBufferAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        info.commandPool = command;
-        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        info.commandBufferCount = (int)1;
-        if (vkAllocateCommandBuffers(device, &info, &commandBuffer) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate command buffers!");
-        return commandBuffer;}(device,pool);
-    fence = [](VkDevice device) {
-        VkFence fence;
-        VkFenceCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        if (vkCreateFence(device, &info, nullptr, &fence) != VK_SUCCESS)
-            throw std::runtime_error("failed to create fence!");
-        return fence;}(device);}
-~BufferState() {
-    vkDestroyFence(device,fence,0);
-    vkFreeCommandBuffers(device, pool, 1, &command);
-    vkDestroyBuffer(device, buffer, nullptr);
-    vkFreeMemory(device, memory, nullptr);
-    if (tag == FetchBuf || tag == StoreBuf || tag == QueryBuf) {
-    vkDestroyBuffer(device, staging, nullptr);
-    vkFreeMemory(device, wasted, nullptr);}}
-VkFence setup() {
-    // this called in separate thread to get fence
-    VkResult result;
-    if (tag != FetchBuf && tag != ChangeBuf && tag != StoreBuf && tag != QueryBuf) return VK_NULL_HANDLE;
-    if (ptr) {memcpy((char*)mapped+loc,ptr,siz); dat(); ptr = 0;}
-    if (tag == ChangeBuf) return VK_NULL_HANDLE;
-    vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-    vkResetFences(device, 1, &fence);
-    VkCommandBufferBeginInfo begin{};
-    begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(command, &begin);
-    VkBufferCopy copy{};
-    copy.size = size;
-    vkCmdCopyBuffer(command, staging, buffer, 1, &copy);
-    vkEndCommandBuffer(command);
-    VkSubmitInfo submit{};
-    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit.commandBufferCount = 1;
-    submit.pCommandBuffers = &command;
-    result = vkQueueSubmit(graphic, 1, &submit, fence);
-    return fence;}
-VkFence getup() {
-    // call this to get computations from gpu
-    VkResult result;
-    if (tag != QueryBuf) return VK_NULL_HANDLE;
-    vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-    vkResetFences(device, 1, &fence);
-    VkCommandBufferBeginInfo begin{};
-    begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(command, &begin);
-    VkBufferCopy copy{};
-    copy.size = size;
-    vkCmdCopyBuffer(command, buffer, staging, 1, &copy);
-    vkEndCommandBuffer(command);
-    VkSubmitInfo submit{};
-    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit.commandBufferCount = 1;
-    submit.pCommandBuffers = &command;
-    result = vkQueueSubmit(graphic, 1, &submit, fence);
-    return fence;}
-void lookup(/*TODO pointers to this and other buffers*/) {
-    // TODO search through pointer for pierce.idx at pierce.vec[0] pierce.vec[1]
-    // TODO calculate or fill in other fields of pierce
-}
-struct Pierce bind() {
-    return pierce;}
-void bind(int base, int left) {
-    pierce.vec[0] = base; pierce.vec[1] = left;}
-void bind(int loc, int siz, const void *ptr, std::function<void()> dat) {
-    this->loc = loc; this->siz = siz; this->ptr = ptr; this->dat = dat;}
-bool bind(int layout, VkCommandBuffer command, VkDescriptorSet descriptor) {
-    if (tag == FetchBuf) {
-    [](VkBuffer buffer, VkCommandBuffer command){
-        VkBuffer buffers[] = {buffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(command, 0, 1, buffers, offsets);
-    }(buffer,command);}
-    if (tag == ChangeBuf) {
-    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor, int layout, int size) {
-        VkDescriptorBufferInfo info{};
-        info.buffer = buffer;
-        info.offset = 0;
-        info.range = size;
-        VkWriteDescriptorSet update{};
-        update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        update.dstSet = descriptor;
-        update.dstBinding = layout;
-        update.dstArrayElement = 0;
-        update.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        update.descriptorCount = 1;
-        update.pBufferInfo = &info;
-        vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-    }(device,buffer,descriptor,layout,size);}
-    if (tag == StoreBuf || tag == QueryBuf) {
-    [](VkDevice device, VkBuffer buffer, VkDescriptorSet descriptor, int layout, int size) {
-        VkDescriptorBufferInfo info{};
-        info.buffer = buffer;
-        info.offset = 0;
-        info.range = size;
-        VkWriteDescriptorSet update{};
-        update.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        update.dstSet = descriptor;
-        update.dstBinding = layout;
-        update.dstArrayElement = 0;
-        update.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        update.descriptorCount = 1;
-        update.pBufferInfo = &info;
-        vkUpdateDescriptorSets(device, 1, &update, 0, nullptr);
-    }(device,buffer,descriptor,layout,size);}
-    return (tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf);}
-};
-
-struct SwapState {
-    GLFWwindow *window;
-    VkPhysicalDevice physical;
-    VkDevice device;
-    VkSurfaceKHR surface;
-    VkFormat image;
-    VkSurfaceFormatKHR format;
-    VkPresentModeKHR mode;
-    VkRenderPass pass;
-    int minimum;
-    int graphicid;
-    int presentid;
-    VkExtent2D extent;
-    VkSwapchainKHR swap;
-    std::vector<VkImage> images;
-    std::vector<VkImageView> views;
-    std::vector<VkFramebuffer> framebuffers;
-    uint32_t count;
-SwapState(MainState *state, int size, WrapTag tag) {
-    int width, height;
-    width = (size >> 16)*state->windowRatio.left/state->windowRatio.width;
-    if (state->windowRatio.left%state->windowRatio.width) width += 1;
-    height = (size & 0xffff)*state->windowRatio.base/state->windowRatio.height;
-    if (state->windowRatio.base/state->windowRatio.height) height += 1;
-    extent.width = width; extent.height = height;
-    std::cerr << "SwapState " << width << "," << height << " " << this << std::endl;
-    [this](OpenState *open, PhysicalState *physical, DeviceState *logical, WrapTag tag){
-    this->device = logical->device;
-    [this](GLFWwindow* window, VkPhysicalDevice physical, VkDevice device, WrapTag tag,
-    VkSurfaceKHR surface, VkFormat image,
-    VkSurfaceFormatKHR format, VkSurfaceFormatKHR linear,
-    VkPresentModeKHR mode, VkRenderPass pass,
-    int minimum, int graphicid, int presentid){
-    this->window = window;
-    this->physical = physical;
-    this->surface = surface;
-    this->image = image;
-    this->format = (tag==LineBuf?linear:format);
-    this->mode = mode;
-    this->pass = pass;
-    this->minimum = minimum;
-    this->graphicid = graphicid;
-    this->presentid = presentid;
-    }(open->window,physical->physical,logical->device,tag,
-    open->surface,physical->image,
-    physical->format,physical->linear,
-    physical->mode,logical->render,
-    physical->minimum,physical->graphicid,physical->presentid);
-    }(state->openState,state->physicalState,state->logicalState,tag);}
-void init() {
-    VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities);
-    swap = [](VkDevice device, VkSurfaceKHR surface, VkSurfaceFormatKHR format, VkPresentModeKHR mode, VkExtent2D extent,
-        VkSurfaceCapabilitiesKHR capabilities, int minimum, uint32_t graphicid, uint32_t presentid) {
-        VkSwapchainKHR swap;
-        VkSwapchainCreateInfoKHR info{};
-        info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        info.surface = surface;
-        info.minImageCount = minimum;
-        info.imageFormat = format.format;
-        info.imageColorSpace = format.colorSpace;
-        info.imageExtent = extent;
-        info.imageArrayLayers = 1;
-        info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        if (graphicid != presentid) {
-            uint32_t indices[2] = {graphicid,presentid};
-            info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            info.queueFamilyIndexCount = 2;
-            info.pQueueFamilyIndices = indices;
-        } else
-            info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        info.preTransform = capabilities.currentTransform;
-        info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        info.presentMode = mode;
-        info.clipped = VK_TRUE;
-        if (vkCreateSwapchainKHR(device, &info, nullptr, &swap) != VK_SUCCESS)
-            throw std::runtime_error("failed to create swap chain!");
-        return swap;}(device,surface,format,mode,extent,capabilities,minimum,graphicid,presentid);
-    [this](uint32_t &count) {vkGetSwapchainImagesKHR(device, swap, &count, nullptr);}(count);
-    images.resize(count);
-    views.resize(count);
-    framebuffers.resize(count);
-    [this](uint32_t count) {vkGetSwapchainImagesKHR(device, swap, &count, images.data());}(count);
-    for (int i = 0; i < count; i++) views[i] =
-        [](VkDevice device, VkFormat format, VkImage image) {
-        VkImageView view;
-        VkImageViewCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        info.image = image;
-        info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        info.format = format;
-        info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        info.subresourceRange.baseMipLevel = 0;
-        info.subresourceRange.levelCount = 1;
-        info.subresourceRange.baseArrayLayer = 0;
-        info.subresourceRange.layerCount = 1;
-        if (vkCreateImageView(device, &info, nullptr, &view) != VK_SUCCESS)
-            throw std::runtime_error("failed to create image views!");
-        return view;}(device,image,images[i]);
-    for (int i = 0; i < count; i++) framebuffers[i] =
-        [](VkDevice device, VkExtent2D extent, VkImageView view, VkRenderPass pass) {
-        VkFramebuffer swapFramebuffer;
-        VkImageView attachments[] = {view};
-        VkFramebufferCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        info.renderPass = pass;
-        info.attachmentCount = 1;
-        info.pAttachments = attachments;
-        info.width = extent.width;
-        info.height = extent.height;
-        info.layers = 1;
-        if (vkCreateFramebuffer(device, &info, nullptr, &swapFramebuffer) != VK_SUCCESS)
-            throw std::runtime_error("failed to create framebuffer!");
-        return swapFramebuffer;}(device,extent,views[i],pass);
-}
-~SwapState() {
-    for (int i = 0; i < count; i++) vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-    for (int i = 0; i < count; i++) vkDestroyImageView(device, views[i], nullptr);
-    vkDestroySwapchainKHR(device, swap, nullptr);}
-};
-
-// TODO map identField to one of VK_FORMAT_R32G32_SFLOAT or VK_FORMAT_R32_UINT
-struct VertexState {
-    int stride;
-    std::vector<VkFormat> format;
-    std::vector<int> offset;
-    VertexState() {
-    stride = sizeof(Vertex);
-    format.push_back(VK_FORMAT_R32G32_SFLOAT); // TODO perhaps autogenerate function in type.gen
-    format.push_back(VK_FORMAT_R32_UINT);
-    offset.push_back(offsetof(Vertex,vec));
-    offset.push_back(offsetof(Vertex,ref));}
-};
-
-struct PipelineState {
-    VkDevice device;
-    VkPipelineLayout layout;
-    VkPipeline pipeline;
-    VkDescriptorSetLayout dlayout;
-    VkDescriptorSet descriptor;
-PipelineState(VkDevice device, VkRenderPass render, VkDescriptorPool dpool, Micro micro) {
-    const char *vertex = VertexG__Micro__Str(micro);
-    const char *fragment = FragmentG__Micro__Str(micro);
-    this->device = device;
-    dlayout = [](VkDevice device, Micro micro) {
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
-        int count = 0; int i = 0; Memory mem = Memorys;
-        while ((mem = BindQ__Micro__Int__Memory(micro)(i++)) != Memorys) {
-        WrapTag tag = TypeQ__Memory__WrapTag(mem);
-        if (tag == ChangeBuf || tag == StoreBuf || tag == QueryBuf) {
-        VkDescriptorSetLayoutBinding binding{};
-        binding.binding = count++;
-        binding.descriptorCount = 1;
-        binding.descriptorType = (tag == ChangeBuf ?
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        binding.pImmutableSamplers = nullptr;
-        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        bindings.push_back(binding);}}
-        VkDescriptorSetLayoutCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        info.bindingCount = bindings.size();
-        info.pBindings = bindings.data();
-        VkDescriptorSetLayout descriptor;
-        if (vkCreateDescriptorSetLayout(device, &info, nullptr, &descriptor) != VK_SUCCESS)
-            throw std::runtime_error("failed to create descriptor set layout!");
-        return descriptor;
-    } (device,micro);
-    descriptor = [](VkDevice device, VkDescriptorSetLayout layout, VkDescriptorPool pool) {
-        VkDescriptorSetAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        info.descriptorPool = pool;
-        info.descriptorSetCount = static_cast<int>(1);
-        info.pSetLayouts = &layout;
-        VkDescriptorSet descriptor;
-        if (vkAllocateDescriptorSets(device, &info, &descriptor) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        return descriptor;}(device,dlayout,dpool);
-    layout = [](VkDevice device, VkDescriptorSetLayout descriptor) {
-        VkPipelineLayoutCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        info.setLayoutCount = 1;
-        info.pSetLayouts = &descriptor;
-        VkPipelineLayout layout;
-        if (vkCreatePipelineLayout(device, &info, nullptr, &layout) != VK_SUCCESS)
-            throw std::runtime_error("failed to create pipeline layout!");
-        return layout;
-    } (device,dlayout);
-    std::vector<VkPipelineShaderStageCreateInfo> stages(Component__Micro__MicroOut(micro) == Discard ? 1 : 2);
-    std::vector<VkShaderModule> modules(Component__Micro__MicroOut(micro) == Discard ? 1 : 2);
-    VkShaderModule vmodule = [](VkDevice device, const std::vector<char>& code) {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-            throw std::runtime_error("failed to create shader module!");
-        return shaderModule;} (device,[](const std::string& filename) {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) throw std::runtime_error("failed to open file!");
-        size_t fileSize = (size_t) file.tellg();
-        std::vector<char> buffer(fileSize);
-        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
-        return buffer;}(vertex));
-    modules[0] = vmodule;
-    VkPipelineShaderStageCreateInfo vinfo = [](VkShaderModule vmodule) {
-        VkPipelineShaderStageCreateInfo vinfo{};
-        vinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vinfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vinfo.module = vmodule;
-        vinfo.pName = "main";
-        return vinfo;}(vmodule);
-    stages[0] = vinfo;
-    if (Component__Micro__MicroOut(micro) != Discard) {
-    VkShaderModule fmodule = [](VkDevice device, const std::vector<char>& code) {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-            throw std::runtime_error("failed to create shader module!");
-        return shaderModule;} (device,[](const std::string& filename) {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        if (!file.is_open()) throw std::runtime_error("failed to open file!");
-        size_t fileSize = (size_t) file.tellg();
-        std::vector<char> buffer(fileSize);
-        file.seekg(0); file.read(buffer.data(), fileSize); file.close();
-        return buffer;}(fragment));
-    modules[1] = fmodule;
-    VkPipelineShaderStageCreateInfo finfo = [](VkShaderModule fmodule) {
-        VkPipelineShaderStageCreateInfo finfo{};
-        finfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        finfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        finfo.module = fmodule;
-        finfo.pName = "main";
-        return finfo;}(fmodule);
-    stages[1] = finfo;}
-    std::vector<VkVertexInputBindingDescription> descriptions;
-    std::vector<VkVertexInputAttributeDescription> attributes;
-    if (Component__Micro__MicroIn(micro) == Practice)
-    [&descriptions,&attributes](VertexState field) {
-        int binding = 0; int location = 0;
-        VkVertexInputBindingDescription description;
-        description.binding = binding;
-        description.stride = field.stride;
-        description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        for (int j = 0; j < field.offset.size(); j++) {
-        VkVertexInputAttributeDescription attribute;
-        attribute.binding = binding;
-        attribute.location = location++;
-        attribute.format = field.format[j];
-        attribute.offset = field.offset[j];
-        attributes.push_back(attribute);}
-        descriptions.push_back(description);}(VertexState());
-    VkPipelineVertexInputStateCreateInfo input = [&descriptions,&attributes] () {
-        VkPipelineVertexInputStateCreateInfo input{};
-        input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        input.vertexBindingDescriptionCount = static_cast<int>(descriptions.size());
-        input.vertexAttributeDescriptionCount = static_cast<int>(attributes.size());
-        input.pVertexBindingDescriptions = descriptions.data();
-        input.pVertexAttributeDescriptions = attributes.data();
-        return input;}();
-    VkPipelineInputAssemblyStateCreateInfo assembly = [] () {
-        VkPipelineInputAssemblyStateCreateInfo assembly{};
-        assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        assembly.primitiveRestartEnable = VK_FALSE;
-        return assembly;}();
-    VkPipelineViewportStateCreateInfo viewport = [] () {
-        VkPipelineViewportStateCreateInfo viewport{};
-        viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewport.viewportCount = 1;
-        viewport.scissorCount = 1;
-        return viewport;}();
-    VkPipelineRasterizationStateCreateInfo rasterize = [micro] () {
-        VkPipelineRasterizationStateCreateInfo rasterize{};
-        rasterize.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterize.depthClampEnable = VK_FALSE;
-        rasterize.rasterizerDiscardEnable = (Component__Micro__MicroOut(micro) == Discard ? VK_TRUE : VK_FALSE);
-        rasterize.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterize.lineWidth = 1.0f;
-        rasterize.cullMode = VK_CULL_MODE_NONE;
-        rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterize.depthBiasEnable = VK_FALSE;
-        return rasterize;}();
-    VkPipelineMultisampleStateCreateInfo multisample = [] () {
-        VkPipelineMultisampleStateCreateInfo multisample{};
-        multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisample.sampleShadingEnable = VK_FALSE;
-        multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        return multisample;}();
-    VkPipelineColorBlendAttachmentState attachment = [] () {
-        VkPipelineColorBlendAttachmentState attachment{};
-        attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        attachment.blendEnable = VK_FALSE;
-        return attachment;}();
-    VkPipelineColorBlendStateCreateInfo blend = [&attachment] () {
-        VkPipelineColorBlendStateCreateInfo blend{};
-        blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        blend.logicOpEnable = VK_FALSE;
-        blend.logicOp = VK_LOGIC_OP_COPY;
-        blend.attachmentCount = 1;
-        blend.pAttachments = &attachment;
-        blend.blendConstants[0] = 0.0f;
-        blend.blendConstants[1] = 0.0f;
-        blend.blendConstants[2] = 0.0f;
-        blend.blendConstants[3] = 0.0f;
-        return blend;}();
-    std::vector<VkDynamicState> states = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
-    VkPipelineDynamicStateCreateInfo state = [&states] () {
-        VkPipelineDynamicStateCreateInfo state{};
-        state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        state.dynamicStateCount = static_cast<int>(states.size());
-        state.pDynamicStates = states.data();
-        return state;}();
-    VkGraphicsPipelineCreateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.stageCount = stages.size();
-    info.pStages = stages.data();
-    info.pVertexInputState = &input;
-    info.pInputAssemblyState = &assembly;
-    info.pViewportState = &viewport;
-    info.pRasterizationState = &rasterize;
-    info.pMultisampleState = &multisample;
-    info.pColorBlendState = &blend;
-    info.pDynamicState = &state;
-    info.layout = layout;
-    info.renderPass = render;
-    info.subpass = 0;
-    info.basePipelineHandle = VK_NULL_HANDLE;
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
-        throw std::runtime_error("failed to create graphic pipeline!");
-    for (auto i = modules.begin(); i != modules.end(); i++)
-    vkDestroyShaderModule(device, *i, nullptr);}
-~PipelineState() {
-    vkDestroyPipeline(device, pipeline, nullptr);
-    vkDestroyPipelineLayout(device, layout, nullptr);
-    vkDestroyDescriptorSetLayout(device, dlayout, nullptr);}
-};
-
-struct DrawState {
-    VkDevice device;
-    VkQueue graphic;
-    VkQueue present;
-    VkRenderPass render;
-    VkCommandPool pool;
-    VkSemaphore available;
-    VkSemaphore signal;
-    VkCommandBuffer command;
-    VkFence fence;
-    uint32_t index;
-    PipelineState* pipeline;
-    WrapTag tag;
-DrawState(MainState *state, int size, WrapTag tag) {
-    DeviceState* logical = state->logicalState;
-    this->device = logical->device;
-    this->graphic = logical->graphic;
-    this->present = logical->present;
-    this->render = logical->render;
-    this->pool = logical->pool;
-    this->pipeline = new PipelineState(device,render,logical->dpool,(Micro)size);
-    this->tag = tag;}
-void init() {
-    // this called in separate thread on newly constructed
-    available = [](VkDevice device) {
-        VkSemaphore semaphore;
-        VkSemaphoreCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
-            throw std::runtime_error("failed to create semaphore!");
-        return semaphore;}(device);
-    signal = [](VkDevice device) {
-        VkSemaphore semaphore;
-        VkSemaphoreCreateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        if (vkCreateSemaphore(device, &info, nullptr, &semaphore) != VK_SUCCESS)
-            throw std::runtime_error("failed to create semaphore!");
-        return semaphore;}(device);
-    command = [](VkDevice device, VkCommandPool pool) {
-        VkCommandBuffer command;
-        VkCommandBufferAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        info.commandPool = pool;
-        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        info.commandBufferCount = (int)1;
-        if (vkAllocateCommandBuffers(device, &info, &command) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate command buffers!");
-        return command;}(device,pool);
-    fence = [](VkDevice device) {
-        VkFence fence;
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
-            throw std::runtime_error("failed to create fence!");
-        return fence;}(device);}
-~DrawState() {
-    vkDestroyFence(device,fence,0);
-    vkFreeCommandBuffers(device, pool, 1, &command);
-    vkDestroySemaphore(device, available, nullptr);
-    vkDestroySemaphore(device, signal, nullptr);
-    delete pipeline;}
-VkFence setup(const std::vector<BufferState*> &buffer, SwapState* swap, VkExtent2D extent, int base, int limit) {
-    VkResult result = vkAcquireNextImageKHR(device, swap->swap, UINT64_MAX, available, VK_NULL_HANDLE, &index);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) std::cerr << "out of date" << std::endl;
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-        throw std::runtime_error("failed to acquire swap chain image!");
-    vkResetFences(device, 1, &fence);
-    vkResetCommandBuffer(command, /*VkCommandBufferResetFlagBits*/ 0);
-    [](VkCommandBuffer command){
-        VkCommandBufferBeginInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        if (vkBeginCommandBuffer(command, &info) != VK_SUCCESS)
-            throw std::runtime_error("failed to begin recording command buffer!");
-    }(command);
-    [](VkRenderPass render, VkFramebuffer framebuffer, VkExtent2D extent, VkCommandBuffer command) {
-        VkRenderPassBeginInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        info.renderPass = render;
-        info.framebuffer = framebuffer;
-        info.renderArea.offset = {0, 0};
-        info.renderArea.extent = extent;
-        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-        info.clearValueCount = 1;
-        info.pClearValues = &clearColor;
-        vkCmdBeginRenderPass(command, &info, VK_SUBPASS_CONTENTS_INLINE);
-    } (render,swap->framebuffers[index],extent,command);
-    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
-    [](VkExtent2D extent, VkCommandBuffer command){
-        VkViewport info{};
-        info.x = 0.0f; info.y = 0.0f;
-        info.width = (float) extent.width;
-        info.height = (float) extent.height;
-        info.minDepth = 0.0f; info.maxDepth = 1.0f;
-        vkCmdSetViewport(command, 0, 1, &info);}(extent,command);
-    [](VkExtent2D extent, VkCommandBuffer command){
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = extent;
-        vkCmdSetScissor(command, 0, 1, &scissor);}(extent,command);
-    int count = 0; for (int i = 0; i < buffer.size(); i++) {
-        if (buffer[i]->bind(count,command,pipeline->descriptor)) count++;}
-    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout, 0, 1,
-        &pipeline->descriptor, 0, nullptr);
-    vkCmdDraw(command, limit-base, (limit-base)/3, base, base/3);
-    vkCmdEndRenderPass(command);
-    if (vkEndCommandBuffer(command) != VK_SUCCESS)
-        throw std::runtime_error("failed to record command buffer!");
-    [](VkQueue graphic, VkCommandBuffer command, VkFence fence, VkSemaphore available, VkSemaphore signal){
-        VkSubmitInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        VkSemaphore availables[] = {available};
-        VkSemaphore signals[] = {signal};
-        VkPipelineStageFlags stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = availables;
-        info.pWaitDstStageMask = stages;
-        info.commandBufferCount = 1;
-        info.pCommandBuffers = &command;
-        info.signalSemaphoreCount = 1;
-        info.pSignalSemaphores = signals;
-        if (vkQueueSubmit(graphic, 1, &info, fence) != VK_SUCCESS)
-            throw std::runtime_error("failed to submit draw command buffer!");
-    }(graphic,command,fence,available,signal);
-    // TODO call vkCmdCopyImageToBuffer instead of vkQueuePresentKHR if tag is QueryBuf
-    [](VkSwapchainKHR swap, VkQueue present, uint32_t index, VkSemaphore signal){
-        VkPresentInfoKHR info{};
-        info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        VkSemaphore signals[] = {signal};
-        info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = signals;
-        VkSwapchainKHR swaps[] = {swap};
-        info.swapchainCount = 1;
-        info.pSwapchains = swaps;
-        info.pImageIndices = &index;
-        VkResult result = vkQueuePresentKHR(present, &info);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) std::cerr << "out of date" << std::endl;
-        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-            throw std::runtime_error("device lost on wait for fence!");
-    }(swap->swap,present,index,signal);
-    return fence;}
-};
-
 struct SafeState {
     sem_t semaphore;
-    SafeState() {
-        if (sem_init(&semaphore, 0, 1) != 0) throw std::runtime_error("failed to create semaphore!");
+    SafeState(int val) {
+        if (sem_init(&semaphore, 0, val) != 0) {std::cerr << "failed to create semaphore!" << std::endl; exit(-1);}
     }
     ~SafeState() {
-        if (sem_destroy(&semaphore) != 0) {
-        std::cerr << "cannot destroy semaphore!" << std::endl; std::terminate();}
+        if (sem_destroy(&semaphore) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; exit(-1);}
     }
     void wait() {
-        if (sem_wait(&semaphore) != 0) throw std::runtime_error("cannot wait for semaphore!");
+        if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
     }
     void post() {
-        if (sem_post(&semaphore) != 0) throw std::runtime_error("cannot post to semaphore!");
+        if (sem_post(&semaphore) != 0) {std::cerr << "cannot post to semaphore!" << std::endl; exit(-1);}
     }
     bool trywait() {
         int tryval = sem_trywait(&semaphore);
-        if (tryval != 0 && errno != EAGAIN) throw std::runtime_error("cannot trywait for semaphore!");
+        if (tryval != 0 && errno != EAGAIN) {std::cerr << "cannot trywait for semaphore!" << std::endl; exit(-1);}
         return (tryval == 0);
     }
     int get() {
         int sval;
-        if (sem_getvalue(&semaphore,&sval) != 0) throw std::runtime_error("cannot get semaphore!");
+        if (sem_getvalue(&semaphore,&sval) != 0) {std::cerr << "cannot get semaphore!" << std::endl; exit(-1);}
         return sval;
     }
 };
 
-void vulkanSafe();
-struct ThreadState {
-    VkDevice device;
-    SafeState protect;
-    SafeState semaphore;
-    pthread_t thread;
-    bool finish;
-    std::deque<std::function<VkFence()>> setup;
-    std::deque<VkFence> fence; // fence to wait for
-    std::deque<int> order; // pushed or pending sequence number
-    std::set<int> lookup; // whether sequence number unfinished
-    std::deque<std::function<VkFence()>> presetup;
-    std::deque<int> preord; // sequence number for push from separate thread
-    std::deque<std::function<bool()>> when; // whether to push from separate thread
-    int limit; int seqnum; int prog; bool pend;
-    ThreadState(VkDevice device, int limit) {
-        this->device = device; finish = false;
-        this->limit = limit; seqnum = 0; prog = 0; pend = false;
-        if (pthread_create(&thread,0,separate,this) != 0) throw std::runtime_error("failed to create thread!");
+enum SizeEnum {
+    IntSize,
+    ExtentSize,
+    MicroSize,
+};
+struct SizeState {
+    SizeEnum tag;
+    int size;
+    VkExtent2D extent;
+    Micro micro;
+    SizeState() {
+        tag = IntSize;
+        size = 0;
     }
-    ~ThreadState() {
-    // this destructed to wait for device idle
-        protect.wait(); finish = true;
-        protect.post(); semaphore.post();
-        if (pthread_join(thread,0) != 0) {std::cerr << "failed to join thread!" << std::endl; std::terminate();}
+    SizeState(int size) {
+        tag = IntSize;
+        this->size = size;
+    }
+    SizeState(VkExtent2D extent) {
+        tag = ExtentSize;
+        this->extent = extent;
+    }
+    SizeState(Micro micro) {
+        tag = MicroSize;
+        this->micro = micro;
+    }
+    bool operator==(const SizeState &other) const {
+        if (tag == IntSize && other.tag == IntSize &&
+        size == other.size) return true;
+        if (tag == ExtentSize && other.tag == ExtentSize &&
+        extent.width == other.extent.width &&
+        extent.height == other.extent.height) return true;
+        if (tag == MicroSize && other.tag == MicroSize &&
+        micro == other.micro) return true;
+        return false;
+    }
+};
+
+enum BindEnum {
+    SwapBind,
+    IndexBind,
+    PipelineBind,
+    DrawBind,
+    BindEnums
+};
+struct BaseState;
+struct BindState {
+    virtual void advance() = 0;
+    virtual BaseState *buffer() = 0;
+    virtual int index() = 0;
+    static BindState* self;
+    static GLFWwindow* window;
+    static VkSurfaceKHR surface;
+    static VkSurfaceCapabilitiesKHR capabilities;
+    static uint32_t graphicsFamily;
+    static uint32_t presentFamily;
+    static VkFormat imageFormat;
+    static VkFormat depthFormat;
+    static VkDevice device;
+    static VkRenderPass renderPass;
+    static VkCommandPool pool;
+    static int frames;
+    static int micro;
+    static VkPhysicalDevice physical;
+    static VkQueue graphics;
+    static VkQueue present;
+    static VkBufferUsageFlags flags;
+    static vftype func;
+    static VkPhysicalDeviceProperties properties;
+    static VkPhysicalDeviceMemoryProperties memProperties;
+    static VkSurfaceFormatKHR surfaceFormat;
+    static VkPresentModeKHR presentMode;
+    static ChangeState *change;
+    static int debug;
+    const char *name;
+    BindState(const char *n,GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice physical, VkDevice device,
+        VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkSurfaceCapabilitiesKHR capabilities,
+        uint32_t graphicsFamily, uint32_t presentFamily, VkFormat imageFormat,
+        VkFormat depthFormat, VkRenderPass renderPass, VkPhysicalDeviceMemoryProperties memProperties) : name(n) {
+        BindState::self = this;
+        BindState::window = window;
+        BindState::surface = surface;
+        BindState::physical = physical;
+        BindState::device = device;
+        BindState::surfaceFormat = surfaceFormat;
+        BindState::presentMode = presentMode;
+        BindState::capabilities = capabilities;
+        BindState::graphicsFamily = graphicsFamily;
+        BindState::presentFamily = presentFamily;
+        BindState::imageFormat = imageFormat;
+        BindState::depthFormat = depthFormat;
+        BindState::renderPass = renderPass;
+        BindState::memProperties = memProperties;
+        BindState::debug = 0;
+    }
+    BindState(const char *n, VkCommandPool pool, int frames) : name(n) {
+        BindState::self = this;
+        BindState::pool = pool;
+        BindState::frames = frames;
+        BindState::micro = 0;
+        BindState::debug = 0;
+    }
+    BindState(const char *n) : name(n) {
+        BindState::self = this;
+        BindState::debug = 0;
+    }
+    BindState(const char *n, VkQueue graphics, VkQueue present, VkBufferUsageFlags flags) : name(n) {
+        BindState::self = this;
+        BindState::graphics = graphics;
+        BindState::present = present;
+        BindState::flags = flags;
+        BindState::debug = 0;
+    }
+    BindState(const char *n, VkBufferUsageFlags flags) : name(n) {
+        BindState::self = this;
+        BindState::flags = flags;
+        BindState::debug = 0;
+    }
+    BindState(const char *n, vftype func, VkPhysicalDeviceProperties properties) : name(n) {
+        BindState::self = this;
+        BindState::func = func;
+        BindState::properties = properties;
+        BindState::debug = 0;
+    }
+    BindState(const char *n, ChangeState *change) : name(n) {
+        BindState::self = this;
+        BindState::change = change;
+        BindState::debug = 0;
+    }
+    static int check(BindEnum typ, Memory mem) {
+        if (mem < 0 || mem > Memorys)
+        {std::cerr << "invalid Memory bind!" << std::endl; exit(-1);}
+        if (typ < 0 || typ > BindEnums)
+        {std::cerr << "invalid BindEnum bind!" << std::endl; exit(-1);}
+        if (mem == Memorys && typ == BindEnums)
+        {std::cerr << "invalid both bind!" << std::endl; exit(-1);}
+        if (mem != Memorys && typ != BindEnums)
+        {std::cerr << "invalid neither bind!" << std::endl; exit(-1);}
+        int idx = (mem == Memorys ? typ : mem+BindEnums);
+        if (idx < 0 || idx >= BindEnums+Memorys)
+        {std::cerr << "invalid index bind!" << std::endl; exit(-1);}
+        return idx;
+    }
+};
+BindState* BindState::self;
+GLFWwindow* BindState::window;
+VkSurfaceKHR BindState::surface;
+VkSurfaceCapabilitiesKHR BindState::capabilities;
+uint32_t BindState::graphicsFamily;
+uint32_t BindState::presentFamily;
+VkFormat BindState::imageFormat;
+VkFormat BindState::depthFormat;
+VkDevice BindState::device;
+VkRenderPass BindState::renderPass;
+VkCommandPool BindState::pool;
+int BindState::frames;
+int BindState::micro;
+VkPhysicalDevice BindState::physical;
+VkQueue BindState::graphics;
+VkQueue BindState::present;
+VkBufferUsageFlags BindState::flags;
+vftype BindState::func;
+VkPhysicalDeviceProperties BindState::properties;
+VkPhysicalDeviceMemoryProperties BindState::memProperties;
+VkSurfaceFormatKHR BindState::surfaceFormat;
+VkPresentModeKHR BindState::presentMode;
+ChangeState *BindState::change;
+int BindState::debug;
+
+template <class State, int Size> struct ArrayState : public BindState {
+    SafeState safe;
+    BindEnum typ;
+    Memory mem;
+    int idx;
+    State state[Size];
+    ArrayState(const char *name, BindEnum t, Memory m,
+        GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice physical, VkDevice device,
+        VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkSurfaceCapabilitiesKHR capabilities,
+        uint32_t graphicsFamily, uint32_t presentFamily, VkFormat imageFormat,
+        VkFormat depthFormat, VkRenderPass renderPass, VkPhysicalDeviceMemoryProperties memProperties) :
+        BindState(name,window,surface,physical,device,
+        surfaceFormat,presentMode,capabilities,
+        graphicsFamily,presentFamily,imageFormat,
+        depthFormat,renderPass,memProperties),
+        safe(1), typ(t), mem(m), idx(0) {}
+    ArrayState(const char *name, BindEnum t, Memory m,
+        VkCommandPool pool, int frames) :
+        BindState(name,pool,frames),
+        safe(1), typ(t), mem(m), idx(0) {}
+    ArrayState(const char *name, BindEnum t, Memory m) :
+        BindState(name),
+        safe(1), typ(t), mem(m), idx(0) {}
+    ArrayState(const char *name, BindEnum t, Memory m,
+        VkQueue graphics, VkQueue present, VkBufferUsageFlags flags) :
+        BindState(name,graphics,present,flags),
+        safe(1), typ(t), mem(m), idx(0) {}
+    ArrayState(const char *name, BindEnum t, Memory m,
+        VkBufferUsageFlags flags) :
+        BindState(name,flags),
+        safe(1), typ(t), mem(m), idx(0) {}
+    ArrayState(const char *name, BindEnum t, Memory m,
+        vftype func, VkPhysicalDeviceProperties properties) :
+        BindState(name,func,properties),
+        safe(1), typ(t), mem(m), idx(0) {}
+    ArrayState(const char *name, BindEnum t, Memory m,
+        ChangeState *change) :
+        BindState(name,change),
+        safe(1), typ(t), mem(m), idx(0) {}
+    State *derived() {safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;}
+    State *preview() {safe.wait(); State *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
+    State *preview(int i) {
+        if (i < 0 || i >= Size) {std::cerr << "cannot preview! " << i << " " << Size << std::endl; exit(-1);}
+        safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;}
+    void advance(int i) {
+        if (i < 0 || i >= Size) {std::cerr << "cannot advance!" << std::endl; exit(-1);}
+        safe.wait(); idx = i; safe.post();}
+    void advance() {safe.wait(); idx = (idx+1)%Size; safe.post();}
+    BaseState *buffer() {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
+    int index() {return check(typ,mem);}
+};
+template<class State, class Init, int Size> struct InitState {
+    State state[Size];
+    InitState(Init func) {for (int i = 0; i < Size; i++) state[i] = func();}
+    InitState(State init) {for (int i = 0; i < Size; i++) state[i] = init;}
+    State &operator[](int i) {return state[i];}
+};
+template<class State, class Init> struct HeapState {
+    std::vector<State> state;
+    HeapState(Init func, int size) : state(size) {for (int i = 0; i < size; i++) state[i] = func();}
+    HeapState(State init, int size) : state(size) {for (int i = 0; i < size; i++) state[i] = init;}
+    State &operator[](int i) {return state[i];}
+};
+template<class State> struct ConstState {
+    State value;
+    ConstState(State value) : value(value) {}
+    State operator()() {return value;}
+};
+
+enum BaseEnum {
+    InitBase, // uninitialized
+    BothBase, // enqued for both change
+    SizeBase, // enqued for size change
+    LockBase, // enqued for data change
+    NextBase, // waiting for fence done
+    FreeBase, // ready to use or update
+    BaseEnums
+};
+struct BaseState {
+    BaseEnum state;
+    SizeState size, todo;
+    void *ptr; int loc; int siz;
+    SafeState safe; int count;
+    BindState *base;
+    char debug[64];
+    BaseState(const char *name) : state(InitBase), size(0), todo(0), safe(1), count(0), base(0) {
+        if (base) sprintf(debug,"%s%s%d",base->name,name,BindState::debug++);
+        else sprintf(debug,"%s%d",name,BindState::debug++);
+    }
+    BaseState(const char *name, BindState *ptr) : state(InitBase), size(0), todo(0), safe(1), count(0), base(ptr) {
+        if (base) sprintf(debug,"%s%s%d",base->name,name,BindState::debug++);
+        else sprintf(debug,"%s%d",name,BindState::debug++);
+    }
+    template <class Type> bool push(void *ptr, int loc, int siz, Type max) { // called in main thread
+        safe.wait();
+        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (state == FreeBase && count > 0) {safe.post(); return false;}
+        this->ptr = ptr; this->loc = loc; this->siz = siz;
+        todo = SizeState(max);
+        state = BothBase;
+        safe.post();
+        return true;
+    }
+    VkFence sizeup() { // called in separate thread
+        safe.wait();
+        if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
+        safe.post();
+        if (size == todo); else {
+        if (size == SizeState(0)); else unsize();
+        if ((size = todo) == SizeState(0)); else resize();}
+        safe.wait();
+        state = NextBase;
+        safe.post();
+        return setup(ptr,loc,siz);
+    }
+    template <class Type> bool push(Type siz) { // called in main thread
+        safe.wait();
+        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (state == FreeBase && count > 0) {safe.post(); return false;}
+        todo = SizeState(siz);
+        state = SizeBase;
+        safe.post();
+        return true;
+    }
+    void baseres() { // called in separate thread
+        safe.wait();
+        if (state != SizeBase) {std::cerr << "resize invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
+        safe.post();
+        if (size == todo); else {
+        if (size == SizeState(0)); else unsize();
+        if ((size = todo) == SizeState(0)); else resize();}
+        safe.wait();
+        state = FreeBase;
+        safe.post();
+    }
+    virtual void unsize() = 0;
+    virtual void resize() = 0;
+    bool push(void *ptr, int loc, int siz) { // called in main thread
+        safe.wait();
+        if (state != FreeBase || count > 0) {safe.post(); return false;}
+        this->ptr = ptr; this->loc = loc; this->siz = siz;
+        state = LockBase;
+        safe.post();
+        return true;
+    }
+    VkFence basesup() { // called in separate thread
+        safe.wait();
+        if (state != LockBase) {std::cerr << "resize invalid state!" << std::endl; exit(-1);}
+        state = NextBase;
+        safe.post();
+        return setup(ptr,loc,siz);
+    }
+    virtual VkFence setup(void *ptr, int loc, int siz) = 0;
+    void baseups() { // called in separate thread
+        safe.wait();
+        if (state != NextBase) {std::cerr << "resize invalid state!" << std::endl; exit(-1);}
+        safe.post();
+        if (base) base->advance();
+        upset();
+        safe.wait();
+        state = FreeBase;
+        safe.post();
+    }
+    virtual void upset() = 0;
+    bool take() {
+        safe.wait();
+        if (state != FreeBase) {safe.post(); return false;}
+        count += 1;
+        safe.post();
+        return true;
+    }
+    void give() {
+        safe.wait();
+        if (state != FreeBase) {std::cerr << "invalid give state!" << std::endl; exit(-1);}
+        if (count <= 0) {std::cerr << "invalid free count! " << debug << std::endl; exit(-1);}
+        count -= 1;
+        safe.post();
+    }
+    bool bind() {
+        safe.wait();
+        if (state != FreeBase) {safe.post(); return false;}
+        safe.post();
+        return true;
+    }
+    virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
+    virtual VkFramebuffer getSwapChainFramebuffer(int i) {std::cerr << "BaseState::swapChainFramebuffer" << std::endl; exit(-1);}
+    virtual VkPipeline getGraphicsPipeline() {std::cerr << "BaseState::graphicsPipeline" << std::endl; exit(-1);}
+    virtual VkPipelineLayout getPipelineLayout() {std::cerr << "BaseState::pipelineLayout" << std::endl; exit(-1);}
+    virtual VkBuffer getBuffer() {std::cerr << "BaseState::buffer" << std::endl; exit(-1);}
+    virtual VkImageView getTextureImageView() {std::cerr << "BaseState::textureImageView" << std::endl; exit(-1);}
+    virtual VkSampler getTextureSampler() {std::cerr << "BaseState::textureSampler" << std::endl; exit(-1);}
+    virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
+    virtual VkDescriptorSetLayout getDescriptorSetLayout() {std::cerr << "BaseState::getDescriptorSetLayout" << std::endl; exit(-1);}
+    virtual VkExtent2D getSwapChainExtent() {std::cerr << "BaseState::getSwapChainExtent" << std::endl; exit(-1);}
+};
+
+struct ThreadState {
+    const VkDevice device;
+    ChangeState *change;
+    SafeState safe; SafeState wait;
+    std::deque<BaseState*> resize;
+    std::deque<BaseState*> setup;
+    std::deque<BaseState*> sizeup;
+    std::deque<SafeState*> noteup;
+    std::deque<VkFence> fence;
+    std::deque<BaseState*> after;
+    std::deque<SafeState*> notify;
+    std::deque<Center*> todo;
+    bool done;
+    pthread_t thread;
+    ThreadState(VkDevice device, ChangeState *change) : device(device), change(change), safe(1), wait(0), done(false) {
+        if (pthread_create(&thread,0,separate,this) != 0) {std::cerr << "failed to create thread!" << std::endl; exit(-1);}
+        {std::cout << "ThreadState" << std::endl;}
+    }
+    ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
+    Center *clear() {
+        safe.wait();
+        if (todo.empty()) {safe.post(); return 0;}
+        Center *temp = todo.front();
+        todo.pop_front();
+        safe.post(); return temp;
+    }
+    bool stage() {
+        VkFence temp;
+        BaseState *base;
+        SafeState *note;
+        while (1) {while (1) {safe.wait();
+        if (resize.empty()) {safe.post(); break;}
+        base = resize.front(); resize.pop_front();
+        note = noteup.front(); noteup.pop_front();
+        safe.post(); base->baseres(); if (note) note->post();}
+        while (1) {safe.wait();
+        if (setup.empty()) {safe.post(); break;}
+        base = setup.front(); setup.pop_front();
+        note = noteup.front(); noteup.pop_front();
+        safe.post(); temp = base->basesup(); safe.wait();
+        after.push_back(base); notify.push_back(note);
+        fence.push_back(temp); safe.post();}
+        while (1) {safe.wait();
+        if (sizeup.empty()) {safe.post(); break;}
+        base = sizeup.front(); sizeup.pop_front();
+        note = noteup.front(); noteup.pop_front();
+        safe.post(); temp = base->sizeup(); safe.wait();
+        after.push_back(base); notify.push_back(note);
+        fence.push_back(temp); safe.post();}
+        safe.wait(); if (!fence.empty()) {safe.post(); break;}
+        if (resize.empty() && setup.empty() && sizeup.empty()) {
+        if (done) {safe.post(); return false;} else {safe.post(); wait.wait();}}}
+        return true;
+    }
+    VkFence next() {
+        safe.wait();
+        VkFence temp = fence.front(); fence.pop_front();
+        safe.post(); return temp;
+    }
+    void last() {
+        safe.wait(); BaseState *base = after.front(); after.pop_front();
+        SafeState *note = notify.front(); notify.pop_front(); safe.post();
+        base->baseups(); if (note) note->post(); change->async();
+    }
+    template <class Type> bool push(BaseState *base, void *ptr, int loc, int siz, Type max, SafeState *note) {
+        if (!base->push(ptr,loc,siz,max)) return false;
+        safe.wait();
+        sizeup.push_back(base);
+        noteup.push_back(note);
+        safe.post();
+        if (wait.get() == 0) wait.post();
+        return true;
+    }
+    template <class Type> bool wrap(BaseState *base, void *ptr, int loc, int siz, Type max) {
+        return push(base,ptr,loc,siz,max,0);
+    }
+    bool push(BaseState *base, void *ptr, int loc, int siz, SafeState *note) {
+        if (!base->push(ptr,loc,siz)) return false;
+        safe.wait();
+        setup.push_back(base);
+        noteup.push_back(note);
+        safe.post();
+        if (wait.get() == 0) wait.post();
+        return true;
+    }
+    bool wrap(BaseState *base, void *ptr, int loc, int siz) {
+        return push(base,ptr,loc,siz,0);
+    }
+    template <class Type> bool push(BaseState *base, Type size, SafeState *note) {
+        if (!base->push(size)) return false;
+        safe.wait();
+        resize.push_back(base);
+        noteup.push_back(note);
+        safe.post();
+        if (wait.get() == 0) wait.post();
+        return true;
+    }
+    template <class Type> bool wrap(BaseState *base, Type size) {
+        return push(base,size,0);
+    }
+    void push(Center *center) {
+        safe.wait();
+        todo.push_back(center);
+        safe.post();
+    }
+    void push() {
+        safe.wait();
+        done = true;
+        safe.post();
+        if (wait.get() == 0) wait.post();
+        pthread_join(thread,0);
     }
     static void *separate(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
-        arg->protect.wait();
-        while (1) {
-            if (arg->finish) {
-                arg->protect.post();
-                break;}
-            while (!arg->when.empty() && arg->clear(arg->when.front())) {
-                int ord = arg->preord.front(); arg->order.push_back(ord);
-                arg->setup.push_back(arg->presetup.front()); arg->presetup.pop_front();
-                arg->when.pop_front(); arg->preord.pop_front();}
-            while (!arg->setup.empty()) {
-                std::function<VkFence()> setup = arg->setup.front();
-                VkFence fence;
-                arg->protect.post();
-                fence = setup();
-                arg->protect.wait();
-                arg->fence.push_back(fence);
-                arg->setup.pop_front();}
-            if (arg->fence.empty()) {
-                arg->protect.post();
-                arg->semaphore.wait();
-                arg->protect.wait();}
-            else {
-                VkResult result = VK_SUCCESS; if (arg->fence.front() != VK_NULL_HANDLE) {
-                VkFence fence = arg->fence.front();
-                arg->protect.post();
-                result = vkWaitForFences(arg->device,1,&fence,VK_FALSE,NANOSECONDS);
-                arg->protect.wait();}
-                if (result != VK_SUCCESS && result != VK_TIMEOUT) throw std::runtime_error("cannot wait for fence!");
-                if (result == VK_SUCCESS) {int next = arg->order.front();
-                arg->lookup.erase(next); arg->order.pop_front(); arg->fence.pop_front();
-                if (arg->pend) {vulkanSafe(); arg->pend = false;}
-                arg->prog += 1;}}}
+        while (arg->stage()) {
+        VkFence fence = arg->next();
+        if (fence != VK_NULL_HANDLE) {
+        VkResult result = vkWaitForFences(arg->device,1,&fence,VK_FALSE,NANOSECONDS);
+        if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
+        arg->last();}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
-    int mark() {
-        int ret;
-        protect.wait();
-        ret = prog;
-        protect.post();
-        return ret;
+};
+
+struct SwapState : public BaseState {
+    GLFWwindow* window;
+    const VkSurfaceKHR surface;
+    const VkPhysicalDevice physical;
+    const VkDevice device;
+    const VkSurfaceFormatKHR surfaceFormat;
+    const VkPresentModeKHR presentMode;
+    const VkSurfaceCapabilitiesKHR capabilities;
+    const uint32_t graphicsFamily;
+    const uint32_t presentFamily;
+    const VkFormat imageFormat;
+    const VkFormat depthFormat;
+    const VkRenderPass renderPass;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    VkSwapchainKHR swapChain;
+    // TODO change vectors to number initialized and array of maximum supported size
+    std::vector<VkImage> swapChainImages;
+    std::vector<VkImageView> swapChainImageViews;
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
+    SwapState() :
+        BaseState("SwapState"),
+        window(BindState::window),
+        surface(BindState::surface),
+        physical(BindState::physical),
+        device(BindState::device),
+        surfaceFormat(BindState::surfaceFormat),
+        presentMode(BindState::presentMode),
+        capabilities(BindState::capabilities),
+        graphicsFamily(BindState::graphicsFamily),
+        presentFamily(BindState::presentFamily),
+        imageFormat(BindState::imageFormat),
+        depthFormat(BindState::depthFormat),
+        renderPass(BindState::renderPass),
+        memProperties(BindState::memProperties)
+        {std::cout << "SwapState" << std::endl;}
+    ~SwapState() {push(0); baseres(); std::cout << "~SwapState" << std::endl;}
+    VkSwapchainKHR getSwapChain() {return swapChain;}
+    VkFramebuffer getSwapChainFramebuffer(int i) {return swapChainFramebuffers[i];}
+    VkExtent2D getSwapChainExtent() {return size.extent;}
+    void resize() {
+        swapChain = createSwapChain(surface,device,size.extent,surfaceFormat,presentMode,capabilities,graphicsFamily,presentFamily);
+        createSwapChainImages(device,swapChain,swapChainImages);
+        swapChainImageViews.resize(swapChainImages.size());
+        for (int i = 0; i < swapChainImages.size(); i++)
+        swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+        createImage(device, physical, size.extent.width, size.extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,
+            /*output*/ depthImage, depthImageMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createFramebuffers(device,size.extent,renderPass,swapChainImageViews,depthImageView,swapChainFramebuffers);
     }
-    bool mark(int given) {
-        bool ret;
-        protect.wait();
-        pend = (prog == given); // whether to wake later
-        ret = !pend; // whether to tight loop
-        protect.post();
-        return ret;
+    void unsize() {
+        int width = 0, height = 0;
+        glfwGetFramebufferSize(window, &width, &height);
+        while (width == 0 || height == 0) {
+            glfwGetFramebufferSize(window, &width, &height);
+            glfwWaitEvents();}
+        vkDeviceWaitIdle(device);
+        vkDestroyImageView(device, depthImageView, nullptr);
+        vkDestroyImage(device, depthImage, nullptr);
+        vkFreeMemory(device, depthImageMemory, nullptr);
+        for (auto framebuffer : swapChainFramebuffers)
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        for (auto imageView : swapChainImageViews)
+            vkDestroyImageView(device, imageView, nullptr);
+        vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
-    bool clear(int given) {
-    // return whether given sequence number is completed
-        protect.wait();
-        if (lookup.find(given) == lookup.end()) {
-        protect.post();
-        return true;}
-        protect.post();
-        return false;
+    VkFence setup(void *ptr, int loc, int siz) {
+        return VK_NULL_HANDLE;
     }
-    bool clear(std::function<bool()> given) {
-    // check given status from separate thread
-        if (protect.get() != 0) throw std::runtime_error("cannot clear function!");
-        protect.post();
-        if (given()) {protect.wait(); return true;}
-        protect.wait(); return false;
-    }
-    bool push() {
-        bool ret;
-        protect.wait();
-        ret = (order.size() < limit);
-        protect.post();
-        return ret;
-    }
-    std::function<bool()> push(std::function<VkFence()> given, std::function<bool()> last) {
-    // return query of whether fence is done for given function started in indicated sequence
-        protect.wait();
-        int sval = semaphore.get();
-        if (sval == 0) semaphore.post();
-        int ord = seqnum++; lookup.insert(ord);
-        preord.push_back(ord); when.push_back(last); presetup.push_back(given);
-        std::function<bool()> done = [this,ord](){return this->clear(ord);};
-        if (fence.size()+setup.size() != order.size()) throw std::runtime_error("cannot push seqnum!");
-        if (order.size()+preord.size() != lookup.size()) throw std::runtime_error("cannot insert seqnum!");
-        protect.post();
-        return done;
-    }
-    std::function<bool()> push(std::function<void()> given, std::function<bool()> last) {
-        return push((std::function<VkFence()>)[given](){given(); return VK_NULL_HANDLE;},last);
+    void upset() {
     }
 };
 
-struct TempState {
-    int seqnum;
-    std::map<int,std::deque<std::function<bool()>>> done;
-    std::map<int,std::deque<std::function<void()>>> todo;
-    std::set<int> pend;
-    SafeState safe;
-    TempState() {
-        seqnum = 0;
+struct PipelineState : public BaseState {
+    const VkDevice device;
+    Micro micro;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
+    const char *name() {return "PipelineState";}
+    PipelineState() :
+        BaseState("PipelineState"),
+        device(BindState::device), micro((Micro)BindState::micro++),
+        descriptorPool(createDescriptorPool(BindState::device,BindState::frames)),
+        descriptorSetLayout(createDescriptorSetLayout(BindState::device,micro)),
+        pipelineLayout(createPipelineLayout(BindState::device,descriptorSetLayout)),
+        graphicsPipeline(createGraphicsPipeline(BindState::device,BindState::renderPass,pipelineLayout))
+        {std::cout << "PipelineState" << std::endl;}
+    ~PipelineState() {
+        std::cout << "~PipelineState" << std::endl;
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     }
-    void temq() {
-        // maintain main state lambdas
-        // separate thread lambdas must protect themselves
-        bool goon = true;
-        safe.wait();
-        while (goon) {std::deque<int> que; goon = false;
-        for (auto i = done.begin(); i != done.end(); i++) {
-        while (!(*i).second.empty() && (*i).second.front()()) (*i).second.pop_front();
-        if ((*i).second.empty()) que.push_back((*i).first);}
-        for (auto i = que.begin(); i != que.end(); i++) {
-        goon = true; done.erase(*i);
-        if (todo.find(*i) != todo.end()) {
-        for (auto j = todo[*i].begin(); j != todo[*i].end(); j++) (*j)();
-        todo.erase(*i);}}}
-        safe.post();
+    VkPipeline getGraphicsPipeline() {return graphicsPipeline;}
+    VkPipelineLayout getPipelineLayout() {return pipelineLayout;}
+    VkDescriptorPool getDescriptorPool() {return descriptorPool;}
+    VkDescriptorSetLayout getDescriptorSetLayout() {return descriptorSetLayout;}
+    void resize() {
     }
-    bool temq(int tag) {
-        // thread safe check of indicated lambda
-        safe.wait();
-        if (pend.find(tag) != pend.end()) {
-        safe.post(); return false;}
-        if (done.find(tag) == done.end()) {
-        safe.post(); return true;}
-        safe.post(); return false;
+    void unsize() {
     }
-    int temp() {
-        // return new identifier
-        int tag;
-        safe.wait();
-        tag = seqnum++;
-        pend.insert(tag);
-        safe.post();
-        return tag;
+    VkFence setup(void *ptr, int loc, int siz) {
+        return VK_NULL_HANDLE; // return null fence for no wait
     }
-    void tmpq(int tag) {
-        safe.wait();
-        if (pend.find(tag) == pend.end()) throw std::runtime_error("temq already called in temq!");
-        pend.erase(tag);
-        safe.post();
-    }
-    void tmpq(int tag, std::function<void()> fnc) {
-        todo[tag].push_back(fnc);
-    }
-    std::function<bool()> temp(int tag) {
-        // return lambda for identifier
-        return [this,tag](){return temq(tag);};
-    }
-    void temp(int tag, std::function<bool()> fnc) {
-        // append condition
-        safe.wait();
-        if (pend.find(tag) == pend.end()) throw std::runtime_error("disabled identifier!");
-        done[tag].push_back(fnc);
-        safe.post();
-    }
-    std::function<bool()> temp(bool &vld, int &tag) {
-        if (vld) return temp(tag);
-        vld = true;
-        tag = temp();
-        return temp(tag);
-    }
-    void temp(bool &vld, int &tag, std::function<bool()> given) {
-        if (!vld) {
-        vld = true;
-        tag = temp();}
-        temp(tag,given);
-    }
-    void temq(bool &vld, int tag) {
-        if (!vld) throw std::runtime_error("temq call not valid!");
-        vld = false;
-        tmpq(tag);
+    void upset() {
     }
 };
 
-template<class Buffer> struct WrapState {
-    std::deque<Buffer*> pool;
-    std::deque<Buffer*> running; std::deque<std::function<bool()>> toready;
-    Buffer* ready; std::deque<std::function<bool()>> toinuse;
-    std::deque<Buffer*> inuse; std::deque<std::function<bool()>> topool;
-    std::set<void*> lookup;
-    int size; void *copy;
-    int count; int limit;
-    bool seqvld; int seqtag;
-    bool sepvld; int septag;
-    bool setvld; int settag;
-    std::pair<Buffer*,bool> setbuf;
-    WrapTag tag; MainState *info;
-    ThreadState *thread;
-    TempState *temp;
-    WrapState(MainState *info, int limit, WrapTag tag) {
-        ready = 0;
-        size = 0;
-        copy = 0;
-        count = 0;
-        this->limit = limit;
-        seqvld = false;
-        setvld = false;
-        setbuf = std::make_pair((Buffer*)0,false);
-        this->tag = tag;
-        this->info = info;
-        thread = info->threadState;
-        temp = info->tempState;
+struct UniformState : public BaseState {
+    const VkDevice device;
+    const VkPhysicalDevice physical;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    void* mapped;
+    UniformState() :
+        BaseState("UniformState",BindState::self),
+        device(BindState::device), physical(BindState::physical),
+        memProperties(BindState::memProperties)
+        {std::cout << "UniformState" << std::endl;}
+    ~UniformState() {push(0); baseres(); std::cout << "~UniformState" << std::endl;}
+    VkBuffer getBuffer() {return buffer;}
+    void resize() {
+        VkDeviceSize bufferSize = size.size;
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        memProperties, buffer, memory);
+        vkMapMemory(device, memory, 0, bufferSize, 0, &mapped);
     }
-    ~WrapState() {
-        while (!pool.empty()) {delete pool.front(); pool.pop_front();}
-        while (!running.empty()) {delete running.front(); running.pop_front();}
-        if (ready) delete ready;
-        while (!inuse.empty()) {delete inuse.front(); inuse.pop_front();}
+    void unsize() {
+        vkFreeMemory(device, memory, nullptr);
+        vkDestroyBuffer(device, buffer, nullptr);
     }
-    bool clr(int siz) {
-    // advance queues with done fronts
-        while (!toinuse.empty() && toinuse.front()()) {
-            toinuse.pop_front();}
-        while (!toready.empty() && toready.front()()) {
-            if (ready && !toinuse.empty()) {
-                while (toinuse.size() > 1) {inuse.push_back(0); topool.push_back(toinuse.front()); toinuse.pop_front();}
-                inuse.push_back(ready); topool.push_back(toinuse.front()); toinuse.pop_front(); ready = 0;}
-            if (!toinuse.empty()) throw std::runtime_error("cannot clr ready!");
-            if (ready) pool.push_back(ready);
-            ready = running.front();
-            if (tag == SwapBuf) std::cerr << "ready " << ready << std::endl;
-            running.pop_front(); toready.pop_front();}
-        while (!topool.empty() && topool.front()()) {
-            if (inuse.front()) pool.push_back(inuse.front());
-            inuse.pop_front(); topool.pop_front();}
-    // change queue item size
-        if (siz != size) {size = siz;
-            while (!pool.empty()) {delete pool.front(); pool.pop_front(); count--;}
-            // TODO do this when copy needed in separate thread
-            if (tag != DrawBuf && tag != SwapBuf) copy = realloc(copy,size);}
-    // return whether queues are not full
-        if (!thread->push()) return false;
-        if (!pool.empty()) return true;
-        if (count < limit) return true;
-        return false;
+    VkFence setup(void *ptr, int loc, int siz) {
+        if (loc < 0 || siz < 0 || loc+siz > size.size)
+        {std::cerr << "invalid uniform size!" << std::endl; exit(-1);}
+        memcpy(mapped, (void*)((char*)ptr+loc), siz);
+        return VK_NULL_HANDLE; // return null fence for no wait
     }
-    WrapTag typ() {
-        return tag;
-    }
-    bool clr() {
-        return clr(size);
-    }
-    std::function<bool()> seq() {
-    // produce marker to wait for in separate thread
-        return temp->temp(seqvld,seqtag);
-    }
-    void seq(std::function<bool()> given) {
-    // add function to wait for in separate thread
-        temp->temp(seqvld,seqtag,given);
-    }
-    std::function<bool()> sep() {
-    // produce lambda that will depend on fence
-        return temp->temp(sepvld,septag);
-    }
-    void sep(std::function<bool()> given) {
-    // make lambda depend on fence
-        temp->temp(sepvld,septag,given);
-    }
-    std::function<bool()> tmp() {
-    // produce lambda for when unreserved
-        return temp->temp(setvld,settag);
-    }
-    void tmp(std::function<bool()> given) {
-    // add function to postpone unreserve
-        temp->temp(setvld,settag,given);
-    }
-    std::pair<Buffer *, bool> buf() {
-    // produce next buffer to modify
-        if (setbuf.first) return setbuf; else clr();
-        if (pool.empty()) {if (count == limit) ERROR();
-        pool.push_back(new Buffer(info,size,tag)); setbuf.second = true; count++;}
-        else setbuf.second = false;
-        setbuf.first = pool.front(); pool.pop_front();
-        return setbuf;
-    }
-    std::function<bool()> set(std::function<bool()> done) {
-        sep(done); // postpone those depending on this setup
-        tmp(done); // postpone buffer ready until after setup
-        temp->temq(sepvld,septag); // subsequent seq depend on subsequent set
-        temp->temq(seqvld,seqtag); // subsequent set depend on subsequent seq
-        setbuf.second = false; // subsequent set need not push init
-        return done;
-    }
-    std::function<bool()> set(std::function<void(Buffer*buf)> setup) {
-        Buffer *ptr = buf().first;
-        return set((std::function<bool()>)(buf().second?
-        thread->push((std::function<void()>)[setup,ptr](){ptr->init(); setup(ptr);},seq()):
-        thread->push((std::function<void()>)[setup,ptr](){setup(ptr);},seq())));
-    }
-    std::function<bool()> set(std::function<VkFence(Buffer*)> setup) {
-        Buffer *ptr = buf().first;
-        return set((std::function<bool()>)(buf().second?
-        thread->push((std::function<VkFence()>)[setup,ptr](){ptr->init(); return setup(ptr);},seq()):
-        thread->push((std::function<VkFence()>)[setup,ptr](){return setup(ptr);},seq())));
-    }
-    std::function<bool()> set() {
-        buf().first->bind(0,size,copy,[](){});
-        return set((std::function<VkFence(Buffer*)>)[](Buffer*buf){return buf->setup();});
-    }
-    std::function<bool()> set(int loc, int siz, const void *ptr, std::function<void()> dat) {
-        int size = (loc+siz > this->size ? loc+siz : this->size); clr(size);
-        set((std::function<void(Buffer*)>)[this,loc,ptr,siz](Buffer*buf){
-        memcpy((void*)((char*)copy+loc),ptr,siz);});
-        if (tag == QueryBuf) return [](){return true;};
-        if (buf().second) return set();
-        buf().first->bind(loc,siz,ptr,dat);
-        return set((std::function<VkFence(Buffer*)>)[](Buffer*buf){return buf->setup();});
-    }
-    void put() {
-        if (tag == SwapBuf) std::cerr << "put " << buf().first << std::endl;
-        running.push_back(buf().first); toready.push_back(tmp());
-        temp->temq(setvld,settag); setbuf.first = 0;
-    }
-    bool get() {
-    // return whether first enque after resize is ready
-        clr();
-        if (ready) return true;
-        return false;
-    }
-    Buffer *get(std::function<bool()> done) {
-    // get buffer and reserve it until given returns true
-        clr();
-        toinuse.push_back(done);
-        return ready;
-    }
-    Buffer *get(int *siz, void *tag) {
-    // get buffer reserved until returned tag is given back
-        clr();
-        if (ready == 0) return 0;
-        *siz = size; lookup.insert(tag);
-        toinuse.push_back([this,tag](){return (lookup.find(tag) != lookup.end());});
-        return ready;
-    }
-    void get(void *tag) {
-    // give back tag to unreserve buffer
-        lookup.erase(tag);
+    void upset() {
     }
 };
 
-struct QueueState {
-    WrapState<SwapState>* swapQueue;
-    WrapState<BufferState>* bufferQueue[Memorys];
-    WrapState<DrawState>* drawQueue[Micros];
-    QueueState() {
-        swapQueue = new WrapState<SwapState>(&mainState,mainState.MAX_FRAMEBUFFER_SWAPS,SwapBuf);
-        for (int i = 0; i < Memorys; i++) {
-        WrapTag tag = TypeQ__Memory__WrapTag((Memory)i); bufferQueue[i] = (tag == WrapTags ? 0 :
-        new WrapState<BufferState>(&mainState,mainState.MAX_FRAMEBUFFER_SWAPS,tag));}
-        for (int i = 0; i < Micros; i++) {
-        Memory mem = BindQ__Micro__Int__Memory(MicroPRPC)((Micro)0); drawQueue[i] = (mem == Memorys ? 0 :
-        new WrapState<DrawState>(&mainState,mainState.MAX_FRAMES_INFLIGHT,DrawBuf));}}
-    ~QueueState() {
-        for (int i = 0; i < Micros; i++) if (drawQueue[i]) delete drawQueue[i];
-        for (int i = 0; i < Memorys; i++) if (bufferQueue[i]) delete bufferQueue[i];
-        if (swapQueue) delete swapQueue;}
-    std::vector<WrapState<BufferState>*> bindBuffer(Micro shader) {
-        std::vector<WrapState<BufferState>*> bind;
-        int i = 0; Memory mem = Memorys;
-        while ((mem = BindQ__Micro__Int__Memory(shader)(i++)) != Memorys){
-        bind.push_back(bufferQueue[mem]);}
-        return bind;}
-    std::vector<WrapState<BufferState>*> queryBuffer(Micro shader) {
-        std::vector<WrapState<BufferState>*> query;
-        int i = 0; Memory mem = Memorys;
-        while((mem = QueryQ__Micro__Int__Memory(shader)(i++)) != Memorys)
-        query.push_back(bufferQueue[mem]);
-        return query;}
+struct BufferState : public BaseState {
+    const VkDevice device;
+    const VkPhysicalDevice physical;
+    const VkQueue graphics;
+    const VkCommandPool pool;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    const VkBufferUsageFlags flags;
+    VkBuffer buffer;
+    VkDeviceMemory bufferMemory;
+    VkCommandBuffer commandBuffer;
+    VkFence fence;
+    // temporary between sup and ups:
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    BufferState() :
+        BaseState("BufferState",BindState::self),
+        device(BindState::device), physical(BindState::physical),
+        graphics(BindState::graphics), pool(BindState::pool), memProperties(BindState::memProperties),
+        flags(BindState::flags)
+        {std::cout << "BufferState" << std::endl;}
+    ~BufferState() {push(0); baseres(); std::cout << "~BufferState" << std::endl;}
+    VkBuffer getBuffer() {return buffer;}
+    void resize() {
+        VkDeviceSize bufferSize = size.size;
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, bufferMemory);
+        commandBuffer = createCommandBuffer(device,pool)();
+        fence = createFence(device);
+    }
+    void unsize() {
+        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+        if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
+        vkFreeMemory(device, bufferMemory, nullptr);
+        vkDestroyBuffer(device, buffer, nullptr);
+    }
+    VkFence setup(void *ptr, int loc, int siz) {
+        if (loc < 0 || siz < 0 || loc+siz > size.size)
+        {std::cerr << "invalid buffer size!" << std::endl; exit(-1);}
+        VkDeviceSize bufferSize = size.size;
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        memProperties, stagingBuffer, stagingBufferMemory);
+        void* data; vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy((void*)((char*)data+loc),ptr,siz);
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetFences(device, 1, &fence);
+        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence);
+        return fence;
+    }
+    void upset() {
+        vkUnmapMemory(device, stagingBufferMemory);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+    }
 };
 
-bool vulkanSet(Memory mem, int loc, int siz, void *ptr, std::function<void()> dat)
-{
-    WrapState<BufferState>* bufferQueue = mainState.queueState->bufferQueue[mem];
-    if (!bufferQueue->clr()) return true;
-    bufferQueue->set(loc,siz,ptr,dat); bufferQueue->put();
-    return false;
-}
-bool vulkanDraw(enum Micro shader, int base, int limit)
-{
-    QueueState *queue = mainState.queueState;
-    std::vector<BufferState*> buffer; SwapState *swap; DrawState *draw;
-    WrapState<SwapState> *swapQueue = queue->swapQueue;
-    std::vector<WrapState<BufferState>*> bindBuffer = queue->bindBuffer(shader);
-    std::vector<WrapState<BufferState>*> queryBuffer = queue->queryBuffer(shader);
-    WrapState<DrawState> *drawQueue = queue->drawQueue[shader];
-    VkExtent2D extent; extent.width = mainState.windowCopy.width; extent.height = mainState.windowCopy.height;
-    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) if (!(*i)->get()) return true;
-    // buffers are available to get
-    if (!queue->swapQueue->get()) return true;
-    // swap buffer is available to get
-    if (!drawQueue->clr(shader)) return true;
-    // draw buffer is ready to set
-    for (auto i = bindBuffer.begin(); i != bindBuffer.end(); i++) {
-    buffer.push_back((*i)->get(drawQueue->tmp()));}
-    swap = queue->swapQueue->get(drawQueue->tmp());
-    std::function<bool()> done = drawQueue->set((std::function<VkFence(DrawState*)>)
-    [buffer,swap,extent,base,limit](DrawState*draw){
-    return draw->setup(buffer,swap,extent,base,limit);});
-    for (auto i = queryBuffer.begin(); i != queryBuffer.end(); i++) {
-    (*i)->seq(drawQueue->sep()); // wait to read image until after draw
-    // kick off read of image buffer after finishing draw
-    (*i)->set((std::function<VkFence(BufferState*buf)>)[](BufferState*buf){return buf->getup();});
-    (*i)->put();}
-    drawQueue->put();
-    return false;
-}
-bool vulkanSwap()
-{
-    WrapState<SwapState>* swapQueue = mainState.queueState->swapQueue;
-    if (!swapQueue->clr((mainState.swapCopy.width<<16)|(mainState.swapCopy.height))) return true;
-    swapQueue->set((std::function<void(SwapState*)>)[](SwapState*buf){}); swapQueue->put();
-    return false;
-}
-bool vulkanFollow()
-{
-    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
-    return vulkanSet(Matrixz,mainState.paramFollow[0]*siz,siz,planeWindow(mat),[mat](){free(mat);});
-}
-bool vulkanModify()
-{
-    int siz = 16*sizeof(float); float *mat = (float*)malloc(siz);
-#ifdef PLANRA
-    planraMatrix(mat);
-#else
-    planeMatrix(mat);
-#endif
-    return vulkanSet(Matrixz,mainState.paramModify[0]*siz,siz,mat,[mat](){free(mat);});
-}
-bool vulkanDirect()
-{
-    // TODO write to Uniform
-    return false;
-}
-bool vulkanDisplay(int idx)
-{
-    return vulkanDraw(mainState.paramShader[idx],mainState.paramBase[idx],mainState.paramLimit[idx]);
-}
-bool vulkanQuery()
-{
-    WrapState<BufferState> *ptr = mainState.queueState->bufferQueue[Piercez];
-    // TODO also get depending on MicroPre from Planez Trianglez Pointz
-    if (!ptr->get()) return true;
-    ThreadState *thd = mainState.threadState;
-    TempState *tmp = mainState.tempState;
-    std::deque<Pierce> *que = &mainState.respMove;
-    int tag = tmp->temp();
-    BufferState *buf = ptr->get(tmp->temp(tag));
-    buf->bind(mainState.queryCopy.left,mainState.queryCopy.base);
-    tmp->temp(tag,thd->push((std::function<void()>)[buf](){buf->lookup();},[](){return true;}));
-    tmp->tmpq(tag,[buf,que](){que->push_back(buf->bind());});
-    tmp->tmpq(tag);
-    return false;
-}
-bool vulkanResp()
-{
-    struct Pierce &pierce = mainState.respCopy;
-    // TODO depending on MicroPre fill in missing fields in pierce
-    if (mainState.manipReact[Enque]) planeSafe(Threads,Phases,PierceLeft);
-    return false;
-}
-bool vulkanDefer()
-{
-    struct Center *center = mainState.deferCopy;
-    int siz; void *ptr; struct WrapState<BufferState> *buf;
-    switch (center->mem) {default: throw std::runtime_error("unsupported mem!");
-    break; case (Vertexz): siz = sizeof(center->vtx[0]); ptr = center->vtx;
-    break; case (Matrixz): siz = sizeof(center->mat[0]); ptr = center->mat;}
-    return vulkanSet(center->mem,center->idx*siz,siz*center->siz,ptr,[center](){planeDone(center);});
-}
-bool vulkanEnact(int idx, enum Enact hint, bool cond, bool tight)
-{ // do work, and return if there is more work to do
-    bool fail; int mark;
-    if (mainState.manipEnact[hint] && cond) mainState.registerDone[hint][idx] = true;
-    if (!mainState.registerDone[hint][idx]) return false;
-    mark = mainState.threadState->mark(); // remember wakes after this
-    switch (hint) {default: throw std::runtime_error("failed to call function!");
-    break; case (Extent): fail = vulkanSwap();
-    break; case (Follow): fail = vulkanFollow();
-    break; case (Modify): fail = vulkanModify();
-    break; case (Direct): fail = vulkanDirect();
-    break; case (Defer): fail = vulkanDefer();
-    break; case (Shader): fail = vulkanDisplay(idx);
-    break; case (Query): fail = vulkanQuery();
-    break; case (Resp): fail = vulkanResp();}
-    mainState.registerDone[hint][idx] = fail; // will wake or already woke
-    if (fail && mainState.threadState->mark(mark)) return true; // already woke
-    return tight; // wait for wake unless there is already work to do
-}
-bool vulkanEnact(enum Enact hint, bool cond, bool tight)
-{
-    return vulkanEnact(0,hint,cond,tight);
-}
-bool vulkanChange()
-{ // do work, and return if there is more work to do
-    bool moved = (mainState.windowMove.left != mainState.windowCopy.left || mainState.windowMove.base != mainState.windowCopy.base);
-    bool sized = (mainState.windowMove.width != mainState.windowCopy.width || mainState.windowMove.height != mainState.windowCopy.height);
-    bool moused = (mainState.mouseMove.left != mainState.mouseCopy.left || mainState.mouseMove.base != mainState.mouseCopy.base);
-    bool queryd = !mainState.queryMove.empty();
-    bool respd = !mainState.respMove.empty();
-    bool deferd = !mainState.deferMove.empty();
-    bool drawed = ((mainState.manipEnact[Follow] && moved) || (mainState.manipEnact[Follow] && sized) ||
-        (mainState.manipEnact[Modify] && moused) || (mainState.manipEnact[Direct] && moused));
-    bool swaped = ((mainState.windowMove.width > mainState.swapMove.width) || (mainState.windowMove.height > mainState.swapMove.height));
-    bool tight = false;
-    if (moved && mainState.windowMove.moved) glfwSetWindowPos(mainState.openState->window,mainState.windowMove.left,mainState.windowMove.base);
-    if (sized && mainState.windowMove.sized) glfwSetWindowSize(mainState.openState->window,mainState.windowMove.width,mainState.windowMove.height);
-    if (moused && mainState.mouseMove.moved) glfwSetCursorPos(mainState.openState->window,mainState.mouseMove.left,mainState.mouseMove.base);
-    if (swaped) {std::cerr << "vulkanChange swaped " << mainState.swapMove.width << "," << mainState.swapMove.height << std::endl;
-        mainState.swapMove.width = mainState.windowMove.width+mainState.MAX_FRAMEBUFFER_RESIZE;
-        mainState.swapMove.height = mainState.windowMove.height+mainState.MAX_FRAMEBUFFER_RESIZE;
-    	mainState.swapCopy.width = mainState.swapMove.width+mainState.MAX_FRAMEBUFFER_RESIZE;
-        mainState.swapCopy.height = mainState.swapMove.height+mainState.MAX_FRAMEBUFFER_RESIZE;}
-    if (moved || sized) {mainState.windowMove.moved = mainState.windowMove.sized = false; mainState.windowCopy = mainState.windowMove;}
-    if (moused) {mainState.mouseCopy.moved = mainState.mouseCopy.sized = false; mainState.mouseCopy = mainState.mouseMove;}
-    if (queryd && !mainState.registerDone[Query][0]) {mainState.queryCopy = mainState.queryMove.front(); mainState.queryMove.pop_front();}
-    if (respd && !mainState.registerDone[Resp][0]) {mainState.respCopy = mainState.respMove.front(); mainState.respMove.pop_front();}
-    if (deferd && !mainState.registerDone[Defer][0]) {mainState.deferCopy = mainState.deferMove.front(); mainState.deferMove.pop_front();}
-    mainState.tempState->temq();
-    tight = vulkanEnact(Extent,swaped,tight);
-    tight = vulkanEnact(Follow,(moved||sized),tight);
-    tight = vulkanEnact(Modify,moused,tight);
-    tight = vulkanEnact(Direct,moused,tight);
-    tight = vulkanEnact(Defer,deferd,tight);
-    for (int idx = mainState.paramIndex; idx != mainState.paramRoof; idx++) tight = vulkanEnact(idx,Shader,drawed,tight);
-    tight = vulkanEnact(Query,queryd,tight);
-    tight = vulkanEnact(Resp,respd,tight);
-    tight = tight || !mainState.queryMove.empty() || !mainState.respMove.empty() || !mainState.deferMove.empty();
-    return tight; // tight loop if any work remains
+struct TextureState : public BaseState {
+    const VkDevice device;
+    const VkPhysicalDevice physical;
+    const VkPhysicalDeviceProperties properties;
+    const VkQueue graphics;
+    const VkCommandPool pool;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    const vftype func;
+    VkImage textureImage;
+    VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
+    VkSampler textureSampler;
+    VkCommandBuffer beforeBuffer;
+    VkCommandBuffer commandBuffer;
+    VkCommandBuffer afterBuffer;
+    VkSemaphore beforeSemaphore;
+    VkSemaphore afterSemaphore;
+    VkFence fence;
+    // temporary between sup and ups:
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    TextureState() :
+        BaseState("TextureState",BindState::self),
+        device(BindState::device), physical(BindState::physical),
+        properties(BindState::properties), graphics(BindState::graphics), pool(BindState::pool),
+        memProperties(BindState::memProperties), func(BindState::func)
+        {std::cout << "TextureState" << std::endl;}
+    ~TextureState() {push(0); baseres(); std::cout << "~TextureState" << std::endl;}
+    VkImageView getTextureImageView() {return textureImageView;}
+    VkSampler getTextureSampler() {return textureSampler;}
+    void resize() {
+        int texWidth = size.extent.width;
+        int texHeight = size.extent.height;
+        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        memProperties, /*output*/ textureImage, textureImageMemory);
+        textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        textureSampler = createTextureSampler(device,physical,properties);
+        beforeBuffer = createCommandBuffer(device,pool)();
+        commandBuffer = createCommandBuffer(device,pool)();
+        afterBuffer = createCommandBuffer(device,pool)();
+        beforeSemaphore = createSemaphore(device);
+        afterSemaphore = createSemaphore(device);
+        fence = createFence(device);
+    }
+    void unsize() {
+        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+        if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
+        if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
+        if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, pool, 1, &afterBuffer);
+        vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
+        vkFreeCommandBuffers(device, pool, 1, &beforeBuffer);
+        vkDestroySampler(device, textureSampler, nullptr);
+        vkDestroyImageView(device, textureImageView, nullptr);
+        vkDestroyImage(device, textureImage, nullptr);
+        vkFreeMemory(device, textureImageMemory, nullptr);
+    }
+    VkFence setup(void *ptr, int loc, int siz) {
+        int texWidth = size.extent.width;
+        int texHeight = size.extent.height;
+        VkDeviceSize imageSize = texWidth * texHeight * 4; // TODO think of way to write to portions of texture
+        if (loc != 0 || siz != 1) {std::cerr << "invalid texture size!" << std::endl; exit(-1);}
+        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
+            stagingBuffer, stagingBufferMemory);
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        memcpy(data, ptr, static_cast<size_t>(imageSize));
+        vkResetCommandBuffer(beforeBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetCommandBuffer(afterBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetFences(device, 1, &fence);
+        copyTextureImage(device, physical, graphics, pool, memProperties, textureImage, texWidth, texHeight,
+            beforeSemaphore, afterSemaphore, fence,
+            stagingBuffer, beforeBuffer, commandBuffer, afterBuffer);
+        return fence;
+    }
+    void upset() {
+        vkUnmapMemory(device, stagingBufferMemory);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+        func();
+    }
+};
+
+struct DrawState : public BaseState {
+    const VkDevice device;
+    const VkRenderPass renderPass;
+    const VkQueue graphics;
+    const VkQueue present;
+    const VkSurfaceFormatKHR surfaceFormat;
+    const VkPresentModeKHR presentMode;
+    const VkCommandPool pool;
+    const int frames;
+    ChangeState *change;
+    VkCommandBuffer commandBuffer;
+    VkSemaphore beforeSemaphore;
+    VkSemaphore afterSemaphore;
+    VkFence fence;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSetLayout descriptorLayout;
+    VkDescriptorSet descriptorSet;
+    InitState<BaseState *, ConstState<BaseState *>, BindEnums+Memorys> bufptr;
+    InitState<int, ConstState<int>, BindEnums+Memorys> bufidx; int bufsiz;
+    DrawState() :
+        BaseState("DrawState"),
+        device(BindState::device), 
+        renderPass(BindState::renderPass),
+        graphics(BindState::graphics),
+        present(BindState::present),
+        surfaceFormat(BindState::surfaceFormat),
+        presentMode(BindState::presentMode),
+        pool(BindState::pool),
+        frames(BindState::frames),
+        change(BindState::change),
+        bufptr(ConstState<BaseState *>((BaseState*)0)),
+        bufidx(ConstState<int>(0)), bufsiz(0)
+        {std::cout << "DrawState " << debug << std::endl;}
+    ~DrawState() {push(0); baseres(); std::cout << "~DrawState " << debug << std::endl;}
+    bool bind(BindState **ary, int siz) {
+        // choose latest of each in BindBase state
+        if (bufsiz != 0) {std::cerr << "invalid bind state!" << std::endl; exit(-1);}
+        for (int i = 0; i < siz; i++) {
+        bufidx[i] = ary[i]->index();
+        bufptr[bufidx[i]] = ary[i]->buffer();
+        if (!bufptr[bufidx[i]]->take()) break;
+        bufsiz++;}
+        return (bufsiz == siz);
+    }
+    void free() {
+        for (int i = 0; i < bufsiz; i++)
+        bufptr[bufidx[i]]->give();
+        bufsiz = 0;
+    }
+    BaseState *get(BindEnum typ, Memory mem) {
+        int index = BindState::check(typ,mem);
+        if (!bufptr[index]) {std::cerr << "invalid bind!" << typ << " " << mem << std::endl; exit(-1);}
+        return bufptr[index];
+    }
+    void resize() {
+        descriptorPool = get(PipelineBind,Memorys)->getDescriptorPool();
+        descriptorLayout = get(PipelineBind,Memorys)->getDescriptorSetLayout(); free();
+        descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames)();
+        commandBuffer = createCommandBuffer(device,pool)();
+        beforeSemaphore = createSemaphore(device);
+        afterSemaphore = createSemaphore(device);
+        fence = createFence(device);
+    }
+    void unsize() {
+        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+        if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
+        if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
+        if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
+    }
+    VkFence setup(void *ptr, int loc, int siz) {
+        if (size == SizeState(MicroTest)) {
+            VkExtent2D swapChainExtent = get(SwapBind,Memorys)->getSwapChainExtent();
+            uint32_t imageIndex;
+            VkResult result = vkAcquireNextImageKHR(device, get(SwapBind,Memorys)->getSwapChain(),
+                UINT64_MAX, beforeSemaphore, VK_NULL_HANDLE, &imageIndex);
+            if (result == VK_ERROR_OUT_OF_DATE_KHR) change->resize();
+            else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+            {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
+            vkResetFences(device, 1, &fence);
+            vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+            updateUniformDescriptor(device,get(BindEnums,Uniformz)->getBuffer(),0,descriptorSet);
+            updateTextureDescriptor(device,get(BindEnums,Texturez)->getTextureImageView(),
+                get(BindEnums,Texturez)->getTextureSampler(),1,descriptorSet);
+            if (!drawFrame(device,commandBuffer,renderPass,graphics,present,
+                get(SwapBind,Memorys)->getSwapChain(),get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex),
+                get(PipelineBind,Memorys)->getGraphicsPipeline(),get(PipelineBind,Memorys)->getPipelineLayout(),
+                get(BindEnums,Vertexz)->getBuffer(),get(IndexBind,Memorys)->getBuffer(),imageIndex,
+                descriptorSet,ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence,
+                swapChainExtent,surfaceFormat,presentMode)) change->resize();
+            return fence;
+        }
+        return VK_NULL_HANDLE;
+    }
+    void upset() {
+        free();
+    }
+};
+
+std::deque<stbi_uc*> donePixels;
+void pixelsDone() { // TODO replace by planeDone when pixels come from Center
+    if (donePixels.empty()) {std::cerr << "no pixels to free!" << std::endl; exit(-1);}
+    stbi_image_free(donePixels.front()); donePixels.pop_front();
 }
 
-void vulkanInitial(enum Phase phase)
-{
-    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-    break; case (Init):
-    std::cerr << "Initial,Init" << std::endl;
-    break; case (Start):
-    std::cerr << "Initial,Start" << std::endl;
-    mainState.initState = new InitState(mainState.layers);
-    break; case (Stop):
-    std::cerr << "Initial,Stop" << std::endl;
-    delete mainState.initState; mainState.initState = 0;}
+struct MainState {
+    static const int frames = 2;
+    ChangeState changeState;
+    WindowState windowState;
+    VulkanState vulkanState;
+    PhysicalState physicalState;
+    LogicalState logicalState;
+    ThreadState threadState;
+    ArrayState<SwapState,1> swapState;
+    ArrayState<PipelineState,Micros> pipelineState;
+    ArrayState<UniformState,frames> uniformState;
+    ArrayState<BufferState,frames> vertexState;
+    ArrayState<BufferState,frames> indexState;
+    ArrayState<TextureState,frames> textureState;
+    ArrayState<DrawState,frames> drawState;
+    VkExtent2D swapChainExtent;
+    MainState() :
+        changeState(this),
+        windowState(&changeState),
+        vulkanState(windowState.window),
+        physicalState(vulkanState.instance,vulkanState.surface),
+        logicalState(physicalState.device,physicalState.graphicsFamily,
+            physicalState.presentFamily,physicalState.surfaceFormat,
+            vulkanState.validationLayers,physicalState.deviceExtensions),
+        threadState(logicalState.device,&changeState),
+        swapState("SwapBind",SwapBind,Memorys,
+            windowState.window,vulkanState.surface,physicalState.device,logicalState.device,
+            physicalState.surfaceFormat,physicalState.presentMode,physicalState.capabilities,
+            physicalState.graphicsFamily,physicalState.presentFamily,logicalState.imageFormat,
+            logicalState.depthFormat,logicalState.renderPass,physicalState.memProperties),
+        pipelineState("PipelineBind",PipelineBind,Memorys,
+            logicalState.pool,frames),
+        uniformState("Uniformz",BindEnums,Uniformz),
+        vertexState("Vertexz",BindEnums,Vertexz,
+            logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+        indexState("IndexBind",IndexBind,Memorys,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+        textureState("Texturez",BindEnums,Texturez,
+            pixelsDone,physicalState.properties),
+        drawState("DrawBind",DrawBind,Memorys,&changeState),
+        swapChainExtent(chooseSwapExtent(windowState.window,physicalState.capabilities)) {
+        changeState.test(); // TODO move to builtin test triggered by copy to Configure
+    }
+};
+
+void ChangeState::async() {
+   // TODO call vulkanSafe and/or planeSafe
 }
-void vulkanWindow(enum Phase phase)
-{
-    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-    break; case (Init):
-    std::cerr << "Window,Init" << std::endl;
-    mainState.windowMove.width = /*mainState.windowCopy.width =*/ 800;
-    mainState.windowMove.height = /*mainState.windowCopy.height =*/ 800;
-    break; case (Start):
-    std::cerr << "Window,Start" << std::endl;
-    mainState.openState = new OpenState(mainState.initState->instance,800,800,(void*)&mainState);
-    break; case (Stop):
-    std::cerr << "Window,Stop " << std::endl;
-    delete mainState.openState; mainState.openState = 0;}
+void ChangeState::resize() {
+    // TODO resize swapState
+    {std::cerr << "swap chain image out of date!" << std::endl; exit(-1);}
 }
-void vulkanGraphics(enum Phase phase)
-{
-    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-    break; case (Init):
-    std::cerr << "Graphics,Init" << std::endl;
-    {int32_t width, height, left, base, workx, worky, sizx, sizy; double posx, posy;
-    GLFWwindow *window = mainState.openState->window;
-    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    glfwGetMonitorWorkarea(monitor,&left,&base,&workx,&worky);
-    glfwGetFramebufferSize(window,&sizx,&sizy);
-    // glfwGetWindowSize(window,&width,&height);
-    width = mainState.windowMove.width; height = mainState.windowMove.height;
-    glfwGetCursorPos(window,&posx,&posy);
-    left += (workx-width)/2; base += (worky-height)/2;
-    posx -= (workx-width)/2; posy -= (worky-height)/2;
-    glfwSetWindowPos(window,left,base); // TODO calculate this before create window
-    if (mainState.manipReact[Relate]) {
-    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ left+posx;
-    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ base+posy;} else {
-    mainState.mouseClick.left = mainState.mouseMove.left = /*mainState.mouseCopy.left =*/ posx;
-    mainState.mouseClick.base = mainState.mouseMove.base = /*mainState.mouseCopy.base =*/ posy;}
-    mainState.windowClick.width = mainState.windowMove.width = /*mainState.windowCopy.width =*/ width;
-    mainState.windowClick.height = mainState.windowMove.height = /*mainState.windowCopy.height =*/ height;
-    mainState.windowClick.left = mainState.windowMove.left = /*mainState.windowCopy.left =*/ left;
-    mainState.windowClick.base = mainState.windowMove.base = /*mainState.windowCopy.base =*/ base;
-    mainState.windowRatio.left = sizx; mainState.windowRatio.width = width;
-    mainState.windowRatio.base = sizy; mainState.windowRatio.height = height;}
-    break; case (Start):
-    std::cerr << "Graphics,Start" << std::endl;
-    mainState.physicalState = new PhysicalState(
-    mainState.initState->instance,mainState.openState->surface,mainState.extensions,
-    mainState.MAX_FRAMES_INFLIGHT);
-    mainState.logicalState = [](PhysicalState *physical){
-    return new DeviceState(physical->physical,physical->graphicid,physical->presentid,
-    physical->image,mainState.layers,mainState.extensions,mainState.MAX_BUFFERS_AVAILABLE*Memorys);
-    }(mainState.physicalState);
-    mainState.threadState = new ThreadState(mainState.logicalState->device,
-    mainState.MAX_FENCES_INFLIGHT);
-    mainState.tempState = new TempState();
-    mainState.queueState = new QueueState();
-    break; case (Stop):
-    std::cerr << "Graphics,Stop " << std::endl;
-    delete mainState.threadState; mainState.threadState = 0;
-    delete mainState.queueState; mainState.queueState = 0;
-    delete mainState.tempState; mainState.tempState = 0;
-    delete mainState.logicalState; mainState.logicalState = 0;
-    delete mainState.physicalState; mainState.physicalState = 0;}
+void ChangeState::loop() {
+    // TODO poll glfw, poll ptasm, copy clear, stall main
 }
-void vulkanProcess(enum Phase phase)
-{
-    switch (phase) {default: throw std::runtime_error("unsupported phase!");
-    break; case (Init):
-    std::cerr << "Process,Init" << std::endl;
-    switch (mainState.registerPlan) {default: throw std::runtime_error("unsupported plan!");
-    break; case(Regress): case (Bringup): {struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 6; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,6); allocInt(&center->val,6); center->cfg[0] = ManipEnact;
-    center->cfg[1] = ParamShader; center->cfg[2] = ParamLimit; center->cfg[3] = RegisterDone;
-    center->cfg[4] = WindowRead; center->cfg[5] = WindowWrite;
-    center->val[0] = (1<<Shader)|(1<<Follow)|(1<<Extent)|(1<<Defer);
-    center->val[1] = MicroPRPC; center->val[2] = 6; center->val[3] = (1<<Shader);
-    center->val[4] = Effect; center->val[5] = Infect;
-    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
-    {int len = 0; char *str; char *tmp;
-    struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Vertexz; center->siz = 6; center->idx = 0; center->slf = 0;
-    allocVertex(&center->vtx,6);
-    asprintf(&str,"Vertex(");
-    asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-    asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-    len = 0; hideVertex(&center->vtx[0],str,&len); free(str);
-    asprintf(&str,"Vertex(");
-    asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-    asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-    len = 0; hideVertex(&center->vtx[1],str,&len); free(str);
-    asprintf(&str,"Vertex(");
-    asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-    asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-    len = 0; hideVertex(&center->vtx[2],str,&len); free(str);
-    asprintf(&str,"Vertex(");
-    asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-    asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-    len = 0; hideVertex(&center->vtx[3],str,&len); free(str);
-    asprintf(&str,"Vertex(");
-    asprintf(&str,"%svec[0]:Old(-0.5)vec[1]:Old(-0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-    asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-    len = 0; hideVertex(&center->vtx[4],str,&len); free(str);
-    asprintf(&str,"Vertex(");
-    asprintf(&str,"%svec[0]:Old(0.5)vec[1]:Old(0.5)vec[2]:Old(0.5)vec[3]:Old(1.0)",tmp = str); free(tmp);
-    asprintf(&str,"%sref[0]:Int32(0)ref[1]:Int32(0)ref[2]:Int32(0)ref[3]:Int32(0))",tmp = str); free(tmp);
-    len = 0; hideVertex(&center->vtx[5],str,&len); free(str);
-    planeCopy(&center); freeCenter(center); allocCenter(&center,0);}}
-    break; case (Start):
-    std::cerr << "Process,Start" << std::endl;
-    mainState.registerOpen = true;
-    break; case (Stop):
-    std::cerr << "Process,Stop" << std::endl;
-    mainState.registerOpen = false;}
+void ChangeState::copy(Center *) {
+    // TODO kick off dma
+}
+// TODO define other ChangeState functions that change state and enque events
+const int NUM_FRAMES_IN_FLIGHT = 2;
+UniformBufferObject ubo[NUM_FRAMES_IN_FLIGHT]; // TODO use Center Uniformz instead of builtin data
+void ChangeState::test() {
+    int texWidth; int texHeight; int texChannels;
+    stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    if (!pixels) {std::cerr << "failed to load texture image: " << "texture.jpg" << std::endl; exit(-1);}
+    donePixels.push_back(pixels);
+
+    SafeState safe(0);
+    if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
+    {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
+    main->swapState.advance(0); safe.wait();
+    if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,&safe))
+    {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
+    main->pipelineState.advance(MicroTest); safe.wait();
+
+    int vsiz = sizeof(vertices[0]) * vertices.size();
+    if (!main->threadState.push(main->vertexState.preview(),(void*)vertices.data(), 0, vsiz, vsiz, &safe))
+    {std::cerr << "cannot push vertices!" << std::endl; exit(-1);} safe.wait();
+    int isiz = sizeof(indices[0]) * indices.size();
+    if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(), 0, isiz, isiz, &safe))
+    {std::cerr << "cannot push indices!" << std::endl; exit(-1);} safe.wait();
+    VkExtent2D texExtent; texExtent.width = texWidth; texExtent.height = texHeight;
+    if (!main->threadState.push(main->textureState.preview(), (void*)pixels, 0, 1, texExtent, &safe))
+    {std::cerr << "cannot push texture!" << std::endl; exit(-1);} safe.wait();
+
+    BindState *single[] = {&main->pipelineState};
+    for (int i = 0; i < main->frames; i++) {
+        if (!main->drawState.preview(i)->bind(single, 1))
+        {std::cerr << "cannot bind draw!" << std::endl; exit(-1);}
+        if (!main->threadState.push(main->drawState.preview(i), MicroTest, &safe))
+        {std::cerr << "cannot push draw!" << std::endl; exit(-1);} safe.wait();}
+    int usiz = sizeof(ubo[0]); 
+    for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; i++) {
+        if (!main->threadState.push(main->uniformState.preview(i), usiz, &safe))
+        {std::cerr << "cannot push uniform!" << std::endl; exit(-1);} safe.wait();}
+
+    int currentUniform = 0; int count = 0; // TODO call planeDone on the Center instead of using temporary ubo
+    while (!glfwWindowShouldClose(main->windowState.window) && count++ < 1000) {
+    Center *center = main->threadState.clear(); if (center) copy(center);
+    ubo[currentUniform] = updateUniformBuffer(main->swapChainExtent);
+    if (main->threadState.wrap(main->uniformState.preview(), &ubo[currentUniform], 0, usiz))
+    currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    BindState *bind[] = {
+        &main->uniformState,
+        &main->textureState,
+        &main->vertexState,
+        &main->indexState,
+        &main->pipelineState,
+        &main->swapState};
+    int count = 0; while (!main->drawState.buffer()->bind()) {
+        if ((++count % 1000) == 0) std::cout << "count " << count << std::endl;
+        glfwWaitEventsTimeout(0.001);}
+    if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+        main->threadState.wrap(main->drawState.derived(), 0, 0, 0))
+        main->drawState.advance();
+    else main->drawState.derived()->free();}
+
+    main->threadState.push();
 }
 
-void vulkanInit()
-{
-    for (int arg = 0; arg < mainState.argc; arg++) planePutstr(mainState.argv[arg]);
-}
-void planraBoot()
-{
-    struct Center *center = 0; allocCenter(&center,1);
-    center->mem = Configurez; center->siz = 4; center->idx = 0; center->slf = 0;
-    allocConfigure(&center->cfg,4); allocInt(&center->val,4);
-    center->cfg[0] = RegisterPlan; center->cfg[1] = RegisterPoll;
-    center->cfg[2] = RegisterInit; center->cfg[3] = RegisterOpen;
-    center->val[0] = PLAN; center->val[1] = 100;
-    center->val[2] = center->val[3] = (1<<Initial)|(1<<Window)|(1<<Graphics)|(1<<Process);
-    planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-}
-int vulkanLoop()
-{ // do work if any, and return if there is more work to do
-    if (!mainState.registerOpen) return 0;
-    glfwPollEvents(); // in case vulkanBlock not called
-    return vulkanChange();
-}
-int vulkanBlock()
-{ // wait for work, and return if there might be work to do
-    if (!mainState.registerOpen) return 0;
-    glfwWaitEventsTimeout(0.0001*mainState.registerPoll);
-    return 1;
-}
-void vulkanPhase(enum Thread thread, enum Phase phase)
-{
-    switch (thread) {default: throw std::runtime_error("unsupported thread!");
-    break; case (Initial): vulkanInitial(phase);
-    break; case (Window): vulkanWindow(phase);
-    break; case (Graphics): vulkanGraphics(phase);
-    break; case (Process): vulkanProcess(phase);}
-}
-void vulkanSafe()
-{
-    glfwPostEmptyEvent();
-}
-template<class Type> void vulkanWrite(int value, int write, Type &click, std::deque<Type> &move, Type &copy,
-    std::function<void(Type&,int)> func)
-{
-    switch (write) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): func(click,value); break;
-    case (Infect): func(click,value); move.push_back(click); break;
-    case (Effect): func(copy,value); break;}
-}
-template<class Type> void vulkanWrite(int value, int write, Type &click, Type &move, Type &copy,
-    std::function<void(Type&,int)> func, std::function<void(Type&)> only)
-{
-    switch (write) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): func(click,value); break;
-    case (Infect): func(move,value); only(move); break;
-    case (Effect): func(copy,value); break;}
-}
-template<class Type> void vulkanWrite(int value, int write, Type &click, Type &move, Type &copy,
-    std::function<void(Type&,int)> func)
-{
-    switch (write) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): func(click,value); break;
-    case (Infect): func(move,value); break;
-    case (Effect): func(copy,value); break;}
-}
-template<class Type> void vulkanWrite(int value, int write, Type &click, Type &copy,
-    std::function<void(Type&,int)> func)
-{
-    switch (write) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): func(click,value); break;
-    case (Infect): func(copy,value); break;
-    case (Effect): func(copy,value); break;}
-}
-#define VWRITE(I,T,F,G) vulkanWrite(center->val[i],mainState.I##Write,\
-    mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
-    (std::function<void(T&,int)>)[](T &x, int y){x.F = y;},\
-    (std::function<void(T&)>)[](T &x){x.G = true;})
-#define VPUSH(I,T,F) vulkanWrite(center->val[i],mainState.I##Write,\
-    mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
-    (std::function<void(T&,int)>)[](T &x, int y){x.F = y;})
-#define WPUSH(I,T,F) vulkanWrite(center->val[i],mainState.I##Write,\
-    mainState.I##Click,mainState.I##Copy,\
-    (std::function<void(T&,int)>)[](T &x, int y){x.F = y;})
-void vulkanCopy(struct Center **given)
-{
-    struct Center *center = *given;
-    switch (center->mem) {default: mainState.deferMove.push_back(center); *given = 0;
-    break; case (Littlez): if (center->idx+center->siz > mainState.littleSize) {
-    mainState.littleSize = center->idx+center->siz; mainState.littleState =
-    (struct Little *)realloc(mainState.littleState,mainState.littleSize*sizeof(center->pvn[0]));}
-    memcpy(mainState.littleState,center->pvn+center->idx,center->siz*sizeof(center->pvn[0]));
-    planeDone(center); *given = 0; return;
-    break; case (Configurez):
-    for (int i = 0; i < center->siz; i++)
-    switch (center->cfg[i]) {default:
-    break; case (CursorIndex): mainState.mouseIndex = center->val[i];
-    break; case (CursorRead): mainState.mouseRead = (Interp)center->val[i];
-    break; case (CursorWrite): mainState.mouseWrite = (Interp)center->val[i];
-    break; case (CursorLeft): VWRITE(mouse,MouseState,left,moved);
-    break; case (CursorBase): VWRITE(mouse,MouseState,base,moved);
-    break; case (CursorAngle): VWRITE(mouse,MouseState,angle,sized);
-    break; case (CursorPress): if (center->val[i] == 0)
-    mainState.linePress.clear(); else mainState.linePress.push_front(center->val[i]);
-    break; case (WindowRead): mainState.windowRead = (Interp)center->val[i];
-    break; case (WindowWrite): mainState.windowWrite = (Interp)center->val[i];
-    break; case (WindowLeft): VWRITE(window,WindowState,left,moved);
-    break; case (WindowBase): VWRITE(window,WindowState,base,moved);
-    break; case (WindowWidth): VWRITE(window,WindowState,width,sized);
-    break; case (WindowHeight): VWRITE(window,WindowState,height,sized);
-    break; case (PierceRead): mainState.respRead = (Interp)center->val[i];
-    break; case (PierceWrite): mainState.respWrite = (Interp)center->val[i];
-    break; case (PierceLeft): VPUSH(resp,Pierce,vec[0]);
-    break; case (PierceBase): WPUSH(resp,Pierce,vec[1]);
-    break; case (PierceDeep): WPUSH(resp,Pierce,vec[2]);
-    break; case (PierceIndex): WPUSH(resp,Pierce,idx);
-    break; case (SpoofRead): mainState.queryRead = (Interp)center->val[i];
-    break; case (SpoofWrite): mainState.queryWrite = (Interp)center->val[i];
-    break; case (SpoofLeft): VPUSH(query,MouseState,left);
-    break; case (SpoofBase): WPUSH(query,MouseState,base);
-    break; case (SwapRead): mainState.swapRead = (Interp)center->val[i];
-    break; case (SwapWrite): mainState.swapWrite = (Interp)center->val[i];
-    break; case (SwapWidth): VPUSH(swap,SizeState,width);
-    break; case (SwapHeight): VPUSH(swap,SizeState,height);
-    break; case (RegisterPlan): mainState.registerPlan = (Plan)center->val[i];
-    break; case (RegisterPoll): mainState.registerPoll = center->val[i];
-    break; case (RegisterDone): for (int j = 0; j < Enacts; j++)
-    mainState.registerDone[(Enact)j][mainState.paramIndex] =
-    (mainState.registerDone[(Enact)j][mainState.paramIndex] || ((center->val[i]&(1<<j)) != 0));
-    break; case (ManipReact): for (int j = 0; j < Reacts; j++)
-    mainState.manipReact[(React)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case (ManipEnact): for (int j = 0; j < Enacts; j++)
-    mainState.manipEnact[(Enact)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case (ManipAction): for (int j = 0; j < Actions; j++)
-    mainState.manipAction[(Action)j] = ((center->val[i]&(1<<j)) != 0);
-    break; case (ParamIndex): mainState.paramIndex = center->val[i];
-    break; case (ParamRoof): mainState.paramRoof = center->val[i];
-    break; case (ParamFollow): mainState.paramFollow[0] = center->val[i];
-    break; case (ParamModify): mainState.paramModify[0] = center->val[i];
-    break; case (ParamShader): mainState.paramShader[mainState.paramIndex] = (Micro)center->val[i];
-    break; case (ParamBase): mainState.paramBase[mainState.paramIndex] = center->val[i];
-    break; case (ParamLimit): mainState.paramLimit[mainState.paramIndex] = center->val[i];
-    break; case (LittleIndex): mainState.littleIndex = center->val[i];}
-    planeDone(center); *given = 0;}
-}
-template<class Type> int vulkanRead(int read, Type &click, std::deque<Type> &move, Type &copy,
-    std::function<int(Type&)> func)
-{
-    switch (read) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return func(click);
-    case (Infect): if (!move.empty()) {click = move.front(); move.pop_front();} return func(click);
-    case (Effect): return func(copy);}
-    return 0;
-}
-template<class Type> int vulkanRead(int read, Type &click, Type &move, Type &copy,
-    std::function<int(Type&)> func)
-{
-    switch (read) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return func(click);
-    case (Infect): return func(move);
-    case (Effect): return func(copy);}
-    return 0;
-}
-template<class Type> int vulkanRead(int read, Type &click, Type &copy,
-    std::function<int(Type&)> func)
-{
-    switch (read) {default: throw std::runtime_error("cannot get info!");
-    case (Affect): return func(click);
-    case (Infect): return func(copy);
-    case (Effect): return func(copy);}
-    return 0;
-}
-#define VREAD(I,T,F) vulkanRead(mainState.I##Read,\
-    mainState.I##Click,mainState.I##Move,mainState.I##Copy,\
-    (std::function<int(T&)>)[](T&x){return x.F;})
-#define WREAD(I,T,F) vulkanRead(mainState.I##Read,\
-    mainState.I##Click,mainState.I##Copy,\
-    (std::function<int(T&)>)[](T&x){return x.F;})
-int vulkanInfo(enum Configure query)
-{
-    switch (query) {default: throw std::runtime_error("cannot get info!");
-    case (CursorLeft): return VREAD(mouse,MouseState,left);
-    case (CursorBase): return VREAD(mouse,MouseState,base);
-    case (CursorAngle): return VREAD(mouse,MouseState,angle);
-    case (CursorPress): {if (mainState.linePress.empty()) return 0;
-    int key = mainState.linePress.front(); mainState.linePress.pop_front(); return key;}
-    case (WindowLeft): return VREAD(window,WindowState,left);
-    case (WindowBase): return VREAD(window,WindowState,base);
-    case (WindowWidth): return VREAD(window,WindowState,width);
-    case (WindowHeight): return VREAD(window,WindowState,height);
-    case (PierceLeft): return VREAD(resp,Pierce,vec[0]);
-    case (PierceBase): return WREAD(resp,Pierce,vec[1]);
-    case (PierceDeep): return WREAD(resp,Pierce,vec[2]);
-    case (PierceIndex): return WREAD(resp,Pierce,idx);
-    case (SpoofLeft): return VREAD(query,MouseState,left);
-    case (SpoofBase): return WREAD(query,MouseState,base);
-    case (SwapWidth): return VREAD(swap,SizeState,width);
-    case (SwapHeight): return VREAD(swap,SizeState,height);
-    case (MonitorWidth): return mainState.windowRatio.width;
-    case (MonitorHeight): return mainState.windowRatio.height;
-    case (PhysicalWidth): return mainState.windowRatio.left;
-    case (PhysicalHeight): return mainState.windowRatio.base;
-    case (RegisterPlan): return mainState.registerPlan;
-    case (RegisterDone): {int val = 0; for (int j = 0; j < Enacts; j++)
-    if (mainState.registerDone[(Enact)j][mainState.paramIndex]) val |= (1<<j); return val;}
-    case (ManipReact): {int val = 0; for (int j = 0; j < Reacts; j++)
-    if (mainState.manipReact[(React)j]) val |= (1<<j); return val;}
-    case (ManipEnact): {int val = 0; for (int j = 0; j < Enacts; j++)
-    if (mainState.manipEnact[(Enact)j]) val |= (1<<j); return val;}
-    case (ManipAction): {int val = 0; for (int j = 0; j < Actions; j++)
-    if (mainState.manipAction[(Action)j]) val |= (1<<j); return val;}}
-    return 0;
-}
-void planraWake(enum Configure hint);
-int main(int argc, char **argv)
-{
-    mainState.argc = argc;
-    mainState.argv = argv;
-    try {
-#ifdef PLANRA
-       planeInit(vulkanInit,planraBoot,planeMain,vulkanLoop,vulkanBlock,planraWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
-#else
-       planeInit(vulkanInit,planeBoot,planeMain,vulkanLoop,vulkanBlock,planeWake,vulkanPhase,vulkanSafe,vulkanCopy,vulkanInfo);
-#endif
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return -1;
-    }
-    return 0;
+// TODO define glfw callbacks that cast void* to ChangeState*
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+    std::cout << "validation layer: " << pCallbackData->pMessage << std::endl;
+    return VK_FALSE;
 }
 
-int planraDone = 0;
-int planraOnce = 0;
-struct timeval planraTime;
-float planraLast = 0.0;
-void planraWake(enum Configure hint)
-{
-    if (!planraOnce) {
-        planraOnce = 1;
-        gettimeofday(&planraTime, NULL);
-    }
-    if (planraDone) return;
-    struct timeval stop; gettimeofday(&stop, NULL);
-    float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    if (time > 4.0 && vulkanInfo(RegisterPlan) == Regress) planraDone = 1;
-    if (hint == CursorPress) {
-        int key1 = vulkanInfo(CursorPress);
-        int key2 = vulkanInfo(CursorPress);
-        if (key1 == 256 && key2 == 257) planraDone = 1;
-        if (key1 == 256 && key2 == 0) {
-        struct Center *center = 0; allocCenter(&center,1);
-        allocConfigure(&center->cfg,1); allocInt(&center->val,1);
-        center->cfg[0] = CursorPress; center->val[0] = 256;
-        center->mem = Configurez; center->idx = 0; center->siz = 1; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);}
-    }
-    if (planraDone) {
-        planeSafe(Process,Stop,Configures);
-        planeSafe(Graphics,Stop,Configures);
-        planeSafe(Window,Stop,Configures);
-        planeSafe(Initial,Stop,Configures);
-        return;
-    }
-    if (time - planraLast > 0.01) {planraLast = time;
-        struct Center *center = 0; allocCenter(&center,1); center->mem = Configurez;
-        allocConfigure(&center->cfg,5); allocInt(&center->val,6);
-        center->cfg[0] = RegisterDone; // TODO remove unnecessary
-        center->cfg[1] = WindowLeft; center->cfg[2] = WindowBase;
-        center->cfg[3] = WindowWidth; center->cfg[4] = WindowHeight;
-        center->cfg[5] = ParamRoof;
-        center->val[0] = (1<<Shader);
-        center->val[1] = vulkanInfo(WindowLeft) - 1;
-        center->val[2] = vulkanInfo(WindowBase) - 1;
-        center->val[3] = vulkanInfo(WindowWidth) + 2;
-        center->val[4] = vulkanInfo(WindowHeight) + 2;
-        center->val[5] = 1;
-        center->idx = 0; center->siz = 6; center->slf = 1;
-        planeCopy(&center); freeCenter(center); allocCenter(&center,0);
-    }
+GLFWwindow* createWindow(uint32_t WIDTH, uint32_t HEIGHT) {
+    glfwInit();
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    return glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+}
+
+VkDebugUtilsMessengerCreateInfoEXT createInfo(const char **validationLayers) {
+    VkDebugUtilsMessengerCreateInfoEXT info{};
+    if (!validationLayers) return info;
+    info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    info.pfnUserCallback = debugCallback;
+    return info;
+}
+VkInstance createInstance(VkDebugUtilsMessengerCreateInfoEXT info, const char **validationLayers) {
+    if (validationLayers) {
+        uint32_t count; vkEnumerateInstanceLayerProperties(&count, nullptr);
+        std::vector<VkLayerProperties> availableLayers(count);
+        vkEnumerateInstanceLayerProperties(&count, availableLayers.data());
+        for (const char **name = validationLayers; *name; name++) {
+        bool found = false; for (uint32_t i = 0; i < count; i++)
+        if (strcmp(*name, availableLayers[i].layerName) == 0) {found = true; break;}
+        if (!found) {std::cerr << "validation layers requested, but not available!" << std::endl; exit(-1);}}}
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "plane";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_0;
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+    const char **ptr = 0; uint32_t count = 0; uint32_t size = 0;
+    ptr = glfwGetRequiredInstanceExtensions(&count);
+    if (validationLayers) size = count+1; else size = count;
+    std::vector<const char *> extensions(size);
+    for (uint32_t i = 0; i < count; i++) extensions[i] = ptr[i];
+    if (validationLayers) extensions[count] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    createInfo.enabledExtensionCount = size;
+    createInfo.ppEnabledExtensionNames = extensions.data();
+    if (validationLayers) {
+        createInfo.enabledLayerCount = 0;
+        for (const char **name = validationLayers; *name; name++) createInfo.enabledLayerCount++;
+        createInfo.ppEnabledLayerNames = validationLayers;
+        createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &info;} else {
+        createInfo.enabledLayerCount = 0;
+        createInfo.pNext = nullptr;}
+    VkInstance instance;
+    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
+    {std::cerr << "failed to create instance!" << std::endl; exit(-1);}
+    return instance;
+}
+VkDebugUtilsMessengerEXT createDebug(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT info,
+    const char **validationLayers) {
+    VkDebugUtilsMessengerEXT debug{};
+    if (!validationLayers) return debug;
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func == nullptr || func(instance, &info, nullptr, &debug) != VK_SUCCESS)
+    {std::cerr << "failed to set up debug messenger!" << std::endl; exit(-1);}
+    return debug;
+}
+
+VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window) {
+    VkSurfaceKHR surface;
+    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+    {std::cerr << "failed to create window surface!" << std::endl; exit(-1);}
+    return surface;
+}
+bool foundIndices(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    bool foundGraphics = false; bool foundPresent = false;
+    uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
+    std::vector<VkQueueFamilyProperties> queueFamilies(count);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
+    uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
+        VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i++, surface, &support);
+        if (support) foundPresent = true;
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) foundGraphics = true;
+        if (foundGraphics && foundPresent) return true;}
+    return false;
+}
+bool foundDetails(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    uint32_t surfaceFormats = 0; vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &surfaceFormats, nullptr);
+    uint32_t presentModes = 0; vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModes, nullptr);
+    return (surfaceFormats > 0 && presentModes > 0);
+}
+VkPhysicalDevice createDevice(VkInstance instance, VkSurfaceKHR surface, const char **deviceExtensions) {
+    VkPhysicalDevice retdev;
+    uint32_t count = 0; vkEnumeratePhysicalDevices(instance, &count, nullptr);
+    if (count == 0) {std::cerr << "failed to find GPUs with Vulkan support!" << std::endl; exit(-1);}
+    std::vector<VkPhysicalDevice> devices(count);
+    vkEnumeratePhysicalDevices(instance, &count, devices.data());
+    bool found = false; for (const auto& device : devices) {
+        if (!foundIndices(surface,device)) continue;
+    if (!foundDetails(surface,device)) continue;
+        count = 0; vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+        std::vector<VkExtensionProperties> properties(count);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &count, properties.data());
+        bool found0 = true; for (const char **name = deviceExtensions; *name; name++) {
+        bool found1 = false; for (uint32_t i = 0; i < count; i++)
+        if (strcmp(*name,properties[i].extensionName) == 0)
+        {found1 = true; break;} if (!found1) {found0 = false; break;}} if (!found0) continue;
+        VkPhysicalDeviceFeatures supportedFeatures;
+        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+        if (!supportedFeatures.samplerAnisotropy) continue;
+        found = true; retdev = device; break;}
+    if (!found) {std::cerr << "failed to find a suitable GPU!" << std::endl; exit(-1);}
+    return retdev;
+}
+uint32_t findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
+    std::vector<VkQueueFamilyProperties> queueFamilies(count);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
+    uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
+        VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
+        if (support && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) return i; i++;}
+    i = 0; for (const auto& queueFamily : queueFamilies) {
+        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) return i; i++;}
+    return 0;
+}
+uint32_t findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
+    std::vector<VkQueueFamilyProperties> queueFamilies(count);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
+    uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
+        VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
+        if (support && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) return i; i++;}
+    i = 0; for (const auto& queueFamily : queueFamilies) {
+        VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
+        if (support) return i; i++;}
+    return 0;
+}
+VkSurfaceCapabilitiesKHR findCapabilities(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    VkSurfaceCapabilitiesKHR capabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
+    return capabilities;
+}
+VkPhysicalDeviceProperties findProperties(VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(device, &properties);
+    return properties;
+}
+VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+    return capabilities.currentExtent;}
+    else {int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    VkExtent2D actualExtent = {
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height)
+    };
+    std::cout << "width " << width << " height " << height << std::endl;
+    actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+    return actualExtent;}
+}
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    uint32_t count = 0; vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
+    std::vector<VkSurfaceFormatKHR> formats(count);
+    if (count != 0) vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
+    for (const auto& format : formats) {
+    if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    return format;}}
+    return formats[0];
+}
+VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    uint32_t count = 0; vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
+    std::vector<VkPresentModeKHR> presentModes(count);
+    if (count != 0) vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, presentModes.data());
+    for (const auto& presentMode : presentModes) {
+    if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+    return presentMode;}}
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
+    const char **validationLayers, const char **deviceExtensions) {
+    VkDevice device;
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    uint32_t queueFamilies[] = {graphicsFamily, presentFamily};
+    float queuePriority = 1.0f;
+    for (uint32_t i = 0; i < (graphicsFamily == presentFamily ? 1 : 2); i++) {
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = queueFamilies[i];
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);}
+    VkPhysicalDeviceFeatures deviceFeatures{};
+    deviceFeatures.samplerAnisotropy = VK_TRUE;
+    VkDeviceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+    createInfo.pQueueCreateInfos = queueCreateInfos.data();
+    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.enabledExtensionCount = 0;
+    for (const char **name = deviceExtensions; *name; name++) createInfo.enabledExtensionCount++;
+    createInfo.ppEnabledExtensionNames = deviceExtensions;
+    if (validationLayers) {
+        createInfo.enabledLayerCount = 0;
+        for (const char **name = validationLayers; *name; name++) createInfo.enabledLayerCount++;
+        createInfo.ppEnabledLayerNames = validationLayers;}
+    else createInfo.enabledLayerCount = 0;
+    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
+    {std::cerr << "failed to create logical device!" << std::endl; exit(-1);}
+    return device;
+}
+VkQueue createQueue(VkDevice device, uint32_t family) {
+    VkQueue queue;
+    vkGetDeviceQueue(device, family, 0, &queue);
+    return queue;
+}
+VkCommandPool createCommandPool(VkDevice device, uint32_t family) {
+    VkCommandPool pool;
+    VkCommandPoolCreateInfo commandPoolInfo{};
+    commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    commandPoolInfo.queueFamilyIndex = family;
+    if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &pool) != VK_SUCCESS)
+    {std::cerr << "failed to create graphics command pool!" << std::endl; exit(-1);}
+    return pool;
+}
+VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size,
+    VkImageTiling tiling, VkFormatFeatureFlags features) {
+    for (int i = 0; i < size; i++) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, candidates[i], &props);
+    if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) return candidates[i];
+    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) return candidates[i];}
+    {std::cerr << "failed to find supported format!" << std::endl; exit(-1);}
+}
+VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(device, &memProperties);
+    return memProperties;
+}
+VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat) {
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = imageFormat;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    VkAttachmentDescription depthAttachment{};
+    depthAttachment.format = depthFormat;
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference colorAttachmentRef{};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference depthAttachmentRef{};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+    VkRenderPassCreateInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    renderPassInfo.pAttachments = attachments.data();
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
+    VkRenderPass renderPass;
+    if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+    {std::cerr << "failed to create render pass!" << std::endl; exit(-1);}
+    return renderPass;
+}
+
+VkDescriptorPool createDescriptorPool(VkDevice device, int frames) {
+    VkDescriptorPool descriptorPool;
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(frames);
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(frames);
+    VkDescriptorPoolCreateInfo descriptorPoolInfo{};
+    descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    descriptorPoolInfo.pPoolSizes = poolSizes.data();
+    descriptorPoolInfo.maxSets = static_cast<uint32_t>(frames);
+    if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+    {std::cerr << "failed to create descriptor pool!" << std::endl; exit(-1);}
+    return descriptorPool;
+}
+VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro) {
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+    samplerLayoutBinding.binding = 1;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    //  TODO number and type of bindings depends on micro
+    //  TODO add constant functions of micro to type.h
+    //  TODO change array to vector
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+    {std::cerr << "failed to create descriptor set layout!" << std::endl; exit(-1);}
+    return descriptorSetLayout;
+}
+VkDescriptorSet createDescriptorSet::operator()() {
+    VkDescriptorSet descriptorSet;
+    std::vector<VkDescriptorSetLayout> layouts(frames, descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
+    allocInfo.pSetLayouts = layouts.data();
+    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS)
+    {std::cerr << "failed to allocate descriptor sets!" << std::endl; exit(-1);}
+    return descriptorSet;
+}
+VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout) {
+    VkPipelineLayout pipelineLayout;
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+    {std::cerr << "failed to create pipeline layout!" << std::endl; exit(-1);}
+    return pipelineLayout;
+}
+std::vector<char> readFile(const std::string& filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {std::cerr << "failed to open shader: " << filename << std::endl; exit(-1);}
+    size_t fileSize = (size_t) file.tellg();
+    std::vector<char> buffer(fileSize);
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+    file.close();
+    return buffer;
+}
+VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code) {
+    VkShaderModuleCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = code.size();
+    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+    {std::cerr << "failed to create shader module!" << std::endl; exit(-1);}
+    return shaderModule;
+}
+VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout) {
+    VkPipeline graphicsPipeline;
+    auto vertShaderCode = readFile("vertexFlattenG");
+    auto fragShaderCode = readFile("fragmentFlattenG");
+    VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
+    VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    auto bindingDescription = TestVertex::getBindingDescription();
+    auto attributeDescriptions = TestVertex::getAttributeDescriptions();
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f;
+    colorBlending.blendConstants[1] = 0.0f;
+    colorBlending.blendConstants[2] = 0.0f;
+    colorBlending.blendConstants[3] = 0.0f;
+    std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pDepthStencilState = &depthStencil;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+    {std::cerr << "failed to create graphics pipeline!" << std::endl; exit(-1);}
+    vkDestroyShaderModule(device, fragShaderModule, nullptr);
+    vkDestroyShaderModule(device, vertShaderModule, nullptr);
+    return graphicsPipeline;
+}
+VkCommandBuffer createCommandBuffer::operator()() {
+    VkCommandBuffer commandBuffer;
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = pool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = (uint32_t)(1);
+    if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+    {std::cerr << "failed to allocate command buffers!" << std::endl; exit(-1);}
+    return commandBuffer;
+}
+
+uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags,
+    VkPhysicalDeviceMemoryProperties memProperties) {
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+    if ((filter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & flags) == flags) return i;
+    {std::cerr << "failed to find suitable memory type!" << std::endl; exit(-1);}
+}
+VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = aspectFlags;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+    VkImageView imageView;
+    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+    {std::cerr << "failed to create image view!" << std::endl; exit(-1);}
+    return imageView;
+}
+void createImage(VkDevice device, VkPhysicalDevice physical,
+    uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+    VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
+    VkImage& image, VkDeviceMemory& imageMemory) {
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = usage;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+    {std::cerr << "failed to create image!" << std::endl; exit(-1);}
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(device, image, &memRequirements);
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, properties, memProperties);
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
+    {std::cerr << "failed to allocate image memory!" << std::endl; exit(-1);}
+    vkBindImageMemory(device, image, imageMemory, 0);
+}
+VkSampler createTextureSampler(VkDevice device, VkPhysicalDevice physical, VkPhysicalDeviceProperties properties) {
+    VkSampler textureSampler;
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
+    {std::cerr << "failed to create texture sampler!" << std::endl; exit(-1);}
+    return textureSampler;
+}
+VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
+    VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
+    VkSurfaceCapabilitiesKHR capabilities, uint32_t graphicsFamily, uint32_t presentFamily) {
+    VkSwapchainKHR swapChain;
+    uint32_t imageCount = capabilities.minImageCount + 1;
+    if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
+    imageCount = capabilities.maxImageCount;
+    VkSwapchainCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = surface;
+    createInfo.minImageCount = imageCount;
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.imageExtent = swapChainExtent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    uint32_t queueFamilies[] = {graphicsFamily, presentFamily};
+    if (graphicsFamily != presentFamily) {
+        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        createInfo.queueFamilyIndexCount = 2;
+        createInfo.pQueueFamilyIndices = queueFamilies;}
+    else createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfo.preTransform = capabilities.currentTransform;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode = presentMode;
+    createInfo.clipped = VK_TRUE;
+    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+    {std::cerr << "failed to create swap chain!" << std::endl; exit(-1);}
+    return swapChain;
+}
+void createSwapChainImages(VkDevice device, VkSwapchainKHR swapChain, std::vector<VkImage> &swapChainImages) {
+    uint32_t imageCount;
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+    swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+}
+void createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
+    std::vector<VkImageView> swapChainImageViews, VkImageView depthImageView,
+    std::vector<VkFramebuffer> &swapChainFramebuffers) {
+    swapChainFramebuffers.resize(swapChainImageViews.size());
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+    std::array<VkImageView, 2> attachments = {swapChainImageViews[i],depthImageView};
+    VkFramebufferCreateInfo framebufferInfo{};
+    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebufferInfo.renderPass = renderPass;
+    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+    framebufferInfo.pAttachments = attachments.data();
+    framebufferInfo.width = swapChainExtent.width;
+    framebufferInfo.height = swapChainExtent.height;
+    framebufferInfo.layers = 1;
+    if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+    {std::cerr << "failed to create framebuffer!" << std::endl; exit(-1);}}
+}
+void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage,
+    VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
+    VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+    {std::cerr << "failed to create buffer!" << std::endl; exit(-1);}
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, properties, memProperties);
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+    {std::cerr << "failed to allocate buffer memory!" << std::endl; exit(-1);}
+    vkBindBufferMemory(device, buffer, bufferMemory, 0);
+}
+
+VkFence createFence(VkDevice device) {
+    VkFence fence;
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+    {std::cerr << "failed to create fence!" << std::endl; exit(-1);}
+    return fence;
+}
+VkSemaphore createSemaphore(VkDevice device) {
+    VkSemaphore semaphore;
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+    {std::cerr << "failed to create semaphore!" << std::endl; exit(-1);}
+    return semaphore;
+}
+
+void updateStorageDescriptor(VkDevice device, VkBuffer buffer,
+    int index, VkDescriptorSet descriptorSet) {
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(UniformBufferObject);
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = descriptorSet;
+    descriptorWrite.dstBinding = index;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    VkWriteDescriptorSet descriptorWrites [] = {descriptorWrite};
+    vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);\
+}
+
+void updateUniformDescriptor(VkDevice device, VkBuffer buffer,
+    int index, VkDescriptorSet descriptorSet) {
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(UniformBufferObject);
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = descriptorSet;
+    descriptorWrite.dstBinding = index;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    VkWriteDescriptorSet descriptorWrites [] = {descriptorWrite};
+    vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
+}
+
+void updateTextureDescriptor(VkDevice device,
+    VkImageView textureImageView, VkSampler textureSampler,
+    int index, VkDescriptorSet descriptorSet) {
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = textureImageView;
+    imageInfo.sampler = textureSampler;
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = descriptorSet;
+    descriptorWrite.dstBinding = index;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pImageInfo = &imageInfo;
+    VkWriteDescriptorSet descriptorWrites [] = {descriptorWrite};
+    vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
+}
+
+void copyBuffer(VkDevice device, VkQueue graphics, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
+    VkCommandBuffer commandBuffer, VkFence fence) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    VkBufferCopy copyRegion{};
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+    vkEndCommandBuffer(commandBuffer);
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    vkQueueSubmit(graphics, 1, &submitInfo, fence);
+    if (fence == VK_NULL_HANDLE) vkQueueWaitIdle(graphics);
+}
+void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
+    VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
+    VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else {std::cerr << "unsupported layout transition!" << std::endl; exit(-1);}
+    vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage,
+        0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkEndCommandBuffer(commandBuffer);
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSemaphore waitSemaphores[] = {semaphoreIn};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
+    if (semaphoreIn != VK_NULL_HANDLE) {
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;}
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    VkSemaphore signalSemaphores[] = {semaphoreOut};
+    if (semaphoreOut != VK_NULL_HANDLE) {
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;}
+    vkQueueSubmit(graphics, 1, &submitInfo, fenceOut);
+    if (semaphoreOut == VK_NULL_HANDLE) vkQueueWaitIdle(graphics);
+}
+void copyTextureImage(VkDevice device, VkPhysicalDevice physical, VkQueue graphics, VkCommandPool pool,
+    VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
+    VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence, VkBuffer stagingBuffer,
+    VkCommandBuffer beforeBuffer, VkCommandBuffer commandBuffer, VkCommandBuffer afterBuffer) {
+    transitionImageLayout(device, graphics, beforeBuffer, textureImage,
+        VK_NULL_HANDLE, beforeSemaphore, VK_NULL_HANDLE,
+        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1};
+    vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkEndCommandBuffer(commandBuffer);
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSemaphore waitSemaphores[] = {beforeSemaphore};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
+    if (beforeSemaphore != VK_NULL_HANDLE) {
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;}
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    VkSemaphore signalSemaphores[] = {afterSemaphore};
+    if (afterSemaphore != VK_NULL_HANDLE) {
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;}
+    vkQueueSubmit(graphics, 1, &submitInfo, VK_NULL_HANDLE);
+    transitionImageLayout(device, graphics, afterBuffer, textureImage,
+        afterSemaphore, VK_NULL_HANDLE, fence,
+        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+UniformBufferObject updateUniformBuffer(VkExtent2D swapChainExtent) {
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    UniformBufferObject ubo{};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;
+    return ubo;
+}
+
+void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer,
+    VkExtent2D swapChainExtent, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
+    VkDescriptorSet &descriptorSet, VkBuffer buffer, VkBuffer indexBuffer, Micro micro) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+    {std::cerr << "failed to begin recording command buffer!" << std::endl; exit(-1);}
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = framebuffer;
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapChainExtent;
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) swapChainExtent.width;
+    viewport.height = (float) swapChainExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = swapChainExtent;
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    VkBuffer buffers[] = {buffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets); // TODO depends on micro
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16); // TODO depends on micro
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+    vkCmdEndRenderPass(commandBuffer);
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+    {std::cerr << "failed to record command buffer!" << std::endl; exit(-1);}
+}
+bool drawFrame(VkDevice device, VkCommandBuffer &commandBuffer,
+    VkRenderPass renderPass, VkQueue graphics, VkQueue present,
+    VkSwapchainKHR swapChain, VkFramebuffer swapChainFramebuffer,
+    VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
+    VkBuffer vertexBuffer, VkBuffer indexBuffer, uint32_t imageIndex,
+    VkDescriptorSet descriptorSet, void *ptr, int loc, int siz, Micro micro,
+    VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence,
+    VkExtent2D swapChainExtent, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode) {
+    recordCommandBuffer(commandBuffer,renderPass,swapChainFramebuffer,swapChainExtent,
+        graphicsPipeline, pipelineLayout, descriptorSet, vertexBuffer, indexBuffer, micro);
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSemaphore waitSemaphores[] = {beforeSemaphore};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    VkSemaphore signalSemaphores[] = {afterSemaphore};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+    if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS)
+    {std::cerr << "failed to submit draw command buffer!" << std::endl; exit(-1);}
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+    VkSwapchainKHR swapChains[] = {swapChain};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &imageIndex;
+    VkResult result = vkQueuePresentKHR(present, &presentInfo);
+    if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR && result != VK_SUCCESS)
+    {std::cerr << "failed to present swap chain image!" << std::endl; exit(-1);}
+    return (result == VK_SUCCESS);
+}
+
+int main() {
+    MainState app;
+    return 0;
 }

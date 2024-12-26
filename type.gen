@@ -31,6 +31,7 @@ Flow = {
 	"Load",
 }
 Memory = {
+	"Indexz", -- fetch buffer indices
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
@@ -152,11 +153,6 @@ Plan = { -- which test to run
 	"Builtin",
 	"Release",
 }
-Interp = { -- configure enum interpretation
-	"Infect", -- changed by callback
-	"Affect", -- changed infrequently
-	"Effect", -- used for display
-}
 React = { -- when updates recorded
 	"Enstate", -- whether to little language
 	"Enque", -- whether to micro code
@@ -199,42 +195,8 @@ Fixed = { -- how motion interpreted
 	"Ortho",
 	"Normal",
 }
-MicroIn = {
-	"Practice", -- use location for Vertex
-	"Concept", -- use binding for Vertex
-}
-MicroMid = {
-	"Raster", -- transform point
-	"CoPoint", -- compute plane
-	"Coplane", -- compute point 
-}
-MicroOut = {
-	"DisPlay", -- produce color
-	"Compute", -- produce pierce point
-	"Discard", -- no fragment shader
-}
-MicroOn = {
-	"Caryon", -- dispatch and forget
-	"CoPyon", -- copy after done
-}
 Micro = {
 	"MicroTest", -- for flatten.cpp
-	"MicroPRPC", -- fetch transform display
-	"MicroPRCP", -- fetch transform pierce
-	"MicroCRPC", -- index transform display
-	"MicroCRCP", -- index transform pierce
-	"MicroCPDP", -- index construct planes
-	"MicroCCDP", -- index intersect points
-}
-WrapTag = {
-	"FetchBuf",
-	"ChangeBuf",
-	"StoreBuf", 
-	"QueryBuf",
-	"DrawBuf",
-	"CompBuf",
-	"SwapBuf",
-	"LineBuf",
 }
 Phase = {
 	"Init",
@@ -327,12 +289,6 @@ Order = {
 	"ForkOrd",
 	"BeginOrd",
 }
-Access = {
-	"GetAcc",
-	"SetAcc",
-	"GlnAcc",
-	"SlnAcc",
-}
 Program = {
 	"Filez",
 	"Holez",
@@ -347,81 +303,6 @@ Program = {
 	"Phonez",
 }
 --HERE Constants
-Component = {
-	{"Micro","MicroPRPC","MicroIn","Practice"},
-	{"Micro","MicroPRCP","MicroIn","Practice"},
-	{"Micro","MicroCRPC","MicroIn","Concept"},
-	{"Micro","MicroCRCP","MicroIn","Concept"},
-	{"Micro","MicroCPDP","MicroIn","Concept"},
-	{"Micro","MicroCCDP","MicroIn","Concept"},
-	{"Micro","MicroPRPC","MicroMid","Raster"},
-	{"Micro","MicroPRCP","MicroMid","Raster"},
-	{"Micro","MicroCRPC","MicroMid","Raster"},
-	{"Micro","MicroCRCP","MicroMid","Raster"},
-	{"Micro","MicroCPDP","MicroMid","CoPoint"},
-	{"Micro","MicroCCDP","MicroMid","Coplane"},
-	{"Micro","MicroPRPC","MicroOut","DisPlay"},
-	{"Micro","MicroPRCP","MicroOut","Compute"},
-	{"Micro","MicroCRPC","MicroOut","DisPlay"},
-	{"Micro","MicroCRCP","MicroOut","Compute"},
-	{"Micro","MicroCPDP","MicroOut","Discard"},
-	{"Micro","MicroCCDP","MicroOut","Discard"},
-	{"Micro","MicroPRPC","MicroOn","Caryon"},
-	{"Micro","MicroPRCP","MicroOn","CoPyon"},
-	{"Micro","MicroCRPC","MicroOn","Caryon"},
-	{"Micro","MicroCRCP","MicroOn","CoPyon"},
-	{"Micro","MicroCPDP","MicroOn","CoPyon"},
-	{"Micro","MicroCCDP","MicroOn","CoPyon"},
-}
-VertexG = {
-	{"Micro","MicroPRPC","Str","vertexPracticeG"},
-	{"Micro","MicroPRCP","Str","vertexPracticeG"},
-	{"Micro","MicroCRPC","Str","vertexRasterG"},
-	{"Micro","MicroCRCP","Str","vertexRasterG"},
-	{"Micro","MicroCPDP","Str","vertexCopointG"},
-	{"Micro","MicroCCDP","Str","vertexCoplaneG"},
-}
-FragmentG = {
-	{"Micro","MicroPRPC","Str","fragmentDisplayG"},
-	{"Micro","MicroPRCP","Str","fragmentComputeG"},
-	{"Micro","MicroCRPC","Str","fragmentDisplayG"},
-	{"Micro","MicroCRCP","Str","fragmentComputeG"},
-	{"Micro","MicroCPDP","Str","fragmentDiscardG"},
-	{"Micro","MicroCCDP","Str","fragmentDiscardG"},
-}
-TypeQ = {
-	{"Memory","Trianglez","WrapTag","StoreBuf"},
-	{"Memory","Numericz","WrapTag","StoreBuf"},
-	{"Memory","Vertexz","WrapTag","FetchBuf"},
-	{"Memory","Basisz","WrapTag","StoreBuf"},
-	{"Memory","Matrixz","WrapTag","StoreBuf"},
-	{"Memory","Uniformz","WrapTag","ChangeBuf"},
-	{"Memory","Piercez","WrapTag","QueryBuf"},
-	{"Memory","Stackz","WrapTag","WrapTags"},
-	{"Memory","Machinez","WrapTag","WrapTags"},
-	{"Memory","Littlez","WrapTag","WrapTags"},
-	{"Memory","Configurez","WrapTag","WrapTags"},
-}
-BindQ = {
-	{"Micro","MicroPRPC","Int","0","Memory","Vertexz"},
-	{"Micro","MicroPRPC","Int","1","Memory","Matrixz"},
-	{"Micro","MicroPRPC","Int","2","Memory","Memorys"},
-	{"Micro","MicroPRCP","Int","0","Memory","Memorys"},
-	{"Micro","MicroCRPC","Int","0","Memory","Memorys"},
-	{"Micro","MicroCRCP","Int","0","Memory","Memorys"},
-	{"Micro","MicroCPDP","Int","0","Memory","Memorys"},
-	{"Micro","MicroCCDP","Int","0","Memory","Memorys"},
-}
-QueryQ = {
-	{"Micro","MicroPRPC","Int","0","Memory","Memorys"},
-	{"Micro","MicroPRCP","Int","0","Memory","Piercez"},
-	{"Micro","MicroPRCP","Int","1","Memory","Memorys"},
-	{"Micro","MicroCRPC","Int","0","Memory","Memorys"},
-	{"Micro","MicroCRCP","Int","0","Memory","Piercez"},
-	{"Micro","MicroCRCP","Int","1","Memory","Memorys"},
-	{"Micro","MicroCPDP","Int","0","Memory","Memorys"},
-	{"Micro","MicroCCDP","Int","0","Memory","Memorys"},
-}
 Bootstrap = {
 	{"Int","0","Str","Force(num:5".. -- assign to configuration
 		"cfg[0]:WindowWide"..
@@ -433,7 +314,7 @@ Bootstrap = {
 		"val[1]:512"..
 		"val[2]:20"..
 		"val[3]:63"..
-		"val[4]:Int(%(return castMicro(\"MicroCRPC\"))))"},
+		"val[4]:Int(%(return castMicro(\"MicroTest\"))))"},
 	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
 	{"Int","2","Str","Eval(".. -- assign machine to accumulator
 		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:14idx:0slf:0"..
@@ -735,6 +616,7 @@ Center = {
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"slf","Int",{},{}},
+	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
