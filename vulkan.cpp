@@ -22,9 +22,12 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
+extern "C" {
 #include "proto.h"
+#include "face.h"
 #include "type.h"
 #include "plane.h"
+};
 
 /*extern "C" {
 // TODO replace by proto.h
@@ -1255,6 +1258,10 @@ void ChangeState::copy(Center *) {
 const int NUM_FRAMES_IN_FLIGHT = 2;
 UniformBufferObject ubo[NUM_FRAMES_IN_FLIGHT]; // TODO use Center Uniformz instead of builtin data
 void ChangeState::test() {
+    Center *center = 0; int len = 0; allocCenter(&center,1);
+    center->siz = 1; allocInt32(&center->ind,1); center->ind[0] = 32;
+    allocInt32(&center->ind,0); allocCenter(&center,0);
+
     int texWidth; int texHeight; int texChannels;
     stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     if (!pixels) {std::cerr << "failed to load texture image: " << "texture.jpg" << std::endl; exit(-1);}

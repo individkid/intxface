@@ -466,51 +466,6 @@ Event = { -- for line process
 	{"len","Int",{["tag"]={["Audio"]=true}},{}},
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
-Uniform = {
-	{"all","Int32",{},{}}, -- which subject to use
-	{"one","Int32",{},{}}, -- which element to use
-	{"pro","Int32",{},{}}, -- which projection to use
-	{"win","Int32",{},{}}, -- which window to use
-
-	{"lon","Int32",{},{}}, -- horizontal axis of cursor
-	{"lat","Int32",{},{}}, -- vertical axis of cursor
-	{"idx","Int32",{},{}}, -- which plane to manipulate
-	{"use","Int32",{},{}}, -- which basis to use
-
-	{"tri","Int32",{},{}}, -- base of triangles
-	{"num","Int32",{},{}}, -- base of numerics
-	{"vtx","Int32",{},{}}, -- base of vertices
-	{"mat","Int32",{},{}}, -- base of matrices
-}
-Triangle = {
-	{"vtx","Int32",{},{4}}, -- points of triangle
-	{"num","Int32",{},{}}, -- plane of points
-	{"pol","Int32",{},{}}, -- polytope triangle is in
-	{"tex","Int32",{},{}}, -- texture selector
-	{"rot","Int32",{},{}}, -- texture rotation
-}
-Numeric = {
-	{"vec","Old",{},{4}}, -- distances above basis
-	{"bas","Int32",{},{}}, -- basis selector
-	{"pad","Int32",{},{3}},
-}
-Vertex = {
-	{"vec","Old",{},{4}}, -- intersection of planes
-	{"ref","Int32",{},{4}}, -- backreference to planes
-}
-Vector = {
-	{"vec","Old",{},{4}},
-}
-Matrix = {
-	{"mat","Old",{},{16}},
-}
-Basis = {
-	{"mat","Old",{},{36}},
-}
-Pierce = {
-	{"vec","Old",{},{3}},
-	{"idx","Int32",{},{}},
-}
 Domain = {
 	{"len","Int",{},{}},
 	{"val","Express",{},"len"},
@@ -611,6 +566,51 @@ Little = {
 	{"idx","Int",{},{}},
 	{"nxt","Int",{},{}},
 }
+Uniform = {
+	{"all","Int32",{},{}}, -- which subject to use
+	{"one","Int32",{},{}}, -- which element to use
+	{"pro","Int32",{},{}}, -- which projection to use
+	{"win","Int32",{},{}}, -- which window to use
+
+	{"lon","Int32",{},{}}, -- horizontal axis of cursor
+	{"lat","Int32",{},{}}, -- vertical axis of cursor
+	{"idx","Int32",{},{}}, -- which plane to manipulate
+	{"use","Int32",{},{}}, -- which basis to use
+
+	{"tri","Int32",{},{}}, -- base of triangles
+	{"num","Int32",{},{}}, -- base of numerics
+	{"vtx","Int32",{},{}}, -- base of vertices
+	{"mat","Int32",{},{}}, -- base of matrices
+}
+Triangle = {
+	{"vtx","Int32",{},{4}}, -- points of triangle
+	{"num","Int32",{},{}}, -- plane of points
+	{"pol","Int32",{},{}}, -- polytope triangle is in
+	{"tex","Int32",{},{}}, -- texture selector
+	{"rot","Int32",{},{}}, -- texture rotation
+}
+Numeric = {
+	{"vec","Old",{},{4}}, -- distances above basis
+	{"bas","Int32",{},{}}, -- basis selector
+	{"pad","Int32",{},{3}},
+}
+Vertex = {
+	{"vec","Old",{},{4}}, -- intersection of planes
+	{"ref","Int32",{},{4}}, -- backreference to planes
+}
+Vector = {
+	{"vec","Old",{},{4}},
+}
+Matrix = {
+	{"mat","Old",{},{16}},
+}
+Basis = {
+	{"mat","Old",{},{36}},
+}
+Pierce = {
+	{"vec","Old",{},{3}},
+	{"idx","Int32",{},{}},
+}
 Center = {
 	{"mem","Memory",{},""},
 	{"siz","Int",{},{}},
@@ -622,6 +622,7 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
+	{"tex","Dat",{["mem"]={["Texturez"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},

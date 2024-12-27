@@ -42,7 +42,7 @@ sharerLua: sharer.lua
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs spaceHs.type.hs
 spaceHs.type.hs: luax.so show.lua type.gen
-spacer.log: spaceHs spacer.lua spacerLua type.lua
+spacer.log: luax.so spaceHs spacer.lua spacerLua type.lua
 spacerLua: spacer.lua
 spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs spacraHs.type.hs
@@ -60,6 +60,8 @@ typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
 vertexFlattenG: flatten.g
-vulkanCpp: vulkanCpp.o
-vulkanCpp.o: plane.h proto.h type.h vulkan.cpp
+vulkanCpp: faceC.o protoC.o vulkanCpp.o vulkanCpp.typeC.o
+vulkanCpp.o: face.h plane.h proto.h type.h vulkan.cpp
+vulkanCpp.type.c: luax.so show.lua type.gen
+vulkanCpp.typeC.o: face.h type.h
 wrapCpp.o: proto.h wrap.cpp wrap.h
