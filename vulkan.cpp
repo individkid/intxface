@@ -1192,9 +1192,13 @@ struct DrawState : public BaseState {
 };
 
 std::deque<stbi_uc*> donePixels;
+std::deque<Center*> doneCenter;
 void pixelsDone() { // TODO replace by planeDone when pixels come from Center
     if (donePixels.empty()) {std::cerr << "no pixels to free!" << std::endl; exit(-1);}
     stbi_image_free(donePixels.front()); donePixels.pop_front();
+    Center *center = doneCenter.front(); doneCenter.pop_front();
+    for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
+    allocTexture(&center->tex,0); allocCenter(&center,0);
 }
 
 struct MainState {
@@ -1262,11 +1266,9 @@ void ChangeState::test() {
     int texWidth; int texHeight; int texChannels;
     stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     if (!pixels) {std::cerr << "failed to load texture image: " << "texture.jpg" << std::endl; exit(-1);}
-    donePixels.push_back(pixels);
-
-    Center *center = 0; int len = 0; allocCenter(&center,1); center->mem = Texturez;
-    center->siz = 1; allocDat(&center->tex,1); fmtxStbi(&center->tex[0],"texture.jpg");
-    freeDat(center->tex, 1); allocDat(&center->tex,0); allocCenter(&center,0);
+    Center *center = 0; int len = 0; allocCenter(&center,1); center->mem = Texturez; center->siz = 1;
+    allocTexture(&center->tex,1); fmtxStbi(&center->tex[0].dat,&center->tex[0].lft,&center->tex[0].bas,"texture.jpg");
+    donePixels.push_back(pixels); doneCenter.push_back(center);
 
     SafeState safe(0);
     if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
@@ -1282,6 +1284,7 @@ void ChangeState::test() {
     int isiz = sizeof(indices[0]) * indices.size();
     if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(), 0, isiz, isiz, &safe))
     {std::cerr << "cannot push indices!" << std::endl; exit(-1);} safe.wait();
+
     VkExtent2D texExtent; texExtent.width = texWidth; texExtent.height = texHeight;
     if (!main->threadState.push(main->textureState.preview(), (void*)pixels, 0, 1, texExtent, &safe))
     {std::cerr << "cannot push texture!" << std::endl; exit(-1);} safe.wait();

@@ -607,6 +607,11 @@ Matrix = {
 Basis = {
 	{"mat","Old",{},{36}},
 }
+Texture = {
+	{"dat","Dat",{},{}},
+	{"lft","Int32",{},{}},
+	{"bas","Int32",{},{}},
+}
 Pierce = {
 	{"vec","Old",{},{3}},
 	{"idx","Int32",{},{}},
@@ -622,7 +627,7 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	{"tex","Dat",{["mem"]={["Texturez"]=true}},"siz"},
+	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},

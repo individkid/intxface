@@ -1,1 +1,1 @@
- allocCenter
+ allocCenter allocTexture freeTexture

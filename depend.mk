@@ -12,7 +12,7 @@ fileC.type.c: luax.so show.lua type.gen
 fileC.typeC.o: face.h type.h
 filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
-fmtxC.o: fmtx.c
+fmtxC.o: fmtx.c fmtx.h proto.h
 fragmentFlattenG: flatten.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
