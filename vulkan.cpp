@@ -27,6 +27,7 @@ extern "C" {
 #include "face.h"
 #include "type.h"
 #include "plane.h"
+#include "fmtx.h"
 };
 
 /*extern "C" {
@@ -1258,14 +1259,14 @@ void ChangeState::copy(Center *) {
 const int NUM_FRAMES_IN_FLIGHT = 2;
 UniformBufferObject ubo[NUM_FRAMES_IN_FLIGHT]; // TODO use Center Uniformz instead of builtin data
 void ChangeState::test() {
-    Center *center = 0; int len = 0; allocCenter(&center,1);
-    center->siz = 1; allocInt32(&center->ind,1); center->ind[0] = 32;
-    allocInt32(&center->ind,0); allocCenter(&center,0);
-
     int texWidth; int texHeight; int texChannels;
     stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     if (!pixels) {std::cerr << "failed to load texture image: " << "texture.jpg" << std::endl; exit(-1);}
     donePixels.push_back(pixels);
+
+    Center *center = 0; int len = 0; allocCenter(&center,1); center->mem = Texturez;
+    center->siz = 1; allocDat(&center->tex,1); fmtxStbi(&center->tex[0],"texture.jpg");
+    freeDat(center->tex, 1); allocDat(&center->tex,0); allocCenter(&center,0);
 
     SafeState safe(0);
     if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))

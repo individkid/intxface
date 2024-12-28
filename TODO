@@ -1,25 +1,4 @@
 
-Implement window matrix maintained by vulkan.cpp. Add depth buffering.
-Interpolate depth to black red orange yellow green blue purple gray.
-
-Add multiple facets. Add PRepare to MultiOut, that records to Identz Memory.
-Then Display and ComBine use Indexz to brighten close calls between facets.
-
-Maintain pierce point by calling set for draw, calling get for read out,
-handing off to thread for after read out. Add pierce point to planra test.
-
-Put in remaining buffers. Switch to Concept shaders.
-Change to two tetrahedrons manipulated separately, together, or unrigidly.
-
-Add min and lim to BufferState to interpret idx from Center.
-Add RegisterOpen bit for thread to read/write Persist to/from string which can hide show with center.
-
-Widgets can have fixed or bound edges; only fixed edges are dragged.
-Edges can have any number of inside and outside limits.
-Reaching a limit provisionally adds to the edges dragged in that direction.
-Dragging in the opposite direction removes provisionals.
-Add share/side/frame processes that use widgets to represent filters/fields/formats.
-
 Make planer.lua to demonstrate classification and heuristic,
 plane.lua to demonstrate manipulation,
 space.lua to demonstrate sampling and equivalence,

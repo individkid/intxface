@@ -611,6 +611,11 @@ void allocOld(float **ptr, int siz)
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
+void freeStr(char **ptr, int siz)
+{
+	for (int i = 0; i < siz; i++)
+	if (ptr[i]) {free(ptr[i]); ptr[i] = 0;}
+}
 void allocStr(char* **ptr, int siz)
 {
 	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
@@ -626,6 +631,11 @@ void assignStr(char **ptr, const char *str)
 	*ptr = realloc(*ptr,strlen(str)+1);
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
+}
+void freeDat(void **ptr, int siz)
+{
+	for (int i = 0; i < siz; i++)
+	if (ptr[i]) {free(ptr[i]); ptr[i] = 0;}
 }
 void allocDat(void* **ptr, int siz)
 {
