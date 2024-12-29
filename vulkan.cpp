@@ -873,6 +873,86 @@ struct BaseState {
     virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
     virtual VkDescriptorSetLayout getDescriptorSetLayout() {std::cerr << "BaseState::getDescriptorSetLayout" << std::endl; exit(-1);}
     virtual VkExtent2D getSwapChainExtent() {std::cerr << "BaseState::getSwapChainExtent" << std::endl; exit(-1);}
+    static uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags,
+        VkPhysicalDeviceMemoryProperties memProperties) {
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        if ((filter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & flags) == flags) return i;
+        {std::cerr << "failed to find suitable memory type!" << std::endl; exit(-1);}
+    }
+    static VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool pool) {
+        VkCommandBuffer commandBuffer;
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = pool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = (uint32_t)(1);
+        if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+        {std::cerr << "failed to allocate command buffers!" << std::endl; exit(-1);}
+        return commandBuffer;
+    }
+    static VkFence createFence(VkDevice device) {
+        VkFence fence;
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+        {std::cerr << "failed to create fence!" << std::endl; exit(-1);}
+        return fence;
+    }
+    static VkSemaphore createSemaphore(VkDevice device) {
+        VkSemaphore semaphore;
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+        {std::cerr << "failed to create semaphore!" << std::endl; exit(-1);}
+        return semaphore;
+    }
+    static void createImage(VkDevice device, VkPhysicalDevice physical,
+        uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+        VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
+        VkImage& image, VkDeviceMemory& imageMemory) {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = format;
+        imageInfo.tiling = tiling;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+        {std::cerr << "failed to create image!" << std::endl; exit(-1);}
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, properties, memProperties);
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
+        {std::cerr << "failed to allocate image memory!" << std::endl; exit(-1);}
+        vkBindImageMemory(device, image, imageMemory, 0);
+    }
+    static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = aspectFlags;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+        VkImageView imageView;
+        if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+        {std::cerr << "failed to create image view!" << std::endl; exit(-1);}
+        return imageView;
+    }
 };
 
 struct ItemState : public BaseState {
@@ -889,23 +969,6 @@ struct ItemState : public BaseState {
         safe.wait();
         state = FreeBase;
         safe.post();
-    }
-    static VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool pool) {
-        VkCommandBuffer commandBuffer;
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = pool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = (uint32_t)(1);
-        if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
-        {std::cerr << "failed to allocate command buffers!" << std::endl; exit(-1);}
-        return commandBuffer;
-    }
-    static uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags,
-        VkPhysicalDeviceMemoryProperties memProperties) {
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        if ((filter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & flags) == flags) return i;
-        {std::cerr << "failed to find suitable memory type!" << std::endl; exit(-1);}
     }
     static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage,
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
@@ -926,23 +989,6 @@ struct ItemState : public BaseState {
         if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
         {std::cerr << "failed to allocate buffer memory!" << std::endl; exit(-1);}
         vkBindBufferMemory(device, buffer, bufferMemory, 0);
-    }
-    static VkFence createFence(VkDevice device) {
-        VkFence fence;
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        if (vkCreateFence(device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
-        {std::cerr << "failed to create fence!" << std::endl; exit(-1);}
-        return fence;
-    }
-    static VkSemaphore createSemaphore(VkDevice device) {
-        VkSemaphore semaphore;
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
-        {std::cerr << "failed to create semaphore!" << std::endl; exit(-1);}
-        return semaphore;
     }
 };
 
@@ -1145,52 +1191,6 @@ struct SwapState : public BaseState {
         return VK_NULL_HANDLE;
     }
     void upset() {
-    }
-    static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
-        VkImageViewCreateInfo viewInfo{};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = image;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = format;
-        viewInfo.subresourceRange.aspectMask = aspectFlags;
-        viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
-        viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
-        VkImageView imageView;
-        if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
-        {std::cerr << "failed to create image view!" << std::endl; exit(-1);}
-        return imageView;
-    }
-    static void createImage(VkDevice device, VkPhysicalDevice physical,
-        uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-        VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
-        VkImage& image, VkDeviceMemory& imageMemory) {
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.width = width;
-        imageInfo.extent.height = height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.format = format;
-        imageInfo.tiling = tiling;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = usage;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
-        {std::cerr << "failed to create image!" << std::endl; exit(-1);}
-        VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(device, image, &memRequirements);
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = ItemState::findMemoryType(physical, memRequirements.memoryTypeBits, properties, memProperties);
-        if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
-        {std::cerr << "failed to allocate image memory!" << std::endl; exit(-1);}
-        vkBindImageMemory(device, image, imageMemory, 0);
     }
     static VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
         VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
@@ -1594,10 +1594,10 @@ struct TextureState : public ItemState {
     void resize() {
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
-        SwapState::createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         memProperties, /*output*/ textureImage, textureImageMemory);
-        textureImageView = SwapState::createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         textureSampler = createTextureSampler(device,physical,properties);
         beforeBuffer = createCommandBuffer(device,pool);
         commandBuffer = createCommandBuffer(device,pool);
@@ -1818,10 +1818,10 @@ struct DrawState : public BaseState {
         descriptorPool = get(PipelineBind,Memorys)->getDescriptorPool();
         descriptorLayout = get(PipelineBind,Memorys)->getDescriptorSetLayout(); free();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
-        commandBuffer = ItemState::createCommandBuffer(device,pool);
-        beforeSemaphore = ItemState::createSemaphore(device);
-        afterSemaphore = ItemState::createSemaphore(device);
-        fence = ItemState::createFence(device);
+        commandBuffer = createCommandBuffer(device,pool);
+        beforeSemaphore = createSemaphore(device);
+        afterSemaphore = createSemaphore(device);
+        fence = createFence(device);
     }
     void unsize() {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
