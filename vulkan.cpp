@@ -372,11 +372,11 @@ struct BindState {
     static VkCommandPool pool;
     static int frames;
     static int micro;
+    static vftype func;
     static VkPhysicalDevice physical;
     static VkQueue graphics;
     static VkQueue present;
     static VkBufferUsageFlags flags;
-    static vftype func;
     static VkPhysicalDeviceProperties properties;
     static VkPhysicalDeviceMemoryProperties memProperties;
     static VkSurfaceFormatKHR surfaceFormat;
@@ -384,9 +384,9 @@ struct BindState {
     static ChangeState *change;
     static int debug;
     const char *name;
-    BindState(const char *n,GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice physical, VkDevice device,
-        VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkSurfaceCapabilitiesKHR capabilities,
-        uint32_t graphicsFamily, uint32_t presentFamily, VkFormat imageFormat,
+    BindState(const char *n,GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice physical,
+        VkDevice device, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
+        VkSurfaceCapabilitiesKHR capabilities, uint32_t graphicsFamily, uint32_t presentFamily, VkFormat imageFormat,
         VkFormat depthFormat, VkRenderPass renderPass, VkPhysicalDeviceMemoryProperties memProperties) : name(n) {
         BindState::self = this;
         BindState::window = window;
@@ -411,8 +411,9 @@ struct BindState {
         BindState::micro = 0;
         BindState::debug = 0;
     }
-    BindState(const char *n) : name(n) {
+    BindState(const char *n, vftype func) : name(n) {
         BindState::self = this;
+        BindState::func = func;
         BindState::debug = 0;
     }
     BindState(const char *n, VkQueue graphics, VkQueue present, VkBufferUsageFlags flags) : name(n) {
@@ -427,9 +428,8 @@ struct BindState {
         BindState::flags = flags;
         BindState::debug = 0;
     }
-    BindState(const char *n, vftype func, VkPhysicalDeviceProperties properties) : name(n) {
+    BindState(const char *n, VkPhysicalDeviceProperties properties) : name(n) {
         BindState::self = this;
-        BindState::func = func;
         BindState::properties = properties;
         BindState::debug = 0;
     }
@@ -454,6 +454,7 @@ struct BindState {
     }
 };
 BindState* BindState::self;
+vftype BindState::func;
 GLFWwindow* BindState::window;
 VkSurfaceKHR BindState::surface;
 VkSurfaceCapabilitiesKHR BindState::capabilities;
@@ -470,7 +471,6 @@ VkPhysicalDevice BindState::physical;
 VkQueue BindState::graphics;
 VkQueue BindState::present;
 VkBufferUsageFlags BindState::flags;
-vftype BindState::func;
 VkPhysicalDeviceProperties BindState::properties;
 VkPhysicalDeviceMemoryProperties BindState::memProperties;
 VkSurfaceFormatKHR BindState::surfaceFormat;
@@ -498,8 +498,9 @@ template <class State, int Size> struct ArrayState : public BindState {
         VkCommandPool pool, int frames) :
         BindState(name,pool,frames),
         safe(1), typ(t), mem(m), idx(0) {}
-    ArrayState(const char *name, BindEnum t, Memory m) :
-        BindState(name),
+    ArrayState(const char *name, BindEnum t, Memory m,
+        vftype func) :
+        BindState(name,func),
         safe(1), typ(t), mem(m), idx(0) {}
     ArrayState(const char *name, BindEnum t, Memory m,
         VkQueue graphics, VkQueue present, VkBufferUsageFlags flags) :
@@ -510,8 +511,8 @@ template <class State, int Size> struct ArrayState : public BindState {
         BindState(name,flags),
         safe(1), typ(t), mem(m), idx(0) {}
     ArrayState(const char *name, BindEnum t, Memory m,
-        vftype func, VkPhysicalDeviceProperties properties) :
-        BindState(name,func,properties),
+        VkPhysicalDeviceProperties properties) :
+        BindState(name,properties),
         safe(1), typ(t), mem(m), idx(0) {}
     ArrayState(const char *name, BindEnum t, Memory m,
         ChangeState *change) :
@@ -561,15 +562,12 @@ struct BaseState {
     SizeState size, todo;
     void *ptr; int loc; int siz;
     SafeState safe; int count;
-    BindState *base;
     char debug[64];
-    BaseState(const char *name) : state(InitBase), size(0), todo(0), safe(1), count(0), base(0) {
-        if (base) sprintf(debug,"%s%s%d",base->name,name,BindState::debug++);
-        else sprintf(debug,"%s%d",name,BindState::debug++);
+    BaseState() : state(InitBase), size(0), todo(0), safe(1), count(0) {
+        debug[0] = 0;
     }
-    BaseState(const char *name, BindState *ptr) : state(InitBase), size(0), todo(0), safe(1), count(0), base(ptr) {
-        if (base) sprintf(debug,"%s%s%d",base->name,name,BindState::debug++);
-        else sprintf(debug,"%s%d",name,BindState::debug++);
+    BaseState(const char *name) : state(InitBase), size(0), todo(0), safe(1), count(0) {
+        sprintf(debug,"%s%d",name,BindState::debug++);
     }
     template <class Type> bool push(void *ptr, int loc, int siz, Type max) { // called in main thread
         safe.wait();
@@ -631,11 +629,11 @@ struct BaseState {
         return setup(ptr,loc,siz);
     }
     virtual VkFence setup(void *ptr, int loc, int siz) = 0;
-    void baseups() { // called in separate thread
+    virtual void baseups() { // called in separate thread
         safe.wait();
         if (state != NextBase) {std::cerr << "resize invalid state!" << std::endl; exit(-1);}
         safe.post();
-        if (base) base->advance();
+        // if (bind) bind->advance();
         upset();
         safe.wait();
         state = FreeBase;
@@ -656,7 +654,7 @@ struct BaseState {
         count -= 1;
         safe.post();
     }
-    bool bind() {
+    bool free() {
         safe.wait();
         if (state != FreeBase) {safe.post(); return false;}
         safe.post();
@@ -672,6 +670,23 @@ struct BaseState {
     virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
     virtual VkDescriptorSetLayout getDescriptorSetLayout() {std::cerr << "BaseState::getDescriptorSetLayout" << std::endl; exit(-1);}
     virtual VkExtent2D getSwapChainExtent() {std::cerr << "BaseState::getSwapChainExtent" << std::endl; exit(-1);}
+};
+
+struct ItemState : public BaseState {
+    BindState *bind;
+    ItemState(const char *name, BindState *ptr) : bind(ptr) {
+        sprintf(debug,"%s%s%d",bind->name,name,BindState::debug++);
+    }
+    void baseups() { // called in separate thread
+        safe.wait();
+        if (state != NextBase) {std::cerr << "resize invalid state!" << std::endl; exit(-1);}
+        safe.post();
+        bind->advance();
+        upset();
+        safe.wait();
+        state = FreeBase;
+        safe.post();
+    }
 };
 
 struct ThreadState {
@@ -914,7 +929,7 @@ struct PipelineState : public BaseState {
     }
 };
 
-struct UniformState : public BaseState {
+struct UniformState : public ItemState {
     const VkDevice device;
     const VkPhysicalDevice physical;
     const VkPhysicalDeviceMemoryProperties memProperties;
@@ -922,7 +937,7 @@ struct UniformState : public BaseState {
     VkDeviceMemory memory;
     void* mapped;
     UniformState() :
-        BaseState("UniformState",BindState::self),
+        ItemState("UniformState",BindState::self),
         device(BindState::device), physical(BindState::physical),
         memProperties(BindState::memProperties)
         {std::cout << "UniformState" << std::endl;}
@@ -949,7 +964,7 @@ struct UniformState : public BaseState {
     }
 };
 
-struct BufferState : public BaseState {
+struct BufferState : public ItemState {
     const VkDevice device;
     const VkPhysicalDevice physical;
     const VkQueue graphics;
@@ -964,7 +979,7 @@ struct BufferState : public BaseState {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     BufferState() :
-        BaseState("BufferState",BindState::self),
+        ItemState("BufferState",BindState::self),
         device(BindState::device), physical(BindState::physical),
         graphics(BindState::graphics), pool(BindState::pool), memProperties(BindState::memProperties),
         flags(BindState::flags)
@@ -1006,7 +1021,7 @@ struct BufferState : public BaseState {
     }
 };
 
-struct TextureState : public BaseState {
+struct TextureState : public ItemState {
     const VkDevice device;
     const VkPhysicalDevice physical;
     const VkPhysicalDeviceProperties properties;
@@ -1028,7 +1043,7 @@ struct TextureState : public BaseState {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     TextureState() :
-        BaseState("TextureState",BindState::self),
+        ItemState("TextureState",BindState::self),
         device(BindState::device), physical(BindState::physical),
         properties(BindState::properties), graphics(BindState::graphics), pool(BindState::pool),
         memProperties(BindState::memProperties), func(BindState::func)
@@ -1191,11 +1206,12 @@ struct DrawState : public BaseState {
 };
 
 std::deque<Center*> doneCenter;
-void pixelsDone() { // TODO replace by planeDone when pixels come from Center
+void centerDone() { // TODO replace by planeDone when Center comes from plane.c
     if (doneCenter.empty()) {std::cerr << "no center to free!" << std::endl; exit(-1);}
     Center *center = doneCenter.front(); doneCenter.pop_front();
-    for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
-    allocTexture(&center->tex,0); allocCenter(&center,0);
+    switch (center->mem) {default: {std::cerr << "unsupported mem type!" << std::endl; exit(-1);}
+    case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
+    allocTexture(&center->tex,0); allocCenter(&center,0); break;}
 }
 
 struct MainState {
@@ -1228,15 +1244,12 @@ struct MainState {
             physicalState.surfaceFormat,physicalState.presentMode,physicalState.capabilities,
             physicalState.graphicsFamily,physicalState.presentFamily,logicalState.imageFormat,
             logicalState.depthFormat,logicalState.renderPass,physicalState.memProperties),
-        pipelineState("PipelineBind",PipelineBind,Memorys,
-            logicalState.pool,frames),
-        uniformState("Uniformz",BindEnums,Uniformz),
+        pipelineState("PipelineBind",PipelineBind,Memorys,logicalState.pool,frames),
+        uniformState("Uniformz",BindEnums,Uniformz,centerDone),
         vertexState("Vertexz",BindEnums,Vertexz,
             logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        indexState("IndexBind",IndexBind,Memorys,
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-        textureState("Texturez",BindEnums,Texturez,
-            pixelsDone,physicalState.properties),
+        indexState("IndexBind",IndexBind,Memorys,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+        textureState("Texturez",BindEnums,Texturez,physicalState.properties),
         drawState("DrawBind",DrawBind,Memorys,&changeState),
         swapChainExtent(chooseSwapExtent(windowState.window,physicalState.capabilities)) {
         changeState.test(); // TODO move to builtin test triggered by copy to Configure
@@ -1264,11 +1277,8 @@ int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
 void ChangeState::test() {
-    Center *center = 0; allocCenter(&center,1); doneCenter.push_back(center);
-    center->mem = Texturez; center->siz = 1; allocTexture(&center->tex,1);
-    fmtxStbi(&center->tex[0].dat,&center->tex[0].wid,&center->tex[0].hei,&center->tex[0].cha,"texture.jpg");
-
     SafeState safe(0);
+
     if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
     main->swapState.advance(0); safe.wait();
@@ -1279,13 +1289,17 @@ void ChangeState::test() {
     int vsiz = sizeof(vertices[0]) * vertices.size();
     if (!main->threadState.push(main->vertexState.preview(),(void*)vertices.data(), 0, vsiz, vsiz, &safe))
     {std::cerr << "cannot push vertices!" << std::endl; exit(-1);} safe.wait();
+
     int isiz = sizeof(indices[0]) * indices.size();
     if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(), 0, isiz, isiz, &safe))
     {std::cerr << "cannot push indices!" << std::endl; exit(-1);} safe.wait();
 
-    VkExtent2D texExtent; texExtent.width = center->tex[0].wid; texExtent.height = center->tex[0].hei;
+    Center *tex = 0; allocCenter(&tex,1); doneCenter.push_back(tex);
+    tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,1);
+    fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
+    VkExtent2D texExtent; texExtent.width = tex->tex[0].wid; texExtent.height = tex->tex[0].hei;
     if (!main->threadState.push(main->textureState.preview(),
-        datxVoidz(0,center->tex[0].dat), 0, datxVoids(center->tex[0].dat), texExtent, &safe))
+    datxVoidz(0,tex->tex[0].dat), 0, datxVoids(tex->tex[0].dat), texExtent, &safe))
     {std::cerr << "cannot push texture!" << std::endl; exit(-1);} safe.wait();
 
     BindState *single[] = {&main->pipelineState};
@@ -1312,7 +1326,7 @@ void ChangeState::test() {
         &main->indexState,
         &main->pipelineState,
         &main->swapState};
-    int count = 0; while (!main->drawState.buffer()->bind()) {
+    int count = 0; while (!main->drawState.buffer()->free()) {
         if ((++count % 1000) == 0) std::cout << "count " << count << std::endl;
         glfwWaitEventsTimeout(0.001);}
     if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
