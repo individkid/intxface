@@ -609,8 +609,9 @@ Basis = {
 }
 Texture = {
 	{"dat","Dat",{},{}},
-	{"lft","Int32",{},{}},
-	{"bas","Int32",{},{}},
+	{"wid","Int32",{},{}},
+	{"hei","Int32",{},{}},
+        {"cha","Int32",{},{}},
 }
 Pierce = {
 	{"vec","Old",{},{3}},

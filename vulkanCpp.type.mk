@@ -1,1 +1,1 @@
- allocCenter allocTexture freeTexture
+ allocCenter allocTexture freeTexture identType

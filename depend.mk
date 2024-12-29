@@ -12,7 +12,7 @@ fileC.type.c: luax.so show.lua type.gen
 fileC.typeC.o: face.h type.h
 filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
-fmtxC.o: fmtx.c fmtx.h proto.h
+fmtxC.o: fmtx.c
 fragmentFlattenG: flatten.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
@@ -61,7 +61,7 @@ typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
 vertexFlattenG: flatten.g
-vulkanCpp: faceC.o fmtxC.o protoC.o vulkanCpp.o vulkanCpp.typeC.o
+vulkanCpp: datxC.o faceC.o fmtxC.o protoC.o vulkanCpp.o vulkanCpp.typeC.o wrapCpp.o
 vulkanCpp.o: face.h fmtx.h plane.h proto.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen
 vulkanCpp.typeC.o: face.h type.h

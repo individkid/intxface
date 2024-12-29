@@ -1068,7 +1068,6 @@ struct TextureState : public BaseState {
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4; // TODO think of way to write to portions of texture
-        if (loc != 0 || siz != 1) {std::cerr << "invalid texture size!" << std::endl; exit(-1);}
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
             stagingBuffer, stagingBufferMemory);
@@ -1191,11 +1190,9 @@ struct DrawState : public BaseState {
     }
 };
 
-std::deque<stbi_uc*> donePixels;
 std::deque<Center*> doneCenter;
 void pixelsDone() { // TODO replace by planeDone when pixels come from Center
-    if (donePixels.empty()) {std::cerr << "no pixels to free!" << std::endl; exit(-1);}
-    stbi_image_free(donePixels.front()); donePixels.pop_front();
+    if (doneCenter.empty()) {std::cerr << "no center to free!" << std::endl; exit(-1);}
     Center *center = doneCenter.front(); doneCenter.pop_front();
     for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
     allocTexture(&center->tex,0); allocCenter(&center,0);
@@ -1262,13 +1259,14 @@ void ChangeState::copy(Center *) {
 // TODO define other ChangeState functions that change state and enque events
 const int NUM_FRAMES_IN_FLIGHT = 2;
 UniformBufferObject ubo[NUM_FRAMES_IN_FLIGHT]; // TODO use Center Uniformz instead of builtin data
+extern "C" {
+int datxVoids(void *dat);
+void *datxVoidz(int num, void *dat);
+};
 void ChangeState::test() {
-    int texWidth; int texHeight; int texChannels;
-    stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-    if (!pixels) {std::cerr << "failed to load texture image: " << "texture.jpg" << std::endl; exit(-1);}
-    Center *center = 0; int len = 0; allocCenter(&center,1); center->mem = Texturez; center->siz = 1;
-    allocTexture(&center->tex,1); fmtxStbi(&center->tex[0].dat,&center->tex[0].lft,&center->tex[0].bas,"texture.jpg");
-    donePixels.push_back(pixels); doneCenter.push_back(center);
+    Center *center = 0; allocCenter(&center,1); doneCenter.push_back(center);
+    center->mem = Texturez; center->siz = 1; allocTexture(&center->tex,1);
+    fmtxStbi(&center->tex[0].dat,&center->tex[0].wid,&center->tex[0].hei,&center->tex[0].cha,"texture.jpg");
 
     SafeState safe(0);
     if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
@@ -1285,8 +1283,9 @@ void ChangeState::test() {
     if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(), 0, isiz, isiz, &safe))
     {std::cerr << "cannot push indices!" << std::endl; exit(-1);} safe.wait();
 
-    VkExtent2D texExtent; texExtent.width = texWidth; texExtent.height = texHeight;
-    if (!main->threadState.push(main->textureState.preview(), (void*)pixels, 0, 1, texExtent, &safe))
+    VkExtent2D texExtent; texExtent.width = center->tex[0].wid; texExtent.height = center->tex[0].hei;
+    if (!main->threadState.push(main->textureState.preview(),
+        datxVoidz(0,center->tex[0].dat), 0, datxVoids(center->tex[0].dat), texExtent, &safe))
     {std::cerr << "cannot push texture!" << std::endl; exit(-1);} safe.wait();
 
     BindState *single[] = {&main->pipelineState};
