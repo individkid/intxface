@@ -1261,7 +1261,7 @@ struct PipelineState : public BaseState {
         descriptorPool(createDescriptorPool(BindState::device,BindState::frames)),
         descriptorSetLayout(createDescriptorSetLayout(BindState::device,micro)),
         pipelineLayout(createPipelineLayout(BindState::device,descriptorSetLayout)),
-        graphicsPipeline(createGraphicsPipeline(BindState::device,BindState::renderPass,pipelineLayout))
+        graphicsPipeline(createGraphicsPipeline(BindState::device,BindState::renderPass,pipelineLayout,micro))
         {std::cout << "PipelineState" << std::endl;}
     ~PipelineState() {
         std::cout << "~PipelineState" << std::endl;
@@ -1356,7 +1356,8 @@ struct PipelineState : public BaseState {
         {std::cerr << "failed to create shader module!" << std::endl; exit(-1);}
         return shaderModule;
     }
-    static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout) {
+    static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
+        VkPipelineLayout pipelineLayout, Micro micro) {
         VkPipeline graphicsPipeline;
         auto vertShaderCode = readFile("vertexFlattenG");
         auto fragShaderCode = readFile("fragmentFlattenG");
@@ -1765,8 +1766,6 @@ struct DrawState : public BaseState {
     const VkRenderPass renderPass;
     const VkQueue graphics;
     const VkQueue present;
-    const VkSurfaceFormatKHR surfaceFormat;
-    const VkPresentModeKHR presentMode;
     const VkCommandPool pool;
     const int frames;
     ChangeState *change;
@@ -1785,8 +1784,6 @@ struct DrawState : public BaseState {
         renderPass(BindState::renderPass),
         graphics(BindState::graphics),
         present(BindState::present),
-        surfaceFormat(BindState::surfaceFormat),
-        presentMode(BindState::presentMode),
         pool(BindState::pool),
         frames(BindState::frames),
         change(BindState::change),
@@ -1844,12 +1841,11 @@ struct DrawState : public BaseState {
             updateUniformDescriptor(device,get(BindEnums,Uniformz)->getBuffer(),0,descriptorSet);
             updateTextureDescriptor(device,get(BindEnums,Texturez)->getTextureImageView(),
                 get(BindEnums,Texturez)->getTextureSampler(),1,descriptorSet);
-            if (!drawFrame(device,commandBuffer,renderPass,graphics,present,
-                get(SwapBind,Memorys)->getSwapChain(),get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex),
-                get(PipelineBind,Memorys)->getGraphicsPipeline(),get(PipelineBind,Memorys)->getPipelineLayout(),
-                get(BindEnums,Vertexz)->getBuffer(),get(IndexBind,Memorys)->getBuffer(),imageIndex,
-                descriptorSet,ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence,
-                swapChainExtent,surfaceFormat,presentMode)) change->resize();
+            recordCommandBuffer(commandBuffer,renderPass,get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex), swapChainExtent,
+                get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),
+                descriptorSet, get(BindEnums,Vertexz)->getBuffer(), get(IndexBind,Memorys)->getBuffer(), size.micro);
+            if (!drawFrame(commandBuffer,graphics,present,get(SwapBind,Memorys)->getSwapChain(),imageIndex,
+                ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence)) change->resize();
             return fence;
         }
         return VK_NULL_HANDLE;
@@ -1924,7 +1920,7 @@ struct DrawState : public BaseState {
     }
     static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer,
         VkExtent2D swapChainExtent, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
-        VkDescriptorSet &descriptorSet, VkBuffer buffer, VkBuffer indexBuffer, Micro micro) {
+        VkDescriptorSet descriptorSet, VkBuffer vertexBuffer, VkBuffer indexBuffer, Micro micro) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
@@ -1954,7 +1950,7 @@ struct DrawState : public BaseState {
         scissor.offset = {0, 0};
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-        VkBuffer buffers[] = {buffer};
+        VkBuffer buffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets); // TODO depends on micro
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16); // TODO depends on micro
@@ -1964,19 +1960,13 @@ struct DrawState : public BaseState {
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
         {std::cerr << "failed to record command buffer!" << std::endl; exit(-1);}
     }
-    static bool drawFrame(VkDevice device, VkCommandBuffer &commandBuffer,
-        VkRenderPass renderPass, VkQueue graphics, VkQueue present,
-        VkSwapchainKHR swapChain, VkFramebuffer swapChainFramebuffer,
-        VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
-        VkBuffer vertexBuffer, VkBuffer indexBuffer, uint32_t imageIndex,
-        VkDescriptorSet descriptorSet, void *ptr, int loc, int siz, Micro micro,
-        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence,
-        VkExtent2D swapChainExtent, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode) {
-        recordCommandBuffer(commandBuffer,renderPass,swapChainFramebuffer,swapChainExtent,
-            graphicsPipeline, pipelineLayout, descriptorSet, vertexBuffer, indexBuffer, micro);
+    static bool drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkQueue present,
+        VkSwapchainKHR swapChain, uint32_t imageIndex, void *ptr, int loc, int siz, Micro micro,
+        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence) {
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         VkSemaphore waitSemaphores[] = {beforeSemaphore};
+        VkCommandBuffer commandBuffers[] = {commandBuffer};
         VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
@@ -1993,9 +1983,10 @@ struct DrawState : public BaseState {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
         VkSwapchainKHR swapChains[] = {swapChain};
+        uint32_t imageIndices[] = {imageIndex};
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
-        presentInfo.pImageIndices = &imageIndex;
+        presentInfo.pImageIndices = imageIndices;
         VkResult result = vkQueuePresentKHR(present, &presentInfo);
         if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR && result != VK_SUCCESS)
         {std::cerr << "failed to present swap chain image!" << std::endl; exit(-1);}
