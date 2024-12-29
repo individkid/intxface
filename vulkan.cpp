@@ -1841,9 +1841,10 @@ struct DrawState : public BaseState {
             updateUniformDescriptor(device,get(BindEnums,Uniformz)->getBuffer(),0,descriptorSet);
             updateTextureDescriptor(device,get(BindEnums,Texturez)->getTextureImageView(),
                 get(BindEnums,Texturez)->getTextureSampler(),1,descriptorSet);
-            recordCommandBuffer(commandBuffer,renderPass,get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex), swapChainExtent,
+            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,
+                get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex),
                 get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),
-                descriptorSet, get(BindEnums,Vertexz)->getBuffer(), get(IndexBind,Memorys)->getBuffer(), size.micro);
+                get(BindEnums,Vertexz)->getBuffer(), get(IndexBind,Memorys)->getBuffer());
             if (!drawFrame(commandBuffer,graphics,present,get(SwapBind,Memorys)->getSwapChain(),imageIndex,
                 ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence)) change->resize();
             return fence;
@@ -1918,9 +1919,10 @@ struct DrawState : public BaseState {
         VkWriteDescriptorSet descriptorWrites [] = {descriptorWrite};
         vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
     }
-    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer,
-        VkExtent2D swapChainExtent, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
-        VkDescriptorSet descriptorSet, VkBuffer vertexBuffer, VkBuffer indexBuffer, Micro micro) {
+    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
+        VkDescriptorSet descriptorSet, VkExtent2D swapChainExtent, Micro micro,
+        VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
+        VkBuffer vertexBuffer, VkBuffer indexBuffer) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
