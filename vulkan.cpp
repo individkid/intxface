@@ -81,10 +81,13 @@ const std::vector<uint16_t> indices = {
     4, 5, 6, 6, 7, 4
 };
 std::deque<Center*> doneCenter;
-void centerDone() { // TODO replace by planeDone when Center comes from plane.c
+void centerDone() {
+    // TODO replace by planeDone when Center comes from plane.c
     if (doneCenter.empty()) {std::cerr << "no center to free!" << std::endl; exit(-1);}
     Center *center = doneCenter.front(); doneCenter.pop_front();
     switch (center->mem) {default: {std::cerr << "unsupported mem type!" << std::endl; exit(-1);}
+    case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
+    allocMatrix(&center->mat,0); allocCenter(&center,0); break;
     case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
     allocTexture(&center->tex,0); allocCenter(&center,0); break;}
 }
@@ -111,7 +114,7 @@ struct ChangeState {
         return ubo;
     }
 };
-// TODO forward declare glfw callbacks that cast void* to ChangeState*
+// TODO define glfw callbacks that cast void* to ChangeState*
 
 struct WindowState {
     const uint32_t WIDTH = 800;
@@ -1457,13 +1460,15 @@ struct UniformState : public ItemState {
     const VkDevice device;
     const VkPhysicalDevice physical;
     const VkPhysicalDeviceMemoryProperties memProperties;
+    const vftype func;
     VkBuffer buffer;
     VkDeviceMemory memory;
     void* mapped;
     UniformState() :
         ItemState("UniformState",BindState::self),
         device(BindState::device), physical(BindState::physical),
-        memProperties(BindState::memProperties)
+        memProperties(BindState::memProperties),
+        func(BindState::func)
         {std::cout << "UniformState" << std::endl;}
     ~UniformState() {push(0); baseres(); std::cout << "~UniformState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
@@ -1485,6 +1490,7 @@ struct UniformState : public ItemState {
         return VK_NULL_HANDLE; // return null fence for no wait
     }
     void upset() {
+        func();
     }
 };
 
@@ -1505,8 +1511,8 @@ struct BufferState : public ItemState {
     BufferState() :
         ItemState("BufferState",BindState::self),
         device(BindState::device), physical(BindState::physical),
-        graphics(BindState::graphics), pool(BindState::pool), memProperties(BindState::memProperties),
-        flags(BindState::flags)
+        graphics(BindState::graphics), pool(BindState::pool),
+        memProperties(BindState::memProperties), flags(BindState::flags)
         {std::cout << "BufferState" << std::endl;}
     ~BufferState() {push(0); baseres(); std::cout << "~BufferState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
@@ -1838,7 +1844,7 @@ struct DrawState : public BaseState {
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
             vkResetFences(device, 1, &fence);
             vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-            updateUniformDescriptor(device,get(BindEnums,Uniformz)->getBuffer(),0,descriptorSet);
+            updateUniformDescriptor(device,get(BindEnums,Matrixz)->getBuffer(),0,descriptorSet);
             updateTextureDescriptor(device,get(BindEnums,Texturez)->getTextureImageView(),
                 get(BindEnums,Texturez)->getTextureSampler(),1,descriptorSet);
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,
@@ -2006,7 +2012,7 @@ struct MainState {
     ThreadState threadState;
     ArrayState<SwapState,1> swapState;
     ArrayState<PipelineState,Micros> pipelineState;
-    ArrayState<UniformState,frames> uniformState;
+    ArrayState<UniformState,frames> matrixState;
     ArrayState<BufferState,frames> vertexState;
     ArrayState<BufferState,frames> indexState;
     ArrayState<TextureState,frames> textureState;
@@ -2027,7 +2033,7 @@ struct MainState {
             physicalState.graphicsFamily,physicalState.presentFamily,logicalState.imageFormat,
             logicalState.depthFormat,logicalState.renderPass,physicalState.memProperties),
         pipelineState("PipelineBind",PipelineBind,Memorys,logicalState.pool,frames),
-        uniformState("Uniformz",BindEnums,Uniformz,centerDone),
+        matrixState("Matrixz",BindEnums,Matrixz,centerDone),
         vertexState("Vertexz",BindEnums,Vertexz,
             logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         indexState("IndexBind",IndexBind,Memorys,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -2053,7 +2059,7 @@ struct MainState {
 };
 
 void ChangeState::async() {
-   // TODO call vulkanSafe and/or planeSafe
+    // TODO call vulkanSafe and/or planeSafe
 }
 void ChangeState::resize() {
     // TODO resize swapState
@@ -2067,7 +2073,7 @@ void ChangeState::copy(Center *) {
 }
 // TODO define other ChangeState functions that change state and enque events
 const int NUM_FRAMES_IN_FLIGHT = 2;
-UniformBufferObject ubo[NUM_FRAMES_IN_FLIGHT]; // TODO use Center Uniformz instead of builtin data
+UniformBufferObject ubo[NUM_FRAMES_IN_FLIGHT];
 extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
@@ -2078,6 +2084,7 @@ void ChangeState::test() {
     if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
     main->swapState.advance(0); safe.wait();
+
     if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,&safe))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
     main->pipelineState.advance(MicroTest); safe.wait();
@@ -2104,19 +2111,28 @@ void ChangeState::test() {
         {std::cerr << "cannot bind draw!" << std::endl; exit(-1);}
         if (!main->threadState.push(main->drawState.preview(i), MicroTest, &safe))
         {std::cerr << "cannot push draw!" << std::endl; exit(-1);} safe.wait();}
-    int usiz = sizeof(ubo[0]); 
+    int usiz = 3*sizeof(Matrix); 
+
     for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; i++) {
-        if (!main->threadState.push(main->uniformState.preview(i), usiz, &safe))
+        if (!main->threadState.push(main->matrixState.preview(i), usiz, &safe))
         {std::cerr << "cannot push uniform!" << std::endl; exit(-1);} safe.wait();}
 
     int currentUniform = 0; int count = 0; // TODO call planeDone on the Center instead of using temporary ubo
     while (!glfwWindowShouldClose(main->windowState.window) && count++ < 1000) {
     Center *center = main->threadState.clear(); if (center) copy(center);
+
     ubo[currentUniform] = updateUniformBuffer(main->swapChainExtent);
-    if (main->threadState.wrap(main->uniformState.preview(), &ubo[currentUniform], 0, usiz))
-    currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    Center *uni = 0; allocCenter(&uni,1); uni->mem = Matrixz; uni->siz = 3; allocMatrix(&uni->mat,3);
+    memcpy(&uni->mat[0],&ubo[currentUniform].model,sizeof(Matrix));
+    memcpy(&uni->mat[0],&ubo[currentUniform].view,sizeof(Matrix));
+    memcpy(&uni->mat[0],&ubo[currentUniform].proj,sizeof(Matrix));
+    if (main->threadState.wrap(main->matrixState.preview(), &ubo[currentUniform], 0, usiz))
+    {currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT; doneCenter.push_back(uni);}
+    else {for (int i = 0; i < uni->siz; i++) freeMatrix(&uni->mat[i]);
+    allocMatrix(&uni->mat,0); allocCenter(&uni,0);}
+
     BindState *bind[] = {
-        &main->uniformState,
+        &main->matrixState,
         &main->textureState,
         &main->vertexState,
         &main->indexState,
@@ -2131,16 +2147,9 @@ void ChangeState::test() {
     else main->drawState.derived()->free();}
 
     main->threadState.push();
+    if (!doneCenter.empty())
+    {std::cerr << "center deque not empty! " << doneCenter.size() << std::endl; exit(-1);}
 }
-
-// TODO define glfw callbacks that cast void* to ChangeState*
-
-
-
-
-
-
-
 
 int main() {
     MainState app;
