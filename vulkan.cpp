@@ -94,6 +94,13 @@ struct ChangeState {
     bool copy(Center *);
     void done();
     void test();
+    static void vulkanDone(Center *center) {
+        switch (center->mem) {default: {std::cerr << "unsupported mem type!" << std::endl; exit(-1);}
+        case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
+        allocMatrix(&center->mat,0); allocCenter(&center,0); break;
+        case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
+        allocTexture(&center->tex,0); allocCenter(&center,0); break;}
+    }
     static UniformBufferObject updateUniformBuffer(VkExtent2D swapChainExtent) {
         static auto startTime = std::chrono::high_resolution_clock::now();
         auto currentTime = std::chrono::high_resolution_clock::now();
@@ -1357,8 +1364,8 @@ struct PipelineState : public BaseState {
     static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
         VkPipelineLayout pipelineLayout, Micro micro) {
         VkPipeline graphicsPipeline;
-        auto vertShaderCode = readFile("vertexFlattenG");
-        auto fragShaderCode = readFile("fragmentFlattenG");
+        auto vertShaderCode = readFile(VertexFile__Micro__Str(micro));
+        auto fragShaderCode = readFile(FragmentFile__Micro__Str(micro));
         VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
         VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
@@ -1374,11 +1381,27 @@ struct PipelineState : public BaseState {
         VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        auto bindingDescription = TestVertex::getBindingDescription();
-        auto attributeDescriptions = TestVertex::getAttributeDescriptions();
-        vertexInputInfo.vertexBindingDescriptionCount = 1;
+        std::vector<VkVertexInputBindingDescription> bindingDescriptions; {
+            VkVertexInputBindingDescription bindingDescription{};
+            bindingDescription.binding = 0;
+            bindingDescription.stride = VertexStride__Micro__Int(micro);
+            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            bindingDescriptions.push_back(bindingDescription);}
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+        auto attributeDescriptionsTODO = TestVertex::getAttributeDescriptions();
+        for (int i = 0; VertexFormat__Micro__Int__Int(micro)(i); i++) {
+            VkVertexInputAttributeDescription attributeDescription{};
+            attributeDescription.binding = 0;
+            attributeDescription.location = i;
+            switch (VertexFormat__Micro__Int__Int(micro)(i)) {
+            default: {std::cerr << "invalid vertex format!" << std::endl; exit(-1);}
+            case (12): attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT; break;
+            case (8): attributeDescription.format = VK_FORMAT_R32G32_SFLOAT; break;}
+            attributeDescription.offset = VertexOffset__Micro__Int__Int(micro)(i);
+            attributeDescriptions.push_back(attributeDescription);}
+        vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
         vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -2077,13 +2100,6 @@ extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
-void vulkanDone(Center *center) {
-    switch (center->mem) {default: {std::cerr << "unsupported mem type!" << std::endl; exit(-1);}
-    case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
-    allocMatrix(&center->mat,0); allocCenter(&center,0); break;
-    case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
-    allocTexture(&center->tex,0); allocCenter(&center,0); break;}
-}
 void ChangeState::test() {
     int currentUniform = 0;
     static const int NUM_FRAMES_IN_FLIGHT = 2;

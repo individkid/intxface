@@ -303,6 +303,25 @@ Program = {
 	"Phonez",
 }
 --HERE Constants
+VertexStride = {
+	{"Micro","MicroTest","Int","32"},
+}
+VertexOffset = {
+	{"Micro","MicroTest","Int","0","Int","0"},
+	{"Micro","MicroTest","Int","1","Int","12"},
+	{"Micro","MicroTest","Int","2","Int","24"},
+}
+VertexFormat = {
+	{"Micro","MicroTest","Int","0","Int","12"},
+	{"Micro","MicroTest","Int","1","Int","12"},
+	{"Micro","MicroTest","Int","2","Int","8"},
+}
+VertexFile = {
+	{"Micro","MicroTest","Str","vertexFlattenG"},
+}
+FragmentFile = {
+	{"Micro","MicroTest","Str","fragmentFlattenG"},
+}
 Bootstrap = {
 	{"Int","0","Str","Force(num:5".. -- assign to configuration
 		"cfg[0]:WindowWide"..
