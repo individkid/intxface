@@ -30,33 +30,6 @@ extern "C" {
 #include "fmtx.h"
 };
 
-// TODO replace these by copy from Center
-struct TestVertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec2 texCoord;
-};
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
-};
-const std::vector<TestVertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-};
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4
-};
-
 struct MainState;
 struct ChangeState {
     MainState *main;
@@ -77,16 +50,14 @@ struct ChangeState {
         case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
         allocTexture(&center->tex,0); allocCenter(&center,0); break;}
     }
-    static UniformBufferObject updateUniformBuffer(VkExtent2D swapChainExtent) {
+    static void updateUniformBuffer(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
         static auto startTime = std::chrono::high_resolution_clock::now();
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-        UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-        return ubo;
+        model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+        proj[1][1] *= -1;
     }
 };
 // TODO define glfw callbacks that cast void* to ChangeState*
@@ -849,6 +820,7 @@ struct BaseState {
     virtual VkPipeline getGraphicsPipeline() {std::cerr << "BaseState::graphicsPipeline" << std::endl; exit(-1);}
     virtual VkPipelineLayout getPipelineLayout() {std::cerr << "BaseState::pipelineLayout" << std::endl; exit(-1);}
     virtual VkBuffer getBuffer() {std::cerr << "BaseState::buffer" << std::endl; exit(-1);}
+    virtual int getRange() {std::cerr << "BaseState::size" << std::endl; exit(-1);}
     virtual VkImageView getTextureImageView() {std::cerr << "BaseState::textureImageView" << std::endl; exit(-1);}
     virtual VkSampler getTextureSampler() {std::cerr << "BaseState::textureSampler" << std::endl; exit(-1);}
     virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
@@ -1465,6 +1437,7 @@ struct UniformState : public ItemState {
         {std::cout << "UniformState" << std::endl;}
     ~UniformState() {push(0); baseres(); std::cout << "~UniformState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
+    int getRange() {return size.size;}
     void resize() {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -1509,6 +1482,7 @@ struct BufferState : public ItemState {
         {std::cout << "BufferState" << std::endl;}
     ~BufferState() {push(0); baseres(); std::cout << "~BufferState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
+    int getRange() {return size.size;}
     void resize() {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
@@ -1837,10 +1811,11 @@ struct DrawState : public BaseState {
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
             vkResetFences(device, 1, &fence);
             vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-            updateUniformDescriptor(device,get(BindEnums,Matrixz)->getBuffer(),0,descriptorSet);
+            updateUniformDescriptor(device,get(BindEnums,Matrixz)->getBuffer(),0,
+                get(BindEnums,Matrixz)->getRange(),descriptorSet);
             updateTextureDescriptor(device,get(BindEnums,Texturez)->getTextureImageView(),
                 get(BindEnums,Texturez)->getTextureSampler(),1,descriptorSet);
-            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,
+            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex),
                 get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),
                 get(BindEnums,Vertexz)->getBuffer(), get(IndexBind,Memorys)->getBuffer());
@@ -1867,11 +1842,11 @@ struct DrawState : public BaseState {
         return descriptorSet;
     }
     static void updateStorageDescriptor(VkDevice device, VkBuffer buffer,
-        int index, VkDescriptorSet descriptorSet) {
+        int index, int size, VkDescriptorSet descriptorSet) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = buffer;
         bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
+        bufferInfo.range = size;
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = descriptorSet;
@@ -1884,11 +1859,11 @@ struct DrawState : public BaseState {
         vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);\
     }
     static void updateUniformDescriptor(VkDevice device, VkBuffer buffer,
-        int index, VkDescriptorSet descriptorSet) {
+        int index, int size, VkDescriptorSet descriptorSet) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = buffer;
         bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
+        bufferInfo.range = size;
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = descriptorSet;
@@ -1919,7 +1894,7 @@ struct DrawState : public BaseState {
         vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
     }
     static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
-        VkDescriptorSet descriptorSet, VkExtent2D swapChainExtent, Micro micro,
+        VkDescriptorSet descriptorSet, VkExtent2D swapChainExtent, Micro micro, uint32_t indices,
         VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
         VkBuffer vertexBuffer, VkBuffer indexBuffer) {
         VkCommandBufferBeginInfo beginInfo{};
@@ -1956,7 +1931,7 @@ struct DrawState : public BaseState {
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets); // TODO depends on micro
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16); // TODO depends on micro
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);
         vkCmdEndRenderPass(commandBuffer);
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
         {std::cerr << "failed to record command buffer!" << std::endl; exit(-1);}
@@ -2075,6 +2050,31 @@ extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
+struct UniformBufferObject {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+};
+struct TestVertex {
+    glm::vec3 pos;
+    glm::vec3 color;
+    glm::vec2 texCoord;
+};
+const std::vector<TestVertex> vertices = {
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+};
+const std::vector<uint16_t> indices = {
+    0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4
+};
 void ChangeState::test() {
     int currentUniform = 0;
     static const int NUM_FRAMES_IN_FLIGHT = 2;
@@ -2122,7 +2122,8 @@ void ChangeState::test() {
     currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;}
     else {ptr->slf = 1; if (center.size() == 1) vulkanDone(ptr);}}
 
-    ubo[currentUniform] = updateUniformBuffer(main->swapChainExtent);
+    updateUniformBuffer(main->swapChainExtent,
+        ubo[currentUniform].model,ubo[currentUniform].view,ubo[currentUniform].proj);
     Center *uni = 0; allocCenter(&uni,1); uni->mem = Matrixz; uni->siz = 3; allocMatrix(&uni->mat,3);
     memcpy(&uni->mat[0],&ubo[currentUniform].model,sizeof(Matrix));
     memcpy(&uni->mat[1],&ubo[currentUniform].view,sizeof(Matrix));
@@ -2140,7 +2141,7 @@ void ChangeState::test() {
         if ((++count % 1000) == 0) std::cout << "count " << count << std::endl;
         glfwWaitEventsTimeout(0.001);}
     if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        main->threadState.wrap(main->drawState.derived(), 0, 0, 0))
+        main->threadState.wrap(main->drawState.derived(), 0, 0, static_cast<uint32_t>(indices.size())))
         main->drawState.advance();
     else main->drawState.derived()->free();}
 
