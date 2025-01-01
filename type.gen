@@ -613,6 +613,11 @@ Numeric = {
 	{"bas","Int32",{},{}}, -- basis selector
 	{"pad","Int32",{},{3}},
 }
+TestVertex = {
+    {"pos","Old",{},{3}},
+    {"color","Old",{},{3}},
+    {"texCoord","Old",{},{2}},
+}
 Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
 	{"ref","Int32",{},{4}}, -- backreference to planes
@@ -630,7 +635,7 @@ Texture = {
 	{"dat","Dat",{},{}},
 	{"wid","Int32",{},{}},
 	{"hei","Int32",{},{}},
-        {"cha","Int32",{},{}},
+	{"cha","Int32",{},{}},
 }
 Pierce = {
 	{"vec","Old",{},{3}},
