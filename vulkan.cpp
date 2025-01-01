@@ -1388,7 +1388,6 @@ struct PipelineState : public BaseState {
             bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
             bindingDescriptions.push_back(bindingDescription);}
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-        auto attributeDescriptionsTODO = TestVertex::getAttributeDescriptions();
         for (int i = 0; VertexFormat__Micro__Int__Int(micro)(i); i++) {
             VkVertexInputAttributeDescription attributeDescription{};
             attributeDescription.binding = 0;
