@@ -33,15 +33,15 @@ extern "C" {
 struct MainState;
 struct ChangeState {
     MainState *main;
-    std::deque<Center*> center;
     wftype wrapDone;
-    ChangeState(MainState*main) : main(main) {std::cout << "ChangeState" << std::endl;}
+    ChangeState(MainState*main) : main(main), wrapDone(0)
+    {std::cout << "ChangeState" << std::endl;}
     ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
     void async(int mask);
     void resize();
     void loop();
     int copy(Center *);
-    bool done();
+    void done(int pass, Center *);
     void test();
 };
 
@@ -741,7 +741,7 @@ struct BaseState {
     }
     void baseres() { // called in separate thread
         safe.wait();
-        if (state != SizeBase) {std::cerr << "resize invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
+        if (state != SizeBase) {std::cerr << "baseres invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
         safe.post();
         if (size == todo); else {
         if (size == SizeState(0)); else unsize();
@@ -793,7 +793,7 @@ struct BaseState {
         count -= 1;
         safe.post();
     }
-    bool free() {
+    bool check() {
         safe.wait();
         if (state != FreeBase) {safe.post(); return false;}
         safe.post();
@@ -899,7 +899,7 @@ struct ItemState : public BaseState {
     }
     void baseups() { // called in separate thread
         safe.wait();
-        if (state != NextBase) {std::cerr << "resize invalid state!" << std::endl; exit(-1);}
+        if (state != NextBase) {std::cerr << "baseups invalid state! " << state << " " << debug << std::endl; exit(-1);}
         safe.post();
         bind->advance();
         upset();
@@ -929,110 +929,59 @@ struct ItemState : public BaseState {
     }
 };
 
+enum ThreadEnum {
+    FailThread,
+    SizeThread,
+    SetThread,
+    BothThread,
+    ThreadEnums
+};
+struct PushState {
+    ThreadEnum tag;
+    BaseState *base;
+    VkFence fence;
+    SafeState *safe;
+    Center *center;
+};
 struct ThreadState {
     const VkDevice device;
     ChangeState *change;
     SafeState safe; SafeState wait;
-    std::deque<BaseState*> resize;
-    std::deque<BaseState*> setup;
-    std::deque<BaseState*> sizeup;
-    std::deque<SafeState*> noteup;
-    std::deque<VkFence> fence;
-    std::deque<BaseState*> after;
-    std::deque<SafeState*> notify;
-    std::deque<Center*> todo;
+    std::deque<PushState> before;
+    std::deque<PushState> after;
     bool done;
     pthread_t thread;
-    ThreadState(VkDevice device, ChangeState *change) : device(device), change(change), safe(1), wait(0), done(false) {
-        if (pthread_create(&thread,0,separate,this) != 0) {std::cerr << "failed to create thread!" << std::endl; exit(-1);}
+    ThreadState(VkDevice device, ChangeState *change) :
+        device(device), change(change),
+        safe(1), wait(0), done(false) {
+        if (pthread_create(&thread,0,separate,this) != 0)
+        {std::cerr << "failed to create thread!" << std::endl; exit(-1);}
         {std::cout << "ThreadState" << std::endl;}
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
-    Center *clear() {
-        safe.wait();
-        if (todo.empty()) {safe.post(); return 0;}
-        Center *temp = todo.front();
-        todo.pop_front();
-        safe.post(); return temp;
-    }
-    bool stage() {
-        VkFence temp;
-        BaseState *base;
-        SafeState *note;
-        while (1) {while (1) {safe.wait();
-        if (resize.empty()) {safe.post(); break;}
-        base = resize.front(); resize.pop_front();
-        note = noteup.front(); noteup.pop_front();
-        safe.post(); base->baseres(); if (note) note->post();}
-        while (1) {safe.wait();
-        if (setup.empty()) {safe.post(); break;}
-        base = setup.front(); setup.pop_front();
-        note = noteup.front(); noteup.pop_front();
-        safe.post(); temp = base->basesup(); safe.wait();
-        after.push_back(base); notify.push_back(note);
-        fence.push_back(temp); safe.post();}
-        while (1) {safe.wait();
-        if (sizeup.empty()) {safe.post(); break;}
-        base = sizeup.front(); sizeup.pop_front();
-        note = noteup.front(); noteup.pop_front();
-        safe.post(); temp = base->sizeup(); safe.wait();
-        after.push_back(base); notify.push_back(note);
-        fence.push_back(temp); safe.post();}
-        safe.wait(); if (!fence.empty()) {safe.post(); break;}
-        if (resize.empty() && setup.empty() && sizeup.empty()) {
-        if (done) {safe.post(); return false;} else {safe.post(); wait.wait();}}}
-        return true;
-    }
-    VkFence next() {
-        safe.wait();
-        VkFence temp = fence.front(); fence.pop_front();
-        safe.post(); return temp;
-    }
-    void last() {
-        safe.wait(); BaseState *base = after.front(); after.pop_front();
-        SafeState *note = notify.front(); notify.pop_front(); safe.post();
-        base->baseups(); if (note) note->post(); change->async(1);
-    }
-    template <class Type> bool push(BaseState *base, void *ptr, int loc, int siz, Type max, SafeState *note) {
-        if (!base->push(ptr,loc,siz,max)) return false;
-        safe.wait();
-        sizeup.push_back(base);
-        noteup.push_back(note);
-        safe.post();
+    bool push(bool pass, ThreadEnum tag, BaseState *base, SafeState *ptr, Center *center) {
+        PushState push;
+        push.base = base; push.safe = ptr; push.center = center;
+        if (!pass) {
+        push.tag = FailThread;
+        safe.wait(); before.push_back(push); safe.post();
+        return false;}
+        push.tag = tag;
+        safe.wait(); before.push_back(push); safe.post();
         if (wait.get() == 0) wait.post();
         return true;
     }
-    template <class Type> bool wrap(BaseState *base, void *ptr, int loc, int siz, Type max) {
-        return push(base,ptr,loc,siz,max,0);
+    template <class Type> bool push(BaseState *base, void *ptr, int loc, int siz, Type max,
+        SafeState *safe, Center *center) {
+        return push(base->push(ptr,loc,siz,max),BothThread,base,safe,center);
     }
-    bool push(BaseState *base, void *ptr, int loc, int siz, SafeState *note) {
-        if (!base->push(ptr,loc,siz)) return false;
-        safe.wait();
-        setup.push_back(base);
-        noteup.push_back(note);
-        safe.post();
-        if (wait.get() == 0) wait.post();
-        return true;
+    bool push(BaseState *base, void *ptr, int loc, int siz,
+        SafeState *safe, Center *center) {
+        return push(base->push(ptr,loc,siz),SetThread,base,safe,center);
     }
-    bool wrap(BaseState *base, void *ptr, int loc, int siz) {
-        return push(base,ptr,loc,siz,0);
-    }
-    template <class Type> bool push(BaseState *base, Type size, SafeState *note) {
-        if (!base->push(size)) return false;
-        safe.wait();
-        resize.push_back(base);
-        noteup.push_back(note);
-        safe.post();
-        if (wait.get() == 0) wait.post();
-        return true;
-    }
-    template <class Type> bool wrap(BaseState *base, Type size) {
-        return push(base,size,0);
-    }
-    void push(Center *center) {
-        safe.wait();
-        todo.push_back(center);
-        safe.post();
+    template <class Type> bool push(BaseState *base, Type size,
+        SafeState *safe, Center *center) {
+        return push(base->push(size),SizeThread,base,safe,center);
     }
     void push() {
         safe.wait();
@@ -1041,14 +990,35 @@ struct ThreadState {
         if (wait.get() == 0) wait.post();
         pthread_join(thread,0);
     }
+    bool stage() {
+        while (1) {while (1) {safe.wait();
+        if (before.empty()) {safe.post(); break;}
+        PushState push = before.front(); before.pop_front(); safe.post();
+        switch (push.tag) {default: {std::cerr << "invalid push tag!" << std::endl; exit(-1);}
+        break; case(FailThread): push.fence = VK_NULL_HANDLE; push.base = 0;
+        break; case(SizeThread): push.fence = VK_NULL_HANDLE; push.base->baseres(); push.base = 0;
+        break; case(SetThread): push.fence = push.base->basesup();
+        break; case(BothThread): push.fence = push.base->sizeup();}
+        after.push_back(push);}
+        safe.wait(); if (!after.empty()) {safe.post(); break;}
+        if (before.empty()) {
+        if (done) {safe.post(); return false;}
+        else {safe.post(); wait.wait();}}}
+        return true;
+    }
     static void *separate(void *ptr) {
         struct ThreadState *arg = (ThreadState*)ptr;
         while (arg->stage()) {
-        VkFence fence = arg->next();
-        if (fence != VK_NULL_HANDLE) {
-        VkResult result = vkWaitForFences(arg->device,1,&fence,VK_FALSE,NANOSECONDS);
+        if (arg->after.empty()) {std::cerr << "separate empty after!" << std::endl; exit(-1);}
+        PushState push = arg->after.front(); arg->after.pop_front();
+        if (push.fence != VK_NULL_HANDLE) {
+        VkResult result = vkWaitForFences(arg->device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
-        arg->last();}
+        if (push.base) push.base->baseups();
+        int pass = (push.tag == FailThread ? 0 : 1);
+        arg->change->done(pass, push.center);
+        if (push.safe) push.safe->post();
+        arg->change->async(1);}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -1440,7 +1410,6 @@ struct UniformState : public ItemState {
         return VK_NULL_HANDLE; // return null fence for no wait
     }
     void upset() {
-        if (!change->done()) {std::cerr << "uniform not done!" << std::endl; exit(-1);}
     }
 };
 
@@ -1600,7 +1569,6 @@ struct TextureState : public ItemState {
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
-        if (!change->done()) {std::cerr << "texture not done!" << std::endl; exit(-1);}
     }
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDevice physical, VkPhysicalDeviceProperties properties) {
         VkSampler textureSampler;
@@ -2023,32 +1991,36 @@ extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
-int ChangeState::copy(Center *ptr) {
-    int retval = 0; center.push_back(ptr); ptr->slf = 0;
-    switch (ptr->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-    break; case (Matrixz): {int uloc = ptr->idx*sizeof(Matrix); int usiz = ptr->siz*sizeof(Matrix);
-    if (main->threadState.wrap(main->matrixState.preview(), ptr->mat, uloc, usiz, usiz)) retval++;
-    else {ptr->slf = 1; if (center.size() == 1) {center.pop_front(); wrapDone(ptr);}}}
-    break; case (Texturez): for (int i = 0; i < ptr->siz; i++) {
-    VkExtent2D texExtent; texExtent.width = ptr->tex[i].wid; texExtent.height = ptr->tex[i].hei;
-    if (main->threadState.wrap(main->textureState.preview(),
-    datxVoidz(0,ptr->tex[i].dat), 0, datxVoids(ptr->tex[i].dat), texExtent/*, &safe*/)) {retval++; /* safe.wait();*/}
-    else {ptr->slf = 1; if (center.size() == 1) {center.pop_front(); wrapDone(ptr);}}}
+int ChangeState::copy(Center *center) {
+    int retval = 0;
+    switch (center->mem) {
+    default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+    break; case (Vertexz): {
+    int vloc = center->idx*sizeof(TestVertex); int vsiz = center->siz*sizeof(TestVertex);
+    if (main->threadState.push(main->vertexState.preview(), center->vtx,vloc,vsiz,vsiz,0,center))retval++;}
+    break; case (Matrixz): {
+    int uloc = center->idx*sizeof(Matrix); int usiz = center->siz*sizeof(Matrix);
+    if (main->threadState.push(main->matrixState.preview(),center->mat,uloc,usiz,usiz,0,center)) retval++;}
+    break; case (Texturez): {
+    VkExtent2D texExtent; texExtent.width = center->tex[0].wid; texExtent.height = center->tex[0].hei;
+    if (main->threadState.push(main->textureState.preview(),
+    datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),texExtent,0,center)) retval++;}
     }
     return retval;
 }
-bool ChangeState::done() {
-    bool done = false; while (!center.empty() && (!done || center.front()->slf != 0)) {
-    Center *ptr = center.front(); center.pop_front();
-    if (ptr->slf == 0) done = true; wrapDone(ptr);}
-    return done;
+void ChangeState::done(int pass, Center *ptr) {
+    wrapDone(pass,ptr);
 }
-void vulkanDone(Center *center) {
-    switch (center->mem) {default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
-    case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
-    allocMatrix(&center->mat,0); allocCenter(&center,0); break;
-    case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
-    allocTexture(&center->tex,0); allocCenter(&center,0); break;}
+void vulkanDone(int pass, Center *center) {
+    if (center) switch (center->mem) {
+    default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
+    break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeTestVertex(&center->vtx[i]);
+    allocTestVertex(&center->vtx,0); allocCenter(&center,0);
+    break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
+    allocMatrix(&center->mat,0); allocCenter(&center,0);
+    break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
+    allocTexture(&center->tex,0); allocCenter(&center,0);
+    }
 }
 void updateUniformBuffer(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
     static auto startTime = std::chrono::high_resolution_clock::now();
@@ -2084,40 +2056,41 @@ void ChangeState::test() {
     wrapDone = vulkanDone;
     SafeState safe(0);
 
-    if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe))
+    if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe,0))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
     main->swapState.advance(0); safe.wait();
 
-    if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,&safe))
+    if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,&safe,0))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
     main->pipelineState.advance(MicroTest); safe.wait();
 
-    int vsiz = sizeof(vertices[0]) * vertices.size();
-    if (!main->threadState.push(main->vertexState.preview(),(void*)vertices.data(), 0, vsiz, vsiz, &safe))
-    {std::cerr << "cannot push vertices!" << std::endl; exit(-1);} safe.wait();
+    BindState *single[] = {&main->pipelineState};
+    for (int i = 0; i < main->frames; i++)
+    if (!main->drawState.preview(i)->bind(single, 1) ||
+    !main->threadState.push(main->drawState.preview(i), MicroTest, 0, 0))
+    {std::cerr << "cannot resize draw!" << std::endl; exit(-1);}
+
+    Center *vtx = 0; allocCenter(&vtx,1);
+    vtx->mem = Vertexz; vtx->siz = vertices.size(); allocTestVertex(&vtx->vtx,vtx->siz);
+    for (int i = 0; i < vtx->siz; i++)
+    memcpy(&vtx->vtx[i],&vertices[i],sizeof(TestVertex));
+    copy(vtx);
 
     int isiz = sizeof(indices[0]) * indices.size();
-    if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(), 0, isiz, isiz, &safe))
+    if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(), 0, isiz, isiz, &safe,0))
     {std::cerr << "cannot push indices!" << std::endl; exit(-1);} safe.wait();
 
     Center *tex = 0; allocCenter(&tex,1);
-    tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,1);
+    tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
     copy(tex);
-
-    BindState *single[] = {&main->pipelineState};
-    for (int i = 0; i < main->frames; i++) {
-        if (!main->drawState.preview(i)->bind(single, 1))
-        {std::cerr << "cannot bind draw!" << std::endl; exit(-1);}
-        if (!main->threadState.push(main->drawState.preview(i), MicroTest, &safe))
-        {std::cerr << "cannot push draw!" << std::endl; exit(-1);} safe.wait();}
 
     int count = 0;
     while (!glfwWindowShouldClose(main->windowState.window) && count++ < 1000) {
 
     updateUniformBuffer(main->swapChainExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
     Center *uni = 0; allocCenter(&uni,1);
-    uni->mem = Matrixz; uni->siz = 3; allocMatrix(&uni->mat,3);
+    uni->mem = Matrixz; uni->siz = 3; allocMatrix(&uni->mat,uni->siz);
     memcpy(&uni->mat[0],&model[currentUniform],sizeof(Matrix));
     memcpy(&uni->mat[1],&view[currentUniform],sizeof(Matrix));
     memcpy(&uni->mat[2],&proj[currentUniform],sizeof(Matrix));
@@ -2130,16 +2103,14 @@ void ChangeState::test() {
         &main->indexState,
         &main->pipelineState,
         &main->swapState};
-    int count = 0; while (!main->drawState.buffer()->free()) {
-        if ((++count % 1000) == 0) std::cout << "count " << count << std::endl;
-        glfwWaitEventsTimeout(0.001);}
-    if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        main->threadState.wrap(main->drawState.derived(), 0, 0, static_cast<uint32_t>(indices.size())))
+    if (main->drawState.derived()->check() &&
+        main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+        main->threadState.push(main->drawState.derived(), 0, 0, static_cast<uint32_t>(indices.size()), 0, 0))
         main->drawState.advance();
-    else main->drawState.derived()->free();}
+    else {main->drawState.derived()->free(); glfwWaitEventsTimeout(0.001);}}
 
     main->threadState.push();
-    if (!center.empty()) {std::cerr << "center not done!" << std::endl; exit(-1);}
+    // if (!center.empty()) {std::cerr << "center not done! " << center.size() << " " << center.front() << " " << center.front()->mem << " " << center.front()->slf << std::endl; exit(-1);}
 }
 
 int main() {

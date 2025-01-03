@@ -649,7 +649,7 @@ Center = {
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
-	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
+	{"vtx","TestVertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},

@@ -7,8 +7,8 @@ struct Pierce;
 typedef void (*vftype)(); // init boot main block safe
 typedef int (*zftype)(); // loop
 typedef void (*yftype)(enum Thread proc, enum Phase wait); // phase
-typedef void (*uftype)(struct Center **center); // copy
-typedef void (*wftype)(struct Center *center); // done
+typedef void (*uftype)(struct Center **center); // copy TODO change to Center *center
+typedef void (*wftype)(int pass, struct Center *center); // done
 typedef void (*sftype)(enum Configure hint); // wake
 typedef int (*tftype)(enum Configure cfg); // info
 void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype phase, vftype safe, uftype copy, tftype info);
