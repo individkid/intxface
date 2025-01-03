@@ -1994,7 +1994,7 @@ int ChangeState::copy(Center *center) {
     int iloc = center->idx*sizeof(int32_t); int isiz = center->siz*sizeof(int32_t);
     if (main->threadState.push(main->indexState.preview(),center->ind,iloc,isiz,isiz,center)) retval++;}
     break; case (Vertexz): {
-    int vloc = center->idx*sizeof(TestVertex); int vsiz = center->siz*sizeof(TestVertex);
+    int vloc = center->idx*sizeof(Vertex); int vsiz = center->siz*sizeof(Vertex);
     if (main->threadState.push(main->vertexState.preview(),center->vtx,vloc,vsiz,vsiz,center)) retval++;}
     break; case (Matrixz): {
     int uloc = center->idx*sizeof(Matrix); int usiz = center->siz*sizeof(Matrix);
@@ -2013,8 +2013,8 @@ void vulkanDone(int pass, Center *center) {
     if (center) switch (center->mem) {
     default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
     break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
-    break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeTestVertex(&center->vtx[i]);
-    allocTestVertex(&center->vtx,0); allocCenter(&center,0);
+    break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
+    allocVertex(&center->vtx,0); allocCenter(&center,0);
     break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
     allocMatrix(&center->mat,0); allocCenter(&center,0);
     break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
@@ -2031,20 +2031,20 @@ void updateUniformBuffer(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4
     proj[1][1] *= -1;
 }
 void ChangeState::test() {
-    const std::vector<TestVertex> vertices = {
-        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-        {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},    
+    const std::vector<Vertex> vertices = {
+        {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, 0.5f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{-0.5f, 0.5f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
 
-        {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-        {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-        {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+        {{-0.5f, -0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, -0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{-0.5f, 0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
     };
     const std::vector<uint16_t> indices = {
         0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4
+        4, 5, 6, 6, 7, 4,
     };
     static const int NUM_FRAMES_IN_FLIGHT = 2;
     glm::mat4 model[NUM_FRAMES_IN_FLIGHT];
@@ -2069,9 +2069,9 @@ void ChangeState::test() {
     {main->drawState.preview(i)->free(); glfwWaitEventsTimeout(0.001);}
 
     Center *vtx = 0; allocCenter(&vtx,1);
-    vtx->mem = Vertexz; vtx->siz = vertices.size(); allocTestVertex(&vtx->vtx,vtx->siz);
+    vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
     for (int i = 0; i < vtx->siz; i++)
-    memcpy(&vtx->vtx[i],&vertices[i],sizeof(TestVertex));
+    memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
     copy(vtx);
 
     Center *ind = 0; allocCenter(&ind,1);

@@ -304,17 +304,17 @@ Program = {
 }
 --HERE Constants
 VertexStride = {
-	{"Micro","MicroTest","Int","32"},
+	{"Micro","MicroTest","Int","48"},
 }
 VertexOffset = {
 	{"Micro","MicroTest","Int","0","Int","0"},
-	{"Micro","MicroTest","Int","1","Int","12"},
-	{"Micro","MicroTest","Int","2","Int","24"},
+	{"Micro","MicroTest","Int","1","Int","16"},
+	{"Micro","MicroTest","Int","2","Int","32"},
 }
 VertexFormat = {
 	{"Micro","MicroTest","Int","0","Int","12"},
 	{"Micro","MicroTest","Int","1","Int","12"},
-	{"Micro","MicroTest","Int","2","Int","8"},
+	{"Micro","MicroTest","Int","2","Int","12"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexFlattenG"},
@@ -613,13 +613,9 @@ Numeric = {
 	{"bas","Int32",{},{}}, -- basis selector
 	{"pad","Int32",{},{3}},
 }
-TestVertex = {
-    {"pos","Old",{},{3}},
-    {"color","Old",{},{3}},
-    {"texCoord","Old",{},{2}},
-}
 Vertex = {
 	{"vec","Old",{},{4}}, -- intersection of planes
+	{"ord","Old",{},{4}}, -- coordinate or color
 	{"ref","Int32",{},{4}}, -- backreference to planes
 }
 Vector = {
@@ -649,7 +645,7 @@ Center = {
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
-	{"vtx","TestVertex",{["mem"]={["Vertexz"]=true}},"siz"},
+	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
