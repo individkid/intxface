@@ -2078,8 +2078,6 @@ void ChangeState::test() {
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    /*if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(),0,isiz,isiz,0))
-    {std::cerr << "cannot push indices!" << std::endl; exit(-1);}*/
     copy(ind);
 
     Center *tex = 0; allocCenter(&tex,1);
@@ -2091,12 +2089,12 @@ void ChangeState::test() {
     while (!glfwWindowShouldClose(main->windowState.window) && count++ < 1000) {
 
     updateUniformBuffer(main->swapChainExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
-    Center *uni = 0; allocCenter(&uni,1);
-    uni->mem = Matrixz; uni->siz = 3; allocMatrix(&uni->mat,uni->siz);
-    memcpy(&uni->mat[0],&model[currentUniform],sizeof(Matrix));
-    memcpy(&uni->mat[1],&view[currentUniform],sizeof(Matrix));
-    memcpy(&uni->mat[2],&proj[currentUniform],sizeof(Matrix));
-    if (copy(uni)) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    Center *mat = 0; allocCenter(&mat,1);
+    mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
+    memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
+    memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
+    memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
+    if (copy(mat)) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
 
     BindState *bind[] = {
         &main->matrixState,
