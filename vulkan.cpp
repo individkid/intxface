@@ -940,7 +940,6 @@ struct PushState {
     ThreadEnum tag;
     BaseState *base;
     VkFence fence;
-    SafeState *safe;
     Center *center;
 };
 struct ThreadState {
@@ -959,9 +958,9 @@ struct ThreadState {
         {std::cout << "ThreadState" << std::endl;}
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
-    bool push(bool pass, ThreadEnum tag, BaseState *base, SafeState *ptr, Center *center) {
+    bool push(bool pass, ThreadEnum tag, BaseState *base, Center *center) {
         PushState push;
-        push.base = base; push.safe = ptr; push.center = center;
+        push.base = base; push.center = center;
         if (!pass) {
         push.tag = FailThread;
         safe.wait(); before.push_back(push); safe.post();
@@ -971,17 +970,14 @@ struct ThreadState {
         if (wait.get() == 0) wait.post();
         return true;
     }
-    template <class Type> bool push(BaseState *base, void *ptr, int loc, int siz, Type max,
-        SafeState *safe, Center *center) {
-        return push(base->push(ptr,loc,siz,max),BothThread,base,safe,center);
+    template <class Type> bool push(BaseState *base, void *ptr, int loc, int siz, Type max, Center *center) {
+        return push(base->push(ptr,loc,siz,max),BothThread,base,center);
     }
-    bool push(BaseState *base, void *ptr, int loc, int siz,
-        SafeState *safe, Center *center) {
-        return push(base->push(ptr,loc,siz),SetThread,base,safe,center);
+    bool push(BaseState *base, void *ptr, int loc, int siz, Center *center) {
+        return push(base->push(ptr,loc,siz),SetThread,base,center);
     }
-    template <class Type> bool push(BaseState *base, Type size,
-        SafeState *safe, Center *center) {
-        return push(base->push(size),SizeThread,base,safe,center);
+    template <class Type> bool push(BaseState *base, Type size, Center *center) {
+        return push(base->push(size),SizeThread,base,center);
     }
     void push() {
         safe.wait();
@@ -1017,7 +1013,6 @@ struct ThreadState {
         if (push.base) push.base->baseups();
         int pass = (push.tag == FailThread ? 0 : 1);
         arg->change->done(pass, push.center);
-        if (push.safe) push.safe->post();
         arg->change->async(1);}
         vkDeviceWaitIdle(arg->device);
         return 0;
@@ -1997,14 +1992,14 @@ int ChangeState::copy(Center *center) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
     break; case (Vertexz): {
     int vloc = center->idx*sizeof(TestVertex); int vsiz = center->siz*sizeof(TestVertex);
-    if (main->threadState.push(main->vertexState.preview(), center->vtx,vloc,vsiz,vsiz,0,center))retval++;}
+    if (main->threadState.push(main->vertexState.preview(), center->vtx,vloc,vsiz,vsiz,center))retval++;}
     break; case (Matrixz): {
     int uloc = center->idx*sizeof(Matrix); int usiz = center->siz*sizeof(Matrix);
-    if (main->threadState.push(main->matrixState.preview(),center->mat,uloc,usiz,usiz,0,center)) retval++;}
+    if (main->threadState.push(main->matrixState.preview(),center->mat,uloc,usiz,usiz,center)) retval++;}
     break; case (Texturez): {
     VkExtent2D texExtent; texExtent.width = center->tex[0].wid; texExtent.height = center->tex[0].hei;
     if (main->threadState.push(main->textureState.preview(),
-    datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),texExtent,0,center)) retval++;}
+    datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),texExtent,center)) retval++;}
     }
     return retval;
 }
@@ -2054,21 +2049,20 @@ void ChangeState::test() {
     int currentUniform = 0;
 
     wrapDone = vulkanDone;
-    SafeState safe(0);
 
-    if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,&safe,0))
+    if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,0))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
-    main->swapState.advance(0); safe.wait();
+    main->swapState.advance(0);
 
-    if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,&safe,0))
+    if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,0))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
-    main->pipelineState.advance(MicroTest); safe.wait();
+    main->pipelineState.advance(MicroTest);
 
     BindState *single[] = {&main->pipelineState};
     for (int i = 0; i < main->frames; i++)
-    if (!main->drawState.preview(i)->bind(single, 1) ||
-    !main->threadState.push(main->drawState.preview(i), MicroTest, 0, 0))
-    {std::cerr << "cannot resize draw!" << std::endl; exit(-1);}
+    while (!main->drawState.preview(i)->bind(single, 1) ||
+    !main->threadState.push(main->drawState.preview(i),MicroTest,0))
+    {main->drawState.preview(i)->free(); glfwWaitEventsTimeout(0.001);}
 
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Vertexz; vtx->siz = vertices.size(); allocTestVertex(&vtx->vtx,vtx->siz);
@@ -2077,8 +2071,8 @@ void ChangeState::test() {
     copy(vtx);
 
     int isiz = sizeof(indices[0]) * indices.size();
-    if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(), 0, isiz, isiz, &safe,0))
-    {std::cerr << "cannot push indices!" << std::endl; exit(-1);} safe.wait();
+    if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(),0,isiz,isiz,0))
+    {std::cerr << "cannot push indices!" << std::endl; exit(-1);}
 
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
@@ -2105,12 +2099,11 @@ void ChangeState::test() {
         &main->swapState};
     if (main->drawState.derived()->check() &&
         main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        main->threadState.push(main->drawState.derived(), 0, 0, static_cast<uint32_t>(indices.size()), 0, 0))
+        main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),0))
         main->drawState.advance();
     else {main->drawState.derived()->free(); glfwWaitEventsTimeout(0.001);}}
 
     main->threadState.push();
-    // if (!center.empty()) {std::cerr << "center not done! " << center.size() << " " << center.front() << " " << center.front()->mem << " " << center.front()->slf << std::endl; exit(-1);}
 }
 
 int main() {
