@@ -1083,7 +1083,6 @@ struct SwapState : public BaseState {
     VkSwapchainKHR getSwapChain() {return swapChain;}
     VkFramebuffer getSwapChainFramebuffer(int i) {return swapChainFramebuffers[i];}
     VkExtent2D getSwapChainExtent() {return size.capabilities.currentExtent;}
-    VkSurfaceCapabilitiesKHR getCapabilities() {return size.capabilities;}
     void resize() {
         swapChain = createSwapChain(surface,device,getSwapChainExtent(),surfaceFormat,presentMode,
             size.capabilities,graphicsFamily,presentFamily);
@@ -1315,8 +1314,8 @@ struct PipelineState : public BaseState {
             attributeDescription.location = i;
             switch (VertexFormat__Micro__Int__Int(micro)(i)) {
             default: {std::cerr << "invalid vertex format!" << std::endl; exit(-1);}
-            case (12): attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT; break;
-            case (8): attributeDescription.format = VK_FORMAT_R32G32_SFLOAT; break;}
+            case (109): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
+            case (107): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
             attributeDescription.offset = VertexOffset__Micro__Int__Int(micro)(i);
             attributeDescriptions.push_back(attributeDescription);}
         vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());

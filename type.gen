@@ -317,9 +317,9 @@ VertexOffset = {
 	{"Micro","MicroTest","Int","2","Int","32"},
 }
 VertexFormat = {
-	{"Micro","MicroTest","Int","0","Int","12"},
-	{"Micro","MicroTest","Int","1","Int","12"},
-	{"Micro","MicroTest","Int","2","Int","12"},
+	{"Micro","MicroTest","Int","0","Int","109"},
+	{"Micro","MicroTest","Int","1","Int","109"},
+	{"Micro","MicroTest","Int","2","Int","107"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexFlattenG"},
