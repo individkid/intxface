@@ -45,6 +45,10 @@ Memory = {
 	"Littlez", -- little machine lines
 	"Configurez", -- configure to value
 }
+Async = {
+	"FenceAsync",
+	"ResizeAsync",
+}
 Configure = {
 	"TriangleSize", -- refers to corners
 	"TriangleBase", --
@@ -77,6 +81,7 @@ Configure = {
 	"RegisterInit", -- thread testing mask
 	"RegisterPlan", -- thread testing plan
 	"RegisterPoll", -- poll second thousandths
+	"RegisterMask", -- async event mask
 	"ResultLine", -- state of machine
 	"ResultHint", -- argument from graphics
 	"ResultType", -- type of eval result
