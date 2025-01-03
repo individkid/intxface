@@ -471,9 +471,9 @@ enum SizeEnum {
 struct SizeState {
     SizeEnum tag;
     int size;
-    VkSurfaceCapabilitiesKHR capabilities;
     VkExtent2D extent;
     Micro micro;
+    VkSurfaceCapabilitiesKHR capabilities;
     SizeState() {
         tag = IntSize;
         size = 0;
@@ -490,10 +490,9 @@ struct SizeState {
         tag = MicroSize;
         this->micro = micro;
     }
-    SizeState(VkSurfaceCapabilitiesKHR capabilities, VkExtent2D extent) {
+    SizeState(VkSurfaceCapabilitiesKHR capabilities) {
         tag = SwapSize;
         this->capabilities = capabilities;
-        this->extent = extent;
     }
     bool operator==(const SizeState &other) const {
         if (tag == IntSize && other.tag == IntSize &&
@@ -504,10 +503,8 @@ struct SizeState {
         if (tag == MicroSize && other.tag == MicroSize &&
         micro == other.micro) return true;
         if (tag == SwapSize && other.tag == SwapSize &&
-        capabilities.maxImageExtent.width == other.capabilities.maxImageExtent.width &&
-        capabilities.maxImageExtent.height == other.capabilities.maxImageExtent.height &&
-        extent.width == other.extent.width &&
-        extent.height == other.extent.height) return true;
+        capabilities.currentExtent.width == other.capabilities.currentExtent.width &&
+        capabilities.currentExtent.height == other.capabilities.currentExtent.height) return true;
         return false;
     }
 };
@@ -515,7 +512,8 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     switch (size.tag) {default: os << "MicroSize()"; break;
     case (IntSize): os << "IntSize(" << size.size << ")"; break;
     case (ExtentSize): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
-    case (MicroSize): os << "MicroSize(" << size.micro << ")"; break;}
+    case (MicroSize): os << "MicroSize(" << size.micro << ")"; break;
+    case (SwapSize): os << "SwapSize(" << size.capabilities.currentExtent.width << "," << size.capabilities.currentExtent.height << ")"; break;}
     return os;
 }
 
@@ -1084,20 +1082,20 @@ struct SwapState : public BaseState {
     ~SwapState() {push(0); baseres(); std::cout << "~SwapState" << std::endl;}
     VkSwapchainKHR getSwapChain() {return swapChain;}
     VkFramebuffer getSwapChainFramebuffer(int i) {return swapChainFramebuffers[i];}
-    VkExtent2D getSwapChainExtent() {return size.extent;}
+    VkExtent2D getSwapChainExtent() {return size.capabilities.currentExtent;}
     VkSurfaceCapabilitiesKHR getCapabilities() {return size.capabilities;}
     void resize() {
-        swapChain = createSwapChain(surface,device,size.extent,surfaceFormat,presentMode,
+        swapChain = createSwapChain(surface,device,getSwapChainExtent(),surfaceFormat,presentMode,
             size.capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
         swapChainImageViews.resize(swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
         swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-        createImage(device, physical, size.extent.width, size.extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,
-            /*output*/ depthImage, depthImageMemory);
+        createImage(device, physical, getSwapChainExtent().width, getSwapChainExtent().height, depthFormat,
+            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            memProperties,/*output*/ depthImage, depthImageMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffers(device,size.extent,renderPass,swapChainImageViews,depthImageView,swapChainFramebuffers);
+        createFramebuffers(device,getSwapChainExtent(),renderPass,swapChainImageViews,depthImageView,swapChainFramebuffers);
     }
     void unsize() {
         int width = 0, height = 0;
@@ -1963,8 +1961,7 @@ struct MainState {
     ArrayState<BufferState,frames> indexState;
     ArrayState<TextureState,frames> textureState;
     ArrayState<DrawState,frames> drawState;
-    VkSurfaceCapabilitiesKHR capabilities;
-    VkExtent2D swapChainExtent;
+    SizeState sizeState;
     MainState() :
         changeState(this),
         windowState(&changeState),
@@ -1986,13 +1983,13 @@ struct MainState {
         indexState("IndexBind",IndexBind,Memorys,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
         drawState("DrawBind",DrawBind,Memorys),
-        capabilities(findCapabilities(vulkanState.surface,physicalState.device)),
-        swapChainExtent(chooseSwapExtent(windowState.window,capabilities)) {
+        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {
         vulkanTest(); // TODO call changeState.loop()
     }
-    static VkSurfaceCapabilitiesKHR findCapabilities(VkSurfaceKHR surface, VkPhysicalDevice device) {
+    static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
+        capabilities.currentExtent = chooseSwapExtent(window,capabilities);
         return capabilities;
     }
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
@@ -2053,7 +2050,7 @@ struct MainState {
 
         changeState.wrapDone = vulkanDone;
 
-        if (!threadState.push(swapState.preview(0),SizeState(capabilities,swapChainExtent),0))
+        if (!threadState.push(swapState.preview(0),sizeState,0))
         {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
         swapState.advance(0);
 
@@ -2089,12 +2086,11 @@ struct MainState {
 
         if (changeState.read(RegisterMask) & (1<<ResizeAsync)) {
         changeState.wotc(RegisterMask,(1<<ResizeAsync));
-        capabilities = findCapabilities(vulkanState.surface,physicalState.device);
-        swapChainExtent = chooseSwapExtent(windowState.window,capabilities);
-        while (!threadState.push(swapState.preview(0),SizeState(capabilities,swapChainExtent),0)) glfwWaitEventsTimeout(0.001);
+        sizeState = SizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device));
+        while (!threadState.push(swapState.preview(0),sizeState,0)) glfwWaitEventsTimeout(0.001);
         swapState.advance(0);}
 
-        updateUniformBuffer(swapChainExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
+        updateUniformBuffer(sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
         Center *mat = 0; allocCenter(&mat,1);
         mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
         memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
