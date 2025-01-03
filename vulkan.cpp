@@ -1757,10 +1757,15 @@ struct DrawState : public BaseState {
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
             vkResetFences(device, 1, &fence);
             vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-            updateUniformDescriptor(device,get(BindEnums,Matrixz)->getBuffer(),0,
+            for (int i = 0; MemoryBinding__Micro__Int__Memory(size.micro)(i) != Memorys; i++)
+            switch (MemoryBinding__Micro__Int__Memory(size.micro)(i)) {
+            default: {std::cerr << "unsupported update memory!" << std::endl; exit(-1);}
+            break; case (Matrixz): updateUniformDescriptor(device,
+                get(BindEnums,Matrixz)->getBuffer(),i,
                 get(BindEnums,Matrixz)->getRange(),descriptorSet);
-            updateTextureDescriptor(device,get(BindEnums,Texturez)->getTextureImageView(),
-                get(BindEnums,Texturez)->getTextureSampler(),1,descriptorSet);
+            break; case (Texturez): updateTextureDescriptor(device,
+                get(BindEnums,Texturez)->getTextureImageView(),
+                get(BindEnums,Texturez)->getTextureSampler(),i,descriptorSet);}
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex),
                 get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),

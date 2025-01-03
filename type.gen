@@ -322,6 +322,11 @@ VertexFile = {
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 }
+MemoryBinding = {
+	{"Micro","MicroTest","Int","0","Memory","Matrixz"},
+	{"Micro","MicroTest","Int","1","Memory","Texturez"},
+	{"Micro","MicroTest","Int","2","Memory","Memorys"},
+}
 Bootstrap = {
 	{"Int","0","Str","Force(num:5".. -- assign to configuration
 		"cfg[0]:WindowWide"..
