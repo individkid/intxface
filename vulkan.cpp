@@ -331,7 +331,7 @@ struct LogicalState {
     VkDevice device;
     VkQueue graphics;
     VkQueue present;
-    VkCommandPool pool;
+    VkCommandPool commandPool;
     VkFormat imageFormat;
     VkFormat depthFormat;
     VkRenderPass renderPass;
@@ -341,7 +341,7 @@ struct LogicalState {
         device(createDevice(physicalDevice,graphicsFamily,presentFamily,validationLayers,deviceExtensions)),
         graphics(createQueue(device,graphicsFamily)),
         present(createQueue(device,presentFamily)),
-        pool(createCommandPool(device,graphicsFamily)),
+        commandPool(createCommandPool(device,graphicsFamily)),
         imageFormat(surfaceFormat.format),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
             VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
@@ -350,7 +350,7 @@ struct LogicalState {
     ~LogicalState() {
         std::cout << "~LogicalState" << std::endl;
         vkDestroyRenderPass(device, renderPass, nullptr);
-        vkDestroyCommandPool(device, pool, nullptr);
+        vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
     }
     static VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
@@ -538,7 +538,7 @@ struct BindState {
     static VkFormat depthFormat;
     static VkDevice device;
     static VkRenderPass renderPass;
-    static VkCommandPool pool;
+    static VkCommandPool commandPool;
     static int frames;
     static int micro;
     static ChangeState *change;
@@ -573,7 +573,7 @@ struct BindState {
     }
     BindState(const char *n, VkCommandPool pool, int frames) : name(n) {
         BindState::self = this;
-        BindState::pool = pool;
+        BindState::commandPool = pool;
         BindState::frames = frames;
         BindState::micro = 0;
         BindState::debug = 0;
@@ -629,7 +629,7 @@ VkFormat BindState::imageFormat;
 VkFormat BindState::depthFormat;
 VkDevice BindState::device;
 VkRenderPass BindState::renderPass;
-VkCommandPool BindState::pool;
+VkCommandPool BindState::commandPool;
 int BindState::frames;
 int BindState::micro;
 VkPhysicalDevice BindState::physical;
@@ -1435,7 +1435,7 @@ struct BufferState : public ItemState {
     const VkDevice device;
     const VkPhysicalDevice physical;
     const VkQueue graphics;
-    const VkCommandPool pool;
+    const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkBufferUsageFlags flags;
     VkBuffer buffer;
@@ -1448,7 +1448,7 @@ struct BufferState : public ItemState {
     BufferState() :
         ItemState("BufferState",BindState::self),
         device(BindState::device), physical(BindState::physical),
-        graphics(BindState::graphics), pool(BindState::pool),
+        graphics(BindState::graphics), commandPool(BindState::commandPool),
         memProperties(BindState::memProperties), flags(BindState::flags)
         {std::cout << "BufferState" << std::endl;}
     ~BufferState() {push(0); baseres(); std::cout << "~BufferState" << std::endl;}
@@ -1458,13 +1458,13 @@ struct BufferState : public ItemState {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, bufferMemory);
-        commandBuffer = createCommandBuffer(device,pool);
+        commandBuffer = createCommandBuffer(device,commandPool);
         fence = createFence(device);
     }
     void unsize() {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
         if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
-        vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeMemory(device, bufferMemory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
@@ -1511,7 +1511,7 @@ struct TextureState : public ItemState {
     const VkPhysicalDevice physical;
     const VkPhysicalDeviceProperties properties;
     const VkQueue graphics;
-    const VkCommandPool pool;
+    const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     ChangeState *change;
     VkImage textureImage;
@@ -1530,7 +1530,7 @@ struct TextureState : public ItemState {
     TextureState() :
         ItemState("TextureState",BindState::self),
         device(BindState::device), physical(BindState::physical),
-        properties(BindState::properties), graphics(BindState::graphics), pool(BindState::pool),
+        properties(BindState::properties), graphics(BindState::graphics), commandPool(BindState::commandPool),
         memProperties(BindState::memProperties), change(BindState::change)
         {std::cout << "TextureState" << std::endl;}
     ~TextureState() {push(0); baseres(); std::cout << "~TextureState" << std::endl;}
@@ -1543,10 +1543,10 @@ struct TextureState : public ItemState {
         VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         memProperties, /*output*/ textureImage, textureImageMemory);
         textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-        textureSampler = createTextureSampler(device,physical,properties);
-        beforeBuffer = createCommandBuffer(device,pool);
-        commandBuffer = createCommandBuffer(device,pool);
-        afterBuffer = createCommandBuffer(device,pool);
+        textureSampler = createTextureSampler(device,properties);
+        beforeBuffer = createCommandBuffer(device,commandPool);
+        commandBuffer = createCommandBuffer(device,commandPool);
+        afterBuffer = createCommandBuffer(device,commandPool);
         beforeSemaphore = createSemaphore(device);
         afterSemaphore = createSemaphore(device);
         fence = createFence(device);
@@ -1556,9 +1556,9 @@ struct TextureState : public ItemState {
         if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
         if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
         if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
-        vkFreeCommandBuffers(device, pool, 1, &afterBuffer);
-        vkFreeCommandBuffers(device, pool, 1, &commandBuffer);
-        vkFreeCommandBuffers(device, pool, 1, &beforeBuffer);
+        vkFreeCommandBuffers(device, commandPool, 1, &afterBuffer);
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(device, commandPool, 1, &beforeBuffer);
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, textureImageView, nullptr);
         vkDestroyImage(device, textureImage, nullptr);
@@ -1578,7 +1578,7 @@ struct TextureState : public ItemState {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetCommandBuffer(afterBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
-        copyTextureImage(device, physical, graphics, pool, memProperties, textureImage, texWidth, texHeight,
+        copyTextureImage(device, graphics, memProperties, textureImage, texWidth, texHeight,
             beforeSemaphore, afterSemaphore, fence,
             stagingBuffer, beforeBuffer, commandBuffer, afterBuffer);
         return fence;
@@ -1588,7 +1588,7 @@ struct TextureState : public ItemState {
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
-    static VkSampler createTextureSampler(VkDevice device, VkPhysicalDevice physical, VkPhysicalDeviceProperties properties) {
+    static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties) {
         VkSampler textureSampler;
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1660,7 +1660,7 @@ struct TextureState : public ItemState {
         vkQueueSubmit(graphics, 1, &submitInfo, fenceOut);
         if (semaphoreOut == VK_NULL_HANDLE) vkQueueWaitIdle(graphics);
     }
-    static void copyTextureImage(VkDevice device, VkPhysicalDevice physical, VkQueue graphics, VkCommandPool pool,
+    static void copyTextureImage(VkDevice device, VkQueue graphics,
         VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
         VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence, VkBuffer stagingBuffer,
         VkCommandBuffer beforeBuffer, VkCommandBuffer commandBuffer, VkCommandBuffer afterBuffer) {
@@ -1709,7 +1709,7 @@ struct DrawState : public BaseState {
     const VkRenderPass renderPass;
     const VkQueue graphics;
     const VkQueue present;
-    const VkCommandPool pool;
+    const VkCommandPool commandPool;
     const int frames;
     ChangeState *change;
     VkCommandBuffer commandBuffer;
@@ -1727,7 +1727,7 @@ struct DrawState : public BaseState {
         renderPass(BindState::renderPass),
         graphics(BindState::graphics),
         present(BindState::present),
-        pool(BindState::pool),
+        commandPool(BindState::commandPool),
         frames(BindState::frames),
         change(BindState::change),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
@@ -1758,7 +1758,7 @@ struct DrawState : public BaseState {
         descriptorPool = get(PipelineBind,Memorys)->getDescriptorPool();
         descriptorLayout = get(PipelineBind,Memorys)->getDescriptorSetLayout(); free();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
-        commandBuffer = createCommandBuffer(device,pool);
+        commandBuffer = createCommandBuffer(device,commandPool);
         beforeSemaphore = createSemaphore(device);
         afterSemaphore = createSemaphore(device);
         fence = createFence(device);
@@ -1975,7 +1975,7 @@ struct MainState {
             physicalState.surfaceFormat,physicalState.presentMode,
             physicalState.graphicsFamily,physicalState.presentFamily,logicalState.imageFormat,
             logicalState.depthFormat,logicalState.renderPass,physicalState.memProperties),
-        pipelineState("PipelineBind",PipelineBind,Memorys,logicalState.pool,frames),
+        pipelineState("PipelineBind",PipelineBind,Memorys,logicalState.commandPool,frames),
         matrixState("Matrixz",BindEnums,Matrixz,&changeState),
         vertexState("Vertexz",BindEnums,Vertexz,
             logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
