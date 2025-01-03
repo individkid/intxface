@@ -42,7 +42,6 @@ struct ChangeState {
     void loop();
     int copy(Center *);
     void done(int pass, Center *);
-    void test();
 };
 
 // TODO define glfw callbacks that cast void* to ChangeState*
@@ -1700,7 +1699,7 @@ struct DrawState : public BaseState {
     InitState<int, ConstState<int>, BindEnums+Memorys> bufidx; int bufsiz;
     DrawState() :
         BaseState("DrawState"),
-        device(BindState::device), 
+        device(BindState::device),
         renderPass(BindState::renderPass),
         graphics(BindState::graphics),
         present(BindState::present),
@@ -1955,7 +1954,7 @@ struct MainState {
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
         drawState("DrawBind",DrawBind,Memorys),
         swapChainExtent(chooseSwapExtent(windowState.window,physicalState.capabilities)) {
-        changeState.test(); // TODO move to builtin test triggered by copy to Configure
+        vulkanTest(); // TODO call changeState.loop()
     }
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
@@ -1970,6 +1969,108 @@ struct MainState {
         actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
         actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
         return actualExtent;}
+    }
+    static void vulkanDone(int pass, Center *center) {
+        if (center) switch (center->mem) {
+        default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
+        break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
+        break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
+        allocVertex(&center->vtx,0); allocCenter(&center,0);
+        break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
+        allocMatrix(&center->mat,0); allocCenter(&center,0);
+        break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
+        allocTexture(&center->tex,0); allocCenter(&center,0);
+        }
+    }
+    static void updateUniformBuffer(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+        model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
+        proj[1][1] *= -1;
+    }
+    void vulkanTest() {
+        const std::vector<Vertex> vertices = {
+            {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+            {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+            {{0.5f, 0.5f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+            {{-0.5f, 0.5f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+
+            {{-0.5f, -0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+            {{0.5f, -0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+            {{0.5f, 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+            {{-0.5f, 0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        };
+        const std::vector<uint16_t> indices = {
+            0, 1, 2, 2, 3, 0,
+            4, 5, 6, 6, 7, 4,
+        };
+        static const int NUM_FRAMES_IN_FLIGHT = 2;
+        glm::mat4 model[NUM_FRAMES_IN_FLIGHT];
+        glm::mat4 view[NUM_FRAMES_IN_FLIGHT];
+        glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
+        int currentUniform = 0;
+
+        changeState.wrapDone = vulkanDone;
+
+        if (!threadState.push(swapState.preview(0),swapChainExtent,0))
+        {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
+        swapState.advance(0);
+
+        if (!threadState.push(pipelineState.preview(MicroTest),MicroTest,0))
+        {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
+        pipelineState.advance(MicroTest);
+
+        BindState *single[] = {&pipelineState};
+        for (int i = 0; i < frames; i++)
+        while (!drawState.preview(i)->bind(single, 1) ||
+        !threadState.push(drawState.preview(i),MicroTest,0))
+        {drawState.preview(i)->free(); glfwWaitEventsTimeout(0.001);}
+
+        Center *vtx = 0; allocCenter(&vtx,1);
+        vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
+        for (int i = 0; i < vtx->siz; i++)
+        memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
+        changeState.copy(vtx);
+
+        Center *ind = 0; allocCenter(&ind,1);
+        int isiz = indices.size()*sizeof(uint16_t);
+        ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
+        memcpy(ind->ind,indices.data(),isiz);
+        changeState.copy(ind);
+
+        Center *tex = 0; allocCenter(&tex,1);
+        tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
+        fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
+        changeState.copy(tex);
+
+        int count = 0;
+        while (!glfwWindowShouldClose(windowState.window) && count++ < 1000) {
+
+        updateUniformBuffer(swapChainExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
+        Center *mat = 0; allocCenter(&mat,1);
+        mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
+        memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
+        memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
+        memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
+        if (changeState.copy(mat)) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+
+        BindState *bind[] = {
+            &matrixState,
+            &textureState,
+            &vertexState,
+            &indexState,
+            &pipelineState,
+            &swapState};
+        if (drawState.derived()->check() &&
+            drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+            threadState.push(drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),0))
+            drawState.advance();
+        else {drawState.derived()->free(); glfwWaitEventsTimeout(0.001);}}
+
+        threadState.push();
     }
 };
 
@@ -2008,108 +2109,6 @@ int ChangeState::copy(Center *center) {
 }
 void ChangeState::done(int pass, Center *ptr) {
     wrapDone(pass,ptr);
-}
-void vulkanDone(int pass, Center *center) {
-    if (center) switch (center->mem) {
-    default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
-    break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
-    break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
-    allocVertex(&center->vtx,0); allocCenter(&center,0);
-    break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
-    allocMatrix(&center->mat,0); allocCenter(&center,0);
-    break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
-    allocTexture(&center->tex,0); allocCenter(&center,0);
-    }
-}
-void updateUniformBuffer(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
-    static auto startTime = std::chrono::high_resolution_clock::now();
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-    proj[1][1] *= -1;
-}
-void ChangeState::test() {
-    const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, 0.5f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{-0.5f, 0.5f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-
-        {{-0.5f, -0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, -0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{-0.5f, 0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-    };
-    const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4,
-    };
-    static const int NUM_FRAMES_IN_FLIGHT = 2;
-    glm::mat4 model[NUM_FRAMES_IN_FLIGHT];
-    glm::mat4 view[NUM_FRAMES_IN_FLIGHT];
-    glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
-    int currentUniform = 0;
-
-    wrapDone = vulkanDone;
-
-    if (!main->threadState.push(main->swapState.preview(0),main->swapChainExtent,0))
-    {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
-    main->swapState.advance(0);
-
-    if (!main->threadState.push(main->pipelineState.preview(MicroTest),MicroTest,0))
-    {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
-    main->pipelineState.advance(MicroTest);
-
-    BindState *single[] = {&main->pipelineState};
-    for (int i = 0; i < main->frames; i++)
-    while (!main->drawState.preview(i)->bind(single, 1) ||
-    !main->threadState.push(main->drawState.preview(i),MicroTest,0))
-    {main->drawState.preview(i)->free(); glfwWaitEventsTimeout(0.001);}
-
-    Center *vtx = 0; allocCenter(&vtx,1);
-    vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
-    for (int i = 0; i < vtx->siz; i++)
-    memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
-    copy(vtx);
-
-    Center *ind = 0; allocCenter(&ind,1);
-    int isiz = indices.size()*sizeof(uint16_t);
-    ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
-    memcpy(ind->ind,indices.data(),isiz);
-    copy(ind);
-
-    Center *tex = 0; allocCenter(&tex,1);
-    tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
-    fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    copy(tex);
-
-    int count = 0;
-    while (!glfwWindowShouldClose(main->windowState.window) && count++ < 1000) {
-
-    updateUniformBuffer(main->swapChainExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
-    Center *mat = 0; allocCenter(&mat,1);
-    mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
-    memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
-    memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
-    memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
-    if (copy(mat)) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
-
-    BindState *bind[] = {
-        &main->matrixState,
-        &main->textureState,
-        &main->vertexState,
-        &main->indexState,
-        &main->pipelineState,
-        &main->swapState};
-    if (main->drawState.derived()->check() &&
-        main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),0))
-        main->drawState.advance();
-    else {main->drawState.derived()->free(); glfwWaitEventsTimeout(0.001);}}
-
-    main->threadState.push();
 }
 
 int main() {
