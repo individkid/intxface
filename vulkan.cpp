@@ -1990,9 +1990,12 @@ int ChangeState::copy(Center *center) {
     int retval = 0;
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+    break; case (Indexz): {
+    int iloc = center->idx*sizeof(int32_t); int isiz = center->siz*sizeof(int32_t);
+    if (main->threadState.push(main->indexState.preview(),center->ind,iloc,isiz,isiz,center)) retval++;}
     break; case (Vertexz): {
     int vloc = center->idx*sizeof(TestVertex); int vsiz = center->siz*sizeof(TestVertex);
-    if (main->threadState.push(main->vertexState.preview(), center->vtx,vloc,vsiz,vsiz,center))retval++;}
+    if (main->threadState.push(main->vertexState.preview(),center->vtx,vloc,vsiz,vsiz,center)) retval++;}
     break; case (Matrixz): {
     int uloc = center->idx*sizeof(Matrix); int usiz = center->siz*sizeof(Matrix);
     if (main->threadState.push(main->matrixState.preview(),center->mat,uloc,usiz,usiz,center)) retval++;}
@@ -2009,6 +2012,7 @@ void ChangeState::done(int pass, Center *ptr) {
 void vulkanDone(int pass, Center *center) {
     if (center) switch (center->mem) {
     default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
+    break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
     break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeTestVertex(&center->vtx[i]);
     allocTestVertex(&center->vtx,0); allocCenter(&center,0);
     break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
@@ -2070,9 +2074,13 @@ void ChangeState::test() {
     memcpy(&vtx->vtx[i],&vertices[i],sizeof(TestVertex));
     copy(vtx);
 
-    int isiz = sizeof(indices[0]) * indices.size();
-    if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(),0,isiz,isiz,0))
-    {std::cerr << "cannot push indices!" << std::endl; exit(-1);}
+    Center *ind = 0; allocCenter(&ind,1);
+    int isiz = indices.size()*sizeof(uint16_t);
+    ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
+    memcpy(ind->ind,indices.data(),isiz);
+    /*if (!main->threadState.push(main->indexState.preview(),(void*)indices.data(),0,isiz,isiz,0))
+    {std::cerr << "cannot push indices!" << std::endl; exit(-1);}*/
+    copy(ind);
 
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
