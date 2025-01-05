@@ -723,15 +723,14 @@ enum BaseEnum {
     BaseEnums
 };
 struct BaseState {
-    BaseEnum state;
+    SafeState safe; int count; BaseEnum state;
+    // following indirectly protected by state/count that are directly protected by safe
+    // only one ThreadState acts on BaseState with reserved state/count
     SizeState size, todo;
     void *ptr; int loc; int siz;
-    SafeState safe; int count;
     char debug[64];
-    BaseState() : state(InitBase), size(0), todo(0), safe(1), count(0) {
-        debug[0] = 0;
-    }
-    BaseState(const char *name) : state(InitBase), size(0), todo(0), safe(1), count(0) {
+    BaseState() : safe(1), count(0), state(InitBase), size(0), todo(0), debug{0} {}
+    BaseState(const char *name) : safe(1), count(0), state(InitBase), size(0), todo(0), debug{0} {
         sprintf(debug,"%s%d",name,BindState::debug++);
     }
     bool push(void *ptr, int loc, int siz, SizeState max) { // called in main thread
@@ -747,11 +746,10 @@ struct BaseState {
     VkFence sizeup() { // called in separate thread
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
-        safe.post();
         if (size == todo); else {
-        if (size == SizeState(0)); else unsize();
-        if ((size = todo) == SizeState(0)); else {std::cout << "sizeup resize " << debug << " " << size << std::endl; resize();}}
-        safe.wait();
+        if (size == SizeState(0)); else {safe.post(); unsize(); safe.wait();}
+        if ((size = todo) == SizeState(0)); else {std::cout << "sizeup resize " << debug << " " << size << std::endl;
+        safe.post(); resize(); safe.wait();}}
         state = NextBase;
         safe.post();
         return setup(ptr,loc,siz);
@@ -768,16 +766,15 @@ struct BaseState {
     void baseres() { // called in separate thread
         safe.wait();
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
-        safe.post();
         if (size == todo); else {
-        if (size == SizeState(0)); else unsize();
-        if ((size = todo) == SizeState(0)); else {std::cout << "baseres resize " << debug << " " << size << std::endl; resize();}}
-        safe.wait();
+        if (size == SizeState(0)); else {safe.post(); unsize(); safe.wait();}
+        if ((size = todo) == SizeState(0)); else {std::cout << "baseres resize " << debug << " " << size << std::endl;
+        safe.post(); resize(); safe.wait();}}
         state = FreeBase;
         safe.post();
     }
-    virtual void unsize() = 0;
-    virtual void resize() = 0;
+    virtual void unsize() = 0; // consumes time
+    virtual void resize() = 0; // consumes time
     bool push(void *ptr, int loc, int siz) { // called in main thread
         safe.wait();
         if (state != FreeBase || count > 0) {safe.post(); return false;}
@@ -793,37 +790,29 @@ struct BaseState {
         safe.post();
         return setup(ptr,loc,siz);
     }
-    virtual VkFence setup(void *ptr, int loc, int siz) = 0;
+    virtual VkFence setup(void *ptr, int loc, int siz) = 0; // consumes time
     virtual void baseups() { // called in separate thread
         safe.wait();
         if (state != NextBase) {std::cerr << "upset invalid state!" << std::endl; exit(-1);}
-        safe.post();
         // if (bind) bind->advance();
-        upset();
-        safe.wait();
+        safe.post(); upset(); safe.wait();
         state = FreeBase;
         safe.post();
     }
-    virtual void upset() = 0;
-    bool take() {
+    virtual void upset() = 0; // consumes time
+    bool take() { // called in main thread by different BaseState
         safe.wait();
         if (state != FreeBase) {safe.post(); return false;}
         count += 1;
         safe.post();
         return true;
     }
-    void give() {
+    void give() { // called in main thread by different BaseState
         safe.wait();
         if (state != FreeBase) {std::cerr << "invalid give state!" << std::endl; exit(-1);}
         if (count <= 0) {std::cerr << "invalid free count! " << debug << std::endl; exit(-1);}
         count -= 1;
         safe.post();
-    }
-    bool check() {
-        safe.wait();
-        if (state != FreeBase) {safe.post(); return false;}
-        safe.post();
-        return true;
     }
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual VkFramebuffer getSwapChainFramebuffer(int i) {std::cerr << "BaseState::swapChainFramebuffer" << std::endl; exit(-1);}
@@ -1737,9 +1726,9 @@ struct DrawState : public BaseState {
         {std::cout << "DrawState " << debug << std::endl;}
     ~DrawState() {push(0); baseres(); std::cout << "~DrawState " << debug << std::endl;}
     bool bind(BindState **ary, int siz) {
-        // choose latest of each in BindBase state
         safe.wait();
-        if (bufsiz != 0) {safe.post(); return false;}
+        // must check both state and bufsiz because might be bound but not pushed
+        if ((state != InitBase && state != FreeBase) || bufsiz != 0) {safe.post(); return false;}
         for (int i = 0; i < siz; i++) {
         bufidx[i] = ary[i]->index();
         bufptr[bufidx[i]] = ary[i]->buffer();
@@ -1749,7 +1738,7 @@ struct DrawState : public BaseState {
         safe.post();
         return pass;
     }
-    void free() {
+    void bind() {
         safe.wait();
         for (int i = 0; i < bufsiz; i++)
         bufptr[bufidx[i]]->give();
@@ -1763,7 +1752,7 @@ struct DrawState : public BaseState {
     }
     void resize() {
         descriptorPool = get(PipelineBind,Memorys)->getDescriptorPool();
-        descriptorLayout = get(PipelineBind,Memorys)->getDescriptorSetLayout(); free();
+        descriptorLayout = get(PipelineBind,Memorys)->getDescriptorSetLayout(); bind();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
         beforeSemaphore = createSemaphore(device);
@@ -1808,7 +1797,7 @@ struct DrawState : public BaseState {
         return VK_NULL_HANDLE;
     }
     void upset() {
-        free();
+        bind();
     }
     static VkDescriptorSet createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
         VkDescriptorSetLayout descriptorSetLayout, int frames) {
@@ -2066,7 +2055,7 @@ struct MainState {
         for (int i = 0; i < frames; i++)
         while (!drawState.preview(i)->bind(single, 1) ||
         !threadState.push(drawState.preview(i),SizeState(MicroTest),0))
-        {drawState.preview(i)->free(); glfwWaitEventsTimeout(0.001);}
+        {drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
 
         Center *vtx = 0; allocCenter(&vtx,1);
         vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
@@ -2109,11 +2098,10 @@ struct MainState {
             &indexState,
             &pipelineState,
             &swapState};
-        if (drawState.derived()->check() &&
-            drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+        if (drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
             threadState.push(drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),0))
             drawState.advance();
-        else {drawState.derived()->free(); glfwWaitEventsTimeout(0.001);}}
+        else {drawState.derived()->bind(); glfwWaitEventsTimeout(0.001);}}
 
         threadState.push();
     }
@@ -2150,10 +2138,14 @@ void ChangeState::done(int pass, Center *ptr) {
 MainState *ptr;
 int vulkanCopy(Center *center) {return ptr->changeState.copy(center);}
 void vulkanCall(Configure cfg, Configured typ, xftype fnc) {ptr->changeState.call(cfg,typ,fnc);}
+void *vulkanTest(void *) {ptr->vulkanTest(); return 0;}
 
 int main() {
+    pthread_t thread; // TODO put in callback of write to RegisterOpen
     MainState main; ptr = &main;
-    main.vulkanTest(); // TODO put in separate thread
+    if (pthread_create(&thread,0,vulkanTest,0) != 0)
+    {std::cerr << "failed to create test!" << std::endl; exit(-1);}
+    pthread_join(thread,0);
     // main.changeState.wrapDone = planeDone;
     // planeInit(vulkanCopy,VulkanCall);
     // while (!glfwWindowShouldClose(windowState.window)) {glfwWaitEventsTimeout(1.0); planeLoop();}
