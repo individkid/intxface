@@ -1738,18 +1738,23 @@ struct DrawState : public BaseState {
     ~DrawState() {push(0); baseres(); std::cout << "~DrawState " << debug << std::endl;}
     bool bind(BindState **ary, int siz) {
         // choose latest of each in BindBase state
-        if (bufsiz != 0) {std::cerr << "invalid bind state!" << std::endl; exit(-1);}
+        safe.wait();
+        if (bufsiz != 0) {safe.post(); return false;}
         for (int i = 0; i < siz; i++) {
         bufidx[i] = ary[i]->index();
         bufptr[bufidx[i]] = ary[i]->buffer();
         if (!bufptr[bufidx[i]]->take()) break;
         bufsiz++;}
-        return (bufsiz == siz);
+        bool pass = (bufsiz == siz);
+        safe.post();
+        return pass;
     }
     void free() {
+        safe.wait();
         for (int i = 0; i < bufsiz; i++)
         bufptr[bufidx[i]]->give();
         bufsiz = 0;
+        safe.post();
     }
     BaseState *get(BindEnum typ, Memory mem) {
         int index = BindState::check(typ,mem);
