@@ -1,4 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
+#define _GLFW_X11
+#define _GLFW_WAYLAND
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -28,6 +30,11 @@ extern "C" {
 #include "type.h"
 #include "plane.h"
 #include "fmtx.h"
+// TODO change plane interface to vulkanCopy vulkanCall planeDone
+void planeDone(struct Center *ptr);
+// TODO vulcanCall takes a function pointer called when Config written to
+typedef void (*xftype)(enum Configure, enum Configured, int sav, int val);
+// TODO add Micro that causes DrawStruct to copy Pierce to Center after render done semaphore
 };
 
 struct SafeState {
@@ -56,41 +63,36 @@ struct SafeState {
     }
 };
 
+typedef int (*ChangeType)(int,int);
 struct MainState;
 struct ChangeState {
     MainState *main;
     wftype wrapDone;
     SafeState safe;
     int config[Configures];
-    ChangeState(MainState*main) : main(main), wrapDone(0), safe(1), config{0}
+    xftype back[Configures][Configureds];
+    ChangeState(MainState*main) : main(main), wrapDone(0), safe(1), config{0}, back{0}
     {std::cout << "ChangeState" << std::endl;}
     ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
-    int get(Configure cfg) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid get cfg!" << std::endl; exit(-1);}
-        return config[cfg];
+    void call(Configure cfg, Configured typ, xftype ptr) {
+        back[cfg][typ] = ptr;
     }
-    void set(Configure cfg, int val) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid set cfg!" << std::endl; exit(-1);}
-        config[cfg] = val;
+    int change(Configure cfg, Configured typ, int val, ChangeType opr, bool ret) {
+        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid change!" << std::endl; exit(-1);}
+        safe.wait(); int sav = config[cfg]; xftype ptr = back[cfg][typ];
+        config[cfg] = opr(config[cfg],val); val = config[cfg]; safe.post();
+        if (ptr) ptr(cfg,typ,sav,val); return (ret?sav:val);
     }
-    int read(Configure cfg) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid read cfg!" << std::endl; exit(-1);}
-        safe.wait(); int val = config[cfg]; safe.post(); return val;
-    }
-    void write(Configure cfg, int val) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid write cfg!" << std::endl; exit(-1);}
-        safe.wait(); config[cfg] = val; safe.post();
-    }
-    void wots(Configure cfg, int val) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid wots cfg!" << std::endl; exit(-1);}
-        safe.wait(); config[cfg] |= val; safe.post();
-    }
-    void wotc(Configure cfg, int val) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid wotc cfg!" << std::endl; exit(-1);}
-        safe.wait(); config[cfg] &= ~val; safe.post();
-    }
-    void async(Async bit);
-    void loop();
+    static int readOp(int l, int r) {return l;}
+    int read(Configure cfg) {return change(cfg,ReadCall,0,readOp,false);}
+    static int writeOp(int l, int r) {return r;}
+    void write(Configure cfg, int val) {change(cfg,WriteCall,val,writeOp,false);}
+    static int wotsOp(int l, int r) {return l|r;}
+    void wots(Configure cfg, int val) {change(cfg,WotsCall,val,wotsOp,false);}
+    static int wotcOp(int l, int r) {return l&~r;}
+    void wotc(Configure cfg, int val) {change(cfg,WotcCall,val,wotcOp,false);}
+    static int rmwOp(int l, int r) {return l+r;}
+    int rmw(Configure cfg, int val) {return change(cfg,RmwCall,val,rmwOp,true);}
     int copy(Center *);
     void done(int pass, Center *);
 };
@@ -1037,7 +1039,7 @@ struct ThreadState {
         if (push.base) push.base->baseups();
         int pass = (push.tag == FailThread ? 0 : 1);
         arg->change->done(pass, push.center);
-        arg->change->async(FenceAsync);}
+        arg->change->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(arg->device);
         return 0;
     }
@@ -1308,14 +1310,14 @@ struct PipelineState : public BaseState {
             bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
             bindingDescriptions.push_back(bindingDescription);}
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-        for (int i = 0; VertexFormat__Micro__Int__Int(micro)(i); i++) {
+        for (int i = 0; VertexFormat__Micro__Int__Format(micro)(i) != Formats; i++) {
             VkVertexInputAttributeDescription attributeDescription{};
             attributeDescription.binding = 0;
             attributeDescription.location = i;
-            switch (VertexFormat__Micro__Int__Int(micro)(i)) {
+            switch (VertexFormat__Micro__Int__Format(micro)(i)) {
             default: {std::cerr << "invalid vertex format!" << std::endl; exit(-1);}
-            case (109): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
-            case (107): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
+            case (VecFormat): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
+            case (UvecFormat): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
             attributeDescription.offset = VertexOffset__Micro__Int__Int(micro)(i);
             attributeDescriptions.push_back(attributeDescription);}
         vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
@@ -1776,7 +1778,7 @@ struct DrawState : public BaseState {
             uint32_t imageIndex;
             VkResult result = vkAcquireNextImageKHR(device, get(SwapBind,Memorys)->getSwapChain(),
                 UINT64_MAX, beforeSemaphore, VK_NULL_HANDLE, &imageIndex);
-            if (result == VK_ERROR_OUT_OF_DATE_KHR) change->async(ResizeAsync);
+            if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<ResizeAsync);
             else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
             vkResetFences(device, 1, &fence);
@@ -1795,7 +1797,7 @@ struct DrawState : public BaseState {
                 get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),
                 get(BindEnums,Vertexz)->getBuffer(), get(IndexBind,Memorys)->getBuffer());
             if (!drawFrame(commandBuffer,graphics,present,get(SwapBind,Memorys)->getSwapChain(),imageIndex,
-                ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence)) change->async(ResizeAsync);
+                ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence)) change->wots(RegisterMask,1<<ResizeAsync);
             return fence;
         }
         return VK_NULL_HANDLE;
@@ -1982,9 +1984,7 @@ struct MainState {
         indexState("IndexBind",IndexBind,Memorys,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
         drawState("DrawBind",DrawBind,Memorys),
-        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {
-        vulkanTest(); // TODO call changeState.loop()
-    }
+        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
@@ -2004,7 +2004,7 @@ struct MainState {
         actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
         return actualExtent;}
     }
-    static void vulkanDone(int pass, Center *center) {
+    static void testDone(int pass, Center *center) {
         if (center) switch (center->mem) {
         default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
         break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
@@ -2016,7 +2016,7 @@ struct MainState {
         allocTexture(&center->tex,0); allocCenter(&center,0);
         }
     }
-    static void updateUniformBuffer(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
+    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
         static auto startTime = std::chrono::high_resolution_clock::now();
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
@@ -2047,7 +2047,7 @@ struct MainState {
         glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
         int currentUniform = 0;
 
-        changeState.wrapDone = vulkanDone;
+        changeState.wrapDone = testDone;
 
         if (!threadState.push(swapState.preview(0),sizeState,0))
         {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
@@ -2089,7 +2089,7 @@ struct MainState {
         while (!threadState.push(swapState.preview(0),sizeState,0)) glfwWaitEventsTimeout(0.001);
         swapState.advance(0);}
 
-        updateUniformBuffer(sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
+        testUpdate(sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
         Center *mat = 0; allocCenter(&mat,1);
         mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
         memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
@@ -2114,13 +2114,6 @@ struct MainState {
     }
 };
 
-void ChangeState::async(Async bit) {
-    wots(RegisterMask,(1<<bit));
-    // TODO call vulkanSafe and/or planeSafe
-}
-void ChangeState::loop() {
-    // TODO poll glfw, poll ptasm, copy clear, stall main
-}
 extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
@@ -2149,7 +2142,15 @@ void ChangeState::done(int pass, Center *ptr) {
     wrapDone(pass,ptr);
 }
 
+MainState *ptr;
+int vulkanCopy(Center *center) {return ptr->changeState.copy(center);}
+void vulkanCall(Configure cfg, Configured typ, xftype fnc) {ptr->changeState.call(cfg,typ,fnc);}
+
 int main() {
-    MainState app;
+    MainState main; ptr = &main;
+    main.vulkanTest(); // TODO put in separate thread
+    // main.changeState.wrapDone = planeDone;
+    // planeInit(vulkanCopy,VulkanCall);
+    // while (!glfwWindowShouldClose(windowState.window)) {glfwWaitEventsTimeout(1.0); planeLoop();}
     return 0;
 }

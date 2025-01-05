@@ -45,9 +45,20 @@ Memory = {
 	"Littlez", -- little machine lines
 	"Configurez", -- configure to value
 }
+Format = {
+	"VecFormat",
+	"UvecFormat",
+}
 Async = {
 	"FenceAsync",
 	"ResizeAsync",
+}
+Configured = {
+    "ReadCall",
+    "WriteCall",
+    "WotsCall",
+    "WotcCall",
+    "RmwCall",
 }
 Configure = {
 	"TriangleSize", -- refers to corners
@@ -76,7 +87,6 @@ Configure = {
 	"ManipAction", -- what to do
 	"ManipFixed", -- how to do
 	"ManipScope", -- what to transform
-	"RegisterDone", -- resource missing mask
 	"RegisterOpen", -- thread running mask
 	"RegisterInit", -- thread testing mask
 	"RegisterPlan", -- thread testing plan
@@ -317,9 +327,10 @@ VertexOffset = {
 	{"Micro","MicroTest","Int","2","Int","32"},
 }
 VertexFormat = {
-	{"Micro","MicroTest","Int","0","Int","109"},
-	{"Micro","MicroTest","Int","1","Int","109"},
-	{"Micro","MicroTest","Int","2","Int","107"},
+	{"Micro","MicroTest","Int","0","Format","VecFormat"},
+	{"Micro","MicroTest","Int","1","Format","VecFormat"},
+	{"Micro","MicroTest","Int","2","Format","UvecFormat"},
+	{"Micro","MicroTest","Int","3","Format","Formats"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexFlattenG"},

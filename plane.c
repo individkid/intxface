@@ -318,7 +318,6 @@ void planeStage(enum Configure cfg)
 {
 	switch (cfg) {
 	case (StringSize): planeString(); break;
-	case (RegisterDone): configure[RegisterDone] = callInfo(RegisterDone); break;
 	case (CenterMemory): configure[CenterMemory] = (center ? center->mem : Memorys); break;
 	case (CenterSize): configure[CenterSize] = (center ? center->siz : 0); break;
 	case (CenterIndex): configure[CenterIndex] = (center ? center->idx : 0); break;
