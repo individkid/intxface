@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <chrono>
 #include <vector>
+#include <map>
+#include <set>
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
@@ -33,7 +35,7 @@ extern "C" {
 // TODO change plane interface to vulkanCopy vulkanCall planeDone
 void planeDone(struct Center *ptr);
 // TODO vulcanCall takes a function pointer called when Config written to
-typedef void (*xftype)(enum Configure, enum Configured, int sav, int val);
+typedef void (*xftype)(enum Configure, int sav, int val);
 // TODO add Micro that causes DrawStruct to copy Pierce to Center after render done semaphore
 };
 
@@ -67,32 +69,36 @@ typedef int (*ChangeType)(int,int);
 struct MainState;
 struct ChangeState {
     MainState *main;
-    wftype wrapDone;
+    wftype callDone;
     SafeState safe;
     int config[Configures];
-    xftype back[Configures][Configureds];
-    ChangeState(MainState*main) : main(main), wrapDone(0), safe(1), config{0}, back{0}
+    std::map<Configure,std::set<xftype>> back;
+    ChangeState(MainState*main) : main(main), callDone(0), safe(1), config{0}
     {std::cout << "ChangeState" << std::endl;}
     ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
-    void call(Configure cfg, Configured typ, xftype ptr) {
-        back[cfg][typ] = ptr;
+    void call(Configure cfg, xftype ptr) {
+        if (ptr) back[cfg].insert(ptr);
+        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end() && back[cfg].size() == 1) back.erase(cfg);
+        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
     }
-    int change(Configure cfg, Configured typ, int val, ChangeType opr, bool ret) {
+    int change(Configure cfg, int val, ChangeType opr, bool ret, bool typ) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid change!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; xftype ptr = back[cfg][typ];
+        safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
+        if (typ && back.find(cfg) != back.end()) todo = back[cfg];
         config[cfg] = opr(config[cfg],val); val = config[cfg]; safe.post();
-        if (ptr) ptr(cfg,typ,sav,val); return (ret?sav:val);
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val);
+        return (ret?sav:val);
     }
     static int readOp(int l, int r) {return l;}
-    int read(Configure cfg) {return change(cfg,ReadCall,0,readOp,false);}
+    int read(Configure cfg) {return change(cfg,0,readOp,false,false);}
     static int writeOp(int l, int r) {return r;}
-    void write(Configure cfg, int val) {change(cfg,WriteCall,val,writeOp,false);}
+    void write(Configure cfg, int val) {change(cfg,val,writeOp,false,true);}
     static int wotsOp(int l, int r) {return l|r;}
-    void wots(Configure cfg, int val) {change(cfg,WotsCall,val,wotsOp,false);}
+    void wots(Configure cfg, int val) {change(cfg,val,wotsOp,false,true);}
     static int wotcOp(int l, int r) {return l&~r;}
-    void wotc(Configure cfg, int val) {change(cfg,WotcCall,val,wotcOp,false);}
+    void wotc(Configure cfg, int val) {change(cfg,val,wotcOp,false,false);}
     static int rmwOp(int l, int r) {return l+r;}
-    int rmw(Configure cfg, int val) {return change(cfg,RmwCall,val,rmwOp,true);}
+    int rmw(Configure cfg, int val) {return change(cfg,val,rmwOp,true,true);}
     int copy(Center *);
     void done(int pass, Center *);
 };
@@ -464,61 +470,6 @@ struct LogicalState {
     }
 };
 
-enum SizeEnum {
-    IntSize,
-    ExtentSize,
-    MicroSize,
-    SwapSize,
-};
-struct SizeState {
-    SizeEnum tag;
-    int size;
-    VkExtent2D extent;
-    Micro micro;
-    VkSurfaceCapabilitiesKHR capabilities;
-    SizeState() {
-        tag = IntSize;
-        size = 0;
-    }
-    SizeState(int size) {
-        tag = IntSize;
-        this->size = size;
-    }
-    SizeState(VkExtent2D extent) {
-        tag = ExtentSize;
-        this->extent = extent;
-    }
-    SizeState(Micro micro) {
-        tag = MicroSize;
-        this->micro = micro;
-    }
-    SizeState(VkSurfaceCapabilitiesKHR capabilities) {
-        tag = SwapSize;
-        this->capabilities = capabilities;
-    }
-    bool operator==(const SizeState &other) const {
-        if (tag == IntSize && other.tag == IntSize &&
-        size == other.size) return true;
-        if (tag == ExtentSize && other.tag == ExtentSize &&
-        extent.width == other.extent.width &&
-        extent.height == other.extent.height) return true;
-        if (tag == MicroSize && other.tag == MicroSize &&
-        micro == other.micro) return true;
-        if (tag == SwapSize && other.tag == SwapSize &&
-        capabilities.currentExtent.width == other.capabilities.currentExtent.width &&
-        capabilities.currentExtent.height == other.capabilities.currentExtent.height) return true;
-        return false;
-    }
-};
-std::ostream& operator<<(std::ostream& os, const SizeState& size) {
-    switch (size.tag) {default: os << "MicroSize()"; break;
-    case (IntSize): os << "IntSize(" << size.size << ")"; break;
-    case (ExtentSize): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
-    case (MicroSize): os << "MicroSize(" << size.micro << ")"; break;
-    case (SwapSize): os << "SwapSize(" << size.capabilities.currentExtent.width << "," << size.capabilities.currentExtent.height << ")"; break;}
-    return os;
-}
-
 enum BindEnum {
     SwapBind,
     IndexBind,
@@ -712,6 +663,61 @@ template<class State> struct ConstState {
     ConstState(State value) : value(value) {}
     State operator()() {return value;}
 };
+
+enum SizeEnum {
+    IntSize,
+    ExtentSize,
+    MicroSize,
+    SwapSize,
+};
+struct SizeState {
+    SizeEnum tag;
+    int size;
+    VkExtent2D extent;
+    Micro micro;
+    VkSurfaceCapabilitiesKHR capabilities;
+    SizeState() {
+        tag = IntSize;
+        size = 0;
+    }
+    SizeState(int size) {
+        tag = IntSize;
+        this->size = size;
+    }
+    SizeState(VkExtent2D extent) {
+        tag = ExtentSize;
+        this->extent = extent;
+    }
+    SizeState(Micro micro) {
+        tag = MicroSize;
+        this->micro = micro;
+    }
+    SizeState(VkSurfaceCapabilitiesKHR capabilities) {
+        tag = SwapSize;
+        this->capabilities = capabilities;
+    }
+    bool operator==(const SizeState &other) const {
+        if (tag == IntSize && other.tag == IntSize &&
+        size == other.size) return true;
+        if (tag == ExtentSize && other.tag == ExtentSize &&
+        extent.width == other.extent.width &&
+        extent.height == other.extent.height) return true;
+        if (tag == MicroSize && other.tag == MicroSize &&
+        micro == other.micro) return true;
+        if (tag == SwapSize && other.tag == SwapSize &&
+        capabilities.currentExtent.width == other.capabilities.currentExtent.width &&
+        capabilities.currentExtent.height == other.capabilities.currentExtent.height) return true;
+        return false;
+    }
+};
+std::ostream& operator<<(std::ostream& os, const SizeState& size) {
+    switch (size.tag) {default: os << "MicroSize()"; break;
+    case (IntSize): os << "IntSize(" << size.size << ")"; break;
+    case (ExtentSize): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
+    case (MicroSize): os << "MicroSize(" << size.micro << ")"; break;
+    case (SwapSize): os << "SwapSize(" << size.capabilities.currentExtent.width << "," << size.capabilities.currentExtent.height << ")"; break;}
+    return os;
+}
 
 enum BaseEnum {
     InitBase, // uninitialized
@@ -1689,9 +1695,8 @@ struct TextureState : public ItemState {
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;}
         vkQueueSubmit(graphics, 1, &submitInfo, VK_NULL_HANDLE);
-        transitionImageLayout(device, graphics, afterBuffer, textureImage,
-            afterSemaphore, VK_NULL_HANDLE, fence,
-            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(device, graphics, afterBuffer, textureImage, afterSemaphore, VK_NULL_HANDLE, fence,
+        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 };
 
@@ -2041,7 +2046,7 @@ struct MainState {
         glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
         int currentUniform = 0;
 
-        changeState.wrapDone = testDone;
+        changeState.callDone = testDone;
 
         if (!threadState.push(swapState.preview(0),sizeState,0))
         {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
@@ -2128,17 +2133,25 @@ int ChangeState::copy(Center *center) {
     VkExtent2D texExtent; texExtent.width = center->tex[0].wid; texExtent.height = center->tex[0].hei;
     if (main->threadState.push(main->textureState.preview(),
     datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),SizeState(texExtent),center)) retval++;}
+    // TODO add remaining Memory types, including Configurez
     }
     return retval;
 }
 void ChangeState::done(int pass, Center *ptr) {
-    wrapDone(pass,ptr);
+    callDone(pass,ptr);
 }
 
 MainState *ptr;
 int vulkanCopy(Center *center) {return ptr->changeState.copy(center);}
-void vulkanCall(Configure cfg, Configured typ, xftype fnc) {ptr->changeState.call(cfg,typ,fnc);}
+void vulkanCall(Configure cfg, xftype fnc) {ptr->changeState.call(cfg,fnc);}
 void *vulkanTest(void *) {ptr->vulkanTest(); return 0;}
+int vulkanOpen = 0;
+int vulkanMask = 1;
+void vulkanBack(Configure cfg, int sav, int val) {
+    if (cfg == RegisterOpen && (val & vulkanMask) && !(vulkanOpen & vulkanMask)) {
+    pthread_t thread; if (pthread_create(&thread,0,vulkanTest,0) != 0)
+    {std::cerr << "failed to create test!" << std::endl; exit(-1);}}
+}
 
 int main() {
     pthread_t thread; // TODO put in callback of write to RegisterOpen
@@ -2146,7 +2159,10 @@ int main() {
     if (pthread_create(&thread,0,vulkanTest,0) != 0)
     {std::cerr << "failed to create test!" << std::endl; exit(-1);}
     pthread_join(thread,0);
-    // main.changeState.wrapDone = planeDone;
+    // TODO maybe let Center go to the callDone associated with the thread it came from
+    // main.changeState.callDone = planeDone;
+    // TODO no need for Configured; just call when changed
+    // main.changeState.call(RegisterOpen,vulkanBack);
     // planeInit(vulkanCopy,VulkanCall);
     // while (!glfwWindowShouldClose(windowState.window)) {glfwWaitEventsTimeout(1.0); planeLoop();}
     return 0;

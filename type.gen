@@ -53,13 +53,6 @@ Async = {
 	"FenceAsync",
 	"ResizeAsync",
 }
-Configured = {
-    "ReadCall",
-    "WriteCall",
-    "WotsCall",
-    "WotcCall",
-    "RmwCall",
-}
 Configure = {
 	"TriangleSize", -- refers to corners
 	"TriangleBase", --
