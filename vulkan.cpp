@@ -65,21 +65,48 @@ struct SafeState {
     }
 };
 
-typedef int (*ChangeType)(int,int);
+struct DoneState;
+typedef void (*DoneType)(DoneState*);
+struct ChangeState;
 struct MainState;
+struct DoneState {
+    // members initialized by push in ChangeState
+    DoneType func; // called by seaparate thread to dealloc this
+    ChangeState *change; // used to erase this in ChangeState
+    MainState *main; // for use by call()
+    pthread_t thread; // used by ChangeState to start separate thread
+    virtual void call() = 0; // called by ChangeState in separate thread
+    virtual void done() = 0; // called by ChangeState to safely stop separate thread
+    virtual void done(int pass, Center *center) = 0; // caled by separate thread in ThreadState
+};
+
+typedef int (*ChangeType)(int,int);
 struct ChangeState {
-    MainState *main;
-    wftype callDone;
-    SafeState safe;
+    MainState *main; // for use by copy
+    SafeState safe; // following protected
     int config[Configures];
     std::map<Configure,std::set<xftype>> back;
-    ChangeState(MainState*main) : main(main), callDone(0), safe(1), config{0}
+    std::set<DoneState*> done;
+    std::set<pthread_t> todo;
+    ChangeState(MainState*main) : main(main), safe(1), config{0}
     {std::cout << "ChangeState" << std::endl;}
-    ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
-    void call(Configure cfg, xftype ptr) {
+    ~ChangeState() {std::cout << "~ChangeState" << std::endl;
+        safe.wait(); for (auto i = done.begin(); i != done.end(); i++) {
+        todo.insert((*i)->thread); (*i)->done();}
+        done.clear(); safe.post(); clear();
+        safe.wait(); if (!done.empty() || !todo.empty())
+        {std::cerr << "done not empty!" << std::endl; exit(-1);} safe.post();
+    }
+    void clear() { // joins any pushed to todo
+        safe.wait(); std::set<pthread_t> doto = todo; todo.clear(); safe.post();
+        for (auto i = doto.begin(); i != doto.end(); i++) pthread_join((*i),0);
+    }
+    void call(Configure cfg, xftype ptr) { // called in main thread
+        safe.wait();
         if (ptr) back[cfg].insert(ptr);
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end() && back[cfg].size() == 1) back.erase(cfg);
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
+        safe.post();
     }
     int change(Configure cfg, int val, ChangeType opr, bool ret, bool typ) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid change!" << std::endl; exit(-1);}
@@ -100,7 +127,21 @@ struct ChangeState {
     static int rmwOp(int l, int r) {return l+r;}
     int rmw(Configure cfg, int val) {return change(cfg,val,rmwOp,true,true);}
     int copy(Center *);
-    void done(int pass, Center *);
+    void push(DoneState *ptr, DoneType fnc) {
+        safe.wait();
+        ptr->change = this; ptr->main = main; ptr->func = fnc; done.insert(ptr);
+        if (pthread_create(&ptr->thread,0,call,ptr) != 0)
+        {std::cerr << "failed to start thread!" << std::endl; exit(-1);}
+        safe.post();
+    }
+    static void *call(void *ptr) { // running on separate thread
+        DoneState *done = (DoneState*)ptr;
+        ChangeState *change = done->change;
+        done->call(); change->safe.wait();
+        // if done() called by ~ChageState, theyre already inserted and erased
+        change->todo.insert(done->thread); change->done.erase(done);
+        change->safe.post(); done->func(done); return 0;
+    }
 };
 
 // TODO define glfw callbacks that cast void* to ChangeState*
@@ -111,8 +152,7 @@ struct WindowState {
     WindowState(ChangeState *change) :
         window(createWindow(WIDTH,HEIGHT))
         {std::cout << "WindowState" << std::endl;}
-    ~WindowState() {
-        std::cout << "~WindowState" << std::endl;
+    ~WindowState() {std::cout << "~WindowState" << std::endl;
         glfwDestroyWindow(window);
         glfwTerminate();
     }
@@ -135,8 +175,7 @@ struct VulkanState {
         debug(createDebug(instance,info,validationLayers)),
         surface(createSurface(instance, window))
         {std::cout << "VulkanState" << std::endl;}
-    ~VulkanState() {
-        std::cout << "~VulkanState" << std::endl;
+    ~VulkanState() {std::cout << "~VulkanState" << std::endl;
         vkDestroySurfaceKHR(instance, surface, nullptr);
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
         vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -355,8 +394,7 @@ struct LogicalState {
             VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
         renderPass(createRenderPass(device,imageFormat,depthFormat))
         {std::cout << "LogicalState" << std::endl;}
-    ~LogicalState() {
-        std::cout << "~LogicalState" << std::endl;
+    ~LogicalState() {std::cout << "~LogicalState" << std::endl;
         vkDestroyRenderPass(device, renderPass, nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -962,6 +1000,7 @@ struct PushState {
     BaseState *base;
     VkFence fence;
     Center *center;
+    DoneState *done;
 };
 struct ThreadState {
     const VkDevice device;
@@ -979,26 +1018,20 @@ struct ThreadState {
         {std::cout << "ThreadState" << std::endl;}
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
-    bool push(bool pass, ThreadEnum tag, BaseState *base, Center *center) {
-        PushState push;
-        push.base = base; push.center = center;
-        if (!pass) {
-        push.tag = FailThread;
-        safe.wait(); before.push_back(push); safe.post();
-        return false;}
-        push.tag = tag;
+    bool push(ThreadEnum tag, BaseState *base, Center *center, DoneState *done) {
+        PushState push = {tag,base,VK_NULL_HANDLE,center,done};
         safe.wait(); before.push_back(push); safe.post();
         if (wait.get() == 0) wait.post();
-        return true;
+        return (tag != FailThread);
     }
-    bool push(BaseState *base, void *ptr, int loc, int siz, SizeState max, Center *center) {
-        return push(base->push(ptr,loc,siz,max),BothThread,base,center);
+    bool push(BaseState *base, void *ptr, int loc, int siz, SizeState max, Center *center = 0, DoneState *done = 0) {
+        return push((base->push(ptr,loc,siz,max)?BothThread:FailThread),base,center,done);
     }
-    bool push(BaseState *base, void *ptr, int loc, int siz, Center *center) {
-        return push(base->push(ptr,loc,siz),SetThread,base,center);
+    bool push(BaseState *base, void *ptr, int loc, int siz, Center *center = 0, DoneState *done = 0) {
+        return push((base->push(ptr,loc,siz)?SetThread:FailThread),base,center,done);
     }
-    bool push(BaseState *base, SizeState size, Center *center) {
-        return push(base->push(size),SizeThread,base,center);
+    bool push(BaseState *base, SizeState size, Center *center = 0, DoneState *done = 0) {
+        return push((base->push(size)?SizeThread:FailThread),base,center,done);
     }
     void push() {
         safe.wait();
@@ -1033,7 +1066,7 @@ struct ThreadState {
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.base) push.base->baseups();
         int pass = (push.tag == FailThread ? 0 : 1);
-        arg->change->done(pass, push.center);
+        push.done->done(pass, push.center);
         arg->change->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(arg->device);
         return 0;
@@ -1185,8 +1218,7 @@ struct PipelineState : public BaseState {
         pipelineLayout(createPipelineLayout(BindState::device,descriptorSetLayout)),
         graphicsPipeline(createGraphicsPipeline(BindState::device,BindState::renderPass,pipelineLayout,micro))
         {std::cout << "PipelineState" << std::endl;}
-    ~PipelineState() {
-        std::cout << "~PipelineState" << std::endl;
+    ~PipelineState() {std::cout << "~PipelineState" << std::endl;
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -2003,18 +2035,10 @@ struct MainState {
         actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
         return actualExtent;}
     }
-    static void testDone(int pass, Center *center) {
-        if (center) switch (center->mem) {
-        default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
-        break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
-        break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
-        allocVertex(&center->vtx,0); allocCenter(&center,0);
-        break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
-        allocMatrix(&center->mat,0); allocCenter(&center,0);
-        break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
-        allocTexture(&center->tex,0); allocCenter(&center,0);
-        }
-    }
+};
+
+struct TestState : public DoneState {
+    virtual ~TestState() {}
     static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
         static auto startTime = std::chrono::high_resolution_clock::now();
         auto currentTime = std::chrono::high_resolution_clock::now();
@@ -2024,7 +2048,7 @@ struct MainState {
         proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
         proj[1][1] *= -1;
     }
-    void vulkanTest() {
+    void call() {
         const std::vector<Vertex> vertices = {
             {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
             {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -2046,69 +2070,87 @@ struct MainState {
         glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
         int currentUniform = 0;
 
-        changeState.callDone = testDone;
-
-        if (!threadState.push(swapState.preview(0),sizeState,0))
+        if (!main->threadState.push(main->swapState.preview(0),main->sizeState,0))
         {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
-        swapState.advance(0);
+        main->swapState.advance(0);
 
-        if (!threadState.push(pipelineState.preview(MicroTest),SizeState(MicroTest),0))
+        if (!main->threadState.push(main->pipelineState.preview(MicroTest),SizeState(MicroTest),0))
         {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
-        pipelineState.advance(MicroTest);
+        main->pipelineState.advance(MicroTest);
 
-        BindState *single[] = {&pipelineState};
-        for (int i = 0; i < frames; i++)
-        while (!drawState.preview(i)->bind(single, 1) ||
-        !threadState.push(drawState.preview(i),SizeState(MicroTest),0))
-        {drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
+        BindState *single[] = {&main->pipelineState};
+        for (int i = 0; i < main->frames; i++)
+        while (!main->drawState.preview(i)->bind(single, 1) ||
+        !main->threadState.push(main->drawState.preview(i),SizeState(MicroTest),0))
+        {main->drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
 
         Center *vtx = 0; allocCenter(&vtx,1);
         vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
         for (int i = 0; i < vtx->siz; i++)
         memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
-        changeState.copy(vtx);
+        change->copy(vtx);
 
         Center *ind = 0; allocCenter(&ind,1);
         int isiz = indices.size()*sizeof(uint16_t);
         ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
         memcpy(ind->ind,indices.data(),isiz);
-        changeState.copy(ind);
+        change->copy(ind);
 
         Center *tex = 0; allocCenter(&tex,1);
         tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
         fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-        changeState.copy(tex);
+        change->copy(tex);
 
-        int count = 0;
-        while (!glfwWindowShouldClose(windowState.window) && count++ < 1000) {
+        int count = 0; // TODO move to main, and wait for done()
+        while (!glfwWindowShouldClose(main->windowState.window) && count++ < 1000) {
 
-        if (changeState.read(RegisterMask) & (1<<ResizeAsync)) {
-        changeState.wotc(RegisterMask,(1<<ResizeAsync));
-        sizeState = SizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device));
-        while (!threadState.push(swapState.preview(0),sizeState,0)) glfwWaitEventsTimeout(0.001);
-        swapState.advance(0);}
+        if (change->read(RegisterMask) & (1<<ResizeAsync)) {
+        change->wotc(RegisterMask,(1<<ResizeAsync));
+        main->sizeState = SizeState(main->findCapabilities(main->windowState.window,main->vulkanState.surface,main->physicalState.device));
+        while (!main->threadState.push(main->swapState.preview(0),main->sizeState,0)) /*glfwWaitEventsTimeout(0.001);*/
+        {std::cerr << "TODO" << std::endl; exit(-1);} /*safely mark wait.post() needed and call wait.wait();*/
+        main->swapState.advance(0);}
 
-        testUpdate(sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
+        testUpdate(main->sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
         Center *mat = 0; allocCenter(&mat,1);
         mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
         memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
         memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
         memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
-        if (changeState.copy(mat)) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+        if (change->copy(mat)) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
 
         BindState *bind[] = {
-            &matrixState,
-            &textureState,
-            &vertexState,
-            &indexState,
-            &pipelineState,
-            &swapState};
-        if (drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-            threadState.push(drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),0))
-            drawState.advance();
-        else {drawState.derived()->bind(); glfwWaitEventsTimeout(0.001);}}
+            &main->matrixState,
+            &main->textureState,
+            &main->vertexState,
+            &main->indexState,
+            &main->pipelineState,
+            &main->swapState};
+        if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+            main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),0))
+            main->drawState.advance();
+        else {main->drawState.derived()->bind(); /*glfwWaitEventsTimeout(0.001);*/
+        {std::cerr << "TODO" << std::endl; exit(-1);} /*safely mark wait.post() needed and call wait.wait();*/}}
 
-        threadState.push();
+        main->threadState.push();
+    }
+    void done() {
+        // TODO cause call() to finish
+    }
+    void wake() {
+        // TODO wait.post() if needed
+    }
+    void done(int pass, Center *center) {
+        if (center) switch (center->mem) {
+        default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
+        break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
+        break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
+        allocVertex(&center->vtx,0); allocCenter(&center,0);
+        break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
+        allocMatrix(&center->mat,0); allocCenter(&center,0);
+        break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
+        allocTexture(&center->tex,0); allocCenter(&center,0);
+        }
     }
 };
 
@@ -2137,33 +2179,27 @@ int ChangeState::copy(Center *center) {
     }
     return retval;
 }
-void ChangeState::done(int pass, Center *ptr) {
-    callDone(pass,ptr);
-}
 
 MainState *ptr;
+TestState *test;
+int vulkanMask = 1;
 int vulkanCopy(Center *center) {return ptr->changeState.copy(center);}
 void vulkanCall(Configure cfg, xftype fnc) {ptr->changeState.call(cfg,fnc);}
-void *vulkanTest(void *) {ptr->vulkanTest(); return 0;}
-int vulkanOpen = 0;
-int vulkanMask = 1;
+void vulkanDone(DoneState *done) {delete done;}
 void vulkanBack(Configure cfg, int sav, int val) {
-    if (cfg == RegisterOpen && (val & vulkanMask) && !(vulkanOpen & vulkanMask)) {
-    pthread_t thread; if (pthread_create(&thread,0,vulkanTest,0) != 0)
-    {std::cerr << "failed to create test!" << std::endl; exit(-1);}}
+    if (cfg == RegisterOpen && (val & vulkanMask) && !(sav & vulkanMask))
+    ptr->changeState.push(test = new TestState(),vulkanDone);
+    if (cfg == RegisterOpen && !(val & vulkanMask) && (sav & vulkanMask))
+    test->done();
 }
 
 int main() {
     pthread_t thread; // TODO put in callback of write to RegisterOpen
     MainState main; ptr = &main;
-    if (pthread_create(&thread,0,vulkanTest,0) != 0)
-    {std::cerr << "failed to create test!" << std::endl; exit(-1);}
-    pthread_join(thread,0);
-    // TODO maybe let Center go to the callDone associated with the thread it came from
-    // main.changeState.callDone = planeDone;
-    // TODO no need for Configured; just call when changed
-    // main.changeState.call(RegisterOpen,vulkanBack);
+    main.changeState.call(RegisterOpen,vulkanBack);
+    // main.changeState.wots(RegisterOpen,vulkanMask);
     // planeInit(vulkanCopy,VulkanCall);
-    // while (!glfwWindowShouldClose(windowState.window)) {glfwWaitEventsTimeout(1.0); planeLoop();}
+    // while (!glfwWindowShouldClose(windowState.window)) {glfwWaitEventsTimeout(1.0); test->wake() planeLoop();}
+    // main.changeState.wotc(RegisterOpen,vulkanMask);
     return 0;
 }
