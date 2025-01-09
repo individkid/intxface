@@ -32,14 +32,12 @@ extern "C" {
 #include "type.h"
 #include "plane.h"
 #include "fmtx.h"
-// TODO vulcanCall takes a function pointer called when Config written to
 typedef void (*xftype)(enum Configure, int sav, int val);
 typedef void (*mftype)(enum Thread tag, int idx);
 typedef void (*nftype)(struct Center *center, wftype pass);
 typedef void (*oftype)(enum Configure cfg, xftype back);
 typedef void (*lftype)(enum Thread thd, int idx, mftype call, mftype done, mftype func);
 // void planeInit(nftype copy, oftype call, lftype fork, wftype pass);
-// TODO add Micro that causes DrawStruct to copy Pierce to Center after render done semaphore
 };
 
 struct SafeState {
@@ -66,9 +64,8 @@ struct SafeState {
     }
 };
 
-typedef int (*ChangeType)(int,int);
 struct MainState;
-struct ChangeState { // TODO separate the thread queue from config callback; move thread queue to thdx.h
+struct ChangeState {
     MainState *main;
     SafeState safe; // following protected
     int config[Configures];
@@ -81,6 +78,7 @@ struct ChangeState { // TODO separate the thread queue from config callback; mov
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
+    typedef int (*ChangeType)(int,int);
     int change(Configure cfg, int val, ChangeType opr, bool ret, bool typ) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid change!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
@@ -1603,6 +1601,7 @@ struct TextureState : public ItemState {
 };
 
 struct DrawState : public BaseState {
+    // TODO add Micro that causes DrawStruct to copy Pierce to Center after render done semaphore
     const VkDevice device;
     const VkRenderPass renderPass;
     const VkQueue graphics;
