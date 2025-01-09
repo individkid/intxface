@@ -6,21 +6,11 @@
 #include "type.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <pthread.h>
 #include <unistd.h>
 #include <sys/errno.h>
 #include <string.h>
 #include <math.h>
 #include <sys/time.h>
-#ifdef __APPLE__
-#include <dispatch/dispatch.h>
-#define sem_t dispatch_semaphore_t
-#define sem_init(S,P,V) {*S = dispatch_semaphore_create(V);}
-#define sem_post(S) {dispatch_semaphore_signal(*S);}
-#define sem_wait(S) {dispatch_semaphore_wait(*S,DISPATCH_TIME_FOREVER);}
-#else
-#include <semaphore.h>
-#endif
 #include <setjmp.h>
 #include <signal.h>
 

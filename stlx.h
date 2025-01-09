@@ -1,5 +1,13 @@
 #include <pthread.h>
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#define sem_t dispatch_semaphore_t
+#define sem_init(S,P,V) {*S = dispatch_semaphore_create(V);}
+#define sem_post(S) {dispatch_semaphore_signal(*S);}
+#define sem_wait(S) {dispatch_semaphore_wait(*S,DISPATCH_TIME_FOREVER);}
+#else
 #include <semaphore.h>
+#endif
 #ifdef __cplusplus
 #include <set>
 struct SafeState {

@@ -264,10 +264,6 @@ Operate = {
 	"ExtOp", -- fields from struct
 	"PrmOp", -- permute list
 	"LstOp", -- join lists
-	"HetOp", -- expression list
-	"HomOp", -- expression list
-	"EmmOp", -- hetgen sugar
-	"OmmOp", -- homgen sugar
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
@@ -337,75 +333,15 @@ MemoryBinding = {
 	{"Micro","MicroTest","Int","2","Memory","Memorys"},
 }
 Bootstrap = {
-	{"Int","0","Str","Force(num:5".. -- assign to configuration
+	{"Int","0","Str","Force(num:4".. -- assign to configuration
 		"cfg[0]:WindowWide"..
 		"cfg[1]:WindowHigh"..
-		"cfg[2]:MachineSize"..
+		"cfg[2]:REgisterPoll"..
 		"cfg[3]:RegisterOpen"..
-		"cfg[4]:ParamMicro"..
-		"val[0]:1024"..
-		"val[1]:512"..
-		"val[2]:20"..
-		"val[3]:63"..
-		"val[4]:Int(%(return castMicro(\"MicroTest\"))))"},
-	{"Int","1","Str","Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"}, -- assign to variable
-	{"Int","2","Str","Eval(".. -- assign machine to accumulator
-		"exp[0]:ImmOp(CenterTag(center[0]:Machinez(siz:14idx:0slf:0"..
-		"mch[0]:Goto(CndOp(CondExp(len:3siz:10"..
-			"typ[0]:Str(Int)typ[1]:Str(Int)typ[2]:Str(Str)"..
-			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)cmp[2]:Compare(ReCmp)"..
-			"var[0]:GetOp(ResultHint)"..
-			"var[1]:ValOp(Str(Changed))"..
-			"var[2]:DupOp(dup[0]:IntOp(-1)dup[1]:IntOp(2)dup[2]:IntOp(-2))"..
-			"dom[0]:Domain(len:1val[0]:CfgOp(CenterMemory))"..
-			"dom[1]:Domain(len:2val[0]:CfgOp(ResultHint)val[1]:IntOp(1))"..
-			"dom[2]:Domain(len:1val[0]:CfgOp(ResultHint))"..
-			"dom[3]:Domain(len:1val[0]:CfgOp(CursorLeft))"..
-			"dom[4]:Domain(len:1val[0]:CfgOp(CursorAngle))"..
-			"dom[5]:Domain(len:1val[0]:CfgOp(CursorClick))"..
-			-- Additive/Subtractive/Refine/Transform/Mode(
-			-- Mouse(Rotate(Ortho/Focal/Normal)/Translate(Ortho/Focal/Normal)/Scale(Ortho/Focal/Normal))/
-			-- Roller(Rotate(Ortho/Focal/Normal)/Translate(Ortho/Focal/Normal)/Scale(Ortho/Focal/Normal)))
-			"dom[6]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:IrxOp(Str(=|Mm^|Mm^|Rr^|Oo^)))"..
-			"dom[7]:Domain(len:3val[0]:CfgOp(RegisterString)val[1]:ValOp(Str(Changed))val[2]:IrxOp(Str(>|Mm^|Mm^|Rr^|Oo^)))"..
-			"dom[8]:Domain(len:1val[0]:CfgOp(RegisterString))"..
-			"dom[9]:Domain(len:0)"..
-			"rng[0]:NamOp(Str(ReadCenter))"..
-			"rng[1]:NamOp(Str(DrawChanged))"..
-			"rng[2]:IntOp(0)".. -- Draw not Changed
-			"rng[3]:IntOp(0)".. -- Move
-			"rng[4]:IntOp(0)".. -- Roll
-			"rng[5]:IntOp(0)".. -- Click
-			"rng[6]:IntOp(0)".. -- Keyboard
-			"rng[7]:IntOp(0)".. -- Keyboard prefix
-			"rng[8]:IntOp(0)".. -- Keyboard error
-			"rng[9]:IntOp(0))))"..
-		"mch[1]:Name(Str(DrawChanged))".. -- Draw, and remember that not Changed
-		"mch[2]:Draw()".. -- pass Param configurations
-		"mch[3]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(0)))"..
-		"mch[4]:Eval(IntOp(0))"..
-		"mch[5]:Name(Str(ReadCenter))".. -- Read center, Stage center, compare center
-		"mch[6]:Read()".. -- read to center
-		"mch[7]:Stage(siz:3".. -- copy to configuration
-			"sav[0]:RegisterMemory"..
-			"sav[1]:RegisterIndex"..
-			"sav[2]:CenterSize)"..
-		"mch[8]:Eval(CndOp(CondExp(len:2siz:2"..
-			"typ[0]:Str(Int)typ[1]:Str(Int)"..
-			"cmp[0]:Compare(ECCmp)cmp[1]:Compare(ECCmp)"..
-			"var[0]:GetOp(CenterSize)"..
-			"var[1]:GetOp(RegisterMemory)"..
-			"dom[0]:Domain(len:2val[0]:IntOp(0)val[1]:GetOp(RegisterMemory))"..
-			"dom[1]:Domain(len:1val[0]:GetOp(CenterSize))"..
-			"rng[0]:IntOp(0)"..
-			"rng[1]:NamOp(Str(SetMemory)))))"..
-		"mch[9]:Name(Str(SetMemory))".. -- Copy center to cpu and gpu, and remember that Changed
-		"mch[10]:Copy()".. -- copy from center to memory
-		"mch[11]:Eval(SavOp(kys:Str(Changed)sav[0]:IntOp(1)))"..
-		"mch[12]:Eval(IntOp(0))"..
-		"mch[13]:Name(Str(Return))))))"},
-	{"Int","3","Str","Echo()"}, -- copy from accumulator to center
-	{"Int","4","Str","Copy()"}, -- copy from center to machine
+		"val[0]:0"..
+		"val[1]:0"..
+		"val[2]:0"..
+		"val[3]:0)"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},
@@ -518,10 +454,6 @@ OptExp = {
 	{"typ","Int",{["vld"]={["1"]=true}},{}},
 	{"dat","Dat",{["vld"]={["1"]=true}},{}},
 }
-Hetgen = {
-	{"siz","Int",{},{}},
-	{"gen","Generic",{},"siz"},
-}
 Irrex = { -- permutation of permutations
 	-- prm of zero is always valid
 	-- advance top level prm first, otherwise
@@ -569,11 +501,7 @@ Express = {
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
 	{"lst","Express",{["opr"]={["LstOp"]=true}},2},
-	{"siz","Int",{["opr"]={["HetOp"]=true,["HomOp"]=true}},{}},
-	{"exp","Express",{["opr"]={["HetOp"]=true,["HomOp"]=true}},"siz"},
-	{"het","Hetgen",{["opr"]={["EmmOp"]=true}},1},
-	{"hom","Homgen",{["opr"]={["OmmOp"]=true}},1},
-	{"val","Generic",{["opr"]={["ImmOp"]=true}},1},
+	{"val","Str",{["opr"]={["ImmOp"]=true}},1},
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
@@ -728,12 +656,6 @@ Type = {
 Enums,Enumz = listHere("Enums","type.gen")
 Constants,Constantz = listHere("Constants","type.gen")
 Structs,Structz = listHere("Structs","type.gen")
-homgen = homgenStruct(Structz,Enumz,"Tag");
-enum = genericEnum(Structz,Enumz,"Tag");
-struct = genericStruct(Structz,Enumz,"Tag");
-Enums[#Enums+1] = "Tag"; Enumz["Tag"] = enum
-Structs[#Structs+1] = "Generic"; Structz["Generic"] = struct
-Structs[#Structs+1] = "Homgen"; Structz["Homgen"] = homgen
 function showTypeC(args)
 	local result = ""
 	result = result.."#include \"face.h\"\n"
