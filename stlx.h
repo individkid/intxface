@@ -1,4 +1,7 @@
+#include <pthread.h>
+#include <semaphore.h>
 #ifdef __cplusplus
+#include <set>
 struct SafeState {
     sem_t semaphore;
     SafeState(int val) {
@@ -83,17 +86,6 @@ TYPE front ## NAME(void *ptr) {return *(TYPE*)frontDeque(ptr);} \
 int size ## NAME(void *ptr) {return sizeDeque(ptr);} \
 void free ## NAME(void *ptr) {freeDeque(ptr);} \
 TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## NAME(ptr); drop ## NAME(ptr);} return val;}
-
-void *allocSafe(int val);
-void waitSafe(void *ptr);
-void postSafe(void *ptr);
-void freeSafe(void *ptr);
-#define DECLARE_SAFE(NAME) \
-void *alloc ## NAME(int val) {return allocSafe(val);} \
-void wait ## NAME(void *ptr) {waitSafe(ptr);} \
-void post ## NAME(void *ptr) {postSafe(ptr);} \
-void free ## NAME(void *ptr) {freeSafe(ptr);}
-// TODO perhaps make alloc and push for CallState
 
 #ifdef __cplusplus
 };

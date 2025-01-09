@@ -23,8 +23,6 @@
 #include <limits>
 #include <array>
 #include <deque>
-#include <pthread.h>
-#include <semaphore.h>
 #include <stdio.h>
 extern "C" {
 #include "proto.h"
