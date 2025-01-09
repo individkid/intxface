@@ -62,7 +62,7 @@ typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
 vertexFlattenG: flatten.g
 vulkanCpp: datxC.o faceC.o fmtxC.o protoC.o vulkanCpp.o vulkanCpp.typeC.o wrapCpp.o
-vulkanCpp.o: face.h fmtx.h plane.h proto.h type.h vulkan.cpp
+vulkanCpp.o: face.h fmtx.h plane.h proto.h stlx.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen
 vulkanCpp.typeC.o: face.h type.h
 wrapCpp.o: proto.h wrap.cpp wrap.h

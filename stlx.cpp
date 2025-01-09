@@ -1,6 +1,4 @@
-extern "C" {
 #include "stlx.h"
-};
 
 #include <vector>
 #include <deque>
@@ -42,4 +40,27 @@ void freeDeque(void *ptr)
 {
 	auto que = (std::deque<std::vector<uint8_t>>*)ptr;
 	delete que;	
+}
+
+void *allocSafe(int val)
+{
+	return new SafeState(val);
+}
+
+void waitSafe(void *ptr)
+{
+	auto safe = (SafeState*)ptr;
+	safe->wait();
+}
+
+void postSafe(void *ptr)
+{
+	auto safe = (SafeState*)ptr;
+	safe->post();
+}
+
+void freeSafe(void *ptr)
+{
+	auto safe = (SafeState*)ptr;
+	delete safe;
 }

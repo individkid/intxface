@@ -39,30 +39,7 @@ typedef void (*oftype)(enum Configure cfg, xftype back);
 typedef void (*lftype)(enum Thread thd, int idx, mftype call, mftype done, mftype func);
 // void planeInit(nftype copy, oftype call, lftype fork, wftype pass);
 };
-
-struct SafeState {
-    sem_t semaphore;
-    SafeState(int val) {
-        if (sem_init(&semaphore, 0, val) != 0) {std::cerr << "failed to create semaphore!" << std::endl; exit(-1);}
-    }
-    ~SafeState() {
-        if (sem_destroy(&semaphore) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; exit(-1);}
-    }
-    void wait() {
-        if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
-    }
-    void post() {
-        if (sem_post(&semaphore) != 0) {std::cerr << "cannot post to semaphore!" << std::endl; exit(-1);}
-    }
-    int get() {
-        int sval;
-        if (sem_getvalue(&semaphore,&sval) != 0) {std::cerr << "cannot get semaphore!" << std::endl; exit(-1);}
-        return sval;
-    }
-    void wake() {
-        if (get() == 0) post();
-    }
-};
+#include "stlx.h"
 
 struct MainState;
 struct ChangeState {
@@ -1847,15 +1824,6 @@ struct DrawState : public BaseState {
     }
 };
 
-struct CallState;
-struct DoneState {
-    CallState *ptr;
-    pthread_t thread;
-    virtual void call() = 0;
-    virtual void done() = 0;
-    virtual void func() = 0;
-};
-
 enum ThreadEnum {
     FailThread,
     SizeThread,
@@ -1967,40 +1935,6 @@ struct ForkState : public DoneState {
     void call() {cfnc(thd,idx);}
     void done() {dfnc(thd,idx);}
     void func() {ffnc(thd,idx); delete this;}
-};
-
-struct CallState {
-    SafeState safe;
-    std::set<DoneState*> done;
-    std::set<pthread_t> todo;
-    CallState() : safe(1) {std::cout << "CallState" << std::endl;}
-    ~CallState() {std::cout << "~CallState" << std::endl;
-        safe.wait(); for (auto i = done.begin(); i != done.end(); i++) {
-        todo.insert((*i)->thread); (*i)->done();}
-        done.clear(); safe.post(); clear();
-        safe.wait(); if (!done.empty() || !todo.empty())
-        {std::cerr << "done not empty!" << std::endl; exit(-1);} safe.post();
-    }
-    void clear() { // joins any pushed to todo
-        safe.wait(); std::set<pthread_t> doto = todo; todo.clear(); safe.post();
-        for (auto i = doto.begin(); i != doto.end(); i++) pthread_join((*i),0);
-    }
-    void push(DoneState *ptr) {
-        safe.wait();
-        ptr->ptr = this;
-        done.insert(ptr);
-        if (pthread_create(&ptr->thread,0,call,ptr) != 0)
-        {std::cerr << "failed to start thread!" << std::endl; exit(-1);}
-        safe.post();
-    }
-    static void *call(void *ptr) { // running on separate thread
-        DoneState *done = (DoneState*)ptr;
-        CallState *call = done->ptr;
-        done->call(); call->safe.wait();
-        // if done() called by ~ChageState, they're already inserted and erased
-        call->todo.insert(done->thread); call->done.erase(done);
-        call->safe.post(); done->func(); return 0;
-    }
 };
 
 struct MainState {
