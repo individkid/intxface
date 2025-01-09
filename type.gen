@@ -206,12 +206,12 @@ Fixed = { -- how motion interpreted
 Micro = {
 	"MicroTest", -- for flatten.cpp
 }
-Phase = {
+Phase = { -- TODO no need for this
 	"Init",
 	"Start",
 	"Stop",
 }
-Thread = {
+Thread = { -- TODO these should match threads pushed to CallState
 	"Select",
 	"Console",
 	"Initial",
