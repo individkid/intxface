@@ -47,13 +47,20 @@ struct ChangeState {
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
+    int info(Configure cfg, int val, yftype fnc) {
+        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid info!" << std::endl; exit(-1);}
+        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
+        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg]; safe.post();
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        return ret;
+    }
     typedef int (*ChangeType)(int,int);
     int change(Configure cfg, int val, ChangeType opr, bool ret, bool typ) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid change!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
         if (typ && back.find(cfg) != back.end()) todo = back[cfg];
         config[cfg] = opr(config[cfg],val); val = config[cfg]; safe.post();
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val);
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
         return (ret?sav:val);
     }
     static int readOp(int l, int r) {return l;}
@@ -2139,10 +2146,15 @@ void vulkanBack(Configure cfg, int sav, int val) {
     main->threadState.done();
 }
 
+int vulkanInfo(Configure cfg, int val, yftype fnc)
+{
+    return change->info(cfg,val,fnc);
+}
+
 int main() {
     MainState main; change = &main.changeState;
     main.changeState.call(RegisterOpen,vulkanBack);
-    /*planeInit(vulkanCopy,vulkanCall,vulkanFork,vukanPass); // writes to RegisterPlan and RegisterPoll
+    /*planeInit(vulkanCopy,vulkanCall,vulkanFork,vukanPass,vulkanInfo); // writes to RegisterPlan and RegisterPoll
     while (!glfwWindowShouldClose(main.windowState.window)) {
     planeLoop(); glfwWaitEventsTimeout(main.safeState.read(RegisterPoll)*0.001);}*/
     return 0;

@@ -7,5 +7,7 @@ typedef void (*wftype)(int pass, struct Center *center);
 typedef void (*nftype)(struct Center *center, wftype pass);
 typedef void (*oftype)(enum Configure cfg, xftype back);
 typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done, mftype func);
-void planeInit(nftype copy, oftype call, vftype fork, wftype pass);
+typedef int (*yftype)(int *ref, int val);
+typedef int (*zftype)(enum Configure cfg, int val, yftype fnc);
+void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info);
 void planeLoop();

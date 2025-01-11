@@ -45,6 +45,7 @@ int strsiz = 0;
 wftype callPass;
 nftype callCopy;
 vftype callFork;
+zftype callInfo;
 sem_t testSem = {0};
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -491,21 +492,34 @@ void planeBack(enum Configure cfg, int sav, int val)
     if (cfg == RegisterOpen && !(val & (1<<SwitchThd)) && (sav & (1<<SwitchThd)))
     planeSwitched(SwitchThd,0);
 }
-void planeInit(nftype copy, oftype call, vftype fork, wftype pass)
+int planeWots(int *ref, int val)
+{
+	int ret = *ref&val; *ref |= val; return ret;
+}
+int planeWotc(int *ref, int val)
+{
+	int ret = *ref&val; *ref &= ~val; return ret;
+}
+int planeWcfg(int *ref, int val)
+{
+	int ret = *ref; *ref = val; return ret;
+}
+void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info)
 {
 	callCopy = copy;
 	callFork = fork;
 	callPass = pass;
+	callInfo = info;
     call(RegisterOpen,planeBack);
     call(RegisterMask,planeSwitcher);
-    planeSync(RegisterPoll,1);
-    planeSync(RegisterOpen,(1<<FenceThd));
+    info(RegisterPoll,1,planeWcfg);
+    info(RegisterOpen,(1<<FenceThd),planeWots);
 	if (sem_init(&testSem, 0, 0) != 0) exitErr(__FILE__,__LINE__);
-    planeSync(RegisterOpen,(1<<FenceThd)|(1<<TestThd));
+    info(RegisterOpen,(1<<TestThd),planeWots);
     if (sem_wait(&testSem) != 0) exitErr(__FILE__,__LINE__);
 	if (sem_destroy(&testSem) != 0) exitErr(__FILE__,__LINE__);
-    planeSync(RegisterOpen,(1<<FenceThd));
-    planeSync(RegisterOpen,0);
+    info(RegisterOpen,(1<<TestThd),planeWotc);
+    info(RegisterOpen,(1<<FenceThd),planeWotc);
 }
 int count = 0;
 void planeLoop()
