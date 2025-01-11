@@ -50,6 +50,23 @@ sem_t testSem = {0};
 
 DECLARE_DEQUE(struct Center *,Centerq)
 
+int planeWots(int *ref, int val)
+{
+	int ret = *ref&val; *ref |= val; return ret;
+}
+int planeWotc(int *ref, int val)
+{
+	int ret = *ref&val; *ref &= ~val; return ret;
+}
+int planeWcfg(int *ref, int val)
+{
+	int ret = *ref; *ref = val; return ret;
+}
+int planeRcfg(int *ref, int val)
+{
+	return *ref;
+}
+
 unsigned char *moveCursor(int dim, int e, int t, int r, int b, int l) {
     int hot = dim/2;
     int box = 1;
@@ -195,7 +212,7 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 planeXform planeFunc()
 {
-    int tmp; int cfg = Mouse; // TODO somehow get configure[FixedCfg]
+    int tmp; int cfg = callInfo(ManipFixed,0,planeRcfg);
     tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeSlideOrthoMouse;
     tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeRotateFocalMouse;
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) return planeRotateCursorRoller;
@@ -225,29 +242,29 @@ float *planraMatrix(float *mat)
 void physicalToScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
-    width = 0/*configure[MonitorWidth]*/; height = 0/*configure[MonitorHeight]*/;
-    xphys = 0/*configure[PhysicalWidth]*/; yphys = 0/*configure[PhysicalHeight]*/;
+    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
+    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
     *xptr *= width/xphys; *yptr *= height/yphys;
 }
 void physicalFromScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
-    width = 0/*configure[MonitorWidth]*/; height = 0/*configure[MonitorHeight]*/;
-    xphys = 0/*configure[PhysicalWidth]*/; yphys = 0/*configure[PhysicalHeight]*/;
+    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
+    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
     *xptr *= xphys/width; *yptr *= yphys/height;
 }
 void screenToWindow(float *xptr, float *yptr)
 {
     int width, height, left, base;
-    width = 0/*configure[WindowWidth]*/; height = 0/*configure[WindowHeight]*/;
-    left = 0/*configure[WindowLeft]*/; base = 0/*configure[WindowBase]*/;
+    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
+    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
     *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
 }
 void screenFromWindow(float *xptr, float *yptr)
 {
     int width, height, left, base;
-    width = 0/*configure[WindowWidth]*/; height = 0/*configure[WindowHeight]*/;
-    left = 0/*configure[WindowLeft]*/; base = 0/*configure[WindowBase]*/;
+    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
+    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
 int debug = 0;
@@ -277,7 +294,7 @@ float *planeWindow(float *mat)
 
 void planeStage(enum Configure cfg)
 {
-	// TODO somehow get configure
+	// TODO callInfo(cfg,val,planeWcfg);
 }
 void *planeResize(void *ptr, int mod, int siz, int tmp) // TODO called by callback
 {
@@ -337,7 +354,7 @@ void planeCopy(struct Center *center)
 	case (Stackz): for (int i = 0; i < center->siz; i++) planeCall(dat0,center->str[i]); break;
 	case (Machinez): for (int i = 0; i < center->siz; i++) {
 		int index = center->idx+i;
-		if (index < 0 || index >= 0/*configure[MachineSize]*/) ERROR();
+		if (index < 0 || index >= callInfo(MachineSize,0,planeRcfg)) ERROR();
 		if (center->mch[i].xfr == Name) {void *dat = 0; datxInt(&dat,index+1);
 		datxInserts("_",center->mch[i].str,dat,identType("Int")); free(dat);}
 		copyMachine(&machine[index],&center->mch[i]);} break;
@@ -346,7 +363,7 @@ void planeCopy(struct Center *center)
 int planeEscape(int lvl, int nxt)
 {
 	int inc = (lvl > 0 ? 1 : (lvl == 0 ? 0 : -1)); lvl *= inc;
-	for (nxt += inc; lvl > 0 && nxt < 0/*configure[MachineSize]*/ && nxt >= 0; nxt += inc)
+	for (nxt += inc; lvl > 0 && nxt < callInfo(MachineSize,0,planeRcfg) && nxt >= 0; nxt += inc)
 	if (machine[nxt].xfr == Nest) lvl += machine[nxt].lvl*inc;
 	return nxt;
 }
@@ -361,7 +378,7 @@ int planeIval(struct Express *exp)
 void planePass(); // TODO
 void planeEcho()
 {
-	if (0/*configure[RegisterType]*/ != identType("Center")) ERROR();
+	if (callInfo(RegisterType,0,planeRcfg) != identType("Center")) ERROR();
 	readCenter(center,idx0);
 }
 void planeHide()
@@ -378,7 +395,7 @@ void planeRead(); // TODO
 void planeWrite(); // TODO
 void planeSwitch(enum Thread tag, int idx)
 {
-	for (int next = 0; next >= 0 && next < 0/*configure[MachineSize]*/; next++) {
+	for (int next = 0; next >= 0 && next < callInfo(MachineSize,0,planeRcfg); next++) {
 	struct Machine *mptr = &machine[next];
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
@@ -404,7 +421,7 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Hide): planeHide(); break; // TODO get center from console thread
 	case (Show): planeShow(); break; // TODO put center to console thread
 	default: break;}
-	if (next == 0/*configure[MachineSize]*/) {next = 0;
+	if (next == callInfo(MachineSize,0,planeRcfg)) {next = 0;
 	if (sem_wait(&switchSem) != 0) exitErr(__FILE__,__LINE__);}}
 }
 void planeSwitched(enum Thread tag, int idx)
@@ -491,18 +508,6 @@ void planeBack(enum Configure cfg, int sav, int val)
     callFork(SwitchThd,0,planeSwitch,planeSwitched,planeNoop);
     if (cfg == RegisterOpen && !(val & (1<<SwitchThd)) && (sav & (1<<SwitchThd)))
     planeSwitched(SwitchThd,0);
-}
-int planeWots(int *ref, int val)
-{
-	int ret = *ref&val; *ref |= val; return ret;
-}
-int planeWotc(int *ref, int val)
-{
-	int ret = *ref&val; *ref &= ~val; return ret;
-}
-int planeWcfg(int *ref, int val)
-{
-	int ret = *ref; *ref = val; return ret;
 }
 void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info)
 {

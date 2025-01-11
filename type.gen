@@ -61,6 +61,16 @@ Configure = {
 	"RegisterPlan", -- testing plan
 	"RegisterPoll", -- poll microseconds
 	"RegisterMask", -- interrupt mask
+	"ManipFixed",
+	"MonitorWidth",
+	"MonitorHeight",
+	"PhysicalWidth",
+	"PhysicalHeight",
+	"WindowWidth",
+	"WindowHeight",
+	"WindowLeft",
+	"WindowBase",
+
 }
 Transfer = {
 	"Read", -- read internal pipe
