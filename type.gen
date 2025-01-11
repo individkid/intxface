@@ -54,86 +54,14 @@ Async = {
 	"ResizeAsync",
 }
 Configure = {
-	"TriangleSize", -- refers to corners
-	"TriangleBase", --
-	"NumericSize", -- planes for corners
-	"NumericBase", --
-	"VertexSize", -- corners of frame
-	"VertexBase", --
-	"MatrixSize", -- multipurpose matrix
-	"MatrixBase", --
-	"BasisSize", -- cospace converters
-	"BasisBase", --
-	"StringSize", -- queue of strings
-	"MachineSize", -- vending machine lines
-	"LittleSize", -- machine size
-	"LittleIndex", -- where in machine
-	"ParamIndex", -- which to use
-	"ParamRoof", --
-	"ParamFollow", -- pass to dma
-	"ParamModify", --
-	"ParamShader", -- pass to draw
-	"ParamBase", --
-	"ParamLimit", --
-	"ManipReact", -- block or behave
-	"ManipEnact", -- call and return
-	"ManipAction", -- what to do
-	"ManipFixed", -- how to do
-	"ManipScope", -- what to transform
-	"RegisterOpen", -- thread running mask
-	"RegisterInit", -- thread testing mask
-	"RegisterPlan", -- thread testing plan
-	"RegisterPoll", -- poll second thousandths
-	"RegisterMask", -- async event mask
-	"ResultLine", -- state of machine
-	"ResultHint", -- argument from graphics
-	"ResultType", -- type of eval result
-	"CursorRead", -- which cursor read
-	"CursorWrite", -- which cursor written
-	"CursorIndex", -- manipulate plane select
-	"CursorLeft", -- user input mouse
-	"CursorBase", --
-	"CursorAngle", -- user input roller
-	"CursorClick", -- user input button
-	"CursorPress", -- user input keyboard
-	"PierceRead", -- which point read
-	"PierceWrite", -- which point written
-	"PierceLeft", -- pierce point found
-	"PierceBase", --
-	"PierceDeep", --
-	"PierceIndex", -- which pierce plane
-	"SpoofRead", -- which point read
-	"SpoofWrite", -- which point written
-	"SpoofLeft", -- pierce point found
-	"SpoofBase", --
-	"SwapRead", -- which size read
-	"SwapWrite", -- which size written
-	"SwapWidth", -- window size
-	"SwapHeight", --
-	"WindowRead", -- which window read
-	"WindowWrite", -- which window written
-	"WindowLeft", -- window position
-	"WindowBase", --
-	"WindowWidth", -- window size
-	"WindowHeight", --
-	"MonitorWidth", -- monitor size
-	"MonitorHeight", --
-	"PhysicalWidth", -- monitor size
-	"PhysicalHeight", --
-	"ClosestFind", -- whether to search or index
-	"ClosestValid", -- search through pierce
-	"ClosestIndex", --
-	"ClosestPoly", --
-	"ClosestLeft", --
-	"ClosestBase", --
-	"ClosestNear", --
-	"NormalLeft", --
-	"NormalBase", --
-	"NormalNear", --
-	"CenterMemory", -- fields to from client
-	"CenterSize", --
-	"CenterIndex", --
-	"CenterSelf", --
+	"MatrixSize",
+	"MachineSize",
+	"RegisterHint", -- callback configure
+	"RegisterType", -- expression type
+	"RegisterOpen", -- thread mask
+	"RegisterPlan", -- testing plan
+	"RegisterPoll", -- poll microseconds
+	"RegisterMask", -- interrupt mask
 }
 Transfer = {
 	"Read", -- read internal pipe
@@ -152,7 +80,9 @@ Transfer = {
 	"Goto", -- jump if true
 	"Nest", -- nest to level
 	"Eval", -- call datxEval
+	"Pass", -- eval given center
 	"Echo", -- copy result to center
+	"Show", -- show and push
 	"Hide", -- pop hide and use
 }
 Plan = { -- which test to run
@@ -206,18 +136,12 @@ Fixed = { -- how motion interpreted
 Micro = {
 	"MicroTest", -- for flatten.cpp
 }
-Phase = { -- TODO no need for this
-	"Init",
-	"Start",
-	"Stop",
-}
-Thread = { -- TODO these should match threads pushed to CallState
-	"Select",
-	"Console",
-	"Initial",
-	"Window",
-	"Graphics",
-	"Process",
+Thread = {
+	"PipeThd",
+	"StdioThd",
+	"SwitchThd",
+	"FenceThd",
+	"TestThd",
 }
 Emerg = {
 	"Planes", -- Scalar -- [Plane] -- per boundary
@@ -246,7 +170,7 @@ Operate = {
 	"MulOp",
 	"DivOp",
 	"RemOp",
-	"CndOp", -- switch on het
+	"CndOp", -- switch on exp
 	"TotOp", -- cast to type
 	"GetOp", -- value from callback
 	"SetOp", -- callback with value
@@ -255,15 +179,15 @@ Operate = {
 	"OptOp", -- cache result
 	"RexOp", -- regex sugar
 	"IrxOp", -- irrex sugar
-	"CmpOp", -- compile for map
+	"CmpOp", -- compare sugar
 	"DatOp", -- memset Dat
 	"PopOp",
 	"PutOp",
 	"OutOp",
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
-	"PrmOp", -- permute list
-	"LstOp", -- join lists
+	"PrmOp", -- permute of list
+	"LstOp", -- list of Dat
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
@@ -495,7 +419,7 @@ Express = {
 	{"cmp","Express",{["opr"]={["CmpOp"]=true}},1},
 	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
-	{"put","Express",{["opr"]={["OutOp"]=true}},1}, -- str:Str :Dat
+	{"put","Express",{["opr"]={["PutOp"]=true}},1}, -- str:Str :Dat
 	{"out","Express",{["opr"]={["OutOp"]=true}},1}, -- str:Str :Dat
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4}, -- giv:Gen val:Het str:Hom idx:Hom :Gen
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
@@ -643,8 +567,6 @@ Valve = {
 --HERE
 -- below for depend.lua
 Wrap = {
-}
-Union = {
 }
 Subtype = {
 }
@@ -796,7 +718,6 @@ if (arg[2] ~= nil) then
 			if string.match(word,"..*Type") then args = nil; break end
 			if string.match(word,"..*Field") then args = nil; break end
 			if string.match(word,"..*Subtype") then args = nil; break end
-			if string.match(word,"..*Union") then args = nil; break end
 			args[word] = true
 			deps = rest
 		end

@@ -27,19 +27,13 @@ lineCpp.typeC.o: face.h type.h
 luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
-planra.log: fragmentFlattenG planraC texture.jpg vertexFlattenG vulkanCpp
+planeC.o: datx.h face.h metx.h plane.c plane.h proto.h stlx.h type.h
+planra.log: fragmentFlattenG planraC vertexFlattenG vulkanCpp
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
 protoC.o: proto.c proto.h
-share: shareC
-shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o wrapCpp.o
-shareC.o: datx.h face.h proto.h share.c type.h
-shareC.type.c: luax.so show.lua type.gen
-shareC.typeC.o: face.h type.h
-sharer.log: luax.so shareC sharer.lua sharerLua type.lua
-sharerLua: sharer.lua
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs spaceHs.type.hs
 spaceHs.type.hs: luax.so show.lua type.gen

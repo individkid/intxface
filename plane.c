@@ -5,14 +5,13 @@
 #include "stlx.h"
 #include "type.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <unistd.h>
-#include <sys/errno.h>
+#include <stdio.h>
+#include <sys/select.h>
 #include <string.h>
 #include <math.h>
 #include <sys/time.h>
-#include <setjmp.h>
-#include <signal.h>
+#include <errno.h>
 
 // Order of matrix application is window * project * subject * object * element * vector.
 // To change X such that YX changes to ZYX, change X to Y’ZXY.
@@ -26,51 +25,25 @@ struct Kernel {
 	struct Matrix local;
 	struct Matrix inverse;
 };
-// owned by main thread:
-// TODO Add map from polytope to matrix, captured from copy to Triangle buffer.
 struct Kernel *matrix = 0;
 struct Machine *machine = 0;
+struct Center *center = 0;
+sem_t switchSem = {0};
 int *intstk = 0;
 int numstk = 0;
 int idxstk = 0;
-int configure[Configures] = {0};
-struct Center *center = 0;
 int sub0 = 0;
 int idx0 = 0;
 void **dat0 = 0;
-int running = 0;
-void planeStarted(int val);
-int planeRunning();
-int planeCall(void **dat, const char *str);
-// constant after other threads start:
 int external = 0;
 int wakeup = 0;
 void *internal = 0;
 void *response = 0;
-vftype callSafe = 0;
-zftype callLoop = 0;
-zftype callBlock = 0;
-yftype callPhase = 0;
-uftype callCopy = 0;
-sftype callWake = 0;
-tftype callInfo = 0;
-pthread_t thread[Threads];
-pthread_key_t retstr;
-// resource protected:
+sem_t pipeSem = {0};
 char **string = 0;
 int strsiz = 0;
-int qsize = 0;
-int qfull = 0;
-int qwait = 0;
-int qhead = 0;
-int qtail = 0;
-enum Configure *hints = 0;
-enum Phase *waits = 0;
-enum Thread *procs = 0;
-// thread safe:
-sem_t resource;
-sem_t pending;
-sem_t ready[Threads];
+wftype callPass;
+nftype callCopy;
 
 DECLARE_DEQUE(struct Center *,Centerq)
 
@@ -219,7 +192,7 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 planeXform planeFunc()
 {
-    int tmp; int cfg = configure[ManipFixed];
+    int tmp; int cfg = Mouse; // TODO somehow get configure[FixedCfg]
     tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeSlideOrthoMouse;
     tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeRotateFocalMouse;
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) return planeRotateCursorRoller;
@@ -249,29 +222,29 @@ float *planraMatrix(float *mat)
 void physicalToScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
-    width = callInfo(MonitorWidth); height = callInfo(MonitorHeight);
-    xphys = callInfo(PhysicalWidth); yphys = callInfo(PhysicalHeight);
+    width = 0/*configure[MonitorWidth]*/; height = 0/*configure[MonitorHeight]*/;
+    xphys = 0/*configure[PhysicalWidth]*/; yphys = 0/*configure[PhysicalHeight]*/;
     *xptr *= width/xphys; *yptr *= height/yphys;
 }
 void physicalFromScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
-    width = callInfo(MonitorWidth); height = callInfo(MonitorHeight);
-    xphys = callInfo(PhysicalWidth); yphys = callInfo(PhysicalHeight);
+    width = 0/*configure[MonitorWidth]*/; height = 0/*configure[MonitorHeight]*/;
+    xphys = 0/*configure[PhysicalWidth]*/; yphys = 0/*configure[PhysicalHeight]*/;
     *xptr *= xphys/width; *yptr *= yphys/height;
 }
 void screenToWindow(float *xptr, float *yptr)
 {
     int width, height, left, base;
-    width = callInfo(WindowWidth); height = callInfo(WindowHeight);
-    left = callInfo(WindowLeft); base = callInfo(WindowBase);
+    width = 0/*configure[WindowWidth]*/; height = 0/*configure[WindowHeight]*/;
+    left = 0/*configure[WindowLeft]*/; base = 0/*configure[WindowBase]*/;
     *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
 }
 void screenFromWindow(float *xptr, float *yptr)
 {
     int width, height, left, base;
-    width = callInfo(WindowWidth); height = callInfo(WindowHeight);
-    left = callInfo(WindowLeft); base = callInfo(WindowBase);
+    width = 0/*configure[WindowWidth]*/; height = 0/*configure[WindowHeight]*/;
+    left = 0/*configure[WindowLeft]*/; base = 0/*configure[WindowBase]*/;
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
 int debug = 0;
@@ -298,42 +271,18 @@ float *planeWindow(float *mat)
     */
     return identmat(mat,4);
 }
-void planeString()
-{
-	sem_wait(&resource);
-	configure[StringSize] = strsiz;
-	sem_post(&resource);
-}
+
 void planeStage(enum Configure cfg)
 {
-	switch (cfg) {
-	case (StringSize): planeString(); break;
-	case (CenterMemory): configure[CenterMemory] = (center ? center->mem : Memorys); break;
-	case (CenterSize): configure[CenterSize] = (center ? center->siz : 0); break;
-	case (CenterIndex): configure[CenterIndex] = (center ? center->idx : 0); break;
-	case (CenterSelf): configure[CenterSelf] = (center ? center->slf : 0); break;
-	// TODO stage Closest and Normal from callInfo
-	case (CursorLeft): configure[CursorLeft] = callInfo(CursorLeft); break;
-	case (CursorBase): configure[CursorBase] = callInfo(CursorBase); break;
-	case (CursorAngle): configure[CursorAngle] = callInfo(CursorAngle); break;
-	case (CursorPress): configure[CursorPress] = callInfo(CursorPress); break;
-	case (WindowLeft): configure[WindowLeft] = callInfo(WindowLeft); break;
-	case (WindowBase): configure[WindowBase] = callInfo(WindowBase); break;
-	case (WindowWidth): configure[WindowWidth] = callInfo(WindowWidth); break;
-	case (WindowHeight): configure[WindowHeight] = callInfo(WindowHeight); break;
-	case (MonitorWidth): configure[MonitorWidth] = callInfo(MonitorWidth); break;
-	case (MonitorHeight): configure[MonitorHeight] = callInfo(MonitorHeight); break;
-	case (PhysicalWidth): configure[PhysicalWidth] = callInfo(PhysicalWidth); break;
-	case (PhysicalHeight): configure[PhysicalHeight] = callInfo(PhysicalHeight); break;
-	default: break;}
+	// TODO somehow get configure
 }
-void *planeResize(void *ptr, int mod, int siz, int tmp)
+void *planeResize(void *ptr, int mod, int siz, int tmp) // TODO called by callback
 {
 	char *result = realloc(ptr,siz*mod);
 	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
 	return result;
 }
-void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
+void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp) // TODO called by callback
 {
 	char *chrs = ptr;
 	char *result = malloc(siz*mod);
@@ -346,30 +295,6 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 	free(ptr);
 	return result;
 }
-void planeStarted(int tmp)
-{
-	int done = 0; int todo = 0;
-	int started = configure[RegisterOpen];
-	int init = configure[RegisterInit];
-	todo = started & ~tmp; done = tmp & ~started;
-	for (enum Thread bit = 0; bit < Threads; bit++)
-	if (done & (1<<bit)) planeSafe(bit,Stop,Configures);
-	for (enum Thread bit = 0; bit < Threads; bit++) {
-	if (init & (1<<bit)) planeSafe(bit,Init,Configures);
-	if (todo & (1<<bit)) planeSafe(bit,Start,Configures);}
-}
-void planeConfig(enum Configure cfg, int val)
-{
-	int tmp = 0;
-	if (cfg < 0 || cfg >= Configures) ERROR();
-	tmp = configure[cfg]; configure[cfg] = val;
-	switch (cfg) {
-	case (MatrixSize): matrix = planeResize(matrix,sizeof(struct Kernel),val,tmp); break;
-	case (MatrixBase): matrix = planeRebase(matrix,sizeof(struct Kernel),configure[MatrixSize],val,tmp); break;
-	case (MachineSize): machine = planeResize(machine,sizeof(struct Machine),val,tmp); break;
-	case (RegisterOpen): planeStarted(tmp); break;
-	default: break;}
-}
 void planeSync(enum Configure cfg, int val)
 {
 	struct Center *center = 0;
@@ -380,8 +305,7 @@ void planeSync(enum Configure cfg, int val)
 	allocInt(&center->val,1);
 	center->cfg[0] = cfg;
 	center->val[0] = val;
-	callCopy(&center);
-	freeCenter(center); allocCenter(&center,0);
+	callCopy(center,callPass);
 }
 void planeCont()
 {
@@ -403,26 +327,23 @@ void planeDisp()
 {
 	// TODO conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 }
-void planeCopy(struct Center **given)
+void planeCall(void **, const char *); // TODO
+void planeCopy(struct Center *center)
 {
-	struct Center *center = *given;
 	switch (center->mem) {
 	case (Stackz): for (int i = 0; i < center->siz; i++) planeCall(dat0,center->str[i]); break;
 	case (Machinez): for (int i = 0; i < center->siz; i++) {
 		int index = center->idx+i;
-		if (index < 0 || index >= configure[MachineSize]) ERROR();
+		if (index < 0 || index >= 0/*configure[MachineSize]*/) ERROR();
 		if (center->mch[i].xfr == Name) {void *dat = 0; datxInt(&dat,index+1);
 		datxInserts("_",center->mch[i].str,dat,identType("Int")); free(dat);}
 		copyMachine(&machine[index],&center->mch[i]);} break;
-	case (Configurez): for (int i = 0; i < center->siz; i++)
-		planeConfig(center->cfg[i],center->val[i]);
-		callCopy(given); break;
-	default: callCopy(given); break;}
+	default: callCopy(center,callPass); break;}
 }
 int planeEscape(int lvl, int nxt)
 {
 	int inc = (lvl > 0 ? 1 : (lvl == 0 ? 0 : -1)); lvl *= inc;
-	for (nxt += inc; lvl > 0 && nxt < configure[MachineSize] && nxt >= 0; nxt += inc)
+	for (nxt += inc; lvl > 0 && nxt < 0/*configure[MachineSize]*/ && nxt >= 0; nxt += inc)
 	if (machine[nxt].xfr == Nest) lvl += machine[nxt].lvl*inc;
 	return nxt;
 }
@@ -434,35 +355,10 @@ int planeIval(struct Express *exp)
 	val = *datxIntz(0,dat); free(dat);
 	return val;
 }
-void planeProduce(vftype func)
-{
-	freeCenter(center);
-	allocCenter(&center,0);
-	func();
-	if (center == 0) allocCenter(&center,1);
-}
-void planeConsume(vftype func)
-{
-	func();
-	center = 0;
-	allocCenter(&center,1);
-}
-void planeRead()
-{
-	sem_wait(&resource);
-	center = maybeCenterq(0,internal);
-	sem_post(&resource);
-}
-void planeWrite()
-{
-	sem_wait(&resource);
-	pushCenterq(center,response);
-	writeInt(0,wakeup);
-	sem_post(&resource);
-}
+void planePass(); // TODO
 void planeEcho()
 {
-	if (configure[ResultType] != identType("Center")) ERROR();
+	if (0/*configure[RegisterType]*/ != identType("Center")) ERROR();
 	readCenter(center,idx0);
 }
 void planeHide()
@@ -474,121 +370,50 @@ void planeHide()
 	// TODO try hideMachine and planeSwitch
 	// TODO otherwise planePutstr
 }
+void planeShow(); // TODO
+void planeRead(); // TODO
+void planeWrite(); // TODO
 int planeSwitch(struct Machine *mptr, int next)
 {
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
-	case (Read): planeProduce(planeRead); break;
-	case (Write): planeConsume(planeWrite); break;
+	case (Read): planeRead(); break; // TODO pop center from pipe thread
+	case (Write): planeWrite(); break; // TODO push center to pipe thread
+	// TODO way to pop/push from/to console thread
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
-	case (Force): for (int i = 0; i < mptr->num; i++) {
-	planeConfig(mptr->cfg[i],mptr->val[i]); planeSync(mptr->cfg[i],mptr->val[i]);} break;
+	case (Force): for (int i = 0; i < mptr->num; i++) planeSync(mptr->cfg[i],mptr->val[i]); break;
 	case (Cont): planeCont(); break;
 	case (Prep): planePrep(); break;
 	case (Send): planeSend(); break;
 	case (Recv): planeRecv(); break;
 	case (Disp): planeDisp(); break;
-	case (Copy): planeCopy(&center); break;
+	case (Copy): planeCopy(center); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
 	case (Name): if (idxstk > 0) next = next - 1; else ERROR(); break;
-	case (Eval): configure[ResultType] = datxEval(dat0,&mptr->exp[0],-1); break;
-	case (Echo): planeProduce(planeEcho); break;
-	case (Hide): planeHide(); break;
+	case (Eval): planeSync(RegisterType,datxEval(dat0,&mptr->exp[0],-1)); break;
+	case (Pass): planePass(); break; // TODO eval expression given center
+	case (Echo): planeEcho(); break; // TODO get center from expression side effect
+	case (Hide): planeHide(); break; // TODO get center from console thread
+	case (Show): planeShow(); break; // TODO put center to console thread
 	default: break;}
 	return next+1;
-}
-void planeMicro()
-{
-	while (configure[ResultLine] >= 0 && configure[ResultLine] < configure[MachineSize]) {
-	struct Machine *mptr = machine+configure[ResultLine];
-	int next = planeSwitch(mptr,configure[ResultLine]);
-	if (next == configure[ResultLine]) break;
-	configure[ResultLine] = next;}
-}
-int planeCall(void **dat, const char *str)
-{
-	void *nam = 0; int typ = 0;
-	if (str == 0) {assignDat(dat,*dat0); return configure[ResultType];}
-	typ = datxFinds(&nam,"_",str);
-	if (typ != identType("Int")) ERROR();
-	if (idxstk >= numstk) {
-	intstk = realloc(intstk,(idxstk+1)*sizeof(int));
-	while (idxstk >= numstk) intstk[numstk++] = 0;}
-	intstk[idxstk++] = configure[ResultLine];
-	configure[ResultLine] = *datxIntz(0,nam);
-	planeMicro();
-	configure[ResultLine] = intstk[--idxstk];
-	assignDat(dat,*dat0);
-	free(nam);
-	return configure[ResultType];
-}
-void planeWake(enum Configure hint)
-{
-	configure[ResultHint] = hint;
-	if (configure[ResultLine] < 0) configure[ResultLine] = 0;
-	if (configure[ResultLine] >= configure[MachineSize]) configure[ResultLine] = 0;
-	planeMicro();
-}
-void planeBoot()
-{
-	for (int i = 0; Bootstrap__Int__Str(i); i++) {
-	struct Machine mptr = {0}; int len = 0;
-	if (!hideMachine(&mptr,Bootstrap__Int__Str(i),&len)) ERROR();
-	planeSwitch(&mptr,0);}
-}
-char *planePopstr() // non-const return means caller owns it
-{
-	char *ret;
-	sem_wait(&resource);
-	ret = strdup(string[0]);
-	strsiz--;
-	for (int i = 0; i < strsiz; i++) string[i] = string[i+1];
-	string = realloc(string,strsiz*sizeof(char*));
-	sem_post(&resource);
-	return ret;
-}
-void planePutstr(const char *str) // const given means caller owns it
-{
-	sem_wait(&resource);
-	strsiz++;
-	string = realloc(string,strsiz*sizeof(char*));
-	string[strsiz-1] = strdup(str);
-	sem_post(&resource);
-}
-void planeOutstr(const char *str)
-{
-	write(STDIN_FILENO,str,strlen(str));
-}
-void planeSetcfg(int val, int sub)
-{
-	if (sub < 0 || sub >= Configures) ERROR();
-	planeConfig(sub,val); planeSync(sub,val);
-}
-int planeGetcfg(int sub)
-{
-	if (sub < 0 || sub >= Configures) ERROR();
-	return configure[sub];
-}
-void planeTerm(int sig)
-{
 }
 void *planeSelect(void *ptr)
 {
 	char *str = 0; // FIXME let planeHide do this when planePopstr is Argument
 	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
-	sem_post(&ready[Select]);
 	while (1) {
 	int sub = waitRead(0,(1<<external)|(1<<wakeup));
 	if (sub == wakeup) {
 	struct Center *center = 0;
 	if (!checkRead(wakeup)) break;
 	readInt(wakeup);
-	sem_wait(&resource);
+	sem_wait(&pipeSem);
 	center = maybeCenterq(0,response);
-	sem_post(&resource);
+	sem_post(&pipeSem);
 	writeCenter(center,external);
 	freeCenter(center);
 	allocCenter(&center,0);}
@@ -597,12 +422,10 @@ void *planeSelect(void *ptr)
 	if (!checkRead(external)) break;
 	allocCenter(&center,1);
 	readCenter(center,external);
-	sem_wait(&resource);
+	sem_wait(&pipeSem);
 	pushCenterq(center,internal);
-	sem_post(&resource);
-	planeSafe(Threads,Phases,CenterMemory); callSafe();}
+	sem_post(&pipeSem);}
 	else break;}
-	planeSafe(Select,Stop,Configures); callSafe();
 	return 0;
 }
 void *planeConsole(void *ptr)
@@ -612,7 +435,6 @@ void *planeConsole(void *ptr)
 	int nfd = 0;
 	char *str = 0;
 	fd_set fds, ers;
-	sem_post(&ready[Console]);
 	while (1) {
 	FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
 	if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
@@ -625,129 +447,13 @@ void *planeConsole(void *ptr)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	// planeDupstr(&str,-1,2,0); planeInsstr(chr,1,2,strlen(str)); free(str); // FIXME
+	// TODO hide string and let machine thread process it
 	}
-	planeSafe(Console,Stop,Configures); callSafe();
 	return 0;
 }
-void planePredo(enum Thread bit)
+void planeInit(nftype copy, oftype call, vftype fork, wftype pass)
 {
-	switch (bit) {default: callPhase(bit,Init);
-	break; case(Select): ERROR();
-	break; case(Console): ERROR();}
+	// TODO register callbacks; push threads
 }
-void planeThread(enum Thread bit)
-{
-	if ((running & (1<<bit)) != 0) return; running |= (1<<bit);
-	switch (bit) {default: sem_post(&ready[bit]); callPhase(bit,Start);
-	break; case (Select): if (pthread_create(&thread[bit],0,planeSelect,0) != 0) ERROR();
-	break; case (Console): if (pthread_create(&thread[bit],0,planeConsole,0) != 0) ERROR();}
-	if ((configure[RegisterOpen] & (1<<bit)) == 0) {
-		configure[RegisterOpen] |= (1<<bit); planeSafe(Threads,Phases,RegisterOpen);}
-}
-void planeFinish(enum Thread bit)
-{
-	if ((running & (1<<bit)) == 0) return; running &= ~(1<<bit);
-	sem_wait(&ready[bit]); switch (bit) {default: callPhase(bit,Stop);
-	break; case (Select): closeIdent(external); if (pthread_join(thread[bit],0) != 0) ERROR();
-	break; case (Console): close(STDIN_FILENO); if (pthread_join(thread[bit],0) != 0) ERROR();}
-	if ((configure[RegisterOpen] & (1<<bit)) != 0) {
-		configure[RegisterOpen] &= ~(1<<bit); planeSafe(Threads,Phases,RegisterOpen);}
-}
-void planePhase(enum Thread bit, enum Phase phase)
-{
-	switch(phase) {default: ERROR();
-	break; case (Init): planePredo(bit);
-	break; case (Start): planeThread(bit);
-	break; case (Stop): planeFinish(bit);}
-}
-void wrapPlane();
-void planeInit(vftype init, vftype boot, vftype main, zftype loop, zftype block, sftype wake, yftype phase,vftype safe, uftype copy, tftype info)
-{
-	struct sigaction act;
-	act.sa_handler = planeTerm;
-	if (sigaction(SIGTERM,&act,0) < 0) ERROR();
-	if (pthread_key_create(&retstr,free) != 0) ERROR();
-	sem_init(&resource,0,1); sem_init(&pending,0,0);
-	for (enum Thread bit = 0; bit < Threads; bit++) sem_init(&ready[bit],0,0);
-	// {struct Center tmp = {0}; allocCenter(&center,1); *center = tmp;}
-	internal = allocCenterq(); response = allocCenterq();
-	wrapPlane(); datxCaller(planeCall);
-	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	callLoop = loop; callBlock = block; callWake = wake; callPhase = phase; callSafe = safe; callCopy = copy; callInfo = info;
-	init(); // planePutstr on argv
-	boot(); // initial planeEnque
-	main(); // planeDeque vulkanChange
-	while (sizeCenterq(internal)) planeRead();
-	while (sizeCenterq(response)) {
-	struct Center *ptr = maybeCenterq(0,response);
-	freeCenter(ptr); allocCenter(&ptr,0);}
-	freeCenterq(internal);
-}
-void planeDone(struct Center *ptr)
-{
-	freeCenter(ptr); allocCenter(&ptr,0);
-}
-void planeEnque(enum Thread thread, enum Phase phase, enum Configure hint)
-{
-	sem_wait(&resource);
-	if (qfull == qsize) {qsize++;
-	procs = realloc(procs,qsize*sizeof(enum Thread));
-	waits = realloc(waits,qsize*sizeof(enum Phase));
-	hints = realloc(hints,qsize*sizeof(enum Configure));
-	for (int i = qsize-1; i > qhead; i--) {
-	procs[i] = procs[i-1]; waits[i] = waits[i-1]; hints[i] = hints[i-1];}
-	qhead++; if (qhead == qsize) qhead = 0;}
-	procs[qtail] = thread; waits[qtail] = phase; hints[qtail] = hint;
-	qtail++; if (qtail == qsize) qtail = 0;
-	qfull++;
-	if (qwait) {qwait = 0; sem_post(&pending);}
-	sem_post(&resource);
-}
-void planeDeque(enum Thread *thread, enum Phase *phase, enum Configure *hint)
-{
-	sem_wait(&resource);
-	if (qfull == 0) ERROR();
-	*thread = procs[qhead]; *phase = waits[qhead]; *hint = hints[qhead];
-	qhead++; if (qhead == qsize) qhead = 0;
-	qfull--;
-	sem_post(&resource);
-}
-int planeCheck()
-{
-	sem_wait(&resource);
-	if (qfull == 0) {sem_post(&resource); return 0;}
-	sem_post(&resource); return 1;
-}
-void planeBlock()
-{
-	sem_wait(&resource);
-	if (qfull > 0) {sem_post(&resource); return;}
-	qwait = 1; sem_post(&resource);
-	sem_wait(&pending);
-}
-void planeSafe(enum Thread thread, enum Phase phase, enum Configure hint)
-{
-	planeEnque(thread,phase,hint);
-}
-int planeLoop()
-{
-	enum Thread thread = 0; enum Phase phase = 0; enum Configure hint = 0;
-	if (!planeCheck()) return 0;
-	planeDeque(&thread,&phase,&hint);
-	if (phase != Phases && hint != Configures) ERROR();
-	if (phase == Phases && hint == Configures && thread != Threads) ERROR();
-	if (phase == Phases && hint != Configures) callWake(hint);
-	if (phase != Phases && hint == Configures) planePhase(thread,phase);
-	return planeCheck();
-}
-void planeMain()
-{
-	int plane,call,wake,full,todo; plane=call=wake=full=todo=0;
-	while (1) {plane = planeLoop(); call = callLoop();
-	sem_wait(&resource); full = (qfull!=0); sem_post(&resource);
-	if (!plane&&!call&&!full&&!wake) {callWake(ResultHint); wake = 1;} else wake = 0;
-	sem_wait(&resource); full = (qfull!=0); todo = (running!=0); sem_post(&resource);
-	if (!plane&&!call&&!wake&&!full&&!todo) break;
-	if (!plane&&!call&&!wake&&!full&&!callBlock()) planeBlock();}
+int planeLoop() {
 }

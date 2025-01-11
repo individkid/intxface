@@ -3,8 +3,8 @@
 .DELETE_ON_ERROR:
 
 UNAME = $(shell uname)
-all: facer.log typra.log typer.log filer.log planra.log spacra.log spacer.log hole line space
-# TODO sharer.log share # remove generic homgen hetgen; think of another way
+all: facer.log typra.log typer.log filer.log planra.log planeC.o spacra.log spacer.log hole line space
+# TODO sharer.log share # remove generic homgen hetgen; instead use Dat and Dat of Dat
 
 ifeq ($(UNAME),Linux)
 LIBRARIES = -llua -lportaudio -lglfw -lvulkan

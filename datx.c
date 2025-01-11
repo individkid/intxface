@@ -664,7 +664,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(dat,&exp->cnd->rng[idx],typ);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (TotOp): {
-		int typ0 = 0; datxSingle();
+		int typ0 = 0;
 		typ0 = datxEval(dat,exp->tot,-1);
 		if (typ == -1) typ = identType(exp->typ); if (typ != identType(exp->typ)) ERROR();
 		if (typ == identType("Int") && typ0 == identType("Int32")) datxInt(dat,*datxInt32z(0,*dat));
@@ -723,7 +723,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (PutOp): {
 		int typ0 = 0;
-		typ0 = datxEval(datxDat0,exp->out,identType("Str")); if (typ0 != identType("Str")) ERROR();
+		typ0 = datxEval(datxDat0,exp->put,identType("Str")); if (typ0 != identType("Str")) ERROR();
 		if (!ptrx[PutstrCb]) ERROR(); datxUnwrap(PutstrCb);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (OutOp): {
@@ -732,15 +732,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (!ptrx[OutstrCb]) ERROR(); datxUnwrap(OutstrCb);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (FldOp):
-		break; // TODO
+		break; // TODO use datxWrap to add field functions to try
 	case (ExtOp):
-		break; // TODO
+		break; // TODO use datxWrap to add extract functions to try
 	case (PrmOp):
-		break; // TODO
+		break; // TODO use datx*z to remap lhs according to rhs
 	case (LstOp):
-		break; // TODO
+		break; // TODO assume both subops are same type return datx*s > 1
+	// TODO perhaps change LstOp to HomOp, add HetOp that is a list of Dat/typ pairs
 	case (ImmOp):
-		break; // TODO
+		break; // TODO use datxWrap to add hide functions to try
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,exp->ivl);} break;
