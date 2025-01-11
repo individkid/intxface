@@ -56,7 +56,6 @@ Async = {
 Configure = {
 	"MatrixSize",
 	"MachineSize",
-	"RegisterHint", -- callback configure
 	"RegisterType", -- expression type
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan
@@ -74,7 +73,6 @@ Transfer = {
 	"Recv", -- either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
 	"Disp", -- conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 	"Copy", -- dma to cpu or gpu
-	"Atom", -- call react
 	"Name", -- function for call
 	"Jump", -- skip if true
 	"Goto", -- jump if true
@@ -440,7 +438,6 @@ Machine = {
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"num"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
-	{"arg","Configure",{["xfr"]={["Atom"]=true}},{}},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 	{"str","Str",{["xfr"]={["Name"]=true}},{}},
 }

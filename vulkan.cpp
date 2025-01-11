@@ -30,12 +30,6 @@ extern "C" {
 #include "type.h"
 #include "plane.h"
 #include "fmtx.h"
-typedef void (*xftype)(enum Configure, int sav, int val);
-typedef void (*mftype)(enum Thread tag, int idx);
-typedef void (*nftype)(struct Center *center, wftype pass);
-typedef void (*oftype)(enum Configure cfg, xftype back);
-typedef void (*lftype)(enum Thread thd, int idx, mftype call, mftype done, mftype func);
-// void planeInit(nftype copy, oftype call, lftype fork, wftype pass);
 };
 #include "stlx.h"
 
@@ -2133,17 +2127,15 @@ void vulkanPass(int pass, Center *center) {
     }
 }
 
-int testMask = 1; // TODO 1 << TestThread
-int fenceMask = 2; // TODO 1 << FenceThread
 void vulkanBack(Configure cfg, int sav, int val) {
     MainState *main = change->main;
-    if (cfg == RegisterOpen && (val & testMask) && !(sav & testMask))
+    if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
     main->callState.push(&main->testState);
-    if (cfg == RegisterOpen && !(val & testMask) && (sav & testMask))
+    if (cfg == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
     main->testState.done();
-    if (cfg == RegisterOpen && (val & fenceMask) && !(sav & fenceMask))
+    if (cfg == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
     main->callState.push(&main->threadState);
-    if (cfg == RegisterOpen && !(val & fenceMask) && (sav & fenceMask))
+    if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
     main->threadState.done();
 }
 
@@ -2151,13 +2143,7 @@ int main() {
     MainState main; change = &main.changeState;
     main.changeState.call(RegisterOpen,vulkanBack);
     /*planeInit(vulkanCopy,vulkanCall,vulkanFork,vukanPass); // writes to RegisterPlan and RegisterPoll
-    main.changeState.wots(RegisterOpen,fenceMask);
-    if (main.read(RegisterPlan) == Builtin) {
-    main.changeState.wots(RegisterOpen,testMask);
-    int count = 0; while (!glfwWindowShouldClose(main.windowState.window) && count++ < 1000) {
-    glfwWaitEventsTimeout(main.safeState.read(RegisterPoll)*0.001); test->wake();}
-    main.changeState.wotc(RegisterOpen,testMask);} else {
-    while (!glfwWindowShouldClose(main.windowState.window)) planeLoop();}
-    main.changeState.wotc(RegisterOpen,fenceMask);*/
+    while (!glfwWindowShouldClose(main.windowState.window)) {
+    planeLoop(); glfwWaitEventsTimeout(main.safeState.read(RegisterPoll)*0.001);}*/
     return 0;
 }

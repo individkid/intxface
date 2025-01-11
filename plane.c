@@ -44,6 +44,8 @@ char **string = 0;
 int strsiz = 0;
 wftype callPass;
 nftype callCopy;
+vftype callFork;
+sem_t testSem = {0};
 
 DECLARE_DEQUE(struct Center *,Centerq)
 
@@ -373,8 +375,10 @@ void planeHide()
 void planeShow(); // TODO
 void planeRead(); // TODO
 void planeWrite(); // TODO
-int planeSwitch(struct Machine *mptr, int next)
+void planeSwitch(enum Thread tag, int idx)
 {
+	for (int next = 0; next >= 0 && next < 0/*configure[MachineSize]*/; next++) {
+	struct Machine *mptr = &machine[next];
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
@@ -399,9 +403,21 @@ int planeSwitch(struct Machine *mptr, int next)
 	case (Hide): planeHide(); break; // TODO get center from console thread
 	case (Show): planeShow(); break; // TODO put center to console thread
 	default: break;}
-	return next+1;
+	if (next == 0/*configure[MachineSize]*/) {next = 0;
+	if (sem_wait(&switchSem) != 0) exitErr(__FILE__,__LINE__);}}
 }
-void *planeSelect(void *ptr)
+void planeSwitched(enum Thread tag, int idx)
+{
+	/*configure[MachineSize] = 0;*/
+	free(machine);
+	if (sem_post(&switchSem) != 0) exitErr(__FILE__,__LINE__);
+}
+void planeSwitcher(enum Configure cfg, int sav, int val)
+{
+	if (cfg != RegisterMask) exitErr(__FILE__,__LINE__);
+	if (sem_post(&switchSem) != 0) exitErr(__FILE__,__LINE__);
+}
+void planeSelect(enum Thread tag, int idx)
 {
 	char *str = 0; // FIXME let planeHide do this when planePopstr is Argument
 	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
@@ -426,9 +442,12 @@ void *planeSelect(void *ptr)
 	pushCenterq(center,internal);
 	sem_post(&pipeSem);}
 	else break;}
-	return 0;
 }
-void *planeConsole(void *ptr)
+void planeSelected(enum Thread tag, int idx)
+{
+	closeIdent(external);
+}
+void planeConsole(enum Thread tag, int idx)
 {
 	char chr[2] = {0};
 	int val = 0;
@@ -449,11 +468,48 @@ void *planeConsole(void *ptr)
 	if (val < 0) ERROR();
 	// TODO hide string and let machine thread process it
 	}
-	return 0;
+}
+void planeConsoled(enum Thread tag, int idx)
+{
+	close(STDIN_FILENO);
+}
+void planeNoop(enum Thread tag, int idx)
+{
+}
+void planeBack(enum Configure cfg, int sav, int val)
+{
+    if (cfg == RegisterOpen && (val & (1<<PipeThd)) && !(sav & (1<<PipeThd)))
+    callFork(PipeThd,0,planeSelect,planeSelected,planeNoop);
+    if (cfg == RegisterOpen && !(val & (1<<PipeThd)) && (sav & (1<<PipeThd)))
+    planeSelected(PipeThd,0);
+    if (cfg == RegisterOpen && (val & (1<<StdioThd)) && !(sav & (1<<StdioThd)))
+    callFork(StdioThd,0,planeConsole,planeConsoled,planeNoop);
+    if (cfg == RegisterOpen && !(val & (1<<StdioThd)) && (sav & (1<<StdioThd)))
+    planeConsoled(StdioThd,0);
+    if (cfg == RegisterOpen && (val & (1<<SwitchThd)) && !(sav & (1<<SwitchThd)))
+    callFork(SwitchThd,0,planeSwitch,planeSwitched,planeNoop);
+    if (cfg == RegisterOpen && !(val & (1<<SwitchThd)) && (sav & (1<<SwitchThd)))
+    planeSwitched(SwitchThd,0);
 }
 void planeInit(nftype copy, oftype call, vftype fork, wftype pass)
 {
-	// TODO register callbacks; push threads
+	callCopy = copy;
+	callFork = fork;
+	callPass = pass;
+    call(RegisterOpen,planeBack);
+    call(RegisterMask,planeSwitcher);
+    planeSync(RegisterPoll,1);
+    planeSync(RegisterOpen,(1<<FenceThd));
+	if (sem_init(&testSem, 0, 0) != 0) exitErr(__FILE__,__LINE__);
+    planeSync(RegisterOpen,(1<<FenceThd)|(1<<TestThd));
+    if (sem_wait(&testSem) != 0) exitErr(__FILE__,__LINE__);
+	if (sem_destroy(&testSem) != 0) exitErr(__FILE__,__LINE__);
+    planeSync(RegisterOpen,(1<<FenceThd));
+    planeSync(RegisterOpen,0);
 }
-int planeLoop() {
+int count = 0;
+void planeLoop()
+{
+	if (count++ < 1000) return;
+	if (sem_post(&testSem) != 0) exitErr(__FILE__,__LINE__);
 }
