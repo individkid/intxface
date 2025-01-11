@@ -46,6 +46,7 @@ wftype callPass;
 nftype callCopy;
 vftype callFork;
 zftype callInfo;
+zftype callJnfo;
 sem_t testSem = {0};
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -294,7 +295,7 @@ float *planeWindow(float *mat)
 
 void planeStage(enum Configure cfg)
 {
-	// TODO callInfo(cfg,val,planeWcfg);
+	// TODO callJnfo(cfg,val,planeWcfg);
 }
 void *planeResize(void *ptr, int mod, int siz, int tmp) // TODO called by callback
 {
@@ -314,18 +315,6 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp) // TODO called 
 	for (int i = 0; i < ofs; i++) result[i] = chrs[i+lim];
 	free(ptr);
 	return result;
-}
-void planeSync(enum Configure cfg, int val)
-{
-	struct Center *center = 0;
-	allocCenter(&center,1);
-	center->mem = Configurez;
-	center->siz = 1;
-	allocConfigure(&center->cfg,1);
-	allocInt(&center->val,1);
-	center->cfg[0] = cfg;
-	center->val[0] = val;
-	callCopy(center,callPass);
 }
 void planeCont()
 {
@@ -404,7 +393,7 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Write): planeWrite(); break; // TODO push center to pipe thread
 	// TODO way to pop/push from/to console thread
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
-	case (Force): for (int i = 0; i < mptr->num; i++) planeSync(mptr->cfg[i],mptr->val[i]); break;
+	case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
 	case (Cont): planeCont(); break;
 	case (Prep): planePrep(); break;
 	case (Send): planeSend(); break;
@@ -415,7 +404,7 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break;
 	case (Name): if (idxstk > 0) next = next - 1; else ERROR(); break;
-	case (Eval): planeSync(RegisterType,datxEval(dat0,&mptr->exp[0],-1)); break;
+	case (Eval): callInfo(RegisterType,datxEval(dat0,&mptr->exp[0],-1),planeWcfg); break;
 	case (Pass): planePass(); break; // TODO eval expression given center
 	case (Echo): planeEcho(); break; // TODO get center from expression side effect
 	case (Hide): planeHide(); break; // TODO get center from console thread
@@ -509,22 +498,23 @@ void planeBack(enum Configure cfg, int sav, int val)
     if (cfg == RegisterOpen && !(val & (1<<SwitchThd)) && (sav & (1<<SwitchThd)))
     planeSwitched(SwitchThd,0);
 }
-void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info)
+void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo)
 {
 	callCopy = copy;
 	callFork = fork;
 	callPass = pass;
 	callInfo = info;
+	callJnfo = jnfo;
     call(RegisterOpen,planeBack);
     call(RegisterMask,planeSwitcher);
-    info(RegisterPoll,1,planeWcfg);
-    info(RegisterOpen,(1<<FenceThd),planeWots);
+    jnfo(RegisterPoll,1,planeWcfg);
+    jnfo(RegisterOpen,(1<<FenceThd),planeWots);
 	if (sem_init(&testSem, 0, 0) != 0) exitErr(__FILE__,__LINE__);
-    info(RegisterOpen,(1<<TestThd),planeWots);
+    jnfo(RegisterOpen,(1<<TestThd),planeWots);
     if (sem_wait(&testSem) != 0) exitErr(__FILE__,__LINE__);
 	if (sem_destroy(&testSem) != 0) exitErr(__FILE__,__LINE__);
-    info(RegisterOpen,(1<<TestThd),planeWotc);
-    info(RegisterOpen,(1<<FenceThd),planeWotc);
+    jnfo(RegisterOpen,(1<<TestThd),planeWotc);
+    jnfo(RegisterOpen,(1<<FenceThd),planeWotc);
 }
 int count = 0;
 void planeLoop()

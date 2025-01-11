@@ -49,6 +49,11 @@ struct ChangeState {
     }
     int info(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid info!" << std::endl; exit(-1);}
+        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val); safe.post();
+        return ret;
+    }
+    int jnfo(Configure cfg, int val, yftype fnc) {
+        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg]; safe.post();
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
