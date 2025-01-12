@@ -41,8 +41,11 @@ Memory = {
 	"Texturez", -- facet decorations
 	"Piercez", -- per fragment info
 	"Stackz", -- named machine locations
+	"Stringz", -- string memory
+	"Dataz", -- data memory
 	"Machinez", -- state machine lines
 	"Littlez", -- little machine lines
+	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
 Format = {
@@ -56,6 +59,11 @@ Async = {
 Configure = {
 	"MatrixSize",
 	"MachineSize",
+	-- TODO other memories, Size Base Index Count
+	"DataBase",
+	"DataSize",
+	"DataIndex",
+	"DataCount",
 	"RegisterType", -- expression type
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan
@@ -73,8 +81,6 @@ Configure = {
 
 }
 Transfer = {
-	"Read", -- read internal pipe
-	"Write", -- write external pipe
 	"Stage", -- center fields, pierce, or info to configure
 	"Force", -- machine to configure
 	"Cont", -- applies inverse of new transformation to local, so the switch to the new transformation is continuous.
@@ -82,16 +88,15 @@ Transfer = {
 	"Send", -- applies to-send to sent and writes composition of all but local.
 	"Recv", -- either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
 	"Disp", -- conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
-	"Copy", -- dma to cpu or gpu
-	"Name", -- function for call
+	"Copy", -- copy between memories
+	"Dopy", -- copy with rebasize
+	"Popy", -- from queue to memory
+	"Qopy", -- from memory to queue
 	"Jump", -- skip if true
 	"Goto", -- jump if true
-	"Nest", -- nest to level
 	"Eval", -- call datxEval
-	"Pass", -- eval given center
-	"Echo", -- copy result to center
-	"Show", -- show and push
-	"Hide", -- pop hide and use
+	"Nest", -- nest to level
+	"Name", -- function for call
 }
 Plan = { -- which test to run
 	"Regress",
@@ -458,6 +463,10 @@ Little = {
 	{"idx","Int",{},{}},
 	{"nxt","Int",{},{}},
 }
+Data = {
+	{"typ","Int",{},{}},
+	{"dat","Dat",{},{}},
+}
 Uniform = {
 	{"all","Int32",{},{}}, -- which subject to use
 	{"one","Int32",{},{}}, -- which element to use
@@ -497,6 +506,15 @@ Vector = {
 Matrix = {
 	{"mat","Old",{},{16}},
 }
+Kernel = {
+	{"optimize","Int",{},{}},
+	{"compose","Matrix",{},{}},
+	{"maintain","Matrix",{},{}},
+	{"written","Matrix",{},{}},
+	{"towrite","Matrix",{},{}},
+	{"local","Matrix",{},{}},
+	{"inverse","Matrix",{},{}},
+}
 Basis = {
 	{"mat","Old",{},{36}},
 }
@@ -523,9 +541,11 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
-	{"str","Str",{["mem"]={["Stackz"]=true}},"siz"},
+	{"str","Str",{["mem"]={["Stackz"]=true,["Stringz"]=true}},"siz"}, -- TODO implement or delete Stackz
+	{"dat","Data",{["mem"]={["Dataz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
-	{"pvn","Little",{["mem"]={["Littlez"]=true}},"siz"},
+	{"pvn","Little",{["mem"]={["Littlez"]=true}},"siz"}, -- TODO implement or delete
+	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
 }
