@@ -39,7 +39,9 @@ struct ChangeState {
     SafeState safe; // following protected
     int config[Configures];
     std::map<Configure,std::set<xftype>> back;
-    ChangeState(MainState *main) : main(main), safe(1), config{0} {std::cout << "ChangeState" << std::endl;}
+    SafeState safeq; // following separately protected
+    std::deque<Configure> cfgq; std::deque<int> valq; std::deque<yftype> fncq;
+    ChangeState(MainState *main) : main(main), safe(1), config{0}, safeq(1) {std::cout << "ChangeState" << std::endl;}
     void call(Configure cfg, xftype ptr) { // called in main thread
         safe.wait();
         if (ptr) back[cfg].insert(ptr);
@@ -49,15 +51,28 @@ struct ChangeState {
     }
     int info(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid info!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val); safe.post();
-        return ret;
+        safe.wait(); int ret = fnc(&config[cfg],val);
+        safe.post(); clear(); return ret;
     }
     int jnfo(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
-        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg]; safe.post();
+        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
-        return ret;
+        safe.post(); clear(); return ret;
+    }
+    void knfo(Configure cfg, int val, yftype fnc) {
+        safeq.wait();
+        cfgq.push_back(cfg); valq.push_back(val); fncq.push_back(fnc);
+        safeq.post();
+    }
+    void clear() {
+        safeq.wait();
+        while (!cfgq.empty()) {
+        if (valq.empty() || fncq.empty()) ERROR();
+        info(cfgq.front(),valq.front(),fncq.front());
+        cfgq.pop_front(); valq.pop_front(); fncq.pop_front();}
+        safeq.post();
     }
     typedef int (*ChangeType)(int,int);
     int change(Configure cfg, int val, ChangeType opr, bool ret, bool typ) {
@@ -1933,12 +1948,12 @@ struct TestState : public DoneState {
 };
 
 struct ForkState : public DoneState {
-    Thread thd; int idx; mftype cfnc; mftype dfnc; mftype ffnc;
-    ForkState (Thread thd, int idx, mftype call, mftype done, mftype func) :
-        thd(thd), idx(idx), cfnc(call), dfnc(done), ffnc(func) {}
+    Thread thd; int idx; mftype cfnc; mftype dfnc;
+    ForkState (Thread thd, int idx, mftype call, mftype done) :
+        thd(thd), idx(idx), cfnc(call), dfnc(done) {}
     void call() {cfnc(thd,idx);}
     void done() {dfnc(thd,idx);}
-    void func() {ffnc(thd,idx); delete this;}
+    void func() {delete this;}
 };
 
 struct MainState {
@@ -2122,8 +2137,8 @@ void vulkanCall(Configure cfg, xftype back) {
     change->call(cfg,back);
 }
 
-void vulkanFork(Thread thd, int idx, mftype call, mftype done, mftype func) {
-    change->main->callState.push(new ForkState(thd,idx,call,done,func));
+void vulkanFork(Thread thd, int idx, mftype call, mftype done) {
+    change->main->callState.push(new ForkState(thd,idx,call,done));
 }
 
 void vulkanPass(int pass, Center *center) {
@@ -2156,11 +2171,24 @@ int vulkanInfo(Configure cfg, int val, yftype fnc)
     return change->info(cfg,val,fnc);
 }
 
+int vulkanJnfo(Configure cfg, int val, yftype fnc)
+{
+    return change->jnfo(cfg,val,fnc);
+}
+
+void vulkanKnfo(Configure cfg, int val, yftype fnc)
+{
+    change->knfo(cfg,val,fnc);
+}
+
 int main() {
     MainState main; change = &main.changeState;
     main.changeState.call(RegisterOpen,vulkanBack);
-    /*planeInit(vulkanCopy,vulkanCall,vulkanFork,vukanPass,vulkanInfo); // writes to RegisterPlan and RegisterPoll
+    /*planeInit(vulkanCopy,vulkanCall,vulkanFork,vukanPass,vulkanInfo,vulkanJnfo,vulkanKnfo);
     while (!glfwWindowShouldClose(main.windowState.window)) {
-    planeLoop(); glfwWaitEventsTimeout(main.safeState.read(RegisterPoll)*0.001);}*/
+    planeLoop();
+    glfwWaitEventsTimeout(main.safeState.read(RegisterPoll)*0.001);}
+    main.callState.done();
+    planeDone();*/
     return 0;
 }

@@ -16,22 +16,25 @@
 // Order of matrix application is window * project * subject * object * element * vector.
 // To change X such that YX changes to ZYX, change X to Y’ZXY.
 // Each matrix is product of local, towrite, written, maintain.
-int external = 0; // TODO move to planeSelect
+
+int external = 0; // get fd, socket, or fsname from commandline Center Machine or Argument
 int wakeup = 0; // protect with pipeSem
 void *internal = 0; // protect with pipeSem
 void *response = 0; // protect with pipeSem
 // TODO queues for strings to and from planeConsole protected by stdioSem
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
-sem_t switchSem = {0};
+sem_t copySem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
 sem_t testSem = {0};
 sem_t dataSem = {0};
 wftype callPass = 0;
 nftype callCopy = 0;
+oftype callCall = 0;
 vftype callFork = 0;
 zftype callInfo = 0;
 zftype callJnfo = 0;
+uftype callKnfo = 0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
 
@@ -287,13 +290,13 @@ void planeEval(struct Express *exp, struct Data *data)
 	if (idx < 0 || idx >= callInfo(DataSize,0,planeRcfg)) ERROR();
 	data[idx].typ = datxEval(data[idx].dat,exp,-1);
 }
-void *planeResize(void *ptr, int mod, int siz, int tmp) // TODO called by callback
+void *planeResize(void *ptr, int mod, int siz, int tmp)
 {
 	char *result = realloc(ptr,siz*mod);
 	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
 	return result;
 }
-void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp) // TODO called by callback
+void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
 {
 	char *chrs = ptr;
 	char *result = malloc(siz*mod);
@@ -328,11 +331,11 @@ void planeDisp(struct Center *center, struct Kernel *kernel)
 }
 void planeCopy(struct Center *center, struct Kernel *kernel, struct Machine *machine, char **string, struct Data *data)
 {
-	// TODO switch on MemorySrc and MemoryDst to copy MemoryCount (all if 0) from MemoryIndex adjusted by *Base limited to prevent rebase or resize
+	// TODO switch on MemorySrc and MemoryDst to copy MemoryCount (all if 0) from MemoryIndex, size and base adjusted to union
 }
 void planeDopy(struct Center *center, struct Kernel *kernel, struct Machine *machine, char **string, struct Data *data)
 {
-	// TODO like planeCopy, except rebase and resize as needed
+	// TODO like planeCopy, except size and base of dst adjusted to src
 }
 void planePopy(struct Center *center, struct Kernel *kernel, struct Machine *machine, char **string, struct Data *data)
 {
@@ -383,21 +386,11 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Qopy): planeQopy(center,kernel,machine,string,data); break;
 	case (Jump): next = planeEscape(machine,planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
-	case (Nest): break;
-	case (Name): break; // TODO
+	case (Nest): break; // this is for Jump and Goto
+	case (Name): break; // TODO cause return to expression
 	default: break;}
 	if (next == callInfo(MachineSize,0,planeRcfg)) {next = 0;
-	if (sem_wait(&switchSem) != 0) exitErr(__FILE__,__LINE__);}}
-}
-void planeSwitched(enum Thread tag, int idx)
-{
-	callJnfo(MachineSize,0,planeWcfg);
-	if (sem_post(&switchSem) != 0) exitErr(__FILE__,__LINE__);
-}
-void planeSwitcher(enum Configure cfg, int sav, int val)
-{
-	if (cfg != RegisterMask) exitErr(__FILE__,__LINE__);
-	if (sem_post(&switchSem) != 0) exitErr(__FILE__,__LINE__);
+	if (sem_wait(&copySem) != 0) exitErr(__FILE__,__LINE__);}}
 }
 void planeSelect(enum Thread tag, int idx)
 {
@@ -425,10 +418,6 @@ void planeSelect(enum Thread tag, int idx)
 	sem_post(&pipeSem);}
 	else break;}
 }
-void planeSelected(enum Thread tag, int idx)
-{
-	closeIdent(external);
-}
 void planeConsole(enum Thread tag, int idx)
 {
 	char chr[2] = {0};
@@ -448,54 +437,76 @@ void planeConsole(enum Thread tag, int idx)
 	val = read(STDIN_FILENO,chr,1);
 	if (val == 0) break;
 	if (val < 0) ERROR();
-	// TODO hide string and let machine thread process it
+	// TODO hide string push to string queue and wakeup machine thread
 	}
 }
-void planeConsoled(enum Thread tag, int idx)
+void planeOpen(enum Thread tag, int idx)
 {
-	close(STDIN_FILENO);
-}
-void planeNoop(enum Thread tag, int idx)
-{
+	callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
 void planeBack(enum Configure cfg, int sav, int val)
 {
-    if (cfg == RegisterOpen && (val & (1<<PipeThd)) && !(sav & (1<<PipeThd)))
-    callFork(PipeThd,0,planeSelect,planeSelected,planeNoop);
-    if (cfg == RegisterOpen && !(val & (1<<PipeThd)) && (sav & (1<<PipeThd)))
-    planeSelected(PipeThd,0);
-    if (cfg == RegisterOpen && (val & (1<<StdioThd)) && !(sav & (1<<StdioThd)))
-    callFork(StdioThd,0,planeConsole,planeConsoled,planeNoop);
-    if (cfg == RegisterOpen && !(val & (1<<StdioThd)) && (sav & (1<<StdioThd)))
-    planeConsoled(StdioThd,0);
-    if (cfg == RegisterOpen && (val & (1<<SwitchThd)) && !(sav & (1<<SwitchThd)))
-    callFork(SwitchThd,0,planeSwitch,planeSwitched,planeNoop);
-    if (cfg == RegisterOpen && !(val & (1<<SwitchThd)) && (sav & (1<<SwitchThd)))
-    planeSwitched(SwitchThd,0);
+	if (cfg != RegisterOpen) ERROR();
+    if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
+		callFork(PipeThd,0,planeSelect,planeOpen);}
+    if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
+		closeIdent(external); closeIdent(wakeup);}
+	if ((val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
+		writeInt(wakeup,0);}
+    if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
+		callFork(StdioThd,0,planeConsole,planeOpen);}
+    if (!(val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
+		close(STDIN_FILENO); close(STDOUT_FILENO);}
+	if ((val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
+		/*TODO no wakeup for console thread*/}
+    if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
+		callFork(CopyThd,0,planeSwitch,planeOpen);}
+    if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
+		callKnfo(MachineSize,0,planeWcfg); if (sem_post(&copySem) != 0) ERROR();}
+	if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
+		if (sem_post(&copySem) != 0) ERROR();}
 }
-void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo)
-// TODO add function that gets arguments copied as implied by first successful hide
+void planeMask(enum Configure cfg, int sav, int val)
+{
+	if (cfg != RegisterMask) ERROR();
+	callKnfo(RegisterOpen,(1<<CopyThd),planeWots);
+}
+void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, uftype knfo)
 {
 	callCopy = copy;
+	callCall = call;
 	callFork = fork;
 	callPass = pass;
 	callInfo = info;
 	callJnfo = jnfo;
+	callKnfo = knfo;
+	// initialize everything that is needed before starting a thread
+	if (sem_init(&copySem, 0, 0) != 0) ERROR();
+	if (sem_init(&pipeSem, 0, 0) != 0) ERROR();
+	if (sem_init(&stdioSem, 0, 0) != 0) ERROR();
+	if (sem_init(&testSem, 0, 0) != 0) ERROR();
+	if (sem_init(&dataSem, 0, 0) != 0) ERROR();
 	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
+	// TODO maintain a stack, and add callback to datx to call Machine function from expression
     call(RegisterOpen,planeBack);
-    call(RegisterMask,planeSwitcher);
+    call(RegisterMask,planeMask);
+	// TODO add function that gets arguments copied as implied by first successful hide
+	// TODO move following to Bootstrap constant switched by commandline
     jnfo(RegisterPoll,1,planeWcfg);
     jnfo(RegisterOpen,(1<<FenceThd),planeWots);
-	if (sem_init(&testSem, 0, 0) != 0) exitErr(__FILE__,__LINE__);
     jnfo(RegisterOpen,(1<<TestThd),planeWots);
-    if (sem_wait(&testSem) != 0) exitErr(__FILE__,__LINE__);
-	if (sem_destroy(&testSem) != 0) exitErr(__FILE__,__LINE__);
-    jnfo(RegisterOpen,(1<<TestThd),planeWotc);
-    jnfo(RegisterOpen,(1<<FenceThd),planeWotc);
+    if (sem_wait(&testSem) != 0) ERROR();
 }
 int count = 0;
 void planeLoop()
 {
 	if (count++ < 1000) return;
 	if (sem_post(&testSem) != 0) exitErr(__FILE__,__LINE__);
+}
+void planeDone() {
+	if (sem_destroy(&copySem) != 0) ERROR();
+	if (sem_destroy(&pipeSem) != 0) ERROR();
+	if (sem_destroy(&stdioSem) != 0) ERROR();
+	if (sem_destroy(&testSem) != 0) ERROR();
+	if (sem_destroy(&dataSem) != 0) ERROR();
 }

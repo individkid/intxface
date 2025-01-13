@@ -46,7 +46,8 @@ struct CallState {
     std::set<DoneState*> done;
     std::set<pthread_t> todo;
     CallState() : safe(1) {std::cout << "CallState" << std::endl;}
-    ~CallState() {std::cout << "~CallState" << std::endl;
+    ~CallState() {std::cout << "~CallState" << std::endl; stop();}
+    void stop() {
         safe.wait(); for (auto i = done.begin(); i != done.end(); i++) {
         todo.insert((*i)->thread); (*i)->done();}
         done.clear(); safe.post(); clear();
@@ -58,7 +59,7 @@ struct CallState {
         for (auto i = doto.begin(); i != doto.end(); i++) pthread_join((*i),0);
     }
     void push(DoneState *ptr) {
-        safe.wait();
+        clear(); safe.wait();
         ptr->ptr = this;
         done.insert(ptr);
         if (pthread_create(&ptr->thread,0,call,ptr) != 0)

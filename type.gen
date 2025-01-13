@@ -152,7 +152,7 @@ Micro = {
 Thread = {
 	"PipeThd",
 	"StdioThd",
-	"SwitchThd",
+	"CopyThd",
 	"FenceThd",
 	"TestThd",
 }
