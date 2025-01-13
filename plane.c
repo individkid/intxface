@@ -34,7 +34,7 @@ oftype callCall = 0;
 vftype callFork = 0;
 zftype callInfo = 0;
 zftype callJnfo = 0;
-uftype callKnfo = 0;
+zftype callKnfo = 0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
 
@@ -462,16 +462,18 @@ void planeBack(enum Configure cfg, int sav, int val)
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
 		callFork(CopyThd,0,planeSwitch,planeOpen);}
     if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
-		callKnfo(MachineSize,0,planeWcfg); if (sem_post(&copySem) != 0) ERROR();}
+		callKnfo(MachineSize,0,planeWcfg);
+		if (sem_post(&copySem) != 0) ERROR();}
 	if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
 		if (sem_post(&copySem) != 0) ERROR();}
 }
 void planeMask(enum Configure cfg, int sav, int val)
 {
 	if (cfg != RegisterMask) ERROR();
-	callKnfo(RegisterOpen,(1<<CopyThd),planeWots);
+	if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd)) {
+		callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
-void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, uftype knfo)
+void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo)
 {
 	callCopy = copy;
 	callCall = call;

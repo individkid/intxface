@@ -39,9 +39,8 @@ struct ChangeState {
     SafeState safe; // following protected
     int config[Configures];
     std::map<Configure,std::set<xftype>> back;
-    SafeState safeq; // following separately protected
-    std::deque<Configure> cfgq; std::deque<int> valq; std::deque<yftype> fncq;
-    ChangeState(MainState *main) : main(main), safe(1), config{0}, safeq(1) {std::cout << "ChangeState" << std::endl;}
+    SafeState nest; int depth; pthread_t self;
+    ChangeState(MainState *main) : main(main), safe(1), config{0}, nest(1), depth(0) {std::cout << "ChangeState" << std::endl;}
     void call(Configure cfg, xftype ptr) { // called in main thread
         safe.wait();
         if (ptr) back[cfg].insert(ptr);
@@ -49,30 +48,32 @@ struct ChangeState {
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
+    int call(int *cfg, int val, yftype fnc) {
+        nest.wait(); depth++; self = pthread_self(); nest.post();
+        int ret = fnc(cfg,val); nest.wait(); depth--; nest.post();
+        return ret;
+    }
+    void check() {
+        nest.wait(); if (!depth || self != pthread_self() || safe.get())
+        {std::cerr << "invalid knfo!" << std::endl; exit(-1);} nest.post();
+    }
     int info(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid info!" << std::endl; exit(-1);}
-        safe.wait(); int ret = fnc(&config[cfg],val);
-        safe.post(); clear(); return ret;
+        safe.wait(); int ret = call(&config[cfg],val,fnc);
+        safe.post(); return ret;
     }
     int jnfo(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
+        safe.wait(); int sav = config[cfg]; int ret = call(&config[cfg],val,fnc);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
-        safe.post(); clear(); return ret;
+        safe.post(); return ret;
     }
-    void knfo(Configure cfg, int val, yftype fnc) {
-        safeq.wait();
-        cfgq.push_back(cfg); valq.push_back(val); fncq.push_back(fnc);
-        safeq.post();
-    }
-    void clear() {
-        safeq.wait();
-        while (!cfgq.empty()) {
-        if (valq.empty() || fncq.empty()) ERROR();
-        info(cfgq.front(),valq.front(),fncq.front());
-        cfgq.pop_front(); valq.pop_front(); fncq.pop_front();}
-        safeq.post();
+    int knfo(Configure cfg, int val, yftype fnc) {
+        check(); int sav = config[cfg]; int ret = call(&config[cfg],val,fnc);
+        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        return ret;
     }
     typedef int (*ChangeType)(int,int);
     int change(Configure cfg, int val, ChangeType opr, bool ret, bool typ) {

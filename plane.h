@@ -9,7 +9,6 @@ typedef void (*oftype)(enum Configure cfg, xftype back);
 typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done);
 typedef int (*yftype)(int *ref, int val);
 typedef int (*zftype)(enum Configure cfg, int val, yftype fnc);
-typedef void (*uftype)(enum Configure cfg, int val, yftype fnc);
-void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, uftype knfo);
+void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
 void planeLoop();
 void planeDone();
