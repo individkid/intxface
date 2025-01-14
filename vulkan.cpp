@@ -34,6 +34,7 @@ extern "C" {
 #include "stlx.h"
 
 struct MainState;
+struct BaseState;
 struct ChangeState {
     MainState *main;
     SafeState safe; // following protected
@@ -53,10 +54,6 @@ struct ChangeState {
         int ret = fnc(cfg,val); nest.wait(); depth--; nest.post();
         return ret;
     }
-    void check() {
-        nest.wait(); if (!depth || self != pthread_self() || safe.get())
-        {std::cerr << "invalid knfo!" << std::endl; exit(-1);} nest.post();
-    }
     int info(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid info!" << std::endl; exit(-1);}
         safe.wait(); int ret = call(&config[cfg],val,fnc);
@@ -70,7 +67,9 @@ struct ChangeState {
         safe.post(); return ret;
     }
     int knfo(Configure cfg, int val, yftype fnc) {
-        check(); int sav = config[cfg]; int ret = call(&config[cfg],val,fnc);
+        nest.wait(); if (!depth || !pthread_equal(self,pthread_self()) || safe.get())
+        {std::cerr << "invalid knfo!" << std::endl; exit(-1);} nest.post();
+        int sav = config[cfg]; int ret = call(&config[cfg],val,fnc);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
         return ret;
@@ -94,6 +93,7 @@ struct ChangeState {
     void wotc(Configure cfg, int val) {change(cfg,val,wotcOp,false,false);}
     static int rmwOp(int l, int r) {return l+r;}
     int rmw(Configure cfg, int val) {return change(cfg,val,rmwOp,true,true);}
+    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Center *center, wftype pass, int &retval);
     int copy(Center *, wftype pass);
 };
 
@@ -468,7 +468,6 @@ enum BindEnum {
     DrawBind,
     BindEnums
 };
-struct BaseState;
 struct BindState {
     virtual void advance() = 0;
     virtual BaseState *buffer() = 0;
@@ -663,7 +662,7 @@ enum SizeEnum {
 };
 struct SizeState {
     SizeEnum tag;
-    int size;
+    int base, size;
     VkExtent2D extent;
     Micro micro;
     VkSurfaceCapabilitiesKHR capabilities;
@@ -671,8 +670,9 @@ struct SizeState {
         tag = IntSize;
         size = 0;
     }
-    SizeState(int size) {
+    SizeState(int base, int size) {
         tag = IntSize;
+        this->base = base;
         this->size = size;
     }
     SizeState(VkExtent2D extent) {
@@ -689,7 +689,7 @@ struct SizeState {
     }
     bool operator==(const SizeState &other) const {
         if (tag == IntSize && other.tag == IntSize &&
-        size == other.size) return true;
+        base == other.base && size == other.size) return true;
         if (tag == ExtentSize && other.tag == ExtentSize &&
         extent.width == other.extent.width &&
         extent.height == other.extent.height) return true;
@@ -726,8 +726,8 @@ struct BaseState {
     SizeState size, todo;
     void *ptr; int loc; int siz;
     char debug[64];
-    BaseState() : safe(1), count(0), state(InitBase), size(0), todo(0), debug{0} {}
-    BaseState(const char *name) : safe(1), count(0), state(InitBase), size(0), todo(0), debug{0} {
+    BaseState() : safe(1), count(0), state(InitBase), size(0,0), todo(0,0), debug{0} {}
+    BaseState(const char *name) : safe(1), count(0), state(InitBase), size(0,0), todo(0,0), debug{0} {
         sprintf(debug,"%s%d",name,BindState::debug++);
     }
     bool push(void *ptr, int loc, int siz, SizeState max) { // called in main thread
@@ -744,8 +744,8 @@ struct BaseState {
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
         if (size == todo); else {
-        if (size == SizeState(0)); else {safe.post(); unsize(); safe.wait();}
-        if ((size = todo) == SizeState(0)); else {std::cout << "sizeup resize " << debug << " " << size << std::endl;
+        if (size == SizeState(0,0)); else {safe.post(); unsize(); safe.wait();}
+        if ((size = todo) == SizeState(0,0)); else {std::cout << "sizeup resize " << debug << " " << size << std::endl;
         safe.post(); resize(); safe.wait();}}
         state = NextBase;
         safe.post();
@@ -764,8 +764,8 @@ struct BaseState {
         safe.wait();
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
         if (size == todo); else {
-        if (size == SizeState(0)); else {safe.post(); unsize(); safe.wait();}
-        if ((size = todo) == SizeState(0)); else {std::cout << "baseres resize " << debug << " " << size << std::endl;
+        if (size == SizeState(0,0)); else {safe.post(); unsize(); safe.wait();}
+        if ((size = todo) == SizeState(0,0)); else {std::cout << "baseres resize " << debug << " " << size << std::endl;
         safe.post(); resize(); safe.wait();}}
         state = FreeBase;
         safe.post();
@@ -940,7 +940,7 @@ struct SwapState : public BaseState {
         renderPass(BindState::renderPass),
         memProperties(BindState::memProperties)
         {std::cout << "SwapState" << std::endl;}
-    ~SwapState() {push(0); baseres(); std::cout << "~SwapState" << std::endl;}
+    ~SwapState() {push(SizeState(0,0)); baseres(); std::cout << "~SwapState" << std::endl;}
     VkSwapchainKHR getSwapChain() {return swapChain;}
     VkFramebuffer getSwapChainFramebuffer(int i) {return swapChainFramebuffers[i];}
     VkExtent2D getSwapChainExtent() {return size.capabilities.currentExtent;}
@@ -1302,7 +1302,7 @@ struct UniformState : public ItemState {
         device(BindState::device), physical(BindState::physical),
         memProperties(BindState::memProperties)
         {std::cout << "UniformState" << std::endl;}
-    ~UniformState() {push(0); baseres(); std::cout << "~UniformState" << std::endl;}
+    ~UniformState() {push(SizeState(0,0)); baseres(); std::cout << "~UniformState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
     int getRange() {return size.size;}
     void resize() {
@@ -1316,10 +1316,12 @@ struct UniformState : public ItemState {
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
+    // TODO add rebase
     VkFence setup(void *ptr, int loc, int siz) {
+        loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
         {std::cerr << "invalid uniform size!" << std::endl; exit(-1);}
-        memcpy(mapped, (void*)((char*)ptr+loc), siz);
+        memcpy((void*)((char*)mapped+loc), ptr, siz);
         return VK_NULL_HANDLE; // return null fence for no wait
     }
     void upset() {
@@ -1346,7 +1348,7 @@ struct BufferState : public ItemState {
         graphics(BindState::graphics), commandPool(BindState::commandPool),
         memProperties(BindState::memProperties), flags(BindState::flags)
         {std::cout << "BufferState" << std::endl;}
-    ~BufferState() {push(0); baseres(); std::cout << "~BufferState" << std::endl;}
+    ~BufferState() {push(SizeState(0,0)); baseres(); std::cout << "~BufferState" << std::endl;}
     VkBuffer getBuffer() {return buffer;}
     int getRange() {return size.size;}
     void resize() {
@@ -1363,7 +1365,9 @@ struct BufferState : public ItemState {
         vkFreeMemory(device, bufferMemory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
+    // TODO add rebase
     VkFence setup(void *ptr, int loc, int siz) {
+        loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
         {std::cerr << "invalid buffer size!" << std::endl; exit(-1);}
         VkDeviceSize bufferSize = size.size;
@@ -1427,7 +1431,7 @@ struct TextureState : public ItemState {
         properties(BindState::properties), graphics(BindState::graphics), commandPool(BindState::commandPool),
         memProperties(BindState::memProperties)
         {std::cout << "TextureState" << std::endl;}
-    ~TextureState() {push(0); baseres(); std::cout << "~TextureState" << std::endl;}
+    ~TextureState() {push(SizeState(0,0)); baseres(); std::cout << "~TextureState" << std::endl;}
     VkImageView getTextureImageView() {return textureImageView;}
     VkSampler getTextureSampler() {return textureSampler;}
     void resize() {
@@ -1459,9 +1463,10 @@ struct TextureState : public ItemState {
         vkFreeMemory(device, textureImageMemory, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz) {
+        if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
-        VkDeviceSize imageSize = texWidth * texHeight * 4; // TODO think of way to write to portions of texture
+        VkDeviceSize imageSize = texWidth * texHeight * 4;
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
             stagingBuffer, stagingBufferMemory);
@@ -1627,7 +1632,7 @@ struct DrawState : public BaseState {
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0)
         {std::cout << "DrawState " << debug << std::endl;}
-    ~DrawState() {push(0); baseres(); std::cout << "~DrawState " << debug << std::endl;}
+    ~DrawState() {push(SizeState(0,0)); baseres(); std::cout << "~DrawState " << debug << std::endl;}
     bool bind(BindState **ary, int siz) {
         safe.wait();
         // must check both state and bufsiz because might be bound but not pushed
@@ -1670,6 +1675,7 @@ struct DrawState : public BaseState {
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
     VkFence setup(void *ptr, int loc, int siz) {
+        if (loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
         if (size == SizeState(MicroTest)) {
             VkExtent2D swapChainExtent = get(SwapBind,Memorys)->getSwapChainExtent();
             uint32_t imageIndex;
@@ -2023,24 +2029,41 @@ extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
+void ChangeState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Center *center, wftype pass, int &retval) {
+    //    x-x     x---x x---x   x-----x
+    //   y---y   y---y   y---y   y---y
+    //   z---z   z----z  z---z   z----z
+    int xl = loc; int xr = xl+siz;
+    int yl = read(IndexBase); int yr = yl+read(IndexSize);
+    int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
+    else if (xl<yl) {zl=yl;zr=xr;}
+    else if (xr<yr) {zl=yl;zr=yr;}
+    else {zl=yl;zr=xr;}
+    ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
+    loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
+    if (main->threadState.push(buf,ptr,loc,siz,SizeState(base,size),center,pass)) retval++;
+}
 int ChangeState::copy(Center *center, wftype pass) {
     int retval = 0;
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-    break; case (Indexz): {
-    int iloc = center->idx*sizeof(int32_t); int isiz = center->siz*sizeof(int32_t);
-    if (main->threadState.push(main->indexState.preview(),center->ind,iloc,isiz,SizeState(isiz),center,pass)) retval++;}
-    break; case (Vertexz): {
-    int vloc = center->idx*sizeof(Vertex); int vsiz = center->siz*sizeof(Vertex);
-    if (main->threadState.push(main->vertexState.preview(),center->vtx,vloc,vsiz,SizeState(vsiz),center,pass)) retval++;}
-    break; case (Matrixz): {
-    int uloc = center->idx*sizeof(Matrix); int usiz = center->siz*sizeof(Matrix);
-    if (main->threadState.push(main->matrixState.preview(),center->mat,uloc,usiz,SizeState(usiz),center,pass)) retval++;}
+    break; case (Indexz):
+        rebase(main->indexState.preview(),(void*)center->ind,center->idx,center->siz,
+        read(IndexBase),read(IndexSize),sizeof(int32_t),center,pass,retval);
+    break; case (Vertexz):
+        rebase(main->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
+        read(VertexBase),read(VertexSize),sizeof(Vertex),center,pass,retval);
+    break; case (Matrixz):
+        rebase(main->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
+        read(MatrixBase),read(MatrixSize),sizeof(Matrix),center,pass,retval);
     break; case (Texturez): {
-    VkExtent2D texExtent; texExtent.width = center->tex[0].wid; texExtent.height = center->tex[0].hei;
-    if (main->threadState.push(main->textureState.preview(),
-    datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),SizeState(texExtent),center,pass)) retval++;}
-    // TODO add remaining Memory types, including Configurez
+        VkExtent2D texExtent = {(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei};
+        if (main->threadState.push(main->textureState.preview(),
+        datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),
+        SizeState(texExtent),center,pass)) retval++;}
+    // TODO add remaining Memory types
+    break; case (Configurez):
+        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
     }
     return retval;
 }

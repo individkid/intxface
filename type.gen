@@ -57,13 +57,28 @@ Async = {
 	"ResizeAsync",
 }
 Configure = {
+	"IndexBase",
+	"IndexSize",
+	"VertexBase",
+	"VertexSize",
+	"MatrixBase",
 	"MatrixSize",
-	"MachineSize",
-	-- TODO other memories, Size Base Index Count
-	"DataBase",
-	"DataSize",
-	"DataIndex",
-	"DataCount",
+	"CenterSize",
+	"CenterNext",
+	"CenterStage",
+	"CenterTsage",
+	"CenterManip",
+	"CenterManipSub",
+	"CenterEval",
+	"CenterEvalSub",
+	"CenterCopy",
+	"CenterDopy",
+	"CenterPopy",
+	"CenterQopy",
+	"StageMem",
+	"StageSiz",
+	"StageIdx",
+	"StageSlf",
 	"RegisterType", -- expression type
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan
@@ -78,20 +93,20 @@ Configure = {
 	"WindowHeight",
 	"WindowLeft",
 	"WindowBase",
-
 }
 Transfer = {
-	"Stage", -- center fields, pierce, or info to configure
+	"Stage", -- center fields to configure
+	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
 	"Cont", -- applies inverse of new transformation to local, so the switch to the new transformation is continuous.
 	"Prep", -- applies local to to-send, and schedules send.
 	"Send", -- applies to-send to sent and writes composition of all but local.
 	"Recv", -- either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
 	"Disp", -- conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
-	"Copy", -- copy between memories
-	"Dopy", -- copy with rebasize
-	"Popy", -- from queue to memory
-	"Qopy", -- from memory to queue
+	"Copy", -- center to memory
+	"Dopy", -- center from memory
+	"Popy", -- from queue to center
+	"Qopy", -- from center to queue
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Eval", -- call datxEval
@@ -447,8 +462,8 @@ Express = {
 }
 Machine = {
 	{"xfr","Transfer",{},""},
-	{"siz","Int",{["xfr"]={["Stage"]=true}},{}},
-	{"sav","Configure",{["xfr"]={["Stage"]=true}},"siz"},
+	{"siz","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
+	{"sav","Configure",{["xfr"]={["Stage"]=true,["Tsage"]=true}},"siz"},
 	{"num","Int",{["xfr"]={["Force"]=true}},{}},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"num"},

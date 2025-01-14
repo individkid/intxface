@@ -17,10 +17,11 @@
 // To change X such that YX changes to ZYX, change X to Y’ZXY.
 // Each matrix is product of local, towrite, written, maintain.
 
-int external = 0; // get fd, socket, or fsname from commandline Center Machine or Argument
+struct Center *center = 0; // array of center for machine and other memories
+int external = 0; // get fd, socket, or fsname from commandline Argument
 int wakeup = 0; // protect with pipeSem
-void *internal = 0; // protect with pipeSem
-void *response = 0; // protect with pipeSem
+void *internal = 0; // queue of center; protect with pipeSem
+void *response = 0; // queue of center; protect with pipeSem
 // TODO queues for strings to and from planeConsole protected by stdioSem
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 sem_t copySem = {0};
@@ -280,76 +281,77 @@ float *planeWindow(float *mat)
     return identmat(mat,4);
 }
 
-void planeStage(enum Configure cfg)
+struct Center *planeCenter(enum Configure cfg)
+{
+	// TODO check limits
+	return &center[callInfo(cfg,0,planeRcfg)];
+}
+struct Data *planeData(enum Configure cfg, enum Configure idx)
+{
+	// TODO check limits
+	return &center[callInfo(cfg,0,planeRcfg)].dat[callInfo(idx,0,planeRcfg)];
+}
+struct Kernel *planeKernel(enum Configure cfg, enum Configure idx)
+{
+	// TODO check limits
+	return &center[callInfo(cfg,0,planeRcfg)].ker[callInfo(idx,0,planeRcfg)];
+}
+struct Machine *planeMachine(enum Configure cfg, enum Configure idx)
+{
+	// TODO check limits
+	return &center[callInfo(cfg,0,planeRcfg)].mch[callInfo(idx,0,planeRcfg)];
+}
+void planeStage(enum Configure cfg, struct Center *center)
 {
 	// TODO callJnfo(cfg,val,planeWcfg);
 }
+void planeTsage(enum Configure cfg, struct Center *center)
+{
+	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
+}
 void planeEval(struct Express *exp, struct Data *data)
 {
-	int idx = callInfo(DataIndex,0,planeRcfg) - callInfo(DataBase,0,planeRcfg);
-	if (idx < 0 || idx >= callInfo(DataSize,0,planeRcfg)) ERROR();
-	data[idx].typ = datxEval(data[idx].dat,exp,-1);
+	data->typ = datxEval(data->dat,exp,-1);
 }
-void *planeResize(void *ptr, int mod, int siz, int tmp)
-{
-	char *result = realloc(ptr,siz*mod);
-	for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
-	return result;
-}
-void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
-{
-	char *chrs = ptr;
-	char *result = malloc(siz*mod);
-	int ofs = tmp*mod-bas*mod; // location of old base in new base
-	int lim = siz*mod-tmp*mod+bas*mod; // location of new limit in old base
-	while (ofs < 0) ofs += siz*mod; ofs %= siz*mod;
-	while (lim < 0) lim += siz*mod; lim %= siz*mod;
-	for (int i = 0; i < lim; i++) result[i+ofs] = chrs[i];
-	for (int i = 0; i < ofs; i++) result[i] = chrs[i+lim];
-	free(ptr);
-	return result;
-}
-void planeCont(struct Center *center, struct Kernel *kernel)
+void planeCont(struct Kernel *kernel)
 {
 	// TODO applies inverse of new transformation to local, so the switch to the new transformation is continuous.
 }
-void planePrep(struct Center *center, struct Kernel *kernel)
+void planePrep(struct Kernel *kernel)
 {
 	// TODO applies local to to-send, and schedules send.
 }
-void planeSend(struct Center *center, struct Kernel *kernel)
+void planeSend(struct Kernel *kernel)
 {
 	// TODO applies to-send to sent and writes composition of all but local.
 }
-void planeRecv(struct Center *center, struct Kernel *kernel)
+void planeRecv(struct Kernel *kernel)
 {
 	// TODO either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
 }
-void planeDisp(struct Center *center, struct Kernel *kernel)
+void planeDisp(struct Kernel *kernel)
 {
 	// TODO conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 }
-void planeCopy(struct Center *center, struct Kernel *kernel, struct Machine *machine, char **string, struct Data *data)
+void planeCopy(struct Center *center)
 {
-	// TODO switch on MemorySrc and MemoryDst to copy MemoryCount (all if 0) from MemoryIndex, size and base adjusted to union
 }
-void planeDopy(struct Center *center, struct Kernel *kernel, struct Machine *machine, char **string, struct Data *data)
+void planeDopy(struct Center *center)
 {
-	// TODO like planeCopy, except size and base of dst adjusted to src
 }
-void planePopy(struct Center *center, struct Kernel *kernel, struct Machine *machine, char **string, struct Data *data)
+void planePopy(struct Center *center)
 {
-	// TODO like planeDopy, except MemorySrc refers to a sem_t protected queue
 }
-void planeQopy(struct Center *center, struct Kernel *kernel, struct Machine *machine, char **string, struct Data *data)
+void planeQopy(struct Center *center)
 {
-	// TODO like planeDopy, except MemoryDst refers to a sem_t protected queue
 }
-int planeEscape(struct Machine *machine, int lvl, int nxt)
+int planeEscape(int lvl, int nxt)
 {
 	int inc = (lvl > 0 ? 1 : (lvl == 0 ? 0 : -1)); lvl *= inc;
-	for (nxt += inc; lvl > 0 && nxt < callInfo(MachineSize,0,planeRcfg) && nxt >= 0; nxt += inc)
-	if (machine[nxt].xfr == Nest) lvl += machine[nxt].lvl*inc;
+	for (nxt += inc; lvl > 0; nxt += inc) {
+	struct Machine *mptr = planeMachine(CenterNext,nxt);
+	if (!mptr) break;
+	if (mptr->xfr == Nest) lvl += mptr->lvl*inc;}
 	return nxt;
 }
 int planeIval(struct Express *exp)
@@ -362,35 +364,32 @@ int planeIval(struct Express *exp)
 }
 void planeSwitch(enum Thread tag, int idx)
 {
-	struct Center *center = 0;
-	struct Kernel *kernel = 0;
-	struct Machine *machine = 0;
-	char **string = 0;
-	struct Data *data = 0;
-	for (int next = 0; next >= 0 && next < callInfo(MachineSize,0,planeRcfg); next++) {
-	struct Machine *mptr = &machine[next];
+	int next = 0; while (1) {
+	struct Machine *mptr = planeMachine(CenterNext,next);
+	if (!mptr && next == 0) break;
+	if (!mptr) {next = 0; if (sem_wait(&copySem) != 0) ERROR(); continue;}
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
-	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i]); break;
+	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i],planeCenter(CenterStage)); break;
+	case (Tsage): for (int i = 0; i < mptr->siz; i++) planeTsage(mptr->sav[i],planeCenter(CenterTsage)); break;
 	case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
-	case (Eval): planeEval(&mptr->exp[0],data); break;
-	case (Cont): planeCont(center,kernel); break;
-	case (Prep): planePrep(center,kernel); break;
-	case (Send): planeSend(center,kernel); break;
-	case (Recv): planeRecv(center,kernel); break;
-	case (Disp): planeDisp(center,kernel); break;
-	case (Copy): planeCopy(center,kernel,machine,string,data); break;
-	case (Dopy): planeDopy(center,kernel,machine,string,data); break;
-	case (Popy): planePopy(center,kernel,machine,string,data); break;
-	case (Qopy): planeQopy(center,kernel,machine,string,data); break;
-	case (Jump): next = planeEscape(machine,planeIval(&mptr->exp[0]),next) - 1; break;
+	case (Eval): planeEval(&mptr->exp[0],planeData(CenterEval,CenterEvalSub)); break;
+	case (Cont): planeCont(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Prep): planePrep(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Send): planeSend(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Recv): planeRecv(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Disp): planeDisp(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Copy): planeCopy(planeCenter(CenterCopy)); break;
+	case (Dopy): planeDopy(planeCenter(CenterDopy)); break;
+	case (Popy): planePopy(planeCenter(CenterPopy)); break;
+	case (Qopy): planeQopy(planeCenter(CenterQopy)); break;
+	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break; // this is for Jump and Goto
 	case (Name): break; // TODO cause return to expression
 	default: break;}
-	if (next == callInfo(MachineSize,0,planeRcfg)) {next = 0;
-	if (sem_wait(&copySem) != 0) exitErr(__FILE__,__LINE__);}}
+	next = next + 1;}
 }
 void planeSelect(enum Thread tag, int idx)
 {
@@ -462,7 +461,7 @@ void planeBack(enum Configure cfg, int sav, int val)
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
 		callFork(CopyThd,0,planeSwitch,planeOpen);}
     if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
-		callKnfo(MachineSize,0,planeWcfg);
+		callKnfo(CenterNext,-1,planeWcfg);
 		if (sem_post(&copySem) != 0) ERROR();}
 	if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
 		if (sem_post(&copySem) != 0) ERROR();}
