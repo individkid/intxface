@@ -275,44 +275,6 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
         return result;
 }
 
-void planeBopy(struct Center *src, struct Center *dst,
-	enum Configure srcIdx, enum Configure dstIdc, enum Configure count)
-{
-}
-void planeCopy(struct Center *center)
-{
-}
-void planeDopy(struct Center *center)
-{
-}
-void planePopy(struct Center *center)
-{
-}
-void planeQopy(struct Center *center)
-{
-}
-void planeStage(enum Configure cfg, struct Center *center)
-{
-	// TODO callJnfo(cfg,val,planeWcfg);
-}
-void planeTsage(enum Configure cfg, struct Center *center)
-{
-	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
-}
-void planeEval(struct Express *exp, struct Center *center)
-{
-	int typ = datxEval(dat0,exp,identType("Center"));
-	if (typ != identType("Center")) ERROR();
-	readCenter(center,sub0);
-}
-int planeIval(struct Express *exp)
-{
-	void *dat = 0; int val = 0; int typ = 0;
-	typ = datxEval(&dat,exp,identType("Int"));
-	if (typ != identType("Int")) ERROR();
-	val = *datxIntz(0,dat); free(dat);
-	return val;
-}
 struct Center *planeCenter(enum Configure cfg)
 {
 	// TODO check limits
@@ -323,15 +285,10 @@ struct Matrix *planeMatrix(enum Configure cfg, enum Configure idx)
 	// TODO check limits
 	return &planeCenter(cfg)->mat[callInfo(idx,0,planeRcfg)];
 }
-int planeSelf(enum Configure cfg)
+int planeEcho(enum Configure cfg)
 {
 	// TODO check limits
 	return planeCenter(cfg)->slf;
-}
-struct Data *planeData(enum Configure cfg, enum Configure idx)
-{
-	// TODO check limits
-	return &planeCenter(cfg)->dat[callInfo(idx,0,planeRcfg)];
 }
 struct Kernel *planeKernel(enum Configure cfg, enum Configure idx)
 {
@@ -342,6 +299,61 @@ struct Machine *planeMachine(enum Configure cfg, enum Configure idx)
 {
 	// TODO check limits
 	return &planeCenter(cfg)->mch[callInfo(idx,0,planeRcfg)];
+}
+void planeManip(int proto, int *arg)
+{
+}
+void planePulse(int proto, int *arg)
+{
+}
+void planeSelf(int proto, int *arg)
+{
+}
+void planeOther(int proto, int *arg)
+{
+}
+void planeSwap(int proto, int *arg)
+{
+}
+void planeComp(int proto, int *arg)
+{
+}
+void planeBopy(enum Configure src, enum Configure dst, enum Configure srcIdx, enum Configure dstIdc, enum Configure count)
+{
+}
+void planeCopy(enum Configure center)
+{
+}
+void planeDopy(enum Configure center)
+{
+}
+void planePopy(enum Configure center)
+{
+}
+void planeQopy(enum Configure center)
+{
+}
+void planeStage(enum Configure cfg, enum Configure center)
+{
+	// TODO callJnfo(cfg,val,planeWcfg);
+}
+void planeTsage(enum Configure cfg, enum Configure center)
+{
+	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
+}
+void planeEval(struct Express *exp, enum Configure center)
+{
+	int typ = datxEval(dat0,exp,identType("Center"));
+	if (typ != identType("Center")) ERROR();
+	readCenter(planeCenter(center),sub0);
+}
+int planeIval(struct Express *exp)
+{
+	void *dat = 0; int val = 0; int typ = 0;
+	typ = datxEval(&dat,exp,identType("Int"));
+	if (typ != identType("Int")) ERROR();
+	val = *datxIntz(0,dat); free(dat);
+	return val;
 }
 int planeEscape(int lvl, int nxt)
 {
@@ -361,23 +373,27 @@ void planeSwitch(enum Thread tag, int idx)
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
-	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i],planeCenter(CenterStage)); break;
-	case (Tsage): for (int i = 0; i < mptr->siz; i++) planeTsage(mptr->sav[i],planeCenter(CenterTsage)); break;
+	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i],CenterStage); break;
+	case (Tsage): for (int i = 0; i < mptr->siz; i++) planeTsage(mptr->sav[i],CenterTsage); break;
 	case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
-	case (Eval): planeEval(&mptr->exp[0],planeCenter(CenterEval)); break;
-	// TODO matrix and kernel manipulation by planeFunc and matrix
+	case (Eval): planeEval(&mptr->exp[0],CenterEval); break;
 	// Order of matrix application is window * project * subject * object * element * vector.
 	// To change X such that YX changes to ZYX, change X to Y’ZYX.
 	// Each matrix is product of local, towrite, written, maintain.
 	// User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
 	// Others manipulate maintain as if before any towrite and after any written.
 	// Change between one planeFunc and another requires swapping their order.
-	case (Bopy): planeBopy(planeCenter(CenterBopySrc),planeCenter(CenterBopyDst),
-		CenterBopySrcIdx,CenterBopyDstIdx,CenterBopyCount); break;
-	case (Copy): planeCopy(planeCenter(CenterCopy)); break;
-	case (Dopy): planeDopy(planeCenter(CenterDopy)); break;
-	case (Popy): planePopy(planeCenter(CenterPopy)); break;
-	case (Qopy): planeQopy(planeCenter(CenterQopy)); break;
+	case (Manip): planeManip(mptr->pro,mptr->arg); break;
+	case (Pulse): planePulse(mptr->pro,mptr->arg); break;
+	case (Self): planeSelf(mptr->pro,mptr->arg); break;
+	case (Other): planeOther(mptr->pro,mptr->arg); break;
+	case (Swap): planeSwap(mptr->pro,mptr->arg); break;
+	case (Comp): planeComp(mptr->pro,mptr->arg); break;
+	case (Bopy): planeBopy(CenterBopySrc,CenterBopyDst,CenterBopySrcIdx,CenterBopyDstIdx,CenterBopyCount); break;
+	case (Copy): planeCopy(CenterCopy); break;
+	case (Dopy): planeDopy(CenterDopy); break;
+	case (Popy): planePopy(CenterPopy); break;
+	case (Qopy): planeQopy(CenterQopy); break;
 	case (Jump): next = planeEscape(planeIval(&mptr->exp[0]),next) - 1; break;
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break; // this is for Jump and Goto

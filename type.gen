@@ -42,7 +42,6 @@ Memory = {
 	"Piercez", -- per fragment info
 	"Stackz", -- named machine locations
 	"Stringz", -- string memory
-	"Dataz", -- data memory
 	"Machinez", -- state machine lines
 	"Littlez", -- little machine lines
 	"Kernelz", -- inflight transformations
@@ -100,6 +99,12 @@ Transfer = {
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
+	"Manip", -- manipulate local
+	"Pulse", -- clear to towrite
+	"Self", -- clear to written
+	"Other", -- maintain as if
+	"Swap", -- change manipulator
+	"Comp", -- compose for draw
 	"Bopy", -- center to center
 	"Copy", -- center to memory
 	"Dopy", -- center from memory
@@ -462,6 +467,8 @@ Machine = {
 	{"xfr","Transfer",{},""},
 	{"siz","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
 	{"sav","Configure",{["xfr"]={["Stage"]=true,["Tsage"]=true}},"siz"},
+	{"pro","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true}},{}},
+	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true}},"pro"},
 	{"num","Int",{["xfr"]={["Force"]=true}},{}},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"num"},
@@ -475,10 +482,6 @@ Little = {
 	{"num","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"nxt","Int",{},{}},
-}
-Data = {
-	{"typ","Int",{},{}},
-	{"dat","Dat",{},{}},
 }
 Uniform = {
 	{"all","Int32",{},{}}, -- which subject to use
@@ -555,7 +558,6 @@ Center = {
 	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stackz"]=true,["Stringz"]=true}},"siz"}, -- TODO implement or delete Stackz
-	{"dat","Data",{["mem"]={["Dataz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"pvn","Little",{["mem"]={["Littlez"]=true}},"siz"}, -- TODO implement or delete
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
