@@ -275,6 +275,10 @@ void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
         return result;
 }
 
+void planeBopy(struct Center *src, struct Center *dst,
+	enum Configure srcIdx, enum Configure dstIdc, enum Configure count)
+{
+}
 void planeCopy(struct Center *center)
 {
 }
@@ -350,7 +354,7 @@ int planeEscape(int lvl, int nxt)
 }
 void planeSwitch(enum Thread tag, int idx)
 {
-	int next = 0; while (1) {
+	for (int next = 0; 1; next++) {
 	struct Machine *mptr = planeMachine(CenterNext,next);
 	if (!mptr && next == 0) break;
 	if (!mptr) {next = 0; if (sem_wait(&copySem) != 0) ERROR(); continue;}
@@ -368,6 +372,8 @@ void planeSwitch(enum Thread tag, int idx)
 	// User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
 	// Others manipulate maintain as if before any towrite and after any written.
 	// Change between one planeFunc and another requires swapping their order.
+	case (Bopy): planeBopy(planeCenter(CenterBopySrc),planeCenter(CenterBopyDst),
+		CenterBopySrcIdx,CenterBopyDstIdx,CenterBopyCount); break;
 	case (Copy): planeCopy(planeCenter(CenterCopy)); break;
 	case (Dopy): planeDopy(planeCenter(CenterDopy)); break;
 	case (Popy): planePopy(planeCenter(CenterPopy)); break;
@@ -376,8 +382,7 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Goto): next = next + planeIval(&mptr->exp[0]) - 1; break;
 	case (Nest): break; // this is for Jump and Goto
 	case (Name): break; // TODO cause return to expression
-	default: break;}
-	next = next + 1;}
+	default: break;}}
 }
 void planeSelect(enum Thread tag, int idx)
 {

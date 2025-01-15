@@ -68,6 +68,11 @@ Configure = {
 	"CenterStage",
 	"CenterTsage",
 	"CenterEval",
+	"CenterBopySrc",
+	"CenterBopyDst",
+	"CenterBopySrcIdx",
+	"CenterBopyDstIdx",
+	"CenterBopyCount",
 	"CenterCopy",
 	"CenterDopy",
 	"CenterPopy",
@@ -95,6 +100,7 @@ Transfer = {
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
+	"Bopy", -- center to center
 	"Copy", -- center to memory
 	"Dopy", -- center from memory
 	"Popy", -- from queue to center
