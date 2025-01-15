@@ -207,10 +207,6 @@ planeXform planeFunc()
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) return planeRotateCursorRoller;
     return 0;
 }
-float *planeMatrix(float *mat)
-{
-    return mat; // TODO
-}
 extern struct timeval planraTime;
 float *planraMatrix(float *mat)
 {
@@ -281,39 +277,11 @@ float *planeWindow(float *mat)
     return identmat(mat,4);
 }
 
-struct Center *planeCenter(enum Configure cfg)
+void planeMove(struct Matrix *matrix, struct Kernel *kernel)
 {
-	// TODO check limits
-	return &center[callInfo(cfg,0,planeRcfg)];
+	// TODO applies manipulation to local
 }
-struct Data *planeData(enum Configure cfg, enum Configure idx)
-{
-	// TODO check limits
-	return &center[callInfo(cfg,0,planeRcfg)].dat[callInfo(idx,0,planeRcfg)];
-}
-struct Kernel *planeKernel(enum Configure cfg, enum Configure idx)
-{
-	// TODO check limits
-	return &center[callInfo(cfg,0,planeRcfg)].ker[callInfo(idx,0,planeRcfg)];
-}
-struct Machine *planeMachine(enum Configure cfg, enum Configure idx)
-{
-	// TODO check limits
-	return &center[callInfo(cfg,0,planeRcfg)].mch[callInfo(idx,0,planeRcfg)];
-}
-void planeStage(enum Configure cfg, struct Center *center)
-{
-	// TODO callJnfo(cfg,val,planeWcfg);
-}
-void planeTsage(enum Configure cfg, struct Center *center)
-{
-	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
-}
-void planeEval(struct Express *exp, struct Data *data)
-{
-	data->typ = datxEval(data->dat,exp,-1);
-}
-void planeCont(struct Kernel *kernel)
+void planeCont(struct Matrix *matrix, struct Kernel *kernel)
 {
 	// TODO applies inverse of new transformation to local, so the switch to the new transformation is continuous.
 }
@@ -325,7 +293,7 @@ void planeSend(struct Kernel *kernel)
 {
 	// TODO applies to-send to sent and writes composition of all but local.
 }
-void planeRecv(struct Kernel *kernel)
+void planeRecv(int self, struct Matrix *matrix, struct Kernel *kernel)
 {
 	// TODO either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
 }
@@ -345,14 +313,17 @@ void planePopy(struct Center *center)
 void planeQopy(struct Center *center)
 {
 }
-int planeEscape(int lvl, int nxt)
+void planeStage(enum Configure cfg, struct Center *center)
 {
-	int inc = (lvl > 0 ? 1 : (lvl == 0 ? 0 : -1)); lvl *= inc;
-	for (nxt += inc; lvl > 0; nxt += inc) {
-	struct Machine *mptr = planeMachine(CenterNext,nxt);
-	if (!mptr) break;
-	if (mptr->xfr == Nest) lvl += mptr->lvl*inc;}
-	return nxt;
+	// TODO callJnfo(cfg,val,planeWcfg);
+}
+void planeTsage(enum Configure cfg, struct Center *center)
+{
+	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
+}
+void planeEval(struct Express *exp, struct Data *data)
+{
+	data->typ = datxEval(data->dat,exp,-1);
 }
 int planeIval(struct Express *exp)
 {
@@ -361,6 +332,45 @@ int planeIval(struct Express *exp)
 	if (typ != identType("Int")) ERROR();
 	val = *datxIntz(0,dat); free(dat);
 	return val;
+}
+struct Center *planeCenter(enum Configure cfg)
+{
+	// TODO check limits
+	return &center[callInfo(cfg,0,planeRcfg)];
+}
+struct Matrix *planeMatrix(enum Configure cfg, enum Configure idx)
+{
+	// TODO check limits
+	return &planeCenter(cfg)->mat[callInfo(idx,0,planeRcfg)];
+}
+int planeSelf(enum Configure cfg)
+{
+	// TODO check limits
+	return planeCenter(cfg)->slf;
+}
+struct Data *planeData(enum Configure cfg, enum Configure idx)
+{
+	// TODO check limits
+	return &planeCenter(cfg)->dat[callInfo(idx,0,planeRcfg)];
+}
+struct Kernel *planeKernel(enum Configure cfg, enum Configure idx)
+{
+	// TODO check limits
+	return &planeCenter(cfg)->ker[callInfo(idx,0,planeRcfg)];
+}
+struct Machine *planeMachine(enum Configure cfg, enum Configure idx)
+{
+	// TODO check limits
+	return &planeCenter(cfg)->mch[callInfo(idx,0,planeRcfg)];
+}
+int planeEscape(int lvl, int nxt)
+{
+	int inc = (lvl > 0 ? 1 : (lvl == 0 ? 0 : -1)); lvl *= inc;
+	for (nxt += inc; lvl > 0; nxt += inc) {
+	struct Machine *mptr = planeMachine(CenterNext,nxt);
+	if (!mptr) break;
+	if (mptr->xfr == Nest) lvl += mptr->lvl*inc;}
+	return nxt;
 }
 void planeSwitch(enum Thread tag, int idx)
 {
@@ -375,10 +385,11 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Tsage): for (int i = 0; i < mptr->siz; i++) planeTsage(mptr->sav[i],planeCenter(CenterTsage)); break;
 	case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
 	case (Eval): planeEval(&mptr->exp[0],planeData(CenterEval,CenterEvalSub)); break;
-	case (Cont): planeCont(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Move): planeMove(planeMatrix(CenterMove,CenterMoveSub),planeKernel(CenterManip,CenterManipSub)); break;
+	case (Cont): planeCont(planeMatrix(CenterCont,CenterContSub),planeKernel(CenterManip,CenterManipSub)); break;
 	case (Prep): planePrep(planeKernel(CenterManip,CenterManipSub)); break;
 	case (Send): planeSend(planeKernel(CenterManip,CenterManipSub)); break;
-	case (Recv): planeRecv(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Recv): planeRecv(planeSelf(CenterRecv),planeMatrix(CenterRecv,CenterRecvSub),planeKernel(CenterManip,CenterManipSub)); break;
 	case (Disp): planeDisp(planeKernel(CenterManip,CenterManipSub)); break;
 	case (Copy): planeCopy(planeCenter(CenterCopy)); break;
 	case (Dopy): planeDopy(planeCenter(CenterDopy)); break;
