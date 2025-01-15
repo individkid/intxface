@@ -13,10 +13,6 @@
 #include <sys/time.h>
 #include <errno.h>
 
-// Order of matrix application is window * project * subject * object * element * vector.
-// To change X such that YX changes to ZYX, change X to Y’ZXY.
-// Each matrix is product of local, towrite, written, maintain.
-
 struct Center *center = 0; // array of center for machine and other memories
 int external = 0; // get fd, socket, or fsname from commandline Argument
 int wakeup = 0; // protect with pipeSem
@@ -207,23 +203,6 @@ planeXform planeFunc()
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) return planeRotateCursorRoller;
     return 0;
 }
-extern struct timeval planraTime;
-float *planraMatrix(float *mat)
-{
-    struct timeval stop; gettimeofday(&stop, NULL);
-    float time = (stop.tv_sec - planraTime.tv_sec) + (stop.tv_usec - planraTime.tv_usec) / (double)MICROSECONDS;
-    float fix[3]; fix[0] = 0.0; fix[1] = 0.0; fix[2] = 0.0;
-    float nml[3]; nml[0] = 0.0; nml[1] = 0.0; nml[2] = -1.0;
-    float org[3]; org[0] = 0.0; org[1] = 0.0; org[2] = 0.0;
-    float cur[3]; cur[0] = 0.2*sinf(time*2.0944);
-    cur[1] = 0.2*cosf(time*2.0944);
-    cur[2] = time*1.5708;
-    identmat(mat,4);
-    planeSlideOrthoMouse(mat,fix,nml,org,cur);
-    planeRotateFocalMouse(mat,fix,nml,org,cur);
-    planeRotateCursorRoller(mat,fix,nml,org,cur);
-    return identmat(mat,4);
-}
 void physicalToScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
@@ -276,31 +255,26 @@ float *planeWindow(float *mat)
     */
     return identmat(mat,4);
 }
+void *planeResize(void *ptr, int mod, int siz, int tmp)
+{
+        char *result = realloc(ptr,siz*mod);
+        for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
+        return result;
+}
+void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
+{
+        char *chrs = ptr;
+        char *result = malloc(siz*mod);
+        int ofs = tmp*mod-bas*mod; // location of old base in new base
+        int lim = siz*mod-tmp*mod+bas*mod; // location of new limit in old base
+        while (ofs < 0) ofs += siz*mod; ofs %= siz*mod;
+        while (lim < 0) lim += siz*mod; lim %= siz*mod;
+        for (int i = 0; i < lim; i++) result[i+ofs] = chrs[i];
+        for (int i = 0; i < ofs; i++) result[i] = chrs[i+lim];
+        free(ptr);
+        return result;
+}
 
-void planeMove(struct Matrix *matrix, struct Kernel *kernel)
-{
-	// TODO applies manipulation to local
-}
-void planeCont(struct Matrix *matrix, struct Kernel *kernel)
-{
-	// TODO applies inverse of new transformation to local, so the switch to the new transformation is continuous.
-}
-void planePrep(struct Kernel *kernel)
-{
-	// TODO applies local to to-send, and schedules send.
-}
-void planeSend(struct Kernel *kernel)
-{
-	// TODO applies to-send to sent and writes composition of all but local.
-}
-void planeRecv(int self, struct Matrix *matrix, struct Kernel *kernel)
-{
-	// TODO either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
-}
-void planeDisp(struct Kernel *kernel)
-{
-	// TODO conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
-}
 void planeCopy(struct Center *center)
 {
 }
@@ -321,9 +295,11 @@ void planeTsage(enum Configure cfg, struct Center *center)
 {
 	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
 }
-void planeEval(struct Express *exp, struct Data *data)
+void planeEval(struct Express *exp, struct Center *center)
 {
-	data->typ = datxEval(data->dat,exp,-1);
+	int typ = datxEval(dat0,exp,identType("Center"));
+	if (typ != identType("Center")) ERROR();
+	readCenter(center,sub0);
 }
 int planeIval(struct Express *exp)
 {
@@ -384,13 +360,14 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Stage): for (int i = 0; i < mptr->siz; i++) planeStage(mptr->sav[i],planeCenter(CenterStage)); break;
 	case (Tsage): for (int i = 0; i < mptr->siz; i++) planeTsage(mptr->sav[i],planeCenter(CenterTsage)); break;
 	case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
-	case (Eval): planeEval(&mptr->exp[0],planeData(CenterEval,CenterEvalSub)); break;
-	case (Move): planeMove(planeMatrix(CenterMove,CenterMoveSub),planeKernel(CenterManip,CenterManipSub)); break;
-	case (Cont): planeCont(planeMatrix(CenterCont,CenterContSub),planeKernel(CenterManip,CenterManipSub)); break;
-	case (Prep): planePrep(planeKernel(CenterManip,CenterManipSub)); break;
-	case (Send): planeSend(planeKernel(CenterManip,CenterManipSub)); break;
-	case (Recv): planeRecv(planeSelf(CenterRecv),planeMatrix(CenterRecv,CenterRecvSub),planeKernel(CenterManip,CenterManipSub)); break;
-	case (Disp): planeDisp(planeKernel(CenterManip,CenterManipSub)); break;
+	case (Eval): planeEval(&mptr->exp[0],planeCenter(CenterEval)); break;
+	// TODO matrix and kernel manipulation by planeFunc and matrix
+	// Order of matrix application is window * project * subject * object * element * vector.
+	// To change X such that YX changes to ZYX, change X to Y’ZYX.
+	// Each matrix is product of local, towrite, written, maintain.
+	// User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
+	// Others manipulate maintain as if before any towrite and after any written.
+	// Change between one planeFunc and another requires swapping their order.
 	case (Copy): planeCopy(planeCenter(CenterCopy)); break;
 	case (Dopy): planeDopy(planeCenter(CenterDopy)); break;
 	case (Popy): planePopy(planeCenter(CenterPopy)); break;

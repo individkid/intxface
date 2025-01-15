@@ -67,16 +67,7 @@ Configure = {
 	"CenterNext",
 	"CenterStage",
 	"CenterTsage",
-	"CenterManip",
-	"CenterManipSub",
-	"CenterMove",
-	"CenterMoveSub",
-	"CenterCont",
-	"CenterContSub",
-	"CenterRecv",
-	"CenterRecvSub",
 	"CenterEval",
-	"CenterEvalSub",
 	"CenterCopy",
 	"CenterDopy",
 	"CenterPopy",
@@ -104,12 +95,6 @@ Transfer = {
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
-	"Move", -- applies manipulation to local
-	"Cont", -- applies inverse of new transformation to local, so the switch to the new transformation is continuous.
-	"Prep", -- applies local to to-send, and schedules send.
-	"Send", -- applies to-send to sent and writes composition of all but local.
-	"Recv", -- either applies part of sent to received, or replaces received and compensates sent such that its delta from received is unchanged.
-	"Disp", -- conjoins product of local, to-send, sent, received with window, project, maybe subject, maybe object
 	"Copy", -- center to memory
 	"Dopy", -- center from memory
 	"Popy", -- from queue to center
