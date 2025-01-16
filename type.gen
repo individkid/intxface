@@ -63,19 +63,7 @@ Configure = {
 	"MatrixBase",
 	"MatrixSize",
 	"CenterSize",
-	"CenterNext",
-	"CenterStage",
-	"CenterTsage",
-	"CenterEval",
-	"CenterBopySrc",
-	"CenterBopyDst",
-	"CenterBopySrcIdx",
-	"CenterBopyDstIdx",
-	"CenterBopyCount",
-	"CenterCopy",
-	"CenterDopy",
-	"CenterPopy",
-	"CenterQopy",
+	"CenterIndex", -- machine array
 	"StageMem",
 	"StageSiz",
 	"StageIdx",
@@ -115,6 +103,13 @@ Transfer = {
 	"Eval", -- call datxEval
 	"Nest", -- nest to level
 	"Name", -- function for call
+}
+BopyArg = {
+	"BopySrc",
+	"BopySrcSub",
+	"BopyDst",
+	"BopyDstSub",
+	"BopyCount",
 }
 Plan = { -- which test to run
 	"Regress",
@@ -467,11 +462,16 @@ Machine = {
 	{"xfr","Transfer",{},""},
 	{"siz","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
 	{"sav","Configure",{["xfr"]={["Stage"]=true,["Tsage"]=true}},"siz"},
-	{"pro","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true}},{}},
-	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true}},"pro"},
+	{"idx","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
 	{"num","Int",{["xfr"]={["Force"]=true}},{}},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
 	{"val","Int",{["xfr"]={["Force"]=true}},"num"},
+	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
+	{"res","Int",{["xfr"]={["Eval"]=true}},{}},
+	{"sig","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
+	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 	{"str","Str",{["xfr"]={["Name"]=true}},{}},
@@ -553,13 +553,12 @@ Center = {
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
-	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
+	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
-	{"str","Str",{["mem"]={["Stackz"]=true,["Stringz"]=true}},"siz"}, -- TODO implement or delete Stackz
+	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
-	{"pvn","Little",{["mem"]={["Littlez"]=true}},"siz"}, -- TODO implement or delete
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
