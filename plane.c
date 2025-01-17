@@ -284,6 +284,13 @@ void centerClear()
 	dropCenterq(copyback); dropIntq(copyidx);}
 	if (sem_post(&copySem) != 0) ERROR();
 }
+void centerPush(int res, struct Center *ptr, int idx)
+{
+	if (idx < 0) {callPass(res,ptr,idx); return;}
+	if (sem_wait(&copySem) != 0) ERROR();
+	pushCenterq(ptr,copyback); pushIntq(idx,copyidx);
+	if (sem_post(&copySem) != 0) ERROR();
+}
 void centerSize(enum Configure cfg, int sav, int val)
 {
 	if (cfg != CenterSize) ERROR();
@@ -299,12 +306,6 @@ void centerIndex(enum Configure cfg, int sav, int val)
 	freeCenter(center[sav]); allocCenter(&center[sav],0); center[sav] = current;
 	current = center[val]; center[val] = 0;
 	if (sem_post(&copySem) != 0) ERROR();	
-}
-void centerPush(struct Center *ptr, int idx)
-{
-	if (sem_wait(&copySem) != 0) ERROR();
-	pushCenterq(ptr,copyback); pushIntq(idx,copyidx);
-	if (sem_post(&copySem) != 0) ERROR();
 }
 void machineManip(int sig, int *arg)
 {
@@ -332,28 +333,30 @@ void machineBopy(int sig, int *arg)
 	int srcSub = arg[BopySrcSub];
 	int dstSub = arg[BopyDstSub];
 	int count = arg[BopyCount];
-	if (src < 0 || src >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-	if (dst < 0 || dst >= callInfo(CenterSize,0,planeRcfg)) ERROR();
 	// TODO use centerPull and centerPlace
-	/* if (srcSub < 0 || srcSub >= center[src].siz) ERROR();
-	if (dstSub < 0 || dstSub >= center[dst].siz) ERROR();
-	if (center[src].mem == Kernelz && center[dst].mem == Matrixz) for (int i = 0; i < count; i++)
-	copyMatrix(&center[dst].mat[dstSub],&center[src].ker[srcSub].compose);
-	else if (center[src].mem == Matrixz && center[dst].mem == Kernelz) for (int i = 0; i < count; i++)
-	copyMatrix(&center[dst].ker[dstSub].local,&center[src].mat[srcSub]);
-	else if (center[src].mem == center[dst].mem) switch (center[src].mem) {default: ERROR();
-	case (Indexz): center[dst].ind[dstSub] = center[src].ind[srcSub]; break;
-	case (Trianglez): copyTriangle(&center[dst].tri[dstSub],&center[src].tri[srcSub]); break;
-	case (Numericz): copyNumeric(&center[dst].num[dstSub],&center[src].num[srcSub]); break;
-	case (Vertexz): copyVertex(&center[dst].vtx[dstSub],&center[src].vtx[srcSub]); break;
-	case (Basisz): copyBasis(&center[dst].bas[dstSub],&center[src].bas[srcSub]); break;
-	case (Matrixz): copyMatrix(&center[dst].mat[dstSub],&center[src].mat[srcSub]); break;
-	case (Texturez): copyTexture(&center[dst].tex[dstSub],&center[src].tex[srcSub]); break;
-	case (Piercez): copyPierce(&center[dst].pie[dstSub],&center[src].pie[srcSub]); break;
-	case (Stringz): assignStr(&center[dst].str[dstSub],center[src].str[srcSub]); break;
-	case (Machinez): copyMachine(&center[dst].mch[dstSub],&center[src].mch[srcSub]); break;
-	case (Kernelz): copyKernel(&center[dst].ker[dstSub],&center[src].ker[srcSub]); break;}
-	else ERROR();*/
+	struct Center *srcPtr = centerPull(src);
+	struct Center *dstPtr = centerPull(dst);
+	if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
+	if (dstSub < 0 || dstSub >= dstPtr->siz) ERROR();
+	if (srcPtr->mem == Kernelz && dstPtr->mem == Matrixz) for (int i = 0; i < count; i++)
+	copyMatrix(&dstPtr->mat[dstSub],&srcPtr->ker[srcSub].compose);
+	else if (srcPtr->mem == Matrixz && dstPtr->mem == Kernelz) for (int i = 0; i < count; i++)
+	copyMatrix(&dstPtr->ker[dstSub].local,&srcPtr->mat[srcSub]);
+	else if (srcPtr->mem == dstPtr->mem) switch (srcPtr->mem) {default: ERROR();
+	case (Indexz): dstPtr->ind[dstSub] = srcPtr->ind[srcSub]; break;
+	case (Trianglez): copyTriangle(&dstPtr->tri[dstSub],&srcPtr->tri[srcSub]); break;
+	case (Numericz): copyNumeric(&dstPtr->num[dstSub],&srcPtr->num[srcSub]); break;
+	case (Vertexz): copyVertex(&dstPtr->vtx[dstSub],&srcPtr->vtx[srcSub]); break;
+	case (Basisz): copyBasis(&dstPtr->bas[dstSub],&srcPtr->bas[srcSub]); break;
+	case (Matrixz): copyMatrix(&dstPtr->mat[dstSub],&srcPtr->mat[srcSub]); break;
+	case (Texturez): copyTexture(&dstPtr->tex[dstSub],&srcPtr->tex[srcSub]); break;
+	case (Piercez): copyPierce(&dstPtr->pie[dstSub],&srcPtr->pie[srcSub]); break;
+	case (Stringz): assignStr(&dstPtr->str[dstSub],srcPtr->str[srcSub]); break;
+	case (Machinez): copyMachine(&dstPtr->mch[dstSub],&srcPtr->mch[srcSub]); break;
+	case (Kernelz): copyKernel(&dstPtr->ker[dstSub],&srcPtr->ker[srcSub]); break;}
+	else ERROR();
+	centerPlace(srcPtr,src);
+	centerPlace(dstPtr,dst);
 }
 void machineCopy(int sig, int *arg)
 {
