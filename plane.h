@@ -1,9 +1,15 @@
 enum Configure;
 enum Thread;
 struct Center;
+struct Response {
+	int res;
+	int idx;
+	struct Center *ptr;
+	void (*fnc)(struct Response);
+};
 typedef void (*xftype)(enum Configure, int sav, int val);
 typedef void (*mftype)(enum Thread tag, int idx);
-typedef void (*wftype)(int pass, struct Center *center, int index);
+typedef void (*wftype)(struct Response);
 typedef void (*nftype)(struct Center *center, int index, wftype pass);
 typedef void (*oftype)(enum Configure cfg, xftype back);
 typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done);

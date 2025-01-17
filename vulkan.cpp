@@ -93,9 +93,8 @@ struct ChangeState {
     void wotc(Configure cfg, int val) {change(cfg,val,wotcOp,false,false);}
     static int rmwOp(int l, int r) {return l+r;}
     int rmw(Configure cfg, int val) {return change(cfg,val,rmwOp,true,true);}
-    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Center *center, int index, wftype pass, int &retval);
-    int copy(Center *center, int index, wftype pass);
-    int copy(Center *center, wftype pass) {return copy(center,-1,pass);}
+    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval);
+    int copy(Response);
 };
 
 // TODO define glfw callbacks that cast void* to ChangeState*
@@ -1862,9 +1861,7 @@ struct PushState {
     ThreadEnum tag;
     BaseState *base;
     VkFence fence;
-    Center *center;
-    int index;
-    wftype pass;
+    Response pass;
 };
 struct ThreadState : DoneState {
     const VkDevice device;
@@ -1880,20 +1877,20 @@ struct ThreadState : DoneState {
         {std::cout << "ThreadState" << std::endl;}
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
-    bool push(ThreadEnum tag, BaseState *base, Center *center, int index, wftype pass) {
-        PushState push = {tag,base,VK_NULL_HANDLE,center,index,pass};
+    bool push(ThreadEnum tag, BaseState *base, Response pass) {
+        PushState push = {tag,base,VK_NULL_HANDLE,pass};
         safe.wait(); before.push_back(push); safe.post();
         wake.wake();
         return (tag != FailThread);
     }
-    bool push(BaseState *base, void *ptr, int loc, int siz, SizeState max, Center *center = 0, int index = -1, wftype pass = 0) {
-        return push((base->push(ptr,loc,siz,max)?BothThread:FailThread),base,center,index,pass);
+    bool push(BaseState *base, void *ptr, int loc, int siz, SizeState max, Response pass) {
+        return push((base->push(ptr,loc,siz,max)?BothThread:FailThread),base,pass);
     }
-    bool push(BaseState *base, void *ptr, int loc, int siz, Center *center = 0, int index = -1, wftype pass = 0) {
-        return push((base->push(ptr,loc,siz)?SetThread:FailThread),base,center,index,pass);
+    bool push(BaseState *base, void *ptr, int loc, int siz, Response pass) {
+        return push((base->push(ptr,loc,siz)?SetThread:FailThread),base,pass);
     }
     bool push(BaseState *base, SizeState size) {
-        return push((base->push(size)?SizeThread:FailThread),base,0,-1,0);
+        return push((base->push(size)?SizeThread:FailThread),base,{0});
     }
     bool stage() {
         while (1) {while (1) {safe.wait();
@@ -1919,8 +1916,8 @@ struct ThreadState : DoneState {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.base) push.base->baseups();
-        int pass = (push.tag == FailThread ? 0 : 1);
-        push.pass(pass,push.center,push.index);
+        push.pass.res = (push.tag == FailThread ? 0 : 1);
+        push.pass.fnc(push.pass);
         change->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(device);
     }
@@ -2031,7 +2028,7 @@ extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
-void ChangeState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Center *center, int index, wftype pass, int &retval) {
+void ChangeState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval) {
     //    x-x     x---x x---x   x-----x
     //   y---y   y---y   y---y   y---y
     //   z---z   z----z  z---z   z----z
@@ -2043,26 +2040,27 @@ void ChangeState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, 
     else {zl=yl;zr=xr;}
     ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
     loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-    if (main->threadState.push(buf,ptr,loc,siz,SizeState(base,size),center,index,pass)) retval++;
+    if (main->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
 }
-int ChangeState::copy(Center *center, int index, wftype pass) {
+int ChangeState::copy(Response pass) {
+    Center *center = pass.ptr;
     int retval = 0;
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
     break; case (Indexz):
         rebase(main->indexState.preview(),(void*)center->ind,center->idx,center->siz,
-        read(IndexBase),read(IndexSize),sizeof(int32_t),center,index,pass,retval);
+        read(IndexBase),read(IndexSize),sizeof(int32_t),pass,retval);
     break; case (Vertexz):
         rebase(main->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
-        read(VertexBase),read(VertexSize),sizeof(Vertex),center,index,pass,retval);
+        read(VertexBase),read(VertexSize),sizeof(Vertex),pass,retval);
     break; case (Matrixz):
         rebase(main->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
-        read(MatrixBase),read(MatrixSize),sizeof(Matrix),center,index,pass,retval);
+        read(MatrixBase),read(MatrixSize),sizeof(Matrix),pass,retval);
     break; case (Texturez): {
         VkExtent2D texExtent = {(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei};
         if (main->threadState.push(main->textureState.preview(),
         datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),
-        SizeState(texExtent),center,index,pass)) retval++;}
+        SizeState(texExtent),pass)) retval++;}
     // TODO add remaining Memory types
     break; case (Configurez):
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
@@ -2070,7 +2068,7 @@ int ChangeState::copy(Center *center, int index, wftype pass) {
     return retval;
 }
 
-void vulkanPass(int pass, Center *center, int index);
+void vulkanPass(Response pass);
 void TestState::call() {
     MainState *main = change->main;
     const std::vector<Vertex> vertices = {
@@ -2112,18 +2110,18 @@ void TestState::call() {
     vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
     for (int i = 0; i < vtx->siz; i++)
     memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
-    change->copy(vtx,vulkanPass);
+    change->copy({0,0,vtx,vulkanPass});
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    change->copy(ind,vulkanPass);
+    change->copy({0,0,ind,vulkanPass});
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    change->copy(tex,vulkanPass);
+    change->copy({0,0,tex,vulkanPass});
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
@@ -2139,7 +2137,7 @@ void TestState::call() {
     memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
-    if (change->copy(mat,vulkanPass)) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    if (change->copy({0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
     BindState *bind[] = {
         &main->matrixState,
@@ -2149,14 +2147,14 @@ void TestState::call() {
         &main->pipelineState,
         &main->swapState};
     if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size())))
+        main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),{0}))
         main->drawState.advance();
     else {main->drawState.derived()->bind(); wake.wait();}}
 }
 
 ChangeState *change;
-void vulkanCopy(Center *center, wftype pass) {
-    change->copy(center,pass);
+void vulkanCopy(Response pass) {
+    change->copy(pass);
 }
 
 void vulkanCall(Configure cfg, xftype back) {
@@ -2167,7 +2165,8 @@ void vulkanFork(Thread thd, int idx, mftype call, mftype done) {
     change->main->callState.push(new ForkState(thd,idx,call,done));
 }
 
-void vulkanPass(int pass, Center *center, int index) {
+void vulkanPass(Response pass) {
+    Center *center = pass.ptr;
     if (center) switch (center->mem) {
     default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
     break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);

@@ -284,11 +284,11 @@ void centerClear()
 	dropCenterq(copyback); dropIntq(copyidx);}
 	if (sem_post(&copySem) != 0) ERROR();
 }
-void centerPush(int res, struct Center *ptr, int idx)
+void centerPush(struct Response resp)
 {
-	if (idx < 0) {callPass(res,ptr,idx); return;}
+	if (resp.idx < 0) {callPass(resp); return;}
 	if (sem_wait(&copySem) != 0) ERROR();
-	pushCenterq(ptr,copyback); pushIntq(idx,copyidx);
+	pushCenterq(resp.ptr,copyback); pushIntq(resp.idx,copyidx);
 	if (sem_post(&copySem) != 0) ERROR();
 }
 void centerSize(enum Configure cfg, int sav, int val)
