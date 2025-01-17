@@ -333,7 +333,6 @@ void machineBopy(int sig, int *arg)
 	int srcSub = arg[BopySrcSub];
 	int dstSub = arg[BopyDstSub];
 	int count = arg[BopyCount];
-	// TODO use centerPull and centerPlace
 	struct Center *srcPtr = centerPull(src);
 	struct Center *dstPtr = centerPull(dst);
 	if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
@@ -360,6 +359,7 @@ void machineBopy(int sig, int *arg)
 }
 void machineCopy(int sig, int *arg)
 {
+
 }
 void machineDopy(int sig, int *arg)
 {
@@ -380,10 +380,11 @@ void machineTsage(enum Configure cfg, int idx)
 }
 void machineEval(struct Express *exp, int idx)
 {
-	int typ = datxEval(dat0,exp,identType("Center"));
-	if (typ != identType("Center")) ERROR();
-	struct Center *cptr = 0;
-	readCenter(cptr,sub0);
+	void *dat = 0; struct Center *cptr = 0;
+	if (datxEval(&dat,exp,identType("Center")) != identType("Center")) ERROR();
+	if (sem_wait(&dataSem) != 0) ERROR();
+	assignDat(dat0,dat); readCenter(cptr,sub0);
+	if (sem_post(&dataSem) != 0) ERROR();
 	centerPlace(cptr,idx);
 }
 int machineIval(struct Express *exp)
@@ -394,7 +395,7 @@ int machineIval(struct Express *exp)
 	val = *datxIntz(0,dat); free(dat);
 	return val;
 }
-struct Machine *machineMachine(int next)
+struct Machine *machineNext(int next)
 {
 	if (next < 0 || next >= current->siz) ERROR();
 	return &current->mch[next];
@@ -403,7 +404,7 @@ int machineEscape(int level, int next)
 {
 	int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
 	for (next += inc; level > 0; next += inc) {
-	struct Machine *mptr = machineMachine(next);
+	struct Machine *mptr = machineNext(next);
 	if (!mptr) break;
 	if (mptr->xfr == Nest) level += mptr->lvl*inc;}
 	return next;
@@ -411,9 +412,9 @@ int machineEscape(int level, int next)
 void planeMachine(enum Thread tag, int idx)
 {
 	for (int next = 0; 1; next++) {
-	struct Machine *mptr = machineMachine(next);
+	struct Machine *mptr = machineNext(next);
 	if (!mptr && next == 0) break;
-	if (!mptr) {next = 0; if (sem_wait(&copySem) != 0) ERROR(); centerClear(); continue;}
+	if (!mptr) {next = -1; centerClear(); if (sem_wait(&copySem) != 0) ERROR(); continue;}
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeMachine %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
@@ -495,7 +496,7 @@ void planeConsole(enum Thread tag, int idx)
 	}
 }
 
-void planeOpen(enum Thread tag, int idx)
+void planeClose(enum Thread tag, int idx)
 {
 	callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
@@ -503,19 +504,19 @@ void registerOpen(enum Configure cfg, int sav, int val)
 {
 	if (cfg != RegisterOpen) ERROR();
     if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
-		callFork(PipeThd,0,planeSelect,planeOpen);}
+		callFork(PipeThd,0,planeSelect,planeClose);}
     if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
 		closeIdent(external); closeIdent(wakeup);}
 	if ((val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
 		writeInt(wakeup,0);}
     if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
-		callFork(StdioThd,0,planeConsole,planeOpen);}
+		callFork(StdioThd,0,planeConsole,planeClose);}
     if (!(val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
 		close(STDIN_FILENO); close(STDOUT_FILENO);}
 	if ((val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
 		/*TODO no wakeup for console thread*/}
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
-		callFork(CopyThd,0,planeMachine,planeOpen);}
+		callFork(CopyThd,0,planeMachine,planeClose);}
     if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
 		callKnfo(CenterIndex,-1,planeWcfg);
 		if (sem_post(&copySem) != 0) ERROR();}
@@ -551,7 +552,7 @@ void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, 
     call(CenterSize,centerSize);
     call(CenterIndex,centerIndex);
 	// TODO add function that gets arguments copied as implied by first successful hide
-	// TODO move following to Bootstrap constant switched by commandline
+	// TODO move following to Bootstrap constant configured by commandline
     jnfo(RegisterPoll,1,planeWcfg);
     jnfo(RegisterOpen,(1<<FenceThd),planeWots);
     jnfo(RegisterOpen,(1<<TestThd),planeWots);
