@@ -13,18 +13,24 @@
 #include <sys/time.h>
 #include <errno.h>
 
-struct Center *center = 0; // array of center for machine and other memories
-int external = 0; // get fd, socket, or fsname from commandline Argument
-int wakeup = 0; // protect with pipeSem
+// TODO callback on CenterIndex does pullCenter for copySem to current
+struct Center *current = 0; // running program; protect with copySem
+// TODO callback on CenterSize reallocs center
+struct Center **center = 0; // array of center; protect with copySem
+void *copyback = 0; // queue of center; protect with copySem
+void *copyidx = 0; // queue of where; protect with copySem
+int external = 0; // safe pipe descriptor
+int wakeup = 0; // safe pipe descriptor
 void *internal = 0; // queue of center; protect with pipeSem
 void *response = 0; // queue of center; protect with pipeSem
-// TODO queues for strings to and from planeConsole protected by stdioSem
+void *strout = 0; // queue of string; protect with stdioSem
+void *strin = 0; // queue of string; protect with stdioSem
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 sem_t copySem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
-sem_t testSem = {0};
 sem_t dataSem = {0};
+sem_t testSem = {0};
 wftype callPass = 0;
 nftype callCopy = 0;
 oftype callCall = 0;
@@ -34,6 +40,7 @@ zftype callJnfo = 0;
 zftype callKnfo = 0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
+DECLARE_DEQUE(int,Intq)
 
 int planeWots(int *ref, int val)
 {
@@ -137,7 +144,6 @@ unsigned char *sculptCursor(int e) {
 }
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
-// not all combinations of Effect Fixed Tool are supported.
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
     float *src2, float *dst2, float *src3, float *dst3)
 {
@@ -255,26 +261,36 @@ float *planeWindow(float *mat)
     */
     return identmat(mat,4);
 }
-void *planeResize(void *ptr, int mod, int siz, int tmp)
-{
-        char *result = realloc(ptr,siz*mod);
-        for (int i = tmp*mod; i < siz*mod; i++) result[i] = 0;
-        return result;
-}
-void *planeRebase(void *ptr, int mod, int siz, int bas, int tmp)
-{
-        char *chrs = ptr;
-        char *result = malloc(siz*mod);
-        int ofs = tmp*mod-bas*mod; // location of old base in new base
-        int lim = siz*mod-tmp*mod+bas*mod; // location of new limit in old base
-        while (ofs < 0) ofs += siz*mod; ofs %= siz*mod;
-        while (lim < 0) lim += siz*mod; lim %= siz*mod;
-        for (int i = 0; i < lim; i++) result[i+ofs] = chrs[i];
-        for (int i = 0; i < ofs; i++) result[i] = chrs[i+lim];
-        free(ptr);
-        return result;
-}
 
+struct Center *pullCenter(int idx)
+{
+	if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
+	if (sem_wait(&copySem) != 0) ERROR();
+	struct Center *ret = center[idx]; center[idx] = 0;
+	if (sem_post(&copySem) != 0) ERROR();
+	return ret;
+}
+void placeCenter(struct Center *ptr, int idx)
+{
+	if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
+	if (sem_wait(&copySem) != 0) ERROR();
+	freeCenter(center[idx]); center[idx] = ptr;
+	if (sem_post(&copySem) != 0) ERROR();
+}
+void clearCenter()
+{
+	if (sem_wait(&copySem) != 0) ERROR();
+	while (sizeCenterq(copyback)) {
+	placeCenter(frontCenterq(copyback),frontIntq(copyidx));
+	dropCenterq(copyback); dropIntq(copyidx);}
+	if (sem_post(&copySem) != 0) ERROR();
+}
+void pushCenter(struct Center *ptr, int idx)
+{
+	if (sem_wait(&copySem) != 0) ERROR();
+	pushCenterq(ptr,copyback); pushIntq(idx,copyidx);
+	if (sem_post(&copySem) != 0) ERROR();
+}
 void planeManip(int sig, int *arg)
 {
 }
@@ -303,7 +319,8 @@ void planeBopy(int sig, int *arg)
 	int count = arg[BopyCount];
 	if (src < 0 || src >= callInfo(CenterSize,0,planeRcfg)) ERROR();
 	if (dst < 0 || dst >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-	if (srcSub < 0 || srcSub >= center[src].siz) ERROR();
+	// TODO use pullCenter and placeCenter
+	/* if (srcSub < 0 || srcSub >= center[src].siz) ERROR();
 	if (dstSub < 0 || dstSub >= center[dst].siz) ERROR();
 	if (center[src].mem == Kernelz && center[dst].mem == Matrixz) for (int i = 0; i < count; i++)
 	copyMatrix(&center[dst].mat[dstSub],&center[src].ker[srcSub].compose);
@@ -321,7 +338,7 @@ void planeBopy(int sig, int *arg)
 	case (Stringz): assignStr(&center[dst].str[dstSub],center[src].str[srcSub]); break;
 	case (Machinez): copyMachine(&center[dst].mch[dstSub],&center[src].mch[srcSub]); break;
 	case (Kernelz): copyKernel(&center[dst].ker[dstSub],&center[src].ker[srcSub]); break;}
-	else ERROR();
+	else ERROR();*/
 }
 void planeCopy(int sig, int *arg)
 {
@@ -343,16 +360,14 @@ void planeTsage(enum Configure cfg, int idx)
 {
 	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
 }
-struct Machine *planeMachine(enum Configure, int next)
-{
-	// TODO check limits
-}
 void planeEval(struct Express *exp, int dst)
 {
 	// TODO check limits for dst
 	int typ = datxEval(dat0,exp,identType("Center"));
 	if (typ != identType("Center")) ERROR();
-	readCenter(&center[dst],sub0);
+	struct Center *cptr = 0;
+	readCenter(cptr,sub0);
+	placeCenter(cptr,dst);
 }
 int planeIval(struct Express *exp)
 {
@@ -362,21 +377,26 @@ int planeIval(struct Express *exp)
 	val = *datxIntz(0,dat); free(dat);
 	return val;
 }
-int planeEscape(int lvl, int nxt)
+struct Machine *planeMachine(int next)
 {
-	int inc = (lvl > 0 ? 1 : (lvl == 0 ? 0 : -1)); lvl *= inc;
-	for (nxt += inc; lvl > 0; nxt += inc) {
-	struct Machine *mptr = planeMachine(CenterIndex,nxt);
+	if (next < 0 || next >= current->siz) ERROR();
+	return &current->mch[next];
+}
+int planeEscape(int level, int next)
+{
+	int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
+	for (next += inc; level > 0; next += inc) {
+	struct Machine *mptr = planeMachine(next);
 	if (!mptr) break;
-	if (mptr->xfr == Nest) lvl += mptr->lvl*inc;}
-	return nxt;
+	if (mptr->xfr == Nest) level += mptr->lvl*inc;}
+	return next;
 }
 void planeSwitch(enum Thread tag, int idx)
 {
 	for (int next = 0; 1; next++) {
-	struct Machine *mptr = planeMachine(CenterIndex,next);
+	struct Machine *mptr = planeMachine(next);
 	if (!mptr && next == 0) break;
-	if (!mptr) {next = 0; if (sem_wait(&copySem) != 0) ERROR(); continue;}
+	if (!mptr) {next = 0; if (sem_wait(&copySem) != 0) ERROR(); clearCenter(); continue;}
 	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
 	// printf("planeSwitch %d %s\n",next,xfr); free(xfr);}
 	switch (mptr->xfr) {
@@ -407,6 +427,7 @@ void planeSwitch(enum Thread tag, int idx)
 	case (Name): break; // TODO cause return to expression
 	default: break;}}
 }
+
 void planeSelect(enum Thread tag, int idx)
 {
 	char *str = 0; // TODO let planeHide do this when planePopstr is Argument
@@ -433,6 +454,7 @@ void planeSelect(enum Thread tag, int idx)
 	sem_post(&pipeSem);}
 	else break;}
 }
+
 void planeConsole(enum Thread tag, int idx)
 {
 	char chr[2] = {0};
@@ -455,6 +477,7 @@ void planeConsole(enum Thread tag, int idx)
 	// TODO hide string push to string queue and wakeup machine thread
 	}
 }
+
 void planeOpen(enum Thread tag, int idx)
 {
 	callJnfo(RegisterOpen,(1<<tag),planeWotc);
@@ -488,6 +511,7 @@ void planeMask(enum Configure cfg, int sav, int val)
 	if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd)) {
 		callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
+
 void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo)
 {
 	callCopy = copy;

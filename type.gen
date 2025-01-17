@@ -63,11 +63,11 @@ Configure = {
 	"MatrixBase",
 	"MatrixSize",
 	"CenterSize",
-	"CenterIndex", -- machine array
-	"StageMem",
-	"StageSiz",
-	"StageIdx",
-	"StageSlf",
+	"CenterIndex", -- running machine
+	"CenterMem", -- staged field
+	"CenterSiz",
+	"CenterIdx",
+	"CenterSlf",
 	"RegisterType", -- expression type
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan
