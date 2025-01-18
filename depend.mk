@@ -27,8 +27,9 @@ lineCpp.typeC.o: face.h type.h
 luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
+metxC.o: metx.c metx.h
 planeC.o: datx.h face.h metx.h plane.c plane.h proto.h stlx.h type.h
-planra.log: fragmentFlattenG planraC vertexFlattenG vulkanCpp
+planra.log: fragmentFlattenG planraC texture.jpg vertexFlattenG vulkanCpp
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
@@ -42,6 +43,7 @@ spacerLua: spacer.lua
 spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs spacraHs.type.hs
 spacraHs.type.hs: luax.so show.lua type.gen
+stlxCpp.o: stlx.cpp stlx.h
 type.h: luax.so show.lua type.gen
 type.lua: luax.so show.lua type.gen
 typer.c: luax.so show.lua test.lua typer.gen
@@ -55,7 +57,7 @@ typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
 vertexFlattenG: flatten.g
-vulkanCpp: datxC.o faceC.o fmtxC.o protoC.o vulkanCpp.o vulkanCpp.typeC.o wrapCpp.o
+vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o vulkanCpp.o vulkanCpp.typeC.o wrapCpp.o
 vulkanCpp.o: face.h fmtx.h plane.h proto.h stlx.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen
 vulkanCpp.typeC.o: face.h type.h

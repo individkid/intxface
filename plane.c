@@ -30,8 +30,8 @@ sem_t stdioSem = {0};
 sem_t dataSem = {0};
 sem_t testSem = {0};
 wftype callPass = 0;
-nftype callCopy = 0;
-oftype callCall = 0;
+wftype callCopy = 0;
+oftype callBack = 0;
 vftype callFork = 0;
 zftype callInfo = 0;
 zftype callJnfo = 0;
@@ -530,10 +530,10 @@ void registerMask(enum Configure cfg, int sav, int val)
 		callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
 
-void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo)
+void planeInit(wftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo)
 {
 	callCopy = copy;
-	callCall = call;
+	callBack = call;
 	callFork = fork;
 	callPass = pass;
 	callInfo = info;
@@ -553,16 +553,17 @@ void planeInit(nftype copy, oftype call, vftype fork, wftype pass, zftype info, 
     call(CenterIndex,centerIndex);
 	// TODO add function that gets arguments copied as implied by first successful hide
 	// TODO move following to Bootstrap constant configured by commandline
+	info(RegisterMask,(1<<ResizeAsync),planeWots);
     jnfo(RegisterPoll,1,planeWcfg);
     jnfo(RegisterOpen,(1<<FenceThd),planeWots);
     jnfo(RegisterOpen,(1<<TestThd),planeWots);
-    if (sem_wait(&testSem) != 0) ERROR();
 }
 int count = 0;
 void planeLoop()
 {
-	if (count++ < 1000) return;
-	if (sem_post(&testSem) != 0) exitErr(__FILE__,__LINE__);
+	// TODO depending on test
+	if (count++ < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
+    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
 }
 void planeDone() {
 	if (sem_destroy(&copySem) != 0) ERROR();

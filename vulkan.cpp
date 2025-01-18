@@ -49,27 +49,24 @@ struct ChangeState {
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
-    int call(int *cfg, int val, yftype fnc) {
-        nest.wait(); depth++; self = pthread_self(); nest.post();
-        int ret = fnc(cfg,val); nest.wait(); depth--; nest.post();
-        return ret;
-    }
     int info(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid info!" << std::endl; exit(-1);}
-        safe.wait(); int ret = call(&config[cfg],val,fnc);
+        safe.wait(); int ret = fnc(&config[cfg],val);
         safe.post(); return ret;
     }
     int jnfo(Configure cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; int ret = call(&config[cfg],val,fnc);
+        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
+        nest.wait(); self = pthread_self(); depth++; nest.post();
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        nest.wait(); depth--; nest.post();
         safe.post(); return ret;
     }
     int knfo(Configure cfg, int val, yftype fnc) {
-        nest.wait(); if (!depth || !pthread_equal(self,pthread_self()) || safe.get())
-        {std::cerr << "invalid knfo!" << std::endl; exit(-1);} nest.post();
-        int sav = config[cfg]; int ret = call(&config[cfg],val,fnc);
+        nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
+        {std::cerr << "invalid knfo! " << depth << std::endl; exit(-1);} nest.post();
+        int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
         return ret;
@@ -79,9 +76,11 @@ struct ChangeState {
         if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid change!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
         if (typ && back.find(cfg) != back.end()) todo = back[cfg];
-        config[cfg] = opr(config[cfg],val); val = config[cfg]; safe.post();
+        config[cfg] = opr(config[cfg],val); val = config[cfg];
+        nest.wait(); self = pthread_self(); depth++; nest.post();
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
-        return (ret?sav:val);
+        nest.wait(); depth--; nest.post();
+        safe.post(); return (ret?sav:val);
     }
     static int readOp(int l, int r) {return l;}
     int read(Configure cfg) {return change(cfg,0,readOp,false,false);}
@@ -1810,6 +1809,7 @@ struct DrawState : public BaseState {
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets); // TODO depends on micro
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16); // TODO depends on micro
+        // HERE
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
         vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);
         vkCmdEndRenderPass(commandBuffer);
@@ -1874,7 +1874,7 @@ struct ThreadState : DoneState {
     ThreadState(VkDevice device, ChangeState *change) :
         device(device), change(change),
         safe(1), wake(0), goon(true) {
-        {std::cout << "ThreadState" << std::endl;}
+        strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
     bool push(ThreadEnum tag, BaseState *base, Response pass) {
@@ -1917,7 +1917,7 @@ struct ThreadState : DoneState {
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.base) push.base->baseups();
         push.pass.res = (push.tag == FailThread ? 0 : 1);
-        push.pass.fnc(push.pass);
+        if (push.pass.fnc) push.pass.fnc(push.pass);
         change->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(device);
     }
@@ -1936,6 +1936,7 @@ struct TestState : public DoneState {
     MainState *main;
     TestState(ChangeState *change) :
         safe(1), wake(0), goon(true), change(change) {
+        strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
     static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
         static auto startTime = std::chrono::high_resolution_clock::now();
@@ -1948,7 +1949,7 @@ struct TestState : public DoneState {
     }
     void call();
     void done() {
-        safe.wait(); goon = false; safe.post();
+        safe.wait(); goon = false; safe.post(); wake.wake();
     }
     void func() {}
 };
@@ -1956,7 +1957,9 @@ struct TestState : public DoneState {
 struct ForkState : public DoneState {
     Thread thd; int idx; mftype cfnc; mftype dfnc;
     ForkState (Thread thd, int idx, mftype call, mftype done) :
-        thd(thd), idx(idx), cfnc(call), dfnc(done) {}
+        thd(thd), idx(idx), cfnc(call), dfnc(done) {
+        strcpy(debug,"ForkState"); std::cout << debug << std::endl;
+    }
     void call() {cfnc(thd,idx);}
     void done() {dfnc(thd,idx);}
     void func() {delete this;}
@@ -2040,6 +2043,7 @@ void ChangeState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, 
     else {zl=yl;zr=xr;}
     ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
     loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
+    std::cerr << "rebase " << siz << std::endl;
     if (main->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
 }
 int ChangeState::copy(Response pass) {
@@ -2048,14 +2052,23 @@ int ChangeState::copy(Response pass) {
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
     break; case (Indexz):
-        rebase(main->indexState.preview(),(void*)center->ind,center->idx,center->siz,
-        read(IndexBase),read(IndexSize),sizeof(int32_t),pass,retval);
+        /*TODO rebase(main->indexState.preview(),(void*)center->ind,center->idx,center->siz,
+        read(IndexBase),read(IndexSize),sizeof(int32_t),pass,retval);*/
+        if (main->threadState.push(main->indexState.preview(),
+            (void*)center->ind,0,center->siz*sizeof(center->ind[0]),
+            SizeState(0,center->siz*sizeof(center->ind[0])),pass)) retval++;
     break; case (Vertexz):
-        rebase(main->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
-        read(VertexBase),read(VertexSize),sizeof(Vertex),pass,retval);
+        /*rebase(main->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
+        read(VertexBase),read(VertexSize),sizeof(Vertex),pass,retval);*/
+        if (main->threadState.push(main->vertexState.preview(),
+            (void*)center->vtx,0,center->siz*sizeof(center->vtx[0]),
+            SizeState(0,center->siz*sizeof(center->vtx[0])),pass)) retval++;
     break; case (Matrixz):
-        rebase(main->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
-        read(MatrixBase),read(MatrixSize),sizeof(Matrix),pass,retval);
+        /*rebase(main->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
+        read(MatrixBase),read(MatrixSize),sizeof(Matrix),pass,retval);*/
+        if (main->threadState.push(main->matrixState.preview(),
+            (void*)center->mat,0,center->siz*sizeof(center->mat[0]),
+            SizeState(0,center->siz*sizeof(center->mat[0])),pass)) retval++;
     break; case (Texturez): {
         VkExtent2D texExtent = {(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei};
         if (main->threadState.push(main->textureState.preview(),
@@ -2068,6 +2081,7 @@ int ChangeState::copy(Response pass) {
     return retval;
 }
 
+int debug_count = 0;
 void vulkanPass(Response pass);
 void TestState::call() {
     MainState *main = change->main;
@@ -2147,8 +2161,8 @@ void TestState::call() {
         &main->pipelineState,
         &main->swapState};
     if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),{0}))
-        main->drawState.advance();
+        main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),{0})) {
+        main->drawState.advance();}
     else {main->drawState.derived()->bind(); wake.wait();}}
 }
 
@@ -2185,6 +2199,8 @@ void vulkanBack(Configure cfg, int sav, int val) {
     main->callState.push(&main->testState);
     if (cfg == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
     main->testState.done();
+    if (cfg == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
+    main->testState.wake.wake();
     if (cfg == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
     main->callState.push(&main->threadState);
     if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
@@ -2201,19 +2217,18 @@ int vulkanJnfo(Configure cfg, int val, yftype fnc)
     return change->jnfo(cfg,val,fnc);
 }
 
-void vulkanKnfo(Configure cfg, int val, yftype fnc)
+int vulkanKnfo(Configure cfg, int val, yftype fnc)
 {
-    change->knfo(cfg,val,fnc);
+    return change->knfo(cfg,val,fnc);
 }
 
+void planeInit(wftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
 int main() {
     MainState main; change = &main.changeState;
     main.changeState.call(RegisterOpen,vulkanBack);
-    /*planeInit(vulkanCopy,vulkanCall,vulkanFork,vukanPass,vulkanInfo,vulkanJnfo,vulkanKnfo);
-    while (!glfwWindowShouldClose(main.windowState.window)) {
-    planeLoop();
-    glfwWaitEventsTimeout(main.safeState.read(RegisterPoll)*0.001);}
-    main.callState.done();
-    planeDone();*/
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanPass,vulkanInfo,vulkanJnfo,vulkanKnfo);
+    while (!glfwWindowShouldClose(main.windowState.window) && (change->read(RegisterOpen) & (1<<TestThd)) != 0) {
+    planeLoop(); glfwWaitEventsTimeout(change->read(RegisterPoll)*0.001);}
+    planeDone();
     return 0;
 }

@@ -1,1 +1,1 @@
- allocCenter allocMatrix allocVertex allocTexture freeMatrix freeVertex freeTexture identType
+ allocCenter allocMatrix allocTexture allocVertex freeMatrix freeTexture freeVertex identType

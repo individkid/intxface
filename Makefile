@@ -4,7 +4,7 @@
 
 UNAME = $(shell uname)
 all: facer.log typra.log typer.log filer.log planra.log planeC.o spacra.log spacer.log hole line space
-# TODO sharer.log share # remove generic homgen hetgen; instead use Dat and Dat of Dat
+# TODO sharer.log share
 
 ifeq ($(UNAME),Linux)
 LIBRARIES = -llua -lportaudio -lglfw -lvulkan

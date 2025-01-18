@@ -10,6 +10,7 @@
 #endif
 #ifdef __cplusplus
 #include <set>
+#include <iostream>
 struct SafeState {
     sem_t semaphore;
     SafeState(int val) {
@@ -37,6 +38,7 @@ struct CallState;
 struct DoneState {
     CallState *ptr;
     pthread_t thread;
+    char debug[64];
     virtual void call() = 0;
     virtual void done() = 0;
     virtual void func() = 0;
@@ -44,23 +46,25 @@ struct DoneState {
 struct CallState {
     SafeState safe;
     std::set<DoneState*> done;
-    std::set<pthread_t> todo;
+    std::set<DoneState*> todo;
     CallState() : safe(1) {std::cout << "CallState" << std::endl;}
-    ~CallState() {std::cout << "~CallState" << std::endl; stop();}
+    ~CallState() {std::cout << "~CallState before" << std::endl; stop(); std::cout << "~CallState after" << std::endl;}
     void stop() {
-        safe.wait(); for (auto i = done.begin(); i != done.end(); i++) {
-        todo.insert((*i)->thread); (*i)->done();}
-        done.clear(); safe.post(); clear();
+        safe.wait(); std::set<DoneState*> doto = done; done.clear(); safe.post();
+        for (auto i = doto.begin(); i != doto.end(); i++) {
+        (*i)->done(); pthread_join((*i)->thread,0); (*i)->func();} safe.post(); clear();
         safe.wait(); if (!done.empty() || !todo.empty())
-        {std::cerr << "done not empty!" << std::endl; exit(-1);} safe.post();
+        {std::cerr << "done not empty! " << done.empty() << " " << todo.empty() << std::endl; exit(-1);}
     }
     void clear() { // joins any pushed to todo
-        safe.wait(); std::set<pthread_t> doto = todo; todo.clear(); safe.post();
-        for (auto i = doto.begin(); i != doto.end(); i++) pthread_join((*i),0);
+        safe.wait(); std::set<DoneState*> doto = todo; todo.clear(); safe.post();
+        for (auto i = doto.begin(); i != doto.end(); i++) {
+        pthread_join((*i)->thread,0); (*i)->func();} 
     }
     void push(DoneState *ptr) {
         clear(); safe.wait();
         ptr->ptr = this;
+        std::cout << "CallState::push " << ptr->debug << std::endl;
         done.insert(ptr);
         if (pthread_create(&ptr->thread,0,call,ptr) != 0)
         {std::cerr << "failed to start thread!" << std::endl; exit(-1);}
@@ -71,8 +75,9 @@ struct CallState {
         CallState *call = done->ptr;
         done->call(); call->safe.wait();
         // if done() called by ~CallState, they're already inserted and erased
-        call->todo.insert(done->thread); call->done.erase(done);
-        call->safe.post(); done->func(); return 0;
+        if (call->done.find(done) != call->done.end()) {
+        call->todo.insert(done); call->done.erase(done);}
+        call->safe.post(); return 0;
     }
 };
 #endif
