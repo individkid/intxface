@@ -2227,8 +2227,9 @@ int main() {
     MainState main; change = &main.changeState;
     main.changeState.call(RegisterOpen,vulkanBack);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanPass,vulkanInfo,vulkanJnfo,vulkanKnfo);
-    while (!glfwWindowShouldClose(main.windowState.window) && (change->read(RegisterOpen) & (1<<TestThd)) != 0) {
-    planeLoop(); glfwWaitEventsTimeout(change->read(RegisterPoll)*0.001);}
+    while (!glfwWindowShouldClose(main.windowState.window) && change->read(RegisterOpen) != 0) {
+    glfwWaitEventsTimeout(change->read(RegisterPoll)*0.001);
+    planeLoop();}
     planeDone();
     return 0;
 }

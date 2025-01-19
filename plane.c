@@ -564,6 +564,7 @@ void planeLoop()
 	// TODO depending on test
 	if (count++ < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
     callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
 }
 void planeDone() {
 	if (sem_destroy(&copySem) != 0) ERROR();
