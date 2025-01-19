@@ -359,7 +359,6 @@ void machineBopy(int sig, int *arg)
 }
 void machineCopy(int sig, int *arg)
 {
-
 }
 void machineDopy(int sig, int *arg)
 {
@@ -372,11 +371,9 @@ void machineQopy(int sig, int *arg)
 }
 void machineStage(enum Configure cfg, int idx)
 {
-	// TODO callJnfo(cfg,val,planeWcfg);
 }
 void machineTsage(enum Configure cfg, int idx)
 {
-	// TODO callJnfo(cfg,val,planeRcfg); and rebase Center
 }
 void machineEval(struct Express *exp, int idx)
 {

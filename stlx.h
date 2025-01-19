@@ -49,16 +49,18 @@ struct CallState {
     // TODO use queues to start and stop in order
     std::set<DoneState*> todo;
     std::deque<DoneState*> doto;
-    CallState() : safe(1) {std::cout << "CallState" << std::endl;}
+    bool lock;
+    CallState() : safe(1), lock(false) {std::cout << "CallState" << std::endl;}
     ~CallState() {std::cout << "~CallState before" << std::endl;
-        while (1) {
-        safe.wait(); if (todo.empty()) {safe.post(); break;}
+        safe.wait(); lock = true; safe.post();
+        while (1) {safe.wait();
+        if (todo.empty()) {safe.post(); break;}
         DoneState *ptr = *(todo.begin()); todo.erase(ptr);
         safe.post(); stop(ptr);} clear();
     }
     void clear() {
-        while (1) {
-        safe.wait(); if (doto.empty()) {safe.post(); break;}
+        while (1) {safe.wait();
+        if (doto.empty()) {safe.post(); break;}
         DoneState *ptr = doto.front(); doto.pop_front();
         safe.post(); if (pthread_join(ptr->thread,0) != 0)
         {std::cerr << "failed to join!" << std::endl; exit(-1);} ptr->func();}
@@ -72,6 +74,7 @@ struct CallState {
     }
     void push(DoneState *ptr) {
         safe.wait();
+        if (lock) {std::cerr << "push after destructor!" << std::endl; exit(-1);}
         ptr->ptr = this;
         todo.insert(ptr);
         if (pthread_create(&ptr->thread,0,call,ptr) != 0)
