@@ -1940,7 +1940,9 @@ struct MainState {
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
         drawState("DrawBind",DrawBind,Memorys,&changeState),
         threadState(logicalState.device,&changeState),
-        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {}
+        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {
+            std::cout << "MainState" << std::endl;}
+    ~MainState() {std::cout << "~MainState" << std::endl;}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
@@ -2144,13 +2146,13 @@ void vulkanBack(Configure cfg, int sav, int val) {
     if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
     mptr->callState.push(&mptr->testState);
     if (cfg == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
-    mptr->testState.done();
+    mptr->callState.stop(&mptr->testState);
     if (cfg == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
     mptr->testState.wake.wake();
     if (cfg == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
     mptr->callState.push(&mptr->threadState);
     if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
-    mptr->threadState.done();
+    mptr->callState.stop(&mptr->threadState);
 }
 
 int main() {

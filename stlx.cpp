@@ -1,9 +1,5 @@
 #include "stlx.h"
 
-#include <vector>
-#include <deque>
-#include <cstdint>
-
 void *allocDeque(int siz)
 {
 	return new std::deque<std::vector<uint8_t>>;
