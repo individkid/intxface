@@ -1861,14 +1861,6 @@ struct ThreadState : public DoneState {
     void func() {}
 };
 
-struct MainState;
-struct CopyState {
-    CopyState() {std::cout << "CopyState" << std::endl;}
-    ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval);
-    int copy(Response);
-};
-
 struct TestState : public DoneState {
     SafeState safe, wake; bool goon;
     TestState() : safe(1), wake(0), goon(true) {
@@ -1900,6 +1892,13 @@ struct ForkState : public DoneState {
     void call() {cfnc(thd,idx);}
     void done() {dfnc(thd,idx);}
     void func() {delete this;}
+};
+
+struct CopyState {
+    CopyState() {std::cout << "CopyState" << std::endl;}
+    ~CopyState() {std::cout << "~CopyState" << std::endl;}
+    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval);
+    int copy(Response);
 };
 
 struct MainState {
@@ -1963,63 +1962,6 @@ struct MainState {
     }
 };
 MainState *mptr = 0;
-
-void CopyState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval) {
-    //    x-x     x---x x---x   x-----x
-    //   y---y   y---y   y---y   y---y
-    //   z---z   z----z  z---z   z----z
-    int xl = loc; int xr = xl+siz;
-    int yl = base; int yr = yl+size;
-    int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
-    else if (xl<yl) {zl=yl;zr=xr;}
-    else if (xr<yr) {zl=yl;zr=yr;}
-    else {zl=yl;zr=xr;}
-    ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
-    loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-    std::cerr << "rebase " << siz << std::endl;
-    if (mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
-}
-extern "C" {
-int datxVoids(void *dat);
-void *datxVoidz(int num, void *dat);
-};
-int CopyState::copy(Response pass) {
-    Center *center = pass.ptr;
-    int retval = 0;
-    switch (center->mem) {
-    default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-    break; case (Indexz):
-        /*TODO rebase(mptr->indexState.preview(),(void*)center->ind,center->idx,center->siz,
-        mptr->changeState.read(IndexBase),mptr->changeState.read(IndexSize),\
-        sizeof(int32_t),pass,retval);*/
-        if (mptr->threadState.push(mptr->indexState.preview(),
-            (void*)center->ind,0,center->siz*sizeof(center->ind[0]),
-            SizeState(0,center->siz*sizeof(center->ind[0])),pass)) retval++;
-    break; case (Vertexz):
-        /*rebase(mptr->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
-        mptr->changeState.read(VertexBase),mptr->changeState.read(VertexSize),
-        sizeof(Vertex),pass,retval);*/
-        if (mptr->threadState.push(mptr->vertexState.preview(),
-            (void*)center->vtx,0,center->siz*sizeof(center->vtx[0]),
-            SizeState(0,center->siz*sizeof(center->vtx[0])),pass)) retval++;
-    break; case (Matrixz):
-        /*rebase(mptr->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
-        mptr->changeState.read(MatrixBase),mptr->changeState.read(MatrixSize),
-        sizeof(Matrix),pass,retval);*/
-        if (mptr->threadState.push(mptr->matrixState.preview(),
-            (void*)center->mat,0,center->siz*sizeof(center->mat[0]),
-            SizeState(0,center->siz*sizeof(center->mat[0])),pass)) retval++;
-    break; case (Texturez): {
-        VkExtent2D texExtent = {(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei};
-        if (mptr->threadState.push(mptr->textureState.preview(),
-        datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),
-        SizeState(texExtent),pass)) retval++;}
-    // TODO add remaining Memory types
-    break; case (Configurez):
-        for (int i = 0; i < center->siz; i++) mptr->changeState.write(center->cfg[i],center->val[i]);
-    }
-    return retval;
-}
 
 void vulkanPass(Response pass) {
     Center *center = pass.ptr;
@@ -2115,6 +2057,63 @@ void TestState::call() {
         mptr->threadState.push(mptr->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),{0})) {
         mptr->drawState.advance();}
     else {mptr->drawState.derived()->bind(); wake.wait();}}
+}
+
+void CopyState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval) {
+    //    x-x     x---x x---x   x-----x
+    //   y---y   y---y   y---y   y---y
+    //   z---z   z----z  z---z   z----z
+    int xl = loc; int xr = xl+siz;
+    int yl = base; int yr = yl+size;
+    int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
+    else if (xl<yl) {zl=yl;zr=xr;}
+    else if (xr<yr) {zl=yl;zr=yr;}
+    else {zl=yl;zr=xr;}
+    ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
+    loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
+    std::cerr << "rebase " << siz << std::endl;
+    if (mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
+}
+extern "C" {
+int datxVoids(void *dat);
+void *datxVoidz(int num, void *dat);
+};
+int CopyState::copy(Response pass) {
+    Center *center = pass.ptr;
+    int retval = 0;
+    switch (center->mem) {
+    default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+    break; case (Indexz):
+        /*TODO rebase(mptr->indexState.preview(),(void*)center->ind,center->idx,center->siz,
+        mptr->changeState.read(IndexBase),mptr->changeState.read(IndexSize),\
+        sizeof(int32_t),pass,retval);*/
+        if (mptr->threadState.push(mptr->indexState.preview(),
+            (void*)center->ind,0,center->siz*sizeof(center->ind[0]),
+            SizeState(0,center->siz*sizeof(center->ind[0])),pass)) retval++;
+    break; case (Vertexz):
+        /*rebase(mptr->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
+        mptr->changeState.read(VertexBase),mptr->changeState.read(VertexSize),
+        sizeof(Vertex),pass,retval);*/
+        if (mptr->threadState.push(mptr->vertexState.preview(),
+            (void*)center->vtx,0,center->siz*sizeof(center->vtx[0]),
+            SizeState(0,center->siz*sizeof(center->vtx[0])),pass)) retval++;
+    break; case (Matrixz):
+        /*rebase(mptr->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
+        mptr->changeState.read(MatrixBase),mptr->changeState.read(MatrixSize),
+        sizeof(Matrix),pass,retval);*/
+        if (mptr->threadState.push(mptr->matrixState.preview(),
+            (void*)center->mat,0,center->siz*sizeof(center->mat[0]),
+            SizeState(0,center->siz*sizeof(center->mat[0])),pass)) retval++;
+    break; case (Texturez): {
+        VkExtent2D texExtent = {(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei};
+        if (mptr->threadState.push(mptr->textureState.preview(),
+        datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),
+        SizeState(texExtent),pass)) retval++;}
+    // TODO add remaining Memory types
+    break; case (Configurez):
+        for (int i = 0; i < center->siz; i++) mptr->changeState.write(center->cfg[i],center->val[i]);
+    }
+    return retval;
 }
 
 void vulkanCopy(Response pass) {
