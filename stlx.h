@@ -38,12 +38,12 @@ struct SafeState {
         if (get() == 0) post();
     }
 };
-template <int Size> struct BackState {
+template <int Size> struct ChangeState {
     int config[Size];
     std::map<int,std::set<xftype>> back;
     SafeState safe; // prior protected
     int depth; pthread_t self; SafeState nest;
-    BackState() : config{0}, safe(1), depth(0), nest(1) {std::cout << "ChangeState" << std::endl;}
+    ChangeState() : config{0}, safe(1), depth(0), nest(1) {std::cout << "ChangeState" << std::endl;}
     void call(int cfg, xftype ptr) {
         safe.wait();
         if (ptr) back[cfg].insert(ptr);

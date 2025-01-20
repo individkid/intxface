@@ -31,26 +31,12 @@ extern "C" {
 };
 #include "stlx.h"
 
-struct ChangeState : public BackState<Configures> {
-    ChangeState() {std::cout << "ChangeState" << std::endl;}
-    ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
-    void call(Configure cfg, xftype ptr) {BackState::call(cfg,ptr);}
-    int info(Configure cfg, int val, yftype fnc) {return BackState::info(cfg,val,fnc);}
-    int jnfo(Configure cfg, int val, yftype fnc) {return BackState::jnfo(cfg,val,fnc);}
-    int knfo(Configure cfg, int val, yftype fnc) {return BackState::knfo(cfg,val,fnc);}
-    int read(Configure cfg) {return BackState::read(cfg);}
-    void write(Configure cfg, int val) {BackState::write(cfg,val);}
-    void wots(Configure cfg, int val) {BackState::wots(cfg,val);}
-    void wotc(Configure cfg, int val) {BackState::wotc(cfg,val);}
-    int rmw(Configure cfg, int val) {return BackState::rmw(cfg,val);}
-};
-
-// TODO define glfw callbacks that cast void* to ChangeState*
+// TODO define glfw callbacks that cast void* to ChangeState<Configures>*
 struct WindowState {
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
     GLFWwindow* const window;
-    WindowState(ChangeState *change) :
+    WindowState(ChangeState<Configures> *change) :
         window(createWindow(WIDTH,HEIGHT))
         {std::cout << "WindowState" << std::endl;}
     ~WindowState() {std::cout << "~WindowState" << std::endl;
@@ -433,7 +419,7 @@ struct BindState {
     static VkCommandPool commandPool;
     static int frames;
     static int micro;
-    static ChangeState *change;
+    static ChangeState<Configures> *change;
     static VkPhysicalDevice physical;
     static VkQueue graphics;
     static VkQueue present;
@@ -491,7 +477,7 @@ struct BindState {
         BindState::properties = properties;
         BindState::debug = 0;
     }
-    BindState(const char *n, ChangeState *change) : name(n) {
+    BindState(const char *n, ChangeState<Configures> *change) : name(n) {
         BindState::self = this;
         BindState::change = change;
         BindState::debug = 0;
@@ -512,7 +498,7 @@ struct BindState {
     }
 };
 BindState* BindState::self;
-ChangeState *BindState::change;
+ChangeState<Configures> *BindState::change;
 GLFWwindow* BindState::window;
 VkSurfaceKHR BindState::surface;
 uint32_t BindState::graphicsFamily;
@@ -570,7 +556,7 @@ template <class State, int Size> struct ArrayState : public BindState {
         BindState(name,properties),
         safe(1), typ(t), mem(m), idx(0) {}
     ArrayState(const char *name, BindEnum t, Memory m,
-        ChangeState *change) :
+        ChangeState<Configures> *change) :
         BindState(name,change),
         safe(1), typ(t), mem(m), idx(0) {}
     State *derived() {safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;}
@@ -1559,7 +1545,7 @@ struct DrawState : public BaseState {
     const VkQueue present;
     const VkCommandPool commandPool;
     const int frames;
-    ChangeState *change;
+    ChangeState<Configures> *change;
     VkCommandBuffer commandBuffer;
     VkSemaphore beforeSemaphore;
     VkSemaphore afterSemaphore;
@@ -1815,13 +1801,13 @@ struct PushState {
 };
 struct ThreadState : DoneState {
     const VkDevice device;
-    ChangeState *change;
+    ChangeState<Configures> *change;
     SafeState safe; SafeState wake;
     std::deque<PushState> before;
     std::deque<PushState> after;
     bool goon;
     pthread_t thread;
-    ThreadState(VkDevice device, ChangeState *change) :
+    ThreadState(VkDevice device, ChangeState<Configures> *change) :
         device(device), change(change),
         safe(1), wake(0), goon(true) {
         strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
@@ -1925,7 +1911,7 @@ struct ForkState : public DoneState {
 
 struct MainState {
     static const int frames = 2;
-    ChangeState changeState;
+    ChangeState<Configures> changeState;
     WindowState windowState;
     VulkanState vulkanState;
     PhysicalState physicalState;
@@ -1943,7 +1929,6 @@ struct MainState {
     TestState testState;
     CallState callState;
     MainState() :
-        changeState(),
         windowState(&changeState),
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),
@@ -2133,7 +2118,7 @@ void vulkanCopy(Response pass) {
     copy->copy(pass);
 }
 
-ChangeState *change;
+ChangeState<Configures> *change;
 void vulkanCall(Configure cfg, xftype back) {
     change->call(cfg,back);
 }
