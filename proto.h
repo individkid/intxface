@@ -72,8 +72,6 @@ struct Close {
 typedef void (*chtype)();
 typedef void (*hgtype)(int val);
 typedef void (*eftype)(const char *str, int num, int idx);
-typedef void (*xftype)(int cfg, int sav, int val);
-typedef int (*yftype)(int *ref, int val);
 
 void stackErr();
 void exitErr(const char *file, int line);

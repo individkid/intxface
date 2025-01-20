@@ -31,12 +31,12 @@ extern "C" {
 };
 #include "stlx.h"
 
-// TODO define glfw callbacks that cast void* to ChangeState<Configures>*
+// TODO define glfw callbacks that cast void* to ChangeState<Configure,Configures>*
 struct WindowState {
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
     GLFWwindow* const window;
-    WindowState(ChangeState<Configures> *change) :
+    WindowState(ChangeState<Configure,Configures> *change) :
         window(createWindow(WIDTH,HEIGHT))
         {std::cout << "WindowState" << std::endl;}
     ~WindowState() {std::cout << "~WindowState" << std::endl;
@@ -419,7 +419,7 @@ struct BindState {
     static VkCommandPool commandPool;
     static int frames;
     static int micro;
-    static ChangeState<Configures> *change;
+    static ChangeState<Configure,Configures> *change;
     static VkPhysicalDevice physical;
     static VkQueue graphics;
     static VkQueue present;
@@ -477,7 +477,7 @@ struct BindState {
         BindState::properties = properties;
         BindState::debug = 0;
     }
-    BindState(const char *n, ChangeState<Configures> *change) : name(n) {
+    BindState(const char *n, ChangeState<Configure,Configures> *change) : name(n) {
         BindState::self = this;
         BindState::change = change;
         BindState::debug = 0;
@@ -498,7 +498,7 @@ struct BindState {
     }
 };
 BindState* BindState::self;
-ChangeState<Configures> *BindState::change;
+ChangeState<Configure,Configures> *BindState::change;
 GLFWwindow* BindState::window;
 VkSurfaceKHR BindState::surface;
 uint32_t BindState::graphicsFamily;
@@ -556,7 +556,7 @@ template <class State, int Size> struct ArrayState : public BindState {
         BindState(name,properties),
         safe(1), typ(t), mem(m), idx(0) {}
     ArrayState(const char *name, BindEnum t, Memory m,
-        ChangeState<Configures> *change) :
+        ChangeState<Configure,Configures> *change) :
         BindState(name,change),
         safe(1), typ(t), mem(m), idx(0) {}
     State *derived() {safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;}
@@ -1545,7 +1545,7 @@ struct DrawState : public BaseState {
     const VkQueue present;
     const VkCommandPool commandPool;
     const int frames;
-    ChangeState<Configures> *change;
+    ChangeState<Configure,Configures> *change;
     VkCommandBuffer commandBuffer;
     VkSemaphore beforeSemaphore;
     VkSemaphore afterSemaphore;
@@ -1799,15 +1799,15 @@ struct PushState {
     VkFence fence;
     Response pass;
 };
-struct ThreadState : DoneState {
+struct ThreadState : public DoneState {
     const VkDevice device;
-    ChangeState<Configures> *change;
+    ChangeState<Configure,Configures> *change;
     SafeState safe; SafeState wake;
     std::deque<PushState> before;
     std::deque<PushState> after;
     bool goon;
     pthread_t thread;
-    ThreadState(VkDevice device, ChangeState<Configures> *change) :
+    ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
         device(device), change(change),
         safe(1), wake(0), goon(true) {
         strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
@@ -1911,7 +1911,7 @@ struct ForkState : public DoneState {
 
 struct MainState {
     static const int frames = 2;
-    ChangeState<Configures> changeState;
+    ChangeState<Configure,Configures> changeState;
     WindowState windowState;
     VulkanState vulkanState;
     PhysicalState physicalState;
@@ -2118,7 +2118,7 @@ void vulkanCopy(Response pass) {
     copy->copy(pass);
 }
 
-ChangeState<Configures> *change;
+ChangeState<Configure,Configures> *change;
 void vulkanCall(Configure cfg, xftype back) {
     change->call(cfg,back);
 }
@@ -2142,7 +2142,7 @@ void vulkanPass(Response pass) {
     }
 }
 
-void vulkanBack(int cfg, int sav, int val) {
+void vulkanBack(Configure cfg, int sav, int val) {
     Configure tmp = static_cast<Configure>(cfg);
     MainState *main = copy->main;
     if (tmp == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))

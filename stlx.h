@@ -13,7 +13,6 @@
 #include <set>
 #include <map>
 #include <iostream>
-#include "proto.h"
 
 struct SafeState {
     sem_t semaphore;
@@ -38,25 +37,27 @@ struct SafeState {
         if (get() == 0) post();
     }
 };
-template <int Size> struct ChangeState {
+template <class Conf, int Size> struct ChangeState {
+    typedef void (*xftype)(Conf cfg, int sav, int val);
+    typedef int (*yftype)(int *ref, int val);
     int config[Size];
     std::map<int,std::set<xftype>> back;
     SafeState safe; // prior protected
     int depth; pthread_t self; SafeState nest;
     ChangeState() : config{0}, safe(1), depth(0), nest(1) {std::cout << "ChangeState" << std::endl;}
-    void call(int cfg, xftype ptr) {
+    void call(Conf cfg, xftype ptr) {
         safe.wait();
         if (ptr) back[cfg].insert(ptr);
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end() && back[cfg].size() == 1) back.erase(cfg);
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
-    int info(int cfg, int val, yftype fnc) {
+    int info(Conf cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Size) {std::cerr << "invalid info!" << std::endl; exit(-1);}
         safe.wait(); int ret = fnc(&config[cfg],val);
         safe.post(); return ret;
     }
-    int jnfo(int cfg, int val, yftype fnc) {
+    int jnfo(Conf cfg, int val, yftype fnc) {
         if (cfg < 0 || cfg >= Size) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
@@ -65,7 +66,7 @@ template <int Size> struct ChangeState {
         nest.wait(); depth--; nest.post();
         safe.post(); return ret;
     }
-    int knfo(int cfg, int val, yftype fnc) {
+    int knfo(Conf cfg, int val, yftype fnc) {
         nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
         {std::cerr << "invalid knfo! " << depth << std::endl; exit(-1);} nest.post();
         int sav = config[cfg]; int ret = fnc(&config[cfg],val);
@@ -74,7 +75,7 @@ template <int Size> struct ChangeState {
         return ret;
     }
     typedef int (*ChangeType)(int,int);
-    int change(int cfg, int val, ChangeType opr, bool ret, bool typ) {
+    int change(Conf cfg, int val, ChangeType opr, bool ret, bool typ) {
         if (cfg < 0 || cfg >= Size) {std::cerr << "invalid change!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
         if (typ && back.find(cfg) != back.end()) todo = back[cfg];
@@ -85,15 +86,15 @@ template <int Size> struct ChangeState {
         safe.post(); return (ret?sav:val);
     }
     static int readOp(int l, int r) {return l;}
-    int read(int cfg) {return change(cfg,0,readOp,false,false);}
+    int read(Conf cfg) {return change(cfg,0,readOp,false,false);}
     static int writeOp(int l, int r) {return r;}
-    void write(int cfg, int val) {change(cfg,val,writeOp,false,true);}
+    void write(Conf cfg, int val) {change(cfg,val,writeOp,false,true);}
     static int wotsOp(int l, int r) {return l|r;}
-    void wots(int cfg, int val) {change(cfg,val,wotsOp,false,true);}
+    void wots(Conf cfg, int val) {change(cfg,val,wotsOp,false,true);}
     static int wotcOp(int l, int r) {return l&~r;}
-    void wotc(int cfg, int val) {change(cfg,val,wotcOp,false,false);}
+    void wotc(Conf cfg, int val) {change(cfg,val,wotcOp,false,false);}
     static int rmwOp(int l, int r) {return l+r;}
-    int rmw(int cfg, int val) {return change(cfg,val,rmwOp,true,true);}
+    int rmw(Conf cfg, int val) {return change(cfg,val,rmwOp,true,true);}
 };
 struct CallState;
 struct DoneState {
