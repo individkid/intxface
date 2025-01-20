@@ -722,13 +722,16 @@ struct BaseState {
         return setup(ptr,loc,siz);
     }
     virtual VkFence setup(void *ptr, int loc, int siz) = 0; // consumes time
-    virtual void baseups() { // called in separate thread
+    void baseups() { // called in separate thread
         safe.wait();
         if (state != NextBase) {std::cerr << "upset invalid state!" << std::endl; exit(-1);}
-        // if (bind) bind->advance();
+        advance();
         safe.post(); upset(); safe.wait();
         state = FreeBase;
         safe.post();
+    }
+    virtual void advance() {
+        // bind->advance();
     }
     virtual void upset() = 0; // consumes time
     bool take() { // called in main thread by different BaseState
@@ -967,23 +970,23 @@ struct SwapState : public BaseState {
     }
 };
 
-struct PipelineState : public BaseState {
+struct PipeState : public BaseState {
     const VkDevice device;
     Micro micro;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
-    const char *name() {return "PipelineState";}
-    PipelineState() :
-        BaseState("PipelineState"),
+    const char *name() {return "PipeState";}
+    PipeState() :
+        BaseState("PipeState"),
         device(BindState::device), micro((Micro)BindState::micro++),
         descriptorPool(createDescriptorPool(BindState::device,BindState::frames)),
         descriptorSetLayout(createDescriptorSetLayout(BindState::device,micro)),
         pipelineLayout(createPipelineLayout(BindState::device,descriptorSetLayout)),
         graphicsPipeline(createGraphicsPipeline(BindState::device,BindState::renderPass,pipelineLayout,micro))
-        {std::cout << "PipelineState " << debug << std::endl;}
-    ~PipelineState() {std::cout << "~PipelineState " << debug << std::endl;
+        {std::cout << "PipeState " << debug << std::endl;}
+    ~PipeState() {std::cout << "~PipeState " << debug << std::endl;
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -1192,15 +1195,8 @@ struct ItemState : public BaseState {
     ItemState(const char *name, BindState *ptr) : bind(ptr) {
         sprintf(debug,"%s%s%d",bind->name,name,BindState::debug++);
     }
-    void baseups() { // called in separate thread
-        safe.wait();
-        if (state != NextBase) {std::cerr << "baseups invalid state! " << state << " " << debug << std::endl; exit(-1);}
-        safe.post();
+    void advance () {
         bind->advance();
-        upset();
-        safe.wait();
-        state = FreeBase;
-        safe.post();
     }
     static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage,
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
@@ -1917,7 +1913,7 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,1> swapState;
-    ArrayState<PipelineState,Micros> pipelineState;
+    ArrayState<PipeState,Micros> pipelineState;
     ArrayState<UniformState,frames> matrixState;
     ArrayState<BufferState,frames> vertexState;
     ArrayState<BufferState,frames> indexState;

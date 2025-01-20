@@ -19,6 +19,7 @@ void *copyback = 0; // queue of center; protect with copySem
 void *copyidx = 0; // queue of where; protect with copySem
 int external = 0; // safe pipe descriptor
 int wakeup = 0; // safe pipe descriptor
+char *argument = 0; // get from commandline Argument
 void *internal = 0; // queue of center; protect with pipeSem
 void *response = 0; // queue of center; protect with pipeSem
 void *strout = 0; // queue of string; protect with stdioSem
@@ -445,8 +446,7 @@ void planeMachine(enum Thread tag, int idx)
 
 void planeSelect(enum Thread tag, int idx)
 {
-	char *str = 0; // TODO let planeHide do this when planePopstr is Argument
-	if ((external = identWrap(Planez,str)) < 0) exitErr(__FILE__,__LINE__); free(str);
+	if ((external = identWrap(Planez,argument)) < 0) ERROR();
 	while (1) {
 	int sub = waitRead(0,(1<<external)|(1<<wakeup));
 	if (sub == wakeup) {
