@@ -112,8 +112,8 @@ BopyArg = {
 	"BopyCount",
 }
 Plan = { -- which test to run
-	"Regress",
 	"Bringup",
+	"Regress",
 	"Builtin",
 	"Release",
 }

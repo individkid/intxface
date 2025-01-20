@@ -1,4 +1,3 @@
-#include "proto.h"
 enum Configure;
 enum Thread;
 struct Center;
@@ -11,10 +10,10 @@ struct Response {
 typedef void (*mftype)(enum Thread tag, int idx);
 typedef void (*wftype)(struct Response);
 typedef void (*xftype)(enum Configure cfg, int sav, int val);
-typedef void (*oftype)(enum Configure cfg, xftype back);
+typedef void (*nftype)(enum Configure cfg, xftype back);
 typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done);
 typedef int (*yftype)(int *ref, int val);
 typedef int (*zftype)(enum Configure cfg, int val, yftype fnc);
-void planeInit(wftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
+void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
 void planeLoop();
 void planeDone();

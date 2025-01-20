@@ -397,7 +397,6 @@ struct LogicalState {
 
 enum BindEnum {
     SwapBind,
-    IndexBind,
     PipelineBind,
     DrawBind,
     BindEnums
@@ -874,8 +873,8 @@ struct SwapState : public BaseState {
         depthFormat(BindState::depthFormat),
         renderPass(BindState::renderPass),
         memProperties(BindState::memProperties)
-        {std::cout << "SwapState" << std::endl;}
-    ~SwapState() {push(SizeState(0,0)); baseres(); std::cout << "~SwapState" << std::endl;}
+        {std::cout << "SwapState " << debug << std::endl;}
+    ~SwapState() {push(SizeState(0,0)); baseres(); std::cout << "~SwapState " << debug << std::endl;}
     VkSwapchainKHR getSwapChain() {return swapChain;}
     VkFramebuffer getSwapChainFramebuffer(int i) {return swapChainFramebuffers[i];}
     VkExtent2D getSwapChainExtent() {return size.capabilities.currentExtent;}
@@ -983,8 +982,8 @@ struct PipelineState : public BaseState {
         descriptorSetLayout(createDescriptorSetLayout(BindState::device,micro)),
         pipelineLayout(createPipelineLayout(BindState::device,descriptorSetLayout)),
         graphicsPipeline(createGraphicsPipeline(BindState::device,BindState::renderPass,pipelineLayout,micro))
-        {std::cout << "PipelineState" << std::endl;}
-    ~PipelineState() {std::cout << "~PipelineState" << std::endl;
+        {std::cout << "PipelineState " << debug << std::endl;}
+    ~PipelineState() {std::cout << "~PipelineState " << debug << std::endl;
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -1236,8 +1235,8 @@ struct UniformState : public ItemState {
         ItemState("UniformState",BindState::self),
         device(BindState::device), physical(BindState::physical),
         memProperties(BindState::memProperties)
-        {std::cout << "UniformState" << std::endl;}
-    ~UniformState() {push(SizeState(0,0)); baseres(); std::cout << "~UniformState" << std::endl;}
+        {std::cout << "UniformState " << debug << std::endl;}
+    ~UniformState() {push(SizeState(0,0)); baseres(); std::cout << "~UniformState " << debug << std::endl;}
     VkBuffer getBuffer() {return buffer;}
     int getRange() {return size.size;}
     void resize() {
@@ -1282,8 +1281,8 @@ struct BufferState : public ItemState {
         device(BindState::device), physical(BindState::physical),
         graphics(BindState::graphics), commandPool(BindState::commandPool),
         memProperties(BindState::memProperties), flags(BindState::flags)
-        {std::cout << "BufferState" << std::endl;}
-    ~BufferState() {push(SizeState(0,0)); baseres(); std::cout << "~BufferState" << std::endl;}
+        {std::cout << "BufferState " << debug << std::endl;}
+    ~BufferState() {push(SizeState(0,0)); baseres(); std::cout << "~BufferState " << debug << std::endl;}
     VkBuffer getBuffer() {return buffer;}
     int getRange() {return size.size;}
     void resize() {
@@ -1365,8 +1364,8 @@ struct TextureState : public ItemState {
         device(BindState::device), physical(BindState::physical),
         properties(BindState::properties), graphics(BindState::graphics), commandPool(BindState::commandPool),
         memProperties(BindState::memProperties)
-        {std::cout << "TextureState" << std::endl;}
-    ~TextureState() {push(SizeState(0,0)); baseres(); std::cout << "~TextureState" << std::endl;}
+        {std::cout << "TextureState " << debug << std::endl;}
+    ~TextureState() {push(SizeState(0,0)); baseres(); std::cout << "~TextureState " << debug << std::endl;}
     VkImageView getTextureImageView() {return textureImageView;}
     VkSampler getTextureSampler() {return textureSampler;}
     void resize() {
@@ -1633,7 +1632,7 @@ struct DrawState : public BaseState {
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex),
                 get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),
-                get(BindEnums,Vertexz)->getBuffer(), get(IndexBind,Memorys)->getBuffer());
+                get(BindEnums,Vertexz)->getBuffer(), get(BindEnums,Indexz)->getBuffer());
             if (!drawFrame(commandBuffer,graphics,present,get(SwapBind,Memorys)->getSwapChain(),imageIndex,
                 ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence)) change->wots(RegisterMask,1<<ResizeAsync);
             return fence;
@@ -1882,6 +1881,7 @@ struct TestState : public DoneState {
         safe(1), wake(0), goon(true), main(main) {
         strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
+    ~TestState() {std::cout << "~TestState" << std::endl;}
     static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
         static auto startTime = std::chrono::high_resolution_clock::now();
         auto currentTime = std::chrono::high_resolution_clock::now();
@@ -1923,11 +1923,11 @@ struct MainState {
     ArrayState<BufferState,frames> indexState;
     ArrayState<TextureState,frames> textureState;
     ArrayState<DrawState,frames> drawState;
-    SizeState sizeState;
     ThreadState threadState;
-    CopyState copyState;
     TestState testState;
     CallState callState;
+    CopyState copyState;
+    SizeState sizeState;
     MainState() :
         windowState(&changeState),
         vulkanState(windowState.window),
@@ -1944,13 +1944,13 @@ struct MainState {
         matrixState("Matrixz",BindEnums,Matrixz),
         vertexState("Vertexz",BindEnums,Vertexz,
             logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        indexState("IndexBind",IndexBind,Memorys,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+        indexState("Indexz",BindEnums,Indexz,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
         drawState("DrawBind",DrawBind,Memorys,&changeState),
-        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)),
         threadState(logicalState.device,&changeState),
+        testState(this),
         copyState(this),
-        testState(this) {}
+        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
@@ -2029,8 +2029,20 @@ int CopyState::copy(Response pass) {
     return retval;
 }
 
-int debug_count = 0;
-void vulkanPass(Response pass);
+void vulkanPass(Response pass) {
+    Center *center = pass.ptr;
+    if (center) switch (center->mem) {
+    default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
+    break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
+    break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
+    allocVertex(&center->vtx,0); allocCenter(&center,0);
+    break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
+    allocMatrix(&center->mat,0); allocCenter(&center,0);
+    break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
+    allocTexture(&center->tex,0); allocCenter(&center,0);
+    }
+}
+
 void TestState::call() {
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -2128,35 +2140,6 @@ void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
     call->push(new ForkState(thd,idx,fnc,done));
 }
 
-void vulkanPass(Response pass) {
-    Center *center = pass.ptr;
-    if (center) switch (center->mem) {
-    default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
-    break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
-    break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
-    allocVertex(&center->vtx,0); allocCenter(&center,0);
-    break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
-    allocMatrix(&center->mat,0); allocCenter(&center,0);
-    break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
-    allocTexture(&center->tex,0); allocCenter(&center,0);
-    }
-}
-
-void vulkanBack(Configure cfg, int sav, int val) {
-    Configure tmp = static_cast<Configure>(cfg);
-    MainState *main = copy->main;
-    if (tmp == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
-    main->callState.push(&main->testState);
-    if (tmp == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
-    main->testState.done();
-    if (tmp == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
-    main->testState.wake.wake();
-    if (tmp == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
-    main->callState.push(&main->threadState);
-    if (tmp == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
-    main->threadState.done();
-}
-
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
     return change->info(cfg,val,fnc);
 }
@@ -2169,7 +2152,21 @@ int vulkanKnfo(Configure cfg, int val, yftype fnc) {
     return change->knfo(cfg,val,fnc);
 }
 
-void planeInit(wftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
+void vulkanBack(Configure cfg, int sav, int val) {
+    MainState *main = copy->main;
+    if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
+    main->callState.push(&main->testState);
+    if (cfg == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
+    main->testState.done();
+    if (cfg == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
+    main->testState.wake.wake();
+    if (cfg == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
+    main->callState.push(&main->threadState);
+    if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
+    main->threadState.done();
+}
+
+void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
 int main() {
     MainState main;
     change = &main.changeState; copy = &main.copyState; change = &main.changeState;

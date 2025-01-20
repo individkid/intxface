@@ -112,7 +112,7 @@ struct CallState {
     bool lock;
     SafeState safe;
     CallState() : lock(false), safe(1) {std::cout << "CallState" << std::endl;}
-    ~CallState() {std::cout << "~CallState before" << std::endl;
+    ~CallState() {std::cout << "~CallState" << std::endl;
         safe.wait(); lock = true; safe.post();
         while (1) {safe.wait();
         if (todo.empty()) {safe.post(); break;}
