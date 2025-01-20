@@ -291,17 +291,19 @@ void centerPush(struct Response resp)
 	pushCenterq(resp.ptr,copyback); pushIntq(resp.idx,copyidx);
 	if (sem_post(&copySem) != 0) ERROR();
 }
-void centerSize(enum Configure cfg, int sav, int val)
+void centerSize(int cfg, int sav, int val)
 {
-	if (cfg != CenterSize) ERROR();
+	enum Configure tmp = cfg;
+	if (tmp != CenterSize) ERROR();
 	if (sem_wait(&copySem) != 0) ERROR();
 	for (int i = val; i < sav; i++) {freeCenter(center[i]); allocCenter(&center[i],0);}
 	center = realloc(center,sizeof(struct Center *)*val);
 	if (sem_post(&copySem) != 0) ERROR();	
 }
-void centerIndex(enum Configure cfg, int sav, int val)
+void centerIndex(int cfg, int sav, int val)
 {
-	if (cfg != CenterIndex) ERROR();
+	enum Configure tmp = cfg;
+	if (tmp != CenterIndex) ERROR();
 	if (sem_wait(&copySem) != 0) ERROR();
 	freeCenter(center[sav]); allocCenter(&center[sav],0); center[sav] = current;
 	current = center[val]; center[val] = 0;
@@ -497,9 +499,10 @@ void planeClose(enum Thread tag, int idx)
 {
 	callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
-void registerOpen(enum Configure cfg, int sav, int val)
+void registerOpen(int cfg, int sav, int val)
 {
-	if (cfg != RegisterOpen) ERROR();
+	enum Configure tmp = cfg;
+	if (tmp != RegisterOpen) ERROR();
     if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
 		callFork(PipeThd,0,planeSelect,planeClose);}
     if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
@@ -520,9 +523,10 @@ void registerOpen(enum Configure cfg, int sav, int val)
 	if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
 		if (sem_post(&copySem) != 0) ERROR();}
 }
-void registerMask(enum Configure cfg, int sav, int val)
+void registerMask(int cfg, int sav, int val)
 {
-	if (cfg != RegisterMask) ERROR();
+	enum Configure tmp = cfg;
+	if (tmp != RegisterMask) ERROR();
 	if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd)) {
 		callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }

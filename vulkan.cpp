@@ -15,8 +15,6 @@
 #include <algorithm>
 #include <chrono>
 #include <vector>
-#include <map>
-#include <set>
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
@@ -33,67 +31,18 @@ extern "C" {
 };
 #include "stlx.h"
 
-struct MainState;
-struct BaseState;
-struct ChangeState {
-    MainState *main;
-    SafeState safe; // following protected
-    int config[Configures];
-    std::map<Configure,std::set<xftype>> back;
-    SafeState nest; int depth; pthread_t self;
-    ChangeState(MainState *main) : main(main), safe(1), config{0}, nest(1), depth(0) {std::cout << "ChangeState" << std::endl;}
-    void call(Configure cfg, xftype ptr) { // called in main thread
-        safe.wait();
-        if (ptr) back[cfg].insert(ptr);
-        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end() && back[cfg].size() == 1) back.erase(cfg);
-        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
-        safe.post();
-    }
-    int info(Configure cfg, int val, yftype fnc) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid info!" << std::endl; exit(-1);}
-        safe.wait(); int ret = fnc(&config[cfg],val);
-        safe.post(); return ret;
-    }
-    int jnfo(Configure cfg, int val, yftype fnc) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
-        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
-        nest.wait(); self = pthread_self(); depth++; nest.post();
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
-        nest.wait(); depth--; nest.post();
-        safe.post(); return ret;
-    }
-    int knfo(Configure cfg, int val, yftype fnc) {
-        nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
-        {std::cerr << "invalid knfo! " << depth << std::endl; exit(-1);} nest.post();
-        int sav = config[cfg]; int ret = fnc(&config[cfg],val);
-        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
-        return ret;
-    }
-    typedef int (*ChangeType)(int,int);
-    int change(Configure cfg, int val, ChangeType opr, bool ret, bool typ) {
-        if (cfg < 0 || cfg >= Configures) {std::cerr << "invalid change!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
-        if (typ && back.find(cfg) != back.end()) todo = back[cfg];
-        config[cfg] = opr(config[cfg],val); val = config[cfg];
-        nest.wait(); self = pthread_self(); depth++; nest.post();
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
-        nest.wait(); depth--; nest.post();
-        safe.post(); return (ret?sav:val);
-    }
-    static int readOp(int l, int r) {return l;}
-    int read(Configure cfg) {return change(cfg,0,readOp,false,false);}
-    static int writeOp(int l, int r) {return r;}
-    void write(Configure cfg, int val) {change(cfg,val,writeOp,false,true);}
-    static int wotsOp(int l, int r) {return l|r;}
-    void wots(Configure cfg, int val) {change(cfg,val,wotsOp,false,true);}
-    static int wotcOp(int l, int r) {return l&~r;}
-    void wotc(Configure cfg, int val) {change(cfg,val,wotcOp,false,false);}
-    static int rmwOp(int l, int r) {return l+r;}
-    int rmw(Configure cfg, int val) {return change(cfg,val,rmwOp,true,true);}
-    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval);
-    int copy(Response);
+struct ChangeState : public BackState<Configures> {
+    ChangeState() {std::cout << "ChangeState" << std::endl;}
+    ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
+    void call(Configure cfg, xftype ptr) {BackState::call(cfg,ptr);}
+    int info(Configure cfg, int val, yftype fnc) {return BackState::info(cfg,val,fnc);}
+    int jnfo(Configure cfg, int val, yftype fnc) {return BackState::jnfo(cfg,val,fnc);}
+    int knfo(Configure cfg, int val, yftype fnc) {return BackState::knfo(cfg,val,fnc);}
+    int read(Configure cfg) {return BackState::read(cfg);}
+    void write(Configure cfg, int val) {BackState::write(cfg,val);}
+    void wots(Configure cfg, int val) {BackState::wots(cfg,val);}
+    void wotc(Configure cfg, int val) {BackState::wotc(cfg,val);}
+    int rmw(Configure cfg, int val) {return BackState::rmw(cfg,val);}
 };
 
 // TODO define glfw callbacks that cast void* to ChangeState*
@@ -467,6 +416,7 @@ enum BindEnum {
     DrawBind,
     BindEnums
 };
+struct BaseState;
 struct BindState {
     virtual void advance() = 0;
     virtual BaseState *buffer() = 0;
@@ -520,9 +470,8 @@ struct BindState {
         BindState::micro = 0;
         BindState::debug = 0;
     }
-    BindState(const char *n, ChangeState *change) : name(n) {
+    BindState(const char *n) : name(n) {
         BindState::self = this;
-        BindState::change = change;
         BindState::debug = 0;
     }
     BindState(const char *n, VkQueue graphics, VkQueue present, VkBufferUsageFlags flags) : name(n) {
@@ -542,8 +491,9 @@ struct BindState {
         BindState::properties = properties;
         BindState::debug = 0;
     }
-    BindState(const char *n) : name(n) {
+    BindState(const char *n, ChangeState *change) : name(n) {
         BindState::self = this;
+        BindState::change = change;
         BindState::debug = 0;
     }
     static int check(BindEnum typ, Memory mem) {
@@ -604,8 +554,7 @@ template <class State, int Size> struct ArrayState : public BindState {
         VkCommandPool pool, int frames) :
         BindState(name,pool,frames),
         safe(1), typ(t), mem(m), idx(0) {}
-    ArrayState(const char *name, BindEnum t, Memory m,
-        ChangeState *change) :
+    ArrayState(const char *name, BindEnum t, Memory m) :
         BindState(name,change),
         safe(1), typ(t), mem(m), idx(0) {}
     ArrayState(const char *name, BindEnum t, Memory m,
@@ -620,8 +569,9 @@ template <class State, int Size> struct ArrayState : public BindState {
         VkPhysicalDeviceProperties properties) :
         BindState(name,properties),
         safe(1), typ(t), mem(m), idx(0) {}
-    ArrayState(const char *name, BindEnum t, Memory m) :
-        BindState(name),
+    ArrayState(const char *name, BindEnum t, Memory m,
+        ChangeState *change) :
+        BindState(name,change),
         safe(1), typ(t), mem(m), idx(0) {}
     State *derived() {safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;}
     State *preview() {safe.wait(); State *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
@@ -1930,12 +1880,20 @@ struct ThreadState : DoneState {
     void func() {}
 };
 
+struct MainState;
+struct CopyState {
+    MainState *main;
+    CopyState(MainState *main) : main(main) {std::cout << "CopyState" << std::endl;}
+    ~CopyState() {std::cout << "~CopyState" << std::endl;}
+    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval);
+    int copy(Response);
+};
+
 struct TestState : public DoneState {
     SafeState safe, wake; bool goon;
-    ChangeState *change;
     MainState *main;
-    TestState(ChangeState *change) :
-        safe(1), wake(0), goon(true), change(change) {
+    TestState(MainState *main) :
+        safe(1), wake(0), goon(true), main(main) {
         strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
     static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
@@ -1981,10 +1939,11 @@ struct MainState {
     ArrayState<DrawState,frames> drawState;
     SizeState sizeState;
     ThreadState threadState;
+    CopyState copyState;
     TestState testState;
     CallState callState;
     MainState() :
-        changeState(this),
+        changeState(),
         windowState(&changeState),
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),
@@ -1997,15 +1956,16 @@ struct MainState {
             physicalState.graphicsFamily,physicalState.presentFamily,logicalState.imageFormat,
             logicalState.depthFormat,logicalState.renderPass,physicalState.memProperties),
         pipelineState("PipelineBind",PipelineBind,Memorys,logicalState.commandPool,frames),
-        matrixState("Matrixz",BindEnums,Matrixz,&changeState),
+        matrixState("Matrixz",BindEnums,Matrixz),
         vertexState("Vertexz",BindEnums,Vertexz,
             logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         indexState("IndexBind",IndexBind,Memorys,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
-        drawState("DrawBind",DrawBind,Memorys),
+        drawState("DrawBind",DrawBind,Memorys,&changeState),
         sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)),
         threadState(logicalState.device,&changeState),
-        testState(&changeState) {}
+        copyState(this),
+        testState(this) {}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
@@ -2027,16 +1987,12 @@ struct MainState {
     }
 };
 
-extern "C" {
-int datxVoids(void *dat);
-void *datxVoidz(int num, void *dat);
-};
-void ChangeState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval) {
+void CopyState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval) {
     //    x-x     x---x x---x   x-----x
     //   y---y   y---y   y---y   y---y
     //   z---z   z----z  z---z   z----z
     int xl = loc; int xr = xl+siz;
-    int yl = read(IndexBase); int yr = yl+read(IndexSize);
+    int yl = base; int yr = yl+size;
     int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
     else if (xl<yl) {zl=yl;zr=xr;}
     else if (xr<yr) {zl=yl;zr=yr;}
@@ -2046,26 +2002,33 @@ void ChangeState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, 
     std::cerr << "rebase " << siz << std::endl;
     if (main->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
 }
-int ChangeState::copy(Response pass) {
+extern "C" {
+int datxVoids(void *dat);
+void *datxVoidz(int num, void *dat);
+};
+int CopyState::copy(Response pass) {
     Center *center = pass.ptr;
     int retval = 0;
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
     break; case (Indexz):
         /*TODO rebase(main->indexState.preview(),(void*)center->ind,center->idx,center->siz,
-        read(IndexBase),read(IndexSize),sizeof(int32_t),pass,retval);*/
+        main->changeState.read(IndexBase),main->changeState.read(IndexSize),\
+        sizeof(int32_t),pass,retval);*/
         if (main->threadState.push(main->indexState.preview(),
             (void*)center->ind,0,center->siz*sizeof(center->ind[0]),
             SizeState(0,center->siz*sizeof(center->ind[0])),pass)) retval++;
     break; case (Vertexz):
         /*rebase(main->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
-        read(VertexBase),read(VertexSize),sizeof(Vertex),pass,retval);*/
+        main->changeState.read(VertexBase),main->changeState.read(VertexSize),
+        sizeof(Vertex),pass,retval);*/
         if (main->threadState.push(main->vertexState.preview(),
             (void*)center->vtx,0,center->siz*sizeof(center->vtx[0]),
             SizeState(0,center->siz*sizeof(center->vtx[0])),pass)) retval++;
     break; case (Matrixz):
         /*rebase(main->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
-        read(MatrixBase),read(MatrixSize),sizeof(Matrix),pass,retval);*/
+        main->changeState.read(MatrixBase),main->changeState.read(MatrixSize),
+        sizeof(Matrix),pass,retval);*/
         if (main->threadState.push(main->matrixState.preview(),
             (void*)center->mat,0,center->siz*sizeof(center->mat[0]),
             SizeState(0,center->siz*sizeof(center->mat[0])),pass)) retval++;
@@ -2076,7 +2039,7 @@ int ChangeState::copy(Response pass) {
         SizeState(texExtent),pass)) retval++;}
     // TODO add remaining Memory types
     break; case (Configurez):
-        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
+        for (int i = 0; i < center->siz; i++) main->changeState.write(center->cfg[i],center->val[i]);
     }
     return retval;
 }
@@ -2084,7 +2047,6 @@ int ChangeState::copy(Response pass) {
 int debug_count = 0;
 void vulkanPass(Response pass);
 void TestState::call() {
-    MainState *main = change->main;
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
         {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -2124,23 +2086,23 @@ void TestState::call() {
     vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
     for (int i = 0; i < vtx->siz; i++)
     memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
-    change->copy({0,0,vtx,vulkanPass});
+    main->copyState.copy({0,0,vtx,vulkanPass});
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    change->copy({0,0,ind,vulkanPass});
+    main->copyState.copy({0,0,ind,vulkanPass});
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    change->copy({0,0,tex,vulkanPass});
+    main->copyState.copy({0,0,tex,vulkanPass});
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
-    if (change->read(RegisterMask) & (1<<ResizeAsync)) {
-    change->wotc(RegisterMask,(1<<ResizeAsync));
+    if (main->changeState.read(RegisterMask) & (1<<ResizeAsync)) {
+    main->changeState.wotc(RegisterMask,(1<<ResizeAsync));
     main->sizeState = SizeState(main->findCapabilities(main->windowState.window,main->vulkanState.surface,main->physicalState.device));
     while (!main->threadState.push(main->swapState.preview(0),main->sizeState)) wake.wait();
     main->swapState.advance(0);}
@@ -2151,7 +2113,7 @@ void TestState::call() {
     memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
-    if (change->copy({0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    if (main->copyState.copy({0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
     BindState *bind[] = {
         &main->matrixState,
@@ -2166,17 +2128,19 @@ void TestState::call() {
     else {main->drawState.derived()->bind(); wake.wait();}}
 }
 
-ChangeState *change;
+CopyState *copy;
 void vulkanCopy(Response pass) {
-    change->copy(pass);
+    copy->copy(pass);
 }
 
+ChangeState *change;
 void vulkanCall(Configure cfg, xftype back) {
     change->call(cfg,back);
 }
 
-void vulkanFork(Thread thd, int idx, mftype call, mftype done) {
-    change->main->callState.push(new ForkState(thd,idx,call,done));
+CallState *call;
+void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
+    call->push(new ForkState(thd,idx,fnc,done));
 }
 
 void vulkanPass(Response pass) {
@@ -2193,38 +2157,37 @@ void vulkanPass(Response pass) {
     }
 }
 
-void vulkanBack(Configure cfg, int sav, int val) {
-    MainState *main = change->main;
-    if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
+void vulkanBack(int cfg, int sav, int val) {
+    Configure tmp = static_cast<Configure>(cfg);
+    MainState *main = copy->main;
+    if (tmp == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
     main->callState.push(&main->testState);
-    if (cfg == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
+    if (tmp == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
     main->testState.done();
-    if (cfg == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
+    if (tmp == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
     main->testState.wake.wake();
-    if (cfg == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
+    if (tmp == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
     main->callState.push(&main->threadState);
-    if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
+    if (tmp == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
     main->threadState.done();
 }
 
-int vulkanInfo(Configure cfg, int val, yftype fnc)
-{
+int vulkanInfo(Configure cfg, int val, yftype fnc) {
     return change->info(cfg,val,fnc);
 }
 
-int vulkanJnfo(Configure cfg, int val, yftype fnc)
-{
+int vulkanJnfo(Configure cfg, int val, yftype fnc) {
     return change->jnfo(cfg,val,fnc);
 }
 
-int vulkanKnfo(Configure cfg, int val, yftype fnc)
-{
+int vulkanKnfo(Configure cfg, int val, yftype fnc) {
     return change->knfo(cfg,val,fnc);
 }
 
 void planeInit(wftype copy, oftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
 int main() {
-    MainState main; change = &main.changeState;
+    MainState main;
+    change = &main.changeState; copy = &main.copyState; change = &main.changeState;
     main.changeState.call(RegisterOpen,vulkanBack);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanPass,vulkanInfo,vulkanJnfo,vulkanKnfo);
     while (!glfwWindowShouldClose(main.windowState.window) && change->read(RegisterOpen) != 0) {

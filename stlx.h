@@ -11,7 +11,10 @@
 #ifdef __cplusplus
 #include <deque>
 #include <set>
+#include <map>
 #include <iostream>
+#include "proto.h"
+
 struct SafeState {
     sem_t semaphore;
     SafeState(int val) {
@@ -35,6 +38,63 @@ struct SafeState {
         if (get() == 0) post();
     }
 };
+template <int Size> struct BackState {
+    int config[Size];
+    std::map<int,std::set<xftype>> back;
+    SafeState safe; // prior protected
+    int depth; pthread_t self; SafeState nest;
+    BackState() : config{0}, safe(1), depth(0), nest(1) {std::cout << "ChangeState" << std::endl;}
+    void call(int cfg, xftype ptr) {
+        safe.wait();
+        if (ptr) back[cfg].insert(ptr);
+        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end() && back[cfg].size() == 1) back.erase(cfg);
+        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
+        safe.post();
+    }
+    int info(int cfg, int val, yftype fnc) {
+        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid info!" << std::endl; exit(-1);}
+        safe.wait(); int ret = fnc(&config[cfg],val);
+        safe.post(); return ret;
+    }
+    int jnfo(int cfg, int val, yftype fnc) {
+        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
+        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
+        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
+        nest.wait(); self = pthread_self(); depth++; nest.post();
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        nest.wait(); depth--; nest.post();
+        safe.post(); return ret;
+    }
+    int knfo(int cfg, int val, yftype fnc) {
+        nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
+        {std::cerr << "invalid knfo! " << depth << std::endl; exit(-1);} nest.post();
+        int sav = config[cfg]; int ret = fnc(&config[cfg],val);
+        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        return ret;
+    }
+    typedef int (*ChangeType)(int,int);
+    int change(int cfg, int val, ChangeType opr, bool ret, bool typ) {
+        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid change!" << std::endl; exit(-1);}
+        safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
+        if (typ && back.find(cfg) != back.end()) todo = back[cfg];
+        config[cfg] = opr(config[cfg],val); val = config[cfg];
+        nest.wait(); self = pthread_self(); depth++; nest.post();
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        nest.wait(); depth--; nest.post();
+        safe.post(); return (ret?sav:val);
+    }
+    static int readOp(int l, int r) {return l;}
+    int read(int cfg) {return change(cfg,0,readOp,false,false);}
+    static int writeOp(int l, int r) {return r;}
+    void write(int cfg, int val) {change(cfg,val,writeOp,false,true);}
+    static int wotsOp(int l, int r) {return l|r;}
+    void wots(int cfg, int val) {change(cfg,val,wotsOp,false,true);}
+    static int wotcOp(int l, int r) {return l&~r;}
+    void wotc(int cfg, int val) {change(cfg,val,wotcOp,false,false);}
+    static int rmwOp(int l, int r) {return l+r;}
+    int rmw(int cfg, int val) {return change(cfg,val,rmwOp,true,true);}
+};
 struct CallState;
 struct DoneState {
     CallState *ptr;
@@ -45,12 +105,12 @@ struct DoneState {
     virtual void func() = 0;
 };
 struct CallState {
-    SafeState safe;
     // TODO use queues to start and stop in order
     std::set<DoneState*> todo;
     std::deque<DoneState*> doto;
     bool lock;
-    CallState() : safe(1), lock(false) {std::cout << "CallState" << std::endl;}
+    SafeState safe;
+    CallState() : lock(false), safe(1) {std::cout << "CallState" << std::endl;}
     ~CallState() {std::cout << "~CallState before" << std::endl;
         safe.wait(); lock = true; safe.post();
         while (1) {safe.wait();
