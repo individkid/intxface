@@ -110,7 +110,7 @@ struct CallState {
     // TODO use queues to start and stop in order
     std::set<DoneState*> todo;
     std::deque<DoneState*> doto;
-    std::deque<bool> fell;
+    std::deque<bool> fall;
     bool lock;
     SafeState safe;
     CallState() : lock(false), safe(1) {std::cout << "CallState" << std::endl;}
@@ -125,7 +125,7 @@ struct CallState {
         while (1) {safe.wait();
         if (doto.empty()) {safe.post(); break;}
         DoneState *ptr = doto.front(); doto.pop_front();
-        bool temp = fell.front(); fell.pop_front();
+        bool temp = fall.front(); fall.pop_front();
         safe.post(); if (!temp) ptr->done();
         if (pthread_join(ptr->thread,0) != 0)
         {std::cerr << "failed to join!" << std::endl; exit(-1);} ptr->func();}
@@ -134,7 +134,7 @@ struct CallState {
         safe.wait();
         if (todo.find(ptr) != todo.end()) {
         doto.push_back(ptr);
-        fell.push_back(false);
+        fall.push_back(false);
         todo.erase(ptr);}
         safe.post();
     }
@@ -153,7 +153,7 @@ struct CallState {
         done->call(); call->safe.wait();
         if (call->todo.find(done) != call->todo.end()) {
         call->doto.push_back(done);
-        call->fell.push_back(true);
+        call->fall.push_back(true);
         call->todo.erase(done);}
         call->safe.post(); return 0;
     }

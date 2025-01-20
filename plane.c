@@ -19,7 +19,7 @@ void *copyback = 0; // queue of center; protect with copySem
 void *copyidx = 0; // queue of where; protect with copySem
 int external = 0; // safe pipe descriptor
 int wakeup = 0; // safe pipe descriptor
-char *argument = 0; // get from commandline Argument
+struct Argument argument = {0}; // get from commandline
 void *internal = 0; // queue of center; protect with pipeSem
 void *response = 0; // queue of center; protect with pipeSem
 void *strout = 0; // queue of string; protect with stdioSem
@@ -37,6 +37,7 @@ vftype callFork = 0;
 zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
+oftype callCmdl = 0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
 DECLARE_DEQUE(int,Intq)
@@ -446,7 +447,7 @@ void planeMachine(enum Thread tag, int idx)
 
 void planeSelect(enum Thread tag, int idx)
 {
-	if ((external = identWrap(Planez,argument)) < 0) ERROR();
+	if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
 	while (1) {
 	int sub = waitRead(0,(1<<external)|(1<<wakeup));
 	if (sub == wakeup) {
@@ -527,7 +528,7 @@ void registerMask(enum Configure cfg, int sav, int val)
 		callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
 
-void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo)
+void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
 {
 	callCopy = copy;
 	callBack = call;
@@ -536,6 +537,7 @@ void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, 
 	callInfo = info;
 	callJnfo = jnfo;
 	callKnfo = knfo;
+	callCmdl = cmdl;
 	// initialize everything that is needed before starting a thread
 	if (sem_init(&copySem, 0, 0) != 0) ERROR();
 	if (sem_init(&pipeSem, 0, 0) != 0) ERROR();
@@ -548,7 +550,14 @@ void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, 
     call(RegisterMask,registerMask);
     call(CenterSize,centerSize);
     call(CenterIndex,centerIndex);
-	// TODO add function that gets arguments copied as implied by first successful hide
+    for (int i = 0; cmdl(i); i++) {
+        int siz;
+        if (hideArgument(&argument, cmdl(i), &siz)) {}
+        // TODO else if hideCenter call machineCopy
+        // TODO else if hideMachine ...
+        // TODO else if hideExpress evaluate expression
+        // TODO else deal with string
+    }
 	switch (info(RegisterPlan,0,planeRcfg)) {default: ERROR();
 	break; case (Bringup): {
 	info(RegisterMask,(1<<ResizeAsync),planeWots);

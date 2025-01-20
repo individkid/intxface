@@ -2155,10 +2155,17 @@ void vulkanBack(Configure cfg, int sav, int val) {
     mptr->callState.stop(&mptr->threadState);
 }
 
-int main() {
+std::vector<const char *> cmdl;
+const char *vulkanCmdl(int arg) {
+    if (arg < 0 || arg >= cmdl.size()) return 0;
+    return cmdl[arg];
+}
+
+int main(int argc, const char **argv) {
+    for (int i = 1; i < argc; i++) cmdl.push_back(argv[i]);
     MainState main; mptr = &main;
     main.changeState.call(RegisterOpen,vulkanBack);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanPass,vulkanInfo,vulkanJnfo,vulkanKnfo);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanPass,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmdl);
     while (!glfwWindowShouldClose(main.windowState.window) && main.changeState.read(RegisterOpen) != 0) {
     glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);
     planeLoop();}
