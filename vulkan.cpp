@@ -1863,8 +1863,7 @@ struct ThreadState : public DoneState {
 
 struct MainState;
 struct CopyState {
-    MainState *main;
-    CopyState(MainState *main) : main(main) {std::cout << "CopyState" << std::endl;}
+    CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval);
     int copy(Response);
@@ -1872,9 +1871,7 @@ struct CopyState {
 
 struct TestState : public DoneState {
     SafeState safe, wake; bool goon;
-    MainState *main;
-    TestState(MainState *main) :
-        safe(1), wake(0), goon(true), main(main) {
+    TestState() : safe(1), wake(0), goon(true) {
         strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
     ~TestState() {std::cout << "~TestState" << std::endl;}
@@ -1944,8 +1941,6 @@ struct MainState {
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
         drawState("DrawBind",DrawBind,Memorys,&changeState),
         threadState(logicalState.device,&changeState),
-        testState(this),
-        copyState(this),
         sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
         VkSurfaceCapabilitiesKHR capabilities;
@@ -1967,6 +1962,7 @@ struct MainState {
         return actualExtent;}
     }
 };
+MainState *mptr = 0;
 
 void CopyState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval) {
     //    x-x     x---x x---x   x-----x
@@ -1981,7 +1977,7 @@ void CopyState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, in
     ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
     loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
     std::cerr << "rebase " << siz << std::endl;
-    if (main->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
+    if (mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
 }
 extern "C" {
 int datxVoids(void *dat);
@@ -1993,34 +1989,34 @@ int CopyState::copy(Response pass) {
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
     break; case (Indexz):
-        /*TODO rebase(main->indexState.preview(),(void*)center->ind,center->idx,center->siz,
-        main->changeState.read(IndexBase),main->changeState.read(IndexSize),\
+        /*TODO rebase(mptr->indexState.preview(),(void*)center->ind,center->idx,center->siz,
+        mptr->changeState.read(IndexBase),mptr->changeState.read(IndexSize),\
         sizeof(int32_t),pass,retval);*/
-        if (main->threadState.push(main->indexState.preview(),
+        if (mptr->threadState.push(mptr->indexState.preview(),
             (void*)center->ind,0,center->siz*sizeof(center->ind[0]),
             SizeState(0,center->siz*sizeof(center->ind[0])),pass)) retval++;
     break; case (Vertexz):
-        /*rebase(main->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
-        main->changeState.read(VertexBase),main->changeState.read(VertexSize),
+        /*rebase(mptr->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
+        mptr->changeState.read(VertexBase),mptr->changeState.read(VertexSize),
         sizeof(Vertex),pass,retval);*/
-        if (main->threadState.push(main->vertexState.preview(),
+        if (mptr->threadState.push(mptr->vertexState.preview(),
             (void*)center->vtx,0,center->siz*sizeof(center->vtx[0]),
             SizeState(0,center->siz*sizeof(center->vtx[0])),pass)) retval++;
     break; case (Matrixz):
-        /*rebase(main->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
-        main->changeState.read(MatrixBase),main->changeState.read(MatrixSize),
+        /*rebase(mptr->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
+        mptr->changeState.read(MatrixBase),mptr->changeState.read(MatrixSize),
         sizeof(Matrix),pass,retval);*/
-        if (main->threadState.push(main->matrixState.preview(),
+        if (mptr->threadState.push(mptr->matrixState.preview(),
             (void*)center->mat,0,center->siz*sizeof(center->mat[0]),
             SizeState(0,center->siz*sizeof(center->mat[0])),pass)) retval++;
     break; case (Texturez): {
         VkExtent2D texExtent = {(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei};
-        if (main->threadState.push(main->textureState.preview(),
+        if (mptr->threadState.push(mptr->textureState.preview(),
         datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),
         SizeState(texExtent),pass)) retval++;}
     // TODO add remaining Memory types
     break; case (Configurez):
-        for (int i = 0; i < center->siz; i++) main->changeState.write(center->cfg[i],center->val[i]);
+        for (int i = 0; i < center->siz; i++) mptr->changeState.write(center->cfg[i],center->val[i]);
     }
     return retval;
 }
@@ -2061,115 +2057,109 @@ void TestState::call() {
     glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
     int currentUniform = 0;
     //
-    if (!main->threadState.push(main->swapState.preview(0),main->sizeState))
+    if (!mptr->threadState.push(mptr->swapState.preview(0),mptr->sizeState))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
-    main->swapState.advance(0);
+    mptr->swapState.advance(0);
     //
-    if (!main->threadState.push(main->pipelineState.preview(MicroTest),SizeState(MicroTest)))
+    if (!mptr->threadState.push(mptr->pipelineState.preview(MicroTest),SizeState(MicroTest)))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
-    main->pipelineState.advance(MicroTest);
+    mptr->pipelineState.advance(MicroTest);
     //
-    BindState *single[] = {&main->pipelineState};
-    for (int i = 0; i < main->frames; i++)
-    while (!main->drawState.preview(i)->bind(single, 1) ||
-    !main->threadState.push(main->drawState.preview(i),SizeState(MicroTest)))
-    {main->drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
+    BindState *single[] = {&mptr->pipelineState};
+    for (int i = 0; i < mptr->frames; i++)
+    while (!mptr->drawState.preview(i)->bind(single, 1) ||
+    !mptr->threadState.push(mptr->drawState.preview(i),SizeState(MicroTest)))
+    {mptr->drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
     for (int i = 0; i < vtx->siz; i++)
     memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
-    main->copyState.copy({0,0,vtx,vulkanPass});
+    mptr->copyState.copy({0,0,vtx,vulkanPass});
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    main->copyState.copy({0,0,ind,vulkanPass});
+    mptr->copyState.copy({0,0,ind,vulkanPass});
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    main->copyState.copy({0,0,tex,vulkanPass});
+    mptr->copyState.copy({0,0,tex,vulkanPass});
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
-    if (main->changeState.read(RegisterMask) & (1<<ResizeAsync)) {
-    main->changeState.wotc(RegisterMask,(1<<ResizeAsync));
-    main->sizeState = SizeState(main->findCapabilities(main->windowState.window,main->vulkanState.surface,main->physicalState.device));
-    while (!main->threadState.push(main->swapState.preview(0),main->sizeState)) wake.wait();
-    main->swapState.advance(0);}
+    if (mptr->changeState.read(RegisterMask) & (1<<ResizeAsync)) {
+    mptr->changeState.wotc(RegisterMask,(1<<ResizeAsync));
+    mptr->sizeState = SizeState(mptr->findCapabilities(mptr->windowState.window,mptr->vulkanState.surface,mptr->physicalState.device));
+    while (!mptr->threadState.push(mptr->swapState.preview(0),mptr->sizeState)) wake.wait();
+    mptr->swapState.advance(0);}
     //
-    testUpdate(main->sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
+    testUpdate(mptr->sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
     memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
-    if (main->copyState.copy({0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    if (mptr->copyState.copy({0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
     BindState *bind[] = {
-        &main->matrixState,
-        &main->textureState,
-        &main->vertexState,
-        &main->indexState,
-        &main->pipelineState,
-        &main->swapState};
-    if (main->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        main->threadState.push(main->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),{0})) {
-        main->drawState.advance();}
-    else {main->drawState.derived()->bind(); wake.wait();}}
+        &mptr->matrixState,
+        &mptr->textureState,
+        &mptr->vertexState,
+        &mptr->indexState,
+        &mptr->pipelineState,
+        &mptr->swapState};
+    if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+        mptr->threadState.push(mptr->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),{0})) {
+        mptr->drawState.advance();}
+    else {mptr->drawState.derived()->bind(); wake.wait();}}
 }
 
-CopyState *copy;
 void vulkanCopy(Response pass) {
-    copy->copy(pass);
+    mptr->copyState.copy(pass);
 }
 
-ChangeState<Configure,Configures> *change;
 void vulkanCall(Configure cfg, xftype back) {
-    change->call(cfg,back);
+    mptr->changeState.call(cfg,back);
 }
 
-CallState *call;
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
-    call->push(new ForkState(thd,idx,fnc,done));
+    mptr->callState.push(new ForkState(thd,idx,fnc,done));
 }
 
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
-    return change->info(cfg,val,fnc);
+    return mptr->changeState.info(cfg,val,fnc);
 }
 
 int vulkanJnfo(Configure cfg, int val, yftype fnc) {
-    return change->jnfo(cfg,val,fnc);
+    return mptr->changeState.jnfo(cfg,val,fnc);
 }
 
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
-    return change->knfo(cfg,val,fnc);
+    return mptr->changeState.knfo(cfg,val,fnc);
 }
 
 void vulkanBack(Configure cfg, int sav, int val) {
-    MainState *main = copy->main;
     if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
-    main->callState.push(&main->testState);
+    mptr->callState.push(&mptr->testState);
     if (cfg == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
-    main->testState.done();
+    mptr->testState.done();
     if (cfg == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
-    main->testState.wake.wake();
+    mptr->testState.wake.wake();
     if (cfg == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
-    main->callState.push(&main->threadState);
+    mptr->callState.push(&mptr->threadState);
     if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
-    main->threadState.done();
+    mptr->threadState.done();
 }
 
-void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo);
 int main() {
-    MainState main;
-    change = &main.changeState; copy = &main.copyState; change = &main.changeState;
+    MainState main; mptr = &main;
     main.changeState.call(RegisterOpen,vulkanBack);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanPass,vulkanInfo,vulkanJnfo,vulkanKnfo);
-    while (!glfwWindowShouldClose(main.windowState.window) && change->read(RegisterOpen) != 0) {
-    glfwWaitEventsTimeout(change->read(RegisterPoll)*0.001);
+    while (!glfwWindowShouldClose(main.windowState.window) && main.changeState.read(RegisterOpen) != 0) {
+    glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);
     planeLoop();}
     planeDone();
     return 0;
