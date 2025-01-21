@@ -13,7 +13,8 @@
 #include <sys/time.h>
 #include <errno.h>
 
-struct Center **center = 0; // protect for resize
+struct Center **center = 0; // only for planeSwitch
+int centers = 0; // only for planeSwitch
 int external = 0; // safe pipe descriptor
 int wakeup = 0; // safe pipe descriptor
 struct Argument argument = {0}; // constant from commandline
@@ -23,7 +24,6 @@ void *strout = 0; // queue of string; protect with stdioSem
 void *strin = 0; // queue of string; protect with stdioSem
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 sem_t waitSem = {0};
-sem_t sizeSem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
 sem_t dataSem = {0};
@@ -37,7 +37,7 @@ zftype callKnfo = 0;
 oftype callCmdl = 0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
-DECLARE_DEQUE(int,Intq)
+DECLARE_DEQUE(char *,Strq)
 
 int planeWots(int *ref, int val)
 {
@@ -268,32 +268,22 @@ float *planeWindow(float *mat)
     return identmat(mat,4);
 }
 
-struct Center *centerPull(int idx)
+void centerSize(int idx)
 {
     if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-    if (sem_wait(&sizeSem) != 0) ERROR();
-    struct Center *ret = center[idx]; center[idx] = 0;
-    if (sem_post(&sizeSem) != 0) ERROR();
-    return ret;
+    if (idx >= centers) {int size = idx+1; center = realloc(center,size);
+    for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
+}
+struct Center *centerPull(int idx)
+{
+    centerSize(idx); struct Center *ret = center[idx]; center[idx] = 0; return ret;
 }
 void centerPlace(struct Center *ptr, int idx)
 {
-    if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-    if (sem_wait(&sizeSem) != 0) ERROR();
-    freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
-    if (sem_post(&sizeSem) != 0) ERROR();
+    centerSize(idx); freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
 }
 void centerFree(struct Response resp) {
     if (resp.ptr) {freeCenter(resp.ptr); allocCenter(&resp.ptr,0);}
-}
-void centerSize(enum Configure cfg, int sav, int val)
-{
-    if (cfg != CenterSize) ERROR();
-    if (sem_wait(&sizeSem) != 0) ERROR();
-    for (int i = val; i < sav; i++) {freeCenter(center[i]); allocCenter(&center[i],0);}
-    center = realloc(center,sizeof(struct Center *)*val);
-    for (int i = sav; i < val; i++) center[i] = 0;
-    if (sem_post(&sizeSem) != 0) ERROR();    
 }
 void machineManip(int sig, int *arg)
 {
@@ -382,8 +372,7 @@ int machineIval(struct Express *exp)
 }
 struct Machine *machineNext(struct Center *current, int next)
 {
-    if (next < 0 || next >= current->siz) ERROR();
-    return &current->mch[next];
+    if (next < 0 || next >= current->siz) ERROR(); return &current->mch[next];
 }
 int machineEscape(struct Center *current, int level, int next)
 {
@@ -427,13 +416,12 @@ void planeMachine(enum Thread tag, int idx)
     if (index < 0) break;
     struct Center *current = centerPull(index);
     int last = callInfo(MachineIndex,0,planeRcfg)-1;
-    for (int next = last+1; next != last; next++) {last = next;
+    for (int next = last+1; next != last; last = ++next) {
     struct Machine *mptr = machineNext(current,next);
     switch (mptr->xfr) {default: machineSwitch(mptr); break;
     case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
     case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
-    case (Nest): break; // this is for Jump
-    case (Name): break;}} // TODO Name causes return to expression
+    case (Nest): break;}}
     centerPlace(current,index);
     if (sem_wait(&waitSem) != 0) ERROR();}
 }
@@ -533,8 +521,7 @@ void initBoot()
     if (hideArgument(&arg, boot[i], &asiz)) {
     copyArgument(&argument,&arg); freeArgument(&arg);}
     else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
-    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr);
-    centerPlace(ptr,callJnfo(CenterSize,1,planeRmw));}
+    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);}
     else if (hideMachine(&mchn, boot[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmatched:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
@@ -558,16 +545,15 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callCmdl = cmdl;
     // initialize everything that is needed before starting a thread
     if (sem_init(&waitSem, 0, 0) != 0) ERROR();
-    if (sem_init(&sizeSem, 0, 1) != 0) ERROR();
     if (sem_init(&pipeSem, 0, 1) != 0) ERROR();
     if (sem_init(&stdioSem, 0, 1) != 0) ERROR();
     if (sem_init(&testSem, 0, 1) != 0) ERROR();
     if (sem_init(&dataSem, 0, 1) != 0) ERROR();
     sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-    // TODO maintain a stack, and add callback to datx to call Machine function from expression
+    internal = allocCenterq(); response = allocCenterq();
+    strout = allocStrq(); strin = allocStrq();
     call(RegisterOpen,registerOpen);
     call(RegisterMask,registerMask);
-    call(CenterSize,centerSize);
     initBoot();
     initPlan();
 }
@@ -584,7 +570,6 @@ void planeLoop()
 void planeDone()
 {
     if (sem_destroy(&waitSem) != 0) ERROR();
-    if (sem_destroy(&sizeSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&testSem) != 0) ERROR();

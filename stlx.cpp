@@ -14,6 +14,12 @@ void pushDeque(int siz, void *val, void *ptr)
 	que->push_back(vec);
 }
 
+void popDeque(void *ptr)
+{
+	auto que = (std::deque<std::vector<uint8_t>>*)ptr;
+	que->pop_back();
+}
+
 void dropDeque(void *ptr)
 {
 	auto que = (std::deque<std::vector<uint8_t>>*)ptr;
@@ -24,6 +30,12 @@ void *frontDeque(void *ptr)
 {
 	auto que = (std::deque<std::vector<uint8_t>>*)ptr;
 	return (void*)que->front().data();
+}
+
+void *backDeque(void *ptr)
+{
+	auto que = (std::deque<std::vector<uint8_t>>*)ptr;
+	return (void*)que->back().data();
 }
 
 int sizeDeque(void *ptr)

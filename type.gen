@@ -101,7 +101,6 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
-	"Name", -- function for call
 }
 BopyArg = {
 	"BopySrc",
@@ -469,7 +468,6 @@ Machine = {
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
-	{"str","Str",{["xfr"]={["Name"]=true}},{}},
 }
 Little = {
 	{"pat","Int",{},{}},
