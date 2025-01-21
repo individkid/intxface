@@ -31,7 +31,6 @@ sem_t pipeSem = {0};
 sem_t stdioSem = {0};
 sem_t dataSem = {0};
 sem_t testSem = {0};
-wftype callPass = 0;
 wftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
@@ -296,9 +295,12 @@ void centerClear()
     dropCenterq(copyback); dropIntq(copyidx);}
     if (sem_post(&copySem) != 0) ERROR();
 }
+void centerFree(struct Response resp) {
+    if (resp.ptr) {freeCenter(resp.ptr); allocCenter(&resp.ptr,0);}
+}
 void centerPush(struct Response resp)
 {
-    if (resp.idx < 0) {callPass(resp); return;}
+    if (resp.idx < 0) {centerFree(resp); return;}
     if (sem_wait(&copySem) != 0) ERROR();
     pushCenterq(resp.ptr,copyback); pushIntq(resp.idx,copyidx);
     if (sem_post(&copySem) != 0) ERROR();
@@ -543,7 +545,7 @@ void registerMask(enum Configure cfg, int sav, int val)
         callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
 
-void planeBoot()
+void initBoot()
 {
     int size = 0; for (int i = 0; callCmdl(i); i++) size++;
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
@@ -563,7 +565,7 @@ void planeBoot()
     callJnfo(MachineIndex,idx,planeWcfg);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmatched:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
 }
-void planePlan()
+void initPlan()
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
     break; case (Bringup): {
@@ -571,12 +573,11 @@ void planePlan()
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     }
 }
-void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
+void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
 {
     callCopy = copy;
     callBack = call;
     callFork = fork;
-    callPass = pass;
     callInfo = info;
     callJnfo = jnfo;
     callKnfo = knfo;
@@ -594,8 +595,8 @@ void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, 
     call(RegisterMask,registerMask);
     call(CenterSize,centerSize);
     call(CenterIndex,centerIndex);
-    planeBoot();
-    planePlan();
+    initBoot();
+    initPlan();
 }
 int count = 0;
 void planeLoop()

@@ -15,6 +15,6 @@ typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done);
 typedef int (*yftype)(int *ref, int val);
 typedef int (*zftype)(enum Configure cfg, int val, yftype fnc);
 typedef const char *(*oftype)(int arg);
-void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo, oftype cmdl);
+void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmdl);
 void planeLoop();
 void planeDone();

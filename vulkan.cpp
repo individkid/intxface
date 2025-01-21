@@ -1966,17 +1966,7 @@ struct MainState {
 MainState *mptr = 0;
 
 void vulkanPass(Response pass) {
-    Center *center = pass.ptr;
-    if (center) switch (center->mem) {
-    default: {std::cerr << "unsupported mem type! " << center->mem << std::endl; exit(-1);}
-    break; case (Indexz): allocInt32(&center->ind,0); allocCenter(&center,0);
-    break; case (Vertexz): for (int i = 0; i < center->siz; i++) freeVertex(&center->vtx[i]);
-    allocVertex(&center->vtx,0); allocCenter(&center,0);
-    break; case (Matrixz): for (int i = 0; i < center->siz; i++) freeMatrix(&center->mat[i]);
-    allocMatrix(&center->mat,0); allocCenter(&center,0);
-    break;case (Texturez): for (int i = 0; i < center->siz; i++) freeTexture(&center->tex[i]);
-    allocTexture(&center->tex,0); allocCenter(&center,0);
-    }
+    if (pass.ptr) {freeCenter(pass.ptr); allocCenter(&pass.ptr,0);}
 }
 
 void TestState::call() {
@@ -2165,7 +2155,7 @@ int main(int argc, const char **argv) {
     for (int i = 1; i < argc; i++) cmdl.push_back(argv[i]);
     MainState main; mptr = &main;
     main.changeState.call(RegisterOpen,vulkanBack);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanPass,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmdl);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmdl);
     while (!glfwWindowShouldClose(main.windowState.window) && main.changeState.read(RegisterOpen) != 0) {
     glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);
     planeLoop();}
