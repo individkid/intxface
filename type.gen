@@ -40,10 +40,8 @@ Memory = {
 	"Uniformz", -- references into arrays
 	"Texturez", -- facet decorations
 	"Piercez", -- per fragment info
-	"Stackz", -- named machine locations
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
-	"Littlez", -- little machine lines
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
@@ -63,11 +61,12 @@ Configure = {
 	"MatrixBase",
 	"MatrixSize",
 	"CenterSize",
-	"CenterIndex", -- running machine
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
 	"CenterSlf",
+	"CenterIndex", -- running machine
+	"MachineIndex", -- reset vector
 	"RegisterType", -- expression type
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan

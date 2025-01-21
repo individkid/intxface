@@ -46,6 +46,7 @@ template <class Conf, int Size> struct ChangeState {
     SafeState safe; // prior protected
     int depth; pthread_t self; SafeState nest;
     ChangeState() : config{0}, safe(1), depth(0), nest(1) {std::cout << "ChangeState" << std::endl;}
+    ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
     void call(Conf cfg, xftype ptr) {
         safe.wait();
         if (ptr) back[cfg].insert(ptr);

@@ -25,6 +25,7 @@ void *response = 0; // queue of center; protect with pipeSem
 void *strout = 0; // queue of string; protect with stdioSem
 void *strin = 0; // queue of string; protect with stdioSem
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
+sem_t waitSem = {0};
 sem_t copySem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
@@ -44,22 +45,27 @@ DECLARE_DEQUE(int,Intq)
 
 int planeWots(int *ref, int val)
 {
-	int ret = *ref&val; *ref |= val; return ret;
+    int ret = *ref&val; *ref |= val; return ret;
 }
 int planeWotc(int *ref, int val)
 {
-	int ret = *ref&val; *ref &= ~val; return ret;
+    int ret = *ref&val; *ref &= ~val; return ret;
 }
 int planeWcfg(int *ref, int val)
 {
-	int ret = *ref; *ref = val; return ret;
+    int ret = *ref; *ref = val; return ret;
 }
 int planeRcfg(int *ref, int val)
 {
-	return *ref;
+    return *ref;
+}
+int planeRmw(int *ref, int val)
+{
+    int ret = *ref; *ref = *ref + val; return ret; 
 }
 
-unsigned char *moveCursor(int dim, int e, int t, int r, int b, int l) {
+unsigned char *moveCursor(int dim, int e, int t, int r, int b, int l)
+{
     int hot = dim/2;
     int box = 1;
     int siz = dim * dim * 4;
@@ -84,7 +90,8 @@ unsigned char *moveCursor(int dim, int e, int t, int r, int b, int l) {
         if (l && j < hot-box && k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
     return pixels;
 }
-unsigned char *rotateCursor(int e) {
+unsigned char *rotateCursor(int e)
+{
     int dim = 11;
     int hot = dim/2;
     int siz = dim * dim * 4;
@@ -100,7 +107,8 @@ unsigned char *rotateCursor(int e) {
         if (e && center) pixels[k*dim*4+j*4+i] = 0xff;}
     return pixels;
 }
-unsigned char *translateCursor(int e) {
+unsigned char *translateCursor(int e)
+{
     int dim = 11;
     int hot = dim/2;
     int siz = dim * dim * 4;
@@ -115,7 +123,8 @@ unsigned char *translateCursor(int e) {
         if (e && center) pixels[k*dim*4+j*4+i] = 0xff;}
     return pixels;
 }
-unsigned char *refineCursor() {
+unsigned char *refineCursor()
+{
     int dim = 11;
     int hot = dim/2;
     int siz = dim * dim * 4;
@@ -130,7 +139,8 @@ unsigned char *refineCursor() {
         if (k == hot) pixels[k*dim*4+j*4+i] = 0xff;}
     return pixels;
 }
-unsigned char *sculptCursor(int e) {
+unsigned char *sculptCursor(int e)
+{
     int dim = 11;
     int hot = dim/2;
     int siz = dim * dim * 4;
@@ -264,50 +274,51 @@ float *planeWindow(float *mat)
 
 struct Center *centerPull(int idx)
 {
-	if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-	if (sem_wait(&copySem) != 0) ERROR();
-	struct Center *ret = center[idx]; center[idx] = 0;
-	if (sem_post(&copySem) != 0) ERROR();
-	return ret;
+    if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
+    if (sem_wait(&copySem) != 0) ERROR();
+    struct Center *ret = center[idx]; center[idx] = 0;
+    if (sem_post(&copySem) != 0) ERROR();
+    return ret;
 }
 void centerPlace(struct Center *ptr, int idx)
 {
-	if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-	if (sem_wait(&copySem) != 0) ERROR();
-	freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
-	if (sem_post(&copySem) != 0) ERROR();
+    if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
+    if (sem_wait(&copySem) != 0) ERROR();
+    freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
+    if (sem_post(&copySem) != 0) ERROR();
 }
 void centerClear()
 {
-	if (sem_wait(&copySem) != 0) ERROR();
-	while (sizeCenterq(copyback)) {
-	struct Center *cptr = frontCenterq(copyback); int idx = frontIntq(copyidx);
-	freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = cptr;
-	dropCenterq(copyback); dropIntq(copyidx);}
-	if (sem_post(&copySem) != 0) ERROR();
+    if (sem_wait(&copySem) != 0) ERROR();
+    while (sizeCenterq(copyback)) {
+    struct Center *cptr = frontCenterq(copyback); int idx = frontIntq(copyidx);
+    freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = cptr;
+    dropCenterq(copyback); dropIntq(copyidx);}
+    if (sem_post(&copySem) != 0) ERROR();
 }
 void centerPush(struct Response resp)
 {
-	if (resp.idx < 0) {callPass(resp); return;}
-	if (sem_wait(&copySem) != 0) ERROR();
-	pushCenterq(resp.ptr,copyback); pushIntq(resp.idx,copyidx);
-	if (sem_post(&copySem) != 0) ERROR();
+    if (resp.idx < 0) {callPass(resp); return;}
+    if (sem_wait(&copySem) != 0) ERROR();
+    pushCenterq(resp.ptr,copyback); pushIntq(resp.idx,copyidx);
+    if (sem_post(&copySem) != 0) ERROR();
 }
 void centerSize(enum Configure cfg, int sav, int val)
 {
-	if (cfg != CenterSize) ERROR();
-	if (sem_wait(&copySem) != 0) ERROR();
-	for (int i = val; i < sav; i++) {freeCenter(center[i]); allocCenter(&center[i],0);}
-	center = realloc(center,sizeof(struct Center *)*val);
-	if (sem_post(&copySem) != 0) ERROR();	
+    if (cfg != CenterSize) ERROR();
+    if (sem_wait(&copySem) != 0) ERROR();
+    for (int i = val; i < sav; i++) {freeCenter(center[i]); allocCenter(&center[i],0);}
+    center = realloc(center,sizeof(struct Center *)*val);
+    for (int i = sav; i < val; i++) center[i] = 0;
+    if (sem_post(&copySem) != 0) ERROR();    
 }
 void centerIndex(enum Configure cfg, int sav, int val)
 {
-	if (cfg != CenterIndex) ERROR();
-	if (sem_wait(&copySem) != 0) ERROR();
-	freeCenter(center[sav]); allocCenter(&center[sav],0); center[sav] = current;
-	current = center[val]; center[val] = 0;
-	if (sem_post(&copySem) != 0) ERROR();	
+    if (cfg != CenterIndex) ERROR();
+    if (sem_wait(&copySem) != 0) ERROR();
+    freeCenter(center[sav]); allocCenter(&center[sav],0); center[sav] = current;
+    current = center[val]; center[val] = 0;
+    if (sem_post(&copySem) != 0) ERROR();    
 }
 void machineManip(int sig, int *arg)
 {
@@ -329,35 +340,35 @@ void machineComp(int sig, int *arg)
 }
 void machineBopy(int sig, int *arg)
 {
-	if (sig != BopyArgs) ERROR();
-	int src = arg[BopySrc];
-	int dst = arg[BopyDst];
-	int srcSub = arg[BopySrcSub];
-	int dstSub = arg[BopyDstSub];
-	int count = arg[BopyCount];
-	struct Center *srcPtr = centerPull(src);
-	struct Center *dstPtr = centerPull(dst);
-	if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
-	if (dstSub < 0 || dstSub >= dstPtr->siz) ERROR();
-	if (srcPtr->mem == Kernelz && dstPtr->mem == Matrixz) for (int i = 0; i < count; i++)
-	copyMatrix(&dstPtr->mat[dstSub],&srcPtr->ker[srcSub].compose);
-	else if (srcPtr->mem == Matrixz && dstPtr->mem == Kernelz) for (int i = 0; i < count; i++)
-	copyMatrix(&dstPtr->ker[dstSub].local,&srcPtr->mat[srcSub]);
-	else if (srcPtr->mem == dstPtr->mem) switch (srcPtr->mem) {default: ERROR();
-	case (Indexz): dstPtr->ind[dstSub] = srcPtr->ind[srcSub]; break;
-	case (Trianglez): copyTriangle(&dstPtr->tri[dstSub],&srcPtr->tri[srcSub]); break;
-	case (Numericz): copyNumeric(&dstPtr->num[dstSub],&srcPtr->num[srcSub]); break;
-	case (Vertexz): copyVertex(&dstPtr->vtx[dstSub],&srcPtr->vtx[srcSub]); break;
-	case (Basisz): copyBasis(&dstPtr->bas[dstSub],&srcPtr->bas[srcSub]); break;
-	case (Matrixz): copyMatrix(&dstPtr->mat[dstSub],&srcPtr->mat[srcSub]); break;
-	case (Texturez): copyTexture(&dstPtr->tex[dstSub],&srcPtr->tex[srcSub]); break;
-	case (Piercez): copyPierce(&dstPtr->pie[dstSub],&srcPtr->pie[srcSub]); break;
-	case (Stringz): assignStr(&dstPtr->str[dstSub],srcPtr->str[srcSub]); break;
-	case (Machinez): copyMachine(&dstPtr->mch[dstSub],&srcPtr->mch[srcSub]); break;
-	case (Kernelz): copyKernel(&dstPtr->ker[dstSub],&srcPtr->ker[srcSub]); break;}
-	else ERROR();
-	centerPlace(srcPtr,src);
-	centerPlace(dstPtr,dst);
+    if (sig != BopyArgs) ERROR();
+    int src = arg[BopySrc];
+    int dst = arg[BopyDst];
+    int srcSub = arg[BopySrcSub];
+    int dstSub = arg[BopyDstSub];
+    int count = arg[BopyCount];
+    struct Center *srcPtr = centerPull(src);
+    struct Center *dstPtr = centerPull(dst);
+    if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
+    if (dstSub < 0 || dstSub >= dstPtr->siz) ERROR();
+    if (srcPtr->mem == Kernelz && dstPtr->mem == Matrixz) for (int i = 0; i < count; i++)
+    copyMatrix(&dstPtr->mat[dstSub],&srcPtr->ker[srcSub].compose);
+    else if (srcPtr->mem == Matrixz && dstPtr->mem == Kernelz) for (int i = 0; i < count; i++)
+    copyMatrix(&dstPtr->ker[dstSub].local,&srcPtr->mat[srcSub]);
+    else if (srcPtr->mem == dstPtr->mem) switch (srcPtr->mem) {default: ERROR();
+    case (Indexz): dstPtr->ind[dstSub] = srcPtr->ind[srcSub]; break;
+    case (Trianglez): copyTriangle(&dstPtr->tri[dstSub],&srcPtr->tri[srcSub]); break;
+    case (Numericz): copyNumeric(&dstPtr->num[dstSub],&srcPtr->num[srcSub]); break;
+    case (Vertexz): copyVertex(&dstPtr->vtx[dstSub],&srcPtr->vtx[srcSub]); break;
+    case (Basisz): copyBasis(&dstPtr->bas[dstSub],&srcPtr->bas[srcSub]); break;
+    case (Matrixz): copyMatrix(&dstPtr->mat[dstSub],&srcPtr->mat[srcSub]); break;
+    case (Texturez): copyTexture(&dstPtr->tex[dstSub],&srcPtr->tex[srcSub]); break;
+    case (Piercez): copyPierce(&dstPtr->pie[dstSub],&srcPtr->pie[srcSub]); break;
+    case (Stringz): assignStr(&dstPtr->str[dstSub],srcPtr->str[srcSub]); break;
+    case (Machinez): copyMachine(&dstPtr->mch[dstSub],&srcPtr->mch[srcSub]); break;
+    case (Kernelz): copyKernel(&dstPtr->ker[dstSub],&srcPtr->ker[srcSub]); break;}
+    else ERROR();
+    centerPlace(srcPtr,src);
+    centerPlace(dstPtr,dst);
 }
 void machineCopy(int sig, int *arg)
 {
@@ -379,208 +390,217 @@ void machineTsage(enum Configure cfg, int idx)
 }
 void machineEval(struct Express *exp, int idx)
 {
-	void *dat = 0; struct Center *cptr = 0;
-	if (datxEval(&dat,exp,identType("Center")) != identType("Center")) ERROR();
-	if (sem_wait(&dataSem) != 0) ERROR();
-	assignDat(dat0,dat); readCenter(cptr,sub0);
-	if (sem_post(&dataSem) != 0) ERROR();
-	centerPlace(cptr,idx);
+    void *dat = 0; struct Center *cptr = 0;
+    if (datxEval(&dat,exp,identType("Center")) != identType("Center")) ERROR();
+    if (sem_wait(&dataSem) != 0) ERROR();
+    assignDat(dat0,dat); readCenter(cptr,sub0);
+    if (sem_post(&dataSem) != 0) ERROR();
+    centerPlace(cptr,idx);
 }
 int machineIval(struct Express *exp)
 {
-	void *dat = 0; int val = 0; int typ = 0;
-	typ = datxEval(&dat,exp,identType("Int"));
-	if (typ != identType("Int")) ERROR();
-	val = *datxIntz(0,dat); free(dat);
-	return val;
+    void *dat = 0; int val = 0; int typ = 0;
+    typ = datxEval(&dat,exp,identType("Int"));
+    if (typ != identType("Int")) ERROR();
+    val = *datxIntz(0,dat); free(dat);
+    return val;
 }
 struct Machine *machineNext(int next)
 {
-	if (next < 0 || next >= current->siz) ERROR();
-	return &current->mch[next];
+    if (next < 0 || next >= current->siz) ERROR();
+    return &current->mch[next];
 }
 int machineEscape(int level, int next)
 {
-	int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
-	for (next += inc; level > 0; next += inc) {
-	struct Machine *mptr = machineNext(next);
-	if (!mptr) break;
-	if (mptr->xfr == Nest) level += mptr->lvl*inc;}
-	return next;
+    int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
+    for (next += inc; level > 0; next += inc) {
+    struct Machine *mptr = machineNext(next);
+    if (!mptr) break;
+    if (mptr->xfr == Nest) level += mptr->lvl*inc;}
+    return next;
+}
+int machineSwitch(struct Machine *mptr, int next)
+{
+    if (!mptr) ERROR();
+    switch (mptr->xfr) {
+    case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],mptr->idx); break;
+    case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],mptr->idx); break;
+    case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
+    case (Eval): machineEval(&mptr->fnc[0],mptr->res); break;
+    // Order of matrix application is window * project * subject * object * element * vector.
+    // To change X such that YX changes to ZYX, change X to Y’ZYX.
+    // Each matrix is product of local, towrite, written, maintain.
+    // User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
+    // Others manipulate maintain as if before any towrite and after any written.
+    // Change between one machineFunc and another requires swapping their order.
+    case (Manip): machineManip(mptr->sig,mptr->arg); break;
+    case (Pulse): machinePulse(mptr->sig,mptr->arg); break;
+    case (Self): machineSelf(mptr->sig,mptr->arg); break;
+    case (Other): machineOther(mptr->sig,mptr->arg); break;
+    case (Swap): machineSwap(mptr->sig,mptr->arg); break;
+    case (Comp): machineComp(mptr->sig,mptr->arg); break;
+    case (Bopy): machineBopy(mptr->sig,mptr->arg); break;
+    case (Copy): machineCopy(mptr->sig,mptr->arg); break;
+    case (Dopy): machineDopy(mptr->sig,mptr->arg); break;
+    case (Popy): machinePopy(mptr->sig,mptr->arg); break;
+    case (Qopy): machineQopy(mptr->sig,mptr->arg); break;
+    case (Jump): next = machineEscape(machineIval(&mptr->exp[0]),next) - 1; break;
+    case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
+    case (Nest): break; // this is for Jump
+    case (Name): break; // TODO cause return to expression
+    default: break;}
+    return next;
 }
 void planeMachine(enum Thread tag, int idx)
 {
-	for (int next = 0; 1; next++) {
-	struct Machine *mptr = machineNext(next);
-	if (!mptr && next == 0) break;
-	if (!mptr) {next = -1; centerClear(); if (sem_wait(&copySem) != 0) ERROR(); continue;}
-	// {char *xfr = 0; showTransfer(mptr->xfr,&xfr);
-	// printf("planeMachine %d %s\n",next,xfr); free(xfr);}
-	switch (mptr->xfr) {
-	case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],mptr->idx); break;
-	case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],mptr->idx); break;
-	case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
-	case (Eval): machineEval(&mptr->fnc[0],mptr->res); break;
-	// Order of matrix application is window * project * subject * object * element * vector.
-	// To change X such that YX changes to ZYX, change X to Y’ZYX.
-	// Each matrix is product of local, towrite, written, maintain.
-	// User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
-	// Others manipulate maintain as if before any towrite and after any written.
-	// Change between one machineFunc and another requires swapping their order.
-	case (Manip): machineManip(mptr->sig,mptr->arg); break;
-	case (Pulse): machinePulse(mptr->sig,mptr->arg); break;
-	case (Self): machineSelf(mptr->sig,mptr->arg); break;
-	case (Other): machineOther(mptr->sig,mptr->arg); break;
-	case (Swap): machineSwap(mptr->sig,mptr->arg); break;
-	case (Comp): machineComp(mptr->sig,mptr->arg); break;
-	case (Bopy): machineBopy(mptr->sig,mptr->arg); break;
-	case (Copy): machineCopy(mptr->sig,mptr->arg); break;
-	case (Dopy): machineDopy(mptr->sig,mptr->arg); break;
-	case (Popy): machinePopy(mptr->sig,mptr->arg); break;
-	case (Qopy): machineQopy(mptr->sig,mptr->arg); break;
-	case (Jump): next = machineEscape(machineIval(&mptr->exp[0]),next) - 1; break;
-	case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
-	case (Nest): break; // this is for Jump
-	case (Name): break; // TODO cause return to expression
-	default: break;}}
+    for (int next = callInfo(MachineIndex,0,planeRcfg); 1; next++) {
+    struct Machine *mptr = machineNext(next);
+    if (!mptr && next == 0) break;
+    if (!mptr) {next = -1; centerClear(); if (sem_wait(&waitSem) != 0) ERROR(); continue;}
+    next = machineSwitch(mptr,next);}
 }
 
 void planeSelect(enum Thread tag, int idx)
 {
-	if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
-	while (1) {
-	int sub = waitRead(0,(1<<external)|(1<<wakeup));
-	if (sub == wakeup) {
-	struct Center *center = 0;
-	if (!checkRead(wakeup)) break;
-	readInt(wakeup);
-	if (sem_wait(&pipeSem) != 0) ERROR();
-	center = maybeCenterq(0,response);
-	if (sem_post(&pipeSem) != 0) ERROR();
-	writeCenter(center,external);
-	freeCenter(center);
-	allocCenter(&center,0);}
-	else if (sub == external) {
-	struct Center *center = 0;
-	if (!checkRead(external)) break;
-	allocCenter(&center,1);
-	readCenter(center,external);
-	if (sem_wait(&pipeSem) != 0) ERROR();
-	pushCenterq(center,internal);
-	if (sem_post(&pipeSem) != 0) ERROR();}
-	else break;}
+    if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
+    while (1) {
+    int sub = waitRead(0,(1<<external)|(1<<wakeup));
+    if (sub == wakeup) {
+    struct Center *center = 0;
+    if (!checkRead(wakeup)) break;
+    readInt(wakeup);
+    if (sem_wait(&pipeSem) != 0) ERROR();
+    center = maybeCenterq(0,response);
+    if (sem_post(&pipeSem) != 0) ERROR();
+    writeCenter(center,external);
+    freeCenter(center);
+    allocCenter(&center,0);}
+    else if (sub == external) {
+    struct Center *center = 0;
+    if (!checkRead(external)) break;
+    allocCenter(&center,1);
+    readCenter(center,external);
+    if (sem_wait(&pipeSem) != 0) ERROR();
+    pushCenterq(center,internal);
+    if (sem_post(&pipeSem) != 0) ERROR();}
+    else break;}
 }
 
 void planeConsole(enum Thread tag, int idx)
 {
-	char chr[2] = {0};
-	int val = 0;
-	int nfd = 0;
-	char *str = 0;
-	fd_set fds, ers;
-	while (1) {
-	FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
-	if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
-	FD_SET(STDIN_FILENO,&fds); FD_SET(STDIN_FILENO,&ers);
-	val = pselect(nfd,&fds,0,&ers,0,0);
-	if (val < 0 && errno == EINTR) continue;
-	if (val < 0 && errno == EBADF) break;
-	if (val == 0) break;
-	if (val < 0) ERROR();
-	val = read(STDIN_FILENO,chr,1);
-	if (val == 0) break;
-	if (val < 0) ERROR();
-	// TODO hide string push to string queue and wakeup machine thread
-	}
+    char chr[2] = {0};
+    int val = 0;
+    int nfd = 0;
+    char *str = 0;
+    fd_set fds, ers;
+    while (1) {
+    FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
+    if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
+    FD_SET(STDIN_FILENO,&fds); FD_SET(STDIN_FILENO,&ers);
+    val = pselect(nfd,&fds,0,&ers,0,0);
+    if (val < 0 && errno == EINTR) continue;
+    if (val < 0 && errno == EBADF) break;
+    if (val == 0) break;
+    if (val < 0) ERROR();
+    val = read(STDIN_FILENO,chr,1);
+    if (val == 0) break;
+    if (val < 0) ERROR();
+    // TODO hide string push to string queue and wakeup machine thread
+    }
 }
 
 void planeClose(enum Thread tag, int idx)
 {
-	callJnfo(RegisterOpen,(1<<tag),planeWotc);
+    callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
 void registerOpen(enum Configure cfg, int sav, int val)
 {
-	if (cfg != RegisterOpen) ERROR();
+    if (cfg != RegisterOpen) ERROR();
     if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
-		callFork(PipeThd,0,planeSelect,planeClose);}
+        callFork(PipeThd,0,planeSelect,planeClose);}
     if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-		closeIdent(external); closeIdent(wakeup);}
-	if ((val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-		writeInt(wakeup,0);}
+        closeIdent(external); closeIdent(wakeup);}
+    if ((val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
+        writeInt(wakeup,0);}
     if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
-		callFork(StdioThd,0,planeConsole,planeClose);}
+        callFork(StdioThd,0,planeConsole,planeClose);}
     if (!(val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-		close(STDIN_FILENO); close(STDOUT_FILENO);}
-	if ((val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-		/*TODO no wakeup for console thread*/}
+        close(STDIN_FILENO); close(STDOUT_FILENO);}
+    if ((val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
+        /*TODO no wakeup for console thread*/}
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
-		callFork(CopyThd,0,planeMachine,planeClose);}
+        callFork(CopyThd,0,planeMachine,planeClose);}
     if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
-		callKnfo(CenterIndex,-1,planeWcfg);
-		if (sem_post(&copySem) != 0) ERROR();}
-	if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
-		if (sem_post(&copySem) != 0) ERROR();}
+        callKnfo(CenterIndex,-1,planeWcfg);
+        if (sem_post(&waitSem) != 0) ERROR();}
+    if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
+        if (sem_post(&waitSem) != 0) ERROR();}
 }
 void registerMask(enum Configure cfg, int sav, int val)
 {
-	if (cfg != RegisterMask) ERROR();
-	if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd)) {
-		callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
+    if (cfg != RegisterMask) ERROR();
+    if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd)) {
+        callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
 
 void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
 {
-	callCopy = copy;
-	callBack = call;
-	callFork = fork;
-	callPass = pass;
-	callInfo = info;
-	callJnfo = jnfo;
-	callKnfo = knfo;
-	callCmdl = cmdl;
-	// initialize everything that is needed before starting a thread
-	if (sem_init(&copySem, 0, 0) != 0) ERROR();
-	if (sem_init(&pipeSem, 0, 0) != 0) ERROR();
-	if (sem_init(&stdioSem, 0, 0) != 0) ERROR();
-	if (sem_init(&testSem, 0, 0) != 0) ERROR();
-	if (sem_init(&dataSem, 0, 0) != 0) ERROR();
-	sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-	// TODO maintain a stack, and add callback to datx to call Machine function from expression
+    callCopy = copy;
+    callBack = call;
+    callFork = fork;
+    callPass = pass;
+    callInfo = info;
+    callJnfo = jnfo;
+    callKnfo = knfo;
+    callCmdl = cmdl;
+    // initialize everything that is needed before starting a thread
+    if (sem_init(&waitSem, 0, 0) != 0) ERROR();
+    if (sem_init(&copySem, 0, 1) != 0) ERROR();
+    if (sem_init(&pipeSem, 0, 1) != 0) ERROR();
+    if (sem_init(&stdioSem, 0, 1) != 0) ERROR();
+    if (sem_init(&testSem, 0, 1) != 0) ERROR();
+    if (sem_init(&dataSem, 0, 1) != 0) ERROR();
+    sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
+    // TODO maintain a stack, and add callback to datx to call Machine function from expression
     call(RegisterOpen,registerOpen);
     call(RegisterMask,registerMask);
     call(CenterSize,centerSize);
     call(CenterIndex,centerIndex);
-    for (int i = 0; cmdl(i); i++) {
-        int siz;
-        if (hideArgument(&argument, cmdl(i), &siz)) {}
-        // TODO else if hideCenter call machineCopy
-        // TODO else if hideMachine ...
-        // TODO else if hideExpress evaluate expression
-        // TODO else deal with string
-    }
-	switch (info(RegisterPlan,0,planeRcfg)) {default: ERROR();
-	break; case (Bringup): {
-	info(RegisterMask,(1<<ResizeAsync),planeWots);
+    for (int i = 0; cmdl(i); i++) {int siz;
+    if (hideArgument(&argument, cmdl(i), &siz)) {}
+    struct Center center = {0}; siz = 0;
+    if (hideCenter(&center, cmdl(i), &siz)) {struct Center *ptr = 0;
+    allocCenter(&ptr,1); copyCenter(ptr,&center); freeCenter(&center);
+    centerPlace(ptr,jnfo(CenterSize,1,planeRmw));}
+    struct Machine machine = {0}; siz = 0;
+    if (hideMachine(&machine, cmdl(i), &siz)) {int idx = info(MachineIndex,0,planeRcfg);
+    idx = machineSwitch(&machine,idx); freeMachine(&machine);
+    jnfo(MachineIndex,idx,planeWcfg);}}
+    switch (info(RegisterPlan,0,planeRcfg)) {default: ERROR();
+    break; case (Bringup): {
+    info(RegisterMask,(1<<ResizeAsync),planeWots);
     jnfo(RegisterPoll,1,planeWcfg);
     jnfo(RegisterOpen,(1<<FenceThd),planeWots);
     jnfo(RegisterOpen,(1<<TestThd),planeWots);}
-	// TODO RegisterPlan of Release would use Bootstrap constant
-	}
+    // TODO RegisterPlan of Release would use Bootstrap constant
+    }
 }
 int count = 0;
 void planeLoop()
 {
-	switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
-	break; case (Bringup): {
-	if (count++ < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
+    break; case (Bringup): {
+    if (count++ < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
     callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
-	}
+    }
 }
-void planeDone() {
-	if (sem_destroy(&copySem) != 0) ERROR();
-	if (sem_destroy(&pipeSem) != 0) ERROR();
-	if (sem_destroy(&stdioSem) != 0) ERROR();
-	if (sem_destroy(&testSem) != 0) ERROR();
-	if (sem_destroy(&dataSem) != 0) ERROR();
+void planeDone()
+{
+    if (sem_destroy(&waitSem) != 0) ERROR();
+    if (sem_destroy(&copySem) != 0) ERROR();
+    if (sem_destroy(&pipeSem) != 0) ERROR();
+    if (sem_destroy(&stdioSem) != 0) ERROR();
+    if (sem_destroy(&testSem) != 0) ERROR();
+    if (sem_destroy(&dataSem) != 0) ERROR();
 }
