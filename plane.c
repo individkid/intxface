@@ -543,6 +543,34 @@ void registerMask(enum Configure cfg, int sav, int val)
         callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
 
+void planeBoot()
+{
+    int size = 0; for (int i = 0; callCmdl(i); i++) size++;
+    for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
+    const char **boot = malloc(size*sizeof(const char *)); size = 0;
+    for (int i = 0; callCmdl(i); i++) boot[size++] = callCmdl(i);
+    for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
+    for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0;
+    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
+    if (hideArgument(&arg, boot[i], &asiz)) {
+    copyArgument(&argument,&arg); freeArgument(&arg);}
+    else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
+    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr);
+    centerPlace(ptr,callJnfo(CenterSize,1,planeRmw));}
+    else if (hideMachine(&mchn, boot[i], &msiz)) {
+    int idx = callInfo(MachineIndex,0,planeRcfg);
+    idx = machineSwitch(&mchn,idx); freeMachine(&mchn);
+    callJnfo(MachineIndex,idx,planeWcfg);}
+    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmatched:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
+}
+void planePlan()
+{
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
+    break; case (Bringup): {
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
+    }
+}
 void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
 {
     callCopy = copy;
@@ -566,29 +594,8 @@ void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, 
     call(RegisterMask,registerMask);
     call(CenterSize,centerSize);
     call(CenterIndex,centerIndex);
-    int size = 0; for (int i = 0; cmdl(i); i++) size++;
-    for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
-    const char **boot = malloc(size*sizeof(const char *)); size = 0;
-    for (int i = 0; cmdl(i); i++) boot[size++] = cmdl(i);
-    for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
-    for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0;
-    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
-    if (hideArgument(&arg, boot[i], &asiz)) {
-    copyArgument(&argument,&arg); freeArgument(&arg);}
-    else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
-    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr);
-    centerPlace(ptr,jnfo(CenterSize,1,planeRmw));}
-    else if (hideMachine(&mchn, boot[i], &msiz)) {
-    int idx = info(MachineIndex,0,planeRcfg);
-    idx = machineSwitch(&mchn,idx); freeMachine(&mchn);
-    jnfo(MachineIndex,idx,planeWcfg);}
-    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmathced:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
-    switch (info(RegisterPlan,0,planeRcfg)) {default: ERROR();
-    break; case (Bringup): {
-    jnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    jnfo(RegisterOpen,(1<<TestThd),planeWots);}
-    // TODO RegisterPlan of Release would use Bootstrap constant
-    }
+    planeBoot();
+    planePlan();
 }
 int count = 0;
 void planeLoop()
