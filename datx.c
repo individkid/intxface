@@ -91,6 +91,10 @@ void **datxDat(int sub)
 {
 	return datx[sub];
 }
+void datxNon()
+{
+	// TODO free memory created by datxSub
+}
 void datxVoid(void **dat, int siz)
 {
 	*dat = realloc(*dat,siz+sizeof(int));

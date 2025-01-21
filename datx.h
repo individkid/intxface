@@ -4,6 +4,7 @@ typedef int (*rltype)(void **dat, const char *str);
 enum Callback {SetcfgCb,GetcfgCb,PutstrCb,PopstrCb,OutstrCb,Callbacks};
 int datxSub();
 void **datxDat(int sub);
+void datxNon();
 int datxReadFp(int fildes, void *buf, int nbyte);
 int datxWriteFp(int fildes, const void *buf, int nbyte);
 void datxSplit(void **pre, void **suf, const void *dat, int len);

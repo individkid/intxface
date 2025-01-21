@@ -475,7 +475,7 @@ void planeConsole(enum Thread tag, int idx)
     }
 }
 
-void planeClose(enum Thread tag, int idx)
+void registerClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
@@ -483,19 +483,19 @@ void registerOpen(enum Configure cfg, int sav, int val)
 {
     if (cfg != RegisterOpen) ERROR();
     if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
-        callFork(PipeThd,0,planeSelect,planeClose);}
+        callFork(PipeThd,0,planeSelect,registerClose);}
     if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         closeIdent(external); closeIdent(wakeup);}
     if ((val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         writeInt(wakeup,0);}
     if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
-        callFork(StdioThd,0,planeConsole,planeClose);}
+        callFork(StdioThd,0,planeConsole,registerClose);}
     if (!(val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         close(STDIN_FILENO); close(STDOUT_FILENO);}
     if ((val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         /*TODO no wakeup for console thread*/}
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
-        callFork(CopyThd,0,planeMachine,planeClose);}
+        callFork(CopyThd,0,planeMachine,registerClose);}
     if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(CenterIndex,-1,planeWcfg);
         if (sem_post(&waitSem) != 0) ERROR();}
@@ -509,6 +509,32 @@ void registerMask(enum Configure cfg, int sav, int val)
         callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
 
+void initSafe()
+{
+    if (sem_init(&waitSem, 0, 0) != 0) ERROR();
+    if (sem_init(&pipeSem, 0, 1) != 0) ERROR();
+    if (sem_init(&stdioSem, 0, 1) != 0) ERROR();
+    if (sem_init(&testSem, 0, 1) != 0) ERROR();
+    if (sem_init(&dataSem, 0, 1) != 0) ERROR();
+    sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
+    internal = allocCenterq(); response = allocCenterq();
+    strout = allocStrq(); strin = allocStrq();
+    callBack(RegisterOpen,registerOpen);
+    callBack(RegisterMask,registerMask);
+}
+void planeDone()
+{
+    callBack(RegisterMask,0);
+    callBack(RegisterOpen,0);
+    freeStrq(strin); freeStrq(strout);
+    freeCenterq(response); freeCenterq(internal);
+    closeIdent(idx0); datxNon();
+    if (sem_destroy(&dataSem) != 0) ERROR();
+    if (sem_destroy(&testSem) != 0) ERROR();
+    if (sem_destroy(&stdioSem) != 0) ERROR();
+    if (sem_destroy(&pipeSem) != 0) ERROR();
+    if (sem_destroy(&waitSem) != 0) ERROR();
+}
 void initBoot()
 {
     int size = 0; for (int i = 0; callCmdl(i); i++) size++;
@@ -534,6 +560,15 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     }
 }
+void planeLoop()
+{
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
+    break; case (Bringup): {
+    if (callJnfo(RegisterCount,1,planeRmw) < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
+    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
+    }
+}
 void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
 {
     callCopy = copy;
@@ -543,35 +578,7 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmdl = cmdl;
-    // initialize everything that is needed before starting a thread
-    if (sem_init(&waitSem, 0, 0) != 0) ERROR();
-    if (sem_init(&pipeSem, 0, 1) != 0) ERROR();
-    if (sem_init(&stdioSem, 0, 1) != 0) ERROR();
-    if (sem_init(&testSem, 0, 1) != 0) ERROR();
-    if (sem_init(&dataSem, 0, 1) != 0) ERROR();
-    sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-    internal = allocCenterq(); response = allocCenterq();
-    strout = allocStrq(); strin = allocStrq();
-    call(RegisterOpen,registerOpen);
-    call(RegisterMask,registerMask);
+    initSafe();
     initBoot();
     initPlan();
-}
-int count = 0;
-void planeLoop()
-{
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
-    break; case (Bringup): {
-    if (count++ < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
-    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
-    }
-}
-void planeDone()
-{
-    if (sem_destroy(&waitSem) != 0) ERROR();
-    if (sem_destroy(&pipeSem) != 0) ERROR();
-    if (sem_destroy(&stdioSem) != 0) ERROR();
-    if (sem_destroy(&testSem) != 0) ERROR();
-    if (sem_destroy(&dataSem) != 0) ERROR();
 }

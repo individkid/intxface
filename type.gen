@@ -67,9 +67,9 @@ Configure = {
 	"CenterSlf",
 	"CenterIndex", -- running machine
 	"MachineIndex", -- reset vector
-	"RegisterType", -- expression type
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan
+	"RegisterCount", -- test progress
 	"RegisterPoll", -- poll microseconds
 	"RegisterMask", -- interrupt mask
 	"ManipFixed",
