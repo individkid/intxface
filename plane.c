@@ -566,20 +566,25 @@ void planeInit(wftype copy, nftype call, vftype fork, wftype pass, zftype info, 
     call(RegisterMask,registerMask);
     call(CenterSize,centerSize);
     call(CenterIndex,centerIndex);
-    for (int i = 0; cmdl(i); i++) {int siz;
-    if (hideArgument(&argument, cmdl(i), &siz)) {}
-    struct Center center = {0}; siz = 0;
-    if (hideCenter(&center, cmdl(i), &siz)) {struct Center *ptr = 0;
-    allocCenter(&ptr,1); copyCenter(ptr,&center); freeCenter(&center);
+    int size = 0; for (int i = 0; cmdl(i); i++) size++;
+    for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
+    const char **boot = malloc(size*sizeof(const char *)); size = 0;
+    for (int i = 0; cmdl(i); i++) boot[size++] = cmdl(i);
+    for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
+    for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0;
+    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
+    if (hideArgument(&arg, boot[i], &asiz)) {
+    copyArgument(&argument,&arg); freeArgument(&arg);}
+    else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
+    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr);
     centerPlace(ptr,jnfo(CenterSize,1,planeRmw));}
-    struct Machine machine = {0}; siz = 0;
-    if (hideMachine(&machine, cmdl(i), &siz)) {int idx = info(MachineIndex,0,planeRcfg);
-    idx = machineSwitch(&machine,idx); freeMachine(&machine);
-    jnfo(MachineIndex,idx,planeWcfg);}}
+    else if (hideMachine(&mchn, boot[i], &msiz)) {
+    int idx = info(MachineIndex,0,planeRcfg);
+    idx = machineSwitch(&mchn,idx); freeMachine(&mchn);
+    jnfo(MachineIndex,idx,planeWcfg);}
+    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmathced:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
     switch (info(RegisterPlan,0,planeRcfg)) {default: ERROR();
     break; case (Bringup): {
-    info(RegisterMask,(1<<ResizeAsync),planeWots);
-    jnfo(RegisterPoll,1,planeWcfg);
     jnfo(RegisterOpen,(1<<FenceThd),planeWots);
     jnfo(RegisterOpen,(1<<TestThd),planeWots);}
     // TODO RegisterPlan of Release would use Bootstrap constant

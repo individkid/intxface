@@ -282,15 +282,11 @@ MemoryBinding = {
 	{"Micro","MicroTest","Int","2","Memory","Memorys"},
 }
 Bootstrap = {
-	{"Int","0","Str","Force(num:4".. -- assign to configuration
-		"cfg[0]:WindowWide"..
-		"cfg[1]:WindowHigh"..
-		"cfg[2]:REgisterPoll"..
-		"cfg[3]:RegisterOpen"..
-		"val[0]:0"..
-		"val[1]:0"..
-		"val[2]:0"..
-		"val[3]:0)"},
+	{"Int","0","Str","Force(num:2"..
+		"cfg[0]:RegisterPlan"..
+		"cfg[1]:RegisterPoll"..
+		"val[0]:%(return castPlan(\"Bringup\"))"..
+		"val[1]:1)"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},
