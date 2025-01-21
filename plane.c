@@ -13,20 +13,17 @@
 #include <sys/time.h>
 #include <errno.h>
 
-struct Center *current = 0; // running program; protect with copySem
-struct Center **center = 0; // array of center; protect with copySem
-void *copyback = 0; // queue of center; protect with copySem
-void *copyidx = 0; // queue of where; protect with copySem
+struct Center **center = 0; // protect for resize
 int external = 0; // safe pipe descriptor
 int wakeup = 0; // safe pipe descriptor
-struct Argument argument = {0}; // get from commandline
+struct Argument argument = {0}; // constant from commandline
 void *internal = 0; // queue of center; protect with pipeSem
 void *response = 0; // queue of center; protect with pipeSem
 void *strout = 0; // queue of string; protect with stdioSem
 void *strin = 0; // queue of string; protect with stdioSem
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 sem_t waitSem = {0};
-sem_t copySem = {0};
+sem_t sizeSem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
 sem_t dataSem = {0};
@@ -274,53 +271,29 @@ float *planeWindow(float *mat)
 struct Center *centerPull(int idx)
 {
     if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-    if (sem_wait(&copySem) != 0) ERROR();
+    if (sem_wait(&sizeSem) != 0) ERROR();
     struct Center *ret = center[idx]; center[idx] = 0;
-    if (sem_post(&copySem) != 0) ERROR();
+    if (sem_post(&sizeSem) != 0) ERROR();
     return ret;
 }
 void centerPlace(struct Center *ptr, int idx)
 {
     if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
-    if (sem_wait(&copySem) != 0) ERROR();
+    if (sem_wait(&sizeSem) != 0) ERROR();
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
-    if (sem_post(&copySem) != 0) ERROR();
-}
-void centerClear()
-{
-    if (sem_wait(&copySem) != 0) ERROR();
-    while (sizeCenterq(copyback)) {
-    struct Center *cptr = frontCenterq(copyback); int idx = frontIntq(copyidx);
-    freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = cptr;
-    dropCenterq(copyback); dropIntq(copyidx);}
-    if (sem_post(&copySem) != 0) ERROR();
+    if (sem_post(&sizeSem) != 0) ERROR();
 }
 void centerFree(struct Response resp) {
     if (resp.ptr) {freeCenter(resp.ptr); allocCenter(&resp.ptr,0);}
 }
-void centerPush(struct Response resp)
-{
-    if (resp.idx < 0) {centerFree(resp); return;}
-    if (sem_wait(&copySem) != 0) ERROR();
-    pushCenterq(resp.ptr,copyback); pushIntq(resp.idx,copyidx);
-    if (sem_post(&copySem) != 0) ERROR();
-}
 void centerSize(enum Configure cfg, int sav, int val)
 {
     if (cfg != CenterSize) ERROR();
-    if (sem_wait(&copySem) != 0) ERROR();
+    if (sem_wait(&sizeSem) != 0) ERROR();
     for (int i = val; i < sav; i++) {freeCenter(center[i]); allocCenter(&center[i],0);}
     center = realloc(center,sizeof(struct Center *)*val);
     for (int i = sav; i < val; i++) center[i] = 0;
-    if (sem_post(&copySem) != 0) ERROR();    
-}
-void centerIndex(enum Configure cfg, int sav, int val)
-{
-    if (cfg != CenterIndex) ERROR();
-    if (sem_wait(&copySem) != 0) ERROR();
-    freeCenter(center[sav]); allocCenter(&center[sav],0); center[sav] = current;
-    current = center[val]; center[val] = 0;
-    if (sem_post(&copySem) != 0) ERROR();    
+    if (sem_post(&sizeSem) != 0) ERROR();    
 }
 void machineManip(int sig, int *arg)
 {
@@ -407,24 +380,24 @@ int machineIval(struct Express *exp)
     val = *datxIntz(0,dat); free(dat);
     return val;
 }
-struct Machine *machineNext(int next)
+struct Machine *machineNext(struct Center *current, int next)
 {
     if (next < 0 || next >= current->siz) ERROR();
     return &current->mch[next];
 }
-int machineEscape(int level, int next)
+int machineEscape(struct Center *current, int level, int next)
 {
     int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
     for (next += inc; level > 0; next += inc) {
-    struct Machine *mptr = machineNext(next);
+    struct Machine *mptr = machineNext(current,next);
     if (!mptr) break;
     if (mptr->xfr == Nest) level += mptr->lvl*inc;}
     return next;
 }
-int machineSwitch(struct Machine *mptr, int next)
+void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
-    switch (mptr->xfr) {
+    switch (mptr->xfr) {default: ERROR();
     case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],mptr->idx); break;
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],mptr->idx); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
@@ -445,21 +418,24 @@ int machineSwitch(struct Machine *mptr, int next)
     case (Copy): machineCopy(mptr->sig,mptr->arg); break;
     case (Dopy): machineDopy(mptr->sig,mptr->arg); break;
     case (Popy): machinePopy(mptr->sig,mptr->arg); break;
-    case (Qopy): machineQopy(mptr->sig,mptr->arg); break;
-    case (Jump): next = machineEscape(machineIval(&mptr->exp[0]),next) - 1; break;
-    case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
-    case (Nest): break; // this is for Jump
-    case (Name): break; // TODO cause return to expression
-    default: break;}
-    return next;
+    case (Qopy): machineQopy(mptr->sig,mptr->arg); break;}
 }
 void planeMachine(enum Thread tag, int idx)
 {
-    for (int next = callInfo(MachineIndex,0,planeRcfg); 1; next++) {
-    struct Machine *mptr = machineNext(next);
-    if (!mptr && next == 0) break;
-    if (!mptr) {next = -1; centerClear(); if (sem_wait(&waitSem) != 0) ERROR(); continue;}
-    next = machineSwitch(mptr,next);}
+    while (1) {
+    int index = callInfo(CenterIndex,0,planeRcfg);
+    if (index < 0) break;
+    struct Center *current = centerPull(index);
+    int last = callInfo(MachineIndex,0,planeRcfg)-1;
+    for (int next = last+1; next != last; next++) {last = next;
+    struct Machine *mptr = machineNext(current,next);
+    switch (mptr->xfr) {default: machineSwitch(mptr); break;
+    case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
+    case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
+    case (Nest): break; // this is for Jump
+    case (Name): break;}} // TODO Name causes return to expression
+    centerPlace(current,index);
+    if (sem_wait(&waitSem) != 0) ERROR();}
 }
 
 void planeSelect(enum Thread tag, int idx)
@@ -560,9 +536,7 @@ void initBoot()
     allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr);
     centerPlace(ptr,callJnfo(CenterSize,1,planeRmw));}
     else if (hideMachine(&mchn, boot[i], &msiz)) {
-    int idx = callInfo(MachineIndex,0,planeRcfg);
-    idx = machineSwitch(&mchn,idx); freeMachine(&mchn);
-    callJnfo(MachineIndex,idx,planeWcfg);}
+    machineSwitch(&mchn); freeMachine(&mchn);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmatched:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
 }
 void initPlan()
@@ -584,7 +558,7 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callCmdl = cmdl;
     // initialize everything that is needed before starting a thread
     if (sem_init(&waitSem, 0, 0) != 0) ERROR();
-    if (sem_init(&copySem, 0, 1) != 0) ERROR();
+    if (sem_init(&sizeSem, 0, 1) != 0) ERROR();
     if (sem_init(&pipeSem, 0, 1) != 0) ERROR();
     if (sem_init(&stdioSem, 0, 1) != 0) ERROR();
     if (sem_init(&testSem, 0, 1) != 0) ERROR();
@@ -594,7 +568,6 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     call(RegisterOpen,registerOpen);
     call(RegisterMask,registerMask);
     call(CenterSize,centerSize);
-    call(CenterIndex,centerIndex);
     initBoot();
     initPlan();
 }
@@ -611,7 +584,7 @@ void planeLoop()
 void planeDone()
 {
     if (sem_destroy(&waitSem) != 0) ERROR();
-    if (sem_destroy(&copySem) != 0) ERROR();
+    if (sem_destroy(&sizeSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&testSem) != 0) ERROR();

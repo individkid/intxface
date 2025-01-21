@@ -86,6 +86,7 @@ Transfer = {
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
+	"Eval", -- call datxEval
 	"Manip", -- manipulate local
 	"Pulse", -- clear to towrite
 	"Self", -- clear to written
@@ -99,7 +100,6 @@ Transfer = {
 	"Qopy", -- from center to queue
 	"Jump", -- skip if true
 	"Goto", -- jump if true
-	"Eval", -- call datxEval
 	"Nest", -- nest to level
 	"Name", -- function for call
 }
