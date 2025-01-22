@@ -72,7 +72,18 @@ Configure = {
 	"RegisterCount", -- test progress
 	"RegisterPoll", -- poll microseconds
 	"RegisterMask", -- interrupt mask
+	"RegisterSelf", -- outstanding selfs
 	"ManipFixed",
+	"ManipLeft",
+	"ManipBase",
+	"ClickLeft",
+	"ClickBase",
+	"PierceLeft",
+	"PierceBase",
+	"PierceDeep",
+	"NormalLeft",
+	"NormalBase",
+	"NormalDeep",
 	"MonitorWidth",
 	"MonitorHeight",
 	"PhysicalWidth",
@@ -101,6 +112,38 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
+}
+ManipArg = {
+	"ManipDst",
+	"ManipDstSub",
+}
+PulseArg = {
+	"PulseSrc",
+	"PulseSrcSub",
+	"PulseDst",
+	"PulseDstSub",
+}
+SelfArg = {
+	"SelfSrc",
+	"SelfSrcSub",
+	"SelfDst",
+	"SelfDstSub",
+}
+OtherArg = {
+	"OtherSrc",
+	"OtherSrcSub",
+	"OtherDst",
+	"OtherDstSub",
+}
+SwapArg = {
+	"SwapDst",
+	"SwapDstSub",
+}
+CompArg = {
+	"CompSrc",
+	"CompSrcSub",
+	"CompDst",
+	"CompDstSub",
 }
 BopyArg = {
 	"BopySrc",

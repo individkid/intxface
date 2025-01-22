@@ -207,14 +207,32 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
     float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
     return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
 }
-typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
-planeXform planeFunc()
+float *vectorThree(float *vec, enum Configure left, enum Configure base, enum Configure deep)
 {
-    int tmp; int cfg = callInfo(ManipFixed,0,planeRcfg);
-    tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeSlideOrthoMouse;
-    tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) return planeRotateFocalMouse;
-    tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) return planeRotateCursorRoller;
-    return 0;
+    vec[0] = callInfo(left,0,planeRcfg);
+    vec[1] = callInfo(base,0,planeRcfg);
+    vec[2] = callInfo(deep,0,planeRcfg);
+    return vec;
+}
+float *vectorTwo(float *vec, enum Configure left, enum Configure base)
+{
+    vec[0] = callInfo(left,0,planeRcfg);
+    vec[1] = callInfo(base,0,planeRcfg);
+    return vec;
+}
+typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
+float *planeMatrix(float *mat)
+{
+    planeXform fnc = 0; int tmp; int cfg = callInfo(ManipFixed,0,planeRcfg);
+    tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeSlideOrthoMouse;
+    tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeRotateFocalMouse;
+    tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) fnc = planeRotateCursorRoller;
+    if (!fnc) return 0; float fix[3]; float nrm[3]; float org[2]; float cur[2];
+    return fnc(identmat(mat,4),
+    vectorThree(fix,PierceLeft,PierceBase,PierceDeep),
+    vectorThree(nrm,NormalLeft,NormalBase,NormalDeep),
+    vectorTwo(org,ClickLeft,ClickBase),
+    vectorTwo(cur,ManipLeft,ManipBase));
 }
 void physicalToScreen(float *xptr, float *yptr)
 {
@@ -277,6 +295,7 @@ void centerSize(int idx)
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (sem_post(&copySem) != 0) ERROR();
 }
+// TODO add sanity check by allowing only a few centerPull without corresponsing centerPlace
 struct Center *centerPull(int idx)
 {
     centerSize(idx);
@@ -295,38 +314,117 @@ void centerPlace(struct Center *ptr, int idx)
 void centerFree(struct Response resp) {
     if (resp.ptr) {freeCenter(resp.ptr); allocCenter(&resp.ptr,0);}
 }
+struct Center *machineCenter(int sig, int *arg, int lim, int idx, int sub)
+{
+    if (sig != lim) ERROR();
+    int src = arg[idx];
+    int srcSub = arg[sub];
+    struct Center *srcPtr = centerPull(src);
+    if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
+    return srcPtr;
+}
+struct Kernel *machineKernel(struct Center *ptr, int sig, int *arg, int lim, int idx, int sub)
+{
+    if (sig != lim) ERROR();
+    int src = arg[idx];
+    int srcSub = arg[sub];
+    if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
+    if (ptr->mem != Kernelz) ERROR();
+    return &ptr->ker[srcSub];
+}
+struct Matrix *machineMatrix(struct Center *ptr, int sig, int *arg, int lim, int idx, int sub)
+{
+    if (sig != lim) ERROR();
+    int src = arg[idx];
+    int srcSub = arg[sub];
+    if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
+    if (ptr->mem != Matrixz) ERROR();
+    return &ptr->mat[srcSub];
+}
+void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int sub)
+{
+    if (sig != lim) ERROR();
+    int src = arg[idx];
+    int srcSub = arg[sub];
+    if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
+    centerPlace(ptr,src);
+}
+// Order of matrix application is window * project * subject * object * element * vector.
+// To change X such that YX changes to ZYX, change X to Y’ZYX.
+// Each matrix is product of local, towrite, written, maintain.
+// User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
+// Others manipulate maintain as if before any towrite and after any written.
+// Change between one machineFunc and another requires swapping their order.
 void machineManip(int sig, int *arg)
 {
-    // TODO
+    struct Center *center = machineCenter(sig,arg,ManipArgs,ManipDst,ManipDstSub);
+    struct Kernel *kernel = machineKernel(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
+    // manipulate local
+    float mat[16]; jumpmat(kernel->local.mat,planeMatrix(mat),4);
+    machinePlace(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
 }
 void machinePulse(int sig, int *arg)
 {
-    // TODO
+    struct Center *src = machineCenter(sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
+    struct Kernel *kernel = machineKernel(src,sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
+    struct Center *dst = machineCenter(sig,arg,PulseArgs,PulseDst,PulseDstSub);
+    struct Matrix *matrix = machineMatrix(src,sig,arg,PulseArgs,PulseDst,PulseDstSub);
+    // clear local to towrite
+    jumpmat(kernel->towrite.mat,kernel->local.mat,4); identmat(kernel->local.mat,4);
+    // compose towrite, wrritten, maintain to matrix
+    timesmat(timesmat(copymat(matrix->mat,kernel->towrite.mat,4),kernel->written.mat,4),
+        kernel->maintain.mat,4);
+    machinePlace(dst,sig,arg,PulseArgs,PulseDst,PulseDstSub);
+    machinePlace(src,sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
 }
 void machineSelf(int sig, int *arg)
 {
-    // TODO
+    struct Center *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
+    struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
+    struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
+    struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
+    if (!dst->slf) ERROR();
+    // TODO move portion of towrite to written indicated by portion of written times maintain that matrix is
+    // TODO if towrite is technically clear, clear written to maintain
+    machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
+    machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
 void machineOther(int sig, int *arg)
 {
-    // TODO
+    struct Center *src = machineCenter(sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
+    struct Matrix *matrix = machineMatrix(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
+    struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
+    struct Kernel *kernel = machineKernel(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
+    if (dst->slf) ERROR();
+    // TODO change written such that written times maintain is matrix
+    machinePlace(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
+    machinePlace(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
 }
 void machineSwap(int sig, int *arg)
 {
-    // TODO
+    struct Center *center = machineCenter(sig,arg,SwapArgs,SwapDst,SwapDstSub);
+    struct Kernel *kernel = machineKernel(center,sig,arg,SwapArgs,SwapDst,SwapDstSub);
+    // TODO change manipulator
+    machinePlace(center,sig,arg,SwapArgs,SwapDst,SwapDstSub);
 }
 void machineComp(int sig, int *arg)
 {
-    // TODO
+    struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
+    struct Matrix *matrix = machineMatrix(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
+    // compose for draw
+    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->local.mat,4),kernel->towrite.mat,4),
+        kernel->written.mat,4),kernel->maintain.mat,4);
+    machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
+    machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
 }
 void machineBopy(int sig, int *arg)
 {
-    if (sig != BopyArgs) ERROR();
-    int src = arg[BopySrc];
-    int dst = arg[BopyDst];
-    int srcSub = arg[BopySrcSub];
-    int dstSub = arg[BopyDstSub];
     int count = arg[BopyCount];
+    if (sig != BopyArgs) ERROR();
+    int src = arg[BopySrc]; int srcSub = arg[BopySrcSub];
+    int dst = arg[BopyDst]; int dstSub = arg[BopyDstSub];
     struct Center *srcPtr = centerPull(src);
     struct Center *dstPtr = centerPull(dst);
     if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
@@ -348,8 +446,8 @@ void machineBopy(int sig, int *arg)
     case (Machinez): copyMachine(&dstPtr->mch[dstSub],&srcPtr->mch[srcSub]); break;
     case (Kernelz): copyKernel(&dstPtr->ker[dstSub],&srcPtr->ker[srcSub]); break;}
     else ERROR();
-    centerPlace(srcPtr,src);
-    centerPlace(dstPtr,dst);
+    machinePlace(srcPtr,sig,arg,BopyArgs,BopySrc,BopySrcSub);
+    machinePlace(dstPtr,sig,arg,BopyArgs,BopyDst,BopyDstSub);
 }
 void machineResp(struct Response resp)
 {
@@ -472,12 +570,6 @@ void machineSwitch(struct Machine *mptr)
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],mptr->idx); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
     case (Eval): machineEval(&mptr->fnc[0],mptr->res); break;
-    // Order of matrix application is window * project * subject * object * element * vector.
-    // To change X such that YX changes to ZYX, change X to Y’ZYX.
-    // Each matrix is product of local, towrite, written, maintain.
-    // User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
-    // Others manipulate maintain as if before any towrite and after any written.
-    // Change between one machineFunc and another requires swapping their order.
     case (Manip): machineManip(mptr->sig,mptr->arg); break;
     case (Pulse): machinePulse(mptr->sig,mptr->arg); break;
     case (Self): machineSelf(mptr->sig,mptr->arg); break;
