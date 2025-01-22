@@ -683,8 +683,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		else if (typ == identType("Old") && typ0 == identType("Int")) datxOld(dat,*datxIntz(0,*dat));
 		else if (typ == identType("Old") && typ0 == identType("Int32")) datxOld(dat,*datxInt32z(0,*dat));
 		else if (typ == identType("Old") && typ0 == identType("Num")) datxOld(dat,*datxNumz(0,*dat));} break;
-	case (GetOp): {
-		datxInt(datxDat0,exp->cfg); if (!ptrx[GetcfgCb]) ERROR(); datxUnwrap(GetcfgCb);
+	case (RetOp): {
+		datxInt(datxDat0,exp->cfg); if (!ptrx[RetcfgCb]) ERROR(); datxUnwrap(RetcfgCb);
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		assignDat(dat,*datxDat0);} break;
 	case (SetOp): {
@@ -719,21 +719,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (DatOp): {
 		if (typ == -1) typ = identType("Dat"); if (typ != identType("Dat")) ERROR();
 		datxVoid(dat,exp->dsz); for (int i = 0; i < exp->dsz; i++) *datxChrz(i,dat) = exp->dvl;} break;
-	case (PopOp): {
+	case (GetOp): {
 		int typ0 = 0;
 		datxInt(datxDat0,-1); datxInt(datxDat1,2); datxInt(datxDat2,0);
-		if (!ptrx[PopstrCb]) ERROR(); datxUnwrap(PopstrCb);
+		if (!ptrx[GetstrCb]) ERROR(); datxUnwrap(GetstrCb);
 		typ0 = identType("Str"); assignDat(dat,*datxDat0);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (PutOp): {
 		int typ0 = 0;
 		typ0 = datxEval(datxDat0,exp->put,identType("Str")); if (typ0 != identType("Str")) ERROR();
 		if (!ptrx[PutstrCb]) ERROR(); datxUnwrap(PutstrCb);
-		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (OutOp): {
-		int typ0 = 0;
-		typ0 = datxEval(datxDat0,exp->out,identType("Str")); if (typ0 != identType("Str")) ERROR();
-		if (!ptrx[OutstrCb]) ERROR(); datxUnwrap(OutstrCb);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (FldOp):
 		break; // TODO use datxWrap to add field functions to try
@@ -761,14 +756,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (UnqOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,unique++);} break;
-	case (NamOp): {
-		int typ0 = 0; if (datxCallFp == 0) ERROR();
-		typ0 = datxCallFp(dat,exp->nam);
-		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (AccOp): {
-		int typ0 = 0; if (datxCallFp == 0) ERROR();
-		typ0 = datxCallFp(dat,0);
-		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	default: ERROR();}
 	// debug--;
 	return typ;
@@ -780,8 +767,4 @@ void datxPrefix(const char *str)
 void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
-}
-void datxCaller(rltype fnc)
-{
-	datxCallFp = fnc;
 }

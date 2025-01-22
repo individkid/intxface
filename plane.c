@@ -24,6 +24,7 @@ void *strout = 0; // queue of string; protect with stdioSem
 void *strin = 0; // queue of string; protect with stdioSem
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 sem_t waitSem = {0};
+sem_t copySem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
 sem_t dataSem = {0};
@@ -270,38 +271,53 @@ float *planeWindow(float *mat)
 
 void centerSize(int idx)
 {
+    if (sem_wait(&copySem) != 0) ERROR();
     if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
     if (idx >= centers) {int size = idx+1; center = realloc(center,size);
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
+    if (sem_post(&copySem) != 0) ERROR();
 }
 struct Center *centerPull(int idx)
 {
-    centerSize(idx); struct Center *ret = center[idx]; center[idx] = 0; return ret;
+    centerSize(idx);
+    if (sem_wait(&copySem) != 0) ERROR();
+    struct Center *ret = center[idx]; center[idx] = 0;
+    if (sem_post(&copySem) != 0) ERROR();
+    return ret;
 }
 void centerPlace(struct Center *ptr, int idx)
 {
-    centerSize(idx); freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
+    centerSize(idx);
+    if (sem_wait(&copySem) != 0) ERROR();
+    freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
+    if (sem_post(&copySem) != 0) ERROR();
 }
 void centerFree(struct Response resp) {
     if (resp.ptr) {freeCenter(resp.ptr); allocCenter(&resp.ptr,0);}
 }
 void machineManip(int sig, int *arg)
 {
+    // TODO
 }
 void machinePulse(int sig, int *arg)
 {
+    // TODO
 }
 void machineSelf(int sig, int *arg)
 {
+    // TODO
 }
 void machineOther(int sig, int *arg)
 {
+    // TODO
 }
 void machineSwap(int sig, int *arg)
 {
+    // TODO
 }
 void machineComp(int sig, int *arg)
 {
+    // TODO
 }
 void machineBopy(int sig, int *arg)
 {
@@ -335,23 +351,67 @@ void machineBopy(int sig, int *arg)
     centerPlace(srcPtr,src);
     centerPlace(dstPtr,dst);
 }
+void machineResp(struct Response resp)
+{
+    centerPlace(resp.ptr,resp.idx);
+}
 void machineCopy(int sig, int *arg)
 {
+    if (sig != CopyArgs) ERROR();
+    int src = arg[CopySrc];
+    struct Center *ptr = centerPull(src);
+    struct Response resp = {0,1,src,ptr,machineResp};
+    callCopy(resp);
 }
 void machineDopy(int sig, int *arg)
 {
+    if (sig != DopyArgs) ERROR();
+    int src = arg[DopySrc];
+    struct Center *ptr = centerPull(src);
+    struct Response resp = {0,0,src,ptr,machineResp};
+    callCopy(resp);
 }
 void machinePopy(int sig, int *arg)
 {
+    if (sig != PopyArgs) ERROR();
+    int dst = arg[PopyDst];
+    if (sem_wait(&pipeSem) != 0) ERROR();
+    struct Center *ptr = maybeCenterq(0,internal);
+    if (sem_post(&pipeSem) != 0) ERROR();
+    centerPlace(ptr,dst);
 }
 void machineQopy(int sig, int *arg)
 {
+    if (sig != QopyArgs) ERROR();
+    int src = arg[QopySrc];
+    struct Center *ptr = centerPull(src);
+    if (sem_wait(&pipeSem) != 0) ERROR();
+    pushCenterq(ptr,response);    
+    if (sem_post(&pipeSem) != 0) ERROR();
+}
+char *planeGetstr()
+{
+    // TODO
+}
+void planePutstr(const char *src)
+{
+    // TODO
+}
+void planeSetcfg(int val, int sub)
+{
+    // TODO
+}
+int planeRetcfg(int sub)
+{
+    // TODO
 }
 void machineStage(enum Configure cfg, int idx)
 {
+    // TODO
 }
 void machineTsage(enum Configure cfg, int idx)
 {
+    // TODO
 }
 void machineEval(struct Express *exp, int idx)
 {
@@ -418,6 +478,8 @@ void planeMachine(enum Thread tag, int idx)
     int last = callInfo(MachineIndex,0,planeRcfg)-1;
     for (int next = last+1; next != last; last = ++next) {
     struct Machine *mptr = machineNext(current,next);
+    // {char *opr = 0; showTransfer(mptr->xfr,&opr);
+    // printf("planeMachine %s\n",opr); free(opr);}
     switch (mptr->xfr) {default: machineSwitch(mptr); break;
     case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
     case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
@@ -512,6 +574,7 @@ void registerMask(enum Configure cfg, int sav, int val)
 void initSafe()
 {
     if (sem_init(&waitSem, 0, 0) != 0) ERROR();
+    if (sem_init(&copySem, 0, 1) != 0) ERROR();
     if (sem_init(&pipeSem, 0, 1) != 0) ERROR();
     if (sem_init(&stdioSem, 0, 1) != 0) ERROR();
     if (sem_init(&testSem, 0, 1) != 0) ERROR();
@@ -533,6 +596,7 @@ void planeDone()
     if (sem_destroy(&testSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
+    if (sem_destroy(&copySem) != 0) ERROR();
     if (sem_destroy(&waitSem) != 0) ERROR();
 }
 void initBoot()
@@ -569,6 +633,7 @@ void planeLoop()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
     }
 }
+void wrapPlane();
 void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
 {
     callCopy = copy;
@@ -580,5 +645,6 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callCmdl = cmdl;
     initSafe();
     initBoot();
+    wrapPlane();
     initPlan();
 }

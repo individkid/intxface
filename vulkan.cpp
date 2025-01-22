@@ -1602,6 +1602,7 @@ struct DrawState : public BaseState {
         if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
         if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
         if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
     VkFence setup(void *ptr, int loc, int siz) {
@@ -1897,7 +1898,7 @@ struct ForkState : public DoneState {
 struct CopyState {
     CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    void rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval);
+    int rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, int &retval);
     int copy(Response);
 };
 
@@ -2009,18 +2010,18 @@ void TestState::call() {
     vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
     for (int i = 0; i < vtx->siz; i++)
     memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
-    mptr->copyState.copy({0,0,vtx,vulkanPass});
+    mptr->copyState.copy({0,0,0,vtx,vulkanPass});
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    mptr->copyState.copy({0,0,ind,vulkanPass});
+    mptr->copyState.copy({0,0,0,ind,vulkanPass});
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    mptr->copyState.copy({0,0,tex,vulkanPass});
+    mptr->copyState.copy({0,0,0,tex,vulkanPass});
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
@@ -2036,7 +2037,7 @@ void TestState::call() {
     memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
-    if (mptr->copyState.copy({0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    if (mptr->copyState.copy({0,0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
     BindState *bind[] = {
         &mptr->matrixState,
@@ -2051,10 +2052,12 @@ void TestState::call() {
     else {mptr->drawState.derived()->bind(); wake.wait();}}
 }
 
-void CopyState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, int size, int mod, Response pass, int &retval) {
+int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, int &retval) {
     //    x-x     x---x x---x   x-----x
     //   y---y   y---y   y---y   y---y
     //   z---z   z----z  z---z   z----z
+    int loc = pass.ptr->idx;
+    int siz = pass.ptr->siz;
     int xl = loc; int xr = xl+siz;
     int yl = base; int yr = yl+size;
     int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
@@ -2064,7 +2067,7 @@ void CopyState::rebase(BaseState *buf, void *ptr, int loc, int siz, int base, in
     ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
     loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
     std::cerr << "rebase " << siz << std::endl;
-    if (mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass)) retval++;
+    return mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass);
 }
 extern "C" {
 int datxVoids(void *dat);
@@ -2076,24 +2079,24 @@ int CopyState::copy(Response pass) {
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
     break; case (Indexz):
-        /*TODO rebase(mptr->indexState.preview(),(void*)center->ind,center->idx,center->siz,
-        mptr->changeState.read(IndexBase),mptr->changeState.read(IndexSize),\
-        sizeof(int32_t),pass,retval);*/
-        if (mptr->threadState.push(mptr->indexState.preview(),
+        if (pass.mod ? rebase(mptr->indexState.preview(),(void*)center->ind,
+            mptr->changeState.read(IndexBase),mptr->changeState.read(IndexSize),
+            sizeof(int32_t),pass,retval) :
+        mptr->threadState.push(mptr->indexState.preview(),
             (void*)center->ind,0,center->siz*sizeof(center->ind[0]),
             SizeState(0,center->siz*sizeof(center->ind[0])),pass)) retval++;
     break; case (Vertexz):
-        /*rebase(mptr->vertexState.preview(),(void*)center->vtx,center->idx,center->siz,
-        mptr->changeState.read(VertexBase),mptr->changeState.read(VertexSize),
-        sizeof(Vertex),pass,retval);*/
-        if (mptr->threadState.push(mptr->vertexState.preview(),
+        if (pass.mod ? rebase(mptr->vertexState.preview(),(void*)center->vtx,
+            mptr->changeState.read(VertexBase),mptr->changeState.read(VertexSize),
+            sizeof(Vertex),pass,retval) :
+        mptr->threadState.push(mptr->vertexState.preview(),
             (void*)center->vtx,0,center->siz*sizeof(center->vtx[0]),
             SizeState(0,center->siz*sizeof(center->vtx[0])),pass)) retval++;
     break; case (Matrixz):
-        /*rebase(mptr->matrixState.preview(),(void*)center->mat,center->idx,center->siz,
-        mptr->changeState.read(MatrixBase),mptr->changeState.read(MatrixSize),
-        sizeof(Matrix),pass,retval);*/
-        if (mptr->threadState.push(mptr->matrixState.preview(),
+        if (pass.mod ? rebase(mptr->matrixState.preview(),(void*)center->mat,
+            mptr->changeState.read(MatrixBase),mptr->changeState.read(MatrixSize),
+            sizeof(Matrix),pass,retval) :
+        mptr->threadState.push(mptr->matrixState.preview(),
             (void*)center->mat,0,center->siz*sizeof(center->mat[0]),
             SizeState(0,center->siz*sizeof(center->mat[0])),pass)) retval++;
     break; case (Texturez): {

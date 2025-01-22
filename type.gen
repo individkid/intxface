@@ -109,34 +109,23 @@ BopyArg = {
 	"BopyDstSub",
 	"BopyCount",
 }
+CopyArg = {
+	"CopySrc",
+}
+DopyArg = {
+	"DopySrc",
+}
+PopyArg = {
+	"PopyDst",
+}
+QopyArg = {
+	"QopySrc",
+}
 Plan = { -- which test to run
 	"Bringup",
 	"Regress",
 	"Builtin",
 	"Release",
-}
-React = { -- when updates recorded
-	"Enstate", -- whether to little language
-	"Enque", -- whether to micro code
-	"Enline", -- whether to enque key
-	"Enchar", -- whether to save key
-	"Arrow", -- whether arrow adjusts window
-	"Drag", -- whether mouse adjusts window
-	"North", -- window edge changed
-	"East",
-	"South",
-	"West",
-	"Relate", -- whether mouse absolute
-}
-Enact = { -- when updates applied
-	"Extent", -- set window and swap on wake
-	"Follow", -- set window matrix on wake
-	"Modify", -- set transform matrix on wake
-	"Direct", -- set uniform fields on wake
-	"Defer", -- set memory from dma center
-	"Shader", -- start display shader on wake
-	"Query", -- capture pierce point on wake
-	"Resp", -- stage pierce point on wake
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
@@ -196,8 +185,8 @@ Operate = {
 	"RemOp",
 	"CndOp", -- switch on exp
 	"TotOp", -- cast to type
-	"GetOp", -- value from callback
-	"SetOp", -- callback with value
+	"RetOp", -- config from callback
+	"SetOp", -- callback with config
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
 	"OptOp", -- cache result
@@ -205,9 +194,8 @@ Operate = {
 	"IrxOp", -- irrex sugar
 	"CmpOp", -- compare sugar
 	"DatOp", -- memset Dat
-	"PopOp",
-	"PutOp",
-	"OutOp",
+	"GetOp", -- string from callback
+	"PutOp", -- callback with string
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
 	"PrmOp", -- permute of list
@@ -218,8 +206,6 @@ Operate = {
 	"CfgOp", -- ImmOp sugar
 	"MemOp", -- ImmOp sugar
 	"UnqOp", -- magic number
-	"NamOp", -- call function
-	"AccOp", -- machine result
 }
 Compare = {
 	-- Less Equal More
@@ -426,7 +412,7 @@ Express = {
 	{"cnd","CondExp",{["opr"]={["CndOp"]=true}},1},
 	{"typ","Str",{["opr"]={["TotOp"]=true}},{}},
 	{"tot","Express",{["opr"]={["TotOp"]=true}},1},
-	{"cfg","Configure",{["opr"]={["GetOp"]=true}},{}},
+	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true}},1},
 	{"key","Str",{["opr"]={["ValOp"]=true}},{}},
@@ -440,7 +426,6 @@ Express = {
 	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"put","Express",{["opr"]={["PutOp"]=true}},1}, -- str:Str :Dat
-	{"out","Express",{["opr"]={["OutOp"]=true}},1}, -- str:Str :Dat
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4}, -- giv:Gen val:Het str:Hom idx:Hom :Gen
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
@@ -450,7 +435,6 @@ Express = {
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
 	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
-	{"nam","Str",{["opr"]={["NamOp"]=true}},{}},
 }
 Machine = {
 	{"xfr","Transfer",{},""},

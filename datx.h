@@ -1,7 +1,7 @@
 #include <stdint.h>
 typedef void (*rktype)(void *dat);
 typedef int (*rltype)(void **dat, const char *str);
-enum Callback {SetcfgCb,GetcfgCb,PutstrCb,PopstrCb,OutstrCb,Callbacks};
+enum Callback {SetcfgCb,RetcfgCb,PutstrCb,GetstrCb,Callbacks};
 int datxSub();
 void **datxDat(int sub);
 void datxNon();
@@ -37,4 +37,3 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
-void datxCaller(rltype fnc);

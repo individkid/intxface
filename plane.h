@@ -3,6 +3,7 @@ enum Thread;
 struct Center;
 struct Response {
 	int res;
+	int mod;
 	int idx;
 	struct Center *ptr;
 	void (*fnc)(struct Response);
