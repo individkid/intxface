@@ -1,4 +1,4 @@
-datxC.o: datx.c datx.h type.h
+datxC.o: datx.c datx.h proto.h type.h
 faceC.o: face.c face.h proto.h
 faceCpp.o: face.cpp face.h proto.h wrap.h
 facer.log: facer.lua facerC facerHs facerLua luax.so
@@ -36,6 +36,11 @@ planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
 protoC.o: proto.c proto.h
+share: shareC
+shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o wrapCpp.o
+shareC.o: datx.h face.h proto.h share.c type.h
+shareC.type.c: luax.so show.lua type.gen
+shareC.typeC.o: face.h type.h
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs spaceHs.type.hs
 spaceHs.type.hs: luax.so show.lua type.gen

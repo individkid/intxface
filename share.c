@@ -179,6 +179,16 @@ void shareError(int len, const char *str)
 {
 	ERROR();
 }
+int identUnion(enum Tag tag)
+{
+	switch (tag) {default: {fprintf(stderr,"invalid tag!"); exit(-1);}
+	case (Persistz): return identType("Persist");
+	case (Eventz): return identType("Event");
+	case (Centerz): return identType("Center");
+	case (Changez): return identType("Change");
+	// TODO video little language
+	}
+}
 int sharePeek(const char *str, int *len)
 {
 	for (enum Tag tag = 0; tag < Tags; tag++) {
@@ -213,17 +223,12 @@ void shareLoop(int src, int dst, int stp, int dtp)
 {
 	if (stp == dtp) {loopType(stp,src,dst); return;}
 	if (stp == identType("Dat") && dtp == identType("Str")) ERROR();
-	if (stp == identType("Dat") && dtp == identType("Generic")) ERROR();
 	if (stp == identType("Dat")) {readDat(dat0,src); loopType(dtp,idx0,dst); return;}
 	if (stp == identType("Str") && dtp == identType("Dat")) {char *str = 0; int len = 0; int typ = 0; readStr(&str,src); datxNone(dat0); typ = sharePeek(str,&len); len = 0; hideType(str,&len,typ,idx0); writeDat(*dat0,dst); free(str); return;}
-	if (stp == identType("Str") && dtp == identType("Generic")) {struct Generic gen = {0}; char *str = 0; int len = 0; int typ = 0; readStr(&str,src); typ = sharePeek(str,&len); hideUnion(&gen,typ,str,&len); writeGeneric(&gen,dst); freeGeneric(&gen); free(str); return;}
 	if (stp == identType("Str")) {char *str = 0; int len = 0; readStr(&str,src); hideType(str,&len,dtp,dst); free(str); return;}
-	if (stp == identType("Generic") && dtp == identType("Dat")) {struct Generic gen = {0}; readGeneric(&gen,src); datxNone(dat0); writeUnion(&gen,idx0); writeDat(*dat0,dst); freeGeneric(&gen); return;}
-	if (stp == identType("Generic") && dtp == identType("Str")) {struct Generic gen = {0}; char *str = 0; readGeneric(&gen,src); showUnion(&gen,&str); writeStr(str,dst); freeGeneric(&gen); free(str); return;}
-	if (stp == identType("Generic")) {struct Generic gen = {0}; readGeneric(&gen,src); if (identUnion(gen.tag) != dtp) ERROR(); writeUnion(&gen,dst); freeGeneric(&gen); return;}
 	if (dtp == identType("Dat")) {datxNone(dat0); loopType(stp,src,idx0); writeDat(*dat0,dst); return;}
 	if (dtp == identType("Str")) {char *str = 0; showType(&str,stp,src); writeStr(str,dst); free(str); return;}
-	if (dtp == identType("Generic")) {struct Generic gen = {0}; readUnion(&gen,stp,src); writeGeneric(&gen,dst); freeGeneric(&gen); return;}
+	// TODO convert between Tag types
 	ERROR();
 }
 void shareWrap(struct Wrap *ptr)

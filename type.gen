@@ -228,17 +228,21 @@ Order = {
 	"BeginOrd",
 }
 Program = {
-	"Filez",
-	"Holez",
-	"Linez",
-	"Planez",
-	"Spacez",
-	"Pagez",
-	"Pipez",
-	"Framez",
-	"Wavez",
-	"Tapez",
-	"Phonez",
+	"Filez", -- Persist
+	"Holez", -- Persist
+	"Linez", -- Event
+	"Planez", -- Center
+	"Spacez", -- Change
+	"Sidez", -- Persist gui
+	"Framez", -- video little language
+	"Sharez", -- Valve
+}
+Tag = {
+	"Persistz", -- file hole side
+	"Eventz", -- line
+	"Centerz", -- plane
+	"Changez", -- space
+	-- video little language -- frame
 }
 --HERE Constants
 VertexStride = {
@@ -279,15 +283,12 @@ Execname = {
 	{"Program","Linez","Str","./line"},
 	{"Program","Planez","Str","./plane"},
 	{"Program","Spacez","Str","./space"},
-	{"Program","Pagez","Str","./page"},
-	{"Program","Pipez","Str","./pipe"},
+	{"Program","Sidez","Str","./side"},
 	{"Program","Framez","Str","./frame"},
-	{"Program","Wavez","Str","./wave"},
-	{"Program","Tapez","Str","./tape"},
-	{"Program","Phonez","Str","./phone"},
+	{"Program","Sharez","Str","./share"},
 }
 --HERE Structs
-Persist = {
+Persist = { -- for file hole side
 	{"act","Goal",{},{}},
 	{"idx","Int",{["act"]={
 		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
@@ -452,13 +453,6 @@ Machine = {
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
-}
-Little = {
-	{"pat","Int",{},{}},
-	{"val","Int",{},{}},
-	{"num","Int",{},{}},
-	{"idx","Int",{},{}},
-	{"nxt","Int",{},{}},
 }
 Uniform = {
 	{"all","Int32",{},{}}, -- which subject to use
