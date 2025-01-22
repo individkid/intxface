@@ -391,27 +391,48 @@ void machineQopy(int sig, int *arg)
 }
 char *planeGetstr()
 {
-    // TODO
+    char *str = malloc(strlen(frontStrq(strin))+1);
+    strcpy(str,frontStrq(strin));
+    if (sem_wait(&stdioSem) != 0) ERROR();
+    popStrq(strin);
+    if (sem_post(&stdioSem) != 0) ERROR();
+    return str;
 }
 void planePutstr(const char *src)
 {
-    // TODO
+    char *str = malloc(strlen(src)+1);
+    strcpy(str,src);
+    if (sem_wait(&stdioSem) != 0) ERROR();
+    pushStrq(str,strout);
+    if (sem_post(&stdioSem) != 0) ERROR();
 }
 void planeSetcfg(int val, int sub)
 {
-    // TODO
+    callJnfo((enum Configure)sub,val,planeWcfg);
 }
 int planeRetcfg(int sub)
 {
-    // TODO
+    return callInfo((enum Configure)sub,0,planeRcfg);
 }
 void machineStage(enum Configure cfg, int idx)
 {
-    // TODO
+    struct Center *ptr = centerPull(idx);
+    switch (cfg) {default: ERROR();
+    case (CenterMem): callJnfo(cfg,ptr->mem,planeWcfg); break;
+    case (CenterSiz): callJnfo(cfg,ptr->siz,planeWcfg); break;
+    case (CenterIdx): callJnfo(cfg,ptr->idx,planeWcfg); break;
+    case (CenterSlf): callJnfo(cfg,ptr->slf,planeWcfg); break;}
+    centerPlace(ptr,idx);
 }
 void machineTsage(enum Configure cfg, int idx)
 {
-    // TODO
+    struct Center *ptr = centerPull(idx);
+    switch (cfg) {default: ERROR();
+    case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break;
+    case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break;
+    case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;
+    case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;}
+    centerPlace(ptr,idx);
 }
 void machineEval(struct Express *exp, int idx)
 {
