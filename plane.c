@@ -234,6 +234,11 @@ float *planeMatrix(float *mat)
     vectorTwo(org,ClickLeft,ClickBase),
     vectorTwo(cur,ManipLeft,ManipBase));
 }
+float *kernelMatrix(float *mat, struct Kernel *ker)
+{
+    timesmat(timesmat(timesmat(timesmat(copymat(mat,ker->manip.mat,4),ker->pulse.mat,4),
+        ker->self.mat,4),ker->other.mat,4),ker->comp.mat,4);
+}
 void physicalToScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
@@ -393,9 +398,18 @@ void machineSelf(int sig, int *arg)
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     if (!dst->slf) ERROR();
     if (dst->slf == kernel->count) {kernel->count--;
-    // TODO move portion of pulse to self to make matrix equal to self times comp
-    // TODO if count is zero, clear self and other to comp
-    }
+    // move portion of pulse to self to make matrix equal to self times comp
+    // self1=matrix/comp; pulse1=pulse0*self0/self1
+    // pulse1*self1=pulse0*self0/self1*self1=pulse0*self0
+    float self[16]; float pulse[16]; float inv[16]; float mat[16];
+    timesmat(copymat(self,matrix->mat,4),invmat(copymat(inv,kernel->comp.mat,4),4),4);
+    timesmat(timesmat(copymat(pulse,kernel->pulse.mat,4),kernel->self.mat,4),invmat(copymat(inv,self,4),4),4);
+    copymat(kernel->pulse.mat,pulse,4); copymat(kernel->self.mat,self,4);
+    // if count is zero, clear self and other to comp
+    if (kernel->count == 0) {
+    copymat(kernel->comp.mat,kernelMatrix(mat,kernel),4);
+    identmat(kernel->manip.mat,4); identmat(kernel->pulse.mat,4);
+    identmat(kernel->self.mat,4); identmat(kernel->other.mat,4);}}
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
