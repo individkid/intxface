@@ -234,11 +234,6 @@ float *planeMatrix(float *mat)
     vectorTwo(org,ClickLeft,ClickBase),
     vectorTwo(cur,ManipLeft,ManipBase));
 }
-float *kernelMatrix(float *mat, struct Kernel *ker)
-{
-    timesmat(timesmat(timesmat(timesmat(copymat(mat,ker->manip.mat,4),ker->pulse.mat,4),
-        ker->self.mat,4),ker->other.mat,4),ker->comp.mat,4);
-}
 void physicalToScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
@@ -319,6 +314,15 @@ void centerPlace(struct Center *ptr, int idx)
 void centerFree(struct Response resp) {
     if (resp.ptr) {freeCenter(resp.ptr); allocCenter(&resp.ptr,0);}
 }
+void kernelClear(struct Kernel *ker)
+{
+    float mat[16];
+    timesmat(timesmat(timesmat(timesmat(copymat(mat,ker->manip.mat,4),
+        ker->pulse.mat,4),ker->self.mat,4),ker->other.mat,4),ker->comp.mat,4);
+    copymat(ker->comp.mat,mat,4);
+    identmat(ker->manip.mat,4); identmat(ker->pulse.mat,4);
+    identmat(ker->self.mat,4); identmat(ker->other.mat,4);
+}
 struct Center *machineCenter(int sig, int *arg, int lim, int idx, int sub)
 {
     if (sig != lim) ERROR();
@@ -398,18 +402,17 @@ void machineSelf(int sig, int *arg)
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     if (!dst->slf) ERROR();
     if (dst->slf == kernel->count) {kernel->count--;
-    // move portion of pulse to self to make matrix equal to self times comp
-    // self1=matrix/comp; pulse1=pulse0*self0/self1
+    // move portion of pulse to self to make matrix equal to self times other times comp
+    // self1=matrix/(other*comp); pulse1=pulse0*self0/self1
     // pulse1*self1=pulse0*self0/self1*self1=pulse0*self0
     float self[16]; float pulse[16]; float inv[16]; float mat[16];
-    timesmat(copymat(self,matrix->mat,4),invmat(copymat(inv,kernel->comp.mat,4),4),4);
-    timesmat(timesmat(copymat(pulse,kernel->pulse.mat,4),kernel->self.mat,4),invmat(copymat(inv,self,4),4),4);
+    timesmat(copymat(self,matrix->mat,4),
+        invmat(timesmat(copymat(inv,kernel->other.mat,4),kernel->comp.mat,4),4),4);
+    timesmat(timesmat(copymat(pulse,kernel->pulse.mat,4),
+        kernel->self.mat,4),invmat(copymat(inv,self,4),4),4);
     copymat(kernel->pulse.mat,pulse,4); copymat(kernel->self.mat,self,4);
     // if count is zero, clear self and other to comp
-    if (kernel->count == 0) {
-    copymat(kernel->comp.mat,kernelMatrix(mat,kernel),4);
-    identmat(kernel->manip.mat,4); identmat(kernel->pulse.mat,4);
-    identmat(kernel->self.mat,4); identmat(kernel->other.mat,4);}}
+    if (kernel->count == 0) kernelClear(kernel);}
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
@@ -420,8 +423,14 @@ void machineOther(int sig, int *arg)
     struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
     if (dst->slf) ERROR();
-    // TODO change other to make matrix equal to self times other times comp
-    // TODO if count is zero, clear self and other to comp
+    // change other to make matrix equal to self times other times comp
+    // matrix=self*other1*comp; other1=(1/self)*matrix/comp
+    float other[16]; float self[16]; float inv[16];
+    timesmat(timesmat(invmat(copymat(other,kernel->self.mat,4),4),
+        matrix->mat,4),invmat(copymat(inv,kernel->comp.mat,4),4),4);
+    copymat(kernel->other.mat,other,4);
+    // if count is zero, clear self and other to comp
+    if (kernel->count == 0) kernelClear(kernel);
     machinePlace(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
     machinePlace(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
 }
