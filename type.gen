@@ -539,6 +539,7 @@ Matrix = {
 	{"mat","Old",{},{16}},
 }
 Kernel = {
+	{"count","Int",{},{}},
 	{"comp","Matrix",{},{}},
 	{"other","Matrix",{},{}},
 	{"self","Matrix",{},{}},

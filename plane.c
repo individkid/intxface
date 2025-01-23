@@ -364,8 +364,8 @@ void machineManip(int sig, int *arg)
     struct Center *center = machineCenter(sig,arg,ManipArgs,ManipDst,ManipDstSub);
     struct Kernel *kernel = machineKernel(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
     // manipulate manip
-    float mat[16]; float inv[16];
-    jumpmat(kernel->manip.mat,timesmat(planeMatrix(mat),invmat(copymat(inv,kernel->copy.mat,4),4),4),4);
+    float mat[16]; float inv[16]; planeMatrix(mat);
+    jumpmat(kernel->manip.mat,jumpmat(invmat(copymat(inv,kernel->copy.mat,4),4),mat,4),4);
     copymat(kernel->copy.mat,mat,4);
     machinePlace(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
 }
@@ -380,6 +380,8 @@ void machinePulse(int sig, int *arg)
     // compose pulse, self, other, comp to matrix
     timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->pulse.mat,4),
         kernel->self.mat,4),kernel->other.mat,4),kernel->comp.mat,4);
+    // record count to detect dropped bounce backs
+    dst->slf = ++kernel->count; // TODO add this functionality to file.c
     machinePlace(dst,sig,arg,PulseArgs,PulseDst,PulseDstSub);
     machinePlace(src,sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
 }
@@ -390,8 +392,10 @@ void machineSelf(int sig, int *arg)
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     if (!dst->slf) ERROR();
+    if (dst->slf == kernel->count) {kernel->count--;
     // TODO move portion of pulse to self to make matrix equal to self times comp
-    // TODO if pulse is technically clear, clear self and other to comp
+    // TODO if count is zero, clear self and other to comp
+    }
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
@@ -403,6 +407,7 @@ void machineOther(int sig, int *arg)
     struct Kernel *kernel = machineKernel(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
     if (dst->slf) ERROR();
     // TODO change other to make matrix equal to self times other times comp
+    // TODO if count is zero, clear self and other to comp
     machinePlace(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
     machinePlace(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
 }
