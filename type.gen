@@ -98,11 +98,11 @@ Transfer = {
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
 	"Eval", -- call datxEval
+	"Click", -- change manipulator
 	"Manip", -- manipulate local
 	"Pulse", -- clear to towrite
 	"Self", -- clear to written
 	"Other", -- maintain as if
-	"Swap", -- change manipulator
 	"Comp", -- compose for draw
 	"Bopy", -- center to center
 	"Copy", -- center to memory
@@ -112,6 +112,12 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
+}
+ClickArg = {
+	"ClickSrc",
+	"ClickSrcSub",
+	"ClickDst",
+	"ClickDstSub",
 }
 ManipArg = {
 	"ManipDst",
@@ -134,10 +140,6 @@ OtherArg = {
 	"OtherSrcSub",
 	"OtherDst",
 	"OtherDstSub",
-}
-SwapArg = {
-	"SwapDst",
-	"SwapDstSub",
 }
 CompArg = {
 	"CompSrc",
@@ -490,9 +492,9 @@ Machine = {
 	{"val","Int",{["xfr"]={["Force"]=true}},"num"},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"res","Int",{["xfr"]={["Eval"]=true}},{}},
-	{"sig","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true,
+	{"sig","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
-	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Swap"]=true,["Comp"]=true,
+	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
@@ -537,13 +539,12 @@ Matrix = {
 	{"mat","Old",{},{16}},
 }
 Kernel = {
-	{"optimize","Int",{},{}},
-	{"compose","Matrix",{},{}},
-	{"maintain","Matrix",{},{}},
-	{"written","Matrix",{},{}},
-	{"towrite","Matrix",{},{}},
-	{"local","Matrix",{},{}},
-	{"inverse","Matrix",{},{}},
+	{"comp","Matrix",{},{}},
+	{"other","Matrix",{},{}},
+	{"self","Matrix",{},{}},
+	{"pulse","Matrix",{},{}},
+	{"manip","Matrix",{},{}},
+	{"copy","Matrix",{},{}},
 }
 Basis = {
 	{"mat","Old",{},{36}},

@@ -349,18 +349,24 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
     if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
     centerPlace(ptr,src);
 }
-// Order of matrix application is window * project * subject * object * element * vector.
-// To change X such that YX changes to ZYX, change X to Y’ZYX.
-// Each matrix is product of local, towrite, written, maintain.
-// User manipulates local, periodically cleared to towrite, cleared to written after echo indicated by slf.
-// Others manipulate maintain as if before any towrite and after any written.
-// Change between one machineFunc and another requires swapping their order.
+void machineClick(int sig, int *arg)
+{
+    struct Center *src = machineCenter(sig,arg,ClickArgs,ClickSrc,ClickSrcSub);
+    struct Matrix *matrix = machineMatrix(src,sig,arg,ClickArgs,ClickSrc,ClickSrcSub);
+    struct Center *dst = machineCenter(sig,arg,ClickArgs,ClickDst,ClickDstSub);
+    struct Kernel *kernel = machineKernel(dst,sig,arg,ClickArgs,ClickDst,ClickDstSub);
+    copymat(kernel->copy.mat,matrix->mat,4);
+    machinePlace(dst,sig,arg,ClickArgs,ClickDst,ClickDstSub);
+    machinePlace(src,sig,arg,ClickArgs,ClickSrc,ClickSrcSub);
+}
 void machineManip(int sig, int *arg)
 {
     struct Center *center = machineCenter(sig,arg,ManipArgs,ManipDst,ManipDstSub);
     struct Kernel *kernel = machineKernel(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
-    // manipulate local
-    float mat[16]; jumpmat(kernel->local.mat,planeMatrix(mat),4);
+    // manipulate manip
+    float mat[16]; float inv[16];
+    jumpmat(kernel->manip.mat,timesmat(planeMatrix(mat),invmat(copymat(inv,kernel->copy.mat,4),4),4),4);
+    copymat(kernel->copy.mat,mat,4);
     machinePlace(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
 }
 void machinePulse(int sig, int *arg)
@@ -369,11 +375,11 @@ void machinePulse(int sig, int *arg)
     struct Kernel *kernel = machineKernel(src,sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
     struct Center *dst = machineCenter(sig,arg,PulseArgs,PulseDst,PulseDstSub);
     struct Matrix *matrix = machineMatrix(src,sig,arg,PulseArgs,PulseDst,PulseDstSub);
-    // clear local to towrite
-    jumpmat(kernel->towrite.mat,kernel->local.mat,4); identmat(kernel->local.mat,4);
-    // compose towrite, wrritten, maintain to matrix
-    timesmat(timesmat(copymat(matrix->mat,kernel->towrite.mat,4),kernel->written.mat,4),
-        kernel->maintain.mat,4);
+    // clear manip to pulse
+    jumpmat(kernel->pulse.mat,kernel->manip.mat,4); identmat(kernel->manip.mat,4);
+    // compose pulse, self, other, comp to matrix
+    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->pulse.mat,4),
+        kernel->self.mat,4),kernel->other.mat,4),kernel->comp.mat,4);
     machinePlace(dst,sig,arg,PulseArgs,PulseDst,PulseDstSub);
     machinePlace(src,sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
 }
@@ -384,8 +390,8 @@ void machineSelf(int sig, int *arg)
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     if (!dst->slf) ERROR();
-    // TODO move portion of towrite to written indicated by portion of written times maintain that matrix is
-    // TODO if towrite is technically clear, clear written to maintain
+    // TODO move portion of pulse to self to make matrix equal to self times comp
+    // TODO if pulse is technically clear, clear self and other to comp
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
@@ -396,26 +402,19 @@ void machineOther(int sig, int *arg)
     struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
     if (dst->slf) ERROR();
-    // TODO change written such that written times maintain is matrix
+    // TODO change other to make matrix equal to self times other times comp
     machinePlace(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
     machinePlace(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
-}
-void machineSwap(int sig, int *arg)
-{
-    struct Center *center = machineCenter(sig,arg,SwapArgs,SwapDst,SwapDstSub);
-    struct Kernel *kernel = machineKernel(center,sig,arg,SwapArgs,SwapDst,SwapDstSub);
-    // TODO change manipulator
-    machinePlace(center,sig,arg,SwapArgs,SwapDst,SwapDstSub);
 }
 void machineComp(int sig, int *arg)
 {
     struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
-    struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
-    struct Matrix *matrix = machineMatrix(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
+    struct Center *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
+    struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
     // compose for draw
-    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->local.mat,4),kernel->towrite.mat,4),
-        kernel->written.mat,4),kernel->maintain.mat,4);
+    timesmat(timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->manip.mat,4),
+        kernel->pulse.mat,4),kernel->self.mat,4),kernel->other.mat,4),kernel->comp.mat,4);
     machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
     machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
 }
@@ -429,11 +428,7 @@ void machineBopy(int sig, int *arg)
     struct Center *dstPtr = centerPull(dst);
     if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
     if (dstSub < 0 || dstSub >= dstPtr->siz) ERROR();
-    if (srcPtr->mem == Kernelz && dstPtr->mem == Matrixz) for (int i = 0; i < count; i++)
-    copyMatrix(&dstPtr->mat[dstSub],&srcPtr->ker[srcSub].compose);
-    else if (srcPtr->mem == Matrixz && dstPtr->mem == Kernelz) for (int i = 0; i < count; i++)
-    copyMatrix(&dstPtr->ker[dstSub].local,&srcPtr->mat[srcSub]);
-    else if (srcPtr->mem == dstPtr->mem) switch (srcPtr->mem) {default: ERROR();
+    if (srcPtr->mem == dstPtr->mem) switch (srcPtr->mem) {default: ERROR();
     case (Indexz): dstPtr->ind[dstSub] = srcPtr->ind[srcSub]; break;
     case (Trianglez): copyTriangle(&dstPtr->tri[dstSub],&srcPtr->tri[srcSub]); break;
     case (Numericz): copyNumeric(&dstPtr->num[dstSub],&srcPtr->num[srcSub]); break;
@@ -570,11 +565,11 @@ void machineSwitch(struct Machine *mptr)
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],mptr->idx); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],mptr->val[i],planeWcfg); break;
     case (Eval): machineEval(&mptr->fnc[0],mptr->res); break;
+    case (Click): machineClick(mptr->sig,mptr->arg); break;
     case (Manip): machineManip(mptr->sig,mptr->arg); break;
     case (Pulse): machinePulse(mptr->sig,mptr->arg); break;
     case (Self): machineSelf(mptr->sig,mptr->arg); break;
     case (Other): machineOther(mptr->sig,mptr->arg); break;
-    case (Swap): machineSwap(mptr->sig,mptr->arg); break;
     case (Comp): machineComp(mptr->sig,mptr->arg); break;
     case (Bopy): machineBopy(mptr->sig,mptr->arg); break;
     case (Copy): machineCopy(mptr->sig,mptr->arg); break;
