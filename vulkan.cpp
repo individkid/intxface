@@ -1299,7 +1299,7 @@ struct BufferState : public ItemState {
     VkFence setup(void *ptr, int loc, int siz) {
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
-        {std::cerr << "invalid buffer size!" << std::endl; exit(-1);}
+        {std::cerr << "invalid buffer size! " << debug << " " << loc << " " << siz << " " << size.size << std::endl; exit(-1);}
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1333,6 +1333,10 @@ struct BufferState : public ItemState {
         vkQueueSubmit(graphics, 1, &submitInfo, fence);
         if (fence == VK_NULL_HANDLE) vkQueueWaitIdle(graphics);
     }
+};
+
+struct PierceState : public BufferState {
+    // TODO
 };
 
 struct TextureState : public ItemState {
@@ -1629,7 +1633,7 @@ struct DrawState : public BaseState {
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 get(SwapBind,Memorys)->getSwapChainFramebuffer(imageIndex),
                 get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),
-                get(BindEnums,Vertexz)->getBuffer(), get(BindEnums,Indexz)->getBuffer());
+                get(BindEnums,Bringupz)->getBuffer(), get(BindEnums,Indexz)->getBuffer());
             if (!drawFrame(commandBuffer,graphics,present,get(SwapBind,Memorys)->getSwapChain(),imageIndex,
                 ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence)) change->wots(RegisterMask,1<<ResizeAsync);
             return fence;
@@ -1898,10 +1902,9 @@ struct ForkState : public DoneState {
 struct CopyState {
     CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    int rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, int &retval);
+    int rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass);
     int copy(Response);
 };
-
 struct MainState {
     static const int frames = 2;
     ChangeState<Configure,Configures> changeState;
@@ -1911,10 +1914,16 @@ struct MainState {
     LogicalState logicalState;
     ArrayState<SwapState,1> swapState;
     ArrayState<PipeState,Micros> pipelineState;
-    ArrayState<UniformState,frames> matrixState;
-    ArrayState<BufferState,frames> vertexState;
     ArrayState<BufferState,frames> indexState;
+    ArrayState<BufferState,frames> bringupState;
     ArrayState<TextureState,frames> textureState;
+    ArrayState<UniformState,frames> uniformState;
+    ArrayState<UniformState,frames> matrixState;
+    ArrayState<BufferState,frames> triangleState;
+    ArrayState<BufferState,frames> numericState;
+    ArrayState<BufferState,frames> vertexState;
+    ArrayState<BufferState,frames> basisState;
+    ArrayState<PierceState,frames> pierceState;
     ArrayState<DrawState,frames> drawState;
     ThreadState threadState;
     TestState testState;
@@ -1934,11 +1943,17 @@ struct MainState {
             physicalState.graphicsFamily,physicalState.presentFamily,logicalState.imageFormat,
             logicalState.depthFormat,logicalState.renderPass,physicalState.memProperties),
         pipelineState("PipelineBind",PipelineBind,Memorys,logicalState.commandPool,frames),
-        matrixState("Matrixz",BindEnums,Matrixz),
-        vertexState("Vertexz",BindEnums,Vertexz,
-            logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        indexState("Indexz",BindEnums,Indexz,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+        indexState("Indexz",BindEnums,Indexz,
+            logicalState.graphics,logicalState.present,VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+        bringupState("Bringupz",BindEnums,Bringupz,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         textureState("Texturez",BindEnums,Texturez,physicalState.properties),
+        uniformState("Uniformz",BindEnums,Uniformz),
+        matrixState("Matrixz",BindEnums,Matrixz),
+        triangleState("Trianglez",BindEnums,Trianglez,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+        numericState("Numericz",BindEnums,Numericz),
+        vertexState("Vertexz",BindEnums,Vertexz),
+        basisState("Basisz",BindEnums,Basisz),
+        pierceState("Piercez",BindEnums,Piercez),
         drawState("DrawBind",DrawBind,Memorys,&changeState),
         threadState(logicalState.device,&changeState),
         sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {
@@ -2007,9 +2022,9 @@ void TestState::call() {
     {mptr->drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
     //
     Center *vtx = 0; allocCenter(&vtx,1);
-    vtx->mem = Vertexz; vtx->siz = vertices.size(); allocVertex(&vtx->vtx,vtx->siz);
+    vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++)
-    memcpy(&vtx->vtx[i],&vertices[i],sizeof(Vertex));
+    memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
     mptr->copyState.copy({0,0,0,vtx,vulkanPass});
     //
     Center *ind = 0; allocCenter(&ind,1);
@@ -2042,7 +2057,7 @@ void TestState::call() {
     BindState *bind[] = {
         &mptr->matrixState,
         &mptr->textureState,
-        &mptr->vertexState,
+        &mptr->bringupState,
         &mptr->indexState,
         &mptr->pipelineState,
         &mptr->swapState};
@@ -2052,7 +2067,8 @@ void TestState::call() {
     else {mptr->drawState.derived()->bind(); wake.wait();}}
 }
 
-int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, int &retval) {
+int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass) {
+    if (pass.mod) {
     //    x-x     x---x x---x   x-----x
     //   y---y   y---y   y---y   y---y
     //   z---z   z----z  z---z   z----z
@@ -2066,44 +2082,38 @@ int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Re
     else {zl=yl;zr=xr;}
     ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
     loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-    std::cerr << "rebase " << siz << std::endl;
-    return mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass);
+    std::cerr << "rebase x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;
+    return mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass);} else {
+    return mptr->threadState.push(buf,ptr,pass.ptr->idx*mod,pass.ptr->siz*mod,
+    SizeState(pass.ptr->idx*mod,pass.ptr->siz*mod),pass);}
 }
 extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
+#define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
+    if (rebase(mptr->STATE.preview(),(void*)center->FIELD, \
+    mptr->changeState.read(BASE),mptr->changeState.read(SIZE), \
+    sizeof(TYPE),pass)) retval++
+#define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
+    if (mptr->threadState.push(mptr->STATE.preview(), \
+    datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
+    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),pass))
 int CopyState::copy(Response pass) {
     Center *center = pass.ptr;
     int retval = 0;
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-    break; case (Indexz):
-        if (pass.mod ? rebase(mptr->indexState.preview(),(void*)center->ind,
-            mptr->changeState.read(IndexBase),mptr->changeState.read(IndexSize),
-            sizeof(int32_t),pass,retval) :
-        mptr->threadState.push(mptr->indexState.preview(),
-            (void*)center->ind,0,center->siz*sizeof(center->ind[0]),
-            SizeState(0,center->siz*sizeof(center->ind[0])),pass)) retval++;
-    break; case (Vertexz):
-        if (pass.mod ? rebase(mptr->vertexState.preview(),(void*)center->vtx,
-            mptr->changeState.read(VertexBase),mptr->changeState.read(VertexSize),
-            sizeof(Vertex),pass,retval) :
-        mptr->threadState.push(mptr->vertexState.preview(),
-            (void*)center->vtx,0,center->siz*sizeof(center->vtx[0]),
-            SizeState(0,center->siz*sizeof(center->vtx[0])),pass)) retval++;
-    break; case (Matrixz):
-        if (pass.mod ? rebase(mptr->matrixState.preview(),(void*)center->mat,
-            mptr->changeState.read(MatrixBase),mptr->changeState.read(MatrixSize),
-            sizeof(Matrix),pass,retval) :
-        mptr->threadState.push(mptr->matrixState.preview(),
-            (void*)center->mat,0,center->siz*sizeof(center->mat[0]),
-            SizeState(0,center->siz*sizeof(center->mat[0])),pass)) retval++;
-    break; case (Texturez): {
-        VkExtent2D texExtent = {(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei};
-        if (mptr->threadState.push(mptr->textureState.preview(),
-        datxVoidz(0,center->tex[0].dat),0,datxVoids(center->tex[0].dat),
-        SizeState(texExtent),pass)) retval++;}
+    break; case (Indexz): REBASE(indexState,ind,IndexBase,IndexSize,int32_t);
+    break; case (Bringupz): REBASE(bringupState,ver,BringupBase,BringupSize,Vertex);
+    break; case (Texturez): EXTENT(textureState,tex[0].dat,tex[0].wid,tex[0].hei); // TODO allow copy multiple textures
+    break; case (Uniformz): REBASE(uniformState,uni,UniformBase,UniformSize,Uniform);
+    break; case (Matrixz): REBASE(matrixState,mat,MatrixBase,MatrixSize,Matrix);
+    break; case (Trianglez): REBASE(triangleState,tri,TriangleBase,TriangleSize,Triangle);
+    break; case (Numericz): REBASE(numericState,num,NumericBase,NumericSize,Numeric);
+    break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
+    break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
+    break; case (Piercez): REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
     // TODO add remaining Memory types
     break; case (Configurez):
         for (int i = 0; i < center->siz; i++) mptr->changeState.write(center->cfg[i],center->val[i]);

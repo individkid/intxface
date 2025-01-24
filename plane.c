@@ -229,7 +229,7 @@ float *planeMatrix(float *mat)
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) fnc = planeRotateCursorRoller;
     if (!fnc) return 0; float fix[3]; float nrm[3]; float org[2]; float cur[2];
     return fnc(identmat(mat,4),
-    vectorThree(fix,PierceLeft,PierceBase,PierceDeep),
+    vectorThree(fix,FixedLeft,FixedBase,FixedDeep),
     vectorThree(nrm,NormalLeft,NormalBase,NormalDeep),
     vectorTwo(org,ClickLeft,ClickBase),
     vectorTwo(cur,ManipLeft,ManipBase));
@@ -400,8 +400,9 @@ void machineSelf(int sig, int *arg)
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
-    if (!dst->slf) ERROR();
-    if (dst->slf == kernel->count) {kernel->count--;
+    if (dst->slf != kernel->count) {kernel->count = 0;
+    callJnfo(RegisterMask,1<<SelfAsync,planeWots);}
+    else {kernel->count--;
     // move portion of pulse to self to make matrix equal to self times other times comp
     // self1=matrix/(other*comp); pulse1=pulse0*self0/self1
     // pulse1*self1=pulse0*self0/self1*self1=pulse0*self0
@@ -422,15 +423,15 @@ void machineOther(int sig, int *arg)
     struct Matrix *matrix = machineMatrix(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
     struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
-    if (dst->slf) ERROR();
+    if (dst->slf) {callJnfo(RegisterMask,1<<OtherAsync,planeWots);}
     // change other to make matrix equal to self times other times comp
     // matrix=self*other1*comp; other1=(1/self)*matrix/comp
-    float other[16]; float self[16]; float inv[16];
+    else {float other[16]; float self[16]; float inv[16];
     timesmat(timesmat(invmat(copymat(other,kernel->self.mat,4),4),
         matrix->mat,4),invmat(copymat(inv,kernel->comp.mat,4),4),4);
     copymat(kernel->other.mat,other,4);
     // if count is zero, clear self and other to comp
-    if (kernel->count == 0) kernelClear(kernel);
+    if (kernel->count == 0) kernelClear(kernel);}
     machinePlace(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
     machinePlace(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
 }
@@ -454,21 +455,21 @@ void machineBopy(int sig, int *arg)
     int dst = arg[BopyDst]; int dstSub = arg[BopyDstSub];
     struct Center *srcPtr = centerPull(src);
     struct Center *dstPtr = centerPull(dst);
-    if (srcSub < 0 || srcSub >= srcPtr->siz) ERROR();
-    if (dstSub < 0 || dstSub >= dstPtr->siz) ERROR();
-    if (srcPtr->mem == dstPtr->mem) switch (srcPtr->mem) {default: ERROR();
-    case (Indexz): dstPtr->ind[dstSub] = srcPtr->ind[srcSub]; break;
-    case (Trianglez): copyTriangle(&dstPtr->tri[dstSub],&srcPtr->tri[srcSub]); break;
-    case (Numericz): copyNumeric(&dstPtr->num[dstSub],&srcPtr->num[srcSub]); break;
-    case (Vertexz): copyVertex(&dstPtr->vtx[dstSub],&srcPtr->vtx[srcSub]); break;
-    case (Basisz): copyBasis(&dstPtr->bas[dstSub],&srcPtr->bas[srcSub]); break;
-    case (Matrixz): copyMatrix(&dstPtr->mat[dstSub],&srcPtr->mat[srcSub]); break;
-    case (Texturez): copyTexture(&dstPtr->tex[dstSub],&srcPtr->tex[srcSub]); break;
-    case (Piercez): copyPierce(&dstPtr->pie[dstSub],&srcPtr->pie[srcSub]); break;
-    case (Stringz): assignStr(&dstPtr->str[dstSub],srcPtr->str[srcSub]); break;
-    case (Machinez): copyMachine(&dstPtr->mch[dstSub],&srcPtr->mch[srcSub]); break;
-    case (Kernelz): copyKernel(&dstPtr->ker[dstSub],&srcPtr->ker[srcSub]); break;}
-    else ERROR();
+    if (srcSub < 0 || srcSub+count >= srcPtr->siz) ERROR();
+    if (dstSub < 0 || dstSub+count >= dstPtr->siz) ERROR();
+    if (srcPtr->mem != dstPtr->mem) ERROR();
+    for (int i = 0; i < count; i++) switch (srcPtr->mem) {default: ERROR();
+    case (Indexz): dstPtr->ind[dstSub+i] = srcPtr->ind[srcSub+i]; break;
+    case (Trianglez): copyTriangle(&dstPtr->tri[dstSub+i],&srcPtr->tri[srcSub+i]); break;
+    case (Numericz): copyNumeric(&dstPtr->num[dstSub+i],&srcPtr->num[srcSub+i]); break;
+    case (Vertexz): copyVertex(&dstPtr->vtx[dstSub+i],&srcPtr->vtx[srcSub+i]); break;
+    case (Basisz): copyBasis(&dstPtr->bas[dstSub+i],&srcPtr->bas[srcSub+i]); break;
+    case (Matrixz): copyMatrix(&dstPtr->mat[dstSub+i],&srcPtr->mat[srcSub+i]); break;
+    case (Texturez): copyTexture(&dstPtr->tex[dstSub+i],&srcPtr->tex[srcSub+i]); break;
+    case (Piercez): copyPierce(&dstPtr->pie[dstSub+i],&srcPtr->pie[srcSub+i]); break;
+    case (Stringz): assignStr(&dstPtr->str[dstSub+i],srcPtr->str[srcSub+i]); break;
+    case (Machinez): copyMachine(&dstPtr->mch[dstSub+i],&srcPtr->mch[srcSub+i]); break;
+    case (Kernelz): copyKernel(&dstPtr->ker[dstSub+i],&srcPtr->ker[srcSub+i]); break;}
     machinePlace(srcPtr,sig,arg,BopyArgs,BopySrc,BopySrcSub);
     machinePlace(dstPtr,sig,arg,BopyArgs,BopyDst,BopyDstSub);
 }

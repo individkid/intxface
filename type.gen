@@ -32,13 +32,14 @@ Flow = {
 }
 Memory = {
 	"Indexz", -- fetch buffer indices
+	"Bringupz", -- fetch buffer verticse
+	"Texturez", -- facet decorations
+	"Uniformz", -- references into arrays
+	"Matrixz", -- transformations
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
 	"Basisz", -- base for each dimension
-	"Matrixz", -- transformations
-	"Uniformz", -- references into arrays
-	"Texturez", -- facet decorations
 	"Piercez", -- per fragment info
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
@@ -52,14 +53,30 @@ Format = {
 Async = {
 	"FenceAsync",
 	"ResizeAsync",
+	"SelfAsync",
+	"OtherAsync",
 }
 Configure = {
 	"IndexBase",
 	"IndexSize",
-	"VertexBase",
-	"VertexSize",
+	"BringupBase",
+	"BringupSize",
+	"TextureBase",
+	"TextureSize",
+	"UniformBase",
+	"UniformSize",
 	"MatrixBase",
 	"MatrixSize",
+	"TriangleBase",
+	"TriangleSize",
+	"NumericBase",
+	"NumericSize",
+	"VertexBase",
+	"VertexSize",
+	"BasisBase",
+	"BasisSize",
+	"PierceBase",
+	"PierceSize",
 	"CenterSize",
 	"CenterMem", -- staged field
 	"CenterSiz",
@@ -78,9 +95,9 @@ Configure = {
 	"ManipBase",
 	"ClickLeft",
 	"ClickBase",
-	"PierceLeft",
-	"PierceBase",
-	"PierceDeep",
+	"FixedLeft",
+	"FixedBase",
+	"FixedDeep",
 	"NormalLeft",
 	"NormalBase",
 	"NormalDeep",
@@ -167,10 +184,10 @@ QopyArg = {
 	"QopySrc",
 }
 Plan = { -- which test to run
-	"Bringup",
-	"Regress",
-	"Builtin",
-	"Release",
+	"Bringup", -- reproduce the tutorial
+	"Regress", -- test each transformation with Configure values; send and receive Matrixz with planer.lua
+	"Builtin", -- test each interaction with space with shader indexed Memory buffers and depth color
+	"Release", -- complete user mouse and roller modes and make persistent through share to file
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
@@ -566,12 +583,14 @@ Center = {
 	{"idx","Int",{},{}},
 	{"slf","Int",{},{}},
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
+	{"ver","Vertex",{["mem"]={["Bringupz"]=true}},"siz"},
+	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
+	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},
+	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
-	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
