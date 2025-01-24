@@ -1,5 +1,35 @@
 
-Make planer.lua to demonstrate classification and heuristic,
+Bringup: Convert to metx matrix calculation. Use Configure to transform and start render.
+
+Regress: Use indexed buffers instead of fetched buffers. Change to depth color. Get pierce point to work. Add memory to add coincidence color, and feedback coincidence buffer to draw. Demonstrate depth and coincidence color with irregular triangles.
+
+Builtin: Test each Transfer from planer.lua. Test modes with writes to Configure.
+ Window move and size modes include
+  — (UArw) toggle top edge fixed,
+  — (LArw) toggle left edge fixed,
+  — (DArw) toggle bottom edge fixed,
+  — (RArw) toggle right edge fixed.
+ Mouse transformations include
+  — (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
+  — (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,
+  — (O) cross between pierce to ortho through picture and pierce to ortho through picture moved by same delta as cursor,
+  — (T) translate parallel to picture,
+  — (P) parallel to pierced plane.
+Roller transformations include
+- (R) rotate around moved leg of cross,
+- (Z) translate perpendicular to picture,
+- (S) perpendicular to pierced plane,
+- (F) resize with pierce fixed.
+
+Release: Write plane.lua that starts share, file, space, plane.
+
+Generic: Remove need for hand written .mk files by adding rules to Makefile, such as %CppR.o that is like %Cpp.o except -DREGRESS. Keep .mk files generated for generated functions, but have show.lua sed for pragma to decide which types covered by generics. The default if there is no pragma is all, so have depend.lua grep for pragma to decide between base.type.c and type.c if generic functions used. Determine if a function is generic by grep for pragma in %.gen.
+
+Suite: In plane.lua, share, file, space, plane, side to manipulate polytopes. In space.lua, share, file, space, plane, to display tetrahedron overlaps as they are found and optimized. In line.lua, share, file, space, plane, line, side, to decorate polytopes with sound. In point.lua, share, file, space, plane, line, side, frame, to decorate facets with little language for textures, sound, frames, text, graffiti, permissions, wormholes, transparency. Share connects processes by pipe. Side displays and edits fields in file. Frame displays and edits video and interfaces to hdmi over usbc. 
+
+Publish: Generate and prettify all tetrahedron overlaps. Make permutation finder with fpga. Make harmonic resonator with op amps. Make diy power supply amplifier to show off diy speakers. Make gaming pc. Make paper mache mountain village tram with overhead line, and coastal high speed rail with overhead line and station without parking, displayed atop and looping under platform. Buy camera to show off home tech, photograph diridon area, perform found sound, integrate with software.
+
+print.lua to demonstrate classification and heuristic,
 plane.lua to demonstrate manipulation,
 space.lua to demonstrate sampling and equivalence,
 line.lua to demonstrate multimedia,
@@ -9,4 +39,3 @@ Add decoration to facets. Add projection of selected decoration onto otherwise t
 Add interpretation of visible facet metrics as sound attractors.
 Add requirement of observation of other decorations in certain orders before observation of a protected decoration.
 Add change of subspace in response to passing through a facet.
-
