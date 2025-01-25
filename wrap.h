@@ -6,6 +6,7 @@ void wrapCallback(const struct Close *arg);
 #ifdef __linux__
 #include <cstring>
 #endif
+#include <stdlib.h>
 
 struct WrapClose; typedef void wrapFunc(const struct WrapClose *arg);
 struct WrapClose : Close {

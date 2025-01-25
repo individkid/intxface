@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <pthread.h>
 #ifdef __APPLE__
 #include <dispatch/dispatch.h>
