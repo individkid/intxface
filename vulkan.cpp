@@ -1356,11 +1356,11 @@ struct ResultState : public ItemState {
     void resize() {
     }
     VkFence setup(void *ptr, int loc, int siz) {
-        // TODO use bindings and return no fence
+        // TODO copy buffer to mapped buffer
         return VK_NULL_HANDLE;
     }
     void upset() {
-        // TODO release bindings
+        // TODO copy from maped buffer to pointer from setup
     }
     // TODO following done in copy of Piercez
     // first semaphore bound as input to pierce setup
