@@ -646,7 +646,7 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 }
 
 enum BaseEnum {
-    InitBase, // uninitialized
+    InitBase, // avoid binding to uninitialized
     BothBase, // enqued for both change
     SizeBase, // enqued for size change
     LockBase, // enqued for data change
@@ -656,14 +656,15 @@ enum BaseEnum {
     BaseEnums
 };
 struct BaseState {
-    SafeState safe; int count; BaseEnum state;
+    SafeState safe;
+    BaseEnum state; int count;
     // following indirectly protected by state/count that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/count
     SizeState size, todo;
     void *ptr; int loc; int siz;
     char debug[64];
-    BaseState() : safe(1), count(0), state(InitBase), size(0,0), todo(0,0), debug{0} {}
-    BaseState(const char *name) : safe(1), count(0), state(InitBase), size(0,0), todo(0,0), debug{0} {
+    BaseState() : safe(1), state(InitBase), count(0), size(0,0), todo(0,0), debug{0} {}
+    BaseState(const char *name) : safe(1), state(InitBase), count(0), size(0,0), todo(0,0), debug{0} {
         sprintf(debug,"%s%d",name,BindState::debug++);
     }
     bool push(void *ptr, int loc, int siz, SizeState max) { // called in main thread
@@ -739,7 +740,7 @@ struct BaseState {
     virtual void upset() = 0; // consumes time
     bool grab() {
         safe.wait();
-        if (state == FreeBase) state = GrabBase;
+        if (state == FreeBase && count == 0) state = GrabBase;
         if (state != GrabBase) {safe.post(); return false;}
         // TODO is there a way to check that grabbed cannot be bound without semaphore link
         count += 1;
@@ -1901,27 +1902,25 @@ struct ThreadState : public DoneState {
     void func() {}
 };
 
-/*extern "C" {
+extern "C" {
 float *planeWindow(float *mat);
 float *matrc(float *u, int r, int c, int n);
-float *identmat(float *u, int n);
-}*/
+}
 struct TestState : public DoneState {
     SafeState safe, wake; bool goon;
     TestState() : safe(1), wake(0), goon(true) {
         strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
     ~TestState() {std::cout << "~TestState" << std::endl;}
-    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj) {
+    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug) {
         static auto startTime = std::chrono::high_resolution_clock::now();
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        // float one[16]; identmat(one,4); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) view[r][c] = *matrc(one,r,c,4);
         view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        // float mat[16]; planeWindow(mat); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) proj[r][c] = *matrc(mat,r,c,4);
         proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
         proj[1][1] *= -1;
+        float mat[16]; planeWindow(mat); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) debug[r][c] = *matrc(mat,r,c,4);
     }
     void call();
     void done() {
@@ -2049,6 +2048,7 @@ void TestState::call() {
     glm::mat4 model[NUM_FRAMES_IN_FLIGHT];
     glm::mat4 view[NUM_FRAMES_IN_FLIGHT];
     glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
+    glm::mat4 debug[NUM_FRAMES_IN_FLIGHT];
     int currentUniform = 0;
     //
     int xsiz = 800; int ysiz = 600;
@@ -2095,12 +2095,13 @@ void TestState::call() {
     while (!mptr->threadState.push(mptr->swapState.preview(0),mptr->sizeState)) wake.wait();
     mptr->swapState.advance(0);}
     //
-    testUpdate(mptr->sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform]);
+    testUpdate(mptr->sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform],debug[currentUniform]);
     Center *mat = 0; allocCenter(&mat,1);
-    mat->mem = Matrixz; mat->siz = 3; allocMatrix(&mat->mat,mat->siz);
+    mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
     memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
+    memcpy(&mat->mat[3],&debug[currentUniform],sizeof(Matrix));
     if (mptr->copyState.copy({0,0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
     BindState *bind[] = {
@@ -2148,7 +2149,7 @@ void *datxVoidz(int num, void *dat);
 #define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
     if (mptr->threadState.push(mptr->STATE.preview(), \
     datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
-    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),pass))
+    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),pass)) retval++
 int CopyState::copy(Response pass) {
     Center *center = pass.ptr;
     int retval = 0;
@@ -2164,10 +2165,8 @@ int CopyState::copy(Response pass) {
     break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
     break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
     break; case (Piercez): REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
-    // TODO add remaining Memory types
-    break; case (Configurez):
-        for (int i = 0; i < center->siz; i++) mptr->changeState.write(center->cfg[i],center->val[i]);
-    }
+    break; case (Configurez): {for (int i = 0; i < center->siz; i++)
+    mptr->changeState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
 }
 
