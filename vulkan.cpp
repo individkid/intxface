@@ -399,6 +399,7 @@ enum BindEnum {
     SwapBind,
     PipelineBind,
     DrawBind,
+    ResultBind,
     BindEnums
 };
 struct BaseState;
@@ -650,6 +651,7 @@ enum BaseEnum {
     SizeBase, // enqued for size change
     LockBase, // enqued for data change
     NextBase, // waiting for fence done
+    GrabBase, // bindable and writable
     FreeBase, // ready to use or update
     BaseEnums
 };
@@ -666,7 +668,7 @@ struct BaseState {
     }
     bool push(void *ptr, int loc, int siz, SizeState max) { // called in main thread
         safe.wait();
-        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (state != InitBase && state != FreeBase && state != GrabBase) {safe.post(); return false;}
         if (state == FreeBase && count > 0) {safe.post(); return false;}
         this->ptr = ptr; this->loc = loc; this->siz = siz;
         todo = max;
@@ -687,7 +689,7 @@ struct BaseState {
     }
     bool push(SizeState siz) { // called in main thread
         safe.wait();
-        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (state != InitBase && state != FreeBase && state != GrabBase) {safe.post(); return false;}
         if (state == FreeBase && count > 0) {safe.post(); return false;}
         todo = siz;
         state = SizeBase;
@@ -708,7 +710,8 @@ struct BaseState {
     virtual void resize() = 0; // consumes time
     bool push(void *ptr, int loc, int siz) { // called in main thread
         safe.wait();
-        if (state != FreeBase || count > 0) {safe.post(); return false;}
+        if (state != FreeBase && state != GrabBase) {safe.post(); return false;}
+        if (state == FreeBase && count > 0) {safe.post(); return false;}
         this->ptr = ptr; this->loc = loc; this->siz = siz;
         state = LockBase;
         safe.post();
@@ -734,14 +737,23 @@ struct BaseState {
         // bind->advance();
     }
     virtual void upset() = 0; // consumes time
-    bool take() { // called in main thread by different BaseState
+    bool grab() {
+        safe.wait();
+        if (state == FreeBase) state = GrabBase;
+        if (state != GrabBase) {safe.post(); return false;}
+        // TODO is there a way to check that grabbed cannot be bound without semaphore link
+        count += 1;
+        safe.post();
+        return true;
+    }
+    bool take() {
         safe.wait();
         if (state != FreeBase) {safe.post(); return false;}
         count += 1;
         safe.post();
         return true;
     }
-    void give() { // called in main thread by different BaseState
+    void give() {
         safe.wait();
         if (state != FreeBase) {std::cerr << "invalid give state!" << std::endl; exit(-1);}
         if (count <= 0) {std::cerr << "invalid free count! " << debug << std::endl; exit(-1);}
@@ -1246,7 +1258,6 @@ struct UniformState : public ItemState {
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
-    // TODO add rebase
     VkFence setup(void *ptr, int loc, int siz) {
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
@@ -1295,7 +1306,6 @@ struct BufferState : public ItemState {
         vkFreeMemory(device, bufferMemory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
-    // TODO add rebase
     VkFence setup(void *ptr, int loc, int siz) {
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
@@ -1335,8 +1345,33 @@ struct BufferState : public ItemState {
     }
 };
 
-struct PierceState : public BufferState {
-    // TODO
+struct ResultState : public ItemState {
+    ResultState() :
+        ItemState("ResultState",BindState::self)
+        {std::cout << "ResultState " << debug << std::endl;}
+    ~ResultState() {std::cout << "~ResultState " << debug << std::endl;}
+    void unsize() {
+    }
+    void resize() {
+    }
+    VkFence setup(void *ptr, int loc, int siz) {
+        // TODO use bindings and return no fence
+        return VK_NULL_HANDLE;
+    }
+    void upset() {
+        // TODO release bindings
+    }
+    // TODO following done in copy of Piercez
+    // first semaphore bound as input to pierce setup
+    // second semaphore bound as output to pierce setup
+    // pierce setup returns no fence
+    // second semaphore bound as input to draw setup
+    // pierce buffer bound to draw
+    // third semaphore bound as output to draw setup
+    // draw setup returns no fence
+    // third semaphore bound as input to result setup
+    // pierce buffer bound to result
+    // result setup returns fence
 };
 
 struct TextureState : public ItemState {
@@ -1866,6 +1901,11 @@ struct ThreadState : public DoneState {
     void func() {}
 };
 
+/*extern "C" {
+float *planeWindow(float *mat);
+float *matrc(float *u, int r, int c, int n);
+float *identmat(float *u, int n);
+}*/
 struct TestState : public DoneState {
     SafeState safe, wake; bool goon;
     TestState() : safe(1), wake(0), goon(true) {
@@ -1877,7 +1917,9 @@ struct TestState : public DoneState {
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
         model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        // float one[16]; identmat(one,4); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) view[r][c] = *matrc(one,r,c,4);
         view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        // float mat[16]; planeWindow(mat); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) proj[r][c] = *matrc(mat,r,c,4);
         proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
         proj[1][1] *= -1;
     }
@@ -1923,7 +1965,8 @@ struct MainState {
     ArrayState<BufferState,frames> numericState;
     ArrayState<BufferState,frames> vertexState;
     ArrayState<BufferState,frames> basisState;
-    ArrayState<PierceState,frames> pierceState;
+    ArrayState<BufferState,frames> pierceState;
+    ArrayState<ResultState,frames> resultState;
     ArrayState<DrawState,frames> drawState;
     ThreadState threadState;
     TestState testState;
@@ -1954,6 +1997,7 @@ struct MainState {
         vertexState("Vertexz",BindEnums,Vertexz),
         basisState("Basisz",BindEnums,Basisz),
         pierceState("Piercez",BindEnums,Piercez),
+        resultState("ResultBind",ResultBind,Memorys),
         drawState("DrawBind",DrawBind,Memorys,&changeState),
         threadState(logicalState.device,&changeState),
         sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)) {
@@ -2006,6 +2050,11 @@ void TestState::call() {
     glm::mat4 view[NUM_FRAMES_IN_FLIGHT];
     glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
     int currentUniform = 0;
+    //
+    int xsiz = 800; int ysiz = 600;
+    mptr->changeState.write(WindowLeft,-xsiz/2); mptr->changeState.write(WindowBase,-ysiz/2);
+    mptr->changeState.write(WindowWidth,xsiz); mptr->changeState.write(WindowHeight,ysiz);
+    mptr->changeState.write(FocalLength,10); mptr->changeState.write(FocalDepth,10);
     //
     if (!mptr->threadState.push(mptr->swapState.preview(0),mptr->sizeState))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
@@ -2068,12 +2117,13 @@ void TestState::call() {
 }
 
 int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass) {
+    int loc = pass.ptr->idx;
+    int siz = pass.ptr->siz;
+    SizeState max;
     if (pass.mod) {
     //    x-x     x---x x---x   x-----x
     //   y---y   y---y   y---y   y---y
     //   z---z   z----z  z---z   z----z
-    int loc = pass.ptr->idx;
-    int siz = pass.ptr->siz;
     int xl = loc; int xr = xl+siz;
     int yl = base; int yr = yl+size;
     int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
@@ -2082,10 +2132,10 @@ int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Re
     else {zl=yl;zr=xr;}
     ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
     loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-    std::cerr << "rebase x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;
-    return mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass);} else {
-    return mptr->threadState.push(buf,ptr,pass.ptr->idx*mod,pass.ptr->siz*mod,
-    SizeState(pass.ptr->idx*mod,pass.ptr->siz*mod),pass);}
+    std::cerr << "rebase x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
+    loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
+    base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
+    return mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass);
 }
 extern "C" {
 int datxVoids(void *dat);

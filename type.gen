@@ -109,6 +109,8 @@ Configure = {
 	"WindowHeight",
 	"WindowLeft",
 	"WindowBase",
+	"FocalLength",
+	"FocalDepth",
 }
 Transfer = {
 	"Stage", -- center fields to configure

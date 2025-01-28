@@ -234,6 +234,17 @@ float *planeMatrix(float *mat)
     vectorTwo(org,ClickLeft,ClickBase),
     vectorTwo(cur,ManipLeft,ManipBase));
 }
+float *planeSolve(float *mat, float *domain, float *range, int dim)
+{
+    float inv[dim*dim];
+    if (invmat(copymat(inv,domain,dim),dim) == 0) {
+    fprintf(stderr,"domain\n");
+    for (int r = 0; r < dim; r++) {for (int c = 0; c < dim; c++) fprintf(stderr," %d",(int)*matrc(domain,r,c,dim)); fprintf(stderr,"\n");}
+    fprintf(stderr,"range\n");
+    for (int r = 0; r < dim; r++) {for (int c = 0; c < dim; c++) fprintf(stderr," %d",(int)*matrc(range,r,c,dim)); fprintf(stderr,"\n");}
+    exit(-1);}
+    return timesmat(copymat(mat,range,dim),inv,dim);
+}
 void physicalToScreen(float *xptr, float *yptr)
 {
     int width, height, xphys, yphys;
@@ -262,29 +273,31 @@ void screenFromWindow(float *xptr, float *yptr)
     left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
     *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
-int debug = 0;
 float *planeWindow(float *mat)
 {
-    // find the matrix to keep points fixed when window moves or resizes
-    float xmax = 50.0; float ymax = 50.0;
-    float xmin = -50.0; float ymin = -50.0;
-    float xmid = (xmax+xmin)/2.0; float ymid = (ymax+ymin)/2.0;
-    physicalToScreen(&xmax,&ymax); screenToWindow(&xmax,&ymax);
-    physicalToScreen(&xmin,&ymin); screenToWindow(&xmin,&ymin);
-    physicalToScreen(&xmid,&ymid); screenToWindow(&xmid,&ymid);
-    for (int i = 0; i < 16; i++) mat[i] = 0.0;
-    *matrc(mat,0,0,4) = 1.0/(xmax-xmid); *matrc(mat,1,1,4) = 1.0/(ymax-ymid);
-    *matrc(mat,0,3,4) = -xmid; *matrc(mat,1,3,4) = -ymid;
-    *matrc(mat,2,2,4) = 1.0; *matrc(mat,3,3,4) = 1.0;
-    /*
-    printf("%d\n",debug++);
-    for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++)
-    printf(" %6f",*matrc(mat,i,j,4));
-    printf("\n");}
-    printf("\n");
-    */
-    return identmat(mat,4);
+    float domain[16]; float range[16];
+    float focal = callInfo(FocalLength,0,planeRcfg); float depth = callInfo(FocalDepth,0,planeRcfg);
+    *matrc(domain,0,0,4) = callInfo(WindowLeft,0,planeRcfg);
+    *matrc(domain,1,0,4) = callInfo(WindowBase,0,planeRcfg);
+    *matrc(domain,2,0,4) = 0.0;
+    *matrc(domain,3,0,4) = 1.0;
+    *matrc(domain,0,1,4) = callInfo(WindowLeft,0,planeRcfg)+callInfo(WindowWidth,0,planeRcfg);
+    *matrc(domain,1,1,4) = callInfo(WindowBase,0,planeRcfg)+callInfo(WindowHeight,0,planeRcfg);
+    *matrc(domain,2,1,4) = 0.0;
+    *matrc(domain,3,1,4) = 1.0;
+    *matrc(domain,0,2,4) = callInfo(WindowLeft,0,planeRcfg);
+    *matrc(domain,1,2,4) = callInfo(WindowBase,0,planeRcfg)+callInfo(WindowHeight,0,planeRcfg);
+    *matrc(domain,2,2,4) = depth;
+    *matrc(domain,3,2,4) = 1.0;
+    *matrc(domain,0,3,4) = callInfo(WindowLeft,0,planeRcfg)+callInfo(WindowWidth,0,planeRcfg);
+    *matrc(domain,1,3,4) = callInfo(WindowBase,0,planeRcfg);
+    *matrc(domain,2,3,4) = depth;
+    *matrc(domain,3,3,4) = 1.0;
+    *matrc(range,0,0,4) = -1.0; *matrc(range,1,0,4) = -1.0; *matrc(range,2,0,4) = 0.0; *matrc(range,3,0,4) = 1.0;
+    *matrc(range,0,1,4) = 1.0; *matrc(range,1,1,4) = 1.0; *matrc(range,2,1,4) = 0.0; *matrc(range,3,1,4) = 1.0;
+    *matrc(range,0,2,4) = -1.0; *matrc(range,1,2,4) = 1.0; *matrc(range,2,2,4) = depth; *matrc(range,3,2,4) = (focal+depth)/focal;
+    *matrc(range,0,3,4) = 1.0; *matrc(range,1,3,4) = -1.0; *matrc(range,2,3,4) = depth; *matrc(range,3,3,4) = (focal+depth)/focal;
+    return planeSolve(mat,domain,range,4);
 }
 
 void centerSize(int idx)
