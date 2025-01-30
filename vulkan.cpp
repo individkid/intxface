@@ -567,9 +567,9 @@ template <class State, int Size> struct ArrayState : public BindState {
     void advance(int i) {
         if (i < 0 || i >= Size) {std::cerr << "cannot advance!" << std::endl; exit(-1);}
         safe.wait(); idx = i; safe.post();}
-    void advance() {safe.wait(); idx = (idx+1)%Size; safe.post();}
-    BaseState *buffer() {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
-    int index() {return check(typ,mem);}
+    void advance() override {safe.wait(); idx = (idx+1)%Size; safe.post();}
+    BaseState *buffer() override {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
+    int index() override {return check(typ,mem);}
 };
 template<class State, class Init, int Size> struct InitState {
     State state[Size];
@@ -899,7 +899,7 @@ struct SwapState : public BaseState {
     VkSwapchainKHR getSwapChain() {return swapChain;}
     VkFramebuffer getSwapChainFramebuffer(int i) {return swapChainFramebuffers[i];}
     VkExtent2D getSwapChainExtent() {return size.capabilities.currentExtent;}
-    void resize() {
+    void resize() override {
         swapChain = createSwapChain(surface,device,getSwapChainExtent(),surfaceFormat,presentMode,
             size.capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
@@ -912,7 +912,7 @@ struct SwapState : public BaseState {
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffers(device,getSwapChainExtent(),renderPass,swapChainImageViews,depthImageView,swapChainFramebuffers);
     }
-    void unsize() {
+    void unsize() override {
         int width = 0, height = 0;
         glfwGetFramebufferSize(window, &width, &height);
         while (width == 0 || height == 0) {
@@ -928,10 +928,10 @@ struct SwapState : public BaseState {
             vkDestroyImageView(device, imageView, nullptr);
         vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
-    VkFence setup(void *ptr, int loc, int siz) {
+    VkFence setup(void *ptr, int loc, int siz) override {
         return VK_NULL_HANDLE;
     }
-    void upset() {
+    void upset() override {
     }
     static VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
         VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
@@ -1014,14 +1014,14 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() {return descriptorSetLayout;}
-    void resize() {
+    void resize() override {
     }
-    void unsize() {
+    void unsize() override {
     }
-    VkFence setup(void *ptr, int loc, int siz) {
+    VkFence setup(void *ptr, int loc, int siz) override {
         return VK_NULL_HANDLE; // return null fence for no wait
     }
-    void upset() {
+    void upset() override {
     }
     static VkDescriptorPool createDescriptorPool(VkDevice device, int frames) {
         VkDescriptorPool descriptorPool;
@@ -1213,7 +1213,7 @@ struct ItemState : public BaseState {
     ItemState(const char *name, BindState *ptr) : bind(ptr) {
         sprintf(debug,"%s%s%d",bind->name,name,BindState::debug++);
     }
-    void advance () {
+    void advance () override {
         bind->advance();
     }
     static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage,
@@ -1251,27 +1251,27 @@ struct UniformState : public ItemState {
         memProperties(BindState::memProperties)
         {std::cout << "UniformState " << debug << std::endl;}
     ~UniformState() {push(SizeState(0,0)); baseres(); std::cout << "~UniformState " << debug << std::endl;}
-    VkBuffer getBuffer() {return buffer;}
-    int getRange() {return size.size;}
-    void resize() {
+    VkBuffer getBuffer() override {return buffer;}
+    int getRange() override {return size.size;}
+    void resize() override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         memProperties, buffer, memory);
         vkMapMemory(device, memory, 0, bufferSize, 0, &mapped);
     }
-    void unsize() {
+    void unsize() override {
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
-    VkFence setup(void *ptr, int loc, int siz) {
+    VkFence setup(void *ptr, int loc, int siz) override {
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
         {std::cerr << "invalid uniform size!" << std::endl; exit(-1);}
         memcpy((void*)((char*)mapped+loc), ptr, siz);
         return VK_NULL_HANDLE; // return null fence for no wait
     }
-    void upset() {
+    void upset() override {
     }
 };
 
@@ -1297,11 +1297,11 @@ struct BufferState : public ItemState {
         before(VK_NULL_HANDLE), atomic(false)
         {std::cout << "BufferState " << debug << std::endl;}
     ~BufferState() {push(SizeState(0,0)); baseres(); std::cout << "~BufferState " << debug << std::endl;}
-    VkBuffer getBuffer() {return buffer;}
-    int getRange() {return size.size;}
-    VkSemaphore getSemaphore() {atomic = true; return after;}
-    void setSemaphore(VkSemaphore sem) {before = sem;}
-    void resize() {
+    VkBuffer getBuffer() override {return buffer;}
+    int getRange() override {return size.size;}
+    VkSemaphore getSemaphore() override {atomic = true; return after;}
+    void setSemaphore(VkSemaphore sem) override {before = sem;}
+    void resize() override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, bufferMemory);
@@ -1309,7 +1309,7 @@ struct BufferState : public ItemState {
         fence = createFence(device);
         after = createSemaphore(device);
     }
-    void unsize() {
+    void unsize() override {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
         vkDestroySemaphore(device, after, nullptr);
         vkDestroyFence(device, fence, nullptr);
@@ -1317,7 +1317,7 @@ struct BufferState : public ItemState {
         vkFreeMemory(device, bufferMemory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
-    VkFence setup(void *ptr, int loc, int siz) {
+    VkFence setup(void *ptr, int loc, int siz) override {
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
         {std::cerr << "invalid buffer size! " << debug << " " << loc << " " << siz << " " << size.size << std::endl; exit(-1);}
@@ -1334,7 +1334,7 @@ struct BufferState : public ItemState {
         if (atomic) {atomic = false; return VK_NULL_HANDLE;}
         return fence;
     }
-    void upset() {
+    void upset() override {
         vkUnmapMemory(device, stagingBufferMemory);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -1372,15 +1372,15 @@ struct ResultState : public ItemState {
         ItemState("ResultState",BindState::self)
         {std::cout << "ResultState " << debug << std::endl;}
     ~ResultState() {std::cout << "~ResultState " << debug << std::endl;}
-    void unsize() {
+    void unsize() override {
     }
-    void resize() {
+    void resize() override {
     }
-    VkFence setup(void *ptr, int loc, int siz) {
+    VkFence setup(void *ptr, int loc, int siz) override {
         // TODO copy buffer to mapped buffer
         return VK_NULL_HANDLE;
     }
-    void upset() {
+    void upset() override {
         // TODO copy from maped buffer to pointer from setup
     }
 };
@@ -1412,9 +1412,9 @@ struct TextureState : public ItemState {
         memProperties(BindState::memProperties)
         {std::cout << "TextureState " << debug << std::endl;}
     ~TextureState() {push(SizeState(0,0)); baseres(); std::cout << "~TextureState " << debug << std::endl;}
-    VkImageView getTextureImageView() {return textureImageView;}
-    VkSampler getTextureSampler() {return textureSampler;}
-    void resize() {
+    VkImageView getTextureImageView() override {return textureImageView;}
+    VkSampler getTextureSampler() override {return textureSampler;}
+    void resize() override {
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
@@ -1429,7 +1429,7 @@ struct TextureState : public ItemState {
         afterSemaphore = createSemaphore(device);
         fence = createFence(device);
     }
-    void unsize() {
+    void unsize() override {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
         if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
         if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
@@ -1442,7 +1442,7 @@ struct TextureState : public ItemState {
         vkDestroyImage(device, textureImage, nullptr);
         vkFreeMemory(device, textureImageMemory, nullptr);
     }
-    VkFence setup(void *ptr, int loc, int siz) {
+    VkFence setup(void *ptr, int loc, int siz) override {
         if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
@@ -1462,7 +1462,7 @@ struct TextureState : public ItemState {
             stagingBuffer, beforeBuffer, commandBuffer, afterBuffer);
         return fence;
     }
-    void upset() {
+    void upset() override {
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
@@ -1583,7 +1583,6 @@ struct TextureState : public ItemState {
 };
 
 struct DrawState : public BaseState {
-    // TODO add Micro that causes DrawStruct to copy Pierce to Center after render done semaphore
     const VkDevice device;
     const VkRenderPass renderPass;
     const VkQueue graphics;
@@ -1591,13 +1590,14 @@ struct DrawState : public BaseState {
     const VkCommandPool commandPool;
     const int frames;
     ChangeState<Configure,Configures> *change;
-    VkCommandBuffer commandBuffer;
     VkSemaphore acquire;
+    VkSemaphore before;
     VkSemaphore after;
-    VkFence fence; VkSemaphore before;
+    VkFence fence;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorLayout;
     VkDescriptorSet descriptorSet;
+    VkCommandBuffer commandBuffer;
     InitState<BaseState *, ConstState<BaseState *>, BindEnums+Memorys> bufptr;
     InitState<int, ConstState<int>, BindEnums+Memorys> bufidx; int bufsiz;
     DrawState() :
@@ -1614,8 +1614,8 @@ struct DrawState : public BaseState {
         bufidx(ConstState<int>(0)), bufsiz(0)
         {std::cout << "DrawState " << debug << std::endl;}
     ~DrawState() {push(SizeState(0,0)); baseres(); std::cout << "~DrawState " << debug << std::endl;}
-    VkSemaphore getSemaphore() {return after;}
-    void setSemaphore(VkSemaphore sem) {before = sem;}
+    VkSemaphore getSemaphore() override {return after;}
+    void setSemaphore(VkSemaphore sem) override {before = sem;}
     bool bind(BindState **ary, int siz) {
         safe.wait();
         // must check both state and bufsiz because might be bound but not pushed
@@ -1641,7 +1641,7 @@ struct DrawState : public BaseState {
         if (!bufptr[index]) {std::cerr << "invalid bind!" << typ << " " << mem << std::endl; exit(-1);}
         return bufptr[index];
     }
-    void resize() {
+    void resize() override {
         descriptorPool = get(PipelineBind,Memorys)->getDescriptorPool();
         descriptorLayout = get(PipelineBind,Memorys)->getDescriptorSetLayout(); bind();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
@@ -1650,7 +1650,7 @@ struct DrawState : public BaseState {
         after = createSemaphore(device);
         fence = createFence(device);
     }
-    void unsize() {
+    void unsize() override {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
         vkDestroySemaphore(device, acquire, nullptr);
         vkDestroySemaphore(device, after, nullptr);
@@ -1658,7 +1658,7 @@ struct DrawState : public BaseState {
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
-    VkFence setup(void *ptr, int loc, int siz) {
+    VkFence setup(void *ptr, int loc, int siz) override {
         if (loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
         if (size == SizeState(MicroTest)) {
             VkExtent2D swapChainExtent = get(SwapBind,Memorys)->getSwapChainExtent();
@@ -1691,7 +1691,7 @@ struct DrawState : public BaseState {
         }
         return VK_NULL_HANDLE;
     }
-    void upset() {
+    void upset() override {
         bind();
     }
     static VkDescriptorSet createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
@@ -1881,7 +1881,7 @@ struct ThreadState : public DoneState {
         else {safe.post(); wake.wait();}}}
         return true;
     }
-    void call() {
+    void call() override {
         while (stage()) {
         if (after.empty()) {std::cerr << "separate empty after!" << std::endl; exit(-1);}
         PushState push = after.front(); after.pop_front();
@@ -1893,13 +1893,13 @@ struct ThreadState : public DoneState {
         change->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(device);
     }
-    void done() {
+    void done() override {
         safe.wait();
         goon = false;
         safe.post();
         wake.wake();
     }
-    void func() {}
+    void func() override {}
 };
 
 extern "C" {
@@ -1922,11 +1922,11 @@ struct TestState : public DoneState {
         proj[1][1] *= -1;
         float mat[16]; planeWindow(mat); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) debug[r][c] = *matrc(mat,r,c,4);
     }
-    void call();
-    void done() {
+    void call() override;
+    void done() override {
         safe.wait(); goon = false; safe.post(); wake.wake();
     }
-    void func() {}
+    void func() override {}
 };
 
 struct ForkState : public DoneState {
@@ -1935,9 +1935,9 @@ struct ForkState : public DoneState {
         thd(thd), idx(idx), cfnc(call), dfnc(done) {
         strcpy(debug,"ForkState"); std::cout << debug << std::endl;
     }
-    void call() {cfnc(thd,idx);}
-    void done() {dfnc(thd,idx);}
-    void func() {delete this;}
+    void call() override {cfnc(thd,idx);}
+    void done() override {dfnc(thd,idx);}
+    void func() override {delete this;}
 };
 
 struct CopyState {
@@ -2110,7 +2110,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug[currentUniform],sizeof(Matrix));
     if (mptr->copyState.copy({0,0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
-    // TODO mptr->changeState.write
+    // TODO move to mptr->changeState.write(DrawCount) callback; use constant for per Micro bind list
     BindState *bind[] = {
         &mptr->matrixState,
         &mptr->textureState,
