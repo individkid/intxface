@@ -770,6 +770,8 @@ struct BaseState {
     virtual VkPipelineLayout getPipelineLayout() {std::cerr << "BaseState::pipelineLayout" << std::endl; exit(-1);}
     virtual VkBuffer getBuffer() {std::cerr << "BaseState::buffer" << std::endl; exit(-1);}
     virtual int getRange() {std::cerr << "BaseState::size" << std::endl; exit(-1);}
+    virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
+    virtual void setSemaphore(VkSemaphore sem) {std::cerr << "BaseState::setSemaphore" << std::endl; exit(-1);}
     virtual VkImageView getTextureImageView() {std::cerr << "BaseState::textureImageView" << std::endl; exit(-1);}
     virtual VkSampler getTextureSampler() {std::cerr << "BaseState::textureSampler" << std::endl; exit(-1);}
     virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
@@ -1283,7 +1285,7 @@ struct BufferState : public ItemState {
     VkBuffer buffer;
     VkDeviceMemory bufferMemory;
     VkCommandBuffer commandBuffer;
-    VkFence fence;
+    VkFence fence; VkSemaphore before, after; bool atomic;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1291,21 +1293,26 @@ struct BufferState : public ItemState {
         ItemState("BufferState",BindState::self),
         device(BindState::device), physical(BindState::physical),
         graphics(BindState::graphics), commandPool(BindState::commandPool),
-        memProperties(BindState::memProperties), flags(BindState::flags)
+        memProperties(BindState::memProperties), flags(BindState::flags),
+        before(VK_NULL_HANDLE), atomic(false)
         {std::cout << "BufferState " << debug << std::endl;}
     ~BufferState() {push(SizeState(0,0)); baseres(); std::cout << "~BufferState " << debug << std::endl;}
     VkBuffer getBuffer() {return buffer;}
     int getRange() {return size.size;}
+    VkSemaphore getSemaphore() {atomic = true; return after;}
+    void setSemaphore(VkSemaphore sem) {before = sem;}
     void resize() {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, bufferMemory);
         commandBuffer = createCommandBuffer(device,commandPool);
         fence = createFence(device);
+        after = createSemaphore(device);
     }
     void unsize() {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-        if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        vkDestroySemaphore(device, after, nullptr);
+        vkDestroyFence(device, fence, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeMemory(device, bufferMemory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
@@ -1322,7 +1329,9 @@ struct BufferState : public ItemState {
         memcpy((void*)((char*)data+loc),ptr,siz);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
-        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence);
+        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence,
+        before, (atomic?after:VK_NULL_HANDLE)); before = VK_NULL_HANDLE;
+        if (atomic) {atomic = false; return VK_NULL_HANDLE;}
         return fence;
     }
     void upset() {
@@ -1331,7 +1340,7 @@ struct BufferState : public ItemState {
         vkDestroyBuffer(device, stagingBuffer, nullptr);
     }
     static void copyBuffer(VkDevice device, VkQueue graphics, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
-        VkCommandBuffer commandBuffer, VkFence fence) {
+        VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -1342,10 +1351,19 @@ struct BufferState : public ItemState {
         vkEndCommandBuffer(commandBuffer);
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkSemaphore befores[] = {before};
+        VkPipelineStageFlags stages[] = {VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
+        if (before != VK_NULL_HANDLE) {
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = befores;
+        submitInfo.pWaitDstStageMask = stages;}
+        VkSemaphore afters[] = {after};
+        if (after != VK_NULL_HANDLE) {
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = afters;}
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
         vkQueueSubmit(graphics, 1, &submitInfo, fence);
-        if (fence == VK_NULL_HANDLE) vkQueueWaitIdle(graphics);
     }
 };
 
@@ -1365,17 +1383,6 @@ struct ResultState : public ItemState {
     void upset() {
         // TODO copy from maped buffer to pointer from setup
     }
-    // TODO following done in copy of Piercez
-    // first semaphore bound as input to pierce setup
-    // second semaphore bound as output to pierce setup
-    // pierce setup returns no fence
-    // second semaphore bound as input to draw setup
-    // pierce buffer bound to draw
-    // third semaphore bound as output to draw setup
-    // draw setup returns no fence
-    // third semaphore bound as input to result setup
-    // pierce buffer bound to result
-    // result setup returns fence
 };
 
 struct TextureState : public ItemState {
@@ -1585,9 +1592,9 @@ struct DrawState : public BaseState {
     const int frames;
     ChangeState<Configure,Configures> *change;
     VkCommandBuffer commandBuffer;
-    VkSemaphore beforeSemaphore;
-    VkSemaphore afterSemaphore;
-    VkFence fence;
+    VkSemaphore acquire;
+    VkSemaphore after;
+    VkFence fence; VkSemaphore before;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorLayout;
     VkDescriptorSet descriptorSet;
@@ -1602,10 +1609,13 @@ struct DrawState : public BaseState {
         commandPool(BindState::commandPool),
         frames(BindState::frames),
         change(BindState::change),
+        before(VK_NULL_HANDLE),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0)
         {std::cout << "DrawState " << debug << std::endl;}
     ~DrawState() {push(SizeState(0,0)); baseres(); std::cout << "~DrawState " << debug << std::endl;}
+    VkSemaphore getSemaphore() {return after;}
+    void setSemaphore(VkSemaphore sem) {before = sem;}
     bool bind(BindState **ary, int siz) {
         safe.wait();
         // must check both state and bufsiz because might be bound but not pushed
@@ -1636,15 +1646,15 @@ struct DrawState : public BaseState {
         descriptorLayout = get(PipelineBind,Memorys)->getDescriptorSetLayout(); bind();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
-        beforeSemaphore = createSemaphore(device);
-        afterSemaphore = createSemaphore(device);
+        acquire = createSemaphore(device);
+        after = createSemaphore(device);
         fence = createFence(device);
     }
     void unsize() {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-        if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
-        if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
-        if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        vkDestroySemaphore(device, acquire, nullptr);
+        vkDestroySemaphore(device, after, nullptr);
+        vkDestroyFence(device, fence, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
@@ -1653,8 +1663,9 @@ struct DrawState : public BaseState {
         if (size == SizeState(MicroTest)) {
             VkExtent2D swapChainExtent = get(SwapBind,Memorys)->getSwapChainExtent();
             uint32_t imageIndex;
+            // TODO depending on size.micro, disable acquire
             VkResult result = vkAcquireNextImageKHR(device, get(SwapBind,Memorys)->getSwapChain(),
-                UINT64_MAX, beforeSemaphore, VK_NULL_HANDLE, &imageIndex);
+                UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
             if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<ResizeAsync);
             else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
@@ -1674,7 +1685,8 @@ struct DrawState : public BaseState {
                 get(PipelineBind,Memorys)->getGraphicsPipeline(), get(PipelineBind,Memorys)->getPipelineLayout(),
                 get(BindEnums,Bringupz)->getBuffer(), get(BindEnums,Indexz)->getBuffer());
             if (!drawFrame(commandBuffer,graphics,present,get(SwapBind,Memorys)->getSwapChain(),imageIndex,
-                ptr,loc,siz,size.micro,beforeSemaphore,afterSemaphore,fence)) change->wots(RegisterMask,1<<ResizeAsync);
+                ptr,loc,siz,size.micro,acquire,after,fence,before))
+                change->wots(RegisterMask,1<<ResizeAsync); before = VK_NULL_HANDLE;
             return fence;
         }
         return VK_NULL_HANDLE;
@@ -1793,18 +1805,21 @@ struct DrawState : public BaseState {
     }
     static bool drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkQueue present,
         VkSwapchainKHR swapChain, uint32_t imageIndex, void *ptr, int loc, int siz, Micro micro,
-        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence) {
+        VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before) {
+        // TODO depending on micro, disable acquire and present
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        VkSemaphore waitSemaphores[] = {beforeSemaphore};
-        VkCommandBuffer commandBuffers[] = {commandBuffer};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
+        VkSemaphore waitSemaphores[] = {acquire,before};
+        VkPipelineStageFlags waitStages[] = {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
+        submitInfo.waitSemaphoreCount = (before == VK_NULL_HANDLE ? 1 : 2);
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
+        VkCommandBuffer commandBuffers[] = {commandBuffer};
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
-        VkSemaphore signalSemaphores[] = {afterSemaphore};
+        VkSemaphore signalSemaphores[] = {after};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
         if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS)
@@ -2158,7 +2173,18 @@ int CopyState::copy(Response pass) {
     break; case (Numericz): REBASE(numericState,num,NumericBase,NumericSize,Numeric);
     break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
     break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
-    break; case (Piercez): REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
+    break; case (Piercez): // TODO write modify read
+    // first semaphore bound as input to pierce setup
+    // second semaphore bound as output to pierce setup
+    // pierce setup returns no fence
+    // second semaphore bound as input to draw setup
+    // pierce buffer bound to draw
+    // third semaphore bound as output to draw setup
+    // draw setup returns no fence
+    // third semaphore bound as input to result setup
+    // pierce buffer bound to result
+    // result setup returns fence
+    REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
     break; case (Configurez): {for (int i = 0; i < center->siz; i++)
     mptr->changeState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
