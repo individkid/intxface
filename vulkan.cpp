@@ -647,39 +647,37 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
-    BothBase, // enqued for both change
-    SizeBase, // enqued for size change
-    LockBase, // enqued for data change
-    NextBase, // waiting for fence done
-    GrabBase, // bindable and writable
     FreeBase, // ready to use or update
+    BothBase, // check for both change
+    SizeBase, // check for size change
+    LockBase, // check for data change
+    NextBase, // waiting for fence done
     BaseEnums
 };
 struct BaseState {
     SafeState safe;
-    BaseEnum state; int count;
+    BaseEnum state; int count; int reuse;
     // following indirectly protected by state/count that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/count
     SizeState size, todo;
     void *ptr; int loc; int siz;
     char debug[64];
-    BaseState() : safe(1), state(InitBase), count(0), size(0,0), todo(0,0), debug{0} {}
-    BaseState(const char *name) : safe(1), state(InitBase), count(0), size(0,0), todo(0,0), debug{0} {
+    BaseState() : safe(1), state(InitBase), count(0), reuse(0), size(0,0), todo(0,0), debug{0} {}
+    BaseState(const char *name) : safe(1), state(InitBase), count(0), reuse(0), size(0,0), todo(0,0), debug{0} {
         sprintf(debug,"%s%d",name,BindState::debug++);
     }
     bool push(void *ptr, int loc, int siz, SizeState max) { // called in main thread
         safe.wait();
-        if (state != InitBase && state != FreeBase && state != GrabBase) {safe.post(); return false;}
-        if (state == FreeBase && count > 0) {safe.post(); return false;}
-        this->ptr = ptr; this->loc = loc; this->siz = siz;
-        todo = max;
-        state = BothBase;
+        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (count) {safe.post(); return false;}
+        this->ptr = ptr; this->loc = loc; this->siz = siz; todo = max; state = BothBase;
         safe.post();
         return true;
     }
     VkFence sizeup() { // called in separate thread
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
+        if (count) {std::cerr << "sizeup invalid count!" << std::endl; exit(-1);}
         if (size == todo); else {
         if (size == SizeState(0,0)); else {safe.post(); unsize(); safe.wait();}
         if ((size = todo) == SizeState(0,0)); else {std::cout << "sizeup resize " << debug << " " << size << std::endl;
@@ -690,37 +688,37 @@ struct BaseState {
     }
     bool push(SizeState siz) { // called in main thread
         safe.wait();
-        if (state != InitBase && state != FreeBase && state != GrabBase) {safe.post(); return false;}
-        if (state == FreeBase && count > 0) {safe.post(); return false;}
-        todo = siz;
-        state = SizeBase;
+        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (count) {safe.post(); return false;}
+        todo = siz; state = SizeBase;
         safe.post();
         return true;
     }
     void baseres() { // called in separate thread
         safe.wait();
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
+        if (count) {std::cerr << "baseres invalid count!" << std::endl; exit(-1);}
         if (size == todo); else {
         if (size == SizeState(0,0)); else {safe.post(); unsize(); safe.wait();}
         if ((size = todo) == SizeState(0,0)); else {std::cout << "baseres resize " << debug << " " << size << std::endl;
         safe.post(); resize(); safe.wait();}}
-        state = FreeBase;
+        state = FreeBase; count = reuse; reuse = 0;
         safe.post();
     }
     virtual void unsize() = 0; // consumes time
     virtual void resize() = 0; // consumes time
     bool push(void *ptr, int loc, int siz) { // called in main thread
         safe.wait();
-        if (state != FreeBase && state != GrabBase) {safe.post(); return false;}
-        if (state == FreeBase && count > 0) {safe.post(); return false;}
-        this->ptr = ptr; this->loc = loc; this->siz = siz;
-        state = LockBase;
+        if (state != FreeBase) {safe.post(); return false;}
+        if (count) {safe.post(); return false;}
+        this->ptr = ptr; this->loc = loc; this->siz = siz; state = LockBase;
         safe.post();
         return true;
     }
     VkFence basesup() { // called in separate thread
         safe.wait();
-        if (state != LockBase) {std::cerr << "setup invalid state!" << std::endl; exit(-1);}
+        if (state != LockBase) {std::cerr << "setup invalid state! " << debug << " " << state << std::endl; exit(-1);}
+        if (count) {std::cerr << "setup invalid count!" << std::endl; exit(-1);}
         state = NextBase;
         safe.post();
         return setup(ptr,loc,siz);
@@ -729,21 +727,20 @@ struct BaseState {
     void baseups() { // called in separate thread
         safe.wait();
         if (state != NextBase) {std::cerr << "upset invalid state!" << std::endl; exit(-1);}
+        if (count) {std::cerr << "upset invalid count!" << std::endl; exit(-1);}
         advance();
         safe.post(); upset(); safe.wait();
-        state = FreeBase;
+        state = FreeBase; count = reuse; reuse = 0;
         safe.post();
     }
     virtual void advance() {
         // bind->advance();
     }
     virtual void upset() = 0; // consumes time
-    bool grab() {
+    bool save() {
         safe.wait();
-        if (state == FreeBase && count == 0) state = GrabBase;
-        if (state != GrabBase) {safe.post(); return false;}
-        // TODO is there a way to check that grabbed cannot be bound without semaphore link
-        count += 1;
+        if (state != FreeBase) {safe.post(); return false;}
+        reuse += 1;
         safe.post();
         return true;
     }
@@ -760,6 +757,12 @@ struct BaseState {
         if (count <= 0) {std::cerr << "invalid free count! " << debug << std::endl; exit(-1);}
         count -= 1;
         safe.post();
+    }
+    BaseEnum check() {
+        safe.wait();
+        BaseEnum ret = state;
+        safe.post();
+        return ret;
     }
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual VkFramebuffer getSwapChainFramebuffer(int i) {std::cerr << "BaseState::swapChainFramebuffer" << std::endl; exit(-1);}
@@ -1606,7 +1609,7 @@ struct DrawState : public BaseState {
     bool bind(BindState **ary, int siz) {
         safe.wait();
         // must check both state and bufsiz because might be bound but not pushed
-        if ((state != InitBase && state != FreeBase) || bufsiz != 0) {safe.post(); return false;}
+        if (bufsiz != 0) {safe.post(); return false;}
         for (int i = 0; i < siz; i++) {
         bufidx[i] = ary[i]->index();
         bufptr[bufidx[i]] = ary[i]->buffer();
@@ -1822,15 +1825,7 @@ struct DrawState : public BaseState {
     }
 };
 
-enum ThreadEnum {
-    FailThread,
-    SizeThread,
-    SetThread,
-    BothThread,
-    ThreadEnums
-};
 struct PushState {
-    ThreadEnum tag;
     BaseState *base;
     VkFence fence;
     Response pass;
@@ -1849,30 +1844,21 @@ struct ThreadState : public DoneState {
         strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
-    bool push(ThreadEnum tag, BaseState *base, Response pass) {
-        PushState push = {tag,base,VK_NULL_HANDLE,pass};
+    void push(BaseState *base, Response pass) {
+        PushState push = {base,VK_NULL_HANDLE,pass};
         safe.wait(); before.push_back(push); safe.post();
         wake.wake();
-        return (tag != FailThread);
-    }
-    bool push(BaseState *base, void *ptr, int loc, int siz, SizeState max, Response pass) {
-        return push((base->push(ptr,loc,siz,max)?BothThread:FailThread),base,pass);
-    }
-    bool push(BaseState *base, void *ptr, int loc, int siz, Response pass) {
-        return push((base->push(ptr,loc,siz)?SetThread:FailThread),base,pass);
-    }
-    bool push(BaseState *base, SizeState size) {
-        return push((base->push(size)?SizeThread:FailThread),base,{0});
     }
     bool stage() {
         while (1) {while (1) {safe.wait();
         if (before.empty()) {safe.post(); break;}
         PushState push = before.front(); before.pop_front(); safe.post();
-        switch (push.tag) {default: {std::cerr << "invalid push tag!" << std::endl; exit(-1);}
-        break; case(FailThread): push.fence = VK_NULL_HANDLE; push.base = 0;
-        break; case(SizeThread): push.fence = VK_NULL_HANDLE; push.base->baseres(); push.base = 0;
-        break; case(SetThread): push.fence = push.base->basesup();
-        break; case(BothThread): push.fence = push.base->sizeup();}
+        if (push.base) switch (push.base->check()) {
+        default: {std::cerr << "invalid push tag! " << push.base->debug << std::endl; exit(-1);}
+        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(); push.base = 0;
+        break; case(LockBase): push.fence = push.base->basesup();
+        break; case(BothBase): push.fence = push.base->sizeup();} else {
+        push.fence = VK_NULL_HANDLE; push.base = 0; push.pass.res = 1;}
         after.push_back(push);}
         safe.wait(); if (!after.empty()) {safe.post(); break;}
         if (before.empty()) {
@@ -1888,7 +1874,6 @@ struct ThreadState : public DoneState {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.base) push.base->baseups();
-        push.pass.res = (push.tag == FailThread ? 0 : 1);
         if (push.pass.fnc) push.pass.fnc(push.pass);
         change->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(device);
@@ -1943,7 +1928,7 @@ struct ForkState : public DoneState {
 struct CopyState {
     CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    int rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass);
+    bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass);
     int copy(Response);
 };
 struct MainState {
@@ -2028,6 +2013,9 @@ void vulkanPass(Response pass) {
     if (pass.ptr) {freeCenter(pass.ptr); allocCenter(&pass.ptr,0);}
 }
 
+/*void vulkanBack(Configure cfg, int sav, int val) {
+}*/ // TODO move draw push to Configure callback
+
 void TestState::call() {
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -2056,24 +2044,26 @@ void TestState::call() {
     mptr->changeState.write(WindowWidth,xsiz); mptr->changeState.write(WindowHeight,ysiz);
     mptr->changeState.write(FocalLength,10); mptr->changeState.write(FocalDepth,10);
     //
-    if (!mptr->threadState.push(mptr->swapState.preview(0),mptr->sizeState))
+    if (!mptr->swapState.preview(0)->push(mptr->sizeState))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
+    mptr->threadState.push(mptr->swapState.preview(0),{0});
     mptr->swapState.advance(0);
     //
-    if (!mptr->threadState.push(mptr->pipelineState.preview(MicroTest),SizeState(MicroTest)))
+    if (!mptr->pipelineState.preview(MicroTest)->push(SizeState(MicroTest)))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
+    mptr->threadState.push(mptr->pipelineState.preview(MicroTest),{0});
     mptr->pipelineState.advance(MicroTest);
     //
     BindState *single[] = {&mptr->pipelineState};
-    for (int i = 0; i < mptr->frames; i++)
+    for (int i = 0; i < mptr->frames; i++) {
     while (!mptr->drawState.preview(i)->bind(single, 1) ||
-    !mptr->threadState.push(mptr->drawState.preview(i),SizeState(MicroTest)))
+    !mptr->drawState.preview(i)->push(SizeState(MicroTest)))
     {mptr->drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
+    mptr->threadState.push(mptr->drawState.preview(i),{0});}
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
-    for (int i = 0; i < vtx->siz; i++)
-    memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
+    for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
     mptr->copyState.copy({0,0,0,vtx,vulkanPass});
     //
     Center *ind = 0; allocCenter(&ind,1);
@@ -2092,7 +2082,8 @@ void TestState::call() {
     if (mptr->changeState.read(RegisterMask) & (1<<ResizeAsync)) {
     mptr->changeState.wotc(RegisterMask,(1<<ResizeAsync));
     mptr->sizeState = SizeState(mptr->findCapabilities(mptr->windowState.window,mptr->vulkanState.surface,mptr->physicalState.device));
-    while (!mptr->threadState.push(mptr->swapState.preview(0),mptr->sizeState)) wake.wait();
+    while (!mptr->swapState.preview(0)->push(mptr->sizeState)) wake.wait();
+    mptr->threadState.push(mptr->swapState.preview(0),{0});
     mptr->swapState.advance(0);}
     //
     testUpdate(mptr->sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform],debug[currentUniform]);
@@ -2104,6 +2095,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug[currentUniform],sizeof(Matrix));
     if (mptr->copyState.copy({0,0,0,mat,vulkanPass})) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
+    // TODO mptr->changeState.write
     BindState *bind[] = {
         &mptr->matrixState,
         &mptr->textureState,
@@ -2112,12 +2104,13 @@ void TestState::call() {
         &mptr->pipelineState,
         &mptr->swapState};
     if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        mptr->threadState.push(mptr->drawState.derived(),0,0,static_cast<uint32_t>(indices.size()),{0})) {
+        mptr->drawState.derived()->push(0,0,static_cast<uint32_t>(indices.size()))) {
+        mptr->threadState.push(mptr->drawState.derived(),{0});
         mptr->drawState.advance();}
     else {mptr->drawState.derived()->bind(); wake.wait();}}
 }
 
-int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass) {
+bool CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass) {
     int loc = pass.ptr->idx;
     int siz = pass.ptr->siz;
     SizeState max;
@@ -2136,7 +2129,8 @@ int CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Re
     std::cerr << "rebase x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
     loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
     base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
-    return mptr->threadState.push(buf,ptr,loc,siz,SizeState(base,size),pass);
+    if (!buf->push(ptr,loc,siz,SizeState(base,size))) return false;
+    mptr->threadState.push(buf,pass); return true;
 }
 extern "C" {
 int datxVoids(void *dat);
@@ -2147,9 +2141,9 @@ void *datxVoidz(int num, void *dat);
     mptr->changeState.read(BASE),mptr->changeState.read(SIZE), \
     sizeof(TYPE),pass)) retval++
 #define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
-    if (mptr->threadState.push(mptr->STATE.preview(), \
-    datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
-    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),pass)) retval++
+    if (mptr->STATE.preview()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
+    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})))) \
+    {mptr->threadState.push(mptr->STATE.preview(),pass); retval++;}
 int CopyState::copy(Response pass) {
     Center *center = pass.ptr;
     int retval = 0;
