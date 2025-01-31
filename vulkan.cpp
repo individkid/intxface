@@ -656,20 +656,22 @@ enum BaseEnum {
 };
 struct BaseState {
     SafeState safe;
-    BaseEnum state; int count; int reuse;
-    // following indirectly protected by state/count that are directly protected by safe
-    // only one ThreadState acts on BaseState with reserved state/count
+    BaseEnum state; int rlock, wlock; int rsave, wsave;
+    // following indirectly protected by state/lock that are directly protected by safe
+    // only one ThreadState acts on BaseState with reserved state/lock
     SizeState size, todo;
     void *ptr; int loc; int siz;
     char debug[64];
-    BaseState() : safe(1), state(InitBase), count(0), reuse(0), size(0,0), todo(0,0), debug{0} {}
-    BaseState(const char *name) : safe(1), state(InitBase), count(0), reuse(0), size(0,0), todo(0,0), debug{0} {
+    BaseState() : safe(1), state(InitBase), rlock(0), wlock(0), rsave(0), wsave(0),
+        size(0,0), todo(0,0), debug{0} {}
+    BaseState(const char *name) : safe(1), state(InitBase), rlock(0), wlock(0), rsave(0), wsave(0),
+        size(0,0), todo(0,0), debug{0} {
         sprintf(debug,"%s%d",name,BindState::debug++);
     }
     bool push(void *ptr, int loc, int siz, SizeState max) { // called in main thread
         safe.wait();
         if (state != InitBase && state != FreeBase) {safe.post(); return false;}
-        if (count) {safe.post(); return false;}
+        if (rlock || wlock) {safe.post(); return false;}
         this->ptr = ptr; this->loc = loc; this->siz = siz; todo = max; state = BothBase;
         safe.post();
         return true;
@@ -677,7 +679,7 @@ struct BaseState {
     VkFence sizeup() { // called in separate thread
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
-        if (count) {std::cerr << "sizeup invalid count!" << std::endl; exit(-1);}
+        if (rlock || wlock) {std::cerr << "sizeup invalid lock!" << std::endl; exit(-1);}
         if (size == todo); else {
         if (size == SizeState(0,0)); else {safe.post(); unsize(); safe.wait();}
         if ((size = todo) == SizeState(0,0)); else {std::cout << "sizeup resize " << debug << " " << size << std::endl;
@@ -689,7 +691,7 @@ struct BaseState {
     bool push(SizeState siz) { // called in main thread
         safe.wait();
         if (state != InitBase && state != FreeBase) {safe.post(); return false;}
-        if (count) {safe.post(); return false;}
+        if (rlock || wlock) {safe.post(); return false;}
         todo = siz; state = SizeBase;
         safe.post();
         return true;
@@ -697,12 +699,14 @@ struct BaseState {
     void baseres() { // called in separate thread
         safe.wait();
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
-        if (count) {std::cerr << "baseres invalid count!" << std::endl; exit(-1);}
+        if (rlock || wlock) {std::cerr << "baseres invalid lock!" << std::endl; exit(-1);}
         if (size == todo); else {
         if (size == SizeState(0,0)); else {safe.post(); unsize(); safe.wait();}
         if ((size = todo) == SizeState(0,0)); else {std::cout << "baseres resize " << debug << " " << size << std::endl;
         safe.post(); resize(); safe.wait();}}
-        state = FreeBase; count = reuse; reuse = 0;
+        state = FreeBase;
+        rlock = rsave; rsave = 0;
+        wlock = wsave; wsave = 0;
         safe.post();
     }
     virtual void unsize() = 0; // consumes time
@@ -710,7 +714,7 @@ struct BaseState {
     bool push(void *ptr, int loc, int siz) { // called in main thread
         safe.wait();
         if (state != FreeBase) {safe.post(); return false;}
-        if (count) {safe.post(); return false;}
+        if (rlock || wlock) {safe.post(); return false;}
         this->ptr = ptr; this->loc = loc; this->siz = siz; state = LockBase;
         safe.post();
         return true;
@@ -718,7 +722,7 @@ struct BaseState {
     VkFence basesup() { // called in separate thread
         safe.wait();
         if (state != LockBase) {std::cerr << "setup invalid state! " << debug << " " << state << std::endl; exit(-1);}
-        if (count) {std::cerr << "setup invalid count!" << std::endl; exit(-1);}
+        if (rlock || wlock) {std::cerr << "setup invalid lock!" << std::endl; exit(-1);}
         state = NextBase;
         safe.post();
         return setup(ptr,loc,siz);
@@ -727,35 +731,54 @@ struct BaseState {
     void baseups() { // called in separate thread
         safe.wait();
         if (state != NextBase) {std::cerr << "upset invalid state!" << std::endl; exit(-1);}
-        if (count) {std::cerr << "upset invalid count!" << std::endl; exit(-1);}
+        if (rlock || wlock) {std::cerr << "upset invalid lock!" << std::endl; exit(-1);}
         advance();
         safe.post(); upset(); safe.wait();
-        state = FreeBase; count = reuse; reuse = 0;
+        state = FreeBase;
+        rlock = rsave; rsave = 0;
+        wlock = wsave; wsave = 0;
         safe.post();
     }
     virtual void advance() {
         // bind->advance();
     }
     virtual void upset() = 0; // consumes time
-    bool save() {
+    bool save(int rsav, int wsav) {
         safe.wait();
         if (state != FreeBase) {safe.post(); return false;}
-        reuse += 1;
+        if (rlock || wlock) {safe.post(); return false;}
+        rsave = rsav; wsave = wsav;
+        safe.post();
+        return true;
+    }
+    bool grab() {
+        safe.wait();
+        if (state != FreeBase) {safe.post(); return false;}
+        if (rlock) {safe.post(); return false;}
+        wlock += 1;
         safe.post();
         return true;
     }
     bool take() {
         safe.wait();
         if (state != FreeBase) {safe.post(); return false;}
-        count += 1;
+        if (wlock) {safe.post(); return false;}
+        rlock += 1;
         safe.post();
         return true;
     }
     void give() {
         safe.wait();
         if (state != FreeBase) {std::cerr << "invalid give state!" << std::endl; exit(-1);}
-        if (count <= 0) {std::cerr << "invalid free count! " << debug << std::endl; exit(-1);}
-        count -= 1;
+        if (rlock <= 0) {std::cerr << "invalid free rlock! " << debug << std::endl; exit(-1);}
+        rlock -= 1;
+        safe.post();
+    }
+    void pick() {
+        safe.wait();
+        if (state != FreeBase) {std::cerr << "invalid pick state!" << std::endl; exit(-1);}
+        if (wlock <= 0) {std::cerr << "invalid pick wlock!" << std::endl; exit(-1);}
+        wlock -= 1;
         safe.post();
     }
     BaseEnum check() {
