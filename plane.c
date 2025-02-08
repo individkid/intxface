@@ -35,7 +35,7 @@ vftype callFork = 0;
 zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
-oftype callCmdl = 0;
+oftype callCmnd = 0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
 DECLARE_DEQUE(char *,Strq)
@@ -751,10 +751,10 @@ void planeDone()
 }
 void initBoot()
 {
-    int size = 0; for (int i = 0; callCmdl(i); i++) size++;
+    int size = 0; for (int i = 0; callCmnd(i); i++) size++;
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
     const char **boot = malloc(size*sizeof(const char *)); size = 0;
-    for (int i = 0; callCmdl(i); i++) boot[size++] = callCmdl(i);
+    for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
     for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
     for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
@@ -784,7 +784,7 @@ void planeLoop()
     }
 }
 void wrapPlane();
-void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmdl)
+void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
 {
     callCopy = copy;
     callBack = call;
@@ -792,7 +792,7 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callInfo = info;
     callJnfo = jnfo;
     callKnfo = knfo;
-    callCmdl = cmdl;
+    callCmnd = cmnd;
     initSafe();
     initBoot();
     wrapPlane();
