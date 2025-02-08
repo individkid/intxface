@@ -259,7 +259,6 @@ VkFormat StaticState::depthFormat;
 VkQueue StaticState::graphics;
 VkQueue StaticState::present;
 VkBufferUsageFlags StaticState::flags;
-
 template <class State, Bind Type, int Size> struct ArrayState : public StaticState {
     SafeState safe;
     int idx;
@@ -450,14 +449,6 @@ struct BaseState {
         safe.post();
         return true;
     }
-    void set(BindState *ptr) {
-        safe.wait();
-        if (state != BothBase && state != SizeBase && state != LockBase)
-        {std::cerr << "invalid set state!" << std::endl; exit(-1);}
-        if (bind != 0) {std::cerr << "invalid set bind! " << debug << std::endl; exit(-1);}
-        bind = ptr;
-        safe.post();
-    }
     VkFence sizeup(SmartState log) { // called in separate thread
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
@@ -544,22 +535,17 @@ struct BaseState {
         state = FreeBase;
         safe.post();
     }
-    void rdec(Bind i);
-    void wdec(Bind i);
-    BaseState *get(Bind i);
-    void set() {
-        safe.wait();
-        if (state != FreeBase && state != SizeBase && state != NextBase)
-        {std::cerr << "set invalid state!" << std::endl; exit(-1);}
-        bind = 0;
-        safe.post();
-    }
     BaseEnum check() {
         safe.wait();
         BaseEnum ret = state;
         safe.post();
         return ret;
     }
+    void set(BindState *ptr);
+    BaseState *get(Bind i);
+    void rdec(Bind i);
+    void wdec(Bind i);
+    void set();
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
@@ -587,7 +573,6 @@ struct BaseState {
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
         VkImage& image, VkDeviceMemory& imageMemory);
 };
-
 struct IncrState {
     StaticState *ptr;
     int inc;
@@ -596,49 +581,19 @@ struct BindState : public BaseState {
     BaseState *bind[Binds];
     int rsav[Binds];
     int wsav[Binds];
-    bool lock;
-    BindState() : BaseState("BindState"), lock(false)
+    int lock;
+    BindState() : BaseState("BindState"), lock(0)
         {std::cout << "BindState " << debug << std::endl;
         for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
     ~BindState()
         {std::cout << "~BindState " << debug << std::endl;}
     bool incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log);
-    void fail(SmartState log);
-    void pass(SmartState log);
-    void unsize(SmartState log) {std::cerr << "invalid bind unsize!" << std::endl; exit(-1);}
-    void resize(SmartState log) {std::cerr << "invalid bind resize!" << std::endl; exit(-1);}
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) {std::cerr << "invalid bind setup!" << std::endl; exit(-1);}
-    void upset(SmartState log) {std::cerr << "invalid bind upset!" << std::endl; exit(-1);}
+    void incr(SmartState log);
+    void unsize(SmartState log) override {std::cerr << "invalid bind unsize!" << std::endl; exit(-1);}
+    void resize(SmartState log) override {std::cerr << "invalid bind resize!" << std::endl; exit(-1);}
+    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {std::cerr << "invalid bind setup!" << std::endl; exit(-1);}
+    void upset(SmartState log) override {std::cerr << "invalid bind upset!" << std::endl; exit(-1);}
 };
-void BaseState::rdec(Bind i) {
-    safe.wait();
-    if (state != FreeBase && state != SizeBase && state != NextBase)
-    {std::cerr << "rdec invalid state!" << std::endl; exit(-1);}
-    if (bind == 0 || bind->bind[i] == 0) {std::cerr << "invalid rdec bind!" << std::endl; exit(-1);}
-    bind->bind[i]->safe.wait();
-    if (bind->bind[i]->state != FreeBase) {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
-    if (bind->bind[i]->rlock <= 0) {std::cerr << "invalid rdec rlock!" << std::endl; exit(-1);}
-    bind->bind[i]->rlock--;
-    bool done = (bind->rsav[i] == 0 && bind->wsav[i] == 0);
-    bind->bind[i]->safe.post();
-    if (done) bind->bind[i] = 0;
-    safe.post();
-}
-void BaseState::wdec(Bind i) {
-    safe.wait();
-    if (state != FreeBase && state != SizeBase && state != NextBase)
-    {std::cerr << "wdec invalid state!" << std::endl; exit(-1);}
-    if (bind == 0 || bind->bind[i] == 0) {std::cerr << "invalid rdec bind!" << std::endl; exit(-1);}
-    // TODO apply to bind->*
-    safe.post();
-}
-BaseState *BaseState::get(Bind i) {
-    safe.wait();
-    if (bind == 0 || bind->bind[i] == 0) {std::cerr << "invalid get bind!" << std::endl; exit(-1);}
-    BaseState *ptr = bind->bind[i];
-    safe.post();
-    return ptr;
-}
 
 struct SwapState : public BaseState {
     GLFWwindow* window;
@@ -1403,13 +1358,11 @@ int CopyState::copy(Response pass, SmartState log) {
 }
 
 // does not refer to mptr, but is complicated
-bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log) {
+bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log) { // called by pusher
     safe.wait();
     log << "incr" << std::endl;
-    if (lock) {safe.post(); log << "incr lock fail" << std::endl; return false;}
-    lock = true;
-    for (int i = 0; i < Binds; i++) if (bind[i] != 0) {
-    lock = false; safe.post(); log << "incr bind fail" << std::endl; return false;}
+    if (lock != 0) {safe.post(); log << "incr lock fail" << std::endl; return false;}
+    for (int i = 0; i < Binds; i++) if (bind[i] != 0) {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
     Bind rtyp[rsiz]; BaseState *rbuf[rsiz];
     int rcount = 0; bool rfail = false; for (int i = 0; i < rsiz; i++) {
     rtyp[i] = rptr[i].ptr->index(); rbuf[i] = rptr[i].ptr->buffer(); rbuf[i]->safe.wait(); rcount++;
@@ -1419,7 +1372,7 @@ bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, Smart
     if (rbuf[i]->rlock || rbuf[i]->wlock) {rfail = true;
     log << "incr rbuf " << rbuf[i]->debug << " lock r" << rbuf[i]->rlock << " w" << rbuf[i]->wlock << " fail" << std::endl; break;}}
     if (rfail) {for (int i = 0; i < rcount; i++) rbuf[i]->safe.post();
-    lock = false; safe.post(); return false;}
+    safe.post(); return false;}
     Bind wtyp[rsiz]; BaseState *wbuf[rsiz];
     int wcount = 0; bool wfail = false; for (int i = 0; i < wsiz; i++) {
     wtyp[i] = wptr[i].ptr->index(); wbuf[i] = wptr[i].ptr->buffer(); wbuf[i]->safe.wait(); wcount++;
@@ -1430,46 +1383,82 @@ bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, Smart
     log << "incr wbuf " << rbuf[i]->debug << " lock r" << wbuf[i]->rlock << " w" << wbuf[i]->wlock << " fail" << std::endl; break;}}
     if (wfail) {for (int i = 0; i < wcount; i++) wbuf[i]->safe.post();
     for (int i = 0; i < rsiz; i++) rbuf[i]->safe.post();
-    lock = false; safe.post(); return false;}
+    safe.post(); return false;}
     for (int i = 0; i < rsiz; i++) {int inc = rptr[i].inc;
+    if (bind[rtyp[i]] == 0) lock += 1;
     bind[rtyp[i]] = rbuf[i]; rbuf[i]->rlock += inc; rsav[i] += inc;
     log << "incr " << rbuf[i]->debug << " r" << rbuf[i]->rlock << std::endl;}
     for (int i = 0; i < wsiz; i++) {int inc = wptr[i].inc;
+    if (bind[wtyp[i]] == 0) lock += 1;
     bind[wtyp[i]] = wbuf[i]; wbuf[i]->wlock += inc; wsav[i] += inc;
     log << "incr " << wbuf[i]->debug << " w" << wbuf[i]->wlock << std::endl;}
     for (int i = 0; i < rsiz; i++) rbuf[i]->safe.post();
     for (int i = 0; i < wsiz; i++) wbuf[i]->safe.post();
-    lock = true; safe.post(); return true;
+    safe.post(); return true;
 }
-void BindState::fail(SmartState log) {
+void BindState::incr(SmartState log) { // called by pusher
     safe.wait();
-    log << "fail" << std::endl;
-    if (!lock) {std::cerr << "invalid fail lock!" << std::endl; exit(-1);}
-    for (int i = 0; i < Binds; i++)
-    if (bind[i]) {
+    log << "decr" << std::endl;
+    if (!lock) {std::cerr << "invalid decr lock!" << std::endl; exit(-1);}
+    for (int i = 0; i < Binds; i++) if (bind[i]) {
     while (rsav[i]) {rsav[i]--;
     bind[i]->safe.wait();
     if (bind[i]->state != FreeBase) {std::cerr << "invalid incr rsav!" << std::endl; exit(-1);}
     if (bind[i]->rlock <= 0) {std::cerr << "invalid incr rlock!" << std::endl; exit(-1);}
     bind[i]->rlock--;
-    log << "fail " << bind[i]->debug << " r" << bind[i]->rlock << std::endl;
+    log << "decr " << bind[i]->debug << " r" << bind[i]->rlock << std::endl;
     bind[i]->safe.post();}
     while (wsav[i]) {wsav[i]--;
     bind[i]->safe.wait();
     if (bind[i]->state != FreeBase) {std::cerr << "invalid incr wsav!" << std::endl; exit(-1);}
     if (bind[i]->rlock <= 0) {std::cerr << "invalid incr wlock!" << std::endl; exit(-1);}
     bind[i]->wlock--;
-    log << "fail " << bind[i]->debug << " w" << bind[i]->wlock << std::endl;
+    log << "decr " << bind[i]->debug << " w" << bind[i]->wlock << std::endl;
     bind[i]->safe.post();}
-    bind[i] = 0;}
-    lock = false;
+    bind[i] = 0; lock -= 1;}
     safe.post();
 }
-void BindState::pass(SmartState log) {
+void BaseState::set(BindState *ptr) {
     safe.wait();
-    if (!lock) {std::cerr << "invalid pass lock!" << std::endl; exit(-1);}
-    lock = false;
-    log << "pass" << std::endl;
+    if (state != BothBase && state != SizeBase && state != LockBase)
+    {std::cerr << "invalid set state!" << std::endl; exit(-1);}
+    if (bind != 0) {std::cerr << "invalid set bind! " << debug << std::endl; exit(-1);}
+    bind = ptr;
+    safe.post();
+}
+BaseState *BaseState::get(Bind i) { // called by pushee
+    safe.wait();
+    if (bind == 0 || bind->bind[i] == 0) {std::cerr << "invalid get bind!" << std::endl; exit(-1);}
+    BaseState *ptr = bind->bind[i];
+    safe.post();
+    return ptr;
+}
+void BaseState::rdec(Bind i) { // called by pushee
+    safe.wait();
+    if (state != SizeBase && state != NextBase)
+    {std::cerr << "rdec invalid state!" << std::endl; exit(-1);}
+    if (bind == 0) {std::cerr << "invalid rdec bind!" << std::endl; exit(-1);}
+    bind->safe.wait();
+    if (bind->bind[i] == 0) {std::cerr << "invalid bind bind!" << std::endl; exit(-1);}
+    bind->bind[i]->safe.wait();
+    if (bind->bind[i]->state != FreeBase) {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
+    if (bind->bind[i]->rlock <= 0) {std::cerr << "invalid rdec rlock!" << std::endl; exit(-1);}
+    bind->bind[i]->rlock -= 1; bind->rsav[i] -= 1;
+    bool done = (bind->rsav[i] == 0 && bind->wsav[i] == 0 && bind->bind[i] != 0);
+    bind->bind[i]->safe.post();
+    if (done) {bind->bind[i] = 0; bind->lock -= 1;}
+    bind->safe.post();
+    safe.post();
+}
+void BaseState::wdec(Bind i) { // called by pushee
+    // TODO apply to bind->*
+}
+void BaseState::set() { // called by pushee
+    safe.wait();
+    if (state != SizeBase && state != NextBase)
+    {std::cerr << "set invalid state!" << std::endl; exit(-1);}
+    if (bind == 0) {std::cerr << "set invalid bind!" << std::endl; exit(-1);}
+    bind = 0;
     safe.post();
 }
 
