@@ -515,26 +515,21 @@ struct BaseState {
     }
     void give() {
         safe.wait();
-        if (state != FreeBase) {std::cerr << "invalid give state!" << std::endl; exit(-1);}
+        if (state != FreeBase && state != SizeBase && state != BothBase && state != NextBase)
+        {std::cerr << "invalid give state! " << state << std::endl; exit(-1);}
         if (rlock <= 0) {std::cerr << "invalid free rlock! " << debug << std::endl; exit(-1);}
         rlock -= 1;
         safe.post();
     }
     void pick() {
         safe.wait();
-        if (state != FreeBase) {std::cerr << "invalid pick state!" << std::endl; exit(-1);}
+        if (state != FreeBase && state != NextBase)
+        {std::cerr << "invalid pick state!" << std::endl; exit(-1);}
         if (wlock <= 0) {std::cerr << "invalid pick wlock!" << std::endl; exit(-1);}
         wlock -= 1;
         safe.post();
     }
     // TODO :replace by BindState
-    void push(SmartState log) {
-        safe.wait();
-        if (state != FreeBase && state != SizeBase && state != NextBase)
-        {std::cerr << "push invalid state!" << std::endl; exit(-1);}
-        state = FreeBase;
-        safe.post();
-    }
     BaseEnum check() {
         safe.wait();
         BaseEnum ret = state;
@@ -545,7 +540,6 @@ struct BaseState {
     BaseState *get(Bind i);
     void rdec(Bind i);
     void wdec(Bind i);
-    void set();
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
@@ -966,9 +960,7 @@ struct AcquireState : public BaseState {
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
-        push(log);
         rdec(SwapBnd);
-        set();
         atomic = false;
     }
 };
@@ -992,11 +984,9 @@ struct PresentState : public BaseState {
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
-        push(log);
         rdec(SwapBnd);
         rdec(AcquireBnd);
         rdec(DrawBnd);
-        set();
     }
     static bool presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before);
 };
@@ -1036,6 +1026,7 @@ struct DrawState : public BaseState {
         std::cout << "~DrawState " << debug << std::endl;}
     VkSemaphore getSemaphore() override {return after;}
     void setSemaphore(VkSemaphore sem) {before = sem;}
+    // TODO use set(bindPtr) and remove bind:
     bool bind(StaticState **ary, int siz) {
         safe.wait();
         // must check both state and bufsiz because might be bound but not pushed
@@ -1056,13 +1047,15 @@ struct DrawState : public BaseState {
         bufsiz = 0;
         safe.post();
     }
+    // TODO :use set(bindPtr) and remove bind
     BaseState *get(Bind typ) {
         if (!bufptr[typ]) {std::cerr << "invalid bind!" << typ << std::endl; exit(-1);}
         return bufptr[typ];
     }
     void resize(SmartState log) override {
         descriptorPool = get(PipelineBnd)->getDescriptorPool();
-        descriptorLayout = get(PipelineBnd)->getDescriptorSetLayout(); bind();
+        descriptorLayout = get(PipelineBnd)->getDescriptorSetLayout();
+        bind(); // TODO use rdec of PipeBnd instead
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
         acquire = createSemaphore(device);
@@ -1111,7 +1104,7 @@ struct DrawState : public BaseState {
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
-        bind();
+        bind(); // TODO use rdec of each in Bind constant instead
     }
     static VkDescriptorSet createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
         VkDescriptorSetLayout descriptorSetLayout, int frames);
@@ -1341,16 +1334,6 @@ int CopyState::copy(Response pass, SmartState log) {
     break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
     break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
     break; case (Piercez): // TODO write modify read
-    // first semaphore bound as input to pierce setup
-    // second semaphore bound as output to pierce setup
-    // pierce setup returns no fence
-    // second semaphore bound as input to draw setup
-    // pierce buffer bound to draw
-    // third semaphore bound as output to draw setup
-    // draw setup returns no fence
-    // third semaphore bound as input to result setup
-    // pierce buffer bound to result
-    // result setup returns fence
     REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
     break; case (Configurez): {for (int i = 0; i < center->siz; i++)
     mptr->changeState.write(center->cfg[i],center->val[i]); retval++;}}
@@ -1399,22 +1382,20 @@ bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, Smart
 void BindState::incr(SmartState log) { // called by pusher
     safe.wait();
     log << "decr" << std::endl;
-    if (!lock) {std::cerr << "invalid decr lock!" << std::endl; exit(-1);}
-    for (int i = 0; i < Binds; i++) if (bind[i]) {
-    while (rsav[i]) {rsav[i]--;
+    if (lock == 0) {std::cerr << "invalid decr lock!" << std::endl; exit(-1);}
+    for (int i = 0; i < Binds; i++) if (bind[i] && (rsav[i] || wsav[i])) {
     bind[i]->safe.wait();
+    while (rsav[i]) {rsav[i] -= 1;
     if (bind[i]->state != FreeBase) {std::cerr << "invalid incr rsav!" << std::endl; exit(-1);}
     if (bind[i]->rlock <= 0) {std::cerr << "invalid incr rlock!" << std::endl; exit(-1);}
     bind[i]->rlock--;
-    log << "decr " << bind[i]->debug << " r" << bind[i]->rlock << std::endl;
-    bind[i]->safe.post();}
-    while (wsav[i]) {wsav[i]--;
-    bind[i]->safe.wait();
+    log << "decr " << bind[i]->debug << " r" << bind[i]->rlock << std::endl;}
+    while (wsav[i]) {wsav[i] -= 1;
     if (bind[i]->state != FreeBase) {std::cerr << "invalid incr wsav!" << std::endl; exit(-1);}
     if (bind[i]->rlock <= 0) {std::cerr << "invalid incr wlock!" << std::endl; exit(-1);}
     bind[i]->wlock--;
-    log << "decr " << bind[i]->debug << " w" << bind[i]->wlock << std::endl;
-    bind[i]->safe.post();}
+    log << "decr " << bind[i]->debug << " w" << bind[i]->wlock << std::endl;}
+    bind[i]->safe.post();
     bind[i] = 0; lock -= 1;}
     safe.post();
 }
@@ -1439,26 +1420,32 @@ void BaseState::rdec(Bind i) { // called by pushee
     {std::cerr << "rdec invalid state!" << std::endl; exit(-1);}
     if (bind == 0) {std::cerr << "invalid rdec bind!" << std::endl; exit(-1);}
     bind->safe.wait();
-    if (bind->bind[i] == 0) {std::cerr << "invalid bind bind!" << std::endl; exit(-1);}
+    if (bind->bind[i] == 0) {std::cerr << "rdec bind bind!" << std::endl; exit(-1);}
     bind->bind[i]->safe.wait();
     if (bind->bind[i]->state != FreeBase) {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
     if (bind->bind[i]->rlock <= 0) {std::cerr << "invalid rdec rlock!" << std::endl; exit(-1);}
     bind->bind[i]->rlock -= 1; bind->rsav[i] -= 1;
-    bool done = (bind->rsav[i] == 0 && bind->wsav[i] == 0 && bind->bind[i] != 0);
+    bool done = (bind->rsav[i] == 0 && bind->wsav[i] == 0);
     bind->bind[i]->safe.post();
     if (done) {bind->bind[i] = 0; bind->lock -= 1;}
     bind->safe.post();
     safe.post();
 }
 void BaseState::wdec(Bind i) { // called by pushee
-    // TODO apply to bind->*
-}
-void BaseState::set() { // called by pushee
     safe.wait();
-    if (state != SizeBase && state != NextBase)
-    {std::cerr << "set invalid state!" << std::endl; exit(-1);}
-    if (bind == 0) {std::cerr << "set invalid bind!" << std::endl; exit(-1);}
-    bind = 0;
+    if (state != NextBase)
+    {std::cerr << "wdec invalid state!" << std::endl; exit(-1);}
+    if (bind == 0) {std::cerr << "invalid wdec bind!" << std::endl; exit(-1);}
+    bind->safe.wait();
+    if (bind->bind[i] == 0) {std::cerr << "wdec bind bind!" << std::endl; exit(-1);}
+    bind->bind[i]->safe.wait();
+    if (bind->bind[i]->state != FreeBase) {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
+    if (bind->bind[i]->wlock <= 0) {std::cerr << "invalid wdec rlock!" << std::endl; exit(-1);}
+    bind->bind[i]->wlock -= 1; bind->wsav[i] -= 1;
+    bool done = (bind->rsav[i] == 0 && bind->wsav[i] == 0);
+    bind->bind[i]->safe.post();
+    if (done) {bind->bind[i] = 0; bind->lock -= 1;}
+    bind->safe.post();
     safe.post();
 }
 
