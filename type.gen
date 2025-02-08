@@ -17,7 +17,7 @@ Level = {
 	"Stock",
 	"First",
 	"Assign",
-	"Bind",
+	"Link",
 	"Wave",
 	"Timer",
 	"Audio",
@@ -45,6 +45,34 @@ Memory = {
 	"Machinez", -- state machine lines
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
+}
+Bind = {
+    "SwapBnd",
+    "PipelineBnd",
+    "AcquireBnd",
+    "PresentBnd",
+    "ResultBnd",
+    "DrawBnd",
+    "BindBnd",
+	"IndexBnd",
+	"BringupBnd",
+	"DecorateBnd", -- Texturez
+	"ConfigureBnd", -- Uniformz
+	"MatrixBnd",
+	"TriangleBnd",
+	"NumericBnd",
+	"VertexBnd",
+	"BasisBnd",
+	"PierceBnd",
+}
+BindTyp = {
+	"StorageBnd",
+	"UniformBnd",
+	"TextureBnd",
+}
+BindLoc = {
+	"BeforeBnd",
+	"MiddleBnd",
 }
 Format = {
 	"VecFormat",
@@ -330,9 +358,30 @@ FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 }
 MemoryBinding = {
-	{"Micro","MicroTest","Int","0","Memory","Matrixz"},
-	{"Micro","MicroTest","Int","1","Memory","Texturez"},
-	{"Micro","MicroTest","Int","2","Memory","Memorys"},
+    {"Micro","MicroTest","Int","0","Memory","Matrixz"},
+    {"Micro","MicroTest","Int","1","Memory","Texturez"},
+    {"Micro","MicroTest","Int","2","Memory","Memorys"},
+}
+BindBuf = {
+    {"Micro","MicroTest","Int","0","Bind","SwapBnd"},
+    {"Micro","MicroTest","Int","1","Bind","MatrixBnd"},
+    {"Micro","MicroTest","Int","2","Bind","DecorateBnd"},
+    {"Micro","MicroTest","Int","3","Bind","BringupBnd"},
+    {"Micro","MicroTest","Int","4","Bind","IndexBnd"},
+    {"Micro","MicroTest","Int","5","Bind","PipelineBnd"},
+    {"Micro","MicroTest","Int","6","Bind","AcquireBnd"},
+    {"Micro","MicroTest","Int","7","Bind","Binds"},
+}
+BindUpd = {
+    {"Micro","MicroTest","Bind","MatrixBnd","BindTyp","UniformBnd"},
+    {"Micro","MicroTest","Bind","DecorateBnd","BindTyp","TextureBnd"},
+}
+BindSem = {
+    {"Micro","MicroTest","Bind","AcquireBnd","BindLoc","MiddleBnd"},
+}
+BindIdx = {
+    {"Micro","MicroTest","Bind","MatrixBnd","Int","0"},
+    {"Micro","MicroTest","Bind","DecorateBnd","Int","1"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:2"..
@@ -416,7 +465,7 @@ Event = { -- for line process
 	{"upd","Ratio",{["tag"]={["Stock"]=true}},{}},
 	{"dly","Ratio",{["tag"]={["Stock"]=true}},{}},
 	{"sch","Ratio",{["tag"]={["Stock"]=true}},{}},
-	{"flw","Flow",{["tag"]={["Bind"]=true}},{}},
+	{"flw","Flow",{["tag"]={["Link"]=true}},{}},
 	{"siz","Int",{["tag"]={["Wave"]=true}},{}},
 	{"buf","Num",{["tag"]={["Wave"]=true}},"siz"},
 	{"num","Int",{["tag"]={["Timer"]=true}},{}},

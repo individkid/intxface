@@ -283,7 +283,7 @@ void stock()
 		alloc(event->key,event->idx,event->val);
 		else numbug++;
 		break;
-	case (Bind): // Peek Poke Store
+	case (Link): // Peek Poke Store
 		if (event->key > nowtime)
 		alloc(event->key,event->flw,event->idx,event->oth);
 		else numbug++;

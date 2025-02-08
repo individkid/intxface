@@ -15,6 +15,8 @@
 #include <set>
 #include <map>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 struct SafeState {
     sem_t semaphore;
@@ -39,6 +41,57 @@ struct SafeState {
         if (get() == 0) post();
     }
 };
+
+struct SmartState {
+    int num;
+    bool vld;
+    SmartState() : num(0), vld(false) {}
+    SmartState(const SmartState &oth);
+    SmartState &operator=(const SmartState &oth);
+    SmartState(std::string str);
+    ~SmartState() {clr();}
+    std::stringstream &set();
+    template<class Type> std::stringstream &operator<<(Type val) {
+    std::stringstream &str = set(); str << val; return str;}
+    void clr();
+};
+
+struct SlogState {
+    SafeState safe;
+    std::map<int, std::stringstream*> sstr;
+    std::map<int, std::string> name;
+    std::map<int, int> smart;
+    int minnum, limnum, min, lim;
+    SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0) {}
+    void onof(int m, int l) {
+        min = m;
+        lim = l;
+    }
+    bool check(int num, int min, int lim) {
+        if (min == lim) return false;
+        if (min < lim && (num < min || num >= lim)) return false;
+        if (min > lim && (num >= min || num < lim)) return false;
+        return true;
+    }
+    void wait(int num) {
+        safe.wait();
+        if (!check(num,minnum,limnum))
+        {std::cerr << "invalid num wait!" << std::endl; exit(-1);}
+        if (sstr.find(num) == sstr.end())
+        {std::cerr << "invalid find wait! " << num << std::endl; exit(-1);}
+    }
+    void clr(int num) {
+        wait(num);
+        if (smart[num] != 0) {std::cerr << "invalid clr smart!" << std::endl; exit(-1);}
+        if (check(num,min,lim)) std::cout << sstr[num]->str();
+        delete sstr[num]; sstr.erase(num); name.erase(num); smart.erase(num);
+        while (sstr.begin() != sstr.end() &&
+        sstr.find(minnum) == sstr.end()) minnum++;
+        safe.post();
+    }
+};
+extern SlogState slog; // TODO qualify with NDEBUG
+
 template <class Conf, int Size> struct ChangeState {
     typedef void (*xftype)(Conf cfg, int sav, int val);
     typedef int (*yftype)(int *ref, int val);
@@ -99,6 +152,7 @@ template <class Conf, int Size> struct ChangeState {
     static int rmwOp(int l, int r) {return l+r;}
     int rmw(Conf cfg, int val) {return change(cfg,val,rmwOp,true,true);}
 };
+
 struct CallState;
 struct DoneState {
     CallState *ptr;
