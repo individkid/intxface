@@ -40,6 +40,7 @@ struct CopyState {
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log);
     int copy(Response pass, SmartState log);
+    void draw(int siz);
 };
 
 // TODO define glfw callbacks that cast void* to CopyState*
@@ -158,13 +159,13 @@ struct LogicalState {
 
 struct StaticState {
     const char *name;
+    static const int frames = 2;
     virtual void advance() = 0;
     virtual BaseState *buffer() = 0;
     virtual Bind index() = 0;
     static StaticState* self;
     static int debug;
     static int micro;
-    static int frames;
     static ConfigState *change;
     static GLFWwindow* window;
     static VkSurfaceKHR surface;
@@ -184,7 +185,6 @@ struct StaticState {
     static VkQueue present;
     static VkBufferUsageFlags flags;
     StaticState(const char *name,
-        int frames,
         ConfigState *change,
         GLFWwindow* window,
         VkSurfaceKHR surface,
@@ -206,7 +206,6 @@ struct StaticState {
         StaticState::self = this;
         StaticState::debug = 0;
         StaticState::micro = 0;
-        StaticState::frames = frames;
         StaticState::change = change;
         StaticState::window = window;
         StaticState::surface = surface;
@@ -240,7 +239,6 @@ struct StaticState {
 StaticState* StaticState::self;
 int StaticState::debug;
 int StaticState::micro;
-int StaticState::frames;
 ConfigState *StaticState::change;
 GLFWwindow* StaticState::window;
 VkSurfaceKHR StaticState::surface;
@@ -264,7 +262,6 @@ template <class State, Bind Type, int Size> struct ArrayState : public StaticSta
     int idx;
     State state[Size];
     ArrayState(const char *name,
-        int frames,
         ConfigState *change,
         GLFWwindow* window,
         VkSurfaceKHR surface,
@@ -283,7 +280,6 @@ template <class State, Bind Type, int Size> struct ArrayState : public StaticSta
         VkQueue graphics,
         VkQueue present) :
     StaticState(name,
-        frames,
         change,
         window,
         surface,
@@ -587,7 +583,7 @@ struct BindState {
     bool incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log);
     void incr(SmartState log);
 };
-template <> BaseState *ArrayState<BindState,BindBnd,2>::buffer() {return 0;}
+template <> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {return 0;}
 
 struct SwapState : public BaseState {
     GLFWwindow* window;
@@ -1123,6 +1119,7 @@ struct DrawState : public BaseState {
         VkSwapchainKHR swapChain, uint32_t imageIndex, void *ptr, int loc, int siz, Micro micro,
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
+template <> BaseState *ArrayState<DrawState,DrawBnd,StaticState::frames>::buffer() {return 0;}
 
 struct PushState {
     BaseState *base;
@@ -1215,7 +1212,6 @@ struct ForkState : public DoneState {
 };
 
 struct MainState {
-    static const int frames = 2;
     ConfigState changeState;
     CopyState copyState;
     WindowState windowState;
@@ -1225,21 +1221,21 @@ struct MainState {
     SizeState sizeState;
     ArrayState<SwapState,SwapBnd,1> swapState;
     ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
-    ArrayState<BufferState,IndexBnd,frames> indexState;
-    ArrayState<BufferState,BringupBnd,frames> bringupState;
-    ArrayState<TextureState,DecorateBnd,frames> textureState;
-    ArrayState<UniformState,ConfigureBnd,frames> uniformState;
-    ArrayState<UniformState,MatrixBnd,frames> matrixState;
-    ArrayState<BufferState,TriangleBnd,frames> triangleState;
-    ArrayState<BufferState,NumericBnd,frames> numericState;
-    ArrayState<BufferState,VertexBnd,frames> vertexState;
-    ArrayState<BufferState,BasisBnd,frames> basisState;
-    ArrayState<BufferState,PierceBnd,frames> pierceState;
-    ArrayState<ResultState,ResultBnd,frames> resultState;
-    ArrayState<AcquireState,AcquireBnd,frames> acquireState;
-    ArrayState<PresentState,PresentBnd,frames> presentState;
-    ArrayState<DrawState,DrawBnd,frames> drawState;
-    ArrayState<BindState,BindBnd,frames> bindState;
+    ArrayState<BufferState,IndexBnd,StaticState::frames> indexState;
+    ArrayState<BufferState,BringupBnd,StaticState::frames> bringupState;
+    ArrayState<TextureState,DecorateBnd,StaticState::frames> textureState;
+    ArrayState<UniformState,ConfigureBnd,StaticState::frames> uniformState;
+    ArrayState<UniformState,MatrixBnd,StaticState::frames> matrixState;
+    ArrayState<BufferState,TriangleBnd,StaticState::frames> triangleState;
+    ArrayState<BufferState,NumericBnd,StaticState::frames> numericState;
+    ArrayState<BufferState,VertexBnd,StaticState::frames> vertexState;
+    ArrayState<BufferState,BasisBnd,StaticState::frames> basisState;
+    ArrayState<BufferState,PierceBnd,StaticState::frames> pierceState;
+    ArrayState<ResultState,ResultBnd,StaticState::frames> resultState;
+    ArrayState<AcquireState,AcquireBnd,StaticState::frames> acquireState;
+    ArrayState<PresentState,PresentBnd,StaticState::frames> presentState;
+    ArrayState<DrawState,DrawBnd,StaticState::frames> drawState;
+    ArrayState<BindState,BindBnd,StaticState::frames> bindState;
     ThreadState threadState;
     TestState testState;
     CallState callState;
@@ -1252,7 +1248,7 @@ struct MainState {
             physicalState.presentFamily,physicalState.surfaceFormat,
             vulkanState.validationLayers,physicalState.deviceExtensions),
         sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)),
-        swapState("SwapBnd",frames,&changeState,
+        swapState("SwapBnd",&changeState,
             windowState.window,vulkanState.surface,physicalState.device,
             physicalState.surfaceFormat,physicalState.presentMode,
             physicalState.graphicsFamily,physicalState.presentFamily,
@@ -1282,65 +1278,7 @@ struct MainState {
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
 };
-MainState *mptr = 0;
 
-// refers to mptr
-bool CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log) {
-    int loc = pass.ptr->idx;
-    int siz = pass.ptr->siz;
-    SizeState max;
-    if (pass.mod) {
-    //    x-x     x---x x---x   x-----x
-    //   y---y   y---y   y---y   y---y
-    //   z---z   z----z  z---z   z----z
-    int xl = loc; int xr = xl+siz;
-    int yl = base; int yr = yl+size;
-    int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
-    else if (xl<yl) {zl=yl;zr=xr;}
-    else if (xr<yr) {zl=yl;zr=yr;}
-    else {zl=yl;zr=xr;}
-    ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
-    loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-    std::cerr << "rebase x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
-    loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
-    base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
-    if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
-    mptr->threadState.push(buf,pass,log); return true;
-}
-extern "C" {
-int datxVoids(void *dat);
-void *datxVoidz(int num, void *dat);
-};
-#define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
-    if (rebase(mptr->STATE.preview(),(void*)center->FIELD, \
-    mptr->changeState.read(BASE),mptr->changeState.read(SIZE), \
-    sizeof(TYPE),pass,log)) retval++
-#define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
-    if (mptr->STATE.preview()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
-    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),log)) \
-    {mptr->threadState.push(mptr->STATE.preview(),pass,log); retval++;}
-int CopyState::copy(Response pass, SmartState log) {
-    Center *center = pass.ptr;
-    int retval = 0;
-    switch (center->mem) {
-    default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-    break; case (Indexz): REBASE(indexState,ind,IndexBase,IndexSize,int32_t);
-    break; case (Bringupz): REBASE(bringupState,ver,BringupBase,BringupSize,Vertex);
-    break; case (Texturez): EXTENT(textureState,tex[0].dat,tex[0].wid,tex[0].hei); // TODO allow copy multiple textures
-    break; case (Uniformz): REBASE(uniformState,uni,UniformBase,UniformSize,Uniform);
-    break; case (Matrixz): REBASE(matrixState,mat,MatrixBase,MatrixSize,Matrix);
-    break; case (Trianglez): REBASE(triangleState,tri,TriangleBase,TriangleSize,Triangle);
-    break; case (Numericz): REBASE(numericState,num,NumericBase,NumericSize,Numeric);
-    break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
-    break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
-    break; case (Piercez): // TODO write modify read
-    REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
-    break; case (Configurez): {for (int i = 0; i < center->siz; i++)
-    mptr->changeState.write(center->cfg[i],center->val[i]); retval++;}}
-    return retval;
-}
-
-// does not refer to mptr, but is complicated
 bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log) { // called by pusher
     safe.wait();
     log << "incr" << std::endl;
@@ -1449,7 +1387,77 @@ void BaseState::wdec(Bind i) { // called by pushee
     safe.post();
 }
 
-// refers to mptr
+MainState *mptr = 0;
+
+bool CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log) {
+    int loc = pass.ptr->idx;
+    int siz = pass.ptr->siz;
+    SizeState max;
+    if (pass.mod) {
+    //    x-x     x---x x---x   x-----x
+    //   y---y   y---y   y---y   y---y
+    //   z---z   z----z  z---z   z----z
+    int xl = loc; int xr = xl+siz;
+    int yl = base; int yr = yl+size;
+    int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
+    else if (xl<yl) {zl=yl;zr=xr;}
+    else if (xr<yr) {zl=yl;zr=yr;}
+    else {zl=yl;zr=xr;}
+    ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
+    loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
+    std::cerr << "rebase x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
+    loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
+    base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
+    if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
+    mptr->threadState.push(buf,pass,log); return true;
+}
+extern "C" {
+int datxVoids(void *dat);
+void *datxVoidz(int num, void *dat);
+};
+#define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
+    if (rebase(mptr->STATE.preview(),(void*)center->FIELD, \
+    mptr->changeState.read(BASE),mptr->changeState.read(SIZE), \
+    sizeof(TYPE),pass,log)) retval++
+#define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
+    if (mptr->STATE.preview()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
+    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),log)) \
+    {mptr->threadState.push(mptr->STATE.preview(),pass,log); retval++;}
+int CopyState::copy(Response pass, SmartState log) {
+    Center *center = pass.ptr;
+    int retval = 0;
+    switch (center->mem) {
+    default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+    break; case (Indexz): REBASE(indexState,ind,IndexBase,IndexSize,int32_t);
+    break; case (Bringupz): REBASE(bringupState,ver,BringupBase,BringupSize,Vertex);
+    break; case (Texturez): EXTENT(textureState,tex[0].dat,tex[0].wid,tex[0].hei); // TODO allow copy multiple textures
+    break; case (Uniformz): REBASE(uniformState,uni,UniformBase,UniformSize,Uniform);
+    break; case (Matrixz): REBASE(matrixState,mat,MatrixBase,MatrixSize,Matrix);
+    break; case (Trianglez): REBASE(triangleState,tri,TriangleBase,TriangleSize,Triangle);
+    break; case (Numericz): REBASE(numericState,num,NumericBase,NumericSize,Numeric);
+    break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
+    break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
+    break; case (Piercez): // TODO write modify read
+    REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
+    break; case (Configurez): {for (int i = 0; i < center->siz; i++)
+    mptr->changeState.write(center->cfg[i],center->val[i]); retval++;}}
+    return retval;
+}
+void CopyState::draw(int siz) {
+    StaticState *bind[] = {
+        &mptr->matrixState,
+        &mptr->textureState,
+        &mptr->bringupState,
+        &mptr->indexState,
+        &mptr->pipelineState,
+        &mptr->swapState};
+    if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+        mptr->drawState.derived()->push(0,0,siz,SmartState())) {
+        mptr->threadState.push(mptr->drawState.derived(),{0},SmartState());
+        mptr->drawState.advance();}
+    else {mptr->drawState.derived()->bind(); mptr->testState.wake.wait();}
+}
+
 void vulkanPass(Response pass);
 void TestState::call() {
     const std::vector<Vertex> vertices = {
@@ -1490,7 +1498,7 @@ void TestState::call() {
     mptr->pipelineState.advance(MicroTest);
     //
     StaticState *single[] = {&mptr->pipelineState};
-    for (int i = 0; i < mptr->frames; i++) {
+    for (int i = 0; i < StaticState::frames; i++) {
     while (!mptr->drawState.preview(i)->bind(single, 1) ||
     !mptr->drawState.preview(i)->push(SizeState(MicroTest),SmartState()))
     {mptr->drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
@@ -1530,19 +1538,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug[currentUniform],sizeof(Matrix));
     if (mptr->copyState.copy({0,0,0,mat,vulkanPass},SmartState())) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
-    // TODO move to mptr->changeState.write(DrawCount) callback; use constant for per Micro bind list
-    StaticState *bind[] = {
-        &mptr->matrixState,
-        &mptr->textureState,
-        &mptr->bringupState,
-        &mptr->indexState,
-        &mptr->pipelineState,
-        &mptr->swapState};
-    if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        mptr->drawState.derived()->push(0,0,static_cast<uint32_t>(indices.size()),SmartState())) {
-        mptr->threadState.push(mptr->drawState.derived(),{0},SmartState());
-        mptr->drawState.advance();}
-    else {mptr->drawState.derived()->bind(); wake.wait();}}
+    mptr->copyState.draw(static_cast<uint32_t>(indices.size()));}
 }
 
 // outside of struct
@@ -1579,8 +1575,10 @@ void vulkanBack(Configure cfg, int sav, int val) {
     if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
     mptr->callState.stop(&mptr->threadState);
 }
-/*void vulkanDraw(Configure cfg, int sav, int val) {
-}*/ // TODO move draw push to Configure callback
+void vulkanDraw(Configure cfg, int sav, int val) {
+    // TODO check cfg draw parameter
+    mptr->copyState.draw(val);
+}
 std::vector<const char *> cmdl;
 const char *vulkanCmnd(int arg) {
     if (arg < 0 || arg >= cmdl.size()) return 0;
@@ -1599,7 +1597,6 @@ int main(int argc, const char **argv) {
     return 0;
 }
 
-// statics
 GLFWwindow* WindowState::createWindow(uint32_t WIDTH, uint32_t HEIGHT) {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
