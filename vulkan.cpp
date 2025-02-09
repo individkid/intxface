@@ -34,13 +34,16 @@ extern "C" {
 typedef ChangeState<Configure,Configures> ConfigState;
 
 struct BaseState;
+struct StaticState;
+struct ParamState;
 struct CopyState {
     ConfigState *change;
     CopyState(ConfigState *ptr) : change(ptr) {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log);
     int copy(Response pass, SmartState log);
-    void draw(int siz);
+    void push(StaticState **ree, int rees, StaticState **wee, int wees, StaticState **der, int ders, ParamState **arg, SmartState log);
+    void draw(int siz, SmartState log);
 };
 
 // TODO define glfw callbacks that cast void* to CopyState*
@@ -427,11 +430,11 @@ struct BaseState {
         safe.post();
         return true;
     }
-    bool push(SizeState siz, SmartState log) { // called in main thread
+    bool push(SizeState max, SmartState log) { // called in main thread
         safe.wait();
         if (state != InitBase && state != FreeBase) {safe.post(); return false;}
         if (rlock || wlock) {safe.post(); return false;}
-        todo = siz;
+        todo = max;
         state = SizeBase;
         safe.post();
         return true;
@@ -563,10 +566,6 @@ struct BaseState {
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
         VkImage& image, VkDeviceMemory& imageMemory);
 };
-struct IncrState {
-    StaticState *ptr;
-    int inc;
-};
 struct BindState {
     SafeState safe;
     BaseState *bind[Binds];
@@ -580,7 +579,7 @@ struct BindState {
         for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
     ~BindState()
         {std::cout << "~BindState " << debug << std::endl;}
-    bool incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log);
+    bool incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log);
     void incr(SmartState log);
 };
 template <> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {return 0;}
@@ -1279,42 +1278,47 @@ struct MainState {
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
 };
 
-bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log) { // called by pusher
+bool BindState::incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log) { // called by pusher
+    int count[Binds] = {0}; BaseState *buffer[Binds] = {0};
     safe.wait();
     log << "incr" << std::endl;
     if (lock != 0) {safe.post(); log << "incr lock fail" << std::endl; return false;}
     for (int i = 0; i < Binds; i++) if (bind[i] != 0) {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
     Bind rtyp[rsiz]; BaseState *rbuf[rsiz];
     int rcount = 0; bool rfail = false; for (int i = 0; i < rsiz; i++) {
-    rtyp[i] = rptr[i].ptr->index(); rbuf[i] = rptr[i].ptr->buffer(); rbuf[i]->safe.wait(); rcount++;
+    rtyp[i] = rptr[i]->index();
+    if (count[rtyp[i]] == 0) {buffer[rtyp[i]] = rptr[i]->buffer(); buffer[rtyp[i]]->safe.wait();}
+    count[rtyp[i]] += 1; rbuf[i] = buffer[rtyp[i]]; rcount++;
     // if (rbuf[i] == this) {std::cerr << "invalid incr rptr!" << std::endl; exit(-1);}
     if (rbuf[i]->state != FreeBase && rbuf[i]->state != InitBase) {rfail = true;
     log << "incr rbuf " << rbuf[i]->debug << " state " << rbuf[i]->state << " fail" << std::endl; break;}
     if (rbuf[i]->rlock || rbuf[i]->wlock) {rfail = true;
     log << "incr rbuf " << rbuf[i]->debug << " lock r" << rbuf[i]->rlock << " w" << rbuf[i]->wlock << " fail" << std::endl; break;}}
-    if (rfail) {for (int i = 0; i < rcount; i++) rbuf[i]->safe.post();
+    if (rfail) {
+    for (int i = 0; i < rcount; i++) if (--count[rtyp[i]] == 0) rbuf[i]->safe.post();
     safe.post(); return false;}
     Bind wtyp[rsiz]; BaseState *wbuf[rsiz];
     int wcount = 0; bool wfail = false; for (int i = 0; i < wsiz; i++) {
-    wtyp[i] = wptr[i].ptr->index(); wbuf[i] = wptr[i].ptr->buffer(); wbuf[i]->safe.wait(); wcount++;
+    wtyp[i] = wptr[i]->index();
+    if (count[wtyp[i]] == 0) {buffer[wtyp[i]] = wptr[i]->buffer(); buffer[wtyp[i]]->safe.wait();}
+    count[wtyp[i]] += 1; wbuf[i] = buffer[wtyp[i]]; wcount++;
     // if (wbuf[i] == this) {std::cerr << "invalid incr wptr!" << std::endl; exit(-1);}
     if (wbuf[i]->state != FreeBase && wbuf[i]->state != InitBase) {wfail = true;
     log << "incr wbuf " << rbuf[i]->debug << " state " << rbuf[i]->state << " fail" << std::endl; break;}
     if (wbuf[i]->rlock || wbuf[i]->wlock) {wfail = true;
     log << "incr wbuf " << rbuf[i]->debug << " lock r" << wbuf[i]->rlock << " w" << wbuf[i]->wlock << " fail" << std::endl; break;}}
-    if (wfail) {for (int i = 0; i < wcount; i++) wbuf[i]->safe.post();
-    for (int i = 0; i < rsiz; i++) rbuf[i]->safe.post();
+    if (wfail) {
+    for (int i = 0; i < wcount; i++) if (--count[wtyp[i]] == 0) wbuf[i]->safe.post();
+    for (int i = 0; i < rcount; i++) if (--count[rtyp[i]] == 0) rbuf[i]->safe.post();
     safe.post(); return false;}
-    for (int i = 0; i < rsiz; i++) {int inc = rptr[i].inc;
-    if (bind[rtyp[i]] == 0) lock += 1;
-    bind[rtyp[i]] = rbuf[i]; rbuf[i]->rlock += inc; rsav[i] += inc;
+    for (int i = 0; i < rsiz; i++) {if (bind[rtyp[i]] == 0) lock += 1;
+    bind[rtyp[i]] = rbuf[i]; rbuf[i]->rlock += 1; rsav[i] += 1;
     log << "incr " << rbuf[i]->debug << " r" << rbuf[i]->rlock << std::endl;}
-    for (int i = 0; i < wsiz; i++) {int inc = wptr[i].inc;
-    if (bind[wtyp[i]] == 0) lock += 1;
-    bind[wtyp[i]] = wbuf[i]; wbuf[i]->wlock += inc; wsav[i] += inc;
+    for (int i = 0; i < wsiz; i++) {if (bind[wtyp[i]] == 0) lock += 1;
+    bind[wtyp[i]] = wbuf[i]; wbuf[i]->wlock += 1; wsav[i] += 1;
     log << "incr " << wbuf[i]->debug << " w" << wbuf[i]->wlock << std::endl;}
-    for (int i = 0; i < rsiz; i++) rbuf[i]->safe.post();
-    for (int i = 0; i < wsiz; i++) wbuf[i]->safe.post();
+    for (int i = 0; i < wsiz; i++) if (--count[wtyp[i]] == 0) wbuf[i]->safe.post();
+    for (int i = 0; i < rsiz; i++) if (--count[rtyp[i]] == 0) rbuf[i]->safe.post();
     safe.post(); return true;
 }
 void BindState::incr(SmartState log) { // called by pusher
@@ -1443,7 +1447,22 @@ int CopyState::copy(Response pass, SmartState log) {
     mptr->changeState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
 }
-void CopyState::draw(int siz) {
+/*struct IncrState {
+    StaticState *ptr;
+    int inc;
+};*/
+struct ParamState {
+    void *ptr; int loc; int siz;
+    SizeState max;
+};
+void CopyState::push(StaticState **ree, int rees, StaticState **wee, int wees, StaticState **der, int ders, ParamState **arg, SmartState log) {
+    BindState *bindPtr = mptr->bindState.derived();
+    if (!bindPtr->incr(ree,rees,wee,wees,log)) {
+        // TODO threadState.push(0,pass);
+    }
+    // TODO push set link push of each der
+}
+void CopyState::draw(int siz, SmartState log) {
     StaticState *bind[] = {
         &mptr->matrixState,
         &mptr->textureState,
@@ -1538,7 +1557,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug[currentUniform],sizeof(Matrix));
     if (mptr->copyState.copy({0,0,0,mat,vulkanPass},SmartState())) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
     //
-    mptr->copyState.draw(static_cast<uint32_t>(indices.size()));}
+    mptr->copyState.draw(static_cast<uint32_t>(indices.size()),SmartState());}
 }
 
 // outside of struct
@@ -1577,7 +1596,7 @@ void vulkanBack(Configure cfg, int sav, int val) {
 }
 void vulkanDraw(Configure cfg, int sav, int val) {
     // TODO check cfg draw parameter
-    mptr->copyState.draw(val);
+    mptr->copyState.draw(val,SmartState());
 }
 std::vector<const char *> cmdl;
 const char *vulkanCmnd(int arg) {
