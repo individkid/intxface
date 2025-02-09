@@ -571,23 +571,23 @@ struct IncrState {
     StaticState *ptr;
     int inc;
 };
-struct BindState : public BaseState {
+struct BindState {
+    SafeState safe;
     BaseState *bind[Binds];
     int rsav[Binds];
     int wsav[Binds];
     int lock;
-    BindState() : BaseState("BindState"), lock(0)
+    char debug[64];
+    BindState() : safe(1), lock(0)
         {std::cout << "BindState " << debug << std::endl;
+        sprintf(debug,"BindState%d",StaticState::debug++);
         for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
     ~BindState()
         {std::cout << "~BindState " << debug << std::endl;}
     bool incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, SmartState log);
     void incr(SmartState log);
-    void unsize(SmartState log) override {std::cerr << "invalid bind unsize!" << std::endl; exit(-1);}
-    void resize(SmartState log) override {std::cerr << "invalid bind resize!" << std::endl; exit(-1);}
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {std::cerr << "invalid bind setup!" << std::endl; exit(-1);}
-    void upset(SmartState log) override {std::cerr << "invalid bind upset!" << std::endl; exit(-1);}
 };
+template <> BaseState *ArrayState<BindState,BindBnd,2>::buffer() {return 0;}
 
 struct SwapState : public BaseState {
     GLFWwindow* window;
@@ -1349,7 +1349,7 @@ bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, Smart
     Bind rtyp[rsiz]; BaseState *rbuf[rsiz];
     int rcount = 0; bool rfail = false; for (int i = 0; i < rsiz; i++) {
     rtyp[i] = rptr[i].ptr->index(); rbuf[i] = rptr[i].ptr->buffer(); rbuf[i]->safe.wait(); rcount++;
-    if (rbuf[i] == this) {std::cerr << "invalid incr rptr!" << std::endl; exit(-1);}
+    // if (rbuf[i] == this) {std::cerr << "invalid incr rptr!" << std::endl; exit(-1);}
     if (rbuf[i]->state != FreeBase && rbuf[i]->state != InitBase) {rfail = true;
     log << "incr rbuf " << rbuf[i]->debug << " state " << rbuf[i]->state << " fail" << std::endl; break;}
     if (rbuf[i]->rlock || rbuf[i]->wlock) {rfail = true;
@@ -1359,7 +1359,7 @@ bool BindState::incr(IncrState *rptr, int rsiz, IncrState *wptr, int wsiz, Smart
     Bind wtyp[rsiz]; BaseState *wbuf[rsiz];
     int wcount = 0; bool wfail = false; for (int i = 0; i < wsiz; i++) {
     wtyp[i] = wptr[i].ptr->index(); wbuf[i] = wptr[i].ptr->buffer(); wbuf[i]->safe.wait(); wcount++;
-    if (wbuf[i] == this) {std::cerr << "invalid incr wptr!" << std::endl; exit(-1);}
+    // if (wbuf[i] == this) {std::cerr << "invalid incr wptr!" << std::endl; exit(-1);}
     if (wbuf[i]->state != FreeBase && wbuf[i]->state != InitBase) {wfail = true;
     log << "incr wbuf " << rbuf[i]->debug << " state " << rbuf[i]->state << " fail" << std::endl; break;}
     if (wbuf[i]->rlock || wbuf[i]->wlock) {wfail = true;
