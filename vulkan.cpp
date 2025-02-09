@@ -31,14 +31,11 @@ extern "C" {
 };
 #include "stlx.h"
 
-typedef ChangeState<Configure,Configures> ConfigState;
-
 struct BaseState;
 struct StaticState;
 struct ParamState;
-struct CopyState {
-    ConfigState *change;
-    CopyState(ConfigState *ptr) : change(ptr) {std::cout << "CopyState" << std::endl;}
+struct CopyState : public ChangeState<Configure,Configures> {
+    CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log);
     int copy(Response pass, SmartState log);
@@ -169,7 +166,7 @@ struct StaticState {
     static StaticState* self;
     static int debug;
     static int micro;
-    static ConfigState *change;
+    static CopyState *copy;
     static GLFWwindow* window;
     static VkSurfaceKHR surface;
     static VkPhysicalDevice physical;
@@ -188,7 +185,7 @@ struct StaticState {
     static VkQueue present;
     static VkBufferUsageFlags flags;
     StaticState(const char *name,
-        ConfigState *change,
+        CopyState *copy,
         GLFWwindow* window,
         VkSurfaceKHR surface,
         VkPhysicalDevice physical,
@@ -209,7 +206,7 @@ struct StaticState {
         StaticState::self = this;
         StaticState::debug = 0;
         StaticState::micro = 0;
-        StaticState::change = change;
+        StaticState::copy = copy;
         StaticState::window = window;
         StaticState::surface = surface;
         StaticState::physical = physical;
@@ -242,7 +239,7 @@ struct StaticState {
 StaticState* StaticState::self;
 int StaticState::debug;
 int StaticState::micro;
-ConfigState *StaticState::change;
+CopyState *StaticState::copy;
 GLFWwindow* StaticState::window;
 VkSurfaceKHR StaticState::surface;
 VkPhysicalDevice StaticState::physical;
@@ -265,7 +262,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StaticSta
     int idx;
     State state[Size];
     ArrayState(const char *name,
-        ConfigState *change,
+        CopyState *copy,
         GLFWwindow* window,
         VkSurfaceKHR surface,
         VkPhysicalDevice physical,
@@ -283,7 +280,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StaticSta
         VkQueue graphics,
         VkQueue present) :
     StaticState(name,
-        change,
+        copy,
         window,
         surface,
         physical,
@@ -448,6 +445,13 @@ struct BaseState {
         safe.post();
         return true;
     }
+    void push(SmartState log) { // called in main thread
+        safe.wait();
+        if (state != BothBase && state != SizeBase && state != LockBase)
+        {std::cerr << "invalid push state!" << std::endl; exit(-1);}
+        state = FreeBase;
+        safe.post();
+    }
     VkFence sizeup(SmartState log) { // called in separate thread
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
@@ -573,16 +577,17 @@ struct BindState {
     int wsav[Binds];
     int lock;
     char debug[64];
-    BindState() : safe(1), lock(0)
-        {std::cout << "BindState " << debug << std::endl;
+    BindState() : safe(1), lock(0) {
         sprintf(debug,"BindState%d",StaticState::debug++);
+        std::cout << "BindState " << debug << std::endl;
         for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
     ~BindState()
         {std::cout << "~BindState " << debug << std::endl;}
     bool incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log);
     void incr(SmartState log);
 };
-template <> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {return 0;}
+template <> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {
+    std::cerr << "invalid base buffer!" << std::endl; exit(-1);}
 
 struct SwapState : public BaseState {
     GLFWwindow* window;
@@ -929,12 +934,12 @@ struct ResultState : public BaseState {
 struct AcquireState : public BaseState {
     const VkDevice device;
     VkSemaphore after; bool atomic;
-    ConfigState *change;
+    CopyState *copy;
     uint32_t imageIndex;
     AcquireState() :
         BaseState("AcquireState"),
         device(StaticState::device),
-        change(StaticState::change),
+        copy(StaticState::copy),
         atomic(false) {
         after = createSemaphore(device);
         std::cout << "AcquireState " << debug << std::endl;}
@@ -949,7 +954,7 @@ struct AcquireState : public BaseState {
         VkExtent2D frameExtent = get(SwapBnd)->getSwapChainExtent();
         VkResult result = vkAcquireNextImageKHR(device,
         get(SwapBnd)->getSwapChain(), UINT64_MAX, (atomic?after:VK_NULL_HANDLE), VK_NULL_HANDLE, &imageIndex);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<ResizeAsync);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
         return VK_NULL_HANDLE;
@@ -962,11 +967,11 @@ struct AcquireState : public BaseState {
 
 struct PresentState : public BaseState {
     const VkQueue present;
-    ConfigState *change;
+    CopyState *copy;
     PresentState() :
         BaseState("PresentState"),
         present(StaticState::present),
-        change(StaticState::change)
+        copy(StaticState::copy)
         {std::cout << "PresentState " << debug << std::endl;}
     ~PresentState() {SmartState log("present"); push(SizeState(0,0),log); baseres(log); log.clr();
         std::cout << "~PresentState " << debug << std::endl;}
@@ -975,7 +980,7 @@ struct PresentState : public BaseState {
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         if (!presentFrame(present,get(SwapBnd)->getSwapChain(),
         get(AcquireBnd)->getImageIndex(),get(DrawBnd)->getSemaphore()))
-        change->wots(RegisterMask,1<<ResizeAsync);
+        copy->wots(RegisterMask,1<<ResizeAsync);
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
@@ -993,7 +998,7 @@ struct DrawState : public BaseState {
     const VkQueue present;
     const VkCommandPool commandPool;
     const int frames;
-    ConfigState *change;
+    CopyState *copy;
     VkSemaphore acquire;
     VkSemaphore before;
     VkSemaphore after;
@@ -1012,7 +1017,7 @@ struct DrawState : public BaseState {
         present(StaticState::present),
         commandPool(StaticState::commandPool),
         frames(StaticState::frames),
-        change(StaticState::change),
+        copy(StaticState::copy),
         before(VK_NULL_HANDLE),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0)
@@ -1073,7 +1078,7 @@ struct DrawState : public BaseState {
             // TODO depending on size.micro, disable acquire
             VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
                 UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
-            if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<ResizeAsync);
+            if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
             else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
             vkResetFences(device, 1, &fence);
@@ -1093,7 +1098,7 @@ struct DrawState : public BaseState {
                 get(BringupBnd)->getBuffer(), get(IndexBnd)->getBuffer());
             if (!drawFrame(commandBuffer,graphics,present,get(SwapBnd)->getSwapChain(),imageIndex,
                 ptr,loc,siz,size.micro,acquire,after,fence,before))
-                change->wots(RegisterMask,1<<ResizeAsync); before = VK_NULL_HANDLE;
+                copy->wots(RegisterMask,1<<ResizeAsync); before = VK_NULL_HANDLE;
             return fence;
         }
         return VK_NULL_HANDLE;
@@ -1118,7 +1123,8 @@ struct DrawState : public BaseState {
         VkSwapchainKHR swapChain, uint32_t imageIndex, void *ptr, int loc, int siz, Micro micro,
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
-template <> BaseState *ArrayState<DrawState,DrawBnd,StaticState::frames>::buffer() {return 0;}
+template <> BaseState *ArrayState<DrawState,DrawBnd,StaticState::frames>::buffer() {
+    std::cerr << "invalid draw buffer!" << std::endl; exit(-1);}
 
 struct PushState {
     BaseState *base;
@@ -1128,14 +1134,14 @@ struct PushState {
 };
 struct ThreadState : public DoneState {
     const VkDevice device;
-    ConfigState *change;
+    CopyState *copy;
     SafeState safe; SafeState wake;
     std::deque<PushState> before;
     std::deque<PushState> after;
     bool goon;
     pthread_t thread;
-    ThreadState(VkDevice device, ConfigState *change) :
-        device(device), change(change),
+    ThreadState(VkDevice device, CopyState *copy) :
+        device(device), copy(copy),
         safe(1), wake(0), goon(true) {
         strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
     }
@@ -1171,7 +1177,7 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.base) push.base->baseups(push.log);
         if (push.pass.fnc) push.pass.fnc(push.pass);
-        change->wots(RegisterMask,1<<FenceAsync);}
+        copy->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(device);
     }
     void done() override {
@@ -1211,7 +1217,6 @@ struct ForkState : public DoneState {
 };
 
 struct MainState {
-    ConfigState changeState;
     CopyState copyState;
     WindowState windowState;
     VulkanState vulkanState;
@@ -1239,7 +1244,6 @@ struct MainState {
     TestState testState;
     CallState callState;
     MainState() :
-        copyState(&changeState),
         windowState(&copyState),
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),
@@ -1247,7 +1251,7 @@ struct MainState {
             physicalState.presentFamily,physicalState.surfaceFormat,
             vulkanState.validationLayers,physicalState.deviceExtensions),
         sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)),
-        swapState("SwapBnd",&changeState,
+        swapState("SwapBnd",&copyState,
             windowState.window,vulkanState.surface,physicalState.device,
             physicalState.surfaceFormat,physicalState.presentMode,
             physicalState.graphicsFamily,physicalState.presentFamily,
@@ -1271,7 +1275,7 @@ struct MainState {
         presentState("PresentBnd"),
         drawState("DrawBnd"),
         bindState("BindBnd"),
-        threadState(logicalState.device,&changeState) {
+        threadState(logicalState.device,&copyState) {
         std::cout << "MainState" << std::endl;}
     ~MainState() {std::cout << "~MainState" << std::endl;}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
@@ -1421,7 +1425,7 @@ void *datxVoidz(int num, void *dat);
 };
 #define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
     if (rebase(mptr->STATE.preview(),(void*)center->FIELD, \
-    mptr->changeState.read(BASE),mptr->changeState.read(SIZE), \
+    mptr->copyState.read(BASE),mptr->copyState.read(SIZE), \
     sizeof(TYPE),pass,log)) retval++
 #define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
     if (mptr->STATE.preview()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
@@ -1444,13 +1448,9 @@ int CopyState::copy(Response pass, SmartState log) {
     break; case (Piercez): // TODO write modify read
     REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
     break; case (Configurez): {for (int i = 0; i < center->siz; i++)
-    mptr->changeState.write(center->cfg[i],center->val[i]); retval++;}}
+    mptr->copyState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
 }
-/*struct IncrState {
-    StaticState *ptr;
-    int inc;
-};*/
 struct ParamState {
     void *ptr; int loc; int siz;
     SizeState max;
@@ -1502,9 +1502,9 @@ void TestState::call() {
     int currentUniform = 0;
     //
     int xsiz = 800; int ysiz = 600;
-    mptr->changeState.write(WindowLeft,-xsiz/2); mptr->changeState.write(WindowBase,-ysiz/2);
-    mptr->changeState.write(WindowWidth,xsiz); mptr->changeState.write(WindowHeight,ysiz);
-    mptr->changeState.write(FocalLength,10); mptr->changeState.write(FocalDepth,10);
+    mptr->copyState.write(WindowLeft,-xsiz/2); mptr->copyState.write(WindowBase,-ysiz/2);
+    mptr->copyState.write(WindowWidth,xsiz); mptr->copyState.write(WindowHeight,ysiz);
+    mptr->copyState.write(FocalLength,10); mptr->copyState.write(FocalDepth,10);
     //
     if (!mptr->swapState.preview(0)->push(mptr->sizeState,SmartState()))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
@@ -1541,8 +1541,8 @@ void TestState::call() {
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
-    if (mptr->changeState.read(RegisterMask) & (1<<ResizeAsync)) {
-    mptr->changeState.wotc(RegisterMask,(1<<ResizeAsync));
+    if (mptr->copyState.read(RegisterMask) & (1<<ResizeAsync)) {
+    mptr->copyState.wotc(RegisterMask,(1<<ResizeAsync));
     mptr->sizeState = SizeState(mptr->findCapabilities(mptr->windowState.window,mptr->vulkanState.surface,mptr->physicalState.device));
     while (!mptr->swapState.preview(0)->push(mptr->sizeState,SmartState())) wake.wait();
     mptr->threadState.push(mptr->swapState.preview(0),{0},SmartState());
@@ -1568,19 +1568,19 @@ void vulkanCopy(Response pass) {
     mptr->copyState.copy(pass,SmartState());
 }
 void vulkanCall(Configure cfg, xftype back) {
-    mptr->changeState.call(cfg,back);
+    mptr->copyState.call(cfg,back);
 }
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
     mptr->callState.push(new ForkState(thd,idx,fnc,done));
 }
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
-    return mptr->changeState.info(cfg,val,fnc);
+    return mptr->copyState.info(cfg,val,fnc);
 }
 int vulkanJnfo(Configure cfg, int val, yftype fnc) {
-    return mptr->changeState.jnfo(cfg,val,fnc);
+    return mptr->copyState.jnfo(cfg,val,fnc);
 }
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
-    return mptr->changeState.knfo(cfg,val,fnc);
+    return mptr->copyState.knfo(cfg,val,fnc);
 }
 void vulkanBack(Configure cfg, int sav, int val) {
     if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
@@ -1607,10 +1607,10 @@ const char *vulkanCmnd(int arg) {
 int main(int argc, const char **argv) {
     for (int i = 1; i < argc; i++) cmdl.push_back(argv[i]);
     MainState main; mptr = &main;
-    main.changeState.call(RegisterOpen,vulkanBack);
+    main.copyState.call(RegisterOpen,vulkanBack);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
-    while (!glfwWindowShouldClose(main.windowState.window) && main.changeState.read(RegisterOpen) != 0) {
-    glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);
+    while (!glfwWindowShouldClose(main.windowState.window) && main.copyState.read(RegisterOpen) != 0) {
+    glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
     planeLoop();}
     planeDone();
     return 0;
