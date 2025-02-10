@@ -87,20 +87,41 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     return os;
 }
 
-struct ParamState {
-    void *ptr; int loc; int siz;
+enum ParamEnum {
+    BothParam,
+    LockParam,
+    SizeParam,
 };
 struct BaseState;
+struct ParamState {
+    void *ptr; int loc; int siz; SizeState max; ParamEnum tag;
+    ParamState(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothParam) {}
+    ParamState(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockParam) {}
+    ParamState(SizeState max) : max(max), tag(SizeParam) {}
+    bool operator()(BaseState *buf, SmartState log);
+};
 struct StaticState;
 struct CopyState : public ChangeState<Configure,Configures> {
     CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log);
     int copy(Response pass, SmartState log);
-    void push(StaticState **ree, int rees, StaticState *der,
-        void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log);
     void push(StaticState **ree, int rees, StaticState **wee, int wees,
-        StaticState **der, int ders, ParamState **arg, Response pass, SmartState log);
+        StaticState **der, int ders, ParamState *arg, Response pass, SmartState log);
+    void push(StaticState **ree, int rees, StaticState *der,
+        ParamState wrap, Response pass, SmartState log);
+    void push(StaticState **ree, int rees, StaticState *der,
+        void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
+        push(ree,rees,der,ParamState(ptr,loc,siz,max),pass,log);
+    }
+    void push(StaticState **ree, int rees, StaticState *der,
+        void *ptr, int loc, int siz, Response pass, SmartState log) {
+        push(ree,rees,der,ParamState(ptr,loc,siz),pass,log);
+    }
+    void push(StaticState **ree, int rees, StaticState *der,
+        SizeState max, Response pass, SmartState log) {
+        push(ree,rees,der,ParamState(max),pass,log);
+    }
     void draw(int siz, SmartState log);
 };
 
@@ -1129,8 +1150,6 @@ struct DrawState : public BaseState {
         VkSwapchainKHR swapChain, uint32_t imageIndex, void *ptr, int loc, int siz, Micro micro,
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
-template <> BaseState *ArrayState<DrawState,DrawBnd,StaticState::frames>::buffer() {
-    std::cerr << "invalid draw buffer!" << std::endl; exit(-1);}
 
 struct PushState {
     BaseState *base;
@@ -1457,37 +1476,49 @@ int CopyState::copy(Response pass, SmartState log) {
     mptr->copyState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
 }
+bool ParamState::operator()(BaseState *buf, SmartState log) {
+    switch(tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
+    break; case (BothParam): return buf->push(ptr,loc,siz,max,log);
+    break; case (LockParam): return buf->push(ptr,loc,siz,log);
+    break; case (SizeParam): return buf->push(max,log);}
+    return true;
+}
 void CopyState::push(StaticState **ree, int rees, StaticState *der,
-    void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
+    ParamState param, Response pass, SmartState log) {
     BindState *bind = mptr->bindState.derived();
     if (!bind->incr(ree,rees,0,0,log)) {
     mptr->threadState.push(0,pass,log);
     return;}
-    if (!der->buffer()->push(ptr,loc,siz,max,log)) {
+    if (!param(der->buffer(),log)) {
     der->buffer()->push(log);
     bind->incr(log);
     mptr->threadState.push(0,pass,log);
     return;}
-    der->buffer()->set(bind);
-    mptr->threadState.push(der->buffer(),pass,log);
+    BaseState *buf = der->buffer();
+    buf->set(bind);
+    der->advance();
+    mptr->threadState.push(buf,pass,log);
 }
 void CopyState::push(StaticState **ree, int rees, StaticState **wee, int wees,
-    StaticState **der, int ders, ParamState **arg, Response pass, SmartState log) {
+    StaticState **der, int ders, ParamState *arg, Response pass, SmartState log) {
     BindState *bind = mptr->bindState.derived();
     if (!bind->incr(ree,rees,wee,wees,log)) {
     mptr->threadState.push(0,pass,log);
     return;}
     int count = 0; for (int i = 0; i < ders; i++) {
-    if (der[i]->buffer()->push(arg[i]->ptr,arg[i]->loc,arg[i]->siz,log))
+    if (arg[i](der[i]->buffer(),log))
     count++; else break;}
     if (count < ders) {
     for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
     bind->incr(log);
     mptr->threadState.push(0,pass,log);
     return;}
-    for (int i = 0; i < ders; i++) der[i]->buffer()->set(bind);
-    for (int i = 1; i < ders; i++) der[i]->buffer()->setSemaphore(der[i-1]->buffer()->getSemaphore());
-    for (int i = 0; i < ders; i++) mptr->threadState.push(der[i]->buffer(),pass,log);
+    BaseState *buf[ders];
+    for (int i = 0; i < ders; i++) buf[i] = der[i]->buffer();
+    for (int i = 0; i < ders; i++) buf[i]->set(bind);
+    for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
+    for (int i = 0; i < ders; i++) der[i]->advance();
+    for (int i = 0; i < ders; i++) mptr->threadState.push(buf[i],pass,log);
 }
 void CopyState::draw(int siz, SmartState log) {
     // TODO call CopyState::push with acquire draw present
@@ -1500,8 +1531,9 @@ void CopyState::draw(int siz, SmartState log) {
         &mptr->swapState};
     if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
         mptr->drawState.derived()->push(0,0,siz,SmartState())) {
-        mptr->threadState.push(mptr->drawState.derived(),{0},SmartState());
-        mptr->drawState.advance();}
+        BaseState *drawPtr = mptr->drawState.buffer();
+        mptr->drawState.advance();
+        mptr->threadState.push(drawPtr,{0},SmartState());}
     else {mptr->drawState.derived()->bind(); mptr->testState.wake.wait();}
 }
 
