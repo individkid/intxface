@@ -109,7 +109,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(StaticState **ree, int rees, StaticState **wee, int wees,
         StaticState **der, int ders, ParamState *arg, Response pass, SmartState log);
     void push(StaticState **ree, int rees, StaticState *der,
-        ParamState wrap, Response pass, SmartState log);
+        ParamState param, Response pass, SmartState log) {
+        push(ree,rees,0,0,&der,1,&param,pass,log);
+    }
     void push(StaticState **ree, int rees, StaticState *der,
         void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
         push(ree,rees,der,ParamState(ptr,loc,siz,max),pass,log);
@@ -1422,6 +1424,13 @@ void BaseState::wdec(Bind i) { // called by pushee
 
 MainState *mptr = 0;
 
+bool ParamState::operator()(BaseState *buf, SmartState log) {
+    switch(tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
+    break; case (BothParam): return buf->push(ptr,loc,siz,max,log);
+    break; case (LockParam): return buf->push(ptr,loc,siz,log);
+    break; case (SizeParam): return buf->push(max,log);}
+    return true;
+}
 bool CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log) {
     int loc = pass.ptr->idx;
     int siz = pass.ptr->siz;
@@ -1475,29 +1484,6 @@ int CopyState::copy(Response pass, SmartState log) {
     break; case (Configurez): {for (int i = 0; i < center->siz; i++)
     mptr->copyState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
-}
-bool ParamState::operator()(BaseState *buf, SmartState log) {
-    switch(tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
-    break; case (BothParam): return buf->push(ptr,loc,siz,max,log);
-    break; case (LockParam): return buf->push(ptr,loc,siz,log);
-    break; case (SizeParam): return buf->push(max,log);}
-    return true;
-}
-void CopyState::push(StaticState **ree, int rees, StaticState *der,
-    ParamState param, Response pass, SmartState log) {
-    BindState *bind = mptr->bindState.derived();
-    if (!bind->incr(ree,rees,0,0,log)) {
-    mptr->threadState.push(0,pass,log);
-    return;}
-    if (!param(der->buffer(),log)) {
-    der->buffer()->push(log);
-    bind->incr(log);
-    mptr->threadState.push(0,pass,log);
-    return;}
-    BaseState *buf = der->buffer();
-    buf->set(bind);
-    der->advance();
-    mptr->threadState.push(buf,pass,log);
 }
 void CopyState::push(StaticState **ree, int rees, StaticState **wee, int wees,
     StaticState **der, int ders, ParamState *arg, Response pass, SmartState log) {
