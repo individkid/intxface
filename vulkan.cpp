@@ -104,8 +104,6 @@ struct StaticState;
 struct CopyState : public ChangeState<Configure,Configures> {
     CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log);
-    int copy(Response pass, SmartState log);
     void push(StaticState **ree, int rees, StaticState **wee, int wees,
         StaticState **der, int ders, ParamState *arg, Response pass, SmartState log);
     void push(StaticState **ree, int rees, StaticState *der,
@@ -125,6 +123,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(ree,rees,der,ParamState(max),pass,log);
     }
     void draw(int siz, SmartState log);
+    bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log);
+    int copy(Response pass, SmartState log);
 };
 
 // TODO define glfw callbacks that cast void* to CopyState*
@@ -416,6 +416,26 @@ template<class State> struct ConstState {
     State operator()() {return value;}
 };
 
+struct BindState {
+    SafeState safe;
+    BaseState *bind[Binds];
+    int rsav[Binds];
+    int wsav[Binds];
+    int lock;
+    char debug[64];
+    BindState() : safe(1), lock(0) {
+        sprintf(debug,"BindState%d",StaticState::debug++);
+        std::cout << "BindState " << debug << std::endl;
+        for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
+    ~BindState()
+        {std::cout << "~BindState " << debug << std::endl;}
+    bool incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log);
+    void incr(SmartState log);
+};
+template <> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {
+    std::cerr << "invalid base buffer!" << std::endl; exit(-1);
+}
+
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
     FreeBase, // ready to use or update
@@ -425,7 +445,6 @@ enum BaseEnum {
     NextBase, // waiting for fence done
     BaseEnums
 };
-struct BindState;
 struct BaseState {
     SafeState safe;
     BaseEnum state; int rlock, wlock;
@@ -599,24 +618,6 @@ struct BaseState {
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
         VkImage& image, VkDeviceMemory& imageMemory);
 };
-struct BindState {
-    SafeState safe;
-    BaseState *bind[Binds];
-    int rsav[Binds];
-    int wsav[Binds];
-    int lock;
-    char debug[64];
-    BindState() : safe(1), lock(0) {
-        sprintf(debug,"BindState%d",StaticState::debug++);
-        std::cout << "BindState " << debug << std::endl;
-        for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
-    ~BindState()
-        {std::cout << "~BindState " << debug << std::endl;}
-    bool incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log);
-    void incr(SmartState log);
-};
-template <> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {
-    std::cerr << "invalid base buffer!" << std::endl; exit(-1);}
 
 struct SwapState : public BaseState {
     GLFWwindow* window;
@@ -1431,6 +1432,43 @@ bool ParamState::operator()(BaseState *buf, SmartState log) {
     break; case (SizeParam): return buf->push(max,log);}
     return true;
 }
+void CopyState::push(StaticState **ree, int rees, StaticState **wee, int wees,
+    StaticState **der, int ders, ParamState *arg, Response pass, SmartState log) {
+    BindState *bind = mptr->bindState.derived();
+    if (!bind->incr(ree,rees,wee,wees,log)) {
+    mptr->threadState.push(0,pass,log);
+    return;}
+    int count = 0; for (int i = 0; i < ders; i++) {
+    if (arg[i](der[i]->buffer(),log))
+    count++; else break;}
+    if (count < ders) {
+    for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
+    bind->incr(log);
+    mptr->threadState.push(0,pass,log);
+    return;}
+    BaseState *buf[ders];
+    for (int i = 0; i < ders; i++) buf[i] = der[i]->buffer();
+    for (int i = 0; i < ders; i++) buf[i]->set(bind);
+    for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
+    for (int i = 0; i < ders; i++) der[i]->advance();
+    for (int i = 0; i < ders; i++) mptr->threadState.push(buf[i],pass,log);
+}
+void CopyState::draw(int siz, SmartState log) {
+    // TODO call CopyState::push with acquire draw present
+    StaticState *bind[] = {
+        &mptr->matrixState,
+        &mptr->textureState,
+        &mptr->bringupState,
+        &mptr->indexState,
+        &mptr->pipelineState,
+        &mptr->swapState};
+    if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+        mptr->drawState.derived()->push(0,0,siz,SmartState())) {
+        BaseState *drawPtr = mptr->drawState.buffer();
+        mptr->drawState.advance();
+        mptr->threadState.push(drawPtr,{0},SmartState());}
+    else {mptr->drawState.derived()->bind(); mptr->testState.wake.wait();}
+}
 bool CopyState::rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log) {
     int loc = pass.ptr->idx;
     int siz = pass.ptr->siz;
@@ -1484,43 +1522,6 @@ int CopyState::copy(Response pass, SmartState log) {
     break; case (Configurez): {for (int i = 0; i < center->siz; i++)
     mptr->copyState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
-}
-void CopyState::push(StaticState **ree, int rees, StaticState **wee, int wees,
-    StaticState **der, int ders, ParamState *arg, Response pass, SmartState log) {
-    BindState *bind = mptr->bindState.derived();
-    if (!bind->incr(ree,rees,wee,wees,log)) {
-    mptr->threadState.push(0,pass,log);
-    return;}
-    int count = 0; for (int i = 0; i < ders; i++) {
-    if (arg[i](der[i]->buffer(),log))
-    count++; else break;}
-    if (count < ders) {
-    for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
-    bind->incr(log);
-    mptr->threadState.push(0,pass,log);
-    return;}
-    BaseState *buf[ders];
-    for (int i = 0; i < ders; i++) buf[i] = der[i]->buffer();
-    for (int i = 0; i < ders; i++) buf[i]->set(bind);
-    for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
-    for (int i = 0; i < ders; i++) der[i]->advance();
-    for (int i = 0; i < ders; i++) mptr->threadState.push(buf[i],pass,log);
-}
-void CopyState::draw(int siz, SmartState log) {
-    // TODO call CopyState::push with acquire draw present
-    StaticState *bind[] = {
-        &mptr->matrixState,
-        &mptr->textureState,
-        &mptr->bringupState,
-        &mptr->indexState,
-        &mptr->pipelineState,
-        &mptr->swapState};
-    if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        mptr->drawState.derived()->push(0,0,siz,SmartState())) {
-        BaseState *drawPtr = mptr->drawState.buffer();
-        mptr->drawState.advance();
-        mptr->threadState.push(drawPtr,{0},SmartState());}
-    else {mptr->drawState.derived()->bind(); mptr->testState.wake.wait();}
 }
 
 void vulkanPass(Response pass);
