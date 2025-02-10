@@ -31,15 +31,76 @@ extern "C" {
 };
 #include "stlx.h"
 
+enum SizeEnum {
+    IntSize,
+    ExtentSize,
+    MicroSize,
+    SwapSize,
+};
+struct SizeState {
+    SizeEnum tag;
+    int base, size;
+    VkExtent2D extent;
+    Micro micro;
+    VkSurfaceCapabilitiesKHR capabilities;
+    SizeState() {
+        tag = IntSize;
+        size = 0;
+    }
+    SizeState(int base, int size) {
+        tag = IntSize;
+        this->base = base;
+        this->size = size;
+    }
+    SizeState(VkExtent2D extent) {
+        tag = ExtentSize;
+        this->extent = extent;
+    }
+    SizeState(Micro micro) {
+        tag = MicroSize;
+        this->micro = micro;
+    }
+    SizeState(VkSurfaceCapabilitiesKHR capabilities) {
+        tag = SwapSize;
+        this->capabilities = capabilities;
+    }
+    bool operator==(const SizeState &other) const {
+        if (tag == IntSize && other.tag == IntSize &&
+        base == other.base && size == other.size) return true;
+        if (tag == ExtentSize && other.tag == ExtentSize &&
+        extent.width == other.extent.width &&
+        extent.height == other.extent.height) return true;
+        if (tag == MicroSize && other.tag == MicroSize &&
+        micro == other.micro) return true;
+        if (tag == SwapSize && other.tag == SwapSize &&
+        capabilities.currentExtent.width == other.capabilities.currentExtent.width &&
+        capabilities.currentExtent.height == other.capabilities.currentExtent.height) return true;
+        return false;
+    }
+};
+std::ostream& operator<<(std::ostream& os, const SizeState& size) {
+    switch (size.tag) {default: os << "MicroSize()"; break;
+    case (IntSize): os << "IntSize(" << size.size << ")"; break;
+    case (ExtentSize): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
+    case (MicroSize): os << "MicroSize(" << size.micro << ")"; break;
+    case (SwapSize): os << "SwapSize(" << size.capabilities.currentExtent.width << "," << size.capabilities.currentExtent.height << ")"; break;}
+    return os;
+}
+
+struct ParamState {
+    void *ptr; int loc; int siz;
+};
 struct BaseState;
 struct StaticState;
-struct ParamState;
 struct CopyState : public ChangeState<Configure,Configures> {
     CopyState() {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log);
     int copy(Response pass, SmartState log);
-    void push(StaticState **ree, int rees, StaticState **wee, int wees, StaticState **der, int ders, ParamState **arg, SmartState log);
+    void push(StaticState **ree, int rees, StaticState *der,
+        void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log);
+    void push(StaticState **ree, int rees, StaticState **wee, int wees,
+        StaticState **der, int ders, ParamState **arg, Response pass, SmartState log);
     void draw(int siz, SmartState log);
 };
 
@@ -332,62 +393,6 @@ template<class State> struct ConstState {
     State operator()() {return value;}
 };
 
-enum SizeEnum {
-    IntSize,
-    ExtentSize,
-    MicroSize,
-    SwapSize,
-};
-struct SizeState {
-    SizeEnum tag;
-    int base, size;
-    VkExtent2D extent;
-    Micro micro;
-    VkSurfaceCapabilitiesKHR capabilities;
-    SizeState() {
-        tag = IntSize;
-        size = 0;
-    }
-    SizeState(int base, int size) {
-        tag = IntSize;
-        this->base = base;
-        this->size = size;
-    }
-    SizeState(VkExtent2D extent) {
-        tag = ExtentSize;
-        this->extent = extent;
-    }
-    SizeState(Micro micro) {
-        tag = MicroSize;
-        this->micro = micro;
-    }
-    SizeState(VkSurfaceCapabilitiesKHR capabilities) {
-        tag = SwapSize;
-        this->capabilities = capabilities;
-    }
-    bool operator==(const SizeState &other) const {
-        if (tag == IntSize && other.tag == IntSize &&
-        base == other.base && size == other.size) return true;
-        if (tag == ExtentSize && other.tag == ExtentSize &&
-        extent.width == other.extent.width &&
-        extent.height == other.extent.height) return true;
-        if (tag == MicroSize && other.tag == MicroSize &&
-        micro == other.micro) return true;
-        if (tag == SwapSize && other.tag == SwapSize &&
-        capabilities.currentExtent.width == other.capabilities.currentExtent.width &&
-        capabilities.currentExtent.height == other.capabilities.currentExtent.height) return true;
-        return false;
-    }
-};
-std::ostream& operator<<(std::ostream& os, const SizeState& size) {
-    switch (size.tag) {default: os << "MicroSize()"; break;
-    case (IntSize): os << "IntSize(" << size.size << ")"; break;
-    case (ExtentSize): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
-    case (MicroSize): os << "MicroSize(" << size.micro << ")"; break;
-    case (SwapSize): os << "SwapSize(" << size.capabilities.currentExtent.width << "," << size.capabilities.currentExtent.height << ")"; break;}
-    return os;
-}
-
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
     FreeBase, // ready to use or update
@@ -544,6 +549,7 @@ struct BaseState {
     void rdec(Bind i);
     void wdec(Bind i);
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
+    virtual void setSemaphore(VkSemaphore s) {std::cerr << "BaseState::setSemaphore" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer(int i) {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
@@ -1160,7 +1166,7 @@ struct ThreadState : public DoneState {
         break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log); push.base = 0;
         break; case(LockBase): push.fence = push.base->basesup(push.log);
         break; case(BothBase): push.fence = push.base->sizeup(push.log);} else {
-        push.fence = VK_NULL_HANDLE; push.base = 0; push.pass.res = 1;}
+        push.fence = VK_NULL_HANDLE; push.pass.res = 1;}
         after.push_back(push);}
         safe.wait(); if (!after.empty()) {safe.post(); break;}
         if (before.empty()) {
@@ -1451,18 +1457,40 @@ int CopyState::copy(Response pass, SmartState log) {
     mptr->copyState.write(center->cfg[i],center->val[i]); retval++;}}
     return retval;
 }
-struct ParamState {
-    void *ptr; int loc; int siz;
-    SizeState max;
-};
-void CopyState::push(StaticState **ree, int rees, StaticState **wee, int wees, StaticState **der, int ders, ParamState **arg, SmartState log) {
-    BindState *bindPtr = mptr->bindState.derived();
-    if (!bindPtr->incr(ree,rees,wee,wees,log)) {
-        // TODO threadState.push(0,pass);
-    }
-    // TODO push set link push of each der
+void CopyState::push(StaticState **ree, int rees, StaticState *der,
+    void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
+    BindState *bind = mptr->bindState.derived();
+    if (!bind->incr(ree,rees,0,0,log)) {
+    mptr->threadState.push(0,pass,log);
+    return;}
+    if (!der->buffer()->push(ptr,loc,siz,max,log)) {
+    der->buffer()->push(log);
+    bind->incr(log);
+    mptr->threadState.push(0,pass,log);
+    return;}
+    der->buffer()->set(bind);
+    mptr->threadState.push(der->buffer(),pass,log);
+}
+void CopyState::push(StaticState **ree, int rees, StaticState **wee, int wees,
+    StaticState **der, int ders, ParamState **arg, Response pass, SmartState log) {
+    BindState *bind = mptr->bindState.derived();
+    if (!bind->incr(ree,rees,wee,wees,log)) {
+    mptr->threadState.push(0,pass,log);
+    return;}
+    int count = 0; for (int i = 0; i < ders; i++) {
+    if (der[i]->buffer()->push(arg[i]->ptr,arg[i]->loc,arg[i]->siz,log))
+    count++; else break;}
+    if (count < ders) {
+    for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
+    bind->incr(log);
+    mptr->threadState.push(0,pass,log);
+    return;}
+    for (int i = 0; i < ders; i++) der[i]->buffer()->set(bind);
+    for (int i = 1; i < ders; i++) der[i]->buffer()->setSemaphore(der[i-1]->buffer()->getSemaphore());
+    for (int i = 0; i < ders; i++) mptr->threadState.push(der[i]->buffer(),pass,log);
 }
 void CopyState::draw(int siz, SmartState log) {
+    // TODO call CopyState::push with acquire draw present
     StaticState *bind[] = {
         &mptr->matrixState,
         &mptr->textureState,
@@ -1560,7 +1588,6 @@ void TestState::call() {
     mptr->copyState.draw(static_cast<uint32_t>(indices.size()),SmartState());}
 }
 
-// outside of struct
 void vulkanPass(Response pass) {
     if (pass.ptr) {freeCenter(pass.ptr); allocCenter(&pass.ptr,0);}
 }
