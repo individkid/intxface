@@ -18,7 +18,7 @@ SmartState::SmartState(std::string str) {
     slog.safe.post();
 }
 std::stringstream &SmartState::set() {
-    if (!vld) {std::cerr << "smart set invalid!" << std::endl; exit(-1);}
+    if (!vld) {dflt.str(""); return dflt;}
     slog.wait(num);
     std::stringstream &ret = *slog.sstr[num];
     ret << slog.name[num] << "#" << num << ":";

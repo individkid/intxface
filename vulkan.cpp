@@ -37,7 +37,9 @@ struct StaticState {
     static const int frames = 2;
     virtual void advance() = 0;
     virtual BaseState *buffer() = 0;
-    virtual Bind index() = 0;
+    virtual BaseState *prebuf() = 0;
+    virtual Bind buftyp() = 0;
+    virtual int bufsiz() = 0;
     static StaticState* self;
     static int debug;
     static int micro;
@@ -187,7 +189,9 @@ template <class State, Bind Type, int Size> struct ArrayState : public StaticSta
         safe.wait(); idx = i; safe.post();}
     void advance() override {safe.wait(); idx = (idx+1)%Size; safe.post();}
     BaseState *buffer() override {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
-    Bind index() override {return Type;}
+    BaseState *prebuf() override {safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
+    Bind buftyp() override {return Type;}
+    int bufsiz() override {return sizeof(State);}
 };
 template<class State, class Init, int Size> struct InitState {
     State state[Size];
@@ -279,8 +283,11 @@ struct BindState {
     bool incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log);
     void incr(SmartState log);
 };
-template <> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {
+template<> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {
     std::cerr << "invalid base buffer!" << std::endl; exit(-1);
+}
+template<> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::prebuf() {
+    std::cerr << "invalid base prebuf!" << std::endl; exit(-1);
 }
 
 enum BaseEnum {
@@ -486,7 +493,7 @@ bool BindState::incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz,
     for (int i = 0; i < Binds; i++) if (bind[i] != 0) {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
     Bind rtyp[rsiz]; BaseState *rbuf[rsiz];
     int rcount = 0; bool rfail = false; for (int i = 0; i < rsiz; i++) {
-    rtyp[i] = rptr[i]->index();
+    rtyp[i] = rptr[i]->buftyp();
     if (count[rtyp[i]] == 0) {buffer[rtyp[i]] = rptr[i]->buffer(); buffer[rtyp[i]]->safe.wait();}
     count[rtyp[i]] += 1; rbuf[i] = buffer[rtyp[i]]; rcount++;
     // if (rbuf[i] == this) {std::cerr << "invalid incr rptr!" << std::endl; exit(-1);}
@@ -499,7 +506,7 @@ bool BindState::incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz,
     safe.post(); return false;}
     Bind wtyp[rsiz]; BaseState *wbuf[rsiz];
     int wcount = 0; bool wfail = false; for (int i = 0; i < wsiz; i++) {
-    wtyp[i] = wptr[i]->index();
+    wtyp[i] = wptr[i]->buftyp();
     if (count[wtyp[i]] == 0) {buffer[wtyp[i]] = wptr[i]->buffer(); buffer[wtyp[i]]->safe.wait();}
     count[wtyp[i]] += 1; wbuf[i] = buffer[wtyp[i]]; wcount++;
     // if (wbuf[i] == this) {std::cerr << "invalid incr wptr!" << std::endl; exit(-1);}
@@ -626,7 +633,7 @@ struct ThreadState : public DoneState {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.base) push.base->baseups(push.log);
-        if (push.pass.fnc) push.pass.fnc(push.pass);
+        if (push.pass.fnc) {push.pass.fnc(push.pass);}
         copy->wots(RegisterMask,1<<FenceAsync);}
         vkDeviceWaitIdle(device);
     }
@@ -691,20 +698,34 @@ struct CopyState : public ChangeState<Configure,Configures> {
     CopyState(ThreadState *thread, ArrayState<BindState,BindBnd,StaticState::frames> *bind) :
         thread(thread), bind(bind) {std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    void push(StaticState **ree, int rees, StaticState **wee, int wees,
+    bool push(StaticState *pre, ParamState *arg, Response pass, SmartState log) {
+        if (!(*arg)(pre->prebuf(),log)) return false;
+        thread->push(pre->prebuf(),pass,log);
+        return true;
+    }
+    bool push(StaticState *pre, void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
+        ParamState arg(ptr,loc,siz,max);
+        return push(pre,&arg,pass,log);
+    }
+    bool push(StaticState *pre, void *ptr, int loc, int siz, Response pass, SmartState log) {
+        ParamState arg(ptr,loc,siz);
+        return push(pre,&arg,pass,log);
+    }
+    bool push(StaticState *pre, SizeState max, Response pass, SmartState log) {
+        ParamState arg(max);
+        return push(pre,&arg,pass,log);
+    }
+    bool push(StaticState **ree, int rees, StaticState **wee, int wees,
         StaticState **der, int ders, ParamState *arg, Response pass, SmartState log) {
         BindState *binds = bind->derived();
-        if (!binds->incr(ree,rees,wee,wees,log)) {
-        thread->push(0,pass,log);
-        return;}
+        if (!binds->incr(ree,rees,wee,wees,log)) return false;
         int count = 0; for (int i = 0; i < ders; i++) {
         if (arg[i](der[i]->buffer(),log))
         count++; else break;}
         if (count < ders) {
         for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
         binds->incr(log);
-        thread->push(0,pass,log);
-        return;}
+        return false;}
         bind->advance();
         for (int i = 0; i < ders; i++) der[i]->advance();
         BaseState *buf[ders];
@@ -712,26 +733,29 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < ders; i++) buf[i]->set(binds);
         for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
         for (int i = 0; i < ders; i++) thread->push(buf[i],pass,log);
+        return true;
     }
-    void push(StaticState **ree, int rees, StaticState *der,
+    bool push(StaticState **ree, int rees, StaticState *der,
         ParamState param, Response pass, SmartState log) {
-        push(ree,rees,0,0,&der,1,&param,pass,log);
+        return push(ree,rees,0,0,&der,1,&param,pass,log);
     }
-    void push(StaticState **ree, int rees, StaticState *der,
+    bool push(StaticState **ree, int rees, StaticState *der,
         void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
-        push(ree,rees,der,ParamState(ptr,loc,siz,max),pass,log);
+        return push(ree,rees,der,ParamState(ptr,loc,siz,max),pass,log);
     }
-    void push(StaticState **ree, int rees, StaticState *der,
+    bool push(StaticState **ree, int rees, StaticState *der,
         void *ptr, int loc, int siz, Response pass, SmartState log) {
-        push(ree,rees,der,ParamState(ptr,loc,siz),pass,log);
+        return push(ree,rees,der,ParamState(ptr,loc,siz),pass,log);
     }
-    void push(StaticState **ree, int rees, StaticState *der,
+    bool push(StaticState **ree, int rees, StaticState *der,
         SizeState max, Response pass, SmartState log) {
-        push(ree,rees,der,ParamState(max),pass,log);
+        return push(ree,rees,der,ParamState(max),pass,log);
     }
-    bool rebase(BaseState *buf, void *ptr, int base, int size, int mod, Response pass, SmartState log) {
+    bool copy(StaticState *pre, void *ptr, int base, int size, Response pass, SmartState log) {
         int loc = pass.ptr->idx;
         int siz = pass.ptr->siz;
+        BaseState *buf = pre->prebuf();
+        int mod = pre->bufsiz();
         SizeState max;
         if (pass.mod) {
         //    x-x     x---x x---x   x-----x
@@ -745,13 +769,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else {zl=yl;zr=xr;}
         ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
         loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-        std::cerr << "rebase x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
+        std::cerr << "copy x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
         loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
         base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
+        log << "copy " << ptr << " " << loc << " " << siz << std::endl;
         if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
         thread->push(buf,pass,log); return true;
     }
-    int copy(Response pass, SmartState log); // depends on mptr
+    void copy(Response pass, SmartState log); // depends on mptr
     void draw(int siz, SmartState log); // depends on mptr
 };
 
@@ -1022,14 +1047,18 @@ struct UniformState : public BaseState {
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
+    void *debug;
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        debug = ptr;
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
         {std::cerr << "invalid uniform size!" << std::endl; exit(-1);}
+        log << "memcpy " << ptr << " " << loc << " " << siz << std::endl;
         memcpy((void*)((char*)mapped+loc), ptr, siz);
         return VK_NULL_HANDLE; // return null fence for no wait
     }
     void upset(SmartState log) override {
+        log << "upset " << debug << std::endl;
     }
 };
 
@@ -1312,7 +1341,7 @@ struct DrawState : public BaseState {
         // must check both state and bufsiz because might be bound but not pushed
         if (bufsiz != 0) {safe.post(); return false;}
         for (int i = 0; i < siz; i++) {
-        bufidx[i] = ary[i]->index();
+        bufidx[i] = ary[i]->buftyp();
         bufptr[bufidx[i]] = ary[i]->buffer();
         if (!bufptr[bufidx[i]]->take()) break;
         bufsiz++;}
@@ -1492,16 +1521,14 @@ int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
 #define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
-    if (rebase(mptr->STATE.preview(),(void*)center->FIELD, \
-    mptr->copyState.read(BASE),mptr->copyState.read(SIZE), \
-    sizeof(TYPE),pass,log)) retval++
+    if (!copy(&mptr->STATE,(void*)center->FIELD,read(BASE),read(SIZE),pass,log)) \
+    thread->push(0,pass,log);
 #define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
     if (mptr->STATE.preview()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
     SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),log)) \
-    {mptr->threadState.push(mptr->STATE.preview(),pass,log); retval++;}
-int CopyState::copy(Response pass, SmartState log) {
+    thread->push(mptr->STATE.preview(),pass,log); else thread->push(0,pass,log);
+void CopyState::copy(Response pass, SmartState log) {
     Center *center = pass.ptr;
-    int retval = 0;
     switch (center->mem) {
     default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
     break; case (Indexz): REBASE(indexState,ind,IndexBase,IndexSize,int32_t);
@@ -1514,14 +1541,14 @@ int CopyState::copy(Response pass, SmartState log) {
     break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
     break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
     break; case (Piercez): // TODO write modify read
-    REBASE(pierceState,pie,PierceBase,PierceSize,Pierce);
     break; case (Configurez): {for (int i = 0; i < center->siz; i++)
-    mptr->copyState.write(center->cfg[i],center->val[i]); retval++;}}
-    return retval;
+    write(center->cfg[i],center->val[i]);} thread->push(0,pass,log);}
 }
 
 void vulkanPass(Response pass);
+void vulkanForce(Response pass);
 void TestState::call() {
+    slog.onof(0,1000000);
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
         {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -1537,12 +1564,6 @@ void TestState::call() {
         0, 1, 2, 2, 3, 0,
         4, 5, 6, 6, 7, 4,
     };
-    static const int NUM_FRAMES_IN_FLIGHT = 2;
-    glm::mat4 model[NUM_FRAMES_IN_FLIGHT];
-    glm::mat4 view[NUM_FRAMES_IN_FLIGHT];
-    glm::mat4 proj[NUM_FRAMES_IN_FLIGHT];
-    glm::mat4 debug[NUM_FRAMES_IN_FLIGHT];
-    int currentUniform = 0;
     //
     int xsiz = 800; int ysiz = 600;
     mptr->copyState.write(WindowLeft,-xsiz/2); mptr->copyState.write(WindowBase,-ysiz/2);
@@ -1569,13 +1590,13 @@ void TestState::call() {
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    mptr->copyState.copy({0,0,0,vtx,vulkanPass},SmartState());
+    mptr->copyState.copy({0,0,0,vtx,vulkanForce},SmartState());
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    mptr->copyState.copy({0,0,0,ind,vulkanPass},SmartState());
+    mptr->copyState.copy({0,0,0,ind,vulkanForce},SmartState());
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
@@ -1591,14 +1612,17 @@ void TestState::call() {
     mptr->threadState.push(mptr->swapState.preview(0),{0},SmartState());
     mptr->swapState.advance(0);}
     //
-    testUpdate(mptr->sizeState.capabilities.currentExtent,model[currentUniform],view[currentUniform],proj[currentUniform],debug[currentUniform]);
+    SmartState log/*("update")*/;
+    glm::mat4 model, view, proj, debug;
+    testUpdate(mptr->sizeState.capabilities.currentExtent,model,view,proj,debug);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
-    memcpy(&mat->mat[0],&model[currentUniform],sizeof(Matrix));
-    memcpy(&mat->mat[1],&view[currentUniform],sizeof(Matrix));
-    memcpy(&mat->mat[2],&proj[currentUniform],sizeof(Matrix));
-    memcpy(&mat->mat[3],&debug[currentUniform],sizeof(Matrix));
-    if (mptr->copyState.copy({0,0,0,mat,vulkanPass},SmartState())) currentUniform = (currentUniform + 1) % NUM_FRAMES_IN_FLIGHT;
+    memcpy(&mat->mat[0],&model,sizeof(Matrix));
+    memcpy(&mat->mat[1],&view,sizeof(Matrix));
+    memcpy(&mat->mat[2],&proj,sizeof(Matrix));
+    memcpy(&mat->mat[3],&debug,sizeof(Matrix));
+    mptr->copyState.copy({0,0,0,mat,vulkanPass},log);
+    log.clr();
     //
     mptr->copyState.draw(static_cast<uint32_t>(indices.size()),SmartState());}
 }
@@ -1606,6 +1630,10 @@ void TestState::call() {
 // TODO define glfw callbacks
 
 void vulkanPass(Response pass) {
+    if (pass.ptr) {freeCenter(pass.ptr); allocCenter(&pass.ptr,0);}
+}
+void vulkanForce(Response pass) {
+    if (pass.res != 0) {std::cerr << "unexpected copy fail!" << std::endl; exit(-1);}
     if (pass.ptr) {freeCenter(pass.ptr); allocCenter(&pass.ptr,0);}
 }
 void vulkanCopy(Response pass) {

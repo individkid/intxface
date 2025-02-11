@@ -45,6 +45,7 @@ struct SafeState {
 struct SmartState {
     int num;
     bool vld;
+    std::stringstream dflt;
     SmartState() : num(0), vld(false) {}
     SmartState(const SmartState &oth);
     SmartState &operator=(const SmartState &oth);
@@ -87,6 +88,12 @@ struct SlogState {
         delete sstr[num]; sstr.erase(num); name.erase(num); smart.erase(num);
         while (sstr.begin() != sstr.end() &&
         sstr.find(minnum) == sstr.end()) minnum++;
+        safe.post();
+    }
+    void clr() {
+        safe.wait();
+        for (auto i = sstr.begin(); i != sstr.end(); i++) {
+        if (check((*i).first,min,lim)) {std::cout << (*i).second->str(); (*i).second->str("");}}
         safe.post();
     }
 };
