@@ -677,24 +677,26 @@ enum RequestEnum {
     BothReq,
     LockReq,
     SizeReq,
+    DrawReq,
 };
 struct Request {
-    void *ptr; int loc; int siz; SizeState max; RequestEnum tag; Bind bnd[Binds]; Configure base, size;
+    void *ptr; int loc; int siz; SizeState max; RequestEnum tag;
+    Bind der[Binds]; Bind dee[Binds]; Configure base, size;
     Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothReq) {}
     Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockReq) {}
     Request(SizeState max) : max(max), tag(SizeReq) {}
-    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max base size
-    bool operator()(BaseState *buf, SmartState log) {
+    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max tag der base size
+    // TODO Request(Micro micro) // use constants to find ptr loc siz max tag der dee
+    bool operator()(BaseState *buf, SmartState log) { // TODO pass in StackState* and ChangeState& instead of BseState
         switch(tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
         break; case (BothReq): return buf->push(ptr,loc,siz,max,log);
         break; case (LockReq): return buf->push(ptr,loc,siz,log);
         break; case (SizeReq): return buf->push(max,log);}
         return true;
     }
-    // TODO operator()(BaseState *buf, ChangeState<Configure,Configures> *cfg, SmartState log) // rebase and push
 };
 
-struct BindPair {
+struct ArraysState {
     Bind key;
     StackState *val;
 };
@@ -702,9 +704,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     ArrayState<BindState,BindBnd,StackState::frames> *bind;
     StackState *stack[Binds];
-    CopyState(ThreadState *thread, ArrayState<BindState,BindBnd,StackState::frames> *bind, BindPair *stack) :
+    CopyState(ThreadState *thread, ArrayState<BindState,BindBnd,StackState::frames> *bind, ArraysState *stack) :
         thread(thread), bind(bind), stack{0} {
-        for (BindPair *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
+        for (ArraysState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool push(StackState **ree, int rees, StackState **wee, int wees,
@@ -728,14 +730,15 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < ders; i++) thread->push(buf[i],pass,log);
         return true;
     }
+    void draw(int siz, SmartState log);
     bool push(StackState *pre, Request arg, Response pass, SmartState log) {
-        // TODO just call push(0,0,0,0,&pre,1,&arg,pass,log);
+        // TODO use this->bind instead of taking StackState pointer
         if (!arg(pre->prebuf(),log)) return false;
         thread->push(pre->prebuf(),pass,log);
         return true;
     }
    bool copy(StackState *pre, void *ptr, int base, int size, Response pass, SmartState log) {
-        // TODO move to Request
+        // TODO use this->bind instead of taking StackState pointer
         int loc = pass.ptr->idx;
         int siz = pass.ptr->siz;
         BaseState *buf = pre->prebuf();
@@ -760,8 +763,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
         thread->push(buf,pass,log); return true;
     }
-    void copy(Response pass, SmartState log); // move back here; should not depend on mptr
-    void draw(int siz, SmartState log); // move back here; should not depend on mptr
+    void copy(Response pass, SmartState log); // TODO move switch to Request and call push(req,rsp,log)
 };
 
 // TODO declare glfw callbacks
@@ -1440,7 +1442,7 @@ struct MainState {
     ArrayState<PresentState,PresentBnd,StackState::frames> presentState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
-    BindPair arrayState[Binds+1];
+    ArraysState arrayState[Binds+1];
     ThreadState threadState;
     TestState testState;
     CallState callState;
