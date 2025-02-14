@@ -32,7 +32,7 @@ extern "C" {
 #include "stlx.h"
 
 struct BaseState;
-struct StaticState {
+struct StackState {
     const char *name;
     static const int frames = 2;
     virtual void advance() = 0;
@@ -40,7 +40,7 @@ struct StaticState {
     virtual BaseState *prebuf() = 0;
     virtual Bind buftyp() = 0;
     virtual int bufsiz() = 0;
-    static StaticState* self;
+    static StackState* self;
     static int debug;
     static int micro;
     static ChangeState<Configure,Configures> *copy;
@@ -61,7 +61,7 @@ struct StaticState {
     static VkQueue graphics;
     static VkQueue present;
     static VkBufferUsageFlags flags;
-    StaticState(const char *name,
+    StackState(const char *name,
         ChangeState<Configure,Configures> *copy,
         GLFWwindow* window,
         VkSurfaceKHR surface,
@@ -80,61 +80,61 @@ struct StaticState {
         VkQueue graphics,
         VkQueue present) :
     name(name) {
-        StaticState::self = this;
-        StaticState::debug = 0;
-        StaticState::micro = 0;
-        StaticState::copy = copy;
-        StaticState::window = window;
-        StaticState::surface = surface;
-        StaticState::physical = physical;
-        StaticState::surfaceFormat = surfaceFormat;
-        StaticState::presentMode = presentMode;
-        StaticState::graphicsFamily = graphicsFamily;
-        StaticState::presentFamily = presentFamily;
-        StaticState::properties = properties;
-        StaticState::memProperties = memProperties;
-        StaticState::device = device;
-        StaticState::commandPool = commandPool;
-        StaticState::renderPass = renderPass;
-        StaticState::imageFormat = imageFormat;
-        StaticState::depthFormat = depthFormat;
-        StaticState::graphics = graphics;
-        StaticState::present = present;
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;
+        StackState::copy = copy;
+        StackState::window = window;
+        StackState::surface = surface;
+        StackState::physical = physical;
+        StackState::surfaceFormat = surfaceFormat;
+        StackState::presentMode = presentMode;
+        StackState::graphicsFamily = graphicsFamily;
+        StackState::presentFamily = presentFamily;
+        StackState::properties = properties;
+        StackState::memProperties = memProperties;
+        StackState::device = device;
+        StackState::commandPool = commandPool;
+        StackState::renderPass = renderPass;
+        StackState::imageFormat = imageFormat;
+        StackState::depthFormat = depthFormat;
+        StackState::graphics = graphics;
+        StackState::present = present;
     }
-    StaticState(const char *name, VkBufferUsageFlags flags) : name(name) {
-        StaticState::self = this;
-        StaticState::debug = 0;
-        StaticState::micro = 0;
-        StaticState::flags = flags;        
+    StackState(const char *name, VkBufferUsageFlags flags) : name(name) {
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;
+        StackState::flags = flags;        
     }
-    StaticState(const char *name) : name(name) {
-        StaticState::self = this;
-        StaticState::debug = 0;
-        StaticState::micro = 0;        
+    StackState(const char *name) : name(name) {
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;        
     }
 };
-StaticState* StaticState::self;
-int StaticState::debug;
-int StaticState::micro;
-ChangeState<Configure,Configures> *StaticState::copy;
-GLFWwindow* StaticState::window;
-VkSurfaceKHR StaticState::surface;
-VkPhysicalDevice StaticState::physical;
-VkSurfaceFormatKHR StaticState::surfaceFormat;
-VkPresentModeKHR StaticState::presentMode;
-uint32_t StaticState::graphicsFamily;
-uint32_t StaticState::presentFamily;
-VkPhysicalDeviceProperties StaticState::properties;
-VkPhysicalDeviceMemoryProperties StaticState::memProperties;
-VkDevice StaticState::device;
-VkCommandPool StaticState::commandPool;
-VkRenderPass StaticState::renderPass;
-VkFormat StaticState::imageFormat;
-VkFormat StaticState::depthFormat;
-VkQueue StaticState::graphics;
-VkQueue StaticState::present;
-VkBufferUsageFlags StaticState::flags;
-template <class State, Bind Type, int Size> struct ArrayState : public StaticState {
+StackState* StackState::self;
+int StackState::debug;
+int StackState::micro;
+ChangeState<Configure,Configures> *StackState::copy;
+GLFWwindow* StackState::window;
+VkSurfaceKHR StackState::surface;
+VkPhysicalDevice StackState::physical;
+VkSurfaceFormatKHR StackState::surfaceFormat;
+VkPresentModeKHR StackState::presentMode;
+uint32_t StackState::graphicsFamily;
+uint32_t StackState::presentFamily;
+VkPhysicalDeviceProperties StackState::properties;
+VkPhysicalDeviceMemoryProperties StackState::memProperties;
+VkDevice StackState::device;
+VkCommandPool StackState::commandPool;
+VkRenderPass StackState::renderPass;
+VkFormat StackState::imageFormat;
+VkFormat StackState::depthFormat;
+VkQueue StackState::graphics;
+VkQueue StackState::present;
+VkBufferUsageFlags StackState::flags;
+template <class State, Bind Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
     int idx;
     State state[Size];
@@ -156,7 +156,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StaticSta
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) :
-    StaticState(name,
+    StackState(name,
         copy,
         window,
         surface,
@@ -176,9 +176,9 @@ template <class State, Bind Type, int Size> struct ArrayState : public StaticSta
         present),
         safe(1), idx(0) {}
     ArrayState(const char *name, VkBufferUsageFlags flags) :
-        StaticState(name,flags), safe(1), idx(0) {}
+        StackState(name,flags), safe(1), idx(0) {}
     ArrayState(const char *name) :
-        StaticState(name), safe(1), idx(0) {}
+        StackState(name), safe(1), idx(0) {}
     State *derived() {safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;}
     State *preview() {safe.wait(); State *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
     State *preview(int i) {
@@ -275,18 +275,18 @@ struct BindState {
     int lock;
     char debug[64];
     BindState() : safe(1), lock(0) {
-        sprintf(debug,"BindState%d",StaticState::debug++);
+        sprintf(debug,"BindState%d",StackState::debug++);
         std::cout << "BindState " << debug << std::endl;
         for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
     ~BindState()
         {std::cout << "~BindState " << debug << std::endl;}
-    bool incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log);
+    bool incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log);
     void incr(SmartState log);
 };
-template<> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::buffer() {
+template<> BaseState *ArrayState<BindState,BindBnd,StackState::frames>::buffer() {
     std::cerr << "invalid base buffer!" << std::endl; exit(-1);
 }
-template<> BaseState *ArrayState<BindState,BindBnd,StaticState::frames>::prebuf() {
+template<> BaseState *ArrayState<BindState,BindBnd,StackState::frames>::prebuf() {
     std::cerr << "invalid base prebuf!" << std::endl; exit(-1);
 }
 
@@ -302,7 +302,7 @@ enum BaseEnum {
 struct BaseState {
     SafeState safe;
     BaseEnum state; int rlock, wlock;
-    StaticState *item;
+    StackState *item;
     BindState *bind;
     // following indirectly protected by state/lock that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/lock
@@ -313,11 +313,11 @@ struct BaseState {
         item(0), bind(0), size(0,0), todo(0,0), debug{0} {}
     BaseState(const char *name) : safe(1), state(InitBase), rlock(0), wlock(0),
         item(0), bind(0), size(0,0), todo(0,0), debug{0} {
-        sprintf(debug,"%s%d",name,StaticState::debug++);
+        sprintf(debug,"%s%d",name,StackState::debug++);
     }
-    BaseState(const char *name, StaticState *ptr) : safe(1), state(InitBase), rlock(0), wlock(0),
+    BaseState(const char *name, StackState *ptr) : safe(1), state(InitBase), rlock(0), wlock(0),
         item(ptr), bind(0), size(0,0), todo(0,0), debug{0} {
-        sprintf(debug,"%s%s%d",item->name,name,StaticState::debug++);
+        sprintf(debug,"%s%s%d",item->name,name,StackState::debug++);
     }
     bool push(void *ptr, int loc, int siz, SizeState max, SmartState log) { // called in main thread
         safe.wait();
@@ -485,7 +485,7 @@ struct BaseState {
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
         VkImage& image, VkDeviceMemory& imageMemory);
 };
-bool BindState::incr(StaticState **rptr, int rsiz, StaticState **wptr, int wsiz, SmartState log) { // called by pusher
+bool BindState::incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log) { // called by pusher
     int count[Binds] = {0}; BaseState *buffer[Binds] = {0};
     safe.wait();
     log << "incr" << std::endl;
@@ -673,85 +673,69 @@ struct ForkState : public DoneState {
     void func() override {delete this;}
 };
 
-enum ParamEnum {
-    BothParam,
-    LockParam,
-    SizeParam,
+enum RequestEnum {
+    BothReq,
+    LockReq,
+    SizeReq,
 };
-struct ParamState {
-    void *ptr; int loc; int siz; SizeState max; ParamEnum tag;
-    ParamState(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothParam) {}
-    ParamState(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockParam) {}
-    ParamState(SizeState max) : max(max), tag(SizeParam) {}
+struct Request {
+    void *ptr; int loc; int siz; SizeState max; RequestEnum tag; Bind bnd[Binds]; Configure base, size;
+    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothReq) {}
+    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockReq) {}
+    Request(SizeState max) : max(max), tag(SizeReq) {}
+    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max base size
     bool operator()(BaseState *buf, SmartState log) {
         switch(tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
-        break; case (BothParam): return buf->push(ptr,loc,siz,max,log);
-        break; case (LockParam): return buf->push(ptr,loc,siz,log);
-        break; case (SizeParam): return buf->push(max,log);}
+        break; case (BothReq): return buf->push(ptr,loc,siz,max,log);
+        break; case (LockReq): return buf->push(ptr,loc,siz,log);
+        break; case (SizeReq): return buf->push(max,log);}
         return true;
     }
+    // TODO operator()(BaseState *buf, ChangeState<Configure,Configures> *cfg, SmartState log) // rebase and push
 };
 
+struct BindPair {
+    Bind key;
+    StackState *val;
+};
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
-    ArrayState<BindState,BindBnd,StaticState::frames> *bind;
-    CopyState(ThreadState *thread, ArrayState<BindState,BindBnd,StaticState::frames> *bind) :
-        thread(thread), bind(bind) {std::cout << "CopyState" << std::endl;}
+    ArrayState<BindState,BindBnd,StackState::frames> *bind;
+    StackState *stack[Binds];
+    CopyState(ThreadState *thread, ArrayState<BindState,BindBnd,StackState::frames> *bind, BindPair *stack) :
+        thread(thread), bind(bind), stack{0} {
+        for (BindPair *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
+        std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    bool push(StaticState *pre, ParamState *arg, Response pass, SmartState log) {
-        if (!(*arg)(pre->prebuf(),log)) return false;
-        thread->push(pre->prebuf(),pass,log);
-        return true;
-    }
-    bool push(StaticState *pre, void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
-        ParamState arg(ptr,loc,siz,max);
-        return push(pre,&arg,pass,log);
-    }
-    bool push(StaticState *pre, void *ptr, int loc, int siz, Response pass, SmartState log) {
-        ParamState arg(ptr,loc,siz);
-        return push(pre,&arg,pass,log);
-    }
-    bool push(StaticState *pre, SizeState max, Response pass, SmartState log) {
-        ParamState arg(max);
-        return push(pre,&arg,pass,log);
-    }
-    bool push(StaticState **ree, int rees, StaticState **wee, int wees,
-        StaticState **der, int ders, ParamState *arg, Response pass, SmartState log) {
-        BindState *binds = bind->derived();
-        if (!binds->incr(ree,rees,wee,wees,log)) return false;
+    bool push(StackState **ree, int rees, StackState **wee, int wees,
+        StackState **der, int ders, Request *arg, Response pass, SmartState log) {
+        // TODO use this->bind instead of taking StackState arrays
+        BindState *bind = this->bind->derived();
+        if (!bind->incr(ree,rees,wee,wees,log)) return false;
         int count = 0; for (int i = 0; i < ders; i++) {
         if (arg[i](der[i]->buffer(),log))
         count++; else break;}
         if (count < ders) {
         for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
-        binds->incr(log);
+        bind->incr(log);
         return false;}
-        bind->advance();
+        stack[BindBnd]->advance();
         for (int i = 0; i < ders; i++) der[i]->advance();
         BaseState *buf[ders];
         for (int i = 0; i < ders; i++) buf[i] = der[i]->buffer();
-        for (int i = 0; i < ders; i++) buf[i]->set(binds);
+        for (int i = 0; i < ders; i++) buf[i]->set(bind);
         for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
         for (int i = 0; i < ders; i++) thread->push(buf[i],pass,log);
         return true;
     }
-    bool push(StaticState **ree, int rees, StaticState *der,
-        ParamState param, Response pass, SmartState log) {
-        return push(ree,rees,0,0,&der,1,&param,pass,log);
+    bool push(StackState *pre, Request arg, Response pass, SmartState log) {
+        // TODO just call push(0,0,0,0,&pre,1,&arg,pass,log);
+        if (!arg(pre->prebuf(),log)) return false;
+        thread->push(pre->prebuf(),pass,log);
+        return true;
     }
-    bool push(StaticState **ree, int rees, StaticState *der,
-        void *ptr, int loc, int siz, SizeState max, Response pass, SmartState log) {
-        return push(ree,rees,der,ParamState(ptr,loc,siz,max),pass,log);
-    }
-    bool push(StaticState **ree, int rees, StaticState *der,
-        void *ptr, int loc, int siz, Response pass, SmartState log) {
-        return push(ree,rees,der,ParamState(ptr,loc,siz),pass,log);
-    }
-    bool push(StaticState **ree, int rees, StaticState *der,
-        SizeState max, Response pass, SmartState log) {
-        return push(ree,rees,der,ParamState(max),pass,log);
-    }
-    bool copy(StaticState *pre, void *ptr, int base, int size, Response pass, SmartState log) {
+   bool copy(StackState *pre, void *ptr, int base, int size, Response pass, SmartState log) {
+        // TODO move to Request
         int loc = pass.ptr->idx;
         int siz = pass.ptr->siz;
         BaseState *buf = pre->prebuf();
@@ -776,8 +760,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
         thread->push(buf,pass,log); return true;
     }
-    void copy(Response pass, SmartState log); // depends on mptr
-    void draw(int siz, SmartState log); // depends on mptr
+    void copy(Response pass, SmartState log); // move back here; should not depend on mptr
+    void draw(int siz, SmartState log); // move back here; should not depend on mptr
 };
 
 // TODO declare glfw callbacks
@@ -917,18 +901,18 @@ struct SwapState : public BaseState {
     std::vector<VkFramebuffer> framebuffers;
     SwapState() :
         BaseState("SwapState"),
-        window(StaticState::window),
-        surface(StaticState::surface),
-        physical(StaticState::physical),
-        device(StaticState::device),
-        surfaceFormat(StaticState::surfaceFormat),
-        presentMode(StaticState::presentMode),
-        graphicsFamily(StaticState::graphicsFamily),
-        presentFamily(StaticState::presentFamily),
-        imageFormat(StaticState::imageFormat),
-        depthFormat(StaticState::depthFormat),
-        renderPass(StaticState::renderPass),
-        memProperties(StaticState::memProperties)
+        window(StackState::window),
+        surface(StackState::surface),
+        physical(StackState::physical),
+        device(StackState::device),
+        surfaceFormat(StackState::surfaceFormat),
+        presentMode(StackState::presentMode),
+        graphicsFamily(StackState::graphicsFamily),
+        presentFamily(StackState::presentFamily),
+        imageFormat(StackState::imageFormat),
+        depthFormat(StackState::depthFormat),
+        renderPass(StackState::renderPass),
+        memProperties(StackState::memProperties)
         {std::cout << "SwapState " << debug << std::endl;}
     ~SwapState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~SwapState " << debug << std::endl;}
     VkSwapchainKHR getSwapChain() override {return swapChain;}
@@ -987,11 +971,11 @@ struct PipeState : public BaseState {
     const char *name() {return "PipeState";}
     PipeState() :
         BaseState("PipeState"),
-        device(StaticState::device), micro((Micro)StaticState::micro++),
-        descriptorPool(createDescriptorPool(StaticState::device,StaticState::frames)),
-        descriptorSetLayout(createDescriptorSetLayout(StaticState::device,micro)),
-        pipelineLayout(createPipelineLayout(StaticState::device,descriptorSetLayout)),
-        pipeline(createGraphicsPipeline(StaticState::device,StaticState::renderPass,pipelineLayout,micro))
+        device(StackState::device), micro((Micro)StackState::micro++),
+        descriptorPool(createDescriptorPool(StackState::device,StackState::frames)),
+        descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
+        pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
+        pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro))
         {std::cout << "PipeState " << debug << std::endl;}
     ~PipeState() {std::cout << "~PipeState " << debug << std::endl;
         vkDestroyPipeline(device, pipeline, nullptr);
@@ -1029,9 +1013,9 @@ struct UniformState : public BaseState {
     VkDeviceMemory memory;
     void* mapped;
     UniformState() :
-        BaseState("UniformState",StaticState::self),
-        device(StaticState::device), physical(StaticState::physical),
-        memProperties(StaticState::memProperties)
+        BaseState("UniformState",StackState::self),
+        device(StackState::device), physical(StackState::physical),
+        memProperties(StackState::memProperties)
         {std::cout << "UniformState " << debug << std::endl;}
     ~UniformState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~UniformState " << debug << std::endl;}
     VkBuffer getBuffer() override {return buffer;}
@@ -1077,10 +1061,10 @@ struct BufferState : public BaseState {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     BufferState() :
-        BaseState("BufferState",StaticState::self),
-        device(StaticState::device), physical(StaticState::physical),
-        graphics(StaticState::graphics), commandPool(StaticState::commandPool),
-        memProperties(StaticState::memProperties), flags(StaticState::flags),
+        BaseState("BufferState",StackState::self),
+        device(StackState::device), physical(StackState::physical),
+        graphics(StackState::graphics), commandPool(StackState::commandPool),
+        memProperties(StackState::memProperties), flags(StackState::flags),
         before(VK_NULL_HANDLE), atomic(false)
         {std::cout << "BufferState " << debug << std::endl;}
     ~BufferState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~BufferState " << debug << std::endl;}
@@ -1151,10 +1135,10 @@ struct TextureState : public BaseState {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     TextureState() :
-        BaseState("TextureState",StaticState::self),
-        device(StaticState::device), physical(StaticState::physical),
-        properties(StaticState::properties), graphics(StaticState::graphics), commandPool(StaticState::commandPool),
-        memProperties(StaticState::memProperties)
+        BaseState("TextureState",StackState::self),
+        device(StackState::device), physical(StackState::physical),
+        properties(StackState::properties), graphics(StackState::graphics), commandPool(StackState::commandPool),
+        memProperties(StackState::memProperties)
         {std::cout << "TextureState " << debug << std::endl;}
     ~TextureState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~TextureState " << debug << std::endl;}
     VkImageView getTextureImageView() override {return textureImageView;}
@@ -1247,8 +1231,8 @@ struct AcquireState : public BaseState {
     uint32_t imageIndex;
     AcquireState() :
         BaseState("AcquireState"),
-        device(StaticState::device),
-        copy(StaticState::copy),
+        device(StackState::device),
+        copy(StackState::copy),
         atomic(false) {
         after = createSemaphore(device);
         std::cout << "AcquireState " << debug << std::endl;}
@@ -1279,8 +1263,8 @@ struct PresentState : public BaseState {
     ChangeState<Configure,Configures> *copy;
     PresentState() :
         BaseState("PresentState"),
-        present(StaticState::present),
-        copy(StaticState::copy)
+        present(StackState::present),
+        copy(StackState::copy)
         {std::cout << "PresentState " << debug << std::endl;}
     ~PresentState() {SmartState log("present"); push(SizeState(0,0),log); baseres(log); log.clr();
         std::cout << "~PresentState " << debug << std::endl;}
@@ -1320,13 +1304,13 @@ struct DrawState : public BaseState {
     InitState<int, ConstState<int>, Binds> bufidx; int bufsiz;
     DrawState() :
         BaseState("DrawState"),
-        device(StaticState::device),
-        renderPass(StaticState::renderPass),
-        graphics(StaticState::graphics),
-        present(StaticState::present),
-        commandPool(StaticState::commandPool),
-        frames(StaticState::frames),
-        copy(StaticState::copy),
+        device(StackState::device),
+        renderPass(StackState::renderPass),
+        graphics(StackState::graphics),
+        present(StackState::present),
+        commandPool(StackState::commandPool),
+        frames(StackState::frames),
+        copy(StackState::copy),
         before(VK_NULL_HANDLE),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0)
@@ -1336,7 +1320,7 @@ struct DrawState : public BaseState {
     VkSemaphore getSemaphore() override {return after;}
     void setSemaphore(VkSemaphore sem) {before = sem;}
     // TODO use set(bindPtr) and remove bind:
-    bool bind(StaticState **ary, int siz) {
+    bool bind(StackState **ary, int siz) {
         safe.wait();
         // must check both state and bufsiz because might be bound but not pushed
         if (bufsiz != 0) {safe.post(); return false;}
@@ -1441,21 +1425,22 @@ struct MainState {
     SizeState sizeState;
     ArrayState<SwapState,SwapBnd,1> swapState;
     ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
-    ArrayState<BufferState,IndexBnd,StaticState::frames> indexState;
-    ArrayState<BufferState,BringupBnd,StaticState::frames> bringupState;
-    ArrayState<TextureState,DecorateBnd,StaticState::frames> textureState;
-    ArrayState<UniformState,ConfigureBnd,StaticState::frames> uniformState;
-    ArrayState<UniformState,MatrixBnd,StaticState::frames> matrixState;
-    ArrayState<BufferState,TriangleBnd,StaticState::frames> triangleState;
-    ArrayState<BufferState,NumericBnd,StaticState::frames> numericState;
-    ArrayState<BufferState,VertexBnd,StaticState::frames> vertexState;
-    ArrayState<BufferState,BasisBnd,StaticState::frames> basisState;
-    ArrayState<BufferState,PierceBnd,StaticState::frames> pierceState;
-    ArrayState<ResultState,ResultBnd,StaticState::frames> resultState;
-    ArrayState<AcquireState,AcquireBnd,StaticState::frames> acquireState;
-    ArrayState<PresentState,PresentBnd,StaticState::frames> presentState;
-    ArrayState<DrawState,DrawBnd,StaticState::frames> drawState;
-    ArrayState<BindState,BindBnd,StaticState::frames> bindState;
+    ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
+    ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
+    ArrayState<TextureState,DecorateBnd,StackState::frames> textureState;
+    ArrayState<UniformState,ConfigureBnd,StackState::frames> uniformState;
+    ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
+    ArrayState<BufferState,TriangleBnd,StackState::frames> triangleState;
+    ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
+    ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
+    ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
+    ArrayState<BufferState,PierceBnd,StackState::frames> pierceState;
+    ArrayState<ResultState,ResultBnd,StackState::frames> resultState;
+    ArrayState<AcquireState,AcquireBnd,StackState::frames> acquireState;
+    ArrayState<PresentState,PresentBnd,StackState::frames> presentState;
+    ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
+    ArrayState<BindState,BindBnd,StackState::frames> bindState;
+    BindPair arrayState[Binds+1];
     ThreadState threadState;
     TestState testState;
     CallState callState;
@@ -1491,18 +1476,39 @@ struct MainState {
         presentState("PresentBnd"),
         drawState("DrawBnd"),
         bindState("BindBnd"),
+        arrayState{
+            {SwapBnd,&swapState},
+            {PipelineBnd,&pipelineState},
+            {IndexBnd,&indexState},
+            {BringupBnd,&bringupState},
+            {DecorateBnd,&textureState},
+            {ConfigureBnd,&uniformState},
+            {MatrixBnd,&matrixState},
+            {TriangleBnd,&triangleState},
+            {NumericBnd,&numericState},
+            {VertexBnd,&vertexState},
+            {BasisBnd,&basisState},
+            {PierceBnd,&pierceState},
+            {ResultBnd,&resultState},
+            {AcquireBnd,&acquireState},
+            {PresentBnd,&presentState},
+            {DrawBnd,&drawState},
+            {BindBnd,&bindState},
+            {Binds,0}},
         threadState(logicalState.device,&copyState),
-        copyState(&threadState,&bindState) {
+        copyState(&threadState,&bindState,arrayState) {
         std::cout << "MainState" << std::endl;}
     ~MainState() {std::cout << "~MainState" << std::endl;}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
 };
 
-MainState *mptr = 0;
+MainState *mptr = 0; // TODO should not be needed
+
+// TODO move CopyState functions to inline, using stack[] instead of mptr
 void CopyState::draw(int siz, SmartState log) {
     // TODO call CopyState::push with acquire draw present
-    StaticState *bind[] = {
+    StackState *bind[] = {
         &mptr->matrixState,
         &mptr->textureState,
         &mptr->bringupState,
@@ -1547,6 +1553,7 @@ void CopyState::copy(Response pass, SmartState log) {
 
 void vulkanPass(Response pass);
 void vulkanForce(Response pass);
+// TODO move to inline, using CopyState and Bind enum
 void TestState::call() {
     slog.onof(0,1000000);
     const std::vector<Vertex> vertices = {
@@ -1580,8 +1587,8 @@ void TestState::call() {
     mptr->threadState.push(mptr->pipelineState.preview(MicroTest),{0},SmartState());
     mptr->pipelineState.advance(MicroTest);
     //
-    StaticState *single[] = {&mptr->pipelineState};
-    for (int i = 0; i < StaticState::frames; i++) {
+    StackState *single[] = {&mptr->pipelineState};
+    for (int i = 0; i < StackState::frames; i++) {
     while (!mptr->drawState.preview(i)->bind(single, 1) ||
     !mptr->drawState.preview(i)->push(SizeState(MicroTest),SmartState()))
     {mptr->drawState.preview(i)->bind(); glfwWaitEventsTimeout(0.001);}
@@ -1678,7 +1685,8 @@ const char *vulkanCmnd(int arg) {
 
 int main(int argc, const char **argv) {
     for (int i = 1; i < argc; i++) cmdl.push_back(argv[i]);
-    MainState main; mptr = &main;
+    MainState main;
+    mptr = &main; // TODO should not be needed
     main.copyState.call(RegisterOpen,vulkanBack);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     while (!glfwWindowShouldClose(main.windowState.window) && main.copyState.read(RegisterOpen) != 0) {
