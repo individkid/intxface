@@ -56,8 +56,8 @@ Bind = {
     "BindBnd",
 	"IndexBnd",
 	"BringupBnd",
-	"DecorateBnd", -- Texturez
-	"ConfigureBnd", -- Uniformz
+	"TextureBnd",
+	"UniformBnd",
 	"MatrixBnd",
 	"TriangleBnd",
 	"NumericBnd",
@@ -66,13 +66,13 @@ Bind = {
 	"PierceBnd",
 }
 BindTyp = {
-	"StorageBnd",
-	"UniformBnd",
-	"TextureBnd",
+	"StorageTyp",
+	"UniformTyp",
+	"TextureTyp",
 }
 BindLoc = {
-	"BeforeBnd",
-	"MiddleBnd",
+	"BeforeLoc",
+	"MiddleLoc",
 }
 Format = {
 	"VecFormat",
@@ -361,27 +361,6 @@ MemoryBinding = {
     {"Micro","MicroTest","Int","0","Memory","Matrixz"},
     {"Micro","MicroTest","Int","1","Memory","Texturez"},
     {"Micro","MicroTest","Int","2","Memory","Memorys"},
-}
-BindBuf = {
-    {"Micro","MicroTest","Int","0","Bind","SwapBnd"},
-    {"Micro","MicroTest","Int","1","Bind","MatrixBnd"},
-    {"Micro","MicroTest","Int","2","Bind","DecorateBnd"},
-    {"Micro","MicroTest","Int","3","Bind","BringupBnd"},
-    {"Micro","MicroTest","Int","4","Bind","IndexBnd"},
-    {"Micro","MicroTest","Int","5","Bind","PipelineBnd"},
-    {"Micro","MicroTest","Int","6","Bind","AcquireBnd"},
-    {"Micro","MicroTest","Int","7","Bind","Binds"},
-}
-BindUpd = {
-    {"Micro","MicroTest","Bind","MatrixBnd","BindTyp","UniformBnd"},
-    {"Micro","MicroTest","Bind","DecorateBnd","BindTyp","TextureBnd"},
-}
-BindSem = {
-    {"Micro","MicroTest","Bind","AcquireBnd","BindLoc","MiddleBnd"},
-}
-BindIdx = {
-    {"Micro","MicroTest","Bind","MatrixBnd","Int","0"},
-    {"Micro","MicroTest","Bind","DecorateBnd","Int","1"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:2"..

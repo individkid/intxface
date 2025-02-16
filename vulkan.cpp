@@ -673,99 +673,6 @@ struct ForkState : public DoneState {
     void func() override {delete this;}
 };
 
-enum RequestEnum {
-    BothReq,
-    LockReq,
-    SizeReq,
-    DrawReq,
-};
-struct Request {
-    void *ptr; int loc; int siz; SizeState max; RequestEnum tag;
-    Bind der[Binds]; Bind dee[Binds]; Configure base, size;
-    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothReq) {}
-    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockReq) {}
-    Request(SizeState max) : max(max), tag(SizeReq) {}
-    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max tag der base size
-    // TODO Request(Micro micro) // use constants to find ptr loc siz max tag der dee
-    bool operator()(BaseState *buf, SmartState log) { // TODO pass in StackState* and ChangeState& instead of BseState
-        switch(tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
-        break; case (BothReq): return buf->push(ptr,loc,siz,max,log);
-        break; case (LockReq): return buf->push(ptr,loc,siz,log);
-        break; case (SizeReq): return buf->push(max,log);}
-        return true;
-    }
-};
-
-struct ArraysState {
-    Bind key;
-    StackState *val;
-};
-struct CopyState : public ChangeState<Configure,Configures> {
-    ThreadState *thread;
-    ArrayState<BindState,BindBnd,StackState::frames> *bind;
-    StackState *stack[Binds];
-    CopyState(ThreadState *thread, ArrayState<BindState,BindBnd,StackState::frames> *bind, ArraysState *stack) :
-        thread(thread), bind(bind), stack{0} {
-        for (ArraysState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
-        std::cout << "CopyState" << std::endl;}
-    ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    bool push(StackState **ree, int rees, StackState **wee, int wees,
-        StackState **der, int ders, Request *arg, Response pass, SmartState log) {
-        // TODO use this->bind instead of taking StackState arrays
-        BindState *bind = this->bind->derived();
-        if (!bind->incr(ree,rees,wee,wees,log)) return false;
-        int count = 0; for (int i = 0; i < ders; i++) {
-        if (arg[i](der[i]->buffer(),log))
-        count++; else break;}
-        if (count < ders) {
-        for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
-        bind->incr(log);
-        return false;}
-        stack[BindBnd]->advance();
-        for (int i = 0; i < ders; i++) der[i]->advance();
-        BaseState *buf[ders];
-        for (int i = 0; i < ders; i++) buf[i] = der[i]->buffer();
-        for (int i = 0; i < ders; i++) buf[i]->set(bind);
-        for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
-        for (int i = 0; i < ders; i++) thread->push(buf[i],pass,log);
-        return true;
-    }
-    void draw(int siz, SmartState log);
-    bool push(StackState *pre, Request arg, Response pass, SmartState log) {
-        // TODO use this->bind instead of taking StackState pointer
-        if (!arg(pre->prebuf(),log)) return false;
-        thread->push(pre->prebuf(),pass,log);
-        return true;
-    }
-   bool copy(StackState *pre, void *ptr, int base, int size, Response pass, SmartState log) {
-        // TODO use this->bind instead of taking StackState pointer
-        int loc = pass.ptr->idx;
-        int siz = pass.ptr->siz;
-        BaseState *buf = pre->prebuf();
-        int mod = pre->bufsiz();
-        SizeState max;
-        if (pass.mod) {
-        //    x-x     x---x x---x   x-----x
-        //   y---y   y---y   y---y   y---y
-        //   z---z   z----z  z---z   z----z
-        int xl = loc; int xr = xl+siz;
-        int yl = base; int yr = yl+size;
-        int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
-        else if (xl<yl) {zl=yl;zr=xr;}
-        else if (xr<yr) {zl=yl;zr=yr;}
-        else {zl=yl;zr=xr;}
-        ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
-        loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-        std::cerr << "copy x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
-        loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
-        base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
-        log << "copy " << ptr << " " << loc << " " << siz << std::endl;
-        if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
-        thread->push(buf,pass,log); return true;
-    }
-    void copy(Response pass, SmartState log); // TODO move switch to Request and call push(req,rsp,log)
-};
-
 // TODO declare glfw callbacks
 
 struct WindowState {
@@ -1385,8 +1292,8 @@ struct DrawState : public BaseState {
                 get(MatrixBnd)->getBuffer(),i,
                 get(MatrixBnd)->getRange(),descriptorSet);
             break; case (Texturez): updateTextureDescriptor(device,
-                get(DecorateBnd)->getTextureImageView(),
-                get(DecorateBnd)->getTextureSampler(),i,descriptorSet);}
+                get(TextureBnd)->getTextureImageView(),
+                get(TextureBnd)->getTextureSampler(),i,descriptorSet);}
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 get(SwapBnd)->getFramebuffer(imageIndex),
                 get(PipelineBnd)->getPipeline(), get(PipelineBnd)->getPipelineLayout(),
@@ -1419,6 +1326,145 @@ struct DrawState : public BaseState {
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
 
+enum RequestEnum {
+    BothReq,
+    LockReq,
+    SizeReq,
+    DrawReq,
+};
+struct Request {
+    void *ptr; int loc; int siz; SizeState max; RequestEnum tag; Configure base, size;
+    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothReq) {}
+    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockReq) {}
+    Request(SizeState max) : max(max), tag(SizeReq) {}
+    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max tag der base size
+    // TODO Request(Micro micro) // use constants to find ptr loc siz max tag der dee
+};
+
+extern "C" {
+int datxVoids(void *dat);
+void *datxVoidz(int num, void *dat);
+};
+struct ArraysState {
+    Bind key;
+    StackState *val;
+};
+struct CopyState : public ChangeState<Configure,Configures> {
+    ThreadState *thread;
+    // TODO perhaps add virtual functions to BaseState instead, then no need for derived()
+    ArrayState<BindState,BindBnd,StackState::frames> *bind;
+    ArrayState<DrawState,DrawBnd,StackState::frames> *draw;
+    StackState *stack[Binds];
+    CopyState(ThreadState *thread, ArraysState *stack,
+        ArrayState<BindState,BindBnd,StackState::frames> *bind,
+        ArrayState<DrawState,DrawBnd,StackState::frames> *draw) :
+        thread(thread), stack{0}, bind(bind), draw(draw) {
+        for (ArraysState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
+        std::cout << "CopyState" << std::endl;}
+    ~CopyState() {std::cout << "~CopyState" << std::endl;}
+    bool push(Request req, BaseState *buf, SmartState log) {
+        switch(req.tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
+        break; case (BothReq): return buf->push(req.ptr,req.loc,req.siz,req.max,log);
+        break; case (LockReq): return buf->push(req.ptr,req.loc,req.siz,log);
+        break; case (SizeReq): return buf->push(req.max,log);}
+        return true;
+    }
+    bool push(StackState **ree, int rees, StackState **wee, int wees,
+        StackState **der, int ders, Request arg, Response pass, SmartState log) {
+        // TODO use this->bind instead of taking StackState arrays
+        BindState *bind = this->bind->derived();
+        if (!bind->incr(ree,rees,wee,wees,log)) return false;
+        int count = 0; for (int i = 0; i < ders; i++) {
+        if (push(arg,der[i]->buffer(),log))
+        count++; else break;}
+        if (count < ders) {
+        for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
+        bind->incr(log);
+        return false;}
+        stack[BindBnd]->advance();
+        for (int i = 0; i < ders; i++) der[i]->advance();
+        BaseState *buf[ders];
+        for (int i = 0; i < ders; i++) buf[i] = der[i]->buffer();
+        for (int i = 0; i < ders; i++) buf[i]->set(bind);
+        for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
+        for (int i = 0; i < ders; i++) thread->push(buf[i],pass,log);
+        return true;
+    }
+    bool push(int siz, SmartState log) {
+        // TODO call CopyState::push with acquire draw present
+        StackState *bind[] = {
+            stack[MatrixBnd],
+            stack[TextureBnd],
+            stack[BringupBnd],
+            stack[IndexBnd],
+            stack[PipelineBnd],
+            stack[SwapBnd]};
+        if (draw->derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
+            draw->derived()->push(0,0,siz,SmartState())) {
+            BaseState *drawPtr = draw->buffer();
+            draw->advance();
+            thread->push(drawPtr,{0},SmartState());}
+        else {draw->derived()->bind(); return false;}
+        return true;
+    }
+    bool push(StackState *pre, Request arg, Response pass, SmartState log) {
+        // TODO use this->bind instead of taking StackState pointer
+        if (!push(arg,pre->prebuf(),log)) return false;
+        thread->push(pre->prebuf(),pass,log);
+        return true;
+    }
+   bool push(StackState *pre, void *ptr, int base, int size, Response pass, SmartState log) {
+        // TODO use this->bind instead of taking StackState pointer
+        int loc = pass.ptr->idx;
+        int siz = pass.ptr->siz;
+        BaseState *buf = pre->prebuf();
+        int mod = pre->bufsiz();
+        SizeState max;
+        if (pass.mod) {
+        //    x-x     x---x x---x   x-----x
+        //   y---y   y---y   y---y   y---y
+        //   z---z   z----z  z---z   z----z
+        int xl = loc; int xr = xl+siz;
+        int yl = base; int yr = yl+size;
+        int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
+        else if (xl<yl) {zl=yl;zr=xr;}
+        else if (xr<yr) {zl=yl;zr=yr;}
+        else {zl=yl;zr=xr;}
+        ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
+        loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
+        std::cerr << "push x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
+        loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
+        base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
+        log << "push " << ptr << " " << loc << " " << siz << std::endl;
+        if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
+        thread->push(buf,pass,log); return true;
+    }
+    #define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
+        if (!push(stack[STATE],(void*)center->FIELD,read(BASE),read(SIZE),pass,log)) \
+        thread->push(0,pass,log);
+    #define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
+        if (stack[STATE]->prebuf()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
+        SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),log)) \
+        thread->push(stack[STATE]->prebuf(),pass,log); else thread->push(0,pass,log);
+    void push(Response pass, SmartState log) {
+        Center *center = pass.ptr;
+        switch (center->mem) {
+        default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+        break; case (Indexz): REBASE(IndexBnd,ind,IndexBase,IndexSize,int32_t);
+        break; case (Bringupz): REBASE(BringupBnd,ver,BringupBase,BringupSize,Vertex);
+        break; case (Texturez): EXTENT(TextureBnd,tex[0].dat,tex[0].wid,tex[0].hei); // TODO allow copy multiple textures
+        break; case (Uniformz): REBASE(UniformBnd,uni,UniformBase,UniformSize,Uniform);
+        break; case (Matrixz): REBASE(MatrixBnd,mat,MatrixBase,MatrixSize,Matrix);
+        break; case (Trianglez): REBASE(TriangleBnd,tri,TriangleBase,TriangleSize,Triangle);
+        break; case (Numericz): REBASE(NumericBnd,num,NumericBase,NumericSize,Numeric);
+        break; case (Vertexz): REBASE(BringupBnd,vtx,VertexBase,VertexSize,Vertex);
+        break; case (Basisz): REBASE(BasisBnd,bas,BasisBase,BasisSize,Basis);
+        break; case (Piercez): // TODO write modify read
+        break; case (Configurez): {for (int i = 0; i < center->siz; i++)
+        write(center->cfg[i],center->val[i]);} thread->push(0,pass,log);}
+    }
+};
+
 struct MainState {
     WindowState windowState;
     VulkanState vulkanState;
@@ -1429,8 +1475,8 @@ struct MainState {
     ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
-    ArrayState<TextureState,DecorateBnd,StackState::frames> textureState;
-    ArrayState<UniformState,ConfigureBnd,StackState::frames> uniformState;
+    ArrayState<TextureState,TextureBnd,StackState::frames> textureState;
+    ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleBnd,StackState::frames> triangleState;
     ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
@@ -1483,8 +1529,8 @@ struct MainState {
             {PipelineBnd,&pipelineState},
             {IndexBnd,&indexState},
             {BringupBnd,&bringupState},
-            {DecorateBnd,&textureState},
-            {ConfigureBnd,&uniformState},
+            {TextureBnd,&textureState},
+            {UniformBnd,&uniformState},
             {MatrixBnd,&matrixState},
             {TriangleBnd,&triangleState},
             {NumericBnd,&numericState},
@@ -1498,7 +1544,7 @@ struct MainState {
             {BindBnd,&bindState},
             {Binds,0}},
         threadState(logicalState.device,&copyState),
-        copyState(&threadState,&bindState,arrayState) {
+        copyState(&threadState,arrayState,&bindState,&drawState) {
         std::cout << "MainState" << std::endl;}
     ~MainState() {std::cout << "~MainState" << std::endl;}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
@@ -1506,53 +1552,6 @@ struct MainState {
 };
 
 MainState *mptr = 0; // TODO should not be needed
-
-// TODO move CopyState functions to inline, using stack[] instead of mptr
-void CopyState::draw(int siz, SmartState log) {
-    // TODO call CopyState::push with acquire draw present
-    StackState *bind[] = {
-        &mptr->matrixState,
-        &mptr->textureState,
-        &mptr->bringupState,
-        &mptr->indexState,
-        &mptr->pipelineState,
-        &mptr->swapState};
-    if (mptr->drawState.derived()->bind(bind,sizeof(bind)/sizeof(bind[0])) &&
-        mptr->drawState.derived()->push(0,0,siz,SmartState())) {
-        BaseState *drawPtr = mptr->drawState.buffer();
-        mptr->drawState.advance();
-        mptr->threadState.push(drawPtr,{0},SmartState());}
-    else {mptr->drawState.derived()->bind(); mptr->testState.wake.wait();}
-}
-extern "C" {
-int datxVoids(void *dat);
-void *datxVoidz(int num, void *dat);
-};
-#define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
-    if (!copy(&mptr->STATE,(void*)center->FIELD,read(BASE),read(SIZE),pass,log)) \
-    thread->push(0,pass,log);
-#define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
-    if (mptr->STATE.preview()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
-    SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),log)) \
-    thread->push(mptr->STATE.preview(),pass,log); else thread->push(0,pass,log);
-void CopyState::copy(Response pass, SmartState log) {
-    Center *center = pass.ptr;
-    switch (center->mem) {
-    default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-    break; case (Indexz): REBASE(indexState,ind,IndexBase,IndexSize,int32_t);
-    break; case (Bringupz): REBASE(bringupState,ver,BringupBase,BringupSize,Vertex);
-    break; case (Texturez): EXTENT(textureState,tex[0].dat,tex[0].wid,tex[0].hei); // TODO allow copy multiple textures
-    break; case (Uniformz): REBASE(uniformState,uni,UniformBase,UniformSize,Uniform);
-    break; case (Matrixz): REBASE(matrixState,mat,MatrixBase,MatrixSize,Matrix);
-    break; case (Trianglez): REBASE(triangleState,tri,TriangleBase,TriangleSize,Triangle);
-    break; case (Numericz): REBASE(numericState,num,NumericBase,NumericSize,Numeric);
-    break; case (Vertexz): REBASE(bringupState,vtx,VertexBase,VertexSize,Vertex);
-    break; case (Basisz): REBASE(basisState,bas,BasisBase,BasisSize,Basis);
-    break; case (Piercez): // TODO write modify read
-    break; case (Configurez): {for (int i = 0; i < center->siz; i++)
-    write(center->cfg[i],center->val[i]);} thread->push(0,pass,log);}
-}
-
 void vulkanPass(Response pass);
 void vulkanForce(Response pass);
 // TODO move to inline, using CopyState and Bind enum
@@ -1599,18 +1598,18 @@ void TestState::call() {
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    mptr->copyState.copy({0,0,0,vtx,vulkanForce},SmartState());
+    mptr->copyState.push({0,0,0,vtx,vulkanForce},SmartState());
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    mptr->copyState.copy({0,0,0,ind,vulkanForce},SmartState());
+    mptr->copyState.push({0,0,0,ind,vulkanForce},SmartState());
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    mptr->copyState.copy({0,0,0,tex,vulkanPass},SmartState());
+    mptr->copyState.push({0,0,0,tex,vulkanPass},SmartState());
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
@@ -1630,10 +1629,10 @@ void TestState::call() {
     memcpy(&mat->mat[1],&view,sizeof(Matrix));
     memcpy(&mat->mat[2],&proj,sizeof(Matrix));
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    mptr->copyState.copy({0,0,0,mat,vulkanPass},log);
+    mptr->copyState.push({0,0,0,mat,vulkanPass},log);
     log.clr();
     //
-    mptr->copyState.draw(static_cast<uint32_t>(indices.size()),SmartState());}
+    if (!mptr->copyState.push(static_cast<uint32_t>(indices.size()),SmartState())) wake.wait();}
 }
 
 // TODO define glfw callbacks
@@ -1646,7 +1645,7 @@ void vulkanForce(Response pass) {
     if (pass.ptr) {freeCenter(pass.ptr); allocCenter(&pass.ptr,0);}
 }
 void vulkanCopy(Response pass) {
-    mptr->copyState.copy(pass,SmartState());
+    mptr->copyState.push(pass,SmartState());
 }
 void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
@@ -1676,8 +1675,8 @@ void vulkanBack(Configure cfg, int sav, int val) {
     mptr->callState.stop(&mptr->threadState);
 }
 void vulkanDraw(Configure cfg, int sav, int val) {
-    // TODO check cfg draw parameter
-    mptr->copyState.draw(val,SmartState());
+    // TODO check cfg draw parameter; pass SmartState with planePass
+    mptr->copyState.push(val,SmartState());
 }
 std::vector<const char *> cmdl;
 const char *vulkanCmnd(int arg) {
