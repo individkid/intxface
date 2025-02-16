@@ -1326,32 +1326,39 @@ struct DrawState : public BaseState {
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
 
-enum RequestEnum {
-    BothReq,
-    LockReq,
-    SizeReq,
-    DrawReq,
-};
-struct Request {
-    void *ptr; int loc; int siz; SizeState max; RequestEnum tag; Configure base, size;
-    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothReq) {}
-    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockReq) {}
-    Request(SizeState max) : max(max), tag(SizeReq) {}
-    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max tag der base size
-    // TODO Request(Micro micro) // use constants to find ptr loc siz max tag der dee
-};
-
 extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
+enum RequestEnum {
+    BothReq,
+    LockReq,
+    SizeReq,
+    BaseReq,
+    DrawReq,
+    ReadReq,
+    ConfReq,
+};
+struct Request {
+    void *ptr; int loc; int siz; SizeState max; Configure base, size;
+    RequestEnum tag; Micro micro; Bind bnd; Configure *cfg; int *val;
+    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max),
+    tag(BothReq), micro(Micros), bnd(Binds), cfg(0), val(0) {}
+    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz),
+    tag(LockReq), micro(Micros), bnd(Binds), cfg(0), val(0) {}
+    Request(SizeState max) : max(max), tag(SizeReq),
+    micro(Micros), bnd(Binds), cfg(0), val(0) {}
+    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max base size tag bnd
+    // TODO Request(Micro micro) // use constants to find ptr loc siz max tag bnd
+};
+
 struct ArraysState {
     Bind key;
     StackState *val;
 };
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
-    // TODO perhaps add virtual functions to BaseState instead, then no need for derived()
+    // TODO perhaps add virtual functions to BaseState instead, then no need for derived() and can move CopyState to just after ThreadState
     ArrayState<BindState,BindBnd,StackState::frames> *bind;
     ArrayState<DrawState,DrawBnd,StackState::frames> *draw;
     StackState *stack[Binds];
@@ -1362,12 +1369,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (ArraysState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    bool push(Request req, BaseState *buf, SmartState log) {
-        switch(req.tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
-        break; case (BothReq): return buf->push(req.ptr,req.loc,req.siz,req.max,log);
-        break; case (LockReq): return buf->push(req.ptr,req.loc,req.siz,log);
-        break; case (SizeReq): return buf->push(req.max,log);}
-        return true;
+    bool push(Request arg, BaseState *buf, SmartState log) {
+        switch(arg.tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
+        break; case (BothReq): return buf->push(arg.ptr,arg.loc,arg.siz,arg.max,log);
+        break; case (LockReq): return buf->push(arg.ptr,arg.loc,arg.siz,log);
+        break; case (SizeReq): return buf->push(arg.max,log);}
+        return false;
     }
     bool push(StackState **ree, int rees, StackState **wee, int wees,
         StackState **der, int ders, Request arg, Response pass, SmartState log) {
@@ -1390,6 +1397,38 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < ders; i++) thread->push(buf[i],pass,log);
         return true;
     }
+    bool push(StackState *pre, void *ptr, int loc, int siz, int base, int size, Response pass, SmartState log) {
+        // TODO use this->bind instead of taking StackState pointer
+        BaseState *buf = pre->prebuf();
+        int mod = pre->bufsiz();
+        SizeState max;
+        if (pass.mod) {
+        //    x-x     x---x x---x   x-----x
+        //   y---y   y---y   y---y   y---y
+        //   z---z   z----z  z---z   z----z
+        int xl = loc; int xr = xl+siz;
+        int yl = base; int yr = yl+size;
+        int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
+        else if (xl<yl) {zl=yl;zr=xr;}
+        else if (xr<yr) {zl=yl;zr=yr;}
+        else {zl=yl;zr=xr;}
+        ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
+        loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
+        std::cerr << "push x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
+        base = loc*mod; size = siz*mod; loc = loc*mod; siz = siz*mod;}
+        log << "push " << ptr << " " << loc << " " << siz << std::endl;
+        if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
+        thread->push(buf,pass,log); return true;
+    }
+    void push(Request arg, Response pass, SmartState log) {
+        if (arg.tag == DrawReq); // TODO call push with dees and ders mapped from arg.micro
+        else if (arg.tag == ReadReq); // TODO write modify read
+        else if (arg.tag == ConfReq) {for (int i = 0; i < arg.siz; i++) write(arg.cfg[i],arg.val[i]);}
+        else if (arg.tag == BaseReq) {
+        if (!push(stack[arg.bnd],arg.ptr,arg.loc,arg.siz,read(arg.base),read(arg.size),pass,log)) thread->push(0,pass,log);}
+        else {if (!push(arg,stack[arg.bnd]->buffer(),log)) thread->push(0,pass,log);}
+    }
+    // TODO move switch on center->mem to Request constructor, and think of a way for TestState to wait; then following two not needed
     bool push(int siz, SmartState log) {
         // TODO call CopyState::push with acquire draw present
         StackState *bind[] = {
@@ -1407,40 +1446,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else {draw->derived()->bind(); return false;}
         return true;
     }
-    bool push(StackState *pre, Request arg, Response pass, SmartState log) {
-        // TODO use this->bind instead of taking StackState pointer
-        if (!push(arg,pre->prebuf(),log)) return false;
-        thread->push(pre->prebuf(),pass,log);
-        return true;
-    }
-   bool push(StackState *pre, void *ptr, int base, int size, Response pass, SmartState log) {
-        // TODO use this->bind instead of taking StackState pointer
-        int loc = pass.ptr->idx;
-        int siz = pass.ptr->siz;
-        BaseState *buf = pre->prebuf();
-        int mod = pre->bufsiz();
-        SizeState max;
-        if (pass.mod) {
-        //    x-x     x---x x---x   x-----x
-        //   y---y   y---y   y---y   y---y
-        //   z---z   z----z  z---z   z----z
-        int xl = loc; int xr = xl+siz;
-        int yl = base; int yr = yl+size;
-        int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
-        else if (xl<yl) {zl=yl;zr=xr;}
-        else if (xr<yr) {zl=yl;zr=yr;}
-        else {zl=yl;zr=xr;}
-        ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
-        loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-        std::cerr << "push x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
-        loc = pass.ptr->idx*mod; siz = pass.ptr->siz*mod;
-        base = pass.ptr->idx*mod; size = pass.ptr->siz*mod;}
-        log << "push " << ptr << " " << loc << " " << siz << std::endl;
-        if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
-        thread->push(buf,pass,log); return true;
-    }
     #define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
-        if (!push(stack[STATE],(void*)center->FIELD,read(BASE),read(SIZE),pass,log)) \
+        if (!push(stack[STATE],(void*)center->FIELD,center->idx,center->siz,read(BASE),read(SIZE),pass,log)) \
         thread->push(0,pass,log);
     #define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
         if (stack[STATE]->prebuf()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
