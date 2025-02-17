@@ -267,7 +267,7 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 }
 
 enum BaseEnum {
-    InitBase, // avoid binding to uninitialized
+    InitBase, // avoid binding to uninitialized // TODO resize should complete to InitBase
     FreeBase, // ready to use or update
     BothBase, // check for both change
     SizeBase, // check for size change
@@ -431,11 +431,11 @@ struct BaseState {
         if (state != BothBase && state != SizeBase && state != LockBase)
         {std::cerr << "invalid set state!" << std::endl; exit(-1);}
         if (lock != 0) {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
-        lock = ptr->cast();
+        lock = ptr->get();
         safe.post();
     }
-    virtual BindState *cast() {
-        std::cerr << "cast not bind!" << std::endl; exit(-1);}
+    virtual BindState *get() {
+        std::cerr << "get not bind!" << std::endl; exit(-1);}
     virtual BaseState *get(Bind i) { // called by pushee
         std::cerr << "get not bind!" << std::endl; exit(-1);}
     virtual bool incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log) {
@@ -483,7 +483,7 @@ struct BindState : public BaseState {
         for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
     ~BindState()
         {std::cout << "~BindState " << debug << std::endl;}
-    BindState *cast() {
+    BindState *get() {
         return this;
     }
     BaseState *get(Bind i) override { // called by pushee
@@ -593,96 +593,6 @@ void BaseState::wdec(Bind i) { // called by pushee
     lock->safe.post();
     safe.post();
 }
-
-struct PushState {
-    BaseState *base;
-    VkFence fence;
-    Response pass;
-    SmartState log;
-};
-struct ThreadState : public DoneState {
-    const VkDevice device;
-    ChangeState<Configure,Configures> *copy;
-    SafeState safe; SafeState wake;
-    std::deque<PushState> before;
-    std::deque<PushState> after;
-    bool goon;
-    pthread_t thread;
-    ThreadState(VkDevice device, ChangeState<Configure,Configures> *copy) :
-        device(device), copy(copy),
-        safe(1), wake(0), goon(true) {
-        strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
-    }
-    ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
-    void push(BaseState *base, Response pass, SmartState log) {
-        PushState push = {base,VK_NULL_HANDLE,pass,log};
-        safe.wait(); before.push_back(push); safe.post();
-        wake.wake();
-    }
-    bool stage() {
-        while (1) {while (1) {safe.wait();
-        if (before.empty()) {safe.post(); break;}
-        PushState push = before.front(); before.pop_front(); safe.post();
-        if (push.base) switch (push.base->check()) {
-        default: {std::cerr << "invalid push tag! " << push.base->debug << std::endl; exit(-1);}
-        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log); push.base = 0;
-        break; case(LockBase): push.fence = push.base->basesup(push.log);
-        break; case(BothBase): push.fence = push.base->sizeup(push.log);} else {
-        push.fence = VK_NULL_HANDLE; push.pass.res = 1;}
-        after.push_back(push);}
-        safe.wait(); if (!after.empty()) {safe.post(); break;}
-        if (before.empty()) {
-        if (!goon) {safe.post(); return false;}
-        else {safe.post(); wake.wait();}}}
-        return true;
-    }
-    void call() override {
-        while (stage()) {
-        if (after.empty()) {std::cerr << "separate empty after!" << std::endl; exit(-1);}
-        PushState push = after.front(); after.pop_front();
-        if (push.fence != VK_NULL_HANDLE) {
-        VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
-        if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
-        if (push.base) push.base->baseups(push.log);
-        if (push.pass.fnc) {push.pass.fnc(push.pass);}
-        copy->wots(RegisterMask,1<<FenceAsync);}
-        vkDeviceWaitIdle(device);
-    }
-    void done() override {
-        safe.wait();
-        goon = false;
-        safe.post();
-        wake.wake();
-    }
-    void func() override {}
-};
-
-extern "C" {
-float *planeWindow(float *mat);
-float *matrc(float *u, int r, int c, int n);
-}
-struct TestState : public DoneState {
-    SafeState safe, wake; bool goon;
-    TestState() : safe(1), wake(0), goon(true) {
-        strcpy(debug,"TestState"); std::cout << debug << std::endl;
-    }
-    ~TestState() {std::cout << "~TestState" << std::endl;}
-    void call() override;
-    void done() override {safe.wait(); goon = false; safe.post(); wake.wake();}
-    void func() override {}
-    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
-};
-
-struct ForkState : public DoneState {
-    Thread thd; int idx; mftype cfnc; mftype dfnc;
-    ForkState (Thread thd, int idx, mftype call, mftype done) :
-        thd(thd), idx(idx), cfnc(call), dfnc(done) {
-        strcpy(debug,"ForkState"); std::cout << debug << std::endl;
-    }
-    void call() override {cfnc(thd,idx);}
-    void done() override {dfnc(thd,idx);}
-    void func() override {delete this;}
-};
 
 // TODO declare glfw callbacks
 
@@ -1337,6 +1247,69 @@ struct DrawState : public BaseState {
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
 
+struct PushState {
+    BaseState *base;
+    VkFence fence;
+    Response pass;
+    SmartState log;
+};
+struct ThreadState : public DoneState {
+    const VkDevice device;
+    ChangeState<Configure,Configures> *copy;
+    SafeState safe; SafeState wake;
+    std::deque<PushState> before;
+    std::deque<PushState> after;
+    bool goon;
+    pthread_t thread;
+    ThreadState(VkDevice device, ChangeState<Configure,Configures> *copy) :
+        device(device), copy(copy),
+        safe(1), wake(0), goon(true) {
+        strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
+    }
+    ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
+    void push(BaseState *base, Response pass, SmartState log) {
+        PushState push = {base,VK_NULL_HANDLE,pass,log};
+        safe.wait(); before.push_back(push); safe.post();
+        wake.wake();
+    }
+    bool stage() {
+        while (1) {while (1) {safe.wait();
+        if (before.empty()) {safe.post(); break;}
+        PushState push = before.front(); before.pop_front(); safe.post();
+        if (push.base) switch (push.base->check()) {
+        default: {std::cerr << "invalid push tag! " << push.base->debug << std::endl; exit(-1);}
+        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log); push.base = 0;
+        break; case(LockBase): push.fence = push.base->basesup(push.log);
+        break; case(BothBase): push.fence = push.base->sizeup(push.log);} else {
+        push.fence = VK_NULL_HANDLE; push.pass.res = 1;}
+        after.push_back(push);}
+        safe.wait(); if (!after.empty()) {safe.post(); break;}
+        if (before.empty()) {
+        if (!goon) {safe.post(); return false;}
+        else {safe.post(); wake.wait();}}}
+        return true;
+    }
+    void call() override {
+        while (stage()) {
+        if (after.empty()) {std::cerr << "separate empty after!" << std::endl; exit(-1);}
+        PushState push = after.front(); after.pop_front();
+        if (push.fence != VK_NULL_HANDLE) {
+        VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
+        if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
+        if (push.base) push.base->baseups(push.log);
+        if (push.pass.fnc) {push.pass.fnc(push.pass);}
+        copy->wots(RegisterMask,1<<FenceAsync);}
+        vkDeviceWaitIdle(device);
+    }
+    void done() override {
+        safe.wait();
+        goon = false;
+        safe.post();
+        wake.wake();
+    }
+    void func() override {}
+};
+
 extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
@@ -1347,48 +1320,41 @@ enum RequestEnum {
     SizeReq,
     BaseReq,
     DrawReq,
-    ReadReq,
     ConfReq,
+    TestReq,
 };
 struct Request {
     void *ptr; int loc; int siz; SizeState max; Configure base, size;
-    RequestEnum tag; Micro micro; Bind bnd; Configure *cfg; int *val;
-    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max),
-    tag(BothReq), micro(Micros), bnd(Binds), cfg(0), val(0) {}
-    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz),
-    tag(LockReq), micro(Micros), bnd(Binds), cfg(0), val(0) {}
-    Request(SizeState max) : max(max), tag(SizeReq),
-    micro(Micros), bnd(Binds), cfg(0), val(0) {}
-    // TODO Request(Center *req) // switch on req->mem to find ptr loc siz max base size tag bnd
-    // TODO Request(Micro micro) // use constants to find ptr loc siz max tag bnd
+    Micro micro; Bind bnd; Configure *cfg; int *val;
+    void (*fnc)(Request); RequestEnum tag;
+    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothReq) {}
+    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockReq) {}
+    Request(SizeState max) : max(max), tag(SizeReq) {}
+    Request(int siz, void (*fnc)(Request)) : siz(siz), fnc(fnc), tag(TestReq) {}
+    // TODO Request(Micro micro) : tag(DrawReq) // use constants to find ptr loc siz max tag bnd
+    // TODO Request(Center *req) : // BaseReq or ConfReq switch on req->mem to find ptr loc siz base size bnd tag
 };
-
 struct ArraysState {
     Bind key;
     StackState *val;
 };
 struct CopyState : public ChangeState<Configure,Configures> {
-    ThreadState *thread; StackState *stack[Binds];
+    ThreadState *thread; StackState *stack[Binds]; bool fail;
     CopyState(ThreadState *thread, ArraysState *stack) :
         thread(thread), stack{0} {
         for (ArraysState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    bool push(Request arg, BaseState *buf, SmartState log) {
-        switch(arg.tag) {default: std::cerr << "param state error!" << std::endl; exit(-1);
-        break; case (BothReq): return buf->push(arg.ptr,arg.loc,arg.siz,arg.max,log);
-        break; case (LockReq): return buf->push(arg.ptr,arg.loc,arg.siz,log);
-        break; case (SizeReq): return buf->push(arg.max,log);}
-        return false;
-    }
     bool push(StackState **ree, int rees, StackState **wee, int wees,
-        StackState **der, int ders, Request arg, Response pass, SmartState log) {
+        StackState **der, Request *arg, Response *pass, int ders, SmartState log) {
         // TODO use this->bind instead of taking StackState arrays
         BaseState *bind = stack[BindBnd]->buffer();
         if (!bind->incr(ree,rees,wee,wees,log)) return false;
         int count = 0; for (int i = 0; i < ders; i++) {
-        if (push(arg,der[i]->buffer(),log))
-        count++; else break;}
+        fail = false;
+        push(arg[i],pass[i],log);
+        if (fail) break;
+        count++;}
         if (count < ders) {
         for (int i = 0; i < count; i++) der[i]->buffer()->push(log);
         bind->incr(log);
@@ -1399,7 +1365,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < ders; i++) buf[i] = der[i]->buffer();
         for (int i = 0; i < ders; i++) buf[i]->set(bind);
         for (int i = 1; i < ders; i++) buf[i]->setSemaphore(buf[i-1]->getSemaphore());
-        for (int i = 0; i < ders; i++) thread->push(buf[i],pass,log);
+        for (int i = 0; i < ders; i++) thread->push(buf[i],pass[i],log);
         return true;
     }
     bool push(StackState *pre, void *ptr, int loc, int siz, int base, int size, Response pass, SmartState log) {
@@ -1426,16 +1392,18 @@ struct CopyState : public ChangeState<Configure,Configures> {
         thread->push(buf,pass,log); return true;
     }
     void push(Request arg, Response pass, SmartState log) {
-        if (arg.tag == DrawReq); // TODO call push with dees and ders mapped from arg.micro
-        else if (arg.tag == ReadReq); // TODO write modify read
-        else if (arg.tag == ConfReq) {for (int i = 0; i < arg.siz; i++) write(arg.cfg[i],arg.val[i]);}
-        else if (arg.tag == BaseReq) {
-        if (!push(stack[arg.bnd],arg.ptr,arg.loc,arg.siz,read(arg.base),read(arg.size),pass,log)) thread->push(0,pass,log);}
-        else {if (!push(arg,stack[arg.bnd]->buffer(),log)) thread->push(0,pass,log);}
+        switch (arg.tag) {default: std::cerr << "invalid push tag!" << std::endl; exit(-1);
+        break; case (TestReq): if (push(arg.siz,log)) return; // TODO remove this and TestReq after change to DrawReq
+        break; case (DrawReq): // TODO acquire draw present or write modify read; use constants to call first push above
+        break; case (ConfReq): {for (int i = 0; i < arg.siz; i++) write(arg.cfg[i],arg.val[i]); return;}
+        break; case (BaseReq): if (push(stack[arg.bnd],arg.ptr,arg.loc,arg.siz,read(arg.base),read(arg.size),pass,log)) return;
+        break; case (BothReq): if (stack[arg.bnd]->buffer()->push(arg.ptr,arg.loc,arg.siz,arg.max,log)) return;
+        break; case (LockReq): if (stack[arg.bnd]->buffer()->push(arg.ptr,arg.loc,arg.siz,log)) return;
+        break; case (SizeReq): if (stack[arg.bnd]->buffer()->push(arg.max,log)) return;}
+        fail = true; if (arg.fnc) arg.fnc(arg); thread->push(0,pass,log);
     }
-    // TODO move switch on center->mem to Request constructor; add immediate callback for TestState to wait; then following two not needed
+    // TODO remove following after change to DrawReq
     bool push(int siz, SmartState log) {
-        // TODO call CopyState::push with acquire draw present
         StackState *bind[] = {
             stack[MatrixBnd],
             stack[TextureBnd],
@@ -1451,6 +1419,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else {stack[DrawBnd]->buffer()->bind(); return false;}
         return true;
     }
+    // TODO move switch on center->mem to Request constructor, then following not needed
     #define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
         if (!push(stack[STATE],(void*)center->FIELD,center->idx,center->siz,read(BASE),read(SIZE),pass,log)) \
         thread->push(0,pass,log);
@@ -1475,6 +1444,33 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Configurez): {for (int i = 0; i < center->siz; i++)
         write(center->cfg[i],center->val[i]);} thread->push(0,pass,log);}
     }
+};
+
+extern "C" {
+float *planeWindow(float *mat);
+float *matrc(float *u, int r, int c, int n);
+}
+struct TestState : public DoneState {
+    SafeState safe, wake; bool goon; CopyState *copy;
+    TestState(CopyState *copy) : safe(1), wake(0), goon(true), copy(copy) {
+        strcpy(debug,"TestState"); std::cout << debug << std::endl;
+    }
+    ~TestState() {std::cout << "~TestState" << std::endl;}
+    void call() override;
+    void done() override {safe.wait(); goon = false; safe.post(); wake.wake();}
+    void func() override {}
+    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
+};
+
+struct ForkState : public DoneState {
+    Thread thd; int idx; mftype cfnc; mftype dfnc;
+    ForkState (Thread thd, int idx, mftype call, mftype done) :
+        thd(thd), idx(idx), cfnc(call), dfnc(done) {
+        strcpy(debug,"ForkState"); std::cout << debug << std::endl;
+    }
+    void call() override {cfnc(thd,idx);}
+    void done() override {dfnc(thd,idx);}
+    void func() override {delete this;}
 };
 
 struct MainState {
@@ -1556,7 +1552,8 @@ struct MainState {
             {BindBnd,&bindState},
             {Binds,0}},
         threadState(logicalState.device,&copyState),
-        copyState(&threadState,arrayState) {
+        copyState(&threadState,arrayState),
+        testState(&copyState) {
         std::cout << "MainState" << std::endl;}
     ~MainState() {std::cout << "~MainState" << std::endl;}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
@@ -1566,6 +1563,7 @@ struct MainState {
 MainState *mptr = 0; // TODO should not be needed
 void vulkanPass(Response pass);
 void vulkanForce(Response pass);
+void vulkanWait(Request arg);
 // TODO move to inline, using CopyState and Bind enum
 void TestState::call() {
     slog.onof(0,1000000);
@@ -1586,9 +1584,9 @@ void TestState::call() {
     };
     //
     int xsiz = 800; int ysiz = 600;
-    mptr->copyState.write(WindowLeft,-xsiz/2); mptr->copyState.write(WindowBase,-ysiz/2);
-    mptr->copyState.write(WindowWidth,xsiz); mptr->copyState.write(WindowHeight,ysiz);
-    mptr->copyState.write(FocalLength,10); mptr->copyState.write(FocalDepth,10);
+    copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
+    copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
+    copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
     if (!mptr->swapState.prebuf(0)->push(mptr->sizeState,SmartState()))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
@@ -1610,23 +1608,23 @@ void TestState::call() {
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    mptr->copyState.push({0,0,0,vtx,vulkanForce},SmartState());
+    copy->push({0,0,0,vtx,vulkanForce},SmartState());
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    mptr->copyState.push({0,0,0,ind,vulkanForce},SmartState());
+    copy->push({0,0,0,ind,vulkanForce},SmartState());
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    mptr->copyState.push({0,0,0,tex,vulkanPass},SmartState());
+    copy->push({0,0,0,tex,vulkanPass},SmartState());
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
-    if (mptr->copyState.read(RegisterMask) & (1<<ResizeAsync)) {
-    mptr->copyState.wotc(RegisterMask,(1<<ResizeAsync));
+    if (copy->read(RegisterMask) & (1<<ResizeAsync)) {
+    copy->wotc(RegisterMask,(1<<ResizeAsync));
     mptr->sizeState = SizeState(mptr->findCapabilities(mptr->windowState.window,mptr->vulkanState.surface,mptr->physicalState.device));
     while (!mptr->swapState.prebuf(0)->push(mptr->sizeState,SmartState())) wake.wait();
     mptr->threadState.push(mptr->swapState.prebuf(0),{0},SmartState());
@@ -1641,14 +1639,17 @@ void TestState::call() {
     memcpy(&mat->mat[1],&view,sizeof(Matrix));
     memcpy(&mat->mat[2],&proj,sizeof(Matrix));
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    mptr->copyState.push({0,0,0,mat,vulkanPass},log);
+    copy->push({0,0,0,mat,vulkanPass},log);
     log.clr();
     //
-    if (!mptr->copyState.push(static_cast<uint32_t>(indices.size()),SmartState())) wake.wait();}
+    copy->push(Request(static_cast<uint32_t>(indices.size()),vulkanWait),{0},SmartState());}
 }
 
 // TODO define glfw callbacks
 
+void vulkanWait(Request arg) {
+    mptr->testState.wake.wait();
+}
 void vulkanPass(Response pass) {
     if (pass.ptr) {freeCenter(pass.ptr); allocCenter(&pass.ptr,0);}
 }
@@ -1661,9 +1662,6 @@ void vulkanCopy(Response pass) {
 }
 void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
-}
-void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
-    mptr->callState.push(new ForkState(thd,idx,fnc,done));
 }
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
     return mptr->copyState.info(cfg,val,fnc);
@@ -1689,6 +1687,9 @@ void vulkanBack(Configure cfg, int sav, int val) {
 void vulkanDraw(Configure cfg, int sav, int val) {
     // TODO check cfg draw parameter; pass SmartState with planePass
     mptr->copyState.push(val,SmartState());
+}
+void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
+    mptr->callState.push(new ForkState(thd,idx,fnc,done));
 }
 std::vector<const char *> cmdl;
 const char *vulkanCmnd(int arg) {
