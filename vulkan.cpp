@@ -530,22 +530,18 @@ struct BaseState {
         safe.post();
         return ret;
     }
-    void set(BaseState *ptr) {
+    void set(BindState *ptr) {
         safe.wait();
         if (state != BothBase && state != SizeBase && state != LockBase)
         {std::cerr << "invalid set state!" << std::endl; exit(-1);}
         if (lock != 0) {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
-        lock = ptr->get();
+        lock = ptr;
         safe.post();
     }
-    virtual BindState *get() {
-        std::cerr << "get not bind!" << std::endl; exit(-1);}
-    virtual BaseState *get(Bind i) { // called by pushee
-        std::cerr << "get not bind!" << std::endl; exit(-1);}
-    virtual bool incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log) {
-        std::cerr << "incr not bind!" << std::endl; exit(-1);}
-    virtual void incr(SmartState log) {
-        std::cerr << "not bind incr!" << std::endl; exit(-1);}
+    BindState *get() {
+        if (lock == 0) {std::cerr << "lock is zero!" << std::endl; exit(-1);}
+        return lock;
+    }
     void rdec(Bind i);
     void wdec(Bind i);
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
@@ -587,18 +583,22 @@ struct BindState : public BaseState {
         for (int i = 0; i < Binds; i++) {bind[i] = 0; rsav[i] = wsav[i] = 0;}}
     ~BindState()
         {std::cout << "~BindState " << debug << std::endl;}
-    BindState *get() {
-        return this;
-    }
-    BaseState *get(Bind i) override { // called by pushee
+    BaseState *get(Bind i) { // called by pushee
         safe.wait();
         if (bind[i] == 0) {std::cerr << "invalid get bind!" << std::endl; exit(-1);}
         BaseState *ptr = bind[i];
         safe.post();
         return ptr;
     }
-    bool incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log) override;
-    void incr(SmartState log) override;
+    bool get(Bind i, BaseState **ptr) { // called by pushee
+        safe.wait();
+        *ptr = bind[i];
+        bool ret = (bind[i] != 0);
+        safe.post();
+        return ret;
+    }
+    bool incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log);
+    void incr(SmartState log);
 };
 
 bool BindState::incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log) { // called by pusher
@@ -1079,9 +1079,10 @@ struct AcquireState : public BaseState {
     void resize(SmartState log) override {std::cerr << "invalid acquire resize!" << std::endl; exit(-1);}
     void unsize(SmartState log) override {std::cerr << "invalid acquire unsize!" << std::endl; exit(-1);}
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        VkExtent2D frameExtent = get(SwapBnd)->getSwapChainExtent();
+        BindState *bind = get();
+        VkExtent2D frameExtent = bind->get(SwapBnd)->getSwapChainExtent();
         VkResult result = vkAcquireNextImageKHR(device,
-        get(SwapBnd)->getSwapChain(), UINT64_MAX, (atomic?after:VK_NULL_HANDLE), VK_NULL_HANDLE, &imageIndex);
+        bind->get(SwapBnd)->getSwapChain(), UINT64_MAX, (atomic?after:VK_NULL_HANDLE), VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
@@ -1106,8 +1107,9 @@ struct PresentState : public BaseState {
     void resize(SmartState log) override {std::cerr << "invalid present resize!" << std::endl; exit(-1);}
     void unsize(SmartState log) override {std::cerr << "invalid present unsize!" << std::endl; exit(-1);}
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        if (!presentFrame(present,get(SwapBnd)->getSwapChain(),
-        get(AcquireBnd)->getImageIndex(),get(DrawBnd)->getSemaphore()))
+        BindState *bind = get();
+        if (!presentFrame(present,bind->get(SwapBnd)->getSwapChain(),
+        bind->get(AcquireBnd)->getImageIndex(),bind->get(DrawBnd)->getSemaphore()))
         copy->wots(RegisterMask,1<<ResizeAsync);
         return VK_NULL_HANDLE;
     }
@@ -1175,11 +1177,15 @@ struct DrawState : public BaseState {
         bufsiz = 0;
         safe.post();
     }
-    // TODO :use set(bindPtr) and remove bind
     BaseState *get(Bind typ) {
         if (!bufptr[typ]) {std::cerr << "invalid bind!" << typ << std::endl; exit(-1);}
         return bufptr[typ];
     }
+    bool get(Bind typ, BaseState **ptr) {
+        *ptr = bufptr[typ];
+        return (bufptr[typ] != 0);
+    }
+    // TODO :use set(bindPtr) and remove bind    // TODO :use set(bindPtr) and remove bufptr bufsiz
     void resize(SmartState log) override {
         descriptorPool = get(PipelineBnd)->getDescriptorPool();
         descriptorLayout = get(PipelineBnd)->getDescriptorSetLayout();
@@ -1352,7 +1358,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool push(StackState **ree, int rees, StackState **wee, int wees,
         StackState **der, Request *arg, Response *pass, int ders, SmartState log) {
-        BaseState *bind = stack[BindBnd]->buffer();
+        BindState *bind = stack[BindBnd]->buffer()->get();
         if (!bind->incr(ree,rees,wee,wees,log)) return false;
         int count = 0; for (int i = 0; i < ders; i++) {
         fail = false;
