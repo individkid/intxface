@@ -149,10 +149,11 @@ struct BaseState;
 struct StackState {
     const char *name;
     static const int frames = 2;
-    virtual void advance() = 0;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
+    virtual void advance() = 0;
+    virtual void advance(int i) = 0;
     virtual Bind buftyp() = 0;
     virtual int bufsiz() = 0;
     static StackState* self;
@@ -295,15 +296,15 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         StackState(name,flags), safe(1), idx(0) {}
     ArrayState(const char *name) :
         StackState(name), safe(1), idx(0) {}
-    void advance(int i) {
-        if (i < 0 || i >= Size) {std::cerr << "cannot advance!" << std::endl; exit(-1);}
-        safe.wait(); idx = i; safe.post();}
-    void advance() override {safe.wait(); idx = (idx+1)%Size; safe.post();}
     BaseState *buffer() override {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
     BaseState *prebuf() override {safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
     BaseState *prebuf(int i) override {
         if (i < 0 || i >= Size) {std::cerr << "cannot buffer! " << i << " " << Size << std::endl; exit(-1);}
         safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;}
+    void advance() override {safe.wait(); idx = (idx+1)%Size; safe.post();}
+    void advance(int i) override {
+        if (i < 0 || i >= Size) {std::cerr << "cannot advance!" << std::endl; exit(-1);}
+        safe.wait(); idx = i; safe.post();}
     Bind buftyp() override {return Type;}
     int bufsiz() override {return sizeof(State);}
 };
@@ -1334,19 +1335,28 @@ enum RequestEnum {
     DrawReq, // bind push advance
     ConfReq, // write to ChangeState
     TestReq, // bind push advance
+    NoneReq,
 };
 struct Request {
-    RequestEnum tag;
+    RequestEnum tag; Bind bnd;
     void *ptr; int loc; int siz; SizeState max; Configure base, size;
-    Micro micro; Bind bnd; Configure *cfg; int *val;
+    Micro micro; Configure *cfg; int *val;
     void (*fnc)(Request); int idx;
-    Request(void *ptr, int loc, int siz, SizeState max, int idx);
-    Request(void *ptr, int loc, int siz, int idx);
-    Request(SizeState max, int idx);
-    Request(int siz, void (*fnc)(Request));
-    // TODO Request(Micro micro);;
-    // TODO Request(Center *req);
-    Request(SizeState max);
+    Request() : tag(NoneReq), bnd(Binds),
+    ptr(0), loc(0), siz(0), max(0,0), base(Configures), size(Configures),
+    micro(Micros), cfg(0), val(0),
+    fnc(0), idx(0) {}
+    Request(const Request &oth) : tag(oth.tag), bnd(oth.bnd),
+    ptr(oth.ptr), loc(oth.loc), siz(oth.siz), max(oth.max), base(oth.base), size(oth.size),
+    micro(oth.micro), cfg(oth.cfg), val(oth.val),
+    fnc(oth.fnc), idx(oth.idx) {}
+    Request &operator()(Bind bnd, void *ptr, int loc, int siz, SizeState max, int idx); // BothReq
+    Request &operator()(Bind bnd, void *ptr, int loc, int siz, int idx); // LockReq
+    Request &operator()(Bind bnd, SizeState max, int idx); // InitReq
+    Request &operator()(int siz, void (*fnc)(Request)); // TestReq
+    // TODO Request &operator()(Micro micro); // DrawReq constant map from micro determines ree wee der
+    // TODO Request &operator()(Center *req); // BaseReq or ConfReq
+    Request &operator()(Bind bnd, SizeState max); // SizeReq
 };
 struct ArraysState {
     Bind key;
@@ -1438,20 +1448,37 @@ struct CopyState : public ChangeState<Configure,Configures> {
         write(center->cfg[i],center->val[i]);} thread->push(0,pass,log);}
     }
 };
-Request::Request(void *ptr, int loc, int siz, SizeState max, int idx) :
-    tag(BothReq), ptr(ptr), loc(loc), siz(siz), max(max), idx(idx) {}
-Request::Request(void *ptr, int loc, int siz, int idx) :
-    tag(LockReq), ptr(ptr), loc(loc), siz(siz), idx(idx) {}
-Request::Request(SizeState max, int idx) :
-    tag(InitReq), max(max), idx(idx) {}
-Request::Request(int siz, void (*fnc)(Request)) :
-    tag(TestReq), siz(siz), fnc(fnc) {}
-// TODO Request::Request(Micro micro) :
-    // tag(DrawReq) // use constants to find ptr loc siz max tag bnd
-// TODO Request::Request(Center *req) :
+Request &Request::operator()(Bind bnd, void *ptr, int loc, int siz, SizeState max, int idx) {
+    this->tag = BothReq; this->bnd = bnd;
+    this->ptr = ptr; this->loc = loc; this->siz = siz; this->max = max; this->idx = idx;
+    return *this;
+}
+Request &Request::operator()(Bind bnd, void *ptr, int loc, int siz, int idx) {
+    this->tag = LockReq; this->bnd = bnd;
+    this->ptr = ptr; this->loc = loc; this->siz = siz; this->idx = idx;
+    return *this;
+}
+Request &Request::operator()(Bind bnd, SizeState max, int idx) {
+    this->tag = InitReq; this->bnd = bnd;
+    this->max = max; this->idx = idx;
+    return *this;
+}
+Request &Request::operator()(int siz, void (*fnc)(Request)) {
+    this->tag = TestReq;
+    this->siz = siz; this->fnc = fnc;
+    return *this;
+}
+// TODO Request &Request::operator()(Micro micro) {
+    // use constants to find ptr loc siz max tag bnd
+// }
+// TODO Request &Request::operator()(Center *req) {
     // BaseReq or ConfReq switch on req->mem to find ptr loc siz base size bnd tag
-Request::Request(SizeState max) :
-    tag(SizeReq), max(max) {}
+// }
+Request &Request::operator()(Bind bnd, SizeState max) {
+    this->tag = SizeReq; this->bnd = bnd;
+    this->max = max;
+    return *this;
+}
 void CopyState::push(Request arg, Response pass, SmartState log) {
     BaseState *buf = 0;
     switch (arg.tag) {
@@ -1471,13 +1498,16 @@ void CopyState::push(Request arg, Response pass, SmartState log) {
         fail = !buf->push(arg.max,log);}
     break; case (BothReq): {
         buf = stack[arg.bnd]->prebuf(arg.idx);
-        fail = !buf->push(arg.ptr,arg.loc,arg.siz,arg.max,log);}
+        fail = !buf->push(arg.ptr,arg.loc,arg.siz,arg.max,log);
+        if (!fail) stack[arg.bnd]->advance(arg.idx);}
     break; case (LockReq): {
         buf = stack[arg.bnd]->prebuf(arg.idx);
-        fail = !buf->push(arg.ptr,arg.loc,arg.siz,log);}
+        fail = !buf->push(arg.ptr,arg.loc,arg.siz,log);
+        if (!fail) stack[arg.bnd]->advance(arg.idx);}
     break; case (InitReq): {
         buf = stack[arg.bnd]->prebuf(arg.idx);
-        fail = !buf->push(arg.max,log);}}
+        fail = !buf->push(arg.max,log);
+        if (!fail) stack[arg.bnd]->advance(arg.idx);}}
     if (fail) {if (arg.fnc) arg.fnc(arg); thread->push(0,pass,log);}
     else {thread->push(buf,pass,log);}
 }
@@ -1624,15 +1654,17 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    if (!mptr->swapState.prebuf(0)->push(mptr->sizeState,SmartState()))
+    copy->push(Request()(SwapBnd,mptr->sizeState,0),{0,0,0,0,vulkanForce},SmartState());
+    /*if (!mptr->swapState.prebuf(0)->push(mptr->sizeState,SmartState()))
     {std::cerr << "cannot push swap!" << std::endl; exit(-1);}
     mptr->threadState.push(mptr->swapState.prebuf(0),{0},SmartState());
-    mptr->swapState.advance(0);
+    mptr->swapState.advance(0);*/
     //
-    if (!mptr->pipelineState.prebuf(MicroTest)->push(SizeState(MicroTest),SmartState()))
+    copy->push(Request()(PipelineBnd,SizeState(MicroTest),MicroTest),{0,0,0,0,vulkanForce},SmartState());
+    /*if (!mptr->pipelineState.prebuf(MicroTest)->push(SizeState(MicroTest),SmartState()))
     {std::cerr << "cannot push pipeline!" << std::endl; exit(-1);}
     mptr->threadState.push(mptr->pipelineState.prebuf(MicroTest),{0},SmartState());
-    mptr->pipelineState.advance(MicroTest);
+    mptr->pipelineState.advance(MicroTest);*/
     //
     StackState *single[] = {&mptr->pipelineState};
     for (int i = 0; i < StackState::frames; i++) {
@@ -1678,7 +1710,7 @@ void TestState::call() {
     copy->push({0,0,0,mat,vulkanPass},log);
     log.clr();
     //
-    copy->push(Request(static_cast<uint32_t>(indices.size()),vulkanWait),{0},SmartState());}
+    copy->push(Request()(static_cast<uint32_t>(indices.size()),vulkanWait),{0},SmartState());}
 }
 
 // TODO define glfw callbacks
