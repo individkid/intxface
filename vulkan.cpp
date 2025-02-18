@@ -1326,24 +1326,27 @@ int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
 enum RequestEnum {
-    BothReq,
-    LockReq,
-    SizeReq,
-    BaseReq,
-    DrawReq,
-    ConfReq,
-    TestReq,
+    BothReq, // indexed resize and initialize
+    LockReq, // indexed initialize
+    InitReq, // indexed resize to uninitialized
+    BaseReq, // restrict given to subset of inplace
+    SizeReq, // resize to uninitialized
+    DrawReq, // bind push advance
+    ConfReq, // write to ChangeState
+    TestReq, // bind push advance
 };
 struct Request {
+    RequestEnum tag;
     void *ptr; int loc; int siz; SizeState max; Configure base, size;
     Micro micro; Bind bnd; Configure *cfg; int *val;
-    void (*fnc)(Request); RequestEnum tag;
-    Request(void *ptr, int loc, int siz, SizeState max) : ptr(ptr), loc(loc), siz(siz), max(max), tag(BothReq) {}
-    Request(void *ptr, int loc, int siz) : ptr(ptr), loc(loc), siz(siz), tag(LockReq) {}
-    Request(SizeState max) : max(max), tag(SizeReq) {}
-    Request(int siz, void (*fnc)(Request)) : siz(siz), fnc(fnc), tag(TestReq) {}
-    // TODO Request(Micro micro) : tag(DrawReq) // use constants to find ptr loc siz max tag bnd
-    // TODO Request(Center *req) : // BaseReq or ConfReq switch on req->mem to find ptr loc siz base size bnd tag
+    void (*fnc)(Request); int idx;
+    Request(void *ptr, int loc, int siz, SizeState max, int idx);
+    Request(void *ptr, int loc, int siz, int idx);
+    Request(SizeState max, int idx);
+    Request(int siz, void (*fnc)(Request));
+    // TODO Request(Micro micro);;
+    // TODO Request(Center *req);
+    Request(SizeState max);
 };
 struct ArraysState {
     Bind key;
@@ -1383,36 +1386,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (pass.mod) {
         //    x-x     x---x x---x   x-----x
         //   y---y   y---y   y---y   y---y
-        //   z---z   z----z  z---z   z----z
-        int xl = loc; int xr = xl+siz;
-        int yl = base; int yr = yl+size;
-        int zl,zr; if (xl<yl&&xr<yr) {zl=yl;zr=yr;}
-        else if (xl<yl) {zl=yl;zr=xr;}
-        else if (xr<yr) {zl=yl;zr=yr;}
-        else {zl=yl;zr=xr;}
-        ptr = (void*)(((char*)ptr)+(xl<yl?yl-xl:0)*mod);
-        loc = (xl<yl?0:xl-yl)*mod; siz = (yr-xl)*mod; base = zl*mod; size = (zr-zl)*mod;
-        std::cerr << "push x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
+        //   z---z   z---z   z---z   z---z
+        // TODO change ptr loc siz so subset of existing buffer is overwritten
+        } else {
         base = loc*mod; size = siz*mod; loc = loc*mod; siz = siz*mod;}
         log << "push " << ptr << " " << loc << " " << siz << std::endl;
         return buf->push(ptr,loc,siz,SizeState(base,size),log);
     }
-    void push(Request arg, Response pass, SmartState log) {
-        switch (arg.tag) {default: std::cerr << "invalid push tag!" << std::endl; exit(-1);
-        break; case (TestReq): if (push(arg.siz,log)) return; // TODO remove this and TestReq after change to DrawReq
-        break; case (DrawReq): // TODO acquire draw present or write modify read; use constants to call first push above
-        break; case (ConfReq): {for (int i = 0; i < arg.siz; i++) write(arg.cfg[i],arg.val[i]); return;}
-        break; case (BaseReq): {BaseState *buf = stack[arg.bnd]->prebuf(); int mod = stack[arg.bnd]->bufsiz();
-            if (push(buf,mod,arg.ptr,arg.loc,arg.siz,read(arg.base),read(arg.size),pass,log))
-            {thread->push(buf,pass,log); return;}}
-        break; case (BothReq): if (stack[arg.bnd]->prebuf()->push(arg.ptr,arg.loc,arg.siz,arg.max,log))
-            {thread->push(stack[arg.bnd]->prebuf(),pass,log); return;}
-        break; case (LockReq): if (stack[arg.bnd]->prebuf()->push(arg.ptr,arg.loc,arg.siz,log))
-            {thread->push(stack[arg.bnd]->prebuf(),pass,log); return;}
-        break; case (SizeReq): if (stack[arg.bnd]->prebuf()->push(arg.max,log))
-            {thread->push(stack[arg.bnd]->prebuf(),pass,log); return;}}
-        fail = true; if (arg.fnc) arg.fnc(arg); thread->push(0,pass,log);
-    }
+    void push(Request arg, Response pass, SmartState log);
     // TODO remove following after change to DrawReq
     bool push(int siz, SmartState log) {
         StackState *bind[] = {
@@ -1457,6 +1438,49 @@ struct CopyState : public ChangeState<Configure,Configures> {
         write(center->cfg[i],center->val[i]);} thread->push(0,pass,log);}
     }
 };
+Request::Request(void *ptr, int loc, int siz, SizeState max, int idx) :
+    tag(BothReq), ptr(ptr), loc(loc), siz(siz), max(max), idx(idx) {}
+Request::Request(void *ptr, int loc, int siz, int idx) :
+    tag(LockReq), ptr(ptr), loc(loc), siz(siz), idx(idx) {}
+Request::Request(SizeState max, int idx) :
+    tag(InitReq), max(max), idx(idx) {}
+Request::Request(int siz, void (*fnc)(Request)) :
+    tag(TestReq), siz(siz), fnc(fnc) {}
+// TODO Request::Request(Micro micro) :
+    // tag(DrawReq) // use constants to find ptr loc siz max tag bnd
+// TODO Request::Request(Center *req) :
+    // BaseReq or ConfReq switch on req->mem to find ptr loc siz base size bnd tag
+Request::Request(SizeState max) :
+    tag(SizeReq), max(max) {}
+void CopyState::push(Request arg, Response pass, SmartState log) {
+    BaseState *buf = 0;
+    switch (arg.tag) {
+        default: std::cerr << "invalid push tag!" << std::endl; exit(-1);
+    break; case (TestReq): {
+        fail = !push(arg.siz,log);} // TODO remove this and TestReq after change to DrawReq
+    // break; case (DrawReq):
+        // TODO acquire draw present or write modify read; use constants to call first push above
+    break; case (ConfReq): {
+        for (int i = 0; i < arg.siz; i++) write(arg.cfg[i],arg.val[i]);
+        fail = false;}
+    break; case (BaseReq): {
+        buf = stack[arg.bnd]->prebuf(); int mod = stack[arg.bnd]->bufsiz();
+        fail = !push(buf,mod,arg.ptr,arg.loc,arg.siz,read(arg.base),read(arg.size),pass,log);}
+    break; case (SizeReq): {
+        buf = stack[arg.bnd]->prebuf();
+        fail = !buf->push(arg.max,log);}
+    break; case (BothReq): {
+        buf = stack[arg.bnd]->prebuf(arg.idx);
+        fail = !buf->push(arg.ptr,arg.loc,arg.siz,arg.max,log);}
+    break; case (LockReq): {
+        buf = stack[arg.bnd]->prebuf(arg.idx);
+        fail = !buf->push(arg.ptr,arg.loc,arg.siz,log);}
+    break; case (InitReq): {
+        buf = stack[arg.bnd]->prebuf(arg.idx);
+        fail = !buf->push(arg.max,log);}}
+    if (fail) {if (arg.fnc) arg.fnc(arg); thread->push(0,pass,log);}
+    else {thread->push(buf,pass,log);}
+}
 
 extern "C" {
 float *planeWindow(float *mat);
