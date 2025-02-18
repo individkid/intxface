@@ -31,13 +31,127 @@ extern "C" {
 };
 #include "stlx.h"
 
+// TODO declare glfw callbacks
+
+struct WindowState {
+    const uint32_t WIDTH = 800;
+    const uint32_t HEIGHT = 600;
+    GLFWwindow* const window;
+    WindowState() :
+        window(createWindow(WIDTH,HEIGHT))
+        {std::cout << "WindowState" << std::endl;}
+    ~WindowState() {std::cout << "~WindowState" << std::endl;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
+    static GLFWwindow* createWindow(uint32_t WIDTH, uint32_t HEIGHT);
+};
+
+struct VulkanState {
+    static const char *validationLayers[];
+    VkDebugUtilsMessengerCreateInfoEXT info;
+    VkInstance instance;
+    VkDebugUtilsMessengerEXT debug;
+    VkSurfaceKHR surface;
+    VulkanState(GLFWwindow* window) :
+        info(createInfo(validationLayers)),
+        instance(createInstance(info,validationLayers)),
+        debug(createDebug(instance,info,validationLayers)),
+        surface(createSurface(instance, window))
+        {std::cout << "VulkanState" << std::endl;}
+    ~VulkanState() {std::cout << "~VulkanState" << std::endl;
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
+        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr) func(instance, debug, nullptr);
+        vkDestroyInstance(instance, nullptr);
+    }
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+    static VkDebugUtilsMessengerCreateInfoEXT createInfo(const char **validationLayers);
+    static VkInstance createInstance(VkDebugUtilsMessengerCreateInfoEXT info, const char **validationLayers);
+    static VkDebugUtilsMessengerEXT createDebug(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT info,
+        const char **validationLayers);
+    static VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
+};
+#ifdef NDEBUG
+const char *VulkanState::validationLayers[] = {0};
+#else
+const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
+#endif
+
+struct PhysicalState {
+    static const char *deviceExtensions[];
+    VkPhysicalDevice device;
+    uint32_t graphicsFamily;
+    uint32_t presentFamily;
+    VkPhysicalDeviceProperties properties;
+    VkSurfaceFormatKHR surfaceFormat;
+    VkPresentModeKHR presentMode;
+    VkPhysicalDeviceMemoryProperties memProperties;
+    PhysicalState(VkInstance instance, VkSurfaceKHR surface) :
+        device(createDevice(instance,surface,deviceExtensions)),
+        graphicsFamily(findGraphicsFamily(surface,device)),
+        presentFamily(findPresentFamily(surface,device)),
+        properties(findProperties(device)),
+        surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
+        presentMode(chooseSwapPresentMode(surface,device)),
+        memProperties(findMemoryProperties(device))
+        {std::cout << "PhysicalState" << std::endl;}
+    ~PhysicalState() {std::cout << "~PhysicalState" << std::endl;}
+    static bool foundIndices(VkSurfaceKHR surface, VkPhysicalDevice device);
+    static bool foundDetails(VkSurfaceKHR surface, VkPhysicalDevice device);
+    static VkPhysicalDevice createDevice(VkInstance instance, VkSurfaceKHR surface, const char **deviceExtensions);
+    static uint32_t findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
+    static uint32_t findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
+    static VkPhysicalDeviceProperties findProperties(VkPhysicalDevice device);
+    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkSurfaceKHR surface, VkPhysicalDevice device);
+    static VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device);
+    static VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device);
+};
+const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
+
+struct LogicalState {
+    VkDevice device;
+    VkQueue graphics;
+    VkQueue present;
+    VkCommandPool commandPool;
+    VkFormat imageFormat;
+    VkFormat depthFormat;
+    VkRenderPass renderPass;
+    static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
+    LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, VkSurfaceFormatKHR surfaceFormat,
+        const char **validationLayers, const char **deviceExtensions) :
+        device(createDevice(physicalDevice,graphicsFamily,presentFamily,validationLayers,deviceExtensions)),
+        graphics(createQueue(device,graphicsFamily)),
+        present(createQueue(device,presentFamily)),
+        commandPool(createCommandPool(device,graphicsFamily)),
+        imageFormat(surfaceFormat.format),
+        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
+            VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
+        renderPass(createRenderPass(device,imageFormat,depthFormat))
+        {std::cout << "LogicalState" << std::endl;}
+    ~LogicalState() {std::cout << "~LogicalState" << std::endl;
+        vkDestroyRenderPass(device, renderPass, nullptr);
+        vkDestroyCommandPool(device, commandPool, nullptr);
+        vkDestroyDevice(device, nullptr);
+    }
+    static VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
+        const char **validationLayers, const char **deviceExtensions);
+    static VkQueue createQueue(VkDevice device, uint32_t family);
+    static VkCommandPool createCommandPool(VkDevice device, uint32_t family);
+    static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size,
+        VkImageTiling tiling, VkFormatFeatureFlags features);
+    static VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat);
+};
+
 struct BaseState;
 struct StackState {
     const char *name;
     static const int frames = 2;
     virtual void advance() = 0;
-    virtual BaseState *buffer() = 0;
-    virtual BaseState *prebuf() = 0;
+    virtual BaseState *buffer() = 0; // no block beween push and advance
+    virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
     virtual Bind buftyp() = 0;
     virtual int bufsiz() = 0;
@@ -135,6 +249,7 @@ VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
 VkBufferUsageFlags StackState::flags;
+
 template <class State, Bind Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
     int idx;
@@ -267,8 +382,9 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 }
 
 enum BaseEnum {
-    InitBase, // avoid binding to uninitialized // TODO resize should complete to InitBase
-    FreeBase, // ready to use or update
+    InitBase, // avoid binding to uninitialized
+    FillBase, // ready for update
+    FreeBase, // ready for use
     BothBase, // check for both change
     SizeBase, // check for size change
     LockBase, // check for data change
@@ -299,7 +415,7 @@ struct BaseState {
     }
     bool push(void *ptr, int loc, int siz, SizeState max, SmartState log) { // called in main thread
         safe.wait();
-        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (state != InitBase && state != FillBase && state != FreeBase) {safe.post(); return false;}
         if (rlock || wlock) {safe.post(); return false;}
         this->ptr = ptr; this->loc = loc; this->siz = siz; todo = max;
         state = BothBase;
@@ -308,7 +424,7 @@ struct BaseState {
     }
     bool push(SizeState max, SmartState log) { // called in main thread
         safe.wait();
-        if (state != InitBase && state != FreeBase) {safe.post(); return false;}
+        if (state != InitBase && state != FillBase && state != FreeBase) {safe.post(); return false;}
         if (rlock || wlock) {safe.post(); return false;}
         todo = max;
         state = SizeBase;
@@ -317,7 +433,7 @@ struct BaseState {
     }
     bool push(void *ptr, int loc, int siz, SmartState log) { // called in main thread
         safe.wait();
-        if (state != FreeBase) {safe.post(); return false;}
+        if (state != FillBase && state != FreeBase) {safe.post(); return false;}
         if (rlock || wlock) {safe.post(); return false;}
         this->ptr = ptr; this->loc = loc; this->siz = siz;
         state = LockBase;
@@ -351,7 +467,7 @@ struct BaseState {
         if (size == SizeState(0,0)); else {safe.post(); unsize(log); safe.wait();}
         if ((size = todo) == SizeState(0,0)); else {
         safe.post(); resize(log); safe.wait();}}
-        state = FreeBase;
+        state = FillBase;
         lock = 0;
         safe.post();
     }
@@ -383,17 +499,10 @@ struct BaseState {
     virtual void upset(SmartState log) { // consumes time
         std::cerr << "unsize not base!" << std::endl; exit(-1);}
     // TODO replace by BindState:
-    bool grab() {
-        safe.wait();
-        if (state != FreeBase) {safe.post(); return false;}
-        if (rlock) {safe.post(); return false;}
-        wlock += 1;
-        safe.post();
-        return true;
-    }
     bool take() {
         safe.wait();
-        if (state != FreeBase) {safe.post(); return false;}
+        if (state != FreeBase && state != FillBase) {safe.post(); return false;}
+        if (state == FillBase && !check(state)) {safe.post(); return false;}
         if (wlock) {safe.post(); return false;}
         rlock += 1;
         safe.post();
@@ -401,18 +510,10 @@ struct BaseState {
     }
     void give() {
         safe.wait();
-        if (state != FreeBase && state != SizeBase && state != BothBase && state != NextBase)
-        {std::cerr << "invalid give state! " << state << std::endl; exit(-1);}
+        if (state != FreeBase && state != FillBase && state != SizeBase && state != BothBase &&
+        state != NextBase) {std::cerr << "invalid give state! " << state << std::endl; exit(-1);}
         if (rlock <= 0) {std::cerr << "invalid free rlock! " << debug << std::endl; exit(-1);}
         rlock -= 1;
-        safe.post();
-    }
-    void pick() {
-        safe.wait();
-        if (state != FreeBase && state != NextBase)
-        {std::cerr << "invalid pick state!" << std::endl; exit(-1);}
-        if (wlock <= 0) {std::cerr << "invalid pick wlock!" << std::endl; exit(-1);}
-        wlock -= 1;
         safe.post();
     }
     virtual bool bind(StackState **ary, int siz) {
@@ -420,6 +521,9 @@ struct BaseState {
     virtual void bind() {
         std::cerr << "draw not bind!" << std::endl; exit(-1);}
     // TODO :replace by BindState
+    virtual bool check(BaseEnum state) {
+        return false;
+    }
     BaseEnum check() {
         safe.wait();
         BaseEnum ret = state;
@@ -496,6 +600,7 @@ struct BindState : public BaseState {
     bool incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log) override;
     void incr(SmartState log) override;
 };
+
 bool BindState::incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log) { // called by pusher
     int count[Binds] = {0}; BaseState *buffer[Binds] = {0};
     safe.wait();
@@ -508,8 +613,10 @@ bool BindState::incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, S
     if (count[rtyp[i]] == 0) {buffer[rtyp[i]] = rptr[i]->buffer(); buffer[rtyp[i]]->safe.wait();}
     count[rtyp[i]] += 1; rbuf[i] = buffer[rtyp[i]]; rcount++;
     // if (rbuf[i] == this) {std::cerr << "invalid incr rptr!" << std::endl; exit(-1);}
-    if (rbuf[i]->state != FreeBase && rbuf[i]->state != InitBase) {rfail = true;
+    if (rbuf[i]->state != FreeBase && rbuf[i]->state != InitBase && rbuf[i]->state != FillBase) {rfail = true;
     log << "incr rbuf " << rbuf[i]->debug << " state " << rbuf[i]->state << " fail" << std::endl; break;}
+    if (rbuf[i]->state == FillBase && !rbuf[i]->check(rbuf[i]->state)) {rfail = true;
+    log << "incr rbuf " << rbuf[i]->debug << " check " << rbuf[i]->state << " fail" << std::endl; break;}
     if (rbuf[i]->rlock || rbuf[i]->wlock) {rfail = true;
     log << "incr rbuf " << rbuf[i]->debug << " lock r" << rbuf[i]->rlock << " w" << rbuf[i]->wlock << " fail" << std::endl; break;}}
     if (rfail) {
@@ -521,8 +628,10 @@ bool BindState::incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, S
     if (count[wtyp[i]] == 0) {buffer[wtyp[i]] = wptr[i]->buffer(); buffer[wtyp[i]]->safe.wait();}
     count[wtyp[i]] += 1; wbuf[i] = buffer[wtyp[i]]; wcount++;
     // if (wbuf[i] == this) {std::cerr << "invalid incr wptr!" << std::endl; exit(-1);}
-    if (wbuf[i]->state != FreeBase && wbuf[i]->state != InitBase) {wfail = true;
+    if (wbuf[i]->state != FreeBase && wbuf[i]->state != InitBase && wbuf[i]->state != FillBase) {wfail = true;
     log << "incr wbuf " << rbuf[i]->debug << " state " << rbuf[i]->state << " fail" << std::endl; break;}
+    if (wbuf[i]->state == FillBase && wbuf[i]->check(wbuf[i]->state)) {wfail = true;
+    log << "incr wbuf " << rbuf[i]->debug << " check " << rbuf[i]->state << " fail" << std::endl; break;}
     if (wbuf[i]->rlock || wbuf[i]->wlock) {wfail = true;
     log << "incr wbuf " << rbuf[i]->debug << " lock r" << wbuf[i]->rlock << " w" << wbuf[i]->wlock << " fail" << std::endl; break;}}
     if (wfail) {
@@ -546,12 +655,14 @@ void BindState::incr(SmartState log) { // called by pusher
     for (int i = 0; i < Binds; i++) if (bind[i] && (rsav[i] || wsav[i])) {
     bind[i]->safe.wait();
     while (rsav[i]) {rsav[i] -= 1;
-    if (bind[i]->state != FreeBase) {std::cerr << "invalid incr rsav!" << std::endl; exit(-1);}
+    if (bind[i]->state != FreeBase && bind[i]->state != FillBase)
+    {std::cerr << "invalid incr rsav!" << std::endl; exit(-1);}
     if (bind[i]->rlock <= 0) {std::cerr << "invalid incr rlock!" << std::endl; exit(-1);}
     bind[i]->rlock--;
     log << "decr " << bind[i]->debug << " r" << bind[i]->rlock << std::endl;}
     while (wsav[i]) {wsav[i] -= 1;
-    if (bind[i]->state != FreeBase) {std::cerr << "invalid incr wsav!" << std::endl; exit(-1);}
+    if (bind[i]->state != FreeBase && bind[i]->state != FillBase)
+    {std::cerr << "invalid incr wsav!" << std::endl; exit(-1);}
     if (bind[i]->rlock <= 0) {std::cerr << "invalid incr wlock!" << std::endl; exit(-1);}
     bind[i]->wlock--;
     log << "decr " << bind[i]->debug << " w" << bind[i]->wlock << std::endl;}
@@ -567,7 +678,8 @@ void BaseState::rdec(Bind i) { // called by pushee
     lock->safe.wait();
     if (lock->bind[i] == 0) {std::cerr << "rdec lock bind!" << std::endl; exit(-1);}
     lock->bind[i]->safe.wait();
-    if (lock->bind[i]->state != FreeBase) {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
+    if (lock->bind[i]->state != FreeBase && lock->bind[i]->state != FillBase)
+    {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
     if (lock->bind[i]->rlock <= 0) {std::cerr << "invalid rdec rlock!" << std::endl; exit(-1);}
     lock->bind[i]->rlock -= 1; lock->rsav[i] -= 1;
     bool done = (lock->rsav[i] == 0 && lock->wsav[i] == 0);
@@ -584,7 +696,8 @@ void BaseState::wdec(Bind i) { // called by pushee
     lock->safe.wait();
     if (lock->bind[i] == 0) {std::cerr << "wdec lock bind!" << std::endl; exit(-1);}
     lock->bind[i]->safe.wait();
-    if (lock->bind[i]->state != FreeBase) {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
+    if (lock->bind[i]->state != FreeBase && lock->bind[i]->state != FillBase)
+    {std::cerr << "invalid rdec rsav!" << std::endl; exit(-1);}
     if (lock->bind[i]->wlock <= 0) {std::cerr << "invalid wdec rlock!" << std::endl; exit(-1);}
     lock->bind[i]->wlock -= 1; lock->wsav[i] -= 1;
     bool done = (lock->rsav[i] == 0 && lock->wsav[i] == 0);
@@ -593,120 +706,6 @@ void BaseState::wdec(Bind i) { // called by pushee
     lock->safe.post();
     safe.post();
 }
-
-// TODO declare glfw callbacks
-
-struct WindowState {
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
-    GLFWwindow* const window;
-    WindowState() :
-        window(createWindow(WIDTH,HEIGHT))
-        {std::cout << "WindowState" << std::endl;}
-    ~WindowState() {std::cout << "~WindowState" << std::endl;
-        glfwDestroyWindow(window);
-        glfwTerminate();
-    }
-    static GLFWwindow* createWindow(uint32_t WIDTH, uint32_t HEIGHT);
-};
-
-struct VulkanState {
-    static const char *validationLayers[];
-    VkDebugUtilsMessengerCreateInfoEXT info;
-    VkInstance instance;
-    VkDebugUtilsMessengerEXT debug;
-    VkSurfaceKHR surface;
-    VulkanState(GLFWwindow* window) :
-        info(createInfo(validationLayers)),
-        instance(createInstance(info,validationLayers)),
-        debug(createDebug(instance,info,validationLayers)),
-        surface(createSurface(instance, window))
-        {std::cout << "VulkanState" << std::endl;}
-    ~VulkanState() {std::cout << "~VulkanState" << std::endl;
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
-        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr) func(instance, debug, nullptr);
-        vkDestroyInstance(instance, nullptr);
-    }
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
-    static VkDebugUtilsMessengerCreateInfoEXT createInfo(const char **validationLayers);
-    static VkInstance createInstance(VkDebugUtilsMessengerCreateInfoEXT info, const char **validationLayers);
-    static VkDebugUtilsMessengerEXT createDebug(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT info,
-        const char **validationLayers);
-    static VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
-};
-#ifdef NDEBUG
-const char *VulkanState::validationLayers[] = {0};
-#else
-const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
-#endif
-
-struct PhysicalState {
-    static const char *deviceExtensions[];
-    VkPhysicalDevice device;
-    uint32_t graphicsFamily;
-    uint32_t presentFamily;
-    VkPhysicalDeviceProperties properties;
-    VkSurfaceFormatKHR surfaceFormat;
-    VkPresentModeKHR presentMode;
-    VkPhysicalDeviceMemoryProperties memProperties;
-    PhysicalState(VkInstance instance, VkSurfaceKHR surface) :
-        device(createDevice(instance,surface,deviceExtensions)),
-        graphicsFamily(findGraphicsFamily(surface,device)),
-        presentFamily(findPresentFamily(surface,device)),
-        properties(findProperties(device)),
-        surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
-        presentMode(chooseSwapPresentMode(surface,device)),
-        memProperties(findMemoryProperties(device))
-        {std::cout << "PhysicalState" << std::endl;}
-    ~PhysicalState() {std::cout << "~PhysicalState" << std::endl;}
-    static bool foundIndices(VkSurfaceKHR surface, VkPhysicalDevice device);
-    static bool foundDetails(VkSurfaceKHR surface, VkPhysicalDevice device);
-    static VkPhysicalDevice createDevice(VkInstance instance, VkSurfaceKHR surface, const char **deviceExtensions);
-    static uint32_t findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
-    static uint32_t findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
-    static VkPhysicalDeviceProperties findProperties(VkPhysicalDevice device);
-    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkSurfaceKHR surface, VkPhysicalDevice device);
-    static VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device);
-    static VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device);
-};
-const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
-
-struct LogicalState {
-    VkDevice device;
-    VkQueue graphics;
-    VkQueue present;
-    VkCommandPool commandPool;
-    VkFormat imageFormat;
-    VkFormat depthFormat;
-    VkRenderPass renderPass;
-    static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
-    LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, VkSurfaceFormatKHR surfaceFormat,
-        const char **validationLayers, const char **deviceExtensions) :
-        device(createDevice(physicalDevice,graphicsFamily,presentFamily,validationLayers,deviceExtensions)),
-        graphics(createQueue(device,graphicsFamily)),
-        present(createQueue(device,presentFamily)),
-        commandPool(createCommandPool(device,graphicsFamily)),
-        imageFormat(surfaceFormat.format),
-        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
-            VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
-        renderPass(createRenderPass(device,imageFormat,depthFormat))
-        {std::cout << "LogicalState" << std::endl;}
-    ~LogicalState() {std::cout << "~LogicalState" << std::endl;
-        vkDestroyRenderPass(device, renderPass, nullptr);
-        vkDestroyCommandPool(device, commandPool, nullptr);
-        vkDestroyDevice(device, nullptr);
-    }
-    static VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
-        const char **validationLayers, const char **deviceExtensions);
-    static VkQueue createQueue(VkDevice device, uint32_t family);
-    static VkCommandPool createCommandPool(VkDevice device, uint32_t family);
-    static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size,
-        VkImageTiling tiling, VkFormatFeatureFlags features);
-    static VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat);
-};
 
 struct SwapState : public BaseState {
     GLFWwindow* window;
@@ -782,6 +781,9 @@ struct SwapState : public BaseState {
     }
     void upset(SmartState log) override {
     }
+    bool check(BaseEnum state) override {
+        return (state == FillBase);
+    }
     static VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
         VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
         VkSurfaceCapabilitiesKHR capabilities, uint32_t graphicsFamily, uint32_t presentFamily);
@@ -825,6 +827,9 @@ struct PipeState : public BaseState {
         return VK_NULL_HANDLE; // return null fence for no wait
     }
     void upset(SmartState log) override {
+    }
+    bool check(BaseEnum) override {
+        return (state == FillBase);
     }
     static VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
     static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro);
@@ -1307,7 +1312,7 @@ struct ThreadState : public DoneState {
         safe.post();
         wake.wake();
     }
-    void func() override {}
+    void heap() override {}
 };
 
 extern "C" {
@@ -1347,7 +1352,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     bool push(StackState **ree, int rees, StackState **wee, int wees,
         StackState **der, Request *arg, Response *pass, int ders, SmartState log) {
-        // TODO use this->bind instead of taking StackState arrays
         BaseState *bind = stack[BindBnd]->buffer();
         if (!bind->incr(ree,rees,wee,wees,log)) return false;
         int count = 0; for (int i = 0; i < ders; i++) {
@@ -1368,10 +1372,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < ders; i++) thread->push(buf[i],pass[i],log);
         return true;
     }
-    bool push(StackState *pre, void *ptr, int loc, int siz, int base, int size, Response pass, SmartState log) {
-        // TODO use this->bind instead of taking StackState pointer
-        BaseState *buf = pre->prebuf();
-        int mod = pre->bufsiz();
+    bool push(BaseState *buf, int mod, void *ptr, int loc, int siz, int base, int size, Response pass, SmartState log) {
         SizeState max;
         if (pass.mod) {
         //    x-x     x---x x---x   x-----x
@@ -1388,18 +1389,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
         std::cerr << "push x:" << loc << "," << siz << " y:" << base << "," << size << std::endl;} else {
         base = loc*mod; size = siz*mod; loc = loc*mod; siz = siz*mod;}
         log << "push " << ptr << " " << loc << " " << siz << std::endl;
-        if (!buf->push(ptr,loc,siz,SizeState(base,size),log)) return false;
-        thread->push(buf,pass,log); return true;
+        return buf->push(ptr,loc,siz,SizeState(base,size),log);
     }
     void push(Request arg, Response pass, SmartState log) {
         switch (arg.tag) {default: std::cerr << "invalid push tag!" << std::endl; exit(-1);
         break; case (TestReq): if (push(arg.siz,log)) return; // TODO remove this and TestReq after change to DrawReq
         break; case (DrawReq): // TODO acquire draw present or write modify read; use constants to call first push above
         break; case (ConfReq): {for (int i = 0; i < arg.siz; i++) write(arg.cfg[i],arg.val[i]); return;}
-        break; case (BaseReq): if (push(stack[arg.bnd],arg.ptr,arg.loc,arg.siz,read(arg.base),read(arg.size),pass,log)) return;
-        break; case (BothReq): if (stack[arg.bnd]->buffer()->push(arg.ptr,arg.loc,arg.siz,arg.max,log)) return;
-        break; case (LockReq): if (stack[arg.bnd]->buffer()->push(arg.ptr,arg.loc,arg.siz,log)) return;
-        break; case (SizeReq): if (stack[arg.bnd]->buffer()->push(arg.max,log)) return;}
+        break; case (BaseReq): {BaseState *buf = stack[arg.bnd]->prebuf(); int mod = stack[arg.bnd]->bufsiz();
+            if (push(buf,mod,arg.ptr,arg.loc,arg.siz,read(arg.base),read(arg.size),pass,log))
+            {thread->push(buf,pass,log); return;}}
+        break; case (BothReq): if (stack[arg.bnd]->prebuf()->push(arg.ptr,arg.loc,arg.siz,arg.max,log))
+            {thread->push(stack[arg.bnd]->prebuf(),pass,log); return;}
+        break; case (LockReq): if (stack[arg.bnd]->prebuf()->push(arg.ptr,arg.loc,arg.siz,log))
+            {thread->push(stack[arg.bnd]->prebuf(),pass,log); return;}
+        break; case (SizeReq): if (stack[arg.bnd]->prebuf()->push(arg.max,log))
+            {thread->push(stack[arg.bnd]->prebuf(),pass,log); return;}}
         fail = true; if (arg.fnc) arg.fnc(arg); thread->push(0,pass,log);
     }
     // TODO remove following after change to DrawReq
@@ -1420,9 +1425,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return true;
     }
     // TODO move switch on center->mem to Request constructor, then following not needed
-    #define REBASE(STATE,FIELD,BASE,SIZE,TYPE) \
-        if (!push(stack[STATE],(void*)center->FIELD,center->idx,center->siz,read(BASE),read(SIZE),pass,log)) \
-        thread->push(0,pass,log);
+    #define REBASE(STATE,FIELD,BASE,SIZE,TYPE) { \
+        BaseState *buf = stack[STATE]->prebuf(); int mod = stack[STATE]->bufsiz(); \
+        if (push(buf,mod,(void*)center->FIELD,center->idx,center->siz,read(BASE),read(SIZE),pass,log)) \
+        thread->push(buf,pass,log); else thread->push(0,pass,log);}
     #define EXTENT(STATE,DATA,WIDTH,HEIGHT) \
         if (stack[STATE]->prebuf()->push(datxVoidz(0,center->DATA),0,datxVoids(center->DATA), \
         SizeState(VkExtent2D({(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei})),log)) \
@@ -1458,7 +1464,7 @@ struct TestState : public DoneState {
     ~TestState() {std::cout << "~TestState" << std::endl;}
     void call() override;
     void done() override {safe.wait(); goon = false; safe.post(); wake.wake();}
-    void func() override {}
+    void heap() override {}
     static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
 };
 
@@ -1470,7 +1476,7 @@ struct ForkState : public DoneState {
     }
     void call() override {cfnc(thd,idx);}
     void done() override {dfnc(thd,idx);}
-    void func() override {delete this;}
+    void heap() override {delete this;}
 };
 
 struct MainState {

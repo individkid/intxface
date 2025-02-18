@@ -167,7 +167,7 @@ struct DoneState {
     char debug[64];
     virtual void call() = 0;
     virtual void done() = 0;
-    virtual void func() = 0;
+    virtual void heap() = 0;
 };
 struct CallState {
     // TODO use queues to start and stop in order
@@ -191,7 +191,7 @@ struct CallState {
         bool temp = fall.front(); fall.pop_front();
         safe.post(); if (!temp) ptr->done();
         if (pthread_join(ptr->thread,0) != 0)
-        {std::cerr << "failed to join!" << std::endl; exit(-1);} ptr->func();}
+        {std::cerr << "failed to join!" << std::endl; exit(-1);} ptr->heap();}
     }
     void stop(DoneState *ptr) {
         safe.wait();
