@@ -966,9 +966,29 @@ function showConstantCG(sub,list)
 	end
 	return result
 end
+function showConstantCH(sub,list)
+	local result = "0"
+	local last = nil
+	for k,v in ipairs(list) do
+		if last then
+			if k == sub+2 and sub+2 == #list and last == "Str" then
+				result = "0"
+			elseif k == sub+2 and sub+2 == #list and last == "Int" then
+				result = "0"
+			elseif k == sub+2 and sub+2 == #list then
+				result = last.."s"
+			end
+			last = nil
+		else
+			last = v
+		end
+	end
+	return result
+end
 function showConstantC(name,constant)
 	local result = ""
 	local mapping = {}
+	local defaults = {}
 	local arguments = {}
 	local values = {}
 	for key,val in ipairs(constant) do
@@ -991,9 +1011,13 @@ function showConstantC(name,constant)
 				local func = showConstantCF(name,k,val) -- func is containing function
 				local gunc = showConstantCF(name,k+2,val) -- gunc is return value
 				local args = showConstantCG(k,val) -- args are argument types
+				local dflt = showConstantCH(k,val) -- dflt is default value
 				-- io.stderr:write("func "..func.." v "..v.." gunc "..gunc.." k "..k.."/"..#val.."\n")
 				if not arguments[func] then
 				arguments[func] = args
+				end
+				if not defaults[func] then
+				defaults[func] = dflt
 				end
 				if not mapping[func] then mapping[func] = {} end
 				mapping[func][v] = gunc
@@ -1026,7 +1050,7 @@ function showConstantC(name,constant)
 			for k,v in pairs(mapping[key]) do
 				result = result.."        case ("..k.."): return "..v..";\n"
 			end
-			result = result.."        default : return 0;\n"
+			result = result.."        default : return "..defaults[key]..";\n"
 			result = result.."    }\n"
 			result = result.."}\n"
 		end

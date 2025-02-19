@@ -591,13 +591,6 @@ struct BindState : public BaseState {
         safe.post();
         return ptr;
     }
-    bool get(Bind i, BaseState **ptr) { // called by pushee
-        safe.wait();
-        *ptr = bind[i];
-        bool ret = (bind[i] != 0);
-        safe.post();
-        return ret;
-    }
     bool incr(StackState **rptr, int rsiz, StackState **wptr, int wsiz, SmartState log);
     void incr(SmartState log);
 };
@@ -1062,8 +1055,8 @@ struct ResultState : public BaseState {
 
 struct AcquireState : public BaseState {
     const VkDevice device;
-    VkSemaphore after; bool atomic;
     ChangeState<Configure,Configures> *copy;
+    bool atomic; VkSemaphore after;
     uint32_t imageIndex;
     AcquireState() :
         BaseState("AcquireState"),
@@ -1182,11 +1175,7 @@ struct DrawState : public BaseState {
         if (!bufptr[typ]) {std::cerr << "invalid bind!" << typ << std::endl; exit(-1);}
         return bufptr[typ];
     }
-    bool get(Bind typ, BaseState **ptr) {
-        *ptr = bufptr[typ];
-        return (bufptr[typ] != 0);
-    }
-    // TODO :use set(bindPtr) and remove bind    // TODO :use set(bindPtr) and remove bufptr bufsiz
+    // TODO :use set(bindPtr) and remove bind bufptr bufsiz
     void resize(SmartState log) override {
         descriptorPool = get(PipelineBnd)->getDescriptorPool();
         descriptorLayout = get(PipelineBnd)->getDescriptorSetLayout();
@@ -1218,22 +1207,31 @@ struct DrawState : public BaseState {
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
             vkResetFences(device, 1, &fence);
             vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-            for (int i = 0; MemoryBinding__Micro__Int__Memory(size.micro)(i) != Memorys; i++)
-            switch (MemoryBinding__Micro__Int__Memory(size.micro)(i)) {
-            default: {std::cerr << "unsupported update memory!" << std::endl; exit(-1);}
-            break; case (Matrixz): updateUniformDescriptor(device,
-                get(MatrixBnd)->getBuffer(),i,
-                get(MatrixBnd)->getRange(),descriptorSet);
-            break; case (Texturez): updateTextureDescriptor(device,
-                get(TextureBnd)->getTextureImageView(),
-                get(TextureBnd)->getTextureSampler(),i,descriptorSet);}
+            BaseState *swapPtr = 0;
+            BaseState *pipelinePtr = 0;
+            BaseState *fetchPtr = 0;
+            BaseState *indexPtr = 0;
+            Bind bnd = Binds;
+            for (int i = 0; (bnd = MicroBind__Micro__BindLoc__Int__Bind(size.micro)(MiddleLoc)(i)) != Binds; i++) {
+            switch (MicroBindTyp__Micro__BindLoc__Int__BindTyp(size.micro)(MiddleLoc)(i)) {
+            default: {std::cerr << "invalid bind type!" << std::endl; exit(-1);}
+            break; case (SwapTyp): swapPtr = get(bnd);
+            break; case (PipelineTyp): pipelinePtr = get(bnd);
+            break; case (FetchTyp): fetchPtr = get(bnd);
+            break; case (IndexTyp): indexPtr = get(bnd);
+            break; case (UniformTyp): updateUniformDescriptor(device,
+                get(bnd)->getBuffer(),i,get(bnd)->getRange(),descriptorSet);
+            break; case (TextureTyp): updateTextureDescriptor(device,
+                get(bnd)->getTextureImageView(),get(bnd)->getTextureSampler(),i,descriptorSet);}}
+            if (swapPtr && pipelinePtr && fetchPtr && indexPtr) {
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
-                get(SwapBnd)->getFramebuffer(imageIndex),
-                get(PipelineBnd)->getPipeline(), get(PipelineBnd)->getPipelineLayout(),
-                get(BringupBnd)->getBuffer(), get(IndexBnd)->getBuffer());
-            if (!drawFrame(commandBuffer,graphics,present,get(SwapBnd)->getSwapChain(),imageIndex,
+                swapPtr->getFramebuffer(imageIndex),
+                pipelinePtr->getPipeline(), pipelinePtr->getPipelineLayout(),
+                fetchPtr->getBuffer(), indexPtr->getBuffer());
+            if (!drawFrame(commandBuffer,graphics,present,swapPtr->getSwapChain(),imageIndex,
                 ptr,loc,siz,size.micro,acquire,after,fence,before))
-                copy->wots(RegisterMask,1<<ResizeAsync); before = VK_NULL_HANDLE;
+                copy->wots(RegisterMask,1<<ResizeAsync); before = VK_NULL_HANDLE;}
+            else {std::cerr << "invalid bind set! " << swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
             return fence;
         }
         return VK_NULL_HANDLE;
