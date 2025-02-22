@@ -221,6 +221,20 @@ struct CallState {
         call->safe.post(); return 0;
     }
 };
+
+template <class Type> struct HeapState {
+    std::vector<Type> vec;
+    HeapState<Type> &operator<<(Type val) {
+        vec.push_back(val);
+        return *this;
+    }
+    Type *data() {
+        return vec.data();
+    }
+    int size() {
+        return vec.size();
+    }
+};
 #endif
 
 #ifdef __cplusplus

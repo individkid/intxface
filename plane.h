@@ -1,6 +1,8 @@
 enum Configure;
 enum Thread;
 struct Center;
+#ifdef MAYBE
+#else
 struct Response {
 	int res;
 	int mod;
@@ -8,8 +10,13 @@ struct Response {
 	struct Center *ptr;
 	void (*fnc)(struct Response);
 };
+#endif
 typedef void (*mftype)(enum Thread tag, int idx);
+#ifdef MAYBE
+typedef void (*wftype)(struct Center *ptr);
+#else
 typedef void (*wftype)(struct Response);
+#endif
 typedef void (*xftype)(enum Configure cfg, int sav, int val);
 typedef void (*nftype)(enum Configure cfg, xftype back);
 typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done);
