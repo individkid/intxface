@@ -1390,7 +1390,7 @@ struct ThreadState : public DoneState {
         if (before.empty()) {safe.post(); break;}
         PushState push = before.front(); before.pop_front(); safe.post();
         if (push.base) switch (push.base->check()) {
-        default: {std::cerr << "invalid push tag! " << push.base->debug << std::endl; exit(-1);}
+        default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
         break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log); push.base = 0;
         break; case(LockBase): push.fence = push.base->basesup(push.log);
         break; case(BothBase): push.fence = push.base->sizeup(push.log);}
@@ -1690,7 +1690,7 @@ Request &Request::operator()(int siz, bool (*fnc)(Request)) {
 void CopyState::push(Request arg, Response pass, SmartState log) {
     while (1) {BaseState *buf = 0;
     switch (arg.tag) {
-        default: std::cerr << "invalid push tag!" << std::endl; exit(-1);
+        default: std::cerr << "invalid push tag! " << arg.tag << std::endl; exit(-1);
     break; case (TestReq): {
         fail = !push(arg.siz,log);} // TODO remove this and TestReq after change to DrawReq
     // break; case (DrawReq):
@@ -1724,8 +1724,8 @@ float *planeWindow(float *mat);
 float *matrc(float *u, int r, int c, int n);
 }
 struct TestState : public DoneState {
-    SafeState safe, wake; bool goon; CopyState *copy;
-    TestState(CopyState *copy) : safe(1), wake(0), goon(true), copy(copy) {
+    SafeState safe, wake; bool goon; CopyState *copy; CpyState *cpy;
+    TestState(CopyState *copy, CpyState *cpy) : safe(1), wake(0), goon(true), copy(copy), cpy(cpy) {
         strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
     ~TestState() {std::cout << "~TestState" << std::endl;}
@@ -1771,9 +1771,10 @@ struct MainState {
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
     ArraysState arrayState[Binds+1];
     ThreadState threadState;
+    CopyState copyState;
+    CpyState cpyState;
     TestState testState;
     CallState callState;
-    CopyState copyState;
     MainState() :
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),
@@ -1826,7 +1827,8 @@ struct MainState {
             {Binds,0}},
         threadState(logicalState.device,&copyState),
         copyState(&threadState,arrayState),
-        testState(&copyState) {
+        cpyState(&threadState,arrayState),
+        testState(&copyState,&cpyState) {
         std::cout << "MainState" << std::endl;}
     ~MainState() {std::cout << "~MainState" << std::endl;}
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
