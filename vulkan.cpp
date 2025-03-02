@@ -1131,8 +1131,8 @@ struct DrawState : public BaseState {
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         type = check();
-        if (loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
-        if (size == SizeState(MicroTest)) {
+        if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
+        if (size == SizeState(MicroTest) && siz > 0) {
             VkExtent2D swapChainExtent = get(SwapBnd)->getSwapChainExtent();
             uint32_t imageIndex;
             // TODO depending on size.micro, disable acquire
@@ -1355,7 +1355,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (pass) req<<Req{PNowReq,Binds,0,{},ptr,pass};
         if (fail) req<<Req{FNowReq,Binds,0,{},ptr,fail};
         if (goon) req<<Req{GoonReq,Binds};
-        req<<Req{DerReq,DrawBnd,0,{BothArg,0,0,siz,SizeState(MicroTest)}};
+        req<<Req{DerReq,DrawBnd,0,{(loc == ResizeLoc ? SizeArg : BothArg),0,0,siz,SizeState(micro)}};
         push(req,log);
     }
     void push(Center *center, void (*pass)(Center*), void (*fail)(Center*), SmartState log) {
