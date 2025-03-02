@@ -46,15 +46,18 @@ struct SmartState {
     static int seqnum;
     int num;
     bool vld;
-    std::stringstream dflt;
     SmartState() : num(0), vld(false) {}
     SmartState(const SmartState &oth);
+    SmartState(const SmartState &&oth) = delete;
+    SmartState(SmartState &&oth) = delete;
+    SmartState(const volatile SmartState &&oth) = delete;
+    SmartState(volatile SmartState &&oth) = delete;
     SmartState &operator=(const SmartState &oth);
     SmartState(std::string str);
     ~SmartState() {clr();}
-    std::stringstream &set();
-    template<class Type> std::stringstream &operator<<(Type val) {
-    std::stringstream &str = set(); str << val; return str;}
+    std::ostream &set();
+    template<class Type> std::ostream &operator<<(Type val) {
+    std::ostream &str = set(); str << val; return str;}
     void clr();
 };
 
@@ -64,6 +67,7 @@ struct SlogState {
     std::map<int, std::string> name;
     std::map<int, int> smart;
     int minnum, limnum, min, lim, ord, num;
+    std::stringstream dflt;
     SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0), ord(0), num(0) {}
     void onof(int m, int l, int o, int n) {
         min = m;

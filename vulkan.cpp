@@ -1206,7 +1206,7 @@ struct PushState {
     VkFence fence;
     Center *ptr;
     void (*fnc)(Center*);
-    // SmartState log; // TODO
+    SmartState log;
 };
 struct ThreadState : public DoneState {
     const VkDevice device;
@@ -1222,7 +1222,7 @@ struct ThreadState : public DoneState {
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
     void push(BaseState *base, Center *ptr, void (*fnc)(Center*), SmartState log) {
-        PushState push = {base,VK_NULL_HANDLE,ptr,fnc};
+        PushState push = {base,VK_NULL_HANDLE,ptr,fnc,log};
         safe.wait();
         before.push_back(push);
         safe.post();
@@ -1236,9 +1236,9 @@ struct ThreadState : public DoneState {
         safe.post();
         if (push.base) switch (push.base->check()) {
         default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
-        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(/*push.log*/SmartState());
-        break; case(LockBase): push.fence = push.base->basesup(/*push.log*/SmartState());
-        break; case(BothBase): push.fence = push.base->sizeup(/*push.log*/SmartState());}
+        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
+        break; case(LockBase): push.fence = push.base->basesup(push.log);
+        break; case(BothBase): push.fence = push.base->sizeup(push.log);}
         after.push_back(push);}
         safe.wait();
         if (!after.empty()) {safe.post(); break;}
@@ -1257,7 +1257,7 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.fnc) {push.fnc(push.ptr);}
         copy->wots(RegisterMask,1<<FenceAsync);
-        if (push.base) push.base->baseups(/*push.log*/SmartState());}
+        if (push.base) push.base->baseups(push.log);}
         vkDeviceWaitIdle(device);
     }
     void done() override {
