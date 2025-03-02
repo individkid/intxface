@@ -124,6 +124,9 @@ Configure = {
 	"RegisterPoll", -- poll microseconds
 	"RegisterMask", -- interrupt mask
 	"RegisterSelf", -- outstanding selfs
+	"DrawMicro", -- argument to draw
+	"DrawType",
+	"DrawSize",
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",

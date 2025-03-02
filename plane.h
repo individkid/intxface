@@ -12,3 +12,5 @@ typedef const char *(*oftype)(int arg);
 void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd);
 void planeLoop();
 void planeDone();
+void planePass(struct Center *ptr);
+void planeFail(struct Center *ptr);

@@ -712,6 +712,7 @@ void registerOpen(enum Configure cfg, int sav, int val)
     if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         if (sem_post(&waitSem) != 0) ERROR();}
 }
+// TODO add callback for RegisterNote RegisterWarn RegisterPass RegisterFail to wots CopyThd to RegisterOpen
 void registerMask(enum Configure cfg, int sav, int val)
 {
     if (cfg != RegisterMask) ERROR();
@@ -732,6 +733,14 @@ void initSafe()
     strout = allocStrq(); strin = allocStrq();
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterMask,registerMask);
+}
+void planePass(struct Center *ptr) {
+    // TODO centerPlace with idx from shadow queue, or add idx to callback
+    // TODO wake up machine with RegisterPass
+}
+void planeFail(struct Center *ptr) {
+    // TODO centerPlace with idx from shadow queue, or add idx to callback
+    // TODO wake up machine with RegisterFail
 }
 void planeDone()
 {

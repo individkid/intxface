@@ -1378,7 +1378,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Vertexz): ptr = (void*)center->vtx;
         break; case (Basisz): ptr = (void*)center->bas;
         break; case (Piercez): ptr = (void*)center->pie;
-        break; case (Configurez):
+        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
         if (pass) thread->push(0,center,pass,log);
         return;}
@@ -1601,7 +1601,13 @@ void vulkanForce(Center *ptr) {
     std::cerr << "unexpected copy fail!" << std::endl; exit(-1);
 }
 void vulkanCopy(Center *ptr) {
-    // mptr->copyState.push(pass,SmartState());
+    mptr->copyState.push(ptr,planePass,planeFail,SmartState());
+}
+void vulkanNote(Center *ptr) {
+    // TODO wots bit in RegisterNote
+}
+void vulkanWarn(Center *ptr) {
+    // TODO wots bit in RegisterWarn
 }
 void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
@@ -1628,8 +1634,10 @@ void vulkanBack(Configure cfg, int sav, int val) {
     mptr->callState.stop(&mptr->threadState);
 }
 void vulkanDraw(Configure cfg, int sav, int val) {
-    // TODO check cfg draw parameter; pass SmartState with planePass
-    // mptr->copyState.push(val,SmartState());
+    mptr->copyState.push(
+    (Micro)mptr->copyState.read(DrawMicro),
+    (BindLoc)mptr->copyState.read(DrawType),
+    val,0,vulkanNote,vulkanWarn,false,SmartState());
 }
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
     mptr->callState.push(new ForkState(thd,idx,fnc,done));
@@ -1643,8 +1651,9 @@ const char *vulkanCmnd(int arg) {
 int main(int argc, const char **argv) {
     for (int i = 1; i < argc; i++) cmdl.push_back(argv[i]);
     MainState main;
-    mptr = &main; // TODO should not be needed
+    mptr = &main;
     main.copyState.call(RegisterOpen,vulkanBack);
+    main.copyState.call(DrawSize,vulkanDraw);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     while (!glfwWindowShouldClose(main.windowState.window) && main.copyState.read(RegisterOpen) != 0) {
     glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
